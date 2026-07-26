@@ -1,5 +1,4 @@
-import { regTimeout } from '../core/timers.js';
-import { state } from '../core/state.js';
+import { renderChoiceQuestion } from '../core/choiceGame.js';
 
 export function enginePythagore(canvas, isDemo, params) {
     const tables = params.tables && params.tables.length > 0 ? params.tables : [1,2,3,4,5,6,7,8,9,10];
@@ -36,53 +35,24 @@ export function enginePythagore(canvas, isDemo, params) {
     gridHtml += '</div>';
 
     // Choix de réponses : le bon résultat + des distracteurs pris dans la même colonne
-    let choices = [product];
-    while (choices.length < 4) {
+    let vals = [product];
+    while (vals.length < 4) {
         const fakeRow = Math.floor(Math.random() * 10) + 1;
         const fake = fakeRow * col;
-        if (!choices.includes(fake)) choices.push(fake);
+        if (!vals.includes(fake)) vals.push(fake);
     }
-    choices = choices.sort(() => Math.random() - 0.5);
+    vals = vals.sort(() => Math.random() - 0.5);
+    const choices = vals.map(v => ({ val: v, label: v, correct: v === product }));
 
-    let choicesHtml = '<div class="bubble-container">';
-    choices.forEach(c => { choicesHtml += `<div class="bubble" data-val="${c}">${c}</div>`; });
-    choicesHtml += '</div>';
-
-    canvas.innerHTML = `
-        <div class="game-question pytha-question">Ligne ${row} × Colonne ${col} = ?</div>
-        ${gridHtml}
-        ${choicesHtml}
-    `;
-
-    if (isDemo) {
-        regTimeout(() => {
-            const el = canvas.querySelector(`.bubble[data-val="${product}"]`);
-            if (el) {
-                el.classList.add('demo-target');
-                regTimeout(() => { enginePythagore(canvas, true, params); }, 800);
-            }
-        }, 2000);
-    } else {
-        canvas.querySelectorAll('.bubble').forEach(b => {
-            b.onclick = () => {
-                const userVal = parseInt(b.dataset.val);
-                if (userVal === product) {
-                    b.style.backgroundColor = "#dcfce7";
-                    state.celebrate(b, 10);
-                    regTimeout(() => { enginePythagore(canvas, false, params); }, 1500);
-                } else {
-                    b.style.background = "var(--danger)";
-                    state.showFeedback(`Faux ! ${row} × ${col} = ${product}`);
-                    import('../core/errorSchema.js').then(schema => {
-                        state.logError(state.activeExo, schema.createErrorSnapshot({
-                            input: userVal,
-                            expected: product,
-                            questionText: `${row} × ${col}`,
-                            row, col, product
-                        }));
-                    });
-                }
-            };
-        });
-    }
+    renderChoiceQuestion(canvas, {
+        isDemo,
+        questionHtml: `<div class="game-question pytha-question">Ligne ${row} × Colonne ${col} = ?</div>`,
+        extraHtml: gridHtml,
+        choices,
+        itemClass: 'bubble',
+        containerClass: 'bubble-container',
+        questionText: `${row} × ${col}`,
+        errorContext: { row, col, product },
+        replay: (nextIsDemo) => enginePythagore(canvas, nextIsDemo, params)
+    });
 }

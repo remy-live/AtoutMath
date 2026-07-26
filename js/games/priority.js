@@ -1,5 +1,4 @@
-import { regTimeout, regInterval } from '../core/timers.js';
-import { state } from '../core/state.js';
+import { renderChoiceQuestion } from '../core/choiceGame.js';
 
 export function enginePriority(canvas, isDemo, params = {}) {
     let eq, right, wrong;
@@ -12,44 +11,28 @@ export function enginePriority(canvas, isDemo, params = {}) {
         right = "2 × 3";
         wrong = "10 + 2";
     }
-    
-    let btns = [right, wrong].sort(() => Math.random() - 0.5);
-    
-    canvas.innerHTML = `<div class="game-question">Priorité ?<br><span style="color:var(--primary)">${eq}</span></div>` + 
-    btns.map(b => `<button class="prio-btn" data-val="${b}">${b}</button>`).join('');
 
-    if(isDemo) {
-        regTimeout(() => {
-            const btn = canvas.querySelector(`.prio-btn[data-val="${right}"]`);
-            if(btn) {
-                btn.classList.add('demo-target');
-                regTimeout(() => { enginePriority(canvas, true, params); }, 800);
+    const choices = [right, wrong]
+        .sort(() => Math.random() - 0.5)
+        .map(v => ({ val: v, label: v, correct: v === right }));
+
+    renderChoiceQuestion(canvas, {
+        isDemo,
+        questionHtml: `<div class="game-question">Priorité ?<br><span style="color:var(--primary)">${eq}</span></div>`,
+        choices,
+        itemClass: 'prio-btn',
+        questionText: eq,
+        feedbackMessage: "Faux ! La multiplication est prioritaire sur l'addition.",
+        errorContext: { eq, right, wrong },
+        styleFeedback: (el, isCorrect) => {
+            if (isCorrect) {
+                el.style.borderColor = 'var(--success)';
+                el.style.backgroundColor = '#dcfce7';
+            } else {
+                el.style.borderColor = 'var(--danger)';
+                el.classList.add('shake');
             }
-        }, 2000);
-    } else {
-        canvas.querySelectorAll('.prio-btn').forEach(btn => {
-            btn.onclick = () => {
-                if(btn.dataset.val === right) {
-                    btn.style.borderColor = "var(--success)";
-                    btn.style.backgroundColor = "#dcfce7";
-                    state.celebrate(btn, 10);
-                    regTimeout(() => { enginePriority(canvas, false, params); }, 1500);
-                } else {
-                    btn.style.borderColor = "var(--danger)";
-                    state.showFeedback("Faux ! La multiplication est prioritaire sur l'addition.");
-                    btn.classList.add('shake');
-                    import('../core/errorSchema.js').then(schema => {
-                        state.logError(state.activeExo, schema.createErrorSnapshot({
-                            input: btn.dataset.val,
-                            expected: right,
-                            questionText: eq,
-                            eq: eq,
-                            right: right,
-                            wrong: wrong
-                        }));
-                    });
-                }
-            };
-        });
-    }
+        },
+        replay: (nextIsDemo) => enginePriority(canvas, nextIsDemo, params)
+    });
 }

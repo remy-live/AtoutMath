@@ -208,6 +208,14 @@ export class SequenceRunner {
     onStepComplete(stepStats) {
         this.stats.totalCorrect += stepStats.correct || 0;
         this.stats.totalErrors += stepStats.errors || 0;
+
+        if (this.isStudentPath) {
+            const finishedStep = this.sequence[this.currentIndex];
+            if (finishedStep && finishedStep.stepId) {
+                state.markStudentPathStepCompleted(finishedStep.stepId);
+            }
+        }
+
         this.currentIndex++;
         
         const canvas = document.getElementById('game-canvas') || document.getElementById('game-board');
@@ -233,33 +241,32 @@ export class SequenceRunner {
             }
         }));
 
-        const uiModule = this.isTeacherPath ? 'teacherUI' : 'profileUI';
-        import(`../ui/${uiModule}.js`).then(module => {
-            const uiFn = this.isTeacherPath ? module.showTeacherDashboard : module.showStudentProfile;
-            
-            const oldModal = document.getElementById('seq-modal');
-            if(oldModal) oldModal.remove();
+        const oldModal = document.getElementById('seq-modal');
+        if (oldModal) oldModal.remove();
 
-            const modal = document.createElement('div');
-            modal.id = 'seq-modal';
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content text-center">
-                    <h2 style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px;">Parcours Terminé ! 🎉</h2>
-                    <p style="font-size: 1.2rem; color: var(--text-main); margin-bottom: 25px;">Tu as terminé toutes les activités.</p>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-bottom: 30px;">
-                        Erreurs totales : ${this.stats.totalErrors}
-                    </div>
-                    <button id="btn-close-seq" class="btn-toggle active" style="font-size: 1.5rem; padding: 15px 30px;">Retour 🏠</button>
+        const modal = document.createElement('div');
+        modal.id = 'seq-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content text-center">
+                <h2 style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px;">Parcours Terminé ! 🎉</h2>
+                <p style="font-size: 1.2rem; color: var(--text-main); margin-bottom: 25px;">Tu as terminé toutes les activités.</p>
+                <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-bottom: 30px;">
+                    Erreurs totales : ${this.stats.totalErrors}
                 </div>
-            `;
-            document.body.appendChild(modal);
-            modal.style.display = 'flex';
+                <button id="btn-close-seq" class="btn-toggle active" style="font-size: 1.5rem; padding: 15px 30px;">Retour 🏠</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
 
-            document.getElementById('btn-close-seq').onclick = () => {
-                modal.remove();
-                uiFn();
-            };
-        });
+        document.getElementById('btn-close-seq').onclick = () => {
+            modal.remove();
+            clearEngines();
+            const gl = document.getElementById('game-layer');
+            gl.classList.remove('device-simulator', 'tablet-simulator');
+            gl.style.display = 'none';
+            import('../ui/navigation.js').then(module => module.setTopNavMode(this.isStudentPath ? 'path' : 'grid'));
+        };
     }
 }

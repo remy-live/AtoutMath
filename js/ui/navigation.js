@@ -259,5 +259,6 @@ export function setTopNavMode(m) {
         initGridFilters();
     } else if (m === 'path') {
         if(document.getElementById('view-path')) document.getElementById('view-path').style.display = 'flex';
+        import('./pathView.js').then(module => module.renderStudentPathView());
     }
 }

@@ -12,6 +12,7 @@ export const state = {
     badges: {}, // key: badgeId, value: timestamp
     errorHistory: [],
     teacherFolders: [],
+    studentPath: null, // { steps: [...], completed: [stepId, ...] } ou null si aucun parcours assigné
     timeSpentTotal: 0, // in seconds
     timeSpentPerGame: {}, // { "math_operations": 120, ... }
 
@@ -45,6 +46,9 @@ export const state = {
 
             const storedNiveaux = await localforage.getItem('atoutmath_selectedNiveaux');
             if (storedNiveaux) this.selectedNiveaux = storedNiveaux;
+
+            const storedStudentPath = await localforage.getItem('atoutmath_studentPath');
+            if (storedStudentPath) this.studentPath = storedStudentPath;
 
             document.dispatchEvent(new CustomEvent('score_updated'));
             document.dispatchEvent(new CustomEvent('badges_updated'));
@@ -81,6 +85,29 @@ export const state = {
         this.selectedNiveaux = niveaux;
         if (typeof localforage !== 'undefined') {
             localforage.setItem('atoutmath_selectedNiveaux', this.selectedNiveaux);
+        }
+    },
+
+    // Parcours assigné à l'élève (via un code prof) et suivi de sa progression
+    setStudentPath: function(steps) {
+        this.studentPath = {
+            steps: steps.map((s, i) => ({ ...s, stepId: s.stepId || `sp_${i}` })),
+            completed: []
+        };
+        if (typeof localforage !== 'undefined') {
+            localforage.setItem('atoutmath_studentPath', this.studentPath);
+        }
+        document.dispatchEvent(new CustomEvent('studentPath_updated'));
+    },
+
+    markStudentPathStepCompleted: function(stepId) {
+        if (!this.studentPath) return;
+        if (!this.studentPath.completed.includes(stepId)) {
+            this.studentPath.completed.push(stepId);
+            if (typeof localforage !== 'undefined') {
+                localforage.setItem('atoutmath_studentPath', this.studentPath);
+            }
+            document.dispatchEvent(new CustomEvent('studentPath_updated'));
         }
     },
 

@@ -1,6 +1,7 @@
 import { Shortcodes } from '../core/shortcodes.js';
 import { exercices } from '../data/catalog.js';
 import { showAlert } from './modal.js';
+import { state } from '../core/state.js';
 
 export function initStudentCodeUI() {
     const btnSubmitCode = document.getElementById('btn-submit-code');
@@ -14,8 +15,11 @@ export function initStudentCodeUI() {
                 showAlert("Code invalide ou introuvable.");
                 return;
             }
+            state.setStudentPath(sequence);
+
             import('../core/sequenceRunner.js').then(module => {
-                const runner = new module.SequenceRunner(sequence, 'none');
+                const runner = new module.SequenceRunner(state.studentPath.steps, 'none');
+                runner.isStudentPath = true;
                 runner.start();
                 document.getElementById('code-modal').style.display = 'none';
 
