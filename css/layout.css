@@ -1,0 +1,97 @@
+/* --- ARCHITECTURE GENERALE --- */
+#app-container { flex-grow: 1; position: relative; overflow: hidden; height: calc(100vh - var(--debug-bar-height)); background: var(--bg-app); display: flex; flex-direction: column; }
+
+#top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
+.nav-left, .nav-center, .nav-right { display: flex; align-items: center; gap: 15px; }
+.nav-center { flex-grow: 1; justify-content: center; }
+
+#app-body { display: flex; flex-grow: 1; overflow: hidden; flex-direction: row; position: relative; }
+
+#sidebar { background-color: var(--bg-sidebar); color: var(--text-sidebar); display: flex; flex-direction: column; z-index: 10; border-right: 1px solid var(--border-sidebar); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; overflow:hidden; }
+#sidebar.collapsed { width: 0 !important; border-right: none; }
+#sidebar header { display: none; } /* Logo is moved to top-navbar */
+#main-area { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; background: var(--bg-app); }
+#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); z-index: 10; }
+#bottom-nav { height: var(--bottom-nav-height); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
+
+/* =========================================================
+   GESTION DU LAYOUT (MOBILE ON vs OFF)
+========================================================= */
+/* -> MODE DESKTOP (par défaut) */
+body:not(.mobile-view) #sidebar { display: flex; width: var(--sidebar-width); height: 100%; position: relative; }
+body:not(.mobile-view) #main-area { display: flex; flex-grow: 1; height: 100%; position: relative; }
+body:not(.mobile-view) #bottom-nav { display: none !important; }
+body:not(.mobile-view) .desktop-controls { display: flex !important; }
+
+/* -> MODE MOBILE (ON) */
+body.mobile-view #app-container { flex-direction: column; }
+
+body.mobile-view #sidebar, body.mobile-view #main-area {
+    position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - var(--bottom-nav-height));
+    display: none !important; border-right: none;
+}
+
+body.mobile-view #sidebar.mob-active, body.mobile-view #main-area.mob-active { display: flex !important; }
+body.mobile-view #bottom-nav { display: flex !important; }
+body.mobile-view .desktop-controls { display: none !important; }
+body.mobile-view #top-navbar .nav-center { display: none !important; } /* Hide text tabs on mobile */
+
+/* -> MODE MOBILE + ENSEIGNANT (Empilement) */
+body.mobile-view.teacher-mode #app-body {
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: var(--bottom-nav-height);
+}
+body.mobile-view.teacher-mode #main-area {
+    position: relative; height: auto; display: flex !important; min-height: 0;
+}
+body.mobile-view.teacher-mode #sidebar {
+    position: relative; height: auto; display: flex !important; min-height: 0;
+    border-top: 2px solid var(--border);
+}
+/* Forcer l'affichage sans se soucier de mob-active en mode prof mobile */
+body.mobile-view.teacher-mode #sidebar, body.mobile-view.teacher-mode #main-area {
+    display: flex !important;
+}
+/* Empiler correctement sur mobile: builder en haut, sidebar en bas */
+body.mobile-view.teacher-mode #main-area { order: 1; flex: none !important; height: auto !important; overflow: visible !important; }
+body.mobile-view.teacher-mode #sidebar { order: 2; border-top: 2px solid var(--border); border-right: none; flex: 1 !important; }
+
+/* --- LAYOUT DU BUILDER --- */
+body.mobile-view .desktop-only { display: none !important; }
+#builder-view { display: none; flex-direction: row; padding: 0; height: 100%; width: 100%; }
+body.mobile-view #builder-view { flex-direction: column; }
+#builder-center-col { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+#view-path { display: none; flex-direction: column; padding: 40px; height: 100%; overflow-y: auto; align-items: center; }
+#view-profile { display: none; flex-direction: column; padding: 40px; height: 100%; overflow-y: auto; }
+body.mobile-view #builder-center-col { flex: none !important; height: auto !important; border-right: none !important; }
+body.mobile-view #path-collapsible-wrapper { display: block; }
+body.mobile-view #path-toggle-icon { display: block !important; }
+
+body.mobile-view #builder-properties-panel { 
+    position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important;
+    background: var(--bg-panel); z-index: 100000;
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none !important; padding-top: 60px; /* Space for close btn */
+}
+body.mobile-view #builder-properties-panel.mob-open {
+    transform: translateY(0);
+}
+#builder-properties-panel { width: 300px; display: flex; flex-direction: column; padding: 20px; background: var(--bg-panel); overflow-y: auto; border-left: 1px solid var(--border); }
+
+/* --- ICONES SVG --- */
+svg { vertical-align: middle; }
+.btn-toggle svg { margin-right: 5px; }
+
+/* --- ZONE DE JEU PLEIN ECRAN --- */
+#game-layer { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-app); z-index: 10000; flex-direction: column; }
+
+/* SIMULATEUR APPAREIL (Mode Test Professeur) */
+#game-layer.device-simulator, #game-layer.tablet-simulator {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 100000; display: flex; flex-direction: column; overflow: hidden;
+    background: white; border-radius: 8px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    border: 1px solid var(--border);
+}
+#game-layer.device-simulator { height: 90vh; width: 400px; max-height: 850px; }
+#game-layer.tablet-simulator { height: 80vh; width: 768px; max-height: 1024px; }

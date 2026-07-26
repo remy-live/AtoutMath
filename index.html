@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MathBox - Mode Démo & Layout</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/ui.css">
+    <link rel="stylesheet" href="css/games.css">
+    <link rel="stylesheet" href="css/components.css">
+    <!-- LocalForage for storage -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <!-- Canvas Confetti for gamification -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+
+<body class="">
+
+    <!-- BARRE DE DEBUG ET LAYOUT -->
+    <div id="debug-toolbar">
+        <div>
+            <button class="debug-btn" id="db-toggle-mobile">📱 Vue Mobile : OFF</button>
+            <button class="debug-btn" id="db-toggle-role">👨‍🏫 Mode : Élève</button>
+            <button class="debug-btn" id="db-clear-storage">🗑️ Vider Sauvegarde</button>
+            <button class="debug-btn" id="db-fake-data">🧪 Générer Données</button>
+        </div>
+    </div>
+
+    <div id="app-container">
+
+        <!-- TOP NAVBAR -->
+        <nav id="top-navbar">
+            <div class="nav-left">
+                <button id="btn-toggle-sidebar" class="btn-icon">☰</button>
+                <div class="title">MathBox</div>
+            </div>
+            <div class="nav-center student-only">
+                <button class="top-nav-tab active" id="top-btn-grid">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="7" height="7" x="3" y="3" rx="1" />
+                        <rect width="7" height="7" x="14" y="3" rx="1" />
+                        <rect width="7" height="7" x="14" y="14" rx="1" />
+                        <rect width="7" height="7" x="3" y="14" rx="1" />
+                    </svg>
+                    Exercices
+                </button>
+                <button class="top-nav-tab" id="top-btn-code">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                    </svg>
+                    Code
+                </button>
+                <button class="top-nav-tab" id="top-btn-path">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                        <path d="M21 12h-2" />
+                        <path d="M5 12H3" />
+                        <path d="M12 3v2" />
+                    </svg>
+                    Parcours
+                </button>
+                <button class="top-nav-tab" id="top-btn-profile">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Profil
+                </button>
+            </div>
+            <div class="nav-center teacher-only nav-center-editing-label">
+                Mode Édition de Parcours
+            </div>
+            <div class="nav-right">
+                <button id="btn-toggle-theme" class="btn-icon btn-icon--sm student-only" title="Changer de thème">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/>
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                    </svg>
+                </button>
+                <button id="btn-open-import-export-student" class="btn-icon btn-icon--sm" title="Sauvegarder / Restaurer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                </button>
+                <span class="score-display">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    0</span>
+            </div>
+        </nav>
+
+        <div id="app-body">
+
+            <!-- SIDEBAR -->
+            <aside id="sidebar">
+                <div class="sidebar-top-controls">
+                    <div class="btn-group desktop-controls">
+                        <button class="btn-toggle active" id="desk-btn-drill" title="Présentation par Clic">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="7"></rect><path d="M12 6v4"></path></svg>
+                            Clic
+                        </button>
+                        <button id="desk-btn-acc" class="btn-toggle" title="Présentation Arborescence">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="6" height="6" rx="1"></rect><rect x="16" y="3" width="6" height="6" rx="1"></rect><rect x="16" y="15" width="6" height="6" rx="1"></rect><path d="M8 12h4V6h4"></path><path d="M12 12v6h4"></path></svg>
+                            Arbre
+                        </button>
+                    </div>
+                    <div class="select-wrap">
+                    <div id="custom-niveau-select">
+                        <span id="cns-label">Tous les niveaux</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div id="cns-dropdown">
+                        <!-- Checkboxes will be injected here -->
+                    </div>
+                    </div>
+                </div>
+                <div id="nav-container">
+                    <div id="view-accordion"></div>
+                    <div id="view-drilldown">
+                        <div id="breadcrumb"><button id="btn-back">←</button><span id="breadcrumb-text">Domaines</span>
+                        </div>
+                        <div id="drill-content"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ZONE PRINCIPALE -->
+            <main id="main-area">
+                <header class="teacher-only">
+                    <div class="builder-header-label">Construction de Parcours
+                    </div>
+                    <div class="flex-spacer"></div>
+                </header>
+
+
+
+                <!-- Grille Globale -->
+                <div id="main-wrapper" class="student-only">
+                    <div id="filter-bar">
+
+                        <div class="filter-row"><span class="filter-row-label">Domaines</span>
+                            <div id="filters-domaine"></div>
+                        </div>
+                    </div>
+                    <div id="main-content"></div>
+                </div>
+
+                <!-- Editeur Professeur -->
+                <div id="builder-view" class="teacher-only">
+
+                    <!-- Colonne Centrale (Parcours) -->
+                    <div id="builder-center-col">
+                        <div id="path-header-toggle" class="path-header-toggle">
+                            <div class="path-header-left">
+                                <h2 class="path-header-title">
+                                    <input type="text" id="path-name-input" value="Mon Parcours" title="Cliquez pour modifier le nom">
+                                    <span id="path-count-badge">0</span>
+                                    <svg id="path-toggle-icon" class="collapsable-btn" xmlns="http://www.w3.org/2000/svg"
+                                        width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                </h2>
+                                <button id="btn-new-path" class="btn-toggle glass-btn btn-toggle--sm">✨ Nouveau</button>
+                                <button id="btn-open-path-browser" class="btn-toggle glass-btn btn-toggle--sm">📂 Mes Parcours</button>
+                                <button id="btn-open-import-export-teacher" class="btn-toggle glass-btn btn-toggle--sm">🔄 Import/Export</button>
+                            </div>
+                            <div class="builder-header-actions" onclick="event.stopPropagation()">
+                            <div class="preview-mode-group desktop-only" onclick="event.stopPropagation()">
+                                <button id="preview-mode-mobile" class="preview-mode-btn active" title="Mobile">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+                                </button>
+                                <button id="preview-mode-tablet" class="preview-mode-btn" title="Tablette">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2" /><line x1="18" y1="12" x2="18.01" y2="12" /></svg>
+                                </button>
+                                <button id="preview-mode-desktop" class="preview-mode-btn" title="Ordinateur">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
+                                </button>
+                            </div>
+                            <button id="btn-test-sequence" class="btn-toggle" title="Tester le Parcours">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="currentColor" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                                Tester
+                            </button>
+                                <button id="btn-generate-code" class="btn-toggle">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                    Code Élève
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="path-collapsible-wrapper">
+
+                            <div id="path-container">
+                                <div class="empty-msg">Ajoutez des
+                                    activités depuis le catalogue.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Colonne de Droite (Propriétés) -->
+                    <div id="builder-properties-panel">
+                        <div class="empty-msg">
+                            Sélectionnez une activité pour en modifier les propriétés.</div>
+                    </div>
+                </div>
+
+                <!-- PARCOURS (ELEVE) -->
+                <div id="view-path" class="student-only">
+                    <h1 class="view-heading-title">Mon Parcours Actuel</h1>
+                    <p class="view-heading-subtitle">Suis les étapes validées
+                        par ton professeur.</p>
+
+                    <div class="path-timeline">
+                        <!-- Ligne verticale -->
+                        <div class="path-timeline-line"></div>
+
+                        <!-- Etape 1 (Validée) -->
+                        <div class="path-timeline-step">
+                            <div class="path-timeline-icon path-timeline-icon--done">✓</div>
+                            <div class="card card--flush">
+                                <div class="timeline-step-title">Additions Mystères</div>
+                                <div class="timeline-step-status">Terminé !</div>
+                            </div>
+                        </div>
+
+                        <!-- Etape 2 (En cours) -->
+                        <div class="path-timeline-step">
+                            <div class="path-timeline-icon path-timeline-icon--current">2</div>
+                            <div class="card card--flush card--current">
+                                <div class="timeline-step-title timeline-step-title--active">Flash Mult</div>
+                                <button class="btn-toggle active">Jouer</button>
+                            </div>
+                        </div>
+
+                        <!-- Etape 3 (Verrouillé) -->
+                        <div class="path-timeline-step path-timeline-step--locked">
+                            <div class="path-timeline-icon path-timeline-icon--locked">🔒</div>
+                            <div class="card card--flush">
+                                <div class="timeline-step-title">Grille Chasseur</div>
+                                <div class="timeline-step-status">À débloquer</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFIL -->
+                <div id="view-profile">
+                    <div class="profile-container">
+                        <div class="profile-header">
+                            <div>
+                                <h1 class="view-heading-title">Mon Profil
+                                </h1>
+                                <p class="view-heading-subtitle">Voici un résumé de tes
+                                    accomplissements et de ta progression.</p>
+                            </div>
+                            <div class="profile-score-block">
+                                <div class="profile-score-emoji">⭐</div>
+                                <div class="profile-score-value">0</div>
+                                <div class="profile-score-label">Points totaux</div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <span class="stat-label">Niveau
+                                    Actuel</span>
+                                <span id="profile-level" class="stat-value stat-value--accent">Apprenti</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Exercices
+                                    Réussis</span>
+                                <span class="stat-value stat-value--success">0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Temps de
+                                    Jeu</span>
+                                <span class="stat-value stat-value--primary">0 min</span>
+                            </div>
+                        </div>
+
+                        <div class="section-header-row">
+                            <h3 class="section-title">Carnet d'Erreurs</h3>
+                            <div class="section-header-actions">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="profile-group-exo" checked>
+                                    Grouper par exercice
+                                </label>
+                                <button id="btn-start-revision" class="btn-toggle">Lancer
+                                    mon Plan de Révisions</button>
+                            </div>
+                        </div>
+                        <div id="error-log-container">
+                            <div class="empty-state-msg">
+                                Bravo ! Tu n'as aucune erreur en attente de révision.
+                            </div>
+                        </div>
+
+                        <h3 class="section-title">Derniers Badges Obtenus</h3>
+                        <div class="badges-placeholder">
+                            Jouez à des jeux pour débloquer des badges !
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div> <!-- END APP BODY -->
+
+        <!-- NAVIGATION MOBILE BASSE -->
+        <nav id="bottom-nav">
+            <button class="bottom-nav-btn" id="mob-btn-drill-acc">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="7"></rect>
+                    <path d="M12 6v4"></path>
+                </svg>
+                <span>Clic</span>
+            </button>
+            <button class="bottom-nav-btn active" id="mob-btn-grid">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="7" height="7" x="3" y="3" rx="1" />
+                    <rect width="7" height="7" x="14" y="3" rx="1" />
+                    <rect width="7" height="7" x="14" y="14" rx="1" />
+                    <rect width="7" height="7" x="3" y="14" rx="1" />
+                </svg>
+                <span>Exercices</span>
+            </button>
+            <button class="bottom-nav-btn" id="mob-btn-path">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="6" cy="19" r="3" />
+                    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+                    <circle cx="18" cy="5" r="3" />
+                </svg>
+                <span>Parcours</span>
+            </button>
+            <button class="bottom-nav-btn" id="mob-btn-profile">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Profil</span>
+            </button>
+        </nav>
+
+        <!-- ZONE DE JEU PLEIN ECRAN -->
+        <div id="game-layer">
+            <div id="game-header">
+                <h3 id="game-title">Titre Exercice</h3>
+
+                <div id="game-progress-container">
+                    <div id="game-progress-bar"></div>
+                    <div id="game-progress-text">0 / 10</div>
+                </div>
+                <div class="game-header-actions">
+                    <button id="btn-toggle-demo" class="game-icon-btn game-icon-btn--warn" title="Mode Démonstration">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="18" x="3" y="3" rx="2" />
+                            <path d="M10 10v.01" />
+                            <path d="M14 10v.01" />
+                            <path d="M8 14h8" />
+                            <path d="M9 18v3" />
+                            <path d="M15 18v3" />
+                            <path d="M2 14h1" />
+                            <path d="M21 14h1" />
+                            <path d="M12 3v-2" />
+                        </svg>
+                    </button>
+                    <button id="btn-show-instruction" class="game-icon-btn game-icon-btn--info" title="Aide">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                            <path d="M12 17h.01" />
+                        </svg>
+                    </button>
+                    <button id="btn-close-game" class="game-icon-btn game-icon-btn--danger" title="Fermer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bannière de Démonstration Autonome (façon Toast) -->
+            <div id="demo-overlay-banner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <path d="M10 10v.01" />
+                    <path d="M14 10v.01" />
+                    <path d="M8 14h8" />
+                    <path d="M9 18v3" />
+                    <path d="M15 18v3" />
+                    <path d="M2 14h1" />
+                    <path d="M21 14h1" />
+                    <path d="M12 3v-2" />
+                </svg>
+                <span id="demo-banner-text">Mode Démonstration</span>
+                <button class="btn-stop-demo" id="btn-start-real-game">À
+                    moi de jouer !</button>
+            </div>
+
+            <div class="canvas-area" id="game-board"></div>
+
+            <div id="game-feedback"></div>
+        </div>
+
+        <!-- MODALE CODE ELEVE -->
+        <div id="code-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-sm">
+                <div class="modal-header">
+                    <h3 class="modal-title modal-title--neutral">Entrer un Code</h3>
+                    <button id="btn-close-code" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-text">Saisis le code donné par ton professeur
+                    pour lancer une activité spécifique.</p>
+
+                <input type="text" id="student-code-input" placeholder="Ex: ABJBC">
+                <button id="btn-submit-code" class="btn-toggle active">Lancer</button>
+            </div>
+        </div>
+
+        <!-- MODALE HOVER PREVIEW DEMO -->
+        <div id="hover-demo-box">
+            <div class="hd-header">
+                <span id="hd-title">Titre</span>
+                <span class="hd-subtitle">Aperçu direct</span>
+            </div>
+            <div class="hd-canvas-wrap">
+                <div id="hover-demo-canvas"></div>
+            </div>
+        </div>
+
+        <!-- MODALE CONFIGURATION -->
+        <div id="config-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-settings">
+                <h3 class="modal-title-bordered">⚙️ Paramètres</h3>
+                <div id="config-content">
+                    <!-- Checkboxes injéctées en JS -->
+                </div>
+                <div class="modal-footer-actions">
+                    <button id="btn-config-cancel" class="btn-toggle glass-btn">Annuler</button>
+                    <button id="btn-config-save" class="btn-toggle active glass-btn primary">Valider</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALE CONSIGNE -->
+        <div id="instruction-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-sm">
+                <h3 class="modal-title">ℹ️ Consigne</h3>
+                <p id="instruction-text"></p>
+                <button id="btn-instruction-close" class="btn-toggle active glass-btn primary modal-btn-primary-lg">Compris !</button>
+            </div>
+        </div>
+
+    </div>
+
+        <!-- MODALE NAVIGATEUR DE PARCOURS -->
+        <div id="path-browser-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-md">
+                <div class="modal-header">
+                    <h3 class="modal-title">📂 Mes Parcours</h3>
+                    <div class="path-browser-header-actions">
+                        <button id="btn-new-folder" class="btn-toggle glass-btn">📁 Nouveau Dossier</button>
+                        <button id="btn-close-path-browser" class="modal-close-btn">&times;</button>
+                    </div>
+                </div>
+                <div id="path-browser-list">
+                    <!-- Liste injectée en JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALE IMPORT/EXPORT -->
+        <div id="import-export-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-sm">
+                <div class="modal-header">
+                    <h3 class="modal-title">🔄 Import / Export</h3>
+                    <button id="btn-close-import-export" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-text">Sauvegarde ou restaure tes données.</p>
+                <div class="import-export-actions">
+                    <button id="btn-export-data" class="btn-toggle glass-btn glass-btn--full">📥 Exporter les données</button>
+                    <div class="file-input-wrap">
+                        <button class="btn-toggle glass-btn primary active glass-btn--full">📤 Importer des données</button>
+                        <input type="file" id="input-import-data" accept=".json">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALE ANALYSE ELEVE (PROF) -->
+        <div id="student-analysis-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-lg">
+                <div class="modal-header">
+                    <h3 class="modal-title">📊 Analyse des données Élève</h3>
+                    <button id="btn-close-student-analysis" class="modal-close-btn">&times;</button>
+                </div>
+                <div id="student-analysis-content">
+                    <!-- Contenu injecté en JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALE CONFIGURATION ÉLÈVE (AVANT JEU) -->
+        <div id="student-config-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-sm-left">
+                <h3 id="student-config-title" class="modal-title modal-title--center">Réglages de la partie</h3>
+                <p class="modal-text modal-text--center">Personnalise ton jeu avant de commencer !</p>
+                <div id="student-config-content">
+                    <!-- Champs injectés dynamiquement par configUI.js -->
+                </div>
+                <div class="modal-actions-center">
+                    <button id="btn-student-config-cancel" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral">Annuler</button>
+                    <button id="btn-student-config-start" class="btn-toggle glass-btn primary active modal-btn-flex modal-btn-flex--primary">Jouer !</button>
+                </div>
+            </div>
+        </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-container"></div>
+
+    <script type="module" src="js/app.js"></script>
+    <script>
+        // Init theme immediately to prevent flash
+        const savedTheme = localStorage.getItem('mathbox-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+        <!-- MODALE DE CONFIRMATION UNIVERSELLE -->
+        <div id="universal-confirm-modal" class="modal-overlay modal-overlay--top">
+            <div class="glass-panel modal-panel-sm">
+                <h3 id="uc-title" class="modal-title">Confirmation</h3>
+                <p id="uc-message" class="uc-message">Êtes-vous sûr ?</p>
+                <div class="modal-actions-center">
+                    <button id="btn-uc-cancel" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral">Annuler</button>
+                    <button id="btn-uc-confirm" class="btn-toggle glass-btn primary active modal-btn-flex modal-btn-flex--danger">Confirmer</button>
+                </div>
+            </div>
+        </div>
+
+    </body>
+
+</html>
