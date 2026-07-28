@@ -1,0 +1,957 @@
+/* ============================================================
+   Composants introduits par la nouvelle architecture.
+   Un seul fichier, organisé par module, pour éviter de disperser
+   les styles des nouvelles briques dans les feuilles existantes.
+   ============================================================ */
+
+/* --- Atelier de relecture (outil d'auteur) ------------------
+   Dense et compact : le but est de balayer une dizaine de questions d'un
+   regard, pas de les contempler une à une. */
+
+#atelier-view {
+    display: none; position: fixed; inset: 0; z-index: 100002;
+    flex-direction: column; background: var(--bg-app); overflow-y: auto;
+    padding: 0 0 24px;
+}
+.atl-header {
+    position: sticky; top: 0; z-index: 2;
+    padding: 18px 28px 12px; background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+}
+.atl-title { margin: 0; font-size: 1.35rem; color: var(--text-main); }
+.atl-subtitle { margin: 2px 0 0; color: var(--text-muted); font-size: .9rem; }
+#btn-close-atelier { position: absolute; top: 16px; right: 22px; font-size: 1.8rem; }
+
+.atl-controls { padding: 16px 28px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.atl-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.atl-field { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
+.atl-field > span { font-size: .78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.atl-field--sm { min-width: 110px; }
+.atl-field--wide { min-width: 100%; }
+.atl-params { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+
+.atl-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: .84rem; color: var(--text-muted); }
+.atl-meta b { color: var(--primary); font-family: ui-monospace, monospace; }
+.atl-uses { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.atl-warn { color: var(--warning); font-weight: 700; }
+
+.atl-sheet {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px; padding: 20px 28px;
+    /* La barre de verdict est collée en bas : sans cette réserve, elle
+       recouvrait la fin des dernières cartes. */
+    padding-bottom: 260px;
+}
+.atl-card {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+    /* Une carte amenée à l'écran doit s'arrêter au-dessus de la barre de
+       verdict, pas dessous. */
+    scroll-margin-bottom: 240px;
+}
+.atl-card--error { border-color: var(--danger); }
+.atl-erreur { color: var(--danger); font-weight: 600; }
+
+.atl-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .78rem; }
+.atl-num {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;
+}
+.atl-skill { font-weight: 700; color: var(--text-main); }
+.atl-diff { color: var(--warning); letter-spacing: 1px; }
+.atl-seed { margin-left: auto; font-family: ui-monospace, monospace; color: var(--text-muted); }
+
+/* L'énoncé est rendu tel que l'élève le verra : c'est le seul moyen de
+   repérer une figure illisible ou un texte qui déborde. */
+.atl-render {
+    background: var(--bg-app); border: 1px dashed var(--border); border-radius: 10px;
+    padding: 12px; display: flex; flex-direction: column; align-items: center;
+    overflow: hidden;
+}
+.atl-render .game-question { font-size: 1.25rem; margin-bottom: 0; }
+.atl-render .figure-wrap { width: min(240px, 100%); margin: 8px auto 0; }
+.atl-render .fig-svg, .atl-render .rep-svg, .atl-render .egy-svg { max-height: 130px; }
+.atl-render .compare-line { font-size: 1.4rem; margin-bottom: 0; }
+.atl-render .pytha-table { transform: scale(.55); transform-origin: top center; margin-bottom: -120px; }
+
+.atl-block { display: flex; flex-direction: column; gap: 4px; }
+.atl-label { font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.atl-answer { font-weight: 800; color: var(--success); font-size: 1.05rem; }
+.atl-expl { font-size: .88rem; color: var(--text-main); line-height: 1.4; }
+
+.atl-choices { list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: .86rem; }
+.atl-choices li { display: flex; flex-direction: column; gap: 1px; }
+.atl-choice-val { font-weight: 700; }
+.atl-ok .atl-choice-val { color: var(--success); }
+.atl-ko .atl-choice-val { color: var(--danger); }
+.atl-why { color: var(--text-muted); font-size: .8rem; line-height: 1.35; padding-left: 16px; }
+.atl-why--absent { color: var(--warning); font-style: italic; }
+
+.atl-hints { margin-left: 18px; font-size: .84rem; color: var(--text-main); line-height: 1.45; }
+.atl-card-actions { display: flex; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
+
+.atl-verdict {
+    position: sticky; bottom: 0; padding: 16px 28px;
+    background: var(--bg-panel); border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 12px;
+}
+.atl-flags { font-size: .85rem; color: var(--text-main); }
+.atl-flags ul { margin-left: 20px; }
+.atl-flags code { font-family: ui-monospace, monospace; color: var(--primary); }
+.atl-verdict-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.atl-verdict button {
+    padding: 12px 26px; border-radius: 12px; border: none; color: #fff;
+    font-size: 1rem; font-weight: 700; cursor: pointer; transition: filter .15s;
+}
+.atl-verdict button:hover { filter: brightness(1.08); }
+.atl-verdict--ok { background: var(--success); }
+.atl-verdict--test { background: var(--warning); }
+.atl-verdict--ko { background: var(--danger); }
+
+/* --- Retour immédiat : correction et indice -----------------
+   Ces cartes attendent une action de l'élève. Elles sont donc traitées comme
+   un vrai dialogue : voile derrière, bouton clairement identifiable, focus
+   posé dessus à l'ouverture. */
+
+/* Voile volontairement léger et sans flou : l'énoncé doit rester lisible
+   pendant qu'on lit la correction. On ne comprend pas « tu as additionné au
+   lieu de multiplier » si la question a disparu. */
+.fb-veil {
+    position: absolute; inset: 0; z-index: 10000;
+    background: rgba(15, 23, 42, .14);
+    animation: fbFade .18s ease;
+}
+.fb-veil--leaving { opacity: 0; transition: opacity .2s ease; }
+
+/* Ancrée en bas pour la même raison : elle laisse le haut de l'écran —
+   l'énoncé et la figure — dégagé. */
+.fb-card {
+    position: absolute; bottom: clamp(26px, 6vh, 60px); left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001; display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding: 22px 32px; border-radius: 22px; text-align: center;
+    width: min(440px, 90%); background: var(--bg-panel);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .26);
+    border: 2px solid var(--border);
+    animation: fbRise .26s cubic-bezier(.175, .885, .32, 1.275);
+}
+.fb-card--leaving {
+    opacity: 0; transform: translateX(-50%) translateY(10px);
+    transition: opacity .2s ease, transform .2s ease;
+}
+/* La carte de réussite reste centrée : elle célèbre, elle n'explique pas. */
+.fb-card--ok {
+    top: 50%; bottom: auto; transform: translate(-50%, -50%);
+    animation: popInCenter .28s cubic-bezier(.175, .885, .32, 1.275);
+}
+.fb-card--ok.fb-card--leaving { transform: translate(-50%, -50%) scale(.94); }
+
+@keyframes fbRise {
+    from { opacity: 0; transform: translateX(-50%) translateY(18px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+/* Sans action requise (réussite, jeux en temps réel) : rien à cliquer, donc
+   la carte n'intercepte pas les événements. */
+.fb-card:not(.fb-card--blocking) { pointer-events: none; }
+
+.fb-icon { line-height: 0; }
+.fb-icon--ok { color: var(--success); }
+.fb-icon--ko { color: var(--danger); }
+.fb-icon--hint { color: var(--primary); }
+
+.fb-label {
+    font-size: .78rem; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+.fb-title { font-size: 1.45rem; font-weight: 800; color: var(--success); }
+.fb-points {
+    font-size: 1.02rem; font-weight: 700; color: var(--success);
+    background: #dcfce7; padding: 4px 14px; border-radius: 12px;
+}
+.fb-message { font-size: 1.1rem; font-weight: 600; line-height: 1.45; color: var(--text-main); }
+.fb-detail {
+    font-size: .95rem; line-height: 1.45; color: var(--text-muted);
+    border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 4px;
+}
+
+.fb-card--ko { border-color: #fecaca; }
+.fb-card--hint { border-color: #bfdbfe; }
+.fb-card--ok { border-color: #bbf7d0; }
+
+.fb-close {
+    margin-top: 12px; padding: 11px 30px; border-radius: 14px; border: none;
+    font-size: 1.05rem; font-weight: 700; color: #fff; cursor: pointer;
+    background: var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, .34);
+    transition: filter .15s, transform .1s;
+}
+.fb-card--ko .fb-close { background: var(--danger); box-shadow: 0 4px 14px rgba(239, 68, 68, .32); }
+.fb-close:hover { filter: brightness(1.07); }
+.fb-close:active { transform: translateY(2px); }
+.fb-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+@keyframes fbFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Aides graduées ---------------------------------------- */
+
+.hint-bar { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: clamp(8px, 2vh, 18px); }
+
+.btn-hint {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-hover); color: var(--text-main);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 8px 18px; font-size: .95rem; font-weight: 600; transition: .2s;
+}
+.btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary); }
+.btn-hint:disabled { opacity: .45; cursor: not-allowed; }
+
+.hint-text {
+    max-width: 460px; text-align: center; font-size: .98rem; line-height: 1.5;
+    color: var(--text-main); background: var(--tag-dom-bg); color: var(--tag-dom-txt);
+    border-radius: 12px; padding: 10px 16px;
+}
+
+/* --- Pavé numérique ----------------------------------------
+   Les touches étaient des capsules étroites et hautes : dans un conteneur
+   centré, la grille en `1fr` se réduisait à la largeur du contenu. Largeur
+   fixée, touches carrées, ombres douces — l'objet doit ressembler à un pavé
+   de calculatrice, pas à une liste de boutons. */
+
+/* Une question doit tenir sur un écran, sans défilement : les hauteurs sont
+   donc exprimées en `clamp(min, vh, max)` plutôt qu'en pixels fixes. Sur un
+   écran large, l'énoncé et le pavé se placent côte à côte. */
+.numpad-layout {
+    display: grid; grid-template-columns: 1fr; gap: 10px clamp(24px, 5vw, 56px);
+    align-items: center; justify-items: center; justify-content: center;
+    width: 100%; max-width: 840px; margin: 0 auto;
+}
+.numpad-context { display: flex; flex-direction: column; align-items: center; max-width: 430px; }
+.numpad-context .game-question {
+    margin-bottom: 10px;
+    font-size: clamp(1.25rem, 3.4vh, 1.95rem);
+    text-wrap: balance;
+}
+.numpad-context .figure-wrap { margin: 0 auto 6px; }
+/* La hauteur rendue d'une figure dépend de la forme du rectangle tiré : un
+   carré occupe bien plus de place qu'un rectangle allongé. Sans plafond en
+   `vh`, certaines questions débordaient et d'autres non — un défilement qui
+   apparaît une fois sur trois est pire qu'un défilement permanent. */
+.numpad-context .fig-svg { max-height: clamp(96px, 26vh, 250px); }
+/* Largeur explicite obligatoire : le panneau est centré dans sa cellule de
+   grille, donc dimensionné par son contenu. Les `width: 100%` de l'écran et
+   du clavier s'y résolvaient alors circulairement, et le pavé se réduisait à
+   la largeur de trois chiffres. */
+.numpad-panel {
+    display: flex; flex-direction: column; align-items: center;
+    width: min(318px, 100%);
+}
+.numpad-device { width: 100%; }
+
+/* Le passage à deux colonnes dépend du format, pas seulement de la largeur :
+   c'est en paysage que la hauteur manque. Un écran 820×620 doit basculer,
+   une tablette 768×1024 non — elle a la place en une colonne. */
+@media (min-width: 760px) and (min-aspect-ratio: 6/5) {
+    /* Colonne de droite de largeur définie, pour la même raison. */
+    .numpad-layout { grid-template-columns: minmax(240px, 430px) minmax(0, 318px); }
+    .numpad-context { justify-self: end; }
+    .numpad-panel { justify-self: start; }
+}
+
+/* Le pavé est un OBJET : un boîtier qui contient un écran et des touches.
+   En cases blanches posées sur un fond blanc, il n'avait ni contour ni
+   matière — d'où l'impression de formulaire plutôt que d'instrument. */
+/* Le boîtier ne contient que l'écran et les touches. Le bouton d'indice
+   n'appartient pas à l'instrument : il reste en dehors. */
+.numpad-device {
+    background: linear-gradient(180deg, var(--bg-panel), var(--bg-app));
+    border: 1px solid var(--border); border-radius: 26px;
+    padding: clamp(10px, 1.8vh, 16px);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+
+/* Écran : sombre et contrasté, comme celui d'une calculatrice. Le nombre
+   saisi doit être l'élément le plus lisible de la zone. */
+/* Le fond de l'écran et la couleur du texte viennent de la MÊME règle, via
+   des variables. Séparés, ils pouvaient diverger : si le fond sombre n'était
+   pas appliqué (feuille en cache, règle écrasée), il restait du texte blanc
+   sur fond blanc — illisible. Ici, faute de `--screen-fg`, le texte retombe
+   sur la couleur de texte normale, sombre : jamais invisible. */
+.numpad-screen {
+    --screen-bg: #0f172a;
+    --screen-fg: #f8fafc;
+    --screen-muted: #94a3b8;
+
+    position: relative;
+    display: flex; align-items: baseline; justify-content: flex-end; gap: 8px;
+    width: min(288px, 100%); margin: 0 auto clamp(10px, 1.6vh, 14px);
+    padding: clamp(8px, 1.5vh, 15px) 18px; min-height: clamp(52px, 8vh, 76px);
+    background: var(--screen-bg); border-radius: 16px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, .45);
+    overflow: hidden; transition: box-shadow .2s;
+}
+.numpad-value {
+    font-size: clamp(1.8rem, 3.8vh, 2.7rem); font-weight: 800;
+    color: var(--screen-fg, var(--text-main));
+    letter-spacing: .01em; font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+/* Espace de largeur nulle : un élément vide n'a pas de ligne de base, et
+   l'unité alignée dessus remontait tant qu'aucun chiffre n'était saisi. Ce
+   caractère donne au champ une ligne de base constante, vide ou non. */
+.numpad-value::before { content: "\200B"; }
+.numpad-unit {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--screen-muted, var(--text-muted));
+}
+
+/* Un curseur clignotant, pas un tiret : dans une appli de mathématiques,
+   « — » se lit comme un signe moins. */
+.numpad-caret {
+    width: 3px; align-self: center;
+    height: clamp(1.6rem, 3.4vh, 2.4rem);
+    background: var(--accent); border-radius: 2px;
+    animation: numpadBlink 1.1s steps(2, start) infinite;
+    display: none;
+}
+.numpad-screen--empty .numpad-caret { display: block; }
+@keyframes numpadBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.numpad-screen--ok { --screen-fg: #4ade80; box-shadow: inset 0 2px 10px rgba(0,0,0,.45), 0 0 0 3px var(--success); }
+.numpad-screen--ko { --screen-fg: #fca5a5; box-shadow: inset 0 2px 10px rgba(0,0,0,.45), 0 0 0 3px var(--danger); }
+
+.numpad {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: clamp(7px, 1.2vh, 11px);
+    width: min(288px, 100%); margin: 0 auto;
+}
+.numpad-blank { visibility: hidden; }
+
+.numpad-key {
+    height: clamp(40px, 7.2vh, 62px);
+    font-size: clamp(1.2rem, 2.8vh, 1.75rem); font-weight: 700;
+    color: var(--text-main);
+    background: linear-gradient(180deg, var(--bg-panel), var(--bg-hover));
+    border: 1px solid var(--border); border-radius: 15px;
+    /* Le liseré clair en haut et l'ombre portée donnent le relief d'une
+       touche ; ils disparaissent à l'appui, ce qui suffit à la sensation. */
+    box-shadow: 0 2px 0 var(--border), 0 3px 6px rgba(15, 23, 42, .07),
+                inset 0 1px 0 rgba(255, 255, 255, .85);
+    transition: transform .08s, box-shadow .12s, color .12s, border-color .12s;
+    display: flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums;
+}
+.numpad-key:hover { border-color: var(--primary); color: var(--primary); }
+.numpad-key:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 var(--border), inset 0 2px 5px rgba(15, 23, 42, .12);
+}
+.numpad-key--del { color: var(--warning); }
+.numpad-key--del svg { width: clamp(20px, 3vh, 25px); height: auto; }
+.numpad-key--ok {
+    grid-column: 1 / -1; height: clamp(42px, 6.8vh, 58px); margin-top: 4px;
+    color: #fff; border-color: transparent;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    font-size: clamp(1.02rem, 2.3vh, 1.22rem); letter-spacing: .02em;
+    box-shadow: 0 4px 0 rgba(79, 70, 229, .55), 0 8px 18px rgba(99, 102, 241, .3);
+}
+.numpad-key--ok:hover { color: #fff; border-color: transparent; filter: brightness(1.06); }
+.numpad-key--ok:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(79, 70, 229, .55), 0 3px 8px rgba(99, 102, 241, .28);
+}
+
+/* --- Zone de jeu : débordement vertical ---------------------
+   `.canvas-area` est en `overflow: hidden` + `justify-content: center`. Une
+   activité haute (énoncé + figure + pavé + validation) débordait alors des
+   deux côtés, et le haut devenait inatteignable. `safe center` centre tant
+   que ça tient, puis bascule en alignement haut et laisse défiler. */
+
+.canvas-area {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    justify-content: safe center;
+}
+
+/* Un énoncé suivi d'une figure ou d'un pavé n'a pas besoin des 40 px de
+   respiration prévus pour une question seule. */
+.canvas-area:has(.figure-wrap) .game-question,
+.canvas-area:has(.numpad) .game-question { margin-bottom: 16px; }
+
+/* Sur un écran court, la marge de la zone de jeu est le premier poste à
+   réduire : mieux vaut la rogner que rapetisser les touches, qui doivent
+   rester atteignables au doigt. */
+@media (max-height: 820px) {
+    .canvas-area:has(.numpad) { padding: 10px 14px; }
+    .canvas-area:has(.numpad) .numpad-layout { row-gap: 6px; }
+    .canvas-area:has(.numpad) .numpad-context .figure-wrap { margin-bottom: 2px; }
+    /* 22vh et non 15 : ce palier attrape aussi les portables 1280×800, où
+       rien n'oblige à écraser la figure — les cotes y devenaient illisibles. */
+    .numpad-context .fig-svg { max-height: 22vh; }
+}
+
+/* Très petits écrans (téléphone en portrait) : dernier cran de resserrement. */
+@media (max-height: 660px) {
+    .canvas-area:has(.numpad) { padding: 6px 12px; }
+    .canvas-area:has(.numpad) .hint-bar { margin-top: 4px; }
+    .canvas-area:has(.numpad) .game-question { margin-bottom: 8px; }
+    .numpad-context .fig-svg { max-height: 20vh; }
+}
+
+/* Disposition en une seule colonne (complément de la règle deux colonnes) :
+   figure et pavé se partagent la hauteur, la figure doit donc céder. Pour que
+   les cotes restent lisibles malgré cette réduction, on les écrit plus gros
+   dans le viewBox — c'est le seul levier, une taille SVG étant mise à
+   l'échelle avec le dessin. */
+/* Sélecteurs scopés sur `.numpad-context` : à spécificité égale, ces blocs
+   placés avant la règle de base ne l'emporteraient pas, et les cotes
+   restaient à leur taille par défaut. */
+@media (max-width: 759px), (max-aspect-ratio: 6/5) {
+    .numpad-context .fig-svg { max-height: 18vh; }
+    .numpad-context .fig-label { font-size: 28px; }
+    .numpad-context .fig-dim { stroke-width: 2.2; }
+}
+@media (max-width: 759px) and (max-height: 720px) {
+    .numpad-context .fig-svg { max-height: 15vh; }
+    .numpad-context .fig-label { font-size: 36px; }
+    .numpad-context .fig-dim { stroke-width: 3; }
+}
+
+/* --- Figures ------------------------------------------------
+   `.canvas-area` centre ses enfants, qui se réduisent donc à leur contenu.
+   Sans largeur explicite, une figure en `width:100%` devient minuscule. */
+
+.figure-wrap {
+    width: min(360px, 92%); margin: 4px auto 22px;
+    display: flex; justify-content: center;
+}
+.figure-wrap--interactive { margin-bottom: 14px; }
+.fig-svg, .rep-svg { width: 100%; height: auto; max-height: 46vh; overflow: visible; }
+
+.fig-shape { fill: var(--tag-dom-bg); stroke: var(--primary); stroke-width: 2.5; }
+.fig-dim { stroke: var(--text-muted); stroke-width: 1.8; }
+/* Ligne d'attache : plus fine que la cote, elle ne doit pas la concurrencer. */
+.fig-ext { stroke: var(--text-muted); stroke-width: 1; opacity: .55; }
+/* Le remplissage du marqueur est stylé ici : `context-stroke` reste
+   inégalement pris en charge selon les navigateurs. */
+.fig-arrow-head { fill: var(--text-muted); }
+
+/* Hiéroglyphes : des tracés, pas des aplats. Sans `fill: none`, les chemins
+   se remplissent en noir et les symboles deviennent des taches. */
+.egy-glyph path {
+    fill: none; stroke: var(--text-main); stroke-width: 2.2;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+.egy-svg { max-height: clamp(90px, 22vh, 200px); }
+
+/* Mises en valeur des énoncés de numération. */
+.nb-highlight { color: var(--primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nb-highlight--lg { display: inline-block; margin-top: 6px; font-size: 1.25em; }
+.nb-words {
+    display: inline-block; margin-top: 10px; font-size: .82em;
+    font-weight: 700; color: var(--primary); line-height: 1.35; max-width: 22ch;
+}
+.nb-slot {
+    display: inline-block; min-width: 1.6em; padding: 0 .2em;
+    border-bottom: 3px dashed var(--primary); color: var(--primary);
+}
+/* Grand dans le viewBox : le SVG est ensuite réduit pour tenir en hauteur,
+   et les cotes doivent rester lisibles après cette réduction. */
+.fig-label { fill: var(--text-main); font-size: 21px; font-weight: 700; }
+
+/* --- Repère du plan ----------------------------------------- */
+
+.rep-svg { color: var(--text-main); }
+.rep-grid { stroke: var(--border); stroke-width: 1; }
+.rep-axis { stroke: var(--text-main); stroke-width: 2; }
+.rep-tick { stroke: var(--text-main); stroke-width: 1.6; }
+.rep-num { fill: var(--text-muted); font-size: 12px; font-weight: 600; }
+.rep-origin { fill: var(--text-main); font-weight: 800; }
+.rep-axis-name { fill: var(--text-main); font-size: 14px; font-style: italic; font-weight: 700; }
+.rep-helper { stroke: var(--primary); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: .65; }
+.rep-point { fill: var(--primary); stroke: #fff; stroke-width: 2; }
+.rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
+
+.rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }
+.rep-hit:hover, .rep-hit:focus-visible { fill: rgba(99, 102, 241, .22); }
+
+.rep-mark { stroke: #fff; stroke-width: 2; }
+.rep-mark--ok { fill: var(--success); }
+.rep-mark--ko { fill: var(--danger); }
+.rep-mark--demo { fill: var(--warning); }
+.rep-mark-label { font-size: 13px; font-weight: 800; }
+.rep-mark-label--ko { fill: var(--danger); }
+.rep-mark-label--demo { fill: var(--warning); }
+
+.coord-badge {
+    display: inline-block; padding: 2px 14px; margin-left: 6px;
+    background: var(--tag-dom-bg); color: var(--tag-dom-txt);
+    border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+
+.coord-row { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.coord-tile {
+    min-width: 108px; padding: 16px 22px; border-radius: 16px;
+    background: var(--bg-panel); border: 2px solid var(--border);
+    font-size: 1.45rem; font-weight: 800; color: var(--text-main);
+    cursor: pointer; box-shadow: var(--shadow-sm); transition: .15s;
+    font-variant-numeric: tabular-nums; text-align: center;
+}
+.coord-tile:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+/* --- Comparaison (< = >) ------------------------------------ */
+
+.compare-line {
+    display: flex; align-items: center; justify-content: center;
+    gap: 22px; flex-wrap: wrap; margin-bottom: 34px;
+    font-size: 2.4rem; font-weight: 800; color: var(--text-main);
+}
+.compare-value { font-variant-numeric: tabular-nums; }
+.compare-op { color: var(--text-muted); font-weight: 700; }
+.compare-slot {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 68px; height: 68px; border-radius: 16px;
+    border: 3px dashed var(--primary); opacity: .5;
+    color: var(--primary); transition: .18s;
+}
+/* Cible de dépôt survolée : elle doit se voir sans ambiguïté au doigt. */
+.compare-slot--hover {
+    opacity: 1; transform: scale(1.08);
+    background: var(--tag-dom-bg); border-style: solid;
+}
+.compare-slot--filled { border-style: solid; opacity: 1; }
+.compare-slot--ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
+.compare-slot--ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
+
+.sign-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+.sign-tile {
+    width: 92px; height: 92px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.6rem; font-weight: 800; color: var(--primary);
+    background: var(--bg-panel); border: 2px solid var(--border);
+    box-shadow: var(--shadow-sm); cursor: grab; transition: .15s;
+    touch-action: none;          /* le geste est capté, pas interprété en défilement */
+    user-select: none;
+}
+.sign-tile:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+.sign-tile:active { cursor: grabbing; }
+.sign-tile.drag-source { opacity: .3; transform: none; }
+
+/* Le fantôme suit le pointeur ; il ne doit jamais intercepter les événements.
+   `transition: none` est indispensable : `.sign-tile` anime toutes ses
+   propriétés, `left` et `top` compris, et le fantôme traînait derrière le
+   doigt d'un sixième de seconde. */
+.drag-ghost {
+    position: fixed; z-index: 100001; pointer-events: none;
+    margin: 0; opacity: .95; transform: scale(1.06);
+    box-shadow: var(--shadow-lg); cursor: grabbing;
+    transition: none !important;
+}
+
+/* --- Fractions --------------------------------------------- */
+
+.frac-question { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.frac-gap { color: var(--primary); font-size: 2rem; font-weight: 700; }
+
+.fraction {
+    display: inline-flex; flex-direction: column; align-items: center;
+    vertical-align: middle; line-height: 1.1; font-weight: 700;
+}
+.fraction-num { padding: 0 .35em; }
+.fraction-den { padding: 0 .35em; border-top: 3px solid currentColor; }
+
+.bubble--sign { font-size: 2.4rem !important; font-weight: 800; min-width: 90px; }
+
+/* --- Chasse aux taupes ------------------------------------- */
+
+.moles-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; }
+.moles-question { margin-bottom: 18px; }
+.moles-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    width: 100%; max-width: 400px; margin: auto;
+}
+.mole-hole {
+    aspect-ratio: 1; background: var(--bg-hover); border-radius: 50%;
+    position: relative; overflow: hidden; display: flex;
+    align-items: center; justify-content: center;
+    box-shadow: inset 0 5px 12px rgba(15, 23, 42, .12); border: none; padding: 0;
+}
+.mole {
+    width: 78%; height: 78%; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem; font-weight: 700;
+    transform: translateY(150%);
+    transition: transform .2s cubic-bezier(.175, .885, .32, 1.275), background .15s;
+}
+.mole--up { transform: translateY(0); }
+.mole--ok { background: var(--success); }
+.mole--ko { background: var(--danger); }
+
+/* --- Écrans du moteur de parcours -------------------------- */
+
+.run-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; text-align: center; gap: 14px; padding: 30px;
+}
+.run-screen-icon { font-size: 3.4rem; }
+.run-screen-title { font-size: 2rem; color: var(--primary); margin: 0; }
+.run-screen-title--ok { color: var(--success); }
+.run-screen-title--ko { color: var(--warning); }
+.run-screen-text { font-size: 1.1rem; color: var(--text-main); max-width: 480px; line-height: 1.5; }
+.run-screen-btn { font-size: 1.25rem; padding: 14px 32px; margin-top: 10px; }
+.run-briefing-note {
+    background: var(--tag-niv-bg); color: var(--tag-niv-txt);
+    padding: 6px 16px; border-radius: 999px; font-weight: 700;
+}
+
+/* Navigation d'étapes du test professeur.
+   L'en-tête gagne trois éléments : sans réglage, le titre se réduisait à une
+   lettre. On fait céder la barre de progression avant lui, et dans le cadre
+   étroit du simulateur on renvoie le titre sur sa propre ligne plutôt que de
+   masquer une information que le professeur veut justement voir. */
+#game-header #game-progress-container { flex: 0 1 250px; min-width: 56px; }
+#game-header #game-title { flex: 1 1 auto; min-width: 8ch; }
+
+.device-simulator #game-header,
+.tablet-simulator #game-header {
+    flex-wrap: wrap; row-gap: 6px; min-height: 0; padding: 8px 14px;
+}
+.device-simulator #game-title,
+.tablet-simulator #game-title {
+    flex: 1 1 100%; margin-right: 0; margin-top: 0; font-size: 1.05rem;
+}
+
+.preview-step-nav {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 6px; margin-right: 6px;
+    background: var(--bg-hover); border: 1px solid var(--border); border-radius: 999px;
+}
+.preview-step-nav[hidden] { display: none; }
+.preview-step-label {
+    font-size: .85rem; font-weight: 700; color: var(--text-muted);
+    min-width: 44px; text-align: center; font-variant-numeric: tabular-nums;
+}
+.preview-step-nav .game-icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+#game-timer-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 6px;
+    background: rgba(239, 68, 68, .2); z-index: 99999; pointer-events: none; display: none;
+}
+#game-timer-bar {
+    width: 100%; height: 100%; background: var(--danger);
+    transition: width 1s linear; box-shadow: 0 0 10px var(--danger);
+}
+
+/* --- Bilan (fin de parcours, profil, analyse prof) --------- */
+
+.report-panel { max-height: 88vh; overflow-y: auto; padding: 26px; }
+.report-title { font-size: 1.7rem; color: var(--text-main); text-align: center; margin-bottom: 4px; }
+.report-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 18px; }
+
+.report-note { text-align: center; margin: 10px 0 6px; }
+.report-note-value { font-size: 3.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.report-note-scale { font-size: 1.4rem; color: var(--text-muted); font-weight: 600; }
+.report-note--nograde .report-note-value { color: var(--success); }
+.report-note-label { color: var(--text-muted); font-size: .92rem; margin-top: 4px; }
+.report-appreciation { text-align: center; color: var(--text-main); font-size: 1.05rem; margin: 12px 0 20px; }
+
+.report-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.report-stat { background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+.report-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
+.report-stat-label { font-size: .8rem; color: var(--text-muted); }
+
+/* --- Modales : débordement vertical -------------------------
+   Même piège que la zone de jeu : une modale plus haute que la fenêtre était
+   centrée, donc son sommet passait au-dessus du bord haut et devenait
+   inatteignable — on ne pouvait plus lire le titre ni la note d'un bilan
+   détaillé sur un petit écran. */
+.modal-overlay {
+    align-items: safe center;
+    overflow-y: auto;
+    padding: 24px 12px;
+}
+
+/* Les panneaux `md`/`lg` sont des conteneurs flex verticaux à hauteur
+   plafonnée. Sans cette règle, leurs enfants se COMPRIMENT au lieu de faire
+   défiler : le détail du calcul, en `overflow:hidden`, s'écrasait à 2 px de
+   haut — présent dans le DOM, invisible à l'écran. */
+.modal-panel-md > *,
+.modal-panel-lg > * { flex-shrink: 0; }
+
+/* Même cause, même effet dans le panneau de propriétés du constructeur :
+   la dernière ligne d'aide était rognée au lieu de faire défiler. */
+#builder-properties-panel > * { flex-shrink: 0; }
+#builder-properties-panel { width: 330px; }
+
+/* --- Détail du calcul de la note ---------------------------- */
+
+.calcul-box {
+    background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 14px; margin: 4px 0 20px; overflow: hidden;
+}
+.calcul-summary {
+    padding: 12px 16px; cursor: pointer; font-weight: 600;
+    color: var(--primary); font-size: .95rem; list-style: none;
+}
+.calcul-summary::-webkit-details-marker { display: none; }
+.calcul-summary::before { content: '▸ '; display: inline-block; transition: transform .15s; }
+.calcul-box[open] .calcul-summary::before { content: '▾ '; }
+.calcul-body { padding: 0 16px 16px; }
+.calcul-regles { margin: 0 0 14px 18px; color: var(--text-main); font-size: .92rem; line-height: 1.55; }
+.calcul-simple { color: var(--text-main); font-size: .95rem; margin-bottom: 12px; }
+.calcul-table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-bottom: 14px; }
+.calcul-table th, .calcul-table td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--border); }
+.calcul-table th:first-child, .calcul-table td:first-child { text-align: left; }
+.calcul-table th { color: var(--text-muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+.calcul-table tfoot td { font-weight: 700; border-bottom: none; }
+.calcul-formule {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+    font-variant-numeric: tabular-nums; font-size: .98rem; color: var(--text-main);
+}
+.calcul-etape--final { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
+
+.report-section-title {
+    font-size: 1rem; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: .05em; margin: 22px 0 10px;
+}
+.report-skill-list, .report-miss-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.report-skill-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.report-skill-label { font-weight: 600; color: var(--text-main); }
+.report-skill-level { font-size: .85rem; font-weight: 700; }
+.report-skill-bar { background: var(--bg-hover); border-radius: 6px; height: 8px; overflow: hidden; margin: 6px 0 3px; }
+.report-skill-bar > div { height: 100%; border-radius: 6px; transition: width .4s ease; }
+.report-skill-sub { font-size: .82rem; color: var(--text-muted); }
+
+.report-miss {
+    background: var(--bg-app); border: 1px solid var(--border);
+    border-left: 3px solid var(--danger); border-radius: 10px; padding: 10px 14px;
+}
+.report-miss-q { font-weight: 700; color: var(--text-main); }
+.report-miss-a { font-size: .9rem; color: var(--text-muted); }
+.report-miss-why { font-size: .9rem; color: var(--warning); margin-top: 4px; }
+.report-replay-btn { margin-top: 14px; width: 100%; }
+.report-close-btn { min-width: 180px; }
+
+/* --- Profil : compétences, erreurs, badges ----------------- */
+
+.profile-rank { font-size: 1.15rem; font-weight: 700; color: var(--text-main); }
+.profile-rank-level { color: var(--primary); }
+.profile-xp-bar {
+    margin-top: 10px; background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 10px; height: 10px; max-width: 300px; overflow: hidden;
+}
+.profile-xp-bar > div { background: var(--primary); height: 100%; transition: width .5s ease; }
+.profile-xp-text { font-size: .8rem; color: var(--text-muted); margin-top: 5px; }
+
+.skill-group-title {
+    font-weight: 700; color: var(--text-muted); font-size: .78rem;
+    letter-spacing: .06em; margin: 18px 0 6px;
+}
+/* Alignement en haut : la ligne peut contenir un rappel de cours sur
+   plusieurs lignes, le bouton doit rester face au libellé. */
+.skill-row { display: flex; align-items: flex-start; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.skill-row > .btn-toggle { flex-shrink: 0; margin-top: 2px; }
+.skill-main { flex: 1; min-width: 0; }
+.skill-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.skill-name { font-weight: 600; color: var(--text-main); }
+.skill-level { font-size: .82rem; font-weight: 700; }
+.skill-sub { font-size: .84rem; color: var(--text-muted); }
+.skill-bar { background: var(--bg-app); border-radius: 6px; height: 6px; margin-top: 6px; overflow: hidden; }
+.skill-bar > div { height: 100%; transition: width .4s ease; }
+.skill-lesson {
+    margin-top: 8px; font-size: .86rem; line-height: 1.45; color: var(--tag-dom-txt);
+    background: var(--tag-dom-bg); border-radius: 8px; padding: 7px 11px;
+}
+
+.error-group-body { display: flex; flex-direction: column; gap: 10px; }
+.error-item-body { flex: 1; min-width: 0; }
+.error-given { color: var(--danger); }
+.error-expected { color: var(--success); }
+.error-repeat { color: var(--warning); font-weight: 700; font-size: .85rem; }
+.error-why { font-size: .88rem; color: var(--warning); margin-top: 4px; line-height: 1.4; }
+.error-skill { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
+
+.badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
+.badge-card {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 15px 10px; text-align: center; position: relative;
+    opacity: .5; filter: grayscale(100%); transition: .2s;
+}
+.badge-card--on { opacity: 1; filter: none; border-color: var(--primary); }
+.badge-icon { font-size: 2.4rem; margin-bottom: 5px; }
+.badge-title { font-weight: 700; font-size: .88rem; color: var(--text-main); }
+.badge-lock {
+    position: absolute; top: -6px; right: -6px; width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center; font-size: .7rem;
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 50%;
+}
+
+/* --- Profils multiples sur un même poste ------------------- */
+
+.profile-switcher { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 30px; }
+.profile-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 14px; cursor: pointer; transition: .15s;
+}
+.profile-chip:hover { border-color: var(--primary); }
+.profile-chip--active { background: var(--primary); color: #fff; border-color: var(--primary); cursor: default; }
+.profile-chip-name { font-weight: 600; outline: none; }
+.profile-chip-del { color: inherit; opacity: .7; font-size: .85rem; }
+.profile-chip-del:hover { opacity: 1; }
+
+/* --- Vue Parcours élève ------------------------------------ */
+
+.path-section { margin-bottom: 34px; }
+.path-section-title { font-size: 1.3rem; color: var(--text-main); margin-bottom: 4px; }
+.path-section-sub { color: var(--text-muted); font-size: .94rem; margin-bottom: 16px; }
+.path-section-sub--eval { color: var(--tag-niv-txt); font-weight: 600; }
+.timeline-step-meta { font-size: .82rem; color: var(--text-muted); margin: 2px 0 8px; }
+.path-complete-banner {
+    margin-top: 14px; padding: 12px; text-align: center; font-weight: 700;
+    background: var(--tag-dom-bg); color: var(--tag-dom-txt); border-radius: 12px;
+}
+
+.reco-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.reco-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; }
+.reco-badge {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 3px 9px; border-radius: 999px;
+}
+.reco-badge--remediation { background: var(--tag-niv-bg); color: var(--tag-niv-txt); }
+.reco-badge--revision { background: #fef3c7; color: #b45309; }
+.reco-badge--nouveau { background: var(--tag-dom-bg); color: var(--tag-dom-txt); }
+.reco-label { font-weight: 700; color: var(--text-main); font-size: 1.05rem; }
+.reco-sub { font-size: .85rem; color: var(--text-muted); flex: 1; }
+.reco-start-all { margin-top: 16px; width: 100%; }
+
+.last-run-card { display: flex; align-items: center; gap: 20px; padding: 18px; flex-wrap: wrap; }
+.last-run-value { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
+.last-run-info { flex: 1; min-width: 160px; }
+.last-run-name { font-weight: 700; color: var(--text-main); }
+.last-run-sub { font-size: .85rem; color: var(--text-muted); }
+
+/* --- Éditeur de parcours ----------------------------------- */
+
+.path-summary { font-size: .88rem; color: var(--text-muted); padding: 4px 0 10px; }
+.path-summary--eval { color: var(--tag-niv-txt); font-weight: 600; }
+
+.path-step-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; }
+.path-step-title {
+    font-weight: 700; font-size: 1.05rem; color: var(--text-main);
+    display: flex; gap: 10px; align-items: center; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+}
+.path-step-grip { color: var(--text-muted); cursor: grab; }
+.path-step-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.path-step-meta {
+    display: flex; gap: 10px 14px; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; padding-left: 24px; margin-top: 8px;
+}
+.path-step-rule { font-size: .86rem; color: var(--text-muted); }
+.path-step-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.path-step--selected { border-color: var(--primary) !important; box-shadow: 0 0 0 2px rgba(99, 102, 241, .18); }
+.path-step--broken { opacity: .6; border-style: dashed !important; }
+
+.tag-meta { background: var(--bg-hover); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Pastilles d'état de publication (vue auteur / professeur). */
+.tag-status { font-weight: 700; }
+.tag-status--test { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.tag-status--brouillon { background: var(--bg-hover); color: var(--text-muted); border: 1px dashed var(--border); }
+.btn-icon--danger { color: var(--danger); }
+.btn-icon--primary { color: var(--primary); }
+
+.props-title { margin: 0 0 18px; font-size: 1.15rem; color: var(--text-main); }
+.props-close {
+    display: none; position: absolute; top: 15px; right: 15px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-main);
+}
+body.mobile-view .props-close { display: flex; align-items: center; justify-content: center; }
+
+.path-folder { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+.path-folder-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.path-folder-name { font-weight: 700; font-size: 1.1rem; color: var(--text-main); outline: none; border-bottom: 1px dashed var(--border); }
+.path-folder-body { display: flex; flex-direction: column; gap: 10px; padding-left: 18px; min-height: 20px; }
+.path-folder-empty { color: var(--text-muted); font-size: .88rem; font-style: italic; }
+.path-browser-root { padding: 15px; border: 1px solid transparent; border-radius: 12px; }
+.path-browser-root-title { font-weight: 700; color: var(--text-main); margin-bottom: 10px; }
+.drop-target { border: 2px dashed var(--primary) !important; }
+.path-browser-item {
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; cursor: grab; margin-bottom: 8px;
+}
+.path-browser-name { font-weight: 700; color: var(--text-main); outline: none; border-bottom: 1px dashed var(--border); display: inline-block; }
+.path-browser-sub { color: var(--text-muted); font-size: .84rem; }
+.path-browser-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+/* --- Formulaires de configuration -------------------------- */
+
+.cfg-header { font-weight: 700; font-size: 1.1rem; color: var(--primary); margin-bottom: 15px; }
+.cfg-field { margin-bottom: 16px; }
+.cfg-label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-main); }
+.cfg-input {
+    width: 100%; padding: 10px 14px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-app);
+    font-size: 1.05rem; color: var(--text-main); font-family: inherit; outline: none;
+}
+.cfg-input:focus { border-color: var(--primary); }
+.cfg-help { font-size: .82rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+.cfg-empty { font-size: .9rem; color: var(--text-muted); font-style: italic; }
+.cfg-chips { display: flex; flex-wrap: wrap; gap: 9px; }
+.cfg-chip {
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 11px;
+}
+.cfg-chip:has(input:checked) { border-color: var(--primary); background: var(--tag-dom-bg); color: var(--tag-dom-txt); }
+.cfg-group { border-top: 1px solid var(--border); padding-top: 18px; margin-top: 18px; }
+.cfg-group--muted { opacity: .55; }
+.cfg-group-title { font-weight: 700; color: var(--text-muted); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+.cfg-check { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; cursor: pointer; color: var(--text-main); }
+
+.cfg-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+.cfg-mode {
+    display: flex; flex-direction: column; gap: 5px; text-align: left;
+    padding: 14px; border-radius: 14px; border: 2px solid var(--border);
+    background: var(--bg-app); transition: .15s;
+}
+.cfg-mode:hover { border-color: var(--primary); }
+.cfg-mode--active { border-color: var(--primary); background: var(--tag-dom-bg); }
+.cfg-mode-icon { font-size: 1.5rem; }
+.cfg-mode-title { font-weight: 700; color: var(--text-main); }
+.cfg-mode-desc { font-size: .82rem; color: var(--text-muted); line-height: 1.4; }
+
+/* --- Analyse d'un élève (import prof) ---------------------- */
+
+.analysis-head { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+.analysis-name { font-size: 1.3rem; font-weight: 700; color: var(--text-main); }
+.analysis-sub { color: var(--text-muted); font-size: .86rem; }
+.analysis-kpis { display: flex; gap: 12px; }
+.analysis-kpi { background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; text-align: center; }
+.analysis-kpi-value { font-size: 1.35rem; font-weight: 700; color: var(--primary); }
+.analysis-kpi-label { font-size: .76rem; color: var(--text-muted); }
+.analysis-skills { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.analysis-skills li { display: flex; align-items: center; gap: 12px; }
+.analysis-skill-label { flex: 0 0 180px; font-weight: 600; color: var(--text-main); font-size: .92rem; }
+.analysis-skill-bar { flex: 1; height: 8px; background: var(--bg-hover); border-radius: 6px; overflow: hidden; }
+.analysis-skill-bar > span { display: block; height: 100%; }
+.analysis-skill-pct { flex: 0 0 90px; text-align: right; font-size: .84rem; font-weight: 700; }
+.analysis-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.analysis-table th, .analysis-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.analysis-table th { color: var(--text-muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+
+/* --- Divers ------------------------------------------------- */
+
+.niveau-option {
+    display: flex; align-items: center; gap: 8px; padding: 6px;
+    cursor: pointer; border-radius: 4px;
+}
+.niveau-option:hover { background: var(--bg-hover); }
+
+@media (max-width: 768px) {
+    .cfg-modes { grid-template-columns: 1fr; }
+    .analysis-skill-label { flex-basis: 120px; }
+    .report-panel { padding: 18px; }
+}

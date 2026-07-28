@@ -1,7 +1,7 @@
-import { exercices, domaines } from '../data/catalog.js';
+import { exercices, domaines, filterByStatus, statusOf, STATUS, STATUS_LABELS } from '../data/catalog.js';
 import { clearEngines } from '../core/timers.js';
 import { state } from '../core/state.js';
-import { launchEngine, openGameLayer } from '../games/engine.js';
+import { launchPreview, openGameLayer } from '../games/engine.js';
 
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
@@ -9,32 +9,29 @@ export function createLibraryItem(exo) {
     item.style.display = 'flex';
     item.style.justifyContent = 'space-between';
     item.style.alignItems = 'center';
-    
+
     const titleSpan = document.createElement('span');
     titleSpan.textContent = exo.title;
     item.appendChild(titleSpan);
-    
+
     const btnAdd = document.createElement('button');
     btnAdd.textContent = '➕';
     btnAdd.className = 'teacher-only';
+    btnAdd.title = 'Ajouter au parcours';
+    btnAdd.setAttribute('aria-label', `Ajouter ${exo.title} au parcours`);
     btnAdd.style.background = 'none';
     btnAdd.style.border = 'none';
     btnAdd.style.cursor = 'pointer';
     btnAdd.style.fontSize = '1.2rem';
-    
+
     btnAdd.onclick = (e) => {
         e.stopPropagation();
-        if(!state.isTeacherMode) return;
-        const stepObj = { 
-            ...exo, 
-            stepId: Date.now() + Math.random().toString(),
-            currentParams: exo.defaultParams ? JSON.parse(JSON.stringify(exo.defaultParams)) : null
-        };
-        state.currentPath.push(stepObj);
-        import('./builder.js').then(module => module.renderTeacherPath());
+        if (!state.isTeacherMode) return;
+        // Une étape est une référence à l'exercice, pas une copie de celui-ci.
+        import('./builder.js').then(module => module.addStep(exo.id));
     };
     item.appendChild(btnAdd);
-    
+
     // Interaction Éditeur vs Élève
     item.draggable = true;
     item.ondragstart = (e) => {
@@ -82,10 +79,9 @@ export function createLibraryItem(exo) {
             hdBox.style.top = `${topPos}px`;
             hdBox.style.left = `${rect.right + 20}px`;
             hdBox.style.display = 'flex';
-            
-            // Lancement Moteur sur le petit canvas
-            const miniCanvas = document.getElementById('hover-demo-canvas');
-            launchEngine(exo, miniCanvas, true);
+
+            // Aperçu autonome dans la vignette : aucune donnée n'est enregistrée.
+            launchPreview(exo, document.getElementById('hover-demo-canvas'));
         }, 500);
     };
 
@@ -98,9 +94,50 @@ export function createLibraryItem(exo) {
     return item;
 }
 
+/**
+ * Pastille d'état, affichée uniquement quand elle apprend quelque chose :
+ * en mode professeur, ou quand un filtre d'état est actif. Un élève n'a pas
+ * à savoir qu'un exercice est « validé ».
+ */
+function statusBadge(exo) {
+    const s = statusOf(exo);
+    const utile = state.isTeacherMode || (state.catalogFilter && state.catalogFilter !== 'tout');
+    if (!utile || s === STATUS.VALIDE) return '';
+    return `<span class="tag tag-btn tag-status tag-status--${s}">${STATUS_LABELS[s]}</span>`;
+}
+
+function matchesSearch(exo, query) {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return true;
+    const haystack = [exo.title, ...(exo.tags.chemin || []), ...(exo.tags.niveaux || [])].join(' ').toLowerCase();
+    return haystack.includes(q);
+}
+
 export function getFilteredExercises() {
-    if (!state.selectedNiveaux || state.selectedNiveaux.length === 0) return exercices;
-    return exercices.filter(e => e.tags.niveaux && e.tags.niveaux.some(n => state.selectedNiveaux.includes(n)));
+    // L'état de publication filtre en premier : un brouillon ne doit
+    // apparaître nulle part, pas même dans une recherche.
+    let list = filterByStatus(exercices, {
+        only: state.catalogFilter,
+        teacher: state.isTeacherMode
+    });
+    if (state.selectedNiveaux && state.selectedNiveaux.length > 0) {
+        list = list.filter(e => e.tags.niveaux && e.tags.niveaux.some(n => state.selectedNiveaux.includes(n)));
+    }
+    if (state.searchQuery) {
+        list = list.filter(e => matchesSearch(e, state.searchQuery));
+    }
+    return list;
+}
+
+export function initSidebarSearch() {
+    const input = document.getElementById('sidebar-search-input');
+    if (!input) return;
+    input.oninput = () => {
+        state.searchQuery = input.value;
+        initAccordion();
+        renderDrilldown();
+        initGridFilters();
+    };
 }
 
 // Un exercice "appartient" au noeud `path` si les premiers segments de son
@@ -189,7 +226,12 @@ export function initGridFilters() {
         }).forEach(exo => {
             const card = document.createElement('div'); card.className = 'card';
             const niveauxStr = exo.tags.niveaux ? exo.tags.niveaux.join(' - ') : '';
-            card.innerHTML = `<div style="font-weight:bold; font-size:1.1rem;">${exo.title}</div><div style="display:flex; gap:5px; flex-wrap:wrap;"><span class="tag tag-btn tag-niveau">${niveauxStr}</span><span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span></div>`;
+            card.innerHTML = `<div style="font-weight:bold; font-size:1.1rem;">${exo.title}</div>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <span class="tag tag-btn tag-niveau">${niveauxStr}</span>
+                    <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
+                    ${statusBadge(exo)}
+                </div>`;
             card.onclick = () => openGameLayer(exo, false);
             container.appendChild(card);
         });

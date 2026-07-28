@@ -6,11 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MathBox - Mode Démo & Layout</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/ui.css">
-    <link rel="stylesheet" href="css/games.css">
-    <link rel="stylesheet" href="css/components.css">
+    <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
+         une modification : une URL jamais vue ne peut pas venir du cache.
+         À incrémenter quand on touche au CSS. -->
+    <link rel="stylesheet" href="css/base.css?v=2">
+    <link rel="stylesheet" href="css/layout.css?v=2">
+    <link rel="stylesheet" href="css/ui.css?v=2">
+    <link rel="stylesheet" href="css/games.css?v=2">
+    <link rel="stylesheet" href="css/components.css?v=2">
+    <link rel="stylesheet" href="css/modules.css?v=2">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -24,6 +28,8 @@
         <div>
             <button class="debug-btn" id="db-toggle-mobile">📱 Vue Mobile : OFF</button>
             <button class="debug-btn" id="db-toggle-role">👨‍🏫 Mode : Élève</button>
+            <button class="debug-btn" id="db-atelier" title="Relire les questions d'un générateur et donner un verdict">🔬 Atelier</button>
+            <button class="debug-btn" id="db-filter-status" title="Filtrer le catalogue par état de publication">🎯 Catalogue : Tout</button>
             <button class="debug-btn" id="db-clear-storage">🗑️ Vider Sauvegarde</button>
             <button class="debug-btn" id="db-fake-data">🧪 Générer Données</button>
         </div>
@@ -85,6 +91,11 @@
                         <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
                     </svg>
                 </button>
+                <button id="btn-open-sync" class="btn-icon btn-icon--sm" title="Ma classe (synchronisation)" aria-label="Ma classe (synchronisation)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.2 4.5 4.5 0 0 0 6.5 19z" />
+                    </svg>
+                </button>
                 <button id="btn-open-import-export-student" class="btn-icon btn-icon--sm" title="Sauvegarder / Restaurer" aria-label="Sauvegarder / Restaurer">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -124,6 +135,9 @@
                         <!-- Checkboxes will be injected here -->
                     </div>
                     </div>
+                </div>
+                <div id="sidebar-search-wrap">
+                    <input type="search" id="sidebar-search-input" placeholder="Rechercher un exercice..." aria-label="Rechercher un exercice">
                 </div>
                 <div id="nav-container">
                     <div id="view-accordion"></div>
@@ -174,6 +188,7 @@
                                 </h2>
                                 <button id="btn-new-path" class="btn-toggle glass-btn btn-toggle--sm">✨ Nouveau</button>
                                 <button id="btn-open-path-browser" class="btn-toggle glass-btn btn-toggle--sm">📂 Mes Parcours</button>
+                                <button id="btn-path-policy" class="btn-toggle glass-btn btn-toggle--sm">🎓 Mode &amp; barème</button>
                                 <button id="btn-open-import-export-teacher" class="btn-toggle glass-btn btn-toggle--sm">🔄 Import/Export</button>
                             </div>
                             <div class="builder-header-actions" onclick="event.stopPropagation()">
@@ -209,7 +224,7 @@
                         </div>
 
                         <div id="path-collapsible-wrapper">
-
+                            <div id="path-summary" class="path-summary"></div>
                             <div id="path-container">
                                 <div class="empty-msg">Ajoutez des
                                     activités depuis le catalogue.</div>
@@ -247,7 +262,7 @@
                             </div>
                             <div class="profile-score-block">
                                 <div class="profile-score-emoji">⭐</div>
-                                <div class="profile-score-value">0</div>
+                                <div id="profile-score-value" class="profile-score-value">0</div>
                                 <div class="profile-score-label">Points totaux</div>
                             </div>
                         </div>
@@ -262,13 +277,26 @@
                             <div class="stat-card">
                                 <span class="stat-label">Exercices
                                     Réussis</span>
-                                <span class="stat-value stat-value--success">0</span>
+                                <span id="profile-correct-count" class="stat-value stat-value--success">0</span>
                             </div>
                             <div class="stat-card">
                                 <span class="stat-label">Temps de
                                     Jeu</span>
-                                <span class="stat-value stat-value--primary">0 min</span>
+                                <span id="profile-time-value" class="stat-value stat-value--primary">0s</span>
                             </div>
+                        </div>
+
+                        <div class="section-header-row">
+                            <h3 class="section-title">Qui travaille ?</h3>
+                            <button id="btn-add-profile" class="btn-toggle btn-toggle--sm">➕ Nouveau profil</button>
+                        </div>
+                        <p class="view-heading-subtitle">Plusieurs élèves peuvent utiliser ce poste : chacun garde sa
+                            progression et ses statistiques séparément.</p>
+                        <div id="profile-switcher" class="profile-switcher"></div>
+
+                        <h3 class="section-title">Forces &amp; Points à Travailler</h3>
+                        <div id="skill-stats-container">
+                            <div class="empty-state-msg">Joue à quelques exercices pour voir apparaître tes points forts et tes points à travailler ici.</div>
                         </div>
 
                         <div class="section-header-row">
@@ -288,10 +316,8 @@
                             </div>
                         </div>
 
-                        <h3 class="section-title">Derniers Badges Obtenus</h3>
-                        <div class="badges-placeholder">
-                            Jouez à des jeux pour débloquer des badges !
-                        </div>
+                        <h3 class="section-title">Badges</h3>
+                        <div id="profile-badges-container"></div>
                     </div>
                 </div>
             </main>
@@ -346,6 +372,23 @@
                     <div id="game-progress-text">0 / 10</div>
                 </div>
                 <div class="game-header-actions">
+                    <!-- Navigation d'étapes : uniquement lors d'un test de parcours
+                         par le professeur (masquée pour l'élève). -->
+                    <div id="preview-step-nav" class="preview-step-nav" hidden>
+                        <button id="btn-preview-prev" class="game-icon-btn" title="Activité précédente" aria-label="Activité précédente">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                        </button>
+                        <span id="preview-step-label" class="preview-step-label">1 / 1</span>
+                        <button id="btn-preview-next" class="game-icon-btn" title="Activité suivante" aria-label="Activité suivante">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </button>
+                    </div>
                     <button id="btn-toggle-demo" class="game-icon-btn game-icon-btn--warn" title="Mode Démonstration" aria-label="Mode Démonstration">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -465,6 +508,60 @@
                 </div>
                 <div id="path-browser-list">
                     <!-- Liste injectée en JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ATELIER DE RELECTURE (outil d'auteur) -->
+        <div id="atelier-view">
+            <div class="atl-header">
+                <h2 class="atl-title">🔬 Atelier de relecture</h2>
+                <p class="atl-subtitle">Relis une planche de questions générées, puis donne ton verdict.</p>
+                <button id="btn-close-atelier" class="modal-close-btn" aria-label="Fermer l'atelier">&times;</button>
+            </div>
+            <div id="atelier-controls" class="atl-controls"></div>
+            <div id="atelier-sheet" class="atl-sheet"></div>
+            <div id="atelier-verdict" class="atl-verdict"></div>
+        </div>
+
+        <!-- MODALE MODE & BARÈME DU PARCOURS -->
+        <div id="path-policy-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-md">
+                <div class="modal-header">
+                    <h3 class="modal-title">🎓 Mode &amp; barème du parcours</h3>
+                    <button id="btn-close-path-policy" class="modal-close-btn" aria-label="Fermer">&times;</button>
+                </div>
+                <p class="modal-text">Un même parcours peut servir d'entraînement ou d'évaluation notée :
+                    ce sont les mêmes activités, avec des règles différentes.</p>
+                <div id="builder-policy-content"></div>
+            </div>
+        </div>
+
+        <!-- MODALE SYNCHRONISATION (classe) -->
+        <div id="sync-modal" class="modal-overlay">
+            <div class="glass-panel modal-panel-sm">
+                <div class="modal-header">
+                    <h3 class="modal-title">☁️ Rejoindre ma classe</h3>
+                    <button id="btn-close-sync" class="modal-close-btn" aria-label="Fermer">&times;</button>
+                </div>
+                <p class="modal-text">Saisis le code donné par ton professeur pour retrouver ta progression
+                    à l'école comme à la maison. L'application continue de fonctionner sans connexion.</p>
+                <div class="cfg-field">
+                    <label class="cfg-label" for="sync-api-url">Adresse du serveur</label>
+                    <input type="url" id="sync-api-url" class="cfg-input" placeholder="https://exemple.fr/atoutmath/api">
+                </div>
+                <div class="cfg-field">
+                    <label class="cfg-label" for="sync-class-code">Code de la classe</label>
+                    <input type="text" id="sync-class-code" class="cfg-input" placeholder="Ex : 6A2X9K">
+                </div>
+                <div class="cfg-field">
+                    <label class="cfg-label" for="sync-first-name">Ton prénom</label>
+                    <input type="text" id="sync-first-name" class="cfg-input" placeholder="Ex : Camille">
+                </div>
+                <div id="sync-status" class="cfg-help"></div>
+                <div class="modal-actions-center">
+                    <button id="btn-sync-now" class="btn-toggle glass-btn modal-btn-flex">Synchroniser</button>
+                    <button id="btn-sync-join" class="btn-toggle glass-btn primary active modal-btn-flex modal-btn-flex--primary">Rejoindre</button>
                 </div>
             </div>
         </div>

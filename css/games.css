@@ -28,7 +28,7 @@
 .bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px rgba(79, 70, 229, 0.5); }
 .bubble:active { transform: translateY(2px) scale(0.95); }
 
-.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
+.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
 
 /* Grille Tactile (Chasseur) */
 .tactile-grid { display: grid; grid-template-columns: repeat(5, 60px); grid-template-rows: repeat(5, 60px); gap: 6px; background: rgba(255,255,255,0.5); border: 1px solid var(--border); padding: 10px; border-radius: 16px; box-shadow: var(--shadow-lg); backdrop-filter: blur(5px); }
