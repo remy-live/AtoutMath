@@ -1,95 +1,126 @@
+// Point d'entrée du lancement d'un exercice.
+//
+// Ne fait plus d'`import('./' + gameType + '.js?v=' + Date.now())` : la
+// résolution passe par le registre, qui sait ce que chaque brique accepte et
+// charge les modules une seule fois (le cache-buster rechargeait le module à
+// chaque partie, sans raison).
+
 import { clearEngines } from '../core/timers.js';
 import { state } from '../core/state.js';
-import { SequenceRunner } from '../core/sequenceRunner.js';
+import { getActivity, getGenerator } from '../core/registry.js';
+import { ItemSession } from '../core/itemSession.js';
+import { makePath, makeStep } from '../core/path.js';
+import { defaultPolicy } from '../core/policy.js';
+import { paramSchemaOf } from '../data/catalog.js';
 
+/**
+ * Ouvre un exercice en plein écran.
+ * @param {Object} exo - descripteur du catalogue
+ * @param {boolean} startAsDemo
+ */
 export function openGameLayer(exo, startAsDemo) {
-    // If it's a configurable game and we don't have current parameters (free play mode)
-    // We intercept the launch and show the config UI first.
-    if (exo.configurable && !exo.currentParams) {
-        if (state.isTeacherMode && window.showGameConfigUI) {
-            window.showGameConfigUI(exo, (newParams) => {
-                const configuredExo = { ...exo, currentParams: newParams };
-                executeOpenGameLayer(configuredExo, startAsDemo);
-            });
-            return;
-        } else {
-            // En mode élève, si le jeu gère sa propre config interne en libre, on ne force pas defaultParams
-            if (exo.internalStudentConfig) {
-                const configuredExo = { ...exo, currentParams: { showInternalMenu: true } };
-                executeOpenGameLayer(configuredExo, startAsDemo);
-            } else {
-                // Show Student Config Modal
-                import(`./configUI.js?v=${Date.now()}`).then(module => {
-                    module.showStudentConfigModal(exo, (newParams) => {
-                        const configuredExo = { ...exo, currentParams: newParams };
-                        executeOpenGameLayer(configuredExo, startAsDemo);
-                    });
-                });
-            }
-            return;
-        }
+    if (!exo) return;
+
+    if (startAsDemo) return openDemo(exo);
+
+    // Réglages avant partie, si l'exercice en propose et qu'aucun n'est fourni.
+    const schema = paramSchemaOf(exo);
+    const needsConfig = schema.length > 0 && !exo.internalStudentConfig;
+
+    if (needsConfig && !state.isTeacherMode) {
+        import('./configUI.js').then(m => {
+            m.showStudentConfigModal(exo, (params) => launchFreePlay(exo, params));
+        });
+        return;
     }
-    
-    executeOpenGameLayer(exo, startAsDemo);
+    if (needsConfig && state.isTeacherMode && window.showGameConfigUI) {
+        window.showGameConfigUI(exo, (params) => launchFreePlay(exo, params));
+        return;
+    }
+    launchFreePlay(exo, { ...(exo.params || {}) });
 }
 
-function executeOpenGameLayer(exo, startAsDemo) {
-    state.activeExo = exo;
-    document.getElementById('game-title').textContent = exo.title;
-    const gl = document.getElementById('game-layer');
-    // Only remove simulator classes if we are NOT already in a simulator mode, 
-    // to prevent losing the mobile/tablet frame when toggling demo mode.
-    if (!gl.classList.contains('device-simulator') && !gl.classList.contains('tablet-simulator')) {
-        gl.classList.remove('device-simulator', 'tablet-simulator');
-    }
-    gl.style.display = 'flex';
-    
-    // Afficher Toast si Mode Aperçu
-    const banner = document.getElementById('demo-overlay-banner');
-    if (startAsDemo && banner) {
-        const bannerMsg = document.getElementById('demo-banner-text');
-        if (bannerMsg) {
-            const instr = exo.instruction ? ` : ${exo.instruction}` : ' en cours. Observe bien l\'exemple !';
-            bannerMsg.textContent = `Mode Aperçu${instr}`;
-        }
-        banner.style.display = 'flex';
-        
-        const board = document.getElementById('game-board');
-        launchEngine(exo, board, true);
-    } else {
-        if (banner) banner.style.display = 'none';
-        
-        // Mode Exercice Libre: on utilise SequenceRunner avec un objectif par défaut
-        if (!exo.currentParams) exo.currentParams = {};
-        if (!exo.currentParams.nbQuestions) exo.currentParams.nbQuestions = 10;
-        if (!exo.currentParams.successThreshold) exo.currentParams.successThreshold = 10;
-        
-        exo.isSingleExercise = true; // Flag for custom end message
-        
-        const runner = new SequenceRunner([exo], state.deviceMode || 'desktop');
-        runner.start();
-    }
-}
+/**
+ * Entraînement libre : un parcours d'une seule étape. Passer par le même
+ * moteur que les parcours du professeur garantit que le suivi (tentatives,
+ * temps, compétences) est identique, quel que soit le point d'entrée.
+ */
+function launchFreePlay(exo, params) {
+    const { nbQuestions, successThreshold, timeLimit, ...overrides } = params || {};
+    const nbItems = nbQuestions || 10;
 
-export function launchEngine(exo, container, isDemo, overrideParams = null) {
-    clearEngines(); // Nettoie toute trace de jeu précédent
-    container.innerHTML = '';
-    
-    // Pass params if they exist (either from sequence step or student free-play choice)
-    // If missing, use defaultParams
-    const params = overrideParams || exo.currentParams || exo.defaultParams || {};
-    const type = exo.gameType;
-
-    const cacheBuster = Date.now();
-    import(`./${type}.js?v=${cacheBuster}`).then(module => {
-        // Find the exported function that starts with 'engine'
-        const engineFuncName = Object.keys(module).find(k => k.startsWith('engine'));
-        if (engineFuncName && module[engineFuncName]) {
-            window.activeGame = module[engineFuncName](container, isDemo, params);
-        } else {
-            console.error(`No exported engine function found in ${type}.js`);
-        }
-    }).catch(err => {
-        console.error(`Failed to load engine for type: ${type}`, err);
+    const step = makeStep(exo.id, overrides, {
+        nbItems,
+        threshold: successThreshold || Math.ceil(nbItems * 0.7),
+        timeLimit: timeLimit || (exo.params && exo.params.timeLimit) || null
     });
+
+    const path = makePath(exo.title, [step], defaultPolicy());
+
+    import('../core/runner.js').then(({ Runner }) => {
+        const runner = new Runner({
+            path,
+            deviceMode: state.isTeacherMode ? (state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode) : 'none'
+        });
+        runner.start();
+    });
+}
+
+// --- Démonstration ----------------------------------------------------------
+// L'aperçu joue tout seul, sans rien enregistrer : c'est un outil de
+// présentation pour le professeur, pas une session de travail.
+
+export function openDemo(exo) {
+    state.activeExo = exo;
+    const gl = document.getElementById('game-layer');
+    document.getElementById('game-title').textContent = exo.title;
+    gl.style.display = 'flex';
+
+    const banner = document.getElementById('demo-overlay-banner');
+    if (banner) {
+        const msg = document.getElementById('demo-banner-text');
+        if (msg) msg.textContent = `Mode Aperçu${exo.instruction ? ' : ' + exo.instruction : ''}`;
+        banner.style.display = 'flex';
+    }
+    const progress = document.getElementById('game-progress-container');
+    if (progress) progress.style.display = 'none';
+
+    launchPreview(exo, document.getElementById('game-board'));
+}
+
+/**
+ * Lance un aperçu autonome dans n'importe quel conteneur (plein écran, ou
+ * la vignette de survol du catalogue).
+ */
+export function launchPreview(exo, container, params = null) {
+    clearEngines();
+    container.innerHTML = '';
+
+    const activity = getActivity(exo.activityId);
+    if (!activity) return null;
+
+    const effective = { ...(exo.params || {}), ...(params || {}) };
+
+    return activity.load().then(mod => {
+        if (activity.supports.autonomous) {
+            const fn = mod[activity.legacyExport] || Object.values(mod).find(v => typeof v === 'function');
+            if (fn) return fn(container, true, effective);
+            return null;
+        }
+        const generator = getGenerator(exo.generatorId);
+        if (!generator) return null;
+        const session = new ItemSession({
+            generator, params: effective, exercise: exo, isDemo: true,
+            preferredKind: activity.accepts[0]
+        });
+        return mod.mount(container, session, activity.mountOptions || {});
+    }).catch(err => {
+        console.error(`[engine] impossible de lancer ${exo.id}`, err);
+        return null;
+    });
+}
+
+// Conservé : quelques appels historiques passent encore par là.
+export function launchEngine(exo, container, isDemo) {
+    return isDemo ? launchPreview(exo, container) : openGameLayer(exo, false);
 }

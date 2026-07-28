@@ -1,141 +1,170 @@
 import { TAGS } from './tags.js';
+import { STATUS } from './status.js';
+
+// `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
+// pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
+// Item : ils n'ont ni aides graduées ni distracteurs expliqués.
+
+// Un exercice n'est plus du code : c'est un assemblage déclaratif
+//   générateur (quelle question)  ×  activité (comment on y répond)
+// plus des paramètres. Aucun `gameType` pointant vers un fichier, aucun
+// `paramSchema` recopié : le schéma de configuration est déduit du registre
+// (voir js/games/configUI.js).
+//
+// Conséquence : proposer « les fractions dans le jeu des taupes » ne demande
+// aucun développement, seulement une ligne de plus dans ce fichier.
 
 export const calculExercises = [
-    { 
-        id: "calc-math-crush", title: "Math Crush", gameType: "math_crush", 
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
-        configurable: true,
-        defaultParams: { mode: 'addition', difficulty: 'progressive' },
-        paramSchema: [
-            { id: 'mode', type: 'select', label: 'Opération', options: ['addition', 'multiplication'], default: 'addition' },
-            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['progressive', 'difficile'], default: 'progressive' }
-        ],
-        instruction: "Glisse ton doigt sur les blocs adjacents pour atteindre la Cible."
-    },
-    { 
-        id: "calc-add", title: "Additions Mystères", gameType: "mental", 
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
+    {
+        id: 'calc-add', title: 'Additions Mystères',
+        generatorId: 'calc.addition', activityId: 'bubbles',
+        params: { max: 10 },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Trouve la somme des deux nombres affichés et sélectionne la bonne bulle."
     },
-    { 
-        id: "calc-prio", title: "Prio-Bot Express", gameType: "priority", 
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Sélectionne l'opération qui doit être effectuée en premier selon les règles de priorité."
+    {
+        id: 'calc-sub', title: 'Soustractions Éclair',
+        generatorId: 'calc.soustraction', activityId: 'bubbles',
+        params: { max: 20 },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Calcule la différence et clique sur la bonne bulle."
     },
-    { 
-        id: "calc-mult-flash", title: "Flash Mult", gameType: "mult_flash", 
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1,2,3,4,5,6,7,8,9,10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
-        ],
+    {
+        id: 'calc-mult-flash', title: 'Flash Mult',
+        generatorId: 'calc.mult.fact', activityId: 'bubbles',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Choisis la bulle qui contient le résultat correct de la multiplication."
     },
-    { 
-        id: "calc-mult-missing", title: "Facteur Manquant", gameType: "mult_missing", 
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CINQUIEME] },
-        configurable: true,
-        defaultParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1,2,3,4,5,6,7,8,9,10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
-        ],
-        instruction: "Trouve le nombre manquant dans l'équation et sélectionne-le sur le digicode."
+    {
+        id: 'calc-pythagore', title: 'Table de Pythagore',
+        generatorId: 'calc.mult.fact', activityId: 'pythagore',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Repère la ligne et la colonne surlignées dans la table, puis clique sur le bon résultat."
     },
     {
-        id: "calc-arcade-sprint", title: "Sprint Chrono", gameType: "arcade_sprint",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { timeLimit: 60, minScore: 10, operations: ['+', '-'] },
-        paramSchema: [
-            { id: 'timeLimit', type: 'number', label: 'Chronomètre (secondes)', default: 60 },
-            { id: 'minScore', type: 'number', label: 'Score minimum requis', default: 10 },
-            { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*'], default: ['+', '-'] },
-            { id: 'tables', type: 'multiselect', label: 'Tables (si multiplication)', options: [1,2,3,4,5,6,7,8,9,10], default: [2,3,4,5,6,7,8,9,10] }
-        ],
-        instruction: "Réponds au plus d'équations possibles avant la fin du temps imparti !"
+        id: 'calc-mult-missing', title: 'Facteur Manquant',
+        generatorId: 'calc.mult.missing', activityId: 'digicode',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trouve le nombre manquant dans l'égalité et sélectionne-le sur le digicode."
     },
     {
-        id: "calc-arcade-moles", title: "Chasse aux Taupes", gameType: "arcade_moles",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { timeLimit: 60, minScore: 10, operations: ['+', '-'] },
-        paramSchema: [
-            { id: 'timeLimit', type: 'number', label: 'Chronomètre (secondes)', default: 60 },
-            { id: 'minScore', type: 'number', label: 'Score minimum requis', default: 10 },
-            { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*'], default: ['+', '-'] },
-            { id: 'tables', type: 'multiselect', label: 'Tables (si multiplication)', options: [1,2,3,4,5,6,7,8,9,10], default: [2,3,4,5,6,7,8,9,10] }
-        ],
-        instruction: "Tape sur la taupe qui tient le bon résultat de l'équation affichée !"
+        id: 'calc-division', title: 'Divisions Express',
+        generatorId: 'calc.division', activityId: 'bubbles',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trouve le quotient exact de la division affichée."
     },
     {
-        id: "calc-arcade-shooter", title: "Météorites Mathématiques", gameType: "arcade_shooter",
+        id: 'calc-prio', title: 'Prio-Bot Express',
+        generatorId: 'calc.priorites', activityId: 'buttons',
+        params: { mode: 'operation' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Sélectionne l'opération à effectuer en premier selon les règles de priorité."
+    },
+    {
+        id: 'calc-prio-resultat', title: 'Prio-Bot Calcul',
+        generatorId: 'calc.priorites', activityId: 'bubbles',
+        params: { mode: 'resultat' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Calcule l'expression en respectant les priorités opératoires."
+    },
+
+    // --- Arcade : mêmes notions, autre présentation ---
+    {
+        id: 'calc-arcade-sprint', title: 'Sprint Chrono',
+        generatorId: 'calc.mixte', activityId: 'bubbles',
+        params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium' },
+        instruction: "Réponds au plus grand nombre de calculs possible avant la fin du chronomètre !"
+    },
+    {
+        id: 'calc-arcade-moles', title: 'Chasse aux Taupes',
+        generatorId: 'calc.mixte', activityId: 'moles',
+        params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Tape sur la taupe qui porte le bon résultat !"
+    },
+    {
+        id: 'calc-moles-tables', title: 'Taupes des Tables',
+        generatorId: 'calc.mult.fact', activityId: 'moles',
+        params: { tables: [6, 7, 8, 9], timeLimit: 60, minScore: 10 },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Tape sur la taupe qui porte le bon produit !"
+    },
+
+    // --- Jeux autonomes : logique de plateau propre, contenu interne ---
+    {
+        id: 'calc-arcade-shooter', status: STATUS.TEST, title: 'Météorites Mathématiques',
+        activityId: 'shooter',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium' },
         paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1,2,3,4,5,6,7,8,9,10], default: [2,3,4,5,6,7,8,9,10] },
+            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['easy', 'medium', 'hard'], default: 'medium' }
         ],
-        instruction: "Détruis la météorite qui contient le bon résultat en cliquant dessus !"
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Détruis la météorite qui porte le bon résultat en cliquant dessus !"
     },
     {
-        id: "calc-math-memory", title: "Memory des Tables", gameType: "math_memory",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], pairs: 6 },
+        id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
+        activityId: 'memory',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], pairs: 6 },
         paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1,2,3,4,5,6,7,8,9,10], default: [2,3,4,5,6,7,8,9,10] },
+            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'pairs', type: 'select', label: 'Nombre de paires', options: [4, 6, 8, 10], default: 6 }
         ],
-        instruction: "Associe l'opération avec son résultat pour nettoyer le plateau !"
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Associe chaque opération à son résultat pour nettoyer le plateau !"
     },
     {
-        id: "calc-labyrinthe", title: "Labyrinthe Mathématique", gameType: "labyrinthe",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { timeLimit: 60, timeReduction: 5, operations: ['*'] },
+        id: 'calc-labyrinthe', status: STATUS.TEST, title: 'Labyrinthe Mathématique',
+        activityId: 'labyrinthe',
+        params: { timeLimit: 60, timeReduction: 5, operations: ['*'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         paramSchema: [
             { id: 'timeLimit', type: 'number', label: 'Temps initial (s)', default: 60 },
             { id: 'timeReduction', type: 'number', label: 'Temps perdu par niveau (s)', default: 5 },
             { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*', '/'], default: ['*'] },
-            { id: 'tables', type: 'multiselect', label: 'Tables (si multiplication)', options: [1,2,3,4,5,6,7,8,9,10], default: [2,3,4,5,6,7,8,9,10] }
+            { id: 'tables', type: 'multiselect', label: 'Tables (si multiplication)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
         ],
-        instruction: "Déplace-toi vers la case contenant la bonne réponse. Atteins la porte pour passer au niveau suivant !"
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Déplace-toi vers la case contenant la bonne réponse pour atteindre la sortie."
     },
     {
-        id: "calc-course", title: "Course Mathématique", gameType: "course",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
+        id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
+        activityId: 'course',
         internalStudentConfig: true,
-        defaultParams: { mode: 'survival', lanes: 3, speed: 3, operations: ['mul'] },
+        params: { mode: 'survival', lanes: 3, speed: 3, operations: ['mul'] },
         paramSchema: [
             { id: 'mode', type: 'select', label: 'Mode de jeu', options: ['survival', 'chrono', 'sprint'], default: 'survival' },
             { id: 'lanes', type: 'number', label: 'Nombre de voies', default: 3 },
             { id: 'speed', type: 'number', label: 'Vitesse', default: 3 },
             { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+9', 'mul', 'c10', 'div', 'rel', 'dec'], default: ['mul'] }
         ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Dirige le véhicule vers la bonne réponse pour continuer la course !"
     },
     {
-        id: "calc-pythagore", title: "Table de Pythagore", gameType: "pythagore",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+        id: 'calc-tetris', status: STATUS.TEST, title: 'Math Tetris',
+        activityId: 'tetris',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], speed: 1000 },
         paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1,2,3,4,5,6,7,8,9,10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
-        ],
-        instruction: "Repère la ligne et la colonne surlignées dans la table de Pythagore, puis clique sur le bon résultat."
-    },
-    {
-        id: "calc-tetris", title: "Math Tetris", gameType: "tetris",
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        configurable: true,
-        defaultParams: { tables: [2,3,4,5,6,7,8,9,10], speed: 1000 },
-        paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables', options: [1,2,3,4,5,6,7,8,9,10], default: [2,3,4,5,6,7,8,9,10] },
+            { id: 'tables', type: 'multiselect', label: 'Tables', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'speed', type: 'number', label: 'Vitesse de chute (ms)', default: 1000 }
         ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Combine les blocs pour que leur produit donne la cible demandée !"
+    },
+    {
+        id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
+        activityId: 'crush',
+        params: { mode: 'addition', difficulty: 'progressive' },
+        paramSchema: [
+            { id: 'mode', type: 'select', label: 'Opération', options: ['addition', 'multiplication'], default: 'addition' },
+            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['progressive', 'difficile'], default: 'progressive' }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Glisse ton doigt sur les blocs adjacents pour atteindre la cible."
     }
 ];

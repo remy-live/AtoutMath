@@ -1,6 +1,16 @@
-import { regTimeout, regInterval } from './timers.js';
 import { state } from './state.js';
+import { conceptToSkill } from './compat.js';
 
+/**
+ * Classe de base des jeux autonomes (Tetris, Course, Memory, Météorites,
+ * Labyrinthe, Math Crush) : ceux qui portent leur propre logique de plateau et
+ * ne consomment donc pas d'ItemSession.
+ *
+ * Leur seule obligation est de déclarer chaque réponse via `onCorrectAnswer` /
+ * `onWrongAnswer`. Ces deux méthodes produisent des tentatives au même format
+ * que les activités modernes, ce qui garantit qu'un jeu autonome alimente
+ * identiquement les statistiques, le carnet d'erreurs et les notes.
+ */
 export class BaseGame {
     constructor(container, isDemo, params, gameId) {
         this.container = container;
@@ -14,11 +24,8 @@ export class BaseGame {
         this.isRunning = true;
         this.container.innerHTML = '';
         this.render();
-        if (this.isDemo) {
-            this.runDemoSequence();
-        } else {
-            this.startGameLoop();
-        }
+        if (this.isDemo) this.runDemoSequence();
+        else this.startGameLoop();
     }
 
     destroy() {
@@ -26,48 +33,83 @@ export class BaseGame {
         this.container.innerHTML = '';
     }
 
-    // --- Méthodes Abstraites (à surcharger) ---
-    render() {
-        console.warn('render() not implemented in subclass');
-    }
-    
-    runDemoSequence() {
-        console.warn('runDemoSequence() not implemented in subclass');
-    }
-    
-    startGameLoop() {
-        console.warn('startGameLoop() not implemented in subclass');
-    }
+    // --- Méthodes abstraites ---
+    render() { console.warn('render() non implémenté'); }
+    runDemoSequence() { console.warn('runDemoSequence() non implémenté'); }
+    startGameLoop() { console.warn('startGameLoop() non implémenté'); }
 
-    // --- Outils Communs ---
-    
-    onCorrectAnswer(el) {
-        if (el) {
-            el.style.backgroundColor = "#dcfce7";
-            el.style.transform = "scale(1.1)";
-        }
-        state.celebrate(el || this.container, 10);
-    }
+    // --- Remontée des réponses ---
 
-    onWrongAnswer(el, errorSnapshot) {
+    /**
+     * @param {HTMLElement} [el]
+     * @param {string} [concept] - ancienne clé ("mult:7") ou id de compétence
+     * @param {Object} [details] - { questionText, given, expected, points }
+     */
+    onCorrectAnswer(el, concept = null, details = {}) {
+        if (this.isDemo) return;
         if (el) {
-            el.style.backgroundColor = "var(--danger)";
-            el.style.transform = "scale(0.95)";
+            el.style.backgroundColor = '#dcfce7';
+            el.style.transform = 'scale(1.1)';
         }
-        
-        // Log error which auto-updates SequenceRunner with a failure
-        import('./errorSchema.js').then(schema => {
-            const snap = schema.createErrorSnapshot(errorSnapshot);
-            state.logError(state.activeExo, snap);
+        const points = details.points || 10;
+        state.recordAttempt({
+            correct: true,
+            skillId: conceptToSkill(concept),
+            points,
+            questionText: details.questionText,
+            given: details.given,
+            expected: details.expected,
+            attemptIndex: 0
         });
+        document.dispatchEvent(new CustomEvent('game_feedback', {
+            detail: { kind: 'success', points, element: el }
+        }));
     }
+
+    /**
+     * @param {HTMLElement} [el]
+     * @param {Object} snapshot - { questionText, input, expected, concept, customMessage }
+     */
+    onWrongAnswer(el, snapshot = {}) {
+        if (this.isDemo) return;
+        if (el) {
+            el.style.backgroundColor = 'var(--danger)';
+            el.style.transform = 'scale(0.95)';
+        }
+        // `operation` : nom de champ utilisé par les jeux les plus anciens.
+        const questionText = snapshot.questionText || snapshot.operation || '';
+        state.recordAttempt({
+            correct: false,
+            skillId: conceptToSkill(snapshot.concept),
+            questionText,
+            given: snapshot.input,
+            expected: snapshot.expected,
+            explanation: snapshot.customMessage || '',
+            attemptIndex: 0
+        });
+        if (snapshot.customMessage || questionText) {
+            document.dispatchEvent(new CustomEvent('game_feedback', {
+                detail: {
+                    kind: 'error', isError: true,
+                    msg: snapshot.customMessage || `Faux ! ${questionText} = ${snapshot.expected}`,
+                    // Ces jeux tournent en temps réel (chute de blocs, course,
+                    // chronomètre) : on ne peut pas les figer sur un clic.
+                    // Le retour y reste donc éphémère.
+                    blocking: false
+                }
+            }));
+        }
+    }
+
+    // --- Utilitaires de tirage (jeux non encore portés sur les générateurs) ---
 
     getRandomTable() {
-        const tables = this.params.tables && this.params.tables.length > 0 ? this.params.tables : [2, 3, 4, 5, 6, 7, 8, 9, 10];
+        const tables = this.params.tables && this.params.tables.length
+            ? this.params.tables : [2, 3, 4, 5, 6, 7, 8, 9, 10];
         return tables[Math.floor(Math.random() * tables.length)];
     }
 
     getRandomMultiplier() {
-        return Math.floor(Math.random() * 10) + 1; // 1 to 10
+        return Math.floor(Math.random() * 10) + 1;
     }
 }

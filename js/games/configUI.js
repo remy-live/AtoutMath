@@ -1,178 +1,269 @@
-export function renderGameConfigUI(stepOrExo, onSaveCallback, containerId = 'builder-config-content') {
+// Formulaires de configuration.
+//
+// Le schéma n'est plus recopié dans le catalogue : il est déduit du registre
+// (paramètres du générateur + paramètres de l'activité). Ajouter une option à
+// un générateur la fait apparaître partout où il est utilisé, sans toucher au
+// catalogue ni à cette interface.
+
+import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
+import { MODES, evaluationPolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
+
+// --- Champs -----------------------------------------------------------------
+
+function fieldHtml(param, value) {
+    const id = `cfg-${param.id}`;
+    let control = '';
+
+    if (param.type === 'multiselect') {
+        control = `<div class="cfg-chips">` + param.options.map(opt => {
+            const checked = Array.isArray(value) && value.includes(opt) ? 'checked' : '';
+            return `<label class="cfg-chip">
+                <input type="checkbox" data-param="${param.id}" data-kind="multiselect" value="${opt}" ${checked}>
+                <span>${opt}</span></label>`;
+        }).join('') + `</div>`;
+    } else if (param.type === 'number') {
+        control = `<input type="number" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="number"
+            value="${value}" ${param.min !== undefined ? `min="${param.min}"` : ''} ${param.max !== undefined ? `max="${param.max}"` : ''}>`;
+    } else if (param.type === 'select') {
+        control = `<select id="${id}" class="cfg-input" data-param="${param.id}" data-kind="select">` +
+            param.options.map(o => `<option value="${o}" ${String(value) === String(o) ? 'selected' : ''}>${o}</option>`).join('') +
+            `</select>`;
+    } else {
+        control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
+    }
+
+    return `<div class="cfg-field">
+        <label class="cfg-label" for="${id}">${param.label}</label>
+        ${control}
+    </div>`;
+}
+
+function readParams(root, schema) {
+    const out = {};
+    schema.forEach(param => {
+        if (param.type === 'multiselect') {
+            const boxes = [...root.querySelectorAll(`[data-param="${param.id}"][data-kind="multiselect"]`)];
+            const isNum = typeof param.options[0] === 'number';
+            out[param.id] = boxes.filter(b => b.checked).map(b => (isNum ? Number(b.value) : b.value));
+        } else {
+            const el = root.querySelector(`[data-param="${param.id}"]`);
+            if (!el) return;
+            const isNum = param.type === 'number' || (param.type === 'select' && typeof param.options[0] === 'number');
+            out[param.id] = isNum ? Number(el.value) : el.value;
+        }
+    });
+    return out;
+}
+
+// --- Panneau « propriétés d'une étape » (éditeur professeur) ----------------
+
+/**
+ * @param {Object} step - étape v2 { exerciseId, overrides, nbItems, threshold, weight, timeLimit }
+ * @param {(step:Object)=>void} onSave
+ */
+export function renderGameConfigUI(step, onSave, containerId = 'builder-config-content') {
     const content = document.getElementById(containerId);
     if (!content) return;
 
-    content.style.textAlign = 'left';
-    content.style.paddingTop = '0';
+    const exo = getExerciseById(step.exerciseId) || step.exercise || {};
+    const schema = paramSchemaOf(exo);
+    const current = { ...(exo.params || {}), ...(step.overrides || {}) };
 
-    const params = stepOrExo.currentParams || stepOrExo.defaultParams || {};
-    const nbQ = params.nbQuestions || 10;
-    const successThresh = params.successThreshold || nbQ;
+    content.innerHTML = `
+        <div class="cfg-header">${exo.title || step.exerciseId}</div>
+        ${schema.length ? schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')
+            : '<p class="cfg-empty">Cette activité n\'a pas de paramètre de contenu.</p>'}
 
-    let html = `<div style="font-weight:bold; font-size:1.1rem; color:var(--primary); margin-bottom: 15px;">${stepOrExo.title}</div>`;
-
-    // Render schema specific parameters
-    if (stepOrExo.paramSchema && stepOrExo.paramSchema.length > 0) {
-        stepOrExo.paramSchema.forEach(param => {
-            html += `<div style="margin-bottom: 20px;">`;
-            html += `<div style="font-weight:600; margin-bottom:10px; color:var(--text-main);">${param.label} :</div>`;
-            
-            const currentValue = params[param.id] !== undefined ? params[param.id] : param.default;
-            
-            if (param.type === 'multiselect') {
-                html += `<div style="display:flex; flex-wrap:wrap; gap:10px;">`;
-                param.options.forEach(opt => {
-                    const isChecked = (Array.isArray(currentValue) && currentValue.includes(opt)) ? 'checked' : '';
-                    html += `<label style="display:flex; align-items:center; gap:5px; background:var(--bg-app); padding:8px 12px; border-radius:8px; border:1px solid var(--border); cursor:pointer;">
-                        <input type="checkbox" class="schema-cb-${param.id}" data-param-id="${param.id}" value="${opt}" ${isChecked}>
-                        <span>${opt}</span>
-                    </label>`;
-                });
-                html += `</div>`;
-            } else if (param.type === 'number') {
-                html += `<input type="number" class="schema-input-${param.id}" data-param-id="${param.id}" value="${currentValue}" min="${param.min || ''}" max="${param.max || ''}" style="width:100%; padding:10px 15px; border-radius:12px; border:2px solid var(--border); background:var(--bg-app); font-size:1.1rem; color:var(--text-main); font-family:inherit; outline:none;">`;
-            } else if (param.type === 'select') {
-                html += `<select class="schema-input-${param.id}" data-param-id="${param.id}" style="width:100%; padding:10px 15px; border-radius:12px; border:2px solid var(--border); background:var(--bg-app); font-size:1.1rem; color:var(--text-main); font-family:inherit; outline:none;">`;
-                param.options.forEach(opt => {
-                    const isSelected = currentValue === opt ? 'selected' : '';
-                    html += `<option value="${opt}" ${isSelected}>${opt}</option>`;
-                });
-                html += `</select>`;
-            }
-            html += `</div>`;
-        });
-    }
-
-    // Common parameters
-    html += `
-        <div style="display:flex; flex-direction:column; gap:15px; border-top:1px solid var(--border); padding-top:20px; margin-top:10px;">
-            <div>
-                <div style="font-weight:600; margin-bottom:5px; color:var(--text-main);">Nombre de questions :</div>
-                <input type="number" id="config-nbq" value="${nbQ}" min="1" max="50" style="width:100%; padding:10px 15px; border-radius:12px; border:2px solid var(--border); background:var(--bg-app); font-size:1.1rem; color:var(--text-main); font-family:inherit; transition:0.2s; outline:none;">
+        <div class="cfg-group">
+            <div class="cfg-group-title">Déroulement de l'étape</div>
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
+                <input type="number" id="cfg-nbitems" class="cfg-input" min="1" max="50" value="${step.nbItems || 10}">
             </div>
-            <div>
-                <div style="font-weight:600; margin-bottom:5px; color:var(--text-main);">Réussites requises pour valider :</div>
-                <input type="number" id="config-success" value="${successThresh}" min="1" max="50" style="width:100%; padding:10px 15px; border-radius:12px; border:2px solid var(--border); background:var(--bg-app); font-size:1.1rem; color:var(--text-main); font-family:inherit; transition:0.2s; outline:none;">
-                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:8px; line-height:1.4;">Nombre de bonnes réponses nécessaires pour passer à l'exercice suivant.</div>
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-threshold">Bonnes réponses exigées pour valider l'étape</label>
+                <input type="number" id="cfg-threshold" class="cfg-input" min="1" max="50"
+                       value="${step.threshold !== null && step.threshold !== undefined ? step.threshold : (step.nbItems || 10)}">
+                <p class="cfg-help" id="cfg-threshold-help"></p>
             </div>
-        </div>
-    `;
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-timelimit">Chronomètre (secondes, 0 = aucun)</label>
+                <input type="number" id="cfg-timelimit" class="cfg-input" min="0" max="600" value="${step.timeLimit || 0}">
+            </div>
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-weight">Poids dans la note</label>
+                <input type="number" id="cfg-weight" class="cfg-input" min="1" max="10" value="${step.weight || 1}">
+                <p class="cfg-help">Une étape de poids 2 compte double dans le barème.</p>
+            </div>
+        </div>`;
 
-    content.innerHTML = html;
-
-    // Save Logic
-    const saveConfig = () => {
-        const newParams = { ...params };
-        newParams.nbQuestions = parseInt(document.getElementById('config-nbq').value) || 10;
-        newParams.successThreshold = parseInt(document.getElementById('config-success').value) || newParams.nbQuestions;
-
-        if (stepOrExo.paramSchema) {
-            stepOrExo.paramSchema.forEach(param => {
-                if (param.type === 'multiselect') {
-                    const checkboxes = document.querySelectorAll('.schema-cb-' + param.id);
-                    // Parse as number if option type is number, otherwise string
-                    const isNum = typeof param.options[0] === 'number';
-                    newParams[param.id] = Array.from(checkboxes).filter(cb => cb.checked).map(cb => isNum ? parseInt(cb.value) : cb.value);
-                } else {
-                    const el = document.querySelector('.schema-input-' + param.id);
-                    if (el) {
-                        const val = el.value;
-                        const isNum = param.type === 'number' || (param.type === 'select' && typeof param.options[0] === 'number');
-                        newParams[param.id] = isNum ? Number(val) : val;
-                    }
-                }
-            });
-        }
-        onSaveCallback(newParams);
+    // Le mot « seuil » ne dit rien à lui seul : on affiche la phrase complète
+    // que le réglage produit, et elle se met à jour à la saisie.
+    const describeThreshold = () => {
+        const help = document.getElementById('cfg-threshold-help');
+        if (!help) return;
+        const nb = intVal('cfg-nbitems', 10);
+        const seuil = Math.min(intVal('cfg-threshold', nb), nb);
+        help.textContent = `L'élève doit réussir ${seuil} question${seuil > 1 ? 's' : ''} sur ${nb} `
+            + `pour que l'étape soit validée. En dessous, il rejoue l'étape (en entraînement) `
+            + `ou passe à la suivante sans la valider (en évaluation).`;
     };
 
-    // Attach listeners
-    content.addEventListener('change', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
-            saveConfig();
-        }
-    });
-    content.addEventListener('keyup', (e) => {
-        if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
-            saveConfig();
-        }
+    const commit = () => {
+        const overrides = readParams(content, schema);
+        const nbItems = intVal('cfg-nbitems', 10);
+        describeThreshold();
+        onSave({
+            ...step,
+            overrides,
+            nbItems,
+            threshold: Math.min(intVal('cfg-threshold', nbItems), nbItems),
+            timeLimit: intVal('cfg-timelimit', 0) || null,
+            weight: intVal('cfg-weight', 1)
+        });
+    };
+
+    describeThreshold();
+    content.addEventListener('change', commit);
+    content.addEventListener('keyup', e => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'number') commit();
     });
 }
 
-export function showStudentConfigModal(exo, onStartCallback) {
+// --- Réglages avant partie (élève) ------------------------------------------
+
+export function showStudentConfigModal(exo, onStart) {
     const modal = document.getElementById('student-config-modal');
     const content = document.getElementById('student-config-content');
-    const btnCancel = document.getElementById('btn-student-config-cancel');
-    const btnStart = document.getElementById('btn-student-config-start');
-    
-    if (!modal || !content) return;
+    if (!modal || !content) return onStart({ ...(exo.params || {}) });
 
-    const params = exo.defaultParams || {};
-    let html = '';
+    const schema = paramSchemaOf(exo);
+    const current = { ...(exo.params || {}) };
 
-    // Render schema specific parameters ONLY
-    if (exo.paramSchema && exo.paramSchema.length > 0) {
-        exo.paramSchema.forEach(param => {
-            html += `<div style="margin-bottom: 15px;">`;
-            html += `<div style="font-weight:600; margin-bottom:8px; color:var(--text-main);">${param.label} :</div>`;
-            
-            const currentValue = params[param.id] !== undefined ? params[param.id] : param.default;
-            
-            if (param.type === 'multiselect') {
-                html += `<div style="display:flex; flex-wrap:wrap; gap:10px;">`;
-                param.options.forEach(opt => {
-                    const isChecked = (Array.isArray(currentValue) && currentValue.includes(opt)) ? 'checked' : '';
-                    html += `<label style="display:flex; align-items:center; gap:5px; background:var(--bg-app); padding:8px 12px; border-radius:8px; border:1px solid var(--border); cursor:pointer;">
-                        <input type="checkbox" class="student-schema-cb-${param.id}" data-param-id="${param.id}" value="${opt}" ${isChecked}>
-                        <span>${opt}</span>
-                    </label>`;
-                });
-                html += `</div>`;
-            } else if (param.type === 'number') {
-                html += `<input type="number" class="student-schema-input-${param.id}" data-param-id="${param.id}" value="${currentValue}" min="${param.min || ''}" max="${param.max || ''}" style="width:100%; padding:10px 15px; border-radius:12px; border:2px solid var(--border); background:var(--bg-app); font-size:1.1rem; color:var(--text-main); font-family:inherit; outline:none;">`;
-            } else if (param.type === 'select') {
-                html += `<select class="student-schema-input-${param.id}" data-param-id="${param.id}" style="width:100%; padding:10px 15px; border-radius:12px; border:2px solid var(--border); background:var(--bg-app); font-size:1.1rem; color:var(--text-main); font-family:inherit; outline:none;">`;
-                param.options.forEach(opt => {
-                    const isSelected = currentValue === opt ? 'selected' : '';
-                    html += `<option value="${opt}" ${isSelected}>${opt}</option>`;
-                });
-                html += `</select>`;
-            }
-            html += `</div>`;
-        });
-    }
+    content.innerHTML = `
+        ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
+        <div class="cfg-field">
+            <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
+            <input type="number" id="cfg-nbitems" class="cfg-input" min="3" max="50" value="${current.nbQuestions || 10}">
+        </div>`;
 
-    content.innerHTML = html;
     modal.style.display = 'flex';
 
-    const getParams = () => {
-        const newParams = { ...params };
-        if (exo.paramSchema) {
-            exo.paramSchema.forEach(param => {
-                if (param.type === 'multiselect') {
-                    const checkboxes = document.querySelectorAll('.student-schema-cb-' + param.id);
-                    const isNum = typeof param.options[0] === 'number';
-                    newParams[param.id] = Array.from(checkboxes).filter(cb => cb.checked).map(cb => isNum ? parseInt(cb.value) : cb.value);
-                } else {
-                    const el = document.querySelector('.student-schema-input-' + param.id);
-                    if (el) {
-                        const val = el.value;
-                        const isNum = param.type === 'number' || (param.type === 'select' && typeof param.options[0] === 'number');
-                        newParams[param.id] = isNum ? Number(val) : val;
-                    }
-                }
-            });
-        }
-        return newParams;
+    document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
+    document.getElementById('btn-student-config-start').onclick = () => {
+        modal.style.display = 'none';
+        onStart({
+            ...current,
+            ...readParams(content, schema),
+            nbQuestions: intVal('cfg-nbitems', 10)
+        });
+    };
+}
+
+// --- Politique du parcours (mode et barème) ---------------------------------
+
+/**
+ * Éditeur de politique : c'est ici que le professeur bascule un parcours
+ * d'entraînement en évaluation notée. Les deux réglages qui changent tout —
+ * nombre d'essais et disponibilité des aides — sont pilotés par le mode, mais
+ * restent ajustables.
+ */
+export function renderPolicyEditor(path, onChange, containerId = 'builder-policy-content') {
+    const root = document.getElementById(containerId);
+    if (!root) return;
+
+    const p = resolvePolicy(path.policy);
+    const isEval = p.mode === MODES.EVALUATION;
+    const g = p.grading || {};
+
+    root.innerHTML = `
+        <div class="cfg-modes">
+            <button type="button" class="cfg-mode ${!isEval ? 'cfg-mode--active' : ''}" data-mode="${MODES.ENTRAINEMENT}">
+                <span class="cfg-mode-icon" aria-hidden="true">🎯</span>
+                <span class="cfg-mode-title">Entraînement</span>
+                <span class="cfg-mode-desc">Plusieurs essais, aides, correction immédiate. Sans note.</span>
+            </button>
+            <button type="button" class="cfg-mode ${isEval ? 'cfg-mode--active' : ''}" data-mode="${MODES.EVALUATION}">
+                <span class="cfg-mode-icon" aria-hidden="true">📝</span>
+                <span class="cfg-mode-title">Évaluation</span>
+                <span class="cfg-mode-desc">Un seul essai, pas d'aide, note et bilan par compétence.</span>
+            </button>
+        </div>
+
+        <div class="cfg-field">
+            <label class="cfg-label" for="cfg-attempts">Essais autorisés par question</label>
+            <input type="number" id="cfg-attempts" class="cfg-input" min="1" max="5" value="${p.maxAttemptsPerItem}">
+        </div>
+        <label class="cfg-check">
+            <input type="checkbox" id="cfg-hints" ${p.hints ? 'checked' : ''}>
+            Autoriser les indices
+        </label>
+        <label class="cfg-check">
+            <input type="checkbox" id="cfg-adaptive" ${p.adaptive ? 'checked' : ''}>
+            Cibler les notions fragiles de l'élève
+        </label>
+
+        <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
+            <div class="cfg-group-title">Barème</div>
+            <label class="cfg-check">
+                <input type="checkbox" id="cfg-graded" ${p.grading ? 'checked' : ''}>
+                Attribuer une note
+            </label>
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-scale">Note sur</label>
+                <input type="number" id="cfg-scale" class="cfg-input" min="5" max="100" value="${g.scale || 20}">
+            </div>
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-rule">Règle de calcul</label>
+                <select id="cfg-rule" class="cfg-input">
+                    <option value="firstTry" ${g.rule === 'firstTry' ? 'selected' : ''}>Réussite du premier coup</option>
+                    <option value="ratio" ${g.rule === 'ratio' ? 'selected' : ''}>Question résolue (essais illimités)</option>
+                    <option value="ponderee" ${g.rule === 'ponderee' ? 'selected' : ''}>Pondérée (pénalité par essai et par aide)</option>
+                </select>
+                <p class="cfg-help">La note est recalculée à partir des réponses enregistrées : modifier le barème met à jour les bilans passés.</p>
+            </div>
+            <label class="cfg-check">
+                <input type="checkbox" id="cfg-show-calc" ${g.showCalculation !== false ? 'checked' : ''}>
+                Montrer à l'élève le détail du calcul de sa note
+            </label>
+        </div>`;
+
+    const commit = () => {
+        const graded = document.getElementById('cfg-graded').checked;
+        const mode = root.querySelector('.cfg-mode--active').dataset.mode;
+        const base = mode === MODES.EVALUATION ? evaluationPolicy() : defaultPolicy();
+        onChange({
+            ...base,
+            mode,
+            maxAttemptsPerItem: intVal('cfg-attempts', base.maxAttemptsPerItem),
+            hints: document.getElementById('cfg-hints').checked,
+            adaptive: document.getElementById('cfg-adaptive').checked,
+            grading: graded ? {
+                scale: intVal('cfg-scale', 20),
+                rule: document.getElementById('cfg-rule').value,
+                penalties: { hint: 0.25, retry: 0.5 },
+                arrondi: 0.5,
+                showCalculation: document.getElementById('cfg-show-calc').checked
+            } : null
+        });
     };
 
-    // Events
-    btnCancel.onclick = () => {
-        modal.style.display = 'none';
-    };
+    root.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.onclick = () => {
+            const mode = btn.dataset.mode;
+            const base = mode === MODES.EVALUATION ? evaluationPolicy() : defaultPolicy();
+            // Changer de mode réapplique les défauts du mode : c'est le sens
+            // même du réglage, on ne conserve pas les réglages contradictoires.
+            onChange(base);
+            renderPolicyEditor({ ...path, policy: base }, onChange, containerId);
+        };
+    });
+    root.addEventListener('change', commit);
+}
 
-    btnStart.onclick = () => {
-        modal.style.display = 'none';
-        onStartCallback(getParams());
-    };
+function intVal(id, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return fallback;
+    const n = parseInt(el.value, 10);
+    return isNaN(n) ? fallback : n;
 }

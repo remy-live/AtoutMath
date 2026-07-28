@@ -7,8 +7,12 @@ export const TAGS = {
     },
     SOUS_DOMAINE: {
         CALCUL_MENTAL: "Calcul Mental",
+        NUMERATION: "Numération",
+        FRACTIONS: "Fractions",
+        DECIMAUX: "Nombres Décimaux",
         REPERAGE: "Repérage",
-        PRIORITES: "Priorités Opératoires"
+        PRIORITES: "Priorités Opératoires",
+        PERIMETRE_AIRE: "Périmètre et Aire"
     },
     // Niveau de regroupement optionnel, sous un SOUS_DOMAINE (ex: Numérique > Calcul Mental > Tables de Multiplication)
     THEME: {

@@ -1,5 +1,7 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
+import { generateMultFact } from '../core/generators.js';
+import { getWeakTables } from '../core/stats.js';
 
 class MathMemory extends BaseGame {
     render() {
@@ -79,15 +81,14 @@ class MathMemory extends BaseGame {
         this.firstPick = null;
         this.lockBoard = false;
         
+        const weakTables = getWeakTables();
         const pairsData = [];
         for(let i = 0; i < this.targetPairs; i++) {
-            const t = this.getRandomTable();
-            const m = this.getRandomMultiplier();
-            const ans = t * m;
+            const { t, m, ans, concept } = generateMultFact(this.params.tables, weakTables);
             const uid = i;
-            
-            pairsData.push({ type: 'question', text: `${t} × ${m}`, uid, t, m, ans });
-            pairsData.push({ type: 'answer', text: `${ans}`, uid, t, m, ans });
+
+            pairsData.push({ type: 'question', text: `${t} × ${m}`, uid, t, m, ans, concept });
+            pairsData.push({ type: 'answer', text: `${ans}`, uid, t, m, ans, concept });
         }
         
         // Shuffle
@@ -157,7 +158,7 @@ class MathMemory extends BaseGame {
         
         if (this.firstPick.data.uid === secondPick.data.uid) {
             // Match!
-            this.onCorrectAnswer(null); // Register generic correct answer
+            this.onCorrectAnswer(null, this.firstPick.data.concept); // Register generic correct answer
             
             regTimeout(() => {
                 if(!this.isRunning) return;
@@ -186,7 +187,8 @@ class MathMemory extends BaseGame {
                 questionText: this.firstPick.data.text,
                 t: this.firstPick.data.t,
                 m: this.firstPick.data.m,
-                ans: this.firstPick.data.ans
+                ans: this.firstPick.data.ans,
+                concept: this.firstPick.data.concept
             });
             
             regTimeout(() => {

@@ -1,5 +1,7 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
+import { generateMultFact, multDistractors } from '../core/generators.js';
+import { getWeakTables } from '../core/stats.js';
 
 class ArcadeShooter extends BaseGame {
     render() {
@@ -336,10 +338,10 @@ class ArcadeShooter extends BaseGame {
 
     hitMeteor(meteorObj) {
         meteorObj.destroyed = true;
-        
+
         if (meteorObj.isCorrect) {
             meteorObj.el.style.animation = 'explode 0.4s forwards';
-            this.onCorrectAnswer(null);
+            this.onCorrectAnswer(null, this.currentConcept);
             
             // Destroy all other meteors visually
             this.meteors.forEach(m => {
@@ -369,7 +371,8 @@ class ArcadeShooter extends BaseGame {
             questionText: `${this.currentT} × ${this.currentM}`,
             t: this.currentT,
             m: this.currentM,
-            ans: this.currentAns
+            ans: this.currentAns,
+            concept: this.currentConcept
         });
         this.arena.style.boxShadow = 'inset 0 0 50px rgba(239, 68, 68, 0.5)';
         regTimeout(() => { this.arena.style.boxShadow = 'none'; }, 300);
@@ -415,9 +418,11 @@ class ArcadeShooter extends BaseGame {
     }
 
     generateQuestion() {
-        this.currentT = this.getRandomTable();
-        this.currentM = this.getRandomMultiplier();
-        this.currentAns = this.currentT * this.currentM;
+        const { t, m, ans, concept } = generateMultFact(this.params.tables, getWeakTables());
+        this.currentT = t;
+        this.currentM = m;
+        this.currentAns = ans;
+        this.currentConcept = concept;
         this.questionDisplay.innerHTML = `${this.currentT} &times; ${this.currentM} = ?`;
     }
 
@@ -427,14 +432,9 @@ class ArcadeShooter extends BaseGame {
         this.meteors = [];
         this.lasers.forEach(l => { if(l.el) l.el.remove(); });
         this.lasers = [];
-        
-        const answers = [this.currentAns];
-        while(answers.length < 3) {
-            let fake = (this.currentT * this.getRandomMultiplier());
-            if(!answers.includes(fake)) answers.push(fake);
-        }
-        answers.sort(() => Math.random() - 0.5);
-        
+
+        const answers = multDistractors(this.currentT, this.currentAns, 2);
+
         const arenaWidth = this.arena.offsetWidth;
         const margin = 20;
         

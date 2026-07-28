@@ -337,16 +337,27 @@ export class MathCrush extends BaseGame {
             }
             
             if (!this.isDemo) {
-                state.addScore(pts);
-                if (state.activeSequenceRunner) state.activeSequenceRunner.onGameAction(true);
+                // Une seule remontée : `onCorrectAnswer` produit la tentative,
+                // qui alimente à la fois le score, les statistiques et le
+                // moteur de parcours. L'ancien code cumulait trois appels et
+                // comptait donc la même réponse plusieurs fois.
+                this.onCorrectAnswer(null, null, {
+                    points: pts,
+                    questionText: `Cible ${this.targetValue}`,
+                    given: sum,
+                    expected: this.targetValue
+                });
             }
             this.generateTarget();
         } else {
             // Failed
             if (!this.isDemo) {
-                // Visual error shake or red flash?
-                // Just let the line disappear.
-                this.timeLeft = Math.max(0, this.timeLeft - 2); // Penalty
+                this.timeLeft = Math.max(0, this.timeLeft - 2); // Pénalité de temps
+                this.onWrongAnswer(null, {
+                    questionText: `Cible ${this.targetValue}`,
+                    input: sum,
+                    expected: this.targetValue
+                });
             }
         }
         
