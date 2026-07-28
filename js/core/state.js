@@ -1,210 +1,343 @@
+// Façade d'état de l'application.
+//
+// `state` n'est plus le propriétaire des données : c'est une vue pratique
+// au-dessus de trois couches distinctes, qu'il ne faut plus confondre.
+//
+//   session  — état d'interface, jamais persisté (navStack, recherche, mode…)
+//   progrès  — dérivé du journal d'événements, jamais écrit directement
+//   contenu  — documents du professeur (parcours, dossiers), persistés tels quels
+//
+// Les propriétés de progression (`score`, `errorHistory`, `attemptHistory`,
+// `badges`, `timeSpent*`, `studentPath`) sont des GETTERS calculés à la volée
+// et mémoïsés jusqu'au prochain événement. Écrire `state.score = 10` n'a donc
+// aucun effet : il faut émettre un événement.
+
+import { LocalStore } from './store.js';
+import { journal, EventTypes } from './journal.js';
+import { initIdentity, getActiveProfileId, getDeviceId, namespaceFor } from './profile.js';
+import {
+    computeScore, computeTime, computeBadges, computeAttempts, computeErrors,
+    countCorrect, computeAssignedPath, errorKeyOf
+} from './projections.js';
+import { computeMastery } from './mastery.js';
+import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
+
+let profileStore = null;
+
+// --- Mémoïsation des projections -------------------------------------------
+// Recalculer les projections à chaque lecture serait correct mais coûteux :
+// `state.score` est lu à chaque rendu. On invalide sur événement.
+const cache = new Map();
+function memo(key, fn) {
+    if (!cache.has(key)) cache.set(key, fn());
+    return cache.get(key);
+}
+function invalidate() {
+    cache.clear();
+}
+document.addEventListener('journal_appended', invalidate);
+document.addEventListener('journal_merged', invalidate);
+
 export const state = {
-    currentPath: [],
-    currentPathId: null, // Si null, c'est un nouveau parcours
-    teacherPaths: [],
+    // --- Session (transitoire, non persisté) ---
+    // Parcours en cours d'édition (format v2 : étapes = références + surcharges).
+    currentPath: { id: null, version: 2, name: 'Mon Parcours', policy: null, steps: [] },
+    currentPathId: null,
     isTeacherMode: false,
     isMobileView: false,
-    activeExo: null, // "math_operations", "tactile_hunter", etc.
+    activeExo: null,
+    activeSequenceRunner: null,
     previewDeviceMode: 'mobile',
-    selectedNiveaux: [],
+    deviceMode: 'desktop',
     navStack: [],
-    score: 0,
-    badges: {}, // key: badgeId, value: timestamp
-    errorHistory: [],
+    searchQuery: '',
+    // Filtre d'état de publication du catalogue : 'tout' | 'valide' | 'test'
+    // | 'brouillon'. Outil d'auteur, persisté par confort entre deux sessions.
+    catalogFilter: 'tout',
+    /**
+     * Contexte de la question en cours, posé par le moteur de parcours avant
+     * chaque item. Il permet aux jeux historiques — qui appellent encore
+     * `state.celebrate()` / `state.logError()` sans rien savoir du parcours —
+     * de produire des tentatives correctement rattachées au run, à l'étape et
+     * à la compétence travaillée.
+     */
+    attemptContext: null,
+
+    // --- Contenu professeur (persisté tel quel) ---
+    teacherPaths: [],
     teacherFolders: [],
-    studentPath: null, // { steps: [...], completed: [stepId, ...] } ou null si aucun parcours assigné
-    timeSpentTotal: 0, // in seconds
-    timeSpentPerGame: {}, // { "math_operations": 120, ... }
+    selectedNiveaux: [],
 
-    load: async function() {
-        if (typeof localforage === 'undefined') {
-            console.error("localforage is not loaded!");
-            return;
+    // --- Progression (dérivée du journal, lecture seule) ---
+    get score() { return memo('score', () => computeScore(journal.all())); },
+    get badges() { return memo('badges', () => computeBadges(journal.all())); },
+    get attemptHistory() { return memo('attempts', () => computeAttempts(journal.all())); },
+    get errorHistory() {
+        // Forme compatible avec l'ancien carnet d'erreurs consommé par l'UI.
+        return memo('errors', () => computeErrors(journal.all()).map(e => ({
+            id: e.key,
+            exoId: e.exerciseId,
+            exoTitle: e.exerciseTitle,
+            skillId: e.skillId,
+            timestamp: e.lastTs,
+            corrected: e.corrected,
+            count: e.count,
+            userAnswer: e.given,
+            questionData: {
+                isStandardized: true,
+                questionText: e.questionText,
+                input: e.given,
+                expected: e.expected,
+                customMessage: e.explanation || '',
+                misconception: e.misconception,
+                skillId: e.skillId,
+                itemSeed: e.itemSeed,
+                generatorId: e.generatorId
+            }
+        })));
+    },
+    get masteryMap() { return memo('mastery', () => computeMastery(this.attemptHistory)); },
+    get timeSpentTotal() { return memo('time', () => computeTime(journal.all())).total; },
+    get timeSpentPerGame() { return memo('time', () => computeTime(journal.all())).perExercise; },
+    get studentPath() { return memo('assigned', () => computeAssignedPath(journal.all())); },
+    get correctCount() { return memo('correct', () => countCorrect(journal.all())); },
+
+    // --- Cycle de vie -------------------------------------------------------
+
+    async load() {
+        const { profileId, deviceId } = await initIdentity();
+        profileStore = new LocalStore(namespaceFor(profileId));
+
+        await journal.load(profileStore, { profileId, deviceId });
+
+        // Migration unique de l'ancien stockage global.
+        const alreadyMigrated = await profileStore.get('migratedFrom');
+        if (!alreadyMigrated) {
+            const { hasLegacyData, buildMigrationEvents } = await import('./migrate.js');
+            if (await hasLegacyData()) {
+                const { events, content } = await buildMigrationEvents(profileId, deviceId);
+                journal.merge(events.map(e => ({ ...e, synced: false })));
+                if (content.teacherPaths.length) await profileStore.set('teacherPaths', content.teacherPaths);
+                if (content.teacherFolders.length) await profileStore.set('teacherFolders', content.teacherFolders);
+                if (content.selectedNiveaux.length) await profileStore.set('selectedNiveaux', content.selectedNiveaux);
+                console.info(`[migration] ${events.length} événements repris depuis l'ancien stockage.`);
+            }
+            await profileStore.set('migratedFrom', { at: Date.now(), version: 1 });
         }
-        
-        try {
-            const storedScore = await localforage.getItem('atoutmath_score');
-            if (storedScore !== null) this.score = parseInt(storedScore);
-            
-            const storedBadges = await localforage.getItem('atoutmath_badges');
-            if (storedBadges) this.badges = storedBadges;
 
-            const storedErrors = await localforage.getItem('atoutmath_errors');
-            if (storedErrors) this.errorHistory = storedErrors;
+        this.teacherPaths = (await profileStore.get('teacherPaths', [])) || [];
+        this.teacherFolders = (await profileStore.get('teacherFolders', [])) || [];
+        this.selectedNiveaux = (await profileStore.get('selectedNiveaux', [])) || [];
+        this.catalogFilter = (await profileStore.get('catalogFilter', 'tout')) || 'tout';
 
-            const storedTeacherPaths = await localforage.getItem('atoutmath_teacherPaths');
-            if (storedTeacherPaths) this.teacherPaths = storedTeacherPaths;
-
-            const storedTeacherFolders = await localforage.getItem('atoutmath_teacherFolders');
-            if (storedTeacherFolders) this.teacherFolders = storedTeacherFolders;
-
-            const storedTimeTotal = await localforage.getItem('atoutmath_timeTotal');
-            if (storedTimeTotal) this.timeSpentTotal = storedTimeTotal;
-
-            const storedTimePerGame = await localforage.getItem('atoutmath_timePerGame');
-            if (storedTimePerGame) this.timeSpentPerGame = storedTimePerGame;
-
-            const storedNiveaux = await localforage.getItem('atoutmath_selectedNiveaux');
-            if (storedNiveaux) this.selectedNiveaux = storedNiveaux;
-
-            const storedStudentPath = await localforage.getItem('atoutmath_studentPath');
-            if (storedStudentPath) this.studentPath = storedStudentPath;
-
-            document.dispatchEvent(new CustomEvent('score_updated'));
-            document.dispatchEvent(new CustomEvent('badges_updated'));
-            document.dispatchEvent(new CustomEvent('errors_updated'));
-            document.dispatchEvent(new CustomEvent('teacherPaths_updated'));
-            document.dispatchEvent(new CustomEvent('teacherFolders_updated'));
-            document.dispatchEvent(new CustomEvent('time_updated'));
-        } catch (e) {
-            console.error("Error loading state from localforage:", e);
-        }
+        journal.compact();
+        invalidate();
+        this._announce();
     },
 
-    addScore: function(points) {
-        this.score += points;
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_score', this.score);
+    _announce() {
+        ['score_updated', 'badges_updated', 'errors_updated', 'attempts_updated',
+            'teacherPaths_updated', 'teacherFolders_updated', 'time_updated',
+            'studentPath_updated'].forEach(evt => document.dispatchEvent(new CustomEvent(evt)));
+    },
+
+    getStore() {
+        return profileStore;
+    },
+
+    /** Recharge tout après un changement de profil. */
+    async switchProfile(profileId) {
+        const { setActiveProfile } = await import('./profile.js');
+        await journal.flush();
+        if (!(await setActiveProfile(profileId))) return false;
+        cache.clear();
+        await this.load();
+        return true;
+    },
+
+    // --- Écritures : tout passe par un événement ----------------------------
+
+    /**
+     * Enregistre une tentative. C'est LE point d'entrée de la progression :
+     * score, carnet d'erreurs, maîtrise et notes en découlent tous.
+     * @param {Object} a
+     * @param {boolean} a.correct
+     * @param {string} [a.skillId]
+     * @param {number} [a.points]
+     * @param {number} [a.attemptIndex] - 0 pour le premier essai sur l'item
+     */
+    recordAttempt(a) {
+        const ctx = this.attemptContext || {};
+        const exo = this.activeExo;
+        const payload = {
+            runId: ctx.runId || null,
+            stepId: ctx.stepId || null,
+            exerciseId: a.exerciseId || ctx.exerciseId || (exo ? exo.id : null),
+            exerciseTitle: a.exerciseTitle || ctx.exerciseTitle || (exo ? exo.title : ''),
+            generatorId: a.generatorId || ctx.generatorId || null,
+            activityId: a.activityId || ctx.activityId || null,
+            skillId: a.skillId || ctx.skillId || null,
+            itemSeed: a.itemSeed || ctx.itemSeed || null,
+            questionText: a.questionText !== undefined ? a.questionText : (ctx.questionText || ''),
+            given: a.given,
+            expected: a.expected !== undefined ? a.expected : ctx.expected,
+            correct: !!a.correct,
+            attemptIndex: a.attemptIndex || 0,
+            msElapsed: a.msElapsed || (ctx.startedAt ? Date.now() - ctx.startedAt : 0),
+            hintsUsed: a.hintsUsed || ctx.hintsUsed || 0,
+            misconception: a.misconception || null,
+            explanation: a.explanation || '',
+            points: a.points || 0
+        };
+        journal.emit(EventTypes.ATTEMPT, payload);
+        invalidate();
+        document.dispatchEvent(new CustomEvent('attempts_updated'));
+        if (payload.points) document.dispatchEvent(new CustomEvent('score_updated'));
+        if (!payload.correct) document.dispatchEvent(new CustomEvent('errors_updated'));
+
+        // Le moteur de parcours suit la progression de l'étape en cours.
+        const runner = this.activeSequenceRunner;
+        if (runner) {
+            if (typeof runner.onAttempt === 'function') runner.onAttempt(payload);
+            else if (typeof runner.onGameAction === 'function') runner.onGameAction(payload.correct);
         }
+        return payload;
+    },
+
+    /** Points hors question (récompense, migration). */
+    addScore(points) {
+        if (!points) return;
+        journal.emit(EventTypes.BONUS, { points, reason: 'bonus' });
+        invalidate();
         document.dispatchEvent(new CustomEvent('score_updated'));
     },
 
-    addTime: function(gameId, seconds) {
-        this.timeSpentTotal += seconds;
-        if (!this.timeSpentPerGame[gameId]) this.timeSpentPerGame[gameId] = 0;
-        this.timeSpentPerGame[gameId] += seconds;
-        
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_timeTotal', this.timeSpentTotal);
-            localforage.setItem('atoutmath_timePerGame', this.timeSpentPerGame);
-        }
+    addTime(exerciseId, seconds) {
+        if (!seconds || seconds <= 0) return;
+        journal.emit(EventTypes.TIME_SPENT, { exerciseId, seconds });
+        invalidate();
         document.dispatchEvent(new CustomEvent('time_updated'));
     },
 
-    setSelectedNiveaux: function(niveaux) {
-        this.selectedNiveaux = niveaux;
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_selectedNiveaux', this.selectedNiveaux);
-        }
+    grantBadge(badgeId) {
+        if (this.badges[badgeId]) return;
+        journal.emit(EventTypes.BADGE_GRANTED, { badgeId });
+        invalidate();
+        document.dispatchEvent(new CustomEvent('badges_updated'));
+        document.dispatchEvent(new CustomEvent('badge_unlocked', { detail: badgeId }));
     },
 
-    // Parcours assigné à l'élève (via un code prof) et suivi de sa progression
-    setStudentPath: function(steps) {
-        this.studentPath = {
-            steps: steps.map((s, i) => ({ ...s, stepId: s.stepId || `sp_${i}` })),
-            completed: []
-        };
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_studentPath', this.studentPath);
+    noteHintUsed() {
+        if (this.attemptContext) {
+            this.attemptContext.hintsUsed = (this.attemptContext.hintsUsed || 0) + 1;
         }
+        journal.emit(EventTypes.HINT_USED, {
+            runId: this.attemptContext ? this.attemptContext.runId : null,
+            skillId: this.attemptContext ? this.attemptContext.skillId : null
+        });
+        invalidate();
+    },
+
+    async setSelectedNiveaux(niveaux) {
+        this.selectedNiveaux = niveaux;
+        if (profileStore) await profileStore.set('selectedNiveaux', niveaux);
+    },
+
+    async setCatalogFilter(filter) {
+        this.catalogFilter = filter;
+        if (profileStore) await profileStore.set('catalogFilter', filter);
+    },
+
+    // --- Parcours assigné ---------------------------------------------------
+
+    setStudentPath(steps, meta = {}) {
+        const pathId = meta.pathId || 'path_' + Date.now();
+        journal.emit(EventTypes.PATH_ASSIGNED, {
+            pathId,
+            name: meta.name || 'Parcours assigné',
+            code: meta.code || null,
+            policy: meta.policy || null,
+            steps: steps.map((s, i) => ({ ...s, stepId: s.stepId || `${pathId}_s${i}` }))
+        });
+        invalidate();
         document.dispatchEvent(new CustomEvent('studentPath_updated'));
     },
 
-    markStudentPathStepCompleted: function(stepId) {
-        if (!this.studentPath) return;
-        if (!this.studentPath.completed.includes(stepId)) {
-            this.studentPath.completed.push(stepId);
-            if (typeof localforage !== 'undefined') {
-                localforage.setItem('atoutmath_studentPath', this.studentPath);
-            }
-            document.dispatchEvent(new CustomEvent('studentPath_updated'));
-        }
+    markStudentPathStepCompleted(stepId, extra = {}) {
+        const path = this.studentPath;
+        if (!path || (path.completed || []).includes(stepId)) return;
+        journal.emit(EventTypes.STEP_COMPLETED, { pathId: path.pathId, stepId, ...extra });
+        invalidate();
+        document.dispatchEvent(new CustomEvent('studentPath_updated'));
     },
 
-    grantBadge: function(badgeId) {
-        if (!this.badges[badgeId]) {
-            this.badges[badgeId] = Date.now();
-            if (typeof localforage !== 'undefined') {
-                localforage.setItem('atoutmath_badges', this.badges);
-            }
-            document.dispatchEvent(new CustomEvent('badges_updated'));
-            document.dispatchEvent(new CustomEvent('badge_unlocked', { detail: badgeId }));
-        }
-    },
-    
-    showFeedback: function(msg, isError=true) {
-        document.dispatchEvent(new CustomEvent('game_feedback', { detail: { msg, isError } }));
+    // --- Carnet d'erreurs ---------------------------------------------------
 
-        
-        if (isError && this.activeSequenceRunner) {
-            this.activeSequenceRunner.onGameAction(false); // false = error
-        }
+    markErrorCorrected(errorKey) {
+        journal.emit(EventTypes.ERROR_RESOLVED, { errorKey });
+        invalidate();
+        document.dispatchEvent(new CustomEvent('errors_updated'));
+        document.dispatchEvent(new CustomEvent('error_corrected', { detail: errorKey }));
     },
-    
-    celebrate: function(element, points=10) {
-        this.addScore(points);
-        
-        const overlay = document.createElement('div');
-        overlay.innerHTML = `<div style="margin-bottom:5px; color:var(--success);"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div style="font-size:1.5rem; font-weight:bold;">Bonne réponse !</div><div style="font-size:1.1rem; margin-top:5px; background:#dcfce7; color:var(--success); padding:4px 12px; border-radius:12px; font-weight:bold;">+${points} points</div>`;
-        overlay.style = "position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:white; z-index:10000; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--success); animation: popInCenter 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding: 25px 40px; border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.15); border:3px solid #bbf7d0;";
-        const gameLayer = document.getElementById('game-layer') || document.body;
-        gameLayer.appendChild(overlay);
-        
-        setTimeout(() => {
-            overlay.style.opacity = '0';
-            overlay.style.transform = 'translate(-50%, -50%) scale(0.9)';
-            overlay.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            setTimeout(() => overlay.remove(), 300);
-        }, 1200);
 
-        if (element) {
-            element.style.transform = 'scale(1.1)';
-            setTimeout(() => element.style.transform = '', 200);
-        }
-        
-        if (this.activeSequenceRunner) {
-            this.activeSequenceRunner.onGameAction(true); // true = success
-        }
-    },
-    
-    logError: function(exo, questionData, userAnswer) {
-        if (!exo || !exo.id) return;
-        
-        // Prevent duplicate errors for the exact same question
-        const exists = this.errorHistory.find(e => e.exoId === exo.id && JSON.stringify(e.questionData) === JSON.stringify(questionData) && !e.corrected);
-        if (exists) return; // Already tracking this error
-
-        const newError = {
-            id: 'err_' + Date.now(),
-            exoId: exo.id,
-            exoTitle: exo.title,
-            questionData,
-            userAnswer,
-            timestamp: Date.now(),
-            corrected: false
-        };
-        this.errorHistory.unshift(newError);
-        this.saveErrors();
-    },
-    
-    markErrorCorrected: function(errorId) {
-        const err = this.errorHistory.find(e => e.id === errorId);
-        if (err) {
-            err.corrected = true;
-            this.saveErrors();
-            document.dispatchEvent(new CustomEvent('error_corrected', { detail: errorId }));
-        }
-    },
-    
-    removeError: function(errorId) {
-        this.errorHistory = this.errorHistory.filter(e => e.id !== errorId);
-        this.saveErrors();
-    },
-    
-    saveErrors: function() {
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_errors', this.errorHistory);
-        }
+    removeError(errorKey) {
+        journal.emit(EventTypes.ERROR_DISMISSED, { errorKey });
+        invalidate();
         document.dispatchEvent(new CustomEvent('errors_updated'));
     },
 
-    // Teacher Paths Management
-    saveTeacherPath: function(name, pathData, folderId = 'root') {
+    saveErrors() { /* conservé pour compatibilité : plus rien à sauvegarder */ },
+
+    // --- Compatibilité avec les moteurs de jeu historiques ------------------
+
+    showFeedback(msg, isError = true) {
+        document.dispatchEvent(new CustomEvent('game_feedback', { detail: { msg, isError } }));
+    },
+
+    /**
+     * Ancien point d'entrée « bonne réponse ». Ne fait plus de DOM : l'effet
+     * visuel est rendu par js/ui/gameFeedbackUI.js, seul responsable de l'UI.
+     */
+    celebrate(element, points = 10, concept = null) {
+        const skillId = conceptToSkill(concept);
+        this.recordAttempt({ correct: true, points, skillId, given: undefined });
+        document.dispatchEvent(new CustomEvent('game_feedback', {
+            detail: { kind: 'success', points, element }
+        }));
+    },
+
+    /** Ancien point d'entrée « mauvaise réponse ». */
+    logError(exo, questionData, userAnswer) {
+        const qd = questionData || {};
+        this.recordAttempt({
+            correct: false,
+            exerciseId: exo ? exo.id : undefined,
+            exerciseTitle: exo ? exo.title : undefined,
+            skillId: deriveSkillFromLegacy(qd),
+            questionText: qd.questionText,
+            given: qd.input !== undefined ? qd.input : userAnswer,
+            expected: qd.expected,
+            explanation: qd.customMessage || '',
+            misconception: qd.misconception || null
+        });
+    },
+
+    /** Ancien point d'entrée statistiques. */
+    logAttempt(correct, concept = null) {
+        this.recordAttempt({ correct, skillId: conceptToSkill(concept) });
+    },
+
+    // --- Contenu professeur -------------------------------------------------
+    // Les parcours et dossiers ne sont pas de la progression : ce sont des
+    // documents éditables. Ils restent stockés tels quels (namespacés par
+    // profil), et non dans le journal.
+
+    saveTeacherPath(name, pathData, folderId = 'root') {
         const newPath = {
             id: 'path_' + Date.now(),
-            name: name,
+            name,
             data: pathData,
-            folderId: folderId,
+            folderId,
             timestamp: Date.now()
         };
         this.teacherPaths.unshift(newPath);
@@ -212,72 +345,62 @@ export const state = {
         return newPath;
     },
 
-    updateTeacherPath: function(id, name, pathData) {
-        const p = this.teacherPaths.find(p => p.id === id);
-        if (p) {
-            if (name) p.name = name;
-            if (pathData) p.data = pathData;
-            p.timestamp = Date.now();
-            this.saveTeacherPaths();
-        }
+    updateTeacherPath(id, name, pathData) {
+        const p = this.teacherPaths.find(x => x.id === id);
+        if (!p) return;
+        if (name) p.name = name;
+        if (pathData) p.data = pathData;
+        p.timestamp = Date.now();
+        this.saveTeacherPaths();
     },
 
-    moveTeacherPath: function(pathId, folderId) {
-        const p = this.teacherPaths.find(p => p.id === pathId);
-        if (p) {
-            p.folderId = folderId;
-            p.timestamp = Date.now();
-            this.saveTeacherPaths();
-        }
+    moveTeacherPath(pathId, folderId) {
+        const p = this.teacherPaths.find(x => x.id === pathId);
+        if (!p) return;
+        p.folderId = folderId;
+        p.timestamp = Date.now();
+        this.saveTeacherPaths();
     },
 
-    removeTeacherPath: function(id) {
+    removeTeacherPath(id) {
         this.teacherPaths = this.teacherPaths.filter(p => p.id !== id);
         this.saveTeacherPaths();
     },
 
-    saveTeacherPaths: function() {
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_teacherPaths', this.teacherPaths);
-        }
+    saveTeacherPaths() {
+        if (profileStore) profileStore.set('teacherPaths', this.teacherPaths);
         document.dispatchEvent(new CustomEvent('teacherPaths_updated'));
     },
 
-    // Teacher Folders Management
-    addTeacherFolder: function(name) {
-        const newFolder = {
-            id: 'folder_' + Date.now(),
-            name: name,
-            timestamp: Date.now()
-        };
-        this.teacherFolders.push(newFolder);
+    addTeacherFolder(name) {
+        const folder = { id: 'folder_' + Date.now(), name, timestamp: Date.now() };
+        this.teacherFolders.push(folder);
         this.saveTeacherFolders();
-        return newFolder;
+        return folder;
     },
 
-    renameTeacherFolder: function(id, name) {
-        const f = this.teacherFolders.find(f => f.id === id);
-        if (f) {
-            f.name = name;
-            f.timestamp = Date.now();
-            this.saveTeacherFolders();
-        }
+    renameTeacherFolder(id, name) {
+        const f = this.teacherFolders.find(x => x.id === id);
+        if (!f) return;
+        f.name = name;
+        f.timestamp = Date.now();
+        this.saveTeacherFolders();
     },
 
-    removeTeacherFolder: function(id) {
+    removeTeacherFolder(id) {
         this.teacherFolders = this.teacherFolders.filter(f => f.id !== id);
-        // Also move paths inside this folder back to root
-        this.teacherPaths.forEach(p => {
-            if (p.folderId === id) p.folderId = 'root';
-        });
+        this.teacherPaths.forEach(p => { if (p.folderId === id) p.folderId = 'root'; });
         this.saveTeacherFolders();
         this.saveTeacherPaths();
     },
 
-    saveTeacherFolders: function() {
-        if (typeof localforage !== 'undefined') {
-            localforage.setItem('atoutmath_teacherFolders', this.teacherFolders);
-        }
+    saveTeacherFolders() {
+        if (profileStore) profileStore.set('teacherFolders', this.teacherFolders);
         document.dispatchEvent(new CustomEvent('teacherFolders_updated'));
     }
 };
+
+// Exposé pour le débogage en console ; aucun code applicatif ne doit s'en servir.
+if (typeof window !== 'undefined') {
+    window.__atoutmath = { state, journal, errorKeyOf, getActiveProfileId, getDeviceId };
+}
