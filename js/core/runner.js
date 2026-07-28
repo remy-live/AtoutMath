@@ -1,0 +1,456 @@
+// Moteur de parcours.
+//
+// Remplace SequenceRunner. Différences structurantes :
+//
+//  - il ne compte plus « des bonnes réponses » mais des QUESTIONS, chacune
+//    tracée individuellement (essais, temps, aide, diagnostic) — sans quoi
+//    aucune note ni aucun bilan par compétence n'est possible ;
+//  - il applique une POLITIQUE (entraînement / évaluation) au lieu d'un
+//    comportement unique codé en dur ;
+//  - il produit un run identifié dans le journal, donc rejouable, notable et
+//    synchronisable.
+
+import { state } from './state.js';
+import { journal, EventTypes } from './journal.js';
+import { clearEngines, regTimeout } from './timers.js';
+import { getActivity, getGenerator } from './registry.js';
+import { ItemSession } from './itemSession.js';
+import { resolvePolicy, isEvaluation, describePolicy } from './policy.js';
+import { hydratePath } from './path.js';
+import { gradeRun } from './grading.js';
+import { computeRuns } from './projections.js';
+import { uuid } from './ids.js';
+
+export class Runner {
+    /**
+     * @param {Object} cfg
+     * @param {Object} cfg.path       - parcours (n'importe quelle version)
+     * @param {string} [cfg.deviceMode] - 'mobile' | 'tablet' | 'none'
+     * @param {boolean} [cfg.isStudentPath] - valide les étapes du parcours assigné
+     * @param {number} [cfg.startIndex]
+     * @param {boolean} [cfg.allowStepNavigation] - affiche les flèches ◀ ▶ permettant
+     *        de sauter d'une activité à l'autre. Réservé au test d'un parcours par le
+     *        professeur : un élève doit valider chaque étape pour passer à la suivante.
+     */
+    constructor(cfg) {
+        const { path, steps, missing } = hydratePath(cfg.path);
+        this.path = path;
+        this.steps = steps;
+        this.missing = missing;
+        this.policy = resolvePolicy(path.policy);
+        this.deviceMode = cfg.deviceMode || 'none';
+        this.isStudentPath = !!cfg.isStudentPath;
+        this.allowStepNavigation = !!cfg.allowStepNavigation;
+        this.index = cfg.startIndex || 0;
+        this.runId = 'run_' + uuid();
+        this.startedAt = 0;
+        this.handle = null;
+        this.session = null;
+        this.timerInterval = null;
+        this.onExit = cfg.onExit || null;
+    }
+
+    // --- Cycle de vie -------------------------------------------------------
+
+    start() {
+        if (!this.steps.length) {
+            console.warn('[runner] parcours vide', this.missing);
+            return false;
+        }
+        this.startedAt = Date.now();
+        state.activeSequenceRunner = this;
+
+        journal.emit(EventTypes.RUN_STARTED, {
+            runId: this.runId,
+            pathId: this.path.id,
+            pathName: this.path.name,
+            mode: this.policy.mode,
+            policy: this.policy,
+            stepCount: this.steps.length
+        });
+
+        if (this.missing.length) {
+            console.warn('[runner] étapes ignorées, exercice introuvable :', this.missing);
+        }
+
+        this.showLayer();
+        this.setupStepNavigation();
+        if (isEvaluation(this.policy)) this.showBriefing();
+        else this.runStep();
+        return true;
+    }
+
+    // --- Navigation entre activités (test professeur) -----------------------
+
+    setupStepNavigation() {
+        const nav = document.getElementById('preview-step-nav');
+        if (!nav) return;
+        nav.hidden = !this.allowStepNavigation;
+        if (!this.allowStepNavigation) return;
+
+        document.getElementById('btn-preview-prev').onclick = () => this.goToStep(this.index - 1);
+        document.getElementById('btn-preview-next').onclick = () => this.goToStep(this.index + 1);
+        this.updateStepNavigation();
+    }
+
+    updateStepNavigation() {
+        if (!this.allowStepNavigation) return;
+        const label = document.getElementById('preview-step-label');
+        const prev = document.getElementById('btn-preview-prev');
+        const next = document.getElementById('btn-preview-next');
+        if (!label || !prev || !next) return;
+
+        const position = Math.min(this.index, this.steps.length - 1);
+        label.textContent = `${position + 1} / ${this.steps.length}`;
+        prev.disabled = position <= 0;
+        next.disabled = position >= this.steps.length - 1;
+    }
+
+    /**
+     * Saute directement à une activité. Contrairement à `endStep()`, aucune
+     * étape n'est validée et rien n'est marqué comme réussi : le professeur
+     * parcourt son parcours, il ne le joue pas.
+     */
+    goToStep(index) {
+        if (!this.allowStepNavigation) return;
+        const target = Math.max(0, Math.min(index, this.steps.length - 1));
+        if (target === this.index && this.step) return;
+        this.index = target;
+        this.runStep();
+    }
+
+    hideStepNavigation() {
+        const nav = document.getElementById('preview-step-nav');
+        if (nav) nav.hidden = true;
+    }
+
+    showLayer() {
+        const gl = document.getElementById('game-layer');
+        gl.classList.remove('device-simulator', 'tablet-simulator');
+        if (this.deviceMode === 'tablet') gl.classList.add('tablet-simulator');
+        else if (this.deviceMode === 'mobile') gl.classList.add('device-simulator');
+        gl.style.display = 'flex';
+        const banner = document.getElementById('demo-overlay-banner');
+        if (banner) banner.style.display = 'none';
+    }
+
+    get canvas() {
+        return document.getElementById('game-canvas') || document.getElementById('game-board');
+    }
+
+    /**
+     * Écran d'annonce avant une évaluation. Une évaluation qui démarre sans
+     * prévenir n'est pas honnête : l'élève doit savoir qu'il n'a qu'un essai
+     * et que cela compte.
+     */
+    showBriefing() {
+        const total = this.steps.reduce((s, st) => s + st.nbItems, 0);
+        const bareme = this.policy.grading && this.policy.grading.scale
+            ? `<div class="run-briefing-note">Noté sur ${this.policy.grading.scale}</div>` : '';
+        this.canvas.innerHTML = `
+            <div class="run-screen">
+                <div class="run-screen-icon" aria-hidden="true">📝</div>
+                <h2 class="run-screen-title">${escapeHtml(this.path.name)}</h2>
+                <p class="run-screen-text">${describePolicy(this.policy)}</p>
+                <p class="run-screen-text">${this.steps.length} activité${this.steps.length > 1 ? 's' : ''} • ${total} questions</p>
+                ${bareme}
+                <button id="btn-run-begin" class="btn-toggle active run-screen-btn">Commencer</button>
+            </div>`;
+        document.getElementById('btn-run-begin').onclick = () => this.runStep();
+    }
+
+    // --- Étapes -------------------------------------------------------------
+
+    async runStep() {
+        this.teardownStep();
+
+        if (this.index >= this.steps.length) return this.finish();
+
+        const step = this.steps[this.index];
+        this.step = step;
+        this.stepStartedAt = Date.now();
+        this.itemsResolved = new Set();
+        this.itemsSolved = new Set();
+        this.autonomousCounter = 0;
+
+        const titleEl = document.getElementById('game-title');
+        if (titleEl) {
+            titleEl.textContent = this.steps.length > 1
+                ? `${step.title} (${this.index + 1}/${this.steps.length})`
+                : step.title;
+        }
+
+        state.activeExo = step.exercise;
+        this.updateProgress();
+        this.updateStepNavigation();
+        this.startTimer(step.timeLimit || step.params.timeLimit || null);
+
+        const activity = getActivity(step.exercise.activityId);
+        if (!activity) {
+            this.canvas.innerHTML = `<div class="run-screen"><p class="run-screen-text">Activité « ${escapeHtml(step.exercise.activityId)} » introuvable.</p></div>`;
+            return;
+        }
+
+        const mod = await activity.load();
+
+        if (activity.supports.autonomous) {
+            // Jeu autonome : il gère son contenu, mais ses tentatives passent
+            // par state.recordAttempt et arrivent donc dans onAttempt().
+            state.attemptContext = {
+                runId: this.runId, stepId: step.stepId,
+                exerciseId: step.exercise.id, exerciseTitle: step.exercise.title,
+                activityId: activity.id, startedAt: Date.now()
+            };
+            const fn = mod[activity.legacyExport] || Object.values(mod).find(v => typeof v === 'function');
+            this.canvas.innerHTML = '';
+            this.handle = { destroy: () => { this.canvas.innerHTML = ''; } };
+            if (fn) fn(this.canvas, false, { ...step.params, nbQuestions: step.nbItems });
+            return;
+        }
+
+        const generator = getGenerator(step.exercise.generatorId);
+        if (!generator) {
+            this.canvas.innerHTML = `<div class="run-screen"><p class="run-screen-text">Générateur « ${escapeHtml(step.exercise.generatorId)} » introuvable.</p></div>`;
+            return;
+        }
+
+        this.session = new ItemSession({
+            generator,
+            params: step.params,
+            policy: this.policy,
+            exercise: step.exercise,
+            runId: this.runId,
+            stepId: step.stepId,
+            forceSeed: step.forceSeed || null,
+            preferredKind: activity.accepts[0]
+        });
+
+        this.handle = mod.mount(this.canvas, this.session, activity.mountOptions || {});
+    }
+
+    /**
+     * Appelé par state.recordAttempt pour chaque réponse, quelle que soit son
+     * origine (activité moderne ou jeu autonome).
+     */
+    onAttempt(payload) {
+        if (!this.step) return;
+
+        const key = payload.itemSeed || `auto_${this.autonomousCounter}`;
+        const maxTries = this.policy.maxAttemptsPerItem;
+        const resolved = payload.correct || (payload.attemptIndex + 1) >= maxTries;
+
+        if (resolved) {
+            this.itemsResolved.add(key);
+            if (!payload.itemSeed) this.autonomousCounter++;
+            if (payload.correct) this.itemsSolved.add(key);
+        }
+
+        this.updateProgress();
+
+        // Fin d'étape au nombre de questions, sauf si un chronomètre pilote.
+        if (!this.currentTimeLimit && this.itemsResolved.size >= this.step.nbItems) {
+            regTimeout(() => this.endStep(), 1500);
+        }
+    }
+
+    /** Compatibilité : anciens moteurs appelant runner.onGameAction(bool). */
+    onGameAction(isSuccess) {
+        this.onAttempt({ correct: !!isSuccess, attemptIndex: 0, itemSeed: null });
+    }
+
+    endStep() {
+        if (!this.step) return;
+        const step = this.step;
+        this.teardownStep();
+
+        const solved = this.itemsSolved.size;
+        const required = Math.min(step.threshold, step.nbItems);
+        const passed = solved >= required;
+
+        journal.emit(EventTypes.STEP_COMPLETED, {
+            runId: this.runId,
+            pathId: this.path.id,
+            stepId: step.stepId,
+            title: step.title,
+            weight: step.weight,
+            exerciseId: step.exercise.id,
+            questions: this.itemsResolved.size,
+            solved,
+            required,
+            passed
+        });
+
+        if (this.isStudentPath && passed) {
+            state.markStudentPathStepCompleted(step.stepId, { runId: this.runId });
+        }
+
+        if (passed || !this.policy.allowRetryStep) {
+            this.index++;
+            this.showStepResult(passed, solved, required);
+        } else {
+            this.showStepResult(false, solved, required);
+        }
+    }
+
+    showStepResult(passed, solved, required) {
+        const last = this.index >= this.steps.length;
+        const icon = passed ? '🎉' : '💪';
+        const title = passed ? 'Étape validée !' : 'Presque…';
+        const detail = passed
+            ? `${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''} sur ${this.itemsResolved.size}.`
+            : `Tu as ${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''}, il en faut ${required}.`;
+
+        const btnLabel = passed ? (last ? 'Voir mon bilan' : 'Continuer') : 'Réessayer';
+
+        this.canvas.innerHTML = `
+            <div class="run-screen">
+                <div class="run-screen-icon" aria-hidden="true">${icon}</div>
+                <h2 class="run-screen-title ${passed ? 'run-screen-title--ok' : 'run-screen-title--ko'}">${title}</h2>
+                <p class="run-screen-text">${detail}</p>
+                <button id="btn-run-next" class="btn-toggle active run-screen-btn">${btnLabel}</button>
+            </div>`;
+
+        document.getElementById('btn-run-next').onclick = () => {
+            if (passed) this.runStep();
+            else this.runStep(); // l'index n'a pas avancé : on rejoue l'étape
+        };
+    }
+
+    // --- Chronomètre --------------------------------------------------------
+
+    startTimer(seconds) {
+        this.stopTimer();
+        this.currentTimeLimit = seconds || null;
+        const bar = ensureTimerBar();
+        if (!seconds) { bar.container.style.display = 'none'; return; }
+
+        this.timeLeft = seconds;
+        bar.container.style.display = 'block';
+        bar.fill.style.transition = 'none';
+        bar.fill.style.width = '100%';
+        void bar.fill.offsetWidth;
+        bar.fill.style.transition = 'width 1s linear';
+
+        this.timerInterval = setInterval(() => {
+            this.timeLeft--;
+            bar.fill.style.width = `${Math.max(0, (this.timeLeft / seconds) * 100)}%`;
+            if (this.timeLeft <= 0) {
+                this.stopTimer();
+                this.endStep();
+            }
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        const bar = document.getElementById('game-timer-container');
+        if (bar) bar.style.display = 'none';
+    }
+
+    // --- Progression --------------------------------------------------------
+
+    updateProgress() {
+        const box = document.getElementById('game-progress-container');
+        const bar = document.getElementById('game-progress-bar');
+        const text = document.getElementById('game-progress-text');
+        if (!box || !bar || !text || !this.step) return;
+
+        box.style.display = 'flex';
+        const total = this.step.nbItems;
+        const done = this.itemsResolved.size;
+        const solved = this.itemsSolved.size;
+
+        bar.style.width = `${Math.min(100, (done / total) * 100)}%`;
+        text.textContent = `${done} / ${total}`;
+        // En évaluation, on n'affiche pas le score en direct : cela induit une
+        // pression inutile et modifie le comportement de l'élève.
+        bar.style.background = isEvaluation(this.policy)
+            ? 'linear-gradient(90deg, var(--text-muted), var(--primary))'
+            : (solved >= Math.min(this.step.threshold, total)
+                ? 'var(--success)'
+                : 'linear-gradient(90deg, var(--primary), var(--accent))');
+    }
+
+    // --- Fin ----------------------------------------------------------------
+
+    teardownStep() {
+        this.stopTimer();
+        if (this.handle && this.handle.destroy) this.handle.destroy();
+        this.handle = null;
+        if (this.session) this.session.finish();
+        this.session = null;
+        clearEngines();
+        state.attemptContext = null;
+
+        if (this.stepStartedAt && this.step) {
+            const elapsed = Math.round((Date.now() - this.stepStartedAt) / 1000);
+            if (elapsed > 0) state.addTime(this.step.exercise.id, elapsed);
+            this.stepStartedAt = null;
+        }
+    }
+
+    finish(aborted = false) {
+        this.teardownStep();
+        this.step = null;
+        this.hideStepNavigation();
+        state.activeSequenceRunner = null;
+
+        journal.emit(EventTypes.RUN_FINISHED, {
+            runId: this.runId,
+            pathId: this.path.id,
+            aborted,
+            durationSeconds: Math.round((Date.now() - this.startedAt) / 1000)
+        });
+
+        if (aborted) return;
+
+        // Le bilan est recalculé depuis le journal, pas depuis des compteurs
+        // internes : c'est exactement ce que verra le professeur.
+        const run = computeRuns(journal.all()).find(r => r.runId === this.runId);
+        const bilan = gradeRun(run, this.policy);
+
+        document.dispatchEvent(new CustomEvent('sequence_completed', {
+            detail: {
+                runId: this.runId,
+                totalTime: Math.round((Date.now() - this.startedAt) / 1000),
+                stepCount: this.steps.length,
+                totalErrors: bilan.totalQuestions - bilan.totalReussies,
+                bilan,
+                stats: { totalQuestions: bilan.totalQuestions, totalCorrect: bilan.totalReussies }
+            }
+        }));
+
+        import('../ui/reportUI.js').then(m => m.showRunReport(bilan, {
+            onClose: () => this.exit()
+        }));
+    }
+
+    abort() {
+        this.finish(true);
+    }
+
+    exit() {
+        clearEngines();
+        const gl = document.getElementById('game-layer');
+        gl.classList.remove('device-simulator', 'tablet-simulator');
+        gl.style.display = 'none';
+        if (this.onExit) return this.onExit();
+        import('../ui/navigation.js').then(m => m.setTopNavMode(this.isStudentPath ? 'path' : 'grid'));
+    }
+}
+
+function ensureTimerBar() {
+    let container = document.getElementById('game-timer-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'game-timer-container';
+        container.innerHTML = '<div id="game-timer-bar"></div>';
+        document.body.appendChild(container);
+    }
+    return { container, fill: document.getElementById('game-timer-bar') };
+}
+
+function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
