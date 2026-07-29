@@ -568,8 +568,8 @@
 .tablet-simulator .preview-step-nav {
     background: transparent; border-color: transparent; padding: 0; margin: 0; gap: 0;
 }
-.device-simulator .preview-step-nav--question .preview-step-label,
-.tablet-simulator .preview-step-nav--question .preview-step-label { display: none; }
+/* Le compteur de questions reste affiché même en cadre étroit : c'est une
+   information, pas un habillage. */
 .device-simulator .preview-step-label,
 .tablet-simulator .preview-step-label { min-width: 34px; font-size: .74rem; }
 .device-simulator .game-icon-btn,

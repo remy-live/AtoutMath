@@ -129,11 +129,22 @@ export class Runner {
         // Un jeu autonome gère lui-même son contenu : on ne peut pas y
         // naviguer question par question.
         const navQ = document.getElementById('preview-question-nav');
-        if (navQ) {
-            navQ.hidden = !this.session;
-            const prevQ = document.getElementById('btn-preview-prev-q');
-            if (prevQ) prevQ.disabled = !this.session || this.session.history.length < 2;
-        }
+        if (!navQ) return;
+        navQ.hidden = !this.session;
+        if (!this.session) return;
+
+        // Position de la question AFFICHÉE, distincte de la barre de
+        // progression qui compte les questions résolues : en parcourant sans
+        // répondre, celle-ci reste à 0 et on ne sait plus où l'on est.
+        const vue = this.session.history.length;
+        const total = this.step ? this.step.nbItems : vue;
+        const labelQ = document.getElementById('preview-question-label');
+        if (labelQ) labelQ.textContent = `${Math.min(vue, total)} / ${total}`;
+
+        const prevQ = document.getElementById('btn-preview-prev-q');
+        const nextQ = document.getElementById('btn-preview-next-q');
+        if (prevQ) prevQ.disabled = vue < 2;
+        if (nextQ) nextQ.disabled = vue >= total;
     }
 
     /**
@@ -259,6 +270,10 @@ export class Runner {
             forceSeed: step.forceSeed || null,
             preferredKind: activity.accepts[0]
         });
+
+        // Le compteur suit toute nouvelle question, d'où qu'elle vienne :
+        // réponse de l'élève, saut du professeur, retour en arrière.
+        this.session.on('item', () => this.updateStepNavigation());
 
         this.handle = mod.mount(this.canvas, this.session, activity.mountOptions || {});
         // La session n'existe qu'ici : c'est seulement maintenant qu'on sait
