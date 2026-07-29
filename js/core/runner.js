@@ -256,6 +256,7 @@ export class Runner {
             // après la sortie — la course rafraîchissait un tableau de bord
             // effacé, une erreur par seconde jusqu'au rechargement de la page.
             this.handle = {
+                jeu,
                 destroy: () => {
                     if (jeu && typeof jeu.destroy === 'function') jeu.destroy();
                     else if (jeu && typeof jeu.pause === 'function') jeu.pause();
