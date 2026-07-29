@@ -9,12 +9,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=16">
-    <link rel="stylesheet" href="css/layout.css?v=16">
-    <link rel="stylesheet" href="css/ui.css?v=16">
-    <link rel="stylesheet" href="css/games.css?v=16">
-    <link rel="stylesheet" href="css/components.css?v=16">
-    <link rel="stylesheet" href="css/modules.css?v=16">
+    <link rel="stylesheet" href="css/base.css?v=18">
+    <link rel="stylesheet" href="css/layout.css?v=18">
+    <link rel="stylesheet" href="css/ui.css?v=18">
+    <link rel="stylesheet" href="css/games.css?v=18">
+    <link rel="stylesheet" href="css/components.css?v=18">
+    <link rel="stylesheet" href="css/modules.css?v=18">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -23,15 +23,24 @@
 
 <body class="">
 
-    <!-- BARRE DE DEBUG ET LAYOUT -->
-    <div id="debug-toolbar">
-        <div>
-            <button class="debug-btn" id="db-toggle-mobile">📱 Vue Mobile : OFF</button>
-            <button class="debug-btn" id="db-toggle-role">👨‍🏫 Mode : Élève</button>
-            <button class="debug-btn" id="db-filter-status" title="Filtrer le catalogue par état de publication">🎯 Catalogue : Tout</button>
-            <button class="debug-btn" id="db-clear-storage">🗑️ Vider Sauvegarde</button>
-            <button class="debug-btn" id="db-fake-data">🧪 Générer Données</button>
+    <!-- PALETTE D'OUTILS D'AUTEUR
+         Flottante et déplaçable : en bandeau fixe en haut, elle recouvrait
+         l'en-tête du jeu qu'elle sert justement à tester. Icônes seules —
+         l'état est porté par la couleur du bouton et son infobulle. -->
+    <div id="debug-toolbar" role="toolbar" aria-label="Outils d'auteur">
+        <button class="dbg-grip" id="db-grip" title="Déplacer la palette"
+                aria-label="Déplacer la palette d'outils">⠿</button>
+        <div class="dbg-tools" id="db-tools">
+            <button class="debug-btn" id="db-toggle-mobile">📱</button>
+            <button class="debug-btn" id="db-toggle-role">👨‍🏫</button>
+            <button class="debug-btn" id="db-filter-status">🎯</button>
+            <button class="debug-btn" id="db-clear-storage" title="Vider la sauvegarde locale"
+                    aria-label="Vider la sauvegarde locale">🗑️</button>
+            <button class="debug-btn" id="db-fake-data" title="Générer des données d'exemple"
+                    aria-label="Générer des données d'exemple">🧪</button>
         </div>
+        <button class="dbg-fold" id="db-fold" title="Replier la palette"
+                aria-label="Replier la palette" aria-expanded="true">‹</button>
     </div>
 
     <div id="app-container">

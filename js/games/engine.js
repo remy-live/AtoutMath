@@ -92,8 +92,33 @@ export function openDemo(exo) {
  * Lance un aperçu autonome dans n'importe quel conteneur (plein écran, ou
  * la vignette de survol du catalogue).
  */
+// Durée laissée à un jeu historique pour dessiner sa première image avant
+// d'être figé. Une seconde et demie parce que plusieurs mettent leur scène en
+// place progressivement : les météorites du jeu de tir apparaissent à 60-210
+// pixels AU-DESSUS de l'arène et doivent y descendre, la course doit lancer sa
+// piste. Coupé plus tôt, on photographiait un écran encore vide.
+// Seuls ces jeux paient ce délai : les activités modernes se dessinent d'un
+// coup, leur vignette est immédiate.
+const DELAI_PREMIERE_IMAGE = 1500;
+
+// `clearEngines()` coupe TOUS les minuteurs. Un gel programmé pour une vignette
+// ne doit donc pas se déclencher après qu'une démonstration a démarré : ce
+// numéro de génération le lui interdit.
+let generationApercu = 0;
+
+function gelerApres(handle) {
+    const generation = generationApercu;
+    return new Promise(resolve => {
+        setTimeout(() => {
+            if (generation === generationApercu) clearEngines();
+            resolve(handle);
+        }, DELAI_PREMIERE_IMAGE);
+    });
+}
+
 export function launchPreview(exo, container, params = null, opts = {}) {
     clearEngines();
+    generationApercu++;
     container.innerHTML = '';
 
     const activity = getActivity(exo.activityId);
@@ -108,10 +133,12 @@ export function launchPreview(exo, container, params = null, opts = {}) {
             if (!fn) return null;
             const handle = fn(container, true, effective);
             // Les jeux historiques n'ont pas de notion d'aperçu figé : ils sont
-            // entièrement pilotés par des minuteurs. Les couper juste après le
-            // montage laisse à l'écran leur première image, ce qui est
-            // exactement la vignette recherchée.
-            if (frozen) clearEngines();
+            // entièrement pilotés par des minuteurs, et leur toute première
+            // image ne montre RIEN — canevas noir du jeu de tir, grille de
+            // Crush encore vide, piste de course déserte. Les couper aussitôt
+            // donnait des vignettes vides. On les laisse donc jouer le temps
+            // de poser une image, puis on gèle.
+            if (frozen) return gelerApres(handle);
             return handle;
         }
         const generator = getGenerator(exo.generatorId);

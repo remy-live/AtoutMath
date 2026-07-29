@@ -4,13 +4,50 @@ body:not(.teacher-mode) .teacher-only { display: none !important; }
 body.teacher-mode .student-only { display: none !important; }
 
 /* --- DEBUG BAR --- */
-#debug-toolbar { height: var(--debug-bar-height); background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: flex-start; padding: 0 10px; font-size: 0.85rem; z-index: 100000; box-shadow: var(--shadow-sm); overflow-x: auto; gap: 10px; white-space: nowrap; }
-#debug-toolbar::-webkit-scrollbar { height: 4px; }
-#debug-toolbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-.debug-btn { background: #1e293b; color: #f8fafc; padding: 6px 14px; border-radius: 6px; border: 1px solid #334155; font-weight: 600; font-size: 0.75rem; transition: 0.2s; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+/* --- Palette d'outils d'auteur ------------------------------
+   Flottante, déplaçable, repliable. En bandeau pleine largeur, elle recouvrait
+   l'en-tête du jeu — c'est-à-dire précisément ce qu'elle sert à tester. */
+#debug-toolbar {
+    position: fixed; top: 6px; left: 6px; z-index: 100000;
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px; border-radius: 12px;
+    background: rgba(15, 23, 42, .94); color: #f8fafc;
+    border: 1px solid #334155; box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(6px);
+}
+/* Pendant le déplacement, aucune transition : la palette doit coller au
+   pointeur, pas le suivre avec un temps de retard. */
+#debug-toolbar.dbg--dragging { transition: none; cursor: grabbing; user-select: none; }
+
+.dbg-tools { display: flex; align-items: center; gap: 4px; }
+#debug-toolbar.dbg--folded .dbg-tools { display: none; }
+
+.dbg-grip {
+    flex-shrink: 0; width: 20px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: #64748b;
+    font-size: 1rem; line-height: 1; cursor: grab;
+    /* Le navigateur ne doit pas interpréter le glissement comme un défilement. */
+    touch-action: none;
+}
+.dbg-grip:active { cursor: grabbing; }
+
+.dbg-fold {
+    flex-shrink: 0; width: 18px; height: 30px;
+    background: none; border: none; color: #64748b;
+    font-size: 1.05rem; line-height: 1; cursor: pointer;
+}
+.dbg-fold:hover, .dbg-grip:hover { color: #f8fafc; }
+
+.debug-btn {
+    width: 32px; height: 30px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #1e293b; color: #f8fafc; padding: 0;
+    border-radius: 8px; border: 1px solid #334155;
+    font-size: 0.95rem; line-height: 1; cursor: pointer; transition: 0.2s;
+}
 .debug-btn:hover { background: #334155; }
 .debug-btn.active { background: #22c55e; border-color: #16a34a; }
-#debug-toolbar > div { display: flex; gap: 15px; }
 #db-clear-storage { background: #ef4444; }
 #db-fake-data { background: #3b82f6; }
 
@@ -133,11 +170,11 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .card-title { font-weight: bold; font-size: 1.1rem; }
 .card-tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 
-/* La vignette est un CONTENEUR nommé `plateau` : les activités interrogent déjà
-   cette place-là pour choisir leur disposition, la vignette hérite donc
-   gratuitement de leurs paliers de resserrement. */
+/* La vignette découpe ; c'est le plateau de référence à l'intérieur qui est
+   déclaré CONTENEUR : les activités interrogent déjà cette place-là pour
+   choisir leur disposition, et elles doivent la mesurer AVANT réduction — sans
+   quoi elles composeraient pour un téléphone ce qu'on affiche en miniature. */
 .card-preview {
-    container-type: size; container-name: plateau;
     position: relative; height: 170px; overflow: hidden;
     border-radius: 12px; border: 1px solid var(--border);
     background: radial-gradient(circle at center, #fff 0%, var(--bg-app) 100%);
@@ -145,12 +182,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .card-preview--live { border-color: var(--primary); }
 
-/* Rendu à taille normale puis réduit d'un bloc : aucune activité ne sait se
-   dessiner dans 170 px, et leurs tailles minimales — des touches doivent
-   rester atteignables au doigt — les empêchent de se réduire davantage. */
+/* Composé à taille de plateau puis réduit d'un bloc : aucune activité ne sait
+   se dessiner dans 170 px, et leurs tailles minimales — des touches doivent
+   rester atteignables au doigt — les empêchent de se réduire davantage.
+   Les dimensions sont posées par `fitPreview`, qui garde le format de la
+   vignette pour que la réduction soit la même en largeur et en hauteur. */
 .card-preview-stage {
-    position: absolute; top: 0; left: 0; width: 100%;
-    transform-origin: top center;
+    container-type: size; container-name: plateau;
+    position: absolute; top: 0; left: 0;
+    transform-origin: top left;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 8px;
 }

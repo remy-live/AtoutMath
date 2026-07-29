@@ -111,32 +111,33 @@ class MathMemory extends BaseGame {
 
     runDemoSequence() {
         this.startGameLoop();
-        
-        // Auto play demo
+
         let step = 0;
-        regInterval(() => {
+        const tour = () => {
             if (!this.isRunning || this.lockBoard) return;
-            
+
             const hiddenCards = this.cards.filter(c => !c.isMatched && c.el.classList.contains('hidden'));
-            if(hiddenCards.length < 2) return;
-            
-            // Try to make a match on purpose occasionally
+            if (hiddenCards.length < 2) return;
+
+            // Une paire trouvée de temps en temps : une démonstration qui
+            // n'associe jamais rien ne montre pas à quoi sert le jeu.
             let c1 = hiddenCards[0];
             let c2 = hiddenCards[1];
-            
             if (step % 3 === 0) {
-                // Find a match
                 c2 = hiddenCards.find(c => c !== c1 && c.data.uid === c1.data.uid) || hiddenCards[1];
             }
-            
-            // Simulate clicks
+
             c1.el.click();
-            regTimeout(() => {
-                if(this.isRunning) c2.el.click();
-            }, 600);
-            
+            regTimeout(() => { if (this.isRunning) c2.el.click(); }, 600);
             step++;
-        }, 3000);
+        };
+
+        // Un premier retournement tout de suite : le plateau démarre
+        // entièrement face cachée, et attendre le premier tour d'intervalle
+        // laissait trois secondes de cartes muettes — assez pour que la
+        // vignette du catalogue ne montre jamais que des dos de cartes.
+        regTimeout(tour, 250);
+        regInterval(tour, 2600);
     }
 
     handleCardClick(el, data) {

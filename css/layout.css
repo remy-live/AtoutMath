@@ -1,5 +1,7 @@
 /* --- ARCHITECTURE GENERALE --- */
-#app-container { flex-grow: 1; position: relative; overflow: hidden; height: calc(100vh - var(--debug-bar-height)); background: var(--bg-app); display: flex; flex-direction: column; }
+/* Plein écran : la palette d'outils est flottante, elle ne prend plus de
+   place dans le flux et n'a donc plus de hauteur à déduire. */
+#app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; background: var(--bg-app); display: flex; flex-direction: column; }
 
 #top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
 .nav-left, .nav-center, .nav-right { display: flex; align-items: center; gap: 15px; }

@@ -381,6 +381,11 @@ function createCard(exo) {
         const stage = document.createElement('div');
         stage.className = 'card-preview-stage';
         box.appendChild(stage);
+        // Les démonstrations des jeux historiques se pilotent en appelant
+        // `el.click()` sur leurs propres cases. Ces clics remontaient jusqu'à
+        // la carte et ouvraient l'exercice tout seuls : `pointer-events: none`
+        // n'arrête que la souris, pas un clic déclenché par programme.
+        box.addEventListener('click', (e) => e.stopPropagation());
         card.appendChild(box);
     }
 
@@ -444,9 +449,33 @@ function mountPreviews(container) {
 
 function mountFrozen(exo, box) {
     const stage = box.querySelector('.card-preview-stage') || box;
+    prepareStage(box, stage);
     const p = launchPreview(exo, stage, null, { frozen: true });
     return (p && p.then ? p : Promise.resolve()).then(() => fitPreview(box, stage));
 }
+
+/**
+ * Donne au plateau ses dimensions de référence AVANT le montage.
+ *
+ * Les jeux historiques mesurent leur conteneur au montage pour en déduire la
+ * taille de leur canevas ou de leurs cases. Dimensionner le plateau après coup
+ * leur faisait lire une boîte vide : canevas noir du jeu de tir, cases de
+ * Math Crush réduites à des dégradés, piste de course déserte.
+ */
+function prepareStage(box, stage) {
+    const large = box.clientWidth;
+    const haut = box.clientHeight;
+    if (!large || !haut) return;
+    stage.style.transform = 'none';
+    stage.style.width = `${LARGEUR_REF}px`;
+    stage.style.height = `${Math.round(haut * LARGEUR_REF / large)}px`;
+}
+
+// Largeur à laquelle la question est COMPOSÉE avant d'être réduite. Composer
+// directement dans les ~290 px de la carte donnait des mises en page de
+// téléphone — « < = > » sur deux lignes, bulles empilées — qu'on réduisait
+// ensuite : on photographiait un écran étroit au lieu d'un plateau de jeu.
+const LARGEUR_REF = 640;
 
 /**
  * Met la question à l'échelle de la vignette.
@@ -454,17 +483,26 @@ function mountFrozen(exo, box) {
  * Les activités se dessinent pour un plateau de jeu ; aucune ne sait tenir dans
  * 170 pixels de haut, et leurs tailles minimales (des touches restent
  * atteignables au doigt) les empêchent de se réduire davantage. On les
- * photographie donc : rendu à taille normale, puis réduit d'un bloc.
+ * photographie donc : composées sur un plateau de référence, puis réduites
+ * d'un bloc. Le plateau garde le format de la vignette, de sorte que la
+ * réduction soit la même dans les deux sens.
  */
 function fitPreview(box, stage) {
-    stage.style.transform = 'none';
-    const dispo = box.clientHeight;
-    const haut = stage.scrollHeight;
-    const large = stage.scrollWidth;
-    if (!dispo || !haut) return;
-    const k = Math.min(1, dispo / haut, box.clientWidth / Math.max(large, 1));
-    stage.style.transform = `scale(${k.toFixed(3)})`;
-    stage.style.height = `${haut}px`;
+    const large = box.clientWidth;
+    const haut = box.clientHeight;
+    if (!large || !haut) return;
+    prepareStage(box, stage);
+
+    // `container-type: size` isole la hauteur du contenu : `scrollHeight`
+    // renverrait celle du conteneur. On mesure donc les enfants eux-mêmes.
+    const haut0 = stage.getBoundingClientRect().top;
+    const bas = [...stage.children]
+        .reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom - haut0), 0);
+
+    const k = Math.min(large / LARGEUR_REF, haut / Math.max(bas, 1));
+    stage.style.transformOrigin = 'top left';
+    stage.style.transform =
+        `translateX(${Math.round((large - LARGEUR_REF * k) / 2)}px) scale(${k.toFixed(4)})`;
 }
 
 function startCardDemo(exo, box) {
@@ -473,6 +511,7 @@ function startCardDemo(exo, box) {
     stopCardDemo();
     const jeton = demoJeton;
     const stage = box.querySelector('.card-preview-stage') || box;
+    prepareStage(box, stage);
     box.classList.add('card-preview--live');
     const p = launchPreview(exo, stage);
     const enregistre = (handle) => {

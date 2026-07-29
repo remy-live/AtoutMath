@@ -16,6 +16,7 @@ import {
     setSidebarMode, setTopNavMode, initSidebarSearch
 } from './ui/navigation.js';
 import { initBuilder } from './ui/builder.js';
+import { initDebugBar } from './ui/debugBar.js';
 import { initImportExport } from './core/importExport.js';
 import { initProfileUI } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
@@ -272,13 +273,31 @@ function initTheme() {
 
 // --- Barre de débogage ------------------------------------------------------
 
+/**
+ * Infobulle ET nom accessible d'un bouton à icône.
+ *
+ * Une icône seule ne dit ni ce qu'elle fait ni dans quel état elle se trouve :
+ * ce qui était écrit sur le bouton doit se retrouver quelque part, sous peine
+ * de rendre la palette illisible au survol comme au lecteur d'écran.
+ */
+function etiquette(btn, texte) {
+    btn.title = texte;
+    btn.setAttribute('aria-label', texte);
+}
+
 function initDebugToolbar() {
+    initDebugBar();
+
     const btnMobile = document.getElementById('db-toggle-mobile');
     if (btnMobile) {
+        const syncMobile = () => {
+            etiquette(btnMobile, `Vue mobile : ${state.isMobileView ? 'activée' : 'désactivée'}`);
+            btnMobile.classList.toggle('active', state.isMobileView);
+        };
+        syncMobile();
         btnMobile.onclick = () => {
             state.isMobileView = !state.isMobileView;
-            btnMobile.textContent = `📱 Vue Mobile : ${state.isMobileView ? 'ON' : 'OFF'}`;
-            btnMobile.classList.toggle('active', state.isMobileView);
+            syncMobile();
             document.body.classList.toggle('mobile-view', state.isMobileView);
             document.body.style.overflowX = state.isMobileView ? 'hidden' : '';
             if (state.isMobileView) document.getElementById('sidebar').classList.add('mob-active');
@@ -287,10 +306,14 @@ function initDebugToolbar() {
 
     const btnRole = document.getElementById('db-toggle-role');
     if (btnRole) {
+        const syncRole = () => {
+            etiquette(btnRole, `Mode : ${state.isTeacherMode ? 'professeur' : 'élève'}`);
+            btnRole.classList.toggle('active', state.isTeacherMode);
+        };
+        syncRole();
         btnRole.onclick = () => {
             state.isTeacherMode = !state.isTeacherMode;
-            btnRole.textContent = `👨‍🏫 Mode : ${state.isTeacherMode ? 'Professeur' : 'Élève'}`;
-            btnRole.classList.toggle('active', state.isTeacherMode);
+            syncRole();
             document.body.classList.toggle('teacher-mode', state.isTeacherMode);
             setTopNavMode(state.isTeacherMode ? 'teacher' : 'grid');
             refreshViews();
@@ -333,7 +356,8 @@ function initStatusFilter() {
         const filter = state.catalogFilter || 'tout';
         const counts = countByStatus(exercices);
         const n = filter === 'tout' ? exercices.length : counts[filter];
-        btn.textContent = `${ICONS[filter]} Catalogue : ${NAMES[filter]} (${n})`;
+        btn.textContent = ICONS[filter];
+        etiquette(btn, `Catalogue : ${NAMES[filter]} (${n}) — cliquer pour changer d'état`);
         btn.classList.toggle('active', filter !== 'tout');
     };
 

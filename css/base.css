@@ -15,7 +15,7 @@
     --tag-dom-bg: #dbeafe; --tag-dom-txt: #2563eb;
     --tag-sous-bg: #f3e8ff; --tag-sous-txt: #9333ea;
     
-    --sidebar-width: 320px; --bottom-nav-height: 60px; --debug-bar-height: 45px;
+    --sidebar-width: 320px; --bottom-nav-height: 60px;
     
     /* Modern Shadows */
     --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
