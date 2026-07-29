@@ -7,6 +7,7 @@
 // qu'une ligne n'y soit ajoutée.
 
 import { regTimeout } from '../timers.js';
+import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 
 const HOLES = 9;
 
@@ -14,6 +15,7 @@ export function mount(container, session, opts = {}) {
     let destroyed = false;
     let activeIndex = -1;
     let item = null;
+    let cursor = null;
 
     container.innerHTML = `
         <div class="moles-wrap">
@@ -59,11 +61,9 @@ export function mount(container, session, opts = {}) {
         mole.classList.remove('mole--ok', 'mole--ko');
 
         if (session.isDemo) {
-            if (showCorrect) {
-                regTimeout(() => { if (!destroyed) hole.click(); }, 800);
-            } else {
-                regTimeout(pop, 900);
-            }
+            if (session.frozen) return;
+            if (showCorrect) runDemo(hole);
+            else regTimeout(pop, 1400);
             return;
         }
         regTimeout(pop, 1100 + Math.random() * 900);
@@ -72,6 +72,16 @@ export function mount(container, session, opts = {}) {
     function hide(hole) {
         const mole = hole.querySelector('[data-mole]');
         mole.classList.remove('mole--up');
+    }
+
+    // Démonstration : la bonne taupe n'est pas « cliquée » dans l'ombre, elle
+    // est visiblement visée puis frappée — sans quoi on voit juste des nombres
+    // apparaître et disparaître sans comprendre ce qui compte.
+    async function runDemo(hole) {
+        if (!cursor) cursor = createDemoCursor();
+        if (!await cursor.tap(hole) || destroyed) return;
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        nextItem();
     }
 
     holes.forEach((hole, idx) => {
@@ -101,6 +111,7 @@ export function mount(container, session, opts = {}) {
         showPrevious() { if (session.rewind()) nextItem(); },
         destroy() {
             destroyed = true;
+            if (cursor) { cursor.destroy(); cursor = null; }
             container.innerHTML = '';
             session.finish();
         }

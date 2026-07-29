@@ -51,6 +51,10 @@ export const state = {
     deviceMode: 'desktop',
     navStack: [],
     searchQuery: '',
+    // Œil du catalogue : les cartes montrent-elles un aperçu de l'exercice ?
+    // État d'interface, volontairement non persisté — c'est un coup d'œil, pas
+    // un réglage.
+    previewsOn: false,
     // Filtre d'état de publication du catalogue : 'tout' | 'valide' | 'test'
     // | 'brouillon'. Outil d'auteur, persisté par confort entre deux sessions.
     catalogFilter: 'tout',

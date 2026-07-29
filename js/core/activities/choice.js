@@ -11,6 +11,7 @@
 // connaissance des notions ici.
 
 import { regTimeout } from '../timers.js';
+import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 
 const VARIANTS = {
     bubbles: { itemClass: 'bubble', containerClass: 'bubble-container' },
@@ -23,11 +24,14 @@ const VARIANTS = {
     coords: { itemClass: 'coord-tile', containerClass: 'coord-row' }
 };
 
-const DELAYS = { success: 1200, reveal: 1500, pause: 1500, demo: 1800, demoClick: 800 };
+const DELAYS = { success: 1200, reveal: 1500, pause: 1500 };
 
 export function mount(container, session, opts = {}) {
     const variant = VARIANTS[opts.variant] || VARIANTS.bubbles;
     let destroyed = false;
+    // Un seul pointeur pour toute la démonstration : recréé à chaque question,
+    // il repartirait du coin de l'écran à chaque fois.
+    let cursor = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -55,21 +59,8 @@ export function mount(container, session, opts = {}) {
 
         const cells = [...container.querySelectorAll(`[data-idx]`)];
 
-        if (session.isDemo) {
-            const correctIdx = choices.findIndex(c => c.correct);
-            regTimeout(() => {
-                if (destroyed) return;
-                const el = cells[correctIdx];
-                if (el) el.classList.add('demo-target');
-                regTimeout(renderNext, DELAYS.demoClick);
-            }, DELAYS.demo);
-            return;
-        }
-
-        wireHint(container, session);
-
         // Emplacement vide de l'énoncé (comparaisons) : il se remplit avec le
-        // signe choisi, quel que soit le geste — clic ou dépôt.
+        // signe choisi, quel que soit le geste — clic, dépôt ou démonstration.
         const slot = container.querySelector('.compare-slot');
         const fillSlot = (el, correct) => {
             if (!slot) return;
@@ -78,6 +69,13 @@ export function mount(container, session, opts = {}) {
             slot.classList.toggle('compare-slot--ok', correct);
             slot.classList.toggle('compare-slot--ko', !correct);
         };
+
+        if (session.isDemo) {
+            if (!session.frozen) runDemo(cells, choices, slot, fillSlot);
+            return;
+        }
+
+        wireHint(container, session);
 
         const answer = (el) => {
             if (destroyed || el.dataset.eliminated === '1') return;
@@ -127,6 +125,34 @@ export function mount(container, session, opts = {}) {
         if (opts.dragToSlot) enableDragToSlot(container, cells, answer);
     }
 
+    /**
+     * Démonstration : on montre le GESTE, pas seulement la bonne case.
+     *
+     * Quand l'exercice se joue au glisser-déposer, c'est ce geste qui est
+     * l'objet de l'apprentissage — le voir sauter d'une question à l'autre
+     * n'apprenait rien. Le pointeur va donc chercher la tuile, la traîne
+     * jusqu'à l'emplacement vide et l'y dépose, puis on laisse la ligne
+     * complétée à l'écran le temps de la relire.
+     */
+    async function runDemo(cells, choices, slot, fillSlot) {
+        const el = cells[choices.findIndex(c => c.correct)];
+        if (!el) { regTimeout(renderNext, DEMO_SPEED.between); return; }
+
+        if (!cursor) cursor = createDemoCursor();
+        if (!await cursor.pause(600) || destroyed) return;
+
+        const fait = (opts.dragToSlot && slot)
+            ? await cursor.dragFromTo(el, slot)
+            : await cursor.tap(el);
+        if (!fait || destroyed) return;
+
+        el.classList.add('demo-target');
+        fillSlot(el, true);
+
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        renderNext();
+    }
+
     renderNext();
 
     return {
@@ -136,6 +162,7 @@ export function mount(container, session, opts = {}) {
         showPrevious() { if (session.rewind()) renderNext(); },
         destroy() {
             destroyed = true;
+            if (cursor) { cursor.destroy(); cursor = null; }
             container.innerHTML = '';
             session.finish();
         }

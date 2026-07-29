@@ -12,7 +12,7 @@ import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
 import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE } from './data/catalog.js';
 import {
-    initAccordion, renderDrilldown, initGridFilters,
+    initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
     setSidebarMode, setTopNavMode, initSidebarSearch
 } from './ui/navigation.js';
 import { initBuilder } from './ui/builder.js';
@@ -191,7 +191,7 @@ function initGameControls() {
 
 function initNavButtons() {
     const back = document.getElementById('btn-back');
-    if (back) back.onclick = () => { state.navStack.pop(); renderDrilldown(); };
+    if (back) back.onclick = () => { state.navStack.pop(); renderDrilldown(); syncGridToSidebar(); };
 
     ['drill', 'acc'].forEach(k => {
         const btn = document.getElementById('desk-btn-' + k);

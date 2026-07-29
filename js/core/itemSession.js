@@ -24,6 +24,7 @@ export class ItemSession {
      * @param {string} [cfg.runId]
      * @param {string} [cfg.stepId]
      * @param {boolean} [cfg.isDemo]
+     * @param {boolean} [cfg.frozen]  - aperçu immobile : la question est dessinée, rien ne se joue
      * @param {string} [cfg.forceSeed] - rejoue exactement une question passée
      * @param {'choice'|'numeric'|'point'} [cfg.preferredKind] - genre attendu par l'activité
      */
@@ -35,6 +36,9 @@ export class ItemSession {
         this.runId = cfg.runId || null;
         this.stepId = cfg.stepId || null;
         this.isDemo = !!cfg.isDemo;
+        // Une vignette de catalogue montre une question, pas une animation :
+        // 45 démonstrations lancées en même temps rameraient sur une tablette.
+        this.frozen = !!cfg.frozen;
         this.forceSeed = cfg.forceSeed || null;
         this.preferredKind = cfg.preferredKind || null;
 

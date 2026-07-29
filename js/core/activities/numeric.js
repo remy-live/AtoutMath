@@ -8,6 +8,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
+import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
@@ -18,6 +19,7 @@ const ICON_BACKSPACE = `<svg viewBox="0 0 24 24" width="24" height="24" fill="no
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let buffer = '';
+    let cursor = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -70,13 +72,7 @@ export function mount(container, session, opts = {}) {
         setBuffer('');
 
         if (session.isDemo) {
-            // En démonstration, on tape la réponse chiffre par chiffre : l'élève
-            // voit la mécanique du pavé, pas seulement le résultat.
-            const target = String(item.answer);
-            target.split('').forEach((ch, i) => {
-                regTimeout(() => { if (!destroyed) setBuffer(target.slice(0, i + 1)); }, 500 + i * 350);
-            });
-            regTimeout(renderNext, 900 + target.length * 350 + 900);
+            if (!session.frozen) runDemo(String(item.answer), setBuffer, screen);
             return;
         }
 
@@ -133,6 +129,34 @@ export function mount(container, session, opts = {}) {
         };
     }
 
+    /**
+     * Démonstration : le pointeur tape la réponse touche par touche, puis
+     * valide. Le nombre qui apparaissait tout seul à l'écran ne disait pas d'où
+     * il venait ; ici on voit le chemin, chiffre après chiffre.
+     */
+    async function runDemo(target, setBuffer, screen) {
+        if (!cursor) cursor = createDemoCursor();
+        if (!await cursor.pause(600) || destroyed) return;
+
+        for (let i = 0; i < target.length; i++) {
+            const touche = container.querySelector(`[data-key="${cssEscape(target[i])}"]`);
+            if (touche) {
+                if (!await cursor.tap(touche, 420) || destroyed) return;
+                touche.classList.add('numpad-key--demo');
+                regTimeout(() => touche.classList.remove('numpad-key--demo'), 220);
+            }
+            setBuffer(target.slice(0, i + 1));
+            if (!await cursor.pause(180) || destroyed) return;
+        }
+
+        const valider = container.querySelector('[data-validate]');
+        if (!await cursor.tap(valider, 480) || destroyed) return;
+        screen.classList.add('numpad-screen--ok');
+
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        renderNext();
+    }
+
     renderNext();
 
     return {
@@ -140,11 +164,17 @@ export function mount(container, session, opts = {}) {
         showPrevious() { if (session.rewind()) renderNext(); },
         destroy() {
             destroyed = true;
+            if (cursor) { cursor.destroy(); cursor = null; }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();
         }
     };
+}
+
+// La virgule est une valeur d'attribut légitime mais un sélecteur invalide.
+function cssEscape(c) {
+    return window.CSS && CSS.escape ? CSS.escape(c) : c.replace(/,/g, '\\,');
 }
 
 function key(k) {

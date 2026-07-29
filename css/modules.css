@@ -482,6 +482,14 @@
     transition: none !important;
 }
 
+/* Sauf en démonstration : là, personne ne tient la tuile, et c'est justement
+   son trajet qu'on veut donner à voir. La durée est posée en ligne par le
+   curseur, mais il faut lever le `!important` ci-dessus. */
+.drag-ghost--demo {
+    transition-property: left, top !important;
+    transition-timing-function: cubic-bezier(.4, 0, .2, 1) !important;
+}
+
 /* --- Fractions --------------------------------------------- */
 
 .frac-question { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
@@ -1003,4 +1011,36 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .cfg-modes { grid-template-columns: 1fr; }
     .analysis-skill-label { flex-basis: 120px; }
     .report-panel { padding: 18px; }
+}
+
+/* --- Curseur de démonstration -------------------------------
+   Posé sur le `body` en `fixed` : les mêmes coordonnées valent dans une
+   vignette, dans le simulateur du professeur et en plein écran. Il ne capte
+   évidemment aucun clic — c'est un dessin, pas un pointeur. */
+.demo-cursor {
+    position: fixed; top: 0; left: 0; z-index: 100010;
+    pointer-events: none; opacity: 0;
+    transition: transform 0ms cubic-bezier(.4, 0, .2, 1), opacity .25s ease;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .35));
+}
+.demo-cursor--visible { opacity: 1; }
+.demo-cursor svg { display: block; margin: -3px 0 0 -3px; }
+
+/* Le halo matérialise l'appui : sans lui, le pointeur arrive sur la bonne
+   réponse sans qu'on sache s'il a cliqué ou s'il ne fait que passer. */
+.demo-cursor-halo {
+    position: absolute; top: -2px; left: -2px;
+    width: 34px; height: 34px; margin: -17px 0 0 -17px;
+    border-radius: 50%; border: 2px solid var(--primary);
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+    transform: scale(0); opacity: 0;
+    transition: transform .26s ease, opacity .26s ease;
+}
+.demo-cursor--pressed .demo-cursor-halo { transform: scale(1); opacity: 1; }
+.demo-cursor--pressed svg { transform: scale(.86); transition: transform .12s ease; }
+
+/* Touche enfoncée par la démonstration : même retour visuel qu'un vrai appui. */
+.numpad-key--demo {
+    border-color: var(--primary) !important; color: var(--primary) !important;
+    transform: translateY(2px) scale(.97);
 }

@@ -183,12 +183,33 @@ export function initAccordion() {
             if (path.length > 0) det.className = 'sub-details';
             if (openPaths.has(pathKey)) det.open = true;
             det.innerHTML = `<summary><span class="custom-chevron"></span>${key}</summary>`;
+            // Sur le clic, et non sur `toggle` : restaurer les dossiers ouverts
+            // après un filtrage émet des `toggle` en série, qui feraient
+            // dériver le dossier courant sans que personne n'ait rien demandé.
+            det.querySelector('summary').onclick = () => {
+                if (det.open) return;   // le clic précède l'ouverture
+                state.navStack = childPath.slice();
+                syncGridToSidebar();
+            };
             renderNode(det, childPath);
             container.appendChild(det);
         });
     };
 
     renderNode(acc, []);
+}
+
+/**
+ * Répercute sur la grille le dossier ouvert à gauche.
+ *
+ * Sans garde, un clic dans la barre latérale du professeur reconstruirait une
+ * grille d'élève masquée — travail inutile qui casserait au passage les
+ * aperçus en cours.
+ */
+export function syncGridToSidebar() {
+    const wrapper = document.getElementById('main-wrapper');
+    if (!wrapper || wrapper.style.display === 'none' || state.isTeacherMode) return;
+    initGridFilters();
 }
 
 export function renderDrilldown() {
@@ -202,62 +223,268 @@ export function renderDrilldown() {
 
     getNodeSubKeys(filtered, path).forEach(key => {
         const b = document.createElement('button'); b.className = 'drill-item'; b.innerHTML = `<span>${key}</span><span>›</span>`;
-        b.onclick = () => { state.navStack.push(key); renderDrilldown(); };
+        b.onclick = () => { state.navStack.push(key); renderDrilldown(); syncGridToSidebar(); };
         content.appendChild(b);
     });
 
     getNodeLeaves(filtered, path).forEach(exo => content.appendChild(createLibraryItem(exo)));
 }
 
+/**
+ * Le chemin qui commande la grille.
+ *
+ * Sur téléphone, la barre latérale et la grille ne sont jamais visibles en même
+ * temps : la grille doit y rester complète, sinon on ouvre le catalogue et il
+ * paraît vide. Sur tablette et ordinateur, les deux se voient d'un coup d'œil,
+ * et la grille sert alors le dossier ouvert à gauche.
+ */
+function gridPath() {
+    // 700 px et non 768 : une tablette en portrait fait justement 768 de large,
+    // et c'est un cas où le couplage est demandé. En dessous, on est sur un
+    // téléphone, où la barre latérale recouvre la grille.
+    const telephone = window.innerWidth <= 700
+        || document.body.classList.contains('mobile-view');
+    return telephone ? [] : state.navStack;
+}
+
 export function initGridFilters() {
     const fd = document.getElementById('filters-domaine');
-    if(fd) fd.innerHTML = '';
+    if (fd) fd.innerHTML = '';
 
     const filtered = getFilteredExercises();
-    const domainesList = [...new Set(filtered.map(e => e.tags.chemin[0]))].sort();
-    let activeDomaines = [];
+    const path = gridPath();
+    // Les exercices du dossier courant, sous-dossiers compris : plus on descend
+    // à gauche, moins il en reste à droite.
+    const dansLeDossier = filtered.filter(e => matchesPath(e, path));
+    // Les tags proposés sont les sous-dossiers du niveau où l'on se trouve, pas
+    // éternellement les trois domaines racine.
+    const sousDossiers = getNodeSubKeys(filtered, path);
+    let actifs = [];
 
     const renderCards = () => {
-        document.getElementById('main-content').innerHTML = '';
-        const container = document.createElement('div'); container.className = 'grid-container';
+        // Sans restauration : les cartes vont être remplacées, remonter un
+        // aperçu figé dans celle qu'on jette ne servirait qu'à le voir surgir
+        // après coup dans le vide.
+        stopCardDemo(false);
+        const main = document.getElementById('main-content');
+        main.innerHTML = '';
+        const container = document.createElement('div');
+        container.className = 'grid-container';
 
-        filtered.filter(exo => {
-            return activeDomaines.length === 0 || activeDomaines.includes(exo.tags.chemin[0]);
-        }).forEach(exo => {
-            const card = document.createElement('div'); card.className = 'card';
-            const niveauxStr = exo.tags.niveaux ? exo.tags.niveaux.join(' - ') : '';
-            card.innerHTML = `<div style="font-weight:bold; font-size:1.1rem;">${exo.title}</div>
-                <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <span class="tag tag-btn tag-niveau">${niveauxStr}</span>
-                    <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
-                    ${statusBadge(exo)}
-                </div>`;
-            card.onclick = () => openGameLayer(exo, false);
-            container.appendChild(card);
-        });
-        document.getElementById('main-content').appendChild(container);
+        dansLeDossier
+            .filter(exo => actifs.length === 0 || actifs.includes(exo.tags.chemin[path.length]))
+            .forEach(exo => container.appendChild(createCard(exo)));
+
+        main.appendChild(container);
+        if (state.previewsOn) mountPreviews(container);
     };
 
     if (fd) {
-        domainesList.forEach(d => {
+        sousDossiers.forEach(d => {
             const btn = document.createElement('button');
             btn.className = 'tag-btn tag-domaine';
             btn.textContent = d;
             btn.onclick = () => {
-                if(activeDomaines.includes(d)) { 
-                    activeDomaines = activeDomaines.filter(x => x !== d); 
-                    btn.classList.remove('active'); 
-                } else { 
-                    activeDomaines.push(d); 
-                    btn.classList.add('active'); 
+                if (actifs.includes(d)) {
+                    actifs = actifs.filter(x => x !== d);
+                    btn.classList.remove('active');
+                } else {
+                    actifs.push(d);
+                    btn.classList.add('active');
                 }
                 renderCards();
             };
             fd.appendChild(btn);
         });
+        fd.appendChild(eyeButton(renderCards));
     }
 
     renderCards();
+}
+
+/* --- Aperçus dans les cartes --------------------------------
+   Un titre et deux tags ne disent pas à quoi ressemble un exercice. L'œil
+   allume, sur toutes les cartes à la fois, la première question réellement
+   tirée : on choisit alors sur pièce, pas sur le nom. */
+
+// Une seule démonstration tourne à la fois : elles partagent les minuteurs
+// globaux, et quinze exercices animés côte à côte seraient illisibles autant
+// que coûteux.
+let demoEnCours = null;
+// Le jeton invalide les démonstrations dont le module arrive après coup : le
+// survol est rapide, et sans lui une carte quittée se remettait à jouer.
+let demoJeton = 0;
+
+function stopCardDemo(restaurer = true) {
+    demoJeton++;
+    const en = demoEnCours;
+    demoEnCours = null;
+    document.querySelectorAll('.card-preview--live')
+        .forEach(b => b.classList.remove('card-preview--live'));
+    if (en && en.handle && typeof en.handle.destroy === 'function') en.handle.destroy();
+    clearEngines();
+    // La carte reprend son aperçu figé, sinon elle reste sur l'image où la
+    // démonstration s'est arrêtée.
+    if (restaurer && en && en.box && en.box.isConnected) mountFrozen(en.exo, en.box);
+}
+
+function eyeButton(renderCards) {
+    const btn = document.createElement('button');
+    btn.className = 'tag-btn tag-eye';
+    btn.type = 'button';
+    const sync = () => {
+        btn.classList.toggle('active', state.previewsOn);
+        btn.setAttribute('aria-pressed', String(state.previewsOn));
+        btn.title = state.previewsOn ? 'Masquer les aperçus' : 'Afficher un aperçu de chaque exercice';
+        btn.setAttribute('aria-label', btn.title);
+        btn.innerHTML = state.previewsOn ? EYE_OFF : EYE_ON;
+    };
+    btn.onclick = () => {
+        state.previewsOn = !state.previewsOn;
+        sync();
+        renderCards();
+    };
+    sync();
+    return btn;
+}
+
+const EYE_ON = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+const EYE_OFF = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M17.9 17.9A10.1 10.1 0 0 1 12 20c-7 0-11-8-11-8a18.4 18.4 0 0 1 5.1-6"/>
+    <path d="M9.9 4.2A10.1 10.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2"/>
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+const ICON_PLAY = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+    <path d="M8 5v14l11-7z"/></svg>`;
+
+function createCard(exo) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const niveauxStr = exo.tags.niveaux ? exo.tags.niveaux.join(' - ') : '';
+
+    const title = document.createElement('div');
+    title.className = 'card-title';
+    title.textContent = exo.title;
+    card.appendChild(title);
+
+    if (state.previewsOn) {
+        const box = document.createElement('div');
+        box.className = 'card-preview';
+        box.dataset.preview = exo.id;
+        // Le conteneur porte le nom `plateau` : les mises en page des activités
+        // interrogent déjà cette place-là, la vignette hérite donc gratuitement
+        // de leurs paliers de resserrement.
+        const stage = document.createElement('div');
+        stage.className = 'card-preview-stage';
+        box.appendChild(stage);
+        card.appendChild(box);
+    }
+
+    const tags = document.createElement('div');
+    tags.className = 'card-tags';
+    tags.innerHTML = `<span class="tag tag-btn tag-niveau">${niveauxStr}</span>
+        <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
+        ${statusBadge(exo)}`;
+
+    if (state.previewsOn) {
+        // Au doigt, il n'y a pas de survol : le bouton lecture est le seul
+        // moyen de déclencher la démonstration sur une tablette.
+        const play = document.createElement('button');
+        play.type = 'button';
+        play.className = 'card-play';
+        play.innerHTML = ICON_PLAY;
+        play.title = 'Voir la démonstration';
+        play.setAttribute('aria-label', `Voir la démonstration de ${exo.title}`);
+        play.onclick = (e) => {
+            e.stopPropagation();
+            const box = card.querySelector('.card-preview');
+            if (demoEnCours && demoEnCours.box === box) stopCardDemo();
+            else startCardDemo(exo, box);
+        };
+        tags.appendChild(play);
+    }
+    card.appendChild(tags);
+
+    card.onclick = () => openGameLayer(exo, false);
+
+    if (state.previewsOn) {
+        // Le survol anime, sans attendre : c'est un geste exploratoire, une
+        // temporisation le rendrait capricieux.
+        card.onmouseenter = () => {
+            if (matchMedia('(hover: hover)').matches) startCardDemo(exo, card.querySelector('.card-preview'));
+        };
+        card.onmouseleave = () => {
+            if (demoEnCours && demoEnCours.box === card.querySelector('.card-preview')) stopCardDemo();
+        };
+    }
+
+    return card;
+}
+
+/**
+ * Monte les aperçus figés l'un après l'autre.
+ *
+ * En série et non en parallèle : `launchPreview` coupe les minuteurs en vigueur
+ * à chaque appel, donc deux montages simultanés se sabotent l'un l'autre.
+ */
+function mountPreviews(container) {
+    const boxes = [...container.querySelectorAll('.card-preview')];
+    const suivant = (i) => {
+        if (i >= boxes.length || !container.isConnected) return;
+        const exo = exercices.find(e => e.id === boxes[i].dataset.preview);
+        const p = exo ? mountFrozen(exo, boxes[i]) : null;
+        (p && p.then ? p : Promise.resolve()).then(() => suivant(i + 1));
+    };
+    suivant(0);
+}
+
+function mountFrozen(exo, box) {
+    const stage = box.querySelector('.card-preview-stage') || box;
+    const p = launchPreview(exo, stage, null, { frozen: true });
+    return (p && p.then ? p : Promise.resolve()).then(() => fitPreview(box, stage));
+}
+
+/**
+ * Met la question à l'échelle de la vignette.
+ *
+ * Les activités se dessinent pour un plateau de jeu ; aucune ne sait tenir dans
+ * 170 pixels de haut, et leurs tailles minimales (des touches restent
+ * atteignables au doigt) les empêchent de se réduire davantage. On les
+ * photographie donc : rendu à taille normale, puis réduit d'un bloc.
+ */
+function fitPreview(box, stage) {
+    stage.style.transform = 'none';
+    const dispo = box.clientHeight;
+    const haut = stage.scrollHeight;
+    const large = stage.scrollWidth;
+    if (!dispo || !haut) return;
+    const k = Math.min(1, dispo / haut, box.clientWidth / Math.max(large, 1));
+    stage.style.transform = `scale(${k.toFixed(3)})`;
+    stage.style.height = `${haut}px`;
+}
+
+function startCardDemo(exo, box) {
+    if (!box) return;
+    if (demoEnCours && demoEnCours.box === box) return;
+    stopCardDemo();
+    const jeton = demoJeton;
+    const stage = box.querySelector('.card-preview-stage') || box;
+    box.classList.add('card-preview--live');
+    const p = launchPreview(exo, stage);
+    const enregistre = (handle) => {
+        // Une démonstration a pu être arrêtée pendant le chargement du module.
+        if (jeton !== demoJeton || !box.isConnected) {
+            if (handle && handle.destroy) handle.destroy();
+            return;
+        }
+        demoEnCours = { exo, box, handle };
+        fitPreview(box, stage);
+    };
+    if (p && p.then) p.then(enregistre); else enregistre(p);
 }
 
 export function setSidebarMode(m) {

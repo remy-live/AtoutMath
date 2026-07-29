@@ -92,7 +92,7 @@ export function openDemo(exo) {
  * Lance un aperçu autonome dans n'importe quel conteneur (plein écran, ou
  * la vignette de survol du catalogue).
  */
-export function launchPreview(exo, container, params = null) {
+export function launchPreview(exo, container, params = null, opts = {}) {
     clearEngines();
     container.innerHTML = '';
 
@@ -100,17 +100,24 @@ export function launchPreview(exo, container, params = null) {
     if (!activity) return null;
 
     const effective = { ...(exo.params || {}), ...(params || {}) };
+    const frozen = !!opts.frozen;
 
     return activity.load().then(mod => {
         if (activity.supports.autonomous) {
             const fn = mod[activity.legacyExport] || Object.values(mod).find(v => typeof v === 'function');
-            if (fn) return fn(container, true, effective);
-            return null;
+            if (!fn) return null;
+            const handle = fn(container, true, effective);
+            // Les jeux historiques n'ont pas de notion d'aperçu figé : ils sont
+            // entièrement pilotés par des minuteurs. Les couper juste après le
+            // montage laisse à l'écran leur première image, ce qui est
+            // exactement la vignette recherchée.
+            if (frozen) clearEngines();
+            return handle;
         }
         const generator = getGenerator(exo.generatorId);
         if (!generator) return null;
         const session = new ItemSession({
-            generator, params: effective, exercise: exo, isDemo: true,
+            generator, params: effective, exercise: exo, isDemo: true, frozen,
             preferredKind: activity.accepts[0]
         });
         return mod.mount(container, session, activity.mountOptions || {});

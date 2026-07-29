@@ -124,3 +124,53 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     0% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
     100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
+
+/* --- Cartes du catalogue : aperçu ---------------------------
+   Un titre et deux tags ne disent pas à quoi ressemble un exercice. L'œil de la
+   barre de filtres allume, sur toutes les cartes, la première question
+   réellement tirée : on choisit sur pièce, pas sur le nom. */
+
+.card-title { font-weight: bold; font-size: 1.1rem; }
+.card-tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+
+/* La vignette est un CONTENEUR nommé `plateau` : les activités interrogent déjà
+   cette place-là pour choisir leur disposition, la vignette hérite donc
+   gratuitement de leurs paliers de resserrement. */
+.card-preview {
+    container-type: size; container-name: plateau;
+    position: relative; height: 170px; overflow: hidden;
+    border-radius: 12px; border: 1px solid var(--border);
+    background: radial-gradient(circle at center, #fff 0%, var(--bg-app) 100%);
+    pointer-events: none;   /* la vignette n'est pas jouable : le clic ouvre l'exercice */
+}
+.card-preview--live { border-color: var(--primary); }
+
+/* Rendu à taille normale puis réduit d'un bloc : aucune activité ne sait se
+   dessiner dans 170 px, et leurs tailles minimales — des touches doivent
+   rester atteignables au doigt — les empêchent de se réduire davantage. */
+.card-preview-stage {
+    position: absolute; top: 0; left: 0; width: 100%;
+    transform-origin: top center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px;
+}
+
+/* Bouton lecture : au doigt il n'y a pas de survol, c'est le seul déclencheur
+   de la démonstration sur tablette. */
+.card-play {
+    margin-left: auto; display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%; border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--primary); cursor: pointer;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+.card-play:hover { background: var(--primary); color: #fff; transform: scale(1.08); }
+
+.tag-eye {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+}
+.tag-eye.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* La ligne de filtres pousse l'œil à droite : c'est une commande d'affichage,
+   pas un filtre de plus, et l'aligner avec les tags les confondrait. */
+#filters-domaine { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: 1; }

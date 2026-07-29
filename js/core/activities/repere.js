@@ -11,9 +11,11 @@
 import { regTimeout } from '../timers.js';
 import { repereSvg } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
+import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 
 export function mount(container, session) {
     let destroyed = false;
+    let cursor = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -33,11 +35,7 @@ export function mount(container, session) {
         const target = svg.querySelector(`.rep-hit[data-c="${item.answer}"]`);
 
         if (session.isDemo) {
-            regTimeout(() => {
-                if (destroyed || !target) return;
-                markPoint(svg, target, 'demo');
-                regTimeout(renderNext, 900);
-            }, 1600);
+            if (!session.frozen) runDemo(svg, target);
             return;
         }
 
@@ -94,6 +92,18 @@ export function mount(container, session) {
         }
     }
 
+    // Démonstration : le pointeur parcourt le repère jusqu'au nœud cherché.
+    // Voir le trajet, c'est voir qu'on lit d'abord l'abscisse puis l'ordonnée.
+    async function runDemo(svg, target) {
+        if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
+        if (!cursor) cursor = createDemoCursor();
+        if (!await cursor.pause(600) || destroyed) return;
+        if (!await cursor.tap(target) || destroyed) return;
+        markPoint(svg, target, 'demo');
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        renderNext();
+    }
+
     renderNext();
 
     return {
@@ -101,6 +111,7 @@ export function mount(container, session) {
         showPrevious() { if (session.rewind()) renderNext(); },
         destroy() {
             destroyed = true;
+            if (cursor) { cursor.destroy(); cursor = null; }
             container.innerHTML = '';
             session.finish();
         }
