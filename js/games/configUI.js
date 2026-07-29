@@ -10,8 +10,15 @@ import { MODES, evaluationPolicy, defaultPolicy, resolvePolicy } from '../core/p
 
 // --- Champs -----------------------------------------------------------------
 
-function fieldHtml(param, value) {
+/**
+ * Un réglage = un libellé court et son contrôle, côte à côte quand la largeur
+ * le permet. Les explications passent dans une infobulle sur « ? » plutôt que
+ * sous le champ : trois paragraphes d'aide empilés rendaient le panneau
+ * illisible et repoussaient les réglages suivants hors de l'écran.
+ */
+function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
+    const wide = param.type === 'multiselect';   // les puces prennent toute la largeur
     let control = '';
 
     if (param.type === 'multiselect') {
@@ -22,7 +29,7 @@ function fieldHtml(param, value) {
                 <span>${opt}</span></label>`;
         }).join('') + `</div>`;
     } else if (param.type === 'number') {
-        control = `<input type="number" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="number"
+        control = `<input type="number" id="${id}" class="cfg-input cfg-input--num" data-param="${param.id}" data-kind="number"
             value="${value}" ${param.min !== undefined ? `min="${param.min}"` : ''} ${param.max !== undefined ? `max="${param.max}"` : ''}>`;
     } else if (param.type === 'select') {
         control = `<select id="${id}" class="cfg-input" data-param="${param.id}" data-kind="select">` +
@@ -32,10 +39,47 @@ function fieldHtml(param, value) {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
     }
 
-    return `<div class="cfg-field">
-        <label class="cfg-label" for="${id}">${param.label}</label>
+    return `<div class="cfg-field${wide ? ' cfg-field--wide' : ''}">
+        <label class="cfg-label" for="${id}">${param.label}${infoBtn(options.aide, options.aideId)}</label>
         ${control}
     </div>`;
+}
+
+// Sorti du littéral de gabarit : les apostrophes d'un texte français y sont
+// une source d'erreurs de syntaxe silencieuses.
+const SCOPE_TIP = "« À toute l'étape » : un seul compte à rebours pour l'ensemble "
+    + "des questions. « À chaque question » : il repart à zéro à chaque question, "
+    + "et une question non répondue à temps est comptée fausse.";
+
+/** Point d'interrogation portant l'explication ; rien du tout s'il n'y en a pas. */
+function infoBtn(aide, id) {
+    if (!aide && !id) return '';
+    return `<button type="button" class="cfg-info" ${id ? `id="${id}"` : ''}
+        data-tip="${aide ? escapeAttr(aide) : ''}" aria-label="Explication">?</button>`;
+}
+
+function escapeAttr(s) {
+    return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/**
+ * Infobulles : au survol pour la souris, au clic pour le tactile — où le
+ * survol n'existe pas.
+ */
+function wireTips(root) {
+    root.querySelectorAll('.cfg-info').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            const ouvert = btn.classList.contains('cfg-info--open');
+            root.querySelectorAll('.cfg-info--open').forEach(b => b.classList.remove('cfg-info--open'));
+            btn.classList.toggle('cfg-info--open', !ouvert);
+        };
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.cfg-info')) {
+            root.querySelectorAll('.cfg-info--open').forEach(b => b.classList.remove('cfg-info--open'));
+        }
+    });
 }
 
 function readParams(root, schema) {
@@ -78,52 +122,73 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             <div class="cfg-group-title">Déroulement de l'étape</div>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
-                <input type="number" id="cfg-nbitems" class="cfg-input" min="1" max="50" value="${step.nbItems || 10}">
+                <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="1" max="50" value="${step.nbItems || 10}">
             </div>
             <div class="cfg-field">
-                <label class="cfg-label" for="cfg-threshold">Bonnes réponses exigées pour valider l'étape</label>
-                <input type="number" id="cfg-threshold" class="cfg-input" min="1" max="50"
+                <label class="cfg-label" for="cfg-threshold">Bonnes réponses exigées
+                    ${infoBtn(null, 'cfg-threshold-tip')}</label>
+                <input type="number" id="cfg-threshold" class="cfg-input cfg-input--num" min="1" max="50"
                        value="${step.threshold !== null && step.threshold !== undefined ? step.threshold : (step.nbItems || 10)}">
-                <p class="cfg-help" id="cfg-threshold-help"></p>
             </div>
             <div class="cfg-field">
-                <label class="cfg-label" for="cfg-timelimit">Chronomètre (secondes, 0 = aucun)</label>
-                <input type="number" id="cfg-timelimit" class="cfg-input" min="0" max="600" value="${step.timeLimit || 0}">
+                <label class="cfg-label" for="cfg-timelimit">Chronomètre (s)
+                    ${infoBtn('0 = aucun chronomètre. Sinon, la durée en secondes.', null)}</label>
+                <input type="number" id="cfg-timelimit" class="cfg-input cfg-input--num" min="0" max="600" value="${step.timeLimit || 0}">
+            </div>
+            <div class="cfg-field" id="cfg-scope-field">
+                <label class="cfg-label" for="cfg-timescope">Le chrono s'applique
+                    ${infoBtn(SCOPE_TIP, null)}</label>
+                <select id="cfg-timescope" class="cfg-input">
+                    <option value="etape" ${step.timerScope !== 'question' ? 'selected' : ''}>à toute l'étape</option>
+                    <option value="question" ${step.timerScope === 'question' ? 'selected' : ''}>à chaque question</option>
+                </select>
             </div>
             <div class="cfg-field">
-                <label class="cfg-label" for="cfg-weight">Poids dans la note</label>
-                <input type="number" id="cfg-weight" class="cfg-input" min="1" max="10" value="${step.weight || 1}">
-                <p class="cfg-help">Une étape de poids 2 compte double dans le barème.</p>
+                <label class="cfg-label" for="cfg-weight">Poids dans la note
+                    ${infoBtn('Une étape de poids 2 compte double dans le barème.', null)}</label>
+                <input type="number" id="cfg-weight" class="cfg-input cfg-input--num" min="1" max="10" value="${step.weight || 1}">
             </div>
         </div>`;
 
-    // Le mot « seuil » ne dit rien à lui seul : on affiche la phrase complète
-    // que le réglage produit, et elle se met à jour à la saisie.
+    // L'explication du seuil est chiffrée avec les valeurs courantes, et suit
+    // la saisie : « 7 sur 10 » parle, « seuil » ne dit rien.
     const describeThreshold = () => {
-        const help = document.getElementById('cfg-threshold-help');
-        if (!help) return;
+        const tip = document.getElementById('cfg-threshold-tip');
+        if (!tip) return;
         const nb = intVal('cfg-nbitems', 10);
         const seuil = Math.min(intVal('cfg-threshold', nb), nb);
-        help.textContent = `L'élève doit réussir ${seuil} question${seuil > 1 ? 's' : ''} sur ${nb} `
+        tip.dataset.tip = `L'élève doit réussir ${seuil} question${seuil > 1 ? 's' : ''} sur ${nb} `
             + `pour que l'étape soit validée. En dessous, il rejoue l'étape (en entraînement) `
             + `ou passe à la suivante sans la valider (en évaluation).`;
+    };
+
+    // Le choix « à chaque question / à toute l'étape » n'a de sens que s'il y
+    // a un chronomètre.
+    const toggleScope = () => {
+        const field = document.getElementById('cfg-scope-field');
+        if (field) field.style.display = intVal('cfg-timelimit', 0) > 0 ? '' : 'none';
     };
 
     const commit = () => {
         const overrides = readParams(content, schema);
         const nbItems = intVal('cfg-nbitems', 10);
         describeThreshold();
+        toggleScope();
+        const scope = document.getElementById('cfg-timescope');
         onSave({
             ...step,
             overrides,
             nbItems,
             threshold: Math.min(intVal('cfg-threshold', nbItems), nbItems),
             timeLimit: intVal('cfg-timelimit', 0) || null,
+            timerScope: scope ? scope.value : 'etape',
             weight: intVal('cfg-weight', 1)
         });
     };
 
     describeThreshold();
+    toggleScope();
+    wireTips(content);
     content.addEventListener('change', commit);
     content.addEventListener('keyup', e => {
         if (e.target.tagName === 'INPUT' && e.target.type === 'number') commit();
@@ -144,9 +209,10 @@ export function showStudentConfigModal(exo, onStart) {
         ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
         <div class="cfg-field">
             <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
-            <input type="number" id="cfg-nbitems" class="cfg-input" min="3" max="50" value="${current.nbQuestions || 10}">
+            <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="3" max="50" value="${current.nbQuestions || 10}">
         </div>`;
 
+    wireTips(content);
     modal.style.display = 'flex';
 
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
@@ -248,6 +314,7 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         });
     };
 
+    wireTips(root);
     root.querySelectorAll('[data-mode]').forEach(btn => {
         btn.onclick = () => {
             const mode = btn.dataset.mode;

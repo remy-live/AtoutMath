@@ -97,6 +97,8 @@ export function mount(container, session, opts = {}) {
     nextItem();
 
     return {
+        showNext: nextItem,
+        showPrevious() { if (session.rewind()) nextItem(); },
         destroy() {
             destroyed = true;
             container.innerHTML = '';

@@ -298,7 +298,6 @@ function initDebugToolbar() {
     }
 
     initStatusFilter();
-    import('./ui/atelierUI.js').then(m => m.initAtelierUI());
 
     const btnClear = document.getElementById('db-clear-storage');
     if (btnClear) {

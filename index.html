@@ -9,12 +9,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=2">
-    <link rel="stylesheet" href="css/layout.css?v=2">
-    <link rel="stylesheet" href="css/ui.css?v=2">
-    <link rel="stylesheet" href="css/games.css?v=2">
-    <link rel="stylesheet" href="css/components.css?v=2">
-    <link rel="stylesheet" href="css/modules.css?v=2">
+    <link rel="stylesheet" href="css/base.css?v=4">
+    <link rel="stylesheet" href="css/layout.css?v=4">
+    <link rel="stylesheet" href="css/ui.css?v=4">
+    <link rel="stylesheet" href="css/games.css?v=4">
+    <link rel="stylesheet" href="css/components.css?v=4">
+    <link rel="stylesheet" href="css/modules.css?v=4">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -28,7 +28,6 @@
         <div>
             <button class="debug-btn" id="db-toggle-mobile">📱 Vue Mobile : OFF</button>
             <button class="debug-btn" id="db-toggle-role">👨‍🏫 Mode : Élève</button>
-            <button class="debug-btn" id="db-atelier" title="Relire les questions d'un générateur et donner un verdict">🔬 Atelier</button>
             <button class="debug-btn" id="db-filter-status" title="Filtrer le catalogue par état de publication">🎯 Catalogue : Tout</button>
             <button class="debug-btn" id="db-clear-storage">🗑️ Vider Sauvegarde</button>
             <button class="debug-btn" id="db-fake-data">🧪 Générer Données</button>
@@ -371,9 +370,37 @@
                     <div id="game-progress-bar"></div>
                     <div id="game-progress-text">0 / 10</div>
                 </div>
+
+                <!-- Chronomètre visible par l'élève, dans l'en-tête plutôt
+                     qu'en filet de 6 px collé au bord de la fenêtre. -->
+                <div id="game-timer" hidden>
+                    <svg class="timer-ring" viewBox="0 0 36 36" aria-hidden="true">
+                        <circle class="timer-ring-track" cx="18" cy="18" r="15.5" />
+                        <circle class="timer-ring-fill" cx="18" cy="18" r="15.5" />
+                    </svg>
+                    <span id="game-timer-value" class="timer-value">60</span>
+                    <span id="game-timer-scope" class="timer-scope"></span>
+                </div>
                 <div class="game-header-actions">
-                    <!-- Navigation d'étapes : uniquement lors d'un test de parcours
-                         par le professeur (masquée pour l'élève). -->
+                    <!-- Navigation du professeur : uniquement lors d'un test de
+                         parcours (masquée pour l'élève). Deux niveaux — passer
+                         d'une question à l'autre, ou d'une activité à l'autre. -->
+                    <div id="preview-question-nav" class="preview-step-nav preview-step-nav--question" hidden>
+                        <button id="btn-preview-prev-q" class="game-icon-btn" title="Question précédente" aria-label="Question précédente">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="11 17 6 12 11 7" /><polyline points="18 17 13 12 18 7" />
+                            </svg>
+                        </button>
+                        <span class="preview-step-label">question</span>
+                        <button id="btn-preview-next-q" class="game-icon-btn" title="Question suivante" aria-label="Question suivante">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="13 17 18 12 13 7" /><polyline points="6 17 11 12 6 7" />
+                            </svg>
+                        </button>
+                    </div>
+
                     <div id="preview-step-nav" class="preview-step-nav" hidden>
                         <button id="btn-preview-prev" class="game-icon-btn" title="Activité précédente" aria-label="Activité précédente">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -510,18 +537,6 @@
                     <!-- Liste injectée en JS -->
                 </div>
             </div>
-        </div>
-
-        <!-- ATELIER DE RELECTURE (outil d'auteur) -->
-        <div id="atelier-view">
-            <div class="atl-header">
-                <h2 class="atl-title">🔬 Atelier de relecture</h2>
-                <p class="atl-subtitle">Relis une planche de questions générées, puis donne ton verdict.</p>
-                <button id="btn-close-atelier" class="modal-close-btn" aria-label="Fermer l'atelier">&times;</button>
-            </div>
-            <div id="atelier-controls" class="atl-controls"></div>
-            <div id="atelier-sheet" class="atl-sheet"></div>
-            <div id="atelier-verdict" class="atl-verdict"></div>
         </div>
 
         <!-- MODALE MODE & BARÈME DU PARCOURS -->

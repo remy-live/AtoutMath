@@ -15,19 +15,13 @@ Ne pas utiliser en production : `no-store` sur chaque fichier est exactement
 ce qu'il ne faut pas faire pour des élèves sur une connexion lente.
 """
 
-import datetime
 import functools
 import http.server
-import json
 import os
 import socketserver
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REVIEWS = os.path.join(ROOT, 'reviews')
-JOURNAL = os.path.join(REVIEWS, 'journal.jsonl')
-
-MAX_REVIEW_BYTES = 512 * 1024
 
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
@@ -52,47 +46,6 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
             return
         super().log_message(fmt, *args)
 
-    def do_POST(self):
-        """Reçoit un verdict de relecture depuis l'atelier et l'archive.
-
-        C'est ce qui ferme la boucle de travail : l'avis donné dans le
-        navigateur atterrit dans un fichier du dépôt, lisible directement,
-        sans copier-coller ni presse-papier.
-        """
-        if self.path.split('?')[0] != '/_review':
-            self.send_error(404, 'Seul /_review accepte POST')
-            return
-
-        length = int(self.headers.get('Content-Length') or 0)
-        if length <= 0 or length > MAX_REVIEW_BYTES:
-            self.send_error(413, 'Charge utile absente ou trop grande')
-            return
-
-        try:
-            payload = json.loads(self.rfile.read(length).decode('utf-8'))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            self.send_error(400, f'JSON invalide : {exc}')
-            return
-
-        payload.setdefault('ts', datetime.datetime.now().isoformat(timespec='seconds'))
-        os.makedirs(REVIEWS, exist_ok=True)
-        # Journal append-only : l'historique des décisions se relit dans
-        # l'ordre, et une relecture ultérieure n'efface pas la précédente.
-        with open(JOURNAL, 'a', encoding='utf-8') as fp:
-            fp.write(json.dumps(payload, ensure_ascii=False) + '\n')
-
-        verdict = payload.get('verdict', '?')
-        generateur = payload.get('generateur', '?')
-        signalements = len(payload.get('signalements') or [])
-        print(f'  ▸ verdict « {verdict} » sur {generateur}'
-              + (f' — {signalements} signalement(s)' if signalements else ''))
-
-        body = json.dumps({'ok': True, 'fichier': 'reviews/journal.jsonl'}).encode('utf-8')
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
 
 
 def main():

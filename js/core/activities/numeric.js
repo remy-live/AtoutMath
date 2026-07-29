@@ -136,6 +136,8 @@ export function mount(container, session, opts = {}) {
     renderNext();
 
     return {
+        showNext: renderNext,
+        showPrevious() { if (session.rewind()) renderNext(); },
         destroy() {
             destroyed = true;
             container.onkeydown = null;

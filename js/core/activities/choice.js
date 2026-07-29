@@ -37,8 +37,11 @@ export function mount(container, session, opts = {}) {
 
     function render(item) {
         const choices = item.choices || [];
+        // « 100 000 » ne tient pas dans une bulle prévue pour « 42 ». On adapte
+        // la taille du texte à la longueur du contenu plutôt que de le laisser
+        // déborder ou se couper.
         const itemsHtml = choices.map((c, i) => `
-            <div class="${variant.itemClass}" role="button" tabindex="0"
+            <div class="${variant.itemClass} ${lengthClass(c.label)}" role="button" tabindex="0"
                  data-idx="${i}" data-val="${escapeAttr(c.value)}">${c.label}</div>`).join('');
 
         const wrapped = variant.containerClass
@@ -127,6 +130,10 @@ export function mount(container, session, opts = {}) {
     renderNext();
 
     return {
+        // Passer d'une question à l'autre sans répondre : utilisé par le
+        // chronomètre par question et par la navigation du professeur.
+        showNext: renderNext,
+        showPrevious() { if (session.rewind()) renderNext(); },
         destroy() {
             destroyed = true;
             container.innerHTML = '';
@@ -260,4 +267,13 @@ export function wireHint(container, session) {
 
 function escapeAttr(v) {
     return String(v).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/** Classe de taille selon la longueur du libellé (balises HTML exclues). */
+function lengthClass(label) {
+    const n = String(label).replace(/<[^>]*>/g, '').replace(/\s/g, '').length;
+    if (n >= 8) return 'choice--xxl';
+    if (n >= 6) return 'choice--xl';
+    if (n >= 4) return 'choice--l';
+    return '';
 }

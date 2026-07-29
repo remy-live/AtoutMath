@@ -4,110 +4,6 @@
    les styles des nouvelles briques dans les feuilles existantes.
    ============================================================ */
 
-/* --- Atelier de relecture (outil d'auteur) ------------------
-   Dense et compact : le but est de balayer une dizaine de questions d'un
-   regard, pas de les contempler une à une. */
-
-#atelier-view {
-    display: none; position: fixed; inset: 0; z-index: 100002;
-    flex-direction: column; background: var(--bg-app); overflow-y: auto;
-    padding: 0 0 24px;
-}
-.atl-header {
-    position: sticky; top: 0; z-index: 2;
-    padding: 18px 28px 12px; background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-}
-.atl-title { margin: 0; font-size: 1.35rem; color: var(--text-main); }
-.atl-subtitle { margin: 2px 0 0; color: var(--text-muted); font-size: .9rem; }
-#btn-close-atelier { position: absolute; top: 16px; right: 22px; font-size: 1.8rem; }
-
-.atl-controls { padding: 16px 28px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
-.atl-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-.atl-field { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
-.atl-field > span { font-size: .78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
-.atl-field--sm { min-width: 110px; }
-.atl-field--wide { min-width: 100%; }
-.atl-params { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
-
-.atl-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: .84rem; color: var(--text-muted); }
-.atl-meta b { color: var(--primary); font-family: ui-monospace, monospace; }
-.atl-uses { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.atl-warn { color: var(--warning); font-weight: 700; }
-
-.atl-sheet {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px; padding: 20px 28px;
-    /* La barre de verdict est collée en bas : sans cette réserve, elle
-       recouvrait la fin des dernières cartes. */
-    padding-bottom: 260px;
-}
-.atl-card {
-    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px;
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
-    /* Une carte amenée à l'écran doit s'arrêter au-dessus de la barre de
-       verdict, pas dessous. */
-    scroll-margin-bottom: 240px;
-}
-.atl-card--error { border-color: var(--danger); }
-.atl-erreur { color: var(--danger); font-weight: 600; }
-
-.atl-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .78rem; }
-.atl-num {
-    width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: #fff;
-    display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;
-}
-.atl-skill { font-weight: 700; color: var(--text-main); }
-.atl-diff { color: var(--warning); letter-spacing: 1px; }
-.atl-seed { margin-left: auto; font-family: ui-monospace, monospace; color: var(--text-muted); }
-
-/* L'énoncé est rendu tel que l'élève le verra : c'est le seul moyen de
-   repérer une figure illisible ou un texte qui déborde. */
-.atl-render {
-    background: var(--bg-app); border: 1px dashed var(--border); border-radius: 10px;
-    padding: 12px; display: flex; flex-direction: column; align-items: center;
-    overflow: hidden;
-}
-.atl-render .game-question { font-size: 1.25rem; margin-bottom: 0; }
-.atl-render .figure-wrap { width: min(240px, 100%); margin: 8px auto 0; }
-.atl-render .fig-svg, .atl-render .rep-svg, .atl-render .egy-svg { max-height: 130px; }
-.atl-render .compare-line { font-size: 1.4rem; margin-bottom: 0; }
-.atl-render .pytha-table { transform: scale(.55); transform-origin: top center; margin-bottom: -120px; }
-
-.atl-block { display: flex; flex-direction: column; gap: 4px; }
-.atl-label { font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.atl-answer { font-weight: 800; color: var(--success); font-size: 1.05rem; }
-.atl-expl { font-size: .88rem; color: var(--text-main); line-height: 1.4; }
-
-.atl-choices { list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: .86rem; }
-.atl-choices li { display: flex; flex-direction: column; gap: 1px; }
-.atl-choice-val { font-weight: 700; }
-.atl-ok .atl-choice-val { color: var(--success); }
-.atl-ko .atl-choice-val { color: var(--danger); }
-.atl-why { color: var(--text-muted); font-size: .8rem; line-height: 1.35; padding-left: 16px; }
-.atl-why--absent { color: var(--warning); font-style: italic; }
-
-.atl-hints { margin-left: 18px; font-size: .84rem; color: var(--text-main); line-height: 1.45; }
-.atl-card-actions { display: flex; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
-
-.atl-verdict {
-    position: sticky; bottom: 0; padding: 16px 28px;
-    background: var(--bg-panel); border-top: 1px solid var(--border);
-    display: flex; flex-direction: column; gap: 12px;
-}
-.atl-flags { font-size: .85rem; color: var(--text-main); }
-.atl-flags ul { margin-left: 20px; }
-.atl-flags code { font-family: ui-monospace, monospace; color: var(--primary); }
-.atl-verdict-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-.atl-verdict button {
-    padding: 12px 26px; border-radius: 12px; border: none; color: #fff;
-    font-size: 1rem; font-weight: 700; cursor: pointer; transition: filter .15s;
-}
-.atl-verdict button:hover { filter: brightness(1.08); }
-.atl-verdict--ok { background: var(--success); }
-.atl-verdict--test { background: var(--warning); }
-.atl-verdict--ko { background: var(--danger); }
-
 /* --- Retour immédiat : correction et indice -----------------
    Ces cartes attendent une action de l'élève. Elles sont donc traitées comme
    un vrai dialogue : voile derrière, bouton clairement identifiable, focus
@@ -190,6 +86,24 @@
 .fb-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
 @keyframes fbFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Propositions longues -----------------------------------
+   Les bulles font 110 px pour un texte de 2 caractères. « 100 000 » y était
+   coupé sur deux lignes et débordait du cercle. On réduit le texte et on
+   élargit la bulle en capsule quand le contenu l'exige — plutôt que de
+   rapetisser tout le monde pour le pire cas. */
+
+.bubble.choice--l { font-size: 1.7rem; }
+.bubble.choice--xl { font-size: 1.35rem; width: auto; min-width: 110px; padding: 0 18px; border-radius: 56px; }
+.bubble.choice--xxl { font-size: 1.15rem; width: auto; min-width: 110px; padding: 0 16px; border-radius: 56px; }
+
+.device-simulator .bubble.choice--l { font-size: 1.3rem; }
+.device-simulator .bubble.choice--xl { font-size: 1.05rem; min-width: 80px; padding: 0 14px; }
+.device-simulator .bubble.choice--xxl { font-size: .92rem; min-width: 80px; padding: 0 12px; }
+
+.missing-cell.choice--l, .prio-btn.choice--l { font-size: .95em; }
+.missing-cell.choice--xl, .prio-btn.choice--xl { font-size: .85em; }
+.missing-cell.choice--xxl, .prio-btn.choice--xxl { font-size: .75em; }
 
 /* --- Aides graduées ---------------------------------------- */
 
@@ -368,7 +282,13 @@
     overflow-y: auto !important;
     overflow-x: hidden !important;
     justify-content: safe center;
+    transition: padding-bottom .22s ease;
 }
+
+/* Pendant qu'une correction est affichée, on réserve sa hauteur : le contenu
+   centré remonte au lieu d'être recouvert. On ne comprend pas une correction
+   si la question a disparu derrière. */
+.canvas-area--fb { padding-bottom: calc(var(--fb-reserve, 0px) + 34px); }
 
 /* Un énoncé suivi d'une figure ou d'un pavé n'a pas besoin des 40 px de
    respiration prévus pour une question seule. */
@@ -619,26 +539,70 @@
     flex: 1 1 100%; margin-right: 0; margin-top: 0; font-size: 1.05rem;
 }
 
+/* En cadre étroit, l'en-tête porte désormais titre, progression, chronomètre
+   et deux navigations : on laisse les commandes passer à la ligne et on
+   réduit les libellés au strict nécessaire, plutôt que de tout rogner. */
+.device-simulator .game-header-actions,
+.tablet-simulator .game-header-actions {
+    flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; margin-left: auto;
+}
+.device-simulator .timer-scope,
+.tablet-simulator .timer-scope { display: none; }
+.device-simulator .preview-step-nav--question .preview-step-label,
+.tablet-simulator .preview-step-nav--question .preview-step-label { display: none; }
+.device-simulator #game-timer,
+.tablet-simulator #game-timer { width: 38px; height: 38px; }
+.device-simulator .timer-value,
+.tablet-simulator .timer-value { font-size: .82rem; }
+
 .preview-step-nav {
     display: flex; align-items: center; gap: 4px;
     padding: 3px 6px; margin-right: 6px;
     background: var(--bg-hover); border: 1px solid var(--border); border-radius: 999px;
 }
 .preview-step-nav[hidden] { display: none; }
+/* La navigation de questions se distingue de celle des activités : mêmes
+   flèches doublées que « piste précédente / suivante ». */
+.preview-step-nav--question { background: var(--tag-dom-bg); border-color: var(--tag-dom-txt); }
+.preview-step-nav--question .preview-step-label {
+    min-width: 0; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--tag-dom-txt);
+}
 .preview-step-label {
     font-size: .85rem; font-weight: 700; color: var(--text-muted);
     min-width: 44px; text-align: center; font-variant-numeric: tabular-nums;
 }
 .preview-step-nav .game-icon-btn:disabled { opacity: .3; cursor: not-allowed; }
 
-#game-timer-container {
-    position: fixed; top: 0; left: 0; width: 100%; height: 6px;
-    background: rgba(239, 68, 68, .2); z-index: 99999; pointer-events: none; display: none;
+/* Chronomètre de l'en-tête : anneau qui se vide + secondes restantes.
+   L'ancien filet de 6 px collé en haut de la fenêtre passait inaperçu. */
+#game-timer {
+    position: relative; flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px;
+    width: 46px; height: 46px; margin-right: 4px;
 }
-#game-timer-bar {
-    width: 100%; height: 100%; background: var(--danger);
-    transition: width 1s linear; box-shadow: 0 0 10px var(--danger);
+#game-timer[hidden] { display: none; }
+
+.timer-ring { position: absolute; inset: 0; transform: rotate(-90deg); }
+.timer-ring-track { fill: none; stroke: var(--border); stroke-width: 3; }
+.timer-ring-fill {
+    fill: none; stroke: var(--primary); stroke-width: 3; stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke .3s;
 }
+.timer-value {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; font-weight: 800; color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+.timer-scope {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    font-size: .6rem; font-weight: 700; color: var(--text-muted); white-space: nowrap;
+}
+/* Cinq dernières secondes : l'anneau et le nombre passent au rouge et
+   battent — un signal, pas une surprise. */
+.timer--urgent .timer-ring-fill { stroke: var(--danger); }
+.timer--urgent .timer-value { color: var(--danger); animation: timerPulse .5s ease-in-out infinite; }
+@keyframes timerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
 
 /* --- Bilan (fin de parcours, profil, analyse prof) --------- */
 
@@ -888,16 +852,67 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 /* --- Formulaires de configuration -------------------------- */
 
-.cfg-header { font-weight: 700; font-size: 1.1rem; color: var(--primary); margin-bottom: 15px; }
-.cfg-field { margin-bottom: 16px; }
-.cfg-label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-main); }
-.cfg-input {
-    width: 100%; padding: 10px 14px; border-radius: 12px;
-    border: 2px solid var(--border); background: var(--bg-app);
-    font-size: 1.05rem; color: var(--text-main); font-family: inherit; outline: none;
+.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 14px; }
+
+/* Libellé et champ sur une même ligne : un panneau de réglages doit se lire
+   d'un coup d'œil, pas se dérouler sur trois écrans. Les libellés sont courts,
+   les explications passent dans l'infobulle du « ? ». */
+.cfg-field {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 6px 14px; margin-bottom: 10px;
 }
+.cfg-field--wide { grid-template-columns: 1fr; }
+.cfg-label {
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 600; color: var(--text-main); font-size: .95rem; line-height: 1.3;
+}
+.cfg-input {
+    width: 100%; padding: 8px 12px; border-radius: 10px;
+    border: 2px solid var(--border); background: var(--bg-app);
+    font-size: 1rem; color: var(--text-main); font-family: inherit; outline: none;
+}
+.cfg-input--num { width: 88px; text-align: center; font-variant-numeric: tabular-nums; }
+.cfg-field--wide .cfg-input { width: 100%; }
 .cfg-input:focus { border-color: var(--primary); }
 .cfg-help { font-size: .82rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+
+/* En colonne étroite (téléphone, panneau replié), on repasse en empilé et
+   aligné à gauche — l'empilement centré était illisible. */
+@media (max-width: 520px) {
+    .cfg-field { grid-template-columns: 1fr; justify-items: start; }
+    .cfg-input--num { width: 100%; text-align: left; }
+    #student-config-content, #builder-config-content, #builder-policy-content { text-align: left; }
+}
+
+/* --- Infobulle « ? » ---------------------------------------------------- */
+
+.cfg-info {
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--text-muted); background: transparent;
+    color: var(--text-muted); font-size: .72rem; font-weight: 800;
+    line-height: 1; cursor: help; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative; transition: .15s;
+}
+.cfg-info:hover, .cfg-info--open { border-color: var(--primary); color: var(--primary); }
+
+.cfg-info::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: 260px; padding: 9px 12px;
+    background: #0f172a; color: #f8fafc; border-radius: 10px;
+    font-size: .8rem; font-weight: 500; line-height: 1.45; text-align: left;
+    white-space: normal; box-shadow: 0 8px 22px rgba(15, 23, 42, .3);
+    opacity: 0; visibility: hidden; transition: opacity .15s; z-index: 50;
+    pointer-events: none;
+}
+.cfg-info:hover::after, .cfg-info--open::after, .cfg-info:focus-visible::after {
+    opacity: 1; visibility: visible;
+}
+/* Près du bord droit du panneau, l'infobulle déborderait : on la recale. */
+.cfg-group .cfg-info::after, .cfg-field:last-child .cfg-info::after {
+    left: auto; right: -8px; transform: none;
+}
 .cfg-empty { font-size: .9rem; color: var(--text-muted); font-style: italic; }
 .cfg-chips { display: flex; flex-wrap: wrap; gap: 9px; }
 .cfg-chip {

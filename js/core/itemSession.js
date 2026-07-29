@@ -45,6 +45,9 @@ export class ItemSession {
         this.answered = 0;
         this.correctCount = 0;
         this.locked = false;
+        // Graines des questions déjà posées, dans l'ordre : permet de revenir
+        // en arrière et de rejouer une question à l'identique.
+        this.history = [];
         this._listeners = { item: [], result: [], finish: [] };
     }
 
@@ -59,10 +62,24 @@ export class ItemSession {
         });
     }
 
+    /**
+     * Revient à la question précédente. Les graines sont conservées, donc la
+     * question est régénérée à l'identique — c'est ce qui permet au professeur
+     * de revenir en arrière pendant un test.
+     * @returns {boolean} false s'il n'y a pas de question antérieure
+     */
+    rewind() {
+        if (this.history.length < 2) return false;
+        this.history.pop();                    // la question courante
+        this.forceSeed = this.history.pop();   // celle d'avant, rejouée telle quelle
+        return true;
+    }
+
     /** Génère (ou régénère) la question suivante. */
     next() {
         const seed = this.forceSeed || randomSeed();
         this.forceSeed = null; // le rejeu ne vaut que pour la première question
+        this.history.push(seed);
         const rng = makeRng(seed);
 
         let item = this.generator.generate(this.params, {

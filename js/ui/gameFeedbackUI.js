@@ -125,6 +125,16 @@ function build(html, variant, blocking = false) {
 
     host.appendChild(card);
     current = card;
+
+    // La carte ne doit pas masquer la question : on réserve sa hauteur en bas
+    // du plateau, ce qui remonte le contenu centré au lieu de le recouvrir.
+    if (blocking) {
+        requestAnimationFrame(() => {
+            const h = card.getBoundingClientRect().height;
+            host.style.setProperty('--fb-reserve', `${Math.round(h)}px`);
+            host.classList.add('canvas-area--fb');
+        });
+    }
     return card;
 }
 
@@ -132,6 +142,13 @@ function close(card) {
     if (!card || card._closing) return;
     card._closing = true;
     if (current === card) current = null;
+
+    const host = card.parentElement;
+    if (host && host.classList.contains('canvas-area--fb')) {
+        host.classList.remove('canvas-area--fb');
+        host.style.removeProperty('--fb-reserve');
+    }
+
     card.classList.add('fb-card--leaving');
     if (card._veil) card._veil.classList.add('fb-veil--leaving');
     setTimeout(() => {

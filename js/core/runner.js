@@ -84,12 +84,33 @@ export class Runner {
 
     setupStepNavigation() {
         const nav = document.getElementById('preview-step-nav');
-        if (!nav) return;
-        nav.hidden = !this.allowStepNavigation;
+        const navQ = document.getElementById('preview-question-nav');
+        if (nav) nav.hidden = !this.allowStepNavigation;
+        if (navQ) navQ.hidden = !this.allowStepNavigation;
         if (!this.allowStepNavigation) return;
 
         document.getElementById('btn-preview-prev').onclick = () => this.goToStep(this.index - 1);
         document.getElementById('btn-preview-next').onclick = () => this.goToStep(this.index + 1);
+
+        // Passer d'une question à l'autre sans répondre : indispensable pour
+        // relire une série sans devoir la jouer. Rien n'est enregistré.
+        document.getElementById('btn-preview-next-q').onclick = () => this.goToQuestion(1);
+        document.getElementById('btn-preview-prev-q').onclick = () => this.goToQuestion(-1);
+
+        this.updateStepNavigation();
+    }
+
+    /**
+     * @param {number} sens +1 question suivante, -1 précédente
+     */
+    goToQuestion(sens) {
+        if (!this.allowStepNavigation || !this.handle) return;
+        if (sens > 0 && this.handle.showNext) this.handle.showNext();
+        else if (sens < 0 && this.handle.showPrevious) this.handle.showPrevious();
+        // Le chrono par question repart avec la nouvelle question.
+        if (this.currentTimeLimit && this.timerScope === 'question') {
+            this.runTimerCycle(this.currentTimeLimit);
+        }
         this.updateStepNavigation();
     }
 
@@ -104,6 +125,15 @@ export class Runner {
         label.textContent = `${position + 1} / ${this.steps.length}`;
         prev.disabled = position <= 0;
         next.disabled = position >= this.steps.length - 1;
+
+        // Un jeu autonome gère lui-même son contenu : on ne peut pas y
+        // naviguer question par question.
+        const navQ = document.getElementById('preview-question-nav');
+        if (navQ) {
+            navQ.hidden = !this.session;
+            const prevQ = document.getElementById('btn-preview-prev-q');
+            if (prevQ) prevQ.disabled = !this.session || this.session.history.length < 2;
+        }
     }
 
     /**
@@ -120,8 +150,10 @@ export class Runner {
     }
 
     hideStepNavigation() {
-        const nav = document.getElementById('preview-step-nav');
-        if (nav) nav.hidden = true;
+        ['preview-step-nav', 'preview-question-nav'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.hidden = true;
+        });
     }
 
     showLayer() {
@@ -183,7 +215,10 @@ export class Runner {
         state.activeExo = step.exercise;
         this.updateProgress();
         this.updateStepNavigation();
-        this.startTimer(step.timeLimit || step.params.timeLimit || null);
+        this.startTimer(
+            step.timeLimit || step.params.timeLimit || null,
+            step.timerScope || 'etape'
+        );
 
         const activity = getActivity(step.exercise.activityId);
         if (!activity) {
@@ -226,6 +261,9 @@ export class Runner {
         });
 
         this.handle = mod.mount(this.canvas, this.session, activity.mountOptions || {});
+        // La session n'existe qu'ici : c'est seulement maintenant qu'on sait
+        // si la navigation question par question est possible.
+        this.updateStepNavigation();
     }
 
     /**
@@ -247,9 +285,14 @@ export class Runner {
 
         this.updateProgress();
 
-        // Fin d'étape au nombre de questions, sauf si un chronomètre pilote.
-        if (!this.currentTimeLimit && this.itemsResolved.size >= this.step.nbItems) {
+        // Un chrono « par question » ne pilote pas la fin d'étape : c'est
+        // toujours le nombre de questions qui l'arrête.
+        const chronoPiloteLEtape = this.currentTimeLimit && this.timerScope !== 'question';
+        if (!chronoPiloteLEtape && this.itemsResolved.size >= this.step.nbItems) {
             regTimeout(() => this.endStep(), 1500);
+        } else if (resolved && this.timerScope === 'question') {
+            // Nouvelle question : le compte à rebours repart.
+            this.runTimerCycle(this.currentTimeLimit);
         }
     }
 
@@ -317,35 +360,86 @@ export class Runner {
     }
 
     // --- Chronomètre --------------------------------------------------------
+    //
+    // Deux portées possibles :
+    //   'etape'    un seul compte à rebours pour l'ensemble des questions ;
+    //   'question' il repart à chaque question, et une question laissée sans
+    //              réponse est comptée fausse — c'est un exercice de rapidité,
+    //              pas une élimination.
+    //
+    // Il s'affiche dans l'en-tête, à côté de la progression : un filet de 6 px
+    // collé au bord de la fenêtre ne se voit pas.
 
-    startTimer(seconds) {
+    startTimer(seconds, scope = 'etape') {
         this.stopTimer();
         this.currentTimeLimit = seconds || null;
-        const bar = ensureTimerBar();
-        if (!seconds) { bar.container.style.display = 'none'; return; }
+        this.timerScope = scope;
 
+        const box = document.getElementById('game-timer');
+        if (!box) return;
+        if (!seconds) { box.hidden = true; return; }
+
+        box.hidden = false;
+        const label = document.getElementById('game-timer-scope');
+        if (label) label.textContent = scope === 'question' ? 'par question' : '';
+
+        this.runTimerCycle(seconds);
+    }
+
+    /** Lance (ou relance) un compte à rebours de `seconds`. */
+    runTimerCycle(seconds) {
+        if (this.timerInterval) clearInterval(this.timerInterval);
         this.timeLeft = seconds;
-        bar.container.style.display = 'block';
-        bar.fill.style.transition = 'none';
-        bar.fill.style.width = '100%';
-        void bar.fill.offsetWidth;
-        bar.fill.style.transition = 'width 1s linear';
+        this.paintTimer(seconds);
 
         this.timerInterval = setInterval(() => {
             this.timeLeft--;
-            bar.fill.style.width = `${Math.max(0, (this.timeLeft / seconds) * 100)}%`;
+            this.paintTimer(seconds);
             if (this.timeLeft <= 0) {
-                this.stopTimer();
-                this.endStep();
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+                if (this.timerScope === 'question') this.onQuestionTimeout();
+                else this.endStep();
             }
         }, 1000);
+    }
+
+    paintTimer(total) {
+        const value = document.getElementById('game-timer-value');
+        const fill = document.querySelector('#game-timer .timer-ring-fill');
+        const box = document.getElementById('game-timer');
+        if (!value || !fill || !box) return;
+
+        const reste = Math.max(0, this.timeLeft);
+        value.textContent = reste;
+        const circonference = 2 * Math.PI * 15.5;
+        fill.style.strokeDasharray = String(circonference);
+        fill.style.strokeDashoffset = String(circonference * (1 - reste / total));
+        box.classList.toggle('timer--urgent', reste <= 5);
+    }
+
+    /**
+     * Temps écoulé sur une question : elle est comptée fausse, la correction
+     * s'affiche, puis on passe à la suivante. L'étape continue.
+     */
+    onQuestionTimeout() {
+        if (!this.session || !this.session.current) return;
+        const result = this.session.submit(null, {});
+        const suite = () => {
+            if (!this.step) return;
+            if (this.itemsResolved.size >= this.step.nbItems) return this.endStep();
+            if (this.handle && this.handle.showNext) this.handle.showNext();
+            this.runTimerCycle(this.currentTimeLimit);
+        };
+        if (result && result.dismissed) result.dismissed.then(suite);
+        else suite();
     }
 
     stopTimer() {
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.timerInterval = null;
-        const bar = document.getElementById('game-timer-container');
-        if (bar) bar.style.display = 'none';
+        const box = document.getElementById('game-timer');
+        if (box) box.hidden = true;
     }
 
     // --- Progression --------------------------------------------------------
@@ -438,17 +532,6 @@ export class Runner {
         if (this.onExit) return this.onExit();
         import('../ui/navigation.js').then(m => m.setTopNavMode(this.isStudentPath ? 'path' : 'grid'));
     }
-}
-
-function ensureTimerBar() {
-    let container = document.getElementById('game-timer-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'game-timer-container';
-        container.innerHTML = '<div id="game-timer-bar"></div>';
-        document.body.appendChild(container);
-    }
-    return { container, fill: document.getElementById('game-timer-bar') };
 }
 
 function escapeHtml(s) {
