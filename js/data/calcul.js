@@ -134,13 +134,33 @@ export const calculExercises = [
     {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
         activityId: 'course',
-        internalStudentConfig: true,
+        // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)
+        // étaient définis dans le schéma mais inatteignables — ni l'élève ni le
+        // professeur ne pouvaient les changer, le jeu démarrait toujours sur
+        // trois voies de tables de multiplication.
         params: { mode: 'survival', lanes: 3, speed: 3, operations: ['mul'] },
         paramSchema: [
-            { id: 'mode', type: 'select', label: 'Mode de jeu', options: ['survival', 'chrono', 'sprint'], default: 'survival' },
-            { id: 'lanes', type: 'number', label: 'Nombre de voies', default: 3 },
-            { id: 'speed', type: 'number', label: 'Vitesse', default: 3 },
-            { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+9', 'mul', 'c10', 'div', 'rel', 'dec'], default: ['mul'] }
+            {
+                id: 'mode', type: 'select', label: 'Mode de jeu', default: 'survival',
+                options: [
+                    { value: 'survival', label: 'Survie (3 vies)' },
+                    { value: 'chrono', label: 'Contre la montre (60 s)' },
+                    { value: 'sprint', label: 'Sprint (20 questions)' }
+                ]
+            },
+            { id: 'lanes', type: 'number', label: 'Nombre de voies', default: 3, min: 2, max: 5 },
+            { id: 'speed', type: 'number', label: 'Vitesse de départ', default: 3, min: 2, max: 8 },
+            {
+                id: 'operations', type: 'multiselect', label: 'Types de calcul', default: ['mul'],
+                options: [
+                    { value: 'mul', label: 'Tables de multiplication' },
+                    { value: 'div', label: 'Divisions' },
+                    { value: '+9', label: 'Ajouter / retirer 9' },
+                    { value: 'c10', label: 'Compléments à 10' },
+                    { value: 'rel', label: 'Nombres relatifs' },
+                    { value: 'dec', label: 'Multiplier par 10 ou 0,1' }
+                ]
+            }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Dirige le véhicule vers la bonne réponse pour continuer la course !"

@@ -11,6 +11,17 @@ import { MODES, evaluationPolicy, defaultPolicy, resolvePolicy } from '../core/p
 // --- Champs -----------------------------------------------------------------
 
 /**
+ * Une option de schéma est soit une valeur brute, soit `{ value, label }`.
+ *
+ * Sans libellé, la case à cocher affichait le code interne : un élève lisait
+ * « mul », « c10 », « rel » au lieu de « Tables », « Compléments à 10 »,
+ * « Relatifs ». Le code, lui, doit rester tel quel — il pilote la génération
+ * des questions et se retrouve dans les parcours enregistrés.
+ */
+function valeurOption(opt) { return (opt && typeof opt === 'object') ? opt.value : opt; }
+function libelleOption(opt) { return (opt && typeof opt === 'object') ? opt.label : String(opt); }
+
+/**
  * Un réglage = un libellé court et son contrôle, côte à côte quand la largeur
  * le permet. Les explications passent dans une infobulle sur « ? » plutôt que
  * sous le champ : trois paragraphes d'aide empilés rendaient le panneau
@@ -23,17 +34,21 @@ function fieldHtml(param, value, options = {}) {
 
     if (param.type === 'multiselect') {
         control = `<div class="cfg-chips">` + param.options.map(opt => {
-            const checked = Array.isArray(value) && value.includes(opt) ? 'checked' : '';
+            const v = valeurOption(opt);
+            const checked = Array.isArray(value) && value.includes(v) ? 'checked' : '';
             return `<label class="cfg-chip">
-                <input type="checkbox" data-param="${param.id}" data-kind="multiselect" value="${opt}" ${checked}>
-                <span>${opt}</span></label>`;
+                <input type="checkbox" data-param="${param.id}" data-kind="multiselect" value="${v}" ${checked}>
+                <span>${libelleOption(opt)}</span></label>`;
         }).join('') + `</div>`;
     } else if (param.type === 'number') {
         control = `<input type="number" id="${id}" class="cfg-input cfg-input--num" data-param="${param.id}" data-kind="number"
             value="${value}" ${param.min !== undefined ? `min="${param.min}"` : ''} ${param.max !== undefined ? `max="${param.max}"` : ''}>`;
     } else if (param.type === 'select') {
         control = `<select id="${id}" class="cfg-input" data-param="${param.id}" data-kind="select">` +
-            param.options.map(o => `<option value="${o}" ${String(value) === String(o) ? 'selected' : ''}>${o}</option>`).join('') +
+            param.options.map(o => {
+                const v = valeurOption(o);
+                return `<option value="${v}" ${String(value) === String(v) ? 'selected' : ''}>${libelleOption(o)}</option>`;
+            }).join('') +
             `</select>`;
     } else {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
@@ -137,12 +152,13 @@ function readParams(root, schema) {
     schema.forEach(param => {
         if (param.type === 'multiselect') {
             const boxes = [...root.querySelectorAll(`[data-param="${param.id}"][data-kind="multiselect"]`)];
-            const isNum = typeof param.options[0] === 'number';
+            const isNum = typeof valeurOption(param.options[0]) === 'number';
             out[param.id] = boxes.filter(b => b.checked).map(b => (isNum ? Number(b.value) : b.value));
         } else {
             const el = root.querySelector(`[data-param="${param.id}"]`);
             if (!el) return;
-            const isNum = param.type === 'number' || (param.type === 'select' && typeof param.options[0] === 'number');
+            const isNum = param.type === 'number'
+                || (param.type === 'select' && typeof valeurOption(param.options[0]) === 'number');
             out[param.id] = isNum ? Number(el.value) : el.value;
         }
     });

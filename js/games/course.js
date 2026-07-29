@@ -802,7 +802,11 @@ class Course extends BaseGame {
         // Jamais sur la voie de la bonne réponse : on ne punit pas un élève qui
         // a juste, et un obstacle infranchissable serait exactement cela.
         const risque = Math.min(0.55, (this.biome - 1) * 0.14);
-        if(this.biome >= 1 && Math.random() < risque && this.laneCount > 1) {
+        // Trois voies au minimum : à deux, la seule voie disponible pour le
+        // plot est celle de la mauvaise réponse. L'élève qui se trompe serait
+        // puni deux fois, celui qui a juste ne le croiserait jamais — dans les
+        // deux cas l'obstacle ne veut plus rien dire.
+        if(this.biome >= 1 && this.laneCount >= 3 && Math.random() < risque) {
             let voie = Math.floor(Math.random()*this.laneCount);
             if(voie === correctIdx) voie = (voie + 1) % this.laneCount;
             this.objects.push({ lane: voie, y: startY + 480, type: 'obstacle', hit: false });
@@ -1147,7 +1151,13 @@ class Course extends BaseGame {
         c.strokeStyle = lineC; c.lineWidth=4; c.setLineDash([40,30]); 
         c.lineDashOffset=-Date.now()*(this.currentSpeed/30)%70;
         c.beginPath();
-        for(let i=1; i<this.laneCount; i++) { c.moveTo(lw*i,0); c.lineTo(lw*i,h); }
+        // Les séparateurs partent du bord de la ROUTE, pas du bord du canevas :
+        // depuis que les bas-côtés existent, la première voie ne commence plus
+        // à zéro, et les pointillés tombaient au milieu des voies.
+        for(let i=1; i<this.laneCount; i++) {
+            const x = bordG + lw * i;
+            c.moveTo(x, 0); c.lineTo(x, h);
+        }
         c.stroke(); c.setLineDash([]);
 
         c.font="bold 28px 'Courier New'"; c.textAlign="center"; c.textBaseline="middle";
