@@ -101,31 +101,30 @@ export function openDemo(exo) {
 // coup, leur vignette est immédiate.
 const DELAI_PREMIERE_IMAGE = 1500;
 
-// `clearEngines()` coupe TOUS les minuteurs. Un gel programmé pour une vignette
-// ne doit donc pas se déclencher après qu'une démonstration a démarré : ce
-// numéro de génération le lui interdit.
-let generationApercu = 0;
-
+// Le gel est INDIVIDUEL : `handle.pause()` n'arrête que ce jeu-là. C'est ce
+// qui permet de monter les vignettes toutes ensemble ; tant que geler
+// signifiait `clearEngines()`, chacune devait attendre la précédente.
 function gelerApres(handle) {
-    const generation = generationApercu;
     return new Promise(resolve => {
         setTimeout(() => {
-            if (generation === generationApercu) clearEngines();
+            if (handle && typeof handle.pause === 'function') handle.pause();
             resolve(handle);
         }, DELAI_PREMIERE_IMAGE);
     });
 }
 
 export function launchPreview(exo, container, params = null, opts = {}) {
-    clearEngines();
-    generationApercu++;
+    const frozen = !!opts.frozen;
+    // Une vignette ne coupe pas les minuteurs des autres : elle vit dans son
+    // propre conteneur et sera gelée individuellement. Une démonstration, si :
+    // il n'en joue qu'une à la fois.
+    if (!frozen) clearEngines();
     container.innerHTML = '';
 
     const activity = getActivity(exo.activityId);
     if (!activity) return null;
 
     const effective = { ...(exo.params || {}), ...(params || {}) };
-    const frozen = !!opts.frozen;
 
     return activity.load().then(mod => {
         if (activity.supports.autonomous) {

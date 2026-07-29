@@ -33,6 +33,31 @@ export class BaseGame {
         this.container.innerHTML = '';
     }
 
+    /**
+     * Gèle le jeu SANS effacer son écran — c'est ce qui distingue une vignette
+     * de catalogue d'un `destroy()`.
+     *
+     * Ces jeux ouvrent leurs propres minuteurs : `setInterval` pour la boucle
+     * de démonstration, `requestAnimationFrame` pour l'animation. Ni l'un ni
+     * l'autre ne passent par `regInterval`, donc `clearEngines()` ne les voit
+     * pas : une fois lancées, leurs vignettes tournaient indéfiniment. On coupe
+     * ici ce que la classe de base peut nommer, et les drapeaux d'exécution
+     * suffisent à faire taire le reste — toutes les boucles les testent.
+     */
+    pause() {
+        this.isRunning = false;
+        this.running = false;
+        this.gameRunning = false;
+        this.isDemo = false;
+        // Certaines boucles ne surveillent pas `isRunning` mais leur propre fin
+        // de partie : la déclarer terminée les fait taire aussi.
+        this.isGameOver = true;
+        if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+        ['demoInterval', 'timerId', 'timerInterval', 'spawnInterval'].forEach(cle => {
+            if (this[cle]) { clearInterval(this[cle]); this[cle] = null; }
+        });
+    }
+
     // --- Méthodes abstraites ---
     render() { console.warn('render() non implémenté'); }
     runDemoSequence() { console.warn('runDemoSequence() non implémenté'); }

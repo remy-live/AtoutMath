@@ -208,4 +208,5 @@ class MathMemory extends BaseGame {
 export function engineMathMemory(container, isDemo, params) {
     const game = new MathMemory(container, isDemo, params, 'math-memory');
     game.start();
+    return game;
 }

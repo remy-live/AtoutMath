@@ -74,8 +74,35 @@ class Labyrinthe extends BaseGame {
         `;
     }
 
+    /**
+     * Démonstration.
+     *
+     * Elle se contentait de lancer la partie : le plateau s'affichait, le
+     * chronomètre tournait, et le héros ne bougeait jamais — le mode robot ne
+     * montrait rien du jeu. Le robot prend donc la décision qu'on demande à
+     * l'élève : parmi les quatre cases voisines, choisir celle qui porte la
+     * réponse du calcul affiché.
+     */
     runDemoSequence() {
         this.startGameLoop();
+
+        const VOISINS = [{ dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 0, dy: -1 }];
+
+        const pas = () => {
+            if (this.isGameOver) return;
+            const ici = this.grid[this.playerPos.y][this.playerPos.x];
+            const bonne = VOISINS
+                .map(d => ({ x: this.playerPos.x + d.dx, y: this.playerPos.y + d.dy }))
+                .filter(p => p.x >= 0 && p.x < this.boardSize && p.y >= 0 && p.y < this.boardSize)
+                .find(p => this.grid[p.y][p.x].displayedNumber == ici.correctAnswer);
+            if (bonne) this.tryMoveTo(bonne.x, bonne.y);
+        };
+
+        // Un premier pas rapide pour que la vignette du catalogue montre déjà
+        // un héros en mouvement, puis un rythme lisible.
+        regTimeout(pas, 450);
+        // Rangé dans `demoInterval` : c'est le nom que `pause()` sait couper.
+        this.demoInterval = regInterval(pas, 1100);
     }
 
     startGameLoop() {
@@ -446,8 +473,15 @@ export const engineLabyrinthe = (container, isDemo, params) => {
     game.handleResize = game.handleResize.bind(game);
     window.addEventListener('resize', game.handleResize);
     
-    return () => {
-        window.removeEventListener('resize', game.handleResize);
-        game.cleanup();
+    // Un objet, et non la seule fonction de nettoyage : le moteur doit pouvoir
+    // GELER une vignette — l'arrêter sans effacer son écran — et pas seulement
+    // la démonter. Sous sa forme précédente, ce jeu était le seul dont l'aperçu
+    // continuait de tourner indéfiniment dans le catalogue.
+    return {
+        pause: () => game.pause(),
+        destroy: () => {
+            window.removeEventListener('resize', game.handleResize);
+            if (typeof game.cleanup === 'function') game.cleanup();
+        }
     };
 };

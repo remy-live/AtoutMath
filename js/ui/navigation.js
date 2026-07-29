@@ -431,27 +431,31 @@ function createCard(exo) {
 }
 
 /**
- * Monte les aperçus figés l'un après l'autre.
+ * Monte tous les aperçus figés en même temps.
  *
- * En série et non en parallèle : `launchPreview` coupe les minuteurs en vigueur
- * à chaque appel, donc deux montages simultanés se sabotent l'un l'autre.
+ * En série tant que geler voulait dire `clearEngines()` : chaque vignette
+ * devait attendre que la précédente ait posé son image, soit une seconde et
+ * demie par jeu historique. Le gel étant devenu individuel (`handle.pause()`),
+ * elles se montent ensemble.
  */
 function mountPreviews(container) {
-    const boxes = [...container.querySelectorAll('.card-preview')];
-    const suivant = (i) => {
-        if (i >= boxes.length || !container.isConnected) return;
-        const exo = exercices.find(e => e.id === boxes[i].dataset.preview);
-        const p = exo ? mountFrozen(exo, boxes[i]) : null;
-        (p && p.then ? p : Promise.resolve()).then(() => suivant(i + 1));
-    };
-    suivant(0);
+    container.querySelectorAll('.card-preview').forEach(box => {
+        const exo = exercices.find(e => e.id === box.dataset.preview);
+        if (exo) mountFrozen(exo, box);
+    });
 }
 
 function mountFrozen(exo, box) {
     const stage = box.querySelector('.card-preview-stage') || box;
     prepareStage(box, stage);
+    // Voilée tant que l'image n'est pas posée : ce qu'on promet est une
+    // vignette figée, pas six jeux qui démarrent en même temps sous les yeux.
+    box.classList.add('card-preview--attente');
     const p = launchPreview(exo, stage, null, { frozen: true });
-    return (p && p.then ? p : Promise.resolve()).then(() => fitPreview(box, stage));
+    return (p && p.then ? p : Promise.resolve()).then(() => {
+        fitPreview(box, stage);
+        box.classList.remove('card-preview--attente');
+    });
 }
 
 /**
@@ -466,9 +470,20 @@ function prepareStage(box, stage) {
     const large = box.clientWidth;
     const haut = box.clientHeight;
     if (!large || !haut) return;
-    stage.style.transform = 'none';
     stage.style.width = `${LARGEUR_REF}px`;
     stage.style.height = `${Math.round(haut * LARGEUR_REF / large)}px`;
+    // La réduction est posée TOUT DE SUITE, et non après le montage : les jeux
+    // historiques mettent une seconde et demie à composer leur image, et
+    // pendant ce temps on les voyait tourner à taille réelle, débordant du
+    // cadre. `fitPreview` ne fera plus que resserrer si le contenu s'avère
+    // plus haut que le plateau de référence.
+    appliquerEchelle(stage, large, large / LARGEUR_REF);
+}
+
+function appliquerEchelle(stage, large, k) {
+    stage.style.transformOrigin = 'top left';
+    stage.style.transform =
+        `translateX(${Math.round((large - LARGEUR_REF * k) / 2)}px) scale(${k.toFixed(4)})`;
 }
 
 // Largeur à laquelle la question est COMPOSÉE avant d'être réduite. Composer
@@ -491,7 +506,9 @@ function fitPreview(box, stage) {
     const large = box.clientWidth;
     const haut = box.clientHeight;
     if (!large || !haut) return;
-    prepareStage(box, stage);
+    // Mesure à l'échelle 1 : un contenu déjà réduit donnerait une hauteur
+    // réduite, et la réduction s'appliquerait deux fois.
+    stage.style.transform = 'none';
 
     // `container-type: size` isole la hauteur du contenu : `scrollHeight`
     // renverrait celle du conteneur. On mesure donc les enfants eux-mêmes.
@@ -499,10 +516,7 @@ function fitPreview(box, stage) {
     const bas = [...stage.children]
         .reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom - haut0), 0);
 
-    const k = Math.min(large / LARGEUR_REF, haut / Math.max(bas, 1));
-    stage.style.transformOrigin = 'top left';
-    stage.style.transform =
-        `translateX(${Math.round((large - LARGEUR_REF * k) / 2)}px) scale(${k.toFixed(4)})`;
+    appliquerEchelle(stage, large, Math.min(large / LARGEUR_REF, haut / Math.max(bas, 1)));
 }
 
 function startCardDemo(exo, box) {

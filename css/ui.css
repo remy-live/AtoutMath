@@ -214,3 +214,21 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* La ligne de filtres pousse l'œil à droite : c'est une commande d'affichage,
    pas un filtre de plus, et l'aligner avec les tags les confondrait. */
 #filters-domaine { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: 1; }
+
+/* Vignette en cours de composition : les jeux historiques mettent une seconde
+   et demie à poser leur image, et les voir démarrer les uns après les autres
+   n'est pas ce qu'on promet en affichant un aperçu figé. Voilée, puis
+   révélée d'un coup une fois l'image arrêtée. */
+.card-preview--attente .card-preview-stage { opacity: 0; }
+.card-preview-stage { transition: opacity .2s ease; }
+.card-preview--attente::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(100deg,
+        transparent 20%, rgba(124, 92, 255, .10) 50%, transparent 80%);
+    background-size: 250% 100%;
+    animation: apercuAttente 1.1s ease-in-out infinite;
+}
+@keyframes apercuAttente {
+    from { background-position: 130% 0; }
+    to { background-position: -30% 0; }
+}

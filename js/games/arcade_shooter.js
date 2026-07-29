@@ -463,4 +463,5 @@ class ArcadeShooter extends BaseGame {
 export function engineArcadeShooter(container, isDemo, params) {
     const game = new ArcadeShooter(container, isDemo, params, 'arcade-shooter');
     game.start();
+    return game;
 }
