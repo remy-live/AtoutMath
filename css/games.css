@@ -1,5 +1,9 @@
 /* --- MOTEUR DE JEUX ET CANVAS --- */
-#game-layer { position: absolute; inset: 0; background: var(--bg-app); z-index: 9999; display: none; flex-direction: column; }
+/* La couche de jeu est définie une seule fois, dans layout.css. Une seconde
+   déclaration ici la repassait en `absolute` tout en lui laissant la hauteur
+   `100vh` de l'autre règle : décalée vers le bas par la barre de débogage, elle
+   dépassait alors de sa propre hauteur sous la fenêtre et rognait le bas du
+   pavé numérique sur téléphone. */
 #game-header { min-height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 10px 25px; border-bottom: 1px solid rgba(0,0,0,0.05); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); position: relative; }
 #game-title { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-top: 5px; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 15px; }
 
