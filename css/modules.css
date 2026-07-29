@@ -530,30 +530,52 @@
 #game-header #game-progress-container { flex: 0 1 250px; min-width: 56px; }
 #game-header #game-title { flex: 1 1 auto; min-width: 8ch; }
 
+/* En cadre étroit, l'en-tête porte titre, progression, chronomètre et jusqu'à
+   deux navigations. Laissé en flex avec retour à la ligne, tout se dispersait
+   sur trois rangées et le bouton de fermeture se retrouvait seul. Une grille
+   explicite fixe les rangées : titre et chrono, puis progression, puis les
+   commandes alignées à droite. */
 .device-simulator #game-header,
 .tablet-simulator #game-header {
-    flex-wrap: wrap; row-gap: 6px; min-height: 0; padding: 8px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "titre  chrono"
+        "avance avance"
+        "actions actions";
+    align-items: center; row-gap: 8px; min-height: 0; padding: 10px 14px;
 }
 .device-simulator #game-title,
 .tablet-simulator #game-title {
-    flex: 1 1 100%; margin-right: 0; margin-top: 0; font-size: 1.05rem;
+    grid-area: titre; margin: 0; font-size: 1.05rem;
 }
-
-/* En cadre étroit, l'en-tête porte désormais titre, progression, chronomètre
-   et deux navigations : on laisse les commandes passer à la ligne et on
-   réduit les libellés au strict nécessaire, plutôt que de tout rogner. */
+.device-simulator #game-progress-container,
+.tablet-simulator #game-progress-container { grid-area: avance; max-width: none; margin: 0; }
+.device-simulator #game-timer,
+.tablet-simulator #game-timer { grid-area: chrono; width: 38px; height: 38px; margin: 0; }
 .device-simulator .game-header-actions,
 .tablet-simulator .game-header-actions {
-    flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; margin-left: auto;
+    grid-area: actions; justify-content: flex-end; flex-wrap: nowrap; gap: 6px; margin: 0;
 }
+
+/* Les commandes doivent tenir sur une seule ligne : on retire l'habillage en
+   pastille des navigations et on resserre les boutons. */
 .device-simulator .timer-scope,
 .tablet-simulator .timer-scope { display: none; }
-.device-simulator .preview-step-nav--question .preview-step-label,
-.tablet-simulator .preview-step-nav--question .preview-step-label { display: none; }
-.device-simulator #game-timer,
-.tablet-simulator #game-timer { width: 38px; height: 38px; }
 .device-simulator .timer-value,
 .tablet-simulator .timer-value { font-size: .82rem; }
+.device-simulator .preview-step-nav,
+.tablet-simulator .preview-step-nav {
+    background: transparent; border-color: transparent; padding: 0; margin: 0; gap: 0;
+}
+.device-simulator .preview-step-nav--question .preview-step-label,
+.tablet-simulator .preview-step-nav--question .preview-step-label { display: none; }
+.device-simulator .preview-step-label,
+.tablet-simulator .preview-step-label { min-width: 34px; font-size: .74rem; }
+.device-simulator .game-icon-btn,
+.tablet-simulator .game-icon-btn { width: 32px; height: 32px; }
+.device-simulator .game-icon-btn svg,
+.tablet-simulator .game-icon-btn svg { width: 17px; height: 17px; }
 
 .preview-step-nav {
     display: flex; align-items: center; gap: 4px;
