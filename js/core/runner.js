@@ -249,8 +249,19 @@ export class Runner {
             };
             const fn = mod[activity.legacyExport] || Object.values(mod).find(v => typeof v === 'function');
             this.canvas.innerHTML = '';
-            this.handle = { destroy: () => { this.canvas.innerHTML = ''; } };
-            if (fn) fn(this.canvas, false, { ...step.params, nbQuestions: step.nbItems });
+            const jeu = fn ? fn(this.canvas, false, { ...step.params, nbQuestions: step.nbItems }) : null;
+            // On GARDE l'instance. Le gestionnaire fabriqué ici se contentait
+            // de vider l'écran, et l'instance était jetée : ces jeux ouvrent
+            // leurs propres `setInterval`, qui continuaient donc de tourner
+            // après la sortie — la course rafraîchissait un tableau de bord
+            // effacé, une erreur par seconde jusqu'au rechargement de la page.
+            this.handle = {
+                destroy: () => {
+                    if (jeu && typeof jeu.destroy === 'function') jeu.destroy();
+                    else if (jeu && typeof jeu.pause === 'function') jeu.pause();
+                    this.canvas.innerHTML = '';
+                }
+            };
             return;
         }
 

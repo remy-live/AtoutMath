@@ -29,6 +29,12 @@ export class BaseGame {
     }
 
     destroy() {
+        // Couper AVANT de vider : ces jeux ouvrent des minuteurs bruts que
+        // `isRunning = false` ne suffit pas à faire taire. La course
+        // rafraîchissait son tableau de bord une fois par seconde après la
+        // sortie, cherchant des éléments que `innerHTML = ''` venait
+        // d'effacer — une erreur par seconde, jusqu'au rechargement de la page.
+        this.pause();
         this.isRunning = false;
         this.container.innerHTML = '';
     }
@@ -86,9 +92,22 @@ export class BaseGame {
             expected: details.expected,
             attemptIndex: 0
         });
-        document.dispatchEvent(new CustomEvent('game_feedback', {
-            detail: { kind: 'success', points, element: el }
-        }));
+        // Pas de carte « Bonne réponse ! » ici.
+        //
+        // Ces jeux annoncent TOUS la réussite eux-mêmes, et mieux que ne le
+        // ferait une carte générique : « EXACT ! +40 » dessiné dans le canevas
+        // de la course, la météorite qui explose, les cases de Crush qui
+        // éclatent, la paire du memory qui s'efface. Une seconde annonce
+        // par-dessus se contredit visuellement plus qu'elle ne renforce.
+        //
+        // Deux de ces appels étaient même trompeurs : Tetris signale une
+        // réussite depuis `quitGame()` — on voyait « Bonne réponse ! » en
+        // QUITTANT la partie — et le labyrinthe depuis `nextLevel()`, où rien
+        // ne vient d'être répondu. La tentative, elle, reste enregistrée
+        // ci-dessus : c'est l'affichage qu'on supprime, pas la donnée.
+        //
+        // Les activités modernes ne passent pas par ici : leur retour vient
+        // d'`itemSession`, qui sait de quelle question il parle.
     }
 
     /**
