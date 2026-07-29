@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo 'import { x } from \"./y.js\"; export const z = totallyUndefinedBrokenSyntax\\(;')",
+      "Bash(node --check /tmp/badtest.mjs)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(rm -f /tmp/badtest.mjs)",
+      "Bash(curl -sf http://localhost:8899/index.html)",
+      "Bash(echo \"server-check-exit:$?\")",
+      "Bash(npm ls *)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(python3 -c \"import playwright; print\\('has playwright'\\)\")",
+      "Bash(node -e \"const {chromium} = require\\('playwright'\\); console.log\\('playwright module resolved, chromium executable path:', chromium.executablePath\\(\\)\\);\")",
+      "Bash(CHROME_BIN=\"/Users/remy/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing\"; ls -la \"$CHROME_BIN\")",
+      "Read(//Users/remy/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/**)",
+      "Bash(node test1.js)",
+      "Bash(node test2.js)",
+      "Bash(node --check js/ui/profileUI.js)",
+      "Bash(node test3.js)",
+      "Bash(lsof -ti:8899 -sTCP:LISTEN)",
+      "Bash(xargs -r kill)",
+      "Bash(git rm *)",
+      "Bash(node --test tests/)",
+      "Bash(node --test \"tests/*.test.mjs\")"
+    ],
+    "additionalDirectories": [
+      "/private/tmp"
+    ]
+  }
+}
