@@ -62,25 +62,75 @@ function escapeAttr(s) {
     return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-/**
- * Infobulles : au survol pour la souris, au clic pour le tactile — où le
- * survol n'existe pas.
- */
+// --- Infobulles -------------------------------------------------------------
+//
+// L'infobulle vit dans <body> et non à côté de son bouton : les panneaux qui
+// la contiennent défilent, et un conteneur qui défile découpe tout ce qui en
+// dépasse — le texte se retrouvait tronqué sur la gauche. Positionnée en
+// `fixed` et recalée dans la fenêtre, elle ne peut plus être rognée.
+
+let tipEl = null;
+
+function tipNode() {
+    if (!tipEl) {
+        tipEl = document.createElement('div');
+        tipEl.className = 'cfg-tip';
+        tipEl.setAttribute('role', 'tooltip');
+        document.body.appendChild(tipEl);
+    }
+    return tipEl;
+}
+
+function showTip(btn) {
+    const texte = btn.dataset.tip;
+    if (!texte) return;
+    const el = tipNode();
+    el.textContent = texte;
+    el.classList.add('cfg-tip--on');
+
+    const b = btn.getBoundingClientRect();
+    const t = el.getBoundingClientRect();
+    const marge = 8;
+
+    // Centrée sur le bouton, puis ramenée dans la fenêtre si elle déborde.
+    let left = b.left + b.width / 2 - t.width / 2;
+    left = Math.max(marge, Math.min(left, window.innerWidth - t.width - marge));
+
+    // Au-dessus par défaut ; en dessous s'il n'y a pas la place.
+    let top = b.top - t.height - 10;
+    if (top < marge) top = b.bottom + 10;
+
+    el.style.left = `${Math.round(left)}px`;
+    el.style.top = `${Math.round(top)}px`;
+}
+
+function hideTip() {
+    if (tipEl) tipEl.classList.remove('cfg-tip--on');
+}
+
+/** Survol et focus pour la souris et le clavier, clic pour le tactile. */
 function wireTips(root) {
     root.querySelectorAll('.cfg-info').forEach(btn => {
+        btn.onmouseenter = () => showTip(btn);
+        btn.onmouseleave = hideTip;
+        btn.onfocus = () => showTip(btn);
+        btn.onblur = hideTip;
         btn.onclick = (e) => {
             e.preventDefault();
-            const ouvert = btn.classList.contains('cfg-info--open');
-            root.querySelectorAll('.cfg-info--open').forEach(b => b.classList.remove('cfg-info--open'));
-            btn.classList.toggle('cfg-info--open', !ouvert);
+            e.stopPropagation();
+            const ouverte = tipEl && tipEl.classList.contains('cfg-tip--on') && tipEl._pour === btn;
+            if (ouverte) return hideTip();
+            showTip(btn);
+            tipNode()._pour = btn;
         };
     });
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.cfg-info')) {
-            root.querySelectorAll('.cfg-info--open').forEach(b => b.classList.remove('cfg-info--open'));
-        }
-    });
 }
+
+document.addEventListener('click', (e) => { if (!e.target.closest('.cfg-info')) hideTip(); });
+// Une infobulle flottante ne suit pas son bouton : on la ferme dès que la
+// page bouge sous elle.
+window.addEventListener('scroll', hideTip, true);
+window.addEventListener('resize', hideTip);
 
 function readParams(root, schema) {
     const out = {};

@@ -894,25 +894,20 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: inline-flex; align-items: center; justify-content: center;
     position: relative; transition: .15s;
 }
-.cfg-info:hover, .cfg-info--open { border-color: var(--primary); color: var(--primary); }
+.cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary); }
 
-.cfg-info::after {
-    content: attr(data-tip);
-    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    width: max-content; max-width: 260px; padding: 9px 12px;
+/* Placée dans <body> et en `fixed` : les panneaux qui défilent découpaient
+   l'infobulle quand elle était rendue à l'intérieur. */
+.cfg-tip {
+    position: fixed; top: 0; left: 0; z-index: 100010;
+    max-width: min(300px, calc(100vw - 24px)); padding: 10px 13px;
     background: #0f172a; color: #f8fafc; border-radius: 10px;
-    font-size: .8rem; font-weight: 500; line-height: 1.45; text-align: left;
-    white-space: normal; box-shadow: 0 8px 22px rgba(15, 23, 42, .3);
-    opacity: 0; visibility: hidden; transition: opacity .15s; z-index: 50;
-    pointer-events: none;
+    font-size: .82rem; font-weight: 500; line-height: 1.5; text-align: left;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .34);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .14s;
 }
-.cfg-info:hover::after, .cfg-info--open::after, .cfg-info:focus-visible::after {
-    opacity: 1; visibility: visible;
-}
-/* Près du bord droit du panneau, l'infobulle déborderait : on la recale. */
-.cfg-group .cfg-info::after, .cfg-field:last-child .cfg-info::after {
-    left: auto; right: -8px; transform: none;
-}
+.cfg-tip--on { opacity: 1; visibility: visible; }
 .cfg-empty { font-size: .9rem; color: var(--text-muted); font-style: italic; }
 .cfg-chips { display: flex; flex-wrap: wrap; gap: 9px; }
 .cfg-chip {
