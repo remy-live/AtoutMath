@@ -1,4 +1,4 @@
-// Activité « Mathodu » : la grille à cages.
+// Activité « Mathdoku » : la grille à cages.
 //
 // Nouveau genre de réponse, 'grid' : l'élève ne choisit pas et ne tape pas un
 // nombre, il construit un état complet — la grille remplie — qui est validé
@@ -90,7 +90,7 @@ export function mount(container, session, opts = {}) {
         container.innerHTML = `
             <div class="kenken-layout">
                 <div class="kenken-context">${item.prompt.html}</div>
-                <div class="kk-board" style="--kk-n:${n}" role="group" aria-label="Grille de Mathodu">
+                <div class="kk-board" style="--kk-n:${n}" role="group" aria-label="Grille de Mathdoku">
                     ${cellsHtml.join('')}
                 </div>
                 <div class="kk-palette" aria-label="Chiffres à placer">${jetons.join('')}</div>

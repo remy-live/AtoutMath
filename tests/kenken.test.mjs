@@ -1,4 +1,4 @@
-// Le générateur de Mathodu promet UNE solution : c'est la propriété que ces
+// Le générateur de Mathdoku promet UNE solution : c'est la propriété que ces
 // tests martèlent, sur beaucoup de graines et toutes les configurations,
 // parce qu'un puzzle à deux solutions compte fausse une grille juste.
 

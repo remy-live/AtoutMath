@@ -271,15 +271,48 @@ export function showStudentConfigModal(exo, onStart) {
     const schema = paramSchemaOf(exo);
     const current = { ...(exo.params || {}) };
 
+    // Fiche à imprimer : proposée seulement quand l'exercice s'y prête
+    // (`printable` au catalogue). Elle reprend les réglages choisis dans cette
+    // fenêtre — un parent règle les chiffres et la difficulté, puis imprime.
+    const impression = exo.printable ? `
+        <div class="cfg-print">
+            <span class="cfg-print-label">📄 Travailler sur papier</span>
+            <div class="cfg-print-row">
+                <label for="cfg-print-nb">Grilles</label>
+                <input type="number" id="cfg-print-nb" class="cfg-input cfg-input--num" min="1" max="12" value="6">
+                <button type="button" class="cfg-print-btn" id="btn-print-sheet">Créer la fiche (PDF)</button>
+            </div>
+            <div class="cfg-print-note">Les solutions sont sur une page à part —
+                à garder pour soi ou à donner après.</div>
+        </div>` : '';
+
     content.innerHTML = `
         ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
         <div class="cfg-field">
             <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
             <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="3" max="50" value="${current.nbQuestions || 10}">
-        </div>`;
+        </div>
+        ${impression}`;
 
     wireTips(content);
     modal.style.display = 'flex';
+
+    const btnPrint = document.getElementById('btn-print-sheet');
+    if (btnPrint) {
+        btnPrint.onclick = () => {
+            const nb = intVal('cfg-print-nb', 6);
+            // Les réglages COURANTS de la fenêtre, pas ceux du catalogue : ce
+            // que le parent vient de choisir est ce qu'il veut sur la feuille.
+            const params = { ...current, ...readParams(content, schema) };
+            import('../ui/printSheet.js').then(m => {
+                if (!m.imprimerFiche(exo, params, nb)) {
+                    window.appConfirm('Fiche bloquée',
+                        'Le navigateur a bloqué la fenêtre d\'impression. Autorise les fenêtres surgissantes pour ce site, puis réessaie.',
+                        null);
+                }
+            });
+        };
+    }
 
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btn-student-config-start').onclick = () => {

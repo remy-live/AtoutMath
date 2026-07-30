@@ -132,8 +132,10 @@ export const calculExercises = [
         instruction: "Déplace-toi vers la case contenant la bonne réponse pour atteindre la sortie."
     },
     {
-        id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathodu',
+        id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathdoku',
         generatorId: 'logique.mathodu', activityId: 'kenken',
+        // Fiche imprimable : des grilles à raturer, pour travailler sur papier.
+        printable: 'mathdoku',
         // 3 grilles par défaut : une grille est une « question » longue, dix
         // seraient une punition.
         params: { nbQuestions: 3, chiffres: '1-4', operations: ['add', 'sub'], difficulte: 'facile' },

@@ -71,7 +71,7 @@ const BASE = {
         lesson: '56 ÷ 8, c\'est chercher combien de fois 8 tient dans 56 : 7 fois.'
     },
     'num.logique.mathodu': {
-        label: 'Grilles à contraintes (Mathodu)',
+        label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
         niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
         prereqs: ['num.add.entiers'],

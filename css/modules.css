@@ -1045,7 +1045,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     transform: translateY(2px) scale(.97);
 }
 
-/* --- Mathodu ------------------------------------------------
+/* --- Mathdoku -----------------------------------------------
    La grille domine l'écran ; les cages se lisent par leurs bordures épaisses,
    qui doivent l'emporter visuellement sur le quadrillage fin. Toutes les
    dimensions interrogent le plateau (`cqh`/`cqw`) : la même grille tient dans

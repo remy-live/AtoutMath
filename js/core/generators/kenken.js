@@ -1,4 +1,4 @@
-// Générateur de Mathodu (KenKen).
+// Générateur de Mathdoku (KenKen).
 //
 // Une grille N×N à remplir avec N chiffres consécutifs : chaque chiffre
 // apparaît une fois par ligne et par colonne (carré latin), et la grille est
@@ -251,7 +251,7 @@ const PLAGES = {
 
 export const kenkenGenerator = {
     id: 'logique.mathodu',
-    label: 'Mathodu',
+    label: 'Mathdoku',
     skills: ['num.logique.mathodu'],
     answerKinds: ['grid'],
     params: [
@@ -293,8 +293,19 @@ export const kenkenGenerator = {
         const difficulte = TAILLES[params.difficulte] ? params.difficulte : 'facile';
 
         const sol = carreLatin(rng, n, lo);
-        let cages = assignerOperations(rng, decouperCages(rng, n, TAILLES[difficulte]), sol, autorisees);
-        cages = rendreUnique(rng, n, lo, cages, sol, autorisees);
+
+        // Quatre découpes candidates, on garde celle qui a le MOINS de cases
+        // données : les détachements d'unicité en créent, et sur une petite
+        // grille chaque case donnée est une case pré-mâchée. Le tirage reste
+        // déterministe — même graine, mêmes quatre essais, même choix.
+        let cages = null, donnees = Infinity;
+        for (let essai = 0; essai < 4; essai++) {
+            let cand = assignerOperations(rng, decouperCages(rng, n, TAILLES[difficulte]), sol, autorisees);
+            cand = rendreUnique(rng, n, lo, cand, sol, autorisees);
+            const nb = cand.filter(c => c.op === null).length;
+            if (nb < donnees) { donnees = nb; cages = cand; }
+            if (nb === 0) break;
+        }
 
         // Ordre de lecture : l'étiquette d'une cage s'affiche dans sa première
         // case en partant du haut-gauche, on fige cet ordre ici.

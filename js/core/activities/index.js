@@ -132,7 +132,7 @@ registerActivity({
 // complet, validé d'un bloc, au lieu de répondre coup par coup.
 registerActivity({
     id: 'kenken',
-    label: 'Mathodu',
+    label: 'Mathdoku',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./kenken.js')
