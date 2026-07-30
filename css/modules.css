@@ -1061,6 +1061,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-board {
     display: grid;
     grid-template-columns: repeat(var(--kk-n), 1fr);
+    /* Les lignes aussi en `1fr` : laissées en `auto`, leur hauteur suivait le
+       CONTENU — la ligne portant un grand chiffre devenait plus haute que les
+       lignes vides, et la grille n'était plus carrée case par case. */
+    grid-template-rows: repeat(var(--kk-n), 1fr);
     width: min(440px, 94cqw, 54cqh);
     aspect-ratio: 1;
     background: var(--bg-panel);
