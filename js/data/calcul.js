@@ -143,6 +143,14 @@ export const calculExercises = [
         instruction: "Remplis la grille : chaque chiffre une fois par ligne et par colonne, et chaque zone doit donner le résultat écrit dans son coin."
     },
     {
+        id: 'calc-binairo', status: STATUS.TEST, title: 'Binairo',
+        generatorId: 'logique.binairo', activityId: 'binairo',
+        printable: 'binairo',
+        params: { nbQuestions: 3, taille: 6, difficulte: 'facile' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
+    },
+    {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
         activityId: 'course',
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)

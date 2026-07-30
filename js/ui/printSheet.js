@@ -169,6 +169,80 @@ function grillePreviewHtml(item, slot, k, solution) {
     return html + '</table>';
 }
 
+// --- Binairo ------------------------------------------------------------------
+
+function dessinerBinairoPdf(doc, item, x, y, taille, solution) {
+    const { n, givens, solution: sol } = item.meta;
+    const s = taille / n;
+
+    doc.setFillColor(...ENCRE.donnee);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (givens[r][c] !== null) doc.rect(x + c * s, y + r * s, s, s, 'F');
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let i = 1; i < n; i++) {
+        doc.line(x + i * s, y, x + i * s, y + taille);
+        doc.line(x, y + i * s, x + taille, y + i * s);
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.rect(x, y, taille, taille, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(16, s * 1.5));
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (!solution && givens[r][c] === null) continue;
+        doc.text(String(sol[r][c]), x + c * s + s / 2, y + r * s + s / 2,
+            { align: 'center', baseline: 'middle' });
+    }
+}
+
+function binairoPreviewHtml(item, slot, k, solution) {
+    const { n, givens, solution: sol } = item.meta;
+    const s = (slot.taille / n) * k;
+    let html = `<table class="fp-grille" style="left:${slot.x * k}px; top:${slot.y * k}px; border: 1.6px solid #1a202c;">`;
+    for (let r = 0; r < n; r++) {
+        html += '<tr>';
+        for (let c = 0; c < n; c++) {
+            const donnee = givens[r][c] !== null;
+            html += `<td style="width:${s}px; height:${s}px; font-size:${s * 0.55}px; ${donnee ? 'background:#eef0fa;' : ''}">
+                ${solution || donnee ? sol[r][c] : ''}</td>`;
+        }
+        html += '</tr>';
+    }
+    return html + '</table>';
+}
+
+// --- Rendus par exercice ------------------------------------------------------
+// Le gabarit (page, en-tête, aperçu, page 2 des solutions) est commun ; chaque
+// exercice imprimable ne fournit que sa consigne et le dessin de SA grille.
+
+const RENDUS = {
+    mathdoku: {
+        titre: 'Mathdoku',
+        consigne: (items) => {
+            const { lo, hi } = items[0].meta;
+            return `Chaque chiffre de ${lo} à ${hi} apparaît une seule fois par ligne et par colonne. `
+                + `Chaque zone doit donner le résultat écrit dans son coin, avec l'opération indiquée.`;
+        },
+        previewGrille: grillePreviewHtml,
+        pdfGrille: dessinerGrillePdf
+    },
+    binairo: {
+        titre: 'Binairo',
+        consigne: (items) => {
+            const { n } = items[0].meta;
+            return `Complète avec des 0 et des 1 : ${n / 2} de chaque sur chaque ligne et chaque colonne, `
+                + `jamais trois chiffres identiques qui se suivent.`;
+        },
+        previewGrille: binairoPreviewHtml,
+        pdfGrille: dessinerBinairoPdf
+    }
+};
+
 // --- La modale ---------------------------------------------------------------
 
 function assurerModale() {
@@ -205,11 +279,11 @@ function assurerModale() {
 
 // --- Mathdoku ----------------------------------------------------------------
 
-function entetePdf(doc, sousTitre, consigne) {
+function entetePdf(doc, titre, sousTitre, consigne) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...ENCRE.texte);
-    doc.text(`Mathdoku${sousTitre ? ' — ' + sousTitre : ''}`, PAGE.marge, PAGE.marge + 6);
+    doc.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, PAGE.marge, PAGE.marge + 6);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text('Nom : ..............................    Date : ....................', PAGE.w - PAGE.marge, PAGE.marge + 6, { align: 'right' });
@@ -226,19 +300,19 @@ function entetePdf(doc, sousTitre, consigne) {
     doc.text('Fiche générée par AtoutMath', PAGE.w / 2, PAGE.h - 4, { align: 'center' });
 }
 
-function construirePdfMathdoku(jsPDF, items, cols, rows, consigne) {
+function construirePdf(jsPDF, rendu, items, cols, rows) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const { slots } = calculerFiche(cols, rows);
 
     const page = (solution) => {
-        entetePdf(doc, solution ? 'Solutions' : '', solution ? '' : consigne);
+        entetePdf(doc, rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items));
         items.forEach((item, i) => {
             const slot = slots[i];
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ENCRE.texte);
             doc.text(`Grille ${i + 1}`, slot.titre.x, slot.titre.y, { align: 'center' });
-            dessinerGrillePdf(doc, item, slot.x, slot.y, slot.taille, solution);
+            rendu.pdfGrille(doc, item, slot.x, slot.y, slot.taille, solution);
         });
     };
 
@@ -255,7 +329,8 @@ function construirePdfMathdoku(jsPDF, items, cols, rows, consigne) {
  */
 export function ouvrirFicheModal(exo, params) {
     const generator = getGenerator(exo.generatorId);
-    if (!generator) return;
+    const rendu = RENDUS[exo.printable];
+    if (!generator || !rendu) return;
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fp-apercu');
@@ -295,14 +370,14 @@ export function ouvrirFicheModal(exo, params) {
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
-                <b>Mathdoku${solutionsVisibles ? ' — Solutions' : ''}</b>
+                <b>${rendu.titre}${solutionsVisibles ? ' — Solutions' : ''}</b>
                 <span>Nom : ............  Date : ......</span>
             </div>
             <div class="fp-ligne" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 8) * k}px;"></div>`;
         items.forEach((item, i) => {
             const slot = slots[i];
             html += `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`;
-            html += grillePreviewHtml(item, slot, k, solutionsVisibles);
+            html += rendu.previewGrille(item, slot, k, solutionsVisibles);
         });
         apercu.innerHTML = html;
     };
@@ -324,13 +399,10 @@ export function ouvrirFicheModal(exo, params) {
     btnDl.onclick = () => {
         btnDl.disabled = true;
         const { cols, rows } = lireDisposition();
-        const lo = items[0].meta.lo, hi = items[0].meta.hi;
         chargerJsPDF()
             .then(jsPDF => {
-                const consigne = `Chaque chiffre de ${lo} à ${hi} apparaît une seule fois par ligne et par colonne. `
-                    + `Chaque zone doit donner le résultat écrit dans son coin, avec l'opération indiquée.`;
-                const doc = construirePdfMathdoku(jsPDF, items, cols, rows, consigne);
-                doc.save(`mathdoku-${cols}x${rows}.pdf`);
+                const doc = construirePdf(jsPDF, rendu, items, cols, rows);
+                doc.save(`${exo.printable}-${cols}x${rows}.pdf`);
             })
             .catch(() => {
                 window.appConfirm('PDF indisponible',

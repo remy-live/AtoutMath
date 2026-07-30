@@ -19,6 +19,7 @@ import {
     egypteGenerator, complementGenerator, pariteGenerator
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
+import { binairoGenerator } from '../generators/binairo.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -31,7 +32,7 @@ import { kenkenGenerator } from '../generators/kenken.js';
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator
+    kenkenGenerator, binairoGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -128,7 +129,7 @@ registerActivity({
     load: () => import('./moles.js')
 });
 
-// Grille à cages : genre de réponse 'grid' — l'élève construit un état
+// Grilles logiques : genre de réponse 'grid' — l'élève construit un état
 // complet, validé d'un bloc, au lieu de répondre coup par coup.
 registerActivity({
     id: 'kenken',
@@ -136,6 +137,14 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./kenken.js')
+});
+
+registerActivity({
+    id: 'binairo',
+    label: 'Binairo',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./binairo.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

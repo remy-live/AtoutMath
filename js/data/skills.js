@@ -78,6 +78,14 @@ const BASE = {
         descriptor: 'Remplir une grille en croisant des contraintes de calcul et de placement.',
         lesson: 'Commence par les zones d\'une seule case, puis cherche les zones où une seule combinaison est possible.'
     },
+    'num.logique.binairo': {
+        label: 'Grilles binaires (Binairo)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Compléter une grille de 0 et de 1 en raisonnant sur l\'équilibre et les interdits.',
+        lesson: 'Deux chiffres identiques côte à côte forcent leurs deux voisines. Une ligne qui a tous ses 1 se finit avec des 0.'
+    },
     'num.prio': {
         label: 'Priorités opératoires',
         chemin: [D.NUMERIQUE, SD.PRIORITES],

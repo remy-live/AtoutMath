@@ -13,6 +13,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
+import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 import { OPS } from '../generators/kenken.js';
 
@@ -154,65 +155,21 @@ export function mount(container, session, opts = {}) {
         });
     }
 
-    /** Glisser un jeton de la palette vers une case (Pointer Events). */
+    /** Glisser un jeton de la palette vers une case — logique partagée. */
     function brancherPalette() {
-        const SEUIL = 8; // en deçà, le geste reste un appui (le clic ne fait rien sur un jeton)
-        container.querySelectorAll('.kk-chip').forEach(chip => {
-            chip.addEventListener('pointerdown', (event) => {
-                if (event.button !== undefined && event.button !== 0) return;
-                if (session.locked) return;
-                const depart = { x: event.clientX, y: event.clientY };
-                let ghost = null;
-                chip.setPointerCapture(event.pointerId);
-
-                const onMove = (e) => {
-                    const dx = e.clientX - depart.x, dy = e.clientY - depart.y;
-                    if (!ghost && Math.hypot(dx, dy) < SEUIL) return;
-                    if (!ghost) {
-                        ghost = chip.cloneNode(true);
-                        ghost.classList.add('drag-ghost');
-                        const r = chip.getBoundingClientRect();
-                        ghost.style.width = `${r.width}px`;
-                        ghost.style.height = `${r.height}px`;
-                        ghost.dataset.originX = String(r.left);
-                        ghost.dataset.originY = String(r.top);
-                        document.body.appendChild(ghost);
-                        chip.classList.add('drag-source');
-                    }
-                    ghost.style.left = `${Number(ghost.dataset.originX) + dx}px`;
-                    ghost.style.top = `${Number(ghost.dataset.originY) + dy}px`;
-
-                    const cible = cibleSous(e);
-                    container.querySelectorAll('.kk-cell--visee').forEach(x => x.classList.remove('kk-cell--visee'));
-                    if (cible) cible.classList.add('kk-cell--visee');
-                };
-                const onUp = (e) => {
-                    chip.removeEventListener('pointermove', onMove);
-                    chip.removeEventListener('pointerup', onUp);
-                    chip.removeEventListener('pointercancel', onUp);
-                    chip.classList.remove('drag-source');
-                    container.querySelectorAll('.kk-cell--visee').forEach(x => x.classList.remove('kk-cell--visee'));
-                    if (!ghost) return;
-                    ghost.remove(); ghost = null;
-                    const cible = cibleSous(e);
-                    if (!cible) return;
-                    const r = Number(cible.dataset.r), c = Number(cible.dataset.c);
-                    poser(r, c, chip.dataset.chip === '' ? 0 : Number(chip.dataset.chip));
-                };
-                chip.addEventListener('pointermove', onMove);
-                chip.addEventListener('pointerup', onUp);
-                chip.addEventListener('pointercancel', onUp);
-            });
+        brancherGlisserPalette(container, {
+            bloque: () => session.locked,
+            cibleSous(e) {
+                const el = document.elementFromPoint(e.clientX, e.clientY);
+                const cell = el && el.closest ? el.closest('.kk-cell') : null;
+                if (!cell) return null;
+                return verrous[Number(cell.dataset.r)][Number(cell.dataset.c)] ? null : cell;
+            },
+            deposer(cible, chip) {
+                poser(Number(cible.dataset.r), Number(cible.dataset.c),
+                    chip.dataset.chip === '' ? 0 : Number(chip.dataset.chip));
+            }
         });
-
-        function cibleSous(e) {
-            // Le fantôme suit le doigt : on le neutralise le temps de sonder.
-            const el = document.elementFromPoint(e.clientX, e.clientY);
-            const cell = el && el.closest ? el.closest('.kk-cell') : null;
-            if (!cell) return null;
-            const r = Number(cell.dataset.r), c = Number(cell.dataset.c);
-            return verrous[r][c] ? null : cell;
-        }
     }
 
     // --- Vérificateur (limité) ----------------------------------------------
