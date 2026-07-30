@@ -29,7 +29,7 @@ function verifieStructure(item) {
         if (givens[r][c] !== null) assert.equal(givens[r][c], solution[r][c], 'case donnée exacte');
     }
 
-    assert.equal(item.answer, solution.map(l => l.join('')).join('/'));
+    assert.equal(item.answer, 'g' + solution.map(l => l.join('')).join('/'));
 }
 
 test('la solution est unique, sur 60 graines et toutes les tailles', () => {

@@ -141,7 +141,9 @@ export const binairoGenerator = {
                 text: `Autant de 0 que de 1 sur chaque ligne et chaque colonne — jamais trois chiffres identiques qui se suivent.`,
                 html: `<div class="game-question kenken-consigne">Autant de <b>0</b> que de <b>1</b> par ligne et par colonne — jamais <b>trois identiques</b> qui se suivent.</div>`
             },
-            answer: sol.map(ligne => ligne.join('')).join('/'),
+            // Préfixe « g » : voir kenken.js — sans lui, seule la première
+            // ligne comptait dans la comparaison.
+            answer: 'g' + sol.map(ligne => ligne.join('')).join('/'),
             hints: [
                 'Observe les cases entourées en orange : deux chiffres identiques côte à côte forcent leurs voisines.',
                 'Une case a été remplie pour toi. Regarde ce qu\'elle impose sur sa ligne et sa colonne.'

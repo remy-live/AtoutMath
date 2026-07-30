@@ -410,7 +410,11 @@ export const kenkenGenerator = {
                 text: `Chaque chiffre de ${lo} à ${hi} apparaît une seule fois par ligne et par colonne.`,
                 html: `<div class="game-question kenken-consigne">Chaque chiffre de <b>${lo} à ${hi}</b> apparaît une seule fois par ligne et par colonne.</div>`
             },
-            answer: sol.map(ligne => ligne.join('')).join('/'),
+            // Préfixe « g » : sans lui, la comparaison tolérante de
+            // sameAnswer passait par parseFloat, qui s'arrête au premier
+            // « / » — une grille dont seule la PREMIÈRE LIGNE était juste
+            // comptait correcte.
+            answer: 'g' + sol.map(ligne => ligne.join('')).join('/'),
             // Les textes restent vrais quel que soit l'état de la grille :
             // l'activité entoure une zone fausse s'il y en a une, sinon la
             // meilleure zone par laquelle continuer.

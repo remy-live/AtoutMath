@@ -197,7 +197,7 @@ export function mount(container, session, opts = {}) {
                 return;
             }
 
-            const result = session.submit(grille.map(l => l.join('')).join('/'));
+            const result = session.submit('g' + grille.map(l => l.join('')).join('/'));
             if (result.ignored) return;
 
             container.querySelector('.kk-board').classList.toggle('kk-board--ok', result.correct);

@@ -56,7 +56,7 @@ function verifieStructure(item) {
     }
 
     // La sérialisation de la solution est la réponse attendue.
-    assert.equal(item.answer, solution.map(l => l.join('')).join('/'));
+    assert.equal(item.answer, 'g' + solution.map(l => l.join('')).join('/'));
 }
 
 test('la solution est unique, sur 60 graines et toutes les tailles', () => {
@@ -122,6 +122,17 @@ test('la difficulté change la structure : plus de grandes cages en difficile', 
     // Des cages plus grandes = moins de cages au total.
     assert.ok(cagesDifficile < cagesFacile,
         `difficile devrait avoir moins de cages (facile ${cagesFacile}, difficile ${cagesDifficile})`);
+});
+
+test('une grille dont seule la première ligne est juste est refusée', async () => {
+    const { evaluate } = await import('../js/core/items.js');
+    const item = genere('presque');
+    assert.equal(evaluate(item, item.answer).correct, true);
+    // Même première ligne, reste faux : c'était compté correct avant le
+    // préfixe « g » (parseFloat s'arrêtait au premier « / »).
+    const lignes = item.answer.slice(1).split('/');
+    const fausse = 'g' + [lignes[0], ...lignes.slice(1).map(l => l.split('').reverse().join(''))].join('/');
+    if (fausse !== item.answer) assert.equal(evaluate(item, fausse).correct, false);
 });
 
 test('la génération est rapide, y compris en 5×5 difficile', () => {

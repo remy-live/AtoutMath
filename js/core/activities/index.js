@@ -20,6 +20,7 @@ import {
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
 import { binairoGenerator } from '../generators/binairo.js';
+import { garamGenerator } from '../generators/garam.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -32,7 +33,7 @@ import { binairoGenerator } from '../generators/binairo.js';
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, binairoGenerator
+    kenkenGenerator, binairoGenerator, garamGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -145,6 +146,14 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./binairo.js')
+});
+
+registerActivity({
+    id: 'garam',
+    label: 'Garam',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./garam.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

@@ -1147,3 +1147,33 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .kenken-layout { gap: 6px; padding: 6px; }
     .kk-board { width: min(300px, 90cqw, 62cqh); }
 }
+
+/* --- Garam --------------------------------------------------
+   Le treillis n'est pas une grille pleine : les cases occupent des positions
+   éparses, les signes vivent entre elles. Chaque élément est placé par ses
+   coordonnées de grille CSS ; les trous restent des trous. */
+.ga-board {
+    display: grid;
+    grid-template-columns: repeat(var(--ga-cols), 1fr);
+    grid-template-rows: repeat(var(--ga-rows), 1fr);
+    gap: 2px;
+    width: min(560px, 96cqw);
+    aspect-ratio: calc(var(--ga-cols) / var(--ga-rows));
+    padding: 8px; border-radius: 12px;
+    background: var(--bg-panel); box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+}
+.ga-cell {
+    border: 2px solid #2c3e50; border-radius: 8px;
+    background: #fff;
+    font-size: clamp(.95rem, 3.4cqh, 1.5rem);
+}
+.ga-signe {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: var(--text-muted);
+    font-size: clamp(.85rem, 2.8cqh, 1.3rem);
+    user-select: none;
+}
+/* Onze jetons : la palette du Garam passe sur deux rangées au besoin. */
+.kk-palette--large { flex-wrap: wrap; justify-content: center; max-width: 460px; }
+.kk-palette--large .kk-chip { width: clamp(36px, 6.4cqh, 48px); height: clamp(36px, 6.4cqh, 48px); }

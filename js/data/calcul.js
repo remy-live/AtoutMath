@@ -151,6 +151,14 @@ export const calculExercises = [
         instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
     },
     {
+        id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
+        generatorId: 'logique.garam', activityId: 'garam',
+        printable: 'garam',
+        params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub'], difficulte: 'facile' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Complète les cases avec des chiffres de 0 à 9 pour que toutes les égalités, horizontales et verticales, soient vraies."
+    },
+    {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
         activityId: 'course',
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)

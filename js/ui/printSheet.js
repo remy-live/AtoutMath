@@ -44,9 +44,13 @@ function calculerFiche(cols, rows) {
             const ySlot = y0 + j * (slotH + gapY);
             slots.push({
                 titre: { x: xSlot + slotW / 2, y: ySlot + titreH - 1.2 },
+                // Le carré inscrit, pour les grilles carrées…
                 x: xSlot + (slotW - board) / 2,
                 y: ySlot + titreH + (slotH - titreH - board) / 2,
-                taille: board
+                taille: board,
+                // … et la boîte complète, pour les treillis larges (Garam) :
+                // un emplacement carré y donnerait des cases minuscules.
+                boite: { x: xSlot, y: ySlot + titreH, w: slotW, h: slotH - titreH }
             });
         }
     }
@@ -84,7 +88,8 @@ function cageMap(item) {
  * Ordre des couches : fonds, quadrillage fin, bordures de cages, textes —
  * le même que le jeu, pour le même dessin.
  */
-function dessinerGrillePdf(doc, item, x, y, taille, solution) {
+function dessinerGrillePdf(doc, item, slot, solution) {
+    const { x, y, taille } = slot;
     const { n, cages, solution: sol } = item.meta;
     const s = taille / n;
     const de = cageMap(item);
@@ -171,7 +176,8 @@ function grillePreviewHtml(item, slot, k, solution) {
 
 // --- Binairo ------------------------------------------------------------------
 
-function dessinerBinairoPdf(doc, item, x, y, taille, solution) {
+function dessinerBinairoPdf(doc, item, slot, solution) {
+    const { x, y, taille } = slot;
     const { n, givens, solution: sol } = item.meta;
     const s = taille / n;
 
@@ -216,6 +222,74 @@ function binairoPreviewHtml(item, slot, k, solution) {
     return html + '</table>';
 }
 
+// --- Garam --------------------------------------------------------------------
+// Le treillis n'est pas carré : on le dessine à sa proportion (11 colonnes ×
+// 5 ou 9 lignes), centré verticalement dans l'emplacement carré du gabarit.
+
+function geometrieGaram(item, boite) {
+    const { rows, cols } = item.meta.structure;
+    const u = Math.min(boite.w / cols, boite.h / rows);
+    return {
+        u,
+        x0: boite.x + (boite.w - u * cols) / 2,
+        y0: boite.y + (boite.h - u * rows) / 2
+    };
+}
+
+function dessinerGaramPdf(doc, item, slot, solution) {
+    const { structure, givens, solution: sol } = item.meta;
+    const { u, x0, y0 } = geometrieGaram(item, slot.boite);
+    const cote = u * 0.92;                       // la case, un peu plus petite que sa maille
+    const px = (c) => x0 + c * u + (u - cote) / 2;
+    const py = (r) => y0 + r * u + (u - cote) / 2;
+
+    structure.cells.forEach((pos, i) => {
+        if (givens[i] !== null) {
+            doc.setFillColor(...ENCRE.donnee);
+            doc.roundedRect(px(pos.c), py(pos.r), cote, cote, 1, 1, 'F');
+        }
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(px(pos.c), py(pos.r), cote, cote, 1, 1, 'S');
+    });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(13, cote * 1.6));
+    structure.cells.forEach((pos, i) => {
+        if (!solution && givens[i] === null) return;
+        doc.text(String(sol[i]), px(pos.c) + cote / 2, py(pos.r) + cote / 2,
+            { align: 'center', baseline: 'middle' });
+    });
+
+    doc.setFontSize(Math.min(11, cote * 1.15));
+    doc.setTextColor(90, 98, 112);
+    structure.signes.forEach(sg => {
+        doc.text(sg.glyphe.replace('−', '-'),
+            x0 + sg.c * u + u / 2, y0 + sg.r * u + u / 2, { align: 'center', baseline: 'middle' });
+    });
+}
+
+function garamPreviewHtml(item, slot, k, solution) {
+    const { structure, givens, solution: sol } = item.meta;
+    const { u, x0, y0 } = geometrieGaram(item, slot.boite);
+    const uk = u * k, cote = uk * 0.92;
+    let html = '';
+    structure.cells.forEach((pos, i) => {
+        const donnee = givens[i] !== null;
+        html += `<div class="fp-case" style="left:${x0 * k + pos.c * uk}px;
+            top:${y0 * k + pos.r * uk}px; width:${cote}px; height:${cote}px;
+            font-size:${cote * 0.55}px; ${donnee ? 'background:#eef0fa;' : ''}">
+            ${solution || donnee ? sol[i] : ''}</div>`;
+    });
+    structure.signes.forEach(sg => {
+        html += `<div class="fp-case fp-case--signe" style="left:${x0 * k + sg.c * uk}px;
+            top:${y0 * k + sg.r * uk}px; width:${uk}px; height:${uk}px;
+            font-size:${uk * 0.5}px;">${sg.glyphe}</div>`;
+    });
+    return html;
+}
+
 // --- Rendus par exercice ------------------------------------------------------
 // Le gabarit (page, en-tête, aperçu, page 2 des solutions) est commun ; chaque
 // exercice imprimable ne fournit que sa consigne et le dessin de SA grille.
@@ -230,6 +304,13 @@ const RENDUS = {
         },
         previewGrille: grillePreviewHtml,
         pdfGrille: dessinerGrillePdf
+    },
+    garam: {
+        titre: 'Garam',
+        consigne: () => 'Complète les cases avec des chiffres de 0 à 9 pour que toutes les égalités, '
+            + 'horizontales et verticales, soient vraies.',
+        previewGrille: garamPreviewHtml,
+        pdfGrille: dessinerGaramPdf
     },
     binairo: {
         titre: 'Binairo',
@@ -312,7 +393,7 @@ function construirePdf(jsPDF, rendu, items, cols, rows) {
             doc.setFontSize(9);
             doc.setTextColor(...ENCRE.texte);
             doc.text(`Grille ${i + 1}`, slot.titre.x, slot.titre.y, { align: 'center' });
-            rendu.pdfGrille(doc, item, slot.x, slot.y, slot.taille, solution);
+            rendu.pdfGrille(doc, item, slot, solution);
         });
     };
 

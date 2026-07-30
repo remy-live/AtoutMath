@@ -86,6 +86,14 @@ const BASE = {
         descriptor: 'Compléter une grille de 0 et de 1 en raisonnant sur l\'équilibre et les interdits.',
         lesson: 'Deux chiffres identiques côte à côte forcent leurs deux voisines. Une ligne qui a tous ses 1 se finit avec des 0.'
     },
+    'num.logique.garam': {
+        label: 'Égalités croisées (Garam)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Compléter un treillis d\'égalités en calculant dans les deux sens : résultat ou opérande manquant.',
+        lesson: 'Commence par les égalités où il ne manque qu\'une case : chaque case trouvée en débloque d\'autres.'
+    },
     'num.prio': {
         label: 'Priorités opératoires',
         chemin: [D.NUMERIQUE, SD.PRIORITES],
