@@ -1,165 +1,343 @@
 // Fiches à imprimer.
 //
 // Certains exercices valent autant sur papier qu'à l'écran — les grilles en
-// tête : on y rature, on note ses candidats dans les coins, on gomme. Ce
-// module fabrique une fiche (énoncés, puis solutions sur une page séparée) et
-// ouvre la fenêtre d'impression du navigateur : « Enregistrer en PDF » y est
-// intégré partout, aucune bibliothèque à charger, et le but final des parents
-// est de toute façon le papier.
+// tête : on y rature, on note ses candidats, on gomme. Ce module ouvre une
+// modale avec un APERÇU fidèle de la page A4 paysage, puis DESSINE le PDF
+// (jsPDF) : traits, cases, étiquettes — pas une capture de page web. Le
+// fichier se télécharge directement, les solutions occupent la page 2.
 //
-// Le cas par cas est assumé : imprimer a du sens pour une grille ou un calcul
-// posé, aucun pour un glisser-déposer ou une course. Un exercice s'inscrit en
-// déclarant `printable: '<cle>'` dans le catalogue, et en fournissant ici le
-// rendu de SES énoncés — le gabarit (page, en-tête, coupures, solutions) est
-// commun.
+// L'aperçu et le PDF partagent la même fonction de mise en page, en
+// millimètres : ce qu'on voit est ce qu'on imprime, au facteur d'échelle
+// près. Le nombre de grilles se règle en colonnes × lignes — c'est la
+// géométrie de la feuille, autant la demander telle quelle.
+//
+// Le cas par cas est assumé : un exercice s'inscrit en déclarant
+// `printable: '<cle>'` au catalogue et en fournissant son dessin de grille ;
+// la page, l'en-tête et la page des solutions sont communs.
 
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 
-// --- Gabarit commun ---------------------------------------------------------
+// --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
-const STYLE_FICHE = `
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Outfit', 'Segoe UI', sans-serif; color: #1a202c; padding: 10mm 12mm; }
-    header { display: flex; justify-content: space-between; align-items: baseline;
-             border-bottom: 2px solid #1a202c; padding-bottom: 4mm; margin-bottom: 6mm; }
-    header h1 { font-size: 17pt; }
-    header .identite { font-size: 10pt; }
-    header .identite span { display: inline-block; min-width: 34mm; border-bottom: 1px dotted #555; }
-    .consigne { font-size: 10.5pt; margin-bottom: 6mm; }
-    .grilles { display: flex; flex-wrap: wrap; gap: 8mm; justify-content: space-between; }
-    .bloc { break-inside: avoid; }
-    .bloc h2 { font-size: 10.5pt; margin-bottom: 2mm; font-weight: 700; }
-    .solutions { page-break-before: always; }
-    .solutions h1 { font-size: 14pt; margin-bottom: 5mm; border-bottom: 2px solid #1a202c; padding-bottom: 2mm; }
-    footer { margin-top: 8mm; font-size: 8pt; color: #718096; text-align: center; }
-    @page { size: A4 portrait; margin: 8mm; }
-`;
+const PAGE = { w: 297, h: 210, marge: 9, enteteH: 17, piedH: 6 };
+const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240, 250], texte: [45, 55, 72] };
 
 /**
- * Ouvre la fiche dans un nouvel onglet et lance l'impression.
- *
- * Le document est écrit d'un bloc : pas de scripts, pas de ressources
- * externes — une page morte, exactement ce qu'un document imprimé doit être.
+ * Positionne `cols × rows` blocs carrés (titre + grille) dans la zone utile.
+ * Renvoie des millimètres ; l'aperçu multiplie par son échelle, le PDF les
+ * utilise tels quels.
  */
-function ouvrirFiche({ titre, consigne, styleExercice, blocsEnonces, blocsSolutions }) {
-    const w = window.open('', '_blank');
-    if (!w) return false; // bloqueur de fenêtres : signalé à l'appelant
+function calculerFiche(cols, rows) {
+    const gapX = 6, gapY = 4, titreH = 4.4;
+    const y0 = PAGE.marge + PAGE.enteteH;
+    const W = PAGE.w - PAGE.marge * 2;
+    const H = PAGE.h - y0 - PAGE.marge - PAGE.piedH;
+    const slotW = (W - gapX * (cols - 1)) / cols;
+    const slotH = (H - gapY * (rows - 1)) / rows;
+    const board = Math.min(slotW, slotH - titreH);
 
-    w.document.write(`<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>${titre} — fiche à imprimer</title>
-<style>${STYLE_FICHE}${styleExercice || ''}</style>
-</head>
-<body>
-    <header>
-        <h1>${titre}</h1>
-        <div class="identite">Nom : <span></span>&nbsp;&nbsp;Date : <span></span></div>
-    </header>
-    <p class="consigne">${consigne}</p>
-    <div class="grilles">${blocsEnonces.join('')}</div>
-    <section class="solutions">
-        <h1>Solutions</h1>
-        <div class="grilles">${blocsSolutions.join('')}</div>
-    </section>
-    <footer>Fiche générée par AtoutMath</footer>
-</body>
-</html>`);
-    w.document.close();
-    // L'impression part une fois la page posée ; l'onglet reste ouvert pour
-    // relancer ou ajuster les réglages d'impression.
-    w.addEventListener('load', () => w.print());
-    return true;
+    const slots = [];
+    for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+            const xSlot = PAGE.marge + i * (slotW + gapX);
+            const ySlot = y0 + j * (slotH + gapY);
+            slots.push({
+                titre: { x: xSlot + slotW / 2, y: ySlot + titreH - 1.2 },
+                x: xSlot + (slotW - board) / 2,
+                y: ySlot + titreH + (slotH - titreH - board) / 2,
+                taille: board
+            });
+        }
+    }
+    return { slots, board };
 }
 
-// --- Mathdoku ---------------------------------------------------------------
+// --- jsPDF, chargé au premier besoin ----------------------------------------
 
-const STYLE_MATHDOKU = `
-    .kkp { border-collapse: collapse; }
-    .kkp td { border: 0.4pt solid #b8bec9; text-align: center; vertical-align: middle;
-              position: relative; font-weight: 700; }
-    .kkp .bt { border-top: 2pt solid #1a202c; } .kkp .br { border-right: 2pt solid #1a202c; }
-    .kkp .bb { border-bottom: 2pt solid #1a202c; } .kkp .bl { border-left: 2pt solid #1a202c; }
-    .kkp .etiquette { position: absolute; top: 0.6mm; left: 1.1mm; font-size: 7pt;
-                      font-weight: 700; color: #4a5568; }
-    .kkp .donnee { background: #eef0fa; }
-    .kkp-enonce td { width: 13mm; height: 13mm; font-size: 13pt; }
-    .kkp-solution td { width: 7mm; height: 7mm; font-size: 8.5pt; }
-    .kkp-solution .etiquette { font-size: 4.5pt; }
-`;
+let jsPDFPromise = null;
+function chargerJsPDF() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    if (!jsPDFPromise) {
+        jsPDFPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            s.onload = () => resolve(window.jspdf.jsPDF);
+            s.onerror = () => { jsPDFPromise = null; reject(new Error('jsPDF inaccessible')); };
+            document.head.appendChild(s);
+        });
+    }
+    return jsPDFPromise;
+}
+
+// --- Dessin d'une grille Mathdoku -------------------------------------------
+
+function cageMap(item) {
+    const { n, cages } = item.meta;
+    const m = Array.from({ length: n }, () => Array(n).fill(-1));
+    cages.forEach((cage, i) => cage.cells.forEach(p => { m[p.r][p.c] = i; }));
+    return m;
+}
 
 /**
- * Une grille en tableau HTML statique — même dessin des cages que le jeu
- * (bordures épaisses aux frontières), sans aucune interactivité.
- * @param {Object} item - produit par le générateur logique.mathodu
- * @param {boolean} solution - grille résolue (page des solutions)
+ * Dessine une grille dans le PDF à (x, y), côté `taille` mm.
+ * Ordre des couches : fonds, quadrillage fin, bordures de cages, textes —
+ * le même que le jeu, pour le même dessin.
  */
-function grilleMathdokuHtml(item, solution) {
+function dessinerGrillePdf(doc, item, x, y, taille, solution) {
     const { n, cages, solution: sol } = item.meta;
-    const cageDe = Array.from({ length: n }, () => Array(n).fill(-1));
-    cages.forEach((cage, i) => cage.cells.forEach(p => { cageDe[p.r][p.c] = i; }));
+    const s = taille / n;
+    const de = cageMap(item);
 
-    let html = `<table class="kkp ${solution ? 'kkp-solution' : 'kkp-enonce'}">`;
+    doc.setFillColor(...ENCRE.donnee);
+    for (const cage of cages) {
+        if (cage.op !== null) continue;
+        const { r, c } = cage.cells[0];
+        doc.rect(x + c * s, y + r * s, s, s, 'F');
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let i = 1; i < n; i++) {
+        doc.line(x + i * s, y, x + i * s, y + taille);
+        doc.line(x, y + i * s, x + taille, y + i * s);
+    }
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+            const ci = de[r][c];
+            if (r === 0 || de[r - 1][c] !== ci) doc.line(x + c * s, y + r * s, x + (c + 1) * s, y + r * s);
+            if (c === 0 || de[r][c - 1] !== ci) doc.line(x + c * s, y + r * s, x + c * s, y + (r + 1) * s);
+        }
+    }
+    doc.rect(x, y, taille, taille, 'S');
+
+    const policeEtiquette = Math.min(8, Math.max(4.6, s * 0.62));
+    const policeValeur = Math.min(20, s * 1.55);
+    for (const cage of cages) {
+        const { r, c } = cage.cells[0];
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(policeEtiquette);
+        doc.setTextColor(90, 98, 112);
+        doc.text(cage.label, x + c * s + 0.9, y + r * s + policeEtiquette * 0.36);
+    }
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(policeValeur);
+    for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+            const donnee = cages[de[r][c]].op === null;
+            if (!solution && !donnee) continue;
+            doc.text(String(sol[r][c]), x + c * s + s / 2, y + r * s + s / 2,
+                { align: 'center', baseline: 'middle' });
+        }
+    }
+}
+
+/** La même grille en HTML pour l'aperçu, aux mêmes proportions (k px/mm). */
+function grillePreviewHtml(item, slot, k, solution) {
+    const { n, cages, solution: sol } = item.meta;
+    const s = (slot.taille / n) * k;
+    const de = cageMap(item);
+
+    let html = `<table class="fp-grille" style="left:${slot.x * k}px; top:${slot.y * k}px;">`;
     for (let r = 0; r < n; r++) {
         html += '<tr>';
         for (let c = 0; c < n; c++) {
-            const ci = cageDe[r][c];
+            const ci = de[r][c];
             const cage = cages[ci];
             const bords = [
-                r === 0 || cageDe[r - 1][c] !== ci ? 'bt' : '',
-                c === n - 1 || cageDe[r][c + 1] !== ci ? 'br' : '',
-                r === n - 1 || cageDe[r + 1][c] !== ci ? 'bb' : '',
-                c === 0 || cageDe[r][c - 1] !== ci ? 'bl' : ''
-            ].join(' ');
-            const premiere = cage.cells[0].r === r && cage.cells[0].c === c;
+                r === 0 || de[r - 1][c] !== ci ? 'border-top:1.6px solid #1a202c;' : '',
+                c === n - 1 || de[r][c + 1] !== ci ? 'border-right:1.6px solid #1a202c;' : '',
+                r === n - 1 || de[r + 1][c] !== ci ? 'border-bottom:1.6px solid #1a202c;' : '',
+                c === 0 || de[r][c - 1] !== ci ? 'border-left:1.6px solid #1a202c;' : ''
+            ].join('');
             const donnee = cage.op === null;
-            const valeur = solution || donnee ? sol[r][c] : '';
-            html += `<td class="${bords}${donnee ? ' donnee' : ''}">
-                ${premiere ? `<span class="etiquette">${cage.label}</span>` : ''}${valeur}</td>`;
+            const premiere = cage.cells[0].r === r && cage.cells[0].c === c;
+            html += `<td style="width:${s}px; height:${s}px; font-size:${s * 0.5}px; ${bords}${donnee ? 'background:#eef0fa;' : ''}">
+                ${premiere ? `<span class="fp-etiquette" style="font-size:${Math.max(6, s * 0.26)}px">${cage.label}</span>` : ''}
+                ${solution || donnee ? sol[r][c] : ''}</td>`;
         }
         html += '</tr>';
     }
     return html + '</table>';
 }
 
-/**
- * Fiche Mathdoku : `nbGrilles` grilles fraîches avec les réglages courants
- * (chiffres, opérations, difficulté), solutions en page séparée.
- */
-function imprimerMathdoku(exo, params, nbGrilles) {
-    const generator = getGenerator(exo.generatorId);
-    if (!generator) return false;
+// --- La modale ---------------------------------------------------------------
 
-    const items = [];
-    for (let i = 0; i < nbGrilles; i++) {
-        // Graine fraîche par grille : la fiche est différente à chaque fois.
-        items.push(generator.generate(params, { rng: makeRng() }));
-    }
-
-    const lo = items[0].meta.lo, hi = items[0].meta.hi;
-    return ouvrirFiche({
-        titre: 'Mathdoku',
-        consigne: `Chaque chiffre de ${lo} à ${hi} apparaît une seule fois par ligne et par colonne.
-            Les cases d'une zone doivent donner le résultat écrit dans son coin, avec l'opération indiquée.`,
-        styleExercice: STYLE_MATHDOKU,
-        blocsEnonces: items.map((item, i) =>
-            `<div class="bloc"><h2>Grille ${i + 1}</h2>${grilleMathdokuHtml(item, false)}</div>`),
-        blocsSolutions: items.map((item, i) =>
-            `<div class="bloc"><h2>Grille ${i + 1}</h2>${grilleMathdokuHtml(item, true)}</div>`)
-    });
+function assurerModale() {
+    let modal = document.getElementById('print-sheet-modal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'print-sheet-modal';
+    modal.className = 'modal-overlay modal-overlay--top';
+    modal.innerHTML = `
+        <div class="glass-panel modal-panel-lg fp-panel">
+            <h3 class="modal-title">📄 Fiche à imprimer</h3>
+            <div class="fp-controles">
+                <label>Colonnes
+                    <input type="number" id="fp-cols" class="cfg-input cfg-input--num" min="1" max="5" value="3"></label>
+                <label>Lignes
+                    <input type="number" id="fp-rows" class="cfg-input cfg-input--num" min="1" max="5" value="4"></label>
+                <span class="fp-total" id="fp-total"></span>
+                <button type="button" class="btn-hint" id="fp-regen">🎲 Autres grilles</button>
+                <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
+            </div>
+            <div class="fp-apercu-cadre">
+                <div class="fp-apercu" id="fp-apercu"></div>
+            </div>
+            <div class="fp-note">Page 1 : les grilles, avec un en-tête Nom / Date.
+                Page 2 : les solutions — à garder pour soi ou à donner après.</div>
+            <div class="modal-actions-center">
+                <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="fp-fermer">Fermer</button>
+                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="fp-telecharger">⬇️ Télécharger le PDF</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    return modal;
 }
 
-// --- Répartition ------------------------------------------------------------
+// --- Mathdoku ----------------------------------------------------------------
 
-const IMPRIMEURS = {
-    mathdoku: imprimerMathdoku
-};
+function entetePdf(doc, sousTitre, consigne) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(`Mathdoku${sousTitre ? ' — ' + sousTitre : ''}`, PAGE.marge, PAGE.marge + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Nom : ..............................    Date : ....................', PAGE.w - PAGE.marge, PAGE.marge + 6, { align: 'right' });
+    if (consigne) {
+        doc.setFontSize(8.6);
+        doc.setTextColor(90, 98, 112);
+        doc.text(consigne, PAGE.marge, PAGE.marge + 12);
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.4);
+    doc.line(PAGE.marge, PAGE.marge + 8, PAGE.w - PAGE.marge, PAGE.marge + 8);
+    doc.setFontSize(6.5);
+    doc.setTextColor(150, 155, 165);
+    doc.text('Fiche générée par AtoutMath', PAGE.w / 2, PAGE.h - 4, { align: 'center' });
+}
 
-/** Lance la fiche de l'exercice, ou explique pourquoi elle n'est pas partie. */
-export function imprimerFiche(exo, params, nbGrilles) {
-    const imprimeur = IMPRIMEURS[exo.printable];
-    if (!imprimeur) return false;
-    return imprimeur(exo, params, Math.max(1, Math.min(12, nbGrilles || 6)));
+function construirePdfMathdoku(jsPDF, items, cols, rows, consigne) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const { slots } = calculerFiche(cols, rows);
+
+    const page = (solution) => {
+        entetePdf(doc, solution ? 'Solutions' : '', solution ? '' : consigne);
+        items.forEach((item, i) => {
+            const slot = slots[i];
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(`Grille ${i + 1}`, slot.titre.x, slot.titre.y, { align: 'center' });
+            dessinerGrillePdf(doc, item, slot.x, slot.y, slot.taille, solution);
+        });
+    };
+
+    page(false);
+    doc.addPage('a4', 'landscape');
+    page(true);
+    return doc;
+}
+
+/**
+ * Ouvre la modale de fiche pour un exercice imprimable.
+ * @param {Object} exo    - entrée de catalogue portant `printable`
+ * @param {Object} params - réglages courants (chiffres, opérations, difficulté)
+ */
+export function ouvrirFicheModal(exo, params) {
+    const generator = getGenerator(exo.generatorId);
+    if (!generator) return;
+
+    const modal = assurerModale();
+    const apercu = modal.querySelector('#fp-apercu');
+    const colsEl = modal.querySelector('#fp-cols');
+    const rowsEl = modal.querySelector('#fp-rows');
+    const totalEl = modal.querySelector('#fp-total');
+    const btnSol = modal.querySelector('#fp-voir-sol');
+
+    let items = [];
+    let solutionsVisibles = false;
+
+    const lireDisposition = () => ({
+        cols: Math.max(1, Math.min(5, Number(colsEl.value) || 3)),
+        rows: Math.max(1, Math.min(5, Number(rowsEl.value) || 4))
+    });
+
+    // Graine fraîche par grille : chaque fiche est différente. Les grilles ne
+    // sont RETIRÉES qu'en cas de besoin (plus de cases), jamais régénérées à
+    // l'ouverture des solutions — l'aperçu doit montrer les mêmes grilles.
+    const completer = (total) => {
+        while (items.length < total) items.push(generator.generate(params, { rng: makeRng() }));
+        items.length = total;
+    };
+
+    const rendre = () => {
+        const { cols, rows } = lireDisposition();
+        completer(cols * rows);
+        totalEl.textContent = `${cols * rows} grilles`;
+
+        // L'échelle vient de la place disponible : la page garde son format.
+        const large = apercu.parentElement.clientWidth || 720;
+        const k = large / PAGE.w;
+        apercu.style.width = `${PAGE.w * k}px`;
+        apercu.style.height = `${PAGE.h * k}px`;
+
+        const { slots } = calculerFiche(cols, rows);
+        const en = PAGE.marge * k;
+        let html = `
+            <div class="fp-entete" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
+                <b>Mathdoku${solutionsVisibles ? ' — Solutions' : ''}</b>
+                <span>Nom : ............  Date : ......</span>
+            </div>
+            <div class="fp-ligne" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 8) * k}px;"></div>`;
+        items.forEach((item, i) => {
+            const slot = slots[i];
+            html += `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`;
+            html += grillePreviewHtml(item, slot, k, solutionsVisibles);
+        });
+        apercu.innerHTML = html;
+    };
+
+    colsEl.value = '3';
+    rowsEl.value = '4';
+    colsEl.onchange = rendre;
+    rowsEl.onchange = rendre;
+    modal.querySelector('#fp-regen').onclick = () => { items = []; rendre(); };
+    btnSol.onclick = () => {
+        solutionsVisibles = !solutionsVisibles;
+        btnSol.textContent = solutionsVisibles ? 'Voir les grilles' : 'Voir les solutions';
+        btnSol.setAttribute('aria-pressed', String(solutionsVisibles));
+        rendre();
+    };
+    modal.querySelector('#fp-fermer').onclick = () => { modal.style.display = 'none'; };
+
+    const btnDl = modal.querySelector('#fp-telecharger');
+    btnDl.onclick = () => {
+        btnDl.disabled = true;
+        const { cols, rows } = lireDisposition();
+        const lo = items[0].meta.lo, hi = items[0].meta.hi;
+        chargerJsPDF()
+            .then(jsPDF => {
+                const consigne = `Chaque chiffre de ${lo} à ${hi} apparaît une seule fois par ligne et par colonne. `
+                    + `Chaque zone doit donner le résultat écrit dans son coin, avec l'opération indiquée.`;
+                const doc = construirePdfMathdoku(jsPDF, items, cols, rows, consigne);
+                doc.save(`mathdoku-${cols}x${rows}.pdf`);
+            })
+            .catch(() => {
+                window.appConfirm('PDF indisponible',
+                    'La bibliothèque de PDF n\'a pas pu être chargée (connexion ?). Réessaie une fois en ligne.',
+                    null);
+            })
+            .finally(() => { btnDl.disabled = false; });
+    };
+
+    items = [];
+    solutionsVisibles = false;
+    btnSol.textContent = 'Voir les solutions';
+    modal.style.display = 'flex';
+    rendre();
 }

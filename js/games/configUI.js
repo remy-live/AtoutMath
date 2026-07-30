@@ -272,19 +272,13 @@ export function showStudentConfigModal(exo, onStart) {
     const current = { ...(exo.params || {}) };
 
     // Fiche à imprimer : proposée seulement quand l'exercice s'y prête
-    // (`printable` au catalogue). Elle reprend les réglages choisis dans cette
-    // fenêtre — un parent règle les chiffres et la difficulté, puis imprime.
+    // (`printable` au catalogue). Le bouton ouvre une modale dédiée, avec
+    // l'aperçu de la page — les réglages choisis ICI (chiffres, opérations,
+    // difficulté) sont ceux des grilles imprimées.
     const impression = exo.printable ? `
-        <div class="cfg-print">
-            <span class="cfg-print-label">📄 Travailler sur papier</span>
-            <div class="cfg-print-row">
-                <label for="cfg-print-nb">Grilles</label>
-                <input type="number" id="cfg-print-nb" class="cfg-input cfg-input--num" min="1" max="12" value="6">
-                <button type="button" class="cfg-print-btn" id="btn-print-sheet">Créer la fiche (PDF)</button>
-            </div>
-            <div class="cfg-print-note">Les solutions sont sur une page à part —
-                à garder pour soi ou à donner après.</div>
-        </div>` : '';
+        <button type="button" class="cfg-print-btn cfg-print-btn--seul" id="btn-print-sheet">
+            📄 Travailler sur papier…
+        </button>` : '';
 
     content.innerHTML = `
         ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
@@ -300,17 +294,10 @@ export function showStudentConfigModal(exo, onStart) {
     const btnPrint = document.getElementById('btn-print-sheet');
     if (btnPrint) {
         btnPrint.onclick = () => {
-            const nb = intVal('cfg-print-nb', 6);
             // Les réglages COURANTS de la fenêtre, pas ceux du catalogue : ce
             // que le parent vient de choisir est ce qu'il veut sur la feuille.
             const params = { ...current, ...readParams(content, schema) };
-            import('../ui/printSheet.js').then(m => {
-                if (!m.imprimerFiche(exo, params, nb)) {
-                    window.appConfirm('Fiche bloquée',
-                        'Le navigateur a bloqué la fenêtre d\'impression. Autorise les fenêtres surgissantes pour ce site, puis réessaie.',
-                        null);
-                }
-            });
+            import('../ui/printSheet.js').then(m => m.ouvrirFicheModal(exo, params));
         };
     }
 
