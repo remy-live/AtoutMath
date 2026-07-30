@@ -121,7 +121,12 @@ function dessinerGrillePdf(doc, item, x, y, taille, solution) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(policeEtiquette);
         doc.setTextColor(90, 98, 112);
-        doc.text(cage.label, x + c * s + 0.9, y + r * s + policeEtiquette * 0.36);
+        // Le signe moins typographique (U+2212) n'existe pas dans les polices
+        // standard du PDF : il sortait en guillemet. Le tiret ASCII s'imprime
+        // pareil à cette taille. La baseline colle l'étiquette au coin —
+        // 0,72 em d'ascendante au-dessus, un pt ≈ 0,353 mm.
+        doc.text(cage.label.replace('−', '-'),
+            x + c * s + 0.5, y + r * s + 0.35 + policeEtiquette * 0.72 * 0.353);
     }
     doc.setTextColor(...ENCRE.texte);
     doc.setFontSize(policeValeur);
