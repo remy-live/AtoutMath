@@ -12,6 +12,7 @@ export const TAGS = {
         DECIMAUX: "Nombres Décimaux",
         REPERAGE: "Repérage",
         PRIORITES: "Priorités Opératoires",
+        LOGIQUE: "Logique",
         PERIMETRE_AIRE: "Périmètre et Aire"
     },
     // Niveau de regroupement optionnel, sous un SOUS_DOMAINE (ex: Numérique > Calcul Mental > Tables de Multiplication)

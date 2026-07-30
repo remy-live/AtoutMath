@@ -18,6 +18,7 @@ import {
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator
 } from '../generators/numeration.js';
+import { kenkenGenerator } from '../generators/kenken.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -29,7 +30,8 @@ import {
     // Chapitre « Nombres entiers et décimaux » (6ᵉ)
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
-    egypteGenerator, complementGenerator, pariteGenerator
+    egypteGenerator, complementGenerator, pariteGenerator,
+    kenkenGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -124,6 +126,16 @@ registerActivity({
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./moles.js')
+});
+
+// Grille à cages : genre de réponse 'grid' — l'élève construit un état
+// complet, validé d'un bloc, au lieu de répondre coup par coup.
+registerActivity({
+    id: 'kenken',
+    label: 'Mathodu',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./kenken.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

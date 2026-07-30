@@ -132,6 +132,15 @@ export const calculExercises = [
         instruction: "Déplace-toi vers la case contenant la bonne réponse pour atteindre la sortie."
     },
     {
+        id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathodu',
+        generatorId: 'logique.mathodu', activityId: 'kenken',
+        // 3 grilles par défaut : une grille est une « question » longue, dix
+        // seraient une punition.
+        params: { nbQuestions: 3, chiffres: '1-4', operations: ['add', 'sub'], difficulte: 'facile' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Remplis la grille : chaque chiffre une fois par ligne et par colonne, et chaque zone doit donner le résultat écrit dans son coin."
+    },
+    {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
         activityId: 'course',
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)

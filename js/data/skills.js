@@ -70,6 +70,14 @@ const BASE = {
         descriptor: 'Calculer un quotient exact en s\'appuyant sur les tables.',
         lesson: '56 ÷ 8, c\'est chercher combien de fois 8 tient dans 56 : 7 fois.'
     },
+    'num.logique.mathodu': {
+        label: 'Grilles à contraintes (Mathodu)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Remplir une grille en croisant des contraintes de calcul et de placement.',
+        lesson: 'Commence par les zones d\'une seule case, puis cherche les zones où une seule combinaison est possible.'
+    },
     'num.prio': {
         label: 'Priorités opératoires',
         chemin: [D.NUMERIQUE, SD.PRIORITES],

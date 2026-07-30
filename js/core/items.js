@@ -12,7 +12,9 @@
 // générateur ceux qu'il sait produire.
 
 /**
- * @typedef {'choice'|'numeric'|'text'|'point'|'pair'} AnswerKind
+ * @typedef {'choice'|'numeric'|'text'|'point'|'pair'|'grid'} AnswerKind
+ * ('grid' : l'élève construit un état complet — une grille remplie — validé
+ * d'un bloc ; la réponse est sa sérialisation.)
  *
  * @typedef {Object} Choice
  * @property {string|number} value
