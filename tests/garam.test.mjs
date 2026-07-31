@@ -36,12 +36,14 @@ function verifieStructure(item) {
 
     givens.forEach((v, i) => { if (v !== null) assert.equal(v, solution[i]); });
 
-    const attendu = structure.rows === 9
-        ? { eqs: 12, cells: 24, doubles: 2 }
-        : { eqs: 7, cells: 15, doubles: 1 };
-    assert.equal(structure.equations.length, attendu.eqs);
-    assert.equal(structure.cells.length, attendu.cells);
-    assert.equal(structure.equations.filter(e => e.z2 !== undefined).length, attendu.doubles);
+    const grand = structure.rows === 13;
+    const doubles = structure.equations.filter(e => e.z2 !== undefined).length;
+    assert.equal(structure.equations.length, grand ? 20 : 9, 'nombre d\'égalités');
+    assert.ok(doubles >= 1, 'au moins un résultat double — la signature du Garam');
+    assert.ok(doubles <= (grand ? 4 : 2));
+    // 8 cases par brique + 1 par pont + 1 par résultat double.
+    const attenduCases = (grand ? 4 * 8 + 4 : 2 * 8 + 1) + doubles;
+    assert.equal(structure.cells.length, attenduCases, 'compte de cases');
 
     assert.equal(item.answer, 'g' + solution.join('/'));
 }
