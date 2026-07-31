@@ -154,9 +154,9 @@ export const calculExercises = [
         id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
         generatorId: 'logique.garam', activityId: 'garam',
         printable: 'garam',
-        params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub'], difficulte: 'facile' },
+        params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Complète les cases avec des chiffres de 0 à 9 pour que toutes les égalités, horizontales et verticales, soient vraies."
+        instruction: "Complète les cases pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres."
     },
     {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',

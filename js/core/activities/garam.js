@@ -18,9 +18,15 @@ import { OPS_GARAM } from '../generators/garam.js';
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
 
+// Pas de plafond à 9 ici : un résultat à deux chiffres vaut jusqu'à 99.
 function evaluer(op, a, b) {
     const v = OPS_GARAM[op].calc(a, b);
-    return v === null || v < 0 || v > 9 || !Number.isInteger(v) ? null : v;
+    return v === null || v < 0 || !Number.isInteger(v) ? null : v;
+}
+
+/** Les cases d'une égalité — quatre quand le résultat s'écrit sur deux. */
+function casesDe(eq) {
+    return eq.z2 !== undefined ? [eq.a, eq.b, eq.z, eq.z2] : [eq.a, eq.b, eq.z];
 }
 
 export function mount(container, session, opts = {}) {
@@ -139,9 +145,11 @@ export function mount(container, session, opts = {}) {
 
     /** Les égalités complètes et fausses — les incomplètes ne disent rien. */
     function egalitesFausses() {
-        return item.meta.structure.equations.filter(({ a, b, z, op }) =>
-            valeurs[a] !== VIDE && valeurs[b] !== VIDE && valeurs[z] !== VIDE
-            && evaluer(op, valeurs[a], valeurs[b]) !== valeurs[z]);
+        return item.meta.structure.equations.filter(eq => {
+            if (casesDe(eq).some(i => valeurs[i] === VIDE)) return false;
+            const T = eq.z2 !== undefined ? 10 * valeurs[eq.z] + valeurs[eq.z2] : valeurs[eq.z];
+            return evaluer(eq.op, valeurs[eq.a], valeurs[eq.b]) !== T;
+        });
     }
 
     function brancherVerificateur() {
@@ -153,8 +161,8 @@ export function mount(container, session, opts = {}) {
             if (verifsRestantes <= 0) btn.disabled = true;
 
             const fausses = egalitesFausses();
-            fausses.forEach(({ a, b, z }) =>
-                [a, b, z].forEach(i => celluleEl(i).classList.add('kk-cage--faux')));
+            fausses.forEach(eq =>
+                casesDe(eq).forEach(i => celluleEl(i).classList.add('kk-cage--faux')));
 
             if (!fausses.length) statut('Toutes les égalités complètes sont justes. Continue !', 'ok');
             else statut(`${fausses.length} égalité${fausses.length > 1 ? 's' : ''} fausse${fausses.length > 1 ? 's' : ''}.`, 'ko');
@@ -216,7 +224,7 @@ export function mount(container, session, opts = {}) {
         const fausses = egalitesFausses();
         if (fausses.length) return fausses[0];
         const presque = item.meta.structure.equations
-            .map(eq => ({ eq, vides: [eq.a, eq.b, eq.z].filter(i => valeurs[i] === VIDE).length }))
+            .map(eq => ({ eq, vides: casesDe(eq).filter(i => valeurs[i] === VIDE).length }))
             .filter(x => x.vides > 0)
             .sort((x, y) => x.vides - y.vides)[0];
         return presque ? presque.eq : null;
@@ -225,7 +233,7 @@ export function mount(container, session, opts = {}) {
     function entourerZone() {
         const eq = equationCiblee();
         if (!eq) return;
-        [eq.a, eq.b, eq.z].forEach(i => celluleEl(i).classList.add('kk-cage--indice'));
+        casesDe(eq).forEach(i => celluleEl(i).classList.add('kk-cage--indice'));
     }
 
     function revelerCase() {
@@ -233,7 +241,7 @@ export function mount(container, session, opts = {}) {
         let cible = valeurs.findIndex((v, i) => !verrous[i] && v !== VIDE && v !== solution[i]);
         if (cible === -1) {
             const eq = equationCiblee();
-            cible = eq ? [eq.a, eq.b, eq.z].find(i => valeurs[i] === VIDE) ?? -1 : -1;
+            cible = eq ? casesDe(eq).find(i => valeurs[i] === VIDE) ?? -1 : -1;
             if (cible === -1) cible = valeurs.findIndex(v => v === VIDE);
         }
         if (cible === -1) return;

@@ -1,28 +1,32 @@
 // Générateur de Garam.
 //
-// Un treillis de petites égalités croisées : des équations horizontales
-// « a ∘ b = c » dont certaines cases servent aussi d'équations VERTICALES.
-// Toutes les cases sont des chiffres de 0 à 9, les opérations sont imprimées,
-// l'élève ne remplit que les chiffres. L'intérêt didactique est le calcul
-// dans les deux sens : trouver un résultat, mais aussi un opérande manquant.
+// Un treillis d'égalités « a ∘ b = c » horizontales et verticales qui se
+// partagent des cases — et, signature du Garam, des résultats à DEUX CHIFFRES
+// écrits sur deux cases : 6 × 7 = [4][2]. Chacune des deux cases peut nourrir
+// d'autres égalités. Le treillis est UNE SEULE TOILE : chaque case est reliée
+// à toutes les autres de proche en proche (vérifié par les tests) — pas deux
+// sous-grilles indépendantes.
 //
-// Même principe que le Binairo : on construit d'abord un treillis COMPLET qui
-// vérifie toutes les égalités, puis on le creuse case par case — un retrait
-// n'est conservé que si la solution reste unique. Le solveur ne force pas
-// bêtement : il DÉDUIT (deux cases connues d'une égalité imposent la
-// troisième), et ne branche que sur ce qui reste — comme l'élève.
+// Deux garanties, plus fortes que la seule solution unique :
+//  - solution unique (comme le Mathdoku et le Binairo) ;
+//  - RÉSOLUBLE SANS DEVINER : on ne creuse une case que si la grille reste
+//    terminable par pur enchaînement de déductions — dans chaque égalité où
+//    il ne manque qu'une case, elle se calcule (l'inverse d'une soustraction
+//    est une addition). C'est exactement le geste de résolution d'un vrai
+//    Garam : il y a toujours un prochain coup forcé.
 //
-// Structure « petit » (7 égalités, 15 cases) :
+// Structure « petit » (7 égalités, 15 cases, 1 résultat à deux chiffres) :
 //
-//     A ∘ B = C     D ∘ E = F
-//     ∘             ∘   (et ∘ sous C)
-//     G       H     I
-//     =       =     =
-//     J ∘ K = L     M ∘ N = O
+//     A ∘ B = C  · · · ·  D ∘ E = F
+//     ∘       ∘           ∘
+//     G       H           P
+//     =       =           =
+//     J ∘ K = M N ∘ O =   Q
 //
-// Verticales : A∘G=J, C∘H=L, D∘I=M. « Grand » prolonge le motif d'un étage :
-// J, L et M deviennent les têtes de trois nouvelles verticales menant à deux
-// égalités horizontales de plus (12 égalités, 24 cases).
+// Le résultat « MN » de la ligne du bas soude tout : M termine la verticale
+// de C, N enchaîne vers Q, qui est le pied de la verticale de D — laquelle
+// porte l'égalité du haut à droite. « Grand » répète le motif un étage plus
+// bas à partir de J, M et Q (12 égalités, 24 cases, 2 résultats doubles).
 
 import { makeItem } from '../items.js';
 
@@ -33,24 +37,24 @@ export const OPS_GARAM = {
     div: { symbole: '÷', calc: (a, b) => (b !== 0 && a % b === 0 ? a / b : null) }
 };
 
-/** a ∘ b, ou null si le résultat n'est pas un chiffre de 0 à 9. */
-function evaluer(op, a, b) {
+/** a ∘ b, ou null si invalide (négatif, division inexacte…). */
+function calculer(op, a, b) {
     const v = OPS_GARAM[op].calc(a, b);
-    return v === null || v < 0 || v > 9 || !Number.isInteger(v) ? null : v;
+    return v === null || v < 0 || !Number.isInteger(v) ? null : v;
 }
 
-// Part de cases données visée après creusage, comme au Binairo.
-const CIBLES_DONNEES = { facile: 0.50, moyen: 0.38, difficile: 0.26 };
+const CIBLES_DONNEES = { facile: 0.62, moyen: 0.46, difficile: 0.30 };
 const DIFFICULTE_ITEM = { facile: 2, moyen: 3, difficile: 4 };
 
-// --- Structures -------------------------------------------------------------
+// --- Structure ---------------------------------------------------------------
 
 /**
- * Le treillis : cases positionnées sur une grille d'affichage (ligne,
- * colonne), égalités désignant leurs cases par indice, signes (∘ et =) posés
- * entre les cases. `ordre` est l'ordre de construction : chaque case y est
- * soit libre, soit déduite de l'égalité précédente — c'est lui qui rend la
- * génération constructive.
+ * Égalité : { a, b, z, z2?, op }. Sans `z2`, le résultat est la case `z`
+ * (0 à 9). Avec `z2`, il s'écrit sur deux cases : `z` les dizaines (1 à 9),
+ * `z2` les unités — la valeur est 10·z + z2.
+ *
+ * Les égalités sont rangées dans l'ORDRE DE CONSTRUCTION : chacune ne dépend
+ * que de cases déjà posées par les précédentes.
  */
 function construireStructure(taille) {
     const cells = [];
@@ -63,7 +67,6 @@ function construireStructure(taille) {
 
     const equations = [];
     const signes = [];
-    // Une égalité horizontale occupe cinq colonnes : a ∘ b = c.
     const H = (r, c0) => {
         const eq = { a: cell(r, c0), b: cell(r, c0 + 2), z: cell(r, c0 + 4), op: null };
         signes.push({ r, c: c0 + 1, eq: equations.length, role: 'op' });
@@ -71,7 +74,14 @@ function construireStructure(taille) {
         equations.push(eq);
         return eq;
     };
-    // Une verticale descend de deux lignes par case : a ∘ g = j.
+    // Horizontale à résultat double : … = [z][z2], deux cases accolées.
+    const H2C = (r, c0) => {
+        const eq = { a: cell(r, c0), b: cell(r, c0 + 2), z: cell(r, c0 + 4), z2: cell(r, c0 + 5), op: null };
+        signes.push({ r, c: c0 + 1, eq: equations.length, role: 'op' });
+        signes.push({ r, c: c0 + 3, glyphe: '=' });
+        equations.push(eq);
+        return eq;
+    };
     const V = (r0, c) => {
         const eq = { a: cell(r0, c), b: cell(r0 + 2, c), z: cell(r0 + 4, c), op: null };
         signes.push({ r: r0 + 1, c, eq: equations.length, role: 'op' });
@@ -80,89 +90,114 @@ function construireStructure(taille) {
         return eq;
     };
 
-    // Étage : deux horizontales en haut (r), trois verticales, deux
-    // horizontales en bas (r+4). Les têtes des verticales sont A, C et D.
+    // Un étage : la boucle fermée décrite en tête de fichier. `r` est la ligne
+    // des égalités du haut de l'étage ; celles du bas sont à r+4.
     const etage = (r) => {
-        H(r, 0); H(r, 6);
-        V(r, 0); V(r, 4); V(r, 6);
-        H(r + 4, 0); H(r + 4, 6);
+        if (r === 0) H(0, 0);        // A ∘ B = C (déjà là aux étages suivants)
+        V(r, 0);                     // A ∘ G = J
+        V(r, 4);                     // C ∘ H = M
+        H2C(r + 4, 0);               // J ∘ K = [M][N]
+        H(r + 4, 5);                 // N ∘ O = Q
+        V(r, 9);                     // D ∘ P = Q (construite tête en bas :
+                                     //   Q est déjà posé, D s'en déduit)
+        if (r === 0) H(0, 9);        // D ∘ E = F
     };
 
     etage(0);
-    if (taille === 'grand') {
-        // Les verticales du second étage partent de J (0,0), L (4,4) et
-        // M (4,6) — les égalités du bas du premier étage sont déjà posées,
-        // seules s'ajoutent les verticales et le nouveau bas.
-        V(4, 0); V(4, 4); V(4, 6);
-        H(8, 0); H(8, 6);
-    }
+    if (taille === 'grand') etage(4);
 
-    const rows = taille === 'grand' ? 9 : 5;
-    return { cells, equations, signes, rows, cols: 11 };
+    return { cells, equations, signes, rows: taille === 'grand' ? 9 : 5, cols: 14 };
 }
 
-// --- Solveur ----------------------------------------------------------------
+// --- Déduction et solveur -----------------------------------------------------
+
+// a ∘ b = T : retrouver a ou b. `undefined` = pas déductible (0 × b = 0),
+// null = contradiction.
+const retrouverA = (op, b, T) => {
+    if (op === 'add') return T - b;
+    if (op === 'sub') return T + b;
+    if (op === 'mul') return b === 0 ? (T === 0 ? undefined : null) : (T % b === 0 ? T / b : null);
+    return T * b;
+};
+const retrouverB = (op, a, T) => {
+    if (op === 'add') return T - a;
+    if (op === 'sub') return a - T;
+    if (op === 'mul') return a === 0 ? (T === 0 ? undefined : null) : (T % a === 0 ? T / a : null);
+    return T === 0 ? (a === 0 ? undefined : null) : (a % T === 0 ? a / T : null);
+};
+const chiffre = (v) => v !== null && v !== undefined && Number.isInteger(v) && v >= 0 && v <= 9;
 
 /**
- * Compte les solutions d'un treillis partiel, en s'arrêtant à `limite`.
- * Exporté pour les tests. Déduction d'abord : dans chaque égalité, deux cases
- * connues imposent la troisième (l'inverse d'une soustraction est une
- * addition, celui d'une division une multiplication) ; on ne branche que sur
- * les cases qu'aucune déduction n'atteint.
+ * Propage les déductions : dans chaque égalité où il ne manque qu'une case,
+ * elle se calcule. Mute `vals` ; false en cas de contradiction. C'est à la
+ * fois le cœur du solveur et la définition de « résoluble sans deviner ».
  */
+function deduire(equations, vals) {
+    let bouge = true;
+    while (bouge) {
+        bouge = false;
+        for (const eq of equations) {
+            const { a, b, z, z2, op } = eq;
+            const double = z2 !== undefined;
+            const va = vals[a], vb = vals[b], vz = vals[z], vz2 = double ? vals[z2] : 0;
+            const inconnues = [va, vb, vz].filter(v => v === null).length
+                + (double && vals[z2] === null ? 1 : 0);
+
+            if (inconnues === 0) {
+                const T = double ? 10 * vz + vz2 : vz;
+                if (calculer(op, va, vb) !== T || (double && vz < 1)) return false;
+                continue;
+            }
+            if (inconnues > 1) continue;
+
+            let idx, v;
+            if (va === null || vb === null) {
+                const T = double ? 10 * vz + vz2 : vz;
+                if (va === null) { idx = a; v = retrouverA(op, vb, T); }
+                else { idx = b; v = retrouverB(op, va, T); }
+            } else {
+                const T = calculer(op, va, vb);
+                if (T === null) return false;
+                if (!double) { idx = z; v = T; }
+                else if (vz === null) {
+                    // T et les unités connues : les dizaines s'en déduisent.
+                    if (T < 10 || T > 99 || T % 10 !== vz2) return false;
+                    idx = z; v = Math.floor(T / 10);
+                } else {
+                    if (T < 10 || T > 99 || Math.floor(T / 10) !== vz) return false;
+                    idx = z2; v = T % 10;
+                }
+            }
+            if (v === undefined) continue;
+            if (!chiffre(v)) return false;
+            if (z2 !== undefined && idx === z && v < 1) return false; // pas de dizaine nulle
+            vals[idx] = v;
+            bouge = true;
+        }
+    }
+    return true;
+}
+
+/** La grille est-elle terminable par déduction seule, sans jamais brancher ? */
+export function resolubleParDeduction(structure, givens) {
+    const vals = [...givens];
+    return deduire(structure.equations, vals) && !vals.includes(null);
+}
+
+/** Compte les solutions (arrêt à `limite`). Exporté pour les tests. */
 export function compterSolutionsGaram(structure, givens, limite = 2, sorties = null) {
     const { equations } = structure;
     let count = 0;
 
-    // a ∘ b = z : retrouver a ou b. `undefined` = pas déductible (0×b=0),
-    // null = contradiction.
-    const retrouverA = (op, b, z) => {
-        if (op === 'add') return z - b;
-        if (op === 'sub') return z + b;
-        if (op === 'mul') return b === 0 ? (z === 0 ? undefined : null) : (z % b === 0 ? z / b : null);
-        return z * b; // div : a = z × b (b ≠ 0 vérifié à l'évaluation)
-    };
-    const retrouverB = (op, a, z) => {
-        if (op === 'add') return z - a;
-        if (op === 'sub') return a - z;
-        if (op === 'mul') return a === 0 ? (z === 0 ? undefined : null) : (z % a === 0 ? z / a : null);
-        return z === 0 ? (a === 0 ? undefined : null) : (a % z === 0 ? a / z : null); // div : b = a ÷ z
-    };
-
-    const deduire = (vals) => {
-        let bouge = true;
-        while (bouge) {
-            bouge = false;
-            for (const { a, b, z, op } of equations) {
-                const va = vals[a], vb = vals[b], vz = vals[z];
-                const connues = (va !== null) + (vb !== null) + (vz !== null);
-                if (connues === 3) {
-                    if (evaluer(op, va, vb) !== vz) return false;
-                } else if (connues === 2) {
-                    let idx, v;
-                    if (va === null) { idx = a; v = retrouverA(op, vb, vz); }
-                    else if (vb === null) { idx = b; v = retrouverB(op, va, vz); }
-                    else { idx = z; v = evaluer(op, va, vb); }
-                    if (v === undefined) continue;
-                    if (v === null || v < 0 || v > 9 || !Number.isInteger(v)) return false;
-                    vals[idx] = v;
-                    bouge = true;
-                }
-            }
-        }
-        return true;
-    };
-
     const chercher = (vals) => {
         if (count >= limite) return;
         const w = [...vals];
-        if (!deduire(w)) return;
+        if (!deduire(equations, w)) return;
         const libre = w.indexOf(null);
         if (libre === -1) {
-            // Toutes les égalités doivent être revérifiées : la déduction peut
-            // avoir terminé sans repasser partout.
-            for (const { a, b, z, op } of equations) {
-                if (evaluer(op, w[a], w[b]) !== w[z]) return;
+            for (const { a, b, z, z2, op } of equations) {
+                const T = z2 !== undefined ? 10 * w[z] + w[z2] : w[z];
+                if (calculer(op, w[a], w[b]) !== T) return;
             }
             count++;
             if (sorties) sorties.push(w);
@@ -179,62 +214,81 @@ export function compterSolutionsGaram(structure, givens, limite = 2, sorties = n
     return count;
 }
 
-// --- Générateur -------------------------------------------------------------
+// --- Construction d'un treillis complet ---------------------------------------
 
 /**
- * Second opérande compatible : tiré pour que « a ∘ b » reste un chiffre.
- * Tirer au hasard puis rejeter faisait s'effondrer la construction du grand
- * treillis — douze égalités à satisfaire en cascade.
+ * Remplit le treillis égalité par égalité, dans l'ordre de construction.
+ * Pour chaque égalité, on énumère (opérations mélangées × valeurs mélangées)
+ * et on garde la première combinaison valide — bien plus sûr que tirer au
+ * hasard et rejeter, qui s'effondrait en cascade.
  */
-function tirerB(rng, op, a) {
-    if (op === 'add') return rng.int(0, 9 - a);
-    if (op === 'sub') return rng.int(0, a);
-    if (op === 'mul') return a === 0 ? rng.int(0, 9) : rng.int(0, Math.floor(9 / a));
-    if (a === 0) return rng.int(1, 9);                       // 0 ÷ b = 0
-    const diviseurs = [];
-    for (let b = 1; b <= 9; b++) if (a % b === 0) diviseurs.push(b);
-    return rng.pick(diviseurs);
-}
-
-/** Un treillis complet valide : opérations tirées, chiffres construits. */
-function treillisNeuf(rng, structure, autorisees) {
+function treillisNeuf(rng, structure, autorisees, essais = 800) {
     const { equations, cells } = structure;
 
-    for (let essai = 0; essai < 600; essai++) {
-        // De nouvelles opérations régulièrement : certaines combinaisons
-        // (divisions en cascade) sont ingrates, inutile de s'y acharner.
-        if (essai % 40 === 0) {
-            for (const eq of equations) eq.op = rng.pick(autorisees);
-        }
+    // Prévoyance sur les cases DIZAINES : une case qui servira de dizaines à
+    // un résultat double ne peut pas prendre n'importe quelle valeur — en
+    // addition pure, la somme de deux chiffres plafonne à 18, la dizaine vaut
+    // forcément 1. Sans ce garde-fou, la construction posait ces cases à
+    // l'aveugle et le grand treillis échouait trois fois sur quatre.
+    const opsDoubles = autorisees.filter(o => o === 'add' || o === 'mul');
+    const doubles = opsDoubles.length ? opsDoubles : ['add'];
+    const dizainesOk = new Set();
+    if (doubles.includes('add')) dizainesOk.add(1);
+    if (doubles.includes('mul')) for (let t = 1; t <= 8; t++) dizainesOk.add(t);
+    const casesDizaines = new Set(equations.filter(e => e.z2 !== undefined).map(e => e.z));
 
+    for (let essai = 0; essai < essais; essai++) {
         const vals = Array(cells.length).fill(null);
         let ok = true;
+
         for (const eq of equations) {
-            const { a, b, z, op } = eq;
-            // Les têtes des égalités suivantes sont souvent déjà remplies par
-            // les précédentes — c'est le croisement du Garam.
-            if (vals[a] === null) vals[a] = rng.int(0, 9);
-            if (vals[b] === null) {
-                if (vals[z] !== null) {
-                    // z déjà imposé par une verticale : b se déduit.
-                    const b2 = op === 'add' ? vals[z] - vals[a]
-                        : op === 'sub' ? vals[a] - vals[z]
-                        : op === 'mul' ? (vals[a] !== 0 && vals[z] % vals[a] === 0 ? vals[z] / vals[a] : null)
-                        : (vals[z] !== 0 && vals[a] % vals[z] === 0 ? vals[a] / vals[z] : null);
-                    if (b2 === null || b2 < 0 || b2 > 9 || !Number.isInteger(b2)) { ok = false; break; }
-                    vals[b] = b2;
-                } else {
-                    vals[b] = tirerB(rng, op, vals[a]);
+            const { a, b, z, z2 } = eq;
+            const double = z2 !== undefined;
+            // Un résultat à deux chiffres exige + ou × (9 − 0 et 9 ÷ 1 plafonnent à 9).
+            const possibles = double ? doubles : autorisees;
+
+            let trouve = false;
+            for (const op of rng.shuffle(double ? [...possibles, 'mul'] : possibles)) {
+                if (double && !possibles.includes(op)) continue;
+                // La seule vraie liberté est la case `b` (ou `a` si b est déjà
+                // posé) : tout le reste se déduit. On énumère ses dix valeurs
+                // en ordre aléatoire et on prend la première qui marche.
+                for (const v of rng.shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+                    const w = [...vals];
+                    if (w[a] === null) w[a] = (w[b] === null && w[z] === null) ? rng.int(0, 9) : null;
+                    if (w[a] === null) w[a] = v;
+                    else if (w[b] === null) w[b] = v;
+                    else if (w[z] === null && !double) { /* z se déduira */ }
+                    const t = { ...eq, op };
+                    const copie = [...w];
+                    if (!deduire([t], copie)) continue;
+                    // L'égalité doit être ENTIÈREMENT résolue à ce stade.
+                    if ([a, b, z].some(i => copie[i] === null) || (double && copie[z2] === null)) continue;
+                    const T = double ? 10 * copie[z] + copie[z2] : copie[z];
+                    if (double && (T < 10 || T > 99)) continue;
+                    if (!double && (T < 0 || T > 9)) continue;
+                    // Une case dizaines posée hors de ses valeurs admissibles
+                    // condamnerait l'égalité double à venir : on refuse ici.
+                    let dizainesValides = true;
+                    for (const i of casesDizaines) {
+                        if (copie[i] !== null && !dizainesOk.has(copie[i])) { dizainesValides = false; break; }
+                    }
+                    if (!dizainesValides) continue;
+                    eq.op = op;
+                    for (let i = 0; i < copie.length; i++) vals[i] = copie[i];
+                    trouve = true;
+                    break;
                 }
+                if (trouve) break;
             }
-            const z2 = evaluer(op, vals[a], vals[b]);
-            if (z2 === null || (vals[z] !== null && vals[z] !== z2)) { ok = false; break; }
-            vals[z] = z2;
+            if (!trouve) { ok = false; break; }
         }
         if (ok) return vals;
     }
     return null;
 }
+
+// --- Générateur ---------------------------------------------------------------
 
 export const garamGenerator = {
     id: 'logique.garam',
@@ -250,7 +304,7 @@ export const garamGenerator = {
             ]
         },
         {
-            id: 'operations', type: 'multiselect', label: 'Opérations', default: ['add', 'sub'],
+            id: 'operations', type: 'multiselect', label: 'Opérations', default: ['add', 'sub', 'mul'],
             options: [
                 { value: 'add', label: 'Addition' },
                 { value: 'sub', label: 'Soustraction' },
@@ -272,16 +326,17 @@ export const garamGenerator = {
         const rng = ctx.rng;
         const taille = params.taille === 'grand' ? 'grand' : 'petit';
         const autorisees = Array.isArray(params.operations) && params.operations.length
-            ? params.operations : ['add', 'sub'];
+            ? params.operations : ['add', 'sub', 'mul'];
         const difficulte = CIBLES_DONNEES[params.difficulte] ? params.difficulte : 'facile';
 
         const structure = construireStructure(taille);
-        const sol = treillisNeuf(rng, structure, autorisees);
-        // Introuvable (opérations trop restrictives) : repli sur l'addition,
-        // qui est toujours satisfiable.
-        const solution = sol || treillisNeuf(rng, structure, ['add']);
+        const solution = treillisNeuf(rng, structure, autorisees)
+            || treillisNeuf(rng, structure, ['add'], 3000);
 
-        // Creusage à solution unique, comme au Binairo.
+        // Creusage : un retrait n'est conservé que si la grille reste
+        // RÉSOLUBLE PAR DÉDUCTION seule — garantie plus forte que l'unicité
+        // (une valeur déduite est forcée), et c'est elle qui rend la grille
+        // agréable : il y a toujours un prochain coup.
         const givens = [...solution];
         let restantes = givens.length;
         const cible = Math.round(CIBLES_DONNEES[difficulte] * givens.length);
@@ -289,7 +344,7 @@ export const garamGenerator = {
             if (restantes <= cible) break;
             const memo = givens[idx];
             givens[idx] = null;
-            if (compterSolutionsGaram(structure, givens) > 1) givens[idx] = memo;
+            if (!resolubleParDeduction(structure, givens)) givens[idx] = memo;
             else restantes--;
         }
 
@@ -299,16 +354,16 @@ export const garamGenerator = {
             skillId: 'num.logique.garam',
             answerKind: 'grid',
             prompt: {
-                text: 'Complète les cases avec des chiffres de 0 à 9 pour que toutes les égalités soient vraies.',
-                html: '<div class="game-question kenken-consigne">Complète les cases (chiffres de <b>0 à 9</b>) pour que <b>toutes les égalités</b>, horizontales et verticales, soient vraies.</div>'
+                text: 'Complète les cases avec des chiffres pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres.',
+                html: '<div class="game-question kenken-consigne">Complète les cases pour que <b>toutes les égalités</b> soient vraies. Deux cases collées forment un <b>nombre à deux chiffres</b>.</div>'
             },
-            // Préfixe « g » : voir kenken.js — l'égalité stricte, pas parseFloat.
+            // Préfixe « g » : l'égalité stricte, pas parseFloat (voir kenken.js).
             answer: 'g' + solution.join('/'),
             hints: [
-                'Observe la zone entourée en orange : une égalité y est fausse, ou presque complète.',
+                'Observe la zone entourée en orange : une égalité y est fausse, ou il n\'y manque qu\'une case.',
                 'Une case a été remplie pour toi. Les égalités qui la traversent se débloquent.'
             ],
-            explanation: 'Chaque égalité, lue horizontalement ou verticalement, doit être vraie — y compris celles qui partagent une case.',
+            explanation: 'Chaque égalité, horizontale ou verticale, doit être vraie — les cases partagées et les nombres à deux chiffres relient tout le treillis.',
             difficulty: DIFFICULTE_ITEM[difficulte] + (taille === 'grand' ? 1 : 0),
             meta: {
                 structure: {

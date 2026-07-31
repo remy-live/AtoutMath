@@ -1,9 +1,12 @@
-// Le Garam promet, comme ses deux aînés, UNE solution — et un treillis dont
-// toutes les égalités sont vraies, y compris celles qui se croisent.
+// Le Garam version treillis lié : ces tests vérifient les trois promesses —
+// solution unique, treillis d'UN SEUL TENANT, et grilles RÉSOLUBLES SANS
+// DEVINER (terminables par pur enchaînement de déductions).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { garamGenerator, compterSolutionsGaram, OPS_GARAM } from '../js/core/generators/garam.js';
+import {
+    garamGenerator, compterSolutionsGaram, resolubleParDeduction, OPS_GARAM
+} from '../js/core/generators/garam.js';
 import { makeRng } from '../js/core/ids.js';
 
 const genere = (seed, params = {}) =>
@@ -12,49 +15,97 @@ const genere = (seed, params = {}) =>
         { rng: makeRng(seed) }
     );
 
+const casesDe = (eq) => (eq.z2 !== undefined ? [eq.a, eq.b, eq.z, eq.z2] : [eq.a, eq.b, eq.z]);
+
 function verifieStructure(item) {
     const { structure, givens, solution } = item.meta;
 
     for (const v of solution) assert.ok(v >= 0 && v <= 9 && Number.isInteger(v), 'chiffre de 0 à 9');
 
-    // Toutes les égalités sont vraies sur la solution.
-    for (const { a, b, z, op } of structure.equations) {
-        const calc = OPS_GARAM[op].calc(solution[a], solution[b]);
-        assert.equal(calc, solution[z], `égalité ${solution[a]} ${op} ${solution[b]} = ${solution[z]}`);
-        if (op === 'div') assert.ok(solution[b] !== 0, 'jamais de division par zéro');
-        if (op === 'sub') assert.ok(solution[z] >= 0, 'jamais de résultat négatif');
+    for (const eq of structure.equations) {
+        const T = eq.z2 !== undefined ? 10 * solution[eq.z] + solution[eq.z2] : solution[eq.z];
+        assert.equal(OPS_GARAM[eq.op].calc(solution[eq.a], solution[eq.b]), T,
+            `égalité ${solution[eq.a]} ${eq.op} ${solution[eq.b]} = ${T}`);
+        if (eq.z2 !== undefined) {
+            assert.ok(T >= 10 && T <= 99, 'résultat double entre 10 et 99');
+            assert.ok(solution[eq.z] >= 1, 'pas de dizaine nulle');
+        }
+        if (eq.op === 'div') assert.ok(solution[eq.b] !== 0, 'jamais de division par zéro');
+        if (eq.op === 'sub') assert.ok(T >= 0, 'jamais de résultat négatif');
     }
 
-    // Les cases données coïncident avec la solution.
     givens.forEach((v, i) => { if (v !== null) assert.equal(v, solution[i]); });
 
-    // Le nombre d'égalités et de cases correspond à la taille.
-    const attendu = structure.rows === 9 ? [12, 24] : [7, 15];
-    assert.equal(structure.equations.length, attendu[0]);
-    assert.equal(structure.cells.length, attendu[1]);
+    const attendu = structure.rows === 9
+        ? { eqs: 12, cells: 24, doubles: 2 }
+        : { eqs: 7, cells: 15, doubles: 1 };
+    assert.equal(structure.equations.length, attendu.eqs);
+    assert.equal(structure.cells.length, attendu.cells);
+    assert.equal(structure.equations.filter(e => e.z2 !== undefined).length, attendu.doubles);
 
     assert.equal(item.answer, 'g' + solution.join('/'));
 }
 
-test('la solution est unique, sur 60 graines, petit et grand', () => {
-    for (let i = 0; i < 60; i++) {
-        const item = genere(`unicite-${i}`, { taille: i % 2 ? 'grand' : 'petit' });
-        assert.equal(compterSolutionsGaram(item.meta.structure, item.meta.givens, 3), 1,
-            `graine unicite-${i} : solution unique`);
+test('le treillis est d\'UN SEUL TENANT : toutes les cases reliées entre elles', () => {
+    for (const taille of ['petit', 'grand']) {
+        const { structure } = genere(`connexe-${taille}`, { taille }).meta;
+        // Parcours du graphe : deux cases sont voisines si une égalité les
+        // contient toutes les deux. C'était LE défaut de la première version —
+        // deux sous-grilles indépendantes.
+        const voisins = Array.from({ length: structure.cells.length }, () => new Set());
+        for (const eq of structure.equations) {
+            const cs = casesDe(eq);
+            for (const x of cs) for (const y of cs) if (x !== y) voisins[x].add(y);
+        }
+        const vus = new Set([0]);
+        const file = [0];
+        while (file.length) {
+            for (const v of voisins[file.pop()]) if (!vus.has(v)) { vus.add(v); file.push(v); }
+        }
+        assert.equal(vus.size, structure.cells.length, `${taille} : une seule toile`);
     }
 });
 
-test('structure valide : égalités vraies, données exactes, bonnes tailles', () => {
+test('chaque grille est résoluble par déduction seule — jamais besoin de deviner', () => {
     for (let i = 0; i < 40; i++) {
+        const item = genere(`deduction-${i}`, { taille: i % 2 ? 'grand' : 'petit' });
+        assert.ok(resolubleParDeduction(item.meta.structure, item.meta.givens),
+            `graine deduction-${i}`);
+    }
+});
+
+test('la solution est unique, sur 40 graines, petit et grand', () => {
+    for (let i = 0; i < 40; i++) {
+        const item = genere(`unicite-${i}`, { taille: i % 2 ? 'grand' : 'petit' });
+        assert.equal(compterSolutionsGaram(item.meta.structure, item.meta.givens, 3), 1,
+            `graine unicite-${i}`);
+    }
+});
+
+test('structure valide : égalités vraies, résultats doubles, données exactes', () => {
+    for (let i = 0; i < 30; i++) {
         verifieStructure(genere(`structure-${i}`, { taille: i % 2 ? 'grand' : 'petit' }));
     }
 });
 
-test('les opérations non autorisées ne sortent jamais', () => {
+test('il y a bien des multiplications à résultat double quand on les autorise', () => {
+    let doublesMul = 0;
+    for (let i = 0; i < 30; i++) {
+        const item = genere(`mul-${i}`, { operations: ['add', 'mul'] });
+        doublesMul += item.meta.structure.equations
+            .filter(e => e.z2 !== undefined && e.op === 'mul').length;
+    }
+    assert.ok(doublesMul >= 10, `seulement ${doublesMul} multiplications doubles sur 30 grilles`);
+});
+
+test('les égalités simples respectent les opérations autorisées', () => {
     for (let i = 0; i < 20; i++) {
-        const item = genere(`ops-${i}`, { operations: ['add', 'mul'] });
+        const item = genere(`ops-${i}`, { operations: ['sub', 'div'] });
         for (const eq of item.meta.structure.equations) {
-            assert.ok(['add', 'mul'].includes(eq.op), `opération interdite : ${eq.op}`);
+            // Un résultat double exige + ou × : seules ces égalités-là ont
+            // droit au repli sur l'addition.
+            if (eq.z2 === undefined) assert.ok(['sub', 'div'].includes(eq.op), `simple en ${eq.op}`);
+            else assert.ok(['add', 'mul'].includes(eq.op), `double en ${eq.op}`);
         }
     }
 });
@@ -89,4 +140,12 @@ test('la génération est rapide, y compris en grand difficile', () => {
     for (let i = 0; i < 20; i++) genere(`vitesse-${i}`, { taille: 'grand', difficulte: 'difficile' });
     const duree = Date.now() - debut;
     assert.ok(duree < 5000, `20 grands treillis en ${duree} ms — trop lent`);
+});
+
+test('cas ingrat : addition seule, les deux tailles restent générables', () => {
+    for (let i = 0; i < 10; i++) {
+        const item = genere(`addonly-${i}`, { operations: ['add'], taille: i % 2 ? 'grand' : 'petit' });
+        assert.ok(item.meta.solution.every(v => v !== null));
+        assert.ok(resolubleParDeduction(item.meta.structure, item.meta.givens));
+    }
 });
