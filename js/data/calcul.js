@@ -140,7 +140,32 @@ export const calculExercises = [
         // seraient une punition.
         params: { nbQuestions: 3, chiffres: '1-4', operations: ['add', 'sub'], difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Remplis la grille : chaque chiffre une fois par ligne et par colonne, et chaque zone doit donner le résultat écrit dans son coin."
+        instruction: "Remplis la grille : chaque chiffre une fois par ligne et par colonne, et chaque zone doit donner le résultat écrit dans son coin.",
+        apprentissage: {
+            intro: "Une grille de Mathdoku se remplit sans jamais deviner : chaque case se déduit.",
+            regles: [
+                {
+                    titre: 'Chaque chiffre une seule fois par ligne et par colonne',
+                    texte: "Dans une grille 4 × 4, chaque ligne contient 1, 2, 3 et 4 — une fois chacun. Idem pour chaque colonne.",
+                    exemple: '<span class="lec-suite"><b>1</b><b>3</b><b>4</b><b>2</b></span>'
+                },
+                {
+                    titre: 'Chaque zone donne le résultat écrit dans son coin',
+                    texte: "Le petit calcul en haut à gauche d'une zone porte sur TOUTES ses cases. Une zone marquée 7+ sur deux cases, ce sont deux chiffres dont la somme fait 7.",
+                    exemple: '<span class="lec-suite"><b class="lec-coin" data-coin="7+">3</b><b>4</b></span>'
+                },
+                {
+                    titre: 'Un même chiffre peut revenir dans une zone',
+                    texte: "À condition qu'il ne soit ni sur la même ligne, ni sur la même colonne. C'est la question que tout le monde pose : la réponse est oui.",
+                    exemple: '<span class="lec-suite"><b>2</b><b class="lec-vide">·</b></span><span class="lec-suite"><b class="lec-vide">·</b><b>2</b></span>'
+                }
+            ],
+            paliers: [
+                { titre: 'Découverte', overrides: { chiffres: '1-3', operations: ['add'], difficulte: 'facile' }, nbItems: 2 },
+                { titre: 'On s\'entraîne', overrides: { chiffres: '1-4', operations: ['add', 'sub'], difficulte: 'facile' }, nbItems: 3 },
+                { titre: 'Défi', overrides: { chiffres: '1-4', operations: ['add', 'sub', 'mul'], difficulte: 'moyen' }, nbItems: 3 }
+            ]
+        }
     },
     {
         id: 'calc-binairo', status: STATUS.TEST, title: 'Binairo',
@@ -148,7 +173,34 @@ export const calculExercises = [
         printable: 'binairo',
         params: { nbQuestions: 3, taille: 6, difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
+        instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite.",
+        apprentissage: {
+            intro: "Deux règles suffisent à remplir toute la grille. Aucune ne demande de calculer : on observe, et on déduit.",
+            regles: [
+                {
+                    titre: 'Des 0 et des 1, rien d\'autre',
+                    texte: "Chaque case reçoit un 0 ou un 1. Certaines sont déjà données : ce sont elles qui lancent le raisonnement.",
+                    exemple: '<span class="lec-suite"><b>0</b><b>1</b><b class="lec-vide">·</b><b>1</b></span>'
+                },
+                {
+                    titre: 'Jamais trois identiques à la suite',
+                    texte: "Ni sur une ligne, ni sur une colonne. C'est la règle qui fait tout le travail : dès que deux chiffres pareils se suivent, la case d'à côté est forcée.",
+                    exemple: '<span class="lec-suite"><b>0</b><b>0</b><b class="lec-ko">0</b></span>'
+                        + '<span class="lec-fleche" aria-hidden="true">→</span>'
+                        + '<span class="lec-suite"><b>0</b><b>0</b><b class="lec-ok">1</b></span>'
+                },
+                {
+                    titre: 'Autant de 0 que de 1',
+                    texte: "Sur chaque ligne et sur chaque colonne. Dans une grille 6 × 6, cela fait trois 0 et trois 1 par ligne — dès que les trois 0 sont posés, tout le reste de la ligne est des 1.",
+                    exemple: '<span class="lec-suite"><b>0</b><b>1</b><b>1</b><b>0</b><b>1</b><b>0</b></span>'
+                }
+            ],
+            paliers: [
+                { titre: 'Découverte', overrides: { taille: 4, difficulte: 'facile' }, nbItems: 2 },
+                { titre: 'On s\'entraîne', overrides: { taille: 6, difficulte: 'facile' }, nbItems: 3 },
+                { titre: 'Défi', overrides: { taille: 6, difficulte: 'moyen' }, nbItems: 3 }
+            ]
+        }
     },
     {
         id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
@@ -156,7 +208,34 @@ export const calculExercises = [
         printable: 'garam',
         params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Complète les cases pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres."
+        instruction: "Complète les cases pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres.",
+        apprentissage: {
+            intro: "Le Garam est un treillis d'égalités : chaque case appartient à deux calculs à la fois, et c'est ce croisement qui donne la solution.",
+            regles: [
+                {
+                    titre: 'Toutes les égalités doivent être vraies',
+                    texte: "On lit chaque ligne et chaque colonne de chiffres comme un calcul complet. Commence par celles auxquelles il ne manque qu'une case.",
+                    exemple: '<span class="lec-calcul">7 − <b class="lec-vide">?</b> = 3</span>'
+                        + '<span class="lec-fleche" aria-hidden="true">→</span>'
+                        + '<span class="lec-calcul">7 − <b class="lec-ok">4</b> = 3</span>'
+                },
+                {
+                    titre: 'Chaque case sert deux fois',
+                    texte: "Une case appartient à une égalité horizontale ET à une égalité verticale. Ce qu'une case t'apprend d'un côté, tu le réutilises de l'autre.",
+                    exemple: ''
+                },
+                {
+                    titre: 'Deux cases collées font un nombre à deux chiffres',
+                    texte: "Quand deux cases se touchent sans signe entre elles, elles s'écrivent l'une après l'autre : un 1 et un 2 côte à côte, cela fait 12, pas 3.",
+                    exemple: '<span class="lec-suite"><b>1</b><b>2</b></span><span class="lec-fleche" aria-hidden="true">=</span><span class="lec-calcul">12</span>'
+                }
+            ],
+            paliers: [
+                { titre: 'Découverte', overrides: { taille: 'petit', operations: ['add'], difficulte: 'facile' }, nbItems: 1 },
+                { titre: 'On s\'entraîne', overrides: { taille: 'petit', operations: ['add', 'sub'], difficulte: 'facile' }, nbItems: 2 },
+                { titre: 'Défi', overrides: { taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'moyen' }, nbItems: 2 }
+            ]
+        }
     },
     {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',

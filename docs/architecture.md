@@ -120,6 +120,45 @@ décimaux, périmètre/aire) ajoutées **sans écrire un seul moteur de jeu**.
 | Un jeu | un `mount(container, session, opts)` dans `core/activities/`, inscrit dans `index.js` |
 | Un genre de réponse | l'ajouter à `answerKinds` d'un générateur et à `accepts` d'une activité |
 
+### Le mode apprentissage n'est pas un moteur de plus
+
+Certains exercices ne s'improvisent pas. Un Binairo ou un Mathdoku jeté sans un
+mot demande à l'élève de deviner la règle **en même temps que** la réponse.
+D'autres n'en ont aucun besoin : une addition se comprend en la lisant.
+
+Un mode apprentissage est donc **une leçon, puis un parcours à paliers** — et
+le moteur de parcours savait déjà tout faire. L'exercice le déclare au
+catalogue, rien d'autre :
+
+```js
+apprentissage: {
+  intro: 'à quoi on joue',
+  regles: [{ titre, texte, exemple?, figure? }],
+  paliers: [{ titre, overrides, nbItems, exerciseId? }]
+}
+```
+
+Trois points à connaître avant d'en écrire un :
+
+- `exerciseId` permet à un palier de passer par **un autre exercice**. La
+  difficulté n'est pas que dans les réglages : on apprend les notations au
+  calme, on ne les révise contre la montre qu'au dernier palier.
+- La politique est imposée par [apprentissage.js](../js/core/apprentissage.js) :
+  entraînement, trois essais, aides, **aucune note**. Être jugé sur ce qu'on
+  découvre n'a pas de sens.
+- Le seuil laisse **toujours passer une erreur** dès qu'il y a plus d'une
+  question. Renvoyer un élève au début d'un palier pour une inattention est la
+  meilleure façon de le faire abandonner.
+
+Les règles sont rendues par [leconUI.js](../js/ui/leconUI.js), et non par le
+catalogue : une règle se montre, et `figure: { type: 'notation', … }` va y
+chercher un vrai dessin. Les données ne connaissent pas le SVG.
+
+`tests/apprentissage.test.mjs` vérifie ce qui dérive en silence : une surcharge
+sur un réglage inexistant (le générateur reprendrait sa valeur par défaut, et le
+palier « facile » se jouerait en difficile sans que rien ne le signale), une
+valeur hors des options, un palier vers un exercice disparu.
+
 ### Le robot explique, et il l'explique gratuitement
 
 La démonstration ne montre pas seulement **où** cliquer, elle dit **pourquoi**.

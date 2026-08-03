@@ -263,7 +263,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
 
 // --- Réglages avant partie (élève) ------------------------------------------
 
-export function showStudentConfigModal(exo, onStart) {
+export function showStudentConfigModal(exo, onStart, onApprendre = null) {
     const modal = document.getElementById('student-config-modal');
     const content = document.getElementById('student-config-content');
     if (!modal || !content) return onStart({ ...(exo.params || {}) });
@@ -280,13 +280,31 @@ export function showStudentConfigModal(exo, onStart) {
             📄 Travailler sur papier…
         </button>` : '';
 
+    // Mode apprentissage : proposé AVANT les réglages, et pas caché en bas.
+    // Un élève qui découvre l'exercice n'a rien à régler, il a besoin qu'on lui
+    // explique — et il ne cherchera pas un bouton sous un formulaire.
+    const apprendre = onApprendre && exo.apprentissage ? `
+        <button type="button" class="cfg-apprendre" id="btn-cfg-apprendre">
+            <span class="cfg-apprendre-icone" aria-hidden="true">🎓</span>
+            <span class="cfg-apprendre-corps">
+                <span class="cfg-apprendre-titre">Apprendre à jouer</span>
+                <span class="cfg-apprendre-note">Les règles expliquées, puis des grilles de plus en plus difficiles.</span>
+            </span>
+        </button>` : '';
+
     content.innerHTML = `
+        ${apprendre}
         ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
         <div class="cfg-field">
             <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
             <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="3" max="50" value="${current.nbQuestions || 10}">
         </div>
         ${impression}`;
+
+    const btnApprendre = document.getElementById('btn-cfg-apprendre');
+    if (btnApprendre) {
+        btnApprendre.onclick = () => { modal.style.display = 'none'; onApprendre(); };
+    }
 
     wireTips(content);
     modal.style.display = 'flex';

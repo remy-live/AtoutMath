@@ -48,6 +48,9 @@ export class Runner {
         this.session = null;
         this.timerInterval = null;
         this.onExit = cfg.onExit || null;
+        // Leçon du mode apprentissage, affichée avant la première étape. On
+        // n'entre pas dans un Binairo sans en connaître les deux règles.
+        this.lecon = cfg.lecon || null;
     }
 
     // --- Cycle de vie -------------------------------------------------------
@@ -75,7 +78,8 @@ export class Runner {
 
         this.showLayer();
         this.setupStepNavigation();
-        if (isEvaluation(this.policy)) this.showBriefing();
+        if (this.lecon) this.showLecon();
+        else if (isEvaluation(this.policy)) this.showBriefing();
         else this.runStep();
         return true;
     }
@@ -179,6 +183,20 @@ export class Runner {
 
     get canvas() {
         return document.getElementById('game-canvas') || document.getElementById('game-board');
+    }
+
+    /**
+     * La leçon, avant tout exercice.
+     *
+     * Rendue par la couche interface : une règle se montre, et le dessin qui
+     * l'illustre n'a rien à faire dans le noyau.
+     */
+    showLecon() {
+        import('../ui/leconUI.js').then(({ leconHtml }) => {
+            this.canvas.innerHTML = leconHtml(this.lecon);
+            const btn = document.getElementById('btn-lecon-go');
+            if (btn) btn.onclick = () => this.runStep();
+        }).catch(() => this.runStep());
     }
 
     /**

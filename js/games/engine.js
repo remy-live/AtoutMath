@@ -13,6 +13,7 @@ import { ItemSession } from '../core/itemSession.js';
 import { makePath, makeStep } from '../core/path.js';
 import { defaultPolicy } from '../core/policy.js';
 import { paramSchemaOf } from '../data/catalog.js';
+import { aApprentissage, construireApprentissage } from '../core/apprentissage.js';
 
 /**
  * Ouvre un exercice en plein écran.
@@ -28,9 +29,12 @@ export function openGameLayer(exo, startAsDemo) {
     const schema = paramSchemaOf(exo);
     const needsConfig = schema.length > 0 && !exo.internalStudentConfig;
 
-    if (needsConfig && !state.isTeacherMode) {
+    // Un exercice qui s'apprend passe TOUJOURS par la fenêtre de départ, même
+    // s'il n'a aucun réglage : c'est là qu'on propose la leçon, et la proposer
+    // est la moitié du travail.
+    if ((needsConfig || aApprentissage(exo)) && !state.isTeacherMode) {
         import('./configUI.js').then(m => {
-            m.showStudentConfigModal(exo, (params) => launchFreePlay(exo, params));
+            m.showStudentConfigModal(exo, (params) => launchFreePlay(exo, params), () => lancerApprentissage(exo));
         });
         return;
     }
@@ -64,6 +68,26 @@ function launchFreePlay(exo, params) {
             deviceMode: state.isTeacherMode ? (state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode) : 'none'
         });
         runner.start();
+    });
+}
+
+/**
+ * Mode apprentissage : la leçon, puis les paliers.
+ *
+ * Rien de neuf sous le capot — c'est un parcours ordinaire, avec une politique
+ * d'entraînement et des étapes de difficulté croissante. Ce qui change est
+ * devant : on explique avant de demander.
+ */
+export function lancerApprentissage(exo) {
+    const plan = construireApprentissage(exo);
+    if (!plan) return launchFreePlay(exo, { ...(exo.params || {}) });
+
+    import('../core/runner.js').then(({ Runner }) => {
+        new Runner({
+            path: plan.path,
+            lecon: plan.lecon,
+            deviceMode: state.isTeacherMode ? (state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode) : 'none'
+        }).start();
     });
 }
 

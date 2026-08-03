@@ -24,6 +24,10 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         overrides: { ...overrides },
         nbItems: opts.nbItems || 10,
         threshold: opts.threshold !== undefined ? opts.threshold : null, // null => tout réussir
+        // Nom propre à l'étape, quand il apprend quelque chose que le titre de
+        // l'exercice ne dit pas — le palier d'un mode apprentissage, par
+        // exemple (« Découverte », « Défi »).
+        titre: opts.titre || null,
         weight: opts.weight || 1,
         timeLimit: opts.timeLimit || null,
         // Rejeu exact d'une question passée : la graine suffit à la régénérer,
@@ -125,7 +129,7 @@ export function hydratePath(path) {
         steps.push({
             ...step,
             exercise: exo,
-            title: exo.title,
+            title: step.titre || exo.title,
             params: { ...(exo.params || {}), ...(step.overrides || {}) },
             threshold: step.threshold === null ? step.nbItems : step.threshold
         });
