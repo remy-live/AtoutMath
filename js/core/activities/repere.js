@@ -9,7 +9,7 @@
 // l'inversion, bien mieux qu'un « faux ».
 
 import { regTimeout } from '../timers.js';
-import { repereSvg } from '../figures.js';
+import { repereSvg, marqueurPoint } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
@@ -88,17 +88,13 @@ export function mount(container, session) {
 
         // Une croix, comme sur la fiche imprimée et comme au tableau : elle
         // désigne le nœud du quadrillage au lieu de le recouvrir.
-        const croix = document.createElementNS(ns, 'g');
-        croix.setAttribute('class', `rep-mark rep-mark--${kind}`);
-        [[-7, -7, 7, 7], [-7, 7, 7, -7]].forEach(([dx1, dy1, dx2, dy2]) => {
-            const l = document.createElementNS(ns, 'line');
-            l.setAttribute('x1', String(Number(cx) + dx1));
-            l.setAttribute('y1', String(Number(cy) + dy1));
-            l.setAttribute('x2', String(Number(cx) + dx2));
-            l.setAttribute('y2', String(Number(cy) + dy2));
-            croix.appendChild(l);
-        });
-        svg.appendChild(croix);
+        // Même marque que les points tracés par les figures : le point que
+        // l'élève pose doit s'écrire comme celui qu'on lui montre.
+        const marque = document.createElementNS(ns, 'g');
+        marque.innerHTML = marqueurPoint(Number(cx), Number(cy), '', 8);
+        const groupe = marque.firstElementChild;
+        groupe.classList.add('rep-mark', `rep-mark--${kind}`);
+        svg.appendChild(groupe);
 
         if (label) {
             const text = document.createElementNS(ns, 'text');

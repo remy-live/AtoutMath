@@ -38,6 +38,20 @@ function invalidate() {
 document.addEventListener('journal_appended', invalidate);
 document.addEventListener('journal_merged', invalidate);
 
+export const STYLES_POINT = ['croix', 'plus', 'disque'];
+
+/**
+ * Le style se porte sur la racine du document, et les figures dessinent les
+ * trois marques d'un coup : c'est le CSS qui montre la bonne.
+ *
+ * Autrement, changer d'habitude imposerait de RÉGÉNÉRER toutes les figures
+ * affichées — et les générateurs, qui produisent ces figures, n'ont pas à
+ * connaître un réglage d'interface.
+ */
+function appliquerStylePoint(style) {
+    if (typeof document !== 'undefined') document.documentElement.dataset.point = style;
+}
+
 export const state = {
     // --- Session (transitoire, non persisté) ---
     // Parcours en cours d'édition (format v2 : étapes = références + surcharges).
@@ -55,6 +69,12 @@ export const state = {
     // État d'interface, volontairement non persisté — c'est un coup d'œil, pas
     // un réglage.
     previewsOn: false,
+    // Comment on marque un point dans les figures : 'croix' | 'plus' | 'disque'.
+    // La croix est la convention des manuels — un point n'a pas d'épaisseur, et
+    // c'est l'INTERSECTION des deux traits qui le désigne, pas la tache. Réglage
+    // d'affichage global, persisté : c'est une habitude de classe, pas un choix
+    // qu'on refait à chaque exercice.
+    stylePoint: 'croix',
     // Filtre d'état de publication du catalogue : 'tout' | 'valide' | 'test'
     // | 'brouillon'. Outil d'auteur, persisté par confort entre deux sessions.
     catalogFilter: 'tout',
@@ -148,6 +168,8 @@ export const state = {
         this.selectedNiveaux = (await profileStore.get('selectedNiveaux', [])) || [];
         this.catalogFilter = (await profileStore.get('catalogFilter', 'tout')) || 'tout';
         this.mesExercices = (await profileStore.get('mesExercices', [])) || [];
+        this.stylePoint = (await profileStore.get('stylePoint', 'croix')) || 'croix';
+        appliquerStylePoint(this.stylePoint);
 
         journal.compact();
         invalidate();
@@ -311,6 +333,11 @@ export const state = {
     async _rangerMesExercices() {
         if (profileStore) await profileStore.set('mesExercices', this.mesExercices);
         document.dispatchEvent(new CustomEvent('mesExercices_updated'));
+    },
+    async setStylePoint(style) {
+        this.stylePoint = STYLES_POINT.includes(style) ? style : 'croix';
+        appliquerStylePoint(this.stylePoint);
+        if (profileStore) await profileStore.set('stylePoint', this.stylePoint);
     },
 
     // --- Parcours assigné ---------------------------------------------------

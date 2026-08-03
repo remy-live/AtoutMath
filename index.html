@@ -393,6 +393,15 @@
                         <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
                     </svg>
                 </button>
+                <!-- LES PARAMÈTRES D'AFFICHAGE. Un seul réglage pour l'instant —
+                     la marque d'un point — mais il vaut d'être ici : on le change
+                     une fois, et toutes les figures suivent. -->
+                <button id="btn-open-config" class="btn-icon btn-icon--sm" title="Paramètres d'affichage" aria-label="Paramètres d'affichage">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                </button>
                 <!-- LES ETOILES MENENT AU PROFIL. C'etait un <span> : un
                      compteur qu'on regarde grimper sans jamais pouvoir demander
                      d'ou il vient. Le meme chiffre vit dans la page profil, avec
@@ -1077,13 +1086,12 @@
         <!-- MODALE CONFIGURATION -->
         <div id="config-modal" class="modal-overlay">
             <div class="glass-panel modal-panel-settings">
-                <h3 class="modal-title-bordered">⚙️ Paramètres</h3>
+                <h3 class="modal-title-bordered">⚙️ Paramètres d'affichage</h3>
                 <div id="config-content">
-                    <!-- Checkboxes injéctées en JS -->
+                    <!-- Réglages injectés par app.js -->
                 </div>
                 <div class="modal-footer-actions">
-                    <button id="btn-config-cancel" class="btn-toggle glass-btn">Annuler</button>
-                    <button id="btn-config-save" class="btn-toggle active glass-btn primary">Valider</button>
+                    <button id="btn-config-cancel" class="btn-toggle glass-btn">Fermer</button>
                 </div>
             </div>
         </div>

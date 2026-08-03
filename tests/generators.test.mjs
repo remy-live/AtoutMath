@@ -10,6 +10,7 @@ import {
 import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../js/core/generators/fractions.js';
 import { repereGenerator, perimetreGenerator, aireGenerator } from '../js/core/generators/geometrie.js';
 import { notationsGenerator } from '../js/core/generators/notations.js';
+import { marqueurPoint } from '../js/core/figures.js';
 import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
@@ -161,6 +162,24 @@ test('notations : le piège de la longueur se désactive', () => {
         assert.ok(!item.choices.some(c => String(c.value) === `${p}${q}`),
             'la longueur ne doit plus être proposée');
     }
+});
+
+test('un point porte ses trois écritures, pour que le CSS en montre une', () => {
+    // Le style de marque est un réglage global appliqué en CSS : les figures
+    // doivent donc contenir les trois formes, sinon changer d'habitude
+    // imposerait de régénérer toutes les figures déjà affichées.
+    const m = marqueurPoint(50, 40, 'rep-point', 7);
+    for (const forme of ['pt-disque', 'pt-croix', 'pt-plus']) {
+        assert.ok(m.includes(forme), `marque « ${forme} » absente`);
+    }
+    assert.ok(!m.includes('NaN'), 'coordonnée invalide dans la marque');
+
+    const repere = repereGenerator.generate({ mode: 'lire' }, { rng: makeRng('pt'), weakTables: [] });
+    assert.ok(repere.prompt.html.includes('pt-marque'), 'le repère doit tracer une marque de point');
+
+    const notation = notationsGenerator.generate({ sens: 'figure' }, { rng: makeRng('pt2') });
+    assert.equal((notation.prompt.html.match(/pt-marque/g) || []).length, 2,
+        'une figure de notation nomme exactement deux points');
 });
 
 test('la comparaison de réponses tolère les formats usuels', () => {
