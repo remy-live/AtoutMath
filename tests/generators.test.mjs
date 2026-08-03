@@ -9,6 +9,7 @@ import {
 } from '../js/core/generators/calcul.js';
 import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../js/core/generators/fractions.js';
 import { repereGenerator, perimetreGenerator, aireGenerator } from '../js/core/generators/geometrie.js';
+import { notationsGenerator } from '../js/core/generators/notations.js';
 import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
@@ -32,6 +33,11 @@ const ALL = [
     [repereGenerator, { mode: "lire" }],
     [perimetreGenerator, {}],
     [aireGenerator, {}],
+    [notationsGenerator, { sens: 'mixte' }],
+    [notationsGenerator, { sens: 'figure' }],
+    [notationsGenerator, { sens: 'ecriture' }],
+    [notationsGenerator, { sens: 'lecture' }],
+    [notationsGenerator, { sens: 'mixte', longueur: 'non' }],
     [chiffreRangGenerator, { partie: 'les deux', decimales: 3 }],
     [partiesGenerator, {}],
     [zerosGenerator, {}],
@@ -112,6 +118,49 @@ test('un item numérique peut être présenté sous forme de choix', () => {
     const converted = toChoices({ ...item, choices: null }, makeRng('conv2'));
     assert.equal(converted.answerKind, 'choice');
     assert.equal(converted.choices.filter(c => c.correct).length, 1);
+});
+
+test('notations : l\'origine d\'une demi-droite compte, et la figure ne ment pas', () => {
+    let demiVues = 0;
+    for (let i = 0; i < 300; i++) {
+        const item = notationsGenerator.generate({ sens: 'mixte' }, { rng: makeRng('not_' + i) });
+        const { p, q, sens, objet, ecriture } = item.meta;
+
+        // [PQ) et [QP) sont deux demi-droites OPPOSÉES : elles ne peuvent
+        // jamais être données pour équivalentes, et l'une doit être proposée
+        // quand l'autre est attendue — c'est là que se joue la notion.
+        if (objet === 'demi_pq' || objet === 'demi_qp') {
+            demiVues++;
+            const attendu = objet === 'demi_pq' ? `[${p}${q})` : `[${q}${p})`;
+            assert.equal(ecriture, attendu, 'origine écrite en premier');
+            if (sens !== 'lecture') {
+                const opposee = objet === 'demi_pq' ? `[${q}${p})` : `[${p}${q})`;
+                assert.ok(item.choices.some(c => c.value === opposee),
+                    `la demi-droite opposée doit être proposée (${item.prompt.text})`);
+            }
+        }
+
+        // Une longueur ne se dessine pas : elle ne peut pas être la réponse
+        // d'une question posée par une figure.
+        if (sens === 'figure') assert.notEqual(objet, 'longueur');
+
+        // La réponse annoncée est bien celle de l'objet tiré.
+        const attenduReponse = sens === 'lecture' ? item.answer : ecriture;
+        assert.equal(String(item.answer), String(attenduReponse));
+    }
+    assert.ok(demiVues > 50, `les demi-droites doivent sortir régulièrement (${demiVues}/300)`);
+});
+
+test('notations : le piège de la longueur se désactive', () => {
+    for (let i = 0; i < 120; i++) {
+        const item = notationsGenerator.generate(
+            { sens: 'mixte', longueur: 'non' }, { rng: makeRng('notl_' + i) }
+        );
+        const { p, q } = item.meta;
+        assert.notEqual(item.meta.objet, 'longueur');
+        assert.ok(!item.choices.some(c => String(c.value) === `${p}${q}`),
+            'la longueur ne doit plus être proposée');
+    }
 });
 
 test('la comparaison de réponses tolère les formats usuels', () => {

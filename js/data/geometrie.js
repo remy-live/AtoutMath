@@ -1,4 +1,5 @@
 import { TAGS } from './tags.js';
+import { STATUS } from './status.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -33,5 +34,12 @@ export const geometrieExercises = [
         params: { relatifs: 'relatives', max: 5, mode: 'lire' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Lis les coordonnées du point, sans oublier les signes."
+    },
+    {
+        id: 'geo-notations-sprint', status: STATUS.TEST, title: 'Sprint des Notations',
+        generatorId: 'geo.notations', activityId: 'sprint',
+        params: { sens: 'mixte', longueur: 'oui' },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Crochet = la ligne s'arrête, parenthèse = elle continue. Réponds avant que la jauge ne se vide : elle se remplit de moins en moins longtemps à mesure que tu enchaînes."
     }
 ];

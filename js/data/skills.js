@@ -232,6 +232,14 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    'geo.notation.objets': {
+        label: 'Segment, droite et demi-droite',
+        chemin: [D.GEOMETRIQUE, SD.NOTATIONS],
+        niveaux: [N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Distinguer et écrire (AB), [AB], [AB) et AB.',
+        lesson: 'Le crochet ferme la ligne, la parenthèse la laisse filer : [AB] est le segment (il s\'arrête en A et en B), (AB) est la droite (elle file des deux côtés), [AB) est la demi-droite d\'origine A. Sans rien autour, AB est la longueur du segment [AB] : un nombre.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

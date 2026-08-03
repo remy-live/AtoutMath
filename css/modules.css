@@ -393,6 +393,97 @@
    et les cotes doivent rester lisibles après cette réduction. */
 .fig-label { fill: var(--text-main); font-size: 21px; font-weight: 700; }
 
+/* --- Droite, demi-droite, segment ---------------------------
+   Le trait est épais et rond : c'est LUI qu'on lit — jusqu'où va l'encre —
+   et non les points, qui ne servent qu'à nommer. */
+
+.not-svg { color: var(--text-main); }
+.not-trace { stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
+.not-point { fill: var(--text-main); stroke: var(--bg-panel); stroke-width: 2.5; }
+.not-name { fill: var(--text-main); font-size: 20px; font-weight: 800; }
+/* L'objet à écrire, dit en toutes lettres dans l'énoncé. */
+.not-cible { display: inline-block; margin-top: 6px; color: var(--primary); font-size: .92em; }
+.not-ecriture {
+    display: inline-block; padding: 2px 12px; border-radius: 10px;
+    background: var(--tag-dom-bg); color: var(--tag-dom-txt);
+    font-family: 'Courier New', monospace; font-weight: 800; letter-spacing: .04em;
+}
+
+/* --- Contre-la-montre ---------------------------------------
+   La jauge est une animation CSS : elle reste fluide quand le fil principal
+   travaille, et se met en pause d'un seul mot pendant une correction. */
+
+.sprint-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; height: 100%; gap: clamp(6px, 1.4cqh, 12px);
+}
+.sprint-hud {
+    display: flex; justify-content: space-between; align-items: center;
+    width: min(520px, 100%); font-weight: 800; font-size: clamp(.78rem, 1.9cqh, .95rem);
+}
+.sprint-vitesse { color: var(--primary); }
+.sprint-vitesse--monte { animation: sprint-palier .5s ease-out; }
+@keyframes sprint-palier {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+.sprint-serie { color: var(--text-muted); }
+.sprint-serie--chaude { color: var(--danger); }
+
+.sprint-jauge {
+    width: min(520px, 100%); height: clamp(8px, 1.6cqh, 13px);
+    background: var(--bg-hover); border-radius: 99px; overflow: hidden;
+}
+.sprint-barre {
+    width: 100%; height: 100%; border-radius: 99px;
+    transform-origin: left center; background: var(--success);
+}
+.sprint-barre--vide { background: var(--danger); }
+@keyframes sprint-fondre {
+    0% { transform: scaleX(1); background: #10b981; }
+    55% { background: #f59e0b; }
+    100% { transform: scaleX(0); background: #ef4444; }
+}
+
+.sprint-scene {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; min-height: 0; width: 100%;
+}
+.sprint-choix {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(8px, 1.8cqh, 14px); width: min(480px, 94%); margin-top: 4px;
+}
+.sprint-tuile {
+    display: flex; align-items: center; gap: 9px;
+    padding: clamp(9px, 1.9cqh, 15px) clamp(10px, 2cqw, 16px);
+    border: 2px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-family: inherit; font-size: clamp(.95rem, 2.4cqh, 1.25rem); font-weight: 700;
+    cursor: pointer; text-align: left; transition: transform .12s, border-color .12s;
+}
+.sprint-tuile:hover { border-color: var(--primary); transform: translateY(-2px); }
+/* Le numéro du raccourci clavier : discret, mais c'est lui qui rend les
+   paliers rapides jouables ailleurs qu'au doigt. */
+.sprint-touche {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 7px;
+    background: var(--bg-hover); color: var(--text-muted);
+    font-size: .74rem; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.sprint-etiquette { line-height: 1.25; }
+.sprint-tuile--ok { border-color: var(--success); background: #dcfce7; color: #065f46; }
+.sprint-tuile--ko { border-color: var(--danger); background: var(--danger); color: #fff; }
+.sprint-tuile--ko .sprint-touche { background: rgba(255,255,255,.25); color: #fff; }
+/* La bonne case, révélée quand le temps est écoulé ou les essais épuisés. */
+.sprint-tuile--vraie { border-color: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,.25); }
+
+@container plateau (max-width: 420px) {
+    .sprint-choix { grid-template-columns: 1fr; }
+}
+
+html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); color: #a7f3d0; }
+
 /* --- Repère du plan ----------------------------------------- */
 
 .rep-svg { color: var(--text-main); }

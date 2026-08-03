@@ -13,6 +13,7 @@ import {
 } from '../generators/calcul.js';
 import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../generators/fractions.js';
 import { repereGenerator, perimetreGenerator, aireGenerator } from '../generators/geometrie.js';
+import { notationsGenerator } from '../generators/notations.js';
 import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
@@ -28,7 +29,7 @@ import { garamGenerator } from '../generators/garam.js';
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator,
     fracCompareGenerator, fracAddGenerator, decCompareGenerator,
-    repereGenerator, perimetreGenerator, aireGenerator,
+    repereGenerator, perimetreGenerator, aireGenerator, notationsGenerator,
     // Chapitre « Nombres entiers et décimaux » (6ᵉ)
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
@@ -120,6 +121,17 @@ registerActivity({
     supports: { timed: true, autonomous: false, demo: true },
     load: choiceModule,
     mountOptions: { variant: 'coords' }
+});
+
+// Contre-la-montre : le temps accordé se resserre à chaque bonne réponse.
+// Activité générique — elle ne connaît aucune notion, donc elle sert aussi bien
+// les notations de géométrie que les tables ou les fractions.
+registerActivity({
+    id: 'sprint',
+    label: 'Contre-la-montre',
+    accepts: ['choice'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./sprint.js')
 });
 
 registerActivity({

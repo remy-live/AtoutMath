@@ -144,6 +144,65 @@ export function rectangleSvg(L, l, unit = 'cm') {
     </svg>`;
 }
 
+// --- Droite, demi-droite, segment -------------------------------------------
+//
+// La différence entre ces trois objets ne se dit pas, elle se VOIT : ce qui
+// change d'une figure à l'autre, c'est jusqu'où va l'encre. Les trois tracés
+// sont donc calculés sur une même ligne de référence, plus longue que l'écart
+// entre les deux points, dont chaque objet ne garde qu'une portion :
+//   segment [PQ]      — de P à Q, rien de plus ;
+//   demi-droite [PQ)  — de P jusqu'au bord, en passant par Q ;
+//   droite (PQ)       — d'un bord à l'autre.
+// La ligne est légèrement inclinée : horizontale, elle se lisait comme un axe.
+
+const NOT_W = 320, NOT_H = 108;
+const NOT_P = 0.28, NOT_Q = 0.72;   // position des deux points sur la ligne
+
+// Portion encrée, en fractions de la ligne de référence.
+const NOT_TRACES = {
+    droite: [0, 1],
+    segment: [NOT_P, NOT_Q],
+    demi_pq: [NOT_P, 1],
+    demi_qp: [0, NOT_Q]
+};
+
+/**
+ * @param {Object} cfg
+ * @param {'droite'|'segment'|'demi_pq'|'demi_qp'} cfg.objet
+ * @param {string} cfg.p - nom du premier point
+ * @param {string} cfg.q - nom du second point
+ */
+export function notationSvg({ objet = 'segment', p = 'A', q = 'B' } = {}) {
+    const x0 = 12, y0 = 80, x1 = NOT_W - 12, y1 = 30;
+    const at = f => ({ x: x0 + f * (x1 - x0), y: y0 + f * (y1 - y0) });
+
+    const [debut, fin] = NOT_TRACES[objet] || NOT_TRACES.segment;
+    const D = at(debut), F = at(fin);
+    const P = at(NOT_P), Q = at(NOT_Q);
+
+    // La description dit ce qu'on VOIT, pas ce que c'est : nommer l'objet
+    // donnerait la réponse à qui écoute la figure au lieu de la regarder.
+    const vu = {
+        droite: `Une ligne passant par ${p} et ${q}, prolongée au-delà des deux points.`,
+        segment: `Une ligne joignant ${p} à ${q}, sans prolongement.`,
+        demi_pq: `Une ligne partant de ${p}, passant par ${q} et prolongée au-delà de ${q}.`,
+        demi_qp: `Une ligne partant de ${q}, passant par ${p} et prolongée au-delà de ${p}.`
+    }[objet] || '';
+
+    const point = (pt, nom) => `
+        <circle class="not-point" cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="5.5"/>
+        <text class="not-name" x="${pt.x.toFixed(1)}" y="${(pt.y - 15).toFixed(1)}" text-anchor="middle">${nom}</text>`;
+
+    return `
+    <svg class="fig-svg not-svg" viewBox="0 0 ${NOT_W} ${NOT_H}" width="${NOT_W}" height="${NOT_H}"
+         role="img" aria-label="${vu}">
+        <line class="not-trace" x1="${D.x.toFixed(1)}" y1="${D.y.toFixed(1)}"
+              x2="${F.x.toFixed(1)}" y2="${F.y.toFixed(1)}"/>
+        ${point(P, p)}
+        ${point(Q, q)}
+    </svg>`;
+}
+
 // --- Numération égyptienne --------------------------------------------------
 //
 // Les glyphes sont dessinés en SVG plutôt que pris dans le bloc Unicode
