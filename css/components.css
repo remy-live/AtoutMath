@@ -274,7 +274,8 @@
 .file-input-wrap { position: relative; width: 100%; }
 #input-import-data { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 #student-analysis-content { display: flex; flex-direction: column; gap: 20px; }
-#student-config-content { display: flex; flex-direction: column; gap: 10px; }
+/* La disposition de #student-config-content est posée dans modules.css, avec
+   les autres règles des formulaires de configuration. */
 #config-content { display: flex; flex-direction: column; gap: 10px; }
 /* LE BANDEAU DE CONFIRMATION.
    Ancré en bas à droite sur grand écran ; sur téléphone il est ancré aux DEUX

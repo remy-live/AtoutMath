@@ -4404,6 +4404,44 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .modal-btn-flex--neutral:hover { color: var(--text-main); border-color: var(--text-muted); }
 
+
+/* --- ET SUR TABLETTE, DEUX COLONNES ------------------------------------
+   Les champs empilés en une seule colonne repoussaient le bouton « Jouer ! »
+   hors de l'écran : il fallait faire défiler la modale pour trouver de quoi
+   lancer la partie. La feuille du téléphone, ci-dessus, règle le cas étroit ;
+   ici on règle le cas large, en donnant deux colonnes au panneau.
+
+   TOUT EST BORNÉ À `min-width: 700px`, y compris la règle de fenêtre basse.
+   Sans cela, un téléphone couché — étroit ET bas — recevrait les deux jeux de
+   règles, et le second, écrit plus bas dans le fichier, l'emporterait sur la
+   feuille montante à spécificité égale. */
+@media (min-width: 700px) {
+    .modal-panel-sm-left { width: min(620px, 92vw); }
+    #student-config-content {
+        display: grid; grid-template-columns: 1fr 1fr;
+        column-gap: 26px; row-gap: 10px; align-content: start;
+    }
+    /* La marge du champ ferait doublon avec l'écart de la grille. */
+    #student-config-content .cfg-field { margin-bottom: 0; }
+    /* Les listes de puces (tables, opérations) et les longues listes
+       déroulantes gardent toute la largeur : à demi-largeur elles se replient
+       sur quatre rangées et regagnent en hauteur ce que la colonne fait
+       économiser. */
+    #student-config-content .cfg-field--wide,
+    #student-config-content .cfg-field--long,
+    #student-config-content .cfg-print-btn--seul { grid-column: 1 / -1; }
+}
+
+/* Tablette couchée, fenêtre basse : le décor passe après les réglages. */
+@media (min-width: 700px) and (max-height: 820px) {
+    .modal-panel-sm-left { padding: 20px 24px; gap: 12px; }
+    #student-config-modal .modal-title { font-size: 1.22rem; }
+    #student-config-modal .modal-text { display: none; }
+    .cfg-chip { padding: 5px 9px; }
+    .cfg-chips { gap: 7px; }
+    .cfg-input { padding: 6px 10px; }
+}
+
 /* --- Infobulle « ? » ---------------------------------------------------- */
 
 .cfg-info {
