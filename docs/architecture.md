@@ -186,6 +186,76 @@ décimaux, périmètre/aire) ajoutées **sans écrire un seul moteur de jeu**.
 | Un jeu | un `mount(container, session, opts)` dans `core/activities/`, inscrit dans `index.js` |
 | Un genre de réponse | l'ajouter à `answerKinds` d'un générateur et à `accepts` d'une activité |
 
+
+### Le mode apprentissage n'est pas un moteur de plus
+
+Certains exercices ne s'improvisent pas. Un Binairo ou un Mathdoku jeté sans un
+mot demande à l'élève de deviner la règle **en même temps que** la réponse.
+D'autres n'en ont aucun besoin : une addition se comprend en la lisant.
+
+Un mode apprentissage est donc **une leçon, puis un parcours à paliers** — et
+le moteur de parcours savait déjà tout faire. L'exercice le déclare au
+catalogue, rien d'autre :
+
+```js
+apprentissage: {
+  intro: 'à quoi on joue',
+  regles: [{ titre, texte, exemple?, figure? }],
+  paliers: [{ titre, overrides, nbItems, exerciseId? }]
+}
+```
+
+Trois points à connaître avant d'en écrire un :
+
+- `exerciseId` permet à un palier de passer par **un autre exercice**. La
+  difficulté n'est pas que dans les réglages : on apprend les notations au
+  calme, on ne les révise contre la montre qu'au dernier palier.
+- La politique est imposée par [apprentissage.js](../js/core/apprentissage.js) :
+  entraînement, trois essais, aides, **aucune note**. Être jugé sur ce qu'on
+  découvre n'a pas de sens.
+- Le seuil laisse **toujours passer une erreur** dès qu'il y a plus d'une
+  question. Renvoyer un élève au début d'un palier pour une inattention est la
+  meilleure façon de le faire abandonner.
+
+Les règles sont rendues par [leconUI.js](../js/ui/leconUI.js), et non par le
+catalogue : une règle se montre, et `figure: { type: 'notation', … }` va y
+chercher un vrai dessin. Les données ne connaissent pas le SVG.
+
+`tests/apprentissage.test.mjs` vérifie ce qui dérive en silence : une surcharge
+sur un réglage inexistant (le générateur reprendrait sa valeur par défaut, et le
+palier « facile » se jouerait en difficile sans que rien ne le signale), une
+valeur hors des options, un palier vers un exercice disparu.
+
+### Le robot explique, et il l'explique gratuitement
+
+La démonstration ne montre pas seulement **où** cliquer, elle dit **pourquoi**.
+Or ce qu'il faut dire est déjà dans l'item, et il y est pour tout générateur —
+présent ou à venir — parce que le contrat l'exige et qu'un test le vérifie :
+
+| Champ | Ce que le robot en fait |
+|---|---|
+| `hints` | la méthode, énoncée avant tout geste |
+| `choice.why` | l'erreur qu'il écarte, en la désignant du doigt |
+| `explanation` | la conclusion, une fois la réponse posée |
+
+Conséquence : **un nouveau générateur est commenté sans écrire une ligne** de
+plus. Une nouvelle activité n'a qu'à appeler `demoChoix()`
+([demoScript.js](../js/core/demoScript.js)) en lui passant ses cases, ou
+`direLaMethode()` / `direLaConclusion()` si son geste lui est propre.
+
+Les jeux à grille (Mathdoku, Binairo, Garam) ne peuvent pas s'en contenter :
+leur raisonnement n'est pas dans l'item, il est dans l'état de la grille. Chacun
+porte donc un `prochainCoup()` qui cherche la case qu'une règle impose et rend
+**la phrase qui la justifie**. Règle d'or : cette phrase est vérifiée contre la
+solution avant d'être prononcée — une justification fausse est pire que pas de
+justification. Quand aucune règle ne tranche, le robot le dit plutôt que
+d'inventer une déduction.
+
+La parole passe par [demoNarration.js](../js/core/demoNarration.js) : une bulle
+ancrée sur ce dont elle parle, dont la durée est calculée sur la longueur du
+texte, et dont l'attente passe par le minuteur de la démonstration — donc la
+pause l'arrête et le ralenti la double.
+
 ### Les jeux autonomes
 
 Tetris, Course, Memory, Météorites, Labyrinthe, Math Crush portent leur propre

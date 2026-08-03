@@ -3031,7 +3031,21 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     const apresLongueur = schema.filter(p => !p.groupe && decoupeLeTotal(p));
     const groupes = schema.filter(p => p.groupe);
 
+    // MODE APPRENTISSAGE : PROPOSÉ AVANT LES RÉGLAGES, et pas caché en bas.
+    // Un élève qui découvre l'exercice n'a rien à régler, il a besoin qu'on lui
+    // explique — et il ne cherchera pas un bouton sous un formulaire.
+    const onApprendre = opts.onApprendre || null;
+    const apprendre = onApprendre && exo.apprentissage ? `
+        <button type="button" class="cfg-apprendre" id="btn-cfg-apprendre">
+            <span class="cfg-apprendre-icone" aria-hidden="true">🎓</span>
+            <span class="cfg-apprendre-corps">
+                <span class="cfg-apprendre-titre">Apprendre à jouer</span>
+                <span class="cfg-apprendre-note">Les règles expliquées, puis des grilles de plus en plus difficiles.</span>
+            </span>
+        </button>` : '';
+
     content.innerHTML = `
+        ${apprendre}
         ${champsSchema(libre, valeurDe)}
         ${glissiereNombre({
         id: 'cfg-nbitems', label: 'Nombre de questions', aide: aideDuree,
@@ -3082,6 +3096,11 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     const partir = document.getElementById('btn-student-config-start');
     if (partir) partir.textContent = auteur ? 'Relancer' : 'Jouer !';
     rafraichirApercu(content);
+
+    const btnApprendre = document.getElementById('btn-cfg-apprendre');
+    if (btnApprendre) {
+        btnApprendre.onclick = () => { modal.style.display = 'none'; onApprendre(); };
+    }
     wireTips(content);
     // LE PANNEAU PASSE AU-DESSUS DE LA FICHE QUAND ELLE EST À L'ÉCRAN.
     // Voir `.modal-overlay--sur-fiche` : l'aperçu papier qui accompagne une
