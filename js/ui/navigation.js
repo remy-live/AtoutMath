@@ -111,6 +111,13 @@ export function createLibraryItem(exo) {
         couperApercuSurvol(); document.getElementById('hover-demo-box').style.display = 'none';
     };
 
+    // PAS D'APERÇU AU DOIGT DEPUIS LA BIBLIOTHÈQUE. Un appui d'une demi-seconde
+    // — un doigt qui s'attarde, un défilement qui démarre avant que `touchmove`
+    // ne parte — ouvrait l'aperçu plein écran sans que le professeur ait rien
+    // demandé. Sur tablette, l'aperçu se demande dans la grille, par l'œil puis
+    // le bouton lecture de la carte. Le geste du doigt sert maintenant à autre
+    // chose, juste en dessous.
+    //
     // Glisser-déposer AU DOIGT vers le parcours : l'API HTML5 ci-dessus ne
     // fonctionne qu'à la souris. Sur tablette, on refait le geste avec les
     // Pointer Events — fantôme sous le doigt, dépôt sur la colonne du milieu.
@@ -124,9 +131,14 @@ export function createLibraryItem(exo) {
     };
 
     // Hover -> Auto Demo Teacher (Desktop)
+    // Réservé aux pointeurs qui survolent vraiment : une tablette fabrique un
+    // `mouseenter` au moment du contact, si bien qu'un simple appui déclenchait
+    // la vignette — et `mouseleave` n'arrivant qu'au prochain appui ailleurs,
+    // elle restait affichée.
     let hoverTimer;
     item.onmouseenter = (e) => {
         if(!state.isTeacherMode) return;
+        if(!matchMedia('(hover: hover)').matches) return;
         hoverTimer = setTimeout(() => {
             const hdBox = document.getElementById('hover-demo-box');
             document.getElementById('hd-title').textContent = exo.title;
