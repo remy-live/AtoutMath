@@ -76,6 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initSyncUI();
     initGameControls();
     initNavButtons();
+    initReglagesAffichage();
     initDebugToolbar();
 
     // Parcours partagé par lien.
@@ -189,6 +190,76 @@ function initGameControls() {
 }
 
 // --- Navigation -------------------------------------------------------------
+
+// --- Paramètres d'affichage -------------------------------------------------
+
+/**
+ * Réglages globaux d'affichage.
+ *
+ * Un seul pour l'instant, mais celui-là compte : la MARQUE D'UN POINT. En
+ * géométrie, un point n'a pas d'épaisseur — c'est l'intersection de deux
+ * traits qui le désigne, et c'est ce que les manuels écrivent. Un disque
+ * laisse croire qu'un point occupe une surface, ce qui rend approximative la
+ * lecture d'une coordonnée. Le choix reste offert : au vidéoprojecteur, le
+ * disque se voit de plus loin.
+ *
+ * Le réglage s'applique À L'INSTANT où on le touche, sur toutes les figures
+ * déjà affichées : c'est le CSS qui montre l'une des trois marques, pas le
+ * dessin qui les fabrique. D'où l'aperçu sous la main, et pas de bouton
+ * « Valider » — il n'y a rien à valider, on voit.
+ */
+const MARQUES_POINT = [
+    { id: 'croix', label: 'Croix', aide: 'La convention des manuels', dessin: 'croix' },
+    { id: 'plus', label: 'Croix droite', aide: 'Mêmes traits, à l\'équerre', dessin: 'plus' },
+    { id: 'disque', label: 'Point plein', aide: 'Se repère de plus loin', dessin: 'disque' }
+];
+
+function apercuMarque(forme) {
+    const t = 9, d = 6.5, c = 15;
+    const trace = forme === 'disque'
+        ? `<circle cx="${c}" cy="${c}" r="7" fill="currentColor"/>`
+        : forme === 'plus'
+            ? `<line x1="${c - t}" y1="${c}" x2="${c + t}" y2="${c}"/><line x1="${c}" y1="${c - t}" x2="${c}" y2="${c + t}"/>`
+            : `<line x1="${c - d}" y1="${c - d}" x2="${c + d}" y2="${c + d}"/><line x1="${c - d}" y1="${c + d}" x2="${c + d}" y2="${c - d}"/>`;
+    return `<svg viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"
+                 stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none">${trace}</svg>`;
+}
+
+function initReglagesAffichage() {
+    const modal = document.getElementById('config-modal');
+    const contenu = document.getElementById('config-content');
+    const ouvrir = document.getElementById('btn-open-config');
+    const fermer = document.getElementById('btn-config-cancel');
+    if (!modal || !contenu || !ouvrir) return;
+
+    const dessiner = () => {
+        contenu.innerHTML = `
+            <div class="reglage-bloc">
+                <div class="reglage-titre">Marque des points</div>
+                <p class="reglage-aide">Comment les points sont tracés dans toutes les figures.</p>
+                <div class="reglage-choix">
+                    ${MARQUES_POINT.map(m => `
+                        <button type="button" class="reglage-option${state.stylePoint === m.id ? ' reglage-option--actif' : ''}"
+                                data-point="${m.id}" aria-pressed="${state.stylePoint === m.id}">
+                            <span class="reglage-dessin">${apercuMarque(m.dessin)}</span>
+                            <span class="reglage-nom">${m.label}</span>
+                            <span class="reglage-note">${m.aide}</span>
+                        </button>`).join('')}
+                </div>
+            </div>`;
+
+        contenu.querySelectorAll('[data-point]').forEach(btn => {
+            btn.onclick = async () => {
+                await state.setStylePoint(btn.dataset.point);
+                dessiner();
+            };
+        });
+    };
+
+    ouvrir.onclick = () => { dessiner(); modal.style.display = 'flex'; };
+    if (fermer) fermer.onclick = () => { modal.style.display = 'none'; };
+    modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+}
 
 function initNavButtons() {
     const back = document.getElementById('btn-back');

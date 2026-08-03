@@ -14,6 +14,37 @@ const UNIT = 34;      // pixels par unité du repère
 const PAD = 30;       // marge pour les graduations et les flèches
 
 /**
+ * La marque d'un point.
+ *
+ * En géométrie, un point n'a pas d'épaisseur : ce qui le désigne est
+ * l'INTERSECTION de deux traits, pas une tache. C'est la convention des
+ * manuels, et elle compte — un disque de six pixels invite à croire qu'un
+ * point occupe une surface, et rend la lecture d'une coordonnée approximative.
+ *
+ * Les trois marques sont dessinées ensemble et c'est le CSS qui montre la
+ * bonne, selon `html[data-point]`. Deux raisons : changer d'habitude n'impose
+ * pas de régénérer les figures affichées, et `figures.js` — partagé avec les
+ * générateurs — n'a pas à lire un réglage d'interface.
+ *
+ * @param {number} x
+ * @param {number} y
+ * @param {string} [classe] - portée par le groupe, pour la couleur
+ * @param {number} [taille] - demi-longueur des branches, en unités du viewBox
+ */
+export function marqueurPoint(x, y, classe = '', taille = 6) {
+    const t = taille;
+    const d = t * 0.72;                // branches obliques : même encombrement
+    const n = (v) => Number(v).toFixed(2);
+    return `<g class="pt-marque ${classe}">
+        <circle class="pt-disque" cx="${n(x)}" cy="${n(y)}" r="${n(t * 0.85)}"/>
+        <line class="pt-croix" x1="${n(x - d)}" y1="${n(y - d)}" x2="${n(x + d)}" y2="${n(y + d)}"/>
+        <line class="pt-croix" x1="${n(x - d)}" y1="${n(y + d)}" x2="${n(x + d)}" y2="${n(y - d)}"/>
+        <line class="pt-plus" x1="${n(x - t)}" y1="${n(y)}" x2="${n(x + t)}" y2="${n(y)}"/>
+        <line class="pt-plus" x1="${n(x)}" y1="${n(y - t)}" x2="${n(x)}" y2="${n(y + t)}"/>
+    </g>`;
+}
+
+/**
  * Repère du plan, avec axes fléchés, origine et graduations entières.
  *
  * @param {Object} cfg
@@ -63,7 +94,7 @@ export function repereSvg({ max = 5, relatifs = false, point = null, interactive
         // évidente, et c'est la méthode qu'on veut voir reproduite.
         parts.push(`<line class="rep-helper" x1="${sx(0)}" y1="${py}" x2="${px}" y2="${py}"/>`);
         parts.push(`<line class="rep-helper" x1="${px}" y1="${sy(0)}" x2="${px}" y2="${py}"/>`);
-        parts.push(`<circle class="rep-point" cx="${px}" cy="${py}" r="6"/>`);
+        parts.push(marqueurPoint(px, py, 'rep-point', 7));
         parts.push(`<text class="rep-point-label" x="${px + 11}" y="${py - 10}">${point.label || 'A'}</text>`);
     }
 
@@ -190,7 +221,7 @@ export function notationSvg({ objet = 'segment', p = 'A', q = 'B' } = {}) {
     }[objet] || '';
 
     const point = (pt, nom) => `
-        <circle class="not-point" cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="5.5"/>
+        ${marqueurPoint(pt.x, pt.y, 'not-point', 6.5)}
         <text class="not-name" x="${pt.x.toFixed(1)}" y="${(pt.y - 15).toFixed(1)}" text-anchor="middle">${nom}</text>`;
 
     return `

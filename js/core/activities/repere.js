@@ -9,7 +9,7 @@
 // l'inversion, bien mieux qu'un « faux ».
 
 import { regTimeout } from '../timers.js';
-import { repereSvg } from '../figures.js';
+import { repereSvg, marqueurPoint } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 import { creerNarrateur } from '../demoNarration.js';
@@ -78,12 +78,13 @@ export function mount(container, session) {
         const cy = hit.getAttribute('cy');
         const ns = 'http://www.w3.org/2000/svg';
 
-        const dot = document.createElementNS(ns, 'circle');
-        dot.setAttribute('cx', cx);
-        dot.setAttribute('cy', cy);
-        dot.setAttribute('r', '7');
-        dot.setAttribute('class', `rep-mark rep-mark--${kind}`);
-        svg.appendChild(dot);
+        // Même marque que les points tracés par les figures : le point que
+        // l'élève pose doit s'écrire comme celui qu'on lui montre.
+        const marque = document.createElementNS(ns, 'g');
+        marque.innerHTML = marqueurPoint(Number(cx), Number(cy), '', 8);
+        const groupe = marque.firstElementChild;
+        groupe.classList.add('rep-mark', `rep-mark--${kind}`);
+        svg.appendChild(groupe);
 
         if (label) {
             const text = document.createElementNS(ns, 'text');

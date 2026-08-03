@@ -399,7 +399,7 @@
 
 .not-svg { color: var(--text-main); }
 .not-trace { stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
-.not-point { fill: var(--text-main); stroke: var(--bg-panel); stroke-width: 2.5; }
+/* La couleur des marques de points est posée plus bas, avec `pt-marque`. */
 .not-name { fill: var(--text-main); font-size: 20px; font-weight: 800; }
 /* L'objet à écrire, dit en toutes lettres dans l'énoncé. */
 .not-cible { display: inline-block; margin-top: 6px; color: var(--primary); font-size: .92em; }
@@ -494,16 +494,56 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .rep-origin { fill: var(--text-main); font-weight: 800; }
 .rep-axis-name { fill: var(--text-main); font-size: 14px; font-style: italic; font-weight: 700; }
 .rep-helper { stroke: var(--primary); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: .65; }
-.rep-point { fill: var(--primary); stroke: #fff; stroke-width: 2; }
+/* --- Paramètres d'affichage ---------------------------------- */
+
+.reglage-bloc { display: flex; flex-direction: column; gap: 4px; }
+.reglage-titre { font-weight: 700; color: var(--text-main); font-size: .95rem; }
+.reglage-aide { margin: 0 0 10px; font-size: .82rem; color: var(--text-muted); line-height: 1.4; }
+.reglage-choix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.reglage-option {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 12px 6px; border-radius: 12px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font-family: inherit; transition: .15s;
+}
+.reglage-option:hover { border-color: var(--primary); }
+.reglage-option--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
+.reglage-dessin { line-height: 0; color: var(--primary); }
+.reglage-nom { font-size: .82rem; font-weight: 700; }
+.reglage-note { font-size: .68rem; color: var(--text-muted); line-height: 1.25; text-align: center; }
+
+/* --- La marque d'un point ------------------------------------
+   Les trois écritures sont dans le SVG ; `html[data-point]` en montre une.
+   Changer d'habitude ne redessine donc aucune figure — et une figure déjà à
+   l'écran change de convention à l'instant où le réglage change.
+
+   La croix est la valeur par défaut, et c'est la convention des manuels : un
+   point n'a pas d'épaisseur, c'est l'intersection des deux traits qui le
+   désigne. Le disque reste proposé, parce qu'il se repère de plus loin — utile
+   au vidéoprojecteur et pour les élèves qui cherchent la tache. */
+.pt-marque .pt-disque { fill: currentColor; stroke: none; }
+.pt-marque .pt-croix,
+.pt-marque .pt-plus { stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; fill: none; }
+
+html:not([data-point="disque"]) .pt-disque { display: none; }
+html[data-point="disque"] .pt-croix,
+html[data-point="disque"] .pt-plus,
+html:not([data-point="plus"]) .pt-plus { display: none; }
+html[data-point="plus"] .pt-croix { display: none; }
+
+.rep-point { color: var(--primary); }
+.not-point { color: var(--text-main); }
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
 .rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }
 .rep-hit:hover, .rep-hit:focus-visible { fill: rgba(99, 102, 241, .22); }
 
-.rep-mark { stroke: #fff; stroke-width: 2; }
-.rep-mark--ok { fill: var(--success); }
-.rep-mark--ko { fill: var(--danger); }
-.rep-mark--demo { fill: var(--warning); }
+/* Le marqueur posé par l'élève : c'est la COULEUR qui change, la forme reste
+   celle qu'on a choisie globalement. */
+.rep-mark { color: var(--primary); }
+.rep-mark--ok { color: var(--success); }
+.rep-mark--ko { color: var(--danger); }
+.rep-mark--demo { color: var(--warning); }
 .rep-mark-label { font-size: 13px; font-weight: 800; }
 .rep-mark-label--ko { fill: var(--danger); }
 .rep-mark-label--demo { fill: var(--warning); }

@@ -9,12 +9,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=28">
-    <link rel="stylesheet" href="css/layout.css?v=28">
-    <link rel="stylesheet" href="css/ui.css?v=28">
-    <link rel="stylesheet" href="css/games.css?v=28">
-    <link rel="stylesheet" href="css/components.css?v=28">
-    <link rel="stylesheet" href="css/modules.css?v=28">
+    <link rel="stylesheet" href="css/base.css?v=29">
+    <link rel="stylesheet" href="css/layout.css?v=29">
+    <link rel="stylesheet" href="css/ui.css?v=29">
+    <link rel="stylesheet" href="css/games.css?v=29">
+    <link rel="stylesheet" href="css/components.css?v=29">
+    <link rel="stylesheet" href="css/modules.css?v=29">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -97,6 +97,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/>
                         <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                    </svg>
+                </button>
+                <button id="btn-open-config" class="btn-icon btn-icon--sm" title="Paramètres d'affichage" aria-label="Paramètres d'affichage">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                 </button>
                 <button id="btn-open-sync" class="btn-icon btn-icon--sm" title="Ma classe (synchronisation)" aria-label="Ma classe (synchronisation)">
@@ -527,13 +533,12 @@
         <!-- MODALE CONFIGURATION -->
         <div id="config-modal" class="modal-overlay">
             <div class="glass-panel modal-panel-settings">
-                <h3 class="modal-title-bordered">⚙️ Paramètres</h3>
+                <h3 class="modal-title-bordered">⚙️ Paramètres d'affichage</h3>
                 <div id="config-content">
-                    <!-- Checkboxes injéctées en JS -->
+                    <!-- Réglages injectés par app.js -->
                 </div>
                 <div class="modal-footer-actions">
-                    <button id="btn-config-cancel" class="btn-toggle glass-btn">Annuler</button>
-                    <button id="btn-config-save" class="btn-toggle active glass-btn primary">Valider</button>
+                    <button id="btn-config-cancel" class="btn-toggle glass-btn">Fermer</button>
                 </div>
             </div>
         </div>
