@@ -10,7 +10,24 @@ export const badgesCatalog = {
     // Récompense la progression réelle plutôt que le volume : c'est le seul
     // signal qui distingue « a beaucoup joué » de « a appris quelque chose ».
     mastery: { id: 'mastery', icon: '🏅', title: 'Notion Maîtrisée', description: 'Amener une compétence au niveau Expert.' },
-    explorer: { id: 'explorer', icon: '🧭', title: 'Explorateur', description: 'Travailler des compétences dans trois domaines différents.' }
+    explorer: { id: 'explorer', icon: '🧭', title: 'Explorateur', description: 'Travailler des compétences dans trois domaines différents.' },
+
+    // Médailles de points : quatre métaux, un objectif toujours en vue —
+    // quand le bronze est acquis, l'argent est déjà affiché à côté.
+    score_bronze: { id: 'score_bronze', icon: '🥉', medal: 'bronze', title: 'Médaille de Bronze', description: 'Gagner 250 points.' },
+    score_argent: { id: 'score_argent', icon: '🥈', medal: 'argent', title: 'Médaille d\'Argent', description: 'Gagner 1 000 points.' },
+    score_or: { id: 'score_or', icon: '🥇', medal: 'or', title: 'Médaille d\'Or', description: 'Gagner 3 000 points.' },
+    score_diamant: { id: 'score_diamant', icon: '💎', medal: 'diamant', title: 'Médaille de Diamant', description: 'Gagner 10 000 points.' },
+
+    // Médailles de maîtrise : le pendant « qualité » des médailles de points.
+    maitre_bronze: { id: 'maitre_bronze', icon: '🎓', medal: 'bronze', title: 'Savant de Bronze', description: 'Maîtriser 2 compétences au niveau Expert.' },
+    maitre_argent: { id: 'maitre_argent', icon: '🎓', medal: 'argent', title: 'Savant d\'Argent', description: 'Maîtriser 5 compétences au niveau Expert.' },
+    maitre_or: { id: 'maitre_or', icon: '🎓', medal: 'or', title: 'Savant d\'Or', description: 'Maîtriser 10 compétences au niveau Expert.' },
+
+    // Régularité et bravoure.
+    comeback: { id: 'comeback', icon: '🔄', title: 'Revanche', description: 'Corriger 10 erreurs de ton carnet.' },
+    grand_jeu: { id: 'grand_jeu', icon: '🎮', title: 'Grand Joueur', description: 'Réussir 100 questions au total.' },
+    centurion: { id: 'centurion', icon: '🏛️', title: 'Centurion', description: 'Réussir 500 questions au total.' }
 };
 
 let correctedThisSession = 0;
@@ -40,10 +57,16 @@ export function initGamificationEngine() {
     document.addEventListener('error_corrected', () => {
         correctedThisSession++;
         if (correctedThisSession >= 3) state.grantBadge('persistent');
+        if (correctedThisSession >= 10) state.grantBadge('comeback');
     });
 
     document.addEventListener('score_updated', () => {
         if (state.score >= 500) state.grantBadge('marathon');
+        // Médailles de points, du bronze au diamant.
+        if (state.score >= 250) state.grantBadge('score_bronze');
+        if (state.score >= 1000) state.grantBadge('score_argent');
+        if (state.score >= 3000) state.grantBadge('score_or');
+        if (state.score >= 10000) state.grantBadge('score_diamant');
     });
 
     document.addEventListener('time_updated', () => {
@@ -52,9 +75,16 @@ export function initGamificationEngine() {
 
     document.addEventListener('attempts_updated', () => {
         const skills = [...state.masteryMap.values()];
-        if (skills.some(s => s.reliable && s.mastery >= 0.9)) state.grantBadge('mastery');
+        const expertes = skills.filter(s => s.reliable && s.mastery >= 0.9).length;
+        if (expertes >= 1) state.grantBadge('mastery');
+        if (expertes >= 2) state.grantBadge('maitre_bronze');
+        if (expertes >= 5) state.grantBadge('maitre_argent');
+        if (expertes >= 10) state.grantBadge('maitre_or');
 
         const domains = new Set(skills.filter(s => s.attempts >= 3).map(s => s.skillId.split('.')[0]));
         if (domains.size >= 3) state.grantBadge('explorer');
+
+        if (state.correctCount >= 100) state.grantBadge('grand_jeu');
+        if (state.correctCount >= 500) state.grantBadge('centurion');
     });
 }

@@ -14,7 +14,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS } from '../generators/kenken.js';
 
 // Le vérificateur est LIMITÉ : vérifier doit rester un choix qui se paie, pas
@@ -328,22 +328,34 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    /** Démonstration : le curseur remplit la grille case par case. */
+    /**
+     * Démonstration : le robot joue les coups dans l'ordre où ils se
+     * déduisent — cage presque finie, ligne à une case, colonne à une case —
+     * et explique chaque déduction dans une bulle. Pause et pas-à-pas
+     * permettent de suivre le raisonnement à son rythme.
+     */
     async function runDemo() {
         const { n, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
-        for (let r = 0; r < n; r++) {
-            for (let c = 0; c < n; c++) {
-                if (grille[r][c] !== 0) continue;
-                const el = celluleEl(r, c);
-                if (!el) return;
-                if (!await cursor.tap(el, 340) || destroyed) return;
-                grille[r][c] = solution[r][c];
-                el.querySelector('.kk-val').textContent = solution[r][c];
-                el.classList.add('demo-target');
-            }
+        const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
+        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+
+        if (!await cursor.pause(600) || destroyed) return fin();
+        while (!destroyed) {
+            const coup = prochainCoupKenken(grille, item.meta);
+            if (!coup) break;
+            if (!await gate.waitTurn() || destroyed) return fin();
+            const el = celluleEl(coup.r, coup.c);
+            if (!el) return fin();
+            cursor.say(coup.motif, el);
+            if (!await cursor.tap(el, 340) || destroyed) return fin();
+            grille[coup.r][coup.c] = solution[coup.r][coup.c];
+            el.querySelector('.kk-val').textContent = solution[coup.r][coup.c];
+            el.classList.add('demo-target');
+            if (!await cursor.pause(900) || destroyed) return fin();
         }
+        fin();
+        if (destroyed) return;
         container.querySelector('.kk-board').classList.add('kk-board--ok');
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
@@ -360,5 +372,64 @@ export function mount(container, session, opts = {}) {
             container.innerHTML = '';
             session.finish();
         }
+    };
+}
+
+/**
+ * Le prochain coup déductible d'un Mathdoku, avec la règle qui le justifie.
+ * Ordre des règles : cage à une seule case restante (l'opération impose la
+ * valeur), puis ligne ou colonne où il ne manque qu'un chiffre, puis, à
+ * défaut, la plus petite cage inachevée par élimination.
+ */
+function prochainCoupKenken(grille, meta) {
+    const { n, lo, hi, cages, solution } = meta;
+
+    // 1. Une cage où il ne reste qu'une case vide : l'opération la donne.
+    for (const cage of cages) {
+        if (cage.op === null) continue;
+        const videsCage = cage.cells.filter(({ r, c }) => grille[r][c] === 0);
+        if (videsCage.length !== 1) continue;
+        const { r, c } = videsCage[0];
+        const v = solution[r][c];
+        const remplies = cage.cells.filter(p => grille[p.r][p.c] !== 0)
+            .map(p => grille[p.r][p.c]);
+        return {
+            r, c, v,
+            motif: remplies.length
+                ? `Cage « ${cage.label} » : avec ${remplies.join(' et ')} déjà posé${remplies.length > 1 ? 's' : ''}, seul ${v} donne ${cage.target}.`
+                : `Cage « ${cage.label} » : une seule case, elle vaut ${cage.target}.`
+        };
+    }
+
+    // 2. Ligne ou colonne où il ne manque qu'une valeur.
+    for (let r = 0; r < n; r++) {
+        const vides = [];
+        for (let c = 0; c < n; c++) if (grille[r][c] === 0) vides.push(c);
+        if (vides.length === 1) {
+            const c = vides[0], v = solution[r][c];
+            return { r, c, v, motif: `Dans cette ligne, il ne manque plus que le ${v} (chaque chiffre de ${lo} à ${hi} apparaît une fois).` };
+        }
+    }
+    for (let c = 0; c < n; c++) {
+        const vides = [];
+        for (let r = 0; r < n; r++) if (grille[r][c] === 0) vides.push(r);
+        if (vides.length === 1) {
+            const r = vides[0], v = solution[r][c];
+            return { r, c, v, motif: `Dans cette colonne, il ne manque plus que le ${v}.` };
+        }
+    }
+
+    // 3. La plus petite cage inachevée, par élimination.
+    const cage = cages
+        .filter(cg => cg.cells.some(({ r, c }) => grille[r][c] === 0))
+        .sort((a, b) => a.cells.length - b.cells.length)[0];
+    if (!cage) return null;
+    const { r, c } = cage.cells.find(p => grille[p.r][p.c] === 0);
+    const v = solution[r][c];
+    return {
+        r, c, v,
+        motif: cage.op === null
+            ? `Cette case est donnée : ${cage.target}.`
+            : `Cage « ${cage.label} » : j'essaie ${v} ici, c'est la seule valeur compatible avec la ligne, la colonne et l'opération.`
     };
 }

@@ -1,5 +1,7 @@
 import { exercices, domaines, filterByStatus, statusOf, STATUS, STATUS_LABELS } from '../data/catalog.js';
 import { clearEngines } from '../core/timers.js';
+import { destroyAllDemoCursors } from '../core/demoPointer.js';
+import { accessOf, lockLabel } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
 
@@ -9,9 +11,31 @@ export function createLibraryItem(exo) {
     item.style.display = 'flex';
     item.style.justifyContent = 'space-between';
     item.style.alignItems = 'center';
+    item.style.gap = '6px';
+
+    // Œil d'aperçu : sur un écran tactile, il n'y a ni survol ni appui long
+    // fiable — ce bouton est le seul moyen de voir l'exercice avant de
+    // l'ajouter au parcours.
+    const btnEye = document.createElement('button');
+    btnEye.className = 'teacher-only exo-item-eye';
+    btnEye.title = `Aperçu de ${exo.title}`;
+    btnEye.setAttribute('aria-label', `Aperçu de ${exo.title}`);
+    btnEye.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    btnEye.onclick = (e) => {
+        e.stopPropagation();
+        if (!state.isTeacherMode) return;
+        clearEngines();
+        document.getElementById('hover-demo-box').style.display = 'none';
+        openGameLayer(exo, true);
+    };
+    item.appendChild(btnEye);
 
     const titleSpan = document.createElement('span');
     titleSpan.textContent = exo.title;
+    titleSpan.style.flex = '1';
+    titleSpan.style.minWidth = '0';
     item.appendChild(titleSpan);
 
     const btnAdd = document.createElement('button');
@@ -40,14 +64,10 @@ export function createLibraryItem(exo) {
         clearEngines(); document.getElementById('hover-demo-box').style.display = 'none';
     };
 
-    // Long press logic for mobile preview
-    let touchTimer;
-    item.ontouchstart = () => {
-        if(!state.isTeacherMode) return;
-        touchTimer = setTimeout(() => openGameLayer(exo, true), 500);
-    };
-    item.ontouchend = () => clearTimeout(touchTimer);
-    item.ontouchmove = () => clearTimeout(touchTimer);
+    // Glisser-déposer AU DOIGT vers le parcours : l'API HTML5 ci-dessus ne
+    // fonctionne qu'à la souris. Sur tablette, on refait le geste avec les
+    // Pointer Events — fantôme sous le doigt, dépôt sur la colonne du milieu.
+    enableTouchDragToPath(item, exo);
 
     item.onclick = () => {
         if(!state.isTeacherMode) {
@@ -92,6 +112,88 @@ export function createLibraryItem(exo) {
     };
 
     return item;
+}
+
+/**
+ * Glisser-déposer tactile d'un exercice vers la colonne du parcours.
+ *
+ * Un appui long (220 ms) arme le glissement — un doigt qui bouge tout de
+ * suite fait défiler la liste, comme d'habitude. Une fois armé, un fantôme
+ * suit le doigt et le dépôt sur la colonne du milieu ajoute l'étape.
+ */
+function enableTouchDragToPath(item, exo) {
+    let armTimer = null;
+    let dragging = false;
+    let ghost = null;
+    let start = null;
+
+    const pathBox = () => document.getElementById('path-container');
+
+    const cleanup = () => {
+        clearTimeout(armTimer); armTimer = null;
+        dragging = false; start = null;
+        if (ghost) { ghost.remove(); ghost = null; }
+        const box = pathBox();
+        if (box) box.classList.remove('drag-over');
+        item.classList.remove('drag-source');
+    };
+
+    // `passive: false` obligatoire : c'est le `preventDefault()` sur touchmove
+    // qui empêche la liste de défiler PENDANT le glissement — et lui seul.
+    item.addEventListener('touchmove', (e) => {
+        if (dragging && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    item.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' || !state.isTeacherMode) return;
+        start = { x: e.clientX, y: e.clientY };
+        armTimer = setTimeout(() => {
+            dragging = true;
+            item.classList.add('drag-source');
+            const r = item.getBoundingClientRect();
+            ghost = item.cloneNode(true);
+            ghost.classList.add('drag-ghost');
+            ghost.style.width = `${r.width}px`;
+            ghost.style.left = `${r.left}px`;
+            ghost.style.top = `${r.top}px`;
+            document.body.appendChild(ghost);
+            if (navigator.vibrate) navigator.vibrate(12);
+        }, 220);
+    });
+
+    item.addEventListener('pointermove', (e) => {
+        if (!start) return;
+        const dx = e.clientX - start.x, dy = e.clientY - start.y;
+        if (!dragging) {
+            // Le doigt est parti avant l'appui long : c'est un défilement.
+            if (Math.hypot(dx, dy) > 10) { clearTimeout(armTimer); start = null; }
+            return;
+        }
+        ghost.style.left = `${e.clientX - ghost.offsetWidth / 2}px`;
+        ghost.style.top = `${e.clientY - 24}px`;
+        const box = pathBox();
+        if (box) {
+            const r = box.getBoundingClientRect();
+            const over = e.clientX >= r.left && e.clientX <= r.right
+                && e.clientY >= r.top && e.clientY <= r.bottom;
+            box.classList.toggle('drag-over', over);
+        }
+    });
+
+    const finish = (e) => {
+        if (dragging) {
+            const box = pathBox();
+            if (box) {
+                const r = box.getBoundingClientRect();
+                const over = e.clientX >= r.left && e.clientX <= r.right
+                    && e.clientY >= r.top && e.clientY <= r.bottom;
+                if (over) import('./builder.js').then(m => m.addStep(exo.id));
+            }
+        }
+        cleanup();
+    };
+    item.addEventListener('pointerup', finish);
+    item.addEventListener('pointercancel', cleanup);
 }
 
 /**
@@ -323,6 +425,7 @@ function stopCardDemo(restaurer = true) {
         .forEach(b => b.classList.remove('card-preview--live'));
     if (en && en.handle && typeof en.handle.destroy === 'function') en.handle.destroy();
     clearEngines();
+    destroyAllDemoCursors();
     // La carte reprend son aperçu figé, sinon elle reste sur l'image où la
     // démonstration s'est arrêtée.
     if (restaurer && en && en.box && en.box.isConnected) mountFrozen(en.exo, en.box);
@@ -365,6 +468,18 @@ function createCard(exo) {
     const card = document.createElement('div');
     card.className = 'card';
     const niveauxStr = exo.tags.niveaux ? exo.tags.niveaux.join(' - ') : '';
+
+    // Verrous du jeu libre : la carte reste visible — l'élève doit voir ce qui
+    // l'attend — mais elle annonce sa condition au lieu de se lancer.
+    const acces = state.isTeacherMode ? { status: 'libre' } : accessOf(exo);
+    if (acces.status !== 'libre') {
+        card.classList.add('card--locked');
+        const lock = document.createElement('div');
+        lock.className = 'card-lock';
+        lock.innerHTML = `<span class="card-lock-icon" aria-hidden="true">🔒</span>
+            <span class="card-lock-label">${lockLabel(acces)}</span>`;
+        card.appendChild(lock);
+    }
 
     const title = document.createElement('div');
     title.className = 'card-title';
@@ -539,6 +654,15 @@ function startCardDemo(exo, box) {
     };
     if (p && p.then) p.then(enregistre); else enregistre(p);
 }
+
+// La grille se rafraîchit quand les verrous changent : réglage du professeur,
+// ou fin de séance (un jeu a pu se débloquer grâce aux réponses gagnées).
+['gameAccess_updated', 'sequence_completed'].forEach(evt => {
+    document.addEventListener(evt, () => {
+        const wrapper = document.getElementById('main-wrapper');
+        if (wrapper && wrapper.style.display !== 'none' && !state.isTeacherMode) initGridFilters();
+    });
+});
 
 export function setSidebarMode(m) {
     ['drill', 'acc'].forEach(k => {

@@ -47,6 +47,12 @@ export class MathCrush extends BaseGame {
         this.canvas.style.display = 'block';
         this.ctx = this.canvas.getContext('2d');
         this.container.style.position = 'relative';
+        // Un glisser sur le plateau est un geste de jeu, jamais une sélection :
+        // sans cela, chaque tracé surlignait la page autour du canevas.
+        ['userSelect', 'webkitUserSelect', 'webkitTouchCallout'].forEach(p => {
+            this.container.style[p] = 'none';
+            this.canvas.style[p] = 'none';
+        });
         this.container.appendChild(this.canvas);
         
         this.helpBtn = document.createElement('button');
@@ -64,7 +70,11 @@ export class MathCrush extends BaseGame {
         this.helpBtn.style.cursor = 'pointer';
         this.helpBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
         
-        this.helpBtn.onclick = () => {
+        // `pointerup` plutôt que `click` : le gestionnaire global de fin de
+        // tracé (`touchend` sur window) neutralisait le clic synthétisé, et le
+        // bouton restait muet sur téléphone et tablette.
+        const useHint = (e) => {
+            e.stopPropagation();
             if (this.score >= 20 && !this.hintPath && !this.isDemo) {
                 this.score -= 20;
                 // Eclaire seulement LA PREMIERE case de la solution
@@ -73,6 +83,7 @@ export class MathCrush extends BaseGame {
                 }
             }
         };
+        this.helpBtn.addEventListener('pointerup', useHint);
         this.container.appendChild(this.helpBtn);
         
         const onResize = () => {
@@ -258,7 +269,13 @@ export class MathCrush extends BaseGame {
 
         const handleEnd = (e) => {
             if (this.isDemo) return;
-            e.preventDefault();
+            // Ce gestionnaire écoute la fenêtre ENTIÈRE : ne neutraliser
+            // l'événement que si un tracé était en cours. Un `preventDefault()`
+            // systématique supprimait le clic synthétisé après chaque appui —
+            // le bouton Indice et la croix de fermeture ne répondaient plus
+            // au doigt.
+            if (!this.isDragging) return;
+            if (e.cancelable) e.preventDefault();
             this.isDragging = false;
             this.evaluatePath();
         };

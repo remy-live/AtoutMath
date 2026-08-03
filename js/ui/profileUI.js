@@ -217,7 +217,8 @@ function renderBadges() {
     const unlockedMap = state.badges;
     container.innerHTML = `<div class="badges-grid">${Object.values(badgesCatalog).map(b => {
         const unlocked = !!unlockedMap[b.id];
-        return `<div class="badge-card ${unlocked ? 'badge-card--on' : ''}" title="${escapeHtml(b.description)}">
+        const medal = b.medal ? ` badge-card--${b.medal}` : '';
+        return `<div class="badge-card ${unlocked ? 'badge-card--on' : ''}${unlocked ? medal : ''}" title="${escapeHtml(b.description)}">
             <div class="badge-icon">${b.icon}</div>
             <div class="badge-title">${escapeHtml(b.title)}</div>
             ${unlocked ? '' : '<div class="badge-lock" aria-label="Verrouillé">🔒</div>'}

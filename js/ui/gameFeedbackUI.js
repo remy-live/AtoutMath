@@ -43,21 +43,33 @@ export function initGameFeedbackUI() {
 }
 
 // --- Réussite : brève, sans action requise ----------------------------------
+//
+// En BANDEAU au sommet du plateau, pas en carte centrée : la carte recouvrait
+// l'exercice au moment précis où l'élève veut voir ce qu'il vient de réussir
+// (la ligne complétée, la figure, l'opération posée).
+
+const ICON_OK_SM = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
 
 function showSuccess(d, done) {
     const msg = SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)];
-    const points = d.points
-        ? `<div class="fb-points">+${d.points} points</div>` : '';
+    const points = d.points ? `<span class="fb-toast-points">+${d.points}</span>` : '';
 
-    const card = build(`
-        <div class="fb-icon fb-icon--ok">${ICON_OK}</div>
-        <div class="fb-title">${msg}</div>${points}`, 'fb-card--ok');
+    if (current) close(current);
+    const host = document.querySelector('#game-layer .canvas-area')
+        || document.getElementById('game-layer') || document.body;
+    const card = document.createElement('div');
+    card.className = 'fb-toast fb-toast--ok';
+    card.setAttribute('role', 'status');
+    card.setAttribute('aria-live', 'assertive');
+    card.innerHTML = `<span class="fb-toast-icon">${ICON_OK_SM}</span><span>${msg}</span>${points}`;
+    host.appendChild(card);
+    current = card;
 
     if (d.element) {
         d.element.style.transform = 'scale(1.1)';
         setTimeout(() => { d.element.style.transform = ''; }, 200);
     }
-    setTimeout(() => { close(card); done(); }, 1100);
+    setTimeout(() => { close(card); done(); }, 1200);
 }
 
 // --- Erreur ou indice : attend la fermeture ---------------------------------

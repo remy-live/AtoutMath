@@ -12,7 +12,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
@@ -302,21 +302,34 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
+    /**
+     * Le robot ne remplit plus les cases dans l'ordre de lecture : il joue les
+     * coups dans l'ordre où ils se DÉDUISENT, et dit à chaque fois quelle
+     * règle il applique. C'est la différence entre montrer la solution et
+     * montrer comment on la trouve.
+     */
     async function runDemo() {
         const { n, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
-        for (let r = 0; r < n; r++) {
-            for (let c = 0; c < n; c++) {
-                if (grille[r][c] !== VIDE) continue;
-                const el = celluleEl(r, c);
-                if (!el) return;
-                if (!await cursor.tap(el, 300) || destroyed) return;
-                grille[r][c] = solution[r][c];
-                el.querySelector('.kk-val').textContent = solution[r][c];
-                el.classList.add('demo-target');
-            }
+        const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
+        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+
+        if (!await cursor.pause(600) || destroyed) return fin();
+        while (!destroyed) {
+            const coup = prochainCoupBinairo(grille, n, solution);
+            if (!coup) break;
+            if (!await gate.waitTurn() || destroyed) return fin();
+            const el = celluleEl(coup.r, coup.c);
+            if (!el) return fin();
+            cursor.say(coup.motif, el);
+            if (!await cursor.tap(el, 340) || destroyed) return fin();
+            grille[coup.r][coup.c] = coup.v;
+            el.querySelector('.kk-val').textContent = coup.v;
+            el.classList.add('demo-target');
+            if (!await cursor.pause(900) || destroyed) return fin();
         }
+        fin();
+        if (destroyed) return;
         container.querySelector('.kk-board').classList.add('kk-board--ok');
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
@@ -334,4 +347,91 @@ export function mount(container, session, opts = {}) {
             session.finish();
         }
     };
+}
+
+/**
+ * Le prochain coup DÉDUCTIBLE et la règle qui le justifie.
+ *
+ * Les règles sont essayées dans l'ordre où on les enseigne :
+ *   1. deux chiffres identiques qui se suivent → les extrémités portent l'autre ;
+ *   2. un trou entre deux identiques → le milieu porte l'autre ;
+ *   3. une ligne ou colonne qui a déjà tous ses 0 (ou ses 1) → le reste se complète.
+ * S'il n'y a plus rien de déductible par ces règles (rare), on retombe sur la
+ * solution avec un motif d'élimination — jamais de coup silencieux.
+ */
+function prochainCoupBinairo(grille, n, solution) {
+    const vide = (r, c) => r >= 0 && r < n && c >= 0 && c < n && grille[r][c] === VIDE;
+    const val = (r, c) => (r >= 0 && r < n && c >= 0 && c < n) ? grille[r][c] : VIDE;
+
+    // Règle 1 : X X _  (dans les quatre orientations, horizontal et vertical).
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (!vide(r, c)) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+            for (const sens of [-1, 1]) {
+                const v1 = val(r + sens * dr, c + sens * dc);
+                const v2 = val(r + 2 * sens * dr, c + 2 * sens * dc);
+                if (v1 !== VIDE && v1 === v2 && solution[r][c] === 1 - v1) {
+                    return {
+                        r, c, v: 1 - v1,
+                        motif: `Deux ${v1} se suivent : jamais trois identiques, je pose un ${1 - v1}.`
+                    };
+                }
+            }
+        }
+    }
+
+    // Règle 2 : X _ X — le milieu ne peut pas former un triple.
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (!vide(r, c)) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+            const avant = val(r - dr, c - dc);
+            const apres = val(r + dr, c + dc);
+            if (avant !== VIDE && avant === apres && solution[r][c] === 1 - avant) {
+                return {
+                    r, c, v: 1 - avant,
+                    motif: `Un ${avant} de chaque côté : un ${avant} au milieu ferait trois identiques, je pose un ${1 - avant}.`
+                };
+            }
+        }
+    }
+
+    // Règle 3 : ligne ou colonne qui a déjà son compte d'un chiffre.
+    const moitie = n / 2;
+    for (let r = 0; r < n; r++) {
+        for (const v of [0, 1]) {
+            if (grille[r].filter(x => x === v).length !== moitie) continue;
+            const c = grille[r].findIndex(x => x === VIDE);
+            if (c !== -1 && solution[r][c] === 1 - v) {
+                return {
+                    r, c, v: 1 - v,
+                    motif: `Cette ligne a déjà tous ses ${v} (${moitie} sur ${n} cases) : je complète avec des ${1 - v}.`
+                };
+            }
+        }
+    }
+    for (let c = 0; c < n; c++) {
+        const colonne = Array.from({ length: n }, (_, r) => grille[r][c]);
+        for (const v of [0, 1]) {
+            if (colonne.filter(x => x === v).length !== moitie) continue;
+            const r = colonne.findIndex(x => x === VIDE);
+            if (r !== -1 && solution[r][c] === 1 - v) {
+                return {
+                    r, c, v: 1 - v,
+                    motif: `Cette colonne a déjà tous ses ${v} : je complète avec des ${1 - v}.`
+                };
+            }
+        }
+    }
+
+    // Rien de déductible par les règles simples : première case vide, par
+    // élimination sur la solution.
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (grille[r][c] === VIDE) {
+            return {
+                r, c, v: solution[r][c],
+                motif: `Par élimination, seul un ${solution[r][c]} convient ici sans casser l'équilibre.`
+            };
+        }
+    }
+    return null;
 }

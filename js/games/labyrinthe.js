@@ -6,6 +6,11 @@ class Labyrinthe extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .laby-arena { position: absolute; inset: 0; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; }
+                .laby-item { position: absolute; top: 2px; right: 4px; font-size: 0.85rem; z-index: 2; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
+                .laby-cell.laby-porte-fermee .laby-item { font-size: 1.3rem; top: 50%; right: 50%; transform: translate(50%, -50%); }
+                .laby-key-indicator { display: none; }
+                .laby-key-indicator.on { display: inline; }
+                .laby-float-gain { position: absolute; color: #10b981; font-weight: 900; font-size: 1.3rem; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.4); transform: translateX(-50%); }
                 .laby-header { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
                 .laby-stats { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
                 
@@ -60,7 +65,7 @@ class Labyrinthe extends BaseGame {
             </style>
             <div class="laby-arena">
                 <div class="laby-header">
-                    <div class="laby-stats">Niv. <span id="laby-lvl">1</span></div>
+                    <div class="laby-stats">Niv. <span id="laby-lvl">1</span> <span id="laby-key" class="laby-key-indicator">🗝️</span></div>
                     <div class="laby-timer-container">
                         <div class="laby-timer-bar" id="laby-timer-bar"></div>
                         <div class="laby-timer-text"><span id="laby-time">0</span>s</div>
@@ -215,15 +220,47 @@ class Labyrinthe extends BaseGame {
         // 3. Remplir les leurres (bug corrigé : pas de leurre égal à la bonne réponse adjacente)
         this.fillDecoys();
 
+        // 3 bis. Objets sur le chemin : clé et porte, bonus à ramasser.
+        this.placeItems();
+
         // 4. Rendu
         this.renderBoard();
         this.updateUI();
     }
-    
+
+    /**
+     * Clé, porte et bonus, posés SUR le chemin correct : ils récompensent
+     * celui qui calcule juste, sans jamais rendre le labyrinthe insoluble.
+     * La clé arrive toujours avant la porte (le chemin est ordonné).
+     */
+    placeItems() {
+        this.hasKey = false;
+        const keyEl = this.container.querySelector('#laby-key');
+        if (keyEl) keyEl.classList.remove('on');
+
+        // Cases intermédiaires du chemin (ni départ ni arrivée).
+        const milieu = this.pathCells.slice(1, -1);
+        milieu.forEach(p => { this.grid[p.y][p.x].item = null; });
+        if (milieu.length < 4) return;
+
+        // La porte garde la fin du chemin, la clé se gagne dans le premier tiers.
+        const iCle = Math.floor(milieu.length * (0.15 + Math.random() * 0.2));
+        const iPorte = Math.floor(milieu.length * (0.65 + Math.random() * 0.25));
+        this.grid[milieu[iCle].y][milieu[iCle].x].item = 'key';
+        this.grid[milieu[iPorte].y][milieu[iPorte].x].item = 'door';
+
+        // Deux étoiles (+15 points) et un sablier (+5 s), sur des cases libres.
+        const libres = milieu.filter((p, i) => i !== iCle && i !== iPorte);
+        const tirage = [...libres].sort(() => Math.random() - 0.5);
+        tirage.slice(0, 2).forEach(p => { this.grid[p.y][p.x].item = 'star'; });
+        if (tirage[2]) this.grid[tirage[2].y][tirage[2].x].item = 'time';
+    }
+
     generatePath(startX, startY) {
         let cx = startX;
         let cy = startY;
         this.grid[cy][cx].isPath = true;
+        this.pathCells = [{ x: cx, y: cy }];
 
         while (cx < this.boardSize - 1 || cy < this.boardSize - 1) {
             let moves = [];
@@ -237,6 +274,7 @@ class Labyrinthe extends BaseGame {
             cy += move.dy;
             let nextCell = this.grid[cy][cx];
             nextCell.isPath = true;
+            this.pathCells.push({ x: cx, y: cy });
 
             let eq = this.generateQuestion();
             currentCell.equation = eq.text;
@@ -287,6 +325,14 @@ class Labyrinthe extends BaseGame {
                 span.className = 'laby-door';
                 span.innerText = cellData.displayedNumber;
                 div.appendChild(span);
+
+                if (cellData.item) {
+                    const item = document.createElement('span');
+                    item.className = 'laby-item';
+                    item.textContent = { key: '🗝️', door: '🚪', star: '⭐', time: '⏳' }[cellData.item];
+                    div.appendChild(item);
+                    if (cellData.item === 'door') div.classList.add('laby-porte-fermee');
+                }
                 
                 // Touch interaction for mobile
                 div.onclick = () => this.tryMoveTo(x, y);
@@ -385,11 +431,21 @@ class Labyrinthe extends BaseGame {
         const targetCell = this.grid[newY][newX];
         
         if (targetCell.displayedNumber == currentCell.correctAnswer) {
+            // La porte ne s'ouvre qu'avec la clé — le calcul est juste, mais
+            // il faut être passé par la case clé plus tôt sur le chemin.
+            if (targetCell.item === 'door' && !this.hasKey) {
+                this.calcEl.classList.add('error');
+                setTimeout(() => this.calcEl.classList.remove('error'), 400);
+                this.floatText(newX, newY, '🔒 Il faut la clé !', 'laby-float-loss');
+                return;
+            }
+
             // Correct move
             this.playerPos = { x: newX, y: newY };
             this.score += 10;
+            this.collectItem(newX, newY, targetCell);
             this.container.querySelector('#laby-score').textContent = this.score;
-            
+
             this.drawHero();
             this.updateUI();
         } else {
@@ -423,6 +479,46 @@ class Labyrinthe extends BaseGame {
         }
     }
     
+    /** Ramasse l'objet de la case atteinte et applique son effet. */
+    collectItem(x, y, cell) {
+        if (!cell.item) return;
+        const cellDiv = this.boardEl.children[y * this.boardSize + x];
+        const itemEl = cellDiv ? cellDiv.querySelector('.laby-item') : null;
+
+        if (cell.item === 'key') {
+            this.hasKey = true;
+            const keyEl = this.container.querySelector('#laby-key');
+            if (keyEl) keyEl.classList.add('on');
+            this.floatText(x, y, '🗝️ Clé !', 'laby-float-gain');
+        } else if (cell.item === 'door') {
+            if (cellDiv) cellDiv.classList.remove('laby-porte-fermee');
+            this.floatText(x, y, '🚪 Ouverte !', 'laby-float-gain');
+        } else if (cell.item === 'star') {
+            this.score += 15;
+            this.floatText(x, y, '⭐ +15', 'laby-float-gain');
+        } else if (cell.item === 'time') {
+            this.timeLeft = Math.min(this.currentMaxTime, this.timeLeft + 5);
+            this.timeEl.textContent = this.timeLeft;
+            this.updateTimerVisuals();
+            this.floatText(x, y, '⏳ +5s', 'laby-float-gain');
+        }
+        cell.item = null;
+        if (itemEl) itemEl.remove();
+    }
+
+    /** Texte flottant au-dessus d'une case (gain ou perte). */
+    floatText(x, y, texte, classe) {
+        const cellDiv = this.boardEl.children[y * this.boardSize + x];
+        if (!cellDiv) return;
+        const el = document.createElement('div');
+        el.textContent = texte;
+        el.className = classe;
+        el.style.left = (cellDiv.offsetLeft + cellDiv.offsetWidth / 2) + 'px';
+        el.style.top = cellDiv.offsetTop + 'px';
+        this.boardEl.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
     nextLevel() {
         this.level++;
         this.score += 50; // Level complete bonus
@@ -448,16 +544,19 @@ class Labyrinthe extends BaseGame {
     
     gameOver(completed) {
         this.isGameOver = true;
-        this.calcEl.innerText = "GAME OVER";
+        this.calcEl.innerText = `GAME OVER — Score : ${this.score}`;
         this.calcEl.style.background = "#ef4444";
-        
-        // Send score back to AtoutMath
-        this.endGame(this.score);
+        // `endGame()` n'existait pas : la fin de partie levait une exception
+        // et l'écran restait figé. La partie s'arrête ici, proprement — les
+        // réponses ont déjà été comptées coup par coup.
     }
-    
+
     destroy() {
+        // `super.destroy()` coupe les minuteurs et vide l'écran ; sans lui, le
+        // chronomètre du labyrinthe continuait de tourner après la sortie.
         document.removeEventListener('keydown', this.handleKey);
         window.removeEventListener('resize', this.handleResize);
+        super.destroy();
     }
 }
 
@@ -479,9 +578,8 @@ export const engineLabyrinthe = (container, isDemo, params) => {
     // continuait de tourner indéfiniment dans le catalogue.
     return {
         pause: () => game.pause(),
-        destroy: () => {
-            window.removeEventListener('resize', game.handleResize);
-            if (typeof game.cleanup === 'function') game.cleanup();
-        }
+        // `game.destroy()` et non l'inexistant `game.cleanup()` : l'écouteur
+        // clavier et les minuteurs survivaient à la fermeture du jeu.
+        destroy: () => game.destroy()
     };
 };

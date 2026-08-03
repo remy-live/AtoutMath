@@ -6,12 +6,14 @@
 // chaque partie, sans raison).
 
 import { clearEngines } from '../core/timers.js';
+import { destroyAllDemoCursors } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { getActivity, getGenerator } from '../core/registry.js';
 import { ItemSession } from '../core/itemSession.js';
 import { makePath, makeStep } from '../core/path.js';
 import { defaultPolicy } from '../core/policy.js';
 import { paramSchemaOf } from '../data/catalog.js';
+import { accessOf, lockLabel } from '../core/gameAccess.js';
 
 /**
  * Ouvre un exercice en plein écran.
@@ -22,6 +24,17 @@ export function openGameLayer(exo, startAsDemo) {
     if (!exo) return;
 
     if (startAsDemo) return openDemo(exo);
+
+    // Verrous du jeu libre (exercices réservés, jeux à débloquer). Seul le
+    // lancement LIBRE passe ici : les parcours du professeur, eux, lancent
+    // leurs étapes par le Runner et ne sont jamais bloqués.
+    if (!state.isTeacherMode) {
+        const acces = accessOf(exo);
+        if (acces.status !== 'libre') {
+            import('../ui/modal.js').then(m => m.showToast(`🔒 ${lockLabel(acces)}`, 'warning'));
+            return;
+        }
+    }
 
     // Réglages avant partie, si l'exercice en propose et qu'aucun n'est fourni.
     const schema = paramSchemaOf(exo);
@@ -118,7 +131,7 @@ export function launchPreview(exo, container, params = null, opts = {}) {
     // Une vignette ne coupe pas les minuteurs des autres : elle vit dans son
     // propre conteneur et sera gelée individuellement. Une démonstration, si :
     // il n'en joue qu'une à la fois.
-    if (!frozen) clearEngines();
+    if (!frozen) { clearEngines(); destroyAllDemoCursors(); }
     container.innerHTML = '';
 
     const activity = getActivity(exo.activityId);

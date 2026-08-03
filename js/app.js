@@ -8,6 +8,7 @@ import './core/activities/index.js';
 import { state } from './core/state.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
+import { destroyAllDemoCursors } from './core/demoPointer.js';
 import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
 import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE } from './data/catalog.js';
@@ -144,6 +145,9 @@ function initGameControls() {
         close.onclick = () => {
             if (state.activeSequenceRunner) state.activeSequenceRunner.abort();
             clearEngines();
+            // Le curseur de démonstration vit sur <body>, pas dans la couche de
+            // jeu : sans ce balayage, il restait affiché après la fermeture.
+            destroyAllDemoCursors();
             journal.flush();
             const gl = document.getElementById('game-layer');
             gl.classList.remove('device-simulator', 'tablet-simulator');
@@ -158,6 +162,7 @@ function initGameControls() {
             const inDemo = banner && banner.style.display === 'flex';
             if (state.activeSequenceRunner) state.activeSequenceRunner.abort();
             clearEngines();
+            destroyAllDemoCursors();
             if (inDemo) openGameLayer(state.activeExo, false);
             else openDemo(state.activeExo);
         };
@@ -167,6 +172,7 @@ function initGameControls() {
     if (startReal) {
         startReal.onclick = () => {
             clearEngines();
+            destroyAllDemoCursors();
             const banner = document.getElementById('demo-overlay-banner');
             if (banner) banner.style.display = 'none';
             openGameLayer(state.activeExo, false);

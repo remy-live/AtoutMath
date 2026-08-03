@@ -25,6 +25,75 @@ export const DEMO_SPEED = {
     between: 1500   // pause avant la question suivante
 };
 
+// Tous les pointeurs vivants. `clearEngines()` coupe les minuteurs d'une
+// démonstration interrompue, mais l'ÉLÉMENT du curseur, posé sur <body>,
+// restait affiché : on fermait l'aperçu et une flèche fantôme continuait de
+// flotter sur l'écran. Ce registre permet de les balayer tous à la fermeture.
+const curseursVivants = new Set();
+
+/** Détruit tous les pointeurs de démonstration encore à l'écran. */
+export function destroyAllDemoCursors() {
+    [...curseursVivants].forEach(c => c.destroy());
+    curseursVivants.clear();
+    // Ceinture et bretelles : un curseur créé par un module rechargé (autre
+    // instance de ce fichier) ne serait pas dans le registre.
+    document.querySelectorAll('.demo-cursor').forEach(el => el.remove());
+}
+
+/**
+ * Barre de commande d'une démonstration : pause / lecture et pas-à-pas.
+ *
+ * Le robot appelle `waitTurn()` avant chaque coup. En lecture, la promesse se
+ * résout tout de suite ; en pause, elle attend « Un pas » (qui libère UN coup
+ * puis rebloque) ou « Reprendre ». On peut ainsi suivre une déduction à son
+ * rythme, ce qu'un défilement continu ne permet pas.
+ */
+export function createDemoGate(host) {
+    let paused = false;
+    let destroyed = false;
+    let attentes = [];
+
+    const bar = document.createElement('div');
+    bar.className = 'demo-controls';
+    bar.innerHTML = `
+        <button type="button" class="demo-ctrl-btn" data-demo-pause aria-label="Mettre la démonstration en pause">⏸ Pause</button>
+        <button type="button" class="demo-ctrl-btn" data-demo-step aria-label="Avancer d'un pas">⏭ Un pas</button>`;
+    host.appendChild(bar);
+
+    const btnPause = bar.querySelector('[data-demo-pause]');
+    const liberer = () => { attentes.forEach(r => r()); attentes = []; };
+    const poserPause = (etat) => {
+        paused = etat;
+        btnPause.innerHTML = paused ? '▶ Reprendre' : '⏸ Pause';
+        btnPause.classList.toggle('demo-ctrl-btn--active', paused);
+    };
+
+    btnPause.onclick = () => {
+        poserPause(!paused);
+        if (!paused) liberer();
+    };
+    bar.querySelector('[data-demo-step]').onclick = () => {
+        // « Un pas » implique la pause : on libère un seul coup, la boucle
+        // se rebloquera au prochain `waitTurn()`.
+        if (!paused) poserPause(true);
+        liberer();
+    };
+
+    return {
+        get paused() { return paused; },
+        async waitTurn() {
+            if (destroyed) return false;
+            if (!paused) return true;
+            return new Promise(res => attentes.push(() => res(!destroyed)));
+        },
+        destroy() {
+            destroyed = true;
+            liberer();
+            bar.remove();
+        }
+    };
+}
+
 /**
  * Crée un pointeur. À détruire avec `destroy()` — ou, plus simplement, en
  * laissant `clearEngines()` faire son travail : toutes les attentes passent par
@@ -42,6 +111,7 @@ export function createDemoCursor() {
 
     let destroyed = false;
     let ghost = null;
+    let bulle = null;
     // Les attentes en cours, pour les dénouer à la destruction : une promesse
     // jamais résolue retiendrait indéfiniment la fonction qui l'attend.
     const pending = new Set();
@@ -65,8 +135,41 @@ export function createDemoCursor() {
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
 
-    return {
+    const api = {
         get destroyed() { return destroyed; },
+
+        /**
+         * Bulle d'explication accrochée au pointeur : le robot dit POURQUOI il
+         * joue ce coup. Elle reste affichée jusqu'au prochain `say()` ou à
+         * `hideBubble()`, pour laisser le temps de lire.
+         */
+        say(texte, cible = null) {
+            if (destroyed || !texte) return;
+            if (!bulle) {
+                bulle = document.createElement('div');
+                bulle.className = 'demo-bubble';
+                bulle.setAttribute('role', 'status');
+                document.body.appendChild(bulle);
+            }
+            bulle.textContent = texte;
+            bulle.classList.add('demo-bubble--on');
+            const ancre = cible ? centerOf(cible) : positionActuelle();
+            requestAnimationFrame(() => {
+                if (!bulle) return;
+                const b = bulle.getBoundingClientRect();
+                const marge = 10;
+                let left = ancre.x - b.width / 2;
+                left = Math.max(marge, Math.min(left, window.innerWidth - b.width - marge));
+                let top = ancre.y - b.height - 46;
+                if (top < marge) top = ancre.y + 40;
+                bulle.style.left = `${Math.round(left)}px`;
+                bulle.style.top = `${Math.round(top)}px`;
+            });
+        },
+
+        hideBubble() {
+            if (bulle) bulle.classList.remove('demo-bubble--on');
+        },
 
         /** Amène le pointeur au centre de l'élément et attend d'y être. */
         async moveTo(target, ms = DEMO_SPEED.move) {
@@ -150,10 +253,22 @@ export function createDemoCursor() {
 
         destroy() {
             destroyed = true;
+            curseursVivants.delete(api);
             pending.forEach(done => done(false));
             pending.clear();
             if (ghost) { ghost.remove(); ghost = null; }
+            if (bulle) { bulle.remove(); bulle = null; }
             el.remove();
         }
     };
+
+    // La position courante du pointeur, pour ancrer la bulle quand aucun
+    // élément cible n'est fourni.
+    function positionActuelle() {
+        const r = el.getBoundingClientRect();
+        return { x: r.left, y: r.top };
+    }
+
+    curseursVivants.add(api);
+    return api;
 }

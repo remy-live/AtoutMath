@@ -5,16 +5,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MathBox - Mode Démo & Layout</title>
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="icons/icon-192.png" type="image/png">
+    <!-- Application installable (PWA) : manifeste, couleur de thème et icône
+         d'écran d'accueil iOS. Le service worker est enregistré en fin de page. -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="AtoutMath">
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=25">
-    <link rel="stylesheet" href="css/layout.css?v=25">
-    <link rel="stylesheet" href="css/ui.css?v=25">
-    <link rel="stylesheet" href="css/games.css?v=25">
-    <link rel="stylesheet" href="css/components.css?v=25">
-    <link rel="stylesheet" href="css/modules.css?v=25">
+    <link rel="stylesheet" href="css/base.css?v=26">
+    <link rel="stylesheet" href="css/layout.css?v=26">
+    <link rel="stylesheet" href="css/ui.css?v=26">
+    <link rel="stylesheet" href="css/games.css?v=26">
+    <link rel="stylesheet" href="css/components.css?v=26">
+    <link rel="stylesheet" href="css/modules.css?v=26">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -198,6 +206,7 @@
                                 <button id="btn-open-path-browser" class="btn-toggle glass-btn btn-toggle--sm">📂 Mes Parcours</button>
                                 <button id="btn-path-policy" class="btn-toggle glass-btn btn-toggle--sm">🎓 Mode &amp; barème</button>
                                 <button id="btn-open-import-export-teacher" class="btn-toggle glass-btn btn-toggle--sm">🔄 Import/Export</button>
+                                <button id="btn-game-access" class="btn-toggle glass-btn btn-toggle--sm" title="Choisir les exercices libres, réservés ou à débloquer">🔐 Accès aux jeux</button>
                             </div>
                             <div class="builder-header-actions" onclick="event.stopPropagation()">
                             <div class="preview-mode-group desktop-only" onclick="event.stopPropagation()">
@@ -211,6 +220,9 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
                                 </button>
                             </div>
+                            <button id="btn-presentation" class="btn-toggle" title="Présenter le parcours à la classe : carte des mondes et aperçu permanent">
+                                🗺️ Présentation
+                            </button>
                             <button id="btn-test-sequence" class="btn-toggle" title="Tester le Parcours">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                     fill="currentColor" stroke="currentColor" stroke-width="2"
@@ -644,6 +656,14 @@
         // Init theme immediately to prevent flash
         const savedTheme = localStorage.getItem('mathbox-theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // PWA : enregistre le service worker (installation + hors ligne).
+        // Silencieux en cas d'échec — l'application marche sans lui.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => { });
+            });
+        }
     </script>
         <!-- MODALE DE CONFIRMATION UNIVERSELLE -->
         <div id="universal-confirm-modal" class="modal-overlay modal-overlay--top">

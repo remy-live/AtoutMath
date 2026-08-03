@@ -69,10 +69,11 @@ class Tetris extends BaseGame {
                     font-family: var(--font-main, 'Outfit', sans-serif);
                 }
                 .tetris-container {
-                    display: flex; flex-direction: row; gap: 25px; padding: 25px; 
+                    display: flex; flex-direction: row; gap: 25px; padding: 25px;
                     background: var(--bg-panel); border: 1px solid var(--border);
-                    border-radius: 16px; box-shadow: var(--shadow-lg); 
+                    border-radius: 16px; box-shadow: var(--shadow-lg);
                     max-width: 100%; max-height: 100%; align-items: stretch;
+                    box-sizing: border-box; overflow: hidden;
                 }
                 .tetris-canvas-area {
                     display: flex; align-items: center; justify-content: center;
@@ -82,6 +83,14 @@ class Tetris extends BaseGame {
                 }
                 .tetris-canvas-area canvas {
                     background-color: transparent; display: block;
+                    /* La grille se réduit pour tenir dans le plateau : à taille
+                       fixe (300x600), elle débordait de la fenêtre dès que la
+                       hauteur manquait. L'unité cqh mesure le plateau de jeu,
+                       pas la fenêtre — l'aperçu tablette du professeur est un
+                       cadre étroit dans une grande fenêtre. */
+                    max-width: 100%;
+                    max-height: calc(100cqh - 90px);
+                    width: auto; height: auto;
                 }
                 .tetris-sidebar {
                     display: flex; flex-direction: column; width: 150px; text-align: center; justify-content: flex-start; gap: 15px;

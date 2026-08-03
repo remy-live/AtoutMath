@@ -39,7 +39,172 @@ export function initBuilder() {
     initToolbar();
     initPathBrowser();
     initPolicyPanel();
+    initPresentationMode();
+    initGameAccessPanel();
     renderTeacherPath();
+}
+
+// --- Accès aux jeux (libre / réservé / à débloquer) -------------------------
+
+function initGameAccessPanel() {
+    const btn = document.getElementById('btn-game-access');
+    if (!btn) return;
+    btn.onclick = async () => {
+        const { getAccessConfig, saveAccessConfig, isGame } = await import('../core/gameAccess.js');
+        openGameAccessModal(getAccessConfig(), saveAccessConfig, isGame);
+    };
+}
+
+function openGameAccessModal(cfg, save, isGame) {
+    let overlay = document.getElementById('game-access-modal');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'game-access-modal';
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+
+    const parDomaine = new Map();
+    exercices.forEach(exo => {
+        const dom = exo.tags.chemin[0];
+        if (!parDomaine.has(dom)) parDomaine.set(dom, []);
+        parDomaine.get(dom).push(exo);
+    });
+
+    const listeHtml = [...parDomaine.entries()].map(([dom, exos]) => `
+        <div class="access-group">
+            <div class="access-group-title">${escapeHtml(dom)}</div>
+            ${exos.map(exo => `
+                <label class="cfg-check access-row">
+                    <input type="checkbox" data-reserved="${escapeHtml(exo.id)}"
+                        ${cfg.reserved.includes(exo.id) ? 'checked' : ''}>
+                    ${escapeHtml(exo.title)}${isGame(exo) ? ' <span class="access-tag-jeu">jeu</span>' : ''}
+                </label>`).join('')}
+        </div>`).join('');
+
+    overlay.innerHTML = `
+        <div class="glass-panel modal-panel-md">
+            <div class="modal-header">
+                <h3 class="modal-title">🔐 Accès aux jeux</h3>
+                <button class="modal-close-btn" id="btn-close-game-access" aria-label="Fermer">&times;</button>
+            </div>
+            <p class="modal-text">Réglage enregistré sur CE poste : il s'applique au jeu libre de tous les
+                élèves qui l'utilisent. Les parcours et les codes que vous donnez ne sont jamais bloqués.</p>
+
+            <div class="cfg-group">
+                <div class="cfg-group-title">Jeux à débloquer</div>
+                <label class="cfg-check">
+                    <input type="radio" name="access-mode" value="libre" ${cfg.mode !== 'progression' ? 'checked' : ''}>
+                    Tous les jeux sont accessibles librement
+                </label>
+                <label class="cfg-check">
+                    <input type="radio" name="access-mode" value="progression" ${cfg.mode === 'progression' ? 'checked' : ''}>
+                    Les jeux se débloquent avec le travail de l'élève
+                </label>
+                <div class="cfg-field">
+                    <label class="cfg-label" for="access-step">Bonnes réponses par jeu débloqué</label>
+                    <input type="number" id="access-step" class="cfg-input cfg-input--num" min="5" max="500" value="${cfg.unlockStep}">
+                </div>
+            </div>
+
+            <div class="cfg-group">
+                <div class="cfg-group-title">Exercices réservés (jamais en jeu libre)</div>
+                <div class="access-list">${listeHtml}</div>
+            </div>
+
+            <div class="modal-actions-center">
+                <button id="btn-access-save" class="btn-toggle glass-btn primary active modal-btn-flex modal-btn-flex--primary">Enregistrer</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#btn-close-game-access').onclick = () => overlay.remove();
+    overlay.querySelector('#btn-access-save').onclick = () => {
+        const mode = overlay.querySelector('[name="access-mode"]:checked').value;
+        const step = parseInt(overlay.querySelector('#access-step').value, 10) || 30;
+        const reserved = [...overlay.querySelectorAll('[data-reserved]:checked')]
+            .map(cb => cb.dataset.reserved);
+        save({ mode, unlockStep: step, reserved });
+        overlay.remove();
+        showToast('Réglages d\'accès enregistrés.', 'success');
+    };
+}
+
+// --- Mode présentation (classe) ---------------------------------------------
+//
+// Pour projeter le parcours au tableau : la carte des mondes à gauche, et un
+// aperçu PERMANENT de l'étape choisie à droite — cliquer sur un monde change
+// l'exercice montré, sans quitter la vue d'ensemble.
+
+function initPresentationMode() {
+    const btn = document.getElementById('btn-presentation');
+    if (!btn) return;
+    btn.onclick = async () => {
+        if (!state.currentPath.steps.length) {
+            showAlert('Ajoutez au moins une activité pour lancer la présentation.');
+            return;
+        }
+        const [{ buildWorldMap }, { hydratePath }] = await Promise.all([
+            import('./pathView.js'), import('../core/path.js')
+        ]);
+        const { steps } = hydratePath(state.currentPath);
+        openPresentation(steps, buildWorldMap);
+    };
+}
+
+function openPresentation(steps, buildWorldMap) {
+    let overlay = document.getElementById('presentation-modal');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'presentation-modal';
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+        <div class="glass-panel modal-panel-lg" style="width: 94vw; max-width: 1280px; height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 class="modal-title">🗺️ ${escapeHtml(state.currentPath.name || 'Parcours')}</h3>
+                <button class="modal-close-btn" id="btn-close-presentation" aria-label="Fermer">&times;</button>
+            </div>
+            <div class="presentation-body">
+                <div class="presentation-map"></div>
+                <div class="presentation-preview">
+                    <div class="presentation-preview-title" id="presentation-title"></div>
+                    <div class="presentation-preview-canvas" id="presentation-canvas"></div>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const canvas = overlay.querySelector('#presentation-canvas');
+    const titre = overlay.querySelector('#presentation-title');
+
+    const montrer = async (i) => {
+        const step = steps[i];
+        if (!step) return;
+        titre.textContent = `${i + 1}. ${step.title}`;
+        overlay.querySelectorAll('.world-node').forEach((n, j) =>
+            n.classList.toggle('world-node--current', j === i));
+        const { launchPreview } = await import('../games/engine.js');
+        launchPreview(step.exercise, canvas, step.params);
+    };
+
+    const map = buildWorldMap(steps, {
+        allUnlocked: true,
+        onNodeClick: (i) => montrer(i)
+    });
+    overlay.querySelector('.presentation-map').appendChild(map);
+
+    overlay.querySelector('#btn-close-presentation').onclick = async () => {
+        const [{ clearEngines }, { destroyAllDemoCursors }] = await Promise.all([
+            import('../core/timers.js'), import('../core/demoPointer.js')
+        ]);
+        clearEngines();
+        destroyAllDemoCursors();
+        overlay.remove();
+    };
+
+    montrer(0);
 }
 
 function handleDrop(e, pathBox) {
@@ -130,13 +295,30 @@ function stepRow(step, index, policy) {
         return row;
     }
 
+    // Une SEULE ligne par étape : titre tronqué, règle en abrégé, actions.
+    // Le détail complet reste lisible dans le panneau de propriétés — la
+    // colonne du milieu, elle, doit montrer beaucoup d'étapes d'un coup d'œil.
     const head = document.createElement('div');
     head.className = 'path-step-head';
 
     const title = document.createElement('div');
     title.className = 'path-step-title';
-    title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span> ${index + 1}. ${escapeHtml(exo.title)}`;
+    title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span>`
+        + `<span class="path-step-name">${index + 1}. ${escapeHtml(exo.title)}</span>`;
     head.appendChild(title);
+
+    const seuil = step.threshold ?? step.nbItems;
+    const details = [`${seuil}/${step.nbItems}`];
+    if (step.timeLimit) details.push(`⏱ ${step.timeLimit}s`);
+    if (policy.grading && step.weight > 1) details.push(`×${step.weight}`);
+
+    const rule = document.createElement('span');
+    rule.className = 'path-step-rule';
+    rule.title = `${seuil} bonne${seuil > 1 ? 's' : ''} réponse${seuil > 1 ? 's' : ''} exigée${seuil > 1 ? 's' : ''} sur ${step.nbItems}`
+        + (step.timeLimit ? ` • chronomètre ${step.timeLimit} s` : '')
+        + (policy.grading && step.weight > 1 ? ` • poids ×${step.weight} dans la note` : '');
+    rule.textContent = details.join(' • ');
+    head.appendChild(rule);
 
     const actions = document.createElement('div');
     actions.className = 'path-step-actions';
@@ -156,23 +338,6 @@ function stepRow(step, index, policy) {
     [preview, props, dup, del].forEach(b => actions.appendChild(b));
     head.appendChild(actions);
     row.appendChild(head);
-
-    // Les réglages de déroulement se lisent en une phrase, pas en étiquettes
-    // empilées : « 7 bonnes réponses sur 10 » dit ce que « seuil 7 » cachait.
-    const seuil = step.threshold ?? step.nbItems;
-    const details = [`${seuil} bonne${seuil > 1 ? 's' : ''} réponse${seuil > 1 ? 's' : ''} sur ${step.nbItems}`];
-    if (step.timeLimit) details.push(`chrono ${step.timeLimit} s`);
-    if (policy.grading && step.weight > 1) details.push(`poids ×${step.weight} dans la note`);
-
-    const meta = document.createElement('div');
-    meta.className = 'path-step-meta';
-    meta.innerHTML = `
-        <span class="path-step-rule">${details.join(' • ')}</span>
-        <span class="path-step-tags">
-            ${exo.tags.niveaux ? `<span class="tag tag-btn tag-niveau">${exo.tags.niveaux.join(', ')}</span>` : ''}
-            <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
-        </span>`;
-    row.appendChild(meta);
 
     return row;
 }

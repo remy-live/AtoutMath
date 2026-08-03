@@ -57,52 +57,26 @@ function assignedSection() {
         <h2 class="path-section-title">${escapeHtml(assigned.name || 'Parcours du professeur')}</h2>
         <p class="path-section-sub ${isEvaluation(policy) ? 'path-section-sub--eval' : ''}">${describePolicy(policy)}</p>`;
 
-    const timeline = document.createElement('div');
-    timeline.className = 'path-timeline';
-    timeline.appendChild(Object.assign(document.createElement('div'), { className: 'path-timeline-line' }));
-
-    steps.forEach((step, i) => {
-        const isDone = done.has(step.stepId);
-        const isCurrent = !isDone && i === firstPending;
-        const isLocked = !isDone && !isCurrent;
-
-        const row = document.createElement('div');
-        row.className = 'path-timeline-step' + (isLocked ? ' path-timeline-step--locked' : '');
-
-        const icon = document.createElement('div');
-        icon.className = 'path-timeline-icon ' + (isDone ? 'path-timeline-icon--done' : isCurrent ? 'path-timeline-icon--current' : 'path-timeline-icon--locked');
-        icon.textContent = isDone ? '✓' : isLocked ? '🔒' : String(i + 1);
-
-        const card = document.createElement('div');
-        card.className = 'card card--flush' + (isCurrent ? ' card--current' : '');
-
-        const title = document.createElement('div');
-        title.className = 'timeline-step-title' + (isCurrent ? ' timeline-step-title--active' : '');
-        title.textContent = step.title;
-        card.appendChild(title);
-
-        const meta = document.createElement('div');
-        meta.className = 'timeline-step-meta';
-        meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
-        card.appendChild(meta);
-
-        if (isDone) {
-            card.appendChild(statusEl('Terminé !'));
-        } else if (isCurrent) {
-            const btn = document.createElement('button');
-            btn.className = 'btn-toggle active';
-            btn.textContent = isEvaluation(policy) ? 'Commencer l\'évaluation' : 'Jouer';
-            btn.onclick = () => launchAssigned(path, i);
-            card.appendChild(btn);
-        } else {
-            card.appendChild(statusEl('À débloquer'));
+    // Carte des mondes façon jeu de plateforme : chaque étape est une île du
+    // chemin, on voit d'un coup d'œil où l'on est, ce qui est gagné et ce qui
+    // reste à débloquer.
+    const map = buildWorldMap(steps, {
+        doneIds: done,
+        currentIndex: firstPending,
+        onNodeClick: (i, statut) => {
+            if (statut === 'locked') return;
+            launchAssigned(path, i);
         }
-
-        row.append(icon, card);
-        timeline.appendChild(row);
     });
+    box.appendChild(map);
 
-    box.appendChild(timeline);
+    if (!allDone && firstPending !== -1) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-toggle active world-map-play';
+        btn.textContent = isEvaluation(policy) ? 'Commencer l\'évaluation' : `Jouer : ${steps[firstPending].title}`;
+        btn.onclick = () => launchAssigned(path, firstPending);
+        box.appendChild(btn);
+    }
 
     if (allDone) {
         const done2 = document.createElement('div');
@@ -116,6 +90,65 @@ function assignedSection() {
 async function launchAssigned(path, startIndex) {
     const { Runner } = await import('../core/runner.js');
     new Runner({ path, deviceMode: 'none', isStudentPath: true, startIndex }).start();
+}
+
+/**
+ * Carte des mondes : les étapes serpentent par rangées de trois, reliées par
+ * des pointillés, comme la carte d'un jeu de plateforme. Réutilisée par la
+ * vue élève et par le mode présentation du professeur.
+ *
+ * @param {Array} steps
+ * @param {Object} opts
+ * @param {Set}    [opts.doneIds]      stepId terminés
+ * @param {number} [opts.currentIndex] étape en cours (-1 : tout est fait)
+ * @param {boolean}[opts.allUnlocked]  professeur : aucun cadenas
+ * @param {(i:number, statut:string)=>void} [opts.onNodeClick]
+ */
+export function buildWorldMap(steps, opts = {}) {
+    const done = opts.doneIds || new Set();
+    const map = document.createElement('div');
+    map.className = 'world-map';
+
+    const PAR_RANGEE = 3;
+    for (let debut = 0; debut < steps.length; debut += PAR_RANGEE) {
+        const rangee = document.createElement('div');
+        const inversee = (debut / PAR_RANGEE) % 2 === 1;
+        rangee.className = 'world-row' + (inversee ? ' world-row--reverse' : '');
+
+        steps.slice(debut, debut + PAR_RANGEE).forEach((step, j) => {
+            const i = debut + j;
+            const isDone = done.has(step.stepId);
+            const isCurrent = !opts.allUnlocked && !isDone && i === opts.currentIndex;
+            const statut = opts.allUnlocked ? 'open'
+                : isDone ? 'done' : (isCurrent ? 'current' : 'locked');
+
+            const node = document.createElement('div');
+            node.className = `world-node world-node--${statut}`;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'world-node-btn';
+            btn.innerHTML = isDone ? '⭐' : (statut === 'locked' ? '🔒' : String(i + 1));
+            btn.title = step.title;
+            btn.setAttribute('aria-label',
+                `${step.title} — ${statut === 'done' ? 'terminé' : statut === 'locked' ? 'à débloquer' : 'jouer'}`);
+            btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
+
+            const label = document.createElement('span');
+            label.className = 'world-node-label';
+            label.textContent = step.title;
+
+            const meta = document.createElement('span');
+            meta.className = 'world-node-meta';
+            meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+
+            node.append(btn, label, meta);
+            rangee.appendChild(node);
+        });
+
+        map.appendChild(rangee);
+    }
+    return map;
 }
 
 // --- 2. Séance conseillée ---------------------------------------------------
@@ -209,13 +242,6 @@ function lastResultSection() {
     box.querySelector('.last-run-card').appendChild(btn);
 
     return box;
-}
-
-function statusEl(text) {
-    const el = document.createElement('div');
-    el.className = 'timeline-step-status';
-    el.textContent = text;
-    return el;
 }
 
 function formatNote(n) {

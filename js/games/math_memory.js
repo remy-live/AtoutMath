@@ -49,7 +49,20 @@ class MathMemory extends BaseGame {
                 }
                 .memory-card.matched {
                     opacity: 0;
+                    transform: scale(0.4);
                     pointer-events: none;
+                }
+                .memory-particle {
+                    position: fixed;
+                    width: 10px; height: 10px;
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 10005;
+                    animation: memoryBurst .7s ease-out forwards;
+                }
+                @keyframes memoryBurst {
+                    0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+                    100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(.3); }
                 }
                 .memory-card.error {
                     background: var(--danger);
@@ -83,13 +96,27 @@ class MathMemory extends BaseGame {
         
         const weakTables = getWeakTables();
         const pairsData = [];
+        // Jamais deux paires avec le MÊME résultat sur un plateau : « 3 × 4 »
+        // retourné avec le 12 de « 2 × 6 » serait mathématiquement juste mais
+        // compté faux — une erreur que l'élève ne peut pas comprendre.
+        const answersUsed = new Set();
         for(let i = 0; i < this.targetPairs; i++) {
-            const { t, m, ans, concept } = generateMultFact(this.params.tables, weakTables);
+            let fact = null;
+            for (let tries = 0; tries < 60; tries++) {
+                const candidate = generateMultFact(this.params.tables, weakTables);
+                if (!answersUsed.has(candidate.ans)) { fact = candidate; break; }
+            }
+            // Plus de résultat inédit disponible (tables trop restreintes) :
+            // on arrête le plateau ici plutôt que d'introduire un doublon.
+            if (!fact) break;
+            answersUsed.add(fact.ans);
+            const { t, m, ans, concept } = fact;
             const uid = i;
 
             pairsData.push({ type: 'question', text: `${t} × ${m}`, uid, t, m, ans, concept });
             pairsData.push({ type: 'answer', text: `${ans}`, uid, t, m, ans, concept });
         }
+        this.targetPairs = pairsData.length / 2;
         
         // Shuffle
         pairsData.sort(() => Math.random() - 0.5);
@@ -140,6 +167,31 @@ class MathMemory extends BaseGame {
         regInterval(tour, 2600);
     }
 
+    /**
+     * Éclat de particules à l'endroit où la paire disparaît. En `position:
+     * fixed` sur <body> : les cartes s'effacent, les particules leur survivent
+     * le temps de l'animation, puis se retirent elles-mêmes.
+     */
+    spawnParticles(cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const colors = ['#f43f5e', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+        for (let i = 0; i < 14; i++) {
+            const p = document.createElement('div');
+            p.className = 'memory-particle';
+            const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.5;
+            const dist = 40 + Math.random() * 55;
+            p.style.left = `${cx}px`;
+            p.style.top = `${cy}px`;
+            p.style.background = colors[i % colors.length];
+            p.style.setProperty('--px', `${Math.cos(angle) * dist}px`);
+            p.style.setProperty('--py', `${Math.sin(angle) * dist}px`);
+            document.body.appendChild(p);
+            regTimeout(() => p.remove(), 750);
+        }
+    }
+
     handleCardClick(el, data) {
         if (this.lockBoard) return;
         if (el === this.firstPick?.el) return;
@@ -163,6 +215,8 @@ class MathMemory extends BaseGame {
             
             regTimeout(() => {
                 if(!this.isRunning) return;
+                this.spawnParticles(this.firstPick.el);
+                this.spawnParticles(secondPick.el);
                 this.firstPick.el.classList.add('matched');
                 secondPick.el.classList.add('matched');
                 this.firstPick = null;

@@ -121,8 +121,21 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .sequence-area { width: 100%; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding: 30px 15px; }
 #path-container { min-height: 150px; background: var(--bg-hover); border: 2px dashed var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; transition: 0.3s; }
 #path-container.drag-over { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
-.path-step { background: var(--bg-panel); border: 1px solid var(--border); border-left: 5px solid var(--primary); padding: 15px 20px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: 0.2s;}
+/* Rangée compacte : une seule ligne par étape, hauteur minimale, pas de
+   retour à la ligne — la colonne du milieu doit montrer un parcours entier
+   sans défiler. */
+.path-step { background: var(--bg-panel); border: 1px solid var(--border); border-left: 5px solid var(--primary); padding: 8px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: 0.2s;}
 .path-step:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+/* Œil d'aperçu des exercices du catalogue (mode professeur, écrans tactiles). */
+.exo-item-eye {
+    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    cursor: pointer; transition: 0.15s;
+}
+.exo-item-eye:hover { border-color: var(--primary); color: var(--primary); }
+.exo-list-item.drag-source { opacity: .35; }
 .collapsable-btn { cursor: pointer; transform: rotate(180deg); transition: transform 0.3s; }
 
 /* --- GRILLE ELEVE --- */
