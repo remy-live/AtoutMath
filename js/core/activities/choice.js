@@ -11,7 +11,9 @@
 // connaissance des notions ici.
 
 import { regTimeout } from '../timers.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
+import { demoChoix } from '../demoScript.js';
 
 const VARIANTS = {
     bubbles: { itemClass: 'bubble', containerClass: 'bubble-container' },
@@ -30,8 +32,10 @@ export function mount(container, session, opts = {}) {
     const variant = VARIANTS[opts.variant] || VARIANTS.bubbles;
     let destroyed = false;
     // Un seul pointeur pour toute la démonstration : recréé à chaque question,
-    // il repartirait du coin de l'écran à chaque fois.
+    // il repartirait du coin de l'écran à chaque fois. Même chose pour la
+    // bulle de parole.
     let cursor = null;
+    let narrateur = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -71,7 +75,7 @@ export function mount(container, session, opts = {}) {
         };
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(cells, choices, slot, fillSlot);
+            if (!session.frozen) runDemo(item, cells, slot, fillSlot);
             return;
         }
 
@@ -126,30 +130,24 @@ export function mount(container, session, opts = {}) {
     }
 
     /**
-     * Démonstration : on montre le GESTE, pas seulement la bonne case.
+     * Démonstration : on montre le RAISONNEMENT, puis le geste.
      *
-     * Quand l'exercice se joue au glisser-déposer, c'est ce geste qui est
-     * l'objet de l'apprentissage — le voir sauter d'une question à l'autre
-     * n'apprenait rien. Le pointeur va donc chercher la tuile, la traîne
-     * jusqu'à l'emplacement vide et l'y dépose, puis on laisse la ligne
-     * complétée à l'écran le temps de la relire.
+     * Le geste compte — quand l'exercice se joue au glisser-déposer, c'est lui
+     * l'objet de l'apprentissage — mais il ne dit pas pourquoi cette case-là.
+     * Le déroulé commenté (méthode, erreur écartée, conclusion) vit dans
+     * `demoScript`, commun à toutes les activités à propositions.
      */
-    async function runDemo(cells, choices, slot, fillSlot) {
-        const el = cells[choices.findIndex(c => c.correct)];
-        if (!el) { regTimeout(renderNext, DEMO_SPEED.between); return; }
-
+    async function runDemo(item, cells, slot, fillSlot) {
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
 
-        const fait = (opts.dragToSlot && slot)
-            ? await cursor.dragFromTo(el, slot)
-            : await cursor.tap(el);
-        if (!fait || destroyed) return;
-
-        el.classList.add('demo-target');
-        fillSlot(el, true);
-
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        const fini = await demoChoix({
+            narrateur, cursor, item, cellules: cells,
+            question: container.querySelector('.game-question'),
+            versEmplacement: (opts.dragToSlot && slot) ? slot : null,
+            apresChoix: (el) => fillSlot(el, true)
+        });
+        if (!fini || destroyed) return;
         renderNext();
     }
 
@@ -163,6 +161,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

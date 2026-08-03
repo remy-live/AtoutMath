@@ -8,6 +8,8 @@
 
 import { regTimeout } from '../timers.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
+import { direLaMethode, direLaConclusion } from '../demoScript.js';
 
 const HOLES = 9;
 
@@ -16,6 +18,7 @@ export function mount(container, session, opts = {}) {
     let activeIndex = -1;
     let item = null;
     let cursor = null;
+    let narrateur = null;
 
     container.innerHTML = `
         <div class="moles-wrap">
@@ -79,8 +82,16 @@ export function mount(container, session, opts = {}) {
     // apparaître et disparaître sans comprendre ce qui compte.
     async function runDemo(hole) {
         if (!cursor) cursor = createDemoCursor();
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
+
+        // Les taupes ne montrent qu'une proposition à la fois : on ne peut pas
+        // écarter les autres du doigt, seulement dire à quoi on les reconnaît.
+        if (!await direLaMethode(narrateur, item, questionEl) || destroyed) return;
+        if (narrateur && !await narrateur.dire('Celle-ci porte le bon résultat : je frappe.', hole)) return;
         if (!await cursor.tap(hole) || destroyed) return;
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (narrateur) {
+            if (!await direLaConclusion(narrateur, item, hole) || destroyed) return;
+        } else if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
         nextItem();
     }
 
@@ -112,6 +123,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

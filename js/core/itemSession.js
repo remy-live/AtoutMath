@@ -39,6 +39,10 @@ export class ItemSession {
         // Une vignette de catalogue montre une question, pas une animation :
         // 45 démonstrations lancées en même temps rameraient sur une tablette.
         this.frozen = !!cfg.frozen;
+        // Démonstration COMMENTÉE : le robot explique son raisonnement à voix
+        // haute. Réservée au plein écran — dans une vignette de catalogue, la
+        // bulle serait plus grande que le jeu qu'elle commente.
+        this.narration = !!cfg.narration;
         this.forceSeed = cfg.forceSeed || null;
         this.preferredKind = cfg.preferredKind || null;
 

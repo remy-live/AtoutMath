@@ -13,6 +13,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
 import { OPS_GARAM } from '../generators/garam.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
@@ -32,6 +33,7 @@ function casesDe(eq) {
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
+    let narrateur = null;
 
     let item = null;
     let valeurs = [];   // par indice de case ; VIDE = -1 (0 est une valeur !)
@@ -262,22 +264,87 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    async function runDemo() {
-        const { solution } = item.meta;
-        if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
-        for (let i = 0; i < valeurs.length; i++) {
-            if (valeurs[i] !== VIDE) continue;
-            const el = celluleEl(i);
-            if (!el) return;
-            if (!await cursor.tap(el, 320) || destroyed) return;
-            valeurs[i] = solution[i];
-            el.querySelector('.kk-val').textContent = solution[i];
-            el.classList.add('demo-target');
+    // --- Le raisonnement du robot ---------------------------------------------
+    //
+    // Le Garam se résout par les égalités auxquelles il ne manque qu'une case :
+    // le robot cherche celle-là, écrit l'égalité avec son trou, puis la
+    // complète. C'est exactement le geste qu'on demande à l'élève.
+
+    /** L'égalité, telle qu'on la lirait à voix haute. */
+    function ecrire(eq) {
+        const v = (i) => (valeurs[i] === VIDE ? '?' : valeurs[i]);
+        const droite = eq.z2 !== undefined ? `${v(eq.z)}${v(eq.z2)}` : `${v(eq.z)}`;
+        return `${v(eq.a)} ${OPS_GARAM[eq.op].symbole} ${v(eq.b)} = ${droite}`;
+    }
+
+    /** Le prochain coup et sa raison, vérifiée contre la solution. */
+    function prochainCoup() {
+        const { structure, solution } = item.meta;
+        const candidates = structure.equations
+            .map(eq => ({ eq, vides: casesDe(eq).filter(i => valeurs[i] === VIDE) }))
+            .filter(x => x.vides.length === 1);
+
+        if (candidates.length) {
+            const { eq, vides } = candidates[0];
+            const i = vides[0];
+            return {
+                i, valeur: solution[i], eq,
+                phrase: `Il ne manque qu'une case à cette égalité : ${ecrire(eq)}. Donc ${solution[i]}.`
+            };
         }
-        container.querySelector('.ga-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+
+        const i = valeurs.findIndex(v => v === VIDE);
+        if (i < 0) return null;
+        const eq = item.meta.structure.equations.find(e => casesDe(e).includes(i)) || null;
+        return {
+            i, valeur: solution[i], eq,
+            phrase: eq
+                ? `Deux cases manquent encore ici (${ecrire(eq)}) : je pars de ${solution[i]}, que les autres égalités confirment.`
+                : `Je place ${solution[i]}.`
+        };
+    }
+
+    const COUPS_COMMENTES = 4;
+
+    async function runDemo() {
+        if (!cursor) cursor = createDemoCursor();
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
+        const plateau = container.querySelector('.ga-board');
+
+        if (narrateur && !await narrateur.dire(`La règle : ${item.explanation}`, plateau)) return;
+        if (!await cursor.pause(narrateur ? 200 : 600) || destroyed) return;
+
+        for (let k = 0; ; k++) {
+            const coup = prochainCoup();
+            if (!coup) break;
+            const el = celluleEl(coup.i);
+            if (!el) break;
+            const commente = narrateur && k < COUPS_COMMENTES;
+
+            if (commente) {
+                if (coup.eq) casesDe(coup.eq).forEach(j => celluleEl(j).classList.add('kk-cage--indice'));
+                if (!await narrateur.dire(coup.phrase, el)) { eteindreDemo(); return; }
+            }
+            if (!await cursor.tap(el, commente ? 320 : 200) || destroyed) { eteindreDemo(); return; }
+            valeurs[coup.i] = coup.valeur;
+            el.querySelector('.kk-val').textContent = coup.valeur;
+            el.classList.add('demo-target');
+            eteindreDemo();
+
+            if (narrateur && k === COUPS_COMMENTES - 1
+                && !await narrateur.dire('Les autres égalités se complètent de la même façon.', plateau)) return;
+        }
+
+        plateau.classList.add('kk-board--ok');
+        if (narrateur) {
+            if (!await narrateur.dire('Toutes les égalités sont justes.', plateau)) return;
+        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
+    }
+
+    function eteindreDemo() {
+        container.querySelectorAll('.kk-cage--indice')
+            .forEach(el => el.classList.remove('kk-cage--indice'));
     }
 
     renderNext();
@@ -288,6 +355,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

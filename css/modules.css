@@ -1185,6 +1185,47 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     transition: transform .12s ease;
 }
 
+/* --- La parole du robot -------------------------------------
+   Ancrée sur ce dont elle parle : la pointe désigne la case, la cage ou la
+   proposition commentée. Une bulle qui dit « celle-ci » sans montrer laquelle
+   ne vaut rien. Elle vit sur le `body`, en `fixed`, pour valoir aussi bien
+   dans le simulateur du professeur qu'en plein écran. */
+.demo-bulle {
+    position: fixed; top: 0; left: 0; z-index: 100009;
+    max-width: min(340px, calc(100vw - 24px));
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 11px 15px; border-radius: 14px;
+    background: #0f172a; color: #f8fafc;
+    font-size: .88rem; font-weight: 500; line-height: 1.45; text-align: left;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, .38);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .18s ease, top .22s ease, left .22s ease;
+}
+.demo-bulle--visible { opacity: 1; visibility: visible; }
+.demo-bulle-qui { flex-shrink: 0; margin-top: 1px; color: var(--primary); line-height: 0; }
+.demo-bulle-texte { display: block; }
+
+/* La pointe. `--fleche` est posée par le narrateur : quand la bulle est
+   ramenée dans la fenêtre, son centre et sa cible ne coïncident plus. */
+.demo-bulle::after {
+    content: ''; position: absolute; left: var(--fleche, 50%);
+    width: 0; height: 0; margin-left: -8px;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+}
+.demo-bulle:not(.demo-bulle--bas)::after {
+    top: 100%; border-top: 9px solid #0f172a;
+}
+.demo-bulle--bas::after {
+    bottom: 100%; border-bottom: 9px solid #0f172a;
+}
+/* Sans cible à désigner, pas de pointe. */
+.demo-bulle--libre::after { display: none; }
+
+/* Ce que le robot est en train de regarder. La proposition écartée s'éteint,
+   la ligne et la colonne examinées s'éclairent. */
+.demo-ecarte { opacity: .45; filter: grayscale(.7); transition: opacity .25s, filter .25s; }
+.kk-cell--regarde { background: color-mix(in srgb, var(--primary) 12%, transparent) !important; }
+
 /* Touche enfoncée par la démonstration : même retour visuel qu'un vrai appui. */
 .numpad-key--demo {
     border-color: var(--primary) !important; color: var(--primary) !important;

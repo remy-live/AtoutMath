@@ -9,6 +9,8 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
+import { direLaMethode, direLaConclusion } from '../demoScript.js';
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
@@ -20,6 +22,7 @@ export function mount(container, session, opts = {}) {
     let destroyed = false;
     let buffer = '';
     let cursor = null;
+    let narrateur = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -136,7 +139,13 @@ export function mount(container, session, opts = {}) {
      */
     async function runDemo(target, setBuffer, screen) {
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
+        const enonce = container.querySelector('.game-question');
+
+        // La méthode AVANT la frappe : voir composer 42 n'apprend rien si on
+        // n'a pas entendu d'où viennent le 4 et le 2.
+        if (!await direLaMethode(narrateur, session.current, enonce) || destroyed) return;
+        if (!await cursor.pause(narrateur ? 250 : 600) || destroyed) return;
 
         for (let i = 0; i < target.length; i++) {
             const touche = container.querySelector(`[data-key="${cssEscape(target[i])}"]`);
@@ -153,7 +162,9 @@ export function mount(container, session, opts = {}) {
         if (!await cursor.tap(valider, 480) || destroyed) return;
         screen.classList.add('numpad-screen--ok');
 
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (narrateur) {
+            if (!await direLaConclusion(narrateur, session.current, screen) || destroyed) return;
+        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -165,6 +176,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();

@@ -70,6 +70,46 @@ export function interrompreDemo() {
 }
 
 /**
+ * Attente pausable et soumise à la vitesse, hors curseur.
+ *
+ * C'est le battement de toute la démonstration : la bulle de parole du
+ * narrateur s'en sert comme le pointeur, donc « pause » arrête la phrase en
+ * cours de lecture et « ×0,5 » laisse le double du temps pour la lire.
+ *
+ * @param {number} ms
+ * @param {(a:Object)=>void} [suivre] - reçoit l'attente, pour la dénouer
+ * @returns {Promise<boolean>} false si elle a été interrompue
+ */
+export function attendreDemo(ms, suivre = null) {
+    const duree = Math.max(0, Math.round(ms / vitesse));
+    return new Promise(resolve => {
+        const a = {
+            reste: duree,
+            debut: 0,
+            timer: null,
+            fin(ok) {
+                if (a.timer) { clearTimeout(a.timer); a.timer = null; }
+                attentes.delete(a);
+                resolve(ok);
+            },
+            geler() {
+                if (!a.timer) return;
+                clearTimeout(a.timer);
+                a.timer = null;
+                a.reste = Math.max(0, a.reste - (Date.now() - a.debut));
+            },
+            repartir() {
+                a.debut = Date.now();
+                a.timer = regTimeout(() => a.fin(true), a.reste);
+            }
+        };
+        attentes.add(a);
+        if (suivre) suivre(a);
+        if (!enPause) a.repartir();
+    });
+}
+
+/**
  * Crée un pointeur. À détruire avec `destroy()` — ou, plus simplement, en
  * laissant `clearEngines()` faire son travail : toutes les attentes passent par
  * `regTimeout`, donc une démonstration interrompue ne laisse rien en vol.

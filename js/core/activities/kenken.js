@@ -15,6 +15,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
 import { OPS } from '../generators/kenken.js';
 
 // Le vérificateur est LIMITÉ : vérifier doit rester un choix qui se paie, pas
@@ -24,6 +25,7 @@ const VERIFICATIONS_PAR_GRILLE = 3;
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
+    let narrateur = null;
 
     let item = null;
     let grille = [];          // valeurs saisies, 0 = vide
@@ -328,24 +330,214 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    /** Démonstration : le curseur remplit la grille case par case. */
-    async function runDemo() {
+    // --- Le raisonnement du robot ---------------------------------------------
+    //
+    // Remplir la grille dans l'ordre de lecture ne montrait RIEN : on voyait la
+    // solution apparaître, jamais comment on la trouve. Le robot cherche donc
+    // le prochain coup comme on l'apprend à un élève, et dit à voix haute la
+    // règle qui le lui donne — en désignant ce qu'il regarde.
+    //
+    // Chaque raison est VÉRIFIÉE contre la solution avant d'être prononcée :
+    // une justification fausse serait pire que pas de justification.
+
+    const cageDeCase = (r, c) =>
+        item.meta.cages.find(k => k.cells.some(p => p.r === r && p.c === c)) || null;
+
+    /** Valeurs déjà posées sur la ligne et la colonne de la case. */
+    function dejaVues(r, c) {
+        const { n } = item.meta;
+        const ligne = [], colonne = [];
+        for (let i = 0; i < n; i++) {
+            if (i !== c && grille[r][i]) ligne.push(grille[r][i]);
+            if (i !== r && grille[i][c]) colonne.push(grille[i][c]);
+        }
+        return { ligne, colonne };
+    }
+
+    /** Valeurs encore admissibles pour la case, au seul titre du carré latin. */
+    function possibles(r, c) {
+        const { lo, hi } = item.meta;
+        const { ligne, colonne } = dejaVues(r, c);
+        const prises = new Set([...ligne, ...colonne]);
+        const out = [];
+        for (let v = lo; v <= hi; v++) if (!prises.has(v)) out.push(v);
+        return out;
+    }
+
+    /**
+     * Toutes les façons de compléter une cage, compte tenu de ce qui est déjà
+     * posé — arithmétique de la cage ET carré latin. Les cages font au plus
+     * quatre cases : l'énumération exhaustive est immédiate et sans piège.
+     */
+    function completions(cage) {
+        const { lo, hi } = item.meta;
+        const vides = cage.cells.filter(p => !grille[p.r][p.c]);
+        const posees = cage.cells.filter(p => grille[p.r][p.c]).map(p => grille[p.r][p.c]);
+        const out = [];
+
+        const essayer = (i, choix) => {
+            if (i === vides.length) {
+                const vals = [...posees, ...choix];
+                if (cage.op === null ? vals[0] === cage.target
+                    : OPS[cage.op].calc(vals) === cage.target) out.push(choix.slice());
+                return;
+            }
+            const { r, c } = vides[i];
+            for (let v = lo; v <= hi; v++) {
+                if (!possibles(r, c).includes(v)) continue;
+                // Deux cases d'une même cage peuvent partager une ligne : le
+                // carré latin les interdit d'être égales.
+                const conflit = choix.some((autre, j) =>
+                    autre === v && (vides[j].r === r || vides[j].c === c));
+                if (conflit) continue;
+                choix.push(v);
+                essayer(i + 1, choix);
+                choix.pop();
+            }
+        };
+        essayer(0, []);
+        return { vides, completions: out };
+    }
+
+    const liste = (vals) => {
+        const t = [...new Set(vals)].sort((a, b) => a - b);
+        return t.length > 1 ? `${t.slice(0, -1).join(', ')} et ${t[t.length - 1]}` : String(t[0] || '');
+    };
+
+    /**
+     * Le prochain coup et sa raison, de la règle la plus lisible à la plus fine.
+     * @returns {{r,c,valeur,phrase,cage?,croix?}|null}
+     */
+    function prochainCoup() {
         const { n, solution } = item.meta;
-        if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
-        for (let r = 0; r < n; r++) {
-            for (let c = 0; c < n; c++) {
-                if (grille[r][c] !== 0) continue;
-                const el = celluleEl(r, c);
-                if (!el) return;
-                if (!await cursor.tap(el, 340) || destroyed) return;
-                grille[r][c] = solution[r][c];
-                el.querySelector('.kk-val').textContent = solution[r][c];
-                el.classList.add('demo-target');
+        const vides = [];
+        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (!grille[r][c]) vides.push({ r, c });
+        if (!vides.length) return null;
+
+        // 1. Le carré latin suffit : tout est pris sauf une valeur.
+        for (const { r, c } of vides) {
+            const p = possibles(r, c);
+            if (p.length === 1 && p[0] === solution[r][c]) {
+                const { ligne, colonne } = dejaVues(r, c);
+                return {
+                    r, c, valeur: p[0], croix: true,
+                    phrase: `Sur cette ligne et cette colonne, il y a déjà ${liste([...ligne, ...colonne])}. `
+                        + `Il ne reste que ${p[0]}.`
+                };
             }
         }
-        container.querySelector('.kk-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+
+        // 2. Une cage à laquelle il ne manque qu'une case : l'opération donne
+        //    directement le compte.
+        for (const cage of item.meta.cages) {
+            if (cage.op === null) continue;
+            const manquantes = cage.cells.filter(p => !grille[p.r][p.c]);
+            if (manquantes.length !== 1) continue;
+            const { r, c } = manquantes[0];
+            const { completions: sols } = completions(cage);
+            const valeurs = new Set(sols.map(s => s[0]));
+            if (valeurs.size !== 1 || !valeurs.has(solution[r][c])) continue;
+            const posees = cage.cells.filter(p => grille[p.r][p.c]).map(p => grille[p.r][p.c]);
+            return {
+                r, c, valeur: solution[r][c], cage,
+                phrase: `Cette zone fait ${cage.label} et j'y ai déjà ${liste(posees)} : `
+                    + `il manque ${solution[r][c]}.`
+            };
+        }
+
+        // 3. La cage tout entière, croisée avec la ligne et la colonne : une
+        //    seule valeur y tient encore pour cette case.
+        for (const cage of item.meta.cages) {
+            if (cage.op === null) continue;
+            const { vides: cases, completions: sols } = completions(cage);
+            if (!sols.length) continue;
+            for (let i = 0; i < cases.length; i++) {
+                const valeurs = new Set(sols.map(s => s[i]));
+                const { r, c } = cases[i];
+                if (valeurs.size !== 1 || !valeurs.has(solution[r][c])) continue;
+                return {
+                    r, c, valeur: solution[r][c], cage, croix: true,
+                    phrase: `Dans cette zone à ${cage.label}, en tenant compte de la ligne et de la `
+                        + `colonne, cette case ne peut être que ${solution[r][c]}.`
+                };
+            }
+        }
+
+        // 4. Rien d'évident : on avance sur la case la plus contrainte, et on
+        //    le dit — annoncer une déduction qu'on n'a pas faite serait mentir.
+        const cible = vides
+            .map(p => ({ ...p, p: possibles(p.r, p.c) }))
+            .sort((a, b) => a.p.length - b.p.length)[0];
+        return {
+            r: cible.r, c: cible.c, valeur: solution[cible.r][cible.c], croix: true,
+            phrase: `Ici, ${liste(cible.p)} restent possibles. En regardant la suite de la grille, `
+                + `c'est ${solution[cible.r][cible.c]} qui convient.`
+        };
+    }
+
+    function eclairer(coup) {
+        eteindre();
+        if (coup.cage) coup.cage.cells.forEach(({ r, c }) => celluleEl(r, c).classList.add('kk-cage--indice'));
+        if (coup.croix) {
+            const { n } = item.meta;
+            for (let i = 0; i < n; i++) {
+                if (i !== coup.c) celluleEl(coup.r, i).classList.add('kk-cell--regarde');
+                if (i !== coup.r) celluleEl(i, coup.c).classList.add('kk-cell--regarde');
+            }
+        }
+    }
+
+    function eteindre() {
+        container.querySelectorAll('.kk-cage--indice, .kk-cell--regarde')
+            .forEach(el => el.classList.remove('kk-cage--indice', 'kk-cell--regarde'));
+    }
+
+    function poserDemo(r, c) {
+        grille[r][c] = item.meta.solution[r][c];
+        const el = celluleEl(r, c);
+        el.querySelector('.kk-val').textContent = grille[r][c];
+        el.classList.add('demo-target');
+    }
+
+    // Combien de coups sont commentés avant de passer à la main levée. La
+    // méthode s'apprend sur quelques cases ; les onze suivantes ne feraient
+    // que répéter, et une démonstration d'une minute n'est plus regardée.
+    const COUPS_COMMENTES = 5;
+
+    /** Démonstration : le robot déduit, explique, puis remplit. */
+    async function runDemo() {
+        if (!cursor) cursor = createDemoCursor();
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
+
+        const plateau = container.querySelector('.kk-board');
+        if (narrateur && !await narrateur.dire(
+            `La règle : ${item.explanation}`, plateau)) return;
+        if (!await cursor.pause(narrateur ? 200 : 600) || destroyed) return;
+
+        for (let i = 0; ; i++) {
+            const coup = prochainCoup();
+            if (!coup) break;
+            const commente = narrateur && i < COUPS_COMMENTES;
+            const el = celluleEl(coup.r, coup.c);
+            if (!el) break;
+
+            if (commente) {
+                eclairer(coup);
+                if (!await narrateur.dire(coup.phrase, el) || destroyed) { eteindre(); return; }
+            }
+            if (!await cursor.tap(el, commente ? 340 : 200) || destroyed) { eteindre(); return; }
+            poserDemo(coup.r, coup.c);
+            eteindre();
+
+            if (narrateur && i === COUPS_COMMENTES - 1) {
+                if (!await narrateur.dire('Le reste se déduit de la même façon, case après case.', plateau)) return;
+            }
+        }
+
+        plateau.classList.add('kk-board--ok');
+        if (narrateur) {
+            if (!await narrateur.dire('Grille terminée : chaque zone donne son résultat.', plateau)) return;
+        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -357,6 +549,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

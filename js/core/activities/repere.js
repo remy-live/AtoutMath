@@ -12,10 +12,13 @@ import { regTimeout } from '../timers.js';
 import { repereSvg } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
+import { direLaMethode, direLaConclusion } from '../demoScript.js';
 
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
+    let narrateur = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -97,10 +100,16 @@ export function mount(container, session) {
     async function runDemo(svg, target) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
+        const enonce = container.querySelector('.game-question');
+
+        if (!await direLaMethode(narrateur, session.current, enonce) || destroyed) return;
+        if (!await cursor.pause(narrateur ? 250 : 600) || destroyed) return;
         if (!await cursor.tap(target) || destroyed) return;
         markPoint(svg, target, 'demo');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (narrateur) {
+            if (!await direLaConclusion(narrateur, session.current, target) || destroyed) return;
+        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -112,6 +121,7 @@ export function mount(container, session) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

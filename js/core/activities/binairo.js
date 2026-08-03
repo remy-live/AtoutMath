@@ -13,6 +13,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { creerNarrateur } from '../demoNarration.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
@@ -20,6 +21,7 @@ const VIDE = -1;
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
+    let narrateur = null;
 
     let item = null;
     let grille = [];
@@ -302,23 +304,89 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    async function runDemo() {
+    // --- Le raisonnement du robot ---------------------------------------------
+    //
+    // Le Binairo tient en trois règles, et chacune se voit. Le robot cherche la
+    // case que l'une d'elles impose, la nomme, puis la remplit — plutôt que de
+    // recopier la solution de gauche à droite.
+
+    const ligneDe = (r) => item.meta.solution[r].map((_, c) => grille[r][c]);
+    const colonneDe = (c) => item.meta.solution.map((_, r) => grille[r][c]);
+
+    function coupDansSerie(vals, i, sens) {
+        // « deux pareils côte à côte » puis « X _ X » : les deux formes du
+        // « jamais trois de suite ».
+        const v = (k) => (k >= 0 && k < vals.length ? vals[k] : VIDE);
+        if (v(i - 1) !== VIDE && v(i - 1) === v(i - 2)) {
+            return { valeur: 1 - v(i - 1), phrase: `Deux ${v(i - 1)} se suivent déjà ${sens} : jamais trois de suite, donc ici c'est ${1 - v(i - 1)}.` };
+        }
+        if (v(i + 1) !== VIDE && v(i + 1) === v(i + 2)) {
+            return { valeur: 1 - v(i + 1), phrase: `Deux ${v(i + 1)} se suivent juste après ${sens} : cette case est donc un ${1 - v(i + 1)}.` };
+        }
+        if (v(i - 1) !== VIDE && v(i - 1) === v(i + 1)) {
+            return { valeur: 1 - v(i - 1), phrase: `Un ${v(i - 1)} de chaque côté ${sens} : mettre un troisième ferait trois à la suite, donc c'est ${1 - v(i - 1)}.` };
+        }
+        const zeros = vals.filter(x => x === 0).length;
+        const uns = vals.filter(x => x === 1).length;
+        const moitie = vals.length / 2;
+        if (zeros === moitie) return { valeur: 1, phrase: `Cette ${sens.replace('sur ', '')} a déjà ses ${moitie} zéros : tout le reste est des 1.` };
+        if (uns === moitie) return { valeur: 0, phrase: `Cette ${sens.replace('sur ', '')} a déjà ses ${moitie} uns : tout le reste est des 0.` };
+        return null;
+    }
+
+    /** Le prochain coup et sa raison, vérifiée contre la solution. */
+    function prochainCoup() {
         const { n, solution } = item.meta;
-        if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
-        for (let r = 0; r < n; r++) {
-            for (let c = 0; c < n; c++) {
-                if (grille[r][c] !== VIDE) continue;
-                const el = celluleEl(r, c);
-                if (!el) return;
-                if (!await cursor.tap(el, 300) || destroyed) return;
-                grille[r][c] = solution[r][c];
-                el.querySelector('.kk-val').textContent = solution[r][c];
-                el.classList.add('demo-target');
+        const vides = [];
+        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (grille[r][c] === VIDE) vides.push({ r, c });
+        if (!vides.length) return null;
+
+        for (const { r, c } of vides) {
+            for (const essai of [
+                () => coupDansSerie(ligneDe(r), c, 'sur cette ligne'),
+                () => coupDansSerie(colonneDe(c), r, 'sur cette colonne')
+            ]) {
+                const coup = essai();
+                if (coup && coup.valeur === solution[r][c]) return { r, c, ...coup };
             }
         }
-        container.querySelector('.kk-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+
+        const { r, c } = vides[0];
+        return {
+            r, c, valeur: solution[r][c],
+            phrase: `Aucune règle ne tranche seule ici : en croisant les lignes et les colonnes, c'est ${solution[r][c]}.`
+        };
+    }
+
+    const COUPS_COMMENTES = 5;
+
+    async function runDemo() {
+        if (!cursor) cursor = createDemoCursor();
+        if (session.narration && !narrateur) narrateur = creerNarrateur();
+        const plateau = container.querySelector('.kk-board');
+
+        if (narrateur && !await narrateur.dire(`La règle : ${item.explanation}`, plateau)) return;
+        if (!await cursor.pause(narrateur ? 200 : 600) || destroyed) return;
+
+        for (let i = 0; ; i++) {
+            const coup = prochainCoup();
+            if (!coup) break;
+            const el = celluleEl(coup.r, coup.c);
+            if (!el) break;
+            const commente = narrateur && i < COUPS_COMMENTES;
+            if (commente && !await narrateur.dire(coup.phrase, el)) return;
+            if (!await cursor.tap(el, commente ? 320 : 200) || destroyed) return;
+            grille[coup.r][coup.c] = coup.valeur;
+            el.querySelector('.kk-val').textContent = coup.valeur;
+            el.classList.add('demo-target');
+            if (narrateur && i === COUPS_COMMENTES - 1
+                && !await narrateur.dire('La suite se déduit de la même façon.', plateau)) return;
+        }
+
+        plateau.classList.add('kk-board--ok');
+        if (narrateur) {
+            if (!await narrateur.dire('Grille terminée.', plateau)) return;
+        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -330,6 +398,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

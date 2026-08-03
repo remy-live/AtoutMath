@@ -86,7 +86,9 @@ export function openDemo(exo) {
     const progress = document.getElementById('game-progress-container');
     if (progress) progress.style.display = 'none';
 
-    brancherCommandesDemo(exo, launchPreview(exo, document.getElementById('game-board')));
+    // Plein écran : le robot commente. C'est ici, et seulement ici, qu'il y a
+    // la place pour une bulle de parole et le temps de la lire.
+    brancherCommandesDemo(exo, launchPreview(exo, document.getElementById('game-board'), null, { narration: true }));
 }
 
 // Vitesses proposées, dans l'ordre du bouton. Le ralenti d'abord : c'est celui
@@ -225,6 +227,7 @@ export function launchPreview(exo, container, params = null, opts = {}) {
         if (!generator) return null;
         const session = new ItemSession({
             generator, params: effective, exercise: exo, isDemo: true, frozen,
+            narration: !!opts.narration,
             preferredKind: activity.accepts[0]
         });
         return mod.mount(container, session, activity.mountOptions || {});
