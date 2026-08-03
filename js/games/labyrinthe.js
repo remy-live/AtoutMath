@@ -1,12 +1,36 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
 
+// Les niveaux ne changent que d'habillage : même règle, même plateau, mais un
+// décor qui tourne, pour qu'on VOIE qu'on a changé d'étage. Aucun mécanisme ne
+// s'ajoute en montant — pas de porte, pas de clef, pas de temps offert : la
+// seule question posée reste « quelle case porte la réponse ? ».
+const NB_DECORS = 5;
+
 class Labyrinthe extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
-                .laby-arena { position: absolute; inset: 0; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; }
-                .laby-header { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
+                /* Un décor par niveau. Tout ce qui distingue un étage du suivant
+                   passe par ces trois variables : la teinte, l'arrondi des
+                   cases et leur écartement. Le jeu, lui, ne bouge pas. */
+                .laby-arena { --laby-accent: #4f46e5; --laby-accent-rgb: 79, 70, 229; --laby-radius: 6px; --laby-gap: 4px; }
+                .laby-arena[data-decor="1"] { --laby-accent: #0d9488; --laby-accent-rgb: 13, 148, 136; --laby-radius: 14px; --laby-gap: 5px; }
+                .laby-arena[data-decor="2"] { --laby-accent: #d97706; --laby-accent-rgb: 217, 119, 6; --laby-radius: 2px; --laby-gap: 3px; }
+                .laby-arena[data-decor="3"] { --laby-accent: #db2777; --laby-accent-rgb: 219, 39, 119; --laby-radius: 10px; --laby-gap: 7px; }
+                .laby-arena[data-decor="4"] { --laby-accent: #0284c7; --laby-accent-rgb: 2, 132, 199; --laby-radius: 18px; --laby-gap: 4px; }
+
+                /* Tout tient dans la place disponible, sans défilement.
+                   Bandeau, calcul, plateau et consigne étaient posés en absolu,
+                   à des hauteurs fixes, et le plateau réclamait 450 px plus
+                   80 px de marge : sur une tablette — et plus encore dans le
+                   cadre du simulateur — l'ensemble dépassait, et il fallait
+                   faire défiler la zone de jeu pour voir la dernière rangée.
+                   Ils sont maintenant empilés en flux, et le plateau se mesure
+                   au conteneur (unités cqh/cqw) et non à la fenêtre : c'est la
+                   place réelle, celle du cadre comme celle du plein écran. */
+                .laby-arena { position: absolute; inset: 0; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(6px, 1.6cqh, 14px); padding: clamp(8px, 1.6cqh, 16px) 12px; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; }
+                .laby-header { flex-shrink: 0; width: 100%; max-width: 520px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
                 .laby-stats { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
                 
                 .laby-timer-container { position: relative; flex: 1; max-width: 150px; height: 30px; background: rgba(0,0,0,0.05); border-radius: 15px; overflow: hidden; border: 1px solid var(--border); box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
@@ -15,31 +39,33 @@ class Labyrinthe extends BaseGame {
                 .laby-timer-bar.danger { background: #ef4444; }
                 .laby-timer-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; color: var(--text-main); z-index: 1; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
                 
-                .laby-calc { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); font-size: 1.5rem; font-weight: bold; background: var(--primary); color: white; padding: 10px 30px; border-radius: 30px; box-shadow: 0 4px 15px rgba(79,70,229,0.3); z-index: 10; text-align: center; white-space: nowrap; transition: 0.2s; }
-                .laby-calc.success { background: #10b981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transform: translateX(-50%) scale(1.1); }
+                .laby-calc { flex-shrink: 0; font-size: clamp(1.05rem, 3cqh, 1.5rem); font-weight: bold; background: var(--laby-accent); color: white; padding: clamp(6px, 1.4cqh, 10px) clamp(18px, 4cqw, 30px); border-radius: 30px; box-shadow: 0 4px 15px rgba(var(--laby-accent-rgb), 0.3); text-align: center; white-space: nowrap; transition: 0.2s; }
+                .laby-calc.success { background: #10b981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transform: scale(1.1); }
                 .laby-calc.error { background: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3); animation: shake 0.4s; }
-                
-                .laby-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--border); border: 6px solid var(--border); border-radius: 12px; padding: 4px; box-shadow: var(--shadow-md); margin-top: 80px; width: 90vw; max-width: 450px; aspect-ratio: 1/1; position: relative; }
-                .laby-cell { background: var(--bg-panel); border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; user-select: none; transition: 0.2s; }
-                .laby-cell.lit { background: rgba(79, 70, 229, 0.08); box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.3); }
+
+                .laby-board { flex: 0 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--laby-gap); background: var(--border); border: 6px solid var(--border); border-radius: 12px; padding: 4px; box-shadow: var(--shadow-md); width: min(450px, 92cqw, 56cqh); aspect-ratio: 1/1; position: relative; }
+                .laby-cell { background: var(--bg-panel); border-radius: var(--laby-radius); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; user-select: none; transition: 0.2s; }
+                .laby-cell.lit { background: rgba(var(--laby-accent-rgb), 0.08); box-shadow: inset 0 0 0 2px rgba(var(--laby-accent-rgb), 0.3); }
                 .laby-cell.visited { background: rgba(16, 185, 129, 0.15); }
-                
-                .laby-door { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); opacity: 0.15; transition: 0.3s; z-index: 2; pointer-events: none; }
-                .laby-cell.lit .laby-door { opacity: 1; color: var(--text-main); }
-                
-                .laby-start { background: rgba(79,70,229,0.05); }
+
+                /* Le nombre inscrit sur la case. Il ne commande aucune porte : on
+                   avance sur celui qui répond au calcul affiché, rien d'autre. */
+                .laby-num { font-size: clamp(.85rem, 2.4cqh, 1.1rem); font-weight: 700; color: var(--text-muted); opacity: 0.15; transition: 0.3s; z-index: 2; pointer-events: none; }
+                .laby-cell.lit .laby-num { opacity: 1; color: var(--text-main); }
+
+                .laby-start { background: rgba(var(--laby-accent-rgb), 0.05); }
                 .laby-end { background: rgba(16,185,129,0.05); }
                 .laby-end::after { content: ''; position: absolute; width: 45%; height: 45%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'%3E%3C/path%3E%3Cpolyline points='16 17 21 12 16 7'%3E%3C/polyline%3E%3Cline x1='21' y1='12' x2='9' y2='12'%3E%3C/line%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.7; pointer-events: none; z-index: 1; }
                 
-                .laby-hero { position: absolute; background: var(--primary); border-radius: 50%; box-shadow: 0 4px 10px rgba(79,70,229,0.5); z-index: 3; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; display: flex; align-items: center; justify-content: center; left: 0; top: 0; }
+                .laby-hero { position: absolute; background: var(--laby-accent); border-radius: 50%; box-shadow: 0 4px 10px rgba(var(--laby-accent-rgb), 0.5); z-index: 3; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; display: flex; align-items: center; justify-content: center; left: 0; top: 0; }
                 .laby-hero::after { content: ''; width: 40%; height: 40%; background: rgba(255,255,255,0.8); border-radius: 50%; }
                 
-                .laby-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: var(--text-muted); text-align: center; }
-                
+                .laby-msg { flex-shrink: 0; font-size: clamp(.72rem, 1.9cqh, .9rem); color: var(--text-muted); text-align: center; }
+
                 @keyframes shake {
-                    0%, 100% { transform: translateX(-50%); }
-                    25% { transform: translateX(calc(-50% - 5px)); }
-                    75% { transform: translateX(calc(-50% + 5px)); }
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    75% { transform: translateX(5px); }
                 }
                 
                 .laby-float-loss { position: absolute; color: #ef4444; font-weight: 900; font-size: 1.5rem; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.5); transform: translateX(-50%); }
@@ -54,9 +80,9 @@ class Labyrinthe extends BaseGame {
                 html[data-theme="dark"] .laby-calc { color: #fff; }
                 html[data-theme="dark"] .laby-board { background: #334155; border-color: #334155; }
                 html[data-theme="dark"] .laby-cell { background: #1e293b; }
-                html[data-theme="dark"] .laby-cell.lit { background: rgba(99, 102, 241, 0.15); box-shadow: inset 0 0 0 2px rgba(99, 102, 241, 0.4); }
+                html[data-theme="dark"] .laby-cell.lit { background: rgba(var(--laby-accent-rgb), 0.18); box-shadow: inset 0 0 0 2px rgba(var(--laby-accent-rgb), 0.45); }
                 html[data-theme="dark"] .laby-cell.visited { background: rgba(16, 185, 129, 0.2); }
-                html[data-theme="dark"] .laby-door { color: #cbd5e1; }
+                html[data-theme="dark"] .laby-num { color: #cbd5e1; }
             </style>
             <div class="laby-arena">
                 <div class="laby-header">
@@ -193,7 +219,15 @@ class Labyrinthe extends BaseGame {
         this.boardEl.innerHTML = '';
         this.playerPos = { x: 0, y: 0 };
         this.calcEl.innerText = "Trouve le chemin !";
-        
+        // La fin de partie peint la bulle en rouge par style en ligne : sans
+        // ce nettoyage, la partie suivante repartait sur un « GAME OVER » rouge.
+        this.calcEl.style.background = '';
+
+        // Le décor tourne avec les niveaux, et repart au premier après le
+        // dernier : c'est un repère visuel, pas une difficulté de plus.
+        const arene = this.container.querySelector('.laby-arena');
+        if (arene) arene.dataset.decor = String((this.level - 1) % NB_DECORS);
+
         // 1. Structure vide
         for (let y = 0; y < this.boardSize; y++) {
             let row = [];
@@ -284,7 +318,7 @@ class Labyrinthe extends BaseGame {
                 if (x === this.boardSize - 1 && y === this.boardSize - 1) div.classList.add('laby-end');
 
                 let span = document.createElement('span');
-                span.className = 'laby-door';
+                span.className = 'laby-num';
                 span.innerText = cellData.displayedNumber;
                 div.appendChild(span);
                 
