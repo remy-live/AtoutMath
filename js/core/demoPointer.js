@@ -25,6 +25,50 @@ export const DEMO_SPEED = {
     between: 1500   // pause avant la question suivante
 };
 
+// --- Pilotage de la démonstration -------------------------------------------
+//
+// Pause et vitesse sont GLOBALES, et non propres à un curseur : il n'y a jamais
+// qu'une démonstration à l'écran, et les commandes doivent pouvoir agir dessus
+// sans savoir quel module la joue.
+//
+// Tout passe par `wait()` : chaque attente est un objet qu'on sait geler et
+// relancer avec le temps qui lui restait. Une durée figée dans un `setTimeout`
+// ne se met pas en pause — c'est pour cela que les attentes sont réifiées.
+
+let enPause = false;
+let vitesse = 1;              // 1 = allure de référence ; 0.5 = deux fois plus lent
+const attentes = new Set();   // attentes en cours, tous curseurs confondus
+
+/** @param {number} v - multiplicateur d'allure (0.25 à 3) */
+export function reglerVitesseDemo(v) {
+    vitesse = Math.max(0.25, Math.min(3, Number(v) || 1));
+    return vitesse;
+}
+
+export function vitesseDemo() { return vitesse; }
+export function estEnPause() { return enPause; }
+
+/** Bascule (sans argument) ou force la pause. @returns {boolean} état obtenu */
+export function pauserDemo(valeur) {
+    const cible = valeur === undefined ? !enPause : !!valeur;
+    if (cible === enPause) return enPause;
+    enPause = cible;
+    [...attentes].forEach(a => (enPause ? a.geler() : a.repartir()));
+    return enPause;
+}
+
+/**
+ * Coupe court à toutes les attentes en cours, sans détruire les curseurs.
+ *
+ * C'est ce qui permet de changer de question pendant une démonstration : la
+ * boucle qui la joue est une fonction `async` suspendue sur un `await`, et
+ * seule une attente résolue à `false` la fait renoncer. Sans cela, l'ancienne
+ * démonstration continuerait de piloter la nouvelle question.
+ */
+export function interrompreDemo() {
+    [...attentes].forEach(a => a.fin(false));
+}
+
 /**
  * Crée un pointeur. À détruire avec `destroy()` — ou, plus simplement, en
  * laissant `clearEngines()` faire son travail : toutes les attentes passent par
@@ -48,10 +92,32 @@ export function createDemoCursor() {
 
     function wait(ms) {
         if (destroyed) return Promise.resolve(false);
+        const duree = Math.max(0, Math.round(ms / vitesse));
         return new Promise(resolve => {
-            const done = (ok) => { pending.delete(done); resolve(ok); };
-            pending.add(done);
-            regTimeout(() => done(!destroyed), ms);
+            const a = {
+                reste: duree,
+                debut: 0,
+                timer: null,
+                fin(ok) {
+                    if (a.timer) { clearTimeout(a.timer); a.timer = null; }
+                    attentes.delete(a);
+                    pending.delete(a);
+                    resolve(ok);
+                },
+                geler() {
+                    if (!a.timer) return;
+                    clearTimeout(a.timer);
+                    a.timer = null;
+                    a.reste = Math.max(0, a.reste - (Date.now() - a.debut));
+                },
+                repartir() {
+                    a.debut = Date.now();
+                    a.timer = regTimeout(() => a.fin(!destroyed), a.reste);
+                }
+            };
+            attentes.add(a);
+            pending.add(a);
+            if (!enPause) a.repartir();
         });
     }
 
@@ -80,7 +146,10 @@ export function createDemoCursor() {
                 el.classList.add('demo-cursor--visible');
                 return wait(220);
             }
-            place(x, y, ms);
+            // La transition dure le temps RÉELLEMENT attendu : au ralenti, un
+            // pointeur qui arrive en 750 ms puis attend une seconde n'a pas
+            // ralenti, il s'est mis à saccader.
+            place(x, y, Math.round(ms / vitesse));
             return wait(ms);
         },
 
@@ -122,7 +191,7 @@ export function createDemoCursor() {
             ghost.style.height = `${r.height}px`;
             ghost.style.left = `${r.left}px`;
             ghost.style.top = `${r.top}px`;
-            ghost.style.setProperty('transition-duration', `${ms}ms`, 'important');
+            ghost.style.setProperty('transition-duration', `${Math.round(ms / vitesse)}ms`, 'important');
             document.body.appendChild(ghost);
             source.classList.add('drag-source');
 
@@ -134,7 +203,7 @@ export function createDemoCursor() {
             ghost.style.left = `${to.x - r.width / 2}px`;
             ghost.style.top = `${to.y - r.height / 2}px`;
             target.classList.add('compare-slot--hover');
-            place(to.x, to.y, ms);
+            place(to.x, to.y, Math.round(ms / vitesse));
 
             if (!await wait(ms + 120)) return false;
 
@@ -150,7 +219,7 @@ export function createDemoCursor() {
 
         destroy() {
             destroyed = true;
-            pending.forEach(done => done(false));
+            [...pending].forEach(a => a.fin(false));
             pending.clear();
             if (ghost) { ghost.remove(); ghost = null; }
             el.remove();

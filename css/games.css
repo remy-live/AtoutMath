@@ -20,6 +20,23 @@
 #demo-overlay-banner { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; z-index: 10001; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: 90vw; }
 #demo-overlay-banner svg { flex-shrink: 0; }
 #demo-banner-text { line-height: 1.4; }
+
+/* Commandes du robot. Sur fond sombre : des pastilles claires, assez grandes
+   pour être atteintes au doigt sur tablette. */
+.demo-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.demo-controls[hidden] { display: none; }
+.demo-ctrl {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 30px; height: 30px; padding: 0 6px;
+    border: 1px solid rgba(255,255,255,.28); border-radius: 9px;
+    background: rgba(255,255,255,.12); color: #fff;
+    font-family: inherit; font-size: .78rem; font-weight: 700;
+    cursor: pointer; transition: background .15s, opacity .15s;
+}
+.demo-ctrl:hover:not(:disabled) { background: rgba(255,255,255,.26); }
+.demo-ctrl:disabled { opacity: .35; cursor: default; }
+.demo-ctrl--actif { background: var(--primary); border-color: var(--primary); }
+.demo-ctrl--txt { font-variant-numeric: tabular-nums; }
 .btn-stop-demo { margin-left: 10px; background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; }
 .btn-stop-demo:hover { background: var(--primary-hover); }
 

@@ -9,12 +9,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=25">
-    <link rel="stylesheet" href="css/layout.css?v=25">
-    <link rel="stylesheet" href="css/ui.css?v=25">
-    <link rel="stylesheet" href="css/games.css?v=25">
-    <link rel="stylesheet" href="css/components.css?v=25">
-    <link rel="stylesheet" href="css/modules.css?v=25">
+    <link rel="stylesheet" href="css/base.css?v=27">
+    <link rel="stylesheet" href="css/layout.css?v=27">
+    <link rel="stylesheet" href="css/ui.css?v=27">
+    <link rel="stylesheet" href="css/games.css?v=27">
+    <link rel="stylesheet" href="css/components.css?v=27">
+    <link rel="stylesheet" href="css/modules.css?v=27">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -472,6 +472,23 @@
                     <path d="M12 3v-2" />
                 </svg>
                 <span id="demo-banner-text">Mode Démonstration</span>
+                <!-- Commandes du robot : une démonstration qu'on ne peut ni
+                     arrêter ni revoir passe trop vite pour qu'on l'explique. -->
+                <div id="demo-controls" class="demo-controls">
+                    <button type="button" class="demo-ctrl" id="btn-demo-prev" title="Revenir à la question précédente" aria-label="Revenir à la question précédente">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                            <path d="M6 5h2v14H6zM20 5v14l-11-7z" /></svg>
+                    </button>
+                    <button type="button" class="demo-ctrl" id="btn-demo-pause" title="Mettre en pause" aria-label="Mettre en pause" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                            <path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
+                    </button>
+                    <button type="button" class="demo-ctrl" id="btn-demo-next" title="Passer à la question suivante" aria-label="Passer à la question suivante">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                            <path d="M16 5h2v14h-2zM4 5v14l11-7z" /></svg>
+                    </button>
+                    <button type="button" class="demo-ctrl demo-ctrl--txt" id="btn-demo-speed" title="Changer la vitesse" aria-label="Changer la vitesse">×1</button>
+                </div>
                 <button class="btn-stop-demo" id="btn-start-real-game">À
                     moi de jouer !</button>
             </div>

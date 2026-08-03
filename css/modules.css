@@ -1145,19 +1145,34 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    Posé sur le `body` en `fixed` : les mêmes coordonnées valent dans une
    vignette, dans le simulateur du professeur et en plein écran. Il ne capte
    évidemment aucun clic — c'est un dessin, pas un pointeur. */
+/* L'élément est un POINT sans dimension, posé exactement là où l'on appuie :
+   la flèche et le halo se placent ensuite par rapport à lui. Tant qu'il avait
+   la taille du dessin, la marge négative de la flèche décalait la boîte, et le
+   halo se retrouvait 5 px plus haut que la pointe — l'appui semblait porter à
+   côté du geste. */
 .demo-cursor {
-    position: fixed; top: 0; left: 0; z-index: 100010;
+    position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 100010;
     pointer-events: none; opacity: 0;
     transition: transform 0ms cubic-bezier(.4, 0, .2, 1), opacity .25s ease;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .35));
 }
 .demo-cursor--visible { opacity: 1; }
-.demo-cursor svg { display: block; margin: -3px 0 0 -3px; }
+
+/* La POINTE de la flèche est le point de contact. Dans le tracé, elle est en
+   (5 ; 2,5) d'un viewBox de 24 rendu sur 26 px, soit (5,4 ; 2,7) px : on
+   décale le dessin d'autant pour que sa pointe tombe sur le point d'appui, et
+   on fait pivoter l'enfoncement autour de ce même point. */
+.demo-cursor svg {
+    display: block; position: absolute; top: 0; left: 0;
+    transform: translate(-5.4px, -2.7px);
+    transform-origin: 5.4px 2.7px;
+}
 
 /* Le halo matérialise l'appui : sans lui, le pointeur arrive sur la bonne
-   réponse sans qu'on sache s'il a cliqué ou s'il ne fait que passer. */
+   réponse sans qu'on sache s'il a cliqué ou s'il ne fait que passer. Il est
+   centré sur la pointe, pas sur le dessin. */
 .demo-cursor-halo {
-    position: absolute; top: -2px; left: -2px;
+    position: absolute; top: 0; left: 0;
     width: 34px; height: 34px; margin: -17px 0 0 -17px;
     border-radius: 50%; border: 2px solid var(--primary);
     background: color-mix(in srgb, var(--primary) 22%, transparent);
@@ -1165,7 +1180,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     transition: transform .26s ease, opacity .26s ease;
 }
 .demo-cursor--pressed .demo-cursor-halo { transform: scale(1); opacity: 1; }
-.demo-cursor--pressed svg { transform: scale(.86); transition: transform .12s ease; }
+.demo-cursor--pressed svg {
+    transform: translate(-5.4px, -2.7px) scale(.86);
+    transition: transform .12s ease;
+}
 
 /* Touche enfoncée par la démonstration : même retour visuel qu'un vrai appui. */
 .numpad-key--demo {

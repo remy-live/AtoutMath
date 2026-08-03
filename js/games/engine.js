@@ -8,6 +8,7 @@
 import { clearEngines } from '../core/timers.js';
 import { state } from '../core/state.js';
 import { getActivity, getGenerator } from '../core/registry.js';
+import { pauserDemo, reglerVitesseDemo, vitesseDemo, interrompreDemo } from '../core/demoPointer.js';
 import { ItemSession } from '../core/itemSession.js';
 import { makePath, makeStep } from '../core/path.js';
 import { defaultPolicy } from '../core/policy.js';
@@ -85,7 +86,87 @@ export function openDemo(exo) {
     const progress = document.getElementById('game-progress-container');
     if (progress) progress.style.display = 'none';
 
-    launchPreview(exo, document.getElementById('game-board'));
+    brancherCommandesDemo(exo, launchPreview(exo, document.getElementById('game-board')));
+}
+
+// Vitesses proposées, dans l'ordre du bouton. Le ralenti d'abord : c'est celui
+// qu'on cherche quand on commente une démonstration à voix haute.
+const VITESSES = [1, 0.5, 2];
+
+const ICONE_PAUSE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+const ICONE_LECTURE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>';
+
+/**
+ * Commandes du « mode robot » : pause, vitesse, question précédente/suivante.
+ *
+ * Le robot enchaînait sans jamais s'arrêter : sur le Mathdoku, il remplit une
+ * grille entière en quelques secondes, et il n'y avait aucun moyen de figer
+ * l'image pour commenter un placement, ni de revoir celui qu'on venait de
+ * manquer.
+ */
+function brancherCommandesDemo(exo, promesse) {
+    const barre = document.getElementById('demo-controls');
+    if (!barre) return;
+
+    const activite = getActivity(exo.activityId);
+    // Les jeux autonomes (Tetris, Course, Labyrinthe…) jouent leur
+    // démonstration avec leurs propres minuteurs : ni le pointeur ni la
+    // navigation par question ne les pilotent. Des boutons sans effet
+    // vaudraient moins que pas de boutons du tout.
+    barre.hidden = !!(activite && activite.supports && activite.supports.autonomous);
+    if (barre.hidden) return;
+
+    const btnPause = document.getElementById('btn-demo-pause');
+    const btnVitesse = document.getElementById('btn-demo-speed');
+    const btnPrev = document.getElementById('btn-demo-prev');
+    const btnNext = document.getElementById('btn-demo-next');
+
+    const afficherPause = (enPause) => {
+        btnPause.innerHTML = enPause ? ICONE_LECTURE : ICONE_PAUSE;
+        btnPause.title = enPause ? 'Reprendre' : 'Mettre en pause';
+        btnPause.setAttribute('aria-label', btnPause.title);
+        btnPause.setAttribute('aria-pressed', String(enPause));
+        btnPause.classList.toggle('demo-ctrl--actif', enPause);
+    };
+    const afficherVitesse = () => {
+        const v = vitesseDemo();
+        btnVitesse.textContent = `×${v}`;
+        btnVitesse.classList.toggle('demo-ctrl--actif', v !== 1);
+    };
+
+    // Chaque ouverture repart de l'allure normale, en marche : la pause laissée
+    // par la démonstration précédente donnerait un écran figé sans explication.
+    pauserDemo(false);
+    reglerVitesseDemo(1);
+    afficherPause(false);
+    afficherVitesse();
+
+    btnPause.onclick = () => afficherPause(pauserDemo());
+    btnVitesse.onclick = () => {
+        reglerVitesseDemo(VITESSES[(VITESSES.indexOf(vitesseDemo()) + 1) % VITESSES.length]);
+        afficherVitesse();
+    };
+
+    btnPrev.disabled = btnNext.disabled = true;
+    Promise.resolve(promesse).then(handle => {
+        // Changer de question pendant une démonstration exige d'abord de
+        // dénouer celle qui joue : c'est une fonction suspendue sur un `await`,
+        // et elle continuerait sinon à piloter la question suivante.
+        const aller = (fn) => () => {
+            interrompreDemo();
+            pauserDemo(false);
+            afficherPause(false);
+            fn();
+        };
+        if (handle && handle.showPrevious) {
+            btnPrev.disabled = false;
+            btnPrev.onclick = aller(() => handle.showPrevious());
+        }
+        if (handle && handle.showNext) {
+            btnNext.disabled = false;
+            btnNext.onclick = aller(() => handle.showNext());
+        }
+    });
 }
 
 /**
