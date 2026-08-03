@@ -931,6 +931,43 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     #student-config-content, #builder-config-content, #builder-policy-content { text-align: left; }
 }
 
+/* --- Réglages avant partie : tenir dans l'écran --------------------
+   Les champs empilés en une seule colonne de 400 px repoussaient le bouton
+   « Jouer ! » hors de l'écran : sur tablette, il fallait faire défiler la
+   modale pour trouver de quoi lancer la partie. Deux colonnes dès qu'il y a
+   la largeur, et un panneau plafonné dont SEULS les champs défilent — le
+   titre et les boutons restent en place. */
+.modal-panel-sm-left { max-height: 88vh; }
+.modal-panel-sm-left > .modal-title,
+.modal-panel-sm-left > .modal-text,
+.modal-panel-sm-left > .modal-actions-center { flex-shrink: 0; }
+#student-config-content {
+    display: grid; grid-template-columns: 1fr; gap: 10px;
+    align-content: start; min-height: 0; overflow-y: auto;
+}
+/* La marge du champ ferait doublon avec l'écart de la grille. */
+#student-config-content .cfg-field { margin-bottom: 0; }
+
+@media (min-width: 700px) {
+    .modal-panel-sm-left { width: min(620px, 92vw); }
+    #student-config-content { grid-template-columns: 1fr 1fr; column-gap: 26px; }
+    /* Les listes de puces (tables, opérations) gardent toute la largeur : à
+       demi-largeur elles se replient sur quatre rangées et regagnent en
+       hauteur ce que la colonne fait économiser. */
+    #student-config-content .cfg-field--wide,
+    #student-config-content .cfg-print-btn--seul { grid-column: 1 / -1; }
+}
+
+/* Tablette couchée, fenêtre basse : le décor passe avant les réglages. */
+@media (max-height: 820px) {
+    .modal-panel-sm-left { padding: 20px 24px; gap: 12px; }
+    #student-config-modal .modal-title { font-size: 1.22rem; }
+    #student-config-modal .modal-text { display: none; }
+    .cfg-chip { padding: 5px 9px; }
+    .cfg-chips { gap: 7px; }
+    .cfg-input { padding: 6px 10px; }
+}
+
 /* --- Infobulle « ? » ---------------------------------------------------- */
 
 .cfg-info {
