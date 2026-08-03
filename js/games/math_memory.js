@@ -163,13 +163,24 @@ class MathMemory extends BaseGame {
 
     startGameLoop() {
         this.pairsFound = 0;
-        this.targetPairs = Math.min(this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
+        // `pairs` D'ABORD : c'est le réglage que le catalogue expose (« Nombre
+        // de paires »), et le seul qui parvienne jusqu'ici — `nbQuestions` est
+        // retenu en amont par le moteur de parcours, qui en fait son nombre
+        // d'items. Le plateau restait donc à six paires quoi qu'on choisisse.
+        this.targetPairs = Math.min(this.params.pairs || this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
 
         this.cards = [];
         this.firstPick = null;
         this.lockBoard = false;
-        
+
         const weakTables = getWeakTables();
+        // Un résultat ne paraît qu'une fois sur le plateau. Les cartes
+        // s'associent par identifiant de paire, pas par valeur : avec « 4 × 3 »
+        // et « 6 × 2 » tirés ensemble, deux cartes « 12 » traînaient, et poser
+        // la bonne réponse sur la mauvaise des deux comptait comme une faute —
+        // une erreur invisible, impossible à éviter, et enregistrée au journal.
+        // Écarter les produits déjà pris rend du même coup les questions
+        // distinctes : deux fois la même question donnerait le même produit.
         const pairsData = [];
         // Jamais deux paires avec le MÊME résultat sur un plateau : « 3 × 4 »
         // retourné avec le 12 de « 2 × 6 » serait mathématiquement juste mais
@@ -191,8 +202,17 @@ class MathMemory extends BaseGame {
             pairsData.push({ type: 'question', text: `${t} × ${m}`, uid, t, m, ans, concept });
             pairsData.push({ type: 'answer', text: `${ans}`, uid, t, m, ans, concept });
         }
+        // Une seule table ne propose que dix produits distincts : le plateau se
+        // contente alors de ce que le tirage a pu rendre unique, plutôt que de
+        // tourner en rond ou de réintroduire un doublon.
         this.targetPairs = pairsData.length / 2;
-        
+
+        // PAS DE `gridTemplateColumns` ICI. Le nombre de colonnes se décide
+        // dans `disposer()`, à partir de la taille réelle du cadre — un plateau
+        // figé à six colonnes coupait les cartes sur un écran étroit. Poser la
+        // valeur ici la ferait gagner une fois sur deux, selon l'ordre des
+        // appels.
+
         // Shuffle
         pairsData.sort(() => Math.random() - 0.5);
         
