@@ -27,6 +27,7 @@ export const TAGS = {
         // « Repérage », ils disparaissaient au milieu des coordonnées.
         TRANSFORMATIONS: "Transformations",
         ANGLES: "Angles",
+        NOTATIONS: "Notations et Vocabulaire",
         PRIORITES: "Priorités Opératoires",
         LOGIQUE: "Logique",
         PERIMETRE_AIRE: "Périmètre et Aire",

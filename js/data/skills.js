@@ -1202,6 +1202,14 @@ const BASE = {
         descriptor: 'Isoler l\'inconnue en effectuant le même geste sur les deux membres.',
         lesson: 'Une équation est une BALANCE en équilibre : les deux membres pèsent pareil. Tout est là, et le reste en découle. Si l\'on retire trois poids d\'un seul plateau, la balance penche — l\'égalité est fausse ; si l\'on retire les trois de chaque côté, elle reste droite. C\'est la seule règle : ON FAIT LA MÊME CHOSE DES DEUX CÔTÉS. Résoudre, c\'est se servir de cette règle pour amener l\'inconnue seule d\'un côté, et l\'ordre des gestes n\'est pas libre. D\'ABORD on rassemble les x d\'un même côté en retirant les moins nombreux des deux membres ; ENSUITE on retire les nombres qui accompagnent les x ; EN DERNIER seulement on partage les deux membres par le nombre de x. Cet ordre a une raison qu\'on voit sur la balance : 2x + 5 = 17 ne se partage pas en deux parts égales tant que le 5 est là — 5 et 17 sont impairs. On enlève donc les poids AVANT de diviser, jamais l\'inverse. Et l\'on vérifie toujours en remplaçant x par la valeur trouvée dans l\'équation de DÉPART : c\'est gratuit, et cela attrape l\'erreur de signe, qui est la plus fréquente.'
     },
+    'geo.notation.objets': {
+        label: 'Segment, droite et demi-droite',
+        chemin: [D.GEOMETRIQUE, SD.NOTATIONS],
+        niveaux: [N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Distinguer et écrire (AB), [AB], [AB) et AB.',
+        lesson: 'Le crochet ferme la ligne, la parenthèse la laisse filer : [AB] est le segment (il s\'arrête en A et en B), (AB) est la droite (elle file des deux côtés), [AB) est la demi-droite d\'origine A. Sans rien autour, AB est la longueur du segment [AB] : un nombre.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

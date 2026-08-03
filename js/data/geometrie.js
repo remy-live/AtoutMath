@@ -2,6 +2,7 @@ import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
 import { PALIERS as MORPH_PALIERS } from '../core/quadriMorph.js';
+import { STATUS } from './status.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -1661,5 +1662,19 @@ export const geometrieExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Trois côtés, trois noms, et un ordre pour les trouver. COMMENCE PAR L'HYPOTÉNUSE : c'est le côté en face de l'ANGLE DROIT, le plus long, et le seul qui ne change jamais de nom quel que soit l'angle qu'on regarde — c'est ton point d'appui. Les deux autres, eux, DÉPENDENT DE L'ANGLE marqué sur la figure. Le côté OPPOSÉ est celui qui ne le touche pas, celui d'en face. Le côté ADJACENT est celui qui le touche ET qui touche aussi l'angle droit. ATTENTION, C'EST LÀ QU'ON SE TROMPE : l'hypoténuse touche l'angle elle aussi, et « adjacent » veut dire « à côté de » — beaucoup la donnent donc pour adjacente. Un seul mot les sépare : l'adjacent touche AUSSI l'angle droit. Et la figure TOURNE d'une question à l'autre : « adjacent » n'est pas « horizontal ». Si tu apprends une position au lieu d'une définition, le premier triangle penché du contrôle te le fera payer. SELON LE RÉGLAGE, on te demandera de CLIQUER le côté, de l'ÉCRIRE — deux lettres, celles de ses extrémités, et les crochets si tu les connais : [AB] est le SEGMENT, (AB) la droite, AB la longueur — ou d'écrire la FORMULE. Pour la formule, deux gestes dans cet ordre, et ils se ratent séparément : d'abord LE RAPPORT (CAH SOH TOA : cosinus = adjacent sur hypoténuse, sinus = opposé sur hypoténuse, tangente = opposé sur adjacent), ensuite LA FIGURE (quel côté joue ce rôle pour l'angle marqué). Se tromper de rapport et se tromper de côté ne sont pas la même faute, et ne se rattrapent pas de la même façon."
+    },
+    {
+        id: 'geo-repere-relatifs-lire', title: 'Coordonnées Négatives',
+        generatorId: 'geo.repere', activityId: 'repere-lecture',
+        params: { relatifs: 'relatives', max: 5, mode: 'lire' },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Lis les coordonnées du point, sans oublier les signes."
+    },
+    {
+        id: 'geo-notations-sprint', status: STATUS.TEST, title: 'Sprint des Notations',
+        generatorId: 'geo.notations', activityId: 'sprint',
+        params: { sens: 'mixte', longueur: 'oui' },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Crochet = la ligne s'arrête, parenthèse = elle continue. Réponds avant que la jauge ne se vide : elle se remplit de moins en moins longtemps à mesure que tu enchaînes."
     }
 ];
