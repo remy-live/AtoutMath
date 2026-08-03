@@ -40,14 +40,11 @@ export function createLibraryItem(exo) {
         clearEngines(); document.getElementById('hover-demo-box').style.display = 'none';
     };
 
-    // Long press logic for mobile preview
-    let touchTimer;
-    item.ontouchstart = () => {
-        if(!state.isTeacherMode) return;
-        touchTimer = setTimeout(() => openGameLayer(exo, true), 500);
-    };
-    item.ontouchend = () => clearTimeout(touchTimer);
-    item.ontouchmove = () => clearTimeout(touchTimer);
+    // Pas d'aperçu au doigt depuis la bibliothèque : un appui d'une demi-seconde
+    // — un doigt qui s'attarde, un défilement qui démarre avant que `touchmove`
+    // ne parte — ouvrait l'aperçu plein écran sans que le professeur ait rien
+    // demandé. Sur tablette, l'aperçu se demande dans la grille, par l'œil puis
+    // le bouton lecture de la carte.
 
     item.onclick = () => {
         if(!state.isTeacherMode) {
@@ -57,9 +54,14 @@ export function createLibraryItem(exo) {
     };
 
     // Hover -> Auto Demo Teacher (Desktop)
+    // Réservé aux pointeurs qui survolent vraiment : une tablette fabrique un
+    // `mouseenter` au moment du contact, si bien qu'un simple appui déclenchait
+    // la vignette — et `mouseleave` n'arrivant qu'au prochain appui ailleurs,
+    // elle restait affichée.
     let hoverTimer;
     item.onmouseenter = (e) => {
         if(!state.isTeacherMode) return;
+        if(!matchMedia('(hover: hover)').matches) return;
         hoverTimer = setTimeout(() => {
             const hdBox = document.getElementById('hover-demo-box');
             document.getElementById('hd-title').textContent = exo.title;
