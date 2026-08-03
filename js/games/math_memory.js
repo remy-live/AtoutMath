@@ -71,26 +71,44 @@ class MathMemory extends BaseGame {
 
     startGameLoop() {
         this.pairsFound = 0;
-        this.targetPairs = Math.min(this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
-        
-        // Setup Grid CSS
-        const cols = this.targetPairs > 8 ? 6 : (this.targetPairs > 4 ? 4 : 3);
-        this.gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-        
+        // `pairs` d'abord : c'est le réglage que le catalogue expose (« Nombre
+        // de paires »), et le seul qui parvienne jusqu'ici — `nbQuestions` est
+        // retenu en amont par le moteur de parcours, qui en fait son nombre
+        // d'items. Le plateau restait donc à six paires quoi qu'on choisisse.
+        const voulues = Math.min(this.params.pairs || this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
+
         this.cards = [];
         this.firstPick = null;
         this.lockBoard = false;
-        
+
         const weakTables = getWeakTables();
+        // Un résultat ne paraît qu'une fois sur le plateau. Les cartes
+        // s'associent par identifiant de paire, pas par valeur : avec « 4 × 3 »
+        // et « 6 × 2 » tirés ensemble, deux cartes « 12 » traînaient, et poser
+        // la bonne réponse sur la mauvaise des deux comptait comme une faute —
+        // une erreur invisible, impossible à éviter, et enregistrée au journal.
+        // Écarter les produits déjà pris rend du même coup les questions
+        // distinctes : deux fois la même question donnerait le même produit.
         const pairsData = [];
-        for(let i = 0; i < this.targetPairs; i++) {
+        const produits = new Set();
+        for (let essais = 0; produits.size < voulues && essais < 300; essais++) {
             const { t, m, ans, concept } = generateMultFact(this.params.tables, weakTables);
-            const uid = i;
+            if (produits.has(ans)) continue;
+            produits.add(ans);
+            const uid = produits.size - 1;
 
             pairsData.push({ type: 'question', text: `${t} × ${m}`, uid, t, m, ans, concept });
             pairsData.push({ type: 'answer', text: `${ans}`, uid, t, m, ans, concept });
         }
-        
+        // Une seule table ne propose que dix produits distincts : le plateau se
+        // contente alors de ce que le tirage a pu rendre unique, plutôt que de
+        // tourner en rond ou de réintroduire un doublon.
+        this.targetPairs = pairsData.length / 2;
+
+        // Setup Grid CSS
+        const cols = this.targetPairs > 8 ? 6 : (this.targetPairs > 4 ? 4 : 3);
+        this.gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
         // Shuffle
         pairsData.sort(() => Math.random() - 0.5);
         
