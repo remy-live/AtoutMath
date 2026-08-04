@@ -36,8 +36,10 @@ export function destroyAllDemoCursors() {
     [...curseursVivants].forEach(c => c.destroy());
     curseursVivants.clear();
     // Ceinture et bretelles : un curseur créé par un module rechargé (autre
-    // instance de ce fichier) ne serait pas dans le registre.
-    document.querySelectorAll('.demo-cursor').forEach(el => el.remove());
+    // instance de ce fichier) ne serait pas dans le registre. La bulle vit
+    // elle aussi sur <body> : sans ce balayage, une explication du robot
+    // restait affichée après la fermeture du jeu.
+    document.querySelectorAll('.demo-cursor, .demo-bubble').forEach(el => el.remove());
 }
 
 /**

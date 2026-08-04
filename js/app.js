@@ -140,9 +140,39 @@ function initNiveauFilter() {
 // --- Couche de jeu ----------------------------------------------------------
 
 function initGameControls() {
+    // Contexte du parcours en cours au moment où le robot est activé : le mode
+    // démonstration remplace l'activité, mais il ne doit pas FAIRE PERDRE le
+    // parcours — en sortant de la démo, on reprend à la même étape.
+    let demoReturn = null;
+
+    const captureRunnerContext = () => {
+        const r = state.activeSequenceRunner;
+        if (!r || !r.step) return null;
+        return {
+            path: r.path,
+            startIndex: r.index,
+            deviceMode: r.deviceMode,
+            isStudentPath: r.isStudentPath,
+            allowStepNavigation: r.allowStepNavigation
+        };
+    };
+
+    const resumeOrFreePlay = () => {
+        const back = demoReturn;
+        demoReturn = null;
+        const banner = document.getElementById('demo-overlay-banner');
+        if (banner) banner.style.display = 'none';
+        if (back) {
+            import('./core/runner.js').then(({ Runner }) => new Runner(back).start());
+        } else {
+            openGameLayer(state.activeExo, false);
+        }
+    };
+
     const close = document.getElementById('btn-close-game');
     if (close) {
         close.onclick = () => {
+            demoReturn = null;
             if (state.activeSequenceRunner) state.activeSequenceRunner.abort();
             clearEngines();
             // Le curseur de démonstration vit sur <body>, pas dans la couche de
@@ -160,10 +190,11 @@ function initGameControls() {
         demo.onclick = () => {
             const banner = document.getElementById('demo-overlay-banner');
             const inDemo = banner && banner.style.display === 'flex';
+            if (!inDemo) demoReturn = captureRunnerContext() || demoReturn;
             if (state.activeSequenceRunner) state.activeSequenceRunner.abort();
             clearEngines();
             destroyAllDemoCursors();
-            if (inDemo) openGameLayer(state.activeExo, false);
+            if (inDemo) resumeOrFreePlay();
             else openDemo(state.activeExo);
         };
     }
@@ -173,9 +204,7 @@ function initGameControls() {
         startReal.onclick = () => {
             clearEngines();
             destroyAllDemoCursors();
-            const banner = document.getElementById('demo-overlay-banner');
-            if (banner) banner.style.display = 'none';
-            openGameLayer(state.activeExo, false);
+            resumeOrFreePlay();
         };
     }
 

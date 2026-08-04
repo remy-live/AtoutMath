@@ -17,12 +17,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=26">
-    <link rel="stylesheet" href="css/layout.css?v=26">
-    <link rel="stylesheet" href="css/ui.css?v=26">
-    <link rel="stylesheet" href="css/games.css?v=26">
-    <link rel="stylesheet" href="css/components.css?v=26">
-    <link rel="stylesheet" href="css/modules.css?v=26">
+    <link rel="stylesheet" href="css/base.css?v=27">
+    <link rel="stylesheet" href="css/layout.css?v=27">
+    <link rel="stylesheet" href="css/ui.css?v=27">
+    <link rel="stylesheet" href="css/games.css?v=27">
+    <link rel="stylesheet" href="css/components.css?v=27">
+    <link rel="stylesheet" href="css/modules.css?v=27">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -202,11 +202,14 @@
                                         <polyline points="6 9 12 15 18 9" />
                                     </svg>
                                 </h2>
-                                <button id="btn-new-path" class="btn-toggle glass-btn btn-toggle--sm">✨ Nouveau</button>
-                                <button id="btn-open-path-browser" class="btn-toggle glass-btn btn-toggle--sm">📂 Mes Parcours</button>
-                                <button id="btn-path-policy" class="btn-toggle glass-btn btn-toggle--sm">🎓 Mode &amp; barème</button>
-                                <button id="btn-open-import-export-teacher" class="btn-toggle glass-btn btn-toggle--sm">🔄 Import/Export</button>
-                                <button id="btn-game-access" class="btn-toggle glass-btn btn-toggle--sm" title="Choisir les exercices libres, réservés ou à débloquer">🔐 Accès aux jeux</button>
+                                <!-- Outils secondaires en icônes seules : les libellés
+                                     faisaient déborder la barre sur trois lignes en
+                                     tablette. L'infobulle porte le nom complet. -->
+                                <button id="btn-new-path" class="toolbar-icon-btn" title="Nouveau parcours" aria-label="Nouveau parcours">✨</button>
+                                <button id="btn-open-path-browser" class="toolbar-icon-btn" title="Mes parcours enregistrés" aria-label="Mes parcours enregistrés">📂</button>
+                                <button id="btn-path-policy" class="toolbar-icon-btn" title="Mode &amp; barème (entraînement ou évaluation notée)" aria-label="Mode et barème">🎓</button>
+                                <button id="btn-open-import-export-teacher" class="toolbar-icon-btn" title="Importer / exporter les données" aria-label="Importer ou exporter les données">🔄</button>
+                                <button id="btn-game-access" class="toolbar-icon-btn" title="Accès aux jeux : exercices libres, réservés ou à débloquer" aria-label="Accès aux jeux">🔐</button>
                             </div>
                             <div class="builder-header-actions" onclick="event.stopPropagation()">
                             <div class="preview-mode-group desktop-only" onclick="event.stopPropagation()">
@@ -220,9 +223,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><path d="M8 21h8" /><path d="M12 17v4" /></svg>
                                 </button>
                             </div>
-                            <button id="btn-presentation" class="btn-toggle" title="Présenter le parcours à la classe : carte des mondes et aperçu permanent">
-                                🗺️ Présentation
-                            </button>
+                            <button id="btn-presentation" class="toolbar-icon-btn" title="Présenter le parcours à la classe : carte des mondes et aperçu permanent" aria-label="Présenter le parcours à la classe">🗺️</button>
                             <button id="btn-test-sequence" class="btn-toggle" title="Tester le Parcours">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                     fill="currentColor" stroke="currentColor" stroke-width="2"

@@ -305,6 +305,7 @@ function stepRow(step, index, policy) {
     title.className = 'path-step-title';
     title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span>`
         + `<span class="path-step-name">${index + 1}. ${escapeHtml(exo.title)}</span>`;
+    title.title = exo.title;
     head.appendChild(title);
 
     const seuil = step.threshold ?? step.nbItems;

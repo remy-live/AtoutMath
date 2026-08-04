@@ -20,12 +20,55 @@ import { gradeRun } from '../core/grading.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 
+// --- Style de présentation du parcours --------------------------------------
+// Trois habillages pour le même parcours : liste classique, carte des mondes
+// (façon jeu de plateforme) ou chemin vertical (façon Duolingo). Le choix est
+// un réglage du poste, rangé dans le localStorage.
+
+const STYLE_KEY = 'mathbox-path-style';
+const STYLES = [
+    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes' },
+    { id: 'chemin', icon: '🐾', label: 'Chemin d\'étapes' },
+    { id: 'classique', icon: '📋', label: 'Liste classique' }
+];
+
+function getPathStyle() {
+    try {
+        const v = localStorage.getItem(STYLE_KEY);
+        return STYLES.some(s => s.id === v) ? v : 'mondes';
+    } catch (e) { return 'mondes'; }
+}
+
+function setPathStyle(id) {
+    try { localStorage.setItem(STYLE_KEY, id); } catch (e) { /* mode privé */ }
+    renderStudentPathView();
+}
+
+function styleSwitcher() {
+    const box = document.createElement('div');
+    box.className = 'path-style-switcher';
+    const actif = getPathStyle();
+    STYLES.forEach(s => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'path-style-btn' + (s.id === actif ? ' path-style-btn--active' : '');
+        btn.textContent = s.icon;
+        btn.title = s.label;
+        btn.setAttribute('aria-label', `Présentation : ${s.label}`);
+        btn.onclick = () => setPathStyle(s.id);
+        box.appendChild(btn);
+    });
+    return box;
+}
+
 export function renderStudentPathView() {
     const container = document.getElementById('student-path-container');
     if (!container) return;
     container.innerHTML = '';
 
     container.appendChild(assignedSection());
+    const teacher = teacherPathsSection();
+    if (teacher) container.appendChild(teacher);
     container.appendChild(recommendedSection());
     const last = lastResultSection();
     if (last) container.appendChild(last);
@@ -54,21 +97,27 @@ function assignedSection() {
     const allDone = firstPending === -1;
 
     box.innerHTML = `
-        <h2 class="path-section-title">${escapeHtml(assigned.name || 'Parcours du professeur')}</h2>
-        <p class="path-section-sub ${isEvaluation(policy) ? 'path-section-sub--eval' : ''}">${describePolicy(policy)}</p>`;
+        <div class="path-section-head">
+            <div>
+                <h2 class="path-section-title">${escapeHtml(assigned.name || 'Parcours du professeur')}</h2>
+                <p class="path-section-sub ${isEvaluation(policy) ? 'path-section-sub--eval' : ''}">${describePolicy(policy)}</p>
+            </div>
+        </div>`;
+    box.querySelector('.path-section-head').appendChild(styleSwitcher());
 
-    // Carte des mondes façon jeu de plateforme : chaque étape est une île du
-    // chemin, on voit d'un coup d'œil où l'on est, ce qui est gagné et ce qui
-    // reste à débloquer.
-    const map = buildWorldMap(steps, {
+    const opts = {
         doneIds: done,
         currentIndex: firstPending,
         onNodeClick: (i, statut) => {
             if (statut === 'locked') return;
             launchAssigned(path, i);
         }
-    });
-    box.appendChild(map);
+    };
+    const style = getPathStyle();
+    const rendu = style === 'classique' ? buildClassicTimeline(steps, opts)
+        : style === 'chemin' ? buildDuoPath(steps, opts)
+            : buildWorldMap(steps, opts);
+    box.appendChild(rendu);
 
     if (!allDone && firstPending !== -1) {
         const btn = document.createElement('button');
@@ -149,6 +198,152 @@ export function buildWorldMap(steps, opts = {}) {
         map.appendChild(rangee);
     }
     return map;
+}
+
+function statutDe(step, i, opts) {
+    const done = opts.doneIds || new Set();
+    if (opts.allUnlocked) return 'open';
+    if (done.has(step.stepId)) return 'done';
+    return i === opts.currentIndex ? 'current' : 'locked';
+}
+
+/**
+ * Présentation classique : la liste verticale d'étapes détaillées, avec la
+ * pastille d'état et le bouton « Jouer » sur l'étape en cours.
+ */
+export function buildClassicTimeline(steps, opts = {}) {
+    const timeline = document.createElement('div');
+    timeline.className = 'path-timeline';
+    timeline.appendChild(Object.assign(document.createElement('div'), { className: 'path-timeline-line' }));
+
+    steps.forEach((step, i) => {
+        const statut = statutDe(step, i, opts);
+
+        const row = document.createElement('div');
+        row.className = 'path-timeline-step' + (statut === 'locked' ? ' path-timeline-step--locked' : '');
+
+        const icon = document.createElement('div');
+        icon.className = 'path-timeline-icon path-timeline-icon--' + (statut === 'done' ? 'done' : statut === 'current' ? 'current' : statut === 'open' ? 'current' : 'locked');
+        icon.textContent = statut === 'done' ? '✓' : statut === 'locked' ? '🔒' : String(i + 1);
+
+        const card = document.createElement('div');
+        card.className = 'card card--flush' + (statut === 'current' ? ' card--current' : '');
+
+        const title = document.createElement('div');
+        title.className = 'timeline-step-title' + (statut === 'current' ? ' timeline-step-title--active' : '');
+        title.textContent = step.title;
+        card.appendChild(title);
+
+        const meta = document.createElement('div');
+        meta.className = 'timeline-step-meta';
+        meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+        card.appendChild(meta);
+
+        if (statut === 'done') {
+            const st = document.createElement('div');
+            st.className = 'timeline-step-status';
+            st.textContent = 'Terminé !';
+            card.appendChild(st);
+        } else if (statut === 'current' || statut === 'open') {
+            const btn = document.createElement('button');
+            btn.className = 'btn-toggle' + (statut === 'current' ? ' active' : ' btn-toggle--sm');
+            btn.textContent = 'Jouer';
+            btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
+            card.appendChild(btn);
+        } else {
+            const st = document.createElement('div');
+            st.className = 'timeline-step-status';
+            st.textContent = 'À débloquer';
+            card.appendChild(st);
+        }
+
+        row.append(icon, card);
+        timeline.appendChild(row);
+    });
+    return timeline;
+}
+
+/**
+ * Chemin d'étapes vertical façon Duolingo : une colonne de pastilles rondes
+ * qui serpente doucement de gauche à droite, le titre posé à côté.
+ */
+export function buildDuoPath(steps, opts = {}) {
+    const chemin = document.createElement('div');
+    chemin.className = 'duo-path';
+
+    steps.forEach((step, i) => {
+        const statut = statutDe(step, i, opts);
+        const node = document.createElement('div');
+        node.className = `duo-node world-node--${statut}`;
+        // Serpentin : décalage sinusoïdal autour de l'axe.
+        const offset = Math.round(Math.sin(i * 1.1) * 70);
+        node.style.transform = `translateX(${offset}px)`;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'world-node-btn';
+        btn.innerHTML = statut === 'done' ? '⭐' : (statut === 'locked' ? '🔒' : String(i + 1));
+        btn.title = step.title;
+        btn.setAttribute('aria-label',
+            `${step.title} — ${statut === 'done' ? 'terminé' : statut === 'locked' ? 'à débloquer' : 'jouer'}`);
+        btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
+
+        const label = document.createElement('div');
+        label.className = 'duo-node-label';
+        label.innerHTML = `<span class="world-node-label">${escapeHtml(step.title)}</span>
+            <span class="world-node-meta">${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}</span>`;
+
+        node.append(btn, label);
+        chemin.appendChild(node);
+    });
+    return chemin;
+}
+
+// --- Parcours du professeur (sur ce poste) ----------------------------------
+// Les parcours construits dans l'éditeur de CE poste sont directement jouables
+// par l'élève, sans passer par un code : en classe, c'est le même appareil.
+
+function teacherPathsSection() {
+    const paths = state.teacherPaths || [];
+    if (!paths.length) return null;
+
+    const box = document.createElement('section');
+    box.className = 'path-section';
+    box.innerHTML = `
+        <h2 class="path-section-title">Parcours du professeur</h2>
+        <p class="path-section-sub">Préparés sur ce poste — choisis-en un et lance-toi !</p>`;
+
+    const list = document.createElement('div');
+    list.className = 'teacher-path-list';
+
+    paths.slice(0, 8).forEach(p => {
+        const normalized = normalizePath(p.data, p.name);
+        if (!normalized.steps.length) return;
+        const policy = resolvePolicy(normalized.policy);
+
+        const card = document.createElement('div');
+        card.className = 'card teacher-path-card';
+        card.innerHTML = `
+            <div class="teacher-path-info">
+                <div class="teacher-path-name">${escapeHtml(p.name)}</div>
+                <div class="teacher-path-sub">${normalized.steps.length} activité${normalized.steps.length > 1 ? 's' : ''}
+                    • ${isEvaluation(policy) ? 'Évaluation' : 'Entraînement'}</div>
+            </div>`;
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-toggle active';
+        btn.textContent = 'Jouer';
+        btn.onclick = async () => {
+            const { Runner } = await import('../core/runner.js');
+            new Runner({ path: normalized, deviceMode: 'none' }).start();
+        };
+        card.appendChild(btn);
+        list.appendChild(card);
+    });
+
+    if (!list.children.length) return null;
+    box.appendChild(list);
+    return box;
 }
 
 // --- 2. Séance conseillée ---------------------------------------------------

@@ -919,6 +919,70 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
     .world-node-btn { width: 48px; height: 48px; }
 }
 
+/* Boutons-outils de l'en-tête du constructeur : icône seule, nom complet en
+   infobulle — les libellés faisaient déborder la barre sur tablette. */
+.toolbar-icon-btn {
+    width: 38px; height: 38px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; border-radius: 12px; cursor: pointer;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm); transition: .15s;
+}
+.toolbar-icon-btn:hover {
+    border-color: var(--primary);
+    transform: translateY(-1px); box-shadow: var(--shadow-md);
+}
+.toolbar-icon-btn:active { transform: translateY(0); }
+
+/* Sélecteur de présentation du parcours (classique / mondes / chemin). */
+.path-section-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px; flex-wrap: wrap;
+}
+.path-style-switcher {
+    display: flex; gap: 4px; background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px;
+}
+.path-style-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: transparent; font-size: 1.05rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: .15s; filter: grayscale(60%); opacity: .7;
+}
+.path-style-btn:hover { filter: none; opacity: 1; }
+.path-style-btn--active {
+    background: var(--bg-panel); box-shadow: var(--shadow-sm);
+    filter: none; opacity: 1;
+}
+
+/* Chemin d'étapes vertical (façon Duolingo) : une colonne de pastilles qui
+   serpente, le titre posé à côté de chaque pastille. */
+.duo-path {
+    display: flex; flex-direction: column; align-items: center; gap: 22px;
+    padding: 26px 0; margin-bottom: 10px; position: relative;
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--primary) 5%, transparent),
+        color-mix(in srgb, var(--success) 6%, transparent));
+    border-radius: 20px;
+}
+.duo-node { display: flex; align-items: center; gap: 14px; position: relative; }
+.duo-node::before {
+    content: ''; position: absolute; left: 28px; top: -22px; height: 22px;
+    border-left: 3px dotted color-mix(in srgb, var(--primary) 45%, transparent);
+}
+.duo-node:first-child::before { display: none; }
+.duo-node-label { display: flex; flex-direction: column; gap: 2px; max-width: 190px; text-align: left; }
+.duo-node-label .world-node-label { display: block; -webkit-line-clamp: 2; }
+
+/* Parcours du professeur listés côté élève. */
+.teacher-path-list { display: flex; flex-direction: column; gap: 10px; }
+.teacher-path-card {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; padding: 14px 18px;
+}
+.teacher-path-name { font-weight: 700; color: var(--text-main); }
+.teacher-path-sub { font-size: .85rem; color: var(--text-muted); }
+
 /* Mode présentation du professeur : la carte à gauche, l'aperçu permanent de
    l'étape choisie à droite. */
 .presentation-body {

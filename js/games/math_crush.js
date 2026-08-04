@@ -1,5 +1,6 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { state } from '../core/state.js';
+import { regTimeout } from '../core/timers.js';
 
 export class MathCrush extends BaseGame {
     constructor(container, isDemo, params, gameId) {
@@ -631,54 +632,42 @@ export class MathCrush extends BaseGame {
         let pIndex = 0;
         let targetPath = [];
 
-        const findValidPath = () => {
-            for(let c=0; c<this.cols; c++) {
-                for(let r=0; r<this.rows; r++) {
-                    const sum = this.grid[c][r].val;
-                    for(let dc=-1; dc<=1; dc++) {
-                        for(let dr=-1; dr<=1; dr++) {
-                            if(dc===0 && dr===0) continue;
-                            let nc = c+dc; let nr = r+dr;
-                            if(nc>=0 && nc<this.cols && nr>=0 && nr<this.rows) {
-                                const sum2 = this.mode === 'addition' ? sum + this.grid[nc][nr].val : sum * this.grid[nc][nr].val;
-                                if (sum2 === this.targetValue) {
-                                    return [{c,r}, {c:nc, r:nr}];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return [];
-        };
-
+        // Le robot trace le CHEMIN SOLUTION généré avec la cible
+        // (`currentTargetPath`) — celui que l'indice éclaire. L'ancien code
+        // cherchait une PAIRE de cases sommant à la cible : dès que la
+        // difficulté passait aux chemins de 3-4 cases, aucune paire ne
+        // convenait plus et le robot re-tirait des cibles en boucle sans
+        // jamais jouer.
+        //
+        // `regTimeout` et non `setTimeout` : la chaîne doit s'arrêter avec
+        // `clearEngines()` quand on ferme ou relance l'aperçu.
         const nextAction = () => {
             if (!this.running || !this.isDemo) return;
-            
+
             if (demoPhase === 0) {
                 this.currentPath = [];
-                targetPath = findValidPath();
+                targetPath = (this.currentTargetPath || []).slice();
                 if (targetPath.length === 0) {
-                    this.generateTarget(); // reroll
-                    setTimeout(nextAction, 500);
+                    this.generateTarget();
+                    regTimeout(nextAction, 500);
                     return;
                 }
                 demoPhase = 1;
                 pIndex = 0;
-                setTimeout(nextAction, 500);
+                regTimeout(nextAction, 500);
             } else if (demoPhase === 1) {
                 if (pIndex < targetPath.length) {
                     this.currentPath.push(targetPath[pIndex]);
                     pIndex++;
-                    setTimeout(nextAction, 400);
+                    regTimeout(nextAction, 450);
                 } else {
                     demoPhase = 2;
-                    setTimeout(nextAction, 400);
+                    regTimeout(nextAction, 450);
                 }
             } else if (demoPhase === 2) {
                 this.evaluatePath();
                 demoPhase = 0;
-                setTimeout(nextAction, 1000);
+                regTimeout(nextAction, 1200);
             }
         };
         nextAction();
