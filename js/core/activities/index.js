@@ -181,7 +181,8 @@ const legacy = [
     ['course', 'Course', 'course', 'engineCourse'],
     ['tetris', 'Math Tetris', 'tetris', 'engineTetris'],
     ['crush', 'Math Crush', 'math_crush', 'engineMathCrush'],
-    ['vault', 'Le Coffre-Fort', 'vault', 'engineVault']
+    ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
+    ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

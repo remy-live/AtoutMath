@@ -50,5 +50,16 @@ export const geometrieExercises = [
         params: { mode: 'construire', plage: 'tous', tolerance: 3 },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Construis l'angle demandé : place le rapporteur, repère la graduation, puis amène le côté rouge dessus en tirant sa poignée."
+    },
+    {
+        id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
+        activityId: 'galactic',
+        params: { startLevel: 1, lives: 3 },
+        paramSchema: {
+            startLevel: { type: 'number', label: 'Niveau de départ', min: 1, max: 6, default: 1 },
+            lives: { type: 'number', label: 'Vies', min: 1, max: 5, default: 3 }
+        },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Un ennemi apparaît au-dessus d'un rapporteur géant : lis l'angle sur la bonne échelle, tape-le au clavier et tire ! Attention aux niveaux à échelle inversée où le canon tire à 180 − x, aux astéroïdes qui bloquent les tirs, et aux cibles mouvantes."
     }
 ];

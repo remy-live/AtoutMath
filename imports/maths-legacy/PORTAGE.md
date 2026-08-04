@@ -14,7 +14,8 @@ didactiques, et intégration au mode apprentissage.
 | memory | Paires calcul/résultat | ✅ Déjà couvert (Memory des Tables) |
 | mole | Taupes à taper | ✅ Déjà couvert (Chasse aux Taupes) |
 | race | Course | ✅ Déjà couvert (La Course) |
-| space / galactic | Tir spatial | ✅ Déjà couvert (Météorites) |
+| space | Tir spatial | ✅ Déjà couvert (Météorites) |
+| galactic | Tir aux angles sur rapporteur géant | ✅ Porté (`js/games/galactic.js`) |
 | multi | Tables | ✅ Déjà couvert (Flash Mult, Pythagore…) |
 | prio | Priorités opératoires | ✅ Déjà couvert (Prio-Bot) |
 | quiz | Quiz générique | ✅ Déjà couvert (activités choice/numpad) |
