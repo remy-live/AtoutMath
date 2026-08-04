@@ -6,7 +6,7 @@
 // catalogue ni à cette interface.
 
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
-import { MODES, evaluationPolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
+import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 
 // --- Champs -----------------------------------------------------------------
 
@@ -326,11 +326,17 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
 
     const p = resolvePolicy(path.policy);
     const isEval = p.mode === MODES.EVALUATION;
+    const isLearn = p.mode === MODES.APPRENTISSAGE;
     const g = p.grading || {};
 
     root.innerHTML = `
-        <div class="cfg-modes">
-            <button type="button" class="cfg-mode ${!isEval ? 'cfg-mode--active' : ''}" data-mode="${MODES.ENTRAINEMENT}">
+        <div class="cfg-modes cfg-modes--3">
+            <button type="button" class="cfg-mode ${isLearn ? 'cfg-mode--active' : ''}" data-mode="${MODES.APPRENTISSAGE}">
+                <span class="cfg-mode-icon" aria-hidden="true">🌱</span>
+                <span class="cfg-mode-title">Apprentissage</span>
+                <span class="cfg-mode-desc">Leçon et robot avant de jouer, essais illimités, aides gratuites, bouton « Montre-moi ». Pour découvrir.</span>
+            </button>
+            <button type="button" class="cfg-mode ${!isEval && !isLearn ? 'cfg-mode--active' : ''}" data-mode="${MODES.ENTRAINEMENT}">
                 <span class="cfg-mode-icon" aria-hidden="true">🎯</span>
                 <span class="cfg-mode-title">Entraînement</span>
                 <span class="cfg-mode-desc">Plusieurs essais, aides, correction immédiate. Sans note.</span>
@@ -380,10 +386,14 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             </label>
         </div>`;
 
+    const baseFor = (mode) => mode === MODES.EVALUATION ? evaluationPolicy()
+        : mode === MODES.APPRENTISSAGE ? apprentissagePolicy()
+            : defaultPolicy();
+
     const commit = () => {
         const graded = document.getElementById('cfg-graded').checked;
         const mode = root.querySelector('.cfg-mode--active').dataset.mode;
-        const base = mode === MODES.EVALUATION ? evaluationPolicy() : defaultPolicy();
+        const base = baseFor(mode);
         onChange({
             ...base,
             mode,
@@ -403,8 +413,7 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
     wireTips(root);
     root.querySelectorAll('[data-mode]').forEach(btn => {
         btn.onclick = () => {
-            const mode = btn.dataset.mode;
-            const base = mode === MODES.EVALUATION ? evaluationPolicy() : defaultPolicy();
+            const base = baseFor(btn.dataset.mode);
             // Changer de mode réapplique les défauts du mode : c'est le sens
             // même du réglage, on ne conserve pas les réglages contradictoires.
             onChange(base);

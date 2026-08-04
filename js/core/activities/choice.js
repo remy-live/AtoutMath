@@ -11,6 +11,7 @@
 // connaissance des notions ici.
 
 import { regTimeout } from '../timers.js';
+import { state } from '../state.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 
 const VARIANTS = {
@@ -76,6 +77,14 @@ export function mount(container, session, opts = {}) {
         }
 
         wireHint(container, session);
+        // « Montre-moi » sur les choix : en plus du texte, la bonne case
+        // s'illumine — l'élève n'a plus qu'à faire le geste dessus.
+        wireShowMe(container, session, {
+            highlight: () => {
+                const good = cells[choices.findIndex(c => c.correct)];
+                if (good) good.classList.add('demo-target');
+            }
+        });
 
         const answer = (el) => {
             if (destroyed || el.dataset.eliminated === '1') return;
@@ -263,18 +272,45 @@ function styleFeedback(el, correct, variant) {
     }
 }
 
-// Bouton d'aide : présent seulement si la politique l'autorise et si l'item
-// propose des indices. En évaluation, il n'apparaît pas du tout.
+// Barre d'aide : l'indice (si la politique l'autorise et si l'item en
+// propose) et, en mode apprentissage, le bouton « Montre-moi » — l'aide
+// maximale : la réponse est révélée et expliquée, puis l'élève fait le geste
+// lui-même. En évaluation, rien de tout cela n'apparaît.
+
+/** « Montre-moi » disponible ? Pas en démo, pas sur les grilles (le
+ *  vérificateur et les indices de zone y jouent déjà ce rôle). */
+function canShowMe(session) {
+    return !!(session.policy && session.policy.showMe && !session.isDemo
+        && session.current && session.current.answerKind !== 'grid');
+}
+
+/** La réponse sous sa forme lisible par l'élève. */
+function answerLabelOf(item) {
+    if (item.choices) {
+        const good = item.choices.find(c => c.correct);
+        if (good) return String(good.label !== undefined ? good.label : good.value);
+    }
+    if (item.answerKind === 'point' && item.meta && item.meta.x !== undefined) {
+        return `(${item.meta.x} ; ${item.meta.y})`;
+    }
+    return String(item.answer);
+}
+
 export function hintBar(session) {
-    if (!session.hintsAvailable) return '';
-    return `<div class="hint-bar">
-        <button type="button" class="btn-hint" data-hint>
+    const showMe = canShowMe(session);
+    if (!session.hintsAvailable && !showMe) return '';
+    return `<div class="hint-bar"><div class="hint-btns">
+        ${session.hintsAvailable ? `<button type="button" class="btn-hint" data-hint>
             <span aria-hidden="true">💡</span> Un indice
-        </button>
-    </div>`;
+        </button>` : ''}
+        ${showMe ? `<button type="button" class="btn-hint btn-showme" data-showme>
+            <span aria-hidden="true">🤝</span> Montre-moi
+        </button>` : ''}
+    </div></div>`;
 }
 
 export function wireHint(container, session) {
+    wireShowMe(container, session);
     const btn = container.querySelector('[data-hint]');
     if (!btn) return;
     btn.onclick = () => {
@@ -285,10 +321,38 @@ export function wireHint(container, session) {
             box = document.createElement('div');
             box.className = 'hint-text';
             box.setAttribute('role', 'status');
-            btn.parentElement.appendChild(box);
+            btn.parentElement.parentElement.appendChild(box);
         }
         box.textContent = h;
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
+    };
+}
+
+/**
+ * « Montre-moi » : révèle la réponse et son explication, sans répondre à la
+ * place de l'élève — c'est encore lui qui clique, tape ou place. L'usage est
+ * tracé comme une aide (gratuite en apprentissage).
+ * @param {{highlight?:()=>void}} [opts] - mise en évidence propre à l'activité
+ */
+export function wireShowMe(container, session, opts = {}) {
+    const btn = container.querySelector('[data-showme]');
+    if (!btn) return;
+    btn.onclick = () => {
+        const item = session.current;
+        if (!item || session.locked) return;
+        btn.disabled = true;
+        // Révéler vaut tous les indices : en entraînement, les points de la
+        // question s'en ressentent ; en apprentissage (pénalité nulle), non.
+        session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length, 2);
+        state.noteHintUsed();
+        document.dispatchEvent(new CustomEvent('game_feedback', {
+            detail: {
+                kind: 'hint',
+                msg: `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`,
+                misconception: item.explanation || null
+            }
+        }));
+        if (opts.highlight) opts.highlight();
     };
 }
 

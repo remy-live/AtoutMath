@@ -15,7 +15,9 @@ import { journal, EventTypes } from './journal.js';
 import { clearEngines, regTimeout } from './timers.js';
 import { getActivity, getGenerator } from './registry.js';
 import { ItemSession } from './itemSession.js';
-import { resolvePolicy, isEvaluation, describePolicy } from './policy.js';
+import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
+import { skillsOf } from '../data/catalog.js';
+import { getSkill } from '../data/skills.js';
 import { hydratePath } from './path.js';
 import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
@@ -42,6 +44,10 @@ export class Runner {
         this.isStudentPath = !!cfg.isStudentPath;
         this.allowStepNavigation = !!cfg.allowStepNavigation;
         this.index = cfg.startIndex || 0;
+        // En mode apprentissage, chaque étape s'ouvre sur un écran leçon +
+        // robot. `skipIntro` le saute UNE fois : posé quand on revient d'une
+        // démonstration (l'élève vient de voir le robot, inutile de re-proposer).
+        this._skipIntro = !!cfg.skipIntro;
         this.runId = 'run_' + uuid();
         this.startedAt = 0;
         this.handle = null;
@@ -226,6 +232,17 @@ export class Runner {
         state.activeExo = step.exercise;
         this.updateProgress();
         this.updateStepNavigation();
+
+        // Mode apprentissage : on découvre la notion AVANT de jouer — rappel
+        // de cours et démonstration du robot proposés à chaque étape. Le
+        // chronomètre n'est pas encore lancé : une leçon ne se lit pas contre
+        // la montre.
+        if (isApprentissage(this.policy) && !this._skipIntro) {
+            this.showLearningIntro(step);
+            return;
+        }
+        this._skipIntro = false;
+
         this.startTimer(
             step.timeLimit || step.params.timeLimit || null,
             step.timerScope || 'etape'
@@ -291,6 +308,50 @@ export class Runner {
         // La session n'existe qu'ici : c'est seulement maintenant qu'on sait
         // si la navigation question par question est possible.
         this.updateStepNavigation();
+    }
+
+    /**
+     * Écran d'accueil d'une étape en mode apprentissage : la leçon (rappels de
+     * cours des compétences travaillées), la consigne, et le choix — regarder
+     * d'abord le robot faire, ou se lancer tout de suite.
+     */
+    showLearningIntro(step) {
+        const exo = step.exercise;
+        const lecons = [...new Set(
+            skillsOf(exo).map(id => (getSkill(id) || {}).lesson).filter(Boolean)
+        )].slice(0, 2);
+
+        const consigne = exo.instruction
+            ? `<p class="run-screen-text">${escapeHtml(exo.instruction)}</p>` : '';
+        const blocsLecon = lecons.map(l =>
+            `<div class="learn-lesson">📖 ${escapeHtml(l)}</div>`).join('');
+
+        this.canvas.innerHTML = `
+            <div class="run-screen run-screen--learn">
+                <div class="run-screen-icon" aria-hidden="true">🌱</div>
+                <h2 class="run-screen-title">${escapeHtml(step.title)}</h2>
+                ${consigne}
+                ${blocsLecon}
+                <div class="learn-actions">
+                    <button id="btn-learn-watch" class="btn-toggle glass-btn">👀 Regarder le robot d'abord</button>
+                    <button id="btn-learn-go" class="btn-toggle active">🚀 C'est parti !</button>
+                </div>
+            </div>`;
+
+        // « Regarder le robot » réutilise le bouton de démonstration de
+        // l'en-tête : il capture le parcours en cours et, au retour, reprend
+        // cette étape sans repasser par cet écran.
+        const watch = document.getElementById('btn-learn-watch');
+        if (watch) watch.onclick = () => {
+            this._skipIntro = true;
+            const demoBtn = document.getElementById('btn-toggle-demo');
+            if (demoBtn) demoBtn.click();
+        };
+        const go = document.getElementById('btn-learn-go');
+        if (go) go.onclick = () => {
+            this._skipIntro = true;
+            this.runStep();
+        };
     }
 
     /**

@@ -153,7 +153,10 @@ function initGameControls() {
             startIndex: r.index,
             deviceMode: r.deviceMode,
             isStudentPath: r.isStudentPath,
-            allowStepNavigation: r.allowStepNavigation
+            allowStepNavigation: r.allowStepNavigation,
+            // On revient d'une démonstration : l'écran « leçon + robot » du
+            // mode apprentissage n'a pas à être reproposé pour cette étape.
+            skipIntro: true
         };
     };
 
@@ -210,10 +213,27 @@ function initGameControls() {
 
     const instr = document.getElementById('btn-show-instruction');
     if (instr) {
-        instr.onclick = () => {
+        instr.onclick = async () => {
             const exo = state.activeExo;
-            document.getElementById('instruction-text').textContent =
-                exo && exo.instruction ? exo.instruction : 'Aucune consigne disponible pour cet exercice.';
+            const box = document.getElementById('instruction-text');
+            const consigne = exo && exo.instruction ? exo.instruction : 'Aucune consigne disponible pour cet exercice.';
+
+            // La consigne, puis les rappels de cours des compétences
+            // travaillées : l'aide « ? » devient une vraie page de leçon,
+            // consultable à tout moment pendant l'exercice.
+            let lecons = [];
+            if (exo) {
+                const [{ skillsOf }, { getSkill }] = await Promise.all([
+                    import('./data/catalog.js'), import('./data/skills.js')
+                ]);
+                lecons = [...new Set(
+                    skillsOf(exo).map(id => (getSkill(id) || {}).lesson).filter(Boolean)
+                )].slice(0, 3);
+            }
+
+            const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            box.innerHTML = esc(consigne)
+                + lecons.map(l => `<span class="learn-lesson">📖 ${esc(l)}</span>`).join('');
             document.getElementById('instruction-modal').style.display = 'flex';
         };
     }

@@ -134,6 +134,27 @@
 /* --- Aides graduées ---------------------------------------- */
 
 .hint-bar { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: clamp(8px, 2cqh, 18px); }
+.hint-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* « Montre-moi » : l'aide maximale — visuellement plus chaleureuse que
+   l'indice, mais de la même famille. */
+.btn-showme {
+    background: color-mix(in srgb, var(--success) 12%, var(--bg-hover));
+    border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+}
+.btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success); }
+
+/* --- Mode apprentissage ------------------------------------ */
+
+/* Rappel de cours : sur l'écran d'accueil d'une étape et dans l'aide « ? ». */
+.learn-lesson {
+    display: block; max-width: 520px; text-align: left;
+    background: var(--tag-dom-bg); color: var(--tag-dom-txt);
+    border-radius: 12px; padding: 10px 14px; margin-top: 10px;
+    font-size: .95rem; line-height: 1.5; font-weight: 500;
+}
+.learn-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 22px; }
+.run-screen--learn .run-screen-title { color: var(--primary); }
 
 .btn-hint {
     display: inline-flex; align-items: center; gap: 8px;
@@ -1208,6 +1229,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-check { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; cursor: pointer; color: var(--text-main); }
 
 .cfg-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+.cfg-modes--3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 760px) { .cfg-modes--3 { grid-template-columns: 1fr; } }
 .cfg-mode {
     display: flex; flex-direction: column; gap: 5px; text-align: left;
     padding: 14px; border-radius: 14px; border: 2px solid var(--border);
