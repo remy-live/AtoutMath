@@ -1,7 +1,7 @@
 /* --- ARCHITECTURE GENERALE --- */
 /* Plein écran : la palette d'outils est flottante, elle ne prend plus de
    place dans le flux et n'a donc plus de hauteur à déduire. */
-#app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; background: var(--bg-app); display: flex; flex-direction: column; }
+#app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-app); display: flex; flex-direction: column; }
 
 #top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
 .nav-left, .nav-center, .nav-right { display: flex; align-items: center; gap: 15px; }
@@ -14,7 +14,7 @@
 #sidebar header { display: none; } /* Logo is moved to top-navbar */
 #main-area { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; background: var(--bg-app); }
 #main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); z-index: 10; }
-#bottom-nav { height: var(--bottom-nav-height); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
+#bottom-nav { height: var(--bottom-nav-height); box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
 
 /* =========================================================
    GESTION DU LAYOUT (MOBILE ON vs OFF)
@@ -70,8 +70,8 @@ body.mobile-view #builder-center-col { flex: none !important; height: auto !impo
 body.mobile-view #path-collapsible-wrapper { display: block; }
 body.mobile-view #path-toggle-icon { display: block !important; }
 
-body.mobile-view #builder-properties-panel { 
-    position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important;
+body.mobile-view #builder-properties-panel {
+    position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; height: 100dvh !important;
     background: var(--bg-panel); z-index: 100000;
     transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: none !important; padding-top: 60px; /* Space for close btn */

@@ -15,7 +15,10 @@
     --tag-dom-bg: #dbeafe; --tag-dom-txt: #2563eb;
     --tag-sous-bg: #f3e8ff; --tag-sous-txt: #9333ea;
     
-    --sidebar-width: 320px; --bottom-nav-height: 60px;
+    --sidebar-width: 320px;
+    /* La barre basse intègre la zone sûre d'iOS (encoche basse / indicateur
+       d'accueil) : sans elle, ses boutons tombaient sous la barre du système. */
+    --bottom-nav-height: calc(60px + env(safe-area-inset-bottom, 0px));
     
     /* Modern Shadows */
     --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
@@ -85,5 +88,8 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
-body { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; background-color: var(--bg-app); color: var(--text-main); }
+/* `dvh` (avec repli `vh`) : sur iPhone, 100vh mesure la fenêtre SANS la barre
+   d'outils de Safari — le bas de page, dont la navigation basse, se retrouvait
+   caché derrière. L'unité dynamique suit la fenêtre réellement visible. */
+body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; background-color: var(--bg-app); color: var(--text-main); }
 button { cursor: pointer; border: none; background: none; }

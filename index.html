@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- `viewport-fit=cover` : nécessaire pour que env(safe-area-inset-*)
+         soit renseigné sur iPhone — la barre basse s'appuie dessus. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MathBox - Mode Démo & Layout</title>
     <link rel="icon" href="icons/icon-192.png" type="image/png">
     <!-- Application installable (PWA) : manifeste, couleur de thème et icône
@@ -17,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=30">
-    <link rel="stylesheet" href="css/layout.css?v=30">
-    <link rel="stylesheet" href="css/ui.css?v=30">
-    <link rel="stylesheet" href="css/games.css?v=30">
-    <link rel="stylesheet" href="css/components.css?v=30">
-    <link rel="stylesheet" href="css/modules.css?v=30">
+    <link rel="stylesheet" href="css/base.css?v=31">
+    <link rel="stylesheet" href="css/layout.css?v=31">
+    <link rel="stylesheet" href="css/ui.css?v=31">
+    <link rel="stylesheet" href="css/games.css?v=31">
+    <link rel="stylesheet" href="css/components.css?v=31">
+    <link rel="stylesheet" href="css/modules.css?v=31">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
