@@ -4,6 +4,12 @@
 #app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-app); display: flex; flex-direction: column; }
 
 #top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
+/* Écran court (téléphone en paysage) : la barre haute s'amincit pour laisser
+   le maximum de hauteur au contenu. */
+@media (max-height: 480px) {
+    #top-navbar { height: 46px; padding: 0 12px; }
+    #top-navbar .title { font-size: 1.1rem; }
+}
 .nav-left, .nav-center, .nav-right { display: flex; align-items: center; gap: 15px; }
 .nav-center { flex-grow: 1; justify-content: center; }
 
@@ -64,8 +70,10 @@ body.mobile-view .desktop-only { display: none !important; }
 #builder-view { display: none; flex-direction: row; padding: 0; height: 100%; width: 100%; }
 body.mobile-view #builder-view { flex-direction: column; }
 #builder-center-col { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
-#view-path { display: none; flex-direction: column; padding: 40px; height: 100%; overflow-y: auto; align-items: center; }
-#view-profile { display: none; flex-direction: column; padding: 40px; height: 100%; overflow-y: auto; }
+#view-path { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); height: 100%; overflow-y: auto; align-items: center; }
+#view-profile { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); height: 100%; overflow-y: auto; }
+/* Le contenu du parcours ne doit jamais dépasser la largeur du téléphone. */
+#view-path > *, #view-profile > * { max-width: 100%; min-width: 0; }
 body.mobile-view #builder-center-col { flex: none !important; height: auto !important; border-right: none !important; }
 body.mobile-view #path-collapsible-wrapper { display: block; }
 body.mobile-view #path-toggle-icon { display: block !important; }

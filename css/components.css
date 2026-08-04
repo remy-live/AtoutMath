@@ -94,8 +94,10 @@
 .profile-score-value { color: var(--primary); font-size: 1.8rem; font-weight: 700; }
 .profile-score-label { color: var(--text-muted); font-size: 0.9rem; }
 
-.view-heading-title { font-size: 2.5rem; color: var(--text-main); margin-bottom: 10px; }
-.view-heading-subtitle { font-size: 1.1rem; color: var(--text-muted); }
+/* `clamp` : 2.5rem débordait de l'écran d'un téléphone — « Mon Parcours
+   Actuel » se coupait. Le titre suit la largeur disponible. */
+.view-heading-title { font-size: clamp(1.5rem, 6vw, 2.5rem); color: var(--text-main); margin-bottom: 10px; overflow-wrap: break-word; }
+.view-heading-subtitle { font-size: clamp(.95rem, 3.4vw, 1.1rem); color: var(--text-muted); }
 #view-path .view-heading-subtitle { margin-bottom: 40px; }
 
 .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }

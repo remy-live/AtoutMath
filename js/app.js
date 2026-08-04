@@ -58,6 +58,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initGameFeedbackUI();
 
     await state.load();
+    await seedExamplePath();
     initSync();
 
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage
@@ -97,24 +98,44 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ensuite sur la détection.
 
 function initDeviceMode() {
-    let choix = null;
-    try { choix = localStorage.getItem('mathbox-device'); } catch (e) { /* mode privé */ }
+    const choixMemorise = () => {
+        try { return localStorage.getItem('mathbox-device'); } catch (e) { return null; }
+    };
 
-    // Téléphone : écran étroit ET pointeur tactile. Une fenêtre de bureau
-    // réduite garde sa présentation, une tablette aussi.
-    const telephone = window.innerWidth <= 700
+    // Téléphone en PORTRAIT : écran étroit et pointeur tactile. Une fenêtre
+    // de bureau réduite garde sa présentation, une tablette aussi — et un
+    // téléphone tourné en paysage repasse en présentation deux colonnes.
+    const telephonePortrait = () => window.innerWidth <= 700
         && window.matchMedia('(pointer: coarse)').matches;
 
-    state.isMobileView = choix ? choix === 'mobile' : telephone;
-    document.body.classList.toggle('mobile-view', state.isMobileView);
-    if (state.isMobileView) {
-        document.body.style.overflowX = 'hidden';
-        // En présentation portable, un panneau à la fois : sans panneau actif,
-        // l'écran démarrait VIDE (ni catalogue ni grille). L'élève arrive sur
-        // la grille d'exercices ; la barre basse mène au reste.
-        const main = document.getElementById('main-area');
-        if (main) main.classList.add('mob-active');
-    }
+    const appliquer = () => {
+        const choix = choixMemorise();
+        state.isMobileView = choix ? choix === 'mobile' : telephonePortrait();
+        document.body.classList.toggle('mobile-view', state.isMobileView);
+        document.body.style.overflowX = state.isMobileView ? 'hidden' : '';
+        if (state.isMobileView) {
+            // En présentation portable, un panneau à la fois : sans panneau
+            // actif, l'écran démarrait VIDE. L'élève arrive sur la grille
+            // d'exercices ; la barre basse mène au reste.
+            const main = document.getElementById('main-area');
+            const sidebar = document.getElementById('sidebar');
+            if (main && sidebar && !main.classList.contains('mob-active')
+                && !sidebar.classList.contains('mob-active')) {
+                main.classList.add('mob-active');
+            }
+        }
+    };
+
+    appliquer();
+
+    // Rotation portrait ↔ paysage : la présentation suit, tant qu'aucun
+    // choix manuel (bascule 📱) n'a été mémorisé.
+    let minuteur = null;
+    window.addEventListener('resize', () => {
+        if (choixMemorise()) return;
+        clearTimeout(minuteur);
+        minuteur = setTimeout(appliquer, 250);
+    });
 }
 
 // --- Filtre par niveau ------------------------------------------------------
@@ -311,6 +332,16 @@ function initNavButtons() {
     const toggleSidebar = () => {
         const sidebar = document.getElementById('sidebar');
         const mobile = window.innerWidth <= 768 || document.body.classList.contains('mobile-view');
+        // En professeur sur téléphone, tout est empilé (parcours en haut,
+        // catalogue en bas) et la barre latérale est toujours affichée : le
+        // bouton ☰ fait alors la navette entre les deux.
+        if (mobile && state.isTeacherMode) {
+            const appBody = document.getElementById('app-body');
+            const versLeCatalogue = appBody.scrollTop < sidebar.offsetTop - 120;
+            (versLeCatalogue ? sidebar : document.getElementById('main-area'))
+                .scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
         sidebar.classList.toggle(mobile ? 'mob-active' : 'collapsed');
     };
     const burger = document.getElementById('btn-toggle-sidebar');
@@ -467,24 +498,49 @@ function initStatusFilter() {
  * pour tester la carte des mondes, le mode apprentissage et le reste sans
  * rien construire à la main.
  */
-async function generateSampleData() {
+/**
+ * Construit le « Parcours découverte » : cinq étapes variées en mode
+ * apprentissage. C'est le parcours d'exemple livré avec l'application.
+ */
+async function buildDiscoveryPath() {
     const [{ makeStep, makePath }, { apprentissagePolicy }] = await Promise.all([
         import('./core/path.js'), import('./core/policy.js')
     ]);
+    const steps = [
+        makeStep('calc-add', {}, { nbItems: 5, threshold: 3 }),
+        makeStep('calc-mult-flash', {}, { nbItems: 5, threshold: 3 }),
+        makeStep('frac-compare-facile', {}, { nbItems: 5, threshold: 3 }),
+        makeStep('mes-perimetre', {}, { nbItems: 4, threshold: 3 }),
+        makeStep('calc-prio-resultat', {}, { nbItems: 5, threshold: 3 })
+    ];
+    return makePath('Parcours découverte', steps, apprentissagePolicy());
+}
 
+/**
+ * Au premier lancement (aucun parcours sur ce poste), un parcours d'exemple
+ * est créé d'office : l'élève le trouve dans « Mon Parcours » sous « Parcours
+ * du professeur », et le professeur dans 📂 Mes Parcours — de quoi tout
+ * essayer sans rien construire.
+ */
+async function seedExamplePath() {
+    if (state.teacherPaths.length) return;
+    const path = await buildDiscoveryPath();
+    state.saveTeacherPath(path.name, path);
+}
+
+async function generateSampleData() {
     if (!state.teacherPaths.some(p => p.name === 'Parcours découverte')) {
-        const steps = [
-            makeStep('calc-add', {}, { nbItems: 5, threshold: 3 }),
-            makeStep('calc-mult-flash', {}, { nbItems: 5, threshold: 3 }),
-            makeStep('frac-compare-facile', {}, { nbItems: 5, threshold: 3 }),
-            makeStep('mes-perimetre', {}, { nbItems: 4, threshold: 3 }),
-            makeStep('calc-prio-resultat', {}, { nbItems: 5, threshold: 3 })
-        ];
-        const path = makePath('Parcours découverte', steps, apprentissagePolicy());
-        state.saveTeacherPath('Parcours découverte', path);
-        // Assigné à l'élève : la carte des mondes de « Mon Parcours » se
-        // remplit comme si un code avait été saisi.
-        state.setStudentPath(steps, { pathId: path.id, name: 'Parcours découverte', policy: path.policy });
+        const path = await buildDiscoveryPath();
+        state.saveTeacherPath(path.name, path);
+    }
+
+    // Assigné à l'élève : la carte des mondes de « Mon Parcours » se remplit
+    // comme si un code avait été saisi.
+    const saved = state.teacherPaths.find(p => p.name === 'Parcours découverte');
+    if (saved && (!state.studentPath || !state.studentPath.steps || !state.studentPath.steps.length)) {
+        state.setStudentPath(saved.data.steps, {
+            pathId: saved.data.id, name: saved.name, policy: saved.data.policy
+        });
     }
 
     genererTentativesExemple();

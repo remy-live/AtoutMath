@@ -53,6 +53,9 @@ export function createLibraryItem(exo) {
         if (!state.isTeacherMode) return;
         // Une étape est une référence à l'exercice, pas une copie de celui-ci.
         import('./builder.js').then(module => module.addStep(exo.id));
+        // Sur téléphone, la colonne du parcours est hors de vue quand on
+        // parcourt le catalogue : sans ce retour, l'ajout semblait muet.
+        import('./modal.js').then(m => m.showToast(`« ${exo.title} » ajouté au parcours`, 'success'));
     };
     item.appendChild(btnAdd);
 
