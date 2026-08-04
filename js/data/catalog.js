@@ -3,6 +3,7 @@ import { numerationExercises } from './numeration.js';
 import { fractionsExercises } from './fractions.js';
 import { geometrieExercises } from './geometrie.js';
 import { mesuresExercises } from './mesures.js';
+import { donneesExercises } from './donnees.js';
 import { getGenerator, getActivity } from '../core/registry.js';
 import { matchSkills } from './skills.js';
 import { STATUS } from './status.js';
@@ -12,7 +13,8 @@ export const exercices = [
     ...calculExercises,
     ...fractionsExercises,
     ...geometrieExercises,
-    ...mesuresExercises
+    ...mesuresExercises,
+    ...donneesExercises
 ];
 
 export const domaines = [...new Set(exercices.map(e => e.tags.chemin[0]))].sort();

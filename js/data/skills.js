@@ -126,6 +126,14 @@ const BASE = {
         descriptor: 'Additionner deux fractions ayant le même dénominateur.',
         lesson: '2/7 + 3/7 = 5/7 : on additionne les numérateurs, le dénominateur ne change pas.'
     },
+    'num.frac.simplification': {
+        label: 'Simplifier une fraction',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.frac.sens'],
+        descriptor: 'Rendre une fraction irréductible en divisant numérateur et dénominateur par leurs facteurs communs.',
+        lesson: 'On cherche un diviseur commun au numérateur et au dénominateur : 36/48 = (12×3)/(12×4) = 3/4. Quand il n\'y a plus aucun diviseur commun, la fraction est irréductible.'
+    },
     // --- Chapitre « Nombres entiers et décimaux » (6ᵉ) ---
     'num.ecriture.lettres': {
         label: 'Écrire un nombre en chiffres et en lettres',
@@ -255,6 +263,30 @@ const BASE = {
         prereqs: ['geo.angles.mesure'],
         descriptor: 'Construire un angle de mesure donnée à l\'aide du rapporteur.',
         lesson: 'Centre sur le sommet, zéro sur le côté déjà tracé : repère la graduation voulue en partant de ce zéro, puis trace le second côté qui passe par elle.'
+    },
+    'geo.espace.orientation': {
+        label: 'Se représenter un solide dans l\'espace',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Anticiper mentalement l\'effet d\'une rotation d\'un quart de tour sur un solide.',
+        lesson: 'Un quart de tour = 90°. Avant d\'agir, imagine le mouvement dans ta tête : que devient la face de devant ? Quatre quarts de tour ramènent toujours le solide à sa position de départ.'
+    },
+    'don.tableur.reperage': {
+        label: 'Se repérer dans un tableur',
+        chemin: [D.DONNEES, SD.TABLEUR],
+        niveaux: [N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Identifier une cellule (B3) et une plage de cellules (A1:B2) dans une feuille de calcul.',
+        lesson: 'Une cellule se nomme colonne puis ligne : B3 = colonne B, ligne 3. Une plage se nomme par ses deux coins séparés par deux-points : A1:B2.'
+    },
+    'don.tableur.formules': {
+        label: 'Écrire une formule de tableur',
+        chemin: [D.DONNEES, SD.TABLEUR],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['don.tableur.reperage', 'num.add.entiers'],
+        descriptor: 'Écrire une formule utilisant des références de cellules et les fonctions SOMME et MOYENNE.',
+        lesson: 'Une formule commence par = et utilise les RÉFÉRENCES des cases : =A1+B1, =SOMME(A1:A4). Si une case change, le tableur recalcule tout seul — c\'est toute sa force.'
     },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',

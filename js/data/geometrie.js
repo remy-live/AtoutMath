@@ -55,11 +55,23 @@ export const geometrieExercises = [
         id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
         activityId: 'galactic',
         params: { startLevel: 1, lives: 3 },
-        paramSchema: {
-            startLevel: { type: 'number', label: 'Niveau de départ', min: 1, max: 6, default: 1 },
-            lives: { type: 'number', label: 'Vies', min: 1, max: 5, default: 3 }
-        },
+        paramSchema: [
+            { id: 'startLevel', type: 'number', label: 'Niveau de départ', min: 1, max: 6, default: 1 },
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 }
+        ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Un ennemi apparaît au-dessus d'un rapporteur géant : lis l'angle sur la bonne échelle, tape-le au clavier et tire ! Attention aux niveaux à échelle inversée où le canon tire à 180 − x, aux astéroïdes qui bloquent les tirs, et aux cibles mouvantes."
+    },
+    {
+        id: 'geo-rotate3d', status: STATUS.TEST, title: 'Solides 3D : Passe-Muraille',
+        activityId: 'rotate3d',
+        params: { speed: 1, forme: 'toutes' },
+        paramSchema: [
+            { id: 'speed', type: 'select', label: 'Vitesse du mur', options: [1, 2, 3], default: 1 },
+            { id: 'forme', type: 'select', label: 'Solides', options: ['toutes', 'pave', 'pyramide', 'arche'], default: 'toutes' }
+        ],
+        skills: ['geo.espace.orientation'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Un mur troué approche ! Tourne ton solide par quarts de tour (90°) — basculer ⬆⬇, pivoter ⬅➡, tourner ↺↻ — pour le superposer à la silhouette en pointillés avant l'impact."
     }
 ];

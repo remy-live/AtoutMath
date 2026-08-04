@@ -182,7 +182,10 @@ const legacy = [
     ['tetris', 'Math Tetris', 'tetris', 'engineTetris'],
     ['crush', 'Math Crush', 'math_crush', 'engineMathCrush'],
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
-    ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic']
+    ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
+    ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
+    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur'],
+    ['rotate3d', 'Solides 3D', 'rotate3d', 'engineRotate3D']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

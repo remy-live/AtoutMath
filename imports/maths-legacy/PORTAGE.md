@@ -20,15 +20,15 @@ didactiques, et intégration au mode apprentissage.
 | prio | Priorités opératoires | ✅ Déjà couvert (Prio-Bot) |
 | quiz | Quiz générique | ✅ Déjà couvert (activités choice/numpad) |
 | snake | Serpent qui mange les bons résultats | ⏳ À porter (autonome) |
-| fractions | Samouraï des fractions (visuel) | ⏳ À porter (fort potentiel) |
-| spreadsheet | École du tableur (formules, références) | ⏳ À porter (fort potentiel) |
+| fractions | Samouraï des fractions (simplification) | ✅ Porté (`js/games/fractions_samurai.js`) |
+| spreadsheet | École du tableur (formules, références) | ✅ Porté (`js/games/spreadsheet.js`) |
 | defense | Tower defense sur la divisibilité | ⏳ À porter |
 | dungeon | Donjon (chrono, taille config) | ⏳ À porter |
 | bubble | Bubble shooter « vise 10 » | ⏳ À porter |
 | drop | Empiler pour faire 10 | ⏳ À étudier (proche de Crush/Tetris) |
 | jump / flappy / ninja | Arcade réflexes | ⏳ À étudier |
-| rotate | Solides 3D fil de fer à aligner | ⏳ À porter (géométrie dans l'espace) |
+| rotate | Solides 3D fil de fer à aligner | ✅ Porté (`js/games/rotate3d.js`) |
 | divider | Usine à diviseurs | ⏳ À porter |
 | math-arcade | Hub arcade | ⏳ À étudier |
 
-Priorités suggérées : fractions, spreadsheet, rotate, snake, defense.
+Priorités suggérées pour la suite : snake, defense, divider, bubble.
