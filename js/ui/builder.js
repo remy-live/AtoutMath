@@ -243,7 +243,11 @@ export function addStep(exerciseId) {
     const step = makeStep(exerciseId, {}, { nbItems: 10, threshold: 7 });
     state.currentPath.steps.push(step);
     renderTeacherPath();
-    selectStep(step.stepId);
+    // Pas sur téléphone : le panneau de propriétés s'y ouvre en PLEIN ÉCRAN,
+    // et chaque ajout depuis le tiroir recouvrait donc tout — impossible
+    // d'ajouter plusieurs exercices à la suite. Les propriétés s'ouvrent d'un
+    // appui sur l'étape, quand on en a besoin.
+    if (!document.body.classList.contains('mobile-view')) selectStep(step.stepId);
 }
 
 // --- Rendu de la liste d'étapes ---------------------------------------------

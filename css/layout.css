@@ -65,6 +65,40 @@ body.mobile-view.teacher-mode #sidebar, body.mobile-view.teacher-mode #main-area
 body.mobile-view.teacher-mode #main-area { order: 1; flex: none !important; height: auto !important; overflow: visible !important; }
 body.mobile-view.teacher-mode #sidebar { order: 2; border-top: 2px solid var(--border); border-right: none; flex: 1 !important; }
 
+/* --- TIROIR DU CATALOGUE (professeur sur téléphone) ---
+   L'empilement parcours-puis-catalogue obligeait à défiler sans fin pour
+   ajouter un exercice. Le catalogue devient une FEUILLE COULISSANTE : le
+   parcours reste à l'écran, la poignée « 📚 Catalogue » dépasse en bas, un
+   appui ouvre le tiroir aux deux tiers — on ajoute (toast de confirmation)
+   en gardant le parcours en tête, puis on rabat. Le ☰ l'ouvre aussi. */
+body.mobile-view.teacher-mode #sidebar {
+    position: fixed; left: 0; right: 0; top: auto;
+    bottom: var(--bottom-nav-height);
+    height: min(64dvh, 540px);
+    transform: translateY(calc(100% - 52px));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 4000;
+    border-radius: 18px 18px 0 0;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -12px 34px rgba(15, 23, 42, 0.22);
+    background: var(--bg-panel);
+}
+body.mobile-view.teacher-mode #sidebar.drawer-open { transform: translateY(0); }
+/* De la place sous le parcours pour que la poignée ne cache rien. */
+body.mobile-view.teacher-mode #app-body { padding-bottom: calc(var(--bottom-nav-height) + 64px); }
+
+.drawer-handle { display: none; }
+body.mobile-view.teacher-mode .drawer-handle {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    width: 100%; padding: 8px 0 10px; flex-shrink: 0;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-main); font-weight: 700; font-size: .95rem;
+}
+.drawer-grip {
+    width: 44px; height: 5px; border-radius: 3px;
+    background: var(--border);
+}
+
 /* --- LAYOUT DU BUILDER --- */
 body.mobile-view .desktop-only { display: none !important; }
 #builder-view { display: none; flex-direction: row; padding: 0; height: 100%; width: 100%; }

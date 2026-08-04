@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=32">
-    <link rel="stylesheet" href="css/layout.css?v=32">
-    <link rel="stylesheet" href="css/ui.css?v=32">
-    <link rel="stylesheet" href="css/games.css?v=32">
-    <link rel="stylesheet" href="css/components.css?v=32">
-    <link rel="stylesheet" href="css/modules.css?v=32">
+    <link rel="stylesheet" href="css/base.css?v=33">
+    <link rel="stylesheet" href="css/layout.css?v=33">
+    <link rel="stylesheet" href="css/ui.css?v=33">
+    <link rel="stylesheet" href="css/games.css?v=33">
+    <link rel="stylesheet" href="css/components.css?v=33">
+    <link rel="stylesheet" href="css/modules.css?v=33">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -133,6 +133,14 @@
 
             <!-- SIDEBAR -->
             <aside id="sidebar">
+                <!-- Poignée du tiroir : en professeur sur téléphone, le
+                     catalogue devient une feuille qui glisse depuis le bas
+                     par-dessus le parcours. Invisible partout ailleurs. -->
+                <button id="drawer-handle" class="drawer-handle" aria-expanded="false"
+                        aria-label="Ouvrir ou fermer le catalogue d'exercices">
+                    <span class="drawer-grip" aria-hidden="true"></span>
+                    <span class="drawer-label">📚 Catalogue d'exercices</span>
+                </button>
                 <div class="sidebar-top-controls">
                     <div class="btn-group desktop-controls">
                         <button class="btn-toggle active" id="desk-btn-drill" title="Présentation par Clic">

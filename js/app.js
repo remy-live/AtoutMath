@@ -329,19 +329,23 @@ function initNavButtons() {
         if (input) input.focus();
     };
 
+    // Tiroir du catalogue (professeur sur téléphone) : la poignée et le ☰
+    // ouvrent et ferment la même feuille coulissante.
+    const toggleDrawer = () => {
+        const sidebar = document.getElementById('sidebar');
+        const ouvert = sidebar.classList.toggle('drawer-open');
+        const handle = document.getElementById('drawer-handle');
+        if (handle) handle.setAttribute('aria-expanded', String(ouvert));
+    };
+    const handle = document.getElementById('drawer-handle');
+    if (handle) handle.onclick = toggleDrawer;
+
     const toggleSidebar = () => {
         const sidebar = document.getElementById('sidebar');
         const mobile = window.innerWidth <= 768 || document.body.classList.contains('mobile-view');
-        // En professeur sur téléphone, tout est empilé (parcours en haut,
-        // catalogue en bas) et la barre latérale est toujours affichée : le
-        // bouton ☰ fait alors la navette entre les deux.
-        if (mobile && state.isTeacherMode) {
-            const appBody = document.getElementById('app-body');
-            const versLeCatalogue = appBody.scrollTop < sidebar.offsetTop - 120;
-            (versLeCatalogue ? sidebar : document.getElementById('main-area'))
-                .scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-        }
+        // En professeur sur téléphone, le catalogue est un tiroir : le ☰
+        // l'ouvre et le ferme, comme sa poignée.
+        if (mobile && state.isTeacherMode) return toggleDrawer();
         sidebar.classList.toggle(mobile ? 'mob-active' : 'collapsed');
     };
     const burger = document.getElementById('btn-toggle-sidebar');
