@@ -1,0 +1,414 @@
+{
+    "adventure": [
+        {
+            "id": "lvl_01",
+            "gameId": "memory",
+            "title": "Niveau 1 : Échauffement",
+            "description": "Trouve 4 paires sans limite de temps.",
+            "config": {
+                "nbPairs": 4,
+                "timeLimit": 0
+            },
+            "winCondition": {
+                "minScore": 400
+            }
+        },
+        {
+            "id": "lvl_02",
+            "gameId": "memory",
+            "title": "Niveau 2 : Contre la Montre",
+            "description": "6 paires en moins de 60 secondes.",
+            "requiredLevel": "lvl_01",
+            "config": {
+                "nbPairs": 6,
+                "timeLimit": 60
+            },
+            "winCondition": {
+                "minScore": 600
+            }
+        },
+        {
+            "id": "lvl_03",
+            "gameId": "dungeon",
+            "title": "Donjon : L'Entrée",
+            "description": "Traverse la salle en suivant les résultats.",
+            "requiredLevel": "lvl_02",
+            "config": {
+                "gridSize": 4,
+                "lives": 3,
+                "difficulty": 1,
+                "timeLimit": 0
+            },
+            "winCondition": {
+                "minScore": 200
+            }
+        }
+    ],
+    "freeMode": [
+        {
+    "id": "angle-master",
+    "name": "Angle Master 📐",
+    "folder": "games/angle-master",
+    "script": "script.js",
+    "options": [
+        { "label": "Lancer", "config": {} }
+    ]
+},
+        {
+    "id": "fractions",
+    "name": "Samouraï des Fractions ⚔️",
+    "folder": "games/fractions",
+    "script": "script.js",
+    "options": [
+        { "label": "Entraînement", "config": {} }
+    ]
+},
+        {
+    "id": "math-arcade",
+    "name": "Maths Arcade (x10, ÷10)",
+    "folder": "games/math-arcade",
+    "script": "script.js",
+    "options": [
+        { "label": "Lancer", "config": {} }
+    ]
+},
+        {
+    "id": "spreadsheet",
+    "name": "École du Tableur 📊",
+    "folder": "games/spreadsheet",
+    "script": "script.js",
+    "options": [
+        {
+            "label": "Lancer le cours",
+            "config": {}
+        }
+    ]
+},
+        {
+    "id": "galactic",
+    "name": "Galactic Gunner 🌠",
+    "folder": "games/galactic",
+    "script": "script.js",
+    "options": [
+        { "label": "Niveau 1 (Normal)", "config": { "startLevel": 1, "lives": 3 } },
+        { "label": "Niveau 3 (Expert)", "config": { "startLevel": 3, "lives": 3 } }
+    ]
+},
+        {
+            "id": "vault",
+            "name": "Le Coffre-Fort 🔐",
+            "folder": "games/vault",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Niveau 1 (1 à 100)",
+                    "config": {
+                        "maxNumber": 100,
+                        "attempts": 10
+                    }
+                },
+                {
+                    "label": "Niveau 2 (1 à 1000)",
+                    "config": {
+                        "maxNumber": 1000,
+                        "attempts": 12
+                    }
+                },
+                {
+                    "label": "Expert (1 à 10 000)",
+                    "config": {
+                        "maxNumber": 10000,
+                        "attempts": 15
+                    }
+                }
+            ]
+        },
+        {
+            "id": "multi",
+            "name": "Multi-Trainer ✖️",
+            "folder": "games/multi",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Débutant (Tables 2 à 5)",
+                    "config": {
+                        "tables": [
+                            2,
+                            3,
+                            4,
+                            5
+                        ],
+                        "totalQuestions": 20
+                    }
+                },
+                {
+                    "label": "Avancé (Tables 6 à 9)",
+                    "config": {
+                        "tables": [
+                            6,
+                            7,
+                            8,
+                            9
+                        ],
+                        "totalQuestions": 20
+                    }
+                },
+                {
+                    "label": "Expert (Toutes les tables)",
+                    "config": {
+                        "tables": [
+                            2,
+                            3,
+                            4,
+                            5,
+                            6,
+                            7,
+                            8,
+                            9,
+                            10
+                        ],
+                        "totalQuestions": 30
+                    }
+                }
+            ]
+        },
+        {
+            "id": "prio",
+            "name": "Prio-Bot 🤖",
+            "folder": "games/prio",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Mode Standard",
+                    "config": {
+                        "difficulty": 1
+                    }
+                }
+            ]
+        },
+        {
+            "id": "divider",
+            "name": "The Divider 🏭",
+            "folder": "games/divider",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Lancer la chaîne",
+                    "config": {}
+                }
+            ]
+        },
+        {
+            "id": "flappy",
+            "name": "Flappy Math 🐦",
+            "folder": "games/flappy",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Vol Libre",
+                    "config": {}
+                }
+            ]
+        },
+        {
+            "id": "drop",
+            "name": "Number Drop 🧱",
+            "folder": "games/drop",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Mode Normal",
+                    "config": {
+                        "speed": 800
+                    }
+                },
+                {
+                    "label": "Mode Rapide",
+                    "config": {
+                        "speed": 500
+                    }
+                }
+            ]
+        },
+        {
+            "id": "ninja",
+            "name": "Math Ninja 🥷",
+            "folder": "games/ninja",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Mode Dojo",
+                    "config": {}
+                }
+            ]
+        },
+        {
+            "id": "space",
+            "name": "Math Invaders 👾",
+            "folder": "games/space",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Mission Standard",
+                    "config": {}
+                }
+            ]
+        },
+        {
+            "id": "snake",
+            "name": "Math Snake 🐍",
+            "folder": "games/snake",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Additions (Lent)",
+                    "config": {
+                        "mode": "add",
+                        "speed": 200,
+                        "gridSize": 15
+                    }
+                },
+                {
+                    "label": "Multiplications (Normal)",
+                    "config": {
+                        "mode": "mult",
+                        "speed": 150,
+                        "gridSize": 15
+                    }
+                },
+                {
+                    "label": "Expert (Rapide !)",
+                    "config": {
+                        "mode": "mult",
+                        "speed": 100,
+                        "gridSize": 20
+                    }
+                }
+            ]
+        },
+        {
+            "id": "mole",
+            "name": "Tape-Taupe 🐹",
+            "folder": "games/mole",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Table de 2 (30s)",
+                    "config": {
+                        "mode": "multiples",
+                        "target": 2,
+                        "speed": 1200
+                    }
+                },
+                {
+                    "label": "Table de 5 (Rapide)",
+                    "config": {
+                        "mode": "multiples",
+                        "target": 5,
+                        "speed": 900
+                    }
+                },
+                {
+                    "label": "Nombres PAIRS",
+                    "config": {
+                        "mode": "even",
+                        "target": 2,
+                        "speed": 1000
+                    }
+                },
+                {
+                    "label": "Table de 9 (Expert)",
+                    "config": {
+                        "mode": "multiples",
+                        "target": 9,
+                        "speed": 700
+                    }
+                }
+            ]
+        },
+        {
+            "id": "memory",
+            "name": "Memory Cartes 🃏",
+            "folder": "games/memory",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Facile (10 paires)",
+                    "config": {
+                        "nbPairs": 10,
+                        "timeLimit": 0
+                    }
+                },
+                {
+                    "label": "Chrono (10 paires - 60s)",
+                    "config": {
+                        "nbPairs": 10,
+                        "timeLimit": 60
+                    }
+                },
+                {
+                    "label": "Expert (18 paires)",
+                    "config": {
+                        "nbPairs": 18,
+                        "timeLimit": 0
+                    }
+                }
+            ]
+        },
+        {
+            "id": "dungeon",
+            "name": "Math Dungeon 🏰",
+            "folder": "games/dungeon",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Débutant (Grille 4x4)",
+                    "config": {
+                        "gridSize": 4,
+                        "lives": 3,
+                        "difficulty": 1,
+                        "timeLimit": 0
+                    }
+                },
+                {
+                    "label": "Standard (Grille 5x5 - Chrono)",
+                    "config": {
+                        "gridSize": 5,
+                        "lives": 3,
+                        "difficulty": 2,
+                        "timeLimit": 60
+                    }
+                },
+                {
+                    "label": "Expert (Grille 8x8)",
+                    "config": {
+                        "gridSize": 8,
+                        "lives": 5,
+                        "difficulty": 3,
+                        "timeLimit": 120
+                    }
+                }
+            ]
+        },
+        {
+            "id": "race",
+            "name": "Math Racer 🏎️",
+            "folder": "games/race",
+            "script": "script.js",
+            "options": [
+                {
+                    "label": "Course Débutant",
+                    "config": {
+                        "startLevel": 1
+                    }
+                },
+                {
+                    "label": "Course Rapide (Niv 2)",
+                    "config": {
+                        "startLevel": 2
+                    }
+                }
+            ]
+        }
+    ]
+}

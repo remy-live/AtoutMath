@@ -204,6 +204,17 @@ export const calculExercises = [
         instruction: "Combine les blocs pour que leur produit donne la cible demandée !"
     },
     {
+        id: 'calc-vault', status: STATUS.TEST, title: 'Le Coffre-Fort',
+        activityId: 'vault',
+        params: { maxNumber: 100, attempts: 10 },
+        paramSchema: [
+            { id: 'maxNumber', type: 'select', label: 'Code entre 1 et…', options: [50, 100, 200, 500, 1000], default: 100 },
+            { id: 'attempts', type: 'number', label: 'Essais par coffre', default: 10, min: 4, max: 15 }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Trouve le code secret ! À chaque essai, le coffre répond « c'est plus » ou « c'est moins ». Astuce de champion : propose toujours le milieu de la zone possible."
+    },
+    {
         id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
         activityId: 'crush',
         params: { mode: 'addition', difficulty: 'progressive' },

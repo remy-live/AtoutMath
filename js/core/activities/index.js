@@ -180,7 +180,8 @@ const legacy = [
     ['labyrinthe', 'Labyrinthe', 'labyrinthe', 'engineLabyrinthe'],
     ['course', 'Course', 'course', 'engineCourse'],
     ['tetris', 'Math Tetris', 'tetris', 'engineTetris'],
-    ['crush', 'Math Crush', 'math_crush', 'engineMathCrush']
+    ['crush', 'Math Crush', 'math_crush', 'engineMathCrush'],
+    ['vault', 'Le Coffre-Fort', 'vault', 'engineVault']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

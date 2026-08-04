@@ -232,6 +232,14 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    'num.logique.dichotomie': {
+        label: 'Encadrer un nombre (dichotomie)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Trouver un nombre inconnu en resserrant un encadrement par essais « plus / moins ».',
+        lesson: 'Propose toujours le MILIEU de la zone possible : chaque réponse « plus » ou « moins » élimine la moitié des nombres. Entre 1 et 100, sept essais suffisent toujours.'
+    },
     'geo.angles.mesure': {
         label: 'Mesurer un angle au rapporteur',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathBox - Salle Info</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div id="system-overlay">
+        <div class="spinner">MATHBOX<br>Chargement...</div>
+    </div>
+
+    <div id="app-root">
+        
+        <header id="main-header" class="main-header">
+            <div class="logo">MathBox</div>
+            <div class="code-input-container">
+                <input type="text" id="prof-code" placeholder="Code Prof">
+                <button id="btn-load-code">Charger</button>
+            </div>
+        </header>
+
+        <div id="quick-access-bar" class="hidden">
+            <span class="label">ACCÈS RAPIDE :</span>
+            <div id="quick-buttons"></div>
+        </div>
+
+        <main id="main-content">
+            
+            <section id="menu-view" class="view active">
+                <div class="container">
+                    
+                    <div class="menu-tabs">
+                        <button id="tab-adventure" class="tab-btn active">🗺️ PARCOURS</button>
+                        <button id="tab-free" class="tab-btn">🕹️ LIBRE</button>
+                    </div>
+                    
+                    <h2 id="menu-title">Mon Parcours</h2>
+
+                    <div id="adventure-container" class="adventure-view">
+                        <p style="text-align:center; color:#666; padding:20px;">Chargement du parcours...</p>
+                    </div>
+
+                    <div id="free-container" class="games-grid hidden"></div>
+
+                </div>
+            </section>
+
+            <section id="game-view" class="view hidden">
+                <div id="game-ui" class="hud-bar">
+                    <div class="hud-group left">
+                        <button id="btn-back" class="btn-secondary">⬅ MENU</button>
+                        <div id="module-lives" class="hud-readout hearts-box hidden">
+                            <span>❤❤❤</span>
+                        </div>
+                    </div>
+                    <div class="hud-group right">
+                        <div id="module-timer" class="hud-readout hidden">
+                            <span class="hud-label">TEMPS</span>
+                            <span id="display-timer">00:00</span>
+                        </div>
+                        <div id="module-score" class="hud-readout">
+                            <span class="hud-label">SCORE</span>
+                            <span id="display-score">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="game-canvas"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="core/particles.js"></script>
+    <script type="module" src="core/manager.js"></script>
+</body>
+</html>

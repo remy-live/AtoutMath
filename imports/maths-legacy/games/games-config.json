@@ -1,0 +1,14 @@
+[
+    {
+        "id": "demo",
+        "name": "Jeu Démo",
+        "folder": "games/demo",
+        "script": "script.js"
+    },
+    {
+        "id": "memory",
+        "name": "Memory Maths",
+        "folder": "games/memory",
+        "script": "script.js"
+    }
+]
