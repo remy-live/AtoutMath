@@ -86,6 +86,14 @@ const BASE = {
         descriptor: 'Compléter une grille de 0 et de 1 en raisonnant sur l\'équilibre et les interdits.',
         lesson: 'Deux chiffres identiques côte à côte forcent leurs deux voisines. Une ligne qui a tous ses 1 se finit avec des 0.'
     },
+    'num.calc.decomposition': {
+        label: 'Décomposer un nombre (calcul mental)',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Reconnaître rapidement les écritures d\'un nombre : sommes, différences, produits.',
+        lesson: 'Un même nombre s\'écrit de mille façons : 12 = 8 + 4 = 15 − 3 = 3 × 4. Les reconnaître d\'un coup d\'œil, c\'est ça, le calcul mental.'
+    },
     'num.logique.sudoku': {
         label: 'Sudoku',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

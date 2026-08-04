@@ -1,15 +1,22 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
 
+// Un DÉCOR par niveau : même règle, ambiance neuve — c'est le décor qui
+// récompense la progression, pas des objets à ramasser.
+const DECORS = [
+    { nom: 'Forêt', emoji: '🌲', fond: 'linear-gradient(160deg, #ecfdf5, #d1fae5)', casebg: '#f0fdf4', accent: '#059669', mur: '#a7f3d0' },
+    { nom: 'Océan', emoji: '🌊', fond: 'linear-gradient(160deg, #eff6ff, #dbeafe)', casebg: '#f0f9ff', accent: '#0284c7', mur: '#bae6fd' },
+    { nom: 'Désert', emoji: '🏜️', fond: 'linear-gradient(160deg, #fffbeb, #fef3c7)', casebg: '#fffdf5', accent: '#d97706', mur: '#fde68a' },
+    { nom: 'Volcan', emoji: '🌋', fond: 'linear-gradient(160deg, #fef2f2, #fee2e2)', casebg: '#fff5f5', accent: '#dc2626', mur: '#fecaca' },
+    { nom: 'Espace', emoji: '🌌', fond: 'linear-gradient(160deg, #1e1b4b, #312e81)', casebg: '#3730a3', accent: '#a78bfa', mur: '#4c1d95', sombre: true },
+    { nom: 'Banquise', emoji: '❄️', fond: 'linear-gradient(160deg, #f0fdfa, #ccfbf1)', casebg: '#f0fdff', accent: '#0d9488', mur: '#99f6e4' }
+];
+
 class Labyrinthe extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
-                .laby-arena { position: absolute; inset: 0; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; }
-                .laby-item { position: absolute; top: 2px; right: 4px; font-size: 0.85rem; z-index: 2; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }
-                .laby-cell.laby-porte-fermee .laby-item { font-size: 1.3rem; top: 50%; right: 50%; transform: translate(50%, -50%); }
-                .laby-key-indicator { display: none; }
-                .laby-key-indicator.on { display: inline; }
+                .laby-arena { position: absolute; inset: 0; background: var(--laby-fond, var(--bg-app)); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; transition: background .6s; }
                 .laby-float-gain { position: absolute; color: #10b981; font-weight: 900; font-size: 1.3rem; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.4); transform: translateX(-50%); }
                 .laby-header { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
                 .laby-stats { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
@@ -20,14 +27,16 @@ class Labyrinthe extends BaseGame {
                 .laby-timer-bar.danger { background: #ef4444; }
                 .laby-timer-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; color: var(--text-main); z-index: 1; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
                 
-                .laby-calc { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); font-size: 1.5rem; font-weight: bold; background: var(--primary); color: white; padding: 10px 30px; border-radius: 30px; box-shadow: 0 4px 15px rgba(79,70,229,0.3); z-index: 10; text-align: center; white-space: nowrap; transition: 0.2s; }
+                .laby-calc { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); font-size: 1.5rem; font-weight: bold; background: var(--laby-accent, var(--primary)); color: white; padding: 10px 30px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; text-align: center; white-space: nowrap; transition: 0.2s; }
                 .laby-calc.success { background: #10b981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transform: translateX(-50%) scale(1.1); }
                 .laby-calc.error { background: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3); animation: shake 0.4s; }
                 
-                .laby-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--border); border: 6px solid var(--border); border-radius: 12px; padding: 4px; box-shadow: var(--shadow-md); margin-top: 80px; width: 90vw; max-width: 450px; aspect-ratio: 1/1; position: relative; }
-                .laby-cell { background: var(--bg-panel); border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; user-select: none; transition: 0.2s; }
-                .laby-cell.lit { background: rgba(79, 70, 229, 0.08); box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.3); }
+                .laby-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--laby-mur, var(--border)); border: 6px solid var(--laby-mur, var(--border)); border-radius: 12px; padding: 4px; box-shadow: var(--shadow-md); margin-top: 80px; width: 90vw; max-width: 450px; aspect-ratio: 1/1; position: relative; transition: background .6s, border-color .6s; }
+                .laby-cell { background: var(--laby-case, var(--bg-panel)); border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; user-select: none; transition: 0.2s; }
+                .laby-cell.lit { background: rgba(79, 70, 229, 0.08); box-shadow: inset 0 0 0 2px var(--laby-accent, rgba(79, 70, 229, 0.3)); }
                 .laby-cell.visited { background: rgba(16, 185, 129, 0.15); }
+                .laby-arena.laby-sombre .laby-door { color: #e0e7ff; }
+                .laby-arena.laby-sombre .laby-cell.lit .laby-door { color: #fff; }
                 
                 .laby-door { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); opacity: 0.15; transition: 0.3s; z-index: 2; pointer-events: none; }
                 .laby-cell.lit .laby-door { opacity: 1; color: var(--text-main); }
@@ -36,7 +45,7 @@ class Labyrinthe extends BaseGame {
                 .laby-end { background: rgba(16,185,129,0.05); }
                 .laby-end::after { content: ''; position: absolute; width: 45%; height: 45%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'%3E%3C/path%3E%3Cpolyline points='16 17 21 12 16 7'%3E%3C/polyline%3E%3Cline x1='21' y1='12' x2='9' y2='12'%3E%3C/line%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.7; pointer-events: none; z-index: 1; }
                 
-                .laby-hero { position: absolute; background: var(--primary); border-radius: 50%; box-shadow: 0 4px 10px rgba(79,70,229,0.5); z-index: 3; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; display: flex; align-items: center; justify-content: center; left: 0; top: 0; }
+                .laby-hero { position: absolute; background: var(--laby-accent, var(--primary)); border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.35); z-index: 3; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; display: flex; align-items: center; justify-content: center; left: 0; top: 0; }
                 .laby-hero::after { content: ''; width: 40%; height: 40%; background: rgba(255,255,255,0.8); border-radius: 50%; }
                 
                 .laby-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: var(--text-muted); text-align: center; }
@@ -65,7 +74,7 @@ class Labyrinthe extends BaseGame {
             </style>
             <div class="laby-arena">
                 <div class="laby-header">
-                    <div class="laby-stats">Niv. <span id="laby-lvl">1</span> <span id="laby-key" class="laby-key-indicator">🗝️</span></div>
+                    <div class="laby-stats"><span id="laby-decor">🌲</span> Niv. <span id="laby-lvl">1</span></div>
                     <div class="laby-timer-container">
                         <div class="laby-timer-bar" id="laby-timer-bar"></div>
                         <div class="laby-timer-text"><span id="laby-time">0</span>s</div>
@@ -220,40 +229,24 @@ class Labyrinthe extends BaseGame {
         // 3. Remplir les leurres (bug corrigé : pas de leurre égal à la bonne réponse adjacente)
         this.fillDecoys();
 
-        // 3 bis. Objets sur le chemin : clé et porte, bonus à ramasser.
-        this.placeItems();
-
-        // 4. Rendu
+        // 4. Décor du niveau, puis rendu
+        this.appliquerDecor();
         this.renderBoard();
         this.updateUI();
     }
 
-    /**
-     * Clé, porte et bonus, posés SUR le chemin correct : ils récompensent
-     * celui qui calcule juste, sans jamais rendre le labyrinthe insoluble.
-     * La clé arrive toujours avant la porte (le chemin est ordonné).
-     */
-    placeItems() {
-        this.hasKey = false;
-        const keyEl = this.container.querySelector('#laby-key');
-        if (keyEl) keyEl.classList.remove('on');
-
-        // Cases intermédiaires du chemin (ni départ ni arrivée).
-        const milieu = this.pathCells.slice(1, -1);
-        milieu.forEach(p => { this.grid[p.y][p.x].item = null; });
-        if (milieu.length < 4) return;
-
-        // La porte garde la fin du chemin, la clé se gagne dans le premier tiers.
-        const iCle = Math.floor(milieu.length * (0.15 + Math.random() * 0.2));
-        const iPorte = Math.floor(milieu.length * (0.65 + Math.random() * 0.25));
-        this.grid[milieu[iCle].y][milieu[iCle].x].item = 'key';
-        this.grid[milieu[iPorte].y][milieu[iPorte].x].item = 'door';
-
-        // Deux étoiles (+15 points) et un sablier (+5 s), sur des cases libres.
-        const libres = milieu.filter((p, i) => i !== iCle && i !== iPorte);
-        const tirage = [...libres].sort(() => Math.random() - 0.5);
-        tirage.slice(0, 2).forEach(p => { this.grid[p.y][p.x].item = 'star'; });
-        if (tirage[2]) this.grid[tirage[2].y][tirage[2].x].item = 'time';
+    /** Chaque niveau a son AMBIANCE : fond, cases, murs et héros changent. */
+    appliquerDecor() {
+        const decor = DECORS[(this.level - 1) % DECORS.length];
+        const arena = this.container.querySelector('.laby-arena');
+        arena.style.setProperty('--laby-fond', decor.fond);
+        arena.style.setProperty('--laby-case', decor.casebg);
+        arena.style.setProperty('--laby-accent', decor.accent);
+        arena.style.setProperty('--laby-mur', decor.mur);
+        arena.classList.toggle('laby-sombre', !!decor.sombre);
+        const badge = this.container.querySelector('#laby-decor');
+        if (badge) badge.textContent = decor.emoji;
+        this.calcEl.title = decor.nom;
     }
 
     generatePath(startX, startY) {
@@ -326,14 +319,6 @@ class Labyrinthe extends BaseGame {
                 span.innerText = cellData.displayedNumber;
                 div.appendChild(span);
 
-                if (cellData.item) {
-                    const item = document.createElement('span');
-                    item.className = 'laby-item';
-                    item.textContent = { key: '🗝️', door: '🚪', star: '⭐', time: '⏳' }[cellData.item];
-                    div.appendChild(item);
-                    if (cellData.item === 'door') div.classList.add('laby-porte-fermee');
-                }
-                
                 // Touch interaction for mobile
                 div.onclick = () => this.tryMoveTo(x, y);
                 
@@ -431,19 +416,9 @@ class Labyrinthe extends BaseGame {
         const targetCell = this.grid[newY][newX];
         
         if (targetCell.displayedNumber == currentCell.correctAnswer) {
-            // La porte ne s'ouvre qu'avec la clé — le calcul est juste, mais
-            // il faut être passé par la case clé plus tôt sur le chemin.
-            if (targetCell.item === 'door' && !this.hasKey) {
-                this.calcEl.classList.add('error');
-                setTimeout(() => this.calcEl.classList.remove('error'), 400);
-                this.floatText(newX, newY, '🔒 Il faut la clé !', 'laby-float-loss');
-                return;
-            }
-
             // Correct move
             this.playerPos = { x: newX, y: newY };
             this.score += 10;
-            this.collectItem(newX, newY, targetCell);
             this.container.querySelector('#laby-score').textContent = this.score;
 
             this.drawHero();
@@ -479,33 +454,6 @@ class Labyrinthe extends BaseGame {
         }
     }
     
-    /** Ramasse l'objet de la case atteinte et applique son effet. */
-    collectItem(x, y, cell) {
-        if (!cell.item) return;
-        const cellDiv = this.boardEl.children[y * this.boardSize + x];
-        const itemEl = cellDiv ? cellDiv.querySelector('.laby-item') : null;
-
-        if (cell.item === 'key') {
-            this.hasKey = true;
-            const keyEl = this.container.querySelector('#laby-key');
-            if (keyEl) keyEl.classList.add('on');
-            this.floatText(x, y, '🗝️ Clé !', 'laby-float-gain');
-        } else if (cell.item === 'door') {
-            if (cellDiv) cellDiv.classList.remove('laby-porte-fermee');
-            this.floatText(x, y, '🚪 Ouverte !', 'laby-float-gain');
-        } else if (cell.item === 'star') {
-            this.score += 15;
-            this.floatText(x, y, '⭐ +15', 'laby-float-gain');
-        } else if (cell.item === 'time') {
-            this.timeLeft = Math.min(this.currentMaxTime, this.timeLeft + 5);
-            this.timeEl.textContent = this.timeLeft;
-            this.updateTimerVisuals();
-            this.floatText(x, y, '⏳ +5s', 'laby-float-gain');
-        }
-        cell.item = null;
-        if (itemEl) itemEl.remove();
-    }
-
     /** Texte flottant au-dessus d'une case (gain ou perte). */
     floatText(x, y, texte, classe) {
         const cellDiv = this.boardEl.children[y * this.boardSize + x];

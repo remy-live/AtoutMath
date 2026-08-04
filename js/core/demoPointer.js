@@ -148,9 +148,15 @@ export function createDemoGate(host) {
  * `regTimeout`, donc une démonstration interrompue ne laisse rien en vol.
  */
 export function createDemoCursor() {
+    // Un curseur créé en mode muet (vignettes d'aperçu) reste DISCRET pour
+    // toute sa vie : ni flèche ni bulle. Douze cartes qui montent leurs
+    // aperçus en même temps lançaient douze robots — autant de flèches et de
+    // bulles qui traversaient l'écran le temps du gel des vignettes.
+    const discret = muet;
     const el = document.createElement('div');
     el.className = 'demo-cursor';
     el.setAttribute('aria-hidden', 'true');
+    if (discret) el.style.display = 'none';
     el.innerHTML = `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
             <path d="M5 2.5 L5 19 L9.2 15.2 L11.9 21.2 L14.6 20 L12 14.2 L18 14 Z"
                   fill="#111827" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
@@ -192,7 +198,7 @@ export function createDemoCursor() {
          * `hideBubble()`, pour laisser le temps de lire.
          */
         say(texte, cible = null) {
-            if (destroyed || !texte || muet) return;
+            if (destroyed || !texte || muet || discret) return;
             if (!bulle) {
                 bulle = document.createElement('div');
                 bulle.className = 'demo-bubble';

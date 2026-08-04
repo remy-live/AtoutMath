@@ -26,7 +26,8 @@ didactiques, et intégration au mode apprentissage.
 | dungeon | Donjon (chrono, taille config) | ⏳ À porter |
 | bubble | Bubble shooter « vise 10 » | ⏳ À porter |
 | drop | Empiler pour faire 10 | ⏳ À étudier (proche de Crush/Tetris) |
-| jump / flappy / ninja | Arcade réflexes | ⏳ À étudier |
+| ninja | Trancher les calculs qui font la cible | ✅ Porté (`js/games/ninja.js`) |
+| jump / flappy | Arcade réflexes | ⏳ À étudier |
 | rotate | Solides 3D fil de fer à aligner | ❌ Porté puis retiré à la demande (2026-08) |
 | divider | Usine à diviseurs | ⏳ À porter |
 | math-arcade | Hub arcade | ⏳ À étudier |

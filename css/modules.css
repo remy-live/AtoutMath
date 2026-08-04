@@ -1543,6 +1543,40 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     user-select: none;
 }
 html[data-theme="dark"] .ga-signe { color: var(--text-main); }
+/* --- Table de Pythagore inversée ------------------------------
+   Le résultat est donné, la table est VIDE : on clique la case dont
+   ligne × colonne fait le résultat. La table se dimensionne sur la largeur
+   ET la hauteur du plateau : elle ne déborde jamais. */
+.pyt-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(4px, 1.2cqh, 12px); width: 100%; padding: 6px;
+}
+.pyt-question { margin: 0; }
+.pyt-cible { color: var(--warning); font-size: 1.25em; }
+.pyt-sous { font-size: .88rem; color: var(--text-muted); text-align: center; }
+.pyt-board {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    grid-template-rows: repeat(11, 1fr);
+    gap: 2px;
+    width: min(480px, 94cqw, 66cqh);
+    aspect-ratio: 1;
+    padding: 6px; border-radius: 12px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+}
+.pyt-cell {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 5px; font-weight: 700; min-width: 0; min-height: 0;
+    font-size: clamp(.6rem, 3.6cqh, 1rem);
+    border: none; font-family: inherit; padding: 0;
+}
+.pyt-cell--tete { background: var(--bg-hover); color: var(--text-muted); font-weight: 800; }
+.pyt-case { background: var(--bg-app); border: 1px solid var(--border); cursor: pointer; color: var(--text-main); }
+.pyt-case:hover { border-color: var(--primary); background: rgba(124, 92, 255, .10); }
+.pyt-case--ok { background: var(--success) !important; color: #fff !important; border-color: var(--success) !important; }
+.pyt-case--ko { background: var(--danger) !important; color: #fff !important; border-color: var(--danger) !important; }
+
 /* --- Sudoku : la grille aux blocs -----------------------------
    Lignes fines entre les cases, traits épais aux frontières des blocs et sur
    le pourtour — la grille de sudoku telle qu'on l'imprime. Les chiffres de

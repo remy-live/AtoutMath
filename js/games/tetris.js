@@ -111,6 +111,19 @@ class Tetris extends BaseGame {
                     user-select: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0.9; transition: all 0.1s;
                 }
                 .tetris-btn-ctrl:active { background: var(--primary); color: #fff; transform: scale(0.95); }
+                /* Pavé de contrôle : dans la colonne, sous la cible, le
+                   suivant et le score — jouable au pouce sur tablette. */
+                .tetris-pad { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+                .tetris-pad-row { display: flex; gap: 6px; justify-content: center; }
+                .tetris-pad-btn {
+                    width: 42px; height: 42px; border-radius: 10px;
+                    background: var(--bg-panel); border: 2px solid var(--primary); color: var(--primary);
+                    font-size: 1.15rem; font-weight: 900; cursor: pointer;
+                    display: flex; align-items: center; justify-content: center;
+                    user-select: none; -webkit-user-select: none; touch-action: manipulation;
+                    box-shadow: 0 2px 0 rgba(0,0,0,.12); font-family: inherit;
+                }
+                .tetris-pad-btn:active { background: var(--primary); color: #fff; transform: translateY(2px); box-shadow: none; }
                 .tetris-overlay {
                     position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
                     display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; border-radius: 16px;
@@ -133,6 +146,8 @@ class Tetris extends BaseGame {
                     .tetris-panel { padding: 5px; }
                     .tetris-panel h2 { font-size: 0.7rem; }
                     .tetris-value { font-size: 1.5rem; }
+                    .tetris-pad-btn { width: 26px; height: 34px; font-size: .95rem; }
+                    .tetris-pad-row { gap: 4px; }
                     #tetris-target-val { font-size: 1.8rem; }
                     .tetris-canvas-area { width: auto; flex: 1; max-width: 250px; }
                     .tetris-canvas-area canvas { width: 100%; height: auto; max-height: 60vh; object-fit: contain; }
@@ -157,6 +172,14 @@ class Tetris extends BaseGame {
                         <div class="tetris-panel">
                             <h2>SCORE</h2>
                             <div id="tetris-score-val" class="tetris-value">0</div>
+                        </div>
+                        <div class="tetris-panel tetris-pad">
+                            <button type="button" class="tetris-pad-btn tetris-pad-rot" data-pad="rot" aria-label="Tourner la pièce">⟳</button>
+                            <div class="tetris-pad-row">
+                                <button type="button" class="tetris-pad-btn" data-pad="left" aria-label="Déplacer à gauche">◀</button>
+                                <button type="button" class="tetris-pad-btn" data-pad="drop" aria-label="Faire descendre">▼</button>
+                                <button type="button" class="tetris-pad-btn" data-pad="right" aria-label="Déplacer à droite">▶</button>
+                            </div>
                         </div>
                     </div>
 
@@ -191,6 +214,20 @@ class Tetris extends BaseGame {
         
         this.container.querySelector('#tetris-btn-play').onclick = () => this.startPlay();
         this.container.querySelector('#tetris-btn-replay').onclick = () => this.startPlay();
+
+        // Pavé de la colonne : pointerdown (et non click) pour une réponse
+        // immédiate au doigt, sans le délai de synthèse du tap.
+        this.container.querySelectorAll('[data-pad]').forEach(btn => {
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                if (!this.gameRunning) return;
+                const geste = btn.dataset.pad;
+                if (geste === 'left') this.playerMove(-1);
+                else if (geste === 'right') this.playerMove(1);
+                else if (geste === 'rot') this.playerRotate();
+                else if (geste === 'drop') this.playerDrop();
+            });
+        });
 
         // Canvas touch/click controls
         this.cvs.addEventListener('pointerdown', (e) => {

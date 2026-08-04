@@ -81,19 +81,16 @@ registerActivity({
     mountOptions: { variant: 'signs', dragToSlot: true }
 });
 
-// Variante « table de Pythagore » : même activité de choix, plus un support
-// visuel construit à partir des métadonnées de l'item.
+// Table de Pythagore INVERSÉE : le résultat est donné, la table est vide,
+// l'élève clique une case dont ligne × colonne fait ce résultat — toutes les
+// décompositions valides sont acceptées.
 registerActivity({
     id: 'pythagore',
     label: 'Table de Pythagore',
     accepts: ['choice'],
     requiresMeta: ['t', 'm'],
     supports: { timed: true, autonomous: false, demo: true },
-    load: choiceModule,
-    mountOptions: {
-        variant: 'bubbles',
-        context: (item) => pythagoreTable(item.meta.m, item.meta.t)
-    }
+    load: () => import('./pythagore.js')
 });
 
 registerActivity({
@@ -193,7 +190,8 @@ const legacy = [
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
     ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
     ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
-    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur']
+    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur'],
+    ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {
@@ -207,21 +205,3 @@ legacy.forEach(([id, label, file, fn]) => {
     });
 });
 
-// --- Support visuel de la table de Pythagore --------------------------------
-
-function pythagoreTable(row, col) {
-    let html = '<div class="pytha-table" role="presentation">';
-    html += '<div class="pytha-cell pytha-cell--corner">×</div>';
-    for (let c = 1; c <= 10; c++) {
-        html += `<div class="pytha-cell pytha-cell--header${c === col ? ' pytha-cell--highlight' : ''}">${c}</div>`;
-    }
-    for (let r = 1; r <= 10; r++) {
-        html += `<div class="pytha-cell pytha-cell--header${r === row ? ' pytha-cell--highlight' : ''}">${r}</div>`;
-        for (let c = 1; c <= 10; c++) {
-            html += (r === row && c === col)
-                ? '<div class="pytha-cell pytha-cell--target">?</div>'
-                : `<div class="pytha-cell">${r * c}</div>`;
-        }
-    }
-    return html + '</div>';
-}

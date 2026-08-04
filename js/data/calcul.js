@@ -41,7 +41,7 @@ export const calculExercises = [
         generatorId: 'calc.mult.fact', activityId: 'pythagore',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Repère la ligne et la colonne surlignées dans la table, puis clique sur le bon résultat."
+        instruction: "Le résultat est donné, la table est vide : clique une case dont ligne × colonne fait ce résultat. Toutes les décompositions justes sont acceptées (6×7 comme 7×6)."
     },
     {
         id: 'calc-mult-missing', title: 'Facteur Manquant',
@@ -149,6 +149,18 @@ export const calculExercises = [
         params: { nbQuestions: 3, taille: 6, difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
+    },
+    {
+        id: 'calc-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
+        activityId: 'ninja',
+        params: { cibleMax: 20, lives: 3 },
+        paramSchema: [
+            { id: 'cibleMax', type: 'number', label: 'Cible jusqu\'à', min: 8, max: 60, default: 20 },
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 }
+        ],
+        skills: ['num.calc.decomposition'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Un nombre cible s'affiche : tranche d'un geste tous les fruits dont le calcul fait EXACTEMENT ce nombre — et laisse retomber les autres. Calcule avant de trancher !"
     },
     {
         id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
