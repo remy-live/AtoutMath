@@ -105,7 +105,7 @@ export const calculExercises = [
             { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['easy', 'medium', 'hard'], default: 'medium' }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Détruis la météorite qui porte le bon résultat en cliquant dessus !"
+        instruction: "Ton vaisseau suit ta souris (ou ton doigt). Tire sur toutes les météorites qui portent un MAUVAIS résultat, et attrape la BONNE réponse avec ton vaisseau !"
     },
     {
         id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
