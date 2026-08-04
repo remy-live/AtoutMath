@@ -2,6 +2,7 @@ import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
 import { generateMultFact } from '../core/generators.js';
 import { getWeakTables } from '../core/stats.js';
+import { meilleuresColonnes, mesurerCarte } from './memoryLayout.js';
 
 class MathMemory extends BaseGame {
     render() {
@@ -15,29 +16,46 @@ class MathMemory extends BaseGame {
                     align-items: center;
                     justify-content: center;
                     background: var(--bg-app);
-                    padding: 20px;
+                    /* Marge du bas renforcée : le plateau remplit la hauteur,
+                       et sans elle la dernière rangée passait sous la barre
+                       basse de Safari (ou sous la palette de débogage). */
+                    padding: clamp(6px, 2vmin, 20px);
+                    padding-bottom: calc(clamp(6px, 2vmin, 20px) + env(safe-area-inset-bottom, 0px) + 14px);
                     box-sizing: border-box;
+                    overflow: hidden;
                 }
+                /* Rangées souples plutôt que grille rigide : une dernière
+                   rangée incomplète se retrouve CENTRÉE, ce qui la fait
+                   paraître voulue au lieu d'oubliée à gauche. Largeur du
+                   plateau, taille des cartes et du texte sont posées par
+                   disposer() d'après le cadre réellement mesuré. */
                 .memory-grid {
-                    display: grid;
-                    gap: 15px;
-                    max-width: 800px;
-                    width: 100%;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: var(--mem-gap, 10px);
+                    justify-content: center;
+                    align-content: center;
+                    max-width: var(--mem-largeur-plateau, 100%);
                 }
                 .memory-card {
                     background: var(--bg-panel);
                     border: 2px solid var(--border);
                     border-radius: 12px;
-                    height: 80px;
+                    flex: 0 0 auto;
+                    width: var(--mem-w, 80px);
+                    height: var(--mem-h, 64px);
+                    box-sizing: border-box;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1.5rem;
+                    font-size: var(--mem-font, 1.5rem);
                     font-weight: bold;
+                    white-space: nowrap;   /* « 8 × 6 » ne se coupe jamais en deux */
                     color: var(--text-main);
                     cursor: pointer;
                     transition: transform 0.3s, background 0.3s, opacity 0.3s;
                     user-select: none;
+                    -webkit-user-select: none;
                     box-shadow: var(--shadow-sm);
                     transform-style: preserve-3d;
                 }
@@ -75,21 +93,53 @@ class MathMemory extends BaseGame {
                     75% { transform: translateX(5px); }
                 }
             </style>
-            <div class="memory-arena">
+            <div class="memory-arena" id="memory-arena">
                 <div class="memory-grid" id="memory-grid"></div>
             </div>
         `;
         this.gridEl = this.container.querySelector('#memory-grid');
+        this.arenaEl = this.container.querySelector('#memory-arena');
+
+        // Rotation de l'appareil, ouverture du clavier, redimensionnement du
+        // cadre d'aperçu : la disposition se recalcule à chaque fois.
+        this.observer = new ResizeObserver(() => this.disposer());
+        this.observer.observe(this.arenaEl);
+    }
+
+    /** Pose largeur du plateau, taille des cartes et du texte d'après le cadre réel. */
+    disposer() {
+        if (!this.gridEl || !this.arenaEl || !this.cards || !this.cards.length) return;
+        const n = this.cards.length;
+        const style = getComputedStyle(this.arenaEl);
+        const largeur = this.arenaEl.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        const hauteur = this.arenaEl.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        if (largeur <= 0 || hauteur <= 0) return;
+
+        // Sur un cadre étroit (téléphone en portrait), un écart généreux mange
+        // la place utile : il se resserre avec la largeur.
+        const gap = Math.max(5, Math.min(14, largeur / 40));
+
+        const cols = meilleuresColonnes(n, largeur, hauteur, gap);
+        const { largeurCarte, hauteurCarte } = mesurerCarte(n, cols, largeur, hauteur, gap);
+
+        this.gridEl.style.setProperty('--mem-gap', `${gap.toFixed(1)}px`);
+        this.gridEl.style.setProperty('--mem-w', `${largeurCarte.toFixed(1)}px`);
+        this.gridEl.style.setProperty('--mem-h', `${hauteurCarte.toFixed(1)}px`);
+        // Le plateau est bridé à la largeur d'une rangée pleine : c'est ce qui
+        // fait passer les cartes à la ligne au bon endroit, la dernière rangée
+        // se centrant alors d'elle-même.
+        this.gridEl.style.setProperty('--mem-largeur-plateau',
+            `${(largeurCarte * cols + gap * (cols - 1)).toFixed(1)}px`);
+        // Le texte suit la carte : « 10 × 10 » fait sept caractères, on vise
+        // donc un peu moins du quart de la largeur, borné pour rester lisible.
+        const police = Math.max(11, Math.min(30, Math.min(largeurCarte * 0.23, hauteurCarte * 0.42)));
+        this.gridEl.style.setProperty('--mem-font', `${police.toFixed(1)}px`);
     }
 
     startGameLoop() {
         this.pairsFound = 0;
         this.targetPairs = Math.min(this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
-        
-        // Setup Grid CSS
-        const cols = this.targetPairs > 8 ? 6 : (this.targetPairs > 4 ? 4 : 3);
-        this.gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-        
+
         this.cards = [];
         this.firstPick = null;
         this.lockBoard = false;
@@ -134,6 +184,13 @@ class MathMemory extends BaseGame {
             this.gridEl.appendChild(el);
             this.cards.push({ el, data, isMatched: false });
         });
+
+        this.disposer();
+    }
+
+    destroy() {
+        if (this.observer) { this.observer.disconnect(); this.observer = null; }
+        super.destroy();
     }
 
     runDemoSequence() {
