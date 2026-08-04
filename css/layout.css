@@ -74,7 +74,7 @@ body.mobile-view.teacher-mode #sidebar { order: 2; border-top: 2px solid var(--b
 body.mobile-view.teacher-mode #sidebar {
     position: fixed; left: 0; right: 0; top: auto;
     bottom: var(--bottom-nav-height);
-    height: min(64dvh, 540px);
+    height: 64vh; height: min(64dvh, 540px);
     transform: translateY(calc(100% - 52px));
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 4000;
@@ -90,10 +90,15 @@ body.mobile-view.teacher-mode #app-body { padding-bottom: calc(var(--bottom-nav-
 .drawer-handle { display: none; }
 body.mobile-view.teacher-mode .drawer-handle {
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    width: 100%; padding: 8px 0 10px; flex-shrink: 0;
-    background: none; border: none; cursor: pointer;
+    width: 100%; padding: 10px 0 12px; flex-shrink: 0;
+    background: none; border: none; cursor: grab;
     color: var(--text-main); font-weight: 700; font-size: .95rem;
+    /* La poignée se tire : sans cela, Safari transforme le glissement en
+       défilement de page et le tiroir ne bouge jamais. */
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
 }
+body.mobile-view.teacher-mode .drawer-handle:active { cursor: grabbing; }
 .drawer-grip {
     width: 44px; height: 5px; border-radius: 3px;
     background: var(--border);

@@ -331,14 +331,77 @@ function initNavButtons() {
 
     // Tiroir du catalogue (professeur sur téléphone) : la poignée et le ☰
     // ouvrent et ferment la même feuille coulissante.
-    const toggleDrawer = () => {
+    const setDrawer = (ouvert) => {
         const sidebar = document.getElementById('sidebar');
-        const ouvert = sidebar.classList.toggle('drawer-open');
+        sidebar.classList.toggle('drawer-open', ouvert);
+        sidebar.style.transform = '';
+        sidebar.style.transition = '';
         const handle = document.getElementById('drawer-handle');
         if (handle) handle.setAttribute('aria-expanded', String(ouvert));
     };
+    const toggleDrawer = () => {
+        setDrawer(!document.getElementById('sidebar').classList.contains('drawer-open'));
+    };
+
+    // La poignée se TIRE, comme un vrai tiroir : la feuille suit le doigt et
+    // se cale ouverte ou fermée au relâcher. Indispensable sur iPhone, où la
+    // barre de Safari (en bas de l'écran) avale volontiers un simple tap au
+    // bord — le glissement, lui, est capturé par la poignée. Le tap reste
+    // possible, et le ☰ aussi.
     const handle = document.getElementById('drawer-handle');
-    if (handle) handle.onclick = toggleDrawer;
+    if (handle) {
+        let departY = null, enTraction = false, vientDeTirer = false;
+
+        handle.addEventListener('pointerdown', (e) => {
+            departY = e.clientY;
+            enTraction = false;
+            try { handle.setPointerCapture(e.pointerId); } catch (err) { /* Safari ancien */ }
+        });
+
+        handle.addEventListener('pointermove', (e) => {
+            if (departY === null) return;
+            const sidebar = document.getElementById('sidebar');
+            const dy = e.clientY - departY;
+            if (!enTraction && Math.abs(dy) < 8) return;
+            enTraction = true;
+            const h = sidebar.offsetHeight;
+            const ferme = h - 52;
+            const base = sidebar.classList.contains('drawer-open') ? 0 : ferme;
+            const off = Math.max(0, Math.min(base + dy, ferme));
+            sidebar.style.transition = 'none';
+            sidebar.style.transform = `translateY(${off}px)`;
+        });
+
+        const finTraction = (e) => {
+            if (departY === null) return;
+            const sidebar = document.getElementById('sidebar');
+            if (enTraction) {
+                const h = sidebar.offsetHeight;
+                const ferme = h - 52;
+                const base = sidebar.classList.contains('drawer-open') ? 0 : ferme;
+                const off = Math.max(0, Math.min(base + (e.clientY - departY), ferme));
+                setDrawer(off < ferme / 2);
+                vientDeTirer = true;
+                setTimeout(() => { vientDeTirer = false; }, 400);
+            }
+            departY = null;
+            enTraction = false;
+        };
+        handle.addEventListener('pointerup', finTraction);
+        handle.addEventListener('pointercancel', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.style.transform = '';
+            sidebar.style.transition = '';
+            departY = null; enTraction = false;
+        });
+
+        // Le tap simple bascule — sauf s'il conclut une traction (le clic
+        // synthétisé suivrait le pointerup et annulerait le geste).
+        handle.addEventListener('click', () => {
+            if (vientDeTirer) return;
+            toggleDrawer();
+        });
+    }
 
     const toggleSidebar = () => {
         const sidebar = document.getElementById('sidebar');
