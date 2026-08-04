@@ -320,6 +320,19 @@ export function renderDrilldown() {
     const filtered = getFilteredExercises();
     const path = state.navStack;
 
+    // Une recherche montre les exercices EUX-MÊMES, à plat : on tape un nom
+    // pour le trouver, pas pour apprendre dans quel dossier il est rangé —
+    // sur téléphone, l'ancien comportement donnait un catalogue « vide ».
+    if (state.searchQuery && state.searchQuery.trim()) {
+        back.style.display = 'none';
+        bread.textContent = `${filtered.length} résultat${filtered.length > 1 ? 's' : ''}`;
+        filtered.forEach(exo => content.appendChild(createLibraryItem(exo)));
+        if (!filtered.length) {
+            content.innerHTML = '<div class="empty-state-msg">Aucun exercice ne correspond à cette recherche.</div>';
+        }
+        return;
+    }
+
     back.style.display = path.length === 0 ? 'none' : 'block';
     bread.textContent = path.length === 0 ? 'Domaines' : path[path.length - 1];
 

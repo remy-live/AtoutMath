@@ -238,8 +238,12 @@ export class MathCrush extends BaseGame {
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
-            const px = clientX - rect.left;
-            const py = clientY - rect.top;
+            // Conversion en coordonnées INTERNES du canevas. Sa résolution est
+            // prise sur `clientWidth` du plateau (padding compris) alors que sa
+            // taille affichée (100 %) l'exclut : sans cette mise à l'échelle,
+            // le doigt sélectionnait la case voisine sur téléphone.
+            const px = (clientX - rect.left) * (this.canvas.width / rect.width);
+            const py = (clientY - rect.top) * (this.canvas.height / rect.height);
 
             // Find block under cursor
             const coords = this.getGridCoords(px, py);

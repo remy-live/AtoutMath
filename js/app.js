@@ -52,6 +52,7 @@ function refreshViews() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+    initDeviceMode();
     initGamificationEngine();
     initGamificationUI();
     initGameFeedbackUI();
@@ -87,6 +88,27 @@ window.addEventListener('DOMContentLoaded', async () => {
         import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId));
     };
 });
+
+// --- Détection de l'appareil ------------------------------------------------
+//
+// Sur un téléphone, l'application démarre directement en présentation
+// portable — l'élève n'a pas à connaître la bascule 📱 de la palette
+// d'auteur. Le choix manuel (via cette bascule) est mémorisé et l'emporte
+// ensuite sur la détection.
+
+function initDeviceMode() {
+    let choix = null;
+    try { choix = localStorage.getItem('mathbox-device'); } catch (e) { /* mode privé */ }
+
+    // Téléphone : écran étroit ET pointeur tactile. Une fenêtre de bureau
+    // réduite garde sa présentation, une tablette aussi.
+    const telephone = window.innerWidth <= 700
+        && window.matchMedia('(pointer: coarse)').matches;
+
+    state.isMobileView = choix ? choix === 'mobile' : telephone;
+    document.body.classList.toggle('mobile-view', state.isMobileView);
+    if (state.isMobileView) document.body.style.overflowX = 'hidden';
+}
 
 // --- Filtre par niveau ------------------------------------------------------
 
@@ -352,6 +374,9 @@ function initDebugToolbar() {
         syncMobile();
         btnMobile.onclick = () => {
             state.isMobileView = !state.isMobileView;
+            // Le choix manuel est mémorisé : il l'emporte sur la détection
+            // automatique aux prochains démarrages.
+            try { localStorage.setItem('mathbox-device', state.isMobileView ? 'mobile' : 'desktop'); } catch (e) { }
             syncMobile();
             document.body.classList.toggle('mobile-view', state.isMobileView);
             document.body.style.overflowX = state.isMobileView ? 'hidden' : '';

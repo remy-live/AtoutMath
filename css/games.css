@@ -17,7 +17,11 @@
 #game-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s ease; border-radius: 12px; }
 #game-progress-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5); z-index: 2; pointer-events: none; }
 
-#demo-overlay-banner { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; z-index: 10001; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: 90vw; }
+/* Dans le FLUX, sous l'en-tête, et non en absolu par-dessus : la bannière
+   recouvrait la croix de fermeture et le titre sur téléphone et tablette —
+   impossible de quitter l'aperçu. En statique, elle pousse le plateau au lieu
+   de recouvrir quoi que ce soit. */
+#demo-overlay-banner { display: none; position: static; align-self: center; margin: 8px auto 0; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: min(90vw, 96%); flex-shrink: 0; }
 #demo-overlay-banner svg { flex-shrink: 0; }
 #demo-banner-text { line-height: 1.4; }
 .btn-stop-demo { margin-left: 10px; background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; }
