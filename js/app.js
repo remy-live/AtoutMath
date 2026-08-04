@@ -107,7 +107,14 @@ function initDeviceMode() {
 
     state.isMobileView = choix ? choix === 'mobile' : telephone;
     document.body.classList.toggle('mobile-view', state.isMobileView);
-    if (state.isMobileView) document.body.style.overflowX = 'hidden';
+    if (state.isMobileView) {
+        document.body.style.overflowX = 'hidden';
+        // En présentation portable, un panneau à la fois : sans panneau actif,
+        // l'écran démarrait VIDE (ni catalogue ni grille). L'élève arrive sur
+        // la grille d'exercices ; la barre basse mène au reste.
+        const main = document.getElementById('main-area');
+        if (main) main.classList.add('mob-active');
+    }
 }
 
 // --- Filtre par niveau ------------------------------------------------------
@@ -455,9 +462,35 @@ function initStatusFilter() {
 /**
  * Jeu de données de démonstration : produit de vraies tentatives via le
  * journal, donc statistiques, maîtrise, carnet d'erreurs et bilans se
- * remplissent exactement comme en usage réel.
+ * remplissent exactement comme en usage réel. Génère aussi un parcours
+ * d'exemple complet — enregistré côté professeur ET assigné à l'élève —
+ * pour tester la carte des mondes, le mode apprentissage et le reste sans
+ * rien construire à la main.
  */
-function generateSampleData() {
+async function generateSampleData() {
+    const [{ makeStep, makePath }, { apprentissagePolicy }] = await Promise.all([
+        import('./core/path.js'), import('./core/policy.js')
+    ]);
+
+    if (!state.teacherPaths.some(p => p.name === 'Parcours découverte')) {
+        const steps = [
+            makeStep('calc-add', {}, { nbItems: 5, threshold: 3 }),
+            makeStep('calc-mult-flash', {}, { nbItems: 5, threshold: 3 }),
+            makeStep('frac-compare-facile', {}, { nbItems: 5, threshold: 3 }),
+            makeStep('mes-perimetre', {}, { nbItems: 4, threshold: 3 }),
+            makeStep('calc-prio-resultat', {}, { nbItems: 5, threshold: 3 })
+        ];
+        const path = makePath('Parcours découverte', steps, apprentissagePolicy());
+        state.saveTeacherPath('Parcours découverte', path);
+        // Assigné à l'élève : la carte des mondes de « Mon Parcours » se
+        // remplit comme si un code avait été saisi.
+        state.setStudentPath(steps, { pathId: path.id, name: 'Parcours découverte', policy: path.policy });
+    }
+
+    genererTentativesExemple();
+}
+
+function genererTentativesExemple() {
     const now = Date.now();
     const DAY = 86400000;
     const scenario = [
@@ -489,5 +522,5 @@ function generateSampleData() {
 
     state.addTime('calc-mult-flash', 640);
     journal.flush();
-    import('./ui/modal.js').then(m => m.showToast('Données de démonstration générées.', 'success'));
+    import('./ui/modal.js').then(m => m.showToast('Données d\'exemple et « Parcours découverte » générés.', 'success'));
 }

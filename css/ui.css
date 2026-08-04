@@ -67,8 +67,11 @@ body.teacher-mode .student-only { display: none !important; }
 #top-navbar .nav-right { gap: 10px; }
 #top-navbar .title { margin: 0; font-size: 1.3rem; }
 .nav-center-editing-label { color: var(--primary); font-weight: bold; }
-.score-display { font-weight: 700; color: var(--primary); font-size: 1.1rem; background: var(--bg-panel); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 5px; }
-.score-display svg { color: var(--warning); }
+/* `flex-shrink: 0` + `nowrap` : comprimé par une barre étroite (téléphone),
+   le badge passait l'étoile au-dessus du nombre. Il garde sa largeur, sur
+   une seule ligne. */
+.score-display { font-weight: 700; color: var(--primary); font-size: 1.1rem; background: var(--bg-panel); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap; line-height: 1; }
+.score-display svg { color: var(--warning); flex-shrink: 0; }
 
 /* Sidebar - sélecteur de niveau */
 .sidebar-top-controls { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
