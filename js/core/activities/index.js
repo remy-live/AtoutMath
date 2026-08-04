@@ -21,6 +21,7 @@ import {
 import { kenkenGenerator } from '../generators/kenken.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { garamGenerator } from '../generators/garam.js';
+import { anglesGenerator } from '../generators/angles.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -33,7 +34,8 @@ import { garamGenerator } from '../generators/garam.js';
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, binairoGenerator, garamGenerator
+    kenkenGenerator, binairoGenerator, garamGenerator,
+    anglesGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -154,6 +156,16 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./garam.js')
+});
+
+// Rapporteur interactif : genre de réponse 'angle' — l'élève mesure ou
+// construit un angle en manœuvrant l'outil, puis valide en degrés.
+registerActivity({
+    id: 'angles',
+    label: 'Rapporteur (Angle Master)',
+    accepts: ['angle'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./angles.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

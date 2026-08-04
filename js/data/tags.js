@@ -11,6 +11,7 @@ export const TAGS = {
         FRACTIONS: "Fractions",
         DECIMAUX: "Nombres Décimaux",
         REPERAGE: "Repérage",
+        ANGLES: "Angles",
         PRIORITES: "Priorités Opératoires",
         LOGIQUE: "Logique",
         PERIMETRE_AIRE: "Périmètre et Aire"

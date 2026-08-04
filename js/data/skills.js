@@ -232,6 +232,22 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    'geo.angles.mesure': {
+        label: 'Mesurer un angle au rapporteur',
+        chemin: [D.GEOMETRIQUE, SD.ANGLES],
+        niveaux: [N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Mesurer un angle avec un rapporteur, au degré près.',
+        lesson: 'Centre du rapporteur sur le sommet, zéro aligné sur un côté : l\'autre côté croise la graduation. Entre les deux échelles, choisis selon la nature de l\'angle — aigu (moins de 90°) ou obtus (plus de 90°).'
+    },
+    'geo.angles.construire': {
+        label: 'Construire un angle au rapporteur',
+        chemin: [D.GEOMETRIQUE, SD.ANGLES],
+        niveaux: [N.SIXIEME],
+        prereqs: ['geo.angles.mesure'],
+        descriptor: 'Construire un angle de mesure donnée à l\'aide du rapporteur.',
+        lesson: 'Centre sur le sommet, zéro sur le côté déjà tracé : repère la graduation voulue en partant de ce zéro, puis trace le second côté qui passe par elle.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

@@ -1,4 +1,5 @@
 import { TAGS } from './tags.js';
+import { STATUS } from './status.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -33,5 +34,21 @@ export const geometrieExercises = [
         params: { relatifs: 'relatives', max: 5, mode: 'lire' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Lis les coordonnées du point, sans oublier les signes."
+    },
+
+    // --- Angle Master : le rapporteur interactif ---
+    {
+        id: 'geo-angles-mesurer', status: STATUS.TEST, title: 'Angle Master : Mesurer',
+        generatorId: 'geo.angles', activityId: 'angles',
+        params: { mode: 'mesurer', plage: 'tous', tolerance: 3 },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Estime d'abord si l'angle est aigu ou obtus, puis mesure-le : déplace le rapporteur sur le sommet, tourne-le par ses poignées pour aligner le zéro, et saisis la valeur lue."
+    },
+    {
+        id: 'geo-angles-construire', status: STATUS.TEST, title: 'Angle Master : Construire',
+        generatorId: 'geo.angles', activityId: 'angles',
+        params: { mode: 'construire', plage: 'tous', tolerance: 3 },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Construis l'angle demandé : place le rapporteur, repère la graduation, puis amène le côté rouge dessus en tirant sa poignée."
     }
 ];

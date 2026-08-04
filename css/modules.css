@@ -1337,6 +1337,59 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
 .demo-ctrl-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
+/* --- Angle Master (rapporteur interactif) -------------------
+   Le plateau prend l'essentiel de la hauteur disponible (unités de conteneur,
+   comme le Mathdoku) ; les commandes tiennent sur une ligne en dessous. */
+
+.angles-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(6px, 1.4cqh, 14px);
+    width: 100%; max-width: 760px; margin: 0 auto; padding: 8px;
+}
+.angles-board {
+    position: relative; width: 100%;
+    height: clamp(260px, 58cqh, 480px);
+    background: var(--bg-panel);
+    border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; touch-action: none;
+    user-select: none; -webkit-user-select: none;
+}
+.angles-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.angles-canvas:active { cursor: grabbing; }
+
+.angles-estimation {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    justify-content: center; z-index: 3;
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px;
+    box-shadow: var(--shadow-sm);
+}
+.angles-estimation-label { font-weight: 700; font-size: .9rem; color: var(--text-main); }
+.angles-estimation--non { animation: anglesShake .35s; }
+@keyframes anglesShake {
+    0%, 100% { transform: translateX(-50%); }
+    25% { transform: translateX(calc(-50% - 7px)); }
+    75% { transform: translateX(calc(-50% + 7px)); }
+}
+
+.angles-controls {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; flex-wrap: wrap;
+}
+.angles-input-label { font-weight: 700; color: var(--text-main); display: inline-flex; align-items: center; gap: 8px; }
+.angles-input {
+    width: 84px; padding: 8px 10px; text-align: center;
+    font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-app); color: var(--text-main); outline: none;
+}
+.angles-input:focus { border-color: var(--primary); }
+.angles-target { font-size: 1.05rem; color: var(--text-main); }
+.angles-target b { color: var(--primary); font-size: 1.25rem; }
+.angles-built { color: var(--text-muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.btn-hint--on { border-color: var(--primary); color: var(--primary); background: var(--bg-panel); }
+
 /* Touche enfoncée par la démonstration : même retour visuel qu'un vrai appui. */
 .numpad-key--demo {
     border-color: var(--primary) !important; color: var(--primary) !important;
