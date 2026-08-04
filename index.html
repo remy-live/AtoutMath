@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=33">
-    <link rel="stylesheet" href="css/layout.css?v=33">
-    <link rel="stylesheet" href="css/ui.css?v=33">
-    <link rel="stylesheet" href="css/games.css?v=33">
-    <link rel="stylesheet" href="css/components.css?v=33">
-    <link rel="stylesheet" href="css/modules.css?v=33">
+    <link rel="stylesheet" href="css/base.css?v=34">
+    <link rel="stylesheet" href="css/layout.css?v=34">
+    <link rel="stylesheet" href="css/ui.css?v=34">
+    <link rel="stylesheet" href="css/games.css?v=34">
+    <link rel="stylesheet" href="css/components.css?v=34">
+    <link rel="stylesheet" href="css/modules.css?v=34">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -49,6 +49,9 @@
             <button class="debug-btn" id="db-fake-data" title="Générer des données d'exemple"
                     aria-label="Générer des données d'exemple">🧪</button>
         </div>
+        <!-- Numéro de version RÉELLEMENT chargée (lu sur l'URL du CSS) :
+             pour savoir d'un coup d'œil si le téléphone a la dernière. -->
+        <span class="dbg-version" id="db-version" title="Version des fichiers chargés"></span>
         <button class="dbg-fold" id="db-fold" title="Replier la palette"
                 aria-label="Replier la palette" aria-expanded="true">‹</button>
     </div>

@@ -39,6 +39,11 @@ body.teacher-mode .student-only { display: none !important; }
 }
 .dbg-fold:hover, .dbg-grip:hover { color: #f8fafc; }
 
+.dbg-version {
+    color: #94a3b8; font-size: 0.72rem; font-weight: 700;
+    font-variant-numeric: tabular-nums; padding: 0 6px; user-select: none;
+}
+
 .debug-btn {
     width: 32px; height: 30px; flex-shrink: 0;
     display: inline-flex; align-items: center; justify-content: center;

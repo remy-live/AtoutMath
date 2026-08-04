@@ -407,6 +407,17 @@ function etiquette(btn, texte) {
 function initDebugToolbar() {
     initDebugBar();
 
+    // Version affichée = celle des fichiers RÉELLEMENT chargés, lue sur
+    // l'URL de la feuille de style. Si le téléphone montre un vieux numéro,
+    // c'est que le cache (ou le service worker) sert encore l'ancienne
+    // version — recharger une seconde fois suffit en général.
+    const versionEl = document.getElementById('db-version');
+    if (versionEl) {
+        const lien = document.querySelector('link[href*="base.css"]');
+        const m = lien && lien.getAttribute('href').match(/v=(\d+)/);
+        versionEl.textContent = m ? `v${m[1]}` : '';
+    }
+
     const btnMobile = document.getElementById('db-toggle-mobile');
     if (btnMobile) {
         const syncMobile = () => {
