@@ -151,6 +151,13 @@ export const calculExercises = [
         instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
     },
     {
+        id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
+        generatorId: 'logique.sudoku', activityId: 'sudoku',
+        params: { nbQuestions: 2, taille: 6, difficulte: 'facile' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque chiffre ne doit apparaître qu'une seule fois par ligne, par colonne et par bloc. Commence par les cases où un seul chiffre est encore possible : chacune en débloque d'autres."
+    },
+    {
         id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
         generatorId: 'logique.garam', activityId: 'garam',
         printable: 'garam',

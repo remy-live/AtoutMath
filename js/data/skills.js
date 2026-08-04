@@ -86,6 +86,14 @@ const BASE = {
         descriptor: 'Compléter une grille de 0 et de 1 en raisonnant sur l\'équilibre et les interdits.',
         lesson: 'Deux chiffres identiques côte à côte forcent leurs deux voisines. Une ligne qui a tous ses 1 se finit avec des 0.'
     },
+    'num.logique.sudoku': {
+        label: 'Sudoku',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Compléter une grille de sudoku par élimination : chaque chiffre une seule fois par ligne, colonne et bloc.',
+        lesson: 'Cherche une case dont la ligne, la colonne et le bloc contiennent déjà tous les autres chiffres : il n\'en reste qu\'un possible. Chaque case remplie en débloque d\'autres.'
+    },
     'num.logique.garam': {
         label: 'Égalités croisées (Garam)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

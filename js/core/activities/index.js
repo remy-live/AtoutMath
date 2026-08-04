@@ -21,6 +21,7 @@ import {
 import { kenkenGenerator } from '../generators/kenken.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { garamGenerator } from '../generators/garam.js';
+import { sudokuGenerator } from '../generators/sudoku.js';
 import { anglesGenerator } from '../generators/angles.js';
 
 // --- Générateurs ------------------------------------------------------------
@@ -34,7 +35,7 @@ import { anglesGenerator } from '../generators/angles.js';
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, binairoGenerator, garamGenerator,
+    kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator
 ].forEach(registerGenerator);
 
@@ -156,6 +157,14 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./garam.js')
+});
+
+registerActivity({
+    id: 'sudoku',
+    label: 'Sudoku',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./sudoku.js')
 });
 
 // Rapporteur interactif : genre de réponse 'angle' — l'élève mesure ou

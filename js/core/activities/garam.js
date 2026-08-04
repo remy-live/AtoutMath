@@ -12,7 +12,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS_GARAM } from '../generators/garam.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
@@ -50,9 +50,17 @@ export function mount(container, session, opts = {}) {
         valeurs = givens.map(v => (v === null ? VIDE : v));
         verrous = givens.map(v => v !== null);
 
+        // Les deux cases d'un résultat double s'ACCOLENT, comme sur les
+        // fiches : dizaines et unités forment visuellement un seul nombre.
+        const dizaines = new Set(), unites = new Set();
+        structure.equations.forEach(eq => {
+            if (eq.z2 !== undefined) { dizaines.add(eq.z); unites.add(eq.z2); }
+        });
+
         const cellsHtml = structure.cells.map((pos, i) => {
             const donnee = verrous[i];
-            return `<div class="kk-cell ga-cell ${donnee ? 'kk-given' : ''}" role="button"
+            const accole = dizaines.has(i) ? ' ga-cell--diz' : (unites.has(i) ? ' ga-cell--uni' : '');
+            return `<div class="kk-cell ga-cell${accole} ${donnee ? 'kk-given' : ''}" role="button"
                  tabindex="${donnee ? -1 : 0}" data-i="${i}"
                  style="grid-row:${pos.r + 1}; grid-column:${pos.c + 1};"
                  aria-label="Case ${i + 1}">
@@ -62,6 +70,17 @@ export function mount(container, session, opts = {}) {
         const signesHtml = structure.signes.map(sg =>
             `<span class="ga-signe" style="grid-row:${sg.r + 1}; grid-column:${sg.c + 1};">${sg.glyphe}</span>`);
 
+        // Le treillis authentique est COMPACT : les pistes qui ne portent que
+        // des signes sont deux fois plus étroites que celles des cases. Seule
+        // exception : une colonne impaire qui héberge la case des unités d'un
+        // double garde la pleine largeur.
+        const colW = Array.from({ length: structure.cols }, (_, c) =>
+            (c % 2 === 0 || structure.cells.some(p => p.c === c)) ? '1fr' : '0.5fr');
+        const rowH = Array.from({ length: structure.rows }, (_, r) => (r % 2 === 0 ? '1fr' : '0.5fr'));
+        const somme = (arr) => arr.reduce((s, v) => s + parseFloat(v), 0);
+        const gabarit = `--ga-ratio:${(somme(colW) / somme(rowH)).toFixed(3)};`
+            + `grid-template-columns:${colW.join(' ')};grid-template-rows:${rowH.join(' ')};`;
+
         const jetons = [];
         for (let v = 0; v <= 9; v++) jetons.push(`<button type="button" class="kk-chip ga-chip" data-chip="${v}">${v}</button>`);
         jetons.push(`<button type="button" class="kk-chip ga-chip kk-chip--gomme" data-chip=""
@@ -70,7 +89,7 @@ export function mount(container, session, opts = {}) {
         container.innerHTML = `
             <div class="kenken-layout">
                 <div class="kenken-context">${item.prompt.html}</div>
-                <div class="ga-board" style="--ga-rows:${structure.rows}; --ga-cols:${structure.cols};"
+                <div class="ga-board" style="${gabarit}"
                      role="group" aria-label="Treillis de Garam">
                     ${cellsHtml.join('')}${signesHtml.join('')}
                 </div>
@@ -262,21 +281,68 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
+    // Le robot résout COMME ON RÉSOUT UN GARAM : il cherche une égalité où il
+    // ne manque qu'une case, dit le calcul qui la donne, la remplit — et
+    // chaque case posée en débloque d'autres. Pause et pas-à-pas compris.
     async function runDemo() {
-        const { solution } = item.meta;
+        const { structure, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(600) || destroyed) return;
+        const gate = createDemoGate(container.querySelector('.kk-actions') || container);
+        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+
+        const lit = (i) => (valeurs[i] === VIDE ? '?' : valeurs[i]);
+        const cibleDe = () => {
+            // L'égalité résoluble : une seule case vide parmi les siennes.
+            for (const eq of structure.equations) {
+                const vides = casesDe(eq).filter(i => valeurs[i] === VIDE);
+                if (vides.length === 1) return { eq, idx: vides[0] };
+            }
+            return null;
+        };
+        const phraseDe = (eq, idx) => {
+            const sym = OPS_GARAM[eq.op].symbole;
+            const double = eq.z2 !== undefined;
+            const cible = double ? `${lit(eq.z)}${lit(eq.z2)}` : `${lit(eq.z)}`;
+            const v = solution[idx];
+            if (idx === eq.a) return `? ${sym} ${lit(eq.b)} = ${cible} : je cherche le nombre de départ → ${v}.`;
+            if (idx === eq.b) return `${lit(eq.a)} ${sym} ? = ${cible} : je remonte le calcul → ${v}.`;
+            const T = double ? 10 * solution[eq.z] + solution[eq.z2] : solution[eq.z];
+            if (double && idx === eq.z) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : les DIZAINES vont dans la première case → ${v}.`;
+            if (double) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : les UNITÉS finissent le nombre → ${v}.`;
+            return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ? : je calcule → ${v}.`;
+        };
+
+        if (!await cursor.pause(600) || destroyed) return fin();
+        cursor.say('Je cherche une égalité où il ne manque qu\'UNE case : elle se calcule à coup sûr.',
+            container.querySelector('.ga-board'));
+        if (!await cursor.pause(2000) || destroyed) return fin();
+
+        let prochaine;
+        while ((prochaine = cibleDe())) {
+            if (!await gate.waitTurn() || destroyed) return fin();
+            const { eq, idx } = prochaine;
+            const el = celluleEl(idx);
+            if (!el) return fin();
+            cursor.say(phraseDe(eq, idx), el);
+            if (!await cursor.pause(2100) || destroyed) return fin();
+            if (!await cursor.tap(el, 320) || destroyed) return fin();
+            valeurs[idx] = solution[idx];
+            el.querySelector('.kk-val').textContent = solution[idx];
+            el.classList.add('demo-target');
+        }
+        // Filet : si une case restait (jamais en théorie), on la pose sans bruit.
         for (let i = 0; i < valeurs.length; i++) {
             if (valeurs[i] !== VIDE) continue;
             const el = celluleEl(i);
-            if (!el) return;
-            if (!await cursor.tap(el, 320) || destroyed) return;
+            if (!el || !await cursor.tap(el, 300) || destroyed) return fin();
             valeurs[i] = solution[i];
             el.querySelector('.kk-val').textContent = solution[i];
-            el.classList.add('demo-target');
         }
+        cursor.say('Toutes les égalités sont vraies : le Garam est terminé !',
+            container.querySelector('.ga-board'));
         container.querySelector('.ga-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await cursor.pause(DEMO_SPEED.between + 600) || destroyed) return fin();
+        fin();
         renderNext();
     }
 

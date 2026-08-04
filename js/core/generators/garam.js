@@ -112,6 +112,17 @@ function construireStructure(taille, rng, forceDoubles = null) {
 
     // Brique haut-gauche : rien n'est connu, ordre naturel.
     const TL = brique(0, 0, doubles[0], ['H1', 'VL', 'VR', 'H2']);
+
+    if (taille === 'petit') {
+        // Petit VERTICAL, comme les fiches officielles : deux briques
+        // empilées, reliées par un pont qui descend du milieu — G(TL) ∘ M =
+        // B(BL). La silhouette haute et étroite est la signature du Garam.
+        const B_BL = cell(8, 2);
+        pont(TL.G, B_BL, [6, 2, 'v']);
+        brique(8, 0, doubles[1], ['H1', 'VL', 'VR', 'H2']);
+        return { cells, equations, signes, rows: 13, cols: 6 };
+    }
+
     // Pont horizontal haut : E(TL) ∘ M = D(TR).
     const D_TR = cell(2, 8);
     pont(TL.E, D_TR, [2, 6, 'h']);
@@ -119,7 +130,7 @@ function construireStructure(taille, rng, forceDoubles = null) {
     // construit d'abord (A libre, F déduit), le reste suit.
     const TR = brique(0, 8, doubles[1], ['VL', 'H1', 'VR', 'H2']);
 
-    if (taille === 'grand') {
+    {
         // Pont vertical gauche : G(TL) ∘ M = B(BL).
         const B_BL = cell(8, 2);
         pont(TL.G, B_BL, [6, 2, 'v']);
@@ -133,7 +144,7 @@ function construireStructure(taille, rng, forceDoubles = null) {
         brique(8, 8, doubles[3], ['H1', 'VL', 'VR', 'H2']);
     }
 
-    return { cells, equations, signes, rows: taille === 'grand' ? 13 : 5, cols: 14 };
+    return { cells, equations, signes, rows: 13, cols: 14 };
 }
 
 // --- Déduction et solveur -----------------------------------------------------
@@ -359,8 +370,8 @@ export const garamGenerator = {
         {
             id: 'taille', type: 'select', label: 'Taille', default: 'petit',
             options: [
-                { value: 'petit', label: 'Petit (7 égalités)' },
-                { value: 'grand', label: 'Grand (12 égalités)' }
+                { value: 'petit', label: 'Petit (9 égalités)' },
+                { value: 'grand', label: 'Grand (20 égalités)' }
             ]
         },
         {

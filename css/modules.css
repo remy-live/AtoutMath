@@ -1514,28 +1514,60 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    Le treillis n'est pas une grille pleine : les cases occupent des positions
    éparses, les signes vivent entre elles. Chaque élément est placé par ses
    coordonnées de grille CSS ; les trous restent des trous. */
+/* Façon fiche officielle : treillis COMPACT (les pistes de signes sont
+   étroites — gabarit posé par l'activité), cases blanches à bord épais,
+   signes noirs et gras, doubles cases accolées en un seul nombre. */
 .ga-board {
     display: grid;
-    grid-template-columns: repeat(var(--ga-cols), 1fr);
-    grid-template-rows: repeat(var(--ga-rows), 1fr);
-    gap: 2px;
-    width: min(560px, 96cqw);
-    aspect-ratio: calc(var(--ga-cols) / var(--ga-rows));
-    padding: 8px; border-radius: 12px;
+    gap: 0;
+    width: min(560px, 94cqw, calc(74cqh * var(--ga-ratio, 1)));
+    aspect-ratio: var(--ga-ratio, 1);
+    padding: 12px; border-radius: 14px;
     background: var(--bg-panel); box-shadow: var(--shadow-md);
     border: 1px solid var(--border);
 }
 .ga-cell {
-    border: 2px solid #2c3e50; border-radius: 8px;
+    border: 2.5px solid #0f172a; border-radius: 7px;
     background: #fff;
-    font-size: clamp(.95rem, 3.4cqh, 1.5rem);
+    font-size: clamp(1rem, 3.8cqh, 1.7rem); font-weight: 800; color: #2563eb;
 }
+.ga-cell.kk-given { color: #0f172a; background: #f1f5f9; }
+/* Résultat double : dizaines et unités se touchent, séparées d'un pointillé —
+   on lit UN nombre à deux chiffres, pas deux cases. */
+.ga-cell--diz { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-width: 0; }
+.ga-cell--uni { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 2px dashed #94a3b8; }
 .ga-signe {
     display: flex; align-items: center; justify-content: center;
-    font-weight: 800; color: var(--text-muted);
-    font-size: clamp(.85rem, 2.8cqh, 1.3rem);
+    font-weight: 900; color: #0f172a;
+    font-size: clamp(1rem, 3.4cqh, 1.55rem);
     user-select: none;
 }
+html[data-theme="dark"] .ga-signe { color: var(--text-main); }
+/* --- Sudoku : la grille aux blocs -----------------------------
+   Lignes fines entre les cases, traits épais aux frontières des blocs et sur
+   le pourtour — la grille de sudoku telle qu'on l'imprime. Les chiffres de
+   l'élève s'écrivent en bleu, les données en noir. */
+.su-board {
+    display: grid;
+    grid-template-columns: repeat(var(--su-n), 1fr);
+    grid-template-rows: repeat(var(--su-n), 1fr);
+    width: min(500px, 92cqw, 72cqh);
+    aspect-ratio: 1;
+    border: 3px solid #0f172a; border-radius: 10px; overflow: hidden;
+    background: var(--bg-panel); box-shadow: var(--shadow-md);
+}
+.su-cell {
+    border: none;
+    border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;
+    border-radius: 0;
+    background: #fff;
+    font-weight: 800; color: #2563eb;
+    font-size: clamp(.9rem, calc(38cqh / var(--su-n)), 1.6rem);
+}
+.su-cell.kk-given { color: #0f172a; background: #f1f5f9; }
+.su-cell.su-br { border-right: 3px solid #0f172a; }
+.su-cell.su-bb { border-bottom: 3px solid #0f172a; }
+
 /* Onze jetons : la palette du Garam passe sur deux rangées au besoin. */
 .kk-palette--large { flex-wrap: wrap; justify-content: center; max-width: 460px; }
 .kk-palette--large .kk-chip { width: clamp(36px, 6.4cqh, 48px); height: clamp(36px, 6.4cqh, 48px); }
