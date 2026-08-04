@@ -15,8 +15,16 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
-const LEG_LEN = 260;          // longueur des côtés de l'angle (px canevas)
+const LEG_LEN = 260;          // longueur maximale des côtés de l'angle (px canevas)
 const SNAP_DIST = 30;         // aimantation du centre du rapporteur au sommet
+
+/** Distance d'un point au segment [a, b] — pour saisir un côté par son trait. */
+function distSegment(p, a, b) {
+    const abx = b.x - a.x, aby = b.y - a.y;
+    const l2 = abx * abx + aby * aby;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / l2)) : 0;
+    return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+}
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
@@ -79,6 +87,7 @@ export function mount(container, session, opts = {}) {
             phase: (m.mode === 'mesurer' && !enEval && !session.isDemo) ? 'estimation' : 'action',
             baseRot: m.baseDeg * Math.PI / 180,
             sommet: { x: 0, y: 0 },
+            legLen: LEG_LEN,
             construit: 45,               // angle du côté rouge (construction)
             rapporteur: { x: 0, y: 0, r: 150, rot: 0, visible: m.mode !== 'mesurer' || enEval || session.isDemo },
             drag: null,                  // 'move' | 'rotate' | 'leg'
@@ -124,6 +133,10 @@ export function mount(container, session, opts = {}) {
         canvas.height = board.clientHeight;
         etat.sommet.x = canvas.width / 2;
         etat.sommet.y = canvas.height * 0.44;
+        // Les côtés se plient à la place disponible : à 260 px fixes, le bout
+        // du côté rouge — la poignée pour construire — sortait du canevas sur
+        // tablette, et le trait devenait insaisissable.
+        etat.legLen = Math.max(120, Math.min(LEG_LEN, canvas.height * 0.42, canvas.width * 0.46));
         etat.rapporteur.r = Math.max(110, Math.min(190, Math.min(canvas.width, canvas.height * 2) * 0.30));
         if (!etat.drag && !etat.fige) {
             etat.rapporteur.x = canvas.width / 2;
@@ -144,8 +157,8 @@ export function mount(container, session, opts = {}) {
     function boutRouge() {
         const rad = etat.baseRot - etat.construit * Math.PI / 180;
         return {
-            x: etat.sommet.x + Math.cos(rad) * LEG_LEN,
-            y: etat.sommet.y + Math.sin(rad) * LEG_LEN
+            x: etat.sommet.x + Math.cos(rad) * etat.legLen,
+            y: etat.sommet.y + Math.sin(rad) * etat.legLen
         };
     }
 
@@ -158,10 +171,13 @@ export function mount(container, session, opts = {}) {
             etat.pointeur = posDe(e);
             const p = etat.pointeur, r = etat.rapporteur;
 
-            // 1. Le côté rouge (construction) se saisit par son extrémité.
+            // 1. Le côté rouge (construction) se saisit par son extrémité OU
+            // n'importe où sur son trait : exiger la poignée seule le rendait
+            // presque insaisissable au doigt.
             if (item.meta.mode === 'construire') {
                 const bout = boutRouge();
-                if (Math.hypot(p.x - bout.x, p.y - bout.y) < 42) { etat.drag = 'leg'; return; }
+                if (Math.hypot(p.x - bout.x, p.y - bout.y) < 48
+                    || distSegment(p, etat.sommet, bout) < 30) { etat.drag = 'leg'; return; }
             }
 
             // 2. Poignées de rotation du rapporteur (aux deux bouts du diamètre).
@@ -321,7 +337,9 @@ export function mount(container, session, opts = {}) {
         const r = etat.rapporteur;
         const de = { x: r.x, y: r.y, rot: r.rot, construit: etat.construit };
         const vers = { x: etat.sommet.x, y: etat.sommet.y, rot: etat.baseRot + Math.PI, construit: item.meta.target };
-        const debut = performance.now(), duree = 1600;
+        // « Montre-moi » se regarde pour comprendre : plus lent que la
+        // correction de fin d'essais, qui enchaîne sur la suite.
+        const debut = performance.now(), duree = puisSuivant ? 2200 : 3200;
 
         const pas = (t) => {
             if (destroyed) return;
@@ -335,7 +353,7 @@ export function mount(container, session, opts = {}) {
                 majConstruit();
             }
             if (p < 1) requestAnimationFrame(pas);
-            else if (puisSuivant) regTimeout(renderNext, 1400);
+            else if (puisSuivant) regTimeout(renderNext, 2000);
             else etat.fige = false;   // Montre-moi : la main revient à l'élève
         };
         requestAnimationFrame(pas);
@@ -382,23 +400,29 @@ export function mount(container, session, opts = {}) {
         ctx.lineCap = 'round';
         ctx.lineWidth = 3;
 
+        const L = etat.legLen;
+
         // Côté fixe (noir)
         ctx.strokeStyle = '#0f172a';
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(LEG_LEN, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
 
         // Second côté
         if (m.mode === 'mesurer') {
             ctx.save();
             ctx.rotate(-m.target * Math.PI / 180);
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(LEG_LEN, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
             ctx.restore();
         } else {
             ctx.save();
             ctx.rotate(-etat.construit * Math.PI / 180);
             ctx.strokeStyle = '#ef4444';
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(LEG_LEN, 0); ctx.stroke();
-            ctx.beginPath(); ctx.arc(LEG_LEN, 0, 10, 0, Math.PI * 2);
+            ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(L, 0, 12, 0, Math.PI * 2);
             ctx.fillStyle = '#ef4444'; ctx.fill();
+            ctx.beginPath(); ctx.arc(L, 0, 12, 0, Math.PI * 2);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
             ctx.restore();
         }
 
@@ -408,7 +432,7 @@ export function mount(container, session, opts = {}) {
             ctx.rotate(-m.target * Math.PI / 180);
             ctx.strokeStyle = 'rgba(34, 197, 94, 0.65)';
             ctx.setLineDash([8, 6]);
-            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(LEG_LEN, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
             ctx.restore();
         }
 

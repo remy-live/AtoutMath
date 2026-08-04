@@ -27,7 +27,7 @@ didactiques, et intégration au mode apprentissage.
 | bubble | Bubble shooter « vise 10 » | ⏳ À porter |
 | drop | Empiler pour faire 10 | ⏳ À étudier (proche de Crush/Tetris) |
 | jump / flappy / ninja | Arcade réflexes | ⏳ À étudier |
-| rotate | Solides 3D fil de fer à aligner | ✅ Porté (`js/games/rotate3d.js`) |
+| rotate | Solides 3D fil de fer à aligner | ❌ Porté puis retiré à la demande (2026-08) |
 | divider | Usine à diviseurs | ⏳ À porter |
 | math-arcade | Hub arcade | ⏳ À étudier |
 

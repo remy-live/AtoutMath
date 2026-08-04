@@ -184,8 +184,7 @@ const legacy = [
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
     ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
     ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
-    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur'],
-    ['rotate3d', 'Solides 3D', 'rotate3d', 'engineRotate3D']
+    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

@@ -58,6 +58,9 @@ export class BaseGame {
         // Certaines boucles ne surveillent pas `isRunning` mais leur propre fin
         // de partie : la déclarer terminée les fait taire aussi.
         this.isGameOver = true;
+        // Le curseur du robot vit sur <body>, pas dans le conteneur : gelé
+        // sans ça, une vignette laissait sa flèche (et sa bulle) à l'écran.
+        if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
         if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
         ['demoInterval', 'timerId', 'timerInterval', 'spawnInterval'].forEach(cle => {
             if (this[cle]) { clearInterval(this[cle]); this[cle] = null; }

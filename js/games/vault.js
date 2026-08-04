@@ -25,18 +25,21 @@ class Vault extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .vault-wrapper {
-                    width: 100%; max-width: 400px; margin: 12px auto;
-                    background: #2c3e50; padding: 18px; border-radius: 20px;
+                    width: 100%; max-width: 400px; margin: 0 auto;
+                    background: #2c3e50; padding: clamp(10px, 2.5vmin, 18px); border-radius: 20px;
                     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
                     font-family: 'Courier New', monospace;
                     border: 4px solid #34495e; box-sizing: border-box;
                     user-select: none; -webkit-user-select: none;
+                    /* Jamais plus haut que l'écran : le contenu défile DANS le
+                       coffre au lieu de déborder sous la barre du navigateur. */
+                    max-height: 100%; overflow-y: auto;
                 }
                 .vault-header { display: flex; justify-content: space-between; color: #95a5a6; margin-bottom: 12px; font-weight: bold; font-size: 0.9rem; }
                 .vault-screen {
-                    background: #000; border: 4px solid #555; border-radius: 10px; padding: 12px;
-                    margin-bottom: 14px; text-align: center; color: #2ecc71; text-shadow: 0 0 10px #2ecc71;
-                    transition: all 0.3s; height: 96px;
+                    background: #000; border: 4px solid #555; border-radius: 10px; padding: 10px;
+                    margin-bottom: 10px; text-align: center; color: #2ecc71; text-shadow: 0 0 10px #2ecc71;
+                    transition: all 0.3s; min-height: 84px;
                     display: flex; flex-direction: column; justify-content: center;
                 }
                 .vault-screen.success { background: #2ecc71; color: #fff; text-shadow: none; border-color: #fff; }
@@ -44,17 +47,17 @@ class Vault extends BaseGame {
                 .vault-main { font-size: 2.6rem; font-weight: bold; letter-spacing: 5px; line-height: 1; }
                 .vault-sub { font-size: 0.95rem; margin-top: 8px; min-height: 20px; }
                 .vault-log {
-                    background: rgba(0,0,0,0.25); height: 88px; overflow-y: auto; margin-bottom: 14px;
+                    background: rgba(0,0,0,0.25); height: clamp(56px, 12vh, 96px); overflow-y: auto; margin-bottom: 10px;
                     border-radius: 6px; padding: 5px; border: 1px solid #444;
                 }
                 .vault-log-item { display: flex; justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); color: #fff; font-size: .95rem; }
                 .vault-log-item.haut small { color: #5dade2; }
                 .vault-log-item.bas small { color: #e67e22; }
-                .vault-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+                .vault-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(6px, 1.4vmin, 10px); }
                 .vault-pad button {
-                    padding: 12px; font-size: 1.4rem; background: #ecf0f1; border: none;
+                    padding: 8px; font-size: 1.4rem; background: #ecf0f1; border: none;
                     border-bottom: 4px solid #bdc3c7; border-radius: 8px; cursor: pointer;
-                    color: #2c3e50; font-weight: bold; transition: all 0.1s; height: 56px;
+                    color: #2c3e50; font-weight: bold; transition: all 0.1s; height: clamp(44px, 7.2vh, 56px);
                 }
                 .vault-pad button:active { border-bottom-width: 0; transform: translateY(4px); }
                 .vault-pad .v-ok { background: #2ecc71; border-color: #27ae60; color: white; }

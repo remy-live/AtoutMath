@@ -186,7 +186,7 @@ function openPresentation(steps, buildWorldMap) {
         overlay.querySelectorAll('.world-node').forEach((n, j) =>
             n.classList.toggle('world-node--current', j === i));
         const { launchPreview } = await import('../games/engine.js');
-        launchPreview(step.exercise, canvas, step.params);
+        launchPreview(step.exercise, canvas, step.params, { muet: true });
     };
 
     const map = buildWorldMap(steps, {
@@ -313,9 +313,11 @@ function stepRow(step, index, policy) {
     head.appendChild(title);
 
     const seuil = step.threshold ?? step.nbItems;
-    const details = [`${seuil}/${step.nbItems}`];
-    if (step.timeLimit) details.push(`⏱ ${step.timeLimit}s`);
-    if (policy.grading && step.weight > 1) details.push(`×${step.weight}`);
+    // « ✔ 7/10 » et non « 7/10 » sec : sans un mot ni un signe, on ne savait
+    // pas si le chiffre parlait de questions, de points ou d'un niveau.
+    const details = [`✔ ${seuil}/${step.nbItems}`];
+    if (step.timeLimit) details.push(`⏱ ${step.timeLimit} s`);
+    if (policy.grading && step.weight > 1) details.push(`barème ×${step.weight}`);
 
     const rule = document.createElement('span');
     rule.className = 'path-step-rule';

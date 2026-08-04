@@ -20,10 +20,40 @@ import { regTimeout } from './timers.js';
 export const DEMO_SPEED = {
     move: 750,      // trajet d'un point à un autre
     press: 260,     // enfoncement
-    settle: 520,    // temps de lecture après un appui
+    settle: 650,    // temps de lecture après un appui
     drag: 1050,     // un glissement se montre plus lentement qu'un déplacement
-    between: 1500   // pause avant la question suivante
+    between: 1900   // pause avant la question suivante
 };
+
+// --- Vitesse globale des démonstrations -------------------------------------
+// Un même robot va trop vite pour l'un, trop lentement pour l'autre : le
+// facteur multiplie TOUTES les durées (trajets, pauses, lectures) et se
+// retient d'une session à l'autre.
+// L'ordre du tableau est l'ordre du cycle : le premier clic RALENTIT — c'est
+// presque toujours ce qu'on cherche quand on touche à la vitesse d'une démo.
+const VITESSES = [
+    { facteur: 1, libelle: '▶ Normal' },
+    { facteur: 1.7, libelle: '🐢 Lent' },
+    { facteur: 0.6, libelle: '⚡ Rapide' }
+];
+
+let facteurVitesse = (() => {
+    const v = parseFloat(localStorage.getItem('mathbox-demo-speed'));
+    return VITESSES.some(o => o.facteur === v) ? v : 1;
+})();
+
+export function setDemoSpeedFactor(f) {
+    facteurVitesse = f;
+    try { localStorage.setItem('mathbox-demo-speed', String(f)); } catch { /* stockage plein ou privé */ }
+}
+
+// --- Mode muet ---------------------------------------------------------------
+// Les vignettes d'aperçu (survol du catalogue, cartes, mode présentation)
+// jouent la démonstration en miniature : une bulle d'explication posée sur
+// <body> y recouvrirait toute la page — et survivait à la vignette. En muet,
+// le robot joue sans parler ; le plein écran garde ses bulles.
+let muet = false;
+export function setDemoMuet(v) { muet = !!v; }
 
 // Tous les pointeurs vivants. `clearEngines()` coupe les minuteurs d'une
 // démonstration interrompue, mais l'ÉLÉMENT du curseur, posé sur <body>,
@@ -59,8 +89,24 @@ export function createDemoGate(host) {
     bar.className = 'demo-controls';
     bar.innerHTML = `
         <button type="button" class="demo-ctrl-btn" data-demo-pause aria-label="Mettre la démonstration en pause">⏸ Pause</button>
-        <button type="button" class="demo-ctrl-btn" data-demo-step aria-label="Avancer d'un pas">⏭ Un pas</button>`;
+        <button type="button" class="demo-ctrl-btn" data-demo-step aria-label="Avancer d'un pas">⏭ Un pas</button>
+        <button type="button" class="demo-ctrl-btn" data-demo-speed aria-label="Vitesse de la démonstration"></button>`;
     host.appendChild(bar);
+
+    // Vitesse : un bouton qui fait le tour Lent → Normal → Rapide, et
+    // retient le choix pour les prochaines démonstrations.
+    const btnVitesse = bar.querySelector('[data-demo-speed]');
+    const majVitesse = () => {
+        const v = VITESSES.find(o => o.facteur === facteurVitesse) || VITESSES[1];
+        btnVitesse.textContent = v.libelle;
+        btnVitesse.classList.toggle('demo-ctrl-btn--active', v.facteur !== 1);
+    };
+    btnVitesse.onclick = () => {
+        const i = VITESSES.findIndex(o => o.facteur === facteurVitesse);
+        setDemoSpeedFactor(VITESSES[(i + 1) % VITESSES.length].facteur);
+        majVitesse();
+    };
+    majVitesse();
 
     const btnPause = bar.querySelector('[data-demo-pause]');
     const liberer = () => { attentes.forEach(r => r()); attentes = []; };
@@ -123,7 +169,7 @@ export function createDemoCursor() {
         return new Promise(resolve => {
             const done = (ok) => { pending.delete(done); resolve(ok); };
             pending.add(done);
-            regTimeout(() => done(!destroyed), ms);
+            regTimeout(() => done(!destroyed), ms * facteurVitesse);
         });
     }
 
@@ -146,7 +192,7 @@ export function createDemoCursor() {
          * `hideBubble()`, pour laisser le temps de lire.
          */
         say(texte, cible = null) {
-            if (destroyed || !texte) return;
+            if (destroyed || !texte || muet) return;
             if (!bulle) {
                 bulle = document.createElement('div');
                 bulle.className = 'demo-bubble';
@@ -163,7 +209,14 @@ export function createDemoCursor() {
                 let left = ancre.x - b.width / 2;
                 left = Math.max(marge, Math.min(left, window.innerWidth - b.width - marge));
                 let top = ancre.y - b.height - 46;
-                if (top < marge) top = ancre.y + 40;
+                const dessous = top < marge;
+                if (dessous) top = ancre.y + 40;
+                // La pointe vise l'ancre même quand la bulle a été ramenée
+                // dans la fenêtre, et bascule en haut quand la bulle est
+                // passée dessous — sinon elle désignait le vide.
+                const pointe = Math.max(14, Math.min(ancre.x - left, b.width - 14));
+                bulle.style.setProperty('--bulle-pointe', `${Math.round(pointe)}px`);
+                bulle.classList.toggle('demo-bubble--dessous', dessous);
                 bulle.style.left = `${Math.round(left)}px`;
                 bulle.style.top = `${Math.round(top)}px`;
             });
@@ -185,7 +238,7 @@ export function createDemoCursor() {
                 el.classList.add('demo-cursor--visible');
                 return wait(220);
             }
-            place(x, y, ms);
+            place(x, y, ms * facteurVitesse);
             return wait(ms);
         },
 
@@ -227,7 +280,7 @@ export function createDemoCursor() {
             ghost.style.height = `${r.height}px`;
             ghost.style.left = `${r.left}px`;
             ghost.style.top = `${r.top}px`;
-            ghost.style.setProperty('transition-duration', `${ms}ms`, 'important');
+            ghost.style.setProperty('transition-duration', `${ms * facteurVitesse}ms`, 'important');
             document.body.appendChild(ghost);
             source.classList.add('drag-source');
 
@@ -239,7 +292,7 @@ export function createDemoCursor() {
             ghost.style.left = `${to.x - r.width / 2}px`;
             ghost.style.top = `${to.y - r.height / 2}px`;
             target.classList.add('compare-slot--hover');
-            place(to.x, to.y, ms);
+            place(to.x, to.y, ms * facteurVitesse);
 
             if (!await wait(ms + 120)) return false;
 

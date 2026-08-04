@@ -62,10 +62,10 @@ class Tableur extends BaseGame {
             <style>
                 .tab-wrap { height: 100%; display: flex; flex-direction: column; background: #f4f6fa; font-family: 'Outfit', sans-serif; overflow: auto; color: #223; }
                 .tab-top { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 10px 4px; flex-wrap: wrap; }
+                .tab-menu-label { font-size: .82rem; font-weight: 700; color: #778; margin-right: 4px; }
                 .tab-niv { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #c3cbe0; background: #fff; font-weight: 900; cursor: pointer; color: #556; font-family: inherit; }
                 .tab-niv.actif { background: #4263eb; border-color: #4263eb; color: #fff; }
-                .tab-prog { height: 6px; background: #dde3f0; margin: 6px 16px; border-radius: 3px; overflow: hidden; }
-                .tab-prog-fill { height: 100%; width: 0; background: #4263eb; transition: width .4s; }
+                .tab-avancee { font-size: .95rem; font-weight: 700; color: #4263eb; }
                 .tab-corps { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 4px 10px 16px; gap: 10px; }
                 .tab-titre { font-weight: 900; font-size: 1.15rem; margin: 2px 0 0; }
                 .tab-consigne { text-align: center; font-size: 1rem; min-height: 2.2em; max-width: 480px; }
@@ -89,25 +89,57 @@ class Tableur extends BaseGame {
                 .tab-coul { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
                 .tab-coul.choisie { border-color: #223; transform: scale(1.15); }
                 .tab-verif { border: none; border-radius: 10px; padding: 10px 20px; font-weight: 900; background: #4263eb; color: #fff; cursor: pointer; font-family: inherit; font-size: 1rem; }
+                .tab-fx { display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #c3cbe0; border-radius: 12px; padding: 6px 8px 6px 12px; width: min(480px, 96%); margin: 0 auto 8px; box-sizing: border-box; }
+                .tab-fx[hidden] { display: none; }
+                .tab-fx-nom { font-weight: 900; color: #4263eb; background: #dbe4ff; border-radius: 6px; padding: 3px 8px; min-width: 30px; text-align: center; }
+                .tab-fx-val { flex: 1; font-family: monospace; font-size: 1.05rem; color: #223; min-height: 1.4em; overflow-wrap: anywhere; text-align: left; }
+                .tab-fx-val:empty::before { content: 'Touche une case, puis tape…'; color: #99a; font-family: inherit; font-size: .88rem; }
+                .tab-fx-btn { padding: 8px 14px; font-size: .92rem; border-radius: 8px; }
             </style>
             <div class="tab-wrap">
-                <div class="tab-top" data-menu></div>
-                <div class="tab-prog"><div class="tab-prog-fill" data-prog></div></div>
+                <div class="tab-top" data-menu><span class="tab-menu-label">Leçons :</span></div>
                 <div class="tab-corps">
-                    <div class="tab-titre" data-titre></div>
+                    <div class="tab-titre"><span data-titre></span> <span class="tab-avancee" data-avancee></span></div>
                     <div class="tab-consigne" data-consigne></div>
                     <div class="tab-msg" data-msg></div>
+                    <div class="tab-fx" data-fx hidden>
+                        <span class="tab-fx-nom" data-fx-nom>—</span>
+                        <span class="tab-fx-val" data-fx-val></span>
+                        <button type="button" class="tab-verif tab-fx-btn" data-fx-ok>✓ Valider</button>
+                    </div>
                     <div data-scene></div>
                 </div>
             </div>`;
 
         this.ui = {
             menu: this.container.querySelector('[data-menu]'),
-            prog: this.container.querySelector('[data-prog]'),
             titre: this.container.querySelector('[data-titre]'),
+            avancee: this.container.querySelector('[data-avancee]'),
             consigne: this.container.querySelector('[data-consigne]'),
             msg: this.container.querySelector('[data-msg]'),
-            scene: this.container.querySelector('[data-scene]')
+            scene: this.container.querySelector('[data-scene]'),
+            fx: this.container.querySelector('[data-fx]'),
+            fxNom: this.container.querySelector('[data-fx-nom]'),
+            fxVal: this.container.querySelector('[data-fx-val]')
+        };
+
+        // Barre de formule : sur tablette, la saisie déborde de sa petite case
+        // et il n'y a pas de touche Entrée évidente — la barre montre TOUT ce
+        // qu'on tape et le bouton Valider remplace Entrée.
+        this.inputActif = null;
+        this.onFocusIn = (e) => {
+            const inp = e.target.closest && e.target.closest('input[data-cell-id]');
+            if (!inp || inp.readOnly) return;
+            this.inputActif = inp;
+            this.ui.fxNom.textContent = inp.dataset.cellId;
+            this.ui.fxVal.textContent = inp.value;
+        };
+        this.container.addEventListener('focusin', this.onFocusIn);
+        this.container.addEventListener('input', (e) => {
+            if (e.target === this.inputActif) this.ui.fxVal.textContent = e.target.value;
+        });
+        this.container.querySelector('[data-fx-ok]').onclick = () => {
+            if (this.inputActif) this.validerSaisie(this.inputActif);
         };
 
         for (let i = 1; i <= 9; i++) {
@@ -133,8 +165,10 @@ class Tableur extends BaseGame {
         this.ui.msg.className = 'tab-msg ' + (cls || '');
     }
 
+    // La progression de la leçon s'affiche en toutes lettres à côté du titre :
+    // une barre de plus faisait doublon avec celle de la plateforme.
     majProg() {
-        this.ui.prog.style.width = (this.victoires / this.goal * 100) + '%';
+        this.ui.avancee.textContent = `· ${Math.min(this.victoires, this.goal)}/${this.goal} réussies`;
     }
 
     // --- Niveaux ------------------------------------------------------------
@@ -148,6 +182,10 @@ class Tableur extends BaseGame {
         this.ui.menu.querySelectorAll('.tab-niv').forEach((b, i) => b.classList.toggle('actif', i + 1 === lvl));
         this.ui.titre.textContent = TITRES[lvl];
         if (annonce) this.message(INTROS[lvl], 'ok');
+        this.ui.fx.hidden = lvl < 4;
+        this.inputActif = null;
+        this.ui.fxNom.textContent = '—';
+        this.ui.fxVal.textContent = '';
 
         if (lvl === 3) {
             this.ui.scene.innerHTML = `
@@ -430,7 +468,9 @@ class Tableur extends BaseGame {
     validerSaisie(inp) {
         const tache = this.taches.find(t => t.id === inp.dataset.cellId);
         if (!tache) return;
+        // Majuscules ou minuscules, peu importe : =somme(a1:a4) vaut =SOMME(A1:A4).
         const val = inp.value.trim().toUpperCase();
+        if (inp === this.inputActif) this.ui.fxVal.textContent = inp.value;
 
         if (tache.formule) {
             if (!val.startsWith('=')) {
@@ -460,6 +500,7 @@ class Tableur extends BaseGame {
             const res = this.evaluerFormule(val);
             if (Math.abs(parseFloat(res) - parseFloat(tache.attendu)) < 0.1) {
                 inp.value = res;
+                if (inp === this.inputActif) this.ui.fxVal.textContent = String(res);
                 this.reussirSaisie(inp);
             } else {
                 this.message(`Ta formule donne ${res}, attendu : ${tache.attendu}.`, 'ko');
@@ -608,8 +649,10 @@ class Tableur extends BaseGame {
             cursor.say(`Le signe = dit au tableur : « calcule ! ». A${l} et B${l} sont des RÉFÉRENCES : si une case change, le résultat se met à jour tout seul. J'écris ${formule}.`, inp);
             if (!await cursor.pause(3000) || !this.isRunning) return fin();
             if (!inp || !await cursor.tap(inp, 260)) return fin();
+            this.ui.fxNom.textContent = tache.id;
             for (const ch of formule) {
                 inp.value += ch;
+                this.ui.fxVal.textContent = inp.value;
                 if (!await cursor.pause(170) || !this.isRunning) return fin();
             }
             this.validerSaisie(inp);

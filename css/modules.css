@@ -1140,7 +1140,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 /* --- Formulaires de configuration -------------------------- */
 
-.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 14px; }
+.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 6px; }
+/* La consigne de l'exercice rappelle DE QUOI on règle les paramètres. */
+.cfg-desc { font-size: .82rem; color: var(--text-muted); line-height: 1.45; margin: 0 0 14px; }
 
 /* Libellé et champ sur une même ligne : un panneau de réglages doit se lire
    d'un coup d'œil, pas se dérouler sur trois écrans. Les libellés sont courts,
@@ -1314,11 +1316,20 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     transition: opacity .18s ease, top .3s ease, left .3s ease;
 }
 .demo-bubble--on { opacity: 1; }
+/* La pointe suit l'ancre (--bulle-pointe, posée par say()) au lieu d'un coin
+   fixe : recalée dans la fenêtre, la bulle pointait à côté de sa cible. */
 .demo-bubble::after {
-    content: ''; position: absolute; bottom: -7px; left: 24px;
+    content: ''; position: absolute; bottom: -7px;
+    left: calc(var(--bulle-pointe, 24px) - 6px);
     width: 12px; height: 12px; transform: rotate(45deg);
     background: var(--bg-panel);
     border-right: 2px solid var(--primary); border-bottom: 2px solid var(--primary);
+}
+/* Bulle passée SOUS l'ancre : la pointe monte et s'inverse. */
+.demo-bubble--dessous::after {
+    bottom: auto; top: -7px;
+    border-right: none; border-bottom: none;
+    border-left: 2px solid var(--primary); border-top: 2px solid var(--primary);
 }
 
 /* Commandes de la démonstration : pause / lecture et pas-à-pas.

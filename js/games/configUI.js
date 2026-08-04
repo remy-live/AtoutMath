@@ -181,7 +181,11 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
 
     content.innerHTML = `
         <div class="cfg-header">${exo.title || step.exerciseId}</div>
-        ${schema.length ? schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')
+        ${exo.instruction ? `<p class="cfg-desc">${exo.instruction}</p>` : ''}
+        ${schema.length ? `<div class="cfg-group">
+            <div class="cfg-group-title">Contenu des questions</div>
+            ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
+        </div>`
             : '<p class="cfg-empty">Cette activité n\'a pas de paramètre de contenu.</p>'}
 
         <div class="cfg-group">

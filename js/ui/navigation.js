@@ -103,8 +103,10 @@ export function createLibraryItem(exo) {
             hdBox.style.left = `${rect.right + 20}px`;
             hdBox.style.display = 'flex';
 
-            // Aperçu autonome dans la vignette : aucune donnée n'est enregistrée.
-            launchPreview(exo, document.getElementById('hover-demo-canvas'));
+            // Aperçu autonome dans la vignette : aucune donnée n'est
+            // enregistrée, et le robot joue en muet — ses bulles couvriraient
+            // la page entière.
+            launchPreview(exo, document.getElementById('hover-demo-canvas'), null, { muet: true });
         }, 500);
     };
 
@@ -112,6 +114,7 @@ export function createLibraryItem(exo) {
         clearTimeout(hoverTimer);
         document.getElementById('hover-demo-box').style.display = 'none';
         clearEngines(); // Stoppe la démo en cours
+        destroyAllDemoCursors(); // ... et balaie sa flèche et sa bulle
     };
 
     return item;
@@ -658,7 +661,7 @@ function startCardDemo(exo, box) {
     const stage = box.querySelector('.card-preview-stage') || box;
     prepareStage(box, stage);
     box.classList.add('card-preview--live');
-    const p = launchPreview(exo, stage);
+    const p = launchPreview(exo, stage, null, { muet: true });
     const enregistre = (handle) => {
         // Une démonstration a pu être arrêtée pendant le chargement du module.
         if (jeton !== demoJeton || !box.isConnected) {

@@ -71,6 +71,29 @@ body.teacher-mode .student-only { display: none !important; }
 /* Navbar */
 #top-navbar .nav-right { gap: 10px; }
 #top-navbar .title { margin: 0; font-size: 1.3rem; }
+
+/* Onglets Exercices / Code / Parcours / Profil : jamais stylés jusqu'ici, ils
+   s'affichaient en boutons bruts du navigateur — dépareillés du reste. */
+.nav-center.student-only { gap: 4px; }
+.top-nav-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 999px;
+    font-family: inherit; font-size: .9rem; font-weight: 700;
+    color: var(--text-muted); background: transparent;
+    border: 1px solid transparent; cursor: pointer; transition: all .15s ease;
+    white-space: nowrap;
+}
+.top-nav-tab:hover:not(.active) { color: var(--text-main); background: rgba(0, 0, 0, 0.04); }
+.top-nav-tab.active {
+    color: var(--primary); background: var(--bg-panel);
+    border-color: var(--border); box-shadow: var(--shadow-sm);
+}
+.top-nav-tab svg { flex-shrink: 0; }
+/* Écran moyen : les libellés se replient sur leurs icônes. */
+@media (max-width: 900px) {
+    .top-nav-tab { font-size: 0; gap: 0; padding: 8px 10px; }
+    .top-nav-tab svg { width: 18px; height: 18px; }
+}
 .nav-center-editing-label { color: var(--primary); font-weight: bold; }
 /* `flex-shrink: 0` + `nowrap` : comprimé par une barre étroite (téléphone),
    le badge passait l'étoile au-dessus du nombre. Il garde sa largeur, sur

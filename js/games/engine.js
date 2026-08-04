@@ -6,7 +6,7 @@
 // chaque partie, sans raison).
 
 import { clearEngines } from '../core/timers.js';
-import { destroyAllDemoCursors } from '../core/demoPointer.js';
+import { destroyAllDemoCursors, setDemoMuet } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { getActivity, getGenerator } from '../core/registry.js';
 import { ItemSession } from '../core/itemSession.js';
@@ -128,6 +128,10 @@ function gelerApres(handle) {
 
 export function launchPreview(exo, container, params = null, opts = {}) {
     const frozen = !!opts.frozen;
+    // Une vignette (survol, carte, présentation) joue en muet : ses bulles,
+    // posées sur <body>, recouvriraient la page entière. Le plein écran
+    // (opts.muet absent) garde les explications du robot.
+    setDemoMuet(frozen || !!opts.muet);
     // Une vignette ne coupe pas les minuteurs des autres : elle vit dans son
     // propre conteneur et sera gelée individuellement. Une démonstration, si :
     // il n'en joue qu'une à la fois.
