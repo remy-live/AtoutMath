@@ -77,12 +77,12 @@ function showSuccess(d, done) {
 function showDismissable(d, done, isHint) {
     const label = isHint ? 'Indice' : 'Ce n\'est pas ça';
     const detail = d.misconception && d.misconception !== d.msg
-        ? `<div class="fb-detail">${escapeHtml(d.misconception)}</div>` : '';
+        ? `<div class="fb-detail">${messageHtml(d.misconception)}</div>` : '';
 
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
         <div class="fb-label">${label}</div>
-        <div class="fb-message">${escapeHtml(d.msg || '')}</div>
+        <div class="fb-message">${messageHtml(d.msg)}</div>
         ${detail}
         <button type="button" class="fb-close">${isHint ? 'Merci !' : 'J\'ai compris'}</button>`,
         isHint ? 'fb-card--hint' : 'fb-card--ko', true);
@@ -104,7 +104,7 @@ function showDismissable(d, done, isHint) {
 function showTransient(d, done, isHint) {
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
-        <div class="fb-message">${escapeHtml(d.msg || '')}</div>`,
+        <div class="fb-message">${messageHtml(d.msg)}</div>`,
         isHint ? 'fb-card--hint' : 'fb-card--ko');
     setTimeout(() => { close(card); done(); }, 2200);
 }
@@ -171,4 +171,29 @@ function close(card) {
 
 function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// Un exemple chiffré annoncé par « : » passe à la ligne.
+//
+// « Un zéro tout à gauche de la partie entière ne change rien : 032,12 =
+// 32,12. » tenait sur trois lignes de téléphone, et la coupure tombait au
+// milieu de l'égalité — « 032,12 = » d'un côté, « 32,12. » de l'autre. La
+// règle et son exemple sont deux choses : on les sépare.
+//
+// Strictement : seule une fin de phrase FAITE DE CHIFFRES bascule. « … : il ne
+// reste que le 6. » ou « … : 17,070 garde son zéro du milieu. » restent en
+// ligne, ce sont des phrases, pas des exemples.
+const EXEMPLE_CHIFFRE = /^[\d\s.,;=+×÷*/<>−–-]+\.?$/;
+
+function messageHtml(texte) {
+    const brut = String(texte == null ? '' : texte);
+    const coupe = brut.lastIndexOf(' : ');
+    if (coupe > 0) {
+        const exemple = brut.slice(coupe + 3).trim();
+        if (exemple && EXEMPLE_CHIFFRE.test(exemple)) {
+            return escapeHtml(brut.slice(0, coupe) + ' :')
+                + `<span class="fb-exemple">${escapeHtml(exemple)}</span>`;
+        }
+    }
+    return escapeHtml(brut);
 }

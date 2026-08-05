@@ -91,6 +91,14 @@
     background: #dcfce7; padding: 4px 14px; border-radius: 12px;
 }
 .fb-message { font-size: 1.1rem; font-weight: 600; line-height: 1.45; color: var(--text-main); }
+/* L'exemple chiffré d'un indice, sur sa propre ligne : la coupure tombait au
+   milieu de l'égalité (« 032,12 = » d'un côté, « 32,12. » de l'autre). */
+.fb-exemple {
+    display: block; margin-top: 8px; white-space: nowrap;
+    font-size: 1.15rem; font-weight: 800; color: var(--primary);
+    font-variant-numeric: tabular-nums;
+}
+.fb-detail .fb-exemple { font-size: 1rem; margin-top: 6px; }
 .fb-detail {
     font-size: .95rem; line-height: 1.45; color: var(--text-muted);
     border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 4px;
@@ -638,11 +646,28 @@
    jeu paraissait impossible à quitter. Les commandes ne cèdent jamais : c'est
    le titre et la progression qui se resserrent. */
 @media (max-width: 620px) {
-    #game-header { padding: 8px 10px; gap: 8px; min-height: 0; }
-    #game-header #game-title { font-size: 1.02rem; min-width: 0; }
-    #game-header #game-progress-container { flex: 0 1 110px; min-width: 38px; }
-    #game-timer { width: 34px; height: 34px; font-size: .8rem; flex-shrink: 0; }
-    .game-header-actions { gap: 5px; flex-shrink: 0; margin-left: auto; }
+    /* Deux rangées plutôt qu'une : le NOM DE L'ACTIVITÉ en entier sur la
+       première, la progression sur la seconde. Tout sur une ligne, il ne
+       restait qu'une dizaine de pixels au titre — on lisait « La Chass… »,
+       « Additions Mystèr… », sans savoir à quoi on jouait. Les commandes
+       gardent leur place à droite de la première rangée : la croix de
+       fermeture reste toujours au même endroit. */
+    #game-header {
+        display: grid; grid-template-columns: 1fr auto;
+        grid-template-areas: "titre actions" "avance chrono";
+        align-items: center; column-gap: 8px; row-gap: 6px;
+        padding: 8px 10px; min-height: 0;
+    }
+    #game-header #game-title {
+        grid-area: titre; margin: 0; font-size: 1rem; line-height: 1.2;
+        white-space: normal; overflow: hidden; text-overflow: clip;
+        /* Deux lignes au maximum : un titre à rallonge ne doit pas repousser
+           le plateau hors de l'écran. */
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    }
+    #game-header #game-progress-container { grid-area: avance; flex: none; max-width: none; margin: 0; min-width: 0; }
+    #game-timer { grid-area: chrono; width: 34px; height: 34px; font-size: .8rem; margin: 0; flex-shrink: 0; }
+    .game-header-actions { grid-area: actions; gap: 5px; flex-shrink: 0; justify-content: flex-end; margin: 0; }
     .game-icon-btn { width: 34px; height: 34px; font-size: 1rem; padding: 4px; }
 }
 
