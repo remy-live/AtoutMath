@@ -115,7 +115,12 @@ export class BaseGame {
 
     /**
      * @param {HTMLElement} [el]
-     * @param {Object} snapshot - { questionText, input, expected, concept, customMessage }
+     * @param {Object} snapshot - { questionText, input, expected, concept, customMessage, silencieux }
+     *
+     * `silencieux` : la tentative est enregistrée, mais SANS carte de
+     * correction. Réservé aux jeux d'arcade qui affichent eux-mêmes
+     * l'explication dans leur décor — une carte pleine largeur posée sur une
+     * partie qui continue de tourner est illisible.
      */
     onWrongAnswer(el, snapshot = {}) {
         if (this.isDemo) return;
@@ -134,7 +139,7 @@ export class BaseGame {
             explanation: snapshot.customMessage || '',
             attemptIndex: 0
         });
-        if (snapshot.customMessage || questionText) {
+        if (!snapshot.silencieux && (snapshot.customMessage || questionText)) {
             document.dispatchEvent(new CustomEvent('game_feedback', {
                 detail: {
                     kind: 'error', isError: true,

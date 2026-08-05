@@ -16,9 +16,17 @@ import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
 const SKILL = 'num.calc.decomposition';
-const TAILLE = 96;            // diamètre d'un fruit (px)
-const GRAVITE = 0.15;
-const CADENCE_SPAWN = 140;    // images entre deux lancers
+
+// Rythme du jeu : durée de vol d'un fruit (en images à 60/s) et intervalle
+// entre deux lancers. Un fruit doit rester en l'air le temps de LIRE son
+// calcul et de décider — l'ancien réglage le faisait monter et retomber en
+// deux secondes et demie, ce qui transformait un exercice de calcul en
+// exercice de réflexes.
+const RYTHMES = {
+    lent: { vol: 420, entre: 240 },
+    normal: { vol: 330, entre: 190 },
+    rapide: { vol: 240, entre: 140 }
+};
 
 const COULEURS = ['ninja-melon', 'ninja-orange', 'ninja-berry'];
 
@@ -26,6 +34,7 @@ class Ninja extends BaseGame {
     render() {
         this.cibleMax = Math.max(8, Math.min(60, parseInt(this.params.cibleMax) || 20));
         this.viesMax = parseInt(this.params.lives) || 3;
+        this.rythme = RYTHMES[this.params.rythme] || RYTHMES.lent;
         this.vies = this.viesMax;
         this.score = 0;
         this.serie = 0;         // bons calculs tranchés sur la cible en cours
@@ -48,9 +57,10 @@ class Ninja extends BaseGame {
                 .ninja-vies { color: #f87171; font-size: 1.3rem; letter-spacing: 2px; }
                 .ninja-score { color: #fcd34d; font-weight: 900; font-size: 1.1rem; }
                 .ninja-canvas { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-                .ninja-item { position: absolute; left: 0; top: 0; width: ${TAILLE}px; height: ${TAILLE}px;
+                .ninja-item { position: absolute; left: 0; top: 0;
+                    width: var(--ninja-taille, 96px); height: var(--ninja-taille, 96px);
                     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                    font-weight: 900; font-size: 1.15rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5);
+                    font-weight: 900; font-size: var(--ninja-police, 1.15rem); color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5);
                     box-shadow: inset -6px -8px 14px rgba(0,0,0,.3), 0 6px 14px rgba(0,0,0,.35);
                     pointer-events: none; z-index: 5; white-space: nowrap; }
                 .ninja-melon { background: radial-gradient(circle at 32% 28%, #4ade80, #15803d); }
@@ -60,6 +70,19 @@ class Ninja extends BaseGame {
                 .ninja-part { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 6; }
                 .ninja-flottant { position: absolute; font-weight: 900; font-size: 1.5rem; z-index: 25;
                     pointer-events: none; text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+                .ninja-item.perime { opacity: .28; filter: grayscale(1); }
+                /* L'explication d'une erreur reste DANS le jeu, sur une ligne
+                   sous le compteur : la carte de correction pleine largeur
+                   couvrait un tiers de l'écran au milieu d'une partie qui
+                   continue, et devenait illisible. */
+                .ninja-mot { position: absolute; top: 84px; left: 50%; transform: translateX(-50%);
+                    max-width: min(92%, 460px); z-index: 22; pointer-events: none;
+                    background: rgba(15, 23, 42, .92); color: #fff; border: 1px solid rgba(255,255,255,.18);
+                    border-radius: 14px; padding: 7px 14px; font-size: .86rem; font-weight: 700;
+                    line-height: 1.35; text-align: center; opacity: 0; transition: opacity .25s; }
+                .ninja-mot.on { opacity: 1; }
+                .ninja-mot.ko { border-color: #f87171; }
+                .ninja-mot.ok { border-color: #4ade80; }
             </style>
             <div class="ninja-arene" data-arene>
                 <div class="ninja-hud">
@@ -67,6 +90,7 @@ class Ninja extends BaseGame {
                     <div class="ninja-cible" data-cible>?</div>
                     <span class="ninja-score">⭐ <span data-score>0</span></span>
                 </div>
+                <div class="ninja-mot" data-mot></div>
                 <canvas class="ninja-canvas"></canvas>
             </div>`;
 
@@ -76,7 +100,8 @@ class Ninja extends BaseGame {
         this.ui = {
             cible: this.container.querySelector('[data-cible]'),
             score: this.container.querySelector('[data-score]'),
-            vies: this.container.querySelector('[data-vies]')
+            vies: this.container.querySelector('[data-vies]'),
+            mot: this.container.querySelector('[data-mot]')
         };
 
         this.dimensionner();
@@ -99,16 +124,45 @@ class Ninja extends BaseGame {
 
     dimensionner() {
         if (!this.canvas) return;
-        this.canvas.width = this.arene.clientWidth || 800;
+        const w = this.arene.clientWidth || 800;
+        this.canvas.width = w;
         this.canvas.height = this.arene.clientHeight || 500;
+        // Un fruit de 96 px sur un téléphone de 390, c'est le quart de la
+        // largeur : deux fruits se recouvraient et le calcul devenait
+        // illisible. La taille suit l'écran, la police suit la taille.
+        this.taille = Math.round(Math.max(66, Math.min(96, w * 0.23)));
+        this.arene.style.setProperty('--ninja-taille', this.taille + 'px');
+        this.arene.style.setProperty('--ninja-police',
+            Math.max(.72, Math.min(1.15, this.taille / 84)).toFixed(2) + 'rem');
     }
 
     majVies() { this.ui.vies.textContent = '❤'.repeat(Math.max(0, this.vies)); }
 
     nouvelleCible() {
+        // Les fruits encore en l'air ont été lancés pour l'ANCIENNE cible :
+        // ils sont mis hors jeu. Sans cela, « 1 + 14 » lancé pour la cible 15
+        // était jugé sur la cible 8 — annoncé « 1 + 14 = 8 » et compté faux.
+        this.fruits.forEach(f => { f.perime = true; f.el.classList.add('perime'); });
         this.cible = Math.floor(Math.random() * (this.cibleMax - 5)) + 6;
         this.serie = 0;
         this.ui.cible.textContent = this.cible;
+    }
+
+    /**
+     * Un mot dans le jeu, à la place de la carte de correction.
+     *
+     * Le jeu ne s'arrête pas quand on se trompe : une carte pleine largeur
+     * posée par-dessus une partie qui continue est illisible. Le message
+     * s'affiche donc sur une ligne sous le compteur, et s'efface tout seul.
+     */
+    mot(texte, ton) {
+        if (!this.ui.mot) return;
+        this.ui.mot.textContent = texte;
+        this.ui.mot.className = 'ninja-mot on ' + (ton || '');
+        clearTimeout(this.motTimer);
+        this.motTimer = setTimeout(() => {
+            if (this.ui.mot) this.ui.mot.classList.remove('on');
+        }, 3200);
     }
 
     // --- Fabrique des calculs ------------------------------------------------
@@ -147,13 +201,39 @@ class Ninja extends BaseGame {
         el.innerHTML = `<span>${eq.txt}</span>`;
         this.arene.appendChild(el);
 
-        const x = Math.random() * Math.max(80, w - 260) + 90;
+        // Physique déduite du RÉSULTAT voulu : le fruit doit rester en l'air
+        // `vol` images et culminer aux deux tiers de l'arène, quelle que soit
+        // la taille de l'écran. De la durée T et de la hauteur H on tire
+        // g = 8H/T² et v = gT/2 — un vol lent et ample, où on a le temps de
+        // lire le calcul, au lieu de la fusée d'avant.
+        const T = this.rythme.vol * (0.9 + Math.random() * 0.2);
+        const H = Math.max(160, (h - this.taille) * 0.66);
+        const g = 8 * H / (T * T);
+
+        // On tire plusieurs positions et on garde la plus ÉLOIGNÉE des fruits
+        // déjà en l'air : deux fruits superposés cachent leurs calculs, et
+        // c'est le calcul qu'on vient lire.
+        const marge = 8, dispo = Math.max(40, w - this.taille - 2 * marge);
+        let x = marge + Math.random() * dispo, meilleure = -1;
+        for (let essai = 0; essai < 8; essai++) {
+            const cand = marge + Math.random() * dispo;
+            const ecart = this.fruits.length
+                ? Math.min(...this.fruits.map(o => Math.abs(o.x - cand))) : Infinity;
+            if (ecart > meilleure) { meilleure = ecart; x = cand; }
+            if (ecart > this.taille * 1.15) break;
+        }
         this.fruits.push({
-            el, txt: eq.txt, valeur, bon, tranche: false, age: 0,
+            el, txtEl: el.querySelector('span'),
+            txt: eq.txt, valeur, bon, cible: this.cible,
+            tranche: false, perime: false, age: 0,
             x, y: h,
-            vx: (w / 2 - x) * 0.002 + (Math.random() - 0.5) * 0.5,
-            vy: -(Math.random() * 3 + 11),
-            rot: 0, vRot: Math.random() * 0.6 - 0.3
+            // Dérive latérale FAIBLE : à 0,002 les fruits convergeaient vers
+            // le centre (155 px sur un vol) et finissaient superposés, chacun
+            // masquant le calcul de l'autre.
+            vx: (w / 2 - x) * 0.0004 + (Math.random() - 0.5) * 0.18,
+            vy: -(g * T / 2),
+            g,
+            rot: 0, vRot: Math.random() * 0.35 - 0.175
         });
     }
 
@@ -168,7 +248,7 @@ class Ninja extends BaseGame {
         this.frame++;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        if (this.frame % CADENCE_SPAWN === 0 || (this.frame === 30 && !this.fruits.length)) this.lancerFruit();
+        if (this.frame % this.rythme.entre === 0 || (this.frame === 30 && !this.fruits.length)) this.lancerFruit();
         this.avancerFruits();
         this.dessinerLame();
 
@@ -179,14 +259,18 @@ class Ninja extends BaseGame {
         const h = this.arene.clientHeight, w = this.arene.clientWidth;
         for (let i = this.fruits.length - 1; i >= 0; i--) {
             const f = this.fruits[i];
-            f.x += f.vx; f.y += f.vy; f.vy += GRAVITE; f.rot += f.vRot; f.age++;
+            f.x += f.vx; f.y += f.vy; f.vy += f.g; f.rot += f.vRot; f.age++;
             f.el.style.transform = `translate(${f.x}px, ${f.y}px) rotate(${f.rot}deg)`;
+            // Le fruit tourne, le CALCUL reste droit : c'est lui qu'on vient
+            // lire, et un « 26 − 6 » penché de 70° ne se déchiffre plus.
+            if (f.txtEl) f.txtEl.style.transform = `rotate(${-f.rot}deg)`;
 
-            const dehors = f.y > h + 200 || f.x < -220 || f.x > w + 220 || f.age > 900;
+            const dehors = f.y > h + 200 || f.x < -220 || f.x > w + 220 || f.age > 1600;
             if (!dehors) continue;
 
             // Un BON calcul retombé sans être tranché : occasion manquée.
-            if (f.bon && !f.tranche && f.y > h && !this.isDemo) this.calculRate(f);
+            // Un fruit périmé (cible changée entre-temps) ne compte pas.
+            if (f.bon && !f.tranche && !f.perime && f.y > h && !this.isDemo) this.calculRate(f);
             f.el.remove();
             this.fruits.splice(i, 1);
         }
@@ -202,8 +286,8 @@ class Ninja extends BaseGame {
         for (let i = this.fruits.length - 1; i >= 0; i--) {
             const f = this.fruits[i];
             if (f.tranche) continue;
-            const d = Math.hypot(f.x + TAILLE / 2 - x, f.y + TAILLE / 2 - y);
-            if (d < TAILLE * 0.62) this.trancher(f, i);
+            const d = Math.hypot(f.x + this.taille / 2 - x, f.y + this.taille / 2 - y);
+            if (d < this.taille * 0.66) this.trancher(f, i);
         }
     }
 
@@ -230,27 +314,33 @@ class Ninja extends BaseGame {
         f.el.remove();
         this.fruits.splice(index, 1);
 
+        // Fruit lancé pour une cible désormais périmée : ni point ni reproche.
+        if (f.perime) return;
+
         if (f.bon) {
             this.score += 10;
             this.serie++;
             this.flottant(f.x, f.y, '+10', '#fcd34d');
             this.onCorrectAnswer(null, SKILL, {
                 points: 10,
-                questionText: `${f.txt} = ${this.cible} ?`,
-                given: f.txt, expected: `${this.cible}`
+                questionText: `${f.txt} = ${f.cible} ?`,
+                given: f.txt, expected: `${f.cible}`
             });
             if (this.serie >= 4) {
                 this.nouvelleCible();
-                this.flottant(this.arene.clientWidth / 2 - 90, 130, 'NOUVELLE CIBLE !', '#fff');
+                this.mot(`Nouvelle cible : ${this.cible}`, 'ok');
             }
         } else {
             this.score = Math.max(0, this.score - 5);
             this.flottant(f.x, f.y, '−5', '#f87171');
+            // Message DANS le jeu (`mot`), pas de carte de correction : la
+            // partie continue pendant qu'on lit.
+            this.mot(`${f.txt} = ${f.valeur}, pas ${f.cible} — calcule avant de trancher !`, 'ko');
             this.onWrongAnswer(null, {
-                questionText: `${f.txt} = ${this.cible} ?`,
-                input: `tranché ${f.txt}`, expected: `un calcul qui fait ${this.cible}`,
-                concept: SKILL,
-                customMessage: `${f.txt} = ${f.valeur}, pas ${this.cible} : ce fruit-là devait retomber. Calcule AVANT de trancher !`
+                questionText: `${f.txt} = ${f.cible} ?`,
+                input: `tranché ${f.txt}`, expected: `un calcul qui fait ${f.cible}`,
+                concept: SKILL, silencieux: true,
+                customMessage: `${f.txt} = ${f.valeur}, pas ${f.cible} : ce fruit-là devait retomber. Calcule AVANT de trancher !`
             });
         }
         this.ui.score.textContent = this.score;
@@ -260,14 +350,15 @@ class Ninja extends BaseGame {
         this.vies--;
         this.majVies();
         this.flottant(f.x, Math.min(f.y, this.arene.clientHeight - 60), 'Raté !', '#f87171');
+        this.mot(`${f.txt} = ${f.cible} : il fallait le trancher !`, 'ko');
         this.onWrongAnswer(null, {
-            questionText: `${f.txt} = ${this.cible} ?`,
+            questionText: `${f.txt} = ${f.cible} ?`,
             input: '(laissé tomber)', expected: `trancher ${f.txt}`,
-            concept: SKILL,
-            customMessage: `${f.txt} = ${this.cible} : c'était un bon calcul, il fallait le trancher avant qu'il retombe.`
+            concept: SKILL, silencieux: true,
+            customMessage: `${f.txt} = ${f.cible} : c'était un bon calcul, il fallait le trancher avant qu'il retombe.`
         });
         if (this.vies <= 0) {
-            this.flottant(this.arene.clientWidth / 2 - 70, 160, 'GAME OVER', '#f87171');
+            this.mot('Plus de vies — on repart !', 'ko');
             this.vies = this.viesMax;
             regTimeout(() => { if (this.isRunning) { this.majVies(); this.nouvelleCible(); } }, 1600);
         }
@@ -278,11 +369,12 @@ class Ninja extends BaseGame {
     debris(f, sens) {
         const el = document.createElement('div');
         el.className = f.el.className.replace('ninja-item', 'ninja-part');
-        el.style.width = `${TAILLE}px`; el.style.height = `${TAILLE / 2}px`;
-        el.style.borderRadius = sens === 1 ? `0 0 ${TAILLE / 2}px ${TAILLE / 2}px` : `${TAILLE / 2}px ${TAILLE / 2}px 0 0`;
+        const T = this.taille;
+        el.style.width = `${T}px`; el.style.height = `${T / 2}px`;
+        el.style.borderRadius = sens === 1 ? `0 0 ${T / 2}px ${T / 2}px` : `${T / 2}px ${T / 2}px 0 0`;
         this.arene.appendChild(el);
         el.animate([
-            { transform: `translate(${f.x}px, ${f.y + (sens === 1 ? TAILLE / 2 : 0)}px) rotate(${f.rot}deg)`, opacity: 1 },
+            { transform: `translate(${f.x}px, ${f.y + (sens === 1 ? T / 2 : 0)}px) rotate(${f.rot}deg)`, opacity: 1 },
             { transform: `translate(${f.x + sens * 60}px, ${f.y + 130}px) rotate(${f.rot + sens * 35}deg)`, opacity: 0 }
         ], { duration: 600, fill: 'forwards' });
         regTimeout(() => el.remove(), 620);
@@ -323,18 +415,21 @@ class Ninja extends BaseGame {
         if (!await cursor.pause(2200) || !this.isRunning) return;
 
         while (this.isRunning && this.isDemo) {
-            // Un fruit dans la zone lisible (proche du sommet de sa cloche).
-            const f = this.fruits.find(x => !x.tranche && Math.abs(x.vy) < 3.4 && x.y < this.arene.clientHeight - 120);
+            // Un fruit dans la zone lisible : à moins d'une seconde de son
+            // sommet. Le seuil se déduit de SA gravité — la physique dépend
+            // désormais du rythme choisi et de la hauteur de l'écran.
+            const f = this.fruits.find(x => !x.tranche && !x.perime
+                && Math.abs(x.vy) < x.g * 60 && x.y < this.arene.clientHeight - 120);
             if (!f) { if (!await cursor.pause(300)) return; continue; }
             if (!await gate.waitTurn() || !this.isRunning) return;
 
             if (f.bon) {
                 f.el.classList.add('demo-target');
-                cursor.say(`${f.txt} = ${this.cible} : c'est la cible, je tranche !`, f.el);
+                cursor.say(`${f.txt} = ${f.cible} : c'est la cible, je tranche !`, f.el);
                 if (!await cursor.pause(1400) || !this.isRunning) return;
                 // Le geste : la lame traverse le fruit de part en part.
-                const a1 = this.ancre(f.x - 50, f.y + TAILLE / 2 + 40);
-                const a2 = this.ancre(f.x + TAILLE + 50, f.y - 10);
+                const a1 = this.ancre(f.x - 50, f.y + this.taille / 2 + 40);
+                const a2 = this.ancre(f.x + this.taille + 50, f.y - 10);
                 await cursor.moveTo(a1, 300);
                 await cursor.moveTo(a2, 260);
                 a1.remove(); a2.remove();
@@ -343,7 +438,7 @@ class Ninja extends BaseGame {
                 if (idx !== -1) this.trancher(f, idx);
                 if (!await cursor.pause(DEMO_SPEED.between) || !this.isRunning) return;
             } else {
-                cursor.say(`${f.txt} = ${f.valeur} : ce n'est PAS ${this.cible}, je le laisse retomber.`, f.el);
+                cursor.say(`${f.txt} = ${f.valeur} : ce n'est PAS ${f.cible}, je le laisse retomber.`, f.el);
                 if (!await cursor.pause(1900) || !this.isRunning) return;
                 f.tranche = true;   // le robot ne le re-commente pas
                 f.el.style.opacity = '0.55';
@@ -354,6 +449,7 @@ class Ninja extends BaseGame {
     destroy() {
         if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        clearTimeout(this.motTimer);
         window.removeEventListener('resize', this.onResize);
         super.destroy();
     }

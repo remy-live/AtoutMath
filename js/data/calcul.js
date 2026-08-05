@@ -153,10 +153,18 @@ export const calculExercises = [
     {
         id: 'calc-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
         activityId: 'ninja',
-        params: { cibleMax: 20, lives: 3 },
+        params: { cibleMax: 20, lives: 3, rythme: 'lent' },
         paramSchema: [
             { id: 'cibleMax', type: 'number', label: 'Cible jusqu\'à', min: 8, max: 60, default: 20 },
-            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 }
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
+            {
+                id: 'rythme', type: 'select', label: 'Rythme', default: 'lent',
+                options: [
+                    { value: 'lent', label: 'Lent (temps de calculer)' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'rapide', label: 'Rapide' }
+                ]
+            }
         ],
         skills: ['num.calc.decomposition'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
