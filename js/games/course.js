@@ -210,6 +210,11 @@ class Course extends BaseGame {
         this.bonusX2 = 0; this.ralenti = 0;
         this.vehicule = chargerVehicule();
         this.feedback = { active:false, text:'', color:'', scale:0, life:0 };
+        // Correction écrite DANS la course, en bandeau haut : la carte de
+        // correction se posait en bas du circuit, pile là où arrivent la
+        // voiture et les portails. On lisait « Faux ! 3 × 3 = 9 » sans plus
+        // voir la route pendant deux secondes.
+        this.correction = { texte:'', life:0 };
         this.shake = 0; this.biome = 0;
         this.col = JSON.parse(JSON.stringify(biomes[0]));
         this.lastFailedOp = null; this.errorTriageCount = 0;
@@ -837,6 +842,11 @@ class Course extends BaseGame {
         this.feedback={active:true,text:t,color:this.couleurCanevas(c),scale:0.5,life:60};
     }
 
+    /** Bandeau de correction en haut du circuit, ~2,5 s à 60 images/s. */
+    montrerCorrection(texte) {
+        this.correction = { texte, life: 150 };
+    }
+
     handleCollision(o) {
         if(o.type === 'star') {
             const gain = 50 * this.multiplier * (this.bonusX2 > 0 ? 2 : 1);
@@ -912,17 +922,28 @@ class Course extends BaseGame {
                 this.lastFailedOp = this.question.op;
                 this.errorTriageCount = 3; 
 
+                // Plus de « FAUX ! » en travers du circuit. Cette bannière de
+                // 500 px se posait au MILIEU de la route, pile là où arrivent
+                // la voiture et les portails suivants : on pilotait à l'aveugle
+                // pendant une seconde, et elle ne disait même pas la réponse.
+                // Le bandeau du haut la remplace — discret, et il corrige.
+                let penalite = '';
                 if(this.mode === 'chrono') {
                     this.timeLeft = Math.max(0, this.timeLeft - 5);
                     this.updateHUD();
-                    this.triggerFeedback("-5s", "var(--danger)");
+                    penalite = '   −5 s';
                 } else {
                     this.lives--;
-                    this.triggerFeedback("FAUX!", "var(--danger)");
                     if(this.lives<=0) setTimeout(()=>this.endGame(),500);
                 }
-                // Record error with BaseGame
-                this.onWrongAnswer(null, { input: o.val, expected: this.question.r, operation: this.question.qText });
+                // `silencieux` : la tentative part au journal, mais SANS carte
+                // de correction — c'est le bandeau qui l'affiche, sans masquer
+                // la route.
+                this.montrerCorrection(`${this.question.qText} = ${this.question.r}${penalite}`);
+                this.onWrongAnswer(null, {
+                    input: o.val, expected: this.question.r,
+                    operation: this.question.qText, silencieux: true
+                });
             }
         }
         this.updateHUD();
@@ -1006,6 +1027,7 @@ class Course extends BaseGame {
         if(this.objects.filter(o=>o.type==='gate').length === 0) this.spawnQ();
 
         if(this.feedback.active) { this.feedback.scale+=(1-this.feedback.scale)*0.2; this.feedback.life--; if(this.feedback.life<=0)this.feedback.active=false; }
+        if(this.correction?.life > 0) this.correction.life--;
         if(this.shake>0)this.shake--;
     }
 
@@ -1217,6 +1239,31 @@ class Course extends BaseGame {
 
         if(this.currentSpeed > this.speedBase * 1.5) {
             c.fillStyle = '#fff'; c.beginPath(); c.moveTo(cx-10, cy+100); c.lineTo(cx, cy+130+Math.random()*20); c.lineTo(cx+10, cy+100); c.fill();
+        }
+
+        // Bandeau de correction : EN HAUT, là où il n'y a ni voiture ni
+        // portails. La carte générique se posait en bas et recouvrait la zone
+        // de jeu au moment précis où il faut regarder la route.
+        if(this.correction?.life > 0){
+            const t = this.correction.texte;
+            c.save();
+            c.font = `800 ${Math.max(15, Math.min(24, w * 0.055))}px 'Inter', sans-serif`;
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            const lw = c.measureText(t).width;
+            // SOUS le tableau de bord : celui-ci est un panneau HTML opaque
+            // posé sur le haut du canevas, et le bandeau se dessinait derrière
+            // — invisible. On lit sa hauteur réelle plutôt que de la deviner.
+            const barre = this.container.querySelector('.course-hud-top');
+            const dy = barre ? barre.getBoundingClientRect().height : 0;
+            const bw = Math.min(w - 24, lw + 36), bh = 36, bx = (w - bw) / 2, by = dy + 6;
+            // Fondu sur la dernière demi-seconde : le bandeau s'efface, il ne
+            // disparaît pas d'un coup au milieu d'une lecture.
+            c.globalAlpha = Math.min(1, this.correction.life / 30);
+            c.fillStyle = 'rgba(15,23,42,.88)';
+            c.beginPath(); drawRound(c, bx, by, bw, bh, 12); c.fill();
+            c.strokeStyle = '#f87171'; c.lineWidth = 2; c.stroke();
+            c.fillStyle = '#fff'; c.fillText(t, w / 2, by + bh / 2 + 1);
+            c.restore();
         }
 
         if(this.feedback.active){

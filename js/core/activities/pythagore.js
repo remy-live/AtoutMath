@@ -104,6 +104,9 @@ export function mount(container, session, opts = {}) {
         const m = item.meta || {};
         const r = m.t || 2, c = m.m || Math.max(1, Math.round(t / (m.t || 2)));
         if (!cursor) cursor = createDemoCursor();
+        // La bulle se pose AUTOUR de la grille, jamais dessus : elle
+        // couvrait la ligne de chiffres sur laquelle porte l'explication.
+        cursor.protegerZone(container.querySelector('.pyt-board'));
         const gate = createDemoGate(container.querySelector('.pyt-layout') || container);
         const fin = () => { cursor.hideBubble(); gate.destroy(); };
 

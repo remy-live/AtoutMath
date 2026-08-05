@@ -83,6 +83,7 @@ const curseursVivants = new Set();
 export function destroyAllDemoCursors() {
     [...curseursVivants].forEach(c => c.destroy());
     curseursVivants.clear();
+    document.querySelectorAll('.demo-cible').forEach(el => el.classList.remove('demo-cible'));
     // Ceinture et bretelles : un curseur créé par un module rechargé (autre
     // instance de ce fichier) ne serait pas dans le registre. La bulle vit
     // elle aussi sur <body> : sans ce balayage, une explication du robot
@@ -146,6 +147,33 @@ function revoirPrecedent() {
     // bulle se recale alors sur le pointeur plutôt que de viser le vide.
     curseurParlant.say(d.texte, d.cible && document.contains(d.cible) ? d.cible : null, true);
     return true;
+}
+
+// --- Bulle rangée au lieu de bulle flottante ---------------------------------
+//
+// Sur grand écran, une bulle à pointe posée à côté de la case est ce qu'il y a
+// de plus clair : elle DÉSIGNE. Sur un téléphone, il n'y a pas de « à côté » —
+// la grille occupe toute la largeur, et la bulle finit forcément par-dessus.
+// Elle se range alors dans l'emplacement partagé du haut, ce qui POUSSE le
+// plateau vers le bas au lieu de le recouvrir, et la case dont on parle est
+// cerclée pour garder le lien.
+function ancrerLesBulles() {
+    const hote = document.getElementById('demo-controls-host');
+    const couche = document.getElementById('game-layer');
+    if (!hote || !couche || getComputedStyle(couche).display === 'none') return false;
+    return window.innerWidth <= 760 || window.innerHeight <= 620;
+}
+
+let cibleMarquee = null;
+
+/** Cercle la case dont le robot parle, et décercle la précédente. */
+function marquerCible(cible) {
+    if (cibleMarquee && cibleMarquee !== cible) cibleMarquee.classList.remove('demo-cible');
+    cibleMarquee = null;
+    if (cible && cible.classList && document.contains(cible)) {
+        cible.classList.add('demo-cible');
+        cibleMarquee = cible;
+    }
 }
 
 /** Commande inerte : une vignette de catalogue n'a pas à porter de barre. */
@@ -266,6 +294,8 @@ export function createDemoCursor() {
     let bulle = null;
     // Instant avant lequel la bulle en cours n'a pas fini d'être lue.
     let finDeLecture = 0;
+    // Zone que la bulle ne doit pas recouvrir (voir `protegerZone`).
+    let zoneProtegee = null;
     // Les attentes en cours, pour les dénouer à la destruction : une promesse
     // jamais résolue retiendrait indéfiniment la fonction qui l'attend.
     const pending = new Set();
@@ -316,34 +346,87 @@ export function createDemoCursor() {
             bulle.classList.add('demo-bubble--on');
             // La prochaine pause du jeu ne s'achèvera pas avant ce moment.
             finDeLecture = performance.now() + tempsDeLecture(texte) * facteurVitesse;
+
+            // Écran étroit : la bulle se RANGE au-dessus du plateau au lieu de
+            // flotter dessus. Sur un sudoku ou un binairo de téléphone, elle
+            // recouvrait la première ligne de la grille — c'est-à-dire les
+            // chiffres dont l'explication parle. Impossible de suivre un
+            // raisonnement dont on cache les prémisses. Le lien avec la case
+            // n'est pas perdu : elle est cerclée pendant que le robot parle.
+            marquerCible(cible);
+            if (ancrerLesBulles()) {
+                const hote = document.getElementById('demo-controls-host');
+                if (bulle.parentElement !== hote) hote.appendChild(bulle);
+                bulle.classList.add('demo-bubble--rangee');
+                bulle.classList.remove('demo-bubble--dessous');
+                bulle.style.left = bulle.style.top = '';
+                return;
+            }
+            if (bulle.parentElement !== document.body) document.body.appendChild(bulle);
+            bulle.classList.remove('demo-bubble--rangee');
+
             const ancre = cible ? centerOf(cible) : positionActuelle();
             requestAnimationFrame(() => {
                 if (!bulle) return;
                 const b = bulle.getBoundingClientRect();
                 const marge = 10;
-                let left = ancre.x - b.width / 2;
-                left = Math.max(marge, Math.min(left, window.innerWidth - b.width - marge));
                 // Plancher haut : sous la bannière et les commandes du robot,
                 // qu'une bulle posée par-dessus rendait illisibles.
                 const chrome = document.getElementById('demo-controls-host');
                 const bas = chrome && chrome.getBoundingClientRect().bottom;
                 const margeHaut = bas > 0 ? bas + 8 : marge;
-                let top = ancre.y - b.height - 46;
-                const dessous = top < margeHaut;
-                if (dessous) top = ancre.y + 40;
+
+                const centrerSurAncre = () => Math.max(marge,
+                    Math.min(ancre.x - b.width / 2, window.innerWidth - b.width - marge));
+
+                // Zone protégée (la grille du jeu) : la bulle se pose AUTOUR,
+                // jamais dessus. Sans elle, l'explication du sudoku couvrait la
+                // ligne de chiffres sur laquelle porte le raisonnement.
+                const zr = zoneProtegee && document.contains(zoneProtegee)
+                    ? zoneProtegee.getBoundingClientRect() : null;
+                let pose = null;
+                if (zr) {
+                    const tient = (l, t) => l >= marge && l + b.width <= window.innerWidth - marge
+                        && t >= margeHaut && t + b.height <= window.innerHeight - marge;
+                    const essais = [
+                        { l: centrerSurAncre(), t: zr.top - b.height - 12, cote: false, dessous: false },
+                        { l: centrerSurAncre(), t: zr.bottom + 12, cote: false, dessous: true },
+                        { l: zr.right + 12, t: ancre.y - b.height / 2, cote: true },
+                        { l: zr.left - b.width - 12, t: ancre.y - b.height / 2, cote: true }
+                    ];
+                    pose = essais.find(e => tient(e.l, e.t)) || null;
+                }
+
+                if (!pose) {
+                    let top = ancre.y - b.height - 46;
+                    const dessous = top < margeHaut;
+                    if (dessous) top = ancre.y + 40;
+                    pose = { l: centrerSurAncre(), t: top, cote: false, dessous };
+                }
+
                 // La pointe vise l'ancre même quand la bulle a été ramenée
                 // dans la fenêtre, et bascule en haut quand la bulle est
-                // passée dessous — sinon elle désignait le vide.
-                const pointe = Math.max(14, Math.min(ancre.x - left, b.width - 14));
+                // passée dessous — sinon elle désignait le vide. Posée SUR LE
+                // CÔTÉ, elle n'en porte pas : c'est la case cerclée qui
+                // désigne, une pointe horizontale ne montrerait rien.
+                const pointe = Math.max(14, Math.min(ancre.x - pose.l, b.width - 14));
                 bulle.style.setProperty('--bulle-pointe', `${Math.round(pointe)}px`);
-                bulle.classList.toggle('demo-bubble--dessous', dessous);
-                bulle.style.left = `${Math.round(left)}px`;
-                bulle.style.top = `${Math.round(top)}px`;
+                bulle.classList.toggle('demo-bubble--cote', !!pose.cote);
+                bulle.classList.toggle('demo-bubble--dessous', !pose.cote && !!pose.dessous);
+                bulle.style.left = `${Math.round(pose.l)}px`;
+                bulle.style.top = `${Math.round(pose.t)}px`;
             });
         },
 
+        /**
+         * Déclare la zone que la bulle ne doit jamais recouvrir — la grille du
+         * jeu, typiquement. À appeler une fois, après le rendu du plateau.
+         */
+        protegerZone(el) { zoneProtegee = el || null; },
+
         hideBubble() {
             if (bulle) bulle.classList.remove('demo-bubble--on');
+            marquerCible(null);
             finDeLecture = 0;
         },
 
@@ -442,6 +525,7 @@ export function createDemoCursor() {
             destroyed = true;
             curseursVivants.delete(api);
             if (curseurParlant === api) curseurParlant = null;
+            marquerCible(null);
             pending.forEach(done => done(false));
             pending.clear();
             if (ghost) { ghost.remove(); ghost = null; }

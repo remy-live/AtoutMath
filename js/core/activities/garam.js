@@ -287,6 +287,9 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         const { structure, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
+        // La bulle se pose AUTOUR de la grille, jamais dessus : elle
+        // couvrait la ligne de chiffres sur laquelle porte l'explication.
+        cursor.protegerZone(container.querySelector('.ga-board, .kk-board'));
         const gate = createDemoGate(container.querySelector('.kk-actions') || container);
         const fin = () => { cursor.hideBubble(); gate.destroy(); };
 

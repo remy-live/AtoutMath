@@ -1463,6 +1463,39 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     border-left: 2px solid var(--primary); border-top: 2px solid var(--primary);
 }
 
+/* --- Bulle RANGÉE (téléphone) -------------------------------------------
+   Sur un écran étroit, il n'y a pas de « à côté » : la grille prend toute la
+   largeur et la bulle finissait forcément par-dessus — sur le sudoku et le
+   binairo elle couvrait la première ligne, c'est-à-dire les chiffres dont
+   l'explication parle. Rangée dans le bandeau du haut, elle POUSSE le plateau
+   au lieu de le cacher. Elle perd sa pointe : la case dont on parle est
+   cerclée (.demo-cible), ce qui désigne mieux qu'une flèche à travers
+   l'écran. */
+/* Bulle posée SUR LE CÔTÉ du plateau : pas de pointe — une flèche horizontale
+   traversant la grille ne désignerait rien. C'est la case cerclée qui montre. */
+.demo-bubble--cote::after { display: none; }
+
+.demo-bubble--rangee {
+    position: static; max-width: none; width: 100%;
+    margin: 6px auto 0; z-index: auto;
+    text-align: center; box-shadow: none;
+    transition: opacity .18s ease;
+}
+.demo-bubble--rangee::after { display: none; }
+
+/* La case en cours d'explication, cerclée et pulsante. */
+.demo-cible {
+    position: relative; z-index: 3;
+    box-shadow: 0 0 0 3px var(--primary), 0 0 0 7px color-mix(in srgb, var(--primary) 28%, transparent) !important;
+    border-radius: 6px;
+    animation: demoCiblePulse 1.4s ease-in-out infinite;
+}
+@keyframes demoCiblePulse {
+    0%, 100% { box-shadow: 0 0 0 3px var(--primary), 0 0 0 7px color-mix(in srgb, var(--primary) 28%, transparent); }
+    50%      { box-shadow: 0 0 0 3px var(--primary), 0 0 0 12px color-mix(in srgb, var(--primary) 6%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .demo-cible { animation: none; } }
+
 /* Commandes de la démonstration : pause / lecture et pas-à-pas.
    Dans le flux, sous le plateau : la barre suit la grille quelle que soit la
    taille du conteneur (plein écran ou simulateur). */
