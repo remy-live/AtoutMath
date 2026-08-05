@@ -54,8 +54,11 @@ function centrer(niveau) {
         const pts = executer(niveau.modele, { ...depart, x: 0, y: 0 }).traces.flat();
         if (pts.length) {
             const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-            depart.x = -(Math.min(...xs) + Math.max(...xs)) / 2;
-            depart.y = -(Math.min(...ys) + Math.max(...ys)) / 2;
+            // Arrondi au carreau : un carreau vaut 10 pas, et une figure dont
+            // le départ tombe à 3,7 pas d'une ligne ne se lit plus. On compte
+            // les côtés en carreaux ou on ne les compte pas.
+            depart.x = Math.round(-(Math.min(...xs) + Math.max(...xs)) / 2 / 10) * 10;
+            depart.y = Math.round(-(Math.min(...ys) + Math.max(...ys)) / 2 / 10) * 10;
         }
     }
     return { depart, figure: executer(niveau.modele, depart).traces };

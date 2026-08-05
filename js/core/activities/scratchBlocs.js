@@ -22,6 +22,7 @@ import { CHAT_SVG, CHAT_TAILLE } from './chatSvg.js';
 import { Atelier, vignettePalette } from './scratchAtelier.js';
 
 const DEMI = 200;          // la scène couvre -200..200 dans les deux sens
+const CARREAU = 10;        // un carreau du quadrillage = 10 pas du chat
 const OUTILS = { compterBlocs, contientBoucle, profondeurBoucles };
 
 /** Les pièces, dans le vocabulaire de Scratch. */
@@ -232,18 +233,49 @@ export function mount(container, session, opts = {}) {
     function dessinerScene(chat) {
         if (!ctx || !cnv) return;
         ctx.clearRect(0, 0, cnv.width, cnv.height);
-        ctx.strokeStyle = 'rgba(148,163,184,.25)'; ctx.lineWidth = 1;
-        for (let v = -DEMI; v <= DEMI; v += 50) {
-            const a = versEcran({ x: v, y: -DEMI }), b = versEcran({ x: v, y: DEMI });
+
+        // Un carreau = 10 pas, et on le DIT.
+        //
+        // Sans échelle, « avancer de 100 » ne veut rien dire : l'élève tâtonne
+        // au lieu de compter. Avec un carreau valant 10 pas, un côté de 8
+        // carreaux se lit à l'œil et s'écrit « avancer de 80 ». Les lignes
+        // fortes tous les 5 carreaux (50 pas) donnent le repère intermédiaire.
+        const ligne = (v, forte, horizontale) => {
+            ctx.strokeStyle = forte ? 'rgba(100,116,139,.34)' : 'rgba(148,163,184,.18)';
+            ctx.lineWidth = forte ? 1.2 : 1;
+            const a = versEcran(horizontale ? { x: -DEMI, y: v } : { x: v, y: -DEMI });
+            const b = versEcran(horizontale ? { x: DEMI, y: v } : { x: v, y: DEMI });
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-            const c = versEcran({ x: -DEMI, y: v }), d = versEcran({ x: DEMI, y: v });
-            ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+        };
+        for (let v = -DEMI; v <= DEMI; v += CARREAU) {
+            const forte = v % (5 * CARREAU) === 0;
+            ligne(v, forte, false);
+            ligne(v, forte, true);
         }
-        // Gabarit épais et pâle, tracé de l'élève fin et coloré par-dessus :
-        // on voit d'un coup d'œil ce qui est couvert et ce qui dépasse.
-        tracer(item.meta.figure, 'rgba(99,102,241,.22)', 14);
-        tracer(traceCourante, '#4f46e5', 4);
+
+        // Gabarit pâle, tracé de l'élève par-dessus : on voit ce qui est
+        // couvert et ce qui dépasse. Le gabarit était épais de 14 px — il
+        // noyait la figure et masquait les carreaux qu'il faut justement
+        // compter. Il suffit qu'il se distingue du tracé, pas qu'il l'écrase.
+        tracer(item.meta.figure, 'rgba(99,102,241,.30)', Math.max(4, cnv.width * 0.016));
+        tracer(traceCourante, '#4f46e5', Math.max(2.5, cnv.width * 0.009));
         dessinerChat(chat || { ...item.meta.depart });
+
+        legendeCarreau();
+    }
+
+    /** Un carreau témoin en bas à gauche : l'échelle, montrée plutôt qu'écrite. */
+    function legendeCarreau() {
+        const pas = CARREAU * echelle;
+        const x = 10, y = cnv.height - 10 - pas;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(79,70,229,.55)'; ctx.lineWidth = 1.4;
+        ctx.strokeRect(x, y, pas, pas);
+        ctx.fillStyle = 'rgba(71,85,105,.85)';
+        ctx.font = `700 ${Math.max(9, Math.min(13, cnv.width * 0.033))}px 'Inter', sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`= ${CARREAU} pas`, x + pas + 6, y + pas / 2);
+        ctx.restore();
     }
 
     function tracer(lignes, couleur, epaisseur) {

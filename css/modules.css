@@ -1831,10 +1831,13 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .sc-titre { font-size: .98rem; color: var(--text-main); flex: 1; min-width: 0; }
 .sc-consigne { margin: 0; font-size: .82rem; line-height: 1.35; color: var(--text-muted); flex-shrink: 0; }
 
-/* La scène est CARRÉE : une figure centrée ne doit pas s'étirer selon
-   l'orientation de l'écran. */
+/* La scène est CARRÉE — une figure centrée ne doit pas s'étirer selon
+   l'orientation de l'écran — et elle prend la MOITIÉ de la hauteur.
+   Réduite au minimum, le dessin à repasser devenait un timbre-poste au milieu
+   d'une bande vide : c'est pourtant lui qu'il faut regarder pour compter les
+   carreaux. */
 .sc-scene {
-    flex: 0 1 auto; min-height: 130px;
+    flex: 1 1 50%; min-height: 200px;
     display: flex; align-items: center; justify-content: center;
     background: var(--bg-app); border: 2px solid var(--border); border-radius: 14px; overflow: hidden;
 }
@@ -1842,13 +1845,13 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 
 /* Le studio : palette + atelier, côte à côte comme dans Scratch. */
 .sc-studio {
-    flex: 1 1 auto; min-height: 190px;
+    flex: 1 1 50%; min-height: 190px;
     display: flex; gap: 6px; align-items: stretch;
     background: var(--bg-panel); border: 2px solid var(--border); border-radius: 14px;
     padding: 6px; overflow: hidden;
 }
 .sc-palette {
-    flex: 0 0 auto; max-width: 46%;
+    flex: 0 0 auto; max-width: 42%;
     display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
     overflow-y: auto; overflow-x: hidden; padding-right: 4px;
     border-right: 1px solid var(--border);
@@ -1874,7 +1877,12 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     background-size: 22px 22px;
     border-radius: 10px; overflow: hidden;
 }
+/* Le temps d'un geste, la pièce tenue peut sortir du cadre : sinon elle est
+   rognée dès qu'on la ramène vers la palette, et on croit qu'elle passe
+   dessous. */
+.sc-atelier--glisse { overflow: visible; z-index: 4; }
 .sc-atelier-svg { display: block; touch-action: none; user-select: none; }
+.sc-atelier--glisse .sc-atelier-svg { overflow: visible; }
 
 /* Les pièces. La forme vient du chemin SVG ; ici on ne fait que l'habillage. */
 .sc-piece-forme { stroke: rgba(0, 0, 0, .18); stroke-width: 1; }
@@ -1929,7 +1937,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 
 /* Écran large : la scène à gauche, le studio à droite et en grand — c'est là
    qu'on peut vraiment étaler un programme. */
-@media (min-width: 900px) and (min-height: 560px) {
+@media (min-width: 860px) {
     .sc-layout {
         display: grid; gap: 10px 14px;
         grid-template-columns: minmax(0, 1fr) minmax(420px, 46%);
@@ -1943,7 +1951,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     }
     .sc-entete { grid-area: entete; }
     .sc-consigne { grid-area: consigne; }
-    .sc-scene { grid-area: scene; flex: 1 1 auto; }
+    .sc-scene { grid-area: scene; flex: 1 1 auto; min-height: 240px; }
     .sc-studio { grid-area: studio; }
     .sc-actions { grid-area: actions; }
     .sc-layout > .hint-bar { grid-area: indices; }

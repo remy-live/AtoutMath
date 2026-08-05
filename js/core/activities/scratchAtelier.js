@@ -400,6 +400,10 @@ export class Atelier {
         this.detacher(bloc);
         bloc.empiler(bloc, this.couche);   // la pile passe au-dessus des autres
         bloc.el.classList.add('sc-piece--tenue');
+        // Le cadre de l'atelier rogne ce qui en sort : une pièce ramenée vers
+        // la palette disparaissait derrière son bord, et on croyait qu'elle
+        // passait SOUS les autres. Le temps du geste, on laisse déborder.
+        this.hote.classList.add('sc-atelier--glisse');
 
         const p0 = this.versAtelier(e);
         const dx = p0.x - bloc.x, dy = p0.y - bloc.y;
@@ -431,6 +435,7 @@ export class Atelier {
             window.removeEventListener('pointerup', lacher, true);
             window.removeEventListener('pointercancel', lacher, true);
             bloc.el.classList.remove('sc-piece--tenue');
+            this.hote.classList.remove('sc-atelier--glisse');
             this.palette.classList.remove('sc-palette--corbeille');
             if (this.surPalette(ev)) this.supprimer(bloc);
             else this.appliquerAimant(bloc);
