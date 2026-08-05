@@ -322,6 +322,19 @@ export function createDemoCursor() {
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
 
+    /** Place la flèche sur la cible sans rien attendre (voir `say`). */
+    function suivreDuRegard(cible) {
+        if (!document.contains(cible)) return;
+        const { x, y } = centerOf(cible);
+        if (!el.dataset.placed) {
+            el.dataset.placed = '1';
+            place(x, y, 0);
+            el.classList.add('demo-cursor--visible');
+            return;
+        }
+        place(x, y, 280 * facteurVitesse);
+    }
+
     const api = {
         get destroyed() { return destroyed; },
 
@@ -354,6 +367,15 @@ export function createDemoCursor() {
             // raisonnement dont on cache les prémisses. Le lien avec la case
             // n'est pas perdu : elle est cerclée pendant que le robot parle.
             marquerCible(cible);
+            // Le pointeur SUIT la phrase, immédiatement.
+            //
+            // La flèche ne bougeait qu'au `moveTo()` suivant, lequel attend
+            // d'abord la fin de la lecture : pendant toute la phrase, elle
+            // restait posée sur la case PRÉCÉDENTE alors que la bulle — et
+            // maintenant le cercle — désignaient la nouvelle. Trois indications
+            // contradictoires à l'écran. Pointer n'est pas agir : la flèche se
+            // place tout de suite, seul l'APPUI attend la fin de la lecture.
+            if (cible && cible.getBoundingClientRect) suivreDuRegard(cible);
             if (ancrerLesBulles()) {
                 const hote = document.getElementById('demo-controls-host');
                 if (bulle.parentElement !== hote) hote.appendChild(bulle);
