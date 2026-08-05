@@ -240,3 +240,29 @@ test('le générateur peut démarrer à un niveau choisi', () => {
     assert.ok(it.meta.figure.length > 0);
     assert.ok(it.explanation.length > 20, 'chaque niveau doit porter sa leçon');
 });
+
+// --- Diagnostic « bonne forme, mauvaise taille » -----------------------------
+
+import { diagnostiquer } from '../js/core/scratchScore.js';
+
+test('un carré deux fois trop petit est diagnostiqué comme tel, pas comme incomplet', () => {
+    const petit = executer([stylo(), rep(4, [av(55), dr(90)])]).traces;
+    const r = comparerTrace(petit, FIGURE_CARRE);
+    assert.equal(r.reussi, false);
+    assert.match(diagnostiquer(r, {}), /trop PETITE/);
+});
+
+test('un carré trop grand est diagnostiqué comme tel', () => {
+    const grand = executer([stylo(), rep(4, [av(160), dr(90)])]).traces;
+    assert.match(diagnostiquer(comparerTrace(grand, FIGURE_CARRE), {}), /trop GRANDE/);
+});
+
+test('un côté manquant reste « il manque un côté », pas un problème de taille', () => {
+    const r = comparerTrace(executer([stylo(), rep(3, [av(100), dr(90)])]).traces, FIGURE_CARRE);
+    assert.match(diagnostiquer(r, {}), /s'arrête trop tôt|manque/);
+});
+
+test('une page blanche garde son message propre', () => {
+    assert.match(diagnostiquer(comparerTrace([], FIGURE_CARRE), { rienTrace: true }), /n'a rien tracé/);
+    assert.match(diagnostiquer(comparerTrace([], FIGURE_CARRE), { rienTrace: true, styloOublie: true }), /stylo/);
+});

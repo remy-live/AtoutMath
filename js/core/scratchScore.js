@@ -88,8 +88,33 @@ export function comparerTrace(trace, figure, opts = {}) {
     return {
         couverture, proprete,
         reussi: couverture >= seuilC && proprete >= seuilP,
-        manquants, bavures
+        manquants, bavures,
+        // Encombrement des deux tracés : c'est ce qui distingue « il manque un
+        // côté » de « la figure est juste, mais trop petite ».
+        boite: encombrement(ptsTrace), boiteCible: encombrement(ptsFigure)
     };
+}
+
+function encombrement(pts) {
+    if (!pts.length) return null;
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    return {
+        w: Math.max(...xs) - Math.min(...xs),
+        h: Math.max(...ys) - Math.min(...ys)
+    };
+}
+
+/** Rapport de taille entre le tracé et la figure, ou null si indécidable. */
+function facteurTaille(r) {
+    const a = r.boite, b = r.boiteCible;
+    if (!a || !b) return null;
+    const ref = Math.max(b.w, b.h), obt = Math.max(a.w, a.h);
+    if (!ref || !obt) return null;
+    // La forme doit être SEMBLABLE : mêmes proportions, sinon ce n'est pas un
+    // problème d'échelle mais de figure.
+    const propA = a.w / Math.max(1, a.h), propB = b.w / Math.max(1, b.h);
+    if (Math.abs(propA - propB) > 0.28 * Math.max(propA, propB)) return null;
+    return obt / ref;
 }
 
 /**
@@ -106,6 +131,15 @@ export function diagnostiquer(resultat, contexte = {}) {
         return contexte.styloOublie
             ? "Le chat s'est bien déplacé, mais son stylo était levé : il n'a rien écrit. Pose le stylo avant de le faire avancer."
             : "Le chat n'a rien tracé. Fais-le avancer, stylo posé.";
+    }
+    // Même forme, mauvaise taille : le cas le plus fréquent, et celui qu'un
+    // « il manque presque tout le tracé » désignait le plus mal — l'élève a
+    // parfaitement compris la figure, il s'est trompé sur la longueur d'un côté.
+    const f = facteurTaille(resultat);
+    if (f && (f < 0.82 || f > 1.22)) {
+        return f < 1
+            ? `Ta figure a la bonne forme, mais elle est trop PETITE : allonge les côtés.`
+            : `Ta figure a la bonne forme, mais elle est trop GRANDE : raccourcis les côtés.`;
     }
     if (couverture < 0.35) {
         return "Il manque presque tout le tracé : le chat ne fait qu'un bout du chemin. Regarde combien de côtés a la figure.";

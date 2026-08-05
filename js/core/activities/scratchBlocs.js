@@ -1,37 +1,45 @@
-// « Le Chat Géomètre » : construire un programme en blocs pour repasser une
-// figure.
+// « Le Chat Géomètre » : programmer le chat pour repasser une figure.
 //
-// Ce fichier ne contient AUCUNE géométrie : la machine virtuelle exécute le
-// script, la notation compare le tracé à la figure, et tous deux sont
-// testables hors navigateur. Ici on ne fait que trois choses — montrer la
-// scène, laisser poser des blocs, animer le chat.
+// Trois morceaux, séparés exprès :
+//   - `scratchVM.js`      exécute un programme et rend le tracé (sans DOM)
+//   - `scratchScore.js`   compare ce tracé à la figure (sans DOM)
+//   - `scratchAtelier.js` l'atelier de blocs à encoches, avec aimantation
+// Ici on ne fait que les relier : la scène, la palette, le bouton Lancer.
 //
-// Le sujet difficile est la SAISIE SUR TÉLÉPHONE. Le glisser-déposer de
-// Scratch demande de la précision, et sur 390 px la palette et le poste de
-// travail ne tiennent pas côte à côte. Deux modes coexistent donc :
-//
-//   « taper »   — on touche un bloc de la palette, il s'insère à l'endroit
-//                 marqué par le curseur (une fente surlignée qu'on déplace
-//                 d'un doigt). Aucun geste précis, aucune cible mouvante.
-//   « glisser » — le vrai glisser-déposer, pour la tablette et l'ordinateur.
-//
-// Le mode se choisit, et le choix est retenu d'une session à l'autre. Par
-// défaut on prend « taper » sur téléphone et « glisser » ailleurs.
+// L'atelier est un VRAI atelier Scratch — des pièces qu'on tire, qui
+// s'attirent, et une bouche de boucle qui s'ouvre. Une première version
+// alignait les blocs dans une liste avec des fentes d'insertion : c'était
+// jouable au doigt, mais ce n'était pas Scratch, et l'élève qui ouvre Scratch
+// ensuite ne devait rien reconnaître. Le glisser-déposer est donc réécrit en
+// événements pointeur, ce qui le rend utilisable au doigt sans rien perdre.
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { executer, compterBlocs, contientBoucle, profondeurBoucles, BLOCS } from '../scratchVM.js';
+import { executer, compterBlocs, contientBoucle, profondeurBoucles } from '../scratchVM.js';
 import { comparerTrace, diagnostiquer, verifierExigences } from '../scratchScore.js';
 import { CHAT_SVG, CHAT_TAILLE } from './chatSvg.js';
+import { Atelier, vignettePalette } from './scratchAtelier.js';
 
-const CLE_SAISIE = 'mathbox-scratch-saisie';
 const DEMI = 200;          // la scène couvre -200..200 dans les deux sens
 const OUTILS = { compterBlocs, contientBoucle, profondeurBoucles };
 
-/** Angles proposés d'un geste, plutôt que d'obliger à taper au clavier. */
-const ANGLES_COURANTS = [30, 36, 45, 60, 72, 90, 120, 144, 180];
-const LONGUEURS_COURANTES = [20, 50, 60, 70, 80, 100, 160, 180, 200, 240];
+/** Les pièces, dans le vocabulaire de Scratch. */
+const MODELES = {
+    chapeau: { type: 'chapeau', cat: 'events', libelle: 'quand ⚑ est cliqué', chapeau: true, champs: [], defauts: {} },
+    avancer: { type: 'avancer', cat: 'motion', libelle: 'avancer de', unite: 'pas', champs: ['valeur'], defauts: { valeur: 100 } },
+    droite: { type: 'droite', cat: 'motion', libelle: 'tourner ↻ de', unite: 'degrés', champs: ['valeur'], defauts: { valeur: 90 } },
+    gauche: { type: 'gauche', cat: 'motion', libelle: 'tourner ↺ de', unite: 'degrés', champs: ['valeur'], defauts: { valeur: 90 } },
+    orienter: { type: 'orienter', cat: 'motion', libelle: "s'orienter à", unite: 'degrés', champs: ['valeur'], defauts: { valeur: 90 } },
+    allerA: { type: 'allerA', cat: 'motion', libelle: 'aller à x:', entre: 'y:', champs: ['valeur', 'valeur2'], defauts: { valeur: 0, valeur2: 0 } },
+    stylo: { type: 'stylo', cat: 'pen', libelle: 'poser le stylo', champs: [], defauts: {} },
+    leveStylo: { type: 'leveStylo', cat: 'pen', libelle: 'lever le stylo', champs: [], defauts: {} },
+    repeter: { type: 'repeter', cat: 'control', libelle: 'répéter', unite: 'fois', champs: ['valeur'], defauts: { valeur: 4 }, bouche: true }
+};
+
+/** Valeurs proposées d'un geste, plutôt qu'un clavier à sortir. */
+const ANGLES = [30, 36, 45, 60, 72, 90, 120, 144, 180];
+const LONGUEURS = [20, 50, 60, 70, 80, 100, 160, 180, 200, 240];
 
 const chatImg = new Image();
 chatImg.src = CHAT_SVG;
@@ -40,362 +48,158 @@ export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
     let item = null;
-    let script = [];
-    let curseurScript = null;      // { parent, index } : où le prochain bloc s'insère
-    let anim = null;               // animation en cours
-    let traceCourante = [];        // ce que le chat a dessiné jusqu'ici
-    let modeSaisie = lireMode();
-
-    function lireMode() {
-        const force = (session.params && session.params.saisie) || 'auto';
-        if (force === 'toucher' || force === 'glisser') return force;
-        try {
-            const retenu = localStorage.getItem(CLE_SAISIE);
-            if (retenu === 'toucher' || retenu === 'glisser') return retenu;
-        } catch { /* stockage privé */ }
-        // Le doigt sur petit écran : taper. Souris ou grande dalle : glisser.
-        return (window.innerWidth <= 760 && matchMedia('(pointer: coarse)').matches)
-            ? 'toucher' : 'glisser';
-    }
+    let atelier = null;
+    let anim = null;
+    let traceCourante = [];
 
     // --- Rendu -------------------------------------------------------------
 
     function renderNext() {
         if (destroyed) return;
         item = session.next();
-        const m = item.meta;
-        script = clonerScript(m.amorce || []);
-        curseurScript = { parent: script, index: script.length };
         traceCourante = [];
         render();
     }
 
     function render() {
         const m = item.meta;
+        if (atelier) { atelier.detruire(); atelier = null; }
+
         container.innerHTML = `
-            <div class="sc-layout" data-mode="${modeSaisie}">
+            <div class="sc-layout">
                 <div class="sc-entete">
                     <span class="sc-niveau">Niveau ${m.niveau} / ${m.total}</span>
                     <b class="sc-titre">${m.titre}</b>
-                    <button type="button" class="sc-mode" data-mode-btn
-                        title="Changer la façon de poser les blocs">${modeSaisie === 'toucher' ? '👆 Taper' : '✋ Glisser'}</button>
                 </div>
-                <p class="sc-consigne">${item.meta.consigneHtml || echapper(itemConsigne())}</p>
+                <p class="sc-consigne">${echapper(consigneCourte())}</p>
                 <div class="sc-scene"><canvas class="sc-canvas"></canvas></div>
-                <div class="sc-script" data-script role="list" aria-label="Programme du chat"></div>
-                <div class="sc-palette" data-palette></div>
+                <div class="sc-studio">
+                    <div class="sc-palette" data-palette aria-label="Blocs disponibles"></div>
+                    <div class="sc-atelier" data-atelier></div>
+                </div>
                 <div class="sc-actions">
-                    <button type="button" class="sc-btn sc-btn--go" data-run>▶ Lancer</button>
+                    <button type="button" class="sc-btn sc-btn--go" data-run>⚑ Lancer</button>
                     <button type="button" class="sc-btn" data-clear>↺ Effacer</button>
                     <button type="button" class="sc-btn sc-btn--ok" data-valider>Valider</button>
                 </div>
                 ${hintBar(session)}
             </div>`;
 
-        dessinerPalette();
-        dessinerScript();
         preparerScene();
+        preparerAtelier();
 
         if (session.frozen) return;
         if (session.isDemo) { runDemo(); return; }
 
         container.querySelector('[data-run]').onclick = () => lancer();
         container.querySelector('[data-clear]').onclick = () => {
-            script = clonerScript(item.meta.amorce || []);
-            curseurScript = { parent: script, index: script.length };
-            traceCourante = [];
-            dessinerScript(); dessinerScene();
+            atelier.charger(item.meta.amorce || []);
+            traceCourante = []; dessinerScene();
         };
         container.querySelector('[data-valider]').onclick = () => valider();
-        container.querySelector('[data-mode-btn]').onclick = () => {
-            modeSaisie = modeSaisie === 'toucher' ? 'glisser' : 'toucher';
-            try { localStorage.setItem(CLE_SAISIE, modeSaisie); } catch { /* privé */ }
-            render();
-        };
         wireHint(container, session);
     }
 
-    function itemConsigne() {
-        // La consigne du générateur porte « Titre — consigne » ; le titre est
-        // déjà dans l'en-tête, on n'affiche que la phrase.
+    function consigneCourte() {
         const t = item.prompt.text;
         const sep = t.indexOf(' — ');
         return sep > 0 ? t.slice(sep + 3) : t;
     }
 
-    // --- Palette -----------------------------------------------------------
+    // --- Atelier et palette -------------------------------------------------
 
-    function dessinerPalette() {
-        const hote = container.querySelector('[data-palette]');
-        hote.innerHTML = item.meta.palette.map(type => {
-            const d = BLOCS[type];
-            return `<button type="button" class="sc-pal sc-bloc--${d.cat}" data-ajout="${type}"
-                        draggable="${modeSaisie === 'glisser'}">
-                        ${etiquette(type)}
-                    </button>`;
-        }).join('');
-
-        hote.querySelectorAll('[data-ajout]').forEach(btn => {
-            const type = btn.dataset.ajout;
-            if (modeSaisie === 'toucher') {
-                btn.onclick = () => { inserer(nouveauBloc(type)); };
-            } else {
-                brancherGlisserDepuisPalette(btn, type);
-            }
+    function preparerAtelier() {
+        const hote = container.querySelector('[data-atelier]');
+        const palette = container.querySelector('[data-palette]');
+        // Une pièce Scratch fait ~110 px de large. Sur un écran de 390 px, la
+        // palette et l'atelier côte à côte ne peuvent pas les porter à taille
+        // réelle : on réduit l'ensemble plutôt que de raccourcir les libellés,
+        // parce que c'est ce texte-là que l'élève retrouvera dans Scratch.
+        const k = Math.max(0.62, Math.min(1, window.innerWidth / 780));
+        atelier = new Atelier(hote, palette, {
+            modeles: MODELES, echelle: k,
+            onEditerNombre: editerNombre,
+            onChange: () => { }
         });
-    }
-
-    /** Libellé court d'un bloc de palette, valeur par défaut comprise. */
-    function etiquette(type) {
-        const d = BLOCS[type];
-        if (!d.unite && d.defaut === undefined) return d.libelle;
-        return `${d.libelle} <b>${d.defaut}</b>${d.unite ? ' ' + d.unite : ''}`;
-    }
-
-    function nouveauBloc(type) {
-        const d = BLOCS[type];
-        const b = { type };
-        if (d.defaut !== undefined) b.valeur = d.defaut;
-        if (d.second !== undefined) b.valeur2 = d.second;
-        if (d.corps) b.corps = [];
-        return b;
-    }
-
-    // --- Le script ---------------------------------------------------------
-
-    function dessinerScript() {
-        const hote = container.querySelector('[data-script]');
-        if (!hote) return;
-        const lignes = [];
-        applatir(script, 0, lignes);
-        hote.innerHTML = lignes.map(l => ligneHtml(l)).join('')
-            + fenteHtml(script, script.length, 0)
-            + (lignes.length ? '' : '<p class="sc-vide">Ajoute un premier bloc ci-dessous.</p>');
-        brancherScript(hote);
-    }
-
-    /**
-     * Aplatit l'arbre en lignes affichables. Chaque ligne connaît son
-     * emplacement (`parent` + `index`), ce qui permet d'insérer, de supprimer
-     * et de déplacer sans jamais reconstruire l'arbre à l'envers.
-     */
-    function applatir(blocs, profondeur, sortie) {
-        blocs.forEach((bloc, index) => {
-            sortie.push({ bloc, parent: blocs, index, profondeur });
-            if (bloc.corps) {
-                applatir(bloc.corps, profondeur + 1, sortie);
-                sortie.push({ fin: bloc, parent: bloc.corps, index: bloc.corps.length, profondeur: profondeur + 1 });
-            }
-        });
-    }
-
-    function ligneHtml(l) {
-        if (l.fin) {
-            // Fente d'insertion À L'INTÉRIEUR de la boucle, puis sa fermeture.
-            return fenteHtml(l.parent, l.index, l.profondeur)
-                + `<div class="sc-fin" style="--prof:${l.profondeur - 1}"></div>`;
-        }
-        const b = l.bloc, d = BLOCS[b.type];
-        const champs = [];
-        if (d.defaut !== undefined) {
-            champs.push(`<button type="button" class="sc-num" data-champ="valeur">${b.valeur}</button>`);
-        }
-        if (d.second !== undefined) {
-            champs.push(`<span class="sc-txt">y:</span>`
-                + `<button type="button" class="sc-num" data-champ="valeur2">${b.valeur2}</button>`);
-        }
-        return fenteHtml(l.parent, l.index, l.profondeur)
-            + `<div class="sc-bloc sc-bloc--${d.cat}" style="--prof:${l.profondeur}"
-                    data-ligne draggable="${modeSaisie === 'glisser'}" role="listitem">
-                <span class="sc-grip" aria-hidden="true">⠿</span>
-                <span class="sc-txt">${d.libelle}</span>
-                ${champs.join('')}
-                ${d.unite ? `<span class="sc-txt">${d.unite}</span>` : ''}
-                <button type="button" class="sc-sup" aria-label="Supprimer ce bloc">✕</button>
-            </div>`;
-    }
-
-    /** Fente d'insertion : c'est elle qui porte le curseur en mode « taper ». */
-    function fenteHtml(parent, index, profondeur) {
-        const actif = curseurScript && curseurScript.parent === parent && curseurScript.index === index;
-        return `<button type="button" class="sc-fente${actif ? ' sc-fente--ici' : ''}"
-                    style="--prof:${profondeur}" data-fente
-                    aria-label="Insérer ici"><span></span></button>`;
-    }
-
-    function brancherScript(hote) {
-        // Les fentes portent leur emplacement par référence : on relie donc
-        // les nœuds du DOM aux nœuds de l'arbre dans l'ordre où ils ont été
-        // produits, plutôt que par des identifiants qu'il faudrait maintenir.
-        const lignes = [];
-        applatir(script, 0, lignes);
-        const fentes = [...hote.querySelectorAll('[data-fente]')];
-        const emplacements = lignes.map(l => ({ parent: l.parent, index: l.index }));
-        emplacements.push({ parent: script, index: script.length });
-        fentes.forEach((el, i) => {
-            const e = emplacements[i];
-            if (!e) return;
-            el._place = e;
-            el.onclick = () => { curseurScript = { ...e }; dessinerScript(); };
-            if (modeSaisie === 'glisser') brancherDepot(el);
-        });
-
-        const rangs = lignes.filter(l => !l.fin);
-        [...hote.querySelectorAll('[data-ligne]')].forEach((el, i) => {
-            const l = rangs[i];
-            if (!l) return;
-            el._ligne = l;
-            el.querySelector('.sc-sup').onclick = (e) => {
-                e.stopPropagation();
-                l.parent.splice(l.index, 1);
-                curseurScript = { parent: script, index: script.length };
-                dessinerScript();
+        atelier.dimensionner();
+        if (!preparerAtelier._resize) {
+            preparerAtelier._resize = () => {
+                if (atelier) atelier.dimensionner();
+                dimensionner(); dessinerScene();
             };
-            el.querySelectorAll('.sc-num').forEach(btn => {
-                btn.onclick = (e) => { e.stopPropagation(); editerNombre(btn, l.bloc, btn.dataset.champ); };
-            });
-            if (modeSaisie === 'glisser') brancherGlisserLigne(el, l);
-        });
-    }
+            window.addEventListener('resize', preparerAtelier._resize);
+        }
 
-    function inserer(bloc) {
-        const p = curseurScript && curseurScript.parent ? curseurScript : { parent: script, index: script.length };
-        p.parent.splice(p.index, 0, bloc);
-        // Poser une boucle place le curseur DEDANS : neuf fois sur dix, le
-        // bloc suivant est son contenu. Sinon on avance d'un cran.
-        curseurScript = bloc.corps
-            ? { parent: bloc.corps, index: 0 }
-            : { parent: p.parent, index: p.index + 1 };
-        dessinerScript();
+        item.meta.palette.forEach(type => {
+            palette.appendChild(vignettePalette(MODELES[type], (t, e) => {
+                // La pièce naît SOUS le doigt, dans l'atelier, et le
+                // glissement continue sans rupture : on tire une pièce de la
+                // palette exactement comme dans Scratch.
+                const p = atelier.versAtelier(e);
+                const bloc = atelier.creer(t, p.x - 40, p.y - 18);
+                atelier.commencerGlisser(bloc, e);
+            }, k));
+        });
+
+        atelier.charger(item.meta.amorce || []);
     }
 
     // --- Saisie d'un nombre -------------------------------------------------
 
-    function editerNombre(btn, bloc, champ) {
-        fermerPopover();
-        const angle = ['droite', 'gauche', 'orienter'].includes(bloc.type);
-        const suggestions = angle ? ANGLES_COURANTS
-            : bloc.type === 'avancer' ? LONGUEURS_COURANTES : [];
+    function editerNombre(piece, champ, ancre) {
+        fermerPavé();
+        const angle = ['droite', 'gauche', 'orienter'].includes(piece.type);
+        const suggestions = angle ? ANGLES : piece.type === 'avancer' ? LONGUEURS : [];
         const pop = document.createElement('div');
         pop.className = 'sc-pop';
         pop.innerHTML = `
             <input type="text" inputmode="numeric" class="sc-pop-champ"
-                   value="${bloc[champ]}" aria-label="Valeur du bloc">
+                   value="${piece.valeurs[champ]}" aria-label="Valeur du bloc">
             <div class="sc-pop-chips">${suggestions.map(v =>
             `<button type="button" class="sc-chip" data-v="${v}">${v}</button>`).join('')}</div>
             <button type="button" class="sc-pop-ok">OK</button>`;
         document.body.appendChild(pop);
-        placerPopover(pop, btn);
+        placerPavé(pop, ancre);
 
         const champInput = pop.querySelector('.sc-pop-champ');
-        const valider = () => {
+        const poser = () => {
             const n = parseFloat(String(champInput.value).replace(',', '.'));
-            if (Number.isFinite(n)) bloc[champ] = n;
-            fermerPopover();
-            dessinerScript();
+            if (Number.isFinite(n)) {
+                piece.valeurs[champ] = n;
+                piece.remonterMiseEnForme();
+            }
+            fermerPavé();
         };
-        pop.querySelector('.sc-pop-ok').onclick = valider;
-        champInput.onkeydown = (e) => { if (e.key === 'Enter') valider(); if (e.key === 'Escape') fermerPopover(); };
+        pop.querySelector('.sc-pop-ok').onclick = poser;
+        champInput.onkeydown = (e) => { if (e.key === 'Enter') poser(); if (e.key === 'Escape') fermerPavé(); };
         pop.querySelectorAll('.sc-chip').forEach(c => {
-            c.onclick = () => { champInput.value = c.dataset.v; valider(); };
+            c.onclick = () => { champInput.value = c.dataset.v; poser(); };
         });
         champInput.focus({ preventScroll: true });
         champInput.select();
-        regTimeout(() => {
-            document.addEventListener('pointerdown', fermerSiDehors, true);
-        }, 0);
+        regTimeout(() => document.addEventListener('pointerdown', fermerSiDehors, true), 0);
     }
 
     function fermerSiDehors(e) {
         const pop = document.querySelector('.sc-pop');
-        if (pop && !pop.contains(e.target)) fermerPopover();
+        if (pop && !pop.contains(e.target)) fermerPavé();
     }
 
-    function fermerPopover() {
+    function fermerPavé() {
         document.removeEventListener('pointerdown', fermerSiDehors, true);
         document.querySelectorAll('.sc-pop').forEach(p => p.remove());
     }
 
-    function placerPopover(pop, ancre) {
+    function placerPavé(pop, ancre) {
         const r = ancre.getBoundingClientRect();
         const b = pop.getBoundingClientRect();
         const marge = 8;
-        let left = Math.min(Math.max(marge, r.left + r.width / 2 - b.width / 2),
+        const left = Math.min(Math.max(marge, r.left + r.width / 2 - b.width / 2),
             window.innerWidth - b.width - marge);
-        // Au-dessus si le clavier virtuel risque de manger le bas de l'écran.
         let top = r.bottom + 8;
         if (top + b.height > window.innerHeight - marge) top = Math.max(marge, r.top - b.height - 8);
         pop.style.left = `${Math.round(left)}px`;
         pop.style.top = `${Math.round(top)}px`;
-    }
-
-    // --- Glisser-déposer (tablette et ordinateur) ---------------------------
-
-    let porte = null;   // { bloc, source } : ce qui est en cours de déplacement
-
-    function brancherGlisserDepuisPalette(btn, type) {
-        btn.addEventListener('dragstart', (e) => {
-            porte = { bloc: nouveauBloc(type), source: null };
-            e.dataTransfer.effectAllowed = 'copy';
-            e.dataTransfer.setData('text/plain', type);
-        });
-        btn.addEventListener('dragend', () => { porte = null; nettoyerDepots(); });
-        // Le glisser natif n'existe pas au doigt : un appui simple ajoute donc
-        // quand même le bloc. Personne ne doit rester bloqué parce qu'il a
-        // choisi le mauvais mode.
-        btn.onclick = () => inserer(nouveauBloc(type));
-    }
-
-    function brancherGlisserLigne(el, ligne) {
-        el.addEventListener('dragstart', (e) => {
-            porte = { bloc: ligne.bloc, source: ligne };
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', 'bloc');
-            regTimeout(() => el.classList.add('sc-bloc--parti'), 0);
-        });
-        el.addEventListener('dragend', () => {
-            porte = null; nettoyerDepots(); dessinerScript();
-        });
-    }
-
-    function brancherDepot(fente) {
-        fente.addEventListener('dragover', (e) => {
-            if (!porte) return;
-            e.preventDefault();
-            fente.classList.add('sc-fente--vise');
-        });
-        fente.addEventListener('dragleave', () => fente.classList.remove('sc-fente--vise'));
-        fente.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (!porte) return;
-            const cible = fente._place;
-            // Déplacement : on retire d'abord, ce qui peut décaler la cible
-            // quand elle suit la source DANS LE MÊME conteneur.
-            if (porte.source) {
-                const { parent, index } = porte.source;
-                // Interdit de déposer une boucle dans son propre corps :
-                // l'arbre deviendrait cyclique et l'exécution ne finirait pas.
-                if (contientNoeud(porte.bloc, cible.parent)) { porte = null; return; }
-                parent.splice(index, 1);
-                if (cible.parent === parent && cible.index > index) cible.index--;
-            }
-            cible.parent.splice(cible.index, 0, porte.bloc);
-            curseurScript = { parent: cible.parent, index: cible.index + 1 };
-            porte = null;
-            dessinerScript();
-        });
-    }
-
-    function nettoyerDepots() {
-        container.querySelectorAll('.sc-fente--vise').forEach(f => f.classList.remove('sc-fente--vise'));
-        container.querySelectorAll('.sc-bloc--parti').forEach(f => f.classList.remove('sc-bloc--parti'));
-    }
-
-    /** Vrai si `tableau` est le corps de `bloc` ou d'un de ses descendants. */
-    function contientNoeud(bloc, tableau) {
-        if (!bloc.corps) return false;
-        if (bloc.corps === tableau) return true;
-        return bloc.corps.some(b => contientNoeud(b, tableau));
     }
 
     // --- Scène --------------------------------------------------------------
@@ -407,20 +211,15 @@ export function mount(container, session, opts = {}) {
         if (!cnv) return;
         ctx = cnv.getContext('2d');
         dimensionner();
-        if (!preparerScene._resize) {
-            preparerScene._resize = () => { dimensionner(); dessinerScene(); };
-            window.addEventListener('resize', preparerScene._resize);
-        }
         if (chatImg.complete) dessinerScene();
         else chatImg.onload = () => { if (!destroyed) dessinerScene(); };
     }
 
     function dimensionner() {
-        if (!cnv) return;
+        if (!cnv || !cnv.parentElement) return;
         const r = cnv.parentElement.getBoundingClientRect();
         const cote = Math.max(120, Math.min(r.width, r.height));
-        cnv.width = Math.round(cote);
-        cnv.height = Math.round(cote);
+        cnv.width = cnv.height = Math.round(cote);
         cnv.style.width = cnv.style.height = `${Math.round(cote)}px`;
         echelle = cote / (2 * DEMI);
     }
@@ -433,8 +232,6 @@ export function mount(container, session, opts = {}) {
     function dessinerScene(chat) {
         if (!ctx || !cnv) return;
         ctx.clearRect(0, 0, cnv.width, cnv.height);
-
-        // Quadrillage discret : il donne l'échelle sans attirer l'œil.
         ctx.strokeStyle = 'rgba(148,163,184,.25)'; ctx.lineWidth = 1;
         for (let v = -DEMI; v <= DEMI; v += 50) {
             const a = versEcran({ x: v, y: -DEMI }), b = versEcran({ x: v, y: DEMI });
@@ -442,15 +239,11 @@ export function mount(container, session, opts = {}) {
             const c = versEcran({ x: -DEMI, y: v }), d = versEcran({ x: DEMI, y: v });
             ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
         }
-
-        // La figure à repasser : épaisse et pâle, c'est un GABARIT. Le tracé de
-        // l'élève passe par-dessus, plus fin et coloré, pour qu'on voie
-        // exactement ce qui est couvert et ce qui dépasse.
+        // Gabarit épais et pâle, tracé de l'élève fin et coloré par-dessus :
+        // on voit d'un coup d'œil ce qui est couvert et ce qui dépasse.
         tracer(item.meta.figure, 'rgba(99,102,241,.22)', 14);
         tracer(traceCourante, '#4f46e5', 4);
-
-        const c = chat || { x: item.meta.depart.x, y: item.meta.depart.y, dir: item.meta.depart.dir };
-        dessinerChat(c);
+        dessinerChat(chat || { ...item.meta.depart });
     }
 
     function tracer(lignes, couleur, epaisseur) {
@@ -474,8 +267,7 @@ export function mount(container, session, opts = {}) {
         const w = h * (CHAT_TAILLE.w / CHAT_TAILLE.h);
         ctx.save();
         ctx.translate(e.x, e.y);
-        // Le dessin regarde vers la droite = direction 90 de la machine.
-        ctx.rotate((c.dir - 90) * Math.PI / 180);
+        ctx.rotate((c.dir - 90) * Math.PI / 180);   // le dessin regarde vers la droite
         ctx.drawImage(chatImg, -w / 2, -h / 2, w, h);
         ctx.restore();
     }
@@ -483,30 +275,25 @@ export function mount(container, session, opts = {}) {
     // --- Exécution animée ---------------------------------------------------
 
     function lancer() {
-        if (destroyed || anim) return null;
-        const r = executer(script, item.meta.depart);
-        traceCourante = [];
-        return animer(r);
+        if (destroyed || anim || !atelier) return null;
+        const script = atelier.versScript();
+        return animer(executer(script, item.meta.depart));
     }
 
     /**
-     * Rejoue le déplacement pas à pas plutôt que d'afficher le résultat d'un
-     * coup : c'est en VOYANT le chat tourner qu'on comprend pourquoi l'angle
-     * est faux. La durée totale est bornée — une rosace de 24 côtés ne doit
-     * pas demander une minute d'attente.
+     * Rejoue le déplacement pas à pas : c'est en VOYANT le chat tourner qu'on
+     * comprend pourquoi l'angle est faux. Durée bornée — une rosace de 24
+     * côtés ne doit pas demander une minute d'attente.
      */
     function animer(resultat) {
         return new Promise(resolve => {
             const etapes = resultat.pas;
-            if (!etapes.length) { dessinerScene(); resolve(resultat); return; }
+            if (!etapes.length) { traceCourante = []; dessinerScene(); resolve(resultat); return; }
             const duree = Math.max(700, Math.min(4000, etapes.length * 110));
             const parEtape = duree / etapes.length;
             let i = 0, depuis = { ...item.meta.depart };
-            let courant = null;
+            let courant = null, entame = false, t0 = performance.now();
             traceCourante = [];
-            let t0 = performance.now();
-            let entame = false;   // le point mobile du segment en cours est-il posé ?
-
             const nouveauTrait = (p) => { courant = [{ x: p.x, y: p.y }]; traceCourante.push(courant); };
             if (item.meta.depart.stylo) nouveauTrait(depuis);
 
@@ -519,10 +306,8 @@ export function mount(container, session, opts = {}) {
                 const y = depuis.y + (e.y - depuis.y) * k;
                 if (trace) {
                     if (!courant) nouveauTrait(depuis);
-                    // On POSE un point mobile au premier passage, puis on le
-                    // déplace. Écraser directement le dernier point écrasait le
-                    // début du trait, qui se réduisait à son extrémité — le
-                    // tracé de l'élève était invisible.
+                    // Un point mobile est POSÉ au premier passage puis déplacé :
+                    // écraser le dernier point écrasait le début du trait.
                     if (!entame) { courant.push({ x, y }); entame = true; }
                     else courant[courant.length - 1] = { x, y };
                 }
@@ -532,8 +317,7 @@ export function mount(container, session, opts = {}) {
                     if (e.bloc.type === 'stylo') nouveauTrait(e);
                     if (e.bloc.type === 'leveStylo') courant = null;
                     if (e.bloc.type === 'allerA') { if (e.stylo) nouveauTrait(e); else courant = null; }
-                    depuis = { x: e.x, y: e.y };
-                    entame = false;
+                    depuis = { x: e.x, y: e.y }; entame = false;
                     i++; t0 = t;
                     if (i >= etapes.length) {
                         anim = null;
@@ -552,7 +336,8 @@ export function mount(container, session, opts = {}) {
     // --- Validation ---------------------------------------------------------
 
     async function valider() {
-        if (destroyed || session.locked) return;
+        if (destroyed || session.locked || !atelier) return;
+        const script = atelier.versScript();
         const resultat = await lancer();
         if (destroyed || !resultat) return;
 
@@ -561,49 +346,42 @@ export function mount(container, session, opts = {}) {
             && resultat.pas.some(p => p.bloc.type === 'avancer');
         let message = null;
 
-        if (!juge.reussi) {
+        if (!script.length) {
+            message = "Le programme est vide : tire un bloc de la palette et accroche-le sous le chapeau.";
+        } else if (!juge.reussi) {
             message = diagnostiquer(juge, { rienTrace: resultat.traces.length === 0, styloOublie });
         } else {
-            // Le tracé est bon : reste l'exigence de code du niveau, quand il
-            // y en a une (« utilise une boucle »).
             message = verifierExigences(script, item.meta.exigences, OUTILS);
         }
 
         const bon = juge.reussi && !message;
-        const donnee = bon ? item.answer : resumerScript(script);
-        const res = session.submit(donnee, { misconception: message || undefined });
+        const res = session.submit(bon ? item.answer : resumer(script),
+            { misconception: message || undefined });
         if (res.ignored) return;
 
         res.dismissed.then(() => {
             if (destroyed) return;
             if (res.correct) { regTimeout(renderNext, 700); return; }
-            if (res.revealed) { montrerModele(); regTimeout(renderNext, 3200); }
+            if (res.revealed) { montrerModele(); regTimeout(renderNext, 3400); }
         });
     }
 
     /** Rejoue la solution attendue : voir la réponse vaut mieux que la lire. */
     function montrerModele() {
-        script = clonerScript(item.meta.modele);
-        curseurScript = { parent: script, index: script.length };
-        dessinerScript();
+        atelier.charger(item.meta.modele);
         lancer();
     }
 
-    /** Trace écrite du script, pour le carnet d'erreurs. */
-    function resumerScript(s) {
+    function resumer(s) {
         if (!s.length) return '(programme vide)';
         return s.map(b => {
-            const d = BLOCS[b.type];
-            const v = d.defaut !== undefined ? ` ${b.valeur}` : '';
-            return b.corps ? `${d.libelle}${v} [${resumerScript(b.corps)}]` : `${d.libelle}${v}`;
+            const m = MODELES[b.type];
+            const v = m.champs.length ? ` ${b.valeur}` : '';
+            return b.corps ? `${m.libelle}${v} [${resumer(b.corps)}]` : `${m.libelle}${v}`;
         }).join(', ');
     }
 
     // --- Démonstration ------------------------------------------------------
-    //
-    // Le robot ne se contente pas de montrer la figure finie : il POSE les
-    // blocs un par un en disant pourquoi. C'est la seule façon de transmettre
-    // le raisonnement « 360 divisé par le nombre de côtés ».
 
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
@@ -618,17 +396,14 @@ export function mount(container, session, opts = {}) {
             container.querySelector('.sc-scene'));
         if (!await cursor.pause(1600) || destroyed) return fin();
 
-        // On pose le modèle bloc par bloc, en commentant les plus parlants.
-        script = [];
-        curseurScript = { parent: script, index: 0 };
-        for (const bloc of m.modele) {
+        // Le robot POSE les pièces une par une, en disant pourquoi : c'est la
+        // seule façon de transmettre « 360 divisé par le nombre de côtés ».
+        for (let i = 0; i < m.modele.length; i++) {
             if (!await gate.waitTurn() || destroyed) return fin();
-            script.push(clonerBloc(bloc));
-            curseurScript = { parent: script, index: script.length };
-            dessinerScript();
-            const phrase = commenter(bloc, m);
-            const dernier = container.querySelector('[data-script] .sc-bloc:last-of-type');
-            if (phrase) cursor.say(phrase, dernier);
+            atelier.charger(m.modele.slice(0, i + 1));
+            const phrase = commenter(m.modele[i], m);
+            const derniere = [...container.querySelectorAll('.sc-piece--vive')].pop();
+            if (phrase) cursor.say(phrase, derniere);
             if (!await cursor.pause(900) || destroyed) return fin();
         }
 
@@ -644,7 +419,7 @@ export function mount(container, session, opts = {}) {
         renderNext();
     }
 
-    /** Ce que le robot dit en posant un bloc — seulement quand ça apprend. */
+    /** Ce que le robot dit en posant une pièce — seulement quand ça apprend. */
     function commenter(bloc, m) {
         const cotes = m.id === 'triangle' ? 3 : m.id === 'hexagone' ? 6 : m.id === 'octogone' ? 8 : 0;
         switch (bloc.type) {
@@ -664,16 +439,6 @@ export function mount(container, session, opts = {}) {
         }
     }
 
-    // --- Utilitaires --------------------------------------------------------
-
-    function clonerBloc(b) {
-        const c = { type: b.type };
-        if (b.valeur !== undefined) c.valeur = b.valeur;
-        if (b.valeur2 !== undefined) c.valeur2 = b.valeur2;
-        if (b.corps) c.corps = clonerScript(b.corps);
-        return c;
-    }
-    function clonerScript(s) { return (s || []).map(clonerBloc); }
     function echapper(s) {
         return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     }
@@ -687,11 +452,12 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (anim) { cancelAnimationFrame(anim); anim = null; }
-            if (preparerScene._resize) {
-                window.removeEventListener('resize', preparerScene._resize);
-                preparerScene._resize = null;
+            if (preparerAtelier._resize) {
+                window.removeEventListener('resize', preparerAtelier._resize);
+                preparerAtelier._resize = null;
             }
-            fermerPopover();
+            fermerPavé();
+            if (atelier) { atelier.detruire(); atelier = null; }
             if (cursor) { cursor.destroy(); cursor = null; }
             container.innerHTML = '';
             session.finish();

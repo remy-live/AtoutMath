@@ -1810,117 +1810,89 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .kk-palette--large { flex-wrap: wrap; justify-content: center; max-width: 460px; }
 .kk-palette--large .kk-chip { width: clamp(36px, 6.4cqh, 48px); height: clamp(36px, 6.4cqh, 48px); }
 
-/* --- Le Chat Géomètre (blocs façon Scratch) --------------------------------
-   Trois bandes empilées : la SCÈNE (la récompense, elle doit rester visible),
-   le SCRIPT, la PALETTE. Cet ordre est le même sur téléphone et sur
-   ordinateur — c'est l'ordre de lecture de l'exercice : je vois ce qu'il faut
-   tracer, j'écris, je pioche. */
+
+/* --- Le Chat Géomètre : l'atelier de blocs ---------------------------------
+   Disposition de Scratch : la scène, puis le studio — palette à gauche,
+   atelier à droite. On garde cet ordre sur téléphone comme sur ordinateur ;
+   c'est l'ordre de lecture de l'exercice, et c'est celui que l'élève
+   retrouvera dans le vrai Scratch. */
 .sc-layout {
     display: flex; flex-direction: column; gap: 8px;
-    /* Le plateau centre ses enfants : sans largeur et hauteur explicites, la
-       colonne se réduisait à la largeur du plus long mot et l'exercice
-       devenait un ruban de 40 px. */
+    /* Le plateau centre ses enfants : sans dimensions explicites, la colonne
+       se réduisait à la largeur du plus long mot. */
     width: 100%; height: 100%; max-width: 100%; min-height: 0;
     padding: 4px; box-sizing: border-box;
 }
 .sc-entete { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .sc-niveau {
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
-    border-radius: 999px; padding: 3px 10px; font-size: .76rem; font-weight: 800;
-    white-space: nowrap;
+    border-radius: 999px; padding: 3px 10px; font-size: .76rem; font-weight: 800; white-space: nowrap;
 }
 .sc-titre { font-size: .98rem; color: var(--text-main); flex: 1; min-width: 0; }
-.sc-mode {
-    background: var(--bg-panel); border: 2px solid var(--border); border-radius: 999px;
-    padding: 4px 10px; font-size: .76rem; font-weight: 700; color: var(--text-muted);
-    cursor: pointer; flex-shrink: 0;
-}
-.sc-mode:hover { border-color: var(--primary); color: var(--primary); }
-.sc-consigne { margin: 0; font-size: .84rem; line-height: 1.35; color: var(--text-muted); flex-shrink: 0; }
+.sc-consigne { margin: 0; font-size: .82rem; line-height: 1.35; color: var(--text-muted); flex-shrink: 0; }
 
 /* La scène est CARRÉE : une figure centrée ne doit pas s'étirer selon
-   l'orientation de l'écran. Le canevas s'y inscrit, jamais l'inverse. */
+   l'orientation de l'écran. */
 .sc-scene {
-    flex: 1 1 auto; min-height: 120px;
+    flex: 0 1 auto; min-height: 130px;
     display: flex; align-items: center; justify-content: center;
-    background: var(--bg-app); border: 2px solid var(--border); border-radius: 14px;
-    overflow: hidden;
+    background: var(--bg-app); border: 2px solid var(--border); border-radius: 14px; overflow: hidden;
 }
 .sc-canvas { display: block; touch-action: none; }
 
-/* Le script défile, la palette non : on doit toujours pouvoir poser un bloc,
-   même quand le programme est long. */
-.sc-script {
-    flex: 1 1 auto; min-height: 90px; overflow-y: auto;
+/* Le studio : palette + atelier, côte à côte comme dans Scratch. */
+.sc-studio {
+    flex: 1 1 auto; min-height: 190px;
+    display: flex; gap: 6px; align-items: stretch;
     background: var(--bg-panel); border: 2px solid var(--border); border-radius: 14px;
-    padding: 6px; display: flex; flex-direction: column;
+    padding: 6px; overflow: hidden;
 }
-.sc-vide { margin: 6px 8px; font-size: .82rem; color: var(--text-muted); font-style: italic; }
-
-/* Un bloc : la couleur dit la catégorie, l'indentation dit la boucle. */
-.sc-bloc {
-    display: flex; align-items: center; gap: 6px;
-    margin-left: calc(var(--prof, 0) * 18px);
-    padding: 7px 10px; border-radius: 8px;
-    color: #fff; font-weight: 700; font-size: .86rem;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .18);
-    user-select: none;
-}
-.sc-bloc--motion { background: #4c97ff; }
-.sc-bloc--pen { background: #0fbd8c; }
-.sc-bloc--control { background: #ffab19; }
-.sc-bloc--parti { opacity: .35; }
-.sc-txt { white-space: nowrap; }
-.sc-grip { cursor: grab; opacity: .7; font-size: .9rem; }
-[data-mode="toucher"] .sc-grip { display: none; }
-
-/* Le nombre est un BOUTON, pas un champ : sur téléphone, un champ ouvre le
-   clavier système au moindre effleurement et masque la moitié de l'écran. */
-.sc-num {
-    background: #fff; color: #1e293b; border: none; border-radius: 999px;
-    padding: 3px 10px; font-weight: 800; font-size: .86rem; cursor: pointer;
-    font-variant-numeric: tabular-nums; min-width: 34px;
-}
-.sc-num:hover { box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
-.sc-sup {
-    margin-left: auto; background: transparent; border: none; color: #fff;
-    opacity: .75; cursor: pointer; font-size: .9rem; padding: 2px 4px; line-height: 1;
-}
-.sc-sup:hover { opacity: 1; }
-/* Pied d'une boucle : il matérialise jusqu'où va son corps. */
-.sc-fin {
-    margin-left: calc(var(--prof, 0) * 18px);
-    height: 10px; width: 46px; border-radius: 0 0 8px 8px; background: #ffab19;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .18);
-}
-
-/* La fente d'insertion : discrète au repos, franche quand c'est là que le
-   prochain bloc ira. C'est elle qui remplace le glisser-déposer au doigt. */
-.sc-fente {
-    margin-left: calc(var(--prof, 0) * 18px);
-    background: transparent; border: none; padding: 2px 0; cursor: pointer;
-    display: block; width: 100%; text-align: left;
-}
-.sc-fente > span {
-    display: block; height: 4px; width: 100%; border-radius: 999px;
-    background: transparent; transition: background .15s, height .15s;
-}
-.sc-fente:hover > span { background: var(--border); }
-.sc-fente--ici > span { background: var(--primary); height: 6px; }
-.sc-fente--vise > span { background: var(--primary); height: 10px; }
-
-/* Palette : une ligne défilante. Le niveau ne montre que ses blocs, donc
-   elle reste courte — c'est ce qui la fait tenir sur un téléphone. */
 .sc-palette {
-    display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 4px;
-    flex-shrink: 0; scrollbar-width: thin;
+    flex: 0 0 auto; max-width: 46%;
+    display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+    overflow-y: auto; overflow-x: hidden; padding-right: 4px;
+    border-right: 1px solid var(--border);
+    transition: background .18s;
 }
-.sc-pal {
-    flex-shrink: 0; border: none; border-radius: 8px; color: #fff;
-    padding: 9px 12px; font-size: .82rem; font-weight: 700; cursor: pointer;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, .18); white-space: nowrap;
+/* Ramener une pièce sur la palette la jette : c'est le geste de Scratch. */
+.sc-palette--corbeille { background: color-mix(in srgb, var(--danger) 16%, transparent); border-radius: 10px; }
+.sc-palette--corbeille::before {
+    content: '🗑️'; font-size: 2rem; align-self: center; margin: auto 0;
+    position: absolute; pointer-events: none;
 }
-.sc-pal:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0, 0, 0, .18); }
+.sc-pal-piece {
+    background: none; border: none; padding: 0; cursor: grab;
+    touch-action: none; flex-shrink: 0; line-height: 0;
+}
+.sc-pal-piece:active { cursor: grabbing; }
+
+.sc-atelier {
+    flex: 1 1 auto; min-width: 0; position: relative;
+    /* Le fond quadrillé de l'atelier Scratch : discret, mais il dit « ici on
+       pose des pièces », et il donne un repère pendant le glissement. */
+    background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+    background-size: 22px 22px;
+    border-radius: 10px; overflow: hidden;
+}
+.sc-atelier-svg { display: block; touch-action: none; user-select: none; }
+
+/* Les pièces. La forme vient du chemin SVG ; ici on ne fait que l'habillage. */
+.sc-piece-forme { stroke: rgba(0, 0, 0, .18); stroke-width: 1; }
+.sc-piece--vive { cursor: grab; }
+.sc-piece--vive:active { cursor: grabbing; }
+.sc-piece--tenue .sc-piece-forme { filter: drop-shadow(0 6px 10px rgba(15, 23, 42, .35)); }
+.sc-piece-texte {
+    fill: #fff; font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 13px;
+    dominant-baseline: central; pointer-events: none;
+}
+.sc-piece-champ { cursor: pointer; }
+.sc-piece-champ-fond { fill: #fff; }
+.sc-piece-champ-texte {
+    fill: #1e293b; font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 13px;
+    text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+/* Le trait blanc qui montre où la pièce va s'accrocher. */
+.sc-aimant { fill: rgba(255, 255, 255, .95); stroke: var(--primary); stroke-width: 1.5; pointer-events: none; }
 
 .sc-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .sc-btn {
@@ -1928,11 +1900,11 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border: 2px solid var(--border); background: var(--bg-panel);
     color: var(--text-main); font-weight: 800; font-size: .9rem;
 }
-.sc-btn--go { background: var(--primary); border-color: var(--primary); color: #fff; }
-.sc-btn--ok { background: var(--success, #10b981); border-color: var(--success, #10b981); color: #fff; }
+.sc-btn--go { background: #0fbd8c; border-color: #0fbd8c; color: #fff; }
+.sc-btn--ok { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-/* Saisie d'un nombre : posée sur <body> en `fixed`, comme les infobulles —
-   rendue dans le script, elle serait découpée par son défilement. */
+/* Saisie d'un nombre : sur <body> en `fixed`, comme les infobulles — rendue
+   dans l'atelier, elle serait découpée par son cadre. */
 .sc-pop {
     position: fixed; z-index: 100020; display: flex; flex-direction: column; gap: 8px;
     background: var(--bg-panel); border: 2px solid var(--primary); border-radius: 14px;
@@ -1955,25 +1927,25 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     padding: 8px; font-weight: 800; cursor: pointer;
 }
 
-/* Écran large : la scène et le programme côte à côte, la scène plus grande —
-   empilés, on perdait la moitié de la figure sur un portable en paysage. */
-@media (min-width: 860px) and (min-height: 520px) {
+/* Écran large : la scène à gauche, le studio à droite et en grand — c'est là
+   qu'on peut vraiment étaler un programme. */
+@media (min-width: 900px) and (min-height: 560px) {
     .sc-layout {
         display: grid; gap: 10px 14px;
-        grid-template-columns: 1fr 380px;
+        grid-template-columns: minmax(0, 1fr) minmax(420px, 46%);
         grid-template-rows: auto auto 1fr auto auto;
         grid-template-areas:
             "entete   entete"
             "consigne consigne"
-            "scene    script"
-            "scene    palette"
-            "scene    actions";
+            "scene    studio"
+            "scene    actions"
+            "indices  indices";
     }
     .sc-entete { grid-area: entete; }
     .sc-consigne { grid-area: consigne; }
-    .sc-scene { grid-area: scene; }
-    .sc-script { grid-area: script; }
-    .sc-palette { grid-area: palette; flex-wrap: wrap; overflow: visible; }
+    .sc-scene { grid-area: scene; flex: 1 1 auto; }
+    .sc-studio { grid-area: studio; }
     .sc-actions { grid-area: actions; }
+    .sc-layout > .hint-bar { grid-area: indices; }
     .sc-titre { font-size: 1.1rem; }
 }
