@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v2';
+const CACHE = 'atoutmath-v3';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=49',
-    './css/layout.css?v=49',
-    './css/ui.css?v=49',
-    './css/games.css?v=49',
-    './css/components.css?v=49',
-    './css/modules.css?v=49',
+    './css/base.css?v=50',
+    './css/layout.css?v=50',
+    './css/ui.css?v=50',
+    './css/games.css?v=50',
+    './css/components.css?v=50',
+    './css/modules.css?v=50',
     './icons/icon-192.png',
     './icons/icon-512.png'
 ];
@@ -48,8 +48,30 @@ self.addEventListener('fetch', (e) => {
     // des données de classe périmées sont pires que pas de données.
     if (new URL(req.url).pathname.includes('/api/')) return;
 
+    // Le « réseau d'abord » ne suffisait PAS à garantir la dernière version.
+    //
+    // `fetch()` passe par le cache HTTP du navigateur, et GitHub Pages sert
+    // ses fichiers avec `max-age=600` : pendant dix minutes après un
+    // déploiement, on pouvait recevoir la page neuve et d'anciens modules.
+    // Les feuilles de style, elles, portent un `?v=N` qui les renouvelle —
+    // d'où le symptôme observé : « v49 » affiché en bas de l'écran et
+    // « Activité introuvable », parce que le catalogue était neuf et le
+    // registre des activités périmé.
+    //
+    // `no-cache` ne veut pas dire « ne pas mettre en cache » : le navigateur
+    // REVALIDE auprès du serveur, qui répond 304 quand rien n'a changé. Le
+    // coût est d'un aller-retour vide, le gain est qu'un poste connecté a
+    // toujours le code du jour. Hors ligne, on retombe sur le cache.
+    const url = new URL(req.url);
+    const demande = url.origin === self.location.origin
+        ? new Request(url.href, {
+            cache: 'no-cache', credentials: 'same-origin',
+            headers: req.headers, redirect: 'follow'
+        })
+        : req;
+
     e.respondWith(
-        fetch(req)
+        fetch(demande)
             .then(reponse => {
                 // Copie en cache au passage (y compris les réponses opaques du
                 // CDN : on ne peut pas les lire, mais on peut les resservir).

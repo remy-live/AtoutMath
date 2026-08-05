@@ -597,6 +597,7 @@
 .run-screen-title--ko { color: var(--warning); }
 .run-screen-text { font-size: 1.1rem; color: var(--text-main); max-width: 480px; line-height: 1.5; }
 .run-screen-btn { font-size: 1.25rem; padding: 14px 32px; margin-top: 10px; }
+.run-screen-sub { font-size: .92rem; color: var(--text-muted); max-width: 460px; line-height: 1.5; margin: -4px 0 4px; }
 .run-briefing-note {
     background: var(--tag-niv-bg); color: var(--tag-niv-txt);
     padding: 6px 16px; border-radius: 999px; font-weight: 700;

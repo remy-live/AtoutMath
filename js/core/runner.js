@@ -250,7 +250,7 @@ export class Runner {
 
         const activity = getActivity(step.exercise.activityId);
         if (!activity) {
-            this.canvas.innerHTML = `<div class="run-screen"><p class="run-screen-text">Activité « ${escapeHtml(step.exercise.activityId)} » introuvable.</p></div>`;
+            this.ecranBrique('activité', step.exercise.activityId);
             return;
         }
 
@@ -285,7 +285,7 @@ export class Runner {
 
         const generator = getGenerator(step.exercise.generatorId);
         if (!generator) {
-            this.canvas.innerHTML = `<div class="run-screen"><p class="run-screen-text">Générateur « ${escapeHtml(step.exercise.generatorId)} » introuvable.</p></div>`;
+            this.ecranBrique('générateur', step.exercise.generatorId);
             return;
         }
 
@@ -315,6 +315,43 @@ export class Runner {
      * cours des compétences travaillées), la consigne, et le choix — regarder
      * d'abord le robot faire, ou se lancer tout de suite.
      */
+    /**
+     * Brique manquante : écran d'impasse, transformé en écran d'action.
+     *
+     * Ce message ne signifie presque jamais que l'exercice est cassé : il
+     * signifie que le navigateur a gardé un ancien module en cache alors que
+     * le catalogue, lui, est à jour. L'élève ne peut pas deviner ça — et
+     * « recharger » ne suffit pas toujours, il faut vider le cache. Le bouton
+     * le fait.
+     */
+    ecranBrique(genre, id) {
+        this.canvas.innerHTML = `
+            <div class="run-screen">
+                <div class="run-screen-icon">🧩</div>
+                <p class="run-screen-text">${genre === 'activité' ? 'Activité' : 'Générateur'}
+                    « ${escapeHtml(id)} » introuvable.</p>
+                <p class="run-screen-sub">C'est presque toujours une version en cache :
+                    l'application a été mise à jour, mais ton navigateur garde un ancien morceau.</p>
+                <button type="button" class="btn-toggle active run-screen-btn" data-vider-cache>Mettre à jour et recharger</button>
+            </div>`;
+        const btn = this.canvas.querySelector('[data-vider-cache]');
+        if (btn) btn.onclick = async () => {
+            btn.disabled = true;
+            btn.textContent = 'Mise à jour…';
+            try {
+                if (self.caches) {
+                    const cles = await caches.keys();
+                    await Promise.all(cles.map(k => caches.delete(k)));
+                }
+                if (navigator.serviceWorker) {
+                    const rs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(rs.map(r => r.unregister()));
+                }
+            } catch { /* rien à vider : on recharge quand même */ }
+            location.reload();
+        };
+    }
+
     showLearningIntro(step) {
         const exo = step.exercise;
         const lecons = [...new Set(
