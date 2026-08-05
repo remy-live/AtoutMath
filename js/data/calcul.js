@@ -151,6 +151,28 @@ export const calculExercises = [
         instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
     },
     {
+        id: 'calc-escadrille', status: STATUS.TEST, title: 'Escadrille des Tables',
+        activityId: 'escadrille',
+        params: { table: 7, lives: 3, rythme: 'lent' },
+        paramSchema: [
+            {
+                id: 'table', type: 'select', label: 'Table à défendre', default: 7,
+                options: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ value: n, label: `Table de ${n}` }))
+            },
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
+            {
+                id: 'rythme', type: 'select', label: 'Rythme', default: 'lent',
+                options: [
+                    { value: 'lent', label: 'Lent (temps de calculer)' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'rapide', label: 'Rapide' }
+                ]
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
+    },
+    {
         id: 'calc-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
         activityId: 'ninja',
         params: { cibleMax: 20, lives: 3, rythme: 'lent' },

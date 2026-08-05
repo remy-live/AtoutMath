@@ -202,7 +202,8 @@ const legacy = [
     ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
     ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
     ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur'],
-    ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja']
+    ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja'],
+    ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {
