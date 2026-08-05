@@ -280,6 +280,14 @@ const BASE = {
         descriptor: 'Construire un angle de mesure donnée à l\'aide du rapporteur.',
         lesson: 'Centre sur le sommet, zéro sur le côté déjà tracé : repère la graduation voulue en partant de ce zéro, puis trace le second côté qui passe par elle.'
     },
+    'geo.figure.programme': {
+        label: 'Construire une figure par un programme',
+        chemin: [D.GEOMETRIQUE, SD.ANGLES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.angles.mesure'],
+        descriptor: "Décrire une figure par une suite d'avances et de rotations, et trouver l'angle qui la referme.",
+        lesson: "En faisant le tour complet d'une figure, on tourne en tout de 360°. Pour un polygone régulier à n côtés, on tourne n fois du même angle : chaque rotation vaut donc 360 ÷ n. Un carré, 360 ÷ 4 = 90° ; un triangle équilatéral, 360 ÷ 3 = 120° ; un hexagone, 360 ÷ 6 = 60°. Attention : c'est l'angle dont on TOURNE, pas l'angle intérieur de la figure."
+    },
     'geo.espace.orientation': {
         label: 'Se représenter un solide dans l\'espace',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],

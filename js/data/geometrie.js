@@ -52,6 +52,13 @@ export const geometrieExercises = [
         instruction: "Construis l'angle demandé : place le rapporteur, repère la graduation, puis amène le côté rouge dessus en tirant sa poignée."
     },
     {
+        id: 'geo-chat-geometre', status: STATUS.TEST, title: 'Le Chat Géomètre',
+        generatorId: 'geo.scratch', activityId: 'scratch',
+        params: { depart: 1, saisie: 'auto' },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Programme le chat pour qu'il repasse la figure : pose des blocs « avancer » et « tourner », puis lance. Douze niveaux, du trait unique à la rosace — c'est le tracé obtenu qui compte, pas la forme du programme."
+    },
+    {
         id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
         activityId: 'galactic',
         params: { startLevel: 1, lives: 3 },

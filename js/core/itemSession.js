@@ -90,6 +90,14 @@ export class ItemSession {
             rng,
             weakTables: this.policy.adaptive ? getWeakTables() : [],
             difficulty: this.params.difficulty || null,
+            // Rang de la question dans la série, à partir de 0.
+            //
+            // La plupart des générateurs tirent au sort et n'en ont que faire.
+            // Mais un générateur qui porte une PROGRESSION — Le Chat Géomètre
+            // enchaîne douze figures dans un ordre choisi — a besoin de savoir
+            // où l'on en est, sinon il repose éternellement la première.
+            // `history` contient déjà la graine de la question en cours.
+            index: Math.max(0, this.history.length - 1),
             // Certains générateurs posent une question différente selon ce que
             // l'activité sait afficher (placer un point vs lire ses coordonnées).
             preferredKind: this.preferredKind
@@ -170,6 +178,14 @@ export class ItemSession {
         }
 
         const verdict = evaluate(this.item, given);
+        // Diagnostic calculé par l'ACTIVITÉ.
+        //
+        // `evaluate` ne sait diagnostiquer que les items à propositions : il
+        // lit le « pourquoi » attaché au distracteur choisi. Une activité qui
+        // juge elle-même — le Chat Géomètre compare un tracé à une figure —
+        // sait dire bien mieux ce qui ne va pas (« il te manque un côté »)
+        // qu'une explication générique. Elle le passe ici.
+        if (opts.misconception && !verdict.correct) verdict.misconception = opts.misconception;
         const isFirstTry = this.attemptIndex === 0;
 
         // Barème des points : plein tarif au premier essai, réduit ensuite,

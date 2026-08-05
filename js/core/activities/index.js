@@ -23,6 +23,7 @@ import { binairoGenerator } from '../generators/binairo.js';
 import { garamGenerator } from '../generators/garam.js';
 import { sudokuGenerator } from '../generators/sudoku.js';
 import { anglesGenerator } from '../generators/angles.js';
+import { scratchGenerator } from '../generators/scratch.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -36,7 +37,7 @@ import { anglesGenerator } from '../generators/angles.js';
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
-    anglesGenerator
+    anglesGenerator, scratchGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -172,6 +173,16 @@ registerActivity({
     accepts: ['angle'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./angles.js')
+});
+
+// Blocs façon Scratch : genre de réponse 'scratch' — l'élève écrit un
+// programme et c'est le TRACÉ obtenu qui est jugé, pas la forme du code.
+registerActivity({
+    id: 'scratch',
+    label: 'Le Chat Géomètre (blocs)',
+    accepts: ['scratch'],
+    supports: { timed: false, autonomous: false, demo: true },
+    load: () => import('./scratchBlocs.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------
