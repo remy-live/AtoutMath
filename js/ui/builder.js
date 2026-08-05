@@ -343,6 +343,25 @@ function stepRow(step, index, policy) {
     del.onclick = (e) => { e.stopPropagation(); removeStep(step.stepId); };
 
     [preview, props, dup, del].forEach(b => actions.appendChild(b));
+
+    // Chevron de dépliage — visible seulement sur téléphone.
+    //
+    // Sur un écran de 390 px, les quatre boutons d'action et la règle prenaient
+    // toute la ligne : il ne restait que trois caractères au titre, et on lisait
+    // « 1. Li… » sans savoir de quelle activité il s'agissait. Le titre passe
+    // donc SEUL sur la première ligne, en entier ; les actions (aperçu,
+    // réglages, duplication, suppression) se déplient sous lui à la demande.
+    const toggle = iconButton('Afficher les options de l\'étape', ICONS.chevron);
+    toggle.classList.add('path-step-toggle');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.onclick = (e) => {
+        e.stopPropagation();
+        const ouvert = row.classList.toggle('path-step--ouvert');
+        toggle.setAttribute('aria-expanded', String(ouvert));
+        toggle.setAttribute('aria-label', ouvert
+            ? 'Masquer les options de l\'étape' : 'Afficher les options de l\'étape');
+    };
+    head.appendChild(toggle);
     head.appendChild(actions);
     row.appendChild(head);
 
@@ -683,7 +702,8 @@ const ICONS = {
     gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
     trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
-    share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>'
+    share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>',
+    chevron: '<polyline points="6 9 12 15 18 9"/>'
 };
 
 function iconButton(title, paths, variant) {

@@ -1117,6 +1117,39 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
     flex-shrink: 0; font-variant-numeric: tabular-nums;
 }
 .path-step-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Le chevron n'a de sens que quand les actions sont repliées : sur grand
+   écran, tout tient sur la ligne et un bouton de plus ne ferait qu'ajouter
+   un clic. */
+.path-step-toggle { display: none; }
+
+/* --- Étape de parcours sur téléphone -----------------------------------
+   Quatre boutons d'action + la règle occupaient toute la largeur : il restait
+   trois caractères au titre (« 1. Li… ») et on ne savait plus de quelle
+   activité on parlait. Le NOM prend la première ligne, en entier et sur
+   plusieurs lignes s'il le faut ; les options se déplient sous lui. */
+@media (max-width: 700px) {
+    .path-step-head { flex-wrap: wrap; row-gap: 8px; }
+    .path-step-title { white-space: normal; flex: 1 1 auto; }
+    .path-step-title > :last-child { overflow: visible; text-overflow: clip; }
+    .path-step-rule { flex-basis: 100%; order: 3; }
+    .path-step-toggle {
+        display: inline-flex; flex-shrink: 0; margin-left: auto;
+        transition: transform .18s;
+    }
+    .path-step--ouvert .path-step-toggle { transform: rotate(180deg); }
+    /* Repliées : les actions ne prennent aucune place, mais restent dans le
+       DOM — dérouler ne recrée rien, on ne perd donc aucun état. */
+    .path-step-actions { display: none; }
+    .path-step--ouvert .path-step-actions {
+        display: flex; flex-basis: 100%; order: 4;
+        justify-content: flex-end; gap: 10px;
+        padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    /* Cibles tactiles : 40 px, pas 28 — on visait à côté et on supprimait
+       l'étape en voulant l'ouvrir. */
+    .path-step--ouvert .path-step-actions .btn-icon { width: 40px; height: 40px; }
+}
 .path-step--selected { border-color: var(--primary) !important; box-shadow: 0 0 0 2px rgba(99, 102, 241, .18); }
 .path-step--broken { opacity: .6; border-style: dashed !important; }
 
