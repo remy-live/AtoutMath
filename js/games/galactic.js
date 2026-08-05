@@ -59,6 +59,21 @@ class Galactic extends BaseGame {
                 .gal-btn:active { transform: translateY(3px); box-shadow: none; }
                 .gal-clr { background: #333; color: #aaa; border: 1px solid #555; }
                 .gal-fire { background: linear-gradient(to bottom, #ff0055, #990033); color: #fff; border: 1px solid #ff3377; }
+                /* Écran étroit : le pavé passait à la ligne (LCD, puis touches,
+                   puis CLR, puis FEU empilés) et occupait la moitié de la
+                   hauteur — le rapporteur, tout l'intérêt du jeu, se retrouvait
+                   dessous, invisible. Resserré, il tient sur une seule ligne. */
+                /* Téléphone couché aussi : 720 px de large mais 390 de haut,
+                   le pavé y mangeait 41 % de la hauteur du champ de tir. */
+                @media (max-width: 620px), (max-height: 480px) {
+                    .gal-deck { gap: 7px; padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px)); flex-wrap: nowrap; }
+                    .gal-lcd { width: 58px; height: 42px; font-size: 1.2rem; border-width: 1px; }
+                    .gal-keys { gap: 4px; }
+                    .gal-row { gap: 4px; }
+                    .gal-key { width: 34px; height: 34px; font-size: 1rem; box-shadow: 0 2px 0 #000; }
+                    .gal-actions { gap: 4px; }
+                    .gal-btn { height: 34px; width: 54px; font-size: .82rem; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+                }
             </style>
             <div class="gal-wrapper">
                 <div class="gal-top">
@@ -135,9 +150,25 @@ class Galactic extends BaseGame {
         if (!this.canvas) return;
         this.canvas.width = this.container.clientWidth || 800;
         this.canvas.height = this.container.clientHeight || 600;
-        this.protractor.r = Math.max(140, Math.min(240, this.canvas.width * 0.28, this.canvas.height * 0.38));
+
+        // Le pavé de saisie est POSÉ SUR le canevas : sa hauteur doit être
+        // retranchée du terrain, sinon le rapporteur géant — tout l'intérêt du
+        // jeu — se dessine dessous et reste invisible sur téléphone.
+        const deck = this.container.querySelector('.gal-deck');
+        this.hauteurDeck = deck ? deck.offsetHeight : 0;
+        // 22 px de garde : les graduations 0 et 180 tombent au ras de la ligne
+        // de base, et leurs libellés passaient sous le pavé en paysage.
+        const garde = 22;
+        const utile = Math.max(180, this.canvas.height - this.hauteurDeck - garde);
+
+        // Le canon se pose au ras du pavé, et le rapporteur tient dans ce qui
+        // reste au-dessus, en largeur comme en hauteur.
         this.player.x = this.canvas.width / 2;
-        this.player.y = this.canvas.height - 150;
+        this.player.y = this.canvas.height - this.hauteurDeck - garde;
+        // 0,32 de la largeur et non 0,42 : l'ennemi doit tenir À CÔTÉ du
+        // rapporteur même à 10°, où il part presque à l'horizontale.
+        this.protractor.r = Math.max(64, Math.min(240,
+            this.canvas.width * 0.32, utile * 0.62));
     }
 
     startGameLoop() {
@@ -195,12 +226,25 @@ class Galactic extends BaseGame {
 
     placerEnnemi() {
         const e = this.enemy;
-        const minD = this.protractor.r + 60;
-        const maxD = Math.max(minD + 40, Math.min(this.canvas.width / 2 - 40, this.player.y - 90));
-        if (!e.active) e.dist = minD + Math.random() * (maxD - minD);
         const rad = this.angleReel() * Math.PI / 180;
-        e.x = this.player.x + Math.cos(-rad) * e.dist;
-        e.y = this.player.y + Math.sin(-rad) * e.dist;
+        const cos = Math.cos(-rad), sin = Math.sin(-rad);
+
+        // Distance PLAFONNÉE PAR L'ANGLE : à 10° l'ennemi part presque à
+        // l'horizontale et sortait du cadre sur un écran étroit. On borne
+        // séparément en largeur et en hauteur, puis on garde le minimum.
+        const marge = e.size + 14;
+        const versBord = Math.abs(cos) > 1e-3
+            ? (this.canvas.width / 2 - marge) / Math.abs(cos) : Infinity;
+        const versHaut = Math.abs(sin) > 1e-3
+            ? (this.player.y - marge - 46) / Math.abs(sin) : Infinity;
+
+        const minD = this.protractor.r + 30;
+        const maxD = Math.max(minD, Math.min(versBord, versHaut));
+        if (!e.active) e.dist = minD + Math.random() * Math.max(0, maxD - minD);
+        e.dist = Math.min(e.dist, maxD);
+
+        e.x = this.player.x + cos * e.dist;
+        e.y = this.player.y + sin * e.dist;
     }
 
     spawnAsteroid() {
@@ -272,6 +316,11 @@ class Galactic extends BaseGame {
             } else {
                 this.texte('RATÉ', '#8899aa');
                 this.combo = 0; this.majCombo();
+                // Un tir à côté coûte un cœur, comme un tir encaissé : sans
+                // ça, on pouvait balayer tous les angles de 0 à 180 sans rien
+                // risquer, et le rapporteur ne servait plus à rien.
+                this.lives--;
+                this.majUI();
                 this.onWrongAnswer(null, {
                     questionText: `Angle de l'ennemi`,
                     input: val,
@@ -281,8 +330,27 @@ class Galactic extends BaseGame {
                         ? `Échelle inversée : l'ennemi est sur la graduation ${this.enemy.angle}, il fallait tirer ${this.enemy.angle} (le canon convertit en 180 − ${this.enemy.angle}).`
                         : `L'ennemi était à ${reel}° — regarde la graduation croisée par la ligne qui le rejoint.`
                 });
+                if (this.lives <= 0) this.plusDeVies();
             }
         }, 100);
+    }
+
+    /**
+     * Cœurs épuisés : on recule d'un niveau et on repart avec une escadrille
+     * neuve. Partagé entre le tir raté et le tir encaissé, sinon les deux
+     * façons de perdre ne se terminaient pas de la même manière.
+     */
+    plusDeVies() {
+        this.texte('GAME OVER', '#ff0055');
+        this.enemy.active = false;
+        this.verrouille = false;
+        regTimeout(() => {
+            if (!this.isRunning) return;
+            this.lives = parseInt(this.params.lives) || 3;
+            this.level = Math.max(1, this.level - 1);
+            this.majUI(); this.majNiveau();
+            this.spawnEnemy();
+        }, 2400);
     }
 
     ligneCercle(x1, y1, x2, y2, cx, cy, r) {
@@ -308,18 +376,8 @@ class Galactic extends BaseGame {
             customMessage: `Trop lent ! L'ennemi a chargé son tir. Il était à ${this.enemy.isReverse ? this.enemy.angle : this.angleReel()}${this.enemy.isReverse ? ' sur l\'échelle inversée' : '°'}.`
         });
         this.majUI();
-        if (this.lives <= 0) {
-            this.texte('GAME OVER', '#ff0055');
-            regTimeout(() => {
-                if (!this.isRunning) return;
-                this.lives = parseInt(this.params.lives) || 3;
-                this.level = Math.max(1, this.level - 1);
-                this.majUI(); this.majNiveau();
-                this.spawnEnemy();
-            }, 2400);
-        } else {
-            regTimeout(() => this.spawnEnemy(), 1500);
-        }
+        if (this.lives <= 0) this.plusDeVies();
+        else regTimeout(() => this.spawnEnemy(), 1500);
     }
 
     texte(txt, col) {
@@ -448,20 +506,33 @@ class Galactic extends BaseGame {
         ctx.beginPath(); ctx.moveTo(-R - 18, 0); ctx.lineTo(R + 18, 0);
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
 
+        // Tout se règle sur le RAYON : sur un petit rapporteur de téléphone,
+        // les nombres écrits tous les 10° se chevauchaient en une bouillie
+        // (« 1211009080706050 »). On les espace jusqu'à ce qu'ils tiennent.
+        const police = Math.max(8, Math.min(13, R * 0.11));
+        const rayonTexte = R - police * 2.2;
+        // Un nombre occupe environ 2,4 fois la police en largeur ; l'écart
+        // angulaire nécessaire s'en déduit.
+        const ecartMini = (police * 2.9) / Math.max(1, rayonTexte) * 180 / Math.PI;
+        const pasTexte = [10, 20, 30, 45, 90].find(p => p >= ecartMini) || 90;
+
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = 'bold 13px Outfit, sans-serif';
+        ctx.font = `bold ${police.toFixed(1)}px Outfit, sans-serif`;
         // La finesse des graduations SUIT le niveau : c'est la difficulté.
         for (let i = 0; i <= 180; i++) {
             if (this.level <= 2 && i % 10 !== 0) continue;
             if (this.level === 3 && i % 5 !== 0) continue;
             const r = -i * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
             const dix = i % 10 === 0, cinq = i % 5 === 0;
-            const l = dix ? 15 : (cinq ? 10 : 6);
+            const l = dix ? R * 0.13 : (cinq ? R * 0.09 : R * 0.05);
             ctx.beginPath(); ctx.moveTo((R - l) * c, (R - l) * s); ctx.lineTo(R * c, R * s);
             ctx.strokeStyle = `rgba(255,255,255,${dix ? 1 : cinq ? 0.9 : 0.75})`;
             ctx.lineWidth = dix ? 2 : 1;
             ctx.stroke();
-            if (dix) { ctx.fillStyle = '#fff'; ctx.fillText(i, (R - 30) * c, (R - 30) * s); }
+            if (i % pasTexte === 0) {
+                ctx.fillStyle = '#fff';
+                ctx.fillText(i, rayonTexte * c, rayonTexte * s);
+            }
         }
         ctx.restore();
     }

@@ -342,13 +342,26 @@ class Ninja extends BaseGame {
                 concept: SKILL, silencieux: true,
                 customMessage: `${f.txt} = ${f.valeur}, pas ${f.cible} : ce fruit-là devait retomber. Calcule AVANT de trancher !`
             });
+            // Trancher un mauvais fruit coûte un cœur, comme en laisser passer
+            // un bon. Seul le second était puni : trancher tout ce qui passe
+            // restait la stratégie gagnante.
+            this.perdreUneVie();
         }
         this.ui.score.textContent = this.score;
     }
 
-    calculRate(f) {
+    /** Un cœur en moins, et une escadrille neuve si le dernier tombe. */
+    perdreUneVie() {
         this.vies--;
         this.majVies();
+        if (this.vies <= 0) {
+            this.mot('Plus de vies — on repart !', 'ko');
+            this.vies = this.viesMax;
+            regTimeout(() => { if (this.isRunning) { this.majVies(); this.nouvelleCible(); } }, 1600);
+        }
+    }
+
+    calculRate(f) {
         this.flottant(f.x, Math.min(f.y, this.arene.clientHeight - 60), 'Raté !', '#f87171');
         this.mot(`${f.txt} = ${f.cible} : il fallait le trancher !`, 'ko');
         this.onWrongAnswer(null, {
@@ -357,11 +370,7 @@ class Ninja extends BaseGame {
             concept: SKILL, silencieux: true,
             customMessage: `${f.txt} = ${f.cible} : c'était un bon calcul, il fallait le trancher avant qu'il retombe.`
         });
-        if (this.vies <= 0) {
-            this.mot('Plus de vies — on repart !', 'ko');
-            this.vies = this.viesMax;
-            regTimeout(() => { if (this.isRunning) { this.majVies(); this.nouvelleCible(); } }, 1600);
-        }
+        this.perdreUneVie();
     }
 
     // --- Habillage -----------------------------------------------------------

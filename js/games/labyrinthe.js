@@ -22,6 +22,8 @@ class Labyrinthe extends BaseGame {
                 .laby-header { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
                 .laby-stats { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
                 
+                .laby-vies { color: #ef4444; letter-spacing: 2px; font-size: 1rem; }
+                .laby-vies.perdue { animation: shake .4s; }
                 .laby-timer-container { position: relative; flex: 1; max-width: 150px; height: 30px; background: rgba(0,0,0,0.05); border-radius: 15px; overflow: hidden; border: 1px solid var(--border); box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
                 .laby-timer-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: #10b981; transition: width 1s linear, background-color 0.3s; }
                 .laby-timer-bar.warning { background: #f59e0b; }
@@ -80,6 +82,7 @@ class Labyrinthe extends BaseGame {
                         <div class="laby-timer-bar" id="laby-timer-bar"></div>
                         <div class="laby-timer-text"><span id="laby-time">0</span>s</div>
                     </div>
+                    <div class="laby-stats"><span class="laby-vies" id="laby-vies">❤❤❤</span></div>
                     <div class="laby-stats">⭐️ <span id="laby-score">0</span></div>
                 </div>
                 <div id="laby-calc" class="laby-calc">START</div>
@@ -137,6 +140,14 @@ class Labyrinthe extends BaseGame {
         this.updateTimerVisuals();
         
         this.score = 0;
+        // Des cœurs, comme dans les autres jeux : une erreur coûtait
+        // seulement 3 secondes, si bien qu'on pouvait tenter toutes les cases
+        // au hasard sans jamais être arrêté. Trois erreurs et le niveau
+        // repart — la réflexion redevient moins chère que l'essai aveugle.
+        this.viesMax = parseInt(this.params.lives) || 3;
+        this.vies = this.viesMax;
+        this.viesEl = this.container.querySelector('#laby-vies');
+        this.majVies();
         this.container.querySelector('#laby-score').textContent = this.score;
         this.container.querySelector('#laby-lvl').textContent = this.level;
         
@@ -163,6 +174,13 @@ class Labyrinthe extends BaseGame {
         document.addEventListener('keydown', this.handleKey);
     }
     
+    /** Cœurs restants (vides en gris pour garder la largeur stable). */
+    majVies() {
+        if (!this.viesEl) return;
+        this.viesEl.textContent = '❤'.repeat(Math.max(0, this.vies))
+            + '♡'.repeat(Math.max(0, this.viesMax - this.vies));
+    }
+
     updateTimerVisuals() {
         if (!this.timerBar) return;
         let pct = (this.timeLeft / this.currentMaxTime) * 100;
@@ -445,14 +463,33 @@ class Labyrinthe extends BaseGame {
             // Penalize time or score
             this.score = Math.max(0, this.score - 5);
             this.container.querySelector('#laby-score').textContent = this.score;
-            
+
             this.timeLeft = Math.max(0, this.timeLeft - 3);
             this.timeEl.textContent = this.timeLeft;
             this.updateTimerVisuals();
-            
+
             // Visual feedback on the board (flash red)
             this.boardEl.style.borderColor = "#ef4444";
             setTimeout(() => this.boardEl.style.borderColor = "", 300);
+
+            // L'erreur part au journal : sans cet appel, un élève pouvait se
+            // tromper vingt fois dans le labyrinthe sans qu'une seule ligne
+            // n'apparaisse dans son bilan.
+            // `el` reste nul : la classe de base repeint la case en rouge sans
+            // jamais la nettoyer, et la case garderait la couleur pour tout le
+            // niveau. Le clignotement du plateau suffit comme retour visuel.
+            this.onWrongAnswer(null, {
+                questionText: currentCell.equation,
+                input: String(targetCell.displayedNumber),
+                expected: String(currentCell.correctAnswer),
+                silencieux: true
+            });
+
+            this.vies--;
+            this.majVies();
+            this.viesEl?.classList.add('perdue');
+            setTimeout(() => this.viesEl?.classList.remove('perdue'), 400);
+            if (this.vies <= 0) this.plusDeVies();
         }
     }
     
@@ -467,6 +504,26 @@ class Labyrinthe extends BaseGame {
         el.style.top = cellDiv.offsetTop + 'px';
         this.boardEl.appendChild(el);
         setTimeout(() => el.remove(), 1000);
+    }
+
+    /**
+     * Cœurs épuisés : on ne termine pas la partie — on rejoue le niveau avec
+     * un labyrinthe neuf. Perdre trois fois au niveau 5 et devoir tout
+     * reprendre au niveau 1 décourage plus que ça n'apprend.
+     */
+    plusDeVies() {
+        this.calcEl.textContent = 'Plus de cœurs — on refait ce niveau !';
+        this.calcEl.classList.add('error');
+        this.vies = this.viesMax;
+        this.majVies();
+        regTimeout(() => {
+            if (this.isGameOver || !this.isRunning) return;
+            this.calcEl.classList.remove('error');
+            this.timeLeft = this.currentMaxTime;
+            this.timeEl.textContent = this.timeLeft;
+            this.updateTimerVisuals();
+            this.initLevel();
+        }, 1400);
     }
 
     nextLevel() {

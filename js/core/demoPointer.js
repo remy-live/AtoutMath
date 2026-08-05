@@ -116,6 +116,38 @@ function hoteDeBarre(host) {
     return (partage && enPleinEcran) ? partage : host;
 }
 
+// --- Un pas en arrière -------------------------------------------------------
+//
+// Rejouer un GESTE à l'envers est impossible : le robot a déjà tapé le 40 dans
+// la cellule, tourné le rapporteur, fait tomber la pièce — l'état du plateau
+// ne se remonte pas. Ce qu'on rate quand « ça va trop vite », ce n'est pas le
+// geste, c'est la PHRASE qui l'explique. « En arrière » remet donc la
+// démonstration en pause et réaffiche l'explication précédente, autant de fois
+// qu'on remonte. Reprendre repart du point où le robot en était.
+const journalDiscours = [];
+let reculDiscours = 0;
+let curseurParlant = null;
+
+function noterDiscours(texte, cible, curseur) {
+    journalDiscours.push({ texte, cible });
+    if (journalDiscours.length > 60) journalDiscours.shift();
+    reculDiscours = 0;
+    curseurParlant = curseur;
+}
+
+/** @returns {boolean} faux quand on est déjà à la première explication. */
+function revoirPrecedent() {
+    if (!curseurParlant || curseurParlant.destroyed) return false;
+    const i = journalDiscours.length - 2 - reculDiscours;
+    if (i < 0) return false;
+    reculDiscours++;
+    const d = journalDiscours[i];
+    // L'ancre a pu disparaître entre-temps (case effacée, fruit tranché) : la
+    // bulle se recale alors sur le pointeur plutôt que de viser le vide.
+    curseurParlant.say(d.texte, d.cible && document.contains(d.cible) ? d.cible : null, true);
+    return true;
+}
+
 /** Commande inerte : une vignette de catalogue n'a pas à porter de barre. */
 const BARRE_MUETTE = { get paused() { return false; }, async waitTurn() { return true; }, destroy() {} };
 
@@ -129,9 +161,15 @@ export function createDemoGate(host) {
     let destroyed = false;
     let attentes = [];
 
+    // Nouvelle démonstration, nouvel historique : « en arrière » ne doit pas
+    // remonter dans les explications d'une question déjà quittée.
+    journalDiscours.length = 0;
+    reculDiscours = 0;
+
     const bar = document.createElement('div');
     bar.className = 'demo-controls';
     bar.innerHTML = `
+        <button type="button" class="demo-ctrl-btn" data-demo-back aria-label="Revoir l'explication précédente">⏮ Arrière</button>
         <button type="button" class="demo-ctrl-btn" data-demo-pause aria-label="Mettre la démonstration en pause">⏸ Pause</button>
         <button type="button" class="demo-ctrl-btn" data-demo-step aria-label="Avancer d'un pas">⏭ Un pas</button>
         <button type="button" class="demo-ctrl-btn" data-demo-speed aria-label="Vitesse de la démonstration"></button>`;
@@ -174,6 +212,17 @@ export function createDemoGate(host) {
         // se rebloquera au prochain `waitTurn()`.
         if (!paused) poserPause(true);
         liberer();
+    };
+
+    const btnBack = bar.querySelector('[data-demo-back]');
+    btnBack.onclick = () => {
+        // Remonter suppose de s'arrêter : sinon le robot recouvrirait la bulle
+        // rappelée par la suivante avant qu'on ait fini de la lire.
+        if (!paused) poserPause(true);
+        if (!revoirPrecedent()) {
+            btnBack.disabled = true;
+            regTimeout(() => { btnBack.disabled = false; }, 700);
+        }
     };
 
     return {
@@ -251,8 +300,12 @@ export function createDemoCursor() {
          * joue ce coup. Elle reste affichée jusqu'au prochain `say()` ou à
          * `hideBubble()`, pour laisser le temps de lire.
          */
-        say(texte, cible = null) {
+        say(texte, cible = null, rejeu = false) {
             if (destroyed || !texte || muet || discret) return;
+            // `rejeu` : rappel d'une explication passée par le bouton
+            // « Arrière ». Le noter rallongerait l'historique à l'infini et
+            // ferait perdre le fil du retour en arrière.
+            if (!rejeu) noterDiscours(texte, cible, api);
             if (!bulle) {
                 bulle = document.createElement('div');
                 bulle.className = 'demo-bubble';
@@ -388,6 +441,7 @@ export function createDemoCursor() {
         destroy() {
             destroyed = true;
             curseursVivants.delete(api);
+            if (curseurParlant === api) curseurParlant = null;
             pending.forEach(done => done(false));
             pending.clear();
             if (ghost) { ghost.remove(); ghost = null; }

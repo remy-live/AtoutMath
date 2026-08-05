@@ -453,12 +453,20 @@ class Tetris extends BaseGame {
     checkMathMatches() {
         if (!this.gameRunning || !this.container.querySelector('#tetris-score-val')) return;
         let matches = [];
-        
+        // Le Tetris ne remontait AUCUNE tentative : une partie entière
+        // n'écrivait pas une ligne dans le bilan de l'élève, alors que chaque
+        // paire posée est une multiplication trouvée.
+        const paires = [];
+
         const check = (x1, y1, x2, y2) => {
             if (this.grid[y1][x1] === 0 || this.grid[y2][x2] === 0) return;
             if (this.grid[y1][x1] * this.grid[y2][x2] === this.currentTarget) {
                 matches.push({x: x1, y: y1});
                 matches.push({x: x2, y: y2});
+                // Les valeurs sont relevées AVANT l'effacement : la boucle
+                // ci-dessous met les cases à zéro, on ne saurait plus quelle
+                // multiplication l'élève vient de réussir.
+                paires.push([this.grid[y1][x1], this.grid[y2][x2]]);
             }
         };
 
@@ -493,7 +501,14 @@ class Tetris extends BaseGame {
             if (uniqueMatches > 0) {
                 this.score += uniqueMatches * 10 * uniqueMatches;
                 this.container.querySelector('#tetris-score-val').innerText = this.score;
-                
+
+                const cible = this.currentTarget;
+                paires.forEach(([a, b]) => this.onCorrectAnswer(null, `mult:${Math.max(a, b)}`, {
+                    points: 10,
+                    questionText: `${a} × ${b}`,
+                    given: cible, expected: cible
+                }));
+
                 this.generateTarget();
                 this.applyGravity();
             }

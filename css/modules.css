@@ -630,6 +630,22 @@
     grid-area: actions; justify-content: flex-end; flex-wrap: nowrap; gap: 6px; margin: 0;
 }
 
+/* Vrai téléphone en plein écran.
+   Le traitement compact ci-dessus ne visait que les cadres de simulation du
+   professeur : sur un vrai téléphone, l'en-tête gardait ses marges de 25 px et
+   sa barre de progression de 250 px, si bien que la CROIX DE FERMETURE
+   dépassait du bord droit (elle finissait à 397 px sur un écran de 390) — le
+   jeu paraissait impossible à quitter. Les commandes ne cèdent jamais : c'est
+   le titre et la progression qui se resserrent. */
+@media (max-width: 620px) {
+    #game-header { padding: 8px 10px; gap: 8px; min-height: 0; }
+    #game-header #game-title { font-size: 1.02rem; min-width: 0; }
+    #game-header #game-progress-container { flex: 0 1 110px; min-width: 38px; }
+    #game-timer { width: 34px; height: 34px; font-size: .8rem; flex-shrink: 0; }
+    .game-header-actions { gap: 5px; flex-shrink: 0; margin-left: auto; }
+    .game-icon-btn { width: 34px; height: 34px; font-size: 1rem; padding: 4px; }
+}
+
 /* Les commandes doivent tenir sur une seule ligne : on retire l'habillage en
    pastille des navigations et on resserre les boutons. */
 .device-simulator .timer-scope,
@@ -1218,17 +1234,74 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-tip--on { opacity: 1; visibility: visible; }
 .cfg-empty { font-size: .9rem; color: var(--text-muted); font-style: italic; }
-.cfg-chips { display: flex; flex-wrap: wrap; gap: 9px; }
+/* --- Puces de sélection multiple ---------------------------------------
+   Une grille de cases à cocher système, chacune traînant son carré gris, fait
+   un panneau de réglages qui ressemble à un formulaire administratif : c'est
+   la case qu'on lisait en premier, pas le mot. La case disparaît donc (elle
+   reste dans le DOM, cliquable et navigable au clavier) et c'est la PASTILLE
+   entière qui s'allume, avec sa coche. */
+.cfg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .cfg-chip {
-    display: flex; align-items: center; gap: 6px; cursor: pointer;
-    background: var(--bg-app); border: 1px solid var(--border);
-    border-radius: 8px; padding: 7px 11px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    background: var(--bg-app); border: 2px solid var(--border);
+    border-radius: 999px; padding: 7px 14px;
+    font-size: .88rem; font-weight: 600; color: var(--text-muted);
+    user-select: none; transition: .15s;
 }
-.cfg-chip:has(input:checked) { border-color: var(--primary); background: var(--tag-dom-bg); color: var(--tag-dom-txt); }
+.cfg-chip input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+/* La coche pousse le texte de la même largeur qu'elle occupera une fois
+   allumée : la pastille ne saute pas au clic. */
+.cfg-chip > span::before {
+    content: '✓'; display: inline-block; width: 0; overflow: hidden;
+    opacity: 0; transition: width .15s, opacity .15s; vertical-align: -1px;
+}
+.cfg-chip:hover { border-color: var(--primary); color: var(--primary); }
+.cfg-chip:has(input:checked) {
+    border-color: var(--primary); background: var(--primary); color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+.cfg-chip:has(input:checked) > span::before { width: 1em; opacity: 1; margin-right: 4px; }
+.cfg-chip:has(input:focus-visible) { outline: 3px solid var(--tag-dom-bg); outline-offset: 2px; }
+
+/* --- Options oui/non : interrupteurs, pas cases système ------------------ */
+.cfg-check input[type="checkbox"],
+.cfg-check input[type="radio"] {
+    appearance: none; -webkit-appearance: none; margin: 0; flex-shrink: 0;
+    cursor: pointer; position: relative; transition: background .18s, border-color .18s;
+}
+.cfg-check input[type="checkbox"] {
+    width: 40px; height: 23px; border-radius: 999px;
+    background: var(--border); border: none;
+}
+.cfg-check input[type="checkbox"]::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 17px; height: 17px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .35); transition: transform .18s;
+}
+.cfg-check input[type="checkbox"]:checked { background: var(--primary); }
+.cfg-check input[type="checkbox"]:checked::after { transform: translateX(17px); }
+.cfg-check input[type="radio"] {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--bg-app); border: 2px solid var(--border);
+}
+.cfg-check input[type="radio"]:checked { border-color: var(--primary); }
+.cfg-check input[type="radio"]:checked::after {
+    content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--primary);
+}
+.cfg-check input:focus-visible { outline: 3px solid var(--tag-dom-bg); outline-offset: 2px; }
 .cfg-group { border-top: 1px solid var(--border); padding-top: 18px; margin-top: 18px; }
 .cfg-group--muted { opacity: .55; }
 .cfg-group-title { font-weight: 700; color: var(--text-muted); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
-.cfg-check { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; cursor: pointer; color: var(--text-main); }
+/* Ligne d'option entière cliquable, et qui se voit l'être : le texte seul,
+   sans zone de survol, ne disait pas qu'on pouvait taper à côté de la case —
+   sur téléphone on visait le carré de 13 px. */
+.cfg-check {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    color: var(--text-main); font-size: .92rem; line-height: 1.35;
+    margin-bottom: 4px; padding: 8px 10px; border-radius: 10px;
+    transition: background .15s;
+}
+.cfg-check:hover { background: var(--tag-dom-bg); }
 
 .cfg-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
 .cfg-modes--3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -1337,6 +1410,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    taille du conteneur (plein écran ou simulateur). */
 .demo-controls {
     display: flex; gap: 8px; justify-content: center; margin-top: 6px;
+    /* Quatre commandes depuis l'ajout d'« Arrière » : sur un téléphone étroit
+       elles passent à la ligne au lieu de sortir de l'écran. */
+    flex-wrap: wrap;
 }
 
 /* Emplacement partagé, juste sous la bannière d'aperçu : la barre y est
@@ -1347,10 +1423,6 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     align-self: center; flex-shrink: 0; margin: 6px auto 0;
 }
 /* Écran court : commandes resserrées, pour ne pas voler de hauteur au jeu. */
-@media (max-height: 620px), (max-width: 700px) {
-    .demo-ctrl-btn { padding: 5px 11px; font-size: .78rem; }
-    #demo-controls-host .demo-controls { gap: 6px; margin-top: 4px; }
-}
 .demo-ctrl-btn {
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--bg-panel); color: var(--text-main);
@@ -1359,7 +1431,18 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     box-shadow: var(--shadow-sm); transition: .15s;
 }
 .demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
+/* « Arrière » à la première explication : rien à remonter, on le dit. */
+.demo-ctrl-btn:disabled { opacity: .4; cursor: default; border-color: var(--border); color: var(--text-main); }
 .demo-ctrl-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Écran court ou étroit : commandes resserrées, pour ne pas voler de hauteur
+   au jeu. Cette règle était écrite AVANT `.demo-ctrl-btn` : à spécificité
+   égale, c'est la dernière qui gagne, et le resserrement n'a jamais eu lieu —
+   la barre occupait deux lignes de 78 px en haut d'un écran de téléphone. */
+@media (max-height: 620px), (max-width: 700px) {
+    .demo-ctrl-btn { padding: 5px 9px; font-size: .74rem; border-width: 1.5px; gap: 4px; }
+    #demo-controls-host .demo-controls { gap: 5px; margin-top: 4px; }
+}
 
 /* --- Angle Master (rapporteur interactif) -------------------
    Le plateau prend l'essentiel de la hauteur disponible (unités de conteneur,

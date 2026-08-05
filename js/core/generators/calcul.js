@@ -334,7 +334,7 @@ export const mixteGenerator = {
     skills: ['num.add.entiers', 'num.sub.entiers', 'num.div.quotient', 'num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
     params: [
-        { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*', '/'], default: ['+', '-'] },
+        { id: 'operations', type: 'multiselect', label: 'Opérations', options: [{ value: '+', label: '+ addition' }, { value: '-', label: '− soustraction' }, { value: '*', label: '× multiplication' }, { value: '/', label: '÷ division' }], default: ['+', '-'] },
         { id: 'tables', type: 'multiselect', label: 'Tables (si × ou ÷)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         { id: 'max', type: 'number', label: 'Plus grand terme (si + ou −)', default: 20, min: 5, max: 100 }
     ],

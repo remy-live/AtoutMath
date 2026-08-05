@@ -169,6 +169,10 @@ export function mount(container, session, opts = {}) {
             if (destroyed || etat.fige || etat.phase !== 'action') return;
             if (e.cancelable) e.preventDefault();
             etat.pointeur = posDe(e);
+            // Loupe allumée : le doigt ne fait QUE déplacer la loupe. Il
+            // saisissait aussi le rapporteur au passage, si bien qu'inspecter
+            // une graduation faisait glisser l'outil qu'on venait de placer.
+            if (etat.loupe) return;
             const p = etat.pointeur, r = etat.rapporteur;
 
             // 1. Le côté rouge (construction) se saisit par son extrémité OU
@@ -206,6 +210,9 @@ export function mount(container, session, opts = {}) {
             if (destroyed) return;
             const p = posDe(e);
             etat.pointeur = p;
+            // La loupe suit le doigt : on retient le geste, sinon la page
+            // défile sous la main pendant qu'on inspecte une graduation.
+            if (etat.loupe && !etat.fige && e.cancelable) e.preventDefault();
             if (etat.fige || !etat.drag) return;
             if (e.cancelable) e.preventDefault();
             const r = etat.rapporteur;

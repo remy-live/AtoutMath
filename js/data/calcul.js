@@ -125,7 +125,7 @@ export const calculExercises = [
         paramSchema: [
             { id: 'timeLimit', type: 'number', label: 'Temps initial (s)', default: 60 },
             { id: 'timeReduction', type: 'number', label: 'Temps perdu par niveau (s)', default: 5 },
-            { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*', '/'], default: ['*'] },
+            { id: 'operations', type: 'multiselect', label: 'Opérations', options: [{ value: '+', label: '+ addition' }, { value: '-', label: '− soustraction' }, { value: '*', label: '× multiplication' }, { value: '/', label: '÷ division' }], default: ['*'] },
             { id: 'tables', type: 'multiselect', label: 'Tables (si multiplication)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
