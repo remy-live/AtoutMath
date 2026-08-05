@@ -8,7 +8,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
@@ -20,6 +20,7 @@ export function mount(container, session, opts = {}) {
     let destroyed = false;
     let buffer = '';
     let cursor = null;
+    let gate = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -136,6 +137,8 @@ export function mount(container, session, opts = {}) {
      */
     async function runDemo(target, setBuffer, screen) {
         if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+        if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
 
         for (let i = 0; i < target.length; i++) {
@@ -165,6 +168,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (gate) { gate.destroy(); gate = null; }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();

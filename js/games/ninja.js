@@ -13,7 +13,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
-import { createDemoCursor, DEMO_SPEED } from '../core/demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
 const SKILL = 'num.calc.decomposition';
 const TAILLE = 96;            // diamètre d'un fruit (px)
@@ -315,6 +315,8 @@ class Ninja extends BaseGame {
         this.startGameLoop();
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
+        const gate = createDemoGate(this.arene);
+        this.demoGate = gate;
 
         if (!await cursor.pause(1000) || !this.isRunning) return;
         cursor.say(`La cible est ${this.cible} : je tranche UNIQUEMENT les calculs qui font ${this.cible}.`, this.ui.cible);
@@ -324,6 +326,7 @@ class Ninja extends BaseGame {
             // Un fruit dans la zone lisible (proche du sommet de sa cloche).
             const f = this.fruits.find(x => !x.tranche && Math.abs(x.vy) < 3.4 && x.y < this.arene.clientHeight - 120);
             if (!f) { if (!await cursor.pause(300)) return; continue; }
+            if (!await gate.waitTurn() || !this.isRunning) return;
 
             if (f.bon) {
                 f.el.classList.add('demo-target');
@@ -350,6 +353,7 @@ class Ninja extends BaseGame {
 
     destroy() {
         if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         window.removeEventListener('resize', this.onResize);
         super.destroy();
     }

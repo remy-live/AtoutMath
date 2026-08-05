@@ -1,5 +1,6 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
+import { createDemoGate } from '../core/demoPointer.js';
 
 // Un DÉCOR par niveau : même règle, ambiance neuve — c'est le décor qui
 // récompense la progression, pas des objets à ramasser.
@@ -99,11 +100,12 @@ class Labyrinthe extends BaseGame {
      */
     runDemoSequence() {
         this.startGameLoop();
+        this.demoGate = createDemoGate(this.container);
 
         const VOISINS = [{ dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 0, dy: -1 }];
 
         const pas = () => {
-            if (this.isGameOver) return;
+            if (this.isGameOver || this.demoGate.paused) return;
             const ici = this.grid[this.playerPos.y][this.playerPos.x];
             const bonne = VOISINS
                 .map(d => ({ x: this.playerPos.x + d.dx, y: this.playerPos.y + d.dy }))
@@ -502,6 +504,7 @@ class Labyrinthe extends BaseGame {
     destroy() {
         // `super.destroy()` coupe les minuteurs et vide l'écran ; sans lui, le
         // chronomètre du labyrinthe continuait de tourner après la sortie.
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         document.removeEventListener('keydown', this.handleKey);
         window.removeEventListener('resize', this.handleResize);
         super.destroy();

@@ -12,7 +12,7 @@
 
 import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 const VARIANTS = {
     bubbles: { itemClass: 'bubble', containerClass: 'bubble-container' },
@@ -33,6 +33,7 @@ export function mount(container, session, opts = {}) {
     // Un seul pointeur pour toute la démonstration : recréé à chaque question,
     // il repartirait du coin de l'écran à chaque fois.
     let cursor = null;
+    let gate = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -148,6 +149,8 @@ export function mount(container, session, opts = {}) {
         if (!el) { regTimeout(renderNext, DEMO_SPEED.between); return; }
 
         if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+        if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
 
         const fait = (opts.dragToSlot && slot)
@@ -172,6 +175,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (gate) { gate.destroy(); gate = null; }
             container.innerHTML = '';
             session.finish();
         }

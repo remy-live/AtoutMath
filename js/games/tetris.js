@@ -1,5 +1,6 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { state } from '../core/state.js';
+import { createDemoGate } from '../core/demoPointer.js';
 
 export function engineTetris(container, isDemo, params) {
     const game = new Tetris(container, isDemo, params);
@@ -257,11 +258,12 @@ class Tetris extends BaseGame {
     }
 
     runDemoSequence() {
+        this.demoGate = createDemoGate(this.container);
         this.startGameLoop();
         this.startPlay();
         this.dropInterval = 400; // fast
         this.demoInterval = setInterval(() => {
-            if(!this.gameRunning) return;
+            if(!this.gameRunning || this.demoGate.paused) return;
             const r = Math.random();
             if(r < 0.3) this.playerMove(-1);
             else if(r < 0.6) this.playerMove(1);
@@ -439,6 +441,8 @@ class Tetris extends BaseGame {
     }
 
     destroy() {
+
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         this.gameRunning = false;
         super.destroy();
         document.removeEventListener('keydown', this.handleKeyDown);

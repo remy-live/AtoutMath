@@ -92,7 +92,12 @@ export function openDemo(exo) {
     const banner = document.getElementById('demo-overlay-banner');
     if (banner) {
         const msg = document.getElementById('demo-banner-text');
-        if (msg) msg.textContent = `Mode Aperçu${exo.instruction ? ' : ' + exo.instruction : ''}`;
+        if (msg) msg.textContent = `Aperçu${exo.instruction ? ' : ' + exo.instruction : ' — le robot joue'}`;
+        // Repliée à chaque ouverture : une consigne dépliée la fois d'avant
+        // ne doit pas manger l'écran de l'aperçu suivant.
+        banner.classList.remove('demo-banner--ouvert');
+        const plus = document.getElementById('demo-banner-plus');
+        if (plus) plus.style.display = exo.instruction ? '' : 'none';
         banner.style.display = 'flex';
     }
     const progress = document.getElementById('game-progress-container');

@@ -1,4 +1,5 @@
 import { BaseGame } from '../core/BaseGame.js';
+import { createDemoGate } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { regTimeout } from '../core/timers.js';
 
@@ -109,6 +110,7 @@ export class MathCrush extends BaseGame {
     }
     
     destroy() {
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
         this.running = false;
         if (this.rafId) cancelAnimationFrame(this.rafId);
@@ -632,6 +634,8 @@ export class MathCrush extends BaseGame {
     runDemoSequence() {
         this.startGameLoop();
         this.isDemo = true;
+        // Pause et vitesse pour la démonstration, comme dans les autres jeux.
+        this.demoGate = createDemoGate(this.container);
         let demoPhase = 0;
         let pIndex = 0;
         let targetPath = [];
@@ -647,6 +651,8 @@ export class MathCrush extends BaseGame {
         // `clearEngines()` quand on ferme ou relance l'aperçu.
         const nextAction = () => {
             if (!this.running || !this.isDemo) return;
+            // En pause, le robot patiente sans rien jouer.
+            if (this.demoGate.paused) { regTimeout(nextAction, 220); return; }
 
             if (demoPhase === 0) {
                 this.currentPath = [];

@@ -12,7 +12,7 @@
 // se fige pendant qu'une correction est ouverte.
 
 import { regTimeout, regInterval } from '../timers.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 const HOLES = 9;
 const SORTIES_MAX = 3;       // taupes visibles en même temps
@@ -23,6 +23,7 @@ export function mount(container, session, opts = {}) {
     let destroyed = false;
     let item = null;
     let cursor = null;
+    let gate = null;
     let metronome = null;
     let generation = 0;      // invalide les minuteurs d'une question passée
 
@@ -148,6 +149,8 @@ export function mount(container, session, opts = {}) {
     // frappe la bonne — c'est le discernement qu'on montre, pas le réflexe.
     async function lancerDemo() {
         if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+        if (!await gate.waitTurn() || destroyed) return;
         const gen = generation;
         // Deux distracteurs sortent d'abord, la bonne ensuite.
         sortir(); sortir();
@@ -181,6 +184,7 @@ export function mount(container, session, opts = {}) {
             destroyed = true;
             if (metronome) clearInterval(metronome);
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (gate) { gate.destroy(); gate = null; }
             container.innerHTML = '';
             session.finish();
         }

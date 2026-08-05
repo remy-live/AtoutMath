@@ -1,5 +1,6 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
+import { createDemoGate } from '../core/demoPointer.js';
 import { generateMultFact } from '../core/generators.js';
 import { getWeakTables } from '../core/stats.js';
 import { meilleuresColonnes, mesurerCarte } from './memoryLayout.js';
@@ -189,16 +190,19 @@ class MathMemory extends BaseGame {
     }
 
     destroy() {
+
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         if (this.observer) { this.observer.disconnect(); this.observer = null; }
         super.destroy();
     }
 
     runDemoSequence() {
+        this.demoGate = createDemoGate(this.container);
         this.startGameLoop();
 
         let step = 0;
         const tour = () => {
-            if (!this.isRunning || this.lockBoard) return;
+            if (!this.isRunning || this.lockBoard || this.demoGate.paused) return;
 
             const hiddenCards = this.cards.filter(c => !c.isMatched && c.el.classList.contains('hidden'));
             if (hiddenCards.length < 2) return;

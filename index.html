@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=40">
-    <link rel="stylesheet" href="css/layout.css?v=40">
-    <link rel="stylesheet" href="css/ui.css?v=40">
-    <link rel="stylesheet" href="css/games.css?v=40">
-    <link rel="stylesheet" href="css/components.css?v=40">
-    <link rel="stylesheet" href="css/modules.css?v=40">
+    <link rel="stylesheet" href="css/base.css?v=42">
+    <link rel="stylesheet" href="css/layout.css?v=42">
+    <link rel="stylesheet" href="css/ui.css?v=42">
+    <link rel="stylesheet" href="css/games.css?v=42">
+    <link rel="stylesheet" href="css/components.css?v=42">
+    <link rel="stylesheet" href="css/modules.css?v=42">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -498,9 +498,15 @@
                     <path d="M12 3v-2" />
                 </svg>
                 <span id="demo-banner-text">Mode Démonstration</span>
-                <button class="btn-stop-demo" id="btn-start-real-game">À
-                    moi de jouer !</button>
+                <span id="demo-banner-plus" aria-hidden="true">▾</span>
+                <button class="btn-stop-demo" id="btn-start-real-game">À moi de jouer !</button>
             </div>
+
+            <!-- Commandes du robot (pause, pas-à-pas, vitesse) : logées ICI,
+                 sous la bannière. En fin de plateau, elles sortaient de l'écran
+                 en paysage et passaient sous la palette de débogage en
+                 portrait — impossible de mettre l'explication en pause. -->
+            <div id="demo-controls-host"></div>
 
             <div class="canvas-area" id="game-board"></div>
 

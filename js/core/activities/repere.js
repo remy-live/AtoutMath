@@ -11,11 +11,12 @@
 import { regTimeout } from '../timers.js';
 import { repereSvg } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
+    let gate = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -97,6 +98,8 @@ export function mount(container, session) {
     async function runDemo(svg, target) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+        if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
         if (!await cursor.tap(target) || destroyed) return;
         markPoint(svg, target, 'demo');
@@ -112,6 +115,7 @@ export function mount(container, session) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (gate) { gate.destroy(); gate = null; }
             container.innerHTML = '';
             session.finish();
         }

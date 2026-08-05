@@ -1338,6 +1338,19 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .demo-controls {
     display: flex; gap: 8px; justify-content: center; margin-top: 6px;
 }
+
+/* Emplacement partagé, juste sous la bannière d'aperçu : la barre y est
+   toujours à l'écran, quelle que soit la hauteur du plateau. Vide, il ne
+   prend aucune place. */
+#demo-controls-host { display: contents; }
+#demo-controls-host .demo-controls {
+    align-self: center; flex-shrink: 0; margin: 6px auto 0;
+}
+/* Écran court : commandes resserrées, pour ne pas voler de hauteur au jeu. */
+@media (max-height: 620px), (max-width: 700px) {
+    .demo-ctrl-btn { padding: 5px 11px; font-size: .78rem; }
+    #demo-controls-host .demo-controls { gap: 6px; margin-top: 4px; }
+}
 .demo-ctrl-btn {
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--bg-panel); color: var(--text-main);
@@ -1419,6 +1432,22 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     width: 100%; max-width: 560px; margin: 0 auto; padding: 12px;
 }
 .kenken-consigne { font-size: clamp(1rem, 2.6cqh, 1.3rem); margin-bottom: 0; }
+
+/* Écran court : la consigne cède la place au plateau.
+   Sur un téléphone, la règle écrite en gros au-dessus de la grille prenait
+   deux ou trois lignes et repoussait les boutons de validation sous la barre
+   du navigateur. Elle reste lisible, mais discrète — le détail est toujours
+   à un appui sur « ? ». */
+@media (max-height: 780px), (max-width: 700px) {
+    .kenken-consigne, .tab-consigne, .pyt-sous {
+        font-size: .84rem; line-height: 1.3; font-weight: 600;
+        color: var(--text-muted);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .kenken-consigne b, .tab-consigne b { font-weight: 800; color: var(--text-main); }
+    .kenken-layout { gap: 6px; padding: 8px 6px; }
+}
 
 .kk-board {
     display: grid;

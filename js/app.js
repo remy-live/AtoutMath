@@ -252,6 +252,15 @@ function initGameControls() {
         };
     }
 
+    // La consigne du bandeau tient sur une ligne ; un appui la déplie.
+    const bandeau = document.getElementById('demo-overlay-banner');
+    if (bandeau) {
+        bandeau.onclick = (e) => {
+            if (e.target.closest('#btn-start-real-game')) return;
+            bandeau.classList.toggle('demo-banner--ouvert');
+        };
+    }
+
     const startReal = document.getElementById('btn-start-real-game');
     if (startReal) {
         startReal.onclick = () => {

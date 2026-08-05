@@ -55,6 +55,24 @@ export function setDemoSpeedFactor(f) {
 let muet = false;
 export function setDemoMuet(v) { muet = !!v; }
 
+// --- Temps de lecture d'une bulle --------------------------------------------
+//
+// Chaque jeu attendait une durée FIXE après avoir fait parler le robot — la
+// même pour « Je tape 40 » que pour « Cette ligne a déjà tous ses 1 (3 sur 6
+// cases) : je complète avec des 0. ». Les explications longues disparaissaient
+// donc avant d'être lues : c'est ça, « ça va trop vite ».
+//
+// La durée se calcule maintenant sur le TEXTE. Après un `say()`, la prochaine
+// pause du jeu ne peut pas se terminer avant que la bulle ait eu le temps
+// d'être lue — les pauses déjà écrites dans les jeux s'allongent d'elles-mêmes
+// quand la phrase est longue, sans qu'aucune n'ait à être retouchée.
+
+/** ~230 ms par mot : le rythme d'un élève qui lit une consigne, pas d'un adulte pressé. */
+export function tempsDeLecture(texte) {
+    const mots = String(texte).trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1300, Math.min(7000, 500 + mots * 230));
+}
+
 // Tous les pointeurs vivants. `clearEngines()` coupe les minuteurs d'une
 // démonstration interrompue, mais l'ÉLÉMENT du curseur, posé sur <body>,
 // restait affiché : on fermait l'aperçu et une flèche fantôme continuait de
@@ -80,7 +98,33 @@ export function destroyAllDemoCursors() {
  * puis rebloque) ou « Reprendre ». On peut ainsi suivre une déduction à son
  * rythme, ce qu'un défilement continu ne permet pas.
  */
+/**
+ * Où poser la barre de commandes.
+ *
+ * En fin de plateau — là où les jeux la demandaient — elle finissait hors de
+ * l'écran en paysage (546 px sur un écran de 390) et sous la palette de
+ * débogage en portrait : impossible de mettre l'explication en pause. En plein
+ * écran, elle rejoint donc la bannière d'aperçu, tout en haut. Les vignettes
+ * du catalogue, elles, gardent leur hôte local.
+ */
+function hoteDeBarre(host) {
+    const partage = document.getElementById('demo-controls-host');
+    const couche = document.getElementById('game-layer');
+    // `offsetParent` vaut null sur un élément en `position: fixed` — c'est le
+    // cas de la couche de jeu : on interroge donc le style calculé.
+    const enPleinEcran = couche && getComputedStyle(couche).display !== 'none';
+    return (partage && enPleinEcran) ? partage : host;
+}
+
+/** Commande inerte : une vignette de catalogue n'a pas à porter de barre. */
+const BARRE_MUETTE = { get paused() { return false; }, async waitTurn() { return true; }, destroy() {} };
+
 export function createDemoGate(host) {
+    // En muet (vignettes du catalogue, mode présentation), la démonstration
+    // n'est pas pilotable : une barre Pause/Un pas/Vitesse tassée dans une
+    // carte de 170 px ne servirait qu'à la défigurer.
+    if (muet) return BARRE_MUETTE;
+
     let paused = false;
     let destroyed = false;
     let attentes = [];
@@ -91,7 +135,12 @@ export function createDemoGate(host) {
         <button type="button" class="demo-ctrl-btn" data-demo-pause aria-label="Mettre la démonstration en pause">⏸ Pause</button>
         <button type="button" class="demo-ctrl-btn" data-demo-step aria-label="Avancer d'un pas">⏭ Un pas</button>
         <button type="button" class="demo-ctrl-btn" data-demo-speed aria-label="Vitesse de la démonstration"></button>`;
-    host.appendChild(bar);
+    const hote = hoteDeBarre(host);
+    // Une seule barre à la fois dans l'emplacement partagé : les activités qui
+    // recréent leur commande à chaque question y empileraient sinon autant de
+    // barres que de questions jouées.
+    hote.querySelectorAll(':scope > .demo-controls').forEach(v => v.remove());
+    hote.appendChild(bar);
 
     // Vitesse : un bouton qui fait le tour Lent → Normal → Rapide, et
     // retient le choix pour les prochaines démonstrations.
@@ -166,18 +215,23 @@ export function createDemoCursor() {
     let destroyed = false;
     let ghost = null;
     let bulle = null;
+    // Instant avant lequel la bulle en cours n'a pas fini d'être lue.
+    let finDeLecture = 0;
     // Les attentes en cours, pour les dénouer à la destruction : une promesse
     // jamais résolue retiendrait indéfiniment la fonction qui l'attend.
     const pending = new Set();
 
-    function wait(ms) {
+    /** Attente brute, déjà à l'échelle de la vitesse choisie. */
+    function attendre(ms) {
         if (destroyed) return Promise.resolve(false);
         return new Promise(resolve => {
             const done = (ok) => { pending.delete(done); resolve(ok); };
             pending.add(done);
-            regTimeout(() => done(!destroyed), ms * facteurVitesse);
+            regTimeout(() => done(!destroyed), Math.max(0, ms));
         });
     }
+
+    const wait = (ms) => attendre(ms * facteurVitesse);
 
     function place(x, y, ms) {
         el.style.transitionDuration = `${ms}ms`;
@@ -207,6 +261,8 @@ export function createDemoCursor() {
             }
             bulle.textContent = texte;
             bulle.classList.add('demo-bubble--on');
+            // La prochaine pause du jeu ne s'achèvera pas avant ce moment.
+            finDeLecture = performance.now() + tempsDeLecture(texte) * facteurVitesse;
             const ancre = cible ? centerOf(cible) : positionActuelle();
             requestAnimationFrame(() => {
                 if (!bulle) return;
@@ -214,8 +270,13 @@ export function createDemoCursor() {
                 const marge = 10;
                 let left = ancre.x - b.width / 2;
                 left = Math.max(marge, Math.min(left, window.innerWidth - b.width - marge));
+                // Plancher haut : sous la bannière et les commandes du robot,
+                // qu'une bulle posée par-dessus rendait illisibles.
+                const chrome = document.getElementById('demo-controls-host');
+                const bas = chrome && chrome.getBoundingClientRect().bottom;
+                const margeHaut = bas > 0 ? bas + 8 : marge;
                 let top = ancre.y - b.height - 46;
-                const dessous = top < marge;
+                const dessous = top < margeHaut;
                 if (dessous) top = ancre.y + 40;
                 // La pointe vise l'ancre même quand la bulle a été ramenée
                 // dans la fenêtre, et bascule en haut quand la bulle est
@@ -230,11 +291,16 @@ export function createDemoCursor() {
 
         hideBubble() {
             if (bulle) bulle.classList.remove('demo-bubble--on');
+            finDeLecture = 0;
         },
 
         /** Amène le pointeur au centre de l'élément et attend d'y être. */
         async moveTo(target, ms = DEMO_SPEED.move) {
             if (destroyed || !target) return false;
+            // Le robot ne part pas agir tant que son explication n'a pas eu le
+            // temps d'être lue : il patiente sur place, la bulle affichée.
+            const restant = finDeLecture - performance.now();
+            if (restant > 0 && !await attendre(restant)) return false;
             const { x, y } = centerOf(target);
             // Premier positionnement : sans transition, sinon le pointeur
             // traverse l'écran depuis son coin d'origine.
@@ -309,8 +375,15 @@ export function createDemoCursor() {
             return !destroyed;
         },
 
-        /** Pause de lecture, interruptible comme le reste. */
-        pause(ms = DEMO_SPEED.settle) { return wait(ms); },
+        /**
+         * Pause de lecture, interruptible comme le reste. Elle ne peut pas
+         * s'achever avant que la bulle affichée ait eu le temps d'être lue :
+         * c'est ce qui allonge automatiquement les explications longues.
+         */
+        pause(ms = DEMO_SPEED.settle) {
+            const restant = finDeLecture - performance.now();
+            return attendre(Math.max(ms * facteurVitesse, restant));
+        },
 
         destroy() {
             destroyed = true;

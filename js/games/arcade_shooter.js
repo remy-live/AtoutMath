@@ -15,7 +15,7 @@ import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
 import { generateMultFact, multDistractors } from '../core/generators.js';
 import { getWeakTables } from '../core/stats.js';
-import { createDemoCursor, DEMO_SPEED } from '../core/demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
 const METEOR_SIZE = 60;
 const SHIP_SIZE = 64;
@@ -154,6 +154,7 @@ class ArcadeShooter extends BaseGame {
 
     destroy() {
         if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         window.removeEventListener('resize', this.onResize);
         super.destroy();
         this.unbindControls();
@@ -482,6 +483,9 @@ class ArcadeShooter extends BaseGame {
         this.newRound();
         this.demoCanFire = false;
         this.demoCursor = createDemoCursor();
+        // Jeu continu : « Pause » y fige l'action entière — c'est ce qu'on
+        // veut pour lire une explication sans que les météorites avancent.
+        this.demoGate = createDemoGate(this.arena);
         let phase = 'annonce';
         let cadence = 0;
 
@@ -494,7 +498,7 @@ class ArcadeShooter extends BaseGame {
         });
 
         regInterval(() => {
-            if (!this.isRunning) return;
+            if (!this.isRunning || this.demoGate.paused) return;
             this.tickPhysics();
             if (this.roundOver) { phase = 'annonce'; return; }
             cadence++;

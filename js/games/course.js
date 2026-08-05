@@ -1,4 +1,5 @@
 import { BaseGame } from '../core/BaseGame.js';
+import { createDemoGate } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 
 export function engineCourse(container, isDemo, params) {
@@ -368,9 +369,11 @@ class Course extends BaseGame {
     }
 
     runDemoSequence() {
+        this.demoGate = createDemoGate(this.container);
         this.startGameLoop();
         this.setupGame(false, this.params);
         this.demoInterval = setInterval(() => {
+            if (this.demoGate.paused) return;
             if (this.gameState === 'race') {
                 this.p.lane = Math.floor(Math.random() * this.laneCount);
             }
@@ -468,6 +471,8 @@ class Course extends BaseGame {
     }
 
     destroy() {
+
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
         window.removeEventListener('resize', this.handleResize);
         document.removeEventListener('keydown', this.handleKeyDown);

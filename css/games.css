@@ -21,10 +21,34 @@
    recouvrait la croix de fermeture et le titre sur téléphone et tablette —
    impossible de quitter l'aperçu. En statique, elle pousse le plateau au lieu
    de recouvrir quoi que ce soit. */
-#demo-overlay-banner { display: none; position: static; align-self: center; margin: 8px auto 0; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: min(90vw, 96%); flex-shrink: 0; }
+/* Une SEULE ligne par défaut, dépliable d'un appui.
+   La consigne complète y tenait en entier : sur téléphone elle occupait sept
+   lignes, soit le quart de l'écran, poussait le plateau vers le bas (les
+   boutons de validation passaient sous la barre du navigateur) et répétait
+   mot pour mot la consigne que le jeu affiche déjà au-dessus de sa grille. */
+#demo-overlay-banner {
+    display: none; position: static; align-self: center;
+    margin: 6px auto 0; background: rgba(0,0,0,0.82); color: white;
+    padding: 6px 8px 6px 14px; border-radius: 24px; font-size: 0.82rem;
+    align-items: center; justify-content: center; gap: 8px;
+    width: max-content; max-width: min(94vw, 98%); flex-shrink: 0;
+    cursor: pointer;
+}
 #demo-overlay-banner svg { flex-shrink: 0; }
-#demo-banner-text { line-height: 1.4; }
-.btn-stop-demo { margin-left: 10px; background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; }
+#demo-banner-text {
+    line-height: 1.35; text-align: left; min-width: 0;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+#demo-overlay-banner.demo-banner--ouvert { border-radius: 16px; }
+#demo-overlay-banner.demo-banner--ouvert #demo-banner-text { -webkit-line-clamp: 6; }
+/* Chevron : il dit qu'il y a plus à lire dessous. */
+#demo-banner-plus {
+    flex-shrink: 0; opacity: .65; font-size: .9rem; line-height: 1;
+    transition: transform .2s;
+}
+#demo-overlay-banner.demo-banner--ouvert #demo-banner-plus { transform: rotate(180deg); }
+.btn-stop-demo { background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
 .btn-stop-demo:hover { background: var(--primary-hover); }
 
 .canvas-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #ffffff 0%, var(--bg-app) 100%); position: relative; padding: 20px; overflow: hidden; }
