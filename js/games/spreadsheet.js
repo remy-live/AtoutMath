@@ -79,7 +79,18 @@ class Tableur extends BaseGame {
                 .tab-cell.zone { outline: 3px solid #4263eb; outline-offset: -3px; background: #dbe4ff; z-index: 2; }
                 .tab-cell.bonne { background: #b2f2bb !important; }
                 .tab-cell input { width: 100%; height: 100%; border: none; text-align: center; font: inherit; background: transparent; min-width: 0; }
-                .tab-cell input:focus { outline: 3px solid #4263eb; outline-offset: -3px; border-radius: 3px; }
+                /* La case en cours de saisie s'ÉLARGIT par-dessus ses voisines :
+                   sur un téléphone, le clavier repousse la barre de formule
+                   hors de l'écran et il ne restait que la case, qui coupait la
+                   formule (« omme( » pour « =SOMME(B1:B4) »). */
+                .tab-cell input:focus {
+                    position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+                    height: 100%; z-index: 40;
+                    width: var(--tab-saisie, 100%); min-width: 100%;
+                    background: #fff; border-radius: 6px;
+                    outline: 3px solid #4263eb; outline-offset: 0;
+                    box-shadow: 0 4px 14px rgba(15, 23, 42, .18);
+                }
                 .tab-cell input.fige { color: #778; background: #f1f3f9; }
                 .tab-cell input.juste { background: #b2f2bb; }
                 .tab-cell input.faux { background: #ffc9c9; }
@@ -89,7 +100,7 @@ class Tableur extends BaseGame {
                 .tab-coul { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
                 .tab-coul.choisie { border-color: #223; transform: scale(1.15); }
                 .tab-verif { border: none; border-radius: 10px; padding: 10px 20px; font-weight: 900; background: #4263eb; color: #fff; cursor: pointer; font-family: inherit; font-size: 1rem; }
-                .tab-fx { display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #c3cbe0; border-radius: 12px; padding: 6px 8px 6px 12px; width: min(480px, 96%); margin: 0 auto 8px; box-sizing: border-box; }
+                .tab-fx { position: sticky; top: 0; display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #c3cbe0; border-radius: 12px; padding: 6px 8px 6px 12px; width: min(480px, 96%); margin: 0 auto 8px; box-sizing: border-box; }
                 .tab-fx[hidden] { display: none; }
                 .tab-fx-nom { font-weight: 900; color: #4263eb; background: #dbe4ff; border-radius: 6px; padding: 3px 8px; min-width: 30px; text-align: center; }
                 .tab-fx-val { flex: 1; font-family: monospace; font-size: 1.05rem; color: #223; min-height: 1.4em; overflow-wrap: anywhere; text-align: left; }
@@ -127,16 +138,28 @@ class Tableur extends BaseGame {
         // et il n'y a pas de touche Entrée évidente — la barre montre TOUT ce
         // qu'on tape et le bouton Valider remplace Entrée.
         this.inputActif = null;
+        // Règle à mesurer les textes : un canevas hors écran, comme le faisait
+        // l'original — c'est la seule façon fiable de connaître la largeur
+        // qu'occupera une formule avant de l'afficher.
+        this.reglet = document.createElement('canvas').getContext('2d');
         this.onFocusIn = (e) => {
             const inp = e.target.closest && e.target.closest('input[data-cell-id]');
             if (!inp || inp.readOnly) return;
             this.inputActif = inp;
             this.ui.fxNom.textContent = inp.dataset.cellId;
             this.ui.fxVal.textContent = inp.value;
+            this.elargir(inp);
         };
         this.container.addEventListener('focusin', this.onFocusIn);
+        this.container.addEventListener('focusout', (e) => {
+            const inp = e.target.closest && e.target.closest('input[data-cell-id]');
+            if (inp) { inp.style.removeProperty('--tab-saisie'); inp.style.removeProperty('left'); }
+        });
         this.container.addEventListener('input', (e) => {
-            if (e.target === this.inputActif) this.ui.fxVal.textContent = e.target.value;
+            if (e.target === this.inputActif) {
+                this.ui.fxVal.textContent = e.target.value;
+                this.elargir(e.target);
+            }
         });
         this.container.querySelector('[data-fx-ok]').onclick = () => {
             if (this.inputActif) this.validerSaisie(this.inputActif);
@@ -163,6 +186,32 @@ class Tableur extends BaseGame {
     message(txt, cls) {
         this.ui.msg.textContent = txt;
         this.ui.msg.className = 'tab-msg ' + (cls || '');
+    }
+
+    /**
+     * Donne à la case en saisie la largeur de son contenu, sans jamais sortir
+     * de la grille : au bord droit, elle s'étend vers la gauche.
+     */
+    elargir(inp) {
+        const grille = this.grilleActive();
+        if (!grille || !inp) return;
+        const style = getComputedStyle(inp);
+        this.reglet.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        const texte = inp.value || inp.placeholder || '';
+        const voulue = this.reglet.measureText(texte).width + 30;
+
+        const cellule = inp.parentElement;
+        const rc = cellule.getBoundingClientRect();
+        const rg = grille.getBoundingClientRect();
+        // Jamais plus large que la grille, et centrée sur sa case tant que
+        // c'est possible : au-delà, on la décale pour rester dans le cadre.
+        const large = Math.min(Math.max(voulue, rc.width), rg.width - 4);
+        const centre = rc.left + rc.width / 2;
+        let gauche = centre - large / 2;
+        gauche = Math.max(rg.left + 2, Math.min(gauche, rg.right - large - 2));
+        inp.style.setProperty('--tab-saisie', `${Math.round(large)}px`);
+        // `left` est en pourcentage de la case : on convertit le décalage.
+        inp.style.left = `${Math.round(gauche - rc.left + large / 2)}px`;
     }
 
     // La progression de la leçon s'affiche en toutes lettres à côté du titre :

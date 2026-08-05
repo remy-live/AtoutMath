@@ -398,7 +398,9 @@ export function mount(container, session, opts = {}) {
         ctx.translate(s.x, s.y);
         ctx.rotate(etat.baseRot);
         ctx.lineCap = 'round';
-        ctx.lineWidth = 3;
+        // Traits FINS : un côté épais couvre plusieurs graduations, et c'est
+        // exactement la graduation croisée qu'on demande de lire.
+        ctx.lineWidth = 1.6;
 
         const L = etat.legLen;
 
@@ -415,13 +417,15 @@ export function mount(container, session, opts = {}) {
         } else {
             ctx.save();
             ctx.rotate(-etat.construit * Math.PI / 180);
+            // Le côté mobile reste un peu plus marqué que le côté fixe — c'est
+            // lui qu'on saisit — mais fin lui aussi : la poignée du bout suffit
+            // à le désigner.
             ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 2.2;
             ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(L, 0, 12, 0, Math.PI * 2);
+            ctx.beginPath(); ctx.arc(L, 0, 11, 0, Math.PI * 2);
             ctx.fillStyle = '#ef4444'; ctx.fill();
-            ctx.beginPath(); ctx.arc(L, 0, 12, 0, Math.PI * 2);
+            ctx.beginPath(); ctx.arc(L, 0, 11, 0, Math.PI * 2);
             ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
             ctx.restore();
         }
@@ -439,14 +443,14 @@ export function mount(container, session, opts = {}) {
         // Arc de l'angle
         ctx.beginPath();
         const a = m.mode === 'mesurer' ? m.target : etat.construit;
-        ctx.arc(0, 0, 34, -a * Math.PI / 180, 0);
+        ctx.arc(0, 0, 30, -a * Math.PI / 180, 0);
         ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.4;
         ctx.stroke();
         ctx.restore();
 
         // Sommet
-        ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#ef4444'; ctx.fill();
     }
 
