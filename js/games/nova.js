@@ -4,16 +4,27 @@
 // d'ennemis en formation, tirs adverses à esquiver, explosions, bonus. On
 // joue pour jouer.
 //
-// Le calcul arrive par les PORTES. Toutes les vingt secondes environ, un mur
-// blindé barre le secteur avec trois ouvertures numérotées, et une question
-// s'affiche en grand : « 7 × 8 = ? ». Il faut franchir la bonne. C'est le
-// point d'équilibre du jeu — la question ne coupe rien, elle se répond en
-// pilotant, et on ne peut pas l'éviter puisque le mur barre tout le passage.
+// Le calcul entre par DEUX chemins, en alternance :
+//   - les PORTES : un mur blindé barre le secteur, trois ouvertures
+//     numérotées, une question en grand — on répond en pilotant ;
+//   - les CONVOIS CODÉS : trois transports blindés traversent le haut de
+//     l'écran, chacun porte un nombre, un seul est le bon résultat. Le canon
+//     étant automatique, VISER c'est SE PLACER : on répond en se glissant
+//     sous le bon transport. Les coques encaissent plusieurs impacts, si bien
+//     qu'une balle perdue ne compte pas — seule la destruction est un choix.
 //
-// Pourquoi ce choix plutôt que des ennemis porteurs de nombres : parce qu'un
-// shmup demande de tirer sur tout ce qui bouge, et qu'une seconde d'hésitation
-// y est mortelle. Séparer les deux — l'action aux ennemis, le calcul aux
-// portes — laisse au calcul le temps d'être un calcul.
+// L'arsenal du joueur tient en un doigt, mais il a trois étages :
+//   - le canon automatique (piloter suffit) ;
+//   - le RAYON LOURD : garder le doigt posé le charge, le relâcher le tire —
+//     et pendant la charge le canon ordinaire ralentit ;
+//   - la BOMBE NOVA : ramassée en bonus, déclenchée d'une DOUBLE TAPE — une
+//     onde qui balaie tout l'écran quand on est submergé.
+//
+// La difficulté MONTE : chaque bonne porte fait passer au secteur suivant,
+// et chaque secteur amène des vagues plus denses, des tirs plus vifs et des
+// appareils nouveaux — chasseurs, plongeurs kamikazes, blindés à tir en
+// éventail, tireurs d'élite qui campent en haut de l'écran. Et un appareil
+// PERCUTÉ fait des dégâts : rester immobile n'est plus une option.
 //
 // Tout est dessiné au canevas : ni image ni son à charger, donc rien à
 // attendre et rien à casser hors ligne.
@@ -59,9 +70,15 @@ class Nova extends BaseGame {
         this.bonus = [];
         this.couches = [];
         this.porte = null;
+        this.convoi = null;
+        this.prochainCalc = 'porte';   // portes et convois alternent
         this.message = null;
         this.bouclier = 0;
         this.puissance = 1;
+        this.bombes = 1;               // une bombe NOVA de départ, pour l'apprendre
+        this.novaOnde = null;
+        this.multi = 0;                // frames restantes de score doublé
+        this.dernierTap = 0;
         // Le compromis du tir.
         //
         // Le canon de base reste AUTOMATIQUE : on ne demande pas à un élève de
@@ -87,6 +104,7 @@ class Nova extends BaseGame {
                     text-shadow: 0 2px 6px rgba(0,0,0,.9); overflow: hidden; text-overflow: ellipsis;
                     white-space: nowrap; }
                 .nv-vies { color: #f87171; font-size: 1.15rem; letter-spacing: 1px; flex-shrink: 0; }
+                .nv-bombes { color: #fcd34d; font-size: .95rem; flex-shrink: 0; letter-spacing: 1px; }
                 .nv-score { color: #fcd34d; font-weight: 900; font-size: 1rem; flex-shrink: 0;
                     font-variant-numeric: tabular-nums; }
             </style>
@@ -95,6 +113,7 @@ class Nova extends BaseGame {
                 <div class="nv-hud">
                     <div class="nv-secteur" data-secteur></div>
                     <div class="nv-vies" data-vies></div>
+                    <div class="nv-bombes" data-bombes title="Bombes NOVA — double-tape pour déclencher"></div>
                     <div class="nv-score" data-score>0</div>
                 </div>
             </div>`;
@@ -105,7 +124,8 @@ class Nova extends BaseGame {
         this.ui = {
             vies: this.container.querySelector('[data-vies]'),
             score: this.container.querySelector('[data-score]'),
-            secteur: this.container.querySelector('[data-secteur]')
+            secteur: this.container.querySelector('[data-secteur]'),
+            bombes: this.container.querySelector('[data-bombes]')
         };
         this.dimensionner();
         this.onResize = () => this.dimensionner();
@@ -167,9 +187,13 @@ class Nova extends BaseGame {
             this.ui.vies.textContent = '❤'.repeat(Math.max(0, this.vies))
                 + '♡'.repeat(Math.max(0, this.viesMax - this.vies));
         }
-        if (this.ui.score) this.ui.score.textContent = this.score;
+        if (this.ui.score) this.ui.score.textContent = this.score + (this.multi > 0 ? ' ×2' : '');
         if (this.ui.secteur) this.ui.secteur.textContent = `Secteur ${this.niveau + 1} · ${this.secteur.nom}`;
+        if (this.ui.bombes) this.ui.bombes.textContent = '✹'.repeat(Math.max(0, this.bombes));
     }
+
+    /** Tous les gains passent ici : le multiplicateur ×2 s'applique d'un coup. */
+    gagner(pts) { this.score += this.multi > 0 ? pts * 2 : pts; }
 
     // --- Départ ---------------------------------------------------------------
 
@@ -210,6 +234,12 @@ class Nova extends BaseGame {
             depart = pos(e); bouge = 0;
             this.vaisseau.cible = depart.x;
             this.doigtPose = true;
+            // DOUBLE TAPE = bombe NOVA. Le seul geste qui restait libre : un
+            // appui simple pilote, un appui long charge, deux appuis brefs
+            // déclenchent l'onde. Rien à viser — c'est l'arme de panique.
+            const maintenant = performance.now();
+            if (maintenant - this.dernierTap < 320 && this.phase === 'jeu') this.declencherNova();
+            this.dernierTap = maintenant;
         };
         this.onMove = (e) => {
             if (!this.isRunning || !depart) return;
@@ -243,28 +273,51 @@ class Nova extends BaseGame {
      * Le décalage `retard` entre appareils d'une même vague fait le serpent :
      * ils passent tous au même endroit, mais pas au même instant.
      */
+    /**
+     * Le GENRE d'une vague : quatre familles d'appareils, qui arrivent avec
+     * les secteurs. On les reconnaît à la silhouette avant de connaître leur
+     * comportement — c'est la grammaire du shmup :
+     *   - CHASSEUR (rouge)   : la base, tir simple visé ;
+     *   - PLONGEUR (orange)  : ne tire jamais, se cale sur toi puis PIQUE —
+     *                          c'est lui qui interdit de rester immobile ;
+     *   - BLINDÉ (violet)    : lent, encaisse, tire en éventail, lâche
+     *                          toujours un bonus en mourant ;
+     *   - TIREUR (vert)      : campe en haut de l'écran et mitraille, puis
+     *                          repart. On va le chercher, ou on subit.
+     */
     lancerVague() {
-        const w = this.canvas.width, h = this.canvas.height;
+        const w = this.canvas.width;
+        const genres = ['chasseur'];
+        if (this.niveau >= 1) genres.push('plongeur');
+        if (this.niveau >= 2) genres.push('blinde', 'tireur');
+        if (this.niveau >= 3) genres.push('plongeur', 'chasseur');   // densité, pas nouveauté
+        const genre = genres[Math.floor(Math.random() * genres.length)];
+
         const figures = ['descente', 'zigzag', 'boucle', 'carrousel', 'pique', 'serpent'];
-        const figure = figures[Math.floor(Math.random() * figures.length)];
-        const n = figure === 'carrousel' ? 6 : 3 + Math.floor(Math.random() * 3);
-        const taille = Math.max(22, Math.min(34, w * 0.075));
+        const figure = genre === 'blinde' ? 'descente'
+            : genre === 'tireur' ? 'zigzag'
+                : figures[Math.floor(Math.random() * figures.length)];
+        const n = genre === 'blinde' ? 2
+            : genre === 'plongeur' ? 2 + Math.floor(this.niveau / 2)
+                : figure === 'carrousel' ? 6 : 3 + Math.floor(Math.random() * 3);
+        const taille = (genre === 'blinde' ? 1.5 : 1) * Math.max(22, Math.min(34, w * 0.075));
         const marge = taille * 1.8;
         const large = w - 2 * marge;
         const sens = Math.random() < 0.5 ? 1 : -1;
-        const vitesse = 0.9 + this.niveau * 0.1;
+        const vitesse = (genre === 'blinde' ? 0.45 : 0.9) + this.niveau * 0.1;
         const base = marge + Math.random() * large;
 
         for (let i = 0; i < n; i++) {
             const part = n === 1 ? 0.5 : i / (n - 1);
-            const retard = figure === 'serpent' ? i * 26 : figure === 'carrousel' ? 0 : i * 8;
+            const retard = figure === 'serpent' ? i * 26 : figure === 'carrousel' ? 0 : i * 10;
             this.ennemis.push({
-                figure, part, sens, retard, taille, base, large, marge,
+                genre, figure, part, sens, retard, taille, base, large, marge,
                 t: -retard,
-                pv: 1 + Math.floor(this.niveau / 2),
+                pv: genre === 'blinde' ? 4 + this.niveau : 1 + Math.floor(this.niveau / 2),
                 vitesse,
                 x: base, y: -taille,
-                tir: 110 + Math.floor(Math.random() * 200),
+                mode: 'vol',                       // le plongeur passera en 'pique'
+                tir: 70 + Math.floor(Math.random() * 150),
                 vivant: true
             });
         }
@@ -273,8 +326,37 @@ class Nova extends BaseGame {
     /** Position d'un appareil selon sa chorégraphie et son âge. */
     placerEnnemi(e) {
         const w = this.canvas.width, h = this.canvas.height;
+
+        // Le PLONGEUR ne suit pas une figure : il se cale sur le joueur, se
+        // fige un instant — c'est l'avertissement — puis pique tout droit.
+        // Trois temps lisibles : on a le droit de l'esquiver, pas de l'ignorer.
+        if (e.genre === 'plongeur') {
+            if (e.mode === 'vol') {
+                e.y = -e.taille + e.t * e.vitesse * 1.1;
+                e.x += (this.vaisseau.x - e.x) * 0.045;
+                if (e.y > h * (0.2 + e.part * 0.12)) { e.mode = 'visee'; e.pause = 26; }
+            } else if (e.mode === 'visee') {
+                if (--e.pause <= 0) e.mode = 'pique';
+            } else {
+                e.y += 7 + this.niveau * 0.5;
+            }
+            return;
+        }
+
         const t = e.t * e.vitesse;
         const col = e.marge + e.part * e.large;
+
+        // Le TIREUR s'arrête en haut de l'écran, mitraille, puis repart : la
+        // figure calcule sa descente, le plafond la borne, et passé son tour
+        // de garde il reprend sa route.
+        if (e.genre === 'tireur') {
+            const plafond = h * 0.22 + Math.sin(t / 30 + e.part * 9) * 12;
+            const yFigure = -e.taille + t;
+            e.y = e.t > 560 ? plafond + (e.t - 560) * 1.6 : Math.min(yFigure, plafond);
+            e.x = col + Math.sin(t / 34) * (e.large * 0.22) * e.sens;
+            return;
+        }
+
         switch (e.figure) {
             case 'zigzag':
                 e.x = col + Math.sin(t / 34) * (e.large * 0.22) * e.sens;
@@ -346,6 +428,79 @@ class Nova extends BaseGame {
         };
     }
 
+    /**
+     * Le CONVOI CODÉ : le calcul au bout du canon.
+     *
+     * Trois transports blindés patrouillent le haut de l'écran, chacun porte
+     * un nombre, et la consigne s'affiche : « Abats 7 × 6 ». Le canon étant
+     * automatique, viser c'est SE PLACER sous le bon transport — la mécanique
+     * du jeu et la réponse à la question sont le même geste.
+     *
+     * Les coques encaissent plusieurs impacts : une balle qui érafle un
+     * mauvais transport ne compte pas, seule sa DESTRUCTION est une réponse.
+     * C'est ce qui rend le tir automatique compatible avec une question.
+     */
+    lancerConvoi() {
+        const w = this.canvas.width, h = this.canvas.height;
+        const t = this.tables[Math.floor(Math.random() * this.tables.length)];
+        const m = 2 + Math.floor(Math.random() * 9);
+        const bon = t * m;
+        const leurres = new Set();
+        [t * (m - 1), t * (m + 1), t + m, bon + t, bon - t].filter(v => v > 0 && v !== bon)
+            .forEach(v => leurres.add(v));
+        const valeurs = [bon, ...[...leurres].sort(() => Math.random() - 0.5).slice(0, 2)]
+            .sort(() => Math.random() - 0.5);
+
+        const sens = Math.random() < 0.5 ? 1 : -1;
+        const ecart = Math.max(120, w / 2.8);
+        this.convoi = {
+            question: `${t} × ${m}`, bon, table: t,
+            t: 0, duree: 1400, reglee: false, sens,
+            largeurBoucle: ecart * valeurs.length,
+            ships: valeurs.map((v, i) => ({
+                v, pv: 5, max: 5, vivant: true,
+                x: sens > 0 ? -60 - i * ecart : w + 60 + i * ecart,
+                y: h * (0.14 + 0.05 * (i % 2)),
+                phase: Math.random() * 6.28
+            }))
+        };
+    }
+
+    // --- Bombe NOVA -----------------------------------------------------------
+
+    declencherNova() {
+        if (this.novaOnde) return;
+        if (this.bombes < 1) { this.mot('Pas de bombe NOVA — cherche le bonus ✹', 'ko'); return; }
+        this.bombes--;
+        this.majHud();
+        this.secousse = 20;
+        this.novaOnde = { r: 10 };
+        this.mot('NOVA !', 'ok');
+    }
+
+    /**
+     * L'onde grandit depuis le vaisseau et efface ce qu'elle touche : les
+     * appareils, leurs tirs — mais PAS les transports du convoi : une bombe
+     * ne répond pas à une question de calcul à ta place.
+     */
+    majNova() {
+        const o = this.novaOnde;
+        if (!o) return;
+        o.r += 16;
+        const v = this.vaisseau;
+        this.ennemis.forEach(e => {
+            if (e.vivant && Math.hypot(e.x - v.x, e.y - v.y) < o.r) {
+                e.vivant = false;
+                this.gagner(10);
+                this.exploser(e.x, e.y, '#fcd34d', 16);
+            }
+        });
+        this.tirsEnnemis.forEach(t => {
+            if (Math.hypot(t.x - v.x, t.y - v.y) < o.r) t.mort = true;
+        });
+        if (o.r > Math.hypot(this.canvas.width, this.canvas.height)) this.novaOnde = null;
+    }
+
     // --- Verdicts -------------------------------------------------------------
 
     franchir(p) {
@@ -353,10 +508,15 @@ class Nova extends BaseGame {
         const bonneReponse = p.v === this.porte.bon;
         const q = `${this.porte.question} = ?`;
         if (bonneReponse) {
-            this.score += 60;
+            this.gagner(60);
             this.bouclier = 240;
             this.puissance = Math.min(3, this.puissance + 1);
-            this.mot(`${this.porte.question} = ${this.porte.bon} — bouclier rechargé !`, 'ok');
+            // Bonne porte = SECTEUR SUIVANT. C'est le calcul qui fait avancer
+            // le voyage — et avec lui la difficulté : vagues plus denses,
+            // tirs plus vifs, appareils nouveaux. Le jeu ne devient dur que
+            // si l'on est bon, ce qui est exactement l'ordre voulu.
+            this.niveau++;
+            this.mot(`${this.porte.question} = ${this.porte.bon} — cap sur ${this.secteur.nom} !`, 'ok');
             this.onCorrectAnswer(null, `mult:${this.porte.table}`, {
                 points: 20, questionText: q, given: p.v, expected: this.porte.bon
             });
@@ -394,7 +554,7 @@ class Nova extends BaseGame {
             this.mot('Vaisseau détruit — nouvelle escadre', 'ko');
             this.vies = this.viesMax;
             this.puissance = 1;
-            this.ennemis = []; this.tirsEnnemis = []; this.porte = null;
+            this.ennemis = []; this.tirsEnnemis = []; this.porte = null; this.convoi = null;
             this.majHud();
         }
     }
@@ -447,18 +607,29 @@ class Nova extends BaseGame {
         if (this.doigtPose) this.charge = Math.min(1, this.charge + 1 / 90);
         if (this.rayon > 0) { this.rayon--; this.frapperAuRayon(); }
 
-        if (!this.porte && this.frame % 150 === 0) this.lancerVague();
-        if (!this.porte && this.frame % this.entrePortes === 0 && this.frame > 60) this.lancerPorte();
+        // Les vagues se resserrent avec les secteurs : c'est LA vis de
+        // difficulté — on ne meurt pas parce qu'un ennemi est fort, on meurt
+        // parce qu'on n'a plus de place.
+        const calme = !this.porte && !this.convoi;
+        const entreVagues = Math.max(78, 150 - this.niveau * 9);
+        if (calme && this.frame % entreVagues === 0) this.lancerVague();
+        if (calme && this.frame % this.entrePortes === 0 && this.frame > 60) {
+            if (this.prochainCalc === 'porte') { this.lancerPorte(); this.prochainCalc = 'convoi'; }
+            else { this.lancerConvoi(); this.prochainCalc = 'porte'; }
+        }
 
         this.majEnnemis();
         this.majTirs();
         this.majPorte();
+        this.majConvoi();
         this.majBonus();
+        this.majNova();
 
         this.particules.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.vie--; });
         this.particules = this.particules.filter(p => p.vie > 0);
         if (this.secousse > 0) this.secousse--;
         if (this.bouclier > 0) this.bouclier--;
+        if (this.multi > 0) { if (--this.multi === 0) this.majHud(); }
         if (this.message && --this.message.vie <= 0) this.message = null;
     }
 
@@ -476,7 +647,7 @@ class Nova extends BaseGame {
             e.pv -= 2;
             if (e.pv <= 0) {
                 e.vivant = false;
-                this.score += 15;
+                this.gagner(15);
                 this.exploser(e.x, e.y, '#a5f3fc', 20);
             }
         });
@@ -493,19 +664,48 @@ class Nova extends BaseGame {
         ecarts.forEach(e => this.tirs.push({ x: x + e, y: y - 16, v: 11 }));
     }
 
+    /** Un tir ennemi vers un angle donné (0 = droit sur le joueur). */
+    tirEnnemi(e, ecart = 0) {
+        if (this.tirsEnnemis.length > 46) return;   // l'écran doit rester lisible
+        const dx = this.vaisseau.x - e.x, dy = this.vaisseau.y - e.y;
+        const a = Math.atan2(dy, dx) + ecart;
+        const v = 2.5 + this.niveau * 0.22;
+        this.tirsEnnemis.push({
+            x: e.x, y: e.y + e.taille / 2,
+            vx: Math.cos(a) * v, vy: Math.sin(a) * v
+        });
+    }
+
     majEnnemis() {
-        const h = this.canvas.height;
+        const h = this.canvas.height, v = this.vaisseau;
         this.ennemis.forEach(e => {
             e.t++;
             if (e.t < 0) return;              // il attend son tour dans le serpent
             this.placerEnnemi(e);
-            if (--e.tir <= 0 && e.y > 0 && e.y < h * 0.7 && !this.porte) {
-                e.tir = 150 + Math.floor(Math.random() * 200);
-                // Le tir vise le joueur : c'est ce qui oblige à bouger.
-                const dx = this.vaisseau.x - e.x, dy = this.vaisseau.y - e.y;
-                const d = Math.max(1, Math.hypot(dx, dy));
-                const v = 2.2 + this.niveau * 0.2;
-                this.tirsEnnemis.push({ x: e.x, y: e.y + e.taille / 2, vx: dx / d * v, vy: dy / d * v });
+
+            // Chaque genre a son tir : c'est la personnalité de l'appareil.
+            // (Le plongeur, lui, EST son tir.)
+            if (--e.tir <= 0 && e.y > 0 && e.y < h * 0.7 && !this.porte && !this.convoi) {
+                if (e.genre === 'blinde') {
+                    e.tir = 120 + Math.floor(Math.random() * 90);
+                    [-0.35, 0, 0.35].forEach(a => this.tirEnnemi(e, a));
+                } else if (e.genre === 'tireur') {
+                    e.tir = 60 + Math.floor(Math.random() * 70);
+                    [-0.1, 0.1].forEach(a => this.tirEnnemi(e, a));
+                } else if (e.genre !== 'plongeur') {
+                    e.tir = 110 + Math.floor(Math.random() * 160);
+                    this.tirEnnemi(e);
+                }
+            }
+
+            // PERCUTER un appareil fait mal — aux deux. Sans cette règle, on
+            // pouvait traverser une vague en spectateur ; c'est elle qui rend
+            // le pilotage obligatoire.
+            if (e.y > 0 && Math.hypot(e.x - v.x, e.y - v.y) < e.taille / 2 + 13) {
+                e.vivant = false;
+                this.exploser(e.x, e.y, '#fb923c', 20);
+                this.secousse = 18;
+                this.perdreUneVie();
             }
             if (e.y > h + 60) e.vivant = false;
         });
@@ -518,9 +718,11 @@ class Nova extends BaseGame {
                     t.mort = true;
                     if (--e.pv <= 0) {
                         e.vivant = false;
-                        this.score += 15;
+                        this.gagner(e.genre === 'blinde' ? 40 : e.genre === 'tireur' ? 25 : 15);
                         this.exploser(e.x, e.y, '#f59e0b', 18);
-                        if (Math.random() < 0.12) this.bonus.push({ x: e.x, y: e.y, v: 1.6, genre: Math.random() < 0.5 ? 'arme' : 'vie' });
+                        // Le blindé lâche TOUJOURS quelque chose : il coûte
+                        // cher à percer, il doit payer.
+                        if (e.genre === 'blinde' || Math.random() < 0.13) this.lacherBonus(e.x, e.y);
                     } else this.exploser(e.x, e.y, '#fde68a', 5);
                 }
             }
@@ -528,6 +730,14 @@ class Nova extends BaseGame {
         this.tirs = this.tirs.filter(t => !t.mort && t.y > -20);
         this.ennemis = this.ennemis.filter(e => e.vivant);
         this.majHud();
+    }
+
+    /** Tire un bonus au sort — les rares sont rares. */
+    lacherBonus(x, y) {
+        const r = Math.random();
+        const genre = r < 0.3 ? 'arme' : r < 0.5 ? 'bouclier' : r < 0.7 ? 'vie'
+            : r < 0.87 ? 'nova' : 'x2';
+        this.bonus.push({ x, y, v: 1.6, genre });
     }
 
     majTirs() {
@@ -558,14 +768,108 @@ class Nova extends BaseGame {
         if (p.y > this.canvas.height + 40) this.porte = null;
     }
 
+    majConvoi() {
+        const cv = this.convoi;
+        if (!cv) return;
+        const w = this.canvas.width;
+        cv.t++;
+        const vitesse = 1.15 + this.niveau * 0.07;
+
+        cv.ships.forEach(s => {
+            if (!s.vivant) return;
+            s.x += cv.sens * vitesse;
+            s.y += Math.sin((this.frame + s.phase * 60) / 38) * 0.25;
+            // La boucle : sorti d'un côté, un transport revient de l'autre —
+            // la question repasse tant qu'elle n'est pas réglée.
+            if (cv.sens > 0 && s.x > w + 70) s.x -= cv.largeurBoucle + w + 140;
+            if (cv.sens < 0 && s.x < -70) s.x += cv.largeurBoucle + w + 140;
+        });
+
+        // Impacts des tirs du joueur sur les coques.
+        this.tirs.forEach(t => {
+            for (const s of cv.ships) {
+                if (!s.vivant || t.mort || s.y < 0) continue;
+                if (Math.abs(t.x - s.x) < 30 && Math.abs(t.y - s.y) < 18) {
+                    t.mort = true;
+                    if (--s.pv <= 0) { s.vivant = false; this.abattreTransport(s); }
+                    else this.exploser(t.x, t.y, '#fde68a', 4);
+                }
+            }
+        });
+        this.tirs = this.tirs.filter(t => !t.mort);
+
+        // Personne d'abattu à temps : la question est comptée manquée, sans
+        // perte de vie — l'inaction coûte le canon, pas la peau.
+        if (!cv.reglee && cv.t > cv.duree) {
+            cv.reglee = true;
+            this.puissance = 1;
+            this.mot(`Le convoi s'échappe… ${cv.question} = ${cv.bon}`, 'ko');
+            this.onWrongAnswer(null, {
+                questionText: `${cv.question} = ?`, input: '(convoi échappé)',
+                expected: cv.bon, concept: `mult:${cv.table}`, silencieux: true,
+                customMessage: `Il fallait abattre le transporteur ${cv.bon} : ${cv.question} = ${cv.bon}.`
+            });
+        }
+        if (cv.reglee) {
+            // Les survivants fuient vers le haut.
+            cv.ships.forEach(s => { if (s.vivant) s.y -= 3; });
+            if (cv.t > cv.duree || cv.ships.every(s => !s.vivant || s.y < -40)) this.convoi = null;
+        }
+    }
+
+    /** Un transport détruit : c'est une RÉPONSE. */
+    abattreTransport(s) {
+        const cv = this.convoi;
+        this.exploser(s.x, s.y, '#f59e0b', 26);
+        const q = `${cv.question} = ?`;
+        if (s.v === cv.bon) {
+            cv.reglee = true;
+            cv.t = cv.duree;                       // les autres s'en vont
+            this.gagner(80);
+            this.multi = 600;                      // dix secondes de score ×2
+            this.lacherBonus(s.x, s.y);
+            this.mot(`${cv.question} = ${cv.bon} — score ×2 !`, 'ok');
+            this.onCorrectAnswer(null, `mult:${cv.table}`, {
+                points: 20, questionText: q, given: s.v, expected: cv.bon
+            });
+        } else {
+            this.secousse = 20;
+            this.puissance = 1;
+            this.mot(`${s.v} était un leurre… ${cv.question} = ${cv.bon}`, 'ko');
+            this.onWrongAnswer(null, {
+                questionText: q, input: s.v, expected: cv.bon,
+                concept: `mult:${cv.table}`, silencieux: true,
+                customMessage: `${cv.question} = ${cv.bon}. Tu as abattu le transporteur ${s.v}.`
+            });
+            this.perdreUneVie();
+        }
+        this.majHud();
+    }
+
     majBonus() {
         const h = this.canvas.height, v = this.vaisseau;
         this.bonus.forEach(b => {
             b.y += b.v;
             if (Math.abs(b.x - v.x) < 22 && Math.abs(b.y - v.y) < 22) {
                 b.pris = true;
-                if (b.genre === 'arme') { this.puissance = Math.min(3, this.puissance + 1); this.mot('Canon amélioré !', 'ok'); }
-                else { this.vies = Math.min(this.viesMax + 2, this.vies + 1); this.majHud(); this.mot('Réparation !', 'ok'); }
+                switch (b.genre) {
+                    case 'arme':
+                        this.puissance = Math.min(3, this.puissance + 1);
+                        this.mot('Canon amélioré !', 'ok'); break;
+                    case 'bouclier':
+                        this.bouclier = 480;
+                        this.mot('Bouclier !', 'ok'); break;
+                    case 'nova':
+                        this.bombes = Math.min(3, this.bombes + 1);
+                        this.mot('Bombe NOVA — double-tape pour tout balayer', 'ok'); break;
+                    case 'x2':
+                        this.multi = 720;
+                        this.mot('Score ×2 pendant 12 secondes !', 'ok'); break;
+                    default:
+                        this.vies = Math.min(this.viesMax + 2, this.vies + 1);
+                        this.mot('Réparation !', 'ok');
+                }
+                this.majHud();
             }
         });
         this.bonus = this.bonus.filter(b => !b.pris && b.y < h + 20);
@@ -629,6 +933,8 @@ class Nova extends BaseGame {
 
         if (this.rayon > 0) this.dessinerRayon();
         if (this.porte) this.dessinerPorte();
+        if (this.convoi) this.dessinerConvoi();
+        if (this.novaOnde) this.dessinerNova();
 
         this.particules.forEach(p => {
             c.globalAlpha = Math.min(1, p.vie / 22); c.fillStyle = p.couleur;
@@ -662,17 +968,120 @@ class Nova extends BaseGame {
         c.restore();
     }
 
+    /** Quatre silhouettes, quatre couleurs : on lit la menace avant le tir. */
     dessinerEnnemi(e) {
         const c = this.ctx, r = e.taille / 2;
         c.save(); c.translate(e.x, e.y);
-        c.shadowColor = 'rgba(244,63,94,.7)'; c.shadowBlur = 12;
-        c.fillStyle = '#be123c';
-        c.beginPath();
-        c.moveTo(0, r); c.lineTo(r, -r * 0.4); c.lineTo(r * 0.4, -r);
-        c.lineTo(-r * 0.4, -r); c.lineTo(-r, -r * 0.4); c.closePath(); c.fill();
-        c.shadowBlur = 0;
-        c.fillStyle = '#fda4af';
-        c.beginPath(); c.arc(0, -r * 0.15, r * 0.3, 0, Math.PI * 2); c.fill();
+
+        if (e.genre === 'plongeur') {
+            // Flèche orange pointée vers le bas ; elle clignote pendant la
+            // visée — c'est l'avertissement qu'elle va piquer.
+            const alerte = e.mode === 'visee' && Math.floor(this.frame / 4) % 2 === 0;
+            c.shadowColor = 'rgba(251,146,60,.8)'; c.shadowBlur = 12;
+            c.fillStyle = alerte ? '#fff7ed' : '#f97316';
+            c.beginPath();
+            c.moveTo(0, r * 1.1); c.lineTo(r * 0.7, -r * 0.6); c.lineTo(0, -r * 0.2);
+            c.lineTo(-r * 0.7, -r * 0.6); c.closePath(); c.fill();
+            if (e.mode === 'pique') {
+                c.shadowBlur = 0; c.globalAlpha = 0.55; c.fillStyle = '#fdba74';
+                c.beginPath(); c.moveTo(-r * 0.3, -r * 0.5); c.lineTo(0, -r * 1.8); c.lineTo(r * 0.3, -r * 0.5);
+                c.closePath(); c.fill();
+            }
+        } else if (e.genre === 'blinde') {
+            // Coque large, plaques apparentes, liseré de points de vie.
+            c.shadowColor = 'rgba(168,85,247,.65)'; c.shadowBlur = 14;
+            c.fillStyle = '#6d28d9';
+            c.beginPath(); c.roundRect(-r, -r * 0.62, r * 2, r * 1.24, r * 0.3); c.fill();
+            c.shadowBlur = 0;
+            c.strokeStyle = 'rgba(233,213,255,.5)'; c.lineWidth = 2;
+            c.beginPath(); c.moveTo(-r * 0.45, -r * 0.62); c.lineTo(-r * 0.45, r * 0.62);
+            c.moveTo(r * 0.45, -r * 0.62); c.lineTo(r * 0.45, r * 0.62); c.stroke();
+            c.fillStyle = '#ddd6fe';
+            c.beginPath(); c.arc(0, 0, r * 0.26, 0, Math.PI * 2); c.fill();
+            const part = Math.max(0, e.pv / (4 + this.niveau));
+            c.fillStyle = '#f0abfc';
+            c.fillRect(-r * 0.8, r * 0.75, r * 1.6 * part, 3);
+        } else if (e.genre === 'tireur') {
+            // Raie manta verte, ailes en courbe : la forme la plus « vivante ».
+            c.shadowColor = 'rgba(74,222,128,.7)'; c.shadowBlur = 12;
+            c.fillStyle = '#16a34a';
+            c.beginPath();
+            c.moveTo(0, r * 0.8);
+            c.quadraticCurveTo(r * 1.2, 0, 0, -r * 0.8);
+            c.quadraticCurveTo(-r * 1.2, 0, 0, r * 0.8);
+            c.closePath(); c.fill();
+            c.shadowBlur = 0;
+            c.fillStyle = '#bbf7d0';
+            c.beginPath(); c.arc(0, 0, r * 0.24, 0, Math.PI * 2); c.fill();
+        } else {
+            c.shadowColor = 'rgba(244,63,94,.7)'; c.shadowBlur = 12;
+            c.fillStyle = '#be123c';
+            c.beginPath();
+            c.moveTo(0, r); c.lineTo(r, -r * 0.4); c.lineTo(r * 0.4, -r);
+            c.lineTo(-r * 0.4, -r); c.lineTo(-r, -r * 0.4); c.closePath(); c.fill();
+            c.shadowBlur = 0;
+            c.fillStyle = '#fda4af';
+            c.beginPath(); c.arc(0, -r * 0.15, r * 0.3, 0, Math.PI * 2); c.fill();
+        }
+        c.restore();
+    }
+
+    /** Les transports du convoi et la consigne en bandeau. */
+    dessinerConvoi() {
+        const c = this.ctx, w = this.canvas.width, cv = this.convoi;
+        // La consigne : la question, et le geste attendu.
+        c.save();
+        c.font = `900 ${Math.max(20, Math.min(34, w * 0.07))}px 'Inter', system-ui, sans-serif`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        const txt = `Abats ${cv.question}`;
+        const lw = c.measureText(txt).width;
+        const by = 46;
+        c.fillStyle = 'rgba(2,6,23,.72)';
+        c.beginPath(); c.roundRect(w / 2 - lw / 2 - 16, by - 21, lw + 32, 42, 12); c.fill();
+        c.strokeStyle = '#fbbf24'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = '#fef3c7'; c.fillText(txt, w / 2, by);
+
+        cv.ships.forEach(s => {
+            if (!s.vivant) return;
+            c.save(); c.translate(s.x, s.y);
+            // Barge blindée : coque ambre, hublot sombre, le nombre en clair.
+            c.shadowColor = 'rgba(245,158,11,.7)'; c.shadowBlur = 12;
+            c.fillStyle = '#b45309';
+            c.beginPath(); c.roundRect(-30, -16, 60, 32, 9); c.fill();
+            c.shadowBlur = 0;
+            c.strokeStyle = 'rgba(253,230,138,.8)'; c.lineWidth = 2; c.stroke();
+            // Moteurs
+            c.fillStyle = 'rgba(253,224,71,.8)';
+            const fl = 4 + Math.random() * 5;
+            [[-31, 0], [31, 0]].forEach(([mx]) => {
+                c.beginPath();
+                c.moveTo(mx, -5); c.lineTo(mx + (mx > 0 ? fl : -fl), 0); c.lineTo(mx, 5);
+                c.closePath(); c.fill();
+            });
+            c.fillStyle = '#1c1207';
+            c.beginPath(); c.roundRect(-20, -11, 40, 22, 7); c.fill();
+            c.fillStyle = '#fef3c7';
+            c.font = '900 17px "Inter", system-ui, sans-serif';
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText(String(s.v), 0, 1);
+            // Jauge de coque : on voit qu'on entame, donc qu'on s'engage.
+            if (s.pv < s.max) {
+                c.fillStyle = 'rgba(2,6,23,.6)'; c.fillRect(-22, 19, 44, 4);
+                c.fillStyle = '#fbbf24'; c.fillRect(-22, 19, 44 * (s.pv / s.max), 4);
+            }
+            c.restore();
+        });
+        c.restore();
+    }
+
+    /** L'onde NOVA : deux anneaux qui balaient l'écran. */
+    dessinerNova() {
+        const c = this.ctx, v = this.vaisseau, o = this.novaOnde;
+        c.save();
+        c.strokeStyle = 'rgba(253,224,71,.9)'; c.lineWidth = 7;
+        c.beginPath(); c.arc(v.x, v.y, o.r, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2;
+        c.beginPath(); c.arc(v.x, v.y, Math.max(1, o.r - 14), 0, Math.PI * 2); c.stroke();
         c.restore();
     }
 
@@ -740,17 +1149,22 @@ class Nova extends BaseGame {
 
     dessinerBonus(b) {
         const c = this.ctx;
+        const STYLE = {
+            arme: ['#a3e635', '»'], vie: ['#f472b6', '+'],
+            bouclier: ['#38bdf8', '◍'], nova: ['#fcd34d', '✹'], x2: ['#c084fc', '×2']
+        };
+        const [couleur, glyphe] = STYLE[b.genre] || STYLE.vie;
         c.save(); c.translate(b.x, b.y);
         c.rotate(this.frame / 22);
-        c.fillStyle = b.genre === 'arme' ? '#a3e635' : '#f472b6';
-        c.shadowColor = c.fillStyle; c.shadowBlur = 12;
+        c.fillStyle = couleur;
+        c.shadowColor = couleur; c.shadowBlur = 12;
         c.fillRect(-9, -9, 18, 18);
         c.shadowBlur = 0;
         c.fillStyle = '#0f172a';
-        c.font = '900 13px "Inter", system-ui, sans-serif';
+        c.font = `900 ${glyphe.length > 1 ? 10 : 13}px "Inter", system-ui, sans-serif`;
         c.textAlign = 'center'; c.textBaseline = 'middle';
         c.rotate(-this.frame / 22);
-        c.fillText(b.genre === 'arme' ? '»' : '+', 0, 1);
+        c.fillText(glyphe, 0, 1);
         c.restore();
     }
 
@@ -856,13 +1270,14 @@ class Nova extends BaseGame {
         };
         const u = Math.min(w, h);
         if (this.phase === 'briefing') {
-            T('N O V A', h * 0.2, u * 0.1, '#22d3ee');
-            T('Glisse pour piloter. Le canon tire tout seul.', h * 0.33, u * 0.05, '#e2e8f0');
-            T('Garde le doigt POSÉ : tu charges le rayon lourd', h * 0.41, u * 0.046, '#a5f3fc', 800);
-            T('(mais le canon ralentit pendant la charge).', h * 0.47, u * 0.042, '#94a3b8', 700);
-            T('Des MURS barrent le secteur :', h * 0.6, u * 0.05, '#fcd34d', 800);
-            T('passe par la porte du bon résultat.', h * 0.665, u * 0.05, '#fcd34d', 800);
-            T('Bonne porte = bouclier · mauvaise = dégâts', h * 0.78, u * 0.04, '#94a3b8', 700);
+            T('N O V A', h * 0.16, u * 0.1, '#22d3ee');
+            T('Glisse pour piloter · le canon tire tout seul', h * 0.27, u * 0.046, '#e2e8f0');
+            T('Doigt POSÉ : rayon lourd · DOUBLE TAPE : bombe ✹', h * 0.34, u * 0.042, '#a5f3fc', 800);
+            T('Ne touche RIEN : appareils et tirs font mal.', h * 0.44, u * 0.044, '#fda4af', 800);
+            T('MURS : passe la porte du bon résultat', h * 0.55, u * 0.046, '#fcd34d', 800);
+            T('CONVOIS : abats le transporteur du bon résultat', h * 0.62, u * 0.046, '#fcd34d', 800);
+            T('Chaque bonne porte ouvre le secteur suivant —', h * 0.73, u * 0.038, '#94a3b8', 700);
+            T('plus loin, plus dur, plus de bonus.', h * 0.785, u * 0.038, '#94a3b8', 700);
         } else {
             T(this.compte > 0 ? String(this.compte) : 'GO !', h * 0.46,
                 u * (this.compte > 0 ? 0.26 : 0.18), this.compte > 0 ? '#e2e8f0' : '#22d3ee');
@@ -900,8 +1315,25 @@ class Nova extends BaseGame {
         const cible = p.portes.find(o => o.v === p.bon);
         if (cible) this.vaisseau.cible = (cible.x0 + cible.x1) / 2 * this.canvas.width;
         if (!await cur.pause(DEMO_SPEED.between + 2200) || !this.isRunning) return fin();
-        cur.say('Bonne porte : bouclier rechargé et canon renforcé. Mauvaise porte : on encaisse.', this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 1500) || !this.isRunning) return fin();
+        cur.say('Bonne porte : bouclier, canon renforcé, et cap sur le secteur suivant — plus dur, mais plus de bonus.', this.arene);
+        if (!await cur.pause(DEMO_SPEED.between + 1600) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        this.porte = null;
+        this.lancerConvoi();
+        const cv = this.convoi;
+        cur.say(`Un CONVOI ! On me demande ${cv.question} : je me place sous le transporteur ${cv.bon} et le canon fait le reste. Abattre un leurre coûte cher.`, this.arene);
+        const bonShip = cv.ships.find(s => s.v === cv.bon);
+        const suivre = setInterval(() => {
+            if (bonShip && bonShip.vivant && this.isRunning) this.vaisseau.cible = bonShip.x;
+        }, 120);
+        if (!await cur.pause(DEMO_SPEED.between + 4200) || !this.isRunning) { clearInterval(suivre); return fin(); }
+        clearInterval(suivre);
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Et si je suis submergé : une DOUBLE TAPE déclenche la bombe NOVA, qui balaie tout l\'écran.', this.arene);
+        this.declencherNova();
+        if (!await cur.pause(DEMO_SPEED.between + 1800) || !this.isRunning) return fin();
         fin();
     }
 

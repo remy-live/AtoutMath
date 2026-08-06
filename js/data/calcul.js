@@ -160,7 +160,7 @@ export const calculExercises = [
             { id: 'entrePortes', type: 'number', label: 'Secondes entre deux murs', min: 8, max: 40, default: 18 }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul. De temps en temps un mur blindé barre le secteur avec trois portes numérotées et une question au-dessus — franchis la porte du bon résultat. Bonne porte : bouclier et canon renforcé. Mauvaise porte ou mur percuté : dégâts."
+        instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul — doigt posé pour charger le rayon lourd, double tape pour la bombe NOVA. Deux épreuves de calcul alternent : les MURS (franchis la porte du bon résultat) et les CONVOIS (place-toi sous le transporteur du bon résultat pour l'abattre). Chaque bonne porte ouvre le secteur suivant, plus dur : chasseurs, plongeurs kamikazes, blindés, tireurs d'élite — et tout ce qui te touche fait mal."
     },
     {
         id: 'calc-escadrille', status: STATUS.TEST, title: 'Escadrille des Tables',
