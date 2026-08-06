@@ -81,7 +81,11 @@ export function mount(container, session, opts = {}) {
         const colW = piste(structure.cols, c => structure.cells.some(p => p.c === c));
         const rowH = piste(structure.rows, r => structure.cells.some(p => p.r === r));
         const somme = (arr) => arr.reduce((s, v) => s + parseFloat(v), 0);
+        // `--ga-unites` = la largeur du plateau en « pistes de case ». Les
+        // chiffres s'y accrochent : sur un Garam géant, une taille de police
+        // calée sur la hauteur du CONTENEUR débordait des cases de 19 px.
         const gabarit = `--ga-ratio:${(somme(colW) / somme(rowH)).toFixed(3)};`
+            + `--ga-unites:${somme(colW).toFixed(1)};`
             + `grid-template-columns:${colW.join(' ')};grid-template-rows:${rowH.join(' ')};`;
 
         const jetons = [];

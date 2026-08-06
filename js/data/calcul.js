@@ -215,9 +215,9 @@ export const calculExercises = [
         id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
         generatorId: 'logique.garam', activityId: 'garam',
         printable: 'garam',
-        params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
+        params: { nbQuestions: 2, taille: 'complet', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Complète les cases pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres."
+        instruction: "Le Garam des fiches officielles : quatre blocs d'égalités reliés par des ponts. Complète les cases avec des chiffres pour que TOUTES les égalités soient vraies, horizontales comme verticales. Une égalité verticale dépasse toujours dix : son résultat s'écrit sur deux cases empilées, dizaines au-dessus, unités en dessous — et la case du bas sert aussi à l'égalité horizontale."
     },
     {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',

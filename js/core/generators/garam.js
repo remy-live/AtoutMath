@@ -23,10 +23,17 @@
 // Les horizontales, elles, tiennent sur un chiffre et acceptent les quatre
 // opérations.
 //
-// Les briques s'assemblent par des PONTS : une case entre deux briques, qui
-// porte sa propre égalité. Petit : deux briques côte à côte et un pont
-// (9 égalités, 21 cases). Grand : quatre briques en carré et quatre ponts,
-// exactement la fiche originale (20 égalités, 44 cases).
+// Les briques s'assemblent en DAMIER, reliées par des PONTS : une case entre
+// deux briques, qui porte sa propre égalité. Un pont horizontal joint le E
+// d'une brique au D de sa voisine de droite ; un pont vertical joint le G
+// d'une brique au B de celle du dessous.
+//
+//   demi    1×2 briques,  1 pont  →  9 égalités,  21 cases
+//   complet 2×2 briques,  4 ponts → 20 égalités,  44 cases  ← la fiche
+//   géant   3×3 briques, 12 ponts → 48 égalités, 102 cases
+//
+// « Complet » est le format du livret, et c'est le défaut : une demi-grille
+// n'est qu'un échauffement.
 //
 // Trois garanties : solution unique ; RÉSOLUBLE SANS DEVINER (on ne creuse
 // une case que si la grille reste terminable par pur enchaînement de
@@ -50,6 +57,9 @@ function calculer(op, a, b) {
 
 const CIBLES_DONNEES = { facile: 0.62, moyen: 0.46, difficile: 0.30 };
 const DIFFICULTE_ITEM = { facile: 2, moyen: 3, difficile: 4 };
+
+/** Les formats, en nombre de briques : [lignes, colonnes]. */
+const DAMIERS = { demi: [1, 2], complet: [2, 2], geant: [3, 3] };
 
 // --- Structure ---------------------------------------------------------------
 
@@ -119,31 +129,33 @@ function construireStructure(taille) {
         return pousser({ a, b: M, z, op: null }, opPos, egalPos);
     };
 
-    // Brique haut-gauche : rien n'est connu, ordre naturel.
-    const TL = brique(0, 0, ['H1', 'VL', 'VR', 'H2']);
+    // Le damier de briques. On avance en LIGNES : chaque brique est précédée
+    // des ponts qui la relient à ses voisines DÉJÀ construites — celle de
+    // gauche et celle du dessus. Ainsi une brique trouve toujours ses cases
+    // d'entrée posées, et l'ordre de ses égalités s'en déduit.
+    const [nl, nc] = DAMIERS[taille] || DAMIERS.complet;
+    const grille = [];
+    for (let i = 0; i < nl; i++) {
+        grille.push([]);
+        for (let j = 0; j < nc; j++) {
+            const r0 = i * 9, c0 = j * 8;
+            // Les ponts d'abord : ils posent D (par la gauche) et B (par le haut).
+            if (j > 0) pont(grille[i][j - 1].E, cell(r0 + 2, c0), [r0 + 2, c0 - 2, 'h']);
+            if (i > 0) pont(grille[i - 1][j].G, cell(r0, c0 + 2), [r0 - 2, c0 + 2, 'v']);
+            // Seul D connu : la verticale gauche ouvre le bal (A libre, P et F
+            // déduits). Dans tous les autres cas l'horizontale haute suffit.
+            const ordre = (j > 0 && i === 0)
+                ? ['VL', 'H1', 'VR', 'H2']
+                : ['H1', 'VL', 'VR', 'H2'];
+            grille[i].push(brique(r0, c0, ordre));
+        }
+    }
 
-    // Pont horizontal haut : E(TL) ∘ M = D(TR).
-    const D_TR = cell(2, 8);
-    pont(TL.E, D_TR, [2, 6, 'h']);
-    // Brique haut-droite : D est posé par le pont — la verticale gauche se
-    // construit d'abord (A libre, P et F déduits), le reste suit.
-    const TR = brique(0, 8, ['VL', 'H1', 'VR', 'H2']);
-
-    if (taille === 'petit') return { cells, equations, signes, rows: 6, cols: 13 };
-
-    // Pont vertical gauche : G(TL) ∘ M = B(BL).
-    const B_BL = cell(9, 2);
-    pont(TL.G, B_BL, [7, 2, 'v']);
-    const BL = brique(9, 0, ['H1', 'VL', 'VR', 'H2']);
-    // Pont vertical droit, puis pont horizontal bas.
-    const B_BR = cell(9, 10);
-    pont(TR.G, B_BR, [7, 10, 'v']);
-    const D_BR = cell(11, 8);
-    pont(BL.E, D_BR, [11, 6, 'h']);
-    // Brique bas-droite : B et D posés par les ponts.
-    brique(9, 8, ['H1', 'VL', 'VR', 'H2']);
-
-    return { cells, equations, signes, rows: 15, cols: 13 };
+    return {
+        cells, equations, signes,
+        rows: (nl - 1) * 9 + 6,
+        cols: (nc - 1) * 8 + 5
+    };
 }
 
 // --- Déduction et solveur -----------------------------------------------------
@@ -401,10 +413,14 @@ export const garamGenerator = {
     answerKinds: ['grid'],
     params: [
         {
-            id: 'taille', type: 'select', label: 'Taille', default: 'petit',
+            // Le format de la fiche est le DÉFAUT : c'est ce qu'on appelle un
+            // Garam. Le demi n'est qu'un échauffement, et le proposer d'office
+            // donnait l'impression d'une grille tronquée.
+            id: 'taille', type: 'select', label: 'Taille', default: 'complet',
             options: [
-                { value: 'petit', label: 'Petit (9 égalités)' },
-                { value: 'grand', label: 'Grand (20 égalités)' }
+                { value: 'demi', label: 'Demi-Garam (9 égalités)' },
+                { value: 'complet', label: 'Garam complet — la fiche (20 égalités)' },
+                { value: 'geant', label: 'Garam géant (48 égalités)' }
             ]
         },
         {
@@ -428,7 +444,11 @@ export const garamGenerator = {
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const taille = params.taille === 'grand' ? 'grand' : 'petit';
+        // `petit`/`grand` sont les anciens noms : des parcours enregistrés les
+        // portent encore, on les traduit plutôt que de les casser.
+        const ANCIENS = { petit: 'demi', grand: 'complet' };
+        const taille = DAMIERS[params.taille] ? params.taille
+            : (ANCIENS[params.taille] || 'complet');
         const autorisees = Array.isArray(params.operations) && params.operations.length
             ? params.operations : ['add', 'sub', 'mul'];
         const difficulte = CIBLES_DONNEES[params.difficulte] ? params.difficulte : 'facile';
@@ -489,7 +509,7 @@ export const garamGenerator = {
                 'Une case a été remplie pour toi. Les égalités qui la traversent se débloquent.'
             ],
             explanation: 'Chaque égalité doit être vraie, horizontale comme verticale. Les verticales dépassent toujours dix : leur résultat s’écrit sur deux cases empilées, et la case du bas sert aussi à l’égalité horizontale — c’est ce qui relie tout le treillis.',
-            difficulty: DIFFICULTE_ITEM[difficulte] + (taille === 'grand' ? 1 : 0),
+            difficulty: DIFFICULTE_ITEM[difficulte] + { demi: 0, complet: 1, geant: 2 }[taille],
             meta: {
                 structure: {
                     cells: structure.cells,

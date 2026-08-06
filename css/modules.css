@@ -2032,6 +2032,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
        quoi « Valider » sortait de l'écran sur un téléphone court. */
     width: min(560px, 94cqw, calc(62cqh * var(--ga-ratio, 1)));
     aspect-ratio: var(--ga-ratio, 1);
+    /* Le plateau est un enfant de flex : son `min-height: auto` implicite le
+       laissait grandir jusqu'à la hauteur naturelle de ses vingt-quatre
+       rangées, et le rapport d'aspect ne s'appliquait plus. */
+    min-height: 0;
     padding: 12px; border-radius: 14px;
     background: var(--bg-panel); box-shadow: var(--shadow-md);
     border: 1px solid var(--border);
@@ -2039,7 +2043,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .ga-cell {
     border: 2.5px solid #0f172a; border-radius: 7px;
     background: #fff;
-    font-size: clamp(1rem, 3.8cqh, 1.7rem); font-weight: 800; color: #2563eb;
+    font-size: clamp(.6rem, calc(52cqw / var(--ga-unites, 10)), 1.7rem);
+    font-weight: 800; color: #2563eb;
     /* Sans `min-height: 0`, une case de grille refuse de descendre sous la
        hauteur de son chiffre : les quinze rangées de la grille officielle
        imposaient alors leur taille et le rapport d'aspect du plateau était
@@ -2056,7 +2061,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: flex; align-items: center; justify-content: center;
     min-height: 0; min-width: 0;
     font-weight: 900; color: #0f172a;
-    font-size: clamp(1rem, 3.4cqh, 1.55rem);
+    font-size: clamp(.55rem, calc(46cqw / var(--ga-unites, 10)), 1.5rem);
     user-select: none;
 }
 html[data-theme="dark"] .ga-signe { color: var(--text-main); }

@@ -11,7 +11,7 @@ import { makeRng } from '../js/core/ids.js';
 
 const genere = (seed, params = {}) =>
     garamGenerator.generate(
-        { taille: 'petit', operations: ['add', 'sub', 'mul', 'div'], difficulte: 'moyen', ...params },
+        { taille: 'demi', operations: ['add', 'sub', 'mul', 'div'], difficulte: 'moyen', ...params },
         { rng: makeRng(seed) }
     );
 
@@ -36,10 +36,11 @@ function verifieStructure(item) {
 
     givens.forEach((v, i) => { if (v !== null) assert.equal(v, solution[i]); });
 
-    // Les deux tailles font la même largeur (deux colonnes de briques) :
-    // c'est la HAUTEUR qui les distingue — une rangée de briques ou deux.
-    const grand = structure.rows === 15;
-    const briques = grand ? 4 : 2, ponts = grand ? 4 : 1;
+    // Le damier se relit sur les dimensions : une brique fait 9 rangées de
+    // pas et 8 colonnes, plus la dernière qui en occupe 6 et 5.
+    const nl = (structure.rows - 6) / 9 + 1, nc = (structure.cols - 5) / 8 + 1;
+    const briques = nl * nc;
+    const ponts = nl * (nc - 1) + nc * (nl - 1);
     const doubles = structure.equations.filter(e => e.z2 !== undefined).length;
     assert.equal(structure.equations.length, briques * 4 + ponts, 'nombre d\'égalités');
     // Deux résultats doubles par brique : les deux VERTICALES, toujours.
@@ -57,7 +58,7 @@ function verifieStructure(item) {
 }
 
 test('le treillis est d\'UN SEUL TENANT : toutes les cases reliées entre elles', () => {
-    for (const taille of ['petit', 'grand']) {
+    for (const taille of ['demi', 'complet', 'geant']) {
         const { structure } = genere(`connexe-${taille}`, { taille }).meta;
         // Parcours du graphe : deux cases sont voisines si une égalité les
         // contient toutes les deux. C'était LE défaut de la première version —
@@ -78,15 +79,15 @@ test('le treillis est d\'UN SEUL TENANT : toutes les cases reliées entre elles'
 
 test('chaque grille est résoluble par déduction seule — jamais besoin de deviner', () => {
     for (let i = 0; i < 40; i++) {
-        const item = genere(`deduction-${i}`, { taille: i % 2 ? 'grand' : 'petit' });
+        const item = genere(`deduction-${i}`, { taille: i % 2 ? 'complet' : 'demi' });
         assert.ok(resolubleParDeduction(item.meta.structure, item.meta.givens),
             `graine deduction-${i}`);
     }
 });
 
-test('la solution est unique, sur 40 graines, petit et grand', () => {
+test('la solution est unique, sur 40 graines, demi et complet', () => {
     for (let i = 0; i < 40; i++) {
-        const item = genere(`unicite-${i}`, { taille: i % 2 ? 'grand' : 'petit' });
+        const item = genere(`unicite-${i}`, { taille: i % 2 ? 'complet' : 'demi' });
         assert.equal(compterSolutionsGaram(item.meta.structure, item.meta.givens, 3), 1,
             `graine unicite-${i}`);
     }
@@ -94,7 +95,7 @@ test('la solution est unique, sur 40 graines, petit et grand', () => {
 
 test('structure valide : égalités vraies, résultats doubles, données exactes', () => {
     for (let i = 0; i < 30; i++) {
-        verifieStructure(genere(`structure-${i}`, { taille: i % 2 ? 'grand' : 'petit' }));
+        verifieStructure(genere(`structure-${i}`, { taille: i % 2 ? 'complet' : 'demi' }));
     }
 });
 
@@ -145,16 +146,24 @@ test('une grille presque juste est refusée', async () => {
     assert.equal(evaluate(item, 'g' + digits.join('/')).correct, false);
 });
 
-test('la génération est rapide, y compris en grand difficile', () => {
+test('la génération est rapide, y compris en géant difficile', () => {
     const debut = Date.now();
-    for (let i = 0; i < 20; i++) genere(`vitesse-${i}`, { taille: 'grand', difficulte: 'difficile' });
+    for (let i = 0; i < 20; i++) genere(`vitesse-${i}`, { taille: 'geant', difficulte: 'difficile' });
     const duree = Date.now() - debut;
-    assert.ok(duree < 5000, `20 grands treillis en ${duree} ms — trop lent`);
+    assert.ok(duree < 8000, `20 treillis géants en ${duree} ms — trop lent`);
 });
 
-test('cas ingrat : addition seule, les deux tailles restent générables', () => {
+test('les anciens noms de taille restent compris', () => {
+    assert.equal(genere('vieux-petit', { taille: 'petit' }).meta.structure.rows, 6);
+    assert.equal(genere('vieux-grand', { taille: 'grand' }).meta.structure.rows, 15);
+    // Taille absente ou inconnue : on retombe sur la fiche officielle.
+    assert.equal(genere('sans', { taille: undefined }).meta.structure.rows, 15);
+});
+
+test('cas ingrat : addition seule, toutes les tailles restent générables', () => {
     for (let i = 0; i < 10; i++) {
-        const item = genere(`addonly-${i}`, { operations: ['add'], taille: i % 2 ? 'grand' : 'petit' });
+        const taille = ['demi', 'complet', 'geant'][i % 3];
+        const item = genere(`addonly-${i}`, { operations: ['add'], taille });
         assert.ok(item.meta.solution.every(v => v !== null));
         assert.ok(resolubleParDeduction(item.meta.structure, item.meta.givens));
     }
