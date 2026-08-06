@@ -2367,19 +2367,27 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    de les confondre, et un rappel permanent coûte moins qu'une correction. */
 .hg-layout {
     display: flex; flex-direction: column; align-items: center;
+    justify-content: center;
     gap: clamp(6px, 1.4cqh, 14px);
-    width: 100%; max-width: 620px; margin: 0 auto; padding: 8px;
+    width: 100%; max-width: 620px; height: 100%; margin: 0 auto; padding: 8px;
 }
 .hg-niveau {
     font-size: .8rem; font-weight: 700; color: var(--text-muted);
     background: var(--bg-hover); border: 1px solid var(--border);
     border-radius: 999px; padding: 3px 12px;
 }
+/* Le cadran CÈDE le premier. Tout le reste — l'énoncé, la légende, les
+   champs, le bouton — doit rester à l'écran : une pendule superbe dont on ne
+   voit pas le bouton « Valider » ne sert à rien. Avec `flex: 1 1 auto` et
+   `min-height: 0`, il prend la place qui reste et le canevas suit (il se
+   dimensionne sur le plus petit côté de cette boîte). */
 .hg-cadran {
-    width: 100%; height: clamp(220px, 52cqh, 420px);
+    width: 100%; flex: 1 1 auto; min-height: 120px;
+    max-height: clamp(220px, 52cqh, 420px);
     display: flex; align-items: center; justify-content: center;
     touch-action: none; user-select: none; -webkit-user-select: none;
 }
+.hg-layout > :not(.hg-cadran) { flex-shrink: 0; }
 .hg-canvas { display: block; touch-action: none; }
 
 .hg-legende {
@@ -2420,4 +2428,49 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-6px); }
     75% { transform: translateX(6px); }
+}
+
+
+/* --- Pendule sur un écran large et bas ----------------------------------
+   En paysage — un ordinateur portable, une tablette couchée, un vidéoprojec-
+   teur — la colonne unique ne tient pas : l'énoncé passe sur deux lignes, le
+   cadran mange le reste, et les champs comme le bouton tombent sous la ligne
+   de flottaison. On a de la LARGEUR en trop et de la hauteur en moins : la
+   pendule passe donc à gauche, et tout ce qui répond à droite.
+
+   Le critère est le RAPPORT de la zone de jeu, pas sa hauteur absolue : un
+   écran de 2000 × 970 est large et confortable en pixels, mais la colonne
+   unique y déborde quand même — c'est la forme du plateau qui décide, pas
+   sa taille. */
+@container plateau (min-aspect-ratio: 3/2) and (min-width: 700px) {
+    .hg-layout {
+        display: grid; max-width: none;
+        grid-template-columns: auto minmax(230px, 360px);
+        grid-template-areas:
+            "titre     titre"
+            "cadran    niveau"
+            "cadran    legende"
+            "cadran    saisie"
+            "cadran    controles"
+            "cadran    aide";
+        align-content: center; align-items: center; justify-items: center;
+        column-gap: clamp(14px, 3cqw, 40px); row-gap: clamp(4px, 1cqh, 10px);
+    }
+    .hg-layout > .game-question {
+        grid-area: titre; font-size: clamp(1.05rem, 3.2cqh, 1.5rem);
+        margin: 0 0 clamp(4px, 1.2cqh, 12px);
+    }
+    /* Le cadran prend la place que la FORME du plateau lui laisse : borné par
+       la hauteur (62 %) et par la largeur (42 %, pour que la colonne de
+       réponse garde la sienne). Carré dans tous les cas. */
+    .hg-cadran {
+        grid-area: cadran; max-height: none;
+        width: min(62cqh, 42cqw); height: min(62cqh, 42cqw);
+        min-height: 150px;
+    }
+    .hg-niveau { grid-area: niveau; }
+    .hg-legende { grid-area: legende; flex-direction: column; gap: 4px; }
+    .hg-saisie, .hg-affiche { grid-area: saisie; }
+    .hg-controles { grid-area: controles; }
+    .hg-layout > .hint-bar { grid-area: aide; margin-top: 0; }
 }
