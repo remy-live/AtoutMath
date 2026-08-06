@@ -151,6 +151,18 @@ export const calculExercises = [
         instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
     },
     {
+        id: 'calc-nova', status: STATUS.TEST, title: 'Nova',
+        activityId: 'nova',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], lives: 3, entrePortes: 18 },
+        paramSchema: [
+            { id: 'tables', type: 'multiselect', label: 'Tables des portes', options: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
+            { id: 'entrePortes', type: 'number', label: 'Secondes entre deux murs', min: 8, max: 40, default: 18 }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul. De temps en temps un mur blindé barre le secteur avec trois portes numérotées et une question au-dessus — franchis la porte du bon résultat. Bonne porte : bouclier et canon renforcé. Mauvaise porte ou mur percuté : dégâts."
+    },
+    {
         id: 'calc-escadrille', status: STATUS.TEST, title: 'Escadrille des Tables',
         activityId: 'escadrille',
         params: { table: 7, lives: 3, rythme: 'lent' },
