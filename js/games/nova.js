@@ -62,6 +62,18 @@ class Nova extends BaseGame {
         this.message = null;
         this.bouclier = 0;
         this.puissance = 1;
+        // Le compromis du tir.
+        //
+        // Le canon de base reste AUTOMATIQUE : on ne demande pas à un élève de
+        // penser à tirer, le doigt sert à piloter et la tête au calcul. Mais un
+        // tir gratuit rend le jeu trop facile, alors la PUISSANCE se mérite :
+        // garder le doigt posé charge un tir lourd, et pendant qu'on charge le
+        // canon ordinaire ralentit de moitié. Rester appuyé pour frapper fort,
+        // c'est s'exposer ; relâcher pour esquiver, c'est renoncer au coup.
+        // Un seul doigt, aucun bouton de plus, et un vrai arbitrage.
+        this.charge = 0;
+        this.doigtPose = false;
+        this.rayon = 0;
 
         this.container.innerHTML = `
             <style>
@@ -119,9 +131,22 @@ class Nova extends BaseGame {
             this.semer(Math.round(w * h / 14000), 0.7, 1.5, 0.55),
             this.semer(Math.round(w * h / 26000), 1.5, 2.4, 0.95)
         ];
+        // Décor de fond : nuages diffus, planètes à anneaux, débris qui
+        // tournent. Trois échelles, trois vitesses — c'est ce qui donne
+        // l'impression de traverser QUELQUE CHOSE plutôt que du vide noir.
         this.astres = Array.from({ length: 3 }, () => ({
             x: Math.random() * w, y: Math.random() * h,
-            r: 26 + Math.random() * (w * 0.16), v: 0.08 + Math.random() * 0.14
+            r: 26 + Math.random() * (w * 0.16), v: 0.06 + Math.random() * 0.1
+        }));
+        this.planetes = Array.from({ length: 2 }, () => ({
+            x: Math.random() * w, y: Math.random() * h * 1.6 - h * 0.3,
+            r: Math.min(w, h) * (0.07 + Math.random() * 0.08), v: 0.14 + Math.random() * 0.16,
+            anneau: Math.random() < 0.6, incline: (Math.random() - 0.5) * 0.9
+        }));
+        this.debris = Array.from({ length: 14 }, () => ({
+            x: Math.random() * w, y: Math.random() * h,
+            r: 3 + Math.random() * 9, v: 0.5 + Math.random() * 1.1,
+            a: Math.random() * 6.28, va: (Math.random() - 0.5) * 0.05
         }));
     }
 
@@ -184,6 +209,7 @@ class Nova extends BaseGame {
             e.preventDefault();
             depart = pos(e); bouge = 0;
             this.vaisseau.cible = depart.x;
+            this.doigtPose = true;
         };
         this.onMove = (e) => {
             if (!this.isRunning || !depart) return;
@@ -191,7 +217,12 @@ class Nova extends BaseGame {
             bouge = Math.max(bouge, Math.abs(p.x - depart.x));
             this.vaisseau.cible = p.x;
         };
-        this.onUp = () => { depart = null; };
+        this.onUp = () => {
+            depart = null;
+            this.doigtPose = false;
+            if (this.charge >= 1) this.lacherRayon();
+            this.charge = 0;
+        };
         this.arene.addEventListener('pointerdown', this.onDown);
         window.addEventListener('pointermove', this.onMove);
         window.addEventListener('pointerup', this.onUp);
@@ -200,29 +231,90 @@ class Nova extends BaseGame {
 
     // --- Contenu --------------------------------------------------------------
 
-    /** Une vague : plusieurs appareils dans une formation lisible. */
+    /**
+     * Une vague, et sa CHORÉGRAPHIE.
+     *
+     * C'est ce qui sépare un shmup d'une pluie de cibles : les appareils
+     * entrent en formation et suivent une figure — une descente en zigzag, une
+     * boucle qui les ramène d'où ils viennent, un carrousel, un piqué. Chaque
+     * chorégraphie est une fonction du temps qui rend une position ; l'appareil
+     * ne « tombe » pas, il VOLE quelque part.
+     *
+     * Le décalage `retard` entre appareils d'une même vague fait le serpent :
+     * ils passent tous au même endroit, mais pas au même instant.
+     */
     lancerVague() {
-        const w = this.canvas.width;
-        const modeles = ['ligne', 'v', 'colonne'];
-        const forme = modeles[Math.floor(Math.random() * modeles.length)];
-        const n = 3 + Math.floor(Math.random() * 3);
+        const w = this.canvas.width, h = this.canvas.height;
+        const figures = ['descente', 'zigzag', 'boucle', 'carrousel', 'pique', 'serpent'];
+        const figure = figures[Math.floor(Math.random() * figures.length)];
+        const n = figure === 'carrousel' ? 6 : 3 + Math.floor(Math.random() * 3);
         const taille = Math.max(22, Math.min(34, w * 0.075));
-        const marge = taille * 1.6;
-        const largeur = w - 2 * marge;
+        const marge = taille * 1.8;
+        const large = w - 2 * marge;
+        const sens = Math.random() < 0.5 ? 1 : -1;
+        const vitesse = 0.9 + this.niveau * 0.1;
+        const base = marge + Math.random() * large;
+
         for (let i = 0; i < n; i++) {
-            const t = n === 1 ? 0.5 : i / (n - 1);
-            let x = marge + t * largeur, y = -taille - i * 6;
-            if (forme === 'v') y = -taille - Math.abs(t - 0.5) * 120;
-            if (forme === 'colonne') { x = marge + Math.random() * largeur; y = -taille - i * 70; }
+            const part = n === 1 ? 0.5 : i / (n - 1);
+            const retard = figure === 'serpent' ? i * 26 : figure === 'carrousel' ? 0 : i * 8;
             this.ennemis.push({
-                x, y, x0: x, taille,
+                figure, part, sens, retard, taille, base, large, marge,
+                t: -retard,
                 pv: 1 + Math.floor(this.niveau / 2),
-                v: 0.9 + this.niveau * 0.12,
-                oscille: forme === 'ligne' ? 26 : 0,
-                phase: Math.random() * 6.28,
-                tir: 90 + Math.floor(Math.random() * 160),
+                vitesse,
+                x: base, y: -taille,
+                tir: 110 + Math.floor(Math.random() * 200),
                 vivant: true
             });
+        }
+    }
+
+    /** Position d'un appareil selon sa chorégraphie et son âge. */
+    placerEnnemi(e) {
+        const w = this.canvas.width, h = this.canvas.height;
+        const t = e.t * e.vitesse;
+        const col = e.marge + e.part * e.large;
+        switch (e.figure) {
+            case 'zigzag':
+                e.x = col + Math.sin(t / 34) * (e.large * 0.22) * e.sens;
+                e.y = -e.taille + t;
+                break;
+            case 'boucle': {
+                // Une descente, puis un cercle, puis la descente reprend :
+                // la figure la plus reconnaissable de Tyrian.
+                const debut = 130, tour = 150;
+                if (t < debut) { e.x = col; e.y = -e.taille + t; }
+                else if (t < debut + tour) {
+                    const a = (t - debut) / tour * Math.PI * 2;
+                    const r = e.large * 0.16;
+                    e.x = col + Math.sin(a) * r * e.sens;
+                    e.y = -e.taille + debut + (1 - Math.cos(a)) * r;
+                } else { e.x = col; e.y = -e.taille + debut + (t - debut - tour); }
+                break;
+            }
+            case 'carrousel': {
+                // Six appareils en ronde autour d'un centre qui descend.
+                const a = t / 46 + e.part * Math.PI * 2;
+                const r = Math.min(w, h) * 0.17;
+                e.x = w / 2 + Math.cos(a) * r * e.sens;
+                e.y = -e.taille + t * 0.55 + Math.sin(a) * r * 0.5;
+                break;
+            }
+            case 'pique': {
+                // Formation en V qui plonge vers le joueur puis se redresse.
+                const creux = Math.abs(e.part - 0.5) * 90;
+                e.x = col + Math.sin(t / 80) * 26 * e.sens;
+                e.y = -e.taille - creux + t * (t < 150 ? 1.7 : 0.55);
+                break;
+            }
+            case 'serpent':
+                // Tous sur le même chemin, décalés dans le temps.
+                e.x = w / 2 + Math.sin(t / 42) * (e.large * 0.42) * e.sens;
+                e.y = -e.taille + t * 0.9;
+                break;
+            default:
+                e.x = col; e.y = -e.taille + t;
         }
     }
 
@@ -325,6 +417,14 @@ class Nova extends BaseGame {
             s.y += s.v; if (s.y > h) { s.y = -2; s.x = Math.random() * w; }
         }));
         this.astres.forEach(a => { a.y += a.v; if (a.y - a.r > h) { a.y = -a.r; a.x = Math.random() * w; } });
+        this.planetes.forEach(pl => {
+            pl.y += pl.v;
+            if (pl.y - pl.r * 2 > h) { pl.y = -pl.r * 2; pl.x = Math.random() * w; }
+        });
+        this.debris.forEach(d => {
+            d.y += d.v; d.a += d.va;
+            if (d.y - d.r > h) { d.y = -d.r; d.x = Math.random() * w; }
+        });
 
         if (this.phase !== 'jeu') {
             if (this.message && --this.message.vie <= 0) this.message = null;
@@ -339,9 +439,13 @@ class Nova extends BaseGame {
         this.vaisseau.x = Math.min(Math.max(this.vaisseau.x, 24), w - 24);
         this.vaisseau.roulis += (Math.max(-1, Math.min(1, dx / 60)) - this.vaisseau.roulis) * 0.15;
 
-        // Tir automatique : dans un shmup on ne demande pas à l'élève de
-        // penser à tirer. Le doigt sert à piloter, et à rien d'autre.
-        if (this.frame % Math.max(7, 13 - this.puissance * 2) === 0) this.tirerJoueur();
+        // Canon automatique — mais deux fois plus lent pendant qu'on charge.
+        const cadence = Math.max(7, 13 - this.puissance * 2) * (this.doigtPose ? 2 : 1);
+        if (this.frame % Math.round(cadence) === 0) this.tirerJoueur();
+
+        // Charge : environ une seconde et demie de doigt posé.
+        if (this.doigtPose) this.charge = Math.min(1, this.charge + 1 / 90);
+        if (this.rayon > 0) { this.rayon--; this.frapperAuRayon(); }
 
         if (!this.porte && this.frame % 150 === 0) this.lancerVague();
         if (!this.porte && this.frame % this.entrePortes === 0 && this.frame > 60) this.lancerPorte();
@@ -358,6 +462,31 @@ class Nova extends BaseGame {
         if (this.message && --this.message.vie <= 0) this.message = null;
     }
 
+    /** Le tir lourd : une colonne de plasma qui balaie tout devant le vaisseau. */
+    lacherRayon() {
+        this.rayon = 26;
+        this.secousse = 10;
+        this.mot('Rayon lourd !', 'ok');
+    }
+
+    frapperAuRayon() {
+        const demi = 26 + this.puissance * 6;
+        this.ennemis.forEach(e => {
+            if (!e.vivant || Math.abs(e.x - this.vaisseau.x) > demi || e.y > this.vaisseau.y) return;
+            e.pv -= 2;
+            if (e.pv <= 0) {
+                e.vivant = false;
+                this.score += 15;
+                this.exploser(e.x, e.y, '#a5f3fc', 20);
+            }
+        });
+        // Le rayon nettoie aussi les projectiles : c'est ce qui en fait une
+        // porte de sortie quand on est acculé.
+        this.tirsEnnemis.forEach(t => {
+            if (Math.abs(t.x - this.vaisseau.x) < demi && t.y < this.vaisseau.y) t.mort = true;
+        });
+    }
+
     tirerJoueur() {
         const { x, y } = this.vaisseau;
         const ecarts = this.puissance === 1 ? [0] : this.puissance === 2 ? [-9, 9] : [-13, 0, 13];
@@ -367,13 +496,18 @@ class Nova extends BaseGame {
     majEnnemis() {
         const h = this.canvas.height;
         this.ennemis.forEach(e => {
-            e.y += e.v;
-            if (e.oscille) e.x = e.x0 + Math.sin((this.frame + e.phase * 30) / 42) * e.oscille;
-            if (--e.tir <= 0 && e.y > 0 && e.y < h * 0.66 && !this.porte) {
+            e.t++;
+            if (e.t < 0) return;              // il attend son tour dans le serpent
+            this.placerEnnemi(e);
+            if (--e.tir <= 0 && e.y > 0 && e.y < h * 0.7 && !this.porte) {
                 e.tir = 150 + Math.floor(Math.random() * 200);
-                this.tirsEnnemis.push({ x: e.x, y: e.y + e.taille / 2, v: 2.4 + this.niveau * 0.25 });
+                // Le tir vise le joueur : c'est ce qui oblige à bouger.
+                const dx = this.vaisseau.x - e.x, dy = this.vaisseau.y - e.y;
+                const d = Math.max(1, Math.hypot(dx, dy));
+                const v = 2.2 + this.niveau * 0.2;
+                this.tirsEnnemis.push({ x: e.x, y: e.y + e.taille / 2, vx: dx / d * v, vy: dy / d * v });
             }
-            if (e.y > h + 40) e.vivant = false;
+            if (e.y > h + 60) e.vivant = false;
         });
 
         this.tirs.forEach(t => {
@@ -399,7 +533,7 @@ class Nova extends BaseGame {
     majTirs() {
         const h = this.canvas.height, v = this.vaisseau;
         this.tirsEnnemis.forEach(t => {
-            t.y += t.v;
+            t.x += t.vx || 0; t.y += t.vy != null ? t.vy : t.v;
             if (Math.abs(t.x - v.x) < 15 && Math.abs(t.y - v.y) < 17) {
                 t.mort = true;
                 this.exploser(v.x, v.y, '#f87171', 14);
@@ -407,13 +541,14 @@ class Nova extends BaseGame {
                 this.perdreUneVie();
             }
         });
-        this.tirsEnnemis = this.tirsEnnemis.filter(t => !t.mort && t.y < h + 20);
+        this.tirsEnnemis = this.tirsEnnemis.filter(t => !t.mort && t.y < h + 20 && t.y > -40
+            && t.x > -40 && t.x < this.canvas.width + 40);
     }
 
     majPorte() {
         const p = this.porte, v = this.vaisseau;
         if (!p) return;
-        p.y += 1.5;
+        p.y += 1.7;
         if (!p.reglee && v.y > p.y && v.y < p.y + p.h) {
             const w = this.canvas.width;
             const passe = p.portes.find(o => v.x >= o.x0 * w + 6 && v.x <= o.x1 * w - 6);
@@ -468,6 +603,22 @@ class Nova extends BaseGame {
         });
         c.globalAlpha = 1;
 
+        this.planetes.forEach(pl => this.dessinerPlanete(pl, s));
+        c.save();
+        c.globalAlpha = 0.5; c.fillStyle = '#0f172a'; c.strokeStyle = s.astre;
+        c.lineWidth = 1;
+        this.debris.forEach(d => {
+            c.save(); c.translate(d.x, d.y); c.rotate(d.a);
+            c.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const ang = i * Math.PI / 3, rr = d.r * (0.7 + ((i * 37) % 10) / 22);
+                i ? c.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr)
+                    : c.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+            }
+            c.closePath(); c.fill(); c.stroke(); c.restore();
+        });
+        c.restore();
+
         this.bonus.forEach(b => this.dessinerBonus(b));
         this.ennemis.forEach(e => this.dessinerEnnemi(e));
 
@@ -476,6 +627,7 @@ class Nova extends BaseGame {
         c.fillStyle = '#fb7185';
         this.tirsEnnemis.forEach(t => { c.beginPath(); c.arc(t.x, t.y, 4, 0, Math.PI * 2); c.fill(); });
 
+        if (this.rayon > 0) this.dessinerRayon();
         if (this.porte) this.dessinerPorte();
 
         this.particules.forEach(p => {
@@ -487,6 +639,26 @@ class Nova extends BaseGame {
         this.dessinerVaisseau();
         if (this.message) this.dessinerMessage();
         if (this.phase !== 'jeu' && !this.isDemo) this.dessinerBriefing();
+        c.restore();
+    }
+
+    /** Une planète : disque ombré, terminateur, et parfois des anneaux. */
+    dessinerPlanete(pl, s) {
+        const c = this.ctx;
+        c.save();
+        c.globalAlpha = 0.55;
+        if (pl.anneau) {
+            c.save();
+            c.translate(pl.x, pl.y); c.rotate(pl.incline);
+            c.strokeStyle = s.teinte; c.lineWidth = Math.max(2, pl.r * 0.09);
+            c.beginPath(); c.ellipse(0, 0, pl.r * 1.75, pl.r * 0.42, 0, 0, Math.PI * 2); c.stroke();
+            c.restore();
+        }
+        const g = c.createRadialGradient(pl.x - pl.r * 0.35, pl.y - pl.r * 0.35, pl.r * 0.15,
+            pl.x, pl.y, pl.r);
+        g.addColorStop(0, s.astre); g.addColorStop(0.55, s.teinte); g.addColorStop(1, '#020617');
+        c.fillStyle = g;
+        c.beginPath(); c.arc(pl.x, pl.y, pl.r, 0, Math.PI * 2); c.fill();
         c.restore();
     }
 
@@ -530,6 +702,39 @@ class Nova extends BaseGame {
             c.lineWidth = 2.4;
             c.beginPath(); c.arc(0, -2, 27, 0, Math.PI * 2); c.stroke();
         }
+        // Anneau de charge : il se referme au fur et à mesure, et devient
+        // blanc quand le tir lourd est prêt. On sait sans quitter l'action.
+        if (this.charge > 0) {
+            const pret = this.charge >= 1;
+            c.strokeStyle = pret ? '#f0f9ff' : 'rgba(250,204,21,.9)';
+            c.lineWidth = pret ? 4 : 3;
+            c.beginPath();
+            c.arc(0, -2, 21, -Math.PI / 2, -Math.PI / 2 + this.charge * Math.PI * 2);
+            c.stroke();
+            if (pret) {
+                c.fillStyle = `rgba(240,249,255,${0.25 + 0.2 * Math.sin(this.frame / 4)})`;
+                c.beginPath(); c.arc(0, -2, 14, 0, Math.PI * 2); c.fill();
+            }
+        }
+        c.restore();
+    }
+
+    /** Le rayon lourd : une colonne de plasma qui monte du vaisseau. */
+    dessinerRayon() {
+        const c = this.ctx, v = this.vaisseau;
+        const demi = 26 + this.puissance * 6;
+        const k = this.rayon / 26;
+        c.save();
+        c.globalAlpha = 0.35 + 0.5 * k;
+        const g = c.createLinearGradient(v.x - demi, 0, v.x + demi, 0);
+        g.addColorStop(0, 'rgba(34,211,238,0)');
+        g.addColorStop(0.5, 'rgba(224,242,254,.95)');
+        g.addColorStop(1, 'rgba(34,211,238,0)');
+        c.fillStyle = g;
+        c.fillRect(v.x - demi, 0, demi * 2, v.y - 12);
+        c.globalAlpha = 0.9 * k;
+        c.fillStyle = '#f0f9ff';
+        c.fillRect(v.x - 3, 0, 6, v.y - 12);
         c.restore();
     }
 
@@ -566,20 +771,55 @@ class Nova extends BaseGame {
             c.fillStyle = '#e0f2fe'; c.fillText(`${p.question} = ?`, w / 2, qy);
         }
 
-        p.portes.forEach((o, i) => {
-            const x0 = o.x0 * w, x1 = o.x1 * w;
-            // Montants du mur : de part et d'autre de chaque ouverture.
-            c.fillStyle = '#334155';
-            c.fillRect(x0, p.y, 6, p.h);
-            c.fillRect(x1 - 6, p.y, 6, p.h);
-            c.fillStyle = 'rgba(56,189,248,.14)';
-            c.fillRect(x0 + 6, p.y, x1 - x0 - 12, p.h);
-            c.strokeStyle = '#38bdf8'; c.lineWidth = 2;
-            c.strokeRect(x0 + 6, p.y, x1 - x0 - 12, p.h);
-            c.fillStyle = '#f8fafc';
-            c.font = `900 ${Math.max(20, Math.min(34, w * 0.072))}px 'Inter', system-ui, sans-serif`;
+        const pulse = 0.5 + 0.5 * Math.sin(this.frame / 7);
+        p.portes.forEach((o) => {
+            const x0 = o.x0 * w, x1 = o.x1 * w, larg = x1 - x0;
+            const M = Math.max(9, larg * 0.075);          // épaisseur d'un montant
+
+            // Les MONTANTS : acier brossé, biseau clair en haut, ombre en bas,
+            // et une bande d'avertissement rayée — c'est ce qui fait « porte
+            // blindée » plutôt que « rectangle ».
+            [x0, x1 - M].forEach(mx => {
+                const g = c.createLinearGradient(mx, 0, mx + M, 0);
+                g.addColorStop(0, '#1e293b'); g.addColorStop(0.45, '#64748b');
+                g.addColorStop(0.55, '#475569'); g.addColorStop(1, '#0f172a');
+                c.fillStyle = g; c.fillRect(mx, p.y, M, p.h);
+                c.fillStyle = 'rgba(255,255,255,.22)'; c.fillRect(mx, p.y, M, 3);
+                c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(mx, p.y + p.h - 3, M, 3);
+                // Rivets
+                c.fillStyle = 'rgba(226,232,240,.55)';
+                for (let ry = p.y + 12; ry < p.y + p.h - 8; ry += 18) {
+                    c.beginPath(); c.arc(mx + M / 2, ry, 1.7, 0, Math.PI * 2); c.fill();
+                }
+            });
+            // Bandes d'avertissement en haut et en bas de l'ouverture.
+            c.save();
+            c.beginPath(); c.rect(x0 + M, p.y, larg - 2 * M, p.h); c.clip();
+            c.strokeStyle = 'rgba(250,204,21,.55)'; c.lineWidth = 5;
+            for (let s = -p.h; s < larg + p.h; s += 16) {
+                c.beginPath(); c.moveTo(x0 + M + s, p.y); c.lineTo(x0 + M + s - 8, p.y + 8); c.stroke();
+                c.beginPath(); c.moveTo(x0 + M + s, p.y + p.h); c.lineTo(x0 + M + s - 8, p.y + p.h - 8); c.stroke();
+            }
+            c.restore();
+
+            // Le champ d'énergie de l'ouverture : un dégradé qui palpite.
+            const inX = x0 + M, inW = larg - 2 * M;
+            const champ = c.createLinearGradient(0, p.y, 0, p.y + p.h);
+            champ.addColorStop(0, `rgba(56,189,248,${0.05 + 0.10 * pulse})`);
+            champ.addColorStop(0.5, `rgba(56,189,248,${0.20 + 0.16 * pulse})`);
+            champ.addColorStop(1, `rgba(56,189,248,${0.05 + 0.10 * pulse})`);
+            c.fillStyle = champ; c.fillRect(inX, p.y + 8, inW, p.h - 16);
+            c.strokeStyle = `rgba(125,211,252,${0.55 + 0.35 * pulse})`; c.lineWidth = 2;
+            c.strokeRect(inX + 1, p.y + 8, inW - 2, p.h - 16);
+
+            // Le nombre, gravé : ombre portée puis contour clair.
+            const cx = (x0 + x1) / 2, cy = p.y + p.h / 2;
+            c.font = `900 ${Math.max(22, Math.min(38, w * 0.078))}px 'Inter', system-ui, sans-serif`;
             c.textAlign = 'center'; c.textBaseline = 'middle';
-            c.fillText(String(o.v), (x0 + x1) / 2, p.y + p.h / 2);
+            c.fillStyle = 'rgba(2,6,23,.75)'; c.fillText(String(o.v), cx, cy + 2);
+            c.shadowColor = 'rgba(125,211,252,.9)'; c.shadowBlur = 12;
+            c.fillStyle = '#f0f9ff'; c.fillText(String(o.v), cx, cy);
+            c.shadowBlur = 0;
         });
         c.restore();
     }
@@ -616,12 +856,13 @@ class Nova extends BaseGame {
         };
         const u = Math.min(w, h);
         if (this.phase === 'briefing') {
-            T('N O V A', h * 0.24, u * 0.1, '#22d3ee');
-            T('Glisse pour piloter.', h * 0.38, u * 0.058, '#e2e8f0');
-            T('Le canon tire tout seul.', h * 0.45, u * 0.058, '#e2e8f0');
-            T('Des MURS barrent le secteur :', h * 0.58, u * 0.05, '#fcd34d', 800);
-            T('passe par la porte du bon résultat.', h * 0.645, u * 0.05, '#fcd34d', 800);
-            T('Bonne porte = bouclier · mauvaise = dégâts', h * 0.76, u * 0.04, '#94a3b8', 700);
+            T('N O V A', h * 0.2, u * 0.1, '#22d3ee');
+            T('Glisse pour piloter. Le canon tire tout seul.', h * 0.33, u * 0.05, '#e2e8f0');
+            T('Garde le doigt POSÉ : tu charges le rayon lourd', h * 0.41, u * 0.046, '#a5f3fc', 800);
+            T('(mais le canon ralentit pendant la charge).', h * 0.47, u * 0.042, '#94a3b8', 700);
+            T('Des MURS barrent le secteur :', h * 0.6, u * 0.05, '#fcd34d', 800);
+            T('passe par la porte du bon résultat.', h * 0.665, u * 0.05, '#fcd34d', 800);
+            T('Bonne porte = bouclier · mauvaise = dégâts', h * 0.78, u * 0.04, '#94a3b8', 700);
         } else {
             T(this.compte > 0 ? String(this.compte) : 'GO !', h * 0.46,
                 u * (this.compte > 0 ? 0.26 : 0.18), this.compte > 0 ? '#e2e8f0' : '#22d3ee');
@@ -644,7 +885,7 @@ class Nova extends BaseGame {
 
         if (!await cur.pause(700) || !this.isRunning) return fin();
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le canon tire tout seul : mon doigt ne sert qu\'à piloter.', this.arene);
+        cur.say('Le canon tire tout seul : mon doigt ne sert qu\'à piloter. Mais si je le laisse POSÉ, je charge un rayon lourd — et pendant ce temps le canon ralentit.', this.arene);
         this.lancerVague();
         if (!await cur.pause(2400) || !this.isRunning) return fin();
 
