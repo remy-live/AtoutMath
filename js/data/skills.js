@@ -264,6 +264,22 @@ const BASE = {
         descriptor: 'Trouver un nombre inconnu en resserrant un encadrement par essais « plus / moins ».',
         lesson: 'Propose toujours le MILIEU de la zone possible : chaque réponse « plus » ou « moins » élimine la moitié des nombres. Entre 1 et 100, sept essais suffisent toujours.'
     },
+    'mes.heure.lire': {
+        label: 'Lire l\'heure sur une pendule',
+        chemin: [D.GRANDEURS, SD.DUREES],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Lire l\'heure sur un cadran à aiguilles, jusqu\'à la minute près, et en 24 heures.',
+        lesson: 'Deux aiguilles, deux lectures. La PETITE donne les heures : quand elle est entre deux nombres, on garde le plus petit. La GRANDE donne les minutes : chaque nombre du cadran en vaut 5, donc sur le 7 il est 35 minutes. L\'après-midi, on ajoute 12 à ce que montre la pendule : 3 h devient 15 h.'
+    },
+    'mes.heure.placer': {
+        label: 'Placer les aiguilles sur une heure donnée',
+        chemin: [D.GRANDEURS, SD.DUREES],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['mes.heure.lire'],
+        descriptor: 'Placer les deux aiguilles d\'une pendule sur une heure donnée, y compris en 24 heures.',
+        lesson: 'On place d\'abord la GRANDE aiguille : les minutes divisées par 5 donnent le nombre visé (35 min → le 7). Puis la petite sur l\'heure. Elle ne reste pas pile sur le nombre : les minutes l\'entraînent vers le suivant, et c\'est ainsi qu\'une pendule fonctionne. Pour une heure de l\'après-midi, on retire 12 : 15 h se place comme 3 h.'
+    },
     'geo.angles.mesure': {
         label: 'Mesurer un angle au rapporteur',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],

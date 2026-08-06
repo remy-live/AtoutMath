@@ -24,6 +24,7 @@ import { garamGenerator } from '../generators/garam.js';
 import { sudokuGenerator } from '../generators/sudoku.js';
 import { anglesGenerator } from '../generators/angles.js';
 import { scratchGenerator } from '../generators/scratch.js';
+import { horlogeGenerator } from '../generators/horloge.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -37,7 +38,7 @@ import { scratchGenerator } from '../generators/scratch.js';
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
-    anglesGenerator, scratchGenerator
+    anglesGenerator, scratchGenerator, horlogeGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -183,6 +184,16 @@ registerActivity({
     accepts: ['scratch'],
     supports: { timed: false, autonomous: false, demo: true },
     load: () => import('./scratchBlocs.js')
+});
+
+// Pendule à aiguilles : genre de réponse 'heure' — l'élève lit l'heure
+// affichée, ou place les aiguilles sur une heure donnée.
+registerActivity({
+    id: 'horloge',
+    label: 'Pendule (lire l\'heure)',
+    accepts: ['heure'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./horloge.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------
