@@ -19,12 +19,31 @@ import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
-/** Cadence de descente : vitesse en pixels par image et intervalle d'apparition. */
+// Cadence de descente : vitesse et intervalle d'apparition.
+//
+// Divisée par deux par rapport au premier réglage. Le jeu demande de DÉCIDER
+// si 44 est dans la table de 7 ; à l'ancienne vitesse, on n'avait le temps que
+// de réagir, ce qui est un autre exercice — et un exercice qu'on ne rate pas
+// pour de mauvaises raisons. Un appareil doit traverser l'écran en une dizaine
+// de secondes au premier niveau.
 const RYTHMES = {
-    lent: { vitesse: 0.55, entre: 105 },
-    normal: { vitesse: 0.8, entre: 78 },
-    rapide: { vitesse: 1.15, entre: 56 }
+    lent: { vitesse: 0.26, entre: 190 },
+    normal: { vitesse: 0.38, entre: 145 },
+    rapide: { vitesse: 0.55, entre: 105 }
 };
+
+// Un décor par niveau : même règle, ciel neuf. C'est le décor qui récompense
+// la progression, et il donne un repère — « j'en suis à la nébuleuse rouge ».
+const DECORS = [
+    { nom: 'Nébuleuse bleue', ciel: ['#1e1b4b', '#0b1020'], halo: 'rgba(99,102,241,.30)', etoile: '#e0e7ff' },
+    { nom: 'Ceinture d\'astéroïdes', ciel: ['#292524', '#0c0a09'], halo: 'rgba(168,162,158,.26)', etoile: '#fef3c7' },
+    { nom: 'Nuage rouge', ciel: ['#4c0519', '#1a0208'], halo: 'rgba(244,63,94,.26)', etoile: '#fecdd3' },
+    { nom: 'Anneaux verts', ciel: ['#052e16', '#020c06'], halo: 'rgba(34,197,94,.26)', etoile: '#dcfce7' },
+    { nom: 'Trou noir', ciel: ['#1e1b4b', '#000000'], halo: 'rgba(217,70,239,.28)', etoile: '#f5d0fe' }
+];
+
+/** Intrus à abattre pour passer au décor suivant. */
+const PAR_NIVEAU = 6;
 
 const SEUIL_TAPE = 10;   // au-delà, l'appui est un déplacement, pas un tir
 
@@ -44,6 +63,13 @@ class Escadrille extends BaseGame {
         this.frame = 0;
         this.secousse = 0;
         this.message = null;
+        this.niveau = 0;
+        this.abattus = 0;
+        // Le jeu s'ouvre sur la RÈGLE, en grand, puis un décompte.
+        // Écrite en petit dans un coin, elle n'était jamais lue : on arrivait
+        // dans une pluie de nombres sans savoir ce qu'on devait en faire.
+        this.phase = 'briefing';
+        this.compte = 0;
 
         this.container.innerHTML = `
             <style>
@@ -61,6 +87,7 @@ class Escadrille extends BaseGame {
                 .esc-vies { color: #f87171; font-size: 1.15rem; letter-spacing: 1px; flex-shrink: 0; }
                 .esc-score { color: #fcd34d; font-weight: 900; font-size: 1rem; flex-shrink: 0;
                     font-variant-numeric: tabular-nums; }
+                .esc-niv { color: #a5b4fc; font-weight: 800; font-size: .82rem; flex-shrink: 0; }
                 .esc-aide { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
                     color: #94a3b8; font-size: .78rem; z-index: 5; pointer-events: none;
                     font-family: 'Inter', system-ui, sans-serif; }
@@ -72,8 +99,9 @@ class Escadrille extends BaseGame {
             <div class="esc-arene">
                 <canvas class="esc-canvas"></canvas>
                 <div class="esc-hud">
-                    <div class="esc-mission">Abats ce qui n'est <b>PAS</b> dans la table de <b>${this.table}</b>
-                        <span class="esc-sous">les multiples sont des amis</span></div>
+                    <div class="esc-mission">Table de <b>${this.table}</b>
+                        <span class="esc-sous">abats ce qui n'y est pas</span></div>
+                    <div class="esc-niv" data-niv></div>
                     <div class="esc-vies" data-vies></div>
                     <div class="esc-score" data-score>0</div>
                 </div>
@@ -85,7 +113,8 @@ class Escadrille extends BaseGame {
         this.ctx = this.canvas.getContext('2d');
         this.ui = {
             vies: this.container.querySelector('[data-vies]'),
-            score: this.container.querySelector('[data-score]')
+            score: this.container.querySelector('[data-score]'),
+            niv: this.container.querySelector('[data-niv]')
         };
         this.dimensionner();
         this.onResize = () => this.dimensionner();
@@ -117,6 +146,22 @@ class Escadrille extends BaseGame {
         }
     }
     majScore() { if (this.ui.score) this.ui.score.textContent = this.score; }
+
+    get decor() { return DECORS[this.niveau % DECORS.length]; }
+
+    majNiveau() {
+        if (this.ui.niv) this.ui.niv.textContent = `Niv. ${this.niveau + 1} · ${this.decor.nom}`;
+    }
+
+    /** Décor suivant : on annonce le passage, on ne le subit pas. */
+    monterDeNiveau() {
+        this.niveau++;
+        this.abattus = 0;
+        this.majNiveau();
+        this.mot(`Secteur dégagé — cap sur : ${this.decor.nom}`, 'ok');
+        this.ennemis = [];
+        this.frame = 0;
+    }
 
     // --- Contenu --------------------------------------------------------------
 
@@ -154,9 +199,32 @@ class Escadrille extends BaseGame {
 
     startGameLoop() {
         this.isRunning = true;
+        this.majNiveau();
         this.brancherPilotage();
         this.boucle = this.boucle.bind(this);
         this.raf = requestAnimationFrame(this.boucle);
+        if (!this.isDemo) this.lancerBriefing();
+    }
+
+    /**
+     * Règle en grand, puis 3 · 2 · 1 · GO.
+     *
+     * Trois secondes perdues au départ valent mieux qu'une partie entière
+     * jouée sans avoir compris la consigne — et le décompte fait sa part :
+     * on est prêt, doigt sur l'écran, quand les premiers appareils arrivent.
+     */
+    lancerBriefing() {
+        this.phase = 'briefing';
+        this.compte = 0;
+        regTimeout(() => { if (this.isRunning) this.decompte(3); }, 2600);
+    }
+
+    decompte(n) {
+        if (!this.isRunning) return;
+        this.phase = 'decompte';
+        this.compte = n;
+        if (n > 0) regTimeout(() => this.decompte(n - 1), 800);
+        else regTimeout(() => { if (this.isRunning) { this.phase = 'jeu'; this.compte = 0; } }, 650);
     }
 
     brancherPilotage() {
@@ -208,6 +276,7 @@ class Escadrille extends BaseGame {
         this.score += pts;
         this.majScore();
         this.mot(`${e.valeur} n'est pas dans la table de ${this.table} !`, 'ok');
+        if (++this.abattus >= PAR_NIVEAU) this.monterDeNiveau();
         this.onCorrectAnswer(null, `mult:${this.table}`, {
             points: pts,
             questionText: `${e.valeur} est-il dans la table de ${this.table} ?`,
@@ -276,6 +345,14 @@ class Escadrille extends BaseGame {
 
     avancer() {
         const w = this.canvas.width;
+        // Pendant le briefing, le ciel défile mais rien ne descend : on lit.
+        if (this.phase !== 'jeu' && !this.isDemo) {
+            this.etoiles.forEach(s => {
+                s.y += s.v; if (s.y > this.canvas.height) { s.y = -2; s.x = Math.random() * w; }
+            });
+            if (this.message && --this.message.vie <= 0) this.message = null;
+            return;
+        }
         // Le vaisseau suit le doigt sans le coller : un peu d'inertie, et le
         // pilotage reste doux même quand le doigt saute.
         this.vaisseau.x += (this.vaisseau.cible - this.vaisseau.x) * 0.22;
@@ -285,7 +362,9 @@ class Escadrille extends BaseGame {
             s.y += s.v; if (s.y > this.canvas.height) { s.y = -2; s.x = Math.random() * w; }
         });
 
-        if (!this.isDemo && this.frame % this.rythme.entre === 0) this.ennemis.push(this.creerEnnemi());
+        if (!this.isDemo && this.phase === 'jeu' && this.frame % this.rythme.entre === 0) {
+            this.ennemis.push(this.creerEnnemi());
+        }
 
         this.ennemis.forEach(e => {
             e.y += this.rythme.vitesse * 2.4;
@@ -330,7 +409,16 @@ class Escadrille extends BaseGame {
         c.save();
         if (this.secousse > 0) c.translate((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7);
 
-        c.fillStyle = '#fff';
+        // Le ciel du secteur : dégradé et halo changent à chaque niveau.
+        const d = this.decor;
+        const fond = c.createLinearGradient(0, 0, 0, h);
+        fond.addColorStop(0, d.ciel[0]); fond.addColorStop(1, d.ciel[1]);
+        c.fillStyle = fond; c.fillRect(0, 0, w, h);
+        const halo = c.createRadialGradient(w / 2, h * 0.18, 10, w / 2, h * 0.18, w * 0.85);
+        halo.addColorStop(0, d.halo); halo.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = halo; c.fillRect(0, 0, w, h);
+
+        c.fillStyle = d.etoile;
         this.etoiles.forEach(s => {
             c.globalAlpha = 0.15 + s.v * 0.4;
             c.fillRect(s.x, s.y, s.r, s.r * 2.2);
@@ -359,26 +447,36 @@ class Escadrille extends BaseGame {
 
         this.dessinerVaisseau();
         if (this.message) this.dessinerMessage();
+        if (this.phase !== 'jeu' && !this.isDemo) this.dessinerBriefing();
         c.restore();
     }
 
     dessinerEnnemi(e) {
         const c = this.ctx, r = e.taille / 2;
-        // Les deux camps se distinguent par la FORME autant que par la couleur :
-        // un élève daltonien doit pouvoir jouer. Ami = disque, intrus = losange.
+        // TOUS les appareils sont identiques.
+        //
+        // La première version distinguait amis et intrus par la forme et la
+        // couleur : il n'y avait alors plus rien à calculer, il suffisait de
+        // viser les rouges. Le seul indice est le NOMBRE — c'est tout le jeu.
         c.save();
         c.translate(e.x, e.y);
-        c.shadowColor = e.ami ? 'rgba(56,189,248,.8)' : 'rgba(248,113,113,.8)';
-        c.shadowBlur = 14;
-        c.fillStyle = e.ami ? '#0ea5e9' : '#e11d48';
+        c.shadowColor = 'rgba(148,163,184,.55)'; c.shadowBlur = 12;
+        c.fillStyle = '#475569';
         c.beginPath();
-        if (e.ami) c.arc(0, 0, r, 0, Math.PI * 2);
-        else { c.moveTo(0, -r); c.lineTo(r, 0); c.lineTo(0, r); c.lineTo(-r, 0); c.closePath(); }
-        c.fill();
+        // Une soucoupe : coque hexagonale, la même pour tout le monde.
+        for (let i = 0; i < 6; i++) {
+            const a = Math.PI / 6 + i * Math.PI / 3;
+            const px = Math.cos(a) * r, py = Math.sin(a) * r * 0.82;
+            i ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.closePath(); c.fill();
         c.shadowBlur = 0;
-        c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.stroke();
-        c.fillStyle = '#fff';
-        c.font = `900 ${Math.round(e.taille * 0.5)}px 'Inter', system-ui, sans-serif`;
+        c.strokeStyle = 'rgba(203,213,225,.9)'; c.lineWidth = 2; c.stroke();
+        // Le hublot porte le nombre : c'est la seule information du jeu.
+        c.fillStyle = '#0f172a';
+        c.beginPath(); c.ellipse(0, 0, r * 0.78, r * 0.6, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#e2e8f0';
+        c.font = `900 ${Math.round(e.taille * 0.46)}px 'Inter', system-ui, sans-serif`;
         c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText(String(e.valeur), 0, 1);
         c.restore();
@@ -399,6 +497,45 @@ class Escadrille extends BaseGame {
         c.fillStyle = 'rgba(251,191,36,.9)';
         const f = 8 + Math.random() * 8;
         c.beginPath(); c.moveTo(-5, 12); c.lineTo(0, 12 + f); c.lineTo(5, 12); c.closePath(); c.fill();
+        c.restore();
+    }
+
+    /** Écran de mission : la règle en grand, puis 3 · 2 · 1 · GO. */
+    dessinerBriefing() {
+        const c = this.ctx, w = this.canvas.width, h = this.canvas.height;
+        c.save();
+        c.fillStyle = 'rgba(2,6,23,.78)'; c.fillRect(0, 0, w, h);
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        // Le texte est RAMENÉ à la largeur disponible : écrit sur une mesure
+        // de l'écran, il sortait du cadre en portrait, et une règle tronquée
+        // est pire qu'une règle absente.
+        const dispo = w - 28;
+        const T = (txt, y, taille, couleur, gras = 900) => {
+            let px = Math.round(taille);
+            c.font = `${gras} ${px}px 'Inter', system-ui, sans-serif`;
+            while (px > 9 && c.measureText(txt).width > dispo) {
+                px -= 1;
+                c.font = `${gras} ${px}px 'Inter', system-ui, sans-serif`;
+            }
+            c.fillStyle = couleur;
+            c.fillText(txt, w / 2, y);
+        };
+        const u = Math.min(w, h);
+
+        if (this.phase === 'briefing') {
+            T('MISSION', h * 0.28, u * 0.062, '#a5b4fc');
+            T('Abats tout ce qui n\'est PAS', h * 0.38, u * 0.068, '#e2e8f0');
+            T(`dans la table de ${this.table}`, h * 0.45, u * 0.068, '#e2e8f0');
+            T(`Les multiples de ${this.table} sont des AMIS :`, h * 0.57, u * 0.046, '#fcd34d', 800);
+            T('laisse-les passer.', h * 0.63, u * 0.046, '#fcd34d', 800);
+            T('Glisse pour piloter · tape pour tirer', h * 0.76, u * 0.04, '#94a3b8', 700);
+        } else {
+            const txt = this.compte > 0 ? String(this.compte) : 'GO !';
+            // Le chiffre grossit et s'efface : on le voit même en clignant.
+            T(txt, h * 0.46, u * (this.compte > 0 ? 0.26 : 0.18),
+                this.compte > 0 ? '#e2e8f0' : '#22d3ee');
+            T(`Table de ${this.table}`, h * 0.62, u * 0.05, '#a5b4fc', 800);
+        }
         c.restore();
     }
 

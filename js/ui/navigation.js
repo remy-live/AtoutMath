@@ -1,7 +1,7 @@
 import { exercices, domaines, filterByStatus, statusOf, STATUS, STATUS_LABELS } from '../data/catalog.js';
 import { clearEngines } from '../core/timers.js';
 import { destroyAllDemoCursors } from '../core/demoPointer.js';
-import { accessOf, lockLabel } from '../core/gameAccess.js';
+import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
 
@@ -217,7 +217,11 @@ function statusBadge(exo) {
 function matchesSearch(exo, query) {
     const q = (query || '').trim().toLowerCase();
     if (!q) return true;
-    const haystack = [exo.title, ...(exo.tags.chemin || []), ...(exo.tags.niveaux || [])].join(' ').toLowerCase();
+    // « jeu » fait partie du foin : c'est le mot que l'on tape quand on cherche
+    // de quoi occuper une fin de séance, et il n'est écrit nulle part dans les
+    // données — il se déduit de l'activité.
+    const haystack = [exo.title, ...(exo.tags.chemin || []), ...(exo.tags.niveaux || []),
+        isGame(exo) ? 'jeu jeux' : ''].join(' ').toLowerCase();
     return haystack.includes(q);
 }
 
@@ -525,8 +529,12 @@ function createCard(exo) {
 
     const tags = document.createElement('div');
     tags.className = 'card-tags';
+    // La pastille « jeu » n'est pas une donnée du catalogue : elle se déduit
+    // de l'activité (autonome = jeu). Impossible d'oublier de la poser en
+    // ajoutant un jeu, ou de la laisser sur un exercice devenu classique.
     tags.innerHTML = `<span class="tag tag-btn tag-niveau">${niveauxStr}</span>
         <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
+        ${isGame(exo) ? '<span class="tag tag-btn tag-jeu">🎮 jeu</span>' : ''}
         ${statusBadge(exo)}`;
 
     if (state.previewsOn) {

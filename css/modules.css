@@ -1182,6 +1182,11 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
 .tag-meta { background: var(--bg-hover); color: var(--text-muted); border: 1px solid var(--border); }
 
 /* Pastilles d'état de publication (vue auteur / professeur). */
+/* Pastille « jeu » : elle distingue d'un coup d'œil les activités autonomes
+   des exercices classiques, dans une liste où tout se ressemble. */
+.tag-jeu { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; font-weight: 700; }
+html[data-theme="dark"] .tag-jeu { background: rgba(252, 211, 77, .16); color: #fcd34d; border-color: rgba(252, 211, 77, .4); }
+
 .tag-status { font-weight: 700; }
 .tag-status--test { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .tag-status--brouillon { background: var(--bg-hover); color: var(--text-muted); border: 1px dashed var(--border); }
