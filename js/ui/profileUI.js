@@ -106,6 +106,15 @@ function renderPlan() {
     }
     if (btn) btn.style.display = 'inline-flex';
 
+    // DEUX LIGNES ET UN BOUTON.
+    //
+    // La carte disait tout d'un coup : la notion, la leçon, les exercices, un
+    // bouton dans un coin. C'est trop à lire pour l'élève à qui elle
+    // s'adresse, et le geste à faire — appuyer sur « Réviser » — se perdait au
+    // milieu. Il reste donc le nom de la notion, une phrase qui dit pourquoi
+    // elle est là, et le bouton en grand juste dessous. Le reste — la leçon,
+    // les exercices — n'est pas perdu : il est replié, à un appui de là, pour
+    // qui veut savoir.
     container.innerHTML = plan.map((r, i) => {
         const def = getSkill(r.skillId);
         const lecon = def && def.lesson ? `<p class="plan-lecon">${escapeHtml(def.lesson)}</p>` : '';
@@ -114,17 +123,22 @@ function renderPlan() {
             ? `<div class="plan-exos">${exos.map(e =>
                 `<button class="plan-exo" data-exo="${escapeHtml(e.id)}">${escapeHtml(e.title)}</button>`).join('')}</div>`
             : '';
+        const detail = (lecon || liens)
+            ? `<details class="plan-detail">
+                   <summary>Pourquoi, et avec quoi ?</summary>
+                   ${lecon}${liens}
+               </details>`
+            : '';
         return `
         <div class="plan-card">
-            <div class="plan-rang">${i + 1}</div>
-            <div class="plan-corps">
-                <div class="plan-head">
-                    <span class="plan-titre">${escapeHtml(r.label)}</span>
-                    <span class="plan-motif plan-motif--${r.reason}">${escapeHtml(r.motif || '')}</span>
-                </div>
-                ${lecon}${liens}
+            <div class="plan-head">
+                <span class="plan-rang">${i + 1}</span>
+                <span class="plan-titre">${escapeHtml(r.label)}</span>
+                <span class="plan-motif plan-motif--${r.reason}">${escapeHtml(r.motif || '')}</span>
             </div>
-            <button class="btn-toggle btn-toggle--sm" data-plan-revise="${escapeHtml(r.skillId)}">Réviser</button>
+            <p class="plan-court">${escapeHtml(raisonCourte(r))}</p>
+            <button type="button" class="plan-btn" data-plan-revise="${escapeHtml(r.skillId)}">▶ Réviser</button>
+            ${detail}
         </div>`;
     }).join('');
 
@@ -139,6 +153,27 @@ function renderPlan() {
             openGameLayer(exo, false);
         };
     });
+}
+
+/**
+ * Pourquoi cette notion est là, en UNE phrase.
+ *
+ * Le motif brut (« remédiation », « révision ») ne veut rien dire pour un
+ * élève. On lui dit ce qui s'est passé, avec ses chiffres quand on les a :
+ * c'est ce qui rend le conseil crédible plutôt qu'arbitraire.
+ */
+function raisonCourte(r) {
+    const m = state.masteryMap.get(r.skillId);
+    const taux = m && m.attempts ? ` (${m.correct} réussies sur ${m.attempts})` : '';
+    if (r.reason === 'remediation') {
+        return `C'est ce qui te manque pour la suite : on repart de la base${taux}.`;
+    }
+    if (r.reason === 'revision') {
+        return m && m.mastery >= 0.7
+            ? `Tu sais faire, mais tu ne l'as pas revue depuis un moment${taux}.`
+            : `Elle résiste encore un peu${taux}.`;
+    }
+    return 'Tu ne l\'as pas encore travaillée : c\'est le moment.';
 }
 
 // --- Compétences ------------------------------------------------------------

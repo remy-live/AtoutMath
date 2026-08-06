@@ -1001,7 +1001,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 
 /* --- Plan de révision : « je révise quoi, là, maintenant ? » -------------- */
 .plan-card {
-    display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px;
+    margin-bottom: 10px;
     background: var(--bg-panel); border: 1px solid var(--border);
     border-left: 4px solid var(--primary); border-radius: 12px; padding: 12px 14px;
 }
@@ -1010,9 +1010,28 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: var(--primary); color: #fff; font-weight: 900; font-size: .85rem;
     display: flex; align-items: center; justify-content: center;
 }
-.plan-corps { flex: 1; min-width: 0; }
 .plan-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .plan-titre { font-weight: 800; color: var(--text-main); }
+/* Une phrase, pas un paragraphe : c'est ce que l'élève lira vraiment. */
+.plan-court { margin: 6px 0 0; font-size: .88rem; line-height: 1.4; color: var(--text-muted); }
+/* Le bouton EN GRAND sous les deux lignes : c'est le seul geste attendu. */
+.plan-btn {
+    display: block; width: 100%; margin-top: 10px; padding: 11px 12px;
+    border: none; border-radius: 12px; cursor: pointer;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: .95rem;
+    font-family: inherit;
+}
+.plan-btn:hover { filter: brightness(1.08); }
+/* Le détail reste là, replié : à un appui pour qui veut savoir. */
+.plan-detail { margin-top: 8px; }
+.plan-detail > summary {
+    cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--text-muted);
+    list-style: none; padding: 4px 0;
+}
+.plan-detail > summary::-webkit-details-marker { display: none; }
+.plan-detail > summary::before { content: '▸\00a0'; }
+.plan-detail[open] > summary::before { content: '▾\00a0'; }
+.plan-detail > summary:hover { color: var(--primary); }
 .plan-motif {
     font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
     border-radius: 999px; padding: 2px 8px;

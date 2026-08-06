@@ -15,12 +15,12 @@ const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=61',
-    './css/layout.css?v=61',
-    './css/ui.css?v=61',
-    './css/games.css?v=61',
-    './css/components.css?v=61',
-    './css/modules.css?v=61',
+    './css/base.css?v=62',
+    './css/layout.css?v=62',
+    './css/ui.css?v=62',
+    './css/games.css?v=62',
+    './css/components.css?v=62',
+    './css/modules.css?v=62',
     './icons/icon-192.png',
     './icons/icon-512.png'
 ];
