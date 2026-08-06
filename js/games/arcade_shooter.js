@@ -475,6 +475,19 @@ class ArcadeShooter extends BaseGame {
     }
 
     /**
+     * Une météorite est-elle DANS le champ ? Elles naissent au-delà du coin
+     * de l'arène (`rayonDepart`) et convergent : pendant une bonne seconde
+     * elles existent sans être visibles. Tout ce que la démonstration montre
+     * doit se lire à l'écran, donc rien ne se joue avant ce test.
+     */
+    meteoriteVisible(m) {
+        const w = this.arena.offsetWidth, h = this.arena.offsetHeight;
+        const cx = m.x + METEOR_SIZE / 2, cy = m.y + METEOR_SIZE / 2;
+        const marge = METEOR_SIZE * 0.6;
+        return cx > marge && cx < w - marge && cy > marge && cy < h - marge;
+    }
+
+    /**
      * Démonstration : le robot montre les deux gestes — il ORIENTE le
      * vaisseau vers une mauvaise réponse, tape dessus pour tirer, puis
      * laisse la bonne arriver au contact. Le tout expliqué en bulles.
@@ -488,6 +501,7 @@ class ArcadeShooter extends BaseGame {
         this.demoGate = createDemoGate(this.arena);
         let phase = 'annonce';
         let cadence = 0;
+        let annonce = 0;
 
         this.demoCursor.pause(50).then(() => {
             if (this.isRunning && this.demoCursor) {
@@ -505,11 +519,28 @@ class ArcadeShooter extends BaseGame {
 
             const vivantes = this.meteors.filter(m => !m.destroyed);
             const bonne = vivantes.find(m => m.isCorrect);
-            const mauvaise = vivantes.find(m => !m.isCorrect);
+            const fausses = vivantes.filter(m => !m.isCorrect);
             if (!bonne) return;
 
-            if (phase === 'annonce' && cadence > 90) phase = 'chasse';
-            if (phase === 'chasse' && !mauvaise) {
+            // On ne vise QUE ce que l'élève voit. Auparavant la chasse
+            // démarrait au bout d'un délai fixe et prenait la première
+            // mauvaise réponse de la liste : le vaisseau pivotait vers le
+            // bord et tirait dans le vide, la météorite n'entrant en scène
+            // qu'après. La plus proche des VISIBLES, et rien avant.
+            const enVue = fausses.filter(m => this.meteoriteVisible(m))
+                .sort((a, b) => a.dist - b.dist);
+            const mauvaise = enVue[0];
+
+            if (phase === 'annonce') {
+                if (!mauvaise) return;
+                phase = 'chasse';
+                annonce = cadence;
+                mauvaise.el.classList.add('demo-target');
+                if (this.demoCursor) this.demoCursor.say(
+                    `${mauvaise.ans} n'est pas ${this.currentT} × ${this.currentM} : je tourne le vaisseau vers elle et je tire.`,
+                    mauvaise.el);
+            }
+            if (phase === 'chasse' && !fausses.length) {
                 phase = 'accueil';
                 bonne.el.classList.add('demo-target');
                 if (this.demoCursor) this.demoCursor.say(
@@ -527,7 +558,9 @@ class ArcadeShooter extends BaseGame {
             this.angle += delta * 0.14;
             this.tourner();
 
-            if (Math.abs(delta) < 0.06 && cadence % 22 === 0) {
+            // Un demi-tour de canon prend le temps qu'il prend : on laisse
+            // voir le pivotement avant la première salve.
+            if (Math.abs(delta) < 0.06 && cadence - annonce > 16 && cadence % 22 === 0) {
                 this.demoCanFire = true;
                 this.fireLaser();
                 this.demoCanFire = false;
