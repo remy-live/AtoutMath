@@ -140,6 +140,7 @@ class Nova extends BaseGame {
         this.charge = 0;
         this.doigtPose = false;
         this.rayon = 0;
+        this.astuceDite = false;       // le rappel des gestes, une seule fois
         // …et son RÉGLAGE. Le canon automatique reste la valeur par défaut,
         // mais certains joueurs veulent décider quand ils tirent : en mode
         // « au doigt », le canon ne crache que tant que le doigt touche
@@ -1209,6 +1210,15 @@ class Nova extends BaseGame {
         // difficulté — on ne meurt pas parce qu'un ennemi est fort, on meurt
         // parce qu'on n'a plus de place. Pendant une épreuve (mur, convoi,
         // Gardien), elles s'arrêtent : l'écran doit rester lisible.
+        // Les deux gestes qu'on ne devine pas — le rayon lourd et la bombe —
+        // ne sont plus écrits sur l'écran titre : ils s'annoncent une fois, en
+        // vol, quand le joueur a déjà le doigt sur l'écran. Une consigne
+        // arrive toujours mieux au moment où elle sert.
+        if (this.niveau === 0 && this.frame === 260 && !this.astuceDite) {
+            this.astuceDite = true;
+            this.mot('Doigt POSÉ : rayon lourd · DOUBLE TAPE : bombe ✹', 'ok');
+        }
+
         const calme = !this.porte && !this.convoi && !this.boss && !this.faille;
         const entreVagues = Math.max(78, 150 - this.niveau * 9);
         if (calme && this.frame % entreVagues === 0) this.lancerVague();
@@ -2203,55 +2213,145 @@ class Nova extends BaseGame {
         c.restore();
     }
 
+    /**
+     * L'écran titre : TROIS DESSINS, trois mots.
+     *
+     * Il portait douze lignes de règles — le mur, le convoi, le Gardien, la
+     * faille, l'atelier, le rayon lourd, la bombe. Personne ne lit douze
+     * lignes avant de jouer, et surtout pas l'enfant qui veut appuyer sur
+     * START : le briefing exhaustif ne servait qu'à me rassurer.
+     *
+     * Ne restent que les trois choses qu'on ne peut pas deviner en dix
+     * secondes de jeu : comment on pilote, ce qui fait mal, et le fait que les
+     * portes se choisissent par le CALCUL. Tout le reste — Gardien, faille,
+     * atelier — s'annonce au moment où ça arrive, avec un bandeau qui ne
+     * disparaît pas, et le robot en fait la démonstration complète pour qui
+     * veut la voir.
+     */
     dessinerBriefing() {
         const c = this.ctx, w = this.canvas.width, h = this.canvas.height;
         c.save();
-        c.fillStyle = 'rgba(2,6,23,.8)'; c.fillRect(0, 0, w, h);
+        c.fillStyle = 'rgba(2,6,23,.86)'; c.fillRect(0, 0, w, h);
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        const dispo = w - 28;
-        const T = (txt, y, taille, couleur, gras = 900) => {
-            let px = Math.round(taille);
+        const u = Math.min(w, h);
+        const T = (txt, x, y, taille, couleur, gras = 900, dispo = w - 28) => {
+            let px = Math.max(9, Math.round(taille));
             c.font = `${gras} ${px}px 'Inter', system-ui, sans-serif`;
             while (px > 9 && c.measureText(txt).width > dispo) {
                 px -= 1; c.font = `${gras} ${px}px 'Inter', system-ui, sans-serif`;
             }
-            c.fillStyle = couleur; c.fillText(txt, w / 2, y);
+            c.fillStyle = couleur; c.fillText(txt, x, y);
         };
-        const u = Math.min(w, h);
-        if (this.phase === 'briefing') {
-            T('N O V A', h * 0.11, u * 0.1, '#22d3ee');
-            T('Glisse pour piloter · le canon tire tout seul', h * 0.20, u * 0.042, '#e2e8f0');
-            T('Doigt POSÉ : rayon lourd · DOUBLE TAPE : bombe ✹', h * 0.26, u * 0.039, '#a5f3fc', 800);
-            T('Ne touche RIEN : appareils et tirs font mal.', h * 0.34, u * 0.041, '#fda4af', 800);
-            T('MURS : passe la porte du bon résultat', h * 0.43, u * 0.042, '#fcd34d', 800);
-            T('CONVOIS : abats le transporteur du bon résultat', h * 0.49, u * 0.042, '#fcd34d', 800);
-            T('GARDIEN : il ferme le secteur. Abats les sphères', h * 0.555, u * 0.042, '#f0abfc', 800);
-            T('que la consigne désigne, évite toutes les autres.', h * 0.605, u * 0.042, '#f0abfc', 800);
-            T('FAILLE : traverse l\'anneau pour le bonus — attrape', h * 0.665, u * 0.04, '#c4b5fd', 800);
-            T('les multiples demandés, esquive tous les autres.', h * 0.712, u * 0.04, '#c4b5fd', 800);
-            T('Puis l\'ATELIER : dépense tes crédits ⬢ pour', h * 0.772, u * 0.034, '#94a3b8', 700);
-            T('améliorer ton vaisseau avant le secteur suivant.', h * 0.812, u * 0.034, '#94a3b8', 700);
 
-            // Le bouton START. Il ne sert pas à viser — l'appui est accepté
-            // partout — mais à DIRE qu'on attend le joueur, et non l'inverse.
-            const bw = Math.min(w - 60, u * 0.62), bh = Math.min(60, h * 0.085);
-            const bx = (w - bw) / 2, by = h * 0.845;
-            const battement = 0.75 + Math.sin(this.frame / 13) * 0.25;
-            c.save();
-            c.globalAlpha = battement;
-            c.fillStyle = '#0e7490';
-            c.beginPath(); c.roundRect(bx, by, bw, bh, 16); c.fill();
-            c.globalAlpha = 1;
-            c.strokeStyle = '#67e8f9'; c.lineWidth = 2.5; c.stroke();
-            c.fillStyle = '#ecfeff';
-            c.font = `900 ${Math.round(u * 0.055)}px 'Inter', system-ui, sans-serif`;
-            c.fillText('▶ START', w / 2, by + bh / 2);
-            c.restore();
-            T('Touche l\'écran quand tu es prêt', h * 0.955, u * 0.032, '#64748b', 700);
-        } else {
-            T(this.compte > 0 ? String(this.compte) : 'GO !', h * 0.46,
+        if (this.phase !== 'briefing') {
+            T(this.compte > 0 ? String(this.compte) : 'GO !', w / 2, h * 0.46,
                 u * (this.compte > 0 ? 0.26 : 0.18), this.compte > 0 ? '#e2e8f0' : '#22d3ee');
+            c.restore();
+            return;
         }
+
+        T('N O V A', w / 2, h * 0.13, u * 0.115, '#22d3ee');
+
+        // Trois vignettes : en colonne sur un téléphone, en ligne dès que la
+        // largeur le permet. Le dessin d'abord, le mot ensuite.
+        const enLigne = w > h * 0.95 && w > 620;
+        const vignettes = [
+            { dessin: (x, y, s) => this.iconePilotage(x, y, s), mot: 'GLISSE', sous: 'le canon tire tout seul', couleur: '#7dd3fc' },
+            { dessin: (x, y, s) => this.iconeDanger(x, y, s), mot: 'N\'Y TOUCHE PAS', sous: 'appareils et tirs font mal', couleur: '#fda4af' },
+            { dessin: (x, y, s) => this.iconePorte(x, y, s), mot: 'CALCULE', sous: 'passe par le bon résultat', couleur: '#fcd34d' }
+        ];
+
+        if (enLigne) {
+            const s = Math.min(u * 0.17, w * 0.11);
+            const cy = h * 0.45;
+            vignettes.forEach((v, i) => {
+                const x = w * (0.5 / 3 + i / 3);
+                v.dessin(x, cy - s * 0.35, s);
+                T(v.mot, x, cy + s * 0.95, u * 0.05, v.couleur, 900, w / 3 - 20);
+                T(v.sous, x, cy + s * 1.45, u * 0.033, '#94a3b8', 700, w / 3 - 20);
+            });
+        } else {
+            const s = Math.min(u * 0.13, h * 0.09);
+            vignettes.forEach((v, i) => {
+                const cy = h * (0.29 + i * 0.16);
+                v.dessin(w * 0.22, cy, s);
+                c.textAlign = 'left';
+                T(v.mot, w * 0.35, cy - s * 0.3, u * 0.058, v.couleur, 900, w * 0.6);
+                T(v.sous, w * 0.35, cy + s * 0.42, u * 0.038, '#94a3b8', 700, w * 0.6);
+                c.textAlign = 'center';
+            });
+        }
+
+        // Le bouton START. Il ne sert pas à viser — l'appui est accepté
+        // partout — mais à DIRE qu'on attend le joueur, et non l'inverse.
+        const bw = Math.min(w - 60, u * 0.62), bh = Math.min(64, h * 0.09);
+        const bx = (w - bw) / 2, by = h * 0.80;
+        const battement = 0.75 + Math.sin(this.frame / 13) * 0.25;
+        c.save();
+        c.globalAlpha = battement;
+        c.fillStyle = '#0e7490';
+        c.beginPath(); c.roundRect(bx, by, bw, bh, 16); c.fill();
+        c.globalAlpha = 1;
+        c.strokeStyle = '#67e8f9'; c.lineWidth = 2.5; c.stroke();
+        c.fillStyle = '#ecfeff';
+        c.font = `900 ${Math.round(u * 0.058)}px 'Inter', system-ui, sans-serif`;
+        c.fillText('▶ START', w / 2, by + bh / 2);
+        c.restore();
+        T('Le reste s\'explique en jeu, au moment où ça arrive.', w / 2, h * 0.93, u * 0.032, '#64748b', 700);
+        c.restore();
+    }
+
+    /** Vignette : le vaisseau et la trace du doigt qui le déplace. */
+    iconePilotage(x, y, s) {
+        const c = this.ctx;
+        c.save(); c.translate(x, y);
+        c.strokeStyle = 'rgba(125,211,252,.6)'; c.lineWidth = 3;
+        c.setLineDash([5, 6]);
+        c.beginPath(); c.moveTo(-s * 0.85, s * 0.5); c.lineTo(s * 0.85, s * 0.5); c.stroke();
+        c.setLineDash([]);
+        c.fillStyle = '#38bdf8';
+        c.beginPath();
+        c.moveTo(0, -s * 0.7); c.lineTo(s * 0.5, s * 0.45); c.lineTo(0, s * 0.2);
+        c.lineTo(-s * 0.5, s * 0.45); c.closePath(); c.fill();
+        c.fillStyle = '#fde047';
+        c.fillRect(-s * 0.06, -s * 1.15, s * 0.12, s * 0.35);
+        c.restore();
+    }
+
+    /** Vignette : un appareil ennemi barré. */
+    iconeDanger(x, y, s) {
+        const c = this.ctx;
+        c.save(); c.translate(x, y);
+        c.fillStyle = '#ef4444';
+        c.beginPath();
+        c.moveTo(0, s * 0.6); c.lineTo(s * 0.6, -s * 0.35); c.lineTo(0, -s * 0.05);
+        c.lineTo(-s * 0.6, -s * 0.35); c.closePath(); c.fill();
+        c.strokeStyle = '#fecaca'; c.lineWidth = Math.max(3, s * 0.12);
+        c.beginPath(); c.arc(0, 0, s * 0.82, 0, Math.PI * 2); c.stroke();
+        c.beginPath();
+        c.moveTo(-s * 0.58, -s * 0.58); c.lineTo(s * 0.58, s * 0.58); c.stroke();
+        c.restore();
+    }
+
+    /** Vignette : le mur, ses trois portes, une seule bonne. */
+    iconePorte(x, y, s) {
+        const c = this.ctx;
+        c.save(); c.translate(x, y);
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        const lw = s * 0.62, lh = s * 0.78;
+        [['12', false], ['15', true], ['18', false]].forEach(([n, bonne], i) => {
+            const px = (i - 1) * (lw + s * 0.12);
+            c.fillStyle = bonne ? 'rgba(250,204,21,.25)' : 'rgba(148,163,184,.14)';
+            c.beginPath(); c.roundRect(px - lw / 2, -lh / 2, lw, lh, s * 0.12); c.fill();
+            c.strokeStyle = bonne ? '#facc15' : '#64748b'; c.lineWidth = bonne ? 3 : 2;
+            c.stroke();
+            c.fillStyle = bonne ? '#fef08a' : '#94a3b8';
+            c.font = `900 ${Math.round(s * 0.42)}px 'Inter', system-ui, sans-serif`;
+            c.fillText(n, px, 0);
+        });
+        c.fillStyle = '#e2e8f0';
+        c.font = `900 ${Math.round(s * 0.4)}px 'Inter', system-ui, sans-serif`;
+        c.fillText('5 × 3', 0, -lh * 0.95);
         c.restore();
     }
 
