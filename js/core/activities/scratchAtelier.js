@@ -26,7 +26,8 @@ const MORTAISE = 'c -2,0 -3,1 -4,2 l -4,4 c -1,1 -2,2 -4,2 h -12 c -2,0 -3,-1 -4
 const R = 4;              // rayon des coins
 const MARGE_G = 12;       // retrait du contenu à gauche
 const HAUT_LIGNE = 40;    // hauteur d'une pièce simple
-const HAUT_CHAPEAU = 46;
+const HAUT_CHAPEAU = 48;
+const DOME = 22;         // hauteur de la bosse du chapeau
 const BOUCHE_VIDE = 28;   // hauteur d'une bouche de boucle vide
 const BAS_BOUCLE = 24;    // barre inférieure d'une boucle
 const RETRAIT = 14;       // décalage horizontal du contenu d'une boucle
@@ -77,8 +78,11 @@ export class Bloc {
     dessiner() {
         this.contenu.innerHTML = '';
         let cx = MARGE_G;
-        const milieu = (this.modele.chapeau ? HAUT_CHAPEAU : HAUT_LIGNE) / 2
-            + (this.modele.chapeau ? 6 : 0);
+        // Le texte du chapeau se centre SOUS le dôme, pas au milieu de la
+        // pièce : sinon il chevauche la bosse.
+        const milieu = this.modele.chapeau
+            ? DOME + (HAUT_CHAPEAU - DOME) / 2
+            : HAUT_LIGNE / 2;
 
         const poserTexte = (txt) => {
             const t = document.createElementNS(SVGNS, 'text');
@@ -128,9 +132,17 @@ export class Bloc {
         const w = this.largeur, h = this.hautLigne;
         let d;
         if (this.modele.chapeau) {
-            // Le dôme du chapeau : la pièce qui démarre le programme et qu'on
-            // ne peut pas décrocher.
-            d = `M 0,20 Q 0,0 28,0 H ${w - R} A ${R},${R} 0 0,1 ${w},${R} V ${h - R}`
+            // Le dôme du chapeau.
+            //
+            // Un quart de rond posé sur le coin gauche donnait une pièce
+            // bancale, penchée, qui ne ressemblait à rien de Scratch. Le vrai
+            // chapeau porte un dôme SYMÉTRIQUE qui court d'un bord à l'autre :
+            // c'est cette bosse-là qu'on reconnaît.
+            // La courbe de Scratch, à la lettre : une cubique dont les points
+            // de contrôle sont à 26 % et 74 % de la largeur, remontés de la
+            // hauteur du dôme. Elle donne des épaules franches et un sommet
+            // presque plat — une parabole simple faisait une colline.
+            d = `M 0,${DOME} C ${w * 0.26},0 ${w * 0.74},0 ${w},${DOME} V ${h - R}`
                 + ` A ${R},${R} 0 0,1 ${w - R},${h} H 48 ${MORTAISE} H ${R}`
                 + ` A ${R},${R} 0 0,1 0,${h - R} Z`;
             this.hauteur = h;
@@ -291,6 +303,33 @@ export class Atelier {
         return bloc;
     }
 
+    /**
+     * Rejet d'une pile : elle rapetisse et s'évanouit, comme dans Scratch.
+     *
+     * Une disparition instantanée laisse un doute — l'a-t-on jetée, ou
+     * a-t-elle glissé quelque part ? Le rétrécissement dit sans ambiguïté que
+     * la pièce est partie, et où.
+     */
+    jeter(premier) {
+        const centre = { x: premier.x + premier.largeur / 2, y: premier.y + 20 };
+        const pile = [];
+        for (let b = premier; b; b = b.next) pile.push(b);
+        pile.forEach(b => { b.el.style.transformOrigin = `${centre.x}px ${centre.y}px`; });
+        const t0 = performance.now();
+        const anim = (t) => {
+            const k = Math.min(1, (t - t0) / 190);
+            const e = 1 - k * k;
+            pile.forEach(b => {
+                b.el.setAttribute('transform',
+                    `translate(${centre.x},${centre.y}) scale(${e}) translate(${b.x - centre.x},${b.y - centre.y})`);
+                b.el.style.opacity = String(e);
+            });
+            if (k < 1) requestAnimationFrame(anim);
+            else this.supprimer(premier);
+        };
+        requestAnimationFrame(anim);
+    }
+
     supprimer(premier) {
         let b = premier;
         while (b) {
@@ -418,12 +457,20 @@ export class Atelier {
         // l'atelier. Une capture posée sur le SVG au moment où le doigt est
         // encore sur la palette est fragile — quand elle échoue, plus rien ne
         // bouge et rien ne le signale.
+        // La corbeille ne s'arme qu'une fois la pièce SORTIE de la palette.
+        //
+        // Sans ça, tirer une pièce de la bibliothèque la faisait virer au
+        // rouge dès le premier pixel : on croyait détruire ce qu'on venait de
+        // prendre. Comme dans Scratch, la palette redevient une zone de rejet
+        // seulement quand on y ramène quelque chose qui en était sorti.
+        let sorti = false;
         const bouger = (ev) => {
             if (ev.pointerId !== id) return;
             ev.preventDefault();
             const p = this.versAtelier(ev);
             bloc.placer(p.x - dx, p.y - dy);
-            const surCorbeille = this.surPalette(ev);
+            if (!this.surPalette(ev)) sorti = true;
+            const surCorbeille = sorti && this.surPalette(ev);
             this.palette.classList.toggle('sc-palette--corbeille', surCorbeille);
             if (surCorbeille) this.cacherAimant();
             else this.chercherAimant(bloc);
@@ -437,7 +484,7 @@ export class Atelier {
             bloc.el.classList.remove('sc-piece--tenue');
             this.hote.classList.remove('sc-atelier--glisse');
             this.palette.classList.remove('sc-palette--corbeille');
-            if (this.surPalette(ev)) this.supprimer(bloc);
+            if (sorti && this.surPalette(ev)) this.jeter(bloc);
             else this.appliquerAimant(bloc);
             this.cacherAimant();
             this.onChange();

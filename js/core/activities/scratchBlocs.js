@@ -74,14 +74,14 @@ export function mount(container, session, opts = {}) {
                 </div>
                 <p class="sc-consigne">${echapper(consigneCourte())}</p>
                 <div class="sc-scene"><canvas class="sc-canvas"></canvas></div>
-                <div class="sc-studio">
-                    <div class="sc-palette" data-palette aria-label="Blocs disponibles"></div>
-                    <div class="sc-atelier" data-atelier></div>
-                </div>
                 <div class="sc-actions">
                     <button type="button" class="sc-btn sc-btn--go" data-run>⚑ Lancer</button>
                     <button type="button" class="sc-btn" data-clear>↺ Effacer</button>
                     <button type="button" class="sc-btn sc-btn--ok" data-valider>Valider</button>
+                </div>
+                <div class="sc-studio">
+                    <div class="sc-palette" data-palette aria-label="Blocs disponibles"></div>
+                    <div class="sc-atelier" data-atelier></div>
                 </div>
                 ${hintBar(session)}
             </div>`;
@@ -238,19 +238,18 @@ export function mount(container, session, opts = {}) {
         //
         // Sans échelle, « avancer de 100 » ne veut rien dire : l'élève tâtonne
         // au lieu de compter. Avec un carreau valant 10 pas, un côté de 8
-        // carreaux se lit à l'œil et s'écrit « avancer de 80 ». Les lignes
-        // fortes tous les 5 carreaux (50 pas) donnent le repère intermédiaire.
-        const ligne = (v, forte, horizontale) => {
-            ctx.strokeStyle = forte ? 'rgba(100,116,139,.34)' : 'rgba(148,163,184,.18)';
-            ctx.lineWidth = forte ? 1.2 : 1;
-            const a = versEcran(horizontale ? { x: -DEMI, y: v } : { x: v, y: -DEMI });
-            const b = versEcran(horizontale ? { x: DEMI, y: v } : { x: v, y: DEMI });
-            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-        };
+        // carreaux se lit à l'œil et s'écrit « avancer de 80 ».
+        //
+        // Un SEUL trait pour toutes les lignes : une ligne forte tous les cinq
+        // carreaux dessinait un second quadrillage par-dessus le premier, et
+        // on ne savait plus lequel compter.
+        ctx.strokeStyle = 'rgba(120,140,170,.30)';
+        ctx.lineWidth = 1;
         for (let v = -DEMI; v <= DEMI; v += CARREAU) {
-            const forte = v % (5 * CARREAU) === 0;
-            ligne(v, forte, false);
-            ligne(v, forte, true);
+            const a = versEcran({ x: v, y: -DEMI }), b = versEcran({ x: v, y: DEMI });
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            const c = versEcran({ x: -DEMI, y: v }), d = versEcran({ x: DEMI, y: v });
+            ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
         }
 
         // Gabarit pâle, tracé de l'élève par-dessus : on voit ce qui est
@@ -292,6 +291,12 @@ export function mount(container, session, opts = {}) {
         }
     }
 
+    // Où se trouve le ventre du chat dans son dessin, en proportion de
+    // l'image. Le stylo sort de LÀ, pas du centre du rectangle : centré, le
+    // chat semblait écrire avec le museau, et le trait paraissait démarrer
+    // devant lui au lieu de sous lui.
+    const VENTRE = { x: 0.52, y: 0.74 };
+
     function dessinerChat(c) {
         if (!chatImg.complete || !chatImg.naturalWidth) return;
         const e = versEcran(c);
@@ -300,7 +305,7 @@ export function mount(container, session, opts = {}) {
         ctx.save();
         ctx.translate(e.x, e.y);
         ctx.rotate((c.dir - 90) * Math.PI / 180);   // le dessin regarde vers la droite
-        ctx.drawImage(chatImg, -w / 2, -h / 2, w, h);
+        ctx.drawImage(chatImg, -w * VENTRE.x, -h * VENTRE.y, w, h);
         ctx.restore();
     }
 
