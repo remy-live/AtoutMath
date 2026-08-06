@@ -1152,58 +1152,125 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    gagnés (étoile), le monde en cours (rebond) et ceux à débloquer. */
 
 .world-map {
-    display: flex; flex-direction: column; gap: 26px;
-    padding: 22px 8px; margin-bottom: 10px;
-    background: linear-gradient(180deg,
-        color-mix(in srgb, var(--primary) 6%, transparent),
-        color-mix(in srgb, var(--success) 7%, transparent));
-    border-radius: 20px;
+    display: flex; flex-direction: column; gap: clamp(22px, 4vw, 40px);
+    padding: 26px 10px; margin-bottom: 10px;
+    position: relative; isolation: isolate;
+    border-radius: 22px; border: 1px solid var(--border);
+    /* Un ciel doux et un semis de points, plutôt que le dégradé verdâtre qui
+       donnait au parcours un air de formulaire décoloré. */
+    background:
+        radial-gradient(circle at 1px 1px,
+            color-mix(in srgb, var(--primary) 22%, transparent) 1.5px, transparent 1.6px) 0 0 / 22px 22px,
+        linear-gradient(165deg,
+            color-mix(in srgb, var(--primary) 10%, var(--bg-panel)),
+            color-mix(in srgb, var(--accent) 9%, var(--bg-panel)));
 }
 .world-row { display: flex; justify-content: space-around; align-items: flex-start; }
 .world-row--reverse { flex-direction: row-reverse; }
+/* Cale invisible : occupe la place d'une pastille manquante en fin de
+   parcours, pour que les colonnes restent alignées. */
+.world-cale { width: 124px; }
+
+/* Le sentier, tracé d'un seul trait par-dessous les pastilles. */
+.path-trail {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    z-index: -1; pointer-events: none; overflow: visible;
+}
+.path-trail-reste, .path-trail-fait { fill: none; stroke-linecap: round; }
+.path-trail-reste {
+    stroke: color-mix(in srgb, var(--text-muted) 45%, transparent);
+    stroke-width: 8; stroke-dasharray: 2 16;
+}
+.path-trail-fait {
+    stroke: color-mix(in srgb, #f59e0b 75%, #fff); stroke-width: 9;
+}
 
 .world-node {
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    width: 120px; position: relative; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    width: 124px; position: relative; text-align: center;
 }
-/* Pointillés entre les nœuds d'une même rangée. */
-.world-node:not(:first-child)::before {
-    content: ''; position: absolute; top: 28px; height: 0;
-    border-top: 3px dotted color-mix(in srgb, var(--primary) 45%, transparent);
-    left: calc(-50% - 20px); width: calc(100% - 40px);
+.world-node-socle { position: relative; display: block; }
+
+/* Le palet : un vrai relief (liseré épais + tranche sous le disque), le geste
+   d'appui l'enfonce. C'est ce qui donne l'air « jeu » à la carte. */
+.world-node-btn {
+    width: 66px; height: 66px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem; line-height: 1; cursor: pointer; padding: 0;
+    border: 4px solid var(--border); background: var(--bg-panel);
+    box-shadow: 0 6px 0 color-mix(in srgb, var(--border) 65%, #000 14%),
+                0 8px 14px rgba(15, 23, 42, .16);
+    transition: transform .12s, box-shadow .12s, filter .2s;
 }
-.world-row--reverse .world-node:not(:first-child)::before {
-    left: auto; right: calc(-50% - 20px);
+.world-node-picto { display: block; transform: translateY(1px); }
+
+/* Gommette d'ordre : le numéro d'étape ne disparaît pas, il se range dans un
+   coin — le pictogramme dit QUOI, la gommette dit QUAND. */
+.world-node-rang {
+    position: absolute; right: -4px; bottom: -2px;
+    min-width: 24px; height: 24px; padding: 0 5px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .78rem; font-weight: 900; font-variant-numeric: tabular-nums;
+    background: var(--bg-panel); color: var(--text-muted);
+    border: 2px solid var(--border); box-shadow: var(--shadow-sm);
 }
 
-.world-node-btn {
-    width: 56px; height: 56px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.25rem; font-weight: 800; cursor: pointer;
-    border: 3px solid var(--border); background: var(--bg-panel); color: var(--text-main);
-    box-shadow: 0 4px 0 color-mix(in srgb, var(--border) 70%, #000 8%), var(--shadow-sm);
-    transition: transform .15s, box-shadow .15s;
-}
 .world-node--done .world-node-btn {
-    border-color: var(--success); background: #dcfce7;
-    box-shadow: 0 4px 0 color-mix(in srgb, var(--success) 55%, #000 12%);
+    border-color: #f59e0b;
+    background: linear-gradient(180deg, #fef3c7, #fde68a);
+    box-shadow: 0 6px 0 #d97706, 0 8px 14px rgba(217, 119, 6, .3);
 }
+.world-node--done .world-node-rang { border-color: #f59e0b; background: #f59e0b; color: #fff; }
+
 .world-node--current .world-node-btn {
-    border-color: var(--primary); background: var(--primary); color: #fff;
-    box-shadow: 0 5px 0 color-mix(in srgb, var(--primary) 60%, #000 25%), 0 8px 18px rgba(99, 102, 241, .4);
-    animation: worldBounce 1.4s ease-in-out infinite;
+    border-color: color-mix(in srgb, var(--primary) 70%, #000 22%);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--primary) 22%, var(--bg-panel)), var(--bg-panel));
+    box-shadow: 0 6px 0 color-mix(in srgb, var(--primary) 60%, #000 25%),
+                0 10px 20px color-mix(in srgb, var(--primary) 35%, transparent);
+    animation: worldBounce 1.6s ease-in-out infinite;
 }
-.world-node--open .world-node-btn { border-color: var(--primary); color: var(--primary); }
-.world-node--locked .world-node-btn { opacity: .55; cursor: not-allowed; filter: grayscale(60%); }
-.world-node:not(.world-node--locked) .world-node-btn:hover { transform: translateY(-3px) scale(1.06); }
+.world-node--current .world-node-rang {
+    border-color: var(--primary); background: var(--primary); color: #fff;
+}
+/* Halo qui respire autour de l'étape en cours. */
+.world-node--current .world-node-socle::after {
+    content: ''; position: absolute; inset: -9px; border-radius: 50%;
+    border: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    animation: worldHalo 1.9s ease-out infinite; pointer-events: none;
+}
+@keyframes worldHalo {
+    0% { transform: scale(.92); opacity: .9; }
+    75%, 100% { transform: scale(1.22); opacity: 0; }
+}
+
+.world-node-ici {
+    margin-top: 8px; padding: 3px 10px; border-radius: 999px;
+    font-size: .7rem; font-weight: 800; letter-spacing: .02em;
+    background: var(--primary); color: #fff; box-shadow: var(--shadow-sm);
+    animation: worldBounce 1.6s ease-in-out infinite;
+}
+
+.world-node--open .world-node-btn { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.world-node--locked .world-node-btn {
+    cursor: not-allowed; filter: grayscale(85%); opacity: .6;
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--border) 70%, #000 10%);
+}
+.world-node--locked .world-node-rang { opacity: .6; }
+.world-node:not(.world-node--locked) .world-node-btn:hover { transform: translateY(-3px); }
+.world-node:not(.world-node--locked) .world-node-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 65%, #000 14%);
+}
 
 @keyframes worldBounce {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-7px); }
+    50% { transform: translateY(-6px); }
 }
 
 .world-node-label {
     font-size: .82rem; font-weight: 700; color: var(--text-main); line-height: 1.25;
+    margin-top: 4px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .world-node--locked .world-node-label { color: var(--text-muted); }
@@ -1211,8 +1278,10 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .world-map-play { width: 100%; margin-top: 4px; }
 
 @media (max-width: 520px) {
-    .world-node { width: 88px; }
-    .world-node-btn { width: 48px; height: 48px; }
+    .world-node, .world-cale { width: 92px; }
+    .world-node-btn { width: 54px; height: 54px; font-size: 1.4rem; border-width: 3px; }
+    .world-node-rang { min-width: 20px; height: 20px; font-size: .7rem; }
+    .world-map { gap: 20px; padding: 18px 4px; }
 }
 
 /* Boutons-outils de l'en-tête du constructeur : icône seule, nom complet en
@@ -1254,21 +1323,22 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 /* Chemin d'étapes vertical (façon Duolingo) : une colonne de pastilles qui
    serpente, le titre posé à côté de chaque pastille. */
 .duo-path {
-    display: flex; flex-direction: column; align-items: center; gap: 22px;
-    padding: 26px 0; margin-bottom: 10px; position: relative;
-    background: linear-gradient(180deg,
-        color-mix(in srgb, var(--primary) 5%, transparent),
-        color-mix(in srgb, var(--success) 6%, transparent));
-    border-radius: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(18px, 3.5vw, 30px);
+    padding: 28px 10px; margin-bottom: 10px;
+    position: relative; isolation: isolate;
+    border-radius: 22px; border: 1px solid var(--border);
+    background:
+        radial-gradient(circle at 1px 1px,
+            color-mix(in srgb, var(--primary) 22%, transparent) 1.5px, transparent 1.6px) 0 0 / 22px 22px,
+        linear-gradient(165deg,
+            color-mix(in srgb, var(--primary) 10%, var(--bg-panel)),
+            color-mix(in srgb, var(--accent) 9%, var(--bg-panel)));
 }
-.duo-node { display: flex; align-items: center; gap: 14px; position: relative; }
-.duo-node::before {
-    content: ''; position: absolute; left: 28px; top: -22px; height: 22px;
-    border-left: 3px dotted color-mix(in srgb, var(--primary) 45%, transparent);
-}
-.duo-node:first-child::before { display: none; }
-.duo-node-label { display: flex; flex-direction: column; gap: 2px; max-width: 190px; text-align: left; }
-.duo-node-label .world-node-label { display: block; -webkit-line-clamp: 2; }
+/* Le serpentin : chaque pastille s'écarte de l'axe, le sentier SVG relie les
+   centres. Le décalage est en pourcentage — sur un téléphone, les 70 px fixes
+   d'avant poussaient les pastilles hors du cadre. */
+.duo-node { position: relative; left: var(--duo-decalage, 0); width: 150px; }
 
 /* Parcours du professeur listés côté élève. */
 .teacher-path-list { display: flex; flex-direction: column; gap: 10px; }
@@ -1919,11 +1989,18 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 .angles-layout {
     display: flex; flex-direction: column; align-items: center;
+    justify-content: center;
     gap: clamp(6px, 1.4cqh, 14px);
-    width: 100%; max-width: 760px; margin: 0 auto; padding: 8px;
+    width: 100%; max-width: 760px; height: 100%; margin: 0 auto; padding: 8px;
 }
+/* Comme pour la pendule : c'est la FIGURE qui cède, jamais les commandes.
+   Sans cette règle, la boîte d'indice ouverte sous « Montre-moi » poussait
+   « Valider » et la barre d'aide hors du plateau — on ne voyait plus tous
+   les boutons. */
+.angles-layout > :not(.angles-board) { flex-shrink: 0; }
 .angles-board {
     position: relative; width: 100%;
+    flex: 0 1 auto; min-height: 140px;
     height: clamp(260px, 58cqh, 480px);
     background: var(--bg-panel);
     border: 1px solid var(--border); border-radius: 14px;

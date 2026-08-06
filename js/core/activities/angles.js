@@ -363,6 +363,19 @@ export function mount(container, session, opts = {}) {
      * rejoint le sommet, s'aligne sur le côté fixe, et le fantôme vert trace
      * l'angle cible. `puisSuivant` enchaîne sur la question suivante.
      */
+    /**
+     * Où doit se tourner le rapporteur.
+     *
+     * La coupole graduée ne couvre qu'un demi-plan. Avec `baseRot + π`, le
+     * zéro de gauche tombait bien sur le côté noir — mais la coupole se
+     * retrouvait du côté OPPOSÉ à l'ouverture de l'angle : le second côté
+     * sortait par le dessous, là où il n'y a aucune graduation, et la mesure
+     * ne pouvait pas se lire. C'est `baseRot` qu'il faut : la coupole coiffe
+     * alors l'angle, et c'est le zéro de DROITE qui se pose sur le côté noir.
+     * C'est précisément à cela que sert la double échelle d'un rapporteur.
+     */
+    function rotationLecture() { return etat.baseRot; }
+
     function animerCorrection(puisSuivant, opts = {}) {
         // `reveler` : la correction de FIN d'essais montre tout — fantôme vert
         // et côté rouge amené sur la cible. « Montre-moi », lui, ne pose que
@@ -374,9 +387,9 @@ export function mount(container, session, opts = {}) {
         if (reveler) etat.fantome = true;
         const r = etat.rapporteur;
         const de = { x: r.x, y: r.y, rot: r.rot, construit: etat.construit };
-        // « Montre-moi » se regarde pour comprendre : plus lent que la
+        // « Montre-moi » se regarde pour comprendre : nettement plus lent que la
         // correction de fin d'essais, qui enchaîne sur la suite.
-        const debut = performance.now(), duree = puisSuivant ? 2200 : 3200;
+        const debut = performance.now(), duree = puisSuivant ? 2400 : 5200;
 
         const pas = (t) => {
             if (destroyed) return;
@@ -386,10 +399,15 @@ export function mount(container, session, opts = {}) {
             // taille pendant l'animation — une carte d'aide qui s'ouvre, le
             // clavier qui apparaît — le sommet bouge, et un point d'arrivée
             // figé au départ laissait le rapporteur à côté.
-            const vers = { x: etat.sommet.x, y: etat.sommet.y, rot: etat.baseRot + Math.PI };
-            r.x = de.x + (vers.x - de.x) * e;
-            r.y = de.y + (vers.y - de.y) * e;
-            r.rot = de.rot + (vers.rot - de.rot) * e;
+            const vers = { x: etat.sommet.x, y: etat.sommet.y, rot: rotationLecture() };
+            // DEUX temps, pas un seul mouvement. Poser le centre puis tourner
+            // le zéro sont les deux gestes qu'on enseigne, et les mener de
+            // front donne une glissade dont on ne retient rien. Le premier
+            // tiers place, le reste oriente.
+            const pose = Math.min(1, e / 0.34), tourne = Math.max(0, (e - 0.34) / 0.66);
+            r.x = de.x + (vers.x - de.x) * pose;
+            r.y = de.y + (vers.y - de.y) * pose;
+            r.rot = de.rot + (vers.rot - de.rot) * tourne;
             if (reveler && item.meta.mode === 'construire') {
                 etat.construit = de.construit + (item.meta.target - de.construit) * e;
                 majConstruit();
@@ -625,7 +643,7 @@ export function mount(container, session, opts = {}) {
         // 2. Zéro aligné sur un côté
         if (!await gate.waitTurn() || destroyed) return fin();
         cursor.say('Je tourne le rapporteur pour aligner son zéro avec un côté de l\'angle.');
-        const de2 = r.rot, vers2 = etat.baseRot + Math.PI;
+        const de2 = r.rot, vers2 = rotationLecture();
         if (!await tween(e => { r.rot = de2 + (vers2 - de2) * e; }, 1400) || destroyed) return fin();
         if (!await cursor.pause(900) || destroyed) return fin();
 

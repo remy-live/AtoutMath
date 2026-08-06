@@ -12,6 +12,7 @@
 
 import { state } from '../core/state.js';
 import { getExerciseById } from '../data/catalog.js';
+import { TAGS } from '../data/tags.js';
 import { hydratePath, normalizePath } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { journal } from '../core/journal.js';
@@ -141,9 +142,162 @@ async function launchAssigned(path, startIndex) {
     new Runner({ path, deviceMode: 'none', isStudentPath: true, startIndex }).start();
 }
 
+// --- Habillage commun des parcours illustrés --------------------------------
+// La carte des mondes et le chemin d'étapes partagent la même pastille : un
+// palet rond à liseré épais, avec le PICTOGRAMME de la notion travaillée
+// plutôt qu'un numéro anonyme — on reconnaît « les angles » ou « l'heure »
+// d'un coup d'œil, comme sur les leçons d'une application de langues.
+
+const PICTOS = {
+    [TAGS.SOUS_DOMAINE.CALCUL_MENTAL]: '🧮',
+    [TAGS.SOUS_DOMAINE.NUMERATION]: '🔢',
+    [TAGS.SOUS_DOMAINE.FRACTIONS]: '🍕',
+    [TAGS.SOUS_DOMAINE.DECIMAUX]: '💰',
+    [TAGS.SOUS_DOMAINE.REPERAGE]: '🗺️',
+    [TAGS.SOUS_DOMAINE.ANGLES]: '📐',
+    [TAGS.SOUS_DOMAINE.PRIORITES]: '⚖️',
+    [TAGS.SOUS_DOMAINE.LOGIQUE]: '🧩',
+    [TAGS.SOUS_DOMAINE.PERIMETRE_AIRE]: '📏',
+    [TAGS.SOUS_DOMAINE.ESPACE]: '🧊',
+    [TAGS.SOUS_DOMAINE.TABLEUR]: '📊',
+    [TAGS.SOUS_DOMAINE.DUREES]: '🕐',
+    [TAGS.DOMAINE.NUMERIQUE]: '🔢',
+    [TAGS.DOMAINE.GEOMETRIQUE]: '📐',
+    [TAGS.DOMAINE.GRANDEURS]: '📏',
+    [TAGS.DOMAINE.DONNEES]: '📊'
+};
+
+function pictoDe(step) {
+    const chemin = (step.exercise && step.exercise.tags && step.exercise.tags.chemin) || [];
+    for (let i = chemin.length - 1; i >= 0; i--) {
+        if (PICTOS[chemin[i]]) return PICTOS[chemin[i]];
+    }
+    return '✏️';
+}
+
+/**
+ * Une pastille de parcours, identique pour les deux habillages illustrés.
+ * Le numéro n'est pas perdu : il passe dans une petite gommette d'angle.
+ */
+function creerNoeud(step, i, statut, opts) {
+    const node = document.createElement('div');
+    node.className = `world-node world-node--${statut}`;
+
+    const socle = document.createElement('div');
+    socle.className = 'world-node-socle';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'world-node-btn';
+    btn.innerHTML = `<span class="world-node-picto">${statut === 'locked' ? '🔒' : pictoDe(step)}</span>`;
+    btn.title = step.title;
+    btn.setAttribute('aria-label',
+        `Étape ${i + 1} : ${step.title} — ${statut === 'done' ? 'terminé' : statut === 'locked' ? 'à débloquer' : 'jouer'}`);
+    btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
+
+    const rang = document.createElement('span');
+    rang.className = 'world-node-rang';
+    rang.textContent = statut === 'done' ? '★' : String(i + 1);
+
+    socle.append(btn, rang);
+    node.appendChild(socle);
+
+    // Le fanion « c'est ici » : sur une carte, l'élève doit trouver SANS
+    // réfléchir l'endroit où reprendre.
+    if (statut === 'current') {
+        const fanion = document.createElement('span');
+        fanion.className = 'world-node-ici';
+        fanion.textContent = 'C\'est ici !';
+        node.appendChild(fanion);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'world-node-label';
+    label.textContent = step.title;
+
+    const meta = document.createElement('span');
+    meta.className = 'world-node-meta';
+    meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+
+    node.append(label, meta);
+    return node;
+}
+
+/**
+ * Le sentier qui relie les pastilles. Il était dessiné en `::before` par
+ * pastille : des bouts de pointillés horizontaux qui s'arrêtaient au bout de
+ * chaque rangée, sans jamais rejoindre la suivante — le chemin ne menait
+ * nulle part. Il est maintenant tracé d'un seul trait, en SVG, en mesurant
+ * les pastilles APRÈS leur mise en page : courbes douces d'un centre à
+ * l'autre, plein et doré sur la partie déjà parcourue, pointillé devant.
+ */
+function tracerSentier(hote) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'path-trail');
+    svg.setAttribute('aria-hidden', 'true');
+    const fait = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    fait.setAttribute('class', 'path-trail-fait');
+    const reste = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    reste.setAttribute('class', 'path-trail-reste');
+    svg.append(reste, fait);
+    hote.insertBefore(svg, hote.firstChild);
+
+    const redessiner = () => {
+        const cadre = hote.getBoundingClientRect();
+        if (!cadre.width) return;
+        svg.setAttribute('viewBox', `0 0 ${cadre.width} ${cadre.height}`);
+        const noeuds = [...hote.querySelectorAll('.world-node')];
+        const pts = noeuds.map(n => {
+            const r = n.querySelector('.world-node-btn').getBoundingClientRect();
+            return { x: r.left - cadre.left + r.width / 2, y: r.top - cadre.top + r.height / 2 };
+        });
+        // Jusqu'où le chemin est-il parcouru ? Jusqu'à la pastille en cours.
+        let coupe = noeuds.findIndex(n => n.classList.contains('world-node--current'));
+        if (coupe === -1) coupe = noeuds.every(n => n.classList.contains('world-node--done')) ? pts.length - 1 : 0;
+
+        const milieu = cadre.width / 2;
+        const trace = (de, a) => {
+            if (a - de < 1) return '';
+            let d = `M ${pts[de].x} ${pts[de].y}`;
+            for (let i = de + 1; i <= a; i++) {
+                const p = pts[i - 1], q = pts[i];
+                if (noeuds[i].dataset.virage) {
+                    // Changement de rangée : le sentier fait un virage bombé
+                    // VERS L'EXTÉRIEUR, sinon il descend tout droit à travers
+                    // le titre de l'étape qu'il vient de quitter.
+                    const sens = p.x >= milieu ? 1 : -1;
+                    const k = sens * Math.min(70, cadre.width * 0.09);
+                    d += ` C ${p.x + k} ${p.y + (q.y - p.y) * 0.35},`
+                        + ` ${q.x + k} ${q.y - (q.y - p.y) * 0.35}, ${q.x} ${q.y}`;
+                } else {
+                    // Courbe en S : on sort verticalement d'une pastille pour
+                    // entrer verticalement dans la suivante.
+                    const my = (p.y + q.y) / 2;
+                    d += ` C ${p.x} ${my}, ${q.x} ${my}, ${q.x} ${q.y}`;
+                }
+            }
+            return d;
+        };
+        fait.setAttribute('d', trace(0, coupe));
+        reste.setAttribute('d', trace(coupe, pts.length - 1));
+    };
+
+    redessiner();
+    // La mise en page n'est pas figée au moment de la construction (polices,
+    // largeur du panneau) : on retrace à chaque changement de taille.
+    if (typeof ResizeObserver === 'function') {
+        const obs = new ResizeObserver(() => {
+            if (!hote.isConnected) { obs.disconnect(); return; }
+            redessiner();
+        });
+        obs.observe(hote);
+    }
+    requestAnimationFrame(redessiner);
+}
+
 /**
  * Carte des mondes : les étapes serpentent par rangées de trois, reliées par
- * des pointillés, comme la carte d'un jeu de plateforme. Réutilisée par la
+ * un sentier continu, comme la carte d'un jeu de plateforme. Réutilisée par la
  * vue élève et par le mode présentation du professeur.
  *
  * @param {Array} steps
@@ -154,7 +308,6 @@ async function launchAssigned(path, startIndex) {
  * @param {(i:number, statut:string)=>void} [opts.onNodeClick]
  */
 export function buildWorldMap(steps, opts = {}) {
-    const done = opts.doneIds || new Set();
     const map = document.createElement('div');
     map.className = 'world-map';
 
@@ -164,39 +317,24 @@ export function buildWorldMap(steps, opts = {}) {
         const inversee = (debut / PAR_RANGEE) % 2 === 1;
         rangee.className = 'world-row' + (inversee ? ' world-row--reverse' : '');
 
-        steps.slice(debut, debut + PAR_RANGEE).forEach((step, j) => {
+        const paquet = steps.slice(debut, debut + PAR_RANGEE);
+        paquet.forEach((step, j) => {
             const i = debut + j;
-            const isDone = done.has(step.stepId);
-            const isCurrent = !opts.allUnlocked && !isDone && i === opts.currentIndex;
-            const statut = opts.allUnlocked ? 'open'
-                : isDone ? 'done' : (isCurrent ? 'current' : 'locked');
-
-            const node = document.createElement('div');
-            node.className = `world-node world-node--${statut}`;
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'world-node-btn';
-            btn.innerHTML = isDone ? '⭐' : (statut === 'locked' ? '🔒' : String(i + 1));
-            btn.title = step.title;
-            btn.setAttribute('aria-label',
-                `${step.title} — ${statut === 'done' ? 'terminé' : statut === 'locked' ? 'à débloquer' : 'jouer'}`);
-            btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
-
-            const label = document.createElement('span');
-            label.className = 'world-node-label';
-            label.textContent = step.title;
-
-            const meta = document.createElement('span');
-            meta.className = 'world-node-meta';
-            meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
-
-            node.append(btn, label, meta);
-            rangee.appendChild(node);
+            const n = creerNoeud(step, i, statutDe(step, i, opts), opts);
+            if (j === 0 && debut > 0) n.dataset.virage = '1';
+            rangee.appendChild(n);
         });
+        // Une dernière rangée incomplète était étalée par `space-around` : ses
+        // pastilles glissaient au milieu du vide, et le sentier traversait la
+        // carte en diagonale pour aller les chercher. Des cales invisibles
+        // gardent les colonnes alignées d'une rangée à l'autre.
+        for (let c = paquet.length; c < PAR_RANGEE; c++) {
+            rangee.appendChild(Object.assign(document.createElement('div'), { className: 'world-cale' }));
+        }
 
         map.appendChild(rangee);
     }
+    tracerSentier(map);
     return map;
 }
 
@@ -272,30 +410,15 @@ export function buildDuoPath(steps, opts = {}) {
     chemin.className = 'duo-path';
 
     steps.forEach((step, i) => {
-        const statut = statutDe(step, i, opts);
-        const node = document.createElement('div');
-        node.className = `duo-node world-node--${statut}`;
-        // Serpentin : décalage sinusoïdal autour de l'axe.
-        const offset = Math.round(Math.sin(i * 1.1) * 70);
-        node.style.transform = `translateX(${offset}px)`;
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'world-node-btn';
-        btn.innerHTML = statut === 'done' ? '⭐' : (statut === 'locked' ? '🔒' : String(i + 1));
-        btn.title = step.title;
-        btn.setAttribute('aria-label',
-            `${step.title} — ${statut === 'done' ? 'terminé' : statut === 'locked' ? 'à débloquer' : 'jouer'}`);
-        btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
-
-        const label = document.createElement('div');
-        label.className = 'duo-node-label';
-        label.innerHTML = `<span class="world-node-label">${escapeHtml(step.title)}</span>
-            <span class="world-node-meta">${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}</span>`;
-
-        node.append(btn, label);
+        const node = creerNoeud(step, i, statutDe(step, i, opts), opts);
+        node.classList.add('duo-node');
+        // Serpentin : décalage sinusoïdal autour de l'axe, en pourcentage de
+        // la largeur disponible pour que la courbe tienne aussi sur un
+        // téléphone (en pixels fixes, les pastilles sortaient du cadre).
+        node.style.setProperty('--duo-decalage', `${(Math.sin(i * 1.05) * 20).toFixed(1)}%`);
         chemin.appendChild(node);
     });
+    tracerSentier(chemin);
     return chemin;
 }
 
