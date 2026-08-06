@@ -1,56 +1,66 @@
+// Célébration des médailles.
+//
+// Une modale par badge était tenable tant qu'ils tombaient un par un. Avec
+// quatre paliers dans chaque famille, une bonne séance en décroche parfois
+// cinq d'un coup — et cinq modales empilées, ce n'est plus une récompense,
+// c'est un péage. On REGROUPE donc ce qui arrive dans la même seconde en une
+// seule annonce.
+
 import { badgesCatalog } from '../core/gamification.js';
 import { showModal } from './modal.js';
 
+const attente = [];
+let minuteur = null;
+
 export function initGamificationUI() {
     document.addEventListener('badge_unlocked', (e) => {
-        const badgeId = e.detail;
-        const badgeDef = badgesCatalog[badgeId];
-        
-        if (!badgeDef) return;
-
-        // Lancer les confettis
-        if (typeof confetti !== 'undefined') {
-            const duration = 3000;
-            const end = Date.now() + duration;
-
-            (function frame() {
-                confetti({
-                    particleCount: 5,
-                    angle: 60,
-                    spread: 55,
-                    origin: { x: 0 },
-                    colors: ['#3b82f6', '#10b981', '#f59e0b']
-                });
-                confetti({
-                    particleCount: 5,
-                    angle: 120,
-                    spread: 55,
-                    origin: { x: 1 },
-                    colors: ['#3b82f6', '#10b981', '#f59e0b']
-                });
-
-                if (Date.now() < end) {
-                    requestAnimationFrame(frame);
-                }
-            }());
-        }
-
-        // Afficher une belle modale de célébration
-        const contentHTML = `
-            <div style="text-align:center; padding:20px 0;">
-                <div style="font-size:4rem; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">${badgeDef.icon}</div>
-                <h2 style="color:var(--primary); font-size:2rem; margin:15px 0;">Badge Débloqué !</h2>
-                <h3 style="color:var(--text-main); font-size:1.5rem; margin-bottom:10px;">${badgeDef.title}</h3>
-                <p style="color:var(--text-muted); font-size:1.1rem; line-height:1.5;">${badgeDef.description}</p>
-                <button class="badge-ok-btn" style="margin-top:25px; background:var(--primary); color:white; border:none; padding:12px 30px; border-radius:12px; font-size:1.2rem; cursor:pointer; font-weight:bold; box-shadow:0 4px 12px rgba(59,130,246,0.3);">Super !</button>
-            </div>
-        `;
-        
-        const modal = showModal('', contentHTML, { width: '450px' });
-        
-        const okBtn = modal.element.querySelector('.badge-ok-btn');
-        if (okBtn) {
-            okBtn.onclick = () => modal.close();
-        }
+        const def = badgesCatalog[e.detail];
+        if (!def) return;
+        attente.push(def);
+        clearTimeout(minuteur);
+        minuteur = setTimeout(annoncer, 260);
     });
+}
+
+function annoncer() {
+    const lot = attente.splice(0, attente.length);
+    if (!lot.length) return;
+
+    confettis();
+
+    const pluriel = lot.length > 1;
+    const cartes = lot.map(b => `
+        <div class="badge-won${b.medal ? ` badge-won--${b.medal}` : ''}">
+            <div class="badge-won-icon">${b.icon}</div>
+            <div>
+                <div class="badge-won-title">${echapper(b.title)}</div>
+                <div class="badge-won-desc">${echapper(b.description)}</div>
+            </div>
+        </div>`).join('');
+
+    const contenu = `
+        <div class="badge-modal">
+            <h2 class="badge-modal-titre">${pluriel ? `${lot.length} récompenses débloquées !` : 'Badge débloqué !'}</h2>
+            <div class="badge-won-list">${cartes}</div>
+            <button class="badge-ok-btn">Super !</button>
+        </div>`;
+
+    const modal = showModal('', contenu, { width: '460px' });
+    const ok = modal.element.querySelector('.badge-ok-btn');
+    if (ok) ok.onclick = () => modal.close();
+}
+
+function confettis() {
+    if (typeof confetti === 'undefined') return;
+    const fin = Date.now() + 2200;
+    (function image() {
+        const couleurs = ['#3b82f6', '#10b981', '#f59e0b'];
+        confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: couleurs });
+        confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: couleurs });
+        if (Date.now() < fin) requestAnimationFrame(image);
+    }());
+}
+
+function echapper(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }

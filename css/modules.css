@@ -899,6 +899,128 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
     background: var(--bg-app); border: 1px solid var(--border); border-radius: 50%;
 }
 
+/* --- Médailles par famille : bronze, argent, or, platine ------------------
+   Quarante vignettes en vrac, dont trente-cinq cadenassées, ne disent rien.
+   Rangées par famille, les quatre paliers alignés et une barre qui montre où
+   l'on en est du suivant, elles redeviennent des objectifs. */
+.medal-families {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px; margin-top: 18px;
+}
+.medal-family {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 10px 12px 12px;
+}
+.medal-family-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.medal-family-icon { font-size: 1.2rem; }
+.medal-family-title { font-weight: 800; font-size: .92rem; color: var(--text-main); flex: 1; min-width: 0; }
+.medal-family-count {
+    font-size: .74rem; font-weight: 800; color: var(--text-muted);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.medal-row { display: flex; gap: 6px; }
+.medal-chip {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 5px 2px;
+    background: var(--bg-app);
+}
+.medal-chip-icon { font-size: 1.15rem; line-height: 1.1; }
+.medal-chip-seuil { font-size: .66rem; font-weight: 800; color: var(--text-muted); }
+.medal-chip--off { opacity: .45; filter: grayscale(100%); }
+.medal-chip--bronze { border-color: #b45309; background: linear-gradient(160deg, #fff7ed, #fed7aa55); }
+.medal-chip--argent { border-color: #94a3b8; background: linear-gradient(160deg, #f8fafc, #cbd5e155); }
+.medal-chip--or { border-color: #f59e0b; background: linear-gradient(160deg, #fffbeb, #fde68a66); }
+.medal-chip--platine {
+    border-color: #22d3ee; background: linear-gradient(160deg, #ecfeff, #a5f3fc66);
+    box-shadow: 0 0 10px rgba(34, 211, 238, .35);
+}
+html[data-theme="dark"] .medal-chip--bronze { background: linear-gradient(160deg, #451a0355, #b4530922); }
+html[data-theme="dark"] .medal-chip--argent { background: linear-gradient(160deg, #1e293b88, #94a3b822); }
+html[data-theme="dark"] .medal-chip--or { background: linear-gradient(160deg, #45230655, #f59e0b22); }
+html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160deg, #08334455, #22d3ee22); }
+.medal-bar {
+    height: 5px; background: var(--border); border-radius: 999px; margin-top: 8px; overflow: hidden;
+}
+.medal-bar > div { height: 100%; background: var(--primary); border-radius: 999px; transition: width .4s; }
+
+/* Annonce des récompenses : une seule modale, même quand plusieurs paliers
+   tombent ensemble. */
+.badge-modal { text-align: center; padding: 6px 0; }
+.badge-modal-titre { color: var(--primary); font-size: 1.5rem; margin: 0 0 16px; }
+.badge-won-list { display: flex; flex-direction: column; gap: 9px; }
+.badge-won {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px;
+    background: var(--bg-app);
+}
+.badge-won--bronze { border-color: #b45309; }
+.badge-won--argent { border-color: #94a3b8; }
+.badge-won--or { border-color: #f59e0b; }
+.badge-won--platine { border-color: #22d3ee; box-shadow: 0 0 12px rgba(34, 211, 238, .3); }
+.badge-won-icon { font-size: 2.1rem; line-height: 1; }
+.badge-won-title { font-weight: 800; color: var(--text-main); }
+.badge-won-desc { font-size: .85rem; color: var(--text-muted); line-height: 1.35; }
+.badge-ok-btn {
+    margin-top: 18px; background: var(--primary); color: #fff; border: none;
+    padding: 11px 30px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, .3);
+}
+
+/* --- Plan de révision : « je révise quoi, là, maintenant ? » -------------- */
+.plan-card {
+    display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 4px solid var(--primary); border-radius: 12px; padding: 12px 14px;
+}
+.plan-rang {
+    flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: #fff; font-weight: 900; font-size: .85rem;
+    display: flex; align-items: center; justify-content: center;
+}
+.plan-corps { flex: 1; min-width: 0; }
+.plan-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.plan-titre { font-weight: 800; color: var(--text-main); }
+.plan-motif {
+    font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
+    border-radius: 999px; padding: 2px 8px;
+    background: var(--tag-dom-bg); color: var(--tag-dom-txt);
+}
+.plan-motif--remediation { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.plan-motif--revision { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
+.plan-lecon { margin: 5px 0 0; font-size: .85rem; line-height: 1.4; color: var(--text-muted); }
+.plan-exos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.plan-exo {
+    border: 1.5px solid var(--border); background: var(--bg-app); color: var(--text-main);
+    border-radius: 999px; padding: 4px 11px; font-size: .78rem; font-weight: 700; cursor: pointer;
+}
+.plan-exo:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Les erreurs venues des jeux, mises de côté sans être perdues. */
+.error-note-jeux {
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    border: 1px dashed var(--border); border-radius: 12px;
+    padding: 9px 12px; margin-bottom: 12px;
+    font-size: .82rem; line-height: 1.4; color: var(--text-muted);
+}
+
+/* --- Console embarquée ---------------------------------------------------- */
+.console-modal { display: flex; flex-direction: column; gap: 10px; }
+.console-resume { display: flex; align-items: center; gap: 10px; }
+.console-pastille { border-radius: 999px; padding: 3px 10px; font-size: .78rem; font-weight: 800; }
+.console-pastille--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
+.console-pastille--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.console-lignes { font-size: .78rem; color: var(--text-muted); font-weight: 700; }
+.console-zone {
+    width: 100%; min-height: 46vh; box-sizing: border-box; resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; line-height: 1.45;
+    background: var(--bg-app); color: var(--text-main);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px; white-space: pre;
+}
+.console-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.console-actions .btn-toggle { border-color: var(--border); }
+.btn-toggle--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-toggle--primary:hover { filter: brightness(1.08); color: #fff; }
+
 /* --- Profils multiples sur un même poste ------------------- */
 
 .profile-switcher { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 30px; }

@@ -17,7 +17,7 @@ import { journal, EventTypes } from './journal.js';
 import { initIdentity, getActiveProfileId, getDeviceId, namespaceFor } from './profile.js';
 import {
     computeScore, computeTime, computeBadges, computeAttempts, computeErrors,
-    countCorrect, computeAssignedPath, errorKeyOf
+    countCorrect, computeAssignedPath, errorKeyOf, computeExploits
 } from './projections.js';
 import { computeMastery } from './mastery.js';
 import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
@@ -105,6 +105,7 @@ export const state = {
     get timeSpentPerGame() { return memo('time', () => computeTime(journal.all())).perExercise; },
     get studentPath() { return memo('assigned', () => computeAssignedPath(journal.all())); },
     get correctCount() { return memo('correct', () => countCorrect(journal.all())); },
+    get exploits() { return memo('exploits', () => computeExploits(journal.all())); },
 
     // --- Cycle de vie -------------------------------------------------------
 

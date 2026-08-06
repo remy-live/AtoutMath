@@ -213,10 +213,18 @@ class Escadrille extends BaseGame {
      * jouée sans avoir compris la consigne — et le décompte fait sa part :
      * on est prêt, doigt sur l'écran, quand les premiers appareils arrivent.
      */
+    /**
+     * Le briefing ATTEND l'élève.
+     *
+     * Il partait tout seul au bout de deux secondes et demie : le temps de
+     * lire « Abats tout ce qui n'est PAS dans la table de 7 », le décompte
+     * était lancé, et les élèves lents à lire — ceux à qui la règle sert le
+     * plus — commençaient la partie sans l'avoir comprise. On ne devine pas
+     * combien de temps il faut à quelqu'un pour lire : on lui demande.
+     */
     lancerBriefing() {
         this.phase = 'briefing';
         this.compte = 0;
-        regTimeout(() => { if (this.isRunning) this.decompte(3); }, 2600);
     }
 
     decompte(n) {
@@ -238,6 +246,10 @@ class Escadrille extends BaseGame {
         this.onDown = (e) => {
             if (!this.isRunning) return;
             e.preventDefault();
+            // Pendant le briefing, l'écran entier est le bouton « C'est parti »
+            // : c'est la cible la plus facile à atteindre au doigt, et il n'y a
+            // rien d'autre à faire à ce moment-là.
+            if (this.phase === 'briefing') { this.decompte(3); return; }
             depart = pos(e); bouge = 0;
             this.vaisseau.cible = depart.x;
         };
@@ -526,9 +538,22 @@ class Escadrille extends BaseGame {
             T('MISSION', h * 0.28, u * 0.062, '#a5b4fc');
             T('Abats tout ce qui n\'est PAS', h * 0.38, u * 0.068, '#e2e8f0');
             T(`dans la table de ${this.table}`, h * 0.45, u * 0.068, '#e2e8f0');
-            T(`Les multiples de ${this.table} sont des AMIS :`, h * 0.57, u * 0.046, '#fcd34d', 800);
-            T('laisse-les passer.', h * 0.63, u * 0.046, '#fcd34d', 800);
-            T('Glisse pour piloter · tape pour tirer', h * 0.76, u * 0.04, '#94a3b8', 700);
+            T(`Les multiples de ${this.table} sont des AMIS :`, h * 0.55, u * 0.046, '#fcd34d', 800);
+            T('laisse-les passer.', h * 0.61, u * 0.046, '#fcd34d', 800);
+            T('Glisse pour piloter · tape pour tirer', h * 0.68, u * 0.04, '#94a3b8', 700);
+
+            // Le bouton : dessiné pour être vu, mais c'est tout l'écran qui
+            // répond — on ne demande pas de viser à quelqu'un qui lit.
+            const bw = Math.min(w - 60, u * 0.62), bh = u * 0.12;
+            const bx = (w - bw) / 2, by = h * 0.80 - bh / 2;
+            const pulse = 0.5 + 0.5 * Math.sin(this.frame / 18);
+            c.fillStyle = '#22d3ee';
+            c.shadowColor = 'rgba(34,211,238,.8)'; c.shadowBlur = 12 + pulse * 16;
+            c.beginPath(); c.roundRect(bx, by, bw, bh, bh / 2); c.fill();
+            c.shadowBlur = 0;
+            c.fillStyle = '#042f2e';
+            c.font = `900 ${Math.round(bh * 0.42)}px 'Inter', system-ui, sans-serif`;
+            c.fillText('C\'EST PARTI !', w / 2, by + bh / 2);
         } else {
             const txt = this.compte > 0 ? String(this.compte) : 'GO !';
             // Le chiffre grossit et s'efface : on le voit même en clignant.

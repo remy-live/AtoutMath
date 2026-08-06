@@ -64,6 +64,35 @@ export function countCorrect(events) {
     return n;
 }
 
+/**
+ * Compteurs d'exploits : ce qu'il faut savoir pour décerner les médailles.
+ *
+ * Rassemblés en une seule passe plutôt que calculés badge par badge : le
+ * journal peut compter des dizaines de milliers d'événements, et le moteur de
+ * médailles est appelé à chaque réponse.
+ *
+ * `serie` est la plus longue suite de bonnes réponses consécutives — la seule
+ * mesure qui distingue « répond juste la moitié du temps » de « ne se trompe
+ * plus ». `rapides` ne compte que les réponses justes obtenues en moins de
+ * trois secondes : la vitesse sans la justesse ne vaut rien.
+ */
+export function computeExploits(events) {
+    const jours = new Set(), exercices = new Set();
+    let rapides = 0, serie = 0, courante = 0;
+    for (const e of events) {
+        if (e.type !== A.ATTEMPT) continue;
+        const p = e.payload;
+        jours.add(new Date(e.ts).toISOString().slice(0, 10));
+        if (p.exerciseId) exercices.add(p.exerciseId);
+        if (p.correct) {
+            courante++;
+            if (courante > serie) serie = courante;
+            if (p.msElapsed > 0 && p.msElapsed < 3000) rapides++;
+        } else courante = 0;
+    }
+    return { jours: jours.size, exercices: exercices.size, rapides, serie };
+}
+
 // Clé d'identité d'une question, pour regrouper les erreurs répétées sur le
 // même item et savoir laquelle a été corrigée.
 export function errorKeyOf(p) {

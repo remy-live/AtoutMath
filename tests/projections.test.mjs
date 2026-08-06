@@ -4,7 +4,7 @@ import './helpers.mjs';
 import { attempt, event } from './helpers.mjs';
 import {
     computeScore, computeErrors, openErrors, computeRuns,
-    computeAssignedPath, computeTime, computeBadges, countCorrect
+    computeAssignedPath, computeTime, computeBadges, countCorrect, computeExploits
 } from '../js/core/projections.js';
 
 test('le score est la somme des points portés par les événements', () => {
@@ -90,4 +90,38 @@ test('temps, badges et compteur de réussites', () => {
     assert.equal(time.perExercise['calc-add'], 120);
     assert.equal(Object.keys(computeBadges(events)).length, 1);
     assert.equal(countCorrect(events), 1);
+});
+
+// --- Exploits (médailles) ----------------------------------------------------
+
+test('la série compte la plus longue suite de bonnes réponses', () => {
+    const events = [
+        attempt({ correct: true }), attempt({ correct: true }), attempt({ correct: true }),
+        attempt({ correct: false }),
+        attempt({ correct: true }), attempt({ correct: true })
+    ];
+    assert.equal(computeExploits(events).serie, 3);
+});
+
+test('seules les bonnes réponses rapides comptent comme éclairs', () => {
+    const events = [
+        attempt({ correct: true, msElapsed: 1200 }),
+        attempt({ correct: true, msElapsed: 9000 }),
+        attempt({ correct: false, msElapsed: 500 }),   // rapide mais faux
+        attempt({ correct: true, msElapsed: 0 })       // durée inconnue
+    ];
+    assert.equal(computeExploits(events).rapides, 1);
+});
+
+test('les jours de pratique et les exercices essayés sont comptés sans doublon', () => {
+    const jour = 24 * 3600 * 1000;
+    const t0 = Date.parse('2026-03-02T09:00:00Z');
+    const events = [
+        attempt({ ts: t0, exerciseId: 'a' }),
+        attempt({ ts: t0 + 3600e3, exerciseId: 'a' }),   // même jour, même exercice
+        attempt({ ts: t0 + jour, exerciseId: 'b' })
+    ];
+    const x = computeExploits(events);
+    assert.equal(x.jours, 2);
+    assert.equal(x.exercices, 2);
 });

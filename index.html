@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=55">
-    <link rel="stylesheet" href="css/layout.css?v=55">
-    <link rel="stylesheet" href="css/ui.css?v=55">
-    <link rel="stylesheet" href="css/games.css?v=55">
-    <link rel="stylesheet" href="css/components.css?v=55">
-    <link rel="stylesheet" href="css/modules.css?v=55">
+    <link rel="stylesheet" href="css/base.css?v=56">
+    <link rel="stylesheet" href="css/layout.css?v=56">
+    <link rel="stylesheet" href="css/ui.css?v=56">
+    <link rel="stylesheet" href="css/games.css?v=56">
+    <link rel="stylesheet" href="css/components.css?v=56">
+    <link rel="stylesheet" href="css/modules.css?v=56">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -48,6 +48,9 @@
                     aria-label="Vider la sauvegarde locale">🗑️</button>
             <button class="debug-btn" id="db-fake-data" title="Générer des données d'exemple"
                     aria-label="Générer des données d'exemple">🧪</button>
+            <!-- Console embarquée : sur téléphone il n'y en a pas d'autre. -->
+            <button class="debug-btn" id="db-console" title="Console : voir et copier le journal"
+                    aria-label="Ouvrir la console">🖥️</button>
         </div>
         <!-- Numéro de version RÉELLEMENT chargée (lu sur l'URL du CSS) :
              pour savoir d'un coup d'œil si le téléphone a la dernière. -->
@@ -328,6 +331,15 @@
                             progression et ses statistiques séparément.</p>
                         <div id="profile-switcher" class="profile-switcher"></div>
 
+                        <!-- Ce qu'il faut réviser : la seule section qui dise à
+                             l'élève quoi faire MAINTENANT, avec les exercices
+                             correspondants à portée de clic. -->
+                        <div class="section-header-row">
+                            <h3 class="section-title">Ce que tu dois réviser</h3>
+                            <button id="btn-seance-conseillee" class="btn-toggle">▶ Lancer la séance conseillée</button>
+                        </div>
+                        <div id="revision-plan-container"></div>
+
                         <h3 class="section-title">Forces &amp; Points à Travailler</h3>
                         <div id="skill-stats-container">
                             <div class="empty-state-msg">Joue à quelques exercices pour voir apparaître tes points forts et tes points à travailler ici.</div>
@@ -336,6 +348,14 @@
                         <div class="section-header-row">
                             <h3 class="section-title">Carnet d'Erreurs</h3>
                             <div class="section-header-actions">
+                                <!-- Les jeux d'arcade produisent des dizaines de
+                                     fautes par partie : elles nourrissent le
+                                     modèle de maîtrise mais noieraient le carnet.
+                                     Elles sont donc repliées par défaut. -->
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="profile-show-games">
+                                    Inclure les jeux
+                                </label>
                                 <label class="checkbox-label">
                                     <input type="checkbox" id="profile-group-exo" checked>
                                     Grouper par exercice

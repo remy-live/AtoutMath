@@ -9,18 +9,26 @@
 //    questions ratées à l'identique grâce à leur graine.
 
 import { state } from '../core/state.js';
-import { badgesCatalog } from '../core/gamification.js';
+import { badgesCatalog, progressionFamilles } from '../core/gamification.js';
 import { computeSkillStats, getWeakSkills, getStrongSkills, getTotalCorrectCount, getDueSkills } from '../core/stats.js';
 import { getSkill, skillLabel } from '../data/skills.js';
-import { startErrorReview, startSkillSession } from '../core/remediation.js';
+import { exercisesForSkill, getExerciseById } from '../data/catalog.js';
+import { isGame } from '../core/gameAccess.js';
+import {
+    startErrorReview, startSkillSession, startRecommendedSession, buildRecommendedPreview
+} from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import { listProfiles, getActiveProfileId, createProfile, renameProfile, deleteProfile } from '../core/profile.js';
 import { showConfirm } from './modal.js';
 
 export function initProfileUI() {
-    document.addEventListener('errors_updated', renderErrors);
-    document.addEventListener('attempts_updated', () => { renderSkills(); renderHeader(); });
-    document.addEventListener('score_updated', renderHeader);
+    document.addEventListener('errors_updated', () => { renderErrors(); renderPlan(); });
+    // Les médailles se rafraîchissent aussi sur les tentatives : leurs barres
+    // suivent la série, la vitesse et la régularité, pas seulement le score.
+    document.addEventListener('attempts_updated', () => {
+        renderSkills(); renderHeader(); renderPlan(); renderBadges();
+    });
+    document.addEventListener('score_updated', () => { renderHeader(); renderBadges(); });
     document.addEventListener('time_updated', renderHeader);
     document.addEventListener('badges_updated', renderBadges);
     document.addEventListener('profiles_updated', renderProfiles);
@@ -28,12 +36,18 @@ export function initProfileUI() {
     const btnRevision = document.getElementById('btn-start-revision');
     if (btnRevision) btnRevision.onclick = () => startErrorReview();
 
-    const toggle = document.getElementById('profile-group-exo');
-    if (toggle) toggle.addEventListener('change', renderErrors);
+    const btnSeance = document.getElementById('btn-seance-conseillee');
+    if (btnSeance) btnSeance.onclick = () => startRecommendedSession();
+
+    ['profile-group-exo', 'profile-show-games'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', renderErrors);
+    });
 
     initProfileSwitcher();
 
     renderHeader();
+    renderPlan();
     renderSkills();
     renderErrors();
     renderBadges();
@@ -66,6 +80,65 @@ function renderHeader() {
             <div class="profile-xp-bar"><div style="width:${xpInLevel}%"></div></div>
             <div class="profile-xp-text">${xpInLevel} / 100 XP avant le niveau ${level + 1}</div>`;
     }
+}
+
+// --- Plan de révision --------------------------------------------------------
+//
+// Le profil disait à l'élève CE QU'IL VAUT (des pourcentages, des niveaux) mais
+// jamais CE QU'IL DOIT FAIRE. Cette section répond à la seule question qui
+// compte quand on ouvre son profil : « je révise quoi, là, maintenant ? ».
+//
+// Trois notions au plus, chacune avec le motif qui l'a fait remonter, la leçon
+// en une phrase, et les exercices qui la travaillent — cliquables. Au-delà de
+// trois, ce n'est plus un plan, c'est une liste.
+
+function renderPlan() {
+    const container = document.getElementById('revision-plan-container');
+    const btn = document.getElementById('btn-seance-conseillee');
+    if (!container) return;
+
+    const plan = buildRecommendedPreview(3);
+    if (!plan.length) {
+        container.innerHTML = `<div class="empty-state-msg">Fais quelques exercices : ton plan de révision
+            se construira tout seul à partir de ce que tu réussis et de ce que tu rates.</div>`;
+        if (btn) btn.style.display = 'none';
+        return;
+    }
+    if (btn) btn.style.display = 'inline-flex';
+
+    container.innerHTML = plan.map((r, i) => {
+        const def = getSkill(r.skillId);
+        const lecon = def && def.lesson ? `<p class="plan-lecon">${escapeHtml(def.lesson)}</p>` : '';
+        const exos = exercisesForSkill(r.skillId).slice(0, 3);
+        const liens = exos.length
+            ? `<div class="plan-exos">${exos.map(e =>
+                `<button class="plan-exo" data-exo="${escapeHtml(e.id)}">${escapeHtml(e.title)}</button>`).join('')}</div>`
+            : '';
+        return `
+        <div class="plan-card">
+            <div class="plan-rang">${i + 1}</div>
+            <div class="plan-corps">
+                <div class="plan-head">
+                    <span class="plan-titre">${escapeHtml(r.label)}</span>
+                    <span class="plan-motif plan-motif--${r.reason}">${escapeHtml(r.motif || '')}</span>
+                </div>
+                ${lecon}${liens}
+            </div>
+            <button class="btn-toggle btn-toggle--sm" data-plan-revise="${escapeHtml(r.skillId)}">Réviser</button>
+        </div>`;
+    }).join('');
+
+    container.querySelectorAll('[data-plan-revise]').forEach(b => {
+        b.onclick = () => startSkillSession(b.dataset.planRevise);
+    });
+    container.querySelectorAll('[data-exo]').forEach(b => {
+        b.onclick = async () => {
+            const exo = getExerciseById(b.dataset.exo);
+            if (!exo) return;
+            const { openGameLayer } = await import('../games/engine.js');
+            openGameLayer(exo, false);
+        };
+    });
 }
 
 // --- Compétences ------------------------------------------------------------
@@ -122,17 +195,37 @@ function skillRow(skill, actionable) {
 
 // --- Carnet d'erreurs -------------------------------------------------------
 
+/**
+ * Une erreur vient-elle d'un jeu d'arcade ?
+ *
+ * La question n'est pas cosmétique : une partie d'« Escadrille des Tables »
+ * produit trente fautes en deux minutes. Les ENREGISTRER est juste — c'est ce
+ * qui alimente le modèle de maîtrise et le plan de révision, et les tables
+ * ratées en jeu sont exactement celles qu'il faut retravailler. Les AFFICHER
+ * une par une noierait les erreurs d'exercice, qui sont, elles, réfléchies.
+ * On les garde donc, repliées derrière un compteur.
+ */
+function estDunJeu(err) {
+    const exo = err.exoId ? getExerciseById(err.exoId) : null;
+    return !!(exo && isGame(exo));
+}
+
 function renderErrors() {
     const container = document.getElementById('error-log-container');
     const btnStart = document.getElementById('btn-start-revision');
     if (!container) return;
 
-    const errors = state.errorHistory;
-    if (!errors.length) {
+    const toutes = state.errorHistory;
+    if (!toutes.length) {
         container.innerHTML = `<div class="empty-state-msg">Bravo ! Aucune erreur en attente de révision.</div>`;
         if (btnStart) btnStart.style.display = 'none';
         return;
     }
+
+    const avecJeux = document.getElementById('profile-show-games');
+    const montrerJeux = avecJeux ? avecJeux.checked : false;
+    const desJeux = toutes.filter(estDunJeu);
+    const errors = montrerJeux ? toutes : toutes.filter(e => !estDunJeu(e));
 
     const open = errors.filter(e => !e.corrected);
     if (btnStart) {
@@ -143,7 +236,20 @@ function renderErrors() {
     const grouped = document.getElementById('profile-group-exo');
     const byExercise = grouped ? grouped.checked : true;
 
-    container.innerHTML = byExercise ? groupedHtml(errors) : flatHtml(errors);
+    const noteJeux = (!montrerJeux && desJeux.length)
+        ? `<div class="error-note-jeux">🎮 ${desJeux.length} erreur${desJeux.length > 1 ? 's' : ''}
+             venant des jeux ${desJeux.length > 1 ? 'sont mises' : 'est mise'} de côté :
+             elles comptent pour tes révisions, mais elles encombreraient ce carnet.
+             Coche « Inclure les jeux » pour les voir.</div>`
+        : '';
+
+    if (!errors.length) {
+        container.innerHTML = noteJeux
+            + `<div class="empty-state-msg">Aucune erreur d'exercice en attente. Beau travail !</div>`;
+        return;
+    }
+
+    container.innerHTML = noteJeux + (byExercise ? groupedHtml(errors) : flatHtml(errors));
 
     container.querySelectorAll('[data-remove]').forEach(btn => {
         btn.onclick = () => state.removeError(btn.dataset.remove);
@@ -211,19 +317,63 @@ function deleteBtn(err) {
 
 // --- Badges -----------------------------------------------------------------
 
+/**
+ * Les médailles par FAMILLE plutôt qu'en vrac.
+ *
+ * Une grille de quarante vignettes dont trente-cinq sont cadenassées ne dit
+ * rien : on ne sait ni ce qui est proche, ni ce qui est hors de portée. Rangées
+ * par famille, avec les quatre paliers alignés et une barre qui montre où l'on
+ * en est du palier suivant, elles redeviennent des objectifs.
+ */
 function renderBadges() {
     const container = document.getElementById('profile-badges-container');
     if (!container) return;
-    const unlockedMap = state.badges;
-    container.innerHTML = `<div class="badges-grid">${Object.values(badgesCatalog).map(b => {
-        const unlocked = !!unlockedMap[b.id];
-        const medal = b.medal ? ` badge-card--${b.medal}` : '';
-        return `<div class="badge-card ${unlocked ? 'badge-card--on' : ''}${unlocked ? medal : ''}" title="${escapeHtml(b.description)}">
-            <div class="badge-icon">${b.icon}</div>
-            <div class="badge-title">${escapeHtml(b.title)}</div>
-            ${unlocked ? '' : '<div class="badge-lock" aria-label="Verrouillé">🔒</div>'}
+    const acquis = state.badges;
+
+    const uniques = Object.values(badgesCatalog).filter(b => !b.famille);
+    const lignes = progressionFamilles().map(f => {
+        const paliers = f.paliers.map(p => {
+            const def = badgesCatalog[p.id];
+            return `<div class="medal-chip ${p.acquis ? `medal-chip--${p.medal}` : 'medal-chip--off'}"
+                         title="${escapeHtml(def.title)} — ${escapeHtml(def.description)}">
+                        <span class="medal-chip-icon">${p.acquis ? def.icon : '🔒'}</span>
+                        <span class="medal-chip-seuil">${seuilCourt(f.cle, p.seuil)}</span>
+                    </div>`;
+        }).join('');
+        const reste = f.suivant
+            ? `${seuilCourt(f.cle, f.valeur)} / ${seuilCourt(f.cle, f.suivant)}`
+            : 'Tous les paliers !';
+        return `
+        <div class="medal-family">
+            <div class="medal-family-head">
+                <span class="medal-family-icon">${f.icone}</span>
+                <span class="medal-family-title">${escapeHtml(f.titre)}</span>
+                <span class="medal-family-count">${reste}</span>
+            </div>
+            <div class="medal-row">${paliers}</div>
+            <div class="medal-bar"><div style="width:${Math.round(f.part * 100)}%"></div></div>
         </div>`;
-    }).join('')}</div>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="badges-grid">${uniques.map(b => {
+        const on = !!acquis[b.id];
+        return `<div class="badge-card ${on ? 'badge-card--on' : ''}" title="${escapeHtml(b.description)}">
+                <div class="badge-icon">${b.icon}</div>
+                <div class="badge-title">${escapeHtml(b.title)}</div>
+                ${on ? '' : '<div class="badge-lock" aria-label="Verrouillé">🔒</div>'}
+            </div>`;
+    }).join('')}</div>
+        <div class="medal-families">${lignes}</div>`;
+}
+
+/** Un seuil lisible d'un coup d'œil : les secondes deviennent des heures. */
+function seuilCourt(famille, n) {
+    if (famille === 'assidu') {
+        if (n < 3600) return `${Math.round(n / 60)} min`;
+        return `${Math.round(n / 360) / 10} h`.replace('.', ',');
+    }
+    return n >= 1000 ? `${Math.round(n / 100) / 10} k`.replace('.', ',') : String(n);
 }
 
 // --- Profils sur un même poste ---------------------------------------------

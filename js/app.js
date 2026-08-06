@@ -5,6 +5,11 @@
 // configuration et les compétences travaillées). D'où cet import en premier.
 import './core/activities/index.js';
 
+// La capture de console s'installe AVANT tout le reste : une erreur survenue
+// au démarrage est précisément celle qu'on veut pouvoir relire.
+import { initConsoleCapture, openConsoleModal } from './ui/consoleLog.js';
+initConsoleCapture();
+
 import { state } from './core/state.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
@@ -540,6 +545,9 @@ function initDebugToolbar() {
 
     const btnFake = document.getElementById('db-fake-data');
     if (btnFake) btnFake.onclick = generateSampleData;
+
+    const btnConsole = document.getElementById('db-console');
+    if (btnConsole) btnConsole.onclick = () => openConsoleModal();
 }
 
 /**
