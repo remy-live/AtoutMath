@@ -243,13 +243,38 @@ export function mount(container, session, opts = {}) {
      * L'UNITÉ ensuite, et c'est elle qui manquait : cadrer ne suffit pas quand
      * la figure elle-même est grande. Un côté de 180 pas fait dix-huit
      * carreaux de dix, et dix-huit carreaux par côté, ça ne se compte plus.
-     * On prend donc la plus petite unité RONDE (10, 20, 25, 50, 100) qui tient
-     * le quadrillage sous seize carreaux de large. Le carreau vaut alors 20 ou
-     * 50 pas au lieu de 10 — et la légende le dit, en toutes lettres, en bas
-     * de la scène. Compter reste possible ; c'était tout l'objet du carreau.
+     * On prend donc la plus petite unité RONDE qui tient le quadrillage sous
+     * dix-huit carreaux de large — et la légende dit ce qu'elle vaut.
+     *
+     * Mais une unité ne se choisit pas sur la seule densité : elle doit
+     * DIVISER ce que le chat parcourt. Un escalier à marches de 70 pas sur un
+     * carreau de 20 tombait entre deux lignes à chaque marche ; la maison à
+     * côtés de 160 sur un carreau de 25 aussi. On mesure donc le pas commun du
+     * modèle (le PGCD de ses « avancer » et de ses « aller à ») et on ne
+     * retient que les unités qui le divisent. Un côté vaut alors toujours un
+     * nombre ENTIER de carreaux, ce qui est la seule raison d'avoir un
+     * quadrillage.
      */
     const UNITES = [10, 20, 25, 50, 100];
-    const MAX_CARREAUX = 16;
+    const MAX_CARREAUX = 18;
+
+    const pgcd = (a, b) => (b ? pgcd(b, a % b) : a);
+
+    /** Le pas commun du modèle : tout déplacement du chat en est un multiple. */
+    function pasDuModele(script) {
+        let g = 0;
+        const voir = (v) => {
+            const n = Math.abs(Math.round(Number(v) || 0));
+            if (n) g = pgcd(g, n);
+        };
+        const parcourir = (blocs) => (blocs || []).forEach(b => {
+            if (b.type === 'avancer') voir(b.valeur);
+            if (b.type === 'allerA') { voir(b.valeur); voir(b.valeur2); }
+            if (b.corps) parcourir(b.corps);
+        });
+        parcourir(script);
+        return g || 10;
+    }
 
     function cadrer(...jeux) {
         const d = item.meta.depart || {};
@@ -258,7 +283,10 @@ export function mount(container, session, opts = {}) {
         voir(d);
         jeux.forEach(lignes => (lignes || []).forEach(l => (l || []).forEach(voir)));
         const rayon = Math.min(400, m + 22);
-        carreau = UNITES.find(u => (2 * rayon) / u <= MAX_CARREAUX) || UNITES[UNITES.length - 1];
+        const pas = pasDuModele(item.meta.modele);
+        const bonnes = UNITES.filter(u => pas % u === 0);
+        const choix = bonnes.length ? bonnes : UNITES;
+        carreau = choix.find(u => (2 * rayon) / u <= MAX_CARREAUX) || choix[choix.length - 1];
         demi = Math.ceil(rayon / carreau) * carreau;
     }
 
@@ -316,12 +344,15 @@ export function mount(container, session, opts = {}) {
             }
             return out;
         };
+        const colonnes = [], rangees = [];
         lignes(ax).forEach(v => {
             const a = versEcran({ x: v, y: -demi }), b = versEcran({ x: v, y: demi });
+            colonnes.push(a.x);
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
         });
         lignes(ay).forEach(v => {
             const c = versEcran({ x: -demi, y: v }), d = versEcran({ x: demi, y: v });
+            rangees.push(c.y);
             ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
         });
 
@@ -333,20 +364,49 @@ export function mount(container, session, opts = {}) {
         tracer(traceCourante, '#4f46e5', Math.max(2.5, cnv.width * 0.009));
         dessinerChat(chat || { ...item.meta.depart });
 
-        legendeCarreau();
+        legendeCarreau(colonnes, rangees);
     }
 
-    /** Un carreau témoin en bas à gauche : l'échelle, montrée plutôt qu'écrite. */
-    function legendeCarreau() {
+    /**
+     * Un carreau témoin en bas à gauche : l'échelle, montrée plutôt qu'écrite.
+     *
+     * Il est posé sur une VRAIE case du quadrillage. Auparavant il était calé
+     * sur le coin du canevas, à dix pixels du bord, donc décalé de quelques
+     * pixels par rapport aux lignes — et un témoin d'échelle qui ne coïncide
+     * pas avec ce qu'il mesure ne prouve rien.
+     */
+    function legendeCarreau(colonnes, rangees) {
         const pas = carreau * echelle;
-        const x = 10, y = cnv.height - 10 - pas;
+        const cols = (colonnes || []).filter(v => v >= 4 && v + pas <= cnv.width - 4);
+        const bas = (rangees || []).filter(v => v + pas <= cnv.height - 4).sort((a, b) => b - a);
+        if (!cols.length || !bas.length) return;
+        const y = bas[0];
+        // Le coin le plus LIBRE des deux : le chat démarre parfois en bas à
+        // gauche, et le témoin lui tombait dessus.
+        const chat = versEcran({ ...(item.meta.depart || { x: 0, y: 0 }) });
+        const gauche = cols[0], droite = cols[cols.length - 1];
+        const loin = (v) => Math.abs(chat.x - (v + pas / 2)) + Math.abs(chat.y - (y + pas / 2));
+        const aDroite = loin(droite) > loin(gauche);
+        const x = aDroite ? droite : gauche;
         ctx.save();
-        ctx.strokeStyle = 'rgba(79,70,229,.55)'; ctx.lineWidth = 1.4;
+        ctx.fillStyle = 'rgba(79,70,229,.10)';
+        ctx.fillRect(x, y, pas, pas);
+        ctx.strokeStyle = 'rgba(79,70,229,.65)'; ctx.lineWidth = 1.6;
         ctx.strokeRect(x, y, pas, pas);
-        ctx.fillStyle = 'rgba(71,85,105,.85)';
+        ctx.fillStyle = 'rgba(71,85,105,.9)';
         ctx.font = `700 ${Math.max(10, Math.min(14, cnv.width * 0.036))}px 'Inter', sans-serif`;
         ctx.textBaseline = 'middle';
-        ctx.fillText(`= ${carreau} pas`, x + pas + 6, y + pas / 2);
+        const txt = `= ${carreau} pas`;
+        const large = ctx.measureText(txt).width;
+        // L'étiquette se met du côté où il reste de la place.
+        if (!aDroite && x + pas + 6 + large <= cnv.width - 4) {
+            ctx.fillText(txt, x + pas + 6, y + pas / 2);
+        } else if (x - 6 - large >= 4) {
+            ctx.textAlign = 'right';
+            ctx.fillText(txt, x - 6, y + pas / 2);
+        } else {
+            ctx.fillText(txt, x, y - 9);
+        }
         ctx.restore();
     }
 
