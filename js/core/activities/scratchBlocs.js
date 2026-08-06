@@ -81,7 +81,17 @@ export function mount(container, session, opts = {}) {
                 </div>
                 <div class="sc-studio">
                     <div class="sc-palette" data-palette aria-label="Blocs disponibles"></div>
-                    <div class="sc-atelier" data-atelier></div>
+                    <div class="sc-atelier" data-atelier>
+                        <div class="sc-outils">
+                            <button type="button" class="sc-outil" data-zoom="-1"
+                                    aria-label="Réduire les blocs">−</button>
+                            <span class="sc-outil-val" data-zoomval>100%</span>
+                            <button type="button" class="sc-outil" data-zoom="1"
+                                    aria-label="Agrandir les blocs">+</button>
+                            <button type="button" class="sc-outil sc-outil--vider" data-vider
+                                    aria-label="Tout enlever">🗑</button>
+                        </div>
+                    </div>
                 </div>
                 ${hintBar(session)}
             </div>`;
@@ -95,10 +105,22 @@ export function mount(container, session, opts = {}) {
         container.querySelector('[data-run]').onclick = () => lancer();
         container.querySelector('[data-clear]').onclick = () => {
             atelier.charger(item.meta.amorce || []);
-            traceCourante = []; dessinerScene();
+            traceCourante = []; cadrer(item.meta.figure); dimensionner(); dessinerScene();
         };
         container.querySelector('[data-valider]').onclick = () => valider();
+        container.querySelectorAll('[data-zoom]').forEach(b => {
+            b.onclick = () => afficherZoom(atelier.regler(atelier.zoom + 0.15 * Number(b.dataset.zoom)));
+        });
+        container.querySelector('[data-vider]').onclick = () => {
+            atelier.vider();
+            traceCourante = []; cadrer(item.meta.figure); dimensionner(); dessinerScene();
+        };
         wireHint(container, session);
+    }
+
+    function afficherZoom(z) {
+        const el = container.querySelector('[data-zoomval]');
+        if (el) el.textContent = `${Math.round(z * 100)}%`;
     }
 
     function consigneCourte() {
@@ -138,7 +160,7 @@ export function mount(container, session, opts = {}) {
                 // palette exactement comme dans Scratch.
                 const p = atelier.versAtelier(e);
                 const bloc = atelier.creer(t, p.x - 40, p.y - 18);
-                atelier.commencerGlisser(bloc, e);
+                atelier.commencerGlisser(bloc, e, { neuf: true });
             }, k));
         });
 
@@ -205,12 +227,31 @@ export function mount(container, session, opts = {}) {
 
     // --- Scène --------------------------------------------------------------
 
-    let cnv = null, ctx = null, echelle = 1;
+    let cnv = null, ctx = null, echelle = 1, demi = DEMI;
+
+    /**
+     * Cadre la scène sur ce qu'il y a à voir.
+     *
+     * La scène couvrait toujours 400 pas de côté : au niveau du triangle, ça
+     * faisait quarante carreaux minuscules autour d'une figure qui en occupait
+     * dix. On ne comptait plus rien. On mesure donc l'encombrement de la
+     * figure (et du tracé de l'élève, pour qu'un dérapage reste visible) et on
+     * cadre juste autour, au carreau près : moins de carreaux, plus grands.
+     */
+    function cadrer(...jeux) {
+        const d = item.meta.depart || {};
+        let m = 45;
+        const voir = (p) => { m = Math.max(m, Math.abs(p.x || 0), Math.abs(p.y || 0)); };
+        voir(d);
+        jeux.forEach(lignes => (lignes || []).forEach(l => (l || []).forEach(voir)));
+        demi = Math.min(320, Math.ceil((m + 22) / CARREAU) * CARREAU);
+    }
 
     function preparerScene() {
         cnv = container.querySelector('.sc-canvas');
         if (!cnv) return;
         ctx = cnv.getContext('2d');
+        cadrer(item.meta.figure);
         dimensionner();
         if (chatImg.complete) dessinerScene();
         else chatImg.onload = () => { if (!destroyed) dessinerScene(); };
@@ -222,7 +263,7 @@ export function mount(container, session, opts = {}) {
         const cote = Math.max(120, Math.min(r.width, r.height));
         cnv.width = cnv.height = Math.round(cote);
         cnv.style.width = cnv.style.height = `${Math.round(cote)}px`;
-        echelle = cote / (2 * DEMI);
+        echelle = cote / (2 * demi);
     }
 
     /** Repère de la machine (y vers le haut) → pixels du canevas (y vers le bas). */
@@ -243,12 +284,12 @@ export function mount(container, session, opts = {}) {
         // Un SEUL trait pour toutes les lignes : une ligne forte tous les cinq
         // carreaux dessinait un second quadrillage par-dessus le premier, et
         // on ne savait plus lequel compter.
-        ctx.strokeStyle = 'rgba(120,140,170,.30)';
+        ctx.strokeStyle = 'rgba(120,140,170,.26)';
         ctx.lineWidth = 1;
-        for (let v = -DEMI; v <= DEMI; v += CARREAU) {
-            const a = versEcran({ x: v, y: -DEMI }), b = versEcran({ x: v, y: DEMI });
+        for (let v = -demi; v <= demi; v += CARREAU) {
+            const a = versEcran({ x: v, y: -demi }), b = versEcran({ x: v, y: demi });
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-            const c = versEcran({ x: -DEMI, y: v }), d = versEcran({ x: DEMI, y: v });
+            const c = versEcran({ x: -demi, y: v }), d = versEcran({ x: demi, y: v });
             ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
         }
 
@@ -323,6 +364,10 @@ export function mount(container, session, opts = {}) {
      * côtés ne doit pas demander une minute d'attente.
      */
     function animer(resultat) {
+        // On recadre AVANT de jouer : un élève qui écrit « avancer de 300 »
+        // doit voir son trait sortir du carré, pas le voir disparaître.
+        cadrer(item.meta.figure, resultat.traces);
+        dimensionner();
         return new Promise(resolve => {
             const etapes = resultat.pas;
             if (!etapes.length) { traceCourante = []; dessinerScene(); resolve(resultat); return; }

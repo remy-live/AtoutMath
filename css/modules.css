@@ -1904,8 +1904,33 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     fill: #1e293b; font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 13px;
     text-anchor: middle; dominant-baseline: central; pointer-events: none;
 }
-/* Le trait blanc qui montre où la pièce va s'accrocher. */
-.sc-aimant { fill: rgba(255, 255, 255, .95); stroke: var(--primary); stroke-width: 1.5; pointer-events: none; }
+/* La pièce fantôme : le double pâle de ce qu'on tient, posé à l'endroit où
+   ça va s'accrocher. Contour clair en pointillés pour qu'on la distingue du
+   programme au lieu de croire qu'elle y est déjà. */
+.sc-fantome { pointer-events: none; opacity: .45; }
+.sc-fantome .sc-piece-forme { stroke: #fff; stroke-width: 2.5; stroke-dasharray: 6 4; }
+.sc-fantome .sc-piece-champ-fond { fill: rgba(255, 255, 255, .8); }
+
+/* La barre d'outils de l'atelier : zoom et corbeille.
+   En BAS à droite : les pièces s'empilent depuis le coin haut-gauche, et une
+   barre posée en haut recouvrait le chapeau du programme dès le départ. */
+.sc-outils {
+    position: absolute; bottom: 5px; right: 5px; z-index: 3;
+    display: flex; align-items: center; gap: 2px;
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px;
+}
+.sc-outil {
+    width: 26px; height: 26px; border: none; background: none; cursor: pointer;
+    border-radius: 999px; color: var(--text-main); font-weight: 900; font-size: 1rem;
+    line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.sc-outil:hover { background: var(--bg-app); }
+.sc-outil--vider { font-size: .85rem; margin-left: 2px; border-left: 1px solid var(--border); }
+.sc-outil-val {
+    font-size: .68rem; font-weight: 800; color: var(--text-muted);
+    min-width: 30px; text-align: center; font-variant-numeric: tabular-nums;
+}
 
 .sc-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .sc-btn {

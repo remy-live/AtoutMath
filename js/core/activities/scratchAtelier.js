@@ -32,6 +32,7 @@ const BOUCHE_VIDE = 28;   // hauteur d'une bouche de boucle vide
 const BAS_BOUCLE = 24;    // barre inférieure d'une boucle
 const RETRAIT = 14;       // décalage horizontal du contenu d'une boucle
 const AIMANT = 58;        // distance d'attraction, en pixels d'atelier
+const SEUIL = 5;          // déplacement, en pixels d'écran, qui fait un GESTE
 
 const COULEURS = { motion: '#4C97FF', pen: '#0FBD8C', control: '#FFAB19', events: '#FFBF00' };
 
@@ -256,18 +257,17 @@ export class Atelier {
         // cadre. On réduit l'atelier ENTIER plutôt que de raccourcir les
         // libellés — « avancer de 100 pas » doit rester lisible tel quel,
         // c'est le texte que l'élève retrouvera dans Scratch.
-        this.k = opts.echelle || 1;
+        // `base` est l'échelle imposée par la largeur de l'écran, `zoom` celle
+        // que l'élève règle. On garde les deux séparées : un changement
+        // d'orientation recalcule la base sans effacer le zoom choisi.
+        this.base = opts.echelle || 1;
+        this.zoom = 1;
+        this.k = this.base;
 
         this.svg = document.createElementNS(SVGNS, 'svg');
         this.svg.classList.add('sc-atelier-svg');
         this.couche = document.createElementNS(SVGNS, 'g');
         this.couche.setAttribute('transform', `scale(${this.k})`);
-        this.indicateur = document.createElementNS(SVGNS, 'path');
-        this.indicateur.classList.add('sc-aimant');
-        this.indicateur.style.display = 'none';
-        // L'indicateur vit DANS la couche : posé à côté, il ne suivait pas
-        // l'échelle et désignait un point décalé.
-        this.couche.appendChild(this.indicateur);
         this.svg.appendChild(this.couche);
         hote.appendChild(this.svg);
 
@@ -290,6 +290,33 @@ export class Atelier {
     versAtelier(e) {
         const r = this.svg.getBoundingClientRect();
         return { x: (e.clientX - r.left) / this.k, y: (e.clientY - r.top) / this.k };
+    }
+
+    /**
+     * Zoom de l'atelier.
+     *
+     * Un programme de dix blocs ne tient pas dans le cadre d'un téléphone, et
+     * réduire les pièces d'office les rendrait illisibles. On laisse donc le
+     * choix : on dézoome pour voir l'ensemble, on rezoome pour viser une
+     * encoche. Tout est mesuré à travers `this.k`, il n'y a rien d'autre à
+     * ajuster.
+     */
+    regler(zoom) {
+        this.zoom = Math.max(0.55, Math.min(1.7, Math.round(zoom * 100) / 100));
+        this.k = this.base * this.zoom;
+        this.couche.setAttribute('transform', `scale(${this.k})`);
+        return this.zoom;
+    }
+
+    /** Enlève tout sauf le chapeau : la page blanche, en un geste. */
+    vider() {
+        if (this.chapeau.next) this.supprimer(this.chapeau.next);
+        this.chapeau.next = null;
+        // Les piles laissées de côté partent aussi : « vider » veut dire vider.
+        this.pieces.filter(p => p !== this.chapeau && !p.parent).forEach(p => this.supprimer(p));
+        this.chapeau.dessiner();
+        this.chapeau.placer(14, 10);
+        this.onChange();
     }
 
     // --- Création et suppression -------------------------------------------
@@ -421,32 +448,85 @@ export class Atelier {
         });
     }
 
+    /**
+     * Accroche une pile à la fin du programme.
+     *
+     * « À la fin » descend DANS la dernière boucle : quand on vient de poser
+     * un « répéter », ce qu'on ajoute ensuite va presque toujours dedans, et
+     * personne n'a envie de viser une bouche de vingt pixels au doigt. Pour
+     * poser quelque chose APRÈS la boucle, il reste le glisser-déposer.
+     */
+    ajouterAuProgramme(bloc) {
+        let support = this.chapeau, dedans = false;
+        for (;;) {
+            while (support.next) support = support.next;
+            if (!support.modele.bouche) break;
+            if (!support.child) { dedans = true; break; }   // bouche vide : on y entre
+            support = support.child;
+        }
+        if (support === bloc || bloc.contient(support)) return;
+        if (dedans) { support.child = bloc; bloc.parent = support; }
+        else { support.next = bloc; bloc.parent = support; }
+        // C'est le SUPPORT qu'on redessine : lui seul sait qu'il vient de
+        // gagner un contenu, et la mise en forme remonte ensuite d'elle-même
+        // jusqu'à la racine — une boucle qui grandit repousse ce qui la suit.
+        support.remonterMiseEnForme();
+        const racine = bloc.racine();
+        racine.empiler(racine, this.couche);
+        racine.placer(racine.x, racine.y);
+    }
+
     /** Détache la pièce de son support et la remet à plat dans l'atelier. */
     detacher(bloc) {
         const p = bloc.parent;
         if (!p) return;
-        const boite = bloc.el.getBoundingClientRect();
-        const r = this.svg.getBoundingClientRect();
+        const pos = this.positionDe(bloc);   // AVANT de couper le lien
         if (p.next === bloc) p.next = null;
         else if (p.child === bloc) p.child = null;
         bloc.parent = null;
         bloc.empiler(bloc, this.couche);
-        bloc.placer((boite.left - r.left) / this.k, (boite.top - r.top) / this.k);
+        bloc.placer(pos.x, pos.y);
         p.remonterMiseEnForme();
     }
 
-    commencerGlisser(bloc, e) {
-        this.detacher(bloc);
-        bloc.empiler(bloc, this.couche);   // la pile passe au-dessus des autres
-        bloc.el.classList.add('sc-piece--tenue');
-        // Le cadre de l'atelier rogne ce qui en sort : une pièce ramenée vers
-        // la palette disparaissait derrière son bord, et on croyait qu'elle
-        // passait SOUS les autres. Le temps du geste, on laisse déborder.
-        this.hote.classList.add('sc-atelier--glisse');
-
-        const p0 = this.versAtelier(e);
-        const dx = p0.x - bloc.x, dy = p0.y - bloc.y;
+    /**
+     * @param {Bloc} bloc
+     * @param {PointerEvent} e
+     * @param {Object} opts { neuf } — vrai pour une pièce qui naît de la palette
+     */
+    commencerGlisser(bloc, e, opts = {}) {
         const id = e.pointerId;
+        const neuf = !!opts.neuf;
+        const depart = { clientX: e.clientX, clientY: e.clientY };
+        let actif = false, bouge = false, sorti = false, dx = 0, dy = 0;
+
+        // Un CLIC n'est pas un GESTE.
+        //
+        // La pièce ne se décrochait pas au premier mouvement mais au premier
+        // APPUI : effleurer un bloc du milieu d'un programme suffisait à le
+        // détacher, lui et tout ce qui pendait dessous. Rien ne bougeait à
+        // l'écran — la pièce restait là où elle était — et le programme
+        // devenait silencieusement vide. D'où l'impression qu'un simple clic
+        // « emportait les autres ».
+        // On attend donc `SEUIL` pixels avant de détacher quoi que ce soit.
+        const armer = () => {
+            actif = true;
+            this.detacher(bloc);
+            bloc.empiler(bloc, this.couche);   // la pile passe au-dessus des autres
+            bloc.el.classList.add('sc-piece--tenue');
+            // Le cadre de l'atelier rogne ce qui en sort : une pièce ramenée
+            // vers la palette disparaissait derrière son bord, et on croyait
+            // qu'elle passait SOUS les autres. Le temps du geste, on laisse
+            // déborder.
+            this.hote.classList.add('sc-atelier--glisse');
+            // Le décalage est mesuré depuis le point d'APPUI, pas depuis le
+            // point où le seuil est franchi : sinon la pièce sauterait de
+            // quelques pixels au démarrage du geste.
+            const p0 = this.versAtelier(depart);
+            dx = p0.x - bloc.x; dy = p0.y - bloc.y;
+            this.preparerFantome(bloc);
+        };
+        if (neuf) armer();   // tirée de la palette, la pièce suit le doigt aussitôt
 
         // Les événements sont suivis sur la FENÊTRE, sans capture de pointeur.
         //
@@ -463,16 +543,20 @@ export class Atelier {
         // rouge dès le premier pixel : on croyait détruire ce qu'on venait de
         // prendre. Comme dans Scratch, la palette redevient une zone de rejet
         // seulement quand on y ramène quelque chose qui en était sorti.
-        let sorti = false;
         const bouger = (ev) => {
             if (ev.pointerId !== id) return;
+            if (!bouge) {
+                if (Math.hypot(ev.clientX - depart.clientX, ev.clientY - depart.clientY) < SEUIL) return;
+                bouge = true;
+                if (!actif) armer();
+            }
             ev.preventDefault();
             const p = this.versAtelier(ev);
             bloc.placer(p.x - dx, p.y - dy);
             if (!this.surPalette(ev)) sorti = true;
             const surCorbeille = sorti && this.surPalette(ev);
             this.palette.classList.toggle('sc-palette--corbeille', surCorbeille);
-            if (surCorbeille) this.cacherAimant();
+            if (surCorbeille) this.cacherFantome();
             else this.chercherAimant(bloc);
         };
 
@@ -481,18 +565,50 @@ export class Atelier {
             window.removeEventListener('pointermove', bouger, true);
             window.removeEventListener('pointerup', lacher, true);
             window.removeEventListener('pointercancel', lacher, true);
+            this.palette.classList.remove('sc-palette--corbeille');
             bloc.el.classList.remove('sc-piece--tenue');
             this.hote.classList.remove('sc-atelier--glisse');
-            this.palette.classList.remove('sc-palette--corbeille');
-            if (sorti && this.surPalette(ev)) this.jeter(bloc);
-            else this.appliquerAimant(bloc);
-            this.cacherAimant();
+            if (!bouge) {
+                // Appui sans déplacement : sur une pièce déjà posée, on ne
+                // touche à rien ; sur la palette, la pièce s'ajoute à la fin du
+                // programme. Au doigt, viser le bas d'une pile est pénible, et
+                // un simple toucher rend le geste facile — c'est aussi ce que
+                // fait le vrai Scratch sur tablette.
+                this.retirerFantome();
+                this.candidat = null;
+                if (neuf) this.ajouterAuProgramme(bloc);
+                this.onChange();
+                return;
+            }
+            // Une pièce neuve relâchée sur la palette retourne d'où elle vient,
+            // même si elle n'en est jamais sortie : sans ça elle restait
+            // accrochée hors du cadre, invisible mais bien là.
+            if ((sorti || neuf) && this.surPalette(ev)) this.jeter(bloc);
+            else if (this.candidat) this.appliquerAimant(bloc);
+            else this.poserLibre(bloc);
+            this.retirerFantome();
+            this.candidat = null;
             this.onChange();
         };
 
         window.addEventListener('pointermove', bouger, true);
         window.addEventListener('pointerup', lacher, true);
         window.addEventListener('pointercancel', lacher, true);
+    }
+
+    /**
+     * Repose une pile là où elle est, mais dans le cadre.
+     *
+     * Sans cette borne, une pile lâchée à cheval sur le bord partait derrière
+     * la palette ou sous le bas de l'atelier : plus moyen de la reprendre, et
+     * le programme semblait avoir avalé des blocs.
+     */
+    poserLibre(bloc) {
+        const w = (parseFloat(this.svg.getAttribute('width')) || 0) / this.k;
+        const h = (parseFloat(this.svg.getAttribute('height')) || 0) / this.k;
+        const x = w ? Math.max(4, Math.min(bloc.x, w - 44)) : Math.max(4, bloc.x);
+        const y = h ? Math.max(4, Math.min(bloc.y, h - 22)) : Math.max(4, bloc.y);
+        bloc.placer(x, y);
     }
 
     surPalette(e) {
@@ -502,11 +618,48 @@ export class Atelier {
 
     // --- Aimantation --------------------------------------------------------
 
-    cacherAimant() { this.indicateur.style.display = 'none'; this.candidat = null; }
+    /**
+     * La pièce FANTÔME : le double transparent de ce qu'on tient, posé là où
+     * ça va tomber.
+     *
+     * Un trait blanc de sept pixels disait « ça s'accroche ici » — mais pas
+     * QUOI s'accroche, ni de quelle taille, ni si la pile entière rentre dans
+     * la bouche de la boucle. Le fantôme montre le résultat avant de lâcher :
+     * c'est la même idée que la figure à repasser, en pâle, sur la scène.
+     */
+    preparerFantome(tenue) {
+        this.retirerFantome();
+        const g = document.createElementNS(SVGNS, 'g');
+        g.classList.add('sc-fantome');
+        for (let b = tenue; b; b = b.next) {
+            const copie = b.el.cloneNode(true);
+            // Le fantôme n'est pas une pièce : on lui retire les marques qui le
+            // feraient prendre pour telle, jusque dans les bouches de boucle.
+            [copie, ...copie.querySelectorAll('.sc-piece--vive')]
+                .forEach(el => el.classList.remove('sc-piece--tenue', 'sc-piece--vive'));
+            copie.setAttribute('transform', `translate(${b.x - tenue.x},${b.y - tenue.y})`);
+            g.appendChild(copie);
+        }
+        g.style.display = 'none';
+        // Sous les vraies pièces : un fantôme qui masque le programme ne
+        // renseigne plus sur l'endroit où il va se poser.
+        this.couche.insertBefore(g, this.couche.firstChild);
+        this.fantome = g;
+    }
 
-    montrerAimant(x, y, w) {
-        this.indicateur.setAttribute('d', `M ${x},${y} h ${w} v 7 h -${w} z`);
-        this.indicateur.style.display = 'block';
+    retirerFantome() {
+        if (this.fantome) { this.fantome.remove(); this.fantome = null; }
+    }
+
+    cacherFantome() {
+        if (this.fantome) this.fantome.style.display = 'none';
+        this.candidat = null;
+    }
+
+    montrerFantome(x, y) {
+        if (!this.fantome) return;
+        this.fantome.setAttribute('transform', `translate(${x},${y})`);
+        this.fantome.style.display = 'block';
     }
 
     /**
@@ -517,7 +670,7 @@ export class Atelier {
      * s'intercale). C'est la plus proche qui gagne, dans la limite de l'aimant.
      */
     chercherAimant(tenue) {
-        this.cacherAimant();
+        this.cacherFantome();
         let meilleure = AIMANT;
         for (const cible of this.pieces) {
             if (tenue.contient(cible)) continue;      // pas dans sa propre pile
@@ -529,7 +682,7 @@ export class Atelier {
                 if (d < meilleure) {
                     meilleure = d;
                     this.candidat = { genre: 'dessous', cible };
-                    this.montrerAimant(pos.x, pos.y + cible.hauteur, cible.largeur);
+                    this.montrerFantome(pos.x, pos.y + cible.hauteur);
                 }
             }
             // Dans la bouche d'une boucle vide.
@@ -547,7 +700,7 @@ export class Atelier {
                 if (d < meilleure || dansLaBouche) {
                     meilleure = d;
                     this.candidat = { genre: 'dedans', cible };
-                    this.montrerAimant(bx, by, cible.largeur - RETRAIT);
+                    this.montrerFantome(bx, by);
                 }
             }
             // Au-dessus : on s'intercale, sauf devant le chapeau.
@@ -557,17 +710,34 @@ export class Atelier {
                 if (d < meilleure) {
                     meilleure = d;
                     this.candidat = { genre: 'dessus', cible };
-                    this.montrerAimant(pos.x, pos.y - 7, cible.largeur);
+                    this.montrerFantome(pos.x, pos.y - tenue.hauteurPile());
                 }
             }
         }
     }
 
-    /** Position d'une pièce dans la couche, mesurée à l'écran puis remise à l'échelle. */
+    /**
+     * Position d'une pièce dans le repère de la couche.
+     *
+     * Calculée, pas mesurée. La version précédente lisait le rectangle
+     * englobant du SVG : elle se trompait de tout ce qui DÉPASSE de la forme —
+     * le dôme d'un chapeau monte au-dessus de son origine, si bien que le
+     * fantôme se posait cinq pixels trop bas et que la pièce, une fois lâchée,
+     * ne tombait pas là où on l'avait vue.
+     *
+     * Les pièces d'une bouche de boucle sont placées dans le repère du groupe
+     * qui la porte : on remonte donc jusqu'à la tête du groupe, puis on ajoute
+     * l'origine de la bouche.
+     */
     positionDe(piece) {
-        const b = piece.el.getBoundingClientRect();
-        const r = this.svg.getBoundingClientRect();
-        return { x: (b.left - r.left) / this.k, y: (b.top - r.top) / this.k };
+        let tete = piece;
+        while (tete.parent && tete.parent.next === tete) tete = tete.parent;
+        if (tete.parent && tete.parent.child === tete) {
+            const boucle = tete.parent;
+            const base = this.positionDe(boucle);
+            return { x: piece.x + base.x + RETRAIT, y: piece.y + base.y + boucle.hautLigne };
+        }
+        return { x: piece.x, y: piece.y };
     }
 
     appliquerAimant(tenue) {
@@ -619,6 +789,7 @@ export class Atelier {
 
     detruire() {
         if (this.ro) { this.ro.disconnect(); this.ro = null; }
+        this.retirerFantome();
         this.svg.remove();
     }
 }
