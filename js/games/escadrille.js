@@ -472,25 +472,44 @@ class Escadrille extends BaseGame {
         // viser les rouges. Le seul indice est le NOMBRE — c'est tout le jeu.
         c.save();
         c.translate(e.x, e.y);
+
+        // Coque hexagonale À SOMMET PLAT, non déformée.
+        //
+        // L'ancienne écrasait la hauteur d'un facteur 0,82 et posait le nombre
+        // dans une ellipse plus large que haute : deux déformations dans deux
+        // sens, et un hublot où « 76 » ne tenait pas. Un hexagone régulier et
+        // un hublot ROND se lisent comme un objet, pas comme un accident.
         c.shadowColor = 'rgba(148,163,184,.55)'; c.shadowBlur = 12;
         c.fillStyle = '#475569';
         c.beginPath();
-        // Une soucoupe : coque hexagonale, la même pour tout le monde.
         for (let i = 0; i < 6; i++) {
-            const a = Math.PI / 6 + i * Math.PI / 3;
-            const px = Math.cos(a) * r, py = Math.sin(a) * r * 0.82;
+            const a = i * Math.PI / 3;
+            const px = Math.cos(a) * r, py = Math.sin(a) * r;
             i ? c.lineTo(px, py) : c.moveTo(px, py);
         }
         c.closePath(); c.fill();
         c.shadowBlur = 0;
         c.strokeStyle = 'rgba(203,213,225,.9)'; c.lineWidth = 2; c.stroke();
-        // Le hublot porte le nombre : c'est la seule information du jeu.
+
+        // Le hublot porte le nombre : c'est la seule information du jeu, donc
+        // le nombre commande, pas l'inverse. Le disque est celui du cercle
+        // inscrit dans l'hexagone, et la police RÉTRÉCIT jusqu'à ce que le
+        // nombre y tienne — un « 132 » ne doit pas déborder sur la coque.
+        const hublot = r * 0.66;
         c.fillStyle = '#0f172a';
-        c.beginPath(); c.ellipse(0, 0, r * 0.78, r * 0.6, 0, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(0, 0, hublot, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(148,163,184,.5)'; c.lineWidth = 1.5; c.stroke();
+
+        const texte = String(e.valeur);
+        let px = Math.round(e.taille * 0.44);
+        c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        while (px > 8 && c.measureText(texte).width > hublot * 1.68) {
+            px -= 1;
+            c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        }
         c.fillStyle = '#e2e8f0';
-        c.font = `900 ${Math.round(e.taille * 0.46)}px 'Inter', system-ui, sans-serif`;
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(String(e.valeur), 0, 1);
+        c.fillText(texte, 0, 0);
         c.restore();
     }
 

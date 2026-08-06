@@ -33,7 +33,12 @@ function fieldHtml(param, value, options = {}) {
     let control = '';
 
     if (param.type === 'multiselect') {
-        control = `<div class="cfg-chips">` + param.options.map(opt => {
+        // Des options toutes courtes — les tables, les nombres de côtés — se
+        // rangent en GRILLE de tuiles identiques plutôt qu'en pastilles au fil
+        // du texte : les tailles ne dépendent plus du contenu, les colonnes
+        // s'alignent, et une table cochée ne pousse plus ses voisines.
+        const grille = param.options.every(o => String(libelleOption(o)).length <= 3);
+        control = `<div class="cfg-chips${grille ? ' cfg-chips--grille' : ''}">` + param.options.map(opt => {
             const v = valeurOption(opt);
             const checked = Array.isArray(value) && value.includes(v) ? 'checked' : '';
             return `<label class="cfg-chip">

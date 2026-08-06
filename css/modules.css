@@ -1531,19 +1531,46 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     user-select: none; transition: .15s;
 }
 .cfg-chip input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
-/* La coche pousse le texte de la même largeur qu'elle occupera une fois
-   allumée : la pastille ne saute pas au clic. */
+/* La coche occupe TOUJOURS sa place, allumée ou non : seule son opacité
+   change. La version précédente animait sa largeur de 0 à 1 em, si bien
+   qu'une pastille cochée s'élargissait et poussait ses voisines — les tables
+   changeaient de taille et la grille se réorganisait à chaque clic. */
 .cfg-chip > span::before {
-    content: '✓'; display: inline-block; width: 0; overflow: hidden;
-    opacity: 0; transition: width .15s, opacity .15s; vertical-align: -1px;
+    content: '✓'; display: inline-block; width: 1em; margin-right: 4px;
+    opacity: 0; transition: opacity .15s; vertical-align: -1px;
 }
 .cfg-chip:hover { border-color: var(--primary); color: var(--primary); }
 .cfg-chip:has(input:checked) {
     border-color: var(--primary); background: var(--primary); color: #fff;
     box-shadow: var(--shadow-sm);
 }
-.cfg-chip:has(input:checked) > span::before { width: 1em; opacity: 1; margin-right: 4px; }
+.cfg-chip:has(input:checked) > span::before { opacity: 1; }
 .cfg-chip:has(input:focus-visible) { outline: 3px solid var(--tag-dom-bg); outline-offset: 2px; }
+
+/* --- Options courtes : une grille de tuiles ------------------------------
+   Pour des nombres — les tables, les côtés d'un polygone —, la pastille au
+   fil du texte est le mauvais objet : sa largeur suit son contenu, « 10 » est
+   plus large que « 2 », et une ligne finit avec un trou. Des tuiles carrées
+   de largeur égale, alignées en colonnes, se lisent comme un clavier : on
+   voit d'un coup d'œil ce qui est pris et ce qui ne l'est pas. */
+.cfg-chips--grille {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+    gap: 7px; width: 100%;
+}
+.cfg-chips--grille .cfg-chip {
+    position: relative; width: 100%; min-width: 0; padding: 0;
+    aspect-ratio: 1 / 1; max-height: 54px;
+    border-radius: 12px; font-size: 1rem; font-weight: 800;
+}
+/* Le nombre reste au CENTRE de sa tuile : la coche passe en pastille de coin,
+   posée par-dessus, et ne déplace donc rien. */
+.cfg-chips--grille .cfg-chip > span::before {
+    content: '✓'; position: absolute; top: -5px; right: -5px;
+    width: 17px; height: 17px; margin: 0; border-radius: 50%;
+    background: var(--primary); color: #fff; border: 2px solid var(--bg-panel);
+    font-size: .6rem; line-height: 15px; text-align: center;
+}
+.cfg-chips--grille .cfg-chip:has(input:checked) > span::before { opacity: 1; }
 
 /* --- Options oui/non : interrupteurs, pas cases système ------------------ */
 .cfg-check input[type="checkbox"],

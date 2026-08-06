@@ -64,7 +64,27 @@ export class Runner {
             return false;
         }
         this.startedAt = Date.now();
+
+        // UN SEUL parcours vivant à la fois.
+        //
+        // Rien n'interdisait d'en lancer un second par-dessus : l'ancien
+        // restait `activeSequenceRunner` le temps que le nouveau se mette en
+        // place, continuait de recevoir les tentatives et de peindre SA barre
+        // de progression. On se retrouvait avec l'en-tête d'un exercice
+        // au-dessus d'un autre. Le précédent est donc abandonné proprement —
+        // ses minuteurs arrêtés, son étape close, sa session terminée.
+        const precedent = state.activeSequenceRunner;
+        if (precedent && precedent !== this) {
+            try { precedent.finish(true); } catch (e) { console.warn('[runner] abandon du parcours précédent', e); }
+        }
         state.activeSequenceRunner = this;
+
+        // Le titre est posé DÈS MAINTENANT et pas seulement dans `runStep` :
+        // en évaluation, un écran de consignes s'intercale, et il portait
+        // encore le nom de l'exercice d'avant.
+        const titreEl = document.getElementById('game-title');
+        const premiere = this.steps[Math.min(this.index, this.steps.length - 1)];
+        if (titreEl && premiere) titreEl.textContent = premiere.title;
 
         journal.emit(EventTypes.RUN_STARTED, {
             runId: this.runId,
@@ -460,6 +480,11 @@ export class Runner {
         if (!this.step) return;
         const step = this.step;
         this.teardownStep();
+        // L'étape est CLOSE. Sans cette ligne, `this.step` restait défini une
+        // fois le bilan affiché : une tentative en retard — ou un saut de
+        // question — continuait d'alimenter le compteur, qui affichait des
+        // « 12 / 3 » impossibles.
+        this.step = null;
 
         const solved = this.itemsSolved.size;
         const required = Math.min(step.threshold, step.nbItems);
