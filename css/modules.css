@@ -1419,14 +1419,50 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    ce qu'on venait de régler. Une feuille hugs-content règle les deux : rien
    de vide, et le bouton juste sous le dernier champ. */
 @media (max-width: 700px) {
-    #student-config-modal { padding: 0; align-items: flex-end; }
+    /* `height: 100dvh` en plus de `inset: 0` : sur iPhone, un élément en
+       `position: fixed` se cale sur le viewport de MISE EN PAGE, c'est-à-dire
+       barres du navigateur masquées. Le bas de la feuille passait donc sous
+       la barre d'outils de Safari, et les boutons paraissaient coupés. La
+       hauteur dynamique, elle, suit les barres réellement affichées.
+       (`top` + `height` l'emportent sur `bottom` : rien à défaire.) */
+    #student-config-modal { padding: 0; align-items: flex-end; height: 100dvh; }
     #student-config-modal .modal-panel-sm-left {
-        width: 100%; max-width: none; min-height: 0; max-height: 90dvh;
+        /* `!important` pour battre `.glass-panel { width: 90% !important }`
+           (css/games.css) : sans lui la feuille gardait 19 px de vide de
+           chaque côté et ne ressemblait ni à une carte ni à une feuille. */
+        width: 100% !important; max-width: none; min-height: 0; max-height: 88dvh;
         border-radius: 22px 22px 0 0; margin: 0;
-        padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
         gap: 8px; overflow-y: auto;
         box-shadow: 0 -12px 34px rgba(15, 23, 42, .28);
     }
+
+    /* Les réglages en LISTE : un libellé, un contrôle, un filet.
+       Chaque ligne avait sa propre largeur de champ — une longue liste
+       déroulante ici, une case de trois caractères là — et la colonne de
+       droite partait dans tous les sens. Une largeur commune suffit à ce que
+       l'œil descende tout droit. */
+    #student-config-modal .cfg-field:not(.cfg-field--wide) {
+        grid-template-columns: minmax(0, 1fr) 50%;
+        align-items: center;
+        padding: 9px 0; margin-bottom: 0;
+        border-bottom: 1px solid var(--border);
+    }
+    #student-config-modal .cfg-field--wide {
+        padding: 9px 0; margin-bottom: 0; border-bottom: 1px solid var(--border);
+    }
+    /* Pas de filet sous le dernier réglage — `:last-of-type` ne suffisait pas,
+       le sélecteur portant sur le type d'élément et non sur la classe. */
+    #student-config-modal .cfg-field:not(:has(~ .cfg-field)) { border-bottom: none; }
+    #student-config-modal .cfg-field:not(.cfg-field--wide) .cfg-input,
+    #student-config-modal .cfg-field:not(.cfg-field--wide) select.cfg-input,
+    #student-config-modal .cfg-field:not(.cfg-field--wide) input[type="text"].cfg-input {
+        width: 100%; max-width: none; text-align: center;
+    }
+    /* Les puces occupent toute la largeur : centrées, elles font un bloc
+       posé plutôt qu'un alignement qui commence nulle part. */
+    #student-config-modal .cfg-chips { justify-content: center; }
+    #student-config-modal .cfg-field--wide .cfg-label { justify-content: center; margin-bottom: 6px; }
     /* La poignée : elle dit « ça vient du bas » sans une ligne de texte. */
     #student-config-modal .modal-panel-sm-left::before {
         content: ''; align-self: center; flex-shrink: 0;
