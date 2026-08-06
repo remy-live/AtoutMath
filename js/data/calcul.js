@@ -239,14 +239,19 @@ export const calculExercises = [
             { id: 'lanes', type: 'number', label: 'Nombre de voies', default: 3, min: 2, max: 5 },
             { id: 'speed', type: 'number', label: 'Vitesse de départ', default: 3, min: 2, max: 8 },
             {
+                // Les puces portent l'OPÉRATION, pas son nom. « Tables de
+                // multiplication » tient sur toute une ligne et se lit moins
+                // vite que « 7 × 8 » : un exemple dit le type de calcul en
+                // trois caractères, et six réglages tiennent alors sur deux
+                // rangées au lieu de quatre.
                 id: 'operations', type: 'multiselect', label: 'Types de calcul', default: ['mul'],
                 options: [
-                    { value: 'mul', label: 'Tables de multiplication' },
-                    { value: 'div', label: 'Divisions' },
-                    { value: '+9', label: 'Ajouter / retirer 9' },
-                    { value: 'c10', label: 'Compléments à 10' },
-                    { value: 'rel', label: 'Nombres relatifs' },
-                    { value: 'dec', label: 'Multiplier par 10 ou 0,1' }
+                    { value: 'mul', label: '7 × 8', aide: 'Tables de multiplication' },
+                    { value: 'div', label: '56 ÷ 7', aide: 'Divisions' },
+                    { value: '+9', label: '+9 / −9', aide: 'Ajouter ou retirer 9' },
+                    { value: 'c10', label: '? + 3 = 10', aide: 'Compléments à 10' },
+                    { value: 'rel', label: '−3 + 5', aide: 'Nombres relatifs' },
+                    { value: 'dec', label: '× 10 / × 0,1', aide: 'Multiplier par 10 ou par 0,1' }
                 ]
             }
         ],

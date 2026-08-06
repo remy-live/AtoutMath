@@ -41,7 +41,12 @@ function fieldHtml(param, value, options = {}) {
         control = `<div class="cfg-chips${grille ? ' cfg-chips--grille' : ''}">` + param.options.map(opt => {
             const v = valeurOption(opt);
             const checked = Array.isArray(value) && value.includes(v) ? 'checked' : '';
-            return `<label class="cfg-chip">
+            // `aide` porte le nom en toutes lettres quand le libellé est un
+            // raccourci — « 7 × 8 » dit ce qu'on va calculer, il ne dit pas
+            // qu'on travaille les tables. L'infobulle rattrape la nuance sans
+            // rallonger la puce.
+            const titre = opt && opt.aide ? ` title="${escapeAttr(opt.aide)}"` : '';
+            return `<label class="cfg-chip"${titre}>
                 <input type="checkbox" data-param="${param.id}" data-kind="multiselect" value="${v}" ${checked}>
                 <span>${libelleOption(opt)}</span></label>`;
         }).join('') + `</div>`;
