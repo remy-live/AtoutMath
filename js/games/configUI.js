@@ -38,7 +38,13 @@ function fieldHtml(param, value, options = {}) {
         // du texte : les tailles ne dépendent plus du contenu, les colonnes
         // s'alignent, et une table cochée ne pousse plus ses voisines.
         const grille = param.options.every(o => String(libelleOption(o)).length <= 3);
-        control = `<div class="cfg-chips${grille ? ' cfg-chips--grille' : ''}">` + param.options.map(opt => {
+        // Le nombre de colonnes est DIT, pas deviné. `auto-fill` remplissait la
+        // largeur avec des tuiles minimales : dix tables tombaient en 6 + 4,
+        // une rangée pleine et une rangée orpheline. Une grille qui compte
+        // exactement ses options tient sur une ligne quand la place existe, et
+        // se replie proprement en deux rangées égales sur un téléphone.
+        const cols = grille ? ` style="--cfg-cols: ${param.options.length}"` : '';
+        control = `<div class="cfg-chips${grille ? ' cfg-chips--grille' : ''}"${cols}>` + param.options.map(opt => {
             const v = valeurOption(opt);
             const checked = Array.isArray(value) && value.includes(v) ? 'checked' : '';
             // `aide` porte le nom en toutes lettres quand le libellé est un

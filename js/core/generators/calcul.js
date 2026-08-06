@@ -334,7 +334,17 @@ export const mixteGenerator = {
     skills: ['num.add.entiers', 'num.sub.entiers', 'num.div.quotient', 'num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
     params: [
-        { id: 'operations', type: 'multiselect', label: 'Opérations', options: [{ value: '+', label: '+ addition' }, { value: '-', label: '− soustraction' }, { value: '*', label: '× multiplication' }, { value: '/', label: '÷ division' }], default: ['+', '-'] },
+        { id: 'operations', type: 'multiselect', label: 'Opérations', options: [
+            // Le SYMBOLE seul, et le nom en infobulle. Écrits en toutes
+            // lettres, les quatre opérations prenaient deux rangées à elles
+            // seules et repoussaient les tables hors de l'écran. « + − × ÷ »
+            // sont les signes que l'élève lit dans l'exercice : ils n'ont
+            // besoin d'aucune traduction.
+            { value: '+', label: '+', aide: 'Addition' },
+            { value: '-', label: '−', aide: 'Soustraction' },
+            { value: '*', label: '×', aide: 'Multiplication' },
+            { value: '/', label: '÷', aide: 'Division' }
+        ], default: ['+', '-'] },
         { id: 'tables', type: 'multiselect', label: 'Tables (si × ou ÷)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         { id: 'max', type: 'number', label: 'Plus grand terme (si + ou −)', default: 20, min: 5, max: 100 }
     ],

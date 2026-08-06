@@ -1668,8 +1668,21 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    de largeur égale, alignées en colonnes, se lisent comme un clavier : on
    voit d'un coup d'œil ce qui est pris et ce qui ne l'est pas. */
 .cfg-chips--grille {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+    display: grid;
+    grid-template-columns: repeat(var(--cfg-cols, 5), minmax(0, 1fr));
     gap: 7px; width: 100%;
+}
+/* Une tuile doit rester visable au doigt : 44 px au moins. Dans un panneau de
+   390 px, dix colonnes en feraient 27 — on repasse donc à cinq, soit deux
+   rangées ÉGALES (et non une pleine et une orpheline, comme le faisait
+   `auto-fill`). Le nombre exact de colonnes n'est rendu que lorsque le
+   panneau a la largeur de le porter. */
+.cfg-chips--grille { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (min-width: 900px) {
+    /* Sur un écran large, un panneau de 390 px n'a aucune raison d'être : on
+       lui donne de quoi aligner les dix tables sur une seule ligne. */
+    #student-config-modal .modal-panel-sm-left { width: 680px !important; max-width: 92vw; }
+    .cfg-chips--grille { grid-template-columns: repeat(var(--cfg-cols, 5), minmax(0, 1fr)); }
 }
 .cfg-chips--grille .cfg-chip {
     position: relative; width: 100%; min-width: 0; padding: 0;
