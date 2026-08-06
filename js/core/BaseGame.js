@@ -18,6 +18,12 @@ export class BaseGame {
         this.params = params || {};
         this.gameId = gameId;
         this.isRunning = false;
+        // Gel de la démonstration. La barre du robot l'annonce ; à chaque jeu
+        // de tester `this.gelDemo` là où il fait avancer son monde. Le rendu,
+        // lui, continue : une image figée vaut mieux qu'un écran noir.
+        this.gelDemo = false;
+        this._surGelDemo = (e) => { this.gelDemo = !!e.detail; };
+        document.addEventListener('demo_pause', this._surGelDemo);
     }
 
     start() {
@@ -36,6 +42,7 @@ export class BaseGame {
         // d'effacer — une erreur par seconde, jusqu'au rechargement de la page.
         this.pause();
         this.isRunning = false;
+        document.removeEventListener('demo_pause', this._surGelDemo);
         this.container.innerHTML = '';
     }
 

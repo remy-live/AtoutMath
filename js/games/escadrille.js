@@ -349,8 +349,12 @@ class Escadrille extends BaseGame {
 
     boucle() {
         if (!this.isRunning || !this.canvas || !this.canvas.isConnected) return;
-        this.frame++;
-        this.avancer();
+        // En pause de démonstration, on DESSINE mais on n'avance plus : le
+        // monde se fige sous l'explication au lieu de continuer sans nous.
+        if (!this.gelDemo) {
+            this.frame++;
+            this.avancer();
+        }
         this.dessiner();
         this.raf = requestAnimationFrame(this.boucle);
     }

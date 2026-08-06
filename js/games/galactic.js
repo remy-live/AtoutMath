@@ -398,6 +398,12 @@ class Galactic extends BaseGame {
 
     boucle() {
         if (!this.isRunning) return;
+        // Pause d'explication : image figée, mais toujours dessinée.
+        if (this.gelDemo) {
+            this.dessiner();
+            this.rafId = requestAnimationFrame(() => this.boucle());
+            return;
+        }
         const e = this.enemy;
         if (e.active) {
             if (e.maxCharge !== Infinity && !this.isDemo) {

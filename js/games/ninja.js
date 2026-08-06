@@ -245,11 +245,16 @@ class Ninja extends BaseGame {
 
     boucle() {
         if (!this.isRunning) return;
-        this.frame++;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        if (this.frame % this.rythme.entre === 0 || (this.frame === 30 && !this.fruits.length)) this.lancerFruit();
-        this.avancerFruits();
+        // En pause d'explication, le monde se fige : sans ça les fruits
+        // continuaient de tomber (et de compter des ratés) pendant que le
+        // robot parlait.
+        if (!this.gelDemo) {
+            this.frame++;
+            if (this.frame % this.rythme.entre === 0 || (this.frame === 30 && !this.fruits.length)) this.lancerFruit();
+            this.avancerFruits();
+        }
         this.dessinerLame();
 
         this.rafId = requestAnimationFrame(() => this.boucle());

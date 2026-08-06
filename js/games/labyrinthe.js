@@ -159,7 +159,7 @@ class Labyrinthe extends BaseGame {
         
         // Timer
         this.timerInterval = regInterval(() => {
-            if(this.timeLeft > 0 && !this.isGameOver) {
+            if(this.timeLeft > 0 && !this.isGameOver && !this.gelDemo) {
                 this.timeLeft--;
                 this.timeEl.textContent = this.timeLeft;
                 this.updateTimerVisuals();

@@ -265,7 +265,7 @@ class ArcadeShooter extends BaseGame {
     startGameLoop() {
         this.newRound();
         regInterval(() => {
-            if (!this.isRunning) return;
+            if (!this.isRunning || this.gelDemo) return;
             this.tickPhysics();
         }, 20);
     }

@@ -628,9 +628,14 @@ class Tetris extends BaseGame {
         const deltaTime = time - this.lastTime;
         this.lastTime = time;
 
-        this.dropCounter += deltaTime;
-        if (this.dropCounter > this.dropInterval) {
-            this.playerDrop();
+        // Pause d'explication : la pièce cesse de tomber. Le temps continue
+        // d'être lu (lastTime ci-dessus) pour qu'à la reprise elle ne
+        // dégringole pas d'un coup de tout le temps écoulé.
+        if (!this.gelDemo) {
+            this.dropCounter += deltaTime;
+            if (this.dropCounter > this.dropInterval) {
+                this.playerDrop();
+            }
         }
 
         this.draw();

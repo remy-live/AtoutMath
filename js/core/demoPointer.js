@@ -229,6 +229,15 @@ export function createDemoGate(host) {
         paused = etat;
         btnPause.innerHTML = paused ? '▶ Reprendre' : '⏸ Pause';
         btnPause.classList.toggle('demo-ctrl-btn--active', paused);
+        // La pause doit arrêter LE JEU, pas seulement le robot.
+        //
+        // Elle ne bloquait que les `waitTurn()` du commentaire : dans un jeu
+        // d'arcade, le vaisseau continuait de voler, les vagues d'arriver et
+        // les vies de tomber pendant qu'on lisait l'explication. On revenait
+        // sur une partie méconnaissable — la pause « plantait » la partie.
+        // L'événement laisse chaque jeu geler ce qu'il sait geler ; les
+        // activités au tour par tour, elles, n'ont rien à faire.
+        document.dispatchEvent(new CustomEvent('demo_pause', { detail: paused }));
     };
 
     btnPause.onclick = () => {
@@ -262,6 +271,8 @@ export function createDemoGate(host) {
         },
         destroy() {
             destroyed = true;
+            // Une barre détruite en pause laisserait le jeu gelé pour de bon.
+            if (paused) { paused = false; document.dispatchEvent(new CustomEvent('demo_pause', { detail: false })); }
             liberer();
             bar.remove();
         }

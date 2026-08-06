@@ -1280,7 +1280,9 @@ class Course extends BaseGame {
             if (this.rafId) cancelAnimationFrame(this.rafId);
             return;
         }
-        this.update();
+        // Pause d'explication : on dessine encore, mais le monde n'avance
+        // plus. La course continuait sinon de défiler sous la bulle du robot.
+        if (!this.gelDemo) this.update();
         this.draw();
         this.rafId = requestAnimationFrame(this.loop);
     }
