@@ -556,7 +556,7 @@ export class Atelier {
             if (!this.surPalette(ev)) sorti = true;
             const surCorbeille = sorti && this.surPalette(ev);
             this.palette.classList.toggle('sc-palette--corbeille', surCorbeille);
-            if (surCorbeille) this.cacherFantome();
+            if (surCorbeille) { this.cacherFantome(); this.refermerEspace(); }
             else this.chercherAimant(bloc);
         };
 
@@ -580,6 +580,10 @@ export class Atelier {
                 this.onChange();
                 return;
             }
+            // La pile se referme AVANT le raccrochage : c'est la mise en forme
+            // qui replace les pièces, et elle part de leurs coordonnées vraies,
+            // pas de l'écart d'affichage.
+            this.refermerEspace();
             // Une pièce neuve relâchée sur la palette retourne d'où elle vient,
             // même si elle n'en est jamais sortie : sans ça elle restait
             // accrochée hors du cadre, invisible mais bien là.
@@ -649,6 +653,7 @@ export class Atelier {
 
     retirerFantome() {
         if (this.fantome) { this.fantome.remove(); this.fantome = null; }
+        this.refermerEspace();
     }
 
     cacherFantome() {
@@ -663,11 +668,41 @@ export class Atelier {
     }
 
     /**
+     * Écarte la pile pour montrer la place que prendrait la pièce tenue.
+     *
+     * Le fantôme seul ne suffisait pas au MILIEU d'une pile : il se posait
+     * par-dessus les blocs suivants, et on ne voyait qu'un empilement confus
+     * au lieu d'une insertion. Comme dans Scratch, ce qui suit le point
+     * d'accroche descend le temps du survol — la pile s'ouvre, le fantôme
+     * occupe le trou, et le geste devient lisible.
+     *
+     * Le décalage est PUREMENT visuel : ni `x`, ni `y`, ni les liens ne
+     * bougent. Il suffit de reposer les pièces pour tout rétablir.
+     */
+    ouvrirEspace(candidat, hauteur) {
+        this.refermerEspace();
+        if (!candidat || !hauteur) return;
+        const suite = [];
+        if (candidat.genre === 'dessous') for (let b = candidat.cible.next; b; b = b.next) suite.push(b);
+        else if (candidat.genre === 'dessus') for (let b = candidat.cible; b; b = b.next) suite.push(b);
+        else if (candidat.genre === 'dedans') for (let b = candidat.cible.child; b; b = b.next) suite.push(b);
+        if (!suite.length) return;
+        this.ecartes = suite;
+        suite.forEach(b => b.el.setAttribute('transform', `translate(${b.x},${b.y + hauteur})`));
+    }
+
+    refermerEspace() {
+        (this.ecartes || []).forEach(b => b.el.setAttribute('transform', `translate(${b.x},${b.y})`));
+        this.ecartes = null;
+    }
+
+    /**
      * Cherche le meilleur point d'accroche pour la pile tenue.
      *
-     * Trois façons de s'accrocher, dans l'ordre où on les essaie : SOUS une
-     * pièce, DANS la bouche d'une boucle, ou AU-DESSUS d'une pièce (on
-     * s'intercale). C'est la plus proche qui gagne, dans la limite de l'aimant.
+     * Trois façons de s'accrocher : SOUS une pièce — y compris entre deux
+     * pièces déjà accrochées, on s'intercale —, DANS la bouche d'une boucle,
+     * ou AU-DESSUS de la tête d'une pile libre. C'est la plus proche qui
+     * gagne, dans la limite de l'aimant.
      */
     chercherAimant(tenue) {
         this.cacherFantome();
@@ -676,8 +711,11 @@ export class Atelier {
             if (tenue.contient(cible)) continue;      // pas dans sa propre pile
             const pos = this.positionDe(cible);
 
-            // Sous la pièce (si rien n'y est déjà accroché).
-            if (!cible.next) {
+            // Sous la pièce. La condition « seulement si rien n'y est déjà
+            // accroché » interdisait d'insérer au milieu d'un programme : il
+            // fallait démonter la pile pour ajouter un bloc. On s'intercale
+            // désormais, et ce qui suit se rattache sous la pièce posée.
+            {
                 const d = Math.hypot(tenue.x - pos.x, tenue.y - (pos.y + cible.hauteur));
                 if (d < meilleure) {
                     meilleure = d;
@@ -703,8 +741,13 @@ export class Atelier {
                     this.montrerFantome(bx, by);
                 }
             }
-            // Au-dessus : on s'intercale, sauf devant le chapeau.
-            if (!cible.modele.chapeau) {
+            // Au-dessus de la TÊTE d'une pile libre : on la coiffe.
+            //
+            // Réservé aux pièces sans parent. Se poser au-dessus d'une pièce
+            // accrochée revient exactement à se poser sous celle du dessus :
+            // proposer les deux créait des ex æquo, et l'accroche sautait de
+            // l'une à l'autre au moindre pixel.
+            if (!cible.modele.chapeau && !cible.parent) {
                 const bas = tenue.y + tenue.hauteurPile();
                 const d = Math.hypot(tenue.x - pos.x, bas - pos.y);
                 if (d < meilleure) {
@@ -714,6 +757,7 @@ export class Atelier {
                 }
             }
         }
+        this.ouvrirEspace(this.candidat, this.candidat ? tenue.hauteurPile() : 0);
     }
 
     /**
@@ -747,7 +791,12 @@ export class Atelier {
         while (dernier.next) dernier = dernier.next;
 
         if (c.genre === 'dessous') {
+            // Insertion : ce qui suivait la cible se raccroche SOUS la pile
+            // posée. Sans ce raccord, tout ce qui était en dessous du point
+            // d'insertion disparaissait du programme sans laisser de trace.
+            const suite = c.cible.next;
             c.cible.next = tenue; tenue.parent = c.cible;
+            if (suite) { dernier.next = suite; suite.parent = dernier; }
             c.cible.remonterMiseEnForme();
         } else if (c.genre === 'dedans') {
             c.cible.child = tenue; tenue.parent = c.cible;

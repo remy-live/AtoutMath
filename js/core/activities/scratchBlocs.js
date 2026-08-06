@@ -22,7 +22,7 @@ import { CHAT_SVG, CHAT_TAILLE } from './chatSvg.js';
 import { Atelier, vignettePalette } from './scratchAtelier.js';
 
 const DEMI = 200;          // la scène couvre -200..200 dans les deux sens
-const CARREAU = 10;        // un carreau du quadrillage = 10 pas du chat
+const CARREAU = 10;        // valeur d'un carreau par défaut, en pas du chat
 const OUTILS = { compterBlocs, contientBoucle, profondeurBoucles };
 
 /** Les pièces, dans le vocabulaire de Scratch. */
@@ -227,24 +227,38 @@ export function mount(container, session, opts = {}) {
 
     // --- Scène --------------------------------------------------------------
 
-    let cnv = null, ctx = null, echelle = 1, demi = DEMI;
+    let cnv = null, ctx = null, echelle = 1, demi = DEMI, carreau = CARREAU;
 
     /**
-     * Cadre la scène sur ce qu'il y a à voir.
+     * Cadre la scène sur ce qu'il y a à voir, et choisit ce que vaut un carreau.
      *
-     * La scène couvrait toujours 400 pas de côté : au niveau du triangle, ça
-     * faisait quarante carreaux minuscules autour d'une figure qui en occupait
-     * dix. On ne comptait plus rien. On mesure donc l'encombrement de la
-     * figure (et du tracé de l'élève, pour qu'un dérapage reste visible) et on
-     * cadre juste autour, au carreau près : moins de carreaux, plus grands.
+     * Deux réglages, pas un.
+     *
+     * Le CADRAGE d'abord : la scène couvrait toujours 400 pas de côté, ce qui
+     * faisait quarante carreaux autour d'une figure qui en occupait dix. On
+     * mesure donc l'encombrement de la figure — et du tracé de l'élève, pour
+     * qu'un dérapage reste visible — et on cadre juste autour.
+     *
+     * L'UNITÉ ensuite, et c'est elle qui manquait : cadrer ne suffit pas quand
+     * la figure elle-même est grande. Un côté de 180 pas fait dix-huit
+     * carreaux de dix, et dix-huit carreaux par côté, ça ne se compte plus.
+     * On prend donc la plus petite unité RONDE (10, 20, 25, 50, 100) qui tient
+     * le quadrillage sous seize carreaux de large. Le carreau vaut alors 20 ou
+     * 50 pas au lieu de 10 — et la légende le dit, en toutes lettres, en bas
+     * de la scène. Compter reste possible ; c'était tout l'objet du carreau.
      */
+    const UNITES = [10, 20, 25, 50, 100];
+    const MAX_CARREAUX = 16;
+
     function cadrer(...jeux) {
         const d = item.meta.depart || {};
         let m = 45;
         const voir = (p) => { m = Math.max(m, Math.abs(p.x || 0), Math.abs(p.y || 0)); };
         voir(d);
         jeux.forEach(lignes => (lignes || []).forEach(l => (l || []).forEach(voir)));
-        demi = Math.min(320, Math.ceil((m + 22) / CARREAU) * CARREAU);
+        const rayon = Math.min(400, m + 22);
+        carreau = UNITES.find(u => (2 * rayon) / u <= MAX_CARREAUX) || UNITES[UNITES.length - 1];
+        demi = Math.ceil(rayon / carreau) * carreau;
     }
 
     function preparerScene() {
@@ -284,14 +298,31 @@ export function mount(container, session, opts = {}) {
         // Un SEUL trait pour toutes les lignes : une ligne forte tous les cinq
         // carreaux dessinait un second quadrillage par-dessus le premier, et
         // on ne savait plus lequel compter.
+        // Le quadrillage est ANCRÉ SUR LE DÉPART DU CHAT, pas sur le centre de
+        // la scène : le chat se retrouve ainsi sur un coin de carreau, et un
+        // côté long d'un nombre entier de carreaux tombe pile sur les lignes.
+        // Centré, il partait parfois au milieu d'un carreau et plus rien ne se
+        // comptait à l'œil.
+        const dep = item.meta.depart || {};
+        const ax = dep.x || 0, ay = dep.y || 0;
         ctx.strokeStyle = 'rgba(120,140,170,.26)';
         ctx.lineWidth = 1;
-        for (let v = -demi; v <= demi; v += CARREAU) {
+        const lignes = (ancre) => {
+            const out = [];
+            const debut = ancre - Math.ceil((demi + ancre) / carreau) * carreau;
+            for (let v = debut; v <= demi + carreau; v += carreau) {
+                if (v >= -demi && v <= demi) out.push(v);
+            }
+            return out;
+        };
+        lignes(ax).forEach(v => {
             const a = versEcran({ x: v, y: -demi }), b = versEcran({ x: v, y: demi });
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        });
+        lignes(ay).forEach(v => {
             const c = versEcran({ x: -demi, y: v }), d = versEcran({ x: demi, y: v });
             ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
-        }
+        });
 
         // Gabarit pâle, tracé de l'élève par-dessus : on voit ce qui est
         // couvert et ce qui dépasse. Le gabarit était épais de 14 px — il
@@ -306,15 +337,15 @@ export function mount(container, session, opts = {}) {
 
     /** Un carreau témoin en bas à gauche : l'échelle, montrée plutôt qu'écrite. */
     function legendeCarreau() {
-        const pas = CARREAU * echelle;
+        const pas = carreau * echelle;
         const x = 10, y = cnv.height - 10 - pas;
         ctx.save();
         ctx.strokeStyle = 'rgba(79,70,229,.55)'; ctx.lineWidth = 1.4;
         ctx.strokeRect(x, y, pas, pas);
         ctx.fillStyle = 'rgba(71,85,105,.85)';
-        ctx.font = `700 ${Math.max(9, Math.min(13, cnv.width * 0.033))}px 'Inter', sans-serif`;
+        ctx.font = `700 ${Math.max(10, Math.min(14, cnv.width * 0.036))}px 'Inter', sans-serif`;
         ctx.textBaseline = 'middle';
-        ctx.fillText(`= ${CARREAU} pas`, x + pas + 6, y + pas / 2);
+        ctx.fillText(`= ${carreau} pas`, x + pas + 6, y + pas / 2);
         ctx.restore();
     }
 
