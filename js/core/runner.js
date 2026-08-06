@@ -22,6 +22,7 @@ import { hydratePath } from './path.js';
 import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
 import { uuid } from './ids.js';
+import { destroyAllDemoCursors } from './demoPointer.js';
 
 export class Runner {
     /**
@@ -78,6 +79,11 @@ export class Runner {
             try { precedent.finish(true); } catch (e) { console.warn('[runner] abandon du parcours précédent', e); }
         }
         state.activeSequenceRunner = this;
+
+        // On part d'un écran propre : une démonstration lancée juste avant a
+        // pu laisser sa flèche, sa bulle ou sa barre de commandes. Elle n'est
+        // tenue par aucun parcours, donc personne d'autre ne les enlève.
+        destroyAllDemoCursors();
 
         // Le titre est posé DÈS MAINTENANT et pas seulement dans `runStep` :
         // en évaluation, un écran de consignes s'intercale, et il portait
@@ -638,8 +644,12 @@ export class Runner {
         const text = document.getElementById('game-progress-text');
         if (!box || !bar || !text || !this.step) return;
 
-        box.style.display = 'flex';
         const total = this.step.nbItems;
+        // Une seule question, aucune progression à montrer : « 0 / 1 » au-dessus
+        // de l'atelier libre annonçait un décompte là où il n'y a rien à
+        // compter, et faisait passer un espace de dessin pour un contrôle.
+        if (total <= 1) { box.style.display = 'none'; return; }
+        box.style.display = 'flex';
         const done = this.itemsResolved.size;
         const solved = this.itemsSolved.size;
 

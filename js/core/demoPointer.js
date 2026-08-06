@@ -88,7 +88,17 @@ export function destroyAllDemoCursors() {
     // instance de ce fichier) ne serait pas dans le registre. La bulle vit
     // elle aussi sur <body> : sans ce balayage, une explication du robot
     // restait affichée après la fermeture du jeu.
-    document.querySelectorAll('.demo-cursor, .demo-bubble').forEach(el => el.remove());
+    //
+    // La BARRE DE COMMANDES est balayée ici aussi. Elle n'a pas de registre —
+    // chaque démonstration détient la sienne et la détruit en terminant — mais
+    // une démonstration lancée par `launchPreview` n'est tenue par aucun
+    // parcours : en passant d'un aperçu à une vraie partie, personne
+    // n'appelait son `destroy()`. On se retrouvait à jouer pour de bon avec
+    // « ⏮ Arrière · ⏸ Pause · ⏭ Un pas » posés en travers de l'en-tête.
+    document.querySelectorAll('.demo-cursor, .demo-bubble, .demo-controls').forEach(el => el.remove());
+    // Une barre retirée alors qu'elle tenait le jeu en pause le laisserait
+    // gelé pour toujours : on relâche le gel avec elle.
+    document.dispatchEvent(new CustomEvent('demo_pause', { detail: false }));
 }
 
 /**

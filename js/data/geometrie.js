@@ -65,6 +65,11 @@ export const geometrieExercises = [
         // donne qu'on découvre le cercle.
         id: 'geo-chat-libre', status: STATUS.TEST, title: 'Le Chat Géomètre — atelier libre',
         generatorId: 'geo.scratch', activityId: 'scratch',
+        // Un ATELIER, pas un exercice : rien à régler avant d'entrer (le
+        // panneau demandait un nombre de questions et un niveau de départ pour
+        // quelque chose qui n'a ni l'un ni l'autre), pas de barre de
+        // progression, pas d'indice. On ouvre et on dessine.
+        atelier: true, internalStudentConfig: true,
         params: { mode: 'libre', saisie: 'auto', nbQuestions: 1 },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "L'atelier libre : toute la palette, aucune figure imposée, rien à valider. Programme le chat et regarde ce qu'il dessine."

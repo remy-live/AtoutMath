@@ -25,6 +25,12 @@ export function openGameLayer(exo, startAsDemo) {
 
     if (startAsDemo) return openDemo(exo);
 
+    // On quitte une démonstration : sa flèche, sa bulle et sa barre de
+    // commandes ne lui survivent pas. Le balayage est fait ICI, avant même le
+    // panneau de réglages, parce que ce panneau rend la main sans rien lancer
+    // — en mode professeur, personne n'atteignait le parcours qui nettoie.
+    destroyAllDemoCursors();
+
     // Verrous du jeu libre (exercices réservés, jeux à débloquer). Seul le
     // lancement LIBRE passe ici : les parcours du professeur, eux, lancent
     // leurs étapes par le Runner et ne sont jamais bloqués.

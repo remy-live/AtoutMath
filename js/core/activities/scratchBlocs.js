@@ -94,7 +94,7 @@ export function mount(container, session, opts = {}) {
                         </div>
                     </div>
                 </div>
-                ${hintBar(session)}
+                ${m.libre ? '' : hintBar(session)}
             </div>`;
 
         preparerScene();
