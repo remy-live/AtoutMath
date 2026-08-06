@@ -1,12 +1,32 @@
 // Générateur de Garam.
 //
-// La structure suit le Garam authentique : des BRIQUES — un anneau de quatre
-// égalités refermé sur sa case H — assemblées par des PONTS, une case entre
-// deux briques qui porte sa propre égalité. Petit : deux briques et un pont
-// (9 égalités). Grand : quatre briques en carré et quatre ponts, comme sur
-// les fiches originales (20 égalités). Les résultats DOUBLES s'écrivent sur
-// deux cases accolées — 6 × 7 = [4][2] — les dizaines fermant l'anneau de la
-// brique : tout est lié, et les tests le prouvent (connexité).
+// La structure est celle des fiches officielles (garam.io), relevée sur un
+// livret original : une BRIQUE de trois colonnes et QUATRE rangées.
+//
+//     A op B = C          ← horizontale haute, résultat à un chiffre
+//     op       op
+//     D        E
+//     =        =
+//     P        Q          ← DIZAINES des résultats verticaux
+//     F op G = H          ← et leurs UNITÉS, qui servent aussi
+//                           d'opérande et de résultat à l'horizontale basse
+//
+// Quatre égalités par brique, dix cases, et tout se referme : la case F est
+// à la fois l'unité de la verticale gauche et le premier terme de
+// l'horizontale basse ; H est l'unité de la verticale droite et le résultat
+// de cette même horizontale.
+//
+// La conséquence tient en une phrase, et c'est elle qui fait le jeu : une
+// VERTICALE donne toujours un nombre à DEUX CHIFFRES, écrit de haut en bas.
+// Donc une verticale ne peut être qu'une addition ou une multiplication —
+// une soustraction ou une division de deux chiffres ne dépasse jamais 9.
+// Les horizontales, elles, tiennent sur un chiffre et acceptent les quatre
+// opérations.
+//
+// Les briques s'assemblent par des PONTS : une case entre deux briques, qui
+// porte sa propre égalité. Petit : deux briques côte à côte et un pont
+// (9 égalités, 21 cases). Grand : quatre briques en carré et quatre ponts,
+// exactement la fiche originale (20 égalités, 44 cases).
 //
 // Trois garanties : solution unique ; RÉSOLUBLE SANS DEVINER (on ne creuse
 // une case que si la grille reste terminable par pur enchaînement de
@@ -34,28 +54,13 @@ const DIFFICULTE_ITEM = { facile: 2, moyen: 3, difficile: 4 };
 // --- Structure ---------------------------------------------------------------
 
 /**
- * La BRIQUE, l'unité du Garam authentique : un anneau de quatre égalités qui
- * se referme sur lui-même —
- *
- *     A ∘ B = C
- *     ∘       ∘
- *     D       E
- *     =       =
- *     F ∘ G = H      (H ferme l'anneau : résultat de la verticale ET de
- *                      l'horizontale du bas)
- *
- * L'égalité du bas peut avoir un résultat DOUBLE : F ∘ G = [H][H₂], les
- * dizaines H restant la fermeture de l'anneau, les unités H₂ une case de plus.
- *
- * Le Garam assemble les briques comme l'original : deux côte à côte reliées
- * par un PONT horizontal (E꜀ ∘ M = D꜀꜀) pour le « petit », quatre en carré
- * avec quatre ponts (deux horizontaux, deux verticaux G ∘ M = B) pour le
- * « grand ». Les ponts font du treillis une seule toile.
+ * Le treillis, brique par brique.
  *
  * Les égalités sont rangées dans l'ORDRE DE CONSTRUCTION : chacune ne dépend
- * que de cases déjà posées par les précédentes.
+ * que de cases déjà posées par les précédentes. C'est pour ça que l'ordre
+ * change d'une brique à l'autre — un pont a pu poser B ou D d'avance.
  */
-function construireStructure(taille, rng, forceDoubles = null) {
+function construireStructure(taille) {
     const cells = [];
     const cellAt = {};
     const cell = (r, c) => {
@@ -74,25 +79,35 @@ function construireStructure(taille, rng, forceDoubles = null) {
     };
 
     /**
-     * Une brique en (r0, c0), au résultat du bas éventuellement double.
-     * `ordre` liste ses égalités dans l'ordre de construction voulu — il
+     * Une brique en (r0, c0). Dix cases, quatre égalités.
+     *
+     *   r0    : A [op] B [=] C
+     *   r0+1  : [op]        [op]
+     *   r0+2  : D            E
+     *   r0+3  : [=]         [=]
+     *   r0+4  : P            Q      ← dizaines, collées à la rangée suivante
+     *   r0+5  : F [op] G [=] H      ← unités
+     *
+     * `ordre` liste les égalités dans l'ordre de construction voulu — il
      * change selon ce que les ponts ont déjà posé (B ou D connus).
      */
-    const brique = (r0, c0, double, ordre) => {
+    const brique = (r0, c0, ordre) => {
         const A = cell(r0, c0), B = cell(r0, c0 + 2), C = cell(r0, c0 + 4);
         const D = cell(r0 + 2, c0), E = cell(r0 + 2, c0 + 4);
-        const F = cell(r0 + 4, c0), G = cell(r0 + 4, c0 + 2), H = cell(r0 + 4, c0 + 4);
+        const P = cell(r0 + 4, c0), Q = cell(r0 + 4, c0 + 4);
+        const F = cell(r0 + 5, c0), G = cell(r0 + 5, c0 + 2), H = cell(r0 + 5, c0 + 4);
         const eqs = {
             H1: { a: A, b: B, z: C, op: null, _s: [[r0, c0 + 1], [r0, c0 + 3]] },
-            VL: { a: A, b: D, z: F, op: null, _s: [[r0 + 1, c0], [r0 + 3, c0]] },
-            VR: { a: C, b: E, z: H, op: null, _s: [[r0 + 1, c0 + 4], [r0 + 3, c0 + 4]] },
-            H2: double
-                ? { a: F, b: G, z: H, z2: cell(r0 + 4, c0 + 5), op: null, _s: [[r0 + 4, c0 + 1], [r0 + 4, c0 + 3]] }
-                : { a: F, b: G, z: H, op: null, _s: [[r0 + 4, c0 + 1], [r0 + 4, c0 + 3]] }
+            // Les VERTICALES portent le résultat double : dizaines au-dessus,
+            // unités en dessous. Ce sont elles, et elles seules, qui obligent
+            // à passer la dizaine — c'est là qu'est le travail.
+            VL: { a: A, b: D, z: P, z2: F, op: null, _s: [[r0 + 1, c0], [r0 + 3, c0]] },
+            VR: { a: C, b: E, z: Q, z2: H, op: null, _s: [[r0 + 1, c0 + 4], [r0 + 3, c0 + 4]] },
+            H2: { a: F, b: G, z: H, op: null, _s: [[r0 + 5, c0 + 1], [r0 + 5, c0 + 3]] }
         };
         for (const nom of ordre) pousser(eqs[nom], eqs[nom]._s[0], eqs[nom]._s[1]);
         Object.values(eqs).forEach(eq => delete eq._s);
-        return { A, B, C, D, E, F, G, H };
+        return { A, B, C, D, E, P, Q, F, G, H };
     };
 
     // Un pont : a ∘ M = z, avec sa case M à lui. `sens` place les signes.
@@ -104,52 +119,31 @@ function construireStructure(taille, rng, forceDoubles = null) {
         return pousser({ a, b: M, z, op: null }, opPos, egalPos);
     };
 
-    // Quelles briques ont un résultat double ? Tirées au sort, au moins une —
-    // c'est la signature du Garam. `forceDoubles` sert aux tests.
-    const nb = taille === 'grand' ? 4 : 2;
-    let doubles = forceDoubles || Array.from({ length: nb }, () => rng.bool());
-    if (!doubles.some(Boolean)) doubles[rng.int(0, nb - 1)] = true;
-
     // Brique haut-gauche : rien n'est connu, ordre naturel.
-    const TL = brique(0, 0, doubles[0], ['H1', 'VL', 'VR', 'H2']);
-
-    if (taille === 'petit') {
-        // Petit AUTHENTIQUE : deux briques CÔTE À CÔTE, reliées par un pont
-        // horizontal — E(TL) ∘ M = D(TR).
-        //
-        // La version précédente les empilait, ce qui donnait une colonne
-        // unique : plus commode sur un téléphone, mais ce n'est pas le Garam
-        // qu'on trouve partout. Le vrai a DEUX COLONNES d'égalités reliées en
-        // leur milieu, et c'est cette silhouette-là qu'un élève reconnaîtra
-        // sur une fiche de journal.
-        const D_TR = cell(2, 8);
-        pont(TL.E, D_TR, [2, 6, 'h']);
-        brique(0, 8, doubles[1], ['VL', 'H1', 'VR', 'H2']);
-        return { cells, equations, signes, rows: 5, cols: 14 };
-    }
+    const TL = brique(0, 0, ['H1', 'VL', 'VR', 'H2']);
 
     // Pont horizontal haut : E(TL) ∘ M = D(TR).
     const D_TR = cell(2, 8);
     pont(TL.E, D_TR, [2, 6, 'h']);
     // Brique haut-droite : D est posé par le pont — la verticale gauche se
-    // construit d'abord (A libre, F déduit), le reste suit.
-    const TR = brique(0, 8, doubles[1], ['VL', 'H1', 'VR', 'H2']);
+    // construit d'abord (A libre, P et F déduits), le reste suit.
+    const TR = brique(0, 8, ['VL', 'H1', 'VR', 'H2']);
 
-    {
-        // Pont vertical gauche : G(TL) ∘ M = B(BL).
-        const B_BL = cell(8, 2);
-        pont(TL.G, B_BL, [6, 2, 'v']);
-        const BL = brique(8, 0, doubles[2], ['H1', 'VL', 'VR', 'H2']);
-        // Pont vertical droit, puis pont horizontal bas.
-        const B_BR = cell(8, 10);
-        pont(TR.G, B_BR, [6, 10, 'v']);
-        const D_BR = cell(10, 8);
-        pont(BL.E, D_BR, [10, 6, 'h']);
-        // Brique bas-droite : B et D posés par les ponts.
-        brique(8, 8, doubles[3], ['H1', 'VL', 'VR', 'H2']);
-    }
+    if (taille === 'petit') return { cells, equations, signes, rows: 6, cols: 13 };
 
-    return { cells, equations, signes, rows: 13, cols: 14 };
+    // Pont vertical gauche : G(TL) ∘ M = B(BL).
+    const B_BL = cell(9, 2);
+    pont(TL.G, B_BL, [7, 2, 'v']);
+    const BL = brique(9, 0, ['H1', 'VL', 'VR', 'H2']);
+    // Pont vertical droit, puis pont horizontal bas.
+    const B_BR = cell(9, 10);
+    pont(TR.G, B_BR, [7, 10, 'v']);
+    const D_BR = cell(11, 8);
+    pont(BL.E, D_BR, [11, 6, 'h']);
+    // Brique bas-droite : B et D posés par les ponts.
+    brique(9, 8, ['H1', 'VL', 'VR', 'H2']);
+
+    return { cells, equations, signes, rows: 15, cols: 13 };
 }
 
 // --- Déduction et solveur -----------------------------------------------------
@@ -189,6 +183,19 @@ function deduire(equations, vals) {
             if (inconnues === 0) {
                 const T = double ? 10 * vz + vz2 : vz;
                 if (calculer(op, va, vb) !== T || (double && vz < 1)) return false;
+                continue;
+            }
+            // Les deux opérandes connus : le résultat l'est aussi, DIZAINES ET
+            // UNITÉS comprises. Deux cases se remplissent d'un coup — ce n'est
+            // pas deviner, c'est poser une opération. Sans ce cas, une brique
+            // dont A et D sont déjà là restait bloquée : deux inconnues, donc
+            // écartée, alors que rien n'était incertain.
+            if (double && va !== null && vb !== null && vz === null && vals[z2] === null) {
+                const T = calculer(op, va, vb);
+                if (T === null || T < 10 || T > 99) return false;
+                vals[z] = Math.floor(T / 10);
+                vals[z2] = T % 10;
+                bouge = true;
                 continue;
             }
             if (inconnues > 1) continue;
@@ -364,6 +371,27 @@ function treillisNeuf(rng, structure, autorisees, essais = 800) {
     return null;
 }
 
+/**
+ * Note de « vivacité » d'un treillis.
+ *
+ * Une grille pleine de 0 et de 1 est juste, et sans intérêt : « 0 + 0 = 0 »
+ * ne se calcule pas, il se lit. On récompense donc la VARIÉTÉ des chiffres et
+ * on pénalise les zéros, ainsi que les opérations neutres (∘ 0 pour + et −,
+ * ∘ 1 pour × et ÷) qui ne demandent aucun effort.
+ */
+function qualiteTreillis(vals, structure) {
+    const distincts = new Set(vals).size;
+    const zeros = vals.filter(v => v === 0).length;
+    let neutres = 0;
+    for (const eq of structure.equations) {
+        const b = vals[eq.b];
+        if ((eq.op === 'add' || eq.op === 'sub') && b === 0) neutres++;
+        if ((eq.op === 'mul' || eq.op === 'div') && b === 1) neutres++;
+        if (eq.op === 'mul' && (b === 0 || vals[eq.a] === 0)) neutres++;
+    }
+    return distincts * 4 - zeros * 2 - neutres * 3;
+}
+
 // --- Générateur ---------------------------------------------------------------
 
 export const garamGenerator = {
@@ -405,9 +433,30 @@ export const garamGenerator = {
             ? params.operations : ['add', 'sub', 'mul'];
         const difficulte = CIBLES_DONNEES[params.difficulte] ? params.difficulte : 'facile';
 
-        const structure = construireStructure(taille, rng);
-        const solution = treillisNeuf(rng, structure, autorisees)
-            || treillisNeuf(rng, structure, ['add'], 3000);
+        const structure = construireStructure(taille);
+        // On tire PLUSIEURS treillis et on garde le plus vivant.
+        //
+        // La construction prend la première combinaison valide, ce qui la fait
+        // pencher vers les valeurs dégénérées : « 0 + 0 = 0 », « 1 − 0 = 1 ».
+        // Rien de faux, mais rien à calculer non plus. Quelques tirages de plus
+        // coûtent une milliseconde et donnent une grille qui ressemble à celles
+        // du livret.
+        // `treillisNeuf` ÉCRIT les opérations dans la structure : garder un
+        // candidat suppose donc de garder ses opérations avec lui, sinon le
+        // tirage suivant les écrase et la grille conservée devient fausse.
+        let solution = null, opsRetenues = null, meilleure = -Infinity;
+        for (let essai = 0; essai < 5; essai++) {
+            const candidat = treillisNeuf(rng, structure, autorisees);
+            if (!candidat) continue;
+            const note = qualiteTreillis(candidat, structure);
+            if (note > meilleure) {
+                meilleure = note;
+                solution = candidat;
+                opsRetenues = structure.equations.map(e => e.op);
+            }
+        }
+        if (!solution) solution = treillisNeuf(rng, structure, ['add'], 3000);
+        else structure.equations.forEach((e, i) => { e.op = opsRetenues[i]; });
 
         // Creusage : un retrait n'est conservé que si la grille reste
         // RÉSOLUBLE PAR DÉDUCTION seule — garantie plus forte que l'unicité
@@ -430,8 +479,8 @@ export const garamGenerator = {
             skillId: 'num.logique.garam',
             answerKind: 'grid',
             prompt: {
-                text: 'Complète les cases avec des chiffres pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres.',
-                html: '<div class="game-question kenken-consigne">Complète les cases pour que <b>toutes les égalités</b> soient vraies. Deux cases collées forment un <b>nombre à deux chiffres</b>.</div>'
+                text: 'Complète les cases avec des chiffres pour que toutes les égalités soient vraies. Les égalités verticales donnent un nombre à deux chiffres : les dizaines au-dessus, les unités en dessous.',
+                html: '<div class="game-question kenken-consigne">Complète les cases pour que <b>toutes les égalités</b> soient vraies. Une égalité <b>verticale</b> donne un nombre à <b>deux chiffres</b> : dizaines au-dessus, unités en dessous.</div>'
             },
             // Préfixe « g » : l'égalité stricte, pas parseFloat (voir kenken.js).
             answer: 'g' + solution.join('/'),
@@ -439,7 +488,7 @@ export const garamGenerator = {
                 'Observe la zone entourée en orange : une égalité y est fausse, ou il n\'y manque qu\'une case.',
                 'Une case a été remplie pour toi. Les égalités qui la traversent se débloquent.'
             ],
-            explanation: 'Chaque égalité, horizontale ou verticale, doit être vraie — les cases partagées et les nombres à deux chiffres relient tout le treillis.',
+            explanation: 'Chaque égalité doit être vraie, horizontale comme verticale. Les verticales dépassent toujours dix : leur résultat s’écrit sur deux cases empilées, et la case du bas sert aussi à l’égalité horizontale — c’est ce qui relie tout le treillis.',
             difficulty: DIFFICULTE_ITEM[difficulte] + (taille === 'grand' ? 1 : 0),
             meta: {
                 structure: {

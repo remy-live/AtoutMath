@@ -38,14 +38,20 @@ function verifieStructure(item) {
 
     // Les deux tailles font la même largeur (deux colonnes de briques) :
     // c'est la HAUTEUR qui les distingue — une rangée de briques ou deux.
-    const grand = structure.rows === 13;
+    const grand = structure.rows === 15;
+    const briques = grand ? 4 : 2, ponts = grand ? 4 : 1;
     const doubles = structure.equations.filter(e => e.z2 !== undefined).length;
-    assert.equal(structure.equations.length, grand ? 20 : 9, 'nombre d\'égalités');
-    assert.ok(doubles >= 1, 'au moins un résultat double — la signature du Garam');
-    assert.ok(doubles <= (grand ? 4 : 2));
-    // 8 cases par brique + 1 par pont + 1 par résultat double.
-    const attenduCases = (grand ? 4 * 8 + 4 : 2 * 8 + 1) + doubles;
-    assert.equal(structure.cells.length, attenduCases, 'compte de cases');
+    assert.equal(structure.equations.length, briques * 4 + ponts, 'nombre d\'égalités');
+    // Deux résultats doubles par brique : les deux VERTICALES, toujours.
+    assert.equal(doubles, briques * 2, 'les verticales portent toutes un résultat double');
+    // 10 cases par brique, 1 par pont.
+    assert.equal(structure.cells.length, briques * 10 + ponts, 'compte de cases');
+
+    // Une verticale ne peut être qu'une addition ou une multiplication : rien
+    // d'autre ne dépasse 9 avec deux chiffres.
+    for (const eq of structure.equations) {
+        if (eq.z2 !== undefined) assert.ok(['add', 'mul'].includes(eq.op), 'verticale + ou ×');
+    }
 
     assert.equal(item.answer, 'g' + solution.join('/'));
 }

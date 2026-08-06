@@ -50,8 +50,10 @@ export function mount(container, session, opts = {}) {
         valeurs = givens.map(v => (v === null ? VIDE : v));
         verrous = givens.map(v => v !== null);
 
-        // Les deux cases d'un résultat double s'ACCOLENT, comme sur les
-        // fiches : dizaines et unités forment visuellement un seul nombre.
+        // Les deux cases d'un résultat double s'ACCOLENT VERTICALEMENT, comme
+        // sur les fiches : le résultat d'une verticale s'écrit de haut en bas,
+        // dizaines puis unités, et les deux cases doivent se lire comme un
+        // seul nombre.
         const dizaines = new Set(), unites = new Set();
         structure.equations.forEach(eq => {
             if (eq.z2 !== undefined) { dizaines.add(eq.z); unites.add(eq.z2); }
@@ -71,12 +73,13 @@ export function mount(container, session, opts = {}) {
             `<span class="ga-signe" style="grid-row:${sg.r + 1}; grid-column:${sg.c + 1};">${sg.glyphe}</span>`);
 
         // Le treillis authentique est COMPACT : les pistes qui ne portent que
-        // des signes sont deux fois plus étroites que celles des cases. Seule
-        // exception : une colonne impaire qui héberge la case des unités d'un
-        // double garde la pleine largeur.
-        const colW = Array.from({ length: structure.cols }, (_, c) =>
-            (c % 2 === 0 || structure.cells.some(p => p.c === c)) ? '1fr' : '0.5fr');
-        const rowH = Array.from({ length: structure.rows }, (_, r) => (r % 2 === 0 ? '1fr' : '0.5fr'));
+        // des SIGNES sont deux fois plus étroites que celles des cases. La
+        // règle vaut dans les deux sens — la rangée des unités d'un résultat
+        // vertical est collée à celle des dizaines, sans rangée de signes
+        // entre elles, donc à hauteur pleine bien que de rang impair.
+        const piste = (n, occupe) => Array.from({ length: n }, (_, i) => occupe(i) ? '1fr' : '0.5fr');
+        const colW = piste(structure.cols, c => structure.cells.some(p => p.c === c));
+        const rowH = piste(structure.rows, r => structure.cells.some(p => p.r === r));
         const somme = (arr) => arr.reduce((s, v) => s + parseFloat(v), 0);
         const gabarit = `--ga-ratio:${(somme(colW) / somme(rowH)).toFixed(3)};`
             + `grid-template-columns:${colW.join(' ')};grid-template-rows:${rowH.join(' ')};`;
@@ -300,6 +303,16 @@ export function mount(container, session, opts = {}) {
                 const vides = casesDe(eq).filter(i => valeurs[i] === VIDE);
                 if (vides.length === 1) return { eq, idx: vides[0] };
             }
+            // Un résultat vertical peut manquer TOUT ENTIER — ses deux
+            // chiffres à la fois. Les deux opérandes suffisent : on pose les
+            // dizaines, puis les unités. C'est ce que fait un élève, et sans
+            // ce cas le robot sautait ces cases sans un mot.
+            for (const eq of structure.equations) {
+                if (eq.z2 === undefined) continue;
+                if (valeurs[eq.a] === VIDE || valeurs[eq.b] === VIDE) continue;
+                if (valeurs[eq.z] === VIDE) return { eq, idx: eq.z };
+                if (valeurs[eq.z2] === VIDE) return { eq, idx: eq.z2 };
+            }
             return null;
         };
         const phraseDe = (eq, idx) => {
@@ -310,8 +323,8 @@ export function mount(container, session, opts = {}) {
             if (idx === eq.a) return `? ${sym} ${lit(eq.b)} = ${cible} : je cherche le nombre de départ → ${v}.`;
             if (idx === eq.b) return `${lit(eq.a)} ${sym} ? = ${cible} : je remonte le calcul → ${v}.`;
             const T = double ? 10 * solution[eq.z] + solution[eq.z2] : solution[eq.z];
-            if (double && idx === eq.z) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : les DIZAINES vont dans la première case → ${v}.`;
-            if (double) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : les UNITÉS finissent le nombre → ${v}.`;
+            if (double && idx === eq.z) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : ça dépasse dix, donc les DIZAINES vont dans la case du dessus → ${v}.`;
+            if (double) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : les UNITÉS vont juste en dessous → ${v}.`;
             return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ? : je calcule → ${v}.`;
         };
 

@@ -2026,7 +2026,11 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .ga-board {
     display: grid;
     gap: 0;
-    width: min(560px, 94cqw, calc(74cqh * var(--ga-ratio, 1)));
+    /* Le plateau se borne en LARGEUR comme en HAUTEUR. La borne de hauteur
+       compte double depuis que la grille officielle est plus haute que large :
+       il faut laisser sous elle le pavé de chiffres ET les deux boutons, sans
+       quoi « Valider » sortait de l'écran sur un téléphone court. */
+    width: min(560px, 94cqw, calc(62cqh * var(--ga-ratio, 1)));
     aspect-ratio: var(--ga-ratio, 1);
     padding: 12px; border-radius: 14px;
     background: var(--bg-panel); box-shadow: var(--shadow-md);
@@ -2036,14 +2040,21 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     border: 2.5px solid #0f172a; border-radius: 7px;
     background: #fff;
     font-size: clamp(1rem, 3.8cqh, 1.7rem); font-weight: 800; color: #2563eb;
+    /* Sans `min-height: 0`, une case de grille refuse de descendre sous la
+       hauteur de son chiffre : les quinze rangées de la grille officielle
+       imposaient alors leur taille et le rapport d'aspect du plateau était
+       ignoré — le pavé de chiffres finissait hors de l'écran. */
+    min-height: 0; min-width: 0; overflow: hidden;
 }
 .ga-cell.kk-given { color: #0f172a; background: #f1f5f9; }
-/* Résultat double : dizaines et unités se touchent, séparées d'un pointillé —
-   on lit UN nombre à deux chiffres, pas deux cases. */
-.ga-cell--diz { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-width: 0; }
-.ga-cell--uni { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 2px dashed #94a3b8; }
+/* Résultat d'une VERTICALE : il s'écrit de haut en bas, dizaines puis unités.
+   Les deux cases se touchent, séparées d'un pointillé — on lit UN nombre à
+   deux chiffres, pas deux cases. */
+.ga-cell--diz { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-width: 0; }
+.ga-cell--uni { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 2px dashed #94a3b8; }
 .ga-signe {
     display: flex; align-items: center; justify-content: center;
+    min-height: 0; min-width: 0;
     font-weight: 900; color: #0f172a;
     font-size: clamp(1rem, 3.4cqh, 1.55rem);
     user-select: none;
