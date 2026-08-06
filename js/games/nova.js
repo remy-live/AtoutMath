@@ -108,6 +108,9 @@ class Nova extends BaseGame {
         this.boss = null;
         this.orbes = [];
         this.atelier = null;
+        this.portail = null;           // l'anneau qui mène à la Faille
+        this.faille = null;            // l'épreuve bonus en cours
+        this.failleFaite = false;      // une seule faille par secteur
         this.epreuves = 0;             // épreuves réglées dans ce secteur
         this.prochainCalc = 'porte';   // portes et convois alternent
         this.message = null;
@@ -137,6 +140,14 @@ class Nova extends BaseGame {
         this.charge = 0;
         this.doigtPose = false;
         this.rayon = 0;
+        // …et son RÉGLAGE. Le canon automatique reste la valeur par défaut,
+        // mais certains joueurs veulent décider quand ils tirent : en mode
+        // « au doigt », le canon ne crache que tant que le doigt touche
+        // l'écran — piloter et tirer redeviennent le même geste. Le choix
+        // reste sur l'appareil, personne n'a envie de le refaire à chaque
+        // partie.
+        this.tirManuel = false;
+        try { this.tirManuel = localStorage.getItem('nova-tir') === 'doigt'; } catch (e) { /* mode privé */ }
 
         this.container.innerHTML = `
             <style>
@@ -155,11 +166,18 @@ class Nova extends BaseGame {
                     font-variant-numeric: tabular-nums; }
                 .nv-score { color: #fcd34d; font-weight: 900; font-size: 1rem; flex-shrink: 0;
                     font-variant-numeric: tabular-nums; }
+                .nv-tir { pointer-events: auto; flex-shrink: 0; cursor: pointer;
+                    background: rgba(15,23,42,.75); border: 1.5px solid #38bdf8; color: #bae6fd;
+                    border-radius: 999px; padding: 3px 9px; font-size: .72rem; font-weight: 800;
+                    font-family: inherit; white-space: nowrap; }
+                .nv-tir:active { transform: translateY(1px); }
             </style>
             <div class="nv-arene">
                 <canvas class="nv-canvas"></canvas>
                 <div class="nv-hud">
                     <div class="nv-secteur" data-secteur></div>
+                    <button type="button" class="nv-tir" data-tir
+                        title="Mode de tir : automatique, ou seulement quand le doigt touche l'écran"></button>
                     <div class="nv-vies" data-vies></div>
                     <div class="nv-bombes" data-bombes title="Bombes NOVA — double-tape pour déclencher"></div>
                     <div class="nv-credits" data-credits title="Crédits — à dépenser à l'atelier entre deux secteurs">⬢ 0</div>
@@ -175,8 +193,16 @@ class Nova extends BaseGame {
             score: this.container.querySelector('[data-score]'),
             secteur: this.container.querySelector('[data-secteur]'),
             bombes: this.container.querySelector('[data-bombes]'),
-            credits: this.container.querySelector('[data-credits]')
+            credits: this.container.querySelector('[data-credits]'),
+            tir: this.container.querySelector('[data-tir]')
         };
+        // Le bouton vit DANS l'arène : sans arrêter la propagation, l'appui
+        // qui change le mode de tir pilotait aussi le vaisseau, et deux appuis
+        // rapides déclenchaient une bombe.
+        if (this.ui.tir) {
+            this.ui.tir.addEventListener('pointerdown', e => e.stopPropagation());
+            this.ui.tir.addEventListener('click', e => { e.stopPropagation(); this.basculerTir(); });
+        }
         this.dimensionner();
         this.onResize = () => this.dimensionner();
         window.addEventListener('resize', this.onResize);
@@ -241,6 +267,16 @@ class Nova extends BaseGame {
         if (this.ui.secteur) this.ui.secteur.textContent = `Secteur ${this.niveau + 1} · ${this.secteur.nom}`;
         if (this.ui.bombes) this.ui.bombes.textContent = '✹'.repeat(Math.max(0, this.bombes));
         if (this.ui.credits) this.ui.credits.textContent = '⬢ ' + this.credits;
+        if (this.ui.tir) this.ui.tir.textContent = this.tirManuel ? '✋ tir au doigt' : '⚡ tir auto';
+    }
+
+    basculerTir() {
+        this.tirManuel = !this.tirManuel;
+        try { localStorage.setItem('nova-tir', this.tirManuel ? 'doigt' : 'auto'); } catch (e) { /* mode privé */ }
+        this.majHud();
+        this.mot(this.tirManuel
+            ? 'Tir au doigt : le canon ne crache que si tu touches l\'écran.'
+            : 'Tir automatique : le doigt ne sert qu\'à piloter.', 'ok');
     }
 
     /**
@@ -869,6 +905,9 @@ class Nova extends BaseGame {
         this.orbes = [];
         this.niveau++;
         this.epreuves = 0;
+        this.portail = null;
+        this.faille = null;
+        this.failleFaite = false;
         this.frame = 0;
         this.ennemis = []; this.tirsEnnemis = [];
         this.puissance = Math.max(this.puissance, this.canonBase);
@@ -876,6 +915,141 @@ class Nova extends BaseGame {
         this.phase = 'jeu';
         this.majHud();
         this.mot(`Cap sur ${this.secteur.nom} !`, 'ok');
+    }
+
+    // --- La FAILLE : l'épreuve bonus ------------------------------------------
+
+    /**
+     * Un anneau de lumière traverse le secteur. On peut l'ignorer — il ne
+     * coûte rien, il ne fait rien. Mais s'y glisser ouvre la FAILLE : une
+     * parenthèse sans ennemis, sans canon, où il ne reste qu'UN geste et UNE
+     * question.
+     *
+     * Des nombres tombent. Consigne : ATTRAPER les multiples de la table, et
+     * ÉVITER tous les autres. C'est l'exact contraire du réflexe du jeu —
+     * ailleurs on évite tout, ici il faut aller CHERCHER certaines choses — et
+     * comme le canon est coupé, il n'y a aucun intermédiaire entre le calcul
+     * et la main : on décide avec le corps.
+     *
+     * On n'y perd pas de vie : une faille est un cadeau, pas un piège. On y
+     * perd sa CHAÎNE, et donc les crédits qu'on serait allé chercher.
+     */
+    lancerPortail() {
+        const w = this.canvas.width;
+        const t = this.tables[Math.floor(Math.random() * this.tables.length)];
+        const lw = Math.max(120, Math.min(w * 0.46, 260));
+        this.failleFaite = true;
+        this.portail = {
+            table: t, lw, y: -70, v: 1.9,
+            x: lw / 2 + 12 + Math.random() * Math.max(1, w - lw - 24)
+        };
+        this.mot(`Une FAILLE ×${t} s'ouvre — traverse l'anneau !`, 'ok');
+    }
+
+    majPortail() {
+        const p = this.portail, h = this.canvas.height, v = this.vaisseau;
+        if (!p) return;
+        p.y += p.v;
+        if (Math.abs(p.y - v.y) < 30 && Math.abs(p.x - v.x) < p.lw / 2) {
+            this.portail = null;
+            this.entrerFaille(p.table);
+            return;
+        }
+        if (p.y > h + 70) { this.portail = null; this.mot('La faille se referme…', 'ko'); }
+    }
+
+    entrerFaille(table) {
+        this.ennemis = []; this.tirsEnnemis = []; this.tirs = [];
+        // Les nombres apparaissent SOUS le bandeau de consigne : nés en haut de
+        // l'écran, ils passaient une bonne seconde cachés derrière lui, et
+        // c'est du temps de lecture volé sur le seul indice qui compte.
+        const plafond = 34 + Math.max(38, Math.min(this.canvas.width, this.canvas.height) * 0.085) + 16;
+        this.faille = {
+            table, t: 0, duree: 780, plafond,
+            pris: 0, rates: 0, chaine: 0, meilleure: 0, fautes: 0,
+            nombres: [], prochain: 24
+        };
+        this.secousse = 18;
+        this.mot(`FAILLE : attrape les multiples de ${table}, évite les autres !`, 'ok');
+    }
+
+    /** Un nombre à attraper (multiple) ou à esquiver — d'apparence identique. */
+    nombreFaille(table, multiple) {
+        if (multiple) return table * (2 + Math.floor(Math.random() * 11));
+        // Un voisin PROCHE d'un multiple : c'est là que se joue la table.
+        // Un nombre tiré au hasard serait souvent écarté sans réfléchir.
+        const base = table * (2 + Math.floor(Math.random() * 11));
+        const ecart = [1, 2, 1, 2, 3][Math.floor(Math.random() * 5)] * (Math.random() < 0.5 ? -1 : 1);
+        const n = base + ecart;
+        return n % table === 0 || n < 2 ? base + 1 : n;
+    }
+
+    majFaille() {
+        const f = this.faille, w = this.canvas.width, h = this.canvas.height, v = this.vaisseau;
+        if (!f) return;
+        f.t++;
+
+        if (--f.prochain <= 0 && f.t < f.duree - 90) {
+            f.prochain = Math.max(16, 32 - this.niveau * 2);
+            const r = Math.max(17, Math.min(25, w * 0.055));
+            f.nombres.push({
+                x: r + 8 + Math.random() * Math.max(1, w - 2 * r - 16), y: f.plafond, age: 0,
+                v: 2.1 + this.niveau * 0.16 + Math.random() * 0.6, r, a: Math.random() * 6.28,
+                n: this.nombreFaille(f.table, Math.random() < 0.5)
+            });
+        }
+
+        f.nombres.forEach(o => {
+            o.y += o.v; o.a += 0.05; o.age = (o.age || 0) + 1;
+            if (o.mort || Math.hypot(o.x - v.x, o.y - v.y) > o.r + 14) return;
+            o.mort = true;
+            const bon = o.n % f.table === 0;
+            const q = `${o.n} est-il un multiple de ${f.table} ?`;
+            if (bon) {
+                f.pris++; f.chaine++;
+                f.meilleure = Math.max(f.meilleure, f.chaine);
+                this.gagner(15 * Math.min(5, f.chaine));
+                this.exploser(o.x, o.y, '#fcd34d', 18);
+                this.onCorrectAnswer(null, `mult:${f.table}`, {
+                    points: 10, questionText: q, given: 'oui', expected: 'oui'
+                });
+            } else {
+                f.rates++; f.chaine = 0;
+                this.secousse = 14;
+                this.exploser(o.x, o.y, '#f43f5e', 16);
+                this.mot(`${o.n} n'est pas dans la table de ${f.table} — chaîne perdue`, 'ko');
+                // Deux fautes enregistrées au plus, comme pour le Gardien : au
+                // milieu d'une esquive, la troisième n'apprend plus rien.
+                if (f.fautes++ < 2 && !this.isDemo) {
+                    this.onWrongAnswer(null, {
+                        questionText: q, input: 'attrapé', expected: 'non',
+                        concept: `mult:${f.table}`, silencieux: true,
+                        customMessage: `${o.n} n'est pas un multiple de ${f.table} : dans la faille, il fallait l'éviter.`
+                    });
+                }
+            }
+        });
+        f.nombres = f.nombres.filter(o => !o.mort && o.y < h + 40);
+
+        if (f.t >= f.duree) this.finirFaille();
+    }
+
+    finirFaille() {
+        const f = this.faille;
+        const parfait = f.rates === 0 && f.pris >= 3;
+        // `gagner` verse le score ET les crédits : une seule source, sinon on
+        // paie deux fois la même prise sans que le compte tombe juste.
+        const avant = this.credits;
+        this.gagner(f.pris * 20 + (parfait ? 60 : 0));
+        const verse = this.credits - avant;
+        if (parfait) {
+            this.bombes = Math.min(5, this.bombes + 1);
+            this.mot(`FAILLE PARFAITE ! ${f.pris} multiples de ${f.table}, aucune erreur · ⬢ ${verse} + une bombe ✹`, 'ok');
+        } else {
+            this.mot(`Faille refermée : ${f.pris} multiples de ${f.table} attrapés, ${f.rates} erreur${f.rates > 1 ? 's' : ''} · ⬢ ${verse}`, f.rates ? 'ko' : 'ok');
+        }
+        this.faille = null;
+        this.majHud();
     }
 
     // --- Bombe NOVA -----------------------------------------------------------
@@ -964,6 +1138,7 @@ class Nova extends BaseGame {
             this.vies = this.viesMax;
             this.puissance = this.canonBase;
             this.ennemis = []; this.tirsEnnemis = []; this.porte = null; this.convoi = null;
+            this.portail = null;
             // Le Gardien, lui, ne profite pas du naufrage : il se retire et le
             // secteur sera à refaire. Sans ça on relançait un duel à mi-vie.
             if (this.boss && !this.boss.reglee) this.fuirBoss();
@@ -1016,9 +1191,15 @@ class Nova extends BaseGame {
         this.vaisseau.x = Math.min(Math.max(this.vaisseau.x, 24), w - 24);
         this.vaisseau.roulis += (Math.max(-1, Math.min(1, dx / 60)) - this.vaisseau.roulis) * 0.15;
 
-        // Canon automatique — mais deux fois plus lent pendant qu'on charge.
-        const cadence = Math.max(7, 13 - this.puissance * 2) * (this.doigtPose ? 2 : 1);
-        if (this.frame % Math.round(cadence) === 0) this.tirerJoueur();
+        // Canon — deux fois plus lent pendant qu'on charge le rayon lourd.
+        // En mode « au doigt », le canon se tait dès qu'on lâche l'écran, et
+        // ne ralentit pas : tenir le doigt, c'est déjà tirer.
+        // Dans la faille, il ne tire pas du tout : rien à détruire, seulement
+        // à choisir.
+        const ralenti = this.doigtPose && !this.tirManuel;
+        const cadence = Math.max(7, 13 - this.puissance * 2) * (ralenti ? 2 : 1);
+        const canonPret = !this.faille && (!this.tirManuel || this.doigtPose);
+        if (canonPret && this.frame % Math.round(cadence) === 0) this.tirerJoueur();
 
         // Charge : environ une seconde et demie de doigt posé.
         if (this.doigtPose) this.charge = Math.min(1, this.charge + 1 / 90);
@@ -1028,9 +1209,16 @@ class Nova extends BaseGame {
         // difficulté — on ne meurt pas parce qu'un ennemi est fort, on meurt
         // parce qu'on n'a plus de place. Pendant une épreuve (mur, convoi,
         // Gardien), elles s'arrêtent : l'écran doit rester lisible.
-        const calme = !this.porte && !this.convoi && !this.boss;
+        const calme = !this.porte && !this.convoi && !this.boss && !this.faille;
         const entreVagues = Math.max(78, 150 - this.niveau * 9);
         if (calme && this.frame % entreVagues === 0) this.lancerVague();
+        // L'anneau de la Faille passe UNE fois par secteur, à mi-chemin entre
+        // deux épreuves : jamais pendant un mur ou un duel, où l'écran est
+        // déjà plein.
+        if (calme && !this.portail && !this.failleFaite && this.epreuves >= 1
+            && this.frame % this.entrePortes === Math.round(this.entrePortes / 2)) {
+            this.lancerPortail();
+        }
         if (calme && this.frame % this.entrePortes === 0 && this.frame > 60) {
             // Deux épreuves par secteur, puis le Gardien : c'est lui, et lui
             // seul, qui ouvre le secteur suivant.
@@ -1043,6 +1231,8 @@ class Nova extends BaseGame {
         this.majTirs();
         this.majPorte();
         this.majConvoi();
+        if (this.portail) this.majPortail();
+        if (this.faille) this.majFaille();
         if (this.boss) {
             this.majBoss();
             if (this.boss && !this.boss.reglee && this.boss.t > 3400) this.fuirBoss();
@@ -1371,6 +1561,8 @@ class Nova extends BaseGame {
         this.tirsEnnemis.forEach(t => { c.beginPath(); c.arc(t.x, t.y, 4, 0, Math.PI * 2); c.fill(); });
 
         if (this.rayon > 0) this.dessinerRayon();
+        if (this.portail) this.dessinerPortail();
+        if (this.faille) this.dessinerFaille();
         if (this.porte) this.dessinerPorte();
         if (this.convoi) this.dessinerConvoi();
         if (this.boss) this.dessinerBoss();
@@ -1822,6 +2014,97 @@ class Nova extends BaseGame {
         c.restore();
     }
 
+    /** L'anneau : une bouche de lumière qu'on traverse, ou qu'on laisse passer. */
+    dessinerPortail() {
+        const c = this.ctx, p = this.portail;
+        const rx = p.lw / 2, ry = Math.max(22, p.lw * 0.16);
+        const pulse = 0.75 + Math.sin(this.frame / 7) * 0.25;
+        c.save();
+        c.translate(p.x, p.y);
+
+        const g = c.createRadialGradient(0, 0, ry * 0.2, 0, 0, rx);
+        g.addColorStop(0, 'rgba(103,232,249,.35)'); g.addColorStop(1, 'rgba(103,232,249,0)');
+        c.fillStyle = g;
+        c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.fill();
+
+        c.shadowColor = 'rgba(34,211,238,.9)'; c.shadowBlur = 22 * pulse;
+        c.strokeStyle = '#67e8f9'; c.lineWidth = 5;
+        c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(224,242,254,.85)'; c.lineWidth = 2;
+        c.beginPath(); c.ellipse(0, 0, rx * 0.78, ry * 0.62, 0, 0, Math.PI * 2); c.stroke();
+        c.shadowBlur = 0;
+
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillStyle = '#ecfeff';
+        c.font = `900 ${Math.round(ry * 0.85)}px 'Inter', system-ui, sans-serif`;
+        c.fillText(`FAILLE ×${p.table}`, 0, 1);
+        c.restore();
+    }
+
+    /**
+     * La faille : la consigne en haut, la jauge de temps, la chaîne en cours,
+     * et les nombres qui tombent. Les nombres sont TOUS IDENTIQUES — même
+     * forme, même couleur, même lueur. Le seul indice, c'est le nombre : si la
+     * bonne réponse se voyait à la couleur, il n'y aurait plus de calcul.
+     */
+    dessinerFaille() {
+        const c = this.ctx, w = this.canvas.width, h = this.canvas.height, f = this.faille;
+        const u = Math.min(w, h);
+
+        c.save();
+        // Un voile violet : on n'est plus dans le secteur, on est ailleurs.
+        c.fillStyle = 'rgba(46,16,101,.34)'; c.fillRect(0, 0, w, h);
+
+        f.nombres.forEach(o => {
+            c.save();
+            c.globalAlpha = Math.min(1, (o.age || 12) / 12);   // apparition en fondu
+            c.translate(o.x, o.y);
+            c.rotate(Math.sin(o.a) * 0.18);
+            c.shadowColor = 'rgba(167,139,250,.9)'; c.shadowBlur = 14;
+            const g = c.createRadialGradient(-o.r * 0.3, -o.r * 0.3, o.r * 0.15, 0, 0, o.r);
+            g.addColorStop(0, '#f5f3ff'); g.addColorStop(0.6, '#c4b5fd'); g.addColorStop(1, '#6d28d9');
+            c.fillStyle = g;
+            c.beginPath();
+            c.moveTo(0, -o.r); c.lineTo(o.r, 0); c.lineTo(0, o.r); c.lineTo(-o.r, 0);
+            c.closePath(); c.fill();
+            c.shadowBlur = 0;
+            c.strokeStyle = 'rgba(30,27,75,.85)'; c.lineWidth = 2; c.stroke();
+            c.fillStyle = '#1e1b4b';
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.font = `900 ${Math.round(o.r * 0.9)}px 'Inter', system-ui, sans-serif`;
+            c.fillText(String(o.n), 0, 1);
+            c.restore();
+        });
+
+        // Le bandeau de consigne : il ne disparaît jamais. Une règle qu'on
+        // doit se rappeler est une règle qu'on applique mal.
+        const bh = Math.max(38, u * 0.085);
+        c.fillStyle = 'rgba(2,6,23,.82)';
+        c.beginPath(); c.roundRect(8, 34, w - 16, bh, 12); c.fill();
+        c.strokeStyle = '#a78bfa'; c.lineWidth = 2; c.stroke();
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        let px = Math.max(11, Math.min(17, w * 0.036));
+        const txt = `ATTRAPE les multiples de ${f.table}  ·  ÉVITE tous les autres`;
+        c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        while (px > 9 && c.measureText(txt).width > w - 40) {
+            px -= 1; c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        }
+        c.fillStyle = '#ddd6fe';
+        c.fillText(txt, w / 2, 34 + bh * 0.36);
+        c.font = `800 ${Math.round(px * 0.85)}px 'Inter', system-ui, sans-serif`;
+        c.fillStyle = f.chaine > 1 ? '#fcd34d' : '#a5b4fc';
+        c.fillText(f.chaine > 1 ? `chaîne ×${Math.min(5, f.chaine)} · ${f.pris} attrapés`
+            : `${f.pris} attrapés`, w / 2, 34 + bh * 0.75);
+
+        // La jauge de temps, collée sous le bandeau.
+        const reste = Math.max(0, 1 - f.t / f.duree);
+        c.fillStyle = 'rgba(148,163,184,.3)';
+        c.fillRect(10, 34 + bh + 4, w - 20, 4);
+        c.fillStyle = '#a78bfa';
+        c.fillRect(10, 34 + bh + 4, (w - 20) * reste, 4);
+        c.restore();
+    }
+
     /**
      * L'atelier : trois offres, un bouton de départ. Dessiné au canevas comme
      * le reste — pas de DOM à poser sur un canevas plein écran, et les
@@ -1942,10 +2225,12 @@ class Nova extends BaseGame {
             T('Ne touche RIEN : appareils et tirs font mal.', h * 0.34, u * 0.041, '#fda4af', 800);
             T('MURS : passe la porte du bon résultat', h * 0.43, u * 0.042, '#fcd34d', 800);
             T('CONVOIS : abats le transporteur du bon résultat', h * 0.49, u * 0.042, '#fcd34d', 800);
-            T('GARDIEN : il ferme le secteur. Abats les sphères', h * 0.58, u * 0.042, '#f0abfc', 800);
-            T('que la consigne désigne, évite toutes les autres.', h * 0.635, u * 0.042, '#f0abfc', 800);
-            T('Puis l\'ATELIER : dépense tes crédits ⬢ pour', h * 0.71, u * 0.036, '#94a3b8', 700);
-            T('améliorer ton vaisseau avant le secteur suivant.', h * 0.755, u * 0.036, '#94a3b8', 700);
+            T('GARDIEN : il ferme le secteur. Abats les sphères', h * 0.555, u * 0.042, '#f0abfc', 800);
+            T('que la consigne désigne, évite toutes les autres.', h * 0.605, u * 0.042, '#f0abfc', 800);
+            T('FAILLE : traverse l\'anneau pour le bonus — attrape', h * 0.665, u * 0.04, '#c4b5fd', 800);
+            T('les multiples demandés, esquive tous les autres.', h * 0.712, u * 0.04, '#c4b5fd', 800);
+            T('Puis l\'ATELIER : dépense tes crédits ⬢ pour', h * 0.772, u * 0.034, '#94a3b8', 700);
+            T('améliorer ton vaisseau avant le secteur suivant.', h * 0.812, u * 0.034, '#94a3b8', 700);
 
             // Le bouton START. Il ne sert pas à viser — l'appui est accepté
             // partout — mais à DIRE qu'on attend le joueur, et non l'inverse.
@@ -2049,8 +2334,43 @@ class Nova extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(viser); return fin(); }
         clearInterval(viser);
 
+        // La FAILLE : elle INVERSE le jeu. Partout ailleurs on évite tout ;
+        // ici il faut aller CHERCHER certains nombres. On la montre en deux
+        // temps — l'anneau, puis la règle en action — et on laisse le robot
+        // esquiver sous les yeux du joueur.
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Gardien abattu, l\'ATELIER s\'ouvre : les crédits ⬢ gagnés achètent un canon, une coque ou un bouclier — et ça, ça se garde.', this.arene);
+        this.boss = null; this.orbes = [];
+        this.lancerPortail();
+        const pt = this.portail;
+        cur.say(`Cet anneau, c'est une FAILLE. Rien ne m'oblige à la prendre — mais dedans, il n'y a plus d'ennemis : juste des nombres, et la table de ${pt.table}.`, this.arene);
+        const versAnneau = setInterval(() => {
+            if (this.isRunning && this.portail) this.vaisseau.cible = this.portail.x;
+        }, 100);
+        if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) { clearInterval(versAnneau); return fin(); }
+        clearInterval(versAnneau);
+        if (!this.faille && this.isRunning) this.entrerFaille(pt.table);
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say(`Ici mon canon est coupé : j'ATTRAPE les multiples de ${pt.table} et j'ESQUIVE tous les autres. Attraper un nombre qui n'est pas dans la table casse ma chaîne.`, this.arene);
+        const trier = setInterval(() => {
+            if (!this.isRunning || !this.faille) return;
+            const f = this.faille, w = this.canvas.width;
+            // Le robot vise le multiple le plus bas ; s'il n'y en a pas, il
+            // s'écarte franchement du premier intrus. Le geste dit la règle.
+            const bons = f.nombres.filter(o => o.n % f.table === 0 && o.y < this.vaisseau.y);
+            if (bons.length) {
+                this.vaisseau.cible = bons.sort((a, b) => b.y - a.y)[0].x;
+            } else if (f.nombres.length) {
+                const gene = f.nombres.sort((a, b) => b.y - a.y)[0];
+                this.vaisseau.cible = gene.x < w / 2
+                    ? Math.min(w - 30, gene.x + 140) : Math.max(30, gene.x - 140);
+            }
+        }, 100);
+        if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(trier); return fin(); }
+        clearInterval(trier);
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Une faille sans faute rapporte des crédits ⬢ et une bombe ✹. Et à l\'ATELIER, ces crédits achètent un canon, une coque ou un bouclier — ça, ça se garde.', this.arene);
         if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) return fin();
         fin();
     }
