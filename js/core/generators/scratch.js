@@ -236,6 +236,13 @@ export const scratchGenerator = {
     answerKinds: ['scratch'],
     params: [
         {
+            id: 'mode', type: 'select', label: 'Mode', default: 'progression',
+            options: [
+                { value: 'progression', label: 'Progression (12 figures à repasser)' },
+                { value: 'libre', label: 'Mode libre (dessiner ce qu’on veut)' }
+            ]
+        },
+        {
             id: 'depart', type: 'select', label: 'Commencer au niveau',
             options: NIVEAUX.map((n, i) => ({ value: i + 1, label: `${i + 1}. ${n.titre}` })),
             default: 1
@@ -252,6 +259,7 @@ export const scratchGenerator = {
     ],
 
     generate(params, ctx) {
+        if (params?.mode === 'libre') return atelierLibre(ctx, params);
         // Les niveaux s'enchaînent dans l'ordre : c'est une progression, pas
         // un tirage. `index` est fourni par la session, sinon on avance seul.
         const premier = Math.max(1, Math.min(NIVEAUX.length, parseInt(params?.depart) || 1)) - 1;
@@ -279,5 +287,45 @@ export const scratchGenerator = {
         });
     }
 };
+
+/**
+ * Le MODE LIBRE : la page blanche.
+ *
+ * Douze figures imposées apprennent l'angle ; elles n'apprennent pas l'envie.
+ * Ici il n'y a rien à repasser, aucune exigence de code, toute la palette et
+ * une scène vide : on essaie « répéter 36 fois : avancer 20, tourner 10 » pour
+ * voir ce que ça fait. C'est ainsi qu'on découvre le cercle — et c'est
+ * exactement l'usage qu'on fait de Scratch en classe entre deux exercices.
+ *
+ * Aucune correction, donc : le bouton « Valider » cède la place à « J'ai
+ * fini », qui clôt la séance sans rien juger.
+ */
+function atelierLibre(ctx, params) {
+    return makeItem({
+        seed: ctx.rng.seed, generatorId: 'geo.scratch', skillId: SKILL,
+        answerKind: 'scratch',
+        prompt: {
+            text: 'Mode libre — Dessine ce que tu veux : le chat obéit à ton programme.',
+            html: '<div class="game-question sc-consigne"><b>Mode libre</b>'
+                + '<span>Dessine ce que tu veux : le chat obéit à ton programme.</span></div>'
+        },
+        answer: 'libre',
+        hints: ['Essaie « répéter 36 fois » avec « avancer de 20 » et « tourner de 10 » : tu obtiendras un cercle.',
+            'Pour dessiner plusieurs morceaux séparés, lève le stylo, déplace-toi, puis repose-le.'],
+        explanation: 'Un programme qui répète un motif en tournant à chaque fois dessine une figure régulière : c’est le principe de toutes les rosaces.',
+        difficulty: 1,
+        meta: {
+            libre: true,
+            niveau: 1, total: 1, id: 'libre', titre: 'Mode libre',
+            palette: ['avancer', 'droite', 'gauche', 'orienter', 'allerA', 'stylo', 'leveStylo', 'repeter'],
+            depart: { x: 0, y: 0, dir: 90, stylo: true },
+            amorce: [], figure: [], exigences: null,
+            // Le robot n'a rien à corriger, mais il a quelque chose à MONTRER :
+            // la rosace, le programme qui donne envie d'en essayer d'autres.
+            modele: [rep(36, [av(20), dr(10)])],
+            saisie: params?.saisie || 'auto'
+        }
+    });
+}
 
 export { NIVEAUX as NIVEAUX_SCRATCH, centrer as centrerFigure };

@@ -114,13 +114,18 @@ function construireStructure(taille, rng, forceDoubles = null) {
     const TL = brique(0, 0, doubles[0], ['H1', 'VL', 'VR', 'H2']);
 
     if (taille === 'petit') {
-        // Petit VERTICAL, comme les fiches officielles : deux briques
-        // empilées, reliées par un pont qui descend du milieu — G(TL) ∘ M =
-        // B(BL). La silhouette haute et étroite est la signature du Garam.
-        const B_BL = cell(8, 2);
-        pont(TL.G, B_BL, [6, 2, 'v']);
-        brique(8, 0, doubles[1], ['H1', 'VL', 'VR', 'H2']);
-        return { cells, equations, signes, rows: 13, cols: 6 };
+        // Petit AUTHENTIQUE : deux briques CÔTE À CÔTE, reliées par un pont
+        // horizontal — E(TL) ∘ M = D(TR).
+        //
+        // La version précédente les empilait, ce qui donnait une colonne
+        // unique : plus commode sur un téléphone, mais ce n'est pas le Garam
+        // qu'on trouve partout. Le vrai a DEUX COLONNES d'égalités reliées en
+        // leur milieu, et c'est cette silhouette-là qu'un élève reconnaîtra
+        // sur une fiche de journal.
+        const D_TR = cell(2, 8);
+        pont(TL.E, D_TR, [2, 6, 'h']);
+        brique(0, 8, doubles[1], ['VL', 'H1', 'VR', 'H2']);
+        return { cells, equations, signes, rows: 5, cols: 14 };
     }
 
     // Pont horizontal haut : E(TL) ∘ M = D(TR).

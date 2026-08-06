@@ -59,6 +59,17 @@ export const geometrieExercises = [
         instruction: "Programme le chat pour qu'il repasse la figure : pose des blocs « avancer » et « tourner », puis lance. Douze niveaux, du trait unique à la rosace — c'est le tracé obtenu qui compte, pas la forme du programme."
     },
     {
+        // La même activité, sans figure à repasser ni correction : l'atelier.
+        // Les douze figures apprennent l'angle, elles n'apprennent pas
+        // l'envie ; c'est en essayant « répéter 36 fois » pour voir ce que ça
+        // donne qu'on découvre le cercle.
+        id: 'geo-chat-libre', status: STATUS.TEST, title: 'Le Chat Géomètre — atelier libre',
+        generatorId: 'geo.scratch', activityId: 'scratch',
+        params: { mode: 'libre', saisie: 'auto', nbQuestions: 1 },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "L'atelier libre : toute la palette, aucune figure imposée, rien à valider. Programme le chat et regarde ce qu'il dessine."
+    },
+    {
         id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
         activityId: 'galactic',
         params: { startLevel: 1, lives: 3 },

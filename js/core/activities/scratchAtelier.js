@@ -723,16 +723,25 @@ export class Atelier {
                     this.montrerFantome(pos.x, pos.y + cible.hauteur);
                 }
             }
-            // Dans la bouche d'une boucle vide.
+            // En TÊTE de bouche de boucle.
             //
-            // Une bouche ouverte est une ZONE, pas un point : dès que la pièce
+            // Une bouche VIDE est une ZONE, pas un point : dès que la pièce
             // tenue survole l'ouverture, elle y va, même si le bas de la
             // boucle est numériquement plus proche. Sans ça, sur téléphone où
             // tout est réduit, on visait la bouche et on tombait dessous —
             // c'est justement le geste que l'exercice demande d'apprendre.
-            if (cible.modele.bouche && !cible.child) {
+            //
+            // Une bouche PLEINE reste une cible, mais un point : on se glisse
+            // devant ce qui s'y trouve déjà. C'était le trou du dispositif —
+            // avec une boucle imbriquée, plus rien ne pouvait se poser
+            // au-dessus d'elle SANS sortir de la boucle parente, et il fallait
+            // tout démonter. La zone, elle, resterait trop gourmande : elle
+            // couvrirait toute la boucle et volerait les accroches internes.
+            if (cible.modele.bouche) {
                 const bx = pos.x + RETRAIT, by = pos.y + cible.hautLigne;
-                const dansLaBouche = tenue.x > pos.x - 20 && tenue.x < pos.x + cible.largeur
+                const vide = !cible.child;
+                const dansLaBouche = vide
+                    && tenue.x > pos.x - 20 && tenue.x < pos.x + cible.largeur
                     && tenue.y > by - 22 && tenue.y < by + cible.hautBouche + 20;
                 const d = dansLaBouche ? 0 : Math.hypot(tenue.x - bx, tenue.y - by);
                 if (d < meilleure || dansLaBouche) {
@@ -799,7 +808,11 @@ export class Atelier {
             if (suite) { dernier.next = suite; suite.parent = dernier; }
             c.cible.remonterMiseEnForme();
         } else if (c.genre === 'dedans') {
+            // Même raccord que pour l'insertion sous une pièce : ce que la
+            // bouche contenait déjà repart sous la pile posée.
+            const dedans = c.cible.child;
             c.cible.child = tenue; tenue.parent = c.cible;
+            if (dedans) { dernier.next = dedans; dedans.parent = dernier; }
             c.cible.remonterMiseEnForme();
         } else if (c.genre === 'dessus') {
             const support = c.cible.parent;

@@ -908,9 +908,11 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
     gap: 12px; margin-top: 18px;
 }
 .medal-family {
+    display: block; width: 100%; text-align: left; font: inherit; cursor: pointer;
     background: var(--bg-panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 10px 12px 12px;
+    border-radius: 14px; padding: 10px 12px 12px; transition: border-color .15s;
 }
+.medal-family:hover { border-color: var(--primary); }
 .medal-family-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
 .medal-family-icon { font-size: 1.2rem; }
 .medal-family-title { font-weight: 800; font-size: .92rem; color: var(--text-main); flex: 1; min-width: 0; }
@@ -965,6 +967,37 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     padding: 11px 30px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer;
     box-shadow: 0 4px 12px rgba(99, 102, 241, .3);
 }
+
+/* Détail d'une médaille : ce qu'elle mesure, où l'on en est, les paliers. */
+.md-detail { display: flex; flex-direction: column; gap: 10px; }
+.md-tete { display: flex; align-items: flex-start; gap: 12px; }
+.md-tete-icone { font-size: 2.2rem; line-height: 1; }
+.md-tete-titre { margin: 0 0 4px; font-size: 1.25rem; color: var(--text-main); }
+.md-tete-mesure { margin: 0; font-size: .86rem; line-height: 1.4; color: var(--text-muted); }
+.md-compteur { display: flex; align-items: baseline; gap: 6px; justify-content: center; margin-top: 4px; }
+.md-compteur-valeur {
+    font-size: 2rem; font-weight: 900; color: var(--primary); font-variant-numeric: tabular-nums;
+}
+.md-compteur-sur { font-size: 1rem; font-weight: 800; color: var(--text-muted); }
+.md-reste { margin: 0; text-align: center; font-size: .88rem; color: var(--text-muted); }
+.md-paliers { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.md-palier {
+    display: grid; grid-template-columns: 30px 74px 1fr; grid-template-rows: auto auto;
+    align-items: center; gap: 0 8px;
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 8px 10px;
+    background: var(--bg-app);
+}
+.md-palier-icone { grid-row: 1 / span 2; font-size: 1.4rem; text-align: center; }
+.md-palier-nom { font-weight: 800; color: var(--text-main); font-size: .9rem; }
+.md-palier-seuil { font-size: .84rem; color: var(--text-muted); line-height: 1.35; }
+.md-palier-etat {
+    grid-column: 2 / span 2; font-size: .74rem; font-weight: 700; color: var(--text-muted);
+}
+.md-palier--off { opacity: .55; }
+.md-palier--bronze { border-color: #b45309; }
+.md-palier--argent { border-color: #94a3b8; }
+.md-palier--or { border-color: #f59e0b; }
+.md-palier--platine { border-color: #22d3ee; }
 
 /* --- Plan de révision : « je révise quoi, là, maintenant ? » -------------- */
 .plan-card {

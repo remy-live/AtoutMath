@@ -69,7 +69,7 @@ export function mount(container, session, opts = {}) {
         container.innerHTML = `
             <div class="sc-layout">
                 <div class="sc-entete">
-                    <span class="sc-niveau">Niveau ${m.niveau} / ${m.total}</span>
+                    <span class="sc-niveau">${m.libre ? '✏️ Libre' : `Niveau ${m.niveau} / ${m.total}`}</span>
                     <b class="sc-titre">${m.titre}</b>
                 </div>
                 <p class="sc-consigne">${echapper(consigneCourte())}</p>
@@ -77,7 +77,8 @@ export function mount(container, session, opts = {}) {
                 <div class="sc-actions">
                     <button type="button" class="sc-btn sc-btn--go" data-run>⚑ Lancer</button>
                     <button type="button" class="sc-btn" data-clear>↺ Effacer</button>
-                    <button type="button" class="sc-btn sc-btn--ok" data-valider>Valider</button>
+                    <button type="button" class="sc-btn sc-btn--ok" data-valider>${
+        m.libre ? 'J’ai fini' : 'Valider'}</button>
                 </div>
                 <div class="sc-studio">
                     <div class="sc-palette" data-palette aria-label="Blocs disponibles"></div>
@@ -451,6 +452,17 @@ export function mount(container, session, opts = {}) {
     async function valider() {
         if (destroyed || session.locked || !atelier) return;
         const script = atelier.versScript();
+
+        // En mode libre, rien n'est à corriger : on regarde le dessin une
+        // dernière fois et on clôt. Juger un bac à sable n'aurait aucun sens.
+        if (item.meta.libre) {
+            await lancer();
+            if (destroyed) return;
+            const res = session.submit(item.answer, {});
+            if (!res.ignored) res.dismissed.then(() => { if (!destroyed) renderNext(); });
+            return;
+        }
+
         const resultat = await lancer();
         if (destroyed || !resultat) return;
 
@@ -505,7 +517,9 @@ export function mount(container, session, opts = {}) {
 
         if (!await cursor.pause(700) || destroyed) return fin();
         if (!await gate.waitTurn() || destroyed) return fin();
-        cursor.say(`On doit repasser ${m.titre.toLowerCase()}. Je vais écrire le programme du chat.`,
+        cursor.say(m.libre
+            ? 'Ici, rien à repasser : on dessine ce qu\'on veut. Je te montre un programme.'
+            : `On doit repasser ${m.titre.toLowerCase()}. Je vais écrire le programme du chat.`,
             container.querySelector('.sc-scene'));
         if (!await cursor.pause(1600) || destroyed) return fin();
 
@@ -522,7 +536,9 @@ export function mount(container, session, opts = {}) {
 
         if (!await gate.waitTurn() || destroyed) return fin();
         const btn = container.querySelector('[data-run]');
-        cursor.say('Et je lance : le chat repasse la figure.', btn);
+        cursor.say(item.meta.libre
+            ? 'Et je lance : regarde ce que ce petit programme dessine.'
+            : 'Et je lance : le chat repasse la figure.', btn);
         if (btn && !await cursor.tap(btn, 700)) return fin();
         await lancer();
         if (destroyed) return fin();

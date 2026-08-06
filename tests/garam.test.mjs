@@ -36,9 +36,9 @@ function verifieStructure(item) {
 
     givens.forEach((v, i) => { if (v !== null) assert.equal(v, solution[i]); });
 
-    // Le petit est désormais vertical (13 lignes aussi) : c'est la largeur
-    // qui distingue les deux tailles.
-    const grand = structure.cols === 14;
+    // Les deux tailles font la même largeur (deux colonnes de briques) :
+    // c'est la HAUTEUR qui les distingue — une rangée de briques ou deux.
+    const grand = structure.rows === 13;
     const doubles = structure.equations.filter(e => e.z2 !== undefined).length;
     assert.equal(structure.equations.length, grand ? 20 : 9, 'nombre d\'égalités');
     assert.ok(doubles >= 1, 'au moins un résultat double — la signature du Garam');

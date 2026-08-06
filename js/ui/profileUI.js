@@ -19,7 +19,7 @@ import {
 } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import { listProfiles, getActiveProfileId, createProfile, renameProfile, deleteProfile } from '../core/profile.js';
-import { showConfirm } from './modal.js';
+import { showConfirm, showModal } from './modal.js';
 
 export function initProfileUI() {
     document.addEventListener('errors_updated', () => { renderErrors(); renderPlan(); });
@@ -331,7 +331,8 @@ function renderBadges() {
     const acquis = state.badges;
 
     const uniques = Object.values(badgesCatalog).filter(b => !b.famille);
-    const lignes = progressionFamilles().map(f => {
+    const familles = progressionFamilles();
+    const lignes = familles.map(f => {
         const paliers = f.paliers.map(p => {
             const def = badgesCatalog[p.id];
             return `<div class="medal-chip ${p.acquis ? `medal-chip--${p.medal}` : 'medal-chip--off'}"
@@ -344,7 +345,8 @@ function renderBadges() {
             ? `${seuilCourt(f.cle, f.valeur)} / ${seuilCourt(f.cle, f.suivant)}`
             : 'Tous les paliers !';
         return `
-        <div class="medal-family">
+        <button type="button" class="medal-family" data-famille="${f.cle}"
+                aria-label="Détail de la médaille ${escapeHtml(f.titre)}">
             <div class="medal-family-head">
                 <span class="medal-family-icon">${f.icone}</span>
                 <span class="medal-family-title">${escapeHtml(f.titre)}</span>
@@ -352,7 +354,7 @@ function renderBadges() {
             </div>
             <div class="medal-row">${paliers}</div>
             <div class="medal-bar"><div style="width:${Math.round(f.part * 100)}%"></div></div>
-        </div>`;
+        </button>`;
     }).join('');
 
     container.innerHTML = `
@@ -365,7 +367,71 @@ function renderBadges() {
             </div>`;
     }).join('')}</div>
         <div class="medal-families">${lignes}</div>`;
+
+    container.querySelectorAll('[data-famille]').forEach(b => {
+        b.onclick = () => detailMedaille(familles.find(f => f.cle === b.dataset.famille));
+    });
 }
+
+/**
+ * Le détail d'une médaille : où j'en suis, et de QUOI on parle.
+ *
+ * Une vignette cadenassée ne dit ni ce qu'elle récompense, ni combien il en
+ * manque — au mieux une infobulle, invisible au doigt. Le détail répond aux
+ * deux questions d'un coup : la mesure en toutes lettres, la valeur actuelle,
+ * les quatre paliers avec leur seuil, et ce qui reste à faire pour le suivant.
+ */
+function detailMedaille(f) {
+    if (!f) return;
+    const acquis = state.badges;
+    const rangs = { bronze: 'Bronze', argent: 'Argent', or: 'Or', platine: 'Platine' };
+    const lignes = f.paliers.map(p => {
+        const def = badgesCatalog[p.id];
+        const date = acquis[p.id] ? new Date(acquis[p.id]).toLocaleDateString('fr-FR') : null;
+        return `<div class="md-palier ${p.acquis ? `md-palier--${p.medal}` : 'md-palier--off'}">
+            <span class="md-palier-icone">${p.acquis ? def.icon : '🔒'}</span>
+            <span class="md-palier-nom">${rangs[p.medal]}</span>
+            <span class="md-palier-seuil">${escapeHtml(def.description)}</span>
+            <span class="md-palier-etat">${p.acquis ? (date ? `obtenue le ${date}` : 'obtenue') : 'à venir'}</span>
+        </div>`;
+    }).join('');
+
+    const manque = f.suivant ? Math.max(0, f.suivant - f.valeur) : 0;
+    const reste = f.suivant
+        ? `Encore <b>${seuilCourt(f.cle, manque)}</b> pour le palier suivant.`
+        : 'Les quatre paliers sont décrochés. Bravo !';
+
+    showModal('', `
+        <div class="md-detail">
+            <div class="md-tete">
+                <span class="md-tete-icone">${f.icone}</span>
+                <div>
+                    <h3 class="md-tete-titre">${escapeHtml(f.titre)}</h3>
+                    <p class="md-tete-mesure">${escapeHtml(MESURES[f.cle] || '')}</p>
+                </div>
+            </div>
+            <div class="md-compteur">
+                <span class="md-compteur-valeur">${seuilCourt(f.cle, f.valeur)}</span>
+                <span class="md-compteur-sur">${f.suivant ? `/ ${seuilCourt(f.cle, f.suivant)}` : ''}</span>
+            </div>
+            <div class="medal-bar"><div style="width:${Math.round(f.part * 100)}%"></div></div>
+            <p class="md-reste">${reste}</p>
+            <div class="md-paliers">${lignes}</div>
+        </div>`, { width: '460px' });
+}
+
+/** Ce que chaque famille MESURE, dit en une phrase d'élève. */
+const MESURES = {
+    score: 'Le total des points gagnés depuis le début, tous exercices confondus.',
+    maitre: 'Le nombre de notions que tu maîtrises au niveau Expert.',
+    juste: 'Le nombre de questions que tu as réussies.',
+    revanche: 'Le nombre d’erreurs de ton carnet que tu as fini par corriger.',
+    assidu: 'Le temps total passé sur les exercices.',
+    fidele: 'Le nombre de jours différents où tu as travaillé.',
+    serie: 'Ta plus longue suite de bonnes réponses d’affilée.',
+    eclair: 'Le nombre de réponses justes données en moins de trois secondes.',
+    curieux: 'Le nombre d’exercices différents que tu as essayés.'
+};
 
 /** Un seuil lisible d'un coup d'œil : les secondes deviennent des heures. */
 function seuilCourt(famille, n) {
