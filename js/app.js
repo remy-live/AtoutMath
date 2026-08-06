@@ -548,6 +548,16 @@ function initDebugToolbar() {
 
     const btnConsole = document.getElementById('db-console');
     if (btnConsole) btnConsole.onclick = () => openConsoleModal();
+
+    // Passer la question en cours, quel que soit l'exercice.
+    const btnSkip = document.getElementById('db-skip');
+    if (btnSkip) btnSkip.onclick = async () => {
+        const { showToast } = await import('./ui/modal.js');
+        const runner = state.activeSequenceRunner;
+        if (!runner || typeof runner.sauterQuestion !== 'function' || !runner.sauterQuestion()) {
+            showToast('Aucun exercice en cours.', 'warning');
+        }
+    };
 }
 
 /**

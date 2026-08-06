@@ -421,6 +421,36 @@ export class Runner {
         }
     }
 
+    /**
+     * Outil d'auteur : passer la question en cours sans y répondre.
+     *
+     * Mettre au point la dixième question d'un exercice supposait de jouer les
+     * neuf précédentes — et de les jouer JUSTE, sinon la série s'arrête avant.
+     * Le saut fait donc avancer la barre de progression sans rien enregistrer :
+     * la question est comptée « vue », jamais « réussie », et aucune tentative
+     * ne part dans le journal. Le profil de l'élève reste propre.
+     *
+     * Sur un jeu autonome, il n'y a pas de question à faire défiler : chaque
+     * saut avance d'un cran le compteur de l'étape, et le dernier la termine —
+     * ce qui permet d'atteindre l'écran de bilan sans jouer la partie.
+     * @returns {boolean} faux si aucun exercice n'est en cours
+     */
+    sauterQuestion() {
+        if (!this.step) return false;
+        const item = this.session && this.session.item;
+        const cle = (item && item.seed) || `saut_${this.itemsResolved.size}_${this.autonomousCounter++}`;
+        this.itemsResolved.add(cle);
+        this.updateProgress();
+
+        if (this.itemsResolved.size >= this.step.nbItems) { this.endStep(); return true; }
+        if (this.handle && this.handle.showNext) this.handle.showNext();
+        if (this.currentTimeLimit && this.timerScope === 'question') {
+            this.runTimerCycle(this.currentTimeLimit);
+        }
+        this.updateStepNavigation();
+        return true;
+    }
+
     /** Compatibilité : anciens moteurs appelant runner.onGameAction(bool). */
     onGameAction(isSuccess) {
         this.onAttempt({ correct: !!isSuccess, attemptIndex: 0, itemSeed: null });

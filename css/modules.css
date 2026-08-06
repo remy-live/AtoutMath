@@ -1003,23 +1003,53 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     font-size: .82rem; line-height: 1.4; color: var(--text-muted);
 }
 
-/* --- Console embarquée ---------------------------------------------------- */
-.console-modal { display: flex; flex-direction: column; gap: 10px; }
-.console-resume { display: flex; align-items: center; gap: 10px; }
+/* --- Console embarquée ----------------------------------------------------
+   Panneau autonome plutôt que modale générique : pas de fond flouté (coûteux
+   sur iPhone), une croix confortable et un grand bouton « Fermer ». Une
+   console dont on ne sort pas est pire que pas de console. */
+.console-fond {
+    position: fixed; inset: 0; z-index: 100030;
+    background: rgba(15, 23, 42, .55);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.console-panneau {
+    display: flex; flex-direction: column; gap: 10px;
+    width: 100%; max-width: 780px; max-height: 92vh;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .35);
+}
+.console-entete { display: flex; align-items: center; gap: 10px; }
 .console-pastille { border-radius: 999px; padding: 3px 10px; font-size: .78rem; font-weight: 800; }
 .console-pastille--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
 .console-pastille--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
-.console-lignes { font-size: .78rem; color: var(--text-muted); font-weight: 700; }
+.console-lignes { font-size: .78rem; color: var(--text-muted); font-weight: 700; flex: 1; }
+.console-croix {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+    border: 1.5px solid var(--border); background: var(--bg-app); color: var(--text-main);
+    font-size: 1.1rem; font-weight: 800; cursor: pointer; line-height: 1;
+}
 .console-zone {
-    width: 100%; min-height: 46vh; box-sizing: border-box; resize: vertical;
+    flex: 1; min-height: 200px; width: 100%; box-sizing: border-box; resize: none;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; line-height: 1.45;
     background: var(--bg-app); color: var(--text-main);
     border: 1px solid var(--border); border-radius: 10px; padding: 10px; white-space: pre;
 }
-.console-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-.console-actions .btn-toggle { border-color: var(--border); }
-.btn-toggle--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-.btn-toggle--primary:hover { filter: brightness(1.08); color: #fff; }
+.console-actions { display: flex; gap: 8px; }
+.console-btn {
+    flex: 1; padding: 12px 10px; border-radius: 12px; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font-weight: 800; font-size: .9rem; font-family: inherit;
+}
+.console-btn--primaire { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+@media (max-width: 700px) {
+    .console-fond { padding: 0; }
+    .console-panneau {
+        max-width: none; max-height: none; height: 100dvh; border-radius: 0;
+        padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+}
 
 /* --- Profils multiples sur un même poste ------------------- */
 
@@ -1381,19 +1411,49 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     #student-config-content, #builder-config-content, #builder-policy-content { text-align: left; }
 }
 
-/* Sur téléphone, les réglages avant partie deviennent une vraie page plein
-   écran : une modale centrée de 400 px, plus haute que la fenêtre, obligeait
-   à faire défiler dans un cadre minuscule. */
+/* Sur téléphone, les réglages avant partie sont une FEUILLE qui monte du bas
+   et s'arrête à la hauteur de son contenu.
+   La version d'avant occupait tout l'écran (`min-height: 100dvh`) et poussait
+   les boutons en bas avec `margin-top: auto` : quatre réglages laissaient
+   les deux tiers de l'écran vides, et « Jouer ! » se retrouvait très loin de
+   ce qu'on venait de régler. Une feuille hugs-content règle les deux : rien
+   de vide, et le bouton juste sous le dernier champ. */
 @media (max-width: 700px) {
-    #student-config-modal { padding: 0; align-items: stretch; }
+    #student-config-modal { padding: 0; align-items: flex-end; }
     #student-config-modal .modal-panel-sm-left {
-        width: 100%; max-width: none; min-height: 100dvh;
-        border-radius: 0; margin: 0;
-        padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
-        gap: 12px; overflow-y: auto;
+        width: 100%; max-width: none; min-height: 0; max-height: 90dvh;
+        border-radius: 22px 22px 0 0; margin: 0;
+        padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        gap: 8px; overflow-y: auto;
+        box-shadow: 0 -12px 34px rgba(15, 23, 42, .28);
     }
-    #student-config-modal .modal-actions-center { margin-top: auto; }
+    /* La poignée : elle dit « ça vient du bas » sans une ligne de texte. */
+    #student-config-modal .modal-panel-sm-left::before {
+        content: ''; align-self: center; flex-shrink: 0;
+        width: 42px; height: 4px; border-radius: 999px;
+        background: var(--border); margin-bottom: 4px;
+    }
+    #student-config-modal .modal-title { font-size: 1.12rem; }
+    /* Le sous-titre n'apprend rien à qui a déjà le panneau sous les yeux. */
+    #student-config-modal .modal-text--center { display: none; }
+    #student-config-modal .cfg-desc { margin-bottom: 8px; }
+    #student-config-modal .cfg-field { margin-bottom: 6px; }
+    /* Les boutons restent visibles quand la liste de réglages défile. */
+    #student-config-modal .modal-actions-center {
+        position: sticky; bottom: 0; margin-top: 6px; padding-top: 8px; gap: 10px;
+        background: linear-gradient(to top, var(--bg-panel) 72%, transparent);
+    }
+    #student-config-modal .modal-btn-flex { padding: 13px 12px; font-size: .95rem; }
 }
+
+/* « Annuler » doit se voir comme un bouton, pas comme un blanc sur du blanc :
+   sur le panneau clair, un fond `--bg-panel` sans bordure le faisait
+   disparaître. */
+.modal-btn-flex--neutral {
+    background: var(--bg-app); color: var(--text-muted);
+    border: 2px solid var(--border); font-weight: 700;
+}
+.modal-btn-flex--neutral:hover { color: var(--text-main); border-color: var(--text-muted); }
 
 /* --- Infobulle « ? » ---------------------------------------------------- */
 
@@ -1426,12 +1486,12 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    la case qu'on lisait en premier, pas le mot. La case disparaît donc (elle
    reste dans le DOM, cliquable et navigable au clavier) et c'est la PASTILLE
    entière qui s'allume, avec sa coche. */
-.cfg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .cfg-chip {
-    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
     background: var(--bg-app); border: 2px solid var(--border);
-    border-radius: 999px; padding: 7px 14px;
-    font-size: .88rem; font-weight: 600; color: var(--text-muted);
+    border-radius: 999px; padding: 6px 12px; min-width: 46px; box-sizing: border-box;
+    font-size: .86rem; font-weight: 600; color: var(--text-muted);
     user-select: none; transition: .15s;
 }
 .cfg-chip input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }

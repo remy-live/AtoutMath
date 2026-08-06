@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=56">
-    <link rel="stylesheet" href="css/layout.css?v=56">
-    <link rel="stylesheet" href="css/ui.css?v=56">
-    <link rel="stylesheet" href="css/games.css?v=56">
-    <link rel="stylesheet" href="css/components.css?v=56">
-    <link rel="stylesheet" href="css/modules.css?v=56">
+    <link rel="stylesheet" href="css/base.css?v=57">
+    <link rel="stylesheet" href="css/layout.css?v=57">
+    <link rel="stylesheet" href="css/ui.css?v=57">
+    <link rel="stylesheet" href="css/games.css?v=57">
+    <link rel="stylesheet" href="css/components.css?v=57">
+    <link rel="stylesheet" href="css/modules.css?v=57">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -51,6 +51,11 @@
             <!-- Console embarquée : sur téléphone il n'y en a pas d'autre. -->
             <button class="debug-btn" id="db-console" title="Console : voir et copier le journal"
                     aria-label="Ouvrir la console">🖥️</button>
+            <!-- Passer la question en cours, dans n'importe quel exercice :
+                 mettre au point la dixième question sans jouer les neuf
+                 premières. Rien n'est enregistré. -->
+            <button class="debug-btn" id="db-skip" title="Passer à la question suivante"
+                    aria-label="Passer à la question suivante">⏭️</button>
         </div>
         <!-- Numéro de version RÉELLEMENT chargée (lu sur l'URL du CSS) :
              pour savoir d'un coup d'œil si le téléphone a la dernière. -->

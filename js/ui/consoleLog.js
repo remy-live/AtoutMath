@@ -12,7 +12,7 @@
 //   - le tampon est borné : un jeu qui journalise à chaque image ne doit pas
 //     faire gonfler la mémoire d'un vieil iPad.
 
-import { showModal } from './modal.js';
+import { state } from '../core/state.js';
 
 const MAX = 400;
 const lignes = [];
@@ -59,8 +59,14 @@ export function journalConsole() {
     return lignes.slice();
 }
 
-/** Un rapport complet, prêt à être collé dans un message. */
-export async function rapportTexte() {
+/**
+ * Un rapport complet, prêt à être collé dans un message.
+ *
+ * SYNCHRONE, et c'est important : la première version chargeait `state.js` en
+ * import dynamique avant d'ouvrir la fenêtre. Sur téléphone, l'ouverture
+ * traînait d'une demi-seconde sans rien afficher, et l'appui semblait perdu.
+ */
+export function rapportTexte() {
     const entete = [];
     entete.push(`MathBox — rapport de console`);
     entete.push(`Date       : ${new Date().toISOString()}`);
@@ -71,7 +77,6 @@ export async function rapportTexte() {
     entete.push(`En ligne   : ${navigator.onLine ? 'oui' : 'non'}`);
 
     try {
-        const { state } = await import('../core/state.js');
         entete.push(`Profil     : score ${state.score}, ${state.correctCount} bonnes réponses,`
             + ` ${state.errorHistory.length} erreurs au carnet`);
         const exo = state.activeExo;
@@ -94,29 +99,57 @@ function versionChargee() {
     return lien ? `v${lien[1]}` : 'inconnue';
 }
 
-export async function openConsoleModal() {
-    const texte = await rapportTexte();
+/**
+ * La fenêtre de console : un panneau à elle, pas la modale générique.
+ *
+ * La modale commune était inutilisable au doigt : sa croix de fermeture fait
+ * quelques pixels dans un coin, son fond flouté coûte cher à l'affichage sur
+ * iPhone, et le clic « à côté pour fermer » ne se déclenchait pas de manière
+ * fiable au-dessus d'une zone de texte. Ici, la fermeture a TROIS entrées —
+ * un grand bouton en bas, une croix confortable en haut, la touche Échap — et
+ * le panneau occupe tout l'écran sur téléphone. Une console dont on ne sort
+ * pas est pire que pas de console du tout.
+ */
+export function openConsoleModal() {
+    fermerConsole();
+
     const erreurs = lignes.filter(l => l.niveau === 'error').length;
-    const html = `
-        <div class="console-modal">
-            <div class="console-resume">
+    const fond = document.createElement('div');
+    fond.className = 'console-fond';
+    fond.innerHTML = `
+        <div class="console-panneau" role="dialog" aria-label="Console">
+            <div class="console-entete">
                 <span class="console-pastille ${erreurs ? 'console-pastille--ko' : 'console-pastille--ok'}">
                     ${erreurs ? `${erreurs} erreur${erreurs > 1 ? 's' : ''}` : 'aucune erreur'}
                 </span>
                 <span class="console-lignes">${lignes.length} lignes</span>
+                <button type="button" class="console-croix" data-fermer aria-label="Fermer">✕</button>
             </div>
             <textarea class="console-zone" readonly spellcheck="false"></textarea>
             <div class="console-actions">
-                <button type="button" class="btn-toggle" data-copier>📋 Copier</button>
-                <button type="button" class="btn-toggle" data-vider>🗑 Vider</button>
-                <button type="button" class="btn-toggle btn-toggle--primary" data-fermer>Fermer</button>
+                <button type="button" class="console-btn" data-copier>📋 Copier</button>
+                <button type="button" class="console-btn" data-vider>🗑 Vider</button>
+                <button type="button" class="console-btn console-btn--primaire" data-fermer>Fermer</button>
             </div>
         </div>`;
-    const modal = showModal('Console', html, { width: '760px' });
-    const zone = modal.element.querySelector('.console-zone');
-    zone.value = texte;
+    document.body.appendChild(fond);
 
-    modal.element.querySelector('[data-copier]').onclick = async (e) => {
+    const zone = fond.querySelector('.console-zone');
+    zone.value = rapportTexte();
+
+    const fermer = () => {
+        document.removeEventListener('keydown', surTouche, true);
+        fond.remove();
+    };
+    const surTouche = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fermer(); } };
+    document.addEventListener('keydown', surTouche, true);
+
+    fond.querySelectorAll('[data-fermer]').forEach(b => { b.onclick = fermer; });
+    // Toucher le fond ferme aussi, mais seulement le FOND lui-même : un appui
+    // qui commence dans le panneau ne doit pas fermer en glissant dehors.
+    fond.addEventListener('pointerdown', (e) => { if (e.target === fond) fermer(); });
+
+    fond.querySelector('[data-copier]').onclick = async (e) => {
         const btn = e.currentTarget;
         let ok = false;
         try {
@@ -125,16 +158,19 @@ export async function openConsoleModal() {
         } catch (err) {
             // Sur téléphone hors HTTPS, l'API presse-papier est refusée : on
             // retombe sur la sélection, que l'utilisateur copie à la main.
-            zone.focus(); zone.select();
+            zone.focus(); zone.setSelectionRange(0, zone.value.length);
             try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
         }
         btn.textContent = ok ? '✓ Copié !' : 'Sélectionné — fais « Copier »';
         setTimeout(() => { btn.textContent = '📋 Copier'; }, 2200);
     };
-    modal.element.querySelector('[data-vider]').onclick = () => {
+    fond.querySelector('[data-vider]').onclick = () => {
         lignes.length = 0;
         zone.value = '(journal vidé)';
     };
-    modal.element.querySelector('[data-fermer]').onclick = () => modal.close();
-    return modal;
+    return { close: fermer, element: fond };
+}
+
+export function fermerConsole() {
+    document.querySelectorAll('.console-fond').forEach(el => el.remove());
 }
