@@ -55,14 +55,16 @@ export function mount(container, session, opts = {}) {
         container.innerHTML = `
             <div class="angles-layout">
                 ${item.prompt.html}
-                <div class="angles-board" data-board>
-                    <canvas class="angles-canvas"></canvas>
-                    ${m.mode === 'mesurer' && !enEval && !session.isDemo ? `
-                    <div class="angles-estimation" data-estimation>
-                        <span class="angles-estimation-label">D'abord, à l'œil :</span>
+                ${m.mode === 'mesurer' && !enEval && !session.isDemo ? `
+                <div class="angles-estimation" data-estimation>
+                    <span class="angles-estimation-label">D'abord, à l'œil :</span>
+                    <div class="angles-estimation-choix">
                         <button type="button" class="btn-hint" data-est="aigu">Aigu (&lt; 90°)</button>
                         <button type="button" class="btn-hint" data-est="obtus">Obtus (&gt; 90°)</button>
-                    </div>` : ''}
+                    </div>
+                </div>` : ''}
+                <div class="angles-board" data-board>
+                    <canvas class="angles-canvas"></canvas>
                 </div>
                 <div class="angles-controls">
                     ${m.mode === 'mesurer' ? `
@@ -96,7 +98,8 @@ export function mount(container, session, opts = {}) {
             pointeur: { x: 0, y: 0 },
             loupe: false,
             fantome: false,              // trace verte de l'angle cible (correction)
-            fige: false
+            fige: false,
+            place: false                 // l'outil a été posé sur le sommet
         };
         // En phase estimation, l'outil est masqué : on juge à l'œil d'abord.
         if (etat.phase === 'estimation') etat.rapporteur.visible = false;
@@ -119,10 +122,25 @@ export function mount(container, session, opts = {}) {
         brancherPointeur();
         brancherControles();
         wireHint(container, session);
-        // « Montre-moi » : en plus du texte, la correction ANIMÉE — le
-        // rapporteur va se placer tout seul sur le sommet, zéro aligné, et
-        // le fantôme vert montre la bonne lecture. L'élève valide ensuite.
-        wireShowMe(container, session, { highlight: () => animerCorrection(false) });
+        // « Montre-moi » ne donne PAS la réponse : il pose l'OUTIL.
+        //
+        // Le rapporteur va se placer tout seul — centre sur le sommet, zéro
+        // sur le côté noir — et s'arrête là. C'est exactement le geste que
+        // l'élève ne sait pas faire ; la lecture, elle, lui reste. Annoncer
+        // « la réponse est 20 » n'apprenait rien : l'énoncé la donne déjà en
+        // mode construction, et en mode mesure elle remplaçait l'exercice.
+        //
+        // Le texte s'écrit SOUS les commandes, pas en carte par-dessus le
+        // plateau : la carte recouvrait l'animation qu'elle commente — et,
+        // en redimensionnant la zone de jeu, déplaçait le sommet en pleine
+        // course, si bien que le rapporteur arrivait à côté.
+        wireShowMe(container, session, {
+            enPage: true,
+            message: (it) => it.meta.mode === 'mesurer'
+                ? 'Je pose le rapporteur : le centre sur le sommet, le zéro sur un côté. À toi de LIRE la graduation où passe l\'autre côté.'
+                : `Je pose le rapporteur : le centre sur le sommet, le zéro sur le côté noir. À toi de faire tourner le côté rouge jusqu'à la graduation ${it.meta.target}.`,
+            highlight: () => animerCorrection(false, { reveler: false })
+        });
     }
 
     // --- Géométrie & dimensions ---------------------------------------------
@@ -139,8 +157,16 @@ export function mount(container, session, opts = {}) {
         etat.legLen = Math.max(120, Math.min(LEG_LEN, canvas.height * 0.42, canvas.width * 0.46));
         etat.rapporteur.r = Math.max(110, Math.min(190, Math.min(canvas.width, canvas.height * 2) * 0.30));
         if (!etat.drag && !etat.fige) {
-            etat.rapporteur.x = canvas.width / 2;
-            etat.rapporteur.y = Math.min(canvas.height * 0.82, canvas.height - 40);
+            // Une fois l'outil POSÉ sur le sommet (par « Montre-moi » ou par la
+            // correction), il y reste : un redimensionnement le renvoyait en
+            // bas de l'écran et défaisait la démonstration qu'on venait de voir.
+            if (etat.place) {
+                etat.rapporteur.x = etat.sommet.x;
+                etat.rapporteur.y = etat.sommet.y;
+            } else {
+                etat.rapporteur.x = canvas.width / 2;
+                etat.rapporteur.y = Math.min(canvas.height * 0.82, canvas.height - 40);
+            }
         }
     }
 
@@ -337,13 +363,17 @@ export function mount(container, session, opts = {}) {
      * rejoint le sommet, s'aligne sur le côté fixe, et le fantôme vert trace
      * l'angle cible. `puisSuivant` enchaîne sur la question suivante.
      */
-    function animerCorrection(puisSuivant) {
+    function animerCorrection(puisSuivant, opts = {}) {
+        // `reveler` : la correction de FIN d'essais montre tout — fantôme vert
+        // et côté rouge amené sur la cible. « Montre-moi », lui, ne pose que
+        // l'outil : la lecture et le geste restent à l'élève.
+        const reveler = opts.reveler !== false;
         etat.fige = true;
+        etat.place = true;
         etat.rapporteur.visible = true;
-        etat.fantome = true;
+        if (reveler) etat.fantome = true;
         const r = etat.rapporteur;
         const de = { x: r.x, y: r.y, rot: r.rot, construit: etat.construit };
-        const vers = { x: etat.sommet.x, y: etat.sommet.y, rot: etat.baseRot + Math.PI, construit: item.meta.target };
         // « Montre-moi » se regarde pour comprendre : plus lent que la
         // correction de fin d'essais, qui enchaîne sur la suite.
         const debut = performance.now(), duree = puisSuivant ? 2200 : 3200;
@@ -352,16 +382,21 @@ export function mount(container, session, opts = {}) {
             if (destroyed) return;
             const p = Math.min((t - debut) / duree, 1);
             const e = 1 - Math.pow(1 - p, 3);
+            // La cible est relue à CHAQUE image : si la zone de jeu change de
+            // taille pendant l'animation — une carte d'aide qui s'ouvre, le
+            // clavier qui apparaît — le sommet bouge, et un point d'arrivée
+            // figé au départ laissait le rapporteur à côté.
+            const vers = { x: etat.sommet.x, y: etat.sommet.y, rot: etat.baseRot + Math.PI };
             r.x = de.x + (vers.x - de.x) * e;
             r.y = de.y + (vers.y - de.y) * e;
             r.rot = de.rot + (vers.rot - de.rot) * e;
-            if (item.meta.mode === 'construire') {
-                etat.construit = de.construit + (vers.construit - de.construit) * e;
+            if (reveler && item.meta.mode === 'construire') {
+                etat.construit = de.construit + (item.meta.target - de.construit) * e;
                 majConstruit();
             }
             if (p < 1) requestAnimationFrame(pas);
             else if (puisSuivant) regTimeout(renderNext, 2000);
-            else etat.fige = false;   // Montre-moi : la main revient à l'élève
+            else { etat.fige = false; r.x = etat.sommet.x; r.y = etat.sommet.y; }
         };
         requestAnimationFrame(pas);
     }

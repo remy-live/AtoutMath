@@ -113,6 +113,12 @@ export class Runner {
         const navQ = document.getElementById('preview-question-nav');
         if (nav) nav.hidden = !this.allowStepNavigation;
         if (navQ) navQ.hidden = !this.allowStepNavigation;
+        // L'en-tête change de plan quand ces deux navigations s'ajoutent :
+        // sur un téléphone, les commandes ne tiennent plus à côté du titre et
+        // débordaient — la croix de fermeture et l'aide sortaient de l'écran.
+        // La feuille de style a besoin de le savoir AVANT de mesurer.
+        const couche = document.getElementById('game-layer');
+        if (couche) couche.classList.toggle('avec-nav-prof', !!this.allowStepNavigation);
         if (!this.allowStepNavigation) return;
 
         document.getElementById('btn-preview-prev').onclick = () => this.goToStep(this.index - 1);
@@ -191,6 +197,8 @@ export class Runner {
             const el = document.getElementById(id);
             if (el) el.hidden = true;
         });
+        const couche = document.getElementById('game-layer');
+        if (couche) couche.classList.remove('avec-nav-prof');
     }
 
     showLayer() {

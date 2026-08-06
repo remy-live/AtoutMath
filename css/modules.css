@@ -670,6 +670,35 @@
     #game-timer { grid-area: chrono; width: 34px; height: 34px; font-size: .8rem; margin: 0; flex-shrink: 0; }
     .game-header-actions { grid-area: actions; gap: 5px; flex-shrink: 0; justify-content: flex-end; margin: 0; }
     .game-icon-btn { width: 34px; height: 34px; font-size: 1rem; padding: 4px; }
+
+    /* --- Avec les deux navigations du professeur -------------------------
+       Passer d'une question à l'autre ET d'une activité à l'autre ajoute deux
+       pastilles dans la rangée des commandes. À côté du titre, elles ne
+       tenaient plus : le bouton d'aide et la CROIX DE FERMETURE sortaient de
+       l'écran, et le bouton de démonstration n'était visible qu'à moitié.
+       Les commandes prennent donc leur propre rangée, pleine largeur, et les
+       navigations perdent leur habillage en pastille — flèches et compteur
+       suffisent. */
+    #game-layer.avec-nav-prof #game-header {
+        grid-template-areas: "titre chrono" "avance avance" "actions actions";
+        row-gap: 5px;
+    }
+    #game-layer.avec-nav-prof #game-header #game-title {
+        -webkit-line-clamp: 1; font-size: .95rem;
+    }
+    #game-layer.avec-nav-prof .game-header-actions {
+        justify-content: flex-end; flex-wrap: nowrap; gap: 4px;
+    }
+    #game-layer.avec-nav-prof .preview-step-nav {
+        background: transparent; border-color: transparent;
+        padding: 0; margin: 0 2px 0 0; gap: 0;
+    }
+    #game-layer.avec-nav-prof .preview-step-label { min-width: 30px; font-size: .72rem; }
+    #game-layer.avec-nav-prof .preview-step-nav--question .preview-step-label {
+        min-width: 26px; font-size: .62rem;
+    }
+    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 30px; height: 30px; }
+    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn svg { width: 15px; height: 15px; }
 }
 
 /* Les commandes doivent tenir sur une seule ligne : on retire l'habillage en
@@ -1353,18 +1382,27 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    un clic. */
 .path-step-toggle { display: none; }
 
+.path-step-seuil { font-weight: 800; color: var(--text-main); }
+
 /* --- Étape de parcours sur téléphone -----------------------------------
    Quatre boutons d'action + la règle occupaient toute la largeur : il restait
    trois caractères au titre (« 1. Li… ») et on ne savait plus de quelle
-   activité on parlait. Le NOM prend la première ligne, en entier et sur
-   plusieurs lignes s'il le faut ; les options se déplient sous lui. */
+   activité on parlait. Les actions se replient donc derrière un chevron.
+
+   Une fois repliées, la place revient : le titre et le seuil tiennent SUR LA
+   MÊME LIGNE. Le seuil passait sous le titre, ce qui donnait deux lignes par
+   étape — dix étapes ne tenaient plus à l'écran, et pendant un glisser on ne
+   voyait plus où l'on posait. Une étape = une ligne. Le titre se tronque s'il
+   le faut : son nom complet reste en info-bulle et dans le panneau de
+   propriétés. Chronomètre et barème, eux, attendent le dépliage. */
 @media (max-width: 700px) {
     .path-step-head { flex-wrap: wrap; row-gap: 8px; }
-    .path-step-title { white-space: normal; flex: 1 1 auto; }
-    .path-step-title > :last-child { overflow: visible; text-overflow: clip; }
-    .path-step-rule { flex-basis: 100%; order: 3; }
+    .path-step-title { flex: 1 1 0; min-width: 0; }
+    .path-step-rule { order: 2; margin-left: auto; font-size: .78rem; }
+    .path-step-extras { display: none; }
+    .path-step--ouvert .path-step-extras { display: inline; }
     .path-step-toggle {
-        display: inline-flex; flex-shrink: 0; margin-left: auto;
+        display: inline-flex; flex-shrink: 0; order: 3;
         transition: transform .18s;
     }
     .path-step--ouvert .path-step-toggle { transform: rotate(180deg); }
@@ -1870,20 +1908,24 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .angles-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 .angles-canvas:active { cursor: grabbing; }
 
+/* L'échauffement du regard, AU-DESSUS de la figure et non par-dessus.
+   Posé en absolu sur le plateau, il passait à la ligne sur un téléphone : le
+   coin arrondi à 999 px devenait une grosse bulle ovale qui recouvrait le
+   sommet de l'angle — précisément ce qu'on demandait de regarder. Il est
+   maintenant dans le flux, avant le plateau, avec des angles francs. */
 .angles-estimation {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    justify-content: center; z-index: 3;
-    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
-    border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px;
-    box-shadow: var(--shadow-sm);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    justify-content: center; align-self: stretch;
+    background: var(--bg-hover);
+    border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px;
 }
+.angles-estimation-choix { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .angles-estimation-label { font-weight: 700; font-size: .9rem; color: var(--text-main); }
 .angles-estimation--non { animation: anglesShake .35s; }
 @keyframes anglesShake {
-    0%, 100% { transform: translateX(-50%); }
-    25% { transform: translateX(calc(-50% - 7px)); }
-    75% { transform: translateX(calc(-50% + 7px)); }
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-7px); }
+    75% { transform: translateX(7px); }
 }
 
 .angles-controls {

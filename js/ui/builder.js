@@ -315,16 +315,21 @@ function stepRow(step, index, policy) {
     const seuil = step.threshold ?? step.nbItems;
     // « ✔ 7/10 » et non « 7/10 » sec : sans un mot ni un signe, on ne savait
     // pas si le chiffre parlait de questions, de points ou d'un niveau.
-    const details = [`✔ ${seuil}/${step.nbItems}`];
-    if (step.timeLimit) details.push(`⏱ ${step.timeLimit} s`);
-    if (policy.grading && step.weight > 1) details.push(`barème ×${step.weight}`);
+    //
+    // Le seuil est SÉPARÉ du reste. C'est la seule information qu'on relit en
+    // parcourant la liste, et sur téléphone elle doit tenir sur la ligne du
+    // titre — chronomètre et barème, eux, attendent le dépliage.
+    const extras = [];
+    if (step.timeLimit) extras.push(`⏱ ${step.timeLimit} s`);
+    if (policy.grading && step.weight > 1) extras.push(`barème ×${step.weight}`);
 
     const rule = document.createElement('span');
     rule.className = 'path-step-rule';
     rule.title = `${seuil} bonne${seuil > 1 ? 's' : ''} réponse${seuil > 1 ? 's' : ''} exigée${seuil > 1 ? 's' : ''} sur ${step.nbItems}`
         + (step.timeLimit ? ` • chronomètre ${step.timeLimit} s` : '')
         + (policy.grading && step.weight > 1 ? ` • poids ×${step.weight} dans la note` : '');
-    rule.textContent = details.join(' • ');
+    rule.innerHTML = `<b class="path-step-seuil">✔ ${seuil}/${step.nbItems}</b>`
+        + (extras.length ? `<span class="path-step-extras"> • ${escapeHtml(extras.join(' • '))}</span>` : '');
     head.appendChild(rule);
 
     const actions = document.createElement('div');

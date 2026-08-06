@@ -336,7 +336,16 @@ export function wireHint(container, session) {
  * « Montre-moi » : révèle la réponse et son explication, sans répondre à la
  * place de l'élève — c'est encore lui qui clique, tape ou place. L'usage est
  * tracé comme une aide (gratuite en apprentissage).
- * @param {{highlight?:()=>void}} [opts] - mise en évidence propre à l'activité
+ *
+ * Deux réglages pour les activités où « la réponse » n'est pas le bon secours :
+ *   - `message(item)` remplace le texte. Sur le rapporteur, annoncer « la
+ *     réponse est 20 » ne sert à rien — l'énoncé la donne déjà — alors que
+ *     montrer le GESTE, puis inviter à lire la graduation, est tout l'exercice.
+ *   - `enPage` affiche ce texte SOUS les commandes plutôt qu'en carte posée
+ *     sur le plateau : une aide qui recouvre l'animation qu'elle commente ne
+ *     s'explique pas elle-même.
+ *
+ * @param {{highlight?:()=>void, message?:(item:Object)=>string, enPage?:boolean}} [opts]
  */
 export function wireShowMe(container, session, opts = {}) {
     const btn = container.querySelector('[data-showme]');
@@ -349,13 +358,23 @@ export function wireShowMe(container, session, opts = {}) {
         // question s'en ressentent ; en apprentissage (pénalité nulle), non.
         session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length, 2);
         state.noteHintUsed();
-        document.dispatchEvent(new CustomEvent('game_feedback', {
-            detail: {
-                kind: 'hint',
-                msg: `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`,
-                misconception: item.explanation || null
+        const msg = opts.message
+            ? opts.message(item)
+            : `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`;
+        if (opts.enPage) {
+            let box = container.querySelector('.hint-text');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'hint-text';
+                box.setAttribute('role', 'status');
+                btn.parentElement.parentElement.appendChild(box);
             }
-        }));
+            box.textContent = msg;
+        } else {
+            document.dispatchEvent(new CustomEvent('game_feedback', {
+                detail: { kind: 'hint', msg, misconception: item.explanation || null }
+            }));
+        }
         if (opts.highlight) opts.highlight();
     };
 }
