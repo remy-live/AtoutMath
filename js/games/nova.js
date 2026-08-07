@@ -141,14 +141,24 @@ class Nova extends BaseGame {
         this.doigtPose = false;
         this.rayon = 0;
         this.astuceDite = false;       // le rappel des gestes, une seule fois
-        // …et son RÉGLAGE. Le canon automatique reste la valeur par défaut,
-        // mais certains joueurs veulent décider quand ils tirent : en mode
-        // « au doigt », le canon ne crache que tant que le doigt touche
-        // l'écran — piloter et tirer redeviennent le même geste. Le choix
-        // reste sur l'appareil, personne n'a envie de le refaire à chaque
-        // partie.
-        this.tirManuel = false;
-        try { this.tirManuel = localStorage.getItem('nova-tir') === 'doigt'; } catch (e) { /* mode privé */ }
+        // …et son RÉGLAGE.
+        //
+        // LES DEUX ZONES SONT LA VALEUR PAR DÉFAUT. Elles ont d'abord été
+        // livrées derrière un bouton laissé sur « tir auto » : autant dire
+        // qu'elles n'existaient pas — personne ne va chercher une pastille de
+        // douze pixels dans le bandeau pour découvrir une mécanique dont on ne
+        // lui a pas parlé.
+        //
+        // Et elles valent mieux que le tir permanent : NE PAS tirer devient
+        // une décision. Devant un mur ou un Gardien, abattre la mauvaise
+        // chose coûte cher ; pouvoir se faufiler sans tirer donne enfin une
+        // réponse au « je ne suis pas sûr ». « ⚡ tir auto » reste à un appui
+        // pour qui préfère l'ancien comportement.
+        this.tirManuel = true;
+        try {
+            const choix = localStorage.getItem('nova-tir');
+            if (choix) this.tirManuel = choix === 'doigt';
+        } catch (e) { /* mode privé */ }
 
         this.container.innerHTML = `
             <style>
@@ -1240,9 +1250,14 @@ class Nova extends BaseGame {
         // ne sont plus écrits sur l'écran titre : ils s'annoncent une fois, en
         // vol, quand le joueur a déjà le doigt sur l'écran. Une consigne
         // arrive toujours mieux au moment où elle sert.
-        if (this.niveau === 0 && this.frame === 260 && !this.astuceDite) {
+        if (this.niveau === 0 && this.frame === 200 && !this.astuceDite) {
             this.astuceDite = true;
-            this.mot('Doigt POSÉ : rayon lourd · DOUBLE TAPE : bombe ✹', 'ok');
+            this.mot(this.tirManuel
+                ? 'Doigt EN BAS : tu pilotes sans tirer. Remonte-le : ça tire.'
+                : 'Doigt POSÉ : rayon lourd · DOUBLE TAPE : bombe ✹', 'ok');
+        }
+        if (this.niveau === 0 && this.frame === 620 && this.tirManuel) {
+            this.mot('Doigt POSÉ longtemps : rayon lourd · DOUBLE TAPE : bombe ✹', 'ok');
         }
 
         const calme = !this.porte && !this.convoi && !this.boss && !this.faille;
@@ -1612,7 +1627,12 @@ class Nova extends BaseGame {
         c.globalAlpha = 1;
 
         this.dessinerVaisseau();
-        if (this.tirManuel && this.doigtPose && this.phase === 'jeu') this.dessinerZones();
+        // La frontière se montre pendant qu'on touche l'écran — et d'office
+        // au début de chaque secteur : une mécanique qui n'apparaît qu'une
+        // fois le doigt posé ne s'apprend que par accident.
+        if (this.tirManuel && this.phase === 'jeu' && (this.doigtPose || this.frame < 300)) {
+            this.dessinerZones();
+        }
         if (this.message) this.dessinerMessage();
         if (this.phase === 'atelier') this.dessinerAtelier();
         else if (this.phase !== 'jeu' && !this.isDemo) this.dessinerBriefing();
@@ -2061,6 +2081,9 @@ class Nova extends BaseGame {
         const y = this.ligneDeTir();
         const tire = this.doigtEnZoneDeTir();
         c.save();
+        // Sans le doigt (rappel de début de secteur), la frontière s'estompe
+        // doucement plutôt que de rester plantée là.
+        if (!this.doigtPose) c.globalAlpha = Math.min(1, (300 - this.frame) / 90);
         c.setLineDash([10, 9]);
         c.lineWidth = 2;
         c.strokeStyle = tire ? 'rgba(252,211,77,.75)' : 'rgba(148,163,184,.45)';
@@ -2420,7 +2443,14 @@ class Nova extends BaseGame {
         // et une gouttière que rien ne franchit.
         const enLigne = w > h * 0.95 && w > 620;
         const vignettes = [
-            { dessin: (x, y, s) => this.iconePilotage(x, y, s), mot: 'GLISSE', sous: 'le canon tire tout seul', couleur: '#7dd3fc' },
+            {
+                dessin: (x, y, s) => this.iconePilotage(x, y, s), mot: 'GLISSE',
+                // La consigne dit le mode RÉELLEMENT actif : annoncer « le
+                // canon tire tout seul » alors que le doigt en bas ne tire
+                // pas, c'est promettre l'inverse de ce qui va se passer.
+                sous: this.tirManuel ? 'en bas tu pilotes, plus haut ça tire' : 'le canon tire tout seul',
+                couleur: '#7dd3fc'
+            },
             { dessin: (x, y, s) => this.iconeDanger(x, y, s), mot: 'ÉVITE', sous: 'les vaisseaux et leurs tirs', couleur: '#fda4af' },
             { dessin: (x, y, s) => this.iconePorte(x, y, s), mot: 'CALCULE', sous: 'passe par le bon résultat', couleur: '#fcd34d' }
         ];
