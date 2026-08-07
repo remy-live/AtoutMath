@@ -786,9 +786,15 @@ class Nova extends BaseGame {
 
         // Un Gardien différent par secteur, dans l'ordre, en boucle.
         const g = GARDIENS[this.niveau % GARDIENS.length];
-        const pv = g.pv + this.niveau * 8;
+        // UN GARDIEN DOIT TENIR. À 26 points de coque il tombait en sept
+        // secondes : on n'avait le temps de voir ni sa façon de bouger, ni sa
+        // façon de tirer, ni le tour de main qui les contre — c'est-à-dire
+        // rien de ce qui le distingue des trois autres. Quatre fois plus de
+        // coque, et le duel dure une demi-minute : assez pour qu'on
+        // l'apprenne, pas assez pour qu'on s'ennuie.
+        const pv = Math.round(g.pv * 4) + this.niveau * 26;
         this.boss = {
-            g, regle, pv, max: pv,
+            g, regle, pv, max: pv, pvFantome: pv,
             x: w / 2, y: -140, t: 0,
             fautes: 0,                       // sphères percutées (2 enregistrées max)
             cadence: 64,                     // frames entre deux sphères
@@ -997,6 +1003,10 @@ class Nova extends BaseGame {
         // toujours sous le bandeau de consigne, qui doit rester lisible.
         this.bougerGardien(b, w, h);
         if (b.presentation > 0) b.presentation--;
+        // La traînée de la barre de coque rattrape le vrai niveau en une demi-
+        // seconde : c'est elle qui rend le dégât visible sans qu'on quitte
+        // l'action des yeux.
+        b.pvFantome += (b.pv - b.pvFantome) * 0.07;
 
         if (b.reglee) {
             b.sortie++;
@@ -1085,7 +1095,11 @@ class Nova extends BaseGame {
         if (b.regle.test(o.n)) {
             // Un multiple récupéré entame la coque : le calcul juste FRAPPE,
             // il ne se contente pas de rapporter des points.
-            b.pv = Math.max(0, b.pv - 2);
+            // Une sphère juste vaut quatre fois un tir de canon. Avec une coque
+            // quatre fois plus épaisse, il fallait choisir ce qui la perce :
+            // le canon tire tout seul, le calcul non — c'est donc le calcul
+            // qui doit faire la différence, sinon le duel se gagne en attendant.
+            b.pv = Math.max(0, b.pv - 4);
             this.gagner(25);
             this.exploser(o.x, o.y, '#fcd34d', 20);
             this.onCorrectAnswer(null, b.regle.table ? `mult:${b.regle.table}` : 'num:multiples', {
@@ -1297,10 +1311,17 @@ class Nova extends BaseGame {
         // l'écran, ils passaient une bonne seconde cachés derrière lui, et
         // c'est du temps de lecture volé sur le seul indice qui compte.
         const plafond = 34 + Math.max(38, Math.min(this.canvas.width, this.canvas.height) * 0.085) + 16;
+        // Une faille se JOUE À LA TÊTE, pas au réflexe : entre le moment où un
+        // cristal devient lisible et celui où il faut être placé, il doit y
+        // avoir de quoi faire une division. Les cristaux tombaient en quatre
+        // secondes et arrivaient toutes les demi-secondes — on n'avait le
+        // temps que de regarder le suivant. Ils descendent maintenant en sept
+        // secondes, plus espacés, et la faille dure d'autant plus longtemps :
+        // on en attrape autant, on en comprend davantage.
         this.faille = {
-            table, t: 0, duree: 780, plafond,
+            table, t: 0, duree: 1020, plafond,
             pris: 0, rates: 0, chaine: 0, meilleure: 0, fautes: 0,
-            nombres: [], prochain: 24
+            nombres: [], prochain: 30
         };
         this.secousse = 18;
         this.mot(`FAILLE : attrape les multiples de ${table}, évite les autres !`, 'ok');
@@ -1323,11 +1344,15 @@ class Nova extends BaseGame {
         f.t++;
 
         if (--f.prochain <= 0 && f.t < f.duree - 90) {
-            f.prochain = Math.max(16, 32 - this.niveau * 2);
+            // L'écart entre deux cristaux suit leur temps de chute : les
+            // ralentir sans les espacer aurait rempli l'écran au lieu de le
+            // calmer. Huit à l'écran, pas douze — on doit pouvoir tous les
+            // lire, pas seulement esquiver la masse.
+            f.prochain = Math.max(38, 64 - this.niveau * 4);
             const r = Math.max(17, Math.min(25, w * 0.055));
             f.nombres.push({
                 x: r + 8 + Math.random() * Math.max(1, w - 2 * r - 16), y: f.plafond, age: 0,
-                v: 2.1 + this.niveau * 0.16 + Math.random() * 0.6, r, a: Math.random() * 6.28,
+                v: 1.35 + this.niveau * 0.11 + Math.random() * 0.4, r, a: Math.random() * 6.28,
                 n: this.nombreFaille(f.table, Math.random() < 0.5)
             });
         }
@@ -1406,10 +1431,14 @@ class Nova extends BaseGame {
      */
     entrerPiste(table) {
         this.ennemis = []; this.tirsEnnemis = []; this.tirs = []; this.bonus = [];
+        // Même correction que pour la faille, et pour la même raison : un
+        // panneau mettait moins de trois secondes à venir du fond, dont la
+        // première où son nombre fait trois pixels de haut. On ne lisait donc
+        // que deux secondes avant de devoir choisir sa voie.
         this.piste = {
-            table, t: 0, duree: 900,
-            vz: 0.052,                 // profondeur avalée par image
-            objets: [], prochain: 30,
+            table, t: 0, duree: 1080,
+            vz: 0.038,                 // profondeur avalée par image
+            objets: [], prochain: 34,
             pris: 0, rates: 0, chaine: 0, meilleure: 0, fautes: 0
         };
         this.secousse = 16;
@@ -1456,7 +1485,7 @@ class Nova extends BaseGame {
         // panneaux d'un même groupe ne partagent jamais une voie : on doit
         // pouvoir choisir, pas seulement subir.
         if (--p.prochain <= 0 && p.t < p.duree - 120) {
-            p.prochain = Math.max(26, 46 - this.niveau * 3);
+            p.prochain = Math.max(34, 58 - this.niveau * 3);
             const voies = [-1, -0.5, 0, 0.5, 1];
             const combien = Math.random() < 0.4 ? 2 : 1;
             const libres = voies.slice();
@@ -1976,7 +2005,10 @@ class Nova extends BaseGame {
         if (this.piste) this.majPiste();
         if (this.boss) {
             this.majBoss();
-            if (this.boss && !this.boss.reglee && this.boss.t > 3400) this.fuirBoss();
+            // Le renoncement : il faut qu'il reste hors d'atteinte d'un joueur
+            // qui joue, sinon une coque plus épaisse ne se traduit pas par un
+            // duel plus long mais par un duel qu'on perd au chronomètre.
+            if (this.boss && !this.boss.reglee && this.boss.t > 5400) this.fuirBoss();
         }
         if (this.orbes.length) this.majOrbes();
         this.majBonus();
@@ -2853,20 +2885,17 @@ class Nova extends BaseGame {
         c.beginPath(); c.arc(0, 0, R * 0.34, 0, Math.PI * 2); c.fill();
         c.globalAlpha = b.opacite != null ? b.opacite : 1;
 
-        // Jauge de coque, sous la carène, en segments : on compte ce qu'il
-        // reste au lieu d'estimer une longueur.
-        const jw = R * 1.5, segs = 10;
-        c.fillStyle = 'rgba(2,6,23,.78)';
-        c.beginPath(); c.roundRect(-jw / 2 - 2, R * 0.72 - 2, jw + 4, 12, 5); c.fill();
-        for (let i = 0; i < segs; i++) {
-            c.fillStyle = (i + 0.5) / segs <= part ? pal.vif : 'rgba(148,163,184,.22)';
-            c.beginPath();
-            c.roundRect(-jw / 2 + i * (jw / segs) + 1, R * 0.72, jw / segs - 2, 8, 2);
-            c.fill();
-        }
         c.restore();
 
         if (b.reglee) return;
+
+        // LA BARRE DE COQUE, en haut, pleine largeur.
+        //
+        // Elle était sous la carène, longue de cent pixels et posée sur un ciel
+        // étoilé : au milieu d'une esquive on ne la voyait pas, et on ne savait
+        // donc jamais si le duel avançait. C'est pourtant la seule information
+        // qui dit « continue comme ça » ou « change de méthode ».
+        this.dessinerBarreBoss(b, pal);
 
         // La PRÉSENTATION : le nom du Gardien et sa parade, une seconde et
         // demie pendant laquelle il ne tire pas. On ne demande pas d'esquiver
@@ -2916,6 +2945,69 @@ class Nova extends BaseGame {
      * halo : seul le nombre dit s'il faut tirer ou s'écarter. Les teinter
      * selon la règle rendrait le duel muet.
      */
+    /**
+     * La barre de coque du Gardien : son nom, ce qui lui reste, et le coup
+     * qu'on vient de lui porter.
+     *
+     * Deux remplissages superposés — le vrai, net, et un FANTÔME plus pâle qui
+     * le rattrape en un demi-souffle. C'est lui qui rend le dégât lisible :
+     * une barre qui saute d'un pixel ne se remarque pas dans le feu de
+     * l'action, une traînée qui se résorbe se voit du coin de l'œil. Et comme
+     * une sphère juste vaut quatre tirs de canon, on VOIT que le calcul frappe
+     * plus fort — c'est l'argument le plus court qu'on puisse faire pour lui.
+     */
+    dessinerBarreBoss(b, pal) {
+        const c = this.ctx, w = this.canvas.width;
+        const part = Math.max(0, b.pv / b.max);
+        const fantome = Math.max(part, Math.min(1, (b.pvFantome || b.pv) / b.max));
+        const x = 10, bw = w - 20;
+        // Juste sous le bandeau de consigne (qui court de 66 à 122).
+        const y = 128, bh = Math.max(14, Math.min(20, w * 0.042));
+
+        c.save();
+        c.fillStyle = 'rgba(2,6,23,.8)';
+        c.beginPath(); c.roundRect(x - 2, y - 2, bw + 4, bh + 4, (bh + 4) / 2); c.fill();
+        c.fillStyle = 'rgba(148,163,184,.18)';
+        c.beginPath(); c.roundRect(x, y, bw, bh, bh / 2); c.fill();
+
+        // Le fantôme d'abord, le vrai par-dessus.
+        if (fantome > part + 0.002) {
+            c.fillStyle = 'rgba(254,226,226,.55)';
+            c.beginPath(); c.roundRect(x, y, Math.max(bh, bw * fantome), bh, bh / 2); c.fill();
+        }
+        const rempli = c.createLinearGradient(x, y, x, y + bh);
+        rempli.addColorStop(0, pal.clair);
+        rempli.addColorStop(1, pal.vif);
+        c.fillStyle = rempli;
+        c.beginPath(); c.roundRect(x, y, Math.max(bh * 0.4, bw * part), bh, bh / 2); c.fill();
+
+        // Quatre repères : on lit « il en reste un quart » sans compter.
+        c.strokeStyle = 'rgba(2,6,23,.45)'; c.lineWidth = 1.5;
+        [0.25, 0.5, 0.75].forEach(k => {
+            c.beginPath(); c.moveTo(x + bw * k, y + 2); c.lineTo(x + bw * k, y + bh - 2); c.stroke();
+        });
+        c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 1.5;
+        c.beginPath(); c.roundRect(x, y, bw, bh, bh / 2); c.stroke();
+
+        // Le nom à gauche, le compte à droite, tous deux DANS la barre : une
+        // ligne de texte en plus coûterait vingt pixels de ciel.
+        // Blanc cerné de nuit, et non foncé sur la barre : le remplissage passe
+        // sous le texte à mesure qu'il recule, et un nom écrit en sombre se
+        // coupait en deux — la moitié sur la couleur, la moitié sur le fond.
+        c.textBaseline = 'middle';
+        const px = Math.max(9, Math.min(13, bh * 0.66));
+        c.shadowColor = 'rgba(2,6,23,.95)'; c.shadowBlur = 4;
+        c.fillStyle = '#f8fafc';
+        c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        c.textAlign = 'left';
+        c.fillText(b.g.nom, x + 10, y + bh / 2 + 0.5);
+        c.textAlign = 'right';
+        c.font = `800 ${px}px 'Inter', system-ui, sans-serif`;
+        c.fillText(`${b.pv} / ${b.max}`, x + bw - 10, y + bh / 2 + 0.5);
+        c.shadowBlur = 0;
+        c.restore();
+    }
+
     // --- Les quatre coques ----------------------------------------------------
 
     /** LE FORGERON : un fer de hache et deux ailes qui battent. */
