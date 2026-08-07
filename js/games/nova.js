@@ -110,6 +110,8 @@ class Nova extends BaseGame {
         this.atelier = null;
         this.portail = null;           // l'anneau qui mène à la Faille
         this.faille = null;            // l'épreuve bonus en cours
+        this.piste = null;             // l'autre bonus : le couloir en perspective
+        this.prochainBonus = 'faille'; // les deux bonus alternent
         this.failleFaite = false;      // une seule faille par secteur
         this.epreuves = 0;             // épreuves réglées dans ce secteur
         this.prochainCalc = 'porte';   // portes et convois alternent
@@ -1010,6 +1012,7 @@ class Nova extends BaseGame {
         this.epreuves = 0;
         this.portail = null;
         this.faille = null;
+        this.piste = null;
         this.failleFaite = false;
         this.frame = 0;
         this.ennemis = []; this.tirsEnnemis = [];
@@ -1042,11 +1045,19 @@ class Nova extends BaseGame {
         const t = this.tables[Math.floor(Math.random() * this.tables.length)];
         const lw = Math.max(120, Math.min(w * 0.46, 260));
         this.failleFaite = true;
+        // Deux bonus alternent : la FAILLE (des cristaux qui tombent) et la
+        // PISTE (le couloir en perspective). Ils travaillent la même chose —
+        // reconnaître un multiple — mais pas le même geste, et l'alternance
+        // suffit à ce qu'aucun des deux ne devienne une corvée.
+        const genre = this.prochainBonus === 'piste' ? 'piste' : 'faille';
+        this.prochainBonus = genre === 'piste' ? 'faille' : 'piste';
         this.portail = {
-            table: t, lw, y: -70, v: 1.9,
+            genre, table: t, lw, y: -70, v: 1.9,
             x: lw / 2 + 12 + Math.random() * Math.max(1, w - lw - 24)
         };
-        this.mot(`Une FAILLE ×${t} s'ouvre — traverse l'anneau !`, 'ok');
+        this.mot(genre === 'piste'
+            ? `Une PISTE ×${t} s'ouvre — traverse l'anneau !`
+            : `Une FAILLE ×${t} s'ouvre — traverse l'anneau !`, 'ok');
     }
 
     majPortail() {
@@ -1055,10 +1066,14 @@ class Nova extends BaseGame {
         p.y += p.v;
         if (Math.abs(p.y - v.y) < 30 && Math.abs(p.x - v.x) < p.lw / 2) {
             this.portail = null;
-            this.entrerFaille(p.table);
+            if (p.genre === 'piste') this.entrerPiste(p.table);
+            else this.entrerFaille(p.table);
             return;
         }
-        if (p.y > h + 70) { this.portail = null; this.mot('La faille se referme…', 'ko'); }
+        if (p.y > h + 70) {
+            this.portail = null;
+            this.mot(p.genre === 'piste' ? 'La piste s\'éloigne…' : 'La faille se referme…', 'ko');
+        }
     }
 
     entrerFaille(table) {
@@ -1158,10 +1173,373 @@ class Nova extends BaseGame {
         this.majHud();
     }
 
+    // --- La PISTE : le couloir en perspective ---------------------------------
+
+    /**
+     * L'autre bonus. Même règle que la faille — prendre les multiples, éviter
+     * le reste — mais vue de derrière le vaisseau, dans un couloir qui fuit
+     * vers l'horizon. Le changement de point de vue n'est pas décoratif : dans
+     * la faille les nombres tombent VERS le joueur et on lit leur valeur tout
+     * de suite ; ici ils arrivent de loin, minuscules, et deviennent lisibles
+     * en approchant. On a donc le temps de voir qu'il y a un choix à faire
+     * bien avant de pouvoir le faire — c'est ce délai qui laisse la place au
+     * calcul plutôt qu'au réflexe.
+     *
+     * Tout est fait à la main sur le canevas déjà là : une projection
+     * perspective tient en trois lignes (un objet à la profondeur z est
+     * dessiné à l'échelle 1/z), et un tri par profondeur suffit à ce que les
+     * panneaux proches passent devant les lointains. Aucune bibliothèque 3D
+     * n'apporterait quoi que ce soit ici, et elle coûterait un demi-mégaoctet
+     * à un jeu qui doit démarrer hors ligne sur un téléphone.
+     */
+    entrerPiste(table) {
+        this.ennemis = []; this.tirsEnnemis = []; this.tirs = []; this.bonus = [];
+        this.piste = {
+            table, t: 0, duree: 900,
+            vz: 0.052,                 // profondeur avalée par image
+            objets: [], prochain: 30,
+            pris: 0, rates: 0, chaine: 0, meilleure: 0, fautes: 0
+        };
+        this.secousse = 16;
+        this.mot(`PISTE : récupère les multiples de ${table}, évite les autres !`, 'ok');
+    }
+
+    /** La géométrie du couloir. Le plan du vaisseau est la profondeur z = 1. */
+    geoPiste() {
+        const w = this.canvas.width, h = this.canvas.height;
+        const hy = h * 0.30;
+        const bas = this.vaisseau.repos;
+        // La piste ne peut pas être plus large que haute : en paysage, une
+        // demi-largeur prise sur l'écran entier donnait des panneaux hauts
+        // comme la moitié du couloir. C'est la profondeur visible qui fixe
+        // l'échelle, pas la largeur de la fenêtre.
+        return {
+            w, h, cx: w / 2, hy, bas,
+            demi: Math.max(60, Math.min(w / 2 - 24, (bas - hy) * 0.95))
+        };
+    }
+
+    /**
+     * Projection : un point à la position latérale `x` (en largeurs de piste,
+     * de −1 à +1) et à la profondeur `z` se retrouve à l'écran d'autant plus
+     * près du centre et de l'horizon que z est grand. C'est tout.
+     */
+    projPiste(x, z, g) {
+        const k = 1 / Math.max(0.3, z);
+        return { k, sx: g.cx + x * k * g.demi, sy: g.hy + (g.bas - g.hy) * k };
+    }
+
+    /** La position latérale du vaisseau, ramenée à l'échelle de la piste. */
+    xPiste(g) {
+        return Math.max(-1, Math.min(1, (this.vaisseau.x - g.cx) / g.demi));
+    }
+
+    majPiste() {
+        const p = this.piste;
+        if (!p) return;
+        const g = this.geoPiste();
+        p.t++;
+
+        // Les panneaux naissent au fond, sur l'une des cinq voies. Deux
+        // panneaux d'un même groupe ne partagent jamais une voie : on doit
+        // pouvoir choisir, pas seulement subir.
+        if (--p.prochain <= 0 && p.t < p.duree - 120) {
+            p.prochain = Math.max(26, 46 - this.niveau * 3);
+            const voies = [-1, -0.5, 0, 0.5, 1];
+            const combien = Math.random() < 0.4 ? 2 : 1;
+            const libres = voies.slice();
+            for (let i = 0; i < combien; i++) {
+                const v = libres.splice(Math.floor(Math.random() * libres.length), 1)[0];
+                // Jamais deux panneaux sur des voies contiguës : à l'écran ils
+                // se chevaucheraient, et un nombre à moitié caché n'est pas une
+                // question, c'est un piège.
+                for (let j = libres.length - 1; j >= 0; j--) {
+                    if (Math.abs(libres[j] - v) < 0.75) libres.splice(j, 1);
+                }
+                // Au moins un multiple dès qu'il y a deux panneaux : une salve
+                // entièrement à éviter n'apprend rien, elle fait juste patienter.
+                const bon = combien === 2 ? i === 0 : Math.random() < 0.5;
+                p.objets.push({
+                    x: v, z: 9.5, n: this.nombreFaille(p.table, bon), a: Math.random() * 6.28
+                });
+            }
+        }
+
+        // Le vaisseau reste SUR la piste. En paysage le couloir est plus étroit
+        // que l'écran : sans cette borne, on peut se garer à côté de la route
+        // et regarder passer les nombres sans jamais avoir à choisir.
+        const bordure = g.demi * 1.02;
+        this.vaisseau.x = Math.min(Math.max(this.vaisseau.x, g.cx - bordure), g.cx + bordure);
+        this.vaisseau.cible = Math.min(Math.max(this.vaisseau.cible, g.cx - bordure), g.cx + bordure);
+
+        const moiX = this.xPiste(g);
+        p.objets.forEach(o => {
+            o.z -= p.vz;
+            o.a += 0.04;
+            if (o.mort) return;
+            // La prise se joue au passage du plan du vaisseau. La demi-largeur
+            // d'un panneau vaut 0,22 : deux voies voisines sont à 0,5 l'une de
+            // l'autre, on ne peut donc jamais en toucher deux à la fois.
+            if (o.z > 1.06 || o.z < 0.62) return;
+            if (Math.abs(o.x - moiX) > 0.24) return;
+            o.mort = true;
+            const pr = this.projPiste(o.x, o.z, g);
+            const bon = o.n % p.table === 0;
+            const q = `${o.n} est-il un multiple de ${p.table} ?`;
+            if (bon) {
+                p.pris++; p.chaine++;
+                p.meilleure = Math.max(p.meilleure, p.chaine);
+                this.gagner(15 * Math.min(5, p.chaine));
+                this.exploser(pr.sx, pr.sy, '#5eead4', 18);
+                this.onCorrectAnswer(null, `mult:${p.table}`, {
+                    points: 10, questionText: q, given: 'oui', expected: 'oui'
+                });
+            } else {
+                p.rates++; p.chaine = 0;
+                this.secousse = 14;
+                this.exploser(pr.sx, pr.sy, '#f43f5e', 16);
+                this.mot(`${o.n} n'est pas dans la table de ${p.table} — chaîne perdue`, 'ko');
+                if (p.fautes++ < 2 && !this.isDemo) {
+                    this.onWrongAnswer(null, {
+                        questionText: q, input: 'percuté', expected: 'non',
+                        concept: `mult:${p.table}`, silencieux: true,
+                        customMessage: `${o.n} n'est pas un multiple de ${p.table} : sur la piste, il fallait l'éviter.`
+                    });
+                }
+            }
+        });
+        p.objets = p.objets.filter(o => !o.mort && o.z > 0.42);
+
+        if (p.t >= p.duree) this.finirPiste();
+    }
+
+    finirPiste() {
+        const p = this.piste;
+        const parfait = p.rates === 0 && p.pris >= 3;
+        const avant = this.credits;
+        this.gagner(p.pris * 20 + (parfait ? 60 : 0));
+        const verse = this.credits - avant;
+        if (parfait) {
+            this.bombes = Math.min(5, this.bombes + 1);
+            this.mot(`PISTE PARFAITE ! ${p.pris} multiples de ${p.table}, aucune erreur · ⬢ ${verse} + une bombe ✹`, 'ok');
+        } else {
+            this.mot(`Sortie de piste : ${p.pris} multiples de ${p.table} récupérés, ${p.rates} erreur${p.rates > 1 ? 's' : ''} · ⬢ ${verse}`, p.rates ? 'ko' : 'ok');
+        }
+        this.piste = null;
+        this.majHud();
+    }
+
+    dessinerPiste() {
+        const c = this.ctx, p = this.piste;
+        const g = this.geoPiste();
+        const { w, h, cx, hy, demi, bas } = g;
+        const u = Math.min(w, h);
+        const t = p.t;
+
+        c.save();
+
+        // --- Le ciel et l'horizon --------------------------------------------
+        const ciel = c.createLinearGradient(0, 0, 0, hy);
+        ciel.addColorStop(0, '#0b1026');
+        ciel.addColorStop(1, '#3b1a5c');
+        c.fillStyle = ciel; c.fillRect(-10, -10, w + 20, hy + 10);
+
+        // Des étoiles fixes : le ciel plat sonnait « fond d'écran ». Elles
+        // sont tirées d'une suite déterministe — pas d'aléa par image, sinon
+        // elles clignotent toutes à chaque frame.
+        c.save();
+        c.fillStyle = 'rgba(226,232,240,.75)';
+        for (let i = 0; i < 60; i++) {
+            const a = (i * 2654435761) % 1000 / 1000;
+            const b2 = (i * 40503) % 997 / 997;
+            const r = ((i * 7919) % 5) / 4;
+            c.globalAlpha = 0.25 + r * 0.55;
+            c.fillRect(a * w, b2 * hy * 0.92, 1 + r, 1 + r);
+        }
+        c.restore();
+
+        // Un soleil bas, posé sur l'horizon : c'est lui qui donne la direction
+        // et qui fait que le couloir « va quelque part ».
+        const so = c.createRadialGradient(cx, hy, 2, cx, hy, u * 0.42);
+        so.addColorStop(0, 'rgba(251,191,36,.55)');
+        so.addColorStop(0.4, 'rgba(244,114,182,.22)');
+        so.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = so; c.beginPath(); c.arc(cx, hy, u * 0.42, 0, Math.PI * 2); c.fill();
+
+        // Une crête de montagnes sur l'horizon, sauf au centre où l'on doit
+        // voir la piste s'enfoncer. C'est elle qui donne le sol : sans ligne
+        // de relief, le couloir flottait dans le vide.
+        c.save();
+        c.fillStyle = '#0b0620';
+        c.beginPath();
+        c.moveTo(-10, hy + 2);
+        const pics = 16;
+        for (let i = 0; i <= pics; i++) {
+            const x = -10 + (w + 20) * (i / pics);
+            const creux = Math.abs(x - cx) / (w / 2);          // écrasées au centre
+            const hh = (u * 0.055) * (0.35 + ((i * 5779) % 100) / 100) * Math.min(1, creux * 1.6);
+            c.lineTo(x, hy + 2 - hh);
+        }
+        c.lineTo(w + 10, hy + 2);
+        c.closePath(); c.fill();
+        c.restore();
+
+        // Le sol, en dessous.
+        const sol = c.createLinearGradient(0, hy, 0, h);
+        sol.addColorStop(0, '#160b2e');
+        sol.addColorStop(1, '#05030f');
+        c.fillStyle = sol; c.fillRect(-10, hy, w + 20, h - hy + 10);
+
+        // --- La piste ---------------------------------------------------------
+        const zMax = 10, zMin = 0.42;
+        const bordG = this.projPiste(-1, zMin, g), bordD = this.projPiste(1, zMin, g);
+        const loinG = this.projPiste(-1, zMax, g), loinD = this.projPiste(1, zMax, g);
+        c.save();
+        c.beginPath();
+        c.moveTo(loinG.sx, loinG.sy); c.lineTo(loinD.sx, loinD.sy);
+        c.lineTo(bordD.sx, bordD.sy); c.lineTo(bordG.sx, bordG.sy);
+        c.closePath();
+        const rev = c.createLinearGradient(0, hy, 0, bas);
+        rev.addColorStop(0, 'rgba(45,20,90,.9)');
+        rev.addColorStop(1, 'rgba(12,6,32,.95)');
+        c.fillStyle = rev; c.fill();
+        c.clip();
+
+        // Traverses : des barres qui défilent vers le joueur. Sans elles on ne
+        // sent pas la vitesse — la perspective seule ne bouge pas.
+        const pas = 1;
+        const defile = (t * p.vz) % pas;
+        c.strokeStyle = 'rgba(94,234,212,.5)';
+        for (let z = zMin + defile; z < zMax; z += pas) {
+            const a = this.projPiste(-1.2, z, g), b = this.projPiste(1.2, z, g);
+            c.globalAlpha = Math.max(0.06, 0.55 * (1 - z / zMax));
+            c.lineWidth = Math.max(1, a.k * 2.2);
+            c.beginPath(); c.moveTo(a.sx, a.sy); c.lineTo(b.sx, b.sy); c.stroke();
+        }
+        c.globalAlpha = 1;
+        // Les cinq voies, plus claires sur les bords.
+        [-1, -0.5, 0, 0.5, 1].forEach(x => {
+            const a = this.projPiste(x, zMin, g), b = this.projPiste(x, zMax, g);
+            const bord = Math.abs(x) === 1;
+            c.strokeStyle = bord ? 'rgba(34,211,238,.85)' : 'rgba(148,163,184,.28)';
+            c.lineWidth = bord ? 3 : 1.4;
+            c.beginPath(); c.moveTo(a.sx, a.sy); c.lineTo(b.sx, b.sy); c.stroke();
+        });
+        c.restore();
+
+        // Deux murs de lumière sur les côtés : ils bornent le couloir et
+        // rendent le défilement visible même au bord de l'écran.
+        [-1, 1].forEach(cote => {
+            for (let z = zMin + defile; z < zMax; z += pas) {
+                const pied = this.projPiste(cote, z, g);
+                const haut = pied.sy - pied.k * u * 0.16;
+                c.globalAlpha = Math.max(0.05, 0.4 * (1 - z / zMax));
+                c.strokeStyle = '#a78bfa';
+                c.lineWidth = Math.max(1, pied.k * 2);
+                c.beginPath(); c.moveTo(pied.sx, pied.sy); c.lineTo(pied.sx, haut); c.stroke();
+            }
+        });
+        c.globalAlpha = 1;
+
+        // --- Les panneaux numérotés -------------------------------------------
+        // Du plus lointain au plus proche : c'est ce tri, et rien d'autre, qui
+        // fait qu'un panneau proche cache celui qui est derrière lui.
+        const tries = p.objets.slice().sort((a, b) => b.z - a.z);
+        tries.forEach(o => {
+            const pr = this.projPiste(o.x, o.z, g);
+            // 0,21 : deux voies sont distantes de 0,5, un panneau en occupe
+            // 0,42 — il reste toujours un vide entre deux voisins.
+            const taille = pr.k * demi * 0.21;
+            if (taille < 3) return;
+            const flou = Math.min(1, (10 - o.z) / 2.2);      // apparition en fondu
+            c.save();
+            c.globalAlpha = Math.max(0, Math.min(1, flou));
+            c.translate(pr.sx, pr.sy - taille * 0.9);
+
+            // Une tache de lumière au pied du panneau, exactement là où il
+            // touche la piste : c'est elle qui dit sur QUELLE voie il est.
+            // Sans elle, deux panneaux à des profondeurs différentes semblent
+            // sur la même ligne, et on se déporte pour rien.
+            c.save();
+            c.globalAlpha *= 0.55;
+            const halo = c.createRadialGradient(0, taille * 0.9, 0, 0, taille * 0.9, taille * 1.1);
+            halo.addColorStop(0, 'rgba(94,234,212,.7)');
+            halo.addColorStop(1, 'rgba(94,234,212,0)');
+            c.fillStyle = halo;
+            c.beginPath();
+            c.ellipse(0, taille * 0.9, taille * 1.1, taille * 0.34, 0, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+
+            const bat = 1 + Math.sin(o.a) * 0.04;
+            c.scale(bat, bat);
+            c.shadowColor = 'rgba(34,211,238,.8)'; c.shadowBlur = Math.min(22, taille * 0.6);
+            const gg = c.createLinearGradient(0, -taille, 0, taille);
+            gg.addColorStop(0, '#f0fdfa'); gg.addColorStop(0.5, '#5eead4'); gg.addColorStop(1, '#0e7490');
+            c.fillStyle = gg;
+            c.beginPath();
+            c.roundRect(-taille, -taille * 0.75, taille * 2, taille * 1.5, taille * 0.28);
+            c.fill();
+            c.shadowBlur = 0;
+            c.strokeStyle = 'rgba(240,253,250,.9)'; c.lineWidth = Math.max(1, taille * 0.07);
+            c.stroke();
+
+            c.fillStyle = '#042f2e';
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.font = `900 ${Math.max(6, Math.round(taille * 0.95))}px 'Inter', system-ui, sans-serif`;
+            c.fillText(String(o.n), 0, 0);
+            c.restore();
+        });
+
+        // --- Le bandeau de consigne -------------------------------------------
+        const bh = Math.max(38, u * 0.085);
+        const bandeau = c.createLinearGradient(0, 34, 0, 34 + bh);
+        bandeau.addColorStop(0, 'rgba(8,60,72,.94)');
+        bandeau.addColorStop(1, 'rgba(4,20,30,.94)');
+        c.fillStyle = bandeau;
+        c.beginPath(); c.roundRect(8, 34, w - 16, bh, 14); c.fill();
+        c.save();
+        c.shadowColor = 'rgba(94,234,212,.8)'; c.shadowBlur = 12;
+        c.strokeStyle = '#5eead4'; c.lineWidth = 2; c.stroke();
+        c.restore();
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        let px = Math.max(11, Math.min(17, w * 0.036));
+        const txt = `RÉCUPÈRE les multiples de ${p.table}  ·  ÉVITE tous les autres`;
+        c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        while (px > 9 && c.measureText(txt).width > w - 40) {
+            px -= 1; c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
+        }
+        c.fillStyle = '#ccfbf1';
+        c.fillText(txt, w / 2, 34 + bh * 0.36);
+        c.font = `800 ${Math.round(px * 0.85)}px 'Inter', system-ui, sans-serif`;
+        if (p.chaine > 1) {
+            const pulse = 1 + Math.max(0, 0.25 - (t % 24) / 96);
+            c.save();
+            c.translate(w / 2, 34 + bh * 0.75); c.scale(pulse, pulse);
+            c.fillStyle = '#fcd34d';
+            c.fillText(`chaîne ×${Math.min(5, p.chaine)} · ${p.pris} récupérés`, 0, 0);
+            c.restore();
+        } else {
+            c.fillStyle = '#99f6e4';
+            c.fillText(`${p.pris} récupérés`, w / 2, 34 + bh * 0.75);
+        }
+
+        const reste = Math.max(0, 1 - p.t / p.duree);
+        const jy = 34 + bh + 5;
+        c.fillStyle = 'rgba(148,163,184,.25)';
+        c.beginPath(); c.roundRect(10, jy, w - 20, 5, 3); c.fill();
+        c.fillStyle = reste < 0.22 ? '#fbbf24' : '#2dd4bf';
+        c.beginPath(); c.roundRect(10, jy, Math.max(3, (w - 20) * reste), 5, 3); c.fill();
+        c.restore();
+    }
+
     // --- Bombe NOVA -----------------------------------------------------------
 
     declencherNova() {
         if (this.novaOnde) return;
+        // Dans un bonus il n'y a rien à effacer : la dépenser là serait une
+        // bombe perdue sur un double appui involontaire.
+        if (this.faille || this.piste) return;
         if (this.bombes < 1) { this.mot('Pas de bombe NOVA — cherche le bonus ✹', 'ko'); return; }
         this.bombes--;
         this.majHud();
@@ -1324,12 +1702,15 @@ class Nova extends BaseGame {
         // Pendant un DUEL, le canon est automatique quoi qu'il arrive : le
         // doigt sert à voler sur tout l'écran, on ne va pas lui demander en
         // plus de rester au-dessus d'une ligne pour tirer.
-        const canonPret = !this.faille
+        const canonPret = !this.faille && !this.piste
             && (!this.tirManuel || enDuel || this.doigtEnZoneDeTir());
         if (canonPret && this.frame % Math.round(cadence) === 0) this.tirerJoueur();
 
-        // Charge : environ une seconde et demie de doigt posé.
-        if (this.doigtPose) this.charge = Math.min(1, this.charge + 1 / 90);
+        // Charge : environ une seconde et demie de doigt posé. Pas dans les
+        // bonus : le doigt y reste posé en permanence pour piloter, et voir
+        // partir un rayon lourd sur des nombres qu'il ne peut pas toucher est
+        // exactement le genre de détail qui fait douter d'une règle.
+        if (this.doigtPose && !this.faille && !this.piste) this.charge = Math.min(1, this.charge + 1 / 90);
         if (this.rayon > 0) { this.rayon--; this.frapperAuRayon(); }
 
         // Les vagues se resserrent avec les secteurs : c'est LA vis de
@@ -1350,7 +1731,7 @@ class Nova extends BaseGame {
             this.mot('Doigt POSÉ longtemps : rayon lourd · DOUBLE TAPE : bombe ✹', 'ok');
         }
 
-        const calme = !this.porte && !this.convoi && !this.boss && !this.faille;
+        const calme = !this.porte && !this.convoi && !this.boss && !this.faille && !this.piste;
         // La MONTÉE EN CHARGE. Le premier secteur envoyait une vague toutes
         // les 2,5 s dès la première seconde : on n'a pas le temps de
         // comprendre qu'on pilote avant d'avoir à esquiver. Les vagues sont
@@ -1380,6 +1761,7 @@ class Nova extends BaseGame {
         this.majConvoi();
         if (this.portail) this.majPortail();
         if (this.faille) this.majFaille();
+        if (this.piste) this.majPiste();
         if (this.boss) {
             this.majBoss();
             if (this.boss && !this.boss.reglee && this.boss.t > 3400) this.fuirBoss();
@@ -1746,6 +2128,11 @@ class Nova extends BaseGame {
         });
         c.restore();
 
+        // La PISTE repeint tout le décor : elle passe donc AVANT le reste,
+        // pas en voile par-dessus comme la faille. Elle vide l'écran en
+        // entrant, il n'y a plus rien derrière à préserver.
+        if (this.piste) this.dessinerPiste();
+
         this.bonus.forEach(b => this.dessinerBonus(b));
         this.ennemis.forEach(e => this.dessinerEnnemi(e));
 
@@ -1804,7 +2191,7 @@ class Nova extends BaseGame {
         // vaisseau vole partout. Une frontière qui ne sépare plus rien est
         // une consigne fausse.
         const duel = this.boss && !this.boss.reglee;
-        if (this.tirManuel && this.phase === 'jeu' && !duel && !this.faille
+        if (this.tirManuel && this.phase === 'jeu' && !duel && !this.faille && !this.piste
             && (this.doigtPose || this.frame < 300)) {
             this.dessinerZones();
         }
@@ -2380,15 +2767,20 @@ class Nova extends BaseGame {
         const c = this.ctx, p = this.portail;
         const rx = p.lw / 2, ry = Math.max(22, p.lw * 0.16);
         const pulse = 0.75 + Math.sin(this.frame / 7) * 0.25;
+        // L'anneau prend la couleur de ce qu'il ouvre : violet pour la faille,
+        // turquoise pour la piste. On sait donc où l'on va AVANT d'y aller —
+        // et les deux bonus cessent d'être la même surprise répétée.
+        const piste = p.genre === 'piste';
+        const teinte = piste
+            ? { cœur: 'rgba(204,251,241,.55)', halo: '94,234,212', anneau: '#5eead4', vif: '#99f6e4', clair: '#f0fdfa' }
+            : { cœur: 'rgba(237,233,254,.55)', halo: '139,92,246', anneau: '#a78bfa', vif: '#67e8f9', clair: '#f5f3ff' };
         c.save();
         c.translate(p.x, p.y);
 
-        // Le cœur : un vortex violet, pas un simple halo bleu — c'est la même
-        // couleur que la faille où il mène.
         const g = c.createRadialGradient(0, 0, ry * 0.15, 0, 0, rx);
-        g.addColorStop(0, 'rgba(237,233,254,.55)');
-        g.addColorStop(0.4, 'rgba(139,92,246,.35)');
-        g.addColorStop(1, 'rgba(139,92,246,0)');
+        g.addColorStop(0, teinte.cœur);
+        g.addColorStop(0.4, `rgba(${teinte.halo},.35)`);
+        g.addColorStop(1, `rgba(${teinte.halo},0)`);
         c.fillStyle = g;
         c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.fill();
 
@@ -2398,7 +2790,7 @@ class Nova extends BaseGame {
             const av = (this.frame / (18 + i * 9)) % (Math.PI * 2);
             c.save();
             c.globalAlpha = 0.35 + i * 0.2;
-            c.strokeStyle = i === 0 ? '#a78bfa' : '#67e8f9';
+            c.strokeStyle = i === 0 ? teinte.anneau : teinte.vif;
             c.lineWidth = 4 - i;
             c.setLineDash([rx * 0.32, rx * 0.16]);
             c.lineDashOffset = -av * rx * 0.4;
@@ -2406,15 +2798,16 @@ class Nova extends BaseGame {
             c.restore();
         }
 
-        c.shadowColor = 'rgba(167,139,250,.95)'; c.shadowBlur = 26 * pulse;
-        c.strokeStyle = '#ddd6fe'; c.lineWidth = 4;
+        c.shadowColor = `rgba(${teinte.halo},.95)`; c.shadowBlur = 26 * pulse;
+        c.strokeStyle = teinte.clair; c.lineWidth = 4;
         c.setLineDash([]);
         c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.stroke();
         c.shadowBlur = 0;
 
         // Deux chevrons vers le bas : l'anneau se traverse, il ne se contourne
         // pas. Sans eux, on le prenait pour un obstacle de plus.
-        c.strokeStyle = 'rgba(237,233,254,.75)'; c.lineWidth = 2.5;
+        c.strokeStyle = piste ? 'rgba(204,251,241,.75)' : 'rgba(237,233,254,.75)';
+        c.lineWidth = 2.5;
         [-1, 1].forEach(d => {
             c.beginPath();
             c.moveTo(d * rx * 0.5, -ry * 0.32);
@@ -2424,9 +2817,9 @@ class Nova extends BaseGame {
         });
 
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillStyle = '#f5f3ff';
+        c.fillStyle = teinte.clair;
         c.font = `900 ${Math.round(ry * 0.8)}px 'Inter', system-ui, sans-serif`;
-        c.fillText(`FAILLE ×${p.table}`, 0, 1);
+        c.fillText(`${piste ? 'PISTE' : 'FAILLE'} ×${p.table}`, 0, 1);
         c.restore();
     }
 
@@ -2988,6 +3381,7 @@ class Nova extends BaseGame {
         }, 100);
         if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) { clearInterval(versAnneau); return fin(); }
         clearInterval(versAnneau);
+        this.portail = null;
         if (!this.faille && this.isRunning) this.entrerFaille(pt.table);
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
@@ -3009,8 +3403,39 @@ class Nova extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(trier); return fin(); }
         clearInterval(trier);
 
+        // La PISTE : le second visage du même anneau. On la montre juste après
+        // la faille pour que la parenté saute aux yeux — même consigne, même
+        // table, un point de vue de plus.
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Une faille sans faute rapporte des crédits ⬢ et une bombe ✹. Et à l\'ATELIER, ces crédits achètent un canon, une coque ou un bouclier — ça, ça se garde.', this.arene);
+        this.faille = null;
+        this.portail = null;
+        this.entrerPiste(pt.table);
+        cur.say(`Un anneau sur deux ouvre une PISTE : la même consigne, mais vue de derrière mon vaisseau. Les nombres arrivent du fond du couloir — j'ai le temps de les lire.`, this.arene);
+        if (!await cur.pause(DEMO_SPEED.between + 3000) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say(`Je me place sur la voie du multiple de ${pt.table} et je laisse filer les autres. Cinq voies, un seul choix à faire à chaque fois.`, this.arene);
+        const piloter = setInterval(() => {
+            if (!this.isRunning || !this.piste) return;
+            const p = this.piste, geo = this.geoPiste();
+            // Le robot se cale sur le multiple le plus proche encore devant
+            // lui ; s'il n'y en a pas, il s'écarte de l'intrus le plus proche.
+            const devant = p.objets.filter(o => o.z > 1.1 && o.z < 5);
+            const bons = devant.filter(o => o.n % p.table === 0).sort((a, b) => a.z - b.z);
+            if (bons.length) {
+                this.vaisseau.cible = geo.cx + bons[0].x * geo.demi;
+            } else if (devant.length) {
+                const gene = devant.sort((a, b) => a.z - b.z)[0];
+                const fuite = Math.abs(gene.x - 1) > Math.abs(gene.x + 1) ? -1 : 1;
+                this.vaisseau.cible = geo.cx + fuite * geo.demi * 0.9;
+            }
+        }, 100);
+        if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(piloter); return fin(); }
+        clearInterval(piloter);
+        this.piste = null;
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Une faille ou une piste sans faute rapporte des crédits ⬢ et une bombe ✹. Et à l\'ATELIER, ces crédits achètent un canon, une coque ou un bouclier — ça, ça se garde.', this.arene);
         if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) return fin();
         fin();
     }
