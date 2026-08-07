@@ -78,6 +78,47 @@ const DUELS = [
     { libelle: 'les nombres plus grands que 50', test: n => n > 50 }
 ];
 
+/**
+ * QUATRE GARDIENS, un par secteur, en boucle.
+ *
+ * Un seul Gardien, si bien dessiné soit-il, se répète : au troisième secteur
+ * on connaît sa gerbe par cœur et le duel redevient une formalité. Quatre
+ * silhouettes, quatre façons de bouger, quatre répertoires de tir — et le
+ * combat redemande à chaque fois d'observer avant d'agir.
+ *
+ * Ce qui NE change jamais : la règle mathématique. On récupère les nombres de
+ * la consigne, on évite les autres, on tire sur la coque. Le Gardien change de
+ * visage, pas de contrat — sinon chaque secteur serait un jeu à réapprendre.
+ *
+ * Chacun a son geste d'esquive propre, et c'est ça qu'on apprend :
+ *  · LE FORGERON martèle droit devant — on se décale ;
+ *  · LE TISSEUR balaie en tournant — on traverse le fil, on ne le fuit pas ;
+ *  · LA COURONNE vise, puis explose en couronne — on bouge tôt, pas tard ;
+ *  · LE SPECTRE pose des murs percés d'une brèche — on cherche le trou.
+ */
+const GARDIENS = [
+    {
+        id: 'forgeron', nom: 'LE FORGERON', pv: 26,
+        vif: '#d946ef', sombre: '#4c1d95', clair: '#f0abfc', aura: 'rgba(217,70,239,.75)',
+        conseil: 'Il martèle droit devant : décale-toi, ne recule pas.'
+    },
+    {
+        id: 'tisseur', nom: 'LE TISSEUR', pv: 30,
+        vif: '#2dd4bf', sombre: '#134e4a', clair: '#99f6e4', aura: 'rgba(45,212,191,.78)',
+        conseil: 'Son fil tourne sans fin : traverse-le, ne le suis pas.'
+    },
+    {
+        id: 'couronne', nom: 'LA COURONNE', pv: 34,
+        vif: '#f59e0b', sombre: '#78350f', clair: '#fde68a', aura: 'rgba(245,158,11,.8)',
+        conseil: 'Ses tourelles te suivent : bouge AVANT qu\'elles ne tirent.'
+    },
+    {
+        id: 'spectre', nom: 'LE SPECTRE', pv: 30,
+        vif: '#818cf8', sombre: '#1e1b4b', clair: '#e0e7ff', aura: 'rgba(129,140,248,.82)',
+        conseil: 'Ses murs ont toujours une brèche — cherche le trou, pas la sortie.'
+    }
+];
+
 class Nova extends BaseGame {
 
     // --- Mise en place -------------------------------------------------------
@@ -743,18 +784,199 @@ class Nova extends BaseGame {
                 ...DUELS];
         const regle = familles[Math.floor(Math.random() * familles.length)];
 
-        const pv = 26 + this.niveau * 10;
+        // Un Gardien différent par secteur, dans l'ordre, en boucle.
+        const g = GARDIENS[this.niveau % GARDIENS.length];
+        const pv = g.pv + this.niveau * 8;
         this.boss = {
-            regle, pv, max: pv,
+            g, regle, pv, max: pv,
             x: w / 2, y: -140, t: 0,
             fautes: 0,                       // sphères percutées (2 enregistrées max)
             cadence: 64,                     // frames entre deux sphères
             prochainTir: 150,
             motif: 0,                        // le tir change de figure avec les dégâts
-            reglee: false, sortie: 0, eclat: 0
+            reglee: false, sortie: 0, eclat: 0,
+            // État propre à chaque silhouette.
+            angle: 0,                        // TISSEUR : l'orientation du fil
+            cibleX: w / 2, repos: 0,         // COURONNE : sa prochaine position
+            tourelle: 0,                     // COURONNE : celle qui tire
+            opacite: 1, saut: 240,           // SPECTRE : son clignotement
+            presentation: 150                // frames de bandeau de présentation
         };
-        this.mot(`GARDIEN ! Récupère ${regle.libelle}, ÉVITE les autres, et TIRE.`, 'ko');
+        this.mot(`${g.nom} — récupère ${regle.libelle}, ÉVITE les autres, et TIRE.`, 'ko');
         this.secousse = 22;
+    }
+
+    // --- Le répertoire des Gardiens -------------------------------------------
+
+    /**
+     * Le déplacement. C'est lui, plus que la silhouette, qui donne au Gardien
+     * son caractère : on lit une intention dans une trajectoire bien avant de
+     * regarder un dessin.
+     */
+    bougerGardien(b, w, h) {
+        // Le perchoir descend juste assez pour passer sous le bandeau de
+        // consigne : sur un écran large et bas, les créneaux de la Couronne
+        // s'y encastraient, et la consigne est ce qu'on relit à chaque sphère.
+        const R = Math.max(52, Math.min(96, w * 0.2));
+        const perchoir = Math.max(h * 0.27, 128 + R * 0.62);
+        switch (b.g.id) {
+            case 'tisseur':
+                // Un huit lent : il n'est jamais deux fois au même endroit, et
+                // sa hauteur varie — le fil ne balaie donc pas toujours pareil.
+                // L'amplitude tient compte des PATTES, pas seulement du corps :
+                // une araignée dont trois pattes sortent de l'écran a l'air
+                // cassée, pas menaçante.
+                b.y += (perchoir + Math.sin(b.t / 44) * h * 0.06 - b.y) * 0.05;
+                b.x = w / 2 + Math.sin(b.t / 72) * (w * 0.19);
+                break;
+            case 'couronne':
+                // Elle glisse d'un poste à l'autre puis s'ancre : entre deux
+                // déplacements elle ne bouge plus du tout, ce qui en fait la
+                // seule qu'on puisse viser tranquillement.
+                b.y += (perchoir - b.y) * 0.04;
+                if (--b.repos <= 0) {
+                    b.repos = 150;
+                    b.cibleX = w * (0.22 + Math.random() * 0.56);
+                }
+                b.x += (b.cibleX - b.x) * 0.045;
+                break;
+            case 'spectre':
+                // Il s'efface, se pose ailleurs, revient. Pendant qu'il est
+                // transparent, il est intouchable — et il ne tire pas non plus :
+                // une disparition qui protège ET attaque serait injuste.
+                b.y += (perchoir - b.y) * 0.05;
+                if (--b.saut <= 0) {
+                    b.saut = Math.max(150, 260 - this.niveau * 20);
+                    b.fondu = 46;
+                }
+                if (b.fondu > 0) {
+                    b.fondu--;
+                    b.opacite = Math.abs(b.fondu - 23) / 23;
+                    if (b.fondu === 23) {
+                        b.x = w * (0.2 + Math.random() * 0.6);
+                        this.exploser(b.x, b.y, b.g.clair, 14);
+                    }
+                } else {
+                    b.opacite = 1;
+                    b.x += Math.sin(b.t / 60) * 0.9;
+                    b.x = Math.min(Math.max(b.x, w * 0.15), w * 0.85);
+                }
+                break;
+            default:
+                // Idem pour les AILES du Forgeron : elles portent ses canons,
+                // et un canon hors cadre tire sans qu'on l'ait vu venir.
+                b.y += (perchoir - b.y) * 0.03;
+                b.x = w / 2 + Math.sin(b.t / 95) * (w * 0.2);
+        }
+    }
+
+    /** Un projectile de Gardien : plus gros, coloré, et parfois chasseur. */
+    balleGardien(b, x, y, vx, vy, extra = {}) {
+        if (this.tirsEnnemis.length > 54) return;
+        this.tirsEnnemis.push({
+            x, y, vx, vy, r: 5.5, couleur: b.g.clair, halo: b.g.aura, ...extra
+        });
+    }
+
+    /**
+     * Le tir. Chaque Gardien a SON geste, et chaque geste a sa parade : c'est
+     * la seule chose qu'on gagne à apprendre par cœur dans ce jeu, parce qu'on
+     * la réutilise au secteur suivant quand le Gardien revient.
+     */
+    tirerGardien(b, v, w, h) {
+        const s = 2.2 + this.niveau * 0.2;
+        const vise = Math.atan2(v.y - b.y, v.x - b.x);
+
+        switch (b.g.id) {
+            case 'tisseur': {
+                // Le FIL : un jet continu dont l'angle avance à chaque salve.
+                // Il ne vise jamais — il balaie. On ne l'esquive donc pas en
+                // fuyant (le balayage rattrape), mais en le traversant.
+                // La cadence et le nombre de bras sont volontairement bas : un
+                // fil ne fait peur que s'il reste LISIBLE. Doublé et accéléré,
+                // il devient un brouillard, et un brouillard ne s'esquive pas,
+                // il se subit.
+                b.prochainTir = Math.max(11, 17 - this.niveau);
+                b.angle += 0.44;
+                const bras = b.motif >= 1 ? 2 : 1;
+                for (let i = 0; i < bras; i++) {
+                    const a = b.angle + (i * Math.PI * 2) / bras;
+                    // Seulement vers le bas : un fil qui part vers le haut de
+                    // l'écran ne menace personne et brouille la lecture.
+                    if (Math.sin(a) < 0.08) continue;
+                    this.balleGardien(b, b.x, b.y + 24, Math.cos(a) * s, Math.sin(a) * s);
+                }
+                break;
+            }
+            case 'couronne': {
+                b.prochainTir = Math.max(66, 125 - this.niveau * 10 - b.motif * 16);
+                // Deux tourelles qui alternent, chacune une rafale visée de
+                // trois traits serrés. On a le temps de partir : elles
+                // rougeoient une demi-seconde avant.
+                b.tourelle = 1 - b.tourelle;
+                const cote = b.tourelle ? 1 : -1;
+                const R = Math.max(52, Math.min(96, w * 0.2));
+                const ox = b.x + cote * R * 0.72, oy = b.y + R * 0.1;
+                const av = Math.atan2(v.y - oy, v.x - ox);
+                [0, 6, 12].forEach(retard => {
+                    regTimeout(() => {
+                        if (this.isRunning && this.boss === b && !b.reglee) {
+                            this.balleGardien(b, ox, oy, Math.cos(av) * s, Math.sin(av) * s);
+                        }
+                    }, retard * 16);
+                });
+                // Blessée, elle ouvre une COURONNE : douze éclats en cercle.
+                // Lents, mais partout — on s'écarte avant, pas pendant.
+                // Une salve sur deux : la couronne doit rester un événement.
+                if (b.motif >= 1 && b.tourelle === 0) {
+                    const n = 10 + b.motif * 2;
+                    for (let i = 0; i < n; i++) {
+                        const a = (i / n) * Math.PI * 2 + b.t * 0.01;
+                        if (Math.sin(a) < -0.2) continue;
+                        this.balleGardien(b, b.x, b.y, Math.cos(a) * s * 0.8, Math.sin(a) * s * 0.8);
+                    }
+                }
+                break;
+            }
+            case 'spectre': {
+                b.prochainTir = Math.max(96, 180 - this.niveau * 12 - b.motif * 20);
+                if (b.opacite < 0.9) { b.prochainTir = 30; break; }
+                // LE MUR : une rangée qui barre l'écran, avec UNE brèche. Ce
+                // n'est pas une esquive, c'est une lecture — il faut voir le
+                // trou et s'y rendre. La brèche est toujours assez large pour
+                // qu'on y tienne, sinon ce serait un piège et non une énigme.
+                // La brèche fait DEUX cases de large. Sur une, il restait sept
+                // pixels de jeu de part et d'autre du vaisseau : ce n'est plus
+                // une lecture, c'est un exercice de doigté — et ça punit le
+                // téléphone, pas le calcul.
+                const cases = 9;
+                const trou = 1 + Math.floor(Math.random() * (cases - 3));
+                for (let i = 0; i < cases; i++) {
+                    if (i === trou || i === trou + 1) continue;
+                    this.balleGardien(b, (i + 0.5) * (w / cases), b.y + 30, 0, s * 0.95);
+                }
+                // À bout de coque, il lâche deux traqueurs : lents, mais ils
+                // suivent. Ils obligent à ne pas se figer dans la brèche.
+                if (b.motif >= 2) {
+                    [-1, 1].forEach(cote => {
+                        this.balleGardien(b, b.x + cote * 40, b.y + 20, cote * 0.6, s * 0.42,
+                            { chasse: 0.05, r: 6.5, couleur: '#c7d2fe' });
+                    });
+                }
+                break;
+            }
+            default: {
+                // LE FORGERON : la gerbe historique, celle sur laquelle on
+                // apprend le duel. Trois traits visés, puis cinq, puis une
+                // pluie régulière quand sa coque cède.
+                b.prochainTir = Math.max(58, 150 - this.niveau * 12 - b.motif * 14);
+                const partir = (a, k = 1) =>
+                    this.balleGardien(b, b.x, b.y + 30, Math.cos(a) * s * k, Math.sin(a) * s * k);
+                if (b.motif === 0) [-0.26, 0, 0.26].forEach(d => partir(vise + d));
+                else if (b.motif === 1) [-0.5, -0.25, 0, 0.25, 0.5].forEach(d => partir(vise + d));
+                else for (let i = 0; i < 7; i++) partir(Math.PI * (0.18 + i * 0.108), 0.9);
+            }
+        }
     }
 
     /** Un nombre à deux chiffres qui vérifie (ou non) la règle du duel. */
@@ -771,11 +993,10 @@ class Nova extends BaseGame {
         if (!b) return;
         b.t++;
 
-        // Entrée par le haut, puis balancement lent : il occupe le ciel — mais
-        // sous le bandeau de consigne, qui doit rester lisible en permanence.
-        const perchoir = h * 0.27;
-        b.y += (perchoir - b.y) * 0.03;
-        b.x = w / 2 + Math.sin(b.t / 95) * (w * 0.24);
+        // Entrée par le haut, puis le déplacement propre à sa silhouette — mais
+        // toujours sous le bandeau de consigne, qui doit rester lisible.
+        this.bougerGardien(b, w, h);
+        if (b.presentation > 0) b.presentation--;
 
         if (b.reglee) {
             b.sortie++;
@@ -804,22 +1025,10 @@ class Nova extends BaseGame {
         // En démonstration il ne tire pas : le robot expliquerait la règle
         // pendant que l'escadre se fait détruire.
         b.motif = b.pv > b.max * 0.66 ? 0 : b.pv > b.max * 0.33 ? 1 : 2;
-        if (--b.prochainTir <= 0 && !this.isDemo) {
-            b.prochainTir = Math.max(58, 150 - this.niveau * 12 - b.motif * 14);
-            const s = 2.2 + this.niveau * 0.22;
-            const a0 = Math.atan2(v.y - b.y, v.x - b.x);
-            const partir = (a, k = 1) => {
-                if (this.tirsEnnemis.length > 52) return;
-                this.tirsEnnemis.push({
-                    x: b.x, y: b.y + 30, vx: Math.cos(a) * s * k, vy: Math.sin(a) * s * k
-                });
-            };
-            if (b.motif === 0) [-0.26, 0, 0.26].forEach(d => partir(a0 + d));
-            else if (b.motif === 1) [-0.5, -0.25, 0, 0.25, 0.5].forEach(d => partir(a0 + d));
-            else {
-                // La pluie : sept traits vers le bas, écartés régulièrement.
-                for (let i = 0; i < 7; i++) partir(Math.PI * (0.18 + i * 0.108), 0.9);
-            }
+        // Le bandeau de présentation retient le feu : on a le droit de lire le
+        // nom de ce qui arrive avant de devoir l'esquiver.
+        if (--b.prochainTir <= 0 && !this.isDemo && b.presentation <= 0) {
+            this.tirerGardien(b, v, w, h);
         }
 
         // LE CANON MORD. Le Gardien était invulnérable et n'offrait qu'un
@@ -830,6 +1039,9 @@ class Nova extends BaseGame {
         const R = Math.max(52, Math.min(96, w * 0.2));
         this.tirs.forEach(t => {
             if (t.mort) return;
+            // Le SPECTRE effacé ne s'atteint pas — mais il ne tire pas non plus
+            // pendant ce temps-là : c'est un répit, pas une injustice.
+            if (b.opacite < 0.6) return;
             if (Math.abs(t.x - b.x) > R * 0.9 || Math.abs(t.y - b.y) > R * 0.6) return;
             t.mort = true;
             b.eclat = 8;
@@ -917,7 +1129,7 @@ class Nova extends BaseGame {
                 }
             }, i * 130);
         }
-        this.mot('GARDIEN ABATTU !', 'ok');
+        this.mot(`${b.g.nom} EST ABATTU !`, 'ok');
         this.onCorrectAnswer(null, b.regle.table ? `mult:${b.regle.table}` : 'num:multiples', {
             points: 30,
             questionText: `Gardien : récupérer ${b.regle.libelle}`,
@@ -933,7 +1145,7 @@ class Nova extends BaseGame {
         b.reglee = true;
         b.sortie = 0;
         this.puissance = this.canonBase;
-        this.mot(`Le Gardien se retire… il fallait récupérer ${b.regle.libelle}`, 'ko');
+        this.mot(`${b.g.nom} se retire… il fallait récupérer ${b.regle.libelle}`, 'ko');
         this.onWrongAnswer(null, {
             questionText: `Gardien : récupérer ${b.regle.libelle}`,
             input: '(Gardien non abattu)', expected: b.regle.libelle,
@@ -1938,9 +2150,19 @@ class Nova extends BaseGame {
                     }));
                 }
             } else {
+                // Un TRAQUEUR corrige sa trajectoire vers le vaisseau, mais
+                // lentement : il ne rattrape jamais qui bouge, il punit qui
+                // se fige. C'est le seul projectile qu'on ne peut pas ignorer
+                // en trouvant une bonne place — il faut continuer à voler.
+                if (t.chasse) {
+                    const d = Math.hypot(v.x - t.x, v.y - t.y) || 1;
+                    const vitesse = Math.hypot(t.vx, t.vy) || 1;
+                    t.vx += ((v.x - t.x) / d * vitesse - t.vx) * t.chasse;
+                    t.vy += ((v.y - t.y) / d * vitesse - t.vy) * t.chasse;
+                }
                 t.x += t.vx || 0; t.y += t.vy != null ? t.vy : t.v;
             }
-            const marge = t.mine != null ? 20 : 15;
+            const marge = t.mine != null ? 20 : (t.r ? t.r + 11 : 15);
             if (Math.abs(t.x - v.x) < marge && Math.abs(t.y - v.y) < marge + 2) {
                 t.mort = true;
                 this.exploser(v.x, v.y, '#f87171', 14);
@@ -2161,6 +2383,18 @@ class Nova extends BaseGame {
                     c.lineTo(t.x + Math.cos(a) * (r + 5), t.y + Math.sin(a) * (r + 5));
                     c.stroke();
                 });
+                c.restore();
+            } else if (t.couleur) {
+                // Les projectiles d'un Gardien portent SA couleur et sont plus
+                // gros : au milieu d'une vague, on doit distinguer d'un coup
+                // d'œil ce qui vient du boss de ce qui vient du menu fretin.
+                c.save();
+                c.shadowColor = t.halo || 'rgba(255,255,255,.8)'; c.shadowBlur = 12;
+                c.fillStyle = t.couleur;
+                c.beginPath(); c.arc(t.x, t.y, t.r || 5.5, 0, Math.PI * 2); c.fill();
+                c.shadowBlur = 0;
+                c.fillStyle = 'rgba(255,255,255,.85)';
+                c.beginPath(); c.arc(t.x - (t.r || 5.5) * 0.28, t.y - (t.r || 5.5) * 0.28, (t.r || 5.5) * 0.32, 0, Math.PI * 2); c.fill();
                 c.restore();
             } else {
                 c.fillStyle = '#fb7185';
@@ -2569,103 +2803,75 @@ class Nova extends BaseGame {
     dessinerBoss() {
         const c = this.ctx, w = this.canvas.width, b = this.boss;
         const R = Math.max(52, Math.min(96, w * 0.2));
+        const part = Math.max(0, b.pv / b.max);
+
+        // La palette reste CELLE DU GARDIEN tant qu'il tient : c'est ce qui le
+        // rend reconnaissable d'un secteur à l'autre. Elle ne vire au rouge que
+        // dans le dernier tiers — là, l'information « il est près de céder »
+        // vaut plus que son identité.
+        const pal = {
+            vif: part > 0.33 ? b.g.vif : '#f43f5e',
+            sombre: part > 0.33 ? b.g.sombre : '#7f1d1d',
+            clair: b.g.clair,
+            aura: part > 0.33 ? b.g.aura : 'rgba(244,63,94,.8)',
+            part,
+            // Les canons rougeoient avant de partir : dans un jeu où l'on
+            // esquive, une attaque qui ne s'annonce pas n'est pas difficile,
+            // elle est injuste.
+            pret: b.prochainTir < 26 && !b.reglee && b.presentation <= 0
+        };
 
         c.save();
+        c.globalAlpha = b.opacite != null ? b.opacite : 1;
         c.translate(b.x, b.y);
 
-        const part = Math.max(0, b.pv / b.max);
-        // La teinte suit la coque : violet, puis ambre, puis rouge. On voit
-        // qu'on gagne sans lire la jauge.
-        const teinte = part > 0.66 ? '#d946ef' : part > 0.33 ? '#fb923c' : '#f43f5e';
-        const sombre = part > 0.66 ? '#4c1d95' : part > 0.33 ? '#7c2d12' : '#7f1d1d';
-
-        // Deux ailes lentes, qui battent : c'est ce qui rend la carcasse
-        // vivante au lieu de la laisser flotter.
-        const bat = Math.sin(b.t / 42) * 0.18;
-        [-1, 1].forEach(s => {
-            c.save();
-            c.rotate(s * bat);
-            c.fillStyle = sombre;
-            c.beginPath();
-            c.moveTo(s * R * 0.5, -R * 0.3);
-            c.lineTo(s * R * 1.5, R * 0.05);
-            c.lineTo(s * R * 1.28, R * 0.42);
-            c.lineTo(s * R * 0.5, R * 0.3);
-            c.closePath(); c.fill();
-            c.strokeStyle = teinte; c.lineWidth = 2.5; c.stroke();
-            // Trois canons par aile, qui rougeoient quand il va tirer.
-            const pret = b.prochainTir < 24 && !b.reglee;
-            c.fillStyle = pret && Math.floor(b.t / 4) % 2 === 0 ? '#fef08a' : teinte;
-            [0.75, 1.0, 1.25].forEach(k => {
-                c.beginPath(); c.arc(s * R * k, R * 0.24, R * 0.06, 0, Math.PI * 2); c.fill();
-            });
-            c.restore();
-        });
-
-        // Coque : un fer de hache sombre, deux nacelles, un œil central.
-        c.shadowColor = 'rgba(217,70,239,.75)'; c.shadowBlur = 22;
-        c.fillStyle = '#1e1b4b';
-        c.beginPath();
-        c.moveTo(0, R * 0.62); c.lineTo(R * 0.95, R * 0.1); c.lineTo(R * 0.62, -R * 0.5);
-        c.lineTo(-R * 0.62, -R * 0.5); c.lineTo(-R * 0.95, R * 0.1);
-        c.closePath(); c.fill();
-        c.shadowBlur = 0;
-        c.strokeStyle = teinte; c.lineWidth = 3; c.stroke();
-        // Blindage : des plaques rivetées, qui se fendillent avec les dégâts.
-        c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1.5;
-        [-0.3, 0, 0.3].forEach(k => {
-            c.beginPath(); c.moveTo(k * R, -R * 0.5); c.lineTo(k * R * 1.4, R * 0.5); c.stroke();
-        });
-        if (part < 0.66) {
-            c.strokeStyle = 'rgba(248,113,113,.75)'; c.lineWidth = 2;
-            c.beginPath();
-            c.moveTo(-R * 0.5, -R * 0.3); c.lineTo(-R * 0.15, R * 0.05);
-            c.lineTo(-R * 0.35, R * 0.3); c.stroke();
-        }
-        if (part < 0.33) {
-            c.strokeStyle = 'rgba(248,113,113,.75)'; c.lineWidth = 2;
-            c.beginPath();
-            c.moveTo(R * 0.55, -R * 0.35); c.lineTo(R * 0.2, R * 0.1);
-            c.lineTo(R * 0.45, R * 0.4); c.stroke();
+        switch (b.g.id) {
+            case 'tisseur': this.coqueTisseur(c, R, b, pal); break;
+            case 'couronne': this.coqueCouronne(c, R, b, pal); break;
+            case 'spectre': this.coqueSpectre(c, R, b, pal); break;
+            default: this.coqueForgeron(c, R, b, pal);
         }
 
-        [-1, 1].forEach(s => {
-            c.fillStyle = sombre;
-            c.beginPath(); c.roundRect(s * R * 0.55 - R * 0.16, -R * 0.42, R * 0.32, R * 0.62, 6); c.fill();
-            c.fillStyle = '#f0abfc';
-            c.beginPath(); c.arc(s * R * 0.55, R * 0.1, R * 0.07, 0, Math.PI * 2); c.fill();
-        });
-
-        // L'impact : un éclair blanc sur la coque, pas un champ qui repousse.
-        // C'est le retour qui dit « ça rentre ».
+        // L'impact : un halo blanc qui gonfle sur la coque, pas un champ qui
+        // repousse. C'est le retour qui dit « ça rentre ».
         if (b.eclat > 0) {
-            c.globalAlpha = b.eclat / 14;
-            c.fillStyle = '#fdf4ff';
-            c.beginPath();
-            c.moveTo(0, R * 0.62); c.lineTo(R * 0.95, R * 0.1); c.lineTo(R * 0.62, -R * 0.5);
-            c.lineTo(-R * 0.62, -R * 0.5); c.lineTo(-R * 0.95, R * 0.1);
-            c.closePath(); c.fill();
-            c.globalAlpha = 1;
+            const f = c.createRadialGradient(0, 0, 0, 0, 0, R);
+            f.addColorStop(0, `rgba(255,255,255,${0.55 * b.eclat / 14})`);
+            f.addColorStop(1, 'rgba(255,255,255,0)');
+            c.fillStyle = f;
+            c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
         }
 
+        // L'œil : commun aux quatre. C'est le point qu'on vise, donc il ne
+        // change pas de place d'un Gardien à l'autre.
         const pulse = 0.7 + Math.sin(b.t / 9) * 0.3;
         const oeil = c.createRadialGradient(0, 0, 2, 0, 0, R * 0.34);
-        oeil.addColorStop(0, '#fdf4ff');
-        oeil.addColorStop(0.5, b.reglee ? '#f97316' : teinte);
+        oeil.addColorStop(0, '#ffffff');
+        oeil.addColorStop(0.5, b.reglee ? '#f97316' : pal.vif);
         oeil.addColorStop(1, 'rgba(0,0,0,0)');
-        c.globalAlpha = pulse; c.fillStyle = oeil;
+        c.globalAlpha *= pulse; c.fillStyle = oeil;
         c.beginPath(); c.arc(0, 0, R * 0.34, 0, Math.PI * 2); c.fill();
-        c.globalAlpha = 1;
+        c.globalAlpha = b.opacite != null ? b.opacite : 1;
 
-        // Jauge de coque, sous la carène.
-        const jw = R * 1.5;
-        c.fillStyle = 'rgba(2,6,23,.75)';
-        c.beginPath(); c.roundRect(-jw / 2, R * 0.72, jw, 8, 4); c.fill();
-        c.fillStyle = teinte;
-        c.beginPath(); c.roundRect(-jw / 2, R * 0.72, jw * part, 8, 4); c.fill();
+        // Jauge de coque, sous la carène, en segments : on compte ce qu'il
+        // reste au lieu d'estimer une longueur.
+        const jw = R * 1.5, segs = 10;
+        c.fillStyle = 'rgba(2,6,23,.78)';
+        c.beginPath(); c.roundRect(-jw / 2 - 2, R * 0.72 - 2, jw + 4, 12, 5); c.fill();
+        for (let i = 0; i < segs; i++) {
+            c.fillStyle = (i + 0.5) / segs <= part ? pal.vif : 'rgba(148,163,184,.22)';
+            c.beginPath();
+            c.roundRect(-jw / 2 + i * (jw / segs) + 1, R * 0.72, jw / segs - 2, 8, 2);
+            c.fill();
+        }
         c.restore();
 
         if (b.reglee) return;
+
+        // La PRÉSENTATION : le nom du Gardien et sa parade, une seconde et
+        // demie pendant laquelle il ne tire pas. On ne demande pas d'esquiver
+        // ce qu'on n'a pas encore vu.
+        if (b.presentation > 0) this.dessinerPresentation(b, R);
 
         // La CONSIGNE, en bandeau : c'est elle qu'on relit à chaque sphère.
         c.save();
@@ -2674,7 +2880,7 @@ class Nova extends BaseGame {
         // et le nom du secteur ne doit pas disparaître pour autant.
         const by = 92;
         const t1 = `RÉCUPÈRE ${b.regle.libelle.toUpperCase()}`;
-        const t2 = 'ÉVITE les autres sphères · TIRE sur le Gardien';
+        const t2 = `ÉVITE les autres sphères · TIRE sur ${b.g.nom}`;
         const dispo = w - 40;
         // Les règles longues (« les nombres plus grands que 50 ») doivent
         // tenir sur un téléphone : on rétrécit jusqu'à ce qu'elles rentrent.
@@ -2693,8 +2899,10 @@ class Nova extends BaseGame {
         const bw = Math.min(w - 16, Math.max(l1, l2) + 32);
         c.fillStyle = 'rgba(2,6,23,.82)';
         c.beginPath(); c.roundRect(w / 2 - bw / 2, by - 26, bw, 56, 12); c.fill();
-        c.strokeStyle = '#d946ef'; c.lineWidth = 2; c.stroke();
-        c.fillStyle = '#f5d0fe';
+        // Le bandeau porte la couleur du Gardien : le décor, la consigne et
+        // les projectiles disent la même chose au même moment.
+        c.strokeStyle = b.g.vif; c.lineWidth = 2; c.stroke();
+        c.fillStyle = b.g.clair;
         c.font = `900 ${grand}px 'Inter', system-ui, sans-serif`;
         c.fillText(t1, w / 2, by - 8);
         c.fillStyle = '#fca5a5';
@@ -2708,6 +2916,301 @@ class Nova extends BaseGame {
      * halo : seul le nombre dit s'il faut tirer ou s'écarter. Les teinter
      * selon la règle rendrait le duel muet.
      */
+    // --- Les quatre coques ----------------------------------------------------
+
+    /** LE FORGERON : un fer de hache et deux ailes qui battent. */
+    coqueForgeron(c, R, b, pal) {
+        const bat = Math.sin(b.t / 42) * 0.18;
+        [-1, 1].forEach(s => {
+            c.save();
+            c.rotate(s * bat);
+            c.fillStyle = pal.sombre;
+            c.beginPath();
+            c.moveTo(s * R * 0.5, -R * 0.3);
+            c.lineTo(s * R * 1.5, R * 0.05);
+            c.lineTo(s * R * 1.28, R * 0.42);
+            c.lineTo(s * R * 0.5, R * 0.3);
+            c.closePath(); c.fill();
+            c.strokeStyle = pal.vif; c.lineWidth = 2.5; c.stroke();
+            c.fillStyle = pal.pret && Math.floor(b.t / 4) % 2 === 0 ? '#fef08a' : pal.vif;
+            [0.75, 1.0, 1.25].forEach(k => {
+                c.beginPath(); c.arc(s * R * k, R * 0.24, R * 0.06, 0, Math.PI * 2); c.fill();
+            });
+            c.restore();
+        });
+
+        const carene = () => {
+            c.beginPath();
+            c.moveTo(0, R * 0.62); c.lineTo(R * 0.95, R * 0.1); c.lineTo(R * 0.62, -R * 0.5);
+            c.lineTo(-R * 0.62, -R * 0.5); c.lineTo(-R * 0.95, R * 0.1);
+            c.closePath();
+        };
+        c.shadowColor = pal.aura; c.shadowBlur = 22;
+        c.fillStyle = '#1e1b4b';
+        carene(); c.fill();
+        c.shadowBlur = 0;
+        c.strokeStyle = pal.vif; c.lineWidth = 3; carene(); c.stroke();
+
+        c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1.5;
+        [-0.3, 0, 0.3].forEach(k => {
+            c.beginPath(); c.moveTo(k * R, -R * 0.5); c.lineTo(k * R * 1.4, R * 0.5); c.stroke();
+        });
+        // Les fissures : elles s'ouvrent au fil des dégâts. On voit qu'on gagne
+        // sur la CARCASSE, pas seulement sur une jauge.
+        c.strokeStyle = 'rgba(248,113,113,.75)'; c.lineWidth = 2;
+        if (pal.part < 0.66) {
+            c.beginPath();
+            c.moveTo(-R * 0.5, -R * 0.3); c.lineTo(-R * 0.15, R * 0.05);
+            c.lineTo(-R * 0.35, R * 0.3); c.stroke();
+        }
+        if (pal.part < 0.33) {
+            c.beginPath();
+            c.moveTo(R * 0.55, -R * 0.35); c.lineTo(R * 0.2, R * 0.1);
+            c.lineTo(R * 0.45, R * 0.4); c.stroke();
+        }
+
+        [-1, 1].forEach(s => {
+            c.fillStyle = pal.sombre;
+            c.beginPath(); c.roundRect(s * R * 0.55 - R * 0.16, -R * 0.42, R * 0.32, R * 0.62, 6); c.fill();
+            c.fillStyle = pal.clair;
+            c.beginPath(); c.arc(s * R * 0.55, R * 0.1, R * 0.07, 0, Math.PI * 2); c.fill();
+        });
+    }
+
+    /**
+     * LE TISSEUR : un anneau et six pattes. L'anneau extérieur pointe la
+     * direction du fil en cours — c'est un cadran, pas une décoration : il
+     * dit où le balayage va passer, donc de quel côté il faut le traverser.
+     */
+    coqueTisseur(c, R, b, pal) {
+        // Six pattes en deux segments, qui fléchissent en décalé.
+        c.strokeStyle = pal.sombre; c.lineCap = 'round';
+        for (let i = 0; i < 6; i++) {
+            const cassees = Math.round((1 - pal.part) * 3);
+            if (i < cassees) continue;                       // arrachées par les tirs
+            const base = Math.PI * (0.12 + i * 0.152);
+            const flex = Math.sin(b.t / 26 + i) * 0.22;
+            const x1 = Math.cos(base) * R * 0.62, y1 = Math.sin(base) * R * 0.62;
+            const x2 = x1 + Math.cos(base + flex) * R * 0.55;
+            const y2 = y1 + Math.sin(base + flex) * R * 0.55;
+            const x3 = x2 + Math.cos(base - flex * 1.6 + 0.5) * R * 0.5;
+            const y3 = y2 + Math.sin(base - flex * 1.6 + 0.5) * R * 0.5;
+            c.lineWidth = R * 0.075;
+            c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.stroke();
+            c.lineWidth = R * 0.03; c.strokeStyle = pal.vif;
+            c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.stroke();
+            c.strokeStyle = pal.sombre;
+        }
+        c.lineCap = 'butt';
+
+        // Le cadran du fil : un arc lumineux à l'angle où part la prochaine
+        // salve, et son opposé quand il tire à deux bras.
+        const bras = 1 + Math.min(2, b.motif);
+        c.save();
+        c.lineWidth = R * 0.08;
+        for (let i = 0; i < bras; i++) {
+            const a = b.angle + (i * Math.PI * 2) / bras;
+            c.strokeStyle = pal.pret ? '#fef9c3' : pal.clair;
+            c.globalAlpha *= 0.9;
+            c.beginPath(); c.arc(0, 0, R * 0.92, a - 0.22, a + 0.22); c.stroke();
+            c.globalAlpha = b.opacite != null ? b.opacite : 1;
+        }
+        c.restore();
+
+        // L'anneau : deux cercles concentriques et un chapelet de nœuds.
+        c.shadowColor = pal.aura; c.shadowBlur = 22;
+        c.fillStyle = '#022c22';
+        c.beginPath(); c.arc(0, 0, R * 0.66, 0, Math.PI * 2); c.fill();
+        c.shadowBlur = 0;
+        c.strokeStyle = pal.vif; c.lineWidth = 4;
+        c.beginPath(); c.arc(0, 0, R * 0.66, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 1.6;
+        c.beginPath(); c.arc(0, 0, R * 0.46, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = pal.clair;
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + b.t / 120;
+            c.beginPath(); c.arc(Math.cos(a) * R * 0.66, Math.sin(a) * R * 0.66, R * 0.055, 0, Math.PI * 2); c.fill();
+        }
+        // Les fils de la toile, tendus entre les nœuds : c'est ce qui fait
+        // « araignée » plutôt que « roue ».
+        c.strokeStyle = 'rgba(153,246,228,.28)'; c.lineWidth = 1;
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + b.t / 120;
+            const a2 = a + Math.PI * 2 / 8;
+            c.beginPath();
+            c.moveTo(Math.cos(a) * R * 0.66, Math.sin(a) * R * 0.66);
+            c.quadraticCurveTo(0, 0, Math.cos(a2) * R * 0.66, Math.sin(a2) * R * 0.66);
+            c.stroke();
+        }
+    }
+
+    /**
+     * LA COURONNE : une forteresse crénelée et deux tourelles qui pivotent
+     * vers le vaisseau. Les tourelles suivent VRAIMENT le joueur — c'est ce
+     * qui rend lisible qu'il faut bouger tôt.
+     */
+    coqueCouronne(c, R, b, pal) {
+        const v = this.vaisseau;
+
+        // Le socle : un trapèze massif, crénelé sur le dessus.
+        c.shadowColor = pal.aura; c.shadowBlur = 20;
+        c.fillStyle = '#3f2a08';
+        c.beginPath();
+        c.moveTo(-R * 0.95, R * 0.45); c.lineTo(-R * 0.72, -R * 0.2);
+        c.lineTo(R * 0.72, -R * 0.2); c.lineTo(R * 0.95, R * 0.45);
+        c.closePath(); c.fill();
+        c.shadowBlur = 0;
+        c.strokeStyle = pal.vif; c.lineWidth = 3; c.stroke();
+
+        // Cinq merlons. Ils tombent un à un avec la coque : la couronne
+        // s'ébrèche, et ça se voit de l'autre bout de l'écran.
+        const debout = Math.max(1, Math.ceil(pal.part * 5));
+        for (let i = 0; i < 5; i++) {
+            if (i >= debout) continue;
+            const x = (i - 2) * R * 0.33;
+            c.fillStyle = pal.sombre;
+            c.beginPath(); c.roundRect(x - R * 0.11, -R * 0.56, R * 0.22, R * 0.38, 3); c.fill();
+            c.strokeStyle = pal.vif; c.lineWidth = 2; c.stroke();
+            c.fillStyle = pal.clair;
+            c.beginPath(); c.arc(x, -R * 0.5, R * 0.045, 0, Math.PI * 2); c.fill();
+        }
+
+        // Les deux tourelles, chacune avec son fût pointé sur le vaisseau.
+        [-1, 1].forEach((cote, i) => {
+            const ox = cote * R * 0.72, oy = R * 0.1;
+            const a = Math.atan2(v.y - (b.y + oy), v.x - (b.x + ox));
+            const chargee = pal.pret && (b.tourelle === (i ? 0 : 1));
+            c.save();
+            c.translate(ox, oy);
+            c.fillStyle = pal.sombre;
+            c.beginPath(); c.arc(0, 0, R * 0.26, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = pal.vif; c.lineWidth = 2.5; c.stroke();
+            c.rotate(a);
+            c.fillStyle = chargee && Math.floor(b.t / 4) % 2 === 0 ? '#fef08a' : '#78350f';
+            c.beginPath(); c.roundRect(0, -R * 0.075, R * 0.42, R * 0.15, 3); c.fill();
+            c.strokeStyle = chargee ? '#fde68a' : pal.vif; c.lineWidth = 2; c.stroke();
+            c.restore();
+        });
+
+        // Le joyau central : il s'assombrit avec la coque.
+        c.fillStyle = pal.vif;
+        c.beginPath();
+        c.moveTo(0, -R * 0.34); c.lineTo(R * 0.24, 0); c.lineTo(0, R * 0.34); c.lineTo(-R * 0.24, 0);
+        c.closePath(); c.fill();
+        c.strokeStyle = '#fff7ed'; c.lineWidth = 1.5; c.stroke();
+    }
+
+    /**
+     * LE SPECTRE : une capuche et un voile qui ondule, doublés de deux
+     * rémanences. Quand il saute, l'opacité fait tout le travail — on n'a rien
+     * à dessiner de plus qu'un fantôme qui s'efface.
+     */
+    coqueSpectre(c, R, b, pal) {
+        // Rémanences : deux copies décalées, très pâles. C'est elles qui
+        // donnent l'impression que la silhouette n'est jamais tout à fait là.
+        [1, 2].forEach(k => {
+            c.save();
+            c.globalAlpha *= 0.16 / k;
+            c.translate(Math.sin(b.t / 30 - k * 0.7) * R * 0.28 * k, k * 4);
+            c.fillStyle = pal.clair;
+            this.silhouetteSpectre(c, R, b);
+            c.fill();
+            c.restore();
+        });
+
+        c.shadowColor = pal.aura; c.shadowBlur = 24;
+        const g = c.createLinearGradient(0, -R * 0.6, 0, R * 0.7);
+        g.addColorStop(0, pal.sombre);
+        g.addColorStop(0.55, '#312e81');
+        g.addColorStop(1, 'rgba(30,27,75,.25)');
+        c.fillStyle = g;
+        this.silhouetteSpectre(c, R, b);
+        c.fill();
+        c.shadowBlur = 0;
+        c.strokeStyle = pal.vif; c.lineWidth = 2.5;
+        this.silhouetteSpectre(c, R, b);
+        c.stroke();
+
+        // Deux yeux, qui s'écarquillent avant le mur.
+        const oeil = pal.pret ? R * 0.11 : R * 0.075;
+        c.fillStyle = pal.pret ? '#fef08a' : pal.clair;
+        c.shadowColor = pal.pret ? 'rgba(253,224,71,.9)' : pal.aura; c.shadowBlur = 14;
+        [-1, 1].forEach(s => {
+            c.beginPath();
+            c.ellipse(s * R * 0.2, -R * 0.16, oeil * 0.7, oeil, s * 0.25, 0, Math.PI * 2);
+            c.fill();
+        });
+        c.shadowBlur = 0;
+
+        // Les lambeaux du voile : ils s'effilochent avec les dégâts.
+        c.strokeStyle = 'rgba(224,231,255,.5)'; c.lineWidth = 1.4;
+        const franges = Math.round(3 + (1 - pal.part) * 5);
+        for (let i = 0; i < franges; i++) {
+            const x = (-0.6 + (i / Math.max(1, franges - 1)) * 1.2) * R;
+            const long = R * (0.2 + ((i * 37) % 10) / 22);
+            c.beginPath();
+            c.moveTo(x, R * 0.5);
+            c.quadraticCurveTo(x + Math.sin(b.t / 24 + i) * R * 0.12, R * 0.5 + long * 0.6,
+                x + Math.sin(b.t / 18 + i) * R * 0.2, R * 0.5 + long);
+            c.stroke();
+        }
+    }
+
+    /** Le contour du Spectre : une capuche prolongée par un voile qui ondule. */
+    silhouetteSpectre(c, R, b) {
+        const onde = Math.sin(b.t / 22) * R * 0.1;
+        c.beginPath();
+        c.moveTo(-R * 0.62, R * 0.5);
+        c.quadraticCurveTo(-R * 0.78, -R * 0.15, -R * 0.34, -R * 0.48);
+        c.quadraticCurveTo(0, -R * 0.78, R * 0.34, -R * 0.48);
+        c.quadraticCurveTo(R * 0.78, -R * 0.15, R * 0.62, R * 0.5);
+        // Le bas du voile : trois vagues, décalées dans le temps.
+        c.quadraticCurveTo(R * 0.34, R * 0.5 + onde, R * 0.12, R * 0.5 - onde * 0.6);
+        c.quadraticCurveTo(-R * 0.14, R * 0.5 + onde, -R * 0.36, R * 0.5 - onde);
+        c.closePath();
+    }
+
+    /**
+     * Le bandeau d'entrée : le nom du Gardien, et la phrase qui dit comment on
+     * s'en sort. Une seconde et demie, pendant laquelle il ne tire pas.
+     */
+    dessinerPresentation(b, R) {
+        const c = this.ctx, w = this.canvas.width;
+        // Il apparaît d'un coup et s'efface sur la fin : un bandeau qui reste
+        // pendant qu'on esquive n'est plus une aide, c'est un obstacle.
+        const a = Math.min(1, b.presentation / 40);
+        c.save();
+        c.globalAlpha = a;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        const y = this.canvas.height * 0.52;
+        const nom = b.g.nom;
+        let gr = Math.max(20, Math.min(40, w * 0.085));
+        c.font = `900 ${gr}px 'Inter', system-ui, sans-serif`;
+        while (gr > 14 && c.measureText(nom).width > w - 60) {
+            gr -= 1; c.font = `900 ${gr}px 'Inter', system-ui, sans-serif`;
+        }
+        let pt = Math.max(11, Math.min(16, w * 0.037));
+        const conseil = b.g.conseil;
+        c.font = `700 ${pt}px 'Inter', system-ui, sans-serif`;
+        while (pt > 9 && c.measureText(conseil).width > w - 56) {
+            pt -= 1; c.font = `700 ${pt}px 'Inter', system-ui, sans-serif`;
+        }
+        c.font = `900 ${gr}px 'Inter', system-ui, sans-serif`;
+        const bw = Math.min(w - 12, Math.max(c.measureText(nom).width,
+            (c.font = `700 ${pt}px 'Inter', system-ui, sans-serif`, c.measureText(conseil).width)) + 40);
+        c.fillStyle = 'rgba(2,6,23,.86)';
+        c.beginPath(); c.roundRect(w / 2 - bw / 2, y - 38, bw, 76, 14); c.fill();
+        c.strokeStyle = b.g.vif; c.lineWidth = 2.5;
+        c.shadowColor = b.g.aura; c.shadowBlur = 16; c.stroke(); c.shadowBlur = 0;
+        c.fillStyle = b.g.clair;
+        c.font = `900 ${gr}px 'Inter', system-ui, sans-serif`;
+        c.fillText(nom, w / 2, y - 12);
+        c.fillStyle = '#cbd5e1';
+        c.font = `700 ${pt}px 'Inter', system-ui, sans-serif`;
+        c.fillText(conseil, w / 2, y + 18);
+        c.restore();
+    }
+
     dessinerOrbe(o) {
         const c = this.ctx;
         c.save();
@@ -3346,8 +3849,15 @@ class Nova extends BaseGame {
         this.convoi = null;
         this.lancerBoss();
         const b = this.boss;
-        cur.say(`Le GARDIEN ferme le secteur. Ici je vole partout : mon canon le mitraille tout seul, et je fonce dans les sphères — mais seulement ${b.regle.libelle}.`, this.arene);
+        cur.say(`${b.g.nom} ferme le secteur. Ici je vole partout : mon canon le mitraille tout seul, et je fonce dans les sphères — mais seulement ${b.regle.libelle}.`, this.arene);
         if (!await cur.pause(DEMO_SPEED.between + 3000) || !this.isRunning) return fin();
+
+        // Chaque secteur a SON Gardien, et chacun a sa parade. Le robot la dit
+        // à voix haute : c'est la seule chose de ce jeu qui se retienne d'un
+        // secteur à l'autre, autant l'énoncer clairement une fois.
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say(`Il y en a quatre, un par secteur, et chacun tire à sa façon. ${b.g.nom} ? ${b.g.conseil}`, this.arene);
+        if (!await cur.pause(DEMO_SPEED.between + 1500) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
         cur.say('Je vais CHERCHER les bonnes sphères — chacune entame sa coque — et j\'esquive toutes les autres : les percuter coûte une vie.', this.arene);
