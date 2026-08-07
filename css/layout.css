@@ -13,6 +13,26 @@
 .nav-left, .nav-center, .nav-right { display: flex; align-items: center; gap: 15px; }
 .nav-center { flex-grow: 1; justify-content: center; }
 
+/* La barre haute ne doit JAMAIS déborder.
+   Sur un téléphone étroit, le titre gardait sa largeur pleine et poussait la
+   pastille d'étoile hors du cadre : `#app-container` étant en `overflow:
+   hidden`, elle était coupée net au lieu de se réduire. Le titre est le seul
+   élément qui accepte de rétrécir — les icônes, elles, sont des cibles
+   tactiles et gardent leur taille. */
+.nav-left { min-width: 0; }
+#top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-right { flex-shrink: 0; }
+@media (max-width: 420px) {
+    #top-navbar { padding: 0 10px; }
+    .nav-left, .nav-right { gap: 8px; }
+    /* Très étroit : tout maigrit d'un cran plutôt que de tronquer le nom de
+       l'application en « Math… ». */
+    #top-navbar .title { font-size: 1.05rem; }
+    #top-navbar .btn-icon { padding: 3px; }
+    #top-navbar .btn-icon--sm svg { width: 18px; height: 18px; }
+    .score-display { font-size: .95rem; padding: 3px 9px; }
+}
+
 #app-body { display: flex; flex-grow: 1; overflow: hidden; flex-direction: row; position: relative; }
 
 #sidebar { background-color: var(--bg-sidebar); color: var(--text-sidebar); display: flex; flex-direction: column; z-index: 10; border-right: 1px solid var(--border-sidebar); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; overflow:hidden; }

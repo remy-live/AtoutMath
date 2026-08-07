@@ -933,7 +933,7 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
    Rangées par famille, les quatre paliers alignés et une barre qui montre où
    l'on en est du suivant, elles redeviennent des objectifs. */
 .medal-families {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
     gap: 12px; margin-top: 18px;
 }
 .medal-family {
@@ -1407,7 +1407,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: var(--tag-dom-bg); color: var(--tag-dom-txt); border-radius: 12px;
 }
 
-.reco-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.reco-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 14px; }
 .reco-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; }
 .reco-badge {
     font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;

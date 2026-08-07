@@ -177,7 +177,19 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .tag-btn:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
 .tag-niveau.active { background: var(--tag-niv-bg); color: var(--tag-niv-txt); border-color: var(--tag-niv-bg); box-shadow: 0 4px 10px rgba(225, 29, 72, 0.2); }
 .tag-domaine.active { background: var(--tag-dom-bg); color: var(--tag-dom-txt); border-color: var(--tag-dom-bg); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
-.grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); grid-auto-rows: max-content; align-content: start; gap: 20px; padding: 25px; overflow-y: auto; flex: 1; min-height: 0; }
+/* La liste d'exercices.
+   `minmax(280px, 1fr)` ne descend JAMAIS sous 280 px : sur un téléphone de
+   320 px de large — un iPhone en zoom d'affichage, par exemple — la colonne
+   restait à 280, plus 2 × 25 px de marge, soit 330 px de contenu dans 320 px
+   de cadre. D'où l'ascenseur horizontal sous la liste. `min(280px, 100%)`
+   autorise la colonne à se rétrécir quand la place manque. */
+.grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); grid-auto-rows: max-content; align-content: start; gap: 20px; padding: 25px; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; }
+/* Téléphone : on récupère aussi les marges, qui volaient un tiers de la
+   largeur d'une carte. */
+@media (max-width: 480px) {
+    .grid-container { padding: 14px; gap: 12px; }
+    .card { padding: 18px; gap: 12px; }
+}
 .card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 25px; display: flex; flex-direction: column; gap: 15px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm); position: relative; overflow: hidden; }
 .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary), var(--accent)); opacity: 0; transition: 0.3s; }
 .card:hover { border-color: transparent; transform: translateY(-4px) scale(1.01); box-shadow: var(--shadow-lg); }
