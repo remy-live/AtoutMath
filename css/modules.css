@@ -619,19 +619,24 @@
 .device-simulator #game-header,
 .tablet-simulator #game-header {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     grid-template-areas:
-        "titre  chrono"
-        "avance avance"
-        "actions actions";
-    align-items: center; row-gap: 8px; min-height: 0; padding: 10px 14px;
+        "titre  avance chrono"
+        "actions actions actions";
+    align-items: center; row-gap: 8px; column-gap: 8px; min-height: 0; padding: 10px 14px;
 }
 .device-simulator #game-title,
 .tablet-simulator #game-title {
     grid-area: titre; margin: 0; font-size: 1.05rem;
 }
 .device-simulator #game-progress-container,
-.tablet-simulator #game-progress-container { grid-area: avance; max-width: none; margin: 0; }
+.tablet-simulator #game-progress-container {
+    grid-area: avance; margin: 0;
+    width: 78px; min-width: 78px; max-width: 78px; height: 18px; border-radius: 9px;
+    background: color-mix(in srgb, var(--text-muted) 55%, var(--border));
+}
+.device-simulator #game-progress-text,
+.tablet-simulator #game-progress-text { font-size: .68rem; }
 .device-simulator #game-timer,
 .tablet-simulator #game-timer { grid-area: chrono; width: 38px; height: 38px; margin: 0; }
 .device-simulator .game-header-actions,
@@ -653,9 +658,15 @@
        « Additions Mystèr… », sans savoir à quoi on jouait. Les commandes
        gardent leur place à droite de la première rangée : la croix de
        fermeture reste toujours au même endroit. */
+    /* La progression REMONTE sur la ligne du titre.
+       Sa propre rangée lui coûtait une trentaine de pixels de hauteur pour
+       afficher « 0 / 10 » sur toute la largeur — de la place volée au jeu, à
+       chaque question. Elle devient une petite jauge de 72 px posée juste
+       après le titre ; celui-ci peut toujours passer à la ligne s'il est
+       long, la jauge reste centrée sur la première. */
     #game-header {
-        display: grid; grid-template-columns: 1fr auto;
-        grid-template-areas: "titre actions" "avance chrono";
+        display: grid; grid-template-columns: 1fr auto auto auto;
+        grid-template-areas: "titre avance chrono actions";
         align-items: center; column-gap: 8px; row-gap: 6px;
         padding: 8px 10px; min-height: 0;
     }
@@ -666,7 +677,15 @@
            le plateau hors de l'écran. */
         display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     }
-    #game-header #game-progress-container { grid-area: avance; flex: none; max-width: none; margin: 0; min-width: 0; }
+    #game-header #game-progress-container {
+        grid-area: avance; flex: none; margin: 0;
+        width: 72px; min-width: 72px; max-width: 72px; height: 18px; border-radius: 9px;
+        /* Piste plus sombre : sur 72 px, le compteur en blanc se perdait sur
+           le gris clair tant que la barre était vide. */
+        background: color-mix(in srgb, var(--text-muted) 55%, var(--border));
+    }
+    #game-progress-bar { border-radius: 9px; }
+    #game-header #game-progress-text { font-size: .68rem; letter-spacing: -.02em; }
     #game-timer { grid-area: chrono; width: 34px; height: 34px; font-size: .8rem; margin: 0; flex-shrink: 0; }
     .game-header-actions { grid-area: actions; gap: 5px; flex-shrink: 0; justify-content: flex-end; margin: 0; }
     .game-icon-btn { width: 34px; height: 34px; font-size: 1rem; padding: 4px; }
@@ -680,7 +699,8 @@
        navigations perdent leur habillage en pastille — flèches et compteur
        suffisent. */
     #game-layer.avec-nav-prof #game-header {
-        grid-template-areas: "titre chrono" "avance avance" "actions actions";
+        grid-template-columns: 1fr auto auto;
+        grid-template-areas: "titre avance chrono" "actions actions actions";
         row-gap: 5px;
     }
     #game-layer.avec-nav-prof #game-header #game-title {

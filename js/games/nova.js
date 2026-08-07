@@ -268,7 +268,7 @@ class Nova extends BaseGame {
         if (this.ui.secteur) this.ui.secteur.textContent = `Secteur ${this.niveau + 1} · ${this.secteur.nom}`;
         if (this.ui.bombes) this.ui.bombes.textContent = '✹'.repeat(Math.max(0, this.bombes));
         if (this.ui.credits) this.ui.credits.textContent = '⬢ ' + this.credits;
-        if (this.ui.tir) this.ui.tir.textContent = this.tirManuel ? '✋ tir au doigt' : '⚡ tir auto';
+        if (this.ui.tir) this.ui.tir.textContent = this.tirManuel ? '✋ deux zones' : '⚡ tir auto';
     }
 
     basculerTir() {
@@ -276,8 +276,28 @@ class Nova extends BaseGame {
         try { localStorage.setItem('nova-tir', this.tirManuel ? 'doigt' : 'auto'); } catch (e) { /* mode privé */ }
         this.majHud();
         this.mot(this.tirManuel
-            ? 'Tir au doigt : le canon ne crache que si tu touches l\'écran.'
+            ? 'Deux zones : en bas on pilote, on remonte le doigt et ça tire.'
             : 'Tir automatique : le doigt ne sert qu\'à piloter.', 'ok');
+    }
+
+    /**
+     * DEUX ZONES, une seule main.
+     *
+     * En mode « ✋ deux zones », l'écran se coupe en deux à hauteur du
+     * vaisseau : le doigt posé EN BAS ne fait que piloter — on se faufile
+     * sans tirer, ce qui compte pour un duel de Gardien ou un mur, où abattre
+     * la mauvaise chose coûte cher. Remonter un peu le doigt met le canon en
+     * marche, sans lâcher le pilotage. Aucun bouton posé sur le jeu, et le
+     * geste reste continu.
+     */
+    ligneDeTir() {
+        const h = this.canvas ? this.canvas.height : 600;
+        const y = this.vaisseau ? this.vaisseau.y : h * 0.85;
+        return y - Math.max(30, h * 0.07);
+    }
+
+    doigtEnZoneDeTir() {
+        return this.doigtPose && this.doigtY != null && this.doigtY < this.ligneDeTir();
     }
 
     /**
@@ -345,6 +365,7 @@ class Nova extends BaseGame {
             depart = p0; bouge = 0;
             this.vaisseau.cible = depart.x;
             this.doigtPose = true;
+            this.doigtY = p0.y;
             // DOUBLE TAPE = bombe NOVA. Le seul geste qui restait libre : un
             // appui simple pilote, un appui long charge, deux appuis brefs
             // déclenchent l'onde. Rien à viser — c'est l'arme de panique.
@@ -357,10 +378,12 @@ class Nova extends BaseGame {
             const p = pos(e);
             bouge = Math.max(bouge, Math.abs(p.x - depart.x));
             this.vaisseau.cible = p.x;
+            this.doigtY = p.y;
         };
         this.onUp = () => {
             depart = null;
             this.doigtPose = false;
+            this.doigtY = null;
             if (this.charge >= 1) this.lacherRayon();
             this.charge = 0;
         };
@@ -960,7 +983,10 @@ class Nova extends BaseGame {
     }
 
     entrerFaille(table) {
-        this.ennemis = []; this.tirsEnnemis = []; this.tirs = [];
+        // Les bonus au sol aussi : dans une faille où la consigne est
+        // « n'attrape QUE les multiples », un objet à ramasser qui traîne
+        // envoie exactement le message contraire.
+        this.ennemis = []; this.tirsEnnemis = []; this.tirs = []; this.bonus = [];
         // Les nombres apparaissent SOUS le bandeau de consigne : nés en haut de
         // l'écran, ils passaient une bonne seconde cachés derrière lui, et
         // c'est du temps de lecture volé sur le seul indice qui compte.
@@ -1199,7 +1225,7 @@ class Nova extends BaseGame {
         // à choisir.
         const ralenti = this.doigtPose && !this.tirManuel;
         const cadence = Math.max(7, 13 - this.puissance * 2) * (ralenti ? 2 : 1);
-        const canonPret = !this.faille && (!this.tirManuel || this.doigtPose);
+        const canonPret = !this.faille && (!this.tirManuel || this.doigtEnZoneDeTir());
         if (canonPret && this.frame % Math.round(cadence) === 0) this.tirerJoueur();
 
         // Charge : environ une seconde et demie de doigt posé.
@@ -1586,6 +1612,7 @@ class Nova extends BaseGame {
         c.globalAlpha = 1;
 
         this.dessinerVaisseau();
+        if (this.tirManuel && this.doigtPose && this.phase === 'jeu') this.dessinerZones();
         if (this.message) this.dessinerMessage();
         if (this.phase === 'atelier') this.dessinerAtelier();
         else if (this.phase !== 'jeu' && !this.isDemo) this.dessinerBriefing();
@@ -2024,6 +2051,30 @@ class Nova extends BaseGame {
         c.restore();
     }
 
+    /**
+     * La frontière des deux zones. Elle n'apparaît QUE pendant que le doigt
+     * est posé : une ligne permanente en travers du ciel serait un meuble de
+     * plus dans un écran déjà chargé. Le côté actif s'allume.
+     */
+    dessinerZones() {
+        const c = this.ctx, w = this.canvas.width;
+        const y = this.ligneDeTir();
+        const tire = this.doigtEnZoneDeTir();
+        c.save();
+        c.setLineDash([10, 9]);
+        c.lineWidth = 2;
+        c.strokeStyle = tire ? 'rgba(252,211,77,.75)' : 'rgba(148,163,184,.45)';
+        c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+        c.setLineDash([]);
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = `900 ${Math.max(10, Math.round(w * 0.028))}px 'Inter', system-ui, sans-serif`;
+        c.fillStyle = tire ? 'rgba(252,211,77,.9)' : 'rgba(148,163,184,.5)';
+        c.fillText('▲ TIRER', w / 2, y - 14);
+        c.fillStyle = tire ? 'rgba(148,163,184,.5)' : 'rgba(103,232,249,.9)';
+        c.fillText('PILOTER ▼', w / 2, y + 16);
+        c.restore();
+    }
+
     /** L'anneau : une bouche de lumière qu'on traverse, ou qu'on laisse passer. */
     dessinerPortail() {
         const c = this.ctx, p = this.portail;
@@ -2032,21 +2083,49 @@ class Nova extends BaseGame {
         c.save();
         c.translate(p.x, p.y);
 
-        const g = c.createRadialGradient(0, 0, ry * 0.2, 0, 0, rx);
-        g.addColorStop(0, 'rgba(103,232,249,.35)'); g.addColorStop(1, 'rgba(103,232,249,0)');
+        // Le cœur : un vortex violet, pas un simple halo bleu — c'est la même
+        // couleur que la faille où il mène.
+        const g = c.createRadialGradient(0, 0, ry * 0.15, 0, 0, rx);
+        g.addColorStop(0, 'rgba(237,233,254,.55)');
+        g.addColorStop(0.4, 'rgba(139,92,246,.35)');
+        g.addColorStop(1, 'rgba(139,92,246,0)');
         c.fillStyle = g;
         c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.fill();
 
-        c.shadowColor = 'rgba(34,211,238,.9)'; c.shadowBlur = 22 * pulse;
-        c.strokeStyle = '#67e8f9'; c.lineWidth = 5;
+        // Trois anneaux emboîtés qui tournent : la bouche « aspire ».
+        for (let i = 0; i < 3; i++) {
+            const k = 1 - i * 0.26;
+            const av = (this.frame / (18 + i * 9)) % (Math.PI * 2);
+            c.save();
+            c.globalAlpha = 0.35 + i * 0.2;
+            c.strokeStyle = i === 0 ? '#a78bfa' : '#67e8f9';
+            c.lineWidth = 4 - i;
+            c.setLineDash([rx * 0.32, rx * 0.16]);
+            c.lineDashOffset = -av * rx * 0.4;
+            c.beginPath(); c.ellipse(0, 0, rx * k, ry * k, 0, 0, Math.PI * 2); c.stroke();
+            c.restore();
+        }
+
+        c.shadowColor = 'rgba(167,139,250,.95)'; c.shadowBlur = 26 * pulse;
+        c.strokeStyle = '#ddd6fe'; c.lineWidth = 4;
+        c.setLineDash([]);
         c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.stroke();
-        c.strokeStyle = 'rgba(224,242,254,.85)'; c.lineWidth = 2;
-        c.beginPath(); c.ellipse(0, 0, rx * 0.78, ry * 0.62, 0, 0, Math.PI * 2); c.stroke();
         c.shadowBlur = 0;
 
+        // Deux chevrons vers le bas : l'anneau se traverse, il ne se contourne
+        // pas. Sans eux, on le prenait pour un obstacle de plus.
+        c.strokeStyle = 'rgba(237,233,254,.75)'; c.lineWidth = 2.5;
+        [-1, 1].forEach(d => {
+            c.beginPath();
+            c.moveTo(d * rx * 0.5, -ry * 0.32);
+            c.lineTo(d * rx * 0.34, 0);
+            c.lineTo(d * rx * 0.5, ry * 0.32);
+            c.stroke();
+        });
+
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillStyle = '#ecfeff';
-        c.font = `900 ${Math.round(ry * 0.85)}px 'Inter', system-ui, sans-serif`;
+        c.fillStyle = '#f5f3ff';
+        c.font = `900 ${Math.round(ry * 0.8)}px 'Inter', system-ui, sans-serif`;
         c.fillText(`FAILLE ×${p.table}`, 0, 1);
         c.restore();
     }
@@ -2060,25 +2139,89 @@ class Nova extends BaseGame {
     dessinerFaille() {
         const c = this.ctx, w = this.canvas.width, h = this.canvas.height, f = this.faille;
         const u = Math.min(w, h);
+        const t = f.t;
 
         c.save();
-        // Un voile violet : on n'est plus dans le secteur, on est ailleurs.
-        c.fillStyle = 'rgba(46,16,101,.34)'; c.fillRect(0, 0, w, h);
+        // --- Le décor de la faille ------------------------------------------
+        // Un voile violet suffisait à dire « on est ailleurs », mais pas à le
+        // faire ressentir. On est maintenant DANS un tunnel : un dégradé qui
+        // se resserre vers un cœur lumineux, des anneaux qui défilent vers le
+        // joueur, et des filaments qui filent sur les côtés.
+        const cx = w / 2, cy = h * 0.32;
+        const voile = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.9);
+        voile.addColorStop(0, 'rgba(129,90,240,.42)');
+        voile.addColorStop(0.45, 'rgba(59,24,130,.5)');
+        voile.addColorStop(1, 'rgba(12,4,32,.72)');
+        c.fillStyle = voile; c.fillRect(0, 0, w, h);
 
+        // Les anneaux du tunnel : ils naissent au cœur et grandissent.
+        c.save();
+        c.lineWidth = 2;
+        for (let i = 0; i < 6; i++) {
+            const p = ((t / 90) + i / 6) % 1;
+            const r = p * Math.max(w, h) * 0.75;
+            c.globalAlpha = 0.35 * (1 - p);
+            c.strokeStyle = '#a78bfa';
+            c.beginPath(); c.ellipse(cx, cy, r, r * 0.62, 0, 0, Math.PI * 2); c.stroke();
+        }
+        c.restore();
+
+        // Filaments : de fines traînées qui accélèrent en s'éloignant du cœur.
+        c.save();
+        c.strokeStyle = 'rgba(196,181,253,.35)'; c.lineWidth = 1.5;
+        for (let i = 0; i < 14; i++) {
+            const a = (i / 14) * Math.PI * 2 + t / 260;
+            const d0 = ((t * (1.6 + (i % 4) * 0.5)) % (u * 0.9)) + u * 0.12;
+            const d1 = d0 + u * 0.09;
+            c.globalAlpha = 0.5 * (1 - d0 / (u * 1.1));
+            c.beginPath();
+            c.moveTo(cx + Math.cos(a) * d0, cy + Math.sin(a) * d0 * 0.7);
+            c.lineTo(cx + Math.cos(a) * d1, cy + Math.sin(a) * d1 * 0.7);
+            c.stroke();
+        }
+        c.restore();
+
+        // --- Les nombres ----------------------------------------------------
         f.nombres.forEach(o => {
             c.save();
             c.globalAlpha = Math.min(1, (o.age || 12) / 12);   // apparition en fondu
             c.translate(o.x, o.y);
+
+            // Une traînée derrière chaque éclat : on voit d'où il vient, donc
+            // où il va — c'est ce qui rend l'esquive lisible.
+            c.save();
+            c.globalAlpha *= 0.3;
+            const tg = c.createLinearGradient(0, -o.r * 3.2, 0, 0);
+            tg.addColorStop(0, 'rgba(167,139,250,0)');
+            tg.addColorStop(1, 'rgba(196,181,253,.85)');
+            c.fillStyle = tg;
+            c.beginPath();
+            c.moveTo(-o.r * 0.42, 0); c.lineTo(0, -o.r * 3.2); c.lineTo(o.r * 0.42, 0);
+            c.closePath(); c.fill();
+            c.restore();
+
             c.rotate(Math.sin(o.a) * 0.18);
-            c.shadowColor = 'rgba(167,139,250,.9)'; c.shadowBlur = 14;
-            const g = c.createRadialGradient(-o.r * 0.3, -o.r * 0.3, o.r * 0.15, 0, 0, o.r);
-            g.addColorStop(0, '#f5f3ff'); g.addColorStop(0.6, '#c4b5fd'); g.addColorStop(1, '#6d28d9');
+            // Un halo qui bat, puis le cristal : deux facettes claires en haut,
+            // deux sombres en bas, et un liseré blanc. Tous identiques — le
+            // nombre reste le seul indice.
+            c.shadowColor = 'rgba(167,139,250,.95)'; c.shadowBlur = 18 + Math.sin(o.a * 2) * 5;
+            const g = c.createLinearGradient(-o.r, -o.r, o.r, o.r);
+            g.addColorStop(0, '#faf5ff'); g.addColorStop(0.45, '#c4b5fd');
+            g.addColorStop(0.75, '#8b5cf6'); g.addColorStop(1, '#4c1d95');
             c.fillStyle = g;
             c.beginPath();
             c.moveTo(0, -o.r); c.lineTo(o.r, 0); c.lineTo(0, o.r); c.lineTo(-o.r, 0);
             c.closePath(); c.fill();
             c.shadowBlur = 0;
-            c.strokeStyle = 'rgba(30,27,75,.85)'; c.lineWidth = 2; c.stroke();
+            // Facette claire, en haut à gauche.
+            c.fillStyle = 'rgba(255,255,255,.35)';
+            c.beginPath();
+            c.moveTo(0, -o.r); c.lineTo(-o.r, 0); c.lineTo(0, 0); c.closePath(); c.fill();
+            c.strokeStyle = 'rgba(237,233,254,.9)'; c.lineWidth = 2;
+            c.beginPath();
+            c.moveTo(0, -o.r); c.lineTo(o.r, 0); c.lineTo(0, o.r); c.lineTo(-o.r, 0);
+            c.closePath(); c.stroke();
+
             c.fillStyle = '#1e1b4b';
             c.textAlign = 'center'; c.textBaseline = 'middle';
             c.font = `900 ${Math.round(o.r * 0.9)}px 'Inter', system-ui, sans-serif`;
@@ -2089,9 +2232,15 @@ class Nova extends BaseGame {
         // Le bandeau de consigne : il ne disparaît jamais. Une règle qu'on
         // doit se rappeler est une règle qu'on applique mal.
         const bh = Math.max(38, u * 0.085);
-        c.fillStyle = 'rgba(2,6,23,.82)';
-        c.beginPath(); c.roundRect(8, 34, w - 16, bh, 12); c.fill();
-        c.strokeStyle = '#a78bfa'; c.lineWidth = 2; c.stroke();
+        const bandeau = c.createLinearGradient(0, 34, 0, 34 + bh);
+        bandeau.addColorStop(0, 'rgba(49,20,110,.94)');
+        bandeau.addColorStop(1, 'rgba(12,6,32,.94)');
+        c.fillStyle = bandeau;
+        c.beginPath(); c.roundRect(8, 34, w - 16, bh, 14); c.fill();
+        c.save();
+        c.shadowColor = 'rgba(167,139,250,.8)'; c.shadowBlur = 12;
+        c.strokeStyle = '#c4b5fd'; c.lineWidth = 2; c.stroke();
+        c.restore();
         c.textAlign = 'center'; c.textBaseline = 'middle';
         let px = Math.max(11, Math.min(17, w * 0.036));
         const txt = `ATTRAPE les multiples de ${f.table}  ·  ÉVITE tous les autres`;
@@ -2099,19 +2248,30 @@ class Nova extends BaseGame {
         while (px > 9 && c.measureText(txt).width > w - 40) {
             px -= 1; c.font = `900 ${px}px 'Inter', system-ui, sans-serif`;
         }
-        c.fillStyle = '#ddd6fe';
+        c.fillStyle = '#ede9fe';
         c.fillText(txt, w / 2, 34 + bh * 0.36);
         c.font = `800 ${Math.round(px * 0.85)}px 'Inter', system-ui, sans-serif`;
-        c.fillStyle = f.chaine > 1 ? '#fcd34d' : '#a5b4fc';
-        c.fillText(f.chaine > 1 ? `chaîne ×${Math.min(5, f.chaine)} · ${f.pris} attrapés`
-            : `${f.pris} attrapés`, w / 2, 34 + bh * 0.75);
+        // La chaîne PULSE quand elle monte : le seul retour qui dit « continue ».
+        if (f.chaine > 1) {
+            const bat = 1 + Math.max(0, 0.25 - (t % 24) / 96);
+            c.save();
+            c.translate(w / 2, 34 + bh * 0.75); c.scale(bat, bat);
+            c.fillStyle = '#fcd34d';
+            c.fillText(`chaîne ×${Math.min(5, f.chaine)} · ${f.pris} attrapés`, 0, 0);
+            c.restore();
+        } else {
+            c.fillStyle = '#a5b4fc';
+            c.fillText(`${f.pris} attrapés`, w / 2, 34 + bh * 0.75);
+        }
 
-        // La jauge de temps, collée sous le bandeau.
+        // La jauge de temps, collée sous le bandeau — et qui vire à l'ambre
+        // sur les trois dernières secondes.
         const reste = Math.max(0, 1 - f.t / f.duree);
-        c.fillStyle = 'rgba(148,163,184,.3)';
-        c.fillRect(10, 34 + bh + 4, w - 20, 4);
-        c.fillStyle = '#a78bfa';
-        c.fillRect(10, 34 + bh + 4, (w - 20) * reste, 4);
+        const jy = 34 + bh + 5;
+        c.fillStyle = 'rgba(148,163,184,.25)';
+        c.beginPath(); c.roundRect(10, jy, w - 20, 5, 3); c.fill();
+        c.fillStyle = reste < 0.22 ? '#fbbf24' : '#a78bfa';
+        c.beginPath(); c.roundRect(10, jy, Math.max(3, (w - 20) * reste), 5, 3); c.fill();
         c.restore();
     }
 
@@ -2250,34 +2410,61 @@ class Nova extends BaseGame {
             return;
         }
 
-        T('N O V A', w / 2, h * 0.13, u * 0.115, '#22d3ee');
+        T('N O V A', w / 2, h * 0.105, u * 0.115, '#22d3ee');
+        T('Un jeu de tir où l\'on répond en SE PLAÇANT.', w / 2, h * 0.165, u * 0.038, '#94a3b8', 700);
 
-        // Trois vignettes : en colonne sur un téléphone, en ligne dès que la
-        // largeur le permet. Le dessin d'abord, le mot ensuite.
+        // Trois FICHES, pas trois dessins posés à côté de trois phrases.
+        // Sans cadre, l'image d'une consigne se retrouvait à hauteur du texte
+        // de la suivante : les trois se mélangeaient et rien ne se lisait.
+        // Chaque fiche est une boîte : son dessin à gauche, ses mots à droite,
+        // et une gouttière que rien ne franchit.
         const enLigne = w > h * 0.95 && w > 620;
         const vignettes = [
             { dessin: (x, y, s) => this.iconePilotage(x, y, s), mot: 'GLISSE', sous: 'le canon tire tout seul', couleur: '#7dd3fc' },
-            { dessin: (x, y, s) => this.iconeDanger(x, y, s), mot: 'N\'Y TOUCHE PAS', sous: 'appareils et tirs font mal', couleur: '#fda4af' },
+            { dessin: (x, y, s) => this.iconeDanger(x, y, s), mot: 'ÉVITE', sous: 'les vaisseaux et leurs tirs', couleur: '#fda4af' },
             { dessin: (x, y, s) => this.iconePorte(x, y, s), mot: 'CALCULE', sous: 'passe par le bon résultat', couleur: '#fcd34d' }
         ];
 
+        const fiche = (x, y, fw, fh, teinte) => {
+            c.save();
+            c.fillStyle = 'rgba(15,23,42,.72)';
+            c.beginPath(); c.roundRect(x, y, fw, fh, Math.min(16, fh * 0.22)); c.fill();
+            c.strokeStyle = teinte + '66'; c.lineWidth = 1.5; c.stroke();
+            c.restore();
+        };
+
         if (enLigne) {
-            const s = Math.min(u * 0.17, w * 0.11);
-            const cy = h * 0.45;
+            const fw = Math.min(w / 3 - 16, 280);
+            const fh = Math.min(h * 0.42, 260);
+            const y0 = h * 0.24;
             vignettes.forEach((v, i) => {
-                const x = w * (0.5 / 3 + i / 3);
-                v.dessin(x, cy - s * 0.35, s);
-                T(v.mot, x, cy + s * 0.95, u * 0.05, v.couleur, 900, w / 3 - 20);
-                T(v.sous, x, cy + s * 1.45, u * 0.033, '#94a3b8', 700, w / 3 - 20);
+                const cx = w * (0.5 / 3 + i / 3);
+                fiche(cx - fw / 2, y0, fw, fh, v.couleur);
+                const s = Math.min(fw * 0.28, fh * 0.22);
+                v.dessin(cx, y0 + fh * 0.32, s);
+                T(v.mot, cx, y0 + fh * 0.68, u * 0.05, v.couleur, 900, fw - 20);
+                T(v.sous, cx, y0 + fh * 0.85, u * 0.032, '#cbd5e1', 700, fw - 20);
             });
         } else {
-            const s = Math.min(u * 0.13, h * 0.09);
+            const marge = Math.max(12, w * 0.05);
+            const fw = w - marge * 2;
+            const fh = Math.min(h * 0.15, 108);
+            const ecart = fh + Math.max(8, h * 0.018);
+            const y0 = h * 0.215;
+            // La colonne du dessin est RÉSERVÉE : le texte commence après, quoi
+            // qu'il arrive. C'est ce qui manquait — les trois portes du
+            // troisième dessin venaient buter dans le mot « CALCULE ».
+            const colDessin = Math.min(fh * 0.9, fw * 0.3);
             vignettes.forEach((v, i) => {
-                const cy = h * (0.29 + i * 0.16);
-                v.dessin(w * 0.22, cy, s);
+                const y = y0 + i * ecart;
+                fiche(marge, y, fw, fh, v.couleur);
+                const s = Math.min(colDessin * 0.42, fh * 0.34);
+                v.dessin(marge + colDessin / 2, y + fh / 2, s);
+                const xt = marge + colDessin + 10;
+                const dispo = fw - colDessin - 22;
                 c.textAlign = 'left';
-                T(v.mot, w * 0.35, cy - s * 0.3, u * 0.058, v.couleur, 900, w * 0.6);
-                T(v.sous, w * 0.35, cy + s * 0.42, u * 0.038, '#94a3b8', 700, w * 0.6);
+                T(v.mot, xt, y + fh * 0.36, u * 0.055, v.couleur, 900, dispo);
+                T(v.sous, xt, y + fh * 0.68, u * 0.036, '#cbd5e1', 700, dispo);
                 c.textAlign = 'center';
             });
         }
@@ -2301,57 +2488,103 @@ class Nova extends BaseGame {
         c.restore();
     }
 
-    /** Vignette : le vaisseau et la trace du doigt qui le déplace. */
+    /*
+     * Les trois pictogrammes de l'écran titre.
+     *
+     * Chacun tient STRICTEMENT dans le carré [-s, s] : c'est ce qui permet à
+     * la mise en page de leur réserver une colonne et de garantir qu'aucun ne
+     * viendra mordre sur le texte voisin.
+     */
+
+    /** Le vaisseau, et la trace du doigt qui le déplace de gauche à droite. */
     iconePilotage(x, y, s) {
         const c = this.ctx;
         c.save(); c.translate(x, y);
-        c.strokeStyle = 'rgba(125,211,252,.6)'; c.lineWidth = 3;
-        c.setLineDash([5, 6]);
-        c.beginPath(); c.moveTo(-s * 0.85, s * 0.5); c.lineTo(s * 0.85, s * 0.5); c.stroke();
+        // La trace, avec une pointe à chaque bout : c'est elle qui dit
+        // « de gauche à droite », pas le vaisseau.
+        c.strokeStyle = 'rgba(125,211,252,.7)'; c.lineWidth = Math.max(2, s * 0.1);
+        c.setLineDash([s * 0.16, s * 0.2]);
+        c.beginPath(); c.moveTo(-s * 0.78, s * 0.7); c.lineTo(s * 0.78, s * 0.7); c.stroke();
         c.setLineDash([]);
-        c.fillStyle = '#38bdf8';
+        c.fillStyle = 'rgba(125,211,252,.85)';
+        [-1, 1].forEach(d => {
+            c.beginPath();
+            c.moveTo(d * s, s * 0.7); c.lineTo(d * s * 0.72, s * 0.5); c.lineTo(d * s * 0.72, s * 0.9);
+            c.closePath(); c.fill();
+        });
+        // Le vaisseau : coque centrale et deux ailerons, pour qu'on lise un
+        // engin et non une flèche.
+        c.fillStyle = '#0ea5e9';
         c.beginPath();
-        c.moveTo(0, -s * 0.7); c.lineTo(s * 0.5, s * 0.45); c.lineTo(0, s * 0.2);
-        c.lineTo(-s * 0.5, s * 0.45); c.closePath(); c.fill();
+        c.moveTo(-s * 0.62, s * 0.28); c.lineTo(-s * 0.24, -s * 0.1);
+        c.lineTo(-s * 0.3, s * 0.34); c.closePath(); c.fill();
+        c.beginPath();
+        c.moveTo(s * 0.62, s * 0.28); c.lineTo(s * 0.24, -s * 0.1);
+        c.lineTo(s * 0.3, s * 0.34); c.closePath(); c.fill();
+        c.fillStyle = '#7dd3fc';
+        c.beginPath();
+        c.moveTo(0, -s * 0.78); c.lineTo(s * 0.3, s * 0.34); c.lineTo(0, s * 0.14);
+        c.lineTo(-s * 0.3, s * 0.34); c.closePath(); c.fill();
         c.fillStyle = '#fde047';
-        c.fillRect(-s * 0.06, -s * 1.15, s * 0.12, s * 0.35);
+        c.fillRect(-s * 0.05, -s * 0.98, s * 0.1, s * 0.24);
         c.restore();
     }
 
-    /** Vignette : un appareil ennemi barré. */
+    /** Un appareil ennemi, dans un panneau d'interdiction. */
     iconeDanger(x, y, s) {
         const c = this.ctx;
         c.save(); c.translate(x, y);
+        // L'appareil : nez vers le BAS, deux ailes — la silhouette de ce qui
+        // fonce sur le joueur. Barré d'une flèche, on lisait une coche verte.
         c.fillStyle = '#ef4444';
         c.beginPath();
-        c.moveTo(0, s * 0.6); c.lineTo(s * 0.6, -s * 0.35); c.lineTo(0, -s * 0.05);
-        c.lineTo(-s * 0.6, -s * 0.35); c.closePath(); c.fill();
-        c.strokeStyle = '#fecaca'; c.lineWidth = Math.max(3, s * 0.12);
-        c.beginPath(); c.arc(0, 0, s * 0.82, 0, Math.PI * 2); c.stroke();
+        c.moveTo(0, s * 0.66); c.lineTo(s * 0.32, -s * 0.16); c.lineTo(-s * 0.32, -s * 0.16);
+        c.closePath(); c.fill();
+        c.fillStyle = '#f87171';
+        [-1, 1].forEach(d => {
+            c.beginPath();
+            c.moveTo(d * s * 0.72, -s * 0.5); c.lineTo(d * s * 0.2, -s * 0.28);
+            c.lineTo(d * s * 0.2, s * 0.1); c.closePath(); c.fill();
+        });
+        c.fillStyle = '#fecaca';
+        c.beginPath(); c.arc(0, -s * 0.22, s * 0.12, 0, Math.PI * 2); c.fill();
+        // Le panneau. Trait plus fin que l'appareil : il l'entoure, il ne
+        // l'efface pas.
+        c.strokeStyle = '#fda4af'; c.lineWidth = Math.max(2.5, s * 0.09);
+        c.beginPath(); c.arc(0, 0, s * 0.92, 0, Math.PI * 2); c.stroke();
         c.beginPath();
-        c.moveTo(-s * 0.58, -s * 0.58); c.lineTo(s * 0.58, s * 0.58); c.stroke();
+        c.moveTo(-s * 0.65, -s * 0.65); c.lineTo(s * 0.65, s * 0.65); c.stroke();
         c.restore();
     }
 
-    /** Vignette : le mur, ses trois portes, une seule bonne. */
+    /** Le mur, sa question, et la seule porte qui s'ouvre. */
     iconePorte(x, y, s) {
         const c = this.ctx;
         c.save(); c.translate(x, y);
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        const lw = s * 0.62, lh = s * 0.78;
+
+        // La question, en haut du carré.
+        c.fillStyle = '#e2e8f0';
+        c.font = `900 ${Math.round(s * 0.38)}px 'Inter', system-ui, sans-serif`;
+        c.fillText('5 × 3', 0, -s * 0.72);
+
+        const lw = s * 0.58, lh = s * 0.66, ecart = lw + s * 0.1;
         [['12', false], ['15', true], ['18', false]].forEach(([n, bonne], i) => {
-            const px = (i - 1) * (lw + s * 0.12);
-            c.fillStyle = bonne ? 'rgba(250,204,21,.25)' : 'rgba(148,163,184,.14)';
-            c.beginPath(); c.roundRect(px - lw / 2, -lh / 2, lw, lh, s * 0.12); c.fill();
-            c.strokeStyle = bonne ? '#facc15' : '#64748b'; c.lineWidth = bonne ? 3 : 2;
+            const px = (i - 1) * ecart;
+            c.fillStyle = bonne ? 'rgba(250,204,21,.3)' : 'rgba(148,163,184,.14)';
+            c.beginPath(); c.roundRect(px - lw / 2, -s * 0.28, lw, lh, s * 0.1); c.fill();
+            c.strokeStyle = bonne ? '#facc15' : '#64748b'; c.lineWidth = bonne ? 2.5 : 1.5;
             c.stroke();
             c.fillStyle = bonne ? '#fef08a' : '#94a3b8';
-            c.font = `900 ${Math.round(s * 0.42)}px 'Inter', system-ui, sans-serif`;
-            c.fillText(n, px, 0);
+            c.font = `900 ${Math.round(s * 0.34)}px 'Inter', system-ui, sans-serif`;
+            c.fillText(n, px, s * 0.05);
         });
-        c.fillStyle = '#e2e8f0';
-        c.font = `900 ${Math.round(s * 0.4)}px 'Inter', system-ui, sans-serif`;
-        c.fillText('5 × 3', 0, -lh * 0.95);
+        // Le vaisseau qui monte vers la bonne porte : la consigne devient un
+        // geste, pas une phrase.
+        c.fillStyle = '#7dd3fc';
+        c.beginPath();
+        c.moveTo(0, s * 0.5); c.lineTo(s * 0.16, s * 0.86); c.lineTo(-s * 0.16, s * 0.86);
+        c.closePath(); c.fill();
         c.restore();
     }
 
