@@ -16,6 +16,13 @@ import { LEVELS, levelFor } from './mastery.js';
 import { skillLabel } from '../data/skills.js';
 
 /**
+ * Au-delà de cinq minutes sur une seule question, ce n'est plus du travail :
+ * c'est un onglet resté ouvert. On plafonne pour que le temps de séance reste
+ * une information et non le reflet des allées et venues de l'élève.
+ */
+export const PAUSE_MAX_MS = 5 * 60 * 1000;
+
+/**
  * @param {Object} run - sortie de projections.computeRuns()
  * @param {Object} [policyOverride]
  * @returns {Object} bilan complet
@@ -43,7 +50,11 @@ export function gradeRun(run, policyOverride = null) {
         const it = items.get(key);
         it.tries++;
         it.hintsUsed = Math.max(it.hintsUsed, a.hintsUsed || 0);
-        it.msElapsed += a.msElapsed || 0;
+        // `msElapsed` est un INTERVALLE — le temps écoulé depuis la tentative
+        // précédente — et les intervalles s'additionnent. Il est en plus borné
+        // : un onglet laissé ouvert pendant la récréation ne doit pas gonfler
+        // le temps de la séance de vingt minutes de rien du tout.
+        it.msElapsed += Math.min(Math.max(0, a.msElapsed || 0), PAUSE_MAX_MS);
         if (a.correct) {
             it.solved = true;
             if ((a.attemptIndex || 0) === 0) it.firstTry = true;

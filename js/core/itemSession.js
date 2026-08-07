@@ -115,6 +115,11 @@ export class ItemSession {
         this.eliminated = new Set();
         this.locked = false;
         this.startedAt = Date.now();
+        // Point de départ du prochain INTERVALLE. Chaque tentative rapporte le
+        // temps écoulé depuis la précédente, pas depuis le début de la
+        // question : sans cela, une question trouvée au troisième essai
+        // comptait trois fois sa durée réelle dans le temps de séance.
+        this.dernierEssaiAt = this.startedAt;
 
         // Contexte lu par state.recordAttempt (y compris pour les jeux
         // historiques qui appellent encore state.celebrate directement).
@@ -198,6 +203,10 @@ export class ItemSession {
             points = Math.max(1, Math.round(base * retryFactor * hintFactor));
         }
 
+        const maintenant = Date.now();
+        const intervalle = maintenant - (this.dernierEssaiAt || this.startedAt);
+        this.dernierEssaiAt = maintenant;
+
         if (!this.isDemo) {
             state.recordAttempt({
                 correct: verdict.correct,
@@ -208,7 +217,7 @@ export class ItemSession {
                 itemSeed: this.item.seed,
                 generatorId: this.generator.id,
                 attemptIndex: this.attemptIndex,
-                msElapsed: Date.now() - this.startedAt,
+                msElapsed: intervalle,
                 hintsUsed: this.hintIndex,
                 misconception: verdict.misconception,
                 explanation: this.item.explanation,

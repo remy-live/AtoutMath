@@ -195,6 +195,16 @@ export const state = {
             points: a.points || 0
         };
         journal.emit(EventTypes.ATTEMPT, payload);
+        // Le chronomètre du contexte REPART à zéro.
+        //
+        // Les jeux autonomes — Nova, Tetris, le labyrinthe… — n'ont pas de
+        // session d'items : ils appellent `recordAttempt` sans `msElapsed`, et
+        // le repli ci-dessus mesurait le temps depuis le début de l'ÉTAPE. La
+        // vingt-cinquième réponse d'une partie de dix minutes rapportait donc
+        // dix minutes, et le bilan, qui additionne, affichait « 135 min » pour
+        // une séance qui en avait duré douze. Chaque tentative doit rapporter
+        // l'intervalle depuis la précédente.
+        if (ctx && ctx.startedAt) ctx.startedAt = Date.now();
         invalidate();
         document.dispatchEvent(new CustomEvent('attempts_updated'));
         if (payload.points) document.dispatchEvent(new CustomEvent('score_updated'));

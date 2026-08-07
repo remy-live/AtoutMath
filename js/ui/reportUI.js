@@ -189,7 +189,11 @@ function formatNote(n) {
 
 export function formatDuration(seconds) {
     if (!seconds) return '0s';
-    const m = Math.floor(seconds / 60), s = seconds % 60;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor(seconds / 60) % 60, s = seconds % 60;
+    // Au-delà de l'heure, « 135 min 43 » ne se lit plus : personne ne compte
+    // en minutes une séance qui dure deux heures.
+    if (h > 0) return `${h} h ${m.toString().padStart(2, '0')}`;
     return m > 0 ? `${m} min ${s.toString().padStart(2, '0')}` : `${s}s`;
 }
 
