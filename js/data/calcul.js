@@ -281,6 +281,24 @@ export const calculExercises = [
         instruction: "Trouve le code secret ! À chaque essai, le coffre répond « c'est plus » ou « c'est moins ». Astuce de champion : propose toujours le milieu de la zone possible."
     },
     {
+        id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
+        activityId: 'demineur',
+        params: { niveau: 'debutant' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Grille',
+                options: [
+                    { value: 'debutant', label: 'Débutant · 9 × 9 · 10 mines' },
+                    { value: 'confirme', label: 'Confirmé · 12 × 12 · 22 mines' },
+                    { value: 'expert', label: 'Expert · 16 × 16 · 46 mines' }
+                ],
+                default: 'debutant'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Les règles du démineur d'origine. Chaque chiffre compte les mines des 8 cases voisines : appui long (ou clic droit) pour poser un drapeau, 💡 pour faire expliquer la prochaine déduction certaine."
+    },
+    {
         id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
         activityId: 'crush',
         params: { mode: 'addition', difficulty: 'progressive' },

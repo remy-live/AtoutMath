@@ -93,7 +93,12 @@
 #hover-demo-box .hd-header { background: linear-gradient(90deg, var(--accent), #1e293b); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .hd-subtitle { color: #cbd5e1; font-weight: normal; font-size: 0.75rem; }
 .hd-canvas-wrap { flex-grow: 1; position: relative; overflow: hidden; background: radial-gradient(circle at center, #ffffff 0%, var(--bg-app) 100%); }
-#hover-demo-canvas { position: absolute; top: 0; left: 0; width: 850px; height: 600px; transform: scale(0.4); transform-origin: top left; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; padding: 20px; box-sizing: border-box; }
+/* Vignette de survol. Elle est déclarée conteneur `plateau` comme la zone de
+   jeu et la vignette de carte : sans ça, une mise en page qui interroge
+   `plateau` (le démineur, Garam, les relatifs…) retombe sur les dimensions de
+   la FENÊTRE, et se dessine à la taille du plein écran dans une boîte de
+   850 × 600 réduite à 40 %. */
+#hover-demo-canvas { container-type: size; container-name: plateau; position: absolute; top: 0; left: 0; width: 850px; height: 600px; transform: scale(0.4); transform-origin: top left; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; padding: 20px; box-sizing: border-box; }
 #hover-demo-canvas .game-question { margin-bottom: 20px; }
 
 /* --- FEEDBACK & ANIMATIONS --- */

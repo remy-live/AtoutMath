@@ -227,7 +227,8 @@ const legacy = [
     ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur'],
     ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja'],
     ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille'],
-    ['nova', 'Nova', 'nova', 'engineNova']
+    ['nova', 'Nova', 'nova', 'engineNova'],
+    ['demineur', 'Le Démineur', 'demineur', 'engineDemineur']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {
