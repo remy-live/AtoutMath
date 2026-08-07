@@ -17,12 +17,17 @@
 
 import { regTimeout } from './timers.js';
 
+// Les durées de base d'un GESTE montré. Elles ont été relevées d'un bon tiers :
+// mesuré sur une démonstration de Nova, le robot enchaînait ses explications à
+// 250 ms par mot — le rythme d'un adulte qui relit un texte qu'il connaît, pas
+// celui d'un élève qui découvre une consigne et regarde en même temps ce qui se
+// passe à l'écran.
 export const DEMO_SPEED = {
-    move: 750,      // trajet d'un point à un autre
-    press: 260,     // enfoncement
-    settle: 650,    // temps de lecture après un appui
-    drag: 1050,     // un glissement se montre plus lentement qu'un déplacement
-    between: 1900   // pause avant la question suivante
+    move: 950,      // trajet d'un point à un autre
+    press: 330,     // enfoncement
+    settle: 900,    // temps de lecture après un appui
+    drag: 1350,     // un glissement se montre plus lentement qu'un déplacement
+    between: 2500   // pause avant la question suivante
 };
 
 // --- Vitesse globale des démonstrations -------------------------------------
@@ -31,20 +36,42 @@ export const DEMO_SPEED = {
 // retient d'une session à l'autre.
 // L'ordre du tableau est l'ordre du cycle : le premier clic RALENTIT — c'est
 // presque toujours ce qu'on cherche quand on touche à la vitesse d'une démo.
+// Le facteur 1 est désormais le rythme POSÉ décrit plus haut. « ⚡ Rapide »
+// retrouve à peu près l'ancienne allure, pour qui connaît déjà le jeu et veut
+// seulement revoir un passage.
 const VITESSES = [
     { facteur: 1, libelle: '▶ Normal' },
-    { facteur: 1.7, libelle: '🐢 Lent' },
-    { facteur: 0.6, libelle: '⚡ Rapide' }
+    { facteur: 1.5, libelle: '🐢 Lent' },
+    { facteur: 0.7, libelle: '⚡ Rapide' }
 ];
 
 let facteurVitesse = (() => {
     const v = parseFloat(localStorage.getItem('mathbox-demo-speed'));
-    return VITESSES.some(o => o.facteur === v) ? v : 1;
+    if (!(v > 0)) return 1;
+    if (VITESSES.some(o => o.facteur === v)) return v;
+    // Les anciens facteurs (1,7 et 0,6) ne sont plus dans la liste. On les
+    // rattache au plus proche plutôt que de les oublier : quelqu'un qui avait
+    // demandé « lent » ne doit pas se retrouver en normal — c'est-à-dire plus
+    // vite qu'il ne l'avait choisi.
+    return VITESSES.reduce((a, o) =>
+        Math.abs(o.facteur - v) < Math.abs(a - v) ? o.facteur : a, VITESSES[0].facteur);
 })();
 
 export function setDemoSpeedFactor(f) {
     facteurVitesse = f;
     try { localStorage.setItem('mathbox-demo-speed', String(f)); } catch { /* stockage plein ou privé */ }
+}
+
+/**
+ * Une durée de démonstration, à l'échelle choisie par l'utilisateur.
+ *
+ * Les jeux qui pilotent leur robot avec leurs propres minuteurs — la course,
+ * Math Crush, le Memory, le Tetris — écrivaient des durées en dur : le
+ * réglage de vitesse n'avait aucun effet sur eux, et on ne pouvait pas les
+ * ralentir. Elles passent maintenant toutes par ici.
+ */
+export function dureeDemo(ms) {
+    return Math.round(ms * facteurVitesse);
 }
 
 // --- Mode muet ---------------------------------------------------------------
@@ -67,10 +94,22 @@ export function setDemoMuet(v) { muet = !!v; }
 // d'être lue — les pauses déjà écrites dans les jeux s'allongent d'elles-mêmes
 // quand la phrase est longue, sans qu'aucune n'ait à être retouchée.
 
-/** ~230 ms par mot : le rythme d'un élève qui lit une consigne, pas d'un adulte pressé. */
+/**
+ * Le temps laissé pour lire une bulle.
+ *
+ * 340 ms par mot, soit environ 175 mots à la minute : c'est le rythme d'un
+ * élève de dix ans qui lit une consigne — 230 ms (260 mots/minute) était celui
+ * d'un adulte qui relit un texte qu'il a écrit. Et l'élève ne fait pas que
+ * lire : il regarde aussi ce que le robot est en train de faire.
+ *
+ * Le PLAFOND comptait autant que la cadence. À 7 s, une explication de trente
+ * mots — le Gardien, la faille, le pilotage de Nova — était coupée net à
+ * 226 ms par mot : les phrases qui avaient le plus besoin de temps étaient
+ * précisément celles qu'on rognait. Il monte à 14 s.
+ */
 export function tempsDeLecture(texte) {
     const mots = String(texte).trim().split(/\s+/).filter(Boolean).length;
-    return Math.max(1300, Math.min(7000, 500 + mots * 230));
+    return Math.max(2200, Math.min(14000, 700 + mots * 340));
 }
 
 // Tous les pointeurs vivants. `clearEngines()` coupe les minuteurs d'une

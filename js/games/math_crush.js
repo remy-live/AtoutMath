@@ -1,5 +1,5 @@
 import { BaseGame } from '../core/BaseGame.js';
-import { createDemoGate } from '../core/demoPointer.js';
+import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { regTimeout } from '../core/timers.js';
 
@@ -659,25 +659,28 @@ export class MathCrush extends BaseGame {
                 targetPath = (this.currentTargetPath || []).slice();
                 if (targetPath.length === 0) {
                     this.generateTarget();
-                    regTimeout(nextAction, 500);
+                    regTimeout(nextAction, dureeDemo(700));
                     return;
                 }
                 demoPhase = 1;
                 pIndex = 0;
-                regTimeout(nextAction, 500);
+                // Un temps d'arrêt sur la CIBLE avant de tracer : c'est le
+                // moment où l'élève doit la lire, pas celui où le chemin
+                // s'allume déjà.
+                regTimeout(nextAction, dureeDemo(1100));
             } else if (demoPhase === 1) {
                 if (pIndex < targetPath.length) {
                     this.currentPath.push(targetPath[pIndex]);
                     pIndex++;
-                    regTimeout(nextAction, 450);
+                    regTimeout(nextAction, dureeDemo(650));
                 } else {
                     demoPhase = 2;
-                    regTimeout(nextAction, 450);
+                    regTimeout(nextAction, dureeDemo(700));
                 }
             } else if (demoPhase === 2) {
                 this.evaluatePath();
                 demoPhase = 0;
-                regTimeout(nextAction, 1200);
+                regTimeout(nextAction, dureeDemo(1800));
             }
         };
         nextAction();

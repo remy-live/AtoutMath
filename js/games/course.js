@@ -1,5 +1,5 @@
 import { BaseGame } from '../core/BaseGame.js';
-import { createDemoGate } from '../core/demoPointer.js';
+import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 
 export function engineCourse(container, isDemo, params) {
@@ -382,7 +382,7 @@ class Course extends BaseGame {
             if (this.gameState === 'race') {
                 this.p.lane = Math.floor(Math.random() * this.laneCount);
             }
-        }, 1000);
+        }, dureeDemo(1600));
     }
 
     setupEventListeners() {

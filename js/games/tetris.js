@@ -1,6 +1,6 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { state } from '../core/state.js';
-import { createDemoGate, createDemoCursor } from '../core/demoPointer.js';
+import { createDemoGate, createDemoCursor, dureeDemo } from '../core/demoPointer.js';
 
 export function engineTetris(container, isDemo, params) {
     const game = new Tetris(container, isDemo, params);
@@ -452,7 +452,7 @@ class Tetris extends BaseGame {
                 if (coup.calcul) cur.say(`${coup.calcul} = ${this.currentTarget} : je pose là.`, this.container);
                 this.playerHardDrop();
             }
-        }, 420);
+        }, dureeDemo(560));
         if (!await cur.pause(9000) || !vivant()) return fin();
 
         if (!await gate.waitTurn() || !vivant()) return fin();

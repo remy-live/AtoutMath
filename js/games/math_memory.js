@@ -1,6 +1,6 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
-import { createDemoGate } from '../core/demoPointer.js';
+import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { generateMultFact } from '../core/generators.js';
 import { getWeakTables } from '../core/stats.js';
 import { meilleuresColonnes, mesurerCarte } from './memoryLayout.js';
@@ -216,7 +216,7 @@ class MathMemory extends BaseGame {
             }
 
             c1.el.click();
-            regTimeout(() => { if (this.isRunning) c2.el.click(); }, 600);
+            regTimeout(() => { if (this.isRunning) c2.el.click(); }, dureeDemo(950));
             step++;
         };
 
@@ -224,8 +224,8 @@ class MathMemory extends BaseGame {
         // entièrement face cachée, et attendre le premier tour d'intervalle
         // laissait trois secondes de cartes muettes — assez pour que la
         // vignette du catalogue ne montre jamais que des dos de cartes.
-        regTimeout(tour, 250);
-        regInterval(tour, 2600);
+        regTimeout(tour, dureeDemo(350));
+        regInterval(tour, dureeDemo(3600));
     }
 
     /**
