@@ -10,9 +10,12 @@ import { TAGS } from './tags.js';
 const D = TAGS.DOMAINE.NUMERIQUE;
 const NUM = TAGS.SOUS_DOMAINE.NUMERATION;
 const DEC = TAGS.SOUS_DOMAINE.DECIMAUX;
+const REL = TAGS.SOUS_DOMAINE.RELATIFS;
 const MENTAL = TAGS.SOUS_DOMAINE.CALCUL_MENTAL;
 const SIXIEME = TAGS.NIVEAU.SIXIEME;
 const CM2 = TAGS.NIVEAU.CM2;
+const CINQUIEME = TAGS.NIVEAU.CINQUIEME;
+const QUATRIEME = TAGS.NIVEAU.QUATRIEME;
 
 export const numerationExercises = [
     // --- Écriture des nombres (fiche § 1, 2, 3, 19) ---
@@ -146,5 +149,39 @@ export const numerationExercises = [
         params: { max: 99 },
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
         instruction: "Regarde seulement le chiffre des unités."
+    },
+
+    // --- Nombres relatifs ---------------------------------------------------
+    // Trois portes d'entrée sur la même notion. La progressive est celle qu'on
+    // conseille : elle traverse l'ascenseur, le thermomètre, les pastilles,
+    // puis l'écriture. Les deux autres servent à REVENIR sur un modèle précis
+    // quand un élève bloque — c'est là que le professeur choisit.
+    {
+        id: 'num-relatifs-progressif', title: 'Nombres Relatifs : la montée',
+        generatorId: 'num.relatifs', activityId: 'relatifs',
+        params: { niveau: 'progressif', reponse: 'saisie' },
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
+        instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances."
+    },
+    {
+        id: 'num-relatifs-thermometre', title: 'Le Thermomètre',
+        generatorId: 'num.relatifs', activityId: 'relatifs',
+        params: { niveau: 'thermometre', reponse: 'saisie' },
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
+        instruction: "La température monte ou baisse : compte les graduations, le zéro n'arrête rien."
+    },
+    {
+        id: 'num-relatifs-pastilles', title: 'Les Pastilles qui s\'annulent',
+        generatorId: 'num.relatifs', activityId: 'relatifs',
+        params: { niveau: 'pastilles', reponse: 'saisie' },
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
+        instruction: "Une pastille bleue et une rouge forment une paire qui vaut 0. Barre les paires : ce qui reste est la réponse."
+    },
+    {
+        id: 'num-relatifs-ecriture', title: 'Sommes de Relatifs',
+        generatorId: 'num.relatifs', activityId: 'relatifs',
+        params: { niveau: 'ecriture', reponse: 'saisie' },
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Même signe : on ajoute et on garde le signe. Signes différents : on soustrait, et on garde le signe du plus éloigné de zéro."
     }
 ];

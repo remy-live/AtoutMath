@@ -280,6 +280,22 @@ const BASE = {
         descriptor: 'Placer les deux aiguilles d\'une pendule sur une heure donnée, y compris en 24 heures.',
         lesson: 'On place d\'abord la GRANDE aiguille : les minutes divisées par 5 donnent le nombre visé (35 min → le 7). Puis la petite sur l\'heure. Elle ne reste pas pile sur le nombre : les minutes l\'entraînent vers le suivant, et c\'est ainsi qu\'une pendule fonctionne. Pour une heure de l\'après-midi, on retire 12 : 15 h se place comme 3 h.'
     },
+    'num.relatifs.sens': {
+        label: 'Comprendre un nombre relatif (position et déplacement)',
+        chemin: [D.NUMERIQUE, SD.RELATIFS],
+        niveaux: [N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Situer un nombre relatif sur une droite graduée et interpréter un déplacement vers le haut ou vers le bas.',
+        lesson: 'Un nombre relatif dit d\'ABORD une position : le 0 n\'est pas le début de la droite, c\'est un repère au milieu. À gauche (ou en dessous), les nombres continuent : −1, −2, −3… Additionner, c\'est alors se DÉPLACER depuis sa position : +5, c\'est cinq crans vers le haut ; −5, cinq crans vers le bas. Le thermomètre et l\'ascenseur disent exactement la même chose.'
+    },
+    'num.relatifs.somme': {
+        label: 'Additionner des nombres relatifs',
+        chemin: [D.NUMERIQUE, SD.RELATIFS],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.relatifs.sens'],
+        descriptor: 'Calculer la somme de deux ou trois nombres relatifs, avec ou sans support.',
+        lesson: 'Deux cas, et deux seulement. MÊME SIGNE : on ajoute les distances à zéro et on garde le signe — (−3) + (−4) = −7. SIGNES DIFFÉRENTS : on retire la plus petite distance à zéro de la plus grande, et on garde le signe du plus éloigné de zéro — (−7) + (+4) = −3, parce que 7 − 4 = 3 et que le 7 était négatif. Les pastilles expliquent pourquoi : une bleue et une rouge forment une paire qui vaut 0, et il ne reste que le surplus.'
+    },
     'geo.angles.mesure': {
         label: 'Mesurer un angle au rapporteur',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],

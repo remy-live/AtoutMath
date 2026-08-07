@@ -25,6 +25,7 @@ import { sudokuGenerator } from '../generators/sudoku.js';
 import { anglesGenerator } from '../generators/angles.js';
 import { scratchGenerator } from '../generators/scratch.js';
 import { horlogeGenerator } from '../generators/horloge.js';
+import { relatifsGenerator } from '../generators/relatifs.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -38,7 +39,7 @@ import { horlogeGenerator } from '../generators/horloge.js';
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
-    anglesGenerator, scratchGenerator, horlogeGenerator
+    anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -194,6 +195,17 @@ registerActivity({
     accepts: ['heure'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./horloge.js')
+});
+
+// Nombres relatifs : ascenseur, thermomètre, pastilles, droite graduée. Le
+// genre de réponse est 'numeric' (ou 'choice' au choix du professeur) — mais
+// c'est le DÉPLACEMENT animé qui porte l'apprentissage, pas la saisie.
+registerActivity({
+    id: 'relatifs',
+    label: 'Nombres relatifs (droite graduée)',
+    accepts: ['numeric', 'choice'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./relatifs.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

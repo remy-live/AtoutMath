@@ -10,6 +10,7 @@ export const TAGS = {
         NUMERATION: "Numération",
         FRACTIONS: "Fractions",
         DECIMAUX: "Nombres Décimaux",
+        RELATIFS: "Nombres Relatifs",
         REPERAGE: "Repérage",
         ANGLES: "Angles",
         PRIORITES: "Priorités Opératoires",
