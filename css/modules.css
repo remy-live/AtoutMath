@@ -1559,14 +1559,19 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* Libellé et champ sur une même ligne : un panneau de réglages doit se lire
    d'un coup d'œil, pas se dérouler sur trois écrans. Les libellés sont courts,
    les explications passent dans l'infobulle du « ? ». */
+/* `1fr` vaut `minmax(auto, 1fr)` : la colonne du libellé refusait donc de
+   descendre sous sa largeur minimale et POUSSAIT la ligne au-delà du panneau.
+   `minmax(0, 1fr)` l'autorise à se replier — le libellé passe à la ligne au
+   lieu de déborder. */
 .cfg-field {
-    display: grid; grid-template-columns: 1fr auto;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
     align-items: center; gap: 6px 14px; margin-bottom: 10px;
 }
-.cfg-field--wide { grid-template-columns: 1fr; }
+.cfg-field--wide { grid-template-columns: minmax(0, 1fr); }
 .cfg-label {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 6px; min-width: 0;
     font-weight: 600; color: var(--text-main); font-size: .95rem; line-height: 1.3;
+    overflow-wrap: anywhere;
 }
 .cfg-input {
     width: 100%; padding: 8px 12px; border-radius: 10px;
@@ -1678,6 +1683,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 #student-config-content {
     flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    /* Le panneau ne défile QUE verticalement.
+       Quelques pixels de contenu en trop — un libellé un peu long, la pastille
+       « ✓ » qui dépasse d'une tuile — suffisaient à le rendre défilable en
+       largeur : en faisant glisser le doigt vers le bas, la page partait aussi
+       de côté, et les libellés se retrouvaient coupés à gauche. C'est le
+       « jeu » qu'on sentait sous le doigt. */
+    overflow-x: hidden; overscroll-behavior-x: none;
     /* La barre de défilement ne doit pas rogner la bordure des champs. */
     padding-right: 2px;
 }
@@ -1781,11 +1793,14 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 /* Le nombre reste au CENTRE de sa tuile : la coche passe en pastille de coin,
    posée par-dessus, et ne déplace donc rien. */
+/* La pastille « ✓ » DANS la tuile, plus à cheval sur son bord : à −5 px elle
+   débordait de la grille, qui devenait défilable en largeur de quelques
+   pixels — assez pour que le panneau glisse de côté sous le doigt. */
 .cfg-chips--grille .cfg-chip > span::before {
-    content: '✓'; position: absolute; top: -5px; right: -5px;
-    width: 17px; height: 17px; margin: 0; border-radius: 50%;
+    content: '✓'; position: absolute; top: 3px; right: 3px;
+    width: 15px; height: 15px; margin: 0; border-radius: 50%;
     background: var(--primary); color: #fff; border: 2px solid var(--bg-panel);
-    font-size: .6rem; line-height: 15px; text-align: center;
+    font-size: .55rem; line-height: 13px; text-align: center;
 }
 .cfg-chips--grille .cfg-chip:has(input:checked) > span::before { opacity: 1; }
 

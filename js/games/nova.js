@@ -286,24 +286,33 @@ class Nova extends BaseGame {
         try { localStorage.setItem('nova-tir', this.tirManuel ? 'doigt' : 'auto'); } catch (e) { /* mode privé */ }
         this.majHud();
         this.mot(this.tirManuel
-            ? 'Deux zones : en bas on pilote, on remonte le doigt et ça tire.'
+            ? 'Deux zones : le doigt sur le vaisseau tire, en dessous il déplace.'
             : 'Tir automatique : le doigt ne sert qu\'à piloter.', 'ok');
     }
 
     /**
      * DEUX ZONES, une seule main.
      *
-     * En mode « ✋ deux zones », l'écran se coupe en deux à hauteur du
-     * vaisseau : le doigt posé EN BAS ne fait que piloter — on se faufile
-     * sans tirer, ce qui compte pour un duel de Gardien ou un mur, où abattre
-     * la mauvaise chose coûte cher. Remonter un peu le doigt met le canon en
-     * marche, sans lâcher le pilotage. Aucun bouton posé sur le jeu, et le
-     * geste reste continu.
+     * La frontière passe JUSTE SOUS LE VAISSEAU : le doigt posé sur l'engin —
+     * ou plus haut — arme le canon ; sous l'engin, on ne fait que le pousser
+     * de gauche à droite. C'est le geste qu'on décrit naturellement : « je
+     * touche le vaisseau, il tire ; je le prends par en dessous, je le
+     * déplace. »
+     *
+     * Elle était d'abord placée AU-DESSUS du vaisseau, ce qui obligeait à
+     * lever le doigt du seul objet qu'on regarde pour pouvoir tirer.
+     *
+     * Se faufiler sans tirer compte : dans un duel de Gardien ou devant un
+     * mur, abattre la mauvaise chose coûte cher.
      */
     ligneDeTir() {
         const h = this.canvas ? this.canvas.height : 600;
         const y = this.vaisseau ? this.vaisseau.y : h * 0.85;
-        return y - Math.max(30, h * 0.07);
+        // Un cran sous la coque : on veut pouvoir poser le doigt SUR le
+        // vaisseau et tirer, sans que le bord bas de l'engin bascule déjà
+        // dans la zone de pilotage. Pas plus bas non plus — il doit rester
+        // sous la ligne de quoi poser un pouce.
+        return Math.min(h - 8, y + Math.max(20, h * 0.035));
     }
 
     doigtEnZoneDeTir() {
@@ -1253,7 +1262,7 @@ class Nova extends BaseGame {
         if (this.niveau === 0 && this.frame === 200 && !this.astuceDite) {
             this.astuceDite = true;
             this.mot(this.tirManuel
-                ? 'Doigt EN BAS : tu pilotes sans tirer. Remonte-le : ça tire.'
+                ? 'Doigt SUR le vaisseau : il tire. Doigt EN DESSOUS : il se déplace.'
                 : 'Doigt POSÉ : rayon lourd · DOUBLE TAPE : bombe ✹', 'ok');
         }
         if (this.niveau === 0 && this.frame === 620 && this.tirManuel) {
@@ -2072,8 +2081,9 @@ class Nova extends BaseGame {
     }
 
     /**
-     * La frontière des deux zones. Elle n'apparaît QUE pendant que le doigt
-     * est posé : une ligne permanente en travers du ciel serait un meuble de
+     * La frontière des deux zones : un pointillé JUSTE SOUS le vaisseau.
+     * Elle se montre pendant qu'on touche l'écran, et d'office au début d'un
+     * secteur — une ligne permanente en travers du ciel serait un meuble de
      * plus dans un écran déjà chargé. Le côté actif s'allume.
      */
     dessinerZones() {
@@ -2085,16 +2095,22 @@ class Nova extends BaseGame {
         // doucement plutôt que de rester plantée là.
         if (!this.doigtPose) c.globalAlpha = Math.min(1, (300 - this.frame) / 90);
         c.setLineDash([10, 9]);
-        c.lineWidth = 2;
-        c.strokeStyle = tire ? 'rgba(252,211,77,.75)' : 'rgba(148,163,184,.45)';
+        c.lineWidth = 2.5;
+        // Le trait prend la couleur du côté actif : gris sur fond de nuit, il
+        // ne se voyait pas, et c'est justement lui qui porte la règle.
+        c.strokeStyle = tire ? 'rgba(252,211,77,.85)' : 'rgba(103,232,249,.8)';
         c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
         c.setLineDash([]);
+        // Les mots se posent du côté OPPOSÉ au vaisseau : la ligne passant
+        // désormais sous la coque, un libellé centré s'écrirait en travers du
+        // seul objet qu'on regarde.
+        const x = this.vaisseau.x > w / 2 ? w * 0.24 : w * 0.76;
         c.textAlign = 'center'; c.textBaseline = 'middle';
         c.font = `900 ${Math.max(10, Math.round(w * 0.028))}px 'Inter', system-ui, sans-serif`;
-        c.fillStyle = tire ? 'rgba(252,211,77,.9)' : 'rgba(148,163,184,.5)';
-        c.fillText('▲ TIRER', w / 2, y - 14);
-        c.fillStyle = tire ? 'rgba(148,163,184,.5)' : 'rgba(103,232,249,.9)';
-        c.fillText('PILOTER ▼', w / 2, y + 16);
+        c.fillStyle = tire ? 'rgba(252,211,77,.95)' : 'rgba(148,163,184,.5)';
+        c.fillText('▲ TIRER', x, y - 15);
+        c.fillStyle = tire ? 'rgba(148,163,184,.5)' : 'rgba(103,232,249,.95)';
+        c.fillText('DÉPLACER ▼', x, y + 16);
         c.restore();
     }
 
@@ -2448,7 +2464,7 @@ class Nova extends BaseGame {
                 // La consigne dit le mode RÉELLEMENT actif : annoncer « le
                 // canon tire tout seul » alors que le doigt en bas ne tire
                 // pas, c'est promettre l'inverse de ce qui va se passer.
-                sous: this.tirManuel ? 'en bas tu pilotes, plus haut ça tire' : 'le canon tire tout seul',
+                sous: this.tirManuel ? 'touche le vaisseau : il tire · dessous : il glisse' : 'le canon tire tout seul',
                 couleur: '#7dd3fc'
             },
             { dessin: (x, y, s) => this.iconeDanger(x, y, s), mot: 'ÉVITE', sous: 'les vaisseaux et leurs tirs', couleur: '#fda4af' },
