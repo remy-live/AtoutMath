@@ -1,0 +1,569 @@
+// LE DUEL DES TABLES — un Pong à deux, sur une seule tablette.
+//
+// La tablette se pose à plat entre les deux joueurs. La moitié du haut est
+// retournée à 180° : chacun lit à l'endroit, chacun a son pavé sous les
+// doigts. Le serveur choisit une table — c'est là qu'est le chambrage, « tiens,
+// je te mets du 8 » — puis la balle fait des allers-retours, et CHAQUE frappe
+// demande un calcul, des deux côtés. Elle accélère à chaque renvoi.
+//
+// Rien n'est enregistré au carnet. Deux enfants jouent sur un seul profil :
+// attribuer à l'un les réponses de l'autre fausserait ses statistiques pour de
+// bon. Un duel est un duel, il se joue et il s'oublie.
+//
+// Le multi-tactile tient en trois précautions, et elles sont toutes les trois
+// nécessaires :
+//   · on écoute `pointerdown`, jamais `click` — le clic sérialise les entrées
+//     et perd un appui quand les deux joueurs tapent au même instant ;
+//   · `touch-action: none` sur le plateau, sinon le navigateur préempte le
+//     doigt pour faire défiler ou zoomer ;
+//   · chaque moitié a ses propres écouteurs, donc deux `pointerId` différents
+//     ne se croisent jamais.
+
+import { BaseGame } from '../core/BaseGame.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, dureeDemo } from '../core/demoPointer.js';
+import {
+    creerPartie, servir, repondre, manquer, pointSuivant,
+    dureeVol, longueurReponse, tablesValides
+} from '../core/duel.js';
+
+const NOMS = ['Joueur 1', 'Joueur 2'];
+
+class Duel extends BaseGame {
+    constructor(container, isDemo, params) {
+        super(container, isDemo, params, 'duel');
+        this.partie = creerPartie({
+            tables: tablesValides(this.params.tables),
+            operations: this.params.operations === 'muldiv' ? ['mul', 'div'] : ['mul'],
+            cible: parseInt(this.params.cible) || 7
+        });
+        this.saisie = ['', ''];
+        this.prets = [false, false];
+        this.vol = null;          // { debut, duree, de, vers }
+    }
+
+    render() {
+        const p = this.partie;
+        this.container.innerHTML = `
+            <style>
+                .du-plateau {
+                    width: 100%; height: 100%;
+                    display: grid; grid-template-rows: 1fr auto 1fr;
+                    gap: 0; touch-action: none; user-select: none;
+                    -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+                    background: #0b1120; border-radius: 16px; overflow: hidden;
+                    position: relative; container-type: size; container-name: duel;
+                }
+                /* La moitié du haut est retournée : la tablette est posée à
+                   plat entre deux joueurs qui se font face. */
+                .du-cote--haut { transform: rotate(180deg); }
+                .du-cote {
+                    display: flex; flex-direction: column; align-items: center;
+                    justify-content: space-between; gap: 4px; padding: 8px 10px;
+                    min-height: 0; position: relative;
+                }
+                /* La teinte du camp passe par une VARIABLE, pas par
+                   currentColor : dans une règle qui déclare aussi sa propre
+                   couleur de texte, currentColor prend CELLE-LÀ, pas celle
+                   héritée. Les boutons de table s'affichaient donc en sombre
+                   sur sombre — invisibles. */
+                .du-cote--0 { --du-teinte: #a78bfa; color: #a78bfa;
+                              background: linear-gradient(180deg, #1e1b4b, #0b1120); }
+                .du-cote--1 { --du-teinte: #38bdf8; color: #38bdf8;
+                              background: linear-gradient(0deg, #082f49, #0b1120); }
+                .du-cote--actif::after {
+                    content: ''; position: absolute; inset: 3px; border-radius: 12px;
+                    border: 2px solid var(--du-teinte); opacity: .55; pointer-events: none;
+                    animation: du-respire 1.1s ease-in-out infinite;
+                }
+                @keyframes du-respire { 50% { opacity: .15 } }
+
+                .du-tete {
+                    display: flex; align-items: center; gap: 8px; width: 100%;
+                    justify-content: center; color: #e2e8f0; font-weight: 800;
+                    font-size: clamp(.7rem, 2.2cqh, .95rem); flex-shrink: 0;
+                }
+                .du-nom { opacity: .75; }
+                .du-pts {
+                    background: #f8fafc; color: #0b1120; border-radius: 999px;
+                    min-width: 1.9em; text-align: center; padding: 1px 10px;
+                    font-weight: 900; font-variant-numeric: tabular-nums;
+                    font-size: 1.15em;
+                }
+                .du-etat {
+                    color: #cbd5e1; font-size: clamp(.68rem, 2.1cqh, .9rem);
+                    font-weight: 700; text-align: center; min-height: 1.2em;
+                    flex-shrink: 0;
+                }
+                .du-saisie {
+                    font-weight: 900; color: #f8fafc; letter-spacing: .06em;
+                    font-size: clamp(1.4rem, 7cqh, 3rem); line-height: 1;
+                    font-variant-numeric: tabular-nums; min-height: 1em; flex-shrink: 0;
+                }
+                .du-saisie--vide { color: #475569; }
+
+                /* Un display:grid posé sur une classe l'emporte sur l'attribut
+                   hidden, qui ne vaut qu'une règle du navigateur : sans ces
+                   deux lignes, le pavé ET les tables restaient affichés en
+                   même temps, chacun sur la moitié de l'autre. */
+                .du-pave[hidden], .du-tables[hidden] { display: none; }
+                .du-pave--inerte { opacity: .3; pointer-events: none; }
+                .du-pave {
+                    display: grid; grid-template-columns: repeat(6, 1fr);
+                    grid-auto-rows: 1fr;
+                    gap: clamp(3px, 1cqh, 7px); width: 100%; max-width: 520px;
+                    flex: 1 1 auto; min-height: 0;
+                }
+                .du-touche {
+                    border: 0; border-radius: 10px; font-weight: 900;
+                    font-size: clamp(.9rem, 4.2cqh, 1.7rem);
+                    background: #1e293b; color: #f1f5f9;
+                    box-shadow: inset 0 -3px 0 rgba(0,0,0,.35);
+                    display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; touch-action: none; min-height: 0;
+                }
+                .du-touche--enfoncee { background: #475569; box-shadow: none; transform: translateY(2px); }
+                .du-touche--eff { background: #7c2d12; color: #fed7aa; }
+
+                /* Les tables du service : elles remplacent le pavé le temps du
+                   choix. Deux rangées de gros boutons, un geste, la balle part. */
+                .du-tables {
+                    display: grid; grid-template-columns: repeat(5, 1fr);
+                    grid-auto-rows: 1fr;
+                    gap: clamp(3px, 1cqh, 7px); width: 100%; max-width: 520px;
+                    flex: 1 1 auto; min-height: 0;
+                }
+                .du-table {
+                    border: 0; border-radius: 10px; font-weight: 900;
+                    font-size: clamp(.85rem, 4cqh, 1.6rem);
+                    background: var(--du-teinte); color: #0b1120;
+                    display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; touch-action: none; min-height: 0;
+                    box-shadow: inset 0 -3px 0 rgba(0,0,0,.3);
+                }
+                .du-table--enfoncee { transform: translateY(2px); box-shadow: none; }
+
+                /* Le terrain : la bande centrale que la balle traverse. */
+                .du-terrain {
+                    position: relative; height: clamp(84px, 21cqh, 230px);
+                    background: #020617; border-top: 2px solid #1e293b; border-bottom: 2px solid #1e293b;
+                    overflow: hidden; flex-shrink: 0;
+                }
+                .du-filet {
+                    position: absolute; left: 0; right: 0; top: 50%;
+                    border-top: 3px dashed #334155;
+                }
+                .du-balle {
+                    position: absolute; left: 50%; top: 0;
+                    transform: translate(-50%, -50%);
+                    display: flex; align-items: center; justify-content: center;
+                    padding: 6px 16px; border-radius: 999px;
+                    font-weight: 900; font-size: clamp(1.1rem, 6cqh, 2.2rem);
+                    background: #f8fafc; color: #0f172a;
+                    box-shadow: 0 0 26px rgba(248,250,252,.55);
+                    white-space: nowrap; opacity: 0;
+                }
+                .du-balle--vivante { opacity: 1; }
+                .du-balle--0 { box-shadow: 0 0 26px rgba(167,139,250,.85); }
+                .du-balle--1 { box-shadow: 0 0 26px rgba(56,189,248,.85); }
+
+                /* Écran de fin et écran de départ : posés SUR le terrain, pas
+                   à la place — le score reste lisible pendant l'annonce. */
+                /* L'annonce est écrite DEUX FOIS, tête-bêche. Les deux joueurs
+                   se font face : un seul texte, quel que soit son sens, serait
+                   à l'envers pour l'un des deux — et c'est précisément le
+                   moment où l'on veut que les deux lisent la même chose en
+                   même temps. */
+                .du-voile {
+                    position: absolute; inset: 0; z-index: 5;
+                    display: flex; flex-direction: column;
+                    align-items: stretch; justify-content: space-between;
+                    background: rgba(2,6,23,.92); text-align: center; padding: 6px;
+                }
+                .du-voile[hidden] { display: none; }
+                .du-annonce {
+                    flex: 1 1 0; min-height: 0;
+                    display: flex; flex-direction: column;
+                    align-items: center; justify-content: center; gap: 3px;
+                }
+                .du-annonce--haut { transform: rotate(180deg); }
+                .du-voile h4 {
+                    margin: 0; color: #fde68a; font-size: clamp(.9rem, 4.4cqh, 1.6rem); font-weight: 900;
+                }
+                .du-voile p { margin: 0; color: #cbd5e1; font-size: clamp(.65rem, 2.4cqh, .95rem); }
+                .du-rejouer {
+                    border: 0; border-radius: 999px; padding: 8px 20px; font-weight: 900;
+                    background: #22c55e; color: #04240f; cursor: pointer;
+                    font-size: clamp(.75rem, 3cqh, 1.05rem); touch-action: none;
+                }
+
+                /* PAYSAGE. Chaque moitié n'a plus que deux cents pixels de
+                   haut : un pavé sur deux rangées y donnait des touches de
+                   26 px, impossibles à viser sans regarder. On a en revanche
+                   de la largeur à revendre — le pavé passe donc sur UNE seule
+                   rangée de onze touches, deux fois plus hautes. C'est lui
+                   qu'on cherche du doigt pendant qu'on regarde la balle. */
+                @container duel (max-height: 640px) {
+                    .du-cote { padding: 4px 8px; gap: 2px; }
+                    .du-terrain { height: clamp(70px, 18cqh, 140px); }
+                    .du-pave { grid-template-columns: repeat(11, 1fr); max-width: 820px; }
+                    .du-tables { max-width: 820px; }
+                    .du-saisie { font-size: clamp(1.1rem, 8cqh, 2.1rem); }
+                    .du-tete, .du-etat { font-size: clamp(.62rem, 2.6cqh, .85rem); }
+                }
+            </style>
+            <div class="du-plateau" data-plateau>
+                ${this.cote(0)}
+                <div class="du-terrain" data-terrain>
+                    <div class="du-filet"></div>
+                    <div class="du-balle" data-balle></div>
+                    <div class="du-voile" data-voile hidden>
+                        ${[0, 1].map(i => `
+                        <div class="du-annonce ${i === 0 ? 'du-annonce--haut' : ''}">
+                            <h4 data-voile-titre></h4>
+                            <p data-voile-texte></p>
+                            <button type="button" class="du-rejouer" data-rejouer hidden>Rejouer</button>
+                        </div>`).join('')}
+                    </div>
+                </div>
+                ${this.cote(1)}
+            </div>
+        `;
+
+        this.plateau = this.container.querySelector('[data-plateau]');
+        this.terrain = this.container.querySelector('[data-terrain]');
+        this.balleEl = this.container.querySelector('[data-balle]');
+        this.voile = this.container.querySelector('[data-voile]');
+        this.cotes = [0, 1].map(i => this.container.querySelector(`[data-cote="${i}"]`));
+
+        this.brancher();
+        this.majEcran();
+        this.annoncer('LE DUEL', `Premier à ${p.cible} points. Chacun tape sur SA moitié — appuyez tous les deux pour commencer.`);
+    }
+
+    cote(i) {
+        const tables = this.partie.tables;
+        return `
+            <section class="du-cote du-cote--${i} ${i === 0 ? 'du-cote--haut' : ''}" data-cote="${i}">
+                <div class="du-tete">
+                    <span class="du-nom">${NOMS[i]}</span>
+                    <span class="du-pts" data-pts="${i}">0</span>
+                </div>
+                <div class="du-etat" data-etat="${i}"></div>
+                <div class="du-saisie du-saisie--vide" data-saisie="${i}">—</div>
+                <div class="du-pave" data-pave="${i}">
+                    ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n =>
+            `<button type="button" class="du-touche" data-touche="${n}">${n}</button>`).join('')}
+                    <button type="button" class="du-touche du-touche--eff" data-touche="eff">⌫</button>
+                </div>
+                <div class="du-tables" data-tables="${i}" hidden>
+                    ${tables.map(t => `<button type="button" class="du-table" data-table="${t}">×${t}</button>`).join('')}
+                </div>
+            </section>
+        `;
+    }
+
+    // --- Entrées ------------------------------------------------------------
+
+    brancher() {
+        this.cotes.forEach((section, i) => {
+            // Un seul écouteur par moitié, sur `pointerdown` : deux doigts
+            // posés au même instant produisent deux événements distincts, avec
+            // deux `pointerId`. C'est tout ce qu'il faut pour le jeu à deux.
+            section.addEventListener('pointerdown', (e) => {
+                const btn = e.target.closest('button');
+                if (!btn || this.isDemo) return;
+                e.preventDefault();
+                this.enfoncer(btn);
+                if (btn.dataset.table) this.choisirTable(i, Number(btn.dataset.table));
+                else if (btn.dataset.touche) this.taper(i, btn.dataset.touche);
+                else if (btn.dataset.rejouer !== undefined) this.rejouer();
+            });
+            section.addEventListener('pointerup', (e) => {
+                const btn = e.target.closest('button');
+                if (btn) btn.classList.remove('du-touche--enfoncee', 'du-table--enfoncee');
+            });
+            section.addEventListener('pointercancel', () => {
+                section.querySelectorAll('button').forEach(b =>
+                    b.classList.remove('du-touche--enfoncee', 'du-table--enfoncee'));
+            });
+        });
+        // Le voile (départ, fin de partie) est commun aux deux moitiés.
+        this.voile.addEventListener('pointerdown', (e) => {
+            const btn = e.target.closest('[data-rejouer]');
+            if (!btn || this.isDemo) return;
+            e.preventDefault();
+            this.rejouer();
+        });
+    }
+
+    enfoncer(btn) {
+        btn.classList.add(btn.dataset.table ? 'du-table--enfoncee' : 'du-touche--enfoncee');
+        setTimeout(() => btn.classList.remove('du-touche--enfoncee', 'du-table--enfoncee'), 140);
+    }
+
+    choisirTable(cote, table) {
+        const p = this.partie;
+        if (p.phase === 'point') pointSuivant(p);
+        if (p.phase !== 'service' || cote !== p.serveur) return;
+        // Le service efface l'annonce en cours : la consigne de départ ne doit
+        // pas rester posée sur le terrain pendant le premier échange.
+        clearTimeout(this.minuteurAnnonce);
+        this.voile.hidden = true;
+        servir(p, table, Math.random);
+        this.saisie = ['', ''];
+        this.lancerVol();
+        this.majEcran();
+    }
+
+    taper(cote, touche) {
+        const p = this.partie;
+        if (p.phase !== 'echange' || cote !== p.defenseur) return;
+        if (touche === 'eff') {
+            this.saisie[cote] = this.saisie[cote].slice(0, -1);
+        } else {
+            if (this.saisie[cote].length >= 4) return;
+            this.saisie[cote] += touche;
+        }
+        this.majSaisie(cote);
+        // Validation AUTOMATIQUE au bon nombre de chiffres : demander un
+        // « valider » de plus coûterait un appui à chaque frappe, et c'est ce
+        // demi-temps-là qui fait la différence entre un échange et un exercice.
+        // La touche ⌫ permet de se rattraper avant d'atteindre la longueur.
+        if (this.saisie[cote].length === longueurReponse(p)) this.valider(cote);
+    }
+
+    valider(cote) {
+        const p = this.partie;
+        const valeur = Number(this.saisie[cote]);
+        this.saisie[cote] = '';
+        const r = repondre(p, valeur, Math.random);
+        if (r.bon) {
+            this.saisie = ['', ''];
+            this.lancerVol();
+            this.majEcran();
+            return;
+        }
+        this.finDePoint(r.point);
+    }
+
+    // --- La balle -----------------------------------------------------------
+
+    lancerVol() {
+        const p = this.partie;
+        this.vol = { debut: performance.now(), duree: dureeVol(p), vers: p.defenseur };
+    }
+
+    startGameLoop() {
+        const boucle = () => {
+            if (!this.isRunning) return;
+            this.rafId = requestAnimationFrame(boucle);
+            if (this.gelDemo) return;
+            this.animerBalle();
+        };
+        this.rafId = requestAnimationFrame(boucle);
+    }
+
+    animerBalle() {
+        const p = this.partie;
+        if (p.phase !== 'echange' || !this.vol || !this.balleEl) {
+            if (this.balleEl) this.balleEl.classList.remove('du-balle--vivante');
+            return;
+        }
+        const h = this.terrain.clientHeight;
+        const k = Math.min(1, (performance.now() - this.vol.debut) / this.vol.duree);
+        // Le joueur 0 est en haut : une balle qui va vers lui remonte.
+        const y = this.vol.vers === 0 ? h * (1 - k) : h * k;
+        this.balleEl.textContent = p.balle.texte;
+        this.balleEl.classList.add('du-balle--vivante');
+        this.balleEl.classList.toggle('du-balle--0', this.vol.vers === 0);
+        this.balleEl.classList.toggle('du-balle--1', this.vol.vers === 1);
+        this.balleEl.style.transform = `translate(-50%, -50%) translateY(${y}px)`;
+        if (k >= 1 && !this.isDemo) this.finDePoint(manquer(p));
+    }
+
+    // --- Points et fin de partie --------------------------------------------
+
+    finDePoint(pt) {
+        if (!pt) return;
+        const p = this.partie;
+        this.saisie = ['', ''];
+        this.vol = null;
+        this.majEcran();
+        if (p.phase === 'fini') {
+            this.annoncer(`${NOMS[p.gagnant]} gagne !`,
+                `${p.score[0]} — ${p.score[1]}`, true);
+            return;
+        }
+        const detail = pt.raison === 'faux'
+            ? `${pt.donne} au lieu de ${pt.attendu}`
+            : `personne n'a renvoyé ${pt.attendu}`;
+        this.annoncer(`Point pour ${NOMS[pt.pour]}`,
+            `${detail} · ${pt.echanges} échange${pt.echanges > 1 ? 's' : ''} · à ${NOMS[p.serveur]} de servir`);
+        // L'annonce s'efface toute seule : personne ne doit avoir à la chasser
+        // d'un appui pour reprendre le duel.
+        clearTimeout(this.minuteurAnnonce);
+        this.minuteurAnnonce = setTimeout(() => {
+            if (!this.isRunning || this.partie.phase === 'fini') return;
+            this.voile.hidden = true;
+            pointSuivant(this.partie);
+            this.majEcran();
+        }, 2200);
+    }
+
+    annoncer(titre, texte, fin = false) {
+        if (!this.voile) return;
+        this.voile.querySelectorAll('[data-voile-titre]').forEach(el => { el.textContent = titre; });
+        this.voile.querySelectorAll('[data-voile-texte]').forEach(el => { el.textContent = texte; });
+        this.voile.querySelectorAll('[data-rejouer]').forEach(el => { el.hidden = !fin; });
+        this.voile.hidden = false;
+    }
+
+    rejouer() {
+        clearTimeout(this.minuteurAnnonce);
+        this.partie = creerPartie({
+            tables: this.partie.tables,
+            operations: this.partie.operations,
+            cible: this.partie.cible
+        });
+        this.saisie = ['', ''];
+        this.vol = null;
+        this.voile.hidden = true;
+        this.majEcran();
+    }
+
+    // --- Affichage ----------------------------------------------------------
+
+    majSaisie(i) {
+        const el = this.container.querySelector(`[data-saisie="${i}"]`);
+        if (!el) return;
+        const p = this.partie;
+        const v = this.saisie[i];
+        const monTour = p.phase === 'echange' && p.defenseur === i;
+        // Des emplacements vides montrent combien de chiffres on attend. C'est
+        // ce qui rend la validation automatique prévisible : on sait que la
+        // frappe partira au dernier chiffre, donc on peut se rattraper au ⌫
+        // avant. Sans ça, le pavé valide « par surprise ».
+        const attendu = monTour ? longueurReponse(p) : 0;
+        el.textContent = monTour ? v.padEnd(Math.max(v.length, attendu), '·') : (v || '—');
+        el.classList.toggle('du-saisie--vide', !v);
+    }
+
+    majEcran() {
+        const p = this.partie;
+        [0, 1].forEach(i => {
+            this.container.querySelector(`[data-pts="${i}"]`).textContent = String(p.score[i]);
+            const pave = this.container.querySelector(`[data-pave="${i}"]`);
+            const tables = this.container.querySelector(`[data-tables="${i}"]`);
+            const etat = this.container.querySelector(`[data-etat="${i}"]`);
+            const sert = p.phase === 'service' && p.serveur === i;
+            const defend = p.phase === 'echange' && p.defenseur === i;
+            // Le pavé reste EN PLACE quand ce n'est pas son tour, simplement
+            // éteint. Le faire disparaître laissait une moitié d'écran vide et
+            // obligeait à retrouver les touches à chaque renvoi — dans un
+            // échange qui accélère, on garde les doigts posés, comme sur une
+            // raquette. Seul le service échange le pavé contre les tables.
+            pave.hidden = sert;
+            pave.classList.toggle('du-pave--inerte', !defend);
+            tables.hidden = !sert;
+            etat.textContent = p.phase === 'fini' ? ''
+                : sert ? 'À toi de servir : choisis ta table'
+                    : defend ? `Tape le résultat !`
+                        : p.phase === 'echange' ? 'À l\'adversaire…' : '';
+            this.cotes[i].classList.toggle('du-cote--actif', sert || defend);
+            this.majSaisie(i);
+        });
+        if (p.phase !== 'echange' && this.balleEl) {
+            this.balleEl.classList.remove('du-balle--vivante');
+        }
+    }
+
+    // --- Le robot -----------------------------------------------------------
+
+    /**
+     * Le robot joue LES DEUX CÔTÉS. C'est la seule façon de montrer ce qui fait
+     * ce jeu : l'aller-retour. Un robot qui ne tiendrait qu'une raquette
+     * donnerait à croire que l'autre joueur attend son tour, alors qu'il
+     * calcule exactement autant.
+     */
+    async runDemoSequence() {
+        const cur = createDemoCursor();
+        this.demoCursor = cur;
+        const gate = createDemoGate(this.plateau);
+        this.demoGate = gate;
+        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const p = this.partie;
+        this.startGameLoop();
+
+        if (!await cur.pause(600) || !this.isRunning) return fin();
+        cur.say('Un duel à deux sur la même tablette : elle se pose à plat entre vous, et la moitié du haut est retournée pour que chacun lise à l\'endroit.', this.plateau);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        const bouton = this.container.querySelector(`[data-cote="${p.serveur}"] [data-table="${p.tables[Math.min(2, p.tables.length - 1)]}"]`);
+        cur.say('Le serveur choisit sa table. C\'est là qu\'on chambre : on attaque là où l\'autre est le moins sûr.', bouton || this.plateau);
+        if (!await cur.tap(bouton || this.plateau) || !this.isRunning) return fin();
+        servir(p, Number(bouton ? bouton.dataset.table : p.tables[0]), Math.random);
+        this.lancerVol();
+        this.majEcran();
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('La balle porte l\'opération. Celui qui la reçoit tape le résultat avant qu\'elle n\'atteigne sa ligne — le pavé valide tout seul au bon nombre de chiffres.', this.terrain);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // Six échanges : de quoi voir la balle changer de camp et accélérer.
+        for (let i = 0; i < 6; i++) {
+            if (!this.isRunning || p.phase !== 'echange') break;
+            const cote = p.defenseur;
+            const attendu = String(p.balle.reponse);
+            this.saisie[cote] = '';
+            for (const chiffre of attendu) {
+                const t = this.container.querySelector(`[data-cote="${cote}"] [data-touche="${chiffre}"]`);
+                if (t) { this.enfoncer(t); }
+                this.saisie[cote] += chiffre;
+                this.majSaisie(cote);
+                if (!await cur.pause(dureeDemo(210)) || !this.isRunning) return fin();
+            }
+            this.saisie[cote] = '';
+            repondre(p, Number(attendu), Math.random);
+            this.lancerVol();
+            this.majEcran();
+            if (i === 1) {
+                cur.say('Et voilà l\'échange : elle repart aussitôt avec un autre produit de la MÊME table, vers l\'autre joueur. Les deux calculent, sans arrêt.', this.terrain);
+            }
+            if (i === 3) {
+                cur.say('À chaque renvoi elle va un peu plus vite. Un point se joue en cinq, dix, quinze échanges — c\'est ça qui use les tables.', this.terrain);
+            }
+            if (!await cur.pause(dureeDemo(i === 1 || i === 3 ? DEMO_SPEED.between : 700)) || !this.isRunning) return fin();
+        }
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Une erreur ou une balle laissée passer, et le point va à l\'autre. Le perdant du point sert le suivant : on peut toujours revenir.', this.terrain);
+        const pt = manquer(p);
+        this.finDePoint(pt);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Rien n\'est enregistré dans le carnet : à deux sur un seul profil, on ne saurait pas à qui attribuer les réponses. Un duel se joue, et il s\'oublie.', this.plateau);
+        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        fin();
+    }
+
+    pause() {
+        clearTimeout(this.minuteurAnnonce);
+        if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+        super.pause();
+    }
+
+    destroy() {
+        clearTimeout(this.minuteurAnnonce);
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        super.destroy();
+    }
+}
+
+export function engineDuel(container, isDemo, params) {
+    const jeu = new Duel(container, isDemo, params);
+    jeu.start();
+    return jeu;
+}

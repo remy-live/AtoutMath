@@ -281,6 +281,25 @@ export const calculExercises = [
         instruction: "Trouve le code secret ! À chaque essai, le coffre répond « c'est plus » ou « c'est moins ». Astuce de champion : propose toujours le milieu de la zone possible."
     },
     {
+        id: 'calc-duel', status: STATUS.TEST, title: 'Duel des Tables (à deux)',
+        activityId: 'duel',
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], cible: 7, operations: 'mul' },
+        paramSchema: [
+            { id: 'tables', type: 'multiselect', label: 'Tables jouables', options: [2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            { id: 'cible', type: 'select', label: 'Partie en', options: [5, 7, 11], default: 7 },
+            {
+                id: 'operations', type: 'select', label: 'Opérations',
+                options: [
+                    { value: 'mul', label: 'Multiplications seules' },
+                    { value: 'muldiv', label: 'Multiplications et divisions' }
+                ],
+                default: 'mul'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
+    },
+    {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         activityId: 'demineur',
         params: { niveau: 'debutant' },

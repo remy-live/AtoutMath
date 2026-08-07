@@ -228,7 +228,8 @@ const legacy = [
     ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja'],
     ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille'],
     ['nova', 'Nova', 'nova', 'engineNova'],
-    ['demineur', 'Le Démineur', 'demineur', 'engineDemineur']
+    ['demineur', 'Le Démineur', 'demineur', 'engineDemineur'],
+    ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {
