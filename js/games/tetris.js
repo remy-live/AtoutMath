@@ -1,6 +1,6 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { state } from '../core/state.js';
-import { createDemoGate } from '../core/demoPointer.js';
+import { createDemoGate, createDemoCursor } from '../core/demoPointer.js';
 
 export function engineTetris(container, isDemo, params) {
     const game = new Tetris(container, isDemo, params);
@@ -39,10 +39,16 @@ class Tetris extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params);
         
-        this.COLS = 10;
-        this.ROWS = 20;
-        this.BLOCK_SIZE = 30;
-        
+        // Une grille de 10 × 20, c'est la mesure du Tetris d'arcade — où les
+        // cases sont des FORMES qu'on reconnaît de loin. Ici chaque case porte
+        // un CHIFFRE qu'il faut lire, et deux cents cases sur un téléphone
+        // donnaient des cases de 20 px : illisibles. 8 × 14, c'est presque
+        // deux fois moins de cases, donc des cases presque deux fois plus
+        // grandes — et il en reste largement assez pour manœuvrer.
+        this.COLS = 8;
+        this.ROWS = 14;
+        this.BLOCK_SIZE = 30;      // recalculé par dimensionner()
+
         this.grid = [];
         this.score = 0;
         this.dropCounter = 0;
@@ -65,136 +71,171 @@ class Tetris extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .tetris-wrapper {
-                    position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; 
+                    position: absolute; inset: 0; display: flex;
                     background: var(--bg-app); color: var(--text-main); overflow: hidden; touch-action: none;
                     font-family: var(--font-main, 'Outfit', sans-serif);
                 }
+                /* Trois zones, une seule grille. Le plateau prend TOUT ce qui
+                   reste : c'est lui qu'on regarde, pas les panneaux. */
                 .tetris-container {
-                    display: flex; flex-direction: row; gap: 25px; padding: 25px;
-                    background: var(--bg-panel); border: 1px solid var(--border);
-                    border-radius: 16px; box-shadow: var(--shadow-lg);
-                    max-width: 100%; max-height: 100%; align-items: stretch;
-                    box-sizing: border-box; overflow: hidden;
+                    display: grid; flex: 1; min-width: 0; min-height: 0;
+                    gap: 10px; padding: 10px; box-sizing: border-box;
+                    grid-template-columns: minmax(0, 1fr) 168px;
+                    grid-template-rows: minmax(0, 1fr) auto;
+                    grid-template-areas: "plateau infos" "plateau pad";
                 }
                 .tetris-canvas-area {
+                    grid-area: plateau; position: relative;
                     display: flex; align-items: center; justify-content: center;
-                    background: var(--bg-app); border: 2px solid var(--border); border-radius: 12px;
-                    box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);
-                    padding: 5px;
+                    min-width: 0; min-height: 0;
                 }
                 .tetris-canvas-area canvas {
-                    background-color: transparent; display: block;
-                    /* La grille se réduit pour tenir dans le plateau : à taille
-                       fixe (300x600), elle débordait de la fenêtre dès que la
-                       hauteur manquait. L'unité cqh mesure le plateau de jeu,
-                       pas la fenêtre — l'aperçu tablette du professeur est un
-                       cadre étroit dans une grande fenêtre. */
-                    max-width: 100%;
-                    max-height: calc(100cqh - 90px);
-                    width: auto; height: auto;
+                    display: block; border-radius: 12px;
+                    background: var(--bg-panel);
+                    border: 2px solid var(--border);
+                    box-shadow: inset 0 4px 12px rgba(0,0,0,.06);
                 }
-                .tetris-sidebar {
-                    display: flex; flex-direction: column; width: 150px; text-align: center; justify-content: flex-start; gap: 15px;
+                .tetris-infos {
+                    grid-area: infos; display: flex; flex-direction: column; gap: 10px;
+                    min-width: 0; min-height: 0;
                 }
                 .tetris-panel {
-                    background: var(--bg-app); padding: 15px 10px; border: 1px solid var(--border); border-radius: 12px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                    background: var(--bg-panel); padding: 10px 8px; border: 1px solid var(--border);
+                    border-radius: 12px; text-align: center; box-shadow: var(--shadow-sm);
                 }
-                .tetris-panel h2 { margin: 0 0 5px 0; font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;}
-                .tetris-value { font-size: 2.5rem; color: var(--primary); font-weight: 800; line-height: 1; }
-                #tetris-target-val { color: var(--warning); font-size: 3.5rem; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-                .tetris-mobile-controls {
-                    position: absolute; bottom: 20px; left: 0; width: 100%; display: none; justify-content: center; gap: 15px; pointer-events: none; z-index: 5;
-                }
-                .tetris-btn-ctrl {
-                    width: 60px; height: 60px; background: var(--bg-panel); border: 2px solid var(--primary); color: var(--primary);
-                    border-radius: 50%; pointer-events: auto; display: flex; align-items: center; justify-content: center; font-size: 24px;
-                    user-select: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0.9; transition: all 0.1s;
-                }
-                .tetris-btn-ctrl:active { background: var(--primary); color: #fff; transform: scale(0.95); }
-                /* Pavé de contrôle : dans la colonne, sous la cible, le
-                   suivant et le score — jouable au pouce sur tablette. */
-                .tetris-pad { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-                .tetris-pad-row { display: flex; gap: 6px; justify-content: center; }
+                .tetris-panel h2 { margin: 0 0 2px 0; font-size: .72rem; color: var(--text-muted);
+                    text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+                .tetris-value { font-size: 2rem; color: var(--primary); font-weight: 800; line-height: 1;
+                    font-variant-numeric: tabular-nums; }
+                #tetris-target-val { color: var(--warning); font-size: 2.8rem;
+                    transition: transform .2s cubic-bezier(.175,.885,.32,1.275); }
+                #tetris-next-cvs { display: block; margin: 0 auto; }
+
+                /* Le pavé. Les boutons faisaient 26 × 34 px sur téléphone —
+                   sous le seuil de ce qu'un doigt vise sans se tromper. Ils
+                   remplissent maintenant la largeur qu'on leur donne, avec un
+                   minimum de 48 px, et se répètent quand on reste appuyé. */
+                .tetris-pad { grid-area: pad; display: flex; flex-direction: column; gap: 8px; }
+                .tetris-pad-row { display: flex; gap: 8px; }
                 .tetris-pad-btn {
-                    width: 42px; height: 42px; border-radius: 10px;
+                    flex: 1; min-width: 48px; height: 52px; border-radius: 12px;
                     background: var(--bg-panel); border: 2px solid var(--primary); color: var(--primary);
-                    font-size: 1.15rem; font-weight: 900; cursor: pointer;
+                    font-size: 1.4rem; font-weight: 900; cursor: pointer;
                     display: flex; align-items: center; justify-content: center;
                     user-select: none; -webkit-user-select: none; touch-action: manipulation;
-                    box-shadow: 0 2px 0 rgba(0,0,0,.12); font-family: inherit;
+                    box-shadow: 0 3px 0 color-mix(in srgb, var(--primary) 45%, #000 10%); font-family: inherit;
                 }
-                .tetris-pad-btn:active { background: var(--primary); color: #fff; transform: translateY(2px); box-shadow: none; }
+                .tetris-pad-btn:active { background: var(--primary); color: #fff;
+                    transform: translateY(3px); box-shadow: none; }
+                .tetris-pad-btn--chute { font-size: 1.05rem; letter-spacing: .5px; }
+
                 .tetris-overlay {
-                    position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
-                    display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; border-radius: 16px;
+                    position: absolute; inset: 0; background: rgba(2,6,23,.9); backdrop-filter: blur(4px);
+                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    z-index: 10; padding: 18px; text-align: center;
                 }
                 .tetris-start-btn {
-                    background: var(--primary); color: #fff; border: none; padding: 15px 40px; border-radius: 30px; font-weight: 800;
-                    font-size: 1.5rem; cursor: pointer; margin-top: 25px; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-transform: uppercase; letter-spacing: 1px;
+                    background: var(--primary); color: #fff; border: none; padding: 14px 38px; border-radius: 30px;
+                    font-weight: 800; font-size: 1.35rem; cursor: pointer; margin-top: 22px; transition: .2s;
+                    box-shadow: 0 4px 15px rgba(0,0,0,.25); text-transform: uppercase; letter-spacing: 1px;
+                    font-family: inherit;
                 }
                 .tetris-start-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
                 .tetris-hidden { display: none !important; }
-                @media (max-width: 768px) {
-                    .tetris-wrapper { align-items: flex-start; padding-top: 10px; }
+                .tetris-regle { display: flex; align-items: center; gap: 10px; margin-top: 14px;
+                    color: #e2e8f0; font-weight: 700; font-size: 1.05rem; }
+                .tetris-demo-bloc {
+                    width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center;
+                    justify-content: center; font-weight: 900; font-size: 1.3rem; color: #1c2833;
+                }
+
+                /* Écran haut et étroit (téléphone) : la colonne de droite
+                   passe au-dessus et au-dessous du plateau, et le pavé occupe
+                   toute la largeur — là où est le pouce. */
+                @media (max-width: 720px), (max-aspect-ratio: 3/4) {
                     .tetris-container {
-                        flex-direction: row; padding: 10px; gap: 10px; width: 95%; height: auto; align-items: flex-start;
-                        box-shadow: none; border: none; background: transparent; padding-bottom: 20px; justify-content: center;
+                        grid-template-columns: minmax(0, 1fr);
+                        grid-template-rows: auto minmax(0, 1fr) auto;
+                        grid-template-areas: "infos" "plateau" "pad";
+                        gap: 8px; padding: 8px;
                     }
-                    .tetris-sidebar {
-                        width: 90px; gap: 10px;
-                    }
-                    .tetris-panel { padding: 5px; }
-                    .tetris-panel h2 { font-size: 0.7rem; }
-                    .tetris-value { font-size: 1.5rem; }
-                    .tetris-pad-btn { width: 26px; height: 34px; font-size: .95rem; }
-                    .tetris-pad-row { gap: 4px; }
+                    .tetris-infos { flex-direction: row; align-items: stretch; }
+                    .tetris-infos .tetris-panel { flex: 1; padding: 6px 4px; }
+                    .tetris-panel h2 { font-size: .62rem; }
+                    .tetris-value { font-size: 1.6rem; }
+                    #tetris-target-val { font-size: 2rem; }
+                }
+
+                /* Téléphone couché : 390 px de haut pour un plateau, trois
+                   panneaux et un pavé. La colonne de droite débordait — le
+                   score passait sous l'écran et le pavé recouvrait l'aperçu.
+                   Les panneaux se mettent côte à côte, et l'aperçu « suivant »
+                   cède : c'est le seul dont on peut se passer. */
+                @media (max-height: 520px) {
+                    .tetris-container { grid-template-columns: minmax(0, 1fr) 200px; gap: 8px; padding: 8px; }
+                    .tetris-infos { flex-direction: row; align-items: flex-start; }
+                    .tetris-infos .tetris-panel { flex: 1; padding: 6px 4px; }
+                    .tetris-panel--suivant { display: none; }
+                    .tetris-panel h2 { font-size: .6rem; }
+                    .tetris-value { font-size: 1.4rem; }
                     #tetris-target-val { font-size: 1.8rem; }
-                    .tetris-canvas-area { width: auto; flex: 1; max-width: 250px; }
-                    .tetris-canvas-area canvas { width: 100%; height: auto; max-height: 60vh; object-fit: contain; }
+                    .tetris-pad-btn { height: 46px; }
                 }
             </style>
-            
+
             <div class="tetris-wrapper" id="tetris-wrapper">
                 <div class="tetris-container">
                     <div class="tetris-canvas-area">
-                        <canvas id="tetris-cvs" width="300" height="600"></canvas>
+                        <canvas id="tetris-cvs"></canvas>
                     </div>
 
-                    <div class="tetris-sidebar">
+                    <div class="tetris-infos">
                         <div class="tetris-panel">
-                            <h2>CIBLE</h2>
+                            <h2>Cible</h2>
                             <div id="tetris-target-val" class="tetris-value">?</div>
                         </div>
-                        <div class="tetris-panel">
-                            <h2>SUIVANT</h2>
-                            <canvas id="tetris-next-cvs" width="80" height="120"></canvas>
+                        <div class="tetris-panel tetris-panel--suivant">
+                            <h2>Suivant</h2>
+                            <canvas id="tetris-next-cvs" width="64" height="112"></canvas>
                         </div>
                         <div class="tetris-panel">
-                            <h2>SCORE</h2>
+                            <h2>Score</h2>
                             <div id="tetris-score-val" class="tetris-value">0</div>
                         </div>
-                        <div class="tetris-panel tetris-pad">
-                            <button type="button" class="tetris-pad-btn tetris-pad-rot" data-pad="rot" aria-label="Tourner la pièce">⟳</button>
-                            <div class="tetris-pad-row">
-                                <button type="button" class="tetris-pad-btn" data-pad="left" aria-label="Déplacer à gauche">◀</button>
-                                <button type="button" class="tetris-pad-btn" data-pad="drop" aria-label="Faire descendre">▼</button>
-                                <button type="button" class="tetris-pad-btn" data-pad="right" aria-label="Déplacer à droite">▶</button>
-                            </div>
+                    </div>
+
+                    <div class="tetris-pad">
+                        <div class="tetris-pad-row">
+                            <button type="button" class="tetris-pad-btn" data-pad="left" aria-label="Déplacer à gauche">◀</button>
+                            <button type="button" class="tetris-pad-btn" data-pad="rot" aria-label="Tourner la pièce">⟳</button>
+                            <button type="button" class="tetris-pad-btn" data-pad="right" aria-label="Déplacer à droite">▶</button>
+                        </div>
+                        <div class="tetris-pad-row">
+                            <button type="button" class="tetris-pad-btn tetris-pad-btn--chute" data-pad="chute"
+                                    aria-label="Faire tomber la pièce d'un coup">▼ POSER ▼</button>
                         </div>
                     </div>
 
                     <div id="tetris-start-screen" class="tetris-overlay">
-                        <h1 style="font-size: 3rem; color: var(--primary); margin: 0; text-align:center;">MATH TETRIS</h1>
-                        <p style="font-size: 1.2rem; color: #fff; text-align:center; padding: 0 20px;">Combine les blocs pour faire le produit !</p>
-                        <p style="color: var(--warning); text-align:center;">Exemple: Si Cible = 12, colle 3 et 4.</p>
-                        <button class="tetris-start-btn" id="tetris-btn-play">JOUER</button>
+                        <h1 style="font-size: 2.4rem; color: var(--primary); margin: 0;">MATH TETRIS</h1>
+                        <p style="font-size: 1.05rem; color: #fff; margin: 10px 0 0;">
+                            Colle deux chiffres dont le PRODUIT fait la cible.</p>
+                        <div class="tetris-regle">
+                            <span class="tetris-demo-bloc" style="background:#48dbfb">3</span>
+                            <span style="color:#94a3b8">×</span>
+                            <span class="tetris-demo-bloc" style="background:#1dd1a1">4</span>
+                            <span style="color:#94a3b8">=</span>
+                            <span style="color: var(--warning); font-size: 1.5rem; font-weight: 900">12</span>
+                        </div>
+                        <p style="color:#94a3b8; margin: 12px 0 0; font-size: .9rem;">
+                            Glisse la pièce du doigt · tape pour la tourner</p>
+                        <button class="tetris-start-btn" id="tetris-btn-play">Jouer</button>
                     </div>
 
                     <div id="tetris-game-over" class="tetris-overlay tetris-hidden">
-                        <h1 style="color: var(--danger);">PERDU !</h1>
-                        <p style="font-size: 2rem; color: #fff;">Score Final: <span id="tetris-final-score">0</span></p>
-                        <button class="tetris-start-btn" id="tetris-btn-replay">REJOUER</button>
+                        <h1 style="color: var(--danger); margin: 0;">PERDU !</h1>
+                        <p style="font-size: 1.5rem; color: #fff;">Score : <span id="tetris-final-score">0</span></p>
+                        <button class="tetris-start-btn" id="tetris-btn-replay">Rejouer</button>
                     </div>
                 </div>
             </div>
@@ -206,69 +247,251 @@ class Tetris extends BaseGame {
         this.ctx = this.cvs.getContext('2d');
         this.nextCvs = this.container.querySelector('#tetris-next-cvs');
         this.nextCtx = this.nextCvs.getContext('2d');
-        
+
+        this.dimensionner();
+        this.onResize = () => { this.dimensionner(); this.draw(); this.drawNextPiece(); };
+        window.addEventListener('resize', this.onResize);
+        // La mise en page n'est pas encore stabilisée au montage : mesurée
+        // trop tôt, la zone de jeu rendait une taille provisoire et le plateau
+        // restait plus petit que la place réellement disponible. On observe le
+        // cadre — il change aussi quand la barre du robot apparaît.
+        if (typeof ResizeObserver === 'function') {
+            this.observateur = new ResizeObserver(() => {
+                if (!this.cvs || !this.cvs.isConnected) { this.observateur.disconnect(); return; }
+                this.onResize();
+            });
+            this.observateur.observe(this.cvs.parentElement);
+        }
+
         this.setupEventListeners();
+    }
+
+    /**
+     * La taille d'une case se DÉDUIT de la place disponible.
+     *
+     * Le canevas était figé à 300 × 600, puis rétréci par la feuille de style :
+     * sur un téléphone il finissait à 199 × 397 dans un écran de 390 × 844 —
+     * moins d'un quart de la surface, des cases de 20 px, et une grande zone
+     * vide en dessous. On mesure maintenant le cadre et on prend tout, en
+     * gardant les cases carrées et le rendu net sur les écrans à haute densité.
+     */
+    dimensionner() {
+        if (!this.cvs) return;
+        const zone = this.cvs.parentElement;
+        const dispo = zone.getBoundingClientRect();
+        const largeur = Math.max(80, dispo.width - 4);
+        const hauteur = Math.max(120, dispo.height - 4);
+        const bs = Math.max(14, Math.floor(Math.min(largeur / this.COLS, hauteur / this.ROWS)));
+        this.BLOCK_SIZE = bs;
+
+        const dpr = Math.min(3, window.devicePixelRatio || 1);
+        const w = bs * this.COLS, h = bs * this.ROWS;
+        this.cvs.width = Math.round(w * dpr);
+        this.cvs.height = Math.round(h * dpr);
+        this.cvs.style.width = w + 'px';
+        this.cvs.style.height = h + 'px';
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.vueW = w; this.vueH = h;
+
+        // L'aperçu « suivant » : petit sur un téléphone, où chaque pixel de
+        // hauteur pris ici est un pixel de moins pour le plateau.
+        if (this.nextCvs) {
+            const etroit = window.innerWidth <= 720;
+            const nw = etroit ? 40 : 60, nh = etroit ? 68 : 104;
+            this.nextCvs.width = Math.round(nw * dpr);
+            this.nextCvs.height = Math.round(nh * dpr);
+            this.nextCvs.style.width = nw + 'px';
+            this.nextCvs.style.height = nh + 'px';
+            this.nextCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            this.nextVue = { w: nw, h: nh };
+        }
     }
     
     setupEventListeners() {
         document.addEventListener('keydown', this.handleKeyDown);
-        
+
         this.container.querySelector('#tetris-btn-play').onclick = () => this.startPlay();
         this.container.querySelector('#tetris-btn-replay').onclick = () => this.startPlay();
 
-        // Pavé de la colonne : pointerdown (et non click) pour une réponse
-        // immédiate au doigt, sans le délai de synthèse du tap.
+        // Pavé : `pointerdown` (et non `click`) pour une réponse immédiate au
+        // doigt. Rester appuyé RÉPÈTE le geste — sans ça, traverser le plateau
+        // demandait sept appuis distincts.
+        this.repetitions = new Map();
+        const agir = (geste) => {
+            if (!this.gameRunning) return;
+            if (geste === 'left') this.playerMove(-1);
+            else if (geste === 'right') this.playerMove(1);
+            else if (geste === 'rot') this.playerRotate();
+            else if (geste === 'chute') this.playerHardDrop();
+        };
         this.container.querySelectorAll('[data-pad]').forEach(btn => {
+            const geste = btn.dataset.pad;
+            const relacher = () => {
+                const t = this.repetitions.get(btn);
+                if (t) { clearTimeout(t.attente); clearInterval(t.rythme); this.repetitions.delete(btn); }
+            };
             btn.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
-                if (!this.gameRunning) return;
-                const geste = btn.dataset.pad;
-                if (geste === 'left') this.playerMove(-1);
-                else if (geste === 'right') this.playerMove(1);
-                else if (geste === 'rot') this.playerRotate();
-                else if (geste === 'drop') this.playerDrop();
+                agir(geste);
+                // La chute ne se répète pas : elle pose la pièce, un appui
+                // maintenu enterrerait les trois suivantes d'affilée.
+                if (geste === 'chute') return;
+                const t = { attente: null, rythme: null };
+                t.attente = setTimeout(() => {
+                    t.rythme = setInterval(() => agir(geste), geste === 'rot' ? 260 : 90);
+                }, 300);
+                this.repetitions.set(btn, t);
             });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+                btn.addEventListener(ev, relacher));
         });
 
-        // Canvas touch/click controls
+        // Le plateau se joue au DOIGT : on fait glisser la pièce colonne par
+        // colonne, on tape pour la tourner, on balaie vers le bas pour la
+        // poser. Avant, chaque appui était interprété selon l'endroit touché
+        // par rapport à la pièce — il fallait deviner des zones invisibles.
+        let geste = null;
         this.cvs.addEventListener('pointerdown', (e) => {
             if (!this.gameRunning) return;
             e.preventDefault();
-            const rect = this.cvs.getBoundingClientRect();
-            const scaleX = this.cvs.width / rect.width;
-            const scaleY = this.cvs.height / rect.height;
-            const clickX = (e.clientX - rect.left) * scaleX;
-            const clickY = (e.clientY - rect.top) * scaleY;
-            
-            const p = this.player;
-            if(!p || !p.matrix) return;
-            const pCenterX = (p.pos.x + p.matrix[0].length / 2) * this.BLOCK_SIZE;
-            const pBottomY = (p.pos.y + p.matrix.length) * this.BLOCK_SIZE;
-            
-            if (clickY > pBottomY + this.BLOCK_SIZE) {
-                this.playerDrop();
-            } else if (clickX < pCenterX - this.BLOCK_SIZE) {
-                this.playerMove(-1);
-            } else if (clickX > pCenterX + this.BLOCK_SIZE) {
-                this.playerMove(1);
-            } else {
-                this.playerRotate();
+            this.cvs.setPointerCapture(e.pointerId);
+            geste = { x0: e.clientX, y0: e.clientY, colonne0: this.player.pos.x, bouge: 0, t0: performance.now() };
+        });
+        this.cvs.addEventListener('pointermove', (e) => {
+            if (!geste || !this.gameRunning) return;
+            const dx = e.clientX - geste.x0, dy = e.clientY - geste.y0;
+            geste.bouge = Math.max(geste.bouge, Math.hypot(dx, dy));
+            const pas = Math.round(dx / this.BLOCK_SIZE);
+            const vise = geste.colonne0 + pas;
+            // On vise une COLONNE absolue : le doigt et la pièce restent
+            // solidaires, même si un mur a bloqué un déplacement en route.
+            while (this.player.pos.x < vise && this.deplacementPossible(1)) this.player.pos.x++;
+            while (this.player.pos.x > vise && this.deplacementPossible(-1)) this.player.pos.x--;
+            if (dy > this.BLOCK_SIZE * 2.2 && Math.abs(dx) < this.BLOCK_SIZE * 1.5) {
+                geste = null;
+                this.playerHardDrop();
             }
         });
+        const fin = (e) => {
+            if (!geste) return;
+            const bref = performance.now() - geste.t0 < 350;
+            if (bref && geste.bouge < 10 && this.gameRunning) this.playerRotate();
+            geste = null;
+            if (e && e.pointerId != null && this.cvs.hasPointerCapture(e.pointerId)) {
+                this.cvs.releasePointerCapture(e.pointerId);
+            }
+        };
+        this.cvs.addEventListener('pointerup', fin);
+        this.cvs.addEventListener('pointercancel', fin);
     }
 
+    /** Le déplacement d'une colonne est-il libre ? (sans le jouer) */
+    deplacementPossible(dir) {
+        this.player.pos.x += dir;
+        const bloque = this.collide(this.grid, this.player);
+        this.player.pos.x -= dir;
+        return !bloque;
+    }
+
+    /** La pièce tombe d'un coup à sa place définitive. */
+    playerHardDrop() {
+        if (!this.player.matrix) return;
+        let chute = 0;
+        while (!this.collide(this.grid, this.player)) { this.player.pos.y++; chute++; }
+        this.player.pos.y--;
+        if (chute > 1) this.score += chute - 1;
+        this.merge(this.grid, this.player);
+        this.checkMathMatches();
+        this.playerReset();
+        this.dropCounter = 0;
+    }
+
+    /**
+     * La démonstration jouait AU HASARD : trois mouvements tirés à pile ou
+     * face toutes les 400 ms, sans une phrase. On y voyait des blocs tomber
+     * sans jamais comprendre pourquoi certains disparaissaient — c'est-à-dire
+     * exactement ce qu'on cherche à expliquer.
+     *
+     * Le robot cherche maintenant un VRAI coup — une colonne où le chiffre du
+     * bas rencontrera un voisin qui complète la cible — et dit à voix haute le
+     * calcul qu'il vient de faire.
+     */
     runDemoSequence() {
         this.demoGate = createDemoGate(this.container);
+        this.demoCursor = createDemoCursor();
         this.startGameLoop();
         this.startPlay();
-        this.dropInterval = 400; // fast
+        this.dropInterval = 900;
+        this.jouerDemo();
+    }
+
+    async jouerDemo() {
+        const cur = this.demoCursor, gate = this.demoGate;
+        const fin = () => { cur.hideBubble(); if (this.demoInterval) clearInterval(this.demoInterval); };
+        const vivant = () => this.gameRunning && !this.destroyed;
+
+        if (!await cur.pause(600) || !vivant()) return fin();
+        if (!await gate.waitTurn() || !vivant()) return fin();
+        cur.say(`La CIBLE, en haut : ${this.currentTarget}. Je dois coller côte à côte deux chiffres dont le PRODUIT fait ${this.currentTarget}.`, this.container);
+        if (!await cur.pause(2800) || !vivant()) return fin();
+
+        if (!await gate.waitTurn() || !vivant()) return fin();
+        cur.say('Le bloc pâle en bas montre où la pièce va se poser. Je n\'ai qu\'à choisir la colonne, et à la faire tomber.', this.container);
+        if (!await cur.pause(2600) || !vivant()) return fin();
+
+        // À partir d'ici le robot joue, et commente chaque coup réfléchi.
+        if (!await gate.waitTurn() || !vivant()) return fin();
+        cur.say('À moi de jouer : je cherche, pour le chiffre du bas de ma pièce, un voisin qui complète la cible.', this.container);
         this.demoInterval = setInterval(() => {
-            if(!this.gameRunning || this.demoGate.paused) return;
-            const r = Math.random();
-            if(r < 0.3) this.playerMove(-1);
-            else if(r < 0.6) this.playerMove(1);
-            else if(r < 0.8) this.playerRotate();
-        }, 400);
+            if (!this.gameRunning || this.gelDemo) return;
+            const coup = this.meilleurCoup();
+            if (!coup) return;
+            if (this.player.pos.x < coup.colonne) this.playerMove(1);
+            else if (this.player.pos.x > coup.colonne) this.playerMove(-1);
+            else {
+                if (coup.calcul) cur.say(`${coup.calcul} = ${this.currentTarget} : je pose là.`, this.container);
+                this.playerHardDrop();
+            }
+        }, 420);
+        if (!await cur.pause(9000) || !vivant()) return fin();
+
+        if (!await gate.waitTurn() || !vivant()) return fin();
+        cur.say('Deux blocs qui font la cible disparaissent, la pile retombe et une nouvelle cible arrive. C\'est tout le jeu.', this.container);
+        if (!await cur.pause(3000) || !vivant()) return fin();
+        fin();
+    }
+
+    /**
+     * Le coup que joue le robot : pour chaque colonne, on regarde où la pièce
+     * se poserait et si le chiffre du bas y trouverait un voisin — dessous ou
+     * sur les côtés — dont le produit fait la cible. À défaut, la pile la plus
+     * basse, pour ne pas s'enterrer.
+     */
+    meilleurCoup() {
+        const m = this.player.matrix;
+        if (!m) return null;
+        const bas = m[m.length - 1][0] || m[m.length - 1][m[0].length - 1];
+        let repli = { colonne: 0, hauteur: this.ROWS + 1 }, trouve = null;
+
+        for (let x = 0; x <= this.COLS - m[0].length; x++) {
+            let y = 0;
+            while (!this.collide(this.grid, { matrix: m, pos: { x, y: y + 1 } }) && y < this.ROWS) y++;
+            if (this.collide(this.grid, { matrix: m, pos: { x, y } })) continue;
+            const ligne = y + m.length - 1;          // ligne du chiffre du bas
+            const voisins = [
+                this.grid[ligne + 1] ? this.grid[ligne + 1][x] : 0,
+                this.grid[ligne] ? this.grid[ligne][x - 1] : 0,
+                this.grid[ligne] ? this.grid[ligne][x + 1] : 0
+            ];
+            const v = voisins.find(n => n && n * bas === this.currentTarget);
+            if (v && !trouve) trouve = { colonne: x, calcul: `${bas} × ${v}` };
+            if (ligne < repli.hauteur) repli = { colonne: x, hauteur: ligne };
+        }
+        // La pièce se suffit à elle-même : ses deux chiffres font la cible.
+        if (!trouve && m.length === 2 && m[0][0] * m[1][0] === this.currentTarget) {
+            return { colonne: repli.colonne, calcul: `${m[0][0]} × ${m[1][0]}` };
+        }
+        return trouve || { colonne: repli.colonne, calcul: null };
     }
 
     startPlay() {
@@ -438,14 +661,22 @@ class Tetris extends BaseGame {
         else if (event.keyCode === 39) this.playerMove(1);
         else if (event.keyCode === 40) { event.preventDefault(); this.playerDrop(); }
         else if (event.keyCode === 38) { event.preventDefault(); this.playerRotate(); }
+        else if (event.keyCode === 32) { event.preventDefault(); this.playerHardDrop(); }
     }
 
     destroy() {
 
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        if (this.demoCursor) { this.demoCursor.hideBubble(); this.demoCursor = null; }
         this.gameRunning = false;
         super.destroy();
         document.removeEventListener('keydown', this.handleKeyDown);
+        if (this.onResize) window.removeEventListener('resize', this.onResize);
+        if (this.observateur) { this.observateur.disconnect(); this.observateur = null; }
+        if (this.repetitions) {
+            this.repetitions.forEach(t => { clearTimeout(t.attente); clearInterval(t.rythme); });
+            this.repetitions.clear();
+        }
         if(this.rafId) cancelAnimationFrame(this.rafId);
         if(this.demoInterval) clearInterval(this.demoInterval);
     }
@@ -536,73 +767,95 @@ class Tetris extends BaseGame {
         }
     }
 
-    drawMatrix(matrix, offset, context) {
+    drawMatrix(matrix, offset, context, bs = this.BLOCK_SIZE) {
+        const police = getComputedStyle(document.body).fontFamily;
         matrix.forEach((row, y) => {
             row.forEach((value, x) => {
                 if (value !== 0) {
-                    const bx = (x + offset.x) * this.BLOCK_SIZE;
-                    const by = (y + offset.y) * this.BLOCK_SIZE;
-                    const bs = this.BLOCK_SIZE;
+                    const bx = (x + offset.x) * bs;
+                    const by = (y + offset.y) * bs;
+                    const r = Math.max(3, bs * 0.18);
 
-                    // Draw rounded block
                     context.fillStyle = COLORS[value];
-                    drawRoundRect(context, bx + 1, by + 1, bs - 2, bs - 2, 6);
-                    context.fill();
-                    
-                    // Subtle highlight on top
-                    context.fillStyle = 'rgba(255,255,255,0.2)';
-                    drawRoundRect(context, bx + 1, by + 1, bs - 2, bs/3, 6);
+                    drawRoundRect(context, bx + 1, by + 1, bs - 2, bs - 2, r);
                     context.fill();
 
-                    // Subtle shadow on bottom
+                    context.fillStyle = 'rgba(255,255,255,0.22)';
+                    drawRoundRect(context, bx + 1, by + 1, bs - 2, bs / 3, r);
+                    context.fill();
+
                     context.fillStyle = 'rgba(0,0,0,0.1)';
-                    drawRoundRect(context, bx + 1, by + bs - bs/3 - 1, bs - 2, bs/3, 6);
+                    drawRoundRect(context, bx + 1, by + bs - bs / 3 - 1, bs - 2, bs / 3, r);
                     context.fill();
 
-                    // Text
-                    context.fillStyle = '#1c2833'; // Dark readable text
-                    context.font = '900 20px ' + getComputedStyle(document.body).fontFamily;
+                    // Le chiffre suit la case : figé à 20 px, il devenait
+                    // minuscule dans une grande case et débordait d'une petite.
+                    context.fillStyle = '#1c2833';
+                    context.font = `900 ${Math.round(bs * 0.6)}px ${police}`;
                     context.textAlign = 'center';
                     context.textBaseline = 'middle';
-                    context.fillText(
-                        value,
-                        bx + bs/2,
-                        by + bs/2 + 2
-                    );
+                    context.fillText(value, bx + bs / 2, by + bs / 2 + bs * 0.04);
                 }
             });
         });
     }
-    
+
     drawNextPiece() {
-        if(!this.nextCtx) return;
-        this.nextCtx.clearRect(0,0, this.nextCvs.width, this.nextCvs.height);
-        if (this.nextPieceMatrix) {
-            const offsetX = (this.nextCvs.width/this.BLOCK_SIZE - this.nextPieceMatrix[0].length) / 2;
-            const offsetY = (this.nextCvs.height/this.BLOCK_SIZE - this.nextPieceMatrix.length) / 2;
-            this.drawMatrix(this.nextPieceMatrix, {x: offsetX, y: offsetY}, this.nextCtx);
-        }
+        if (!this.nextCtx) return;
+        const vue = this.nextVue || { w: this.nextCvs.width, h: this.nextCvs.height };
+        this.nextCtx.clearRect(0, 0, vue.w, vue.h);
+        if (!this.nextPieceMatrix) return;
+        const m = this.nextPieceMatrix;
+        // L'aperçu a sa PROPRE échelle : il partageait celle du plateau, si
+        // bien qu'une grande case sur grand écran le faisait déborder de son
+        // panneau.
+        const bs = Math.floor(Math.min(vue.w / (m[0].length + 0.4), vue.h / (m.length + 0.4)));
+        const ox = (vue.w / bs - m[0].length) / 2;
+        const oy = (vue.h / bs - m.length) / 2;
+        this.drawMatrix(m, { x: ox, y: oy }, this.nextCtx, bs);
+    }
+
+    /** Où la pièce se posera si on la lâche : le repère qui rend le jeu jouable. */
+    positionFantome() {
+        if (!this.player.matrix) return null;
+        const y0 = this.player.pos.y;
+        let y = y0;
+        while (!this.collide(this.grid, { matrix: this.player.matrix, pos: { x: this.player.pos.x, y: y + 1 } })) y++;
+        return y === y0 ? null : { x: this.player.pos.x, y };
     }
 
     draw() {
-        if(!this.ctx) return;
-        this.ctx.clearRect(0, 0, this.cvs.width, this.cvs.height);
+        if (!this.ctx) return;
+        const bs = this.BLOCK_SIZE, W = bs * this.COLS, H = bs * this.ROWS;
+        this.ctx.clearRect(0, 0, W, H);
 
-        // Draw faint grid background
-        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.03)';
+        this.ctx.strokeStyle = 'rgba(100, 116, 139, 0.14)';
         this.ctx.lineWidth = 1;
-        for(let i=0; i<=this.COLS; i++) {
-            this.ctx.beginPath(); this.ctx.moveTo(i*this.BLOCK_SIZE, 0); this.ctx.lineTo(i*this.BLOCK_SIZE, this.cvs.height); this.ctx.stroke();
+        for (let i = 0; i <= this.COLS; i++) {
+            this.ctx.beginPath(); this.ctx.moveTo(i * bs, 0); this.ctx.lineTo(i * bs, H); this.ctx.stroke();
         }
-        for(let i=0; i<=this.ROWS; i++) {
-            this.ctx.beginPath(); this.ctx.moveTo(0, i*this.BLOCK_SIZE); this.ctx.lineTo(this.cvs.width, i*this.BLOCK_SIZE); this.ctx.stroke();
+        for (let i = 0; i <= this.ROWS; i++) {
+            this.ctx.beginPath(); this.ctx.moveTo(0, i * bs); this.ctx.lineTo(W, i * bs); this.ctx.stroke();
         }
 
-        this.drawMatrix(this.grid, {x: 0, y: 0}, this.ctx);
+        this.drawMatrix(this.grid, { x: 0, y: 0 }, this.ctx);
+
         if (this.player.matrix) {
+            const f = this.positionFantome();
+            if (f) {
+                this.ctx.save();
+                this.ctx.globalAlpha = 0.26;
+                this.player.matrix.forEach((row, y) => row.forEach((v, x) => {
+                    if (!v) return;
+                    this.ctx.fillStyle = COLORS[v];
+                    drawRoundRect(this.ctx, (x + f.x) * bs + 2, (y + f.y) * bs + 2, bs - 4, bs - 4, Math.max(3, bs * 0.18));
+                    this.ctx.fill();
+                }));
+                this.ctx.restore();
+            }
             this.drawMatrix(this.player.matrix, this.player.pos, this.ctx);
         }
-        
+
         // Draw & update particles
         for(let i = this.particles.length-1; i>=0; i--) {
             let p = this.particles[i];
