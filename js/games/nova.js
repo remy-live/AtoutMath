@@ -442,31 +442,61 @@ class Nova extends BaseGame {
      *   - PONDEUSE (rose)    : grosse, molle — mais elle se SCINDE en deux
      *                          petits chasseurs quand on la crève. La tuer au
      *                          mauvais moment, c'est s'en créer deux.
+     *   - BALISE (turquoise) : lente, inoffensive, elle ne fait que descendre.
+     *                          C'est la CIBLE D'ENTRAÎNEMENT : elle donne le
+     *                          plaisir de toucher sans punir, et elle lâche
+     *                          souvent un bonus. Un premier secteur uniquement
+     *                          peuplé de menaces n'apprend pas à viser.
+     *   - MINEUR (ambre)     : ne tire pas — il SÈME. Ses mines restent en
+     *                          place, clignotent, puis éclatent. Le seul
+     *                          appareil qui rend dangereux l'endroit où l'on
+     *                          se tient, et non celui où il est.
+     *   - SPECTRE (indigo)   : il apparaît et DISPARAÎT. Translucide, les
+     *                          tirs le traversent ; solide, il encaisse. On
+     *                          attend le bon moment au lieu d'arroser.
      */
     lancerVague() {
         const w = this.canvas.width;
-        const genres = ['chasseur'];
-        if (this.niveau >= 1) genres.push('plongeur', 'intercepteur');
-        if (this.niveau >= 2) genres.push('blinde', 'tireur');
+        // Le secteur 1 n'avait qu'UN genre d'appareil : rouge, tir simple, la
+        // même chose pendant deux minutes. Il en a maintenant trois — de quoi
+        // apprendre à lire une silhouette — et les familles exigeantes
+        // arrivent ensuite.
+        const genres = ['chasseur', 'chasseur', 'balise', 'intercepteur'];
+        if (this.niveau >= 1) genres.push('plongeur', 'mineur');
+        if (this.niveau >= 2) genres.push('blinde', 'tireur', 'spectre');
         if (this.niveau >= 3) genres.push('pondeuse', 'chasseur');   // densité et nouveauté
         const genre = genres[Math.floor(Math.random() * genres.length)];
 
         const figures = ['descente', 'zigzag', 'boucle', 'carrousel', 'pique', 'serpent'];
         const figure = genre === 'blinde' ? 'descente'
             : genre === 'tireur' ? 'zigzag'
-                : figures[Math.floor(Math.random() * figures.length)];
+                // La balise ne fait rien de brusque : elle descend, tout
+                // droit ou en balancement. Une cible d'entraînement qui pique
+                // sur le joueur n'entraîne plus rien.
+                : genre === 'balise' ? (Math.random() < 0.5 ? 'descente' : 'zigzag')
+                    : genre === 'mineur' ? 'zigzag'
+                        : figures[Math.floor(Math.random() * figures.length)];
         const n = genre === 'blinde' ? 2
             : genre === 'pondeuse' ? 2
-                : genre === 'intercepteur' ? 2 + Math.floor(Math.random() * 2)
-                    : genre === 'plongeur' ? 2 + Math.floor(this.niveau / 2)
-                        : figure === 'carrousel' ? 6 : 3 + Math.floor(Math.random() * 3);
-        const taille = (genre === 'blinde' ? 1.5 : genre === 'pondeuse' ? 1.35 : 1)
+                : genre === 'mineur' ? 1 + Math.floor(this.niveau / 2)
+                    : genre === 'spectre' ? 2
+                        : genre === 'balise' ? 3 + Math.floor(Math.random() * 3)
+                            : genre === 'intercepteur' ? 2 + Math.floor(Math.random() * 2)
+                                : genre === 'plongeur' ? 2 + Math.floor(this.niveau / 2)
+                                    : figure === 'carrousel' ? 6 : 3 + Math.floor(Math.random() * 3);
+        const taille = (genre === 'blinde' ? 1.5 : genre === 'pondeuse' ? 1.35
+            : genre === 'balise' ? 0.85 : genre === 'mineur' ? 1.15 : 1)
             * Math.max(22, Math.min(34, w * 0.075));
         const marge = taille * 1.8;
         const large = w - 2 * marge;
         const sens = Math.random() < 0.5 ? 1 : -1;
-        const vitesse = (genre === 'blinde' ? 0.45 : genre === 'pondeuse' ? 0.5 : 0.9)
-            + this.niveau * 0.1;
+        // La vitesse de base descend de 0,9 à 0,62 : au premier secteur, les
+        // appareils traversaient l'écran avant qu'on ait fini de lire la
+        // question du mur. Elle remonte plus franchement ensuite (0,14 par
+        // secteur au lieu de 0,10), pour que la difficulté monte quand même.
+        const vitesse = (genre === 'blinde' ? 0.42 : genre === 'pondeuse' ? 0.46
+            : genre === 'balise' ? 0.5 : genre === 'mineur' ? 0.5 : 0.62)
+            + this.niveau * 0.14;
         const base = marge + Math.random() * large;
         // L'intercepteur entre par un CÔTÉ, à une hauteur tirée dans la moitié
         // basse : c'est là qu'il gêne, juste au-dessus du vaisseau.
@@ -482,12 +512,19 @@ class Nova extends BaseGame {
                 t: -retard,
                 pv: genre === 'blinde' ? 4 + this.niveau
                     : genre === 'pondeuse' ? 3 + Math.floor(this.niveau / 2)
-                        : 1 + Math.floor(this.niveau / 2),
+                        : genre === 'balise' ? 1
+                            : genre === 'spectre' ? 2 + Math.floor(this.niveau / 2)
+                                : 1 + Math.floor(this.niveau / 2),
                 vitesse,
                 x: base, y: -taille,
                 couloir: couloir + i * taille * 1.6,
                 mode: 'vol',                       // le plongeur passera en 'pique'
                 tir: 70 + Math.floor(Math.random() * 150),
+                // Le mineur sème à intervalle régulier ; le spectre bat entre
+                // solide et translucide, décalé d'un appareil à l'autre pour
+                // qu'ils ne clignotent pas tous ensemble.
+                pose: 90 + i * 30,
+                phase: i * 40,
                 vivant: true
             });
         }
@@ -522,7 +559,7 @@ class Nova extends BaseGame {
         // il barre le couloir au lieu de le mitrailler. On l'esquive par le
         // haut ou par le bas, pas en reculant.
         if (e.genre === 'intercepteur') {
-            const v = 5.5 + this.niveau * 0.4;
+            const v = 4 + this.niveau * 0.55;
             e.x = (e.sens > 0 ? -e.taille : w + e.taille) + e.sens * v * e.t;
             e.y = e.couloir + Math.sin(e.t / 22) * 14;
             if (e.x < -e.taille * 2 || e.x > w + e.taille * 2) e.vivant = false;
@@ -540,7 +577,7 @@ class Nova extends BaseGame {
             } else if (e.mode === 'visee') {
                 if (--e.pause <= 0) e.mode = 'pique';
             } else {
-                e.y += 7 + this.niveau * 0.5;
+                e.y += 5.6 + this.niveau * 0.6;
             }
             return;
         }
@@ -1270,7 +1307,13 @@ class Nova extends BaseGame {
         }
 
         const calme = !this.porte && !this.convoi && !this.boss && !this.faille;
-        const entreVagues = Math.max(78, 150 - this.niveau * 9);
+        // La MONTÉE EN CHARGE. Le premier secteur envoyait une vague toutes
+        // les 2,5 s dès la première seconde : on n'a pas le temps de
+        // comprendre qu'on pilote avant d'avoir à esquiver. Les vagues sont
+        // plus espacées au début et se resserrent secteur après secteur, et
+        // les vingt premières secondes du secteur 1 laissent respirer.
+        const debutDouceur = this.niveau === 0 && this.frame < 1200 ? 1.45 : 1;
+        const entreVagues = Math.round(Math.max(84, 205 - this.niveau * 20) * debutDouceur);
         if (calme && this.frame % entreVagues === 0) this.lancerVague();
         // L'anneau de la Faille passe UNE fois par secteur, à mi-chemin entre
         // deux épreuves : jamais pendant un mur ou un duel, où l'écran est
@@ -1345,7 +1388,10 @@ class Nova extends BaseGame {
         if (this.tirsEnnemis.length > 46) return;   // l'écran doit rester lisible
         const dx = this.vaisseau.x - e.x, dy = this.vaisseau.y - e.y;
         const a = Math.atan2(dy, dx) + ecart;
-        const v = 2.5 + this.niveau * 0.22;
+        // Les projectiles partaient à 2,5 dès le premier secteur : à cette
+        // vitesse, sur un téléphone, ils arrivent avant la décision. On
+        // commence plus lentement, on rattrape ensuite.
+        const v = 2.0 + this.niveau * 0.3;
         this.tirsEnnemis.push({
             x: e.x, y: e.y + e.taille / 2,
             vx: Math.cos(a) * v, vy: Math.sin(a) * v
@@ -1359,10 +1405,32 @@ class Nova extends BaseGame {
             if (e.t < 0) return;              // il attend son tour dans le serpent
             this.placerEnnemi(e);
 
+            // Le SPECTRE bat entre solide et translucide. Translucide, les
+            // tirs le traversent : on attend au lieu d'arroser.
+            if (e.genre === 'spectre') {
+                e.solide = ((e.t + e.phase) % 150) < 85;
+            }
+
+            // Le MINEUR ne tire pas : il SÈME. Une mine reste où elle est
+            // posée, clignote, puis éclate. C'est le seul appareil qui rend
+            // dangereux l'endroit où l'on se tient, et non celui où il est.
+            if (e.genre === 'mineur' && e.y > 0 && e.y < h * 0.62
+                && --e.pose <= 0 && !this.porte && !this.convoi && !this.boss) {
+                e.pose = 110 + Math.floor(Math.random() * 60);
+                if (this.tirsEnnemis.length < 40) {
+                    this.tirsEnnemis.push({
+                        x: e.x, y: e.y + e.taille / 2, vx: 0, vy: 0,
+                        mine: 150 + Math.floor(Math.random() * 40), r: 9
+                    });
+                }
+            }
+
             // Chaque genre a son tir : c'est la personnalité de l'appareil.
-            // (Le plongeur, lui, EST son tir.)
+            // (Le plongeur, lui, EST son tir ; la balise ne tire jamais.)
             if (--e.tir <= 0 && e.y > 0 && e.y < h * 0.7
-                && !this.porte && !this.convoi && !this.boss && e.genre !== 'intercepteur') {
+                && !this.porte && !this.convoi && !this.boss
+                && e.genre !== 'intercepteur' && e.genre !== 'balise'
+                && e.genre !== 'mineur' && e.genre !== 'spectre') {
                 if (e.genre === 'blinde') {
                     e.tir = 120 + Math.floor(Math.random() * 90);
                     [-0.35, 0, 0.35].forEach(a => this.tirEnnemi(e, a));
@@ -1391,19 +1459,25 @@ class Nova extends BaseGame {
             t.y -= t.v;
             for (const e of this.ennemis) {
                 if (!e.vivant || t.mort) continue;
+                // Le spectre translucide laisse passer les tirs.
+                if (e.genre === 'spectre' && !e.solide) continue;
                 if (Math.abs(t.x - e.x) < e.taille * 0.6 && Math.abs(t.y - e.y) < e.taille * 0.6) {
                     t.mort = true;
                     if (--e.pv <= 0) {
                         e.vivant = false;
                         this.gagner(e.genre === 'blinde' ? 40 : e.genre === 'pondeuse' ? 35
-                            : e.genre === 'tireur' ? 25 : e.genre === 'intercepteur' ? 30 : 15);
+                            : e.genre === 'spectre' ? 32
+                                : e.genre === 'tireur' ? 25 : e.genre === 'intercepteur' ? 30
+                                    : e.genre === 'mineur' ? 22 : e.genre === 'balise' ? 10 : 15);
                         this.exploser(e.x, e.y, '#f59e0b', 18);
                         // La pondeuse crevée se scinde : deux petits partent
                         // en biais. Elle se tue tôt, ou pas au-dessus de soi.
                         if (e.genre === 'pondeuse' && !e.eclat) this.scinder(e);
                         // Le blindé lâche TOUJOURS quelque chose : il coûte
-                        // cher à percer, il doit payer.
-                        if (e.genre === 'blinde' || Math.random() < 0.13) this.lacherBonus(e.x, e.y);
+                        // cher à percer, il doit payer. La balise, souvent :
+                        // elle est là pour récompenser un tir juste.
+                        if (e.genre === 'blinde' || (e.genre === 'balise' && Math.random() < 0.4)
+                            || Math.random() < 0.13) this.lacherBonus(e.x, e.y);
                     } else this.exploser(e.x, e.y, '#fde68a', 5);
                 }
             }
@@ -1424,8 +1498,24 @@ class Nova extends BaseGame {
     majTirs() {
         const h = this.canvas.height, v = this.vaisseau;
         this.tirsEnnemis.forEach(t => {
-            t.x += t.vx || 0; t.y += t.vy != null ? t.vy : t.v;
-            if (Math.abs(t.x - v.x) < 15 && Math.abs(t.y - v.y) < 17) {
+            // Une MINE ne bouge pas. Elle compte, clignote de plus en plus
+            // vite, puis crache quatre éclats en croix. On a tout le temps de
+            // s'en écarter : ce n'est pas un piège, c'est un espace confisqué.
+            if (t.mine != null) {
+                if (--t.mine <= 0) {
+                    t.mort = true;
+                    this.exploser(t.x, t.y, '#fbbf24', 14);
+                    [-1, 1].forEach(sx => [-1, 1].forEach(sy => {
+                        if (this.tirsEnnemis.length < 46) {
+                            this.tirsEnnemis.push({ x: t.x, y: t.y, vx: sx * 1.9, vy: sy * 1.9 });
+                        }
+                    }));
+                }
+            } else {
+                t.x += t.vx || 0; t.y += t.vy != null ? t.vy : t.v;
+            }
+            const marge = t.mine != null ? 20 : 15;
+            if (Math.abs(t.x - v.x) < marge && Math.abs(t.y - v.y) < marge + 2) {
                 t.mort = true;
                 this.exploser(v.x, v.y, '#f87171', 14);
                 this.secousse = 16;
@@ -1617,8 +1707,35 @@ class Nova extends BaseGame {
 
         c.fillStyle = '#fde047';
         this.tirs.forEach(t => { c.fillRect(t.x - 1.6, t.y - 13, 3.2, 15); });
-        c.fillStyle = '#fb7185';
-        this.tirsEnnemis.forEach(t => { c.beginPath(); c.arc(t.x, t.y, 4, 0, Math.PI * 2); c.fill(); });
+        this.tirsEnnemis.forEach(t => {
+            if (t.mine != null) {
+                // La mine bat de plus en plus vite à mesure qu'elle approche
+                // de son terme : le compte à rebours se VOIT.
+                const proche = Math.max(0, 1 - t.mine / 150);
+                const bat = Math.floor(this.frame / Math.max(3, 14 - proche * 11)) % 2 === 0;
+                c.save();
+                c.strokeStyle = 'rgba(251,191,36,.45)'; c.lineWidth = 2;
+                c.setLineDash([4, 5]);
+                c.beginPath(); c.arc(t.x, t.y, 20 + proche * 6, 0, Math.PI * 2); c.stroke();
+                c.setLineDash([]);
+                c.fillStyle = bat ? '#fbbf24' : '#92400e';
+                c.beginPath(); c.arc(t.x, t.y, t.r || 9, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = '#fde68a'; c.lineWidth = 2;
+                c.beginPath(); c.arc(t.x, t.y, t.r || 9, 0, Math.PI * 2); c.stroke();
+                // Quatre picots : on lit une mine, pas une bille.
+                [0, 1, 2, 3].forEach(i => {
+                    const a = i * Math.PI / 2 + Math.PI / 4, r = (t.r || 9);
+                    c.beginPath();
+                    c.moveTo(t.x + Math.cos(a) * r, t.y + Math.sin(a) * r);
+                    c.lineTo(t.x + Math.cos(a) * (r + 5), t.y + Math.sin(a) * (r + 5));
+                    c.stroke();
+                });
+                c.restore();
+            } else {
+                c.fillStyle = '#fb7185';
+                c.beginPath(); c.arc(t.x, t.y, 4, 0, Math.PI * 2); c.fill();
+            }
+        });
 
         if (this.rayon > 0) this.dessinerRayon();
         if (this.portail) this.dessinerPortail();
@@ -1729,6 +1846,52 @@ class Nova extends BaseGame {
             });
             c.strokeStyle = 'rgba(251,207,232,.55)'; c.lineWidth = 2;
             c.beginPath(); c.ellipse(0, 0, r * 0.7, r * 0.5, 0, 0, Math.PI * 2); c.stroke();
+        } else if (e.genre === 'balise') {
+            // Une sonde turquoise, ronde et calme : rien d'agressif dans la
+            // silhouette. On doit voir en un coup d'œil qu'elle ne mord pas.
+            c.shadowColor = 'rgba(45,212,191,.7)'; c.shadowBlur = 12;
+            c.fillStyle = '#0d9488';
+            c.beginPath(); c.arc(0, 0, r * 0.72, 0, Math.PI * 2); c.fill();
+            c.shadowBlur = 0;
+            c.strokeStyle = '#5eead4'; c.lineWidth = 2;
+            c.beginPath(); c.ellipse(0, 0, r, r * 0.34, 0, 0, Math.PI * 2); c.stroke();
+            c.fillStyle = '#ccfbf1';
+            c.beginPath(); c.arc(0, 0, r * 0.26, 0, Math.PI * 2); c.fill();
+        } else if (e.genre === 'mineur') {
+            // Coque trapue à hublot, et deux trappes SOUS le ventre : on voit
+            // par où sortent les mines.
+            c.shadowColor = 'rgba(251,191,36,.7)'; c.shadowBlur = 13;
+            c.fillStyle = '#b45309';
+            c.beginPath(); c.roundRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1, r * 0.28); c.fill();
+            c.shadowBlur = 0;
+            c.fillStyle = '#fbbf24';
+            [-0.4, 0.4].forEach(k => {
+                c.beginPath(); c.roundRect(r * k - r * 0.16, r * 0.4, r * 0.32, r * 0.26, 3); c.fill();
+            });
+            c.fillStyle = '#fef3c7';
+            c.beginPath(); c.arc(0, -r * 0.1, r * 0.24, 0, Math.PI * 2); c.fill();
+        } else if (e.genre === 'spectre') {
+            // Voile indigo : plein quand il est solide, presque effacé quand
+            // les tirs le traversent. L'état se lit sans un mot.
+            const solide = e.solide !== false;
+            c.globalAlpha = solide ? 1 : 0.24;
+            c.shadowColor = 'rgba(129,140,248,.8)'; c.shadowBlur = solide ? 16 : 6;
+            c.fillStyle = solide ? '#4338ca' : '#312e81';
+            c.beginPath();
+            c.moveTo(0, r); c.quadraticCurveTo(r, r * 0.2, r * 0.55, -r * 0.85);
+            c.lineTo(-r * 0.55, -r * 0.85);
+            c.quadraticCurveTo(-r, r * 0.2, 0, r);
+            c.closePath(); c.fill();
+            c.shadowBlur = 0;
+            c.fillStyle = solide ? '#c7d2fe' : '#818cf8';
+            [-0.3, 0.3].forEach(k => {
+                c.beginPath(); c.ellipse(r * k, -r * 0.28, r * 0.14, r * 0.2, 0, 0, Math.PI * 2); c.fill();
+            });
+            if (solide) {
+                c.strokeStyle = 'rgba(199,210,254,.6)'; c.lineWidth = 2;
+                c.beginPath(); c.arc(0, 0, r * 0.95, 0, Math.PI * 2); c.stroke();
+            }
+            c.globalAlpha = 1;
         } else if (e.genre === 'tireur') {
             // Raie manta verte, ailes en courbe : la forme la plus « vivante ».
             c.shadowColor = 'rgba(74,222,128,.7)'; c.shadowBlur = 12;

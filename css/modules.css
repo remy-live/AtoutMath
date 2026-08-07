@@ -1793,14 +1793,16 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 /* Le nombre reste au CENTRE de sa tuile : la coche passe en pastille de coin,
    posée par-dessus, et ne déplace donc rien. */
-/* La pastille « ✓ » DANS la tuile, plus à cheval sur son bord : à −5 px elle
-   débordait de la grille, qui devenait défilable en largeur de quelques
-   pixels — assez pour que le panneau glisse de côté sous le doigt. */
+/* La pastille « ✓ » revient à CHEVAL sur le coin de la tuile : posée à
+   l'intérieur, elle s'écrasait sur le chiffre et on lisait mal les deux. Ce
+   qu'elle débordait rendait la grille défilable de quelques pixels — mais
+   c'est réglé à la source, la feuille de réglages ne défile plus qu'en
+   hauteur. */
 .cfg-chips--grille .cfg-chip > span::before {
-    content: '✓'; position: absolute; top: 3px; right: 3px;
-    width: 15px; height: 15px; margin: 0; border-radius: 50%;
+    content: '✓'; position: absolute; top: -5px; right: -5px;
+    width: 17px; height: 17px; margin: 0; border-radius: 50%;
     background: var(--primary); color: #fff; border: 2px solid var(--bg-panel);
-    font-size: .55rem; line-height: 13px; text-align: center;
+    font-size: .6rem; line-height: 15px; text-align: center;
 }
 .cfg-chips--grille .cfg-chip:has(input:checked) > span::before { opacity: 1; }
 
@@ -2221,7 +2223,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
        compte double depuis que la grille officielle est plus haute que large :
        il faut laisser sous elle le pavé de chiffres ET les deux boutons, sans
        quoi « Valider » sortait de l'écran sur un téléphone court. */
-    width: min(560px, 94cqw, calc(62cqh * var(--ga-ratio, 1)));
+    /* La largeur RETENUE du plateau, nommée : les chiffres s'y accrochent.
+       Ils se calaient sur `cqw`, la largeur du PLATEAU DE JEU — mais le
+       treillis, lui, est borné par la HAUTEUR. Sur un grand écran, la
+       cellule faisait 18 px et le chiffre 27 : les nombres se touchaient et
+       débordaient de leurs cases. */
+    --ga-largeur: min(560px, 94cqw, calc(62cqh * var(--ga-ratio, 1)));
+    width: var(--ga-largeur);
     aspect-ratio: var(--ga-ratio, 1);
     /* Le plateau est un enfant de flex : son `min-height: auto` implicite le
        laissait grandir jusqu'à la hauteur naturelle de ses vingt-quatre
@@ -2234,7 +2242,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .ga-cell {
     border: 2.5px solid #0f172a; border-radius: 7px;
     background: #fff;
-    font-size: clamp(.6rem, calc(52cqw / var(--ga-unites, 10)), 1.7rem);
+    font-size: clamp(.55rem, calc(var(--ga-largeur) / var(--ga-unites, 10) * .62), 1.7rem);
     font-weight: 800; color: #2563eb;
     /* Sans `min-height: 0`, une case de grille refuse de descendre sous la
        hauteur de son chiffre : les quinze rangées de la grille officielle
@@ -2252,10 +2260,43 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: flex; align-items: center; justify-content: center;
     min-height: 0; min-width: 0;
     font-weight: 900; color: #0f172a;
-    font-size: clamp(.55rem, calc(46cqw / var(--ga-unites, 10)), 1.5rem);
+    font-size: clamp(.5rem, calc(var(--ga-largeur) / var(--ga-unites, 10) * .55), 1.5rem);
     user-select: none;
 }
 html[data-theme="dark"] .ga-signe { color: var(--text-main); }
+
+/* Garam en PAYSAGE : le treillis à gauche, tout ce qui répond à droite.
+   Sur un écran large et court, le plateau restait borné par la hauteur — il
+   occupait 390 px de large dans une fenêtre de 2000, et les quinze rangées du
+   grand Garam donnaient des cases de 18 px. En rendant sa colonne au pavé de
+   chiffres, le treillis récupère presque toute la hauteur. */
+@container plateau (min-aspect-ratio: 3/2) and (min-width: 700px) {
+    .kenken-layout:has(.ga-board) {
+        display: grid; max-width: none; width: 100%;
+        grid-template-columns: auto minmax(210px, 330px);
+        /* La rangée vide en bas ramasse le mou : sans elle, les trois blocs
+           de droite s'étalaient sur toute la hauteur du treillis, chacun
+           seul au milieu de son tiers. */
+        grid-template-areas:
+            "consigne consigne"
+            "treillis pave"
+            "treillis actions"
+            "treillis aide"
+            "treillis vide";
+        grid-template-rows: auto auto auto auto 1fr;
+        align-content: center; align-items: center; justify-items: center;
+        column-gap: clamp(16px, 3cqw, 48px); row-gap: clamp(8px, 1.6cqh, 18px);
+    }
+    .kenken-layout:has(.ga-board) > .kenken-context { grid-area: consigne; margin: 0 0 6px; }
+    .kenken-layout:has(.ga-board) > .ga-board {
+        grid-area: treillis;
+        --ga-largeur: min(620px, 52cqw, calc(88cqh * var(--ga-ratio, 1)));
+    }
+    .kenken-layout:has(.ga-board) > .kk-palette { grid-area: pave; }
+    .kenken-layout:has(.ga-board) > .kk-actions { grid-area: actions; }
+    .kenken-layout:has(.ga-board) > .kk-status,
+    .kenken-layout:has(.ga-board) > .hint-bar { grid-area: aide; }
+}
 /* --- Table de Pythagore inversée ------------------------------
    Le résultat est donné, la table est VIDE : on clique la case dont
    ligne × colonne fait le résultat. La table se dimensionne sur la largeur
