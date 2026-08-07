@@ -31,6 +31,7 @@ import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
+import { initPleinEcran } from './ui/fullscreen.js';
 
 // Confirmation universelle, utilisée par plusieurs vues.
 window.appConfirm = (title, message, onConfirm) => {
@@ -84,6 +85,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initSyncUI();
     initGameControls();
     initNavButtons();
+    initPleinEcran();
     initDebugToolbar();
 
     // Parcours partagé par lien.

@@ -673,6 +673,11 @@
     #game-header #game-title {
         grid-area: titre; margin: 0; font-size: 1rem; line-height: 1.2;
         white-space: normal; overflow: hidden; text-overflow: clip;
+        /* La colonne du titre est en `1fr`, donc en `minmax(auto, 1fr)` : sans
+           cette ligne, elle refuse de descendre sous la largeur de son plus
+           long mot et pousse les commandes hors de l'écran. Le titre est le
+           seul élément de cette rangée qui puisse céder. */
+        min-width: 0;
         /* Deux lignes au maximum : un titre à rallonge ne doit pas repousser
            le plateau hors de l'écran. */
         display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
@@ -719,6 +724,19 @@
     }
     #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 30px; height: 30px; }
     #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn svg { width: 15px; height: 15px; }
+}
+
+/* Le bouton PLEIN ÉCRAN fait un quatrième rond dans cette rangée. Sur les
+   écrans les plus étroits, ce sont la jauge et les ronds qui maigrissent :
+   une commande qu'on ne peut plus viser au doigt ne sert à rien, alors qu'une
+   jauge de 58 px se lit aussi bien qu'une de 72. */
+@media (max-width: 400px) {
+    #game-header { column-gap: 6px; padding: 8px; }
+    #game-header #game-progress-container { width: 58px; min-width: 58px; max-width: 58px; }
+    .game-header-actions { gap: 4px; }
+    .game-icon-btn { width: 32px; height: 32px; padding: 3px; }
+    .game-icon-btn svg { width: 17px; height: 17px; }
+    #game-timer { width: 30px; height: 30px; }
 }
 
 /* Les commandes doivent tenir sur une seule ligne : on retire l'habillage en

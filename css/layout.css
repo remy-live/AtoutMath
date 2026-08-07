@@ -22,15 +22,28 @@
 .nav-left { min-width: 0; }
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-right { flex-shrink: 0; }
-@media (max-width: 420px) {
+/* Le bouton PLEIN ÉCRAN s'ajoute à une rangée déjà pleine. Plutôt que de le
+   reléguer dans un menu — un bouton qu'il faut chercher n'est pas « toujours
+   accessible » — on resserre : les icônes maigrissent d'un cran et la pastille
+   de score perd son rembourrage. Le nom de l'application, lui, reste entier :
+   c'est la seule chose de cette barre qui ne se devine pas. */
+@media (max-width: 480px) {
     #top-navbar { padding: 0 10px; }
-    .nav-left, .nav-right { gap: 8px; }
-    /* Très étroit : tout maigrit d'un cran plutôt que de tronquer le nom de
-       l'application en « Math… ». */
+    .nav-left { gap: 8px; }
+    #top-navbar .nav-right { gap: 5px; }
     #top-navbar .title { font-size: 1.05rem; }
     #top-navbar .btn-icon { padding: 3px; }
     #top-navbar .btn-icon--sm svg { width: 18px; height: 18px; }
-    .score-display { font-size: .95rem; padding: 3px 9px; }
+    .score-display { font-size: .88rem; padding: 3px 7px; gap: 3px; }
+    .score-display svg { width: 13px; height: 13px; }
+}
+/* En dessous de 360 px, cinq icônes plus une pastille ne tiennent plus quoi
+   qu'on fasse : la sauvegarde et la synchronisation, qui ne servent qu'une
+   fois de temps en temps, cèdent la place. Elles restent atteignables depuis
+   le menu latéral. */
+@media (max-width: 359px) {
+    #top-navbar #btn-open-import-export-student { display: none; }
+    #top-navbar .btn-icon--sm svg { width: 17px; height: 17px; }
 }
 
 #app-body { display: flex; flex-grow: 1; overflow: hidden; flex-direction: row; position: relative; }

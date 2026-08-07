@@ -68,6 +68,21 @@ body.teacher-mode .student-only { display: none !important; }
 .btn-icon:hover { background: var(--bg-hover); color: var(--text-main); }
 .btn-icon--sm { font-size: 1.2rem; }
 
+/* --- PLEIN ÉCRAN ------------------------------------------------------------
+   Un seul bouton, deux icônes : « agrandir » quand on est dedans, « réduire »
+   quand on est dehors. Deux boutons distincts qu'on montre à tour de rôle
+   sauteraient d'un pixel à l'autre au moment du clic. */
+.pe-sortir { display: none; }
+body.plein-ecran .pe-entrer { display: none; }
+body.plein-ecran .pe-sortir { display: block; }
+[data-plein-ecran][aria-pressed="true"] { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* La palette d'outils d'auteur flotte AU-DESSUS de tout, y compris des jeux :
+   sur téléphone elle recouvre le bas du plateau. C'est elle, et pas la barre
+   du navigateur, que le plein écran fait gagner sur iPad et sur iPhone — où
+   aucune API ne peut enlever la barre d'adresse. */
+body.plein-ecran #debug-toolbar { display: none; }
+
 /* Navbar */
 #top-navbar .nav-right { gap: 10px; }
 #top-navbar .title { margin: 0; font-size: 1.3rem; }
