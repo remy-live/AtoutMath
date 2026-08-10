@@ -151,17 +151,52 @@ export function rectangleSvg(L, l, unit = 'cm') {
 // police système, et un carré blanc à la place d'un symbole rend l'exercice
 // impossible. Des tracés simples, reconnaissables et de taille homogène.
 
+/**
+ * Les cinq glyphes, en TRACÉS PLEINS dans une case de 24 × 32.
+ *
+ * Ils étaient dessinés au trait fin : à trente-quatre pixels, une anse et une
+ * corde enroulée se ressemblaient, le lotus n'était qu'un gribouillis, et il
+ * fallait deviner au lieu de compter. Or l'exercice ne demande pas de
+ * reconnaître un hiéroglyphe d'archéologue : il demande de voir d'un coup
+ * d'œil « trois de ceux-là, deux de ceux-ci », puis d'additionner. Des formes
+ * PLEINES et franchement différentes les unes des autres — une barre, une
+ * arche, une spirale, une fleur, un doigt — servent ce comptage ; un trait de
+ * 2 px ne le servait pas.
+ *
+ * Chaque glyphe déclare lui-même s'il se remplit ou s'il se trace : la spirale
+ * de la centaine n'a de sens qu'en trait continu, tout le reste gagne à être
+ * plein.
+ */
 const GLYPHES = {
-    // Bâton : une unité.
-    1: '<path d="M11 3 V25" />',
-    // Anse (arceau renversé) : une dizaine.
-    10: '<path d="M3 24 Q3 5 11 5 Q19 5 19 24" />',
-    // Corde enroulée : une centaine.
-    100: '<path d="M18 8 Q18 3 12 3 Q4 3 4 11 Q4 20 12 20 Q17 20 17 15 Q17 11 13 11 Q10 11 10 14" />',
-    // Fleur de lotus : un millier.
-    1000: '<path d="M11 26 V13" /><path d="M11 13 Q3 12 3 4 Q9 5 11 13" /><path d="M11 13 Q19 12 19 4 Q13 5 11 13" /><path d="M11 13 Q11 4 11 2" />',
-    // Doigt levé : dix milliers.
-    10000: '<path d="M8 26 V10 Q8 3 12 3 Q16 3 16 10 V26" /><path d="M8 12 H16" />'
+    // Bâton : une unité. Une simple barre, légèrement arrondie.
+    1: '<rect x="9.4" y="3" width="5.2" height="26" rx="2.6" />',
+
+    // Anse (entrave à bétail) : une dizaine. Une arche épaisse, à pieds droits
+    // — c'est le contraste plein/vide au centre qui la distingue du bâton.
+    10: '<path d="M2 29 V15 C2 7 6.4 2.5 12 2.5 C17.6 2.5 22 7 22 15 V29 H16.5 V15'
+        + ' C16.5 10.2 14.6 8 12 8 C9.4 8 7.5 10.2 7.5 15 V29 Z" />',
+
+    // Corde enroulée : une centaine. Une vraie spirale qui rentre vers son
+    // centre — dessinée au trait, parce qu'une spirale pleine n'est plus une
+    // spirale.
+    // Deux tours seulement, bien écartés : à quatre tours les spires se
+    // touchaient et la spirale se lisait comme un disque.
+    100: '<path class="egy-trait egy-spirale" d="M12 27 A11 11 0 1 1 23 16 A7 7 0 1 0 12 23'
+        + ' A3 3 0 1 1 15 16" />',
+
+    // Fleur de lotus : un millier. Une tige et trois pétales.
+    1000: '<path class="egy-trait" d="M12 30 V17" />'
+        + '<path d="M12 18.5 C5.5 17.4 1.5 12 2.2 5 C8 5.8 11 9.6 12 15.5'
+        + ' C13 9.6 16 5.8 21.8 5 C22.5 12 18.5 17.4 12 18.5 Z" />'
+        + '<path d="M12 17 C9.2 12.4 9.2 6 12 1.5 C14.8 6 14.8 12.4 12 17 Z" />',
+
+    // Doigt levé : dix milliers. Une phalange, un ongle, une articulation.
+    // Plus large que le bâton, et creusé de deux articulations : à silhouette
+    // égale, on confondait le doigt (10 000) avec l'unité.
+    10000: '<path d="M6.4 30 V13 C6.4 6 8.8 1.8 12 1.8 C15.2 1.8 17.6 6 17.6 13 V30 Z" />'
+        + '<path class="egy-creux" d="M9 8.4 C9.8 6 14.2 6 15 8.4 C14 7.4 10 7.4 9 8.4 Z" />'
+        + '<path class="egy-creux" d="M6.4 15.6 H17.6 V18 H6.4 Z" />'
+        + '<path class="egy-creux" d="M6.4 22 H17.6 V24 H6.4 Z" />'
 };
 
 /**
@@ -172,14 +207,17 @@ export function egyptianSvg(symboles) {
     // figure reste étroite, donc chaque glyphe est rendu plus grand ; et
     // l'élève voit d'un coup d'œil « 2 lotus, 3 anses, 1 bâton », ce qui est
     // exactement le découpage du calcul à faire.
-    const CELL = 34, GAP = 8, PAD = 12;
+    // Des cases de 44 px : l'exercice consiste à COMPTER des symboles, ce qui
+    // suppose de les distinguer sans se pencher. La feuille reste bornée en
+    // hauteur par le CSS, qui la réduira si le plateau est court.
+    const CELL = 44, GAP = 9, PAD = 12;
     const colonnes = Math.max(...symboles.map(s => s.n));
     const W = colonnes * CELL + (colonnes - 1) * GAP + PAD * 2;
     const H = symboles.length * CELL + (symboles.length - 1) * GAP + PAD * 2;
 
-    // Les tracés sont dessinés dans une case de 22 × 28 ; on les met à
+    // Les tracés sont dessinés dans une case de 24 × 32 ; on les met à
     // l'échelle de la cellule plutôt que de réécrire chaque chemin.
-    const echelle = (CELL / 29).toFixed(3);
+    const echelle = (CELL / 32).toFixed(3);
 
     const contenu = symboles.map((s, ligne) => {
         const y = PAD + ligne * (CELL + GAP);

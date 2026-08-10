@@ -106,27 +106,34 @@ class Demineur extends BaseGame {
                     grid-template-columns: repeat(var(--cols), var(--case));
                     grid-auto-rows: var(--case);
                     gap: 2px; padding: 6px;
-                    background: #cbd5e1; border-radius: 12px;
-                    box-shadow: inset 0 2px 6px rgba(15,23,42,.22);
+                    background: #dbe2ec; border-radius: 12px;
+                    border: 1px solid #c3cdda;
                     touch-action: manipulation;
                 }
                 /* Une case fermée est en RELIEF, une case ouverte est à plat.
                    C'est le seul repère qui compte : on doit voir d'un coup
                    d'œil où finit le connu et où commence le reste. */
+                /* À PLAT. Le relief — dégradé sur trois arrêts, ombre interne
+                   en bas, liseré blanc en haut — imitait le bouton en plastique
+                   de 1990. Il coûtait deux choses : les chiffres se lisaient sur
+                   un fond qui change de valeur du haut vers le bas, et surtout
+                   une case fermée et une case ouverte se distinguaient par leur
+                   MATIÈRE plutôt que par leur couleur. Deux aplats francs
+                   séparés par un cadre disent la même chose, plus vite. */
                 .dm-case {
-                    border-radius: max(3px, calc(var(--case) * .16));
-                    background: linear-gradient(158deg, #f1f5f9 0%, #cbd5e1 42%, #94a3b8 100%);
-                    box-shadow: inset 0 -3px 0 rgba(51,65,85,.34), inset 0 1px 0 rgba(255,255,255,.75);
+                    border-radius: max(3px, calc(var(--case) * .14));
+                    background: #b8c4d6;
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 900; font-size: calc(var(--case) * .58);
                     line-height: 1; cursor: pointer; color: transparent;
                     transition: background .12s ease, transform .1s ease;
                 }
-                .dm-case:active { transform: scale(.9); }
+                .dm-case:hover { background: #a7b5cb; }
+                .dm-case:active { transform: scale(.92); background: #93a3bd; }
                 .dm-case--ouverte {
-                    background: #fbfdff; box-shadow: inset 0 0 0 1px rgba(148,163,184,.35);
-                    cursor: default;
+                    background: #f7f9fc; box-shadow: none; cursor: default;
                 }
+                .dm-case--ouverte:hover { background: #f7f9fc; }
                 .dm-case--vide { background: #eef2f7; box-shadow: none; }
                 .dm-case--drapeau { font-size: calc(var(--case) * .62); color: #0f172a; }
                 .dm-case--mine { background: #fecaca; }

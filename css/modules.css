@@ -435,10 +435,18 @@
 
 /* Hiéroglyphes : des tracés, pas des aplats. Sans `fill: none`, les chemins
    se remplissent en noir et les symboles deviennent des taches. */
-.egy-glyph path {
-    fill: none; stroke: var(--text-main); stroke-width: 2.2;
+/* Par défaut, un glyphe se REMPLIT ; seules les formes qui n'ont de sens
+   qu'en trait continu — la spirale de la centaine, la tige du lotus — portent
+   `egy-trait`. */
+.egy-glyph path, .egy-glyph rect { fill: var(--text-main); stroke: none; }
+.egy-glyph .egy-trait {
+    fill: none; stroke: var(--text-main); stroke-width: 2.6;
     stroke-linecap: round; stroke-linejoin: round;
 }
+.egy-glyph .egy-spirale { stroke-width: 2.2; }
+/* Les creux du doigt : ils reprennent la couleur du FOND, pas du trait — un
+   sillon se voit parce qu'il enlève de la matière. */
+.egy-glyph .egy-creux { fill: var(--bg-plateau); stroke: none; }
 .egy-svg { max-height: clamp(90px, 22cqh, 200px); }
 
 /* Mises en valeur des énoncés de numération. */
