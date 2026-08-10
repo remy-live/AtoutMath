@@ -309,6 +309,58 @@ export const calculExercises = [
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
     {
+        id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
+        activityId: 'motscaches',
+        // Les erreurs n'ont rien à réviser ici : un tracé raté est un essai, pas
+        // une faute, et le jeu n'en enregistre aucun.
+        sansRevision: true,
+        params: { theme: 'tout', taille: 12, nbMots: 10, diagonales: true, envers: false },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                options: [
+                    { value: 'tout', label: 'Tout le vocabulaire' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'calcul', label: 'Le calcul' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' }
+                ],
+                default: 'tout'
+            },
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                options: [
+                    { value: 10, label: '10 × 10' },
+                    { value: 12, label: '12 × 12' },
+                    { value: 14, label: '14 × 14' },
+                    { value: 16, label: '16 × 16 — pour les mots longs' }
+                ],
+                default: 12
+            },
+            {
+                id: 'nbMots', type: 'select', label: 'Nombre de mots',
+                options: [
+                    { value: 6, label: '6 mots' },
+                    { value: 10, label: '10 mots' },
+                    { value: 14, label: '14 mots' }
+                ],
+                default: 10
+            },
+            {
+                id: 'diagonales', type: 'checkbox', label: 'Mots en diagonale',
+                aide: 'Sans les diagonales, la grille se lit uniquement en lignes et en colonnes — nettement plus facile.',
+                default: true
+            },
+            {
+                id: 'envers', type: 'checkbox', label: 'Mots écrits à l\'envers',
+                aide: 'De droite à gauche et de bas en haut : à réserver aux élèves qui trouvent la grille trop rapide.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Glisse ton doigt de la première à la dernière lettre pour tracer un mot. Chaque mot trouvé affiche SA DÉFINITION : c'est le vocabulaire que ton cours emploie sans toujours l'expliquer. Le bouton 💡 fait l'inverse — il donne la définition, à toi de retrouver le mot."
+    },
+    {
         id: 'calc-chantier', status: STATUS.TEST, title: 'Le Chantier des Blocs',
         activityId: 'chantier',
         params: { depart: 'ch1' },

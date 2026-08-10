@@ -264,6 +264,14 @@ const BASE = {
         descriptor: 'Conclure à coup sûr à partir de nombres qui comptent : savoir quand on sait, et quand on devine.',
         lesson: 'Chaque chiffre est une petite équation : il annonce combien de mines se cachent parmi ses huit voisines. Deux cas suffisent à tout démarrer. Si les drapeaux déjà posés atteignent le chiffre, toutes ses autres voisines sont sûres. S\'il reste autant de cases cachées que de mines à trouver, ce sont toutes des mines. Le troisième cas est le plus puissant : quand les cases d\'un chiffre sont toutes comprises dans celles d\'un autre, on soustrait — 2 mines ici, 1 déjà comptée là, il en reste 1 pour la différence.'
     },
+    'voc.mathematique': {
+        label: 'Vocabulaire mathématique',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Reconnaître et savoir dire les mots du cours : hypoténuse, quotient, médiatrice, dénominateur.',
+        lesson: 'Un mot de mathématiques désigne UNE chose précise, et cette précision est ce qui rend les énoncés lisibles. « Somme » n\'est pas « produit », « diviseur » n\'est pas « division », « médiatrice » n\'est pas « bissectrice ». La plupart des blocages en résolution de problème ne viennent pas du calcul mais d\'un mot de la question qu\'on n\'a pas su relier à ce qu\'on sait faire.'
+    },
     'num.logique.dichotomie': {
         label: 'Encadrer un nombre (dichotomie)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
