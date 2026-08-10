@@ -96,6 +96,13 @@ const DUELS = [
  *  · LA COURONNE vise, puis explose en couronne — on bouge tôt, pas tard ;
  *  · LE SPECTRE pose des murs percés d'une brèche — on cherche le trou.
  */
+/**
+ * Ce qu'un missile intercepté enlève à la coque du Gardien. La coque totale
+ * n'est rien d'autre qu'un multiple de ce nombre : un duel se compte en
+ * DÉCISIONS, pas en secondes de mitraillage.
+ */
+const DEGAT_SALVE = 6;
+
 const GARDIENS = [
     {
         id: 'forgeron', nom: 'LE FORGERON', pv: 26,
@@ -786,21 +793,22 @@ class Nova extends BaseGame {
 
         // Un Gardien différent par secteur, dans l'ordre, en boucle.
         const g = GARDIENS[this.niveau % GARDIENS.length];
-        // UN GARDIEN DOIT TENIR. À 26 points de coque il tombait en sept
-        // secondes : on n'avait le temps de voir ni sa façon de bouger, ni sa
-        // façon de tirer, ni le tour de main qui les contre — c'est-à-dire
-        // rien de ce qui le distingue des trois autres. Quatre fois plus de
-        // coque, et le duel dure une demi-minute : assez pour qu'on
-        // l'apprenne, pas assez pour qu'on s'ennuie.
-        const pv = Math.round(g.pv * 4) + this.niveau * 26;
+        // LA COQUE SE COMPTE EN SALVES, pas en secondes. Huit salves au premier
+        // secteur, deux de plus à chaque suivant : le duel dure exactement le
+        // temps de huit décisions justes. Avant, le canon — qui tire tout seul
+        // — faisait les deux tiers des dégâts : on gagnait le duel en tenant
+        // le doigt appuyé, et les nombres n'étaient qu'un décor.
+        const salves = 8 + this.niveau * 2;
+        const pv = salves * DEGAT_SALVE;
         this.boss = {
             g, regle, pv, max: pv, pvFantome: pv,
             x: w / 2, y: -140, t: 0,
             fautes: 0,                       // sphères percutées (2 enregistrées max)
-            cadence: 64,                     // frames entre deux sphères
+            cadence: 230,                    // frames entre deux salves
+            derniereSalve: 0,
             prochainTir: 150,
             motif: 0,                        // le tir change de figure avec les dégâts
-            reglee: false, sortie: 0, eclat: 0,
+            reglee: false, sortie: 0, eclat: 0, bouclier: 0,
             // État propre à chaque silhouette.
             angle: 0,                        // TISSEUR : l'orientation du fil
             cibleX: w / 2, repos: 0,         // COURONNE : sa prochaine position
@@ -808,7 +816,7 @@ class Nova extends BaseGame {
             opacite: 1, saut: 240,           // SPECTRE : son clignotement
             presentation: 150                // frames de bandeau de présentation
         };
-        this.mot(`${g.nom} — récupère ${regle.libelle}, ÉVITE les autres, et TIRE.`, 'ko');
+        this.mot(`${g.nom} — il lâche des salves : ABATS ${regle.libelle}, laisse passer le reste.`, 'ko');
         this.secousse = 22;
     }
 
@@ -1015,17 +1023,12 @@ class Nova extends BaseGame {
             return;
         }
 
-        // Les sphères, de plus en plus vite à mesure qu'il encaisse.
-        const cadence = Math.max(26, b.cadence - Math.round((1 - b.pv / b.max) * 30) - this.niveau * 3);
-        if (b.t > 60 && b.t % cadence === 0) {
-            const cible = Math.random() < 0.5;
-            this.orbes.push({
-                x: 34 + Math.random() * (w - 68), y: b.y + 26,
-                v: 1.5 + this.niveau * 0.15 + Math.random() * 0.5,
-                n: this.nombreDuel(b.regle, cible),
-                r: Math.max(17, Math.min(24, w * 0.055)),
-                a: Math.random() * 6.28
-            });
+        // LES SALVES DE MISSILES. Une salve tombe quand la précédente a fini
+        // de descendre : on ne se retrouve jamais avec deux questions en l'air.
+        const cadence = Math.max(150, b.cadence - Math.round((1 - b.pv / b.max) * 40) - this.niveau * 14);
+        if (b.t > 70 && !this.orbes.length && b.t - (b.derniereSalve || 0) > cadence) {
+            b.derniereSalve = b.t;
+            this.lancerSalve(b, w);
         }
 
         // ET IL RIPOSTE. Trois FIGURES de tir, qui se succèdent à mesure qu'il
@@ -1038,93 +1041,151 @@ class Nova extends BaseGame {
         // Le bandeau de présentation retient le feu : on a le droit de lire le
         // nom de ce qui arrive avant de devoir l'esquiver.
         if (--b.prochainTir <= 0 && !this.isDemo && b.presentation <= 0) {
-            this.tirerGardien(b, v, w, h);
+            // Pendant qu'une salve descend, il se tait à moitié : la salve EST
+            // la question, et une question qu'on lit entre deux esquives n'est
+            // plus une question.
+            if (this.orbes.length) b.prochainTir = 40;
+            else this.tirerGardien(b, v, w, h);
         }
 
-        // LE CANON MORD. Le Gardien était invulnérable et n'offrait qu'un
-        // exercice de placement : on tirait dans le vide pendant tout le
-        // combat. Il encaisse maintenant, et sa coque descend sous les tirs —
-        // ce qui rend le duel actif, et les sphères, elles, redeviennent ce
-        // qu'elles doivent être : des choses à prendre ou à esquiver.
+        // SA COQUE ABSORBE LE CANON. Les tirs s'y écrasent en gerbe sans
+        // l'entamer : sinon le duel se gagne en tenant le doigt appuyé, et les
+        // nombres deviennent un décor qu'on peut ignorer. Ce qui perce le
+        // Gardien, c'est UNIQUEMENT le missile juste qu'on lui renvoie.
         const R = Math.max(52, Math.min(96, w * 0.2));
         this.tirs.forEach(t => {
             if (t.mort) return;
-            // Le SPECTRE effacé ne s'atteint pas — mais il ne tire pas non plus
-            // pendant ce temps-là : c'est un répit, pas une injustice.
             if (b.opacite < 0.6) return;
             if (Math.abs(t.x - b.x) > R * 0.9 || Math.abs(t.y - b.y) > R * 0.6) return;
             t.mort = true;
-            b.eclat = 8;
-            b.pv--;
-            this.exploser(t.x, t.y, '#f0abfc', 5);
-            if (b.pv <= 0) this.vaincreBoss();
+            b.bouclier = 10;
+            this.exploser(t.x, t.y, '#e0f2fe', 3);
         });
+        this.tirs = this.tirs.filter(t => !t.mort);
         if (b.eclat > 0) b.eclat--;
+        if (b.bouclier > 0) b.bouclier--;
     }
 
     /**
-     * Les sphères ne se tirent PLUS : elles se traversent ou s'évitent.
+     * LA SALVE : trois missiles, un seul à abattre.
      *
-     * Avant, tout passait par le canon — abattre la bonne, épargner l'autre —
-     * et comme le canon est automatique, le duel se résumait à se placer sous
-     * une sphère ou à s'en écarter. Le geste était juste, mais il entrait en
-     * concurrence avec le tir sur le Gardien.
+     * On y est revenu après avoir essayé de faire percuter des sphères au
+     * vaisseau : demander en même temps de foncer dans certaines choses, d'en
+     * esquiver d'autres ET de canarder le Gardien faisait trois gestes
+     * contradictoires avec un seul doigt. Le duel devenait ingérable — et
+     * surtout il cessait d'être un shoot'em up.
      *
-     * Désormais les deux canaux sont séparés et sans ambiguïté : LE CANON
-     * s'occupe du Gardien, LE CORPS s'occupe des sphères. On fonce dans les
-     * multiples — c'est un gain — et on esquive tout le reste.
+     * Maintenant il n'y a plus qu'un seul geste, celui du jeu : TIRER. Le
+     * Gardien lâche trois missiles numérotés, un seul relève de la consigne,
+     * et le canon étant automatique, « viser » c'est se glisser dessous. La
+     * décision est mathématique, l'exécution est du pilotage — et les deux ne
+     * se marchent plus dessus.
+     */
+    lancerSalve(b, w) {
+        const t = b.regle.table;
+        const combien = 3;
+        // Une voie par missile, jamais deux au même endroit : la salve doit se
+        // lire d'un coup d'œil, pas se démêler.
+        const voies = [];
+        for (let i = 0; i < combien; i++) voies.push((i + 0.5) * (w / combien));
+        const bonne = Math.floor(Math.random() * combien);
+        const r = Math.max(19, Math.min(27, w * 0.062));
+        const v = 0.85 + this.niveau * 0.09 + (1 - b.pv / b.max) * 0.35;
+        for (let i = 0; i < combien; i++) {
+            this.orbes.push({
+                x: voies[i] + (Math.random() - 0.5) * (w / combien - 2 * r - 8),
+                y: b.y + 30 + i * 4,
+                v, r, a: 0, salve: b.t,
+                n: this.nombreDuel(b.regle, i === bonne),
+                bon: i === bonne
+            });
+        }
+        this.mot(`Salve ! Abats ${t ? `le multiple de ${t}` : b.regle.libelle}.`, 'ko');
+    }
+
+    /**
+     * Les missiles descendent. Le canon du joueur les intercepte ; ceux qui
+     * arrivent au bout explosent sur le vaisseau.
      */
     majOrbes() {
         const b = this.boss, h = this.canvas.height, v = this.vaisseau;
         this.orbes.forEach(o => {
-            o.y += o.v; o.a += 0.03;
+            o.y += o.v; o.a += 0.06;
             if (o.mort || !b) return;
 
-            if (Math.hypot(o.x - v.x, o.y - v.y) < o.r + 13) {
+            // ZONE DE TIR. Un missile n'est interceptable qu'une fois descendu
+            // à mi-écran. Sans ce délai, le canon — qui tire tout seul —
+            // détruisait un missile simplement parce qu'on passait dessous en
+            // allant se placer : on perdait la salve sans avoir rien décidé.
+            // Avec, on a le temps de LIRE les trois nombres, de choisir, puis
+            // de se placer ; le tir part quand la cible entre en portée.
+            o.armes = o.y > h * 0.46;
+            if (!o.armes) return;
+
+            // Le canon d'abord : c'est LE geste du jeu.
+            for (const t of this.tirs) {
+                if (t.mort) continue;
+                if (Math.abs(t.x - o.x) > o.r || Math.abs(t.y - o.y) > o.r) continue;
+                t.mort = true;
                 o.mort = true;
-                this.toucherOrbe(o);
+                this.abattreMissile(o);
+                return;
+            }
+            // Un missile qui touche le vaisseau explose : c'est un missile.
+            if (Math.hypot(o.x - v.x, o.y - v.y) < o.r + 12) {
+                o.mort = true;
+                if (!this.isDemo) {
+                    this.exploser(o.x, o.y, '#f43f5e', 18);
+                    this.secousse = 18;
+                    this.perdreUneVie();
+                } else this.exploser(o.x, o.y, '#a5f3fc', 8);
             }
         });
+        this.tirs = this.tirs.filter(t => !t.mort);
         this.orbes = this.orbes.filter(o => !o.mort && o.y < h + 40);
     }
 
-    /** Une sphère TRAVERSÉE : c'est une réponse à la règle du duel. */
-    toucherOrbe(o) {
+    /** Un missile abattu : c'est la réponse à la consigne du duel. */
+    abattreMissile(o) {
         const b = this.boss;
+        if (!b) return;
         const q = `${o.n} — ${b.regle.libelle} ?`;
-        if (b.regle.test(o.n)) {
-            // Un multiple récupéré entame la coque : le calcul juste FRAPPE,
-            // il ne se contente pas de rapporter des points.
-            // Une sphère juste vaut quatre fois un tir de canon. Avec une coque
-            // quatre fois plus épaisse, il fallait choisir ce qui la perce :
-            // le canon tire tout seul, le calcul non — c'est donc le calcul
-            // qui doit faire la différence, sinon le duel se gagne en attendant.
-            b.pv = Math.max(0, b.pv - 4);
-            this.gagner(25);
-            this.exploser(o.x, o.y, '#fcd34d', 20);
-            this.onCorrectAnswer(null, b.regle.table ? `mult:${b.regle.table}` : 'num:multiples', {
-                points: 10, questionText: q, given: 'oui', expected: 'oui'
+        const concept = b.regle.table ? `mult:${b.regle.table}` : 'num:multiples';
+
+        if (o.bon) {
+            // Le bon missile abattu ENTAME LA COQUE, et fait sauter le reste de
+            // la salve : la récompense d'un calcul juste, c'est que le danger
+            // disparaît avec lui.
+            b.pv = Math.max(0, b.pv - DEGAT_SALVE);
+            b.eclat = 14;
+            this.gagner(30);
+            this.exploser(o.x, o.y, '#fcd34d', 24);
+            this.orbes.forEach(a => {
+                if (a === o || a.mort || a.salve !== o.salve) return;
+                a.mort = true;
+                this.exploser(a.x, a.y, '#fde68a', 10);
+            });
+            this.secousse = 12;
+            this.onCorrectAnswer(null, concept, {
+                points: 10, questionText: q, given: String(o.n), expected: String(o.n)
             });
             if (b.pv <= 0) this.vaincreBoss();
-        } else if (!this.isDemo) {
-            this.secousse = 18;
-            this.puissance = this.canonBase;
-            this.exploser(o.x, o.y, '#f43f5e', 18);
-            this.mot(`${o.n} n'est pas dans ${b.regle.libelle} !`, 'ko');
-            this.perdreUneVie();
-            // On n'enregistre que les DEUX premières : une sphère effleurée en
-            // pleine manœuvre n'est pas une erreur de calcul, et un carnet
-            // noyé sous vingt lignes ne se relit pas.
-            if (b.fautes++ < 2) {
-                this.onWrongAnswer(null, {
-                    questionText: q, input: `${o.n} percuté`, expected: b.regle.libelle,
-                    concept: b.regle.table ? `mult:${b.regle.table}` : 'num:multiples',
-                    silencieux: true,
-                    customMessage: `Consigne : récupérer ${b.regle.libelle}. ${o.n} n'en fait pas partie.`
-                });
-            }
-        } else {
-            this.exploser(o.x, o.y, '#a5f3fc', 8);
+            return;
+        }
+
+        // Le mauvais missile : il explose quand même — on ne rend pas un tir
+        // inopérant, ce serait illisible — mais la coque ne bouge pas, et les
+        // autres continuent de descendre. La faute se paie en danger restant.
+        this.exploser(o.x, o.y, '#f43f5e', 14);
+        if (this.isDemo) return;
+        this.secousse = 10;
+        this.mot(`${o.n} n'est pas dans ${b.regle.libelle} — la coque tient.`, 'ko');
+        if (b.fautes++ < 2) {
+            this.onWrongAnswer(null, {
+                questionText: q, input: `${o.n} abattu`, expected: b.regle.libelle,
+                concept, silencieux: true,
+                customMessage: `Consigne : abattre ${b.regle.libelle}. ${o.n} n'en fait pas partie.`
+            });
         }
     }
 
@@ -1146,7 +1207,7 @@ class Nova extends BaseGame {
         this.mot(`${b.g.nom} EST ABATTU !`, 'ok');
         this.onCorrectAnswer(null, b.regle.table ? `mult:${b.regle.table}` : 'num:multiples', {
             points: 30,
-            questionText: `Gardien : récupérer ${b.regle.libelle}`,
+            questionText: `Gardien : abattre ${b.regle.libelle}`,
             given: b.regle.libelle, expected: b.regle.libelle
         });
         // L'atelier s'ouvre une fois les explosions retombées.
@@ -1159,13 +1220,13 @@ class Nova extends BaseGame {
         b.reglee = true;
         b.sortie = 0;
         this.puissance = this.canonBase;
-        this.mot(`${b.g.nom} se retire… il fallait récupérer ${b.regle.libelle}`, 'ko');
+        this.mot(`${b.g.nom} se retire… il fallait abattre ${b.regle.libelle}`, 'ko');
         this.onWrongAnswer(null, {
-            questionText: `Gardien : récupérer ${b.regle.libelle}`,
+            questionText: `Gardien : abattre ${b.regle.libelle}`,
             input: '(Gardien non abattu)', expected: b.regle.libelle,
             concept: b.regle.table ? `mult:${b.regle.table}` : 'num:multiples',
             silencieux: true,
-            customMessage: `Il fallait foncer dans ${b.regle.libelle}, éviter les autres sphères et tirer sur le Gardien.`
+            customMessage: `À chaque salve, un seul missile relève de ${b.regle.libelle} : c'est celui-là qu'il faut abattre.`
         });
         this.epreuves = 0;
     }
@@ -2864,6 +2925,18 @@ class Nova extends BaseGame {
             default: this.coqueForgeron(c, R, b, pal);
         }
 
+        // LE BOUCLIER : un anneau qui s'allume quand un tir s'y écrase. Sans
+        // lui, le canon aurait l'air en panne — on doit VOIR que les tirs
+        // portent, et qu'ils ne suffisent pas.
+        if (b.bouclier > 0) {
+            c.save();
+            c.globalAlpha *= b.bouclier / 14;
+            c.strokeStyle = '#bae6fd'; c.lineWidth = 3;
+            c.shadowColor = 'rgba(186,230,253,.9)'; c.shadowBlur = 14;
+            c.beginPath(); c.ellipse(0, 0, R * 1.05, R * 0.78, 0, 0, Math.PI * 2); c.stroke();
+            c.restore();
+        }
+
         // L'impact : un halo blanc qui gonfle sur la coque, pas un champ qui
         // repousse. C'est le retour qui dit « ça rentre ».
         if (b.eclat > 0) {
@@ -2908,8 +2981,8 @@ class Nova extends BaseGame {
         // Sous le HUD, jamais dessus : la consigne se relit à chaque sphère,
         // et le nom du secteur ne doit pas disparaître pour autant.
         const by = 92;
-        const t1 = `RÉCUPÈRE ${b.regle.libelle.toUpperCase()}`;
-        const t2 = `ÉVITE les autres sphères · TIRE sur ${b.g.nom}`;
+        const t1 = `ABATS ${b.regle.libelle.toUpperCase()}`;
+        const t2 = `Un seul missile par salve · laisse passer les autres`;
         const dispo = w - 40;
         // Les règles longues (« les nombres plus grands que 50 ») doivent
         // tenir sur un téléphone : on rétrécit jusqu'à ce qu'elles rentrent.
@@ -3303,23 +3376,80 @@ class Nova extends BaseGame {
         c.restore();
     }
 
+    /**
+     * Un missile de salve. Ogive vers le bas, ailerons, flamme de rétro-fusée,
+     * et le nombre en grand sur le fuselage.
+     *
+     * Ils sont TOUS IDENTIQUES — même métal, même flamme. Teinter le bon en
+     * vert reviendrait à donner la réponse ; c'est le nombre, et lui seul, qui
+     * doit décider du tir.
+     */
     dessinerOrbe(o) {
-        const c = this.ctx;
+        const c = this.ctx, r = o.r;
         c.save();
         c.translate(o.x, o.y);
-        c.shadowColor = 'rgba(148,163,184,.8)'; c.shadowBlur = 12;
-        const g = c.createRadialGradient(-o.r * 0.35, -o.r * 0.35, o.r * 0.15, 0, 0, o.r);
-        g.addColorStop(0, '#f8fafc'); g.addColorStop(0.55, '#94a3b8'); g.addColorStop(1, '#334155');
-        c.fillStyle = g;
-        c.beginPath(); c.arc(0, 0, o.r, 0, Math.PI * 2); c.fill();
+
+        // Hors de portée : un halo bleu autour du missile. C'est le seul
+        // moment du duel où l'on a le droit de réfléchir sans tirer, autant
+        // que ça se voie.
+        if (!o.armes) {
+            c.save();
+            c.globalAlpha = 0.5 + Math.sin(this.frame / 8) * 0.2;
+            c.strokeStyle = '#38bdf8'; c.lineWidth = 2;
+            c.setLineDash([5, 5]);
+            c.beginPath(); c.arc(0, 0, r * 1.5, 0, Math.PI * 2); c.stroke();
+            c.restore();
+        }
+
+        // La flamme : elle sort par le HAUT, puisque le missile descend.
+        const f = r * (0.9 + Math.random() * 0.5);
+        const gf = c.createLinearGradient(0, -r * 0.9, 0, -r * 0.9 - f);
+        gf.addColorStop(0, 'rgba(251,191,36,.95)');
+        gf.addColorStop(0.5, 'rgba(239,68,68,.6)');
+        gf.addColorStop(1, 'rgba(239,68,68,0)');
+        c.fillStyle = gf;
+        c.beginPath();
+        c.moveTo(-r * 0.34, -r * 0.9); c.lineTo(0, -r * 0.9 - f); c.lineTo(r * 0.34, -r * 0.9);
+        c.closePath(); c.fill();
+
+        c.rotate(Math.sin(o.a) * 0.06);
+
+        // Ailerons.
+        c.fillStyle = '#475569';
+        [-1, 1].forEach(s => {
+            c.beginPath();
+            c.moveTo(s * r * 0.5, -r * 0.72);
+            c.lineTo(s * r * 1.02, -r * 0.28);
+            c.lineTo(s * r * 0.5, -r * 0.1);
+            c.closePath(); c.fill();
+        });
+
+        // Fuselage : capsule verticale terminée par une ogive vers le bas.
+        c.shadowColor = 'rgba(226,232,240,.65)'; c.shadowBlur = 12;
+        const gc = c.createLinearGradient(-r * 0.55, 0, r * 0.55, 0);
+        gc.addColorStop(0, '#64748b'); gc.addColorStop(0.35, '#f1f5f9');
+        gc.addColorStop(0.7, '#cbd5e1'); gc.addColorStop(1, '#475569');
+        c.fillStyle = gc;
+        c.beginPath();
+        c.moveTo(-r * 0.55, -r * 0.9);
+        c.lineTo(r * 0.55, -r * 0.9);
+        c.lineTo(r * 0.55, r * 0.5);
+        c.quadraticCurveTo(0, r * 1.25, -r * 0.55, r * 0.5);
+        c.closePath(); c.fill();
         c.shadowBlur = 0;
-        c.strokeStyle = 'rgba(15,23,42,.8)'; c.lineWidth = 2;
-        c.beginPath(); c.arc(0, 0, o.r, 0, Math.PI * 2); c.stroke();
-        c.rotate(Math.sin(o.a) * 0.12);
+        c.strokeStyle = 'rgba(15,23,42,.8)'; c.lineWidth = 2; c.stroke();
+
+        // Bande d'ogive : le rouge dit « ça explose », pas « c'est le bon ».
+        c.fillStyle = '#dc2626';
+        c.beginPath();
+        c.moveTo(-r * 0.55, r * 0.5); c.lineTo(r * 0.55, r * 0.5);
+        c.quadraticCurveTo(0, r * 1.25, -r * 0.55, r * 0.5);
+        c.closePath(); c.fill();
+
         c.fillStyle = '#0f172a';
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.font = `900 ${Math.round(o.r * 1.05)}px 'Inter', system-ui, sans-serif`;
-        c.fillText(String(o.n), 0, 1);
+        c.font = `900 ${Math.round(r * 0.82)}px 'Inter', system-ui, sans-serif`;
+        c.fillText(String(o.n), 0, -r * 0.2);
         c.restore();
     }
 
@@ -3941,7 +4071,7 @@ class Nova extends BaseGame {
         this.convoi = null;
         this.lancerBoss();
         const b = this.boss;
-        cur.say(`${b.g.nom} ferme le secteur. Ici je vole partout : mon canon le mitraille tout seul, et je fonce dans les sphères — mais seulement ${b.regle.libelle}.`, this.arene);
+        cur.say(`${b.g.nom} ferme le secteur. Sa coque encaisse mon canon, mais ce n'est pas là que ça se joue : il lâche des SALVES de trois missiles.`, this.arene);
         if (!await cur.pause(DEMO_SPEED.between + 3000) || !this.isRunning) return fin();
 
         // Chaque secteur a SON Gardien, et chacun a sa parade. Le robot la dit
@@ -3952,18 +4082,19 @@ class Nova extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between + 1500) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je vais CHERCHER les bonnes sphères — chacune entame sa coque — et j\'esquive toutes les autres : les percuter coûte une vie.', this.arene);
+        cur.say(`Dans chaque salve, UN SEUL missile relève de ${b.regle.libelle}. Mon canon tire tout seul : viser, c'est me glisser dessous — et laisser filer les deux autres.`, this.arene);
         const viser = setInterval(() => {
             if (!this.isRunning || !this.boss) return;
-            // Le robot se cale sous la première sphère à ABATTRE, et s'écarte
-            // des autres : le geste dit la règle mieux qu'une phrase.
-            const cible = this.orbes.find(o => b.regle.test(o.n));
-            if (cible) { this.vaisseau.cible = cible.x; this.doigtY = cible.y; }
+            // Le robot se cale sous le missile à abattre, et s'écarte des
+            // autres dès qu'ils descendent : le geste dit la règle mieux
+            // qu'une phrase.
+            const cible = this.orbes.find(o => o.bon && !o.mort);
+            if (cible) { this.vaisseau.cible = cible.x; this.doigtY = this.canvas.height * 0.72; }
             else if (this.orbes.length) {
                 const gene = this.orbes[0];
                 this.vaisseau.cible = gene.x < this.canvas.width / 2
-                    ? Math.min(this.canvas.width - 30, gene.x + 130)
-                    : Math.max(30, gene.x - 130);
+                    ? Math.min(this.canvas.width - 30, gene.x + 140)
+                    : Math.max(30, gene.x - 140);
             }
         }, 100);
         if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(viser); return fin(); }
