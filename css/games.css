@@ -53,7 +53,20 @@
 .btn-stop-demo:hover { background: var(--primary-hover); }
 
 .canvas-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); position: relative; padding: 20px; overflow: hidden; }
-.game-question { font-size: 2.2rem; font-weight: 800; margin-bottom: 40px; text-align: center; color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+/* L'ÉNONCÉ SE MET À LA TAILLE DE L'ÉCRAN. Figé à 2,2 rem, « Chiffre des
+   unités de mille de 5 076,854 ? » tombait sur trois lignes au milieu d'un
+   téléphone, et le nombre — la seule chose à regarder — se retrouvait coupé
+   d'un côté à l'autre. La coupure est confiée à `balance` (des lignes de
+   longueur voisine, pas une longue et une orpheline) et le nombre lui-même ne
+   se coupe jamais. */
+.game-question {
+    font-size: clamp(1.3rem, 5.4vw, 2.2rem); font-weight: 800;
+    margin-bottom: clamp(16px, 4vh, 40px); text-align: center;
+    color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    text-wrap: balance; line-height: 1.25; max-width: 26ch; margin-inline: auto;
+}
+.game-question .nb-highlight,
+.game-question b { white-space: nowrap; }
 
 /* Objets du jeu */
 .bubble-container { display: flex; gap: 25px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
@@ -144,3 +157,26 @@
 .device-simulator .pytha-cell { font-size: 0.65rem; border-radius: 4px; }
 .device-simulator .pytha-cell--target { font-size: 0.85rem; }
 
+
+
+/* --- LA BANDE DU ROBOT ------------------------------------------------------
+   La bannière d'aperçu et les commandes (Arrière / Pause / Un pas / Vitesse)
+   occupaient deux rangées empilées au-dessus du plateau. Sur un jeu d'arcade
+   en 700 px de haut, cela retirait près d'un tiers de la surface de jeu — et
+   c'est précisément le plateau que la démonstration sert à montrer. Elles
+   partagent maintenant une ligne dès qu'elles y tiennent, et se replient l'une
+   sous l'autre seulement quand la largeur manque. */
+#demo-strip {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 6px 10px; flex-shrink: 0; padding: 0 6px;
+}
+#demo-strip:empty { display: none; }
+#demo-strip #demo-overlay-banner { margin: 6px 0 0; }
+#demo-strip #demo-controls-host { margin-top: 6px; }
+/* Écran court : tout maigrit d'un cran. Le plateau prime. */
+@media (max-height: 620px) {
+    #demo-strip { gap: 4px 8px; }
+    #demo-strip #demo-overlay-banner { margin-top: 3px; padding: 3px 6px 3px 10px; font-size: .74rem; }
+    #demo-strip #demo-controls-host { margin-top: 3px; }
+    #demo-strip .demo-ctrl-btn { padding: 3px 8px; font-size: .74rem; }
+}

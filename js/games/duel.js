@@ -46,6 +46,7 @@ class Duel extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .du-plateau {
+                    --couloir: clamp(84px, 21cqh, 230px);
                     width: 100%; height: 100%;
                     display: grid; grid-template-rows: 1fr auto 1fr;
                     gap: 0; touch-action: none; user-select: none;
@@ -56,6 +57,11 @@ class Duel extends BaseGame {
                 /* La moitié du haut est retournée : la tablette est posée à
                    plat entre deux joueurs qui se font face. */
                 .du-cote--haut { transform: rotate(180deg); }
+                /* L'enveloppe ne sert qu'en paysage, pour porter la rotation
+                   d'un quart de tour. En portrait elle se fond dans son
+                   parent : display:contents la retire de la mise en page
+                   sans toucher au balisage. */
+                .du-cote-inner { display: contents; }
                 .du-cote {
                     display: flex; flex-direction: column; align-items: center;
                     justify-content: space-between; gap: 4px; padding: 8px 10px;
@@ -144,7 +150,7 @@ class Duel extends BaseGame {
 
                 /* Le terrain : la bande centrale que la balle traverse. */
                 .du-terrain {
-                    position: relative; height: clamp(84px, 21cqh, 230px);
+                    position: relative; height: var(--couloir);
                     background: #020617; border-top: 2px solid #1e293b; border-bottom: 2px solid #1e293b;
                     overflow: hidden; flex-shrink: 0;
                 }
@@ -196,15 +202,57 @@ class Duel extends BaseGame {
                     font-size: clamp(.75rem, 3cqh, 1.05rem); touch-action: none;
                 }
 
-                /* PAYSAGE. Chaque moitié n'a plus que deux cents pixels de
-                   haut : un pavé sur deux rangées y donnait des touches de
-                   26 px, impossibles à viser sans regarder. On a en revanche
-                   de la largeur à revendre — le pavé passe donc sur UNE seule
-                   rangée de onze touches, deux fois plus hautes. C'est lui
-                   qu'on cherche du doigt pendant qu'on regarde la balle. */
-                @container duel (max-height: 640px) {
+                /* PAYSAGE : LE PLATEAU TOURNE D'UN QUART DE TOUR.
+                   Coupé en haut et en bas, chaque camp n'avait plus que deux
+                   cents pixels de haut : des touches de 26 px, une saisie
+                   minuscule et un couloir où la balle traversait en trois
+                   centimètres. Coupé à GAUCHE et à DROITE, chaque camp
+                   récupère toute la hauteur de l'écran, et le couloir toute sa
+                   largeur — c'est-à-dire le côté long.
+                   Les deux joueurs se placent alors aux deux bouts : leur
+                   moitié pivote de 90° pour qu'ils lisent à l'endroit. Une
+                   rotation change ce qu'on VOIT, pas la boîte : le contenu est
+                   donc dimensionné avec les côtés échangés (100cqh de large
+                   pour une colonne haute de tout l'écran) avant d'être
+                   tourné.
+                   La requête porte sur le conteneur PARENT : une requête de
+                   conteneur style les descendants du conteneur nommé, jamais
+                   le conteneur lui-même — les règles visant .du-plateau ne
+                   s'appliquaient donc pas, et le plateau restait en rangées. */
+                @container plateau (min-aspect-ratio: 13/10) {
+                    .du-plateau {
+                        --couloir: clamp(120px, 26cqw, 320px);
+                        grid-template-rows: 1fr;
+                        grid-template-columns: 1fr var(--couloir) 1fr;
+                    }
+                    .du-terrain { height: auto; width: var(--couloir); border: 0;
+                                  border-left: 2px solid #1e293b; border-right: 2px solid #1e293b; }
+                    .du-filet { top: 0; bottom: 0; left: 50%; right: auto;
+                                border-top: 0; border-left: 3px dashed #334155; }
+                    .du-cote {
+                        overflow: hidden;
+                        align-items: center; justify-content: center;
+                    }
+                    /* La moitié se dessine à plat, aux dimensions échangées,
+                       puis pivote autour de son centre. */
+                    .du-cote > * { --largeur-camp: calc((100cqw - var(--couloir)) / 2); }
+                    .du-cote--haut { transform: none; }
+                    .du-cote-inner {
+                        width: 100cqh; height: calc((100cqw - var(--couloir)) / 2);
+                        display: flex; flex-direction: column; align-items: center;
+                        justify-content: space-between; gap: 3px; padding: 6px 10px;
+                    }
+                    .du-cote--0 .du-cote-inner { transform: rotate(90deg); }
+                    .du-cote--1 .du-cote-inner { transform: rotate(-90deg); }
+                    .du-pave, .du-tables { max-width: min(560px, 82cqh); }
+                    .du-saisie { font-size: clamp(1.2rem, 7cqw, 2.4rem); }
+                    .du-annonce--haut { transform: rotate(180deg); }
+                }
+                /* Écran court MAIS étroit (téléphone en paysage serré) : on
+                   garde la coupe haut/bas et on resserre. */
+                @container plateau (max-height: 640px) and (max-aspect-ratio: 13/10) {
                     .du-cote { padding: 4px 8px; gap: 2px; }
-                    .du-terrain { height: clamp(70px, 18cqh, 140px); }
+                    .du-plateau { --couloir: clamp(70px, 18cqh, 140px); }
                     .du-pave { grid-template-columns: repeat(11, 1fr); max-width: 820px; }
                     .du-tables { max-width: 820px; }
                     .du-saisie { font-size: clamp(1.1rem, 8cqh, 2.1rem); }
@@ -244,6 +292,7 @@ class Duel extends BaseGame {
         const tables = this.partie.tables;
         return `
             <section class="du-cote du-cote--${i} ${i === 0 ? 'du-cote--haut' : ''}" data-cote="${i}">
+              <div class="du-cote-inner">
                 <div class="du-tete">
                     <span class="du-nom">${NOMS[i]}</span>
                     <span class="du-pts" data-pts="${i}">0</span>
@@ -258,6 +307,7 @@ class Duel extends BaseGame {
                 <div class="du-tables" data-tables="${i}" hidden>
                     ${tables.map(t => `<button type="button" class="du-table" data-table="${t}">×${t}</button>`).join('')}
                 </div>
+              </div>
             </section>
         `;
     }
@@ -369,15 +419,34 @@ class Duel extends BaseGame {
             if (this.balleEl) this.balleEl.classList.remove('du-balle--vivante');
             return;
         }
-        const h = this.terrain.clientHeight;
         const k = Math.min(1, (performance.now() - this.vol.debut) / this.vol.duree);
-        // Le joueur 0 est en haut : une balle qui va vers lui remonte.
-        const y = this.vol.vers === 0 ? h * (1 - k) : h * k;
         this.balleEl.textContent = p.balle.texte;
         this.balleEl.classList.add('du-balle--vivante');
         this.balleEl.classList.toggle('du-balle--0', this.vol.vers === 0);
         this.balleEl.classList.toggle('du-balle--1', this.vol.vers === 1);
-        this.balleEl.style.transform = `translate(-50%, -50%) translateY(${y}px)`;
+
+        // L'AXE DE VOL SE LIT SUR LE PLATEAU, il ne se devine pas. En portrait
+        // les camps sont l'un au-dessus de l'autre et la balle monte ou
+        // descend ; en paysage ils sont côte à côte et elle traverse. Coder
+        // l'axe en dur aurait fait voler la balle en travers du couloir dès
+        // qu'on tourne la tablette.
+        const a = this.cotes[0].getBoundingClientRect();
+        const b = this.cotes[1].getBoundingClientRect();
+        const horizontal = Math.abs(b.left - a.left) > Math.abs(b.top - a.top);
+        if (horizontal) {
+            const w = this.terrain.clientWidth;
+            // Le camp 0 est à gauche : une balle qui va vers lui revient.
+            const x = this.vol.vers === 0 ? w * (1 - k) : w * k;
+            this.balleEl.style.transform = `translate(-50%, -50%) translateX(${x}px)`;
+            this.balleEl.style.top = '50%';
+            this.balleEl.style.left = '0';
+        } else {
+            const h = this.terrain.clientHeight;
+            const y = this.vol.vers === 0 ? h * (1 - k) : h * k;
+            this.balleEl.style.transform = `translate(-50%, -50%) translateY(${y}px)`;
+            this.balleEl.style.top = '0';
+            this.balleEl.style.left = '50%';
+        }
         if (k >= 1 && !this.isDemo) this.finDePoint(manquer(p));
     }
 

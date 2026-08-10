@@ -134,8 +134,7 @@ body.plein-ecran .pe-sortir { display: block; }
 .builder-header-label { color: var(--primary); font-weight: 600; font-size: 0.85rem; }
 .flex-spacer { flex-grow: 1; }
 .filter-row { display: flex; gap: 10px; align-items: center; }
-.filter-row-label { font-size: 0.8rem; font-weight: bold; min-width: 60px; }
-#filters-domaine { display: flex; gap: 5px; flex-wrap: wrap; }
+.filter-row-label { font-size: 0.8rem; font-weight: bold; min-width: 60px; flex-shrink: 0; }
 .bottom-nav-btn { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.75rem; color: var(--text-muted); transition: 0.2s; }
 .bottom-nav-btn:hover { color: var(--text-main); }
 .bottom-nav-btn.active { color: var(--primary); font-weight: 600; transform: translateY(-2px); }
@@ -284,7 +283,23 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 
 /* La ligne de filtres pousse l'œil à droite : c'est une commande d'affichage,
    pas un filtre de plus, et l'aligner avec les tags les confondrait. */
-#filters-domaine { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex: 1; }
+/* UNE RANGÉE PAR FAMILLE, qui DÉFILE plutôt que de se replier.
+   En `flex-wrap`, huit domaines occupaient trois lignes sur un téléphone :
+   la barre de filtres mangeait un tiers de l'écran avant qu'un seul exercice
+   ne soit visible. En défilement horizontal, chaque famille tient sur sa
+   ligne, on la parcourt du pouce, et le catalogue reste en vue. */
+#filters-domaine, #filters-niveau {
+    display: flex; gap: 8px; align-items: center; flex: 1; min-width: 0;
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    /* Le défilement horizontal ne doit pas déclencher le « retour arrière »
+       du navigateur quand on arrive au bout. */
+    overscroll-behavior-x: contain;
+}
+#filters-domaine::-webkit-scrollbar, #filters-niveau::-webkit-scrollbar { display: none; }
+#filters-domaine > *, #filters-niveau > * { flex-shrink: 0; }
+#filter-row-niveau[hidden] { display: none; }
 
 /* Vignette en cours de composition : les jeux historiques mettent une seconde
    et demie à poser leur image, et les voir démarrer les uns après les autres

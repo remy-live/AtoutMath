@@ -60,7 +60,22 @@ class Tableur extends BaseGame {
 
         this.container.innerHTML = `
             <style>
-                .tab-wrap { height: 100%; display: flex; flex-direction: column; background: #f4f6fa; font-family: 'Outfit', sans-serif; overflow: auto; color: #223; }
+                .tab-wrap {
+                    height: 100%; display: flex; flex-direction: column;
+                    background: #f4f6fa; font-family: 'Outfit', sans-serif;
+                    overflow: auto; color: #223;
+                    /* UNE grille de six colonnes : elle a de la place. */
+                    --tab-entete: 26px;
+                    --tab-cell: clamp(30px, min((100cqw - 80px) / 7, (100cqh - 210px) / 8), 64px);
+                    --tab-hauteur: clamp(26px, (100cqh - 210px) / 8, 42px);
+                }
+                /* DEUX grilles côte à côte : la largeur se partage, et il faut
+                   aussi la place du titre de chacune. */
+                .tab-duo { --tab-entete: 22px; }
+                .tab-duo .tab-grille {
+                    --tab-cell: clamp(20px, min((100cqw - 130px) / 12, (100cqh - 250px) / 8), 54px);
+                    --tab-hauteur: clamp(20px, (100cqh - 250px) / 8, 44px);
+                }
                 .tab-top { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 10px 4px; flex-wrap: wrap; }
                 .tab-menu-label { font-size: .82rem; font-weight: 700; color: #778; margin-right: 4px; }
                 .tab-niv { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #c3cbe0; background: #fff; font-weight: 900; cursor: pointer; color: #556; font-family: inherit; }
@@ -74,7 +89,7 @@ class Tableur extends BaseGame {
                 .tab-msg { min-height: 1.5em; font-weight: 700; text-align: center; font-size: .95rem; }
                 .tab-msg.ok { color: #2b8a3e; } .tab-msg.ko { color: #e03131; }
                 .tab-grille { display: grid; gap: 2px; background: #c3cbe0; border: 2px solid #c3cbe0; border-radius: 8px; padding: 2px; touch-action: none; user-select: none; -webkit-user-select: none; }
-                .tab-cell { background: #fff; min-height: 38px; display: flex; align-items: center; justify-content: center; font-weight: 700; position: relative; border-radius: 3px; }
+                .tab-cell { background: #fff; min-height: var(--tab-hauteur); display: flex; align-items: center; justify-content: center; font-weight: 700; position: relative; border-radius: 3px; }
                 .tab-cell.entete { background: #e7ecf7; color: #556; font-size: .85rem; }
                 .tab-cell.zone { outline: 3px solid #4263eb; outline-offset: -3px; background: #dbe4ff; z-index: 2; }
                 .tab-cell.bonne { background: #b2f2bb !important; }
@@ -270,7 +285,11 @@ class Tableur extends BaseGame {
 
     construireGrille(el, interactive, modele = null) {
         el.innerHTML = '';
-        el.style.gridTemplateColumns = `28px repeat(${this.cols.length}, minmax(44px, 64px))`;
+        // La case se mesure sur la PLACE DISPONIBLE, pas en pixels fixes. En
+        // 44 px minimum, la leçon Pixel Art — deux grilles côte à côte, plus
+        // une palette et une consigne — dépassait de l'écran et il fallait
+        // faire défiler pour voir le bas de son propre dessin.
+        el.style.gridTemplateColumns = `var(--tab-entete) repeat(${this.cols.length}, var(--tab-cell))`;
         const entete = (txt) => {
             const d = document.createElement('div');
             d.className = 'tab-cell entete';

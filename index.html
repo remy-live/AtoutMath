@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=83">
-    <link rel="stylesheet" href="css/layout.css?v=83">
-    <link rel="stylesheet" href="css/ui.css?v=83">
-    <link rel="stylesheet" href="css/games.css?v=83">
-    <link rel="stylesheet" href="css/components.css?v=83">
-    <link rel="stylesheet" href="css/modules.css?v=83">
+    <link rel="stylesheet" href="css/base.css?v=84">
+    <link rel="stylesheet" href="css/layout.css?v=84">
+    <link rel="stylesheet" href="css/ui.css?v=84">
+    <link rel="stylesheet" href="css/games.css?v=84">
+    <link rel="stylesheet" href="css/components.css?v=84">
+    <link rel="stylesheet" href="css/modules.css?v=84">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -215,6 +215,13 @@
 
                         <div class="filter-row"><span class="filter-row-label">Domaines</span>
                             <div id="filters-domaine"></div>
+                        </div>
+                        <!-- Le NIVEAU est le premier tri d'un professeur comme
+                             d'un élève : il mérite sa propre rangée, et pas
+                             seulement un menu déroulant dans le panneau
+                             latéral qui n'existe pas sur téléphone. -->
+                        <div class="filter-row" id="filter-row-niveau"><span class="filter-row-label">Niveaux</span>
+                            <div id="filters-niveau"></div>
                         </div>
                     </div>
                     <div id="main-content"></div>
@@ -532,6 +539,11 @@
                 </div>
             </div>
 
+            <!-- LA BANDE DU ROBOT : bannière et commandes sur la MÊME ligne
+                 quand la largeur le permet. Empilées, elles coûtaient deux
+                 rangées à l'écran — près d'un tiers de la hauteur sur un jeu
+                 d'arcade, où c'est justement le plateau qu'on veut voir. -->
+            <div id="demo-strip">
             <!-- Bannière de Démonstration Autonome (façon Toast) -->
             <div id="demo-overlay-banner">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -556,6 +568,7 @@
                  en paysage et passaient sous la palette de débogage en
                  portrait — impossible de mettre l'explication en pause. -->
             <div id="demo-controls-host"></div>
+        </div>
 
             <div class="canvas-area" id="game-board"></div>
 

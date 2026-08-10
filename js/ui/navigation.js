@@ -1,4 +1,5 @@
 import { exercices, domaines, filterByStatus, statusOf, STATUS, STATUS_LABELS } from '../data/catalog.js';
+import { TAGS } from '../data/tags.js';
 import { clearEngines } from '../core/timers.js';
 import { destroyAllDemoCursors } from '../core/demoPointer.js';
 import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
@@ -424,7 +425,57 @@ export function initGridFilters() {
         fd.appendChild(eyeButton(renderCards));
     }
 
+    renderNiveauRow();
     renderCards();
+}
+
+/**
+ * La rangée des NIVEAUX.
+ *
+ * Le niveau est le premier tri de tout le monde — un professeur cherche « ce
+ * que je peux donner en 6e », un élève « ce qui est de mon année ». Il n'avait
+ * pourtant qu'un menu déroulant dans le panneau latéral, c'est-à-dire nulle
+ * part sur téléphone. Il prend sa propre rangée, à côté des domaines, et les
+ * deux se lisent de la même façon.
+ *
+ * Les niveaux proposés sont ceux qui EXISTENT dans le catalogue courant : une
+ * pastille « 3e » sur laquelle il n'y a rien à trouver serait un cul-de-sac.
+ */
+function renderNiveauRow() {
+    const fn = document.getElementById('filters-niveau');
+    if (!fn) return;
+    fn.innerHTML = '';
+
+    const dispo = [];
+    filterByStatus(exercices, { only: state.catalogFilter, teacher: state.isTeacherMode })
+        .forEach(e => (e.tags.niveaux || []).forEach(n => { if (!dispo.includes(n)) dispo.push(n); }));
+    // L'ordre du référentiel, pas l'ordre d'apparition dans le catalogue : on
+    // veut CP → CM2 → 6e → 5e, pas l'ordre dans lequel les fichiers ont été
+    // écrits.
+    const ordre = Object.values(TAGS.NIVEAU);
+    dispo.sort((a, b) => ordre.indexOf(a) - ordre.indexOf(b));
+
+    const ligne = document.getElementById('filter-row-niveau');
+    if (ligne) ligne.hidden = dispo.length < 2;
+
+    dispo.forEach(n => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn tag-niveau';
+        btn.textContent = n;
+        if (state.selectedNiveaux && state.selectedNiveaux.includes(n)) btn.classList.add('active');
+        btn.onclick = () => {
+            const sel = state.selectedNiveaux ? state.selectedNiveaux.slice() : [];
+            const i = sel.indexOf(n);
+            if (i >= 0) sel.splice(i, 1); else sel.push(n);
+            state.selectedNiveaux = sel;
+            // Le niveau filtre TOUT le catalogue : l'arbre de gauche et la
+            // grille de droite doivent repartir ensemble.
+            initAccordion();
+            renderDrilldown();
+            initGridFilters();
+        };
+        fn.appendChild(btn);
+    });
 }
 
 /* --- Aperçus dans les cartes --------------------------------
