@@ -2914,3 +2914,23 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* Le pavé gagne une touche virgule à la dernière marche : sans elle, l'élève
    tape 47 pour 4,7 et se voit refuser un calcul qu'il avait juste. */
 .rl-pave--virgule { grid-template-columns: repeat(3, 1fr); }
+
+/* --- Message d'arrivée et bilan de fin d'exercice -------------------
+   Une modale sobre, avec le robot en tête : c'est lui qui parle à l'élève
+   partout ailleurs dans l'application, il n'y a pas de raison qu'un autre
+   ton apparaisse au moment le plus personnel. */
+.ac-panel { max-width: 520px; text-align: center; }
+.ac-robot { font-size: 2.6rem; line-height: 1; margin-bottom: 4px; }
+.ac-texte { font-size: 1rem; line-height: 1.5; color: var(--text-main); margin: 6px 0 10px; }
+.ac-conseil {
+    font-size: .88rem; line-height: 1.45; color: var(--text-muted);
+    background: var(--bg-hover); border-radius: 12px; padding: 9px 13px;
+    margin: 0 0 12px;
+}
+.ac-conseil:empty { display: none; }
+.ac-lecon {
+    font-size: .92rem; line-height: 1.45; text-align: left;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border-left: 4px solid var(--primary); border-radius: 0 10px 10px 0;
+    padding: 10px 13px; margin: 0 0 12px;
+}

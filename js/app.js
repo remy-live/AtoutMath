@@ -32,6 +32,7 @@ import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
+import { initAccueil, initBilanExercice } from './ui/accueilUI.js';
 
 // Confirmation universelle, utilisée par plusieurs vues.
 window.appConfirm = (title, message, onConfirm) => {
@@ -87,6 +88,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     initNavButtons();
     initPleinEcran();
     initDebugToolbar();
+    // Le bilan de fin d'exercice s'abonne AVANT qu'un exercice puisse être
+    // lancé par un lien de parcours.
+    initBilanExercice();
 
     // Parcours partagé par lien.
     const code = new URLSearchParams(window.location.search).get('code');
@@ -95,6 +99,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.showGameConfigUI = (step, onSave, containerId = 'builder-config-content') => {
         import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId));
     };
+
+    // Le message d'arrivée passe EN DERNIER : il lit le carnet d'erreurs, donc
+    // après `state.load()`, et il s'efface devant un exercice déjà ouvert par
+    // un lien de parcours — on ne coupe pas quelqu'un qui vient travailler.
+    initAccueil();
 });
 
 // --- Détection de l'appareil ------------------------------------------------

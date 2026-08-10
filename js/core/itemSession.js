@@ -268,7 +268,22 @@ export class ItemSession {
 
     finish() {
         state.attemptContext = null;
-        this._fire('finish', { answered: this.answered, correct: this.correctCount });
+        const bilan = {
+            answered: this.answered,
+            correct: this.correctCount,
+            exerciseId: this.exercise ? this.exercise.id : null,
+            exerciseTitle: this.exercise ? this.exercise.title : '',
+            // La leçon de la dernière question : c'est elle qu'on redonnera si
+            // l'exercice a été loupé, et c'est le générateur qui la connaît.
+            lecon: (this.item && this.item.meta && this.item.meta.texteLecon) || ''
+        };
+        this._fire('finish', bilan);
+        // Le noyau annonce, il n'affiche pas. L'interface décide s'il y a
+        // quelque chose à dire — et l'aperçu du catalogue, qui termine lui
+        // aussi des sessions sans qu'on y ait répondu, n'ouvre rien.
+        if (!this.isDemo && !this.frozen) {
+            document.dispatchEvent(new CustomEvent('session_finished', { detail: bilan }));
+        }
     }
 }
 
