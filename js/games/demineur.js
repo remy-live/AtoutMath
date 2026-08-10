@@ -40,6 +40,15 @@ class Demineur extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'demineur');
         this.niveau = niveauDe(this.params.niveau || 'debutant');
+        // TROIS VIES, et une distinction qui fait tout le jeu : une mine
+        // DÉDUCTIBLE coûte une vie, une mine que rien ne permettait de deviner
+        // n'en coûte aucune. Avant, la moindre mine terminait la grille — y
+        // compris le 50/50 de fin de partie, où le joueur n'a rien fait de
+        // faux. On perdait donc une grille entière sur un coup de dé, et le
+        // seul message était « c'était un pari » : vrai, mais on ne pouvait
+        // plus jouer pour autant.
+        this.viesMax = Math.max(1, Math.min(9, parseInt(this.params.vies) || 3));
+        this.vies = this.viesMax;
         this.rng = makeRng(this.params.seed);
         this.modeDrapeau = false;
         this.secondes = 0;
@@ -172,10 +181,19 @@ class Demineur extends BaseGame {
                         ), 40px);
                     }
                 }
+                .dm-compteur--vies { letter-spacing: -1px; }
+                .dm-vie--perdue { opacity: .35; }
+                /* Une mine devinée impossible : marquée en bleu, pas en rouge.
+                   Le rouge dit « tu t'es trompé » ; ici, non. */
+                .dm-case--pari {
+                    background: #dbeafe !important; border-color: #60a5fa !important;
+                    box-shadow: 0 0 0 2px rgba(96,165,250,.5) inset;
+                }
             </style>
             <div class="dm-wrap">
                 <div class="dm-bar">
                     <div class="dm-compteur">💣 <b data-restantes>${n.mines}</b></div>
+                    <div class="dm-compteur dm-compteur--vies" data-vies></div>
                     <div class="dm-compteur">⏱ <span data-chrono>0:00</span></div>
                     <button type="button" class="dm-btn" data-mode>🚩 Drapeau</button>
                     <button type="button" class="dm-btn dm-btn--aide" data-indice>💡 Indice</button>
@@ -189,6 +207,7 @@ class Demineur extends BaseGame {
         this.plateau = this.container.querySelector('[data-plateau]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.restantesEl = this.container.querySelector('[data-restantes]');
+        this.viesEl = this.container.querySelector('[data-vies]');
         this.chronoEl = this.container.querySelector('[data-chrono]');
         this.btnMode = this.container.querySelector('[data-mode]');
 
@@ -201,6 +220,7 @@ class Demineur extends BaseGame {
         }
         this.plateau.appendChild(frag);
         this.cases = [...this.plateau.children];
+        this.majVies();
 
         this.brancher();
 
@@ -302,8 +322,9 @@ class Demineur extends BaseGame {
 
         if (g.etat[i] === OUVERT) {
             // Sur un chiffre déjà servi : le coup double de l'original.
+            const su0 = deductionsVisibles(g);
             const r = ouvrirAutour(g, i);
-            if (r.perdu) return this.perdre(r.ouvertes.find(c => g.bombe[c]));
+            if (r.perdu) return this.mineTouchee(r.ouvertes.find(c => g.bombe[c]), su0);
             if (r.ouvertes.length) this.peindre();
             if (gagnee(g)) this.reussir();
             return;
@@ -316,19 +337,7 @@ class Demineur extends BaseGame {
         const r = ouvrir(g, i);
         this.peindre();
 
-        if (r.perdu) {
-            if (su.mines.has(i)) {
-                this.onWrongAnswer(null, {
-                    questionText: `Ouvrir ${this.nomCase(i)}`,
-                    input: 'ouverte', expected: 'drapeau', concept: SKILL, silencieux: true,
-                    customMessage: `${this.nomCase(i)} était déductible : ${su.mines.get(i)}`
-                });
-                this.note(`💥 <b>Tu pouvais le savoir :</b> ${su.mines.get(i)}`, 'ko');
-            } else {
-                this.note('💥 Rien ne permettait de le savoir : ce coup-là était un pari, il ne compte pas comme une faute.', 'ko');
-            }
-            return this.perdre(i);
-        }
+        if (r.perdu) return this.mineTouchee(i, su);
 
         if (su.surs.has(i)) {
             this.onCorrectAnswer(null, SKILL, {
@@ -344,6 +353,64 @@ class Demineur extends BaseGame {
         }
 
         if (gagnee(g)) this.reussir();
+    }
+
+    /**
+     * Une mine ouverte. Tout dépend de ce que le plateau permettait de SAVOIR
+     * juste avant : on juge le coup à l'information disponible, pas au
+     * résultat.
+     *
+     *  · DÉDUCTIBLE — c'est une vraie faute : elle coûte une vie, et le carnet
+     *    la retient avec le raisonnement qu'il fallait faire.
+     *  · IMPRÉVISIBLE — le fameux 50/50 de fin de grille : la mine se marque
+     *    toute seule d'un drapeau, on ne perd rien, et LA PARTIE CONTINUE.
+     *    Avant, ce coup-là fermait la grille en expliquant qu'il n'y avait rien
+     *    à comprendre : le message était juste, mais on ne pouvait plus jouer.
+     *    Punir un pari qu'on a soi-même rendu obligatoire n'apprend rien.
+     */
+    mineTouchee(i, su) {
+        const g = this.grille;
+        const deductible = su && su.mines.has(i);
+
+        if (!deductible) {
+            g.etat[i] = DRAPEAU;                 // la mine est repérée, pas subie
+            this.peindre();
+            this.cases[i].classList.add('dm-case--pari');
+            this.note('🎲 <b>Rien ne permettait de le savoir.</b> La mine est marquée d\'office : '
+                + 'ce coup-là était un pari, il ne coûte rien. Continue.', 'ok');
+            if (gagnee(g)) this.reussir();
+            return;
+        }
+
+        this.vies--;
+        this.majVies();
+        this.onWrongAnswer(null, {
+            questionText: `Ouvrir ${this.nomCase(i)}`,
+            input: 'ouverte', expected: 'drapeau', concept: SKILL, silencieux: true,
+            customMessage: `${this.nomCase(i)} était déductible : ${su.mines.get(i)}`
+        });
+
+        if (this.vies > 0) {
+            // La grille survit : on marque la mine et on repart. Une déduction
+            // ratée doit se payer, pas tout effacer — sinon on ne revoit jamais
+            // le raisonnement qu'on vient de manquer.
+            g.etat[i] = DRAPEAU;
+            this.peindre();
+            this.cases[i].classList.add('dm-case--fatale');
+            this.note(`💥 <b>Tu pouvais le savoir :</b> ${su.mines.get(i)}<br>`
+                + `Il te reste ${this.vies} vie${this.vies > 1 ? 's' : ''}.`, 'ko');
+            if (gagnee(g)) this.reussir();
+            return;
+        }
+
+        this.note(`💥 <b>Tu pouvais le savoir :</b> ${su.mines.get(i)}<br>Plus de vies — relance une grille.`, 'ko');
+        this.perdre(i);
+    }
+
+    majVies() {
+        if (!this.viesEl) return;
+        this.viesEl.innerHTML = '❤️'.repeat(Math.max(0, this.vies))
+            + `<span class="dm-vie--perdue">${'🖤'.repeat(Math.max(0, this.viesMax - this.vies))}</span>`;
     }
 
     marquer(i) {
@@ -447,6 +514,7 @@ class Demineur extends BaseGame {
     rejouer() {
         this.fini = false; this.gagne = false; this.secondes = 0;
         this.indices = 0; this.aideVue.clear();
+        this.vies = this.viesMax; this.majVies();
         this.grille = creerGrille(this.niveau);
         if (this.chronoEl) this.chronoEl.textContent = '0:00';
         this.effacerSurbrillance();

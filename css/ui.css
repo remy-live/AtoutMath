@@ -77,11 +77,11 @@ body.plein-ecran .pe-entrer { display: none; }
 body.plein-ecran .pe-sortir { display: block; }
 [data-plein-ecran][aria-pressed="true"] { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-/* La palette d'outils d'auteur flotte AU-DESSUS de tout, y compris des jeux :
-   sur téléphone elle recouvre le bas du plateau. C'est elle, et pas la barre
-   du navigateur, que le plein écran fait gagner sur iPad et sur iPhone — où
-   aucune API ne peut enlever la barre d'adresse. */
-body.plein-ecran #debug-toolbar { display: none; }
+/* La palette d'outils d'auteur reste visible en plein écran : elle sert
+   justement à tester ce qu'on regarde, et la faire disparaître exactement au
+   moment où l'on veut voir le jeu en grand revenait à retirer l'outil avec le
+   décor. Elle est déplaçable et repliable — c'est à elle de s'écarter, pas au
+   plein écran de la supprimer. */
 
 /* Navbar */
 #top-navbar .nav-right { gap: 10px; }

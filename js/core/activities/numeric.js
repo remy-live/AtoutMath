@@ -12,6 +12,14 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js'
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
+/**
+ * Le pavé porte une VIRGULE, comme tout ce qu'on écrit en français ; JavaScript,
+ * lui, rend `0.2`. Le robot cherchait donc une touche « . » qui n'existe pas :
+ * il sautait le séparateur en silence et affichait « 0.2 » à l'écran — soit la
+ * seule notation que l'élève ne doit jamais écrire.
+ */
+const enFrancais = (v) => String(v).replace('.', ',');
+
 const ICON_BACKSPACE = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><line x1="17" y1="9" x2="11" y2="15"/><line x1="11" y1="9" x2="17" y2="15"/></svg>`;
@@ -73,7 +81,7 @@ export function mount(container, session, opts = {}) {
         setBuffer('');
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(String(item.answer), setBuffer, screen);
+            if (!session.frozen) runDemo(enFrancais(item.answer), setBuffer, screen);
             return;
         }
 
@@ -96,7 +104,7 @@ export function mount(container, session, opts = {}) {
                 if (result.correct) { renderNext(); return; }
 
                 if (result.revealed) {
-                    setBuffer(String(item.answer));
+                    setBuffer(enFrancais(item.answer));
                     screen.classList.remove('numpad-screen--ko');
                     screen.classList.add('numpad-screen--ok');
                     regTimeout(renderNext, 1600);

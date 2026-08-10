@@ -367,7 +367,7 @@ export class MathCrush extends BaseGame {
                 // comptait donc la même réponse plusieurs fois.
                 this.onCorrectAnswer(null, null, {
                     points: pts,
-                    questionText: `Cible ${this.targetValue}`,
+                    questionText: `Faire ${this.targetValue}`,
                     given: sum,
                     expected: this.targetValue
                 });
@@ -377,10 +377,15 @@ export class MathCrush extends BaseGame {
             // Failed
             if (!this.isDemo) {
                 this.timeLeft = Math.max(0, this.timeLeft - 2); // Pénalité de temps
+                // Le message par défaut donnait « Faux ! Cible 7 = 7 » : il
+                // répétait la cible deux fois et taisait le seul nombre qui
+                // manquait — CE QUE LA CHAÎNE FAISAIT. On lisait donc une
+                // contradiction là où il n'y avait qu'un écart.
                 this.onWrongAnswer(null, {
-                    questionText: `Cible ${this.targetValue}`,
+                    questionText: `Faire ${this.targetValue}`,
                     input: sum,
-                    expected: this.targetValue
+                    expected: this.targetValue,
+                    customMessage: `Ta chaîne ${this.mode === 'addition' ? 'fait' : 'donne'} ${sum} — il fallait ${this.targetValue}.`
                 });
             }
         }

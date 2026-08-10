@@ -1319,7 +1319,7 @@ class Nova extends BaseGame {
         // secondes, plus espacés, et la faille dure d'autant plus longtemps :
         // on en attrape autant, on en comprend davantage.
         this.faille = {
-            table, t: 0, duree: 1020, plafond,
+            table, t: 0, duree: 1140, plafond,
             pris: 0, rates: 0, chaine: 0, meilleure: 0, fautes: 0,
             nombres: [], prochain: 30
         };
@@ -1348,11 +1348,11 @@ class Nova extends BaseGame {
             // ralentir sans les espacer aurait rempli l'écran au lieu de le
             // calmer. Huit à l'écran, pas douze — on doit pouvoir tous les
             // lire, pas seulement esquiver la masse.
-            f.prochain = Math.max(38, 64 - this.niveau * 4);
+            f.prochain = Math.max(46, 78 - this.niveau * 5);
             const r = Math.max(17, Math.min(25, w * 0.055));
             f.nombres.push({
                 x: r + 8 + Math.random() * Math.max(1, w - 2 * r - 16), y: f.plafond, age: 0,
-                v: 1.35 + this.niveau * 0.11 + Math.random() * 0.4, r, a: Math.random() * 6.28,
+                v: 1.0 + this.niveau * 0.09 + Math.random() * 0.3, r, a: Math.random() * 6.28,
                 n: this.nombreFaille(f.table, Math.random() < 0.5)
             });
         }
@@ -1436,8 +1436,8 @@ class Nova extends BaseGame {
         // première où son nombre fait trois pixels de haut. On ne lisait donc
         // que deux secondes avant de devoir choisir sa voie.
         this.piste = {
-            table, t: 0, duree: 1080,
-            vz: 0.038,                 // profondeur avalée par image
+            table, t: 0, duree: 1260,
+            vz: 0.030,                 // profondeur avalée par image
             objets: [], prochain: 34,
             pris: 0, rates: 0, chaine: 0, meilleure: 0, fautes: 0
         };
@@ -1485,7 +1485,7 @@ class Nova extends BaseGame {
         // panneaux d'un même groupe ne partagent jamais une voie : on doit
         // pouvoir choisir, pas seulement subir.
         if (--p.prochain <= 0 && p.t < p.duree - 120) {
-            p.prochain = Math.max(34, 58 - this.niveau * 3);
+            p.prochain = Math.max(42, 70 - this.niveau * 4);
             const voies = [-1, -0.5, 0, 0.5, 1];
             const combien = Math.random() < 0.4 ? 2 : 1;
             const libres = voies.slice();

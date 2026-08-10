@@ -302,8 +302,17 @@ export const calculExercises = [
     {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         activityId: 'demineur',
-        params: { niveau: 'debutant' },
+        params: { niveau: 'debutant', vies: 3 },
         paramSchema: [
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [
+                    { value: 1, label: '1 — à l\'ancienne, une mine et c\'est fini' },
+                    { value: 3, label: '3 vies' },
+                    { value: 5, label: '5 vies' }
+                ],
+                default: 3
+            },
             {
                 id: 'niveau', type: 'select', label: 'Grille',
                 options: [

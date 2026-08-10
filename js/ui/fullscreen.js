@@ -7,18 +7,16 @@
 // haute quand on choisit un exercice, dans l'en-tête du jeu quand on en fait
 // un. Jamais plus d'un geste pour entrer, jamais plus d'un pour sortir.
 //
-// Il fait DEUX choses, et les deux comptent :
+// Il demande le plein écran du navigateur : c'est lui qui enlève la barre
+// d'adresse et les onglets. La palette d'outils d'auteur, elle, RESTE — elle
+// sert justement à tester ce qu'on regarde, et la faire disparaître au moment
+// où l'on veut voir le jeu en grand revenait à retirer l'outil avec le décor.
+// Elle se déplace et se replie : c'est à elle de s'écarter.
 //
-//  1. le plein écran du navigateur, quand il existe. C'est lui qui enlève la
-//     barre d'adresse et les onglets ;
-//  2. le repli de la palette d'outils d'auteur, qui flotte au-dessus de tout,
-//     y compris des jeux — sur un téléphone elle recouvre le bas du plateau.
-//
-// Sur iPhone, le premier n'existe pas : Safari ne donne le plein écran qu'aux
-// vidéos. Le bouton fait donc ce qu'il peut (le point 2), et le dit une fois :
-// pour un vrai plein écran sur iOS, il faut installer l'application depuis
-// « Partager → Sur l'écran d'accueil ». Promettre autre chose serait mentir à
-// l'utilisateur sur ce que le bouton vient de faire.
+// Sur iPhone, le plein écran n'existe pas : Safari ne le donne qu'aux vidéos.
+// Le bouton le dit une fois, plutôt que de faire semblant : pour un vrai plein
+// écran sur iOS, il faut installer l'application depuis « Partager → Sur
+// l'écran d'accueil ».
 
 const CLE = 'mathbox-plein-ecran';
 
