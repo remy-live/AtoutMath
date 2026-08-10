@@ -165,6 +165,24 @@ export const numerationExercises = [
         instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances."
     },
     {
+        id: 'num-dictee', status: STATUS.TEST, title: 'Dictée de Grands Nombres',
+        activityId: 'dictee',
+        params: { palier: 'grands' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'Taille des nombres',
+                options: [
+                    { value: 'milliers', label: 'Jusqu\'à 99 999' },
+                    { value: 'grands', label: 'Jusqu\'à 999 999' },
+                    { value: 'millions', label: 'Jusqu\'aux millions' }
+                ],
+                default: 'grands'
+            }
+        ],
+        tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
+        instruction: "Le nombre n'est pas écrit : il est DIT. Appuie sur le haut-parleur, écoute, puis écris-le en chiffres. On peut réécouter autant de fois qu'on veut, et ralentir la voix. La correction affiche le nombre en lettres à côté des chiffres : c'est là qu'on voit ce qu'on avait mal entendu. Si l'appareil n'a pas de voix, le nombre s'affiche en lettres."
+    },
+    {
         id: 'num-ninja-zeros', status: STATUS.TEST, title: 'Ninja des Zéros Inutiles',
         activityId: 'ninja',
         // Un objet raté est une erreur de règle, pas une erreur de calcul : on
