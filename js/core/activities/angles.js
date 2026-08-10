@@ -75,6 +75,10 @@ export function mount(container, session, opts = {}) {
                         <span class="angles-target">Cible : <b>${m.target}°</b>
                             <span class="angles-built" data-built>— côté rouge : 45°</span></span>`}
                     <button type="button" class="btn-hint" data-loupe>🔍 Loupe</button>
+                    <span class="angles-zoom">
+                        <button type="button" class="btn-hint" data-zoom="-1" aria-label="Dézoomer">−</button>
+                        <button type="button" class="btn-hint" data-zoom="1" aria-label="Zoomer">+</button>
+                    </span>
                     <button type="button" class="btn-hint" data-recentre>🧭 Recentrer</button>
                     <button type="button" class="kk-btn-valider" data-valider>Valider</button>
                 </div>
@@ -99,7 +103,12 @@ export function mount(container, session, opts = {}) {
             loupe: false,
             fantome: false,              // trace verte de l'angle cible (correction)
             fige: false,
-            place: false                 // l'outil a été posé sur le sommet
+            place: false,                // l'outil a été posé sur le sommet
+            // LA VUE : un zoom et un déplacement appliqués au dessin, et
+            // défaits sur les coordonnées du pointeur. Tout le reste du code
+            // continue donc de raisonner dans le repère du plateau, sans
+            // savoir qu'une vue existe.
+            zoom: 1, pan: { x: 0, y: 0 }, pince: null
         };
         // En phase estimation, l'outil est masqué : on juge à l'œil d'abord.
         if (etat.phase === 'estimation') etat.rapporteur.visible = false;
@@ -174,10 +183,34 @@ export function mount(container, session, opts = {}) {
     function posDe(e) {
         const rect = canvas.getBoundingClientRect();
         const src = e.touches && e.touches.length ? e.touches[0] : e;
-        return {
-            x: (src.clientX - rect.left) * (canvas.width / rect.width),
-            y: (src.clientY - rect.top) * (canvas.height / rect.height)
-        };
+        const x = (src.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (src.clientY - rect.top) * (canvas.height / rect.height);
+        // On DÉFAIT la vue ici, une fois pour toutes : le rapporteur, le
+        // sommet et les poignées se testent dans le repère du plateau.
+        return { x: (x - etat.pan.x) / etat.zoom, y: (y - etat.pan.y) / etat.zoom };
+    }
+
+    /** Le même point, mais à l'écran : la loupe, elle, se dessine par-dessus. */
+    function versEcran(p) {
+        return { x: p.x * etat.zoom + etat.pan.x, y: p.y * etat.zoom + etat.pan.y };
+    }
+
+    /**
+     * Zoomer AUTOUR D'UN POINT : c'est ce qui donne l'impression de tirer la
+     * feuille vers soi. Zoomer autour du coin ferait fuir la figure hors du
+     * cadre à chaque cran.
+     */
+    function zoomer(facteur, centre) {
+        const av = etat.zoom;
+        etat.zoom = Math.max(0.6, Math.min(4, etat.zoom * facteur));
+        if (etat.zoom === av) return;
+        const c = centre || { x: canvas.width / 2, y: canvas.height / 2 };
+        etat.pan.x = c.x - (c.x - etat.pan.x) * (etat.zoom / av);
+        etat.pan.y = c.y - (c.y - etat.pan.y) * (etat.zoom / av);
+    }
+
+    function recentrer() {
+        etat.zoom = 1; etat.pan.x = 0; etat.pan.y = 0;
     }
 
     function boutRouge() {
@@ -191,8 +224,35 @@ export function mount(container, session, opts = {}) {
     // --- Entrées -------------------------------------------------------------
 
     function brancherPointeur() {
+        // PINCER POUR ZOOMER, deux doigts pour déplacer. Ces deux gestes-là
+        // sont les seuls que personne n'a besoin d'apprendre — et sur un
+        // rapporteur, où l'on cherche une graduation d'un demi-degré, pouvoir
+        // approcher change tout. À deux doigts, on ne touche jamais à l'outil :
+        // le glissement à UN doigt reste entièrement au rapporteur.
+        const brut = (e, i) => {
+            const rect = canvas.getBoundingClientRect();
+            const t = e.touches[i];
+            return {
+                x: (t.clientX - rect.left) * (canvas.width / rect.width),
+                y: (t.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        };
+        const pince = (e) => {
+            const a = brut(e, 0), b = brut(e, 1);
+            return {
+                d: Math.hypot(b.x - a.x, b.y - a.y),
+                c: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+            };
+        };
+
         const down = (e) => {
             if (destroyed || etat.fige || etat.phase !== 'action') return;
+            if (e.touches && e.touches.length === 2) {
+                if (e.cancelable) e.preventDefault();
+                etat.drag = null;
+                etat.pince = pince(e);
+                return;
+            }
             if (e.cancelable) e.preventDefault();
             etat.pointeur = posDe(e);
             // Loupe allumée : le doigt ne fait QUE déplacer la loupe. Il
@@ -234,6 +294,17 @@ export function mount(container, session, opts = {}) {
 
         const move = (e) => {
             if (destroyed) return;
+            if (etat.pince && e.touches && e.touches.length === 2) {
+                if (e.cancelable) e.preventDefault();
+                const n = pince(e);
+                if (etat.pince.d > 10) zoomer(n.d / etat.pince.d, n.c);
+                // Le déplacement suit le milieu des deux doigts : on tire la
+                // feuille, on ne la fait pas glisser sous un curseur.
+                etat.pan.x += n.c.x - etat.pince.c.x;
+                etat.pan.y += n.c.y - etat.pince.c.y;
+                etat.pince = n;
+                return;
+            }
             const p = posDe(e);
             etat.pointeur = p;
             // La loupe suit le doigt : on retient le geste, sinon la page
@@ -262,7 +333,7 @@ export function mount(container, session, opts = {}) {
             }
         };
 
-        const up = () => { etat.drag = null; };
+        const up = () => { etat.drag = null; etat.pince = null; };
 
         canvas.addEventListener('mousedown', down);
         canvas.addEventListener('mousemove', move);
@@ -302,8 +373,15 @@ export function mount(container, session, opts = {}) {
             loupe.classList.toggle('btn-hint--on', etat.loupe);
         };
 
+        container.querySelectorAll('[data-zoom]').forEach(btn => {
+            btn.onclick = () => zoomer(Number(btn.dataset.zoom) > 0 ? 1.25 : 1 / 1.25);
+        });
+
         const recentre = container.querySelector('[data-recentre]');
         if (recentre) recentre.onclick = () => {
+            // Recentrer remet AUSSI la vue à plat : après un zoom, c'est le
+            // geste par lequel on se sort de n'importe quelle situation.
+            recentrer();
             etat.rapporteur.x = canvas.width / 2;
             etat.rapporteur.y = Math.min(canvas.height * 0.82, canvas.height - 40);
             etat.rapporteur.rot = 0;
@@ -435,6 +513,9 @@ export function mount(container, session, opts = {}) {
         if (!ctx) return;
         const w = canvas.width, h = canvas.height;
         ctx.clearRect(0, 0, w, h);
+        ctx.save();
+        ctx.translate(etat.pan.x, etat.pan.y);
+        ctx.scale(etat.zoom, etat.zoom);
 
         // Quadrillage discret
         ctx.save();
@@ -448,6 +529,9 @@ export function mount(container, session, opts = {}) {
 
         dessinerAngle();
         if (etat.rapporteur.visible) dessinerRapporteur();
+        ctx.restore();
+        // La loupe est un instrument POSÉ SUR la vue : elle ne zoome pas avec
+        // elle, sinon regarder une graduation de près en changerait la taille.
         if (etat.loupe && !etat.fige) dessinerLoupe();
     }
 
@@ -463,6 +547,23 @@ export function mount(container, session, opts = {}) {
         ctx.lineWidth = 1.6;
 
         const L = etat.legLen;
+        const angle = m.mode === 'mesurer' ? m.target : etat.construit;
+
+        // LE SECTEUR EST PEINT. Deux traits partant d'un point laissent
+        // toujours DEUX angles — celui qu'on voit et son rentrant — et rien ne
+        // disait lequel on demandait. Une zone colorée entre les deux côtés le
+        // dit sans une phrase : c'est CET espace-là qu'on mesure.
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, L * 0.62, -angle * Math.PI / 180, 0);
+        ctx.closePath();
+        const secteur = ctx.createRadialGradient(0, 0, 0, 0, 0, L * 0.62);
+        secteur.addColorStop(0, 'rgba(99, 102, 241, .30)');
+        secteur.addColorStop(1, 'rgba(99, 102, 241, .06)');
+        ctx.fillStyle = secteur;
+        ctx.fill();
+        ctx.restore();
 
         // Côté fixe (noir)
         ctx.strokeStyle = '#0f172a';
@@ -500,14 +601,29 @@ export function mount(container, session, opts = {}) {
             ctx.restore();
         }
 
-        // Arc de l'angle
+        // Arc de l'angle, franc, avec le point d'interrogation POSÉ DEDANS :
+        // la question est écrite à l'endroit exact où se trouve sa réponse.
         ctx.beginPath();
-        const a = m.mode === 'mesurer' ? m.target : etat.construit;
-        ctx.arc(0, 0, 30, -a * Math.PI / 180, 0);
-        ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)';
-        ctx.lineWidth = 1.4;
+        ctx.arc(0, 0, 34, -angle * Math.PI / 180, 0);
+        ctx.strokeStyle = '#4f46e5';
+        ctx.lineWidth = 2.4;
         ctx.stroke();
         ctx.restore();
+
+        if (m.mode === 'mesurer') {
+            const mi = etat.baseRot - (angle / 2) * Math.PI / 180;
+            const d = 58;
+            const mx = s.x + Math.cos(mi) * d, my = s.y + Math.sin(mi) * d;
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,.9)';
+            ctx.beginPath(); ctx.arc(mx, my, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#4f46e5';
+            ctx.font = '900 19px Inter, system-ui, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('?', mx, my + 1);
+            ctx.restore();
+        }
 
         // Sommet
         ctx.beginPath(); ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
@@ -568,11 +684,12 @@ export function mount(container, session, opts = {}) {
 
     function dessinerLoupe() {
         const zoom = 2.6, R = 80;
-        const { x, y } = etat.pointeur;
+        const { x, y } = versEcran(etat.pointeur);
         ctx.save();
         ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.clip();
         ctx.fillStyle = '#fff'; ctx.fill();
         ctx.translate(x, y); ctx.scale(zoom, zoom); ctx.translate(-x, -y);
+        ctx.translate(etat.pan.x, etat.pan.y); ctx.scale(etat.zoom, etat.zoom);
         dessinerAngle();
         if (etat.rapporteur.visible) dessinerRapporteur();
         ctx.restore();

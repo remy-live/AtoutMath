@@ -2810,3 +2810,12 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     .rl-saisie, .rl-choix { grid-area: reponse; }
     .rl-layout > .hint-bar { grid-area: aide; }
 }
+
+
+/* Zoom du rapporteur : deux boutons collés, à côté de la loupe. Au doigt on
+   pince, à la souris on clique — les deux mènent au même endroit. */
+.angles-zoom { display: inline-flex; gap: 4px; }
+.angles-zoom .btn-hint {
+    min-width: 38px; padding: 6px 0; text-align: center;
+    font-size: 1.15rem; font-weight: 900; line-height: 1;
+}

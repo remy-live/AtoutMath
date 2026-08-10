@@ -62,6 +62,21 @@ const legacyMap = {
     e1: 'calc-add', e2: 'geom-grid', e3: 'calc-prio', e4: 'calc-mult-flash', e5: 'calc-mult-missing'
 };
 
+/**
+ * Un exercice se RÉVISE-T-IL ?
+ *
+ * Non pour les jeux de pure logique — sudoku, binairo, démineur. Y « rater une
+ * question » n'a pas de sens : il n'y a pas de question, il y a une grille, et
+ * la rejouer à l'identique reviendrait à redonner la même grille déjà résolue.
+ * Ces jeux entraînent le raisonnement, pas une connaissance qu'on révise à la
+ * demande — et leurs entrées noyaient un carnet qui doit se lire en dix
+ * secondes.
+ */
+export function estRevisable(exoOuId) {
+    const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
+    return !(exo && exo.sansRevision);
+}
+
 export function getExerciseById(id) {
     return exercices.find(e => e.id === (legacyMap[id] || id)) || null;
 }

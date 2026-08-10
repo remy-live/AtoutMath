@@ -12,7 +12,7 @@ import { state } from '../core/state.js';
 import { badgesCatalog, progressionFamilles } from '../core/gamification.js';
 import { computeSkillStats, getWeakSkills, getStrongSkills, getTotalCorrectCount, getDueSkills } from '../core/stats.js';
 import { getSkill, skillLabel } from '../data/skills.js';
-import { exercisesForSkill, getExerciseById } from '../data/catalog.js';
+import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
 import {
     startErrorReview, startSkillSession, startRecommendedSession, buildRecommendedPreview
@@ -250,7 +250,10 @@ function renderErrors() {
     const btnStart = document.getElementById('btn-start-revision');
     if (!container) return;
 
-    const toutes = state.errorHistory;
+    // Les jeux de PURE LOGIQUE n'entrent pas au carnet : une grille de sudoku
+    // ne se révise pas, et leurs entrées noyaient les erreurs de calcul, qui
+    // sont les seules qu'on puisse retravailler.
+    const toutes = state.errorHistory.filter(e => estRevisable(e.exoId));
     if (!toutes.length) {
         container.innerHTML = `<div class="empty-state-msg">Bravo ! Aucune erreur en attente de révision.</div>`;
         if (btnStart) btnStart.style.display = 'none';

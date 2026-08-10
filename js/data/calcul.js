@@ -145,6 +145,7 @@ export const calculExercises = [
     {
         id: 'calc-binairo', status: STATUS.TEST, title: 'Binairo',
         generatorId: 'logique.binairo', activityId: 'binairo',
+        sansRevision: true,
         printable: 'binairo',
         params: { nbQuestions: 3, taille: 6, difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
@@ -207,6 +208,7 @@ export const calculExercises = [
     {
         id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
         generatorId: 'logique.sudoku', activityId: 'sudoku',
+        sansRevision: true,
         params: { nbQuestions: 2, taille: 6, difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Chaque chiffre ne doit apparaître qu'une seule fois par ligne, par colonne et par bloc. Commence par les cases où un seul chiffre est encore possible : chacune en débloque d'autres."
@@ -302,6 +304,7 @@ export const calculExercises = [
     {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         activityId: 'demineur',
+        sansRevision: true,
         params: { niveau: 'debutant', vies: 3 },
         paramSchema: [
             {

@@ -16,7 +16,7 @@
 import { state } from './state.js';
 import { makePath, makeStep } from './path.js';
 import { defaultPolicy } from './policy.js';
-import { exercisesForSkill, getExerciseById } from '../data/catalog.js';
+import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { openErrors } from './projections.js';
 import { journal } from './journal.js';
 import { skillLabel, prereqChain } from '../data/skills.js';
@@ -55,7 +55,12 @@ export function startRemediation(questions) {
 
 /** Séance à partir du carnet d'erreurs (bouton « Plan de révisions »). */
 export function startErrorReview(limit = 6) {
-    const errors = openErrors(journal.all()).slice(0, limit);
+    // Les jeux de pure logique sont écartés : rejouer « une erreur de sudoku »
+    // veut dire redonner une grille, ce qui n'a rien à voir avec ce qu'on
+    // vient de rater.
+    const errors = openErrors(journal.all())
+        .filter(e => estRevisable(e.exerciseId))
+        .slice(0, limit);
     const steps = errors.map(err => {
         const exoId = err.exerciseId && getExerciseById(err.exerciseId)
             ? err.exerciseId
