@@ -188,10 +188,15 @@
 /* Une question doit tenir sur un écran, sans défilement : les hauteurs sont
    donc exprimées en `clamp(min, vh, max)` plutôt qu'en pixels fixes. Sur un
    écran large, l'énoncé et le pavé se placent côte à côte. */
+/* `width: 100%` étirait la grille sur toute la largeur du plateau : sur une
+   tablette de 1200 px, l'énoncé se retrouvait à un tiers de l'écran et le pavé
+   à l'autre bout, avec un vide au milieu qu'aucun des deux ne remplissait.
+   `fit-content` lui donne la largeur de ce qu'elle contient, et le `margin:
+   auto` recentre le tout : l'énoncé et le pavé restent voisins. */
 .numpad-layout {
-    display: grid; grid-template-columns: 1fr; gap: 10px clamp(24px, 5vw, 56px);
+    display: grid; grid-template-columns: 1fr; gap: 10px clamp(20px, 3vw, 40px);
     align-items: center; justify-items: center; justify-content: center;
-    width: 100%; max-width: 840px; margin: 0 auto;
+    width: fit-content; max-width: 100%; margin: 0 auto;
 }
 .numpad-context { display: flex; flex-direction: column; align-items: center; max-width: 430px; }
 .numpad-context .game-question {
@@ -219,8 +224,11 @@
    largeur : c'est en paysage que la hauteur manque. Un plateau 820×500 doit
    basculer, une tablette en portrait non — elle a la place en une colonne. */
 @container plateau (min-width: 720px) and (min-aspect-ratio: 6/5) {
-    /* Colonne de droite de largeur définie, pour la même raison. */
-    .numpad-layout { grid-template-columns: minmax(240px, 430px) minmax(0, 318px); }
+    /* Colonne de droite de largeur définie, pour la même raison. La colonne de
+       gauche est en `max-content` bornée : elle prend la largeur de l'énoncé,
+       pas celle du plateau — un énoncé court ne doit pas creuser un fossé
+       jusqu'au pavé. */
+    .numpad-layout { grid-template-columns: minmax(0, max-content) minmax(0, 318px); }
     .numpad-context { justify-self: end; }
     .numpad-panel { justify-self: start; }
 }
@@ -1585,6 +1593,16 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: grid; grid-template-columns: minmax(0, 1fr) auto;
     align-items: center; gap: 6px 14px; margin-bottom: 10px;
 }
+
+/* LE PANNEAU SE MESURE À SON CONTENU. Sur tablette, un panneau de 680 px pour
+   trois réglages laissait une trentaine de centimètres de vide entre chaque
+   libellé et son champ : l'œil devait traverser le panneau pour relier les
+   deux. On le borne à une largeur de lecture, et les deux colonnes se
+   retrouvent côte à côte. */
+#student-config-modal .modal-panel-sm-left {
+    width: min(430px, 92vw);
+}
+#student-config-content { display: flex; flex-direction: column; gap: 2px; }
 .cfg-field--wide { grid-template-columns: minmax(0, 1fr); }
 .cfg-label {
     display: flex; align-items: center; gap: 6px; min-width: 0;
@@ -1597,6 +1615,26 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-size: 1rem; color: var(--text-main); font-family: inherit; outline: none;
 }
 .cfg-input--num { width: 88px; text-align: center; font-variant-numeric: tabular-nums; }
+/* Les flèches natives du champ `number` sont minuscules et n'existent pas sur
+   téléphone : on les remplace par deux vraies cibles tactiles. */
+.cfg-input--num::-webkit-outer-spin-button,
+.cfg-input--num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cfg-stepper input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.cfg-stepper {
+    display: inline-flex; align-items: stretch; gap: 6px;
+    touch-action: pan-x;          /* le glissé vertical nous appartient */
+}
+.cfg-stepper .cfg-input--num { width: 74px; cursor: ns-resize; }
+.cfg-step {
+    width: 40px; flex-shrink: 0; border: 2px solid var(--border);
+    background: var(--bg-app); color: var(--text-main);
+    border-radius: 10px; font-size: 1.35rem; font-weight: 800; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background .12s ease, transform .1s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.cfg-step:hover { background: var(--bg-hover); }
+.cfg-step:active { transform: scale(.9); background: var(--primary); color: #fff; border-color: var(--primary); }
 .cfg-field--wide .cfg-input { width: 100%; }
 .cfg-input:focus { border-color: var(--primary); }
 .cfg-help { font-size: .82rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
@@ -1799,9 +1837,14 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    panneau a la largeur de le porter. */
 .cfg-chips--grille { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (min-width: 900px) {
-    /* Sur un écran large, un panneau de 390 px n'a aucune raison d'être : on
-       lui donne de quoi aligner les dix tables sur une seule ligne. */
-    #student-config-modal .modal-panel-sm-left { width: 680px !important; max-width: 92vw; }
+    /* Sur un écran large, le panneau s'élargit UNIQUEMENT s'il contient une
+       grille de tuiles à aligner. Élargi dans tous les cas, il laissait une
+       trentaine de centimètres de vide entre chaque libellé et son champ pour
+       trois réglages qui n'en demandaient pas tant : l'œil devait traverser le
+       panneau pour relier les deux. */
+    #student-config-modal .modal-panel-sm-left:has(.cfg-chips--grille) {
+        width: 680px !important; max-width: 92vw;
+    }
     .cfg-chips--grille { grid-template-columns: repeat(var(--cfg-cols, 5), minmax(0, 1fr)); }
 }
 .cfg-chips--grille .cfg-chip {
@@ -2705,13 +2748,32 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 }
 .rl-saisie { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .rl-champ { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-main); }
-.rl-champ input {
-    width: 96px; padding: 8px 10px; text-align: center;
-    font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums;
-    border: 2px solid var(--border); border-radius: 10px;
-    background: var(--bg-app); color: var(--text-main); outline: none;
+.rl-champ b {
+    min-width: 84px; padding: 6px 12px; text-align: center;
+    font-size: 1.5rem; font-weight: 900; font-variant-numeric: tabular-nums;
+    border: 2px solid var(--primary); border-radius: 10px;
+    background: var(--bg-app); color: var(--text-main); line-height: 1.2;
 }
-.rl-champ input:focus { border-color: var(--primary); }
+.rl-champ .rl-affiche--vide { color: var(--text-muted); border-color: var(--border); }
+
+/* Le pavé de l'exercice, DANS la page. Trois colonnes de touches larges : on
+   répond du pouce sans que le clavier du téléphone ne vienne recouvrir
+   l'ascenseur ou le thermomètre qu'on est en train de lire. */
+.rl-pave {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 6px; width: min(230px, 68vw);
+}
+.rl-touche {
+    padding: 10px 0; border-radius: 10px; border: 2px solid var(--border);
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.15rem; font-weight: 800; font-family: inherit;
+    cursor: pointer; font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 0 rgba(15,23,42,.12);
+    -webkit-tap-highlight-color: transparent;
+}
+.rl-touche:active { transform: translateY(2px); box-shadow: none; background: var(--bg-hover); }
+.rl-touche--signe { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.rl-touche--eff { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .rl-choix { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .rl-choix-btn {
     min-width: 74px; padding: 10px 16px; border-radius: 12px;

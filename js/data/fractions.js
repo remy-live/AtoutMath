@@ -33,8 +33,17 @@ export const fractionsExercises = [
         activityId: 'samurai',
         params: { startLevel: 1, goal: 4 },
         paramSchema: [
-            { id: 'startLevel', type: 'number', label: 'Rang de départ', min: 1, max: 5, default: 1 },
-            { id: 'goal', type: 'number', label: 'Fractions par rang', min: 2, max: 8, default: 4 }
+            {
+                id: 'startLevel', type: 'number', label: 'Difficulté de départ', min: 1, max: 5, default: 1,
+                aide: "Le samouraï monte en grade au fil de la partie. Rang 1 : petites fractions, "
+                    + "un seul facteur commun évident (6/8). Rang 5 : grands nombres et pièges. "
+                    + "Commencer plus haut, c'est sauter l'échauffement."
+            },
+            {
+                id: 'goal', type: 'number', label: 'Fractions à réussir par rang', min: 2, max: 8, default: 4,
+                aide: "Combien de fractions il faut simplifier correctement avant de passer au rang suivant. "
+                    + "Plus le nombre est grand, plus on s'entraîne longtemps à chaque difficulté."
+            }
         ],
         skills: ['num.frac.simplification'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },

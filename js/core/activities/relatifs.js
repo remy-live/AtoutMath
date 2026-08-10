@@ -48,10 +48,11 @@ export function mount(container, session) {
             ? `<div class="rl-choix">${item.choices.map(c =>
                 `<button type="button" class="rl-choix-btn" data-choix="${c.value}">${c.label}</button>`).join('')}</div>`
             : `<div class="rl-saisie">
-                    <label class="rl-champ">
-                        <span>Résultat</span>
-                        <input type="number" data-reponse placeholder="?" inputmode="numeric">
-                    </label>
+                    <div class="rl-champ" data-reponse-vue><span>Résultat</span><b data-affiche>?</b></div>
+                    <div class="rl-pave">
+                        ${['1', '2', '3', '4', '5', '6', '7', '8', '9', '−', '0', '⌫']
+            .map(k => `<button type="button" class="rl-touche${k === '−' ? ' rl-touche--signe' : ''}${k === '⌫' ? ' rl-touche--eff' : ''}" data-touche="${k}">${k}</button>`).join('')}
+                    </div>
                     <button type="button" class="kk-btn-valider" data-valider>Valider</button>
                </div>`;
 
@@ -444,14 +445,51 @@ export function mount(container, session) {
             });
         };
 
-        const champ = container.querySelector('[data-reponse]');
+        // LE PAVÉ EST DANS LA PAGE, pas dans le système. Un `<input>` faisait
+        // monter le clavier du téléphone, qui recouvrait la moitié basse de
+        // l'écran — c'est-à-dire l'ascenseur, le thermomètre ou les pastilles
+        // dont on a précisément besoin pour répondre. Onze touches suffisent
+        // ici : les chiffres, le signe moins et l'effacement.
+        const affiche = container.querySelector('[data-affiche]');
         const btn = container.querySelector('[data-valider]');
-        if (champ && btn) {
-            btn.onclick = () => repondre(parseInt(champ.value, 10));
-            const surTouche = (e) => { if (e.key === 'Enter') { e.preventDefault(); btn.click(); } };
-            champ.addEventListener('keydown', surTouche);
-            nettoyeurs.push(() => champ.removeEventListener('keydown', surTouche));
-            regTimeout(() => { if (!destroyed && champ.isConnected) champ.focus(); }, 60);
+        if (affiche && btn) {
+            let saisie = '';
+            const peindre = () => {
+                affiche.textContent = saisie === '' ? '?' : saisie.replace('-', '−');
+                affiche.classList.toggle('rl-affiche--vide', saisie === '');
+            };
+            const valider = () => {
+                if (saisie === '' || saisie === '-') return;
+                repondre(parseInt(saisie, 10));
+            };
+            container.querySelectorAll('[data-touche]').forEach(t => {
+                t.onclick = () => {
+                    if (session.locked) return;
+                    const k = t.dataset.touche;
+                    if (k === '⌫') saisie = saisie.slice(0, -1);
+                    // Le signe se met et s'enlève d'un même appui : sur un
+                    // exercice de relatifs, on se reprend souvent.
+                    else if (k === '−') saisie = saisie.startsWith('-') ? saisie.slice(1) : '-' + saisie;
+                    else if (saisie.replace('-', '').length < 3) saisie += k;
+                    peindre();
+                };
+            });
+            btn.onclick = valider;
+            // Le clavier physique reste servi : sur ordinateur, taper est plus
+            // rapide que viser onze boutons.
+            const surTouche = (e) => {
+                if (session.locked) return;
+                if (/^[0-9]$/.test(e.key)) { if (saisie.replace('-', '').length < 3) saisie += e.key; }
+                else if (e.key === 'Backspace') saisie = saisie.slice(0, -1);
+                else if (e.key === '-') saisie = saisie.startsWith('-') ? saisie.slice(1) : '-' + saisie;
+                else if (e.key === 'Enter') { valider(); return; }
+                else return;
+                e.preventDefault();
+                peindre();
+            };
+            document.addEventListener('keydown', surTouche);
+            nettoyeurs.push(() => document.removeEventListener('keydown', surTouche));
+            peindre();
         }
         container.querySelectorAll('[data-choix]').forEach(b => {
             b.onclick = () => repondre(parseInt(b.dataset.choix, 10));

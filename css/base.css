@@ -3,6 +3,14 @@
 
 :root {
     --bg-app: #f8fafc; --bg-panel: #ffffff; --bg-hover: #f1f5f9;
+    /* Le cœur du plateau : un halo plus clair que le fond. En thème
+       sombre il doit être plus clair SANS devenir blanc, sinon le texte
+       clair du plateau se dissout dedans. */
+    --bg-plateau: #ffffff;
+    /* Les barres « verre dépoli » : blanches en clair, ardoise en sombre.
+       Codées en dur, elles restaient blanches en thème nuit — et le titre,
+       lui, passait au blanc : on lisait un bandeau vide. */
+    --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #ffffff; --bg-sidebar-hover: #f1f5f9;
     --text-main: #0f172a; --text-muted: #64748b; 
     --text-sidebar: #0f172a; --text-sidebar-muted: #64748b;
@@ -28,6 +36,8 @@
 
 :root[data-theme="dark"] {
     --bg-app: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155;
+    --bg-plateau: #1e2a44;
+    --bg-verre: rgba(15, 23, 42, .86);
     --bg-sidebar: #1e293b; --bg-sidebar-hover: #334155;
     --text-main: #f8fafc; --text-muted: #94a3b8; 
     --text-sidebar: #f8fafc; --text-sidebar-muted: #94a3b8;
@@ -44,6 +54,7 @@
 
 :root[data-theme="ocean"] {
     --bg-app: #e0f2fe; --bg-panel: #f0f9ff; --bg-hover: #bae6fd;
+    --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #f0f9ff; --bg-sidebar-hover: #bae6fd;
     --text-main: #0c4a6e; --text-muted: #0369a1; 
     --text-sidebar: #0c4a6e; --text-sidebar-muted: #0369a1;
@@ -59,6 +70,7 @@
 
 :root[data-theme="forest"] {
     --bg-app: #f0fdf4; --bg-panel: #f8fafc; --bg-hover: #dcfce7;
+    --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #f8fafc; --bg-sidebar-hover: #dcfce7;
     --text-main: #14532d; --text-muted: #15803d; 
     --text-sidebar: #14532d; --text-sidebar-muted: #15803d;
@@ -74,6 +86,7 @@
 
 :root[data-theme="sunset"] {
     --bg-app: #fffbeb; --bg-panel: #fff; --bg-hover: #fef3c7;
+    --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #fff; --bg-sidebar-hover: #fef3c7;
     --text-main: #78350f; --text-muted: #b45309; 
     --text-sidebar: #78350f; --text-sidebar-muted: #b45309;

@@ -3,7 +3,7 @@
    place dans le flux et n'a donc plus de hauteur à déduire. */
 #app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-app); display: flex; flex-direction: column; }
 
-#top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
+#top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: var(--bg-verre); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
 /* Écran court (téléphone en paysage) : la barre haute s'amincit pour laisser
    le maximum de hauteur au contenu. */
 @media (max-height: 480px) {
@@ -52,7 +52,7 @@
 #sidebar.collapsed { width: 0 !important; border-right: none; }
 #sidebar header { display: none; } /* Logo is moved to top-navbar */
 #main-area { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; background: var(--bg-app); }
-#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); z-index: 10; }
+#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; background: var(--bg-verre); backdrop-filter: blur(12px); z-index: 10; }
 #bottom-nav { height: var(--bottom-nav-height); box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
 
 /* =========================================================

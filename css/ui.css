@@ -248,7 +248,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .card-preview {
     position: relative; height: 170px; overflow: hidden;
     border-radius: 12px; border: 1px solid var(--border);
-    background: radial-gradient(circle at center, #fff 0%, var(--bg-app) 100%);
+    background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%);
     pointer-events: none;   /* la vignette n'est pas jouable : le clic ouvre l'exercice */
 }
 .card-preview--live { border-color: var(--primary); }

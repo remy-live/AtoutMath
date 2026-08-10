@@ -57,8 +57,19 @@ function fieldHtml(param, value, options = {}) {
                 <span>${libelleOption(opt)}</span></label>`;
         }).join('') + `</div>`;
     } else if (param.type === 'number') {
-        control = `<input type="number" id="${id}" class="cfg-input cfg-input--num" data-param="${param.id}" data-kind="number"
-            value="${value}" ${param.min !== undefined ? `min="${param.min}"` : ''} ${param.max !== undefined ? `max="${param.max}"` : ''}>`;
+        // UN NOMBRE SE RÈGLE DE TROIS FAÇONS, et il faut les trois : un champ
+        // nu obligeait à sélectionner le contenu puis à taper — sur téléphone,
+        // c'est faire monter le clavier système pour changer 4 en 5. On garde
+        // donc la saisie (la plus rapide pour aller loin), on ajoute deux
+        // boutons − / + (le geste évident au doigt) et la molette ou le glissé
+        // vertical sur le champ (le geste évident à la souris).
+        control = `<div class="cfg-stepper" data-stepper>
+            <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
+            <input type="number" inputmode="numeric" id="${id}" class="cfg-input cfg-input--num"
+                data-param="${param.id}" data-kind="number" value="${value}"
+                ${param.min !== undefined ? `min="${param.min}"` : ''} ${param.max !== undefined ? `max="${param.max}"` : ''}>
+            <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
+        </div>`;
     } else if (param.type === 'select') {
         control = `<select id="${id}" class="cfg-input" data-param="${param.id}" data-kind="select">` +
             param.options.map(o => {
@@ -70,8 +81,11 @@ function fieldHtml(param, value, options = {}) {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
     }
 
+    // L'explication peut venir du schéma lui-même (`aide`) : un réglage dont le
+    // libellé ne suffit pas se documente là où il est défini, pas au point
+    // d'appel — sinon l'aide n'existe que dans un seul des trois panneaux.
     return `<div class="cfg-field${wide ? ' cfg-field--wide' : ''}">
-        <label class="cfg-label" for="${id}">${param.label}${infoBtn(options.aide, options.aideId)}</label>
+        <label class="cfg-label" for="${id}">${param.label}${infoBtn(options.aide || param.aide, options.aideId)}</label>
         ${control}
     </div>`;
 }
@@ -162,6 +176,75 @@ document.addEventListener('click', (e) => { if (!e.target.closest('.cfg-info')) 
 // page bouge sous elle.
 window.addEventListener('scroll', hideTip, true);
 window.addEventListener('resize', hideTip);
+
+// --- Le pas-à-pas des nombres -----------------------------------------------
+//
+// Un seul écouteur posé sur <body> sert TOUS les panneaux, présents et à venir
+// (réglages avant partie, propriétés d'étape, politique). Les panneaux se
+// reconstruisent à chaque ouverture : brancher les champs après chaque rendu
+// aurait multiplié les écouteurs sans jamais les retirer.
+
+function borner(input, v) {
+    const min = input.min !== '' ? Number(input.min) : -Infinity;
+    const max = input.max !== '' ? Number(input.max) : Infinity;
+    return Math.max(min, Math.min(max, v));
+}
+
+/** Change la valeur ET prévient le panneau : sans `change`, rien n'est retenu. */
+function pousser(input, delta) {
+    const v = borner(input, (Number(input.value) || 0) + delta);
+    if (v === Number(input.value)) return;
+    input.value = String(v);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cfg-step');
+    if (!btn) return;
+    const input = btn.parentElement.querySelector('input[type="number"]');
+    if (input) { e.preventDefault(); pousser(input, Number(btn.dataset.step)); }
+});
+
+// La molette : elle ne doit agir que sur un champ SURVOLÉ, jamais emporter la
+// page avec elle — d'où le `preventDefault` et le `passive: false`.
+document.addEventListener('wheel', (e) => {
+    const st = e.target.closest('.cfg-stepper');
+    if (!st) return;
+    const input = st.querySelector('input[type="number"]');
+    if (!input) return;
+    e.preventDefault();
+    pousser(input, e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+
+// Le glissé vertical sur le champ : le geste du curseur de volume. Utile au
+// doigt sur tablette, où viser deux petits boutons est moins naturel que
+// pousser le nombre vers le haut.
+let glisse = null;
+document.addEventListener('pointerdown', (e) => {
+    const st = e.target.closest('.cfg-stepper');
+    if (!st || e.target.closest('.cfg-step')) return;
+    const input = st.querySelector('input[type="number"]');
+    if (!input) return;
+    glisse = { input, y: e.clientY, depart: Number(input.value) || 0, bouge: false };
+});
+document.addEventListener('pointermove', (e) => {
+    if (!glisse) return;
+    const d = Math.round((glisse.y - e.clientY) / 14);   // 14 px = un cran
+    if (!d) return;
+    glisse.bouge = true;
+    const v = borner(glisse.input, glisse.depart + d);
+    if (v !== Number(glisse.input.value)) {
+        glisse.input.value = String(v);
+        glisse.input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+});
+document.addEventListener('pointerup', () => {
+    // Un glissé n'ouvre pas le clavier : sinon il masquerait le nombre qu'on
+    // vient de régler au doigt.
+    if (glisse && glisse.bouge) glisse.input.blur();
+    glisse = null;
+});
+document.addEventListener('pointercancel', () => { glisse = null; });
 
 function readParams(root, schema) {
     const out = {};
@@ -304,7 +387,12 @@ export function showStudentConfigModal(exo, onStart) {
         ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
         <div class="cfg-field">
             <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
-            <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="3" max="50" value="${current.nbQuestions || 10}">
+            <div class="cfg-stepper" data-stepper>
+                <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
+                <input type="number" inputmode="numeric" id="cfg-nbitems" class="cfg-input cfg-input--num"
+                    min="3" max="50" value="${current.nbQuestions || 10}">
+                <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
+            </div>
         </div>
         ${impression}`;
 
