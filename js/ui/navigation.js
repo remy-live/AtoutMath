@@ -1,4 +1,4 @@
-import { exercices, domaines, filterByStatus, statusOf, STATUS, STATUS_LABELS } from '../data/catalog.js';
+import { exercices, domaines, filterByStatus, statusOf, estADeux, STATUS, STATUS_LABELS } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { clearEngines } from '../core/timers.js';
 import { destroyAllDemoCursors } from '../core/demoPointer.js';
@@ -222,7 +222,8 @@ function matchesSearch(exo, query) {
     // de quoi occuper une fin de séance, et il n'est écrit nulle part dans les
     // données — il se déduit de l'activité.
     const haystack = [exo.title, ...(exo.tags.chemin || []), ...(exo.tags.niveaux || []),
-        isGame(exo) ? 'jeu jeux' : ''].join(' ').toLowerCase();
+        isGame(exo) ? 'jeu jeux' : '',
+        estADeux(exo) ? 'deux joueurs duo à deux' : ''].join(' ').toLowerCase();
     return haystack.includes(q);
 }
 
@@ -235,6 +236,9 @@ export function getFilteredExercises() {
     });
     if (state.selectedNiveaux && state.selectedNiveaux.length > 0) {
         list = list.filter(e => e.tags.niveaux && e.tags.niveaux.some(n => state.selectedNiveaux.includes(n)));
+    }
+    if (state.aDeuxSeuls) {
+        list = list.filter(e => estADeux(e));
     }
     if (state.searchQuery) {
         list = list.filter(e => matchesSearch(e, state.searchQuery));
@@ -455,8 +459,14 @@ function renderNiveauRow() {
     const ordre = Object.values(TAGS.NIVEAU);
     dispo.sort((a, b) => ordre.indexOf(a) - ordre.indexOf(b));
 
+    // La pastille « à deux » vit dans CETTE rangée, pas dans une troisième :
+    // elle ne concerne qu'une poignée d'exercices, et une ligne de tags de plus
+    // coûterait à tout le monde la place qu'elle ne rend qu'à eux.
+    const duos = filterByStatus(exercices, { only: state.catalogFilter, teacher: state.isTeacherMode })
+        .filter(e => estADeux(e)).length;
+
     const ligne = document.getElementById('filter-row-niveau');
-    if (ligne) ligne.hidden = dispo.length < 2;
+    if (ligne) ligne.hidden = dispo.length < 2 && !duos;
 
     dispo.forEach(n => {
         const btn = document.createElement('button');
@@ -476,6 +486,21 @@ function renderNiveauRow() {
         };
         fn.appendChild(btn);
     });
+
+    if (duos) {
+        const duo = document.createElement('button');
+        duo.className = 'tag-btn tag-duo';
+        duo.textContent = `👥 À deux (${duos})`;
+        duo.title = 'Ne montrer que les activités qui se jouent à deux sur le même écran';
+        if (state.aDeuxSeuls) duo.classList.add('active');
+        duo.onclick = () => {
+            state.aDeuxSeuls = !state.aDeuxSeuls;
+            initAccordion();
+            renderDrilldown();
+            initGridFilters();
+        };
+        fn.appendChild(duo);
+    }
 }
 
 /* --- Aperçus dans les cartes --------------------------------
@@ -586,6 +611,7 @@ function createCard(exo) {
     tags.innerHTML = `<span class="tag tag-btn tag-niveau">${niveauxStr}</span>
         <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
         ${isGame(exo) ? '<span class="tag tag-btn tag-jeu">🎮 jeu</span>' : ''}
+        ${estADeux(exo) ? '<span class="tag tag-btn tag-duo">👥 à deux</span>' : ''}
         ${statusBadge(exo)}`;
 
     if (state.previewsOn) {

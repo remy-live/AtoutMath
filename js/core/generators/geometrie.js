@@ -114,6 +114,7 @@ export const perimetreGenerator = {
     label: 'Périmètre d\'un rectangle',
     skills: ['mes.perimetre.rectangle'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Dimension maximale', default: 12, min: 3, max: 40 },
         { id: 'unite', type: 'select', label: 'Unité', options: ['cm', 'm'], default: 'cm' }
@@ -159,6 +160,7 @@ export const aireGenerator = {
     label: 'Aire d\'un rectangle',
     skills: ['mes.aire.rectangle'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Dimension maximale', default: 10, min: 3, max: 20 },
         { id: 'unite', type: 'select', label: 'Unité', options: ['cm', 'm'], default: 'cm' }

@@ -134,6 +134,11 @@ export const calculExercises = [
     {
         id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathdoku',
         generatorId: 'logique.mathodu', activityId: 'kenken',
+        // Une erreur de placement dans une grille ne se révise pas : « case B3 »
+        // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
+        // sudoku et le binairo, le Mathdoku entraîne le raisonnement, pas une
+        // connaissance ; ses entrées noyaient un carnet qui doit se lire vite.
+        sansRevision: true,
         // Fiche imprimable : des grilles à raturer, pour travailler sur papier.
         printable: 'mathdoku',
         // 3 grilles par défaut : une grille est une « question » longue, dix
@@ -216,6 +221,7 @@ export const calculExercises = [
     {
         id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
         generatorId: 'logique.garam', activityId: 'garam',
+        sansRevision: true,
         printable: 'garam',
         params: { nbQuestions: 2, taille: 'complet', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
@@ -299,6 +305,7 @@ export const calculExercises = [
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        deuxJoueurs: true,
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
     {

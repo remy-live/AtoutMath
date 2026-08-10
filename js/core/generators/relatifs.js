@@ -189,6 +189,7 @@ export const relatifsGenerator = {
     label: 'Additionner des nombres relatifs',
     skills: [SKILL_SOMME, SKILL_SENS],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         {
             id: 'niveau', type: 'select', label: 'Niveau',

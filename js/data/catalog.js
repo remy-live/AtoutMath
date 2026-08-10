@@ -77,6 +77,19 @@ export function estRevisable(exoOuId) {
     return !(exo && exo.sansRevision);
 }
 
+/**
+ * « À deux » : il faut être DEUX devant le même écran pour y jouer.
+ *
+ * Ce n'est ni un domaine ni un niveau — c'est une condition matérielle, et
+ * elle mérite sa propre marque : un élève seul qui ouvre un duel se retrouve
+ * devant un jeu qu'il ne peut pas jouer, et le professeur qui cherche une
+ * activité de fin d'heure ne sait pas lesquelles s'y prêtent.
+ */
+export function estADeux(exoOuId) {
+    const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
+    return !!(exo && exo.deuxJoueurs);
+}
+
 export function getExerciseById(id) {
     return exercices.find(e => e.id === (legacyMap[id] || id)) || null;
 }

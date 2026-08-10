@@ -36,6 +36,7 @@ export const chiffreRangGenerator = {
     label: 'Chiffre d\'un rang donné',
     skills: ['num.numeration.rang'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'partie', type: 'select', label: 'Rangs interrogés', options: ['entière', 'décimale', 'les deux'], default: 'les deux' },
         { id: 'decimales', type: 'number', label: 'Nombre de décimales', default: 3, min: 1, max: 3 }
@@ -99,6 +100,7 @@ export const partiesGenerator = {
     label: 'Partie entière et partie décimale',
     skills: ['num.decimal.parties'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [],
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -147,6 +149,7 @@ export const zerosGenerator = {
     label: 'Supprimer les zéros inutiles',
     skills: ['num.decimal.zeros'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [],
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -206,6 +209,7 @@ export const conversionGenerator = {
     label: 'Convertir des unités de numération',
     skills: ['num.numeration.conversion'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'decimaux', type: 'select', label: 'Inclure dixièmes et centièmes', options: ['oui', 'non'], default: 'non' }
     ],
@@ -248,6 +252,7 @@ export const decompositionGenerator = {
     label: 'Décomposer un nombre',
     skills: ['num.numeration.decomposition'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'sens', type: 'select', label: 'Sens', options: ['recomposer', 'terme manquant', 'libre'], default: 'libre' }
     ],
@@ -305,6 +310,7 @@ export const lettresGenerator = {
     label: 'Écriture en lettres',
     skills: ['num.ecriture.lettres'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'select', label: 'Jusqu\'à', options: [1000, 100000, 1000000], default: 100000 },
         { id: 'decimaux', type: 'select', label: 'Rangs décimaux', options: ['non', 'parfois', 'toujours'], default: 'non' }
@@ -375,6 +381,7 @@ export const ordreGrandeurGenerator = {
     label: 'Ordre de grandeur',
     skills: ['num.ordre-grandeur'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'decimaux', type: 'select', label: 'Nombres décimaux', options: ['oui', 'non'], default: 'non' }
     ],
@@ -489,6 +496,7 @@ export const complementGenerator = {
     label: 'Compléments à 10, 100, 1000',
     skills: ['num.complement'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'cible', type: 'multiselect', label: 'Compléter à', options: [10, 100, 1000], default: [10, 100] }
     ],
@@ -534,6 +542,7 @@ export const pariteGenerator = {
     label: 'Pair ou impair',
     skills: ['num.parite'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Nombre maximum', default: 99, min: 20, max: 999 }
     ],

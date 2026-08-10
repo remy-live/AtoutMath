@@ -60,7 +60,7 @@ function calculerFiche(cols, rows) {
 // --- jsPDF, chargé au premier besoin ----------------------------------------
 
 let jsPDFPromise = null;
-function chargerJsPDF() {
+export function chargerJsPDF() {
     if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
     if (!jsPDFPromise) {
         jsPDFPromise = new Promise((resolve, reject) => {
@@ -411,7 +411,17 @@ function construirePdf(jsPDF, rendu, items, cols, rows) {
 export function ouvrirFicheModal(exo, params) {
     const generator = getGenerator(exo.generatorId);
     const rendu = RENDUS[exo.printable];
-    if (!generator || !rendu) return;
+    // Deux papiers pour deux natures d'exercice : une GRILLE se dessine (on y
+    // rature, on y note ses candidats), une QUESTION s'écrit sur une ligne.
+    // Le second cas est de loin le plus fréquent, et n'existait pas.
+    if (!rendu) {
+        if (generator && generator.ecrit) {
+            import('./printQuestions.js')
+                .then(m => m.ouvrirFicheQuestions(exo, params, chargerJsPDF));
+        }
+        return;
+    }
+    if (!generator) return;
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fp-apercu');

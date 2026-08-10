@@ -364,3 +364,34 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     background: #fff;
 }
 .fp-case--signe { border: none; background: none; color: #5a6270; }
+
+/* --- Fiche de questions (mode écrit) --------------------------------
+   Une grille tient sur une page ; une liste de questions en occupe souvent
+   deux ou trois. L'aperçu empile donc de vraies feuilles A4 dans un cadre
+   qui défile : on vérifie AVANT d'imprimer que rien ne tombe en bas d'une
+   colonne, ce qu'un aperçu d'une seule page ne montrerait jamais. */
+.fq-apercu {
+    background: none; border: none; box-shadow: none; overflow: visible;
+}
+.fq-page {
+    position: absolute; left: 0; background: #fff; color: #1a202c;
+    border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .18);
+    /* La MÊME police que celle qui a servi à mesurer les lignes et que celle
+       du PDF. Avec la police de l'application, les lignes calculées justes
+       débordaient à l'écran sur la colonne voisine : l'aperçu mentait
+       exactement là où il doit être fiable. */
+    font-family: Helvetica, Arial, sans-serif;
+}
+#print-questions-modal .fp-apercu-cadre {
+    max-height: min(58vh, 660px); overflow-y: auto; padding: 4px 0 10px;
+}
+.fq-num { position: absolute; font-weight: 700; color: #1a202c; line-height: 1.05; }
+.fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }
+.fq-choix { position: absolute; color: #5a6270; line-height: 1.05; white-space: pre; }
+/* La ligne à remplir : des pointillés, pas un trait plein — un trait plein
+   ressemble à une réponse déjà écrite quand on photocopie en gris. */
+.fq-reponse { position: absolute; border-top: 1px dotted #9aa3b2; }
+.fq-consigne { position: absolute; color: #5a6270; line-height: 1.25; }
+.fq-case { gap: 6px; }
+.fq-case input { accent-color: var(--primary); }

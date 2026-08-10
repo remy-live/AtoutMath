@@ -22,6 +22,7 @@ export const fracCompareGenerator = {
     label: 'Comparer deux fractions',
     skills: ['num.frac.compare'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'memeDenominateur', type: 'select', label: 'Dénominateurs', options: ['identiques', 'differents', 'libre'], default: 'libre' },
         { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 3, max: 20 }
@@ -106,6 +107,7 @@ export const fracAddGenerator = {
     label: 'Additionner des fractions (même dénominateur)',
     skills: ['num.frac.add-meme-denom'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 3, max: 20 }
     ],
@@ -174,6 +176,7 @@ export const decCompareGenerator = {
     label: 'Comparer deux nombres décimaux',
     skills: ['num.dec.compare'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'decimales', type: 'select', label: 'Nombre de décimales', options: [1, 2, 3], default: 2 }
     ],

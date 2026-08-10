@@ -6,6 +6,7 @@
 // catalogue ni à cette interface.
 
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
+import { getGenerator } from '../core/registry.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 
 // --- Champs -----------------------------------------------------------------
@@ -374,13 +375,16 @@ export function showStudentConfigModal(exo, onStart) {
     const schema = paramSchemaOf(exo);
     const current = { ...(exo.params || {}) };
 
-    // Fiche à imprimer : proposée seulement quand l'exercice s'y prête
-    // (`printable` au catalogue). Le bouton ouvre une modale dédiée, avec
-    // l'aperçu de la page — les réglages choisis ICI (chiffres, opérations,
-    // difficulté) sont ceux des grilles imprimées.
-    const impression = exo.printable ? `
+    // Travailler sur papier : proposé quand l'exercice s'y prête, c'est-à-dire
+    // dans deux cas — une GRILLE déclarée imprimable au catalogue, ou un
+    // générateur dont les énoncés se suffisent en texte (`ecrit`). Le bouton
+    // ouvre une modale d'aperçu ; les réglages choisis ICI (tables, opérations,
+    // difficulté) sont ceux de la fiche, il n'y a pas deux endroits à régler.
+    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
+    const surPapier = exo.printable ? 'grille' : (gen && gen.ecrit ? 'ecrit' : null);
+    const impression = surPapier ? `
         <button type="button" class="cfg-print-btn cfg-print-btn--seul" id="btn-print-sheet">
-            📄 Travailler sur papier…
+            ${surPapier === 'ecrit' ? '📝 Fiche d\'exercices à imprimer…' : '📄 Travailler sur papier…'}
         </button>` : '';
 
     content.innerHTML = `

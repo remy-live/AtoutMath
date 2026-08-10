@@ -19,6 +19,7 @@ export const additionGenerator = {
     label: 'Addition de deux entiers',
     skills: ['num.add.entiers'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Plus grand terme', default: 10, min: 5, max: 100 },
         { id: 'retenue', type: 'select', label: 'Retenue', options: ['libre', 'avec', 'sans'], default: 'libre' }
@@ -72,6 +73,7 @@ export const soustractionGenerator = {
     label: 'Soustraction de deux entiers',
     skills: ['num.sub.entiers'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Plus grand nombre', default: 20, min: 10, max: 100 }
     ],
@@ -113,6 +115,7 @@ export const multFactGenerator = {
     label: 'Table de multiplication',
     skills: ['num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         { id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10, min: 5, max: 12 }
@@ -166,6 +169,7 @@ export const multMissingGenerator = {
     label: 'Facteur manquant',
     skills: ['num.mult.facteur-manquant'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
     ],
@@ -220,6 +224,7 @@ export const divisionGenerator = {
     label: 'Division (quotient exact)',
     skills: ['num.div.quotient'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Diviseurs', options: [2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
     ],
@@ -266,6 +271,7 @@ export const prioriteGenerator = {
     label: 'Priorités opératoires',
     skills: ['num.prio'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' }
     ],
@@ -333,6 +339,7 @@ export const mixteGenerator = {
     label: 'Calcul mental varié',
     skills: ['num.add.entiers', 'num.sub.entiers', 'num.div.quotient', 'num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'operations', type: 'multiselect', label: 'Opérations', options: [
             // Le SYMBOLE seul, et le nom en infobulle. Écrits en toutes

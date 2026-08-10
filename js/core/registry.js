@@ -25,7 +25,15 @@ const activities = new Map();
  * @param {string[]} def.skills        - ids ou motifs ('num.mult.table.*')
  * @param {string[]} def.answerKinds
  * @param {Array} [def.params]         - schéma de configuration
+ * @param {boolean} [def.ecrit]        - voir ci-dessous
  * @param {(params:Object, ctx:Object)=>Object} def.generate
+ *
+ * `ecrit` : cette question se pose TELLE QUELLE sur une feuille, sans rien
+ * d'autre que son texte. C'est le générateur qui le sait, et lui seul —
+ * « 7 × 8 = ? » se photocopie, « Quelle heure est-il ? » ne veut rien dire
+ * sans le cadran, « Place le point B (4 ; 1) » sans le repère non plus. Le
+ * drapeau commande le bouton « Travailler sur papier » : sans lui, l'élève
+ * recevrait une fiche de questions auxquelles il manque l'essentiel.
  */
 export function registerGenerator(def) {
     if (!def || !def.id) throw new Error('[registry] générateur sans id');

@@ -71,6 +71,11 @@ export const state = {
     teacherPaths: [],
     teacherFolders: [],
     selectedNiveaux: [],
+    // Filtre « à deux » : volontairement NON persisté. C'est un filtre de
+    // circonstance — « qu'est-ce qu'on peut faire à deux, là, maintenant ? » —
+    // et le retrouver actif à la connexion suivante ferait croire à un
+    // catalogue vide.
+    aDeuxSeuls: false,
 
     // --- Progression (dérivée du journal, lecture seule) ---
     get score() { return memo('score', () => computeScore(journal.all())); },

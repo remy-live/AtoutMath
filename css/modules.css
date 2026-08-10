@@ -1553,6 +1553,15 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .tag-jeu { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; font-weight: 700; }
 html[data-theme="dark"] .tag-jeu { background: rgba(252, 211, 77, .16); color: #fcd34d; border-color: rgba(252, 211, 77, .4); }
 
+/* « À deux » : ce n'est ni un domaine ni un niveau, c'est une CONDITION
+   matérielle — il faut être deux devant le même écran. Un élève seul qui ouvre
+   un duel se retrouve devant un jeu qu'il ne peut pas jouer, et le professeur
+   qui cherche une activité de fin d'heure ne sait pas lesquelles s'y prêtent :
+   la pastille répond aux deux d'un coup d'œil. */
+.tag-duo { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; font-weight: 700; }
+html[data-theme="dark"] .tag-duo { background: rgba(167, 139, 250, .18); color: #c4b5fd; border-color: rgba(167, 139, 250, .42); }
+.tag-btn.tag-duo.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+
 .tag-status { font-weight: 700; }
 .tag-status--test { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .tag-status--brouillon { background: var(--bg-hover); color: var(--text-muted); border: 1px dashed var(--border); }
