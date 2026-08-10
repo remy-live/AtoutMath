@@ -246,6 +246,7 @@ const legacy = [
     ['chantier', 'Le Chantier des Blocs', 'chantier', 'engineChantier'],
     ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches'],
     ['arpenteurs', 'Les Arpenteurs (à deux)', 'arpenteurs', 'engineArpenteurs'],
+    ['ninja', 'Trancher et tirer', 'ninja', 'engineNinja'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel']
 ];
 

@@ -1,4 +1,5 @@
 import { TAGS } from './tags.js';
+import { STATUS } from './status.js';
 
 // Chapitre « Nombres entiers et décimaux » (6ᵉ), d'après la fiche de cours.
 //
@@ -164,6 +165,24 @@ export const numerationExercises = [
         instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances."
     },
     {
+        id: 'num-ninja-zeros', status: STATUS.TEST, title: 'Ninja des Zéros Inutiles',
+        activityId: 'ninja',
+        // Un objet raté est une erreur de règle, pas une erreur de calcul : on
+        // l'affiche tout de suite, mais on ne surcharge pas le carnet avec les
+        // ratés de vitesse.
+        sansRevision: true,
+        params: { mode: 'zeros', vies: 3 },
+        paramSchema: [
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
+                default: 3
+            }
+        ],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
+        instruction: "Le nombre traverse l'écran d'un seul tenant. Tranche UNIQUEMENT ses zéros inutiles : ceux de devant, et ceux tout à la fin après la virgule. Le 0 de 1,05 tient un rang — y toucher coûte une vie. Laisser filer un zéro inutile en coûte une aussi : ne rien faire n'est pas une stratégie."
+    },
+    {
         id: 'num-relatifs-addition', title: 'Additionner des Relatifs, pas à pas',
         generatorId: 'num.relatifs.addition', activityId: 'add-relatifs',
         params: { etape: 'progressif', reponse: 'saisie' },
@@ -176,6 +195,46 @@ export const numerationExercises = [
         params: { etape: 'B', reponse: 'saisie' },
         tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
         instruction: "Le passage difficile du chapitre, et lui seul : (+7) + (−3). Les paires rouge-bleu s'éliminent une par une sous tes yeux, et c'est de là que vient la soustraction."
+    },
+    {
+        id: 'num-ninja-negatifs', status: STATUS.TEST, title: 'Ninja des Résultats Négatifs',
+        activityId: 'ninja',
+        sansRevision: true,
+        params: { mode: 'negatifs', vies: 3, parVague: 5 },
+        paramSchema: [
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
+                default: 3
+            },
+            {
+                id: 'parVague', type: 'select', label: 'Bulles par vague',
+                options: [{ value: 3, label: '3 bulles' }, { value: 5, label: '5 bulles' }, { value: 7, label: '7 bulles' }],
+                default: 5
+            }
+        ],
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Des bulles portent un calcul simplifié : 3 − 7, −2 + 9… Coupe celles dont le RÉSULTAT est négatif, laisse filer les autres. Se tromper de bulle coûte une vie ; en laisser passer une qu'il fallait couper aussi."
+    },
+    {
+        id: 'num-ninja-positifs', status: STATUS.TEST, title: 'Tir sur les Résultats Positifs',
+        activityId: 'ninja',
+        sansRevision: true,
+        params: { mode: 'positifs', vies: 3, parVague: 5 },
+        paramSchema: [
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
+                default: 3
+            },
+            {
+                id: 'parVague', type: 'select', label: 'Cibles par vague',
+                options: [{ value: 3, label: '3 cibles' }, { value: 5, label: '5 cibles' }, { value: 7, label: '7 cibles' }],
+                default: 5
+            }
+        ],
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Le jeu inverse du précédent : des cibles portent un calcul, tu tires sur celles dont le résultat est POSITIF et tu épargnes les autres. La consigne reste écrite en haut de l'écran du début à la fin."
     },
     {
         id: 'num-relatifs-thermometre', title: 'Le Thermomètre',
