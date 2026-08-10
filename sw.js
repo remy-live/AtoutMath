@@ -9,7 +9,7 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v24';
+const CACHE = 'atoutmath-v25';
 
 const NOYAU = [
     './',

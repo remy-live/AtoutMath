@@ -229,6 +229,7 @@ const legacy = [
     ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille'],
     ['nova', 'Nova', 'nova', 'engineNova'],
     ['demineur', 'Le Démineur', 'demineur', 'engineDemineur'],
+    ['chantier', 'Le Chantier des Blocs', 'chantier', 'engineChantier'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel']
 ];
 

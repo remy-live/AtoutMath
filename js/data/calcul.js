@@ -302,6 +302,28 @@ export const calculExercises = [
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
     {
+        id: 'calc-chantier', status: STATUS.TEST, title: 'Le Chantier des Blocs',
+        activityId: 'chantier',
+        params: { depart: 'ch1' },
+        paramSchema: [
+            {
+                id: 'depart', type: 'select', label: 'Commencer au niveau',
+                aide: 'Les six niveaux s\'enchaînent tout seuls ; ce réglage sert à reprendre plus loin ou à montrer directement le niveau à deux résultats identiques.',
+                options: [
+                    { value: 'ch1', label: '1 · Le premier bloc' },
+                    { value: 'ch2', label: '2 · Glisser jusqu\'au coin' },
+                    { value: 'ch3', label: '3 · Chacun sa dalle' },
+                    { value: 'ch4', label: '4 · Le bloc devient un mur' },
+                    { value: 'ch5', label: '5 · Deux façons de faire 16' },
+                    { value: 'ch6', label: '6 · Le chantier' }
+                ],
+                default: 'ch1'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat. Un bloc poussé GLISSE jusqu'au premier obstacle : s'il s'arrête sur la dalle qui porte son résultat, il se pose — et devient lui-même un mur. Touche un bloc, puis la case d'arrivée (ou balaye du doigt). Sur les derniers niveaux, deux blocs valent la même chose : le calcul ne suffit plus, il faut choisir lequel va où."
+    },
+    {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         activityId: 'demineur',
         sansRevision: true,
