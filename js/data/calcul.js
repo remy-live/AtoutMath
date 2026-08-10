@@ -309,6 +309,43 @@ export const calculExercises = [
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
     {
+        id: 'calc-arpenteurs', status: STATUS.TEST, title: 'Les Arpenteurs',
+        activityId: 'arpenteurs',
+        deuxJoueurs: true,
+        // À deux sur un seul compte : attribuer les coups de l'un aux
+        // statistiques de l'autre ne voudrait rien dire. Rien n'est enregistré,
+        // comme pour le Duel des Tables.
+        sansRevision: true,
+        params: { terrain: 'moyen', table: 10, bandes: false },
+        paramSchema: [
+            {
+                id: 'terrain', type: 'select', label: 'Taille du terrain',
+                options: [
+                    { value: 'petit', label: '18 × 12 — partie rapide' },
+                    { value: 'moyen', label: '24 × 16' },
+                    { value: 'grand', label: '30 × 20 — partie longue' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'table', type: 'select', label: 'Nombres tirés',
+                aide: 'Les nombres viennent de la table de Pythagore. En s\'arrêtant à 7, les parcelles restent petites et la partie plus longue.',
+                options: [
+                    { value: 7, label: 'Jusqu\'à 7 × 7' },
+                    { value: 10, label: 'Toute la table (jusqu\'à 10 × 10)' }
+                ],
+                default: 10
+            },
+            {
+                id: 'bandes', type: 'checkbox', label: 'Autoriser les bandes d\'une case',
+                aide: 'Une bande de 1 case de large reste presque toujours posable : la fin de partie devient un remplissage mécanique, sans plus rien à décomposer.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "À DEUX sur la même tablette. Un nombre de la table de Pythagore tombe — 36 — et celui dont c'est le tour clôture une parcelle de 36 cases : 6 × 6, 4 × 9, 3 × 12, comme il veut, où il veut. Glisse le doigt d'un coin à l'autre : l'aire s'affiche pendant le tracé. Le premier qui ne peut plus poser a perdu. Rien n'est enregistré dans le profil : c'est un duel."
+    },
+    {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
         activityId: 'motscaches',
         // Les erreurs n'ont rien à réviser ici : un tracé raté est un essai, pas
