@@ -74,7 +74,7 @@ export const NIVEAUX = [
     {
         id: 'pastilles', modele: 'pastilles', titre: 'Les pastilles qui s\'annulent',
         difficulte: 2, min: -7, max: 7, pas: [1, 7], sensNegatif: true,
-        aide: 'Une pastille bleue (+1) et une pastille rouge (−1) forment une PAIRE qui vaut 0 : on les barre toutes les deux. Ce qui reste est la réponse.'
+        aide: 'Une pastille rouge (+1) et une pastille bleue (−1) forment une PAIRE qui vaut 0 : on les barre toutes les deux. Ce qui reste est la réponse.'
     },
     {
         id: 'ecriture', modele: 'ecriture', titre: 'L\'écriture mathématique',
@@ -119,7 +119,7 @@ export function expliquer(modele, depart, deplacements, resultat) {
         }
         return `On forme ${paires} paire${paires > 1 ? 's' : ''} (une bleue avec une rouge), et chaque paire vaut 0. `
             + `Il reste ${Math.abs(total)} pastille${Math.abs(total) > 1 ? 's' : ''} `
-            + `${total > 0 ? 'bleue' : total < 0 ? 'rouge' : ''}${Math.abs(total) > 1 && total !== 0 ? 's' : ''}`
+            + `${total > 0 ? 'rouge' : total < 0 ? 'bleue' : ''}${Math.abs(total) > 1 && total !== 0 ? 's' : ''}`
             + `${total === 0 ? '— aucune' : ''} : le résultat est ${nb(total)}.`;
     }
     // Écriture : on décrit le geste sur la droite graduée, puis la règle.

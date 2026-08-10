@@ -2836,3 +2836,81 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     min-width: 38px; padding: 6px 0; text-align: center;
     font-size: 1.15rem; font-weight: 900; line-height: 1;
 }
+
+/* --- Additionner des relatifs : le tableau de pastilles -------------
+   Deux colonnes, ROUGE pour les positifs et BLEU pour les négatifs. Les
+   teintes sont pastel à dessein : ce sont des jetons de manipulation, pas
+   des alertes, et un rouge vif sur une colonne « + » se lirait comme une
+   erreur. La même convention vaut dans TOUTE l'application — deux
+   conventions opposées sur le même chapitre seraient pires que pas de
+   couleur du tout. */
+.ad-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; width: 100%;
+}
+.ad-etape { font-size: .82rem; color: var(--text-muted); font-weight: 600; }
+
+.ad-tableau {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    width: min(440px, 92%);
+}
+.ad-col {
+    border-radius: 14px; padding: 8px 8px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    min-height: 108px;
+}
+.ad-col--plus { background: #fde8e8; border: 2px solid #f5b5b5; }
+.ad-col--moins { background: #e3edfb; border: 2px solid #a9c6ee; }
+html[data-theme="dark"] .ad-col--plus { background: rgba(248, 113, 113, .16); border-color: rgba(248, 113, 113, .45); }
+html[data-theme="dark"] .ad-col--moins { background: rgba(96, 165, 250, .16); border-color: rgba(96, 165, 250, .45); }
+
+.ad-col-titre { font-weight: 900; font-size: 1.25rem; line-height: 1; }
+.ad-col--plus .ad-col-titre { color: #b91c1c; }
+.ad-col--moins .ad-col-titre { color: #1d4ed8; }
+html[data-theme="dark"] .ad-col--plus .ad-col-titre { color: #fca5a5; }
+html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
+
+.ad-jetons {
+    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+    align-content: flex-start; flex: 1; min-height: 42px;
+}
+.ad-jeton {
+    width: clamp(20px, 6vw, 30px); height: clamp(20px, 6vw, 30px);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: .82rem; color: #fff;
+    transition: transform .38s ease, opacity .38s ease;
+}
+.ad-jeton--plus { background: #ef8a8a; box-shadow: inset 0 -2px 0 rgba(0,0,0,.16); }
+.ad-jeton--moins { background: #7ba7e0; box-shadow: inset 0 -2px 0 rgba(0,0,0,.16); }
+/* La paire s'annonce AVANT de disparaître : les deux jetons se rapprochent
+   l'un de l'autre, puis s'effacent ensemble. C'est ce demi-temps qui fait
+   comprendre que c'est bien une PAIRE qui vaut zéro, pas deux disparitions
+   qui se suivent. */
+.ad-jeton--paire { transform: scale(1.22); box-shadow: 0 0 0 3px rgba(255,255,255,.75); }
+.ad-jeton--parti { transform: scale(0); opacity: 0; }
+
+.ad-col-compte {
+    font-weight: 800; font-size: .95rem; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.ad-calcul {
+    min-height: 1.5em; font-size: 1.05rem; font-weight: 700;
+    color: var(--text-muted); text-align: center;
+}
+.ad-calcul--montre { color: var(--primary); font-size: 1.35rem; }
+
+.ad-choix { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.ad-choix-btn {
+    min-width: 92px; padding: 11px 18px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font-size: 1.2rem; font-weight: 800;
+    font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 0 rgba(15,23,42,.12);
+}
+.ad-choix-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ad-choix-btn:active { transform: translateY(2px); box-shadow: none; }
+
+/* Le pavé gagne une touche virgule à la dernière marche : sans elle, l'élève
+   tape 47 pour 4,7 et se voit refuser un calcul qu'il avait juste. */
+.rl-pave--virgule { grid-template-columns: repeat(3, 1fr); }

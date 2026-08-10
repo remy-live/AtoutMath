@@ -26,6 +26,7 @@ import { anglesGenerator } from '../generators/angles.js';
 import { scratchGenerator } from '../generators/scratch.js';
 import { horlogeGenerator } from '../generators/horloge.js';
 import { relatifsGenerator } from '../generators/relatifs.js';
+import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -39,7 +40,8 @@ import { relatifsGenerator } from '../generators/relatifs.js';
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
-    anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator
+    anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
+    relatifsAdditionGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -206,6 +208,18 @@ registerActivity({
     accepts: ['numeric', 'choice'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./relatifs.js')
+});
+
+// Additionner des relatifs : le tableau de pastilles à deux colonnes et
+// l'écriture qui se simplifie. Là où l'activité précédente montre ce QU'EST un
+// nombre négatif, celle-ci montre comment on l'ÉCRIT et pourquoi une
+// soustraction apparaît.
+registerActivity({
+    id: 'add-relatifs',
+    label: 'Additionner des relatifs (pastilles)',
+    accepts: ['numeric', 'choice'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./addRelatifs.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

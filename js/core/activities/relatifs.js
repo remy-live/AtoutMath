@@ -314,8 +314,12 @@ export function mount(container, session) {
     function dessinerPastilles(w, h) {
         const c = ctx;
         const a = etat.depart, b = etat.deplacements[0];
-        const bleues = Math.max(0, a) + Math.max(0, b);
-        const rouges = Math.abs(Math.min(0, a)) + Math.abs(Math.min(0, b));
+        // ROUGE = positif, BLEU = négatif — la même convention que le tableau
+        // de l'activité « Additionner des relatifs ». Deux conventions
+        // opposées dans le même chapitre seraient pires que pas de couleur du
+        // tout : l'élève verrait la couleur avant de lire le signe.
+        const rouges = Math.max(0, a) + Math.max(0, b);
+        const bleues = Math.abs(Math.min(0, a)) + Math.abs(Math.min(0, b));
         const total = bleues + rouges;
         const parRangee = Math.min(7, Math.max(4, Math.ceil(Math.sqrt(total * 1.6))));
         const r = Math.min(22, (w * 0.9) / (parRangee * 2.4), (h * 0.42) / 2.6);
@@ -328,12 +332,12 @@ export function mount(container, session) {
                 const barre = i < decale;
                 c.save();
                 c.globalAlpha = barre ? 0.32 : 1;
-                c.fillStyle = couleur === 'bleu' ? '#3b82f6' : '#ef4444';
+                c.fillStyle = couleur === 'rouge' ? '#ef8a8a' : '#7ba7e0';
                 c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
                 c.fillStyle = '#fff';
                 c.font = `900 ${Math.round(r * 1.05)}px 'Inter', system-ui, sans-serif`;
                 c.textAlign = 'center'; c.textBaseline = 'middle';
-                c.fillText(couleur === 'bleu' ? '+' : '−', cx, cy + 1);
+                c.fillText(couleur === 'rouge' ? '+' : '−', cx, cy + 1);
                 if (barre) {
                     c.globalAlpha = 1;
                     c.strokeStyle = '#0f172a'; c.lineWidth = 3; c.lineCap = 'round';
@@ -344,19 +348,21 @@ export function mount(container, session) {
                 c.restore();
             }
         };
-        poser(bleues, 'bleu', h * 0.33, Math.min(etat.apparies, bleues));
-        poser(rouges, 'rouge', h * 0.69, Math.min(etat.apparies, rouges));
+        // Les positifs en HAUT, les négatifs en dessous : le même ordre que la
+        // droite graduée et que le tableau à deux colonnes.
+        poser(rouges, 'rouge', h * 0.33, Math.min(etat.apparies, rouges));
+        poser(bleues, 'bleu', h * 0.69, Math.min(etat.apparies, bleues));
 
         // Les traits d'appariement : c'est eux qui font voir la paire.
         if (etat.apparies > 0) {
             c.save();
             c.strokeStyle = 'rgba(15,23,42,.35)'; c.lineWidth = 2; c.setLineDash([4, 4]);
             for (let i = 0; i < Math.min(etat.apparies, paires); i++) {
-                const cxb = w / 2 + ((i % parRangee) - (Math.min(bleues, parRangee) - 1) / 2) * (r * 2.3);
-                const cxr = w / 2 + ((i % parRangee) - (Math.min(rouges, parRangee) - 1) / 2) * (r * 2.3);
+                const cxHaut = w / 2 + ((i % parRangee) - (Math.min(rouges, parRangee) - 1) / 2) * (r * 2.3);
+                const cxBas = w / 2 + ((i % parRangee) - (Math.min(bleues, parRangee) - 1) / 2) * (r * 2.3);
                 c.beginPath();
-                c.moveTo(cxb, h * 0.33 + Math.floor(i / parRangee) * (r * 2.3) + r);
-                c.lineTo(cxr, h * 0.69 + Math.floor(i / parRangee) * (r * 2.3) - r);
+                c.moveTo(cxHaut, h * 0.33 + Math.floor(i / parRangee) * (r * 2.3) + r);
+                c.lineTo(cxBas, h * 0.69 + Math.floor(i / parRangee) * (r * 2.3) - r);
                 c.stroke();
             }
             c.restore();
@@ -522,7 +528,7 @@ export function mount(container, session) {
         if (!await gate.waitTurn() || destroyed) return fin();
 
         if (m.modele === 'pastilles') {
-            cursor.say(`Une pastille bleue vaut +1, une rouge vaut −1. Ensemble, elles font ZÉRO : c'est tout le secret.`, container);
+            cursor.say(`Une pastille rouge vaut +1, une bleue vaut −1. Ensemble, elles font ZÉRO : c'est tout le secret.`, container);
             if (!await cursor.pause(DEMO_SPEED.between + 1200) || destroyed) return fin();
             if (!await gate.waitTurn() || destroyed) return fin();
             cursor.say('Je barre les paires une par une. Ce qui reste sans partenaire donne la réponse.', container);

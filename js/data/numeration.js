@@ -164,6 +164,20 @@ export const numerationExercises = [
         instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances."
     },
     {
+        id: 'num-relatifs-addition', title: 'Additionner des Relatifs, pas à pas',
+        generatorId: 'num.relatifs.addition', activityId: 'add-relatifs',
+        params: { etape: 'progressif', reponse: 'saisie' },
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Douze marches, deux questions chacune. D'abord des pastilles toutes de la même couleur — il n'y a qu'à compter, et on apprend l'écriture. Puis des pastilles des DEUX couleurs : une rouge et une bleue valent zéro ensemble, on les élimine par paires, et la soustraction apparaît toute seule. Ensuite on simplifie les écritures, et on finit avec une virgule."
+    },
+    {
+        id: 'num-relatifs-addition-b', title: 'Relatifs : quand les signes diffèrent',
+        generatorId: 'num.relatifs.addition', activityId: 'add-relatifs',
+        params: { etape: 'B', reponse: 'saisie' },
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Le passage difficile du chapitre, et lui seul : (+7) + (−3). Les paires rouge-bleu s'éliminent une par une sous tes yeux, et c'est de là que vient la soustraction."
+    },
+    {
         id: 'num-relatifs-thermometre', title: 'Le Thermomètre',
         generatorId: 'num.relatifs', activityId: 'relatifs',
         params: { niveau: 'thermometre', reponse: 'saisie' },
@@ -175,7 +189,7 @@ export const numerationExercises = [
         generatorId: 'num.relatifs', activityId: 'relatifs',
         params: { niveau: 'pastilles', reponse: 'saisie' },
         tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
-        instruction: "Une pastille bleue et une rouge forment une paire qui vaut 0. Barre les paires : ce qui reste est la réponse."
+        instruction: "Une pastille rouge (+1) et une bleue (−1) forment une paire qui vaut 0. Barre les paires : ce qui reste est la réponse."
     },
     {
         id: 'num-relatifs-ecriture', title: 'Sommes de Relatifs',
