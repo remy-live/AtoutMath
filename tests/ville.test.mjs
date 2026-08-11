@@ -290,13 +290,22 @@ test('« à » se contracte comme en français', () => {
  *
  * Le contrôle précédent rejouait l'itinéraire nœud par nœud à travers le juge —
  * il vérifiait que le CHEMIN est jouable, jamais que la feuille de route le
- * décrit. Signalé à l'usage : « je ne peux pas prendre la deuxième à droite ».
- * C'était exact. La consigne comptait le carrefour sur lequel la voiture venait
- * de tourner, donc annonçait un rang de trop ; sur une rue qui ne continuait
- * pas, il fallait dépasser une rue qu'on ne pouvait pas dépasser.
+ * décrit. Signalé deux fois à l'usage, et à chaque fois à raison.
+ *
+ * Tout tient dans la façon de compter, et elle n'est pas symétrique :
+ *
+ *   — AU DÉPART, la voiture est GARÉE sur un carrefour. La rue qui part de son
+ *     stationnement, elle ne l'a pas croisée : elle ne compte pas.
+ *   — APRÈS UN VIRAGE, la voiture ARRIVE sur le carrefour suivant. Celui-là,
+ *     elle vient de le rencontrer : il compte — et c'est même celui que l'élève,
+ *     qui voit la voiture posée dessus, appelle « la première ».
+ *
+ * Compter le premier donnait un rang de trop ; sauter le second en donnait un
+ * de moins et renvoyait une rue trop loin. Ce test refait le trajet en
+ * n'obéissant qu'aux mots, et n'accepte que l'arrivée.
  */
 function suivreLesMots(ville, it, etapes) {
-    let p = { ...it.noeuds[0] }, cap = it.capDepart;
+    let p = { ...it.noeuds[0] }, cap = it.capDepart, gare = true;
     const avancer = () => {
         const s = sortiesRelatives(ville, p.x, p.y, cap);
         if (!s['tout-droit']) return false;
@@ -311,17 +320,19 @@ function suivreLesMots(ville, it, etapes) {
             }
             continue;
         }
-        // Rang 0 : « la rue tourne » — on ne compte rien, on suit.
-        if (e.rang < 1) {
-            const s = sortiesRelatives(ville, p.x, p.y, cap);
-            if (!s[e.sens]) return { ok: false, quoi: `aucune rue à ${e.sens} tout de suite` };
-            p = { x: s[e.sens].x, y: s[e.sens].y }; cap = s[e.sens].cap;
-            continue;
-        }
         let vus = 0;
+        // Le carrefour sous les roues compte — sauf au départ, voiture garée.
+        if (!gare) {
+            const s0 = sortiesRelatives(ville, p.x, p.y, cap);
+            if (s0[e.sens] && ++vus === e.rang) {
+                p = { x: s0[e.sens].x, y: s0[e.sens].y }; cap = s0[e.sens].cap;
+                continue;
+            }
+        }
+        gare = false;
         for (let garde = 0; ; garde++) {
             if (garde > 40) return { ok: false, quoi: 'consigne sans fin' };
-            if (!avancer()) return { ok: false, quoi: `impossible d'avancer (${vus} vus sur ${e.rang})` };
+            if (!avancer()) return { ok: false, quoi: `impossible d'avancer (${vus} sur ${e.rang} à ${e.sens})` };
             const s = sortiesRelatives(ville, p.x, p.y, cap);
             if (!s[e.sens]) continue;
             if (++vus < e.rang) continue;
@@ -341,6 +352,21 @@ test('un élève qui obéit AUX MOTS arrive bien à destination', () => {
         assert.ok(it, `pas d'itinéraire au tirage ${g}`);
         const r = suivreLesMots(v, it, decrireItineraire(v, it));
         assert.ok(r.ok, `tirage ${g} : ${r.quoi}`);
+    }
+});
+
+test('… et sur les trois tailles de ville, avec un à quatre virages', () => {
+    const rng = rngFixe(88);
+    for (const [cols, rows] of [[4, 4], [5, 5], [6, 5]]) {
+        for (const virages of [1, 2, 3, 4]) {
+            for (let g = 0; g < 25; g++) {
+                const v = creerVille({ cols, rows, trous: 0.16, rng });
+                const it = tirerItineraire(v, { virages, rng });
+                if (!it) continue;
+                const r = suivreLesMots(v, it, decrireItineraire(v, it));
+                assert.ok(r.ok, `${cols}x${rows}, ${virages} virages, tirage ${g} : ${r.quoi}`);
+            }
+        }
     }
 });
 

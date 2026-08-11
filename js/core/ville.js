@@ -262,9 +262,6 @@ export function decrireItineraire(ville, itineraire) {
     // Occasions rencontrées depuis le dernier virage, par côté.
     let occasions = { gauche: 0, droite: 0 };
     let droitDepuis = 0;
-    // Le carrefour SOUS LES ROUES ne compte pas — vrai au départ comme après
-    // chaque virage (voir plus bas).
-    let sousLesRoues = true;
 
     for (let i = 0; i + 1 < noeuds.length; i++) {
         const ici = noeuds[i], suivant = noeuds[i + 1];
@@ -282,20 +279,18 @@ export function decrireItineraire(ville, itineraire) {
         // coin de rue ne compte pas la rue de ce coin-là, il compte à partir du
         // carrefour suivant.
         //
-        // Cela vaut au DÉPART, et tout autant APRÈS CHAQUE VIRAGE — c'est ce
-        // second cas qui manquait. Après avoir tourné, la voiture se retrouve
-        // posée sur un carrefour, et ce carrefour était compté : la consigne
-        // annonçait « la deuxième à droite » là où l'élève voyait la première,
-        // et sur une rue qui ne continuait pas, elle devenait carrément
-        // infaisable — il fallait dépasser une rue qu'on ne pouvait pas
-        // dépasser. Un contrôle qui SUIT LES MOTS à la lettre le prouve
-        // maintenant sur quatre cents itinéraires (voir les tests).
-        if (!sousLesRoues) {
+        // MAIS SEULEMENT AU DÉPART, et la nuance est tout sauf un détail : au
+        // départ la voiture est GARÉE sur son carrefour, elle n'a croisé
+        // aucune rue ; après un virage, elle ARRIVE sur le carrefour suivant,
+        // et celui-là elle vient de le rencontrer. C'est même celui que
+        // l'élève, qui voit la voiture posée dessus, appelle « la première ».
+        // L'avoir sauté aussi rendait la consigne fausse dans l'autre sens :
+        // elle renvoyait une rue trop loin.
+        if (i > 0) {
             const sorties = sortiesRelatives(ville, ici.x, ici.y, cap);
             if (sorties.gauche) occasions.gauche++;
             if (sorties.droite) occasions.droite++;
         }
-        sousLesRoues = false;
 
         if (sens === 'tout-droit') { droitDepuis++; cap = capVers; continue; }
 
@@ -315,7 +310,6 @@ export function decrireItineraire(ville, itineraire) {
         cap = capVers;
         occasions = { gauche: 0, droite: 0 };
         droitDepuis = 0;
-        sousLesRoues = true;    // on se pose sur le carrefour suivant
     }
 
     const arrivee = noeuds[noeuds.length - 1];
