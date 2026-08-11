@@ -386,7 +386,7 @@ class FracSamurai extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.ui.card);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         if (!await cursor.pause(1200) || !this.isRunning) return fin();
 

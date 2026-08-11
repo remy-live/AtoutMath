@@ -4046,7 +4046,7 @@ class Nova extends BaseGame {
 
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
-        const fin = () => { cur.hideBubble(); gate.destroy(); };
+        const fin = () => { cur?.hideBubble(); gate?.destroy(); };
 
         if (!await cur.pause(700) || !this.isRunning) return fin();
         if (!await gate.waitTurn() || !this.isRunning) return fin();

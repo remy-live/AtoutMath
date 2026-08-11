@@ -278,7 +278,7 @@ export function mount(container, session) {
     async function runDemo() {
         cursor = createDemoCursor();
         gate = createDemoGate(container);
-        const fin = () => { cursor.hideBubble(); return true; };
+        const fin = () => { cursor?.hideBubble(); return true; };
         const m = item.meta;
 
         if (!await cursor.pause(500)) return fin();

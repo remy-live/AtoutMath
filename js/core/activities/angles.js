@@ -738,7 +738,7 @@ export function mount(container, session, opts = {}) {
         const m = item.meta;
         if (!cursor) cursor = createDemoCursor();
         const gate = createDemoGate(container.querySelector('.angles-layout') || container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         if (!await cursor.pause(700) || destroyed) return fin();
 

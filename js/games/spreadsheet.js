@@ -674,7 +674,7 @@ class Tableur extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.container.querySelector('.tab-corps'));
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         this.montrerNiveau(1, false);
         if (!await cursor.pause(1200) || !this.isRunning) return fin();

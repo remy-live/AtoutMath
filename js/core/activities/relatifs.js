@@ -520,7 +520,7 @@ export function mount(container, session) {
     async function runDemo() {
         cursor = createDemoCursor();
         gate = createDemoGate(container);
-        const fin = () => { cursor.hideBubble(); return true; };
+        const fin = () => { cursor?.hideBubble(); return true; };
         const m = item.meta;
         const d = m.deplacements[0];
 

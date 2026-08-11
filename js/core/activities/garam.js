@@ -298,7 +298,7 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.ga-board, .kk-board'));
         const gate = createDemoGate(container.querySelector('.kk-actions') || container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         const lit = (i) => (valeurs[i] === VIDE ? '?' : valeurs[i]);
         const cibleDe = () => {

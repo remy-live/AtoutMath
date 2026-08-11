@@ -427,7 +427,7 @@ class Tetris extends BaseGame {
 
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
-        const fin = () => { cur.hideBubble(); if (this.demoInterval) clearInterval(this.demoInterval); };
+        const fin = () => { cur?.hideBubble(); if (this.demoInterval) clearInterval(this.demoInterval); };
         const vivant = () => this.gameRunning && !this.destroyed;
 
         if (!await cur.pause(600) || !vivant()) return fin();

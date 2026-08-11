@@ -90,6 +90,9 @@ class Duel extends BaseGame {
                     animation: du-respire 1.1s ease-in-out infinite;
                 }
                 @keyframes du-respire { 50% { opacity: .15 } }
+                /* « Prêt » : le camp s'éclaire, l'autre joueur voit qu'on
+                   n'attend plus que lui. */
+                .du-cote--pret { box-shadow: inset 0 0 0 3px var(--du-teinte); }
 
                 /* Le nom, le score et la consigne sur UNE ligne : trois lignes
                    empilées coûtaient soixante pixels par camp, pris sur le
@@ -356,8 +359,17 @@ class Duel extends BaseGame {
             // posés au même instant produisent deux événements distincts, avec
             // deux `pointerId`. C'est tout ce qu'il faut pour le jeu à deux.
             section.addEventListener('pointerdown', (e) => {
+                if (this.isDemo) return;
                 const btn = e.target.closest('button');
-                if (!btn || this.isDemo) return;
+                if (!btn) {
+                    // Appui SUR SA MOITIÉ, hors des touches : c'est le « je
+                    // suis prêt » que réclame l'annonce de départ. Sans lui,
+                    // l'écran disait « appuyez tous les deux pour commencer »
+                    // et rien n'écoutait : le duel ne démarrait que si l'un
+                    // des deux devinait qu'il fallait taper une table.
+                    this.direPret(i);
+                    return;
+                }
                 e.preventDefault();
                 this.enfoncer(btn);
                 if (btn.dataset.table) this.choisirTable(i, Number(btn.dataset.table));
@@ -523,6 +535,32 @@ class Duel extends BaseGame {
         this.voile.hidden = false;
     }
 
+    /**
+     * « Je suis prêt ».
+     *
+     * Les deux joueurs se font face et ne voient pas le même sens : un seul
+     * bouton « Commencer » serait à l'envers pour l'un des deux. Chacun tape
+     * donc SA moitié — le même geste que tout le reste du jeu — et la partie
+     * part quand les deux l'ont fait. L'annonce dit lequel manque, sinon on
+     * s'accuse mutuellement de ne pas avoir appuyé.
+     */
+    direPret(i) {
+        const p = this.partie;
+        if (p.phase === 'fini' || this.voile.hidden) return;
+        if (this.prets[i]) return;
+        this.prets[i] = true;
+        this.cotes[i].classList.add('du-cote--pret');
+        if (this.prets[0] && this.prets[1]) {
+            clearTimeout(this.minuteurAnnonce);
+            this.voile.hidden = true;
+            this.cotes.forEach(c => c.classList.remove('du-cote--pret'));
+            this.majEcran();
+            return;
+        }
+        const attendu = NOMS[this.prets[0] ? 1 : 0];
+        this.annoncer('LE DUEL', `${NOMS[i]} est prêt. On attend ${attendu}…`);
+    }
+
     rejouer() {
         clearTimeout(this.minuteurAnnonce);
         this.partie = creerPartie({
@@ -532,6 +570,8 @@ class Duel extends BaseGame {
         });
         this.saisie = ['', ''];
         this.vol = null;
+        this.prets = [false, false];
+        this.cotes.forEach(c => c.classList.remove('du-cote--pret'));
         this.voile.hidden = true;
         this.majEcran();
     }

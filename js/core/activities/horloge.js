@@ -473,7 +473,7 @@ export function mount(container, session) {
         const m = item.meta;
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        const fin = () => { cursor.hideBubble(); regTimeout(renderNext, DEMO_SPEED.between); };
+        const fin = () => { cursor?.hideBubble(); regTimeout(renderNext, DEMO_SPEED.between); };
         const cadran = container.querySelector('[data-cadran]');
 
         if (!await cursor.pause(600) || destroyed) return fin();

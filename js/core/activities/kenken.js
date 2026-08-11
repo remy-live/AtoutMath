@@ -341,7 +341,7 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.kk-board'));
         const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         if (!await cursor.pause(600) || destroyed) return fin();
         while (!destroyed) {

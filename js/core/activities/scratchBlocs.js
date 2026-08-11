@@ -572,7 +572,7 @@ export function mount(container, session, opts = {}) {
         if (!cursor) cursor = createDemoCursor();
         cursor.protegerZone(container.querySelector('.sc-scene'));
         const gate = createDemoGate(container.querySelector('.sc-layout') || container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
         const m = item.meta;
 
         if (!await cursor.pause(700) || destroyed) return fin();

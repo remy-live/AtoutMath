@@ -550,7 +550,7 @@ class Galactic extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.container.querySelector('.gal-deck') || this.container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         if (!await cursor.pause(1400) || !this.isRunning) return fin();
 

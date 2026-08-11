@@ -204,7 +204,7 @@ class Vault extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.container.querySelector('.vault-wrapper') || this.container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         const tape = async (texte) => {
             this.demoTape = true;

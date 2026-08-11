@@ -295,7 +295,7 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.su-board, .kk-board'));
         const gate = createDemoGate(container.querySelector('.kk-actions') || container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         if (!await cursor.pause(600) || destroyed) return fin();
         cursor.say(`Chaque chiffre de 1 à ${N()} n'apparaît qu'une fois par ligne, colonne et bloc. Je cherche les cases OBLIGÉES.`,

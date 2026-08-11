@@ -108,7 +108,7 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.pyt-board'));
         const gate = createDemoGate(container.querySelector('.pyt-layout') || container);
-        const fin = () => { cursor.hideBubble(); gate.destroy(); };
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
         if (!await cursor.pause(800) || destroyed) return fin();
         if (!await gate.waitTurn() || destroyed) return fin();

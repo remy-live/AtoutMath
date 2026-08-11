@@ -699,10 +699,10 @@ function prepareStage(box, stage) {
     appliquerEchelle(stage, large, large / LARGEUR_REF);
 }
 
-function appliquerEchelle(stage, large, k) {
+function appliquerEchelle(stage, large, k, decalageY = 0) {
     stage.style.transformOrigin = 'top left';
     stage.style.transform =
-        `translateX(${Math.round((large - LARGEUR_REF * k) / 2)}px) scale(${k.toFixed(4)})`;
+        `translate(${Math.round((large - LARGEUR_REF * k) / 2)}px, ${Math.round(decalageY)}px) scale(${k.toFixed(4)})`;
 }
 
 // Largeur à laquelle la question est COMPOSÉE avant d'être réduite. Composer
@@ -731,11 +731,43 @@ function fitPreview(box, stage) {
 
     // `container-type: size` isole la hauteur du contenu : `scrollHeight`
     // renverrait celle du conteneur. On mesure donc les enfants eux-mêmes.
-    const haut0 = stage.getBoundingClientRect().top;
-    const bas = [...stage.children]
-        .reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom - haut0), 0);
+    //
+    // Et on mesure les DEUX bords, pas seulement le bas. Le contenu d'une
+    // activité est centré verticalement : plus haut que la scène, il déborde
+    // AUTANT par le haut que par le bas. En ne regardant que le bas, on
+    // sous-estimait la hauteur réelle de moitié — la vignette restait trop
+    // grande, et l'énoncé se retrouvait coupé au ras du cadre. On aligne
+    // ensuite le sommet du contenu sur celui de la vignette : ce qui dépasse
+    // dépasse en bas, là où c'est le décor, jamais sur la question.
+    const zero = stage.getBoundingClientRect().top;
+    // EN PROFONDEUR, pas seulement les enfants directs. Beaucoup d'activités
+    // posent un unique conteneur à la taille de la scène, et c'est SON contenu
+    // qui déborde : mesurée au premier niveau, la vignette paraissait tenir et
+    // on en voyait les deux tiers. Le parcours est borné (nombre de nœuds, et
+    // distance) pour rester bon marché et pour qu'une particule partie au loin
+    // ne réduise pas toute la vignette à un timbre.
+    const stageH = stage.getBoundingClientRect().height || haut;
+    let sommet = Infinity, bas = 0, budget = 400;
+    const visiter = (el) => {
+        for (const enfant of el.children) {
+            if (budget-- <= 0) return;
+            const r = enfant.getBoundingClientRect();
+            if (r.width >= 1 || r.height >= 1) {
+                const t = r.top - zero, b = r.bottom - zero;
+                if (b > -stageH * 2 && t < stageH * 3) {
+                    sommet = Math.min(sommet, t);
+                    bas = Math.max(bas, b);
+                }
+            }
+            if (enfant.children.length) visiter(enfant);
+        }
+    };
+    visiter(stage);
+    if (!isFinite(sommet)) sommet = 0;
+    const hauteurContenu = Math.max(bas - Math.min(sommet, 0), 1);
 
-    appliquerEchelle(stage, large, Math.min(large / LARGEUR_REF, haut / Math.max(bas, 1)));
+    const k = Math.min(large / LARGEUR_REF, haut / hauteurContenu);
+    appliquerEchelle(stage, large, k, Math.min(sommet, 0) * -k);
 }
 
 function startCardDemo(exo, box) {

@@ -619,7 +619,7 @@ class Escadrille extends BaseGame {
 
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
-        const fin = () => { cur.hideBubble(); gate.destroy(); };
+        const fin = () => { cur?.hideBubble(); gate?.destroy(); };
         const t = this.table;
 
         if (!await cur.pause(700) || !this.isRunning) return fin();
