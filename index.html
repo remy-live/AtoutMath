@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=105">
-    <link rel="stylesheet" href="css/layout.css?v=105">
-    <link rel="stylesheet" href="css/ui.css?v=105">
-    <link rel="stylesheet" href="css/games.css?v=105">
-    <link rel="stylesheet" href="css/components.css?v=105">
-    <link rel="stylesheet" href="css/modules.css?v=105">
+    <link rel="stylesheet" href="css/base.css?v=106">
+    <link rel="stylesheet" href="css/layout.css?v=106">
+    <link rel="stylesheet" href="css/ui.css?v=106">
+    <link rel="stylesheet" href="css/games.css?v=106">
+    <link rel="stylesheet" href="css/components.css?v=106">
+    <link rel="stylesheet" href="css/modules.css?v=106">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -65,6 +65,15 @@
             <button class="debug-btn" id="db-console" title="Console : voir et copier le journal"
                     aria-label="Ouvrir la console">
                 <svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="2.5"/><path d="M6.5 9 9 11.5 6.5 14"/><path d="M12 14h5"/></svg>
+            </button>
+            <!-- LA SOLUTION, pour l'auteur seul. Un niveau qu'on vient
+                 d'écrire se vérifie en le jouant, et rejouer douze poussées à
+                 la main pour contrôler la douzième prend plus de temps que
+                 d'écrire le niveau. Le bouton est dans la palette d'auteur :
+                 un élève n'y a pas accès, et rien n'est enregistré. -->
+            <button class="debug-btn" id="db-solution" title="Montrer la solution (outil d'auteur)"
+                    aria-label="Montrer la solution">
+                <svg viewBox="0 0 24 24"><circle cx="8.5" cy="15.5" r="3.5"/><path d="m11 13 8.5-8.5"/><path d="m16 8 2 2M18.5 5.5l2 2"/></svg>
             </button>
             <!-- Reculer et avancer d'une question, dans n'importe quel
                  exercice : mettre au point la dixième sans jouer les neuf

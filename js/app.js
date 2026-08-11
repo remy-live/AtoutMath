@@ -628,6 +628,18 @@ function initDebugToolbar() {
     if (btnSkip) btnSkip.onclick = naviguer('sauterQuestion', 'Impossible d\'avancer ici.');
     const btnBack = document.getElementById('db-back');
     if (btnBack) btnBack.onclick = naviguer('revenirQuestion', 'Cet exercice ne sait pas revenir en arrière.');
+
+    // La solution : chaque jeu décide s'il sait la montrer. Aucun ne la donne
+    // à l'élève — le bouton n'existe que dans la palette d'auteur.
+    const btnSol = document.getElementById('db-solution');
+    if (btnSol) btnSol.onclick = async () => {
+        const { showToast } = await import('./ui/modal.js');
+        const jeu = state.activeSequenceRunner && state.activeSequenceRunner.handle
+            && state.activeSequenceRunner.handle.jeu;
+        if (!jeu || typeof jeu.montrerSolution !== 'function' || !jeu.montrerSolution()) {
+            showToast(jeu ? 'Ce jeu ne sait pas montrer sa solution.' : 'Aucun jeu en cours.', 'warning');
+        }
+    };
 }
 
 /**

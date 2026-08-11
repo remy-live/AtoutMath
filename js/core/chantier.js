@@ -219,6 +219,18 @@ export const NIVEAUX = [
             ########`
     },
     {
+        id: 'ch26', titre: 'Vingt-quatre des deux côtés',
+        produits: { A: [4, 6], B: [3, 8] },
+        indice: '4 × 6 et 3 × 8 font 24 : chaque bloc accepte les deux dalles. Regarde où chacun PEUT s\'arrêter.',
+        plan: `
+            ########
+            #A...#.#
+            #......#
+            #..#bB.#
+            #a..#..#
+            ########`
+    },
+    {
         id: 'ch3', titre: 'Chacun sa dalle',
         produits: { A: [7, 8], B: [6, 4] },
         indice: 'Une dalle qui ne porte pas ton résultat ne te retient pas : le bloc s\'y pose sans se sceller. Calcule avant de pousser.',
@@ -259,6 +271,19 @@ export const NIVEAUX = [
             #########`
     },
     {
+        id: 'ch27', titre: 'Les deux du fond',
+        produits: { A: [8, 8], B: [6, 8] },
+        indice: 'Les deux dalles sont côte à côte en bas. Celui qui descend le premier prend la place de l\'autre.',
+        plan: `
+            ########
+            ##.....#
+            #..B#..#
+            #...A..#
+            #......#
+            #a#b...#
+            ########`
+    },
+    {
         id: 'ch6', titre: 'Trente-six des deux côtés',
         produits: { A: [6, 6], B: [4, 9] },
         indice: '6 × 6 et 4 × 9 font 36 : les deux dalles acceptent les deux blocs. Regarde donc où chacun PEUT s\'arrêter.',
@@ -282,6 +307,19 @@ export const NIVEAUX = [
             #.#..A..#
             #.#.B...#
             #.#...ba#
+            #########`
+    },
+    {
+        id: 'ch28', titre: 'Le passage étroit',
+        produits: { A: [8, 6], B: [6, 9] },
+        indice: 'Peu de place et beaucoup de murs : c\'est ce qui rend le chemin unique.',
+        plan: `
+            #########
+            #.......#
+            #..##.#.#
+            ###..#..#
+            ##..#.b##
+            #B.A..a##
             #########`
     },
     {
@@ -310,6 +348,19 @@ export const NIVEAUX = [
             #######`
     },
     {
+        id: 'ch29', titre: 'Trois dans un coin',
+        produits: { A: [9, 8], B: [7, 7], C: [6, 7] },
+        indice: 'Trois blocs serrés en haut. Celui qui bouge en premier libère — ou condamne — les autres.',
+        plan: `
+            #######
+            ##aAcb#
+            #.B...#
+            #C...##
+            #....##
+            #..#.##
+            #######`
+    },
+    {
         id: 'ch10', titre: 'Le chantier encombré',
         produits: { A: [8, 6], B: [8, 7], C: [9, 9] },
         indice: 'Trois blocs dans le même espace. Chacun scellé rétrécit le passage des autres — d\'où l\'ordre.',
@@ -333,6 +384,18 @@ export const NIVEAUX = [
             #..C#...#
             #...ca.##
             #########`
+    },
+    {
+        id: 'ch30', titre: 'Soixante-douze en double, encore',
+        produits: { A: [9, 8], B: [12, 6], C: [8, 7] },
+        indice: '9 × 8 et 12 × 6 font 72. Une des deux dalles est bien plus difficile à atteindre.',
+        plan: `
+            ########
+            #b#...c#
+            #a.B..A#
+            #......#
+            #..C..##
+            ########`
     },
     {
         id: 'ch12', titre: 'Le chantier',
@@ -377,6 +440,19 @@ export const NIVEAUX = [
             #########`
     },
     {
+        id: 'ch31', titre: 'Le labyrinthe',
+        produits: { A: [9, 6], B: [7, 7], C: [6, 7] },
+        indice: 'Des murs partout : chaque bloc n\'a qu\'un ou deux chemins possibles. Cherche-les avant de pousser.',
+        plan: `
+            #########
+            ##....#b#
+            #a#A....#
+            #..C#...#
+            ##......#
+            ##.c...B#
+            #########`
+    },
+    {
         id: 'ch15', titre: 'L\'ordre décide',
         produits: { A: [7, 8], B: [14, 4], C: [6, 7] },
         indice: 'Encore 56 en double. Un des deux blocs n\'atteint SA dalle que si l\'autre lui sert de mur.',
@@ -389,6 +465,18 @@ export const NIVEAUX = [
             #B......a#
             #..b....##
             ##########`
+    },
+    {
+        id: 'ch32', titre: 'Quatre à l\'étroit',
+        produits: { A: [9, 8], B: [7, 9], C: [8, 6], D: [8, 7] },
+        indice: 'Quatre blocs sur un tout petit chantier. Il n\'y a presque pas de place pour se tromper.',
+        plan: `
+            #######
+            #.DCA##
+            #b...a#
+            #.#B#.#
+            #.dc.##
+            #######`
     },
     {
         id: 'ch16', titre: 'Le détour obligé',
@@ -458,6 +546,18 @@ export const NIVEAUX = [
             #######`
     },
     {
+        id: 'ch33', titre: 'La table de 7',
+        produits: { A: [7, 7], B: [7, 8], C: [7, 6] },
+        indice: 'Trois multiples de 7 : 49, 56, 42. Le calcul est simple, le chemin l\'est beaucoup moins.',
+        plan: `
+            ##########
+            #.A......#
+            #c..B#b..#
+            #C.....#.#
+            #a.......#
+            ##########`
+    },
+    {
         id: 'ch21', titre: 'Deux blocs, dix coups',
         produits: { A: [7, 6], B: [8, 6] },
         indice: 'Deux blocs seulement, et pourtant dix poussées : chacun doit faire le tour pour se présenter du bon côté.',
@@ -484,6 +584,18 @@ export const NIVEAUX = [
             #.A.###
             #d..b##
             #######`
+    },
+    {
+        id: 'ch34', titre: 'Le grand large',
+        produits: { A: [7, 7], B: [9, 9], C: [8, 6] },
+        indice: 'Beaucoup d\'espace, donc peu de murs pour s\'arrêter : ce sont les blocs scellés qui feront les murs.',
+        plan: `
+            ##########
+            ##...b.Aa#
+            #..B....##
+            #...C....#
+            #..c.....#
+            ##########`
     },
     {
         id: 'ch23', titre: 'Le grand tour',
@@ -526,6 +638,19 @@ export const NIVEAUX = [
             #........#
             #.......C#
             ##########`
+    },
+    {
+        id: 'ch35', titre: 'Le dernier chantier',
+        produits: { A: [9, 9], B: [7, 7], C: [7, 8] },
+        indice: 'Douze poussées. Lis tout, prévois l\'ordre, et ne pousse qu\'ensuite.',
+        plan: `
+            #######
+            #.....#
+            #Ba...#
+            #c#C..#
+            #...Ab#
+            #.#...#
+            #######`
     }
 ];
 

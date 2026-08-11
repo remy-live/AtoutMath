@@ -1,5 +1,6 @@
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
+import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 
 // `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
 // pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
@@ -404,34 +405,11 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'depart', type: 'select', label: 'Commencer au niveau',
-                aide: 'Les vingt-cinq niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
-                options: [
-                    { value: 'ch1', label: '1 · Le premier bloc' },
-                    { value: 'ch2', label: '2 · Glisser jusqu\'au coin' },
-                    { value: 'ch3', label: '3 · Chacun sa dalle' },
-                    { value: 'ch4', label: '4 · Le bloc devient un mur' },
-                    { value: 'ch5', label: '5 · Deux façons de faire 16' },
-                    { value: 'ch6', label: '6 · Trente-six des deux côtés' },
-                    { value: 'ch7', label: '7 · Les deux couloirs' },
-                    { value: 'ch8', label: '8 · Le coude' },
-                    { value: 'ch9', label: '9 · Soixante-quatre en double' },
-                    { value: 'ch10', label: '10 · Le chantier encombré' },
-                    { value: 'ch11', label: '11 · Cinquante-six, deux fois' },
-                    { value: 'ch12', label: '12 · Le chantier' },
-                    { value: 'ch13', label: '13 · La longue traversée' },
-                    { value: 'ch14', label: '14 · Quatre à la fois' },
-                    { value: 'ch15', label: '15 · L\'ordre décide' },
-                    { value: 'ch16', label: '16 · Le détour obligé' },
-                    { value: 'ch17', label: '17 · Le grand chantier' },
-                    { value: 'ch18', label: '18 · La cour ouverte' },
-                    { value: 'ch19', label: '19 · Soixante-quatre, encore' },
-                    { value: 'ch20', label: '20 · Le fond du couloir' },
-                    { value: 'ch21', label: '21 · Deux blocs, dix coups' },
-                    { value: 'ch22', label: '22 · Le chantier en étage' },
-                    { value: 'ch23', label: '23 · Le grand tour' },
-                    { value: 'ch24', label: '24 · Soixante-douze en double' },
-                    { value: 'ch25', label: '25 · La grande cour' }
-                ],
+                aide: 'Les niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
+                // La liste se CONSTRUIT depuis les niveaux. Recopiée à la main,
+                // elle a déjà divergé une fois — et un menu qui annonce vingt-cinq
+                // niveaux quand il y en a trente-cinq est un menu qui ment.
+                options: NIVEAUX_CHANTIER.map((n, i) => ({ value: n.id, label: `${i + 1} · ${n.titre}` })),
                 default: 'ch1'
             }
         ],

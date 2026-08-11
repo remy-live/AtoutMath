@@ -235,6 +235,55 @@ class Chantier extends BaseGame {
 
     startGameLoop() { /* Un puzzle au tour par tour : rien à faire tourner. */ }
 
+    /**
+     * LA SOLUTION, POUR L'AUTEUR — jamais pour l'élève.
+     *
+     * Un niveau qu'on vient d'écrire se vérifie en le jouant, et se rejouer
+     * douze poussées à la main pour contrôler la douzième prend plus de temps
+     * que d'écrire le niveau. Le solveur du noyau connaît déjà le plus court
+     * chemin : il le joue sous les yeux, coup par coup, à vitesse lisible.
+     *
+     * Rien n'est enregistré : ni réussite, ni erreur, ni compétence. C'est un
+     * outil de mise au point, pas une aide — un élève qui voit la solution
+     * n'apprend rien, et il n'a aucun moyen de la demander.
+     */
+    montrerSolution() {
+        if (this.solutionEnCours) return true;
+        const chemin = resoudre(cloner(this.etat), 300000);
+        if (!chemin || !chemin.length) {
+            this.note(gagne(this.etat)
+                ? 'Ce niveau est déjà terminé.'
+                : 'Aucune solution depuis cette position — le chantier est condamné.', 'ko');
+            return true;
+        }
+        this.solutionEnCours = true;
+        this.note(`Solution en ${chemin.length} coup${chemin.length > 1 ? 's' : ''} — démonstration d'auteur, rien n'est enregistré.`);
+
+        let i = 0;
+        const suite = () => {
+            if (!this.isRunning || i >= chemin.length) {
+                this.solutionEnCours = false;
+                if (this.isRunning) this.majPlateau();
+                return;
+            }
+            const { id, dir } = chemin[i++];
+            const b = this.etat.blocs.find(o => o.id === id);
+            this.choisi = id;
+            this.majPlateau();
+            this.timerSolution = setTimeout(() => {
+                if (!this.isRunning) return;
+                pousser(this.etat, id, dir);
+                this.choisi = null;
+                this.majPlateau();
+                this.majBarre();
+                if (b) this.note(`${i}/${chemin.length} — ${b.a} × ${b.b} = ${b.produit} vers ${NOMS[dir]}.`);
+                this.timerSolution = setTimeout(suite, 520);
+            }, 380);
+        };
+        suite();
+        return true;
+    }
+
     /** Le saut d'auteur passe au niveau suivant : c'est ici la « question ». */
     showNext() {
         if (this.index >= NIVEAUX.length - 1) return false;
@@ -587,6 +636,7 @@ class Chantier extends BaseGame {
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         if (this.surTouche) document.removeEventListener('keydown', this.surTouche);
+        if (this.timerSolution) clearTimeout(this.timerSolution);
         super.destroy();
     }
 }
