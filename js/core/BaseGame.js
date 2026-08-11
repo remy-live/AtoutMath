@@ -34,6 +34,27 @@ export class BaseGame {
         else this.startGameLoop();
     }
 
+    /**
+     * PASSER À LA QUESTION SUIVANTE — demandé par la barre d'auteur.
+     *
+     * Le saut ne faisait qu'avancer le compteur de l'étape : la barre affichait
+     * « 3 / 10 » et l'écran gardait le même trajet, le même programme, la même
+     * pizza. Bon à rien, donc : on saute justement pour ATTEINDRE une autre
+     * question, pas pour voir le compteur bouger.
+     *
+     * Presque tous ces jeux portent déjà le bouton qui convient — « ↺ Autre
+     * trajet », « ↺ Autre programme », « ↺ Autre commande » —, marqué
+     * `[data-neuf]`. On appuie dessus. Un jeu qui n'en a pas (arcade sans fin)
+     * n'a rien à changer, et le dit en renvoyant `false`.
+     * @returns {boolean} vrai si quelque chose a effectivement changé
+     */
+    showNext() {
+        const neuf = this.container && this.container.querySelector('[data-neuf]');
+        if (!neuf || neuf.disabled) return false;
+        neuf.click();
+        return true;
+    }
+
     destroy() {
         // Couper AVANT de vider : ces jeux ouvrent des minuteurs bruts que
         // `isRunning = false` ne suffit pas à faire taire. La course

@@ -308,6 +308,9 @@ export class Runner {
             // effacé, une erreur par seconde jusqu'au rechargement de la page.
             this.handle = {
                 jeu,
+                // Le saut d'auteur passe par le jeu lui-même : sans ce relais,
+                // il ne touchait que le compteur et l'écran ne bougeait pas.
+                showNext: () => (jeu && typeof jeu.showNext === 'function') ? jeu.showNext() : false,
                 destroy: () => {
                     if (jeu && typeof jeu.destroy === 'function') jeu.destroy();
                     else if (jeu && typeof jeu.pause === 'function') jeu.pause();
@@ -464,9 +467,10 @@ export class Runner {
      * la question est comptée « vue », jamais « réussie », et aucune tentative
      * ne part dans le journal. Le profil de l'élève reste propre.
      *
-     * Sur un jeu autonome, il n'y a pas de question à faire défiler : chaque
-     * saut avance d'un cran le compteur de l'étape, et le dernier la termine —
-     * ce qui permet d'atteindre l'écran de bilan sans jouer la partie.
+     * Sur un jeu autonome, `showNext` appuie sur le bouton « ↺ Autre … » du
+     * jeu : c'est bien un nouveau trajet, un nouveau programme, une nouvelle
+     * commande qui s'affiche. Le compteur avançait auparavant tout seul, en
+     * laissant le même écran — un saut qui ne saute rien.
      * @returns {boolean} faux si aucun exercice n'est en cours
      */
     sauterQuestion() {

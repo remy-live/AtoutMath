@@ -189,6 +189,39 @@ export function tirerItineraire(ville, {
                 if (flane) candidats = libres.filter(([s]) => s === 'tout-droit');
                 else candidats = libres.filter(([s]) => veutTourner ? s !== 'tout-droit' : true);
             }
+
+            // UN VIRAGE DOIT ÊTRE UNE DÉCISION.
+            //
+            // Sur un coin où la rue se contente de tourner, il n'y a rien à
+            // choisir : la voiture n'a qu'une sortie, et la consigne se réduit
+            // à « tourne tout de suite ». Elle est exacte, mais elle ne demande
+            // pas de compter — or compter les rues EST l'exercice. Quatre
+            // virages sur dix tombaient sur un coin pareil. On ne tourne donc
+            // qu'aux carrefours qui offraient AUSSI de continuer tout droit,
+            // dès que c'est possible : le coin devient l'exception, pas la
+            // règle.
+            // JAMAIS DEUX VIRAGES DE SUITE.
+            //
+            // C'est la cause du « tourne tout de suite » : quand la voiture
+            // tourne au carrefour même où elle vient de tourner, aucune rue
+            // n'a défilé entre les deux, et la consigne n'a plus de rang —
+            // rien à compter, donc rien à apprendre. Quatre virages sur dix
+            // étaient dans ce cas. On impose au moins une rue tout droit après
+            // chaque virage, exactement comme au départ. Reste le vrai coin,
+            // où la rue ne fait que tourner : là on n'a pas le choix, et
+            // « Tourne tout de suite » redevient la phrase juste.
+            if (laissesPasser === 0 && tournes > 0) {
+                const droit = libres.filter(([s]) => s === 'tout-droit');
+                if (droit.length) candidats = droit;
+            }
+            // À égalité, on évite d'aller se coincer dans une rue qui ne fait
+            // que tourner : le virage suivant y serait forcé.
+            const ouvert = candidats.filter(([, n]) => {
+                const apres = sortiesRelatives(ville, n.x, n.y, n.cap);
+                return !!apres['tout-droit'];
+            });
+            if (ouvert.length) candidats = ouvert;
+
             const [sens, suivant] = pick(candidats.length ? candidats : libres);
             if (sens !== 'tout-droit') { tournes++; laissesPasser = 0; }
             else laissesPasser++;
@@ -229,6 +262,9 @@ export function decrireItineraire(ville, itineraire) {
     // Occasions rencontrées depuis le dernier virage, par côté.
     let occasions = { gauche: 0, droite: 0 };
     let droitDepuis = 0;
+    // Le carrefour SOUS LES ROUES ne compte pas — vrai au départ comme après
+    // chaque virage (voir plus bas).
+    let sousLesRoues = true;
 
     for (let i = 0; i + 1 < noeuds.length; i++) {
         const ici = noeuds[i], suivant = noeuds[i + 1];
@@ -240,19 +276,26 @@ export function decrireItineraire(ville, itineraire) {
 
         // Ce carrefour offrait-il une rue à gauche, à droite ?
         //
-        // LE CARREFOUR OÙ L'ON EST NE COMPTE PAS. On compte les rues qu'on
-        // RENCONTRE en roulant, pas celle au bord de laquelle on est déjà
-        // arrêté : un passager qui dit « la deuxième à gauche » depuis un coin
-        // de rue ne compte jamais la rue de ce coin-là, il compte à partir du
-        // carrefour suivant. C'est déjà la règle après un virage — les
-        // occasions repartent de zéro AU carrefour suivant celui où l'on a
-        // tourné — et le départ doit obéir à la même règle, sinon la voiture
-        // affiche « deuxième » là où l'élève voit, à juste titre, la première.
-        if (i > 0) {
+        // LE CARREFOUR SOUS LES ROUES NE COMPTE JAMAIS. On compte les rues
+        // qu'on RENCONTRE en roulant, pas celle au bord de laquelle on est
+        // déjà arrêté : un passager qui dit « la deuxième à gauche » depuis un
+        // coin de rue ne compte pas la rue de ce coin-là, il compte à partir du
+        // carrefour suivant.
+        //
+        // Cela vaut au DÉPART, et tout autant APRÈS CHAQUE VIRAGE — c'est ce
+        // second cas qui manquait. Après avoir tourné, la voiture se retrouve
+        // posée sur un carrefour, et ce carrefour était compté : la consigne
+        // annonçait « la deuxième à droite » là où l'élève voyait la première,
+        // et sur une rue qui ne continuait pas, elle devenait carrément
+        // infaisable — il fallait dépasser une rue qu'on ne pouvait pas
+        // dépasser. Un contrôle qui SUIT LES MOTS à la lettre le prouve
+        // maintenant sur quatre cents itinéraires (voir les tests).
+        if (!sousLesRoues) {
             const sorties = sortiesRelatives(ville, ici.x, ici.y, cap);
             if (sorties.gauche) occasions.gauche++;
             if (sorties.droite) occasions.droite++;
         }
+        sousLesRoues = false;
 
         if (sens === 'tout-droit') { droitDepuis++; cap = capVers; continue; }
 
@@ -272,6 +315,7 @@ export function decrireItineraire(ville, itineraire) {
         cap = capVers;
         occasions = { gauche: 0, droite: 0 };
         droitDepuis = 0;
+        sousLesRoues = true;    // on se pose sur le carrefour suivant
     }
 
     const arrivee = noeuds[noeuds.length - 1];

@@ -19,7 +19,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     tirerProgramme, derouler, jugerGeste, jugerArrivee, direBloc,
-    devant, nomCap, tourner
+    devant, nomCap, tourner, PALIERS, palierPour, TAILLES_NIVEAU
 } from '../core/automate.js';
 
 const SKILL = 'geo.espace.programme';
@@ -34,9 +34,12 @@ const MODES = {
 class Automate extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'automate');
-        this.niveau = ['facile', 'moyen', 'difficile'].includes(this.params.niveau)
-            ? this.params.niveau : 'moyen';
-        this.mode = MODES[this.params.mode] ? this.params.mode : 'guide';
+        this.niveau = TAILLES_NIVEAU[this.params.niveau] ? this.params.niveau : 'moyen';
+        // « progressif » : le jeu conduit lui-même l'élève de palier en palier
+        // et ANNONCE chaque changement. Les trois modes figés restent, pour le
+        // professeur qui veut poser toute une classe sur la même marche.
+        this.mode = MODES[this.params.mode] ? this.params.mode : 'progressif';
+        this.palierIndex = -1;
         this.rng = makeRng(this.params.seed);
         this.reussis = 0;
         this.erreurs = 0;
@@ -45,7 +48,16 @@ class Automate extends BaseGame {
     // Pendant la démonstration, on montre TOUJOURS le mode guidé : le robot
     // explique le bloc allumé et la boucle qui remonte, ce qui n'aurait aucun
     // sens sans surligneur — ni en mode prédiction, où il n'y a rien à exécuter.
-    get reglage() { return this.isDemo ? MODES.guide : MODES[this.mode]; }
+    get reglage() {
+        if (this.isDemo) return MODES.guide;
+        if (this.mode === 'progressif') return palierPour(this.reussis).palier;
+        return MODES[this.mode];
+    }
+
+    /** Le niveau de programme à tirer : celui du palier, ou celui des réglages. */
+    get niveauCourant() {
+        return this.mode === 'progressif' ? palierPour(this.reussis).palier.niveau : this.niveau;
+    }
 
     // --- Mise en place ---------------------------------------------------------
 
@@ -53,6 +65,7 @@ class Automate extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .au-wrap {
+                    position: relative;
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
                     width: 100%; height: 100%; color: var(--text-main);
                     user-select: none; -webkit-user-select: none;
@@ -152,6 +165,31 @@ class Automate extends BaseGame {
                 /* Le raccourci clavier, écrit sur le bouton : sans quoi il
                    n'existe que pour qui a pensé à l'essayer. Caché au doigt,
                    où il n'y a pas de clavier à annoncer. */
+                /* LA CARTE DE PALIER. Posée sur le jeu, pas à côté : on ne
+                   change pas les règles dans un coin de l'écran. */
+                .au-annonce {
+                    position: absolute; inset: 0; z-index: 5;
+                    display: flex; align-items: center; justify-content: center;
+                    background: color-mix(in srgb, var(--bg-app) 78%, transparent);
+                    backdrop-filter: blur(3px);
+                    animation: au-fondu .22s ease-out;
+                }
+                @keyframes au-fondu { from { opacity: 0; } }
+                .au-annonce-carte {
+                    max-width: min(420px, 88%); text-align: center;
+                    background: var(--bg-panel); border: 1px solid var(--border);
+                    border-radius: 16px; padding: 20px 22px; box-shadow: var(--shadow-lg);
+                }
+                .au-annonce-rang {
+                    font-size: .74rem; font-weight: 800; letter-spacing: .04em;
+                    text-transform: uppercase; color: var(--primary);
+                }
+                .au-annonce-carte h3 { margin: 4px 0 8px; font-size: 1.25rem; }
+                .au-annonce-carte p { margin: 0 0 16px; line-height: 1.4; color: var(--text-muted); }
+                .au-annonce-ok {
+                    border: none; border-radius: 10px; padding: 9px 22px; cursor: pointer;
+                    background: var(--primary); color: #fff; font: inherit; font-weight: 800;
+                }
                 .au-cmd-touche {
                     font: inherit; font-size: .64rem; font-weight: 800; line-height: 1.5;
                     min-width: 1.5em; text-align: center;
@@ -261,8 +299,52 @@ class Automate extends BaseGame {
 
     // --- Un programme ----------------------------------------------------------
 
+    /**
+     * L'ANNONCE DU PALIER — le changement se DIT avant de se produire.
+     *
+     * Éteindre le surligneur sans prévenir, c'est retirer une aide en silence :
+     * l'élève croit à une panne, cherche ce qui ne s'allume plus, et se trompe
+     * pour une raison qui n'a rien à voir avec le programme. La carte s'affiche
+     * donc entre deux programmes, dit ce qui change et pourquoi, et attend
+     * qu'on l'ait lue.
+     */
+    annoncerPalier(index, apres) {
+        const p = PALIERS[index];
+        if (!p) return apres();
+        const carte = document.createElement('div');
+        carte.className = 'au-annonce';
+        carte.innerHTML = `
+            <div class="au-annonce-carte">
+                <div class="au-annonce-rang">Étape ${index + 1} sur ${PALIERS.length}</div>
+                <h3>${p.titre}</h3>
+                <p>${p.annonce}</p>
+                <button type="button" class="au-annonce-ok">C'est parti !</button>
+            </div>`;
+        this.container.querySelector('.au-wrap').appendChild(carte);
+        const fermer = () => { carte.remove(); apres(); };
+        carte.querySelector('.au-annonce-ok').addEventListener('click', fermer);
+        // Une carte oubliée à l'écran bloquerait le jeu : elle se ferme aussi
+        // toute seule, assez tard pour avoir été lue.
+        this.timerAnnonce = setTimeout(() => { if (carte.isConnected) fermer(); }, 9000);
+    }
+
     nouveauProgramme() {
-        const t = tirerProgramme(this.niveau, this.rng);
+        // Le programme est tiré et DESSINÉ d'abord, la carte se pose dessus :
+        // annoncer sur un écran vide donnait l'impression d'un jeu qui n'a pas
+        // fini de charger, et l'élève n'a rien à lire derrière la carte s'il
+        // n'y a rien.
+        this.tirerEtAfficher();
+        if (this.mode === 'progressif' && !this.isDemo) {
+            const { index } = palierPour(this.reussis);
+            if (index !== this.palierIndex) {
+                this.palierIndex = index;
+                this.annoncerPalier(index, () => { });
+            }
+        }
+    }
+
+    tirerEtAfficher() {
+        const t = tirerProgramme(this.niveauCourant, this.rng);
         this.grille = t.grille;
         this.depart = t.depart;
         this.programme = t.programme;
@@ -764,6 +846,7 @@ class Automate extends BaseGame {
 
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        if (this.timerAnnonce) clearTimeout(this.timerAnnonce);
         if (this.surTouche) document.removeEventListener('keydown', this.surTouche);
         if (this.timerSecousse) clearTimeout(this.timerSecousse);
         super.destroy();

@@ -129,27 +129,33 @@ export const geometrieExercises = [
         // robot.
         id: 'geo-automate', status: STATUS.TEST, title: 'L\'Automate',
         activityId: 'automate',
-        params: { niveau: 'moyen', mode: 'guide' },
+        params: { niveau: 'moyen', mode: 'progressif' },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Le programme',
-                aide: 'Ce qu\'il y a dans le programme. La boucle apparaît au niveau moyen : c\'est elle qui fait tout l\'intérêt, et toute la difficulté.',
+                aide: 'Ce qu\'il y a dans le programme. La boucle apparaît au niveau moyen : c\'est elle qui fait tout l\'intérêt, et toute la difficulté. Ce réglage est IGNORÉ en mode progressif, où chaque étape apporte sa forme de programme.',
                 options: [
+                    { value: 'decouverte', label: 'Deux ou trois blocs, sans boucle' },
                     { value: 'facile', label: 'Sans boucle — 3 ou 4 blocs' },
+                    { value: 'poser', label: 'Sans boucle, avec des pastilles à poser' },
+                    { value: 'boucleSimple', label: 'Une boucle, et rien d\'autre' },
                     { value: 'moyen', label: 'Une boucle de 2 blocs' },
-                    { value: 'difficile', label: 'Une boucle de 3 blocs, grande grille' }
+                    { value: 'long', label: 'Une boucle de 3 blocs, programme long' },
+                    { value: 'difficile', label: 'Une boucle de 3 blocs, grande grille' },
+                    { value: 'deuxBoucles', label: 'DEUX boucles dans le même programme' }
                 ],
                 default: 'moyen'
             },
             {
                 id: 'mode', type: 'select', label: 'Comment on exécute',
-                aide: 'Le surligneur montre où en est le programme. Le retirer, c\'est demander à l\'élève de tenir lui-même le compte des tours — c\'est là que la boucle devient une vraie notion. La prédiction, elle, demande de tout dérouler dans sa tête.',
+                aide: 'Le surligneur montre où en est le programme. Le retirer, c\'est demander à l\'élève de tenir lui-même le compte des tours — c\'est là que la boucle devient une vraie notion. La prédiction, elle, demande de tout dérouler dans sa tête. En mode progressif, le jeu retire les aides lui-même, une par une, en annonçant chaque changement.',
                 options: [
+                    { value: 'progressif', label: 'Progressif — sept étapes, annoncées' },
                     { value: 'guide', label: 'Guidé — le bloc en cours s\'allume' },
                     { value: 'seul', label: 'Sans surligneur — je suis le fil moi-même' },
                     { value: 'arrivee', label: 'Prédiction — je dis seulement où il arrive' }
                 ],
-                default: 'guide'
+                default: 'progressif'
             }
         ],
         skills: ['geo.espace.programme'],

@@ -241,7 +241,7 @@ class Ville extends BaseGame {
     nouveauTrajet() {
         const t = this.taille;
         for (let essai = 0; essai < 30; essai++) {
-            this.ville = creerVille({ cols: t.cols, rows: t.rows, trous: 0.22, rng: this.rng });
+            this.ville = creerVille({ cols: t.cols, rows: t.rows, trous: 0.16, rng: this.rng });
             this.itineraire = tirerItineraire(this.ville, {
                 virages: t.virages,
                 capDepart: this.capNord ? 'N' : null,
@@ -533,9 +533,14 @@ class Ville extends BaseGame {
         for (const e of this.etapes) {
             if (e.type === 'depart') continue;          // fondu dans « Avance puis… »
             if (e.type === 'tourner') {
+                // Rang 0 : la rue ne fait que tourner, il n'y a rien à compter
+                // et surtout rien à avancer — « Avance puis tourne tout de
+                // suite » se contredit en six mots.
                 lignes.push({
                     ico: e.sens === 'gauche' ? '↰' : '↱',
-                    texte: `Avance puis ${e.texte.charAt(0).toLowerCase()}${e.texte.slice(1)}.`
+                    texte: e.rang < 1
+                        ? `La rue tourne à ${e.sens} : suis-la.`
+                        : `Avance puis ${e.texte.charAt(0).toLowerCase()}${e.texte.slice(1)}.`
                 });
             } else {
                 lignes.push({

@@ -235,6 +235,13 @@ class Chantier extends BaseGame {
 
     startGameLoop() { /* Un puzzle au tour par tour : rien à faire tourner. */ }
 
+    /** Le saut d'auteur passe au niveau suivant : c'est ici la « question ». */
+    showNext() {
+        if (this.index >= NIVEAUX.length - 1) return false;
+        this.allerNiveau(this.index + 1);
+        return true;
+    }
+
     // --- Les niveaux --------------------------------------------------------
 
     charger(i) {

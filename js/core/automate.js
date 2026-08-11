@@ -203,12 +203,81 @@ export function jugerArrivee(deroule, geste) {
 // --- Le tirage des programmes ---------------------------------------------------
 
 const NIVEAUX = {
+    // Sept réglages au lieu de trois : c'est le NOMBRE de formes de programme
+    // qui fait la variété, pas la taille de la grille. Quatre programmes
+    // d'affilée « avance, tourne, avance » se ressemblent tous, même tirés au
+    // hasard — et l'élève cesse de lire dès qu'il a reconnu la forme.
+    decouverte: { cols: 5, rows: 5, blocs: [2, 3], boucle: null, avance: [1, 2], pose: false },
     facile: { cols: 5, rows: 5, blocs: [3, 4], boucle: null, avance: [1, 2], pose: false },
+    poser: { cols: 5, rows: 5, blocs: [4, 5], boucle: null, avance: [1, 2], pose: true },
+    boucleSimple: { cols: 5, rows: 5, blocs: [0, 1], boucle: { tours: [2, 3], corps: 2 }, avance: [1, 2], pose: false },
     moyen: { cols: 5, rows: 5, blocs: [1, 2], boucle: { tours: [2, 4], corps: 2 }, avance: [1, 2], pose: true },
-    difficile: { cols: 6, rows: 6, blocs: [1, 2], boucle: { tours: [3, 4], corps: 3 }, avance: [1, 3], pose: true }
+    long: { cols: 6, rows: 6, blocs: [2, 3], boucle: { tours: [2, 3], corps: 3 }, avance: [1, 3], pose: true },
+    difficile: { cols: 6, rows: 6, blocs: [1, 2], boucle: { tours: [3, 4], corps: 3 }, avance: [1, 3], pose: true },
+    // Deux boucles dans le même programme : l'allumage remonte deux fois, à
+    // deux endroits différents. C'est là qu'on voit qui a compris.
+    deuxBoucles: { cols: 6, rows: 6, blocs: [0, 1], boucle: { tours: [2, 3], corps: 2 }, boucles: 2, avance: [1, 2], pose: true }
 };
 
 export const TAILLES_NIVEAU = NIVEAUX;
+
+/**
+ * LES PALIERS — le jeu conduit l'élève au lieu de le laisser au même endroit.
+ *
+ * Trois réglages figés dans un menu, c'est un choix de professeur, pas une
+ * progression : l'élève qui ouvre le jeu reste toute la séance sur la même
+ * marche. Ici les paliers s'enchaînent, et surtout LE CHANGEMENT SE DIT — on
+ * annonce qu'on éteint le surligneur avant de l'éteindre. Une aide qui
+ * disparaît sans prévenir se lit comme une panne.
+ */
+export const PALIERS = [
+    {
+        id: 'p1', titre: 'Bloc à bloc', niveau: 'decouverte',
+        surligneur: true, prediction: false, questions: 2,
+        annonce: 'Le bloc allumé dit ce qu\'il faut faire. Tu l\'exécutes, il passe au suivant.'
+    },
+    {
+        id: 'p2', titre: 'Poser des pastilles', niveau: 'poser',
+        surligneur: true, prediction: false, questions: 2,
+        annonce: 'Un nouveau bloc : « poser une pastille ». Le robot ne bouge pas, il marque la case.'
+    },
+    {
+        id: 'p3', titre: 'La boucle', niveau: 'boucleSimple',
+        surligneur: true, prediction: false, questions: 2,
+        annonce: 'Voici « répéter ». Regarde bien : l\'allumage va REMONTER dans le programme.'
+    },
+    {
+        id: 'p4', titre: 'À toi de suivre', niveau: 'moyen',
+        surligneur: false, prediction: false, questions: 3,
+        annonce: 'Plus rien ne s\'allume. C\'est à toi de savoir où tu en es dans le programme — pointe-le du doigt si besoin.'
+    },
+    {
+        id: 'p5', titre: 'Un long programme', niveau: 'long',
+        surligneur: false, prediction: false, questions: 3,
+        annonce: 'Plus long, toujours sans surligneur. Compte les tours de boucle avant de bouger.'
+    },
+    {
+        id: 'p6', titre: 'Dans ta tête', niveau: 'difficile',
+        surligneur: false, prediction: true, questions: 3,
+        annonce: 'Cette fois, ne bouge pas le robot : lis TOUT le programme dans ta tête, puis touche la case où il arrive.'
+    },
+    {
+        id: 'p7', titre: 'Deux boucles', niveau: 'deuxBoucles',
+        surligneur: false, prediction: true, questions: 4,
+        annonce: 'Deux boucles dans le même programme. Toujours de tête : où arrive-t-il ?'
+    }
+];
+
+/** Le palier en cours d'après le nombre de programmes déjà réussis. */
+export function palierPour(reussis) {
+    let reste = Math.max(0, reussis);
+    for (let i = 0; i < PALIERS.length; i++) {
+        if (reste < PALIERS[i].questions) return { palier: PALIERS[i], index: i, dans: reste };
+        reste -= PALIERS[i].questions;
+    }
+    // Au-delà du dernier, on y reste : le jeu ne s'arrête pas, il se corse.
+    return { palier: PALIERS[PALIERS.length - 1], index: PALIERS.length - 1, dans: reste };
+}
 
 /**
  * Tire un programme JOUABLE : il tient dans la grille, et il a de quoi occuper.
@@ -237,22 +306,31 @@ export function tirerProgramme(niveau, rng) {
             return { type: 'avance', n: entre(N.avance) };
         };
 
-        const programme = [];
-        const avant = entre(N.blocs);
-        for (let i = 0; i < avant; i++) programme.push(bloc());
-        if (N.boucle) {
-            // Un corps de boucle qui contient au moins UN virage : sans lui, la
-            // boucle ne fait qu'avancer en ligne droite et n'apprend rien —
-            // « répéter 3 fois avancer de 2 » se lit comme « avancer de 6 ».
+        // Un corps de boucle contient TOUJOURS un virage et une avance : sans
+        // virage, « répéter 3 fois avancer de 2 » se lit « avancer de 6 » et
+        // la boucle n'apprend rien ; sans avance, le robot tourne sur place.
+        const corpsDeBoucle = () => {
             const corps = [];
             for (let i = 0; i < N.boucle.corps; i++) corps.push(bloc());
             if (!corps.some(b => b.type === 'droite' || b.type === 'gauche')) {
                 corps[corps.length - 1] = { type: rng.bool() ? 'droite' : 'gauche' };
             }
             if (!corps.some(b => b.type === 'avance')) corps[0] = { type: 'avance', n: entre(N.avance) };
-            programme.push({ type: 'repete', n: entre(N.boucle.tours), corps });
-            const apres = rng.int(0, 1);
-            for (let i = 0; i < apres; i++) programme.push(bloc());
+            return corps;
+        };
+
+        const programme = [];
+        const avant = entre(N.blocs);
+        for (let i = 0; i < avant; i++) programme.push(bloc());
+        if (N.boucle) {
+            const combien = N.boucles || 1;
+            for (let b = 0; b < combien; b++) {
+                programme.push({ type: 'repete', n: entre(N.boucle.tours), corps: corpsDeBoucle() });
+                // Entre deux boucles, un bloc ou deux : sans quoi elles se
+                // touchent et se lisent comme une seule.
+                const entreDeux = b < combien - 1 ? rng.int(1, 2) : rng.int(0, 1);
+                for (let i = 0; i < entreDeux; i++) programme.push(bloc());
+            }
         }
 
         const d = derouler(programme, depart, grille);

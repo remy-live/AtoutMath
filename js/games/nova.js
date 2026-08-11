@@ -162,6 +162,7 @@ class Nova extends BaseGame {
         this.porte = null;
         this.convoi = null;
         this.boss = null;
+        this.annonce = null;
         this.orbes = [];
         this.atelier = null;
         this.portail = null;           // l'anneau qui mène à la Faille
@@ -833,6 +834,7 @@ class Nova extends BaseGame {
             presentation: 150                // frames de bandeau de présentation
         };
         this.mot(`${g.nom} — il lâche des salves : ABATS ${regle.libelle}, laisse passer le reste.`, 'ko');
+        this.annoncer(g.nom, `Il lâche des salves : abats ${regle.libelle}, laisse passer tout le reste.`);
         this.secousse = 22;
     }
 
@@ -1313,6 +1315,7 @@ class Nova extends BaseGame {
     quitterAtelier() {
         this.atelier = null;
         this.boss = null;
+        this.annonce = null;
         this.orbes = [];
         this.niveau++;
         this.epreuves = 0;
@@ -1405,6 +1408,7 @@ class Nova extends BaseGame {
         };
         this.secousse = 18;
         this.mot(`FAILLE : attrape les multiples de ${table}, évite les autres !`, 'ok');
+        this.annoncer(`FAILLE ×${table}`, `Attrape les multiples de ${table}. Évite tous les autres — le canon est coupé.`, 'ok');
     }
 
     /** Un nombre à attraper (multiple) ou à esquiver — d'apparence identique. */
@@ -1523,6 +1527,7 @@ class Nova extends BaseGame {
         };
         this.secousse = 16;
         this.mot(`PISTE : récupère les multiples de ${table}, évite les autres !`, 'ok');
+        this.annoncer(`PISTE ×${table}`, `Choisis la voie qui porte un multiple de ${table}. Les autres coûtent la chaîne.`, 'ok');
     }
 
     /** La géométrie du couloir. Le plan du vaisseau est la profondeur z = 1. */
@@ -1965,11 +1970,90 @@ class Nova extends BaseGame {
         // En pause de démonstration, on DESSINE mais on n'avance plus : le
         // monde se fige sous l'explication au lieu de continuer sans nous.
         if (!this.gelDemo) {
-            this.frame++;
-            this.avancer();
+            // PENDANT UNE ANNONCE, le monde tourne au RALENTI — une image sur
+            // trois. Il ne s'arrête pas : un arrêt net ressemble à un plantage,
+            // et le Gardien qui descend doit continuer de descendre pendant
+            // qu'on lit ce qu'il faut lui faire. Trois fois plus lent, c'est
+            // assez pour lire sans rien manquer.
+            const ralenti = this.annonce && (this.annonce.t % 3) !== 0;
+            if (!ralenti) { this.frame++; this.avancer(); }
+            if (this.annonce && ++this.annonce.t >= this.annonce.duree) this.annonce = null;
         }
         this.dessiner();
         this.raf = requestAnimationFrame(this.boucle);
+    }
+
+    /**
+     * L'ANNONCE — ce qu'il faut faire, dit AVANT que ça commence.
+     *
+     * Le duel s'ouvrait sur une phrase dans le bandeau, au milieu d'un écran
+     * qui bougeait déjà : on la lisait après avoir encaissé la première salve,
+     * c'est-à-dire trop tard pour qu'elle serve. La consigne s'affiche
+     * maintenant en grand, le décor passe au ralenti et se brouille derrière
+     * elle, et l'action reprend d'elle-même quand elle a eu le temps d'être
+     * lue — de deux secondes et demie à quatre, selon la longueur.
+     */
+    annoncer(titre, texte, ton = 'ko') {
+        // Pas pendant la démonstration : le robot y explique déjà, et deux
+        // consignes superposées ne se lisent ni l'une ni l'autre.
+        if (this.isDemo) return;
+        const mots = String(texte).split(/\s+/).length;
+        this.annonce = { titre, texte, ton, t: 0, duree: Math.max(140, Math.min(255, 80 + mots * 14)) };
+    }
+
+    /** Le voile : le décor au ralenti passe derrière un flou, la consigne devant. */
+    dessinerAnnonce() {
+        const a = this.annonce;
+        if (!a) return;
+        const c = this.ctx, w = this.canvas.width, h = this.canvas.height;
+        // UN seul passage filtré — le canvas redessiné sur lui-même. Poser le
+        // flou sur chaque tracé du décor coûterait cinquante opérations
+        // filtrées par image.
+        c.save();
+        // Repère écran : `dessiner` peut être en train de secouer l'image, et
+        // recopier le canvas dans un repère décalé décalerait le flou d'autant.
+        c.setTransform(1, 0, 0, 1, 0, 0);
+        c.filter = 'blur(3.5px)';
+        c.drawImage(this.canvas, 0, 0);
+        c.restore();
+
+        // Le voile s'ouvre et se referme : sans ces deux fondus, la consigne
+        // apparaît et disparaît d'un coup, ce qui se lit comme un scintillement.
+        const fondu = Math.min(1, a.t / 12, (a.duree - a.t) / 14);
+        c.save();
+        c.setTransform(1, 0, 0, 1, 0, 0);
+        c.globalAlpha = 0.72 * fondu;
+        c.fillStyle = '#050813';
+        c.fillRect(0, 0, w, h);
+
+        c.globalAlpha = fondu;
+        c.textAlign = 'center';
+        const grand = Math.max(20, Math.min(38, w * 0.062));
+        c.fillStyle = a.ton === 'ok' ? '#86efac' : '#fca5a5';
+        c.font = `900 ${grand}px Inter, system-ui, sans-serif`;
+        c.fillText(a.titre, w / 2, h / 2 - grand * 0.5);
+
+        c.fillStyle = '#f8fafc';
+        c.font = `700 ${Math.max(13, grand * 0.5)}px Inter, system-ui, sans-serif`;
+        // Le texte se coupe en lignes : une consigne de douze mots sur une
+        // seule ligne déborde de l'écran d'un téléphone, donc ne se lit pas.
+        const lignes = this.couperTexte(c, a.texte, w * 0.86);
+        lignes.forEach((l, i) => c.fillText(l, w / 2, h / 2 + grand * (0.6 + i * 0.75)));
+        c.restore();
+    }
+
+    /** Coupe un texte en lignes qui tiennent dans `large`. */
+    couperTexte(c, texte, large) {
+        const mots = String(texte).split(' ');
+        const lignes = [];
+        let ligne = '';
+        for (const m of mots) {
+            const essai = ligne ? `${ligne} ${m}` : m;
+            if (c.measureText(essai).width > large && ligne) { lignes.push(ligne); ligne = m; }
+            else ligne = essai;
+        }
+        if (ligne) lignes.push(ligne);
+        return lignes;
     }
 
     avancer() {
@@ -2555,6 +2639,7 @@ class Nova extends BaseGame {
             && (this.doigtPose || this.frame < 300)) {
             this.dessinerZones();
         }
+        if (this.annonce) this.dessinerAnnonce();
         if (this.message) this.dessinerMessage();
         if (this.phase === 'atelier') this.dessinerAtelier();
         else if (this.phase !== 'jeu' && !this.isDemo) this.dessinerBriefing();

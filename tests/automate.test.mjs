@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     derouler, jugerGeste, jugerArrivee, tirerProgramme, tailleProgramme,
-    direBloc, CAPS, tourner
+    direBloc, CAPS, tourner, PALIERS, palierPour
 } from '../js/core/automate.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -192,4 +192,34 @@ test('quatre quarts de tour du même côté ramènent au cap de départ', () => 
         for (let i = 0; i < 4; i++) d = tourner(d, 'droite');
         assert.equal(d, c);
     });
+});
+
+test('les paliers s\'enchaînent, et le dernier ne s\'épuise pas', () => {
+    // La progression est ce qui manquait : trois réglages figés dans un menu,
+    // c'est un choix de professeur, pas un chemin pour l'élève.
+    const vus = [];
+    for (let r = 0; r < 40; r++) vus.push(palierPour(r).index);
+    assert.equal(vus[0], 0, 'on commence au premier palier');
+    // Jamais en arrière, jamais de saut.
+    for (let i = 1; i < vus.length; i++) {
+        assert.ok(vus[i] >= vus[i - 1], `retour en arrière au ${i}e programme`);
+        assert.ok(vus[i] - vus[i - 1] <= 1, `saut de palier au ${i}e programme`);
+    }
+    assert.equal(vus[vus.length - 1], PALIERS.length - 1, 'on finit au dernier palier');
+    // Le premier programme de chaque palier tombe bien sur `dans === 0` : c'est
+    // ce zéro qui déclenche l'annonce.
+    let total = 0;
+    for (const p of PALIERS) { assert.equal(palierPour(total).dans, 0); total += p.questions; }
+});
+
+test('chaque palier tire un programme jouable', () => {
+    for (const p of PALIERS) {
+        const t = tirerProgramme(p.niveau, makeRng('palier-' + p.id));
+        assert.ok(t && t.deroule && !t.deroule.hors, `${p.id} : programme hors grille`);
+        assert.ok(t.deroule.pas.length >= 3, `${p.id} : programme trop court`);
+        if (p.niveau === 'deuxBoucles') {
+            assert.equal(t.programme.filter(b => b.type === 'repete').length, 2,
+                'le palier « deux boucles » doit en contenir deux');
+        }
+    }
 });
