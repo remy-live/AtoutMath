@@ -14,6 +14,31 @@ import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
+/**
+ * Ce que le robot dit avant de choisir, et après avoir choisi.
+ *
+ * On fait entendre l'indice et l'explication que le générateur fournit déjà —
+ * c'est le raisonnement de l'exercice, pas une phrase de remplissage. Mais une
+ * bulle se lit à 340 ms le mot : une explication de trois lignes fige la
+ * démonstration au point qu'on la croit plantée. On ne dit donc à voix haute
+ * que ce qui tient en une respiration ; le texte long reste dans la
+ * correction, où l'élève le lit à son rythme.
+ */
+const COURT = 110;
+const tientEnUneBulle = (t) => typeof t === 'string' && t.trim() && t.trim().length <= COURT;
+
+function phraseDepart(item) {
+    const indice = (item.hints || [])[0];
+    if (tientEnUneBulle(indice)) return indice.trim();
+    return 'Je lis la question en entier avant de regarder les réponses.';
+}
+
+function phraseFin(item, el) {
+    if (tientEnUneBulle(item.explanation)) return item.explanation.trim();
+    const r = (el.textContent || '').trim();
+    return r && r.length <= 22 ? `La réponse est ${r}.` : 'C\'est celle-là.';
+}
+
 const VARIANTS = {
     bubbles: { itemClass: 'bubble', containerClass: 'bubble-container' },
     digicode: { itemClass: 'missing-cell', containerClass: 'missing-grid' },
@@ -85,7 +110,7 @@ export function mount(container, session, opts = {}) {
         };
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(cells, choices, slot, fillSlot);
+            if (!session.frozen) runDemo(cells, choices, slot, fillSlot, item);
             return;
         }
 
@@ -156,7 +181,7 @@ export function mount(container, session, opts = {}) {
      * jusqu'à l'emplacement vide et l'y dépose, puis on laisse la ligne
      * complétée à l'écran le temps de la relire.
      */
-    async function runDemo(cells, choices, slot, fillSlot) {
+    async function runDemo(cells, choices, slot, fillSlot, item) {
         const el = cells[choices.findIndex(c => c.correct)];
         if (!el) { regTimeout(renderNext, DEMO_SPEED.between); return; }
 
@@ -164,6 +189,16 @@ export function mount(container, session, opts = {}) {
         if (!gate) gate = createDemoGate(container);
         if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
+
+        // LE ROBOT DIT POURQUOI. Il se contentait de poser le doigt sur la
+        // bonne case : montrer LAQUELLE est juste sans dire pourquoi n'apprend
+        // rien à qui ne le savait pas déjà — et l'élève qui suit la
+        // démonstration est exactement celui-là. Accessoirement, « Arrière »
+        // rappelle les explications passées : sans une seule explication, il
+        // n'avait rien à rappeler et semblait cassé.
+        cursor.say(phraseDepart(item), container.querySelector('.question-prompt') || container);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await gate.waitTurn() || destroyed) return;
 
         const fait = (opts.dragToSlot && slot)
             ? await cursor.dragFromTo(el, slot)
@@ -173,6 +208,8 @@ export function mount(container, session, opts = {}) {
         el.classList.add('demo-target');
         fillSlot(el, true);
 
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item, el), el);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }

@@ -185,16 +185,33 @@ function noterDiscours(texte, cible, curseur) {
     curseurParlant = curseur;
 }
 
+/**
+ * Le curseur par lequel faire parler un rappel.
+ *
+ * `curseurParlant` est celui qui a dit la dernière phrase — mais il a pu être
+ * détruit depuis : plusieurs activités refont leur curseur à chaque question,
+ * et « Arrière » se retrouvait alors muet, sans que rien ne l'explique. On
+ * repêche donc n'importe quel curseur encore vivant : l'historique, lui, est
+ * commun.
+ */
+function porteVoix() {
+    if (curseurParlant && !curseurParlant.destroyed) return curseurParlant;
+    for (const c of curseursVivants) if (!c.destroyed && !c.discret) return c;
+    return null;
+}
+
 /** @returns {boolean} faux quand on est déjà à la première explication. */
 function revoirPrecedent() {
-    if (!curseurParlant || curseurParlant.destroyed) return false;
+    const voix = porteVoix();
+    if (!voix) return false;
     const i = journalDiscours.length - 2 - reculDiscours;
     if (i < 0) return false;
     reculDiscours++;
+    curseurParlant = voix;
     const d = journalDiscours[i];
     // L'ancre a pu disparaître entre-temps (case effacée, fruit tranché) : la
     // bulle se recale alors sur le pointeur plutôt que de viser le vide.
-    curseurParlant.say(d.texte, d.cible && document.contains(d.cible) ? d.cible : null, true);
+    voix.say(d.texte, d.cible && document.contains(d.cible) ? d.cible : null, true);
     return true;
 }
 
@@ -305,10 +322,20 @@ export function createDemoGate(host) {
         // Remonter suppose de s'arrêter : sinon le robot recouvrirait la bulle
         // rappelée par la suivante avant qu'on ait fini de la lire.
         if (!paused) poserPause(true);
-        if (!revoirPrecedent()) {
-            btnBack.disabled = true;
-            regTimeout(() => { btnBack.disabled = false; }, 700);
-        }
+        if (revoirPrecedent()) return;
+        // ON NE SE TAIT PAS. Le bouton se grisait 700 ms, et rien d'autre : sur
+        // la première explication — ou quand la démonstration n'avait pas encore
+        // commencé à parler — on appuyait, il ne se passait rien, et on en
+        // concluait que le bouton ne marchait pas. Une phrase vaut mieux qu'un
+        // clignotement : elle dit POURQUOI.
+        const voix = porteVoix();
+        // En « rejeu » : ce rappel ne doit pas entrer dans l'historique, sinon
+        // il deviendrait lui-même l'explication précédente.
+        if (voix) voix.say(journalDiscours.length
+            ? 'C\'est la première explication : on ne remonte pas plus haut.'
+            : 'Le robot n\'a encore rien expliqué : laisse-le commencer.', null, true);
+        btnBack.disabled = true;
+        regTimeout(() => { btnBack.disabled = false; }, 900);
     };
 
     return {
@@ -397,6 +424,9 @@ export function createDemoCursor() {
 
     const api = {
         get destroyed() { return destroyed; },
+        // Un curseur discret (vignette d'aperçu) ne parle pas : il ne peut donc
+        // pas servir de porte-voix au bouton « Arrière ».
+        get discret() { return discret; },
 
         /**
          * Bulle d'explication accrochée au pointeur : le robot dit POURQUOI il

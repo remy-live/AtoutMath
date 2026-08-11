@@ -36,7 +36,7 @@ export function mount(container, session) {
         const target = svg.querySelector(`.rep-hit[data-c="${item.answer}"]`);
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(svg, target);
+            if (!session.frozen) runDemo(svg, target, item);
             return;
         }
 
@@ -95,14 +95,25 @@ export function mount(container, session) {
 
     // Démonstration : le pointeur parcourt le repère jusqu'au nœud cherché.
     // Voir le trajet, c'est voir qu'on lit d'abord l'abscisse puis l'ordonnée.
-    async function runDemo(svg, target) {
+    async function runDemo(svg, target, item) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
+
+        // La règle de lecture, DITE avant le geste. Le pointeur allait droit au
+        // point : on voyait où, jamais comment — or « d'abord l'abscisse, puis
+        // l'ordonnée » est exactement ce qui s'oublie.
+        cursor.say(phraseDepart(item), container.querySelector('.figure-wrap') || container);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+
+        if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.tap(target) || destroyed) return;
         markPoint(svg, target, 'demo');
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item), target);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
@@ -125,4 +136,24 @@ export function mount(container, session) {
 function formatCoord(raw) {
     const [x, y] = String(raw).split(',');
     return `(${x} ; ${y})`;
+}
+
+/**
+ * Ce que le robot dit. L'indice et l'explication du générateur d'abord — c'est
+ * le raisonnement de l'exercice ; une phrase de secours ensuite, quand ils sont
+ * trop longs pour une bulle (on lit à 340 ms le mot : trois lignes figent la
+ * démonstration au point qu'on la croit plantée).
+ */
+const COURT = 110;
+const tientEnUneBulle = (t) => typeof t === 'string' && t.trim() && t.trim().length <= COURT;
+
+function phraseDepart(item) {
+    const indice = (item.hints || [])[0];
+    if (tientEnUneBulle(indice)) return indice.trim();
+    return 'On lit d\'abord l\'abscisse, en marchant sur l\'axe horizontal.';
+}
+
+function phraseFin(item) {
+    if (tientEnUneBulle(item.explanation)) return item.explanation.trim();
+    return `Puis l'ordonnée, en montant : ${formatCoord(item.answer)}.`;
 }

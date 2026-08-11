@@ -20,6 +20,31 @@ const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
  */
 const enFrancais = (v) => String(v).replace('.', ',');
 
+/**
+ * Ce que le robot dit AVANT de taper, et APRÈS avoir validé.
+ *
+ * Les générateurs fournissent déjà un indice et une explication : ce sont eux
+ * qu'il faut faire entendre, pas une phrase creuse. Mais une bulle se lit à
+ * 340 ms le mot, plafonnée à quatorze secondes — une explication de trois
+ * lignes fige la démonstration si longtemps qu'on la croit plantée. On ne
+ * parle donc à voix haute que ce qui tient en une respiration ; au-delà, une
+ * phrase courte qui dit la même chose du geste, et l'explication complète
+ * reste disponible dans la correction.
+ */
+const COURT = 110;
+const tientEnUneBulle = (t) => typeof t === 'string' && t.trim() && t.trim().length <= COURT;
+
+function phraseDepart(item) {
+    const indice = (item.hints || [])[0];
+    if (tientEnUneBulle(indice)) return indice.trim();
+    return 'Je lis l\'énoncé en entier avant de toucher une touche.';
+}
+
+function phraseFin(item) {
+    if (tientEnUneBulle(item.explanation)) return item.explanation.trim();
+    return 'Je relis mon nombre, puis je valide.';
+}
+
 const ICON_BACKSPACE = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><line x1="17" y1="9" x2="11" y2="15"/><line x1="11" y1="9" x2="17" y2="15"/></svg>`;
@@ -81,7 +106,7 @@ export function mount(container, session, opts = {}) {
         setBuffer('');
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(enFrancais(item.answer), setBuffer, screen);
+            if (!session.frozen) runDemo(enFrancais(item.answer), setBuffer, screen, item);
             return;
         }
 
@@ -142,12 +167,28 @@ export function mount(container, session, opts = {}) {
      * Démonstration : le pointeur tape la réponse touche par touche, puis
      * valide. Le nombre qui apparaissait tout seul à l'écran ne disait pas d'où
      * il venait ; ici on voit le chemin, chiffre après chiffre.
+     *
+     * ET LE ROBOT PARLE. Il se contentait de taper : on voyait donc le GESTE
+     * — appuyer sur 4, puis sur 2 — sans jamais le raisonnement, qui est
+     * pourtant tout ce qu'il y a à apprendre. Un élève qui regarde une main
+     * composer un numéro n'apprend pas le numéro. Deux conséquences : la
+     * démonstration n'expliquait rien, et le bouton « Arrière », qui rappelle
+     * les explications précédentes, n'avait rien à rappeler — il paraissait
+     * cassé alors qu'il n'y avait simplement pas un mot à revoir.
      */
-    async function runDemo(target, setBuffer, screen) {
+    async function runDemo(target, setBuffer, screen, item) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
+
+        const contexte = container.querySelector('.numpad-context');
+        cursor.say(phraseDepart(item), contexte || container);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(`Je tape ${target} chiffre par chiffre.`, screen);
+        if (!await cursor.pause(DEMO_SPEED.press) || destroyed) return;
 
         for (let i = 0; i < target.length; i++) {
             const touche = container.querySelector(`[data-key="${cssEscape(target[i])}"]`);
@@ -164,6 +205,8 @@ export function mount(container, session, opts = {}) {
         if (!await cursor.tap(valider, 480) || destroyed) return;
         screen.classList.add('numpad-screen--ok');
 
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item), screen);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }

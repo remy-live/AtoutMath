@@ -1,6 +1,6 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
-import { createDemoGate } from '../core/demoPointer.js';
+import { createDemoGate, createDemoCursor } from '../core/demoPointer.js';
 
 // Un DÉCOR par niveau : même règle, ambiance neuve — c'est le décor qui
 // récompense la progression, pas des objets à ramasser.
@@ -104,6 +104,12 @@ class Labyrinthe extends BaseGame {
     runDemoSequence() {
         this.startGameLoop();
         this.demoGate = createDemoGate(this.container);
+        // ET IL DIT SON CALCUL. Le héros se déplaçait en silence : on voyait
+        // une case s'allumer sans savoir POURQUOI celle-là. Le calcul énoncé à
+        // voix haute est tout ce qui sépare « le robot se promène » de « le
+        // robot cherche 7 × 6 ». C'est aussi ce que le bouton « Arrière »
+        // rappelle — sans une phrase, il n'a rien à rejouer.
+        this.demoCursor = createDemoCursor();
 
         const VOISINS = [{ dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 0, dy: -1 }];
 
@@ -114,14 +120,23 @@ class Labyrinthe extends BaseGame {
                 .map(d => ({ x: this.playerPos.x + d.dx, y: this.playerPos.y + d.dy }))
                 .filter(p => p.x >= 0 && p.x < this.boardSize && p.y >= 0 && p.y < this.boardSize)
                 .find(p => this.grid[p.y][p.x].displayedNumber == ici.correctAnswer);
-            if (bonne) this.tryMoveTo(bonne.x, bonne.y);
+            if (!bonne) return;
+            const cible = this.grid[bonne.y][bonne.x];
+            const calcul = (this.calcEl?.innerText || '').replace(/\s*=\s*\?\s*$/, '').trim();
+            this.demoCursor?.say(
+                calcul ? `${calcul}, ça fait ${cible.displayedNumber} : je vais là.`
+                    : `Je cherche ${cible.displayedNumber}.`,
+                this.boardEl);
+            this.tryMoveTo(bonne.x, bonne.y);
         };
 
         // Un premier pas rapide pour que la vignette du catalogue montre déjà
         // un héros en mouvement, puis un rythme lisible.
         regTimeout(pas, 450);
-        // Rangé dans `demoInterval` : c'est le nom que `pause()` sait couper.
-        this.demoInterval = regInterval(pas, 1100);
+        // Le rythme suit la LECTURE : une bulle remplacée avant d'être lue ne
+        // sert à rien, et 1100 ms ne suffisent pas à lire « 7 × 6 : je vais
+        // sur 42 ».
+        this.demoInterval = regInterval(pas, 2600);
     }
 
     startGameLoop() {
@@ -562,6 +577,7 @@ class Labyrinthe extends BaseGame {
         // `super.destroy()` coupe les minuteurs et vide l'écran ; sans lui, le
         // chronomètre du labyrinthe continuait de tourner après la sortie.
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
         document.removeEventListener('keydown', this.handleKey);
         window.removeEventListener('resize', this.handleResize);
         super.destroy();
