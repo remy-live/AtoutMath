@@ -368,6 +368,82 @@ const BASE = {
         descriptor: 'Exécuter un itinéraire donné en gauche / droite / tout droit sur un plan fixe.',
         lesson: 'La gauche d\'un véhicule n\'est pas la gauche du plan : elle dépend du sens dans lequel il roule. Quand la voiture monte, sa gauche est bien à gauche de l\'écran ; quand elle descend, sa gauche est à DROITE de l\'écran. Avant de tourner, mets-toi à la place du conducteur : tourne la tête dans le sens de la voiture, puis choisis. Et « la deuxième à gauche » compte les RUES qui partent à gauche, pas les carrefours traversés.'
     },
+    // LES PROBLÈMES. Une compétence par TYPE DE SITUATION, et non une seule
+    // « résoudre un problème » : un élève peut être à l'aise sur les
+    // compositions et perdu sur les comparaisons, et c'est exactement ce que
+    // le bilan doit pouvoir dire au professeur.
+    'num.probleme.composition': {
+        label: 'Problème : réunir ou compléter',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Trouver le tout à partir des parts, ou la part qui manque.',
+        lesson: "Deux parts forment un tout. Si on connaît les deux parts, on ADDITIONNE pour trouver le tout. Si on connaît le tout et une part, on SOUSTRAIT pour trouver l'autre. Attention : « en tout » ne veut pas dire « additionne » — quand le total est déjà donné dans l'énoncé, c'est qu'on cherche une part. Fais le schéma en barres : le tout dessus, les parts dessous, et ce qu'on cherche saute aux yeux."
+    },
+    'num.probleme.transformation': {
+        label: 'Problème : un changement d\'état',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['num.probleme.composition'],
+        descriptor: 'Trouver l\'état final, ou la transformation, quand une quantité augmente ou diminue.',
+        lesson: "Il y a un état de départ, un changement, un état d'arrivée. Recevoir, gagner, ajouter : la quantité AUGMENTE. Dépenser, perdre, donner : elle DIMINUE. Si on cherche l'arrivée, on applique le changement au départ. Si on cherche le changement, on prend l'écart entre le départ et l'arrivée. Dessine une flèche entre deux cases : le sens de la flèche donne l'opération."
+    },
+    'num.probleme.comparaison': {
+        label: 'Problème : comparer deux quantités',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['num.probleme.composition'],
+        descriptor: 'Trouver une quantité connaissant l\'autre et leur écart.',
+        lesson: "« A a 6 de plus que B » ne veut PAS dire qu'il faut ajouter 6 à tout. Cela dit que la barre de A est plus longue que celle de B de 6 unités. Si on connaît A et qu'on cherche B, on ENLÈVE l'écart. Le mot « plus » est un piège : c'est le schéma qui décide, pas le mot. Dessine deux barres l'une sous l'autre, alignées à gauche."
+    },
+    'num.probleme.multiplication': {
+        label: 'Problème : des groupes tous pareils',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['num.mult.sens'],
+        descriptor: 'Reconnaître une situation de groupes égaux et la traiter par une multiplication.',
+        lesson: "Quand on a plusieurs groupes qui contiennent tous la MÊME chose, on multiplie : nombre de groupes × contenu d'un groupe. « 6 boîtes de 8 » ne fait pas 14 : cela fait 6 × 8 = 48. Dessine les boîtes, écris le même nombre dans chacune : on voit tout de suite qu'additionner les deux nombres n'a aucun sens."
+    },
+    'num.probleme.division': {
+        label: 'Problème : partager ou grouper',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.probleme.multiplication'],
+        descriptor: 'Distinguer le partage (combien dans chaque part) du groupement (combien de parts), et gérer le reste.',
+        lesson: "Deux questions différentes, la même division. PARTAGER : on connaît le nombre de parts, on cherche ce qu'il y a dans une part. GROUPER : on connaît le contenu d'un paquet, on cherche combien de paquets. Quand ça ne tombe pas juste, il RESTE quelque chose, et le reste est toujours plus petit que le paquet. Vérifie toujours : quotient × diviseur + reste = total."
+    },
+    'num.probleme.proportion': {
+        label: 'Problème : proportionnalité simple',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.probleme.multiplication'],
+        descriptor: 'Passer par la valeur unitaire pour changer de quantité.',
+        lesson: "Si 4 stylos coûtent 6 €, on ne peut rien faire directement avec 7 stylos. On passe par UN stylo : 6 ÷ 4 = 1,50 €. Puis 1,50 × 7 = 10,50 €. C'est le « retour à l'unité », et il marche toujours. Range les données dans un tableau à deux lignes : la quantité au-dessus, le prix en dessous."
+    },
+    'num.probleme.fraction': {
+        label: 'Problème : une fraction d\'une quantité',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.frac.sens'],
+        descriptor: 'Calculer les n/d d\'une quantité.',
+        lesson: "Prendre les 3/4 de 20, c'est deux gestes dans cet ordre : on partage en 4 (20 ÷ 4 = 5), puis on en prend 3 (5 × 3 = 15). Le dénominateur dit en combien de parts on coupe, le numérateur dit combien on en garde. Dessine la barre coupée en 4 et colorie 3 morceaux."
+    },
+    'num.probleme.duree': {
+        label: 'Problème : horaires et durées',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.probleme.transformation'],
+        descriptor: 'Calculer une heure de fin ou une durée, en base 60.',
+        lesson: "Les heures ne se comptent pas comme les euros : une heure fait 60 minutes, pas 100. 14 h 40 + 30 min ne fait pas 14 h 70 mais 15 h 10. Le plus sûr est la ligne du temps : on part de l'heure de début et on avance par bonds ronds — d'abord jusqu'à l'heure pleine, puis les heures entières, puis les minutes qui restent."
+    },
+    'num.probleme.etapes': {
+        label: 'Problème à deux étapes',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.probleme.multiplication', 'num.probleme.composition'],
+        descriptor: 'Fabriquer une donnée intermédiaire absente de l\'énoncé, puis conclure.',
+        lesson: "Certains problèmes ne se résolvent pas d'un seul calcul : la donnée dont on a besoin n'est pas écrite, il faut la FABRIQUER. « 3 cahiers à 2 €, payés avec un billet de 10 € » : le prix total n'est nulle part, on le calcule d'abord (3 × 2 = 6 €), et seulement ensuite la monnaie (10 − 6 = 4 €). Écris toujours l'étape 1 avant de chercher la réponse."
+    },
     'geo.espace.programme': {
         label: 'Exécuter un programme de déplacement',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],

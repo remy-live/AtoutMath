@@ -22,7 +22,11 @@ const VARIANTS = {
     // visuel d'une réponse chiffrée. Des tuiles compactes alignées se lisent
     // comme la ligne d'égalité qu'on cherche à compléter.
     signs: { itemClass: 'sign-tile', containerClass: 'sign-row' },
-    coords: { itemClass: 'coord-tile', containerClass: 'coord-row' }
+    coords: { itemClass: 'coord-tile', containerClass: 'coord-row' },
+    // Des cartes, pour les réponses qui sont des PHRASES : « 17 billes
+    // rouges », « il en reste 4 ». Voir `estLong` plus bas — on n'y passe que
+    // quand c'est nécessaire.
+    cartes: { itemClass: 'choice-carte', containerClass: 'choice-cartes' }
 };
 
 const DELAYS = { success: 1200, reveal: 1500, pause: 1500 };
@@ -43,15 +47,23 @@ export function mount(container, session, opts = {}) {
 
     function render(item) {
         const choices = item.choices || [];
+        // BULLES OU CARTES ? Une bulle ronde est parfaite pour « 42 » et
+        // ridicule pour « 17 billes rouges » : le texte se recroqueville ou
+        // déborde. Dès qu'une seule proposition est longue, tout le groupe
+        // passe en cartes rectangulaires posées deux par deux. On ne le décide
+        // pas exercice par exercice — c'est le CONTENU qui le décide, donc ça
+        // reste juste le jour où un générateur allonge ses libellés.
+        const habillage = (variant === VARIANTS.bubbles && choices.some(c => estLong(c.label)))
+            ? VARIANTS.cartes : variant;
         // « 100 000 » ne tient pas dans une bulle prévue pour « 42 ». On adapte
         // la taille du texte à la longueur du contenu plutôt que de le laisser
         // déborder ou se couper.
         const itemsHtml = choices.map((c, i) => `
-            <div class="${variant.itemClass} ${lengthClass(c.label)}" role="button" tabindex="0"
+            <div class="${habillage.itemClass} ${lengthClass(c.label)}" role="button" tabindex="0"
                  data-idx="${i}" data-val="${escapeAttr(c.value)}">${c.label}</div>`).join('');
 
-        const wrapped = variant.containerClass
-            ? `<div class="${variant.containerClass}">${itemsHtml}</div>`
+        const wrapped = habillage.containerClass
+            ? `<div class="${habillage.containerClass}">${itemsHtml}</div>`
             : itemsHtml;
 
         // `context` permet à une variante d'ajouter un support visuel entre
@@ -381,6 +393,23 @@ export function wireShowMe(container, session, opts = {}) {
 
 function escapeAttr(v) {
     return String(v).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/** Le texte visible d'un libellé, balises et espaces multiples retirés. */
+function texteNu(label) {
+    return String(label).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Un libellé assez long pour qu'une bulle ronde ne convienne plus.
+ *
+ * Deux critères, parce qu'ils ne disent pas la même chose : au-delà de neuf
+ * caractères, ça ne tient plus dans un rond ; et dès qu'il y a un espace, on
+ * lit une PHRASE — « 17 billes » — qui appelle un rectangle, même courte.
+ */
+function estLong(label) {
+    const t = texteNu(label);
+    return t.length > 9 || /\s/.test(t);
 }
 
 /** Classe de taille selon la longueur du libellé (balises HTML exclues). */

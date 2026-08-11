@@ -255,7 +255,8 @@ const legacy = [
     ['othello', 'Othello', 'plateau', 'engineOthello'],
     ['dames', 'Jeu de Dames', 'plateau', 'engineDames'],
     ['echecs', 'Échecs', 'plateau', 'engineEchecs'],
-    ['automate', 'L\'Automate (exécuter un programme)', 'automate', 'engineAutomate']
+    ['automate', 'L\'Automate (exécuter un programme)', 'automate', 'engineAutomate'],
+    ['problemes', 'L\'Atelier des Problèmes', 'problemes', 'engineProblemes']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

@@ -541,5 +541,41 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Glisse ton doigt sur les blocs adjacents pour atteindre la cible."
+    },
+    {
+        // LE BOUTON SCHÉMA EST L'EXERCICE. Un problème ne se rate presque
+        // jamais faute de savoir calculer : il se rate faute de savoir QUELLE
+        // opération faire. Alors l'élève attrape un mot — « en tout », « de
+        // plus » — et le mot décide à sa place. Le schéma est la seule chose
+        // qui puisse reprendre cette décision : il est donc gratuit, sans
+        // pénalité et sans condition. Le cacher derrière un coût apprendrait à
+        // s'en passer, exactement l'inverse du but.
+        id: 'num-problemes', status: STATUS.TEST, title: 'L\'Atelier des Problèmes',
+        activityId: 'problemes',
+        params: { niveau: 'tout', familles: '' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Familles proposées',
+                aide: "Filtre les types de situations selon le niveau. « Toutes » brasse les onze familles : c'est ce qui empêche l'élève de reconnaître l'opération à la place de l'énoncé.",
+                options: [
+                    { value: 'tout', label: 'Toutes les familles' },
+                    { value: 'CM2', label: 'CM2 — réunir, changer, comparer, grouper' },
+                    { value: '6ème', label: '6ème' },
+                    { value: '5ème', label: '5ème — proportionnalité, durées, deux étapes' }
+                ],
+                default: 'tout'
+            },
+            {
+                id: 'familles', type: 'text', label: 'Familles précises (facultatif)',
+                aide: "Pour cibler une difficulté : écris les identifiants séparés par des virgules — composition, complement, transformation, comparaison, groupes, partage, quotition, proportion, fraction, duree, deuxEtapes. Laisse vide pour tout prendre.",
+                default: ''
+            }
+        ],
+        skills: ['num.probleme.composition', 'num.probleme.transformation',
+            'num.probleme.comparaison', 'num.probleme.multiplication',
+            'num.probleme.division', 'num.probleme.proportion',
+            'num.probleme.fraction', 'num.probleme.duree', 'num.probleme.etapes'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Lis l'histoire, puis la question — ce sont deux lectures différentes, et c'est la question qu'on oublie. Les nombres de l'énoncé sont en gras : ce sont les données. Si tu hésites sur l'opération, appuie sur « Voir le schéma » : il est fait pour ça, il ne coûte rien, et c'est lui qui doit décider — pas le mot « en tout » ni le mot « de plus ». Chaque mauvaise réponse te dit quelle erreur elle correspond."
     }
 ];

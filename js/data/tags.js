@@ -18,7 +18,8 @@ export const TAGS = {
         PERIMETRE_AIRE: "Périmètre et Aire",
         ESPACE: "Géométrie dans l'espace",
         TABLEUR: "Tableur",
-        DUREES: "Heures et Durées"
+        DUREES: "Heures et Durées",
+        PROBLEMES: "Résolution de Problèmes"
     },
     // Niveau de regroupement optionnel, sous un SOUS_DOMAINE (ex: Numérique > Calcul Mental > Tables de Multiplication)
     THEME: {

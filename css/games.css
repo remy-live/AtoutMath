@@ -180,3 +180,53 @@
     #demo-strip #demo-controls-host { margin-top: 3px; }
     #demo-strip .demo-ctrl-btn { padding: 3px 8px; font-size: .74rem; }
 }
+
+/* --- Réponses en CARTES ------------------------------------
+   Une bulle ronde est parfaite pour « 42 » et ridicule pour « 17 billes
+   rouges » : le texte s'y recroqueville. Dès qu'une proposition est une
+   phrase, choice.js bascule tout le groupe ici — deux cartes par ligne,
+   arrondies comme le reste, et de la même famille de couleurs que les
+   bulles pour qu'on reconnaisse « ce sur quoi on tape ». */
+.choice-cartes {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(9px, 2vw, 14px); width: 100%; max-width: 560px; margin-inline: auto;
+}
+.choice-carte {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: clamp(56px, 11vw, 74px); padding: 12px 14px;
+    border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: #fff; font-weight: 700; font-size: clamp(.95rem, 3.4vw, 1.25rem);
+    line-height: 1.25; text-wrap: balance; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, .34);
+    transition: all .25s cubic-bezier(.4, 0, .2, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+.choice-carte:hover { transform: translateY(-4px); box-shadow: 0 13px 28px rgba(79, 70, 229, .45); }
+.choice-carte:active { transform: translateY(2px) scale(.98); }
+/* Trois propositions : la dernière prend toute la ligne plutôt que de
+   rester orpheline dans une demi-largeur. */
+.choice-carte:last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* Les classes de taille des bulles ne s'appliquent pas ici : la carte
+   grandit avec son texte au lieu de le rapetisser. */
+.choice-carte.choice--l, .choice-carte.choice--xl, .choice-carte.choice--xxl { font-size: clamp(.95rem, 3.4vw, 1.25rem); }
+/* Le retour de correction doit se VOIR sur la carte : les styles en ligne
+   posés par choice.js ne peuvent rien contre un dégradé, qui est une image
+   de fond et non une couleur. On le dit donc ici. */
+.choice-carte.choice--ok {
+    background: linear-gradient(135deg, #34d399, #16a34a) !important;
+    box-shadow: 0 8px 20px rgba(22, 163, 74, .4);
+}
+.choice-carte.choice--ko {
+    background: linear-gradient(135deg, #f87171, #dc2626) !important;
+    box-shadow: 0 8px 20px rgba(220, 38, 38, .35);
+}
+.choice-carte.demo-target {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, .5), 0 0 25px var(--warning) !important;
+    transform: scale(1.05) !important;
+    background: linear-gradient(135deg, var(--warning), #fbbf24) !important;
+    border-color: #fff !important;
+}
+@media (max-width: 330px) {
+    .choice-cartes { grid-template-columns: 1fr; }
+}
