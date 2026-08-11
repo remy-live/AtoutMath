@@ -20,6 +20,8 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { tirerProbleme, famillesDe, IDS_FAMILLES, FAMILLES, direReponse } from '../core/problemes.js';
+import { boutonAide, majBoutonAide } from '../ui/gameChrome.js';
+import { suivreDefilement } from '../ui/defilement.js';
 
 const SKILL_DEFAUT = 'num.probleme.composition';
 
@@ -86,15 +88,6 @@ class Problemes extends BaseGame {
                 .pb-nb { font-weight: 800; color: var(--text-main); white-space: nowrap; }
 
                 .pb-schema-barre { display: flex; justify-content: center; width: 100%; flex: 0 0 auto; }
-                .pb-voir {
-                    display: inline-flex; align-items: center; gap: 7px;
-                    border: 2px solid var(--primary); border-radius: 999px;
-                    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
-                    color: var(--primary); font: inherit; font-weight: 800;
-                    font-size: clamp(12px, 2.9cqw, 15px); padding: 7px 16px; cursor: pointer;
-                    -webkit-tap-highlight-color: transparent;
-                }
-                .pb-voir:hover { background: color-mix(in srgb, var(--primary) 18%, var(--bg-panel)); }
                 .pb-schema {
                     width: 100%; max-width: 620px; flex: 0 0 auto;
                     background: var(--bg-app); border: 1px solid var(--border);
@@ -162,16 +155,7 @@ class Problemes extends BaseGame {
                     <p class="pb-enonce" data-enonce></p>
                     <p class="pb-question" data-question></p>
                 </div>
-                <div class="pb-schema-barre">
-                    <button type="button" class="pb-voir" data-voir>
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-                            <rect x="3" y="5" width="18" height="5" rx="1.6" />
-                            <rect x="3" y="14" width="10" height="5" rx="1.6" />
-                        </svg>
-                        <span data-voir-texte>Voir le schéma</span>
-                    </button>
-                </div>
+                <div class="pb-schema-barre">${boutonAide('le schéma')}</div>
                 <div class="pb-schema" data-schema hidden></div>
                 <div class="pb-choix" data-choix></div>
                 <p class="pb-note" data-note></p>
@@ -184,8 +168,7 @@ class Problemes extends BaseGame {
         this.schemaEl = this.container.querySelector('[data-schema]');
         this.choixEl = this.container.querySelector('[data-choix]');
         this.noteEl = this.container.querySelector('[data-note]');
-        this.voirEl = this.container.querySelector('[data-voir]');
-        this.voirTexteEl = this.container.querySelector('[data-voir-texte]');
+        this.voirEl = this.container.querySelector('[data-aide]');
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouveauProbleme());
         this.voirEl.addEventListener('click', () => this.basculerSchema());
 
@@ -220,7 +203,7 @@ class Problemes extends BaseGame {
         this.questionEl.textContent = p.question;
         this.schemaEl.hidden = true;
         this.schemaEl.innerHTML = '';
-        this.voirTexteEl.textContent = 'Voir le schéma';
+        majBoutonAide(this.voirEl, 'le schéma', false);
         this.majScore();
         this.peindreChoix();
         this.note('Lis l\'énoncé, puis la question. Si tu hésites, ouvre le schéma — c\'est fait pour.');
@@ -243,9 +226,10 @@ class Problemes extends BaseGame {
         if (!this.p) return;
         this.schemaOuvert = !this.schemaOuvert;
         this.schemaEl.hidden = !this.schemaOuvert;
-        this.voirTexteEl.textContent = this.schemaOuvert ? 'Masquer le schéma' : 'Voir le schéma';
+        majBoutonAide(this.voirEl, 'le schéma', this.schemaOuvert);
         if (this.schemaOuvert && !this.schemaEl.innerHTML) {
             this.schemaEl.innerHTML = `<div class="pb-schema-titre">Le schéma de la situation</div>${dessinerSchema(this.p.schema)}`;
+            suivreDefilement(this.schemaEl);
         }
     }
 
@@ -282,7 +266,7 @@ class Problemes extends BaseGame {
         // Le message dit CE QU'ON A FAIT, pas seulement que c'est faux — et il
         // renvoie au schéma, qui est la seule chose qui puisse changer le
         // raisonnement.
-        this.note(`${c.pourquoi} <b>Ouvre le schéma</b> et regarde ce qu'on cherche.`, 'ko');
+        this.note(`${c.pourquoi} <b>Ouvre l'aide</b> et regarde ce qu'on cherche.`, 'ko');
         this.onWrongAnswer(el, {
             concept: this.p.skill || SKILL_DEFAUT,
             questionText: `${this.p.enonce} ${this.p.question}`,
@@ -323,7 +307,7 @@ class Problemes extends BaseGame {
 
         // Le geste central de l'exercice : ouvrir le schéma.
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je ne devine pas l\'opération. J\'ouvre le schéma.', this.voirEl);
+        cur.say('Je ne devine pas l\'opération. J\'ouvre l\'aide.', this.voirEl);
         if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
         if (!await cur.tap(this.voirEl)) return fin();
         this.basculerSchema();

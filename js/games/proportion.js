@@ -22,6 +22,8 @@ import {
     tirerTableau, attendu, colonnesCompletes, verifierCase, termine,
     expliquer, ecrire, lire, titreLigne, direContexte, IDS_NIVEAUX
 } from '../core/proportion.js';
+import { boutonAide, majBoutonAide } from '../ui/gameChrome.js';
+import { suivreDefilement } from '../ui/defilement.js';
 
 const SKILL = 'num.proportion.tableau';
 
@@ -125,15 +127,6 @@ class Proportion extends BaseGame {
 
                 /* LE LIEN, replié par défaut. */
                 .pr-aide-barre { display: flex; justify-content: center; width: 100%; flex: 0 0 auto; }
-                .pr-voir {
-                    display: inline-flex; align-items: center; gap: 7px;
-                    border: 2px solid var(--primary); border-radius: 999px;
-                    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
-                    color: var(--primary); font: inherit; font-weight: 800;
-                    font-size: clamp(12px, 2.9cqw, 15px); padding: 7px 16px; cursor: pointer;
-                    -webkit-tap-highlight-color: transparent;
-                }
-                .pr-voir:hover { background: color-mix(in srgb, var(--primary) 18%, var(--bg-panel)); }
                 .pr-lien {
                     width: 100%; max-width: 560px; flex: 0 0 auto;
                     background: var(--bg-app); border: 1px solid var(--border);
@@ -184,15 +177,7 @@ class Proportion extends BaseGame {
                 </div>
                 <p class="pr-consigne" data-consigne></p>
                 <div class="pr-cadre"><table class="pr-tab" data-tab></table></div>
-                <div class="pr-aide-barre">
-                    <button type="button" class="pr-voir" data-voir>
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-                            <path d="M4 17 L10 11 L14 14 L20 7" /><path d="M15 7h5v5" />
-                        </svg>
-                        <span data-voir-texte>Montrer le lien</span>
-                    </button>
-                </div>
+                <div class="pr-aide-barre">${boutonAide('le lien')}</div>
                 <div class="pr-lien" data-lien hidden></div>
                 <div class="pr-pave" data-pave></div>
                 <p class="pr-note" data-note></p>
@@ -202,11 +187,11 @@ class Proportion extends BaseGame {
         this.scoreEl = this.container.querySelector('[data-score]');
         this.consigneEl = this.container.querySelector('[data-consigne]');
         this.tabEl = this.container.querySelector('[data-tab]');
+        suivreDefilement(this.container.querySelector('.pr-cadre'));
         this.lienEl = this.container.querySelector('[data-lien]');
         this.paveEl = this.container.querySelector('[data-pave]');
         this.noteEl = this.container.querySelector('[data-note]');
-        this.voirEl = this.container.querySelector('[data-voir]');
-        this.voirTexteEl = this.container.querySelector('[data-voir-texte]');
+        this.voirEl = this.container.querySelector('[data-aide]');
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouveauTableau());
         this.voirEl.addEventListener('click', () => this.basculerLien());
 
@@ -244,7 +229,7 @@ class Proportion extends BaseGame {
         this.consigneEl.textContent = direContexte(this.t);
         this.lienEl.hidden = true;
         this.lienEl.innerHTML = '';
-        this.voirTexteEl.textContent = 'Montrer le lien';
+        majBoutonAide(this.voirEl, 'le lien', false);
         this.majScore();
         this.dessinerTableau();
         this.note('Touche une case bleue, puis tape le nombre. La colonne surlignée est complète : c\'est elle qui donne le lien.');
@@ -382,7 +367,7 @@ class Proportion extends BaseGame {
         // L'erreur additive mérite qu'on ouvre le lien : c'est exactement ce
         // qu'elle ignore.
         const pousse = r.faute === 'additif' && !this.lienOuvert
-            ? ' <b>Ouvre « Montrer le lien ».</b>' : '';
+            ? ' <b>Ouvre l\'aide : elle donne le coefficient.</b>' : '';
         this.note(r.message + pousse, 'ko');
         this.onWrongAnswer(td, {
             concept: SKILL,
@@ -426,7 +411,7 @@ class Proportion extends BaseGame {
         if (!this.t) return;
         this.lienOuvert = !this.lienOuvert;
         this.lienEl.hidden = !this.lienOuvert;
-        this.voirTexteEl.textContent = this.lienOuvert ? 'Masquer le lien' : 'Montrer le lien';
+        majBoutonAide(this.voirEl, 'le lien', this.lienOuvert);
         if (!this.lienOuvert || this.lienEl.innerHTML) return;
 
         const t = this.t;

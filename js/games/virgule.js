@@ -27,6 +27,7 @@ import {
     RANGS, nomRang, placer, combler, decaler, normaliser, tirerQuestion,
     verifierGlissement, verifierEcriture, expliquer, IDS_NIVEAUX
 } from '../core/virgule.js';
+import { suivreDefilement } from '../ui/defilement.js';
 
 const SKILL = 'num.dec.puissances10';
 
@@ -256,6 +257,7 @@ class Virgule extends BaseGame {
         this.opEl = this.container.querySelector('[data-op]');
         this.consigneEl = this.container.querySelector('[data-consigne]');
         this.tabEl = this.container.querySelector('[data-tab]');
+        suivreDefilement(this.container.querySelector('.vg-cadre'));
         this.zoneEl = this.container.querySelector('[data-zone]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouvelleQuestion());

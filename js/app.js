@@ -16,7 +16,8 @@ import { clearEngines } from './core/timers.js';
 import { destroyAllDemoCursors } from './core/demoPointer.js';
 import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
-import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE } from './data/catalog.js';
+import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE, estRevisable, getExerciseById } from './data/catalog.js';
+import { isGame } from './core/gameAccess.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
     setSidebarMode, setTopNavMode, refreshCatalogViews
@@ -321,6 +322,36 @@ function initGameControls() {
 
 // --- Navigation -------------------------------------------------------------
 
+/**
+ * LE COMPTE DE LA PASTILLE.
+ *
+ * Il doit dire EXACTEMENT ce que l'élève trouvera en ouvrant le carnet, sinon
+ * la pastille ment : on compte donc comme le carnet le fait à l'ouverture —
+ * les erreurs révisables, non corrigées, hors jeux d'arcade (qui y sont
+ * repliées derrière une case à cocher décochée par défaut).
+ */
+function majPastilleCarnet() {
+    const pastille = document.getElementById('carnet-compte');
+    if (!pastille) return;
+    let n = 0;
+    try {
+        n = (state.errorHistory || []).filter(e => {
+            if (e.corrected || !estRevisable(e.exoId)) return false;
+            const exo = e.exoId ? getExerciseById(e.exoId) : null;
+            return !(exo && isGame(exo));
+        }).length;
+    } catch { n = 0; }
+    pastille.textContent = n > 99 ? '99+' : String(n);
+    pastille.hidden = n === 0;
+    const btn = document.getElementById('btn-open-errors');
+    if (btn) {
+        const t = n === 0 ? 'Mes erreurs à revoir'
+            : `${n} erreur${n > 1 ? 's' : ''} à revoir`;
+        btn.title = t;
+        btn.setAttribute('aria-label', t);
+    }
+}
+
 function initNavButtons() {
     const back = document.getElementById('btn-back');
     if (back) back.onclick = () => { state.navStack.pop(); renderDrilldown(); syncGridToSidebar(); };
@@ -329,6 +360,28 @@ function initNavButtons() {
         const btn = document.getElementById('desk-btn-' + k);
         if (btn) btn.onclick = () => setSidebarMode(k);
     });
+
+    // LE CARNET D'ERREURS. Il vivait au fond de la page « profil », après les
+    // statistiques et les badges : personne n'y descendait. Le bouton ouvre la
+    // vue ET amène le carnet sous les yeux, ce qui n'est pas la même chose que
+    // « la page contient l'information ».
+    const carnet = document.getElementById('btn-open-errors');
+    if (carnet) {
+        majPastilleCarnet();
+        ['errors_updated', 'attempts_updated', 'error_corrected']
+            .forEach(evt => document.addEventListener(evt, majPastilleCarnet));
+        carnet.onclick = () => {
+            setTopNavMode('profile');
+            const cible = document.getElementById('error-log-container');
+            if (cible) {
+                requestAnimationFrame(() => {
+                    cible.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    cible.classList.add('carnet-vu');
+                    setTimeout(() => cible.classList.remove('carnet-vu'), 1600);
+                });
+            }
+        };
+    }
 
     ['grid', 'path', 'profile'].forEach(k => {
         const top = document.getElementById('top-btn-' + k);

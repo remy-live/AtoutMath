@@ -216,3 +216,137 @@ body.mobile-view #toast-container {
     #toast-container { left: 12px; right: 12px; align-items: center; }
 }
 #btn-new-folder { padding: 4px 8px; font-size: 0.9rem; }
+
+
+/* --- « CE TABLEAU DÉFILE » -------------------------------------
+   Un tableau plus large que l'écran se coupe net au bord droit, et rien
+   ne dit qu'il continue : on croit avoir tout vu. Le dégradé n'apparaît
+   QUE quand il y a réellement quelque chose à droite (variable posée par
+   `js/ui/defilement.js`), sinon il ment dans l'autre sens.
+
+   `mask-image` plutôt qu'un ::after posé par-dessus : un pseudo-élément
+   dans un conteneur qui défile se déplace avec le contenu, donc glisse
+   hors du cadre au premier mouvement. */
+.defile-x { position: relative; }
+.defile-x[data-suite="droite"],
+.defile-x[data-suite="deux"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+}
+.defile-x[data-suite="gauche"] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to left, #000 calc(100% - 26px), transparent 100%);
+}
+.defile-x[data-suite="deux"] {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+}
+
+/* --- HABILLAGE COMMUN DES EXERCICES ----------------------------
+   Voir js/ui/gameChrome.js. Ces classes remplacent les copies que chaque
+   exercice s'était écrites : un bandeau, un bouton d'aide, un pavé, des
+   cartes de réponse. Elles sont ici et non dans le <style> d'un jeu pour
+   qu'une correction profite à tous — c'était le contraire jusqu'ici. */
+
+.jeu-haut {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    flex-wrap: wrap; width: 100%; flex: 0 0 auto;
+    font-size: clamp(11px, 2.6cqw, 14px); font-weight: 700;
+}
+.jeu-score { color: var(--text-muted); font-weight: 600; }
+.jeu-btn {
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); border-radius: 9px; cursor: pointer;
+    font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
+}
+.jeu-btn:hover { background: var(--bg-hover); }
+
+/* LE BOUTON D'AIDE. Même mot, même ampoule, même couleur, partout — c'est
+   ce qui permet de le reconnaître sans le relire. */
+.jeu-aide {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 2px solid var(--primary); border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+    color: var(--primary); font: inherit; font-weight: 800;
+    font-size: clamp(12px, 2.9cqw, 15px); padding: 7px 16px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.jeu-aide:hover { background: color-mix(in srgb, var(--primary) 18%, var(--bg-panel)); }
+.jeu-aide svg { flex: 0 0 auto; }
+
+.jeu-pave {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: clamp(5px, 1.4cqw, 9px); width: 100%; max-width: 400px; flex: 0 0 auto;
+    margin-inline: auto;
+}
+.jeu-touche {
+    padding: clamp(9px, 2.4cqw, 13px) 0; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font: inherit; font-weight: 800;
+    font-size: clamp(15px, 3.6cqw, 20px); cursor: pointer;
+    box-shadow: 0 3px 0 rgba(15, 23, 42, .12);
+    -webkit-tap-highlight-color: transparent;
+}
+.jeu-touche:active { transform: translateY(3px); box-shadow: none; }
+.jeu-touche--ok { border-color: var(--success); color: var(--success); }
+.jeu-touche--eff { border-color: var(--warning); color: var(--warning); }
+
+.jeu-cartes {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(8px, 2cqw, 13px); width: 100%; max-width: 560px;
+    flex: 0 0 auto; margin-inline: auto;
+}
+.jeu-carte {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: clamp(52px, 10cqw, 70px); padding: 11px 13px;
+    border-radius: 18px; border: 3px solid rgba(255, 255, 255, .22);
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: #fff; font-weight: 800; font-size: clamp(.95rem, 3.2cqw, 1.25rem);
+    line-height: 1.2; text-wrap: balance; cursor: pointer;
+    box-shadow: 0 7px 18px rgba(79, 70, 229, .32);
+    transition: all .22s cubic-bezier(.4, 0, .2, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+.jeu-carte:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(79, 70, 229, .42); }
+.jeu-carte:active:not(:disabled) { transform: translateY(2px) scale(.98); }
+.jeu-carte:disabled { cursor: default; }
+.jeu-carte--ok { background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 8px 20px rgba(22, 163, 74, .4); }
+.jeu-carte--ko { background: linear-gradient(135deg, #f87171, #dc2626); box-shadow: 0 8px 20px rgba(220, 38, 38, .35); }
+.jeu-carte--eteinte { opacity: .32; }
+@media (max-width: 330px) { .jeu-cartes { grid-template-columns: 1fr; } }
+
+.jeu-bulle { display: inline-block; padding: 6px 14px; border-radius: 14px; font-weight: 700; }
+.jeu-bulle--ok { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+.jeu-bulle--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+
+/* Le mouvement en moins pour qui le demande : le système le dit, on
+   l'écoute. Les animations d'un exercice ne sont jamais l'exercice. */
+@media (prefers-reduced-motion: reduce) {
+    .jeu-carte, .jeu-touche, .jeu-aide { transition-duration: .01ms !important; }
+}
+
+/* --- LE CARNET D'ERREURS, dans la barre du haut ----------------
+   La pastille ne s'affiche que s'il y a quelque chose dedans : un « 0 »
+   permanent est du bruit, et on cesse de le regarder. */
+.carnet-btn { position: relative; overflow: visible; }
+.carnet-pastille {
+    position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px;
+    padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff;
+    font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
+    box-shadow: 0 0 0 2px var(--bg-app); pointer-events: none;
+}
+.carnet-pastille[hidden] { display: none; }
+
+/* Arriver sur la page ne suffit pas : il faut voir OÙ on vient d'arriver.
+   Un halo bref, puis plus rien — un surlignage permanent deviendrait un décor. */
+.carnet-vu {
+    animation: carnet-halo 1.6s ease-out;
+    border-radius: 14px;
+}
+@keyframes carnet-halo {
+    0%, 60% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 34%, transparent); }
+    100% { box-shadow: 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .carnet-vu { animation: none; }
+}
