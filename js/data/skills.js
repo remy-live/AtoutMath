@@ -240,6 +240,14 @@ const BASE = {
         lesson: 'Un nombre est pair s\'il se termine par 0, 2, 4, 6 ou 8. Seul le chiffre des unités compte.'
     },
 
+    'num.dec.puissances10': {
+        label: 'Multiplier et diviser par 10, 100, 1000',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.numeration.rang'],
+        descriptor: 'Multiplier ou diviser un décimal par une puissance de 10, en raisonnant sur le changement de rang.',
+        lesson: "« On ajoute un zéro » ne marche que pour les entiers : 2,5 × 10 ne fait pas 2,50, qui est le MÊME nombre. Ce qui se passe vraiment : chaque chiffre change de rang. Multiplier par 10, c'est faire glisser tous les chiffres d'une colonne vers la gauche dans le tableau de numération — chacun vaut alors dix fois plus. Par 100, deux colonnes ; par 1000, trois. Diviser fait glisser dans l'autre sens. Et la virgule, elle, ne bouge JAMAIS : elle marque la frontière entre les unités et les dixièmes, et cette frontière est fixe. Vérifie toujours l'ordre de grandeur : multiplier donne un nombre plus grand, diviser un nombre plus petit."
+    },
     'num.dec.compare': {
         label: 'Comparer des nombres décimaux',
         chemin: [D.NUMERIQUE, SD.DECIMAUX],

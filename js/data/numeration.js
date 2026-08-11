@@ -274,5 +274,35 @@ export const numerationExercises = [
         params: { niveau: 'ecriture', reponse: 'saisie' },
         tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
         instruction: "Même signe : on ajoute et on garde le signe. Signes différents : on soustrait, et on garde le signe du plus éloigné de zéro."
+    },
+    {
+        // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
+        // une règle qui marche pour les entiers et casse dès la première
+        // décimale. On ne la déloge pas en la contredisant : on la déloge en
+        // faisant MANIPULER ce qui se passe — les chiffres glissent d'un rang,
+        // la virgule reste — assez longtemps pour que l'image remplace la
+        // formule. Ensuite seulement on demande de choisir, puis d'écrire.
+        id: 'num-virgule', status: STATUS.TEST, title: 'La Virgule qui ne bouge pas',
+        activityId: 'virgule',
+        params: { niveau: 'facile', parPhase: 3 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté',
+                aide: "En « facile », on ne fait que multiplier, par 10 ou par 100 : on installe le sens du glissement avant d'ajouter la division. Le nombre de départ a TOUJOURS une partie décimale — avec un entier, la règle fausse « on ajoute un zéro » tomberait juste et sortirait renforcée.",
+                options: [
+                    { value: 'facile', label: '× 10 et × 100 seulement' },
+                    { value: 'moyen', label: '× et ÷ par 10, 100, 1000' },
+                    { value: 'difficile', label: 'Idem, jusqu\'aux millièmes' }
+                ],
+                default: 'facile'
+            },
+            {
+                id: 'parPhase', type: 'number', label: 'Réussites par temps', min: 1, max: 8, default: 3,
+                aide: "Combien de fois il faut réussir avant de passer au temps suivant : d'abord faire glisser, puis choisir parmi quatre, puis écrire de tête."
+            }
+        ],
+        skills: ['num.dec.puissances10'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trois temps. D'abord tu fais GLISSER les chiffres dans le tableau de numération avec les flèches : × 10 les monte d'un rang vers la gauche, ÷ 10 les descend. Regarde bien le trait rouge — c'est la virgule, et elle ne bouge jamais : elle marque la frontière entre les unités et les dixièmes. Ensuite on te demandera de choisir le résultat parmi quatre, puis de l'écrire toi-même. Attention au piège : « multiplier par 10, on ajoute un zéro » est faux dès qu'il y a une virgule — 2,5 et 2,50 sont le même nombre."
     }
 ];
