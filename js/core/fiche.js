@@ -59,9 +59,15 @@ export function couperEnLignes(texte, largeur, taille, mesurer) {
     return lignes;
 }
 
-/** Hauteur qu'occupera une question, une fois ses lignes connues. */
+/** Hauteur qu'occupera un bloc, une fois ses lignes connues. */
 function hauteurBloc(bloc, o) {
     const corps = bloc.lignes.length * o.interligne;
+    // Un INTERTITRE n'a pas de ligne à remplir : il n'occupe que son texte et
+    // un peu d'air. Il doit malgré tout occuper sa place — un titre posé « par
+    // dessus » la mise en page atterrit sur la première question de sa
+    // section, ce qui est exactement ce qui arrive quand on le dessine après
+    // coup.
+    if (bloc.titre) return corps + o.interligne * 0.5;
     const choix = bloc.choix ? o.interligne : 0;
     return corps + choix + o.ligneReponse;
 }
@@ -90,19 +96,29 @@ export function composerFiche(questions, opts, mesurer) {
     let page = { blocs: [] };
     let col = 0;
     let y = zone.y;
+    // La numérotation ignore les intertitres : elle compte les QUESTIONS, et
+    // elle est continue d'une section à l'autre — « exercice 2, question 14 »
+    // se retrouve d'un coup d'œil quand on corrige.
+    let numero = 0;
 
-    questions.forEach((q, i) => {
+    questions.forEach((q) => {
+        const estTitre = !!q.titre;
+        if (!estTitre) numero++;
         const bloc = {
-            n: i + 1,
+            n: numero,
+            titre: estTitre,
             lignes: couperEnLignes(q.texte, texteW, o.taille, mesurer),
-            choix: (o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null,
+            choix: (!estTitre && o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null,
             reponse: q.reponse
         };
         const h = hauteurBloc(bloc, o);
+        // Un intertitre ne reste jamais seul en bas d'une colonne : on exige
+        // la place d'au moins une question derrière lui.
+        const besoin = estTitre ? h + o.interligne * 2 + o.ligneReponse : h;
 
         // Une question ne se coupe jamais entre deux colonnes : on préfère un
         // blanc en bas de colonne à un énoncé dont la fin est ailleurs.
-        if (y + h > zone.y + zone.h) {
+        if (y + besoin > zone.y + zone.h) {
             col++;
             if (col >= colonnes) { pages.push(page); page = { blocs: [] }; col = 0; }
             y = zone.y;
@@ -113,7 +129,7 @@ export function composerFiche(questions, opts, mesurer) {
         bloc.texteX = bloc.x + o.numeroL;
         bloc.texteW = texteW;
         // La ligne de pointillés se pose sous la dernière ligne de l'énoncé.
-        bloc.reponseY = y + bloc.lignes.length * o.interligne
+        bloc.reponseY = estTitre ? null : y + bloc.lignes.length * o.interligne
             + (bloc.choix ? o.interligne : 0) + o.ligneReponse * 0.55;
         page.blocs.push(bloc);
         y += h + o.entreQuestions;

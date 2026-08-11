@@ -126,3 +126,46 @@ test('la zone imprimable respecte les marges de la feuille', () => {
     assert.ok(zone.y + zone.h <= A4.h - A4.marge, 'la zone dépasse la marge basse');
     assert.ok(DEFAUTS.ligneReponse > 0, 'il faut de la place pour écrire la réponse');
 });
+
+test('un intertitre occupe sa place et ne se numérote pas', () => {
+    const questions = [
+        { titre: true, texte: 'Flash Mult' },
+        { texte: '7 × 8 = ?', reponse: 56 },
+        { texte: '6 × 9 = ?', reponse: 54 },
+        { titre: true, texte: 'Sommes de Relatifs' },
+        { texte: '(−3) + (+5) = ?', reponse: 2 }
+    ];
+    const { pages, opts } = composerFiche(questions, { colonnes: 1 }, mesurer);
+    const blocs = pages.flatMap(p => p.blocs);
+
+    // La numérotation compte les questions, pas les titres.
+    assert.deepEqual(blocs.filter(b => !b.titre).map(b => b.n), [1, 2, 3]);
+    assert.deepEqual(blocs.filter(b => b.titre).map(b => b.lignes[0]), ['Flash Mult', 'Sommes de Relatifs']);
+
+    // Un titre n'a pas de ligne à remplir…
+    blocs.filter(b => b.titre).forEach(b => assert.equal(b.reponseY, null));
+    // … mais il occupe bien sa place : la question qui suit est PLUS BAS.
+    for (let i = 0; i < blocs.length - 1; i++) {
+        if (!blocs[i].titre) continue;
+        const suivant = blocs[i + 1];
+        assert.ok(suivant.y > blocs[i].y + opts.interligne * 0.9,
+            `« ${blocs[i].lignes[0]} » se pose sur la question qui le suit`);
+    }
+});
+
+test('un intertitre ne reste jamais seul en bas d\'une colonne', () => {
+    // On remplit une colonne presque entièrement, puis on ouvre une section.
+    const questions = [];
+    for (let i = 0; i < 22; i++) questions.push({ texte: `Question ${i}`, reponse: i });
+    questions.push({ titre: true, texte: 'Deuxième exercice' });
+    questions.push({ texte: 'La première de la section', reponse: 1 });
+
+    const { pages } = composerFiche(questions, { colonnes: 2 }, mesurer);
+    const blocs = pages.flatMap(p => p.blocs);
+    const iTitre = blocs.findIndex(b => b.titre);
+    assert.ok(iTitre >= 0);
+    const titre = blocs[iTitre], suivante = blocs[iTitre + 1];
+    assert.ok(suivante, 'la section a bien une question');
+    assert.equal(Math.round(titre.x), Math.round(suivante.x),
+        'le titre est resté dans une colonne que sa première question a quittée');
+});

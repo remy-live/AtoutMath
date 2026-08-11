@@ -511,6 +511,17 @@ function initToolbar() {
         };
     }
 
+    const btnFiche = document.getElementById('btn-fiche-parcours');
+    if (btnFiche) {
+        btnFiche.onclick = () => {
+            if (!state.currentPath.steps.length) {
+                showAlert('Ajoutez au moins une activité pour imprimer une fiche.');
+                return;
+            }
+            import('./printParcours.js').then(m => m.ouvrirFicheParcours(state.currentPath));
+        };
+    }
+
     const btnCode = document.getElementById('btn-generate-code');
     if (btnCode) {
         btnCode.onclick = async () => {
