@@ -17,35 +17,15 @@
 // navigateur — ce qui compte, parce qu'un itinéraire mal décrit envoie l'élève
 // dans le mur en lui donnant tort.
 
-/** Les quatre caps, dans l'ordre des aiguilles d'une montre. */
-export const CAPS = ['N', 'E', 'S', 'O'];
-const VECTEURS = { N: [0, -1], E: [1, 0], S: [0, 1], O: [-1, 0] };
-
-/** Tourner : la gauche retire un quart de tour, la droite en ajoute un. */
-export function tourner(cap, sens) {
-    const i = CAPS.indexOf(cap);
-    if (i < 0) return cap;
-    if (sens === 'gauche') return CAPS[(i + 3) % 4];
-    if (sens === 'droite') return CAPS[(i + 1) % 4];
-    if (sens === 'demi-tour') return CAPS[(i + 2) % 4];
-    return cap;
-}
-
-/** Le sens relatif qui mène du cap `a` au cap `b`. */
-export function sensEntre(a, b) {
-    const d = (CAPS.indexOf(b) - CAPS.indexOf(a) + 4) % 4;
-    return ['tout-droit', 'droite', 'demi-tour', 'gauche'][d];
-}
+// Les quatre directions vivent dans core/cardinal.js : elles servent aussi à
+// l'automate, et deux copies auraient fini par diverger. On les réexporte pour
+// que rien de ce qui parle à ce module n'ait à le savoir.
+export { CAPS, tourner, sensEntre, devant, nomCap } from './cardinal.js';
+import { CAPS, tourner, sensEntre, devant, nomCap } from './cardinal.js';
 
 export const cle = (x, y) => `${x},${y}`;
 const cleArete = (a, b) => (a.x < b.x || (a.x === b.x && a.y < b.y))
     ? `${a.x},${a.y}|${b.x},${b.y}` : `${b.x},${b.y}|${a.x},${a.y}`;
-
-/** Le carrefour atteint en avançant d'un pas depuis (x, y) au cap donné. */
-export function devant(x, y, cap) {
-    const [dx, dy] = VECTEURS[cap];
-    return { x: x + dx, y: y + dy };
-}
 
 /** Y a-t-il une rue entre ces deux carrefours voisins ? */
 export function rue(ville, a, b) {
@@ -329,6 +309,3 @@ export function aLieu(nom) {
     return `à ${n}`;                    // « à la gare », « à l'école »
 }
 
-export function nomCap(cap) {
-    return { N: 'le haut du plan', E: 'la droite du plan', S: 'le bas du plan', O: 'la gauche du plan' }[cap] || cap;
-}

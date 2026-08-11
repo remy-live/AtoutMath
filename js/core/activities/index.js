@@ -254,7 +254,8 @@ const legacy = [
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
     ['othello', 'Othello', 'plateau', 'engineOthello'],
     ['dames', 'Jeu de Dames', 'plateau', 'engineDames'],
-    ['echecs', 'Échecs', 'plateau', 'engineEchecs']
+    ['echecs', 'Échecs', 'plateau', 'engineEchecs'],
+    ['automate', 'L\'Automate (exécuter un programme)', 'automate', 'engineAutomate']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

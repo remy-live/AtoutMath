@@ -119,5 +119,41 @@ export const geometrieExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Conduis la voiture jusqu'au lieu demandé en suivant la feuille de route : « prends la deuxième à gauche », « puis la première à droite ». Les trois boutons — et les flèches du clavier — sont ceux du CONDUCTEUR : quand la voiture descend, sa gauche est à droite de l'écran. Avant chaque virage, demande-toi dans quel sens elle roule. Et « la deuxième à gauche » compte les rues qui partent à gauche, pas les carrefours."
+    },
+    {
+        // LE RENVERSEMENT : on n'écrit pas le programme, on l'EXÉCUTE. Un élève
+        // qui empile des blocs jusqu'à ce que « ça marche » peut réussir sans
+        // avoir jamais compris ce que fait la machine. Du côté de la machine,
+        // trois choses deviennent inévitables : il y a un endroit du programme
+        // où l'on se trouve, la boucle y REMONTE, et la gauche est celle du
+        // robot.
+        id: 'geo-automate', status: STATUS.TEST, title: 'L\'Automate',
+        activityId: 'automate',
+        params: { niveau: 'moyen', mode: 'guide' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Le programme',
+                aide: 'Ce qu\'il y a dans le programme. La boucle apparaît au niveau moyen : c\'est elle qui fait tout l\'intérêt, et toute la difficulté.',
+                options: [
+                    { value: 'facile', label: 'Sans boucle — 3 ou 4 blocs' },
+                    { value: 'moyen', label: 'Une boucle de 2 blocs' },
+                    { value: 'difficile', label: 'Une boucle de 3 blocs, grande grille' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'mode', type: 'select', label: 'Comment on exécute',
+                aide: 'Le surligneur montre où en est le programme. Le retirer, c\'est demander à l\'élève de tenir lui-même le compte des tours — c\'est là que la boucle devient une vraie notion. La prédiction, elle, demande de tout dérouler dans sa tête.',
+                options: [
+                    { value: 'guide', label: 'Guidé — le bloc en cours s\'allume' },
+                    { value: 'seul', label: 'Sans surligneur — je suis le fil moi-même' },
+                    { value: 'arrivee', label: 'Prédiction — je dis seulement où il arrive' }
+                ],
+                default: 'guide'
+            }
+        ],
+        skills: ['geo.espace.programme'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Le programme est déjà écrit : c'est toi l'ordinateur. Exécute-le bloc après bloc. Pour « avancer de 3 », touche la case où le robot arrive — trois cases droit devant LUI, pas devant toi. Pour tourner, utilise les boutons (ou les flèches du clavier). Le bloc allumé dit où on en est dans le programme : quand la boucle arrive au bout de son corps, il REMONTE, et le compteur passe au tour suivant. C'est ça, répéter."
     }
 ];

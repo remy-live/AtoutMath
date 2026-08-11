@@ -368,6 +368,14 @@ const BASE = {
         descriptor: 'Exécuter un itinéraire donné en gauche / droite / tout droit sur un plan fixe.',
         lesson: 'La gauche d\'un véhicule n\'est pas la gauche du plan : elle dépend du sens dans lequel il roule. Quand la voiture monte, sa gauche est bien à gauche de l\'écran ; quand elle descend, sa gauche est à DROITE de l\'écran. Avant de tourner, mets-toi à la place du conducteur : tourne la tête dans le sens de la voiture, puis choisis. Et « la deuxième à gauche » compte les RUES qui partent à gauche, pas les carrefours traversés.'
     },
+    'geo.espace.programme': {
+        label: 'Exécuter un programme de déplacement',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.espace.deplacement'],
+        descriptor: 'Dérouler pas à pas un programme de déplacement, boucle comprise, et dire où arrive le robot.',
+        lesson: 'Exécuter un programme, c\'est faire UNE chose à la fois, dans l\'ordre, en sachant toujours où on en est. « Répéter 4 fois » ne recopie pas les blocs plus bas : quand on arrive au bout du corps de la boucle, on REMONTE au premier bloc de ce corps, et on recommence — jusqu\'à avoir fait les quatre tours. Compte les tours à voix haute. Et « tourner à gauche », c\'est la gauche du ROBOT : quand il descend l\'écran, sa gauche est à droite du dessin.'
+    },
     'don.tableur.reperage': {
         label: 'Se repérer dans un tableur',
         chemin: [D.DONNEES, SD.TABLEUR],
