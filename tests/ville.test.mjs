@@ -178,6 +178,48 @@ test('« la deuxième à gauche » compte les rues, pas les carrefours', () => {
     assert.match(virage.texte, /deuxième à droite/);
 });
 
+test('la rue du carrefour de départ ne compte pas', () => {
+    // Le cas signalé à l'usage : la voiture démarre au coin d'une rue qui part
+    // à gauche. On l'a déjà dépassée avant même d'avoir roulé — un passager
+    // dirait « la première à gauche » pour le carrefour SUIVANT, pas « la
+    // deuxième ». La règle est celle d'après un virage : on compte les rues
+    // qu'on rencontre, jamais celle où l'on est.
+    const v = { cols: 3, rows: 2, rues: new Set(), lieux: [] };
+    const ajoute = (a, b) => v.rues.add(
+        (a.x < b.x || (a.x === b.x && a.y < b.y))
+            ? `${a.x},${a.y}|${b.x},${b.y}` : `${b.x},${b.y}|${a.x},${a.y}`);
+    [[0, 1], [1, 1]].forEach(([x, y]) => ajoute({ x, y }, { x: x + 1, y }));
+    ajoute({ x: 0, y: 1 }, { x: 0, y: 0 });      // la rue DU COIN DE DÉPART
+    ajoute({ x: 1, y: 1 }, { x: 1, y: 0 });      // le virage pris
+
+    // Départ en (0,1) cap est, tout droit jusqu'en (1,1), puis à gauche (nord).
+    const it = { noeuds: [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 0 }], capDepart: 'E' };
+    const virage = decrireItineraire(v, it).find(e => e.type === 'tourner');
+    assert.equal(virage.sens, 'gauche');
+    assert.equal(virage.rang, 1, 'le coin du départ a été compté à tort');
+    assert.match(virage.texte, /première à gauche/);
+});
+
+test('les itinéraires ne sont pas tous « la première »', () => {
+    // Un générateur qui tourne à la première occasion venue produit des
+    // feuilles de route où il n'y a rien à compter — donc plus d'exercice.
+    const rng = rngFixe(2024);
+    const rangs = new Map();
+    for (let g = 0; g < 200; g++) {
+        const v = creerVille({ cols: 5, rows: 5, trous: 0.22, rng });
+        const it = tirerItineraire(v, { virages: 3, rng });
+        assert.ok(it, `pas d'itinéraire au tirage ${g}`);
+        for (const e of decrireItineraire(v, it)) {
+            if (e.type === 'tourner') rangs.set(e.rang, (rangs.get(e.rang) || 0) + 1);
+        }
+    }
+    const total = [...rangs.values()].reduce((a, b) => a + b, 0);
+    const auDela = total - (rangs.get(1) || 0);
+    assert.ok(auDela / total > 0.1,
+        `seulement ${Math.round(100 * auDela / total)} % de virages au-delà de la première`);
+    assert.ok(rangs.has(2), 'aucune « deuxième » en 200 trajets');
+});
+
 test('suivre la feuille de route à la lettre mène à l\'arrivée', () => {
     // La vérification qui compte : on rejoue l'itinéraire coup par coup à
     // travers le juge, et on doit arriver au bout sans une seule erreur.

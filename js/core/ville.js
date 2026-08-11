@@ -134,9 +134,15 @@ export function connexe(ville) {
  * du départ ne laisse rien à lire : la voiture tourne avant d'être partie. En
  * démarrant tout droit, l'élève voit d'abord la voiture s'engager, compte les
  * rues qui défilent, et tourne à la bonne.
+ *
+ * `flanerie` est la chance, à chaque carrefour, de LAISSER PASSER un virage
+ * possible. Sans elle, l'itinéraire tourne à la première occasion venue : tout
+ * l'exercice tient alors en « première à gauche, première à droite », et il n'y
+ * a plus rien à compter — or compter les rues EST l'exercice. En laissant filer
+ * un carrefour de temps en temps, on obtient de vraies deuxièmes et troisièmes.
  */
 export function tirerItineraire(ville, {
-    virages = 3, capDepart = null, essais = 400, droitAuDepart = 1, rng
+    virages = 3, capDepart = null, essais = 400, droitAuDepart = 1, flanerie = 0.5, rng
 } = {}) {
     const alea = rng || { next: Math.random, int: (a, b) => a + Math.floor(Math.random() * (b - a + 1)) };
     const pick = (arr) => arr[Math.floor(alea.next() * arr.length)];
@@ -155,7 +161,10 @@ export function tirerItineraire(ville, {
         let cap = cap0, ici = { ...depart }, tournes = 0;
         // On avance au hasard, mais on privilégie les virages tant qu'on n'en a
         // pas assez, puis le tout droit : l'itinéraire ne part pas en spirale.
-        const pas = virages * 2 + 3;
+        // De la place pour flâner : chaque virage laissé passer coûte une rue
+        // de plus, sinon le trajet s'arrête avant d'avoir fait ses virages.
+        const pas = virages * 3 + 4;
+        let laissesPasser = 0;                  // depuis le dernier virage
         for (let i = 0; i < pas && tournes <= virages; i++) {
             const sorties = sortiesRelatives(ville, ici.x, ici.y, cap);
             const libres = Object.entries(sorties)
@@ -170,10 +179,19 @@ export function tirerItineraire(ville, {
                 if (!candidats.length) break;
             } else {
                 const veutTourner = tournes < virages;
-                candidats = libres.filter(([s]) => veutTourner ? s !== 'tout-droit' : true);
+                // On laisse passer un carrefour au plus deux fois de suite :
+                // au-delà, l'élève ne compte plus, il attend.
+                const flane = veutTourner && laissesPasser < 2
+                    && alea.next() < flanerie
+                    && libres.some(([s]) => s === 'tout-droit')
+                    // Il reste-t-il assez de rues pour placer les virages ?
+                    && (pas - i) > (virages - tournes) + 1;
+                if (flane) candidats = libres.filter(([s]) => s === 'tout-droit');
+                else candidats = libres.filter(([s]) => veutTourner ? s !== 'tout-droit' : true);
             }
             const [sens, suivant] = pick(candidats.length ? candidats : libres);
-            if (sens !== 'tout-droit') tournes++;
+            if (sens !== 'tout-droit') { tournes++; laissesPasser = 0; }
+            else laissesPasser++;
             cap = suivant.cap;
             ici = { x: suivant.x, y: suivant.y };
             vus.add(cle(ici.x, ici.y));
@@ -220,19 +238,35 @@ export function decrireItineraire(ville, itineraire) {
         });
         const sens = sensEntre(cap, capVers);
 
-        // Ce carrefour offrait-il une rue à gauche, à droite ? (Le carrefour de
-        // DÉPART compte : « la première à gauche », c'est bien la première
-        // occasion rencontrée, y compris tout de suite.)
-        const sorties = sortiesRelatives(ville, ici.x, ici.y, cap);
-        if (sorties.gauche) occasions.gauche++;
-        if (sorties.droite) occasions.droite++;
+        // Ce carrefour offrait-il une rue à gauche, à droite ?
+        //
+        // LE CARREFOUR OÙ L'ON EST NE COMPTE PAS. On compte les rues qu'on
+        // RENCONTRE en roulant, pas celle au bord de laquelle on est déjà
+        // arrêté : un passager qui dit « la deuxième à gauche » depuis un coin
+        // de rue ne compte jamais la rue de ce coin-là, il compte à partir du
+        // carrefour suivant. C'est déjà la règle après un virage — les
+        // occasions repartent de zéro AU carrefour suivant celui où l'on a
+        // tourné — et le départ doit obéir à la même règle, sinon la voiture
+        // affiche « deuxième » là où l'élève voit, à juste titre, la première.
+        if (i > 0) {
+            const sorties = sortiesRelatives(ville, ici.x, ici.y, cap);
+            if (sorties.gauche) occasions.gauche++;
+            if (sorties.droite) occasions.droite++;
+        }
 
         if (sens === 'tout-droit') { droitDepuis++; cap = capVers; continue; }
 
+        // Un virage AU carrefour de départ n'a pas de rang : aucune rue n'a
+        // encore défilé. Le générateur n'en produit pas (le premier pas est
+        // toujours tout droit), mais un itinéraire fabriqué à la main peut en
+        // contenir, et « Prends la  à gauche » ne doit jamais s'afficher.
+        const rang = occasions[sens];
         etapes.push({
-            type: 'tourner', sens, rang: occasions[sens],
+            type: 'tourner', sens, rang,
             avant: droitDepuis,
-            texte: `Prends la ${ORDINAUX[occasions[sens]] || `${occasions[sens]}ᵉ`} à ${sens}`,
+            texte: rang < 1
+                ? `Tourne tout de suite à ${sens}`
+                : `Prends la ${ORDINAUX[rang] || `${rang}ᵉ`} à ${sens}`,
             noeud: { ...ici }
         });
         cap = capVers;
