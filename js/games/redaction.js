@@ -35,6 +35,7 @@ class Redaction extends BaseGame {
         this.trous = { d0g: null, d0d: null, d1g: null, d1d: null, cg: null, cd: null };
         this.choisi = null;
         this.motsRevele = 0;
+        this.motsDeja = 0;
     }
 
     render() {
@@ -64,13 +65,32 @@ class Redaction extends BaseGame {
                    et l'élève « voit » un parallélisme qu'il devrait déduire. */
                 .rd-para { stroke: #2563eb; stroke-width: 2.6; stroke-dasharray: 9 6; fill: none; }
                 .rd-perp { stroke: #b45309; stroke-width: 2.6; fill: none; }
-                .rd-perp--trace { stroke-dasharray: 400; stroke-dashoffset: 400; }
-                .rd-perp--vue { transition: stroke-dashoffset 1.5s ease-out; stroke-dashoffset: 0; }
                 .rd-nom { font-size: 15px; font-weight: 800; }
-                .rd-angle { stroke: #b45309; stroke-width: 2.2; fill: none; opacity: 0; transition: opacity .6s; }
+                .rd-angle { stroke: #b45309; stroke-width: 2.2; fill: none; opacity: 0; transition: opacity .35s; }
                 .rd-angle--vu { opacity: 1; }
-                .rd-clignote { animation: rd-cli 1s ease-in-out 3; }
-                @keyframes rd-cli { 50% { stroke-width: 6; stroke-opacity: .45; } }
+                /* L'angle droit ne se contente pas d'apparaître : il se signale.
+                   Un fondu de 0 à 1 sur un petit carré de treize pixels passait
+                   complètement inaperçu — le moment le plus important de
+                   l'exercice était le moins visible. */
+                .rd-angle--pop { animation: rd-pop .8s ease-out 3; }
+                @keyframes rd-pop {
+                    0%, 100% { stroke-width: 2.2; }
+                    45% { stroke-width: 8; filter: drop-shadow(0 0 7px rgba(180,83,9,.95)); }
+                }
+                /* Le clignotement des parallèles, en NET. La version discrète
+                   (trait à peine épaissi) ne se remarquait pas sur un
+                   téléphone. */
+                .rd-clignote { animation: rd-cli .62s ease-in-out 5; }
+                @keyframes rd-cli {
+                    0%, 100% { stroke-width: 2.6; }
+                    50% { stroke-width: 9; filter: drop-shadow(0 0 8px rgba(37,99,235,.95)); }
+                }
+                /* Les mots qui viennent d'apparaître dans la propriété. */
+                .rd-neuf { animation: rd-neuf .62s ease-in-out 5; border-radius: 5px; }
+                @keyframes rd-neuf {
+                    0%, 100% { background: transparent; }
+                    50% { background: color-mix(in srgb, var(--primary) 34%, transparent); }
+                }
 
                 .rd-texte { flex: 1 1 300px; max-width: 460px; min-width: 260px;
                     display: flex; flex-direction: column; gap: 10px; }
@@ -103,6 +123,21 @@ class Redaction extends BaseGame {
                 }
                 .rd-fente--pleine { border-style: solid; border-color: var(--success); }
                 .rd-banque { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
+                /* GLISSER-DÉPOSER. « touch-action: none » sur ce qui se glisse,
+                   et rien d'autre : le reste de la page doit continuer à
+                   défiler normalement au doigt. */
+                .rd-etiquette, .rd-groupe { touch-action: none; }
+                .rd-fantome {
+                    position: fixed; z-index: 9999; pointer-events: none;
+                    transform: translate(-50%, -50%) scale(1.06);
+                    opacity: .95; box-shadow: var(--shadow-md);
+                    border-color: var(--primary); color: var(--primary);
+                }
+                .rd-source { opacity: .28; }
+                .rd-survol {
+                    background: color-mix(in srgb, var(--primary) 22%, transparent);
+                    border-color: var(--primary); border-style: solid;
+                }
                 .rd-note { min-height: 2.6em; text-align: center; max-width: 640px;
                     font-size: clamp(11px, 2.7cqw, 15px); line-height: 1.35; color: var(--text-muted); }
                 .rd-note b { color: var(--text-main); }
@@ -181,11 +216,24 @@ class Redaction extends BaseGame {
         const nom = (x, y, texte, couleur, sens) =>
             `<text class="rd-nom" x="${x + nx * 15 * sens}" y="${y + ny * 15 * sens + 5}" fill="${couleur}">(${texte})</text>`;
 
+        // Le tracé part du côté de la PREMIÈRE parallèle et descend vers la
+        // seconde : c'est l'ordre de la phrase (« perpendiculaire à l'une…
+        // à l'autre »), et il faut qu'il soit celui du geste.
+        // Longueur réelle du segment, et fraction parcourue au moment où il
+        // atteint la seconde parallèle : c'est là que l'angle droit apparaît.
+        this.perpLong = 2 * (e + 34);
+        this.perpFraction = (34 + 2 * e) / this.perpLong;
+        // Où le trait marque une pause : entre les deux parallèles. Il a coupé
+        // « l'une », il n'a pas encore atteint « l'autre » — exactement là où
+        // en est la phrase à ce moment-là.
+        this.perpMilieu = (34 + e) / this.perpLong;
+
         this.figureEl.innerHTML = `
             <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Deux droites parallèles et une perpendiculaire">
                 <line class="rd-para" data-para="1" x1="${p1.x1}" y1="${p1.y1}" x2="${p1.x2}" y2="${p1.y2}" />
                 <line class="rd-para" data-para="2" x1="${p2.x1}" y1="${p2.y1}" x2="${p2.x2}" y2="${p2.y2}" />
-                <line class="rd-perp rd-perp--trace" data-perp x1="${perp.x1}" y1="${perp.y1}" x2="${perp.x2}" y2="${perp.y2}" />
+                <line class="rd-perp" data-perp x1="${perp.x1}" y1="${perp.y1}" x2="${perp.x2}" y2="${perp.y2}"
+                      style="stroke-dasharray:${this.perpLong};stroke-dashoffset:${this.perpLong}" />
                 <path class="rd-angle rd-angle--vu" d="${carre1}" />
                 <path class="rd-angle" data-angle d="${carre}" />
                 ${nom(p1.x2 - 30 * dx, p1.y2 - 30 * dy, f.noms.p1, '#2563eb', -1)}
@@ -197,8 +245,54 @@ class Redaction extends BaseGame {
         if (this.etape >= 1) this.montrerPerpendiculaire();
     }
 
+    /** La perpendiculaire, posée d'un coup — pour les temps où elle est un acquis. */
     montrerPerpendiculaire() {
-        this.figureEl.querySelector('[data-perp]')?.classList.add('rd-perp--vue');
+        const l = this.figureEl.querySelector('[data-perp]');
+        if (!l) return;
+        l.style.transition = 'none';
+        l.style.strokeDashoffset = '0';
+    }
+
+    /**
+     * LA PERPENDICULAIRE SE RETRACE, du début, à vitesse constante.
+     *
+     * Et l'angle droit n'apparaît pas à la fin de l'animation : il apparaît à
+     * l'instant précis où le trait ATTEINT la seconde parallèle. C'est cette
+     * coïncidence qui fait la démonstration — le trait touche, l'angle naît.
+     * Un angle qui surgirait avant, ou une seconde après, ne dirait rien.
+     */
+    tracerPerpendiculaire({ de = 0, a = 1, duree = 1700, angleEnArrivant = false } = {}) {
+        const l = this.figureEl.querySelector('[data-perp]');
+        if (!l) return;
+        clearTimeout(this.timerAngle);
+        if (de === 0) this.cacherAngleDroit();
+        l.style.transition = 'none';
+        l.style.strokeDashoffset = this.perpLong * (1 - de);
+        void l.getBoundingClientRect();                 // on force le retour au départ
+        // `linear` et pas `ease` : sans vitesse constante, la fraction de
+        // longueur ne correspondrait plus à la fraction de temps, et l'angle
+        // apparaîtrait à côté du trait au lieu de sous lui.
+        l.style.transition = `stroke-dashoffset ${duree}ms linear`;
+        l.style.strokeDashoffset = this.perpLong * (1 - a);
+        if (angleEnArrivant && this.perpFraction > de && this.perpFraction <= a) {
+            this.timerAngle = setTimeout(
+                () => { if (this.isRunning) this.montrerAngleDroit(); },
+                Math.round(duree * (this.perpFraction - de) / (a - de)));
+        }
+    }
+
+    /** La perpendiculaire n'est pas encore là : la phrase n'en a pas parlé. */
+    cacherPerpendiculaire() {
+        const l = this.figureEl.querySelector('[data-perp]');
+        if (!l) return;
+        clearTimeout(this.timerAngle);
+        l.style.transition = 'none';
+        l.style.strokeDashoffset = this.perpLong;
+        this.cacherAngleDroit();
+    }
+
+    cacherAngleDroit() {
+        this.figureEl.querySelector('[data-angle]')?.classList.remove('rd-angle--vu', 'rd-angle--pop');
     }
 
     clignoterParalleles() {
@@ -209,8 +303,13 @@ class Redaction extends BaseGame {
         });
     }
 
-    montrerAngleDroit() {
-        this.figureEl.querySelector('[data-angle]')?.classList.add('rd-angle--vu');
+    montrerAngleDroit(pop = true) {
+        const a = this.figureEl.querySelector('[data-angle]');
+        if (!a) return;
+        a.classList.remove('rd-angle--pop');
+        void a.getBoundingClientRect();
+        a.classList.add('rd-angle--vu');
+        if (pop) a.classList.add('rd-angle--pop');
     }
 
     // --- Les quatre temps ---------------------------------------------------
@@ -238,7 +337,21 @@ class Redaction extends BaseGame {
                 ${this.choisi === i ? 'rd-groupe--choisi' : ''}" data-groupe="${i}">${g}</span>`).join('');
 
         this.banqueEl.querySelectorAll('[data-groupe]').forEach(el => {
+            // Glisser un morceau dans une fente précise : c'est le geste qu'on
+            // fait naturellement quand on veut CORRIGER l'ordre, plutôt que de
+            // tout vider pour recommencer.
+            this.glisser(el, '[data-fente]', (cible) => {
+                const i = Number(el.dataset.groupe);
+                const g = this.banque[i];
+                if (this.phrase.includes(g)) return;
+                const f = Number(cible.dataset.fente);
+                this.phrase[f] = g;
+                this.choisi = null;
+                this.peindrePhrase();
+                this.controlerPhrase();
+            });
             el.onclick = () => {
+                if (this.vientDeGlisser) return;
                 const i = Number(el.dataset.groupe);
                 if (this.phrase.includes(this.banque[i])) return;
                 this.choisi = this.choisi === i ? null : i;
@@ -254,6 +367,7 @@ class Redaction extends BaseGame {
         });
         this.texteEl.querySelectorAll('[data-fente]').forEach(el => {
             el.onclick = () => {
+                if (this.vientDeGlisser) return;
                 const i = Number(el.dataset.fente);
                 if (!this.phrase[i]) return;
                 this.phrase[i] = null;
@@ -320,12 +434,23 @@ class Redaction extends BaseGame {
     /** Temps 3 : la propriété s'écrit pendant que la figure la montre. */
     peindreOr() {
         this.banqueEl.innerHTML = '';
+        // On repart de la figure NUE : seules les deux parallèles. La
+        // perpendiculaire va se retracer sous les yeux, et c'est ce tracé qui
+        // fait la démonstration.
+        this.motsRevele = 0;
+        this.motsDeja = 0;
+        this.cacherPerpendiculaire();
         this.majOr();
         this.jouerMiseEnScene(0);
     }
 
     majOr() {
-        const vus = PROPRIETE.groupes.slice(0, this.motsRevele).join(' ');
+        // Les mots qui viennent d'apparaître clignotent : sans ça, la phrase
+        // s'allonge et on ne sait pas quel morceau la figure est en train
+        // d'illustrer.
+        const vus = PROPRIETE.groupes.slice(0, this.motsRevele)
+            .map((mot, i) => i >= this.motsDeja ? `<span class="rd-neuf">${mot}</span>` : mot)
+            .join(' ');
         this.texteEl.innerHTML = `
             <div class="rd-ligne"><span class="rd-mot">Je sais que</span> : ${this.resumeDonnees()}</div>
             <div class="rd-ligne ${this.motsRevele ? '' : 'rd-ligne--vide'}">
@@ -346,12 +471,21 @@ class Redaction extends BaseGame {
             return;
         }
         const s = scenes[i];
+        this.motsDeja = this.motsRevele;
         this.motsRevele = s.jusqu_a;
         this.majOr();
         this.note(s.dit);
         if (s.montre === 'paralleles') this.clignoterParalleles();
-        if (s.montre === 'perpendiculaire') this.montrerPerpendiculaire();
-        if (s.montre === 'conclusion') this.montrerAngleDroit();
+        // Le trait part du haut et s'arrête ENTRE les deux parallèles : il a
+        // coupé « l'une », pas encore « l'autre ».
+        if (s.montre === 'perpendiculaire') {
+            this.tracerPerpendiculaire({ de: 0, a: this.perpMilieu, duree: 1700 });
+        }
+        // Puis il reprend sa route, et l'angle droit naît à la seconde
+        // parallèle — au moment où le trait la touche, pas avant.
+        if (s.montre === 'conclusion') {
+            this.tracerPerpendiculaire({ de: this.perpMilieu, a: 1, duree: 1600, angleEnArrivant: true });
+        }
         // Lentement : c'est le seul moment où l'on voit une phrase de cours
         // DÉSIGNER quelque chose, et il ne se rejoue pas tout seul.
         this.timerId = setTimeout(() => { if (this.isRunning) this.jouerMiseEnScene(i + 1); }, 3400);
@@ -359,7 +493,9 @@ class Redaction extends BaseGame {
 
     /** Temps 4 : la conclusion. */
     peindreDonc() {
-        this.montrerAngleDroit();
+        // Sans clignotement ici : cette méthode est rappelée à chaque étiquette
+        // posée, et l'angle se remettrait à clignoter à chaque clic.
+        this.montrerAngleDroit(false);
         this.texteEl.innerHTML = `
             <div class="rd-ligne"><span class="rd-mot">Je sais que</span> : ${this.resumeDonnees()}</div>
             <div class="rd-ligne"><span class="rd-mot">Or</span> ${PROPRIETE.enonce}</div>
@@ -403,15 +539,24 @@ class Redaction extends BaseGame {
             `<span class="rd-etiquette ${this.choisi === n ? 'rd-etiquette--choisi' : ''}" data-etiq="${n}">(${n})</span>`).join('');
         this.banqueEl.querySelectorAll('[data-etiq]').forEach(el => {
             el.onclick = () => {
+                if (this.vientDeGlisser) return;
                 this.choisi = this.choisi === el.dataset.etiq ? null : el.dataset.etiq;
                 this.peindreEtiquettes();
             };
+            this.glisser(el, '[data-trou]', (cible) => {
+                this.trous[cible.dataset.trou] = el.dataset.etiq;
+                this.choisi = null;
+                this.peindre();
+                this.apresTrou?.();
+            });
         });
     }
 
     brancherTrous(apres) {
+        this.apresTrou = apres;
         this.texteEl.querySelectorAll('[data-trou]').forEach(el => {
             el.onclick = () => {
+                if (this.vientDeGlisser) return;
                 const k = el.dataset.trou;
                 // Un trou déjà rempli se vide au clic : se reprendre doit être
                 // aussi simple que répondre.
@@ -421,6 +566,100 @@ class Redaction extends BaseGame {
                 apres();
             };
         });
+    }
+
+    // --- Glisser-déposer ------------------------------------------------------
+
+    /**
+     * RENDRE UN ÉLÉMENT GLISSABLE, à la souris ET au doigt.
+     *
+     * L'appui simple continue de marcher — c'est le geste le plus sûr, et il
+     * reste le seul au clavier. Mais devant une étiquette et un trou, on essaie
+     * de glisser : ne rien obtenir donne l'impression que l'écran est cassé.
+     *
+     * Le tactile passe par les événements TOUCH bruts, pas par les événements
+     * pointeur. Safari émet un `pointercancel` dès qu'il décide qu'un geste est
+     * un défilement, et cette page défile : le glissement mourait à mi-chemin.
+     * `touch-action: none` sur l'étiquette ne suffit pas — c'est la leçon déjà
+     * apprise sur la mise en page des fiches.
+     */
+    glisser(el, selecteurCible, deposer) {
+        if (this.isDemo) return;
+        let fantome = null, cible = null;
+
+        const viser = (x, y) => {
+            const sous = document.elementFromPoint(x, y);
+            const c = sous && sous.closest(selecteurCible);
+            if (c === cible) return;
+            cible?.classList.remove('rd-survol');
+            cible = c;
+            cible?.classList.add('rd-survol');
+        };
+
+        const bouger = (x, y) => {
+            if (!fantome) {
+                const r = el.getBoundingClientRect();
+                fantome = el.cloneNode(true);
+                fantome.classList.add('rd-fantome');
+                fantome.style.width = `${r.width}px`;
+                document.body.appendChild(fantome);
+                el.classList.add('rd-source');
+            }
+            fantome.style.left = `${x}px`;
+            fantome.style.top = `${y}px`;
+            viser(x, y);
+        };
+
+        const lacher = () => {
+            el.classList.remove('rd-source');
+            fantome?.remove();
+            fantome = null;
+            const c = cible;
+            cible?.classList.remove('rd-survol');
+            cible = null;
+            // Le clic qui suit un glissement ne doit pas re-sélectionner
+            // l'étiquette qu'on vient de déposer.
+            this.vientDeGlisser = true;
+            setTimeout(() => { this.vientDeGlisser = false; }, 350);
+            if (c) deposer(c);
+        };
+
+        el.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'touch') return;          // le doigt : plus bas
+            e.preventDefault();
+            const move = (m) => bouger(m.clientX, m.clientY);
+            const up = () => {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', up);
+                if (fantome) lacher();
+            };
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+        });
+
+        el.addEventListener('touchstart', (e) => {
+            const d = e.touches[0];
+            const depart = { x: d.clientX, y: d.clientY };
+            let parti = false;
+            const move = (m) => {
+                const p = m.touches[0];
+                // Huit pixels de marge : en dessous, c'est un appui qui tremble,
+                // pas un glissement — et l'appui a déjà son propre effet.
+                if (!parti && Math.hypot(p.clientX - depart.x, p.clientY - depart.y) < 8) return;
+                parti = true;
+                m.preventDefault();                          // on prend la main sur le défilement
+                bouger(p.clientX, p.clientY);
+            };
+            const fin = () => {
+                document.removeEventListener('touchmove', move);
+                document.removeEventListener('touchend', fin);
+                document.removeEventListener('touchcancel', fin);
+                if (parti) lacher();
+            };
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', fin);
+            document.addEventListener('touchcancel', fin);
+        }, { passive: true });
     }
 
     suivant() {
@@ -437,6 +676,7 @@ class Redaction extends BaseGame {
         this.trous = { d0g: null, d0d: null, d1g: null, d1d: null, cg: null, cd: null };
         this.choisi = null;
         this.motsRevele = 0;
+        this.motsDeja = 0;
         this.suiteEl.textContent = 'Continuer';
         this.dessinerFigure();
         this.note('');
@@ -507,6 +747,10 @@ class Redaction extends BaseGame {
 
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        clearTimeout(this.timerAngle);
+        // Un fantôme de glissement vit hors du conteneur du jeu : il ne
+        // disparaîtrait pas tout seul.
+        document.querySelectorAll('.rd-fantome').forEach(f => f.remove());
         super.destroy();
     }
 }

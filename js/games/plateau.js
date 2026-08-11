@@ -25,7 +25,19 @@ import * as othello from '../core/othello.js';
 import * as dames from '../core/dames.js';
 import * as echecs from '../core/echecs.js';
 
-const GLYPHES = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
+// LE SÉLECTEUR DE VARIANTE ︎ N'EST PAS DÉCORATIF.
+//
+// « ♟ » (U+265F) est le seul symbole d'échecs qu'iOS classe comme ÉMOJI : sans
+// rien demander, Safari le rend avec sa police d'émojis, en couleur, et la
+// couleur CSS ne s'applique plus. Résultat : les pions blancs sortaient noirs
+// sur l'iPhone — huit pions noirs au premier rang des Blancs — alors que tours,
+// cavaliers et dames étaient corrects. U+FE0E demande explicitement la
+// présentation TEXTE, celle qui obéit à `color`.
+const TEXTE = '︎';
+const GLYPHES = {
+    K: '♚' + TEXTE, Q: '♛' + TEXTE, R: '♜' + TEXTE,
+    B: '♝' + TEXTE, N: '♞' + TEXTE, P: '♟' + TEXTE
+};
 
 // La difficulté : profondeur de calcul et part de hasard, par jeu — un coup
 // d'échecs coûte bien plus cher à explorer qu'un coup de dames.
@@ -66,7 +78,7 @@ const ADAPTATEURS = {
         pieceHtml(p) {
             if (!p) return '';
             const c = p.couleur === 'B' ? 'pl-pion--blanc' : 'pl-pion--noir';
-            return `<span class="pl-pion ${c}">${p.genre === 'd' ? '<i>♛</i>' : ''}</span>`;
+            return `<span class="pl-pion ${c}">${p.genre === 'd' ? `<i>${GLYPHES.Q}</i>` : ''}</span>`;
         },
         verdict(t) { return t.raison === 'plus de coup possible' ? 'Plus aucun coup possible.' : ''; },
         bulles: [
@@ -211,8 +223,14 @@ class Plateau extends BaseGame {
                 .pl-pion--noir i { color: #fbbf24; }
 
                 .pl-glyphe {
-                    font-size: min(6.4cqw, 6.4cqh); line-height: 1;
+                    /* Les pièces remplissent VRAIMENT leur case : à 6.4 elles
+                       flottaient au milieu d'un carré trop grand, et sur un
+                       téléphone il fallait viser. */
+                    font-size: min(8.6cqw, 8.6cqh); line-height: 1;
                     filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));
+                    /* Ceinture et bretelles avec le U+FE0E des glyphes : ce
+                       réglage dit la même chose au navigateur, en CSS. */
+                    font-variant-emoji: text;
                 }
                 .pl-glyphe--noir { color: #1f2937; }
                 .pl-glyphe--blanc {

@@ -41,15 +41,26 @@ export const PROPRIETE = {
     // du troisième temps, quand la phrase s'écrit pendant que le dessin bouge.
     mise_en_scene: [
         { jusqu_a: 2, montre: 'paralleles', dit: 'Les deux droites parallèles clignotent : ce sont elles, « deux droites parallèles ».' },
-        { jusqu_a: 4, montre: 'perpendiculaire', dit: 'La perpendiculaire se trace : elle coupe la première à angle droit.' },
-        { jusqu_a: 6, montre: 'conclusion', dit: 'Et l\'angle droit apparaît sur la seconde : c\'est ce que la propriété annonçait.' }
+        // Le tracé REPART du début et descend : on le suit du doigt, il coupe
+        // la première à angle droit, puis continue vers la seconde. C'est en
+        // arrivant DESSUS que l'angle droit apparaît — le geste et la phrase
+        // disent la même chose au même instant.
+        { jusqu_a: 4, montre: 'perpendiculaire', dit: 'La perpendiculaire se retrace : elle coupe la première à angle droit.' },
+        { jusqu_a: 6, montre: 'conclusion', dit: 'Elle atteint la seconde, et l\'angle droit apparaît : c\'est ce que la propriété annonçait.' }
     ],
     lecon: 'Une justification en géométrie a toujours trois lignes. JE SAIS QUE : ce qu\'on lit sur la figure ou dans l\'énoncé. OR : la propriété du cours, écrite en entier — c\'est elle qui autorise le pas suivant. DONC : la conclusion, qui ne dit rien de plus que ce que la propriété permet.'
 };
 
-/** Trois noms de droites distincts, tirés au hasard. */
+/**
+ * Trois noms de droites distincts, tirés au hasard.
+ *
+ * Que des noms de SIXIÈME. Le delta majuscule est la notation du lycée ; en
+ * sixième, il ajoute un obstacle qui n'a rien à voir avec la propriété qu'on
+ * travaille — l'élève bute sur un symbole qu'il n'a jamais vu au lieu de lire
+ * la figure.
+ */
 export function tirerNoms(rng) {
-    const lettres = rng.shuffle(['d', 'd\'', 'd₁', 'd₂', 'd₃', 'Δ', 'k', 'm']);
+    const lettres = rng.shuffle(['d', 'd\'', 'd₁', 'd₂', 'd₃', 'd₄', 'd₅']);
     return { p1: lettres[0], p2: lettres[1], perp: lettres[2] };
 }
 

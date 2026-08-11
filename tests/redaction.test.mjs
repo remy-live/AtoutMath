@@ -35,6 +35,18 @@ test('les trois droites portent des noms différents', () => {
     }
 });
 
+test('les noms de droites sont ceux de la SIXIÈME', () => {
+    // Le delta majuscule est une notation de lycée : en sixième, il ajoute un
+    // obstacle qui n'a rien à voir avec la propriété travaillée.
+    for (let i = 0; i < 60; i++) {
+        const noms = Object.values(tirerNoms(makeRng(`s${i}`)));
+        noms.forEach(n => {
+            assert.ok(!/[ΔΩαβ]/.test(n), `nom de lycée proposé : ${n}`);
+            assert.match(n, /^d['₀-₉]*$/, `nom inattendu : ${n}`);
+        });
+    }
+});
+
 test('la figure n\'est pas toujours horizontale', () => {
     // Une propriété apprise sur une seule orientation ne se reconnaît plus dès
     // qu'on penche la feuille.
