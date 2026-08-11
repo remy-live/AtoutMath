@@ -91,7 +91,8 @@ const ADAPTATEURS = {
         verdict(t) { return t.raison === 'échec et mat' ? 'Échec et mat.' : `Partie nulle : ${t.raison}.`; },
         bulles: [
             'Le but n\'est pas de tout prendre : c\'est le roi adverse.',
-            'Chaque pièce a sa marche. Touche une pièce : ses coups s\'allument.'
+            'Chaque pièce a sa marche. Touche une pièce : ses coups s\'allument.',
+            'Un pion qui atteint le bout se transforme. Tu choisis en quoi.'
         ]
     }
 };
@@ -138,6 +139,7 @@ class Plateau extends BaseGame {
                 .pl-scene {
                     flex: 1 1 auto; min-height: 0; width: 100%;
                     display: flex; align-items: center; justify-content: center;
+                    position: relative;
                 }
                 /* Le damier est un CARRÉ borné par la place disponible, sans
                    calcul : aspect-ratio fait le travail dans les deux sens. */
@@ -218,6 +220,39 @@ class Plateau extends BaseGame {
                     text-shadow: 0 0 2px #1f2937, 0 0 1px #1f2937;
                 }
 
+                /* LE CHOIX DE PROMOTION.
+                   Il se pose PAR-DESSUS le damier, pas à côté : c'est le seul
+                   endroit où le regard est déjà, et sur un téléphone il n'y a
+                   de la place nulle part ailleurs. Le voile bloque aussi le
+                   damier — tant qu'on n'a pas choisi, il n'y a rien d'autre à
+                   faire. */
+                .pl-promo {
+                    position: absolute; inset: 0; z-index: 6;
+                    display: flex; align-items: center; justify-content: center;
+                    background: rgba(15, 23, 42, .55); backdrop-filter: blur(2px);
+                }
+                .pl-promo[hidden] { display: none; }
+                .pl-promo-boite {
+                    background: var(--bg-panel); border: 1px solid var(--border);
+                    border-radius: 14px; box-shadow: var(--shadow-md);
+                    padding: 12px 14px; max-width: 94%;
+                    display: flex; flex-direction: column; align-items: center; gap: 9px;
+                }
+                .pl-promo-titre {
+                    margin: 0; text-align: center; font-weight: 700;
+                    font-size: clamp(11px, 2.8cqw, 15px); color: var(--text-main);
+                }
+                .pl-promo-choix { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
+                .pl-promo-btn {
+                    display: flex; flex-direction: column; align-items: center; gap: 1px;
+                    padding: 7px 9px; min-width: 62px; cursor: pointer; font: inherit;
+                    border: 2px solid var(--border); border-radius: 11px;
+                    background: ${co.claire};
+                }
+                .pl-promo-btn:hover { border-color: #2563eb; transform: translateY(-2px); }
+                .pl-promo-btn .pl-glyphe { font-size: clamp(24px, 7cqw, 40px); }
+                .pl-promo-btn small { font-size: .7rem; font-weight: 700; color: #3f3222; }
+
                 .pl-note {
                     min-height: 2.4em; text-align: center; width: 100%; max-width: 640px;
                     font-size: clamp(11px, 2.7cqw, 14px); line-height: 1.35;
@@ -236,11 +271,13 @@ class Plateau extends BaseGame {
                 </div>
                 <div class="pl-scene">
                     <div class="pl-damier" data-damier role="grid" aria-label="${this.ad.id}"></div>
+                    <div class="pl-promo" data-promo hidden></div>
                 </div>
                 <p class="pl-note" data-note></p>
             </div>`;
 
         this.damierEl = this.container.querySelector('[data-damier]');
+        this.promoEl = this.container.querySelector('[data-promo]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.tourEl = this.container.querySelector('[data-tour]');
         this.jetonEl = this.container.querySelector('[data-jeton]');
@@ -270,6 +307,7 @@ class Plateau extends BaseGame {
 
     nouvellePartie() {
         clearTimeout(this.timerIA);
+        this.fermerPromotion();
         this.etat = this.ad.module.initial();
         this.selection = null;
         this.dernier = null;
@@ -354,6 +392,7 @@ class Plateau extends BaseGame {
 
     toucher(x, y) {
         if (this.finie || !this.tourHumain()) return;
+        if (this.promoEl && !this.promoEl.hidden) return;   // on choisit d'abord
         const m = this.ad.module;
         const coups = m.coups(this.etat);
 
@@ -364,22 +403,81 @@ class Plateau extends BaseGame {
         }
 
         // Prendre une pièce à soi la sélectionne (ou re-sélectionne) ; toucher
-        // une destination allumée joue. Les promotions d'échecs vont à la
-        // dame — le choix du cavalier attendra qu'un élève le demande.
+        // une destination allumée joue.
         const piece = this.etat.cases[y * this.ad.taille + x];
         const mienne = piece && (this.ad.id === 'echecs'
             ? (piece === piece.toUpperCase() ? 'B' : 'N') === this.etat.trait
             : piece.couleur === this.etat.trait);
         if (this.selection) {
-            const coup = coups.find(c => {
+            const candidats = coups.filter(c => {
                 const de = this.ad.deDe(c), vers = this.ad.versDe(c);
                 return de.x === this.selection.x && de.y === this.selection.y
-                    && vers.x === x && vers.y === y && (!c.promotion || c.promotion === 'Q');
+                    && vers.x === x && vers.y === y;
             });
-            if (coup) { this.selection = null; this.jouerCoup(coup); return; }
+            // Une seule case d'arrivée, QUATRE coups différents : c'est une
+            // promotion. Le noyau les propose tous, l'écran doit demander
+            // lequel — la sous-promotion en cavalier est parfois le seul coup
+            // qui gagne, et c'est justement ce qui la rend intéressante.
+            if (candidats.length > 1 && candidats.every(c => c.promotion)) {
+                this.demanderPromotion(candidats);
+                return;
+            }
+            if (candidats[0]) { this.selection = null; this.jouerCoup(candidats[0]); return; }
         }
         this.selection = mienne ? { x, y } : null;
         this.peindre();
+    }
+
+    // --- La promotion du pion ---------------------------------------------------
+
+    /**
+     * Le pion touche le bout : en quoi le transforme-t-on ?
+     *
+     * Les quatre pièces sont montrées telles qu'elles apparaîtront sur le
+     * damier — même glyphe, même couleur. On ne demande pas « Q, R, B ou N » à
+     * un élève de sixième : on lui montre la dame, la tour, le fou, le cavalier.
+     */
+    demanderPromotion(candidats) {
+        const blanc = this.etat.trait === 'B';
+        const noms = { Q: 'Dame', R: 'Tour', B: 'Fou', N: 'Cavalier' };
+        this.promoEl.innerHTML = `
+            <div class="pl-promo-boite">
+                <p class="pl-promo-titre">Ton pion arrive au bout ! En quoi le transformes-tu ?</p>
+                <div class="pl-promo-choix">
+                    ${['Q', 'R', 'B', 'N'].filter(p => candidats.some(c => c.promotion === p)).map(p => `
+                        <button type="button" class="pl-promo-btn" data-choix="${p}" aria-label="${noms[p]}">
+                            <span class="pl-glyphe ${blanc ? 'pl-glyphe--blanc' : 'pl-glyphe--noir'}">${GLYPHES[p]}</span>
+                            <small>${noms[p]}</small>
+                        </button>`).join('')}
+                </div>
+                <button type="button" class="pl-btn" data-annule>Annuler</button>
+            </div>`;
+        this.promoEl.hidden = false;
+        this.note('Presque toujours la dame — mais pas toujours : la tour ou le cavalier évitent parfois un pat ou donnent mat.');
+
+        this.promoEl.onpointerdown = (e) => {
+            e.preventDefault();
+            const b = e.target.closest('[data-choix]');
+            // Le voile lui-même et « Annuler » renoncent : le pion reste
+            // sélectionné, on peut choisir une autre case.
+            if (!b) {
+                if (e.target === this.promoEl || e.target.closest('[data-annule]')) this.fermerPromotion();
+                return;
+            }
+            const coup = candidats.find(c => c.promotion === b.dataset.choix);
+            this.fermerPromotion();
+            if (!coup) return;
+            this.selection = null;
+            this.note(`Le pion devient <b>${noms[coup.promotion].toLowerCase()}</b>.`);
+            this.jouerCoup(coup);
+        };
+    }
+
+    fermerPromotion() {
+        if (!this.promoEl) return;
+        this.promoEl.hidden = true;
+        this.promoEl.innerHTML = '';
+        this.promoEl.onpointerdown = null;
     }
 
     jouerCoup(coup) {
@@ -472,6 +570,7 @@ class Plateau extends BaseGame {
 
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        this.fermerPromotion();
         clearTimeout(this.timerIA);
         super.destroy();
     }

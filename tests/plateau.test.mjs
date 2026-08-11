@@ -223,6 +223,26 @@ test('échecs : la promotion offre les quatre pièces', () => {
     assert.equal(e2.cases[0], 'Q');
 });
 
+test('échecs : les quatre promotions partagent la MÊME case d\'arrivée', () => {
+    // C'est à ça que l'écran reconnaît une promotion : plusieurs coups pour un
+    // seul couple départ/arrivée. Si le noyau cessait de les grouper ainsi, la
+    // fenêtre de choix ne s'ouvrirait plus et le pion redeviendrait dame
+    // d'office, sans rien casser d'autre — d'où ce test.
+    for (const fen of ['8/P7/8/8/8/8/8/k5K1 w - -',           // promotion simple
+        'r5k1/1P6/8/8/8/8/8/6K1 w - -']) {                     // promotion EN PRENANT
+        const e = echecs.fenVersEtat(fen);
+        const groupes = new Map();
+        for (const c of echecs.coups(e).filter(c => c.promotion)) {
+            const cle = `${c.de}>${c.vers}`;
+            groupes.set(cle, [...(groupes.get(cle) || []), c.promotion]);
+        }
+        for (const [cle, pieces] of groupes) {
+            assert.deepEqual(pieces.sort(), ['B', 'N', 'Q', 'R'], `${fen} — ${cle}`);
+        }
+        assert.ok(groupes.size >= 1, `${fen} — aucune promotion trouvée`);
+    }
+});
+
 test('échecs : l\'IA trouve le mat du couloir en un coup', () => {
     const e = echecs.fenVersEtat('7k/6pp/8/8/8/8/8/R5K1 w - -');
     const { coup } = meilleurCoup(echecs, e, { profondeur: 2, rng: rngFixe(2) });
