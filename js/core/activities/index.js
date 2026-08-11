@@ -249,7 +249,8 @@ const legacy = [
     ['ninja', 'Trancher et tirer', 'ninja', 'engineNinja'],
     ['dictee', 'Dictée de nombres', 'dictee', 'engineDictee'],
     ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction'],
-    ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel']
+    ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
+    ['ville', 'Le Plan de Ville', 'ville', 'engineVille']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

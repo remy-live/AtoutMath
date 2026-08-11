@@ -352,6 +352,14 @@ const BASE = {
         descriptor: 'Anticiper mentalement l\'effet d\'une rotation d\'un quart de tour sur un solide.',
         lesson: 'Un quart de tour = 90°. Avant d\'agir, imagine le mouvement dans ta tête : que devient la face de devant ? Quatre quarts de tour ramènent toujours le solide à sa position de départ.'
     },
+    'geo.espace.deplacement': {
+        label: 'Suivre un déplacement sur un plan',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Exécuter un itinéraire donné en gauche / droite / tout droit sur un plan fixe.',
+        lesson: 'La gauche d\'un véhicule n\'est pas la gauche du plan : elle dépend du sens dans lequel il roule. Quand la voiture monte, sa gauche est bien à gauche de l\'écran ; quand elle descend, sa gauche est à DROITE de l\'écran. Avant de tourner, mets-toi à la place du conducteur : tourne la tête dans le sens de la voiture, puis choisis. Et « la deuxième à gauche » compte les RUES qui partent à gauche, pas les carrefours traversés.'
+    },
     'don.tableur.reperage': {
         label: 'Se repérer dans un tableur',
         chemin: [D.DONNEES, SD.TABLEUR],

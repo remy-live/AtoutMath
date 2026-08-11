@@ -91,5 +91,33 @@ export const geometrieExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Un ennemi apparaît au-dessus d'un rapporteur géant : lis l'angle sur la bonne échelle, tape-le au clavier et tire ! Attention aux niveaux à échelle inversée où le canon tire à 180 − x, aux astéroïdes qui bloquent les tirs, et aux cibles mouvantes."
+    },
+    {
+        // LE PLAN NE BOUGE PAS, LA VOITURE TOURNE. Toute la difficulté est là :
+        // quand la voiture descend, sa gauche est à DROITE de l'écran. Un plan
+        // qui pivoterait avec le véhicule — comme un GPS — supprimerait
+        // l'exercice au lieu de l'aider.
+        id: 'geo-ville', status: STATUS.TEST, title: 'Le Plan de Ville',
+        activityId: 'ville',
+        params: { taille: 'moyen', capNord: false },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la ville',
+                aide: 'Plus la ville est grande, plus il y a de virages à enchaîner sans se tromper.',
+                options: [
+                    { value: 'petit', label: '4 × 4 — deux virages' },
+                    { value: 'moyen', label: '5 × 5 — trois virages' },
+                    { value: 'grand', label: '6 × 5 — quatre virages' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'capNord', type: 'checkbox', label: 'Toujours partir vers le haut',
+                aide: 'Départ vers le haut du plan : tant que la voiture monte, sa gauche est celle de l\'écran. À décocher dès que le mécanisme est compris — c\'est en descendant qu\'on apprend.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Conduis la voiture jusqu'au lieu demandé en suivant la feuille de route : « prends la deuxième à gauche », « puis la première à droite ». Les trois boutons — et les flèches du clavier — sont ceux du CONDUCTEUR : quand la voiture descend, sa gauche est à droite de l'écran. Avant chaque virage, demande-toi dans quel sens elle roule. Et « la deuxième à gauche » compte les rues qui partent à gauche, pas les carrefours."
     }
 ];
