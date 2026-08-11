@@ -169,3 +169,104 @@ test('un intertitre ne reste jamais seul en bas d\'une colonne', () => {
     assert.equal(Math.round(titre.x), Math.round(suivante.x),
         'le titre est resté dans une colonne que sa première question a quittée');
 });
+
+// --- La fiche en blocs d'exercices ------------------------------------------
+
+import { composerBlocs, DEFAUTS_BLOCS } from '../js/core/fiche.js';
+
+const exoCourt = (titre, n, texte = '7 × 8 = ?') => ({
+    titre, consigne: '',
+    questions: Array.from({ length: n }, (_, i) => ({ texte, reponse: i }))
+});
+
+test('blocs : les questions courtes se rangent à plusieurs par ligne', () => {
+    const { pages, nbQuestions } = composerBlocs([exoCourt('Tables', 12)], {}, mesurer);
+    assert.equal(nbQuestions, 12);
+    const qs = pages[0].items.filter(i => i.type === 'q');
+    const xs = new Set(qs.map(q => Math.round(q.x)));
+    assert.ok(xs.size >= 2, `questions courtes sur ${xs.size} colonne(s) — on en attend plusieurs`);
+});
+
+test('blocs : un long énoncé ramène son exercice à une colonne', () => {
+    const long = 'Quelle est la partie entière du nombre décimal quatre-vingt-quatre virgule vingt et un, sachant que sa partie décimale compte deux chiffres ?';
+    const { pages } = composerBlocs([{
+        titre: 'Décimaux', questions: Array.from({ length: 4 }, () => ({ texte: long }))
+    }], {}, mesurer);
+    const qs = pages[0].items.filter(i => i.type === 'q');
+    assert.equal(new Set(qs.map(q => Math.round(q.x))).size, 1);
+    qs.forEach(q => assert.ok(q.lignes.length > 1));
+});
+
+test('blocs : une question de l\'exercice 2 ne se glisse jamais dans l\'exercice 1', () => {
+    const { pages } = composerBlocs([exoCourt('A', 5), exoCourt('B', 5)], {}, mesurer);
+    // Sur chaque page, l'ordre vertical suit l'ordre des items : le bandeau de
+    // B est posé APRÈS toutes les questions de A, et plus bas qu'elles.
+    const items = pages[0].items;
+    const bandeauB = items.findIndex(i => i.type === 'exo' && i.titre === 'B');
+    items.slice(0, bandeauB).filter(i => i.type === 'q').forEach(q => {
+        assert.ok(q.y < items[bandeauB].y, 'question de A sous le bandeau de B');
+    });
+    const apres = items.slice(bandeauB).filter(i => i.type === 'q');
+    apres.forEach(q => assert.ok(q.y >= items[bandeauB].y));
+});
+
+test('blocs : rien ne sort de la zone, même sur plusieurs pages', () => {
+    const exos = [exoCourt('A', 40), exoCourt('B', 40, 'Un énoncé qui prend nettement plus de place sur la ligne ?'), exoCourt('C', 30)];
+    const { pages, zone, opts, nbQuestions } = composerBlocs(exos, {}, mesurer);
+    assert.equal(nbQuestions, 110);
+    assert.ok(pages.length > 1);
+    for (const p of pages) {
+        for (const it of p.items) {
+            assert.ok(it.y >= zone.y - 0.01, `${it.type} au-dessus de la zone`);
+            const bas = it.type === 'q'
+                ? Math.max(it.y + it.lignes.length * opts.interligne, it.rep ? it.rep.y : 0)
+                : it.y + (it.h || 5);
+            assert.ok(bas <= zone.y + zone.h + 0.01, `${it.type} déborde en bas (${bas.toFixed(1)})`);
+        }
+    }
+});
+
+test('blocs : un exercice coupé par la page reprend avec un bandeau « suite »', () => {
+    const { pages } = composerBlocs([exoCourt('Grand', 300)], {}, mesurer);
+    assert.ok(pages.length > 1);
+    for (let i = 1; i < pages.length; i++) {
+        const premier = pages[i].items[0];
+        assert.equal(premier.type, 'exo');
+        assert.equal(premier.suite, true);
+    }
+});
+
+test('blocs : la numérotation est continue à travers exercices et pages', () => {
+    const { pages } = composerBlocs([exoCourt('A', 30), exoCourt('B', 30)], {}, mesurer);
+    const numeros = pages.flatMap(p => p.items.filter(i => i.type === 'q').map(q => q.n));
+    assert.deepEqual(numeros, numeros.map((_, i) => i + 1));
+});
+
+test('blocs : l\'interrogation laisse de la place pour écrire sous chaque question', () => {
+    const { pages, opts } = composerBlocs([exoCourt('A', 6)], { interrogation: true }, mesurer);
+    const qs = pages[0].items.filter(i => i.type === 'q');
+    qs.forEach(q => {
+        assert.ok(q.rep, 'chaque question a sa zone de réponse');
+        assert.ok(q.rep.y >= q.y + opts.interligne, 'la réponse est SOUS la question, pas sur sa ligne');
+    });
+});
+
+test('blocs : deux questions voisines ne se chevauchent jamais', () => {
+    const exos = [{
+        titre: 'Mélange',
+        questions: Array.from({ length: 24 }, (_, i) => ({
+            texte: i % 3 === 0 ? 'Court ?' : 'Un énoncé nettement plus long qui passera à la ligne au moins une fois ou deux, voire trois'
+        }))
+    }];
+    const { pages, opts } = composerBlocs(exos, {}, mesurer);
+    for (const p of pages) {
+        const qs = p.items.filter(i => i.type === 'q');
+        for (const a of qs) {
+            for (const b of qs) {
+                if (a === b || Math.round(a.x) !== Math.round(b.x) || a.y >= b.y) continue;
+                const basA = Math.max(a.y + a.lignes.length * opts.interligne, a.rep ? a.rep.y : 0);
+                assert.ok(b.y >= basA - 0.01, `la question ${b.n} chevauche la ${a.n}`);
+            }
+        }
+    }
+});

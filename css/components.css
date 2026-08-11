@@ -139,7 +139,14 @@
 .preview-mode-btn.active { background: var(--primary); color: white; }
 #btn-test-sequence { background: var(--primary); color: white; border: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; padding: 8px 15px; }
 #btn-generate-code { background: var(--success); color: white; border: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; }
-.builder-header-actions { display: flex; gap: 10px; }
+.builder-header-actions { display: flex; gap: 10px; align-items: center; }
+/* Sur téléphone, les neuf outils — désormais tous en icône seule — tiennent
+   sur UNE ligne compacte au lieu des deux rangées de boutons à libellé. */
+@media (max-width: 700px) {
+    .path-header-toggle { gap: 8px 6px; margin-bottom: 12px; }
+    .path-header-left, .builder-header-actions { gap: 6px; }
+    .toolbar-icon-btn { width: 36px; height: 36px; border-radius: 10px; }
+}
 
 /* --- MODALES --- */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100000; justify-content: center; align-items: center; backdrop-filter: blur(8px); }

@@ -40,3 +40,14 @@ test('aucun exercice ne porte un statut inconnu', () => {
     const fautifs = exercices.filter(e => e.status && !connus.includes(e.status));
     assert.deepEqual(fautifs.map(e => e.id), []);
 });
+
+test('chaque exercice est rangé dans un chemin entièrement nommé', () => {
+    // Un segment `undefined` (constante TAGS mal orthographiée) crée un
+    // dossier « undefined » dans le catalogue — c'est arrivé, un élève l'a vu.
+    const fautifs = exercices.filter(e => {
+        const c = e.tags && e.tags.chemin;
+        return !Array.isArray(c) || c.length === 0
+            || c.some(s => typeof s !== 'string' || !s.trim());
+    });
+    assert.deepEqual(fautifs.map(e => e.id), []);
+});

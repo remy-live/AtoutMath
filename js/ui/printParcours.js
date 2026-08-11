@@ -1,43 +1,36 @@
 // LA FICHE D'UN PARCOURS — le parcours de l'écran, sur papier.
 //
 // Le professeur a déjà composé sa séance : trois exercices, dans cet ordre,
-// avec ces réglages. La fiche n'est que la même chose imprimée — on ne lui
-// demande pas de recomposer quoi que ce soit, on lui demande combien de
-// questions il veut par étape.
+// avec ces réglages. La fiche est la même chose imprimée, dans la mise en page
+// des manuels : UN EXERCICE = UN BLOC pleine largeur, avec son bandeau
+// (« Exercice 1 — Les compléments à 10 »), sa consigne et ses questions —
+// jamais deux exercices côte à côte en colonnes. À l'intérieur d'un bloc, les
+// questions courtes se rangent d'elles-mêmes à deux ou trois par ligne.
+//
+// L'ORDRE des blocs se règle au doigt : chaque exercice de la liste se glisse
+// plus haut ou plus bas, et la fiche se recompose aussitôt.
 //
 // Deux documents, et c'est toute la différence entre un entraînement et une
 // évaluation :
 //
-//   FICHE D'EXERCICES  chaque étape a son titre et sa consigne, les questions
-//                      sont numérotées en continu, et les solutions sont en
-//                      dernière page.
+//   FICHE D'EXERCICES  consignes imprimées, questions numérotées en continu,
+//                      solutions en dernière page.
 //   INTERROGATION      pas de consigne (elle a été donnée en classe), un
-//                      barème par exercice, et une page solutions qui reste
-//                      dans la main du professeur. Les questions y sont plus
-//                      espacées : on écrit sur la feuille, pas au brouillon.
+//                      barème par exercice, de la place pour ÉCRIRE sous
+//                      chaque question, et la page des solutions qui reste
+//                      dans la main du professeur.
 //
 // Les étapes qui n'existent pas sur papier — un jeu d'arcade, un rapporteur à
 // manœuvrer — sont ANNONCÉES comme telles plutôt que silencieusement omises.
-// Un professeur qui compte trois exercices et n'en voit que deux se demande
-// ce qu'il a raté.
 
 import { hydratePath } from '../core/path.js';
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
-import { A4, composerFiche, composerSolutions } from '../core/fiche.js';
+import { A4, composerBlocs, composerSolutions } from '../core/fiche.js';
 import { chargerJsPDF } from './printSheet.js';
-
-const ENCRE = { texte: [30, 41, 59], gris: [120, 128, 142], trait: [26, 32, 44], pointille: [172, 180, 195] };
-
-const echapper = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-
-function mesureur() {
-    const c = document.createElement('canvas').getContext('2d');
-    return (texte, taille) => {
-        c.font = `${taille * 100}px Helvetica, Arial, sans-serif`;
-        return c.measureText(texte).width / 100;
-    };
-}
+import {
+    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, ENCRE
+} from './ficheRendu.js';
 
 /**
  * Les étapes du parcours, triées en « imprimables » et « à l'écran seulement ».
@@ -66,8 +59,7 @@ function questionsDe(etape, nb) {
         out.push({
             texte,
             choix: item.choices ? item.choices.map(c => String(c.label ?? c.value)) : null,
-            reponse: formaterReponse(item),
-            etape: etape.title
+            reponse: formaterReponse(item)
         });
     }
     return out;
@@ -79,32 +71,6 @@ function formaterReponse(item) {
         if (bonne) return String(bonne.label ?? bonne.value);
     }
     return String(item.answer).replace('.', ',');
-}
-
-/**
- * Assemble le document : les questions de toutes les étapes, à la suite, avec
- * un intertitre par étape. La numérotation est CONTINUE d'une étape à l'autre
- * — « exercice 2, question 14 » se retrouve d'un coup d'œil quand on corrige.
- */
-export function assembler(etapes, quantites, options, mesurer) {
-    const questions = [];
-    for (const e of etapes) {
-        const nb = Math.max(0, quantites[e.stepId] ?? e.nbItems ?? 5);
-        if (!nb) continue;
-        // L'intertitre est un BLOC de la mise en page, pas une décoration
-        // posée après coup : dessiné après, il atterrit sur la première
-        // question de sa section.
-        questions.push({ titre: true, texte: e.title });
-        questions.push(...questionsDe(e, nb));
-    }
-    // En interrogation, on écrit sur la feuille : il faut de la place.
-    const mise = composerFiche(questions, {
-        colonnes: options.colonnes,
-        avecChoix: options.avecChoix,
-        ligneReponse: options.interrogation ? 13 : 7,
-        entreQuestions: options.interrogation ? 6 : 4.2
-    }, mesurer);
-    return { questions, mise };
 }
 
 // --- La modale ------------------------------------------------------------------
@@ -120,7 +86,6 @@ function assurerModale() {
             <h3 class="modal-title">📄 Fiche du parcours</h3>
             <div class="fp-controles">
                 <label class="fq-case"><input type="checkbox" id="pp-interro"> Mode interrogation</label>
-                <label>Colonnes <input type="number" id="pp-cols" class="cfg-input cfg-input--num" min="1" max="3" value="2"></label>
                 <label class="fq-case"><input type="checkbox" id="pp-choix"> Proposer les réponses</label>
                 <span class="fp-total" id="pp-total"></span>
                 <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
@@ -140,33 +105,6 @@ function assurerModale() {
     return m;
 }
 
-function apercuPage(page, k, o, solutions) {
-    let html = '';
-    for (const b of page.blocs) {
-        if (b.titre) {
-            html += `<div class="pp-inter" style="left:${b.x * k}px; top:${b.y * k}px; width:${b.largeur * k}px;
-                font-size:${o.taille * k * 1.05}px">${echapper(b.lignes.join(' '))}</div>`;
-            continue;
-        }
-        if (!solutions) {
-            html += `<div class="fq-num" style="left:${b.x * k}px; top:${b.y * k}px; font-size:${o.taille * k}px">${b.n}.</div>`;
-        }
-        b.lignes.forEach((ligne, i) => {
-            const x = solutions ? b.x : b.texteX;
-            html += `<div class="fq-ligne" style="left:${x * k}px; top:${(b.y + i * o.interligne) * k}px;
-                width:${(solutions ? b.largeur : b.texteW) * k}px; font-size:${o.taille * k}px">${echapper(ligne)}</div>`;
-        });
-        if (b.choix) {
-            html += `<div class="fq-choix" style="left:${b.texteX * k}px; top:${(b.y + b.lignes.length * o.interligne) * k}px;
-                font-size:${o.taille * k * .9}px">${b.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
-        }
-        if (!solutions) {
-            html += `<div class="fq-reponse" style="left:${b.texteX * k}px; top:${b.reponseY * k}px; width:${b.texteW * k}px"></div>`;
-        }
-    }
-    return html;
-}
-
 export function ouvrirFicheParcours(chemin) {
     const { papier, ecran, total } = analyserParcours(chemin);
     const m = assurerModale();
@@ -174,56 +112,136 @@ export function ouvrirFicheParcours(chemin) {
 
     const apercu = m.querySelector('#pp-apercu');
     const interro = m.querySelector('#pp-interro');
-    const colsEl = m.querySelector('#pp-cols');
     const choixEl = m.querySelector('#pp-choix');
     const totalEl = m.querySelector('#pp-total');
     const noteEl = m.querySelector('#pp-note');
     const btnSol = m.querySelector('#pp-sol');
+    const listeEl = m.querySelector('#pp-etapes');
 
     let solutions = false;
-    let doc = null;
+    let blocs = null;           // les questions déjà tirées, par étape
+    let ordre = papier.map(e => e.stepId);
     const quantites = {};
     papier.forEach(e => { quantites[e.stepId] = Math.max(1, Math.min(40, e.nbItems || 5)); });
-
-    // La liste des étapes, avec le nombre de questions de chacune : c'est le
-    // seul réglage propre au parcours, et il ne demande pas d'éditeur de mise
-    // en page pour être utile.
-    m.querySelector('#pp-etapes').innerHTML = papier.map(e => `
-        <label class="pp-etape">
-            <span class="pp-etape-nom">${echapper(e.title)}</span>
-            <input type="number" class="cfg-input cfg-input--num" data-etape="${e.stepId}"
-                min="0" max="40" value="${quantites[e.stepId]}">
-            <span class="pp-etape-unite">questions</span>
-        </label>`).join('')
-        + (ecran.length ? `<div class="pp-ecran">Sur écran seulement : ${ecran.map(e => echapper(e.title)).join(', ')}
-             — ${ecran.length > 1 ? 'ces activités demandent' : 'cette activité demande'} de manipuler, elles ne se photocopient pas.</div>` : '');
-
-    m.querySelectorAll('[data-etape]').forEach(inp => {
-        inp.oninput = () => {
-            quantites[inp.dataset.etape] = Math.max(0, Math.min(40, Number(inp.value) || 0));
-            doc = null;
-            rendre();
-        };
-    });
+    const parId = new Map(papier.map(e => [e.stepId, e]));
 
     const options = () => ({
         interrogation: interro.checked,
-        colonnes: Math.max(1, Math.min(3, Number(colsEl.value) || 2)),
         avecChoix: choixEl.checked
     });
 
+    // La liste des étapes : le nombre de questions de chacune, ET leur ordre
+    // sur la feuille — chaque ligne se glisse plus haut ou plus bas par sa
+    // poignée. C'est toute la mise en page : le reste se calcule.
+    const rendreListe = () => {
+        listeEl.innerHTML = ordre.map((id, i) => {
+            const e = parId.get(id);
+            return `
+            <div class="pp-etape" data-etape-ligne="${id}">
+                <button type="button" class="pp-grip" data-grip="${id}"
+                    title="Glisser pour changer l'ordre sur la feuille"
+                    aria-label="Déplacer « ${echapper(e.title)} »">⠿</button>
+                <span class="pp-etape-num">${i + 1}.</span>
+                <span class="pp-etape-nom">${echapper(e.title)}</span>
+                <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
+                    min="0" max="40" value="${quantites[id]}">
+                <span class="pp-etape-unite">questions</span>
+            </div>`;
+        }).join('')
+            + (ecran.length ? `<div class="pp-ecran">Sur écran seulement : ${[...new Set(ecran.map(e => e.title))].map(echapper).join(', ')}
+                 — ${ecran.length > 1 ? 'ces activités demandent' : 'cette activité demande'} de manipuler, elles ne se photocopient pas.</div>` : '');
+
+        listeEl.querySelectorAll('[data-etape]').forEach(inp => {
+            inp.oninput = () => {
+                quantites[inp.dataset.etape] = Math.max(0, Math.min(40, Number(inp.value) || 0));
+                blocs = null;
+                rendre();
+            };
+        });
+        brancherGlisser();
+    };
+
+    // Le glisser-déposer, aux pointer events : il marche au doigt comme à la
+    // souris. La ligne saisie suit le pointeur, les autres s'écartent, et on
+    // recompose la fiche au lâcher.
+    const brancherGlisser = () => {
+        listeEl.querySelectorAll('[data-grip]').forEach(grip => {
+            grip.onpointerdown = (ev) => {
+                ev.preventDefault();
+                const id = grip.dataset.grip;
+                const ligne = listeEl.querySelector(`[data-etape-ligne="${id}"]`);
+                const lignes = () => [...listeEl.querySelectorAll('[data-etape-ligne]')];
+                ligne.classList.add('pp-etape--saisie');
+
+                // Les écouteurs vivent sur la FENÊTRE, pas sur la poignée :
+                // déplacer la ligne dans le DOM (insertBefore) retire un
+                // instant l'élément du document, ce qui ANNULE une capture de
+                // pointeur — le glisser mourait au premier réordonnancement.
+                const bouger = (e2) => {
+                    const autres = lignes().filter(l => l !== ligne);
+                    // On insère la ligne saisie avant la première ligne dont le
+                    // milieu est sous le pointeur — et seulement si ça change
+                    // quelque chose, pour ne pas secouer le DOM à chaque pixel.
+                    let cible = null;
+                    for (const l of autres) {
+                        const r = l.getBoundingClientRect();
+                        if (e2.clientY < r.top + r.height / 2) { cible = l; break; }
+                    }
+                    if (cible && ligne.nextElementSibling !== cible) listeEl.insertBefore(ligne, cible);
+                    else if (!cible && autres.length && autres[autres.length - 1].nextElementSibling !== ligne) {
+                        autres[autres.length - 1].after(ligne);
+                    }
+                };
+                const lacher = () => {
+                    window.removeEventListener('pointermove', bouger);
+                    window.removeEventListener('pointerup', lacher);
+                    window.removeEventListener('pointercancel', lacher);
+                    ligne.classList.remove('pp-etape--saisie');
+                    const nouvelOrdre = [...listeEl.querySelectorAll('[data-etape-ligne]')]
+                        .map(l => l.dataset.etapeLigne);
+                    const change = nouvelOrdre.join() !== ordre.join();
+                    ordre = nouvelOrdre;
+                    rendreListe();
+                    if (change) rendre();
+                };
+                window.addEventListener('pointermove', bouger);
+                window.addEventListener('pointerup', lacher);
+                window.addEventListener('pointercancel', lacher);
+            };
+        });
+    };
+
     const rendre = () => {
         const o = options();
-        if (!doc) doc = assembler(papier, quantites, o, mesurer);
-        else doc.mise = composerFiche(doc.questions, {
-            colonnes: o.colonnes, avecChoix: o.avecChoix,
-            ligneReponse: o.interrogation ? 13 : 7,
-            entreQuestions: o.interrogation ? 6 : 4.2
-        }, mesurer);
+        // Les questions ne sont retirées que si nécessaire (« D'autres
+        // questions », changement de quantité) : changer un réglage de mise en
+        // page garde les mêmes questions.
+        if (!blocs) {
+            const tirages = new Map();
+            ordre.forEach(id => {
+                const e = parId.get(id);
+                const nb = quantites[id];
+                tirages.set(id, nb ? questionsDe(e, nb) : []);
+            });
+            blocs = tirages;
+        }
+        const exos = ordre
+            .filter(id => (quantites[id] || 0) > 0)
+            .map(id => {
+                const e = parId.get(id);
+                return {
+                    titre: e.title,
+                    consigne: o.interrogation ? '' : (e.exercise.instruction || ''),
+                    points: o.interrogation ? quantites[id] : null,
+                    questions: (blocs.get(id) || []).slice(0, quantites[id])
+                };
+            })
+            .filter(x => x.questions.length);
 
+        const toutes = exos.flatMap(x => x.questions);
         const mise = solutions
-            ? composerSolutions(doc.questions.filter(q => !q.titre), { colonnesSolutions: 4 }, mesurer)
-            : doc.mise;
+            ? composerSolutions(toutes, { colonnesSolutions: 4 }, mesurer)
+            : composerBlocs(exos, o, mesurer);
 
         const large = apercu.parentElement.clientWidth || 640;
         const k = Math.min(large, 700) / A4.w;
@@ -231,27 +249,24 @@ export function ouvrirFicheParcours(chemin) {
         apercu.style.height = `${A4.h * k * mise.pages.length + 12 * Math.max(0, mise.pages.length - 1)}px`;
 
         const nom = chemin.name || 'Parcours';
+        const sousTitre = solutions ? 'Solutions' : (o.interrogation ? 'Interrogation' : '');
         apercu.innerHTML = mise.pages.map((page, i) => `
             <div class="fq-page" style="width:${A4.w * k}px; height:${A4.h * k}px; top:${i * (A4.h * k + 12)}px">
-                <div class="fp-entete" style="left:${A4.marge * k}px; right:${A4.marge * k}px; top:${(A4.marge + 1) * k}px;">
-                    <b>${echapper(nom)}${solutions ? ' — Solutions' : (o.interrogation ? ' — Interrogation' : '')}</b>
-                    <span>Nom : ............  Date : ......</span>
-                </div>
-                <div class="fp-ligne" style="left:${A4.marge * k}px; right:${A4.marge * k}px; top:${(A4.marge + 9) * k}px;"></div>
-                ${apercuPage(page, k, mise.opts, solutions)}
+                ${apercuEntete(k, nom, sousTitre)}
+                ${solutions ? apercuSolutions(page, k, mise.opts) : apercuItems(page, k, mise.opts)}
             </div>`).join('');
 
-        const nb = doc.questions.filter(q => !q.titre).length;
-        totalEl.textContent = `${nb} question${nb > 1 ? 's' : ''} · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`;
+        totalEl.textContent = `${toutes.length} question${toutes.length > 1 ? 's' : ''} · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`;
         noteEl.textContent = o.interrogation
-            ? 'Interrogation : pas de consigne imprimée, et de la place pour écrire sous chaque question. La page des solutions reste dans ta main.'
-            : `Les ${papier.length} étape${papier.length > 1 ? 's' : ''} imprimable${papier.length > 1 ? 's' : ''} du parcours, dans l'ordre, numérotées en continu.`;
+            ? 'Interrogation : pas de consigne imprimée, un barème par exercice, et de la place pour écrire. La page des solutions reste dans ta main.'
+            : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
+        derniers = { exos, toutes };
     };
+    let derniers = null;
 
-    interro.onchange = rendre;
-    colsEl.oninput = rendre;
+    interro.onchange = () => { blocs = null; rendre(); };
     choixEl.onchange = rendre;
-    m.querySelector('#pp-regen').onclick = () => { doc = null; rendre(); };
+    m.querySelector('#pp-regen').onclick = () => { blocs = null; rendre(); };
     btnSol.onclick = () => {
         solutions = !solutions;
         btnSol.textContent = solutions ? 'Voir les questions' : 'Voir les solutions';
@@ -259,12 +274,17 @@ export function ouvrirFicheParcours(chemin) {
         rendre();
     };
     m.querySelector('#pp-fermer').onclick = () => { m.style.display = 'none'; };
-    m.querySelector('#pp-dl').onclick = () => telecharger(m, chemin, () => ({ doc, options: options(), mesurer }));
+    m.querySelector('#pp-dl').onclick = () => telecharger(m, chemin, () => ({
+        exos: derniers ? derniers.exos : [],
+        toutes: derniers ? derniers.toutes : [],
+        options: options(), mesurer
+    }));
 
     solutions = false;
     btnSol.textContent = 'Voir les solutions';
     m.style.display = 'flex';
     if (!papier.length) {
+        listeEl.innerHTML = '';
         apercu.innerHTML = '';
         totalEl.textContent = '';
         noteEl.textContent = total
@@ -272,96 +292,59 @@ export function ouvrirFicheParcours(chemin) {
             : 'Ce parcours est vide.';
         return;
     }
+    rendreListe();
     rendre();
+}
+
+/** La page des solutions en aperçu — l'ancienne mise compacte, en colonnes. */
+function apercuSolutions(page, k, o) {
+    let html = '';
+    for (const b of page.blocs) {
+        b.lignes.forEach((ligne, i) => {
+            html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
+                width:${b.largeur * k}px; font-size:${o.taille * k}px">${echapper(ligne)}</div>`;
+        });
+    }
+    return html;
 }
 
 // --- Le PDF -----------------------------------------------------------------------
 
-function entete(pdf, titre, sousTitre, bareme) {
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(15);
-    pdf.setTextColor(...ENCRE.texte);
-    pdf.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, A4.marge, A4.marge + 6);
+function pdfSolutions(pdf, page, o) {
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9.5);
-    pdf.text('Nom : ...........................   Date : ..............',
-        A4.w - A4.marge, A4.marge + 6, { align: 'right' });
-    pdf.setDrawColor(...ENCRE.trait);
-    pdf.setLineWidth(0.4);
-    pdf.line(A4.marge, A4.marge + 9, A4.w - A4.marge, A4.marge + 9);
-    if (bareme) {
-        pdf.setFontSize(8.6);
-        pdf.setTextColor(...ENCRE.gris);
-        pdf.text(bareme, A4.marge, A4.marge + 14);
-    }
-    pdf.setFontSize(6.5);
-    pdf.setTextColor(160, 165, 175);
-    pdf.text('Fiche générée par AtoutMath', A4.w / 2, A4.h - 4, { align: 'center' });
-}
-
-function pagePdf(pdf, page, o, solutions) {
+    pdf.setFontSize(o.taille * 2.83);
     pdf.setTextColor(...ENCRE.texte);
     for (const b of page.blocs) {
-        if (b.titre) {
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(o.taille * 2.9);
-            pdf.text(b.lignes.join(' '), b.x, b.y + o.taille);
-            pdf.setDrawColor(...ENCRE.gris);
-            pdf.setLineWidth(0.2);
-            pdf.line(b.x, b.y + o.taille + 1.2, b.x + b.largeur, b.y + o.taille + 1.2);
-            continue;
-        }
-        if (!solutions) {
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(o.taille * 2.83);
-            pdf.text(`${b.n}.`, b.x, b.y + o.taille);
-        }
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(o.taille * 2.83);
         b.lignes.forEach((ligne, i) => {
-            pdf.text(ligne, solutions ? b.x : b.texteX, b.y + o.taille + i * o.interligne);
+            pdf.text(ligne, b.x, b.y + o.taille + i * o.interligne);
         });
-        if (b.choix) {
-            pdf.setFontSize(o.taille * 2.5);
-            pdf.setTextColor(...ENCRE.gris);
-            pdf.text(b.choix.map(c => `☐ ${c}`).join('   '),
-                b.texteX, b.y + o.taille + b.lignes.length * o.interligne);
-            pdf.setTextColor(...ENCRE.texte);
-        }
-        if (!solutions) {
-            pdf.setDrawColor(...ENCRE.pointille);
-            pdf.setLineWidth(0.25);
-            pdf.setLineDashPattern([0.7, 1.1], 0);
-            pdf.line(b.texteX, b.reponseY, b.texteX + b.texteW, b.reponseY);
-            pdf.setLineDashPattern([], 0);
-        }
     }
 }
 
 function telecharger(modal, chemin, lire) {
     const btn = modal.querySelector('#pp-dl');
     btn.disabled = true;
-    const { doc, options, mesurer } = lire();
-    if (!doc) { btn.disabled = false; return; }
+    const { exos, toutes, options, mesurer } = lire();
+    if (!exos.length) { btn.disabled = false; return; }
     chargerJsPDF()
         .then(jsPDF => {
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const nom = chemin.name || 'Parcours';
-            const nbQ = doc.questions.filter(q => !q.titre).length;
             const bareme = options.interrogation
-                ? `Barème : ${nbQ} question${nbQ > 1 ? 's' : ''}, 1 point chacune.`
+                ? `Barème : ${toutes.length} question${toutes.length > 1 ? 's' : ''}, 1 point chacune.`
                 : '';
-            doc.mise.pages.forEach((page, i) => {
+            const mise = composerBlocs(exos, options, mesurer);
+            mise.pages.forEach((page, i) => {
                 if (i) pdf.addPage('a4', 'portrait');
-                entete(pdf, nom, options.interrogation ? 'Interrogation' : `page ${i + 1}/${doc.mise.pages.length}`,
+                entetePdf(pdf, nom, options.interrogation ? 'Interrogation' : `page ${i + 1}/${mise.pages.length}`,
                     i === 0 ? bareme : '');
-                pagePdf(pdf, page, doc.mise.opts, false);
+                pdfItems(pdf, page, mise.opts);
             });
-            const sol = composerSolutions(doc.questions.filter(q => !q.titre), { colonnesSolutions: 4 }, mesurer);
+            const sol = composerSolutions(toutes, { colonnesSolutions: 4 }, mesurer);
             sol.pages.forEach(page => {
                 pdf.addPage('a4', 'portrait');
-                entete(pdf, nom, 'Solutions', '');
-                pagePdf(pdf, page, sol.opts, true);
+                entetePdf(pdf, nom, 'Solutions', '');
+                pdfSolutions(pdf, page, sol.opts);
             });
             pdf.save(`${nom.replace(/[^\w\-]+/g, '-').toLowerCase()}${options.interrogation ? '-interrogation' : ''}.pdf`);
         })

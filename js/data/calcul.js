@@ -187,7 +187,7 @@ export const calculExercises = [
                 ]
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
     },
     {
