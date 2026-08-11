@@ -127,8 +127,14 @@ class Redaction extends BaseGame {
                    et rien d'autre : le reste de la page doit continuer à
                    défiler normalement au doigt. */
                 .rd-etiquette, .rd-groupe { touch-action: none; }
+                /* LE FANTÔME PASSE AU-DESSUS DE TOUT.
+                   Il vit sur le <body>, alors que l'exercice s'affiche dans
+                   #game-layer, qui est en z-index 10000 : à 9999 le fantôme
+                   glissait DERRIÈRE l'exercice, invisible. On ne pouvait pas
+                   voir ce qu'on déplaçait — et un glisser-déposer dont on ne
+                   voit rien bouger passe pour cassé. */
                 .rd-fantome {
-                    position: fixed; z-index: 9999; pointer-events: none;
+                    position: fixed; z-index: 2147483000; pointer-events: none;
                     transform: translate(-50%, -50%) scale(1.06);
                     opacity: .95; box-shadow: var(--shadow-md);
                     border-color: var(--primary); color: var(--primary);

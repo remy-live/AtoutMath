@@ -160,6 +160,18 @@
 .modal-text { color: var(--text-muted); font-size: 1rem; margin: 0; }
 .modal-text--center { text-align: center; }
 .uc-message { color: var(--text-main); font-size: 1.1rem; margin: 0; }
+/* LA MODALE DE BASE.
+   Cette classe était employée par l'accueil et le bilan sans exister dans
+   aucune feuille : le texte se collait donc aux bords, et le bouton touchait
+   le cadre. Les variantes -sm / -md / -lg posaient chacune leur padding de
+   leur côté ; la classe nue, elle, n'en avait aucun. */
+.modal-panel {
+    width: min(520px, calc(100vw - 32px));
+    padding: clamp(20px, 4.5vw, 30px);
+    display: flex; flex-direction: column; gap: 14px;
+    max-height: calc(100dvh - 32px); overflow-y: auto;
+}
+
 .modal-panel-sm { width: 400px; padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: center; }
 .modal-panel-sm-left { width: 400px; padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: left; }
 .modal-panel-settings { width: 350px; padding: 25px; display: flex; flex-direction: column; gap: 15px; }

@@ -1697,9 +1697,21 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    `minmax(0, 1fr)` l'autorise à se replier — le libellé passe à la ligne au
    lieu de déborder. */
 .cfg-field {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    display: grid; grid-template-columns: minmax(6.5rem, 1fr) minmax(0, auto);
     align-items: center; gap: 6px 14px; margin-bottom: 10px;
 }
+/* UNE LISTE DÉROULANTE QUI CONTIENT DES PHRASES PREND TOUTE LA LARGEUR.
+   « Coefficient entier, 2 cases en bas » ou « Guidé — le bloc en cours
+   s'allume » sont des options légitimes, mais la largeur naturelle du menu
+   écrasait alors la colonne du libellé jusqu'à une lettre par ligne :
+   « D / i / f / f / i / c / u / l / t / é ». Ces réglages-là s'empilent —
+   libellé au-dessus, champ en dessous — et chacun retrouve sa place. */
+.cfg-field:has(select.cfg-input),
+.cfg-field:has(input[type="text"].cfg-input) { grid-template-columns: minmax(0, 1fr); }
+.cfg-field:has(select.cfg-input) .cfg-input,
+.cfg-field:has(input[type="text"].cfg-input) .cfg-input { width: 100%; }
+.cfg-field:has(select.cfg-input) .cfg-label,
+.cfg-field:has(input[type="text"].cfg-input) .cfg-label { justify-content: flex-start; }
 
 /* LE PANNEAU SE MESURE À SON CONTENU. Sur tablette, un panneau de 680 px pour
    trois réglages laissait une trentaine de centimètres de vide entre chaque
@@ -3017,13 +3029,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    Une modale sobre, avec le robot en tête : c'est lui qui parle à l'élève
    partout ailleurs dans l'application, il n'y a pas de raison qu'un autre
    ton apparaisse au moment le plus personnel. */
-.ac-panel { max-width: 520px; text-align: center; }
-.ac-robot { font-size: 2.6rem; line-height: 1; margin-bottom: 4px; }
-.ac-texte { font-size: 1rem; line-height: 1.5; color: var(--text-main); margin: 6px 0 10px; }
+.ac-panel { text-align: center; }
+/* Les marges viennent maintenant de `.modal-panel` : ici on ne règle plus que
+   le rythme vertical entre les blocs, et les marges propres des paragraphes
+   sont remises à zéro — c'est le `gap` du panneau qui les espace, sinon les
+   deux se cumulent et l'écart devient deux fois trop grand. */
+.ac-robot { line-height: 1; margin: 0; }
+.ac-texte { font-size: 1rem; line-height: 1.5; color: var(--text-main); margin: 0; text-wrap: pretty; }
 .ac-conseil {
     font-size: .88rem; line-height: 1.45; color: var(--text-muted);
-    background: var(--bg-hover); border-radius: 12px; padding: 9px 13px;
-    margin: 0 0 12px;
+    background: var(--bg-hover); border-radius: 12px;
+    padding: clamp(10px, 2.5vw, 14px); margin: 0;
 }
 .ac-conseil:empty { display: none; }
 .ac-lecon {
@@ -3128,6 +3144,8 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 
 /* Le robot des modales : le MÊME dessin que le bouton « Mode démonstration ». */
 .ac-robot { color: var(--primary); display: flex; justify-content: center; line-height: 0; }
+.ac-panel .modal-title { font-size: clamp(1.25rem, 5vw, 1.6rem); line-height: 1.15; }
+.ac-panel .modal-actions-center { margin-top: 2px; gap: 10px; }
 .ac-robot svg { display: block; }
 .ac-conseil { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
 .ac-ampoule { flex: none; color: var(--warning); margin-top: 1px; }
