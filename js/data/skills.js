@@ -264,6 +264,14 @@ const BASE = {
         descriptor: 'Conclure à coup sûr à partir de nombres qui comptent : savoir quand on sait, et quand on devine.',
         lesson: 'Chaque chiffre est une petite équation : il annonce combien de mines se cachent parmi ses huit voisines. Deux cas suffisent à tout démarrer. Si les drapeaux déjà posés atteignent le chiffre, toutes ses autres voisines sont sûres. S\'il reste autant de cases cachées que de mines à trouver, ce sont toutes des mines. Le troisième cas est le plus puissant : quand les cases d\'un chiffre sont toutes comprises dans celles d\'un autre, on soustrait — 2 mines ici, 1 déjà comptée là, il en reste 1 pour la différence.'
     },
+    'geo.para-perp': {
+        label: 'Parallèles et perpendiculaires (rédiger)',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Justifier par écrit qu\'une droite est perpendiculaire à une autre, en citant la propriété du cours.',
+        lesson: 'Une justification a trois lignes, toujours les mêmes. JE SAIS QUE : les données lues sur la figure. OR : la propriété du cours, écrite EN ENTIER — c\'est elle qui autorise le pas suivant, et une propriété à moitié citée n\'autorise rien. DONC : la conclusion, qui ne dit rien de plus que ce que la propriété permet. Ici : si deux droites sont parallèles, toute perpendiculaire à l\'une est perpendiculaire à l\'autre.'
+    },
     'voc.mathematique': {
         label: 'Vocabulaire mathématique',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

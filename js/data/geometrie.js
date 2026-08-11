@@ -8,6 +8,13 @@ import { STATUS } from './status.js';
 
 export const geometrieExercises = [
     {
+        id: 'geo-redaction-para-perp', status: STATUS.TEST, title: 'Rédiger : Parallèles et Perpendiculaires',
+        activityId: 'redaction',
+        params: {},
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une justification de géométrie a toujours trois lignes : JE SAIS QUE, OR, DONC. On les écrit une par une. D'abord tu remets la propriété du cours dans l'ordre, puis tu lis la figure — les droites en POINTILLÉS sont parallèles — puis la propriété s'écrit pendant que la figure montre de quoi elle parle, et enfin tu conclus."
+    },
+    {
         id: 'geo-repere-placer', title: 'Placer un Point',
         generatorId: 'geo.repere', activityId: 'repere',
         params: { relatifs: 'positives', max: 5, mode: 'placer' },
