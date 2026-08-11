@@ -50,6 +50,31 @@ export const fractionsExercises = [
         instruction: "Rends la fraction irréductible ! Décompose le numérateur et le dénominateur (36/48 = 12×3 / 12×4), puis barre le facteur commun d'un coup de sabre. Attention aux pièges : si rien ne se simplifie, lève le bouclier 🛡️."
     },
     {
+        // LE PPCM RENDU MANGEABLE. Deux fractions de dénominateurs différents
+        // ne se posent pas sur la même pizza tant qu'on n'a pas trouvé le
+        // découpage commun. L'élève ne calcule pas une fraction équivalente sur
+        // une feuille : il compte des parts, et le nombre trouvé EST le
+        // numérateur.
+        id: 'frac-pizza', status: STATUS.TEST, title: 'La Pizzeria des Fractions',
+        activityId: 'pizza',
+        params: { niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté',
+                aide: 'Le nombre de fractions à poser et les dénominateurs tirés. Plus ils sont variés, plus le PPCM devient grand — et plus la pizza compte de parts.',
+                options: [
+                    { value: 'facile', label: '2 fractions · moitiés, tiers, quarts' },
+                    { value: 'moyen', label: '2 fractions · jusqu\'aux sixièmes' },
+                    { value: 'difficile', label: '3 fractions · jusqu\'aux huitièmes' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        skills: ['num.frac.denominateur-commun'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une commande arrive : « les deux tiers de champignons et le quart de sauce tomate ». Les deux dénominateurs ne sont pas les mêmes, alors la pizza est coupée en autant de parts que leur PPCM — douze pour 3 et 4. À toi de trouver combien de parts font les deux tiers, et combien font le quart. Choisis un ingrédient et tape les parts (tu peux balayer pour en garnir plusieurs), ou fais glisser l'ingrédient depuis la caisse. Puis au four !"
+    },
+    {
         id: 'dec-compare', title: 'Décimaux en Duel',
         generatorId: 'dec.compare', activityId: 'signs',
         params: { decimales: 2 },

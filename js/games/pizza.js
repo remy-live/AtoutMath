@@ -1,0 +1,542 @@
+// LA PIZZERIA DES FRACTIONS — garnir une commande, part par part.
+//
+// « Les deux tiers de champignons et le quart de sauce tomate. » Deux
+// dénominateurs différents : on ne peut rien poser tant qu'on n'a pas trouvé le
+// découpage où les deux se comptent en même chose. C'est le PPCM, et la pizza
+// arrive coupée en autant de parts — douze pour 3 et 4. Les deux tiers font
+// alors huit parts, le quart en fait trois.
+//
+// L'élève ne calcule pas une fraction équivalente sur une feuille : il compte
+// des parts, et le nombre qu'il trouve EST le numérateur. C'est le même
+// raisonnement, mais dans le sens où il se comprend.
+//
+// Deux gestes, parce qu'ils ne conviennent pas aux mêmes mains : on choisit un
+// ingrédient puis on tape les parts (et on peut BALAYER pour en garnir
+// plusieurs d'un trait), ou bien on fait glisser l'ingrédient depuis la caisse
+// jusqu'à la part. Le second est le plus naturel au doigt, le premier le plus
+// rapide quand on a compris.
+//
+// Les nombres vivent dans core/pizza.js, sans DOM et testés : une commande qui
+// ne tiendrait pas sur une pizza ferait chercher à l'élève une erreur qui n'est
+// pas la sienne.
+
+import { BaseGame } from '../core/BaseGame.js';
+import { makeRng } from '../core/ids.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import {
+    INGREDIENTS, tirerCommande, verifier, expliquer, direFraction,
+    complement, parts
+} from '../core/pizza.js';
+
+const NIVEAUX = {
+    facile: { nbFractions: 2, denominateurs: [2, 3, 4], label: '2 fractions · moitiés, tiers, quarts' },
+    moyen: { nbFractions: 2, denominateurs: [2, 3, 4, 6], label: '2 fractions · jusqu\'aux sixièmes' },
+    difficile: { nbFractions: 3, denominateurs: [2, 3, 4, 6, 8], label: '3 fractions · jusqu\'aux huitièmes' }
+};
+
+// Le dessin de chaque ingrédient, posé au milieu d'une part. Les fractions se
+// comptent à l'œil : deux garnitures qui se ressemblent, et la pizza n'est plus
+// lisible au moment précis où il faut la compter.
+const DESSINS = {
+    tomate: (r) => `<circle r="${r * .5}" fill="#ef4444" opacity=".9" />
+        <circle cx="${-r * .2}" cy="${-r * .2}" r="${r * .18}" fill="#fca5a5" opacity=".8" />`,
+    champignons: (r) => `<g>
+        <path d="M${-r * .5} 0a${r * .5} ${r * .42} 0 0 1 ${r} 0z" fill="#e7d3b8" stroke="#a8896a" stroke-width="1.5" />
+        <rect x="${-r * .16}" y="0" width="${r * .32}" height="${r * .45}" rx="2" fill="#f5ead9" stroke="#a8896a" stroke-width="1.3" /></g>`,
+    olives: (r) => `<g>
+        <ellipse rx="${r * .3}" ry="${r * .24}" cy="${-r * .22}" fill="#3b1d6e" />
+        <ellipse rx="${r * .12}" ry="${r * .09}" cy="${-r * .22}" fill="#c4b5fd" />
+        <ellipse rx="${r * .3}" ry="${r * .24}" cy="${r * .3}" cx="${r * .22}" fill="#3b1d6e" />
+        <ellipse rx="${r * .12}" ry="${r * .09}" cy="${r * .3}" cx="${r * .22}" fill="#c4b5fd" /></g>`,
+    jambon: (r) => `<g fill="#f9a8d4" stroke="#ec4899" stroke-width="1.3">
+        <path d="M${-r * .5} ${-r * .1}q${r * .25} ${-r * .35} ${r * .5} 0t${r * .5} 0v${r * .35}q-${r * .25} ${r * .3} -${r * .5} 0t-${r * .5} 0z" /></g>`,
+    poivron: (r) => `<g fill="none" stroke="#16a34a" stroke-width="${Math.max(2, r * .13)}">
+        <circle r="${r * .34}" cy="${-r * .16}" /><circle r="${r * .26}" cy="${r * .34}" cx="${r * .24}" /></g>`,
+    ananas: (r) => `<g>
+        <path d="M${-r * .34} ${-r * .3}h${r * .68}l${-r * .12} ${r * .62}h${-r * .44}z" fill="#fde047" stroke="#ca8a04" stroke-width="1.3" />
+        <circle r="${r * .1}" cy="${r * .02}" fill="#fef9c3" /></g>`
+};
+
+// Le fond d'une part garnie : la couleur de l'ingrédient, très éclaircie, pour
+// rester une pizza et non un camembert statistique.
+const TEINTES_PART = {
+    tomate: '#f3a9a2', champignons: '#e8d3b4', olives: '#c9bde4',
+    jambon: '#f8c8dc', poivron: '#bfe3c3', ananas: '#fbe9a7'
+};
+
+const par = (id) => INGREDIENTS.find(i => i.id === id) || INGREDIENTS[0];
+
+class Pizza extends BaseGame {
+    constructor(container, isDemo, params) {
+        super(container, isDemo, params, 'pizza');
+        this.niveau = NIVEAUX[this.params.niveau] || NIVEAUX.moyen;
+        this.rng = makeRng(this.params.seed);
+        this.reussies = 0;
+        this.ratees = 0;
+    }
+
+    // --- Mise en place -----------------------------------------------------------
+
+    render() {
+        this.container.innerHTML = `
+            <style>
+                .pz-wrap {
+                    display: flex; flex-direction: column; align-items: center; gap: 6px;
+                    width: 100%; height: 100%; color: var(--text-main);
+                    user-select: none; -webkit-user-select: none;
+                }
+                .pz-haut {
+                    display: flex; align-items: center; justify-content: center; gap: 10px;
+                    flex-wrap: wrap; width: 100%; flex: 0 0 auto;
+                    font-size: clamp(11px, 2.6cqw, 14px); font-weight: 700;
+                }
+                .pz-score { color: var(--text-muted); font-weight: 600; }
+                .pz-btn {
+                    border: 1px solid var(--border); background: var(--bg-panel);
+                    color: var(--text-main); border-radius: 9px; cursor: pointer;
+                    font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
+                }
+                .pz-btn:hover { background: var(--bg-hover); }
+
+                /* LE BON DE COMMANDE. Chaque ligne porte sa fraction, son
+                   ingrédient et son compteur : « 5 / 8 parts ». C'est ce
+                   compteur qui transforme le comptage en calcul — on voit
+                   combien il en manque avant de les avoir posées. */
+                .pz-commande {
+                    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+                    width: 100%; max-width: 640px; flex: 0 0 auto;
+                }
+                .pz-ligne {
+                    display: flex; align-items: center; gap: 7px;
+                    padding: 5px 11px; border-radius: 12px; font-weight: 700;
+                    background: var(--bg-hover); border: 2px solid transparent;
+                    font-size: clamp(11px, 2.5cqw, 13.5px); transition: .15s;
+                }
+                .pz-ligne--pleine { border-color: var(--success); }
+                .pz-ligne--trop { border-color: var(--danger); }
+                .pz-pastille { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; }
+                .pz-compteur { font-variant-numeric: tabular-nums; color: var(--text-muted); font-weight: 800; }
+
+                .pz-scene {
+                    flex: 1 1 auto; min-height: 0; width: 100%;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                .pz-svg { width: 100%; height: 100%; display: block; touch-action: none; }
+                .pz-part { cursor: pointer; }
+                .pz-part:hover .pz-fond { filter: brightness(1.06); }
+
+                /* LA CAISSE À INGRÉDIENTS : on en choisit un, ou on le fait
+                   glisser sur une part. Le bac sélectionné est franchement
+                   marqué — sans ça, on verse du poivron en croyant verser des
+                   champignons, et l'erreur n'est pas mathématique. */
+                .pz-bacs {
+                    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+                    width: 100%; flex: 0 0 auto;
+                }
+                .pz-bac {
+                    display: flex; flex-direction: column; align-items: center; gap: 2px;
+                    padding: 6px 10px 5px; border-radius: 14px; cursor: grab;
+                    border: 2px solid var(--border); background: var(--bg-panel);
+                    color: var(--text-main); font: inherit; font-weight: 700;
+                    font-size: .68rem; touch-action: none;
+                    -webkit-tap-highlight-color: transparent;
+                    box-shadow: 0 3px 0 rgba(15,23,42,.12);
+                }
+                .pz-bac--actif { border-color: currentColor; transform: translateY(-2px); }
+                .pz-bac--actif .pz-bac-nom { color: inherit; }
+                .pz-bac-nom { color: var(--text-muted); }
+                .pz-bac svg { display: block; }
+                .pz-gomme { color: var(--text-muted); }
+
+                /* Le grain d'ingrédient qui suit le doigt pendant le glissé. */
+                .pz-grain {
+                    position: fixed; z-index: 60; pointer-events: none;
+                    transform: translate(-50%, -50%); filter: drop-shadow(0 3px 5px rgba(0,0,0,.3));
+                }
+
+                .pz-note {
+                    min-height: 2.5em; text-align: center; width: 100%; max-width: 640px;
+                    font-size: clamp(11px, 2.7cqw, 14px); line-height: 1.35;
+                    color: var(--text-muted); flex: 0 0 auto;
+                }
+                .pz-note b { color: var(--text-main); }
+                .pz-bulle { display: inline-block; padding: 5px 13px; border-radius: 999px; font-weight: 700; }
+                .pz-bulle--ok { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+                .pz-bulle--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+
+                .pz-four {
+                    border: 0; border-radius: 999px; padding: 9px 26px; cursor: pointer;
+                    font: inherit; font-weight: 900; font-size: clamp(13px, 3cqw, 16px);
+                    background: var(--primary); color: #fff; flex: 0 0 auto;
+                    box-shadow: 0 3px 0 rgba(15,23,42,.2);
+                }
+                .pz-four:disabled { opacity: .4; cursor: default; box-shadow: none; }
+                .pz-four:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
+            </style>
+            <div class="pz-wrap">
+                <div class="pz-haut">
+                    <span data-titre></span>
+                    <span class="pz-score" data-score></span>
+                    <button type="button" class="pz-btn" data-neuf>↺ Autre commande</button>
+                </div>
+                <div class="pz-commande" data-commande></div>
+                <div class="pz-scene" data-scene></div>
+                <div class="pz-bacs" data-bacs></div>
+                <p class="pz-note" data-note></p>
+                <button type="button" class="pz-four" data-four>🔥 Au four !</button>
+            </div>`;
+
+        this.sceneEl = this.container.querySelector('[data-scene]');
+        this.commandeEl = this.container.querySelector('[data-commande]');
+        this.bacsEl = this.container.querySelector('[data-bacs]');
+        this.noteEl = this.container.querySelector('[data-note]');
+        this.titreEl = this.container.querySelector('[data-titre]');
+        this.scoreEl = this.container.querySelector('[data-score]');
+        this.fourEl = this.container.querySelector('[data-four]');
+        this.fourEl.addEventListener('click', () => this.enfourner());
+        this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouvelleCommande());
+
+        this.nouvelleCommande();
+    }
+
+    startGameLoop() { /* Rien à animer en continu : on garnit à son rythme. */ }
+
+    nouvelleCommande() {
+        this.commande = tirerCommande({ ...this.niveau, rng: this.rng });
+        if (!this.commande) { this.note('Impossible de composer une commande.', 'ko'); return; }
+        this.garniture = new Array(this.commande.parts).fill(null);
+        this.choisi = this.commande.fractions[0].ingredient;
+        this.cuite = false;
+
+        const dens = this.commande.fractions.map(f => f.den);
+        this.titreEl.innerHTML = `🍕 Pizza en <b>${this.commande.parts}</b> parts `
+            + `<span style="font-weight:500">(PPCM de ${dens.join(' et ')})</span>`;
+        this.dessinerPizza();
+        this.dessinerBacs();
+        this.majCommande();
+        this.majScore();
+        this.fourEl.disabled = false;
+        this.note(`${dens.join(' et ')} n'ont pas le même dénominateur : on coupe la pizza en <b>${this.commande.parts}</b> parts, `
+            + `le plus petit découpage qui convient aux deux. Choisis un ingrédient et garnis.`);
+    }
+
+    majScore() {
+        this.scoreEl.textContent = `${this.reussies} pizza${this.reussies > 1 ? 's' : ''} réussie${this.reussies > 1 ? 's' : ''}`
+            + (this.ratees ? ` · ${this.ratees} à refaire` : '');
+    }
+
+    // --- Le bon de commande --------------------------------------------------------
+
+    majCommande() {
+        const compte = {};
+        this.garniture.forEach(g => { if (g) compte[g] = (compte[g] || 0) + 1; });
+        this.commandeEl.innerHTML = this.commande.fractions.map(f => {
+            const ing = par(f.ingredient);
+            const attendu = this.commande.cible[f.ingredient];
+            const pose = compte[f.ingredient] || 0;
+            const etat = pose === attendu ? 'pleine' : (pose > attendu ? 'trop' : '');
+            return `<span class="pz-ligne ${etat ? 'pz-ligne--' + etat : ''}">
+                <span class="pz-pastille" style="background:${ing.teinte}"></span>
+                ${direFraction(f.num, f.den)} ${complement(ing.nom)}
+                <span class="pz-compteur">${pose} / ${attendu}</span>
+            </span>`;
+        }).join('');
+    }
+
+    // --- La pizza -------------------------------------------------------------------
+
+    dessinerPizza() {
+        const n = this.commande.parts;
+        const R = 150, cx = 170, cy = 170;
+        const croute = R + 16;
+
+        // Une part = un secteur. On la trace en partant du haut et dans le sens
+        // des aiguilles : c'est le sens où l'on compte spontanément.
+        const secteur = (i, rayon) => {
+            const a0 = (i / n) * Math.PI * 2 - Math.PI / 2;
+            const a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2;
+            const x0 = cx + rayon * Math.cos(a0), y0 = cy + rayon * Math.sin(a0);
+            const x1 = cx + rayon * Math.cos(a1), y1 = cy + rayon * Math.sin(a1);
+            const grand = (a1 - a0) > Math.PI ? 1 : 0;
+            return `M${cx} ${cy} L${x0} ${y0} A${rayon} ${rayon} 0 ${grand} 1 ${x1} ${y1} Z`;
+        };
+        const milieu = (i, k = 0.62) => {
+            const a = ((i + 0.5) / n) * Math.PI * 2 - Math.PI / 2;
+            return { x: cx + R * k * Math.cos(a), y: cy + R * k * Math.sin(a) };
+        };
+        this.geo = { n, R, cx, cy, milieu };
+
+        const parts = Array.from({ length: n }, (_, i) => `
+            <g class="pz-part" data-part="${i}">
+                <path class="pz-fond" d="${secteur(i, R)}" fill="#fcd9a0" />
+                <g data-garni="${i}"></g>
+                <path d="${secteur(i, R)}" fill="none" stroke="#c9822f" stroke-width="2.6" stroke-linejoin="round" />
+            </g>`).join('');
+
+        this.sceneEl.innerHTML = `
+            <svg class="pz-svg" viewBox="0 0 340 340" preserveAspectRatio="xMidYMid meet"
+                 role="img" aria-label="Pizza en ${n} parts">
+                <circle cx="${cx}" cy="${cy}" r="${croute}" fill="#d9a05b" />
+                <circle cx="${cx}" cy="${cy}" r="${croute}" fill="none" stroke="#b97e3c" stroke-width="3" />
+                <circle cx="${cx}" cy="${cy}" r="${R + 3}" fill="#f3c583" />
+                ${parts}
+                <circle cx="${cx}" cy="${cy}" r="3" fill="#e2a44f" />
+            </svg>`;
+
+        this.brancherGestes();
+    }
+
+    /** Repeint une part : le fond prend la teinte, le dessin se pose dessus. */
+    peindre(i) {
+        const id = this.garniture[i];
+        const g = this.sceneEl.querySelector(`[data-garni="${i}"]`);
+        const fond = this.sceneEl.querySelector(`[data-part="${i}"] .pz-fond`);
+        if (!g || !fond) return;
+        if (!id) { g.innerHTML = ''; fond.setAttribute('fill', '#fcd9a0'); return; }
+        const ing = par(id);
+        // La part prend la TEINTE de son ingrédient, pas seulement son dessin :
+        // c'est à l'œil qu'on doit compter « huit parts sur douze ». Avec deux
+        // petits champignons posés au milieu d'une part beige, il faut viser
+        // chaque part pour savoir si elle est garnie — et on recompte trois
+        // fois. Un fond coloré se compte d'un regard.
+        fond.setAttribute('fill', TEINTES_PART[id] || '#fcd9a0');
+        const m = this.geo.milieu(i);
+        const r = Math.min(30, (this.geo.R * 1.7) / this.geo.n + 10);
+        g.innerHTML = `<g transform="translate(${m.x},${m.y})">${DESSINS[id](r)}</g>`;
+        g.setAttribute('data-ing', ing.id);
+    }
+
+    // --- Les ingrédients --------------------------------------------------------------
+
+    dessinerBacs() {
+        const utiles = this.commande.fractions.map(f => par(f.ingredient));
+        this.bacsEl.innerHTML = utiles.map(ing => `
+            <button type="button" class="pz-bac" data-bac="${ing.id}" style="color:${ing.teinte}"
+                aria-label="${ing.nom}">
+                <svg width="30" height="30" viewBox="-16 -16 32 32">${DESSINS[ing.id](15)}</svg>
+                <span class="pz-bac-nom">${ing.nom}</span>
+            </button>`).join('')
+            + `<button type="button" class="pz-bac pz-gomme" data-bac="" aria-label="Enlever la garniture">
+                <svg width="30" height="30" viewBox="-16 -16 32 32" fill="none" stroke="currentColor"
+                    stroke-width="2.4" stroke-linecap="round"><path d="M-8 -8 L8 8 M8 -8 L-8 8" /></svg>
+                <span class="pz-bac-nom">enlever</span>
+            </button>`;
+        this.bacsEl.querySelectorAll('[data-bac]').forEach(b => {
+            b.addEventListener('pointerdown', (e) => this.prendreIngredient(e, b));
+        });
+        this.majBacs();
+    }
+
+    majBacs() {
+        this.bacsEl.querySelectorAll('[data-bac]').forEach(b => {
+            b.classList.toggle('pz-bac--actif', b.dataset.bac === (this.choisi || ''));
+        });
+    }
+
+    /**
+     * Prendre un ingrédient — d'un simple appui, ou pour le faire glisser.
+     *
+     * Les deux gestes partagent le même début : on ne demande pas à l'enfant de
+     * décider avant de toucher lequel des deux il fait. S'il lâche sans bouger,
+     * l'ingrédient est simplement sélectionné ; s'il glisse jusqu'à une part,
+     * elle est garnie au lâcher.
+     */
+    prendreIngredient(e, bouton) {
+        if (this.isDemo || this.cuite) return;
+        e.preventDefault();
+        const id = bouton.dataset.bac;
+        this.choisi = id;
+        this.majBacs();
+
+        const grain = document.createElement('div');
+        grain.className = 'pz-grain';
+        grain.innerHTML = id
+            ? `<svg width="42" height="42" viewBox="-16 -16 32 32">${DESSINS[id](15)}</svg>`
+            : `<svg width="34" height="34" viewBox="-16 -16 32 32" fill="none" stroke="#64748b"
+                 stroke-width="3" stroke-linecap="round"><path d="M-8 -8 L8 8 M8 -8 L-8 8" /></svg>`;
+        grain.style.left = `${e.clientX}px`;
+        grain.style.top = `${e.clientY}px`;
+        grain.style.display = 'none';
+        document.body.appendChild(grain);
+
+        let bouge = false;
+        const suivre = (ev) => {
+            if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) > 6) {
+                bouge = true; grain.style.display = '';
+            }
+            grain.style.left = `${ev.clientX}px`;
+            grain.style.top = `${ev.clientY}px`;
+        };
+        const lacher = (ev) => {
+            window.removeEventListener('pointermove', suivre);
+            window.removeEventListener('pointerup', lacher);
+            window.removeEventListener('pointercancel', lacher);
+            grain.remove();
+            if (!bouge) return;                       // simple sélection
+            const cible = document.elementFromPoint(ev.clientX, ev.clientY);
+            const part = cible && cible.closest('[data-part]');
+            if (part) this.garnir(Number(part.dataset.part));
+        };
+        window.addEventListener('pointermove', suivre);
+        window.addEventListener('pointerup', lacher);
+        window.addEventListener('pointercancel', lacher);
+    }
+
+    /**
+     * Garnir au doigt, en BALAYANT : une fois l'ingrédient choisi, on passe sur
+     * les parts et elles se remplissent. Huit parts à taper une par une, c'est
+     * huit occasions de rater le geste sur une chose déjà comprise.
+     */
+    brancherGestes() {
+        const svg = this.sceneEl.querySelector('.pz-svg');
+        if (!svg) return;
+        let actif = false;
+        const partSous = (ev) => {
+            const el = document.elementFromPoint(ev.clientX, ev.clientY);
+            const p = el && el.closest('[data-part]');
+            return p ? Number(p.dataset.part) : null;
+        };
+        svg.addEventListener('pointerdown', (ev) => {
+            if (this.isDemo || this.cuite) return;
+            ev.preventDefault();
+            actif = true;
+            const i = partSous(ev);
+            if (i !== null) this.garnir(i);
+        });
+        svg.addEventListener('pointermove', (ev) => {
+            if (!actif) return;
+            const i = partSous(ev);
+            if (i !== null) this.garnir(i);
+        });
+        const stop = () => { actif = false; };
+        svg.addEventListener('pointerup', stop);
+        svg.addEventListener('pointercancel', stop);
+        svg.addEventListener('pointerleave', stop);
+    }
+
+    garnir(i) {
+        if (this.cuite || this.garniture[i] === (this.choisi || null)) return;
+        this.garniture[i] = this.choisi || null;
+        this.peindre(i);
+        this.majCommande();
+    }
+
+    // --- Le four ----------------------------------------------------------------------
+
+    enfourner() {
+        if (this.cuite) return;
+        const r = verifier(this.commande, this.garniture);
+        if (r.ok) {
+            this.cuite = true;
+            this.reussies++;
+            this.fourEl.disabled = true;
+            this.majScore();
+            const dit = this.commande.fractions
+                .map(f => `${direFraction(f.num, f.den)} = ${parts(this.commande.cible[f.ingredient])} sur ${this.commande.parts}`)
+                .join(', ');
+            this.note(`🍕 Parfait ! ${dit}.`, 'ok');
+            if (!this.isDemo) {
+                this.onCorrectAnswer(null, 'num.frac.denominateur-commun', {
+                    points: 25,
+                    questionText: this.commande.fractions.map(f => `${f.num}/${f.den}`).join(' + ')
+                        + ` sur ${this.commande.parts} parts`,
+                    given: 'juste', expected: 'juste'
+                });
+            }
+            this.timerId = setTimeout(() => { if (this.isRunning) this.nouvelleCommande(); }, 2800);
+            return;
+        }
+
+        this.ratees++;
+        this.majScore();
+        // On explique LE premier compte faux, pas les trois : une correction
+        // qu'on ne lit pas ne corrige rien.
+        const faux = r.detail.find(d => !d.ok);
+        const message = r.intrus.length
+            ? `${par(r.intrus[0]).nom} : ce n'était pas dans la commande. Enlève-le avec la croix.`
+            : expliquer(this.commande, faux);
+        this.note(message, 'ko');
+        if (!this.isDemo) {
+            this.onWrongAnswer(null, {
+                concept: 'num.frac.denominateur-commun',
+                questionText: faux ? `${faux.num}/${faux.den} sur ${this.commande.parts} parts` : 'garniture hors commande',
+                input: faux ? `${faux.pose} parts` : r.intrus.join(', '),
+                expected: faux ? `${faux.attendu} parts` : 'rien',
+                customMessage: message,
+                silencieux: true
+            });
+        }
+    }
+
+    note(html, ton) {
+        if (!this.noteEl) return;
+        this.noteEl.innerHTML = ton ? `<span class="pz-bulle pz-bulle--${ton}">${html}</span>` : html;
+    }
+
+    // --- Le robot ------------------------------------------------------------------------
+
+    async runDemoSequence() {
+        const cur = createDemoCursor();
+        this.demoCursor = cur;
+        const gate = createDemoGate(this.sceneEl);
+        this.demoGate = gate;
+        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const f = this.commande.fractions;
+        const dens = f.map(x => x.den);
+
+        if (!await cur.pause(600) || !this.isRunning) return fin();
+        // Une idée par bulle : le robot attend le temps de lire ce qu'il dit.
+        cur.say(`${dens.join(' et ')} : pas le même dénominateur.`, this.commandeEl);
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say(`On coupe en ${this.commande.parts} : ${dens.join(' et ')} divisent ${this.commande.parts}.`, this.sceneEl);
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+
+        for (const frac of f) {
+            const ing = par(frac.ingredient);
+            const cible = this.commande.cible[frac.ingredient];
+            const facteur = this.commande.parts / frac.den;
+
+            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            cur.say(`${direFraction(frac.num, frac.den)} : ${frac.num} × ${facteur} = ${parts(cible)}.`, this.commandeEl);
+            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+
+            const bac = this.bacsEl.querySelector(`[data-bac="${ing.id}"]`);
+            this.choisi = ing.id;
+            this.majBacs();
+            if (bac && !await cur.tap(bac)) return fin();
+
+            for (let k = 0; k < cible; k++) {
+                const libre = this.garniture.findIndex(g => !g);
+                if (libre < 0) break;
+                const part = this.sceneEl.querySelector(`[data-part="${libre}"]`);
+                if (part && !await cur.moveTo(part)) return fin();
+                this.garniture[libre] = ing.id;
+                this.peindre(libre);
+                this.majCommande();
+                if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            }
+        }
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Le compte y est : au four.', this.fourEl);
+        if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+        if (!await cur.tap(this.fourEl)) return fin();
+        this.enfourner();
+        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        fin();
+    }
+
+    destroy() {
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        document.querySelectorAll('.pz-grain').forEach(g => g.remove());
+        super.destroy();
+    }
+}
+
+export function enginePizza(container, isDemo, params) {
+    const jeu = new Pizza(container, isDemo, params);
+    jeu.start();
+    return jeu;
+}

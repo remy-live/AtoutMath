@@ -142,6 +142,14 @@ const BASE = {
         descriptor: 'Additionner deux fractions ayant le même dénominateur.',
         lesson: '2/7 + 3/7 = 5/7 : on additionne les numérateurs, le dénominateur ne change pas.'
     },
+    'num.frac.denominateur-commun': {
+        label: 'Mettre des fractions au même dénominateur',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.frac.sens'],
+        descriptor: 'Trouver le PPCM de deux dénominateurs et convertir chaque fraction sur ce découpage commun.',
+        lesson: 'Deux fractions de dénominateurs différents ne se comparent ni ne s\'additionnent telles quelles : elles ne comptent pas la même chose. On cherche donc le PLUS PETIT découpage qui convient aux deux — le PPCM des dénominateurs. Pour 3 et 4, c\'est 12. On convertit ensuite chaque fraction sur ce découpage en multipliant le numérateur par le même facteur que le dénominateur : 2/3 = (2×4)/(3×4) = 8/12, et 1/4 = (1×3)/(4×3) = 3/12. Sur une pizza coupée en 12 parts, les deux tiers font bien 8 parts et le quart 3 parts.'
+    },
     'num.frac.simplification': {
         label: 'Simplifier une fraction',
         chemin: [D.NUMERIQUE, SD.FRACTIONS],
