@@ -38,24 +38,66 @@ const NIVEAUX = {
 // comptent à l'œil : deux garnitures qui se ressemblent, et la pizza n'est plus
 // lisible au moment précis où il faut la compter.
 const DESSINS = {
-    tomate: (r) => `<circle r="${r * .5}" fill="#ef4444" opacity=".9" />
-        <circle cx="${-r * .2}" cy="${-r * .2}" r="${r * .18}" fill="#fca5a5" opacity=".8" />`,
-    champignons: (r) => `<g>
-        <path d="M${-r * .5} 0a${r * .5} ${r * .42} 0 0 1 ${r} 0z" fill="#e7d3b8" stroke="#a8896a" stroke-width="1.5" />
-        <rect x="${-r * .16}" y="0" width="${r * .32}" height="${r * .45}" rx="2" fill="#f5ead9" stroke="#a8896a" stroke-width="1.3" /></g>`,
-    olives: (r) => `<g>
-        <ellipse rx="${r * .3}" ry="${r * .24}" cy="${-r * .22}" fill="#3b1d6e" />
-        <ellipse rx="${r * .12}" ry="${r * .09}" cy="${-r * .22}" fill="#c4b5fd" />
-        <ellipse rx="${r * .3}" ry="${r * .24}" cy="${r * .3}" cx="${r * .22}" fill="#3b1d6e" />
-        <ellipse rx="${r * .12}" ry="${r * .09}" cy="${r * .3}" cx="${r * .22}" fill="#c4b5fd" /></g>`,
-    jambon: (r) => `<g fill="#f9a8d4" stroke="#ec4899" stroke-width="1.3">
-        <path d="M${-r * .5} ${-r * .1}q${r * .25} ${-r * .35} ${r * .5} 0t${r * .5} 0v${r * .35}q-${r * .25} ${r * .3} -${r * .5} 0t-${r * .5} 0z" /></g>`,
-    poivron: (r) => `<g fill="none" stroke="#16a34a" stroke-width="${Math.max(2, r * .13)}">
-        <circle r="${r * .34}" cy="${-r * .16}" /><circle r="${r * .26}" cy="${r * .34}" cx="${r * .24}" /></g>`,
-    ananas: (r) => `<g>
-        <path d="M${-r * .34} ${-r * .3}h${r * .68}l${-r * .12} ${r * .62}h${-r * .44}z" fill="#fde047" stroke="#ca8a04" stroke-width="1.3" />
-        <circle r="${r * .1}" cy="${r * .02}" fill="#fef9c3" /></g>`
+    // Chaque ingrédient est dessiné PLUSIEURS FOIS, à des positions et des
+    // tailles décalées : une seule rondelle bien centrée fait un pictogramme,
+    // trois rondelles éparpillées font une garniture. La différence est
+    // exactement celle entre un schéma et une pizza.
+    tomate: (r) => semer(r, 3, (u, k) => `
+        <circle r="${u * .34}" fill="#e23b2e" />
+        <circle r="${u * .34}" fill="none" stroke="#a81f14" stroke-width="${u * .07}" opacity=".55" />
+        <path d="M${-u * .2} 0 A${u * .2} ${u * .2} 0 0 1 ${u * .2} 0Z" fill="#f87171" opacity=".55"
+              transform="rotate(${k * 47})" />`),
+    champignons: (r) => semer(r, 3, (u) => `
+        <path d="M${-u * .38} ${u * .04} a${u * .38} ${u * .33} 0 0 1 ${u * .76} 0 z"
+              fill="#efe0c9" stroke="#9c7d5c" stroke-width="${u * .07}" stroke-linejoin="round" />
+        <path d="M${-u * .13} ${u * .04} h${u * .26} l${-u * .04} ${u * .3}
+                 a${u * .09} ${u * .09} 0 0 1 ${-u * .18} 0 z"
+              fill="#faf3e6" stroke="#9c7d5c" stroke-width="${u * .06}" stroke-linejoin="round" />
+        <path d="M${-u * .2} ${u * .02} h${u * .4}" stroke="#c4a883" stroke-width="${u * .05}" />`),
+    olives: (r) => semer(r, 4, (u) => `
+        <ellipse rx="${u * .3}" ry="${u * .25}" fill="#3d2168" />
+        <ellipse rx="${u * .3}" ry="${u * .25}" fill="none" stroke="#241040" stroke-width="${u * .07}" />
+        <ellipse rx="${u * .11}" ry="${u * .09}" fill="#f6efdd" />`),
+    jambon: (r) => semer(r, 3, (u, k) => `
+        <g transform="rotate(${k * 37})">
+            <path d="M${-u * .38} ${-u * .16} q${u * .19} ${-u * .16} ${u * .38} 0
+                     t${u * .38} 0 v${u * .3} q${-u * .19} ${u * .16} ${-u * .38} 0
+                     t${-u * .38} 0 z"
+                  fill="#f2839f" stroke="#cf5878" stroke-width="${u * .07}" stroke-linejoin="round" />
+            <circle cx="${-u * .12}" cy="${u * .02}" r="${u * .06}" fill="#fbd0dc" />
+            <circle cx="${u * .18}" cy="${u * .06}" r="${u * .05}" fill="#fbd0dc" />
+        </g>`),
+    poivron: (r) => semer(r, 3, (u, k) => `
+        <g transform="rotate(${k * 63})">
+            <path d="M${-u * .34} 0 a${u * .34} ${u * .28} 0 1 1 ${u * .68} 0
+                     a${u * .34} ${u * .28} 0 1 1 ${-u * .68} 0 z"
+                  fill="none" stroke="#15803d" stroke-width="${u * .13}" />
+            <path d="M${-u * .34} 0 a${u * .34} ${u * .28} 0 0 1 ${u * .68} 0"
+                  fill="none" stroke="#4ade80" stroke-width="${u * .05}" />
+        </g>`),
+    ananas: (r) => semer(r, 3, (u, k) => `
+        <g transform="rotate(${k * 29})">
+            <path d="M${-u * .3} ${-u * .26} h${u * .6} l${-u * .1} ${u * .55} h${-u * .4} z"
+                  fill="#fbcf3b" stroke="#c98a0c" stroke-width="${u * .07}" stroke-linejoin="round" />
+            <path d="M${-u * .16} ${-u * .1} h${u * .32}" stroke="#e9a615" stroke-width="${u * .05}" />
+            <circle r="${u * .07}" cy="${u * .06}" fill="#fef3c7" />
+        </g>`)
 };
+
+// Les positions de semis : un hasard FIXE, pour que la garniture ne saute pas
+// d'un endroit à l'autre au moindre redessin. Trois morceaux en triangle
+// irrégulier, ça remplit sans faire de motif.
+const SEMIS = [
+    { x: -.42, y: -.30, e: 1.00 }, { x: .40, y: -.18, e: .88 },
+    { x: -.06, y: .40, e: .95 }, { x: .34, y: .38, e: .78 }
+];
+
+/** Répète un motif sur les positions de semis, à l'échelle de la part. */
+function semer(r, combien, motif) {
+    const u = r * 1.15;
+    return SEMIS.slice(0, combien).map((p, k) =>
+        `<g transform="translate(${p.x * r},${p.y * r}) scale(${p.e})">${motif(u, k)}</g>`).join('');
+}
 
 // Le fond d'une part garnie : la couleur de l'ingrédient, très éclaircie, pour
 // rester une pizza et non un camembert statistique.
@@ -266,21 +308,70 @@ class Pizza extends BaseGame {
         };
         this.geo = { n, R, cx, cy, milieu };
 
+        // LES PARTS SE DÉTACHENT. Un très léger écartement depuis le centre,
+        // et chacune projette son ombre : c'est ce qui fait qu'on voit des
+        // PARTS et non un disque rayé. Sur un camembert de statistiques les
+        // secteurs se touchent ; sur une pizza coupée, non.
+        const ecart = 5;
+        const decale = (i) => {
+            const a = ((i + 0.5) / n) * Math.PI * 2 - Math.PI / 2;
+            return `translate(${ecart * Math.cos(a)},${ecart * Math.sin(a)})`;
+        };
         const parts = Array.from({ length: n }, (_, i) => `
-            <g class="pz-part" data-part="${i}">
-                <path class="pz-fond" d="${secteur(i, R)}" fill="#fcd9a0" />
+            <g class="pz-part" data-part="${i}" transform="${decale(i)}">
+                <path class="pz-fond" d="${secteur(i, R)}" fill="url(#pz-fromage)" />
                 <g data-garni="${i}"></g>
-                <path d="${secteur(i, R)}" fill="none" stroke="#c9822f" stroke-width="2.6" stroke-linejoin="round" />
+                <path d="${secteur(i, R)}" fill="none" stroke="#e2b06a" stroke-width="1.6"
+                      stroke-linejoin="round" opacity=".75" />
             </g>`).join('');
+
+        // La croûte : un anneau doré, ses cloques de cuisson, et quelques
+        // taches de four. Sans elles, on regarde une roue en bois.
+        const cloques = Array.from({ length: 18 }, (_, k) => {
+            const a = (k / 18) * Math.PI * 2 + 0.21;
+            const rr = croute - 8 - (k % 3) * 2.5;
+            const taille = 4.2 + (k % 4) * 1.1;
+            return `<circle cx="${cx + rr * Math.cos(a)}" cy="${cy + rr * Math.sin(a)}"
+                            r="${taille}" fill="${k % 3 === 0 ? '#a4661f' : '#f7d4a0'}"
+                            opacity="${k % 3 === 0 ? .5 : .6}" />`;
+        }).join('');
 
         this.sceneEl.innerHTML = `
             <svg class="pz-svg" viewBox="0 0 340 340" preserveAspectRatio="xMidYMid meet"
                  role="img" aria-label="Pizza en ${n} parts">
-                <circle cx="${cx}" cy="${cy}" r="${croute}" fill="#d9a05b" />
-                <circle cx="${cx}" cy="${cy}" r="${croute}" fill="none" stroke="#b97e3c" stroke-width="3" />
-                <circle cx="${cx}" cy="${cy}" r="${R + 3}" fill="#f3c583" />
+                <defs>
+                    <!-- La mozzarella : un fond crème marbré, pas un aplat. -->
+                    <radialGradient id="pz-fromage" cx="42%" cy="36%">
+                        <stop offset="0%" stop-color="#fdf0cf" />
+                        <stop offset="62%" stop-color="#f8dfa4" />
+                        <stop offset="100%" stop-color="#efc981" />
+                    </radialGradient>
+                    <radialGradient id="pz-croute" cx="40%" cy="34%">
+                        <stop offset="0%" stop-color="#f0bd76" />
+                        <stop offset="70%" stop-color="#dfa155" />
+                        <stop offset="100%" stop-color="#c4813c" />
+                    </radialGradient>
+                    <radialGradient id="pz-sauce" cx="45%" cy="40%">
+                        <stop offset="0%" stop-color="#e8674f" />
+                        <stop offset="100%" stop-color="#c9402c" />
+                    </radialGradient>
+                    <filter id="pz-ombre" x="-25%" y="-25%" width="150%" height="150%">
+                        <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#7c4a12" flood-opacity=".35" />
+                    </filter>
+                </defs>
+                <!-- L'ombre portée sur le plan de travail. -->
+                <ellipse cx="${cx}" cy="${cy + croute + 4}" rx="${croute * .86}" ry="${croute * .1}"
+                         fill="#8a5a1e" opacity=".12" />
+                <g filter="url(#pz-ombre)">
+                    <circle cx="${cx}" cy="${cy}" r="${croute}" fill="url(#pz-croute)" />
+                    <circle cx="${cx}" cy="${cy}" r="${croute}" fill="none" stroke="#a96c2e" stroke-width="2.5" />
+                    ${cloques}
+                    <!-- La sauce déborde légèrement sous le fromage : c'est ce
+                         liseré rouge qui fait « pizza » plutôt que « galette ». -->
+                    <circle cx="${cx}" cy="${cy}" r="${R + 5}" fill="url(#pz-sauce)" />
+                </g>
                 ${parts}
-                <circle cx="${cx}" cy="${cy}" r="3" fill="#e2a44f" />
+                <circle cx="${cx}" cy="${cy}" r="2.5" fill="#d9a05b" opacity=".5" />
             </svg>`;
 
         this.brancherGestes();
@@ -292,14 +383,14 @@ class Pizza extends BaseGame {
         const g = this.sceneEl.querySelector(`[data-garni="${i}"]`);
         const fond = this.sceneEl.querySelector(`[data-part="${i}"] .pz-fond`);
         if (!g || !fond) return;
-        if (!id) { g.innerHTML = ''; fond.setAttribute('fill', '#fcd9a0'); return; }
+        if (!id) { g.innerHTML = ''; fond.setAttribute('fill', 'url(#pz-fromage)'); return; }
         const ing = par(id);
         // La part prend la TEINTE de son ingrédient, pas seulement son dessin :
         // c'est à l'œil qu'on doit compter « huit parts sur douze ». Avec deux
         // petits champignons posés au milieu d'une part beige, il faut viser
         // chaque part pour savoir si elle est garnie — et on recompte trois
         // fois. Un fond coloré se compte d'un regard.
-        fond.setAttribute('fill', TEINTES_PART[id] || '#fcd9a0');
+        fond.setAttribute('fill', TEINTES_PART[id] || 'url(#pz-fromage)');
         const m = this.geo.milieu(i);
         const r = Math.min(30, (this.geo.R * 1.7) / this.geo.n + 10);
         g.innerHTML = `<g transform="translate(${m.x},${m.y})">${DESSINS[id](r)}</g>`;
