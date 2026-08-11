@@ -30,7 +30,13 @@ class Problemes extends BaseGame {
         super(container, isDemo, params, 'problemes');
         this.rng = makeRng(this.params.seed);
         const niveau = this.params.niveau || null;
-        const choisies = (this.params.familles || '').split(',').map(s => s.trim()).filter(Boolean);
+        // Le réglage vient d'une liste à cocher (tableau) ; l'ancienne saisie
+        // libre — des identifiants séparés par des virgules — reste acceptée,
+        // car elle dort dans les parcours déjà enregistrés.
+        const brut = this.params.familles;
+        const choisies = Array.isArray(brut)
+            ? brut.map(String)
+            : String(brut || '').split(',').map(s => s.trim()).filter(Boolean);
         const dispo = famillesDe(niveau === 'tout' ? null : niveau);
         this.familles = choisies.filter(f => IDS_FAMILLES.includes(f));
         if (!this.familles.length) this.familles = dispo.length ? dispo : IDS_FAMILLES;

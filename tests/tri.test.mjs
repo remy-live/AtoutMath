@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     MODES, analyserZeros, sansZerosInutiles, tirerNombre, tirerCalcul,
-    creerPartie, genererVague, toucher, laisserPasser, vagueFinie, resteAPrendre
+    creerPartie, genererVague, toucher, laisserPasser, laisserPasserGroupe, vagueFinie, resteAPrendre
 } from '../js/core/tri.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -188,4 +188,28 @@ test('le message d\'erreur des zéros distingue le zéro utile du reste', () => 
     if (chiffre) {
         assert.match(toucher(e, chiffre.id).message, /pas un zéro/);
     }
+});
+
+test('un nombre qui s\'échappe coûte UNE vie, pas une par chiffre manqué', () => {
+    // Le cas signalé à l'usage : trois zéros à trancher, deux tranchés, le
+    // nombre tombe — et on perdait trois cœurs d'un coup, c'est-à-dire tout,
+    // pour quelqu'un qui avait presque tout juste.
+    const e = creerPartie({ mode: 'zeros', vies: 3 });
+    const v = genererVague(e, makeRng("nj-groupe"));
+    const cibles = v.objets.filter(o => o.cible);
+    assert.ok(cibles.length >= 2, 'il faut au moins deux zéros à trancher pour ce test');
+
+    const avant = e.vies;
+    const r = laisserPasserGroupe(e, v.objets.map(o => o.id));
+    assert.equal(r.perdu, true, 'le nombre manqué doit bien coûter quelque chose');
+    assert.equal(e.vies, avant - 1, `${cibles.length} zéros manqués n'ont coûté qu'une vie`);
+});
+
+test('un groupe entièrement tranché ne coûte rien en sortant', () => {
+    const e = creerPartie({ mode: 'zeros', vies: 3 });
+    const v = genererVague(e, makeRng("nj-groupe-2"));
+    v.objets.filter(o => o.cible).forEach(o => toucher(e, o.id));
+    const avant = e.vies;
+    assert.equal(laisserPasserGroupe(e, v.objets.map(o => o.id)).perdu, false);
+    assert.equal(e.vies, avant);
 });

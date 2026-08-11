@@ -23,6 +23,16 @@ function valeurOption(opt) { return (opt && typeof opt === 'object') ? opt.value
 function libelleOption(opt) { return (opt && typeof opt === 'object') ? opt.label : String(opt); }
 
 /**
+ * Ce que dit une liste repliée. « 0 coché » ne veut pas dire « rien » : dans
+ * ces réglages, ne rien choisir revient à tout prendre — et c'est exactement
+ * ce qu'il faut écrire, sinon on croit avoir désactivé l'exercice.
+ */
+function resumeListe(cochees, total, mot) {
+    if (!cochees || cochees === total) return `Tout — les ${total} ${mot}`;
+    return `${cochees} ${mot.replace(/s$/, '')}${cochees > 1 ? 's' : ''} sur ${total}`;
+}
+
+/**
  * Un réglage = un libellé court et son contrôle, côte à côte quand la largeur
  * le permet. Les explications passent dans une infobulle sur « ? » plutôt que
  * sous le champ : trois paragraphes d'aide empilés rendaient le panneau
@@ -33,7 +43,39 @@ function fieldHtml(param, value, options = {}) {
     const wide = param.type === 'multiselect';   // les puces prennent toute la largeur
     let control = '';
 
-    if (param.type === 'multiselect') {
+    if (param.type === 'multiselect' && param.deroulant) {
+        // UNE LISTE QUI SE DÉPLIE, quand les options sont des PHRASES.
+        //
+        // Onze familles de problèmes en pastilles au fil du texte, ce sont onze
+        // lignes de libellés longs qui repoussent tout le reste du panneau hors
+        // de l'écran — et le professeur n'y touche qu'une fois sur dix. Repliée,
+        // la liste tient sur une ligne et dit son état (« 3 familles sur 11 ») ;
+        // dépliée, elle donne les cases. « Tout cocher / tout décocher » évite
+        // les onze clics qu'on faisait sinon pour n'en garder qu'une.
+        const choisis = Array.isArray(value) ? value.map(String)
+            : String(value || '').split(',').map(s => s.trim()).filter(Boolean);
+        const n = param.options.length;
+        const cochees = param.options.filter(o => choisis.includes(String(valeurOption(o)))).length;
+        control = `<details class="cfg-liste" data-liste="${param.id}" data-mot="${escapeAttr(param.tout || 'éléments')}">
+            <summary class="cfg-liste-tete">
+                <span data-resume>${resumeListe(cochees, n, param.tout || 'tout')}</span>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="cfg-liste-actions">
+                <button type="button" class="cfg-liste-btn" data-cocher="1">Tout cocher</button>
+                <button type="button" class="cfg-liste-btn" data-cocher="0">Tout décocher</button>
+            </div>
+            <div class="cfg-liste-corps">${param.options.map(opt => {
+            const v = valeurOption(opt);
+            const checked = choisis.includes(String(v)) ? 'checked' : '';
+            return `<label class="cfg-liste-ligne">
+                    <input type="checkbox" data-param="${param.id}" data-kind="multiselect" value="${v}" ${checked}>
+                    <span>${libelleOption(opt)}</span></label>`;
+        }).join('')}</div>
+        </details>`;
+    } else if (param.type === 'multiselect') {
         // Des options toutes courtes — les tables, les nombres de côtés — se
         // rangent en GRILLE de tuiles identiques plutôt qu'en pastilles au fil
         // du texte : les tailles ne dépendent plus du contenu, les colonnes
@@ -227,6 +269,32 @@ document.addEventListener('click', (e) => {
     if (!btn) return;
     const input = btn.parentElement.querySelector('input[type="number"]');
     if (input) { e.preventDefault(); pousser(input, Number(btn.dataset.step)); }
+});
+
+// Les listes dépliantes : « tout cocher / tout décocher », et le résumé qui
+// suit les cases. Écouteurs délégués, comme le reste du panneau — les champs
+// sont reconstruits à chaque ouverture, brancher à la main les ferait
+// s'empiler.
+function majResumeListe(liste) {
+    const boxes = [...liste.querySelectorAll('input[type="checkbox"]')];
+    const resume = liste.querySelector('[data-resume]');
+    if (!resume) return;
+    resume.textContent = resumeListe(boxes.filter(b => b.checked).length, boxes.length,
+        liste.dataset.mot || 'éléments');
+}
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cfg-liste-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const liste = btn.closest('.cfg-liste');
+    liste.querySelectorAll('input[type="checkbox"]').forEach(b => { b.checked = btn.dataset.cocher === '1'; });
+    majResumeListe(liste);
+});
+
+document.addEventListener('change', (e) => {
+    const liste = e.target.closest && e.target.closest('.cfg-liste');
+    if (liste) majResumeListe(liste);
 });
 
 // La molette : elle ne doit agir que sur un champ SURVOLÉ, jamais emporter la

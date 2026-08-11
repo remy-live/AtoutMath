@@ -614,15 +614,20 @@ function initDebugToolbar() {
     const btnConsole = document.getElementById('db-console');
     if (btnConsole) btnConsole.onclick = () => openConsoleModal();
 
-    // Passer la question en cours, quel que soit l'exercice.
-    const btnSkip = document.getElementById('db-skip');
-    if (btnSkip) btnSkip.onclick = async () => {
+    // Passer la question en cours, ou revenir sur la précédente, quel que soit
+    // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
+    // voulait examiner et il fallait relancer l'exercice depuis le début.
+    const naviguer = (methode, rate) => async () => {
         const { showToast } = await import('./ui/modal.js');
         const runner = state.activeSequenceRunner;
-        if (!runner || typeof runner.sauterQuestion !== 'function' || !runner.sauterQuestion()) {
-            showToast('Aucun exercice en cours.', 'warning');
+        if (!runner || typeof runner[methode] !== 'function' || !runner[methode]()) {
+            showToast(runner ? rate : 'Aucun exercice en cours.', 'warning');
         }
     };
+    const btnSkip = document.getElementById('db-skip');
+    if (btnSkip) btnSkip.onclick = naviguer('sauterQuestion', 'Impossible d\'avancer ici.');
+    const btnBack = document.getElementById('db-back');
+    if (btnBack) btnBack.onclick = naviguer('revenirQuestion', 'Cet exercice ne sait pas revenir en arrière.');
 }
 
 /**
@@ -637,14 +642,22 @@ function initStatusFilter() {
     const btn = document.getElementById('db-filter-status');
     if (!btn) return;
 
-    const ICONS = { tout: '🎯', test: '🔧', valide: '✅', brouillon: '📦' };
+    // Un tracé par état, dans le même trait que les autres icônes de la
+    // palette : cible, clé, coche, carton. L'émoji rendait ce bouton — le seul
+    // qui change d'aspect — dépendant du jeu de glyphes du système.
+    const ICONS = {
+        tout: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/>',
+        test: '<path d="M14.5 4.5a4 4 0 0 0 5 5L21 8v5l-8.5 8.5a2.5 2.5 0 0 1-3.5 0l-2.5-2.5a2.5 2.5 0 0 1 0-3.5L15 7"/>',
+        valide: '<path d="M4.5 12.5 10 18 19.5 6.5"/>',
+        brouillon: '<path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5M12 13v7"/>'
+    };
     const NAMES = { tout: 'Tout', ...STATUS_LABELS };
 
     const render = () => {
         const filter = state.catalogFilter || 'tout';
         const counts = countByStatus(exercices);
         const n = filter === 'tout' ? exercices.length : counts[filter];
-        btn.textContent = ICONS[filter];
+        btn.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[filter] || ICONS.tout}</svg>`;
         etiquette(btn, `Catalogue : ${NAMES[filter]} (${n}) — cliquer pour changer d'état`);
         btn.classList.toggle('active', filter !== 'tout');
     };

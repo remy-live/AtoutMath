@@ -230,6 +230,30 @@ export function laisserPasser(etat, id) {
     };
 }
 
+/**
+ * UN GROUPE QUI S'ÉCHAPPE COÛTE UNE VIE, PAS UNE PAR OBJET.
+ *
+ * En mode « zéros inutiles », le nombre entier voyage d'un seul tenant : ses
+ * chiffres sont des objets distincts, mais ils tombent ensemble. Compter une
+ * vie par zéro manqué faisait perdre trois cœurs d'un coup à qui en avait
+ * tranché deux sur trois — c'est-à-dire à quelqu'un qui avait presque tout
+ * juste. On sanctionne le nombre raté, pas chacun de ses chiffres.
+ */
+export function laisserPasserGroupe(etat, ids) {
+    const viesAvant = etat.vies;
+    const etaitFini = etat.fini;
+    let premier = null;
+    for (const id of ids) {
+        const p = laisserPasser(etat, id);
+        if (p.perdu && !premier) premier = p;
+    }
+    // Le compte est REFAIT à partir de l'avant : une seule vie, quel que soit
+    // le nombre d'objets manqués dans le groupe.
+    etat.vies = Math.max(0, viesAvant - (premier ? 1 : 0));
+    etat.fini = etaitFini || etat.vies <= 0;
+    return premier || { perdu: false };
+}
+
 export function vagueFinie(etat) {
     return !!etat.vague && etat.vague.objets.every(o => !o.cible || o.coupe);
 }

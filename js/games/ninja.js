@@ -26,8 +26,20 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    MODES, creerPartie, genererVague, toucher, laisserPasser, vagueFinie, resteAPrendre
+    MODES, creerPartie, genererVague, toucher, laisserPasserGroupe, vagueFinie, resteAPrendre
 } from '../core/tri.js';
+
+// Le doigt qui GLISSE n'atteint qu'un objet dont il touche le milieu : les
+// sept dixièmes centraux, soit à peu près la moitié de la surface. Au-delà,
+// c'est un frôlement — et un frôlement ne doit pas coûter un cœur.
+const COEUR = 0.7;
+
+function auCoeur(el, x, y) {
+    const r = el.getBoundingClientRect();
+    const dx = (x - (r.left + r.width / 2)) / (r.width / 2);
+    const dy = (y - (r.top + r.height / 2)) / (r.height / 2);
+    return dx * dx + dy * dy <= COEUR * COEUR;
+}
 
 class Ninja extends BaseGame {
     constructor(container, isDemo, params) {
@@ -270,17 +282,16 @@ class Ninja extends BaseGame {
         }
 
         // Les deux ninjas : une cloche LENTE, qui monte haut. Réglée pour que
-        // l'objet mette environ trois secondes et demie à traverser et qu'il
-        // atteigne le haut de l'écran — la version précédente durait à peine une
-        // seconde et culminait au milieu : on n'avait le temps ni de lire le
-        // calcul, ni de viser.
+        // l'objet mette environ quatre secondes et demie à traverser et qu'il
+        // frôle le haut de l'écran. Lire « −7 + 12 », décider, puis viser : ce
+        // sont trois gestes, et trois secondes et demie n'y suffisaient pas.
         if (this.mode === 'zeros') {
-            this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0, -(haut * 0.0166), larg, haut, 'chiffre'));
+            this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0, -(haut * 0.0138), larg, haut, 'chiffre'));
         } else {
             const type = 'bulle';
             v.objets.forEach((o, i) => {
                 const x = larg * (0.16 + 0.68 * (i + 0.5) / v.objets.length);
-                const e = this.creerEntite([o], x, haut + 80 + i * 26, (this.rng.int(-4, 4)) / 12, -(haut * 0.0172) - this.rng.int(0, 4) / 100, larg, haut, type);
+                const e = this.creerEntite([o], x, haut + 80 + i * 26, (this.rng.int(-3, 3)) / 14, -(haut * 0.0143) - this.rng.int(0, 3) / 100, larg, haut, type);
                 e.retard = i * 520;
                 this.entites.push(e);
             });
@@ -302,9 +313,11 @@ class Ninja extends BaseGame {
     avancer(k) {
         const r = this.scene.getBoundingClientRect();
         const haut = r.height;
-        // La gravité, réglée avec la vitesse de lancement : environ trois
-        // secondes et demie de vol, et un sommet tout en haut de la scène.
-        const g = haut * 0.00016;
+        // La gravité, réglée avec la vitesse de lancement : environ quatre
+        // secondes et demie de vol, et un sommet qui frôle le haut de la
+        // scène. La cloche précédente montait moins et allait plus vite : on
+        // voyait la bulle avant d'avoir fini de lire le calcul qu'elle porte.
+        const g = haut * 0.000104;
         let vivantes = 0;
 
         for (const e of this.entites) {
@@ -324,10 +337,8 @@ class Ninja extends BaseGame {
                     e.el.firstElementChild?.classList.add('nj-baisse');
                     const el = e.el;
                     setTimeout(() => el.remove(), 300);
-                    for (const id of e.objets) {
-                        const p = laisserPasser(this.etat, id);
-                        if (p.perdu) this.perdre(p.message);
-                    }
+                    const p = laisserPasserGroupe(this.etat, e.objets);
+                    if (p.perdu) this.perdre(p.message);
                 }
                 continue;
             }
@@ -338,10 +349,8 @@ class Ninja extends BaseGame {
             if (e.y > haut + 90) {
                 e.sortie = true;
                 e.el.remove();
-                for (const id of e.objets) {
-                    const p = laisserPasser(this.etat, id);
-                    if (p.perdu) this.perdre(p.message);
-                }
+                const p = laisserPasserGroupe(this.etat, e.objets);
+                if (p.perdu) this.perdre(p.message);
             }
         }
 
@@ -366,20 +375,30 @@ class Ninja extends BaseGame {
     // --- Le geste -----------------------------------------------------------
 
     brancherGestes() {
-        const viser = (ev) => {
+        /**
+         * LE COUP PORTE AU CŒUR, PAS AU BORD.
+         *
+         * En glissant, le doigt traversait tout ce qui affleurait son chemin :
+         * on visait une bulle, on effleurait sa voisine, et on perdait un cœur
+         * pour une réponse qu'on n'avait jamais voulu donner. Sur un geste
+         * CONTINU, on n'atteint donc que ce dont on touche vraiment le milieu —
+         * la moitié centrale. Une PRESSION, elle, reste franche : viser puis
+         * appuyer est un choix, on le prend tel quel.
+         */
+        const viser = (ev, franc) => {
             const el = document.elementFromPoint(ev.clientX, ev.clientY);
             const cible = el && el.closest ? el.closest('[data-obj]') : null;
-            if (cible) this.frapper(cible);
+            if (cible && (franc || auCoeur(cible, ev.clientX, ev.clientY))) this.frapper(cible);
             this.laisserTrace(ev);
         };
         this.scene.addEventListener('pointerdown', (ev) => {
             ev.preventDefault();
             this.tranche = true;
-            viser(ev);
+            viser(ev, true);
         });
         this.scene.addEventListener('pointermove', (ev) => {
             // Sur les cibles, un simple survol ne tire pas : il faut appuyer.
-            if (this.tranche) viser(ev);
+            if (this.tranche) viser(ev, false);
         });
         const fin = () => { this.tranche = false; };
         this.scene.addEventListener('pointerup', fin);

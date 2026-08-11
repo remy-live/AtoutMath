@@ -256,7 +256,7 @@ const legacy = [
     ['dames', 'Jeu de Dames', 'plateau', 'engineDames'],
     ['echecs', 'Échecs', 'plateau', 'engineEchecs'],
     ['automate', 'L\'Automate (exécuter un programme)', 'automate', 'engineAutomate'],
-    ['problemes', 'L\'Atelier des Problèmes', 'problemes', 'engineProblemes'],
+    ['problemes', 'Histoires en Pagaille', 'problemes', 'engineProblemes'],
     ['proportion', 'Tableau de Proportionnalité', 'proportion', 'engineProportion'],
     ['virgule', 'La Virgule qui ne bouge pas', 'virgule', 'engineVirgule']
 ];

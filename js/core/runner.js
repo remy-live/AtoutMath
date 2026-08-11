@@ -485,6 +485,30 @@ export class Runner {
         return true;
     }
 
+    /**
+     * REVENIR SUR LA QUESTION PRÉCÉDENTE — outil d'auteur, pendant du saut.
+     *
+     * Sauter d'un cran de trop obligeait à relancer l'exercice depuis le début
+     * pour revoir la question qu'on cherchait. Le recul s'appuie sur le
+     * `showPrevious` des activités, qui rembobine la session : les jeux
+     * autonomes n'en ont pas, et le disent plutôt que de ne rien faire.
+     * @returns {boolean} faux si l'exercice en cours ne sait pas reculer
+     */
+    revenirQuestion() {
+        if (!this.step || !this.handle || typeof this.handle.showPrevious !== 'function') return false;
+        this.handle.showPrevious();
+        // Le compteur de progression suit : sans quoi la barre annoncerait
+        // « 5 / 10 » sur la quatrième question.
+        const cle = [...this.itemsResolved].pop();
+        if (cle !== undefined) this.itemsResolved.delete(cle);
+        this.updateProgress();
+        if (this.currentTimeLimit && this.timerScope === 'question') {
+            this.runTimerCycle(this.currentTimeLimit);
+        }
+        this.updateStepNavigation();
+        return true;
+    }
+
     /** Compatibilité : anciens moteurs appelant runner.onGameAction(bool). */
     onGameAction(isSuccess) {
         this.onAttempt({ correct: !!isSuccess, attemptIndex: 0, itemSeed: null });

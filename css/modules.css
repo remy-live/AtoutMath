@@ -3149,3 +3149,48 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .ac-robot svg { display: block; }
 .ac-conseil { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
 .ac-ampoule { flex: none; color: var(--warning); margin-top: 1px; }
+
+/* --- LISTE DÉPLIANTE DE CASES À COCHER -----------------------------------
+   Pour les réglages dont les options sont des PHRASES et non des symboles :
+   les onze familles de problèmes en pastilles au fil du texte occupaient tout
+   le panneau, alors qu'on n'y touche qu'une fois sur dix. Repliée, la liste
+   tient sur une ligne et dit son état ; dépliée, elle donne les cases. */
+.cfg-liste {
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-app); overflow: hidden;
+}
+.cfg-liste-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 12px; cursor: pointer; user-select: none;
+    font-size: .88rem; font-weight: 700; color: var(--text-main);
+    list-style: none;
+}
+/* Le triangle du navigateur est remplacé par le chevron du fichier : celui de
+   Safari n'a ni la même taille ni la même couleur que celui de Chrome. */
+.cfg-liste-tete::-webkit-details-marker { display: none; }
+.cfg-liste-tete:hover { background: var(--bg-hover); }
+.cfg-liste-tete svg { flex-shrink: 0; color: var(--text-muted); transition: transform .18s; }
+.cfg-liste[open] .cfg-liste-tete svg { transform: rotate(180deg); }
+.cfg-liste[open] .cfg-liste-tete { border-bottom: 1px solid var(--border); }
+
+.cfg-liste-actions { display: flex; gap: 6px; padding: 8px 10px 4px; }
+.cfg-liste-btn {
+    flex: 1; padding: 5px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-muted);
+}
+.cfg-liste-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+
+/* La liste défile au-delà de sept lignes : elle ne doit jamais pousser les
+   boutons « Annuler / Jouer » hors de l'écran d'un téléphone. */
+.cfg-liste-corps { max-height: 232px; overflow-y: auto; padding: 4px 6px 8px; }
+.cfg-liste-ligne {
+    display: flex; align-items: center; gap: 9px; cursor: pointer;
+    padding: 6px 8px; border-radius: 8px;
+    font-size: .86rem; font-weight: 600; color: var(--text-main);
+}
+.cfg-liste-ligne:hover { background: var(--bg-hover); }
+.cfg-liste-ligne input {
+    flex-shrink: 0; width: 17px; height: 17px; margin: 0;
+    accent-color: var(--primary); cursor: pointer;
+}

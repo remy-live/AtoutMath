@@ -218,9 +218,12 @@ class Automate extends BaseGame {
         // Avancer, non : il faut DÉSIGNER la case d'arrivée, sinon on n'a rien
         // compté — et compter les cases est tout l'exercice.
         this.surTouche = (e) => {
+            if (this.isDemo) return;
+            if (e.key === 'ArrowUp') { e.preventDefault(); this.avancerDUneCase(); return; }
             const g = { ArrowLeft: 'gauche', ArrowRight: 'droite', ' ': 'pose' }[e.key];
-            if (!g || this.isDemo) return;
+            if (!g) return;
             e.preventDefault();
+            this.pasComptes = 0;                 // on change d'avis : le compte repart
             this.jouer({ type: g });
             const b = this.container.querySelector(`[data-geste="${g}"]`);
             if (b) { b.classList.add('au-cmd--frappe'); setTimeout(() => b.classList.remove('au-cmd--frappe'), 170); }
@@ -266,6 +269,8 @@ class Automate extends BaseGame {
         this.deroule = t.deroule;
         this.k = 0;
         this.etat = { ...t.depart, marques: [] };
+        this.angleRobot = undefined;        // nouveau plan, nouvelle orientation
+        this.pasComptes = 0;
         this.fautes = 0;
 
         this.dessinerPlan();
@@ -276,7 +281,7 @@ class Automate extends BaseGame {
         this.note(this.reglage.prediction
             ? `Lis tout le programme dans ta tête, puis touche la case où le robot <b>arrive</b>.`
             : `Tu es l'ordinateur. Le robot regarde vers <b>${nomCap(this.etat.cap)}</b>. `
-              + `Pour « avancer », touche la case d'arrivée sur le quadrillage.`);
+              + `Pour « avancer », touche la case d'arrivée — ou appuie sur <b>↑</b>, une case par appui.`);
     }
 
     majBandeau() {
@@ -418,12 +423,89 @@ class Automate extends BaseGame {
             </g>`;
     }
 
+    /**
+     * AVANCER À LA FLÈCHE DU HAUT, une case par appui.
+     *
+     * Désigner la case d'arrivée du doigt reste la manière naturelle sur
+     * tablette, mais au clavier c'est une acrobatie : on a les deux mains sur
+     * les flèches et il faut lâcher pour viser une case. Une flèche du haut
+     * qui avance d'UNE case répond à « avancer de 2 » en deux appuis — donc en
+     * comptant, ce qui est exactement ce que l'exercice demande. Rien n'est
+     * validé avant le dernier appui : c'est la case d'arrivée, et elle seule,
+     * qui est soumise au juge.
+     */
+    avancerDUneCase() {
+        if (!this.deroule || this.animation) return;
+        const pas = this.deroule.pas[this.k];
+        const bloc = pas && pas.bloc;
+        const v = devant(this.etat.x, this.etat.y, this.etat.cap);
+        // Hors du plan : on le dit plutôt que de compter dans le vide.
+        if (v.x < 0 || v.y < 0 || v.x >= this.grille.cols || v.y >= this.grille.rows) {
+            this.note('Le robot sortirait du plan : ce n\'est pas par là.', 'ko');
+            return;
+        }
+        // Le bloc allumé ne demande pas d'avancer : on soumet quand même la
+        // case, pour que le juge donne SA phrase — « le bloc dit tourner ».
+        if (!bloc || bloc.type !== 'avance') {
+            this.pasComptes = 0;
+            this.jouer({ type: 'case', x: v.x, y: v.y });
+            return;
+        }
+
+        const n = (this.pasComptes || 0) + 1;
+        if (n >= bloc.n) {
+            this.pasComptes = 0;
+            this.jouer({ type: 'case', x: pas.apres.x, y: pas.apres.y });
+            return;
+        }
+        this.pasComptes = n;
+        this.note(`${n} case${n > 1 ? 's' : ''}… continue de compter.`);
+        this.marquerCompte(n);
+    }
+
+    /** Le repère du comptage en cours : jusqu'où on a avancé, sans valider. */
+    marquerCompte(n) {
+        if (!this.ciblesEl) return;
+        const { cx, cy } = this.pos;
+        let p = { x: this.etat.x, y: this.etat.y };
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+            p = devant(p.x, p.y, this.etat.cap);
+            pts.push(`<circle cx="${cx(p.x)}" cy="${cy(p.y)}" r="9" fill="none"
+                              stroke="var(--primary)" stroke-width="3" opacity=".85" />
+                      <text x="${cx(p.x)}" y="${cy(p.y) + 5}" text-anchor="middle"
+                            font-size="14" font-weight="800" fill="var(--primary)">${i + 1}</text>`);
+        }
+        this.ciblesEl.innerHTML = pts.join('');
+    }
+
+    /**
+     * L'ANGLE EST CUMULÉ, jamais recalculé modulo 360.
+     *
+     * En repartant à chaque fois de l'angle absolu du cap, « tourner à gauche »
+     * depuis le nord donnait 0° → 270° : le robot faisait trois quarts de tour
+     * PAR LA DROITE pour un quart de tour à gauche. Sur un exercice dont tout
+     * l'objet est de distinguer sa gauche de celle de l'écran, c'est le pire
+     * mensonge possible — le robot montrait le contraire de ce qu'on lui
+     * demandait. On suit donc le chemin le plus court, en mémorisant l'angle
+     * réellement parcouru.
+     */
+    angleVers(cap) {
+        const vise = ANGLES[cap];
+        if (this.angleRobot === undefined) { this.angleRobot = vise; return vise; }
+        // L'écart ramené dans ]-180, 180] : le quart de tour, dans le bon sens.
+        let d = (vise - (this.angleRobot % 360) + 540) % 360 - 180;
+        if (d === -180) d = 180;
+        this.angleRobot += d;
+        return this.angleRobot;
+    }
+
     placerRobot(anime = true) {
         if (!this.robotEl) return;
         const { cx, cy } = this.pos;
         this.robotEl.classList.toggle('au-robot--stop', !anime);
         this.robotEl.setAttribute('transform',
-            `translate(${cx(this.etat.x)},${cy(this.etat.y)}) rotate(${ANGLES[this.etat.cap]})`);
+            `translate(${cx(this.etat.x)},${cy(this.etat.y)}) rotate(${this.angleVers(this.etat.cap)})`);
     }
 
     /**
@@ -594,7 +676,7 @@ class Automate extends BaseGame {
         if (!this.robotEl) return;
         this.robotEl.classList.add('au-robot--stop');
         const { cx, cy } = this.pos;
-        const base = `translate(${cx(this.etat.x)},${cy(this.etat.y)}) rotate(${ANGLES[this.etat.cap]})`;
+        const base = `translate(${cx(this.etat.x)},${cy(this.etat.y)}) rotate(${this.angleRobot ?? ANGLES[this.etat.cap]})`;
         let i = 0;
         const tic = () => {
             if (!this.robotEl || !this.isRunning) return;

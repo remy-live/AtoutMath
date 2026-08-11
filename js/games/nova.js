@@ -54,6 +54,9 @@ const SECTEURS = [
 
 const SEUIL_TAPE = 12;
 
+/** Le plafond de vies : au-delà, la rangée de cœurs déborde et le jeu n'a plus d'enjeu. */
+const VIES_PLAFOND = 7;
+
 // Nombre d'épreuves de calcul (portes ou convois) avant que le GARDIEN du
 // secteur ne se présente. Deux : assez pour installer le rythme, assez peu
 // pour que le boss ne se fasse pas attendre.
@@ -134,7 +137,12 @@ class Nova extends BaseGame {
         const p = this.params || {};
         this.tables = (Array.isArray(p.tables) && p.tables.length ? p.tables : [2, 3, 4, 5, 6, 7, 8, 9, 10])
             .map(Number).filter(n => n >= 2 && n <= 12);
-        this.viesMax = parseInt(p.lives) || 3;
+        // SEPT VIES AU MAXIMUM. Les coques ramassées faisaient monter le
+        // compteur sans fin : la rangée de cœurs finissait par déborder du
+        // bandeau, et surtout un vaisseau à douze vies ne risque plus rien —
+        // les portes de calcul ne coûtent plus rien à rater, donc on cesse de
+        // calculer. Sept, c'est déjà beaucoup, et ça tient sur une ligne.
+        this.viesMax = Math.min(VIES_PLAFOND, parseInt(p.lives) || 3);
         this.entrePortes = Math.max(8, Math.min(40, parseInt(p.entrePortes) || 18)) * 60;
 
         this.vies = this.viesMax;
@@ -1289,7 +1297,10 @@ class Nova extends BaseGame {
                 this.puissance = Math.max(this.puissance, this.canonBase);
                 break;
             case 'coque':
-                this.viesMax++; this.vies++;
+                // Au plafond, la coque répare au lieu d'ajouter : le bonus
+                // reste utile sans faire enfler le compteur.
+                if (this.viesMax < VIES_PLAFOND) this.viesMax++;
+                this.vies = Math.min(this.viesMax, this.vies + 1);
                 break;
             case 'nova':
                 this.bombes = Math.min(5, this.bombes + 2);
@@ -2408,7 +2419,7 @@ class Nova extends BaseGame {
                         this.multi = 720;
                         this.mot('Score ×2 pendant 12 secondes !', 'ok'); break;
                     default:
-                        this.vies = Math.min(this.viesMax + 2, this.vies + 1);
+                        this.vies = Math.min(this.viesMax, this.vies + 1);
                         this.mot('Réparation !', 'ok');
                 }
                 this.majHud();

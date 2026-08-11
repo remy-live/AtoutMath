@@ -404,7 +404,7 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'depart', type: 'select', label: 'Commencer au niveau',
-                aide: 'Les dix-sept niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
+                aide: 'Les vingt-cinq niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
                 options: [
                     { value: 'ch1', label: '1 · Le premier bloc' },
                     { value: 'ch2', label: '2 · Glisser jusqu\'au coin' },
@@ -422,7 +422,15 @@ export const calculExercises = [
                     { value: 'ch14', label: '14 · Quatre à la fois' },
                     { value: 'ch15', label: '15 · L\'ordre décide' },
                     { value: 'ch16', label: '16 · Le détour obligé' },
-                    { value: 'ch17', label: '17 · Le grand chantier' }
+                    { value: 'ch17', label: '17 · Le grand chantier' },
+                    { value: 'ch18', label: '18 · La cour ouverte' },
+                    { value: 'ch19', label: '19 · Soixante-quatre, encore' },
+                    { value: 'ch20', label: '20 · Le fond du couloir' },
+                    { value: 'ch21', label: '21 · Deux blocs, dix coups' },
+                    { value: 'ch22', label: '22 · Le chantier en étage' },
+                    { value: 'ch23', label: '23 · Le grand tour' },
+                    { value: 'ch24', label: '24 · Soixante-douze en double' },
+                    { value: 'ch25', label: '25 · La grande cour' }
                 ],
                 default: 'ch1'
             }
@@ -561,9 +569,14 @@ export const calculExercises = [
         // qui puisse reprendre cette décision : il est donc gratuit, sans
         // pénalité et sans condition. Le cacher derrière un coût apprendrait à
         // s'en passer, exactement l'inverse du but.
-        id: 'num-problemes', status: STATUS.TEST, title: 'L\'Atelier des Problèmes',
+        // « Histoires en pagaille » et non « atelier des problèmes » : les
+        // élèves ont bien assez de problèmes comme ça, et le mot suffit à
+        // fermer la porte avant d'avoir lu la première ligne. Ce sont des
+        // histoires — courtes, mélangées, et c'est justement le mélange qui
+        // empêche de reconnaître l'opération sans lire.
+        id: 'num-problemes', status: STATUS.TEST, title: 'Histoires en Pagaille',
         activityId: 'problemes',
-        params: { niveau: 'tout', familles: '' },
+        params: { niveau: 'tout', familles: [] },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Familles proposées',
@@ -577,9 +590,23 @@ export const calculExercises = [
                 default: 'tout'
             },
             {
-                id: 'familles', type: 'text', label: 'Familles précises (facultatif)',
-                aide: "Pour cibler une difficulté : écris les identifiants séparés par des virgules — composition, complement, transformation, comparaison, groupes, partage, quotition, proportion, fraction, duree, deuxEtapes. Laisse vide pour tout prendre.",
-                default: ''
+                id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
+                label: 'Familles précises (facultatif)',
+                aide: "Pour cibler une difficulté : coche les familles à travailler. Aucune cochée = toutes. Le réglage du dessus limite déjà au niveau ; celui-ci sert à isoler, par exemple, les seuls problèmes de durée.",
+                options: [
+                    { value: 'composition', label: 'Réunir deux quantités' },
+                    { value: 'complement', label: 'Trouver la part qui manque' },
+                    { value: 'transformation', label: 'Un changement (gagner, perdre, dépenser)' },
+                    { value: 'comparaison', label: 'Comparer deux quantités' },
+                    { value: 'groupes', label: 'Des groupes tous pareils' },
+                    { value: 'partage', label: 'Partager équitablement' },
+                    { value: 'quotition', label: 'Combien de paquets, et le reste' },
+                    { value: 'proportion', label: 'Le prix de plusieurs articles' },
+                    { value: 'fraction', label: 'Une fraction d\'une quantité' },
+                    { value: 'duree', label: 'Des horaires et des durées' },
+                    { value: 'deuxEtapes', label: 'Deux étapes : la monnaie rendue' }
+                ],
+                default: []
             }
         ],
         skills: ['num.probleme.composition', 'num.probleme.transformation',

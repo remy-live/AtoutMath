@@ -416,6 +416,116 @@ export const NIVEAUX = [
             #....A..#
             ##..a##.#
             #########`
+    },
+    {
+        id: 'ch18', titre: 'La cour ouverte',
+        produits: { A: [6, 7], B: [9, 6], C: [9, 7], D: [7, 7] },
+        indice: 'Beaucoup de place, donc peu de murs pour s\'arrêter. Ce sont les blocs scellés qui feront les murs manquants.',
+        plan: `
+            #########
+            #...Dd.C#
+            #..A...a#
+            #c.....B#
+            #..b..#.#
+            #########`
+    },
+    {
+        id: 'ch19', titre: 'Soixante-quatre, encore',
+        produits: { A: [8, 8], B: [16, 4], C: [9, 7], D: [6, 8] },
+        indice: '8 × 8 et 16 × 4 : deux blocs pour deux dalles. Regarde d\'abord ce que les deux autres viennent bloquer.',
+        plan: `
+            ########
+            #.BD...#
+            #d..A###
+            #.b...a#
+            #.#c.C.#
+            #......#
+            #..#...#
+            ########`
+    },
+    {
+        id: 'ch20', titre: 'Le fond du couloir',
+        produits: { A: [6, 8], B: [12, 4], C: [8, 9], D: [8, 7] },
+        indice: 'Les quatre dalles sont alignées tout en bas. L\'ordre d\'arrivée décide de qui peut encore descendre.',
+        plan: `
+            #######
+            ##.#.##
+            #.#.B.#
+            #..#b.#
+            #.....#
+            #...A.#
+            #cDCad#
+            #######`
+    },
+    {
+        id: 'ch21', titre: 'Deux blocs, dix coups',
+        produits: { A: [7, 6], B: [8, 6] },
+        indice: 'Deux blocs seulement, et pourtant dix poussées : chacun doit faire le tour pour se présenter du bon côté.',
+        plan: `
+            #######
+            #.#..A#
+            #.....#
+            #.....#
+            #.#a..#
+            #.....#
+            #.#.Bb#
+            #######`
+    },
+    {
+        id: 'ch22', titre: 'Le chantier en étage',
+        produits: { A: [8, 8], B: [7, 6], C: [9, 6], D: [7, 9] },
+        indice: 'Quatre blocs dans un couloir en escalier. Un seul peut passer en premier.',
+        plan: `
+            #######
+            #....c#
+            ##a.#.#
+            #..B.##
+            #.C#.D#
+            #.A.###
+            #d..b##
+            #######`
+    },
+    {
+        id: 'ch23', titre: 'Le grand tour',
+        produits: { A: [8, 8], B: [16, 4] },
+        indice: 'Encore 8 × 8 et 16 × 4. Une des deux dalles ne s\'atteint qu\'après un long détour : laquelle, et par qui ?',
+        plan: `
+            #########
+            #...#...#
+            #....#..#
+            #.##.aA.#
+            #b..#...#
+            #.....B##
+            #....#..#
+            #########`
+    },
+    {
+        id: 'ch24', titre: 'Soixante-douze en double',
+        produits: { A: [9, 8], B: [12, 6], C: [9, 7] },
+        indice: '9 × 8 et 12 × 6 font 72. Le troisième bloc n\'a rien d\'ambigu — mais il occupe la place.',
+        plan: `
+            ##########
+            #.......##
+            ##C..A#..#
+            #B.#....##
+            #..a...###
+            #...#.#..#
+            #...c.b..#
+            ##########`
+    },
+    {
+        id: 'ch25', titre: 'La grande cour',
+        produits: { A: [6, 7], B: [8, 6], C: [9, 7] },
+        indice: 'Presque pas de murs : tout le chantier se construit avec les blocs qu\'on vient de sceller. Douze poussées.',
+        plan: `
+            ##########
+            #...b....#
+            #....c#B.#
+            #.......a#
+            ##....A..#
+            #........#
+            #.......C#
+            ##########`
     }
 ];
 
