@@ -18,7 +18,7 @@ import { Shortcodes } from '../core/shortcodes.js';
 import { makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { renderGameConfigUI, renderPolicyEditor } from '../games/configUI.js';
-import { showToast, showAlert } from './modal.js';
+import { showToast, showAlert, showConfirm } from './modal.js';
 
 let selectedStepId = null;
 
@@ -520,8 +520,14 @@ function initPreviewModes() {
     const wrapper = document.getElementById('path-collapsible-wrapper');
     const icon = document.getElementById('path-toggle-icon');
     if (toggleHeader && wrapper && icon) {
-        toggleHeader.addEventListener('click', () => {
+        toggleHeader.addEventListener('click', (e) => {
             if (!document.body.classList.contains('mobile-view')) return;
+            // Les outils de la barre (✨ 📂 🎓 🔄 🔐, Tester, Code Élève…)
+            // vivent DANS cet en-tête repliable. Sans ce filtre, ouvrir « Mes
+            // parcours » repliait la liste au passage : on refermait la fenêtre
+            // et le parcours en cours avait disparu — il fallait retoucher
+            // l'icône pour le faire revenir.
+            if (e.target.closest('button, input, select, textarea, a, label')) return;
             const hidden = wrapper.style.display === 'none';
             wrapper.style.display = hidden ? 'block' : 'none';
             icon.style.transform = hidden ? 'rotate(180deg)' : 'rotate(0deg)';
@@ -596,13 +602,28 @@ function initToolbar() {
 
     const btnNew = document.getElementById('btn-new-path');
     if (btnNew) {
-        btnNew.onclick = () => {
+        const repartirDeZero = () => {
             state.currentPath = { id: null, version: 2, name: 'Nouveau parcours', policy: resolvePolicy(null), steps: [] };
             state.currentPathId = null;
             selectedStepId = null;
             const input = document.getElementById('path-name-input');
             if (input) input.value = state.currentPath.name;
             renderTeacherPath();
+        };
+        // « Nouveau parcours » VIDE la table de travail. Ce n'est pas rien :
+        // sans un mot, on croit avoir perdu ce qu'on venait de composer. On le
+        // demande donc — en rappelant au passage que le parcours en cours est
+        // déjà enregistré et se retrouve dans « Mes Parcours ».
+        btnNew.onclick = () => {
+            const n = state.currentPath.steps.length;
+            if (!n) return repartirDeZero();
+            const nom = state.currentPath.name || 'Le parcours en cours';
+            showConfirm(
+                `Commencer un nouveau parcours, vide ?<br><br>`
+                + `« ${escapeHtml(nom)} » (${n} activité${n > 1 ? 's' : ''}) est enregistré : `
+                + `vous le retrouverez dans <b>Mes Parcours</b> 📂.`,
+                repartirDeZero
+            );
         };
     }
 }

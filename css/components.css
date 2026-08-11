@@ -178,5 +178,22 @@
 #student-analysis-content { display: flex; flex-direction: column; gap: 20px; }
 #student-config-content { display: flex; flex-direction: column; gap: 10px; }
 #config-content { display: flex; flex-direction: column; gap: 10px; }
-#toast-container { display: none; position: fixed; bottom: 20px; right: 20px; z-index: 10000; flex-direction: column; gap: 10px; }
+/* LE BANDEAU DE CONFIRMATION.
+   Ancré en bas à droite sur grand écran ; sur téléphone il est ancré aux DEUX
+   bords et centré. Ancré au seul bord droit, un message long grandissait vers
+   la gauche jusqu'à toucher le bord de l'écran : 20 px de marge à droite, zéro
+   à gauche. Et il se pose AU-DESSUS de la barre du bas, qu'il recouvrait. */
+#toast-container {
+    display: none; position: fixed; bottom: 20px; right: 20px; left: auto;
+    z-index: 10000; flex-direction: column; align-items: flex-end; gap: 10px;
+    pointer-events: none;
+}
+#toast-container > * { max-width: 100%; box-sizing: border-box; }
+body.mobile-view #toast-container {
+    left: 12px; right: 12px; align-items: center;
+    bottom: calc(var(--bottom-nav-height) + 12px);
+}
+@media (max-width: 700px) {
+    #toast-container { left: 12px; right: 12px; align-items: center; }
+}
 #btn-new-folder { padding: 4px 8px; font-size: 0.9rem; }

@@ -1647,6 +1647,36 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .path-browser-sub { color: var(--text-muted); font-size: .84rem; }
 .path-browser-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
+/* MES PARCOURS SUR TÉLÉPHONE.
+   La fiche était une ligne : nom + résumé à gauche, trois boutons à droite. Sur
+   390 px il ne restait qu'une centaine de pixels au texte — « Nouveau parcours »
+   se coupait en deux, le résumé s'étalait sur trois lignes, et chaque parcours
+   occupait un tiers de l'écran. On empile : le nom en entier, le résumé sur une
+   ligne, les actions dessous. Les emboîtements (dossier → racine → fiche) sont
+   aussi dégraissés : trois niveaux de marge de 15 px mangeaient un cinquième de
+   la largeur. */
+@media (max-width: 700px) {
+    #path-browser-modal .modal-panel-md { padding: 18px 14px; }
+    /* Le titre garde sa ligne, « Nouveau dossier » passe dessous en pleine
+       largeur : à trois éléments sur une ligne, « Mes Parcours » se coupait
+       en deux. `display: contents` dissout le groupe pour que ses deux
+       boutons se placent librement dans l'en-tête. */
+    #path-browser-modal .modal-title { font-size: 1.05rem; flex: 1 1 auto; white-space: nowrap; }
+    #path-browser-modal .modal-header { align-items: center; gap: 8px; flex-wrap: wrap; row-gap: 10px; }
+    #path-browser-modal .path-browser-header-actions { display: contents; }
+    #path-browser-modal .modal-close-btn { order: 2; }
+    #btn-new-folder { white-space: nowrap; order: 3; flex: 1 0 100%; }
+    .path-browser-root, .path-folder { padding: 10px; }
+    .path-folder-body { padding-left: 8px; }
+    .path-browser-item {
+        flex-direction: column; align-items: stretch; gap: 8px; padding: 11px 12px;
+    }
+    .path-browser-sub { font-size: .8rem; line-height: 1.35; }
+    .path-browser-actions { justify-content: flex-end; }
+    /* « Charger » est l'action principale : elle prend la place qui reste. */
+    .path-browser-actions .btn-toggle { flex: 1; justify-content: center; }
+}
+
 /* --- Formulaires de configuration -------------------------- */
 
 .cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 6px; }

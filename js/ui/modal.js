@@ -3,7 +3,8 @@ export function showToast(message, type = 'success', duration = 3000) {
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.style = "position:fixed; bottom:20px; right:20px; z-index:10000; display:flex; flex-direction:column; gap:10px;";
+        // Le placement est entièrement dans la feuille de style : centré et
+        // au-dessus de la barre du bas sur téléphone, en bas à droite ailleurs.
         document.body.appendChild(container);
     }
     container.style.display = 'flex';
@@ -17,8 +18,8 @@ export function showToast(message, type = 'success', duration = 3000) {
     
     const icon = isError ? iconError : iconSuccess;
     
-    toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><span>${icon}</span><span style="font-weight:600;">${message}</span></div>`;
-    toast.style = `background: ${bg}; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width: 200px;`;
+    toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><span style="flex:0 0 auto; line-height:0;">${icon}</span><span style="font-weight:600; min-width:0;">${message}</span></div>`;
+    toast.style = `background: ${bg}; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width: min(200px, 100%);`;
     
     container.appendChild(toast);
 
