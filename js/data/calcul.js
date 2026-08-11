@@ -577,5 +577,31 @@ export const calculExercises = [
             'num.probleme.fraction', 'num.probleme.duree', 'num.probleme.etapes'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Lis l'histoire, puis la question — ce sont deux lectures différentes, et c'est la question qu'on oublie. Les nombres de l'énoncé sont en gras : ce sont les données. Si tu hésites sur l'opération, appuie sur « Voir le schéma » : il est fait pour ça, il ne coûte rien, et c'est lui qui doit décider — pas le mot « en tout » ni le mot « de plus ». Chaque mauvaise réponse te dit quelle erreur elle correspond."
+    },
+    {
+        // « DANS UN TABLEAU DE PROPORTIONNALITÉ, ON MULTIPLIE TOUJOURS PAR LE
+        // MÊME NOMBRE. » Tant que cette phrase n'est pas installée, l'élève
+        // complète en AJOUTANT l'écart de la colonne voisine — et ça donne
+        // juste assez souvent pour ne pas l'alerter. Le bouton « Montrer le
+        // lien » existe pour que chercher le coefficient devienne le premier
+        // geste, pas le dernier recours.
+        id: 'num-proportion-tableau', status: STATUS.TEST, title: 'Tableau de Proportionnalité',
+        activityId: 'proportion',
+        params: { niveau: 'facile' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté',
+                aide: "Le coefficient et le sens de lecture. En « facile » il est entier et on ne complète que la ligne du bas : on apprend à multiplier avant d'apprendre à diviser. Aux niveaux suivants, le tableau se complète aussi vers le haut, et le coefficient peut être décimal ou plus petit que 1 — ce qui casse l'idée fausse que « multiplier, ça fait plus grand ».",
+                options: [
+                    { value: 'facile', label: 'Coefficient entier, 2 cases en bas' },
+                    { value: 'moyen', label: 'Coefficient décimal, 3 cases dans les deux sens' },
+                    { value: 'difficile', label: '5 colonnes, 4 cases, coefficients difficiles' }
+                ],
+                default: 'facile'
+            }
+        ],
+        skills: ['num.proportion.tableau'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Touche une case bleue, tape le nombre au pavé, puis ✓. La colonne surlignée en jaune est complète : c'est elle qui donne le lien entre les deux lignes. Le piège à éviter : compléter en ajoutant l'écart d'une colonne à l'autre. Dans un tableau de proportionnalité, on passe d'une ligne à l'autre en MULTIPLIANT, toujours par le même nombre. Appuie sur « Montrer le lien » pour faire apparaître ce coefficient — et la valeur pour 1, qui est l'autre chemin."
     }
 ];

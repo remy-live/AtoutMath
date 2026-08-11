@@ -412,6 +412,17 @@ const BASE = {
         descriptor: 'Distinguer le partage (combien dans chaque part) du groupement (combien de parts), et gérer le reste.',
         lesson: "Deux questions différentes, la même division. PARTAGER : on connaît le nombre de parts, on cherche ce qu'il y a dans une part. GROUPER : on connaît le contenu d'un paquet, on cherche combien de paquets. Quand ça ne tombe pas juste, il RESTE quelque chose, et le reste est toujours plus petit que le paquet. Vérifie toujours : quotient × diviseur + reste = total."
     },
+    // Le TABLEAU est un objet à part : on peut résoudre un problème de
+    // proportionnalité en rédigeant, sans jamais avoir manipulé un tableau —
+    // et réciproquement. D'où une compétence distincte.
+    'num.proportion.tableau': {
+        label: 'Compléter un tableau de proportionnalité',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.mult.sens'],
+        descriptor: 'Trouver le coefficient de proportionnalité et compléter les cases manquantes, dans les deux sens.',
+        lesson: "Dans un tableau de proportionnalité, on passe de la ligne du haut à la ligne du bas en MULTIPLIANT toujours par le même nombre : le coefficient. Pour le trouver, il faut une colonne complète, et on divise la valeur du bas par celle du haut. Ensuite on l'applique partout. Pour remonter du bas vers le haut, on divise par ce même coefficient. Le piège à éviter absolument : ajouter l'écart d'une colonne à l'autre. « 4 stylos coûtent 6 €, donc 5 stylos coûtent 7 € » est faux — 5 stylos coûtent 5 × 1,50 = 7,50 €. On multiplie, on n'ajoute jamais. Autre chemin toujours possible : passer par 1 (la valeur unitaire), puis multiplier."
+    },
     'num.probleme.proportion': {
         label: 'Problème : proportionnalité simple',
         chemin: [D.NUMERIQUE, SD.PROBLEMES],
