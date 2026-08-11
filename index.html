@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=101">
-    <link rel="stylesheet" href="css/layout.css?v=101">
-    <link rel="stylesheet" href="css/ui.css?v=101">
-    <link rel="stylesheet" href="css/games.css?v=101">
-    <link rel="stylesheet" href="css/components.css?v=101">
-    <link rel="stylesheet" href="css/modules.css?v=101">
+    <link rel="stylesheet" href="css/base.css?v=102">
+    <link rel="stylesheet" href="css/layout.css?v=102">
+    <link rel="stylesheet" href="css/ui.css?v=102">
+    <link rel="stylesheet" href="css/games.css?v=102">
+    <link rel="stylesheet" href="css/components.css?v=102">
+    <link rel="stylesheet" href="css/modules.css?v=102">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -186,8 +186,24 @@
                     </div>
                     </div>
                 </div>
+                <!-- LA RECHERCHE. La loupe dit ce qu'est ce champ sans le
+                     dire ; la liste de suggestions s'ouvre sous lui au fil de
+                     la frappe et mène directement à l'exercice. -->
                 <div id="sidebar-search-wrap">
-                    <input type="search" id="sidebar-search-input" placeholder="Rechercher un exercice..." aria-label="Rechercher un exercice">
+                    <div class="rech-champ">
+                        <svg class="rech-loupe" viewBox="0 0 24 24" width="17" height="17" fill="none"
+                             stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.6-3.6" />
+                        </svg>
+                        <input type="search" id="sidebar-search-input" autocomplete="off"
+                               role="combobox" aria-expanded="false" aria-autocomplete="list"
+                               aria-controls="sidebar-search-suggestions"
+                               placeholder="Rechercher un exercice..." aria-label="Rechercher un exercice">
+                        <button type="button" id="sidebar-search-clear" class="rech-croix" hidden
+                                aria-label="Effacer la recherche">&times;</button>
+                    </div>
+                    <ul id="sidebar-search-suggestions" class="rech-liste" role="listbox" hidden
+                        aria-label="Suggestions d'exercices"></ul>
                 </div>
                 <div id="nav-container">
                     <div id="view-accordion"></div>

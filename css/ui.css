@@ -122,9 +122,30 @@ body.plein-ecran .pe-sortir { display: block; }
 #custom-niveau-select { width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
 #cns-dropdown { display: none; flex-direction: column; gap: 4px; position: absolute; top: calc(100% - 5px); left: 10px; right: 10px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); z-index: 100; max-height: 250px; overflow-y: auto; padding: 5px; }
 
-#sidebar-search-wrap { padding: 0 10px 10px; }
-#sidebar-search-input { width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border); font-size: 0.9rem; font-family: inherit; outline: none; }
-#sidebar-search-input:focus { border-color: var(--primary); }
+/* LA RECHERCHE.
+   La loupe est dans le champ, pas à côté : c'est ce qui fait lire « on tape
+   ici » sans écrire le mot. La liste de suggestions se pose PAR-DESSUS le
+   catalogue (absolue) — si elle poussait le contenu, chaque frappe ferait
+   sauter la page sous les doigts. */
+#sidebar-search-wrap { padding: 0 10px 10px; position: relative; }
+.rech-champ { position: relative; display: flex; align-items: center; }
+.rech-loupe { position: absolute; left: 10px; color: var(--text-muted); pointer-events: none; }
+#sidebar-search-input { width: 100%; padding: 8px 30px 8px 33px; border-radius: 8px; background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border); font-size: 0.9rem; font-family: inherit; outline: none; }
+#sidebar-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+#sidebar-search-input::-webkit-search-cancel-button { display: none; }  /* la nôtre suffit */
+.rech-croix { position: absolute; right: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 1.15rem; line-height: 1; color: var(--text-muted); background: none; border: none; cursor: pointer; }
+.rech-croix:hover { color: var(--text-main); background: rgba(0,0,0,0.06); }
+
+.rech-liste { position: absolute; top: calc(100% - 10px); left: 10px; right: 10px; z-index: 120; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md); max-height: min(52vh, 340px); overflow-y: auto; }
+.rech-item { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 7px 9px; border-radius: 7px; cursor: pointer; }
+.rech-item--actif, .rech-item:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.rech-titre { font-size: 0.9rem; font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le gras marque CE QU'ON VIENT DE TAPER : l'œil retrouve sa saisie dans la
+   ligne sans relire le titre entier. */
+.rech-titre b { color: var(--primary); font-weight: 800; }
+.rech-tags { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+.rech-sous { grid-column: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rech-vide { padding: 10px; font-size: 0.82rem; color: var(--text-muted); text-align: center; }
 
 .btn-group { display: flex; gap: 4px; background: var(--bg-app); padding: 4px; border-radius: 10px; border: 1px solid var(--border); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
 .btn-toggle { padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; transition: all 0.2s ease; border: 1px solid transparent; }

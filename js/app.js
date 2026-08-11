@@ -19,8 +19,9 @@ import { validateCatalog } from './core/registry.js';
 import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE } from './data/catalog.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
-    setSidebarMode, setTopNavMode, initSidebarSearch
+    setSidebarMode, setTopNavMode, refreshCatalogViews
 } from './ui/navigation.js';
+import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
 import { initDebugBar } from './ui/debugBar.js';
 import { initImportExport } from './core/importExport.js';
@@ -79,7 +80,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setSidebarMode('drill');
     setTopNavMode('grid');
     initGridFilters();
-    initSidebarSearch();
+    initRechercheUI(refreshCatalogViews);
     initBuilder();
     initStudentCodeUI();
     initProfileUI();

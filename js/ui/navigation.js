@@ -5,6 +5,8 @@ import { destroyAllDemoCursors } from '../core/demoPointer.js';
 import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
+import { correspond } from '../core/recherche.js';
+import { ficheDe } from './rechercheUI.js';
 
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
@@ -215,16 +217,12 @@ function statusBadge(exo) {
     return `<span class="tag tag-btn tag-status tag-status--${s}">${STATUS_LABELS[s]}</span>`;
 }
 
+// Le catalogue se resserre avec EXACTEMENT la règle des suggestions : sans
+// accents, mot à mot, la consigne en dernier recours. Deux règles différentes
+// donneraient le spectacle absurde d'une suggestion visible au-dessus d'un
+// catalogue qui prétend n'avoir rien trouvé.
 function matchesSearch(exo, query) {
-    const q = (query || '').trim().toLowerCase();
-    if (!q) return true;
-    // « jeu » fait partie du foin : c'est le mot que l'on tape quand on cherche
-    // de quoi occuper une fin de séance, et il n'est écrit nulle part dans les
-    // données — il se déduit de l'activité.
-    const haystack = [exo.title, ...(exo.tags.chemin || []), ...(exo.tags.niveaux || []),
-        isGame(exo) ? 'jeu jeux' : '',
-        estADeux(exo) ? 'deux joueurs duo à deux' : ''].join(' ').toLowerCase();
-    return haystack.includes(q);
+    return correspond(ficheDe(exo), query);
 }
 
 export function getFilteredExercises() {
@@ -246,15 +244,11 @@ export function getFilteredExercises() {
     return list;
 }
 
-export function initSidebarSearch() {
-    const input = document.getElementById('sidebar-search-input');
-    if (!input) return;
-    input.oninput = () => {
-        state.searchQuery = input.value;
-        initAccordion();
-        renderDrilldown();
-        initGridFilters();
-    };
+/** Ce que la recherche doit rafraîchir derrière elle, à chaque frappe. */
+export function refreshCatalogViews() {
+    initAccordion();
+    renderDrilldown();
+    initGridFilters();
 }
 
 // Un exercice "appartient" au noeud `path` si les premiers segments de son
