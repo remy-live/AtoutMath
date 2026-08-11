@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     CAPS, tourner, sensEntre, devant, rue, sortiesRelatives,
-    creerVille, degre, connexe, tirerItineraire, decrireItineraire, jugerCoup, cle
+    creerVille, degre, connexe, tirerItineraire, decrireItineraire, jugerCoup, cle, aLieu
 } from '../js/core/ville.js';
 
 // Un hasard reproductible : les tests portent sur des propriétés, mais un
@@ -119,6 +119,37 @@ test('le nombre de virages demandé est le nombre de virages obtenu', () => {
     }
 });
 
+test('le premier pas est TOUJOURS tout droit', () => {
+    // On ne demande pas de tourner à quelqu'un qui n'est pas encore parti :
+    // la voiture s'engage d'abord, on compte les rues, puis on tourne.
+    for (const virages of [1, 2, 3, 4]) {
+        for (let g = 1; g <= 10; g++) {
+            const v = creerVille({ cols: 5, rows: 5, rng: rngFixe(g) });
+            const it = tirerItineraire(v, { virages, rng: rngFixe(g * 13 + virages) });
+            assert.ok(it, `pas d'itinéraire (${virages} virages, graine ${g})`);
+            const a = it.noeuds[0], b = it.noeuds[1];
+            const capVers = CAPS.find(c => {
+                const d = devant(a.x, a.y, c);
+                return d.x === b.x && d.y === b.y;
+            });
+            assert.equal(sensEntre(it.capDepart, capVers), 'tout-droit',
+                `le trajet commence par un virage (${virages} virages, graine ${g})`);
+        }
+    }
+});
+
+test('la feuille de route commence par « Avance »', () => {
+    const v = creerVille({ cols: 5, rows: 5, rng: rngFixe(5) });
+    const it = tirerItineraire(v, { virages: 3, rng: rngFixe(99) });
+    const etapes = decrireItineraire(v, it);
+    assert.equal(etapes[0].type, 'depart');
+    assert.equal(etapes[0].texte, 'Avance');
+    assert.equal(etapes.filter(e => e.type === 'depart').length, 1);
+    // Et la consigne suivante est bien un virage : « avance PUIS la première
+    // à droite ».
+    assert.equal(etapes[1].type, 'tourner');
+});
+
 test('la feuille de route se termine toujours par une arrivée, et une seule', () => {
     const v = creerVille({ cols: 5, rows: 5, rng: rngFixe(5) });
     const it = tirerItineraire(v, { virages: 3, rng: rngFixe(99) });
@@ -200,4 +231,13 @@ test('tourner là où il n\'y a pas de rue est refusé sans ambiguïté', () => 
         assert.equal(r.ok, false);
         assert.equal(r.faute, 'pas-de-rue');
     }
+});
+
+test('« à » se contracte comme en français', () => {
+    // « Va jusqu'à le parc » s'affichait tel quel à l'écran.
+    assert.equal(aLieu('le parc'), 'au parc');
+    assert.equal(aLieu('le stade'), 'au stade');
+    assert.equal(aLieu('la gare'), 'à la gare');
+    assert.equal(aLieu('l\'école'), 'à l\'école');
+    assert.equal(aLieu('les halles'), 'aux halles');
 });

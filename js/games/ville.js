@@ -20,7 +20,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     creerVille, tirerItineraire, decrireItineraire, jugerCoup,
-    sortiesRelatives, tourner, sensEntre, CAPS, devant, nomCap
+    sortiesRelatives, tourner, sensEntre, CAPS, devant, nomCap, aLieu
 } from '../core/ville.js';
 
 const ANGLES = { N: 0, E: 90, S: 180, O: 270 };
@@ -236,9 +236,10 @@ class Ville extends BaseGame {
         this.dessinerPlan();
         this.majRoute();
         this.majCommandes();
-        this.butEl.innerHTML = `🚗 Va jusqu'à <b>${this.lieu.nom}</b>`;
+        this.butEl.innerHTML = `🚗 Va jusqu'<b>${aLieu(this.lieu.nom)}</b>`;
         this.majScore();
         this.note(`La voiture roule vers <b>${nomCap(this.etat.cap)}</b>. `
+            + `Avance d'abord, puis <b>${this.consigneSuivante().toLowerCase()}</b>. `
             + `Les trois boutons sont ceux du CONDUCTEUR, pas ceux de l'écran.`);
     }
 
@@ -266,20 +267,40 @@ class Ville extends BaseGame {
         // l'asphalte n'apparaît que dans l'espace laissé libre entre les îlots :
         // ce sont bien les bâtiments qui dessinent les rues, comme sur un vrai
         // plan.
-        let asphalte = '', bandes = '';
+        // TROIS PASSES, et l'ordre n'est pas un détail. Dessiner chaque rue
+        // complète (trottoir puis chaussée) l'une après l'autre faisait passer
+        // le trottoir clair de la rue suivante PAR-DESSUS la chaussée de la
+        // précédente : à chaque carrefour apparaissait une encoche claire, et
+        // les croisements avaient l'air rapiécés. Tous les trottoirs d'abord,
+        // toutes les chaussées ensuite, les bandes en dernier : le carrefour
+        // devient une seule nappe d'asphalte.
+        const traits = [];
         for (let y = 0; y < v.rows; y++) {
             for (let x = 0; x < v.cols; x++) {
                 for (const cap of ['E', 'S']) {
                     const n = devant(x, y, cap);
                     if (n.x >= v.cols || n.y >= v.rows) continue;
                     if (!this.ville.rues.has(this.cleRue({ x, y }, n))) continue;
-                    const a = `x1="${px(x)}" y1="${py(y)}" x2="${px(n.x)}" y2="${py(n.y)}"`;
-                    asphalte += `<line ${a} stroke="#cbd5e1" stroke-width="40" stroke-linecap="round" />`
-                        + `<line ${a} stroke="#9aa8ba" stroke-width="32" stroke-linecap="round" />`;
-                    bandes += `<line ${a} stroke="#f8fafc" stroke-width="2.4" stroke-dasharray="9 13" opacity=".9" />`;
+                    traits.push({ x1: px(x), y1: py(y), x2: px(n.x), y2: py(n.y) });
                 }
             }
         }
+        const coord = (t) => `x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}"`;
+        const trottoirs = traits.map(t =>
+            `<line ${coord(t)} stroke="#cbd5e1" stroke-width="40" stroke-linecap="round" />`).join('');
+        const chaussees = traits.map(t =>
+            `<line ${coord(t)} stroke="#9aa8ba" stroke-width="32" stroke-linecap="round" />`).join('');
+        // La bande blanche s'ARRÊTE avant le carrefour, comme sur une vraie
+        // route : c'est elle qui, en traversant les croisements, y dessinait
+        // une croix blanche et les salissait. On raccourcit donc la ligne
+        // elle-même plutôt que de ruser avec les tirets.
+        const recul = 24;
+        const bandes = traits.map(t => {
+            const dx = Math.sign(t.x2 - t.x1) * recul, dy = Math.sign(t.y2 - t.y1) * recul;
+            return `<line x1="${t.x1 + dx}" y1="${t.y1 + dy}" x2="${t.x2 - dx}" y2="${t.y2 - dy}"
+                stroke="#f8fafc" stroke-width="2.4" stroke-dasharray="9 12" opacity=".85" />`;
+        }).join('');
+        const asphalte = trottoirs + chaussees;
 
         // Les ÎLOTS : les pâtés de maisons entre quatre carrefours. Ils ne
         // servent à rien au jeu et à tout au plan — sans eux, on regarde un
@@ -334,6 +355,8 @@ class Ville extends BaseGame {
                 ${asphalte}
                 ${bandes}
                 ${ilots}
+                <g data-trace fill="none" stroke="#ef4444" stroke-width="9"
+                   stroke-linecap="round" stroke-linejoin="round" opacity=".75"></g>
                 ${depart}
                 ${but}
                 <g data-cibles></g>
@@ -342,9 +365,37 @@ class Ville extends BaseGame {
 
         this.voitureEl = this.planEl.querySelector('[data-voiture]');
         this.ciblesEl = this.planEl.querySelector('[data-cibles]');
+        this.traceEl = this.planEl.querySelector('[data-trace]');
         this.pos = { px, py, pas };
         this.placerVoiture(false);
         this.majCibles();
+    }
+
+    /**
+     * LE CHEMIN PARCOURU, tracé rue après rue derrière la voiture.
+     *
+     * Ce n'est pas une décoration. Sans lui, un élève qui s'est trompé deux
+     * carrefours plus tôt ne voit qu'une voiture au mauvais endroit ; avec lui,
+     * il voit le trait revenir sur lui-même, ou tourner trop tôt, et il
+     * comprend OÙ ça a dérapé — pas seulement que c'est raté.
+     *
+     * Chaque tronçon se dessine à la vitesse de la voiture : le trait sort de
+     * dessous elle au lieu d'apparaître d'un bloc.
+     */
+    tracerTroncon(a, b, anime = true) {
+        if (!this.traceEl) return;
+        const { px, py, pas } = this.pos;
+        const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        l.setAttribute('x1', px(a.x)); l.setAttribute('y1', py(a.y));
+        l.setAttribute('x2', px(b.x)); l.setAttribute('y2', py(b.y));
+        this.traceEl.appendChild(l);
+        if (!anime) return;
+        l.style.strokeDasharray = pas;
+        l.style.strokeDashoffset = pas;
+        requestAnimationFrame(() => {
+            l.style.transition = 'stroke-dashoffset .42s cubic-bezier(.4,.1,.2,1)';
+            l.style.strokeDashoffset = '0';
+        });
     }
 
     /**
@@ -363,12 +414,16 @@ class Ville extends BaseGame {
         const fini = this.etat.index >= this.etat.noeuds.length - 1;
         const sorties = fini || this.isDemo
             ? {} : sortiesRelatives(this.ville, n.x, n.y, this.etat.cap);
+        // Un repère BLANC, comme un marquage au sol : la pastille sombre qu'on
+        // avait avant se lisait comme une tache sur la chaussée, et il y en
+        // avait trois par carrefour.
         this.ciblesEl.innerHTML = Object.entries(sorties).map(([sens, c]) => `
             <g class="vi-cible" data-cible="${sens}" transform="translate(${px(c.x)},${py(c.y)})"
                role="button" tabindex="0" aria-label="Aller à ce carrefour">
                 <circle r="26" fill="transparent" />
-                <circle r="7" fill="#0f172a" opacity=".22">
-                    <animate attributeName="opacity" values=".1;.32;.1" dur="2.2s" repeatCount="indefinite" />
+                <circle r="11" fill="none" stroke="#f8fafc" stroke-width="2.6" opacity=".7" />
+                <circle r="4.5" fill="#f8fafc" opacity=".9">
+                    <animate attributeName="r" values="3.5;5.5;3.5" dur="2.2s" repeatCount="indefinite" />
                 </circle>
             </g>`).join('');
         this.ciblesEl.querySelectorAll('[data-cible]').forEach(g => {
@@ -418,14 +473,14 @@ class Ville extends BaseGame {
     // --- La feuille de route ----------------------------------------------------
 
     majRoute() {
-        const ico = { gauche: '↰', droite: '↱' };
+        const ico = { gauche: '↰', droite: '↱', depart: '🚗', arrivee: '🏁' };
         this.routeEl.innerHTML = this.etapes.map((e, i) => {
             const etat = i < this.etapeCourante ? 'faite' : (i === this.etapeCourante ? 'active' : '');
             const texte = e.type === 'arrivee'
-                ? (e.rues > 0 ? e.texte : `Tu arrives à ${this.lieu.nom}`)
+                ? (e.rues > 0 ? e.texte : `Tu arrives ${aLieu(this.lieu.nom)}`)
                 : e.texte;
             return `<span class="vi-etape ${etat ? 'vi-etape--' + etat : ''}">
-                <span class="vi-fleche">${e.type === 'arrivee' ? '🏁' : ico[e.sens]}</span>${texte}</span>`;
+                <span class="vi-fleche">${ico[e.type] || ico[e.sens]}</span>${texte}</span>`;
         }).join('');
     }
 
@@ -435,9 +490,13 @@ class Ville extends BaseGame {
      * L'étape avance quand le virage qu'elle décrit vient d'être pris — pas au
      * carrefour suivant. C'est ce décalage qui permet de dire « tu es allé trop
      * loin » plutôt que « faux ».
+     *
+     * Tant que la voiture n'a pas bougé, c'est « Avance » qui est allumé : la
+     * première chose à faire n'est pas de chercher un virage, c'est de partir.
      */
     majEtapeCourante() {
-        let i = 0, virages = 0;
+        if (this.etat.index === 0) { this.etapeCourante = 0; return; }
+        let virages = 0;
         let cap = this.itineraire.capDepart;
         for (let k = 0; k < this.etat.index; k++) {
             const a = this.etat.noeuds[k], b = this.etat.noeuds[k + 1];
@@ -448,8 +507,8 @@ class Ville extends BaseGame {
             if (sensEntre(cap, capVers) !== 'tout-droit') virages++;
             cap = capVers;
         }
-        i = Math.min(virages, this.etapes.length - 1);
-        this.etapeCourante = i;
+        // +1 : la feuille de route commence par « Avance ».
+        this.etapeCourante = Math.min(virages + 1, this.etapes.length - 1);
     }
 
     // --- Les commandes ----------------------------------------------------------
@@ -482,11 +541,7 @@ class Ville extends BaseGame {
         const res = jugerCoup(this.ville, this.etat, sens);
         if (res.ok) {
             this.animation = true;
-            this.etat.cap = res.cap;
-            this.etat.index++;
-            this.placerVoiture(true);
-            this.majEtapeCourante();
-            this.majRoute();
+            this.avancer(res);
             this.timerId = setTimeout(() => {
                 this.animation = false;
                 if (!this.isRunning) return;
@@ -518,8 +573,28 @@ class Ville extends BaseGame {
         }
     }
 
+    /** Un pas accepté : la voiture glisse, le trait la suit, la feuille avance. */
+    avancer(res) {
+        const de = this.etat.noeuds[this.etat.index];
+        this.etat.cap = res.cap;
+        this.etat.index++;
+        this.tracerTroncon(de, this.etat.noeuds[this.etat.index]);
+        this.placerVoiture(true);
+        this.majEtapeCourante();
+        this.majRoute();
+    }
+
     consigneTexte() {
         const e = this.etapes[this.etapeCourante];
+        if (!e) return '';
+        return e.type === 'arrivee'
+            ? (e.rues > 0 ? e.texte : `rejoindre ${this.lieu.nom}`)
+            : e.texte;
+    }
+
+    /** La consigne d'APRÈS : ce qu'on cherche pendant qu'on avance. */
+    consigneSuivante() {
+        const e = this.etapes[this.etapeCourante + 1];
         if (!e) return '';
         return e.type === 'arrivee'
             ? (e.rues > 0 ? e.texte : `rejoindre ${this.lieu.nom}`)
@@ -551,13 +626,13 @@ class Ville extends BaseGame {
         this.majScore();
         const parfait = this.fautesTrajet === 0;
         this.note(parfait
-            ? `🏁 Arrivé à ${this.lieu.nom} sans une seule erreur. Tu t'es mis à la place du conducteur.`
-            : `🏁 Arrivé à ${this.lieu.nom}. ${this.fautesTrajet} erreur${this.fautesTrajet > 1 ? 's' : ''} en route — le prochain trajet sera plus net.`,
+            ? `🏁 Arrivé ${aLieu(this.lieu.nom)} sans une seule erreur. Tu t'es mis à la place du conducteur.`
+            : `🏁 Arrivé ${aLieu(this.lieu.nom)}. ${this.fautesTrajet} erreur${this.fautesTrajet > 1 ? 's' : ''} en route — le prochain trajet sera plus net.`,
             'ok');
         if (!this.isDemo) {
             this.onCorrectAnswer(null, 'geo.espace.deplacement', {
                 points: parfait ? 30 : 15,
-                questionText: `Itinéraire jusqu'à ${this.lieu.nom} (${this.taille.virages} virages)`,
+                questionText: `Itinéraire jusqu'${aLieu(this.lieu.nom)} (${this.taille.virages} virages)`,
                 given: 'arrivé', expected: 'arrivé'
             });
         }
@@ -587,7 +662,7 @@ class Ville extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say(`Direction ${this.lieu.nom}. D'abord : ${this.consigneTexte().toLowerCase()}.`, this.routeEl);
+        cur.say(`Direction : ${this.lieu.nom}. On avance, puis ${this.consigneSuivante().toLowerCase()}.`, this.routeEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         while (this.isRunning && this.etat.index < this.etat.noeuds.length - 1) {
@@ -614,13 +689,7 @@ class Ville extends BaseGame {
             const bouton = this.container.querySelector(`[data-sens="${sens}"]`);
             if (bouton && !await cur.tap(bouton)) return fin();
             const res = jugerCoup(this.ville, this.etat, sens);
-            if (res.ok) {
-                this.etat.cap = res.cap;
-                this.etat.index++;
-                this.placerVoiture(true);
-                this.majEtapeCourante();
-                this.majRoute();
-            }
+            if (res.ok) this.avancer(res);
             if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
         }
 

@@ -148,8 +148,16 @@ export function connexe(ville) {
  * On impose un NOMBRE DE VIRAGES plutôt qu'une longueur : c'est le virage qui
  * fait l'exercice. Un trajet de dix rues tout droit ne demande rien ; trois
  * virages sur cinq rues demandent trois fois de se replacer dans la voiture.
+ *
+ * `droitAuDepart` impose des rues TOUT DROIT avant le premier virage. Un
+ * itinéraire qui commence par « prends la première à droite » au carrefour même
+ * du départ ne laisse rien à lire : la voiture tourne avant d'être partie. En
+ * démarrant tout droit, l'élève voit d'abord la voiture s'engager, compte les
+ * rues qui défilent, et tourne à la bonne.
  */
-export function tirerItineraire(ville, { virages = 3, capDepart = null, essais = 400, rng } = {}) {
+export function tirerItineraire(ville, {
+    virages = 3, capDepart = null, essais = 400, droitAuDepart = 1, rng
+} = {}) {
     const alea = rng || { next: Math.random, int: (a, b) => a + Math.floor(Math.random() * (b - a + 1)) };
     const pick = (arr) => arr[Math.floor(alea.next() * arr.length)];
 
@@ -173,8 +181,17 @@ export function tirerItineraire(ville, { virages = 3, capDepart = null, essais =
             const libres = Object.entries(sorties)
                 .filter(([, n]) => !vus.has(cle(n.x, n.y)));
             if (!libres.length) break;
-            const veutTourner = tournes < virages;
-            const candidats = libres.filter(([s]) => veutTourner ? s !== 'tout-droit' : true);
+            let candidats;
+            if (i < droitAuDepart) {
+                // Les premiers pas sont tout droit, sans négociation possible :
+                // si cette rue-là ne continue pas, ce départ ne convient pas et
+                // on en tire un autre.
+                candidats = libres.filter(([s]) => s === 'tout-droit');
+                if (!candidats.length) break;
+            } else {
+                const veutTourner = tournes < virages;
+                candidats = libres.filter(([s]) => veutTourner ? s !== 'tout-droit' : true);
+            }
             const [sens, suivant] = pick(candidats.length ? candidats : libres);
             if (sens !== 'tout-droit') tournes++;
             cap = suivant.cap;
@@ -201,10 +218,15 @@ const ORDINAUX = ['', 'première', 'deuxième', 'troisième', 'quatrième', 'cin
  * dire la deuxième rue qui part sur ta gauche. Entre les deux, il peut y avoir
  * des carrefours où rien ne part à gauche — c'est justement ce qu'il faut lire
  * sur le plan. On compte donc les OCCASIONS de tourner, pas les croisements.
+ *
+ * La feuille commence par « Avance » : c'est ce que dit un passager, et c'est
+ * ce que la voiture fait — le premier pas est tout droit. Sans cette ligne, la
+ * première consigne affichée est un virage, et on cherche à tourner avant même
+ * d'être parti.
  */
 export function decrireItineraire(ville, itineraire) {
     const { noeuds, capDepart } = itineraire;
-    const etapes = [];
+    const etapes = [{ type: 'depart', texte: 'Avance', noeud: { ...noeuds[0] } }];
     let cap = capDepart;
     // Occasions rencontrées depuis le dernier virage, par côté.
     let occasions = { gauche: 0, droite: 0 };
@@ -291,6 +313,20 @@ export function jugerCoup(ville, etat, sens) {
             ? `La voiture roule vers ${nomCap(cap)} : sa ${bonSens} n'est pas de ce côté de l'écran. Mets-toi à la place du conducteur.`
             : `Ce n'était pas ce virage-là : il fallait aller à ${bonSens === 'tout-droit' ? 'tout droit' : bonSens}.`
     };
+}
+
+/**
+ * « à » + un nom de lieu, en français correct.
+ *
+ * « Va jusqu'à le parc » se lisait en toutes lettres à l'écran. La contraction
+ * ne s'invente pas au cas par cas dans chaque phrase : elle se fait ici, une
+ * fois, pour toutes les destinations.
+ */
+export function aLieu(nom) {
+    const n = String(nom || '');
+    if (/^les /i.test(n)) return `aux ${n.slice(4)}`;
+    if (/^le /i.test(n)) return `au ${n.slice(3)}`;
+    return `à ${n}`;                    // « à la gare », « à l'école »
 }
 
 export function nomCap(cap) {
