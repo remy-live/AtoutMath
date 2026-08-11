@@ -183,9 +183,18 @@ test('les niveaux d\'ambiguïté proposent bien deux blocs de même valeur', () 
     const valeurs = Object.values(seize.produits).map(([a, b]) => a * b);
     assert.deepEqual(valeurs, [16, 16], '4 × 4 et 2 × 8 valent tous les deux 16');
 
-    const chantier = NIVEAUX.find(n => n.id === 'ch6');
+    const chantier = NIVEAUX.find(n => n.id === 'ch12');
     const v = Object.values(chantier.produits).map(([a, b]) => a * b);
     assert.equal(v.filter(x => x === 64).length, 2, '8 × 8 et 4 × 16 valent tous les deux 64');
+
+    // L'ambiguïté n'est pas un cas isolé : c'est l'idée du jeu, et elle doit
+    // revenir assez souvent pour qu'on cesse de la prendre pour un accident.
+    const ambigus = NIVEAUX.filter(n => {
+        const p = Object.values(n.produits).map(([a, b]) => a * b);
+        return new Set(p).size < p.length;
+    });
+    assert.ok(ambigus.length >= 6,
+        `seulement ${ambigus.length} niveaux à valeurs jumelles sur ${NIVEAUX.length}`);
 });
 
 test('chaque bloc a exactement une dalle et chaque dalle exactement un bloc', () => {

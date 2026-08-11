@@ -259,7 +259,83 @@ export const NIVEAUX = [
             #########`
     },
     {
-        id: 'ch6', titre: 'Le chantier',
+        id: 'ch6', titre: 'Trente-six des deux côtés',
+        produits: { A: [6, 6], B: [4, 9] },
+        indice: '6 × 6 et 4 × 9 font 36 : les deux dalles acceptent les deux blocs. Regarde donc où chacun PEUT s\'arrêter.',
+        plan: `
+            ########
+            ##.A...#
+            #.a..#.#
+            ###..B.#
+            #.#b.#.#
+            #..#...#
+            ########`
+    },
+    {
+        id: 'ch7', titre: 'Les deux couloirs',
+        produits: { A: [6, 8], B: [9, 9] },
+        indice: 'Les deux dalles sont côte à côte, au fond à droite. Celui qui arrive le premier prend la place de l\'autre.',
+        plan: `
+            #########
+            #.......#
+            #.......#
+            #.#..A..#
+            #.#.B...#
+            #.#...ba#
+            #########`
+    },
+    {
+        id: 'ch8', titre: 'Le coude',
+        produits: { A: [7, 6], B: [6, 8] },
+        indice: 'Un bloc ne tourne pas : pour changer de direction, il faut d\'abord qu\'il rencontre un mur.',
+        plan: `
+            ########
+            #a.....#
+            #.....A#
+            #.....##
+            #...Bb.#
+            ########`
+    },
+    {
+        id: 'ch9', titre: 'Soixante-quatre en double',
+        produits: { A: [8, 8], B: [16, 4], C: [7, 7] },
+        indice: '8 × 8 et 16 × 4 valent 64. Le troisième bloc, lui, n\'a qu\'une seule dalle possible : commence par ce qui est forcé.',
+        plan: `
+            #######
+            #B....#
+            #.#...#
+            #.....#
+            #..A.a#
+            #.Cbc.#
+            #######`
+    },
+    {
+        id: 'ch10', titre: 'Le chantier encombré',
+        produits: { A: [8, 6], B: [8, 7], C: [9, 9] },
+        indice: 'Trois blocs dans le même espace. Chacun scellé rétrécit le passage des autres — d\'où l\'ordre.',
+        plan: `
+            #########
+            #..c....#
+            #..B#...#
+            #A.C....#
+            #......a#
+            #.#....b#
+            #########`
+    },
+    {
+        id: 'ch11', titre: 'Cinquante-six, deux fois',
+        produits: { A: [7, 8], B: [14, 4], C: [7, 6] },
+        indice: '7 × 8 et 14 × 4 font 56. Une des deux dalles est plus difficile à atteindre : réserve-la à celui qui peut y aller.',
+        plan: `
+            #########
+            #.A..Bb.#
+            #..#....#
+            #..C#...#
+            #...ca.##
+            #########`
+    },
+    {
+        id: 'ch12', titre: 'Le chantier',
         produits: { A: [8, 8], B: [4, 16], C: [5, 6] },
         indice: '8 × 8 et 4 × 16 font 64 tous les deux. Un seul des deux peut descendre : l\'autre est retenu par un mur.',
         plan: `
@@ -272,6 +348,74 @@ export const NIVEAUX = [
             #C......c#
             #........#
             ##########`
+    },
+    {
+        id: 'ch13', titre: 'La longue traversée',
+        produits: { A: [6, 9], B: [6, 7] },
+        indice: 'Les dalles sont au fond, séparées par un mur. Il faut faire le tour, et le tour se prépare.',
+        plan: `
+            ##########
+            #.A......#
+            #....#...#
+            #.....#.##
+            #.......##
+            #..B.a#.b#
+            #........#
+            ##########`
+    },
+    {
+        id: 'ch14', titre: 'Quatre à la fois',
+        produits: { A: [6, 7], B: [8, 8], C: [7, 9], D: [8, 6] },
+        indice: 'Quatre blocs, quatre dalles, et de la place — pour l\'instant. Chaque bloc posé en enlève.',
+        plan: `
+            #########
+            #c.....d#
+            #...B...#
+            #...C..D#
+            #.....a##
+            #..Ab...#
+            #########`
+    },
+    {
+        id: 'ch15', titre: 'L\'ordre décide',
+        produits: { A: [7, 8], B: [14, 4], C: [6, 7] },
+        indice: 'Encore 56 en double. Un des deux blocs n\'atteint SA dalle que si l\'autre lui sert de mur.',
+        plan: `
+            ##########
+            #......c.#
+            #.A......#
+            #.......##
+            ##.###.C.#
+            #B......a#
+            #..b....##
+            ##########`
+    },
+    {
+        id: 'ch16', titre: 'Le détour obligé',
+        produits: { A: [6, 8], B: [12, 4], C: [7, 9] },
+        indice: '6 × 8 et 12 × 4 font 48. Aucune dalle n\'est en face de son bloc : tout se joue en deux temps.',
+        plan: `
+            ##########
+            #.......##
+            ##.C...a##
+            #.....##.#
+            #.B...A#.#
+            #..#.....#
+            #..cb..#.#
+            ##########`
+    },
+    {
+        id: 'ch17', titre: 'Le grand chantier',
+        produits: { A: [6, 6], B: [4, 9], C: [7, 7], D: [9, 6] },
+        indice: 'Quatre blocs, dont deux qui valent 36. Lis tout le chantier avant de pousser quoi que ce soit.',
+        plan: `
+            #########
+            #bC#cd#.#
+            #.B.D...#
+            #.......#
+            #....A..#
+            ##..a##.#
+            #########`
     }
 ];
 

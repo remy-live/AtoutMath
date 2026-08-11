@@ -404,14 +404,25 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'depart', type: 'select', label: 'Commencer au niveau',
-                aide: 'Les six niveaux s\'enchaînent tout seuls ; ce réglage sert à reprendre plus loin ou à montrer directement le niveau à deux résultats identiques.',
+                aide: 'Les dix-sept niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
                 options: [
                     { value: 'ch1', label: '1 · Le premier bloc' },
                     { value: 'ch2', label: '2 · Glisser jusqu\'au coin' },
                     { value: 'ch3', label: '3 · Chacun sa dalle' },
                     { value: 'ch4', label: '4 · Le bloc devient un mur' },
                     { value: 'ch5', label: '5 · Deux façons de faire 16' },
-                    { value: 'ch6', label: '6 · Le chantier' }
+                    { value: 'ch6', label: '6 · Trente-six des deux côtés' },
+                    { value: 'ch7', label: '7 · Les deux couloirs' },
+                    { value: 'ch8', label: '8 · Le coude' },
+                    { value: 'ch9', label: '9 · Soixante-quatre en double' },
+                    { value: 'ch10', label: '10 · Le chantier encombré' },
+                    { value: 'ch11', label: '11 · Cinquante-six, deux fois' },
+                    { value: 'ch12', label: '12 · Le chantier' },
+                    { value: 'ch13', label: '13 · La longue traversée' },
+                    { value: 'ch14', label: '14 · Quatre à la fois' },
+                    { value: 'ch15', label: '15 · L\'ordre décide' },
+                    { value: 'ch16', label: '16 · Le détour obligé' },
+                    { value: 'ch17', label: '17 · Le grand chantier' }
                 ],
                 default: 'ch1'
             }

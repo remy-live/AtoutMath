@@ -24,6 +24,8 @@ import {
 } from '../core/ville.js';
 
 const ANGLES = { N: 0, E: 90, S: 180, O: 270 };
+// Les trois crans du volant, du plus à gauche au plus à droite.
+const SENS = ['gauche', 'tout-droit', 'droite'];
 
 const TAILLES = {
     petit: { cols: 4, rows: 4, virages: 2, label: '4 × 4 — pour commencer' },
@@ -80,14 +82,20 @@ class Ville extends BaseGame {
                    cours mise en avant. Les donner une par une masquerait ce qui
                    fait l'exercice — anticiper, et se rendre compte qu'on est
                    allé trop loin. */
+                /* UNE CONSIGNE PAR LIGNE. En pastilles côte à côte, les
+                   consignes se lisaient comme une phrase continue et il
+                   fallait deviner où l'une finissait ; surtout, « Avance »
+                   flottait tout seul au début alors qu'il fait partie de
+                   CHAQUE consigne — on avance, PUIS on tourne. Chaque ligne
+                   porte donc l'ordre entier. */
                 .vi-route {
-                    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-                    justify-content: center; width: 100%; max-width: 680px;
+                    display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+                    width: 100%; max-width: 480px;
                     font-size: clamp(11px, 2.6cqw, 14px); flex: 0 0 auto;
                 }
                 .vi-etape {
-                    display: flex; align-items: center; gap: 5px;
-                    padding: 4px 10px; border-radius: 999px; font-weight: 700;
+                    display: flex; align-items: center; gap: 7px;
+                    padding: 5px 12px; border-radius: 10px; font-weight: 700;
                     background: var(--bg-hover); color: var(--text-muted);
                     border: 2px solid transparent; transition: .18s;
                 }
@@ -95,7 +103,6 @@ class Ville extends BaseGame {
                 .vi-etape--active {
                     background: color-mix(in srgb, var(--primary) 16%, transparent);
                     color: var(--text-main); border-color: var(--primary);
-                    transform: scale(1.04);
                 }
                 .vi-fleche { font-size: 1.05em; line-height: 1; }
 
@@ -135,12 +142,28 @@ class Ville extends BaseGame {
                 .vi-cmd svg { display: block; }
                 .vi-cmd-nom { font-size: .72rem; font-weight: 700; color: var(--text-muted); }
                 .vi-cmd--go { border-color: var(--primary); color: var(--primary); }
+                /* Le volant est braqué : le bouton reste enfoncé. Sans cette
+                   marque, rien ne dit que la rotation est ACQUISE et qu'il ne
+                   reste qu'à avancer. */
+                .vi-cmd--braque {
+                    background: color-mix(in srgb, var(--primary) 18%, transparent);
+                    border-color: var(--primary); color: var(--primary);
+                    box-shadow: none; transform: translateY(3px);
+                }
 
+                /* RIEN SOUS LE PLAN. Une ligne de commentaire posée sous la
+                   ville répétait la consigne déjà surlignée au-dessus et
+                   poussait le plan vers le haut : deux endroits où lire la
+                   même chose, et un plan plus petit. Il ne reste que le
+                   retour d'erreur — irremplaçable, lui —, remonté au-dessus
+                   du plan, et qui ne prend de place que s'il a quelque chose
+                   à dire. */
                 .vi-note {
-                    min-height: 2.6em; text-align: center; width: 100%; max-width: 640px;
+                    text-align: center; width: 100%; max-width: 640px;
                     font-size: clamp(11px, 2.7cqw, 14px); line-height: 1.35;
                     color: var(--text-muted); flex: 0 0 auto;
                 }
+                .vi-note:empty { display: none; }
                 .vi-note b { color: var(--text-main); }
                 .vi-bulle { display: inline-block; padding: 5px 13px; border-radius: 999px; font-weight: 700; }
                 .vi-bulle--ok { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
@@ -166,12 +189,14 @@ class Ville extends BaseGame {
                     <button type="button" class="vi-btn" data-neuf>↺ Autre trajet</button>
                 </div>
                 <div class="vi-route" data-route></div>
-                <div class="vi-plan" data-plan></div>
                 <p class="vi-note" data-note></p>
+                <div class="vi-plan" data-plan></div>
                 <div class="vi-cmds">
-                    ${this.boutonCmd('gauche', 'À gauche', 'M14 4 L6 12 L14 20 M6 12 H20')}
-                    ${this.boutonCmd('tout-droit', 'Tout droit', 'M12 20 V4 M5 11 L12 4 L19 11')}
-                    ${this.boutonCmd('droite', 'À droite', 'M10 4 L18 12 L10 20 M18 12 H4')}
+                    ${this.boutonCmd('gauche', 'Tourner à gauche',
+        'M3 3v6h6M3.5 15.5a9 9 0 1 0 2.1-9.4L3 8.5')}
+                    ${this.boutonCmd('avance', 'Avance', 'M12 20 V4 M5 11 L12 4 L19 11')}
+                    ${this.boutonCmd('droite', 'Tourner à droite',
+        'M21 3v6h-6M20.5 15.5a9 9 0 1 1-2.1-9.4L21 8.5')}
                 </div>
             </div>`;
 
@@ -182,16 +207,16 @@ class Ville extends BaseGame {
         this.scoreEl = this.container.querySelector('[data-score]');
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouveauTrajet());
         this.container.querySelectorAll('[data-sens]').forEach(b => {
-            b.addEventListener('click', () => this.jouer(b.dataset.sens));
+            b.addEventListener('click', () => this.commande(b.dataset.sens));
         });
 
         // Les flèches du clavier, pour qui en a un. ↑ avance, ← et → tournent —
         // du côté de la VOITURE, comme les boutons.
         this.surTouche = (e) => {
-            const sens = { ArrowLeft: 'gauche', ArrowUp: 'tout-droit', ArrowRight: 'droite' }[e.key];
+            const sens = { ArrowLeft: 'gauche', ArrowUp: 'avance', ArrowRight: 'droite' }[e.key];
             if (!sens || this.isDemo) return;
             e.preventDefault();
-            this.jouer(sens);
+            this.commande(sens);
         };
         document.addEventListener('keydown', this.surTouche);
 
@@ -199,7 +224,7 @@ class Ville extends BaseGame {
     }
 
     boutonCmd(sens, nom, d) {
-        return `<button type="button" class="vi-cmd ${sens === 'tout-droit' ? 'vi-cmd--go' : ''}"
+        return `<button type="button" class="vi-cmd ${sens === 'avance' ? 'vi-cmd--go' : ''}"
             data-sens="${sens}" aria-label="${nom}">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -229,6 +254,8 @@ class Ville extends BaseGame {
         this.etapes = decrireItineraire(this.ville, this.itineraire);
         this.lieu = LIEUX[Math.floor(this.rng.next() * LIEUX.length)];
         this.etat = { noeuds: this.itineraire.noeuds, index: 0, cap: this.itineraire.capDepart };
+        this.braquage = 0;
+        this.angleVoiture = ANGLES[this.itineraire.capDepart];
         this.etapeCourante = 0;
         this.fautesTrajet = 0;
         this.trajets++;
@@ -238,9 +265,7 @@ class Ville extends BaseGame {
         this.majCommandes();
         this.butEl.innerHTML = `🚗 Va jusqu'<b>${aLieu(this.lieu.nom)}</b>`;
         this.majScore();
-        this.note(`La voiture roule vers <b>${nomCap(this.etat.cap)}</b>. `
-            + `Avance d'abord, puis <b>${this.consigneSuivante().toLowerCase()}</b>. `
-            + `Les trois boutons sont ceux du CONDUCTEUR, pas ceux de l'écran.`);
+        this.note('');
     }
 
     majScore() {
@@ -426,8 +451,21 @@ class Ville extends BaseGame {
                     <animate attributeName="r" values="3.5;5.5;3.5" dur="2.2s" repeatCount="indefinite" />
                 </circle>
             </g>`).join('');
+        // Désigner une rue sur le plan reste possible, mais passe par le volant
+        // comme le reste : la voiture braque D'ABORD, puis s'engage. Sans ce
+        // détour elle se serait mise à changer de cap par téléportation dans le
+        // seul cas où l'on montre du doigt — deux règles pour un même geste.
         this.ciblesEl.querySelectorAll('[data-cible]').forEach(g => {
-            g.addEventListener('click', () => this.jouer(g.dataset.cible));
+            g.addEventListener('click', () => {
+                const voulu = SENS.indexOf(g.dataset.cible) - 1;
+                if (this.animation || voulu < -1) return;
+                this.angleVoiture += (voulu - this.braquage) * 90;
+                this.braquage = voulu;
+                this.placerVoiture(true);
+                this.timerVirage = setTimeout(() => {
+                    if (this.isRunning) this.commande('avance');
+                }, voulu === 0 ? 0 : 260);
+            });
         });
     }
 
@@ -461,26 +499,62 @@ class Ville extends BaseGame {
             </g>`;
     }
 
+    /** Le cap vers lequel la voiture POINTE, volant compris. */
+    capVise() {
+        return tourner(this.etat.cap, SENS[this.braquage + 1]);
+    }
+
     placerVoiture(anime = true) {
         if (!this.voitureEl) return;
         const n = this.etat.noeuds[this.etat.index];
         const { px, py } = this.pos;
         this.voitureEl.classList.toggle('vi-voiture--stop', !anime);
+        // L'angle est CUMULÉ, jamais recalculé modulo 360 : recalculer donnerait
+        // 270° là où l'on vient de braquer à −90°, et la voiture ferait trois
+        // quarts de tour à l'écran pour un quart de volant.
         this.voitureEl.setAttribute('transform',
-            `translate(${px(n.x)},${py(n.y)}) rotate(${ANGLES[this.etat.cap]})`);
+            `translate(${px(n.x)},${py(n.y)}) rotate(${this.angleVoiture})`);
     }
 
     // --- La feuille de route ----------------------------------------------------
 
+    /**
+     * LA FEUILLE DE ROUTE, une consigne complète par ligne.
+     *
+     * « Avance » n'est pas une étape : c'est la moitié de chaque étape. Isolé
+     * en tête de liste, il donnait l'impression qu'on avançait une fois pour
+     * toutes, puis qu'on ne faisait plus que tourner — alors qu'entre deux
+     * virages on roule, et que c'est en roulant qu'on compte les rues. Chaque
+     * ligne porte donc l'ordre entier : « Avance puis prends la deuxième à
+     * gauche. »
+     */
+    lignesRoute() {
+        const lignes = [];
+        for (const e of this.etapes) {
+            if (e.type === 'depart') continue;          // fondu dans « Avance puis… »
+            if (e.type === 'tourner') {
+                lignes.push({
+                    ico: e.sens === 'gauche' ? '↰' : '↱',
+                    texte: `Avance puis ${e.texte.charAt(0).toLowerCase()}${e.texte.slice(1)}.`
+                });
+            } else {
+                lignes.push({
+                    ico: '🏁',
+                    texte: e.rues > 0 ? `${e.texte}.` : `Tu arrives ${aLieu(this.lieu.nom)}.`
+                });
+            }
+        }
+        return lignes;
+    }
+
     majRoute() {
-        const ico = { gauche: '↰', droite: '↱', depart: '🚗', arrivee: '🏁' };
-        this.routeEl.innerHTML = this.etapes.map((e, i) => {
-            const etat = i < this.etapeCourante ? 'faite' : (i === this.etapeCourante ? 'active' : '');
-            const texte = e.type === 'arrivee'
-                ? (e.rues > 0 ? e.texte : `Tu arrives ${aLieu(this.lieu.nom)}`)
-                : e.texte;
+        // La ligne en cours : « Avance » et le premier virage ne font plus
+        // qu'une consigne, donc l'étape 0 et l'étape 1 allument la même ligne.
+        const active = Math.max(0, this.etapeCourante - 1);
+        this.routeEl.innerHTML = this.lignesRoute().map((l, i) => {
+            const etat = i < active ? 'faite' : (i === active ? 'active' : '');
             return `<span class="vi-etape ${etat ? 'vi-etape--' + etat : ''}">
-                <span class="vi-fleche">${ico[e.type] || ico[e.sens]}</span>${texte}</span>`;
+                <span class="vi-fleche">${l.ico}</span>${l.texte}</span>`;
         }).join('');
     }
 
@@ -514,20 +588,47 @@ class Ville extends BaseGame {
     // --- Les commandes ----------------------------------------------------------
 
     majCommandes() {
-        const n = this.etat.noeuds[this.etat.index];
-        const sorties = sortiesRelatives(this.ville, n.x, n.y, this.etat.cap);
         const fini = this.etat.index >= this.etat.noeuds.length - 1;
         this.container.querySelectorAll('[data-sens]').forEach(b => {
-            // On laisse ACTIVES les directions sans rue : refuser le clic
-            // priverait l'élève du seul retour qui compte — « il n'y a pas de
-            // rue de ce côté ». Seule l'arrivée éteint tout.
-            //
-            // Pendant la démonstration non plus : le robot APPUIE sur ces
-            // boutons, et le voir presser une touche grisée donne l'impression
-            // que rien ne répond. Les vrais clics, eux, sont ignorés plus bas.
-            b.disabled = fini;
-            b.title = sorties[b.dataset.sens] ? '' : 'Aucune rue de ce côté';
+            const s = b.dataset.sens;
+            // Le volant a trois crans : au bout, le bouton s'éteint. « Avance »
+            // reste toujours actif — même vers une rue qui n'existe pas, car
+            // « il n'y a pas de rue de ce côté » est le retour qui apprend le
+            // plus, et le refuser en silence n'apprend rien.
+            b.disabled = fini || (s === 'gauche' && this.braquage <= -1)
+                || (s === 'droite' && this.braquage >= 1);
+            b.classList.toggle('vi-cmd--braque',
+                (s === 'gauche' && this.braquage < 0) || (s === 'droite' && this.braquage > 0));
         });
+    }
+
+    /**
+     * TOURNER N'EST PAS AVANCER.
+     *
+     * Les trois boutons faisaient tous rouler la voiture : choisir « à gauche »
+     * l'envoyait dans la rue de gauche, et c'était jugé sur-le-champ. Or ce
+     * qu'on travaille ici, c'est justement le geste de se mettre à la place du
+     * conducteur — et ce geste-là, c'est TOURNER LE VOLANT. Le séparer de
+     * l'avance donne à l'élève ce qui lui manquait : voir où la voiture pointe
+     * AVANT de s'engager, et se reprendre si ce n'est pas ce qu'il voulait.
+     * Une rotation ne coûte rien et ne compte pas comme une réponse ; seul
+     * « Avance » engage.
+     */
+    commande(action) {
+        if (this.isDemo || !this.etat || this.animation) return;
+        if (this.etat.index >= this.etat.noeuds.length - 1) return;
+        if (action === 'avance') { this.jouer(SENS[this.braquage + 1]); return; }
+
+        // Le volant a TROIS crans : à gauche, tout droit, à droite. Au-delà on
+        // ferait demi-tour, ce qu'aucun itinéraire ne demande — et une voiture
+        // qui peut tourner en rond n'aide personne à compter les rues.
+        const vise = this.braquage + (action === 'gauche' ? -1 : 1);
+        if (vise < -1 || vise > 1) return;
+        this.angleVoiture += (vise - this.braquage) * 90;
+        this.braquage = vise;
+        this.placerVoiture(true);
+        this.majCommandes();
+        this.note('');
     }
 
     jouer(sens) {
@@ -549,7 +650,7 @@ class Ville extends BaseGame {
                 else {
                     this.majCommandes();
                     this.majCibles();
-                    this.note(`Tu roules vers <b>${nomCap(this.etat.cap)}</b>. Consigne : <b>${this.consigneTexte()}</b>`);
+                    this.note('');
                 }
             }, 460);
             return;
@@ -578,6 +679,9 @@ class Ville extends BaseGame {
         const de = this.etat.noeuds[this.etat.index];
         this.etat.cap = res.cap;
         this.etat.index++;
+        // Le volant se remet droit : au carrefour suivant, « à gauche » veut
+        // dire la gauche de la voiture telle qu'elle arrive.
+        this.braquage = 0;
         this.tracerTroncon(de, this.etat.noeuds[this.etat.index]);
         this.placerVoiture(true);
         this.majEtapeCourante();
@@ -606,7 +710,7 @@ class Ville extends BaseGame {
         this.voitureEl.classList.add('vi-voiture--stop');
         const n = this.etat.noeuds[this.etat.index];
         const { px, py } = this.pos;
-        const base = `translate(${px(n.x)},${py(n.y)}) rotate(${ANGLES[this.etat.cap]})`;
+        const base = `translate(${px(n.x)},${py(n.y)}) rotate(${this.angleVoiture})`;
         let i = 0;
         const tic = () => {
             if (!this.voitureEl || !this.isRunning) return;
@@ -686,10 +790,24 @@ class Ville extends BaseGame {
             }
             if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
 
-            const bouton = this.container.querySelector(`[data-sens="${sens}"]`);
-            if (bouton && !await cur.tap(bouton)) return fin();
+            // Le robot BRAQUE d'abord, puis avance — dans cet ordre, parce que
+            // c'est l'ordre que l'élève devra reproduire. Le voir tourner le
+            // volant et attendre montre que la rotation seule ne fait rien
+            // avancer : c'est là que se joue « la gauche de qui ? ».
+            if (sens !== 'tout-droit') {
+                const volant = this.container.querySelector(`[data-sens="${sens}"]`);
+                if (volant && !await cur.tap(volant)) return fin();
+                this.angleVoiture += sens === 'gauche' ? -90 : 90;
+                this.braquage = sens === 'gauche' ? -1 : 1;
+                this.placerVoiture(true);
+                this.majCommandes();
+                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            }
+            const go = this.container.querySelector('[data-sens="avance"]');
+            if (go && !await cur.tap(go)) return fin();
             const res = jugerCoup(this.ville, this.etat, sens);
             if (res.ok) this.avancer(res);
+            this.majCommandes();
             if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
         }
 
@@ -703,6 +821,7 @@ class Ville extends BaseGame {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         if (this.surTouche) document.removeEventListener('keydown', this.surTouche);
         if (this.timerSecousse) clearTimeout(this.timerSecousse);
+        if (this.timerVirage) clearTimeout(this.timerVirage);
         super.destroy();
     }
 }

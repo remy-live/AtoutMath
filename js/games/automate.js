@@ -149,6 +149,18 @@ class Automate extends BaseGame {
                 .au-cmd:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
                 .au-cmd:disabled { opacity: .3; cursor: default; }
                 .au-cmd-nom { font-size: .7rem; font-weight: 700; color: var(--text-muted); }
+                /* Le raccourci clavier, écrit sur le bouton : sans quoi il
+                   n'existe que pour qui a pensé à l'essayer. Caché au doigt,
+                   où il n'y a pas de clavier à annoncer. */
+                .au-cmd-touche {
+                    font: inherit; font-size: .64rem; font-weight: 800; line-height: 1.5;
+                    min-width: 1.5em; text-align: center;
+                    padding: 0 5px; border-radius: 5px; margin-top: 2px;
+                    background: var(--bg-hover); color: var(--text-muted);
+                    border: 1px solid var(--border);
+                }
+                @media (pointer: coarse) { .au-cmd-touche { display: none; } }
+                .au-cmd--frappe { transform: translateY(3px); box-shadow: none; }
 
                 .au-robot { transition: transform .38s cubic-bezier(.4,.1,.2,1); }
                 .au-robot--stop { transition: none; }
@@ -182,9 +194,11 @@ class Automate extends BaseGame {
                     <div class="au-plan" data-plan></div>
                 </div>
                 <div class="au-cmds" data-cmds>
-                    ${this.boutonCmd('gauche', '↺ à gauche', 'M14 4 L6 12 L14 20 M6 12 H20')}
-                    ${this.boutonCmd('pose', 'poser', '')}
-                    ${this.boutonCmd('droite', '↻ à droite', 'M10 4 L18 12 L10 20 M18 12 H4')}
+                    ${this.boutonCmd('gauche', 'tourner à gauche',
+        'M3 3v6h6M3.5 15.5a9 9 0 1 0 2.1-9.4L3 8.5', '←')}
+                    ${this.boutonCmd('pose', 'poser', '', 'espace')}
+                    ${this.boutonCmd('droite', 'tourner à droite',
+        'M21 3v6h-6M20.5 15.5a9 9 0 1 1-2.1-9.4L21 8.5', '→')}
                 </div>
                 <p class="au-note" data-note></p>
             </div>`;
@@ -200,20 +214,33 @@ class Automate extends BaseGame {
             b.addEventListener('click', () => this.jouer({ type: b.dataset.geste }));
         });
 
-        // Les flèches du clavier tournent le robot. Avancer, non : il faut
-        // DÉSIGNER la case d'arrivée, sinon on n'a rien compté.
+        // Les flèches du clavier tournent le robot, l'espace pose une marque.
+        // Avancer, non : il faut DÉSIGNER la case d'arrivée, sinon on n'a rien
+        // compté — et compter les cases est tout l'exercice.
         this.surTouche = (e) => {
-            const g = { ArrowLeft: 'gauche', ArrowRight: 'droite' }[e.key];
+            const g = { ArrowLeft: 'gauche', ArrowRight: 'droite', ' ': 'pose' }[e.key];
             if (!g || this.isDemo) return;
             e.preventDefault();
             this.jouer({ type: g });
+            const b = this.container.querySelector(`[data-geste="${g}"]`);
+            if (b) { b.classList.add('au-cmd--frappe'); setTimeout(() => b.classList.remove('au-cmd--frappe'), 170); }
         };
         document.addEventListener('keydown', this.surTouche);
 
         this.nouveauProgramme();
     }
 
-    boutonCmd(geste, nom, d) {
+    /**
+     * UNE FLÈCHE DROITE NE VEUT PAS DIRE « TOURNE ».
+     *
+     * Les boutons portaient ← et → : le geste qu'ils annoncent est « va à
+     * gauche », alors qu'ils font pivoter le robot SUR PLACE. C'est exactement
+     * la confusion que l'exercice cherche à défaire — se déplacer n'est pas
+     * s'orienter. Les flèches sont donc circulaires, et la touche du clavier
+     * qui fait la même chose est écrite dessous : elle existait déjà, mais
+     * rien ne la disait, donc personne ne s'en servait.
+     */
+    boutonCmd(geste, nom, d, touche = '') {
         const dessin = d
             ? `<path d="${d}" />`
             : '<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none" />';
@@ -223,6 +250,7 @@ class Automate extends BaseGame {
                 ${dessin}
             </svg>
             <span class="au-cmd-nom">${nom}</span>
+            ${touche ? `<kbd class="au-cmd-touche">${touche}</kbd>` : ''}
         </button>`;
     }
 

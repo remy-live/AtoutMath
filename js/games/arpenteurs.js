@@ -104,11 +104,9 @@ class Arpenteurs extends BaseGame {
                     border: 1px solid rgba(255,255,255,.55);
                     animation: ar-pose .3s ease-out; overflow: hidden;
                 }
-                /* La parcelle porte SA multiplication : c'est elle qu'on est
-                   venu chercher. L'aire seule ne dit rien — on la relit sous
-                   la multiplication, en plus discret. */
+                /* La parcelle porte SA multiplication, et rien d'autre :
+                   l'aire écrite dessous rendait le calcul inutile. */
                 .ar-parcelle i { font-style: normal; font-weight: 900; }
-                .ar-parcelle u { text-decoration: none; opacity: .8; font-weight: 700; }
                 @keyframes ar-pose { from { transform: scale(.86); opacity: .4; } }
                 .ar-parcelle--1 { background: linear-gradient(150deg, #60a5fa, #1d4ed8); }
                 .ar-parcelle--2 { background: linear-gradient(150deg, #fbbf24, #b45309); }
@@ -210,13 +208,14 @@ class Arpenteurs extends BaseGame {
         // Deux lignes seulement si la hauteur les accepte, et une taille de
         // police bornée par la LARGEUR disponible : « 3×12 » dans une bande de
         // trois cases déborderait sinon.
-        const deuxLignes = h * pas >= 42;
+        // Rien d'autre que les CÔTÉS. L'aire était rappelée sous la
+        // multiplication : la parcelle donnait alors la réponse au tour
+        // suivant qui retomberait sur le même nombre, et surtout elle donnait
+        // au voisin, d'un coup d'œil, ce qu'il aurait dû calculer.
         const parLigne = (pas * w - 6) / (mul.length * 0.62);
-        const taille = Math.max(7, Math.min(pas * 0.8, parLigne, deuxLignes ? pas * h * 0.42 : pas * h * 0.8));
+        const taille = Math.max(7, Math.min(pas * 0.8, parLigne, pas * h * 0.8));
         el.style.fontSize = `${taille.toFixed(1)}px`;
-        el.innerHTML = deuxLignes
-            ? `<i>${mul}</i><u>${el.dataset.aire}</u>`
-            : `<i>${mul}</i>`;
+        el.innerHTML = `<i>${mul}</i>`;
     }
 
     // --- Le déroulement -----------------------------------------------------
@@ -311,7 +310,11 @@ class Arpenteurs extends BaseGame {
         el.style.top = `calc(var(--pas) * ${r.y})`;
         el.style.width = `calc(var(--pas) * ${r.w})`;
         el.style.height = `calc(var(--pas) * ${r.h})`;
-        el.textContent = `${r.w} × ${r.h} = ${aire}`;
+        // LES DIMENSIONS, PAS LE PRODUIT. Afficher « 3 × 4 = 12 » pendant le
+        // tracé dispensait de calculer : il suffisait d'étirer le rectangle
+        // jusqu'à lire le nombre demandé. C'est le seul calcul du jeu — on le
+        // rend à l'élève.
+        el.textContent = `${r.w} × ${r.h}`;
     }
 
     effacerTrace() {

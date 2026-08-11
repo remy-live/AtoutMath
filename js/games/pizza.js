@@ -101,6 +101,9 @@ function semer(r, combien, motif) {
 
 // Le fond d'une part garnie : la couleur de l'ingrédient, très éclaircie, pour
 // rester une pizza et non un camembert statistique.
+// La mozzarella : UN aplat, le même pour toutes les parts nues.
+const FROMAGE = '#f7dda2';
+
 const TEINTES_PART = {
     tomate: '#f3a9a2', champignons: '#e8d3b4', olives: '#c9bde4',
     jambon: '#f8c8dc', poivron: '#bfe3c3', ananas: '#fbe9a7'
@@ -319,7 +322,7 @@ class Pizza extends BaseGame {
         };
         const parts = Array.from({ length: n }, (_, i) => `
             <g class="pz-part" data-part="${i}" transform="${decale(i)}">
-                <path class="pz-fond" d="${secteur(i, R)}" fill="url(#pz-fromage)" />
+                <path class="pz-fond" d="${secteur(i, R)}" fill="${FROMAGE}" />
                 <g data-garni="${i}"></g>
                 <path d="${secteur(i, R)}" fill="none" stroke="#e2b06a" stroke-width="1.6"
                       stroke-linejoin="round" opacity=".75" />
@@ -339,37 +342,19 @@ class Pizza extends BaseGame {
         this.sceneEl.innerHTML = `
             <svg class="pz-svg" viewBox="0 0 340 340" preserveAspectRatio="xMidYMid meet"
                  role="img" aria-label="Pizza en ${n} parts">
-                <defs>
-                    <!-- La mozzarella : un fond crème marbré, pas un aplat. -->
-                    <radialGradient id="pz-fromage" cx="42%" cy="36%">
-                        <stop offset="0%" stop-color="#fdf0cf" />
-                        <stop offset="62%" stop-color="#f8dfa4" />
-                        <stop offset="100%" stop-color="#efc981" />
-                    </radialGradient>
-                    <radialGradient id="pz-croute" cx="40%" cy="34%">
-                        <stop offset="0%" stop-color="#f0bd76" />
-                        <stop offset="70%" stop-color="#dfa155" />
-                        <stop offset="100%" stop-color="#c4813c" />
-                    </radialGradient>
-                    <radialGradient id="pz-sauce" cx="45%" cy="40%">
-                        <stop offset="0%" stop-color="#e8674f" />
-                        <stop offset="100%" stop-color="#c9402c" />
-                    </radialGradient>
-                    <filter id="pz-ombre" x="-25%" y="-25%" width="150%" height="150%">
-                        <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#7c4a12" flood-opacity=".35" />
-                    </filter>
-                </defs>
-                <!-- L'ombre portée sur le plan de travail. -->
-                <ellipse cx="${cx}" cy="${cy + croute + 4}" rx="${croute * .86}" ry="${croute * .1}"
-                         fill="#8a5a1e" opacity=".12" />
-                <g filter="url(#pz-ombre)">
-                    <circle cx="${cx}" cy="${cy}" r="${croute}" fill="url(#pz-croute)" />
-                    <circle cx="${cx}" cy="${cy}" r="${croute}" fill="none" stroke="#a96c2e" stroke-width="2.5" />
-                    ${cloques}
-                    <!-- La sauce déborde légèrement sous le fromage : c'est ce
-                         liseré rouge qui fait « pizza » plutôt que « galette ». -->
-                    <circle cx="${cx}" cy="${cy}" r="${R + 5}" fill="url(#pz-sauce)" />
-                </g>
+                <!-- APLATS. Les dégradés radiaux et l'ombre portée donnaient une
+                     pizza en relief, jolie de près et brouillonne de loin : la
+                     mozzarella passait du crème au doré, si bien que deux parts
+                     nues n'avaient pas la même couleur selon leur place sur le
+                     disque. Or ce qu'on demande ici, c'est de COMPTER des parts
+                     identiques. Un aplat par matière, un liseré net entre elles,
+                     et les parts se comparent d'un regard. -->
+                <circle cx="${cx}" cy="${cy}" r="${croute}" fill="#e7a95d" />
+                <circle cx="${cx}" cy="${cy}" r="${croute}" fill="none" stroke="#c9853a" stroke-width="2.5" />
+                ${cloques}
+                <!-- La sauce déborde sous le fromage : c'est ce liseré rouge qui
+                     fait « pizza » plutôt que « galette ». -->
+                <circle cx="${cx}" cy="${cy}" r="${R + 5}" fill="#c9402c" />
                 ${parts}
                 <circle cx="${cx}" cy="${cy}" r="2.5" fill="#d9a05b" opacity=".5" />
             </svg>`;
@@ -383,14 +368,14 @@ class Pizza extends BaseGame {
         const g = this.sceneEl.querySelector(`[data-garni="${i}"]`);
         const fond = this.sceneEl.querySelector(`[data-part="${i}"] .pz-fond`);
         if (!g || !fond) return;
-        if (!id) { g.innerHTML = ''; fond.setAttribute('fill', 'url(#pz-fromage)'); return; }
+        if (!id) { g.innerHTML = ''; fond.setAttribute('fill', FROMAGE); return; }
         const ing = par(id);
         // La part prend la TEINTE de son ingrédient, pas seulement son dessin :
         // c'est à l'œil qu'on doit compter « huit parts sur douze ». Avec deux
         // petits champignons posés au milieu d'une part beige, il faut viser
         // chaque part pour savoir si elle est garnie — et on recompte trois
         // fois. Un fond coloré se compte d'un regard.
-        fond.setAttribute('fill', TEINTES_PART[id] || 'url(#pz-fromage)');
+        fond.setAttribute('fill', TEINTES_PART[id] || FROMAGE);
         const m = this.geo.milieu(i);
         const r = Math.min(30, (this.geo.R * 1.7) / this.geo.n + 10);
         g.innerHTML = `<g transform="translate(${m.x},${m.y})">${DESSINS[id](r)}</g>`;
