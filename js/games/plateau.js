@@ -141,9 +141,15 @@ class Plateau extends BaseGame {
                 }
                 /* Le damier est un CARRÉ borné par la place disponible, sans
                    calcul : aspect-ratio fait le travail dans les deux sens. */
+                /* Colonnes ET rangées en 1fr. Sans la seconde ligne, les
+                   rangées se dimensionnent au CONTENU : une case vide
+                   s'écrase, une case avec pièce s'étire — les cases n'étaient
+                   carrées que peuplées. */
                 .pl-damier {
                     aspect-ratio: 1; max-width: 100%; max-height: 100%;
-                    display: grid; grid-template-columns: repeat(${n}, 1fr);
+                    display: grid;
+                    grid-template-columns: repeat(${n}, 1fr);
+                    grid-template-rows: repeat(${n}, 1fr);
                     border: 6px solid ${co.bord}; border-radius: 10px;
                     box-shadow: var(--shadow-md); touch-action: manipulation;
                     width: min(100cqw, 92cqh);
