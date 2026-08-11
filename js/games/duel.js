@@ -45,10 +45,18 @@ class Duel extends BaseGame {
         const p = this.partie;
         this.container.innerHTML = `
             <style>
+                /* LE TERRAIN PREND TOUT CE QUI RESTE.
+                   Les deux camps se partageaient l'écran en trois tiers égaux
+                   (1fr auto 1fr) : chacun gardait près de 300 px pour un
+                   clavier qui en occupe 58, et le couloir où circule la balle
+                   — le jeu lui-même — se retrouvait à 21 % de la surface. Les
+                   camps sont maintenant dimensionnés PAR LEUR CONTENU (auto),
+                   et le terrain reçoit la ligne 1fr. Un camp fait la hauteur
+                   de son bandeau, de sa saisie et de sa rangée de touches, pas
+                   un millimètre de plus. */
                 .du-plateau {
-                    --couloir: clamp(84px, 21cqh, 230px);
                     width: 100%; height: 100%;
-                    display: grid; grid-template-rows: 1fr auto 1fr;
+                    display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
                     gap: 0; touch-action: none; user-select: none;
                     -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
                     background: #0b1120; border-radius: 16px; overflow: hidden;
@@ -64,7 +72,7 @@ class Duel extends BaseGame {
                 .du-cote-inner { display: contents; }
                 .du-cote {
                     display: flex; flex-direction: column; align-items: center;
-                    justify-content: space-between; gap: 4px; padding: 8px 10px;
+                    justify-content: flex-start; gap: 4px; padding: 6px 10px;
                     min-height: 0; position: relative;
                 }
                 /* La teinte du camp passe par une VARIABLE, pas par
@@ -83,26 +91,30 @@ class Duel extends BaseGame {
                 }
                 @keyframes du-respire { 50% { opacity: .15 } }
 
+                /* Le nom, le score et la consigne sur UNE ligne : trois lignes
+                   empilées coûtaient soixante pixels par camp, pris sur le
+                   terrain. */
                 .du-tete {
-                    display: flex; align-items: center; gap: 8px; width: 100%;
+                    display: flex; align-items: baseline; gap: 7px; width: 100%;
                     justify-content: center; color: #e2e8f0; font-weight: 800;
-                    font-size: clamp(.7rem, 2.2cqh, .95rem); flex-shrink: 0;
+                    font-size: clamp(.66rem, 1.9cqh, .9rem); flex-shrink: 0;
+                    min-height: 1.3em; overflow: hidden;
                 }
-                .du-nom { opacity: .75; }
+                .du-nom { opacity: .75; flex-shrink: 0; }
                 .du-pts {
                     background: #f8fafc; color: #0b1120; border-radius: 999px;
-                    min-width: 1.9em; text-align: center; padding: 1px 10px;
+                    min-width: 1.8em; text-align: center; padding: 1px 9px;
                     font-weight: 900; font-variant-numeric: tabular-nums;
-                    font-size: 1.15em;
+                    font-size: 1.15em; flex-shrink: 0;
                 }
                 .du-etat {
-                    color: #cbd5e1; font-size: clamp(.68rem, 2.1cqh, .9rem);
-                    font-weight: 700; text-align: center; min-height: 1.2em;
-                    flex-shrink: 0;
+                    color: #cbd5e1; font-weight: 700; text-align: left;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                    min-width: 0;
                 }
                 .du-saisie {
                     font-weight: 900; color: #f8fafc; letter-spacing: .06em;
-                    font-size: clamp(1.4rem, 7cqh, 3rem); line-height: 1;
+                    font-size: clamp(1.2rem, 5.2cqh, 2.3rem); line-height: 1.05;
                     font-variant-numeric: tabular-nums; min-height: 1em; flex-shrink: 0;
                 }
                 .du-saisie--vide { color: #475569; }
@@ -124,7 +136,7 @@ class Duel extends BaseGame {
                     grid-auto-rows: minmax(0, 1fr);
                     gap: clamp(2px, .8cqh, 6px); width: 100%; max-width: 560px;
                     flex: 0 0 auto; min-height: 0;
-                    height: clamp(38px, 11cqh, 76px);
+                    height: clamp(38px, 7.5cqh, 62px);
                 }
                 .du-touche {
                     border: 0; border-radius: 10px; font-weight: 900;
@@ -139,15 +151,22 @@ class Duel extends BaseGame {
 
                 /* Les tables du service : elles remplacent le pavé le temps du
                    choix. Deux rangées de gros boutons, un geste, la balle part. */
+                /* Les tables du service : UNE rangée, exactement la place du
+                   pavé. Sur deux rangées étirées (flex: 1), le camp du
+                   serveur était plus haut de quarante pixels que celui du
+                   receveur — le filet n'était plus au milieu, et le terrain
+                   changeait de taille à chaque service. Même hauteur des deux
+                   côtés, à toutes les phases : le couloir ne bouge plus. */
                 .du-tables {
-                    display: grid; grid-template-columns: repeat(5, 1fr);
-                    grid-auto-rows: 1fr;
-                    gap: clamp(3px, 1cqh, 7px); width: 100%; max-width: 520px;
-                    flex: 1 1 auto; min-height: 0;
+                    display: grid; grid-auto-flow: column;
+                    grid-auto-columns: minmax(0, 1fr);
+                    gap: clamp(2px, .8cqh, 6px); width: 100%; max-width: 560px;
+                    flex: 0 0 auto; min-height: 0;
+                    height: clamp(38px, 7.5cqh, 62px);
                 }
                 .du-table {
                     border: 0; border-radius: 10px; font-weight: 900;
-                    font-size: clamp(.85rem, 4cqh, 1.6rem);
+                    font-size: clamp(.72rem, 3.2cqh, 1.25rem);
                     background: var(--du-teinte); color: #0b1120;
                     display: flex; align-items: center; justify-content: center;
                     cursor: pointer; touch-action: none; min-height: 0;
@@ -155,11 +174,14 @@ class Duel extends BaseGame {
                 }
                 .du-table--enfoncee { transform: translateY(2px); box-shadow: none; }
 
-                /* Le terrain : la bande centrale que la balle traverse. */
+                /* Le terrain : la bande centrale que la balle traverse. Sa
+                   hauteur n'est plus fixée — il occupe la ligne 1fr de la
+                   grille, c'est-à-dire tout ce que les deux camps ne prennent
+                   pas. */
                 .du-terrain {
-                    position: relative; height: var(--couloir);
+                    position: relative; min-height: 96px;
                     background: #020617; border-top: 2px solid #1e293b; border-bottom: 2px solid #1e293b;
-                    overflow: hidden; flex-shrink: 0;
+                    overflow: hidden;
                 }
                 .du-filet {
                     position: absolute; left: 0; right: 0; top: 50%;
@@ -227,44 +249,50 @@ class Duel extends BaseGame {
                    le conteneur lui-même — les règles visant .du-plateau ne
                    s'appliquaient donc pas, et le plateau restait en rangées. */
                 @container plateau (min-aspect-ratio: 13/10) {
+                    /* En paysage, le camp est une BANDE de largeur fixe le
+                       long du bord, et le couloir prend tout le milieu — même
+                       principe qu'en portrait, un quart de tour plus loin. La
+                       largeur ne peut pas se déduire du contenu ici : il est
+                       pivoté, donc c'est sa HAUTEUR à plat qui deviendra la
+                       largeur de la bande. On la nomme, et les deux s'y
+                       réfèrent. */
                     .du-plateau {
-                        --couloir: clamp(120px, 26cqw, 320px);
+                        --camp: clamp(96px, 16cqw, 152px);
                         grid-template-rows: 1fr;
-                        grid-template-columns: 1fr var(--couloir) 1fr;
+                        grid-template-columns: var(--camp) minmax(120px, 1fr) var(--camp);
                     }
-                    .du-terrain { height: auto; width: var(--couloir); border: 0;
+                    .du-terrain { height: auto; min-height: 0; border: 0;
                                   border-left: 2px solid #1e293b; border-right: 2px solid #1e293b; }
                     .du-filet { top: 0; bottom: 0; left: 50%; right: auto;
                                 border-top: 0; border-left: 3px dashed #334155; }
                     .du-cote {
-                        overflow: hidden;
+                        overflow: hidden; padding: 0;
                         align-items: center; justify-content: center;
                     }
                     /* La moitié se dessine à plat, aux dimensions échangées,
                        puis pivote autour de son centre. */
-                    .du-cote > * { --largeur-camp: calc((100cqw - var(--couloir)) / 2); }
                     .du-cote--haut { transform: none; }
                     .du-cote-inner {
-                        width: 100cqh; height: calc((100cqw - var(--couloir)) / 2);
+                        width: 100cqh; height: var(--camp);
                         display: flex; flex-direction: column; align-items: center;
-                        justify-content: space-between; gap: 3px; padding: 6px 10px;
+                        justify-content: center; gap: 4px; padding: 5px 10px;
+                        box-sizing: border-box;
                     }
                     .du-cote--0 .du-cote-inner { transform: rotate(90deg); }
                     .du-cote--1 .du-cote-inner { transform: rotate(-90deg); }
                     .du-pave, .du-tables { max-width: min(560px, 82cqh); }
-                    .du-pave { height: clamp(38px, 11cqw, 76px); }
-                    .du-saisie { font-size: clamp(1.2rem, 7cqw, 2.4rem); }
+                    .du-pave, .du-tables { height: clamp(34px, 7cqw, 58px); }
+                    .du-tete { font-size: clamp(.62rem, 1.7cqw, .85rem); }
+                    .du-saisie { font-size: clamp(1.1rem, 4.6cqw, 2rem); }
                     .du-annonce--haut { transform: rotate(180deg); }
                 }
                 /* Écran court MAIS étroit (téléphone en paysage serré) : on
                    garde la coupe haut/bas et on resserre. */
                 @container plateau (max-height: 640px) and (max-aspect-ratio: 13/10) {
-                    .du-cote { padding: 4px 8px; gap: 2px; }
-                    .du-plateau { --couloir: clamp(70px, 18cqh, 140px); }
-                    .du-pave { max-width: 820px; height: clamp(32px, 13cqh, 60px); }
-                    .du-tables { max-width: 820px; }
-                    .du-saisie { font-size: clamp(1.1rem, 8cqh, 2.1rem); }
-                    .du-tete, .du-etat { font-size: clamp(.62rem, 2.6cqh, .85rem); }
+                    .du-cote { padding: 4px 8px; gap: 3px; }
+                    .du-pave, .du-tables { max-width: 820px; height: clamp(32px, 9cqh, 56px); }
+                    .du-saisie { font-size: clamp(1.1rem, 6cqh, 1.9rem); }
+                    .du-tete { font-size: clamp(.62rem, 2.4cqh, .85rem); }
                 }
             </style>
             <div class="du-plateau" data-plateau>
@@ -304,8 +332,8 @@ class Duel extends BaseGame {
                 <div class="du-tete">
                     <span class="du-nom">${NOMS[i]}</span>
                     <span class="du-pts" data-pts="${i}">0</span>
+                    <span class="du-etat" data-etat="${i}"></span>
                 </div>
-                <div class="du-etat" data-etat="${i}"></div>
                 <div class="du-saisie du-saisie--vide" data-saisie="${i}">—</div>
                 <div class="du-pave" data-pave="${i}">
                     ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n =>
