@@ -229,21 +229,28 @@ export const TAILLES_NIVEAU = NIVEAUX;
  * marche. Ici les paliers s'enchaînent, et surtout LE CHANGEMENT SE DIT — on
  * annonce qu'on éteint le surligneur avant de l'éteindre. Une aide qui
  * disparaît sans prévenir se lit comme une panne.
+ *
+ * UNE SEULE IDÉE NEUVE PAR PALIER, et la boucle arrive VITE : elle est le
+ * cœur de l'exercice — c'est elle qui fait remonter l'allumage dans le
+ * programme, et c'est cela qu'un enfant qui empile des blocs jusqu'à ce que
+ * « ça marche » n'a jamais vu. Les deux paliers qui la précèdent ne durent
+ * donc qu'un programme chacun : le temps de comprendre qu'on exécute, pas
+ * qu'on écrit. La boucle est là au troisième, et ne repart plus.
  */
 export const PALIERS = [
     {
         id: 'p1', titre: 'Bloc à bloc', niveau: 'decouverte',
-        surligneur: true, prediction: false, questions: 2,
+        surligneur: true, prediction: false, questions: 1,
         annonce: 'Le bloc allumé dit ce qu\'il faut faire. Tu l\'exécutes, il passe au suivant.'
     },
     {
         id: 'p2', titre: 'Poser des pastilles', niveau: 'poser',
-        surligneur: true, prediction: false, questions: 2,
+        surligneur: true, prediction: false, questions: 1,
         annonce: 'Un nouveau bloc : « poser une pastille ». Le robot ne bouge pas, il marque la case.'
     },
     {
         id: 'p3', titre: 'La boucle', niveau: 'boucleSimple',
-        surligneur: true, prediction: false, questions: 2,
+        surligneur: true, prediction: false, questions: 3,
         annonce: 'Voici « répéter ». Regarde bien : l\'allumage va REMONTER dans le programme.'
     },
     {
