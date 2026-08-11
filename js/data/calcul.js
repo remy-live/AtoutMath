@@ -406,10 +406,12 @@ export const calculExercises = [
             {
                 id: 'depart', type: 'select', label: 'Commencer au niveau',
                 aide: 'Les niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
-                // La liste se CONSTRUIT depuis les niveaux. Recopiée à la main,
-                // elle a déjà divergé une fois — et un menu qui annonce vingt-cinq
-                // niveaux quand il y en a trente-cinq est un menu qui ment.
-                options: NIVEAUX_CHANTIER.map((n, i) => ({ value: n.id, label: `${i + 1} · ${n.titre}` })),
+                // La liste se CONSTRUIT depuis les niveaux, et chaque ligne
+                // porte sa longueur de solution : cent titres dans un menu
+                // déroulant ne se choisissent pas sans savoir lequel demande
+                // trois poussées et lequel en demande douze. Recopiée à la
+                // main, la liste avait déjà divergé une fois.
+                options: NIVEAUX_CHANTIER.map((n, i) => ({ value: n.id, label: `${i + 1} · ${n.titre} — ${n.coups} coup${n.coups > 1 ? 's' : ''}` })),
                 default: 'ch1'
             }
         ],

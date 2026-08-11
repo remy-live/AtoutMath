@@ -310,7 +310,11 @@ export class Runner {
                 jeu,
                 // Le saut d'auteur passe par le jeu lui-même : sans ce relais,
                 // il ne touchait que le compteur et l'écran ne bougeait pas.
+                // Le retour en arrière suit le même chemin — un jeu à niveaux
+                // sait très bien revenir au précédent, encore fallait-il le
+                // lui demander.
                 showNext: () => (jeu && typeof jeu.showNext === 'function') ? jeu.showNext() : false,
+                showPrevious: () => (jeu && typeof jeu.showPrevious === 'function') ? jeu.showPrevious() : false,
                 destroy: () => {
                     if (jeu && typeof jeu.destroy === 'function') jeu.destroy();
                     else if (jeu && typeof jeu.pause === 'function') jeu.pause();
@@ -494,13 +498,14 @@ export class Runner {
      *
      * Sauter d'un cran de trop obligeait à relancer l'exercice depuis le début
      * pour revoir la question qu'on cherchait. Le recul s'appuie sur le
-     * `showPrevious` des activités, qui rembobine la session : les jeux
-     * autonomes n'en ont pas, et le disent plutôt que de ne rien faire.
+     * `showPrevious` des activités, qui rembobine la session, ou sur celui du
+     * jeu — un jeu à niveaux revient au précédent. Celui qui ne sait pas le
+     * DIT, plutôt que de faire reculer le compteur devant un écran figé.
      * @returns {boolean} faux si l'exercice en cours ne sait pas reculer
      */
     revenirQuestion() {
         if (!this.step || !this.handle || typeof this.handle.showPrevious !== 'function') return false;
-        this.handle.showPrevious();
+        if (this.handle.showPrevious() === false) return false;
         // Le compteur de progression suit : sans quoi la barre annoncerait
         // « 5 / 10 » sur la quatrième question.
         const cle = [...this.itemsResolved].pop();

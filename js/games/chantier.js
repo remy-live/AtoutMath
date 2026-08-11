@@ -291,6 +291,13 @@ class Chantier extends BaseGame {
         return true;
     }
 
+    /** Et le retour au précédent, pour revoir celui qu'on vient de dépasser. */
+    showPrevious() {
+        if (this.index <= 0) return false;
+        this.allerNiveau(this.index - 1);
+        return true;
+    }
+
     // --- Les niveaux --------------------------------------------------------
 
     charger(i) {

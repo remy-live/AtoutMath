@@ -233,3 +233,24 @@ test('dalleEn et blocEn lisent bien la case demandée', () => {
     assert.equal(dalleEn(e, 4, 1).valeur, 56);
     assert.equal(dalleEn(e, 1, 1), null);
 });
+
+test('le nombre de coups annoncé par chaque niveau est le vrai', () => {
+    // `coups` est écrit dans la donnée pour que le menu du professeur puisse
+    // afficher la difficulté sans lancer cent recherches en largeur au
+    // chargement de la page. Une donnée recopiée est une donnée qui dérive :
+    // c'est ce test qui la tient.
+    for (const def of NIVEAUX) {
+        const sol = resoudre(lireNiveau(def), 200000);
+        assert.ok(sol, `${def.id} : insoluble`);
+        assert.equal(def.coups, sol.length,
+            `${def.id} annonce ${def.coups} coups pour une solution en ${sol.length}`);
+    }
+});
+
+test('les cent niveaux ont des titres et des identifiants uniques', () => {
+    // Deux niveaux de même nom, c'est un professeur qui ne retrouve pas celui
+    // qu'il voulait remontrer.
+    assert.equal(new Set(NIVEAUX.map(n => n.id)).size, NIVEAUX.length, 'identifiants en double');
+    assert.equal(new Set(NIVEAUX.map(n => n.titre)).size, NIVEAUX.length, 'titres en double');
+    assert.ok(NIVEAUX.every(n => n.indice && n.indice.length > 20), 'un niveau sans indice utile');
+});
