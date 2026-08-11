@@ -728,9 +728,17 @@ class Nova extends BaseGame {
      * automatique, viser c'est SE PLACER sous le bon transport — la mécanique
      * du jeu et la réponse à la question sont le même geste.
      *
-     * Les coques encaissent plusieurs impacts : une balle qui érafle un
-     * mauvais transport ne compte pas, seule sa DESTRUCTION est une réponse.
-     * C'est ce qui rend le tir automatique compatible avec une question.
+     * LA COQUE DÉPEND DU MODE DE TIR, et c'est tout le raisonnement :
+     *
+     *   · en TIR AUTOMATIQUE, le canon part tout seul. Une balle qui érafle un
+     *     mauvais transport en passant n'est pas une réponse — il faut cinq
+     *     impacts pour le détruire, c'est-à-dire s'obstiner. Sans cette
+     *     réserve, on perdrait une vie en se déplaçant.
+     *   · en DEUX ZONES (le mode par défaut), on tire quand on décide de
+     *     tirer. Une balle sur le mauvais transport EST la mauvaise réponse :
+     *     il explose au premier coup, et ça coûte une vie. Garder les cinq
+     *     impacts ici, c'était laisser croire qu'on peut tirer sur tout sans
+     *     conséquence — exactement ce que le jeu ne doit pas enseigner.
      */
     lancerConvoi() {
         const w = this.canvas.width, h = this.canvas.height;
@@ -750,7 +758,7 @@ class Nova extends BaseGame {
             t: 0, duree: 1400, reglee: false, sens,
             largeurBoucle: ecart * valeurs.length,
             ships: valeurs.map((v, i) => ({
-                v, pv: 5, max: 5, vivant: true,
+                v, pv: this.tirManuel ? 1 : 5, max: this.tirManuel ? 1 : 5, vivant: true,
                 x: sens > 0 ? -60 - i * ecart : w + 60 + i * ecart,
                 y: h * (0.14 + 0.05 * (i % 2)),
                 phase: Math.random() * 6.28
@@ -1889,7 +1897,11 @@ class Nova extends BaseGame {
                 points: 20, questionText: q, given: p.v, expected: this.porte.bon
             });
         } else {
-            this.secousse = 26;
+            // La mauvaise porte se paie d'une vie : elle doit EXPLOSER. Elle
+            // ne faisait que secouer l'écran, et le cœur perdu passait
+            // inaperçu au milieu de l'action.
+            this.exploser(this.vaisseau.x, this.vaisseau.y, '#f43f5e', 34);
+            this.secousse = 30;
             this.puissance = this.canonBase;
             this.mot(`${this.porte.question} = ${this.porte.bon}, pas ${p.v}`, 'ko');
             this.onWrongAnswer(null, {
@@ -2303,7 +2315,11 @@ class Nova extends BaseGame {
                 if (!s.vivant || t.mort || s.y < 0) continue;
                 if (Math.abs(t.x - s.x) < 30 && Math.abs(t.y - s.y) < 18) {
                     t.mort = true;
-                    if (--s.pv <= 0) { s.vivant = false; this.abattreTransport(s); }
+                    // Le mode de tir se change en pleine partie : on relit la
+                    // règle au moment de l'impact plutôt que de figer la coque
+                    // au lancement du convoi.
+                    if (this.tirManuel) s.pv = 0; else s.pv--;
+                    if (s.pv <= 0) { s.vivant = false; this.abattreTransport(s); }
                     else this.exploser(t.x, t.y, '#fde68a', 4);
                 }
             }
@@ -2333,10 +2349,11 @@ class Nova extends BaseGame {
     /** Un transport détruit : c'est une RÉPONSE. */
     abattreTransport(s) {
         const cv = this.convoi;
-        this.exploser(s.x, s.y, '#f59e0b', 26);
         const q = `${cv.question} = ?`;
         this.epreuves++;
         if (s.v === cv.bon) {
+            // Explosion ambre, aux couleurs de la barge : c'était la bonne.
+            this.exploser(s.x, s.y, '#f59e0b', 26);
             cv.reglee = true;
             cv.t = cv.duree;                       // les autres s'en vont
             this.gagner(80);
@@ -2347,7 +2364,12 @@ class Nova extends BaseGame {
                 points: 20, questionText: q, given: s.v, expected: cv.bon
             });
         } else {
-            this.secousse = 20;
+            // Une ERREUR ne se voit pas comme une réussite : détonation rouge,
+            // deux fois plus large, et l'écran tremble plus fort. On doit
+            // savoir qu'on vient de se tromper sans lire le bandeau.
+            this.exploser(s.x, s.y, '#f43f5e', 40);
+            this.exploser(s.x, s.y, '#fecdd3', 16);
+            this.secousse = 30;
             this.puissance = 1;
             this.mot(`${s.v} était un leurre… ${cv.question} = ${cv.bon}`, 'ko');
             this.onWrongAnswer(null, {
