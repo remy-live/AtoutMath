@@ -136,16 +136,27 @@ export function ouvrirFicheParcours(chemin) {
     const rendreListe = () => {
         listeEl.innerHTML = ordre.map((id, i) => {
             const e = parId.get(id);
+            const nom = echapper(e.title);
             return `
             <div class="pp-etape" data-etape-ligne="${id}">
                 <button type="button" class="pp-grip" data-grip="${id}"
                     title="Glisser pour changer l'ordre sur la feuille"
-                    aria-label="Déplacer « ${echapper(e.title)} »">⠿</button>
+                    aria-label="Déplacer « ${nom} »">⠿</button>
                 <span class="pp-etape-num">${i + 1}.</span>
-                <span class="pp-etape-nom">${echapper(e.title)}</span>
-                <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
-                    min="0" max="40" value="${quantites[id]}">
-                <span class="pp-etape-unite">questions</span>
+                <span class="pp-etape-nom">${nom}</span>
+                <span class="pp-fleches">
+                    <button type="button" class="pp-fleche" data-monter="${id}"
+                        ${i === 0 ? 'disabled' : ''} title="Monter d'un cran"
+                        aria-label="Monter « ${nom} »">▲</button>
+                    <button type="button" class="pp-fleche" data-descendre="${id}"
+                        ${i === ordre.length - 1 ? 'disabled' : ''} title="Descendre d'un cran"
+                        aria-label="Descendre « ${nom} »">▼</button>
+                </span>
+                <span class="pp-etape-nb">
+                    <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
+                        min="0" max="40" value="${quantites[id]}">
+                    <span class="pp-etape-unite">questions</span>
+                </span>
             </div>`;
         }).join('')
             + (ecran.length ? `<div class="pp-ecran">Sur écran seulement : ${[...new Set(ecran.map(e => e.title))].map(echapper).join(', ')}
@@ -158,55 +169,111 @@ export function ouvrirFicheParcours(chemin) {
                 rendre();
             };
         });
+        // Les flèches font le même travail que le glisser, sans geste : c'est
+        // le chemin sûr sur un téléphone, où une liste qui défile et un
+        // élément qu'on traîne se disputent le même doigt.
+        const deplacer = (id, delta) => {
+            const i = ordre.indexOf(id);
+            const j = i + delta;
+            if (i < 0 || j < 0 || j >= ordre.length) return;
+            ordre.splice(j, 0, ordre.splice(i, 1)[0]);
+            rendreListe();
+            rendre();
+        };
+        listeEl.querySelectorAll('[data-monter]').forEach(b => {
+            b.onclick = () => deplacer(b.dataset.monter, -1);
+        });
+        listeEl.querySelectorAll('[data-descendre]').forEach(b => {
+            b.onclick = () => deplacer(b.dataset.descendre, +1);
+        });
         brancherGlisser();
     };
 
-    // Le glisser-déposer, aux pointer events : il marche au doigt comme à la
-    // souris. La ligne saisie suit le pointeur, les autres s'écartent, et on
-    // recompose la fiche au lâcher.
+    // Le glisser-déposer.
+    //
+    // Deux chemins, et c'est délibéré. À la SOURIS, les pointer events
+    // suffisent. AU DOIGT, on passe par les évènements tactiles bruts :
+    // Safari mobile ne renonce à faire défiler la page que si `touchmove`
+    // est annulé, et tant qu'il croit à un défilement il émet un
+    // `pointercancel` qui tue le glisser au premier millimètre. `touch-action:
+    // none` ne suffit pas dans un panneau qui défile — c'est exactement le
+    // cas ici.
+    //
+    // Les écouteurs vivent sur le DOCUMENT, jamais sur la poignée : déplacer
+    // la ligne saisie (insertBefore) la retire un instant du document, ce qui
+    // annulerait une capture de pointeur.
     const brancherGlisser = () => {
         listeEl.querySelectorAll('[data-grip]').forEach(grip => {
-            grip.onpointerdown = (ev) => {
-                ev.preventDefault();
-                const id = grip.dataset.grip;
+            const debut = (id) => {
                 const ligne = listeEl.querySelector(`[data-etape-ligne="${id}"]`);
-                const lignes = () => [...listeEl.querySelectorAll('[data-etape-ligne]')];
+                if (!ligne) return null;
                 ligne.classList.add('pp-etape--saisie');
-
-                // Les écouteurs vivent sur la FENÊTRE, pas sur la poignée :
-                // déplacer la ligne dans le DOM (insertBefore) retire un
-                // instant l'élément du document, ce qui ANNULE une capture de
-                // pointeur — le glisser mourait au premier réordonnancement.
-                const bouger = (e2) => {
-                    const autres = lignes().filter(l => l !== ligne);
+                return {
                     // On insère la ligne saisie avant la première ligne dont le
-                    // milieu est sous le pointeur — et seulement si ça change
+                    // milieu est sous le doigt — et seulement si ça change
                     // quelque chose, pour ne pas secouer le DOM à chaque pixel.
-                    let cible = null;
-                    for (const l of autres) {
-                        const r = l.getBoundingClientRect();
-                        if (e2.clientY < r.top + r.height / 2) { cible = l; break; }
+                    bouger(clientY) {
+                        const autres = [...listeEl.querySelectorAll('[data-etape-ligne]')]
+                            .filter(l => l !== ligne);
+                        let cible = null;
+                        for (const l of autres) {
+                            const r = l.getBoundingClientRect();
+                            if (clientY < r.top + r.height / 2) { cible = l; break; }
+                        }
+                        if (cible && ligne.nextElementSibling !== cible) listeEl.insertBefore(ligne, cible);
+                        else if (!cible && autres.length && autres[autres.length - 1].nextElementSibling !== ligne) {
+                            autres[autres.length - 1].after(ligne);
+                        }
+                    },
+                    lacher() {
+                        ligne.classList.remove('pp-etape--saisie');
+                        const nouvelOrdre = [...listeEl.querySelectorAll('[data-etape-ligne]')]
+                            .map(l => l.dataset.etapeLigne);
+                        const change = nouvelOrdre.join() !== ordre.join();
+                        ordre = nouvelOrdre;
+                        rendreListe();
+                        if (change) rendre();
                     }
-                    if (cible && ligne.nextElementSibling !== cible) listeEl.insertBefore(ligne, cible);
-                    else if (!cible && autres.length && autres[autres.length - 1].nextElementSibling !== ligne) {
-                        autres[autres.length - 1].after(ligne);
-                    }
+                };
+            };
+
+            grip.addEventListener('touchstart', (ev) => {
+                if (ev.touches.length !== 1) return;
+                ev.preventDefault();          // pas de défilement, pas de pointercancel
+                const ctrl = debut(grip.dataset.grip);
+                if (!ctrl) return;
+                const bouger = (e2) => {
+                    if (e2.cancelable) e2.preventDefault();
+                    ctrl.bouger(e2.touches[0].clientY);
                 };
                 const lacher = () => {
-                    window.removeEventListener('pointermove', bouger);
-                    window.removeEventListener('pointerup', lacher);
-                    window.removeEventListener('pointercancel', lacher);
-                    ligne.classList.remove('pp-etape--saisie');
-                    const nouvelOrdre = [...listeEl.querySelectorAll('[data-etape-ligne]')]
-                        .map(l => l.dataset.etapeLigne);
-                    const change = nouvelOrdre.join() !== ordre.join();
-                    ordre = nouvelOrdre;
-                    rendreListe();
-                    if (change) rendre();
+                    document.removeEventListener('touchmove', bouger, { passive: false });
+                    document.removeEventListener('touchend', lacher);
+                    document.removeEventListener('touchcancel', lacher);
+                    ctrl.lacher();
                 };
-                window.addEventListener('pointermove', bouger);
-                window.addEventListener('pointerup', lacher);
-                window.addEventListener('pointercancel', lacher);
+                document.addEventListener('touchmove', bouger, { passive: false });
+                document.addEventListener('touchend', lacher);
+                document.addEventListener('touchcancel', lacher);
+            }, { passive: false });
+
+            grip.onpointerdown = (ev) => {
+                // Le doigt est déjà servi par le chemin tactile ci-dessus :
+                // le laisser passer ici lancerait deux glissers concurrents.
+                if (ev.pointerType === 'touch') return;
+                ev.preventDefault();
+                const ctrl = debut(grip.dataset.grip);
+                if (!ctrl) return;
+                const bouger = (e2) => ctrl.bouger(e2.clientY);
+                const lacher = () => {
+                    document.removeEventListener('pointermove', bouger);
+                    document.removeEventListener('pointerup', lacher);
+                    document.removeEventListener('pointercancel', lacher);
+                    ctrl.lacher();
+                };
+                document.addEventListener('pointermove', bouger);
+                document.addEventListener('pointerup', lacher);
+                document.addEventListener('pointercancel', lacher);
             };
         });
     };
