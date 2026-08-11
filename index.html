@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=90">
-    <link rel="stylesheet" href="css/layout.css?v=90">
-    <link rel="stylesheet" href="css/ui.css?v=90">
-    <link rel="stylesheet" href="css/games.css?v=90">
-    <link rel="stylesheet" href="css/components.css?v=90">
-    <link rel="stylesheet" href="css/modules.css?v=90">
+    <link rel="stylesheet" href="css/base.css?v=91">
+    <link rel="stylesheet" href="css/layout.css?v=91">
+    <link rel="stylesheet" href="css/ui.css?v=91">
+    <link rel="stylesheet" href="css/games.css?v=91">
+    <link rel="stylesheet" href="css/components.css?v=91">
+    <link rel="stylesheet" href="css/modules.css?v=91">
     <!-- LocalForage for storage -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <!-- Canvas Confetti for gamification -->
@@ -655,6 +655,12 @@
                 <p class="modal-text">Un même parcours peut servir d'entraînement ou d'évaluation notée :
                     ce sont les mêmes activités, avec des règles différentes.</p>
                 <div id="builder-policy-content"></div>
+                <!-- Un vrai bouton de sortie : la croix en haut à droite ne se
+                     voit pas sur un panneau qui remplit l'écran, et les
+                     réglages sont déjà enregistrés au fur et à mesure. -->
+                <div class="modal-actions-center">
+                    <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="btn-valider-path-policy">Valider</button>
+                </div>
             </div>
         </div>
 

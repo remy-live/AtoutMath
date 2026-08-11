@@ -13,6 +13,7 @@ import { state } from '../core/state.js';
 import { estRevisable, getExerciseById } from '../data/catalog.js';
 import { messageDArrivee, bilanExercice } from '../core/accueil.js';
 import { startErrorReview } from '../core/remediation.js';
+import { robotSvg, ampouleSvg } from './icones.js';
 
 const CLE_VISITE = 'mathbox-derniere-visite';
 
@@ -35,7 +36,7 @@ function assurerModale() {
     m.className = 'modal-overlay modal-overlay--top';
     m.innerHTML = `
         <div class="glass-panel modal-panel ac-panel">
-            <div class="ac-robot">🤖</div>
+            <div class="ac-robot">${robotSvg(46)}</div>
             <h3 class="modal-title" id="ac-titre"></h3>
             <p class="ac-texte" id="ac-texte"></p>
             <p class="ac-conseil" id="ac-conseil"></p>
@@ -74,7 +75,8 @@ export function initAccueil() {
     const m = assurerModale();
     m.querySelector('#ac-titre').textContent = message.titre;
     m.querySelector('#ac-texte').textContent = message.texte;
-    m.querySelector('#ac-conseil').textContent = message.conseil ? `💡 ${message.conseil}` : '';
+    const conseilEl = m.querySelector('#ac-conseil');
+    conseilEl.innerHTML = message.conseil ? `${ampouleSvg(19, 'ac-ampoule')}<span>${message.conseil}</span>` : '';
 
     const go = m.querySelector('#ac-go');
     const tard = m.querySelector('#ac-plus-tard');
@@ -103,7 +105,7 @@ function assurerBilan() {
     m.className = 'modal-overlay modal-overlay--top';
     m.innerHTML = `
         <div class="glass-panel modal-panel ac-panel">
-            <div class="ac-robot" id="bi-emoji">🤖</div>
+            <div class="ac-robot" id="bi-emoji">${robotSvg(46)}</div>
             <h3 class="modal-title" id="bi-titre"></h3>
             <p class="ac-texte" id="bi-texte"></p>
             <div class="ac-lecon" id="bi-lecon"></div>
@@ -136,8 +138,11 @@ export function initBilanExercice() {
         if (bilan.verdict === 'court') return;
 
         const m = assurerBilan();
-        m.querySelector('#bi-emoji').textContent =
-            bilan.verdict === 'reussi' ? '🎉' : bilan.verdict === 'loupe' ? '🤖' : '👍';
+        // Le robot de l'application, pas un emoji : c'est LUI qui parle à
+        // l'élève partout ailleurs, et un autre dessin ferait un autre
+        // personnage au moment le plus personnel.
+        m.querySelector('#bi-emoji').innerHTML =
+            bilan.verdict === 'reussi' ? '🎉' : robotSvg(46);
         m.querySelector('#bi-titre').textContent = bilan.titre;
         m.querySelector('#bi-texte').textContent = bilan.texte;
         const lecon = m.querySelector('#bi-lecon');

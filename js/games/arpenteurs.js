@@ -31,8 +31,15 @@ class Arpenteurs extends BaseGame {
         super(container, isDemo, params, 'arpenteurs');
         const t = TAILLES[this.params.terrain] || TAILLES.moyen;
         this.rng = makeRng(this.params.seed);
+        // Sur un téléphone tenu debout, un terrain 24 × 16 se réduit à des
+        // carreaux minuscules parce que c'est la LARGEUR qui manque. On tourne
+        // donc le terrain dans le sens de l'écran : mêmes règles, mêmes aires,
+        // mais des cases deux fois plus grandes.
+        const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.15;
+        const cols = portrait ? t.rows : t.cols;
+        const rows = portrait ? t.cols : t.rows;
         this.etat = creerPartie({
-            cols: t.cols, rows: t.rows,
+            cols, rows,
             table: parseInt(this.params.table) || 10,
             minCote: this.params.bandes ? 1 : 2
         });
@@ -66,30 +73,42 @@ class Arpenteurs extends BaseGame {
                     line-height: 1; padding: 0 6px;
                 }
 
+                /* Le pas du quadrillage est calculé en JavaScript, en pixels
+                   ENTIERS (voir ajusterTaille). Un pas fractionnaire — ce que
+                   donnait le clamp() d'avant — fait dériver le fond répété
+                   d'un côté et les parcelles positionnées de l'autre : au
+                   bout de vingt colonnes, le quadrillage « ne tombe plus
+                   juste ». Et la bordure est en box-shadow, pas en border :
+                   avec box-sizing border-box (réglé globalement), une bordure
+                   de 2px rognerait 4px sur la largeur utile et décalerait
+                   encore le fond d'un demi-carreau. */
                 .ar-terrain {
-                    --pas: clamp(9px, min(
-                        (100cqw - 16px) / var(--cols),
-                        (100cqh - 150px) / var(--rows)
-                    ), 34px);
+                    --pas: 18px;
                     position: relative; flex: none; touch-action: none;
                     width: calc(var(--pas) * var(--cols));
                     height: calc(var(--pas) * var(--rows));
                     background: var(--bg-plateau);
                     background-image:
-                        linear-gradient(to right, color-mix(in srgb, var(--text-muted) 22%, transparent) 1px, transparent 1px),
-                        linear-gradient(to bottom, color-mix(in srgb, var(--text-muted) 22%, transparent) 1px, transparent 1px);
+                        linear-gradient(to right, color-mix(in srgb, var(--text-muted) 26%, transparent) 1px, transparent 1px),
+                        linear-gradient(to bottom, color-mix(in srgb, var(--text-muted) 26%, transparent) 1px, transparent 1px);
                     background-size: var(--pas) var(--pas);
-                    border: 2px solid color-mix(in srgb, var(--text-main) 35%, transparent);
-                    border-radius: 8px; box-shadow: var(--shadow-md); overflow: hidden;
+                    background-position: 0 0;
+                    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-main) 35%, transparent), var(--shadow-md);
+                    border-radius: 4px; overflow: hidden;
                 }
                 .ar-parcelle {
                     position: absolute; box-sizing: border-box;
-                    display: flex; align-items: center; justify-content: center;
+                    display: flex; flex-direction: column; align-items: center;
+                    justify-content: center; line-height: 1.05; gap: 1px;
                     font-weight: 800; color: #fff; border-radius: 3px;
-                    font-size: calc(var(--pas) * .85);
                     border: 1px solid rgba(255,255,255,.55);
-                    animation: ar-pose .3s ease-out;
+                    animation: ar-pose .3s ease-out; overflow: hidden;
                 }
+                /* La parcelle porte SA multiplication : c'est elle qu'on est
+                   venu chercher. L'aire seule ne dit rien — on la relit sous
+                   la multiplication, en plus discret. */
+                .ar-parcelle i { font-style: normal; font-weight: 900; }
+                .ar-parcelle u { text-decoration: none; opacity: .8; font-weight: 700; }
                 @keyframes ar-pose { from { transform: scale(.86); opacity: .4; } }
                 .ar-parcelle--1 { background: linear-gradient(150deg, #60a5fa, #1d4ed8); }
                 .ar-parcelle--2 { background: linear-gradient(150deg, #fbbf24, #b45309); }
@@ -149,10 +168,56 @@ class Arpenteurs extends BaseGame {
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.rejouer());
 
         this.brancherGestes();
+        this.ajusterTaille();
+        if (typeof ResizeObserver === 'function') {
+            this.observateur = new ResizeObserver(() => this.ajusterTaille());
+            this.observateur.observe(this.container);
+        }
         this.tourSuivant();
     }
 
     startGameLoop() { /* Au tour par tour : rien à animer en continu. */ }
+
+    // --- La taille du terrain -----------------------------------------------
+    //
+    // On mesure la place RÉELLEMENT libre (le bandeau et la note ont la taille
+    // qu'a leur texte, pas celle qu'on aurait devinée) et on en déduit un pas
+    // en pixels entiers. Entier : c'est la condition pour que le fond répété
+    // et les parcelles absolues restent alignés d'un bout à l'autre.
+
+    ajusterTaille() {
+        const wrap = this.container.querySelector('.ar-wrap');
+        if (!wrap || !this.terrain || !wrap.clientHeight) return;
+        let pris = 0;
+        for (const el of wrap.children) if (el !== this.terrain) pris += el.offsetHeight;
+        const gaps = 8 * Math.max(0, wrap.children.length - 1);
+        const dispoH = wrap.clientHeight - pris - gaps - 6;
+        const dispoW = wrap.clientWidth - 8;
+        const pas = Math.max(9, Math.min(46, Math.floor(
+            Math.min(dispoW / this.etat.cols, dispoH / this.etat.rows)
+        )));
+        if (pas === this.pas) return;
+        this.pas = pas;
+        this.terrain.style.setProperty('--pas', `${pas}px`);
+        this.terrain.querySelectorAll('.ar-parcelle').forEach(el => this.habiller(el));
+    }
+
+    /** Le texte d'une parcelle, dimensionné pour tenir dans la parcelle. */
+    habiller(el) {
+        const pas = this.pas || 18;
+        const w = Number(el.dataset.w), h = Number(el.dataset.h);
+        const mul = `${w}×${h}`;
+        // Deux lignes seulement si la hauteur les accepte, et une taille de
+        // police bornée par la LARGEUR disponible : « 3×12 » dans une bande de
+        // trois cases déborderait sinon.
+        const deuxLignes = h * pas >= 42;
+        const parLigne = (pas * w - 6) / (mul.length * 0.62);
+        const taille = Math.max(7, Math.min(pas * 0.8, parLigne, deuxLignes ? pas * h * 0.42 : pas * h * 0.8));
+        el.style.fontSize = `${taille.toFixed(1)}px`;
+        el.innerHTML = deuxLignes
+            ? `<i>${mul}</i><u>${el.dataset.aire}</u>`
+            : `<i>${mul}</i>`;
+    }
 
     // --- Le déroulement -----------------------------------------------------
 
@@ -193,7 +258,7 @@ class Arpenteurs extends BaseGame {
 
     caseSous(ev) {
         const r = this.terrain.getBoundingClientRect();
-        const pas = r.width / this.etat.cols;
+        const pas = this.pas || r.width / this.etat.cols;
         return {
             x: Math.max(0, Math.min(this.etat.cols - 1, Math.floor((ev.clientX - r.left) / pas))),
             y: Math.max(0, Math.min(this.etat.rows - 1, Math.floor((ev.clientY - r.top) / pas)))
@@ -273,13 +338,18 @@ class Arpenteurs extends BaseGame {
         el.style.top = `calc(var(--pas) * ${p.y})`;
         el.style.width = `calc(var(--pas) * ${p.w})`;
         el.style.height = `calc(var(--pas) * ${p.h})`;
-        el.textContent = p.aire;
+        el.dataset.w = p.w; el.dataset.h = p.h; el.dataset.aire = p.aire;
+        this.habiller(el);
         this.terrain.appendChild(el);
     }
 
     note(html, ton) {
         if (!this.noteEl) return;
         this.noteEl.innerHTML = ton ? `<span class="ar-fin ar-fin--${ton}">${html}</span>` : html;
+        // Une note sur trois lignes au lieu de deux mange une rangée de
+        // carreaux : on reprend la mesure plutôt que de laisser le terrain
+        // déborder sous les boutons.
+        this.ajusterTaille();
     }
 
     // --- Le robot -----------------------------------------------------------
@@ -323,6 +393,7 @@ class Arpenteurs extends BaseGame {
 
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        if (this.observateur) { this.observateur.disconnect(); this.observateur = null; }
         super.destroy();
     }
 }

@@ -78,6 +78,18 @@ function fieldHtml(param, value, options = {}) {
                 return `<option value="${v}" ${String(value) === String(v) ? 'selected' : ''}>${libelleOption(o)}</option>`;
             }).join('') +
             `</select>`;
+    } else if (param.type === 'checkbox' || param.type === 'bool' || typeof value === 'boolean') {
+        // OUI / NON, jamais « true » et « false ».
+        //
+        // Sans cette branche, un réglage booléen tombait dans le champ texte :
+        // l'élève lisait « true », et en tapant dessus il pouvait écrire
+        // n'importe quoi — le clavier du téléphone montait pour éditer un mot
+        // anglais qui n'a aucun sens dans une salle de classe.
+        const oui = value === true || value === 'true';
+        control = `<div class="cfg-oui-non" data-param="${param.id}" data-kind="bool" data-valeur="${oui}">
+            <button type="button" class="cfg-on ${oui ? 'cfg-on--actif' : ''}" data-bool="true">Oui</button>
+            <button type="button" class="cfg-on ${oui ? '' : 'cfg-on--actif'}" data-bool="false">Non</button>
+        </div>`;
     } else {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
     }
@@ -199,6 +211,17 @@ function pousser(input, delta) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+// Oui / Non : un seul écouteur délégué, comme les autres commandes du panneau.
+document.addEventListener('click', (e) => {
+    const b = e.target.closest('.cfg-on');
+    if (!b) return;
+    e.preventDefault();
+    const groupe = b.parentElement;
+    groupe.dataset.valeur = b.dataset.bool;
+    groupe.querySelectorAll('.cfg-on').forEach(x =>
+        x.classList.toggle('cfg-on--actif', x.dataset.bool === b.dataset.bool));
+});
+
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.cfg-step');
     if (!btn) return;
@@ -257,6 +280,7 @@ function readParams(root, schema) {
         } else {
             const el = root.querySelector(`[data-param="${param.id}"]`);
             if (!el) return;
+            if (el.dataset.kind === 'bool') { out[param.id] = el.dataset.valeur === 'true'; return; }
             const isNum = param.type === 'number'
                 || (param.type === 'select' && typeof valeurOption(param.options[0]) === 'number');
             out[param.id] = isNum ? Number(el.value) : el.value;
@@ -483,7 +507,11 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
                 <label class="cfg-label" for="cfg-scale">Note sur</label>
                 <input type="number" id="cfg-scale" class="cfg-input" min="5" max="100" value="${g.scale || 20}">
             </div>
-            <div class="cfg-field">
+            <!-- Pleine largeur : les trois règles portent des noms longs, et
+                 une liste déroulante large mangeait la colonne du libellé —
+                 « Règle de calcul » et son explication s'imprimaient alors un
+                 mot par ligne. -->
+            <div class="cfg-field cfg-field--wide">
                 <label class="cfg-label" for="cfg-rule">Règle de calcul</label>
                 <select id="cfg-rule" class="cfg-input">
                     <option value="firstTry" ${g.rule === 'firstTry' ? 'selected' : ''}>Réussite du premier coup</option>

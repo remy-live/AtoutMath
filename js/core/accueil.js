@@ -33,9 +33,9 @@ export function memeJour(a, b) {
  */
 export const CONSEILS = [
     'Quand tu bloques, relis la question à voix haute. La moitié des erreurs viennent d\'un mot lu trop vite.',
-    'Le bouton 💡 ne donne jamais la réponse : il donne la première chose à regarder. Sers-t\'en tôt plutôt que tard.',
+    'Le bouton d\'indice ne donne jamais la réponse : il donne la première chose à regarder. Sers-t\'en tôt plutôt que tard.',
     'Se tromper puis comprendre pourquoi vaut mieux que réussir sans savoir comment.',
-    'Le robot 🤖 fait l\'exercice devant toi en expliquant chaque geste. C\'est le meilleur départ sur un exercice inconnu.',
+    'Le robot fait l\'exercice devant toi en expliquant chaque geste. C\'est le meilleur départ sur un exercice inconnu.',
     'Dix minutes par jour valent mieux qu\'une heure le dimanche : la mémoire retient ce qu\'elle revoit.',
     'Avant de calculer, demande-toi si le résultat sera grand ou petit. Tu repéreras tes erreurs toi-même.',
     'Une erreur notée dans ton carnet n\'est pas une mauvaise note : c\'est une question que tu vas apprendre à refaire.'
@@ -105,7 +105,7 @@ export function messageDArrivee(faits) {
         return {
             type: 'bienvenue',
             titre: 'Bienvenue !',
-            texte: 'Choisis un exercice qui te tente. Le robot 🤖 peut le faire devant toi avant que tu essaies, et le bouton 💡 t\'aide sans jamais donner la réponse.',
+            texte: 'Choisis un exercice qui te tente. Le robot peut le faire devant toi avant que tu essaies, et le bouton d\'indice t\'aide sans jamais donner la réponse.',
             conseil: conseilDuJour(maintenant),
             erreurs: [], revision: null
         };

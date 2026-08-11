@@ -1409,20 +1409,74 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     display: flex; gap: 18px; flex: 1; min-height: 0;
 }
 .presentation-map { flex: 0 0 340px; overflow-y: auto; }
+/* `min-height: 0` : sans lui, l'aperçu refusait de descendre sous la taille
+   de l'exercice qu'il contient et le débordait hors du panneau — sur
+   téléphone, le bouton d'indice tombait sous le bord arrondi de la modale. */
 .presentation-preview {
-    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column;
     border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
     background: var(--bg-app);
 }
 .presentation-preview-title {
-    padding: 10px 16px; font-weight: 700; color: var(--text-main);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; font-weight: 700; color: var(--text-main);
     border-bottom: 1px solid var(--border); background: var(--bg-panel);
+    font-size: .95rem;
 }
-.presentation-preview-canvas { flex: 1; position: relative; min-height: 0; container-type: size; }
+/* La règle de l'étape, à droite du titre : c'est ce que le professeur
+   commente en projetant (« dix questions, sept pour valider »). */
+.presentation-preview-rule {
+    margin-left: auto; font-weight: 600; font-size: .82rem; color: var(--text-muted);
+    white-space: nowrap;
+}
+.presentation-preview-canvas { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+/* La scène porte la taille de référence et le zoom ; c'est ELLE qui est le
+   conteneur de requête, pour que les exercices se composent comme sur un vrai
+   écran d'élève avant d'être réduits. */
+.presentation-scene {
+    position: absolute; top: 0; left: 0; transform-origin: top left;
+    container-type: size; container-name: plateau;
+}
+/* Feuilleter les étapes sans viser un petit rond sur la carte. */
+.presentation-nav {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: 7px 10px; border-top: 1px solid var(--border); background: var(--bg-panel);
+}
+.presentation-nav button {
+    border: 1px solid var(--border); background: var(--bg-app); color: var(--text-main);
+    border-radius: 9px; font: inherit; font-weight: 600; font-size: .88rem;
+    padding: 6px 14px; cursor: pointer;
+}
+.presentation-nav button:hover:not(:disabled) { background: var(--bg-hover); }
+.presentation-nav button:disabled { opacity: .4; cursor: default; }
+.presentation-nav-pos { font-size: .82rem; color: var(--text-muted); font-weight: 600; }
 @media (max-width: 800px) {
     .presentation-body { flex-direction: column; }
-    .presentation-map { flex: 0 0 auto; max-height: 40%; }
+    /* La carte devient une frise : elle sert à REPÉRER l'étape, pas à la
+       lire. Les 40 % qu'elle prenait laissaient à l'aperçu moins de place
+       qu'il n'en faut pour afficher un exercice. */
+    .presentation-map { flex: 0 0 auto; max-height: 148px; overflow-x: auto; }
+    .presentation-preview-title { font-size: .88rem; padding: 7px 12px; }
 }
+/* Sur téléphone, les deux flèches suffisent : « ← Étape précédente » passait
+   à la ligne et doublait la hauteur du pied. */
+@media (max-width: 480px) {
+    .presentation-nav button span { display: none; }
+    .presentation-nav button { padding: 6px 18px; font-size: 1.1rem; }
+}
+
+/* Le bouton de sortie du panneau « Mode & barème » reste COLLÉ au bas du
+   panneau. Le panneau défile — la croix de fermeture, elle, partait vers le
+   haut hors de l'écran dès le premier coup de doigt, et plus rien ne disait
+   comment sortir. Un bouton toujours visible le dit. */
+#path-policy-modal .modal-actions-center {
+    position: sticky; bottom: -30px; z-index: 2;
+    margin: 4px -30px -30px; padding: 14px 30px calc(18px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 16px 16px;
+}
+#path-policy-modal .modal-actions-center .modal-btn-flex { max-width: 260px; }
 
 /* Modale « Accès aux jeux » du professeur. */
 .access-list { max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
@@ -1654,7 +1708,15 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-step:active { transform: scale(.9); background: var(--primary); color: #fff; border-color: var(--primary); }
 .cfg-field--wide .cfg-input { width: 100%; }
 .cfg-input:focus { border-color: var(--primary); }
-.cfg-help { font-size: .82rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+/* L'explication passe SOUS le réglage, sur toute la largeur. Sans le
+   `grid-column`, elle devenait le troisième enfant de la grille à deux
+   colonnes : elle atterrissait dans la colonne du libellé, déjà réduite par
+   la liste déroulante d'à côté, et se retrouvait imprimée un mot par ligne. */
+.cfg-help {
+    grid-column: 1 / -1;
+    font-size: .82rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;
+    text-align: left; overflow-wrap: break-word;
+}
 
 /* En colonne étroite (téléphone, panneau replié), le champ RESTE à côté de
    son libellé : chaque réglage tient sur une ligne. L'empilement précédent
@@ -2960,3 +3022,24 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border-bottom: 1px solid #cbd5e1; padding-bottom: 1px;
 }
 #print-parcours-modal .fp-apercu-cadre { max-height: min(50vh, 560px); overflow-y: auto; padding: 4px 0 10px; }
+
+/* --- Réglage OUI / NON ----------------------------------------------
+   Un booléen n'a jamais à s'écrire « true ». Sans commande dédiée, il
+   tombait dans le champ texte : l'élève lisait un mot anglais, et en
+   tapant dessus faisait monter le clavier du téléphone pour éditer une
+   valeur qu'il pouvait casser. */
+.cfg-oui-non { display: flex; gap: 6px; }
+.cfg-on {
+    flex: 1; padding: 9px 0; border-radius: 10px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-muted); font: inherit; font-weight: 700; font-size: .95rem;
+    transition: background .12s, color .12s, border-color .12s;
+}
+.cfg-on:hover { border-color: var(--primary); }
+.cfg-on--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Le robot des modales : le MÊME dessin que le bouton « Mode démonstration ». */
+.ac-robot { color: var(--primary); display: flex; justify-content: center; line-height: 0; }
+.ac-robot svg { display: block; }
+.ac-conseil { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
+.ac-ampoule { flex: none; color: var(--warning); margin-top: 1px; }

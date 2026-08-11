@@ -113,11 +113,18 @@ class Duel extends BaseGame {
                    même temps, chacun sur la moitié de l'autre. */
                 .du-pave[hidden], .du-tables[hidden] { display: none; }
                 .du-pave--inerte { opacity: .3; pointer-events: none; }
+                /* UNE SEULE RANGÉE de chiffres, collée au bord du joueur.
+                   En deux rangées de six, le pavé mangeait la moitié de son
+                   camp : c'est le COULOIR où circule la balle qui doit avoir
+                   la place, pas le clavier. Onze touches sur une ligne restent
+                   largement tapables au pouce, et le joueur garde les yeux sur
+                   le jeu au lieu de chercher une touche dans une grille. */
                 .du-pave {
-                    display: grid; grid-template-columns: repeat(6, 1fr);
-                    grid-auto-rows: 1fr;
-                    gap: clamp(3px, 1cqh, 7px); width: 100%; max-width: 520px;
-                    flex: 1 1 auto; min-height: 0;
+                    display: grid; grid-template-columns: repeat(11, 1fr);
+                    grid-auto-rows: minmax(0, 1fr);
+                    gap: clamp(2px, .8cqh, 6px); width: 100%; max-width: 560px;
+                    flex: 0 0 auto; min-height: 0;
+                    height: clamp(38px, 11cqh, 76px);
                 }
                 .du-touche {
                     border: 0; border-radius: 10px; font-weight: 900;
@@ -245,6 +252,7 @@ class Duel extends BaseGame {
                     .du-cote--0 .du-cote-inner { transform: rotate(90deg); }
                     .du-cote--1 .du-cote-inner { transform: rotate(-90deg); }
                     .du-pave, .du-tables { max-width: min(560px, 82cqh); }
+                    .du-pave { height: clamp(38px, 11cqw, 76px); }
                     .du-saisie { font-size: clamp(1.2rem, 7cqw, 2.4rem); }
                     .du-annonce--haut { transform: rotate(180deg); }
                 }
@@ -253,7 +261,7 @@ class Duel extends BaseGame {
                 @container plateau (max-height: 640px) and (max-aspect-ratio: 13/10) {
                     .du-cote { padding: 4px 8px; gap: 2px; }
                     .du-plateau { --couloir: clamp(70px, 18cqh, 140px); }
-                    .du-pave { grid-template-columns: repeat(11, 1fr); max-width: 820px; }
+                    .du-pave { max-width: 820px; height: clamp(32px, 13cqh, 60px); }
                     .du-tables { max-width: 820px; }
                     .du-saisie { font-size: clamp(1.1rem, 8cqh, 2.1rem); }
                     .du-tete, .du-etat { font-size: clamp(.62rem, 2.6cqh, .85rem); }

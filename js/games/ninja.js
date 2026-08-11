@@ -79,6 +79,23 @@ class Ninja extends BaseGame {
                     background: var(--bg-plateau); box-shadow: var(--shadow-md);
                     touch-action: none; cursor: crosshair;
                 }
+                /* LE STAND DE TIR : ciel de désert, soleil bas, sol ocre et
+                   palissade. Le décor n'est pas décoratif — il dit qu'ici on
+                   VISE, alors que dans les deux autres modes on tranche. */
+                .nj-scene--western {
+                    background:
+                        radial-gradient(circle at 50% 62%, rgba(255, 214, 138, .95) 0 9%, transparent 9.5%),
+                        linear-gradient(#f8c88a 0 58%, #e8a765 58% 62%, #d98f4e 62%);
+                }
+                .nj-decor { position: absolute; inset: 0; pointer-events: none; }
+                .nj-sol { position: absolute; left: 0; right: 0; top: 62%; bottom: 0;
+                    background: repeating-linear-gradient(90deg, rgba(160,90,40,.10) 0 22px, transparent 22px 46px); }
+                .nj-palissade {
+                    position: absolute; left: 0; right: 0; top: 56%; height: 8%;
+                    background: repeating-linear-gradient(90deg, #a9713f 0 16px, #8d5c33 16px 20px, transparent 20px 40px);
+                    opacity: .85;
+                }
+                .nj-cactus { position: absolute; bottom: 4%; fill: #4b7a3a; opacity: .75; }
                 .nj-groupe { position: absolute; display: flex; gap: 3px; will-change: transform; }
                 .nj-obj {
                     display: flex; align-items: center; justify-content: center;
@@ -121,6 +138,12 @@ class Ninja extends BaseGame {
                     padding: 2px 9px; box-shadow: 0 1px 4px rgba(0,0,0,.25);
                 }
                 .nj-obj--pris { transform: scale(1.5) rotate(14deg); opacity: 0; }
+                /* Le lever et le baisser d'une cible s'animent sur L'OBJET, pas
+                   sur le groupe : le groupe porte déjà le transform qui le
+                   place, et l'écraser renverrait la cible en haut à gauche. */
+                .nj-obj.nj-leve { animation: nj-lever .34s cubic-bezier(.2,1.3,.4,1); }
+                .nj-obj.nj-baisse { transform: translateY(60%) scale(.7); opacity: 0; }
+                @keyframes nj-lever { from { transform: translateY(70%) scale(.7); opacity: 0; } }
                 .nj-obj--rate {
                     animation: nj-secousse .34s ease;
                     box-shadow: 0 0 0 4px var(--danger);
@@ -157,7 +180,13 @@ class Ninja extends BaseGame {
                     <span data-score></span>
                     <button type="button" class="nj-btn" data-neuf>↺ Rejouer</button>
                 </div>
-                <div class="nj-scene" data-scene></div>
+                <div class="nj-scene${this.mode === 'positifs' ? ' nj-scene--western' : ''}" data-scene>
+                    ${this.mode === 'positifs' ? `<div class="nj-decor">
+                        <div class="nj-palissade"></div><div class="nj-sol"></div>
+                        <svg class="nj-cactus" style="left:4%" width="34" height="58" viewBox="0 0 34 58"><path d="M14 58V16a3 3 0 0 1 6 0v42zM6 34V24a3 3 0 0 1 6 0v10a5 5 0 0 1-6 0zM22 40V28a3 3 0 0 1 6 0v12a5 5 0 0 1-6 0z"/></svg>
+                        <svg class="nj-cactus" style="right:6%; bottom:2%" width="26" height="44" viewBox="0 0 34 58"><path d="M14 58V16a3 3 0 0 1 6 0v42zM22 40V28a3 3 0 0 1 6 0v12a5 5 0 0 1-6 0z"/></svg>
+                    </div>` : ''}
+                </div>
                 <p class="nj-note" data-note></p>
             </div>`;
 
@@ -219,15 +248,40 @@ class Ninja extends BaseGame {
             return;
         }
 
+        // TIR AU STAND : les cibles ne volent pas, elles se lèvent et se
+        // baissent. C'est un autre geste et un autre rythme — on vise, on lit,
+        // on décide. Une cible en cloche ne laisse le temps de rien.
+        if (this.mode === 'positifs') {
+            v.objets.forEach((o, i) => {
+                const colonnes = Math.min(4, v.objets.length);
+                const col = i % colonnes, rang = Math.floor(i / colonnes);
+                const x = larg * (0.5 + (col - (colonnes - 1) / 2) * (0.86 / colonnes));
+                const y = haut * (0.30 + rang * 0.30);
+                const e = this.creerEntite([o], x, y, 0, 0, larg, haut, 'cible');
+                e.stand = true;
+                e.retard = i * 420;
+                // Le temps de LIRE un calcul signé, pas celui de réagir.
+                e.vie = 5200 + this.rng.int(0, 1400);
+                e.el.style.opacity = '0';
+                this.entites.push(e);
+            });
+            this.note('');
+            return;
+        }
+
+        // Les deux ninjas : une cloche LENTE, qui monte haut. Réglée pour que
+        // l'objet mette environ trois secondes et demie à traverser et qu'il
+        // atteigne le haut de l'écran — la version précédente durait à peine une
+        // seconde et culminait au milieu : on n'avait le temps ni de lire le
+        // calcul, ni de viser.
         if (this.mode === 'zeros') {
-            // Le nombre vole d'un seul tenant : ses chiffres doivent se lire.
-            this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0, -(haut * 0.036), larg, haut, 'chiffre'));
+            this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0, -(haut * 0.0166), larg, haut, 'chiffre'));
         } else {
-            const type = this.mode === 'positifs' ? 'cible' : 'bulle';
+            const type = 'bulle';
             v.objets.forEach((o, i) => {
                 const x = larg * (0.16 + 0.68 * (i + 0.5) / v.objets.length);
-                const e = this.creerEntite([o], x, haut + 80 + i * 26, (this.rng.int(-8, 8)) / 12, -(haut * 0.033) - this.rng.int(0, 6) / 10, larg, haut, type);
-                e.retard = i * 260;
+                const e = this.creerEntite([o], x, haut + 80 + i * 26, (this.rng.int(-4, 4)) / 12, -(haut * 0.0172) - this.rng.int(0, 4) / 100, larg, haut, type);
+                e.retard = i * 520;
                 this.entites.push(e);
             });
         }
@@ -248,16 +302,35 @@ class Ninja extends BaseGame {
     avancer(k) {
         const r = this.scene.getBoundingClientRect();
         const haut = r.height;
-        // La gravité est réglée pour que la cloche dure environ deux secondes :
-        // le temps de LIRE un calcul, ce qui est tout le sujet.
-        const g = haut * 0.00095;
+        // La gravité, réglée avec la vitesse de lancement : environ trois
+        // secondes et demie de vol, et un sommet tout en haut de la scène.
+        const g = haut * 0.00016;
         let vivantes = 0;
 
         for (const e of this.entites) {
             if (e.sortie) continue;
             if (this.isDemo) { vivantes++; continue; }
-            if (e.retard > 0) { e.retard -= k * 16.7; continue; }
+            if (e.retard > 0) {
+                e.retard -= k * 16.7;
+                if (e.retard <= 0 && e.stand) { e.el.style.opacity = '1'; e.el.firstElementChild?.classList.add('nj-leve'); }
+                continue;
+            }
             vivantes++;
+            // Au stand, la cible reste en place puis se baisse.
+            if (e.stand) {
+                e.vie -= k * 16.7;
+                if (e.vie <= 0) {
+                    e.sortie = true;
+                    e.el.firstElementChild?.classList.add('nj-baisse');
+                    const el = e.el;
+                    setTimeout(() => el.remove(), 300);
+                    for (const id of e.objets) {
+                        const p = laisserPasser(this.etat, id);
+                        if (p.perdu) this.perdre(p.message);
+                    }
+                }
+                continue;
+            }
             e.x += e.vx * k;
             e.y += e.vy * k;
             e.vy += g * k;

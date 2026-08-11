@@ -169,25 +169,73 @@ function openPresentation(steps, buildWorldMap) {
             <div class="presentation-body">
                 <div class="presentation-map"></div>
                 <div class="presentation-preview">
-                    <div class="presentation-preview-title" id="presentation-title"></div>
-                    <div class="presentation-preview-canvas" id="presentation-canvas"></div>
+                    <div class="presentation-preview-title">
+                        <span id="presentation-title"></span>
+                        <span class="presentation-preview-rule" id="presentation-rule"></span>
+                    </div>
+                    <div class="presentation-preview-canvas" id="presentation-canvas">
+                        <div class="presentation-scene" id="presentation-scene"></div>
+                    </div>
+                    <div class="presentation-nav">
+                        <button type="button" id="presentation-prev" aria-label="Étape précédente">←<span> Précédente</span></button>
+                        <span class="presentation-nav-pos" id="presentation-pos"></span>
+                        <button type="button" id="presentation-next" aria-label="Étape suivante"><span>Suivante </span>→</button>
+                    </div>
                 </div>
             </div>
         </div>`;
     document.body.appendChild(overlay);
 
     const canvas = overlay.querySelector('#presentation-canvas');
+    const scene = overlay.querySelector('#presentation-scene');
     const titre = overlay.querySelector('#presentation-title');
+    const regle = overlay.querySelector('#presentation-rule');
+    const pos = overlay.querySelector('#presentation-pos');
+    const prev = overlay.querySelector('#presentation-prev');
+    const next = overlay.querySelector('#presentation-next');
 
+    // L'aperçu est une SCÈNE mise à l'échelle, pas un exercice écrasé.
+    //
+    // Un exercice a besoin d'une place minimale : sous 400 × 520, un pavé
+    // numérique ou un rapporteur dépassent, et on ne voyait plus le bouton de
+    // validation. On lui donne donc toujours cette place — quitte à la
+    // réduire ensuite d'un coup de zoom. L'aperçu montre alors exactement ce
+    // que l'élève verra, en plus petit, plutôt qu'un morceau d'exercice.
+    const caler = () => {
+        const r = canvas.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const w = Math.max(r.width, 400), h = Math.max(r.height, 520);
+        const k = Math.min(r.width / w, r.height / h, 1);
+        scene.style.width = `${w}px`;
+        scene.style.height = `${h}px`;
+        scene.style.transform =
+            `translate(${(r.width - w * k) / 2}px, ${(r.height - h * k) / 2}px) scale(${k})`;
+    };
+
+    let courant = 0;
     const montrer = async (i) => {
         const step = steps[i];
         if (!step) return;
+        courant = i;
         titre.textContent = `${i + 1}. ${step.title}`;
+        // Combien de questions, combien pour valider : c'est ce que la classe
+        // demande en premier quand on projette le parcours.
+        const src = state.currentPath.steps[i] || {};
+        const nb = src.nbItems ?? step.nbItems;
+        const seuil = src.threshold ?? nb;
+        regle.textContent = nb ? `${nb} question${nb > 1 ? 's' : ''} · ✔ ${seuil} pour valider` : '';
+        pos.textContent = `${i + 1} / ${steps.length}`;
+        prev.disabled = i === 0;
+        next.disabled = i === steps.length - 1;
         overlay.querySelectorAll('.world-node').forEach((n, j) =>
             n.classList.toggle('world-node--current', j === i));
+        caler();
         const { launchPreview } = await import('../games/engine.js');
-        launchPreview(step.exercise, canvas, step.params, { muet: true });
+        launchPreview(step.exercise, scene, step.params, { muet: true });
     };
+
+    prev.onclick = () => montrer(Math.max(0, courant - 1));
+    next.onclick = () => montrer(Math.min(steps.length - 1, courant + 1));
 
     const map = buildWorldMap(steps, {
         allUnlocked: true,
@@ -195,7 +243,11 @@ function openPresentation(steps, buildWorldMap) {
     });
     overlay.querySelector('.presentation-map').appendChild(map);
 
+    const surResize = () => caler();
+    window.addEventListener('resize', surResize);
+
     overlay.querySelector('#btn-close-presentation').onclick = async () => {
+        window.removeEventListener('resize', surResize);
         const [{ clearEngines }, { destroyAllDemoCursors }] = await Promise.all([
             import('../core/timers.js'), import('../core/demoPointer.js')
         ]);
@@ -434,8 +486,11 @@ function initPolicyPanel() {
         });
         modal.style.display = 'flex';
     };
+    const fermer = () => { modal.style.display = 'none'; };
     const close = document.getElementById('btn-close-path-policy');
-    if (close) close.onclick = () => { modal.style.display = 'none'; };
+    if (close) close.onclick = fermer;
+    const ok = document.getElementById('btn-valider-path-policy');
+    if (ok) ok.onclick = fermer;
 }
 
 // --- Barre d'outils ---------------------------------------------------------
