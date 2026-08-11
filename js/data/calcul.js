@@ -420,6 +420,90 @@ export const calculExercises = [
         instruction: "Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat. Un bloc poussé GLISSE jusqu'au premier obstacle : s'il s'arrête sur la dalle qui porte son résultat, il se pose — et devient lui-même un mur. Touche un bloc, puis la case d'arrivée (ou balaye du doigt). Sur les derniers niveaux, deux blocs valent la même chose : le calcul ne suffit plus, il faut choisir lequel va où."
     },
     {
+        // Trois jeux de plateau, un seul moteur d'affichage (games/plateau.js)
+        // et une seule IA (core/ia.js). Les règles, testées sans navigateur,
+        // vivent chacune dans leur module — les échecs validés au perft.
+        id: 'logi-othello', status: STATUS.TEST, title: 'Othello',
+        activityId: 'othello',
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Adversaire',
+                options: [
+                    { value: 'ia', label: "Contre l'ordinateur" },
+                    { value: 'deux', label: 'À deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
+                aide: "Deux réglages en un : jusqu'où l'ordinateur calcule, et sa part de coups joués au hasard — c'est elle qui le rend battable.",
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Un pion posé ENCADRE : tous les pions adverses pris entre lui et un autre de tes pions se retournent. On ne joue que là où l'on retourne au moins un pion — les cases allumées te les montrent. À la fin, celui qui a le plus de pions gagne. Les coins ne se reprennent jamais : vise-les, et méfie-toi des cases qui les touchent."
+    },
+    {
+        id: 'logi-dames', status: STATUS.TEST, title: 'Jeu de Dames',
+        activityId: 'dames',
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Adversaire',
+                options: [
+                    { value: 'ia', label: "Contre l'ordinateur" },
+                    { value: 'deux', label: 'À deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
+                aide: "Deux réglages en un : jusqu'où l'ordinateur calcule, et sa part de coups joués au hasard — c'est elle qui le rend battable.",
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les vraies règles françaises, sur le damier 10 × 10 : la prise est OBLIGATOIRE, et quand plusieurs rafles sont possibles, on joue celle qui prend le PLUS de pièces — compte avant de bouger. Le pion avance tout droit mais prend aussi en arrière ; arrivé au bout, il devient dame, et la dame vole sur toute la diagonale. Touche une pièce : ses coups s'allument."
+    },
+    {
+        id: 'logi-echecs', status: STATUS.TEST, title: 'Échecs',
+        activityId: 'echecs',
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Adversaire',
+                options: [
+                    { value: 'ia', label: "Contre l'ordinateur" },
+                    { value: 'deux', label: 'À deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
+                aide: "Deux réglages en un : jusqu'où l'ordinateur calcule, et sa part de coups joués au hasard — c'est elle qui le rend battable.",
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les règles complètes : roque, prise en passant, promotion (à la dame), pat. Le but n'est pas de tout prendre — c'est le roi adverse. Touche une pièce pour voir ses coups ; ton roi s'allume en rouge quand il est en échec. Contre l'ordinateur, commence en Débutant : il voit un coup devant lui et se trompe souvent, c'est fait pour."
+    },
+    {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         activityId: 'demineur',
         sansRevision: true,

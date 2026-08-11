@@ -251,7 +251,10 @@ const legacy = [
     ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
-    ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza']
+    ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
+    ['othello', 'Othello', 'plateau', 'engineOthello'],
+    ['dames', 'Jeu de Dames', 'plateau', 'engineDames'],
+    ['echecs', 'Échecs', 'plateau', 'engineEchecs']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {
