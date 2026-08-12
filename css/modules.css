@@ -3316,7 +3316,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-red-svg text:last-of-type { fill: #b45309; }
 .fx-red-ligne {
     position: absolute; color: #1e293b; font-weight: 400;
-    white-space: nowrap; overflow: hidden;
+    overflow: hidden;
 }
 .fx-red-ligne b { font-weight: 800; }
 /* Sans réponse, la place à écrire est un filet pointillé, comme sur la fiche. */
@@ -3371,3 +3371,23 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .cfg-case--bonus { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
 .cfg-case--bonus input { margin-top: 3px; flex-shrink: 0; width: 17px; height: 17px; accent-color: var(--warning); }
 .cfg-unite { color: var(--text-muted); font-weight: 600; margin-left: 4px; }
+
+/* --- GARAM SUR PAPIER -----------------------------------------------------
+   Le même dessin qu'à l'écran : cadre noir épais et arrondi, données sur fond
+   gris, et le POINTILLÉ entre les deux cases d'un résultat à deux chiffres —
+   sans lui, on lit deux cases au lieu d'un nombre. */
+.fx-ga-case {
+    position: absolute; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    border-style: solid; border-color: #0f172a; background: #fff;
+    font-weight: 800; color: #2563eb; overflow: hidden;
+}
+.fx-ga-case--donnee { color: #0f172a; background: #f1f5f9; }
+.fx-ga-signe {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #0f172a;
+}
+/* La réciproque : le parallélisme est à CONCLURE, la droite est donc pleine. */
+.fx-red-plein { stroke: #2563eb; stroke-width: .5; fill: none; }
+/* Les lignes d'écriture supplémentaires de la rédaction, dans l'aperçu. */
+.fx-red-rail { position: absolute; border-bottom: 1px dotted #a8b0bf; }

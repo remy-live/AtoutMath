@@ -120,9 +120,24 @@ class Chantier extends BaseGame {
                    de petits carres. La difference est enorme a la lecture — on
                    voit un couloir, donc on voit ou le bloc va s'arreter. */
                 .ch-mur {
-                    background: color-mix(in srgb, var(--text-main) 58%, transparent);
+                    /* OPAQUE, et non semi-transparent. Une paroi translucide
+                       laissait voir le fond du plateau dans la moindre couture
+                       — et, une fois les parois legerement superposees pour
+                       fermer ces coutures, c'est l'alpha qui doublait et
+                       dessinait une ligne SOMBRE au meme endroit. Melangee au
+                       fond plutot qu'au vide, la couleur est la meme a l'oeil
+                       et le recouvrement ne se voit plus. */
+                    background: color-mix(in srgb, var(--text-main) 58%, var(--bg-plateau));
                     border-radius: 0;
-                    width: var(--pas); height: var(--pas);
+                    /* UN DEMI-PIXEL DE PLUS QUE LEUR PAS. Le pas est une valeur
+                       fractionnaire (il vient d'un clamp sur la largeur
+                       disponible) : posees a x * pas et larges de pas
+                       exactement, deux parois voisines se manquaient d'un
+                       cheveu apres arrondi, et le fond du plateau passait entre
+                       elles. On voyait alors le contour decoupe en morceaux par
+                       des lignes claires. Le recouvrement ne se voit pas — le
+                       plateau est en overflow: hidden. */
+                    width: calc(var(--pas) + .5px); height: calc(var(--pas) + .5px);
                     left: calc(var(--x) * var(--pas));
                     top: calc(var(--y) * var(--pas));
                 }

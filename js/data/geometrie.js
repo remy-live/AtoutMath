@@ -14,9 +14,22 @@ export const geometrieExercises = [
         // sert au papier. Rédiger une justification, c'est écrire à la main —
         // c'est l'exercice qui gagne le plus à sortir de l'écran.
         generatorId: 'geo.redaction', printable: 'redaction',
-        params: {},
+        params: { propriete: 'para-perp' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Une justification de géométrie a toujours trois lignes : JE SAIS QUE, OR, DONC. On les écrit une par une. D'abord tu remets la propriété du cours dans l'ordre, puis tu lis la figure — les droites en POINTILLÉS sont parallèles — puis la propriété s'écrit pendant que la figure montre de quoi elle parle, et enfin tu conclus."
+    },
+    {
+        // LA RÉCIPROQUE. Même figure, même rédaction en trois lignes, mais on
+        // part des DEUX angles droits pour conclure un parallélisme. C'est la
+        // confusion la plus fréquente en sixième : l'élève qui n'a qu'une
+        // propriété en tête écrit la première pour justifier un parallélisme.
+        id: 'geo-redaction-perp-perp', status: STATUS.TEST,
+        title: 'Rédiger : Deux Perpendiculaires à une Même Droite',
+        activityId: 'redaction',
+        generatorId: 'geo.redaction', printable: 'redaction',
+        params: { propriete: 'perp-perp' },
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Les deux angles droits sont DONNÉS sur la figure : c'est de là qu'on part. La propriété permet alors de conclure que les deux droites sont parallèles — attention à ne pas la confondre avec celle qui part de deux parallèles."
     },
     {
         id: 'geo-repere-placer', title: 'Placer un Point',

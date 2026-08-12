@@ -316,14 +316,51 @@ function dessinerGaramPdf(doc, item, slot, solution) {
     const px = (c) => x0 + c * u + (u - cote) / 2;
     const py = (r) => y0 + r * u + (u - cote) / 2;
 
+    const { dizaines, unites } = accolagesGaram(structure);
+    const rond = Math.min(1.6, cote * 0.17);
+
     structure.cells.forEach((pos, i) => {
+        const x = px(pos.c), y = py(pos.r);
+        const diz = dizaines.has(i), uni = unites.has(i);
+        // Une case accolée à sa voisine s'étend jusqu'à elle : le cadre des
+        // deux ne fait qu'un, comme sur une fiche de garam.
+        const h = diz ? cote + (u - cote) : cote;
         if (givens[i] !== null) {
             doc.setFillColor(...ENCRE.donnee);
-            doc.roundedRect(px(pos.c), py(pos.r), cote, cote, 1, 1, 'F');
+            doc.roundedRect(x, y, cote, h, diz || uni ? 0.2 : rond, diz || uni ? 0.2 : rond, 'F');
         }
         doc.setDrawColor(...ENCRE.trait);
-        doc.setLineWidth(0.4);
-        doc.roundedRect(px(pos.c), py(pos.r), cote, cote, 1, 1, 'S');
+        doc.setLineWidth(0.55);
+        if (!diz && !uni) {
+            doc.roundedRect(x, y, cote, cote, rond, rond, 'S');
+        } else if (diz) {
+            // Le haut du cadre commun : trois côtés, sans le bas.
+            doc.line(x, y + rond, x, y + h);
+            doc.line(x + cote, y + rond, x + cote, y + h);
+            doc.roundedRect(x, y, cote, cote, rond, rond, 'S');
+            // On efface le trait du bas en le repassant en blanc, puis on
+            // reposera le pointillé avec la case des unités.
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.8);
+            doc.line(x + rond, y + cote, x + cote - rond, y + cote);
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.55);
+        } else {
+            doc.line(x, y, x, y + cote - rond);
+            doc.line(x + cote, y, x + cote, y + cote - rond);
+            doc.roundedRect(x, y, cote, cote, rond, rond, 'S');
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.8);
+            doc.line(x + rond, y, x + cote - rond, y);
+            // LE POINTILLÉ qui sépare les dizaines des unités.
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.35);
+            doc.setLineDashPattern([0.7, 0.7], 0);
+            doc.line(x + 0.3, y, x + cote - 0.3, y);
+            doc.setLineDashPattern([], 0);
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.55);
+        }
     });
 
     doc.setFont('helvetica', 'bold');
@@ -343,22 +380,50 @@ function dessinerGaramPdf(doc, item, slot, solution) {
     });
 }
 
+/**
+ * LES CASES ACCOLÉES. Le résultat d'une verticale s'écrit sur DEUX cases, de
+ * haut en bas — dizaines puis unités — et elles se touchent, séparées d'un
+ * simple pointillé : on lit UN nombre à deux chiffres, pas deux cases. C'est
+ * la convention des fiches de garam, et l'exercice à l'écran la respecte ; le
+ * papier l'ignorait et rendait la grille fausse à lire.
+ */
+function accolagesGaram(structure) {
+    const dizaines = new Set(), unites = new Set();
+    (structure.equations || []).forEach(eq => {
+        if (eq.z2 !== undefined) { dizaines.add(eq.z); unites.add(eq.z2); }
+    });
+    return { dizaines, unites };
+}
+
 function garamPreviewHtml(item, slot, k, solution) {
     const { structure, givens, solution: sol } = item.meta;
     const { u, x0, y0 } = geometrieGaram(item, slot.boite);
+    const { dizaines, unites } = accolagesGaram(structure);
     const uk = u * k, cote = uk * 0.92;
+    const trait = Math.max(1, cote * 0.075);
+    const rond = Math.max(1.5, cote * 0.17);
     let html = '';
     structure.cells.forEach((pos, i) => {
         const donnee = givens[i] !== null;
-        html += `<div class="fp-case" style="left:${x0 * k + pos.c * uk}px;
-            top:${y0 * k + pos.r * uk}px; width:${cote}px; height:${cote}px;
-            font-size:${cote * 0.55}px; ${donnee ? 'background:#eef0fa;' : ''}">
-            ${solution || donnee ? sol[i] : ''}</div>`;
+        // La case du haut perd son bord bas et ses arrondis bas, celle du bas
+        // reçoit le pointillé : les deux ne font plus qu'un cadre.
+        const diz = dizaines.has(i), uni = unites.has(i);
+        const bords = diz
+            ? `border-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0;`
+            : uni
+                ? `border-top:${Math.max(1, trait * 0.8)}px dashed #94a3b8;
+                   border-top-left-radius:0; border-top-right-radius:0;`
+                : '';
+        html += `<div class="fx-ga-case${donnee ? ' fx-ga-case--donnee' : ''}"
+            style="left:${x0 * k + pos.c * uk}px; top:${y0 * k + pos.r * uk}px;
+            width:${cote}px; height:${cote + (diz ? trait : 0)}px;
+            border-width:${trait}px; border-radius:${rond}px;
+            font-size:${cote * 0.6}px; ${bords}">${solution || donnee ? sol[i] : ''}</div>`;
     });
     structure.signes.forEach(sg => {
-        html += `<div class="fp-case fp-case--signe" style="left:${x0 * k + sg.c * uk}px;
+        html += `<div class="fx-ga-signe" style="left:${x0 * k + sg.c * uk}px;
             top:${y0 * k + sg.r * uk}px; width:${uk}px; height:${uk}px;
-            font-size:${uk * 0.5}px;">${sg.glyphe}</div>`;
+            font-size:${uk * 0.55}px;">${sg.glyphe}</div>`;
     });
     return html;
 }
@@ -378,9 +443,12 @@ const RED_LIGNES = ['Je sais que', 'Or', 'Donc'];
 
 function geometrieRedaction(item, boite) {
     const f = item.meta.figure;
-    // La figure prend le haut de la boîte, les trois lignes le bas. Une
-    // justification s'écrit en toutes lettres : il lui faut de la place.
-    const figH = Math.min(boite.h * 0.46, boite.w * 0.38);
+    // La figure prend le haut de la boîte, les trois lignes le bas — et
+    // celles-ci en prennent la plus grosse part. La ligne « Or » porte la
+    // propriété du cours EN ENTIER (« Si deux droites sont parallèles, toute
+    // perpendiculaire à l'une… ») : sur une seule ligne de trois centimètres,
+    // aucun élève ne peut l'écrire.
+    const figH = Math.min(boite.h * 0.40, boite.w * 0.34);
     const cx = boite.x + boite.w / 2;
     const cy = boite.y + figH / 2;
     const a = f.inclinaison * Math.PI / 180;
@@ -415,14 +483,19 @@ function geometrieRedaction(item, boite) {
         x1: px - nx * (e + debord), y1: py - ny * (e + debord),
         x2: px + nx * (e + debord), y2: py + ny * (e + debord)
     };
-    // L'angle droit sur la PREMIÈRE parallèle : c'est une donnée de l'énoncé.
-    const jx = px - nx * e, jy = py - ny * e;
+    // LES ANGLES DROITS DONNÉS. Pour la propriété directe, un seul : celui
+    // que la figure offre. Pour la réciproque, les DEUX — ce sont eux les
+    // données, et c'est le parallélisme qui se conclut.
     const c = Math.min(3.2, e * 0.35);
-    const angle = [
-        { x: jx + dx * c, y: jy + dy * c },
-        { x: jx + dx * c + nx * c, y: jy + dy * c + ny * c },
-        { x: jx + nx * c, y: jy + ny * c }
+    const equerre = (cx0, cy0, sens) => [
+        { x: cx0 + dx * c, y: cy0 + dy * c },
+        { x: cx0 + dx * c + nx * c * sens, y: cy0 + dy * c + ny * c * sens },
+        { x: cx0 + nx * c * sens, y: cy0 + ny * c * sens }
     ];
+    const jx = px - nx * e, jy = py - ny * e;
+    const angle = equerre(jx, jy, 1);
+    const reciproque = (item.meta.propriete || f.propriete) === 'perp-perp';
+    const angle2 = reciproque ? equerre(px + nx * e, py + ny * e, -1) : null;
     // Les noms au bout le plus loin du croisement, comme à l'écran.
     const loin = f.ou > 50 ? -1 : 1;
     // Chaque nom est RAMENÉ dans la boîte : à moitié coupé, il ne nomme rien,
@@ -437,15 +510,19 @@ function geometrieRedaction(item, boite) {
         return dedans(bx + nx * 3.6 * sens, by + ny * 3.6 * sens + 1.1);
     };
     return {
-        p1, p2, perp, angle,
+        p1, p2, perp, angle, angle2, reciproque,
         noms: [
             { ...bout(p1, -1), texte: `(${f.noms.p1})` },
             { ...bout(p2, 1), texte: `(${f.noms.p2})` },
             { ...dedans(perp.x2 + nx * 1.5, perp.y2 + ny * 1.5 + 3.2), texte: `(${f.noms.perp})` }
         ],
-        // Les trois lignes à remplir, sous la figure.
-        ligneY: (i) => boite.y + figH + 5 + i * ((boite.h - figH - 6) / 3),
-        ligneH: (boite.h - figH - 6) / 3
+        // Les trois lignes à remplir, sous la figure. « Or » vaut DEUX lignes
+        // de la grille : c'est elle qui porte la propriété entière.
+        // Répartition : Je sais que = 1 part, Or = 2 parts, Donc = 1 part.
+        parts: [0, 1, 3],
+        pas: (boite.h - figH - 6) / 4,
+        ligneY: (i) => boite.y + figH + 5 + [0, 1, 3][i] * ((boite.h - figH - 6) / 4),
+        ligneH: (boite.h - figH - 6) / 4
     };
 }
 
@@ -457,16 +534,26 @@ function redactionPreviewHtml(item, slot, k, solution) {
     const texteLignes = RED_LIGNES.map((et, i) => {
         const y = g.ligneY(i);
         const rempli = solution ? lignes[i].texte : '';
+        // « Or » occupe deux interlignes : c'est elle qui porte la propriété.
+        const enPlus = i === 1 ? 2 : 1;
+        const haut = g.ligneH * (i === 1 ? 2 : 1);
+        // Les lignes d'écriture supplémentaires, comme sur le PDF : l'aperçu
+        // doit montrer la place réelle, sinon le professeur découvre à
+        // l'impression que la propriété ne tient pas.
+        const rails = solution ? '' : Array.from({ length: enPlus }, (_, j) =>
+            `<div class="fx-red-rail" style="left:${(b.x + 4) * k}px;
+                top:${(y + 0.8 + (j + 1) * g.ligneH * 0.42) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
         return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${y * k}px;
-            width:${b.w * k}px; font-size:${3.2 * k}px">
-            <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>`;
+            width:${b.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
+            <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
     }).join('');
     return `<div class="fx-red" style="left:0; top:0">
         <svg class="fx-red-svg" style="left:${b.x * k}px; top:${b.y * k}px;
              width:${b.w * k}px; height:${b.h * k}px"
              viewBox="${b.x} ${b.y} ${b.w} ${b.h}">
-            ${trait(g.p1, 'fx-red-para')}${trait(g.p2, 'fx-red-para')}${trait(g.perp, 'fx-red-perp')}
+            ${trait(g.p1, g.reciproque ? 'fx-red-plein' : 'fx-red-para')}${trait(g.p2, g.reciproque ? 'fx-red-plein' : 'fx-red-para')}${trait(g.perp, 'fx-red-perp')}
             <path d="M ${g.angle.map(p => `${p.x} ${p.y}`).join(' L ')}" class="fx-red-angle" />
+            ${g.angle2 ? `<path d="M ${g.angle2.map(p => `${p.x} ${p.y}`).join(' L ')}" class="fx-red-angle" />` : ''}
             ${g.noms.map(n => `<text x="${n.x}" y="${n.y}" class="fx-red-nom" text-anchor="middle">${n.texte}</text>`).join('')}
         </svg>${texteLignes}</div>`;
 }
@@ -477,7 +564,10 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
 
     doc.setDrawColor(37, 99, 235);
     doc.setLineWidth(0.5);
-    doc.setLineDashPattern([1.6, 1.1], 0);
+    // Le pointillé EST la marque du parallélisme : dans la réciproque, où le
+    // parallélisme est ce qu'on doit conclure, les deux droites se tracent au
+    // trait plein — sinon la figure donne la réponse.
+    if (!g.reciproque) doc.setLineDashPattern([1.6, 1.1], 0);
     doc.line(g.p1.x1, g.p1.y1, g.p1.x2, g.p1.y2);
     doc.line(g.p2.x1, g.p2.y1, g.p2.x2, g.p2.y2);
     doc.setLineDashPattern([], 0);
@@ -485,8 +575,11 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
     doc.setDrawColor(180, 83, 9);
     doc.line(g.perp.x1, g.perp.y1, g.perp.x2, g.perp.y2);
     doc.setLineWidth(0.4);
-    doc.line(g.angle[0].x, g.angle[0].y, g.angle[1].x, g.angle[1].y);
-    doc.line(g.angle[1].x, g.angle[1].y, g.angle[2].x, g.angle[2].y);
+    for (const a of [g.angle, g.angle2]) {
+        if (!a) continue;
+        doc.line(a[0].x, a[0].y, a[1].x, a[1].y);
+        doc.line(a[1].x, a[1].y, a[2].x, a[2].y);
+    }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
@@ -517,8 +610,13 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
             doc.setLineWidth(0.25);
             doc.setLineDashPattern([0.7, 1.1], 0);
             doc.line(x0, y + 0.8, b.x + b.w, y + 0.8);
-            // Une justification tient rarement sur une ligne : on en donne deux.
-            if (i !== 2) doc.line(b.x + 4, y + 4.6, b.x + b.w, y + 4.6);
+            // « Or » porte la propriété entière : deux lignes de plus. Les
+            // deux autres en reçoivent une seconde, la conclusion se logeant
+            // souvent juste à côté de sa marge.
+            const enPlus = i === 1 ? 2 : 1;
+            for (let j = 1; j <= enPlus; j++) {
+                doc.line(b.x + 4, y + 0.8 + j * g.ligneH * 0.42, b.x + b.w, y + 0.8 + j * g.ligneH * 0.42);
+            }
             doc.setLineDashPattern([], 0);
         }
     });
@@ -527,14 +625,23 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
 export const RENDUS = {
     redaction: {
         titre: 'Rédiger un raisonnement',
-        consigne: () => 'Les droites en pointillés sont parallèles. Justifie la perpendicularité '
-            + 'demandée en trois lignes. Propriété : si deux droites sont parallèles, '
-            + 'toute perpendiculaire à l\'une est perpendiculaire à l\'autre.',
+        consigne: (items) => (items[0] && items[0].meta.propriete === 'perp-perp')
+            ? 'Les deux angles droits sont donnés sur la figure. Justifie en trois lignes que les '
+              + 'deux droites sont parallèles. Propriété : si deux droites sont perpendiculaires '
+              + 'à une même troisième, alors elles sont parallèles entre elles.'
+            : 'Les droites en pointillés sont parallèles. Justifie la perpendicularité '
+              + 'demandée en trois lignes. Propriété : si deux droites sont parallèles, '
+              + 'toute perpendiculaire à l\'une est perpendiculaire à l\'autre.',
         previewGrille: redactionPreviewHtml,
         pdfGrille: dessinerRedactionPdf,
         // Ce bloc n'est pas carré : il lui faut la largeur d'une colonne et la
         // hauteur d'une figure plus trois lignes d'écriture.
-        proportions: { w: 1, h: 0.72 }
+        proportions: { w: 1, h: 0.72 },
+        // DEUX PAR LIGNE, et pas ce que la largeur permettrait. Une grille se
+        // contente d'être lisible ; ici l'élève doit ÉCRIRE trois phrases sur
+        // la ligne, dont la propriété du cours en entier. À trois par ligne,
+        // il reste cinq centimètres par phrase.
+        parLigneDefaut: 2
     },
     sudoku: {
         titre: 'Sudoku',

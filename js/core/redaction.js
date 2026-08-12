@@ -18,11 +18,20 @@
 // trois lignes du raisonnement. Il ne connaît ni le DOM ni le SVG.
 
 /**
- * La propriété travaillée. Une seule pour l'instant, volontairement : la
- * seconde (« deux droites perpendiculaires à une même troisième sont
- * parallèles ») s'écrira sur le même moule une fois celle-ci éprouvée.
+ * LES PROPRIÉTÉS TRAVAILLÉES.
+ *
+ * Deux, et elles se dessinent sur la MÊME figure : deux droites parallèles
+ * coupées par une troisième à angle droit. Ce qui change, c'est ce que la
+ * figure DONNE et ce qu'elle fait CONCLURE.
+ *
+ *   para-perp   donné : (d1) // (d2) et (d3) ⊥ (d1)   →   (d3) ⊥ (d2)
+ *   perp-perp   donné : (d3) ⊥ (d1) et (d3) ⊥ (d2)    →   (d1) // (d2)
+ *
+ * La seconde est la réciproque de la première, et c'est exactement pour cela
+ * qu'elle mérite d'être travaillée : l'élève qui ne distingue pas les deux
+ * écrit la première pour justifier un parallélisme.
  */
-export const PROPRIETE = {
+const PARA_PERP = {
     id: 'para-perp',
     titre: 'Parallèles et perpendiculaires',
     enonce: 'Si deux droites sont parallèles, toute perpendiculaire à l\'une est perpendiculaire à l\'autre.',
@@ -51,6 +60,36 @@ export const PROPRIETE = {
     lecon: 'Une justification en géométrie a toujours trois lignes. JE SAIS QUE : ce qu\'on lit sur la figure ou dans l\'énoncé. OR : la propriété du cours, écrite en entier — c\'est elle qui autorise le pas suivant. DONC : la conclusion, qui ne dit rien de plus que ce que la propriété permet.'
 };
 
+const PERP_PERP = {
+    id: 'perp-perp',
+    titre: 'Deux perpendiculaires à une même droite',
+    enonce: 'Si deux droites sont perpendiculaires à une même troisième, alors elles sont parallèles entre elles.',
+    groupes: [
+        'Si deux droites',
+        'sont perpendiculaires',
+        'à une même troisième,',
+        'alors elles sont',
+        'parallèles',
+        'entre elles.'
+    ],
+    mise_en_scene: [
+        { jusqu_a: 3, montre: 'perpendiculaire', dit: 'La troisième droite coupe les deux autres, et les deux angles droits sont marqués.' },
+        { jusqu_a: 4, montre: 'paralleles', dit: 'On regarde alors les deux premières droites : ce sont elles dont on va parler.' },
+        { jusqu_a: 6, montre: 'conclusion', dit: 'Elles ne se rencontreront jamais : elles sont parallèles. C\'est ce que la propriété annonçait.' }
+    ],
+    lecon: 'Attention à ne pas confondre les deux propriétés. L\'une part de DEUX PARALLÈLES pour conclure un angle droit ; celle-ci part de DEUX ANGLES DROITS pour conclure un parallélisme. On les distingue par ce qu\'on possède : regarde toujours d\'abord ce que la figure te DONNE.'
+};
+
+export const PROPRIETES = { 'para-perp': PARA_PERP, 'perp-perp': PERP_PERP };
+
+/** La propriété demandée, celle des parallèles par défaut. */
+export function proprieteDe(id) {
+    return PROPRIETES[id] || PARA_PERP;
+}
+
+/** Conservée pour les appelants qui ne travaillent qu'une propriété. */
+export const PROPRIETE = PARA_PERP;
+
 /**
  * Les trois droites s'appellent TOUJOURS (d₁), (d₂), (d₃).
  *
@@ -75,8 +114,9 @@ export function tirerNoms(rng) {
  * qu'« être parallèle » veut dire « être couché ». Une propriété apprise sur
  * une seule orientation ne se reconnaît plus dès qu'on penche la feuille.
  */
-export function tirerFigure(rng) {
+export function tirerFigure(rng, proprieteId) {
     return {
+        propriete: proprieteDe(proprieteId).id,
         noms: tirerNoms(rng),
         inclinaison: rng.int(-28, 28),
         // Position de la perpendiculaire le long des parallèles, en pourcentage.
@@ -88,6 +128,14 @@ export function tirerFigure(rng) {
 /** Ce qu'on LIT sur la figure : les deux données du « Je sais que ». */
 export function donnees(figure) {
     const { p1, p2, perp } = figure.noms;
+    if (figure.propriete === 'perp-perp') {
+        // Ici, les DEUX angles droits sont donnés ; c'est le parallélisme qui
+        // se conclut.
+        return [
+            { gauche: perp, relation: '⊥', droite: p1, dit: `(${perp}) est perpendiculaire à (${p1})` },
+            { gauche: perp, relation: '⊥', droite: p2, dit: `(${perp}) est perpendiculaire à (${p2})` }
+        ];
+    }
     return [
         { gauche: p1, relation: '//', droite: p2, dit: `(${p1}) et (${p2}) sont parallèles` },
         { gauche: perp, relation: '⊥', droite: p1, dit: `(${perp}) est perpendiculaire à (${p1})` }
@@ -96,7 +144,10 @@ export function donnees(figure) {
 
 /** Ce que la propriété AUTORISE à écrire. */
 export function conclusion(figure) {
-    const { p2, perp } = figure.noms;
+    const { p1, p2, perp } = figure.noms;
+    if (figure.propriete === 'perp-perp') {
+        return { gauche: p1, relation: '//', droite: p2, dit: `(${p1}) et (${p2}) sont parallèles` };
+    }
     return { gauche: perp, relation: '⊥', droite: p2, dit: `(${perp}) est perpendiculaire à (${p2})` };
 }
 
@@ -111,8 +162,8 @@ export function etiquettes(figure, rng) {
 }
 
 /** Les groupes de la phrase, mélangés — et jamais dans l'ordre par hasard. */
-export function groupesMelanges(rng) {
-    const bon = PROPRIETE.groupes;
+export function groupesMelanges(rng, proprieteId) {
+    const bon = proprieteDe(proprieteId).groupes;
     for (let essai = 0; essai < 20; essai++) {
         const m = rng.shuffle(bon);
         if (m.some((g, i) => g !== bon[i])) return m;
@@ -125,8 +176,8 @@ export function groupesMelanges(rng) {
  * On renvoie AUSSI le premier rang fautif : dire « c'est faux » sans dire où
  * oblige à tout recommencer, et l'élève relit alors sans savoir quoi chercher.
  */
-export function verifierPhrase(proposition) {
-    const bon = PROPRIETE.groupes;
+export function verifierPhrase(proposition, proprieteId) {
+    const bon = proprieteDe(proprieteId).groupes;
     const premierFaux = bon.findIndex((g, i) => proposition[i] !== g);
     return {
         juste: premierFaux === -1 && proposition.length === bon.length,

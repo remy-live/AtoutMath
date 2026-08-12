@@ -730,10 +730,11 @@ async function buildPrintablePath() {
         const gen = e.generatorId ? getGenerator(e.generatorId) : null;
         return !!(gen && gen.ecrit);
     });
-    // Peu de questions par exercice : la fiche doit rester feuilletable. Les
-    // exercices à grilles en demandent encore moins — une grille occupe le
-    // quart d'une page.
-    const steps = surPapier.map(e => makeStep(e.id, {}, { nbItems: e.printable ? 2 : 6, threshold: 1 }));
+    // Peu de questions par exercice : la fiche doit rester feuilletable. Six
+    // grilles, en revanche, plutôt que deux : c'est le nombre qui permet
+    // d'essayer les mises en page à trois, quatre ou six par ligne. Avec deux
+    // grilles seulement, « quatre par ligne » ne peut rien montrer.
+    const steps = surPapier.map(e => makeStep(e.id, {}, { nbItems: 6, threshold: 1 }));
     return makePath(`Tout sur papier (${steps.length} exercices)`, steps);
 }
 

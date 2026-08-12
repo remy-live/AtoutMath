@@ -18,7 +18,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    PROPRIETE, ETAPES, tirerFigure, donnees, conclusion, etiquettes,
+    proprieteDe, ETAPES, tirerFigure, donnees, conclusion, etiquettes,
     groupesMelanges, verifierPhrase, verifierDonnee, verifierConclusion
 } from '../core/redaction.js';
 
@@ -28,10 +28,13 @@ class Redaction extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'redaction');
         this.rng = makeRng(this.params.seed);
-        this.figure = tirerFigure(this.rng);
+        // La propriété d'abord : c'est elle qui décide de la figure, de la
+        // phrase à reconstituer et de ce que l'élève doit conclure.
+        this.propriete = proprieteDe(this.params && this.params.propriete);
+        this.figure = tirerFigure(this.rng, this.propriete.id);
         this.etape = 0;
-        this.phrase = new Array(PROPRIETE.groupes.length).fill(null);
-        this.banque = groupesMelanges(this.rng);
+        this.phrase = new Array(this.propriete.groupes.length).fill(null);
+        this.banque = groupesMelanges(this.rng, this.propriete.id);
         this.trous = { d0g: null, d0d: null, d1g: null, d1d: null, cg: null, cd: null };
         this.choisi = null;
         this.motsRevele = 0;
@@ -77,6 +80,19 @@ class Redaction extends BaseGame {
                 }
                 .rd-angle { stroke: #b45309; stroke-width: 2.2; fill: none; opacity: 0; transition: opacity .35s; }
                 .rd-angle--vu { opacity: 1; }
+                /* Le chevron du parallélisme : la marque du tableau. Deux
+                   chevrons identiques sur deux droites disent « celles-ci sont
+                   parallèles » — c'est la conclusion de la réciproque. */
+                /* DANS LA RÉCIPROQUE, le parallélisme est la CONCLUSION : les
+                   deux droites ne peuvent pas être dessinées en pointillés,
+                   puisque le pointillé est justement la marque du parallélisme
+                   dans cet exercice. Trait plein tant qu'on ne l'a pas prouvé. */
+                .rd-para--inconnu { stroke-dasharray: none; }
+                .rd-chevron {
+                    stroke: #2563eb; stroke-width: 3.4; fill: none;
+                    stroke-linecap: round; stroke-linejoin: round;
+                    opacity: 0; transition: opacity .35s;
+                }
                 /* L'angle droit ne se contente pas d'apparaître : il se signale.
                    Un fondu de 0 à 1 sur un petit carré de treize pixels passait
                    complètement inaperçu — le moment le plus important de
@@ -262,14 +278,41 @@ class Redaction extends BaseGame {
         // en est la phrase à ce moment-là.
         this.perpMilieu = (34 + e) / this.perpLong;
 
+        const reciproque = f.propriete === 'perp-perp';
+        // Le chevron du parallélisme, posé sur une droite entre le croisement
+        // et son extrémité : deux chevrons identiques disent « ces deux-là
+        // sont parallèles », c'est la notation du tableau.
+        const chevron = (d, sens) => {
+            const cxp = (d.x1 + d.x2) / 2 - dx * L * 0.45;
+            const cyp = (d.y1 + d.y2) / 2 - dy * L * 0.45;
+            const t = 7, o = 5;
+            return `M ${cxp - dx * o + nx * t} ${cyp - dy * o + ny * t} `
+                + `L ${cxp + dx * o} ${cyp + dy * o} `
+                + `L ${cxp - dx * o - nx * t} ${cyp - dy * o - ny * t}`;
+        };
+
         this.figureEl.innerHTML = `
-            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Deux droites parallèles et une perpendiculaire">
-                <line class="rd-para" data-para="1" x1="${p1.x1}" y1="${p1.y1}" x2="${p1.x2}" y2="${p1.y2}" />
-                <line class="rd-para" data-para="2" x1="${p2.x1}" y1="${p2.y1}" x2="${p2.x2}" y2="${p2.y2}" />
+            <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${reciproque
+        ? 'Deux droites coupées à angle droit par une troisième'
+        : 'Deux droites parallèles et une perpendiculaire'}">
+                <line class="rd-para${reciproque ? ' rd-para--inconnu' : ''}" data-para="1"
+                      x1="${p1.x1}" y1="${p1.y1}" x2="${p1.x2}" y2="${p1.y2}" />
+                <line class="rd-para${reciproque ? ' rd-para--inconnu' : ''}" data-para="2"
+                      x1="${p2.x1}" y1="${p2.y1}" x2="${p2.x2}" y2="${p2.y2}" />
                 <line class="rd-perp" data-perp x1="${perp.x1}" y1="${perp.y1}" x2="${perp.x2}" y2="${perp.y2}"
                       style="stroke-dasharray:${this.perpLong};stroke-dashoffset:${this.perpLong}" />
-                <path class="rd-angle rd-angle--vu" d="${carre1}" />
-                <path class="rd-angle" data-angle d="${carre}" />
+                ${reciproque
+        // LA RÉCIPROQUE RENVERSE LA FIGURE. « Deux perpendiculaires à une même
+        // troisième sont parallèles » : ici les DEUX angles droits sont donnés,
+        // et c'est le PARALLÉLISME qui se conclut. On le marque comme au
+        // tableau — un chevron identique sur chaque droite, qui apparaît quand
+        // la propriété l'autorise.
+        ? `<path class="rd-angle rd-angle--vu" d="${carre1}" />
+                <path class="rd-angle rd-angle--vu" d="${carre}" />
+                <path class="rd-chevron" data-conclusion d="${chevron(p1, -1)}" />
+                <path class="rd-chevron rd-chevron--bis" data-conclusion d="${chevron(p2, 1)}" />`
+        : `<path class="rd-angle rd-angle--vu" d="${carre1}" />
+                <path class="rd-angle" data-conclusion d="${carre}" />`}
                 ${nom(bout(p1).x, bout(p1).y, f.noms.p1, '#2563eb', -1)}
                 ${nom(bout(p2).x, bout(p2).y, f.noms.p2, '#2563eb', 1)}
                 ${nom(perp.x2, perp.y2 + 12, f.noms.perp, '#b45309', 0)}
@@ -330,7 +373,7 @@ class Redaction extends BaseGame {
     }
 
     cacherAngleDroit() {
-        this.figureEl.querySelector('[data-angle]')?.classList.remove('rd-angle--vu', 'rd-angle--pop');
+        this.figureEl.querySelectorAll('[data-conclusion]').forEach(e => e.classList.remove('rd-angle--vu', 'rd-angle--pop'));
     }
 
     clignoterParalleles() {
@@ -342,11 +385,16 @@ class Redaction extends BaseGame {
     }
 
     montrerAngleDroit(pop = true) {
-        const a = this.figureEl.querySelector('[data-angle]');
-        if (!a) return;
-        a.classList.remove('rd-angle--pop');
-        void a.getBoundingClientRect();
-        a.classList.add('rd-angle--vu');
+        // La réciproque conclut sur DEUX marques (un chevron par droite) : on
+        // les révèle ensemble, sinon le parallélisme se lit sur une seule.
+        const cibles = [...this.figureEl.querySelectorAll('[data-conclusion]')];
+        if (!cibles.length) return;
+        cibles.forEach(a => {
+            a.classList.remove('rd-angle--pop');
+            void a.getBoundingClientRect();
+            a.classList.add('rd-angle--vu');
+        });
+        const a = cibles[0];
         if (pop) a.classList.add('rd-angle--pop');
     }
 
@@ -416,7 +464,7 @@ class Redaction extends BaseGame {
 
     controlerPhrase() {
         if (this.phrase.some(g => g === null)) return;
-        const r = verifierPhrase(this.phrase);
+        const r = verifierPhrase(this.phrase, this.propriete.id);
         if (r.juste) {
             this.note('✅ C\'est exactement la propriété du cours.', 'ok');
             this.onCorrectAnswer(null, SKILL, {
@@ -428,8 +476,8 @@ class Redaction extends BaseGame {
             this.note(`Pas tout à fait : c'est à partir du <b>${r.premierFaux + 1}<sup>e</sup> morceau</b> que ça se gâte. Relis à voix haute, la phrase doit s'entendre.`, 'ko');
             this.onWrongAnswer(null, {
                 concept: SKILL, questionText: 'Ordre de la propriété',
-                input: this.phrase.join(' '), expected: PROPRIETE.enonce,
-                customMessage: PROPRIETE.enonce, silencieux: true
+                input: this.phrase.join(' '), expected: this.propriete.enonce,
+                customMessage: this.propriete.enonce, silencieux: true
             });
         }
     }
@@ -486,7 +534,7 @@ class Redaction extends BaseGame {
         // Les mots qui viennent d'apparaître clignotent : sans ça, la phrase
         // s'allonge et on ne sait pas quel morceau la figure est en train
         // d'illustrer.
-        const vus = PROPRIETE.groupes.slice(0, this.motsRevele)
+        const vus = this.propriete.groupes.slice(0, this.motsRevele)
             .map((mot, i) => i >= this.motsDeja ? `<span class="rd-neuf">${mot}</span>` : mot)
             .join(' ');
         this.texteEl.innerHTML = `
@@ -502,7 +550,7 @@ class Redaction extends BaseGame {
     }
 
     jouerMiseEnScene(i) {
-        const scenes = PROPRIETE.mise_en_scene;
+        const scenes = this.propriete.mise_en_scene;
         if (i >= scenes.length) {
             this.note('La propriété désigne des objets du dessin : c\'est ce qui la rend utilisable.');
             this.suiteEl.hidden = false;
@@ -536,7 +584,7 @@ class Redaction extends BaseGame {
         this.montrerAngleDroit(false);
         this.texteEl.innerHTML = `
             <div class="rd-ligne"><span class="rd-mot">Je sais que</span> : ${this.resumeDonnees()}</div>
-            <div class="rd-ligne"><span class="rd-mot">Or</span> ${PROPRIETE.enonce}</div>
+            <div class="rd-ligne"><span class="rd-mot">Or</span> ${this.propriete.enonce}</div>
             <div class="rd-ligne">
                 <span class="rd-mot">Donc</span>
                 (<span class="rd-trou ${this.trous.cg ? '' : 'rd-trou--vide'}" data-trou="cg">${this.trous.cg || ''}</span>)
@@ -709,7 +757,7 @@ class Redaction extends BaseGame {
 
     nouvelleFigure() {
         this.rng = makeRng();
-        this.figure = tirerFigure(this.rng);
+        this.figure = tirerFigure(this.rng, this.propriete.id);
         this.etape = 1;                 // la phrase est acquise, on n'y revient pas
         this.trous = { d0g: null, d0d: null, d1g: null, d1d: null, cg: null, cd: null };
         this.choisi = null;
@@ -743,7 +791,7 @@ class Redaction extends BaseGame {
         if (!await gate.waitTurn() || !this.isRunning) return fin();
         cur.say('D\'abord la propriété du cours. Je la remets dans l\'ordre : elle doit s\'entendre comme une phrase.', this.banqueEl);
         if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-        for (const g of PROPRIETE.groupes) {
+        for (const g of this.propriete.groupes) {
             const i = this.banque.indexOf(g);
             const el = this.banqueEl.querySelector(`[data-groupe="${i}"]`);
             if (el && !await cur.tap(el)) return fin();
@@ -751,7 +799,7 @@ class Redaction extends BaseGame {
             if (libre >= 0) this.phrase[libre] = g;
             this.peindrePhrase();
         }
-        cur.say(PROPRIETE.enonce, this.texteEl);
+        cur.say(this.propriete.enonce, this.texteEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Temps 2 : les données.

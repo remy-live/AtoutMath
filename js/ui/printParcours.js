@@ -448,7 +448,9 @@ export function ouvrirFicheParcours(chemin) {
                     questions: e.grille ? [] : tire,
                     grilles: e.grille ? tire : [],
                     colonnes: e.grille ? null : col,
-                    grillesParLigne: e.grille ? col : null,
+                    // « auto » demande au rendu ce qui lui convient : une grille
+                    // remplit la largeur, une rédaction veut deux par ligne.
+                    grillesParLigne: e.grille ? (col ?? RENDUS[e.grille].parLigneDefaut ?? null) : null,
                     // Tous les blocs imprimables ne sont pas carrés : une
                     // figure suivie de trois lignes à rédiger est large et
                     // basse. Le rendu déclare sa proportion, la mise en page

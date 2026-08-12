@@ -9,7 +9,7 @@
 // le jeu. On ne recopie rien : une propriété corrigée d'un côté l'est des deux.
 
 import { makeItem } from '../items.js';
-import { PROPRIETE, tirerFigure, donnees, conclusion } from '../redaction.js';
+import { PROPRIETES, proprieteDe, tirerFigure, donnees, conclusion } from '../redaction.js';
 
 export const redactionGenerator = {
     id: 'geo.redaction',
@@ -19,11 +19,18 @@ export const redactionGenerator = {
     // Pas de `ecrit: true` : cet exercice ne se pose pas en question à trou
     // dans une colonne. Il occupe un BLOC — figure plus trois lignes — et
     // c'est `printable` qui l'y envoie.
-    params: [],
+    params: [
+        {
+            id: 'propriete', label: 'Propriété travaillée', type: 'select',
+            default: 'para-perp',
+            options: Object.values(PROPRIETES).map(p => ({ value: p.id, label: p.titre }))
+        }
+    ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const figure = tirerFigure(rng);
+        const prop = proprieteDe(params && params.propriete);
+        const figure = tirerFigure(rng, prop.id);
         const [d1, d2] = donnees(figure);
         const c = conclusion(figure);
 
@@ -33,23 +40,26 @@ export const redactionGenerator = {
             skillId: 'geo.redaction.para-perp',
             answerKind: 'text',
             prompt: {
-                text: `Justifie que (${c.gauche}) est perpendiculaire à (${c.droite}).`
+                text: c.relation === '//'
+                    ? `Justifie que (${c.gauche}) et (${c.droite}) sont parallèles.`
+                    : `Justifie que (${c.gauche}) est perpendiculaire à (${c.droite}).`
             },
-            answer: `(${c.gauche}) ⊥ (${c.droite})`,
+            answer: `(${c.gauche}) ${c.relation} (${c.droite})`,
             hints: [
                 'Commence par ce que la figure te DONNE : deux droites parallèles, et une perpendiculaire à l\'une des deux.',
                 'La propriété est écrite dans la consigne : recopie-la en entier à la ligne « Or ».'
             ],
-            explanation: `Je sais que ${d1.dit} et ${d2.dit}. Or ${PROPRIETE.enonce} Donc ${c.dit}.`,
+            explanation: `Je sais que ${d1.dit} et ${d2.dit}. Or ${prop.enonce} Donc ${c.dit}.`,
             difficulty: 2,
             meta: {
                 figure,
+                propriete: prop.id,
                 noms: figure.noms,
                 // Les trois lignes, déjà rédigées : la feuille de solutions
                 // n'a plus qu'à les poser.
                 lignes: [
                     { etiquette: 'Je sais que', texte: `${d1.dit} et ${d2.dit}.` },
-                    { etiquette: 'Or', texte: PROPRIETE.enonce },
+                    { etiquette: 'Or', texte: prop.enonce },
                     { etiquette: 'Donc', texte: `${c.dit}.` }
                 ]
             }
