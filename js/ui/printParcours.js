@@ -121,6 +121,11 @@ function assurerModale() {
                     </select></label>
                 <label class="fq-case"><input type="checkbox" id="pp-champs">
                     Champs remplissables (PDF)</label>
+                <label>Numéros
+                    <select id="pp-numerotation" class="cfg-input">
+                        <option value="continue">Qui se suivent (1, 2, 3… sur toute la feuille)</option>
+                        <option value="exercice">Qui repartent à 1 à chaque exercice</option>
+                    </select></label>
             </div>
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
@@ -169,6 +174,7 @@ export function ouvrirFicheParcours(chemin) {
     const champsEl = m.querySelector('#pp-champs');
     const noteSurEl = m.querySelector('#pp-note-sur');
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
+    const numEl = m.querySelector('#pp-numerotation');
 
     let solutions = false;
     let blocs = null;           // les questions déjà tirées, par étape
@@ -188,6 +194,12 @@ export function ouvrirFicheParcours(chemin) {
     // cas « combien en met-on côte à côte », donc un seul réglage.
     const colonnes = {};
     papier.forEach(e => { colonnes[e.stepId] = 'auto'; });
+    // NUMÉROTER, OU NON, EXERCICE PAR EXERCICE. Par défaut oui — c'est ce
+    // qu'on attend d'une fiche. Mais six grilles de sudoku appelées « 7. » à
+    // « 12. » n'y gagnent rien : ce qu'on écrit dedans n'est pas la réponse à
+    // une question numérotée, c'est la grille elle-même.
+    const numeroter = {};
+    papier.forEach(e => { numeroter[e.stepId] = true; });
     const parId = new Map(papier.map(e => [e.stepId, e]));
 
     const totalPoints = () => ordre
@@ -212,6 +224,7 @@ export function ouvrirFicheParcours(chemin) {
         ouSolution: ouSol.value,
         orientation: orientEl.value,
         champs: champsEl.checked,
+        numerotation: numEl.value,
         noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20))
     });
 
@@ -270,6 +283,9 @@ export function ouvrirFicheParcours(chemin) {
                             ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
                                 ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
                         </select></label>
+                    <label class="pp-etape-champ pp-etape-case">
+                        <input type="checkbox" data-numeroter="${id}"
+                            ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
                     <label class="pp-etape-champ pp-etape-pts" ${interro.checked ? '' : 'hidden'}>Barème
                         <input type="number" class="cfg-input cfg-input--num" data-points="${id}"
                             min="0" max="40" value="${points[id]}"
@@ -284,15 +300,25 @@ export function ouvrirFicheParcours(chemin) {
             inp.oninput = () => {
                 quantites[inp.dataset.etape] = Math.max(0, Math.min(40, Number(inp.value) || 0));
                 blocs = null;
-                if (!baremeTouche) { repartirPoints(); rendreListe(); }
+                if (!baremeTouche) repartirPoints();
+                majChiffres();
                 rendre();
             };
+            // Le rabotage (0 à 40) ne s'écrit dans le champ qu'à la sortie :
+            // pendant la frappe, réécrire ce que l'on tape empêche de taper.
+            inp.onchange = () => { inp.value = quantites[inp.dataset.etape]; };
         });
         listeEl.querySelectorAll('.pp-etape').forEach(d => {
             d.addEventListener('toggle', () => {
                 if (d.open) ouvertes.add(d.dataset.etapeLigne);
                 else ouvertes.delete(d.dataset.etapeLigne);
             });
+        });
+        listeEl.querySelectorAll('[data-numeroter]').forEach(c => {
+            c.onchange = () => {
+                numeroter[c.dataset.numeroter] = c.checked;
+                rendre();
+            };
         });
         listeEl.querySelectorAll('[data-colonnes]').forEach(sel => {
             sel.onchange = () => {
@@ -306,7 +332,27 @@ export function ouvrirFicheParcours(chemin) {
                 baremeTouche = true;     // à partir d'ici, le barème est le sien
                 rendre();
             };
+            inp.onchange = () => { inp.value = points[inp.dataset.points]; };
         });
+        // RAFRAÎCHIR LES CHIFFRES SANS RECONSTRUIRE LA LISTE.
+        //
+        // Chaque frappe dans « Grilles » ou « Questions » réécrivait tout le
+        // HTML de la liste — donc remplaçait le champ en cours de saisie. Le
+        // curseur partait au premier chiffre tapé et la valeur revenait à
+        // celle du modèle : le champ paraissait impossible à modifier. On ne
+        // retouche donc que les textes qui ont bougé, et jamais le champ qu'on
+        // est en train de remplir.
+        const majChiffres = () => {
+            listeEl.querySelectorAll('[data-etape-ligne]').forEach(ligne => {
+                const id = ligne.dataset.etapeLigne;
+                const e = parId.get(id);
+                const resume = ligne.querySelector('.pp-etape-resume');
+                if (resume) resume.textContent = `${quantites[id]} ${e && e.grille ? 'grilles' : 'questions'}`;
+                const pts = ligne.querySelector('[data-points]');
+                if (pts && pts !== document.activeElement) pts.value = points[id];
+            });
+        };
+
         // Les flèches font le même travail que le glisser, sans geste : c'est
         // le chemin sûr sur un téléphone, où une liste qui défile et un
         // élément qu'on traîne se disputent le même doigt.
@@ -445,6 +491,7 @@ export function ouvrirFicheParcours(chemin) {
                     titre: e.title,
                     consigne: o.interrogation ? '' : (e.grille ? consigneGrille : (e.exercise.instruction || '')),
                     points: o.interrogation ? (points[id] || null) : null,
+                    numeroter: numeroter[id] !== false,
                     questions: e.grille ? [] : tire,
                     grilles: e.grille ? tire : [],
                     colonnes: e.grille ? null : col,
@@ -464,14 +511,14 @@ export function ouvrirFicheParcours(chemin) {
         // une grille se corrige sur son propre dessin, pas dans une liste.
         const toutes = exos.flatMap(x => x.questions);
         const sections = exos.filter(x => x.questions.length)
-            .map(x => ({ titre: x.titre, points: x.points, questions: x.questions }));
+            .map(x => ({ titre: x.titre, points: x.points, questions: x.questions, numeroter: x.numeroter }));
         // LES BLOCS SE CORRIGENT SUR LEUR PROPRE DESSIN. Un sudoku rempli, une
         // rédaction écrite : leur solution est une figure, pas une ligne dans
         // une liste. La vue « solutions » est donc en deux temps — la liste des
         // réponses écrites, puis les blocs redessinés avec leur contenu.
         const aGrilles = exos.filter(x => x.grilles.length);
         const mise = solutions
-            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections }, mesurer)
+            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections, numerotation: o.numerotation }, mesurer)
             : composerBlocs(exos, o, mesurer);
         const blocsSol = (solutions && aGrilles.length)
             ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false }, mesurer)
@@ -523,6 +570,7 @@ export function ouvrirFicheParcours(chemin) {
     ouSol.onchange = rendre;
     orientEl.onchange = rendre;
     champsEl.onchange = rendre;
+    numEl.onchange = rendre;
     noteSurEl.oninput = () => {
         if (!baremeTouche) { repartirPoints(); rendreListe(); }
         rendre();
@@ -628,7 +676,8 @@ function telecharger(modal, chemin, lire) {
                 const nouvelle = () => { if (premiere && !posee) { posee = true; return; } doc.addPage('a4', sens); };
                 if (toutes.length) {
                     const sol = composerSolutions(toutes,
-                        { mode: options.modeSolution, orientation: options.orientation, sections }, mesurer);
+                        { mode: options.modeSolution, orientation: options.orientation, sections,
+                          numerotation: options.numerotation }, mesurer);
                     sol.pages.forEach((page) => {
                         nouvelle();
                         entetePdf(doc, nom, 'Solutions', '', null, sol.page);

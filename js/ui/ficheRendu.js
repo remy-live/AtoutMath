@@ -97,14 +97,20 @@ export function apercuItems(page, k, o) {
         if (it.type === 'grille') {
             const r = RENDUS[it.cle];
             if (r) {
-                html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
-                    font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
+                // `n` vaut null quand le professeur a décoché la numérotation
+                // de cet exercice : on n'écrit alors rien du tout.
+                if (it.n != null) {
+                    html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
+                        font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
+                }
                 html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, k, !!o.solution);
             }
             continue;
         }
         // type 'q'
-        html += `<div class="fq-num" style="left:${it.x * k}px; top:${it.y * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
+        if (it.n != null) {
+            html += `<div class="fq-num" style="left:${it.x * k}px; top:${it.y * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
+        }
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + i * o.interligne) * k}px;
                 width:${it.texteW * k}px; font-size:${o.taille * k}px">${echapper(ligne)}</div>`;
@@ -257,7 +263,7 @@ export function pdfItems(pdf, page, o) {
                 pdf.setFont('helvetica', 'bold');
                 pdf.setFontSize(o.tailleConsigne * 2.83);
                 pdf.setTextColor(...ENCRE.gris);
-                pdf.text(`${it.n}.`, it.x, it.y - 1.2);
+                if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
                 r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, !!o.solution);
             }
             continue;
@@ -265,7 +271,7 @@ export function pdfItems(pdf, page, o) {
         pdf.setTextColor(...ENCRE.texte);
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(o.taille * 2.83);
-        pdf.text(`${it.n}.`, it.x, it.y + o.taille);
+        if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + o.taille);
         pdf.setFont('helvetica', 'normal');
         it.lignes.forEach((ligne, i) => {
             pdf.text(pourPdf(ligne), it.texteX, it.y + o.taille + i * o.interligne);

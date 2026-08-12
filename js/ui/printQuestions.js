@@ -93,6 +93,8 @@ function assurerModale() {
                     </select></label>
                 <label class="fq-case"><input type="checkbox" id="fq-champs">
                     Champs remplissables (PDF)</label>
+                <label class="fq-case"><input type="checkbox" id="fq-numeroter" checked>
+                    Numéroter les questions</label>
             </div>
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
@@ -165,6 +167,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const orientEl = modal.querySelector('#fq-orientation');
     const colsEl = modal.querySelector('#fq-colonnes');
     const champsEl = modal.querySelector('#fq-champs');
+    const numEl = modal.querySelector('#fq-numeroter');
     const mesurer = mesureur();
 
     // Le QCM n'a de sens que si le générateur produit des choix : sur un
@@ -183,13 +186,19 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         ouSolution: ouSol.value,
         orientation: orientEl.value,
         champs: champsEl.checked,
+        numeroter: numEl.checked,
         colonnes: colsEl.value === 'auto' ? null : Number(colsEl.value)
     });
 
     // Le nombre de colonnes de la feuille de solutions n'est pas un réglage à
     // part : il découle du mode. Cinq colonnes de réponses nues pour corriger
     // vite, une seule quand chaque ligne porte son explication.
-    const solutionsDe = (mode, orientation) => composerSolutions(questions, { mode, orientation }, mesurer);
+    const solutionsDe = (mode, orientation) => composerSolutions(questions, {
+        mode, orientation,
+        // Une feuille sans numéros se corrige dans l'ordre : le corrigé
+        // n'invente pas une numérotation que la feuille n'a pas.
+        sections: numEl.checked ? null : [{ titre: exo.title, questions, numeroter: false }]
+    }, mesurer);
 
     const completer = (nb) => {
         if (questions.length < nb) {
@@ -202,7 +211,8 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         titre: exo.title,
         consigne: exo.instruction || '',
         questions,
-        colonnes: o.colonnes
+        colonnes: o.colonnes,
+        numeroter: o.numeroter
     }], { avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs }, mesurer);
 
     const rendre = () => {
@@ -243,6 +253,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     orientEl.onchange = rendre;
     colsEl.onchange = rendre;
     champsEl.onchange = rendre;
+    numEl.onchange = rendre;
     ouSol.onchange = rendre;
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
     btnSol.onclick = () => {

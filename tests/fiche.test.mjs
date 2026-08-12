@@ -522,3 +522,84 @@ test('un bloc peut ne pas être carré, et il tient quand même dans la page', (
         assert.ok(it.boite.x + it.boite.w <= mise.zone.x + mise.zone.w + 0.01, 'un bloc déborde à droite');
     }
 });
+
+// --- La numérotation --------------------------------------------------------
+//
+// Deux réglages demandés, et ils sont indépendants : un GLOBAL — les numéros
+// se suivent d'un bout à l'autre de la feuille, ou repartent à 1 à chaque
+// exercice — et un PAR EXERCICE — numéroter, ou pas du tout.
+
+const numeros = (mise) => mise.pages
+    .flatMap(p => p.items)
+    .filter(i => i.type === 'q' || i.type === 'grille')
+    .map(i => i.n);
+
+test('numéros : en continu, ils courent d\'un exercice à l\'autre', () => {
+    const mise = composerBlocs([exoCourt('A', 3), exoCourt('B', 3)], {}, mesurer);
+    assert.deepEqual(numeros(mise), [1, 2, 3, 4, 5, 6]);
+});
+
+test('numéros : par exercice, ils repartent à 1', () => {
+    const mise = composerBlocs([exoCourt('A', 3), exoCourt('B', 3)],
+        { numerotation: 'exercice' }, mesurer);
+    assert.deepEqual(numeros(mise), [1, 2, 3, 1, 2, 3]);
+});
+
+test('numéros : un exercice non numéroté n\'en consomme aucun', () => {
+    const sans = { ...exoCourt('Sudokus', 2), numeroter: false };
+    const mise = composerBlocs([exoCourt('A', 2), sans, exoCourt('C', 2)], {}, mesurer);
+    // Les deux questions du milieu ne portent rien, et la suite reprend où
+    // l'on s'était arrêté — pas deux crans plus loin.
+    assert.deepEqual(numeros(mise), [1, 2, null, null, 3, 4]);
+});
+
+test('numéros : sans numéro, le texte récupère la gouttière', () => {
+    const avec = composerBlocs([exoCourt('A', 2)], {}, mesurer);
+    const sans = composerBlocs([{ ...exoCourt('A', 2), numeroter: false }], {}, mesurer);
+    const q1 = avec.pages[0].items.find(i => i.type === 'q');
+    const q2 = sans.pages[0].items.find(i => i.type === 'q');
+    assert.ok(q2.texteX < q1.texteX, 'le texte doit commencer plus à gauche');
+    assert.equal(Math.round(q2.texteX), Math.round(q2.x));
+    assert.ok(q2.texteW > q1.texteW, 'et disposer de plus de largeur');
+});
+
+test('numéros : les champs du PDF gardent des noms uniques', () => {
+    // Piège : si le nom du champ suivait le numéro imprimé, deux questions
+    // « 1. » de deux exercices porteraient le même nom — et un PDF recopie la
+    // réponse d'un champ dans tous ses homonymes.
+    const mise = composerBlocs([exoCourt('A', 3), { ...exoCourt('B', 3), numeroter: false }],
+        { numerotation: 'exercice', champs: true }, mesurer);
+    const noms = mise.pages.flatMap(p => p.items)
+        .filter(i => i.type === 'q' && i.rep).map(i => i.rep.nom);
+    assert.equal(noms.length, 6);
+    assert.equal(new Set(noms).size, 6, 'six questions, six noms de champ');
+    assert.equal(mise.nbQuestions, 6, 'le total compte le travail, pas les numéros imprimés');
+});
+
+test('numéros : le corrigé suit exactement la feuille', () => {
+    const qs = (n, d) => Array.from({ length: n }, (_, i) => ({ texte: `q${d + i}`, reponse: d + i }));
+    const sections = [
+        { titre: 'A', questions: qs(3, 1) },
+        { titre: 'B', questions: qs(2, 4) }
+    ];
+    const toutes = sections.flatMap(s => s.questions);
+    const reponses = (mise) => mise.pages.flatMap(p => p.blocs)
+        .filter(b => !b.titre).map(b => b.lignes[0]);
+
+    // En continu, l'exercice B poursuit la numérotation de A.
+    assert.deepEqual(
+        reponses(composerSolutions(toutes, { mode: 'compact', sections }, mesurer)),
+        ['1. 1', '2. 2', '3. 3', '4. 4', '5. 5']);
+
+    // Par exercice, il repart à 1 — comme la feuille de questions.
+    assert.deepEqual(
+        reponses(composerSolutions(toutes, { mode: 'compact', sections, numerotation: 'exercice' }, mesurer)),
+        ['1. 1', '2. 2', '3. 3', '1. 4', '2. 5']);
+
+    // Et un exercice qu'on a choisi de ne pas numéroter ne l'est pas non plus
+    // au corrigé : on lit ses réponses dans l'ordre.
+    const muet = [sections[0], { ...sections[1], numeroter: false }];
+    assert.deepEqual(
+        reponses(composerSolutions(toutes, { mode: 'compact', sections: muet }, mesurer)),
+        ['1. 1', '2. 2', '3. 3', '4', '5']);
+});

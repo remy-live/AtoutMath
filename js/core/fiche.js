@@ -239,7 +239,12 @@ export const DEFAUTS_BLOCS = {
     celluleMin: 46,          // largeur minimale d'une cellule de question, en mm
     colonnesMax: 6,          // le plafond absolu, toutes orientations confondues
     champs: false,           // champs de formulaire remplissables dans le PDF
-    champH: 6                // hauteur d'un champ de saisie, en mm
+    champH: 6,               // hauteur d'un champ de saisie, en mm
+    // LA NUMÉROTATION. « continue » suit la feuille du début à la fin
+    // (« question 27 » se trouve sans compter les exercices) ; « exercice »
+    // repart à 1 à chaque exercice, ce qui est la convention des manuels et
+    // des contrôles — « exercice 3, question 2 » y est plus court à dire.
+    numerotation: 'continue'
 };
 
 /**
@@ -279,7 +284,16 @@ export function composerBlocs(exos, opts, mesurer) {
     const pages = [];
     let page = { items: [] };
     let y = zone.y;
-    let nbQuestions = 0;
+    // DEUX COMPTEURS, ET C'EST NÉCESSAIRE.
+    //
+    // `numero` est ce qui s'IMPRIME : il repart à 1 à chaque exercice quand on
+    // le demande, et il saute les exercices qu'on a choisi de ne pas numéroter.
+    // `total`, lui, ne s'arrête jamais : il compte le travail réel, sert de
+    // retour à l'appelant, et surtout nomme les champs du PDF remplissable —
+    // deux champs de même nom dans un PDF n'en font qu'un, et l'élève verrait
+    // sa réponse se recopier toute seule d'une question à l'autre.
+    let numero = 0;
+    let total = 0;
     // Ce que « auto » a finalement décidé, exercice par exercice : l'interface
     // le rend au professeur, pour qu'il sache de quoi il part avant de forcer.
     const colonnesParExo = [];
@@ -297,6 +311,12 @@ export function composerBlocs(exos, opts, mesurer) {
         const questions = exo.questions || [];
         const grilles = exo.grilles || [];
         if (!questions.length && !grilles.length) return;
+        // Numéroter ou non, exercice par exercice. Six grilles de sudoku n'ont
+        // que faire d'être appelées « 7. » à « 12. » : ce qu'on écrit dessus
+        // n'est pas une réponse à une question, c'est la grille elle-même.
+        const numerote = exo.numeroter !== false;
+        const gouttiereNum = numerote ? o.numeroL : 0;
+        if (o.numerotation === 'exercice') numero = 0;
 
         // --- UN EXERCICE EN GRILLES (sudoku, binairo, garam, mathdoku) ------
         //
@@ -368,10 +388,11 @@ export function composerBlocs(exos, opts, mesurer) {
                 const largeurRangee = rangee.length * cote + gap * (rangee.length - 1);
                 const x0 = zone.x + (zone.w - largeurRangee) / 2;
                 rangee.forEach((g, i) => {
-                    nbQuestions++;
+                    total++;
+                    if (numerote) numero++;
                     const gx = x0 + i * (cote + gap);
                     page.items.push({
-                        type: 'grille', n: nbQuestions, cle: g.cle, item: g.item,
+                        type: 'grille', n: numerote ? numero : null, cle: g.cle, item: g.item,
                         x: gx, y, taille: cote,
                         // La boîte complète, pour les treillis larges (Garam)
                         // et les blocs qui ne sont pas carrés du tout.
@@ -402,7 +423,7 @@ export function composerBlocs(exos, opts, mesurer) {
             for (let c = maxCols; c >= 2; c--) {
                 if (questions.length < c) continue;
                 const cellW = (zone.w - o.gouttiere * (c - 1)) / c;
-                const texteW = cellW - o.numeroL - o.repMin - 2;
+                const texteW = cellW - gouttiereNum - o.repMin - 2;
                 // Un générateur peut PROPOSER des choix sans que la fiche les
                 // imprime : seuls les choix réellement imprimés comptent ici.
                 if (questions.every(q => (!o.avecChoix || !q.choix) && mesurer(q.texte, o.taille) <= texteW)) { cols = c; break; }
@@ -410,7 +431,7 @@ export function composerBlocs(exos, opts, mesurer) {
         }
         colonnesParExo.push(cols);
         const cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
-        const texteW = cellW - o.numeroL;
+        const texteW = cellW - gouttiereNum;
 
         // Les cellules, pré-mesurées : la pagination a besoin des hauteurs
         // avant de poser quoi que ce soit.
@@ -420,7 +441,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
             const memeLigne = !choix && lignes.length === 1
-                && cellW - o.numeroL - mesurer(lignes[0], o.taille) - 2 >= o.repMin
+                && cellW - gouttiereNum - mesurer(lignes[0], o.taille) - 2 >= o.repMin
                 && !o.interrogation;
             const h = lignes.length * o.interligne
                 + (choix ? o.interligne : 0)
@@ -465,9 +486,10 @@ export function composerBlocs(exos, opts, mesurer) {
                 poserBandeau(true);
             }
             rangee.forEach((cell, iCell) => {
-                nbQuestions++;
+                total++;
+                if (numerote) numero++;
                 const x = zone.x + iCell * (cellW + o.gouttiere);
-                const texteX = x + o.numeroL;
+                const texteX = x + gouttiereNum;
                 let rep = null;
                 if (cell.memeLigne) {
                     // Les pointillés continuent la ligne d'écriture : même
@@ -489,9 +511,9 @@ export function composerBlocs(exos, opts, mesurer) {
                 // là que le curseur doit clignoter.
                 rep.h = Math.min(o.champH, ligneRep || o.champH);
                 rep.champY = rep.y - rep.h * 0.78;
-                rep.nom = `q${nbQuestions}`;
+                rep.nom = `q${total}`;
                 page.items.push({
-                    type: 'q', n: nbQuestions,
+                    type: 'q', n: numerote ? numero : null,
                     lignes: cell.lignes, x, y, texteX, texteW,
                     choix: cell.choix,
                     choixY: cell.choix ? y + cell.lignes.length * o.interligne : null,
@@ -503,7 +525,7 @@ export function composerBlocs(exos, opts, mesurer) {
     });
 
     if (page.items.length) pages.push(page);
-    return { pages, zone, opts: o, nbQuestions, page: page0, colonnes: colonnesParExo };
+    return { pages, zone, opts: o, nbQuestions: total, page: page0, colonnes: colonnesParExo };
 }
 
 /**
@@ -574,10 +596,11 @@ export function composerSolutions(questions, opts, mesurer) {
     // tableau en corrigeant.
     const ligneDe = (q, n) => {
         const rep = q.reponse ?? '';
-        if (mode === 'compact') return `${n}. ${rep}`;
-        if (mode === 'normal') return `${n}. ${nettoyer(q.texte)} = ${rep}`;
+        const tete = n == null ? '' : `${n}. `;      // un exercice non numéroté n'invente pas de numéro
+        if (mode === 'compact') return `${tete}${rep}`;
+        if (mode === 'normal') return `${tete}${nettoyer(q.texte)} = ${rep}`;
         const expl = (q.explication || '').trim();
-        return `${n}. ${nettoyer(q.texte)} = ${rep}${expl ? '\n' + expl : ''}`;
+        return `${tete}${nettoyer(q.texte)} = ${rep}${expl ? '\n' + expl : ''}`;
     };
 
     // LES SECTIONS. Une feuille de solutions qui aligne « 1. 2  2. 9  3. 4 »
@@ -588,13 +611,21 @@ export function composerSolutions(questions, opts, mesurer) {
     const sections = (opts && opts.sections) || null;
     const items = [];
     if (sections && sections.length) {
+        // LE CORRIGÉ COMPTE COMME LA FEUILLE. Si les questions repartent à 1 à
+        // chaque exercice, le corrigé aussi — sinon le professeur corrige la
+        // question 14 d'une feuille qui n'en a que huit par exercice. Et un
+        // exercice non numéroté sur la feuille ne l'est pas davantage ici : on
+        // lit alors les réponses dans l'ordre, ce qui est exactement ce qu'on
+        // fait devant six grilles de sudoku.
         let n = 0;
         sections.forEach((sec, i) => {
             const qs = sec.questions || [];
             if (!qs.length) return;
             const bareme = sec.points ? ` — ${sec.points} pt${sec.points > 1 ? 's' : ''}` : '';
             items.push({ titre: true, texte: `Exercice ${i + 1} — ${sec.titre}${bareme}` });
-            qs.forEach(q => items.push({ texte: ligneDe(q, ++n) }));
+            if (o.numerotation === 'exercice') n = 0;
+            const numerote = sec.numeroter !== false;
+            qs.forEach(q => items.push({ texte: numerote ? ligneDe(q, ++n) : ligneDe(q, null) }));
         });
     } else {
         questions.forEach((q, i) => items.push({ texte: ligneDe(q, i + 1) }));
