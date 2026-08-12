@@ -109,6 +109,56 @@ test('aucun énoncé glauque : ni vol, ni crime, ni disparition', () => {
     }
 });
 
+test('les trente thèmes tiennent tous la route, un par un', () => {
+    // Trente thèmes tirés au hasard, c'est trente occasions d'écrire « ne fait
+    // pas de la natation » ou de faire déborder un en-tête. On les passe donc
+    // TOUS, au niveau le plus bavard — celui qui utilise tous les types
+    // d'indices — au lieu d'espérer que le tirage les rencontre.
+    const INTERDIT = /vol|voleur|meurtr|crime|mort|tué|cadavre|assassin|disparu|enquêt|coupable|suspect|police|arme|poison/i;
+    assert.ok(THEMES.length >= 30, 'la variété est le sujet : au moins trente thèmes');
+    assert.equal(new Set(THEMES.map(t => t.id)).size, THEMES.length, 'deux thèmes portent le même identifiant');
+
+    for (const theme of THEMES) {
+        const p = genererLogigramme({ niveau: 6, theme: theme.id }, makeRng(`tous-${theme.id}`));
+        assert.equal(p.theme, theme.id, 'le thème demandé doit être celui qu\'on obtient');
+        assert.ok(resoudre(p).complet, `thème ${theme.id} : grille non résoluble par déduction`);
+        // Chaque catégorie doit tenir dans un en-tête de quelques millimètres.
+        p.categories.forEach(cat => {
+            assert.ok(cat.label.length <= 12, `thème ${theme.id} : libellé « ${cat.label} » trop long`);
+            (cat.valeurs || cat.nombres).forEach((_, i) =>
+                assert.ok(etiquette(cat, i).length <= 14,
+                    `thème ${theme.id} : étiquette « ${etiquette(cat, i)} »`));
+        });
+        for (const ind of p.indices) {
+            const t = ind.texte;
+            // « a mangé 1 tartines » : le pluriel après un, ça ne s'écrit pas.
+            assert.ok(!/\b1 \S*[^s]s\b/.test(t.replace(/\b1 (fois|puis)\b/g, '')),
+                `thème ${theme.id} : pluriel après « 1 » — « ${t} »`);
+            assert.match(t, /\.$/, `thème ${theme.id} : « ${t} »`);
+            assert.match(t[0], /[A-ZÀÉÈÊÎÔÇ]/, `thème ${theme.id} : « ${t} »`);
+            assert.ok(!/\bque [aeiouyâàéèêîôùûAEIOUYÀÂÉÈÊÎÔÙÛ]/.test(t), `élision : « ${t} »`);
+            assert.ok(!/pas (du|de la|de l'|des) /.test(t), `partitif après négation : « ${t} »`);
+            assert.ok(!/(undefined|NaN)/.test(t), `trou dans la phrase : « ${t} »`);
+            assert.ok(!INTERDIT.test(t), `thème ${theme.id} : indice glauque « ${t} »`);
+        }
+    }
+});
+
+test('une fiche ne répète pas deux fois le même thème', () => {
+    // « Quand on imprime, on varie les thèmes » : douze grilles sur une fiche,
+    // douze histoires différentes. Le générateur écarte ce qui a déjà servi.
+    const vus = [];
+    for (let i = 0; i < 12; i++) {
+        const p = genererLogigramme({ niveau: 3, themesExclus: vus }, makeRng(`fiche-${i}`));
+        assert.ok(!vus.includes(p.theme), `le thème ${p.theme} revient une deuxième fois`);
+        vus.push(p.theme);
+    }
+    // Et quand la réserve est vide, on recommence plutôt que de rendre rien.
+    const tousLesIds = THEMES.map(t => t.id);
+    const quandMeme = genererLogigramme({ niveau: 3, themesExclus: tousLesIds }, makeRng('vide'));
+    assert.ok(tousLesIds.includes(quandMeme.theme));
+});
+
 test('la vérification accepte la grille juste et refuse la fausse', () => {
     const p = tirer(3, 'verif');
     const n = p.categories[0].valeurs.length;

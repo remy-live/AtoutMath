@@ -58,7 +58,16 @@ export function analyserParcours(chemin) {
 function grillesDe(etape, nb) {
     const out = [];
     for (let i = 0; i < nb; i++) {
-        out.push({ cle: etape.grille, item: etape.generator.generate(etape.params, { index: i, rng: makeRng() }) });
+        // `themesExclus` : ce qui a déjà servi dans cette étape. Un générateur
+        // qui a des histoires (le logigramme) en change à chaque grille ; les
+        // autres n'en tiennent pas compte.
+        out.push({
+            cle: etape.grille,
+            item: etape.generator.generate(etape.params, {
+                index: i, rng: makeRng(),
+                themesExclus: out.map(g => g.item.meta && g.item.meta.theme).filter(Boolean)
+            })
+        });
     }
     return out;
 }

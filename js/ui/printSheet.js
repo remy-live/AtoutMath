@@ -617,19 +617,22 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         lignesTexte.forEach((l, li) => { y += 3.9; doc.text(l, b.x + (li ? 3 : 0), y); });
     });
 
-    // Les bandeaux de colonne.
+    // Les bandeaux de colonne. Cernés eux aussi : le trait noir court sur
+    // toute la grille, en-têtes compris.
     const libH = g.entete - g.bandeau;
+    doc.setDrawColor(...ENCRE.trait);
     colonnes.forEach((c, ci) => {
         const x = x0 + ci * n * cote;
+        doc.setLineWidth(0.15);
         doc.setFillColor(...pastel(c, 0.55));
-        doc.rect(x, y0 - g.entete, n * cote, g.bandeau, 'F');
+        doc.rect(x, y0 - g.entete, n * cote, g.bandeau, 'FD');
         doc.setFontSize(Math.min(8, cote * 1.3));
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(p.categories[c].label), x + n * cote / 2, y0 - g.entete + g.bandeau * 0.72,
             { align: 'center' });
         doc.setFillColor(...pastel(c, 0.18));
-        doc.rect(x, y0 - libH, n * cote, libH, 'F');
+        for (let j = 0; j < n; j++) doc.rect(x + j * cote, y0 - libH, cote, libH, 'FD');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(Math.min(7.5, cote * 1.2));
         for (let j = 0; j < n; j++) {
@@ -641,15 +644,17 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
     lignes.forEach((r, ri) => {
         const y0r = y0 + ri * n * cote;
         const xCat = g.xCat;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.15);
         doc.setFillColor(...pastel(r, 0.55));
-        doc.rect(xCat, y0r, g.bandeau, n * cote, 'F');
+        doc.rect(xCat, y0r, g.bandeau, n * cote, 'FD');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(Math.min(8, cote * 1.3));
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(p.categories[r].label), xCat + g.bandeau * 0.72, y0r + n * cote / 2,
             { align: 'center', angle: 90 });
         doc.setFillColor(...pastel(r, 0.18));
-        doc.rect(xCat + g.bandeau, y0r, g.etiq, n * cote, 'F');
+        for (let i = 0; i < n; i++) doc.rect(xCat + g.bandeau, y0r + i * cote, g.etiq, cote, 'FD');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(Math.min(7.5, cote * 1.2));
         for (let i = 0; i < n; i++) {
@@ -660,13 +665,15 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         colonnes.forEach((c, ci) => {
             if (!logiVisible(r, c)) return;
             const x = x0 + ci * n * cote;
-            doc.setDrawColor(...ENCRE.grille);
-            doc.setLineWidth(0.12);
+            // Tout est noir : le quadrillage fin à l'intérieur, le cadre plus
+            // épais autour. C'est le trait d'un logigramme de magazine, et
+            // c'est lui qui dit d'un coup d'œil où s'arrête un bloc.
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.15);
             for (let i = 1; i < n; i++) {
                 doc.line(x, y0r + i * cote, x + n * cote, y0r + i * cote);
                 doc.line(x + i * cote, y0r, x + i * cote, y0r + n * cote);
             }
-            doc.setDrawColor(...ENCRE.trait);
             doc.setLineWidth(0.6);
             doc.rect(x, y0r, n * cote, n * cote, 'S');
             if (solution) {
@@ -1134,7 +1141,15 @@ export function ouvrirFicheModal(exo, params) {
     // sont RETIRÉES qu'en cas de besoin (plus de cases), jamais régénérées à
     // l'ouverture des solutions — l'aperçu doit montrer les mêmes grilles.
     const completer = (total) => {
-        while (items.length < total) items.push(generator.generate(params, { rng: makeRng() }));
+        while (items.length < total) {
+            // On passe au générateur ce qui a DÉJÀ été tiré : un logigramme
+            // change alors d'histoire à chaque grille au lieu de resservir la
+            // boulangerie trois fois sur la même feuille.
+            items.push(generator.generate(params, {
+                rng: makeRng(), index: items.length,
+                themesExclus: items.map(it => it.meta && it.meta.theme).filter(Boolean)
+            }));
+        }
         items.length = total;
     };
 

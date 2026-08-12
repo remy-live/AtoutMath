@@ -30,7 +30,13 @@ export const logigrammeGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const niv = niveauDe(params && params.niveau);
-        const p = genererLogigramme({ niveau: niv.id, theme: params && params.theme }, rng);
+        // Une fiche porte plusieurs logigrammes : la feuille dit lesquels sont
+        // déjà servis pour qu'on change d'histoire à chaque grille.
+        const p = genererLogigramme({
+            niveau: niv.id,
+            theme: params && params.theme,
+            themesExclus: ctx.themesExclus
+        }, rng);
         return makeItem({
             seed: rng.seed,
             generatorId: 'logique.logigramme',

@@ -79,8 +79,11 @@ class Logigramme extends BaseGame {
                 .lg-grille { flex: 0 0 auto; }
                 .lg-table { border-collapse: collapse; }
                 .lg-table td, .lg-table th { padding: 0; }
+                /* TOUT LE TRAIT EST DE L'ENCRE, jamais du gris de bordure : le
+                   quadrillage fin à l'intérieur, le cadre épais autour du bloc.
+                   C'est ce qui distingue une grille de logigramme d'un tableau. */
                 .lg-case {
-                    border: 1px solid var(--border); cursor: pointer; text-align: center;
+                    border: 1px solid var(--text-main); cursor: pointer; text-align: center;
                     background: var(--bg-panel); font-weight: 800; user-select: none;
                     -webkit-tap-highlight-color: transparent; line-height: 1;
                 }
@@ -103,13 +106,13 @@ class Logigramme extends BaseGame {
                 }
                 /* Les en-têtes portent la couleur de leur liste : pastel, pour
                    rester lisibles sous une photocopie comme sur un écran. */
-                .lg-th--val { border: 1px solid var(--border); padding: 2px 4px !important; }
+                .lg-th--val { border: 1px solid var(--text-main); padding: 2px 4px !important; }
                 .lg-th--col { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; }
                 .lg-th--lig { text-align: right; padding-right: 6px !important; max-width: 96px;
                     overflow: hidden; text-overflow: ellipsis; }
                 .lg-th--cat {
                     font-weight: 800; color: var(--text-main); text-align: center;
-                    border: 1px solid var(--border); padding: 3px 4px !important;
+                    border: 1px solid var(--text-main); padding: 3px 4px !important;
                     font-size: clamp(9px, 2.1cqw, 12.5px);
                 }
                 .lg-th--catlig { writing-mode: vertical-rl; transform: rotate(180deg); }
@@ -251,7 +254,7 @@ class Logigramme extends BaseGame {
                         html += `<td class="lg-case lg-case--vide${bords}" data-r="${r}" data-i="${i}"
                              data-c="${c}" data-j="${j}"
                              style="width:${cote}px; height:${cote}px; font-size:${cote * 0.62}px;
-                             border-color:var(--border);
+                             border-color:${trait()};
                              ${j === 0 ? `border-left-color:${trait()};` : ''}
                              ${j === this.n - 1 ? `border-right-color:${trait()};` : ''}
                              ${i === 0 ? `border-top-color:${trait()};` : ''}
