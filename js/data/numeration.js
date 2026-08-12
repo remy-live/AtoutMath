@@ -167,6 +167,33 @@ export const numerationExercises = [
         instruction: "Combien faut-il ajouter pour faire 10 ?"
     },
     {
+        // LES PAIRES. Le complément est un réflexe, et un réflexe se construit
+        // en CHERCHANT des paires, pas en répondant à des questions : une
+        // table de cartes, on tape 3 puis 7, elles s'envolent. La table vidée,
+        // une plus grande arrive.
+        id: 'num-amis-de-dix', status: STATUS.TEST, title: 'Les Amis de Dix',
+        activityId: 'dix',
+        sansRevision: true,
+        skills: ['num.complement'],
+        params: { cible: [10], vies: 3 },
+        paramSchema: [
+            {
+                id: 'cible', type: 'multiselect', label: 'Compléter à',
+                options: [10, 100, 1000], default: [10]
+            },
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [
+                    { value: 3, label: '3 vies' },
+                    { value: 5, label: '5 vies' }
+                ],
+                default: 3
+            }
+        ],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME] },
+        instruction: "Toutes les cartes sont visibles, et chacune a son amie : tape deux cartes dont la somme fait la cible. Ne cherche pas au hasard — choisis UNE carte, calcule ce qui lui manque, puis cherche ce nombre des yeux."
+    },
+    {
         id: 'num-complement-100',
         consignePapier: "Complète.",
         colonnesPapier: 3,

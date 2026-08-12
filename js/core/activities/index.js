@@ -280,6 +280,7 @@ const legacy = [
     ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction'],
     ['logigramme', 'Logigramme', 'logigramme', 'engineLogigramme'],
     ['dominos', 'Dominos mathématiques', 'dominos', 'engineDominos'],
+    ['dix', 'Les Amis de Dix (paires)', 'dix', 'engineDix'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
