@@ -219,10 +219,24 @@ export function computeAssignedPath(events) {
     if (!assigned) return null;
 
     const done = new Set();
+    // Le DÉTAIL de chaque étape, pas seulement « faite » : les jeux de
+    // récompense s'ouvrent sur un TAUX de réussite, et « terminée » ne dit pas
+    // à quel point. On garde le meilleur passage de chaque étape — un élève
+    // qui recommence pour se rattraper doit voir son rattrapage compter.
+    const resultats = {};
     for (const e of events) {
-        if (e.type === A.STEP_COMPLETED && e.payload.pathId === assigned.pathId) {
-            done.add(e.payload.stepId);
+        if (e.type !== A.STEP_COMPLETED || e.payload.pathId !== assigned.pathId) continue;
+        const { stepId, solved = 0, required = 1, passed } = e.payload;
+        // `passed` absent = l'ancien marqueur « étape validée », émis par
+        // state.markStudentPathStepCompleted et seulement quand elle l'est.
+        // Seul un `passed: false` explicite — le runner sur un échec — ne
+        // valide pas l'étape.
+        if (passed !== false) done.add(stepId);
+        const ancien = resultats[stepId];
+        const taux = solved / Math.max(1, required);
+        if (!ancien || taux > ancien.solved / Math.max(1, ancien.required)) {
+            resultats[stepId] = { solved, required, passed: !!passed };
         }
     }
-    return { ...assigned, completed: [...done] };
+    return { ...assigned, completed: [...done], resultats };
 }

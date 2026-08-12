@@ -14,6 +14,7 @@
 import { getExerciseById } from '../data/catalog.js';
 import { resolvePolicy, defaultPolicy } from './policy.js';
 import { shortId } from './ids.js';
+import { SEUIL_DEFAUT } from './recompenses.js';
 
 export const PATH_VERSION = 2;
 
@@ -28,7 +29,11 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         timeLimit: opts.timeLimit || null,
         // Rejeu exact d'une question passée : la graine suffit à la régénérer,
         // on n'a donc jamais besoin de stocker son contenu.
-        forceSeed: opts.forceSeed || null
+        forceSeed: opts.forceSeed || null,
+        // UNE ÉTAPE-JEU n'est pas du travail : elle ne compte ni dans les
+        // exercices à faire, ni dans la note, et elle ne s'ouvre qu'une fois
+        // le travail qui la précède réussi. Voir core/recompenses.js.
+        bonus: !!opts.bonus
     };
 }
 
@@ -38,6 +43,8 @@ export function makePath(name = 'Nouveau parcours', steps = [], policy = null) {
         version: PATH_VERSION,
         name,
         policy: policy || defaultPolicy(),
+        // Le niveau de réussite qui ouvre les jeux de récompense du parcours.
+        bonusSeuil: SEUIL_DEFAUT,
         steps
     };
 }
@@ -61,7 +68,12 @@ export function normalizePath(raw, name = 'Parcours') {
     }
 
     if (raw.version === PATH_VERSION) {
-        return { ...raw, policy: resolvePolicy(raw.policy), steps: (raw.steps || []).map(normalizeStep) };
+        return {
+            bonusSeuil: SEUIL_DEFAUT,
+            ...raw,
+            policy: resolvePolicy(raw.policy),
+            steps: (raw.steps || []).map(normalizeStep)
+        };
     }
 
     // Objet { name, data: [...] } tel que stocké par l'ancien navigateur de parcours.
@@ -86,14 +98,16 @@ function legacyStep(s, i) {
         weight: s.weight || 1,
         timeLimit: p.timeLimit || null,
         forceSeed: p.forceSeed || null,
-        forceQuestion: p.forceQuestion || null
+        forceQuestion: p.forceQuestion || null,
+        bonus: !!s.bonus
     };
 }
 
 function normalizeStep(s) {
     return {
-        weight: 1, nbItems: 10, threshold: null, timeLimit: null,
+        weight: 1, nbItems: 10, threshold: null, timeLimit: null, bonus: false,
         ...s,
+        bonus: !!s.bonus,
         overrides: s.overrides || {}
     };
 }
@@ -134,12 +148,17 @@ export function hydratePath(path) {
     return { path: normalized, steps, missing };
 }
 
-/** Total des poids, pour afficher la répartition du barème dans l'éditeur. */
+/**
+ * Total des poids, pour afficher la répartition du barème dans l'éditeur.
+ * Les jeux de récompense en sont exclus : on ne note pas une récompense.
+ */
 export function totalWeight(path) {
-    return (path.steps || []).reduce((s, st) => s + (st.weight || 1), 0) || 1;
+    return (path.steps || []).filter(st => !st.bonus)
+        .reduce((s, st) => s + (st.weight || 1), 0) || 1;
 }
 
-/** Nombre total de questions d'un parcours. */
+/** Nombre total de questions d'un parcours — hors jeux de récompense. */
 export function totalItems(path) {
-    return (path.steps || []).reduce((s, st) => s + (st.nbItems || 0), 0);
+    return (path.steps || []).filter(st => !st.bonus)
+        .reduce((s, st) => s + (st.nbItems || 0), 0);
 }
