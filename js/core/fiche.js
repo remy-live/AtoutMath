@@ -34,18 +34,63 @@ export function pageDe(orientation) {
 }
 
 /**
- * L'énoncé tel qu'il s'imprime.
+ * L'énoncé tel qu'il s'imprime, et le TROU où l'on écrit.
  *
  * À l'écran, « 7 + 2 = ? » désigne la case à remplir. Sur le papier, le point
  * d'interrogation ne désigne plus rien : la place à remplir, ce sont les
  * pointillés ou le champ juste derrière. « 7 + 2 = » se termine sur le signe
- * égal, comme dans tous les cahiers. On ne touche qu'au « ? » qui suit
- * immédiatement un « = » — celui de « Combien de billes reste-t-il ? » est une
- * vraie question et doit rester.
+ * égal, comme dans tous les cahiers.
+ *
+ * Mais un « ? » n'est pas toujours en bout de ligne. « 82 041 = 80 000 + ? +
+ * 40 + 1 » a son trou AU MILIEU : c'est là qu'on écrit, et une ligne de
+ * pointillés au bout de la question ne veut alors plus rien dire. On remplace
+ * donc ces marques — « ? », « … », « ... » — par une VRAIE place, large de la
+ * réponse attendue. La mise en page la retrouve ensuite (c'est le seul endroit
+ * où l'on trouve trois espaces d'affilée) pour y poser le trait à remplir et,
+ * si le professeur le demande, le champ du PDF.
+ *
+ * Le « ? » final d'une vraie question — « Combien de billes reste-t-il ? » —
+ * n'est évidemment pas un trou : on n'y touche pas.
  */
-export function texteImprime(texte) {
-    return String(texte ?? '').replace(/=\s*\?(?=\s|$)/g, '=').trimEnd();
+export const TROU_MIN = 3;
+
+export function texteImprime(texte, reponse) {
+    // Le « ? » qui suit un « = » EN FIN D'ÉNONCÉ disparaît : la place à
+    // remplir, ce sont les pointillés juste après. Mais « 82 041 = ? + 40 »
+    // n'est pas de ceux-là — son « ? » est un trou au milieu, et l'effacer
+    // laissait un « = + 40 » qui ne veut rien dire. D'où l'ancrage en fin.
+    let t = String(texte ?? '').replace(/([=\u2248])\s*\?\s*$/, '$1');
+    // Assez large pour la réponse, et jamais moins que la marque remplacée.
+    const large = Math.max(TROU_MIN + 1, String(reponse ?? '').length + 2);
+    // Un trou peut aussi FINIR l'énoncé — « 7 677 = 7 000 + 600 + 70 + ? ».
+    // Ce qui distingue ce « ? » de celui d'une vraie question, c'est ce qui le
+    // précède : un opérateur, jamais un mot.
+    t = t.replace(/([+\-\u2212\u00D7\u00F7*/])(\s*)\?\s*$/, (m, op) => op + ' '.repeat(large));
+    t = t.replace(/(\?|…|\.{2,})(?=\s*\S)/g, ' '.repeat(large));
+    return t.replace(/\s+$/, '');
 }
+
+/**
+ * MESURER UNE FRACTION TELLE QU'ELLE S'IMPRIME.
+ *
+ * « 5/11 » écrit en colonne n'occupe que la largeur de « 11 » : le trait, le
+ * numérateur et le dénominateur se superposent. Mesurer la chaîne telle quelle
+ * la croyait deux fois trop large — et l'énoncé passait à la ligne pour rien,
+ * la seconde fraction venant se poser sous la première.
+ */
+export function mesureurFractions(mesurer) {
+    return (texte, taille) => mesurer(
+        String(texte).replace(/(\d+)\s*\/\s*(\d+)/g,
+            (m, a, b) => ' ' + (a.length >= b.length ? a : b) + ' '),
+        taille);
+}
+
+/** L'emplacement du trou dans une ligne déjà composée, ou null. */
+export function trouDe(ligne) {
+    const m = / {3,}/.exec(ligne || '');
+    return m ? { debut: m.index, fin: m.index + m[0].length } : null;
+}
+
 
 export const DEFAUTS = {
     colonnes: 2,
@@ -67,11 +112,18 @@ export const DEFAUTS = {
 export function couperEnLignes(texte, largeur, taille, mesurer) {
     const lignes = [];
     for (const paragraphe of String(texte ?? '').split('\n')) {
-        const mots = paragraphe.split(/\s+/).filter(Boolean);
+        // LE TROU EST UN MOT COMME UN AUTRE. Découper sur « un ou plusieurs
+        // espaces » écrasait la place laissée pour écrire : « 52 085 =    +
+        // 2 000 » redevenait « 52 085 = + 2 000 », un énoncé sans trou et sans
+        // le moindre sens. On isole donc les blancs longs avant de découper.
+        const mots = paragraphe.split(/( {3,})|\s+/).filter(Boolean);
         if (!mots.length) { lignes.push(''); continue; }
         let courante = '';
         for (let mot of mots) {
-            const essai = courante ? `${courante} ${mot}` : mot;
+            // Un blanc se colle au mot précédent sans espace ajouté : c'est
+            // lui, l'espace.
+            const blanc = / {3,}/.test(mot);
+            const essai = (courante && !blanc) ? `${courante} ${mot}` : courante + mot;
             if (mesurer(essai, taille) <= largeur) { courante = essai; continue; }
             if (courante) { lignes.push(courante); courante = ''; }
             while (mesurer(mot, taille) > largeur && mot.length > 1) {
@@ -234,7 +286,14 @@ export const DEFAUTS_BLOCS = {
     apresBandeau: 3.4,
     entreExercices: 7,
     grillesParLigne: 'auto', // pour les exercices à grilles ; 'auto' remplit la largeur
-    grilleMax: 78,           // côté maximal d'une grille, en mm
+    grilleMax: 92,           // côté maximal d'une grille, en mm
+    // ENTRE DEUX GRILLES, MOINS D'AIR QU'ENTRE DEUX COLONNES DE TEXTE. Deux
+    // colonnes de questions ont besoin d'une gouttière large pour que l'œil ne
+    // saute pas de l'une à l'autre en cours de ligne ; deux grilles sont des
+    // objets fermés, que leur cadre sépare déjà. Ce qu'on leur retire en marge,
+    // elles le prennent en taille — et une grille remplie à la main ne se
+    // discute pas : plus grande, elle est plus facile.
+    gouttiereGrilles: 5,
     grilleMin: 46,           // en dessous, une grille 9×9 n'est plus remplissable
     celluleMin: 46,          // largeur minimale d'une cellule de question, en mm
     colonnesMax: 6,          // le plafond absolu, toutes orientations confondues
@@ -315,7 +374,14 @@ export function composerBlocs(exos, opts, mesurer) {
         // que faire d'être appelées « 7. » à « 12. » : ce qu'on écrit dessus
         // n'est pas une réponse à une question, c'est la grille elle-même.
         const numerote = exo.numeroter !== false;
-        const gouttiereNum = numerote ? o.numeroL : 0;
+        // LA GOUTTIÈRE DU NUMÉRO SUIT LA LARGEUR DE LA CELLULE. Sept
+        // millimètres et demi devant « 12. » sont justes dans une colonne
+        // large ; dans une cellule de vingt-deux millimètres — six colonnes de
+        // comparaisons — c'est le tiers de la place, pris à l'énoncé.
+        const gouttiere = (cellW) => numerote
+            ? Math.min(o.numeroL, Math.max(4.4, cellW * 0.2))
+            : 0;
+        let gouttiereNum = numerote ? o.numeroL : 0;
         if (o.numerotation === 'exercice') numero = 0;
 
         // --- UN EXERCICE EN GRILLES (sudoku, binairo, garam, mathdoku) ------
@@ -336,7 +402,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // « auto » remplit la largeur sans descendre sous `grilleMin`, en
             // dessous de quoi les cases deviennent trop petites pour écrire.
             const voulu = exo.grillesParLigne ?? o.grillesParLigne;
-            const gap = o.gouttiere;
+            const gap = o.gouttiereGrilles ?? o.gouttiere;
             const tiendraient = Math.max(1, Math.floor((zone.w + gap) / (o.grilleMin + gap)));
             const parLigne = Math.max(1, Math.min(
                 grilles.length,
@@ -423,30 +489,47 @@ export function composerBlocs(exos, opts, mesurer) {
             for (let c = maxCols; c >= 2; c--) {
                 if (questions.length < c) continue;
                 const cellW = (zone.w - o.gouttiere * (c - 1)) / c;
-                const texteW = cellW - gouttiereNum - o.repMin - 2;
+                const texteW = cellW - gouttiere(cellW) - o.repMin - 2;
                 // Un générateur peut PROPOSER des choix sans que la fiche les
                 // imprime : seuls les choix réellement imprimés comptent ici.
-                if (questions.every(q => (!o.avecChoix || !q.choix) && mesurer(q.texte, o.taille) <= texteW)) { cols = c; break; }
+                if (questions.every(q => (!o.avecChoix || !q.choix)
+                    && (q.fractions ? mesureurFractions(mesurer) : mesurer)(q.texte, o.taille) <= texteW)) { cols = c; break; }
             }
         }
         colonnesParExo.push(cols);
         const cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
+        gouttiereNum = gouttiere(cellW);
         const texteW = cellW - gouttiereNum;
 
         // Les cellules, pré-mesurées : la pagination a besoin des hauteurs
         // avant de poser quoi que ce soit.
         const cellules = questions.map(q => {
-            const lignes = couperEnLignes(texteImprime(q.texte), texteW, o.taille, mesurer);
+            const mes = q.fractions ? mesureurFractions(mesurer) : mesurer;
+            const lignes = couperEnLignes(texteImprime(q.texte, q.reponse), texteW, o.taille, mes);
             const choix = (o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null;
+            // LE TROU DANS L'ÉNONCÉ. « 82 041 = 80 000 +      + 40 + 1 » porte
+            // déjà la place où l'on écrit : lui ajouter des pointillés au bout
+            // ferait deux endroits pour une seule réponse.
+            let trou = null;
+            for (let i = 0; i < lignes.length && !trou; i++) {
+                const t = trouDe(lignes[i]);
+                if (t) trou = { ...t, ligne: i };
+            }
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
-            const memeLigne = !choix && lignes.length === 1
-                && cellW - gouttiereNum - mesurer(lignes[0], o.taille) - 2 >= o.repMin
+            const memeLigne = !trou && !choix && lignes.length === 1
+                && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= o.repMin
                 && !o.interrogation;
-            const h = lignes.length * o.interligne
+            // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
+            // numérateur au-dessus du trait, le dénominateur dessous. Il leur
+            // faut donc plus d'une ligne de hauteur, et le texte descend
+            // d'autant pour que le numérateur ne monte pas dans la question du
+            // dessus.
+            const supp = q.fractions ? o.interligne * 0.85 : 0;
+            const h = supp + lignes.length * o.interligne
                 + (choix ? o.interligne : 0)
-                + (memeLigne ? 0 : ligneRep);
-            return { lignes, choix, memeLigne, h };
+                + (trou || memeLigne ? 0 : ligneRep);
+            return { lignes, choix, memeLigne, trou, h, dy: supp, mes, fractions: !!q.fractions };
         });
 
         const consigneLignes = exo.consigne
@@ -491,15 +574,26 @@ export function composerBlocs(exos, opts, mesurer) {
                 const x = zone.x + iCell * (cellW + o.gouttiere);
                 const texteX = x + gouttiereNum;
                 let rep = null;
-                if (cell.memeLigne) {
+                if (cell.trou) {
+                    // On écrit DANS l'énoncé, à l'endroit du trou : le trait à
+                    // remplir se pose sous ce blanc, et le champ du PDF dessus.
+                    const ligne = cell.lignes[cell.trou.ligne];
+                    const avant = cell.mes(ligne.slice(0, cell.trou.debut), o.taille);
+                    const largeur = cell.mes(ligne.slice(cell.trou.debut, cell.trou.fin), o.taille);
+                    rep = {
+                        x: texteX + avant,
+                        y: y + cell.dy + o.taille + cell.trou.ligne * o.interligne + 0.9,
+                        w: largeur, dansLeTexte: true
+                    };
+                } else if (cell.memeLigne) {
                     // Les pointillés continuent la ligne d'écriture : même
                     // hauteur que la ligne de base du texte.
-                    const finTexte = texteX + mesurer(cell.lignes[0], o.taille) + 2;
-                    rep = { x: finTexte, y: y + o.taille, w: x + cellW - finTexte };
+                    const finTexte = texteX + cell.mes(cell.lignes[0], o.taille) + 2;
+                    rep = { x: finTexte, y: y + cell.dy + o.taille, w: x + cellW - finTexte };
                 } else {
                     rep = {
                         x: texteX,
-                        y: y + cell.lignes.length * o.interligne
+                        y: y + cell.dy + cell.lignes.length * o.interligne
                             + (cell.choix ? o.interligne : 0) + ligneRep * 0.62,
                         w: texteW
                     };
@@ -514,9 +608,10 @@ export function composerBlocs(exos, opts, mesurer) {
                 rep.nom = `q${total}`;
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
-                    lignes: cell.lignes, x, y, texteX, texteW,
+                    lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,
+                    fractions: cell.fractions,
                     choix: cell.choix,
-                    choixY: cell.choix ? y + cell.lignes.length * o.interligne : null,
+                    choixY: cell.choix ? y + cell.dy + cell.lignes.length * o.interligne : null,
                     rep
                 });
             });

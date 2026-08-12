@@ -76,6 +76,9 @@ function questionsDe(etape, nb) {
             texte,
             choix: item.choices ? item.choices.map(c => String(c.label ?? c.value)) : null,
             reponse: formaterReponse(item),
+            // Le générateur dit si ses questions portent des fractions : la
+            // mise en page les écrira alors en colonne.
+            fractions: !!etape.generator.fractions,
             // L'explication du générateur : c'est elle qui fait la feuille de
             // solutions détaillée, celle qu'on distribue après le contrôle.
             explication: item.explanation || ''
@@ -194,14 +197,32 @@ export function ouvrirFicheParcours(chemin) {
     // LA MISE EN PAGE, EXERCICE PAR EXERCICE. Pour les questions c'est un
     // nombre de colonnes, pour les grilles un nombre par ligne : dans les deux
     // cas « combien en met-on côte à côte », donc un seul réglage.
+    // « auto » convient à la plupart, mais un exercice sait souvent mieux :
+    // trois colonnes pour des nombres en lettres, six pour comparer deux
+    // fractions. Le professeur garde la main sur le réglage.
     const colonnes = {};
-    papier.forEach(e => { colonnes[e.stepId] = 'auto'; });
+    papier.forEach(e => { colonnes[e.stepId] = e.exercise.colonnesPapier || 'auto'; });
     // NUMÉROTER, OU NON, EXERCICE PAR EXERCICE. Par défaut oui — c'est ce
     // qu'on attend d'une fiche. Mais six grilles de sudoku appelées « 7. » à
     // « 12. » n'y gagnent rien : ce qu'on écrit dedans n'est pas la réponse à
     // une question numérotée, c'est la grille elle-même.
     const numeroter = {};
     papier.forEach(e => { numeroter[e.stepId] = true; });
+    // LA CONSIGNE ÉCRITE, ET MODIFIABLE.
+    //
+    // Une consigne d'écran et une consigne de feuille ne se ressemblent pas :
+    // l'écran peut expliquer, donner un exemple, rappeler le piège — il a la
+    // place et l'élève est devant. Sur le papier, la consigne est écrite une
+    // fois en tête de l'exercice, elle ne se répète pas à chaque question, et
+    // « Écris en chiffres. » suffit. Chaque exercice propose donc la sienne
+    // (`consignePapier`), et le professeur la RÉÉCRIT s'il préfère la sienne :
+    // c'est sa feuille, pas la nôtre.
+    const consignes = {};
+    papier.forEach(e => {
+        consignes[e.stepId] = e.exercise.consignePapier !== undefined
+            ? e.exercise.consignePapier
+            : (e.exercise.instruction || '');
+    });
     const parId = new Map(papier.map(e => [e.stepId, e]));
 
     const totalPoints = () => ordre
@@ -276,6 +297,11 @@ export function ouvrirFicheParcours(chemin) {
                     <span class="pp-chevron" aria-hidden="true">${CHEVRON}</span>
                 </summary>
                 <div class="pp-etape-reglages">
+                    <label class="pp-etape-champ pp-etape-consigne">Consigne
+                        <input type="text" class="cfg-input" data-consigne="${id}"
+                            value="${echapper(consignes[id] || '')}" maxlength="140"
+                            placeholder="(aucune consigne imprimée)"
+                            aria-label="Consigne imprimée de « ${nom} »"></label>
                     <label class="pp-etape-champ">${unite === 'grilles' ? 'Grilles' : 'Questions'}
                         <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
                             min="0" max="40" value="${quantites[id]}"></label>
@@ -315,6 +341,10 @@ export function ouvrirFicheParcours(chemin) {
                 if (d.open) ouvertes.add(d.dataset.etapeLigne);
                 else ouvertes.delete(d.dataset.etapeLigne);
             });
+        });
+        listeEl.querySelectorAll('[data-consigne]').forEach(inp => {
+            // Sans reconstruire la liste : on tape dedans, la feuille suit.
+            inp.oninput = () => { consignes[inp.dataset.consigne] = inp.value; rendre(); };
         });
         listeEl.querySelectorAll('[data-numeroter]').forEach(c => {
             c.onchange = () => {
@@ -491,7 +521,7 @@ export function ouvrirFicheParcours(chemin) {
                 const col = colonnes[id] === 'auto' ? null : Number(colonnes[id]);
                 return {
                     titre: e.title,
-                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille : (e.exercise.instruction || '')),
+                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille : consignes[id]),
                     points: o.interrogation ? (points[id] || null) : null,
                     numeroter: numeroter[id] !== false,
                     questions: e.grille ? [] : tire,

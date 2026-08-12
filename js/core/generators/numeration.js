@@ -171,7 +171,7 @@ export const zerosGenerator = {
             seed: rng.seed, generatorId: 'num.zeros', skillId: 'num.decimal.zeros',
             answerKind: 'numeric',
             prompt: {
-                text: `Écris ${affiche} sans les zéros inutiles.`,
+                text: `${affiche} =`,
                 html: `<div class="game-question">Enlève les zéros inutiles<br>
                        <span class="nb-highlight nb-highlight--lg">${affiche}</span></div>`
             },
@@ -332,7 +332,7 @@ export const lettresGenerator = {
                 seed: rng.seed, generatorId: 'num.lettres', skillId: 'num.ecriture.lettres',
                 answerKind: 'numeric',
                 prompt: {
-                    text: `Écris en chiffres : ${mots}`,
+                    text: `${mots} =`,
                     html: `<div class="game-question">Écris en chiffres<br><span class="nb-words">${mots}</span></div>`
                 },
                 answer,
@@ -354,7 +354,7 @@ export const lettresGenerator = {
             seed: rng.seed, generatorId: 'num.lettres', skillId: 'num.ecriture.lettres',
             answerKind: 'numeric',
             prompt: {
-                text: `Écris en chiffres : ${mots}`,
+                text: `${mots} =`,
                 html: `<div class="game-question">Écris en chiffres<br><span class="nb-words">${mots}</span></div>`
             },
             answer: n,

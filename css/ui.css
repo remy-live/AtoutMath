@@ -422,6 +422,21 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 #print-questions-modal .fp-apercu-cadre {
     max-height: min(58vh, 660px); overflow-y: auto; padding: 4px 0 10px;
 }
+/* UNE FRACTION S'ÉCRIT EN COLONNE, sur la fiche comme au tableau : le
+   numérateur sur le dénominateur, séparés d'un trait. « 5/7 » à la barre
+   oblique laisse croire à une division déguisée — et ce n'est pas la forme
+   qu'on demande à l'élève d'écrire. */
+.fx-frac {
+    display: inline-flex; flex-direction: column; align-items: center;
+    vertical-align: middle; line-height: 1; margin: 0 .12em;
+    transform: translateY(-.30em);
+}
+.fx-frac-n { border-bottom: 1px solid currentColor; padding: 0 .18em .04em; }
+.fx-frac-d { padding: .04em .18em 0; }
+/* Le « à peu près égal » : dans l'aperçu on l'écrit, dans le PDF on le trace —
+   les polices standard d'un PDF ne le connaissent pas. */
+.fx-presque { padding: 0 .05em; }
+
 .fq-num { position: absolute; font-weight: 700; color: #1a202c; line-height: 1.05; }
 .fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }
 .fq-choix { position: absolute; color: #5a6270; line-height: 1.05; white-space: pre; }

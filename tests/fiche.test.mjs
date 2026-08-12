@@ -603,3 +603,72 @@ test('numéros : le corrigé suit exactement la feuille', () => {
         reponses(composerSolutions(toutes, { mode: 'compact', sections: muet }, mesurer)),
         ['1. 1', '2. 2', '3. 3', '4', '5']);
 });
+
+// --- Le trou dans l'énoncé --------------------------------------------------
+//
+// « 82 041 = 80 000 + ? + 40 + 1 » a sa place à écrire AU MILIEU. Trois choses
+// devaient donc changer ensemble : le « ? » devient un blanc large de la
+// réponse, ce blanc survit au découpage en lignes, et la question ne reçoit
+// plus de pointillés au bout — il y aurait deux endroits pour une réponse.
+
+import { trouDe, mesureurFractions } from '../js/core/fiche.js';
+
+test('trou : le « ? » du milieu devient une place à écrire', () => {
+    const t = texteImprime('82 041 = 80 000 + ? + 40 + 1', 900);
+    assert.ok(!t.includes('?'), 'le point d\'interrogation disparaît');
+    const trou = trouDe(t);
+    assert.ok(trou, 'et laisse un blanc repérable');
+    assert.ok(trou.fin - trou.debut >= 5, 'assez large pour la réponse');
+});
+
+test('trou : le « = ? » de la fin reste une ligne de pointillés', () => {
+    assert.equal(texteImprime('7 × 8 = ?', 56), '7 × 8 =');
+    assert.equal(trouDe(texteImprime('7 × 8 = ?', 56)), null);
+    // Le « ≈ ? » suit la même règle : c'est aussi une relation.
+    assert.equal(texteImprime('1 003 ≈ ?', 1000), '1 003 ≈');
+});
+
+test('trou : la vraie question garde son point d\'interrogation', () => {
+    const t = 'Quelle est la partie entière de 10,35 ?';
+    assert.equal(texteImprime(t, 10), t);
+});
+
+test('trou : « … » et « ... » sont des trous eux aussi', () => {
+    assert.ok(trouDe(texteImprime('4/10 … 6/8', '<')), 'la comparaison');
+    assert.ok(trouDe(texteImprime('... × 8 = 72', 9)), 'le facteur manquant');
+});
+
+test('trou : le découpage en lignes ne mange pas le blanc', () => {
+    const t = texteImprime('52 085 = ? + 2 000 + 80 + 5', 2000);
+    const lignes = couperEnLignes(t, 400, 3.9, mesurer);
+    assert.equal(lignes.length, 1);
+    assert.ok(trouDe(lignes[0]), 'le blanc doit survivre au découpage');
+});
+
+test('trou : la question qui le porte n\'a pas de pointillés au bout', () => {
+    const avec = composerBlocs([{ titre: 'A', questions: [{ texte: '9 + ? = 10', reponse: 1 }] }], {}, mesurer);
+    const q = avec.pages[0].items.find(i => i.type === 'q');
+    assert.ok(q.rep.dansLeTexte, 'la place à remplir est DANS l\'énoncé');
+    // Elle tombe bien sous le blanc, pas en bout de ligne.
+    assert.ok(q.rep.x > q.texteX && q.rep.x < q.texteX + q.texteW);
+});
+
+test('fractions : on les mesure telles qu\'elles s\'impriment', () => {
+    // « 5/11 » en colonne n'occupe que la largeur de « 11 » : mesurée comme du
+    // texte, elle passait à la ligne pour rien.
+    const mf = mesureurFractions(mesurer);
+    // Le trait, le numérateur et le dénominateur se superposent : c'est le plus
+    // long des deux qui commande, pas leur somme.
+    assert.ok(mf('11/12', 4) < mesurer('11/12', 4));
+    // À largeur égale, la mise en page en fait donc tenir davantage sur une
+    // ligne — c'est tout l'objet de la mesure.
+    const questions = (frac) => Array.from({ length: 4 },
+        () => ({ texte: '5/11 + 6/11 =', reponse: '11/11', fractions: frac }));
+    const lignes = (frac) => composerBlocs([{ titre: 'F', colonnes: 4, questions: questions(frac) }], {}, mesurer)
+        .pages[0].items.filter(i => i.type === 'q');
+    const avec = lignes(true), sans = lignes(false);
+    assert.ok(avec[0].lignes.length <= sans[0].lignes.length,
+        'les fractions empilées ne doivent jamais tenir sur PLUS de lignes');
+    assert.ok(avec[0].fractions && avec[0].dy > 0, 'et le texte descend pour loger le numérateur');
+    assert.ok(!sans[0].dy, 'une question sans fraction ne descend pas');
+});

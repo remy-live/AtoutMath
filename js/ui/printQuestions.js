@@ -208,7 +208,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
 
     const composer = (o) => composerBlocs([{
         titre: exo.title,
-        consigne: exo.instruction || '',
+        consigne: consigneEl.value,
         questions,
         colonnes: o.colonnes,
         numeroter: o.numeroter
@@ -310,6 +310,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     };
 
     questions = [];
+    // Le nombre de colonnes que l'exercice sait lui convenir — le professeur
+    // reste libre de le changer.
+    colsEl.value = exo.colonnesPapier ? String(exo.colonnesPapier) : 'auto';
     modal.style.display = 'flex';
     rendre();
 }

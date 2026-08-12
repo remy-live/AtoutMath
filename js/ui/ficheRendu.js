@@ -51,6 +51,90 @@ const HORS_TABLE = {
     '\u2261': '=', '\u221A': 'V', '\u03C0': 'pi'
 };
 
+/**
+ * UNE LIGNE D'ÉNONCÉ, DÉCOUPÉE EN MORCEAUX QUI NE SE DESSINENT PAS PAREIL.
+ *
+ * Deux choses ne s'écrivent pas comme du texte ordinaire sur une fiche de
+ * mathématiques :
+ *
+ *   · LA FRACTION. « 5/7 » n'est pas la façon dont on l'écrit à la main ni au
+ *     tableau : le numérateur va au-dessus d'un trait, le dénominateur
+ *     dessous. Un élève de sixième qui ne voit jamais que la barre oblique
+ *     finit par croire que c'est une division déguisée.
+ *   · LE SIGNE ≈. Il n'existe pas dans les polices standard d'un PDF : il en
+ *     sortait une seule vaguelette. On le TRACE donc, deux vagues, à la main.
+ *
+ * Le découpage est commun à l'aperçu et au PDF pour que les deux tombent au
+ * même endroit — c'est toute la raison d'être de ce module.
+ */
+export function morceauxLigne(ligne, avecFractions) {
+    const out = [];
+    const re = avecFractions ? /(\d+)\s*\/\s*(\d+)|(\u2248)/g : /(\u2248)/g;
+    let dernier = 0, m;
+    while ((m = re.exec(ligne))) {
+        if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
+        if (m[0] === '\u2248') out.push({ presque: true });
+        else out.push({ num: m[1], den: m[2] });
+        dernier = m.index + m[0].length;
+    }
+    if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
+    return out.length ? out : [{ texte: ligne }];
+}
+
+/** Trace le signe « à peu près égal » : deux vagues, puisqu'on ne peut l'écrire. */
+function signePresque(pdf, x, y, taille) {
+    const l = taille * 0.9, h = taille * 0.2;
+    pdf.setLineWidth(taille * 0.08);
+    pdf.setDrawColor(...ENCRE.texte);
+    for (const dy of [-taille * 0.58, -taille * 0.16]) {
+        // Une vague, c'est une courbe en S : deux points de contrôle opposés.
+        pdf.lines([[l * 0.3, -h * 2.2, l * 0.7, h * 2.2, l, 0]], x, y + dy, [1, 1], 'S', false);
+    }
+}
+
+/** La largeur qu'occupera une fraction empilée. */
+function largeurFraction(pdf, m) {
+    return Math.max(pdf.getTextWidth(m.num), pdf.getTextWidth(m.den)) + 1.6;
+}
+
+/**
+ * Une ligne d'énoncé dans le PDF, morceau par morceau. Rend l'abscisse
+ * atteinte, ce qui permettrait d'enchaîner.
+ */
+function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
+    let x = x0;
+    for (const m of morceauxLigne(ligne, avecFractions)) {
+        if (m.texte !== undefined) {
+            const t = pourPdf(m.texte);
+            pdf.text(t, x, y);
+            x += pdf.getTextWidth(t);
+        } else if (m.presque) {
+            signePresque(pdf, x + o.taille * 0.15, y, o.taille);
+            x += o.taille * 1.25;
+        } else {
+            const w = largeurFraction(pdf, m);
+            const yTrait = y - o.taille * 0.34;
+            pdf.text(m.num, x + (w - pdf.getTextWidth(m.num)) / 2, yTrait - o.taille * 0.22);
+            pdf.text(m.den, x + (w - pdf.getTextWidth(m.den)) / 2, yTrait + o.taille * 1.02);
+            pdf.setLineWidth(0.28);
+            pdf.setDrawColor(...ENCRE.texte);
+            pdf.line(x + 0.4, yTrait, x + w - 0.4, yTrait);
+            x += w;
+        }
+    }
+    return x;
+}
+
+/** La même ligne en HTML, pour l'aperçu. */
+function ligneHtml(ligne, avecFractions) {
+    return morceauxLigne(ligne, avecFractions).map(m => {
+        if (m.texte !== undefined) return echapper(m.texte);
+        if (m.presque) return '<span class="fx-presque">&#8776;</span>';
+        return `<span class="fx-frac"><span class="fx-frac-n">${echapper(m.num)}</span>`
+            + `<span class="fx-frac-d">${echapper(m.den)}</span></span>`;
+    }).join('');
+}
+
 export function pourPdf(texte) {
     let t = String(texte ?? '');
     for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
@@ -112,8 +196,8 @@ export function apercuItems(page, k, o) {
             html += `<div class="fq-num" style="left:${it.x * k}px; top:${it.y * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
         }
         it.lignes.forEach((ligne, i) => {
-            html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + i * o.interligne) * k}px;
-                width:${it.texteW * k}px; font-size:${o.taille * k}px">${echapper(ligne)}</div>`;
+            html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
+                width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions)}</div>`;
         });
         if (it.choix) {
             html += `<div class="fq-choix" style="left:${it.texteX * k}px; top:${it.choixY * k}px;
@@ -274,7 +358,7 @@ export function pdfItems(pdf, page, o) {
         if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + o.taille);
         pdf.setFont('helvetica', 'normal');
         it.lignes.forEach((ligne, i) => {
-            pdf.text(pourPdf(ligne), it.texteX, it.y + o.taille + i * o.interligne);
+            dessinerLigne(pdf, ligne, it.texteX, it.y + (it.dy || 0) + o.taille + i * o.interligne, o, it.fractions);
         });
         if (it.choix) {
             // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐

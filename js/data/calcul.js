@@ -17,56 +17,80 @@ import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 
 export const calculExercises = [
     {
-        id: 'calc-add', title: 'Additions Mystères',
+        id: 'calc-add',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Additions Mystères',
         generatorId: 'calc.addition', activityId: 'bubbles',
         params: { max: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Trouve la somme des deux nombres affichés et sélectionne la bonne bulle."
     },
     {
-        id: 'calc-sub', title: 'Soustractions Éclair',
+        id: 'calc-sub',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Soustractions Éclair',
         generatorId: 'calc.soustraction', activityId: 'bubbles',
         params: { max: 20 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Calcule la différence et clique sur la bonne bulle."
     },
     {
-        id: 'calc-mult-flash', title: 'Flash Mult',
+        id: 'calc-mult-flash',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Flash Mult',
         generatorId: 'calc.mult.fact', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Choisis la bulle qui contient le résultat correct de la multiplication."
     },
     {
-        id: 'calc-pythagore', title: 'Table de Pythagore',
+        id: 'calc-pythagore',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Table de Pythagore',
         generatorId: 'calc.mult.fact', activityId: 'pythagore',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Le résultat est donné, la table est vide : clique une case dont ligne × colonne fait ce résultat. Toutes les décompositions justes sont acceptées (6×7 comme 7×6)."
     },
     {
-        id: 'calc-mult-missing', title: 'Facteur Manquant',
+        id: 'calc-mult-missing',
+        consignePapier: "Complète.",
+        colonnesPapier: 3,
+        title: 'Facteur Manquant',
         generatorId: 'calc.mult.missing', activityId: 'digicode',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Trouve le nombre manquant dans l'égalité et sélectionne-le sur le digicode."
     },
     {
-        id: 'calc-division', title: 'Divisions Express',
+        id: 'calc-division',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Divisions Express',
         generatorId: 'calc.division', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Trouve le quotient exact de la division affichée."
     },
     {
-        id: 'calc-prio', title: 'Prio-Bot Express',
+        id: 'calc-prio',
+        consignePapier: "Quelle opération faut-il effectuer en premier ?",
+        colonnesPapier: 2,
+        title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
         params: { mode: 'operation' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Sélectionne l'opération à effectuer en premier selon les règles de priorité."
     },
     {
-        id: 'calc-prio-resultat', title: 'Prio-Bot Calcul',
+        id: 'calc-prio-resultat',
+        consignePapier: "Calcule en respectant les priorités, et détaille.",
+        colonnesPapier: 2,
+        title: 'Prio-Bot Calcul',
         generatorId: 'calc.priorites', activityId: 'bubbles',
         params: { mode: 'resultat' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
@@ -75,21 +99,30 @@ export const calculExercises = [
 
     // --- Arcade : mêmes notions, autre présentation ---
     {
-        id: 'calc-arcade-sprint', title: 'Sprint Chrono',
+        id: 'calc-arcade-sprint',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Sprint Chrono',
         generatorId: 'calc.mixte', activityId: 'bubbles',
         params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Réponds au plus grand nombre de calculs possible avant la fin du chronomètre !"
     },
     {
-        id: 'calc-arcade-moles', title: 'Chasse aux Taupes',
+        id: 'calc-arcade-moles',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Chasse aux Taupes',
         generatorId: 'calc.mixte', activityId: 'moles',
         params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Tape sur la taupe qui porte le bon résultat !"
     },
     {
-        id: 'calc-moles-tables', title: 'Taupes des Tables',
+        id: 'calc-moles-tables',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Taupes des Tables',
         generatorId: 'calc.mult.fact', activityId: 'moles',
         params: { tables: [6, 7, 8, 9], timeLimit: 60, minScore: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },

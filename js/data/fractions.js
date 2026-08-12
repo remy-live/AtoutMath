@@ -8,21 +8,30 @@ import { STATUS } from './status.js';
 
 export const fractionsExercises = [
     {
-        id: 'frac-compare', title: 'Duel de Fractions',
+        id: 'frac-compare',
+        consignePapier: "Compare : écris <, = ou >.",
+        colonnesPapier: 5,
+        title: 'Duel de Fractions',
         generatorId: 'frac.compare', activityId: 'signs',
         params: { memeDenominateur: 'libre', maxDen: 12 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Compare les deux fractions et choisis le bon signe : <, = ou >."
     },
     {
-        id: 'frac-compare-facile', title: 'Fractions : même dénominateur',
+        id: 'frac-compare-facile',
+        consignePapier: "Compare : écris <, = ou >.",
+        colonnesPapier: 6,
+        title: 'Fractions : même dénominateur',
         generatorId: 'frac.compare', activityId: 'signs',
         params: { memeDenominateur: 'identiques', maxDen: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Les dénominateurs sont identiques : compare les numérateurs."
     },
     {
-        id: 'frac-add', title: 'Addition de Fractions',
+        id: 'frac-add',
+        consignePapier: "Additionne les fractions.",
+        colonnesPapier: 4,
+        title: 'Addition de Fractions',
         generatorId: 'frac.add', activityId: 'bubbles',
         params: { maxDen: 12 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CINQUIEME] },
@@ -75,7 +84,10 @@ export const fractionsExercises = [
         instruction: "Une commande arrive : « les deux tiers de champignons et le quart de sauce tomate ». Les deux dénominateurs ne sont pas les mêmes, alors la pizza est coupée en autant de parts que leur PPCM — douze pour 3 et 4. À toi de trouver combien de parts font les deux tiers, et combien font le quart. Choisis un ingrédient et tape les parts (tu peux balayer pour en garnir plusieurs), ou fais glisser l'ingrédient depuis la caisse. Puis au four !"
     },
     {
-        id: 'dec-compare', title: 'Décimaux en Duel',
+        id: 'dec-compare',
+        consignePapier: "Compare : écris <, = ou >.",
+        colonnesPapier: 4,
+        title: 'Décimaux en Duel',
         generatorId: 'dec.compare', activityId: 'signs',
         params: { decimales: 2 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.SIXIEME] },

@@ -3129,6 +3129,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pp-etape-champ[hidden] { display: none; }
 /* « Numéroter » est une case, pas un champ : son étiquette suit la case au
    lieu de la précéder, et elle n'a pas à s'étirer comme les autres. */
+/* La consigne prend toute la largeur de la ligne : c'est une phrase, pas un
+   nombre, et la voir en entier est le seul moyen de juger si elle convient. */
+.pp-etape-consigne, .fq-consigne { flex: 1 1 100%; }
+.fq-consigne { display: flex; align-items: center; gap: 8px; }
+.fq-consigne input { flex: 1 1 auto; min-width: 0; }
+.pp-etape-consigne input { flex: 1 1 auto; min-width: 0; font-weight: 500; }
 .pp-etape-case { cursor: pointer; gap: 7px; }
 .pp-etape-case input { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
 

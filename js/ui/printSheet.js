@@ -535,14 +535,18 @@ function redactionPreviewHtml(item, slot, k, solution) {
         const y = g.ligneY(i);
         const rempli = solution ? lignes[i].texte : '';
         // « Or » occupe deux interlignes : c'est elle qui porte la propriété.
-        const enPlus = i === 1 ? 2 : 1;
+        // « Or » occupe DEUX unités de la grille : il lui faut donc trois
+        // rails d'un demi-pas pour les remplir, sinon il reste une ligne vide
+        // entre la propriété et la conclusion — un blanc qu'on ne sait pas
+        // interpréter quand on écrit dessus.
+        const enPlus = i === 1 ? 3 : 1;
         const haut = g.ligneH * (i === 1 ? 2 : 1);
         // Les lignes d'écriture supplémentaires, comme sur le PDF : l'aperçu
         // doit montrer la place réelle, sinon le professeur découvre à
         // l'impression que la propriété ne tient pas.
         const rails = solution ? '' : Array.from({ length: enPlus }, (_, j) =>
             `<div class="fx-red-rail" style="left:${(b.x + 4) * k}px;
-                top:${(y + 0.8 + (j + 1) * g.ligneH * 0.42) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
+                top:${(y + 0.8 + (j + 1) * g.ligneH * 0.5) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
         return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${y * k}px;
             width:${b.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
             <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
@@ -613,9 +617,9 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
             // « Or » porte la propriété entière : deux lignes de plus. Les
             // deux autres en reçoivent une seconde, la conclusion se logeant
             // souvent juste à côté de sa marge.
-            const enPlus = i === 1 ? 2 : 1;
+            const enPlus = i === 1 ? 3 : 1;
             for (let j = 1; j <= enPlus; j++) {
-                doc.line(b.x + 4, y + 0.8 + j * g.ligneH * 0.42, b.x + b.w, y + 0.8 + j * g.ligneH * 0.42);
+                doc.line(b.x + 4, y + 0.8 + j * g.ligneH * 0.5, b.x + b.w, y + 0.8 + j * g.ligneH * 0.5);
             }
             doc.setLineDashPattern([], 0);
         }
@@ -668,7 +672,12 @@ export const RENDUS = {
         consigne: () => 'Complète les cases avec des chiffres de 0 à 9 pour que toutes les égalités, '
             + 'horizontales et verticales, soient vraies.',
         previewGrille: garamPreviewHtml,
-        pdfGrille: dessinerGaramPdf
+        pdfGrille: dessinerGaramPdf,
+        // DEUX PAR LIGNE. Un garam n'est pas une grille de cases vides : c'est
+        // un treillis d'égalités où l'on écrit un chiffre dans des cases de
+        // trois millimètres. À trois par ligne elles deviennent illisibles —
+        // et la première chose qu'on fait sur un garam, c'est écrire dedans.
+        parLigneDefaut: 2
     },
     binairo: {
         titre: 'Binairo',

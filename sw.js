@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v57';
+const CACHE = 'atoutmath-v58';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=118',
-    './css/layout.css?v=118',
-    './css/ui.css?v=118',
-    './css/games.css?v=118',
-    './css/components.css?v=118',
-    './css/modules.css?v=118',
+    './css/base.css?v=119',
+    './css/layout.css?v=119',
+    './css/ui.css?v=119',
+    './css/games.css?v=119',
+    './css/components.css?v=119',
+    './css/modules.css?v=119',
     './icons/icon-192.png',
     './icons/icon-512.png'
 ];

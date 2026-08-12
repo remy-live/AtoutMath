@@ -23,6 +23,10 @@ export const fracCompareGenerator = {
     skills: ['num.frac.compare'],
     answerKinds: ['choice'],
     ecrit: true,
+    // Sur le papier, une fraction s'écrit EN COLONNE — numérateur sur
+    // dénominateur, séparés d'un trait. La barre oblique est une commodité
+    // d'écran ; ce n'est pas ce qu'on demande d'écrire à l'élève.
+    fractions: true,
     params: [
         { id: 'memeDenominateur', type: 'select', label: 'Dénominateurs', options: ['identiques', 'differents', 'libre'], default: 'libre' },
         { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 3, max: 20 }
@@ -108,6 +112,7 @@ export const fracAddGenerator = {
     skills: ['num.frac.add-meme-denom'],
     answerKinds: ['choice'],
     ecrit: true,
+    fractions: true,
     params: [
         { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 3, max: 20 }
     ],
