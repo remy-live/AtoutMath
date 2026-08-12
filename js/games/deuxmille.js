@@ -45,22 +45,34 @@ class DeuxMille extends BaseGame {
                 .dm2-tete { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; justify-content: center; }
                 .dm2-score { font-weight: 900; font-size: 1.15rem; }
                 .dm2-obj { color: var(--text-muted); font-size: .85rem; }
+                /* LE PLATEAU : un fond de cases immobiles, et par-dessus une
+                   couche de tuiles absolues. C'est ce qui permet la GLISSADE :
+                   une tuile est un élément qui garde son identité d'un coup à
+                   l'autre, et son transform est animé. */
                 .dm2-grille {
                     display: grid; gap: 8px; padding: 10px; border-radius: 12px;
                     background: color-mix(in srgb, var(--text-main) 12%, var(--bg-panel));
                     grid-template-columns: repeat(4, 1fr);
+                    grid-template-rows: repeat(4, 1fr);
                     width: min(92cqw, 400px); aspect-ratio: 1;
+                    box-sizing: border-box; position: relative;
                     touch-action: none; user-select: none;
                 }
+                /* Les cases du fond : CARRÉES par construction — 4 colonnes et
+                   4 rangées de 1fr dans un plateau carré. */
                 .dm2-case {
                     border-radius: 8px; background: color-mix(in srgb, var(--text-main) 5%, var(--bg-panel));
-                    display: flex; align-items: center; justify-content: center;
-                    font-weight: 900; transition: transform .1s ease;
                 }
-                .dm2-case--pop { animation: dm2-pop .22s ease; }
-                @keyframes dm2-pop { from { transform: scale(.4); } }
-                .dm2-case--fusion { animation: dm2-fusion .3s ease; }
-                @keyframes dm2-fusion { 40% { transform: scale(1.22); } }
+                .dm2-tuile {
+                    position: absolute; left: 0; top: 0; border-radius: 8px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-weight: 900; will-change: transform;
+                    transition: transform .13s ease-in-out;
+                }
+                .dm2-tuile--pop { animation: dm2-pop .22s ease; }
+                @keyframes dm2-pop { from { scale: .4; } }
+                .dm2-tuile--fusion { animation: dm2-fusion .26s ease; }
+                @keyframes dm2-fusion { 45% { scale: 1.2; } }
                 .dm2-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
                 .dm2-btn {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
@@ -89,7 +101,13 @@ class DeuxMille extends BaseGame {
         this.container.querySelector('[data-obj]').textContent = String(this.objectif);
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
         this.container.querySelector('[data-neuf]').onclick = () => this.showNext();
+        // Le fond, une fois pour toutes ; les tuiles vivent par-dessus.
+        this.grilleEl.innerHTML = Array.from({ length: 16 }, () => '<div class="dm2-case"></div>').join('');
         this.brancherGestes();
+        // Les tuiles sont placées en pixels : si le plateau change de taille
+        // (rotation d'une tablette), on les repose.
+        this.observateur = new ResizeObserver(() => this.replacerTuiles());
+        this.observateur.observe(this.grilleEl);
     }
 
     startGameLoop() { this.poser(); }
@@ -102,9 +120,55 @@ class DeuxMille extends BaseGame {
         this.finie = false;
         this.gagnee = false;
         this.meilleures = new Set();
-        this.peindre();
+        this.finirAnimation = null;
+        // Les tuiles repartent de zéro, une par case pleine.
+        this.tuiles = [];
+        this.grilleEl.querySelectorAll('.dm2-tuile').forEach(el => el.remove());
+        this.grille.forEach((v, i) => { if (v) this.creerTuile(v, i, false); });
+        this.scoreEl.textContent = '0';
         this.note('Glisse la grille (doigt, souris ou flèches) : deux tuiles égales fusionnent en leur double.');
         return true;
+    }
+
+    // --- Les tuiles -------------------------------------------------------------
+
+    /** La géométrie du plateau, en pixels : d'où viennent left/top des tuiles. */
+    geometrie() {
+        const w = this.grilleEl.clientWidth || 400;
+        const marge = 10, ecart = 8;
+        const cote = (w - marge * 2 - ecart * 3) / 4;
+        return { marge, ecart, cote };
+    }
+
+    placer(el, i) {
+        const { marge, ecart, cote } = this.geometrie();
+        el.style.width = `${cote}px`;
+        el.style.height = `${cote}px`;
+        el.style.transform = `translate(${marge + (i % 4) * (cote + ecart)}px, ${marge + Math.floor(i / 4) * (cote + ecart)}px)`;
+    }
+
+    habiller(el, v) {
+        const teinte = TEINTES[v] || (v > 2048 ? '#3c3a32' : '');
+        const clair = v > 2048 || SOMBRES.has(v) ? '#f9f6f2' : '#4a5568';
+        const taille = v >= 1024 ? 0.26 : v >= 128 ? 0.32 : 0.4;
+        el.style.background = teinte;
+        el.style.color = clair;
+        el.style.fontSize = `${Math.round(this.geometrie().cote * taille)}px`;
+        el.textContent = String(v);
+    }
+
+    creerTuile(v, i, pop) {
+        const el = document.createElement('div');
+        el.className = 'dm2-tuile' + (pop ? ' dm2-tuile--pop' : '');
+        this.habiller(el, v);
+        this.placer(el, i);
+        this.grilleEl.appendChild(el);
+        this.tuiles.push({ el, valeur: v, case: i });
+        return el;
+    }
+
+    replacerTuiles() {
+        (this.tuiles || []).forEach(t => { this.placer(t.el, t.case); this.habiller(t.el, t.valeur); });
     }
 
     // --- Les gestes -----------------------------------------------------------
@@ -132,6 +196,10 @@ class DeuxMille extends BaseGame {
 
     jouer(direction) {
         if (this.isDemo || this.finie || !this.grille) return;
+        // Un coup rapide pendant la glissade : on termine l'animation en
+        // cours d'un claquement de doigts, puis on joue — jamais d'attente,
+        // jamais deux animations qui s'emmêlent.
+        if (this.finirAnimation) this.finirAnimation();
         const coup = glisser(this.grille, direction);
         if (!coup) { this.note('Rien ne bouge de ce côté : essaie une autre direction.'); return; }
         this.appliquer(coup);
@@ -141,7 +209,40 @@ class DeuxMille extends BaseGame {
         this.score += coup.points;
         const res = apparaitre(coup.grille, this.rng);
         this.grille = res.grille;
-        this.peindre(coup.fusions.map(f => f.case), res.case);
+        this.scoreEl.textContent = String(this.score);
+
+        // LA GLISSADE. Chaque tuile suit son mouvement du journal ; les deux
+        // tuiles d'une fusion voyagent vers la même case, et c'est à
+        // L'ARRIVÉE que l'une absorbe l'autre — comme à l'œil nu.
+        for (const mv of coup.mouvements) {
+            const t = this.tuiles.find(x => x.case === mv.de && !x.enRoute);
+            if (!t) continue;
+            t.enRoute = true;
+            t.case = mv.vers;
+            t.el.classList.remove('dm2-tuile--pop', 'dm2-tuile--fusion');
+            this.placer(t.el, mv.vers);
+        }
+        const atterrir = () => {
+            if (this.finirAnimation !== atterrir) return;
+            this.finirAnimation = null;
+            clearTimeout(minuteur);
+            // Les fusions : sur chaque case d'arrivée, une tuile survit et
+            // double, l'autre disparaît.
+            for (const f of coup.fusions) {
+                const dessus = this.tuiles.filter(t => t.case === f.case);
+                dessus.slice(1).forEach(t => t.el.remove());
+                this.tuiles = this.tuiles.filter(t => t.case !== f.case || t === dessus[0]);
+                if (dessus[0]) {
+                    dessus[0].valeur = f.valeur;
+                    this.habiller(dessus[0].el, f.valeur);
+                    dessus[0].el.classList.add('dm2-tuile--fusion');
+                }
+            }
+            this.tuiles.forEach(t => { t.enRoute = false; });
+            if (res.case >= 0) this.creerTuile(res.valeur, res.case, true);
+        };
+        this.finirAnimation = atterrir;
+        const minuteur = setTimeout(atterrir, 140);
 
         // CHAQUE FUSION EST UN DOUBLEMENT DIT : c'est là que le jeu devient un
         // exercice — 8 + 8 = 16 énoncé cent fois finit par s'installer.
@@ -172,20 +273,6 @@ class DeuxMille extends BaseGame {
             this.finie = true;
             this.note(`Plus aucun coup possible. Score : ${this.score}, plus grande tuile : ${plusGrande(this.grille)}.`, 'ko');
         }
-    }
-
-    peindre(fusions = [], neuve = -1) {
-        this.scoreEl.textContent = String(this.score);
-        this.grilleEl.innerHTML = this.grille.map((v, i) => {
-            const teinte = TEINTES[v] || (v > 2048 ? '#3c3a32' : null);
-            const clair = v > 64 || v === 0 ? (v > 2048 ? '#f9f6f2' : '#4a5568') : (SOMBRES.has(v) ? '#f9f6f2' : '#4a5568');
-            const taille = v >= 1024 ? '5.4cqw' : v >= 128 ? '6.4cqw' : '7.6cqw';
-            const classes = ['dm2-case',
-                fusions.includes(i) ? 'dm2-case--fusion' : '',
-                i === neuve ? 'dm2-case--pop' : ''].join(' ');
-            return `<div class="${classes}" style="${teinte ? `background:${teinte};` : ''}
-                color:${clair}; font-size:clamp(13px, ${taille}, 34px)">${v || ''}</div>`;
-        }).join('');
     }
 
     aider() {
@@ -235,6 +322,7 @@ class DeuxMille extends BaseGame {
     }
 
     destroy() {
+        if (this.observateur) { this.observateur.disconnect(); this.observateur = null; }
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
     }

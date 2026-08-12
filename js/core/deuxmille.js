@@ -20,28 +20,36 @@ export const grilleVide = (n = 4) => Array.from({ length: n * n }, () => 0);
 
 /**
  * Tasse et fusionne UNE ligne vers la gauche. Renvoie la ligne obtenue, les
- * points gagnés et les fusions ([{valeur, arrivee}]).
+ * points gagnés, les fusions ([{valeur, arrivee}]) et les MOUVEMENTS
+ * ([{de, vers}] en indices de la ligne) — c'est le journal qui permet
+ * d'animer chaque tuile de sa case de départ à sa case d'arrivée.
  * C'est la seule fonction qui connaisse la règle ; les quatre directions s'y
  * ramènent par lecture de la grille dans le bon ordre.
  */
 export function tasserLigne(ligne) {
-    const pleines = ligne.filter(v => v !== 0);
+    const pleines = [];
+    ligne.forEach((v, i) => { if (v !== 0) pleines.push({ v, de: i }); });
     const sortie = [];
     const fusions = [];
+    const mouvements = [];
     let points = 0;
     for (let i = 0; i < pleines.length; i++) {
-        if (i + 1 < pleines.length && pleines[i] === pleines[i + 1]) {
-            const double = pleines[i] * 2;
+        if (i + 1 < pleines.length && pleines[i].v === pleines[i + 1].v) {
+            const double = pleines[i].v * 2;
             fusions.push({ valeur: double, arrivee: sortie.length });
+            // Les DEUX tuiles voyagent vers la même case : c'est la fusion.
+            mouvements.push({ de: pleines[i].de, vers: sortie.length });
+            mouvements.push({ de: pleines[i + 1].de, vers: sortie.length });
             sortie.push(double);
             points += double;
             i++;                       // la tuile absorbée ne resservira pas
         } else {
-            sortie.push(pleines[i]);
+            mouvements.push({ de: pleines[i].de, vers: sortie.length });
+            sortie.push(pleines[i].v);
         }
     }
     while (sortie.length < ligne.length) sortie.push(0);
-    return { ligne: sortie, points, fusions };
+    return { ligne: sortie, points, fusions, mouvements };
 }
 
 // Les quatre lectures d'une grille : chaque direction devient « tasser chaque
@@ -55,8 +63,10 @@ const LECTURES = {
 
 /**
  * Joue un coup. Renvoie null si RIEN ne bouge (ce n'est pas un coup), sinon
- * { grille, points, fusions, bouge } — sans tuile nouvelle : elle s'ajoute
- * par `apparaitre`, pour que le robot puisse s'arrêter entre les deux.
+ * { grille, points, fusions, mouvements } — sans tuile nouvelle : elle
+ * s'ajoute par `apparaitre`, pour que le robot puisse s'arrêter entre les
+ * deux. `mouvements` donne, en indices de LA GRILLE, d'où part et où arrive
+ * chaque tuile : c'est lui qui permet la glissade à l'écran.
  */
 export function glisser(grille, direction) {
     const n = Math.sqrt(grille.length);
@@ -66,18 +76,20 @@ export function glisser(grille, direction) {
     let bouge = false;
     let points = 0;
     const fusions = [];
+    const mouvements = [];
     for (let r = 0; r < n; r++) {
         const avant = Array.from({ length: n }, (_, i) => grille[lire(n, r, i)]);
         const res = tasserLigne(avant);
         points += res.points;
         res.fusions.forEach(f => fusions.push({ valeur: f.valeur, case: lire(n, r, f.arrivee) }));
+        res.mouvements.forEach(m => mouvements.push({ de: lire(n, r, m.de), vers: lire(n, r, m.vers) }));
         for (let i = 0; i < n; i++) {
             const idx = lire(n, r, i);
             if (sortie[idx] !== res.ligne[i]) bouge = true;
             sortie[idx] = res.ligne[i];
         }
     }
-    return bouge ? { grille: sortie, points, fusions } : null;
+    return bouge ? { grille: sortie, points, fusions, mouvements } : null;
 }
 
 /** Fait apparaître une tuile (2, parfois 4) sur une case vide. */

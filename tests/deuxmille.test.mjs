@@ -32,6 +32,25 @@ test('les points d\'un coup sont la somme des tuiles créées', () => {
     assert.equal(tasserLigne([2, 4, 2, 4]).points, 0);
 });
 
+test('le journal des mouvements suit chaque tuile, fusion comprise', () => {
+    // [2, 0, 2, 4] vers la gauche : les deux 2 voyagent vers la case 0, le 4
+    // vers la case 1. C'est ce journal qui fait la glissade à l'écran.
+    assert.deepEqual(tasserLigne([2, 0, 2, 4]).mouvements, [
+        { de: 0, vers: 0 }, { de: 2, vers: 0 }, { de: 3, vers: 1 }
+    ]);
+    // Et en indices de grille, dans les quatre directions.
+    const g = [
+        2, 0, 0, 2,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0
+    ];
+    assert.deepEqual(glisser(g, 'droite').mouvements,
+        [{ de: 3, vers: 3 }, { de: 0, vers: 3 }]);
+    assert.deepEqual(glisser(g, 'bas').mouvements,
+        [{ de: 0, vers: 12 }, { de: 3, vers: 15 }]);
+});
+
 test('les quatre directions lisent la même règle', () => {
     //  2 0 0 2         4 . . .   (gauche)
     //  0 4 4 0    →    8 . . .
