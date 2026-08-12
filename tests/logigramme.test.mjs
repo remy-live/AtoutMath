@@ -172,3 +172,19 @@ test('un indice se relit tout seul', () => {
     });
     assert.ok([INCONNU, OUI, NON].every(Number.isInteger));
 });
+
+// --- Sur le papier ----------------------------------------------------------
+
+import { logigrammeGenerator } from '../js/core/generators/logigramme.js';
+
+test('le générateur pose un logigramme complet sur la feuille', () => {
+    for (let g = 1; g <= 12; g++) {
+        const it = logigrammeGenerator.generate({ niveau: (g % 6) + 1 }, { rng: makeRng(`pap${g}`), index: g });
+        const p = it.meta;
+        assert.ok(p.categories && p.indices.length, 'le puzzle voyage avec l\'item');
+        assert.ok(resoudre(p).complet, 'et il reste résoluble par déduction pure');
+        // La correction imprimée doit lister la solution, ligne par ligne.
+        assert.equal(it.explanation.split(' ; ').length, p.categories[0].valeurs.length);
+        assert.ok(!/undefined/.test(it.explanation));
+    }
+});

@@ -123,6 +123,92 @@ export const THEMES = [
         ]
     },
     {
+        id: 'anniversaire',
+        titre: 'Les cadeaux d\'anniversaire',
+        decor: 'Chacun a reçu un cadeau et a soufflé ses bougies.',
+        sujet: { id: 'enfant', label: 'Enfant', valeurs: PRENOMS },
+        attributs: [
+            {
+                id: 'cadeau', label: 'Cadeau',
+                verbe: 'a reçu', verbeNeg: 'n\'a pas reçu',
+                valeurs: ['un ballon', 'un puzzle', 'un jeu de cartes', 'une bande dessinée', 'une trottinette'],
+                valeursNeg: ['de ballon', 'de puzzle', 'de jeu de cartes', 'de bande dessinée', 'de trottinette'],
+                courts: ['ballon', 'puzzle', 'cartes', 'BD', 'trottinette']
+            },
+            {
+                id: 'bougies', label: 'Bougies', ordonnee: true,
+                verbe: 'a soufflé', verbeNeg: 'n\'a pas soufflé',
+                nombres: [7, 8, 9, 10, 11], unite: 'bougies',
+                comparatif: { moins: 'a soufflé moins de bougies que', plus: 'a soufflé plus de bougies que' },
+                ecart: (d) => `a soufflé ${d} bougie${d > 1 ? 's' : ''} de plus que`
+            }
+        ]
+    },
+    {
+        id: 'musique',
+        titre: 'L\'école de musique',
+        decor: 'Chacun apprend un instrument.',
+        sujet: { id: 'eleve', label: 'Élève', valeurs: PRENOMS },
+        attributs: [
+            {
+                id: 'instrument', label: 'Instrument',
+                verbe: 'joue', verbeNeg: 'ne joue pas',
+                valeurs: ['de la guitare', 'du piano', 'de la flûte', 'du violon', 'de la batterie'],
+                valeursNeg: ['de guitare', 'de piano', 'de flûte', 'de violon', 'de batterie'],
+                courts: ['guitare', 'piano', 'flûte', 'violon', 'batterie']
+            },
+            {
+                id: 'morceaux', label: 'Morceaux', ordonnee: true,
+                verbe: 'a appris', verbeNeg: 'n\'a pas appris',
+                nombres: [2, 3, 4, 5, 6], unite: 'morceaux',
+                comparatif: { moins: 'a appris moins de morceaux que', plus: 'a appris plus de morceaux que' },
+                ecart: (d) => `a appris ${d} morceau${d > 1 ? 'x' : ''} de plus que`
+            }
+        ]
+    },
+    {
+        id: 'voyage',
+        titre: 'La sortie scolaire',
+        decor: 'Chacun a visité un endroit différent pendant la sortie.',
+        sujet: { id: 'eleve', label: 'Élève', valeurs: PRENOMS },
+        attributs: [
+            {
+                id: 'lieu', label: 'Visite',
+                verbe: 'a visité', verbeNeg: 'n\'a pas visité',
+                valeurs: ['le musée', 'le château', 'la ferme', 'l\'aquarium', 'l\'observatoire'],
+                courts: ['musée', 'château', 'ferme', 'aquarium', 'observatoire']
+            },
+            {
+                id: 'photos', label: 'Photos', ordonnee: true,
+                verbe: 'a pris', verbeNeg: 'n\'a pas pris',
+                nombres: [5, 10, 15, 20, 25], unite: 'photos',
+                comparatif: { moins: 'a pris moins de photos que', plus: 'a pris plus de photos que' },
+                ecart: (d) => `a pris ${d} photos de plus que`
+            }
+        ]
+    },
+    {
+        id: 'boulangerie',
+        titre: 'À la boulangerie',
+        decor: 'Chacun est reparti avec une viennoiserie.',
+        sujet: { id: 'client', label: 'Client', valeurs: PRENOMS },
+        attributs: [
+            {
+                id: 'viennoiserie', label: 'Achat',
+                verbe: 'a choisi', verbeNeg: 'n\'a pas choisi',
+                valeurs: ['le croissant', 'le pain au chocolat', 'la brioche', 'le chausson aux pommes', 'l\'éclair'],
+                courts: ['croissant', 'pain choco', 'brioche', 'chausson', 'éclair']
+            },
+            {
+                id: 'prix', label: 'Prix', ordonnee: true,
+                verbe: 'a payé', verbeNeg: 'n\'a pas payé',
+                nombres: [1, 2, 3, 4, 5], unite: '€',
+                comparatif: { moins: 'a payé moins cher que', plus: 'a payé plus cher que' },
+                ecart: (d) => `a payé ${d} € de plus que`
+            }
+        ]
+    },
+    {
         id: 'club',
         titre: 'Le club du mercredi',
         decor: 'Chacun s\'est inscrit à une activité.',

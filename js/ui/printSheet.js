@@ -22,7 +22,8 @@ import { pourPdf } from './ficheRendu.js';
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
 const PAGE = { w: 297, h: 210, marge: 9, enteteH: 17, piedH: 6 };
-const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240, 250], texte: [45, 55, 72] };
+const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240, 250],
+    texte: [45, 55, 72], gris: [110, 118, 132] };
 
 /**
  * Positionne `cols × rows` blocs carrés (titre + grille) dans la zone utile.
@@ -451,6 +452,194 @@ function garamPreviewHtml(item, slot, k, solution, champs) {
     return html;
 }
 
+
+// --- Le logigramme -------------------------------------------------------------
+//
+// Sur le papier, un logigramme tient en deux morceaux : l'histoire et ses
+// indices d'un côté, la grille de l'autre. La grille est celle du commerce —
+// bandeaux de couleur en tête de chaque liste, blocs cernés, et l'angle mort
+// laissé VIDE plutôt que grisé : un damier où il n'y a rien à croiser occupe
+// l'œil pour rien.
+
+const LOGI_TEINTES = [[125, 211, 252], [134, 239, 172], [252, 211, 77], [249, 168, 212]];
+const pastel = (k, force) => LOGI_TEINTES[k % LOGI_TEINTES.length].map(v => Math.round(255 - (255 - v) * force));
+
+/** La géométrie commune à l'aperçu et au PDF : indices à gauche, grille à droite. */
+function geometrieLogi(item, boite) {
+    const p = item.meta;
+    const n = p.categories[0].valeurs.length;
+    const nc = p.categories.length;
+    const colonnes = []; for (let c = 1; c < nc; c++) colonnes.push(c);
+    const lignes = [0]; for (let r = nc - 1; r >= 2; r--) lignes.push(r);
+
+    // La grille prend la moitié droite ; les étiquettes de ligne et le bandeau
+    // de la liste mangent une colonne de plus, À GAUCHE de la grille — c'est
+    // là que le texte des indices débordait dessus.
+    const largeurGrille = boite.w * 0.56;
+    const entete = Math.min(26, largeurGrille * 0.2);    // hauteur des libellés verticaux
+    const gouttiere = Math.min(26, largeurGrille * 0.22); // largeur des libellés de ligne
+    const cote = Math.min(
+        (largeurGrille - gouttiere - 5) / (colonnes.length * n),
+        (boite.h - entete - 12) / (lignes.length * n)
+    );
+    const x0 = boite.x + boite.w - (cote * colonnes.length * n);
+    const y0 = boite.y + 8 + entete;
+    const xCat = x0 - gouttiere - 4.5;                   // le bord gauche des étiquettes
+    return { p, n, nc, colonnes, lignes, cote, x0, y0, entete, gouttiere, xCat,
+        indicesW: Math.max(40, xCat - boite.x - 5) };
+}
+
+const logiVisible = (r, c) => r === 0 || c < r;
+
+function logigrammePreviewHtml(item, slot, k, solution) {
+    const b = slot.boite;
+    const g = geometrieLogi(item, b);
+    const { p, n, colonnes, lignes, cote, x0, y0 } = g;
+    const rgb = (c, f) => `rgb(${pastel(c, f).join(',')})`;
+    let html = '';
+
+    // L'histoire et les indices.
+    html += `<div class="fx-logi-texte" style="left:${b.x * k}px; top:${b.y * k}px;
+        width:${g.indicesW * k}px; font-size:${3.1 * k}px">
+        <b>${echapperSheet(p.titre)}</b> — ${echapperSheet(p.decor)}
+        <ol>${p.indices.map(i => `<li>${echapperSheet(i.texte)}</li>`).join('')}</ol></div>`;
+
+    // Les bandeaux et les étiquettes de colonne.
+    colonnes.forEach((c, ci) => {
+        const x = x0 + ci * n * cote;
+        html += `<div class="fx-logi-cat" style="left:${x * k}px; top:${(y0 - g.entete) * k}px;
+            width:${(n * cote) * k}px; height:${(g.entete * 0.28) * k}px; background:${rgb(c, .55)};
+            font-size:${2.5 * k}px">${echapperSheet(p.categories[c].label)}</div>`;
+        for (let j = 0; j < n; j++) {
+            html += `<div class="fx-logi-vert" style="left:${(x + j * cote) * k}px;
+                top:${(y0 - g.entete + g.entete * 0.28) * k}px; width:${cote * k}px;
+                height:${(g.entete * 0.72) * k}px; background:${rgb(c, .18)};
+                font-size:${Math.min(2.5, cote * 0.62) * k}px">${echapperSheet(etiquetteLogi(p.categories[c], j))}</div>`;
+        }
+    });
+
+    lignes.forEach((r, ri) => {
+        const y = y0 + ri * n * cote;
+        html += `<div class="fx-logi-catlig" style="left:${g.xCat * k}px; top:${y * k}px;
+            width:${(g.gouttiere * 0.3) * k}px; height:${(n * cote) * k}px; background:${rgb(r, .55)};
+            font-size:${2.5 * k}px">${echapperSheet(p.categories[r].label)}</div>`;
+        for (let i = 0; i < n; i++) {
+            html += `<div class="fx-logi-lig" style="left:${(g.xCat + g.gouttiere * 0.3) * k}px;
+                top:${(y + i * cote) * k}px; width:${(g.gouttiere * 0.7 + 4.5) * k}px; height:${cote * k}px;
+                background:${rgb(r, .18)}; font-size:${Math.min(2.5, cote * 0.62) * k}px">${echapperSheet(etiquetteLogi(p.categories[r], i))}</div>`;
+        }
+        colonnes.forEach((c, ci) => {
+            if (!logiVisible(r, c)) return;
+            const x = x0 + ci * n * cote;
+            for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+                const rempli = solution
+                    ? (p.solution.findIndex(e => e[r] === i) === p.solution.findIndex(e => e[c] === j) ? '●' : '×')
+                    : '';
+                html += `<div class="fx-logi-case" style="left:${(x + j * cote) * k}px; top:${(y + i * cote) * k}px;
+                    width:${cote * k}px; height:${cote * k}px; font-size:${cote * 0.6 * k}px">${rempli}</div>`;
+            }
+            html += `<div class="fx-logi-bloc" style="left:${x * k}px; top:${y * k}px;
+                width:${(n * cote) * k}px; height:${(n * cote) * k}px; border-color:${rgb(c, .95)}"></div>`;
+        });
+    });
+    return html;
+}
+
+function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
+    const b = slot.boite;
+    const g = geometrieLogi(item, b);
+    const { p, n, colonnes, lignes, cote, x0, y0 } = g;
+
+    // L'histoire, puis les indices numérotés.
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...ENCRE.texte);
+    let y = b.y + 4;
+    doc.text(pourPdf(p.titre), b.x, y);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.6);
+    doc.setTextColor(...ENCRE.gris);
+    doc.splitTextToSize(pourPdf(p.decor), g.indicesW).forEach(l => { y += 3.4; doc.text(l, b.x, y); });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...ENCRE.texte);
+    y += 1.5;
+    p.indices.forEach((ind, k) => {
+        const lignesTexte = doc.splitTextToSize(pourPdf(`${k + 1}. ${ind.texte}`), g.indicesW - 2);
+        lignesTexte.forEach((l, li) => { y += 3.9; doc.text(l, b.x + (li ? 3 : 0), y); });
+    });
+
+    // Les bandeaux de colonne.
+    colonnes.forEach((c, ci) => {
+        const x = x0 + ci * n * cote;
+        doc.setFillColor(...pastel(c, 0.55));
+        doc.rect(x, y0 - g.entete, n * cote, g.entete * 0.28, 'F');
+        doc.setFontSize(Math.min(8, cote * 1.5));
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(p.categories[c].label), x + n * cote / 2, y0 - g.entete + g.entete * 0.2,
+            { align: 'center' });
+        doc.setFillColor(...pastel(c, 0.18));
+        doc.rect(x, y0 - g.entete + g.entete * 0.28, n * cote, g.entete * 0.72, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(Math.min(7, cote * 1.35));
+        for (let j = 0; j < n; j++) {
+            doc.text(pourPdf(etiquetteLogi(p.categories[c], j)),
+                x + j * cote + cote * 0.68, y0 - 1.2, { angle: 90 });
+        }
+    });
+
+    lignes.forEach((r, ri) => {
+        const y0r = y0 + ri * n * cote;
+        const xCat = g.xCat;
+        doc.setFillColor(...pastel(r, 0.55));
+        doc.rect(xCat, y0r, g.gouttiere * 0.3, n * cote, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.min(8, cote * 1.5));
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(p.categories[r].label), xCat + g.gouttiere * 0.22, y0r + n * cote / 2,
+            { align: 'center', angle: 90 });
+        doc.setFillColor(...pastel(r, 0.18));
+        doc.rect(xCat + g.gouttiere * 0.3, y0r, g.gouttiere * 0.7 + 4.5, n * cote, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(Math.min(7, cote * 1.35));
+        for (let i = 0; i < n; i++) {
+            doc.text(pourPdf(etiquetteLogi(p.categories[r], i)),
+                x0 - 1.5, y0r + i * cote + cote * 0.68, { align: 'right' });
+        }
+
+        colonnes.forEach((c, ci) => {
+            if (!logiVisible(r, c)) return;
+            const x = x0 + ci * n * cote;
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.12);
+            for (let i = 1; i < n; i++) {
+                doc.line(x, y0r + i * cote, x + n * cote, y0r + i * cote);
+                doc.line(x + i * cote, y0r, x + i * cote, y0r + n * cote);
+            }
+            doc.setDrawColor(...pastel(c, 0.95));
+            doc.setLineWidth(0.5);
+            doc.rect(x, y0r, n * cote, n * cote, 'S');
+            if (solution) {
+                doc.setTextColor(...ENCRE.texte);
+                doc.setFontSize(Math.min(9, cote * 1.7));
+                for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+                    const juste = p.solution.findIndex(e => e[r] === i) === p.solution.findIndex(e => e[c] === j);
+                    doc.text(juste ? 'O' : 'x', x + j * cote + cote / 2, y0r + i * cote + cote / 2,
+                        { align: 'center', baseline: 'middle' });
+                }
+            } else if (champ) {
+                for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+                    champ(x + j * cote + cote * 0.12, y0r + i * cote + cote * 0.12, cote * 0.76, cote * 0.76);
+                }
+            }
+        });
+    });
+}
+
+const etiquetteLogi = (cat, i) => cat.nombres ? String(cat.nombres[i]) : ((cat.courts && cat.courts[i]) || cat.valeurs[i]);
+const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
 // --- Rendus par exercice ------------------------------------------------------
 // Le gabarit (page, en-tête, aperçu, page 2 des solutions) est commun ; chaque
 // exercice imprimable ne fournit que sa consigne et le dessin de SA grille.
@@ -718,6 +907,22 @@ export const RENDUS = {
         // trois millimètres. À trois par ligne elles deviennent illisibles —
         // et la première chose qu'on fait sur un garam, c'est écrire dedans.
         parLigneDefaut: 2
+    },
+    logigramme: {
+        titre: 'Logigramme',
+        consigne: () => 'Chaque personne a UNE valeur dans chaque liste, et chaque valeur ne sert qu\'une fois. '
+            + 'Barre les cases impossibles, coche les certaines : dès qu\'une case est cochée, sa ligne et sa '
+            + 'colonne se barrent, et s\'il ne reste qu\'une case non barrée dans une ligne, c\'est elle.',
+        previewGrille: logigrammePreviewHtml,
+        pdfGrille: dessinerLogigrammePdf,
+        // Un logigramme n'est pas carré : il lui faut la largeur d'une page
+        // pour poser ses indices à côté de sa grille.
+        // Assez haut pour la grille et ses indices, assez court pour en poser
+        // DEUX sur une page : un logigramme par feuille serait du gâchis.
+        proportions: { w: 1, h: 0.47 },
+        parLigneDefaut: 1,
+        // Il prend toute la largeur : ses indices se lisent à côté de sa grille.
+        grilleMax: 300
     },
     binairo: {
         titre: 'Binairo',

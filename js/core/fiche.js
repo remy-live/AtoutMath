@@ -414,9 +414,14 @@ export function composerBlocs(exos, opts, mesurer) {
                 grilles.length,
                 Number.isFinite(Number(voulu)) && Number(voulu) > 0 ? Number(voulu) : tiendraient
             ));
+            // UN BLOC PEUT DEMANDER PLUS QUE LE PLAFOND COMMUN. Une grille de
+            // sudoku n'a pas besoin de plus de neuf centimètres — au-delà, on
+            // écrit gros pour rien. Un logigramme, lui, pose ses indices À CÔTÉ
+            // de sa grille : il lui faut la largeur de la feuille, sinon la
+            // moitié droite reste blanche et le texte se serre pour rien.
             const cote = Math.min(
                 (zone.w - gap * (parLigne - 1)) / parLigne,
-                o.grilleMax || 78
+                Number(exo.grilleMax) > 0 ? Number(exo.grilleMax) : (o.grilleMax || 78)
             );
             // TOUS LES BLOCS NE SONT PAS CARRÉS. Une grille l'est ; une figure
             // suivie de trois lignes à rédiger est large et basse. Le bloc

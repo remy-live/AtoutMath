@@ -544,9 +544,14 @@ export const calculExercises = [
         // dans le catalogue ce qui est une seule progression.
         id: 'logi-logigramme', status: STATUS.TEST, title: 'Le Logigramme',
         activityId: 'logigramme',
+        // Le générateur ne sert PAS à l'écran (l'activité mène son propre jeu) :
+        // il sert au PAPIER. Un logigramme se fait d'abord au crayon, en rayant
+        // et en revenant en arrière — c'est un des exercices qui gagnent le
+        // plus à sortir de l'écran.
+        generatorId: 'logique.logigramme', printable: 'logigramme',
         sansRevision: true,
         skills: ['num.logique.logigramme'],
-        params: { niveau: 1, auto: true },
+        params: { niveau: 1, auto: false },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Niveau',
@@ -562,7 +567,7 @@ export const calculExercises = [
             },
             {
                 id: 'auto', type: 'bool', label: 'Barrer la ligne automatiquement',
-                default: true
+                default: false
             },
             {
                 id: 'theme', type: 'select', label: 'Histoire',

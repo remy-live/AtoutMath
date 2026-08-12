@@ -31,10 +31,14 @@ class Logigramme extends BaseGame {
         super(container, isDemo, params, 'logigramme');
         this.rng = makeRng(this.params.seed);
         this.niveau = Number(this.params.niveau) || 1;
-        // L'aide mécanique : poser un rond barre le reste de sa ligne et de sa
-        // colonne. C'est le geste que l'élève apprend d'abord ; une fois qu'il
-        // le sait, le faire à la main trente fois n'apprend plus rien.
-        this.auto = this.params.auto !== false;
+        // UN ROND MET UN ROND, ET RIEN D'AUTRE.
+        //
+        // On barrait automatiquement le reste de la ligne et de la colonne :
+        // c'est le geste que l'élève doit apprendre, et le lui prendre des
+        // mains l'empêche de l'apprendre — sans compter qu'un rond posé pour
+        // essayer remplissait aussitôt la moitié de la grille. Le professeur
+        // peut le réactiver ; par défaut, on n'écrit que ce qu'on a cliqué.
+        this.auto = this.params.auto === true;
         this.reussis = 0;
         this.aidesUtilisees = 0;
     }
@@ -86,18 +90,30 @@ class Logigramme extends BaseGame {
                 .lg-case--faute { animation: lg-faute .5s ease 3; }
                 @keyframes lg-faute { 50% { background: color-mix(in srgb, var(--danger, #dc2626) 45%, var(--bg-panel)); } }
                 .lg-case--montre { box-shadow: inset 0 0 0 3px var(--primary); }
-                /* Le trait épais sépare deux catégories : sans lui, la grille
-                   n'est qu'un damier et l'œil s'y perd. */
-                .lg-case--bordG { border-left-width: 2.5px; border-left-color: var(--text-main); }
-                .lg-case--bordH { border-top-width: 2.5px; border-top-color: var(--text-main); }
+                /* CHAQUE BLOC EST CERNÉ. Sans ce cadre, la grille n'est qu'un
+                   damier : on ne voit plus quelle liste croise quelle liste, et
+                   c'est justement ce qu'il faut lire d'un coup d'œil. */
+                .lg-case--bordG { border-left-width: 2.2px; }
+                .lg-case--bordH { border-top-width: 2.2px; }
+                .lg-case--bordD { border-right-width: 2.2px; }
+                .lg-case--bordB { border-bottom-width: 2.2px; }
                 .lg-th {
-                    font-size: clamp(8px, 1.9cqw, 11px); font-weight: 700; color: var(--text-muted);
+                    font-size: clamp(8px, 1.9cqw, 11px); font-weight: 700; color: var(--text-main);
                     white-space: nowrap;
                 }
-                .lg-th--col { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; padding: 3px 0 !important; }
-                .lg-th--lig { text-align: right; padding-right: 5px !important; max-width: 92px;
+                /* Les en-têtes portent la couleur de leur liste : pastel, pour
+                   rester lisibles sous une photocopie comme sur un écran. */
+                .lg-th--val { border: 1px solid var(--border); padding: 2px 4px !important; }
+                .lg-th--col { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; }
+                .lg-th--lig { text-align: right; padding-right: 6px !important; max-width: 96px;
                     overflow: hidden; text-overflow: ellipsis; }
-                .lg-th--cat { font-weight: 800; color: var(--text-main); }
+                .lg-th--cat {
+                    font-weight: 800; color: var(--text-main); text-align: center;
+                    border: 1px solid var(--border); padding: 3px 4px !important;
+                    font-size: clamp(9px, 2.1cqw, 12.5px);
+                }
+                .lg-th--catlig { writing-mode: vertical-rl; transform: rotate(180deg); }
+                .lg-mort { border: 0; background: none; }
 
                 .lg-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .lg-btn {
@@ -193,16 +209,19 @@ class Logigramme extends BaseGame {
         const { colonnes, lignes } = this.plan();
         const cote = this.coteCase(colonnes.length);
         const cats = p.categories;
-        let html = '<table class="lg-table"><tr><th></th><th></th>';
-        colonnes.forEach((c, ci) => {
-            html += `<th class="lg-th lg-th--cat" colspan="${this.n}"
-                style="border-left:${ci ? '2.5px solid var(--text-main)' : '0'}">${echapper(cats[c].label)}</th>`;
+        const fond = (k, force) => `background:color-mix(in srgb, ${TEINTES[k % TEINTES.length]} ${force}%, var(--bg-panel));`;
+        const trait = (k) => `color-mix(in srgb, ${TEINTES[k % TEINTES.length]} 75%, var(--text-main))`;
+
+        // Ligne 1 : le nom des listes en colonne, sur leur bandeau pastel.
+        let html = '<table class="lg-table"><tr><td class="lg-mort"></td><td class="lg-mort"></td>';
+        colonnes.forEach(c => {
+            html += `<th class="lg-th lg-th--cat" colspan="${this.n}" style="${fond(c, 42)}">${echapper(cats[c].label)}</th>`;
         });
-        html += '</tr><tr><th></th><th></th>';
-        colonnes.forEach((c, ci) => {
+        html += '</tr><tr><td class="lg-mort"></td><td class="lg-mort"></td>';
+        colonnes.forEach(c => {
             for (let j = 0; j < this.n; j++) {
-                html += `<th class="lg-th lg-th--col" style="height:${Math.max(52, cote * 3.4)}px;
-                    ${ci && j === 0 ? 'border-left:2.5px solid var(--text-main);' : ''}">${echapper(etiquette(cats[c], j))}</th>`;
+                html += `<th class="lg-th lg-th--val lg-th--col" style="${fond(c, 16)}
+                    height:${Math.max(56, cote * 3.6)}px">${echapper(etiquette(cats[c], j))}</th>`;
             }
         });
         html += '</tr>';
@@ -211,20 +230,28 @@ class Logigramme extends BaseGame {
             for (let i = 0; i < this.n; i++) {
                 html += '<tr>';
                 if (i === 0) {
-                    html += `<th class="lg-th lg-th--cat" rowspan="${this.n}"
-                        style="writing-mode:vertical-rl; transform:rotate(180deg)">${echapper(cats[r].label)}</th>`;
+                    html += `<th class="lg-th lg-th--cat lg-th--catlig" rowspan="${this.n}"
+                        style="${fond(r, 42)}">${echapper(cats[r].label)}</th>`;
                 }
-                html += `<th class="lg-th lg-th--lig">${echapper(etiquette(cats[r], i))}</th>`;
+                html += `<th class="lg-th lg-th--val lg-th--lig" style="${fond(r, 16)}">${echapper(etiquette(cats[r], i))}</th>`;
                 colonnes.forEach((c, ci) => {
                     for (let j = 0; j < this.n; j++) {
-                        const actif = r !== c && this.paireVisible(r, c);
-                        const bords = (ci && j === 0 ? ' lg-case--bordG' : '') + (ri && i === 0 ? ' lg-case--bordH' : '');
-                        html += actif
-                            ? `<td class="lg-case lg-case--vide${bords}" data-r="${r}" data-i="${i}"
-                                 data-c="${c}" data-j="${j}"
-                                 style="width:${cote}px; height:${cote}px; font-size:${cote * 0.62}px"></td>`
-                            : `<td style="width:${cote}px; height:${cote}px; background:var(--bg-app);
-                                 border:1px solid var(--border);${bords ? 'border-left-width:2.5px;' : ''}"></td>`;
+                        // LE BLOC MORT NE SE DESSINE PAS DU TOUT. Un damier gris
+                        // là où il n'y a rien à croiser occupe l'œil pour rien —
+                        // les logigrammes du commerce laissent l'angle vide.
+                        if (!this.paireVisible(r, c)) { html += '<td class="lg-mort"></td>'; continue; }
+                        const bords = (j === 0 ? ' lg-case--bordG' : '')
+                            + (j === this.n - 1 ? ' lg-case--bordD' : '')
+                            + (i === 0 ? ' lg-case--bordH' : '')
+                            + (i === this.n - 1 ? ' lg-case--bordB' : '');
+                        html += `<td class="lg-case lg-case--vide${bords}" data-r="${r}" data-i="${i}"
+                             data-c="${c}" data-j="${j}"
+                             style="width:${cote}px; height:${cote}px; font-size:${cote * 0.62}px;
+                             border-color:var(--border);
+                             ${j === 0 ? `border-left-color:${trait(c)};` : ''}
+                             ${j === this.n - 1 ? `border-right-color:${trait(c)};` : ''}
+                             ${i === 0 ? `border-top-color:${trait(c)};` : ''}
+                             ${i === this.n - 1 ? `border-bottom-color:${trait(c)};` : ''}"></td>`;
                     }
                 });
                 html += '</tr>';
@@ -370,16 +397,27 @@ class Logigramme extends BaseGame {
         this.demoGate = gate;
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
-        if (!this.puzzle) this.poser();
+        if (!this.puzzle) this.poser();     // hors partie (aperçu), on en tire une
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
         cur.say('Un logigramme se résout SANS jamais deviner : chaque case s\'écrit parce qu\'un indice '
             + 'ou la grille l\'oblige. Regarde.', this.teteEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        // On rejoue le journal du solveur : c'est l'ordre dans lequel l'énigme
-        // se démonte, et chaque pas porte sa raison.
-        const etapes = this.puzzle.etapes.slice(0, 14);
+        // IL REPREND LA GRILLE EN COURS, LÀ OÙ L'ÉLÈVE EN EST.
+        //
+        // Le robot ne recommence pas une autre énigme : il continue celle qui
+        // est à l'écran et saute les cases déjà écrites. C'est ce qui en fait
+        // une aide et non une démonstration à côté — on bloque sur SA grille,
+        // pas sur une autre.
+        const etapes = this.puzzle.etapes
+            .filter(e => lire(this.saisie, e.a, e.i, e.b, e.j) === INCONNU)
+            .slice(0, 14);
+        if (!etapes.length) {
+            cur.say('Ta grille est déjà complète : il n\'y a plus rien à déduire. Vérifie-la !', this.container);
+            if (!await cur.pause(DEMO_SPEED.between)) return fin();
+            return fin();
+        }
         for (const e of etapes) {
             if (!await gate.waitTurn() || !this.isRunning) return fin();
             const td = this.caseEl(e);
@@ -410,6 +448,9 @@ const CROIX = '<svg class="lg-case-svg" viewBox="0 0 24 24" width="70%" height="
     + 'stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const ROND = '<svg class="lg-case-svg" viewBox="0 0 24 24" width="74%" height="74%" fill="none" '
     + 'stroke="currentColor" stroke-width="3.4"><circle cx="12" cy="12" r="7.5"/></svg>';
+
+/* Une couleur par liste : pastel, franche à l'œil, discrète à l'impression. */
+const TEINTES = ['#7dd3fc', '#86efac', '#fcd34d', '#f9a8d4', '#c4b5fd'];
 
 const echapper = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 

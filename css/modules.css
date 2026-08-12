@@ -3348,6 +3348,32 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    TEINTE dans l'aperçu, pour que le professeur voie où l'élève pourra écrire
    avant d'avoir ouvert le fichier. */
 .fp-case--champ { background: rgba(99, 102, 241, .10) !important; }
+
+/* --- Le logigramme sur la fiche ------------------------------------------
+   L'histoire et ses indices à gauche, la grille à droite : la disposition des
+   logigrammes de magazine, celle qu'un élève reconnaît. */
+.fx-logi-texte { position: absolute; color: #1a202c; line-height: 1.35; }
+.fx-logi-texte ol { margin: .35em 0 0; padding-left: 1.15em; }
+.fx-logi-texte li { margin-bottom: .18em; }
+.fx-logi-cat, .fx-logi-catlig {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #1a202c; text-align: center; overflow: hidden;
+}
+.fx-logi-catlig { writing-mode: vertical-rl; transform: rotate(180deg); }
+.fx-logi-vert {
+    position: absolute; display: flex; align-items: flex-end; justify-content: center;
+    writing-mode: vertical-rl; transform: rotate(180deg); color: #1a202c;
+    padding-top: 2px; overflow: hidden;
+}
+.fx-logi-lig {
+    position: absolute; display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 2px; color: #1a202c; overflow: hidden; white-space: nowrap;
+}
+.fx-logi-case {
+    position: absolute; border: .5px solid #c9cfdb; display: flex;
+    align-items: center; justify-content: center; color: #1a202c;
+}
+.fx-logi-bloc { position: absolute; border: 1.4px solid; pointer-events: none; }
 .fx-red-rail--champ { border-bottom-color: #6366f1; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------

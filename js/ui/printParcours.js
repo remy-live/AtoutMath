@@ -545,6 +545,8 @@ export function ouvrirFicheParcours(chemin) {
                     // « auto » demande au rendu ce qui lui convient : une grille
                     // remplit la largeur, une rédaction veut deux par ligne.
                     grillesParLigne: e.grille ? (col ?? RENDUS[e.grille].parLigneDefaut ?? null) : null,
+                    // Certains blocs demandent plus large que le plafond commun.
+                    grilleMax: e.grille ? (RENDUS[e.grille].grilleMax ?? null) : null,
                     // Tous les blocs imprimables ne sont pas carrés : une
                     // figure suivie de trois lignes à rédiger est large et
                     // basse. Le rendu déclare sa proportion, la mise en page

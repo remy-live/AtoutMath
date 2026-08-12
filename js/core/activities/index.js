@@ -29,6 +29,7 @@ import { relatifsGenerator } from '../generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
+import { logigrammeGenerator } from '../generators/logigramme.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -43,7 +44,7 @@ import { CONSIGNES } from '../geoConstruction.js';
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
-    relatifsAdditionGenerator, redactionGenerator
+    relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
