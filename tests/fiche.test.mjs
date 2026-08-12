@@ -371,3 +371,94 @@ test('sans aucun exercice actif, le barème reste vide', () => {
     assert.deepEqual(repartirBareme({ a: 0, b: 0 }, 20), { a: 0, b: 0 });
     assert.deepEqual(repartirBareme({}, 20), {});
 });
+
+// --- UNE VRAIE MISE EN PAGE ----------------------------------------------------
+
+import { A4_PAYSAGE, pageDe, texteImprime } from '../js/core/fiche.js';
+
+test('le point d\'interrogation d\'un « = ? » ne s\'imprime pas', () => {
+    // Sur le papier, la place à remplir ce sont les pointillés : « 7 + 2 = ? »
+    // se termine sur le signe égal, comme dans tous les cahiers.
+    assert.equal(texteImprime('7 + 2 = ?'), '7 + 2 =');
+    assert.equal(texteImprime('7 + 2 =?'), '7 + 2 =');
+    assert.equal(texteImprime('12 × 4 = ?  '), '12 × 4 =');
+    // Mais une VRAIE question garde son point d'interrogation.
+    assert.equal(texteImprime('Combien de billes reste-t-il ?'), 'Combien de billes reste-t-il ?');
+    assert.equal(texteImprime('Quel est le résultat de 3 + 4 ?'), 'Quel est le résultat de 3 + 4 ?');
+    // Y compris quand la phrase contient un « = » ailleurs.
+    assert.equal(texteImprime('On sait que a = 3. Que vaut 2a ?'), 'On sait que a = 3. Que vaut 2a ?');
+});
+
+test('la fiche se compose aussi sur une page couchée', () => {
+    const questions = Array.from({ length: 24 }, (_, i) => ({ texte: `${i + 2} × 7 =` }));
+    const debout = composerBlocs([{ titre: 'Tables', questions }], { orientation: 'portrait' }, mesurer);
+    const couche = composerBlocs([{ titre: 'Tables', questions }], { orientation: 'paysage' }, mesurer);
+
+    assert.equal(debout.page.w, 210);
+    assert.equal(couche.page.w, A4_PAYSAGE.w);
+    assert.equal(couche.page.h, A4_PAYSAGE.h);
+    // Une page couchée est plus large : elle tient plus de colonnes.
+    assert.ok(couche.colonnes[0] > debout.colonnes[0],
+        `paysage ${couche.colonnes[0]} colonnes vs portrait ${debout.colonnes[0]}`);
+    // Et rien ne dépasse de la feuille.
+    for (const p of couche.pages) {
+        for (const it of p.items) {
+            assert.ok(it.x >= couche.zone.x - 0.01, 'un item sort à gauche');
+            assert.ok(it.x + (it.w ?? it.texteW ?? 0) <= couche.zone.x + couche.zone.w + 0.01,
+                'un item sort à droite');
+        }
+    }
+});
+
+test('le professeur impose le nombre de colonnes, exercice par exercice', () => {
+    const q = (n) => Array.from({ length: n }, (_, i) => ({ texte: `${i + 1} + 1 =` }));
+    const mise = composerBlocs([
+        { titre: 'Calcul', questions: q(12), colonnes: 4 },
+        { titre: 'Problèmes', questions: q(3), colonnes: 1 }
+    ], {}, mesurer);
+    assert.deepEqual(mise.colonnes, [4, 1]);
+
+    // Quatre colonnes, c'est bien quatre abscisses distinctes sur une rangée.
+    const qs = mise.pages.flatMap(p => p.items).filter(it => it.type === 'q');
+    const xs = [...new Set(qs.slice(0, 4).map(it => Math.round(it.x)))];
+    assert.equal(xs.length, 4, 'la première rangée occupe quatre colonnes');
+    // Et l'exercice suivant revient à une seule.
+    const apres = qs.slice(12, 15).map(it => Math.round(it.x));
+    assert.equal(new Set(apres).size, 1, 'le second exercice tient sur une colonne');
+});
+
+test('les grilles par ligne se choisissent, et la rangée reste centrée', () => {
+    const grilles = (n) => Array.from({ length: n }, () => ({ cle: 'sudoku', item: {} }));
+    const mise = composerBlocs([{ titre: 'Mathdoku', grilles: grilles(4), grillesParLigne: 4 }],
+        { orientation: 'paysage' }, mesurer);
+    assert.deepEqual(mise.colonnes, [4]);
+    const g = mise.pages.flatMap(p => p.items).filter(it => it.type === 'grille');
+    assert.equal(g.length, 4);
+    assert.equal(new Set(g.map(x => Math.round(x.y))).size, 1, 'les quatre sont sur la même ligne');
+
+    // Centrage : les marges gauche et droite de la rangée sont égales.
+    const gauche = g[0].x - mise.zone.x;
+    const droite = (mise.zone.x + mise.zone.w) - (g[3].x + g[3].taille);
+    assert.ok(Math.abs(gauche - droite) < 0.01, `rangée décentrée (${gauche} vs ${droite})`);
+});
+
+test('chaque question porte une boîte de saisie nommée et unique', () => {
+    const mise = composerBlocs([{ titre: 'Calcul', questions: [
+        { texte: '7 + 2 =' }, { texte: '3 + 5 =' }, { texte: '9 + 1 =' }
+    ] }], { champs: true }, mesurer);
+    const qs = mise.pages.flatMap(p => p.items).filter(it => it.type === 'q');
+    const noms = qs.map(it => it.rep.nom);
+    assert.equal(new Set(noms).size, noms.length, 'deux champs ne portent jamais le même nom');
+    for (const it of qs) {
+        assert.ok(it.rep.h > 0, 'un champ sans hauteur ne se clique pas');
+        // La boîte est à cheval sur la ligne d'écriture, pas en dessous.
+        assert.ok(it.rep.champY < it.rep.y && it.rep.champY + it.rep.h > it.rep.y - 0.01,
+            'la boîte ne couvre pas la ligne de réponse');
+    }
+});
+
+test('pageDe rend une COPIE : personne ne peut abîmer la géométrie A4', () => {
+    const p = pageDe('portrait');
+    p.marge = 999;
+    assert.equal(pageDe('portrait').marge, 14);
+});

@@ -77,65 +77,73 @@ export function apercuItems(page, k, o) {
                 font-size:${o.taille * k * .9}px">${it.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
         }
         if (it.rep) {
-            html += `<div class="fq-reponse" style="left:${it.rep.x * k}px; top:${it.rep.y * k}px; width:${it.rep.w * k}px"></div>`;
+            // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
+            // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
+            // sinon le professeur découvre la différence à l'impression.
+            html += o.champs
+                ? `<div class="fx-champ" style="left:${it.rep.x * k}px; top:${it.rep.champY * k}px;
+                    width:${it.rep.w * k}px; height:${it.rep.h * k}px"></div>`
+                : `<div class="fq-reponse" style="left:${it.rep.x * k}px; top:${it.rep.y * k}px; width:${it.rep.w * k}px"></div>`;
         }
     }
     return html;
 }
 
 /** L'en-tête d'une page d'aperçu (titre, Nom/Date, filet). */
-export function apercuEntete(k, titre, sousTitre, note) {
+export function apercuEntete(k, titre, sousTitre, note, page) {
+    const P = page || A4;
     // LA CASE DE LA NOTE. Sur une interrogation, elle est le premier endroit
     // que regarde l'élève et le dernier que remplit le professeur : elle mérite
     // un cadre à elle, en haut à droite, pas une mention perdue dans une ligne
     // de texte. Le total du barème y est imprimé — « … / 20 » — pour que la
     // note se pose sans avoir à chercher sur combien elle compte.
     const cadre = note ? `
-        <div class="fp-note-case" style="right:${A4.marge * k}px; top:${(A4.marge + 0.5) * k}px;
+        <div class="fp-note-case" style="right:${P.marge * k}px; top:${(P.marge + 0.5) * k}px;
             width:${26 * k}px; height:${13 * k}px; font-size:${4.4 * k}px">… / ${echapper(String(note.sur))}</div>` : '';
     return `
-        <div class="fp-entete" style="left:${A4.marge * k}px; right:${(A4.marge + (note ? 30 : 0)) * k}px; top:${(A4.marge + 1) * k}px;">
+        <div class="fp-entete" style="left:${P.marge * k}px; right:${(P.marge + (note ? 30 : 0)) * k}px; top:${(P.marge + 1) * k}px;">
             <b>${echapper(titre)}${sousTitre ? ' — ' + echapper(sousTitre) : ''}</b>
             <span>Nom : ............  Date : ......</span>
         </div>
         ${cadre}
-        <div class="fp-ligne" style="left:${A4.marge * k}px; right:${A4.marge * k}px; top:${(A4.marge + 9) * k}px;"></div>`;
+        <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px; top:${(P.marge + 9) * k}px;"></div>`;
 }
 
 // --- PDF ---------------------------------------------------------------------
 
-export function entetePdf(pdf, titre, sousTitre, bareme, note) {
+export function entetePdf(pdf, titre, sousTitre, bareme, note, page) {
+    const P = page || A4;
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.5);
     pdf.setTextColor(...ENCRE.texte);
-    pdf.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, A4.marge, A4.marge + 6);
+    pdf.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, P.marge, P.marge + 6);
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9.5);
     // La case de la note mange le coin droit : le « Nom / Date » se décale.
-    const droite = A4.w - A4.marge - (note ? 30 : 0);
+    const droite = P.w - P.marge - (note ? 30 : 0);
     pdf.text('Nom : ...........................   Date : ..............',
-        droite, A4.marge + 6, { align: 'right' });
+        droite, P.marge + 6, { align: 'right' });
     if (note) {
         pdf.setDrawColor(...ENCRE.trait);
         pdf.setLineWidth(0.5);
-        pdf.roundedRect(A4.w - A4.marge - 26, A4.marge + 0.5, 26, 13, 1.5, 1.5, 'S');
+        pdf.roundedRect(P.w - P.marge - 26, P.marge + 0.5, 26, 13, 1.5, 1.5, 'S');
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(13);
         pdf.setTextColor(...ENCRE.gris);
-        pdf.text(`… / ${note.sur}`, A4.w - A4.marge - 13, A4.marge + 8.6, { align: 'center' });
+        pdf.text(`… / ${note.sur}`, P.w - P.marge - 13, P.marge + 8.6, { align: 'center' });
         pdf.setTextColor(...ENCRE.texte);
     }
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.4);
-    pdf.line(A4.marge, A4.marge + 9, A4.w - A4.marge, A4.marge + 9);
+    pdf.line(P.marge, P.marge + 9, P.w - P.marge, P.marge + 9);
     if (bareme) {
         pdf.setFontSize(8.6);
         pdf.setTextColor(...ENCRE.gris);
-        pdf.text(bareme, A4.marge, A4.marge + 14);
+        pdf.text(bareme, P.marge, P.marge + 14);
     }
     pdf.setFontSize(6.5);
     pdf.setTextColor(160, 165, 175);
-    pdf.text('Fiche générée par AtoutMath', A4.w / 2, A4.h - 4, { align: 'center' });
+    pdf.text('Fiche générée par AtoutMath', P.w / 2, P.h - 4, { align: 'center' });
 }
 
 function pointilles(pdf, x, y, largeur) {
@@ -146,8 +154,39 @@ function pointilles(pdf, x, y, largeur) {
     pdf.setLineDashPattern([], 0);
 }
 
+/**
+ * UN CHAMP DE SAISIE dans le PDF — un vrai champ de formulaire AcroForm, pas
+ * un rectangle dessiné. L'élève ouvre le fichier, clique, tape sa réponse,
+ * enregistre et rend le PDF : la fiche se remplit à l'écran sans imprimante.
+ *
+ * jsPDF fournit `AcroFormTextField` sur le module UMD (`window.jspdf`). S'il
+ * manque — build allégé, version ancienne — on retombe sur les pointillés :
+ * une fiche imprimable vaut mieux qu'une erreur au téléchargement.
+ */
+function champSaisie(pdf, rep, index) {
+    const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
+        || (pdf.AcroFormTextField);
+    if (typeof Champ !== 'function' || typeof pdf.addField !== 'function') {
+        pointilles(pdf, rep.x, rep.y, rep.w);
+        return false;
+    }
+    const champ = new Champ();
+    champ.Rect = [rep.x, rep.champY, rep.w, rep.h];
+    // Le nom doit être UNIQUE dans le document : deux champs homonymes sont un
+    // seul champ pour un lecteur PDF, et taper dans l'un remplit l'autre.
+    champ.fieldName = rep.nom ? `${rep.nom}_${index}` : `reponse_${index}`;
+    champ.fontSize = 10;
+    champ.multiline = false;
+    pdf.addField(champ);
+    // Le champ lui-même n'a pas de bordure visible à l'impression : on pose un
+    // trait sous lui, pour que la fiche imprimée reste utilisable au stylo.
+    pointilles(pdf, rep.x, rep.champY + rep.h, rep.w);
+    return true;
+}
+
 /** Les items d'une page, dans le PDF. */
 export function pdfItems(pdf, page, o) {
+    let nChamp = 0;
     for (const it of page.items) {
         if (it.type === 'exo') {
             pdf.setFillColor(...ENCRE.bandeau);
@@ -200,6 +239,9 @@ export function pdfItems(pdf, page, o) {
             pdf.text(it.choix.map(c => `☐ ${c}`).join('   '), it.texteX, it.choixY + o.taille);
             pdf.setTextColor(...ENCRE.texte);
         }
-        if (it.rep) pointilles(pdf, it.rep.x, it.rep.y, it.rep.w);
+        if (it.rep) {
+            if (o.champs) champSaisie(pdf, it.rep, ++nChamp);
+            else pointilles(pdf, it.rep.x, it.rep.y, it.rep.w);
+        }
     }
 }

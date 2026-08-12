@@ -3256,3 +3256,22 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     background: var(--bg-panel); border-top: 1px solid var(--border);
 }
 .apercu-actions .btn-toggle { flex: 1 1 auto; max-width: 260px; }
+
+/* --- LES RÉGLAGES DE MISE EN PAGE D'UNE FICHE -----------------------------
+   Format, colonnes, champs remplissables : trois décisions qui changent la
+   feuille entière, sur leur propre ligne au-dessus de l'aperçu. */
+.pp-mep { margin-top: -4px; }
+.pp-mep select.cfg-input { min-width: 8.5rem; }
+
+/* Le choix « combien côte à côte », sur la ligne d'un exercice. */
+.pp-etape-cols { display: inline-flex; align-items: center; gap: 4px; }
+.pp-etape-cols select.cfg-input { width: 4.6rem; padding: 3px 4px; font-size: .82rem; }
+
+/* LE CHAMP REMPLISSABLE, dans l'aperçu. Un cadre léger là où le lecteur PDF
+   posera sa boîte de saisie : le professeur voit la place que prendra la
+   réponse avant de distribuer le fichier. */
+.fx-champ {
+    position: absolute; box-sizing: border-box;
+    border: 1px solid #8b93a7; border-radius: 1.5px;
+    background: rgba(139, 147, 167, .09);
+}

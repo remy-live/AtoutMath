@@ -21,7 +21,7 @@
 
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
-import { A4, composerBlocs, composerSolutions } from '../core/fiche.js';
+import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, ENCRE
 } from './ficheRendu.js';
@@ -77,6 +77,22 @@ function assurerModale() {
                 <span class="fp-total" id="fq-total"></span>
                 <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
                 <button type="button" class="btn-hint" id="fq-voir-sol" aria-pressed="false">Voir les solutions</button>
+            </div>
+            <div class="fp-controles pp-mep">
+                <label>Format
+                    <select id="fq-orientation" class="cfg-input">
+                        <option value="portrait">A4 portrait</option>
+                        <option value="paysage">A4 paysage</option>
+                    </select></label>
+                <label>Colonnes
+                    <select id="fq-colonnes" class="cfg-input">
+                        <option value="auto">auto</option>
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
+                        <option value="5">5</option><option value="6">6</option>
+                    </select></label>
+                <label class="fq-case"><input type="checkbox" id="fq-champs">
+                    Champs remplissables (PDF)</label>
             </div>
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
@@ -146,6 +162,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const btnSol = modal.querySelector('#fq-voir-sol');
     const modeSol = modal.querySelector('#fq-sol-mode');
     const ouSol = modal.querySelector('#fq-sol-ou');
+    const orientEl = modal.querySelector('#fq-orientation');
+    const colsEl = modal.querySelector('#fq-colonnes');
+    const champsEl = modal.querySelector('#fq-champs');
     const mesurer = mesureur();
 
     // Le QCM n'a de sens que si le générateur produit des choix : sur un
@@ -161,13 +180,16 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         nb: Math.max(4, Math.min(80, Number(nbEl.value) || 20)),
         avecChoix: choixEl.checked,
         modeSolution: modeSol.value,
-        ouSolution: ouSol.value
+        ouSolution: ouSol.value,
+        orientation: orientEl.value,
+        champs: champsEl.checked,
+        colonnes: colsEl.value === 'auto' ? null : Number(colsEl.value)
     });
 
     // Le nombre de colonnes de la feuille de solutions n'est pas un réglage à
     // part : il découle du mode. Cinq colonnes de réponses nues pour corriger
     // vite, une seule quand chaque ligne porte son explication.
-    const solutionsDe = (mode) => composerSolutions(questions, { mode }, mesurer);
+    const solutionsDe = (mode, orientation) => composerSolutions(questions, { mode, orientation }, mesurer);
 
     const completer = (nb) => {
         if (questions.length < nb) {
@@ -176,30 +198,35 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         questions.length = nb;
     };
 
-    const composer = (avecChoix) => composerBlocs([{
+    const composer = (o) => composerBlocs([{
         titre: exo.title,
         consigne: exo.instruction || '',
-        questions
-    }], { avecChoix }, mesurer);
+        questions,
+        colonnes: o.colonnes
+    }], { avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs }, mesurer);
 
     const rendre = () => {
-        const { nb, avecChoix, modeSolution } = lire();
+        const o = lire();
+        const { nb, modeSolution } = o;
         completer(nb);
 
-        const mise = solutions ? solutionsDe(modeSolution) : composer(avecChoix);
+        const mise = solutions ? solutionsDe(modeSolution, o.orientation) : composer(o);
+        const pg = mise.page || pageDe(o.orientation);
 
         const large = apercu.parentElement.clientWidth || 640;
-        const k = Math.min(large, 720) / A4.w;
-        apercu.style.width = `${A4.w * k}px`;
-        apercu.style.height = `${A4.h * k * mise.pages.length + 12 * (mise.pages.length - 1)}px`;
+        const k = Math.min(large, 720) / pg.w;
+        apercu.style.width = `${pg.w * k}px`;
+        apercu.style.height = `${pg.h * k * mise.pages.length + 12 * (mise.pages.length - 1)}px`;
 
         apercu.innerHTML = mise.pages.map((page, i) => `
-            <div class="fq-page" style="width:${A4.w * k}px; height:${A4.h * k}px; top:${i * (A4.h * k + 12)}px">
-                ${apercuEntete(k, exo.title, solutions ? 'Solutions' : '')}
+            <div class="fq-page" style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
+                ${apercuEntete(k, exo.title, solutions ? 'Solutions' : '', null, pg)}
                 ${solutions ? apercuSolutions(page, k, mise.opts) : apercuItems(page, k, mise.opts)}
             </div>`).join('');
 
-        totalEl.textContent = `${nb} questions · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`;
+        const enCol = mise.colonnes && mise.colonnes[0];
+        totalEl.textContent = `${nb} questions · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`
+            + (solutions ? '' : ` · ${enCol} colonne${enCol > 1 ? 's' : ''}`);
         const OU = {
             ensemble: 'Les solutions seront ajoutées à la fin du même PDF.',
             separe: 'Les solutions partiront dans un second PDF, à garder pour toi.',
@@ -213,6 +240,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     nbEl.oninput = rendre;
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
+    orientEl.onchange = rendre;
+    colsEl.onchange = rendre;
+    champsEl.onchange = rendre;
     ouSol.onchange = rendre;
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
     btnSol.onclick = () => {
@@ -226,16 +256,19 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const btnDl = modal.querySelector('#fq-telecharger');
     btnDl.onclick = () => {
         btnDl.disabled = true;
-        const { nb, avecChoix, modeSolution, ouSolution } = lire();
+        const o = lire();
+        const { nb, modeSolution, ouSolution } = o;
         completer(nb);
         chargerJsPDF()
             .then(jsPDF => {
-                const neuf = () => new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const sens = o.orientation === 'paysage' ? 'landscape' : 'portrait';
+                const neuf = () => new jsPDF({ orientation: sens, unit: 'mm', format: 'a4' });
                 const pdf = neuf();
-                const mise = composer(avecChoix);
+                const mise = composer(o);
                 mise.pages.forEach((page, i) => {
-                    if (i) pdf.addPage('a4', 'portrait');
-                    entetePdf(pdf, exo.title, mise.pages.length > 1 ? `page ${i + 1}/${mise.pages.length}` : '', '');
+                    if (i) pdf.addPage('a4', sens);
+                    entetePdf(pdf, exo.title, mise.pages.length > 1 ? `page ${i + 1}/${mise.pages.length}` : '',
+                        '', null, mise.page);
                     pdfItems(pdf, page, mise.opts);
                 });
 
@@ -243,15 +276,15 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
                 // du tout. Le second fichier existe pour le cas le plus banal
                 // de la salle des profs — imprimer les questions en trente
                 // exemplaires et le corrigé en un seul.
-                const sol = ouSolution === 'sans' ? null : solutionsDe(modeSolution);
+                const sol = ouSolution === 'sans' ? null : solutionsDe(modeSolution, o.orientation);
                 const cible = ouSolution === 'separe' ? neuf() : pdf;
                 if (sol) {
                     sol.pages.forEach((page, i) => {
                         // Dans le même document, chaque page de solutions est
                         // une page de plus ; dans un document neuf, la
                         // première existe déjà.
-                        if (cible === pdf || i > 0) cible.addPage('a4', 'portrait');
-                        entetePdf(cible, exo.title, 'Solutions', '');
+                        if (cible === pdf || i > 0) cible.addPage('a4', sens);
+                        entetePdf(cible, exo.title, 'Solutions', '', null, sol.page);
                         pdfSolutions(cible, page, sol.opts);
                     });
                 }

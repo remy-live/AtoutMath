@@ -19,6 +19,34 @@
 /** Millimètres. A4 portrait : une fiche de questions se lit en hauteur. */
 export const A4 = { w: 210, h: 297, marge: 14, enteteH: 21, piedH: 8 };
 
+/**
+ * A4 PAYSAGE. Ce n'est pas un caprice de présentation : quarante calculs
+ * courts en quatre colonnes tiennent sur une page couchée là où il en faut
+ * deux debout, et une rangée de quatre mathdokus n'existe qu'en paysage. Les
+ * marges y sont un peu plus serrées — une feuille couchée a plus de largeur à
+ * offrir qu'à gâcher.
+ */
+export const A4_PAYSAGE = { w: 297, h: 210, marge: 12, enteteH: 19, piedH: 7 };
+
+/** La géométrie de page demandée. Tout le reste s'en déduit. */
+export function pageDe(orientation) {
+    return { ...(orientation === 'paysage' ? A4_PAYSAGE : A4) };
+}
+
+/**
+ * L'énoncé tel qu'il s'imprime.
+ *
+ * À l'écran, « 7 + 2 = ? » désigne la case à remplir. Sur le papier, le point
+ * d'interrogation ne désigne plus rien : la place à remplir, ce sont les
+ * pointillés ou le champ juste derrière. « 7 + 2 = » se termine sur le signe
+ * égal, comme dans tous les cahiers. On ne touche qu'au « ? » qui suit
+ * immédiatement un « = » — celui de « Combien de billes reste-t-il ? » est une
+ * vraie question et doit rester.
+ */
+export function texteImprime(texte) {
+    return String(texte ?? '').replace(/=\s*\?(?=\s|$)/g, '=').trimEnd();
+}
+
 export const DEFAUTS = {
     colonnes: 2,
     taille: 3.9,        // hauteur des capitales, en mm (≈ 11 pt)
@@ -86,11 +114,14 @@ export function composerFiche(questions, opts, mesurer) {
     // mais la feuille de solutions compacte en demande cinq — c'est elle qui
     // doit tenir sur une seule page pendant qu'on corrige.
     const colonnes = Math.max(1, Math.min(6, o.colonnes));
+    // La feuille de solutions suit l'orientation de la fiche : on ne corrige
+    // pas un contrôle en paysage avec un corrigé en portrait.
+    const pg = o.page || pageDe(o.orientation);
     const zone = {
-        x: A4.marge,
-        y: A4.marge + A4.enteteH,
-        w: A4.w - A4.marge * 2,
-        h: A4.h - A4.marge * 2 - A4.enteteH - A4.piedH
+        x: pg.marge,
+        y: pg.marge + pg.enteteH,
+        w: pg.w - pg.marge * 2,
+        h: pg.h - pg.marge * 2 - pg.enteteH - pg.piedH
     };
     const colonneW = (zone.w - o.gouttiere * (colonnes - 1)) / colonnes;
     const texteW = colonneW - o.numeroL;
@@ -139,7 +170,7 @@ export function composerFiche(questions, opts, mesurer) {
     });
 
     if (page.blocs.length) pages.push(page);
-    return { pages, colonneW, zone, opts: o, colonnes };
+    return { pages, colonneW, zone, opts: o, colonnes, page: pg };
 }
 
 // --- La fiche en BLOCS D'EXERCICES -------------------------------------------
@@ -169,8 +200,13 @@ export const DEFAUTS_BLOCS = {
     bandeauH: 8,          // le bandeau « Exercice N »
     apresBandeau: 3.4,
     entreExercices: 7,
-    grillesParLigne: 2,   // pour les exercices à grilles
-    grilleMax: 78         // côté maximal d'une grille, en mm
+    grillesParLigne: 'auto', // pour les exercices à grilles ; 'auto' remplit la largeur
+    grilleMax: 78,           // côté maximal d'une grille, en mm
+    grilleMin: 46,           // en dessous, une grille 9×9 n'est plus remplissable
+    celluleMin: 46,          // largeur minimale d'une cellule de question, en mm
+    colonnesMax: 6,          // le plafond absolu, toutes orientations confondues
+    champs: false,           // champs de formulaire remplissables dans le PDF
+    champH: 6                // hauteur d'un champ de saisie, en mm
 };
 
 /**
@@ -189,22 +225,31 @@ export const DEFAUTS_BLOCS = {
  */
 export function composerBlocs(exos, opts, mesurer) {
     const o = { ...DEFAUTS_BLOCS, ...(opts || {}) };
+    const page0 = o.page || pageDe(o.orientation);
     const zone = {
-        x: A4.marge,
-        y: A4.marge + A4.enteteH,
-        w: A4.w - A4.marge * 2,
-        h: A4.h - A4.marge * 2 - A4.enteteH - A4.piedH
+        x: page0.marge,
+        y: page0.marge + page0.enteteH,
+        w: page0.w - page0.marge * 2,
+        h: page0.h - page0.marge * 2 - page0.enteteH - page0.piedH
     };
     const basPage = zone.y + zone.h;
-    // En interrogation on ÉCRIT sur la feuille : les réponses sous les
-    // questions gagnent de la place, et on ne serre pas trois par ligne.
-    const maxCols = o.interrogation ? 2 : 3;
+    // COMBIEN DE COLONNES AU MAXIMUM ? Cela dépend de la largeur réelle du
+    // papier, pas d'un chiffre écrit une fois pour toutes : une page couchée
+    // en tient davantage. On compte en largeur minimale de cellule — au-dessous
+    // de `celluleMin`, un « 137 − 48 = » et ses pointillés ne rentrent plus.
+    // En interrogation on ÉCRIT sur la feuille : les cellules sont plus larges
+    // et il y en a donc moins.
+    const largeurCell = o.interrogation ? o.celluleMin * 1.6 : o.celluleMin;
+    const maxCols = Math.max(1, Math.min(o.colonnesMax, Math.floor(zone.w / largeurCell)));
     const ligneRep = o.interrogation ? Math.max(o.ligneReponse, 12) : o.ligneReponse;
 
     const pages = [];
     let page = { items: [] };
     let y = zone.y;
     let nbQuestions = 0;
+    // Ce que « auto » a finalement décidé, exercice par exercice : l'interface
+    // le rend au professeur, pour qu'il sache de quoi il part avant de forcer.
+    const colonnesParExo = [];
 
     const nouvellePage = () => { pages.push(page); page = { items: [] }; y = zone.y; };
 
@@ -225,12 +270,23 @@ export function composerBlocs(exos, opts, mesurer) {
         // par ligne. On ne les coupe jamais : une grille à cheval sur deux
         // pages est une grille perdue.
         if (grilles.length) {
-            const parLigne = Math.max(1, Math.min(grilles.length, o.grillesParLigne || 2));
+            // COMBIEN DE GRILLES PAR LIGNE. Le professeur le choisit exercice
+            // par exercice — quatre mathdokus 4×4 sur une ligne en paysage,
+            // deux sudokus 9×9 en portrait, ce ne sont pas les mêmes feuilles.
+            // « auto » remplit la largeur sans descendre sous `grilleMin`, en
+            // dessous de quoi les cases deviennent trop petites pour écrire.
+            const voulu = exo.grillesParLigne ?? o.grillesParLigne;
             const gap = o.gouttiere;
+            const tiendraient = Math.max(1, Math.floor((zone.w + gap) / (o.grilleMin + gap)));
+            const parLigne = Math.max(1, Math.min(
+                grilles.length,
+                Number.isFinite(Number(voulu)) && Number(voulu) > 0 ? Number(voulu) : tiendraient
+            ));
             const cote = Math.min(
                 (zone.w - gap * (parLigne - 1)) / parLigne,
                 o.grilleMax || 78
             );
+            colonnesParExo.push(parLigne);
             const consigneLignes = exo.consigne
                 ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)
                 : [];
@@ -261,14 +317,20 @@ export function composerBlocs(exos, opts, mesurer) {
                     });
                     y += o.bandeauH + o.apresBandeau;
                 }
+                // La rangée est CENTRÉE : plafonnées à `grilleMax`, deux
+                // grilles sur une page couchée laissaient tout le vide à
+                // droite, comme si la mise en page s'était arrêtée en chemin.
+                const largeurRangee = rangee.length * cote + gap * (rangee.length - 1);
+                const x0 = zone.x + (zone.w - largeurRangee) / 2;
                 rangee.forEach((g, i) => {
                     nbQuestions++;
+                    const gx = x0 + i * (cote + gap);
                     page.items.push({
                         type: 'grille', n: nbQuestions, cle: g.cle, item: g.item,
-                        x: zone.x + i * (cote + gap), y, taille: cote,
+                        x: gx, y, taille: cote,
                         // La boîte complète, pour les treillis larges (Garam) :
                         // un carré y donnerait des cases minuscules.
-                        boite: { x: zone.x + i * (cote + gap), y, w: cote, h: cote }
+                        boite: { x: gx, y, w: cote, h: cote }
                     });
                 });
                 y += cote + o.entreQuestions;
@@ -276,26 +338,39 @@ export function composerBlocs(exos, opts, mesurer) {
             return;
         }
 
-        // Combien de colonnes internes ? Le plus possible, à condition que
-        // CHAQUE question tienne sur une seule ligne de sa cellule avec au
-        // moins `repMin` de pointillés derrière — un QCM ou un long énoncé
-        // ramènent l'exercice à une colonne.
+        // COMBIEN DE COLONNES INTERNES ?
+        //
+        // Le professeur tranche, exercice par exercice : vingt calculs en
+        // quatre colonnes, six problèmes rédigés sur une seule. C'est la
+        // décision de mise en page la plus fréquente, et l'automatisme ne
+        // pouvait pas la deviner — il ne connaît ni le niveau de la classe ni
+        // la place qu'un élève met à poser une opération.
+        //
+        // « auto » garde l'ancien comportement : le plus de colonnes possible,
+        // à condition que CHAQUE question tienne sur une ligne de sa cellule
+        // avec au moins `repMin` de pointillés derrière.
+        const voulues = Number(exo.colonnes);
         let cols = 1;
-        for (let c = maxCols; c >= 2; c--) {
-            if (questions.length < c) continue;
-            const cellW = (zone.w - o.gouttiere * (c - 1)) / c;
-            const texteW = cellW - o.numeroL - o.repMin - 2;
-            // Un générateur peut PROPOSER des choix sans que la fiche les
-            // imprime : seuls les choix réellement imprimés comptent ici.
-            if (questions.every(q => (!o.avecChoix || !q.choix) && mesurer(q.texte, o.taille) <= texteW)) { cols = c; break; }
+        if (Number.isFinite(voulues) && voulues > 0) {
+            cols = Math.max(1, Math.min(o.colonnesMax, Math.round(voulues)));
+        } else {
+            for (let c = maxCols; c >= 2; c--) {
+                if (questions.length < c) continue;
+                const cellW = (zone.w - o.gouttiere * (c - 1)) / c;
+                const texteW = cellW - o.numeroL - o.repMin - 2;
+                // Un générateur peut PROPOSER des choix sans que la fiche les
+                // imprime : seuls les choix réellement imprimés comptent ici.
+                if (questions.every(q => (!o.avecChoix || !q.choix) && mesurer(q.texte, o.taille) <= texteW)) { cols = c; break; }
+            }
         }
+        colonnesParExo.push(cols);
         const cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
         const texteW = cellW - o.numeroL;
 
         // Les cellules, pré-mesurées : la pagination a besoin des hauteurs
         // avant de poser quoi que ce soit.
         const cellules = questions.map(q => {
-            const lignes = couperEnLignes(q.texte, texteW, o.taille, mesurer);
+            const lignes = couperEnLignes(texteImprime(q.texte), texteW, o.taille, mesurer);
             const choix = (o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null;
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
@@ -362,6 +437,14 @@ export function composerBlocs(exos, opts, mesurer) {
                         w: texteW
                     };
                 }
+                // LA BOÎTE DE SAISIE, pour la fiche remplissable. Les
+                // pointillés ne sont qu'un trait de base ; un champ de
+                // formulaire, lui, a une hauteur. On la pose À CHEVAL sur ce
+                // trait — c'est là que l'élève écrirait à la main, donc c'est
+                // là que le curseur doit clignoter.
+                rep.h = Math.min(o.champH, ligneRep || o.champH);
+                rep.champY = rep.y - rep.h * 0.78;
+                rep.nom = `q${nbQuestions}`;
                 page.items.push({
                     type: 'q', n: nbQuestions,
                     lignes: cell.lignes, x, y, texteX, texteW,
@@ -375,7 +458,7 @@ export function composerBlocs(exos, opts, mesurer) {
     });
 
     if (page.items.length) pages.push(page);
-    return { pages, zone, opts: o, nbQuestions };
+    return { pages, zone, opts: o, nbQuestions, page: page0, colonnes: colonnesParExo };
 }
 
 /**

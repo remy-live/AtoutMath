@@ -26,7 +26,7 @@
 import { hydratePath } from '../core/path.js';
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
-import { A4, composerBlocs, composerSolutions, repartirBareme } from '../core/fiche.js';
+import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
@@ -113,6 +113,15 @@ function assurerModale() {
                 <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
                 <button type="button" class="btn-hint" id="pp-sol" aria-pressed="false">Voir les solutions</button>
             </div>
+            <div class="fp-controles pp-mep">
+                <label>Format
+                    <select id="pp-orientation" class="cfg-input">
+                        <option value="portrait">A4 portrait</option>
+                        <option value="paysage">A4 paysage</option>
+                    </select></label>
+                <label class="fq-case"><input type="checkbox" id="pp-champs">
+                    Champs remplissables (PDF)</label>
+            </div>
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
                     <select id="pp-sol-mode" class="cfg-input">
@@ -156,6 +165,8 @@ export function ouvrirFicheParcours(chemin) {
 
     const modeSol = m.querySelector('#pp-sol-mode');
     const ouSol = m.querySelector('#pp-sol-ou');
+    const orientEl = m.querySelector('#pp-orientation');
+    const champsEl = m.querySelector('#pp-champs');
     const noteSurEl = m.querySelector('#pp-note-sur');
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
 
@@ -172,6 +183,11 @@ export function ouvrirFicheParcours(chemin) {
         const n = Math.max(1, Math.min(40, e.nbItems || (e.grille ? 2 : 5)));
         quantites[e.stepId] = e.grille ? Math.min(6, n) : n;
     });
+    // LA MISE EN PAGE, EXERCICE PAR EXERCICE. Pour les questions c'est un
+    // nombre de colonnes, pour les grilles un nombre par ligne : dans les deux
+    // cas « combien en met-on côte à côte », donc un seul réglage.
+    const colonnes = {};
+    papier.forEach(e => { colonnes[e.stepId] = 'auto'; });
     const parId = new Map(papier.map(e => [e.stepId, e]));
 
     const totalPoints = () => ordre
@@ -194,6 +210,8 @@ export function ouvrirFicheParcours(chemin) {
         avecChoix: choixEl.checked,
         modeSolution: modeSol.value,
         ouSolution: ouSol.value,
+        orientation: orientEl.value,
+        champs: champsEl.checked,
         noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20))
     });
 
@@ -224,6 +242,15 @@ export function ouvrirFicheParcours(chemin) {
                         min="0" max="40" value="${quantites[id]}">
                     <span class="pp-etape-unite">${e.grille ? 'grilles' : 'questions'}</span>
                 </span>
+                <span class="pp-etape-cols">
+                    <select class="cfg-input" data-colonnes="${id}"
+                        title="${e.grille ? 'Grilles par ligne' : 'Colonnes de questions'}"
+                        aria-label="Mise en page de « ${nom} »">
+                        ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
+                            ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
+                    </select>
+                    <span class="pp-etape-unite">${e.grille ? '/ ligne' : 'col.'}</span>
+                </span>
                 <span class="pp-etape-pts" ${interro.checked ? '' : 'hidden'}>
                     <input type="number" class="cfg-input cfg-input--num" data-points="${id}"
                         min="0" max="40" value="${points[id]}"
@@ -240,6 +267,12 @@ export function ouvrirFicheParcours(chemin) {
                 quantites[inp.dataset.etape] = Math.max(0, Math.min(40, Number(inp.value) || 0));
                 blocs = null;
                 if (!baremeTouche) { repartirPoints(); rendreListe(); }
+                rendre();
+            };
+        });
+        listeEl.querySelectorAll('[data-colonnes]').forEach(sel => {
+            sel.onchange = () => {
+                colonnes[sel.dataset.colonnes] = sel.value;
                 rendre();
             };
         });
@@ -382,12 +415,16 @@ export function ouvrirFicheParcours(chemin) {
                 // c'est la règle du jeu, et elle se déduit de la grille tirée.
                 const consigneGrille = e.grille && tire.length && RENDUS[e.grille].consigne
                     ? RENDUS[e.grille].consigne(tire.map(g => g.item)) : '';
+                // « auto » ne descend pas jusqu'au moteur : c'est son défaut.
+                const col = colonnes[id] === 'auto' ? null : Number(colonnes[id]);
                 return {
                     titre: e.title,
                     consigne: o.interrogation ? '' : (e.grille ? consigneGrille : (e.exercise.instruction || '')),
                     points: o.interrogation ? (points[id] || null) : null,
                     questions: e.grille ? [] : tire,
-                    grilles: e.grille ? tire : []
+                    grilles: e.grille ? tire : [],
+                    colonnes: e.grille ? null : col,
+                    grillesParLigne: e.grille ? col : null
                 };
             })
             .filter(x => x.questions.length || x.grilles.length);
@@ -396,20 +433,21 @@ export function ouvrirFicheParcours(chemin) {
         // une grille se corrige sur son propre dessin, pas dans une liste.
         const toutes = exos.flatMap(x => x.questions);
         const mise = solutions
-            ? composerSolutions(toutes, { mode: o.modeSolution }, mesurer)
+            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation }, mesurer)
             : composerBlocs(exos, o, mesurer);
+        const pg = mise.page || pageDe(o.orientation);
 
         const large = apercu.parentElement.clientWidth || 640;
-        const k = Math.min(large, 700) / A4.w;
-        apercu.style.width = `${A4.w * k}px`;
-        apercu.style.height = `${A4.h * k * mise.pages.length + 12 * Math.max(0, mise.pages.length - 1)}px`;
+        const k = Math.min(large, 700) / pg.w;
+        apercu.style.width = `${pg.w * k}px`;
+        apercu.style.height = `${pg.h * k * mise.pages.length + 12 * Math.max(0, mise.pages.length - 1)}px`;
 
         const nom = chemin.name || 'Parcours';
         const sousTitre = solutions ? 'Solutions' : (o.interrogation ? 'Interrogation' : '');
         const note = (o.interrogation && !solutions) ? { sur: o.noteSur } : null;
         apercu.innerHTML = mise.pages.map((page, i) => `
-            <div class="fq-page" style="width:${A4.w * k}px; height:${A4.h * k}px; top:${i * (A4.h * k + 12)}px">
-                ${apercuEntete(k, nom, sousTitre, i === 0 ? note : null)}
+            <div class="fq-page" style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
+                ${apercuEntete(k, nom, sousTitre, i === 0 ? note : null, pg)}
                 ${solutions ? apercuSolutions(page, k, mise.opts) : apercuItems(page, k, mise.opts)}
             </div>`).join('');
 
@@ -418,6 +456,7 @@ export function ouvrirFicheParcours(chemin) {
         if (toutes.length) morceaux.push(`${toutes.length} question${toutes.length > 1 ? 's' : ''}`);
         if (nbGrilles) morceaux.push(`${nbGrilles} grille${nbGrilles > 1 ? 's' : ''}`);
         morceaux.push(`${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`);
+        morceaux.push(o.orientation === 'paysage' ? 'paysage' : 'portrait');
         totalEl.textContent = morceaux.join(' · ');
 
         noteSurChamp.hidden = !o.interrogation;
@@ -427,7 +466,7 @@ export function ouvrirFicheParcours(chemin) {
               + `et la case « … / ${o.noteSur} » en haut de la première page.`
               + (total === o.noteSur ? '' : ` ⚠️ Le barème totalise ${total} points pour une note sur ${o.noteSur}.`)
             : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
-        derniers = { exos, toutes, note, total };
+        derniers = { exos, toutes, note, total, page: pg };
     };
     let derniers = null;
 
@@ -518,20 +557,28 @@ function telecharger(modal, chemin, lire) {
                 ? `Barème sur ${total} point${total > 1 ? 's' : ''} — ramené à ${options.noteSur}.`
                 : '';
 
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            // Le PDF est créé DANS l'orientation demandée, et chaque page
+            // ajoutée la répète : une seule page couchée dans un document
+            // debout est le genre de détail qui ne se voit qu'à l'impression.
+            const sens = options.orientation === 'paysage' ? 'landscape' : 'portrait';
+            const neuf = () => new jsPDF({ orientation: sens, unit: 'mm', format: 'a4' });
+
+            const pdf = neuf();
             const mise = composerBlocs(exos, options, mesurer);
             mise.pages.forEach((page, i) => {
-                if (i) pdf.addPage('a4', 'portrait');
+                if (i) pdf.addPage('a4', sens);
                 entetePdf(pdf, nom, options.interrogation ? 'Interrogation' : `page ${i + 1}/${mise.pages.length}`,
-                    i === 0 ? bareme : '', i === 0 ? note : null);
+                    i === 0 ? bareme : '', i === 0 ? note : null, mise.page);
                 pdfItems(pdf, page, mise.opts);
             });
 
             const dessinerSolutions = (doc, premiere) => {
-                const sol = composerSolutions(toutes, { mode: options.modeSolution }, mesurer);
+                const sol = composerSolutions(toutes,
+                    { mode: options.modeSolution, orientation: options.orientation }, mesurer);
                 sol.pages.forEach((page, i) => {
-                    if (!premiere || i) doc.addPage('a4', 'portrait');
-                    entetePdf(doc, nom, sol.pages.length > 1 ? `Solutions ${i + 1}/${sol.pages.length}` : 'Solutions', '', null);
+                    if (!premiere || i) doc.addPage('a4', sens);
+                    entetePdf(doc, nom, sol.pages.length > 1 ? `Solutions ${i + 1}/${sol.pages.length}` : 'Solutions',
+                        '', null, sol.page);
                     pdfSolutions(doc, page, sol.opts);
                 });
             };
@@ -540,7 +587,7 @@ function telecharger(modal, chemin, lire) {
             pdf.save(`${base}${options.interrogation ? '-interrogation' : ''}.pdf`);
 
             if (options.ouSolution === 'separe' && toutes.length) {
-                const solPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                const solPdf = neuf();
                 dessinerSolutions(solPdf, true);
                 solPdf.save(`${base}-solutions-${options.modeSolution}.pdf`);
             }
