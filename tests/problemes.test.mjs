@@ -5,6 +5,7 @@ import {
     FAMILLES, IDS_FAMILLES, famillesDe, tirerProbleme, direReponse, accorder, prix, nombre, deElide
 } from '../js/core/problemes.js';
 import { makeRng } from '../js/core/ids.js';
+import { dessinerSchema } from '../js/games/problemesSchema.js';
 
 const TOUTES = IDS_FAMILLES;
 
@@ -211,5 +212,76 @@ test('deux graines différentes donnent deux problèmes différents', () => {
         const a = tirerProbleme(f, makeRng(`a-${f}`));
         const b = tirerProbleme(f, makeRng(`b-${f}`));
         assert.notEqual(a.enonce + a.reponse, b.enonce + b.reponse, `${f} : toujours le même problème`);
+    }
+});
+
+// --- Le schéma des groupes égaux -------------------------------------------
+//
+// Deux défauts avaient été signalés sur le schéma de la division, et ils sont
+// de nature différente. Le premier est un défaut d'HONNÊTETÉ : le dessin
+// s'arrêtait à huit paquets et écrivait « … et 1 de plus », dans l'exercice où
+// le nombre de paquets est justement la question. Le second est un défaut de
+// LECTURE : la légende annonçait « 9 sachets » en toutes lettres, c'est-à-dire
+// la réponse. Les deux se testent.
+
+const rects = (svg) => svg.match(/<rect\b/g) || [];
+const legende = (svg) => (svg.match(/<text[^>]*y="14"[^>]*>([^<]*)</) || [, ''])[1];
+
+test('le schéma de la division dessine TOUS les paquets, sur une seule ligne', () => {
+    for (let g = 1; g <= 30; g++) {
+        const p = tirerProbleme('quotition', makeRng(`sq${g}`));
+        const svg = dessinerSchema(p.schema);
+        // Un rectangle par paquet plein, plus celui du reste. Rien de tronqué.
+        assert.equal(rects(svg).length, p.schema.n + 1,
+            `graine ${g} : ${p.schema.n} paquets + 1 reste attendus`);
+        assert.ok(!/de plus/.test(svg), 'plus aucun « et n de plus » : le schéma est complet');
+        // En ligne : toutes les cases partagent la même ordonnée.
+        const ys = new Set([...svg.matchAll(/<rect[^>]*\sy="([\d.]+)"/g)].map(m => m[1]));
+        assert.equal(ys.size, 1, `graine ${g} : les cases doivent être sur une seule ligne`);
+    }
+});
+
+test('le schéma ne récite jamais la réponse dans sa légende', () => {
+    // Ce qu'on interdit, c'est d'ANNONCER LE NOMBRE DE PAQUETS — « 9 sachets »
+    // quand la question est « combien de sachets ? ». On ne peut pas se
+    // contenter de chercher la valeur de la réponse : « des sachets de 5
+    // crayons » est un énoncé parfaitement licite même quand la réponse vaut
+    // 5. C'est donc la tournure « nombre + nom du contenant » qu'on traque.
+    for (let g = 1; g <= 30; g++) {
+        const p = tirerProbleme('quotition', makeRng(`sl${g}`));
+        const texte = legende(dessinerSchema(p.schema));
+        assert.ok(texte, 'le schéma doit porter une légende');
+        assert.ok(!new RegExp(`\\d+\\s+${p.schema.nomGroupes}`).test(texte),
+            `graine ${g} : la légende « ${texte} » compte les paquets à la place de l'élève`);
+    }
+});
+
+test('le reste est plus étroit qu\'un paquet : ça se voit sans le lire', () => {
+    for (let g = 1; g <= 20; g++) {
+        const p = tirerProbleme('quotition', makeRng(`sr${g}`));
+        const svg = dessinerSchema(p.schema);
+        const larg = [...svg.matchAll(/<rect[^>]*\swidth="([\d.]+)"/g)].map(m => +m[1]);
+        const dernier = larg[larg.length - 1];
+        assert.ok(dernier < larg[0], `graine ${g} : le reste doit être plus étroit qu'un paquet`);
+    }
+});
+
+test('le point d\'interrogation se pose sur ce qu\'on cherche', () => {
+    // Partage : on cherche le contenu d'une part — le « ? » est dans les cases.
+    const partage = dessinerSchema(tirerProbleme('partage', makeRng('sp1')).schema);
+    assert.ok(/>\?</.test(partage), 'le partage doit montrer un « ? » dans les cases');
+    assert.match(partage, /en tout/);
+    // Multiplication : on cherche le tout — le « ? » est sur l'accolade.
+    const mult = dessinerSchema(tirerProbleme('groupes', makeRng('sm1')).schema);
+    assert.match(mult, /\? en tout/);
+    assert.ok(/stroke-dasharray="7 5"/.test(mult), 'le tout cherché se dessine en pointillés');
+});
+
+test('chaque famille rend un schéma non vide', () => {
+    for (const f of TOUTES) {
+        const p = tirerProbleme(f, makeRng(`sv-${f}`));
+        const svg = dessinerSchema(p.schema);
+        assert.match(svg, /^<svg/, `${f} : pas de dessin`);
+        assert.ok(!/undefined|NaN/.test(svg), `${f} : trou dans le dessin — ${svg.slice(0, 120)}`);
     }
 });

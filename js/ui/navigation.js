@@ -8,6 +8,30 @@ import { launchPreview, openGameLayer } from '../games/engine.js';
 import { correspond } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
 
+// L'APERÇU AU SURVOL, ET SA MISE À MORT.
+//
+// `clearEngines()` ne coupe que les minuteurs déclarés par `regInterval` — les
+// jeux historiques ouvrent les leurs directement, et y survivaient. On quittait
+// une carte, la vignette se cachait, mais la course continuait de rafraîchir un
+// tableau de bord que la vignette suivante venait d'effacer : une erreur par
+// seconde dans la console, jusqu'au rechargement de la page.
+//
+// On garde donc l'instance et on la DÉTRUIT. Le jeton règle le cas de celui qui
+// passe vite : quand l'aperçu finit de monter alors que la souris est déjà
+// repartie, il est détruit à l'arrivée au lieu de rester en fond.
+let apercuSurvol = null;
+let jetonSurvol = 0;
+
+function couperApercuSurvol() {
+    jetonSurvol++;
+    const h = apercuSurvol;
+    apercuSurvol = null;
+    if (h && typeof h.destroy === 'function') {
+        try { h.destroy(); } catch (e) { /* déjà démonté */ }
+    }
+    clearEngines();
+}
+
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
     item.className = 'exo-list-item';
@@ -29,7 +53,7 @@ export function createLibraryItem(exo) {
     btnEye.onclick = (e) => {
         e.stopPropagation();
         if (!state.isTeacherMode) return;
-        clearEngines();
+        couperApercuSurvol();
         document.getElementById('hover-demo-box').style.display = 'none';
         openGameLayer(exo, true);
     };
@@ -67,7 +91,7 @@ export function createLibraryItem(exo) {
     item.ondragstart = (e) => {
         if(!state.isTeacherMode) { e.preventDefault(); return; }
         e.dataTransfer.setData('text/plain', exo.id);
-        clearEngines(); document.getElementById('hover-demo-box').style.display = 'none';
+        couperApercuSurvol(); document.getElementById('hover-demo-box').style.display = 'none';
     };
 
     // Glisser-déposer AU DOIGT vers le parcours : l'API HTML5 ci-dessus ne
@@ -109,15 +133,23 @@ export function createLibraryItem(exo) {
             // Aperçu autonome dans la vignette : aucune donnée n'est
             // enregistrée, et le robot joue en muet — ses bulles couvriraient
             // la page entière.
-            launchPreview(exo, document.getElementById('hover-demo-canvas'), null, { muet: true });
+            const jeton = ++jetonSurvol;
+            launchPreview(exo, document.getElementById('hover-demo-canvas'), null, { muet: true })
+                .then(h => {
+                    if (jeton !== jetonSurvol) {
+                        if (h && typeof h.destroy === 'function') h.destroy();
+                        return;
+                    }
+                    apercuSurvol = h;
+                });
         }, 500);
     };
 
     item.onmouseleave = () => {
         clearTimeout(hoverTimer);
         document.getElementById('hover-demo-box').style.display = 'none';
-        clearEngines(); // Stoppe la démo en cours
-        destroyAllDemoCursors(); // ... et balaie sa flèche et sa bulle
+        couperApercuSurvol();     // détruit l'instance, pas seulement ses minuteurs déclarés
+        destroyAllDemoCursors();  // ... et balaie sa flèche et sa bulle
     };
 
     return item;

@@ -120,9 +120,19 @@ export function validateCatalog(exercises) {
             continue;
         }
         if (exo.generatorId) {
+            const act0 = getActivity(exo.activityId);
             if (!getGenerator(exo.generatorId)) {
                 problems.push(`${exo.id}: générateur inconnu "${exo.generatorId}"`);
-            } else if (exo.activityId && !isCompatible(exo.generatorId, exo.activityId)) {
+            } else if (exo.activityId && !isCompatible(exo.generatorId, exo.activityId)
+                && !(act0 && act0.supports.autonomous)) {
+                // UNE ACTIVITÉ AUTONOME NE CONSOMME PAS SON GÉNÉRATEUR.
+                //
+                // La rédaction géométrique porte les deux : à l'écran elle mène
+                // son propre jeu, et le générateur ne sert qu'à IMPRIMER la
+                // même notion sur une feuille. Exiger qu'ils soient compatibles
+                // reviendrait à interdire d'imprimer les activités autonomes —
+                // alors que rédiger une justification est précisément ce qui
+                // gagne le plus à sortir de l'écran.
                 problems.push(`${exo.id}: "${exo.generatorId}" ne peut pas s'afficher dans "${exo.activityId}"`);
             }
         }

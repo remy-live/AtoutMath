@@ -692,9 +692,17 @@ class Course extends BaseGame {
         }
     }
     updateHUD() {
-        this.container.querySelector('#course-hud-score').textContent = this.score;
+        const sEl = this.container.querySelector('#course-hud-score');
         const lEl = this.container.querySelector('#course-disp-lives');
         const tEl = this.container.querySelector('#course-disp-timer');
+        // LE TABLEAU DE BORD A DISPARU SOUS NOS PIEDS.
+        //
+        // Ça arrive quand l'écran de la course est effacé sans qu'on nous
+        // l'ait dit : une vignette d'aperçu remplacée par une autre, une vue
+        // qu'on quitte. Le minuteur, lui, tourne toujours — et il criait une
+        // erreur par seconde jusqu'au rechargement de la page. On coupe.
+        if (!sEl || !lEl || !tEl) { this.pause(); return; }
+        sEl.textContent = this.score;
         if(this.mode === 'chrono') {
             lEl.style.display = 'none'; tEl.style.display = 'inline-block'; tEl.textContent = this.timeLeft + 's';
         } else if (this.mode === 'sprint') {

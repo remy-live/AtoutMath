@@ -278,7 +278,7 @@ export const FAMILLES = {
                     { v: n * par - par, pourquoi: `Il manque un ${c.s} : ils sont ${n}, pas ${n - 1}.` },
                     { v: par, pourquoi: `C'est le contenu d'UN seul ${c.s}.` }
                 ],
-                schema: { genre: 'groupes', n, par, nomGroupe: c.s, nomObjet: o.p },
+                schema: { genre: 'groupes', n, par, nomGroupe: c.s, nomGroupes: c.p, nomObjet: o.p },
                 etapes: [
                     `${n} groupes qui contiennent chacun la même chose : c'est une multiplication.`,
                     `${n} × ${par} = ${n * par}`,
@@ -306,7 +306,7 @@ export const FAMILLES = {
                     { v: parts, pourquoi: 'C\'est le nombre d\'enfants, pas ce que chacun reçoit.' },
                     { v: par + 1, pourquoi: 'Vérifie : ce nombre multiplié par le nombre d\'enfants doit redonner le total.' }
                 ],
-                schema: { genre: 'groupes', n: parts, par: '?', nomGroupe: 'enfant', nomObjet: o.p, total },
+                schema: { genre: 'groupes', n: parts, par: '?', nomGroupe: 'enfant', nomGroupes: 'enfants', nomObjet: o.p, total },
                 etapes: [
                     'Partager en parts égales, c\'est diviser.',
                     `${total} ÷ ${parts} = ${par}`,
@@ -336,7 +336,7 @@ export const FAMILLES = {
                     { v: reste, pourquoi: `C'est le reste — ce qui n'entre dans aucun ${c.s} plein.` },
                     { v: total - par, pourquoi: 'Soustraire une fois ne suffit pas : il faut retirer autant de fois que possible.' }
                 ],
-                schema: { genre: 'groupes', n: q, par, nomGroupe: c.s, nomObjet: o.p, total, reste },
+                schema: { genre: 'groupes', n: q, par, nomGroupe: c.s, nomGroupes: c.p, nomObjet: o.p, total, reste },
                 etapes: [
                     `On cherche combien de fois ${par} tient dans ${total}.`,
                     `${total} = ${q} × ${par} + ${reste}`,
