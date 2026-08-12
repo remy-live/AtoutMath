@@ -111,8 +111,13 @@ function assurerModale() {
                         min="5" max="100" step="1" value="20"></label>
                 <span class="fp-total" id="pp-total"></span>
                 <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
-                <button type="button" class="btn-hint" id="pp-sol" aria-pressed="false">Voir les solutions</button>
             </div>
+            <div class="pp-etapes" id="pp-etapes"></div>
+            <!-- LA MISE EN PAGE SE RÈGLE AU CONTACT DE L'APERÇU. Format,
+                 numérotation, solutions : ce sont les réglages dont on juge
+                 l'effet en REGARDANT la feuille. Placés tout en haut du
+                 panneau, la liste des exercices les séparait de la seule chose
+                 qui permet de les choisir. -->
             <div class="fp-controles pp-mep">
                 <label>Format
                     <select id="pp-orientation" class="cfg-input">
@@ -141,7 +146,6 @@ function assurerModale() {
                         <option value="sans">Sans solutions</option>
                     </select></label>
             </div>
-            <div class="pp-etapes" id="pp-etapes"></div>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu fq-apercu" id="pp-apercu"></div>
             </div>
@@ -165,7 +169,6 @@ export function ouvrirFicheParcours(chemin) {
     const choixEl = m.querySelector('#pp-choix');
     const totalEl = m.querySelector('#pp-total');
     const noteEl = m.querySelector('#pp-note');
-    const btnSol = m.querySelector('#pp-sol');
     const listeEl = m.querySelector('#pp-etapes');
 
     const modeSol = m.querySelector('#pp-sol-mode');
@@ -176,7 +179,6 @@ export function ouvrirFicheParcours(chemin) {
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
     const numEl = m.querySelector('#pp-numerotation');
 
-    let solutions = false;
     let blocs = null;           // les questions déjà tirées, par étape
     let ordre = papier.map(e => e.stepId);
     const quantites = {};
@@ -517,10 +519,22 @@ export function ouvrirFicheParcours(chemin) {
         // une liste. La vue « solutions » est donc en deux temps — la liste des
         // réponses écrites, puis les blocs redessinés avec leur contenu.
         const aGrilles = exos.filter(x => x.grilles.length);
-        const mise = solutions
+
+        // L'APERÇU MONTRE LE DOCUMENT ENTIER, solutions comprises.
+        //
+        // Il y avait un bouton pour basculer de l'un à l'autre, et c'est une
+        // façon de cacher la moitié du travail : on règle la mise en page des
+        // questions sans voir ce que devient le corrigé, on télécharge, et on
+        // découvre à l'impression. Ici on fait défiler et on voit ce qu'on
+        // aura — exactement ce qu'aura le PDF, et dans le même ordre. Si le
+        // professeur a choisi « sans solutions », l'aperçu n'en montre pas :
+        // c'est la même règle, toujours.
+        const avecSolutions = o.ouSolution !== 'sans';
+        const mise = composerBlocs(exos, o, mesurer);
+        const listeSol = (avecSolutions && toutes.length)
             ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections, numerotation: o.numerotation }, mesurer)
-            : composerBlocs(exos, o, mesurer);
-        const blocsSol = (solutions && aGrilles.length)
+            : null;
+        const blocsSol = (avecSolutions && aGrilles.length)
             ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false }, mesurer)
             : null;
         const pg = mise.page || pageDe(o.orientation);
@@ -530,17 +544,27 @@ export function ouvrirFicheParcours(chemin) {
         apercu.style.width = `${pg.w * k}px`;
 
         const nom = chemin.name || 'Parcours';
-        const sousTitre = solutions ? 'Solutions' : (o.interrogation ? 'Interrogation' : '');
-        const note = (o.interrogation && !solutions) ? { sur: o.noteSur } : null;
-        // Les pages à montrer : celles de la liste, puis celles des blocs.
+        const note = o.interrogation ? { sur: o.noteSur } : null;
+        // Les pages, dans l'ordre du document : les questions, la liste des
+        // réponses, puis les blocs corrigés (le sudoku rempli, la rédaction
+        // écrite — leur solution est une figure, pas une ligne dans une liste).
         const vues = [
-            ...mise.pages.map(p => ({ page: p, opts: mise.opts, liste: solutions })),
-            ...(blocsSol ? blocsSol.pages.map(p => ({ page: p, opts: blocsSol.opts, liste: false })) : [])
+            ...mise.pages.map(p => ({
+                page: p, opts: mise.opts, liste: false,
+                sousTitre: o.interrogation ? 'Interrogation' : ''
+            })),
+            ...(listeSol ? listeSol.pages.map(p => ({
+                page: p, opts: listeSol.opts, liste: true, sousTitre: 'Solutions', sol: true
+            })) : []),
+            ...(blocsSol ? blocsSol.pages.map(p => ({
+                page: p, opts: blocsSol.opts, liste: false, sousTitre: 'Solutions', sol: true
+            })) : [])
         ];
         apercu.style.height = `${pg.h * k * vues.length + 12 * Math.max(0, vues.length - 1)}px`;
         apercu.innerHTML = vues.map((v, i) => `
-            <div class="fq-page" style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
-                ${apercuEntete(k, nom, sousTitre, i === 0 ? note : null, pg)}
+            <div class="fq-page${v.sol ? ' fq-page--sol' : ''}"
+                 style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
+                ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg)}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts) : apercuItems(v.page, k, v.opts)}
             </div>`).join('');
 
@@ -548,8 +572,9 @@ export function ouvrirFicheParcours(chemin) {
         const morceaux = [];
         if (toutes.length) morceaux.push(`${toutes.length} question${toutes.length > 1 ? 's' : ''}`);
         if (nbGrilles) morceaux.push(`${nbGrilles} grille${nbGrilles > 1 ? 's' : ''}`);
-        const nbPages = mise.pages.length + (blocsSol ? blocsSol.pages.length : 0);
-        morceaux.push(`${nbPages} page${nbPages > 1 ? 's' : ''}`);
+        const nbSol = (listeSol ? listeSol.pages.length : 0) + (blocsSol ? blocsSol.pages.length : 0);
+        morceaux.push(`${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`);
+        if (nbSol) morceaux.push(`+ ${nbSol} de solutions`);
         morceaux.push(o.orientation === 'paysage' ? 'paysage' : 'portrait');
         totalEl.textContent = morceaux.join(' · ');
 
@@ -576,12 +601,6 @@ export function ouvrirFicheParcours(chemin) {
         rendre();
     };
     m.querySelector('#pp-regen').onclick = () => { blocs = null; rendre(); };
-    btnSol.onclick = () => {
-        solutions = !solutions;
-        btnSol.textContent = solutions ? 'Voir les questions' : 'Voir les solutions';
-        btnSol.setAttribute('aria-pressed', String(solutions));
-        rendre();
-    };
     m.querySelector('#pp-fermer').onclick = () => { m.style.display = 'none'; };
     m.querySelector('#pp-dl').onclick = () => telecharger(m, chemin, () => ({
         exos: derniers ? derniers.exos : [],
@@ -593,8 +612,6 @@ export function ouvrirFicheParcours(chemin) {
         options: options(), mesurer
     }));
 
-    solutions = false;
-    btnSol.textContent = 'Voir les solutions';
     m.style.display = 'flex';
     if (!papier.length) {
         listeEl.innerHTML = '';

@@ -3053,7 +3053,16 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    La liste des étapes : le nombre de questions de chacune, et leur ORDRE
    sur la feuille — chaque ligne se glisse plus haut ou plus bas par sa
    poignée ⠿. C'est toute la mise en page : le reste se calcule. */
-.pp-etapes { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+/* LA LISTE DES EXERCICES DÉFILE DANS SA PROPRE FENÊTRE.
+   Le parcours de vérification en compte quarante-cinq : sans plafond, la liste
+   poussait les réglages de mise en page et l'aperçu à deux écrans plus bas, et
+   il fallait remonter à chaque essai. Elle garde donc sa hauteur, et ce qu'on
+   regarde — la feuille — reste sous les commandes qui la règlent. */
+.pp-etapes {
+    display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px;
+    max-height: min(34vh, 330px); overflow-y: auto; overscroll-behavior: contain;
+    padding-right: 2px;
+}
 /* La ligne est un <details> : il EMPILE son résumé et son tiroir. Un
    « display: flex » ici les mettrait côte à côte, et le tiroir se dessinerait
    par-dessus le nom de l'exercice. */

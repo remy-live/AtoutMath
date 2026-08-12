@@ -745,9 +745,20 @@ async function buildPrintablePath() {
  * essayer sans rien construire.
  */
 async function seedExamplePath() {
-    if (state.teacherPaths.length) return;
-    const path = await buildDiscoveryPath();
-    state.saveTeacherPath(path.name, path);
+    // Le parcours de découverte n'a lieu d'être que sur un poste vierge : on ne
+    // va pas reposer un exemple devant un professeur qui a déjà bâti ses
+    // séances.
+    if (!state.teacherPaths.length) {
+        const path = await buildDiscoveryPath();
+        state.saveTeacherPath(path.name, path);
+    }
+    // « TOUT SUR PAPIER », EN REVANCHE, SE POSE TOUJOURS.
+    //
+    // Il était à l'intérieur du « poste vierge » : un professeur qui avait créé
+    // ne serait-ce qu'un parcours ne l'a donc jamais vu. Or c'est la feuille de
+    // vérification — celle qui contient tous les exercices imprimables du
+    // catalogue, pour regarder la présentation de chacun. Elle doit être là, et
+    // à jour, à chaque démarrage.
     await semerParcoursPapier();
 }
 

@@ -76,8 +76,9 @@ function assurerModale() {
                 <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
                 <span class="fp-total" id="fq-total"></span>
                 <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
-                <button type="button" class="btn-hint" id="fq-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
+            <!-- Les réglages de mise en page au contact de l'aperçu : ce
+                 sont ceux dont on juge l'effet en REGARDANT la feuille. -->
             <div class="fp-controles pp-mep">
                 <label>Format
                     <select id="fq-orientation" class="cfg-input">
@@ -161,7 +162,6 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const choixEl = modal.querySelector('#fq-choix');
     const totalEl = modal.querySelector('#fq-total');
     const noteEl = modal.querySelector('#fq-note');
-    const btnSol = modal.querySelector('#fq-voir-sol');
     const modeSol = modal.querySelector('#fq-sol-mode');
     const ouSol = modal.querySelector('#fq-sol-ou');
     const orientEl = modal.querySelector('#fq-orientation');
@@ -177,7 +177,6 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     if (!aDesChoix) choixEl.checked = false;
 
     let questions = [];
-    let solutions = false;
 
     const lire = () => ({
         nb: Math.max(4, Math.min(80, Number(nbEl.value) || 20)),
@@ -220,31 +219,40 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         const { nb, modeSolution } = o;
         completer(nb);
 
-        const mise = solutions ? solutionsDe(modeSolution, o.orientation) : composer(o);
+        // L'APERÇU MONTRE LE DOCUMENT ENTIER, solutions comprises : on règle
+        // la mise en page en voyant CE QU'ON AURA, corrigé compris, au lieu de
+        // le découvrir à l'impression. « Sans solutions » les retire de
+        // l'aperçu comme du fichier — l'aperçu ne ment jamais sur le PDF.
+        const mise = composer(o);
+        const sol = o.ouSolution !== 'sans' ? solutionsDe(modeSolution, o.orientation) : null;
         const pg = mise.page || pageDe(o.orientation);
 
         const large = apercu.parentElement.clientWidth || 640;
         const k = Math.min(large, 720) / pg.w;
+        const vues = [
+            ...mise.pages.map(page => ({ page, opts: mise.opts, liste: false, sousTitre: '' })),
+            ...(sol ? sol.pages.map(page => ({ page, opts: sol.opts, liste: true, sousTitre: 'Solutions' })) : [])
+        ];
         apercu.style.width = `${pg.w * k}px`;
-        apercu.style.height = `${pg.h * k * mise.pages.length + 12 * (mise.pages.length - 1)}px`;
+        apercu.style.height = `${pg.h * k * vues.length + 12 * Math.max(0, vues.length - 1)}px`;
 
-        apercu.innerHTML = mise.pages.map((page, i) => `
-            <div class="fq-page" style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
-                ${apercuEntete(k, exo.title, solutions ? 'Solutions' : '', null, pg)}
-                ${solutions ? apercuSolutions(page, k, mise.opts) : apercuItems(page, k, mise.opts)}
+        apercu.innerHTML = vues.map((v, i) => `
+            <div class="fq-page${v.liste ? ' fq-page--sol' : ''}"
+                 style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
+                ${apercuEntete(k, exo.title, v.sousTitre, null, pg)}
+                ${v.liste ? apercuSolutions(v.page, k, v.opts) : apercuItems(v.page, k, v.opts)}
             </div>`).join('');
 
         const enCol = mise.colonnes && mise.colonnes[0];
         totalEl.textContent = `${nb} questions · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`
-            + (solutions ? '' : ` · ${enCol} colonne${enCol > 1 ? 's' : ''}`);
+            + (sol ? ` + ${sol.pages.length} de solutions` : '')
+            + ` · ${enCol} colonne${enCol > 1 ? 's' : ''}`;
         const OU = {
             ensemble: 'Les solutions seront ajoutées à la fin du même PDF.',
             separe: 'Les solutions partiront dans un second PDF, à garder pour toi.',
             sans: 'Le PDF ne contiendra que les questions.'
         };
-        noteEl.textContent = solutions
-            ? 'La page des solutions : à garder pour corriger, ou à distribuer après.'
-            : `Les questions viennent des réglages de l'exercice. ${OU[ouSol.value] || ''}`;
+        noteEl.textContent = `Les questions viennent des réglages de l'exercice. ${OU[ouSol.value] || ''}`;
     };
 
     nbEl.oninput = rendre;
@@ -256,12 +264,6 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     numEl.onchange = rendre;
     ouSol.onchange = rendre;
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
-    btnSol.onclick = () => {
-        solutions = !solutions;
-        btnSol.textContent = solutions ? 'Voir les questions' : 'Voir les solutions';
-        btnSol.setAttribute('aria-pressed', String(solutions));
-        rendre();
-    };
     modal.querySelector('#fq-fermer').onclick = () => { modal.style.display = 'none'; };
 
     const btnDl = modal.querySelector('#fq-telecharger');
@@ -308,8 +310,6 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     };
 
     questions = [];
-    solutions = false;
-    btnSol.textContent = 'Voir les solutions';
     modal.style.display = 'flex';
     rendre();
 }

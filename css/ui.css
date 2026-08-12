@@ -413,6 +413,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
        exactement là où il doit être fiable. */
     font-family: Helvetica, Arial, sans-serif;
 }
+/* LES PAGES DE SOLUTIONS SE REPÈRENT EN DÉFILANT. L'aperçu montre maintenant
+   le document entier — questions puis corrigé — et sans marque on ne sait plus,
+   à mi-défilement, de quel côté de la pile on se trouve. Un liseré suffit :
+   c'est un repère, pas une décoration, et il ne s'imprime évidemment pas. */
+.fq-page--sol { border-left: 4px solid var(--success, #16a34a); }
+
 #print-questions-modal .fp-apercu-cadre {
     max-height: min(58vh, 660px); overflow-y: auto; padding: 4px 0 10px;
 }
