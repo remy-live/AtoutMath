@@ -540,7 +540,14 @@ export function composerSolutions(questions, opts, mesurer) {
     return composerFiche(items, { ...o, ligneReponse: 0, entreQuestions: entre, numeroL: 0 }, mesurer);
 }
 
-/** Un énoncé sur une feuille de solutions tient sur une ligne : pas de retours. */
+/**
+ * Un énoncé sur une feuille de solutions tient sur une ligne : pas de retours.
+ *
+ * Le signe égal final tombe avec le point d'interrogation : c'est la FLÈCHE
+ * qui mène à la réponse sur cette feuille-là. « 7 × 8 → 56 » se lit d'un trait,
+ * « 7 × 8 = → 56 » fait buter l'œil sur deux signes qui disent la même chose.
+ */
 function nettoyer(texte) {
-    return String(texte ?? '').replace(/\s*\n\s*/g, ' ').trim();
+    return texteImprime(String(texte ?? '').replace(/\s*\n\s*/g, ' '))
+        .replace(/\s*=\s*$/, '').trim();
 }

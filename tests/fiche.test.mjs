@@ -462,3 +462,13 @@ test('pageDe rend une COPIE : personne ne peut abîmer la géométrie A4', () =>
     p.marge = 999;
     assert.equal(pageDe('portrait').marge, 14);
 });
+
+test('la feuille de solutions écrit l\'énoncé comme la fiche', () => {
+    const questions = [{ texte: '7 × 8 = ?', reponse: '56', explication: 'La table de 7.' }];
+    const ligne = (m) => composerSolutions(questions, { mode: m }, mesurer)
+        .pages.flatMap(p => p.blocs)[0].lignes[0];
+    // Le « = ? » disparaît, et le « = » final aussi : c'est la flèche qui
+    // mène à la réponse ici.
+    assert.equal(ligne('normal'), '1. 7 × 8 → 56');
+    assert.equal(ligne('detaille'), '1. 7 × 8 → 56');
+});

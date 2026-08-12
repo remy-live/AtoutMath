@@ -474,6 +474,8 @@ export function ouvrirFicheParcours(chemin) {
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
     ouSol.onchange = rendre;
+    orientEl.onchange = rendre;
+    champsEl.onchange = rendre;
     noteSurEl.oninput = () => {
         if (!baremeTouche) { repartirPoints(); rendreListe(); }
         rendre();
