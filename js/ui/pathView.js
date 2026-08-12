@@ -21,6 +21,7 @@ import { gradeRun } from '../core/grading.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import { showModal } from './modal.js';
+import { etatRecompenses, direRecompense, estRecompense } from '../core/recompenses.js';
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
@@ -100,7 +101,12 @@ function assignedSection() {
     const { steps } = hydratePath(path);
     const policy = resolvePolicy(path.policy);
     const done = new Set(assigned.completed || []);
-    const firstPending = steps.findIndex(s => !done.has(s.stepId));
+    // LES JEUX DE RÉCOMPENSE. Ils ne comptent pas dans la progression : la
+    // « prochaine étape » est le prochain EXERCICE à faire, et un parcours est
+    // terminé quand son travail l'est — pas quand ses jeux le sont.
+    const etatJeux = etatRecompenses(path, { completed: assigned.completed || [], resultats: assigned.resultats });
+    const parJeu = new Map(etatJeux.jeux.map(j => [j.stepId, j]));
+    const firstPending = steps.findIndex(s => !estRecompense(s) && !done.has(s.stepId));
     const allDone = firstPending === -1;
 
     box.innerHTML = `
@@ -115,8 +121,10 @@ function assignedSection() {
     const opts = {
         doneIds: done,
         currentIndex: firstPending,
+        recompenses: parJeu,
+        seuilRecompense: etatJeux.seuil,
         onNodeClick: (i, statut) => {
-            if (statut === 'locked') return;
+            if (statut === 'locked' || statut === 'cadeau-ferme') return;
             launchAssigned(path, i);
         }
     };
@@ -140,6 +148,46 @@ function assignedSection() {
         done2.textContent = '🎉 Parcours terminé ! Bravo.';
         box.appendChild(done2);
     }
+
+    // LA SALLE DE JEUX. Quand le travail est fait au niveau demandé, tous les
+    // jeux du parcours passent en accès libre — c'est la récompense de fin, et
+    // elle mérite mieux qu'une pastille au milieu de la carte.
+    const salle = salleDeJeux(path, steps, etatJeux);
+    if (salle) box.appendChild(salle);
+    return box;
+}
+
+/**
+ * La salle de jeux : les récompenses ouvertes, offertes d'un bloc.
+ * Rien tant qu'aucune n'est ouverte — une salle vide n'annonce que le manque.
+ */
+function salleDeJeux(path, steps, etat) {
+    const ouverts = etat.jeux.filter(j => j.ouvert);
+    if (!ouverts.length) return null;
+
+    const box = document.createElement('section');
+    box.className = 'path-section salle-jeux';
+    box.innerHTML = `
+        <h2 class="path-section-title">🎁 ${etat.toutOuvert ? 'Tes jeux sont ouverts' : 'Ta récompense'}</h2>
+        <p class="path-section-sub">${etat.toutOuvert
+        ? 'Parcours terminé : tous les jeux du parcours sont à toi.'
+        : 'Tu as mérité ce jeu. Il reste du travail après, mais il est à toi.'}</p>`;
+
+    const liste = document.createElement('div');
+    liste.className = 'salle-jeux-liste';
+    for (const j of ouverts) {
+        const i = steps.findIndex(s => s.stepId === j.stepId);
+        if (i < 0) continue;
+        const carte = document.createElement('button');
+        carte.type = 'button';
+        carte.className = 'salle-jeu';
+        carte.innerHTML = `<span class="salle-jeu-picto">${pictoDe(steps[i])}</span>
+            <span class="salle-jeu-nom">${escapeHtml(steps[i].title)}</span>`;
+        carte.onclick = () => launchAssigned(path, i);
+        liste.appendChild(carte);
+    }
+    if (!liste.children.length) return null;
+    box.appendChild(liste);
     return box;
 }
 
@@ -195,15 +243,23 @@ function creerNoeud(step, i, statut, opts) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'world-node-btn';
-    btn.innerHTML = `<span class="world-node-picto">${statut === 'locked' ? '🔒' : pictoDe(step)}</span>`;
+    const cadeau = statut === 'cadeau' || statut === 'cadeau-ferme';
+    const picto = statut === 'cadeau' ? '🎁'
+        : statut === 'cadeau-ferme' ? '🔒'
+            : statut === 'locked' ? '🔒' : pictoDe(step);
+    btn.innerHTML = `<span class="world-node-picto">${picto}</span>`;
     btn.title = step.title;
-    btn.setAttribute('aria-label',
-        `Étape ${i + 1} : ${step.title} — ${statut === 'done' ? 'terminé' : statut === 'locked' ? 'à débloquer' : 'jouer'}`);
+    const dit = statut === 'done' ? 'terminé'
+        : statut === 'cadeau' ? 'jeu ouvert'
+            : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer' : 'jouer';
+    btn.setAttribute('aria-label', `${cadeau ? 'Jeu' : 'Étape ' + (i + 1)} : ${step.title} — ${dit}`);
     btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
 
     const rang = document.createElement('span');
     rang.className = 'world-node-rang';
-    rang.textContent = statut === 'done' ? '★' : String(i + 1);
+    // Un jeu ne porte pas de numéro d'étape : il n'est pas du travail, et le
+    // numéroter le ferait compter dans la série.
+    rang.textContent = cadeau ? '🎁' : (statut === 'done' ? '★' : String(i + 1));
 
     socle.append(btn, rang);
     node.appendChild(socle);
@@ -223,7 +279,14 @@ function creerNoeud(step, i, statut, opts) {
 
     const meta = document.createElement('span');
     meta.className = 'world-node-meta';
-    meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+    if (cadeau) {
+        // Sous un jeu fermé, ce qu'il reste à faire — jamais « interdit ».
+        const jeu = opts.recompenses.get(step.stepId);
+        meta.classList.add('world-node-meta--cadeau');
+        meta.textContent = direRecompense(jeu, opts.seuilRecompense ?? 0.75);
+    } else {
+        meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+    }
 
     node.append(label, meta);
     return node;
@@ -346,6 +409,10 @@ export function buildWorldMap(steps, opts = {}) {
 
 function statutDe(step, i, opts) {
     const done = opts.doneIds || new Set();
+    // UN JEU DE RÉCOMPENSE suit sa propre règle : il n'est ni « l'étape en
+    // cours » ni « à débloquer plus tard », il est ouvert ou mérité.
+    const jeu = opts.recompenses && opts.recompenses.get(step.stepId);
+    if (jeu) return jeu.ouvert ? 'cadeau' : 'cadeau-ferme';
     if (opts.allUnlocked) return 'open';
     if (done.has(step.stepId)) return 'done';
     return i === opts.currentIndex ? 'current' : 'locked';

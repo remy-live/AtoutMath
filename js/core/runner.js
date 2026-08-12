@@ -543,6 +543,7 @@ export class Runner {
             stepId: step.stepId,
             title: step.title,
             weight: step.weight,
+            bonus: !!step.bonus,
             exerciseId: step.exercise.id,
             questions: this.itemsResolved.size,
             solved,
@@ -556,6 +557,11 @@ export class Runner {
 
         if (passed || !this.policy.allowRetryStep) {
             this.index++;
+            // ON N'ENCHAÎNE JAMAIS SUR UN JEU DE RÉCOMPENSE. Une récompense se
+            // choisit — l'élève clique dessus depuis sa carte quand il l'a
+            // méritée. Servie d'office à la suite d'un exercice, elle
+            // deviendrait une étape de plus à traverser.
+            while (this.steps[this.index] && this.steps[this.index].bonus) this.index++;
             this.showStepResult(passed, solved, required);
         } else {
             this.showStepResult(false, solved, required);

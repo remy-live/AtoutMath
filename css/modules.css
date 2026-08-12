@@ -3325,3 +3325,49 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     vertical-align: bottom; height: .9em;
 }
 .fx-red-sol { color: #3c4658; }
+
+/* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------
+   Un jeu n'est pas une étape de plus : il se voit AUTREMENT. Pastille dorée
+   quand il est ouvert, grisée mais explicite quand il ne l'est pas — un verrou
+   qui ne dit pas ce qu'il attend est vécu comme une punition. */
+.world-node--cadeau .world-node-btn {
+    border-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 20%, var(--bg-panel));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning) 22%, transparent);
+}
+.world-node--cadeau .world-node-rang {
+    background: var(--warning); color: #3a2a00; border-color: var(--warning);
+}
+.world-node--cadeau-ferme .world-node-btn {
+    border-style: dashed; border-color: var(--border);
+    background: var(--bg-app); opacity: .75; cursor: default;
+}
+.world-node--cadeau-ferme .world-node-label { color: var(--text-muted); }
+.world-node-meta--cadeau {
+    max-width: 22ch; white-space: normal; line-height: 1.25;
+    color: var(--text-muted); font-weight: 600;
+}
+.world-node--cadeau .world-node-meta--cadeau { color: var(--warning); font-weight: 700; }
+
+/* La salle de jeux : les récompenses ouvertes, offertes d'un bloc. */
+.salle-jeux {
+    border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+    background: color-mix(in srgb, var(--warning) 8%, var(--bg-panel));
+    border-radius: 16px; padding: 14px 16px;
+}
+.salle-jeux-liste { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.salle-jeu {
+    display: flex; align-items: center; gap: 9px; cursor: pointer;
+    padding: 9px 14px; border-radius: 999px;
+    border: 1.5px solid var(--warning); background: var(--bg-panel);
+    font: inherit; font-weight: 700; color: var(--text-main);
+    transition: transform .12s, box-shadow .12s;
+}
+.salle-jeu:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.salle-jeu-picto { font-size: 1.2rem; line-height: 1; }
+
+/* Le rôle d'une étape, côté professeur. */
+.cfg-group--bonus { border-left: 3px solid var(--warning); padding-left: 10px; }
+.cfg-case--bonus { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+.cfg-case--bonus input { margin-top: 3px; flex-shrink: 0; width: 17px; height: 17px; accent-color: var(--warning); }
+.cfg-unite { color: var(--text-muted); font-weight: 600; margin-left: 4px; }

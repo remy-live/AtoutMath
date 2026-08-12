@@ -6,6 +6,7 @@
 // catalogue ni à cette interface.
 
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
+import { seuilDe } from '../core/recompenses.js';
 import { getGenerator } from '../core/registry.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 
@@ -380,7 +381,17 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         </div>`
             : '<p class="cfg-empty">Cette activité n\'a pas de paramètre de contenu.</p>'}
 
-        <div class="cfg-group">
+        <div class="cfg-group cfg-group--bonus">
+            <div class="cfg-group-title">Rôle de l'étape</div>
+            <label class="cfg-case cfg-case--bonus">
+                <input type="checkbox" id="cfg-bonus" ${step.bonus ? 'checked' : ''}>
+                <span><b>🎁 Jeu de récompense</b><br>
+                <span class="cfg-help">Cette étape n'est pas du travail : elle ne compte pas dans
+                la note et ne s'ouvre que si les exercices placés AVANT elle sont réussis.</span></span>
+            </label>
+        </div>
+
+        <div class="cfg-group" id="cfg-groupe-deroulement">
             <div class="cfg-group-title">Déroulement de l'étape</div>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
@@ -431,12 +442,23 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         if (field) field.style.display = intVal('cfg-timelimit', 0) > 0 ? '' : 'none';
     };
 
+    // UN JEU DE RÉCOMPENSE N'A NI SEUIL NI POIDS : il ne se valide pas et ne
+    // se note pas. Laisser les champs visibles laisserait croire le contraire.
+    const toggleBonus = () => {
+        const bonusEl = document.getElementById('cfg-bonus');
+        const groupe = document.getElementById('cfg-groupe-deroulement');
+        if (groupe) groupe.style.display = (bonusEl && bonusEl.checked) ? 'none' : '';
+    };
+
     const commit = () => {
         const overrides = readParams(content, schema);
         const nbItems = intVal('cfg-nbitems', 10);
         describeThreshold();
         toggleScope();
+        toggleBonus();
         const scope = document.getElementById('cfg-timescope');
+        const bonusEl = document.getElementById('cfg-bonus');
+        const bonus = !!(bonusEl && bonusEl.checked);
         onSave({
             ...step,
             overrides,
@@ -444,12 +466,14 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             threshold: Math.min(intVal('cfg-threshold', nbItems), nbItems),
             timeLimit: intVal('cfg-timelimit', 0) || null,
             timerScope: scope ? scope.value : 'etape',
-            weight: intVal('cfg-weight', 1)
+            weight: intVal('cfg-weight', 1),
+            bonus
         });
     };
 
     describeThreshold();
     toggleScope();
+    toggleBonus();
     wireTips(content);
     content.addEventListener('change', commit);
     content.addEventListener('keyup', e => {
@@ -592,6 +616,21 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
                 <input type="checkbox" id="cfg-show-calc" ${g.showCalculation !== false ? 'checked' : ''}>
                 Montrer à l'élève le détail du calcul de sa note
             </label>
+        </div>
+
+        <div class="cfg-group">
+            <div class="cfg-group-title">🎁 Jeux de récompense</div>
+            <div class="cfg-field">
+                <label class="cfg-label" for="cfg-bonus-seuil">Réussite exigée
+                    ${infoBtn('Le pourcentage de bonnes réponses qu\'il faut atteindre sur les '
+                        + 'exercices placés avant un jeu pour que ce jeu s\'ouvre. '
+                        + 'Quand tout le parcours est réussi à ce niveau, TOUS les jeux s\'ouvrent.', null)}</label>
+                <input type="number" id="cfg-bonus-seuil" class="cfg-input cfg-input--num"
+                       min="0" max="100" step="5" value="${Math.round(seuilDe(path) * 100)}">
+                <span class="cfg-unite">%</span>
+            </div>
+            <p class="cfg-help">Une étape se déclare « jeu de récompense » dans ses propres
+            réglages. Sans jeu dans le parcours, ce réglage ne sert à rien.</p>
         </div>`;
 
     const baseFor = (mode) => mode === MODES.EVALUATION ? evaluationPolicy()
@@ -614,16 +653,27 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
                 penalties: { hint: 0.25, retry: 0.5 },
                 arrondi: 0.5,
                 showCalculation: document.getElementById('cfg-show-calc').checked
-            } : null
+            } : null,
+            // Le seuil des récompenses est une règle de la séance : il vit
+            // avec les autres, et survit donc au changement de mode.
+            bonusSeuil: Math.max(0, Math.min(100, intVal('cfg-bonus-seuil', 75))) / 100
         });
     };
 
     wireTips(root);
     root.querySelectorAll('[data-mode]').forEach(btn => {
         btn.onclick = () => {
-            const base = baseFor(btn.dataset.mode);
             // Changer de mode réapplique les défauts du mode : c'est le sens
             // même du réglage, on ne conserve pas les réglages contradictoires.
+            // Le seuil des récompenses, lui, n'a rien de contradictoire avec
+            // un mode : il survit.
+            // On relit le CHAMP, pas le parcours reçu au montage : sinon un
+            // changement de mode rendrait au professeur le seuil qu'il avait
+            // avant de le régler.
+            const base = {
+                ...baseFor(btn.dataset.mode),
+                bonusSeuil: Math.max(0, Math.min(100, intVal('cfg-bonus-seuil', 75))) / 100
+            };
             onChange(base);
             renderPolicyEditor({ ...path, policy: base }, onChange, containerId);
         };

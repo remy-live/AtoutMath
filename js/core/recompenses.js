@@ -35,7 +35,12 @@ export const estRecompense = (step) => !!(step && step.bonus);
  * choix légitimes du professeur, on ne les interdit pas, on les borne.
  */
 export function seuilDe(path) {
-    const v = Number(path && path.bonusSeuil);
+    // Le seuil se range avec les autres règles de la séance (la « politique »),
+    // mais un parcours peut aussi le porter directement : les deux se lisent.
+    const brut = (path && path.bonusSeuil !== undefined)
+        ? path.bonusSeuil
+        : (path && path.policy ? path.policy.bonusSeuil : undefined);
+    const v = Number(brut);
     return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : SEUIL_DEFAUT;
 }
 
@@ -50,9 +55,13 @@ function resultatDe(stepId, resultats, faites) {
     const fait = faites.has(stepId);
     const r = resultats && resultats[stepId];
     if (r) {
-        const requis = Math.max(1, Number(r.required) || 1);
+        // LE TAUX SE MESURE SUR LES QUESTIONS POSÉES, pas sur le seuil de
+        // l'étape. Rapporté au seuil, un élève qui fait exactement le minimum
+        // demandé afficherait 100 % — et ouvrirait la récompense en ayant
+        // raté la moitié de la feuille.
+        const posees = Math.max(1, Number(r.questions) || Number(r.required) || 1);
         const reussies = Math.max(0, Number(r.solved) || 0);
-        return { fait, taux: Math.min(1, reussies / requis), reussies, requis };
+        return { fait, taux: Math.min(1, reussies / posees), reussies, requis: posees };
     }
     return fait
         ? { fait: true, taux: 1, reussies: 1, requis: 1 }

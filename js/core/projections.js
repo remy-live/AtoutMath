@@ -226,16 +226,17 @@ export function computeAssignedPath(events) {
     const resultats = {};
     for (const e of events) {
         if (e.type !== A.STEP_COMPLETED || e.payload.pathId !== assigned.pathId) continue;
-        const { stepId, solved = 0, required = 1, passed } = e.payload;
+        const { stepId, solved = 0, required = 1, questions = 0, passed } = e.payload;
         // `passed` absent = l'ancien marqueur « étape validée », émis par
         // state.markStudentPathStepCompleted et seulement quand elle l'est.
         // Seul un `passed: false` explicite — le runner sur un échec — ne
         // valide pas l'étape.
         if (passed !== false) done.add(stepId);
         const ancien = resultats[stepId];
-        const taux = solved / Math.max(1, required);
-        if (!ancien || taux > ancien.solved / Math.max(1, ancien.required)) {
-            resultats[stepId] = { solved, required, passed: !!passed };
+        const posees = Math.max(1, questions || required);
+        const taux = solved / posees;
+        if (!ancien || taux > ancien.solved / Math.max(1, ancien.questions || ancien.required)) {
+            resultats[stepId] = { solved, required, questions: posees, passed: !!passed };
         }
     }
     return { ...assigned, completed: [...done], resultats };

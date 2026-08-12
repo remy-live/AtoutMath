@@ -98,6 +98,10 @@ export function gradeRun(run, policyOverride = null) {
     for (const [stepId, list] of byStep) {
         const credit = list.reduce((s, it) => s + creditOf(it), 0);
         const stepInfo = (run.steps || []).find(s => s.stepId === stepId);
+        // UN JEU DE RÉCOMPENSE NE SE NOTE PAS. Il est là pour être joué, et
+        // les points qu'on y marque n'ont rien à voir avec ce qu'on a compris :
+        // les compter reviendrait à noter le plaisir.
+        if (stepInfo && stepInfo.bonus) continue;
         parEtape.push({
             stepId,
             title: (stepInfo && stepInfo.title) || '',

@@ -16,8 +16,11 @@ const parcours = (seuil) => ({
     steps: [exo('e1'), exo('e2'), exo('e3'), exo('e4'), jeu('j1')]
 });
 
+// [bonnes réponses, questions posées] : c'est sur les questions POSÉES que se
+// mesure le taux, jamais sur le seuil de validation de l'étape.
 const resultats = (paires) => Object.fromEntries(
-    Object.entries(paires).map(([id, [solved, required]]) => [id, { solved, required, passed: solved >= required }])
+    Object.entries(paires).map(([id, [solved, questions]]) =>
+        [id, { solved, questions, required: Math.ceil(questions / 2), passed: true }])
 );
 
 test('le jeu reste fermé tant que les exercices ne sont pas faits', () => {
@@ -143,4 +146,30 @@ test('estRecompense ne se laisse pas tromper', () => {
     assert.equal(estRecompense(exo('e')), false);
     assert.equal(estRecompense(null), false);
     assert.equal(estRecompense(undefined), false);
+});
+
+test('le taux se mesure sur les questions POSÉES, pas sur le seuil', () => {
+    // Une étape de 10 questions validée à partir de 5 bonnes réponses. L'élève
+    // en réussit exactement 5 : l'étape est validée, mais il a raté la moitié
+    // de la feuille — la récompense ne s'ouvre pas.
+    const path = { bonusSeuil: 0.75, steps: [exo('e1'), jeu('j1')] };
+    const e = etatRecompenses(path, {
+        completed: ['e1'],
+        resultats: { e1: { solved: 5, required: 5, questions: 10, passed: true } }
+    });
+    assert.equal(e.jeux[0].taux, 0.5);
+    assert.equal(e.jeux[0].ouvert, false);
+    assert.equal(e.jeux[0].raison, 'insuffisant');
+});
+
+test('sans « questions », le seuil sert de dénominateur par défaut', () => {
+    // Les journaux d'avant ne notaient pas le nombre de questions posées : on
+    // se rabat sur ce qu'ils ont, plutôt que de tout refuser.
+    const path = { bonusSeuil: 0.75, steps: [exo('e1'), jeu('j1')] };
+    const e = etatRecompenses(path, {
+        completed: ['e1'],
+        resultats: { e1: { solved: 8, required: 10, passed: true } }
+    });
+    assert.equal(e.jeux[0].taux, 0.8);
+    assert.equal(e.jeux[0].ouvert, true);
 });
