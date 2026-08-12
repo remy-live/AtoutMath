@@ -34,6 +34,7 @@ import { dominosGenerator } from '../generators/dominos.js';
 import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
+import { futoshikiGenerator } from '../generators/futoshiki.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -49,7 +50,7 @@ import { carreMagiqueGenerator } from '../generators/carreMagique.js';
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
-    pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator
+    pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator, futoshikiGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -288,6 +289,7 @@ const legacy = [
     ['pythagore-theoreme', 'Le Théorème de Pythagore', 'pythagore_theoreme', 'enginePythagoreTheoreme'],
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique'],
+    ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

@@ -589,6 +589,19 @@ export const calculExercises = [
         instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
     },
     {
+        // LE FUTOSHIKI. Un carré latin sous inégalités : le puzzle qui fait de
+        // la COMPARAISON un outil de déduction. Généré à solution unique,
+        // résoluble par propagation pure — jamais d'essai-erreur.
+        id: 'logi-futoshiki', status: STATUS.TEST, title: 'Le Futoshiki',
+        activityId: 'futoshiki',
+        generatorId: 'logique.futoshiki', printable: 'futoshiki',
+        sansRevision: true,
+        skills: ['num.logique.futoshiki'],
+        params: { taille: 4 },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Touche une case, puis un chiffre du pavé."
+    },
+    {
         // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la
         // main : on cherche la ligne où il ne manque qu'une case, on soustrait
         // de la somme magique, et chaque case écrite en débloque d'autres. Le

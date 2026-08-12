@@ -3381,6 +3381,18 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     align-items: center; justify-content: center; color: #1a202c;
 }
 .fx-logi-bloc { position: absolute; border: 1.4px solid #1a202c; pointer-events: none; }
+/* --- Le futoshiki sur la fiche --------------------------------------------- */
+.fx-fu-case {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1.2px solid #1a202c; border-radius: 8%; box-sizing: border-box;
+    font-weight: 700; color: #1a202c; background: #fff;
+}
+.fx-fu-case--donnee { background: #eef0fa; font-weight: 800; }
+.fx-fu-signe {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #1a202c;
+}
+
 /* --- Le carré magique sur la fiche ----------------------------------------- */
 .fx-cm-somme { position: absolute; color: #1a202c; }
 .fx-cm-case {

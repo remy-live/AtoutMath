@@ -296,6 +296,14 @@ const BASE = {
         descriptor: 'Compl\u00e9ter un carr\u00e9 dont toutes les lignes, colonnes et diagonales ont la m\u00eame somme.',
         lesson: 'Un carr\u00e9 magique se r\u00e9sout toujours par le M\u00caME raisonnement : cherche une ligne \u2014 rang\u00e9e, colonne ou diagonale \u2014 o\u00f9 il ne manque qu\'UNE case. Additionne ce que tu connais, soustrais de la somme magique : la case est trouv\u00e9e. Et chaque case \u00e9crite d\u00e9bloque de nouvelles lignes \u00e0 une seule case. Si aucune ligne n\'a un seul trou, c\'est que tu as rat\u00e9 une diagonale \u2014 elles comptent aussi.'
     },
+    'num.logique.futoshiki': {
+        label: 'Futoshiki (in\u00e9galit\u00e9s)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Compl\u00e9ter un carr\u00e9 latin en s\'appuyant sur des in\u00e9galit\u00e9s entre cases voisines.',
+        lesson: 'Chaque chiffre appara\u00eet UNE fois par ligne et par colonne, et les signes < et > doivent \u00eatre respect\u00e9s. Le secret : un signe \u00c9LIMINE. La case du petit c\u00f4t\u00e9 ne peut jamais porter le plus grand chiffre, celle du grand c\u00f4t\u00e9 jamais le 1. Et les signes se PROPAGENT : dans une cha\u00eene a < b < c, la case a perd ses deux plus grands chiffres. Commence toujours par les bouts des cha\u00eenes de signes.'
+    },
     'num.logique.dominos': {
         label: 'Enchaîner des dominos mathématiques',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

@@ -838,6 +838,89 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- Le futoshiki ------------------------------------------------------------
+
+/** La géométrie : n cases et n−1 gouttières de signes, dans le carré du slot. */
+function geoFutoshiki(item, slot) {
+    const { n } = item.meta;
+    const gout = slot.taille / (n * 3.4);      // la gouttière vaut ~30 % d'une case
+    const cote = (slot.taille - gout * (n - 1)) / n;
+    const pos = (k) => slot.x + k * (cote + gout);
+    const posY = (k) => slot.y + k * (cote + gout);
+    return { n, gout, cote, pos, posY };
+}
+
+const signeFuto = (meta, a, b) => {
+    for (const ing of meta.inegalites) {
+        if (ing.petit === a && ing.grand === b) return '<';
+        if (ing.petit === b && ing.grand === a) return '>';
+    }
+    return '';
+};
+
+function futoshikiPreviewHtml(item, slot, k, solution, champs) {
+    const m = item.meta;
+    const { n, cote, gout, pos, posY } = geoFutoshiki(item, slot);
+    let html = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        const i = r * n + c;
+        const donnee = m.donnees[i];
+        html += `<div class="fx-fu-case${donnee ? ' fx-fu-case--donnee' : ''}${!donnee && champs ? ' fp-case--champ' : ''}"
+            style="left:${pos(c) * k}px; top:${posY(r) * k}px; width:${cote * k}px; height:${cote * k}px;
+            font-size:${cote * 0.5 * k}px">${donnee || (solution ? m.solution[i] : '')}</div>`;
+        if (c + 1 < n) {
+            const s = signeFuto(m, i, i + 1);
+            if (s) html += `<div class="fx-fu-signe" style="left:${(pos(c) + cote) * k}px; top:${posY(r) * k}px;
+                width:${gout * k}px; height:${cote * k}px; font-size:${gout * 0.9 * k}px">${s}</div>`;
+        }
+        if (r + 1 < n) {
+            const s = signeFuto(m, i, i + n);
+            if (s) html += `<div class="fx-fu-signe" style="left:${pos(c) * k}px; top:${(posY(r) + cote) * k}px;
+                width:${cote * k}px; height:${gout * k}px; font-size:${gout * 0.9 * k}px">${s === '<' ? '∧' : '∨'}</div>`;
+        }
+    }
+    return html;
+}
+
+function dessinerFutoshikiPdf(doc, item, slot, solution, champ) {
+    const m = item.meta;
+    const { n, cote, gout, pos, posY } = geoFutoshiki(item, slot);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        const i = r * n + c;
+        const donnee = m.donnees[i];
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.4);
+        if (donnee) { doc.setFillColor(...ENCRE.donnee); doc.rect(pos(c), posY(r), cote, cote, 'FD'); }
+        else doc.rect(pos(c), posY(r), cote, cote, 'S');
+        if (donnee || solution) {
+            doc.setFont('helvetica', donnee ? 'bold' : 'normal');
+            doc.setFontSize(Math.min(13, cote * 1.6));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(String(donnee || m.solution[i]), pos(c) + cote / 2, posY(r) + cote / 2 + cote * 0.15,
+                { align: 'center' });
+        } else if (champ) {
+            champ(pos(c) + cote * 0.12, posY(r) + cote * 0.12, cote * 0.76, cote * 0.76);
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.min(10, gout * 2.6));
+        if (c + 1 < n) {
+            const s = signeFuto(m, i, i + 1);
+            if (s) doc.text(s, pos(c) + cote + gout / 2, posY(r) + cote / 2 + 1.1, { align: 'center' });
+        }
+        if (r + 1 < n) {
+            const s = signeFuto(m, i, i + n);
+            // ∧ et ∨ n'existent pas en Windows-1252 : on dessine le chevron.
+            if (s) {
+                const cx = pos(c) + cote / 2, cy = posY(r) + cote + gout / 2;
+                const w = gout * 0.42, h = gout * 0.34;
+                doc.setLineWidth(0.5);
+                if (s === '<') doc.lines([[w, -h], [w, h]], cx - w, cy + h / 2);
+                else doc.lines([[w, h], [w, -h]], cx - w, cy - h / 2);
+            }
+        }
+    }
+}
+
 // --- Le carré magique ------------------------------------------------------------
 
 function carreMagiquePreviewHtml(item, slot, k, solution, champs) {
@@ -1183,6 +1266,16 @@ export const RENDUS = {
         separateurs: true,
         // Il prend toute la largeur : ses indices se lisent à côté de sa grille.
         grilleMax: 300
+    },
+    futoshiki: {
+        titre: 'Futoshiki',
+        consigne: (items) => {
+            const { n } = items[0].meta;
+            return `Chaque chiffre de 1 à ${n} une seule fois par ligne et par colonne, `
+                + 'en respectant les signes < et > entre les cases.';
+        },
+        previewGrille: futoshikiPreviewHtml,
+        pdfGrille: dessinerFutoshikiPdf
     },
     'carre-magique': {
         titre: 'Carrés magiques',
