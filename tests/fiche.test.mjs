@@ -286,10 +286,10 @@ test('les trois modes de solutions disent trois choses différentes', () => {
     // tient d'une main en corrigeant.
     assert.deepEqual(ligne('compact'), ['1. 56']);
     // NORMAL : l'énoncé rappelé, utile quand on corrige des jours après.
-    assert.deepEqual(ligne('normal'), ['1. 7 × 8 → 56']);
+    assert.deepEqual(ligne('normal'), ['1. 7 × 8 = 56']);
     // DÉTAILLÉ : l'explication en plus, sur sa propre ligne — c'est la feuille
     // qu'on distribue après le contrôle.
-    assert.deepEqual(ligne('detaille'), ['1. 7 × 8 → 56', 'La table de 7 : 7 × 8 = 56.']);
+    assert.deepEqual(ligne('detaille'), ['1. 7 × 8 = 56', 'La table de 7 : 7 × 8 = 56.']);
 });
 
 test('la feuille compacte tient sur cinq colonnes, la détaillée sur une', () => {
@@ -467,8 +467,43 @@ test('la feuille de solutions écrit l\'énoncé comme la fiche', () => {
     const questions = [{ texte: '7 × 8 = ?', reponse: '56', explication: 'La table de 7.' }];
     const ligne = (m) => composerSolutions(questions, { mode: m }, mesurer)
         .pages.flatMap(p => p.blocs)[0].lignes[0];
-    // Le « = ? » disparaît, et le « = » final aussi : c'est la flèche qui
-    // mène à la réponse ici.
-    assert.equal(ligne('normal'), '1. 7 × 8 → 56');
-    assert.equal(ligne('detaille'), '1. 7 × 8 → 56');
+    // Le « = ? » disparaît, et le signe égal unique reste celui du corrigé.
+    assert.equal(ligne('normal'), '1. 7 × 8 = 56');
+    assert.equal(ligne('detaille'), '1. 7 × 8 = 56');
+});
+
+test('une feuille de solutions ne laisse pas trois colonnes vides', () => {
+    // Soixante réponses courtes tenaient sur deux colonnes, la feuille était
+    // blanche aux trois cinquièmes. Les colonnes s'équilibrent maintenant.
+    const questions = Array.from({ length: 60 }, (_, i) => ({ texte: `${i} + 1`, reponse: String(i + 1) }));
+    const mise = composerSolutions(questions, { mode: 'compact' }, mesurer);
+    assert.equal(mise.pages.length, 1, 'le compact tient sur une page');
+    const xs = [...new Set(mise.pages[0].blocs.map(b => Math.round(b.x)))].sort((a, b) => a - b);
+    assert.equal(xs.length, 5, `cinq colonnes occupées, pas ${xs.length}`);
+    // Et elles sont de hauteur comparable : aucune ne porte le double d'une autre.
+    const parCol = xs.map(x => mise.pages[0].blocs.filter(b => Math.round(b.x) === x).length);
+    assert.ok(Math.max(...parCol) - Math.min(...parCol) <= 1,
+        `colonnes déséquilibrées : ${parCol.join(', ')}`);
+});
+
+test('la feuille de solutions dit à quel exercice on en est', () => {
+    const q = (n, base) => Array.from({ length: n }, (_, i) => ({ texte: `q${i}`, reponse: String(base + i) }));
+    const sections = [
+        { titre: 'Amis de 10', points: 6, questions: q(3, 1) },
+        { titre: 'Soustractions', points: 4, questions: q(2, 10) }
+    ];
+    const mise = composerSolutions([], { mode: 'compact', sections }, mesurer);
+    const lignes = mise.pages.flatMap(p => p.blocs).map(b => b.lignes.join(' '));
+    assert.ok(lignes.includes('Exercice 1 — Amis de 10 — 6 pts'), lignes.join(' | '));
+    assert.ok(lignes.includes('Exercice 2 — Soustractions — 4 pts'), lignes.join(' | '));
+    // La numérotation reste CONTINUE d'un exercice à l'autre.
+    assert.ok(lignes.includes('4. 10') && lignes.includes('5. 11'), lignes.join(' | '));
+});
+
+test('aucune page vide ne se glisse dans la fiche', () => {
+    for (const n of [1, 5, 12, 23, 40, 61]) {
+        const questions = Array.from({ length: n }, (_, i) => ({ texte: `${i} × 7 =` }));
+        const mise = composerBlocs([{ titre: 'Tables', questions }], { interrogation: true }, mesurer);
+        mise.pages.forEach((p, i) => assert.ok(p.items.length > 0, `page ${i + 1} vide avec ${n} questions`));
+    }
 });

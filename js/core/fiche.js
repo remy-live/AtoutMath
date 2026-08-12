@@ -126,50 +126,83 @@ export function composerFiche(questions, opts, mesurer) {
     const colonneW = (zone.w - o.gouttiere * (colonnes - 1)) / colonnes;
     const texteW = colonneW - o.numeroL;
 
-    const pages = [];
-    let page = { blocs: [] };
-    let col = 0;
-    let y = zone.y;
-    // La numérotation ignore les intertitres : elle compte les QUESTIONS, et
-    // elle est continue d'une section à l'autre — « exercice 2, question 14 »
-    // se retrouve d'un coup d'œil quand on corrige.
-    let numero = 0;
-
-    questions.forEach((q) => {
+    // Les blocs, mesurés une fois pour toutes : la répartition en colonnes a
+    // besoin de connaître les hauteurs avant de décider où couper.
+    const prepares = questions.map((q) => {
         const estTitre = !!q.titre;
-        if (!estTitre) numero++;
         const bloc = {
-            n: numero,
             titre: estTitre,
             lignes: couperEnLignes(q.texte, texteW, o.taille, mesurer),
             choix: (!estTitre && o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null,
             reponse: q.reponse
         };
-        const h = hauteurBloc(bloc, o);
+        bloc.h = hauteurBloc(bloc, o);
         // Un intertitre ne reste jamais seul en bas d'une colonne : on exige
         // la place d'au moins une question derrière lui.
-        const besoin = estTitre ? h + o.interligne * 2 + o.ligneReponse : h;
-
-        // Une question ne se coupe jamais entre deux colonnes : on préfère un
-        // blanc en bas de colonne à un énoncé dont la fin est ailleurs.
-        if (y + besoin > zone.y + zone.h) {
-            col++;
-            if (col >= colonnes) { pages.push(page); page = { blocs: [] }; col = 0; }
-            y = zone.y;
-        }
-        bloc.x = zone.x + col * (colonneW + o.gouttiere);
-        bloc.y = y;
-        bloc.largeur = colonneW;
-        bloc.texteX = bloc.x + o.numeroL;
-        bloc.texteW = texteW;
-        // La ligne de pointillés se pose sous la dernière ligne de l'énoncé.
-        bloc.reponseY = estTitre ? null : y + bloc.lignes.length * o.interligne
-            + (bloc.choix ? o.interligne : 0) + o.ligneReponse * 0.55;
-        page.blocs.push(bloc);
-        y += h + o.entreQuestions;
+        bloc.besoin = estTitre ? bloc.h + o.interligne * 2 + o.ligneReponse : bloc.h;
+        return bloc;
     });
 
-    if (page.blocs.length) pages.push(page);
+    /**
+     * Pose tous les blocs en coupant les colonnes à `limite` de haut.
+     * Séparé du reste pour pouvoir être RELANCÉ avec d'autres limites : c'est
+     * ainsi qu'on trouve la hauteur qui équilibre les colonnes.
+     */
+    const poser = (limite) => {
+        const pages = [];
+        let page = { blocs: [] };
+        let col = 0;
+        let y = zone.y;
+        // La numérotation ignore les intertitres : elle compte les QUESTIONS,
+        // et elle est continue d'une section à l'autre — « exercice 2,
+        // question 14 » se retrouve d'un coup d'œil quand on corrige.
+        let numero = 0;
+        for (const modele of prepares) {
+            const bloc = { ...modele };
+            if (!bloc.titre) numero++;
+            bloc.n = numero;
+            // Une question ne se coupe jamais entre deux colonnes : on préfère
+            // un blanc en bas de colonne à un énoncé dont la fin est ailleurs.
+            if (y + bloc.besoin > zone.y + limite && page.blocs.length) {
+                col++;
+                if (col >= colonnes) { pages.push(page); page = { blocs: [] }; col = 0; }
+                y = zone.y;
+            }
+            bloc.x = zone.x + col * (colonneW + o.gouttiere);
+            bloc.y = y;
+            bloc.largeur = colonneW;
+            bloc.texteX = bloc.x + o.numeroL;
+            bloc.texteW = texteW;
+            // La ligne de pointillés se pose sous la dernière ligne de l'énoncé.
+            bloc.reponseY = bloc.titre ? null : y + bloc.lignes.length * o.interligne
+                + (bloc.choix ? o.interligne : 0) + o.ligneReponse * 0.55;
+            page.blocs.push(bloc);
+            y += bloc.h + o.entreQuestions;
+        }
+        if (page.blocs.length) pages.push(page);
+        return pages;
+    };
+
+    // COLONNES ÉQUILIBRÉES. Le remplissage glouton descend une colonne jusqu'en
+    // bas avant d'attaquer la suivante : soixante réponses courtes tenaient
+    // ainsi sur deux colonnes et laissaient les trois autres vides, avec une
+    // feuille aux trois cinquièmes blanche.
+    //
+    // On cherche donc la PLUS PETITE hauteur de colonne qui ne coûte pas une
+    // page de plus, par dichotomie sur la même fonction de pose. Le résultat
+    // est exact : les colonnes se remplissent également, et jamais au prix
+    // d'une feuille supplémentaire.
+    let pages = poser(zone.h);
+    if (o.equilibrer && pages.length) {
+        const cible = pages.length;
+        let bas = 0, haut = zone.h, meilleur = pages;
+        for (let i = 0; i < 14; i++) {
+            const milieu = (bas + haut) / 2;
+            const essai = poser(milieu);
+            if (essai.length <= cible) { meilleur = essai; haut = milieu; } else { bas = milieu; }
+        }
+        pages = meilleur;
+    }
     return { pages, colonneW, zone, opts: o, colonnes, page: pg };
 }
 
@@ -251,7 +284,14 @@ export function composerBlocs(exos, opts, mesurer) {
     // le rend au professeur, pour qu'il sache de quoi il part avant de forcer.
     const colonnesParExo = [];
 
-    const nouvellePage = () => { pages.push(page); page = { items: [] }; y = zone.y; };
+    // On ne pousse JAMAIS une page vide : une feuille blanche au milieu d'un
+    // PDF ressemble à une erreur d'impression, et le professeur la photocopie
+    // trente fois avant de s'en apercevoir.
+    const nouvellePage = () => {
+        if (page.items.length) pages.push(page);
+        page = { items: [] };
+        y = zone.y;
+    };
 
     exos.forEach((exo, iExo) => {
         const questions = exo.questions || [];
@@ -524,20 +564,45 @@ export function composerSolutions(questions, opts, mesurer) {
         colonnes: Math.max(1, Math.min(5, (opts && opts.colonnesSolutions) || colonnes))
     };
 
-    const items = questions.map((q, i) => {
-        const n = `${i + 1}.`;
+    // La ligne d'une réponse. La FLÈCHE a disparu : elle n'existe pas dans les
+    // polices d'un PDF, et « 7 × 8 = 56 » est de toute façon ce qu'on écrit au
+    // tableau en corrigeant.
+    const ligneDe = (q, n) => {
         const rep = q.reponse ?? '';
-        if (mode === 'compact') return { texte: `${n} ${rep}` };
-        if (mode === 'normal') return { texte: `${n} ${nettoyer(q.texte)} → ${rep}` };
-        // Détaillé : l'explication sur sa propre ligne, quand il y en a une.
+        if (mode === 'compact') return `${n}. ${rep}`;
+        if (mode === 'normal') return `${n}. ${nettoyer(q.texte)} = ${rep}`;
         const expl = (q.explication || '').trim();
-        return { texte: `${n} ${nettoyer(q.texte)} → ${rep}${expl ? '\n' + expl : ''}` };
-    });
+        return `${n}. ${nettoyer(q.texte)} = ${rep}${expl ? '\n' + expl : ''}`;
+    };
+
+    // LES SECTIONS. Une feuille de solutions qui aligne « 1. 2  2. 9  3. 4 »
+    // sur soixante numéros ne dit plus à quel exercice on en est : le
+    // professeur compte les lignes pour retrouver où commence l'exercice 3.
+    // Un intertitre par exercice — avec son barème quand c'est une
+    // interrogation — le lui dit d'un coup d'œil.
+    const sections = (opts && opts.sections) || null;
+    const items = [];
+    if (sections && sections.length) {
+        let n = 0;
+        sections.forEach((sec, i) => {
+            const qs = sec.questions || [];
+            if (!qs.length) return;
+            const bareme = sec.points ? ` — ${sec.points} pt${sec.points > 1 ? 's' : ''}` : '';
+            items.push({ titre: true, texte: `Exercice ${i + 1} — ${sec.titre}${bareme}` });
+            qs.forEach(q => items.push({ texte: ligneDe(q, ++n) }));
+        });
+    } else {
+        questions.forEach((q, i) => items.push({ texte: ligneDe(q, i + 1) }));
+    }
 
     // En détaillé les entrées respirent : deux explications collées l'une à
     // l'autre se lisent comme un seul paragraphe.
     const entre = mode === 'detaille' ? 2.6 : 1.4;
-    return composerFiche(items, { ...o, ligneReponse: 0, entreQuestions: entre, numeroL: 0 }, mesurer);
+    return composerFiche(items, {
+        ...o, ligneReponse: 0, entreQuestions: entre, numeroL: 0,
+        // Le compact n'a de sens que rempli : c'est la feuille d'UNE page.
+        equilibrer: mode !== 'detaille'
+    }, mesurer);
 }
 
 /**

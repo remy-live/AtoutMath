@@ -130,7 +130,7 @@ function dessinerGrillePdf(doc, item, slot, solution) {
         // standard du PDF : il sortait en guillemet. Le tiret ASCII s'imprime
         // pareil à cette taille. La baseline colle l'étiquette au coin —
         // 0,72 em d'ascendante au-dessus, un pt ≈ 0,353 mm.
-        doc.text(cage.label.replace('−', '-'),
+        doc.text(pourPdf(cage.label),
             x + c * s + 0.5, y + r * s + 0.35 + policeEtiquette * 0.72 * 0.353);
     }
     doc.setTextColor(...ENCRE.texte);
@@ -337,7 +337,7 @@ function dessinerGaramPdf(doc, item, slot, solution) {
     doc.setFontSize(Math.min(11, cote * 1.15));
     doc.setTextColor(90, 98, 112);
     structure.signes.forEach(sg => {
-        doc.text(sg.glyphe.replace('−', '-'),
+        doc.text(pourPdf(sg.glyphe),
             x0 + sg.c * u + u / 2, y0 + sg.r * u + u / 2, { align: 'center', baseline: 'middle' });
     });
 }
@@ -446,14 +446,14 @@ function entetePdf(doc, titre, sousTitre, consigne) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...ENCRE.texte);
-    doc.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, PAGE.marge, PAGE.marge + 6);
+    doc.text(pourPdf(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`), PAGE.marge, PAGE.marge + 6);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text('Nom : ..............................    Date : ....................', PAGE.w - PAGE.marge, PAGE.marge + 6, { align: 'right' });
     if (consigne) {
         doc.setFontSize(8.6);
         doc.setTextColor(90, 98, 112);
-        doc.text(consigne, PAGE.marge, PAGE.marge + 12);
+        doc.text(pourPdf(consigne), PAGE.marge, PAGE.marge + 12);
     }
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.4);

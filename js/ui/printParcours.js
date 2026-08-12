@@ -432,8 +432,10 @@ export function ouvrirFicheParcours(chemin) {
         // La feuille de solutions ne porte que ce qui a une réponse écrite :
         // une grille se corrige sur son propre dessin, pas dans une liste.
         const toutes = exos.flatMap(x => x.questions);
+        const sections = exos.filter(x => x.questions.length)
+            .map(x => ({ titre: x.titre, points: x.points, questions: x.questions }));
         const mise = solutions
-            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation }, mesurer)
+            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections }, mesurer)
             : composerBlocs(exos, o, mesurer);
         const pg = mise.page || pageDe(o.orientation);
 
@@ -466,7 +468,7 @@ export function ouvrirFicheParcours(chemin) {
               + `et la case « … / ${o.noteSur} » en haut de la première page.`
               + (total === o.noteSur ? '' : ` ⚠️ Le barème totalise ${total} points pour une note sur ${o.noteSur}.`)
             : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
-        derniers = { exos, toutes, note, total, page: pg };
+        derniers = { exos, toutes, note, total, page: pg, sections };
     };
     let derniers = null;
 
@@ -493,6 +495,7 @@ export function ouvrirFicheParcours(chemin) {
         toutes: derniers ? derniers.toutes : [],
         note: derniers ? derniers.note : null,
         total: derniers ? derniers.total : 0,
+        sections: derniers ? derniers.sections : [],
         options: options(), mesurer
     }));
 
@@ -532,7 +535,7 @@ function pdfSolutions(pdf, page, o) {
     pdf.setTextColor(...ENCRE.texte);
     for (const b of page.blocs) {
         b.lignes.forEach((ligne, i) => {
-            pdf.text(ligne, b.x, b.y + o.taille + i * o.interligne);
+            pdf.text(pourPdf(ligne), b.x, b.y + o.taille + i * o.interligne);
         });
     }
 }
@@ -549,7 +552,7 @@ function pdfSolutions(pdf, page, o) {
 function telecharger(modal, chemin, lire) {
     const btn = modal.querySelector('#pp-dl');
     btn.disabled = true;
-    const { exos, toutes, note, total, options, mesurer } = lire();
+    const { exos, toutes, note, total, options, mesurer, sections } = lire();
     if (!exos.length) { btn.disabled = false; return; }
     chargerJsPDF()
         .then(jsPDF => {
@@ -576,7 +579,7 @@ function telecharger(modal, chemin, lire) {
 
             const dessinerSolutions = (doc, premiere) => {
                 const sol = composerSolutions(toutes,
-                    { mode: options.modeSolution, orientation: options.orientation }, mesurer);
+                    { mode: options.modeSolution, orientation: options.orientation, sections }, mesurer);
                 sol.pages.forEach((page, i) => {
                     if (!premiere || i) doc.addPage('a4', sens);
                     entetePdf(doc, nom, sol.pages.length > 1 ? `Solutions ${i + 1}/${sol.pages.length}` : 'Solutions',

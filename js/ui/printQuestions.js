@@ -138,7 +138,7 @@ function pdfSolutions(pdf, page, o) {
     pdf.setTextColor(...ENCRE.texte);
     for (const b of page.blocs) {
         b.lignes.forEach((ligne, i) => {
-            pdf.text(ligne, b.x, b.y + o.taille + i * o.interligne);
+            pdf.text(pourPdf(ligne), b.x, b.y + o.taille + i * o.interligne);
         });
     }
 }

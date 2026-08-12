@@ -22,6 +22,43 @@ export const ENCRE = {
     bandeauTrait: [203, 210, 220]
 };
 
+/**
+ * LE TEXTE TEL QUE LE PDF SAIT L'ÉCRIRE.
+ *
+ * Les polices standard d'un PDF (Helvetica et compagnie) n'ont qu'un jeu de
+ * caractères : celui de Windows-1252. Dès qu'une chaîne contient AUTRE CHOSE,
+ * jsPDF bascule la chaîne ENTIÈRE en UTF-16 — mais la police, elle, ne sait
+ * pas la relire, et chaque caractère sort en deux glyphes de hasard. C'est
+ * ainsi que « 5 + ? = 10 → 5 » s'imprimait « 5 + ? = 1 0 !' 5 » : un seul
+ * caractère hors table, et toute la ligne était perdue.
+ *
+ * On remplace donc ces caractères par leur équivalent lisible AVANT de les
+ * confier au PDF. Les symboles vraiment utiles à une fiche de mathématiques —
+ * × ÷ ° ² ³ ½ « » — sont dans la table, eux, et passent intacts.
+ */
+const HORS_TABLE = {
+    '\u2212': '-',      // le vrai signe moins
+    '\u2192': '->', '\u2190': '<-',
+    '\u2248': '~',      // « à peu près égal »
+    '\u22A5': '_|_',    // perpendiculaire
+    '\u2260': '=/=', '\u2264': '<=', '\u2265': '>=',
+    '\u2081': '1', '\u2082': '2', '\u2083': '3', '\u2084': '4', '\u2085': '5',
+    '\u2086': '6', '\u2087': '7', '\u2088': '8', '\u2089': '9', '\u2080': '0',
+    '\u1D49': 'e',      // le « e » de « 2ᵉ »
+    '\u2610': '[ ]', '\u2611': '[x]',
+    '\u2153': '1/3', '\u2154': '2/3', '\u00BC': '1/4', '\u00BE': '3/4',
+    '\u2218': 'o', '\u2032': "'", '\u2033': '"',
+    '\u2261': '=', '\u221A': 'V', '\u03C0': 'pi'
+};
+
+export function pourPdf(texte) {
+    let t = String(texte ?? '');
+    for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
+    // Filet de sécurité : tout ce qui reste au-dessus de la table y passe.
+    // Un point d'interrogation vaut mieux qu'une ligne entière illisible.
+    return t.replace(/[^\u0000-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192\u02C6\u02DC\u2013\u2014\u2018\u2019\u201A\u201C\u201D\u201E\u2020\u2021\u2022\u2026\u2030\u2039\u203A\u20AC\u2122]/g, '?');
+}
+
 export const echapper = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 /** Largeur d'un texte en mm, métriques Helvetica (la police du PDF). */
@@ -116,7 +153,7 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page) {
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.5);
     pdf.setTextColor(...ENCRE.texte);
-    pdf.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, P.marge, P.marge + 6);
+    pdf.text(pourPdf(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`), P.marge, P.marge + 6);
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9.5);
     // La case de la note mange le coin droit : le « Nom / Date » se décale.
@@ -139,7 +176,7 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page) {
     if (bareme) {
         pdf.setFontSize(8.6);
         pdf.setTextColor(...ENCRE.gris);
-        pdf.text(bareme, P.marge, P.marge + 14);
+        pdf.text(pourPdf(bareme), P.marge, P.marge + 14);
     }
     pdf.setFontSize(6.5);
     pdf.setTextColor(160, 165, 175);
@@ -196,7 +233,7 @@ export function pdfItems(pdf, page, o) {
             pdf.setFont('helvetica', 'bold');
             pdf.setFontSize(o.taille * 2.9);
             pdf.setTextColor(...ENCRE.texte);
-            pdf.text(titreExo(it), it.x + 3, it.y + it.h / 2 + o.taille * 0.42);
+            pdf.text(pourPdf(titreExo(it)), it.x + 3, it.y + it.h / 2 + o.taille * 0.42);
             if (it.points) {
                 pdf.setFont('helvetica', 'normal');
                 pdf.setFontSize(o.taille * 2.5);
@@ -210,7 +247,7 @@ export function pdfItems(pdf, page, o) {
             pdf.setFontSize(o.tailleConsigne * 2.83);
             pdf.setTextColor(...ENCRE.gris);
             it.lignes.forEach((ligne, i) => {
-                pdf.text(ligne, it.x + 1, it.y + o.tailleConsigne + i * o.tailleConsigne * 1.45);
+                pdf.text(pourPdf(ligne), it.x + 1, it.y + o.tailleConsigne + i * o.tailleConsigne * 1.45);
             });
             continue;
         }
@@ -231,12 +268,25 @@ export function pdfItems(pdf, page, o) {
         pdf.text(`${it.n}.`, it.x, it.y + o.taille);
         pdf.setFont('helvetica', 'normal');
         it.lignes.forEach((ligne, i) => {
-            pdf.text(ligne, it.texteX, it.y + o.taille + i * o.interligne);
+            pdf.text(pourPdf(ligne), it.texteX, it.y + o.taille + i * o.interligne);
         });
         if (it.choix) {
+            // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐
+            // n'existe pas dans les polices standard du PDF : il sortait en
+            // deux glyphes de hasard, et emportait toute la ligne de choix
+            // avec lui. Un carré tracé s'imprime partout et se coche mieux.
             pdf.setFontSize(o.taille * 2.5);
-            pdf.setTextColor(...ENCRE.gris);
-            pdf.text(it.choix.map(c => `☐ ${c}`).join('   '), it.texteX, it.choixY + o.taille);
+            const cote = o.taille * 0.82;
+            let cx = it.texteX;
+            for (const choix of it.choix) {
+                const mot = pourPdf(String(choix));
+                pdf.setDrawColor(...ENCRE.gris);
+                pdf.setLineWidth(0.22);
+                pdf.rect(cx, it.choixY + o.taille - cote, cote, cote, 'S');
+                pdf.setTextColor(...ENCRE.gris);
+                pdf.text(mot, cx + cote + 1.4, it.choixY + o.taille);
+                cx += cote + 1.4 + pdf.getTextWidth(mot) + 4;
+            }
             pdf.setTextColor(...ENCRE.texte);
         }
         if (it.rep) {
