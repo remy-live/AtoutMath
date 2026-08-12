@@ -224,11 +224,18 @@ class Logigramme extends BaseGame {
         colonnes.forEach(c => {
             html += `<th class="lg-th lg-th--cat" colspan="${this.n}" style="${fond(c, 42)}">${echapper(cats[c].label)}</th>`;
         });
+        // La hauteur des libellés verticaux suit le PLUS LONG D'ENTRE EUX. À
+        // hauteur fixe, « poules · lapins · chèvres » laissait au-dessus de la
+        // grille une bande blanche aussi haute que la grille elle-même.
+        const plusLong = Math.max(...colonnes.map(c =>
+            Math.max(...Array.from({ length: this.n }, (_, j) => etiquette(cats[c], j).length))));
+        const hautEntete = Math.min(Math.max(38, plusLong * 7.2 + 12), Math.max(56, cote * 3.6));
+
         html += '</tr><tr><td class="lg-mort"></td><td class="lg-mort"></td>';
         colonnes.forEach(c => {
             for (let j = 0; j < this.n; j++) {
                 html += `<th class="lg-th lg-th--val lg-th--col" style="${fond(c, 16)}
-                    height:${Math.max(56, cote * 3.6)}px">${echapper(etiquette(cats[c], j))}</th>`;
+                    height:${hautEntete}px">${echapper(etiquette(cats[c], j))}</th>`;
             }
         });
         html += '</tr>';
@@ -277,7 +284,11 @@ class Logigramme extends BaseGame {
     coteCase(nbBlocs) {
         const large = this.container.clientWidth || 700;
         const dispo = Math.max(240, Math.min(large - 300, 520));
-        return Math.max(17, Math.min(34, Math.floor(dispo / (nbBlocs * this.n))));
+        // Le plafond ne sert qu'à ne pas obtenir des cases énormes sur un grand
+        // écran ; il était si bas qu'une grille 3 × 3 restait minuscule alors
+        // que la place ne manquait pas. La largeur totale, elle, reste bornée
+        // par `dispo` : ce plafond ne déborde jamais.
+        return Math.max(17, Math.min(46, Math.floor(dispo / (nbBlocs * this.n))));
     }
 
     cliquer(td) {

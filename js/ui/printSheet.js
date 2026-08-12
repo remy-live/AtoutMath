@@ -475,9 +475,24 @@ function garamPreviewHtml(item, slot, k, solution, champs) {
 const LOGI_TEINTES = [[125, 211, 252], [134, 239, 172], [252, 211, 77], [249, 168, 212]];
 const pastel = (k, force) => LOGI_TEINTES[k % LOGI_TEINTES.length].map(v => Math.round(255 - (255 - v) * force));
 
-// Le bandeau coloré de la liste, la place des étiquettes, la hauteur des
-// libellés verticaux : les trois constantes de la grille, en millimètres.
-const LOGI_BANDEAU = 4.6, LOGI_LIBELLES = 15;
+// Le bandeau coloré de la liste, en millimètres. La hauteur des libellés
+// verticaux, elle, se mesure : voir `hauteurLibelles`.
+const LOGI_BANDEAU = 4.6;
+
+/**
+ * La hauteur des libellés écrits à la verticale au-dessus de la grille.
+ * Elle suit le PLUS LONG d'entre eux : à hauteur fixe, « poules · lapins ·
+ * chèvres » laissait une bande blanche aussi haute que la grille.
+ */
+function hauteurLibelles(p, colonnes) {
+    const plusLong = Math.max(...colonnes.map(c => {
+        const cat = p.categories[c];
+        return Math.max(...(cat.valeurs || cat.nombres).map((_, j) => etiquetteLogi(cat, j).length));
+    }));
+    // 7,5 pt est la plus grande taille que le rendu s'autorise : la mesure
+    // faite à cette taille couvre tous les cas, quelle que soit celle retenue.
+    return Math.max(6, Math.min(17, largeurTexte('x'.repeat(plusLong), 7.5) + 2));
+}
 
 /** Une approximation de la largeur d'un texte en Helvetica, en millimètres. */
 const largeurTexte = (s, pt) => String(s).length * pt * 0.48 * 0.3528;
@@ -508,7 +523,7 @@ function geometrieLogi(item, boite) {
 
     const bandeau = LOGI_BANDEAU;
     const etiq = Math.max(11, Math.min(17, boite.w * 0.13));
-    const entete = bandeau + LOGI_LIBELLES;
+    const entete = bandeau + hauteurLibelles(p, colonnes);
     const nx = colonnes.length * n, ny = lignes.length * n;
     const cases = (largeur, hautDispo) => Math.min(
         (largeur - bandeau - etiq) / nx, (hautDispo - entete - 2) / ny, 14);
