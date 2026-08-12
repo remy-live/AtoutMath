@@ -79,7 +79,7 @@ export const calculExercises = [
     {
         id: 'calc-prio',
         consignePapier: "Quelle opération faut-il effectuer en premier ?",
-        colonnesPapier: 2,
+        colonnesPapier: 1,
         title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
         params: { mode: 'operation' },

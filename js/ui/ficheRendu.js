@@ -125,10 +125,23 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
     return x;
 }
 
-/** La même ligne en HTML, pour l'aperçu. */
-function ligneHtml(ligne, avecFractions) {
+/**
+ * La même ligne en HTML, pour l'aperçu.
+ *
+ * LE TROU EST DESSINÉ DANS LA LIGNE, pas posé par-dessus. On le plaçait en
+ * absolu, à l'abscisse calculée par la mise en page ; mais l'aperçu et la
+ * fonction de mesure ne tombent jamais au pixel près sur une longue amorce, et
+ * le trait dérivait vers la gauche à mesure que l'énoncé s'allongeait. Écrit à
+ * sa place dans le texte, il ne peut plus dériver du tout.
+ */
+function ligneHtml(ligne, avecFractions, opts = {}) {
+    const trouCls = 'fx-trou'
+        + (opts.champs ? ' fx-trou--champ' : '')
+        + (avecFractions ? ' fx-trou--frac' : '');
+    const texteHtml = (t) => echapper(t).replace(/ {3,}/g,
+        (blanc) => `<span class="${trouCls}">${blanc}</span>`);
     return morceauxLigne(ligne, avecFractions).map(m => {
-        if (m.texte !== undefined) return echapper(m.texte);
+        if (m.texte !== undefined) return texteHtml(m.texte);
         if (m.presque) return '<span class="fx-presque">&#8776;</span>';
         return `<span class="fx-frac"><span class="fx-frac-n">${echapper(m.num)}</span>`
             + `<span class="fx-frac-d">${echapper(m.den)}</span></span>`;
@@ -197,13 +210,13 @@ export function apercuItems(page, k, o) {
         }
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
-                width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions)}</div>`;
+                width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
         });
         if (it.choix) {
             html += `<div class="fq-choix" style="left:${it.texteX * k}px; top:${it.choixY * k}px;
                 font-size:${o.taille * k * .9}px">${it.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
         }
-        if (it.rep) {
+        if (it.rep && !it.rep.dansLeTexte) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
             // sinon le professeur découvre la différence à l'impression.

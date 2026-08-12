@@ -35,7 +35,9 @@ function tirerQuestions(generator, params, nb) {
     // possibles (les compléments à 10, par exemple).
     for (let essai = 0; out.length < nb && essai < nb * 12; essai++) {
         const item = generator.generate(params, { index: out.length, rng: makeRng() });
-        const texte = (item.prompt && item.prompt.text) || '';
+        // `papier` : la même question, écrite pour la feuille — sans la
+        // consigne répétée devant chaque ligne. À défaut, le texte d'écran.
+        const texte = (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
         if (vus.has(texte) && essai < nb * 6) continue;
         vus.add(texte);
         out.push({
@@ -104,6 +106,14 @@ function assurerModale() {
                         <option value="normal">Normal — énoncé et réponse</option>
                         <option value="detaille">Détaillé — avec les explications</option>
                     </select></label>
+                <label>Colonnes
+                    <select id="fq-sol-colonnes" class="cfg-input"
+                        aria-label="Colonnes de la feuille de solutions">
+                        <option value="auto">auto</option>
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
+                        <option value="5">5</option>
+                    </select></label>
                 <label>Fichier
                     <select id="fq-sol-ou" class="cfg-input">
                         <option value="ensemble">Un seul PDF, solutions à la fin</option>
@@ -163,6 +173,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const totalEl = modal.querySelector('#fq-total');
     const noteEl = modal.querySelector('#fq-note');
     const modeSol = modal.querySelector('#fq-sol-mode');
+    const colSol = modal.querySelector('#fq-sol-colonnes');
     const ouSol = modal.querySelector('#fq-sol-ou');
     const orientEl = modal.querySelector('#fq-orientation');
     const colsEl = modal.querySelector('#fq-colonnes');
@@ -194,6 +205,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     // vite, une seule quand chaque ligne porte son explication.
     const solutionsDe = (mode, orientation) => composerSolutions(questions, {
         mode, orientation,
+        colonnesSolutions: colSol.value === 'auto' ? null : Number(colSol.value),
         // Une feuille sans numéros se corrige dans l'ordre : le corrigé
         // n'invente pas une numérotation que la feuille n'a pas.
         sections: numEl.checked ? null : [{ titre: exo.title, questions, numeroter: false }]
@@ -258,6 +270,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     nbEl.oninput = rendre;
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
+    colSol.onchange = rendre;
     orientEl.onchange = rendre;
     colsEl.onchange = rendre;
     champsEl.onchange = rendre;

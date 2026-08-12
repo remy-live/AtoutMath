@@ -23,7 +23,7 @@ export const numerationExercises = [
     {
         id: 'num-lettres-mille',
         consignePapier: "Écris en chiffres.",
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         title: 'Des Lettres aux Chiffres',
         generatorId: 'num.lettres', activityId: 'numpad',
         params: { max: 1000, decimaux: 'non' },
@@ -33,7 +33,7 @@ export const numerationExercises = [
     {
         id: 'num-lettres-grands',
         consignePapier: "Écris en chiffres.",
-        colonnesPapier: 3,
+        colonnesPapier: 1,
         title: 'Les Grands Nombres',
         generatorId: 'num.lettres', activityId: 'numpad',
         params: { max: 1000000, decimaux: 'non' },
@@ -43,7 +43,7 @@ export const numerationExercises = [
     {
         id: 'num-lettres-decimaux',
         consignePapier: "Écris en chiffres.",
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         title: 'Dixièmes et Centièmes',
         generatorId: 'num.lettres', activityId: 'numpad',
         params: { max: 100000, decimaux: 'toujours' },

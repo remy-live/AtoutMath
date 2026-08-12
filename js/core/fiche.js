@@ -378,8 +378,14 @@ export function composerBlocs(exos, opts, mesurer) {
         // millimètres et demi devant « 12. » sont justes dans une colonne
         // large ; dans une cellule de vingt-deux millimètres — six colonnes de
         // comparaisons — c'est le tiers de la place, pris à l'énoncé.
+        // Elle ne descend jamais sous la largeur du plus grand numéro de
+        // l'exercice, plus une espace : « 240.3,9 » collés, c'est illisible, et
+        // c'est ce qui arrive quand la gouttière est calculée sans regarder ce
+        // qu'on va y écrire.
+        const dernierNum = numero + (questions.length || grilles.length);
+        const largeurNum = mesurer(`${dernierNum}.`, o.taille) + 1.6;
         const gouttiere = (cellW) => numerote
-            ? Math.min(o.numeroL, Math.max(4.4, cellW * 0.2))
+            ? Math.max(largeurNum, Math.min(o.numeroL, cellW * 0.2))
             : 0;
         let gouttiereNum = numerote ? o.numeroL : 0;
         if (o.numerotation === 'exercice') numero = 0;
@@ -496,14 +502,28 @@ export function composerBlocs(exos, opts, mesurer) {
                     && (q.fractions ? mesureurFractions(mesurer) : mesurer)(q.texte, o.taille) <= texteW)) { cols = c; break; }
             }
         }
+        // UNE FRACTION NE SE COUPE PAS EN DEUX LIGNES. Un énoncé de texte qui
+        // passe à la ligne reste lisible ; une comparaison de fractions, non :
+        // la seconde fraction vient se poser sous la première, et l'on ne sait
+        // plus ce qu'on compare. Quand la colonne demandée est trop étroite
+        // pour les tenir, on en retire une — le réglage du professeur est un
+        // souhait, pas un ordre de rendre la feuille illisible.
+        const aDesFractions = questions.some(q => q.fractions);
+        let cellW, texteW, cellules;
+        for (;;) {
+            cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
+            gouttiereNum = gouttiere(cellW);
+            texteW = cellW - gouttiereNum;
+            cellules = mesurerCellules();
+            if (!aDesFractions || cols <= 1) break;
+            if (!cellules.some(c => c.fractions && c.lignes.length > 1)) break;
+            cols--;
+        }
         colonnesParExo.push(cols);
-        const cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
-        gouttiereNum = gouttiere(cellW);
-        const texteW = cellW - gouttiereNum;
 
         // Les cellules, pré-mesurées : la pagination a besoin des hauteurs
         // avant de poser quoi que ce soit.
-        const cellules = questions.map(q => {
+        function mesurerCellules() { return questions.map(q => {
             const mes = q.fractions ? mesureurFractions(mesurer) : mesurer;
             const lignes = couperEnLignes(texteImprime(q.texte, q.reponse), texteW, o.taille, mes);
             const choix = (o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null;
@@ -530,7 +550,7 @@ export function composerBlocs(exos, opts, mesurer) {
                 + (choix ? o.interligne : 0)
                 + (trou || memeLigne ? 0 : ligneRep);
             return { lignes, choix, memeLigne, trou, h, dy: supp, mes, fractions: !!q.fractions };
-        });
+        }); }
 
         const consigneLignes = exo.consigne
             ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)

@@ -69,7 +69,9 @@ function questionsDe(etape, nb) {
     const out = [];
     for (let essai = 0; out.length < nb && essai < nb * 12; essai++) {
         const item = etape.generator.generate(etape.params, { index: out.length, rng: makeRng() });
-        const texte = (item.prompt && item.prompt.text) || '';
+        // `papier` : la même question, écrite pour la feuille — sans la
+        // consigne répétée devant chaque ligne. À défaut, le texte d'écran.
+        const texte = (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
         if (vus.has(texte) && essai < nb * 6) continue;
         vus.add(texte);
         out.push({
@@ -142,6 +144,14 @@ function assurerModale() {
                         <option value="normal">Normal — énoncé et réponse</option>
                         <option value="detaille">Détaillé — avec les explications</option>
                     </select></label>
+                <label>Colonnes
+                    <select id="pp-sol-colonnes" class="cfg-input"
+                        aria-label="Colonnes de la feuille de solutions">
+                        <option value="auto">auto</option>
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
+                        <option value="5">5</option>
+                    </select></label>
                 <label>Fichier
                     <select id="pp-sol-ou" class="cfg-input">
                         <option value="ensemble">Un seul PDF, solutions à la fin</option>
@@ -175,6 +185,7 @@ export function ouvrirFicheParcours(chemin) {
     const listeEl = m.querySelector('#pp-etapes');
 
     const modeSol = m.querySelector('#pp-sol-mode');
+    const colSol = m.querySelector('#pp-sol-colonnes');
     const ouSol = m.querySelector('#pp-sol-ou');
     const orientEl = m.querySelector('#pp-orientation');
     const champsEl = m.querySelector('#pp-champs');
@@ -244,6 +255,10 @@ export function ouvrirFicheParcours(chemin) {
         interrogation: interro.checked,
         avecChoix: choixEl.checked,
         modeSolution: modeSol.value,
+        // « auto » laisse le mode décider : cinq colonnes de réponses nues
+        // pour corriger vite, une seule quand chaque ligne porte son
+        // explication. Le professeur tranche quand ça ne lui va pas.
+        colonnesSolutions: colSol.value === 'auto' ? null : Number(colSol.value),
         ouSolution: ouSol.value,
         orientation: orientEl.value,
         champs: champsEl.checked,
@@ -562,7 +577,8 @@ export function ouvrirFicheParcours(chemin) {
         const avecSolutions = o.ouSolution !== 'sans';
         const mise = composerBlocs(exos, o, mesurer);
         const listeSol = (avecSolutions && toutes.length)
-            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections, numerotation: o.numerotation }, mesurer)
+            ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections,
+                numerotation: o.numerotation, colonnesSolutions: o.colonnesSolutions }, mesurer)
             : null;
         const blocsSol = (avecSolutions && aGrilles.length)
             ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false }, mesurer)
@@ -622,6 +638,7 @@ export function ouvrirFicheParcours(chemin) {
     interro.onchange = () => { blocs = null; rendreListe(); rendre(); };
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
+    colSol.onchange = rendre;
     ouSol.onchange = rendre;
     orientEl.onchange = rendre;
     champsEl.onchange = rendre;
@@ -724,7 +741,8 @@ function telecharger(modal, chemin, lire) {
                 if (toutes.length) {
                     const sol = composerSolutions(toutes,
                         { mode: options.modeSolution, orientation: options.orientation, sections,
-                          numerotation: options.numerotation }, mesurer);
+                          numerotation: options.numerotation,
+                          colonnesSolutions: options.colonnesSolutions }, mesurer);
                     sol.pages.forEach((page) => {
                         nouvelle();
                         entetePdf(doc, nom, 'Solutions', '', null, sol.page);

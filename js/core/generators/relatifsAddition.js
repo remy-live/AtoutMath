@@ -300,7 +300,12 @@ export const relatifsAdditionGenerator = {
 
         if (surLEcriture) {
             const { juste, pieges } = ecrituresPossibles(a, b);
+            // Sur la feuille, la consigne est écrite une fois en tête de
+            // l'exercice : la répéter devant chaque calcul mange la place et
+            // n'apprend rien de plus. À l'écran, en revanche, c'est elle qui
+            // dit ce qu'on attend — la question y garde donc sa phrase.
             const enonce = `Écris ce calcul plus simplement : ${complete(a, b)}`;
+            const enoncePapier = `${complete(a, b)} =`;
             const explication = `${complete(a, b)} : on n'écrit jamais deux signes à la suite. `
                 + `Le « + » et le « ${b < 0 ? '−' : '+'} » du deuxième nombre se réduisent à un seul « ${b < 0 ? '−' : '+'} », `
                 + `et les parenthèses ne servent plus à rien. On écrit donc ${juste}.`;
@@ -309,7 +314,10 @@ export const relatifsAdditionGenerator = {
                 generatorId: 'num.relatifs.addition',
                 skillId: SKILL_ECRITURE,
                 answerKind: 'choice',
-                prompt: { text: enonce, html: `<div class="game-question">${enonce}</div>` },
+                prompt: {
+                    text: enonce, papier: enoncePapier,
+                    html: `<div class="game-question">${enonce}</div>`
+                },
                 answer: juste,
                 // MÉLANGÉES : sans cela la bonne écriture serait toujours la
                 // première proposée, et l'élève apprendrait à cliquer en haut

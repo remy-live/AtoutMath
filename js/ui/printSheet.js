@@ -440,6 +440,10 @@ function garamPreviewHtml(item, slot, k, solution) {
 // endroit, comme partout ailleurs dans la fiche.
 
 const RED_LIGNES = ['Je sais que', 'Or', 'Donc'];
+// Combien de lignes d'écriture pour chacune, et où elles commencent.
+const RED_ECRITURE = [2, 3, 2];
+const RED_TOTAL = RED_ECRITURE.reduce((a, b) => a + b, 0);
+const RED_DEBUT = RED_ECRITURE.reduce((acc, n) => (acc.push(acc[acc.length - 1] + n), acc), [0]);
 
 function geometrieRedaction(item, boite) {
     const f = item.meta.figure;
@@ -516,13 +520,25 @@ function geometrieRedaction(item, boite) {
             { ...bout(p2, 1), texte: `(${f.noms.p2})` },
             { ...dedans(perp.x2 + nx * 1.5, perp.y2 + ny * 1.5 + 3.2), texte: `(${f.noms.perp})` }
         ],
-        // Les trois lignes à remplir, sous la figure. « Or » vaut DEUX lignes
-        // de la grille : c'est elle qui porte la propriété entière.
-        // Répartition : Je sais que = 1 part, Or = 2 parts, Donc = 1 part.
-        parts: [0, 1, 3],
-        pas: (boite.h - figH - 6) / 4,
-        ligneY: (i) => boite.y + figH + 5 + [0, 1, 3][i] * ((boite.h - figH - 6) / 4),
-        ligneH: (boite.h - figH - 6) / 4
+        // LES LIGNES À REMPLIR, COMPTÉES UNE PAR UNE.
+        //
+        // On répartissait en « parts » — Je sais que 1, Or 2, Donc 1 — et on
+        // ajoutait ensuite des traits intermédiaires à la louche : les écarts
+        // ne tombaient pas juste, et il restait un blanc entre la propriété et
+        // la conclusion. Ici on dit combien de lignes d'écriture chaque partie
+        // reçoit, on divise la hauteur par leur nombre TOTAL, et tout est
+        // régulier par construction. « Or » en reçoit trois : c'est elle qui
+        // porte la propriété du cours, écrite en entier.
+        lignesEcriture: RED_ECRITURE,
+        pas: (boite.h - figH - 6) / RED_TOTAL,
+        ligneY: (i) => boite.y + figH + 5 + RED_DEBUT[i] * ((boite.h - figH - 6) / RED_TOTAL),
+        railsY: (i) => {
+            const pas = (boite.h - figH - 6) / RED_TOTAL;
+            const y0 = boite.y + figH + 5;
+            return Array.from({ length: RED_ECRITURE[i] - 1 },
+                (_, j) => y0 + (RED_DEBUT[i] + j + 1) * pas);
+        },
+        ligneH: (boite.h - figH - 6) / RED_TOTAL
     };
 }
 
@@ -535,18 +551,13 @@ function redactionPreviewHtml(item, slot, k, solution) {
         const y = g.ligneY(i);
         const rempli = solution ? lignes[i].texte : '';
         // « Or » occupe deux interlignes : c'est elle qui porte la propriété.
-        // « Or » occupe DEUX unités de la grille : il lui faut donc trois
-        // rails d'un demi-pas pour les remplir, sinon il reste une ligne vide
-        // entre la propriété et la conclusion — un blanc qu'on ne sait pas
-        // interpréter quand on écrit dessus.
-        const enPlus = i === 1 ? 3 : 1;
-        const haut = g.ligneH * (i === 1 ? 2 : 1);
+        const haut = g.ligneH * RED_ECRITURE[i];
         // Les lignes d'écriture supplémentaires, comme sur le PDF : l'aperçu
         // doit montrer la place réelle, sinon le professeur découvre à
         // l'impression que la propriété ne tient pas.
-        const rails = solution ? '' : Array.from({ length: enPlus }, (_, j) =>
+        const rails = solution ? '' : g.railsY(i).map(yr =>
             `<div class="fx-red-rail" style="left:${(b.x + 4) * k}px;
-                top:${(y + 0.8 + (j + 1) * g.ligneH * 0.5) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
+                top:${(yr + 0.8) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
         return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${y * k}px;
             width:${b.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
             <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
@@ -614,13 +625,7 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
             doc.setLineWidth(0.25);
             doc.setLineDashPattern([0.7, 1.1], 0);
             doc.line(x0, y + 0.8, b.x + b.w, y + 0.8);
-            // « Or » porte la propriété entière : deux lignes de plus. Les
-            // deux autres en reçoivent une seconde, la conclusion se logeant
-            // souvent juste à côté de sa marge.
-            const enPlus = i === 1 ? 3 : 1;
-            for (let j = 1; j <= enPlus; j++) {
-                doc.line(b.x + 4, y + 0.8 + j * g.ligneH * 0.5, b.x + b.w, y + 0.8 + j * g.ligneH * 0.5);
-            }
+            g.railsY(i).forEach(yr => doc.line(b.x + 4, yr + 0.8, b.x + b.w, yr + 0.8));
             doc.setLineDashPattern([], 0);
         }
     });

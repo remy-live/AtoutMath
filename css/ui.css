@@ -437,6 +437,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    les polices standard d'un PDF ne le connaissent pas. */
 .fx-presque { padding: 0 .05em; }
 
+/* LE TROU À REMPLIR, écrit dans la ligne : impossible qu'il dérive. */
+.fx-trou { border-bottom: 1px dotted #9aa3b2; }
+.fx-trou--champ { background: rgba(99, 102, 241, .10); border-bottom-color: #6366f1; }
+/* Devant des fractions, le trou s'aligne sur le TRAIT de fraction, pas sur la
+   ligne d'écriture : c'est la hauteur où l'œil attend le signe de comparaison. */
+.fx-trou--frac { position: relative; top: -.42em; }
+
 .fq-num { position: absolute; font-weight: 700; color: #1a202c; line-height: 1.05; }
 .fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }
 .fq-choix { position: absolute; color: #5a6270; line-height: 1.05; white-space: pre; }
