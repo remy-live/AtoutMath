@@ -292,6 +292,7 @@ const legacy = [
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
+    ['skweek', 'Skweek (repeindre le sol)', 'skweek', 'engineSkweek'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

@@ -589,6 +589,42 @@ export const calculExercises = [
         instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
     },
     {
+        // SKWEEK. Le jeu de Loriciels : une bête rose repeint le sol en
+        // marchant dessus. Ici chaque dalle porte un calcul et le niveau
+        // annonce sa règle : marcher sur une dalle qui la vérifie la repeint,
+        // marcher sur une autre la fait s'effriter. Soixante dalles, soixante
+        // calculs — et l'élève TRIE en se déplaçant au lieu de répondre.
+        id: 'calc-skweek', status: STATUS.TEST, title: 'Skweek',
+        activityId: 'skweek',
+        sansRevision: true,
+        skills: ['num.calc.tri'],
+        params: { niveau: 1, vies: 3 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de départ',
+                options: [
+                    { value: 1, label: '1 — Les résultats pairs' },
+                    { value: 2, label: '2 — Les multiples de 3' },
+                    { value: 3, label: '3 — Les multiples de 5' },
+                    { value: 4, label: '4 — Plus grands que 30' },
+                    { value: 5, label: '5 — Les multiples de 4' },
+                    { value: 6, label: '6 — Entre 20 et 40' }
+                ],
+                default: 1
+            },
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [
+                    { value: 3, label: '3 vies' },
+                    { value: 5, label: '5 vies' }
+                ],
+                default: 3
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain ; le bouton TIR élimine les blobs verts."
+    },
+    {
         // LE FUTOSHIKI. Un carré latin sous inégalités : le puzzle qui fait de
         // la COMPARAISON un outil de déduction. Généré à solution unique,
         // résoluble par propagation pure — jamais d'essai-erreur.

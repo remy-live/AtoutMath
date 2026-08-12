@@ -312,6 +312,14 @@ const BASE = {
         descriptor: 'Lire et estimer une part d\'aire exprim\u00e9e en pourcentage.',
         lesson: 'Un pourcentage d\'aire, c\'est une PART : 75 %, c\'est trois quarts du terrain. Pour estimer, d\u00e9coupe en morceaux simples \u2014 la moiti\u00e9 fait 50 %, le quart 25 %, le dixi\u00e8me 10 % \u2014 et additionne. Et retiens ce que montre le jeu : couper en deux CE QUI RESTE rapporte de moins en moins. Passer de 50 % \u00e0 75 %, c\'est reconqu\u00e9rir la moiti\u00e9 du reste ; de 75 % \u00e0 87 %, encore la moiti\u00e9 du reste \u2014 chaque pas vaut moiti\u00e9 moins.'
     },
+    'num.calc.tri': {
+        label: 'Trier des r\u00e9sultats selon une r\u00e8gle',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Calculer puis d\u00e9cider si le r\u00e9sultat v\u00e9rifie une r\u00e8gle : parit\u00e9, multiple, comparaison.',
+        lesson: 'Trier demande DEUX gestes, pas un : d\'abord calculer, ensuite comparer \u00e0 la r\u00e8gle. Le pi\u00e8ge est d\'oublier le second \u2014 on calcule 6 \u00d7 4 = 24, on est content, et on oublie de se demander si 24 est un multiple de 5. Les r\u00e8gles utiles se reconnaissent vite : un nombre est PAIR si son chiffre des unit\u00e9s est 0, 2, 4, 6 ou 8 ; multiple de 5 s\'il finit par 0 ou 5 ; multiple de 3 si la somme de ses chiffres l\'est. Ces raccourcis \u00e9vitent de refaire la division \u00e0 chaque fois.'
+    },
     'num.logique.dominos': {
         label: 'Enchaîner des dominos mathématiques',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
