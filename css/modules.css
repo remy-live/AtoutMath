@@ -3303,3 +3303,25 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: 1px solid #8b93a7; border-radius: 1.5px;
     background: rgba(139, 147, 167, .09);
 }
+
+/* --- RÉDIGER UN RAISONNEMENT, SUR LE PAPIER -------------------------------
+   Le seul bloc imprimable qui ne soit pas une grille : une figure, puis trois
+   lignes à écrire. Les couleurs sont celles de l'écran — un élève qui a joué
+   l'exercice reconnaît sa feuille. */
+.fx-red-svg { position: absolute; overflow: visible; }
+.fx-red-para { stroke: #2563eb; stroke-width: .5; stroke-dasharray: 1.6 1.1; fill: none; }
+.fx-red-perp { stroke: #b45309; stroke-width: .5; fill: none; }
+.fx-red-angle { stroke: #b45309; stroke-width: .4; fill: none; }
+.fx-red-nom { font-size: 3.1px; font-weight: 800; fill: #2563eb; }
+.fx-red-svg text:last-of-type { fill: #b45309; }
+.fx-red-ligne {
+    position: absolute; color: #1e293b; font-weight: 400;
+    white-space: nowrap; overflow: hidden;
+}
+.fx-red-ligne b { font-weight: 800; }
+/* Sans réponse, la place à écrire est un filet pointillé, comme sur la fiche. */
+.fx-red-vide {
+    display: inline-block; width: 60%; border-bottom: 1px dotted #a8b0bf;
+    vertical-align: bottom; height: .9em;
+}
+.fx-red-sol { color: #3c4658; }

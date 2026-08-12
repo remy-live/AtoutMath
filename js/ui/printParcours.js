@@ -448,7 +448,12 @@ export function ouvrirFicheParcours(chemin) {
                     questions: e.grille ? [] : tire,
                     grilles: e.grille ? tire : [],
                     colonnes: e.grille ? null : col,
-                    grillesParLigne: e.grille ? col : null
+                    grillesParLigne: e.grille ? col : null,
+                    // Tous les blocs imprimables ne sont pas carrés : une
+                    // figure suivie de trois lignes à rédiger est large et
+                    // basse. Le rendu déclare sa proportion, la mise en page
+                    // la respecte.
+                    grilleRatio: e.grille ? (RENDUS[e.grille].proportions?.h ?? 1) : 1
                 };
             })
             .filter(x => x.questions.length || x.grilles.length);
@@ -458,30 +463,44 @@ export function ouvrirFicheParcours(chemin) {
         const toutes = exos.flatMap(x => x.questions);
         const sections = exos.filter(x => x.questions.length)
             .map(x => ({ titre: x.titre, points: x.points, questions: x.questions }));
+        // LES BLOCS SE CORRIGENT SUR LEUR PROPRE DESSIN. Un sudoku rempli, une
+        // rédaction écrite : leur solution est une figure, pas une ligne dans
+        // une liste. La vue « solutions » est donc en deux temps — la liste des
+        // réponses écrites, puis les blocs redessinés avec leur contenu.
+        const aGrilles = exos.filter(x => x.grilles.length);
         const mise = solutions
             ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections }, mesurer)
             : composerBlocs(exos, o, mesurer);
+        const blocsSol = (solutions && aGrilles.length)
+            ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false }, mesurer)
+            : null;
         const pg = mise.page || pageDe(o.orientation);
 
         const large = apercu.parentElement.clientWidth || 640;
         const k = Math.min(large, 700) / pg.w;
         apercu.style.width = `${pg.w * k}px`;
-        apercu.style.height = `${pg.h * k * mise.pages.length + 12 * Math.max(0, mise.pages.length - 1)}px`;
 
         const nom = chemin.name || 'Parcours';
         const sousTitre = solutions ? 'Solutions' : (o.interrogation ? 'Interrogation' : '');
         const note = (o.interrogation && !solutions) ? { sur: o.noteSur } : null;
-        apercu.innerHTML = mise.pages.map((page, i) => `
+        // Les pages à montrer : celles de la liste, puis celles des blocs.
+        const vues = [
+            ...mise.pages.map(p => ({ page: p, opts: mise.opts, liste: solutions })),
+            ...(blocsSol ? blocsSol.pages.map(p => ({ page: p, opts: blocsSol.opts, liste: false })) : [])
+        ];
+        apercu.style.height = `${pg.h * k * vues.length + 12 * Math.max(0, vues.length - 1)}px`;
+        apercu.innerHTML = vues.map((v, i) => `
             <div class="fq-page" style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
                 ${apercuEntete(k, nom, sousTitre, i === 0 ? note : null, pg)}
-                ${solutions ? apercuSolutions(page, k, mise.opts) : apercuItems(page, k, mise.opts)}
+                ${v.liste ? apercuSolutions(v.page, k, v.opts) : apercuItems(v.page, k, v.opts)}
             </div>`).join('');
 
         const nbGrilles = exos.reduce((s, x) => s + x.grilles.length, 0);
         const morceaux = [];
         if (toutes.length) morceaux.push(`${toutes.length} question${toutes.length > 1 ? 's' : ''}`);
         if (nbGrilles) morceaux.push(`${nbGrilles} grille${nbGrilles > 1 ? 's' : ''}`);
-        morceaux.push(`${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`);
+        const nbPages = mise.pages.length + (blocsSol ? blocsSol.pages.length : 0);
+        morceaux.push(`${nbPages} page${nbPages > 1 ? 's' : ''}`);
         morceaux.push(o.orientation === 'paysage' ? 'paysage' : 'portrait');
         totalEl.textContent = morceaux.join(' · ');
 
@@ -492,7 +511,7 @@ export function ouvrirFicheParcours(chemin) {
               + `et la case « … / ${o.noteSur} » en haut de la première page.`
               + (total === o.noteSur ? '' : ` ⚠️ Le barème totalise ${total} points pour une note sur ${o.noteSur}.`)
             : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
-        derniers = { exos, toutes, note, total, page: pg, sections };
+        derniers = { exos, toutes, note, total, page: pg, sections, aGrilles };
     };
     let derniers = null;
 
@@ -520,6 +539,7 @@ export function ouvrirFicheParcours(chemin) {
         note: derniers ? derniers.note : null,
         total: derniers ? derniers.total : 0,
         sections: derniers ? derniers.sections : [],
+        aGrilles: derniers ? derniers.aGrilles : [],
         options: options(), mesurer
     }));
 
@@ -576,7 +596,7 @@ function pdfSolutions(pdf, page, o) {
 function telecharger(modal, chemin, lire) {
     const btn = modal.querySelector('#pp-dl');
     btn.disabled = true;
-    const { exos, toutes, note, total, options, mesurer, sections } = lire();
+    const { exos, toutes, note, total, options, mesurer, sections, aGrilles } = lire();
     if (!exos.length) { btn.disabled = false; return; }
     chargerJsPDF()
         .then(jsPDF => {
@@ -602,20 +622,33 @@ function telecharger(modal, chemin, lire) {
             });
 
             const dessinerSolutions = (doc, premiere) => {
-                const sol = composerSolutions(toutes,
-                    { mode: options.modeSolution, orientation: options.orientation, sections }, mesurer);
-                sol.pages.forEach((page, i) => {
-                    if (!premiere || i) doc.addPage('a4', sens);
-                    entetePdf(doc, nom, sol.pages.length > 1 ? `Solutions ${i + 1}/${sol.pages.length}` : 'Solutions',
-                        '', null, sol.page);
-                    pdfSolutions(doc, page, sol.opts);
-                });
+                let posee = false;
+                const nouvelle = () => { if (premiere && !posee) { posee = true; return; } doc.addPage('a4', sens); };
+                if (toutes.length) {
+                    const sol = composerSolutions(toutes,
+                        { mode: options.modeSolution, orientation: options.orientation, sections }, mesurer);
+                    sol.pages.forEach((page) => {
+                        nouvelle();
+                        entetePdf(doc, nom, 'Solutions', '', null, sol.page);
+                        pdfSolutions(doc, page, sol.opts);
+                    });
+                }
+                // Les blocs corrigés : le sudoku rempli, la rédaction écrite.
+                if (aGrilles.length) {
+                    const bs = composerBlocs(aGrilles,
+                        { ...options, solution: true, interrogation: false }, mesurer);
+                    bs.pages.forEach((page) => {
+                        nouvelle();
+                        entetePdf(doc, nom, 'Solutions', '', null, bs.page);
+                        pdfItems(doc, page, bs.opts);
+                    });
+                }
             };
 
-            if (options.ouSolution === 'ensemble' && toutes.length) dessinerSolutions(pdf, false);
+            if (options.ouSolution === 'ensemble' && (toutes.length || aGrilles.length)) dessinerSolutions(pdf, false);
             pdf.save(`${base}${options.interrogation ? '-interrogation' : ''}.pdf`);
 
-            if (options.ouSolution === 'separe' && toutes.length) {
+            if (options.ouSolution === 'separe' && (toutes.length || aGrilles.length)) {
                 const solPdf = neuf();
                 dessinerSolutions(solPdf, true);
                 solPdf.save(`${base}-solutions-${options.modeSolution}.pdf`);

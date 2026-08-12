@@ -10,6 +10,10 @@ export const geometrieExercises = [
     {
         id: 'geo-redaction-para-perp', status: STATUS.TEST, title: 'Rédiger : Parallèles et Perpendiculaires',
         activityId: 'redaction',
+        // Le générateur ne sert PAS à l'écran (l'activité est autonome) : il
+        // sert au papier. Rédiger une justification, c'est écrire à la main —
+        // c'est l'exercice qui gagne le plus à sortir de l'écran.
+        generatorId: 'geo.redaction', printable: 'redaction',
         params: {},
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Une justification de géométrie a toujours trois lignes : JE SAIS QUE, OR, DONC. On les écrit une par une. D'abord tu remets la propriété du cours dans l'ordre, puis tu lis la figure — les droites en POINTILLÉS sont parallèles — puis la propriété s'écrit pendant que la figure montre de quoi elle parle, et enfin tu conclus."

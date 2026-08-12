@@ -99,7 +99,7 @@ export function apercuItems(page, k, o) {
             if (r) {
                 html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
                     font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
-                html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, k, false);
+                html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, k, !!o.solution);
             }
             continue;
         }
@@ -258,7 +258,7 @@ export function pdfItems(pdf, page, o) {
                 pdf.setFontSize(o.tailleConsigne * 2.83);
                 pdf.setTextColor(...ENCRE.gris);
                 pdf.text(`${it.n}.`, it.x, it.y - 1.2);
-                r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, false);
+                r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, !!o.solution);
             }
             continue;
         }

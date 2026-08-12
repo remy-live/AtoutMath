@@ -326,13 +326,18 @@ export function composerBlocs(exos, opts, mesurer) {
                 (zone.w - gap * (parLigne - 1)) / parLigne,
                 o.grilleMax || 78
             );
+            // TOUS LES BLOCS NE SONT PAS CARRÉS. Une grille l'est ; une figure
+            // suivie de trois lignes à rédiger est large et basse. Le bloc
+            // déclare sa proportion, et la hauteur s'en déduit.
+            const ratio = Number(exo.grilleRatio) > 0 ? Number(exo.grilleRatio) : 1;
+            const hauteurBloc2 = cote * ratio;
             colonnesParExo.push(parLigne);
             const consigneLignes = exo.consigne
                 ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)
                 : [];
             const enteteH = o.bandeauH + consigneLignes.length * (o.tailleConsigne * 1.45) + o.apresBandeau;
             if (iExo > 0 && page.items.length && y > zone.y) y += o.entreExercices - o.entreQuestions;
-            if (page.items.length && y + enteteH + cote > basPage) nouvellePage();
+            if (page.items.length && y + enteteH + hauteurBloc2 > basPage) nouvellePage();
 
             page.items.push({
                 type: 'exo', n: iExo + 1, suite: false,
@@ -348,7 +353,7 @@ export function composerBlocs(exos, opts, mesurer) {
 
             for (let debut = 0; debut < grilles.length; debut += parLigne) {
                 const rangee = grilles.slice(debut, debut + parLigne);
-                if (y + cote + o.entreQuestions > basPage) {
+                if (y + hauteurBloc2 + o.entreQuestions > basPage) {
                     nouvellePage();
                     page.items.push({
                         type: 'exo', n: iExo + 1, suite: true,
@@ -368,12 +373,12 @@ export function composerBlocs(exos, opts, mesurer) {
                     page.items.push({
                         type: 'grille', n: nbQuestions, cle: g.cle, item: g.item,
                         x: gx, y, taille: cote,
-                        // La boîte complète, pour les treillis larges (Garam) :
-                        // un carré y donnerait des cases minuscules.
-                        boite: { x: gx, y, w: cote, h: cote }
+                        // La boîte complète, pour les treillis larges (Garam)
+                        // et les blocs qui ne sont pas carrés du tout.
+                        boite: { x: gx, y, w: cote, h: hauteurBloc2 }
                     });
                 });
-                y += cote + o.entreQuestions;
+                y += hauteurBloc2 + o.entreQuestions;
             }
             return;
         }

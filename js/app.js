@@ -712,6 +712,32 @@ async function buildDiscoveryPath() {
 }
 
 /**
+ * LE PARCOURS « TOUT SUR PAPIER » : un exemplaire de CHAQUE exercice qui sait
+ * s'imprimer, dans l'ordre du catalogue.
+ *
+ * Il sert à vérifier la fiche d'un seul coup d'œil — orientation, colonnes,
+ * champs remplissables, corrigés — sans composer la même séance à la main à
+ * chaque essai. Il se construit à partir du CATALOGUE et non d'une liste
+ * écrite ici : un exercice imprimable ajouté demain y entrera tout seul, et
+ * aucun exercice retiré n'y laissera un trou.
+ */
+async function buildPrintablePath() {
+    const [{ makeStep, makePath }, { exercices }, { getGenerator }] = await Promise.all([
+        import('./core/path.js'), import('./data/catalog.js'), import('./core/registry.js')
+    ]);
+    const surPapier = exercices.filter(e => {
+        if (e.printable) return true;
+        const gen = e.generatorId ? getGenerator(e.generatorId) : null;
+        return !!(gen && gen.ecrit);
+    });
+    // Peu de questions par exercice : la fiche doit rester feuilletable. Les
+    // exercices à grilles en demandent encore moins — une grille occupe le
+    // quart d'une page.
+    const steps = surPapier.map(e => makeStep(e.id, {}, { nbItems: e.printable ? 2 : 6, threshold: 1 }));
+    return makePath(`Tout sur papier (${steps.length} exercices)`, steps);
+}
+
+/**
  * Au premier lancement (aucun parcours sur ce poste), un parcours d'exemple
  * est créé d'office : l'élève le trouve dans « Mon Parcours » sous « Parcours
  * du professeur », et le professeur dans 📂 Mes Parcours — de quoi tout
@@ -721,6 +747,19 @@ async function seedExamplePath() {
     if (state.teacherPaths.length) return;
     const path = await buildDiscoveryPath();
     state.saveTeacherPath(path.name, path);
+    await semerParcoursPapier();
+}
+
+/**
+ * Pose (ou remet à jour) le parcours « Tout sur papier ». Son contenu suit le
+ * catalogue : on le RECALCULE au lieu de le laisser vieillir, sinon un
+ * exercice imprimable ajouté après coup manquerait à la vérification.
+ */
+async function semerParcoursPapier() {
+    const papier = await buildPrintablePath();
+    const ancien = state.teacherPaths.find(p => /^Tout sur papier/.test(p.name));
+    if (ancien) state.updateTeacherPath(ancien.id, papier.name, papier);
+    else state.saveTeacherPath(papier.name, papier);
 }
 
 async function generateSampleData() {
@@ -728,6 +767,8 @@ async function generateSampleData() {
         const path = await buildDiscoveryPath();
         state.saveTeacherPath(path.name, path);
     }
+
+    await semerParcoursPapier();
 
     // Assigné à l'élève : la carte des mondes de « Mon Parcours » se remplit
     // comme si un code avait été saisi.

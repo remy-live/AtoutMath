@@ -17,6 +17,7 @@
 
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
+import { pourPdf } from './ficheRendu.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -366,7 +367,175 @@ function garamPreviewHtml(item, slot, k, solution) {
 // Le gabarit (page, en-tête, aperçu, page 2 des solutions) est commun ; chaque
 // exercice imprimable ne fournit que sa consigne et le dessin de SA grille.
 
+// --- Rédiger un raisonnement ---------------------------------------------------
+//
+// Le seul « imprimable » qui ne soit pas une grille : une FIGURE, puis trois
+// lignes à écrire. La géométrie est calculée une fois, en millimètres, et
+// servie aux deux rendus — l'aperçu HTML et le PDF tombent donc au même
+// endroit, comme partout ailleurs dans la fiche.
+
+const RED_LIGNES = ['Je sais que', 'Or', 'Donc'];
+
+function geometrieRedaction(item, boite) {
+    const f = item.meta.figure;
+    // La figure prend le haut de la boîte, les trois lignes le bas. Une
+    // justification s'écrit en toutes lettres : il lui faut de la place.
+    const figH = Math.min(boite.h * 0.46, boite.w * 0.38);
+    const cx = boite.x + boite.w / 2;
+    const cy = boite.y + figH / 2;
+    const a = f.inclinaison * Math.PI / 180;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const nx = -dy, ny = dx;
+    // LA FIGURE TIENT DANS SA BOÎTE, quelle que soit son inclinaison. Calculée
+    // à taille fixe, elle débordait sur le bloc voisin dès qu'elle penchait :
+    // « (d₁) » de la première figure se posait sur la deuxième. On calcule donc
+    // l'encombrement réel — demi-longueur projetée sur chaque axe, plus la
+    // place d'une étiquette — et on met le tout à l'échelle.
+    const MARGE_NOM = 7;
+    let L = boite.w * 0.34, e = figH * 0.26;
+    const demiW = L * Math.abs(dx) + e * Math.abs(nx) + MARGE_NOM;
+    const demiH = L * Math.abs(dy) + e * Math.abs(ny) + MARGE_NOM;
+    const facteur = Math.min(
+        (boite.w / 2 - 1) / demiW,
+        (figH / 2 - 1) / demiH,
+        1
+    );
+    L *= facteur; e *= facteur;
+
+    const droite = (ox, oy) => ({
+        x1: cx + ox - dx * L, y1: cy + oy - dy * L,
+        x2: cx + ox + dx * L, y2: cy + oy + dy * L
+    });
+    const p1 = droite(nx * -e, ny * -e);
+    const p2 = droite(nx * e, ny * e);
+    const t = (f.ou - 50) / 100 * 1.2 * L;
+    const px = cx + dx * t, py = cy + dy * t;
+    const debord = e * 0.85;
+    const perp = {
+        x1: px - nx * (e + debord), y1: py - ny * (e + debord),
+        x2: px + nx * (e + debord), y2: py + ny * (e + debord)
+    };
+    // L'angle droit sur la PREMIÈRE parallèle : c'est une donnée de l'énoncé.
+    const jx = px - nx * e, jy = py - ny * e;
+    const c = Math.min(3.2, e * 0.35);
+    const angle = [
+        { x: jx + dx * c, y: jy + dy * c },
+        { x: jx + dx * c + nx * c, y: jy + dy * c + ny * c },
+        { x: jx + nx * c, y: jy + ny * c }
+    ];
+    // Les noms au bout le plus loin du croisement, comme à l'écran.
+    const loin = f.ou > 50 ? -1 : 1;
+    // Chaque nom est RAMENÉ dans la boîte : à moitié coupé, il ne nomme rien,
+    // et posé sur le bloc voisin il nomme la mauvaise figure.
+    const dedans = (x, y) => ({
+        x: Math.min(boite.x + boite.w - 4.5, Math.max(boite.x + 4.5, x)),
+        y: Math.min(boite.y + figH - 0.5, Math.max(boite.y + 3.2, y))
+    });
+    const bout = (d, sens) => {
+        const bx = loin > 0 ? d.x2 - 3 * dx : d.x1 + 3 * dx;
+        const by = loin > 0 ? d.y2 - 3 * dy : d.y1 + 3 * dy;
+        return dedans(bx + nx * 3.6 * sens, by + ny * 3.6 * sens + 1.1);
+    };
+    return {
+        p1, p2, perp, angle,
+        noms: [
+            { ...bout(p1, -1), texte: `(${f.noms.p1})` },
+            { ...bout(p2, 1), texte: `(${f.noms.p2})` },
+            { ...dedans(perp.x2 + nx * 1.5, perp.y2 + ny * 1.5 + 3.2), texte: `(${f.noms.perp})` }
+        ],
+        // Les trois lignes à remplir, sous la figure.
+        ligneY: (i) => boite.y + figH + 5 + i * ((boite.h - figH - 6) / 3),
+        ligneH: (boite.h - figH - 6) / 3
+    };
+}
+
+function redactionPreviewHtml(item, slot, k, solution) {
+    const b = slot.boite;
+    const g = geometrieRedaction(item, b);
+    const trait = (d, cls) => `<line x1="${d.x1}" y1="${d.y1}" x2="${d.x2}" y2="${d.y2}" class="${cls}" />`;
+    const lignes = item.meta.lignes;
+    const texteLignes = RED_LIGNES.map((et, i) => {
+        const y = g.ligneY(i);
+        const rempli = solution ? lignes[i].texte : '';
+        return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${y * k}px;
+            width:${b.w * k}px; font-size:${3.2 * k}px">
+            <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>`;
+    }).join('');
+    return `<div class="fx-red" style="left:0; top:0">
+        <svg class="fx-red-svg" style="left:${b.x * k}px; top:${b.y * k}px;
+             width:${b.w * k}px; height:${b.h * k}px"
+             viewBox="${b.x} ${b.y} ${b.w} ${b.h}">
+            ${trait(g.p1, 'fx-red-para')}${trait(g.p2, 'fx-red-para')}${trait(g.perp, 'fx-red-perp')}
+            <path d="M ${g.angle.map(p => `${p.x} ${p.y}`).join(' L ')}" class="fx-red-angle" />
+            ${g.noms.map(n => `<text x="${n.x}" y="${n.y}" class="fx-red-nom" text-anchor="middle">${n.texte}</text>`).join('')}
+        </svg>${texteLignes}</div>`;
+}
+
+function dessinerRedactionPdf(doc, item, slot, solution) {
+    const b = slot.boite;
+    const g = geometrieRedaction(item, b);
+
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(0.5);
+    doc.setLineDashPattern([1.6, 1.1], 0);
+    doc.line(g.p1.x1, g.p1.y1, g.p1.x2, g.p1.y2);
+    doc.line(g.p2.x1, g.p2.y1, g.p2.x2, g.p2.y2);
+    doc.setLineDashPattern([], 0);
+
+    doc.setDrawColor(180, 83, 9);
+    doc.line(g.perp.x1, g.perp.y1, g.perp.x2, g.perp.y2);
+    doc.setLineWidth(0.4);
+    doc.line(g.angle[0].x, g.angle[0].y, g.angle[1].x, g.angle[1].y);
+    doc.line(g.angle[1].x, g.angle[1].y, g.angle[2].x, g.angle[2].y);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    g.noms.forEach((n, i) => {
+        doc.setTextColor(...(i === 2 ? [180, 83, 9] : [37, 99, 235]));
+        doc.text(pourPdf(n.texte), n.x, n.y, { align: 'center' });
+    });
+
+    // Les trois lignes. Sans réponse, un filet pointillé à remplir ; avec, la
+    // phrase rédigée — c'est la feuille de correction.
+    const lignes = item.meta.lignes;
+    RED_LIGNES.forEach((et, i) => {
+        const y = g.ligneY(i);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        const chapeau = `${et} : `;
+        doc.text(chapeau, b.x, y);
+        const x0 = b.x + doc.getTextWidth(chapeau);
+        doc.setFont('helvetica', 'normal');
+        if (solution) {
+            doc.setFontSize(8.2);
+            doc.setTextColor(60, 70, 88);
+            const mots = doc.splitTextToSize(pourPdf(lignes[i].texte), b.x + b.w - x0);
+            mots.slice(0, 2).forEach((ligne, j) => doc.text(ligne, x0, y + j * 3.6));
+        } else {
+            doc.setDrawColor(168, 176, 191);
+            doc.setLineWidth(0.25);
+            doc.setLineDashPattern([0.7, 1.1], 0);
+            doc.line(x0, y + 0.8, b.x + b.w, y + 0.8);
+            // Une justification tient rarement sur une ligne : on en donne deux.
+            if (i !== 2) doc.line(b.x + 4, y + 4.6, b.x + b.w, y + 4.6);
+            doc.setLineDashPattern([], 0);
+        }
+    });
+}
+
 export const RENDUS = {
+    redaction: {
+        titre: 'Rédiger un raisonnement',
+        consigne: () => 'Les droites en pointillés sont parallèles. Justifie la perpendicularité '
+            + 'demandée en trois lignes. Propriété : si deux droites sont parallèles, '
+            + 'toute perpendiculaire à l\'une est perpendiculaire à l\'autre.',
+        previewGrille: redactionPreviewHtml,
+        pdfGrille: dessinerRedactionPdf,
+        // Ce bloc n'est pas carré : il lui faut la largeur d'une colonne et la
+        // hauteur d'une figure plus trois lignes d'écriture.
+        proportions: { w: 1, h: 0.72 }
+    },
     sudoku: {
         titre: 'Sudoku',
         consigne: (items) => {

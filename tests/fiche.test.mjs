@@ -507,3 +507,18 @@ test('aucune page vide ne se glisse dans la fiche', () => {
         mise.pages.forEach((p, i) => assert.ok(p.items.length > 0, `page ${i + 1} vide avec ${n} questions`));
     }
 });
+
+test('un bloc peut ne pas être carré, et il tient quand même dans la page', () => {
+    // Une figure suivie de trois lignes à rédiger est large et basse : le bloc
+    // déclare sa proportion, la mise en page la respecte.
+    const blocs = Array.from({ length: 6 }, () => ({ cle: 'redaction', item: {} }));
+    const mise = composerBlocs([{ titre: 'Rédiger', grilles: blocs, grilleRatio: 0.72 }], {}, mesurer);
+    const items = mise.pages.flatMap(p => p.items).filter(it => it.type === 'grille');
+    assert.equal(items.length, 6);
+    for (const it of items) {
+        assert.ok(Math.abs(it.boite.h / it.boite.w - 0.72) < 0.001,
+            `proportion perdue : ${it.boite.h} / ${it.boite.w}`);
+        assert.ok(it.boite.y + it.boite.h <= mise.zone.y + mise.zone.h + 0.01, 'un bloc déborde du bas');
+        assert.ok(it.boite.x + it.boite.w <= mise.zone.x + mise.zone.w + 0.01, 'un bloc déborde à droite');
+    }
+});

@@ -27,6 +27,7 @@ import { scratchGenerator } from '../generators/scratch.js';
 import { horlogeGenerator } from '../generators/horloge.js';
 import { relatifsGenerator } from '../generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
+import { redactionGenerator } from '../generators/redaction.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -41,7 +42,7 @@ import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
-    relatifsAdditionGenerator
+    relatifsAdditionGenerator, redactionGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
