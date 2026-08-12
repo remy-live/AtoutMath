@@ -290,6 +290,7 @@ const legacy = [
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique'],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
+    ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

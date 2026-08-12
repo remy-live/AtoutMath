@@ -304,6 +304,14 @@ const BASE = {
         descriptor: 'Compl\u00e9ter un carr\u00e9 latin en s\'appuyant sur des in\u00e9galit\u00e9s entre cases voisines.',
         lesson: 'Chaque chiffre appara\u00eet UNE fois par ligne et par colonne, et les signes < et > doivent \u00eatre respect\u00e9s. Le secret : un signe \u00c9LIMINE. La case du petit c\u00f4t\u00e9 ne peut jamais porter le plus grand chiffre, celle du grand c\u00f4t\u00e9 jamais le 1. Et les signes se PROPAGENT : dans une cha\u00eene a < b < c, la case a perd ses deux plus grands chiffres. Commence toujours par les bouts des cha\u00eenes de signes.'
     },
+    'mes.aire.proportion': {
+        label: 'Proportions d\'aire et pourcentages',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Lire et estimer une part d\'aire exprim\u00e9e en pourcentage.',
+        lesson: 'Un pourcentage d\'aire, c\'est une PART : 75 %, c\'est trois quarts du terrain. Pour estimer, d\u00e9coupe en morceaux simples \u2014 la moiti\u00e9 fait 50 %, le quart 25 %, le dixi\u00e8me 10 % \u2014 et additionne. Et retiens ce que montre le jeu : couper en deux CE QUI RESTE rapporte de moins en moins. Passer de 50 % \u00e0 75 %, c\'est reconqu\u00e9rir la moiti\u00e9 du reste ; de 75 % \u00e0 87 %, encore la moiti\u00e9 du reste \u2014 chaque pas vaut moiti\u00e9 moins.'
+    },
     'num.logique.dominos': {
         label: 'Enchaîner des dominos mathématiques',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
