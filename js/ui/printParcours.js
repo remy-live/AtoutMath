@@ -30,7 +30,7 @@ import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../cor
 import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
-    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, ENCRE
+    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE
 } from './ficheRendu.js';
 
 /**
@@ -770,7 +770,19 @@ function telecharger(modal, chemin, lire) {
                 solPdf.save(`${base}-solutions-${options.modeSolution}.pdf`);
             }
         })
-        .catch(() => window.appConfirm('PDF indisponible',
-            'La bibliothèque de PDF n\'a pas pu être chargée (connexion ?). Réessaie une fois en ligne.', null))
+        // UN SEUL MESSAGE POUR DEUX PANNES TRÈS DIFFÉRENTES, c'était trompeur :
+        // « la bibliothèque n'a pas pu être chargée » s'affichait aussi quand
+        // elle était là et que c'est la FABRICATION de la fiche qui avait
+        // échoué. On distingue, et on écrit l'erreur dans la console — c'est la
+        // seule chose qui permette ensuite de la corriger.
+        .catch((err) => {
+            console.error('[fiche] échec du PDF', err);
+            const chargee = !!(window.jspdf && window.jspdf.jsPDF);
+            import('./modal.js').then(m => m.showAlert(chargee
+                ? 'La fiche n\'a pas pu être fabriquée : ' + (err && err.message ? err.message : 'erreur inconnue')
+                    + '. Le détail est dans la console (bouton 🐞).'
+                : 'Le générateur de PDF n\'a pas pu être chargé. Recharge la page : la bibliothèque '
+                    + 'est servie avec l\'application, elle ne dépend d\'aucun site extérieur.'));
+        })
         .finally(() => { btn.disabled = false; });
 }

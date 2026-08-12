@@ -19,16 +19,20 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=121">
-    <link rel="stylesheet" href="css/layout.css?v=121">
-    <link rel="stylesheet" href="css/ui.css?v=121">
-    <link rel="stylesheet" href="css/games.css?v=121">
-    <link rel="stylesheet" href="css/components.css?v=121">
-    <link rel="stylesheet" href="css/modules.css?v=121">
-    <!-- LocalForage for storage -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
-    <!-- Canvas Confetti for gamification -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="css/base.css?v=123">
+    <link rel="stylesheet" href="css/layout.css?v=123">
+    <link rel="stylesheet" href="css/ui.css?v=123">
+    <link rel="stylesheet" href="css/games.css?v=123">
+    <link rel="stylesheet" href="css/components.css?v=123">
+    <link rel="stylesheet" href="css/modules.css?v=123">
+    <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
+         Une classe derrière un filtre d'établissement, un réseau qui tombe, un
+         bloqueur de publicité : il suffisait de l'un des trois pour que le
+         stockage retombe en mémoire et que le PDF devienne impossible à
+         fabriquer. Une application qui se veut utilisable hors ligne ne peut
+         pas dépendre d'un serveur qu'elle ne maîtrise pas. -->
+    <script src="vendor/localforage/localforage.min.js"></script>
+    <script src="vendor/confetti/confetti.browser.js"></script>
 </head>
 
 <body class="">

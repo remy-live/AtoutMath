@@ -23,7 +23,7 @@ import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
 import {
-    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, ENCRE
+    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE
 } from './ficheRendu.js';
 
 /** Les questions de la fiche, tirées du générateur avec les réglages courants. */
@@ -317,8 +317,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
                 pdf.save(`${exo.id}-${nb}-questions.pdf`);
                 if (sol && cible !== pdf) cible.save(`${exo.id}-solutions-${modeSolution}.pdf`);
             })
-            .catch(() => window.appConfirm('PDF indisponible',
-                'La bibliothèque de PDF n\'a pas pu être chargée (connexion ?). Réessaie une fois en ligne.', null))
+            .catch(() => import('./modal.js').then(m => m.showAlert(
+                'Le générateur de PDF n\'a pas pu être chargé. Recharge la page : '
+                + 'la bibliothèque est servie avec l\'application, elle ne dépend d\'aucun site extérieur.')))
             .finally(() => { btnDl.disabled = false; });
     };
 

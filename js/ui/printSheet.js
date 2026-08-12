@@ -66,8 +66,15 @@ export function chargerJsPDF() {
     if (!jsPDFPromise) {
         jsPDFPromise = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            s.onload = () => resolve(window.jspdf.jsPDF);
+            // SERVIE AVEC L'APPLICATION, plus depuis un CDN. Le professeur qui
+            // prépare sa fiche derrière le filtre de son établissement voyait
+            // « PDF indisponible » sans rien pouvoir y faire — et la fiche est
+            // justement ce qu'on emporte quand le réseau n'est pas là.
+            s.src = './vendor/jspdf/jspdf.umd.min.js';
+            s.onload = () => {
+                if (window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
+                else { jsPDFPromise = null; reject(new Error('jsPDF illisible')); }
+            };
             s.onerror = () => { jsPDFPromise = null; reject(new Error('jsPDF inaccessible')); };
             document.head.appendChild(s);
         });
@@ -896,9 +903,9 @@ export function ouvrirFicheModal(exo, params) {
                 doc.save(`${exo.printable}-${cols}x${rows}.pdf`);
             })
             .catch(() => {
-                window.appConfirm('PDF indisponible',
-                    'La bibliothèque de PDF n\'a pas pu être chargée (connexion ?). Réessaie une fois en ligne.',
-                    null);
+                import('./modal.js').then(m => m.showAlert(
+                'Le générateur de PDF n\'a pas pu être chargé. Recharge la page : '
+                + 'la bibliothèque est servie avec l\'application, elle ne dépend d\'aucun site extérieur.'));
             })
             .finally(() => { btnDl.disabled = false; });
     };

@@ -9,20 +9,31 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v60';
+const CACHE = 'atoutmath-v62';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=121',
-    './css/layout.css?v=121',
-    './css/ui.css?v=121',
-    './css/games.css?v=121',
-    './css/components.css?v=121',
-    './css/modules.css?v=121',
+    './css/base.css?v=123',
+    './css/layout.css?v=123',
+    './css/ui.css?v=123',
+    './css/games.css?v=123',
+    './css/components.css?v=123',
+    './css/modules.css?v=123',
     './icons/icon-192.png',
-    './icons/icon-512.png'
+    './icons/icon-512.png',
+    // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans
+    // le NOYAU et non chargées à la demande : c'est hors ligne qu'on en a le
+    // plus besoin — le stockage au démarrage, et le PDF quand on prépare une
+    // fiche là où le réseau ne suit pas.
+    './vendor/localforage/localforage.min.js',
+    './vendor/confetti/confetti.browser.js',
+    './vendor/jspdf/jspdf.umd.min.js',
+    './vendor/outfit/outfit.css',
+    './vendor/outfit/outfit-latin-400-normal.woff2',
+    './vendor/outfit/outfit-latin-700-normal.woff2',
+    './vendor/outfit/outfit-latin-800-normal.woff2'
 ];
 
 self.addEventListener('install', (e) => {

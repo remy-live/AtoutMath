@@ -1,5 +1,8 @@
 /* --- VARIABLES --- */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* La police est servie AVEC l'application (vendor/outfit) et non depuis Google
+   Fonts : derrière le filtre d'un établissement ou hors ligne, la requête
+   échouait et toute l'interface changeait de tête. */
+@import url('../vendor/outfit/outfit.css');
 
 :root {
     --bg-app: #f8fafc; --bg-panel: #ffffff; --bg-hover: #f1f5f9;
