@@ -30,6 +30,7 @@ import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
+import { dominosGenerator } from '../generators/dominos.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -44,7 +45,7 @@ import { logigrammeGenerator } from '../generators/logigramme.js';
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
-    relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator
+    relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -278,6 +279,7 @@ const legacy = [
     ['dictee', 'Dictée de nombres', 'dictee', 'engineDictee'],
     ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction'],
     ['logigramme', 'Logigramme', 'logigramme', 'engineLogigramme'],
+    ['dominos', 'Dominos mathématiques', 'dominos', 'engineDominos'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

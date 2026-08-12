@@ -3381,6 +3381,20 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     align-items: center; justify-content: center; color: #1a202c;
 }
 .fx-logi-bloc { position: absolute; border: 1.4px solid #1a202c; pointer-events: none; }
+/* --- La planche de dominos à découper ------------------------------------- */
+.fx-dom-piece {
+    position: absolute; display: flex; align-items: stretch; box-sizing: border-box;
+    border: 1.4px solid #1a202c; border-radius: 3px; background: #fff; overflow: hidden;
+}
+.fx-dom-demi {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    color: #1a202c; font-weight: 700; line-height: 1.15; padding: 1px 2px; box-sizing: border-box;
+}
+.fx-dom-demi--g { border-right: 1.4px solid #1a202c; }
+.fx-dom-fleche {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    color: #6b7280; font-weight: 800;
+}
 .fx-red-rail--champ { border-bottom-color: #6366f1; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------

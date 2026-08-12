@@ -280,6 +280,14 @@ const BASE = {
         descriptor: 'Croiser des indices dans une grille et n\'écrire que ce qui est certain.',
         lesson: 'Deux règles font tout, et il n\'y en a pas d\'autres. UNE VALEUR NE SERT QU\'UNE FOIS : dès qu\'une case est cochée, toute sa ligne et toute sa colonne se barrent. S\'IL NE RESTE QU\'UNE CASE non barrée dans une ligne, c\'est elle — même si aucun indice ne le dit. La troisième idée est celle qui fait la différence : quand deux cases parlent de la MÊME personne, tout ce qui vaut pour l\'une vaut pour l\'autre. « Celui qui a pris le chocolat a neuf ans » et « Léa a neuf ans » donnent ensemble « Léa a pris le chocolat », sans que personne l\'ait écrit. On ne devine jamais : si rien ne s\'impose, c\'est qu\'on n\'a pas encore relu le bon indice.'
     },
+    'num.logique.dominos': {
+        label: 'Enchaîner des dominos mathématiques',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Poser bout à bout des pièces où chaque question touche sa réponse.',
+        lesson: 'Une pièce de dominos porte DEUX MOITIÉS, et elles ne disent pas la même chose : à droite une question, à gauche la réponse d\'une AUTRE question. On ne cherche donc jamais au hasard. On lit le bout ouvert de la chaîne — c\'est une question —, on la calcule dans sa tête, et on cherche ce résultat À GAUCHE d\'une pièce de la réserve. Il n\'y en a qu\'une : deux questions n\'ont jamais la même réponse dans un jeu de dominos bien fait. Et c\'est ce qui rend le jeu auto-correctif — si la dernière pièce porte ARRIVÉE et qu\'il ne reste rien en main, tout est juste, sans que personne ait à le vérifier. Quand on bloque, ce n\'est pas la bonne pièce qu\'il faut chercher : c\'est le calcul du bout ouvert qu\'il faut refaire.'
+    },
     'num.logique.demineur': {
         label: 'Déduction certaine (démineur)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

@@ -1,6 +1,9 @@
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
 import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
+// Les dominos empruntent leurs questions aux autres notions : la liste des
+// sources est tenue là où elle est vérifiée, pas recopiée ici.
+import { SOURCES as SOURCES_DOMINOS } from '../core/generators/dominos.js';
 
 // `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
 // pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
@@ -584,6 +587,39 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
+    },
+    {
+        // LES DOMINOS. Le jeu ne fabrique aucune question : il emprunte une
+        // notion du catalogue et en fait une chaîne. Un seul exercice, dix-sept
+        // jeux de dominos — et le jour où l'on ajoute un générateur qui écrit
+        // ses questions, il suffit de l'inscrire dans la liste des sources.
+        id: 'logi-dominos', status: STATUS.TEST, title: 'Les Dominos',
+        activityId: 'dominos',
+        // Le générateur sert au PAPIER : la planche de pièces à découper, qui
+        // est l'usage historique de ce jeu en classe.
+        generatorId: 'jeu.dominos', printable: 'dominos',
+        sansRevision: true,
+        skills: ['num.logique.dominos'],
+        params: { source: 'calc.mult.fact', pieces: 9 },
+        paramSchema: [
+            {
+                id: 'source', type: 'select', label: 'Notion',
+                options: SOURCES_DOMINOS.map(s => ({ value: s.id, label: s.label })),
+                default: 'calc.mult.fact'
+            },
+            {
+                id: 'pieces', type: 'select', label: 'Longueur de la chaîne',
+                options: [
+                    { value: 7, label: '7 dominos — 6 calculs' },
+                    { value: 9, label: '9 dominos — 8 calculs' },
+                    { value: 11, label: '11 dominos — 10 calculs' },
+                    { value: 13, label: '13 dominos — 12 calculs' }
+                ],
+                default: 9
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une pièce porte une question à droite et la réponse d'une AUTRE question à gauche. On lit le bout ouvert de la chaîne, on calcule dans sa tête, et on cherche ce résultat à gauche d'une pièce de la réserve — il n'y en a qu'une, car deux questions n'ont jamais la même réponse. Quand la dernière pièce porte ARRIVÉE et que la réserve est vide, tout est juste : personne n'a besoin de te le dire."
     },
     {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',

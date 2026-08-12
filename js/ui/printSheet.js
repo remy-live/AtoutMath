@@ -718,6 +718,120 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- Les dominos ---------------------------------------------------------------
+//
+// Une planche de pièces à découper. C'est l'usage historique du jeu en classe :
+// on photocopie, on découpe, on distribue une enveloppe par binôme, et les
+// élèves cherchent la chaîne à plat sur la table. La feuille de solutions
+// montre la même chaîne dans l'ordre — le professeur corrige d'un regard.
+
+const DOM_LIGNE = 3.5;          // hauteur d'une ligne de texte dans une pièce, en mm
+const DOM_ECART = 2.4;          // le blanc entre deux pièces : la marge du ciseau
+
+/** La géométrie d'une planche : combien de pièces par ligne, et de quelle taille. */
+function geometrieDominos(item, boite) {
+    const pieces = item.meta.pieces || [];
+    const plusLongue = Math.max(8, ...pieces.map(p => String(p.droite).length));
+    // Deux par ligne quand les questions sont longues, trois quand elles sont
+    // courtes : une pièce de table de multiplication n'a pas besoin de la
+    // moitié de la feuille.
+    const cols = plusLongue <= 18 ? 3 : 2;
+    const pieceW = (boite.w - DOM_ECART * (cols - 1)) / cols;
+    // La moitié de gauche ne porte qu'un nombre, mais elle reste une VRAIE
+    // moitié de domino : réduite à une languette, la pièce ne se lisait plus
+    // comme un domino mais comme une étiquette suivie d'un cadre.
+    const gaucheW = Math.max(14, Math.min(38, pieceW * 0.3));
+    const droiteW = pieceW - gaucheW;
+    // La hauteur suit la question la plus longue : toutes les pièces d'une
+    // planche ont la même taille, sinon elles ne se mélangent pas.
+    const lignes = Math.max(1, ...pieces.map(p =>
+        Math.ceil(largeurTexte(String(p.droite), 8) / Math.max(8, droiteW - 3))));
+    const minimum = Math.max(9, lignes * DOM_LIGNE + 4.5);
+    // … et elles PRENNENT LA PLACE QU'IL RESTE. Ces pièces vont être
+    // découpées puis manipulées par des doigts d'élève : les laisser à leur
+    // hauteur minimale au milieu d'une demi-page blanche n'aurait servi
+    // personne. Plafonnées quand même — un domino de trois centimètres de haut
+    // ne ressemble plus à un domino.
+    const rangs = Math.ceil(pieces.length / cols);
+    const dispo = (boite.h - DOM_ECART * (rangs - 1)) / rangs;
+    const pieceH = Math.max(minimum, Math.min(20, dispo));
+    return { pieces, cols, pieceW, pieceH, gaucheW, droiteW, lignes };
+}
+
+/** L'ordre d'affichage : mélangé sur la planche, dans l'ordre sur la correction. */
+const ordreDominos = (item, solution) => solution
+    ? (item.meta.pieces || []).map(p => p.id)
+    : (item.meta.reserve && item.meta.reserve.length
+        ? [0, ...item.meta.reserve] : (item.meta.pieces || []).map(p => p.id));
+
+function dominosPreviewHtml(item, slot, k, solution) {
+    const b = slot.boite;
+    const g = geometrieDominos(item, b);
+    const ordre = ordreDominos(item, solution);
+    let html = '';
+    ordre.forEach((id, rang) => {
+        const p = g.pieces[id];
+        if (!p) return;
+        const x = b.x + (rang % g.cols) * (g.pieceW + DOM_ECART);
+        const y = b.y + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
+        if (y + g.pieceH > b.y + b.h + 1) return;
+        const demi = (t, cls, w) => `<div class="fx-dom-demi ${cls}" style="width:${w * k}px;
+            font-size:${Math.min(2.9, 2.9) * k}px">${echapperSheet(t)}</div>`;
+        html += `<div class="fx-dom-piece" style="left:${x * k}px; top:${y * k}px;
+            width:${g.pieceW * k}px; height:${g.pieceH * k}px">
+            ${demi(p.gauche, 'fx-dom-demi--g', g.gaucheW)}
+            ${demi(p.droite, 'fx-dom-demi--d', g.droiteW)}</div>`;
+        // La flèche de la correction : elle dit dans quel sens se lit la chaîne.
+        if (solution && rang < ordre.length - 1 && (rang % g.cols) !== g.cols - 1) {
+            html += `<div class="fx-dom-fleche" style="left:${(x + g.pieceW) * k}px;
+                top:${(y + g.pieceH / 2 - 1.4) * k}px; width:${DOM_ECART * k}px;
+                font-size:${2.4 * k}px">›</div>`;
+        }
+    });
+    return html;
+}
+
+function dessinerDominosPdf(doc, item, slot, solution, champ) {
+    const b = slot.boite;
+    const g = geometrieDominos(item, b);
+    const ordre = ordreDominos(item, solution);
+    ordre.forEach((id, rang) => {
+        const p = g.pieces[id];
+        if (!p) return;
+        const x = b.x + (rang % g.cols) * (g.pieceW + DOM_ECART);
+        const y = b.y + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
+        if (y + g.pieceH > b.y + b.h + 1) return;
+
+        // Le trait de découpe : franc, et le même tout autour de la pièce.
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.5);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(x, y, g.pieceW, g.pieceH, 1.2, 1.2, 'FD');
+        doc.setLineWidth(0.5);
+        doc.line(x + g.gaucheW, y, x + g.gaucheW, y + g.pieceH);
+
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFont('helvetica', 'bold');
+        const bout = p.gauche === 'DÉPART' || p.droite === 'ARRIVÉE';
+        doc.setFontSize(bout ? 7 : 9);
+        const ecrire = (texte, cx, largeur, taille) => {
+            doc.setFontSize(taille);
+            const lignes = doc.splitTextToSize(pourPdf(String(texte)), largeur - 2.5);
+            const h0 = y + g.pieceH / 2 - (lignes.length - 1) * (DOM_LIGNE / 2) + 0.9;
+            lignes.forEach((l, i) => doc.text(l, cx, h0 + i * DOM_LIGNE, { align: 'center' }));
+        };
+        ecrire(p.gauche, x + g.gaucheW / 2, g.gaucheW, p.gauche === 'DÉPART' ? 6.6 : 9);
+        ecrire(p.droite, x + g.gaucheW + g.droiteW / 2, g.droiteW, p.droite === 'ARRIVÉE' ? 6.6 : 8);
+
+        if (solution && rang < ordre.length - 1 && (rang % g.cols) !== g.cols - 1) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(...ENCRE.gris);
+            doc.text('>', x + g.pieceW + DOM_ECART / 2, y + g.pieceH / 2 + 1.2, { align: 'center' });
+        }
+    });
+}
+
 const etiquetteLogi = (cat, i) => cat.nombres ? String(cat.nombres[i]) : ((cat.courts && cat.courts[i]) || cat.valeurs[i]);
 const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
@@ -1014,6 +1128,27 @@ export const RENDUS = {
         // Il prend toute la largeur : ses indices se lisent à côté de sa grille.
         grilleMax: 300
     },
+    dominos: {
+        titre: 'Dominos',
+        consigne: (items) => `Découpe les ${(items[0] && items[0].meta.pieces.length) || ''} pièces et remets-les `
+            + 'bout à bout : chaque question doit toucher sa réponse. On part de la pièce DÉPART, '
+            + 'on lit le bout ouvert, on le calcule, et on cherche ce résultat à GAUCHE d\'une autre pièce. '
+            + 'Quand la pièce ARRIVÉE est posée et qu\'il ne reste rien, tout est juste.',
+        previewGrille: dominosPreviewHtml,
+        pdfGrille: dessinerDominosPdf,
+        // Une planche prend une demi-page : les pièces doivent rester assez
+        // grandes pour être découpées et manipulées par des doigts d'élève.
+        proportions: { w: 1, h: 0.62 },
+        parLigneDefaut: 1,
+        // Sur la fiche autonome : UNE planche par page. Deux jeux de dominos
+        // découpés sur la même feuille finiraient mélangés dans l'enveloppe.
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        titreAGauche: true,
+        separateurs: true,
+        grilleMax: 300,
+        // On ne dit pas « grille » à une planche de dominos.
+        nomBloc: 'Planche'
+    },
     binairo: {
         titre: 'Binairo',
         consigne: (items) => {
@@ -1102,8 +1237,11 @@ function construirePdf(jsPDF, rendu, items, cols, rows) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ENCRE.texte);
-            if (rendu.titreAGauche) doc.text(`Grille ${i + 1}`, slot.boite.x, slot.titre.y);
-            else doc.text(`Grille ${i + 1}`, slot.titre.x, slot.titre.y, { align: 'center' });
+            // « Grille » pour un sudoku, « Planche » pour des dominos : le
+            // rendu nomme ses blocs, la modale ne le devine pas.
+            const nom = `${rendu.nomBloc || 'Grille'} ${i + 1}`;
+            if (rendu.titreAGauche) doc.text(nom, slot.boite.x, slot.titre.y);
+            else doc.text(nom, slot.titre.x, slot.titre.y, { align: 'center' });
             rendu.pdfGrille(doc, item, slot, solution);
         });
     };
@@ -1171,7 +1309,7 @@ export function ouvrirFicheModal(exo, params) {
     const rendre = () => {
         const { cols, rows } = lireDisposition();
         completer(cols * rows);
-        totalEl.textContent = `${cols * rows} grilles`;
+        totalEl.textContent = `${cols * rows} ${(rendu.nomBloc || 'Grille').toLowerCase()}s`;
 
         // L'échelle vient de la place disponible : la page garde son format.
         const large = apercu.parentElement.clientWidth || 720;
@@ -1199,6 +1337,7 @@ export function ouvrirFicheModal(exo, params) {
                     width:${Math.max(1, (t.x2 - t.x1) * k)}px; height:${Math.max(1, (t.y2 - t.y1) * k)}px"></div>`;
             });
         }
+        const nomBloc = rendu.nomBloc || 'Grille';
         items.forEach((item, i) => {
             const slot = slots[i];
             // Centré au-dessus d'une grille carrée ; à gauche pour un bloc
@@ -1206,8 +1345,8 @@ export function ouvrirFicheModal(exo, params) {
             html += rendu.titreAGauche
                 ? `<div class="fp-titre fp-titre--gauche" style="left:${slot.boite.x * k}px;
                     width:${slot.boite.w * k}px; top:${(slot.titre.y - 3.6) * k}px;
-                    font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`
-                : `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`;
+                    font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`
+                : `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`;
             html += rendu.previewGrille(item, slot, k, solutionsVisibles);
         });
         apercu.innerHTML = html;
