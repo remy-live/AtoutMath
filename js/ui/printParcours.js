@@ -218,46 +218,64 @@ export function ouvrirFicheParcours(chemin) {
     // La liste des étapes : le nombre de questions de chacune, ET leur ordre
     // sur la feuille — chaque ligne se glisse plus haut ou plus bas par sa
     // poignée. C'est toute la mise en page : le reste se calcule.
+    // Quels tiroirs sont ouverts : la liste est redessinée à chaque réglage,
+    // et un tiroir qui se referme sous le doigt est insupportable.
+    //
+    // Sur grand écran ils s'ouvrent tous d'emblée : le tiroir existe pour
+    // épargner la hauteur d'un téléphone, et sur un ordinateur il ne ferait
+    // qu'ajouter un clic devant chaque réglage.
+    const ouvertes = new Set(
+        (typeof window !== 'undefined' && window.innerWidth > 700) ? papier.map(e => e.stepId) : []
+    );
+    const CHEVRON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"'
+        + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+
     const rendreListe = () => {
         listeEl.innerHTML = ordre.map((id, i) => {
             const e = parId.get(id);
             const nom = echapper(e.title);
+            // LA LIGNE ET SON TIROIR. Sur un téléphone, les quatre réglages
+            // d'une étape à plat prenaient trois rangées chacun : la liste des
+            // exercices devenait un mur avant même qu'on voie l'aperçu. Ce
+            // qu'on regarde — l'ordre et le nom — reste visible ; ce qu'on
+            // règle une fois se déplie d'un chevron. Un <details> le fait sans
+            // une ligne de JavaScript, et sur grand écran il s'ouvre tout seul.
+            const unite = e.grille ? 'grilles' : 'questions';
             return `
-            <div class="pp-etape" data-etape-ligne="${id}">
-                <button type="button" class="pp-grip" data-grip="${id}"
-                    title="Glisser pour changer l'ordre sur la feuille"
-                    aria-label="Déplacer « ${nom} »">⠿</button>
-                <span class="pp-etape-num">${i + 1}.</span>
-                <span class="pp-etape-nom">${nom}</span>
-                <span class="pp-fleches">
-                    <button type="button" class="pp-fleche" data-monter="${id}"
-                        ${i === 0 ? 'disabled' : ''} title="Monter d'un cran"
-                        aria-label="Monter « ${nom} »">▲</button>
-                    <button type="button" class="pp-fleche" data-descendre="${id}"
-                        ${i === ordre.length - 1 ? 'disabled' : ''} title="Descendre d'un cran"
-                        aria-label="Descendre « ${nom} »">▼</button>
-                </span>
-                <span class="pp-etape-nb">
-                    <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
-                        min="0" max="40" value="${quantites[id]}">
-                    <span class="pp-etape-unite">${e.grille ? 'grilles' : 'questions'}</span>
-                </span>
-                <span class="pp-etape-cols">
-                    <select class="cfg-input" data-colonnes="${id}"
-                        title="${e.grille ? 'Grilles par ligne' : 'Colonnes de questions'}"
-                        aria-label="Mise en page de « ${nom} »">
-                        ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
-                            ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
-                    </select>
-                    <span class="pp-etape-unite">${e.grille ? '/ ligne' : 'col.'}</span>
-                </span>
-                <span class="pp-etape-pts" ${interro.checked ? '' : 'hidden'}>
-                    <input type="number" class="cfg-input cfg-input--num" data-points="${id}"
-                        min="0" max="40" value="${points[id]}"
-                        title="Barème de cet exercice" aria-label="Points de « ${nom} »">
-                    <span class="pp-etape-unite">pts</span>
-                </span>
-            </div>`;
+            <details class="pp-etape" data-etape-ligne="${id}" ${ouvertes.has(id) ? 'open' : ''}>
+                <summary class="pp-etape-tete">
+                    <button type="button" class="pp-grip" data-grip="${id}"
+                        title="Glisser pour changer l'ordre sur la feuille"
+                        aria-label="Déplacer « ${nom} »">⠿</button>
+                    <span class="pp-etape-num">${i + 1}.</span>
+                    <span class="pp-etape-nom">${nom}</span>
+                    <span class="pp-etape-resume">${quantites[id]} ${unite}</span>
+                    <span class="pp-fleches">
+                        <button type="button" class="pp-fleche" data-monter="${id}"
+                            ${i === 0 ? 'disabled' : ''} title="Monter d'un cran"
+                            aria-label="Monter « ${nom} »">▲</button>
+                        <button type="button" class="pp-fleche" data-descendre="${id}"
+                            ${i === ordre.length - 1 ? 'disabled' : ''} title="Descendre d'un cran"
+                            aria-label="Descendre « ${nom} »">▼</button>
+                    </span>
+                    <span class="pp-chevron" aria-hidden="true">${CHEVRON}</span>
+                </summary>
+                <div class="pp-etape-reglages">
+                    <label class="pp-etape-champ">${unite === 'grilles' ? 'Grilles' : 'Questions'}
+                        <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
+                            min="0" max="40" value="${quantites[id]}"></label>
+                    <label class="pp-etape-champ">${e.grille ? 'Par ligne' : 'Colonnes'}
+                        <select class="cfg-input" data-colonnes="${id}"
+                            aria-label="Mise en page de « ${nom} »">
+                            ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
+                                ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
+                        </select></label>
+                    <label class="pp-etape-champ pp-etape-pts" ${interro.checked ? '' : 'hidden'}>Barème
+                        <input type="number" class="cfg-input cfg-input--num" data-points="${id}"
+                            min="0" max="40" value="${points[id]}"
+                            aria-label="Points de « ${nom} »"></label>
+                </div>
+            </details>`;
         }).join('')
             + (ecran.length ? `<div class="pp-ecran">Sur écran seulement : ${[...new Set(ecran.map(e => e.title))].map(echapper).join(', ')}
                  — ${ecran.length > 1 ? 'ces activités demandent' : 'cette activité demande'} de manipuler, elles ne se photocopient pas.</div>` : '');
@@ -269,6 +287,12 @@ export function ouvrirFicheParcours(chemin) {
                 if (!baremeTouche) { repartirPoints(); rendreListe(); }
                 rendre();
             };
+        });
+        listeEl.querySelectorAll('.pp-etape').forEach(d => {
+            d.addEventListener('toggle', () => {
+                if (d.open) ouvertes.add(d.dataset.etapeLigne);
+                else ouvertes.delete(d.dataset.etapeLigne);
+            });
         });
         listeEl.querySelectorAll('[data-colonnes]').forEach(sel => {
             sel.onchange = () => {

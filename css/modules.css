@@ -3054,8 +3054,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    sur la feuille — chaque ligne se glisse plus haut ou plus bas par sa
    poignée ⠿. C'est toute la mise en page : le reste se calcule. */
 .pp-etapes { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+/* La ligne est un <details> : il EMPILE son résumé et son tiroir. Un
+   « display: flex » ici les mettrait côte à côte, et le tiroir se dessinerait
+   par-dessus le nom de l'exercice. */
 .pp-etape {
-    display: flex; align-items: center; gap: 8px;
+    display: block;
     background: var(--bg-hover); border-radius: 10px; padding: 6px 10px;
     font-size: .92rem; font-weight: 600;
 }
@@ -3073,7 +3076,6 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pp-etape--saisie .pp-grip { cursor: grabbing; color: var(--primary); }
 .pp-etape-num { color: var(--text-muted); font-weight: 700; min-width: 1.4em; }
 .pp-etape-nom { flex: 1; min-width: 0; }
-.pp-etape-nb { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
 .pp-etape-unite { color: var(--text-muted); font-weight: 500; font-size: .85rem; }
 .pp-etape .cfg-input--num { width: 62px; }
 /* Monter / descendre d'un cran : le même travail que le glisser, sans geste.
@@ -3090,21 +3092,50 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
 .pp-fleche:disabled { opacity: .3; cursor: default; }
 
-/* Sur téléphone, la ligne tient sur DEUX rangées : le nom en entier au-dessus,
-   les commandes en dessous. À plat, le nom se voyait accorder une centaine de
-   pixels et « Périmètre : à toi de choisir » s'imprimait sur trois lignes. */
+/* --- LA LIGNE D'UNE ÉTAPE, ET SON TIROIR ---------------------------------
+   Ce qu'on REGARDE — l'ordre, le nom, combien de questions — tient sur la
+   ligne. Ce qu'on RÈGLE une fois — colonnes, barème — se déplie d'un chevron.
+   Sur un téléphone, les quatre réglages à plat prenaient trois rangées par
+   exercice : la liste devenait un mur avant même qu'on voie l'aperçu. */
+.pp-etape-tete {
+    display: flex; align-items: center; gap: 9px;
+    cursor: pointer; user-select: none; list-style: none;
+}
+.pp-etape-tete::-webkit-details-marker { display: none; }
+.pp-chevron { color: var(--text-muted); flex-shrink: 0; line-height: 0; transition: transform .18s; }
+.pp-etape[open] .pp-chevron { transform: rotate(180deg); }
+.pp-etape-resume {
+    color: var(--text-muted); font-weight: 600; font-size: .82rem;
+    white-space: nowrap; flex-shrink: 0;
+}
+.pp-etape-reglages {
+    display: flex; flex-wrap: wrap; gap: 10px 14px;
+    padding: 10px 2px 2px; margin-top: 8px;
+    border-top: 1px solid var(--border);
+}
+.pp-etape-champ {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .82rem; font-weight: 600; color: var(--text-muted);
+}
+.pp-etape-champ[hidden] { display: none; }
+
 @media (max-width: 560px) {
-    .pp-etape {
-        display: grid; align-items: center; gap: 6px 8px;
-        grid-template-columns: auto auto 1fr;
-        grid-template-areas: "poignee numero nom" "fleches fleches nombre";
+    /* Le nom passe seul sur sa ligne : « Périmètre : à toi de choisir » ne
+       tient pas à côté de trois commandes sur 390 px de large. */
+    .pp-etape-tete {
+        display: grid; gap: 6px 8px; align-items: center;
+        grid-template-columns: auto auto 1fr auto;
+        grid-template-areas: "poignee numero nom chevron" "fleches fleches resume resume";
     }
     .pp-grip { grid-area: poignee; }
     .pp-etape-num { grid-area: numero; }
     .pp-etape-nom { grid-area: nom; }
+    .pp-chevron { grid-area: chevron; }
     .pp-fleches { grid-area: fleches; justify-self: start; }
-    .pp-etape-nb { grid-area: nombre; justify-self: end; }
+    .pp-etape-resume { grid-area: resume; justify-self: end; }
     .pp-fleche { width: 38px; height: 34px; font-size: .8rem; }
+    .pp-etape-reglages { gap: 8px 12px; }
+    .pp-etape-champ { flex: 1 1 8.5rem; justify-content: space-between; }
 }
 /* Les activités qui ne se photocopient pas sont ANNONCÉES : un professeur
    qui compte trois exercices et n'en voit que deux se demande ce qu'il a
@@ -3209,9 +3240,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pp-sol-reglages { margin-top: -4px; }
 .pp-sol-reglages select.cfg-input { min-width: 12rem; }
 .pp-note-sur[hidden] { display: none; }
-.pp-etape-pts { display: inline-flex; align-items: center; gap: 4px; }
-.pp-etape-pts[hidden] { display: none; }
-.pp-etape-pts .cfg-input--num { width: 3.4rem; }
+.pp-etape-pts .cfg-input--num { width: 3.6rem; }
 
 /* --- APERÇU D'UN PARCOURS, AVANT DE S'Y ENGAGER ---------------------------
    La même carte que « Mon Parcours », mais dans une fenêtre : l'élève voit le
@@ -3264,8 +3293,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pp-mep select.cfg-input { min-width: 8.5rem; }
 
 /* Le choix « combien côte à côte », sur la ligne d'un exercice. */
-.pp-etape-cols { display: inline-flex; align-items: center; gap: 4px; }
-.pp-etape-cols select.cfg-input { width: 4.6rem; padding: 3px 4px; font-size: .82rem; }
+.pp-etape-reglages select.cfg-input { width: 5.2rem; padding: 4px 6px; font-size: .84rem; }
 
 /* LE CHAMP REMPLISSABLE, dans l'aperçu. Un cadre léger là où le lecteur PDF
    posera sa boîte de saisie : le professeur voit la place que prendra la
