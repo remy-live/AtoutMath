@@ -276,6 +276,7 @@ const legacy = [
     ['ninja', 'Trancher et tirer', 'ninja', 'engineNinja'],
     ['dictee', 'Dictée de nombres', 'dictee', 'engineDictee'],
     ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction'],
+    ['logigramme', 'Logigramme', 'logigramme', 'engineLogigramme'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

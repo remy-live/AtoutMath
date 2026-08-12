@@ -272,6 +272,14 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    'num.logique.logigramme': {
+        label: 'Déduire dans un logigramme',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Croiser des indices dans une grille et n\'écrire que ce qui est certain.',
+        lesson: 'Deux règles font tout, et il n\'y en a pas d\'autres. UNE VALEUR NE SERT QU\'UNE FOIS : dès qu\'une case est cochée, toute sa ligne et toute sa colonne se barrent. S\'IL NE RESTE QU\'UNE CASE non barrée dans une ligne, c\'est elle — même si aucun indice ne le dit. La troisième idée est celle qui fait la différence : quand deux cases parlent de la MÊME personne, tout ce qui vaut pour l\'une vaut pour l\'autre. « Celui qui a pris le chocolat a neuf ans » et « Léa a neuf ans » donnent ensemble « Léa a pris le chocolat », sans que personne l\'ait écrit. On ne devine jamais : si rien ne s\'impose, c\'est qu\'on n\'a pas encore relu le bon indice.'
+    },
     'num.logique.demineur': {
         label: 'Déduction certaine (démineur)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

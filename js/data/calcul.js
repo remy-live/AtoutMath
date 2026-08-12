@@ -538,6 +538,49 @@ export const calculExercises = [
         instruction: "Les règles complètes : roque, prise en passant, promotion (à la dame), pat. Le but n'est pas de tout prendre — c'est le roi adverse. Touche une pièce pour voir ses coups ; ton roi s'allume en rouge quand il est en échec. Contre l'ordinateur, commence en Débutant : il voit un coup devant lui et se trompe souvent, c'est fait pour."
     },
     {
+        // LE LOGIGRAMME. Un seul exercice, six niveaux : c'est la MÊME grille de
+        // déduction qui grandit, et l'élève retrouve à chaque fois les deux
+        // règles qu'il connaît déjà. Un exercice par niveau aurait éparpillé
+        // dans le catalogue ce qui est une seule progression.
+        id: 'logi-logigramme', status: STATUS.TEST, title: 'Le Logigramme',
+        activityId: 'logigramme',
+        sansRevision: true,
+        skills: ['num.logique.logigramme'],
+        params: { niveau: 1, auto: true },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau',
+                options: [
+                    { value: 1, label: '1 — Découverte · 3 lignes, 2 listes' },
+                    { value: 2, label: '2 — Trois amis, deux listes · indices croisés' },
+                    { value: 3, label: '3 — Quatre à croiser · plus rien de donné' },
+                    { value: 4, label: '4 — Plus grand, plus petit · comparaisons' },
+                    { value: 5, label: '5 — L\'écart exact · différences chiffrées' },
+                    { value: 6, label: '6 — Cinq, et rien de donné · avec des « soit… soit… »' }
+                ],
+                default: 1
+            },
+            {
+                id: 'auto', type: 'bool', label: 'Barrer la ligne automatiquement',
+                default: true
+            },
+            {
+                id: 'theme', type: 'select', label: 'Histoire',
+                options: [
+                    { value: '', label: 'Au hasard' },
+                    { value: 'gouter', label: 'Le goûter d\'anniversaire' },
+                    { value: 'mediatheque', label: 'À la médiathèque' },
+                    { value: 'potager', label: 'Le potager de l\'école' },
+                    { value: 'kermesse', label: 'La kermesse' },
+                    { value: 'club', label: 'Le club du mercredi' }
+                ],
+                default: ''
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
+    },
+    {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         activityId: 'demineur',
         sansRevision: true,
