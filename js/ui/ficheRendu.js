@@ -200,7 +200,8 @@ export function apercuItems(page, k, o) {
                     html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
                         font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
                 }
-                html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, k, !!o.solution);
+                html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite },
+                    k, !!o.solution, !!o.champs && !o.solution);
             }
             continue;
         }
@@ -324,6 +325,34 @@ function champSaisie(pdf, rep, index) {
     return true;
 }
 
+/**
+ * UNE CASE DE GRILLE REMPLISSABLE.
+ *
+ * Une fiche remplissable qui s'arrête aux questions écrites laisse l'élève sur
+ * ordinateur devant un sudoku qu'il ne peut pas remplir — c'est-à-dire devant
+ * un dessin. Les grilles reçoivent donc les mêmes champs, une case à la fois,
+ * et sans trait sous le champ : la case EST déjà le cadre.
+ */
+// UN COMPTEUR QUI NE REPART JAMAIS À ZÉRO. `pdfItems` est appelé une fois par
+// PAGE : un compteur local rendait « case_1 » sur chaque page, et deux champs
+// homonymes ne font qu'un seul champ pour un lecteur PDF — l'élève tapait dans
+// une case du premier sudoku et voyait son chiffre apparaître dans le second.
+let compteurChamps = 0;
+
+function champCase(pdf, x, y, w, h, nom) {
+    const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
+        || (pdf.AcroFormTextField);
+    if (typeof Champ !== 'function' || typeof pdf.addField !== 'function') return false;
+    const champ = new Champ();
+    champ.Rect = [x, y, w, h];
+    champ.fieldName = nom;
+    champ.fontSize = Math.max(6, Math.min(16, h * 2.2));
+    champ.multiline = false;
+    champ.textAlign = 'center';
+    pdf.addField(champ);
+    return true;
+}
+
 /** Les items d'une page, dans le PDF. */
 export function pdfItems(pdf, page, o) {
     let nChamp = 0;
@@ -361,7 +390,13 @@ export function pdfItems(pdf, page, o) {
                 pdf.setFontSize(o.tailleConsigne * 2.83);
                 pdf.setTextColor(...ENCRE.gris);
                 if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
-                r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, !!o.solution);
+                // Le rendu de la grille appelle ce crayon pour chaque case
+                // vide, quand la fiche est déclarée remplissable.
+                const champ = (o.champs && !o.solution)
+                    ? (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`)
+                    : null;
+                r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite },
+                    !!o.solution, champ);
             }
             continue;
         }

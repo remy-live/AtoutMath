@@ -89,7 +89,7 @@ function cageMap(item) {
  * Ordre des couches : fonds, quadrillage fin, bordures de cages, textes —
  * le même que le jeu, pour le même dessin.
  */
-function dessinerGrillePdf(doc, item, slot, solution) {
+function dessinerGrillePdf(doc, item, slot, solution, champ) {
     const { x, y, taille } = slot;
     const { n, cages, solution: sol } = item.meta;
     const s = taille / n;
@@ -139,7 +139,11 @@ function dessinerGrillePdf(doc, item, slot, solution) {
     for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
             const donnee = cages[de[r][c]].op === null;
-            if (!solution && !donnee) continue;
+            if (!solution && !donnee) {
+                // Case à remplir : un champ si la fiche est remplissable.
+                if (champ) champ(x + c * s + s * 0.12, y + r * s + s * 0.12, s * 0.76, s * 0.76);
+                continue;
+            }
             doc.text(String(sol[r][c]), x + c * s + s / 2, y + r * s + s / 2,
                 { align: 'center', baseline: 'middle' });
         }
@@ -147,7 +151,7 @@ function dessinerGrillePdf(doc, item, slot, solution) {
 }
 
 /** La même grille en HTML pour l'aperçu, aux mêmes proportions (k px/mm). */
-function grillePreviewHtml(item, slot, k, solution) {
+function grillePreviewHtml(item, slot, k, solution, champs) {
     const { n, cages, solution: sol } = item.meta;
     const s = (slot.taille / n) * k;
     const de = cageMap(item);
@@ -166,7 +170,8 @@ function grillePreviewHtml(item, slot, k, solution) {
             ].join('');
             const donnee = cage.op === null;
             const premiere = cage.cells[0].r === r && cage.cells[0].c === c;
-            html += `<td style="width:${s}px; height:${s}px; font-size:${s * 0.5}px; ${bords}${donnee ? 'background:#eef0fa;' : ''}">
+            const vide = champs && !donnee && !solution;
+            html += `<td class="${vide ? 'fp-case--champ' : ''}" style="width:${s}px; height:${s}px; font-size:${s * 0.5}px; ${bords}${donnee ? 'background:#eef0fa;' : ''}">
                 ${premiere ? `<span class="fp-etiquette" style="font-size:${Math.max(6, s * 0.26)}px">${cage.label}</span>` : ''}
                 ${solution || donnee ? sol[r][c] : ''}</td>`;
         }
@@ -177,7 +182,7 @@ function grillePreviewHtml(item, slot, k, solution) {
 
 // --- Binairo ------------------------------------------------------------------
 
-function dessinerBinairoPdf(doc, item, slot, solution) {
+function dessinerBinairoPdf(doc, item, slot, solution, champ) {
     const { x, y, taille } = slot;
     const { n, givens, solution: sol } = item.meta;
     const s = taille / n;
@@ -201,13 +206,16 @@ function dessinerBinairoPdf(doc, item, slot, solution) {
     doc.setTextColor(...ENCRE.texte);
     doc.setFontSize(Math.min(16, s * 1.5));
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-        if (!solution && givens[r][c] === null) continue;
+        if (!solution && givens[r][c] === null) {
+            if (champ) champ(x + c * s + s * 0.12, y + r * s + s * 0.12, s * 0.76, s * 0.76);
+            continue;
+        }
         doc.text(String(sol[r][c]), x + c * s + s / 2, y + r * s + s / 2,
             { align: 'center', baseline: 'middle' });
     }
 }
 
-function binairoPreviewHtml(item, slot, k, solution) {
+function binairoPreviewHtml(item, slot, k, solution, champs) {
     const { n, givens, solution: sol } = item.meta;
     const s = (slot.taille / n) * k;
     let html = `<table class="fp-grille" style="left:${slot.x * k}px; top:${slot.y * k}px; border: 1.6px solid #1a202c;">`;
@@ -215,7 +223,7 @@ function binairoPreviewHtml(item, slot, k, solution) {
         html += '<tr>';
         for (let c = 0; c < n; c++) {
             const donnee = givens[r][c] !== null;
-            html += `<td style="width:${s}px; height:${s}px; font-size:${s * 0.55}px; ${donnee ? 'background:#eef0fa;' : ''}">
+            html += `<td class="${champs && !donnee && !solution ? 'fp-case--champ' : ''}" style="width:${s}px; height:${s}px; font-size:${s * 0.55}px; ${donnee ? 'background:#eef0fa;' : ''}">
                 ${solution || donnee ? sol[r][c] : ''}</td>`;
         }
         html += '</tr>';
@@ -234,7 +242,7 @@ function binairoPreviewHtml(item, slot, k, solution) {
 // nombres), là où le binairo garde un tableau de lignes. On passe donc par
 // `case(r, c)` plutôt que par `givens[r][c]`, qui ne veut rien dire ici.
 
-function sudokuPreviewHtml(item, slot, k, solution) {
+function sudokuPreviewHtml(item, slot, k, solution, champs) {
     const { n, br, bc, givens, solution: sol } = item.meta;
     const s = (slot.taille / n) * k;
     let html = `<table class="fp-grille" style="left:${slot.x * k}px; top:${slot.y * k}px; border: 2.4px solid #1a202c;">`;
@@ -250,7 +258,8 @@ function sudokuPreviewHtml(item, slot, k, solution) {
                 r % br === 0 ? 'border-top:2.4px solid #1a202c;' : '',
                 c % bc === 0 ? 'border-left:2.4px solid #1a202c;' : ''
             ].join('');
-            html += `<td style="width:${s}px; height:${s}px; font-size:${s * 0.55}px;
+            html += `<td class="${champs && !donnee && !solution ? 'fp-case--champ' : ''}"
+                style="width:${s}px; height:${s}px; font-size:${s * 0.55}px;
                 ${donnee ? 'background:#eef0fa;' : ''}${bords}">
                 ${solution || donnee ? sol[i] : ''}</td>`;
         }
@@ -259,7 +268,7 @@ function sudokuPreviewHtml(item, slot, k, solution) {
     return html + '</table>';
 }
 
-function dessinerSudokuPdf(doc, item, slot, solution) {
+function dessinerSudokuPdf(doc, item, slot, solution, champ) {
     const { x, y, taille } = slot;
     const { n, br, bc, givens, solution: sol } = item.meta;
     const s = taille / n;
@@ -289,7 +298,10 @@ function dessinerSudokuPdf(doc, item, slot, solution) {
     doc.setFontSize(Math.min(16, s * 1.5));
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
         const i = r * n + c;
-        if (!solution && (givens[i] === null || givens[i] === undefined)) continue;
+        if (!solution && (givens[i] === null || givens[i] === undefined)) {
+            if (champ) champ(x + c * s + s * 0.12, y + r * s + s * 0.12, s * 0.76, s * 0.76);
+            continue;
+        }
         doc.text(String(sol[i]), x + c * s + s / 2, y + r * s + s / 2,
             { align: 'center', baseline: 'middle' });
     }
@@ -309,7 +321,7 @@ function geometrieGaram(item, boite) {
     };
 }
 
-function dessinerGaramPdf(doc, item, slot, solution) {
+function dessinerGaramPdf(doc, item, slot, solution, champ) {
     const { structure, givens, solution: sol } = item.meta;
     const { u, x0, y0 } = geometrieGaram(item, slot.boite);
     const cote = u * 0.92;                       // la case, un peu plus petite que sa maille
@@ -367,7 +379,10 @@ function dessinerGaramPdf(doc, item, slot, solution) {
     doc.setTextColor(...ENCRE.texte);
     doc.setFontSize(Math.min(13, cote * 1.6));
     structure.cells.forEach((pos, i) => {
-        if (!solution && givens[i] === null) return;
+        if (!solution && givens[i] === null) {
+            if (champ) champ(px(pos.c) + cote * 0.1, py(pos.r) + cote * 0.1, cote * 0.8, cote * 0.8);
+            return;
+        }
         doc.text(String(sol[i]), px(pos.c) + cote / 2, py(pos.r) + cote / 2,
             { align: 'center', baseline: 'middle' });
     });
@@ -395,7 +410,7 @@ function accolagesGaram(structure) {
     return { dizaines, unites };
 }
 
-function garamPreviewHtml(item, slot, k, solution) {
+function garamPreviewHtml(item, slot, k, solution, champs) {
     const { structure, givens, solution: sol } = item.meta;
     const { u, x0, y0 } = geometrieGaram(item, slot.boite);
     const { dizaines, unites } = accolagesGaram(structure);
@@ -414,7 +429,8 @@ function garamPreviewHtml(item, slot, k, solution) {
                 ? `border-top:${Math.max(1, trait * 0.8)}px dashed #94a3b8;
                    border-top-left-radius:0; border-top-right-radius:0;`
                 : '';
-        html += `<div class="fx-ga-case${donnee ? ' fx-ga-case--donnee' : ''}"
+        const vide = champs && !donnee && !solution;
+        html += `<div class="fx-ga-case${donnee ? ' fx-ga-case--donnee' : ''}${vide ? ' fp-case--champ' : ''}"
             style="left:${x0 * k + pos.c * uk}px; top:${y0 * k + pos.r * uk}px;
             width:${cote}px; height:${cote + (diz ? trait : 0)}px;
             border-width:${trait}px; border-radius:${rond}px;
@@ -542,7 +558,7 @@ function geometrieRedaction(item, boite) {
     };
 }
 
-function redactionPreviewHtml(item, slot, k, solution) {
+function redactionPreviewHtml(item, slot, k, solution, champs) {
     const b = slot.boite;
     const g = geometrieRedaction(item, b);
     const trait = (d, cls) => `<line x1="${d.x1}" y1="${d.y1}" x2="${d.x2}" y2="${d.y2}" class="${cls}" />`;
@@ -556,9 +572,13 @@ function redactionPreviewHtml(item, slot, k, solution) {
         // doit montrer la place réelle, sinon le professeur découvre à
         // l'impression que la propriété ne tient pas.
         const rails = solution ? '' : g.railsY(i).map(yr =>
-            `<div class="fx-red-rail" style="left:${(b.x + 4) * k}px;
+            `<div class="fx-red-rail${champs ? ' fx-red-rail--champ' : ''}"
+                style="left:${(b.x + 4) * k}px;
                 top:${(yr + 0.8) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
-        return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${y * k}px;
+        // `y` est la LIGNE DE BASE du texte dans le PDF ; en HTML, `top` est le
+        // haut de la boîte. Sans ce décalage, l'aperçu descendait chaque
+        // étiquette d'une hauteur de police et les écarts semblaient irréguliers.
+        return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${(y - 2.5) * k}px;
             width:${b.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
             <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
     }).join('');
@@ -573,7 +593,7 @@ function redactionPreviewHtml(item, slot, k, solution) {
         </svg>${texteLignes}</div>`;
 }
 
-function dessinerRedactionPdf(doc, item, slot, solution) {
+function dessinerRedactionPdf(doc, item, slot, solution, champ) {
     const b = slot.boite;
     const g = geometrieRedaction(item, b);
 
@@ -626,6 +646,14 @@ function dessinerRedactionPdf(doc, item, slot, solution) {
             doc.setLineDashPattern([0.7, 1.1], 0);
             doc.line(x0, y + 0.8, b.x + b.w, y + 0.8);
             g.railsY(i).forEach(yr => doc.line(b.x + 4, yr + 0.8, b.x + b.w, yr + 0.8));
+            // Rédiger au clavier : un champ par ligne d'écriture, posé sur son
+            // trait. Sans eux, la fiche remplissable s'arrête avant la seule
+            // chose qu'on demande vraiment d'écrire ici.
+            if (champ) {
+                const h = g.ligneH * 0.8;
+                champ(x0, y + 0.8 - h, b.x + b.w - x0, h);
+                g.railsY(i).forEach(yr => champ(b.x + 4, yr + 0.8 - h, b.x + b.w - 4 - 4, h));
+            }
             doc.setLineDashPattern([], 0);
         }
     });

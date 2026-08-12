@@ -3344,6 +3344,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     vertical-align: bottom; height: .9em;
 }
 .fx-red-sol { color: #3c4658; }
+/* Une case (ou une ligne) qui deviendra un champ de saisie dans le PDF : on la
+   TEINTE dans l'aperçu, pour que le professeur voie où l'élève pourra écrire
+   avant d'avoir ouvert le fichier. */
+.fp-case--champ { background: rgba(99, 102, 241, .10) !important; }
+.fx-red-rail--champ { border-bottom-color: #6366f1; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------
    Un jeu n'est pas une étape de plus : il se voit AUTREMENT. Pastille dorée
