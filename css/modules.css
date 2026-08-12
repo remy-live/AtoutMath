@@ -3350,11 +3350,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fp-case--champ { background: rgba(99, 102, 241, .10) !important; }
 
 /* --- Le logigramme sur la fiche ------------------------------------------
-   L'histoire et ses indices à gauche, la grille à droite : la disposition des
-   logigrammes de magazine, celle qu'un élève reconnaît. */
-.fx-logi-texte { position: absolute; color: #1a202c; line-height: 1.35; }
-.fx-logi-texte ol { margin: .35em 0 0; padding-left: 1.15em; }
-.fx-logi-texte li { margin-bottom: .18em; }
+   L'énigme et ses indices, puis la grille — au-dessous quand le bloc est haut,
+   à côté quand il est large : la disposition des logigrammes de magazine,
+   celle qu'un élève reconnaît. */
+.fp-titre--gauche { text-align: left !important; }
+.fp-separateur { position: absolute; background: #1a202c; opacity: .85; }
+.fx-logi-texte { position: absolute; color: #1a202c; line-height: 1.38; }
+.fx-logi-texte ol { margin: .35em 0 0; padding-left: 1.35em; }
+.fx-logi-texte li { margin-bottom: .1em; }
 .fx-logi-cat, .fx-logi-catlig {
     position: absolute; display: flex; align-items: center; justify-content: center;
     font-weight: 800; color: #1a202c; text-align: center; overflow: hidden;
@@ -3373,7 +3376,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; border: .5px solid #c9cfdb; display: flex;
     align-items: center; justify-content: center; color: #1a202c;
 }
-.fx-logi-bloc { position: absolute; border: 1.4px solid; pointer-events: none; }
+.fx-logi-bloc { position: absolute; border: 1.4px solid #1a202c; pointer-events: none; }
 .fx-red-rail--champ { border-bottom-color: #6366f1; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------

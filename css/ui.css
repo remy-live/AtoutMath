@@ -378,6 +378,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-entete { position: absolute; display: flex; justify-content: space-between; font-size: 11px; }
 .fp-entete span { color: #4a5568; }
 .fp-ligne { position: absolute; border-top: 1.4px solid #1a202c; }
+.fp-consigne { position: absolute; color: #5a6270; line-height: 1.2; }
 .fp-titre { position: absolute; text-align: center; font-weight: 700; }
 .fp-grille { position: absolute; border-collapse: collapse; }
 .fp-grille td {

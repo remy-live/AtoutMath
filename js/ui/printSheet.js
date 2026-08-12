@@ -56,7 +56,18 @@ function calculerFiche(cols, rows) {
             });
         }
     }
-    return { slots, board };
+    // Les traits de séparation passent au milieu des gouttières : de quoi les
+    // tracer sans redéfinir la mise en page ailleurs.
+    const traits = [];
+    for (let i = 1; i < cols; i++) {
+        const x = PAGE.marge + i * (slotW + gapX) - gapX / 2;
+        traits.push({ x1: x, y1: y0 - 1, x2: x, y2: y0 + H });
+    }
+    for (let j = 1; j < rows; j++) {
+        const y = y0 + j * (slotH + gapY) - gapY / 2;
+        traits.push({ x1: PAGE.marge, y1: y, x2: PAGE.w - PAGE.marge, y2: y });
+    }
+    return { slots, board, traits };
 }
 
 // --- jsPDF, chargé au premier besoin ----------------------------------------
@@ -464,7 +475,30 @@ function garamPreviewHtml(item, slot, k, solution, champs) {
 const LOGI_TEINTES = [[125, 211, 252], [134, 239, 172], [252, 211, 77], [249, 168, 212]];
 const pastel = (k, force) => LOGI_TEINTES[k % LOGI_TEINTES.length].map(v => Math.round(255 - (255 - v) * force));
 
-/** La géométrie commune à l'aperçu et au PDF : indices à gauche, grille à droite. */
+// Le bandeau coloré de la liste, la place des étiquettes, la hauteur des
+// libellés verticaux : les trois constantes de la grille, en millimètres.
+const LOGI_BANDEAU = 4.6, LOGI_LIBELLES = 15;
+
+/** Une approximation de la largeur d'un texte en Helvetica, en millimètres. */
+const largeurTexte = (s, pt) => String(s).length * pt * 0.48 * 0.3528;
+
+/** La hauteur qu'occupe l'énigme (titre, décor, indices numérotés) à cette largeur. */
+function hauteurTexteLogi(p, largeur) {
+    const lignes = (s, pt, l) => Math.max(1, Math.ceil(largeurTexte(s, pt) / Math.max(10, l)));
+    let h = 4 + lignes(p.decor, 7.6, largeur) * 3.4 + 1.5;
+    p.indices.forEach((ind, k) => { h += lignes(`${k + 1}. ${ind.texte}`, 8, largeur - 2) * 3.9; });
+    return h;
+}
+
+/**
+ * La géométrie commune à l'aperçu et au PDF.
+ *
+ * Deux dispositions, et on garde celle qui donne les plus GROSSES cases : côte
+ * à côte quand le bloc est large et bas (la fiche de parcours), empilée quand
+ * il est haut (la fiche autonome, deux logigrammes par page). Toujours côte à
+ * côte, la grille finissait minuscule au bord droit avec une clairière blanche
+ * au milieu ; toujours empilée, elle ne tenait pas dans un bloc de parcours.
+ */
 function geometrieLogi(item, boite) {
     const p = item.meta;
     const n = p.categories[0].valeurs.length;
@@ -472,21 +506,32 @@ function geometrieLogi(item, boite) {
     const colonnes = []; for (let c = 1; c < nc; c++) colonnes.push(c);
     const lignes = [0]; for (let r = nc - 1; r >= 2; r--) lignes.push(r);
 
-    // La grille prend la moitié droite ; les étiquettes de ligne et le bandeau
-    // de la liste mangent une colonne de plus, À GAUCHE de la grille — c'est
-    // là que le texte des indices débordait dessus.
-    const largeurGrille = boite.w * 0.56;
-    const entete = Math.min(26, largeurGrille * 0.2);    // hauteur des libellés verticaux
-    const gouttiere = Math.min(26, largeurGrille * 0.22); // largeur des libellés de ligne
-    const cote = Math.min(
-        (largeurGrille - gouttiere - 5) / (colonnes.length * n),
-        (boite.h - entete - 12) / (lignes.length * n)
-    );
-    const x0 = boite.x + boite.w - (cote * colonnes.length * n);
-    const y0 = boite.y + 8 + entete;
-    const xCat = x0 - gouttiere - 4.5;                   // le bord gauche des étiquettes
-    return { p, n, nc, colonnes, lignes, cote, x0, y0, entete, gouttiere, xCat,
-        indicesW: Math.max(40, xCat - boite.x - 5) };
+    const bandeau = LOGI_BANDEAU;
+    const etiq = Math.max(11, Math.min(17, boite.w * 0.13));
+    const entete = bandeau + LOGI_LIBELLES;
+    const nx = colonnes.length * n, ny = lignes.length * n;
+    const cases = (largeur, hautDispo) => Math.min(
+        (largeur - bandeau - etiq) / nx, (hautDispo - entete - 2) / ny, 14);
+
+    // À côté : le texte tient dans une colonne, la grille occupe le reste.
+    const texteW = Math.max(58, Math.min(boite.w * 0.44, 118));
+    const coteA = cases(boite.w - texteW - 6, boite.h);
+    // Empilée : le texte prend toute la largeur, la grille toute la hauteur qui reste.
+    const texteH = hauteurTexteLogi(p, boite.w);
+    const coteB = cases(boite.w, boite.h - texteH - 3);
+
+    const empile = coteB > coteA;
+    const cote = Math.max(3, empile ? coteB : coteA);
+    const largeurTotale = bandeau + etiq + cote * nx;
+    const zoneX = empile ? boite.x : boite.x + texteW + 6;
+    const zoneW = empile ? boite.w : boite.w - texteW - 6;
+    const xCat = zoneX + Math.max(0, (zoneW - largeurTotale) / 2);
+    return {
+        p, n, nc, colonnes, lignes, cote, bandeau, etiq, entete, xCat,
+        x0: xCat + bandeau + etiq,
+        y0: (empile ? boite.y + texteH + 3 : boite.y) + entete + 1,
+        empile, indicesW: empile ? boite.w : texteW
+    };
 }
 
 const logiVisible = (r, c) => r === 0 || c < r;
@@ -500,33 +545,34 @@ function logigrammePreviewHtml(item, slot, k, solution) {
 
     // L'histoire et les indices.
     html += `<div class="fx-logi-texte" style="left:${b.x * k}px; top:${b.y * k}px;
-        width:${g.indicesW * k}px; font-size:${3.1 * k}px">
-        <b>${echapperSheet(p.titre)}</b> — ${echapperSheet(p.decor)}
+        width:${g.indicesW * k}px; font-size:${2.82 * k}px">
+        <b>${echapperSheet(p.titre)}</b> — <i>${echapperSheet(p.decor)}</i>
         <ol>${p.indices.map(i => `<li>${echapperSheet(i.texte)}</li>`).join('')}</ol></div>`;
 
     // Les bandeaux et les étiquettes de colonne.
+    const libH = g.entete - g.bandeau;
     colonnes.forEach((c, ci) => {
         const x = x0 + ci * n * cote;
         html += `<div class="fx-logi-cat" style="left:${x * k}px; top:${(y0 - g.entete) * k}px;
-            width:${(n * cote) * k}px; height:${(g.entete * 0.28) * k}px; background:${rgb(c, .55)};
-            font-size:${2.5 * k}px">${echapperSheet(p.categories[c].label)}</div>`;
+            width:${(n * cote) * k}px; height:${g.bandeau * k}px; background:${rgb(c, .55)};
+            font-size:${Math.min(2.6, cote * 0.55) * k}px">${echapperSheet(p.categories[c].label)}</div>`;
         for (let j = 0; j < n; j++) {
             html += `<div class="fx-logi-vert" style="left:${(x + j * cote) * k}px;
-                top:${(y0 - g.entete + g.entete * 0.28) * k}px; width:${cote * k}px;
-                height:${(g.entete * 0.72) * k}px; background:${rgb(c, .18)};
-                font-size:${Math.min(2.5, cote * 0.62) * k}px">${echapperSheet(etiquetteLogi(p.categories[c], j))}</div>`;
+                top:${(y0 - libH) * k}px; width:${cote * k}px;
+                height:${libH * k}px; background:${rgb(c, .18)};
+                font-size:${Math.min(2.5, cote * 0.5) * k}px">${echapperSheet(etiquetteLogi(p.categories[c], j))}</div>`;
         }
     });
 
     lignes.forEach((r, ri) => {
         const y = y0 + ri * n * cote;
         html += `<div class="fx-logi-catlig" style="left:${g.xCat * k}px; top:${y * k}px;
-            width:${(g.gouttiere * 0.3) * k}px; height:${(n * cote) * k}px; background:${rgb(r, .55)};
-            font-size:${2.5 * k}px">${echapperSheet(p.categories[r].label)}</div>`;
+            width:${g.bandeau * k}px; height:${(n * cote) * k}px; background:${rgb(r, .55)};
+            font-size:${Math.min(2.6, cote * 0.55) * k}px">${echapperSheet(p.categories[r].label)}</div>`;
         for (let i = 0; i < n; i++) {
-            html += `<div class="fx-logi-lig" style="left:${(g.xCat + g.gouttiere * 0.3) * k}px;
-                top:${(y + i * cote) * k}px; width:${(g.gouttiere * 0.7 + 4.5) * k}px; height:${cote * k}px;
-                background:${rgb(r, .18)}; font-size:${Math.min(2.5, cote * 0.62) * k}px">${echapperSheet(etiquetteLogi(p.categories[r], i))}</div>`;
+            html += `<div class="fx-logi-lig" style="left:${(g.xCat + g.bandeau) * k}px;
+                top:${(y + i * cote) * k}px; width:${g.etiq * k}px; height:${cote * k}px;
+                background:${rgb(r, .18)}; font-size:${Math.min(2.5, cote * 0.5) * k}px">${echapperSheet(etiquetteLogi(p.categories[r], i))}</div>`;
         }
         colonnes.forEach((c, ci) => {
             if (!logiVisible(r, c)) return;
@@ -538,8 +584,10 @@ function logigrammePreviewHtml(item, slot, k, solution) {
                 html += `<div class="fx-logi-case" style="left:${(x + j * cote) * k}px; top:${(y + i * cote) * k}px;
                     width:${cote * k}px; height:${cote * k}px; font-size:${cote * 0.6 * k}px">${rempli}</div>`;
             }
+            // Le cadre du bloc est NOIR : en pastel il se confondait avec le
+            // quadrillage, alors que c'est lui qui dit où s'arrête une liste.
             html += `<div class="fx-logi-bloc" style="left:${x * k}px; top:${y * k}px;
-                width:${(n * cote) * k}px; height:${(n * cote) * k}px; border-color:${rgb(c, .95)}"></div>`;
+                width:${(n * cote) * k}px; height:${(n * cote) * k}px"></div>`;
         });
     });
     return html;
@@ -570,19 +618,20 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
     });
 
     // Les bandeaux de colonne.
+    const libH = g.entete - g.bandeau;
     colonnes.forEach((c, ci) => {
         const x = x0 + ci * n * cote;
         doc.setFillColor(...pastel(c, 0.55));
-        doc.rect(x, y0 - g.entete, n * cote, g.entete * 0.28, 'F');
-        doc.setFontSize(Math.min(8, cote * 1.5));
+        doc.rect(x, y0 - g.entete, n * cote, g.bandeau, 'F');
+        doc.setFontSize(Math.min(8, cote * 1.3));
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(p.categories[c].label), x + n * cote / 2, y0 - g.entete + g.entete * 0.2,
+        doc.text(pourPdf(p.categories[c].label), x + n * cote / 2, y0 - g.entete + g.bandeau * 0.72,
             { align: 'center' });
         doc.setFillColor(...pastel(c, 0.18));
-        doc.rect(x, y0 - g.entete + g.entete * 0.28, n * cote, g.entete * 0.72, 'F');
+        doc.rect(x, y0 - libH, n * cote, libH, 'F');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(Math.min(7, cote * 1.35));
+        doc.setFontSize(Math.min(7.5, cote * 1.2));
         for (let j = 0; j < n; j++) {
             doc.text(pourPdf(etiquetteLogi(p.categories[c], j)),
                 x + j * cote + cote * 0.68, y0 - 1.2, { angle: 90 });
@@ -593,19 +642,19 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         const y0r = y0 + ri * n * cote;
         const xCat = g.xCat;
         doc.setFillColor(...pastel(r, 0.55));
-        doc.rect(xCat, y0r, g.gouttiere * 0.3, n * cote, 'F');
+        doc.rect(xCat, y0r, g.bandeau, n * cote, 'F');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.min(8, cote * 1.5));
+        doc.setFontSize(Math.min(8, cote * 1.3));
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(p.categories[r].label), xCat + g.gouttiere * 0.22, y0r + n * cote / 2,
+        doc.text(pourPdf(p.categories[r].label), xCat + g.bandeau * 0.72, y0r + n * cote / 2,
             { align: 'center', angle: 90 });
         doc.setFillColor(...pastel(r, 0.18));
-        doc.rect(xCat + g.gouttiere * 0.3, y0r, g.gouttiere * 0.7 + 4.5, n * cote, 'F');
+        doc.rect(xCat + g.bandeau, y0r, g.etiq, n * cote, 'F');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(Math.min(7, cote * 1.35));
+        doc.setFontSize(Math.min(7.5, cote * 1.2));
         for (let i = 0; i < n; i++) {
             doc.text(pourPdf(etiquetteLogi(p.categories[r], i)),
-                x0 - 1.5, y0r + i * cote + cote * 0.68, { align: 'right' });
+                x0 - 1.5, y0r + i * cote + cote * 0.62, { align: 'right' });
         }
 
         colonnes.forEach((c, ci) => {
@@ -617,16 +666,26 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
                 doc.line(x, y0r + i * cote, x + n * cote, y0r + i * cote);
                 doc.line(x + i * cote, y0r, x + i * cote, y0r + n * cote);
             }
-            doc.setDrawColor(...pastel(c, 0.95));
-            doc.setLineWidth(0.5);
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.6);
             doc.rect(x, y0r, n * cote, n * cote, 'S');
             if (solution) {
-                doc.setTextColor(...ENCRE.texte);
-                doc.setFontSize(Math.min(9, cote * 1.7));
+                // Le rond et la croix sont DESSINÉS : écrits, ils sortaient en
+                // « O » et « x » de machine à écrire, là où la grille de
+                // l'élève porte un vrai rond et une vraie croix.
+                doc.setFillColor(...ENCRE.trait);
+                doc.setDrawColor(...ENCRE.trait);
+                const r0 = cote * 0.2, br = cote * 0.24;
                 for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-                    const juste = p.solution.findIndex(e => e[r] === i) === p.solution.findIndex(e => e[c] === j);
-                    doc.text(juste ? 'O' : 'x', x + j * cote + cote / 2, y0r + i * cote + cote / 2,
-                        { align: 'center', baseline: 'middle' });
+                    const cx = x + j * cote + cote / 2, cy = y0r + i * cote + cote / 2;
+                    if (p.solution.findIndex(e => e[r] === i) === p.solution.findIndex(e => e[c] === j)) {
+                        doc.setLineWidth(Math.max(0.35, cote * 0.06));
+                        doc.circle(cx, cy, r0, 'FD');
+                    } else {
+                        doc.setLineWidth(Math.max(0.28, cote * 0.045));
+                        doc.line(cx - br, cy - br, cx + br, cy + br);
+                        doc.line(cx - br, cy + br, cx + br, cy - br);
+                    }
                 }
             } else if (champ) {
                 for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
@@ -921,6 +980,15 @@ export const RENDUS = {
         // DEUX sur une page : un logigramme par feuille serait du gâchis.
         proportions: { w: 1, h: 0.47 },
         parLigneDefaut: 1,
+        // SUR LA FICHE AUTONOME : deux colonnes, une seule rangée. La page est
+        // en paysage, un logigramme est HAUT (son énigme au-dessus de sa
+        // grille) : deux colonnes pleine hauteur donnent des cases de douze
+        // millimètres là où trois par quatre les réduisait à deux.
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
+        titreAGauche: true,
+        // Et un trait noir entre les énigmes : sans lui on ne sait plus quel
+        // indice appartient à quelle grille.
+        separateurs: true,
         // Il prend toute la largeur : ses indices se lisent à côté de sa grille.
         grilleMax: 300
     },
@@ -981,9 +1049,12 @@ function entetePdf(doc, titre, sousTitre, consigne) {
     doc.setFontSize(10);
     doc.text('Nom : ..............................    Date : ....................', PAGE.w - PAGE.marge, PAGE.marge + 6, { align: 'right' });
     if (consigne) {
+        // Découpée à la largeur de la page : d'un seul tenant, une consigne un
+        // peu longue sortait par la droite et se terminait dans le vide.
         doc.setFontSize(8.6);
         doc.setTextColor(90, 98, 112);
-        doc.text(pourPdf(consigne), PAGE.marge, PAGE.marge + 12);
+        const lignes = doc.splitTextToSize(pourPdf(consigne), PAGE.w - PAGE.marge * 2);
+        lignes.slice(0, 2).forEach((l, i) => doc.text(l, PAGE.marge, PAGE.marge + 11.6 + i * 3.4));
     }
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.4);
@@ -995,16 +1066,22 @@ function entetePdf(doc, titre, sousTitre, consigne) {
 
 function construirePdf(jsPDF, rendu, items, cols, rows) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const { slots } = calculerFiche(cols, rows);
+    const { slots, traits } = calculerFiche(cols, rows);
 
     const page = (solution) => {
         entetePdf(doc, rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items));
+        if (rendu.separateurs) {
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.35);
+            traits.forEach(t => doc.line(t.x1, t.y1, t.x2, t.y2));
+        }
         items.forEach((item, i) => {
             const slot = slots[i];
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9);
             doc.setTextColor(...ENCRE.texte);
-            doc.text(`Grille ${i + 1}`, slot.titre.x, slot.titre.y, { align: 'center' });
+            if (rendu.titreAGauche) doc.text(`Grille ${i + 1}`, slot.boite.x, slot.titre.y);
+            else doc.text(`Grille ${i + 1}`, slot.titre.x, slot.titre.y, { align: 'center' });
             rendu.pdfGrille(doc, item, slot, solution);
         });
     };
@@ -1045,9 +1122,12 @@ export function ouvrirFicheModal(exo, params) {
     let items = [];
     let solutionsVisibles = false;
 
+    // Le rendu sait mieux que la modale comment il tient sur une page : un
+    // sudoku va par douze, un logigramme par deux.
+    const dispo = rendu.disposition || { cols: 3, rows: 4, maxCols: 5, maxRows: 5 };
     const lireDisposition = () => ({
-        cols: Math.max(1, Math.min(5, Number(colsEl.value) || 3)),
-        rows: Math.max(1, Math.min(5, Number(rowsEl.value) || 4))
+        cols: Math.max(1, Math.min(dispo.maxCols || 5, Number(colsEl.value) || dispo.cols)),
+        rows: Math.max(1, Math.min(dispo.maxRows || 5, Number(rowsEl.value) || dispo.rows))
     });
 
     // Graine fraîche par grille : chaque fiche est différente. Les grilles ne
@@ -1069,7 +1149,7 @@ export function ouvrirFicheModal(exo, params) {
         apercu.style.width = `${PAGE.w * k}px`;
         apercu.style.height = `${PAGE.h * k}px`;
 
-        const { slots } = calculerFiche(cols, rows);
+        const { slots, traits } = calculerFiche(cols, rows);
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
@@ -1077,16 +1157,36 @@ export function ouvrirFicheModal(exo, params) {
                 <span>Nom : ............  Date : ......</span>
             </div>
             <div class="fp-ligne" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 8) * k}px;"></div>`;
+        // La consigne aussi : l'aperçu doit montrer la feuille telle qu'elle
+        // sortira de l'imprimante, consigne comprise.
+        if (!solutionsVisibles) {
+            html += `<div class="fp-consigne" style="left:${en}px; right:${en}px;
+                top:${(PAGE.marge + 9.4) * k}px; font-size:${3.03 * k}px">${echapperSheet(rendu.consigne(items))}</div>`;
+        }
+        if (rendu.separateurs) {
+            traits.forEach(t => {
+                html += `<div class="fp-separateur" style="left:${t.x1 * k}px; top:${t.y1 * k}px;
+                    width:${Math.max(1, (t.x2 - t.x1) * k)}px; height:${Math.max(1, (t.y2 - t.y1) * k)}px"></div>`;
+            });
+        }
         items.forEach((item, i) => {
             const slot = slots[i];
-            html += `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`;
+            // Centré au-dessus d'une grille carrée ; à gauche pour un bloc
+            // large, où le milieu tombe en plein dans le texte de l'énigme.
+            html += rendu.titreAGauche
+                ? `<div class="fp-titre fp-titre--gauche" style="left:${slot.boite.x * k}px;
+                    width:${slot.boite.w * k}px; top:${(slot.titre.y - 3.6) * k}px;
+                    font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`
+                : `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">Grille ${i + 1}</div>`;
             html += rendu.previewGrille(item, slot, k, solutionsVisibles);
         });
         apercu.innerHTML = html;
     };
 
-    colsEl.value = '3';
-    rowsEl.value = '4';
+    colsEl.value = String(dispo.cols);
+    rowsEl.value = String(dispo.rows);
+    colsEl.max = String(dispo.maxCols || 5);
+    rowsEl.max = String(dispo.maxRows || 5);
     colsEl.onchange = rendre;
     rowsEl.onchange = rendre;
     modal.querySelector('#fp-regen').onclick = () => { items = []; rendre(); };

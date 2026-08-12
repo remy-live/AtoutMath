@@ -210,7 +210,11 @@ class Logigramme extends BaseGame {
         const cote = this.coteCase(colonnes.length);
         const cats = p.categories;
         const fond = (k, force) => `background:color-mix(in srgb, ${TEINTES[k % TEINTES.length]} ${force}%, var(--bg-panel));`;
-        const trait = (k) => `color-mix(in srgb, ${TEINTES[k % TEINTES.length]} 75%, var(--text-main))`;
+        // LE CADRE DU BLOC EST NOIR. En pastel il se confondait avec le
+        // quadrillage : c'est pourtant lui qui dit où s'arrête une liste, et
+        // c'est la première chose que l'œil doit trouver. La couleur reste aux
+        // bandeaux, le trait revient au noir.
+        const trait = () => 'var(--text-main)';
 
         // Ligne 1 : le nom des listes en colonne, sur leur bandeau pastel.
         let html = '<table class="lg-table"><tr><td class="lg-mort"></td><td class="lg-mort"></td>';
@@ -248,10 +252,10 @@ class Logigramme extends BaseGame {
                              data-c="${c}" data-j="${j}"
                              style="width:${cote}px; height:${cote}px; font-size:${cote * 0.62}px;
                              border-color:var(--border);
-                             ${j === 0 ? `border-left-color:${trait(c)};` : ''}
-                             ${j === this.n - 1 ? `border-right-color:${trait(c)};` : ''}
-                             ${i === 0 ? `border-top-color:${trait(c)};` : ''}
-                             ${i === this.n - 1 ? `border-bottom-color:${trait(c)};` : ''}"></td>`;
+                             ${j === 0 ? `border-left-color:${trait()};` : ''}
+                             ${j === this.n - 1 ? `border-right-color:${trait()};` : ''}
+                             ${i === 0 ? `border-top-color:${trait()};` : ''}
+                             ${i === this.n - 1 ? `border-bottom-color:${trait()};` : ''}"></td>`;
                     }
                 });
                 html += '</tr>';
