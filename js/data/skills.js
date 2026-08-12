@@ -304,6 +304,14 @@ const BASE = {
         descriptor: 'Justifier par écrit qu\'une droite est perpendiculaire à une autre, en citant la propriété du cours.',
         lesson: 'Une justification a trois lignes, toujours les mêmes. JE SAIS QUE : les données lues sur la figure. OR : la propriété du cours, écrite EN ENTIER — c\'est elle qui autorise le pas suivant, et une propriété à moitié citée n\'autorise rien. DONC : la conclusion, qui ne dit rien de plus que ce que la propriété permet. Ici : si deux droites sont parallèles, toute perpendiculaire à l\'une est perpendiculaire à l\'autre.'
     },
+    'mes.vitesse': {
+        label: 'Temps, distance, vitesse',
+        chemin: [D.GRANDEURS, SD.DUREES],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Calculer une distance, une vitesse ou une dur\u00e9e \u00e0 partir de d = v \u00d7 t.',
+        lesson: 'UNE seule formule suffit : d = v \u00d7 t \u2014 la distance, c\'est la vitesse multipli\u00e9e par le temps. Les deux autres s\'en d\u00e9duisent en divisant : v = d \u00f7 t et t = d \u00f7 v. Devant un \u00e9nonc\u00e9, \u00e9cris la formule, entoure ce que tu connais, et la question te dit quoi calculer. LE PI\u00c8GE du chapitre : le temps se met en HEURES D\u00c9CIMALES \u2014 1 h 30 n\'est pas 1,3 h mais 1,5 h, et 15 minutes font 0,25 h. Enfin, v\u00e9rifie l\'ordre de grandeur : un cycliste ne roule pas \u00e0 200 km/h.'
+    },
     'geo.pythagore': {
         label: 'Théorème de Pythagore',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

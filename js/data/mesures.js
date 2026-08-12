@@ -27,6 +27,19 @@ export const mesuresExercises = [
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Calcule l'aire du rectangle et saisis ta réponse."
     },
+    {
+        // TEMPS, DISTANCE, VITESSE. Une seule formule (d = v × t), la question
+        // qui tourne, et les nombres qui tombent juste par construction : on
+        // tire la vitesse et la durée, la distance en découle.
+        id: 'mes-vitesse',
+        consignePapier: "Réponds en indiquant l'unité demandée.",
+        colonnesPapier: 1,
+        title: 'Temps, Distance, Vitesse',
+        generatorId: 'mes.vitesse', activityId: 'numpad',
+        params: { chercher: 'melange', difficulte: 1 },
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Tout vient d'une seule formule : d = v × t. Écris-la, entoure ce que l'énoncé te donne, et la question te dit quoi calculer — multiplier pour la distance, diviser pour la vitesse ou la durée. Attention aux durées : 1 h 30, c'est 1,5 h."
+    },
     // La pendule à aiguilles. Trois entrées plutôt qu'une : lire et placer
     // sont deux gestes différents, et le professeur doit pouvoir donner l'un
     // sans l'autre. La progression complète reste l'entrée principale.

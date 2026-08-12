@@ -32,6 +32,7 @@ import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
 import { dominosGenerator } from '../generators/dominos.js';
 import { pythagoreGenerator } from '../generators/pythagore.js';
+import { vitesseGenerator } from '../generators/vitesse.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -47,7 +48,7 @@ import { pythagoreGenerator } from '../generators/pythagore.js';
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
-    pythagoreGenerator
+    pythagoreGenerator, vitesseGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
