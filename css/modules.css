@@ -3212,3 +3212,47 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pp-etape-pts { display: inline-flex; align-items: center; gap: 4px; }
 .pp-etape-pts[hidden] { display: none; }
 .pp-etape-pts .cfg-input--num { width: 3.4rem; }
+
+/* --- APERÇU D'UN PARCOURS, AVANT DE S'Y ENGAGER ---------------------------
+   La même carte que « Mon Parcours », mais dans une fenêtre : l'élève voit le
+   chemin entier avant de choisir de le prendre. Les boutons restent collés en
+   bas de la fenêtre — sur un parcours de douze étapes, la carte défile et le
+   bouton « C'est parti » ne doit pas partir avec elle. */
+.apercu-parcours { display: flex; flex-direction: column; gap: 12px; }
+.apercu-tete {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+}
+.apercu-nom { font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
+.apercu-chiffres { font-size: .86rem; color: var(--text-muted); margin-top: 2px; }
+.apercu-genre {
+    padding: 5px 12px; border-radius: 999px; white-space: nowrap;
+    font-size: .8rem; font-weight: 700;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted);
+}
+/* Une évaluation ne se découvre pas en cours de route : elle se signale. */
+.apercu-genre--eval {
+    background: color-mix(in srgb, var(--warning) 16%, transparent);
+    border-color: var(--warning); color: var(--warning);
+}
+.apercu-regle { margin: 0; font-size: .86rem; color: var(--text-muted); }
+.apercu-styles {
+    display: flex; gap: 4px; background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px;
+}
+/* La carte de l'aperçu MONTRE, elle ne se joue pas : le départ se donne par le
+   bouton du bas, une fois pour toutes. Sans cela, chaque étape porte une
+   pastille et un « Jouer » qui ne mènent nulle part — et sur une évaluation,
+   commencer par l'étape 4 n'aurait aucun sens. */
+.apercu-carte { margin: 0 -4px; pointer-events: none; }
+.apercu-carte .path-timeline-step .btn-toggle { display: none; }
+.apercu-carte .world-map,
+.apercu-carte .duo-path,
+.apercu-carte .path-timeline { margin-bottom: 0; }
+.apercu-actions {
+    position: sticky; bottom: -20px; z-index: 1;
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    margin: 0 -20px -20px; padding: 14px 20px;
+    background: var(--bg-panel); border-top: 1px solid var(--border);
+}
+.apercu-actions .btn-toggle { flex: 1 1 auto; max-width: 260px; }

@@ -20,6 +20,7 @@ import { computeRuns } from '../core/projections.js';
 import { gradeRun } from '../core/grading.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
+import { showModal } from './modal.js';
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
@@ -40,8 +41,13 @@ function getPathStyle() {
     } catch (e) { return 'mondes'; }
 }
 
-function setPathStyle(id) {
+/** Retient le choix d'habillage, sans rien redessiner. */
+function memoriserStyle(id) {
     try { localStorage.setItem(STYLE_KEY, id); } catch (e) { /* mode privé */ }
+}
+
+function setPathStyle(id) {
+    memoriserStyle(id);
     renderStudentPathView();
 }
 
@@ -455,8 +461,11 @@ function teacherPathsSection() {
 
         const btn = document.createElement('button');
         btn.className = 'btn-toggle active';
-        btn.textContent = 'Jouer';
+        btn.textContent = 'Voir le parcours';
         btn.onclick = async () => {
+            // On montre la carte AVANT de lancer : « Jouer » engageait l'élève
+            // pour douze étapes sans lui avoir dit lesquelles.
+            if (!await apercuParcours(normalized)) return;
             const { Runner } = await import('../core/runner.js');
             new Runner({ path: normalized, deviceMode: 'none' }).start();
         };
@@ -564,6 +573,120 @@ function lastResultSection() {
 
 function formatNote(n) {
     return Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
+}
+
+// --- L'APERÇU D'UN PARCOURS, AVANT DE S'Y ENGAGER ---------------------------
+//
+// Jusqu'ici, choisir un parcours — en cliquant une carte ou en saisissant le
+// code du professeur — jetait l'élève directement dans la première question.
+// Il découvrait le contenu de sa séance en la faisant, et n'apprenait qu'à la
+// fin qu'elle comptait douze étapes.
+//
+// L'aperçu montre le chemin AVANT de s'y engager, dans le même habillage que
+// la vue « Mon Parcours » : la carte des mondes, le chemin d'étapes ou la
+// liste, au choix de l'élève. On y lit d'un coup d'œil combien d'étapes, quoi
+// (les pictogrammes disent la notion), combien de questions, et s'il s'agit
+// d'un entraînement ou d'une évaluation — la seule chose qu'on ne devrait
+// jamais apprendre en cours de route.
+
+/**
+ * Ouvre l'aperçu illustré d'un parcours et attend la décision de l'élève.
+ * @param {Object} path      parcours normalisé
+ * @param {Object} [opts]
+ * @param {string} [opts.titre]   titre de la fenêtre
+ * @param {string} [opts.action]  texte du bouton de départ
+ * @returns {Promise<boolean>} vrai si l'élève se lance
+ */
+export function apercuParcours(path, opts = {}) {
+    const { steps } = hydratePath(path);
+    if (!steps.length) return Promise.resolve(false);
+    const policy = resolvePolicy(path.policy);
+    const evaluation = isEvaluation(policy);
+
+    return new Promise((resolve) => {
+        const corps = document.createElement('div');
+        corps.className = 'apercu-parcours';
+
+        const tete = document.createElement('div');
+        tete.className = 'apercu-tete';
+        const total = steps.reduce((s, e) => s + (e.nbItems || 0), 0);
+        tete.innerHTML = `
+            <div>
+                <div class="apercu-nom">${escapeHtml(path.name || 'Parcours')}</div>
+                <div class="apercu-chiffres">${steps.length} étape${steps.length > 1 ? 's' : ''}
+                    • ${total} question${total > 1 ? 's' : ''}</div>
+            </div>
+            <div class="apercu-genre ${evaluation ? 'apercu-genre--eval' : ''}">
+                ${evaluation ? '📝 Évaluation' : '🎯 Entraînement'}</div>`;
+        corps.appendChild(tete);
+
+        const regle = document.createElement('p');
+        regle.className = 'apercu-regle';
+        regle.textContent = describePolicy(policy);
+        corps.appendChild(regle);
+
+        // La carte elle-même, redessinée quand l'élève change d'habillage.
+        const scene = document.createElement('div');
+        scene.className = 'apercu-carte';
+        corps.appendChild(scene);
+
+        const dessiner = () => {
+            scene.innerHTML = '';
+            // Toutes les étapes sont montrées, aucune n'est encore faite : les
+            // cadenas n'apprendraient rien ici, ils feraient seulement peur.
+            const o = { allUnlocked: true, currentIndex: 0, doneIds: new Set() };
+            const style = getPathStyle();
+            scene.appendChild(
+                style === 'classique' ? buildClassicTimeline(steps, o)
+                    : style === 'chemin' ? buildDuoPath(steps, o)
+                        : buildWorldMap(steps, o));
+        };
+
+        const barre = document.createElement('div');
+        barre.className = 'apercu-styles';
+        STYLES.forEach(s => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'path-style-btn' + (s.id === getPathStyle() ? ' path-style-btn--active' : '');
+            b.textContent = s.icon;
+            b.title = s.label;
+            b.setAttribute('aria-label', `Présentation : ${s.label}`);
+            b.onclick = () => {
+                memoriserStyle(s.id);
+                barre.querySelectorAll('.path-style-btn').forEach(x => x.classList.remove('path-style-btn--active'));
+                b.classList.add('path-style-btn--active');
+                dessiner();
+            };
+            barre.appendChild(b);
+        });
+        tete.appendChild(barre);
+        dessiner();
+
+        const actions = document.createElement('div');
+        actions.className = 'apercu-actions';
+        const retour = document.createElement('button');
+        retour.type = 'button';
+        retour.className = 'btn-toggle';
+        retour.textContent = 'Plus tard';
+        const partir = document.createElement('button');
+        partir.type = 'button';
+        partir.className = 'btn-toggle active';
+        partir.textContent = opts.action || (evaluation ? 'Commencer l\'évaluation' : 'C\'est parti !');
+        actions.append(retour, partir);
+        corps.appendChild(actions);
+
+        let choisi = false;
+        const fenetre = showModal(opts.titre || 'Ton parcours', '', {
+            width: '640px',
+            onClose: () => resolve(choisi)
+        });
+        // showModal pose l'en-tête puis le corps défilant : c'est ce dernier
+        // bloc qui accueille la carte.
+        fenetre.element.lastElementChild.appendChild(corps);
+
+        retour.onclick = () => fenetre.close();
+        partir.onclick = () => { choisi = true; fenetre.close(); };
+    });
 }
 
 function escapeHtml(s) {

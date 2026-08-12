@@ -52,7 +52,7 @@
 #sidebar.collapsed { width: 0 !important; border-right: none; }
 #sidebar header { display: none; } /* Logo is moved to top-navbar */
 #main-area { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; background: var(--bg-app); }
-#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; background: var(--bg-verre); backdrop-filter: blur(12px); z-index: 10; }
+#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; flex-shrink: 0; background: var(--bg-verre); backdrop-filter: blur(12px); z-index: 10; }
 #bottom-nav { height: var(--bottom-nav-height); box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
 
 /* =========================================================
@@ -139,11 +139,20 @@ body.mobile-view.teacher-mode .drawer-handle:active { cursor: grabbing; }
 
 /* --- LAYOUT DU BUILDER --- */
 body.mobile-view .desktop-only { display: none !important; }
-#builder-view { display: none; flex-direction: row; padding: 0; height: 100%; width: 100%; }
+/* LA HAUTEUR DES VUES DE #main-area.
+   « height: 100% » se mesurait sur #main-area TOUT ENTIER, en-tête compris :
+   la vue descendait donc systématiquement d'une hauteur d'en-tête sous le bas
+   de l'écran, et ce bout-là était rogné par « overflow: hidden ». Dans le
+   builder, cela mangeait la fin du panneau de propriétés — on pouvait faire
+   défiler le panneau, mais ses derniers champs restaient hors de la fenêtre,
+   inatteignables. « flex: 1 » prend la place qui reste vraiment, et
+   « min-height: 0 » autorise la vue à se serrer sous son contenu, sans quoi
+   elle repousse à nouveau tout le monde vers le bas. */
+#builder-view { display: none; flex-direction: row; padding: 0; flex: 1 1 auto; min-height: 0; width: 100%; }
 body.mobile-view #builder-view { flex-direction: column; }
-#builder-center-col { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
-#view-path { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); height: 100%; overflow-y: auto; align-items: center; }
-#view-profile { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); height: 100%; overflow-y: auto; }
+#builder-center-col { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+#view-path { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; align-items: center; }
+#view-profile { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 /* Le contenu du parcours ne doit jamais dépasser la largeur du téléphone. */
 #view-path > *, #view-profile > * { max-width: 100%; min-width: 0; }
 body.mobile-view #builder-center-col { flex: none !important; height: auto !important; border-right: none !important; }

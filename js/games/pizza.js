@@ -143,10 +143,12 @@ class Pizza extends BaseGame {
                 }
                 .pz-btn:hover { background: var(--bg-hover); }
 
-                /* LE BON DE COMMANDE. Chaque ligne porte sa fraction, son
-                   ingrédient et son compteur : « 5 / 8 parts ». C'est ce
-                   compteur qui transforme le comptage en calcul — on voit
-                   combien il en manque avant de les avoir posées. */
+                /* LE BON DE COMMANDE. Une ligne = une fraction et son
+                   ingrédient : « un quart d'ananas ». RIEN D'AUTRE.
+                   Il affichait « 0 / 8 », c'est-à-dire la réponse : combien de
+                   huitièmes font un quart était justement la question posée.
+                   Le nombre de parts DÉJÀ POSÉES reste, lui — l'élève peut les
+                   compter sur la pizza, l'écrire ne lui apprend rien de plus. */
                 .pz-commande {
                     display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
                     width: 100%; max-width: 640px; flex: 0 0 auto;
@@ -157,8 +159,10 @@ class Pizza extends BaseGame {
                     background: var(--bg-hover); border: 2px solid transparent;
                     font-size: clamp(11px, 2.5cqw, 13.5px); transition: .15s;
                 }
-                .pz-ligne--pleine { border-color: var(--success); }
-                .pz-ligne--trop { border-color: var(--danger); }
+                /* La ligne sur laquelle l'élève travaille en ce moment. Elle
+                   ne dit pas si le compte est bon : elle dit seulement quel
+                   ingrédient la main tient. */
+                .pz-ligne--actif { border-color: var(--primary); }
                 .pz-pastille { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; }
                 .pz-compteur { font-variant-numeric: tabular-nums; color: var(--text-muted); font-weight: 800; }
 
@@ -277,13 +281,14 @@ class Pizza extends BaseGame {
         this.garniture.forEach(g => { if (g) compte[g] = (compte[g] || 0) + 1; });
         this.commandeEl.innerHTML = this.commande.fractions.map(f => {
             const ing = par(f.ingredient);
-            const attendu = this.commande.cible[f.ingredient];
             const pose = compte[f.ingredient] || 0;
-            const etat = pose === attendu ? 'pleine' : (pose > attendu ? 'trop' : '');
-            return `<span class="pz-ligne ${etat ? 'pz-ligne--' + etat : ''}">
+            // « un quart d'ananas », et rien de plus : combien de parts cela
+            // fait sur cette pizza-là est TOUTE la question de l'exercice.
+            const actif = f.ingredient === this.choisi ? ' pz-ligne--actif' : '';
+            return `<span class="pz-ligne${actif}">
                 <span class="pz-pastille" style="background:${ing.teinte}"></span>
                 ${direFraction(f.num, f.den)} ${complement(ing.nom)}
-                <span class="pz-compteur">${pose} / ${attendu}</span>
+                ${pose ? `<span class="pz-compteur">${pose} posée${pose > 1 ? 's' : ''}</span>` : ''}
             </span>`;
         }).join('');
     }
@@ -423,6 +428,10 @@ class Pizza extends BaseGame {
         const id = bouton.dataset.bac;
         this.choisi = id;
         this.majBacs();
+        // Le bon de commande souligne la ligne de l'ingrédient en main : c'est
+        // le seul lien entre « le quart d'ananas » et le bac qu'on vient de
+        // prendre, maintenant que le compteur ne l'annonce plus.
+        this.majCommande();
 
         const grain = document.createElement('div');
         grain.className = 'pz-grain';
@@ -581,6 +590,7 @@ class Pizza extends BaseGame {
             const bac = this.bacsEl.querySelector(`[data-bac="${ing.id}"]`);
             this.choisi = ing.id;
             this.majBacs();
+            this.majCommande();
             if (bac && !await cur.tap(bac)) return fin();
 
             for (let k = 0; k < cible; k++) {
