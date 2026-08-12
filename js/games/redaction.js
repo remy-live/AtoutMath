@@ -65,7 +65,16 @@ class Redaction extends BaseGame {
                    et l'élève « voit » un parallélisme qu'il devrait déduire. */
                 .rd-para { stroke: #2563eb; stroke-width: 2.6; stroke-dasharray: 9 6; fill: none; }
                 .rd-perp { stroke: #b45309; stroke-width: 2.6; fill: none; }
-                .rd-nom { font-size: 15px; font-weight: 800; }
+                /* Le nom d'une droite doit rester lisible APRÈS réduction : la
+                   figure fait 380 px sur un ordinateur et 210 sur un
+                   téléphone, soit un texte presque deux fois plus petit. On
+                   l'écrit donc gros dans le repère du viewBox, avec un
+                   liseré blanc qui le décolle des traits qu'il croise. */
+                .rd-nom {
+                    font-size: 24px; font-weight: 800;
+                    paint-order: stroke; stroke: var(--bg-panel); stroke-width: 4px;
+                    stroke-linejoin: round;
+                }
                 .rd-angle { stroke: #b45309; stroke-width: 2.2; fill: none; opacity: 0; transition: opacity .35s; }
                 .rd-angle--vu { opacity: 1; }
                 /* L'angle droit ne se contente pas d'apparaître : il se signale.
@@ -188,13 +197,16 @@ class Redaction extends BaseGame {
 
     dessinerFigure() {
         const f = this.figure;
-        const W = 300, H = 240;
+        // Le cadre est plus large que le tracé : les noms de droites se posent
+        // au BOUT des traits, et grossis pour le téléphone ils sortaient de la
+        // figure — « (d₃) » se lisait « (d ». La marge leur appartient.
+        const W = 360, H = 250;
         const a = f.inclinaison * Math.PI / 180;
         const cx = W / 2, cy = H / 2;
         const dx = Math.cos(a), dy = Math.sin(a);
         const nx = -dy, ny = dx;              // la normale : direction de la perpendiculaire
         const e = f.ecart;                    // demi-écart entre les parallèles
-        const L = 150;
+        const L = 128;
 
         const droite = (ox, oy) => ({
             x1: cx + ox - dx * L, y1: cy + oy - dy * L,
@@ -216,11 +228,27 @@ class Redaction extends BaseGame {
         const jx = px - nx * e, jy = py - ny * e;
         const carre1 = `M ${jx + dx * c} ${jy + dy * c} L ${jx + dx * c + nx * c} ${jy + dy * c + ny * c} L ${jx + nx * c} ${jy + ny * c}`;
 
-        // Le nom se pose À CÔTÉ de la droite, décalé le long de sa normale :
-        // posé dessus, il se lit mal et masque le trait au moment où l'élève
-        // cherche justement à le suivre.
-        const nom = (x, y, texte, couleur, sens) =>
-            `<text class="rd-nom" x="${x + nx * 15 * sens}" y="${y + ny * 15 * sens + 5}" fill="${couleur}">(${texte})</text>`;
+        // Le nom se pose À CÔTÉ de la droite, décalé le long de sa normale, et
+        // RAMENÉ DANS LE CADRE : une étiquette à moitié coupée ne nomme rien.
+        // Un demi-cadratin par caractère est une estimation généreuse de la
+        // largeur, qui suffit à décider du bord dont il faut s'écarter.
+        // Chaque parallèle porte son nom au bout LE PLUS LOIN du croisement :
+        // du côté proche, l'étiquette se serait posée sur l'angle droit que la
+        // propriété fait justement apparaître.
+        const loin = f.ou > 50 ? -1 : 1;
+        const bout = (d) => loin > 0
+            ? { x: d.x2 - 26 * dx, y: d.y2 - 26 * dy }
+            : { x: d.x1 + 26 * dx, y: d.y1 + 26 * dy };
+
+        const MARGE = 6;
+        const nom = (x, y, texte, couleur, sens) => {
+            const etiquette = `(${texte})`;
+            const demi = etiquette.length * 6.5;
+            const px = Math.min(W - MARGE - demi, Math.max(MARGE + demi, x + nx * 23 * sens));
+            const py = Math.min(H - MARGE, Math.max(MARGE + 16, y + ny * 23 * sens + 5));
+            return `<text class="rd-nom" x="${px}" y="${py}" fill="${couleur}"
+                          text-anchor="middle">${etiquette}</text>`;
+        };
 
         // Le tracé part du côté de la PREMIÈRE parallèle et descend vers la
         // seconde : c'est l'ordre de la phrase (« perpendiculaire à l'une…
@@ -242,13 +270,17 @@ class Redaction extends BaseGame {
                       style="stroke-dasharray:${this.perpLong};stroke-dashoffset:${this.perpLong}" />
                 <path class="rd-angle rd-angle--vu" d="${carre1}" />
                 <path class="rd-angle" data-angle d="${carre}" />
-                ${nom(p1.x2 - 30 * dx, p1.y2 - 30 * dy, f.noms.p1, '#2563eb', -1)}
-                ${nom(p2.x2 - 30 * dx, p2.y2 - 30 * dy, f.noms.p2, '#2563eb', 1)}
-                <text class="rd-nom" x="${perp.x2 + dx * 16}" y="${perp.y2 + dy * 16 + 5}" fill="#b45309">(${f.noms.perp})</text>
+                ${nom(bout(p1).x, bout(p1).y, f.noms.p1, '#2563eb', -1)}
+                ${nom(bout(p2).x, bout(p2).y, f.noms.p2, '#2563eb', 1)}
+                ${nom(perp.x2, perp.y2 + 12, f.noms.perp, '#b45309', 0)}
             </svg>`;
-        // Au premier temps, la perpendiculaire n'est pas encore tracée : elle
-        // apparaît quand la phrase en parle.
-        if (this.etape >= 1) this.montrerPerpendiculaire();
+        // LA PERPENDICULAIRE EST UNE DONNÉE, pas une conclusion : elle est là
+        // dès le premier écran. Cachée, elle laissait sur la figure un angle
+        // droit et une étiquette « (d₃) » qui ne désignaient rien — l'élève
+        // cherchait une droite absente. Ce qui reste caché jusqu'au bout, et
+        // qui est le vrai enjeu de l'exercice, c'est le SECOND angle droit :
+        // celui que la propriété fait apparaître.
+        this.montrerPerpendiculaire();
     }
 
     /** La perpendiculaire, posée d'un coup — pour les temps où elle est un acquis. */

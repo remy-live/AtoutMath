@@ -52,16 +52,20 @@ export const PROPRIETE = {
 };
 
 /**
- * Trois noms de droites distincts, tirés au hasard.
+ * Les trois droites s'appellent TOUJOURS (d₁), (d₂), (d₃).
  *
- * Que des noms de SIXIÈME. Le delta majuscule est la notation du lycée ; en
- * sixième, il ajoute un obstacle qui n'a rien à voir avec la propriété qu'on
- * travaille — l'élève bute sur un symbole qu'il n'a jamais vu au lieu de lire
- * la figure.
+ * Elles portaient auparavant trois noms tirés parmi d, d', d₁ … d₅ : sur la
+ * figure d'un téléphone, « (d) » et « (d₅) » se confondaient, et rien ne
+ * disait combien de droites la figure comptait. Trois indices consécutifs se
+ * lisent d'un coup d'œil et disent leur nombre.
+ *
+ * Ce qui reste tiré au sort, c'est le RÔLE de chacune : la perpendiculaire
+ * n'est pas toujours (d₃). Sans cela, l'élève apprendrait la place de
+ * l'étiquette au lieu de lire la figure.
  */
 export function tirerNoms(rng) {
-    const lettres = rng.shuffle(['d', 'd\'', 'd₁', 'd₂', 'd₃', 'd₄', 'd₅']);
-    return { p1: lettres[0], p2: lettres[1], perp: lettres[2] };
+    const roles = rng.shuffle(['d₁', 'd₂', 'd₃']);
+    return { p1: roles[0], p2: roles[1], perp: roles[2] };
 }
 
 /**
