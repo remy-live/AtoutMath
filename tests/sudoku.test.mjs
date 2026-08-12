@@ -96,3 +96,22 @@ test('la génération est rapide, y compris en 9×9 difficile', () => {
     const duree = Date.now() - debut;
     assert.ok(duree < 5000, `10 grilles 9×9 en ${duree} ms — trop lent`);
 });
+
+test('la grille est un tableau PLAT, comme l\'attend la fiche imprimée', () => {
+    // Le rendu papier lit la case (r, c) à l'indice r × n + c. Le binairo, lui,
+    // range ses cases en tableau de lignes : les deux se ressemblent assez pour
+    // qu'on écrive `givens[r][c]` par habitude, et la fiche plantait pour ça.
+    // Ce test fige le contrat du côté du générateur.
+    for (const taille of [4, 6, 9]) {
+        const { meta } = genere(taille * 7, { taille });
+        const { n, br, bc, givens, solution } = meta;
+        assert.equal(n, taille);
+        assert.equal(givens.length, n * n, `givens à plat pour ${n}×${n}`);
+        assert.equal(solution.length, n * n, `solution à plat pour ${n}×${n}`);
+        assert.ok(givens.every(v => v === null || typeof v === 'number'),
+            'une case est un nombre ou null — jamais une ligne');
+        assert.equal(br * bc, n, 'un bloc contient exactement n cases');
+        // La case (1, 2) doit bien être à l'indice n + 2.
+        assert.equal(solution[n + 2], solution[1 * n + 2]);
+    }
+});

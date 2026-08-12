@@ -82,7 +82,10 @@ function hauteurBloc(bloc, o) {
  */
 export function composerFiche(questions, opts, mesurer) {
     const o = { ...DEFAUTS, ...(opts || {}) };
-    const colonnes = Math.max(1, Math.min(3, o.colonnes));
+    // Jusqu'à SIX colonnes : trois suffisent pour des questions à répondre,
+    // mais la feuille de solutions compacte en demande cinq — c'est elle qui
+    // doit tenir sur une seule page pendant qu'on corrige.
+    const colonnes = Math.max(1, Math.min(6, o.colonnes));
     const zone = {
         x: A4.marge,
         y: A4.marge + A4.enteteH,
@@ -165,7 +168,9 @@ export const DEFAUTS_BLOCS = {
     entreQuestions: 3.4,  // entre deux rangées de questions
     bandeauH: 8,          // le bandeau « Exercice N »
     apresBandeau: 3.4,
-    entreExercices: 7
+    entreExercices: 7,
+    grillesParLigne: 2,   // pour les exercices à grilles
+    grilleMax: 78         // côté maximal d'une grille, en mm
 };
 
 /**
@@ -205,7 +210,71 @@ export function composerBlocs(exos, opts, mesurer) {
 
     exos.forEach((exo, iExo) => {
         const questions = exo.questions || [];
-        if (!questions.length) return;
+        const grilles = exo.grilles || [];
+        if (!questions.length && !grilles.length) return;
+
+        // --- UN EXERCICE EN GRILLES (sudoku, binairo, garam, mathdoku) ------
+        //
+        // Ces exercices n'ont pas de « questions » : ils ont des grilles, qui
+        // occupent un carré et qu'on remplit dessus. Ils étaient jusqu'ici
+        // renvoyés à « écran seulement », ce qui est faux — ce sont justement
+        // ceux qu'on fait le plus volontiers sur papier : on y rature, on note
+        // ses candidats, on gomme.
+        //
+        // Elles se rangent en rangées, la taille du carré déduite du nombre
+        // par ligne. On ne les coupe jamais : une grille à cheval sur deux
+        // pages est une grille perdue.
+        if (grilles.length) {
+            const parLigne = Math.max(1, Math.min(grilles.length, o.grillesParLigne || 2));
+            const gap = o.gouttiere;
+            const cote = Math.min(
+                (zone.w - gap * (parLigne - 1)) / parLigne,
+                o.grilleMax || 78
+            );
+            const consigneLignes = exo.consigne
+                ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)
+                : [];
+            const enteteH = o.bandeauH + consigneLignes.length * (o.tailleConsigne * 1.45) + o.apresBandeau;
+            if (iExo > 0 && page.items.length && y > zone.y) y += o.entreExercices - o.entreQuestions;
+            if (page.items.length && y + enteteH + cote > basPage) nouvellePage();
+
+            page.items.push({
+                type: 'exo', n: iExo + 1, suite: false,
+                titre: exo.titre, points: exo.points ?? null,
+                x: zone.x, y, w: zone.w, h: o.bandeauH
+            });
+            y += o.bandeauH;
+            if (consigneLignes.length) {
+                page.items.push({ type: 'consigne', lignes: consigneLignes, x: zone.x, y, w: zone.w - 2 });
+                y += consigneLignes.length * (o.tailleConsigne * 1.45);
+            }
+            y += o.apresBandeau;
+
+            for (let debut = 0; debut < grilles.length; debut += parLigne) {
+                const rangee = grilles.slice(debut, debut + parLigne);
+                if (y + cote + o.entreQuestions > basPage) {
+                    nouvellePage();
+                    page.items.push({
+                        type: 'exo', n: iExo + 1, suite: true,
+                        titre: exo.titre, points: null,
+                        x: zone.x, y, w: zone.w, h: o.bandeauH
+                    });
+                    y += o.bandeauH + o.apresBandeau;
+                }
+                rangee.forEach((g, i) => {
+                    nbQuestions++;
+                    page.items.push({
+                        type: 'grille', n: nbQuestions, cle: g.cle, item: g.item,
+                        x: zone.x + i * (cote + gap), y, taille: cote,
+                        // La boîte complète, pour les treillis larges (Garam) :
+                        // un carré y donnerait des cases minuscules.
+                        boite: { x: zone.x + i * (cote + gap), y, w: cote, h: cote }
+                    });
+                });
+                y += cote + o.entreQuestions;
+            }
+            return;
+        }
 
         // Combien de colonnes internes ? Le plus possible, à condition que
         // CHAQUE question tienne sur une seule ligne de sa cellule avec au
@@ -310,14 +379,85 @@ export function composerBlocs(exos, opts, mesurer) {
 }
 
 /**
- * La page des solutions : compacte, plusieurs par ligne. Elle n'a pas à être
- * belle, elle a à être lue en diagonale pendant qu'on corrige.
+ * LA FEUILLE DE SOLUTIONS, en trois modes — parce qu'on ne s'en sert pas de la
+ * même façon selon le moment.
+ *
+ *   COMPACT   « 1. 56  2. 42  3. 7 » — cinq colonnes, rien d'autre que les
+ *             réponses. C'est la feuille qu'on tient d'une main en corrigeant
+ *             trente copies : on cherche un numéro et on lit un nombre. Y
+ *             ajouter l'énoncé ferait tourner la page, donc perdre le fil.
+ *   NORMAL    « 1. 7 × 8 = 56 ». L'énoncé rappelé sert quand on corrige
+ *             plusieurs jours après, ou quand une copie répond à côté et qu'on
+ *             veut vérifier de quelle question il s'agissait.
+ *   DÉTAILLÉ  l'énoncé, la réponse et l'EXPLICATION du générateur. C'est la
+ *             feuille qu'on distribue après le contrôle, ou qu'on projette
+ *             pour la correction collective.
+ *
+ * Les trois lisent les mêmes questions : c'est le texte de chaque ligne et le
+ * nombre de colonnes qui changent, pas les données.
  */
+export const MODES_SOLUTION = ['compact', 'normal', 'detaille'];
+
+/**
+ * LE BARÈME D'UNE INTERROGATION, réparti tout seul sur la note.
+ *
+ * Un contrôle « sur 20 » dont les exercices totalisent 38 points n'est pas une
+ * proposition à discuter, c'est une faute d'inattention que le professeur
+ * devra rattraper à la main. On répartit donc au prorata du travail demandé —
+ * le nombre de questions — puis on distribue les points restants aux exercices
+ * dont la part a été le plus rabotée par l'arrondi. La somme vaut exactement
+ * la note, sauf s'il y a plus d'exercices que de points : on laisse alors un
+ * point à chacun, et c'est à l'appelant de le signaler.
+ *
+ * @param {Object} quantites - nombre de questions par identifiant d'exercice
+ * @param {number} noteSur   - le total visé
+ * @returns {Object} les points par identifiant
+ */
+export function repartirBareme(quantites, noteSur) {
+    const points = {};
+    const actifs = Object.keys(quantites).filter(id => quantites[id] > 0);
+    Object.keys(quantites).forEach(id => { points[id] = 0; });
+    if (!actifs.length) return points;
+
+    const sur = Math.max(1, Math.round(noteSur) || 20);
+    const masse = actifs.reduce((s, id) => s + quantites[id], 0);
+    const parts = actifs.map(id => ({ id, exact: (quantites[id] / masse) * sur }));
+    parts.forEach(p => { points[p.id] = Math.max(1, Math.floor(p.exact)); });
+
+    // Le reste ne peut être que positif : chaque part a été arrondie vers le
+    // bas. Il ne devient négatif que dans le cas dégénéré « plus d'exercices
+    // que de points », où le plancher d'un point l'emporte — on n'y touche pas.
+    let reste = sur - parts.reduce((s, p) => s + points[p.id], 0);
+    parts.sort((a, b) => (b.exact - Math.floor(b.exact)) - (a.exact - Math.floor(a.exact)));
+    for (let i = 0; reste > 0; i++, reste--) points[parts[i % parts.length].id]++;
+    return points;
+}
+
 export function composerSolutions(questions, opts, mesurer) {
-    const o = { ...DEFAUTS, ...(opts || {}), colonnes: Math.max(2, Math.min(5, (opts && opts.colonnesSolutions) || 4)) };
-    const items = questions.map((q, i) => ({
-        texte: `${i + 1}. ${q.reponse ?? ''}`,
-        reponse: q.reponse
-    }));
-    return composerFiche(items, { ...o, ligneReponse: 0, entreQuestions: 1.4, numeroL: 0 }, mesurer);
+    const mode = MODES_SOLUTION.includes(opts && opts.mode) ? opts.mode : 'compact';
+    const colonnes = { compact: 5, normal: 3, detaille: 1 }[mode];
+    const o = {
+        ...DEFAUTS, ...(opts || {}),
+        colonnes: Math.max(1, Math.min(5, (opts && opts.colonnesSolutions) || colonnes))
+    };
+
+    const items = questions.map((q, i) => {
+        const n = `${i + 1}.`;
+        const rep = q.reponse ?? '';
+        if (mode === 'compact') return { texte: `${n} ${rep}` };
+        if (mode === 'normal') return { texte: `${n} ${nettoyer(q.texte)} → ${rep}` };
+        // Détaillé : l'explication sur sa propre ligne, quand il y en a une.
+        const expl = (q.explication || '').trim();
+        return { texte: `${n} ${nettoyer(q.texte)} → ${rep}${expl ? '\n' + expl : ''}` };
+    });
+
+    // En détaillé les entrées respirent : deux explications collées l'une à
+    // l'autre se lisent comme un seul paragraphe.
+    const entre = mode === 'detaille' ? 2.6 : 1.4;
+    return composerFiche(items, { ...o, ligneReponse: 0, entreQuestions: entre, numeroL: 0 }, mesurer);
+}
+
+/** Un énoncé sur une feuille de solutions tient sur une ligne : pas de retours. */
+function nettoyer(texte) {
+    return String(texte ?? '').replace(/\s*\n\s*/g, ' ').trim();
 }

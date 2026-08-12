@@ -3194,3 +3194,21 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     flex-shrink: 0; width: 17px; height: 17px; margin: 0;
     accent-color: var(--primary); cursor: pointer;
 }
+
+/* La case de la note d'une interrogation, dans l'aperçu de la fiche. Un cadre
+   à elle en haut à droite : c'est le premier endroit que regarde l'élève et le
+   dernier que remplit le professeur. */
+.fp-note-case {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid #1a202c; border-radius: 3px;
+    font-weight: 800; color: #6e7684; box-sizing: border-box;
+}
+.fx-grille-num { position: absolute; font-weight: 800; color: #6e7684; }
+
+/* Les réglages des solutions et le barème, dans la fiche du parcours. */
+.pp-sol-reglages { margin-top: -4px; }
+.pp-sol-reglages select.cfg-input { min-width: 12rem; }
+.pp-note-sur[hidden] { display: none; }
+.pp-etape-pts { display: inline-flex; align-items: center; gap: 4px; }
+.pp-etape-pts[hidden] { display: none; }
+.pp-etape-pts .cfg-input--num { width: 3.4rem; }

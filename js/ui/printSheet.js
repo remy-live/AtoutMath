@@ -222,6 +222,78 @@ function binairoPreviewHtml(item, slot, k, solution) {
     return html + '</table>';
 }
 
+// --- Sudoku -------------------------------------------------------------------
+//
+// La seule chose qui distingue un sudoku d'un binairo à l'impression, ce sont
+// ses BLOCS : sans les traits épais qui les délimitent, la grille est illisible
+// et le raisonnement impossible. `br` × `bc` donnent la forme du bloc — 2×2
+// pour un 4×4, 2×3 pour un 6×6, 3×3 pour un 9×9.
+//
+// ATTENTION : le sudoku range ses cases À PLAT (un seul tableau de n × n
+// nombres), là où le binairo garde un tableau de lignes. On passe donc par
+// `case(r, c)` plutôt que par `givens[r][c]`, qui ne veut rien dire ici.
+
+function sudokuPreviewHtml(item, slot, k, solution) {
+    const { n, br, bc, givens, solution: sol } = item.meta;
+    const s = (slot.taille / n) * k;
+    let html = `<table class="fp-grille" style="left:${slot.x * k}px; top:${slot.y * k}px; border: 2.4px solid #1a202c;">`;
+    for (let r = 0; r < n; r++) {
+        html += '<tr>';
+        for (let c = 0; c < n; c++) {
+            const i = r * n + c;
+            const donnee = givens[i] !== null && givens[i] !== undefined;
+            // Les traits de bloc sont volontairement bien plus épais que le
+            // quadrillage : c'est le seul repère qui dit où s'arrête un bloc,
+            // et une photocopie mange toujours un peu de l'encre la plus fine.
+            const bords = [
+                r % br === 0 ? 'border-top:2.4px solid #1a202c;' : '',
+                c % bc === 0 ? 'border-left:2.4px solid #1a202c;' : ''
+            ].join('');
+            html += `<td style="width:${s}px; height:${s}px; font-size:${s * 0.55}px;
+                ${donnee ? 'background:#eef0fa;' : ''}${bords}">
+                ${solution || donnee ? sol[i] : ''}</td>`;
+        }
+        html += '</tr>';
+    }
+    return html + '</table>';
+}
+
+function dessinerSudokuPdf(doc, item, slot, solution) {
+    const { x, y, taille } = slot;
+    const { n, br, bc, givens, solution: sol } = item.meta;
+    const s = taille / n;
+
+    doc.setFillColor(...ENCRE.donnee);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        const g = givens[r * n + c];
+        if (g !== null && g !== undefined) doc.rect(x + c * s, y + r * s, s, s, 'F');
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let i = 1; i < n; i++) {
+        doc.line(x + i * s, y, x + i * s, y + taille);
+        doc.line(x, y + i * s, x + taille, y + i * s);
+    }
+
+    // Les séparations de blocs, par-dessus le quadrillage fin.
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    for (let i = bc; i < n; i += bc) doc.line(x + i * s, y, x + i * s, y + taille);
+    for (let i = br; i < n; i += br) doc.line(x, y + i * s, x + taille, y + i * s);
+    doc.rect(x, y, taille, taille, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(16, s * 1.5));
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        const i = r * n + c;
+        if (!solution && (givens[i] === null || givens[i] === undefined)) continue;
+        doc.text(String(sol[i]), x + c * s + s / 2, y + r * s + s / 2,
+            { align: 'center', baseline: 'middle' });
+    }
+}
+
 // --- Garam --------------------------------------------------------------------
 // Le treillis n'est pas carré : on le dessine à sa proportion (11 colonnes ×
 // 5 ou 9 lignes), centré verticalement dans l'emplacement carré du gabarit.
@@ -294,7 +366,17 @@ function garamPreviewHtml(item, slot, k, solution) {
 // Le gabarit (page, en-tête, aperçu, page 2 des solutions) est commun ; chaque
 // exercice imprimable ne fournit que sa consigne et le dessin de SA grille.
 
-const RENDUS = {
+export const RENDUS = {
+    sudoku: {
+        titre: 'Sudoku',
+        consigne: (items) => {
+            const { n, br, bc } = items[0].meta;
+            return `Complète la grille : chaque chiffre de 1 à ${n} une seule fois par ligne, `
+                + `par colonne et par bloc de ${br} × ${bc}.`;
+        },
+        previewGrille: sudokuPreviewHtml,
+        pdfGrille: dessinerSudokuPdf
+    },
     mathdoku: {
         titre: 'Mathdoku',
         consigne: (items) => {

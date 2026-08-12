@@ -214,6 +214,8 @@ export const calculExercises = [
     {
         id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
         generatorId: 'logique.sudoku', activityId: 'sudoku',
+        // Le sudoku se fait très bien sur papier — c'est même là qu'il est né.
+        printable: 'sudoku',
         sansRevision: true,
         params: { nbQuestions: 2, taille: 6, difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },

@@ -26,7 +26,8 @@
 import { hydratePath } from '../core/path.js';
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
-import { A4, composerBlocs, composerSolutions } from '../core/fiche.js';
+import { A4, composerBlocs, composerSolutions, repartirBareme } from '../core/fiche.js';
+import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, ENCRE
@@ -41,10 +42,25 @@ export function analyserParcours(chemin) {
     const papier = [], ecran = [];
     for (const s of steps) {
         const gen = s.exercise.generatorId ? getGenerator(s.exercise.generatorId) : null;
-        if (gen && gen.ecrit) papier.push({ ...s, generator: gen });
+        // Deux façons d'aller sur le papier, et la seconde manquait : un
+        // sudoku, un binairo, un garam n'ont pas de « questions » mais des
+        // GRILLES, et ce sont justement les exercices qu'on fait le plus
+        // volontiers sur feuille — on y rature, on note ses candidats, on
+        // gomme. Ils étaient rangés en « écran seulement », ce qui est faux.
+        const grille = s.exercise.printable && RENDUS[s.exercise.printable] ? s.exercise.printable : null;
+        if (gen && (gen.ecrit || grille)) papier.push({ ...s, generator: gen, grille });
         else ecran.push(s);
     }
     return { papier, ecran, total: steps.length };
+}
+
+/** Les grilles d'une étape à grilles, tirées comme les questions. */
+function grillesDe(etape, nb) {
+    const out = [];
+    for (let i = 0; i < nb; i++) {
+        out.push({ cle: etape.grille, item: etape.generator.generate(etape.params, { index: i, rng: makeRng() }) });
+    }
+    return out;
 }
 
 /** Tire les questions d'une étape, avec les réglages voulus par le professeur. */
@@ -59,7 +75,10 @@ function questionsDe(etape, nb) {
         out.push({
             texte,
             choix: item.choices ? item.choices.map(c => String(c.label ?? c.value)) : null,
-            reponse: formaterReponse(item)
+            reponse: formaterReponse(item),
+            // L'explication du générateur : c'est elle qui fait la feuille de
+            // solutions détaillée, celle qu'on distribue après le contrôle.
+            explication: item.explanation || ''
         });
     }
     return out;
@@ -87,9 +106,26 @@ function assurerModale() {
             <div class="fp-controles">
                 <label class="fq-case"><input type="checkbox" id="pp-interro"> Mode interrogation</label>
                 <label class="fq-case"><input type="checkbox" id="pp-choix"> Proposer les réponses</label>
+                <label class="pp-note-sur" id="pp-note-sur-champ">Note sur
+                    <input type="number" id="pp-note-sur" class="cfg-input cfg-input--num"
+                        min="5" max="100" step="1" value="20"></label>
                 <span class="fp-total" id="pp-total"></span>
                 <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
                 <button type="button" class="btn-hint" id="pp-sol" aria-pressed="false">Voir les solutions</button>
+            </div>
+            <div class="fp-controles pp-sol-reglages">
+                <label>Solutions
+                    <select id="pp-sol-mode" class="cfg-input">
+                        <option value="compact">Compact — juste les réponses</option>
+                        <option value="normal">Normal — énoncé et réponse</option>
+                        <option value="detaille">Détaillé — avec les explications</option>
+                    </select></label>
+                <label>Fichier
+                    <select id="pp-sol-ou" class="cfg-input">
+                        <option value="ensemble">Un seul PDF, solutions à la fin</option>
+                        <option value="separe">Deux PDF séparés</option>
+                        <option value="sans">Sans solutions</option>
+                    </select></label>
             </div>
             <div class="pp-etapes" id="pp-etapes"></div>
             <div class="fp-apercu-cadre">
@@ -118,16 +154,47 @@ export function ouvrirFicheParcours(chemin) {
     const btnSol = m.querySelector('#pp-sol');
     const listeEl = m.querySelector('#pp-etapes');
 
+    const modeSol = m.querySelector('#pp-sol-mode');
+    const ouSol = m.querySelector('#pp-sol-ou');
+    const noteSurEl = m.querySelector('#pp-note-sur');
+    const noteSurChamp = m.querySelector('#pp-note-sur-champ');
+
     let solutions = false;
     let blocs = null;           // les questions déjà tirées, par étape
     let ordre = papier.map(e => e.stepId);
     const quantites = {};
-    papier.forEach(e => { quantites[e.stepId] = Math.max(1, Math.min(40, e.nbItems || 5)); });
+    // LE BARÈME, exercice par exercice. Un point par question est le défaut
+    // honnête, mais c'est rarement ce qu'on veut : le sudoku de fin vaut plus
+    // que les dix multiplications du début, et c'est au professeur d'en
+    // décider — pas au nombre de questions.
+    const points = {};
+    papier.forEach(e => {
+        const n = Math.max(1, Math.min(40, e.nbItems || (e.grille ? 2 : 5)));
+        quantites[e.stepId] = e.grille ? Math.min(6, n) : n;
+    });
     const parId = new Map(papier.map(e => [e.stepId, e]));
+
+    const totalPoints = () => ordre
+        .filter(id => (quantites[id] || 0) > 0)
+        .reduce((s, id) => s + (points[id] || 0), 0);
+
+    // TANT QUE LE PROFESSEUR N'Y A PAS TOUCHÉ, le barème se répartit tout seul
+    // pour tomber juste sur la note. Dès qu'il corrige une case, le barème
+    // devient le sien et on cesse d'y toucher — la ligne d'explication signale
+    // alors l'écart avec la note plutôt que de le masquer.
+    let baremeTouche = false;
+    const repartirPoints = () => {
+        const sur = Math.max(5, Math.min(100, Number(noteSurEl.value) || 20));
+        Object.assign(points, repartirBareme(quantites, sur));
+    };
+    repartirPoints();
 
     const options = () => ({
         interrogation: interro.checked,
-        avecChoix: choixEl.checked
+        avecChoix: choixEl.checked,
+        modeSolution: modeSol.value,
+        ouSolution: ouSol.value,
+        noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20))
     });
 
     // La liste des étapes : le nombre de questions de chacune, ET leur ordre
@@ -155,7 +222,13 @@ export function ouvrirFicheParcours(chemin) {
                 <span class="pp-etape-nb">
                     <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
                         min="0" max="40" value="${quantites[id]}">
-                    <span class="pp-etape-unite">questions</span>
+                    <span class="pp-etape-unite">${e.grille ? 'grilles' : 'questions'}</span>
+                </span>
+                <span class="pp-etape-pts" ${interro.checked ? '' : 'hidden'}>
+                    <input type="number" class="cfg-input cfg-input--num" data-points="${id}"
+                        min="0" max="40" value="${points[id]}"
+                        title="Barème de cet exercice" aria-label="Points de « ${nom} »">
+                    <span class="pp-etape-unite">pts</span>
                 </span>
             </div>`;
         }).join('')
@@ -166,6 +239,14 @@ export function ouvrirFicheParcours(chemin) {
             inp.oninput = () => {
                 quantites[inp.dataset.etape] = Math.max(0, Math.min(40, Number(inp.value) || 0));
                 blocs = null;
+                if (!baremeTouche) { repartirPoints(); rendreListe(); }
+                rendre();
+            };
+        });
+        listeEl.querySelectorAll('[data-points]').forEach(inp => {
+            inp.oninput = () => {
+                points[inp.dataset.points] = Math.max(0, Math.min(40, Number(inp.value) || 0));
+                baremeTouche = true;     // à partir d'ici, le barème est le sien
                 rendre();
             };
         });
@@ -288,7 +369,7 @@ export function ouvrirFicheParcours(chemin) {
             ordre.forEach(id => {
                 const e = parId.get(id);
                 const nb = quantites[id];
-                tirages.set(id, nb ? questionsDe(e, nb) : []);
+                tirages.set(id, nb ? (e.grille ? grillesDe(e, nb) : questionsDe(e, nb)) : []);
             });
             blocs = tirages;
         }
@@ -296,18 +377,26 @@ export function ouvrirFicheParcours(chemin) {
             .filter(id => (quantites[id] || 0) > 0)
             .map(id => {
                 const e = parId.get(id);
+                const tire = (blocs.get(id) || []).slice(0, quantites[id]);
+                // Une grille n'a pas de consigne écrite par le professeur :
+                // c'est la règle du jeu, et elle se déduit de la grille tirée.
+                const consigneGrille = e.grille && tire.length && RENDUS[e.grille].consigne
+                    ? RENDUS[e.grille].consigne(tire.map(g => g.item)) : '';
                 return {
                     titre: e.title,
-                    consigne: o.interrogation ? '' : (e.exercise.instruction || ''),
-                    points: o.interrogation ? quantites[id] : null,
-                    questions: (blocs.get(id) || []).slice(0, quantites[id])
+                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille : (e.exercise.instruction || '')),
+                    points: o.interrogation ? (points[id] || null) : null,
+                    questions: e.grille ? [] : tire,
+                    grilles: e.grille ? tire : []
                 };
             })
-            .filter(x => x.questions.length);
+            .filter(x => x.questions.length || x.grilles.length);
 
+        // La feuille de solutions ne porte que ce qui a une réponse écrite :
+        // une grille se corrige sur son propre dessin, pas dans une liste.
         const toutes = exos.flatMap(x => x.questions);
         const mise = solutions
-            ? composerSolutions(toutes, { colonnesSolutions: 4 }, mesurer)
+            ? composerSolutions(toutes, { mode: o.modeSolution }, mesurer)
             : composerBlocs(exos, o, mesurer);
 
         const large = apercu.parentElement.clientWidth || 640;
@@ -317,22 +406,39 @@ export function ouvrirFicheParcours(chemin) {
 
         const nom = chemin.name || 'Parcours';
         const sousTitre = solutions ? 'Solutions' : (o.interrogation ? 'Interrogation' : '');
+        const note = (o.interrogation && !solutions) ? { sur: o.noteSur } : null;
         apercu.innerHTML = mise.pages.map((page, i) => `
             <div class="fq-page" style="width:${A4.w * k}px; height:${A4.h * k}px; top:${i * (A4.h * k + 12)}px">
-                ${apercuEntete(k, nom, sousTitre)}
+                ${apercuEntete(k, nom, sousTitre, i === 0 ? note : null)}
                 ${solutions ? apercuSolutions(page, k, mise.opts) : apercuItems(page, k, mise.opts)}
             </div>`).join('');
 
-        totalEl.textContent = `${toutes.length} question${toutes.length > 1 ? 's' : ''} · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`;
+        const nbGrilles = exos.reduce((s, x) => s + x.grilles.length, 0);
+        const morceaux = [];
+        if (toutes.length) morceaux.push(`${toutes.length} question${toutes.length > 1 ? 's' : ''}`);
+        if (nbGrilles) morceaux.push(`${nbGrilles} grille${nbGrilles > 1 ? 's' : ''}`);
+        morceaux.push(`${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`);
+        totalEl.textContent = morceaux.join(' · ');
+
+        noteSurChamp.hidden = !o.interrogation;
+        const total = totalPoints();
         noteEl.textContent = o.interrogation
-            ? 'Interrogation : pas de consigne imprimée, un barème par exercice, et de la place pour écrire. La page des solutions reste dans ta main.'
+            ? `Interrogation : pas de consigne imprimée, un barème par exercice (total ${total} pt${total > 1 ? 's' : ''}), `
+              + `et la case « … / ${o.noteSur} » en haut de la première page.`
+              + (total === o.noteSur ? '' : ` ⚠️ Le barème totalise ${total} points pour une note sur ${o.noteSur}.`)
             : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
-        derniers = { exos, toutes };
+        derniers = { exos, toutes, note, total };
     };
     let derniers = null;
 
-    interro.onchange = () => { blocs = null; rendre(); };
+    interro.onchange = () => { blocs = null; rendreListe(); rendre(); };
     choixEl.onchange = rendre;
+    modeSol.onchange = rendre;
+    ouSol.onchange = rendre;
+    noteSurEl.oninput = () => {
+        if (!baremeTouche) { repartirPoints(); rendreListe(); }
+        rendre();
+    };
     m.querySelector('#pp-regen').onclick = () => { blocs = null; rendre(); };
     btnSol.onclick = () => {
         solutions = !solutions;
@@ -344,6 +450,8 @@ export function ouvrirFicheParcours(chemin) {
     m.querySelector('#pp-dl').onclick = () => telecharger(m, chemin, () => ({
         exos: derniers ? derniers.exos : [],
         toutes: derniers ? derniers.toutes : [],
+        note: derniers ? derniers.note : null,
+        total: derniers ? derniers.total : 0,
         options: options(), mesurer
     }));
 
@@ -388,32 +496,54 @@ function pdfSolutions(pdf, page, o) {
     }
 }
 
+/**
+ * LE FICHIER — un ou deux, au choix.
+ *
+ * Un seul PDF avec les solutions à la fin, c'est pratique à archiver ; mais
+ * c'est aussi le fichier qu'on envoie par erreur aux élèves avec les réponses
+ * dedans. Deux fichiers séparés évitent cette bêtise-là, et se photocopient
+ * chacun de leur côté. Le troisième choix — sans solutions — sert quand on
+ * corrige au tableau.
+ */
 function telecharger(modal, chemin, lire) {
     const btn = modal.querySelector('#pp-dl');
     btn.disabled = true;
-    const { exos, toutes, options, mesurer } = lire();
+    const { exos, toutes, note, total, options, mesurer } = lire();
     if (!exos.length) { btn.disabled = false; return; }
     chargerJsPDF()
         .then(jsPDF => {
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const nom = chemin.name || 'Parcours';
+            const base = nom.replace(/[^\w\-]+/g, '-').toLowerCase();
             const bareme = options.interrogation
-                ? `Barème : ${toutes.length} question${toutes.length > 1 ? 's' : ''}, 1 point chacune.`
+                ? `Barème sur ${total} point${total > 1 ? 's' : ''} — ramené à ${options.noteSur}.`
                 : '';
+
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const mise = composerBlocs(exos, options, mesurer);
             mise.pages.forEach((page, i) => {
                 if (i) pdf.addPage('a4', 'portrait');
                 entetePdf(pdf, nom, options.interrogation ? 'Interrogation' : `page ${i + 1}/${mise.pages.length}`,
-                    i === 0 ? bareme : '');
+                    i === 0 ? bareme : '', i === 0 ? note : null);
                 pdfItems(pdf, page, mise.opts);
             });
-            const sol = composerSolutions(toutes, { colonnesSolutions: 4 }, mesurer);
-            sol.pages.forEach(page => {
-                pdf.addPage('a4', 'portrait');
-                entetePdf(pdf, nom, 'Solutions', '');
-                pdfSolutions(pdf, page, sol.opts);
-            });
-            pdf.save(`${nom.replace(/[^\w\-]+/g, '-').toLowerCase()}${options.interrogation ? '-interrogation' : ''}.pdf`);
+
+            const dessinerSolutions = (doc, premiere) => {
+                const sol = composerSolutions(toutes, { mode: options.modeSolution }, mesurer);
+                sol.pages.forEach((page, i) => {
+                    if (!premiere || i) doc.addPage('a4', 'portrait');
+                    entetePdf(doc, nom, sol.pages.length > 1 ? `Solutions ${i + 1}/${sol.pages.length}` : 'Solutions', '', null);
+                    pdfSolutions(doc, page, sol.opts);
+                });
+            };
+
+            if (options.ouSolution === 'ensemble' && toutes.length) dessinerSolutions(pdf, false);
+            pdf.save(`${base}${options.interrogation ? '-interrogation' : ''}.pdf`);
+
+            if (options.ouSolution === 'separe' && toutes.length) {
+                const solPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                dessinerSolutions(solPdf, true);
+                solPdf.save(`${base}-solutions-${options.modeSolution}.pdf`);
+            }
         })
         .catch(() => window.appConfirm('PDF indisponible',
             'La bibliothèque de PDF n\'a pas pu être chargée (connexion ?). Réessaie une fois en ligne.', null))

@@ -99,8 +99,11 @@ test('une colonne de plus rétrécit les colonnes, jamais la feuille', () => {
 });
 
 test('le nombre de colonnes est borné à ce qui reste lisible', () => {
+    // Six au plus : trois suffisent à une fiche où l'on écrit, mais la
+    // feuille de solutions compacte en demande cinq — c'est elle qui doit
+    // tenir sur une page pendant qu'on corrige trente copies.
     const q = [{ texte: 'x', reponse: 1 }];
-    assert.equal(composerFiche(q, { colonnes: 9 }, mesurer).colonnes, 3);
+    assert.equal(composerFiche(q, { colonnes: 9 }, mesurer).colonnes, 6);
     assert.equal(composerFiche(q, { colonnes: 0 }, mesurer).colonnes, 1);
 });
 
@@ -269,4 +272,102 @@ test('blocs : deux questions voisines ne se chevauchent jamais', () => {
             }
         }
     }
+});
+
+test('les trois modes de solutions disent trois choses différentes', () => {
+    const questions = [
+        { texte: '7 × 8', reponse: '56', explication: 'La table de 7 : 7 × 8 = 56.' },
+        { texte: '6 × 9', reponse: '54', explication: 'Le double de 27.' }
+    ];
+    const ligne = (m) => composerSolutions(questions, { mode: m }, mesurer)
+        .pages.flatMap(p => p.blocs)[0].lignes;
+
+    // COMPACT : le numéro et la réponse, rien d'autre. C'est la feuille qu'on
+    // tient d'une main en corrigeant.
+    assert.deepEqual(ligne('compact'), ['1. 56']);
+    // NORMAL : l'énoncé rappelé, utile quand on corrige des jours après.
+    assert.deepEqual(ligne('normal'), ['1. 7 × 8 → 56']);
+    // DÉTAILLÉ : l'explication en plus, sur sa propre ligne — c'est la feuille
+    // qu'on distribue après le contrôle.
+    assert.deepEqual(ligne('detaille'), ['1. 7 × 8 → 56', 'La table de 7 : 7 × 8 = 56.']);
+});
+
+test('la feuille compacte tient sur cinq colonnes, la détaillée sur une', () => {
+    const questions = Array.from({ length: 30 }, (_, i) => ({
+        texte: `${i + 2} × 8`, reponse: String((i + 2) * 8), explication: 'Table de 8.'
+    }));
+    assert.equal(composerSolutions(questions, { mode: 'compact' }, mesurer).colonnes, 5);
+    assert.equal(composerSolutions(questions, { mode: 'normal' }, mesurer).colonnes, 3);
+    assert.equal(composerSolutions(questions, { mode: 'detaille' }, mesurer).colonnes, 1);
+    // Et le compact tient sur UNE page : c'est sa raison d'être.
+    assert.equal(composerSolutions(questions, { mode: 'compact' }, mesurer).pages.length, 1);
+});
+
+test('un exercice à grilles occupe des carrés, jamais coupés entre deux pages', () => {
+    // Sudoku, binairo, garam : ils n'ont pas de questions, ils ont des grilles.
+    // Une grille à cheval sur deux pages est une grille perdue.
+    const grilles = Array.from({ length: 6 }, () => ({ cle: 'sudoku', item: {} }));
+    const mise = composerBlocs([{ titre: 'Sudoku', consigne: 'Complète.', points: 6, grilles }], {}, mesurer);
+    const tous = mise.pages.flatMap(p => p.items).filter(it => it.type === 'grille');
+    assert.equal(tous.length, 6, 'les six grilles sont posées');
+    assert.equal(new Set(tous.map(g => Math.round(g.taille))).size, 1, 'toutes de la même taille');
+    for (const g of tous) {
+        assert.ok(g.y + g.taille <= mise.zone.y + mise.zone.h + 0.01,
+            `une grille déborde du bas de page (y=${g.y}, côté=${g.taille})`);
+        assert.ok(g.x + g.taille <= mise.zone.x + mise.zone.w + 0.01, 'une grille déborde à droite');
+    }
+    // La numérotation continue de couvrir les grilles : « exercice 2, grille 3 ».
+    assert.deepEqual(tous.map(g => g.n), [1, 2, 3, 4, 5, 6]);
+});
+
+test('questions et grilles cohabitent sur la même fiche', () => {
+    const mise = composerBlocs([
+        { titre: 'Calcul', consigne: 'Calcule.', questions: [{ texte: '7 × 8' }, { texte: '6 × 9' }] },
+        { titre: 'Sudoku', consigne: 'Complète.', grilles: [{ cle: 'sudoku', item: {} }] }
+    ], {}, mesurer);
+    const types = mise.pages.flatMap(p => p.items).map(it => it.type);
+    assert.ok(types.includes('q'), 'les questions sont là');
+    assert.ok(types.includes('grille'), 'les grilles aussi');
+    // Et la numérotation est CONTINUE d'un exercice à l'autre.
+    const nums = mise.pages.flatMap(p => p.items).filter(it => it.n && it.type !== 'exo').map(it => it.n);
+    assert.deepEqual(nums, [1, 2, 3]);
+});
+
+// --- LE BARÈME D'UNE INTERROGATION ---------------------------------------------
+
+import { repartirBareme } from '../js/core/fiche.js';
+
+test('le barème par défaut tombe juste sur la note', () => {
+    // Cinq exercices très inégaux : dix additions, dix soustractions, puis
+    // trois séries de six grilles. Le professeur a dit « sur 20 » : la somme
+    // des barèmes doit valoir 20, pas 38.
+    const quantites = { add: 10, sub: 10, sudoku: 6, garam: 6, binairo: 6 };
+    for (const sur of [7, 10, 20, 40, 100]) {
+        const pts = repartirBareme(quantites, sur);
+        const somme = Object.values(pts).reduce((s, p) => s + p, 0);
+        assert.equal(somme, sur, `barème sur ${sur}`);
+        assert.ok(Object.values(pts).every(p => p >= 1), 'aucun exercice à zéro point');
+    }
+    // Et le partage suit le travail demandé : dix additions valent plus que
+    // six grilles.
+    const pts = repartirBareme(quantites, 20);
+    assert.ok(pts.add > pts.sudoku, 'dix questions pèsent plus que six grilles');
+});
+
+test('un exercice à zéro question ne vaut aucun point', () => {
+    const pts = repartirBareme({ add: 10, retire: 0 }, 20);
+    assert.equal(pts.retire, 0);
+    assert.equal(pts.add, 20, 'tout le barème va au seul exercice qui reste');
+});
+
+test('plus d\'exercices que de points : un point chacun, sans négatif', () => {
+    // Cas dégénéré, mais il ne doit ni boucler ni produire un barème absurde.
+    const quantites = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`e${i}`, 4]));
+    const pts = repartirBareme(quantites, 5);
+    assert.deepEqual([...new Set(Object.values(pts))], [1]);
+});
+
+test('sans aucun exercice actif, le barème reste vide', () => {
+    assert.deepEqual(repartirBareme({ a: 0, b: 0 }, 20), { a: 0, b: 0 });
+    assert.deepEqual(repartirBareme({}, 20), {});
 });

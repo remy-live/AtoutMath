@@ -9,6 +9,9 @@
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
 import { A4 } from '../core/fiche.js';
+// Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
+// pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
+import { RENDUS } from './printSheet.js';
 
 export const ENCRE = {
     texte: [30, 41, 59],
@@ -54,6 +57,15 @@ export function apercuItems(page, k, o) {
             });
             continue;
         }
+        if (it.type === 'grille') {
+            const r = RENDUS[it.cle];
+            if (r) {
+                html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
+                    font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
+                html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, k, false);
+            }
+            continue;
+        }
         // type 'q'
         html += `<div class="fq-num" style="left:${it.x * k}px; top:${it.y * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
         it.lignes.forEach((ligne, i) => {
@@ -72,26 +84,47 @@ export function apercuItems(page, k, o) {
 }
 
 /** L'en-tête d'une page d'aperçu (titre, Nom/Date, filet). */
-export function apercuEntete(k, titre, sousTitre) {
+export function apercuEntete(k, titre, sousTitre, note) {
+    // LA CASE DE LA NOTE. Sur une interrogation, elle est le premier endroit
+    // que regarde l'élève et le dernier que remplit le professeur : elle mérite
+    // un cadre à elle, en haut à droite, pas une mention perdue dans une ligne
+    // de texte. Le total du barème y est imprimé — « … / 20 » — pour que la
+    // note se pose sans avoir à chercher sur combien elle compte.
+    const cadre = note ? `
+        <div class="fp-note-case" style="right:${A4.marge * k}px; top:${(A4.marge + 0.5) * k}px;
+            width:${26 * k}px; height:${13 * k}px; font-size:${4.4 * k}px">… / ${echapper(String(note.sur))}</div>` : '';
     return `
-        <div class="fp-entete" style="left:${A4.marge * k}px; right:${A4.marge * k}px; top:${(A4.marge + 1) * k}px;">
+        <div class="fp-entete" style="left:${A4.marge * k}px; right:${(A4.marge + (note ? 30 : 0)) * k}px; top:${(A4.marge + 1) * k}px;">
             <b>${echapper(titre)}${sousTitre ? ' — ' + echapper(sousTitre) : ''}</b>
             <span>Nom : ............  Date : ......</span>
         </div>
+        ${cadre}
         <div class="fp-ligne" style="left:${A4.marge * k}px; right:${A4.marge * k}px; top:${(A4.marge + 9) * k}px;"></div>`;
 }
 
 // --- PDF ---------------------------------------------------------------------
 
-export function entetePdf(pdf, titre, sousTitre, bareme) {
+export function entetePdf(pdf, titre, sousTitre, bareme, note) {
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.5);
     pdf.setTextColor(...ENCRE.texte);
     pdf.text(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`, A4.marge, A4.marge + 6);
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9.5);
+    // La case de la note mange le coin droit : le « Nom / Date » se décale.
+    const droite = A4.w - A4.marge - (note ? 30 : 0);
     pdf.text('Nom : ...........................   Date : ..............',
-        A4.w - A4.marge, A4.marge + 6, { align: 'right' });
+        droite, A4.marge + 6, { align: 'right' });
+    if (note) {
+        pdf.setDrawColor(...ENCRE.trait);
+        pdf.setLineWidth(0.5);
+        pdf.roundedRect(A4.w - A4.marge - 26, A4.marge + 0.5, 26, 13, 1.5, 1.5, 'S');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(13);
+        pdf.setTextColor(...ENCRE.gris);
+        pdf.text(`… / ${note.sur}`, A4.w - A4.marge - 13, A4.marge + 8.6, { align: 'center' });
+        pdf.setTextColor(...ENCRE.texte);
+    }
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.4);
     pdf.line(A4.marge, A4.marge + 9, A4.w - A4.marge, A4.marge + 9);
@@ -140,6 +173,17 @@ export function pdfItems(pdf, page, o) {
             it.lignes.forEach((ligne, i) => {
                 pdf.text(ligne, it.x + 1, it.y + o.tailleConsigne + i * o.tailleConsigne * 1.45);
             });
+            continue;
+        }
+        if (it.type === 'grille') {
+            const r = RENDUS[it.cle];
+            if (r) {
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(o.tailleConsigne * 2.83);
+                pdf.setTextColor(...ENCRE.gris);
+                pdf.text(`${it.n}.`, it.x, it.y - 1.2);
+                r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite }, false);
+            }
             continue;
         }
         pdf.setTextColor(...ENCRE.texte);
