@@ -81,6 +81,15 @@ export function rassemblerCouples(tirer, voulu, essais = 0) {
     return couples;
 }
 
+// Le TYPE d'une moitié. C'est lui qui fait la règle du jeu, et il la rend
+// symétrique : deux moitiés se touchent quand l'une est une question et
+// l'autre SA réponse — peu importe laquelle est à gauche. C'est exactement la
+// règle des vrais dominos (deux moitiés se touchent quand elles portent le
+// même nombre de points), et c'est ce qui autorise à retourner une pièce.
+export const QUESTION = 'question';
+export const REPONSE = 'reponse';
+export const BOUT = 'bout';          // DÉPART et ARRIVÉE ne se marient à rien
+
 /**
  * Monte la chaîne : n couples donnent n + 1 pièces.
  *
@@ -89,69 +98,187 @@ export function rassemblerCouples(tirer, voulu, essais = 0) {
  * la question précédente et une question neuve.
  */
 export function construireChaine(couples) {
+    const bout = (texte) => ({ texte, type: BOUT, couple: -1 });
+    const question = (k) => ({ texte: couples[k].q, type: QUESTION, couple: k });
+    const reponse = (k) => ({ texte: couples[k].r, type: REPONSE, couple: k });
+
     const pieces = couples.map((c, i) => ({
         id: i,
-        gauche: i === 0 ? DEPART : couples[i - 1].r,
-        droite: c.q,
-        // Ce que le joint de GAUCHE de cette pièce vérifie : rien pour la
-        // première, sinon la question de la pièce d'avant.
-        couple: i === 0 ? null : couples[i - 1]
+        demis: [i === 0 ? bout(DEPART) : reponse(i - 1), question(i)]
     }));
     pieces.push({
         id: couples.length,
-        gauche: couples.length ? couples[couples.length - 1].r : DEPART,
-        droite: ARRIVEE,
-        couple: couples.length ? couples[couples.length - 1] : null
+        demis: [couples.length ? reponse(couples.length - 1) : bout(DEPART), bout(ARRIVEE)]
+    });
+    // `gauche`, `droite` et `couple` restent lisibles tels quels : c'est ce que
+    // regardent l'impression et les explications.
+    pieces.forEach(p => {
+        p.gauche = p.demis[0].texte;
+        p.droite = p.demis[1].texte;
+        p.couple = p.demis[0].couple >= 0 ? couples[p.demis[0].couple] : null;
     });
     return { couples, pieces };
 }
 
-/** L'identifiant de la pièce qui vient après les `posees` déjà en place. */
-export const pieceSuivante = (chaine, posees) =>
-    posees < chaine.pieces.length ? posees : null;
+/** La moitié qui se présente à gauche (0) ou à droite (1) d'une pièce posée. */
+export const demiDe = (piece, cote, retourne) => piece.demis[retourne ? 1 - cote : cote];
 
-/** La moitié laissée ouverte à droite de la chaîne en cours. */
-export function boutOuvert(chaine, posees) {
-    if (posees <= 0) return null;
-    const derniere = chaine.pieces[Math.min(posees, chaine.pieces.length) - 1];
-    return derniere.droite;
-}
-
-/** Cette pièce est-elle celle qui doit venir maintenant ? */
-export const posePossible = (chaine, posees, id) => id === pieceSuivante(chaine, posees);
+/** Ces deux moitiés peuvent-elles se toucher ? */
+export const seMarient = (a, b) =>
+    !!a && !!b && a.type !== BOUT && b.type !== BOUT
+    && a.couple === b.couple && a.type !== b.type;
 
 /**
- * Ce que le robot dit — et ce qu'on répond à l'élève qui s'est trompé.
- * Jamais la réponse toute crue : la question qu'il faut se poser, puis le
- * calcul, puis la moitié qu'on va chercher.
+ * L'état d'un plateau : les pièces posées, chacune avec son sens.
+ * Le plateau commence VIDE — on pose la première pièce où l'on veut, puis la
+ * chaîne s'allonge des deux côtés. C'est ce qui donne un sens à retourner une
+ * pièce : sans deuxième bout, on ne retourne jamais rien.
  */
-export function direJoint(chaine, id) {
+export const plateauVide = () => ({ posees: [] });
+
+/** Les deux moitiés exposées du plateau : celle de gauche, celle de droite. */
+export function boutsLibres(chaine, etat) {
+    if (!etat.posees.length) return { gauche: null, droite: null };
+    const p = etat.posees;
+    return {
+        gauche: demiDe(chaine.pieces[p[0].id], 0, p[0].retourne),
+        droite: demiDe(chaine.pieces[p[p.length - 1].id], 1, p[p.length - 1].retourne)
+    };
+}
+
+/**
+ * Cette pièce peut-elle se poser de ce côté, et dans quel sens ?
+ * @returns {{retourne:boolean}|null}
+ */
+export function poseAdmise(chaine, etat, id, cote) {
     const piece = chaine.pieces[id];
-    if (!piece || !piece.couple) return 'On commence par la pièce marquée DÉPART.';
-    const { q, r } = piece.couple;
-    return `Le bout ouvert demande « ${q} ». ${q} fait ${r} : je cherche donc la pièce qui porte ${r} à gauche.`;
+    if (!piece || etat.posees.some(x => x.id === id)) return null;
+    if (!etat.posees.length) return { retourne: false };   // la première va où elle veut
+    const bouts = boutsLibres(chaine, etat);
+    const cible = cote === 'gauche' ? bouts.gauche : bouts.droite;
+    for (const retourne of [false, true]) {
+        // Posée à GAUCHE, c'est sa moitié de droite qui touche la chaîne.
+        const mienne = demiDe(piece, cote === 'gauche' ? 1 : 0, retourne);
+        if (seMarient(cible, mienne)) return { retourne };
+    }
+    return null;
+}
+
+/** Pose la pièce, si elle a le droit. Renvoie un NOUVEL état, ou null. */
+export function poserPiece(chaine, etat, id, cote) {
+    const sens = poseAdmise(chaine, etat, id, cote);
+    if (!sens) return null;
+    const posees = etat.posees.slice();
+    if (!posees.length || cote === 'droite') posees.push({ id, retourne: sens.retourne });
+    else posees.unshift({ id, retourne: sens.retourne });
+    return { posees };
+}
+
+/** Le côté où cette pièce peut aller, s'il n'y en a qu'un. */
+export function coteNaturel(chaine, etat, id) {
+    const d = poseAdmise(chaine, etat, id, 'droite');
+    const g = poseAdmise(chaine, etat, id, 'gauche');
+    if (d && !g) return 'droite';
+    if (g && !d) return 'gauche';
+    return d ? 'droite' : null;
+}
+
+/** Toutes les pièces sont-elles posées ? */
+export const plateauFini = (chaine, etat) => etat.posees.length === chaine.pieces.length;
+
+/**
+ * La prochaine pièce jouable, et de quel côté. C'est ce que suit le robot, et
+ * ce que l'aide raconte. Il peut y en avoir deux (une à chaque bout) : on rend
+ * la première trouvée, l'ordre de la chaîne n'ayant aucune importance.
+ */
+export function prochainePose(chaine, etat) {
+    if (!etat.posees.length) {
+        // Le plateau est vide : on commence par la pièce DÉPART, la seule qui
+        // ne demande aucun calcul.
+        return { id: 0, cote: 'droite' };
+    }
+    for (const cote of ['droite', 'gauche']) {
+        for (const piece of chaine.pieces) {
+            if (poseAdmise(chaine, etat, piece.id, cote)) return { id: piece.id, cote };
+        }
+    }
+    return null;
+}
+
+/**
+ * Ce que le robot dit — et ce que reçoit l'élève qui demande de l'aide.
+ * Jamais la réponse toute crue : la question qu'il faut se poser, le calcul,
+ * puis la moitié qu'on va chercher.
+ */
+export function direJoint(chaine, etat, pose) {
+    if (!pose) return 'Toutes les pièces sont posées.';
+    if (!etat.posees.length) {
+        return 'Le plateau est vide : on commence par la pièce marquée DÉPART, '
+            + 'la seule qui ne demande aucun calcul.';
+    }
+    const bouts = boutsLibres(chaine, etat);
+    const bout = pose.cote === 'gauche' ? bouts.gauche : bouts.droite;
+    const cote = pose.cote === 'gauche' ? 'à gauche' : 'à droite';
+    if (bout.type === QUESTION) {
+        const c = chaine.couples[bout.couple];
+        return `Le bout ouvert ${cote} demande « ${c.q} ». ${c.q} fait ${c.r} : `
+            + `je cherche donc la pièce qui porte ${c.r}.`;
+    }
+    const c = chaine.couples[bout.couple];
+    return `Le bout ouvert ${cote} porte ${c.r}. Ce n'est pas une question, c'est une réponse : `
+        + `je cherche la pièce dont la question fait ${c.r} — c'est « ${c.q} ».`;
 }
 
 /** La correction d'une pièce mal posée : pourquoi celle-là ne va pas. */
-export function direErreur(chaine, posees, id) {
-    const attendue = chaine.pieces[pieceSuivante(chaine, posees)];
+export function direErreur(chaine, etat, id) {
     const jouee = chaine.pieces[id];
-    const bout = boutOuvert(chaine, posees);
-    if (!jouee || !attendue) return 'Cette pièce ne peut pas venir ici.';
-    return `Le bout ouvert demande « ${bout} », et cette pièce porte ${jouee.gauche} à gauche. `
-        + `Ce n'est pas la réponse de « ${bout} ».`;
+    if (!jouee) return 'Cette pièce ne peut pas venir ici.';
+    if (!etat.posees.length) return 'Le plateau est vide : commence par la pièce DÉPART.';
+    const bouts = boutsLibres(chaine, etat);
+    const dire = (d) => d ? (d.type === BOUT ? `« ${d.texte} »` : `« ${d.texte} »`) : 'rien';
+    return `Aucun bout de cette pièce ne va avec la chaîne. À gauche elle attend ${dire(bouts.gauche)}, `
+        + `à droite ${dire(bouts.droite)} — et cette pièce porte ${dire(jouee.demis[0])} `
+        + `et ${dire(jouee.demis[1])}.`;
 }
 
 /**
- * L'ordre dans lequel la réserve est présentée à l'élève : les pièces à poser,
- * mélangées. La pièce de DÉPART n'y est pas — elle est déjà sur la table, sans
- * quoi l'élève commencerait par chercher quelque chose qui ne se cherche pas.
+ * L'ordre dans lequel la réserve est présentée à l'élève : toutes les pièces,
+ * mélangées. Aucune n'est posée d'avance — le plateau part vide, et c'est ce
+ * qui donne deux bouts à la chaîne au lieu d'un.
  */
 export function reserveMelangee(chaine, rng) {
-    const ids = chaine.pieces.slice(1).map(p => p.id);
+    const ids = chaine.pieces.map(p => p.id);
     return rng && rng.shuffle ? rng.shuffle(ids) : ids;
 }
 
 /** La chaîne, écrite en une ligne : de quoi corriger sur le papier. */
 export const direChaine = (chaine) =>
     chaine.pieces.map(p => `${p.gauche} | ${p.droite}`).join('  →  ');
+
+/**
+ * La fraction du carré que peut faire la police pour que `texte` y entre.
+ * Deux contraintes, essayées en descendant : le plus long mot tient sur une
+ * ligne, et toutes les lignes tiennent en hauteur. 0,62 : la largeur moyenne
+ * d'un caractère gras rapportée à sa taille.
+ */
+export function ajusterAuCarre(texte) {
+    const t = String(texte ?? '');
+    const mots = t.split(/\s+/).filter(Boolean);
+    const plusLong = Math.max(1, ...mots.map(m => m.length));
+    const tient = (f) => {
+        // 0,68 : la largeur d'un caractère GRAS rapportée à sa taille, mesurée
+        // large — mieux vaut une police un cran plus petite qu'un mot coupé.
+        const parLigne = Math.floor(0.92 / (f * 0.68));
+        if (plusLong > parLigne) return false;
+        // On remplit les lignes mot par mot, comme le fera le navigateur.
+        let lignes = 1, courante = 0;
+        for (const m of mots) {
+            const largeur = (courante ? courante + 1 : 0) + m.length;
+            if (largeur <= parLigne) { courante = largeur; }
+            else { lignes++; courante = m.length; }
+        }
+        return lignes * f * 1.18 <= 0.92;
+    };
+    for (let f = 0.34; f > 0.1; f -= 0.02) if (tient(f)) return f;
+    return 0.1;
+}

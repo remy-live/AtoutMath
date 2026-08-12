@@ -18,6 +18,7 @@
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { pourPdf } from './ficheRendu.js';
+import { ajusterAuCarre } from '../core/dominos.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -731,56 +732,58 @@ const DOM_ECART = 2.4;          // le blanc entre deux pièces : la marge du cis
 /** La géométrie d'une planche : combien de pièces par ligne, et de quelle taille. */
 function geometrieDominos(item, boite) {
     const pieces = item.meta.pieces || [];
-    const plusLongue = Math.max(8, ...pieces.map(p => String(p.droite).length));
-    // Deux par ligne quand les questions sont longues, trois quand elles sont
-    // courtes : une pièce de table de multiplication n'a pas besoin de la
-    // moitié de la feuille.
-    const cols = plusLongue <= 18 ? 3 : 2;
-    const pieceW = (boite.w - DOM_ECART * (cols - 1)) / cols;
-    // La moitié de gauche ne porte qu'un nombre, mais elle reste une VRAIE
-    // moitié de domino : réduite à une languette, la pièce ne se lisait plus
-    // comme un domino mais comme une étiquette suivie d'un cadre.
-    const gaucheW = Math.max(14, Math.min(38, pieceW * 0.3));
-    const droiteW = pieceW - gaucheW;
-    // La hauteur suit la question la plus longue : toutes les pièces d'une
-    // planche ont la même taille, sinon elles ne se mélangent pas.
-    const lignes = Math.max(1, ...pieces.map(p =>
-        Math.ceil(largeurTexte(String(p.droite), 8) / Math.max(8, droiteW - 3))));
-    const minimum = Math.max(9, lignes * DOM_LIGNE + 4.5);
-    // … et elles PRENNENT LA PLACE QU'IL RESTE. Ces pièces vont être
-    // découpées puis manipulées par des doigts d'élève : les laisser à leur
-    // hauteur minimale au milieu d'une demi-page blanche n'aurait servi
-    // personne. Plafonnées quand même — un domino de trois centimètres de haut
-    // ne ressemble plus à un domino.
-    const rangs = Math.ceil(pieces.length / cols);
-    const dispo = (boite.h - DOM_ECART * (rangs - 1)) / rangs;
-    const pieceH = Math.max(minimum, Math.min(20, dispo));
-    return { pieces, cols, pieceW, pieceH, gaucheW, droiteW, lignes };
+    const plusLongue = Math.max(4, ...pieces.map(p =>
+        Math.max(String(p.droite).length, String(p.gauche).length)));
+    // UN DOMINO EST FAIT DE DEUX CARRÉS, comme le vrai. On choisit donc le
+    // nombre de colonnes qui donne les plus grandes pièces au format 2:1 —
+    // trois colonnes pour des tables, deux pour des périmètres, mais toujours
+    // la MÊME pièce sur toute la planche : le texte s'adapte à la pièce,
+    // jamais l'inverse.
+    const rangs = (c) => Math.ceil(pieces.length / c);
+    const coteDe = (c) => {
+        const w = ((boite.w - DOM_ECART * (c - 1)) / c) / 2;   // le carré, par la largeur
+        const h = (boite.h - DOM_ECART * (rangs(c) - 1)) / rangs(c);
+        return Math.min(w, h, 24);
+    };
+    let cols = 2;
+    for (const c of [3, 4]) if (coteDe(c) >= coteDe(cols) - 0.01 && plusLongue <= (c === 3 ? 26 : 12)) cols = c;
+    const cote = Math.max(10, coteDe(cols));
+    return { pieces, cols, pieceW: cote * 2, pieceH: cote, gaucheW: cote, droiteW: cote };
 }
 
 /** L'ordre d'affichage : mélangé sur la planche, dans l'ordre sur la correction. */
+// Mélangées sur la planche (la réserve porte TOUTES les pièces), dans l'ordre
+// de la chaîne sur la correction.
 const ordreDominos = (item, solution) => solution
     ? (item.meta.pieces || []).map(p => p.id)
     : (item.meta.reserve && item.meta.reserve.length
-        ? [0, ...item.meta.reserve] : (item.meta.pieces || []).map(p => p.id));
+        ? item.meta.reserve : (item.meta.pieces || []).map(p => p.id));
+
+/** La taille du texte dans un carré de `cote` mm : la même règle qu'à l'écran. */
+const policeDomino = (texte, cote) => Math.max(1.7, cote * ajusterAuCarre(texte));
 
 function dominosPreviewHtml(item, slot, k, solution) {
     const b = slot.boite;
     const g = geometrieDominos(item, b);
     const ordre = ordreDominos(item, solution);
+    // La grille de pièces est centrée dans son bloc : collée en haut à gauche
+    // d'une page presque vide, la planche avait l'air d'une erreur de marge.
+    const rangs = Math.ceil(ordre.length / g.cols);
+    const x0 = b.x + Math.max(0, (b.w - (g.cols * g.pieceW + (g.cols - 1) * DOM_ECART)) / 2);
+    const y0 = b.y + Math.max(0, (b.h - (rangs * g.pieceH + (rangs - 1) * DOM_ECART)) / 2);
     let html = '';
     ordre.forEach((id, rang) => {
         const p = g.pieces[id];
         if (!p) return;
-        const x = b.x + (rang % g.cols) * (g.pieceW + DOM_ECART);
-        const y = b.y + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
+        const x = x0 + (rang % g.cols) * (g.pieceW + DOM_ECART);
+        const y = y0 + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
         if (y + g.pieceH > b.y + b.h + 1) return;
-        const demi = (t, cls, w) => `<div class="fx-dom-demi ${cls}" style="width:${w * k}px;
-            font-size:${Math.min(2.9, 2.9) * k}px">${echapperSheet(t)}</div>`;
+        const demi = (t, cls) => `<div class="fx-dom-demi ${cls}" style="width:${g.gaucheW * k}px;
+            font-size:${policeDomino(t, g.pieceH) * k}px">${echapperSheet(t)}</div>`;
         html += `<div class="fx-dom-piece" style="left:${x * k}px; top:${y * k}px;
             width:${g.pieceW * k}px; height:${g.pieceH * k}px">
-            ${demi(p.gauche, 'fx-dom-demi--g', g.gaucheW)}
-            ${demi(p.droite, 'fx-dom-demi--d', g.droiteW)}</div>`;
+            ${demi(p.gauche, 'fx-dom-demi--g')}
+            ${demi(p.droite, 'fx-dom-demi--d')}</div>`;
         // La flèche de la correction : elle dit dans quel sens se lit la chaîne.
         if (solution && rang < ordre.length - 1 && (rang % g.cols) !== g.cols - 1) {
             html += `<div class="fx-dom-fleche" style="left:${(x + g.pieceW) * k}px;
@@ -795,11 +798,14 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
     const b = slot.boite;
     const g = geometrieDominos(item, b);
     const ordre = ordreDominos(item, solution);
+    const rangs = Math.ceil(ordre.length / g.cols);
+    const x0 = b.x + Math.max(0, (b.w - (g.cols * g.pieceW + (g.cols - 1) * DOM_ECART)) / 2);
+    const y0 = b.y + Math.max(0, (b.h - (rangs * g.pieceH + (rangs - 1) * DOM_ECART)) / 2);
     ordre.forEach((id, rang) => {
         const p = g.pieces[id];
         if (!p) return;
-        const x = b.x + (rang % g.cols) * (g.pieceW + DOM_ECART);
-        const y = b.y + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
+        const x = x0 + (rang % g.cols) * (g.pieceW + DOM_ECART);
+        const y = y0 + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
         if (y + g.pieceH > b.y + b.h + 1) return;
 
         // Le trait de découpe : franc, et le même tout autour de la pièce.
@@ -807,21 +813,21 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
         doc.setLineWidth(0.5);
         doc.setFillColor(255, 255, 255);
         doc.roundedRect(x, y, g.pieceW, g.pieceH, 1.2, 1.2, 'FD');
-        doc.setLineWidth(0.5);
         doc.line(x + g.gaucheW, y, x + g.gaucheW, y + g.pieceH);
 
         doc.setTextColor(...ENCRE.texte);
         doc.setFont('helvetica', 'bold');
-        const bout = p.gauche === 'DÉPART' || p.droite === 'ARRIVÉE';
-        doc.setFontSize(bout ? 7 : 9);
-        const ecrire = (texte, cx, largeur, taille) => {
-            doc.setFontSize(taille);
-            const lignes = doc.splitTextToSize(pourPdf(String(texte)), largeur - 2.5);
-            const h0 = y + g.pieceH / 2 - (lignes.length - 1) * (DOM_LIGNE / 2) + 0.9;
-            lignes.forEach((l, i) => doc.text(l, cx, h0 + i * DOM_LIGNE, { align: 'center' }));
+        // La police vient de la taille du carré : 1 pt ≈ 0,3528 mm.
+        const ecrire = (texte, cx) => {
+            const pt = policeDomino(texte, g.pieceH) / 0.3528;
+            doc.setFontSize(pt);
+            const interligne = pt * 0.42;
+            const lignes = doc.splitTextToSize(pourPdf(String(texte)), g.gaucheW - 2);
+            const h0 = y + g.pieceH / 2 - (lignes.length - 1) * (interligne / 2) + pt * 0.12;
+            lignes.forEach((l, i) => doc.text(l, cx, h0 + i * interligne, { align: 'center' }));
         };
-        ecrire(p.gauche, x + g.gaucheW / 2, g.gaucheW, p.gauche === 'DÉPART' ? 6.6 : 9);
-        ecrire(p.droite, x + g.gaucheW + g.droiteW / 2, g.droiteW, p.droite === 'ARRIVÉE' ? 6.6 : 8);
+        ecrire(p.gauche, x + g.gaucheW / 2);
+        ecrire(p.droite, x + g.gaucheW + g.droiteW / 2);
 
         if (solution && rang < ordre.length - 1 && (rang % g.cols) !== g.cols - 1) {
             doc.setFont('helvetica', 'bold');

@@ -4,9 +4,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
-    DEPART, ARRIVEE, compacter, rassemblerCouples, construireChaine,
-    pieceSuivante, boutOuvert, posePossible, direJoint, direErreur,
-    reserveMelangee, direChaine, MIN_COUPLES
+    DEPART, ARRIVEE, QUESTION, REPONSE, BOUT, compacter, rassemblerCouples,
+    construireChaine, plateauVide, boutsLibres, poseAdmise, poserPiece,
+    coteNaturel, plateauFini, prochainePose, seMarient, demiDe,
+    direJoint, direErreur, reserveMelangee, direChaine, MIN_COUPLES
 } from '../js/core/dominos.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -85,55 +86,123 @@ test('quand le générateur n\'a pas assez de réponses, la chaîne raccourcit',
     assert.deepEqual(rassemblerCouples(() => null, 10), []);
 });
 
-test('à chaque instant, une seule pièce peut être posée', () => {
-    const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
-    for (let posees = 1; posees < ch.pieces.length; posees++) {
-        const bonnes = ch.pieces.filter(p => posePossible(ch, posees, p.id));
-        assert.equal(bonnes.length, 1, `${posees} pièces posées : ${bonnes.length} choix`);
-        assert.equal(bonnes[0].id, pieceSuivante(ch, posees));
-        // Et cette pièce porte bien à gauche la réponse du bout ouvert.
-        assert.equal(bonnes[0].gauche, ch.couples[posees - 1].r);
-    }
-    // Chaîne finie : plus rien à poser.
-    assert.equal(pieceSuivante(ch, ch.pieces.length), null);
+test('deux moitiés se touchent quand l\'une est la réponse de l\'autre', () => {
+    // C'est la règle des vrais dominos, et elle est SYMÉTRIQUE : c'est elle
+    // qui autorise à retourner une pièce.
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
+    const q0 = ch.pieces[0].demis[1];         // la question du couple 0
+    const r0 = ch.pieces[1].demis[0];         // sa réponse
+    assert.equal(q0.type, QUESTION);
+    assert.equal(r0.type, REPONSE);
+    assert.ok(seMarient(q0, r0));
+    assert.ok(seMarient(r0, q0), 'la règle ne doit pas dépendre du sens');
+    // Deux questions ne se touchent pas, deux réponses non plus.
+    assert.ok(!seMarient(q0, ch.pieces[1].demis[1]));
+    assert.ok(!seMarient(r0, ch.pieces[2].demis[0]));
+    // DÉPART et ARRIVÉE ne se marient à rien : ce sont les extrémités.
+    assert.equal(ch.pieces[0].demis[0].type, BOUT);
+    assert.ok(!seMarient(ch.pieces[0].demis[0], ch.pieces[ch.pieces.length - 1].demis[1]));
 });
 
-test('le bout ouvert est toujours la dernière moitié droite', () => {
+test('retourner une pièce échange ses deux moitiés', () => {
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 3));
+    const p = ch.pieces[1];
+    assert.equal(demiDe(p, 0, false), p.demis[0]);
+    assert.equal(demiDe(p, 0, true), p.demis[1]);
+    assert.equal(demiDe(p, 1, true), p.demis[0]);
+});
+
+test('le plateau part vide et s\'allonge par les DEUX bouts', () => {
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
+    let etat = plateauVide();
+    assert.deepEqual(boutsLibres(ch, etat), { gauche: null, droite: null });
+
+    // On commence au milieu, exprès : rien n'oblige à partir du DÉPART.
+    etat = poserPiece(ch, etat, 3, 'droite');
+    assert.equal(etat.posees.length, 1);
+    // La pièce 2 se raccroche à gauche, la pièce 4 à droite.
+    assert.ok(poseAdmise(ch, etat, 2, 'gauche'));
+    assert.ok(!poseAdmise(ch, etat, 2, 'droite'));
+    assert.ok(poseAdmise(ch, etat, 4, 'droite'));
+    assert.ok(!poseAdmise(ch, etat, 4, 'gauche'));
+    // Et une pièce qui n'a rien à voir ne va nulle part.
+    assert.equal(poseAdmise(ch, etat, 0, 'gauche'), null);
+
+    etat = poserPiece(ch, etat, 2, 'gauche');
+    etat = poserPiece(ch, etat, 4, 'droite');
+    assert.deepEqual(etat.posees.map(p => p.id), [2, 3, 4]);
+    // Une pièce déjà posée ne se repose pas.
+    assert.equal(poseAdmise(ch, etat, 3, 'droite'), null);
+    assert.ok(!plateauFini(ch, etat));
+});
+
+test('une pièce se retourne toute seule quand c\'est le seul moyen', () => {
+    // Posée à gauche de la chaîne, une pièce présente sa moitié DROITE : elle
+    // doit donc pivoter. L'élève n'a pas à s'en occuper.
     const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
-    assert.equal(boutOuvert(ch, 0), null);
-    assert.equal(boutOuvert(ch, 1), ch.couples[0].q);
-    assert.equal(boutOuvert(ch, 3), ch.couples[2].q);
-    assert.equal(boutOuvert(ch, ch.pieces.length), ARRIVEE);
+    let etat = poserPiece(ch, plateauVide(), 2, 'droite');
+    const sens = poseAdmise(ch, etat, 1, 'gauche');
+    assert.ok(sens);
+    etat = poserPiece(ch, etat, 1, 'gauche');
+    // Après la pose, la chaîne se relit dans le bon ordre : la moitié droite
+    // de la pièce 1 touche la moitié gauche de la pièce 2.
+    const g = etat.posees[0], d = etat.posees[1];
+    assert.ok(seMarient(demiDe(ch.pieces[g.id], 1, g.retourne), demiDe(ch.pieces[d.id], 0, d.retourne)));
+});
+
+test('le plateau entier se remplit, et alors c\'est fini', () => {
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 6));
+    let etat = plateauVide();
+    let garde = 0;
+    while (!plateauFini(ch, etat) && garde++ < 40) {
+        const pose = prochainePose(ch, etat);
+        assert.ok(pose, 'la chaîne doit toujours pouvoir continuer');
+        etat = poserPiece(ch, etat, pose.id, pose.cote);
+        assert.ok(etat, 'la pose annoncée doit être admise');
+    }
+    assert.ok(plateauFini(ch, etat));
+    assert.equal(prochainePose(ch, etat), null);
+    // Et la chaîne obtenue est bien la chaîne d'origine, DÉPART puis ARRIVÉE.
+    assert.deepEqual(etat.posees.map(p => p.id), ch.pieces.map(p => p.id));
+});
+
+test('le côté naturel évite de viser', () => {
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
+    let etat = poserPiece(ch, plateauVide(), 2, 'droite');
+    assert.equal(coteNaturel(ch, etat, 1), 'gauche');
+    assert.equal(coteNaturel(ch, etat, 3), 'droite');
+    assert.equal(coteNaturel(ch, etat, 0), null, 'une pièce qui ne va nulle part n\'a pas de côté');
 });
 
 test('le robot explique le chemin, il ne donne pas la pièce', () => {
     const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
-    const dit = direJoint(ch, 2);
+    // Plateau vide : on commence par le DÉPART, et on dit pourquoi.
+    assert.match(direJoint(ch, plateauVide(), prochainePose(ch, plateauVide())), /DÉPART/);
+    const etat = poserPiece(ch, plateauVide(), 1, 'droite');
+    const dit = direJoint(ch, etat, prochainePose(ch, etat));
     assert.match(dit, /bout ouvert/);
-    assert.match(dit, new RegExp(ch.couples[1].q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.match(dit, /à gauche/, 'il doit dire OÙ chercher, pas seulement quoi');
-    // Le départ ne se cherche pas.
-    assert.match(direJoint(ch, 0), /DÉPART/);
+    assert.match(dit, /à (gauche|droite)/, 'il doit dire OÙ chercher, pas seulement quoi');
+    assert.ok(dit.length > 40);
 });
 
 test('une pièce mal posée reçoit sa raison, pas un simple « faux »', () => {
     const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
-    const raison = direErreur(ch, 2, 4);
-    assert.match(raison, /bout ouvert/);
-    assert.match(raison, /à gauche/);
+    const etat = poserPiece(ch, plateauVide(), 2, 'droite');
+    const raison = direErreur(ch, etat, 0);
+    assert.match(raison, /gauche/);
+    assert.match(raison, /droite/);
     assert.ok(raison.length > 40, 'une correction d\'un mot n\'apprend rien');
 });
 
-test('la réserve est mélangée, la pièce de départ n\'y est pas', () => {
+test('la réserve porte TOUTES les pièces, mélangées', () => {
+    // Le plateau part vide : aucune pièce n'est posée d'avance, sinon la
+    // chaîne n'aurait qu'un seul bout ouvert.
     const ch = construireChaine(rassemblerCouples(tirageSimple(), 8));
     const reserve = reserveMelangee(ch, makeRng('mel'));
-    assert.equal(reserve.length, ch.pieces.length - 1);
-    assert.ok(!reserve.includes(0), 'la pièce DÉPART est déjà sur la table');
-    assert.deepEqual([...reserve].sort((a, b) => a - b), ch.pieces.slice(1).map(p => p.id));
-    // Mélangée pour de bon : l'ordre du tirage n'est pas l'ordre de la chaîne.
-    assert.notDeepEqual(reserve, ch.pieces.slice(1).map(p => p.id));
-    // Et reproductible : même graine, même réserve.
-    assert.deepEqual(reserve, reserveMelangee(ch, makeRng('mel')));
+    assert.equal(reserve.length, ch.pieces.length);
+    assert.deepEqual([...reserve].sort((a, b) => a - b), ch.pieces.map(p => p.id));
+    assert.notDeepEqual(reserve, ch.pieces.map(p => p.id), 'mélangée pour de bon');
+    assert.deepEqual(reserve, reserveMelangee(ch, makeRng('mel')), 'et reproductible');
 });
 
 test('la chaîne se relit en une ligne pour la correction', () => {
@@ -188,7 +257,8 @@ test('le générateur pose une planche complète sur la feuille', () => {
             { source: 'calc.addition', pieces: 9 }, { rng: makeRng(`pap${g}`), index: g });
         assert.ok(it.meta.pieces.length >= 4, 'la planche voyage avec l\'item');
         assert.equal(it.meta.pieces.length, it.meta.couples.length + 1);
-        assert.ok(it.meta.reserve.length === it.meta.pieces.length - 1);
+        assert.equal(it.meta.reserve.length, it.meta.pieces.length,
+            'la planche imprimée porte toutes les pièces, mélangées');
         assert.ok(!/undefined|NaN/.test(it.explanation));
         assert.match(it.explanation, /ARRIVÉE/);
     }
