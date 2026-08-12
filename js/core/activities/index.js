@@ -28,6 +28,7 @@ import { horlogeGenerator } from '../generators/horloge.js';
 import { relatifsGenerator } from '../generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 import { redactionGenerator } from '../generators/redaction.js';
+import { CONSIGNES } from '../geoConstruction.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -221,6 +222,31 @@ registerActivity({
     accepts: ['numeric', 'choice'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./addRelatifs.js')
+});
+
+// L'ATELIER DE GÉOMÉTRIE : règle, équerre, compas et rapporteur, empruntés au
+// projet GéoMaster et montés dans un cadre. Activité autonome — elle porte sa
+// propre consigne et son propre jugement — mais déclarée à part des jeux
+// historiques parce qu'elle a des réglages : le professeur choisit ce qu'il a
+// enseigné.
+registerActivity({
+    id: 'geometrie',
+    label: 'Atelier de géométrie (instruments)',
+    accepts: [],
+    supports: { timed: false, autonomous: true, demo: true },
+    params: [
+        {
+            id: 'consigne', label: 'Construction demandée', type: 'select',
+            default: 'aleatoire',
+            options: [
+                { value: 'aleatoire', label: 'Au hasard parmi toutes' },
+                ...CONSIGNES.map(c => ({ value: c.id, label: c.titre }))
+            ]
+        }
+    ],
+    legacyModule: '../../games/geometrie.js',
+    legacyExport: 'engineGeometrie',
+    load: () => import('../../games/geometrie.js')
 });
 
 // --- Activités autonomes ----------------------------------------------------

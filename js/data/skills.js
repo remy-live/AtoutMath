@@ -288,6 +288,14 @@ const BASE = {
         descriptor: 'Justifier par écrit qu\'une droite est perpendiculaire à une autre, en citant la propriété du cours.',
         lesson: 'Une justification a trois lignes, toujours les mêmes. JE SAIS QUE : les données lues sur la figure. OR : la propriété du cours, écrite EN ENTIER — c\'est elle qui autorise le pas suivant, et une propriété à moitié citée n\'autorise rien. DONC : la conclusion, qui ne dit rien de plus que ce que la propriété permet. Ici : si deux droites sont parallèles, toute perpendiculaire à l\'une est perpendiculaire à l\'autre.'
     },
+    'geo.construire.instruments': {
+        label: 'Construire aux instruments',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Construire à la règle, à l\'équerre et au compas : milieu, médiatrice, perpendiculaire, parallèle, cercle.',
+        lesson: 'Chaque instrument sert à garder une chose fixe. Le COMPAS garde une distance : deux points tracés du même écartement sont à la même distance du centre — c\'est ce qui fait le cercle, et c\'est ce qui fait la médiatrice (deux points à égale distance de A et de B suffisent à la tenir). L\'ÉQUERRE garde l\'angle droit : un côté le long de la droite, on glisse jusqu\'au point, on trace le long de l\'autre. La RÈGLE ne mesure pas seulement, elle joint. Et la médiatrice de [AB], c\'est les deux à la fois : elle passe par le milieu de [AB] ET elle lui est perpendiculaire — les deux conditions, pas une seule.'
+    },
     'voc.mathematique': {
         label: 'Vocabulaire mathématique',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

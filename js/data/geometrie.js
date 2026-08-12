@@ -32,6 +32,19 @@ export const geometrieExercises = [
         instruction: "Les deux angles droits sont DONNÉS sur la figure : c'est de là qu'on part. La propriété permet alors de conclure que les deux droites sont parallèles — attention à ne pas la confondre avec celle qui part de deux parallèles."
     },
     {
+        // L'ATELIER : les vrais instruments, à l'écran. La consigne est posée
+        // par l'application (le segment [AB] est déjà là), la construction est
+        // libre — compas, équerre, règle, peu importe — et c'est la FIGURE
+        // obtenue qui est jugée, pas la méthode employée.
+        id: 'geo-atelier-instruments', status: STATUS.TEST,
+        title: 'Atelier de Géométrie : Règle, Équerre et Compas',
+        activityId: 'geometrie',
+        params: { consigne: 'aleatoire' },
+        skills: ['geo.construire.instruments'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Les quatre instruments sont en haut de la feuille : règle, équerre, compas, rapporteur. On les prend, on les pose, on les tourne — à la souris comme au doigt — et on trace le long de leur bord. La figure de départ est déjà placée : lis la consigne, construis, puis appuie sur « Valider ma construction ». C'est la figure obtenue qui est jugée, pas l'outil choisi : la médiatrice au compas et la médiatrice à l'équerre valent pareil."
+    },
+    {
         id: 'geo-repere-placer', title: 'Placer un Point',
         generatorId: 'geo.repere', activityId: 'repere',
         params: { relatifs: 'positives', max: 5, mode: 'placer' },
