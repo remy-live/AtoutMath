@@ -280,6 +280,22 @@ const BASE = {
         descriptor: 'Croiser des indices dans une grille et n\'écrire que ce qui est certain.',
         lesson: 'Deux règles font tout, et il n\'y en a pas d\'autres. UNE VALEUR NE SERT QU\'UNE FOIS : dès qu\'une case est cochée, toute sa ligne et toute sa colonne se barrent. S\'IL NE RESTE QU\'UNE CASE non barrée dans une ligne, c\'est elle — même si aucun indice ne le dit. La troisième idée est celle qui fait la différence : quand deux cases parlent de la MÊME personne, tout ce qui vaut pour l\'une vaut pour l\'autre. « Celui qui a pris le chocolat a neuf ans » et « Léa a neuf ans » donnent ensemble « Léa a pris le chocolat », sans que personne l\'ait écrit. On ne devine jamais : si rien ne s\'impose, c\'est qu\'on n\'a pas encore relu le bon indice.'
     },
+    'num.calc.doublements': {
+        label: 'Doublements et puissances de deux',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Doubler mentalement, et reconna\u00eetre la suite 2, 4, 8, 16, \u2026, 2048.',
+        lesson: 'Doubler, c\'est ajouter le nombre \u00e0 lui-m\u00eame \u2014 et la suite des doublements va tr\u00e8s vite : 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048. Onze doublements suffisent pour passer de 2 \u00e0 plus de 2000. Pour doubler vite, d\u00e9compose : 128 + 128, c\'est 250 + 6 = 256. Ces nombres sont les PUISSANCES DE DEUX \u2014 tu les recroiseras partout, de l\'informatique aux tournois.'
+    },
+    'num.logique.carre-magique': {
+        label: 'Carr\u00e9s magiques',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Compl\u00e9ter un carr\u00e9 dont toutes les lignes, colonnes et diagonales ont la m\u00eame somme.',
+        lesson: 'Un carr\u00e9 magique se r\u00e9sout toujours par le M\u00caME raisonnement : cherche une ligne \u2014 rang\u00e9e, colonne ou diagonale \u2014 o\u00f9 il ne manque qu\'UNE case. Additionne ce que tu connais, soustrais de la somme magique : la case est trouv\u00e9e. Et chaque case \u00e9crite d\u00e9bloque de nouvelles lignes \u00e0 une seule case. Si aucune ligne n\'a un seul trou, c\'est que tu as rat\u00e9 une diagonale \u2014 elles comptent aussi.'
+    },
     'num.logique.dominos': {
         label: 'Enchaîner des dominos mathématiques',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

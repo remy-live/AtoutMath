@@ -838,6 +838,56 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- Le carré magique ------------------------------------------------------------
+
+function carreMagiquePreviewHtml(item, slot, k, solution, champs) {
+    const { n, cases, trous, somme } = item.meta;
+    const cote = slot.taille / n;
+    // La somme s'écrit SOUS le carré : au-dessus, elle se battait avec le
+    // titre « Grille N » de la fiche.
+    let html = `<div class="fx-cm-somme" style="left:${slot.x * k}px; top:${(slot.y + slot.taille + 1.2) * k}px;
+        width:${slot.taille * k}px; font-size:${3 * k}px">Somme magique : <b>${somme}</b></div>`;
+    for (let i = 0; i < cases.length; i++) {
+        const x = slot.x + (i % n) * cote, y = slot.y + Math.floor(i / n) * cote;
+        const trou = trous.includes(i);
+        html += `<div class="fx-cm-case${trou ? ' fx-cm-case--trou' : ''}${trou && champs ? ' fp-case--champ' : ''}"
+            style="left:${x * k}px; top:${y * k}px; width:${cote * k}px; height:${cote * k}px;
+            font-size:${cote * 0.42 * k}px">${trou && !solution ? '' : cases[i]}</div>`;
+    }
+    return html;
+}
+
+function dessinerCarreMagiquePdf(doc, item, slot, solution, champ) {
+    const { n, cases, trous, somme } = item.meta;
+    const cote = slot.taille / n;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(`Somme magique : ${somme}`), slot.x + (cote * n) / 2, slot.y + cote * n + 4.4,
+        { align: 'center' });
+    for (let i = 0; i < cases.length; i++) {
+        const x = slot.x + (i % n) * cote, y = slot.y + Math.floor(i / n) * cote;
+        const trou = trous.includes(i);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.35);
+        if (!trou) {
+            doc.setFillColor(...ENCRE.donnee);
+            doc.rect(x, y, cote, cote, 'FD');
+        } else {
+            doc.rect(x, y, cote, cote, 'S');
+        }
+        if (!trou || solution) {
+            doc.setFont('helvetica', trou ? 'normal' : 'bold');
+            doc.setFontSize(Math.min(14, cote * 1.7));
+            doc.text(String(cases[i]), x + cote / 2, y + cote / 2 + cote * 0.14, { align: 'center' });
+        } else if (champ) {
+            champ(x + cote * 0.12, y + cote * 0.12, cote * 0.76, cote * 0.76);
+        }
+    }
+    doc.setLineWidth(0.7);
+    doc.rect(slot.x, slot.y, cote * n, cote * n, 'S');
+}
+
 const etiquetteLogi = (cat, i) => cat.nombres ? String(cat.nombres[i]) : ((cat.courts && cat.courts[i]) || cat.valeurs[i]);
 const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
@@ -1133,6 +1183,14 @@ export const RENDUS = {
         separateurs: true,
         // Il prend toute la largeur : ses indices se lisent à côté de sa grille.
         grilleMax: 300
+    },
+    'carre-magique': {
+        titre: 'Carrés magiques',
+        consigne: (items) => 'Complète chaque carré : toutes les lignes, colonnes et diagonales doivent '
+            + 'faire la somme indiquée. Cherche une ligne où il ne manque qu\'une case, et soustrais.',
+        previewGrille: carreMagiquePreviewHtml,
+        pdfGrille: dessinerCarreMagiquePdf,
+        parLigneDefaut: 3
     },
     dominos: {
         titre: 'Dominos',

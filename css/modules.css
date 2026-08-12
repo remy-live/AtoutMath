@@ -3381,6 +3381,15 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     align-items: center; justify-content: center; color: #1a202c;
 }
 .fx-logi-bloc { position: absolute; border: 1.4px solid #1a202c; pointer-events: none; }
+/* --- Le carré magique sur la fiche ----------------------------------------- */
+.fx-cm-somme { position: absolute; color: #1a202c; }
+.fx-cm-case {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1px solid #1a202c; box-sizing: border-box; font-weight: 800; color: #1a202c;
+    background: #eef0fa;
+}
+.fx-cm-case--trou { background: #fff; font-weight: 600; }
+
 /* --- La planche de dominos à découper ------------------------------------- */
 .fx-dom-piece {
     position: absolute; display: flex; align-items: stretch; box-sizing: border-box;

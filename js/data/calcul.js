@@ -589,6 +589,45 @@ export const calculExercises = [
         instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
     },
     {
+        // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la
+        // main : on cherche la ligne où il ne manque qu'une case, on soustrait
+        // de la somme magique, et chaque case écrite en débloque d'autres. Le
+        // générateur garantit la résolubilité par déduction pure.
+        id: 'logi-carre-magique', status: STATUS.TEST, title: 'Le Carré Magique',
+        activityId: 'carre-magique',
+        generatorId: 'logique.carre-magique', printable: 'carre-magique',
+        sansRevision: true,
+        skills: ['num.logique.carre-magique'],
+        params: { taille: 3, difficulte: 'normal' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Toutes les lignes, colonnes ET diagonales font la même somme — elle est affichée. Cherche une ligne où il ne manque qu'une case : additionne ce que tu connais, soustrais de la somme magique, écris. Chaque case trouvée en débloque d'autres. On ne devine jamais."
+    },
+    {
+        // 2048. Un jeu de puissances de deux qui n'a pas besoin d'être
+        // déguisé : chaque fusion est un doublement énoncé, et chaque coup
+        // s'anticipe. Le robot montre la seule chose qui compte : on ne glisse
+        // pas au hasard, on cherche AVANT quelles tuiles vont se retrouver.
+        id: 'calc-2048', status: STATUS.TEST, title: '2048',
+        activityId: 'deuxmille',
+        sansRevision: true,
+        skills: ['num.calc.doublements'],
+        params: { objectif: 2048 },
+        paramSchema: [
+            {
+                id: 'objectif', type: 'select', label: 'Objectif',
+                options: [
+                    { value: 256, label: 'La tuile 256 — partie courte' },
+                    { value: 512, label: 'La tuile 512' },
+                    { value: 1024, label: 'La tuile 1024' },
+                    { value: 2048, label: 'La tuile 2048 — le vrai défi' }
+                ],
+                default: 2048
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Glisse la grille dans une des quatre directions : tout se tasse, et deux tuiles égales fusionnent en leur double. Chaque tuile ne fusionne qu'une fois par coup. Ne joue pas au hasard : avant de glisser, cherche quelles tuiles vont se retrouver — c'est du calcul mental déguisé en réflexe."
+    },
+    {
         // LES DOMINOS. Le jeu ne fabrique aucune question : il emprunte une
         // notion du catalogue et en fait une chaîne. Un seul exercice, dix-sept
         // jeux de dominos — et le jour où l'on ajoute un générateur qui écrit
