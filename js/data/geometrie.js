@@ -32,6 +32,37 @@ export const geometrieExercises = [
         instruction: "Les deux angles droits sont DONNÉS sur la figure : c'est de là qu'on part. La propriété permet alors de conclure que les deux droites sont parallèles — attention à ne pas la confondre avec celle qui part de deux parallèles."
     },
     {
+        // PYTHAGORE, TRÈS PROGRESSIVEMENT. Six niveaux, six marches : montrer
+        // l'hypoténuse du doigt, remettre la phrase du cours dans l'ordre,
+        // écrire l'égalité pour SON triangle, calculer l'hypoténuse, calculer
+        // un côté (on soustrait), rédiger en entier. On ne demande jamais deux
+        // choses nouvelles à la fois — le modèle des exercices de rédaction.
+        id: 'geo-pythagore', status: STATUS.TEST, title: 'Le Théorème de Pythagore',
+        activityId: 'pythagore-theoreme',
+        // Le générateur sert au PAPIER : les énoncés de calcul, avec la
+        // correction en trois lignes.
+        generatorId: 'geo.pythagore', printable: null,
+        sansRevision: true,
+        skills: ['geo.pythagore'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau',
+                options: [
+                    { value: 1, label: '1 — Montrer l\'hypoténuse' },
+                    { value: 2, label: '2 — La phrase du théorème' },
+                    { value: 3, label: '3 — Écrire l\'égalité' },
+                    { value: 4, label: '4 — Calculer l\'hypoténuse' },
+                    { value: 5, label: '5 — Calculer un côté de l\'angle droit' },
+                    { value: 6, label: '6 — Rédiger en entier' }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
+        instruction: "Tout part de l'angle droit : le côté d'en face est l'hypoténuse. Son carré vaut la somme des carrés des deux autres côtés. Chaque niveau ajoute UNE seule chose : d'abord montrer l'hypoténuse du doigt, puis la phrase du cours, puis l'égalité, puis les calculs — additionner pour l'hypoténuse, soustraire pour un côté — et enfin la rédaction complète. La racine carrée est la dernière marche : le calcul donne un carré, pas une longueur."
+    },
+    {
         // L'ATELIER : les vrais instruments, à l'écran. La consigne est posée
         // par l'application (le segment [AB] est déjà là), la construction est
         // libre — compas, équerre, règle, peu importe — et c'est la FIGURE

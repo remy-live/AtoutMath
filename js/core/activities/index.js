@@ -31,6 +31,7 @@ import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
 import { dominosGenerator } from '../generators/dominos.js';
+import { pythagoreGenerator } from '../generators/pythagore.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -45,7 +46,8 @@ import { dominosGenerator } from '../generators/dominos.js';
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
-    relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator
+    relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
+    pythagoreGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -281,6 +283,7 @@ const legacy = [
     ['logigramme', 'Logigramme', 'logigramme', 'engineLogigramme'],
     ['dominos', 'Dominos mathématiques', 'dominos', 'engineDominos'],
     ['dix', 'Les Amis de Dix (paires)', 'dix', 'engineDix'],
+    ['pythagore-theoreme', 'Le Théorème de Pythagore', 'pythagore_theoreme', 'enginePythagoreTheoreme'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

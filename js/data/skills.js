@@ -304,6 +304,14 @@ const BASE = {
         descriptor: 'Justifier par écrit qu\'une droite est perpendiculaire à une autre, en citant la propriété du cours.',
         lesson: 'Une justification a trois lignes, toujours les mêmes. JE SAIS QUE : les données lues sur la figure. OR : la propriété du cours, écrite EN ENTIER — c\'est elle qui autorise le pas suivant, et une propriété à moitié citée n\'autorise rien. DONC : la conclusion, qui ne dit rien de plus que ce que la propriété permet. Ici : si deux droites sont parallèles, toute perpendiculaire à l\'une est perpendiculaire à l\'autre.'
     },
+    'geo.pythagore': {
+        label: 'Théorème de Pythagore',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Identifier l\'hypoténuse, écrire l\'égalité de Pythagore et calculer une longueur dans un triangle rectangle.',
+        lesson: 'Tout commence par l\'ANGLE DROIT : le côté d\'en face est l\'hypoténuse, toujours le plus long. Le théorème dit une seule chose : son carré vaut la somme des carrés des deux autres côtés. Pour CALCULER, deux cas et pas trois : on cherche l\'hypoténuse, on ADDITIONNE les deux carrés ; on cherche un côté de l\'angle droit, on SOUSTRAIT du carré de l\'hypoténuse. Et la dernière ligne est celle qu\'on oublie : le calcul donne un CARRÉ, il faut la racine carrée pour revenir à la longueur. Un résultat de 100 n\'est pas une longueur de 100 cm — c\'est 10 cm.'
+    },
     'geo.construire.instruments': {
         label: 'Construire aux instruments',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],
