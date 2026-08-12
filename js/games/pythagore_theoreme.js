@@ -18,6 +18,7 @@ import {
     THEOREME, NIVEAUX, niveauDe, tirerTriangle, cotesDe, direTriangle,
     egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase
 } from '../core/pythagore.js';
+import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
 const SKILL = 'geo.pythagore';
 
@@ -32,6 +33,7 @@ class Pythagore extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                ${CSS_GLISSER}
                 .py-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 10px;
                     height: 100%; width: 100%; color: var(--text-main); overflow-y: auto;
@@ -261,6 +263,14 @@ class Pythagore extends BaseGame {
         this.peindrePhrase();
     }
 
+    /** Retire un morceau posé et retasse : jamais de trou au milieu. */
+    reprendreMot(rang) {
+        this.phrase[rang] = null;
+        this.phrase = this.phrase.filter(g => g !== null).concat(
+            new Array(THEOREME.groupes.length).fill(null)).slice(0, THEOREME.groupes.length);
+        this.peindrePhrase();
+    }
+
     peindrePhrase() {
         const zone = this.zoneEl.querySelector('[data-phrase]');
         const banque = this.zoneEl.querySelector('[data-banque]');
@@ -269,24 +279,50 @@ class Pythagore extends BaseGame {
             : `<button type="button" class="py-mot py-mot--pose" data-rang="${i}">${g}</button>`).join('');
         banque.innerHTML = this.banque.map((g, k) =>
             this.phrase.includes(g) ? '' : `<button type="button" class="py-mot" data-mot="${k}">${g}</button>`).join('');
+
+        // LE CLIC ET LE GLISSÉ font la même chose : le clic pose dans le
+        // premier trou libre, le glissé pose où l'on vise.
         banque.querySelectorAll('[data-mot]').forEach(b => {
-            b.onclick = () => {
-                if (this.isDemo) return;
-                const trou = this.phrase.indexOf(null);
+            const poser = (rang) => {
+                if (this.isDemo || this.vientDeGlisser) return;
+                const mot = this.banque[Number(b.dataset.mot)];
+                const trou = rang !== undefined && this.phrase[rang] === null ? rang : this.phrase.indexOf(null);
                 if (trou === -1) return;
-                this.phrase[trou] = this.banque[Number(b.dataset.mot)];
+                this.phrase[trou] = mot;
                 this.peindrePhrase();
             };
+            b.onclick = () => poser();
+            rendreGlissable(b, {
+                cibles: '.py-trou, .py-mot--pose',
+                deposer: (c) => {
+                    const rang = Number(c.dataset.rang);
+                    // Sur un morceau déjà posé : il repart au stock, le nouveau prend sa place.
+                    if (this.phrase[rang] !== null) this.phrase[rang] = null;
+                    this.phrase[rang] = this.banque[Number(b.dataset.mot)];
+                    this.peindrePhrase();
+                },
+                actif: () => !this.isDemo,
+                marquerGlissement: (v) => { this.vientDeGlisser = v; }
+            });
         });
+
+        // UN MORCEAU POSÉ SE REPREND : au clic, ou en le glissant dans le vide.
         zone.querySelectorAll('.py-mot--pose').forEach(b => {
-            b.onclick = () => {
-                if (this.isDemo) return;
-                this.phrase[Number(b.dataset.rang)] = null;
-                // Les mots posés APRÈS le retiré se décalent : pas de trous au milieu.
-                this.phrase = this.phrase.filter(g => g !== null).concat(
-                    new Array(THEOREME.groupes.length).fill(null)).slice(0, THEOREME.groupes.length);
-                this.peindrePhrase();
-            };
+            b.onclick = () => { if (!this.isDemo && !this.vientDeGlisser) this.reprendreMot(Number(b.dataset.rang)); };
+            rendreGlissable(b, {
+                cibles: '.py-trou',
+                deposer: (c) => {
+                    const de = Number(b.dataset.rang), vers = Number(c.dataset.rang);
+                    const mot = this.phrase[de];
+                    this.phrase[de] = null;
+                    this.phrase[vers] = mot;
+                    this.peindrePhrase();
+                },
+                retirer: () => this.reprendreMot(Number(b.dataset.rang)),
+                zoneRetour: banque,
+                actif: () => !this.isDemo,
+                marquerGlissement: (v) => { this.vientDeGlisser = v; }
+            });
         });
     }
 
@@ -324,28 +360,69 @@ class Pythagore extends BaseGame {
         this.barreEl.innerHTML = `<button type="button" class="py-btn py-btn--valider" data-verif>Vérifier</button>`;
         this.barreEl.querySelector('[data-verif]').onclick = () => this.validerEgalite();
 
+        this.peindreEgalite();
+    }
+
+    /** Repose l'égalité : chaque case porte son nom, chaque nom son état. */
+    peindreEgalite() {
         const trous = [...this.zoneEl.querySelectorAll('[data-trou]')];
-        this.zoneEl.querySelectorAll('[data-nom]').forEach(b => {
-            b.onclick = () => {
-                if (this.isDemo) return;
-                const libre = this.trous.indexOf(null);
-                if (libre === -1) return;
-                this.trous[libre] = b.dataset.nom;
-                trous[libre].textContent = b.dataset.nom;
-                trous[libre].classList.add('py-trou--plein');
-                b.disabled = true; b.style.opacity = '.35';
-            };
+        const banque = this.zoneEl.querySelector('[data-banque]');
+        trous.forEach((tr, i) => {
+            tr.textContent = this.trous[i] === null ? '?' : this.trous[i];
+            tr.classList.toggle('py-trou--plein', this.trous[i] !== null);
         });
+        banque.querySelectorAll('[data-nom]').forEach(b => {
+            const pris = this.trous.includes(b.dataset.nom);
+            b.disabled = pris;
+            b.style.opacity = pris ? '.3' : '';
+        });
+
+        // Poser un nom : au clic (premier trou libre) ou au glissé (où l'on vise).
+        const poser = (nom, i) => {
+            if (this.isDemo) return;
+            const libre = i !== undefined ? i : this.trous.indexOf(null);
+            if (libre === -1) return;
+            // Un nom ne sert qu'une fois : s'il était ailleurs, il déménage.
+            const ancien = this.trous.indexOf(nom);
+            if (ancien !== -1) this.trous[ancien] = null;
+            this.trous[libre] = nom;
+            this.peindreEgalite();
+        };
+        banque.querySelectorAll('[data-nom]').forEach(b => {
+            b.onclick = () => { if (!this.vientDeGlisser && !b.disabled) poser(b.dataset.nom); };
+            rendreGlissable(b, {
+                cibles: '[data-trou]',
+                deposer: (c) => { if (!b.disabled) poser(b.dataset.nom, Number(c.dataset.trou)); },
+                actif: () => !this.isDemo,
+                marquerGlissement: (v) => { this.vientDeGlisser = v; }
+            });
+        });
+        // UNE CASE REMPLIE SE VIDE : au clic, ou en la glissant hors des cases.
         trous.forEach((tr, i) => {
             tr.onclick = () => {
-                if (this.isDemo || this.trous[i] === null) return;
-                const nom = this.trous[i];
+                if (this.isDemo || this.vientDeGlisser || this.trous[i] === null) return;
                 this.trous[i] = null;
-                tr.textContent = '?';
-                tr.classList.remove('py-trou--plein');
-                const b = this.zoneEl.querySelector(`[data-nom="${nom}"]`);
-                if (b) { b.disabled = false; b.style.opacity = ''; }
+                this.peindreEgalite();
             };
+            rendreGlissable(tr, {
+                cibles: '[data-trou]',
+                deposer: (c) => {
+                    const vers = Number(c.dataset.trou);
+                    if (this.trous[i] === null || vers === i) return;
+                    const nom = this.trous[i];
+                    this.trous[i] = this.trous[vers];    // échange : deux cases pleines permutent
+                    this.trous[vers] = nom;
+                    this.peindreEgalite();
+                },
+                retirer: () => {
+                    if (this.trous[i] === null) return;
+                    this.trous[i] = null;
+                    this.peindreEgalite();
+                },
+                zoneRetour: banque,
+                actif: () => !this.isDemo && this.trous[i] !== null,
+                marquerGlissement: (v) => { this.vientDeGlisser = v; }
+            });
         });
     }
 

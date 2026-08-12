@@ -20,16 +20,34 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { CSS_GLISSER } from '../core/glisserDeposer.js';
 
 const COMPETENCE = 'num.complement';
 
-/** Les valeurs qu'un boulet peut porter, par cible et par niveau. */
+/**
+ * Les valeurs qu'un boulet peut porter, par cible et par niveau.
+ *
+ * LA PROGRESSION EST LE CŒUR DU JEU. On ne commence pas par 23 : à 100, les
+ * premiers boulets sont des dizaines rondes (30 → 70), puis des multiples de
+ * cinq (35 → 65), et seulement quand l'élève tient la mécanique arrivent les
+ * nombres quelconques (23 → 77), qui demandent la vraie technique — compléter
+ * d'abord les unités à 10, puis les dizaines à 90.
+ */
 export function tirerValeur(cible, niveau, rng) {
     if (cible === 10) return rng.int(1, 9);
     const pas = cible === 100
         ? (niveau <= 2 ? 10 : (niveau <= 4 ? 5 : 1))
-        : (niveau <= 2 ? 100 : (niveau <= 4 ? 50 : 10));
+        : (niveau <= 2 ? 100 : (niveau <= 4 ? 50 : (niveau <= 6 ? 10 : 1)));
     return rng.int(1, cible / pas - 1) * pas;
+}
+
+/** Ce que le pas courant demande, en clair — pour l'annonce de niveau. */
+export function direPalier(cible, niveau) {
+    if (cible === 10) return 'les amis de 10';
+    if (niveau <= 2) return cible === 100 ? 'des dizaines rondes' : 'des centaines rondes';
+    if (niveau <= 4) return cible === 100 ? 'des multiples de 5' : 'des multiples de 50';
+    if (cible === 100) return 'des nombres quelconques — complète les unités à 10, puis les dizaines à 90';
+    return niveau <= 6 ? 'des dizaines' : 'des nombres quelconques';
 }
 
 class Canon extends BaseGame {
@@ -53,53 +71,109 @@ class Canon extends BaseGame {
                 .cn-tete { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
                     justify-content: center; font-size: .92rem; }
                 .cn-cible { font-weight: 900; color: var(--primary); font-size: 1.1rem; }
+                .cn-palier { color: var(--text-muted); font-size: .82rem; font-style: italic; }
 
+                /* LE CHAMP DE BATAILLE. Un ciel dégradé, un sol, et des
+                   boulets qui roulent : le décor porte le jeu autant que la
+                   règle — un rectangle blanc avec des ronds gris n'a jamais
+                   donné envie de calculer. */
                 .cn-terrain {
-                    position: relative; width: min(94cqw, 680px); height: 300px;
-                    border: 2.5px solid var(--text-main); border-radius: 12px;
-                    background: color-mix(in srgb, var(--text-main) 4%, var(--bg-panel));
-                    overflow: hidden; touch-action: manipulation; user-select: none;
+                    position: relative; width: min(94cqw, 700px); height: 320px;
+                    border-radius: 14px; overflow: hidden;
+                    border: 3px solid color-mix(in srgb, var(--text-main) 70%, transparent);
+                    background:
+                        radial-gradient(circle at 50% 120%, rgba(253,224,71,.35), transparent 55%),
+                        linear-gradient(180deg, #1e3a5f 0%, #2d5580 42%, #4a7ba7 68%, #6b8f5a 68%, #4d6b3f 100%);
+                    touch-action: manipulation; user-select: none;
+                    box-shadow: inset 0 -18px 40px rgba(0,0,0,.28);
                 }
-                /* En colonne sur les écrans étroits : le canon passe en bas. */
-                .cn-wrap--colonne .cn-terrain { height: min(52cqh, 380px); }
+                .cn-wrap--colonne .cn-terrain {
+                    height: min(56cqh, 420px);
+                    background:
+                        radial-gradient(circle at -10% 50%, rgba(253,224,71,.35), transparent 55%),
+                        linear-gradient(90deg, #1e3a5f 0%, #2d5580 42%, #4a7ba7 68%, #6b8f5a 68%, #4d6b3f 100%);
+                }
+                /* Les étoiles du fond : trois nuages fixes, discrets. */
+                .cn-terrain::before {
+                    content: ''; position: absolute; inset: 0; pointer-events: none;
+                    background:
+                        radial-gradient(2px 2px at 18% 22%, rgba(255,255,255,.7), transparent),
+                        radial-gradient(2px 2px at 62% 14%, rgba(255,255,255,.5), transparent),
+                        radial-gradient(2px 2px at 84% 30%, rgba(255,255,255,.6), transparent),
+                        radial-gradient(1.5px 1.5px at 38% 9%, rgba(255,255,255,.5), transparent);
+                }
 
+                /* LE BOULET ENNEMI : une bille de fonte, avec sa mèche qui
+                   fume et son reflet. Il tourne en avançant. */
                 .cn-boulet {
                     position: absolute; border-radius: 50%; display: flex;
                     align-items: center; justify-content: center; font-weight: 900;
-                    background: #334155; color: #f8fafc; cursor: pointer;
-                    width: 52px; height: 52px; font-size: 17px;
-                    box-shadow: inset -4px -4px 8px rgba(0,0,0,.35);
+                    width: 56px; height: 56px; font-size: 18px; border: 0; padding: 0;
+                    color: #fff7ed; cursor: pointer; font-family: inherit;
+                    background: radial-gradient(circle at 32% 28%, #64748b 0%, #334155 45%, #0f172a 100%);
+                    box-shadow: 0 4px 10px rgba(0,0,0,.45), inset -6px -6px 12px rgba(0,0,0,.55),
+                                inset 4px 4px 10px rgba(255,255,255,.18);
+                    text-shadow: 0 1px 3px rgba(0,0,0,.9);
                     -webkit-tap-highlight-color: transparent;
+                    transition: filter .12s ease;
                 }
+                .cn-boulet:hover { filter: brightness(1.35) drop-shadow(0 0 8px rgba(252,211,77,.9)); }
+                /* La mèche allumée, en haut du boulet. */
+                .cn-boulet::after {
+                    content: ''; position: absolute; top: -7px; left: 50%; width: 7px; height: 7px;
+                    border-radius: 50%; transform: translateX(-50%);
+                    background: radial-gradient(circle, #fef08a 0%, #f97316 55%, transparent 75%);
+                    animation: cn-meche .5s ease-in-out infinite alternate;
+                }
+                @keyframes cn-meche { from { opacity: .5; scale: .75; } to { opacity: 1; scale: 1.3; } }
+
+                /* NOTRE BOULET : lumineux, avec une traînée. */
                 .cn-boulet--mien {
-                    background: var(--primary); box-shadow: inset -4px -4px 8px rgba(0,0,0,.25);
-                    pointer-events: none;
+                    background: radial-gradient(circle at 34% 30%, #fef3c7 0%, #fbbf24 40%, #d97706 100%);
+                    color: #431407; pointer-events: none; text-shadow: none;
+                    box-shadow: 0 0 18px rgba(251,191,36,.85), inset -5px -5px 10px rgba(120,53,15,.5);
                 }
+                .cn-boulet--mien::after { display: none; }
+
                 .cn-boum {
-                    position: absolute; border-radius: 50%; pointer-events: none;
-                    background: radial-gradient(circle, #fcd34d 0%, #f59e0b 45%, transparent 70%);
-                    animation: cn-boum .45s ease-out forwards;
+                    position: absolute; border-radius: 50%; pointer-events: none; z-index: 5;
+                    background: radial-gradient(circle, #fff7ed 0%, #fcd34d 30%, #f97316 55%, transparent 72%);
+                    animation: cn-boum .5s ease-out forwards;
                 }
-                @keyframes cn-boum { from { scale: .3; opacity: 1; } to { scale: 2.2; opacity: 0; } }
-                .cn-canon {
-                    position: absolute; display: flex; align-items: center; justify-content: center;
-                    font-size: 30px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3));
+                @keyframes cn-boum { from { scale: .3; opacity: 1; } to { scale: 2.6; opacity: 0; } }
+
+                /* LE CANON : dessiné, pas un émoji — et il recule au tir. */
+                .cn-canon { position: absolute; width: 74px; height: 60px; pointer-events: none; }
+                .cn-canon svg { width: 100%; height: 100%; overflow: visible; }
+                .cn-canon--tire { animation: cn-recul .28s ease-out; }
+                @keyframes cn-recul {
+                    30% { translate: -9px 0; }
                 }
+                .cn-wrap--colonne .cn-canon--tire { animation: cn-recul-bas .28s ease-out; }
+                @keyframes cn-recul-bas { 30% { translate: 0 9px; } }
 
                 .cn-pupitre { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+                /* LA CHAMBRE DE CHARGE : c'est le boulet qu'on prépare, alors
+                   elle EST un boulet — même rondeur, même lueur. */
                 .cn-charge {
-                    min-width: 84px; height: 46px; border: 2.5px solid var(--primary); border-radius: 999px;
+                    min-width: 74px; height: 58px; border-radius: 999px;
                     display: flex; align-items: center; justify-content: center;
-                    font-weight: 900; font-size: 1.25rem; background: var(--bg-panel);
-                    padding: 0 12px;
+                    font-weight: 900; font-size: 1.4rem; padding: 0 16px; color: #431407;
+                    background: radial-gradient(circle at 34% 30%, #fef3c7 0%, #fbbf24 40%, #d97706 100%);
+                    box-shadow: 0 0 16px rgba(251,191,36,.7), inset -5px -5px 10px rgba(120,53,15,.45);
                 }
-                .cn-charge--vide { color: var(--text-muted); font-size: .85rem; font-weight: 600; }
+                .cn-charge--vide {
+                    color: var(--text-muted); font-size: .8rem; font-weight: 700;
+                    background: var(--bg-panel); border: 2.5px dashed var(--border); box-shadow: none;
+                }
                 .cn-pave { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; max-width: 300px; }
                 .cn-chiffre {
-                    width: 42px; height: 42px; border: 1.5px solid var(--border); border-radius: 10px;
+                    width: 44px; height: 44px; border: 1.5px solid var(--border); border-radius: 12px;
                     background: var(--bg-panel); color: var(--text-main); font: inherit;
                     font-weight: 900; font-size: 1.05rem; cursor: pointer;
+                    transition: transform .1s ease, background .1s ease;
                 }
+                .cn-chiffre:active { transform: scale(.9); background: var(--bg-hover); }
                 .cn-note { min-height: 2.4em; text-align: center; font-size: .88rem;
                     color: var(--text-muted); max-width: 640px; }
                 .cn-note--ok { color: var(--success, #16a34a); font-weight: 700; }
@@ -110,6 +184,7 @@ class Canon extends BaseGame {
                     <span>Complète à <span class="cn-cible" data-cible></span></span>
                     <span data-vies></span>
                     <span>Niveau <b data-niveau>1</b></span>
+                    <span class="cn-palier" data-palier></span>
                 </div>
                 <div class="cn-terrain" data-terrain></div>
                 <div class="cn-pupitre">
@@ -155,7 +230,25 @@ class Canon extends BaseGame {
         this.wrapEl.classList.toggle('cn-wrap--colonne', this.colonne);
         this.canonEl = document.createElement('div');
         this.canonEl.className = 'cn-canon';
-        this.canonEl.textContent = '🛡️';
+        // Un fût, deux roues, un socle : le canon se reconnaît de loin, et sa
+        // gueule pointe vers l'arrivée des boulets.
+        this.canonEl.innerHTML = `
+            <svg viewBox="0 0 74 60" aria-hidden="true"
+                 style="transform: rotate(${this.colonne ? -90 : 0}deg)">
+                <defs>
+                    <linearGradient id="cn-fut" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#94a3b8"/><stop offset=".45" stop-color="#475569"/>
+                        <stop offset="1" stop-color="#1e293b"/>
+                    </linearGradient>
+                </defs>
+                <rect x="6" y="40" width="46" height="9" rx="4" fill="#78350f"/>
+                <circle cx="17" cy="49" r="9" fill="#92400e" stroke="#451a03" stroke-width="2.5"/>
+                <circle cx="17" cy="49" r="2.6" fill="#451a03"/>
+                <circle cx="40" cy="49" r="7" fill="#92400e" stroke="#451a03" stroke-width="2.5"/>
+                <rect x="12" y="18" width="52" height="20" rx="9" fill="url(#cn-fut)"/>
+                <rect x="58" y="15" width="10" height="26" rx="4" fill="#1e293b"/>
+                <ellipse cx="66" cy="28" rx="3.4" ry="10" fill="#0b1220"/>
+            </svg>`;
         this.terrainEl.appendChild(this.canonEl);
         this.placerCanon();
         this.prochainBoulet = 0;
@@ -168,11 +261,11 @@ class Canon extends BaseGame {
     placerCanon() {
         const t = this.geometrie();
         if (this.colonne) {
-            this.canonEl.style.left = `${t.w / 2 - 18}px`;
-            this.canonEl.style.top = `${t.h - 40}px`;
+            this.canonEl.style.left = `${t.w / 2 - 37}px`;
+            this.canonEl.style.top = `${t.h - 66}px`;
         } else {
-            this.canonEl.style.left = '8px';
-            this.canonEl.style.top = `${t.h / 2 - 18}px`;
+            this.canonEl.style.left = '4px';
+            this.canonEl.style.top = `${t.h / 2 - 30}px`;
         }
     }
 
@@ -191,6 +284,8 @@ class Canon extends BaseGame {
         this.container.querySelector('[data-vies]').textContent =
             '❤️'.repeat(Math.max(0, this.vies)) + '🖤'.repeat(Math.max(0, this.viesDepart - this.vies));
         this.container.querySelector('[data-niveau]').textContent = String(this.niveau);
+        const pal = this.container.querySelector('[data-palier]');
+        if (pal) pal.textContent = direPalier(this.cible, this.niveau);
     }
 
     majCharge() {
@@ -280,7 +375,9 @@ class Canon extends BaseGame {
         el.type = 'button';
         el.className = 'cn-boulet';
         el.textContent = String(valeur);
-        const b = { el, valeur, voie: this.rng.int(0, this.voies - 1), avancee: 0 };
+        // Il ENTRE par le bord : posé à l'arrêt à moitié dedans, il avait
+        // l'air coupé. `overflow: hidden` le cache jusqu'à son entrée.
+        const b = { el, valeur, voie: this.rng.int(0, this.voies - 1), avancee: -60 };
         el.onclick = () => this.tirer(b);
         this.terrainEl.appendChild(el);
         this.placerEnnemi(b);
@@ -290,12 +387,14 @@ class Canon extends BaseGame {
     placerEnnemi(b) {
         const t = this.geometrie();
         const axe = this.axeVoie(b.voie);
+        // La rotation dit le roulement : sans elle, un boulet « glisse ».
+        b.el.style.rotate = `${-b.avancee * 2.6}deg`;
         if (this.colonne) {
-            b.el.style.left = `${axe - 26}px`;
-            b.el.style.top = `${b.avancee - 26}px`;
+            b.el.style.left = `${axe - 28}px`;
+            b.el.style.top = `${b.avancee - 28}px`;
         } else {
-            b.el.style.left = `${t.w - b.avancee - 26}px`;
-            b.el.style.top = `${axe - 26}px`;
+            b.el.style.left = `${t.w - b.avancee - 28}px`;
+            b.el.style.top = `${axe - 28}px`;
         }
     }
 
@@ -314,11 +413,20 @@ class Canon extends BaseGame {
         el.className = 'cn-boulet cn-boulet--mien';
         el.textContent = String(valeur);
         const t = this.geometrie();
-        const x = this.colonne ? t.w / 2 : 34, y = this.colonne ? t.h - 34 : t.h / 2;
+        const x = this.colonne ? t.w / 2 : 62, y = this.colonne ? t.h - 62 : t.h / 2;
         el.style.left = `${x - 26}px`;
         el.style.top = `${y - 26}px`;
         this.terrainEl.appendChild(el);
         this.tirs.push({ el, valeur, cibleBoulet, x, y });
+        this.reculer();
+    }
+
+    /** Le canon recule au tir : c'est le retour de manivelle qui fait le poids. */
+    reculer() {
+        if (!this.canonEl) return;
+        this.canonEl.classList.remove('cn-canon--tire');
+        void this.canonEl.offsetWidth;          // relance l'animation
+        this.canonEl.classList.add('cn-canon--tire');
     }
 
     impact(tir, ennemi) {
@@ -344,11 +452,17 @@ class Canon extends BaseGame {
                 expected: String(tir.valeur), given: String(tir.valeur),
                 points: this.cible === 10 ? 4 : (this.cible === 100 ? 6 : 8)
             });
-            // Cinq boulets détruits : le niveau monte.
+            // Cinq boulets détruits : le niveau monte. Et quand le PALIER
+            // change — les nombres deviennent quelconques — on le dit, avec la
+            // technique qui va avec : c'est là que l'élève a besoin d'un mot.
             if (this.detruits % 5 === 0) {
+                const avant = direPalier(this.cible, this.niveau);
                 this.niveau++;
                 this.majTete();
-                this.note(`Niveau ${this.niveau} : les boulets accélèrent.`, 'ok');
+                const apres = direPalier(this.cible, this.niveau);
+                this.note(apres !== avant
+                    ? `⭐ Niveau ${this.niveau} — maintenant, ${apres}.`
+                    : `Niveau ${this.niveau} : les boulets accélèrent.`, 'ok');
             }
         } else {
             // Le boulet ennemi CONTINUE SA ROUTE — c'est la punition du jeu,
@@ -417,10 +531,11 @@ class Canon extends BaseGame {
             el.className = 'cn-boulet cn-boulet--mien';
             el.textContent = String(valeur);
             const t = this.geometrie();
-            const x = this.colonne ? t.w / 2 : 34, y = this.colonne ? t.h - 34 : t.h / 2;
+            const x = this.colonne ? t.w / 2 : 62, y = this.colonne ? t.h - 62 : t.h / 2;
             el.style.left = `${x - 26}px`; el.style.top = `${y - 26}px`;
             this.terrainEl.appendChild(el);
             this.tirs.push({ el, valeur, cibleBoulet: ennemi, x, y });
+            this.reculer();
             if (!await cur.pause(1500) || !this.isRunning) return fin();
         }
 
