@@ -291,6 +291,7 @@ const legacy = [
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique'],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
+    ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

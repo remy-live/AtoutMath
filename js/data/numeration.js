@@ -194,6 +194,38 @@ export const numerationExercises = [
         instruction: "Toutes les cartes sont visibles, et chacune a son amie : tape deux cartes dont la somme fait la cible. Ne cherche pas au hasard — choisis UNE carte, calcule ce qui lui manque, puis cherche ce nombre des yeux."
     },
     {
+        // LE CANON. Le complément se PRÉPARE avant de tirer : un boulet
+        // ennemi porte 23, la cible est 100, on charge 77 au pavé, on touche
+        // le boulet, et le nôtre part à sa rencontre. Somme juste : explosion.
+        // Fausse : l'ennemi continue sa route. Le calcul précède le geste.
+        id: 'num-canon-complements', status: STATUS.TEST, title: 'Le Canon des Compléments',
+        activityId: 'canon',
+        sansRevision: true,
+        skills: ['num.complement'],
+        params: { cible: 100, vies: 3 },
+        paramSchema: [
+            {
+                id: 'cible', type: 'select', label: 'Compléter à',
+                options: [
+                    { value: 10, label: '10 — une voie' },
+                    { value: 100, label: '100 — deux voies' },
+                    { value: 1000, label: '1 000 — trois voies' }
+                ],
+                default: 100
+            },
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [
+                    { value: 3, label: '3 vies' },
+                    { value: 5, label: '5 vies' }
+                ],
+                default: 3
+            }
+        ],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME] },
+        instruction: "Des boulets ennemis avancent vers ton canon, chacun porte un nombre. PRÉPARE ton boulet au pavé — un 23 approche et la cible est 100 : charge 77 — puis touche le boulet visé. Si la somme fait la cible, il explose ; sinon il continue sa route. Le calcul d'abord, le tir ensuite."
+    },
+    {
         id: 'num-complement-100',
         consignePapier: "Complète.",
         colonnesPapier: 3,

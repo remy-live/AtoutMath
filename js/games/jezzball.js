@@ -84,11 +84,29 @@ class JezzBall extends BaseGame {
         this.sensEl.onclick = () => { this.vertical = !this.vertical; this.majSens(); };
         this.container.querySelector('[data-neuf]').onclick = () => { this.niveau = 1; this.poser(); };
         this.toile.onpointerdown = (e) => this.cliquer(e);
+        // LES TOUCHES H ET V : à la souris, le geste le plus rapide est de ne
+        // pas viser le bouton — H lance un mur horizontal là où est le
+        // curseur, V un vertical. On suit donc la souris en permanence. Sur
+        // une tablette il n'y a ni touches ni survol : le bouton et le
+        // toucher restent le chemin complet.
+        this.souris = null;
+        this.toile.onpointermove = (e) => { this.souris = { x: e.clientX, y: e.clientY }; };
+        this.toile.onpointerleave = () => { this.souris = null; };
+        this.surTouche = (e) => {
+            if (this.isDemo || !this.isRunning) return;
+            const touche = e.key.toLowerCase();
+            if (touche !== 'h' && touche !== 'v') return;
+            if (!this.souris) return;
+            this.vertical = touche === 'v';
+            this.majSens();
+            this.lancerSous(this.souris.x, this.souris.y);
+        };
+        document.addEventListener('keydown', this.surTouche);
         this.majSens();
     }
 
     majSens() {
-        this.sensEl.textContent = this.vertical ? '↕ Mur vertical' : '↔ Mur horizontal';
+        this.sensEl.textContent = this.vertical ? '↕ Mur vertical (V)' : '↔ Mur horizontal (H)';
     }
 
     startGameLoop() {
@@ -117,10 +135,16 @@ class JezzBall extends BaseGame {
     }
 
     cliquer(e) {
+        this.lancerSous(e.clientX, e.clientY);
+    }
+
+    /** Lance un mur sous un point de l'écran — le clic et les touches H/V y passent. */
+    lancerSous(clientX, clientY) {
         if (this.isDemo || !this.p || this.finie) return;
         const r = this.toile.getBoundingClientRect();
-        const x = Math.floor((e.clientX - r.left) / r.width * this.p.cols);
-        const y = Math.floor((e.clientY - r.top) / r.height * this.p.lignes);
+        const x = Math.floor((clientX - r.left) / r.width * this.p.cols);
+        const y = Math.floor((clientY - r.top) / r.height * this.p.lignes);
+        if (x < 0 || y < 0 || x >= this.p.cols || y >= this.p.lignes) return;
         lancerMur(this.p, x, y, this.vertical);
     }
 
@@ -259,6 +283,7 @@ class JezzBall extends BaseGame {
     }
 
     destroy() {
+        if (this.surTouche) { document.removeEventListener('keydown', this.surTouche); this.surTouche = null; }
         if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
