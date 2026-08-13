@@ -136,6 +136,10 @@ export function noter(carnet, ligne) {
         date: ligne.date || 0,
         verdicts: { ...(ligne.verdicts || {}) },
         note: (ligne.note || '').slice(0, 2000),
+        // `classement` : là où l'exercice est rangé AUJOURD'HUI. `tags` : ce
+        // qu'on propose d'en faire. Les confondre, c'est ne plus savoir en
+        // relisant si une ligne demande un changement ou décrit l'existant.
+        classement: ligne.classement ? { ...ligne.classement } : null,
         tags: ligne.tags ? { ...ligne.tags } : null
     };
     const lignes = carnet.lignes.filter(l => clefLigne(l) !== clefLigne(complet));
@@ -166,6 +170,14 @@ export function avancement(carnet, exercices, appareilNom) {
     };
 }
 
+/** « Numérique > Fractions — 6ème, 5ème ». */
+export function direClassement(c) {
+    if (!c) return '';
+    const chemin = (c.chemin || []).filter(Boolean).join(' > ');
+    const niveaux = (c.niveaux || []).join(', ');
+    return [chemin, niveaux].filter(Boolean).join(' — ');
+}
+
 /** Les ennuis, du plus grave au moins grave. C'est par là que je commencerai. */
 export function ennuis(carnet) {
     const poids = { ko: 0, moyen: 1 };
@@ -176,7 +188,8 @@ export function ennuis(carnet) {
             if (v === 'ko' || v === 'moyen') {
                 sortis.push({
                     exercice: l.exercice, titre: l.titre, activite: l.activite,
-                    critere: c.id, verdict: v, note: l.note, appareil: l.appareilNom
+                    critere: c.id, verdict: v, note: l.note, appareil: l.appareilNom,
+                    classement: l.classement
                 });
             }
         });
@@ -239,6 +252,7 @@ export function lire(texte) {
             verdicts: Object.fromEntries(Object.entries(l.verdicts || {})
                 .filter(([k, v]) => CRITERES.some(c => c.id === k) && estVerdict(v))),
             note: String(l.note || ''),
+            classement: l.classement || null,
             tags: l.tags || null
         }))
     };
@@ -277,21 +291,23 @@ export function versMarkdown(carnet, { titre = 'Banc d\'essai' } = {}) {
         const c = CRITERES.find(x => x.id === s.critere);
         l.push(`### ${s.verdict === 'ko' ? '✗ CASSÉ' : '~ à revoir'} — ${s.titre} `
             + `(\`${s.exercice}\`${s.activite ? `, jeu \`${s.activite}\`` : ''})`);
+        if (s.classement) l.push(`_${direClassement(s.classement)}_`);
         l.push(`**${c ? c.label : s.critere}** — ${c ? c.question : ''}`);
         if (s.note) l.push('', `> ${s.note.split('\n').join('\n> ')}`);
         l.push('');
     });
 
     l.push('## Le détail, exercice par exercice', '');
-    l.push(`| Exercice | ${CRITERES.map(c => c.label).join(' | ')} | Remarque |`);
-    l.push(`|---|${CRITERES.map(() => '---').join('|')}|---|`);
+    l.push(`| Exercice | Niveaux | ${CRITERES.map(c => c.label).join(' | ')} | Remarque |`);
+    l.push(`|---|---|${CRITERES.map(() => '---').join('|')}|---|`);
     [...carnet.lignes].sort((a, b) => a.exercice.localeCompare(b.exercice)).forEach(x => {
         const cases = CRITERES.map(c => {
             const v = x.verdicts[c.id];
             const d = VERDICTS.find(y => y.id === v);
             return d ? d.signe : '';
         });
-        l.push(`| ${x.titre || x.exercice} | ${cases.join(' | ')} | `
+        const niv = (x.classement && x.classement.niveaux || []).join(' ');
+        l.push(`| ${x.titre || x.exercice} | ${niv} | ${cases.join(' | ')} | `
             + `${(x.note || '').replace(/\n/g, ' ').slice(0, 120)} |`);
     });
     l.push('');

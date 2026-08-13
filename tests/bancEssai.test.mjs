@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     CRITERES, VERDICTS, FORMAT, decrireAppareil, nommerAppareil, nouveauCarnet,
-    noter, ligneDe, avancement, ennuis, resume, fusionner, lire, versMarkdown, clefLigne
+    noter, ligneDe, avancement, ennuis, resume, fusionner, lire, versMarkdown, clefLigne,
+    direClassement
 } from '../js/core/bancEssai.js';
 
 const faussetteFenetre = (over = {}) => ({
@@ -204,4 +205,37 @@ test('les critères et les verdicts sont ceux qu\'un test automatique ne sait pa
     // reste éternellement « non testé ».
     assert.ok(VERDICTS.some(v => v.id === 'na'));
     assert.equal(VERDICTS.length, 4);
+});
+
+test('le classement courant voyage avec la ligne, et les niveaux entrent dans le rapport', () => {
+    // « Ça marche mais c'est annoncé pour le mauvais niveau » est un défaut
+    // aussi réel qu'un débordement — encore faut-il que le rapport dise à quel
+    // niveau l'exercice est rangé aujourd'hui.
+    let c = nouveauCarnet({ appareil: decrireAppareil(faussetteFenetre()) });
+    c = noter(c, {
+        exercice: 'num-parties', titre: 'Parties', date: 1,
+        verdicts: { marche: 'ok', classement: 'ko' }, note: 'Trop dur pour du CM2.',
+        classement: { chemin: ['Numérique', 'Fractions'], niveaux: ['CM2', '6ème'] }
+    });
+    const relu = lire(JSON.stringify(c));
+    assert.deepEqual(relu.lignes[0].classement.niveaux, ['CM2', '6ème'],
+        'le classement doit survivre à l\'aller-retour par le presse-papiers');
+
+    assert.equal(direClassement({ chemin: ['Numérique', 'Fractions'], niveaux: ['CM2', '6ème'] }),
+        'Numérique > Fractions — CM2, 6ème');
+    assert.equal(direClassement(null), '');
+
+    const md = versMarkdown(c);
+    assert.match(md, /\| Exercice \| Niveaux \|/, 'le tableau doit porter une colonne de niveaux');
+    assert.match(md, /\| Parties \| CM2 6ème \|/);
+    // Et l'ennui lui-même annonce où l'exercice est rangé : c'est la première
+    // chose à savoir quand on vient corriger un classement.
+    assert.match(md, /_Numérique > Fractions — CM2, 6ème_/);
+});
+
+test('une ligne sans classement ne casse pas le rapport', () => {
+    // Les carnets déjà remplis avant ce champ doivent rester lisibles.
+    const md = versMarkdown(carnetType());
+    assert.ok(!/undefined|\[object/.test(md));
+    assert.match(md, /\| Le Tangram \|  \|/, 'la colonne reste, simplement vide');
 });

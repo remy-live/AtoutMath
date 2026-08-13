@@ -295,6 +295,14 @@ si bien qu'ils se lisent et se fusionnent ensemble (`core/bancEssai.js`) :
 | **Banc d'essai** (palette d'auteur → ✓) | un humain, sur son appareil | ça marche, les indices, le robot, la fiche, la mise en page, le classement |
 | **Balayage** (`npm run balayage`) | la machine, sans surveillance | se lance sans erreur, dessine quelque chose, ne défile pas en largeur |
 
+LA FICHE PART TOUTE VERTE, et l'on ne signale que les exceptions. Demander six
+verdicts sur cent exercices, c'est six cents gestes : la passe s'arrête au
+dixième. Or dans l'immense majorité des cas il n'y a rien à dire — et « rien à
+dire » est une information, pas un vide à remplir. Le cas courant coûte donc UN
+geste, « Tout bon → suivant », qui note et lance l'exercice d'après ; le
+panneau de réglages est sauté, et le seul verdict que la machine pose seule est
+« sans objet » sur la fiche papier, qu'elle sait détecter.
+
 Le banc enchaîne jouer → fermer → noter tout seul, garde le carnet dans le
 navigateur de l'appareil qui teste, et en sort un rapport par « Copier ». Il
 enregistre l'APPAREIL et la VERSION chargée : sans eux, un défaut de mise en

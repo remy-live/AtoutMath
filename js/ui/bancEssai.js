@@ -15,7 +15,7 @@ import { exercices } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import {
     CRITERES, VERDICTS, decrireAppareil, nommerAppareil, nouveauCarnet, noter,
-    ligneDe, avancement, versMarkdown, lire, fusionner
+    ligneDe, avancement, versMarkdown, lire, fusionner, direClassement
 } from '../core/bancEssai.js';
 
 const CLE = 'mathbox-banc-essai';
@@ -99,6 +99,10 @@ function assurerPanneau() {
             }
             .banc-nom { font-weight: 700; font-size: .9rem; flex: 1 1 160px; }
             .banc-sous { font-size: .7rem; color: var(--text-muted); font-weight: 500; }
+            .banc-niv {
+                display: block; font-size: .68rem; font-weight: 700; color: var(--primary);
+                letter-spacing: .02em;
+            }
             .banc-etat { display: flex; gap: 3px; }
             .banc-pastille {
                 width: 17px; height: 17px; border-radius: 50%; font-size: .62rem; font-weight: 800;
@@ -148,9 +152,15 @@ function assurerPanneau() {
             .banc-etiq--pris { background: var(--primary); border-color: var(--primary); color: #fff; }
             .banc-bloc { padding: 12px 0; }
             .banc-bloc h4 { margin: 0 0 6px; font-size: .84rem; }
+            .banc-presume {
+                background: color-mix(in srgb, var(--success) 12%, transparent);
+                border-radius: 10px; padding: 8px 11px; font-size: .8rem; margin-bottom: 6px;
+            }
+            .banc-btn--vert { background: var(--success); border-color: var(--success); color: #fff; }
         </style>
         <div class="banc-tete">
             <span class="banc-titre">Banc d'essai</span>
+            <button type="button" class="banc-btn banc-btn--fort" data-passe>▶▶ Passe guidée</button>
             <button type="button" class="banc-btn" data-copier>⧉ Copier le rapport</button>
             <button type="button" class="banc-btn" data-fichier>⤓ Fichier</button>
             <button type="button" class="banc-btn" data-vider>Vider</button>
@@ -162,6 +172,12 @@ function assurerPanneau() {
     document.body.appendChild(el);
 
     el.querySelector('[data-fermer]').onclick = () => fermer();
+    el.querySelector('[data-passe]').onclick = () => {
+        const suite = listeFiltree();
+        const premier = suite[0];
+        if (!premier) return import('./modal.js').then(m => m.showToast('Plus rien à passer ici.', 'success'));
+        jouer(premier.id);
+    };
     el.querySelector('[data-copier]').onclick = () => copierRapport();
     el.querySelector('[data-fichier]').onclick = () => telechargerRapport();
     el.querySelector('[data-vider]').onclick = () => {
@@ -242,9 +258,14 @@ function ligneHtml(exo) {
             title="${echapper(c.label)}">${d ? d.signe : '·'}</span>`;
     }).join('');
     const sd = (exo.tags && exo.tags.chemin && exo.tags.chemin[1]) || '';
+    // LES NIVEAUX SE LISENT DANS LA LISTE. C'est ce qu'on vérifie en premier
+    // quand on passe les exercices en revue : un exercice bien fait mais
+    // annoncé pour le mauvais niveau ne servira jamais.
+    const niveaux = ((exo.tags && exo.tags.niveaux) || []).join(' · ');
     return `<div class="banc-ligne">
         <span class="banc-nom">${echapper(exo.title)}
-            <span class="banc-sous">${echapper(sd)}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span></span>
+            <span class="banc-sous">${echapper(sd)}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span>
+            <span class="banc-niv">${echapper(niveaux || 'aucun niveau')}</span></span>
         <span class="banc-etat">${pastilles}</span>
         <span class="banc-actions">
             <button type="button" class="banc-btn" data-jouer="${exo.id}">▶</button>
@@ -257,9 +278,13 @@ function ligneHtml(exo) {
 // --- Jouer, puis noter ------------------------------------------------------
 
 /**
- * On lance l'exercice comme un élève le lancerait — même chemin, mêmes
- * réglages — et l'on guette la fermeture de la couche de jeu pour rouvrir la
- * fiche. Sans ce retour automatique, la notation ne se fait pas.
+ * On lance l'exercice comme un élève le lancerait, et l'on guette la fermeture
+ * de la couche de jeu pour rouvrir la fiche. Sans ce retour automatique, la
+ * notation ne se fait pas.
+ *
+ * `internalStudentConfig` saute le panneau de réglages : sur cent exercices,
+ * c'est cent fenêtres à valider pour retomber sur les réglages par défaut —
+ * ceux que l'on veut justement vérifier.
  */
 function jouer(id) {
     const exo = exercices.find(e => e.id === id);
@@ -267,9 +292,19 @@ function jouer(id) {
     ouvertSur = id;
     fermer(true);
     import('../games/engine.js').then(m => {
-        m.openGameLayer(exo);
+        m.openGameLayer({ ...exo, internalStudentConfig: true, params: { ...(exo.params || {}) } });
         guetterRetour();
     });
+}
+
+/** L'exercice d'après dans la liste en cours : c'est lui qui s'enchaîne. */
+function suivantDe(id) {
+    const suite = listeFiltree();
+    const i = suite.findIndex(e => e.id === id);
+    // La liste « à faire » perd l'exercice qu'on vient de noter : le suivant
+    // reprend donc sa place, et c'est celui-là qu'il faut lancer.
+    if (i < 0) return suite[0] || null;
+    return suite[i + 1] || null;
 }
 
 function guetterRetour() {
@@ -288,6 +323,13 @@ function guetterRetour() {
     });
     obs.observe(couche, { attributes: true, attributeFilter: ['style'] });
     if (visible()) arme = true;
+}
+
+/** Cet exercice a-t-il une fiche papier ? Sinon le critère est sans objet. */
+async function aUneFiche(exo) {
+    const { getGenerator } = await import('../core/registry.js');
+    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
+    return !!(exo.printable || (gen && gen.ecrit));
 }
 
 /** L'aperçu papier. Tous les exercices n'en ont pas : on le dit. */
@@ -309,14 +351,29 @@ function apercuFiche(id) {
 
 // --- La fiche de notation ---------------------------------------------------
 
-function ouvrirFiche(id) {
+/**
+ * LA FICHE PART TOUTE VERTE, et l'on ne signale que les exceptions.
+ *
+ * Demander six verdicts sur cent exercices, c'est six cents gestes : la passe
+ * s'arrête au dixième. Or dans l'immense majorité des cas il n'y a RIEN à
+ * dire — et « rien à dire » est une information, pas un vide à remplir. On
+ * présume donc que tout va bien, et l'on ne touche que ce qui cloche. Le cas
+ * courant coûte alors UN geste : « Tout bon → suivant ».
+ *
+ * Le seul verdict que la machine sait poser seule est « sans objet » sur la
+ * fiche papier : elle sait si l'exercice s'imprime.
+ */
+async function ouvrirFiche(id) {
     const exo = exercices.find(e => e.id === id);
     if (!exo) return;
     ouvertSur = id;
     const el = assurerPanneau();
     const fiche = el.querySelector('[data-fiche]');
     const l = ligneDe(carnet, id, nomAppareil);
-    const verdicts = { ...(l ? l.verdicts : {}) };
+    const papier = await aUneFiche(exo);
+    const presume = {};
+    CRITERES.forEach(c => { presume[c.id] = (c.id === 'fiche' && !papier) ? 'na' : 'ok'; });
+    const verdicts = { ...presume, ...(l ? l.verdicts : {}) };
     const tagsInit = (l && l.tags) || {};
     const cheminInit = tagsInit.chemin || (exo.tags && exo.tags.chemin) || [];
     const niveauxInit = new Set(tagsInit.niveaux || (exo.tags && exo.tags.niveaux) || []);
@@ -324,14 +381,20 @@ function ouvrirFiche(id) {
     fiche.innerHTML = `
         <div class="banc-tete">
             <span class="banc-titre">${echapper(exo.title)}</span>
+            <button type="button" class="banc-btn banc-btn--vert" data-suivant>Tout bon → suivant</button>
             <button type="button" class="banc-btn" data-rejouer>▶ Rejouer</button>
             <button type="button" class="banc-btn" data-pdf>🖨 Fiche</button>
             <button type="button" class="banc-btn banc-btn--fort" data-enregistrer>Enregistrer</button>
             <button type="button" class="banc-btn" data-annuler>Fermer</button>
             <span class="banc-appareil">${echapper(exo.id)}${exo.activityId
-        ? ` · jeu ${echapper(exo.activityId)}` : ''} — noté sur ${echapper(nomAppareil)}</span>
+        ? ` · jeu ${echapper(exo.activityId)}` : ''} · ${echapper(direClassement({
+            chemin: (exo.tags && exo.tags.chemin) || [], niveaux: (exo.tags && exo.tags.niveaux) || []
+        }))} — noté sur ${echapper(nomAppareil)}</span>
         </div>
         <div class="banc-corps">
+            <div class="banc-presume">Tout est présumé <b>bon</b>${papier ? ''
+        : ', et la fiche papier « sans objet » (cet exercice ne s\'imprime pas)'}.
+                Ne touche que ce qui cloche, puis <b>→ suivant</b>.</div>
             ${CRITERES.map(c => `
                 <div class="banc-critere">
                     <div class="banc-critere-titre">${echapper(c.label)}</div>
@@ -390,10 +453,7 @@ function ouvrirFiche(id) {
             b.classList.toggle('banc-etiq--pris', niveauxInit.has(n));
         };
     });
-    fiche.querySelector('[data-rejouer]').onclick = () => { fermerFiche(); jouer(id); };
-    fiche.querySelector('[data-pdf]').onclick = () => apercuFiche(id);
-    fiche.querySelector('[data-annuler]').onclick = () => fermerFiche();
-    fiche.querySelector('[data-enregistrer]').onclick = () => {
+    const enregistrer = () => {
         const chemin = [fiche.querySelector('[data-domaine]').value,
             fiche.querySelector('[data-sousdomaine]').value];
         const ajouts = fiche.querySelector('[data-ajouts]').value
@@ -401,8 +461,10 @@ function ouvrirFiche(id) {
         const avant = (exo.tags && exo.tags.chemin) || [];
         const niveaux = [...niveauxInit];
         const avantNiv = (exo.tags && exo.tags.niveaux) || [];
-        // On n'enregistre le classement QUE s'il change : un rapport plein de
-        // propositions identiques à l'existant ne se lit plus.
+        // On n'enregistre une PROPOSITION que si le classement change : un
+        // rapport plein de propositions identiques à l'existant ne se lit plus.
+        // Le classement courant, lui, part toujours — c'est lui qui met les
+        // niveaux dans le rapport.
         const bouge = chemin.join('>') !== avant.join('>')
             || niveaux.slice().sort().join(',') !== avantNiv.slice().sort().join(',')
             || ajouts.length;
@@ -410,12 +472,32 @@ function ouvrirFiche(id) {
             exercice: id, titre: exo.title, activite: exo.activityId || '',
             appareilNom: nomAppareil, version: carnet.version, date: Date.now(),
             verdicts, note: fiche.querySelector('[data-note]').value,
+            classement: { chemin: avant, niveaux: avantNiv },
             tags: bouge ? { chemin, niveaux, ajouts } : null
         });
         garder();
         fermerFiche();
         peindre();
+    };
+
+    fiche.querySelector('[data-rejouer]').onclick = () => { fermerFiche(); jouer(id); };
+    fiche.querySelector('[data-pdf]').onclick = () => apercuFiche(id);
+    fiche.querySelector('[data-annuler]').onclick = () => fermerFiche();
+    fiche.querySelector('[data-enregistrer]').onclick = () => {
+        enregistrer();
         import('./modal.js').then(m => m.showToast('Noté.', 'success'));
+    };
+    // LE GESTE UNIQUE : on note, et l'exercice suivant se lance dans la
+    // foulée. Repasser par la liste entre chaque essai, c'est ce qui rendait
+    // la passe interminable.
+    fiche.querySelector('[data-suivant]').onclick = () => {
+        enregistrer();
+        const suite = suivantDe(id);
+        if (!suite) {
+            import('./modal.js').then(m => m.showToast('Passe terminée sur cette liste.', 'success'));
+            return;
+        }
+        jouer(suite.id);
     };
 }
 
