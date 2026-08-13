@@ -231,10 +231,19 @@ export function fusionner(...carnets) {
     };
 }
 
-/** Relit un carnet transmis, en refusant ce qui n'en est pas un. */
+/**
+ * Relit un carnet transmis, en refusant ce qui n'en est pas un.
+ *
+ * On accepte le RAPPORT ENTIER, pas seulement le bloc de données : c'est le
+ * rapport qu'on copie, qu'on colle dans une conversation et qu'on retrouve
+ * trois jours plus tard. Demander d'en extraire le JSON à la main, c'est
+ * perdre le carnet à la première reprise.
+ */
 export function lire(texte) {
     let brut;
-    try { brut = typeof texte === 'string' ? JSON.parse(texte) : texte; }
+    const bloc = typeof texte === 'string' && texte.match(/```json\s*([\s\S]*?)```/);
+    const source = bloc ? bloc[1] : texte;
+    try { brut = typeof source === 'string' ? JSON.parse(source) : source; }
     catch (e) { return null; }
     if (!brut || typeof brut !== 'object' || !Array.isArray(brut.lignes)) return null;
     return {

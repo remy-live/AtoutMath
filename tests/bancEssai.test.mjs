@@ -239,3 +239,36 @@ test('une ligne sans classement ne casse pas le rapport', () => {
     assert.ok(!/undefined|\[object/.test(md));
     assert.match(md, /\| Le Tangram \|  \|/, 'la colonne reste, simplement vide');
 });
+
+test('un RAPPORT collé se relit, pas seulement son bloc de données', () => {
+    // C'est le rapport qu'on copie, qu'on colle dans une conversation et qu'on
+    // retrouve trois jours plus tard. Demander d'en extraire le JSON à la main,
+    // c'est perdre le carnet à la première reprise.
+    const c = carnetType();
+    const rapport = versMarkdown(c) + '\n\n<!-- CARNET -->\n```json\n' + JSON.stringify(c) + '\n```\n';
+    const relu = lire(rapport);
+    assert.ok(relu, 'le rapport entier doit se relire');
+    assert.equal(relu.lignes.length, 2);
+    assert.equal(relu.lignes[0].verdicts.marche, 'ok');
+    // Et un rapport sans bloc de données n'est pas un carnet : on ne devine pas.
+    assert.equal(lire(versMarkdown(c)), null);
+});
+
+test('reprendre un carnet AJOUTE, il ne remplace pas', () => {
+    // On note sur le téléphone, on continue sur la tablette, on rapatrie : les
+    // deux passes doivent tenir dans le même carnet.
+    const tel = carnetType();
+    let tablette = nouveauCarnet({
+        appareil: decrireAppareil(faussetteFenetre({ innerWidth: 820, innerHeight: 1080 }))
+    });
+    tablette = noter(tablette, {
+        exercice: 'geo-tangram', titre: 'Le Tangram', date: 4000,
+        verdicts: { marche: 'ok', 'mise-en-page': 'ok' }, note: 'Nickel sur la tablette.'
+    });
+    const rapport = versMarkdown(tablette) + '\n```json\n' + JSON.stringify(tablette) + '\n```';
+    const tout = fusionner(tel, lire(rapport));
+    const surTangram = tout.lignes.filter(l => l.exercice === 'geo-tangram');
+    assert.equal(surTangram.length, 2, 'le verdict du téléphone survit à la reprise');
+    assert.ok(surTangram.some(l => l.verdicts.marche === 'ko'));
+    assert.ok(surTangram.some(l => l.verdicts.marche === 'ok'));
+});

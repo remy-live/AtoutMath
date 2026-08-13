@@ -600,9 +600,21 @@ function initDebugToolbar() {
     const btnClear = document.getElementById('db-clear-storage');
     if (btnClear) {
         btnClear.onclick = () => {
-            window.appConfirm('Réinitialisation', 'Effacer toutes les données locales de ce poste ?', async () => {
+            window.appConfirm('Réinitialisation',
+                'Effacer toutes les données locales de ce poste ?<br><br>'
+                + '<b>Le carnet du banc d\'essai est conservé.</b> Une passe s\'étale sur '
+                + 'plusieurs soirées, et ce bouton sert justement à repartir d\'un profil '
+                + 'propre POUR continuer à tester.', async () => {
+                // Le carnet du banc est un travail d'auteur, pas une donnée
+                // d'élève : le perdre en vidant un profil de test coûterait
+                // plusieurs soirées de relevés.
+                let carnet = null;
+                try { carnet = window.localStorage.getItem('mathbox-banc-essai'); } catch (e) { /* privé */ }
                 if (typeof localforage !== 'undefined') await localforage.clear();
-                try { window.localStorage.clear(); } catch (e) { /* mode privé */ }
+                try {
+                    window.localStorage.clear();
+                    if (carnet) window.localStorage.setItem('mathbox-banc-essai', carnet);
+                } catch (e) { /* mode privé */ }
                 window.location.reload();
             });
         };

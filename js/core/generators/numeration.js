@@ -80,8 +80,12 @@ export const chiffreRangGenerator = {
                     : null,
                 { value: parLaGauche, why: 'Les rangs se comptent à partir de la virgule, pas depuis le début du nombre.' }
             ].filter(Boolean), { count: 4, filler: r => r.int(0, 9) }),
+            // UN INDICE QUI COMMANDE DOIT NOMMER SUR QUOI. « Place le nombre
+            // dans le tableau » ne désigne rien — et c'est le PREMIER indice,
+            // donc la phrase que le robot prononce, sans montrer quoi que ce
+            // soit. On nomme le nombre ET la colonne à lire.
             hints: [
-                'Place le nombre dans le tableau de numération, colonne par colonne.',
+                `Place ${affiche} dans le tableau de numération : la colonne des ${RANK_NAMES[rank]}.`,
                 rank >= 0
                     ? 'Les unités sont juste à gauche de la virgule, puis dizaines, centaines…'
                     : 'Juste à droite de la virgule : dixièmes, puis centièmes, puis millièmes.'

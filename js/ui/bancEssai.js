@@ -157,12 +157,20 @@ function assurerPanneau() {
                 border-radius: 10px; padding: 8px 11px; font-size: .8rem; margin-bottom: 6px;
             }
             .banc-btn--vert { background: var(--success); border-color: var(--success); color: #fff; }
+            .banc-coller {
+                position: fixed; inset: 8% 5%; z-index: 3020; overflow-y: auto;
+                background: var(--bg-panel); border: 1px solid var(--border);
+                border-radius: 14px; padding: 14px; box-shadow: var(--shadow-lg);
+            }
+            .banc-coller h4 { margin: 0 0 6px; font-size: .95rem; }
+            .banc-coller .banc-champ { min-height: 40vh; }
         </style>
         <div class="banc-tete">
             <span class="banc-titre">Banc d'essai</span>
             <button type="button" class="banc-btn banc-btn--fort" data-passe>▶▶ Passe guidée</button>
             <button type="button" class="banc-btn" data-copier>⧉ Copier le rapport</button>
             <button type="button" class="banc-btn" data-fichier>⤓ Fichier</button>
+            <button type="button" class="banc-btn" data-reprendre>⧉ Reprendre un carnet</button>
             <button type="button" class="banc-btn" data-vider>Vider</button>
             <button type="button" class="banc-btn banc-btn--fort" data-fermer>Fermer</button>
             <span class="banc-appareil" data-appareil></span>
@@ -180,6 +188,7 @@ function assurerPanneau() {
     };
     el.querySelector('[data-copier]').onclick = () => copierRapport();
     el.querySelector('[data-fichier]').onclick = () => telechargerRapport();
+    el.querySelector('[data-reprendre]').onclick = () => demanderCarnet();
     el.querySelector('[data-vider]').onclick = () => {
         window.appConfirm('Vider le carnet', 'Effacer toutes les notes de cet appareil ?', () => {
             carnet = nouveauCarnet({ appareil, version: versionChargee(), date: Date.now() });
@@ -209,7 +218,8 @@ function peindre() {
     const el = assurerPanneau();
     const av = avancement(carnet, exercices, nomAppareil);
     el.querySelector('[data-appareil]').textContent =
-        `${nomAppareil} — ${carnet.version || 'version ?'} — ${av.vus} / ${av.total} passés`;
+        `${nomAppareil} — ${carnet.version || 'version ?'} — ${av.vus} / ${av.total} passés`
+        + ' · carnet gardé sur cet appareil, tu peux fermer et reprendre plus tard';
 
     const corps = el.querySelector('[data-corps]');
     const chips = [
@@ -565,6 +575,37 @@ const ouvrir = () => {
     const el = document.getElementById('banc-essai');
     if (el) el.classList.add('banc--ouvert');
 };
+
+/**
+ * Coller un rapport pour le reprendre. Deux usages, et c'est le même geste :
+ * rapatrier ce qu'on a noté sur le téléphone quand on continue sur la
+ * tablette, et récupérer son propre carnet si un navigateur a été vidé.
+ */
+function demanderCarnet() {
+    const el = assurerPanneau();
+    const zone = document.createElement('div');
+    zone.className = 'banc-coller';
+    zone.innerHTML = `
+        <h4>Reprendre un carnet</h4>
+        <div class="banc-critere-q">Colle ici un rapport copié — celui de cet appareil après
+            un incident, ou celui d'un autre appareil. Les deux carnets s'ADDITIONNENT : une
+            note prise sur le téléphone ne remplace pas celle prise sur la tablette.</div>
+        <textarea class="banc-champ" data-colle placeholder="# Banc d'essai — …"></textarea>
+        <div style="display:flex; gap:6px; margin-top:8px">
+            <button type="button" class="banc-btn banc-btn--fort" data-ok>Reprendre</button>
+            <button type="button" class="banc-btn" data-non>Annuler</button>
+        </div>`;
+    el.appendChild(zone);
+    zone.querySelector('[data-non]').onclick = () => zone.remove();
+    zone.querySelector('[data-ok]').onclick = async () => {
+        const avant = carnet.lignes.length;
+        const ok = importerCarnet(zone.querySelector('[data-colle]').value);
+        const { showToast } = await import('./modal.js');
+        if (!ok) { showToast('Ce texte ne contient pas de carnet.', 'warning'); return; }
+        showToast(`Carnet repris : ${carnet.lignes.length - avant} note(s) de plus.`, 'success');
+        zone.remove();
+    };
+}
 
 /** Reprendre un carnet reçu d'un autre appareil, pour tout avoir au même endroit. */
 export function importerCarnet(texte) {
