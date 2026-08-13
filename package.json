@@ -6,6 +6,7 @@
   "description": "Entraînement et évaluation en mathématiques (collège) — application web sans build.",
   "scripts": {
     "test": "node --test tests/",
-    "serve": "python3 -m http.server 8080"
+    "serve": "python3 -m http.server 8080",
+    "balayage": "node outils/balayage.mjs"
   }
 }

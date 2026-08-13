@@ -272,6 +272,48 @@ Ce qui est couvert, et pourquoi c'est précisément ça :
 Le test des générateurs a immédiatement trouvé un vrai défaut (propositions en
 double, et un distracteur parfois égal à la bonne réponse).
 
+### Ce qu'un test sous Node ne peut pas voir
+
+Deux gardes relisent le SOURCE plutôt que d'exécuter du code, parce que les
+défauts qu'ils cherchent ne lèvent aucune erreur — ils laissent seulement un
+écran faux (`interfaceIds.test.mjs`) :
+
+- un identifiant interrogé (`querySelector('#fq-consigne')`) qui n'est posé
+  nulle part rend `null`, et le défaut n'apparaît que trois lignes plus loin ;
+- une variable de couleur mal orthographiée (`var(--bg-main)` au lieu de
+  `var(--bg-app)`) rend le panneau TRANSPARENT, sans rien casser.
+
+### Le banc d'essai, et le balayage
+
+Le reste — est-ce que l'indice AIDE, est-ce que le robot montre la bonne façon
+de faire, est-ce que la fiche est imprimable telle quelle — ne se teste qu'en
+regardant. Deux outils s'en chargent, et ils rendent le MÊME format de rapport,
+si bien qu'ils se lisent et se fusionnent ensemble (`core/bancEssai.js`) :
+
+| | Qui juge | Ce qu'il regarde |
+|---|---|---|
+| **Banc d'essai** (palette d'auteur → ✓) | un humain, sur son appareil | ça marche, les indices, le robot, la fiche, la mise en page, le classement |
+| **Balayage** (`npm run balayage`) | la machine, sans surveillance | se lance sans erreur, dessine quelque chose, ne défile pas en largeur |
+
+Le banc enchaîne jouer → fermer → noter tout seul, garde le carnet dans le
+navigateur de l'appareil qui teste, et en sort un rapport par « Copier ». Il
+enregistre l'APPAREIL et la VERSION chargée : sans eux, un défaut de mise en
+page n'est pas reproductible, et un défaut déjà corrigé se signale sans fin
+tant qu'un téléphone garde l'ancienne version en cache.
+
+Le balayage demande `playwright-core` (outil d'auteur, pas dépendance de
+l'application) :
+
+```
+npm install --no-save playwright-core
+npm run balayage                # téléphone, tous les exercices → balayage.md
+npm run balayage -- --large     # ajoute tablette et poste fixe
+```
+
+Il ferme chaque exercice PAR LA CROIX, comme un utilisateur : vider la zone de
+jeu à la main laissait les moteurs animés écrire dans des nœuds disparus, et
+l'outil inventait cinq pannes qui n'existaient pas.
+
 ---
 
 ## 11. Corrections apportées au passage

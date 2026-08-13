@@ -218,7 +218,7 @@ export class Runner {
     }
 
     get canvas() {
-        return document.getElementById('game-canvas') || document.getElementById('game-board');
+        return document.getElementById('game-board');
     }
 
     /**

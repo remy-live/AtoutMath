@@ -4,3 +4,4 @@ node_modules/
 
 # Contient les identifiants de base de données et le secret applicatif.
 api/config.php
+balayage.md

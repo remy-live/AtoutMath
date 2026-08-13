@@ -2363,7 +2363,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 /* Palette : les jetons se glissent OU s'appuient — mêmes proportions que les
    touches du pavé, atteignables au doigt. */
-.kk-palette { display: flex; gap: clamp(6px, 1.2cqh, 10px); }
+/* La palette se replie plutôt que de pousser le plateau hors de l'écran :
+   sur un téléphone de 390 px, neuf jetons alignés dépassaient de quelques
+   pixels — assez pour que toute la zone de jeu défile en largeur. */
+.kk-palette {
+    display: flex; gap: clamp(6px, 1.2cqh, 10px);
+    flex-wrap: wrap; justify-content: center; max-width: 100%;
+}
 .kk-chip {
     width: clamp(42px, 8cqh, 56px); height: clamp(42px, 8cqh, 56px);
     display: inline-flex; align-items: center; justify-content: center;
@@ -2545,7 +2551,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .su-cell.su-bb { border-bottom: 3px solid #0f172a; }
 
 /* Onze jetons : la palette du Garam passe sur deux rangées au besoin. */
-.kk-palette--large { flex-wrap: wrap; justify-content: center; max-width: 460px; }
+.kk-palette--large { max-width: min(460px, 100%); }
 .kk-palette--large .kk-chip { width: clamp(36px, 6.4cqh, 48px); height: clamp(36px, 6.4cqh, 48px); }
 
 

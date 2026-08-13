@@ -614,6 +614,11 @@ function initDebugToolbar() {
     const btnConsole = document.getElementById('db-console');
     if (btnConsole) btnConsole.onclick = () => openConsoleModal();
 
+    // Le banc d'essai : chargé à la demande. C'est un outil d'auteur, il n'a
+    // aucune raison de peser sur le démarrage d'un élève.
+    const btnBanc = document.getElementById('db-banc');
+    if (btnBanc) btnBanc.onclick = () => import('./ui/bancEssai.js').then(m => m.ouvrirBancEssai());
+
     // Passer la question en cours, ou revenir sur la précédente, quel que soit
     // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
     // voulait examiner et il fallait relancer l'exercice depuis le début.

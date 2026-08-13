@@ -26,6 +26,19 @@ import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE
 } from './ficheRendu.js';
 
+/**
+ * La première phrase d'un énoncé, pour amorcer la consigne de la feuille.
+ * On s'arrête au premier point : la suite explique l'écran — les touches, les
+ * glissements, le bouton d'aide — et n'a rien à faire sur du papier.
+ */
+export function premierePhrase(texte) {
+    const t = String(texte || '').trim();
+    if (!t) return '';
+    const fin = t.search(/[.!?](\s|$)/);
+    const phrase = (fin > 0 ? t.slice(0, fin + 1) : t).trim();
+    return phrase.length > 120 ? '' : phrase;
+}
+
 /** Les questions de la fiche, tirées du générateur avec les réglages courants. */
 function tirerQuestions(generator, params, nb) {
     const vus = new Set();
@@ -82,6 +95,9 @@ function assurerModale() {
             <!-- Les réglages de mise en page au contact de l'aperçu : ce
                  sont ceux dont on juge l'effet en REGARDANT la feuille. -->
             <div class="fp-controles pp-mep">
+                <label class="pp-consigne">Consigne
+                    <input type="text" id="fq-consigne" class="cfg-input"
+                        placeholder="Écrite en tête de la feuille — facultatif"></label>
                 <label>Format
                     <select id="fq-orientation" class="cfg-input">
                         <option value="portrait">A4 portrait</option>
@@ -179,7 +195,13 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const colsEl = modal.querySelector('#fq-colonnes');
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');
+    const consigneEl = modal.querySelector('#fq-consigne');
     const mesurer = mesureur();
+
+    // La consigne de la feuille. Celle de l'écran parle de toucher, de glisser
+    // et de boutons : sur papier elle n'a aucun sens. On propose donc la
+    // première phrase de l'énoncé, et le professeur la réécrit.
+    consigneEl.value = premierePhrase(exo.instruction || '');
 
     // Le QCM n'a de sens que si le générateur produit des choix : sur un
     // exercice à réponse libre, la case n'aurait rien à cocher.
@@ -267,6 +289,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         noteEl.textContent = `Les questions viennent des réglages de l'exercice. ${OU[ouSol.value] || ''}`;
     };
 
+    consigneEl.oninput = rendre;
     nbEl.oninput = rendre;
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;

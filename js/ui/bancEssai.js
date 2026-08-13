@@ -1,0 +1,505 @@
+// L'ÉCRAN DU BANC D'ESSAI.
+//
+// On ouvre la liste, on prend un exercice, on le joue pour de vrai, on le
+// referme — et la fiche de notation s'ouvre TOUTE SEULE sur cet exercice-là.
+// C'est le seul enchaînement qui tienne : demander à quelqu'un de rouvrir un
+// panneau et de retrouver la bonne ligne après chaque essai, c'est garantir
+// qu'il ne notera rien après le cinquième.
+//
+// Le carnet vit dans le navigateur de l'appareil qui teste — on peut donc
+// interrompre la passe et la reprendre. Il en sort par « Copier » (le seul
+// transfert fiable depuis un iPhone) ou par un fichier.
+
+import { state } from '../core/state.js';
+import { exercices } from '../data/catalog.js';
+import { TAGS } from '../data/tags.js';
+import {
+    CRITERES, VERDICTS, decrireAppareil, nommerAppareil, nouveauCarnet, noter,
+    ligneDe, avancement, versMarkdown, lire, fusionner
+} from '../core/bancEssai.js';
+
+const CLE = 'mathbox-banc-essai';
+let carnet = null;
+let appareil = null;
+let nomAppareil = '';
+let filtre = 'restants';
+let ouvertSur = null;          // l'exercice à noter au retour du jeu
+
+// --- Le carnet, gardé sur l'appareil ----------------------------------------
+
+function versionChargee() {
+    const el = document.getElementById('db-version');
+    if (el && el.textContent) return el.textContent.trim();
+    const lien = document.querySelector('link[href*="?v="]');
+    const m = lien && lien.getAttribute('href').match(/\?v=([\w.-]+)/);
+    return m ? `v${m[1]}` : '';
+}
+
+function charger() {
+    appareil = decrireAppareil(window);
+    nomAppareil = nommerAppareil(appareil);
+    let garde = null;
+    try { garde = lire(window.localStorage.getItem(CLE)); } catch (e) { garde = null; }
+    carnet = garde || nouveauCarnet({ appareil, version: versionChargee(), date: Date.now() });
+    // L'appareil et la version sont relus à chaque ouverture : on teste souvent
+    // la même passe après une mise à jour, et c'est la version du moment qui
+    // compte pour la ligne qu'on écrit maintenant.
+    carnet.appareil = appareil;
+    carnet.version = versionChargee();
+}
+
+function garder() {
+    try { window.localStorage.setItem(CLE, JSON.stringify(carnet)); } catch (e) { /* privé */ }
+}
+
+// --- L'écran ----------------------------------------------------------------
+
+function assurerPanneau() {
+    let el = document.getElementById('banc-essai');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'banc-essai';
+    el.className = 'banc';
+    el.innerHTML = `
+        <style>
+            .banc {
+                position: fixed; inset: 0; z-index: 3000; display: none;
+                flex-direction: column; background: var(--bg-app); color: var(--text-main);
+            }
+            .banc--ouvert { display: flex; }
+            .banc-tete {
+                display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                padding: 10px 12px; border-bottom: 1px solid var(--border);
+                background: var(--bg-panel); flex: 0 0 auto;
+            }
+            .banc-titre { font-weight: 800; font-size: 1rem; margin-right: auto; }
+            .banc-appareil { font-size: .74rem; color: var(--text-muted); width: 100%; }
+            .banc-btn {
+                border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+                border-radius: 9px; padding: 6px 11px; font: inherit; font-weight: 700;
+                font-size: .82rem; cursor: pointer; min-height: 36px;
+            }
+            .banc-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+            .banc-corps { flex: 1 1 auto; overflow-y: auto; padding: 10px 12px 40px; }
+            .banc-filtres { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+            .banc-chip {
+                border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-muted);
+                border-radius: 999px; padding: 5px 12px; font-size: .78rem; font-weight: 700;
+                cursor: pointer; min-height: 32px;
+            }
+            .banc-chip--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
+            .banc-domaine {
+                font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+                color: var(--text-muted); margin: 14px 0 6px;
+            }
+            .banc-ligne {
+                display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                border: 1px solid var(--border); border-radius: 11px; padding: 8px 10px;
+                margin-bottom: 6px; background: var(--bg-panel);
+            }
+            .banc-nom { font-weight: 700; font-size: .9rem; flex: 1 1 160px; }
+            .banc-sous { font-size: .7rem; color: var(--text-muted); font-weight: 500; }
+            .banc-etat { display: flex; gap: 3px; }
+            .banc-pastille {
+                width: 17px; height: 17px; border-radius: 50%; font-size: .62rem; font-weight: 800;
+                display: flex; align-items: center; justify-content: center;
+                background: var(--bg-hover); color: var(--text-muted);
+            }
+            .banc-pastille--ok { background: color-mix(in srgb, var(--success) 25%, transparent); color: var(--success); }
+            .banc-pastille--moyen { background: color-mix(in srgb, #f59e0b 30%, transparent); color: #b45309; }
+            .banc-pastille--ko { background: color-mix(in srgb, var(--danger) 25%, transparent); color: var(--danger); }
+            .banc-actions { display: flex; gap: 5px; }
+            .banc-vide { color: var(--text-muted); font-size: .86rem; padding: 20px 0; text-align: center; }
+
+            /* LA FICHE DE NOTATION. Elle s'ouvre par-dessus la liste, à la
+               place exacte où l'on en était : on note, on ferme, on continue. */
+            .banc-fiche { position: fixed; inset: 0; z-index: 3010; display: none;
+                flex-direction: column; background: var(--bg-app); }
+            .banc-fiche--ouverte { display: flex; }
+            .banc-critere { border-bottom: 1px solid var(--border); padding: 10px 0; }
+            .banc-critere-titre { font-weight: 800; font-size: .9rem; }
+            .banc-critere-q { font-size: .78rem; color: var(--text-muted); margin: 2px 0 7px; }
+            .banc-verdicts { display: flex; gap: 6px; flex-wrap: wrap; }
+            .banc-v {
+                border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+                border-radius: 9px; padding: 7px 12px; font: inherit; font-weight: 700;
+                font-size: .8rem; cursor: pointer; min-height: 38px; min-width: 44px;
+            }
+            .banc-v--ok.banc-v--pris { background: var(--success); border-color: var(--success); color: #fff; }
+            .banc-v--moyen.banc-v--pris { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+            .banc-v--ko.banc-v--pris { background: var(--danger); border-color: var(--danger); color: #fff; }
+            .banc-v--na.banc-v--pris { background: var(--text-muted); border-color: var(--text-muted); color: #fff; }
+            .banc-champ {
+                width: 100%; box-sizing: border-box; border: 1px solid var(--border);
+                border-radius: 9px; padding: 8px; font: inherit; font-size: .88rem;
+                background: var(--bg-panel); color: var(--text-main); min-height: 76px; resize: vertical;
+            }
+            .banc-sel {
+                border: 1px solid var(--border); border-radius: 9px; padding: 7px;
+                font: inherit; font-size: .84rem; background: var(--bg-panel);
+                color: var(--text-main); min-height: 38px; max-width: 100%;
+            }
+            .banc-niveaux { display: flex; gap: 5px; flex-wrap: wrap; }
+            .banc-etiq {
+                display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
+                border-radius: 999px; padding: 5px 11px; font-size: .78rem; font-weight: 700;
+                cursor: pointer; background: var(--bg-panel); min-height: 32px;
+            }
+            .banc-etiq--pris { background: var(--primary); border-color: var(--primary); color: #fff; }
+            .banc-bloc { padding: 12px 0; }
+            .banc-bloc h4 { margin: 0 0 6px; font-size: .84rem; }
+        </style>
+        <div class="banc-tete">
+            <span class="banc-titre">Banc d'essai</span>
+            <button type="button" class="banc-btn" data-copier>⧉ Copier le rapport</button>
+            <button type="button" class="banc-btn" data-fichier>⤓ Fichier</button>
+            <button type="button" class="banc-btn" data-vider>Vider</button>
+            <button type="button" class="banc-btn banc-btn--fort" data-fermer>Fermer</button>
+            <span class="banc-appareil" data-appareil></span>
+        </div>
+        <div class="banc-corps" data-corps></div>
+        <div class="banc-fiche" data-fiche></div>`;
+    document.body.appendChild(el);
+
+    el.querySelector('[data-fermer]').onclick = () => fermer();
+    el.querySelector('[data-copier]').onclick = () => copierRapport();
+    el.querySelector('[data-fichier]').onclick = () => telechargerRapport();
+    el.querySelector('[data-vider]').onclick = () => {
+        window.appConfirm('Vider le carnet', 'Effacer toutes les notes de cet appareil ?', () => {
+            carnet = nouveauCarnet({ appareil, version: versionChargee(), date: Date.now() });
+            garder(); peindre();
+        });
+    };
+    return el;
+}
+
+const domaineDe = (exo) => (exo.tags && exo.tags.chemin && exo.tags.chemin[0]) || 'Sans domaine';
+
+function listeFiltree() {
+    const av = avancement(carnet, exercices, nomAppareil);
+    const restants = new Set(av.restants);
+    if (filtre === 'restants') return exercices.filter(e => restants.has(e.id));
+    if (filtre === 'ennuis') {
+        return exercices.filter(e => {
+            const l = ligneDe(carnet, e.id, nomAppareil);
+            return l && Object.values(l.verdicts).some(v => v === 'ko' || v === 'moyen');
+        });
+    }
+    if (filtre === 'jeux') return exercices.filter(e => e.activityId);
+    return exercices;
+}
+
+function peindre() {
+    const el = assurerPanneau();
+    const av = avancement(carnet, exercices, nomAppareil);
+    el.querySelector('[data-appareil]').textContent =
+        `${nomAppareil} — ${carnet.version || 'version ?'} — ${av.vus} / ${av.total} passés`;
+
+    const corps = el.querySelector('[data-corps]');
+    const chips = [
+        ['restants', `À faire (${av.restants.length})`],
+        ['ennuis', 'Ce qui cloche'],
+        ['jeux', 'Les jeux'],
+        ['tous', `Tous (${exercices.length})`]
+    ];
+    const liste = listeFiltree();
+    const parDomaine = new Map();
+    liste.forEach(e => {
+        const d = domaineDe(e);
+        if (!parDomaine.has(d)) parDomaine.set(d, []);
+        parDomaine.get(d).push(e);
+    });
+
+    corps.innerHTML = `
+        <div class="banc-filtres">${chips.map(([id, txt]) =>
+        `<button type="button" class="banc-chip ${filtre === id ? 'banc-chip--actif' : ''}"
+             data-filtre="${id}">${txt}</button>`).join('')}</div>
+        ${liste.length ? '' : '<div class="banc-vide">Rien dans cette liste.</div>'}
+        ${[...parDomaine.entries()].map(([dom, exos]) => `
+            <div class="banc-domaine">${echapper(dom)}</div>
+            ${exos.map(e => ligneHtml(e)).join('')}`).join('')}`;
+
+    corps.querySelectorAll('[data-filtre]').forEach(b => {
+        b.onclick = () => { filtre = b.dataset.filtre; peindre(); };
+    });
+    corps.querySelectorAll('[data-jouer]').forEach(b => {
+        b.onclick = () => jouer(b.dataset.jouer);
+    });
+    corps.querySelectorAll('[data-fiche-pdf]').forEach(b => {
+        b.onclick = () => apercuFiche(b.dataset.fichePdf);
+    });
+    corps.querySelectorAll('[data-noter]').forEach(b => {
+        b.onclick = () => ouvrirFiche(b.dataset.noter);
+    });
+}
+
+function ligneHtml(exo) {
+    const l = ligneDe(carnet, exo.id, nomAppareil);
+    const pastilles = CRITERES.map(c => {
+        const v = l && l.verdicts[c.id];
+        const d = VERDICTS.find(x => x.id === v);
+        return `<span class="banc-pastille ${v ? `banc-pastille--${v}` : ''}"
+            title="${echapper(c.label)}">${d ? d.signe : '·'}</span>`;
+    }).join('');
+    const sd = (exo.tags && exo.tags.chemin && exo.tags.chemin[1]) || '';
+    return `<div class="banc-ligne">
+        <span class="banc-nom">${echapper(exo.title)}
+            <span class="banc-sous">${echapper(sd)}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span></span>
+        <span class="banc-etat">${pastilles}</span>
+        <span class="banc-actions">
+            <button type="button" class="banc-btn" data-jouer="${exo.id}">▶</button>
+            <button type="button" class="banc-btn" data-fiche-pdf="${exo.id}">🖨</button>
+            <button type="button" class="banc-btn banc-btn--fort" data-noter="${exo.id}">Noter</button>
+        </span>
+    </div>`;
+}
+
+// --- Jouer, puis noter ------------------------------------------------------
+
+/**
+ * On lance l'exercice comme un élève le lancerait — même chemin, mêmes
+ * réglages — et l'on guette la fermeture de la couche de jeu pour rouvrir la
+ * fiche. Sans ce retour automatique, la notation ne se fait pas.
+ */
+function jouer(id) {
+    const exo = exercices.find(e => e.id === id);
+    if (!exo) return;
+    ouvertSur = id;
+    fermer(true);
+    import('../games/engine.js').then(m => {
+        m.openGameLayer(exo);
+        guetterRetour();
+    });
+}
+
+function guetterRetour() {
+    const couche = document.getElementById('game-layer');
+    if (!couche) return;
+    const visible = () => couche.style.display && couche.style.display !== 'none';
+    // On n'arme le guet qu'une fois le jeu VRAIMENT ouvert : la couche met un
+    // instant à s'afficher (réglages, chargement du moteur), et guetter tout de
+    // suite ferait croire à une fermeture immédiate.
+    let arme = false;
+    const obs = new MutationObserver(() => {
+        if (visible()) { arme = true; return; }
+        if (!arme) return;
+        obs.disconnect();
+        setTimeout(() => { ouvrir(); if (ouvertSur) ouvrirFiche(ouvertSur); }, 350);
+    });
+    obs.observe(couche, { attributes: true, attributeFilter: ['style'] });
+    if (visible()) arme = true;
+}
+
+/** L'aperçu papier. Tous les exercices n'en ont pas : on le dit. */
+function apercuFiche(id) {
+    const exo = exercices.find(e => e.id === id);
+    if (!exo) return;
+    import('./printSheet.js').then(m => {
+        import('../core/registry.js').then(({ getGenerator }) => {
+            const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
+            if (!exo.printable && !(gen && gen.ecrit)) {
+                import('./modal.js').then(x => x.showToast(
+                    'Cet exercice n\'a pas de fiche papier : c\'est une activité à l\'écran.', 'warning'));
+                return;
+            }
+            m.ouvrirFicheModal(exo, { ...(exo.params || {}) });
+        });
+    });
+}
+
+// --- La fiche de notation ---------------------------------------------------
+
+function ouvrirFiche(id) {
+    const exo = exercices.find(e => e.id === id);
+    if (!exo) return;
+    ouvertSur = id;
+    const el = assurerPanneau();
+    const fiche = el.querySelector('[data-fiche]');
+    const l = ligneDe(carnet, id, nomAppareil);
+    const verdicts = { ...(l ? l.verdicts : {}) };
+    const tagsInit = (l && l.tags) || {};
+    const cheminInit = tagsInit.chemin || (exo.tags && exo.tags.chemin) || [];
+    const niveauxInit = new Set(tagsInit.niveaux || (exo.tags && exo.tags.niveaux) || []);
+
+    fiche.innerHTML = `
+        <div class="banc-tete">
+            <span class="banc-titre">${echapper(exo.title)}</span>
+            <button type="button" class="banc-btn" data-rejouer>▶ Rejouer</button>
+            <button type="button" class="banc-btn" data-pdf>🖨 Fiche</button>
+            <button type="button" class="banc-btn banc-btn--fort" data-enregistrer>Enregistrer</button>
+            <button type="button" class="banc-btn" data-annuler>Fermer</button>
+            <span class="banc-appareil">${echapper(exo.id)}${exo.activityId
+        ? ` · jeu ${echapper(exo.activityId)}` : ''} — noté sur ${echapper(nomAppareil)}</span>
+        </div>
+        <div class="banc-corps">
+            ${CRITERES.map(c => `
+                <div class="banc-critere">
+                    <div class="banc-critere-titre">${echapper(c.label)}</div>
+                    <div class="banc-critere-q">${echapper(c.question)}</div>
+                    <div class="banc-verdicts">${VERDICTS.map(v => `
+                        <button type="button" class="banc-v banc-v--${v.id}
+                            ${verdicts[c.id] === v.id ? 'banc-v--pris' : ''}"
+                            data-critere="${c.id}" data-verdict="${v.id}">${v.signe} ${v.label}</button>`).join('')}
+                    </div>
+                </div>`).join('')}
+            <div class="banc-bloc">
+                <h4>Ce que tu as vu</h4>
+                <textarea class="banc-champ" data-note
+                    placeholder="Ce qui déborde, ce qui bloque, ce que l'indice aurait dû dire…">${
+    echapper(l ? l.note : '')}</textarea>
+            </div>
+            <div class="banc-bloc">
+                <h4>Où cet exercice se situe</h4>
+                <div class="banc-critere-q">Le classement actuel est pré-rempli. Corrige-le si
+                    l'exercice n'est pas au bon endroit : la proposition part dans le rapport.</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px">
+                    <select class="banc-sel" data-domaine>
+                        ${Object.values(TAGS.DOMAINE).map(d =>
+        `<option ${cheminInit[0] === d ? 'selected' : ''}>${echapper(d)}</option>`).join('')}
+                    </select>
+                    <select class="banc-sel" data-sousdomaine>
+                        ${Object.values(TAGS.SOUS_DOMAINE).map(d =>
+        `<option ${cheminInit[1] === d ? 'selected' : ''}>${echapper(d)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="banc-niveaux">${Object.values(TAGS.NIVEAU).map(n =>
+        `<button type="button" class="banc-etiq ${niveauxInit.has(n) ? 'banc-etiq--pris' : ''}"
+                        data-niveau="${echapper(n)}">${echapper(n)}</button>`).join('')}</div>
+            </div>
+            <div class="banc-bloc">
+                <h4>Mots-clefs à ajouter</h4>
+                <div class="banc-critere-q">Séparés par des virgules — « fractions », « révisions
+                    brevet », « à deux »… Ils arrivent dans le rapport, je les range dans le code.</div>
+                <input class="banc-sel" style="width:100%" data-ajouts
+                    value="${echapper((tagsInit.ajouts || []).join(', '))}">
+            </div>
+        </div>`;
+
+    fiche.classList.add('banc-fiche--ouverte');
+    fiche.querySelectorAll('[data-verdict]').forEach(b => {
+        b.onclick = () => {
+            verdicts[b.dataset.critere] = b.dataset.verdict;
+            fiche.querySelectorAll(`[data-critere="${b.dataset.critere}"]`)
+                .forEach(x => x.classList.toggle('banc-v--pris', x === b));
+        };
+    });
+    fiche.querySelectorAll('[data-niveau]').forEach(b => {
+        b.onclick = () => {
+            const n = b.dataset.niveau;
+            if (niveauxInit.has(n)) niveauxInit.delete(n); else niveauxInit.add(n);
+            b.classList.toggle('banc-etiq--pris', niveauxInit.has(n));
+        };
+    });
+    fiche.querySelector('[data-rejouer]').onclick = () => { fermerFiche(); jouer(id); };
+    fiche.querySelector('[data-pdf]').onclick = () => apercuFiche(id);
+    fiche.querySelector('[data-annuler]').onclick = () => fermerFiche();
+    fiche.querySelector('[data-enregistrer]').onclick = () => {
+        const chemin = [fiche.querySelector('[data-domaine]').value,
+            fiche.querySelector('[data-sousdomaine]').value];
+        const ajouts = fiche.querySelector('[data-ajouts]').value
+            .split(',').map(s => s.trim()).filter(Boolean);
+        const avant = (exo.tags && exo.tags.chemin) || [];
+        const niveaux = [...niveauxInit];
+        const avantNiv = (exo.tags && exo.tags.niveaux) || [];
+        // On n'enregistre le classement QUE s'il change : un rapport plein de
+        // propositions identiques à l'existant ne se lit plus.
+        const bouge = chemin.join('>') !== avant.join('>')
+            || niveaux.slice().sort().join(',') !== avantNiv.slice().sort().join(',')
+            || ajouts.length;
+        carnet = noter(carnet, {
+            exercice: id, titre: exo.title, activite: exo.activityId || '',
+            appareilNom: nomAppareil, version: carnet.version, date: Date.now(),
+            verdicts, note: fiche.querySelector('[data-note]').value,
+            tags: bouge ? { chemin, niveaux, ajouts } : null
+        });
+        garder();
+        fermerFiche();
+        peindre();
+        import('./modal.js').then(m => m.showToast('Noté.', 'success'));
+    };
+}
+
+function fermerFiche() {
+    const el = document.getElementById('banc-essai');
+    if (el) el.querySelector('[data-fiche]').classList.remove('banc-fiche--ouverte');
+}
+
+// --- Sortir le rapport ------------------------------------------------------
+
+const nomFichier = () => `banc-${nomAppareil.replace(/[^\w]+/g, '-').toLowerCase()}`;
+
+function rapport() {
+    return versMarkdown(carnet, { titre: `Banc d'essai — ${nomAppareil}` })
+        + '\n\n<!-- CARNET (ne pas modifier) -->\n```json\n'
+        + JSON.stringify(carnet) + '\n```\n';
+}
+
+async function copierRapport() {
+    const texte = rapport();
+    const { showToast } = await import('./modal.js');
+    try {
+        await navigator.clipboard.writeText(texte);
+        showToast('Rapport copié : colle-le dans la conversation.', 'success');
+    } catch (e) {
+        // Sur un navigateur qui refuse le presse-papiers sans geste direct, on
+        // montre le texte : il reste sélectionnable à la main.
+        const z = document.createElement('textarea');
+        z.value = texte;
+        z.style.cssText = 'position:fixed;inset:8% 5%;z-index:4000;width:90%;height:80%';
+        document.body.appendChild(z);
+        z.select();
+        showToast('Sélectionne et copie ce texte, puis touche ailleurs.', 'warning');
+        z.addEventListener('blur', () => z.remove());
+    }
+}
+
+function telechargerRapport() {
+    const blob = new Blob([rapport()], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${nomFichier()}.md`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+// --- Ouverture / fermeture --------------------------------------------------
+
+export function ouvrirBancEssai() {
+    if (!carnet) charger();
+    const el = assurerPanneau();
+    el.classList.add('banc--ouvert');
+    peindre();
+}
+
+export function fermer(silencieux) {
+    const el = document.getElementById('banc-essai');
+    if (!el) return;
+    el.classList.remove('banc--ouvert');
+    fermerFiche();
+    if (!silencieux) ouvertSur = null;
+}
+
+const ouvrir = () => {
+    const el = document.getElementById('banc-essai');
+    if (el) el.classList.add('banc--ouvert');
+};
+
+/** Reprendre un carnet reçu d'un autre appareil, pour tout avoir au même endroit. */
+export function importerCarnet(texte) {
+    const autre = lire(texte);
+    if (!autre) return false;
+    if (!carnet) charger();
+    carnet = fusionner(carnet, autre);
+    garder();
+    peindre();
+    return true;
+}
+
+const echapper = (s) => String(s ?? '')
+    .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Le banc est un outil d'auteur : on l'atteint aussi depuis la console, sans
+// avoir à retrouver le bouton dans une palette repliée.
+if (typeof window !== 'undefined') {
+    window.bancEssai = { ouvrir: ouvrirBancEssai, importer: importerCarnet };
+}
