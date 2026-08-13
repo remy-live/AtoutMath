@@ -64,6 +64,29 @@ export const mesuresExercises = [
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Touche le terrain pour lancer un mur — il pousse des deux côtés. Si une balle le touche avant qu'il soit fini, il est perdu (et une vie avec). Toute région fermée SANS balle est conquise. Objectif : 75 % de l'aire. Le bouton sous le terrain change le sens du mur."
     },
+    {
+        // LE TANGRAM. Sept pièces, une figure — et surtout la découverte que
+        // deux formes différentes peuvent couvrir la même surface. Chaque
+        // pièce porte sa fraction de la figure, et la figure terminée pose une
+        // question d'aire : sans elle, il ne resterait qu'un casse-tête.
+        id: 'geo-tangram', status: STATUS.TEST, title: 'Le Tangram',
+        activityId: 'tangram',
+        sansRevision: true,
+        skills: ['geo.aires.tangram'],
+        params: { aide: 'traits' },
+        paramSchema: [
+            {
+                id: 'aide', type: 'select', label: 'Aide au montage',
+                options: [
+                    { value: 'traits', label: 'Traits de d\u00e9coupe visibles (plus facile)' },
+                    { value: 'silhouette', label: 'Silhouette seule (vrai tangram)' }
+                ],
+                default: 'traits'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Remplis la figure avec les SEPT pi\u00e8ces, sans trou ni chevauchement. Prends une pi\u00e8ce au doigt, tourne-la avec \u21bb (ou la touche R), et approche-la du bon endroit : elle se cale toute seule. Seul le parall\u00e9logramme se retourne, avec \u21c4. Chaque pi\u00e8ce affiche sa part de la figure \u2014 regarde bien celles qui ont la m\u00eame."
+    },
     // La pendule à aiguilles. Trois entrées plutôt qu'une : lire et placer
     // sont deux gestes différents, et le professeur doit pouvoir donner l'un
     // sans l'autre. La progression complète reste l'entrée principale.

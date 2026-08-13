@@ -312,6 +312,14 @@ const BASE = {
         descriptor: 'Tracer une boucle unique sur un quadrillage, en respectant le nombre de c\u00f4t\u00e9s annonc\u00e9 par chaque chiffre.',
         lesson: 'Le Slitherlink se joue avec DEUX r\u00e8gles, jamais avec de la chance. Le chiffre : il dit combien des quatre c\u00f4t\u00e9s de sa case font partie de la boucle \u2014 un 0 les interdit tous les quatre, un 3 n\'en laisse qu\'un seul de libre. Le point : la boucle ne s\'arr\u00eate jamais, donc chaque point du quadrillage porte deux segments ou aucun \u2014 jamais un seul, jamais trois. Barre d\'une croix tout c\u00f4t\u00e9 dont tu es s\u00fbr : une croix te fait avancer autant qu\'un trait. Et si tracer un segment refermait une petite boucle alors qu\'il reste du chemin ailleurs, c\'est qu\'il est impossible : la solution n\'en fait qu\'UNE.'
     },
+    'geo.aires.tangram': {
+        label: 'Tangram (aires et recomposition)',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Comparer des aires en recomposant une figure avec les sept pi\u00e8ces du tangram.',
+        lesson: 'Le tangram apprend une chose que le dessin cache : L\'AIRE NE SE LIT PAS \u00c0 LA FORME. Le carr\u00e9 et le triangle moyen n\'ont rien en commun \u00e0 l\'\u0153il, et pourtant ils couvrent exactement la m\u00eame surface \u2014 un huiti\u00e8me de la figure chacun. Retiens les parts : un grand triangle vaut 1/4, le triangle moyen, le carr\u00e9 et le parall\u00e9logramme valent 1/8, un petit triangle vaut 1/16. Il faut donc quatre petits triangles pour recouvrir un grand, et les deux grands \u00e0 eux seuls font la moiti\u00e9 de la figure. Quand une pi\u00e8ce ne rentre pas, elle est presque toujours mal TOURN\u00c9E ; et le parall\u00e9logramme est la seule pi\u00e8ce qu\'il faut parfois retourner, parce que son image dans un miroir ne se superpose pas \u00e0 lui.'
+    },
     'mes.aire.proportion': {
         label: 'Proportions d\'aire et pourcentages',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
