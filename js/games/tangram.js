@@ -43,7 +43,7 @@ class Tangram extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'tangram');
         this.rng = makeRng(this.params.seed);
-        this.aideVisuelle = this.params.aide !== 'silhouette';
+        this.montrerFractions = false;
         this.figureCourante = 0;
         this.reussies = 0;
         this.aides = 0;
@@ -75,9 +75,6 @@ class Tangram extends BaseGame {
                 /* LA SILHOUETTE : l'ombre qu'il faut remplir. */
                 .tg-ombre { fill: color-mix(in srgb, var(--text-main) 13%, transparent);
                     stroke: var(--text-main); stroke-width: .18; stroke-linejoin: round; }
-                /* Les traits de découpe, en pointillé, quand l'aide est allumée. */
-                .tg-decoupe { fill: none; stroke: color-mix(in srgb, var(--text-main) 34%, transparent);
-                    stroke-width: .1; stroke-dasharray: .5 .4; }
                 .tg-tapis { fill: color-mix(in srgb, var(--text-main) 5%, transparent);
                     stroke: color-mix(in srgb, var(--text-main) 18%, transparent);
                     stroke-width: .1; stroke-dasharray: .6 .5; }
@@ -92,8 +89,6 @@ class Tangram extends BaseGame {
                 /* Le calage : la pièce se pose avec un petit rebond. */
                 .tg-piece--cale { animation: tg-cale .32s ease; }
                 @keyframes tg-cale { 40% { transform: scale(1.06); } }
-                .tg-etiquette { font-size: 1.1px; font-weight: 900; fill: rgba(0,0,0,.55);
-                    text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 
                 .tg-barre { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
                 .tg-btn {
@@ -232,11 +227,6 @@ class Tangram extends BaseGame {
             width="${RESERVE_L + 2}" height="${RESERVE_H + 1.2}" rx="1"></rect>`;
 
         svg += `<polygon class="tg-ombre" points="${pts(this.figureDecalee(this.figure.silhouette))}"></polygon>`;
-        if (this.aideVisuelle) {
-            for (const p of piecesPlacees(this.figure)) {
-                svg += `<polygon class="tg-decoupe" points="${pts(this.figureDecalee(p.sommets))}"></polygon>`;
-            }
-        }
 
         for (const p of this.pieces) {
             svg += this.svgPiece(p);
@@ -250,12 +240,10 @@ class Tangram extends BaseGame {
     svgPiece(p) {
         const def = pieceDe(p.id);
         const som = this.sommetsDe(p);
-        const [cx, cy] = centre(som);
         const pts = som.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
         return `<g data-piece="${p.id}">
             <polygon class="tg-piece${p.posee ? ' tg-piece--posee' : ''}" points="${pts}"
                 fill="${def.couleur}"></polygon>
-            <text class="tg-etiquette" x="${cx.toFixed(2)}" y="${cy.toFixed(2)}">${def.fraction}</text>
         </g>`;
     }
 
@@ -263,14 +251,10 @@ class Tangram extends BaseGame {
         const g = this.svgEl.querySelector(`[data-piece="${p.id}"]`);
         if (!g) return;
         const som = this.sommetsDe(p);
-        const [cx, cy] = centre(som);
         const poly = g.querySelector('polygon');
         poly.setAttribute('points', som.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' '));
         poly.classList.toggle('tg-piece--posee', p.posee);
         poly.classList.toggle('tg-piece--choisie', this.choisie === p.id && !p.posee);
-        const t = g.querySelector('text');
-        t.setAttribute('x', cx.toFixed(2));
-        t.setAttribute('y', cy.toFixed(2));
         // Une pièce posée passe SOUS les autres : on ne la déplace plus.
         if (p.posee && g.parentNode.firstElementChild !== g) {
             const apres = [...g.parentNode.children].find(e => e.tagName !== 'rect' && e.tagName !== 'polygon');
@@ -529,9 +513,9 @@ class Tangram extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Chaque pièce porte sa part de la figure : 1/4 pour un grand triangle, '
-            + '1/8 pour le carré, 1/16 pour un petit. Le carré et le triangle moyen ont la MÊME aire — '
-            + 'des formes différentes, une même surface.', this.plateauEl);
+        cur.say('Retiens leurs parts, la question de la fin les demande : 1/4 pour un grand '
+            + 'triangle, 1/8 pour le carré, 1/16 pour un petit. Le carré et le triangle moyen ont '
+            + 'la MÊME aire — des formes différentes, une même surface.', this.plateauEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Le robot pose quatre pièces, en disant à chaque fois ce qui compte.

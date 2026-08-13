@@ -100,20 +100,25 @@ class Logigramme extends BaseGame {
                 .lg-case--bordH { border-top-width: 2.2px; }
                 .lg-case--bordD { border-right-width: 2.2px; }
                 .lg-case--bordB { border-bottom-width: 2.2px; }
+                /* LA TAILLE DES LIBELLÉS SUIT CELLE DES CASES, pas la largeur
+                   de l'écran. Mesurée en pourcentage de la largeur, elle
+                   tombait à huit pixels sur un
+                   téléphone alors que les cases y font quarante : on lisait la
+                   grille sans pouvoir lire ce qu'elle croise. */
                 .lg-th {
-                    font-size: clamp(8px, 1.9cqw, 11px); font-weight: 700; color: var(--text-main);
+                    font-size: var(--lg-fonte, 11px); font-weight: 700; color: var(--text-main);
                     white-space: nowrap;
                 }
                 /* Les en-têtes portent la couleur de leur liste : pastel, pour
                    rester lisibles sous une photocopie comme sur un écran. */
                 .lg-th--val { border: 1px solid var(--text-main); padding: 2px 4px !important; }
                 .lg-th--col { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; }
-                .lg-th--lig { text-align: right; padding-right: 6px !important; max-width: 96px;
+                .lg-th--lig { text-align: right; padding-right: 6px !important; max-width: 120px;
                     overflow: hidden; text-overflow: ellipsis; }
                 .lg-th--cat {
                     font-weight: 800; color: var(--text-main); text-align: center;
                     border: 1px solid var(--text-main); padding: 3px 4px !important;
-                    font-size: clamp(9px, 2.1cqw, 12.5px);
+                    font-size: calc(var(--lg-fonte, 11px) * 1.14);
                 }
                 .lg-th--catlig { writing-mode: vertical-rl; transform: rotate(180deg); }
                 .lg-mort { border: 0; background: none; }
@@ -220,7 +225,11 @@ class Logigramme extends BaseGame {
         const trait = () => 'var(--text-main)';
 
         // Ligne 1 : le nom des listes en colonne, sur leur bandeau pastel.
-        let html = '<table class="lg-table"><tr><td class="lg-mort"></td><td class="lg-mort"></td>';
+        // Onze pixels au plancher : en dessous, un nom de liste n'est plus
+        // lisible, même par-dessus l'épaule d'un élève.
+        const fonte = Math.max(11, Math.min(16, Math.round(cote * 0.34)));
+        let html = `<table class="lg-table" style="--lg-fonte:${fonte}px">`
+            + '<tr><td class="lg-mort"></td><td class="lg-mort"></td>';
         colonnes.forEach(c => {
             html += `<th class="lg-th lg-th--cat" colspan="${this.n}" style="${fond(c, 42)}">${echapper(cats[c].label)}</th>`;
         });
@@ -229,7 +238,7 @@ class Logigramme extends BaseGame {
         // grille une bande blanche aussi haute que la grille elle-même.
         const plusLong = Math.max(...colonnes.map(c =>
             Math.max(...Array.from({ length: this.n }, (_, j) => etiquette(cats[c], j).length))));
-        const hautEntete = Math.min(Math.max(38, plusLong * 7.2 + 12), Math.max(56, cote * 3.6));
+        const hautEntete = Math.min(Math.max(38, plusLong * fonte * 0.64 + 12), Math.max(64, cote * 4));
 
         html += '</tr><tr><td class="lg-mort"></td><td class="lg-mort"></td>';
         colonnes.forEach(c => {

@@ -87,8 +87,12 @@ export function mount(container, session, opts = {}) {
             <div class="${habillage.itemClass} ${lengthClass(c.label)}" role="button" tabindex="0"
                  data-idx="${i}" data-val="${escapeAttr(c.value)}">${c.label}</div>`).join('');
 
+        // Le nombre de propositions est passé à la mise en page : c'est lui
+        // qui décide de la taille des bulles pour qu'elles tiennent TOUTES SUR
+        // UNE LIGNE. Trois en haut et une orpheline en dessous, c'est laid, et
+        // surtout ça suggère un groupement qui n'existe pas.
         const wrapped = habillage.containerClass
-            ? `<div class="${habillage.containerClass}">${itemsHtml}</div>`
+            ? `<div class="${habillage.containerClass}" style="--n:${choices.length}">${itemsHtml}</div>`
             : itemsHtml;
 
         // `context` permet à une variante d'ajouter un support visuel entre
@@ -444,9 +448,18 @@ function texteNu(label) {
  * caractères, ça ne tient plus dans un rond ; et dès qu'il y a un espace, on
  * lit une PHRASE — « 17 billes » — qui appelle un rectangle, même courte.
  */
+/**
+ * Une bulle ronde tient « 42 », pas « 12 345 ».
+ *
+ * Le seuil se déduit de la mise en page : quatre bulles sur une ligne font
+ * environ soixante-quinze pixels de large sur un téléphone, soit cinq
+ * caractères lisibles. Au-delà, on passe aux cartes rectangulaires posées deux
+ * par deux — c'est la règle convenue, et elle vaut aussi pour les nombres, pas
+ * seulement pour les phrases.
+ */
 function estLong(label) {
     const t = texteNu(label);
-    return t.length > 9 || /\s/.test(t);
+    return t.length > 5 || /\s/.test(t);
 }
 
 /** Classe de taille selon la longueur du libellé (balises HTML exclues). */

@@ -73,19 +73,9 @@ export const mesuresExercises = [
         activityId: 'tangram',
         sansRevision: true,
         skills: ['geo.aires.tangram'],
-        params: { aide: 'traits' },
-        paramSchema: [
-            {
-                id: 'aide', type: 'select', label: 'Aide au montage',
-                options: [
-                    { value: 'traits', label: 'Traits de d\u00e9coupe visibles (plus facile)' },
-                    { value: 'silhouette', label: 'Silhouette seule (vrai tangram)' }
-                ],
-                default: 'traits'
-            }
-        ],
+        params: {},
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Remplis la figure avec les SEPT pi\u00e8ces, sans trou ni chevauchement. Prends une pi\u00e8ce au doigt, tourne-la avec \u21bb (ou la touche R), et approche-la du bon endroit : elle se cale toute seule. Seul le parall\u00e9logramme se retourne, avec \u21c4. Chaque pi\u00e8ce affiche sa part de la figure \u2014 regarde bien celles qui ont la m\u00eame."
+        instruction: "Remplis la SILHOUETTE avec les sept pi\u00e8ces, sans trou ni chevauchement. Prends une pi\u00e8ce au doigt, tourne-la avec \u21bb (ou la touche R), et approche-la du bon endroit : elle se cale toute seule. Seul le parall\u00e9logramme se retourne, avec \u21c4. Si tu bloques, \u00ab Aide-moi \u00bb pose une pi\u00e8ce \u2014 mais la figure ne montre jamais o\u00f9 vont les autres. \u00c0 la fin, une question sur les aires : retiens que le carr\u00e9 et le triangle moyen couvrent la m\u00eame surface."
     },
     // La pendule à aiguilles. Trois entrées plutôt qu'une : lire et placer
     // sont deux gestes différents, et le professeur doit pouvoir donner l'un

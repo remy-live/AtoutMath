@@ -69,8 +69,21 @@
 .game-question b { white-space: nowrap; }
 
 /* Objets du jeu */
-.bubble-container { display: flex; gap: 25px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
-.bubble { width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-size: 2.2rem; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }
+/* LES BULLES TIENNENT TOUTES SUR UNE LIGNE.
+   À 110 px de large et 25 px d'écart, quatre bulles réclament 515 px : sur un
+   téléphone il en passait trois, et la quatrième tombait seule en dessous —
+   laid, et trompeur, parce que ce retour à la ligne suggère un groupement qui
+   n'existe pas. La bulle se dimensionne donc sur la place disponible DIVISÉE
+   PAR LE NOMBRE de propositions, que choice.js passe en `--n`. Sur un grand
+   écran le calcul dépasse 110 px et la bulle garde sa taille d'origine. */
+.bubble-container {
+    --n: 4; --ecart: clamp(8px, 2.4cqw, 25px);
+    --bulle: min(110px, calc((100cqw - 30px - (var(--n) - 1) * var(--ecart)) / var(--n)));
+    display: flex; gap: var(--ecart); flex-wrap: wrap; justify-content: center;
+    width: 100%; max-width: 600px;
+}
+.bubble { width: var(--bulle); height: var(--bulle); flex: 0 0 auto;
+    font-size: min(2.2rem, calc(var(--bulle) * .4)); border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }
 .bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px rgba(79, 70, 229, 0.5); }
 .bubble:active { transform: translateY(2px) scale(0.95); }
 
@@ -135,7 +148,6 @@
 /* --- RESPONSIVE ADJUSTMENTS --- */
 @media (max-width: 600px) {
     .game-question { font-size: 1.6rem; margin-bottom: 20px; }
-    .bubble { width: 80px; height: 80px; font-size: 1.6rem; }
     .tactile-grid { grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(5, 50px); gap: 4px; padding: 8px; }
     .missing-grid { grid-template-columns: repeat(3, 60px); gap: 10px; }
     .missing-cell { width: 60px; height: 60px; font-size: 1.4rem; }

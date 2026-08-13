@@ -181,8 +181,13 @@ class Slitherlink extends BaseGame {
             return `<g data-seg="${type}${i}">
                 <rect class="sl-clic" data-type="${type}" data-i="${i}"
                     x="${rx}" y="${ry}" width="${rw}" height="${rh}"></rect>
-                <line class="sl-arete" data-arete x1="${x1 + 3}" y1="${y1 + (type === 'h' ? 0 : 3)}"
-                    x2="${x2 - 3}" y2="${y2 - (type === 'h' ? 0 : 3)}"></line>
+                <!-- Le retrait de trois unités se prend DANS LE SENS DU SEGMENT :
+                     appliqué sur x aux deux bouts d'un segment vertical, il
+                     rentrait le haut vers la droite et le bas vers la gauche —
+                     et le trait penchait. -->
+                <line class="sl-arete" data-arete
+                    x1="${type === 'h' ? x1 + 3 : x1}" y1="${type === 'h' ? y1 : y1 + 3}"
+                    x2="${type === 'h' ? x2 - 3 : x2}" y2="${type === 'h' ? y2 : y2 - 3}"></line>
                 <path class="sl-croix" data-croix
                     d="M ${mx - r} ${my - r} L ${mx + r} ${my + r} M ${mx + r} ${my - r} L ${mx - r} ${my + r}"></path>
             </g>`;
