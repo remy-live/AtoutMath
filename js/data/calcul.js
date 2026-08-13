@@ -625,6 +625,40 @@ export const calculExercises = [
         instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain ; le bouton TIR élimine les blobs verts."
     },
     {
+        // LE SLITHERLINK. Une seule boucle fermée sur un quadrillage de points,
+        // dictée par des chiffres qui comptent les côtés. Deux règles suffisent
+        // — le chiffre et le point — et jamais besoin de deviner : la grille
+        // est fabriquée pour se déduire par propagation pure.
+        id: 'logi-slitherlink', status: STATUS.TEST, title: 'Le Slitherlink',
+        activityId: 'slitherlink',
+        generatorId: 'logique.slitherlink', printable: 'slitherlink',
+        sansRevision: true,
+        skills: ['num.logique.slitherlink'],
+        params: { taille: 'moyen', difficulte: 'moyen' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                options: [
+                    { value: 'petit', label: '5 \u00d7 5' },
+                    { value: 'moyen', label: '7 \u00d7 7' },
+                    { value: 'grand', label: '10 \u00d7 8' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Difficult\u00e9',
+                options: [
+                    { value: 'facile', label: 'Facile \u2014 beaucoup de chiffres' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'difficile', label: 'Difficile \u2014 peu de chiffres' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trace UNE seule boucle ferm\u00e9e qui ne se croise ni ne se touche. Chaque chiffre dit combien des quatre c\u00f4t\u00e9s de sa case font partie de la boucle ; une case sans chiffre ne dit rien. Touche un segment pour le tracer, encore une fois pour le barrer d'une croix, encore une fois pour l'effacer \u2014 et glisse le doigt pour encha\u00eener. Un point porte toujours deux segments ou aucun."
+    },
+    {
         // LE FUTOSHIKI. Un carré latin sous inégalités : le puzzle qui fait de
         // la COMPARAISON un outil de déduction. Généré à solution unique,
         // résoluble par propagation pure — jamais d'essai-erreur.

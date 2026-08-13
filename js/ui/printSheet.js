@@ -921,6 +921,77 @@ function dessinerFutoshikiPdf(doc, item, slot, solution, champ) {
     }
 }
 
+// --- Le slitherlink ------------------------------------------------------------
+
+/** La grille n'est pas carrée : on la centre dans le carré du slot. */
+function geoSlither(item, slot) {
+    const { cols, lignes } = item.meta;
+    const pas = Math.min(slot.taille / cols, slot.taille / lignes);
+    const x0 = slot.x + (slot.taille - cols * pas) / 2;
+    const y0 = slot.y + (slot.taille - lignes * pas) / 2;
+    return { cols, lignes, pas, px: (x) => x0 + x * pas, py: (y) => y0 + y * pas };
+}
+
+function slitherlinkPreviewHtml(item, slot, k, solution) {
+    const m = item.meta;
+    const { cols, lignes, pas, px, py } = geoSlither(item, slot);
+    const ep = Math.max(0.5, pas * 0.09);        // l'épaisseur du tracé
+    let html = '';
+    if (solution) {
+        for (let y = 0; y <= lignes; y++) for (let x = 0; x < cols; x++) {
+            if (!m.solution.h[y * cols + x]) continue;
+            html += `<div class="fx-sl-trait" style="left:${px(x) * k}px; top:${(py(y) - ep / 2) * k}px;
+                width:${pas * k}px; height:${ep * k}px"></div>`;
+        }
+        for (let y = 0; y < lignes; y++) for (let x = 0; x <= cols; x++) {
+            if (!m.solution.v[y * (cols + 1) + x]) continue;
+            html += `<div class="fx-sl-trait" style="left:${(px(x) - ep / 2) * k}px; top:${py(y) * k}px;
+                width:${ep * k}px; height:${pas * k}px"></div>`;
+        }
+    }
+    for (let y = 0; y < lignes; y++) for (let x = 0; x < cols; x++) {
+        const n = m.indices[y * cols + x];
+        if (n < 0) continue;
+        html += `<div class="fx-sl-chiffre" style="left:${px(x) * k}px; top:${py(y) * k}px;
+            width:${pas * k}px; height:${pas * k}px; font-size:${pas * 0.52 * k}px">${n}</div>`;
+    }
+    // Les points par-dessus : c'est le quadrillage sur lequel on trace.
+    const r = Math.max(0.32, pas * 0.06);
+    for (let y = 0; y <= lignes; y++) for (let x = 0; x <= cols; x++) {
+        html += `<div class="fx-sl-point" style="left:${(px(x) - r) * k}px; top:${(py(y) - r) * k}px;
+            width:${2 * r * k}px; height:${2 * r * k}px"></div>`;
+    }
+    return html;
+}
+
+function dessinerSlitherlinkPdf(doc, item, slot, solution) {
+    const m = item.meta;
+    const { cols, lignes, pas, px, py } = geoSlither(item, slot);
+    if (solution) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(Math.max(0.5, pas * 0.09));
+        for (let y = 0; y <= lignes; y++) for (let x = 0; x < cols; x++) {
+            if (m.solution.h[y * cols + x]) doc.line(px(x), py(y), px(x + 1), py(y));
+        }
+        for (let y = 0; y < lignes; y++) for (let x = 0; x <= cols; x++) {
+            if (m.solution.v[y * (cols + 1) + x]) doc.line(px(x), py(y), px(x), py(y + 1));
+        }
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.min(11, pas * 1.5));
+    doc.setTextColor(...ENCRE.texte);
+    for (let y = 0; y < lignes; y++) for (let x = 0; x < cols; x++) {
+        const n = m.indices[y * cols + x];
+        if (n < 0) continue;
+        doc.text(String(n), px(x) + pas / 2, py(y) + pas / 2 + pas * 0.18, { align: 'center' });
+    }
+    doc.setFillColor(...ENCRE.trait);
+    const r = Math.max(0.3, pas * 0.06);
+    for (let y = 0; y <= lignes; y++) for (let x = 0; x <= cols; x++) {
+        doc.circle(px(x), py(y), r, 'F');
+    }
+}
+
 // --- Le carré magique ------------------------------------------------------------
 
 function carreMagiquePreviewHtml(item, slot, k, solution, champs) {
@@ -1276,6 +1347,20 @@ export const RENDUS = {
         },
         previewGrille: futoshikiPreviewHtml,
         pdfGrille: dessinerFutoshikiPdf
+    },
+    slitherlink: {
+        titre: 'Slitherlink',
+        consigne: () => 'Relie des points voisins par des segments pour former UNE seule boucle '
+            + 'fermée, qui ne se croise ni ne se touche. Un chiffre dit combien des quatre côtés '
+            + 'de sa case font partie de la boucle ; une case vide ne dit rien. '
+            + 'Barre d\'une croix les côtés dont tu es sûr : un point porte deux segments ou aucun.',
+        previewGrille: slitherlinkPreviewHtml,
+        pdfGrille: dessinerSlitherlinkPdf,
+        // QUATRE grilles par page, pas douze. On trace au crayon entre des
+        // points : sous six millimètres de côté, la main ne passe plus et la
+        // grille devient un exercice de dessin fin au lieu d'un raisonnement.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
     },
     'carre-magique': {
         titre: 'Carrés magiques',

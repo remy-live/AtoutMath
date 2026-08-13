@@ -304,6 +304,14 @@ const BASE = {
         descriptor: 'Compl\u00e9ter un carr\u00e9 latin en s\'appuyant sur des in\u00e9galit\u00e9s entre cases voisines.',
         lesson: 'Chaque chiffre appara\u00eet UNE fois par ligne et par colonne, et les signes < et > doivent \u00eatre respect\u00e9s. Le secret : un signe \u00c9LIMINE. La case du petit c\u00f4t\u00e9 ne peut jamais porter le plus grand chiffre, celle du grand c\u00f4t\u00e9 jamais le 1. Et les signes se PROPAGENT : dans une cha\u00eene a < b < c, la case a perd ses deux plus grands chiffres. Commence toujours par les bouts des cha\u00eenes de signes.'
     },
+    'num.logique.slitherlink': {
+        label: 'Slitherlink (la boucle unique)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Tracer une boucle unique sur un quadrillage, en respectant le nombre de c\u00f4t\u00e9s annonc\u00e9 par chaque chiffre.',
+        lesson: 'Le Slitherlink se joue avec DEUX r\u00e8gles, jamais avec de la chance. Le chiffre : il dit combien des quatre c\u00f4t\u00e9s de sa case font partie de la boucle \u2014 un 0 les interdit tous les quatre, un 3 n\'en laisse qu\'un seul de libre. Le point : la boucle ne s\'arr\u00eate jamais, donc chaque point du quadrillage porte deux segments ou aucun \u2014 jamais un seul, jamais trois. Barre d\'une croix tout c\u00f4t\u00e9 dont tu es s\u00fbr : une croix te fait avancer autant qu\'un trait. Et si tracer un segment refermait une petite boucle alors qu\'il reste du chemin ailleurs, c\'est qu\'il est impossible : la solution n\'en fait qu\'UNE.'
+    },
     'mes.aire.proportion': {
         label: 'Proportions d\'aire et pourcentages',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

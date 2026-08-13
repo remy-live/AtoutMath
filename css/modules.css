@@ -3393,6 +3393,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-weight: 900; color: #1a202c;
 }
 
+/* --- Le slitherlink sur la fiche -------------------------------------------- */
+.fx-sl-point { position: absolute; background: #1a202c; border-radius: 50%; }
+.fx-sl-trait { position: absolute; background: #1a202c; border-radius: 1px; }
+.fx-sl-chiffre {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #1a202c;
+}
+
 /* --- Le carré magique sur la fiche ----------------------------------------- */
 .fx-cm-somme { position: absolute; color: #1a202c; }
 .fx-cm-case {

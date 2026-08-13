@@ -35,6 +35,7 @@ import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
+import { slitherlinkGenerator } from '../generators/slitherlink.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -50,7 +51,8 @@ import { futoshikiGenerator } from '../generators/futoshiki.js';
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
-    pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator, futoshikiGenerator
+    pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator, futoshikiGenerator,
+    slitherlinkGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -293,6 +295,7 @@ const legacy = [
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
     ['skweek', 'Skweek (repeindre le sol)', 'skweek', 'engineSkweek'],
+    ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
