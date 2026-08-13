@@ -198,10 +198,22 @@ svg { vertical-align: middle; }
 .btn-toggle svg { margin-right: 5px; }
 
 /* --- ZONE DE JEU PLEIN ECRAN --- */
-/* `inset: 0` plutôt que `100vw/100vh` : la couche épouse exactement la fenêtre
-   visible, sans dépendre d'unités que la barre d'adresse d'un téléphone fait
-   varier, et sans barre de défilement horizontale due à `100vw`. */
-#game-layer { display: none; position: fixed; inset: 0; background: var(--bg-app); z-index: 10000; flex-direction: column; }
+/* `inset: 0` NE SUFFIT PAS sur iPhone. Un élément `position: fixed` se cale
+   sur le bloc conteneur initial, c'est-à-dire la GRANDE fenêtre — celle qui
+   passe sous la barre d'adresse et sous la barre d'outils de Safari. La couche
+   mesurait donc 844 px là où l'élève n'en voyait que 734, et tout ce qui touche
+   les bords disparaissait : dans le Duel des Tables, la rangée de tables du
+   joueur du haut passait sous la barre d'adresse et le pavé de chiffres du
+   joueur du bas sous la barre d'outils — le jeu devenait injouable.
+   `100dvh` suit la fenêtre réellement visible, et le retrait de sécurité du
+   bas dégage la barre d'accueil des iPhone sans encoche matérielle. */
+#game-layer {
+    display: none; position: fixed; inset: 0;
+    height: 100vh; height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+    background: var(--bg-app); z-index: 10000; flex-direction: column;
+}
 
 /* SIMULATEUR APPAREIL (Mode Test Professeur) */
 #game-layer.device-simulator, #game-layer.tablet-simulator {

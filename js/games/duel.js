@@ -260,7 +260,7 @@ class Duel extends BaseGame {
                        largeur de la bande. On la nomme, et les deux s'y
                        réfèrent. */
                     .du-plateau {
-                        --camp: clamp(96px, 16cqw, 152px);
+                        --camp: clamp(128px, 21cqw, 186px);
                         grid-template-rows: 1fr;
                         grid-template-columns: var(--camp) minmax(120px, 1fr) var(--camp);
                     }
@@ -283,8 +283,10 @@ class Duel extends BaseGame {
                     }
                     .du-cote--0 .du-cote-inner { transform: rotate(90deg); }
                     .du-cote--1 .du-cote-inner { transform: rotate(-90deg); }
-                    .du-pave, .du-tables { max-width: min(560px, 82cqh); }
-                    .du-pave, .du-tables { height: clamp(34px, 7cqw, 58px); }
+                    /* La bande s'élargit pour loger deux rangées de touches :
+                       en une seule, elles tombaient à dix-neuf pixels. */
+                    .du-pave, .du-tables { max-width: min(620px, 94cqh); }
+                    .du-pave, .du-tables { height: clamp(64px, 13cqw, 104px); }
                     .du-tete { font-size: clamp(.62rem, 1.7cqw, .85rem); }
                     .du-saisie { font-size: clamp(1.1rem, 4.6cqw, 2rem); }
                     .du-annonce--haut { transform: rotate(180deg); }
@@ -296,6 +298,46 @@ class Duel extends BaseGame {
                     .du-pave, .du-tables { max-width: 820px; height: clamp(32px, 9cqh, 56px); }
                     .du-saisie { font-size: clamp(1.1rem, 6cqh, 1.9rem); }
                     .du-tete { font-size: clamp(.62rem, 2.4cqh, .85rem); }
+                }
+
+                /* TÉLÉPHONE : ONZE TOUCHES SUR UNE LIGNE FONT 25 PX DE LARGE.
+                   La rangée unique tenait sur une tablette ; sur un téléphone
+                   de 390 px chaque touche tombe à vingt-cinq pixels — moins
+                   que la moitié d'un pouce — et à dix-neuf pixels quand le
+                   camp est une bande latérale. L'élève tape à côté, ou n'ose
+                   plus taper. Deux rangées de six lui rendent cinquante
+                   pixels dans les deux sens ; le couloir paie soixante pixels,
+                   il en a largement de quoi. Les tables du service suivent, en
+                   deux rangées de cinq.
+                   CE BLOC VIENT EN DERNIER : les paliers de resserrement plus
+                   haut fixent eux aussi la hauteur du pavé, et une requête de
+                   conteneur n'ajoute aucune spécificité — seul l'ordre tranche. */
+                @container plateau (max-width: 560px) {
+                    .du-pave {
+                        grid-template-columns: repeat(6, 1fr);
+                        grid-template-rows: repeat(2, minmax(0, 1fr));
+                    }
+                    .du-tables {
+                        grid-auto-flow: row; grid-template-columns: repeat(5, 1fr);
+                        grid-template-rows: repeat(2, minmax(0, 1fr));
+                        grid-auto-columns: auto;
+                    }
+                    .du-pave, .du-tables { height: clamp(74px, 16cqh, 124px); }
+                }
+                /* Même règle en bande latérale, où la touche tombait à dix-neuf
+                   pixels. La profondeur de la bande se mesure alors sur la
+                   LARGEUR du plateau : c'est elle qui la porte une fois pivotée. */
+                @container plateau (min-aspect-ratio: 13/10) {
+                    .du-pave {
+                        grid-template-columns: repeat(6, 1fr);
+                        grid-template-rows: repeat(2, minmax(0, 1fr));
+                    }
+                    .du-tables {
+                        grid-auto-flow: row; grid-template-columns: repeat(5, 1fr);
+                        grid-template-rows: repeat(2, minmax(0, 1fr));
+                        grid-auto-columns: auto;
+                    }
+                    .du-pave, .du-tables { height: clamp(74px, 15cqw, 124px); }
                 }
             </style>
             <div class="du-plateau" data-plateau>

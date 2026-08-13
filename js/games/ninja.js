@@ -34,6 +34,20 @@ import {
 // c'est un frôlement — et un frôlement ne doit pas coûter un cœur.
 const COEUR = 0.7;
 
+/**
+ * LE NOMBRE VOLE PLUS LENTEMENT QUE LES BULLES.
+ *
+ * Une bulle porte UN calcul : on lit, on décide, on tranche. Un nombre porte
+ * huit tuiles qu'il faut lire de gauche à droite, décider pour chacune, et
+ * trancher plusieurs fois — quatre secondes et demie n'y suffisent pas, et le
+ * jeu devient un exercice de vitesse au lieu d'un exercice de rang.
+ *
+ * On ralentit sans changer la trajectoire : diviser la vitesse de lancement
+ * par s et la gravité par s² allonge le vol de s tout en gardant EXACTEMENT le
+ * même sommet — la cloche reste dans l'écran, elle prend juste son temps.
+ */
+const LENTEUR_ZEROS = 1.7;
+
 function auCoeur(el, x, y) {
     const r = el.getBoundingClientRect();
     const dx = (x - (r.left + r.width / 2)) / (r.width / 2);
@@ -91,23 +105,56 @@ class Ninja extends BaseGame {
                     background: var(--bg-plateau); box-shadow: var(--shadow-md);
                     touch-action: none; cursor: crosshair;
                 }
-                /* LE STAND DE TIR : ciel de désert, soleil bas, sol ocre et
-                   palissade. Le décor n'est pas décoratif — il dit qu'ici on
-                   VISE, alors que dans les deux autres modes on tranche. */
-                .nj-scene--western {
+                /* LE STAND DE FÊTE FORAINE. Le désert western disait « western »
+                   plus qu'il ne disait « stand de tir » : un sol ocre, deux
+                   cactus, et des cibles qui flottaient sans rien pour les
+                   porter. Ici tout dit le stand — la banne rayée, la guirlande
+                   d'ampoules, le comptoir de bois, et surtout les DEUX RAILS
+                   sur lesquels les cibles se lèvent. Le décor explique le
+                   geste : on vise une cible posée, on ne tranche pas une bulle
+                   qui vole. */
+                .nj-scene--stand {
                     background:
-                        radial-gradient(circle at 50% 62%, rgba(255, 214, 138, .95) 0 9%, transparent 9.5%),
-                        linear-gradient(#f8c88a 0 58%, #e8a765 58% 62%, #d98f4e 62%);
+                        radial-gradient(circle at 12% 30%, rgba(253,224,71,.16) 0 2.2%, transparent 2.6%),
+                        radial-gradient(circle at 86% 26%, rgba(248,113,113,.16) 0 1.8%, transparent 2.2%),
+                        radial-gradient(circle at 68% 44%, rgba(96,165,250,.14) 0 2%, transparent 2.4%),
+                        radial-gradient(circle at 30% 66%, rgba(253,224,71,.10) 0 1.6%, transparent 2%),
+                        linear-gradient(#170e3a 0 60%, #2b1a63 60% 82%, #3b1f6b 82%);
                 }
                 .nj-decor { position: absolute; inset: 0; pointer-events: none; }
-                .nj-sol { position: absolute; left: 0; right: 0; top: 62%; bottom: 0;
-                    background: repeating-linear-gradient(90deg, rgba(160,90,40,.10) 0 22px, transparent 22px 46px); }
-                .nj-palissade {
-                    position: absolute; left: 0; right: 0; top: 56%; height: 8%;
-                    background: repeating-linear-gradient(90deg, #a9713f 0 16px, #8d5c33 16px 20px, transparent 20px 40px);
-                    opacity: .85;
+                /* La banne rayée, festonnée sur son bord bas. */
+                .nj-banne {
+                    position: absolute; left: -2%; right: -2%; top: 0; height: 13%;
+                    background: repeating-linear-gradient(90deg, #dc2626 0 30px, #fff5f5 30px 60px);
+                    filter: drop-shadow(0 3px 5px rgba(0,0,0,.45));
+                    -webkit-mask-image: radial-gradient(circle 13px at 15px 100%, transparent 0 13px, #000 13.5px);
+                    mask-image: radial-gradient(circle 13px at 15px 100%, transparent 0 13px, #000 13.5px);
+                    -webkit-mask-size: 30px 100%; mask-size: 30px 100%;
+                    -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
                 }
-                .nj-cactus { position: absolute; bottom: 4%; fill: #4b7a3a; opacity: .75; }
+                /* La guirlande : des ampoules qui clignotent en décalé. */
+                .nj-guirlande {
+                    position: absolute; left: 0; right: 0; top: 13.5%; height: 12px;
+                    background: radial-gradient(circle 4px at 17px 6px, #fde047 0 4px, transparent 4.5px);
+                    background-size: 34px 12px; background-repeat: repeat-x;
+                    filter: drop-shadow(0 0 5px rgba(253,224,71,.85));
+                    animation: nj-ampoules 1.6s steps(2) infinite;
+                }
+                @keyframes nj-ampoules { 50% { opacity: .45; background-position: 17px 0; } }
+                /* Les rails : les cibles se lèvent DE quelque part. */
+                .nj-rail {
+                    position: absolute; left: 3%; right: 3%; height: 7px; border-radius: 4px;
+                    background: linear-gradient(#e2e8f0, #64748b 55%, #334155);
+                    box-shadow: 0 3px 7px rgba(0,0,0,.5);
+                }
+                .nj-comptoir {
+                    position: absolute; left: 0; right: 0; bottom: 0; height: 14%;
+                    background:
+                        repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 2px, transparent 2px 58px),
+                        linear-gradient(#a16207, #713f12);
+                    border-top: 5px solid #d97706;
+                    box-shadow: 0 -4px 14px rgba(0,0,0,.45);
+                }
                 .nj-groupe { position: absolute; display: flex; gap: 3px; will-change: transform; }
                 .nj-obj {
                     display: flex; align-items: center; justify-content: center;
@@ -164,11 +211,25 @@ class Ninja extends BaseGame {
                     25% { transform: translateX(-6px); } 75% { transform: translateX(6px); }
                 }
 
-                .nj-lame {
-                    position: absolute; width: 10px; height: 10px; border-radius: 50%;
-                    background: var(--primary); pointer-events: none;
-                    transition: opacity .3s linear, transform .3s linear;
+                /* LE SABRE. Un point posé à chaque événement de pointeur
+                   donnait un pointillé : le doigt va plus vite que les
+                   événements, et sur téléphone il en arrive deux fois moins
+                   qu'à la souris. On trace donc une VRAIE lame — une polyligne
+                   qui relie les derniers points, doublée d'un cœur blanc et
+                   d'un halo, et qui s'efface par la queue. */
+                /* Largeur et hauteur EXPLICITES : un svg est un élément
+                   remplacé, il garde sa taille intrinsèque de 300 × 150 quand
+                   on ne lui donne que des décalages, et la lame se dessinait
+                   hors du cadre — invisible. */
+                .nj-sabre {
+                    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+                    pointer-events: none; z-index: 5; overflow: visible;
                 }
+                .nj-sabre path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+                .nj-lame-halo { stroke: var(--primary); stroke-width: 22; opacity: .28;
+                    filter: blur(4px); }
+                .nj-lame-corps { stroke: var(--primary); stroke-width: 11; opacity: .85; }
+                .nj-lame-coeur { stroke: #fff; stroke-width: 3.5; opacity: .95; }
                 .nj-note {
                     min-height: 2.5em; text-align: center; width: 100%; max-width: 640px;
                     font-size: clamp(11px, 2.7cqw, 15px); line-height: 1.3; color: var(--text-muted);
@@ -192,12 +253,19 @@ class Ninja extends BaseGame {
                     <span data-score></span>
                     <button type="button" class="nj-btn" data-neuf>↺ Rejouer</button>
                 </div>
-                <div class="nj-scene${this.mode === 'positifs' ? ' nj-scene--western' : ''}" data-scene>
+                <div class="nj-scene${this.mode === 'positifs' ? ' nj-scene--stand' : ''}" data-scene>
                     ${this.mode === 'positifs' ? `<div class="nj-decor">
-                        <div class="nj-palissade"></div><div class="nj-sol"></div>
-                        <svg class="nj-cactus" style="left:4%" width="34" height="58" viewBox="0 0 34 58"><path d="M14 58V16a3 3 0 0 1 6 0v42zM6 34V24a3 3 0 0 1 6 0v10a5 5 0 0 1-6 0zM22 40V28a3 3 0 0 1 6 0v12a5 5 0 0 1-6 0z"/></svg>
-                        <svg class="nj-cactus" style="right:6%; bottom:2%" width="26" height="44" viewBox="0 0 34 58"><path d="M14 58V16a3 3 0 0 1 6 0v42zM22 40V28a3 3 0 0 1 6 0v12a5 5 0 0 1-6 0z"/></svg>
+                        <div class="nj-banne"></div>
+                        <div class="nj-guirlande"></div>
+                        <div class="nj-rail" style="top:47%"></div>
+                        <div class="nj-rail" style="top:77%"></div>
+                        <div class="nj-comptoir"></div>
                     </div>` : ''}
+                    <svg class="nj-sabre" data-sabre>
+                        <path class="nj-lame-halo" data-lame></path>
+                        <path class="nj-lame-corps" data-lame></path>
+                        <path class="nj-lame-coeur" data-lame></path>
+                    </svg>
                 </div>
                 <p class="nj-note" data-note></p>
             </div>`;
@@ -281,17 +349,25 @@ class Ninja extends BaseGame {
             return;
         }
 
-        // Les deux ninjas : une cloche LENTE, qui monte haut. Réglée pour que
-        // l'objet mette environ quatre secondes et demie à traverser et qu'il
-        // frôle le haut de l'écran. Lire « −7 + 12 », décider, puis viser : ce
-        // sont trois gestes, et trois secondes et demie n'y suffisaient pas.
+        // Les deux ninjas : une cloche LENTE, qui monte haut. Lire « −7 + 12 »,
+        // décider, puis viser : ce sont trois gestes.
+        //
+        // TOUTES LES BULLES PARTENT DE LA MÊME LIGNE, juste sous le bord. Elles
+        // partaient en escalier — la cinquième à deux cents pixels plus bas que
+        // la première — c'est-à-dire DÉJÀ au-delà de la ligne de sortie : quatre
+        // bulles sur cinq étaient détruites à leur première image, et comptées
+        // comme laissées passer. L'élève tranchait la seule bulle visible et
+        // perdait ses vies quand même. Leur décalage se fait par le retard au
+        // lancement, pas par la hauteur de départ.
         if (this.mode === 'zeros') {
-            this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0, -(haut * 0.0138), larg, haut, 'chiffre'));
+            this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0,
+                -(haut * 0.0138) / LENTEUR_ZEROS, larg, haut, 'chiffre'));
         } else {
             const type = 'bulle';
             v.objets.forEach((o, i) => {
                 const x = larg * (0.16 + 0.68 * (i + 0.5) / v.objets.length);
-                const e = this.creerEntite([o], x, haut + 80 + i * 26, (this.rng.int(-3, 3)) / 14, -(haut * 0.0143) - this.rng.int(0, 3) / 100, larg, haut, type);
+                const e = this.creerEntite([o], x, haut + 60, (this.rng.int(-3, 3)) / 14,
+                    -(haut * 0.0143) - this.rng.int(0, 3) / 100, larg, haut, type);
                 e.retard = i * 520;
                 this.entites.push(e);
             });
@@ -317,8 +393,9 @@ class Ninja extends BaseGame {
         // secondes et demie de vol, et un sommet qui frôle le haut de la
         // scène. La cloche précédente montait moins et allait plus vite : on
         // voyait la bulle avant d'avoir fini de lire le calcul qu'elle porte.
-        const g = haut * 0.000104;
+        const g = haut * 0.000104 / (this.mode === 'zeros' ? LENTEUR_ZEROS * LENTEUR_ZEROS : 1);
         let vivantes = 0;
+        this.majSabre();
 
         for (const e of this.entites) {
             if (e.sortie) continue;
@@ -346,7 +423,11 @@ class Ninja extends BaseGame {
             e.y += e.vy * k;
             e.vy += g * k;
             e.el.style.transform = `translate(${Math.round(e.x)}px, ${Math.round(e.y)}px) translateX(-50%)`;
-            if (e.y > haut + 90) {
+            // UNE BULLE NE SORT QUE SI ELLE EST ENTRÉE. Sans ce verrou, tout
+            // objet lancé sous la ligne de sortie était détruit avant d'avoir
+            // paru — et compté comme laissé passer.
+            if (e.y < haut) e.entre = true;
+            if (e.entre && e.y > haut + 90) {
                 e.sortie = true;
                 e.el.remove();
                 const p = laisserPasserGroupe(this.etat, e.objets);
@@ -406,15 +487,29 @@ class Ninja extends BaseGame {
         this.scene.addEventListener('pointerleave', fin);
     }
 
+    /**
+     * LA LAME. On garde les derniers points du geste, avec leur heure, et on
+     * les relie. Un point posé par événement donnait un pointillé — le doigt
+     * va plus vite que les événements, et un téléphone en envoie deux fois
+     * moins qu'une souris. La queue s'efface toute seule au bout de deux
+     * dixièmes de seconde, si bien que la lame SUIT le doigt au lieu de
+     * s'accumuler derrière lui.
+     */
     laisserTrace(ev) {
         const r = this.scene.getBoundingClientRect();
-        const d = document.createElement('div');
-        d.className = 'nj-lame';
-        d.style.left = `${ev.clientX - r.left - 5}px`;
-        d.style.top = `${ev.clientY - r.top - 5}px`;
-        this.scene.appendChild(d);
-        requestAnimationFrame(() => { d.style.opacity = '0'; d.style.transform = 'scale(.3)'; });
-        setTimeout(() => d.remove(), 340);
+        this.trace.push({ x: ev.clientX - r.left, y: ev.clientY - r.top, t: performance.now() });
+        if (this.trace.length > 24) this.trace.shift();
+        this.majSabre();
+    }
+
+    majSabre() {
+        const svg = this.container.querySelector('[data-sabre]');
+        if (!svg) return;
+        const limite = performance.now() - 200;
+        while (this.trace.length && this.trace[0].t < limite) this.trace.shift();
+        const d = this.trace.length < 2 ? ''
+            : 'M ' + this.trace.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ');
+        svg.querySelectorAll('[data-lame]').forEach(p => p.setAttribute('d', d));
     }
 
     frapper(el) {
