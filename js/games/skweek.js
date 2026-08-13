@@ -26,8 +26,7 @@ import {
 
 const COMPETENCE = 'num.calc.tri';
 const CASE_MAX = 62;             // le côté d'une dalle sur un grand écran
-const CASE_MIN = 40;             // en dessous, le calcul devient illisible
-const COLONNES_VUE = 7;          // ce qu'on veut voir devant soi, au minimum
+const CASE_LISIBLE = 50;         // en dessous, « 61 − 19 » ne tient plus
 
 class Skweek extends BaseGame {
     constructor(container, isDemo, params) {
@@ -119,6 +118,14 @@ class Skweek extends BaseGame {
                     width: 20%; height: 26%; border-radius: 50%; background: #1e1b4b;
                     box-shadow: inset 0 -2px 0 rgba(255,255,255,.35);
                 }
+                /* IL REGARDE OÙ IL VA. Les yeux glissent vers la direction du
+                   dernier pas : au doigt, c'est le seul retour qui dit dans
+                   quel sens le prochain pas partira. */
+                .sk-heros i { transition: translate .12s ease; }
+                .sk-heros[data-dir="droite"] i { translate: 26% 0; }
+                .sk-heros[data-dir="gauche"] i { translate: -26% 0; }
+                .sk-heros[data-dir="haut"] i { translate: 0 -24%; }
+                .sk-heros[data-dir="bas"] i { translate: 0 24%; }
                 .sk-heros--bond { animation: sk-bond .22s ease; }
                 @keyframes sk-bond { 45% { scale: 1.14 .88; } }
                 .sk-heros--touche { animation: sk-touche .4s ease 2; }
@@ -223,8 +230,13 @@ class Skweek extends BaseGame {
         // redessine. Sinon la caméra viserait dans un monde qui n'existe plus.
         this.observateur = new ResizeObserver(() => {
             if (!this.etat) return;
-            if (this.coteDalle() === this.cote) return this.cadrer();
-            this.dessinerSol();
+            const t = this.tailleTerrain();
+            // Le terrain ne se refait PAS pour quelques pixels : on perdrait la
+            // partie en cours. Seule une rotation d'écran, qui change vraiment
+            // ce qu'on peut afficher, justifie de reposer un niveau.
+            if (t.cols !== this.etat.cols || t.lignes !== this.etat.lignes) return this.poser();
+            if (this.coteDalle() !== this.cote) return this.dessinerSol();
+            this.cadrer();
         });
         this.observateur.observe(this.vueEl);
     }
@@ -247,18 +259,42 @@ class Skweek extends BaseGame {
         };
         document.addEventListener('keydown', this.surTouche);
 
-        // LE GLISSÉ SUR LE TERRAIN : le second geste tactile. On lit la
-        // direction dominante au lever, comme dans 2048.
-        let depart = null;
-        this.vueEl.onpointerdown = (e) => { depart = { x: e.clientX, y: e.clientY }; };
-        this.vueEl.onpointerup = (e) => {
-            if (!depart) return;
-            const dx = e.clientX - depart.x, dy = e.clientY - depart.y;
-            depart = null;
-            if (Math.hypot(dx, dy) < 18) return;
+        // SKWEEK SUIT LE DOIGT. On touche une dalle voisine, il y va ; on garde
+        // le doigt posé et on le promène, il suit dalle par dalle, en tournant
+        // la tête vers là où il marche. C'est le geste le plus direct : on
+        // désigne la case où l'on veut aller, on ne compose pas une direction.
+        // La croix et le clavier restent — trois façons pour trois mains.
+        let suit = false;
+        const versDalle = (ev) => {
+            const r = this.mondeEl.getBoundingClientRect();
+            if (!r.width) return null;
+            return {
+                x: Math.floor((ev.clientX - r.left) / this.cote),
+                y: Math.floor((ev.clientY - r.top) / this.cote)
+            };
+        };
+        // Un pas AU PLUS par événement, vers la case visée : un doigt rapide
+        // saute des dalles, et Skweek ne doit pas les sauter avec lui — il
+        // les repeint une à une, ou s'arrête sur la première qui casse.
+        const versLa = (ev) => {
+            const but = versDalle(ev);
+            if (!but) return;
+            const dx = but.x - this.etat.joueur.x, dy = but.y - this.etat.joueur.y;
+            if (!dx && !dy) return;
             this.aller(Math.abs(dx) > Math.abs(dy)
                 ? (dx > 0 ? 'droite' : 'gauche') : (dy > 0 ? 'bas' : 'haut'));
         };
+        this.vueEl.onpointerdown = (ev) => {
+            if (this.isDemo || this.finie) return;
+            ev.preventDefault();
+            suit = true;
+            try { this.vueEl.setPointerCapture(ev.pointerId); } catch { /* sans capture */ }
+            versLa(ev);
+        };
+        this.vueEl.onpointermove = (ev) => { if (suit) versLa(ev); };
+        const lacher = () => { suit = false; };
+        this.vueEl.onpointerup = lacher;
+        this.vueEl.onpointercancel = lacher;
     }
 
     startGameLoop() {
@@ -268,7 +304,7 @@ class Skweek extends BaseGame {
     }
 
     poser() {
-        this.etat = genererNiveau({ niveau: this.niveauCourant }, this.rng);
+        this.etat = genererNiveau({ niveau: this.niveauCourant, ...this.tailleTerrain() }, this.rng);
         this.reste = this.etat.secondes;
         this.finie = false;
         this.container.querySelector('[data-regle]').textContent =
@@ -283,15 +319,27 @@ class Skweek extends BaseGame {
     // --- Le dessin ------------------------------------------------------------
 
     /**
-     * LE CÔTÉ D'UNE DALLE SUIT L'ÉCRAN. Sur un téléphone, garder 62 px ne
-     * laisserait voir que cinq colonnes : on ne peut pas lire son chemin avant
-     * de s'y engager, et le jeu devient un pari. On rétrécit donc les dalles
-     * jusqu'à en montrer sept, sans descendre sous la taille où le calcul
-     * cesse d'être lisible.
+     * TOUT LE NIVEAU TIENT À L'ÉCRAN — plus de défilement.
+     *
+     * On ne rétrécit pas les dalles jusqu'à faire entrer dix-neuf colonnes :
+     * le calcul qu'une dalle porte EST le jeu, et sous cinquante pixels il ne
+     * se lit plus. C'est donc le TERRAIN qui se replie à ce que l'écran peut
+     * montrer lisiblement, et la dalle prend ensuite toute la place restante.
      */
+    tailleTerrain() {
+        const vw = this.vueEl?.clientWidth || 600, vh = this.vueEl?.clientHeight || 420;
+        return {
+            cols: Math.max(6, Math.floor(vw / CASE_LISIBLE)),
+            lignes: Math.max(6, Math.floor(vh / CASE_LISIBLE))
+        };
+    }
+
+    /** La dalle remplit la vue une fois le terrain choisi. */
     coteDalle() {
-        const vw = this.vueEl?.clientWidth || 600;
-        return Math.max(CASE_MIN, Math.min(CASE_MAX, Math.floor(vw / COLONNES_VUE)));
+        const e = this.etat;
+        if (!e || !this.vueEl) return CASE_MAX;
+        return Math.max(24, Math.min(CASE_MAX,
+            Math.floor(Math.min(this.vueEl.clientWidth / e.cols, this.vueEl.clientHeight / e.lignes))));
     }
 
     dessinerSol() {
@@ -311,7 +359,7 @@ class Skweek extends BaseGame {
                 data-c="${y * e.cols + x}"
                 style="left:${x * CASE + 2}px; top:${y * CASE + 2}px;
                 width:${CASE - 4}px; height:${CASE - 4}px;
-                font-size:${Math.round((c.calcul.length > 6 ? 14 : 17) * k)}px">${c.calcul}</div>`;
+                font-size:${Math.max(12, Math.round((c.calcul.length > 6 ? 14 : 17) * k))}px">${c.calcul}</div>`;
         }
         const cote = Math.round(CASE * 0.74);
         html += `<div class="sk-heros" data-heros style="width:${cote}px; height:${cote}px">
@@ -326,6 +374,7 @@ class Skweek extends BaseGame {
 
     placerHeros() {
         const { x, y } = this.etat.joueur;
+        this.herosEl.dataset.dir = this.etat.joueur.dir || 'droite';
         const CASE = this.cote, marge = Math.round(CASE * 0.13);
         this.herosEl.style.left = `${x * CASE + marge}px`;
         this.herosEl.style.top = `${y * CASE + marge}px`;

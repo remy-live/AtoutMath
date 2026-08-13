@@ -85,7 +85,13 @@ export function calculPour(v, rng) {
 export function genererNiveau(params, rng) {
     const niv = niveauDe(params && params.niveau);
     const regle = regleDe(niv.regle);
-    const { cols, lignes } = niv;
+    // LE NIVEAU S'ADAPTE À L'ÉCRAN. Un terrain de dix-neuf colonnes sur un
+    // téléphone donnerait des dalles de dix-sept pixels : le calcul qu'elles
+    // portent n'y tiendrait plus, et c'est le calcul qui EST le jeu. L'appelant
+    // dit donc combien de colonnes et de lignes il peut afficher lisiblement,
+    // et le niveau se replie dedans sans jamais dépasser sa taille annoncée.
+    const cols = Math.max(6, Math.min(niv.cols, Number(params && params.cols) || niv.cols));
+    const lignes = Math.max(6, Math.min(niv.lignes, Number(params && params.lignes) || niv.lignes));
     const total = cols * lignes;
     const idx = (x, y) => y * cols + x;
 
