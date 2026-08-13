@@ -464,6 +464,14 @@ const BASE = {
         descriptor: 'Anticiper mentalement l\'effet d\'une rotation d\'un quart de tour sur un solide.',
         lesson: 'Un quart de tour = 90°. Avant d\'agir, imagine le mouvement dans ta tête : que devient la face de devant ? Quatre quarts de tour ramènent toujours le solide à sa position de départ.'
     },
+    'geo.espace.denombrer': {
+        label: 'Dénombrer sommets, arêtes et faces',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Compter les sommets, les arêtes et les faces d\'un solide dessiné en perspective cavalière.',
+        lesson: "Sur une perspective cavalière, une partie du solide est DERRIÈRE : elle se dessine en pointillés. Celui qui compte seulement ce qu'il voit trouve toujours trop peu. Compte donc en marquant, une par une, sans oublier les pointillés. Et surtout, raisonne par familles plutôt que d'apprendre des nombres : un PRISME a deux bases identiques, donc 2 × n sommets, 3 × n arêtes (les n côtés du bas, les n du haut, les n montants) et n + 2 faces. Une PYRAMIDE a une base et un sommet, donc n + 1 sommets, 2 × n arêtes (les n côtés de la base, les n qui montent) et n + 1 faces. Enfin, une vérification vaut pour tous ces solides : sommets − arêtes + faces = 2. Si tu ne tombes pas sur 2, l'un des trois comptes est faux."
+    },
     'geo.espace.deplacement': {
         label: 'Suivre un déplacement sur un plan',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],

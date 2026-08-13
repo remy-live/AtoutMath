@@ -182,6 +182,44 @@ export const geometrieExercises = [
         instruction: "Conduis la voiture jusqu'au lieu demandé en suivant la feuille de route : « prends la deuxième à gauche », « puis la première à droite ». Les trois boutons — et les flèches du clavier — sont ceux du CONDUCTEUR : quand la voiture descend, sa gauche est à droite de l'écran. Avant chaque virage, demande-toi dans quel sens elle roule. Et « la deuxième à gauche » compte les rues qui partent à gauche, pas les carrefours."
     },
     {
+        // DÉNOMBRER SUR UN SOLIDE. L'exercice a l'air simple et ne l'est pas :
+        // sur une perspective cavalière, une partie du solide est derrière, et
+        // l'élève qui compte ce qu'il voit trouve toujours trop peu. Le jeu
+        // donne le geste qui manque sur le papier — toucher ce qu'on compte —
+        // et la correction montre CE QU'ON A OUBLIÉ plutôt que d'annoncer un
+        // nombre.
+        id: 'geo-solides-denombrer', status: STATUS.TEST,
+        title: 'Compter sur un solide',
+        activityId: 'solides',
+        params: { niveau: 'tous', aspect: 'tous' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Les solides proposés',
+                aide: 'Les solides usuels d\'abord — cube, pavé, prisme triangulaire, pyramide. Les bases à cinq et six côtés obligent à raisonner par familles plutôt qu\'à retenir des nombres ; l\'octaèdre, lui, ne se range dans aucune des deux et force à vraiment regarder le dessin.',
+                options: [
+                    { value: 'facile', label: 'Les solides usuels' },
+                    { value: 'moyen', label: 'Jusqu\'aux bases pentagonales' },
+                    { value: 'tous', label: 'Tous, octaèdre compris' }
+                ],
+                default: 'tous'
+            },
+            {
+                id: 'aspect', type: 'select', label: 'Ce qu\'on demande de compter',
+                aide: 'On ne demande jamais les trois d\'un coup : l\'élève qui se trompe saurait seulement qu\'il s\'est trompé quelque part, et la correction ne pourrait plus rien montrer. Fixer une seule catégorie sert à travailler un point précis — les arêtes sont les plus difficiles, parce que ce sont elles qu\'on oublie derrière.',
+                options: [
+                    { value: 'tous', label: 'Les trois, en alternance' },
+                    { value: 'sommets', label: 'Les sommets seulement' },
+                    { value: 'aretes', label: 'Les arêtes seulement' },
+                    { value: 'faces', label: 'Les faces seulement' }
+                ],
+                default: 'tous'
+            }
+        ],
+        skills: ['geo.espace.denombrer'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Le solide est dessiné en perspective cavali\u00e8re : les traits en POINTILL\u00c9S sont les ar\u00eates de derri\u00e8re, celles qu'on ne voit pas mais qui existent. Touche ce qu'on te demande de compter, une par une : chaque marque porte son num\u00e9ro, tu ne comptes donc jamais deux fois la m\u00eame et tu vois ce qu'il te reste \u00e0 prendre. \u00c9cris ensuite ton total. Si tu te trompes, ce que tu as oubli\u00e9 se met \u00e0 clignoter. Et pour v\u00e9rifier tout seul : sommets \u2212 ar\u00eates + faces = 2, toujours."
+    },
+    {
         // LE RENVERSEMENT : on n'écrit pas le programme, on l'EXÉCUTE. Un élève
         // qui empile des blocs jusqu'à ce que « ça marche » peut réussir sans
         // avoir jamais compris ce que fait la machine. Du côté de la machine,

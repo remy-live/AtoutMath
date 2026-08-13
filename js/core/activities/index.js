@@ -297,6 +297,7 @@ const legacy = [
     ['skweek', 'Skweek (repeindre le sol)', 'skweek', 'engineSkweek'],
     ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
     ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram'],
+    ['solides', 'Compter sur un solide', 'solides', 'engineSolides'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
