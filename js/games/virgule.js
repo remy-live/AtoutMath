@@ -460,11 +460,14 @@ class Virgule extends BaseGame {
         this.consigneEl.innerHTML = `Décale <b>la virgule</b> dans le tableau. Les chiffres, eux, ne bougent pas.`;
         this.zoneEl.innerHTML = `
             <div class="vg-fleches">
-                <button type="button" class="vg-fleche" data-sens="1">
-                    <span style="font-size:1.5em">→</span><small>× 10 · virgule à droite</small>
-                </button>
+                <!-- LE BOUTON EST DU CÔTÉ OÙ IL ENVOIE LA VIRGULE. Une flèche
+                     vers la droite posée à gauche de l'écran, c'est un geste
+                     qui contredit son propre dessin. -->
                 <button type="button" class="vg-fleche" data-sens="-1">
                     <span style="font-size:1.5em">←</span><small>÷ 10 · virgule à gauche</small>
+                </button>
+                <button type="button" class="vg-fleche" data-sens="1">
+                    <span style="font-size:1.5em">→</span><small>× 10 · virgule à droite</small>
                 </button>
                 <button type="button" class="vg-fleche vg-fleche--ok" data-valider>
                     <span style="font-size:1.1em">✓</span><small>C'est bon</small>
