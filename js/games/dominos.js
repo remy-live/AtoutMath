@@ -15,7 +15,12 @@
 //     n'aurait aucun sens.
 //   · ET ON PEUT AUSSI SE CONTENTER D'UN CLIC. Le glissé est agréable à la
 //     souris ; sur une tablette posée en travers d'une table, c'est le geste
-//     qui rate. Toucher une pièce la pose du côté qui l'accepte.
+//     qui rate. Toucher une pièce la pose, du côté qui l'accepte s'il y en a
+//     un, au bout droit sinon.
+//   · ET AUCUNE POSE N'EST REFUSÉE. Le jeu qui repousse la mauvaise pièce
+//     corrige à la place de l'élève : il finit par les essayer une à une
+//     jusqu'à ce que ça passe. Ici il décide, puis « Vérifier » entoure les
+//     jointures qui ne collent pas — et ↩ reprend la pièce à revoir.
 //
 // L'aide et le robot disent tous deux la MÊME chose, et jamais la réponse
 // nue : « le bout ouvert demande 7 × 8, donc je cherche 56 ». C'est la méthode
@@ -28,7 +33,7 @@ import {
     DEPART, ARRIVEE, QUESTION, BOUT,
     plateauVide, boutsLibres, poseAdmise, poserPiece, coteNaturel, plateauFini,
     poserLibre, retournerPosee, retirerPosee, verifierChaine,
-    prochainePose, direJoint, direErreur, reserveMelangee, demiDe, ajusterAuCarre
+    prochainePose, direJoint, reserveMelangee, demiDe, ajusterAuCarre
 } from '../core/dominos.js';
 import { chaineDepuisGenerateur, sourceDe } from '../core/generators/dominos.js';
 
@@ -63,9 +68,17 @@ class Dominos extends BaseGame {
                 .dm-plateau {
                     width: 100%; flex: 0 0 auto; border: 2px dashed var(--border);
                     border-radius: 12px; padding: 8px; box-sizing: border-box;
-                    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+                    display: flex; gap: 6px; justify-content: center;
                     align-items: center; min-height: calc(var(--dm-cote) + 24px);
                     background: color-mix(in srgb, var(--text-main) 3%, transparent);
+                }
+                /* LES DEUX BOUTS RESTENT AUX DEUX BORDS, la chaîne se replie
+                   entre eux. Rangés dans le fil des pièces, le « + » de droite
+                   se retrouvait seul au milieu de la ligne suivante : on ne
+                   voyait plus qu'il était le bout de la chaîne. */
+                .dm-chaine {
+                    flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 5px;
+                    justify-content: center; align-items: flex-start;
                 }
                 .dm-plateau--vide::before {
                     content: 'Pose ici la première pièce'; color: var(--text-muted);
@@ -107,11 +120,17 @@ class Dominos extends BaseGame {
                 /* LA RÉSERVE PRÉSENTE LES PIÈCES DEBOUT, comme on les tient en
                    main avant de les poser à plat. Couchées, elles ressemblaient
                    déjà à des pièces posées, et on ne voyait plus ce qui était
-                   sur le plateau et ce qui restait à jouer. */
+                   sur le plateau et ce qui restait à jouer.
+                   DEBOUT, LA PIÈCE PIVOTE VRAIMENT : hauteur et largeur
+                   s'échangent. Se contenter d'empiler les deux moitiés dans la
+                   même boîte couchée donnait deux bandes plates — plus de
+                   domino du tout. */
                 .dm-piece--reserve {
                     cursor: grab; flex-direction: column;
+                    width: var(--dm-cote); height: calc(var(--dm-cote) * 2);
                     transition: transform .12s ease, box-shadow .12s ease;
                 }
+                .dm-piece--reserve .dm-demi { width: 100%; height: var(--dm-cote); }
                 /* Debout, la séparation passe à l'horizontale : sans cela les
                    deux moitiés se collaient sans trait entre elles. */
                 .dm-piece--reserve .dm-demi + .dm-demi {
@@ -124,29 +143,31 @@ class Dominos extends BaseGame {
                 }
                 .dm-piece--posee { animation: dm-pose .3s ease; }
                 @keyframes dm-pose { from { transform: scale(.75); opacity: .25; } }
-                .dm-piece--faute { animation: dm-faute .45s ease 2; }
-                @keyframes dm-faute { 50% { border-color: var(--danger, #dc2626); transform: translateX(-4px) rotate(-2deg); } }
                 .dm-piece--montre { box-shadow: 0 0 0 4px var(--primary); }
 
-                /* LES POIGNÉES. Toujours visibles : cachées derrière un survol,
-                   elles n'existent pas sur une tablette. On peut retourner une
-                   pièce EN RÉSERVE COMME SUR LE PLATEAU — une pièce posée à
+                /* LES POIGNÉES SONT SOUS LA PIÈCE, JAMAIS DESSUS. Posées en
+                   coin sur la face, elles mangeaient le calcul : « 10 × 5 »
+                   s'affichait « 10 5 », le signe caché sous un bouton. Une
+                   petite barre sous chaque domino les garde toujours à portée
+                   — en réserve comme sur le plateau, car une pièce posée à
                    l'envers doit pouvoir se remettre à l'endroit sans qu'on
-                   défasse tout — et reprendre une pièce qu'on a mal placée. */
+                   défasse la chaîne. */
+                .dm-case { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 0 0 auto; }
+                .dm-outils { display: flex; gap: 5px; height: 18px; }
                 .dm-poignee {
-                    position: absolute; top: 1px; width: 17px; height: 17px;
-                    border: 0; border-radius: 50%; background: var(--text-main); color: var(--bg-panel);
-                    font-size: 10px; line-height: 1; cursor: pointer; padding: 0;
-                    display: flex; align-items: center; justify-content: center; opacity: .55;
+                    width: 18px; height: 18px; border: 0; border-radius: 50%;
+                    background: color-mix(in srgb, var(--text-main) 55%, transparent);
+                    color: var(--bg-panel); font-size: 11px; line-height: 1; cursor: pointer;
+                    padding: 0; display: flex; align-items: center; justify-content: center;
                 }
-                .dm-poignee:hover { opacity: 1; }
-                .dm-tourner { right: 1px; }
-                .dm-reprendre { left: 1px; }
+                .dm-poignee:hover { background: var(--text-main); }
 
-                /* LES DEUX BOUTS OÙ L'ON DÉPOSE. */
+                /* LES DEUX BOUTS OÙ L'ON DÉPOSE. Discrets : ce sont des repères,
+                   pas des pièces. */
                 .dm-bout {
-                    width: calc(var(--dm-cote) * .8); height: var(--dm-cote);
-                    border: 2px dashed var(--border); border-radius: 9px; flex: 0 0 auto;
+                    width: calc(var(--dm-cote) * .7); height: var(--dm-cote);
+                    border: 2px dashed color-mix(in srgb, var(--text-muted) 45%, transparent);
+                    border-radius: 9px; flex: 0 0 auto;
                     display: flex; align-items: center; justify-content: center;
                     color: var(--text-muted); font-size: 1.1rem; font-weight: 800;
                 }
@@ -249,10 +270,13 @@ class Dominos extends BaseGame {
         };
         const bouton = (nom, glyphe, titre) => this.isDemo ? ''
             : `<button type="button" class="dm-poignee dm-${nom}" data-${nom} title="${titre}">${glyphe}</button>`;
-        return `<div class="dm-piece ${classes}" data-piece="${piece.id}">
-            ${demi(0)}${demi(1)}
-            ${poignees ? bouton('tourner', '↻', 'Retourner la pièce') : ''}
+        const outils = this.isDemo ? '' : `<div class="dm-outils">
+            ${bouton('tourner', '↻', 'Retourner la pièce')}
             ${poignees === 'plateau' ? bouton('reprendre', '↩', 'Reprendre la pièce') : ''}
+        </div>`;
+        return `<div class="dm-case" data-case="${piece.id}">
+            <div class="dm-piece ${classes}" data-piece="${piece.id}">${demi(0)}${demi(1)}</div>
+            ${poignees ? outils : ''}
         </div>`;
     }
 
@@ -260,10 +284,11 @@ class Dominos extends BaseGame {
         const vide = !this.etat.posees.length;
         this.plateauEl.classList.toggle('dm-plateau--vide', vide);
         this.plateauEl.innerHTML = vide ? '' :
-            `<div class="dm-bout" data-bout="gauche">+</div>`
+            `<div class="dm-bout" data-bout="gauche">+</div>
+            <div class="dm-chaine">`
             + this.etat.posees.map(p => this.pieceHtml(this.chaine.pieces[p.id], p.retourne,
                 p.id === this.dernierePosee ? 'dm-piece--posee' : '', 'plateau')).join('')
-            + `<div class="dm-bout" data-bout="droite">+</div>`;
+            + `</div><div class="dm-bout" data-bout="droite">+</div>`;
 
         this.reserveEl.innerHTML = this.reserve
             .map(id => this.pieceHtml(this.chaine.pieces[id], this.retournees.has(id),
@@ -273,16 +298,16 @@ class Dominos extends BaseGame {
         // Sur le plateau : ↻ remet la pièce à l'endroit sans la déplacer,
         // ↩ la renvoie en réserve. Sans ces deux gestes, une erreur entourée
         // par « Vérifier » ne se corrigerait pas.
-        this.plateauEl.querySelectorAll('[data-piece]').forEach(el => {
-            const id = Number(el.dataset.piece);
-            el.querySelector('[data-tourner]')?.addEventListener('click', (ev) => {
+        this.plateauEl.querySelectorAll('[data-case]').forEach(cas => {
+            const id = Number(cas.dataset.case);
+            cas.querySelector('[data-tourner]')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (this.isDemo) return;
                 this.etat = retournerPosee(this.etat, id);
                 this.dessiner();
                 this.note('Pièce retournée. Appuie sur « Vérifier » quand tu veux relire la chaîne.');
             });
-            el.querySelector('[data-reprendre]')?.addEventListener('click', (ev) => {
+            cas.querySelector('[data-reprendre]')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (this.isDemo) return;
                 this.etat = retirerPosee(this.etat, id);
@@ -293,9 +318,10 @@ class Dominos extends BaseGame {
             });
         });
 
-        this.reserveEl.querySelectorAll('[data-piece]').forEach(el => {
-            const id = Number(el.dataset.piece);
-            el.querySelector('[data-tourner]')?.addEventListener('click', (ev) => {
+        this.reserveEl.querySelectorAll('[data-case]').forEach(cas => {
+            const id = Number(cas.dataset.case);
+            const el = cas.querySelector('[data-piece]');
+            cas.querySelector('[data-tourner]')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (this.isDemo) return;
                 if (this.retournees.has(id)) this.retournees.delete(id); else this.retournees.add(id);
@@ -348,13 +374,14 @@ class Dominos extends BaseGame {
             el.style.opacity = '';
             this.plateauEl.querySelectorAll('[data-bout]').forEach(b =>
                 b.classList.remove('dm-bout--actif', 'dm-bout--survol'));
-            if (!bouge) return this.jouer(id, coteNaturel(this.chaine, this.etat, id), el);
+            // Un simple toucher pose la pièce : c'est le geste de la tablette
+            // posée à plat, où le glissé rate une fois sur deux.
+            if (!bouge) return this.jouer(id, null, el);
+            // Lâchée sur le plateau sans viser un bout précis : le jeu choisit
+            // le côté. L'élève voulait la poser, pas viser.
             const cible = this.boutSous(e.clientX, e.clientY);
-            // Lâchée sur le plateau sans viser un bout précis : on choisit le
-            // côté qui l'accepte. L'élève voulait la poser, pas viser.
-            const cote = cible ? cible.dataset.bout
-                : (this.surPlateau(e.clientX, e.clientY) ? coteNaturel(this.chaine, this.etat, id) : null);
-            if (cote) this.jouer(id, cote, el);
+            if (cible) this.jouer(id, cible.dataset.bout, el);
+            else if (this.surPlateau(e.clientX, e.clientY)) this.jouer(id, null, el);
         };
 
         window.addEventListener('pointermove', bouger);
@@ -390,11 +417,14 @@ class Dominos extends BaseGame {
      */
     jouer(id, cote, el) {
         if (this.isDemo || !this.chaine) return;
-        if (!cote) return this.refuser(id, el);
+        // Sans bout visé — un simple toucher — la pièce va du côté qui
+        // l'accepte, et à défaut au bout droit. Elle se pose TOUJOURS : c'est
+        // « Vérifier » qui dira si elle y a sa place, et ↩ qui la reprendra.
+        const ou = cote || coteNaturel(this.chaine, this.etat, id) || 'droite';
         // Le sens qui marie, s'il existe : l'élève choisit le bout, pas
         // l'orientation — le bouton ↻ reste là pour la reprendre.
-        const sens = poseAdmise(this.chaine, this.etat, id, cote);
-        this.accepter(id, poserLibre(this.etat, id, cote,
+        const sens = poseAdmise(this.chaine, this.etat, id, ou);
+        this.accepter(id, poserLibre(this.etat, id, ou,
             sens ? sens.retourne : this.retournees.has(id)));
     }
 
@@ -476,19 +506,8 @@ class Dominos extends BaseGame {
         }
     }
 
-    refuser(id, el) {
-        if (el) { el.classList.add('dm-piece--faute'); setTimeout(() => el.classList.remove('dm-piece--faute'), 900); }
-        const raison = direErreur(this.chaine, this.etat, id);
-        this.note('❌ ' + echapper(raison), 'ko');
-        const bouts = boutsLibres(this.chaine, this.etat);
-        this.onWrongAnswer(el, {
-            concept: this.chaine.skillId || COMPETENCE,
-            questionText: (bouts.droite && bouts.droite.texte) || 'plateau vide',
-            input: this.chaine.pieces[id] ? String(this.chaine.pieces[id].gauche) : '?',
-            expected: (bouts.gauche && bouts.gauche.texte) || '',
-            customMessage: raison
-        });
-    }
+    // Il n'y a plus de « refuser » : aucune pose n'est repoussée. L'erreur ne
+    // se dit qu'au moment de la vérification, et elle se dit en montrant OÙ.
 
     // --- Aider --------------------------------------------------------------
 
