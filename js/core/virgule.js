@@ -189,12 +189,12 @@ export function propositions(depart, op, k, resultat, rng) {
         {
             v: decaler(depart, -sens * k),
             pourquoi: op === '×'
-                ? 'Décalage dans le mauvais sens : multiplier rend le nombre plus GRAND.'
-                : 'Décalage dans le mauvais sens : diviser rend le nombre plus PETIT.'
+                ? 'La virgule est partie du mauvais côté : multiplier rend le nombre plus GRAND.'
+                : 'La virgule est partie du mauvais côté : diviser rend le nombre plus PETIT.'
         },
         {
             v: decaler(depart, sens * (k === 1 ? 2 : k - 1)),
-            pourquoi: `Ce n'est pas le bon nombre de rangs : ${op === '×' ? 'multiplier' : 'diviser'} par ${k === 1 ? 10 : Math.pow(10, k)} décale de ${k} rang${k > 1 ? 's' : ''}.`
+            pourquoi: `Ce n'est pas le bon nombre de rangs : ${op === '×' ? 'multiplier' : 'diviser'} par ${k === 1 ? 10 : Math.pow(10, k)} décale la virgule de ${k} rang${k > 1 ? 's' : ''}.`
         }
     ];
 
@@ -226,17 +226,24 @@ export function ajouterZeros(texte, k) {
     return `${ent},${dec}${'0'.repeat(k)}`;
 }
 
-/** La correction, une ligne par idée. */
+/**
+ * La correction, une ligne par idée : LA RÈGLE, PUIS SA RAISON.
+ *
+ * On dit d'abord ce que l'élève retient et redit en classe — la virgule se
+ * décale vers la droite quand on multiplie — puis pourquoi c'est vrai : chaque
+ * chiffre change de rang. L'ordre compte. Commencer par les rangs, ce serait
+ * expliquer une règle avant de l'avoir énoncée.
+ */
 export function expliquer(q) {
     const k = Math.abs(q.rangs);
-    const sens = q.rangs > 0 ? 'la gauche' : 'la droite';
+    const sens = q.rangs > 0 ? 'la DROITE' : 'la GAUCHE';
     const p = placer(q.depart);
     const premier = p[0];
     const arrivee = premier.e + q.rangs;
     return [
-        `${q.op} ${q.facteur}, c'est faire glisser chaque chiffre de ${k} rang${k > 1 ? 's' : ''} vers ${sens}.`,
-        `Le ${premier.chiffre} passe des ${nomRang(premier.e)} aux ${nomRang(arrivee)}.`,
-        `La virgule ne bouge pas : elle reste entre les unités et les dixièmes. On lit ${q.resultat}.`
+        `${q.op} ${q.facteur}, c'est décaler la virgule de ${k} rang${k > 1 ? 's' : ''} vers ${sens}.`,
+        `Chaque chiffre change alors de valeur : le ${premier.chiffre} valait des ${nomRang(premier.e)}, il vaut maintenant des ${nomRang(arrivee)}.`,
+        `On lit ${q.resultat}.`
     ];
 }
 
@@ -249,13 +256,13 @@ export function verifierGlissement(q, rangsFaits) {
         return {
             ok: false, faute: 'sens',
             message: q.op === '×'
-                ? 'Mauvais sens : multiplier rend le nombre plus GRAND, donc les chiffres montent vers la gauche.'
-                : 'Mauvais sens : diviser rend le nombre plus PETIT, donc les chiffres descendent vers la droite.'
+                ? 'Mauvais sens : multiplier rend le nombre plus GRAND, donc la virgule se décale vers la DROITE.'
+                : 'Mauvais sens : diviser rend le nombre plus PETIT, donc la virgule se décale vers la GAUCHE.'
         };
     }
     return {
         ok: false, faute: 'rangs',
-        message: `${q.op} ${q.facteur} décale de ${Math.abs(q.rangs)} rang${Math.abs(q.rangs) > 1 ? 's' : ''}, tu en as fait ${Math.abs(rangsFaits)}${trop ? ' — un de trop' : ''}.`
+        message: `${q.op} ${q.facteur} décale la virgule de ${Math.abs(q.rangs)} rang${Math.abs(q.rangs) > 1 ? 's' : ''}, tu l'as déplacée de ${Math.abs(rangsFaits)}${trop ? ' — un de trop' : ''}.`
     };
 }
 
@@ -275,6 +282,6 @@ export function verifierEcriture(q, texte) {
         ok: false,
         faute: mauvaise ? 'connue' : 'autre',
         message: mauvaise ? mauvaise.pourquoi
-            : `Ce n'est pas ça. Repose le nombre dans le tableau et fais glisser les chiffres.`
+            : `Ce n'est pas ça. Repose le nombre dans le tableau et déplace la virgule.`
     };
 }

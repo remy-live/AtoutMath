@@ -1,11 +1,21 @@
-// × 10, × 100, × 1000 — LA VIRGULE NE BOUGE PAS.
+// × 10, × 100, × 1000 — LA VIRGULE SE DÉCALE.
 //
 // Trois temps, et l'ordre est le sujet même de l'exercice.
 //
-//   GLISSER.  Le nombre est posé dans un tableau de numération, et l'élève
-//             fait glisser les chiffres d'un rang à l'autre, à la main. La
-//             virgule reste dessinée à sa place, immobile. On ne demande aucun
-//             résultat : on fait faire le geste, et le geste EST la règle.
+//   DÉCALER.  Le nombre est posé dans un tableau de numération, et l'élève
+//             déplace LA VIRGULE d'un rang à l'autre, à la main : vers la
+//             DROITE pour multiplier, vers la gauche pour diviser. Les chiffres
+//             restent à leur place. On ne demande aucun résultat : on fait
+//             faire le geste, et le geste EST la règle — celle que le
+//             professeur dit en classe, dans les mêmes mots.
+//
+//             Faire glisser les chiffres donnait le même résultat et disait
+//             l'inverse. Les deux lectures sont vraies — un chiffre change de
+//             rang, la virgule change de place — mais une seule est celle que
+//             l'élève entend en cours, et c'est celle-là qu'il doit voir. Le
+//             tableau montre l'autre en même temps, sans avoir à la nommer :
+//             les rangs restent écrits en tête de colonne, et le chiffre qui
+//             valait des dixièmes se retrouve à gauche de la virgule.
 //   CHOISIR.  Quatre propositions, dont les trois fausses règles du chapitre.
 //             On n'écrit pas encore ; on reconnaît.
 //   ÉCRIRE.   Le résultat au clavier, sans tableau. C'est là qu'on saura si
@@ -122,12 +132,28 @@ class Virgule extends BaseGame {
                 .vg-case { height: var(--vg-h); }
 
                 /* La virgule est DESSINÉE SUR LE TABLEAU, pas dans un chiffre :
-                   elle marque la frontière entre les unités et les dixièmes, et
-                   c'est cette frontière qui ne bouge jamais. Tout l'exercice
-                   tient dans ce trait immobile. */
+                   c'est un objet à part entière, qu'on déplace d'une frontière
+                   de colonne à la suivante. Tout l'exercice tient dans ce
+                   trait — et dans le fait qu'il GLISSE, doucement, pour qu'on
+                   voie le passage d'un rang à l'autre au lieu de deux états. */
                 .vg-virgule {
                     position: absolute; top: 0; bottom: 0; width: 3px;
                     background: var(--danger); z-index: 3; pointer-events: none;
+                    transition: left .34s cubic-bezier(.35, .1, .25, 1);
+                }
+                /* LE REPÈRE DES UNITÉS. Les en-têtes disent le rang des
+                   colonnes et ne bougent pas — c'est ce qui fait qu'on VOIT le
+                   changement. Mais une fois la virgule déplacée, ce n'est plus
+                   la colonne « unités » qui porte les unités : c'est celle
+                   juste à gauche du trait rouge. Sans ce repère, le tableau
+                   dirait deux choses à la fois. */
+                .vg-unites {
+                    position: absolute; bottom: 2px; height: 17px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 9px; font-weight: 800; letter-spacing: .02em;
+                    color: #fff; background: var(--danger); border-radius: 5px;
+                    z-index: 4; pointer-events: none; white-space: nowrap;
+                    transition: left .34s cubic-bezier(.35, .1, .25, 1);
                 }
                 .vg-virgule::after {
                     content: ','; position: absolute; bottom: -2px; left: 50%;
@@ -135,7 +161,9 @@ class Virgule extends BaseGame {
                     font-size: clamp(24px, 6cqw, 38px); font-weight: 900; line-height: .6;
                 }
 
-                /* Les chiffres GLISSENT : c'est ce mouvement qui est la leçon.
+                /* Les chiffres restent, mais gardent leur transition : le
+                   tableau se réutilise d'une question à l'autre, et une tuile
+                   qui se repose doit le faire proprement.
                    S'ils se téléportaient, on verrait deux états sans voir le
                    passage de l'un à l'autre — donc rien. */
                 .vg-chiffre {
@@ -265,8 +293,8 @@ class Virgule extends BaseGame {
         this.surTouche = (e) => {
             if (this.isDemo) return;
             if (this.phase === 0) {
-                if (e.key === 'ArrowLeft') { e.preventDefault(); this.glisser(1); }
-                if (e.key === 'ArrowRight') { e.preventDefault(); this.glisser(-1); }
+                if (e.key === 'ArrowRight') { e.preventDefault(); this.glisser(1); }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); this.glisser(-1); }
                 if (e.key === 'Enter') { e.preventDefault(); this.validerGlissement(); }
                 return;
             }
@@ -295,9 +323,11 @@ class Virgule extends BaseGame {
                 <div class="vg-case"></div>
             </div>`).join('')
             + `<div class="vg-virgule" data-virgule></div>
+               <div class="vg-unites" data-unites>unités</div>
                <div data-chiffres></div>`;
         this.chiffresEl = this.tabEl.querySelector('[data-chiffres]');
         this.virguleEl = this.tabEl.querySelector('[data-virgule]');
+        this.unitesEl = this.tabEl.querySelector('[data-unites]');
         this.iUnites = iUnites;
         this.majTaille();
         if (!this.redim) {
@@ -315,9 +345,17 @@ class Virgule extends BaseGame {
         this.colW = w;
         this.tabEl.style.setProperty('--vg-w', `${w}px`);
         this.tabEl.style.setProperty('--vg-h', `${h}px`);
-        // La virgule tombe sur la frontière droite de la colonne des unités.
-        this.virguleEl.style.left = `${(this.iUnites + 1) * w - 1.5}px`;
+        this.poserVirgule(w, this.rangsFaits || 0);
         if (this.q) this.placerChiffres(false);
+    }
+
+    /** La virgule sur sa frontière, et l'étiquette « unités » juste à gauche. */
+    poserVirgule(w, rangs) {
+        const bord = (this.iUnites + 1 + rangs) * w;
+        this.virguleEl.style.left = `${bord - 1.5}px`;
+        if (!this.unitesEl) return;
+        this.unitesEl.style.left = `${bord - w + 2}px`;
+        this.unitesEl.style.width = `${w - 4}px`;
     }
 
     /**
@@ -347,29 +385,37 @@ class Virgule extends BaseGame {
         const tuiles = this.chiffresEl.querySelectorAll('[data-e]');
         if (!tuiles.length) return this.construireChiffres();
 
+        // LES CHIFFRES NE BOUGENT PAS : chacun reste sur son rang d'origine.
         tuiles.forEach(el => {
-            const e = Number(el.dataset.e) + this.rangsFaits;
-            const i = INDEX.get(e);
+            const i = INDEX.get(Number(el.dataset.e));
             if (!anime) el.style.transition = 'none';
             if (i === undefined) { el.style.opacity = '0'; return; }
             el.style.opacity = '';
             el.style.transform = `translateX(${i * w}px)`;
         });
+        // C'EST LA VIRGULE QUI SE DÉPLACE, d'un rang par cran — et le repère
+        // des unités la suit, collé à sa gauche.
+        this.poserVirgule(w, this.rangsFaits);
         if (!anime) {
             void this.chiffresEl.offsetWidth;
             tuiles.forEach(el => { el.style.transition = ''; });
         }
 
-        // Les zéros qui COMBLENT jusqu'aux unités. Sans eux, après × 1000 le
-        // tableau montrerait « 7777 » avec la colonne des unités vide, alors
-        // qu'on lit 77770 — et c'est exactement le trou dans lequel l'élève
-        // tombe. Ils ne glissent pas : ils apparaissent, parce qu'ils n'étaient
-        // pas là avant.
+        // Les zéros qui COMBLENT entre le dernier chiffre et la virgule. Sans
+        // eux, après × 1000 le tableau montrerait « 7,777 » avec la virgule
+        // trois rangs plus loin et des colonnes vides entre les deux, alors
+        // qu'on lit 7777 — et c'est exactement le trou dans lequel l'élève
+        // tombe. Ils ne glissent pas : ils apparaissent, parce qu'ils
+        // n'étaient pas là avant.
+        //
+        // `combler` raisonne dans le repère où les chiffres ont bougé ; on
+        // ramène ses colonnes dans le nôtre en retirant le décalage.
         const tete = this.tabEl.querySelector('.vg-tete')?.offsetHeight || 30;
-        const cases = combler(placer(this.q.depart).map(c => ({ ...c, e: c.e + this.rangsFaits })));
-        this.comblesEl.innerHTML = cases.filter(c => c.implicite && INDEX.has(c.e)).map(c => `
+        const r = this.rangsFaits;
+        const cases = combler(placer(this.q.depart).map(c => ({ ...c, e: c.e + r })));
+        this.comblesEl.innerHTML = cases.filter(c => c.implicite && INDEX.has(c.e - r)).map(c => `
             <div class="vg-chiffre vg-chiffre--comble"
-                 style="top:${tete}px;left:0;transform:translateX(${INDEX.get(c.e) * w}px)">
+                 style="top:${tete}px;left:0;transform:translateX(${INDEX.get(c.e - r) * w}px)">
                 <span>0</span></div>`).join('');
     }
 
@@ -389,7 +435,7 @@ class Virgule extends BaseGame {
     }
 
     majFil() {
-        const noms = ['1 · Faire glisser', '2 · Choisir', '3 · Écrire'];
+        const noms = ['1 · Décaler', '2 · Choisir', '3 · Écrire'];
         this.filEl.innerHTML = noms.map((n, i) => {
             const etat = i < this.phase ? 'faite' : i === this.phase ? 'active' : '';
             const compte = i === this.phase ? ` ${this.acquis}/${this.parPhase}` : '';
@@ -411,14 +457,14 @@ class Virgule extends BaseGame {
     // --- Phase 1 : glisser --------------------------------------------------------
 
     peindreGlisser() {
-        this.consigneEl.innerHTML = `Fais glisser les chiffres dans le tableau. La virgule, elle, ne bouge pas.`;
+        this.consigneEl.innerHTML = `Décale <b>la virgule</b> dans le tableau. Les chiffres, eux, ne bougent pas.`;
         this.zoneEl.innerHTML = `
             <div class="vg-fleches">
                 <button type="button" class="vg-fleche" data-sens="1">
-                    <span style="font-size:1.5em">←</span><small>× 10 · un rang</small>
+                    <span style="font-size:1.5em">→</span><small>× 10 · virgule à droite</small>
                 </button>
                 <button type="button" class="vg-fleche" data-sens="-1">
-                    <span style="font-size:1.5em">→</span><small>÷ 10 · un rang</small>
+                    <span style="font-size:1.5em">←</span><small>÷ 10 · virgule à gauche</small>
                 </button>
                 <button type="button" class="vg-fleche vg-fleche--ok" data-valider>
                     <span style="font-size:1.1em">✓</span><small>C'est bon</small>
@@ -430,26 +476,30 @@ class Virgule extends BaseGame {
         });
         this.zoneEl.querySelector('[data-valider]').addEventListener('click', () => this.validerGlissement());
         this.majCompteur();
-        this.note('Le nombre est posé dans le tableau. Chaque chiffre est à son rang.');
+        this.note('Le nombre est posé dans le tableau, chaque chiffre à son rang. '
+            + 'Le trait rouge est la virgule : c\'est elle que tu déplaces.');
     }
 
     majCompteur() {
         const el = this.zoneEl.querySelector('[data-compteur]');
         if (!el) return;
         const n = this.rangsFaits;
-        el.innerHTML = n === 0 ? 'aucun rang' :
-            `<b>${Math.abs(n)}</b> rang${Math.abs(n) > 1 ? 's' : ''} vers ${n > 0 ? 'la gauche' : 'la droite'}`;
+        el.innerHTML = n === 0 ? 'virgule à sa place' :
+            `virgule décalée de <b>${Math.abs(n)}</b> rang${Math.abs(n) > 1 ? 's' : ''} vers ${n > 0 ? 'la droite' : 'la gauche'}`;
     }
 
     glisser(sens) {
         if (this.isDemo || this.phase !== 0 || this.repondu) return;
-        // On borne au tableau : un chiffre qui sortirait par le bord n'aurait
-        // plus de rang, et le tableau mentirait.
-        const cases = placer(this.q.depart);
+        // On borne au tableau. La virgule doit rester sur une frontière de
+        // colonne, et les zéros qu'elle fait apparaître derrière elle doivent
+        // avoir un rang où se poser — sinon le tableau mentirait.
         const suivant = this.rangsFaits + sens;
-        const ok = cases.every(c => INDEX.has(c.e + suivant));
+        const frontiere = this.iUnites + 1 + suivant;
+        const cases = combler(placer(this.q.depart).map(c => ({ ...c, e: c.e + suivant })));
+        const ok = frontiere >= 1 && frontiere <= COLONNES.length - 1
+            && cases.every(c => INDEX.has(c.e - suivant));
         if (!ok) {
-            this.note('Le tableau s\'arrête là : un chiffre n\'aurait plus de rang.', 'ko');
+            this.note('Le tableau s\'arrête là : la virgule n\'aurait plus de rang où aller.', 'ko');
             return;
         }
         this.rangsFaits = suivant;
@@ -517,7 +567,7 @@ class Virgule extends BaseGame {
             });
         });
         this.majEcran();
-        this.note('Repense au tableau : de combien de rangs les chiffres glissent-ils ?');
+        this.note('Repense au tableau : de combien de rangs la virgule se décale-t-elle ?');
     }
 
     taper(c) {
@@ -607,11 +657,13 @@ class Virgule extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le trait rouge, c\'est la virgule. Elle ne bouge jamais.', this.virguleEl);
+        cur.say('Le trait rouge, c\'est la virgule. C\'est ELLE qu\'on déplace.', this.virguleEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say(`${this.q.op} ${this.q.facteur} : ce sont les chiffres qui glissent.`, this.tabEl);
+        cur.say(`${this.q.op} ${this.q.facteur} : la virgule se décale de `
+            + `${Math.abs(this.q.rangs)} rang${Math.abs(this.q.rangs) > 1 ? 's' : ''} vers `
+            + `${this.q.rangs > 0 ? 'la DROITE' : 'la GAUCHE'}. Les chiffres, eux, ne bougent pas.`, this.tabEl);
         if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
 
         const sens = this.q.rangs > 0 ? '1' : '-1';

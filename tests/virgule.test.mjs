@@ -183,20 +183,41 @@ test('une écriture fausse CONNUE est expliquée, pas seulement refusée', () =>
     const q = { depart: '2,5', op: '×', facteur: 10, rangs: 1, resultat: '25' };
     const r = verifierEcriture(q, '0,25');
     assert.equal(r.faute, 'connue');
-    assert.match(r.message, /mauvais sens/i);
+    // La virgule est partie à gauche au lieu d'aller à droite : c'est CE
+    // mot-là que l'élève doit lire, celui qu'il entend en classe.
+    assert.match(r.message, /mauvais côté/i);
+    assert.match(r.message, /GRAND/);
 });
 
-test('la correction dit ce qui se passe, et que la virgule ne bouge pas', () => {
+test('la correction énonce LA RÈGLE avant sa raison', () => {
+    // L'élève entend en classe « la virgule se décale vers la droite ». La
+    // correction doit dire cela D'ABORD — le changement de rang vient ensuite,
+    // comme justification, jamais à la place.
     for (const n of NIVEAUX) {
         for (let g = 1; g <= 25; g++) {
             const q = tirerQuestion(n, makeRng(`x-${n}-${g}`));
             const e = expliquer(q);
             assert.equal(e.length, 3);
             e.forEach(l => assert.ok(!/undefined|NaN/.test(l), `${n} : ${l}`));
-            assert.match(e[2], /virgule ne bouge pas/);
+            assert.match(e[0], /décaler la virgule/);
+            assert.match(e[0], q.rangs > 0 ? /DROITE/ : /GAUCHE/, `${n} ${g} : mauvais sens annoncé`);
+            // La deuxième ligne nomme deux rangs DIFFÉRENTS : c'est la raison.
+            assert.match(e[1], /valait des .+ vaut maintenant des .+/);
             assert.ok(e[2].includes(q.resultat), `${n} ${g} : la correction ne donne pas le résultat`);
-            // La deuxième ligne nomme deux rangs DIFFÉRENTS.
-            assert.match(e[1], /passe des .+ aux .+/);
+        }
+    }
+});
+
+test('le sens annoncé suit toujours l\'opération', () => {
+    // Multiplier agrandit : la virgule va à droite. Diviser rapetisse : à
+    // gauche. Un seul contre-exemple rendrait l'exercice trompeur.
+    for (const n of NIVEAUX) {
+        for (let g = 1; g <= 40; g++) {
+            const q = tirerQuestion(n, makeRng(`s-${n}-${g}`));
+            const sens = verifierGlissement(q, -q.rangs);
+            assert.equal(sens.faute, 'sens');
+            assert.match(sens.message, q.op === '×' ? /DROITE/ : /GAUCHE/);
+            assert.match(sens.message, q.op === '×' ? /plus GRAND/ : /plus PETIT/);
         }
     }
 });

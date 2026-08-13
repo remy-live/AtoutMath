@@ -383,16 +383,20 @@ export const numerationExercises = [
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
         // une règle qui marche pour les entiers et casse dès la première
         // décimale. On ne la déloge pas en la contredisant : on la déloge en
-        // faisant MANIPULER ce qui se passe — les chiffres glissent d'un rang,
-        // la virgule reste — assez longtemps pour que l'image remplace la
+        // faisant MANIPULER ce qui se passe — la virgule se décale d'un rang
+        // vers la droite — assez longtemps pour que l'image remplace la
         // formule. Ensuite seulement on demande de choisir, puis d'écrire.
-        id: 'num-virgule', status: STATUS.TEST, title: 'La Virgule qui ne bouge pas',
+        // On dit « la virgule se décale » et non « les chiffres glissent » :
+        // les deux lectures sont vraies et donnent le même nombre, mais c'est
+        // la première que l'élève entend en classe, et l'exercice ne doit pas
+        // dire le contraire du professeur.
+        id: 'num-virgule', status: STATUS.TEST, title: 'La Virgule qui se décale',
         activityId: 'virgule',
         params: { niveau: 'facile', parPhase: 3 },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Difficulté',
-                aide: "En « facile », on ne fait que multiplier, par 10 ou par 100 : on installe le sens du glissement avant d'ajouter la division. Le nombre de départ a TOUJOURS une partie décimale — avec un entier, la règle fausse « on ajoute un zéro » tomberait juste et sortirait renforcée.",
+                aide: "En « facile », on ne fait que multiplier, par 10 ou par 100 : on installe le sens du décalage avant d'ajouter la division. Le nombre de départ a TOUJOURS une partie décimale — avec un entier, la règle fausse « on ajoute un zéro » tomberait juste et sortirait renforcée.",
                 options: [
                     { value: 'facile', label: '× 10 et × 100 seulement' },
                     { value: 'moyen', label: '× et ÷ par 10, 100, 1000' },
@@ -407,6 +411,6 @@ export const numerationExercises = [
         ],
         skills: ['num.dec.puissances10'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Trois temps. D'abord tu fais GLISSER les chiffres dans le tableau de numération avec les flèches : × 10 les monte d'un rang vers la gauche, ÷ 10 les descend. Regarde bien le trait rouge — c'est la virgule, et elle ne bouge jamais : elle marque la frontière entre les unités et les dixièmes. Ensuite on te demandera de choisir le résultat parmi quatre, puis de l'écrire toi-même. Attention au piège : « multiplier par 10, on ajoute un zéro » est faux dès qu'il y a une virgule — 2,5 et 2,50 sont le même nombre."
+        instruction: "Trois temps. D'abord tu DÉCALES LA VIRGULE dans le tableau de numération avec les flèches : × 10 la pousse d'un rang vers la DROITE, ÷ 10 d'un rang vers la gauche. Les chiffres, eux, ne bougent pas — et c'est ce qui rend la règle visible : le chiffre qui valait des dixièmes se retrouve à gauche de la virgule, il vaut maintenant des unités. Ensuite on te demandera de choisir le résultat parmi quatre, puis de l'écrire toi-même. Attention au piège : « multiplier par 10, on ajoute un zéro » est faux dès qu'il y a une virgule — 2,5 et 2,50 sont le même nombre."
     }
 ];
