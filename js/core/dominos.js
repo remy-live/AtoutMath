@@ -129,126 +129,172 @@ export const seMarient = (a, b) =>
     && a.couple === b.couple && a.type !== b.type;
 
 /**
- * L'état d'un plateau : les pièces posées, chacune avec son sens.
- * Le plateau commence VIDE — on pose la première pièce où l'on veut, puis la
- * chaîne s'allonge des deux côtés. C'est ce qui donne un sens à retourner une
- * pièce : sans deuxième bout, on ne retourne jamais rien.
+ * LE PLATEAU EST DESSINÉ AVANT LA PREMIÈRE PIÈCE.
+ *
+ * Une chaîne qui se construit au fur et à mesure ne montre rien : l'élève ne
+ * sait ni combien de pièces il pose, ni où cela finit. Le vrai jeu de dominos
+ * scolaire — celui qu'on découpe et qu'on distribue — donne une PLANCHE : le
+ * serpentin est tracé, les emplacements sont vides, et l'on voit d'un coup
+ * d'œil la forme de ce qu'il faut reconstituer.
+ *
+ * Le serpentin descend rangée par rangée, chaque virage étant un domino
+ * DEBOUT : c'est ce qui fait tenir douze pièces sur un écran de téléphone.
+ *
+ *     ┌───┬───┐┌───┬───┐┌───┐
+ *     │   │   ││   │   ││   │
+ *     └───┴───┘└───┴───┘├───┤
+ *     ┌───┬───┐┌───┬───┐│   │
+ *     │   │   ││   │   ││   │
+ *     └───┴───┘└───┴───┘└───┘
+ *
+ * Une case connaît sa position en CELLULES (une moitié de domino = une
+ * cellule) et son sens : 'hr' vers la droite, 'hl' vers la gauche, 'vd' vers
+ * le bas, 'vu' vers le haut. Deux cases qui se suivent sur le chemin se
+ * touchent toujours par une arête : c'est là que se lit la jointure.
  */
-export const plateauVide = () => ({ posees: [] });
+export function cheminSerpentin(n, parRangee = 3) {
+    const k = Math.max(1, Math.floor(parRangee));
+    const maxW = k * 2;                 // l'abscisse du virage, en cellules
+    const cases = [];
+    let x = 0, y = 0, sens = 1;
+    for (let i = 0; i < n; i++) {
+        const dernier = i === n - 1;
+        const auBord = (sens === 1 && x >= maxW) || (sens === -1 && x <= 0);
+        if (!dernier && auBord) {
+            cases.push({ x, y, dir: 'vd' });
+            y += 2; sens *= -1;
+        } else {
+            cases.push({ x, y, dir: sens === 1 ? 'hr' : 'hl' });
+            x += sens * 2;
+        }
+    }
+    return normaliserChemin(cases);
+}
 
-/** Les deux moitiés exposées du plateau : celle de gauche, celle de droite. */
-export function boutsLibres(chaine, etat) {
-    if (!etat.posees.length) return { gauche: null, droite: null };
-    const p = etat.posees;
+/** Les deux cellules qu'occupe une case, DANS L'ORDRE DU CHEMIN. */
+export function cellulesDe(c) {
+    if (c.dir === 'hr') return [[c.x, c.y], [c.x + 1, c.y]];
+    if (c.dir === 'hl') return [[c.x, c.y], [c.x - 1, c.y]];
+    if (c.dir === 'vd') return [[c.x, c.y], [c.x, c.y + 1]];
+    return [[c.x, c.y], [c.x, c.y - 1]];
+}
+
+/**
+ * Recale le chemin sur l'origine et donne la taille du plateau. Les modèles
+ * qui remontent ('vu') ou reviennent ('hl') produisent des coordonnées
+ * négatives : sans ce recalage, une partie du plateau sortirait du cadre.
+ */
+export function normaliserChemin(cases) {
+    const cells = cases.flatMap(cellulesDe);
+    const minX = Math.min(...cells.map(c => c[0]));
+    const minY = Math.min(...cells.map(c => c[1]));
+    const bouge = cases.map(c => ({ ...c, x: c.x - minX, y: c.y - minY }));
+    const apres = bouge.flatMap(cellulesDe);
     return {
-        gauche: demiDe(chaine.pieces[p[0].id], 0, p[0].retourne),
-        droite: demiDe(chaine.pieces[p[p.length - 1].id], 1, p[p.length - 1].retourne)
+        cases: bouge,
+        colonnes: Math.max(...apres.map(c => c[0])) + 1,
+        lignes: Math.max(...apres.map(c => c[1])) + 1
+    };
+}
+
+/** Le coin haut-gauche d'une case et sa taille, en cellules. */
+export function boiteDe(c) {
+    const [a, b] = cellulesDe(c);
+    return {
+        x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]),
+        l: a[0] === b[0] ? 1 : 2, h: a[1] === b[1] ? 1 : 2,
+        // Le chemin peut traverser une case à l'envers ('hl', 'vu') : c'est
+        // alors sa SECONDE moitié qui se dessine en premier à l'écran.
+        inverse: a[0] > b[0] || a[1] > b[1]
     };
 }
 
 /**
- * Cette pièce peut-elle se poser de ce côté, et dans quel sens ?
- * @returns {{retourne:boolean}|null}
+ * L'état du plateau : un emplacement par case, vide ou occupé.
+ * Le plateau part vide — toutes les pièces sont en réserve.
  */
-export function poseAdmise(chaine, etat, id, cote) {
-    const piece = chaine.pieces[id];
-    if (!piece || etat.posees.some(x => x.id === id)) return null;
-    if (!etat.posees.length) return { retourne: false };   // la première va où elle veut
-    const bouts = boutsLibres(chaine, etat);
-    const cible = cote === 'gauche' ? bouts.gauche : bouts.droite;
-    for (const retourne of [false, true]) {
-        // Posée à GAUCHE, c'est sa moitié de droite qui touche la chaîne.
-        const mienne = demiDe(piece, cote === 'gauche' ? 1 : 0, retourne);
-        if (seMarient(cible, mienne)) return { retourne };
-    }
-    return null;
-}
+export const plateauVide = (n) => ({ cases: Array(n).fill(null) });
 
-/** Pose la pièce, si elle a le droit. Renvoie un NOUVEL état, ou null. */
-export function poserPiece(chaine, etat, id, cote) {
-    const sens = poseAdmise(chaine, etat, id, cote);
-    if (!sens) return null;
-    const posees = etat.posees.slice();
-    if (!posees.length || cote === 'droite') posees.push({ id, retourne: sens.retourne });
-    else posees.unshift({ id, retourne: sens.retourne });
-    return { posees };
-}
+/** Où se trouve cette pièce sur le plateau, ou −1. */
+export const casePiece = (etat, id) => etat.cases.findIndex(c => c && c.id === id);
 
 /**
- * POSER SANS CONTRÔLE — le contrôle se fait à la fin.
+ * POSE LIBRE : aucun emplacement ne refuse une pièce.
  *
- * Refuser une pièce au moment où l'élève la pose, c'est corriger à sa place :
- * il apprend que le jeu l'empêche de se tromper, et il essaie les pièces une à
- * une jusqu'à ce que ça passe. En laissant poser, on lui demande de DÉCIDER —
- * et la vérification finale montre exactement quelle jointure ne va pas.
+ * Refuser au moment où l'élève pose, c'est corriger à sa place : il essaie les
+ * pièces une à une jusqu'à ce que ça passe, et n'a rien décidé. Ici il pose ce
+ * qu'il veut où il veut — et « Vérifier » lui montre ensuite quelles jointures
+ * ne collent pas.
  */
-export function poserLibre(etat, id, cote, retourne = false) {
-    if (etat.posees.some(x => x.id === id)) return etat;
-    const posees = etat.posees.slice();
-    const p = { id, retourne: !!retourne };
-    if (!posees.length || cote === 'droite') posees.push(p);
-    else posees.unshift(p);
-    return { posees };
+export function poserEnCase(etat, index, id, retourne = false) {
+    if (index < 0 || index >= etat.cases.length) return etat;
+    const cases = etat.cases.map(c => (c && c.id === id ? null : c));
+    cases[index] = { id, retourne: !!retourne };
+    return { cases };
 }
 
-/** Retourne une pièce déjà posée, sans la déplacer. */
-export function retournerPosee(etat, id) {
-    return { posees: etat.posees.map(p => (p.id === id ? { ...p, retourne: !p.retourne } : p)) };
+/** Retire la pièce d'un emplacement : elle repart en réserve. */
+export function retirerDeCase(etat, index) {
+    const cases = etat.cases.slice();
+    cases[index] = null;
+    return { cases };
 }
 
-/** Reprend une pièce du plateau : elle retourne dans la réserve. */
-export function retirerPosee(etat, id) {
-    return { posees: etat.posees.filter(p => p.id !== id) };
+/** Retourne la pièce d'un emplacement, sans la déplacer. */
+export function retournerCase(etat, index) {
+    const cases = etat.cases.slice();
+    if (cases[index]) cases[index] = { ...cases[index], retourne: !cases[index].retourne };
+    return { cases };
 }
+
+/** Tous les emplacements sont-ils occupés ? */
+export const plateauFini = (etat) => etat.cases.every(Boolean);
 
 /**
- * LE CONTRÔLE DE FIN. Chaque jointure doit marier une question et sa réponse ;
- * la chaîne doit commencer par DÉPART et finir par ARRIVÉE. On renvoie les
- * jointures fautives par l'indice de la pièce de GAUCHE, pour que le jeu
- * puisse les entourer une par une.
+ * LE CONTRÔLE DE FIN. Chaque jointure du serpentin doit marier une question et
+ * sa réponse ; la planche doit commencer par un bout et finir par l'autre. On
+ * rend les jointures fautives par l'indice de la case de GAUCHE, pour que le
+ * jeu puisse les entourer une par une : l'élève doit pouvoir relire CE
+ * joint-là, pas chercher lequel.
  */
-export function verifierChaine(chaine, etat) {
-    const p = etat.posees;
+export function verifierPlateau(chaine, etat) {
+    const c = etat.cases;
+    const demi = (k, cote) => (c[k] ? demiDe(chaine.pieces[c[k].id], cote, c[k].retourne) : null);
     const fautes = [];
-    for (let i = 0; i + 1 < p.length; i++) {
-        const droite = demiDe(chaine.pieces[p[i].id], 1, p[i].retourne);
-        const gauche = demiDe(chaine.pieces[p[i + 1].id], 0, p[i + 1].retourne);
-        if (!seMarient(droite, gauche)) fautes.push(i);
+    for (let i = 0; i + 1 < c.length; i++) {
+        if (!c[i] || !c[i + 1]) continue;
+        if (!seMarient(demi(i, 1), demi(i + 1, 0))) fautes.push(i);
     }
-    const complet = p.length === chaine.pieces.length;
-    const premier = p.length ? demiDe(chaine.pieces[p[0].id], 0, p[0].retourne) : null;
-    const dernier = p.length
-        ? demiDe(chaine.pieces[p[p.length - 1].id], 1, p[p.length - 1].retourne) : null;
+    const complet = plateauFini(etat);
+    const premier = demi(0, 0);
+    const dernier = demi(c.length - 1, 1);
     const bouts = !!premier && !!dernier && premier.type === BOUT && dernier.type === BOUT;
     return { fautes, complet, bouts, ok: complet && bouts && fautes.length === 0 };
 }
 
-/** Le côté où cette pièce peut aller, s'il n'y en a qu'un. */
-export function coteNaturel(chaine, etat, id) {
-    const d = poseAdmise(chaine, etat, id, 'droite');
-    const g = poseAdmise(chaine, etat, id, 'gauche');
-    if (d && !g) return 'droite';
-    if (g && !d) return 'gauche';
-    return d ? 'droite' : null;
-}
-
-/** Toutes les pièces sont-elles posées ? */
-export const plateauFini = (chaine, etat) => etat.posees.length === chaine.pieces.length;
-
 /**
- * La prochaine pièce jouable, et de quel côté. C'est ce que suit le robot, et
- * ce que l'aide raconte. Il peut y en avoir deux (une à chaque bout) : on rend
- * la première trouvée, l'ordre de la chaîne n'ayant aucune importance.
+ * La prochaine case à remplir, et par quelle pièce. C'est ce que suit le
+ * robot, et ce que l'aide raconte : on avance le long du serpentin, chaque
+ * case se déduisant de celle d'avant.
  */
-export function prochainePose(chaine, etat) {
-    if (!etat.posees.length) {
-        // Le plateau est vide : on commence par la pièce DÉPART, la seule qui
-        // ne demande aucun calcul.
-        return { id: 0, cote: 'droite' };
-    }
-    for (const cote of ['droite', 'gauche']) {
-        for (const piece of chaine.pieces) {
-            if (poseAdmise(chaine, etat, piece.id, cote)) return { id: piece.id, cote };
+export function prochaineCase(chaine, etat) {
+    const c = etat.cases;
+    let index = c.findIndex((v, i) => !v && (i === 0 || c[i - 1]));
+    if (index < 0) index = c.findIndex(v => !v);
+    if (index < 0) return null;
+    const avant = index > 0 ? c[index - 1] : null;
+    const cible = avant ? demiDe(chaine.pieces[avant.id], 1, avant.retourne) : null;
+    for (const piece of chaine.pieces) {
+        if (casePiece(etat, piece.id) >= 0) continue;
+        if (!cible) {
+            // Première case : on commence par la pièce qui ne demande aucun
+            // calcul — celle qui porte DÉPART.
+            if (piece.demis[0].type === BOUT) return { index, id: piece.id, retourne: false };
+            if (piece.demis[1].type === BOUT) return { index, id: piece.id, retourne: true };
+            continue;
+        }
+        for (const retourne of [false, true]) {
+            if (seMarient(cible, demiDe(piece, 0, retourne))) return { index, id: piece.id, retourne };
         }
     }
     return null;
@@ -256,38 +302,29 @@ export function prochainePose(chaine, etat) {
 
 /**
  * Ce que le robot dit — et ce que reçoit l'élève qui demande de l'aide.
- * Jamais la réponse toute crue : la question qu'il faut se poser, le calcul,
- * puis la moitié qu'on va chercher.
+ * Jamais la réponse toute crue : la moitié qui attend, le calcul, puis ce
+ * qu'on va chercher.
  */
 export function direJoint(chaine, etat, pose) {
     if (!pose) return 'Toutes les pièces sont posées.';
-    if (!etat.posees.length) {
-        return 'Le plateau est vide : on commence par la pièce marquée DÉPART, '
-            + 'la seule qui ne demande aucun calcul.';
+    const avant = pose.index > 0 ? etat.cases[pose.index - 1] : null;
+    if (!avant) {
+        return 'Le plateau est vide : on commence par le premier emplacement, avec la '
+            + 'pièce marquée DÉPART — la seule qui ne demande aucun calcul.';
     }
-    const bouts = boutsLibres(chaine, etat);
-    const bout = pose.cote === 'gauche' ? bouts.gauche : bouts.droite;
-    const cote = pose.cote === 'gauche' ? 'à gauche' : 'à droite';
+    const bout = demiDe(chaine.pieces[avant.id], 1, avant.retourne);
+    const couple = chaine.couples[bout.couple];
+    if (!couple) {
+        return 'L\'emplacement d\'avant se termine par un bout de la planche : '
+            + 'cherche la pièce qui la prolonge.';
+    }
     if (bout.type === QUESTION) {
-        const c = chaine.couples[bout.couple];
-        return `Le bout ouvert ${cote} demande « ${c.q} ». ${c.q} fait ${c.r} : `
-            + `je cherche donc la pièce qui porte ${c.r}.`;
+        return `L'emplacement d'avant se termine par « ${couple.q} ». ${couple.q} fait `
+            + `${couple.r} : je cherche donc la pièce qui porte ${couple.r}.`;
     }
-    const c = chaine.couples[bout.couple];
-    return `Le bout ouvert ${cote} porte ${c.r}. Ce n'est pas une question, c'est une réponse : `
-        + `je cherche la pièce dont la question fait ${c.r} — c'est « ${c.q} ».`;
-}
-
-/** La correction d'une pièce mal posée : pourquoi celle-là ne va pas. */
-export function direErreur(chaine, etat, id) {
-    const jouee = chaine.pieces[id];
-    if (!jouee) return 'Cette pièce ne peut pas venir ici.';
-    if (!etat.posees.length) return 'Le plateau est vide : commence par la pièce DÉPART.';
-    const bouts = boutsLibres(chaine, etat);
-    const dire = (d) => d ? (d.type === BOUT ? `« ${d.texte} »` : `« ${d.texte} »`) : 'rien';
-    return `Aucun bout de cette pièce ne va avec la chaîne. À gauche elle attend ${dire(bouts.gauche)}, `
-        + `à droite ${dire(bouts.droite)} — et cette pièce porte ${dire(jouee.demis[0])} `
-        + `et ${dire(jouee.demis[1])}.`;
+    return `L'emplacement d'avant se termine par ${couple.r}. Ce n'est pas une question, `
+        + `c'est une réponse : je cherche la pièce dont la question fait ${couple.r} — `
+        + `c'est « ${couple.q} ».`;
 }
 
 /**

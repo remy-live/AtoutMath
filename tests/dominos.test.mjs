@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     DEPART, ARRIVEE, QUESTION, REPONSE, BOUT, compacter, rassemblerCouples,
-    construireChaine, plateauVide, boutsLibres, poseAdmise, poserPiece,
-    coteNaturel, plateauFini, prochainePose, seMarient, demiDe,
-    direJoint, direErreur, reserveMelangee, direChaine, MIN_COUPLES, poserLibre, retournerPosee, retirerPosee, verifierChaine
+    construireChaine, cheminSerpentin, cellulesDe, boiteDe, plateauVide, casePiece,
+    poserEnCase, retirerDeCase, retournerCase, plateauFini, verifierPlateau,
+    prochaineCase, seMarient, demiDe, direJoint, reserveMelangee, direChaine, MIN_COUPLES
 } from '../js/core/dominos.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -112,86 +112,129 @@ test('retourner une pièce échange ses deux moitiés', () => {
     assert.equal(demiDe(p, 1, true), p.demis[0]);
 });
 
-test('le plateau part vide et s\'allonge par les DEUX bouts', () => {
-    const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
-    let etat = plateauVide();
-    assert.deepEqual(boutsLibres(ch, etat), { gauche: null, droite: null });
-
-    // On commence au milieu, exprès : rien n'oblige à partir du DÉPART.
-    etat = poserPiece(ch, etat, 3, 'droite');
-    assert.equal(etat.posees.length, 1);
-    // La pièce 2 se raccroche à gauche, la pièce 4 à droite.
-    assert.ok(poseAdmise(ch, etat, 2, 'gauche'));
-    assert.ok(!poseAdmise(ch, etat, 2, 'droite'));
-    assert.ok(poseAdmise(ch, etat, 4, 'droite'));
-    assert.ok(!poseAdmise(ch, etat, 4, 'gauche'));
-    // Et une pièce qui n'a rien à voir ne va nulle part.
-    assert.equal(poseAdmise(ch, etat, 0, 'gauche'), null);
-
-    etat = poserPiece(ch, etat, 2, 'gauche');
-    etat = poserPiece(ch, etat, 4, 'droite');
-    assert.deepEqual(etat.posees.map(p => p.id), [2, 3, 4]);
-    // Une pièce déjà posée ne se repose pas.
-    assert.equal(poseAdmise(ch, etat, 3, 'droite'), null);
-    assert.ok(!plateauFini(ch, etat));
-});
-
-test('une pièce se retourne toute seule quand c\'est le seul moyen', () => {
-    // Posée à gauche de la chaîne, une pièce présente sa moitié DROITE : elle
-    // doit donc pivoter. L'élève n'a pas à s'en occuper.
-    const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
-    let etat = poserPiece(ch, plateauVide(), 2, 'droite');
-    const sens = poseAdmise(ch, etat, 1, 'gauche');
-    assert.ok(sens);
-    etat = poserPiece(ch, etat, 1, 'gauche');
-    // Après la pose, la chaîne se relit dans le bon ordre : la moitié droite
-    // de la pièce 1 touche la moitié gauche de la pièce 2.
-    const g = etat.posees[0], d = etat.posees[1];
-    assert.ok(seMarient(demiDe(ch.pieces[g.id], 1, g.retourne), demiDe(ch.pieces[d.id], 0, d.retourne)));
-});
-
-test('le plateau entier se remplit, et alors c\'est fini', () => {
-    const ch = construireChaine(rassemblerCouples(tirageSimple(), 6));
-    let etat = plateauVide();
-    let garde = 0;
-    while (!plateauFini(ch, etat) && garde++ < 40) {
-        const pose = prochainePose(ch, etat);
-        assert.ok(pose, 'la chaîne doit toujours pouvoir continuer');
-        etat = poserPiece(ch, etat, pose.id, pose.cote);
-        assert.ok(etat, 'la pose annoncée doit être admise');
+test('le serpentin ne se coupe jamais, et ne se marche jamais dessus', () => {
+    // Deux propriétés font toute la planche : chaque case touche la suivante
+    // (sinon la jointure ne veut rien dire) et aucune cellule ne sert deux
+    // fois (sinon deux pièces se recouvrent à l'écran).
+    for (const parRangee of [2, 3, 4, 5, 6]) {
+        for (const n of [4, 7, 9, 13, 16]) {
+            const ch = cheminSerpentin(n, parRangee);
+            assert.equal(ch.cases.length, n, `${n}/${parRangee} : il manque des emplacements`);
+            const cellules = ch.cases.flatMap(cellulesDe);
+            assert.equal(new Set(cellules.map(c => c.join(','))).size, cellules.length,
+                `${n}/${parRangee} : deux emplacements se recouvrent`);
+            for (let i = 0; i + 1 < n; i++) {
+                const a = cellulesDe(ch.cases[i])[1];
+                const b = cellulesDe(ch.cases[i + 1])[0];
+                assert.equal(Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]), 1,
+                    `${n}/${parRangee} : rupture entre ${i} et ${i + 1}`);
+            }
+            // Et tout tient dans le cadre annoncé, sans coordonnée négative.
+            cellules.forEach(([x, y]) => {
+                assert.ok(x >= 0 && x < ch.colonnes, `abscisse ${x} hors du plateau`);
+                assert.ok(y >= 0 && y < ch.lignes, `ordonnée ${y} hors du plateau`);
+            });
+        }
     }
-    assert.ok(plateauFini(ch, etat));
-    assert.equal(prochainePose(ch, etat), null);
-    // Et la chaîne obtenue est bien la chaîne d'origine, DÉPART puis ARRIVÉE.
-    assert.deepEqual(etat.posees.map(p => p.id), ch.pieces.map(p => p.id));
 });
 
-test('le côté naturel évite de viser', () => {
+test('une case couchée fait deux cellules de large, une case debout deux de haut', () => {
+    const ch = cheminSerpentin(9, 3);
+    ch.cases.forEach((c, i) => {
+        const b = boiteDe(c);
+        assert.equal(b.l * b.h, 2, `case ${i} : un domino occupe deux cellules`);
+        assert.ok((b.l === 2 && b.h === 1) || (b.l === 1 && b.h === 2));
+        // Le retour de serpentin traverse la case à l'envers : c'est alors sa
+        // seconde moitié qui se dessine en premier.
+        assert.equal(b.inverse, c.dir === 'hl' || c.dir === 'vu', `case ${i}`);
+    });
+    assert.ok(ch.cases.some(c => c.dir === 'vd'), 'un serpentin sans virage n\'en est pas un');
+    assert.ok(ch.cases.some(c => c.dir === 'hl'), 'et il doit revenir dans l\'autre sens');
+});
+
+test('le plateau part vide, et n\'importe quelle pièce entre n\'importe où', () => {
+    // ON POSE, ON NE JUGE PAS : refuser au moment de la pose, c'est corriger à
+    // la place de l'élève. La sanction vient à la vérification.
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
+    let etat = plateauVide(ch.pieces.length);
+    assert.equal(etat.cases.length, 6);
+    assert.ok(!plateauFini(etat));
+    assert.equal(casePiece(etat, 3), -1);
+
+    etat = poserEnCase(etat, 4, 0);            // le DÉPART tout au bout : admis
+    assert.equal(casePiece(etat, 0), 4);
+    assert.equal(etat.cases[4].id, 0);
+    // Une pièce déjà posée se DÉPLACE au lieu de se dédoubler.
+    etat = poserEnCase(etat, 1, 0);
+    assert.equal(etat.cases[4], null);
+    assert.equal(casePiece(etat, 0), 1);
+    assert.equal(etat.cases.filter(Boolean).length, 1);
+
+    etat = retournerCase(etat, 1);
+    assert.equal(etat.cases[1].retourne, true);
+    etat = retirerDeCase(etat, 1);
+    assert.equal(casePiece(etat, 0), -1);
+});
+
+test('la vérification entoure la jointure fautive, pas la planche entière', () => {
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
+    // La bonne planche : chaque pièce à sa place, dans l'ordre du serpentin.
+    let juste = plateauVide(ch.pieces.length);
+    ch.pieces.forEach((p, i) => { juste = poserEnCase(juste, i, p.id); });
+    const bon = verifierPlateau(ch, juste);
+    assert.ok(bon.ok && bon.complet && bon.bouts);
+    assert.deepEqual(bon.fautes, []);
+
+    // Deux pièces interverties : DEUX jointures cassent autour de chacune.
+    let faux = poserEnCase(poserEnCase(juste, 1, 2), 2, 1);
+    const bilan = verifierPlateau(ch, faux);
+    assert.ok(!bilan.ok);
+    assert.ok(bilan.complet, 'la planche est pleine : c\'est bien la LECTURE qui cloche');
+    assert.deepEqual(bilan.fautes, [0, 1, 2], 'les trois jointures autour de l\'échange');
+
+    // Une planche incomplète n'est pas fausse pour autant : on ne gronde pas
+    // un élève qui n'a pas fini.
+    const partiel = retirerDeCase(juste, 3);
+    const b2 = verifierPlateau(ch, partiel);
+    assert.ok(!b2.ok && !b2.complet);
+    assert.deepEqual(b2.fautes, [], 'un trou ne fabrique pas de fautes');
+});
+
+test('la planche se lit aussi à l\'envers — c\'est un domino, pas une dictée', () => {
+    // Poser la chaîne en commençant par ARRIVÉE, chaque pièce retournée, donne
+    // une planche tout aussi juste. Refuser celle-là serait arbitraire.
     const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
-    let etat = poserPiece(ch, plateauVide(), 2, 'droite');
-    assert.equal(coteNaturel(ch, etat, 1), 'gauche');
-    assert.equal(coteNaturel(ch, etat, 3), 'droite');
-    assert.equal(coteNaturel(ch, etat, 0), null, 'une pièce qui ne va nulle part n\'a pas de côté');
+    let etat = plateauVide(ch.pieces.length);
+    ch.pieces.slice().reverse().forEach((p, i) => { etat = poserEnCase(etat, i, p.id, true); });
+    assert.ok(verifierPlateau(ch, etat).ok);
+});
+
+test('le robot avance le long du serpentin, case par case', () => {
+    const ch = construireChaine(rassemblerCouples(tirageSimple(), 6));
+    let etat = plateauVide(ch.pieces.length);
+    let garde = 0, pose;
+    const vues = [];
+    while ((pose = prochaineCase(ch, etat)) && garde++ < 40) {
+        vues.push(pose.index);
+        etat = poserEnCase(etat, pose.index, pose.id, pose.retourne);
+    }
+    assert.ok(plateauFini(etat), 'le robot doit remplir toute la planche');
+    assert.deepEqual(vues, ch.pieces.map((_, i) => i), 'et la remplir dans l\'ordre');
+    assert.ok(verifierPlateau(ch, etat).ok, 'ce que pose le robot doit être juste');
+    assert.equal(prochaineCase(ch, etat), null);
 });
 
 test('le robot explique le chemin, il ne donne pas la pièce', () => {
     const ch = construireChaine(rassemblerCouples(tirageSimple(), 4));
+    let etat = plateauVide(ch.pieces.length);
     // Plateau vide : on commence par le DÉPART, et on dit pourquoi.
-    assert.match(direJoint(ch, plateauVide(), prochainePose(ch, plateauVide())), /DÉPART/);
-    const etat = poserPiece(ch, plateauVide(), 1, 'droite');
-    const dit = direJoint(ch, etat, prochainePose(ch, etat));
-    assert.match(dit, /bout ouvert/);
-    assert.match(dit, /à (gauche|droite)/, 'il doit dire OÙ chercher, pas seulement quoi');
-    assert.ok(dit.length > 40);
-});
-
-test('une pièce mal posée reçoit sa raison, pas un simple « faux »', () => {
-    const ch = construireChaine(rassemblerCouples(tirageSimple(), 5));
-    const etat = poserPiece(ch, plateauVide(), 2, 'droite');
-    const raison = direErreur(ch, etat, 0);
-    assert.match(raison, /gauche/);
-    assert.match(raison, /droite/);
-    assert.ok(raison.length > 40, 'une correction d\'un mot n\'apprend rien');
+    assert.match(direJoint(ch, etat, prochaineCase(ch, etat)), /DÉPART/);
+    etat = poserEnCase(etat, 0, 0);
+    const dit = direJoint(ch, etat, prochaineCase(ch, etat));
+    assert.match(dit, /emplacement d'avant/);
+    assert.ok(dit.length > 40, 'une correction d\'un mot n\'apprend rien');
+    // Et jamais le numéro de la pièce à prendre : seulement ce qu'on cherche.
+    assert.ok(!/pièce numéro/i.test(dit));
 });
 
 test('la réserve porte TOUTES les pièces, mélangées', () => {
@@ -262,42 +305,4 @@ test('le générateur pose une planche complète sur la feuille', () => {
         assert.ok(!/undefined|NaN/.test(it.explanation));
         assert.match(it.explanation, /ARRIVÉE/);
     }
-});
-
-test('on pose ce qu\'on veut, et c\'est la vérification finale qui tranche', () => {
-    // Refuser une pièce au moment où l'élève la pose, c'est corriger à sa
-    // place. On laisse poser, et on montre ensuite quelle jointure ne va pas.
-    // Des couples TOUS DIFFÉRENTS : avec le même partout, n'importe quelle
-    // question épouserait n'importe quelle réponse et le test ne dirait rien.
-    const c = construireChaine([
-        { question: '2 × 2', reponse: '4' }, { question: '2 × 3', reponse: '6' },
-        { question: '2 × 5', reponse: '10' }, { question: '2 × 7', reponse: '14' }
-    ]);
-    let e = plateauVide();
-    // La bonne chaîne, dans l'ordre : rien à signaler.
-    for (let i = 0; i < c.pieces.length; i++) e = poserLibre(e, i, 'droite', false);
-    const bon = verifierChaine(c, e);
-    assert.equal(bon.fautes.length, 0);
-    assert.ok(bon.complet && bon.bouts && bon.ok);
-
-    // Deux pièces échangées : la jointure fautive est nommée, pas la partie.
-    let f = plateauVide();
-    const ordre = [0, 2, 1, 3, 4].filter(i => i < c.pieces.length);
-    for (const i of ordre) f = poserLibre(f, i, 'droite', false);
-    const mauvais = verifierChaine(c, f);
-    assert.ok(mauvais.fautes.length > 0, 'un échange doit se voir');
-    assert.ok(!mauvais.ok);
-});
-
-test('retourner et reprendre une pièce posée', () => {
-    const c = construireChaine([
-        { question: '4 × 2', reponse: '8' }, { question: '4 × 3', reponse: '12' },
-        { question: '4 × 5', reponse: '20' }
-    ]);
-    let e = poserLibre(plateauVide(), 1, 'droite', false);
-    assert.equal(e.posees[0].retourne, false);
-    e = retournerPosee(e, 1);
-    assert.equal(e.posees[0].retourne, true);
-    e = retirerPosee(e, 1);
-    assert.equal(e.posees.length, 0, 'la pièce reprise quitte le plateau');
 });
