@@ -174,6 +174,55 @@ export function poserPiece(chaine, etat, id, cote) {
     return { posees };
 }
 
+/**
+ * POSER SANS CONTRÔLE — le contrôle se fait à la fin.
+ *
+ * Refuser une pièce au moment où l'élève la pose, c'est corriger à sa place :
+ * il apprend que le jeu l'empêche de se tromper, et il essaie les pièces une à
+ * une jusqu'à ce que ça passe. En laissant poser, on lui demande de DÉCIDER —
+ * et la vérification finale montre exactement quelle jointure ne va pas.
+ */
+export function poserLibre(etat, id, cote, retourne = false) {
+    if (etat.posees.some(x => x.id === id)) return etat;
+    const posees = etat.posees.slice();
+    const p = { id, retourne: !!retourne };
+    if (!posees.length || cote === 'droite') posees.push(p);
+    else posees.unshift(p);
+    return { posees };
+}
+
+/** Retourne une pièce déjà posée, sans la déplacer. */
+export function retournerPosee(etat, id) {
+    return { posees: etat.posees.map(p => (p.id === id ? { ...p, retourne: !p.retourne } : p)) };
+}
+
+/** Reprend une pièce du plateau : elle retourne dans la réserve. */
+export function retirerPosee(etat, id) {
+    return { posees: etat.posees.filter(p => p.id !== id) };
+}
+
+/**
+ * LE CONTRÔLE DE FIN. Chaque jointure doit marier une question et sa réponse ;
+ * la chaîne doit commencer par DÉPART et finir par ARRIVÉE. On renvoie les
+ * jointures fautives par l'indice de la pièce de GAUCHE, pour que le jeu
+ * puisse les entourer une par une.
+ */
+export function verifierChaine(chaine, etat) {
+    const p = etat.posees;
+    const fautes = [];
+    for (let i = 0; i + 1 < p.length; i++) {
+        const droite = demiDe(chaine.pieces[p[i].id], 1, p[i].retourne);
+        const gauche = demiDe(chaine.pieces[p[i + 1].id], 0, p[i + 1].retourne);
+        if (!seMarient(droite, gauche)) fautes.push(i);
+    }
+    const complet = p.length === chaine.pieces.length;
+    const premier = p.length ? demiDe(chaine.pieces[p[0].id], 0, p[0].retourne) : null;
+    const dernier = p.length
+        ? demiDe(chaine.pieces[p[p.length - 1].id], 1, p[p.length - 1].retourne) : null;
+    const bouts = !!premier && !!dernier && premier.type === BOUT && dernier.type === BOUT;
+    return { fautes, complet, bouts, ok: complet && bouts && fautes.length === 0 };
+}
+
 /** Le côté où cette pièce peut aller, s'il n'y en a qu'un. */
 export function coteNaturel(chaine, etat, id) {
     const d = poseAdmise(chaine, etat, id, 'droite');

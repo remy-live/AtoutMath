@@ -7,7 +7,7 @@ import {
     DEPART, ARRIVEE, QUESTION, REPONSE, BOUT, compacter, rassemblerCouples,
     construireChaine, plateauVide, boutsLibres, poseAdmise, poserPiece,
     coteNaturel, plateauFini, prochainePose, seMarient, demiDe,
-    direJoint, direErreur, reserveMelangee, direChaine, MIN_COUPLES
+    direJoint, direErreur, reserveMelangee, direChaine, MIN_COUPLES, poserLibre, retournerPosee, retirerPosee, verifierChaine
 } from '../js/core/dominos.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -262,4 +262,42 @@ test('le générateur pose une planche complète sur la feuille', () => {
         assert.ok(!/undefined|NaN/.test(it.explanation));
         assert.match(it.explanation, /ARRIVÉE/);
     }
+});
+
+test('on pose ce qu\'on veut, et c\'est la vérification finale qui tranche', () => {
+    // Refuser une pièce au moment où l'élève la pose, c'est corriger à sa
+    // place. On laisse poser, et on montre ensuite quelle jointure ne va pas.
+    // Des couples TOUS DIFFÉRENTS : avec le même partout, n'importe quelle
+    // question épouserait n'importe quelle réponse et le test ne dirait rien.
+    const c = construireChaine([
+        { question: '2 × 2', reponse: '4' }, { question: '2 × 3', reponse: '6' },
+        { question: '2 × 5', reponse: '10' }, { question: '2 × 7', reponse: '14' }
+    ]);
+    let e = plateauVide();
+    // La bonne chaîne, dans l'ordre : rien à signaler.
+    for (let i = 0; i < c.pieces.length; i++) e = poserLibre(e, i, 'droite', false);
+    const bon = verifierChaine(c, e);
+    assert.equal(bon.fautes.length, 0);
+    assert.ok(bon.complet && bon.bouts && bon.ok);
+
+    // Deux pièces échangées : la jointure fautive est nommée, pas la partie.
+    let f = plateauVide();
+    const ordre = [0, 2, 1, 3, 4].filter(i => i < c.pieces.length);
+    for (const i of ordre) f = poserLibre(f, i, 'droite', false);
+    const mauvais = verifierChaine(c, f);
+    assert.ok(mauvais.fautes.length > 0, 'un échange doit se voir');
+    assert.ok(!mauvais.ok);
+});
+
+test('retourner et reprendre une pièce posée', () => {
+    const c = construireChaine([
+        { question: '4 × 2', reponse: '8' }, { question: '4 × 3', reponse: '12' },
+        { question: '4 × 5', reponse: '20' }
+    ]);
+    let e = poserLibre(plateauVide(), 1, 'droite', false);
+    assert.equal(e.posees[0].retourne, false);
+    e = retournerPosee(e, 1);
+    assert.equal(e.posees[0].retourne, true);
+    e = retirerPosee(e, 1);
+    assert.equal(e.posees.length, 0, 'la pièce reprise quitte le plateau');
 });

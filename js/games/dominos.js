@@ -27,6 +27,7 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import {
     DEPART, ARRIVEE, QUESTION, BOUT,
     plateauVide, boutsLibres, poseAdmise, poserPiece, coteNaturel, plateauFini,
+    poserLibre, retournerPosee, retirerPosee, verifierChaine,
     prochainePose, direJoint, direErreur, reserveMelangee, demiDe, ajusterAuCarre
 } from '../core/dominos.js';
 import { chaineDepuisGenerateur, sourceDe } from '../core/generators/dominos.js';
@@ -103,7 +104,19 @@ class Dominos extends BaseGame {
                 .dm-demi--bout { background: color-mix(in srgb, #c4b5fd 34%, var(--bg-panel)); letter-spacing: .04em; }
                 .dm-demi + .dm-demi { border-left: 2px solid var(--text-main); }
 
-                .dm-piece--reserve { cursor: grab; transition: transform .12s ease, box-shadow .12s ease; }
+                /* LA RÉSERVE PRÉSENTE LES PIÈCES DEBOUT, comme on les tient en
+                   main avant de les poser à plat. Couchées, elles ressemblaient
+                   déjà à des pièces posées, et on ne voyait plus ce qui était
+                   sur le plateau et ce qui restait à jouer. */
+                .dm-piece--reserve {
+                    cursor: grab; flex-direction: column;
+                    transition: transform .12s ease, box-shadow .12s ease;
+                }
+                /* Debout, la séparation passe à l'horizontale : sans cela les
+                   deux moitiés se collaient sans trait entre elles. */
+                .dm-piece--reserve .dm-demi + .dm-demi {
+                    border-left: 0; border-top: 2px solid var(--text-main);
+                }
                 .dm-piece--reserve:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.17); }
                 .dm-piece--vole {
                     position: fixed; z-index: 9999; pointer-events: none; cursor: grabbing;
@@ -115,15 +128,20 @@ class Dominos extends BaseGame {
                 @keyframes dm-faute { 50% { border-color: var(--danger, #dc2626); transform: translateX(-4px) rotate(-2deg); } }
                 .dm-piece--montre { box-shadow: 0 0 0 4px var(--primary); }
 
-                /* LA POIGNÉE POUR TOURNER. Toujours visible : cachée derrière
-                   un survol, elle n'existe pas sur une tablette. */
-                .dm-tourner {
-                    position: absolute; top: 1px; right: 1px; width: 17px; height: 17px;
+                /* LES POIGNÉES. Toujours visibles : cachées derrière un survol,
+                   elles n'existent pas sur une tablette. On peut retourner une
+                   pièce EN RÉSERVE COMME SUR LE PLATEAU — une pièce posée à
+                   l'envers doit pouvoir se remettre à l'endroit sans qu'on
+                   défasse tout — et reprendre une pièce qu'on a mal placée. */
+                .dm-poignee {
+                    position: absolute; top: 1px; width: 17px; height: 17px;
                     border: 0; border-radius: 50%; background: var(--text-main); color: var(--bg-panel);
                     font-size: 10px; line-height: 1; cursor: pointer; padding: 0;
                     display: flex; align-items: center; justify-content: center; opacity: .55;
                 }
-                .dm-tourner:hover { opacity: 1; }
+                .dm-poignee:hover { opacity: 1; }
+                .dm-tourner { right: 1px; }
+                .dm-reprendre { left: 1px; }
 
                 /* LES DEUX BOUTS OÙ L'ON DÉPOSE. */
                 .dm-bout {
@@ -138,10 +156,19 @@ class Dominos extends BaseGame {
                 }
 
                 .dm-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
+                /* LA JOINTURE FAUTIVE S'ENTOURE. On ne dit pas « c'est faux » :
+                   on montre OÙ, et l'élève relit ce joint-là. */
+                .dm-piece--joint {
+                    outline: 3px solid var(--danger, #dc2626);
+                    outline-offset: 2px; border-radius: 8px;
+                }
                 .dm-btn {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; padding: 7px 13px;
                 }
+                /* « Vérifier » est LE geste de fin : il se voit. (Déclaré après
+                   .dm-btn, sans quoi le fond neutre l'emporterait.) */
+                .dm-btn--verifier { border-color: var(--primary); background: var(--primary); color: #fff; }
                 .dm-note {
                     min-height: 2.6em; text-align: center; font-size: .86rem;
                     color: var(--text-muted); max-width: 660px; flex: 0 0 auto; padding: 0 8px;
@@ -160,6 +187,7 @@ class Dominos extends BaseGame {
                 <div class="dm-zone">La réserve</div>
                 <div class="dm-reserve" data-reserve></div>
                 <div class="dm-barre">
+                    <button type="button" class="dm-btn dm-btn--verifier" data-verifier>✓ Vérifier</button>
                     <button type="button" class="dm-btn" data-aide>💡 Aide-moi</button>
                     <button type="button" class="dm-btn" data-recommencer>↺ Recommencer</button>
                     <button type="button" class="dm-btn" data-neuf>Autre jeu</button>
@@ -174,6 +202,7 @@ class Dominos extends BaseGame {
 
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
         this.container.querySelector('[data-recommencer]').onclick = () => this.recommencer();
+        this.container.querySelector('[data-verifier]').onclick = () => this.verifier();
         this.container.querySelector('[data-neuf]').onclick = () => this.showNext();
     }
 
@@ -192,9 +221,11 @@ class Dominos extends BaseGame {
         this.etat = plateauVide();
         this.reserve = reserveMelangee(this.chaine, this.rng);
         this.retournees = new Set();
+        this.dernierePosee = null;
         this.teteEl.innerHTML = `<b>Dominos — ${echapper(this.source.label)}</b><br>
             <span class="dm-consigne">Glisse les pièces sur le plateau, ou touche-les.
-            La chaîne s'allonge des deux côtés ; ↻ retourne une pièce.</span>`;
+            La chaîne s'allonge des deux côtés ; ↻ retourne une pièce, ↩ la reprend.
+            « Vérifier » entoure les jointures fausses.</span>`;
         this.dessiner();
         this.note('');
     }
@@ -209,16 +240,19 @@ class Dominos extends BaseGame {
      */
     taillePolice(texte) { return ajusterAuCarre(texte); }
 
-    pieceHtml(piece, retourne, classes, avecPoignee) {
+    pieceHtml(piece, retourne, classes, poignees) {
         const demi = (cote) => {
             const d = demiDe(piece, cote, retourne);
             const genre = d.type === BOUT ? 'bout' : (d.type === QUESTION ? 'question' : 'reponse');
             return `<span class="dm-demi dm-demi--${genre}"
                 style="font-size:calc(var(--dm-cote) * ${this.taillePolice(d.texte)})">${echapper(d.texte)}</span>`;
         };
+        const bouton = (nom, glyphe, titre) => this.isDemo ? ''
+            : `<button type="button" class="dm-poignee dm-${nom}" data-${nom} title="${titre}">${glyphe}</button>`;
         return `<div class="dm-piece ${classes}" data-piece="${piece.id}">
             ${demi(0)}${demi(1)}
-            ${avecPoignee ? '<button type="button" class="dm-tourner" data-tourner title="Retourner la pièce">↻</button>' : ''}
+            ${poignees ? bouton('tourner', '↻', 'Retourner la pièce') : ''}
+            ${poignees === 'plateau' ? bouton('reprendre', '↩', 'Reprendre la pièce') : ''}
         </div>`;
     }
 
@@ -227,22 +261,46 @@ class Dominos extends BaseGame {
         this.plateauEl.classList.toggle('dm-plateau--vide', vide);
         this.plateauEl.innerHTML = vide ? '' :
             `<div class="dm-bout" data-bout="gauche">+</div>`
-            + this.etat.posees.map(p =>
-                this.pieceHtml(this.chaine.pieces[p.id], p.retourne, 'dm-piece--posee', false)).join('')
+            + this.etat.posees.map(p => this.pieceHtml(this.chaine.pieces[p.id], p.retourne,
+                p.id === this.dernierePosee ? 'dm-piece--posee' : '', 'plateau')).join('')
             + `<div class="dm-bout" data-bout="droite">+</div>`;
 
         this.reserveEl.innerHTML = this.reserve
-            .map(id => this.pieceHtml(this.chaine.pieces[id], this.retournees.has(id), 'dm-piece--reserve', true))
+            .map(id => this.pieceHtml(this.chaine.pieces[id], this.retournees.has(id),
+                'dm-piece--reserve', 'reserve'))
             .join('');
+
+        // Sur le plateau : ↻ remet la pièce à l'endroit sans la déplacer,
+        // ↩ la renvoie en réserve. Sans ces deux gestes, une erreur entourée
+        // par « Vérifier » ne se corrigerait pas.
+        this.plateauEl.querySelectorAll('[data-piece]').forEach(el => {
+            const id = Number(el.dataset.piece);
+            el.querySelector('[data-tourner]')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (this.isDemo) return;
+                this.etat = retournerPosee(this.etat, id);
+                this.dessiner();
+                this.note('Pièce retournée. Appuie sur « Vérifier » quand tu veux relire la chaîne.');
+            });
+            el.querySelector('[data-reprendre]')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (this.isDemo) return;
+                this.etat = retirerPosee(this.etat, id);
+                this.reserve = this.reserve.concat(id);
+                this.dernierePosee = null;
+                this.dessiner();
+                this.note('Pièce reprise : elle repart en réserve.');
+            });
+        });
 
         this.reserveEl.querySelectorAll('[data-piece]').forEach(el => {
             const id = Number(el.dataset.piece);
-            el.querySelector('[data-tourner]').onclick = (ev) => {
+            el.querySelector('[data-tourner]')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (this.isDemo) return;
                 if (this.retournees.has(id)) this.retournees.delete(id); else this.retournees.add(id);
                 this.dessiner();
-            };
+            });
             el.onpointerdown = (ev) => this.commencerGlisse(ev, id, el);
         });
     }
@@ -324,11 +382,65 @@ class Dominos extends BaseGame {
 
     // --- Poser une pièce ----------------------------------------------------
 
+    /**
+     * ON POSE, ON NE JUGE PAS. Refuser la pièce au moment où l'élève la pose,
+     * c'est corriger à sa place : il finit par essayer les pièces une à une
+     * jusqu'à ce que ça passe. Ici la pose est libre — et le bouton
+     * « Vérifier » montre ensuite quelles jointures ne vont pas.
+     */
     jouer(id, cote, el) {
         if (this.isDemo || !this.chaine) return;
-        const suivant = cote ? poserPiece(this.chaine, this.etat, id, cote) : null;
-        if (!suivant) return this.refuser(id, el);
-        this.accepter(id, suivant);
+        if (!cote) return this.refuser(id, el);
+        // Le sens qui marie, s'il existe : l'élève choisit le bout, pas
+        // l'orientation — le bouton ↻ reste là pour la reprendre.
+        const sens = poseAdmise(this.chaine, this.etat, id, cote);
+        this.accepter(id, poserLibre(this.etat, id, cote,
+            sens ? sens.retourne : this.retournees.has(id)));
+    }
+
+    /**
+     * LE CONTRÔLE DE FIN. On entoure chaque jointure fautive — les DEUX pièces
+     * qui se touchent — au lieu d'annoncer un nombre d'erreurs : l'élève doit
+     * pouvoir aller relire le joint, pas chercher lequel.
+     */
+    verifier() {
+        if (this.isDemo || !this.chaine) return;
+        this.plateauEl.querySelectorAll('.dm-piece--joint')
+            .forEach(el => el.classList.remove('dm-piece--joint'));
+        const bilan = verifierChaine(this.chaine, this.etat);
+        const posees = this.etat.posees;
+        if (bilan.ok) {
+            this.reussis++;
+            this.note('✅ La chaîne est juste : chaque question touche sa réponse, '
+                + 'DÉPART d\'un bout et ARRIVÉE de l\'autre.', 'ok');
+            this.onCorrectAnswer(null, COMPETENCE, {
+                questionText: `Dominos — ${this.source.label} (${this.chaine.pieces.length} pièces)`,
+                expected: 'chaîne complète', given: 'chaîne complète',
+                points: 10 + this.chaine.couples.length * 2
+            });
+            setTimeout(() => { if (this.isRunning) this.showNext(); }, 2200);
+            return;
+        }
+        bilan.fautes.forEach(i => {
+            [posees[i], posees[i + 1]].forEach(p => {
+                this.plateauEl.querySelector(`[data-piece="${p.id}"]`)
+                    ?.classList.add('dm-piece--joint');
+            });
+        });
+        const quoi = bilan.fautes.length
+            ? `${bilan.fautes.length} jointure${bilan.fautes.length > 1 ? 's' : ''} ne colle`
+                + `${bilan.fautes.length > 1 ? 'nt' : ''} pas : elles sont entourées. `
+                + 'Relis le calcul et sa réponse de part et d\'autre du trait.'
+            : (!bilan.complet ? 'Il reste des pièces dans la réserve.'
+                : 'Les jointures sont bonnes, mais la chaîne doit commencer par DÉPART '
+                    + 'et finir par ARRIVÉE.');
+        this.note(`❌ ${quoi}`, 'ko');
+        this.onWrongAnswer(null, {
+            concept: COMPETENCE,
+            questionText: `Dominos — ${this.source.label}`,
+            input: 'chaîne à revoir', expected: 'chaque question contre sa réponse',
+            customMessage: quoi, silencieux: true
+        });
     }
 
     accepter(id, etatSuivant) {
@@ -340,6 +452,7 @@ class Dominos extends BaseGame {
         const couple = ferme ? this.chaine.couples[ferme.couple] : null;
 
         this.etat = etatSuivant;
+        this.dernierePosee = id;   // seule la nouvelle venue s'anime
         this.reserve = this.reserve.filter(x => x !== id);
         this.retournees.delete(id);
         this.dessiner();
@@ -354,15 +467,8 @@ class Dominos extends BaseGame {
         }
 
         if (plateauFini(this.chaine, this.etat)) {
-            this.reussis++;
-            this.note('✅ La chaîne est complète, DÉPART d\'un bout et ARRIVÉE de l\'autre : '
-                + 'tout est juste, et tu n\'avais besoin de personne pour le savoir.', 'ok');
-            this.onCorrectAnswer(null, COMPETENCE, {
-                questionText: `Dominos — ${this.source.label} (${this.chaine.pieces.length} pièces)`,
-                expected: 'chaîne complète',
-                given: 'chaîne complète',
-                points: 10 + this.chaine.couples.length * 2
-            });
+            this.note('Toutes les pièces sont posées. Appuie sur « Vérifier » : '
+                + 'les jointures fausses, s\'il y en a, seront entourées.');
         } else {
             this.note(couple ? `Bien : ${echapper(couple.q)} fait ${echapper(couple.r)}. `
                 + `Il reste ${this.reserve.length} pièce${this.reserve.length > 1 ? 's' : ''}.`
