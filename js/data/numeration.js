@@ -223,7 +223,7 @@ export const numerationExercises = [
             }
         ],
         tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME] },
-        instruction: "Des boulets ennemis avancent vers ton canon, chacun porte un nombre. PRÉPARE ton boulet au pavé — un 23 approche et la cible est 100 : charge 77 — puis touche le boulet visé. Si la somme fait la cible, il explose ; sinon il continue sa route. Le calcul d'abord, le tir ensuite."
+        instruction: "Des astéroïdes foncent sur ton canon orbital, chacun porte un nombre. PRÉPARE ta charge au pavé — un 23 approche et la cible est 100 : charge 77 — puis touche l'astéroïde visé. Si la somme fait la cible, il éclate ; sinon il continue sa route. Le calcul d'abord, le tir ensuite. Au fil des niveaux ils arrivent de plus en plus nombreux, sur plusieurs voies à la fois : c'est là qu'il faut choisir lequel traiter d'abord."
     },
     {
         id: 'num-complement-100',

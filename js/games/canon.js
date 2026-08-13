@@ -1,11 +1,15 @@
 // LE CANON DES COMPLÉMENTS — préparer le boulet qui fait le compte.
 //
-// Des boulets ennemis avancent vers le canon, chacun porte un nombre. On
-// PRÉPARE son boulet au pavé — un 23 s'approche et la cible est 100 : on
-// charge 77 — puis on TAPE le boulet visé, et le nôtre part à sa rencontre.
-// À l'impact, si la somme fait la cible, explosion ; sinon notre boulet est
-// perdu et l'ennemi CONTINUE SA ROUTE. Un boulet qui atteint le canon coûte
-// une vie.
+// Des ASTÉROÏDES foncent sur le canon orbital, chacun porte un nombre. On
+// PRÉPARE sa charge au pavé — un 23 s'approche et la cible est 100 : on
+// charge 77 — puis on TAPE l'astéroïde visé, et le tir part à sa rencontre.
+// À l'impact, si la somme fait la cible, il éclate ; sinon le tir est perdu et
+// la roche CONTINUE SA ROUTE. Un astéroïde qui atteint le canon coûte une vie.
+//
+// Le décor est l'espace, et ce n'est pas qu'une image : au sol, une ligne
+// d'horizon n'autorisait qu'une seule direction d'arrivée. Dans le vide, les
+// voies se répartissent librement — et l'on peut donc en remplir plusieurs à
+// la fois, ce qui est tout l'enjeu des niveaux avancés.
 //
 // Ce qui fait travailler le complément mieux qu'une question posée : ON
 // PRÉPARE AVANT DE TIRER. Le calcul précède le geste, comme le joueur de
@@ -73,71 +77,127 @@ class Canon extends BaseGame {
                 .cn-cible { font-weight: 900; color: var(--primary); font-size: 1.1rem; }
                 .cn-palier { color: var(--text-muted); font-size: .82rem; font-style: italic; }
 
-                /* LE CHAMP DE BATAILLE. Un ciel dégradé, un sol, et des
-                   boulets qui roulent : le décor porte le jeu autant que la
-                   règle — un rectangle blanc avec des ronds gris n'a jamais
-                   donné envie de calculer. */
+                /* L'ESPACE. Le champ de bataille au sol enfermait le jeu dans
+                   une ligne d'horizon : des boulets qui roulent ne peuvent
+                   venir que d'un côté, et la troisième voie n'avait nulle part
+                   où passer. Dans le vide il n'y a ni haut ni bas — les voies
+                   se répartissent librement, on peut en ouvrir plus, et les
+                   astéroïdes arrivent de partout à la fois. */
                 .cn-terrain {
                     position: relative; width: min(94cqw, 700px); height: 320px;
                     border-radius: 14px; overflow: hidden;
                     border: 3px solid color-mix(in srgb, var(--text-main) 70%, transparent);
                     background:
-                        radial-gradient(circle at 50% 120%, rgba(253,224,71,.35), transparent 55%),
-                        linear-gradient(180deg, #1e3a5f 0%, #2d5580 42%, #4a7ba7 68%, #6b8f5a 68%, #4d6b3f 100%);
+                        radial-gradient(circle at 74% 20%, rgba(167,139,250,.30), transparent 44%),
+                        radial-gradient(circle at 26% 78%, rgba(56,189,248,.20), transparent 42%),
+                        radial-gradient(circle at 96% 92%, rgba(244,114,182,.16), transparent 38%),
+                        linear-gradient(160deg, #04051a 0%, #0a0f36 48%, #150a33 100%);
                     touch-action: manipulation; user-select: none;
-                    box-shadow: inset 0 -18px 40px rgba(0,0,0,.28);
+                    box-shadow: inset 0 0 60px rgba(0,0,0,.6);
                 }
-                .cn-wrap--colonne .cn-terrain {
-                    height: min(56cqh, 420px);
-                    background:
-                        radial-gradient(circle at -10% 50%, rgba(253,224,71,.35), transparent 55%),
-                        linear-gradient(90deg, #1e3a5f 0%, #2d5580 42%, #4a7ba7 68%, #6b8f5a 68%, #4d6b3f 100%);
-                }
-                /* Les étoiles du fond : trois nuages fixes, discrets. */
+                .cn-wrap--colonne .cn-terrain { height: min(56cqh, 420px); }
+
+                /* Le champ d'étoiles : deux couches, dont une qui scintille. */
                 .cn-terrain::before {
                     content: ''; position: absolute; inset: 0; pointer-events: none;
                     background:
-                        radial-gradient(2px 2px at 18% 22%, rgba(255,255,255,.7), transparent),
-                        radial-gradient(2px 2px at 62% 14%, rgba(255,255,255,.5), transparent),
-                        radial-gradient(2px 2px at 84% 30%, rgba(255,255,255,.6), transparent),
-                        radial-gradient(1.5px 1.5px at 38% 9%, rgba(255,255,255,.5), transparent);
+                        radial-gradient(1.6px 1.6px at 12% 18%, rgba(255,255,255,.9), transparent),
+                        radial-gradient(1.2px 1.2px at 28% 62%, rgba(255,255,255,.6), transparent),
+                        radial-gradient(1.8px 1.8px at 44% 12%, rgba(255,255,255,.8), transparent),
+                        radial-gradient(1.2px 1.2px at 58% 78%, rgba(255,255,255,.55), transparent),
+                        radial-gradient(1.6px 1.6px at 71% 40%, rgba(255,255,255,.75), transparent),
+                        radial-gradient(1.2px 1.2px at 86% 66%, rgba(255,255,255,.6), transparent),
+                        radial-gradient(1.4px 1.4px at 94% 14%, rgba(255,255,255,.7), transparent),
+                        radial-gradient(1.2px 1.2px at 8% 88%, rgba(255,255,255,.5), transparent);
+                }
+                .cn-terrain::after {
+                    content: ''; position: absolute; inset: 0; pointer-events: none;
+                    background:
+                        radial-gradient(1.4px 1.4px at 22% 34%, rgba(191,219,254,.9), transparent),
+                        radial-gradient(1.4px 1.4px at 52% 52%, rgba(254,240,138,.8), transparent),
+                        radial-gradient(1.4px 1.4px at 78% 26%, rgba(255,255,255,.85), transparent),
+                        radial-gradient(1.4px 1.4px at 36% 86%, rgba(196,181,253,.8), transparent);
+                    animation: cn-scintille 2.6s ease-in-out infinite alternate;
+                }
+                @keyframes cn-scintille { from { opacity: .25; } to { opacity: 1; } }
+
+                /* LA PLANÈTE : un repère de profondeur, posé au fond. Elle
+                   donne l'échelle, et le vide cesse d'être un fond uni. */
+                .cn-planete {
+                    position: absolute; border-radius: 50%; pointer-events: none;
+                    left: -14%; bottom: -34%; width: 46%; aspect-ratio: 1;
+                    background:
+                        radial-gradient(circle at 34% 26%, #93c5fd 0%, #3b82f6 34%, #1d4ed8 62%, #0b1a52 100%);
+                    box-shadow: 0 0 60px rgba(59,130,246,.35), inset -22px -18px 46px rgba(0,0,0,.6);
+                    opacity: .85;
+                }
+                .cn-planete::after {
+                    content: ''; position: absolute; inset: -18% -34%;
+                    border-radius: 50%; border: 5px solid rgba(148,163,184,.30);
+                    transform: rotate(-18deg);
                 }
 
-                /* LE BOULET ENNEMI : une bille de fonte, avec sa mèche qui
-                   fume et son reflet. Il tourne en avançant. */
+                /* L'ASTÉROÏDE ENNEMI : une roche irrégulière, cratérisée, avec
+                   sa traînée de plasma derrière elle. Elle tourne en avançant. */
                 .cn-boulet {
                     position: absolute; border-radius: 50%; display: flex;
                     align-items: center; justify-content: center; font-weight: 900;
                     width: 56px; height: 56px; font-size: 18px; border: 0; padding: 0;
                     color: #fff7ed; cursor: pointer; font-family: inherit;
-                    background: radial-gradient(circle at 32% 28%, #64748b 0%, #334155 45%, #0f172a 100%);
-                    box-shadow: 0 4px 10px rgba(0,0,0,.45), inset -6px -6px 12px rgba(0,0,0,.55),
-                                inset 4px 4px 10px rgba(255,255,255,.18);
-                    text-shadow: 0 1px 3px rgba(0,0,0,.9);
+                    border-radius: 52% 48% 44% 56% / 50% 54% 46% 50%;
+                    /* Les deux premières couches sont les CRATÈRES : elles
+                       défilent quand la roche avance, ce qui la fait tourner
+                       sans emporter le nombre avec elle. La troisième, le
+                       corps, ne bouge pas. */
+                    background:
+                        radial-gradient(circle 7px at 14px 16px, rgba(0,0,0,.5) 0 7px, transparent 8px),
+                        radial-gradient(circle 5px at 34px 38px, rgba(0,0,0,.4) 0 5px, transparent 6px),
+                        radial-gradient(circle at 32% 26%, #a8a29e 0%, #57534e 42%, #292524 78%, #1c1917 100%);
+                    background-size: 30px 30px, 44px 44px, 100% 100%;
+                    background-repeat: repeat, repeat, no-repeat;
+                    box-shadow: 0 0 14px rgba(251,146,60,.35), inset -7px -7px 14px rgba(0,0,0,.65),
+                                inset 5px 5px 12px rgba(255,255,255,.14);
+                    text-shadow: 0 1px 3px rgba(0,0,0,.95);
                     -webkit-tap-highlight-color: transparent;
                     transition: filter .12s ease;
                 }
-                .cn-boulet:hover { filter: brightness(1.35) drop-shadow(0 0 8px rgba(252,211,77,.9)); }
-                /* La mèche allumée, en haut du boulet. */
+                .cn-boulet:hover { filter: brightness(1.4) drop-shadow(0 0 10px rgba(252,211,77,.95)); }
+                /* LA TRAÎNÉE, derrière l'astéroïde — donc du côté d'où il
+                   vient : à droite quand il arrive de droite, en bas quand il
+                   tombe. Elle dit le sens de la marche d'un coup d'œil. */
                 .cn-boulet::after {
-                    content: ''; position: absolute; top: -7px; left: 50%; width: 7px; height: 7px;
-                    border-radius: 50%; transform: translateX(-50%);
-                    background: radial-gradient(circle, #fef08a 0%, #f97316 55%, transparent 75%);
-                    animation: cn-meche .5s ease-in-out infinite alternate;
+                    content: ''; position: absolute; top: 50%; left: 100%;
+                    width: 46px; height: 15px; transform: translateY(-50%);
+                    border-radius: 50%;
+                    background: linear-gradient(90deg, rgba(251,146,60,.85), rgba(249,115,22,.35) 45%, transparent);
+                    animation: cn-trainee .45s ease-in-out infinite alternate;
                 }
-                @keyframes cn-meche { from { opacity: .5; scale: .75; } to { opacity: 1; scale: 1.3; } }
+                .cn-wrap--colonne .cn-boulet::after {
+                    top: 100%; left: 50%; width: 15px; height: 46px;
+                    transform: translateX(-50%);
+                    background: linear-gradient(180deg, rgba(251,146,60,.85), rgba(249,115,22,.35) 45%, transparent);
+                }
+                @keyframes cn-trainee { from { opacity: .45; } to { opacity: 1; } }
 
-                /* NOTRE BOULET : lumineux, avec une traînée. */
+                /* NOTRE TIR : une charge de plasma, pas une bille de fonte. */
                 .cn-boulet--mien {
-                    background: radial-gradient(circle at 34% 30%, #fef3c7 0%, #fbbf24 40%, #d97706 100%);
-                    color: #431407; pointer-events: none; text-shadow: none;
-                    box-shadow: 0 0 18px rgba(251,191,36,.85), inset -5px -5px 10px rgba(120,53,15,.5);
+                    border-radius: 50%;
+                    background: radial-gradient(circle at 40% 34%, #ffffff 0%, #a5f3fc 32%, #22d3ee 60%, #0891b2 100%);
+                    color: #083344; pointer-events: none; text-shadow: none;
+                    box-shadow: 0 0 24px rgba(34,211,238,.95), 0 0 46px rgba(34,211,238,.5),
+                                inset -4px -4px 10px rgba(8,51,68,.5);
                 }
-                .cn-boulet--mien::after { display: none; }
+                .cn-boulet--mien::after {
+                    content: ''; position: absolute; inset: -6px; border-radius: 50%;
+                    background: none; border: 2px solid rgba(165,243,252,.55);
+                    animation: cn-halo .6s ease-out infinite;
+                    top: auto; left: auto; width: auto; height: auto; transform: none;
+                }
+                @keyframes cn-halo { from { scale: .8; opacity: .9; } to { scale: 1.5; opacity: 0; } }
 
                 .cn-boum {
                     position: absolute; border-radius: 50%; pointer-events: none; z-index: 5;
-                    background: radial-gradient(circle, #fff7ed 0%, #fcd34d 30%, #f97316 55%, transparent 72%);
+                    background: radial-gradient(circle, #ffffff 0%, #a5f3fc 26%, #22d3ee 48%, #7c3aed 66%, transparent 74%);
                     animation: cn-boum .5s ease-out forwards;
                 }
                 @keyframes cn-boum { from { scale: .3; opacity: 1; } to { scale: 2.6; opacity: 0; } }
@@ -186,7 +246,7 @@ class Canon extends BaseGame {
                     <span>Niveau <b data-niveau>1</b></span>
                     <span class="cn-palier" data-palier></span>
                 </div>
-                <div class="cn-terrain" data-terrain></div>
+                <div class="cn-terrain" data-terrain><div class="cn-planete"></div></div>
                 <div class="cn-pupitre">
                     <div class="cn-charge cn-charge--vide" data-charge>prépare…</div>
                     <div class="cn-pave" data-pave></div>
@@ -230,30 +290,37 @@ class Canon extends BaseGame {
         this.wrapEl.classList.toggle('cn-wrap--colonne', this.colonne);
         this.canonEl = document.createElement('div');
         this.canonEl.className = 'cn-canon';
-        // Un fût, deux roues, un socle : le canon se reconnaît de loin, et sa
-        // gueule pointe vers l'arrivée des boulets.
+        // LE CANON ORBITAL : un socle ancré, une tourelle, un fût à bobines
+        // d'énergie dont la gueule luit. Il se reconnaît de loin et pointe
+        // toujours vers l'arrivée des astéroïdes.
         this.canonEl.innerHTML = `
             <svg viewBox="0 0 74 60" aria-hidden="true"
                  style="transform: rotate(${this.colonne ? -90 : 0}deg)">
                 <defs>
                     <linearGradient id="cn-fut" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stop-color="#94a3b8"/><stop offset=".45" stop-color="#475569"/>
-                        <stop offset="1" stop-color="#1e293b"/>
+                        <stop offset="0" stop-color="#e2e8f0"/><stop offset=".42" stop-color="#64748b"/>
+                        <stop offset="1" stop-color="#0f172a"/>
                     </linearGradient>
+                    <radialGradient id="cn-gueule">
+                        <stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#67e8f9"/>
+                        <stop offset="1" stop-color="#0e7490"/>
+                    </radialGradient>
                 </defs>
-                <rect x="6" y="40" width="46" height="9" rx="4" fill="#78350f"/>
-                <circle cx="17" cy="49" r="9" fill="#92400e" stroke="#451a03" stroke-width="2.5"/>
-                <circle cx="17" cy="49" r="2.6" fill="#451a03"/>
-                <circle cx="40" cy="49" r="7" fill="#92400e" stroke="#451a03" stroke-width="2.5"/>
-                <rect x="12" y="18" width="52" height="20" rx="9" fill="url(#cn-fut)"/>
-                <rect x="58" y="15" width="10" height="26" rx="4" fill="#1e293b"/>
-                <ellipse cx="66" cy="28" rx="3.4" ry="10" fill="#0b1220"/>
+                <path d="M4 52h44l-6-10H10z" fill="#1e293b" stroke="#475569" stroke-width="1.6"/>
+                <rect x="14" y="34" width="30" height="12" rx="5" fill="#334155" stroke="#64748b" stroke-width="1.4"/>
+                <circle cx="29" cy="28" r="13" fill="url(#cn-fut)" stroke="#0f172a" stroke-width="1.6"/>
+                <circle cx="29" cy="28" r="5" fill="#0ea5e9" opacity=".85"/>
+                <rect x="30" y="20" width="34" height="16" rx="7" fill="url(#cn-fut)" stroke="#0f172a" stroke-width="1.4"/>
+                <rect x="38" y="18" width="4" height="20" rx="2" fill="#22d3ee" opacity=".9"/>
+                <rect x="48" y="18" width="4" height="20" rx="2" fill="#22d3ee" opacity=".9"/>
+                <rect x="60" y="17" width="9" height="22" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1.2"/>
+                <ellipse cx="68" cy="28" rx="3.6" ry="9" fill="url(#cn-gueule)"/>
             </svg>`;
         this.terrainEl.appendChild(this.canonEl);
         this.placerCanon();
         this.prochainBoulet = 0;
         this.majTete();
-        this.note(`Prépare ton boulet au pavé, puis touche le boulet ennemi visé. `
+        this.note(`Prépare ta charge au pavé, puis touche l'astéroïde visé. `
             + `La somme doit faire ${this.cible}.`);
         return true;
     }
@@ -319,12 +386,18 @@ class Canon extends BaseGame {
         const t = this.geometrie();
         const longueur = this.colonne ? t.h : t.w;
 
-        // De nouveaux ennemis, tant que le niveau n'a pas son compte.
+        // DE PLUS EN PLUS D'ASTÉROÏDES À LA FOIS. Au premier niveau on en voit
+        // un : le temps de lire, de préparer son complément et de viser. Puis
+        // le ciel se remplit — deux, trois, jusqu'à deux par voie — et il faut
+        // choisir lequel traiter d'abord. C'est là que le complément doit être
+        // devenu automatique, pas seulement calculable.
         this.prochainBoulet -= 28;
-        const simultanes = Math.min(this.voies + 1, 1 + Math.floor(this.niveau / 2));
-        if (this.boulets.length < simultanes && this.prochainBoulet <= 0) {
-            this.prochainBoulet = 1400 - Math.min(800, this.niveau * 120);
-            this.creerEnnemi();
+        const simultanes = Math.min(this.voies * 2 + 1, this.voies + Math.floor(this.niveau / 2));
+        if (this.boulets.length < Math.max(1, simultanes) && this.prochainBoulet <= 0) {
+            // Si toutes les voies sont encombrées à l'entrée, on repasse dans
+            // un instant plutôt que d'attendre un cycle entier.
+            this.prochainBoulet = this.creerEnnemi()
+                ? 1500 - Math.min(1050, this.niveau * 150) : 280;
         }
 
         // Les ennemis avancent vers le canon.
@@ -377,18 +450,34 @@ class Canon extends BaseGame {
         el.textContent = String(valeur);
         // Il ENTRE par le bord : posé à l'arrêt à moitié dedans, il avait
         // l'air coupé. `overflow: hidden` le cache jusqu'à son entrée.
-        const b = { el, valeur, voie: this.rng.int(0, this.voies - 1), avancee: -60 };
+        //
+        // ON ÉVITE LA VOIE OÙ UN ASTÉROÏDE VIENT D'ENTRER : maintenant qu'il y
+        // en a plusieurs à la fois, deux lancés coup sur coup dans la même
+        // voie se recouvriraient, et l'élève lirait un nombre pour l'autre.
+        const occupees = new Set(this.boulets.filter(x => x.avancee < 84).map(x => x.voie));
+        const libres = [...Array(this.voies).keys()].filter(v => !occupees.has(v));
+        // Aucune voie dégagée : on ATTEND. Lancer quand même empilerait deux
+        // roches l'une sur l'autre, et un nombre en cacherait un autre.
+        if (!libres.length) { el.remove(); return false; }
+        const b = { el, valeur, voie: this.rng.pick(libres), avancee: -60 };
         el.onclick = () => this.tirer(b);
         this.terrainEl.appendChild(el);
         this.placerEnnemi(b);
         this.boulets.push(b);
+        return true;
     }
 
     placerEnnemi(b) {
         const t = this.geometrie();
         const axe = this.axeVoie(b.voie);
         // La rotation dit le roulement : sans elle, un boulet « glisse ».
-        b.el.style.rotate = `${-b.avancee * 2.6}deg`;
+        // LE NOMBRE NE TOURNE PAS AVEC LA ROCHE. Faire pivoter le bouton
+        // entier retournait son chiffre : « 60 » se lisait « 09 », et l'élève
+        // calculait le complément d'un nombre qui n'existait pas. C'est le
+        // FOND qui tourne — la roche, ses cratères — pendant que l'étiquette
+        // reste droite.
+        b.el.style.backgroundPosition = `${b.avancee * 0.9}px ${b.avancee * 0.5}px,`
+            + `${-b.avancee * 0.7}px ${b.avancee * 0.35}px, 0 0`;
         if (this.colonne) {
             b.el.style.left = `${axe - 28}px`;
             b.el.style.top = `${b.avancee - 28}px`;
@@ -465,7 +554,7 @@ class Canon extends BaseGame {
                     : `Niveau ${this.niveau} : les boulets accélèrent.`, 'ok');
             }
         } else {
-            // Le boulet ennemi CONTINUE SA ROUTE — c'est la punition du jeu,
+            // L'astéroïde CONTINUE SA ROUTE — c'est la punition du jeu,
             // et l'erreur est dite en entier.
             this.note(`❌ ${ennemi.valeur} + ${tir.valeur} = ${somme}, pas ${this.cible}. `
                 + `L'ami de ${ennemi.valeur}, c'est ${this.cible - ennemi.valeur}.`, 'ko');
