@@ -96,9 +96,27 @@ class Slitherlink extends BaseGame {
                 .sl-note--ok { color: var(--success, #16a34a); font-weight: 700; }
                 .sl-note--ko { color: var(--danger, #dc2626); font-weight: 600; }
 
+                /* Sur un téléphone, chaque pixel de largeur est un pixel de
+                   côté en plus : on rend au plateau les marges du cadre. */
                 @container (max-width: 430px) {
                     .sl-tete { font-size: .82rem; }
                     .sl-btn { padding: 6px 10px; font-size: .86rem; }
+                    .sl-wrap { padding: 6px 2px; gap: 8px; }
+                    .sl-plateau { max-width: 100cqw; padding: 2px; }
+                }
+                /* TÉLÉPHONE COUCHÉ : empilés, la grille et les boutons sortent
+                   de l'écran. On met la grille à gauche et tout le reste à
+                   droite — rien à faire défiler pour atteindre « Vérifier ». */
+                @media (max-height: 560px) {
+                    .sl-wrap {
+                        display: grid; grid-template-columns: auto minmax(0, 1fr);
+                        grid-template-rows: auto auto auto; align-items: center;
+                        gap: 6px 14px; align-content: center;
+                    }
+                    .sl-plateau { grid-area: 1 / 1 / 4 / 2; max-width: min(52vw, 82vh); }
+                    .sl-tete { grid-area: 1 / 2; font-size: .8rem; }
+                    .sl-barre { grid-area: 2 / 2; }
+                    .sl-note { grid-area: 3 / 2; min-height: 2em; font-size: .82rem; }
                 }
             </style>
             <div class="sl-wrap">
@@ -188,39 +206,74 @@ class Slitherlink extends BaseGame {
     }
 
     /**
+     * LE SEGMENT VISÉ. On ne demande pas au navigateur quel élément est sous le
+     * doigt : on cherche le segment dont le MILIEU est le plus proche. Sur un
+     * téléphone, une grille 10×8 donne des côtés de vingt-cinq pixels, et viser
+     * un rectangle de cette taille au doigt est impossible ; là, toute la bande
+     * autour d'un segment le désigne, et seul le cœur d'une case ne fait rien.
+     */
+    segmentVise(clientX, clientY) {
+        const r = this.svgEl.getBoundingClientRect();
+        if (!r.width) return null;
+        const { cols, lignes } = this.puzzle;
+        const W = cols * PAS + 2 * MARGE;
+        const ux = (clientX - r.left) / r.width * W;
+        const uy = (clientY - r.top) / r.height * (lignes * PAS + 2 * MARGE);
+        const cx = (ux - MARGE) / PAS, cy = (uy - MARGE) / PAS;
+
+        let meilleur = null;
+        const voir = (type, x, y, mx, my) => {
+            if (x < 0 || y < 0) return;
+            if (type === 'h' ? (x >= cols || y > lignes) : (x > cols || y >= lignes)) return;
+            const d = Math.hypot(cx - mx, cy - my);
+            if (!meilleur || d < meilleur.d) {
+                meilleur = { d, type, i: type === 'h' ? clefH(cols, x, y) : clefV(cols, x, y) };
+            }
+        };
+        // Les segments des quatre côtés de la case touchée, et de ses voisines.
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const x = Math.floor(cx) + dx, y = Math.floor(cy) + dy;
+            voir('h', x, y, x + 0.5, y);
+            voir('h', x, y + 1, x + 0.5, y + 1);
+            voir('v', x, y, x, y + 0.5);
+            voir('v', x + 1, y, x + 1, y + 0.5);
+        }
+        // Au-delà d'un demi-côté, l'élève ne visait aucun segment.
+        return meilleur && meilleur.d <= 0.46 ? meilleur : null;
+    }
+
+    /**
      * LE GESTE : un appui bascule le segment, et le glissé continue sur les
      * suivants avec la MÊME marque. Tracer une boucle segment par segment au
      * doigt serait décourageant ; là, on suit le chemin d'un trait.
      */
     brancherGestes() {
         let marque = null;
-        const cible = (e) => document.elementFromPoint(e.clientX, e.clientY)?.closest('.sl-clic');
-        const poser = (el, forcee) => {
-            if (!el) return;
-            const type = el.dataset.type, i = Number(el.dataset.i);
-            const tab = type === 'h' ? this.h : this.v;
-            const val = forcee === undefined ? (tab[i] + 1) % 3 : forcee;
-            if (tab[i] === val) return;
-            tab[i] = val;
-            this.majSegment(type, i);
+        const poser = (vise, forcee) => {
+            if (!vise) return;
+            const tab = vise.type === 'h' ? this.h : this.v;
+            const val = forcee === undefined ? (tab[vise.i] + 1) % 3 : forcee;
+            if (tab[vise.i] === val) return;
+            tab[vise.i] = val;
+            this.majSegment(vise.type, vise.i);
             this.rafraichir();
         };
         this.svgEl.onpointerdown = (e) => {
             if (this.isDemo) return;
-            const el = cible(e);
-            if (!el) return;
+            const vise = this.segmentVise(e.clientX, e.clientY);
+            if (!vise) return;
             e.preventDefault();
             // La capture garde le glissé même si le doigt sort du SVG. Elle
             // refuse un pointeur qu'elle ne connaît pas : le geste doit
             // continuer quand même, pas s'interrompre là.
             try { this.svgEl.setPointerCapture(e.pointerId); } catch { /* sans capture */ }
-            const tab = el.dataset.type === 'h' ? this.h : this.v;
-            marque = (tab[Number(el.dataset.i)] + 1) % 3;
-            poser(el, marque);
+            const tab = vise.type === 'h' ? this.h : this.v;
+            marque = (tab[vise.i] + 1) % 3;
+            poser(vise, marque);
         };
         this.svgEl.onpointermove = (e) => {
             if (marque === null || this.isDemo) return;
-            poser(cible(e), marque);
+            poser(this.segmentVise(e.clientX, e.clientY), marque);
         };
         const lacher = () => { marque = null; };
         this.svgEl.onpointerup = lacher;
