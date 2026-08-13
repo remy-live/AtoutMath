@@ -7,7 +7,8 @@ import {
     DEPART, ARRIVEE, QUESTION, REPONSE, BOUT, compacter, rassemblerCouples,
     construireChaine, cheminSerpentin, cellulesDe, boiteDe, plateauVide, casePiece,
     poserEnCase, retirerDeCase, retournerCase, plateauFini, verifierPlateau,
-    prochaineCase, seMarient, demiDe, direJoint, reserveMelangee, direChaine, MIN_COUPLES
+    prochaineCase, seMarient, demiDe, direJoint, reserveMelangee, direChaine,
+    insecable, ajusterAuCarre, largeurTexte, LIMITE_INSECABLE, MIN_COUPLES
 } from '../js/core/dominos.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -305,4 +306,34 @@ test('le générateur pose une planche complète sur la feuille', () => {
         assert.ok(!/undefined|NaN/.test(it.explanation));
         assert.match(it.explanation, /ARRIVÉE/);
     }
+});
+
+test('un calcul court ne se coupe pas en deux lignes', () => {
+    // « 10 × 3 » écrit « 10 × » au-dessus de « 3 » se lit deux fois : d'abord
+    // comme deux morceaux, ensuite comme un calcul. Sur une moitié de domino
+    // qu'on reconnaît d'un coup d'œil, c'est un temps de trop.
+    const NBSP = '\u00A0';
+    assert.equal(insecable('10 × 3'), `10${NBSP}×${NBSP}3`);
+    assert.equal(insecable('8 × 4'), `8${NBSP}×${NBSP}4`);
+    assert.equal(insecable('10 × 10'), `10${NBSP}×${NBSP}10`);
+    // Et l'ajustement le voit comme UN seul mot : la police descend jusqu'à
+    // ce que la ligne entière tienne, au lieu de replier le calcul.
+    const soude = insecable('10 × 3');
+    const f = ajusterAuCarre(soude);
+    assert.ok(largeurTexte(soude) * f <= 0.92,
+        'la police doit laisser tenir tout le calcul sur une ligne');
+
+    // Une vraie phrase continue de se replier : elle se lit ligne à ligne,
+    // et la souder donnerait une police illisible.
+    const phrase = 'Périmètre d\'un rectangle de 11 cm sur 6 cm';
+    assert.equal(insecable(phrase), phrase);
+    assert.ok(phrase.length > LIMITE_INSECABLE);
+    const fp = ajusterAuCarre(phrase);
+    assert.ok(largeurTexte(phrase) * fp > 0.92,
+        'une phrase se replie sur plusieurs lignes, elle ne se réduit pas à rien');
+    assert.ok(fp > 0.1, 'et elle reste lisible');
+
+    // Et une espace ne coûte pas un chiffre : « 10 × 10 » doit rester plus
+    // grand que « 1010101 », qui occupe vraiment sept caractères pleins.
+    assert.ok(ajusterAuCarre(insecable('10 × 10')) > ajusterAuCarre('1010101'));
 });

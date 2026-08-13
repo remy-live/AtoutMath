@@ -34,7 +34,7 @@ import {
     QUESTION, BOUT,
     cheminSerpentin, boiteDe, plateauVide, casePiece, poserEnCase, retirerDeCase,
     retournerCase, plateauFini, verifierPlateau, prochaineCase, direJoint,
-    reserveMelangee, demiDe, ajusterAuCarre
+    reserveMelangee, demiDe, ajusterAuCarre, insecable
 } from '../core/dominos.js';
 import { chaineDepuisGenerateur, sourceDe } from '../core/generators/dominos.js';
 
@@ -279,8 +279,11 @@ class Dominos extends BaseGame {
     demiHtml(piece, cote, retourne, taille) {
         const d = demiDe(piece, cote, retourne);
         const genre = d.type === BOUT ? 'bout' : (d.type === QUESTION ? 'question' : 'reponse');
+        // Un calcul court est soudé par des espaces insécables : « 10 × 3 »
+        // reste sur une ligne au lieu de se lire en deux fois.
+        const texte = insecable(d.texte);
         return `<span class="dm-demi dm-demi--${genre}"
-            style="font-size:${Math.round(taille * ajusterAuCarre(d.texte))}px">${echapper(d.texte)}</span>`;
+            style="font-size:${Math.round(taille * ajusterAuCarre(texte))}px">${echapper(texte)}</span>`;
     }
 
     /** Une pièce rangée dans son emplacement : c'est la case qui décide du sens. */

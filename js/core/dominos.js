@@ -342,26 +342,62 @@ export const direChaine = (chaine) =>
     chaine.pieces.map(p => `${p.gauche} | ${p.droite}`).join('  →  ');
 
 /**
+ * UN CALCUL COURT NE SE COUPE PAS EN DEUX LIGNES.
+ *
+ * « 10 × 3 » écrit « 10 × » au-dessus de « 3 » se lit deux fois : d'abord
+ * comme deux morceaux, ensuite comme un calcul. Sur une moitié de domino
+ * qu'on doit reconnaître d'un coup d'œil, c'est un temps de trop.
+ *
+ * On colle donc les mots d'une écriture courte avec des espaces INSÉCABLES —
+ * huit caractères au plus, au-delà la police tomberait sous le lisible et
+ * mieux vaut alors deux lignes bien dimensionnées. Une vraie phrase
+ * (« Périmètre d'un rectangle de 11 cm sur 6 cm ») continue de se replier :
+ * elle se lit ligne à ligne, comme toutes les phrases.
+ */
+export const LIMITE_INSECABLE = 8;
+
+export function insecable(texte) {
+    const t = String(texte ?? '');
+    return t.length <= LIMITE_INSECABLE ? t.replace(/ /g, '\u00A0') : t;
+}
+
+/**
+ * LA LARGEUR D'UN TEXTE, en multiples de sa taille de police.
+ *
+ * Compter chaque caractère pour un caractère plein revenait à facturer une
+ * espace au prix d'un chiffre : « 10 × 10 » était réputé aussi large que
+ * « 1010101 », et la police tombait deux fois plus bas que nécessaire. On
+ * mesure donc par famille — les chiffres et les lettres larges, les espaces
+ * et la ponctuation pour ce qu'elles valent.
+ */
+const LARGEURS = { ' ': 0.3, '\u00A0': 0.3, ',': 0.3, '.': 0.3, '\'': 0.24, '’': 0.24, ':': 0.3 };
+const largeurCar = (c) => LARGEURS[c] !== undefined ? LARGEURS[c]
+    : (/[ilj!|]/.test(c) ? 0.34 : (/[A-ZÀ-ÖØ-Þ]/.test(c) ? 0.7 : 0.64));
+
+export const largeurTexte = (texte) =>
+    [...String(texte ?? '')].reduce((somme, c) => somme + largeurCar(c), 0);
+
+/**
  * La fraction du carré que peut faire la police pour que `texte` y entre.
  * Deux contraintes, essayées en descendant : le plus long mot tient sur une
- * ligne, et toutes les lignes tiennent en hauteur. 0,62 : la largeur moyenne
- * d'un caractère gras rapportée à sa taille.
+ * ligne, et toutes les lignes tiennent en hauteur.
  */
 export function ajusterAuCarre(texte) {
     const t = String(texte ?? '');
-    const mots = t.split(/\s+/).filter(Boolean);
-    const plusLong = Math.max(1, ...mots.map(m => m.length));
+    // On coupe sur les espaces ORDINAIRES : l'insécable soude ce qu'il relie,
+    // et c'est justement à quoi il sert ici.
+    const mots = t.split(/[ \t\r\n]+/).filter(Boolean);
+    const largeurs = mots.map(largeurTexte);
+    const espace = largeurCar(' ');
+    const plusLarge = Math.max(0.5, ...largeurs);
     const tient = (f) => {
-        // 0,68 : la largeur d'un caractère GRAS rapportée à sa taille, mesurée
-        // large — mieux vaut une police un cran plus petite qu'un mot coupé.
-        const parLigne = Math.floor(0.92 / (f * 0.68));
-        if (plusLong > parLigne) return false;
+        if (plusLarge * f > 0.92) return false;
         // On remplit les lignes mot par mot, comme le fera le navigateur.
         let lignes = 1, courante = 0;
-        for (const m of mots) {
-            const largeur = (courante ? courante + 1 : 0) + m.length;
-            if (largeur <= parLigne) { courante = largeur; }
-            else { lignes++; courante = m.length; }
+        for (const l of largeurs) {
+            const ajout = (courante ? espace : 0) + l;
+            if ((courante + ajout) * f <= 0.92) courante += ajout;
+            else { lignes++; courante = l; }
         }
         return lignes * f * 1.18 <= 0.92;
     };

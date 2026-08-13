@@ -18,7 +18,7 @@
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { pourPdf } from './ficheRendu.js';
-import { ajusterAuCarre } from '../core/dominos.js';
+import { ajusterAuCarre, insecable } from '../core/dominos.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -760,7 +760,7 @@ const ordreDominos = (item, solution) => solution
         ? item.meta.reserve : (item.meta.pieces || []).map(p => p.id));
 
 /** La taille du texte dans un carré de `cote` mm : la même règle qu'à l'écran. */
-const policeDomino = (texte, cote) => Math.max(1.7, cote * ajusterAuCarre(texte));
+const policeDomino = (texte, cote) => Math.max(1.7, cote * ajusterAuCarre(insecable(texte)));
 
 function dominosPreviewHtml(item, slot, k, solution) {
     const b = slot.boite;
@@ -779,7 +779,7 @@ function dominosPreviewHtml(item, slot, k, solution) {
         const y = y0 + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
         if (y + g.pieceH > b.y + b.h + 1) return;
         const demi = (t, cls) => `<div class="fx-dom-demi ${cls}" style="width:${g.gaucheW * k}px;
-            font-size:${policeDomino(t, g.pieceH) * k}px">${echapperSheet(t)}</div>`;
+            font-size:${policeDomino(t, g.pieceH) * k}px">${echapperSheet(insecable(t))}</div>`;
         html += `<div class="fx-dom-piece" style="left:${x * k}px; top:${y * k}px;
             width:${g.pieceW * k}px; height:${g.pieceH * k}px">
             ${demi(p.gauche, 'fx-dom-demi--g')}
@@ -822,7 +822,12 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
             const pt = policeDomino(texte, g.pieceH) / 0.3528;
             doc.setFontSize(pt);
             const interligne = pt * 0.42;
-            const lignes = doc.splitTextToSize(pourPdf(String(texte)), g.gaucheW - 2);
+            // Un calcul court reste sur UNE ligne, comme à l'écran. On ne
+            // met pas d'insécable dans le PDF : la police embarquée n'a pas
+            // forcément ce caractère, et un glyphe manquant s'imprime.
+            const court = insecable(texte) !== String(texte ?? '');
+            const lignes = court ? [pourPdf(texte)]
+                : doc.splitTextToSize(pourPdf(String(texte)), g.gaucheW - 2);
             const h0 = y + g.pieceH / 2 - (lignes.length - 1) * (interligne / 2) + pt * 0.12;
             lignes.forEach((l, i) => doc.text(l, cx, h0 + i * interligne, { align: 'center' }));
         };
