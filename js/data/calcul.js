@@ -667,9 +667,30 @@ export const calculExercises = [
         generatorId: 'logique.futoshiki', printable: 'futoshiki',
         sansRevision: true,
         skills: ['num.logique.futoshiki'],
-        params: { taille: 4 },
+        params: { taille: 4, difficulte: 'facile' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille',
+                options: [
+                    { value: 4, label: '4 \u00d7 4' },
+                    { value: 5, label: '5 \u00d7 5' },
+                    { value: 6, label: '6 \u00d7 6' }
+                ],
+                default: 4
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Difficult\u00e9',
+                aide: "En \u00ab facile \u00bb, un tiers des cases est d\u00e9j\u00e0 rempli : l'\u00e9l\u00e8ve a de quoi accrocher avant de se servir des signes. En \u00ab difficile \u00bb, il ne reste que les indices strictement n\u00e9cessaires \u2014 c'est le vrai futoshiki, et c'est beaucoup plus dur.",
+                options: [
+                    { value: 'facile', label: 'Facile \u2014 des chiffres pour commencer' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'difficile', label: 'Difficile \u2014 le strict n\u00e9cessaire' }
+                ],
+                default: 'facile'
+            }
+        ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Touche une case, puis un chiffre du pavé."
+        instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Pour écrire : touche une case et son chiffre monte (1, 2, 3… puis vide), ou glisse un chiffre du pavé dessus."
     },
     {
         // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la
@@ -813,19 +834,19 @@ export const calculExercises = [
             {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Familles précises (facultatif)',
-                aide: "Pour cibler une difficulté : coche les familles à travailler. Aucune cochée = toutes. Le réglage du dessus limite déjà au niveau ; celui-ci sert à isoler, par exemple, les seuls problèmes de durée.",
+                aide: "Pour cibler une difficulté : coche les familles à travailler. Aucune cochée = toutes. L'opération demandée est rappelée entre parenthèses — c'est souvent par elle qu'on choisit, quand on veut faire travailler la division ou les deux étapes. Le réglage du dessus limite déjà au niveau ; celui-ci sert à isoler, par exemple, les seuls problèmes de durée.",
                 options: [
-                    { value: 'composition', label: 'Réunir deux quantités' },
-                    { value: 'complement', label: 'Trouver la part qui manque' },
-                    { value: 'transformation', label: 'Un changement (gagner, perdre, dépenser)' },
-                    { value: 'comparaison', label: 'Comparer deux quantités' },
-                    { value: 'groupes', label: 'Des groupes tous pareils' },
-                    { value: 'partage', label: 'Partager équitablement' },
-                    { value: 'quotition', label: 'Combien de paquets, et le reste' },
-                    { value: 'proportion', label: 'Le prix de plusieurs articles' },
-                    { value: 'fraction', label: 'Une fraction d\'une quantité' },
-                    { value: 'duree', label: 'Des horaires et des durées' },
-                    { value: 'deuxEtapes', label: 'Deux étapes : la monnaie rendue' }
+                    { value: 'composition', label: 'Réunir deux quantités (+)' },
+                    { value: 'complement', label: 'Trouver la part qui manque (−)' },
+                    { value: 'transformation', label: 'Un changement (gagner, perdre, dépenser) (+ ou −)' },
+                    { value: 'comparaison', label: 'Comparer deux quantités (−)' },
+                    { value: 'groupes', label: 'Des groupes tous pareils (×)' },
+                    { value: 'partage', label: 'Partager équitablement (÷)' },
+                    { value: 'quotition', label: 'Combien de paquets, et le reste (÷ et reste)' },
+                    { value: 'proportion', label: 'Le prix de plusieurs articles (×)' },
+                    { value: 'fraction', label: 'Une fraction d\'une quantité (÷ puis ×)' },
+                    { value: 'duree', label: 'Des horaires et des durées (+ ou −)' },
+                    { value: 'deuxEtapes', label: 'Deux étapes : la monnaie rendue (× puis −)' }
                 ],
                 default: []
             }

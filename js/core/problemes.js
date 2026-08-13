@@ -116,12 +116,19 @@ const duree = (m) => m % 60 === 0 ? `${m / 60} h` : (m < 60 ? `${m} min` : `${Ma
 //   faux     les réponses PLAUSIBLES, chacune avec l'erreur qu'elle traduit
 //   schema   les données du dessin
 //   etapes   la correction, une ligne par idée
+//
+// Chaque famille annonce aussi son OPÉRATION. Le professeur qui compose une
+// feuille choisit ses familles par le geste qu'elles demandent — « je veux des
+// divisions » — et devait jusque-là le deviner d'après l'intitulé. Le signe de
+// division s'écrit ÷ : c'est celui du tableau et des manuels français, pas le
+// slash des calculatrices.
 
 export const FAMILLES = {
 
     // 1. COMPOSITION — deux parts font un tout. On cherche le tout.
     composition: {
         label: 'Réunir deux quantités',
+        operation: '+',
         niveaux: ['CM2', '6ème'],
         skill: 'num.probleme.composition',
         tirer(rng) {
@@ -152,6 +159,7 @@ export const FAMILLES = {
     //    C'est ici que « en tout » fait écrire une addition à tort.
     complement: {
         label: 'Trouver la part qui manque',
+        operation: '−',
         niveaux: ['CM2', '6ème'],
         skill: 'num.probleme.composition',
         tirer(rng) {
@@ -181,6 +189,7 @@ export const FAMILLES = {
     //    transformation.
     transformation: {
         label: 'Un changement (gagner, perdre, dépenser)',
+        operation: '+ ou −',
         niveaux: ['CM2', '6ème'],
         skill: 'num.probleme.transformation',
         tirer(rng) {
@@ -230,6 +239,7 @@ export const FAMILLES = {
     // 4. COMPARAISON — « de plus que ». Le piège de vocabulaire par excellence.
     comparaison: {
         label: 'Comparer deux quantités',
+        operation: '−',
         niveaux: ['CM2', '6ème'],
         skill: 'num.probleme.comparaison',
         tirer(rng) {
@@ -263,6 +273,7 @@ export const FAMILLES = {
     // 5. GROUPES ÉGAUX — la multiplication comme « n fois p ».
     groupes: {
         label: 'Des groupes tous pareils',
+        operation: '×',
         niveaux: ['CM2', '6ème'],
         skill: 'num.probleme.multiplication',
         tirer(rng) {
@@ -291,6 +302,7 @@ export const FAMILLES = {
     // 6. PARTAGE — division : combien dans chaque part ?
     partage: {
         label: 'Partager équitablement',
+        operation: '÷',
         niveaux: ['CM2', '6ème'],
         skill: 'num.probleme.division',
         tirer(rng) {
@@ -319,6 +331,7 @@ export const FAMILLES = {
     // 7. QUOTITION AVEC RESTE — « combien de fois ? » et ce qui déborde.
     quotition: {
         label: 'Combien de paquets, et le reste',
+        operation: '÷ et reste',
         niveaux: ['6ème', '5ème'],
         skill: 'num.probleme.division',
         tirer(rng) {
@@ -349,6 +362,7 @@ export const FAMILLES = {
     // 8. PROPORTIONNALITÉ — passer par l'unité.
     proportion: {
         label: 'Le prix de plusieurs articles',
+        operation: '×',
         niveaux: ['6ème', '5ème'],
         skill: 'num.probleme.proportion',
         tirer(rng) {
@@ -382,6 +396,7 @@ export const FAMILLES = {
     // 9. FRACTION D'UNE QUANTITÉ.
     fraction: {
         label: 'Une fraction d\'une quantité',
+        operation: '÷ puis ×',
         niveaux: ['6ème', '5ème'],
         skill: 'num.probleme.fraction',
         tirer(rng) {
@@ -413,6 +428,7 @@ export const FAMILLES = {
     // 10. DURÉES — la seule famille où l'on ne compte pas en base dix.
     duree: {
         label: 'Des horaires et des durées',
+        operation: '+ ou −',
         niveaux: ['6ème', '5ème'],
         skill: 'num.probleme.duree',
         tirer(rng) {
@@ -442,6 +458,7 @@ export const FAMILLES = {
     //     C'est ce qui distingue un problème d'un calcul déguisé.
     deuxEtapes: {
         label: 'Deux étapes : la monnaie rendue',
+        operation: '× puis −',
         niveaux: ['6ème', '5ème'],
         skill: 'num.probleme.etapes',
         tirer(rng) {

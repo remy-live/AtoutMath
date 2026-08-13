@@ -30,25 +30,66 @@ class CarreMagique extends BaseGame {
                 }
                 .cm-tete { text-align: center; font-size: .95rem; }
                 .cm-somme { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
-                .cm-grille {
-                    display: grid; gap: 0; border: 2.5px solid var(--text-main); border-radius: 8px;
-                    overflow: hidden;
+                /* LE CARRÉ EST UN TABLEAU DE SOMMES, pas une grille de trous.
+                   Le total de chaque rangée s'écrit au bout, en direct : c'est
+                   lui qui dit si l'on approche, et c'est par lui qu'on trouve la
+                   case manquante. Sans ces totaux, l'élève additionne de tête,
+                   se trompe, et croit que sa case est fausse. */
+                .cm-plateau {
+                    display: grid; gap: 4px; padding: 6px; border-radius: 14px;
+                    background: color-mix(in srgb, var(--text-main) 12%, transparent);
                 }
                 .cm-case {
-                    width: clamp(52px, 17cqw, 84px); aspect-ratio: 1;
+                    width: clamp(48px, 16cqw, 78px); aspect-ratio: 1;
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 900; font-size: clamp(17px, 5cqw, 27px);
-                    border: 1px solid var(--text-main); box-sizing: border-box;
-                    background: var(--bg-panel);
+                    border-radius: 9px; box-sizing: border-box; background: var(--bg-panel);
+                    color: var(--text-main); border: 0; font-family: inherit;
+                    -webkit-tap-highlight-color: transparent;
                 }
-                .cm-case--donnee { background: color-mix(in srgb, var(--text-main) 7%, var(--bg-panel)); }
-                .cm-case input {
-                    width: 100%; height: 100%; border: 0; text-align: center;
-                    font: inherit; background: color-mix(in srgb, #fcd34d 20%, var(--bg-panel));
-                    color: var(--text-main); outline: none;
+                /* Une case DONNÉE est imprimée : fond plein, on n'y touche pas.
+                   Une case à trouver est un creux clair, cerné de pointillés. */
+                .cm-case--donnee {
+                    background: color-mix(in srgb, var(--text-main) 82%, transparent);
+                    color: var(--bg-panel);
                 }
-                .cm-case--montre { box-shadow: inset 0 0 0 3.5px var(--primary); }
-                .cm-case--faute input { background: color-mix(in srgb, var(--danger, #dc2626) 22%, var(--bg-panel)); }
+                .cm-case--trou {
+                    background: var(--bg-panel); cursor: pointer;
+                    border: 2.5px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+                }
+                .cm-case--trou:hover { border-color: var(--primary); }
+                .cm-case--choisie {
+                    border-style: solid; border-color: var(--primary);
+                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 28%, transparent);
+                }
+                .cm-case--montre { box-shadow: 0 0 0 4px var(--warning, #f59e0b); }
+                .cm-case--faute { border-color: var(--danger, #dc2626);
+                    background: color-mix(in srgb, var(--danger, #dc2626) 15%, var(--bg-panel)); }
+
+                /* Le total d'une rangée : gris tant qu'elle est incomplète,
+                   vert quand elle tombe juste, rouge quand elle dépasse. */
+                .cm-total {
+                    display: flex; align-items: center; justify-content: center;
+                    font-weight: 800; font-size: clamp(12px, 3.4cqw, 17px);
+                    color: var(--text-muted); border-radius: 9px;
+                    background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+                }
+                .cm-total--ok { color: var(--success, #16a34a);
+                    background: color-mix(in srgb, var(--success, #16a34a) 18%, transparent); }
+                .cm-total--ko { color: var(--danger, #dc2626);
+                    background: color-mix(in srgb, var(--danger, #dc2626) 15%, transparent); }
+                .cm-total--cible { color: var(--primary); font-weight: 900; }
+
+                /* LE PAVÉ MAISON. Le clavier de l'iPhone recouvrait le carré et
+                   les boutons : on ne voyait plus ce qu'on remplissait. */
+                .cm-pave { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 320px; }
+                .cm-touche {
+                    width: 44px; height: 44px; border-radius: 11px; cursor: pointer;
+                    border: 1px solid var(--border); background: var(--bg-panel);
+                    color: var(--text-main); font: inherit; font-weight: 900; font-size: 1.1rem;
+                    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+                }
+                .cm-touche:active { background: var(--primary); color: #fff; }
                 .cm-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
                 .cm-btn {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
@@ -63,7 +104,8 @@ class CarreMagique extends BaseGame {
             <div class="cm-wrap">
                 <div class="cm-tete">Toutes les lignes, colonnes et diagonales font
                     <span class="cm-somme" data-somme></span></div>
-                <div class="cm-grille" data-grille></div>
+                <div class="cm-plateau" data-grille></div>
+                <div class="cm-pave" data-pave></div>
                 <div class="cm-barre">
                     <button type="button" class="cm-btn" data-aide>💡 Aide-moi</button>
                     <button type="button" class="cm-btn" data-effacer>↺ Effacer</button>
@@ -73,6 +115,13 @@ class CarreMagique extends BaseGame {
                 <div class="cm-note" data-note></div>
             </div>`;
         this.grilleEl = this.container.querySelector('[data-grille]');
+        this.paveEl = this.container.querySelector('[data-pave]');
+        this.paveEl.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+            .map(n => `<button type="button" class="cm-touche" data-t="${n}">${n}</button>`).join('')
+            + '<button type="button" class="cm-touche" data-t="eff" aria-label="Effacer">⌫</button>';
+        this.paveEl.querySelectorAll('[data-t]').forEach(b => {
+            b.onclick = () => this.taper(b.dataset.t);
+        });
         this.sommeEl = this.container.querySelector('[data-somme]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
@@ -93,23 +142,95 @@ class CarreMagique extends BaseGame {
 
     dessiner() {
         const p = this.puzzle;
-        this.grilleEl.style.gridTemplateColumns = `repeat(${p.n}, auto)`;
-        this.grilleEl.innerHTML = p.cases.map((v, i) => p.trous.includes(i)
-            ? `<div class="cm-case" data-i="${i}"><input type="number" inputmode="numeric"
-                aria-label="case à compléter" data-saisie="${i}"></div>`
-            : `<div class="cm-case cm-case--donnee" data-i="${i}">${v}</div>`).join('');
+        this.valeurs = {};
+        this.choisie = null;
+        // n colonnes de cases, plus une colonne de totaux ; n rangées, plus
+        // une rangée de totaux et le coin qui rappelle la somme visée.
+        this.grilleEl.style.gridTemplateColumns = `repeat(${p.n}, auto) auto`;
+        let html = '';
+        for (let r = 0; r < p.n; r++) {
+            for (let c = 0; c < p.n; c++) {
+                const i = r * p.n + c;
+                html += p.trous.includes(i)
+                    ? `<button type="button" class="cm-case cm-case--trou" data-i="${i}"
+                         aria-label="case à compléter"></button>`
+                    : `<div class="cm-case cm-case--donnee" data-i="${i}">${p.cases[i]}</div>`;
+            }
+            html += `<div class="cm-total" data-tot="l${r}"></div>`;
+        }
+        for (let c = 0; c < p.n; c++) html += `<div class="cm-total" data-tot="c${c}"></div>`;
+        html += `<div class="cm-total cm-total--cible" data-tot="cible">${p.somme}</div>`;
+        this.grilleEl.innerHTML = html;
+        this.grilleEl.querySelectorAll('.cm-case--trou').forEach(el => {
+            el.onclick = () => this.choisir(el);
+        });
+        this.majTotaux();
+    }
+
+    choisir(el) {
+        if (this.isDemo) return;
+        this.grilleEl.querySelectorAll('.cm-case--choisie')
+            .forEach(c => c.classList.remove('cm-case--choisie'));
+        el.classList.add('cm-case--choisie');
+        this.choisie = Number(el.dataset.i);
+    }
+
+    /** Le pavé écrit dans la case choisie, chiffre par chiffre. */
+    taper(t) {
+        if (this.isDemo) return;
+        if (this.choisie === null) {
+            this.note('Touche d\'abord une case à compléter, puis tape son nombre.');
+            return;
+        }
+        const el = this.grilleEl.querySelector(`.cm-case[data-i="${this.choisie}"]`);
+        if (!el) return;
+        const actuel = el.textContent.trim();
+        const suivant = t === 'eff' ? actuel.slice(0, -1)
+            : (actuel.length >= 3 ? actuel : actuel + t);
+        el.textContent = suivant;
+        el.classList.remove('cm-case--faute');
+        if (suivant === '') delete this.valeurs[this.choisie];
+        else this.valeurs[this.choisie] = Number(suivant);
+        this.majTotaux();
+    }
+
+    /** Le total de chaque rangée, en direct : c'est l'outil de résolution. */
+    majTotaux() {
+        const p = this.puzzle;
+        const val = (i) => p.trous.includes(i)
+            ? (this.valeurs[i] === undefined ? null : this.valeurs[i]) : p.cases[i];
+        const poser = (clef, cases) => {
+            const el = this.grilleEl.querySelector(`[data-tot="${clef}"]`);
+            if (!el) return;
+            const vals = cases.map(val);
+            const somme = vals.reduce((t, v) => t + (v || 0), 0);
+            const complet = vals.every(v => v !== null);
+            el.textContent = complet || somme ? String(somme) : '';
+            el.classList.toggle('cm-total--ok', complet && somme === p.somme);
+            el.classList.toggle('cm-total--ko', complet && somme !== p.somme);
+        };
+        for (let r = 0; r < p.n; r++) {
+            poser(`l${r}`, Array.from({ length: p.n }, (_, c) => r * p.n + c));
+        }
+        for (let c = 0; c < p.n; c++) {
+            poser(`c${c}`, Array.from({ length: p.n }, (_, r) => r * p.n + c));
+        }
     }
 
     effacer() {
-        this.grilleEl.querySelectorAll('[data-saisie]').forEach(inp => { inp.value = ''; });
-        this.grilleEl.querySelectorAll('.cm-case--faute').forEach(c => c.classList.remove('cm-case--faute'));
+        this.valeurs = {};
+        this.grilleEl.querySelectorAll('.cm-case--trou').forEach(el => {
+            el.textContent = '';
+            el.classList.remove('cm-case--faute');
+        });
+        this.majTotaux();
         this.note('');
     }
 
     saisie() {
         const s = {};
-        this.grilleEl.querySelectorAll('[data-saisie]').forEach(inp => {
-            s[Number(inp.dataset.saisie)] = inp.value === '' ? null : Number(inp.value);
+        this.puzzle.trous.forEach(i => {
+            s[i] = this.valeurs[i] === undefined ? null : this.valeurs[i];
         });
         return s;
     }
@@ -197,8 +318,11 @@ class CarreMagique extends BaseGame {
             const el = this.grilleEl.querySelector(`.cm-case[data-i="${e.case}"]`);
             cur.say(`${e.raison}.`, el || this.grilleEl);
             if (el && !await cur.tap(el)) return fin();
-            const inp = el && el.querySelector('input');
-            if (inp) inp.value = String(e.valeur);
+            if (el) {
+                el.textContent = String(e.valeur);
+                this.valeurs[e.case] = e.valeur;
+                this.majTotaux();
+            }
             if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
         }
 

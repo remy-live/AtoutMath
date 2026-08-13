@@ -47,8 +47,10 @@ test('toutes les inégalités du puzzle sont vraies dans la solution', () => {
     }
 });
 
-test('aucun indice n\'est de trop', () => {
-    const p = genererFutoshiki({ taille: 4 }, makeRng('min'));
+test('en « difficile », aucun indice n\'est de trop', () => {
+    // C'est le vrai futoshiki : rien de superflu. Les modes plus doux, eux,
+    // rendent volontairement des cases — voir le test suivant.
+    const p = genererFutoshiki({ taille: 4, difficulte: 'difficile' }, makeRng('min'));
     p.inegalites.forEach((_, k) => {
         const sans = p.inegalites.filter((__, x) => x !== k);
         assert.ok(!resoudre({ ...p, inegalites: sans }).complet,
@@ -59,6 +61,29 @@ test('aucun indice n\'est de trop', () => {
         const sans = p.donnees.slice(); sans[i] = 0;
         assert.ok(!resoudre({ ...p, donnees: sans }).complet, `la donnée en ${i} ne sert à rien`);
     });
+});
+
+test('les premières grilles donnent de quoi accrocher, sans jamais mentir', () => {
+    // Une grille dépouillée est la plus belle et la plus dure : un élève qui
+    // découvre le futoshiki se retrouve devant quatre signes et rien d'autre.
+    // On rend donc des cases — mais une case rendue vient de LA solution, elle
+    // n'apporte que de l'information vraie, et la grille reste déductible.
+    for (const n of [4, 5]) {
+        let precedent = 99;
+        for (const d of ['facile', 'moyen', 'difficile']) {
+            const p = genererFutoshiki({ taille: n, difficulte: d }, makeRng(`d${n}${d}`));
+            const donnes = p.donnees.filter(Boolean).length;
+            assert.ok(donnes <= precedent, `${n}/${d} : ${donnes} n'est pas plus dépouillé que ${precedent}`);
+            precedent = donnes;
+            // Chaque case rendue est la bonne, et la grille se déduit toujours.
+            p.donnees.forEach((v, i) => {
+                if (v) assert.equal(v, p.solution[i], `${n}/${d} : case ${i} fausse`);
+            });
+            const r = resoudre(p);
+            assert.ok(r.complet, `${n}/${d} : la propagation cale`);
+            assert.deepEqual([...r.grille], [...p.solution], `${n}/${d} : mauvaise solution`);
+        }
+    }
 });
 
 test('le journal du solveur explique chaque case à trouver', () => {

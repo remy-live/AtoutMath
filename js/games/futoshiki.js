@@ -10,6 +10,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { genererFutoshiki, verifierSaisie } from '../core/futoshiki.js';
+import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
 const COMPETENCE = 'num.logique.futoshiki';
 
@@ -18,6 +19,7 @@ class Futoshiki extends BaseGame {
         super(container, isDemo, params, 'futoshiki');
         this.rng = makeRng(this.params.seed);
         this.taille = Number(this.params.taille) || 4;
+        this.difficulte = this.params.difficulte || 'facile';
         this.reussis = 0;
         this.aidesUtilisees = 0;
     }
@@ -25,6 +27,7 @@ class Futoshiki extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                ${CSS_GLISSER}
                 .fu-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 12px;
                     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
@@ -67,7 +70,8 @@ class Futoshiki extends BaseGame {
             </style>
             <div class="fu-wrap">
                 <div class="fu-tete">Chaque chiffre de 1 à <b data-n></b> une fois par ligne et par colonne,
-                    en respectant les signes < et >.</div>
+                    en respectant les signes &lt; et &gt;.<br>
+                    <small>Touche une case pour faire monter son chiffre, ou glisse un chiffre du pavé dessus.</small></div>
                 <div class="fu-grille" data-grille></div>
                 <div class="fu-pave" data-pave></div>
                 <div class="fu-barre">
@@ -90,7 +94,7 @@ class Futoshiki extends BaseGame {
     startGameLoop() { this.poser(); }
 
     poser() {
-        this.puzzle = genererFutoshiki({ taille: this.taille }, this.rng);
+        this.puzzle = genererFutoshiki({ taille: this.taille, difficulte: this.difficulte }, this.rng);
         this.saisie = {};
         this.choisie = null;
         this.container.querySelector('[data-n]').textContent = String(this.puzzle.n);
@@ -137,15 +141,43 @@ class Futoshiki extends BaseGame {
             }
         }
         this.grilleEl.innerHTML = html;
+        // TOUCHER UNE CASE FAIT MONTER SON CHIFFRE. C'est le geste le plus
+        // court : sur une grille de quatre, une case se remplit en quatre
+        // touches au pire, et sans jamais quitter la grille des yeux. La case
+        // reste choisie au passage, si bien que le pavé écrit directement
+        // dedans — et un chiffre du pavé peut aussi se GLISSER sur une case.
         this.grilleEl.querySelectorAll('.fu-case:not(.fu-case--donnee)').forEach(el => {
-            el.onclick = () => this.choisir(el);
+            el.onclick = () => { this.choisir(el); this.monter(el); };
         });
         this.paveEl.innerHTML = Array.from({ length: n }, (_, v) =>
             `<button type="button" class="fu-chiffre" data-v="${v + 1}">${v + 1}</button>`).join('')
             + '<button type="button" class="fu-chiffre" data-v="0" aria-label="Effacer la case">⌫</button>';
         this.paveEl.querySelectorAll('[data-v]').forEach(b => {
             b.onclick = () => this.ecrire(Number(b.dataset.v));
+            rendreGlissable(b, {
+                cibles: '.fu-case:not(.fu-case--donnee)',
+                deposer: (cible) => this.ecrireCase(Number(cible.dataset.i), Number(b.dataset.v)),
+                actif: () => !this.isDemo
+            });
         });
+    }
+
+    /** Le chiffre suivant : 1, 2, … n, puis vide, et on recommence. */
+    monter(el) {
+        if (this.isDemo) return;
+        const i = Number(el.dataset.i);
+        const actuel = Number(this.saisie[i]) || 0;
+        this.ecrireCase(i, actuel >= this.puzzle.n ? 0 : actuel + 1);
+    }
+
+    /** Écrit une valeur dans une case, ou l'efface si la valeur est zéro. */
+    ecrireCase(i, v) {
+        const el = this.grilleEl.querySelector(`.fu-case[data-i="${i}"]`);
+        if (!el || el.classList.contains('fu-case--donnee')) return;
+        el.classList.remove('fu-case--faute');
+        if (!v) { delete this.saisie[i]; el.textContent = ''; return; }
+        this.saisie[i] = v;
+        el.textContent = String(v);
     }
 
     choisir(el) {
@@ -156,16 +188,12 @@ class Futoshiki extends BaseGame {
     }
 
     ecrire(v) {
-        if (this.isDemo || this.choisie === null) {
-            if (this.choisie === null) this.note('Choisis d\'abord une case, puis un chiffre.');
+        if (this.isDemo) return;
+        if (this.choisie === null) {
+            this.note('Touche une case pour faire monter son chiffre, ou glisse un chiffre dessus.');
             return;
         }
-        const el = this.grilleEl.querySelector(`.fu-case[data-i="${this.choisie}"]`);
-        if (!el) return;
-        el.classList.remove('fu-case--faute');
-        if (v === 0) { delete this.saisie[this.choisie]; el.textContent = ''; return; }
-        this.saisie[this.choisie] = v;
-        el.textContent = String(v);
+        this.ecrireCase(this.choisie, v);
     }
 
     effacer() {

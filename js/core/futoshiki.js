@@ -160,8 +160,29 @@ export function genererFutoshiki(params, rng) {
         if (resoudre({ n, donnees, inegalites: sans }).complet) inegalites.splice(k, 1);
     }
 
+    // ON REMET DES CASES POUR LES PREMIÈRES GRILLES.
+    //
+    // L'émondage laisse la grille la plus dépouillée possible : c'est la plus
+    // belle, et c'est aussi la plus dure — un élève qui découvre le futoshiki
+    // se retrouve devant quatre signes et rien d'autre. On rend donc quelques
+    // chiffres selon la difficulté. Ajouter une case connue ne peut pas rendre
+    // la grille ambiguë : elle n'apporte que de l'information vraie, la
+    // solution reste unique, et le solveur n'en termine que plus tôt.
+    const part = { facile: 0.34, moyen: 0.16, difficile: 0 }[params && params.difficulte];
+    const voulu = Math.round(n * n * (part === undefined ? 0.34 : part));
+    let combien = donnees.filter(Boolean).length;
+    for (const i of rng.shuffle([...Array(n * n).keys()])) {
+        if (combien >= voulu) break;
+        if (donnees[i]) continue;
+        donnees[i] = solution[i];
+        combien++;
+    }
+
     const final = resoudre({ n, donnees, inegalites });
-    return { n, solution, donnees, inegalites, etapes: final.etapes };
+    return {
+        n, solution, donnees, inegalites, etapes: final.etapes,
+        difficulte: (params && params.difficulte) || 'facile'
+    };
 }
 
 /** La saisie est-elle juste ? Les fautes, une par une ; le vide n'en est pas une. */
