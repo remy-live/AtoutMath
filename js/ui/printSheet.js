@@ -22,6 +22,7 @@ import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
+import { ecrire as ecrireProp } from '../core/proportion.js';
 import {
     dessiner as dessinerNoyau, aretesCachees as aretesCacheesNoyau,
     facesVisibles as facesVisiblesNoyau
@@ -1971,6 +1972,100 @@ function dessinerPizzaPdf(doc, item, slot, solution) {
     });
 }
 
+
+// --- LE TABLEAU DE PROPORTIONNALITÉ --------------------------------------------
+//
+// Deux lignes, quelques colonnes, des cases vides : c'est l'exercice du cahier,
+// et il se photocopie tel quel. Les en-têtes portent leur unité — « Prix (€) »,
+// « Farine (g) » — parce qu'un tableau sans unité ne dit pas de quoi il parle,
+// et que la réponse d'un problème porte toujours la sienne.
+//
+// LA COLONNE COMPLÈTE EST GARANTIE PAR LE NOYAU : sans elle le coefficient
+// serait indéterminé et l'élève aurait tort en ayant raison. Le titre du bloc
+// rappelle la situation (« l'achat de stylos ») : un tableau de nombres nus
+// n'apprend pas à reconnaître une situation de proportionnalité.
+
+function geoProportion(item, slot) {
+    const m = item.meta;
+    const cols = m.a.length + 1;                 // + la colonne des libellés
+    const b = slot.boite;
+    const enTete = Math.min(b.h * 0.28, 9);      // la phrase de situation
+    const hDispo = b.h - enTete;
+    const cellH = Math.min(hDispo / 2.6, 13);
+    const libW = Math.min(b.w * 0.34, 42);
+    const cellW = (b.w - libW) / (cols - 1);
+    return { m, cols, b, enTete, cellH, libW, cellW, y0: b.y + enTete };
+}
+
+const enTeteProp = (nom, unite) => (unite ? `${nom} (${unite})` : nom);
+
+function proportionPreviewHtml(item, slot, k, solution) {
+    const g = geoProportion(item, slot);
+    const m = g.m;
+    const creux = (col, ligne) => m.trous.some(t => t.col === col && t.ligne === ligne);
+    let html = `<div class="fx-pr-sujet" style="left:${g.b.x * k}px; top:${g.b.y * k}px;
+        width:${g.b.w * k}px; height:${g.enTete * k}px;
+        font-size:${Math.min(g.enTete * 0.5, 3.4) * k}px">Tableau de proportionnalité pour
+        ${echapperSheet(m.contexte.sujet)}.</div>`;
+
+    const ligne = (nom, unite, valeurs, quelle, rang) => {
+        const y = g.y0 + rang * g.cellH;
+        let out = `<div class="fx-pr-tete" style="left:${g.b.x * k}px; top:${y * k}px;
+            width:${g.libW * k}px; height:${g.cellH * k}px;
+            font-size:${Math.min(g.cellH * 0.34, 3) * k}px">${echapperSheet(enTeteProp(nom, unite))}</div>`;
+        valeurs.forEach((v, i) => {
+            const vide = creux(i, quelle) && !solution;
+            out += `<div class="fx-pr-case${vide ? ' fx-pr-case--vide' : ''}"
+                style="left:${(g.b.x + g.libW + i * g.cellW) * k}px; top:${y * k}px;
+                width:${g.cellW * k}px; height:${g.cellH * k}px;
+                font-size:${Math.min(g.cellH * 0.46, 4.2) * k}px">${vide ? '' : echapperSheet(ecrireProp(v))}</div>`;
+        });
+        return out;
+    };
+    html += ligne(m.contexte.a, m.contexte.uA, m.a, 'a', 0);
+    html += ligne(m.contexte.b, m.contexte.uB, m.b, 'b', 1);
+    return html;
+}
+
+function dessinerProportionPdf(doc, item, slot, solution, champ) {
+    const g = geoProportion(item, slot);
+    const m = g.m;
+    const creux = (col, ligne) => m.trous.some(t => t.col === col && t.ligne === ligne);
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(Math.max(6, Math.min(g.enTete * 0.85, 8)));
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf(`Tableau de proportionnalité pour ${m.contexte.sujet}.`),
+        g.b.x, g.b.y + g.enTete * 0.72);
+
+    const ligne = (nom, unite, valeurs, quelle, rang) => {
+        const y = g.y0 + rang * g.cellH;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.35);
+        doc.setFillColor(...ENCRE.donnee);
+        doc.rect(g.b.x, y, g.libW, g.cellH, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5.5, Math.min(g.cellH * 0.62, 8)));
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(enTeteProp(nom, unite)), g.b.x + 1.4, y + g.cellH * 0.64, {
+            maxWidth: g.libW - 2.6
+        });
+        valeurs.forEach((v, i) => {
+            const x = g.b.x + g.libW + i * g.cellW;
+            const vide = creux(i, quelle) && !solution;
+            doc.setFillColor(255, 255, 255);
+            doc.rect(x, y, g.cellW, g.cellH, 'FD');
+            if (vide) { if (champ) champ(x + 1, y + 1, g.cellW - 2, g.cellH - 2); return; }
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(Math.max(6, Math.min(g.cellH * 0.72, 11)));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(pourPdf(ecrireProp(v)), x + g.cellW / 2, y + g.cellH * 0.68, { align: 'center' });
+        });
+    };
+    ligne(m.contexte.a, m.contexte.uA, m.a, 'a', 0);
+    ligne(m.contexte.b, m.contexte.uB, m.b, 'b', 1);
+}
+
 export const RENDUS = {
     repere: {
         titre: 'Repère et coordonnées',
@@ -1987,6 +2082,19 @@ export const RENDUS = {
         // centimètres, deux graduations voisines se touchent et l'on ne peut
         // plus tracer une croix entre elles.
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
+    proportion: {
+        titre: 'Tableaux de proportionnalité',
+        consigne: () => 'Complète chaque tableau. Une colonne est toujours entièrement '
+            + 'connue : c\'est elle qui donne le lien entre les deux lignes. Écris ce lien '
+            + 'au-dessus du tableau si cela t\'aide (× ou ÷ combien ?).',
+        previewGrille: proportionPreviewHtml,
+        pdfGrille: dessinerProportionPdf,
+        nomBloc: 'Tableau',
+        titreAGauche: true,
+        disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
         parLigneDefaut: 2
     },
 
@@ -2370,7 +2478,12 @@ export function ouvrirFicheModal(exo, params) {
     const rendre = () => {
         const { cols, rows } = lireDisposition();
         completer(cols * rows);
-        totalEl.textContent = `${cols * rows} ${(rendu.nomBloc || 'Grille').toLowerCase()}s`;
+        // « tableaus », « bateaus »… Un pluriel fautif dans une interface de
+        // professeur de français-et-maths ne passe pas : le rendu peut donner
+        // le sien, sinon on ajoute un « s » (ou rien s'il y en a déjà un).
+        const un = rendu.nomBloc || 'Grille';
+        const plusieurs = rendu.nomBlocs || (/(au|eu|eau)$/.test(un) ? `${un}x` : `${un}s`);
+        totalEl.textContent = `${cols * rows} ${(cols * rows > 1 ? plusieurs : un).toLowerCase()}`;
 
         // L'échelle vient de la place disponible : la page garde son format.
         const large = apercu.parentElement.clientWidth || 720;

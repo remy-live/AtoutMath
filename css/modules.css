@@ -3597,3 +3597,19 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-pz-ligne span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .fx-pz-ligne i { font-style: normal; color: #6e7684; font-weight: 700; }
 .fx-pz-cle { flex: 0 0 auto; overflow: visible; }
+
+/* --- Fiche « Tableaux de proportionnalité » ------------------------------
+   Deux lignes d'un vrai tableau : l'en-tête porte son unité sur fond gris, les
+   cases à compléter restent blanches et bordées — on écrit dedans au crayon. */
+.fx-pr-sujet {
+    position: absolute; display: flex; align-items: center;
+    color: #6e7684; font-style: italic;
+}
+.fx-pr-tete, .fx-pr-case {
+    position: absolute; box-sizing: border-box; border: .35px solid #1a202c;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    color: #2d3748; overflow: hidden;
+}
+.fx-pr-tete { background: #eef0fa; font-weight: 700; justify-content: flex-start; padding: 0 .35em; }
+.fx-pr-case { font-weight: 600; }
+.fx-pr-case--vide { background: #fff; }

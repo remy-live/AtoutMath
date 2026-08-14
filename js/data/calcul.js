@@ -895,6 +895,9 @@ export const calculExercises = [
         // geste, pas le dernier recours.
         id: 'num-proportion-tableau', status: STATUS.TEST, title: 'Tableau de Proportionnalité',
         activityId: 'proportion',
+        // Le seul de ces exercices qui se photocopie tel quel : deux lignes,
+        // des cases vides, et le lien à retrouver.
+        printable: 'proportion', printGeneratorId: 'num.proportion-fiche',
         params: { niveau: 'facile' },
         paramSchema: [
             {
