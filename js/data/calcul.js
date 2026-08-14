@@ -170,6 +170,64 @@ export const calculExercises = [
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Touche une plaque, un signe, une seconde plaque — puis ÉCRIS le résultat toi-même : la machine ne calcule jamais à ta place. Deux règles seulement : jamais de nombre négatif, et une division doit tomber juste. Une plaque ne sert qu'une fois, et le résultat obtenu revient sur la table."
     },
+    {
+        id: 'calc-poser-addition', status: STATUS.TEST, title: 'Poser une addition',
+        activityId: 'poser-operation',
+        skills: ['num.add.entiers'],
+        params: { operation: '+', decimales: false, chiffres: 3 },
+        paramSchema: [
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
+                aide: 'C\'est là que tout se joue : on aligne sur la VIRGULE, pas sur le bord droit.',
+                default: false
+            },
+            {
+                id: 'chiffres', type: 'select', label: 'Taille des nombres',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            },
+            {
+                id: 'termes', type: 'select', label: 'Combien de nombres',
+                aide: 'À trois nombres, la retenue peut valoir 2 — et le petit rond le sait.',
+                options: [
+                    { value: 2, label: 'Deux' },
+                    { value: 3, label: 'Trois' }
+                ],
+                default: 2
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "D'abord ALIGNER : chaque chiffre glisse dans sa colonne, les unités sous les unités. Puis calculer, colonne par colonne, en partant de la droite. La retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2."
+    },
+    {
+        id: 'calc-poser-soustraction', status: STATUS.TEST, title: 'Poser une soustraction',
+        activityId: 'poser-operation',
+        skills: ['num.add.entiers'],
+        params: { operation: '-', decimales: false, chiffres: 3 },
+        paramSchema: [
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
+                aide: 'C\'est là que tout se joue : on aligne sur la VIRGULE, pas sur le bord droit.',
+                default: false
+            },
+            {
+                id: 'chiffres', type: 'select', label: 'Taille des nombres',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "D'abord ALIGNER : chaque chiffre glisse dans sa colonne. Puis soustraire, en partant de la droite. Quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : c'est là que se note la retenue, contre le nombre du dessous."
+    },
+
 
     // --- Arcade : mêmes notions, autre présentation ---
     {

@@ -315,6 +315,7 @@ const legacy = [
     ['priorites', 'Priorités : la réécriture', 'priorites', 'enginePriorites'],
     ['compte-est-bon', 'Le Compte est Bon', 'compteEstBon', 'engineCompteEstBon'],
     ['conversion', 'Le tableau de conversion', 'conversion', 'engineConversion'],
+    ['poser-operation', 'Poser une opération', 'poserOperation', 'enginePoserOperation'],
     ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
     ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram'],
     ['solides', 'Compter sur un solide', 'solides', 'engineSolides'],
