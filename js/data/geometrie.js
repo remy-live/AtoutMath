@@ -190,6 +190,9 @@ export const geometrieExercises = [
         // déjà toute la surface : elle est donc résoluble par construction.
         id: 'geo-relier-points', status: STATUS.TEST, title: 'Relie les points',
         activityId: 'relier',
+        // La même grille sert à l'écran et sur le papier : le générateur la
+        // fabrique, l'activité la joue, le rendu l'imprime.
+        generatorId: 'logique.relier', printable: 'relier',
         params: { taille: 'moyen', marques: 'les-deux' },
         paramSchema: [
             {

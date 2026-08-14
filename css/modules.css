@@ -3497,3 +3497,31 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-red-plein { stroke: #2563eb; stroke-width: .5; fill: none; }
 /* Les lignes d'écriture supplémentaires de la rédaction, dans l'aperçu. */
 .fx-red-rail { position: absolute; border-bottom: 1px dotted #a8b0bf; }
+
+/* RELIER LES POINTS, sur la feuille. La marque de forme est toujours là :
+   c'est elle qui dit quelle borne va avec quelle autre une fois la page
+   photocopiée en gris. La couleur ne fait que doubler cette information. */
+.fx-rl-case { position: absolute; border: .8px solid #b0b6c5; box-sizing: border-box; }
+.fx-rl-trait { position: absolute; border-radius: 2px; opacity: .85; }
+.fx-rl-marque {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; opacity: .85; pointer-events: none;
+}
+.fx-rl-borne {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1.2px solid #1a202c; border-radius: 50%; font-weight: 800; box-sizing: border-box;
+}
+
+/* RELIER LES POINTS, sur la feuille. La marque de forme est toujours là :
+   c'est elle qui dit quelle borne va avec quelle autre une fois la page
+   photocopiée en gris. La couleur ne fait que doubler cette information. */
+.fx-rl-case { position: absolute; border: .8px solid #b0b6c5; box-sizing: border-box; }
+.fx-rl-trait { position: absolute; border-radius: 2px; opacity: .85; }
+.fx-rl-marque {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; opacity: .85; pointer-events: none;
+}
+.fx-rl-borne {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1.2px solid #1a202c; border-radius: 50%; font-weight: 800; box-sizing: border-box;
+}

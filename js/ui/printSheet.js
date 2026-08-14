@@ -17,7 +17,8 @@
 
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
-import { pourPdf } from './ficheRendu.js';
+import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
+} from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
@@ -1265,7 +1266,161 @@ function dessinerRedactionPdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- Relier les points ------------------------------------------------------
+
+/**
+ * La géométrie d'une grille de liens dans son emplacement. Un emplacement est
+ * CARRÉ et se décrit par `taille` — comme pour toutes les autres grilles ; le
+ * lire autrement rendait des positions NaN, donc des cases invisibles.
+ */
+function geoRelier(item, slot) {
+    const m = item.meta;
+    const marge = slot.taille * 0.04;
+    const pas = (slot.taille - 2 * marge) / Math.max(m.l, m.h);
+    const x0 = slot.x + (slot.taille - pas * m.l) / 2;
+    const y0 = slot.y + (slot.taille - pas * m.h) / 2;
+    return { m, pas, x0, y0, cx: (x) => x0 + (x + 0.5) * pas, cy: (y) => y0 + (y + 0.5) * pas };
+}
+
+/**
+ * LA GRILLE SUR LE PAPIER. Les bornes portent TOUJOURS leur symbole : c'est
+ * lui qui dit quelle borne va avec quelle autre une fois la feuille
+ * photocopiée. La couleur, quand elle est demandée, ne fait que doubler cette
+ * information — jamais la porter seule.
+ */
+function relierPreviewHtml(item, slot, k, solution) {
+    const g = geoRelier(item, slot);
+    const couleur = polycopieEnCouleur();
+    const ep = g.pas * 0.09;
+    let html = '';
+
+    // Le quadrillage.
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            html += `<div class="fx-rl-case" style="left:${(g.x0 + x * g.pas) * k}px;
+                top:${(g.y0 + y * g.pas) * k}px; width:${g.pas * k}px; height:${g.pas * k}px"></div>`;
+        }
+    }
+
+    // La solution : le chemin, et le symbole de la paire DANS CHAQUE CASE.
+    // En noir et blanc, deux tuyaux gris voisins seraient indiscernables ;
+    // le symbole répété lève l'ambiguïté sans dépendre d'une couleur.
+    if (solution) {
+        g.m.paires.forEach(p => {
+            p.solution.forEach((c, i) => {
+                if (i) {
+                    const b = p.solution[i - 1];
+                    const x1 = Math.min(g.cx(c[0]), g.cx(b[0])), y1 = Math.min(g.cy(c[1]), g.cy(b[1]));
+                    const l = Math.abs(g.cx(c[0]) - g.cx(b[0])) || ep;
+                    const h = Math.abs(g.cy(c[1]) - g.cy(b[1])) || ep;
+                    html += `<div class="fx-rl-trait" style="left:${(x1 - ep / 2) * k}px;
+                        top:${(y1 - ep / 2) * k}px; width:${(l + ep) * k}px; height:${(h + ep) * k}px;
+                        background:${couleur ? p.couleur : '#94a3b8'}"></div>`;
+                }
+                html += `<div class="fx-rl-marque" style="left:${(g.cx(c[0]) - g.pas / 2) * k}px;
+                    top:${(g.cy(c[1]) - g.pas / 2) * k}px; width:${g.pas * k}px; height:${g.pas * k}px;
+                    font-size:${g.pas * 0.34 * k}px; color:${couleur ? p.couleur : '#334155'}"
+                    >${p.symbole}</div>`;
+            });
+        });
+    }
+
+    // Les bornes : un disque marqué, aux deux bouts de chaque paire.
+    g.m.paires.forEach(p => {
+        [p.a, p.b].forEach(([x, y]) => {
+            const d = g.pas * 0.62;
+            html += `<div class="fx-rl-borne" style="left:${(g.cx(x) - d / 2) * k}px;
+                top:${(g.cy(y) - d / 2) * k}px; width:${d * k}px; height:${d * k}px;
+                font-size:${d * 0.6 * k}px;
+                background:${couleur ? p.couleur : '#ffffff'};
+                color:${couleur ? '#ffffff' : '#0f172a'}">${p.symbole}</div>`;
+        });
+    });
+    return html;
+}
+
+function dessinerRelierPdf(doc, item, slot, solution) {
+    const g = geoRelier(item, slot);
+    const couleur = polycopieEnCouleur();
+    const teinte = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16),
+        parseInt(hex.slice(5, 7), 16)];
+
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(...ENCRE.grille);
+    for (let y = 0; y <= g.m.h; y++) {
+        doc.line(g.x0, g.y0 + y * g.pas, g.x0 + g.m.l * g.pas, g.y0 + y * g.pas);
+    }
+    for (let x = 0; x <= g.m.l; x++) {
+        doc.line(g.x0 + x * g.pas, g.y0, g.x0 + x * g.pas, g.y0 + g.m.h * g.pas);
+    }
+
+    if (solution) {
+        g.m.paires.forEach(p => {
+            doc.setLineWidth(g.pas * 0.14);
+            doc.setDrawColor(...(couleur ? teinte(p.couleur) : [150, 158, 170]));
+            for (let i = 1; i < p.solution.length; i++) {
+                const a = p.solution[i - 1], b = p.solution[i];
+                doc.line(g.cx(a[0]), g.cy(a[1]), g.cx(b[0]), g.cy(b[1]));
+            }
+        });
+    }
+
+    // Les symboles ne passent pas dans les polices standard du PDF : on dessine
+    // donc les marques en GÉOMÉTRIE — un disque, un carré, un triangle. C'est
+    // d'ailleurs plus net à l'impression qu'un caractère de police.
+    g.m.paires.forEach(p => {
+        const r = g.pas * 0.3;
+        [p.a, p.b].forEach(([x, y]) => {
+            const cx = g.cx(x), cy = g.cy(y);
+            doc.setLineWidth(0.4);
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setFillColor(...(couleur ? teinte(p.couleur) : [255, 255, 255]));
+            doc.circle(cx, cy, r, 'FD');
+            dessinerMarque(doc, p.id, cx, cy, r * 0.62, couleur ? [255, 255, 255] : ENCRE.trait);
+        });
+    });
+}
+
+/**
+ * La marque d'une paire, dessinée au trait. Huit formes franches, qui restent
+ * distinctes à cinq millimètres et après une photocopie — là où huit
+ * caractères de police se ressembleraient tous.
+ */
+function dessinerMarque(doc, id, cx, cy, r, encre) {
+    doc.setFillColor(...encre);
+    doc.setDrawColor(...encre);
+    doc.setLineWidth(r * 0.42);
+    const k = id % 8;
+    if (k === 0) doc.circle(cx, cy, r * 0.72, 'F');
+    else if (k === 1) doc.rect(cx - r * 0.66, cy - r * 0.66, r * 1.32, r * 1.32, 'F');
+    else if (k === 2) doc.triangle(cx, cy - r, cx - r * 0.9, cy + r * 0.7, cx + r * 0.9, cy + r * 0.7, 'F');
+    else if (k === 3) {
+        doc.triangle(cx, cy - r, cx + r, cy, cx, cy + r, 'F');
+        doc.triangle(cx, cy - r, cx - r, cy, cx, cy + r, 'F');
+    }
+    else if (k === 4) { doc.line(cx - r, cy, cx + r, cy); doc.line(cx, cy - r, cx, cy + r); }
+    else if (k === 5) { doc.line(cx - r * 0.8, cy - r * 0.8, cx + r * 0.8, cy + r * 0.8);
+        doc.line(cx - r * 0.8, cy + r * 0.8, cx + r * 0.8, cy - r * 0.8); }
+    else if (k === 6) { doc.circle(cx, cy, r * 0.78, 'S'); doc.circle(cx, cy, r * 0.3, 'F'); }
+    else { doc.rect(cx - r * 0.7, cy - r * 0.7, r * 1.4, r * 1.4, 'S'); doc.circle(cx, cy, r * 0.3, 'F'); }
+}
+
 export const RENDUS = {
+    relier: {
+        titre: 'Relier les points',
+        consigne: () => 'Relie les deux points de MÊME MARQUE par un chemin qui suit les cases, '
+            + 'sans diagonale. Deux règles, et c\'est la seconde qui fait chercher : les chemins '
+            + 'ne se croisent jamais, et à la fin il ne doit rester AUCUNE case vide. '
+            + 'Commence par les coins : un coin n\'a que deux voisines, le chemin qui y passe '
+            + 'est donc presque toujours obligé.',
+        previewGrille: relierPreviewHtml,
+        pdfGrille: dessinerRelierPdf,
+        // QUATRE par page. On trace au crayon entre des cases : sous huit
+        // millimètres de côté, le trait ne se corrige plus à la gomme.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
     redaction: {
         titre: 'Rédiger un raisonnement',
         consigne: (items) => (items[0] && items[0].meta.propriete === 'perp-perp')
@@ -1425,6 +1580,11 @@ function assurerModale() {
                 <label>Lignes
                     <input type="number" id="fp-rows" class="cfg-input cfg-input--num" min="1" max="5" value="4"></label>
                 <span class="fp-total" id="fp-total"></span>
+                <label>Impression
+                    <select id="fp-couleur" class="cfg-input">
+                        <option value="0">Noir et blanc</option>
+                        <option value="1">En couleur</option>
+                    </select></label>
                 <button type="button" class="btn-hint" id="fp-regen">🎲 Autres grilles</button>
                 <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
@@ -1605,6 +1765,13 @@ export function ouvrirFicheModal(exo, params) {
     rowsEl.max = String(dispo.maxRows || 5);
     colsEl.onchange = rendre;
     rowsEl.onchange = rendre;
+    // Le choix couleur / noir et blanc : il vaut pour CETTE fiche, et devient
+    // le choix par défaut des suivantes. Un professeur qui imprime en noir et
+    // blanc le fait pour toute l'année, pas pour une feuille.
+    const couleurEl = modal.querySelector('#fp-couleur');
+    couleurEl.value = polycopieEnCouleur() ? '1' : '0';
+    couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
+
     modal.querySelector('#fp-regen').onclick = () => { items = []; rendre(); };
     btnSol.onclick = () => {
         solutionsVisibles = !solutionsVisibles;

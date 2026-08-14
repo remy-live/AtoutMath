@@ -13,6 +13,37 @@ import { A4 } from '../core/fiche.js';
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
 import { RENDUS } from './printSheet.js';
 
+/**
+ * LE POLYCOPIÉ EN COULEUR, OU NON.
+ *
+ * Une salle des professeurs a une imprimante noir et blanc, et de l'encre
+ * comptée. Une feuille dont la compréhension DÉPEND de la couleur devient
+ * alors inutilisable — c'est pour cela que tout ce qui s'imprime ici porte
+ * aussi une marque de forme (un symbole, une trame, une étiquette) : la
+ * couleur ajoute du confort, elle ne porte jamais l'information à elle seule.
+ *
+ * Le choix est GLOBAL — mémorisé d'une fiche à l'autre, on ne le refait pas
+ * dix fois — et RÉGLABLE FICHE PAR FICHE, puisque c'est le même sélecteur qui
+ * l'affiche et le change.
+ */
+const CLE_COULEUR = 'mathbox-polycopie-couleur';
+let couleurEnMemoire = null;
+
+export function polycopieEnCouleur() {
+    if (couleurEnMemoire !== null) return couleurEnMemoire;
+    let v = null;
+    try { v = window.localStorage.getItem(CLE_COULEUR); } catch (e) { v = null; }
+    // Par défaut : NOIR ET BLANC. C'est ce qui sort de la photocopieuse de
+    // l'établissement, et une feuille pensée pour elle marche partout.
+    couleurEnMemoire = v === '1';
+    return couleurEnMemoire;
+}
+
+export function reglerPolycopieCouleur(oui) {
+    couleurEnMemoire = !!oui;
+    try { window.localStorage.setItem(CLE_COULEUR, oui ? '1' : '0'); } catch (e) { /* privé */ }
+}
+
 export const ENCRE = {
     texte: [30, 41, 59],
     gris: [110, 118, 132],
