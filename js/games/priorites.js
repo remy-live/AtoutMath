@@ -180,10 +180,21 @@ class Priorites extends BaseGame {
             trou.type = 'text';
             trou.inputMode = 'numeric';
             trou.setAttribute('aria-label', 'résultat de l\'opération soulignée');
-            trou.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter') this.valider(trou);
-            });
-            trou.addEventListener('blur', () => { if (trou.value.trim()) this.valider(trou); });
+            // « Entrée » valide, puis le champ disparaît au redessin — ce qui
+            // déclenche « blur », donc un second envoi. Ici il tombe dans le
+            // vide (l'opération choisie est retombée à null), mais par chance
+            // seulement : le verrou le dit au lieu d'en dépendre.
+            // Le verrou se pose AVANT l'appel : valider redessine, ce qui
+            // retire le champ, ce qui déclenche « blur » — le second envoi
+            // partirait pendant que l'affectation attend son retour.
+            let rendu = false;
+            const valider = () => {
+                if (rendu || !trou.value.trim()) return;
+                rendu = true;
+                if (!this.valider(trou)) rendu = false;
+            };
+            trou.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') valider(); });
+            trou.addEventListener('blur', valider);
             ligne.appendChild(trou);
         }
         return ligne;
@@ -213,11 +224,14 @@ class Priorites extends BaseGame {
         this.dessiner();
     }
 
-    /** L'élève donne le résultat de l'opération soulignée. */
+    /**
+     * L'élève donne le résultat de l'opération soulignée.
+     * @returns {boolean} vrai si la ligne est passée — c'est le verrou du champ.
+     */
     valider(trou) {
-        if (this.choisi === null) return;
+        if (this.choisi === null) return false;
         const brut = trou.value.trim().replace(',', '.');
-        if (!brut) return;
+        if (!brut) return false;
         const p = operationPrioritaire(this.courant);
         if (Number(brut) !== p.valeur) {
             this.note(`${p.gauche} ${ecrire([{ type: 'op', op: p.op }])} ${p.droite} ne fait pas ${brut}. Recompte.`, 'ko');
@@ -229,7 +243,7 @@ class Priorites extends BaseGame {
             });
             trou.value = '';
             trou.focus();
-            return;
+            return false;
         }
 
         const suivant = reduire(this.courant, this.choisi, p.valeur);
@@ -248,10 +262,11 @@ class Priorites extends BaseGame {
             });
             this.dessiner();
             setTimeout(() => { if (this.isRunning) this.poser(); }, 1900);
-            return;
+            return true;
         }
         this.note('Bien. Recopie faite — quelle opération maintenant ?');
         this.dessiner();
+        return true;
     }
 
     expliquer() {

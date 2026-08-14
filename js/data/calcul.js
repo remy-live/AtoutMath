@@ -132,6 +132,44 @@ export const calculExercises = [
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 »."
     },
+    {
+        // LE COMPTE EST BON. Le tirage est fabriqué à l'endroit : le compte est
+        // donc toujours atteignable, et l'on sait en combien d'opérations —
+        // c'est le réglage de difficulté. Les grandes plaques sont garanties :
+        // 25, 50, 75 et 100 sont celles dont les multiples doivent devenir des
+        // réflexes.
+        id: 'calc-compte-est-bon', status: STATUS.TEST, title: 'Le Compte est Bon',
+        activityId: 'compte-est-bon',
+        skills: ['num.calc.tri'],
+        params: { operations: 3, tous: false, grands: 1 },
+        paramSchema: [
+            {
+                id: 'operations', type: 'select', label: 'Opérations pour y arriver',
+                options: [
+                    { value: 2, label: '2 — pour commencer' },
+                    { value: 3, label: '3' },
+                    { value: 4, label: '4' },
+                    { value: 5, label: '5 — le tirage complet' }
+                ],
+                default: 3
+            },
+            {
+                id: 'tous', type: 'checkbox', label: 'Utiliser TOUTES les plaques',
+                aide: 'Atteindre le compte ne suffit plus : il ne doit rien rester sur la table. Cela impose cinq opérations, et transforme « trouve un chemin » en « trouve LE chemin ».',
+                default: false
+            },
+            {
+                id: 'grands', type: 'select', label: 'Grandes plaques (25, 50, 75, 100)',
+                options: [
+                    { value: 1, label: 'Une au moins' },
+                    { value: 2, label: 'Deux au moins' }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Touche une plaque, un signe, une seconde plaque — puis ÉCRIS le résultat toi-même : la machine ne calcule jamais à ta place. Deux règles seulement : jamais de nombre négatif, et une division doit tomber juste. Une plaque ne sert qu'une fois, et le résultat obtenu revient sur la table."
+    },
 
     // --- Arcade : mêmes notions, autre présentation ---
     {
