@@ -105,7 +105,7 @@ class Escadrille extends BaseGame {
                     <div class="esc-vies" data-vies></div>
                     <div class="esc-score" data-score>0</div>
                 </div>
-                <div class="esc-aide">Glisse pour piloter · tape pour tirer</div>
+                <div class="esc-aide">Glisse (ou bouge la souris) pour piloter · tape pour tirer</div>
             </div>`;
 
         this.arene = this.container.querySelector('.esc-arene');
@@ -254,9 +254,20 @@ class Escadrille extends BaseGame {
             this.vaisseau.cible = depart.x;
         };
         this.onMove = (e) => {
-            if (!this.isRunning || !depart) return;
+            if (!this.isRunning) return;
             const p = pos(e);
-            bouge = Math.max(bouge, Math.hypot(p.x - depart.x, p.y - depart.y));
+            if (depart) {
+                bouge = Math.max(bouge, Math.hypot(p.x - depart.x, p.y - depart.y));
+                this.vaisseau.cible = p.x;
+                return;
+            }
+            // À LA SOURIS, LE VAISSEAU SUIT LE CURSEUR SANS QU'ON APPUIE.
+            // Tenir le bouton enfoncé pour piloter n'a de sens qu'au doigt, où
+            // il n'y a pas de survol ; à la souris, cela occupe la main qui
+            // devrait tirer — on ne pouvait pas manœuvrer et tirer en même
+            // temps, alors que c'est tout le jeu.
+            if (e.pointerType !== 'mouse' || this.phase === 'briefing') return;
+            if (p.x < 0 || p.x > this.canvas.width || p.y < 0 || p.y > this.canvas.height) return;
             this.vaisseau.cible = p.x;
         };
         this.onUp = () => {
@@ -563,7 +574,7 @@ class Escadrille extends BaseGame {
             T(`dans la table de ${this.table}`, h * 0.45, u * 0.068, '#e2e8f0');
             T(`Les multiples de ${this.table} sont des AMIS :`, h * 0.55, u * 0.046, '#fcd34d', 800);
             T('laisse-les passer.', h * 0.61, u * 0.046, '#fcd34d', 800);
-            T('Glisse pour piloter · tape pour tirer', h * 0.68, u * 0.04, '#94a3b8', 700);
+            T('Glisse ou bouge la souris pour piloter · tape pour tirer', h * 0.68, u * 0.04, '#94a3b8', 700);
 
             // Le bouton : dessiné pour être vu, mais c'est tout l'écran qui
             // répond — on ne demande pas de viser à quelqu'un qui lit.

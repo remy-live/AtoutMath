@@ -558,6 +558,17 @@ function geometrieLogi(item, boite) {
 
 const logiVisible = (r, c) => r === 0 || c < r;
 
+/**
+ * La solution en toutes lettres, une ligne par personnage.
+ *
+ * Le générateur la compose déjà pour l'explication de l'écran (« Malo · le roi ;
+ * Zoé · la fée ») : on la redécoupe plutôt que de la recalculer, pour que le
+ * papier et l'écran ne puissent pas diverger.
+ */
+function phrasesSolutionLogi(item) {
+    return String(item.explanation || '').split(' ; ').filter(Boolean);
+}
+
 function logigrammePreviewHtml(item, slot, k, solution) {
     const b = slot.boite;
     const g = geometrieLogi(item, b);
@@ -565,11 +576,15 @@ function logigrammePreviewHtml(item, slot, k, solution) {
     const rgb = (c, f) => `rgb(${pastel(c, f).join(',')})`;
     let html = '';
 
-    // L'histoire et les indices.
+    // L'histoire et les indices — ou, sur la page des solutions, la réponse
+    // en toutes lettres. Réimprimer les indices à côté d'une grille de ronds et
+    // de croix n'aide personne : celui qui corrige trente copies veut lire
+    // « Malo · le roi », pas déchiffrer un tableau une deuxième fois.
     html += `<div class="fx-logi-texte" style="left:${b.x * k}px; top:${b.y * k}px;
         width:${g.indicesW * k}px; font-size:${2.82 * k}px">
-        <b>${echapperSheet(p.titre)}</b> — <i>${echapperSheet(p.decor)}</i>
-        <ol>${p.indices.map(i => `<li>${echapperSheet(i.texte)}</li>`).join('')}</ol></div>`;
+        <b>${echapperSheet(p.titre)}</b> — <i>${echapperSheet(solution ? 'Solution' : p.decor)}</i>
+        <ol>${(solution ? phrasesSolutionLogi(item) : p.indices.map(i => i.texte))
+        .map(t => `<li>${echapperSheet(t)}</li>`).join('')}</ol></div>`;
 
     // Les bandeaux et les étiquettes de colonne.
     const libH = g.entete - g.bandeau;
@@ -620,7 +635,8 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
     const g = geometrieLogi(item, b);
     const { p, n, colonnes, lignes, cote, x0, y0 } = g;
 
-    // L'histoire, puis les indices numérotés.
+    // L'histoire, puis les indices numérotés — ou la réponse en toutes lettres
+    // sur la page des solutions (voir `phrasesSolutionLogi`).
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...ENCRE.texte);
@@ -629,13 +645,17 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(7.6);
     doc.setTextColor(...ENCRE.gris);
-    doc.splitTextToSize(pourPdf(p.decor), g.indicesW).forEach(l => { y += 3.4; doc.text(l, b.x, y); });
+    doc.splitTextToSize(pourPdf(solution ? 'Solution' : p.decor), g.indicesW)
+        .forEach(l => { y += 3.4; doc.text(l, b.x, y); });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...ENCRE.texte);
     y += 1.5;
-    p.indices.forEach((ind, k) => {
-        const lignesTexte = doc.splitTextToSize(pourPdf(`${k + 1}. ${ind.texte}`), g.indicesW - 2);
+    const textes = solution
+        ? phrasesSolutionLogi(item)
+        : p.indices.map(ind => ind.texte);
+    textes.forEach((t, k) => {
+        const lignesTexte = doc.splitTextToSize(pourPdf(`${k + 1}. ${t}`), g.indicesW - 2);
         lignesTexte.forEach((l, li) => { y += 3.9; doc.text(l, b.x + (li ? 3 : 0), y); });
     });
 

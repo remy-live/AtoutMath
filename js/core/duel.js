@@ -27,12 +27,29 @@
 
 export const CIBLE_DEFAUT = 7;
 
-/** Durée de vol de la première balle d'un point, en millisecondes. */
-export const VOL_DEPART = 2800;
+/**
+ * Durée de vol de la première balle d'un point, en millisecondes.
+ *
+ * 2 800 ms au départ : « trop rapide au début ». C'est juste — dans ce
+ * temps-là, le défenseur doit LIRE l'opération, la calculer, puis taper deux
+ * chiffres sur un pavé qu'il ne regarde pas encore. La table de 7 ne se sort
+ * pas en deux secondes et demie quand on est en train de l'apprendre, et un
+ * duel dont on perd les premiers points sans avoir eu le temps de penser n'est
+ * pas un duel, c'est un tirage au sort.
+ */
+export const VOL_DEPART = 4200;
 /** Plancher : en dessous, on ne calcule plus, on devine. */
-export const VOL_MINIMUM = 950;
+export const VOL_MINIMUM = 1100;
 /** Ce que la balle gagne en vitesse à chaque frappe réussie. */
-export const ACCELERATION = 0.92;
+export const ACCELERATION = 0.9;
+/**
+ * Le tout premier point se joue plus lentement encore.
+ *
+ * C'est celui où l'on cherche son pavé, où l'on découvre la table annoncée par
+ * l'adversaire, et où l'on n'a encore rien vu voler. Une fois qu'un point est
+ * marqué, le duel prend son rythme normal.
+ */
+export const ECHAUFFEMENT = 1.3;
 
 export function tablesValides(tables) {
     const t = (Array.isArray(tables) ? tables : [])
@@ -93,7 +110,9 @@ export function servir(p, table, rng = Math.random) {
 
 /** Millisecondes de vol de la balle en cours : elle accélère à chaque frappe. */
 export function dureeVol(p) {
-    return Math.max(VOL_MINIMUM, Math.round(VOL_DEPART * Math.pow(ACCELERATION, p.echange)));
+    const chauffe = (p.score[0] + p.score[1]) === 0 ? ECHAUFFEMENT : 1;
+    return Math.max(VOL_MINIMUM,
+        Math.round(VOL_DEPART * chauffe * Math.pow(ACCELERATION, p.echange)));
 }
 
 function marquer(p, pour, raison, donne) {

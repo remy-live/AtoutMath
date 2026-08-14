@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     creerPartie, servir, repondre, manquer, pointSuivant, dureeVol, frappe,
-    longueurReponse, tablesValides, VOL_DEPART, VOL_MINIMUM, ACCELERATION
+    longueurReponse, tablesValides, VOL_DEPART, VOL_MINIMUM, ACCELERATION, ECHAUFFEMENT
 } from '../js/core/duel.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -126,14 +126,30 @@ test('la partie se termine au score cible, et rien ne bouge après', () => {
 test('la balle accélère à chaque frappe, sans jamais devenir indevinable', () => {
     const { p, rng } = partie();
     servir(p, 7, rng);
-    assert.equal(dureeVol(p), VOL_DEPART);
+    // Score vierge : c'est le point d'échauffement, la balle part plus lentement.
+    assert.equal(dureeVol(p), Math.round(VOL_DEPART * ECHAUFFEMENT));
     const vols = [dureeVol(p)];
     for (let i = 0; i < 40; i++) { repondre(p, p.balle.reponse, rng); vols.push(dureeVol(p)); }
     for (let i = 1; i < vols.length; i++) {
         assert.ok(vols[i] <= vols[i - 1], 'la balle ne doit jamais ralentir dans un échange');
     }
-    assert.equal(vols[1], Math.round(VOL_DEPART * ACCELERATION));
+    assert.equal(vols[1], Math.round(VOL_DEPART * ECHAUFFEMENT * ACCELERATION));
     assert.equal(vols[vols.length - 1], VOL_MINIMUM, 'le plancher doit être atteint et tenu');
+});
+
+test('l\'échauffement ne dure que le premier point', () => {
+    const { p, rng } = partie();
+    servir(p, 7, rng);
+    const auDepart = dureeVol(p);
+    // Un point marqué, et le duel prend son rythme.
+    manquer(p);
+    pointSuivant(p);
+    servir(p, 7, rng);
+    assert.equal(dureeVol(p), VOL_DEPART);
+    assert.ok(auDepart > VOL_DEPART, 'la toute première balle doit être la plus lente');
+    // Et la première balle reste largement au-dessus du plancher : le début
+    // d'un point se calcule, il ne se devine pas.
+    assert.ok(VOL_DEPART >= 3 * VOL_MINIMUM);
 });
 
 test('le pavé sait combien de chiffres attendre', () => {
