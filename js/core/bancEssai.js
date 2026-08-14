@@ -140,6 +140,8 @@ export function noter(carnet, ligne) {
         // qu'on propose d'en faire. Les confondre, c'est ne plus savoir en
         // relisant si une ligne demande un changement ou décrit l'existant.
         classement: ligne.classement ? { ...ligne.classement } : null,
+        // Noter à nouveau un exercice repris solde la demande de retest.
+        aRetester: ligne.aRetester || null,
         tags: ligne.tags ? { ...ligne.tags } : null
     };
     const lignes = carnet.lignes.filter(l => clefLigne(l) !== clefLigne(complet));
@@ -159,8 +161,10 @@ export const ligneDe = (carnet, exercice, appareilNom) =>
  */
 export function avancement(carnet, exercices, appareilNom) {
     const nom = appareilNom || nommerAppareil(carnet.appareil);
+    // Un exercice REPRIS depuis la dernière passe redevient « à faire » : son
+    // ancien verdict ne dit plus rien de la version qu'on a sous les yeux.
     const vus = new Set(carnet.lignes
-        .filter(l => l.appareilNom === nom && l.verdicts && l.verdicts.marche)
+        .filter(l => l.appareilNom === nom && l.verdicts && l.verdicts.marche && !l.aRetester)
         .map(l => l.exercice));
     const ids = exercices.map(e => e.id);
     return {
@@ -251,6 +255,57 @@ export function fusionner(...carnets) {
 }
 
 /**
+ * LA CONSIGNE DE RETEST — ce que je renvoie après avoir corrigé.
+ *
+ * Une passe finie, un rapport envoyé, et huit exercices corrigés. Sans rien,
+ * il faudrait les retrouver un par un dans une liste de cent cinq, se souvenir
+ * de ce qui a été touché, et refaire la passe entière au moindre doute. Une
+ * CHAÎNE à coller suffit : elle nomme les exercices repris, dit ce qui a
+ * changé pour chacun, et les remet dans la liste « à faire ».
+ *
+ * Le format est fait pour survivre à une conversation — pas de JSON, pas
+ * d'accolades qu'un correcteur irait fermer, pas de retour à la ligne
+ * obligatoire :
+ *
+ *   RETEST v160 | num-ninja-positifs = vagues moitié-moitié, chute ralentie
+ *   | logi-dominos = la pièce glissée passe au-dessus du jeu
+ */
+export const MARQUE_RETEST = 'RETEST';
+
+export function lireRetest(texte) {
+    const t = String(texte || '');
+    const i = t.toUpperCase().indexOf(MARQUE_RETEST);
+    if (i < 0) return null;
+    const morceaux = t.slice(i + MARQUE_RETEST.length).split('|').map(x => x.trim()).filter(Boolean);
+    if (!morceaux.length) return null;
+    // Le premier morceau porte la version corrigée, s'il ne nomme pas d'exercice.
+    const version = morceaux[0].includes('=') ? '' : morceaux.shift().trim();
+    const repris = morceaux.map(m => {
+        const k = m.indexOf('=');
+        const id = (k < 0 ? m : m.slice(0, k)).trim();
+        return id ? { exercice: id, quoi: k < 0 ? '' : m.slice(k + 1).trim() } : null;
+    }).filter(Boolean);
+    return repris.length ? { version, exercices: repris } : null;
+}
+
+/**
+ * Remet les exercices repris dans la liste « à faire », en gardant leur
+ * ancienne note. On n'EFFACE pas le verdict précédent : savoir que c'était
+ * cassé la dernière fois est utile pendant qu'on reteste.
+ */
+export function marquerARetester(carnet, consigne, quand = 0) {
+    if (!consigne) return carnet;
+    const parId = new Map(consigne.exercices.map(e => [e.exercice, e]));
+    const lignes = carnet.lignes.map(l => (parId.has(l.exercice)
+        ? { ...l, aRetester: { version: consigne.version, quoi: parId.get(l.exercice).quoi, depuis: quand } }
+        : l));
+    return { ...carnet, lignes };
+}
+
+/** Ce qui attend une nouvelle vérification. */
+export const aRetester = (carnet) => carnet.lignes.filter(l => l.aRetester);
+
+/**
  * Relit un carnet transmis, en refusant ce qui n'en est pas un.
  *
  * On accepte le RAPPORT ENTIER, pas seulement le bloc de données : c'est le
@@ -281,6 +336,7 @@ export function lire(texte) {
                 .filter(([k, v]) => CRITERES.some(c => c.id === k) && estVerdict(v))),
             note: String(l.note || ''),
             classement: l.classement || null,
+            aRetester: l.aRetester || null,
             tags: l.tags || null
         }))
     };

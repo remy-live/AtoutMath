@@ -13,10 +13,66 @@
 // Un code v2 commence par « M2- ». Les anciens codes restent décodables.
 
 import { normalizePath, makePath } from './path.js';
-import { getExerciseById } from '../data/catalog.js';
+import { getExerciseById, exercices } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy } from './policy.js';
 
 const PREFIX = 'M2-';
+
+/**
+ * LE CODE COURT — quatre caractères, pour l'usage le plus fréquent.
+ *
+ * « Fais l'exercice sur les relatifs ce soir » n'a pas besoin d'un parcours :
+ * c'est UN exercice, avec ses réglages d'usine. Le format complet coûtait
+ * pourtant 81 caractères de base64 — à recopier sur un téléphone, en devoirs,
+ * c'est une faute de frappe garantie et un élève qui abandonne.
+ *
+ * Le code court est calculé À PARTIR de l'identifiant de l'exercice : rien à
+ * tenir à jour quand on en ajoute un, et le code d'un exercice ne change
+ * jamais tant que son identifiant ne change pas. On le VÉRIFIE : un test
+ * s'assure qu'aucun couple d'exercices du catalogue ne tombe sur le même code.
+ *
+ * L'alphabet écarte ce qui se lit mal recopié à la main — pas de O contre 0,
+ * pas de I contre 1, pas de S contre 5.
+ */
+const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXYZ2346789';
+const LONGUEUR_COURT = 4;
+
+export function codeCourt(exerciseId) {
+    // FNV-1a, 32 bits : court, sans dépendance, et bien réparti sur des
+    // chaînes qui se ressemblent — « num-relatifs-addition » et
+    // « num-relatifs-addition-b » doivent tomber loin l'un de l'autre.
+    let h = 0x811c9dc5;
+    const s = String(exerciseId || '');
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    let out = '';
+    for (let i = 0; i < LONGUEUR_COURT; i++) {
+        out += ALPHABET[h % ALPHABET.length];
+        h = Math.floor(h / ALPHABET.length);
+    }
+    return out;
+}
+
+/** Le code tel qu'on l'écrit au tableau : « REL-K7QP » se lit, « relk7qp » aussi. */
+export const normaliserCourt = (code) => String(code || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '')
+    .replace(/O/g, '0').replace(/I/g, '1').replace(/S/g, '5');
+
+/** Ce parcours se résume-t-il à « cet exercice, tel quel » ? */
+function estSimple(path) {
+    const p = normalizePath(path);
+    if (!p.steps || p.steps.length !== 1) return false;
+    const s = p.steps[0];
+    if (s.overrides && Object.keys(s.overrides).length) return false;
+    if (s.threshold !== null && s.threshold !== undefined && s.threshold !== 7) return false;
+    if ((s.nbItems || 10) !== 10 || (s.weight || 1) !== 1 || s.timeLimit) return false;
+    const pol = resolvePolicy(p.policy);
+    const def = defaultPolicy();
+    return pol.mode === def.mode && pol.hints === def.hints
+        && pol.maxAttemptsPerItem === def.maxAttemptsPerItem && !pol.grading;
+}
 
 // --- base64url ---------------------------------------------------------------
 
@@ -126,9 +182,14 @@ function decodeLegacy(code) {
 // --- API ---------------------------------------------------------------------
 
 export const Shortcodes = {
-    /** @returns {string} code partageable (préfixé M2-) */
+    /**
+     * @returns {string} code partageable — QUATRE CARACTÈRES quand le parcours
+     * se résume à un exercice pris tel quel, le format complet sinon.
+     */
     encodePath(path) {
         try {
+            const p = normalizePath(path);
+            if (estSimple(p)) return codeCourt(p.steps[0].exerciseId);
             return PREFIX + toBase64Url(JSON.stringify(compact(path)));
         } catch (e) {
             console.error('[shortcodes] encodage impossible', e);
@@ -144,11 +205,27 @@ export const Shortcodes = {
             if (trimmed.startsWith(PREFIX)) {
                 return expand(JSON.parse(fromBase64Url(trimmed.slice(PREFIX.length))));
             }
+            const court = this.exerciceDuCodeCourt(trimmed);
+            if (court) {
+                const path = makePath(court.title || 'Exercice', [], defaultPolicy());
+                path.steps = [{
+                    stepId: 'sc_0', exerciseId: court.id, overrides: {},
+                    nbItems: 10, threshold: 7, weight: 1, timeLimit: null, forceSeed: null
+                }];
+                return path;
+            }
             return decodeLegacy(trimmed);
         } catch (e) {
             console.warn('[shortcodes] code illisible', e);
             return null;
         }
+    },
+
+    /** L'exercice désigné par un code court, ou null. */
+    exerciceDuCodeCourt(code) {
+        const cible = normaliserCourt(code);
+        if (cible.length !== LONGUEUR_COURT) return null;
+        return exercices.find(e => normaliserCourt(codeCourt(e.id)) === cible) || null;
     },
 
     shareUrl(path) {

@@ -7,7 +7,7 @@ import './helpers.mjs';
 import {
     CRITERES, VERDICTS, FORMAT, decrireAppareil, nommerAppareil, nouveauCarnet,
     noter, ligneDe, avancement, ennuis, resume, fusionner, lire, versMarkdown, clefLigne,
-    direClassement, remarques
+    direClassement, remarques, lireRetest, marquerARetester, aRetester
 } from '../js/core/bancEssai.js';
 
 const faussetteFenetre = (over = {}) => ({
@@ -301,4 +301,48 @@ test('une remarque écrite sous des verdicts tout verts ressort quand même', ()
     // est déjà dans « Ce qui ne va pas », avec sa cause.
     assert.equal(remarques(carnetType()).length, 0);
     assert.ok(!/## Noté au passage/.test(versMarkdown(carnetType())));
+});
+
+test('une consigne de RETEST se colle et remet les exercices à faire', () => {
+    // Une passe finie, un rapport envoyé, huit exercices corrigés : sans
+    // consigne, il faudrait les retrouver un par un dans une liste de cent
+    // cinq. Le format doit survivre à une conversation — pas de JSON.
+    const c0 = carnetType();
+    const avant = avancement(c0, [{ id: 'geo-tangram' }, { id: 'geo-solides-denombrer' }]);
+    assert.equal(avant.vus, 2, 'les deux étaient notés');
+
+    const consigne = lireRetest(
+        'RETEST v160 | geo-tangram = la silhouette tient en paysage | logi-dominos = pièce visible');
+    assert.equal(consigne.version, 'v160');
+    assert.equal(consigne.exercices.length, 2);
+    assert.equal(consigne.exercices[0].exercice, 'geo-tangram');
+    assert.match(consigne.exercices[0].quoi, /silhouette/);
+
+    const c1 = marquerARetester(c0, consigne, 42);
+    assert.equal(aRetester(c1).length, 1, 'seul l\'exercice déjà noté est repris');
+    assert.equal(aRetester(c1)[0].exercice, 'geo-tangram');
+    // Il redevient « à faire » : son ancien verdict ne dit plus rien de la
+    // version qu'on a sous les yeux.
+    const apres = avancement(c1, [{ id: 'geo-tangram' }, { id: 'geo-solides-denombrer' }]);
+    assert.equal(apres.vus, 1);
+    assert.deepEqual(apres.restants, ['geo-tangram']);
+    // Mais l'ancienne note reste lisible pendant qu'on reteste.
+    assert.equal(ligneDe(c1, 'geo-tangram', nommerAppareil(c1.appareil)).verdicts.marche, 'ko');
+
+    // Et un texte qui n'est pas une consigne ne l'est pas.
+    assert.equal(lireRetest('bonjour, peux-tu corriger le tangram ?'), null);
+    assert.equal(lireRetest('RETEST'), null);
+    assert.equal(lireRetest(''), null);
+});
+
+test('renoter un exercice repris solde la demande', () => {
+    let c = marquerARetester(carnetType(),
+        lireRetest('RETEST v160 | geo-tangram = corrigé'), 1);
+    assert.equal(aRetester(c).length, 1);
+    c = noter(c, {
+        exercice: 'geo-tangram', titre: 'Le Tangram', date: 5000,
+        verdicts: { marche: 'ok', 'mise-en-page': 'ok' }, note: 'Bon maintenant.'
+    });
+    assert.equal(aRetester(c).length, 0, 'la note fraîche solde le retest');
+    assert.equal(ligneDe(c, 'geo-tangram', nommerAppareil(c.appareil)).verdicts.marche, 'ok');
 });

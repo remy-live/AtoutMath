@@ -590,10 +590,20 @@ function initToolbar() {
                 showAlert('Ajoutez au moins une activité pour générer un code.');
                 return;
             }
+            // LE CODE COURT SE DIT À VOIX HAUTE. Un parcours d'un seul
+            // exercice pris tel quel tient en quatre caractères : c'est celui
+            // qu'on écrit au tableau pour les devoirs du soir. On le MONTRE
+            // toujours, même quand le lien part au presse-papiers — un élève
+            // qui n'a pas le lien doit pouvoir taper le code.
             const code = Shortcodes.encodePath(state.currentPath);
+            const court = code.length <= 6;
             try {
                 await navigator.clipboard.writeText(Shortcodes.shareUrl(state.currentPath));
-                showToast('Lien copié dans le presse-papier !', 'success');
+                showToast(court ? `Lien copié — code à dicter : ${code}`
+                    : 'Lien copié dans le presse-papier !', 'success');
+                if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
+                    + '<br><br>Quatre caractères, à taper dans « J\'ai un code ». '
+                    + 'Le lien est aussi dans le presse-papiers.');
             } catch (e) {
                 showAlert(`Code du parcours :\n\n${code}`);
             }

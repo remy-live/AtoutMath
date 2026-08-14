@@ -15,7 +15,8 @@ import { exercices } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import {
     CRITERES, VERDICTS, decrireAppareil, nommerAppareil, nouveauCarnet, noter,
-    ligneDe, avancement, versMarkdown, lire, fusionner, direClassement
+    ligneDe, avancement, versMarkdown, lire, fusionner, direClassement,
+    lireRetest, marquerARetester, aRetester
 } from '../core/bancEssai.js';
 
 const CLE = 'mathbox-banc-essai';
@@ -99,6 +100,10 @@ function assurerPanneau() {
             }
             .banc-nom { font-weight: 700; font-size: .9rem; flex: 1 1 160px; }
             .banc-sous { font-size: .7rem; color: var(--text-muted); font-weight: 500; }
+            .banc-repris {
+                display: block; font-size: .7rem; font-weight: 700;
+                color: var(--warning, #b45309); margin-top: 2px;
+            }
             .banc-niv {
                 display: block; font-size: .68rem; font-weight: 700; color: var(--primary);
                 letter-spacing: .02em;
@@ -210,6 +215,10 @@ function listeFiltree() {
             return l && Object.values(l.verdicts).some(v => v === 'ko' || v === 'moyen');
         });
     }
+    if (filtre === 'retest') {
+        const repris = new Set(aRetester(carnet).map(l => l.exercice));
+        return exercices.filter(e => repris.has(e.id));
+    }
     if (filtre === 'jeux') return exercices.filter(e => e.activityId);
     return exercices;
 }
@@ -222,8 +231,10 @@ function peindre() {
         + ' · carnet gardé sur cet appareil, tu peux fermer et reprendre plus tard';
 
     const corps = el.querySelector('[data-corps]');
+    const repris = aRetester(carnet).length;
     const chips = [
         ['restants', `À faire (${av.restants.length})`],
+        ...(repris ? [['retest', `À retester (${repris})`]] : []),
         ['ennuis', 'Ce qui cloche'],
         ['jeux', 'Les jeux'],
         ['tous', `Tous (${exercices.length})`]
@@ -272,10 +283,14 @@ function ligneHtml(exo) {
     // quand on passe les exercices en revue : un exercice bien fait mais
     // annoncé pour le mauvais niveau ne servira jamais.
     const niveaux = ((exo.tags && exo.tags.niveaux) || []).join(' · ');
+    // CE QUI A CHANGÉ SE LIT SUR LA LIGNE. Retester sans savoir ce qui a été
+    // touché, c'est rejouer au hasard en espérant retomber sur le défaut.
+    const repris = l && l.aRetester
+        ? `<span class="banc-repris">↻ ${echapper(l.aRetester.quoi || 'repris')}</span>` : '';
     return `<div class="banc-ligne">
         <span class="banc-nom">${echapper(exo.title)}
             <span class="banc-sous">${echapper(sd)}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span>
-            <span class="banc-niv">${echapper(niveaux || 'aucun niveau')}</span></span>
+            <span class="banc-niv">${echapper(niveaux || 'aucun niveau')}</span>${repris}</span>
         <span class="banc-etat">${pastilles}</span>
         <span class="banc-actions">
             <button type="button" class="banc-btn" data-jouer="${exo.id}">▶</button>
@@ -603,10 +618,14 @@ function demanderCarnet() {
     const zone = document.createElement('div');
     zone.className = 'banc-coller';
     zone.innerHTML = `
-        <h4>Reprendre un carnet</h4>
-        <div class="banc-critere-q">Colle ici un rapport copié — celui de cet appareil après
-            un incident, ou celui d'un autre appareil. Les deux carnets s'ADDITIONNENT : une
-            note prise sur le téléphone ne remplace pas celle prise sur la tablette.</div>
+        <h4>Coller un carnet ou une consigne de retest</h4>
+        <div class="banc-critere-q">Deux choses se collent ici, et le champ reconnaît
+            laquelle. UN RAPPORT copié — celui de cet appareil après un incident, ou celui
+            d'un autre appareil : les deux carnets s'ADDITIONNENT, une note prise sur le
+            téléphone ne remplace pas celle prise sur la tablette. Ou UNE CONSIGNE DE
+            RETEST — la ligne « RETEST v160 | exercice = ce qui a changé » que je renvoie
+            après avoir corrigé : les exercices repris retournent dans « À faire », avec
+            le rappel de ce qui a bougé.</div>
         <textarea class="banc-champ" data-colle placeholder="# Banc d'essai — …"></textarea>
         <div style="display:flex; gap:6px; margin-top:8px">
             <button type="button" class="banc-btn banc-btn--fort" data-ok>Reprendre</button>
@@ -615,10 +634,26 @@ function demanderCarnet() {
     el.appendChild(zone);
     zone.querySelector('[data-non]').onclick = () => zone.remove();
     zone.querySelector('[data-ok]').onclick = async () => {
-        const avant = carnet.lignes.length;
-        const ok = importerCarnet(zone.querySelector('[data-colle]').value);
+        const texte = zone.querySelector('[data-colle]').value;
         const { showToast } = await import('./modal.js');
-        if (!ok) { showToast('Ce texte ne contient pas de carnet.', 'warning'); return; }
+        // La consigne de retest d'abord : elle est plus courte et plus
+        // reconnaissable qu'un carnet, et c'est le cas le plus fréquent.
+        const consigne = lireRetest(texte);
+        if (consigne) {
+            carnet = marquerARetester(carnet, consigne, Date.now());
+            garder();
+            filtre = 'retest';
+            peindre();
+            const combien = aRetester(carnet).length;
+            showToast(combien
+                ? `${combien} exercice(s) à retester${consigne.version ? ` en ${consigne.version}` : ''}.`
+                : 'Aucun de ces exercices n\'est encore dans ton carnet — ils sont dans « À faire ».',
+            combien ? 'success' : 'warning');
+            zone.remove();
+            return;
+        }
+        const avant = carnet.lignes.length;
+        if (!importerCarnet(texte)) { showToast('Ce texte n\'est ni un carnet ni une consigne de retest.', 'warning'); return; }
         showToast(`Carnet repris : ${carnet.lignes.length - avant} note(s) de plus.`, 'success');
         zone.remove();
     };
