@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
-    LEXIQUE, THEMES, DIRECTIONS, motsDisponibles, creerGrille,
+    LEXIQUE, THEMES, DIRECTIONS, motsDisponibles, tirerMots, creerGrille,
     segment, lire, motTrouve, toutTrouve
 } from '../js/core/motsCaches.js';
 import { makeRng } from '../js/core/ids.js';
@@ -159,5 +159,54 @@ test('toutes les directions déclarées sont des directions valides', () => {
         assert.ok(Math.abs(d.dx) <= 1 && Math.abs(d.dy) <= 1);
         assert.ok(d.dx !== 0 || d.dy !== 0, 'une direction immobile');
         assert.ok(d.nom, 'une direction sans nom lisible');
+    }
+});
+
+// --- La variété du placement, et la fiche papier -----------------------------
+
+test('une grille ne pose pas tous ses mots dans le même sens', () => {
+    // Le croisement est rare — il faut la même lettre au point de rencontre —
+    // donc presque tous les candidats valaient zéro, et le hasard suivait le
+    // sens qui offre le plus de positions : une grille sur quatre sortait tout
+    // en lignes ou tout en colonnes. C'est une liste, plus un mot caché.
+    let pauvres = 0;
+    for (let i = 0; i < 40; i++) {
+        const rng = makeRng('var' + i);
+        const g = grille({ rng, mots: tirerMots({ theme: 'tout', nbMots: 10, rng }) });
+        const sens = new Set(g.mots.map(m => `${m.dx},${m.dy}`));
+        assert.ok(sens.size >= 2, `grille ${i} : tous les mots dans le sens ${[...sens][0]}`);
+        if (sens.size === 2) pauvres++;
+    }
+    // Et la grande majorité en utilise trois ou quatre.
+    assert.ok(pauvres < 10, `${pauvres} grilles sur 40 n'utilisent que deux sens`);
+});
+
+test('la fiche papier ne sert pas que les mots les plus longs', async () => {
+    const { motsCachesFicheGenerator: G } = await import('../js/core/generators/motsCachesFiche.js');
+    const vus = new Set();
+    for (let i = 0; i < 25; i++) {
+        const it = G.generate({ theme: 'tout', taille: 12, nbMots: 10 },
+            { rng: makeRng('fiche' + i) });
+        it.meta.mots.forEach(m => vus.add(m.mot));
+        assert.ok(it.meta.mots.length >= 7, `grille trop pauvre : ${it.meta.mots.length} mots`);
+    }
+    // Le placeur pose les plus longs d'abord ; sans tirage préalable, il
+    // servait les dix mêmes mots interminables à chaque feuille.
+    const courts = [...vus].filter(m => m.length <= 6);
+    assert.ok(courts.length >= 5, `aucun mot court n'est jamais tiré : ${[...vus].join(', ')}`);
+    assert.ok(vus.size > 25, `seulement ${vus.size} mots différents sur 25 feuilles`);
+});
+
+test('la fiche annonce des mots réellement présents dans sa grille', async () => {
+    const { motsCachesFicheGenerator: G } = await import('../js/core/generators/motsCachesFiche.js');
+    for (let i = 0; i < 20; i++) {
+        const it = G.generate({ theme: 'tout', taille: 12, nbMots: 8, envers: true },
+            { rng: makeRng('lit' + i) });
+        const { grille: gr, mots } = it.meta;
+        for (const w of mots) {
+            let lu = '';
+            for (let k = 0; k < w.longueur; k++) lu += gr[w.y + w.dy * k][w.x + w.dx * k];
+            assert.equal(lu, w.mot, `« ${w.mot} » ne se lit pas là où la solution le dit`);
+        }
     }
 });

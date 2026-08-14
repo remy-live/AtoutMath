@@ -13,7 +13,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    THEMES, motsDisponibles, creerGrille, segment, motTrouve, toutTrouve
+    THEMES, tirerMots, creerGrille, segment, motTrouve, toutTrouve
 } from '../core/motsCaches.js';
 
 const SKILL = 'voc.mathematique';
@@ -151,10 +151,13 @@ class MotsCaches extends BaseGame {
 
     nouvelleGrille() {
         const rng = makeRng(this.params.seed);
-        const dispo = motsDisponibles({ theme: this.theme, niveauMax: this.params.niveauMax || 3 });
+        const dispo = tirerMots({
+            theme: this.theme, niveauMax: this.params.niveauMax || 3,
+            nbMots: this.nbMots, rng
+        });
         this.etat = creerGrille({
             taille: this.taille, nbMots: this.nbMots, rng,
-            mots: rng.shuffle(dispo), diagonales: this.diagonales, envers: this.envers
+            mots: dispo, diagonales: this.diagonales, envers: this.envers
         });
         this.trouves = [];
     }

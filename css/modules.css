@@ -3641,6 +3641,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    les côtés, comme sur une figure de géométrie, et non dans un énoncé. Sous
    lui, une ligne par grandeur demandée. */
 .fx-rc-svg { position: absolute; overflow: visible; pointer-events: none; }
+
+/* Les mots cachés : la grille dans un SVG, la liste des indices à côté. */
+.fx-mc-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-mc-liste {
+    position: absolute; color: #2d3748; overflow: hidden;
+    font-weight: 700; letter-spacing: .01em;
+}
 .fx-rc-ligne {
     position: absolute; display: flex; align-items: center; gap: .4em;
     padding: 0 6%; box-sizing: border-box; color: #2d3748; white-space: nowrap;

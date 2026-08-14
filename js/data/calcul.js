@@ -407,6 +407,12 @@ export const calculExercises = [
     {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
         activityId: 'motscaches',
+        // SUR LE PAPIER, PERSONNE NE VALIDE : il faut entourer, donc être sûr.
+        // Et la fiche sait faire ce que l'écran ne fait pas — ne donner que les
+        // DÉFINITIONS, et laisser retrouver le mot du cours avant de le
+        // chercher dans la grille.
+        printable: 'motscaches', printGeneratorId: 'voc.mots-caches-fiche',
+        printParams: { theme: 'tout', taille: 12, nbMots: 10, indices: 'mots', diagonales: true },
         // Les erreurs n'ont rien à réviser ici : un tracé raté est un essai, pas
         // une faute, et le jeu n'en enregistre aucun.
         sansRevision: true,

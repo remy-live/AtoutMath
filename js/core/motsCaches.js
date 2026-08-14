@@ -117,6 +117,23 @@ export function motsDisponibles({ theme = 'tout', niveauMax = 3 } = {}) {
     return LEXIQUE.filter(m => (theme === 'tout' || m.theme === theme) && m.niveau <= niveauMax);
 }
 
+/**
+ * Les mots d'UNE grille : un tirage, pas tout le lexique.
+ *
+ * `creerGrille` pose les mots les plus longs d'abord — c'est la bonne règle,
+ * un « PERPENDICULAIRE » ne rentre plus dans une grille déjà garnie — mais si
+ * on lui donne le lexique entier, il s'arrête au dixième mot posé : ce sont
+ * toujours les dix mots les plus longs, et ni CARRE, ni RAYON, ni SOMME ne
+ * paraissent jamais. On tire donc d'abord, on place ensuite.
+ *
+ * Quelques mots de rab : certains ne rentreront pas, et une grille à sept mots
+ * quand on en demandait dix se remarque.
+ */
+export function tirerMots({ theme = 'tout', niveauMax = 3, nbMots = 10, rng } = {}) {
+    const dispo = motsDisponibles({ theme, niveauMax });
+    return (rng ? rng.shuffle(dispo) : dispo).slice(0, nbMots + 5);
+}
+
 const cle = (x, y) => `${x},${y}`;
 
 /** Les cases qu'occuperait ce mot, ou null si ça ne passe pas. */
@@ -152,6 +169,14 @@ export function creerGrille({ taille = 12, mots = [], nbMots = 10, rng = makeRng
 
     const cases = {};
     const places = [];
+    // COMBIEN DE FOIS CHAQUE SENS A SERVI. Sans ce compte, une grille sur
+    // quatre sortait avec ses dix mots dans le même sens : le croisement est
+    // rare (il faut la même lettre au point de rencontre), donc la plupart des
+    // candidats valent zéro, et le hasard suit alors le sens qui offre le plus
+    // de positions. Une grille où tout se lit de gauche à droite n'est plus un
+    // mot caché, c'est une liste.
+    const usages = {};
+    const cleDir = (d) => `${d.dx},${d.dy}`;
     // Les mots longs d'abord : placer « PERPENDICULAIRE » en dernier dans une
     // grille déjà pleine échoue presque toujours, et c'est justement le mot
     // qu'on voulait faire lire.
@@ -167,9 +192,19 @@ export function creerGrille({ taille = 12, mots = [], nbMots = 10, rng = makeRng
         // mots posés côte à côte, repérables d'un coup d'œil, et une grille qui
         // n'a de mots cachés que le nom. Le croisement est ce qui oblige à
         // vraiment lire les lettres.
+        // LES SENS LES MOINS SERVIS SONT ESSAYÉS EN PREMIER. Trier au moment
+        // du choix ne suffisait pas : quand le meilleur croisement n'existe
+        // que dans un seul sens, c'est ce sens qui gagne, et de proche en
+        // proche toute la grille bascule. En tirant les positions dans les
+        // sens rares, on récolte des candidats à départager.
+        const moindre = Math.min(...dirs.map(d => usages[cleDir(d)] || 0));
+        const rares = dirs.filter(d => (usages[cleDir(d)] || 0) === moindre);
         const trouvees = [];
         for (let essai = 0; essai < 260 && trouvees.length < 24; essai++) {
-            const dir = rng.pick(dirs);
+            // Les deux tiers des essais dans les sens rares, le reste partout :
+            // un mot qui ne rentre QUE dans le sens déjà servi doit pouvoir y
+            // rentrer quand même, plutôt que d'être abandonné.
+            const dir = rng.pick(essai % 3 === 2 ? dirs : rares);
             const x = rng.int(0, taille - 1);
             const y = rng.int(0, taille - 1);
             const cellules = essayer(cases, taille, entree.mot, x, y, dir);
@@ -182,7 +217,13 @@ export function creerGrille({ taille = 12, mots = [], nbMots = 10, rng = makeRng
         if (!trouvees.length) continue;
         const meilleur = Math.max(...trouvees.map(t => t.croisements));
         const bonnes = trouvees.filter(t => t.croisements === meilleur);
-        const pose = bonnes[rng.int(0, bonnes.length - 1)];
+        // À CROISEMENTS ÉGAUX, LE SENS LE MOINS SERVI. Le croisement reste
+        // prioritaire — c'est lui qui fait la grille — mais entre deux
+        // placements aussi bons, on varie.
+        const rare = Math.min(...bonnes.map(t => usages[cleDir(t.dir)] || 0));
+        const variees = bonnes.filter(t => (usages[cleDir(t.dir)] || 0) === rare);
+        const pose = variees[rng.int(0, variees.length - 1)];
+        usages[cleDir(pose.dir)] = (usages[cleDir(pose.dir)] || 0) + 1;
         pose.cellules.forEach(c => { cases[cle(c.x, c.y)] = c.lettre; });
         places.push({
             mot: entree.mot, def: entree.def, theme: entree.theme,

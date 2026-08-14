@@ -2415,6 +2415,158 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- LES MOTS CACHÉS -----------------------------------------------------------
+//
+// La grille prend la hauteur de la page, la liste des mots se range à côté.
+// Une grille par feuille : à deux, les lettres tombent sous quatre millimètres
+// et l'on ne cherche plus des mots, on plisse les yeux.
+//
+// SUR LA CORRECTION, on ne redessine pas la grille en couleur — on éteint les
+// lettres de bourrage et l'on trace un trait d'un bout à l'autre de chaque mot.
+// C'est exactement le geste qu'on demande à l'élève, et ça se photocopie.
+
+function geoMots(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    // La colonne des indices : large quand elle porte des définitions, étroite
+    // quand elle ne porte que les mots.
+    const seulsMots = m.indices === 'mots';
+    const listeW = seulsMots
+        ? Math.max(34, Math.min(b.w * 0.20, 58))
+        : Math.max(58, Math.min(b.w * 0.42, 118));
+    const cote = Math.max(10, Math.min(b.w - listeW - 8, b.h));
+    const cell = cote / m.taille;
+    // L'ensemble grille + liste est centré : la grille est bornée par la
+    // HAUTEUR de la page, donc collée à gauche elle laissait cinq centimètres
+    // de blanc à droite, comme une feuille mal cadrée.
+    const x0 = b.x + Math.max(0, (b.w - cote - 8 - listeW) / 2);
+    return {
+        m, b, cell, cote, listeW,
+        x0, y0: b.y + (b.h - cote) / 2,
+        listeX: x0 + cote + 8
+    };
+}
+
+/** Le centre d'une case, en millimètres — la même pour l'aperçu et le PDF. */
+const centreMot = (g, x, y) => ({
+    cx: g.x0 + (x + 0.5) * g.cell,
+    cy: g.y0 + (y + 0.5) * g.cell
+});
+
+/** Les lignes de la colonne d'indices, dans l'ordre où elles s'impriment. */
+function indicesMots(m) {
+    if (m.indices === 'definitions') return m.mots.map((w, i) => `${i + 1}. ${w.def}`);
+    if (m.indices === 'les-deux') return m.mots.map(w => `${w.mot} — ${w.def}`);
+    return m.mots.map(w => w.mot);
+}
+
+function motsPreviewHtml(item, slot, k, solution) {
+    const g = geoMots(item, slot);
+    const m = g.m;
+    // Les cases occupées par un mot : sur la correction, seules celles-là
+    // restent noires.
+    const dedans = new Set();
+    if (solution) {
+        m.mots.forEach(w => {
+            for (let i = 0; i < w.longueur; i++) dedans.add(`${w.x + w.dx * i},${w.y + w.dy * i}`);
+        });
+    }
+
+    const T = (v) => (v * k).toFixed(2);
+    let svg = '';
+    m.grille.forEach((ligne, y) => {
+        ligne.forEach((lettre, x) => {
+            const c = centreMot(g, x, y);
+            const chaude = !solution || dedans.has(`${x},${y}`);
+            svg += `<text x="${T(c.cx)}" y="${T(c.cy)}" text-anchor="middle"
+                dominant-baseline="central" font-size="${T(g.cell * 0.62)}"
+                font-weight="${chaude ? 700 : 400}"
+                fill="${chaude ? '#1a202c' : '#c3c8d2'}">${lettre}</text>`;
+        });
+    });
+    if (solution) {
+        m.mots.forEach(w => {
+            const a = centreMot(g, w.x, w.y);
+            const z = centreMot(g, w.x + w.dx * (w.longueur - 1), w.y + w.dy * (w.longueur - 1));
+            svg += `<line x1="${T(a.cx)}" y1="${T(a.cy)}" x2="${T(z.cx)}" y2="${T(z.cy)}"
+                stroke="#e11d48" stroke-width="${T(g.cell * 0.44)}" stroke-linecap="round"
+                opacity="0.26"/>`;
+        });
+    } else {
+        // Le cadre : sans lui, une grille de lettres flotte au milieu du papier.
+        svg += `<rect x="${T(g.x0)}" y="${T(g.y0)}" width="${T(g.cote)}" height="${T(g.cote)}"
+            fill="none" stroke="#1a202c" stroke-width="${T(0.45)}"/>`;
+    }
+
+    let html = `<svg class="fx-mc-svg" style="left:0; top:0; width:100%; height:100%">${svg}</svg>`;
+    const lignes = indicesMots(m);
+    const pas = Math.min(g.cote / Math.max(lignes.length, 8), m.indices === 'mots' ? 8 : 12);
+    html += `<div class="fx-mc-liste" style="left:${g.listeX * k}px; top:${g.y0 * k}px;
+        width:${g.listeW * k}px; height:${g.cote * k}px;
+        font-size:${Math.min(pas * 0.42, 4) * k}px; line-height:${pas * k}px">`
+        + lignes.map(l => `<div>${echapperSheet(l)}</div>`).join('') + '</div>';
+    return html;
+}
+
+function dessinerMotsPdf(doc, item, slot, solution) {
+    const g = geoMots(item, slot);
+    const m = g.m;
+    const dedans = new Set();
+    if (solution) {
+        m.mots.forEach(w => {
+            for (let i = 0; i < w.longueur; i++) dedans.add(`${w.x + w.dx * i},${w.y + w.dy * i}`);
+        });
+    }
+
+    if (solution) {
+        // Le trait D'ABORD, les lettres par-dessus : l'inverse barrerait le mot
+        // au lieu de le désigner.
+        // Assez large pour désigner, assez clair pour qu'on lise la lettre au
+        // travers : à pleine case, deux mots qui se croisent font une tache.
+        doc.setDrawColor(249, 205, 216);
+        doc.setLineWidth(g.cell * 0.46);
+        m.mots.forEach(w => {
+            const a = centreMot(g, w.x, w.y);
+            const z = centreMot(g, w.x + w.dx * (w.longueur - 1), w.y + w.dy * (w.longueur - 1));
+            doc.line(a.cx, a.cy, z.cx, z.cy);
+        });
+        doc.setLineWidth(0.4);
+    } else {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.45);
+        doc.rect(g.x0, g.y0, g.cote, g.cote, 'S');
+    }
+
+    doc.setFontSize(Math.max(5, Math.min(g.cell * 2.1, 13)));
+    m.grille.forEach((ligne, y) => {
+        ligne.forEach((lettre, x) => {
+            const c = centreMot(g, x, y);
+            const chaude = !solution || dedans.has(`${x},${y}`);
+            doc.setFont('helvetica', chaude ? 'bold' : 'normal');
+            doc.setTextColor(...(chaude ? ENCRE.texte : [196, 201, 210]));
+            doc.text(lettre, c.cx, c.cy + g.cell * 0.22, { align: 'center' });
+        });
+    });
+
+    const lignes = indicesMots(m);
+    const taille = m.indices === 'mots' ? 9 : 7;
+    doc.setFont('helvetica', m.indices === 'mots' ? 'bold' : 'normal');
+    doc.setFontSize(taille);
+    doc.setTextColor(...ENCRE.texte);
+    // Chaque indice est découpé à la largeur de sa colonne : une définition
+    // d'un seul tenant sortait par la droite de la feuille.
+    let y = g.y0 + taille * 0.5;
+    const interligne = taille * 0.42;
+    lignes.forEach(l => {
+        doc.splitTextToSize(pourPdf(l), g.listeW).forEach(part => {
+            if (y > g.y0 + g.cote) return;
+            doc.text(part, g.listeX, y);
+            y += interligne;
+        });
+        y += interligne * 0.55;
+    });
+}
+
 export const RENDUS = {
     repere: {
         titre: 'Repère et coordonnées',
@@ -2450,6 +2602,33 @@ export const RENDUS = {
         nomBloc: 'Rectangle',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    motscaches: {
+        titre: 'Mots cachés du vocabulaire',
+        consigne: (items) => {
+            const m = (items[0] && items[0].meta) || {};
+            const commun = 'Les mots se lisent dans tous les sens : horizontalement, '
+                + 'verticalement, en diagonale — et parfois à l\'envers. Entoure chacun '
+                + 'dans la grille.';
+            if (m.indices === 'definitions') {
+                return `${commun} Ici les mots ne sont pas donnés : chaque définition en `
+                    + 'désigne un seul. Écris-le sur la ligne, puis va le chercher.';
+            }
+            if (m.indices === 'les-deux') {
+                return `${commun} La définition est là pour que le mot veuille dire quelque `
+                    + 'chose — relis-la une fois le mot trouvé.';
+            }
+            return commun;
+        },
+        previewGrille: motsPreviewHtml,
+        pdfGrille: dessinerMotsPdf,
+        nomBloc: 'Grille',
+        titreAGauche: true,
+        // UNE GRILLE PAR PAGE. À deux, un 12 × 12 tombe sous quatre millimètres
+        // par lettre : on ne cherche plus des mots, on plisse les yeux.
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
+        parLigneDefaut: 1
     },
 
     angles: {
