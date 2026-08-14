@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     VIDE, decompositions, nombresDeLaTable, creerPartie, idx, libre,
-    placementPossible, ciblesPossibles, tirerCible, poser, restant, score, conseil
+    placementPossible, ciblesPossibles, tirerCible, poser, restant, score, conseil,
+    utiliserJoker, formes
 } from '../js/core/arpenteurs.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -184,4 +185,63 @@ test('deux joueurs se partagent le terrain, personne ne joue deux fois', () => {
         assert.notEqual(ordre[i], ordre[i - 1], 'un joueur a joué deux fois de suite');
     }
     assert.deepEqual(e.parcelles.map(p => p.joueur), ordre);
+});
+
+// --- Le joker et la partie solo ----------------------------------------------
+
+test('le joker change le nombre, une seule fois par joueur', () => {
+    const rng = makeRng('joker');
+    const e = creerPartie({ cols: 20, rows: 14, table: 10 });
+    tirerCible(e, rng);
+    const avant = e.cible;
+    const r = utiliserJoker(e, rng);
+    assert.equal(r.ok, true);
+    assert.notEqual(r.cible, avant, 'le joker doit donner un AUTRE nombre');
+    assert.equal(e.jokers[1], 0);
+    // Deuxième usage : refusé, et le nombre ne bouge plus.
+    const encore = utiliserJoker(e, rng);
+    assert.equal(encore.ok, false);
+    assert.equal(encore.raison, 'epuise');
+    assert.equal(e.cible, r.cible);
+    // Le joker de l'autre joueur est intact : c'est un par personne.
+    assert.equal(e.jokers[2], 1);
+});
+
+test('un joker inutile ne se consomme pas', () => {
+    const rng = makeRng('joker2');
+    // Terrain minuscule : il ne reste qu'un seul nombre posable.
+    const e = creerPartie({ cols: 3, rows: 2, table: 10 });
+    tirerCible(e, rng);
+    const possibles = ciblesPossibles(e);
+    if (possibles.length === 1) {
+        const r = utiliserJoker(e, rng);
+        assert.equal(r.ok, false);
+        assert.equal(r.raison, 'seul-possible');
+        assert.equal(e.jokers[1], 1, 'on ne dépense pas un joker qui ne peut rien changer');
+    }
+});
+
+test('en solo, la main ne change jamais de joueur', () => {
+    const rng = makeRng('solo');
+    const e = creerPartie({ cols: 20, rows: 14, table: 10, joueurs: 1 });
+    assert.equal(e.joueurs, 1);
+    for (let coup = 0; coup < 6; coup++) {
+        const n = tirerCible(e, rng);
+        if (n === null) break;
+        // `formes` rend des couples [a, b] : on essaie les deux orientations.
+        let pose = false;
+        for (const [a, bb] of formes(e, n)) {
+            for (const [w, h] of [[a, bb], [bb, a]]) {
+                for (let y = 0; y < e.rows && !pose; y++) for (let x = 0; x < e.cols && !pose; x++) {
+                    if (libre(e, x, y, w, h)) pose = poser(e, x, y, w, h).ok;
+                }
+                if (pose) break;
+            }
+            if (pose) break;
+        }
+        if (!pose) break;
+        assert.equal(e.joueur, 1, 'en solo, c\'est toujours au même de jouer');
+    }
+    assert.ok(score(e, 1) > 0, 'le joueur solo a bien clôturé');
+    assert.equal(score(e, 2), 0, 'aucune case ne doit appartenir à un second joueur');
 });

@@ -365,8 +365,17 @@ export const calculExercises = [
         // statistiques de l'autre ne voudrait rien dire. Rien n'est enregistré,
         // comme pour le Duel des Tables.
         sansRevision: true,
-        params: { terrain: 'moyen', table: 10, bandes: false },
+        params: { terrain: 'moyen', table: 10, bandes: false, joueurs: 2 },
         paramSchema: [
+            {
+                id: 'joueurs', type: 'select', label: 'Qui joue ?',
+                aide: 'Seul, on clôture jusqu\'à ce que plus rien ne rentre et la partie se juge à la surface conquise — même jeu, même calcul, sans partenaire.',
+                options: [
+                    { value: 2, label: 'À deux, sur la même tablette' },
+                    { value: 1, label: 'Seul, contre le terrain' }
+                ],
+                default: 2
+            },
             {
                 id: 'terrain', type: 'select', label: 'Taille du terrain',
                 options: [

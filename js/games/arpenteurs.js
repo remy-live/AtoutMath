@@ -17,7 +17,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     creerPartie, idx, libre, placementPossible, tirerCible, poser,
-    restant, score, conseil, formes
+    restant, score, conseil, formes, utiliserJoker
 } from '../core/arpenteurs.js';
 
 const TAILLES = {
@@ -38,10 +38,12 @@ class Arpenteurs extends BaseGame {
         const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.15;
         const cols = portrait ? t.rows : t.cols;
         const rows = portrait ? t.cols : t.rows;
+        this.solo = String(this.params.joueurs) === '1';
         this.etat = creerPartie({
             cols, rows,
             table: parseInt(this.params.table) || 10,
-            minCote: this.params.bandes ? 1 : 2
+            minCote: this.params.bandes ? 1 : 2,
+            joueurs: this.solo ? 1 : 2
         });
         this.noms = [null, this.params.nom1 || 'Joueur 1', this.params.nom2 || 'Joueur 2'];
     }
@@ -66,6 +68,10 @@ class Arpenteurs extends BaseGame {
                     opacity: .5; transition: opacity .15s, border-color .15s;
                 }
                 .ar-joueur--actif { opacity: 1; border-color: currentColor; }
+                /* « display » est posé explicitement plus haut : sans cette
+                   règle, l'attribut « hidden » ne cache rien et le second
+                   joueur restait affiché en solo. */
+                .ar-joueur[hidden] { display: none; }
                 .ar-joueur--1 { color: #1d4ed8; background: color-mix(in srgb, #60a5fa 22%, transparent); }
                 .ar-joueur--2 { color: #b45309; background: color-mix(in srgb, #fbbf24 26%, transparent); }
                 .ar-cible {
@@ -116,9 +122,9 @@ class Arpenteurs extends BaseGame {
                 .ar-trace {
                     position: absolute; box-sizing: border-box; pointer-events: none;
                     display: flex; align-items: center; justify-content: center;
-                    border: 3px dashed var(--primary); border-radius: 4px;
-                    background: color-mix(in srgb, var(--primary) 22%, transparent);
-                    font-weight: 900; color: var(--primary);
+                    border: 3px dashed var(--ar-main, var(--primary)); border-radius: 4px;
+                    background: color-mix(in srgb, var(--ar-main, var(--primary)) 22%, transparent);
+                    font-weight: 900; color: var(--ar-main, var(--primary));
                     font-size: clamp(11px, calc(var(--pas) * 1.1), 22px);
                     text-shadow: 0 1px 0 var(--bg-plateau), 0 -1px 0 var(--bg-plateau),
                                  1px 0 0 var(--bg-plateau), -1px 0 0 var(--bg-plateau);
@@ -147,12 +153,13 @@ class Arpenteurs extends BaseGame {
                 <div class="ar-haut">
                     <span class="ar-joueur ar-joueur--1" data-j1></span>
                     <span class="ar-cible" data-cible></span>
-                    <span class="ar-joueur ar-joueur--2" data-j2></span>
+                    <span class="ar-joueur ar-joueur--2" data-j2${this.solo ? ' hidden' : ''}></span>
                 </div>
                 <div class="ar-terrain" data-terrain style="--cols:${e.cols};--rows:${e.rows}"></div>
                 <p class="ar-note" data-note></p>
                 <div class="ar-haut">
                     <button type="button" class="ar-btn" data-formes>💡 Quelles formes ?</button>
+                    <button type="button" class="ar-btn" data-joker></button>
                     <button type="button" class="ar-btn" data-neuf>↺ Nouvelle partie</button>
                 </div>
             </div>`;
@@ -163,6 +170,8 @@ class Arpenteurs extends BaseGame {
         this.j1El = this.container.querySelector('[data-j1]');
         this.j2El = this.container.querySelector('[data-j2]');
         this.container.querySelector('[data-formes]').addEventListener('click', () => this.note(conseil(this.etat)));
+        this.jokerEl = this.container.querySelector('[data-joker]');
+        this.jokerEl.addEventListener('click', () => this.jouerJoker());
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.rejouer());
 
         this.brancherGestes();
@@ -224,21 +233,59 @@ class Arpenteurs extends BaseGame {
         const n = tirerCible(this.etat, this.rng);
         this.majBandeau();
         if (n === null) return this.finir();
-        this.note(`Au tour de <b>${this.noms[this.etat.joueur]}</b> : clôture une parcelle de <b>${n}</b> cases. `
-            + `Glisse d'un coin à l'autre.`);
+        this.note(this.solo
+            ? `Clôture une parcelle de <b>${n}</b> cases. Glisse d'un coin à l'autre.`
+            : `Au tour de <b>${this.noms[this.etat.joueur]}</b> : clôture une parcelle de <b>${n}</b> cases. `
+                + `Glisse d'un coin à l'autre.`);
+    }
+
+    /** Le joker : on refuse le nombre tiré, une fois par partie. */
+    jouerJoker() {
+        const r = utiliserJoker(this.etat, this.rng);
+        if (!r.ok) {
+            this.note(r.raison === 'epuise'
+                ? 'Ton joker est déjà passé : il n\'y en a qu\'un par partie.'
+                : (r.raison === 'seul-possible'
+                    ? `Inutile ici : ${this.etat.cible} est le SEUL nombre encore posable. `
+                        + 'Ton joker te reste.'
+                    : 'La partie est finie.'));
+            return;
+        }
+        this.majBandeau();
+        this.note(`Joker ! Le nombre change : clôture une parcelle de <b>${r.cible}</b> cases.`);
     }
 
     majBandeau() {
         const e = this.etat;
         this.cibleEl.textContent = e.cible ?? '—';
-        this.j1El.textContent = `${this.noms[1]} · ${score(e, 1)}`;
+        this.j1El.textContent = this.solo
+            ? `${score(e, 1)} cases clôturées`
+            : `${this.noms[1]} · ${score(e, 1)}`;
         this.j2El.textContent = `${this.noms[2]} · ${score(e, 2)}`;
         this.j1El.classList.toggle('ar-joueur--actif', e.joueur === 1 && !e.perdant);
         this.j2El.classList.toggle('ar-joueur--actif', e.joueur === 2 && !e.perdant);
+        // LE TRACÉ PREND LA COULEUR DE CELUI QUI JOUE. Il était toujours
+        // indigo, c'est-à-dire presque le bleu du joueur 1 : pendant que le
+        // second dessinait, le terrain donnait la couleur de son adversaire.
+        if (this.terrain) {
+            this.terrain.style.setProperty('--ar-main', e.joueur === 2 ? '#b45309' : '#1d4ed8');
+        }
+        if (this.jokerEl) {
+            const reste = e.jokers[e.joueur];
+            this.jokerEl.textContent = reste ? '🃏 Joker — changer de nombre' : '🃏 Joker utilisé';
+            this.jokerEl.disabled = !reste || !!e.perdant;
+        }
     }
 
     finir() {
         const e = this.etat;
+        if (this.solo) {
+            const pris = score(e, 1), total = e.cols * e.rows;
+            this.note(`🏁 Plus aucune parcelle ne rentre. Tu as clôturé <b>${pris}</b> cases sur ${total} `
+                + `(${Math.round(pris / total * 100)} %). Il en restait ${restant(e)}, trop morcelées `
+                + 'pour un rectangle — c\'est là que se gagne la partie suivante.', 'ok');
+            return;
+        }
         const gagnant = e.perdant === 1 ? 2 : 1;
         this.note(`🏁 Plus aucune parcelle ne rentre : <b>${this.noms[e.perdant]}</b> ne peut plus poser. `
             + `<b>${this.noms[gagnant]}</b> gagne, avec ${score(e, gagnant)} cases contre ${score(e, e.perdant)}. `

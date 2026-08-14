@@ -47,7 +47,7 @@ export function nombresDeLaTable(max = 10) {
     return [...vus].sort((x, y) => x - y);
 }
 
-export function creerPartie({ cols = 26, rows = 18, table = 10, minCote = 2 } = {}) {
+export function creerPartie({ cols = 26, rows = 18, table = 10, minCote = 2, joueurs = 2 } = {}) {
     return {
         cols, rows, table, minCote,
         // Le plus grand côté possible : celui du terrain. Une parcelle plus
@@ -55,6 +55,15 @@ export function creerPartie({ cols = 26, rows = 18, table = 10, minCote = 2 } = 
         max: Math.max(cols, rows),
         cases: new Array(cols * rows).fill(VIDE),
         joueur: 1,
+        // SEUL OU À DEUX. En solo, le tour ne change jamais de main : on
+        // clôture jusqu'à ce que plus rien ne rentre, et la partie se juge à la
+        // surface conquise. C'est le même jeu, et il devient jouable sans
+        // partenaire — ce qu'un exercice de classe doit pouvoir être.
+        joueurs: joueurs === 1 ? 1 : 2,
+        // Un JOKER par joueur : le droit de refuser UNE fois le nombre tiré.
+        // Sans lui, un tirage malheureux décide seul de la partie, alors que
+        // tout le jeu consiste à garder des formes possibles.
+        jokers: { 1: 1, 2: 1 },
         cible: null,
         tour: 0,
         perdant: null,
@@ -128,6 +137,27 @@ export function tirerCible(e, rng) {
 }
 
 /**
+ * LE JOKER : refuser une fois le nombre tiré, et en tirer un autre.
+ *
+ * Le tirage ne sort déjà que des nombres posables, donc on ne perd jamais sur
+ * un coup impossible. Mais on peut recevoir 81 quand la seule place de 81
+ * ruine le terrain : le joker rend au joueur la décision, une fois par partie.
+ * Il ne sert à rien s'il n'existe qu'un seul nombre posable — on le lui dit
+ * plutôt que de le lui consommer.
+ *
+ * @returns {{ok:boolean, cible:?number, raison:?string}}
+ */
+export function utiliserJoker(e, rng) {
+    if (e.perdant) return { ok: false, cible: e.cible, raison: 'finie' };
+    if (!e.jokers[e.joueur]) return { ok: false, cible: e.cible, raison: 'epuise' };
+    const autres = ciblesPossibles(e).filter(n => n !== e.cible);
+    if (!autres.length) return { ok: false, cible: e.cible, raison: 'seul-possible' };
+    e.jokers[e.joueur]--;
+    e.cible = rng ? rng.pick(autres) : autres[Math.floor(Math.random() * autres.length)];
+    return { ok: true, cible: e.cible, raison: null };
+}
+
+/**
  * Pose une parcelle. Renvoie le compte rendu du coup — et surtout, quand il est
  * refusé, POURQUOI : c'est le seul retour dont l'élève puisse tirer quelque
  * chose (« tu as tracé 5 × 7 = 35, il en fallait 36 »).
@@ -151,7 +181,8 @@ export function poser(e, x, y, w, h) {
     const parcelle = { joueur: e.joueur, x, y, w, h, aire, tour: e.tour };
     e.parcelles.push(parcelle);
     e.tour++;
-    e.joueur = e.joueur === 1 ? 2 : 1;
+    // En solo, la main ne change pas : il n'y a personne à qui la passer.
+    if (e.joueurs === 2) e.joueur = e.joueur === 1 ? 2 : 1;
     return { ok: true, parcelle, message: `${w} × ${h} = ${aire}` };
 }
 
