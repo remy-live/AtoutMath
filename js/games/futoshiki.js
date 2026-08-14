@@ -14,6 +14,26 @@ import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
 const COMPETENCE = 'num.logique.futoshiki';
 
+/**
+ * La déduction à refaire, selon la règle qui a fermé la case.
+ *
+ * Le solveur n'en connaît que trois, et ce sont exactement les trois qu'un
+ * élève apprend : ce qui reste après la ligne et la colonne, ce qu'un signe
+ * interdit, et la valeur qui n'a plus qu'une place. Nommer la bonne, c'est la
+ * différence entre un indice et une lampe qui clignote.
+ */
+const RAISONS = {
+    unicite: () => 'Sa ligne et sa colonne portent déjà tous les autres chiffres : '
+        + 'compte lequel manque encore.',
+    'trop-grand': () => 'Un signe la relie à une voisine PLUS GRANDE : les chiffres du haut '
+        + 'lui sont interdits. Barre-les, il n\'en restera qu\'un.',
+    'trop-petit': () => 'Un signe la relie à une voisine PLUS PETITE : les chiffres du bas '
+        + 'lui sont interdits. Barre-les, il n\'en restera qu\'un.',
+    'seule-place': (e) => `Cherche plutôt où peut aller le ${e.valeur} dans `
+        + `${e.unite.type === 'ligne' ? 'la ligne' : 'la colonne'} ${e.unite.index + 1} : `
+        + 'toutes les autres cases le refusent.'
+};
+
 class Futoshiki extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'futoshiki');
@@ -93,10 +113,30 @@ class Futoshiki extends BaseGame {
 
     startGameLoop() { this.poser(); }
 
+    /**
+     * La part de cases données pour la grille qui vient.
+     *
+     * « Des grilles plus simples au début » : la première grille d'une séance
+     * ne doit pas être celle d'un joueur qui connaît le futoshiki. On garnit
+     * franchement les deux premières, un peu la troisième, puis on rend la
+     * main au réglage choisi par le professeur — qu'on ne contredit jamais
+     * au-delà de ce démarrage.
+     */
+    partDeDepart() {
+        if (this.reussis === 0) return 0.5;
+        if (this.reussis === 1) return 0.42;
+        if (this.reussis === 2) return 0.34;
+        return undefined;
+    }
+
     poser() {
-        this.puzzle = genererFutoshiki({ taille: this.taille, difficulte: this.difficulte }, this.rng);
+        this.puzzle = genererFutoshiki({
+            taille: this.taille, difficulte: this.difficulte, partDonnees: this.partDeDepart()
+        }, this.rng);
         this.saisie = {};
         this.choisie = null;
+        this.caseAidee = null;
+        this.palierAide = 0;
         this.container.querySelector('[data-n]').textContent = String(this.puzzle.n);
         this.dessiner();
         this.note('');
@@ -241,18 +281,38 @@ class Futoshiki extends BaseGame {
         return this.puzzle.etapes.find(e => Number(this.saisie[e.case]) !== e.valeur);
     }
 
+    /**
+     * L'AIDE DIT LAQUELLE DES TROIS RÈGLES JOUE.
+     *
+     * Elle répétait « sa ligne, sa colonne et ses signes ne lui laissent qu'une
+     * seule valeur » : vrai de toutes les cases déductibles, donc utile pour
+     * aucune. Le solveur note maintenant par quelle règle chaque case tombe
+     * (voir core/futoshiki.js), et l'aide la nomme.
+     *
+     * Elle se donne aussi EN TROIS TEMPS sur la même case : où regarder, puis
+     * quelle déduction refaire, puis — seulement si l'on insiste — le chiffre.
+     * Recevoir la réponse du premier coup n'apprend pas à la trouver.
+     */
     aider() {
         if (this.isDemo) return;
         const e = this.prochaine();
         if (!e) { this.note('Tout se déduit de ce que tu as : vérifie ta grille !'); return; }
+        if (this.caseAidee !== e.case) { this.caseAidee = e.case; this.palierAide = 0; }
+        this.palierAide++;
         this.aidesUtilisees++;
-        this.note('Regarde la case qui s\'allume : sa ligne, sa colonne et ses signes '
-            + 'ne lui laissent qu\'une seule valeur possible.');
+
         const el = this.grilleEl.querySelector(`.fu-case[data-i="${e.case}"]`);
         if (el) {
             el.classList.add('fu-case--montre');
             setTimeout(() => el.classList.remove('fu-case--montre'), 2600);
         }
+        if (this.palierAide === 1) {
+            this.note('Cette case-là se déduit toute seule. Regarde sa ligne, sa colonne, '
+                + 'et les signes qui la touchent.');
+            return;
+        }
+        if (this.palierAide === 2) { this.note(RAISONS[e.regle] ? RAISONS[e.regle](e) : RAISONS.unicite(e)); return; }
+        this.note(`Ici, c'est <b>${e.valeur}</b>. À toi de l'écrire, puis de repartir de là.`);
     }
 
     showNext() { return this.poser(); }

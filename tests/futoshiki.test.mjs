@@ -115,3 +115,40 @@ test('le même tirage donne le même puzzle', () => {
     assert.deepEqual(a.inegalites, b.inegalites);
     assert.deepEqual(a.donnees, b.donnees);
 });
+
+// --- Ce que l'aide a le droit de dire ----------------------------------------
+
+test('chaque étape du solveur nomme la règle qui la ferme', () => {
+    const regles = new Set();
+    for (let i = 0; i < 60; i++) {
+        const p = genererFutoshiki({ taille: 4 + (i % 2) }, makeRng('regle_' + i));
+        assert.ok(p.etapes.length > 0, 'une grille résoluble a des étapes');
+        for (const e of p.etapes) {
+            assert.ok(['unicite', 'trop-grand', 'trop-petit', 'seule-place'].includes(e.regle),
+                `règle inconnue : ${e.regle}`);
+            if (e.regle === 'seule-place') {
+                assert.ok(e.unite && ['ligne', 'colonne'].includes(e.unite.type));
+                assert.ok(e.unite.index >= 0 && e.unite.index < p.n);
+            }
+            regles.add(e.regle);
+        }
+    }
+    // Les trois familles servent réellement : sans quoi l'aide n'aurait qu'une
+    // phrase, et on serait revenu au message unique qu'on vient de remplacer.
+    assert.ok(regles.has('unicite'), 'la règle de ligne/colonne doit servir');
+    assert.ok(regles.has('trop-grand') || regles.has('trop-petit'),
+        'les inégalités doivent fermer des cases — c\'est le sujet du jeu');
+});
+
+test('les premières grilles sont plus garnies, sans cesser d\'être uniques', () => {
+    for (let i = 0; i < 20; i++) {
+        const debut = genererFutoshiki({ taille: 4, partDonnees: 0.5 }, makeRng('debut_' + i));
+        const fin = genererFutoshiki({ taille: 4, difficulte: 'facile' }, makeRng('debut_' + i));
+        const compte = (p) => p.donnees.filter(Boolean).length;
+        assert.ok(compte(debut) >= compte(fin),
+            `la grille de démarrage doit être au moins aussi garnie (${compte(debut)} vs ${compte(fin)})`);
+        // Une case donnée en plus n'apporte que de l'information vraie : la
+        // grille reste résoluble par propagation, donc faisable sans deviner.
+        assert.ok(resoudre(debut).complet, 'la grille de démarrage reste déductible');
+    }
+});

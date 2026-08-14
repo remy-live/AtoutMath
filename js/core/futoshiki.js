@@ -38,9 +38,13 @@ export function resoudre(puzzle) {
         donnees[i] ? new Set([donnees[i]]) : new Set(Array.from({ length: n }, (_, v) => v + 1)));
     const etapes = [];
 
-    const poserSi = (i, avant) => {
+    // CHAQUE ÉTAPE DIT PAR QUELLE RÈGLE ELLE TOMBE. L'aide du jeu répétait
+    // « sa ligne, sa colonne et ses signes ne lui laissent qu'une valeur » —
+    // vrai pour toutes les cases, donc utile pour aucune. Avec la règle, elle
+    // peut nommer la déduction précise à refaire.
+    const poserSi = (i, avant, regle) => {
         if (cand[i].size === 1 && avant !== 1) {
-            etapes.push({ case: i, valeur: [...cand[i]][0] });
+            etapes.push({ case: i, valeur: [...cand[i]][0], regle });
         }
     };
 
@@ -59,7 +63,7 @@ export function resoudre(puzzle) {
                         const avant = cand[j].size;
                         cand[j].delete(v);
                         if (!cand[j].size) return { complet: false, etapes };
-                        poserSi(j, avant);
+                        poserSi(j, avant, 'unicite');
                         progres = true;
                     }
                 }
@@ -75,7 +79,7 @@ export function resoudre(puzzle) {
                     const avant = cand[p].size;
                     cand[p].delete(v);
                     if (!cand[p].size) return { complet: false, etapes };
-                    poserSi(p, avant);
+                    poserSi(p, avant, 'trop-grand');
                     progres = true;
                 }
             }
@@ -84,7 +88,7 @@ export function resoudre(puzzle) {
                     const avant = cand[g_].size;
                     cand[g_].delete(v);
                     if (!cand[g_].size) return { complet: false, etapes };
-                    poserSi(g_, avant);
+                    poserSi(g_, avant, 'trop-petit');
                     progres = true;
                 }
             }
@@ -98,7 +102,12 @@ export function resoudre(puzzle) {
                 const possibles = cases.filter(i => cand[i].has(v));
                 if (possibles.length === 1 && cand[possibles[0]].size > 1) {
                     cand[possibles[0]] = new Set([v]);
-                    etapes.push({ case: possibles[0], valeur: v });
+                    etapes.push({
+                        case: possibles[0], valeur: v, regle: 'seule-place',
+                        unite: unite < n
+                            ? { type: 'ligne', index: unite }
+                            : { type: 'colonne', index: unite - n }
+                    });
                     progres = true;
                 }
             }
@@ -168,7 +177,14 @@ export function genererFutoshiki(params, rng) {
     // chiffres selon la difficulté. Ajouter une case connue ne peut pas rendre
     // la grille ambiguë : elle n'apporte que de l'information vraie, la
     // solution reste unique, et le solveur n'en termine que plus tôt.
-    const part = { facile: 0.34, moyen: 0.16, difficile: 0 }[params && params.difficulte];
+    // LES PREMIÈRES GRILLES D'UNE SÉANCE SONT PLUS GARNIES. Le jeu passe une
+    // part explicite (`partDonnees`) pour ses deux ou trois premières grilles :
+    // on découvre la mécanique des signes sur une grille qui se laisse
+    // commencer, pas sur quatre inégalités et rien d'autre.
+    const impose = params && params.partDonnees;
+    const part = Number.isFinite(impose)
+        ? impose
+        : { facile: 0.34, moyen: 0.16, difficile: 0 }[params && params.difficulte];
     const voulu = Math.round(n * n * (part === undefined ? 0.34 : part));
     let combien = donnees.filter(Boolean).length;
     for (const i of rng.shuffle([...Array(n * n).keys()])) {
