@@ -503,5 +503,11 @@ class Conversion extends BaseGame {
 }
 
 export function engineConversion(container, isDemo, params) {
-    return new Conversion(container, isDemo, params);
+    const jeu = new Conversion(container, isDemo, params);
+    // C'EST L'USINE QUI DÉMARRE LE JEU, pas l'appelant. Le Runner appelle
+    // cette fonction et garde l'instance ; il n'appelle jamais « start ». Sans
+    // cette ligne, le jeu se construisait, ne dessinait rien, et l'écran
+    // restait vide — sans la moindre erreur pour le dire.
+    jeu.start();
+    return jeu;
 }
