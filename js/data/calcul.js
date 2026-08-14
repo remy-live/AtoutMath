@@ -543,6 +543,12 @@ export const calculExercises = [
     {
         id: 'logi-echecs', status: STATUS.TEST, title: 'Échecs',
         activityId: 'echecs',
+        // L'ÉCHIQUIER EST UN REPÈRE. « e4 » n'est pas du jargon : c'est une
+        // lettre de colonne et un chiffre de ligne, la même chose qu'un couple
+        // de coordonnées — et qu'un B3 de tableur.
+        printable: 'echiquier', printGeneratorId: 'logi.echecs-fiche',
+        printParams: { quoi: 'melange', pieces: 4 },
+        consignePapier: "La lettre d'abord, le chiffre ensuite : e4.",
         params: { mode: 'ia', niveau: 'moyen' },
         paramSchema: [
             {

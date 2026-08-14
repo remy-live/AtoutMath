@@ -2415,6 +2415,182 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- L'ÉCHIQUIER ---------------------------------------------------------------
+//
+// Un échiquier est un tableau à double entrée : lettre en abscisse, chiffre en
+// ordonnée. Les lettres SOUS le damier et les chiffres à GAUCHE, comme sur un
+// vrai — c'est la convention, et un élève qui jouera aux échecs un jour doit
+// retrouver la même.
+//
+// Les pièces sont des jetons portant leur initiale française (T, C, F, D, P) :
+// les symboles Unicode (♞) n'existent pas dans la police du PDF, et un jeton
+// blanc contre un jeton noir se photocopie, contrairement à une nuance de gris.
+
+function geoEchiquier(item, slot) {
+    const m = item.meta;
+    // Une ligne de réponse par pièce à nommer ; deux pour la liste des cases
+    // atteignables, qui ne tient pas sur une (« 14 cases : a4, b4, c4… »).
+    const lignes = m.quoi === 'nommer' ? Math.min(m.posees.length, 6)
+        : (m.quoi === 'deplacements' ? 2 : 1);
+    const ligneH = slot.taille * 0.072;
+    const zone = slot.taille - lignes * ligneH;
+    const marge = Math.min(zone * 0.1, slot.taille * 0.09);   // les graduations
+    const cote = Math.max(12, Math.min(slot.taille - marge, zone - marge));
+    return {
+        m, lignes, ligneH, cote, marge, cell: cote / 8,
+        x0: slot.x + marge + (slot.taille - marge - cote) / 2,
+        y0: slot.y + (zone - marge - cote) / 2,
+        ligneY: slot.y + zone
+    };
+}
+
+const caseEchiquier = (g, x, y) => ({ x: g.x0 + x * g.cell, y: g.y0 + y * g.cell });
+
+function echiquierPreviewHtml(item, slot, k, solution) {
+    const g = geoEchiquier(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    // Sur « placer », le damier est vide : c'est à l'élève de le composer.
+    const montrerPieces = m.quoi !== 'placer' || solution;
+
+    let d = '';
+    for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+            const q = caseEchiquier(g, x, y);
+            d += `<rect x="${T(q.x)}" y="${T(q.y)}" width="${T(g.cell)}" height="${T(g.cell)}"
+                fill="${(x + y) % 2 ? '#dfe5ee' : '#ffffff'}" stroke="#9aa3b2"
+                stroke-width="${T(0.14)}"/>`;
+        }
+    }
+    d += `<rect x="${T(g.x0)}" y="${T(g.y0)}" width="${T(g.cote)}" height="${T(g.cote)}"
+        fill="none" stroke="#2d3748" stroke-width="${T(0.42)}"/>`;
+
+    // Les graduations : lettres dessous, chiffres à gauche.
+    for (let i = 0; i < 8; i++) {
+        d += `<text x="${T(g.x0 + (i + 0.5) * g.cell)}" y="${T(g.y0 + g.cote + g.marge * 0.55)}"
+            text-anchor="middle" dominant-baseline="central"
+            font-size="${T(Math.min(g.marge * 0.62, g.cell * 0.5))}" font-weight="700"
+            fill="#4a5568">${'abcdefgh'[i]}</text>
+            <text x="${T(g.x0 - g.marge * 0.45)}" y="${T(g.y0 + (i + 0.5) * g.cell)}"
+            text-anchor="middle" dominant-baseline="central"
+            font-size="${T(Math.min(g.marge * 0.62, g.cell * 0.5))}" font-weight="700"
+            fill="#4a5568">${8 - i}</text>`;
+    }
+
+    // Les cases atteignables : un point sur la correction seulement.
+    if (m.quoi === 'deplacements' && solution) {
+        (m.cibles || []).forEach(c => {
+            const q = caseEchiquier(g, c.x, c.y);
+            d += `<circle cx="${T(q.x + g.cell / 2)}" cy="${T(q.y + g.cell / 2)}"
+                r="${T(g.cell * 0.2)}" fill="#e11d48" opacity="0.6"/>`;
+        });
+    }
+
+    if (montrerPieces) {
+        m.posees.forEach(p => {
+            const q = caseEchiquier(g, p.x, p.y);
+            const cx = q.x + g.cell / 2, cy = q.y + g.cell / 2;
+            d += `<circle cx="${T(cx)}" cy="${T(cy)}" r="${T(g.cell * 0.36)}"
+                fill="${p.noir ? '#2d3748' : '#ffffff'}" stroke="#1a202c" stroke-width="${T(0.3)}"/>
+                <text x="${T(cx)}" y="${T(cy)}" text-anchor="middle" dominant-baseline="central"
+                font-size="${T(g.cell * 0.44)}" font-weight="800"
+                fill="${p.noir ? '#ffffff' : '#1a202c'}">${p.lettre}</text>`;
+        });
+    }
+
+    let html = `<svg class="fx-ec-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    const dire = lignesEchiquier(m, solution);
+    // Une seule phrase : elle occupe toute la place et a le droit de passer à
+    // la ligne. Plusieurs : une par pièce, chacune sur sa ligne.
+    const seule = dire.length === 1;
+    dire.forEach((texte, i) => {
+        html += `<div class="fx-ec-ligne${seule ? ' fx-ec-ligne--longue' : ''}"
+            style="left:${slot.x * k}px; top:${(g.ligneY + i * g.ligneH) * k}px;
+            width:${slot.taille * k}px;
+            height:${(seule ? g.lignes : 1) * g.ligneH * k}px;
+            font-size:${Math.min(g.ligneH * 0.62, 3.2) * k}px">${echapperSheet(texte)}</div>`;
+    });
+    return html;
+}
+
+/** Ce qui s'écrit sous le damier — une ligne par pièce, ou une consigne. */
+function lignesEchiquier(m, solution) {
+    if (m.quoi === 'nommer') {
+        return m.posees.slice(0, 6)
+            .map(p => `${p.lettre} ${p.noir ? '(noir)' : '(blanc)'} : ${solution ? p.case : '..........'}`);
+    }
+    if (m.quoi === 'placer') {
+        return [`À placer : ${m.posees.map(p => `${p.lettre} en ${p.case}`).join(', ')}`];
+    }
+    return [solution
+        ? `${m.noms.length} cases : ${m.noms.join(', ')}`
+        : `Marque d'une croix toutes les cases où ${m.nom === 'tour' ? 'la tour' : `le ${m.nom}`} peut aller.`];
+}
+
+function dessinerEchiquierPdf(doc, item, slot, solution) {
+    const g = geoEchiquier(item, slot);
+    const m = g.m;
+    const montrerPieces = m.quoi !== 'placer' || solution;
+
+    doc.setDrawColor(154, 163, 178);
+    doc.setLineWidth(0.14);
+    for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+            const q = caseEchiquier(g, x, y);
+            // Le remplissage est redit à chaque case : dans jsPDF, écrire du
+            // texte change la couleur de remplissage.
+            if ((x + y) % 2) doc.setFillColor(223, 229, 238);
+            else doc.setFillColor(255, 255, 255);
+            doc.rect(q.x, q.y, g.cell, g.cell, 'FD');
+        }
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.42);
+    doc.rect(g.x0, g.y0, g.cote, g.cote, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(5, Math.min(g.cell * 1.3, 9)));
+    doc.setTextColor(74, 85, 104);
+    for (let i = 0; i < 8; i++) {
+        doc.text('abcdefgh'[i], g.x0 + (i + 0.5) * g.cell, g.y0 + g.cote + g.marge * 0.7,
+            { align: 'center' });
+        doc.text(String(8 - i), g.x0 - g.marge * 0.45, g.y0 + (i + 0.6) * g.cell,
+            { align: 'center' });
+    }
+
+    if (m.quoi === 'deplacements' && solution) {
+        doc.setFillColor(244, 150, 172);
+        (m.cibles || []).forEach(c => {
+            const q = caseEchiquier(g, c.x, c.y);
+            doc.circle(q.x + g.cell / 2, q.y + g.cell / 2, g.cell * 0.2, 'F');
+        });
+    }
+
+    if (montrerPieces) {
+        m.posees.forEach(p => {
+            const q = caseEchiquier(g, p.x, p.y);
+            const cx = q.x + g.cell / 2, cy = q.y + g.cell / 2;
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.3);
+            if (p.noir) doc.setFillColor(45, 55, 72);
+            else doc.setFillColor(255, 255, 255);
+            doc.circle(cx, cy, g.cell * 0.36, 'FD');
+            doc.setFontSize(Math.max(5, Math.min(g.cell * 1.25, 10)));
+            doc.setTextColor(...(p.noir ? [255, 255, 255] : ENCRE.texte));
+            doc.text(p.lettre, cx, cy + g.cell * 0.15, { align: 'center' });
+        });
+    }
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(Math.max(6, Math.min(g.ligneH * 1.5, 9)));
+    doc.setTextColor(...ENCRE.texte);
+    lignesEchiquier(m, solution).forEach((texte, i) => {
+        const y = g.ligneY + i * g.ligneH + g.ligneH * 0.72;
+        doc.splitTextToSize(pourPdf(texte), slot.taille).slice(0, 2)
+            .forEach((part, j) => doc.text(part, slot.x, y + j * g.ligneH * 0.8));
+    });
+}
+
 // --- LE CHAT GÉOMÈTRE ----------------------------------------------------------
 //
 // Le programme à gauche, le quadrillage à droite. Un carreau vaut dix pas de
@@ -2967,6 +3143,19 @@ export const RENDUS = {
         nomBloc: 'Rectangle',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    echiquier: {
+        titre: 'L\'échiquier, une grille à deux entrées',
+        consigne: () => 'Une case d\'échiquier se nomme comme un point dans un repère : LA '
+            + 'LETTRE DE SA COLONNE, PUIS LE CHIFFRE DE SA LIGNE — e4, pas 4e. Les pièces '
+            + 'portent leur initiale : T tour, C cavalier, F fou, D dame, P pion ; les jetons '
+            + 'noirs sont les pièces noires.',
+        previewGrille: echiquierPreviewHtml,
+        pdfGrille: dessinerEchiquierPdf,
+        nomBloc: 'Échiquier',
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 2 },
+        parLigneDefaut: 2
     },
 
     chat: {

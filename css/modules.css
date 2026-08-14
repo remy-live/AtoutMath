@@ -3642,6 +3642,19 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    lui, une ligne par grandeur demandée. */
 .fx-rc-svg { position: absolute; overflow: visible; pointer-events: none; }
 
+/* L'échiquier : le damier en SVG, les lignes de réponse dessous. */
+.fx-ec-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-ec-ligne {
+    position: absolute; display: flex; align-items: center;
+    box-sizing: border-box; color: #2d3748; font-weight: 700;
+    white-space: nowrap; overflow: hidden;
+}
+/* « 14 cases : a4, b4, c4… » ne tient pas sur une ligne : elle a droit à
+   toute la hauteur réservée, et au retour à la ligne. */
+.fx-ec-ligne--longue {
+    white-space: normal; align-items: flex-start; line-height: 1.25;
+}
+
 /* Le chat géomètre : le programme à gauche, le quadrillage à droite. */
 .fx-ch-svg { position: absolute; overflow: visible; pointer-events: none; }
 .fx-ch-prog { position: absolute; color: #1a202c; font-weight: 600; }
