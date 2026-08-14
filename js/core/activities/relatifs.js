@@ -80,7 +80,12 @@ export function mount(container, session) {
             // qu'on n'a pas animé, puis glisse jusqu'à l'arrivée.
             curseur: m.depart,
             pas: 0,                 // combien de crans déjà parcourus
-            apparies: 0,            // pastilles déjà barrées
+            apparies: 0,            // paires déjà barrées
+            // Le plateau de pastilles : qui est barré, qui attend sa partenaire,
+            // et quelles paires ont été formées (pour tracer les traits).
+            rouges: Math.max(0, m.depart) + Math.max(0, m.deplacements[0]),
+            bleues: -Math.min(0, m.depart) - Math.min(0, m.deplacements[0]),
+            barreR: new Set(), barreB: new Set(), paires: [], choix: null,
             juste: null,
             fige: false
         };
@@ -126,12 +131,21 @@ export function mount(container, session) {
         const el = container.querySelector('[data-compte]');
         if (!el || !etat) return;
         if (etat.modele === 'pastilles') {
-            const paires = Math.min(Math.abs(etat.depart), Math.abs(etat.deplacements[0]));
-            el.textContent = etat.apparies > 0
-                ? `${etat.apparies} paire${etat.apparies > 1 ? 's' : ''} barrée${etat.apparies > 1 ? 's' : ''} sur ${paires} — chaque paire vaut 0`
-                : (etat.depart >= 0) === (etat.deplacements[0] >= 0)
-                    ? 'Toutes de la même couleur : aucune paire ne s\'annule.'
-                    : 'Associe une bleue avec une rouge : chaque paire vaut 0.';
+            const paires = Math.min(etat.rouges, etat.bleues);
+            const s = (n) => (n > 1 ? 's' : '');
+            if (!paires) {
+                el.textContent = 'Toutes de la même couleur : aucune paire ne s\'annule, il n\'y a qu\'à compter.';
+            } else if (etat.apparies >= paires) {
+                el.textContent = `Les ${paires} paire${s(paires)} sont barrées. Compte ce qui reste sans partenaire.`;
+            } else if (etat.choix) {
+                el.textContent = etat.choix.couleur === 'rouge'
+                    ? 'Une rouge est choisie : touche une bleue pour former la paire.'
+                    : 'Une bleue est choisie : touche une rouge pour former la paire.';
+            } else if (etat.apparies > 0) {
+                el.textContent = `${etat.apparies} paire${s(etat.apparies)} barrée${s(etat.apparies)} sur ${paires} — chaque paire vaut 0.`;
+            } else {
+                el.textContent = 'Touche une rouge, puis une bleue : la paire vaut 0 et se barre.';
+            }
             return;
         }
         const d = etat.deplacements[0];
@@ -183,17 +197,24 @@ export function mount(container, session) {
         // La cage / le tube.
         c.save();
         if (thermo) {
+            // LE LIQUIDE PART DU BULBE, comme dans un vrai thermomètre.
+            //
+            // Il montait de la graduation zéro jusqu'à la température : sous
+            // zéro le tube restait vide, le bulbe pendait tout seul en bas, et
+            // la colonne flottait au milieu du verre. Or c'est précisément la
+            // HAUTEUR DEPUIS LE BAS qui fait sentir qu'il fait plus chaud ou
+            // plus froid ; le zéro n'est qu'une graduation parmi les autres —
+            // c'est même toute la leçon du chapitre.
+            const yFond = y(etat.min) + 26;   // le liquide descend dans le bulbe
             c.fillStyle = 'rgba(148,163,184,.16)';
-            c.beginPath(); c.roundRect(axeX - 13, y(etat.max) - 6, 26, y(etat.min) - y(etat.max) + 40, 13); c.fill();
-            // Le mercure : rouge au-dessus de zéro, bleu en dessous.
+            c.beginPath(); c.roundRect(axeX - 13, y(etat.max) - 6, 26, yFond - y(etat.max) + 6, 13); c.fill();
             const v = etat.curseur;
+            const yv = Math.min(y(v), yFond);
+            // La couleur dit le signe : rouge quand il fait plus de zéro, bleu
+            // quand il fait moins.
             c.fillStyle = v >= 0 ? '#ef4444' : '#38bdf8';
-            const yv = y(v), y0 = y(0);
-            c.beginPath();
-            c.roundRect(axeX - 7, Math.min(yv, y0), 14, Math.abs(yv - y0) + 2, 7);
-            c.fill();
-            c.beginPath(); c.arc(axeX, y(etat.min) + 22, 17, 0, Math.PI * 2);
-            c.fillStyle = v >= 0 ? '#ef4444' : '#38bdf8'; c.fill();
+            c.beginPath(); c.roundRect(axeX - 7, yv, 14, yFond - yv, 7); c.fill();
+            c.beginPath(); c.arc(axeX, y(etat.min) + 22, 17, 0, Math.PI * 2); c.fill();
         } else {
             c.fillStyle = 'rgba(148,163,184,.14)';
             c.beginPath(); c.roundRect(axeX - 26, y(etat.max) - 10, 52, y(etat.min) - y(etat.max) + 20, 10); c.fill();
@@ -310,63 +331,150 @@ export function mount(container, session) {
         c.restore();
     }
 
-    /** Les pastilles : le seul modèle qui explique l'annulation. */
+    // --- Les pastilles ---------------------------------------------------------
+    //
+    // C'est le seul modèle qui explique POURQUOI les signes s'annulent, et il
+    // n'expliquait rien : les pastilles étaient dessinées, elles ne s'appariaient
+    // pas. L'élève lisait « associe une bleue avec une rouge » devant une image
+    // fixe. On APPARIE maintenant pour de bon — une pastille, puis l'autre, et
+    // la paire se barre. C'est le geste qui fait la leçon ; le compte à côté ne
+    // fait que dire ce que la main vient de faire.
+    //
+    // ROUGE = positif, BLEU = négatif : la même convention que le tableau de
+    // « Additionner des relatifs ». Deux conventions opposées dans un même
+    // chapitre seraient pires que pas de couleur du tout.
+
+    /**
+     * Où se posent les pastilles. Une fonction unique, appelée par le dessin ET
+     * par la détection du doigt : deux calculs séparés finiraient par diverger,
+     * et l'on toucherait à côté de ce qu'on voit.
+     */
+    function disposerPastilles(w, h) {
+        const rouges = etat.rouges, bleues = etat.bleues;
+        const parRangee = Math.min(8, Math.max(4, Math.ceil(Math.sqrt((rouges + bleues) * 1.7))));
+        // Un groupe vide n'occupe RIEN. Quand les deux nombres sont du même
+        // signe — la moitié des questions — une bande vide restait dessinée
+        // au-dessus : une gélule rose sans rien dedans, qu'on cherchait à
+        // comprendre avant de comprendre l'exercice.
+        const ligR = Math.ceil(rouges / parRangee);
+        const ligB = Math.ceil(bleues / parRangee);
+        const r = Math.max(9, Math.min(32,
+            (w * 0.84) / (parRangee * 2.4),
+            (h * 0.80) / (Math.max(1, ligR + ligB) * 2.4 + 1.8)));
+        const pas = r * 2.35;
+        const ecart = (ligR && ligB) ? r * 1.7 : 0;
+        const hautR = ligR * pas, hautB = ligB * pas;
+        const y0 = (h - (hautR + hautB + ecart)) / 2;
+
+        const groupe = (n, yTop) => {
+            const jetons = [];
+            for (let i = 0; i < n; i++) {
+                const rang = Math.floor(i / parRangee);
+                const dansCeRang = Math.min(n - rang * parRangee, parRangee);
+                jetons.push({
+                    i,
+                    x: w / 2 + ((i % parRangee) - (dansCeRang - 1) / 2) * pas,
+                    y: yTop + rang * pas + pas / 2
+                });
+            }
+            const large = Math.max(Math.min(n, parRangee), 2) * pas;
+            return {
+                jetons,
+                bande: n ? { x: w / 2 - large / 2 - r * 0.4, y: yTop - r * 0.25,
+                    w: large + r * 0.8, h: Math.ceil(n / parRangee) * pas + r * 0.5 } : null
+            };
+        };
+
+        return { r, rouge: groupe(rouges, y0), bleu: groupe(bleues, y0 + hautR + ecart) };
+    }
+
     function dessinerPastilles(w, h) {
         const c = ctx;
-        const a = etat.depart, b = etat.deplacements[0];
-        // ROUGE = positif, BLEU = négatif — la même convention que le tableau
-        // de l'activité « Additionner des relatifs ». Deux conventions
-        // opposées dans le même chapitre seraient pires que pas de couleur du
-        // tout : l'élève verrait la couleur avant de lire le signe.
-        const rouges = Math.max(0, a) + Math.max(0, b);
-        const bleues = Math.abs(Math.min(0, a)) + Math.abs(Math.min(0, b));
-        const total = bleues + rouges;
-        const parRangee = Math.min(7, Math.max(4, Math.ceil(Math.sqrt(total * 1.6))));
-        const r = Math.min(22, (w * 0.9) / (parRangee * 2.4), (h * 0.42) / 2.6);
-        const paires = Math.min(bleues, rouges);
+        const plan = disposerPastilles(w, h);
+        const r = plan.r;
 
-        const poser = (n, couleur, y0, decale) => {
-            for (let i = 0; i < n; i++) {
-                const cx = w / 2 + ((i % parRangee) - (Math.min(n, parRangee) - 1) / 2) * (r * 2.3);
-                const cy = y0 + Math.floor(i / parRangee) * (r * 2.3);
-                const barre = i < decale;
+        const bande = (b, fond, trait) => {
+            if (!b) return;
+            c.save();
+            c.fillStyle = fond; c.strokeStyle = trait; c.lineWidth = 1.5;
+            c.beginPath(); c.roundRect(b.x, b.y, b.w, b.h, r * 0.8); c.fill(); c.stroke();
+            c.restore();
+        };
+        bande(plan.rouge.bande, 'rgba(239,68,68,.07)', 'rgba(239,68,68,.28)');
+        bande(plan.bleu.bande, 'rgba(56,189,248,.09)', 'rgba(56,189,248,.34)');
+
+        const peindre = (groupe, couleur, barres) => {
+            for (const j of groupe.jetons) {
+                const barre = barres.has(j.i);
+                const choisie = etat.choix && etat.choix.couleur === couleur && etat.choix.i === j.i;
                 c.save();
-                c.globalAlpha = barre ? 0.32 : 1;
-                c.fillStyle = couleur === 'rouge' ? '#ef8a8a' : '#7ba7e0';
-                c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+                c.globalAlpha = barre ? 0.28 : 1;
+                c.fillStyle = couleur === 'rouge' ? '#ef4444' : '#38bdf8';
+                c.beginPath(); c.arc(j.x, j.y, r, 0, Math.PI * 2); c.fill();
                 c.fillStyle = '#fff';
-                c.font = `900 ${Math.round(r * 1.05)}px 'Inter', system-ui, sans-serif`;
+                c.font = `900 ${Math.round(r * 1.1)}px 'Inter', system-ui, sans-serif`;
                 c.textAlign = 'center'; c.textBaseline = 'middle';
-                c.fillText(couleur === 'rouge' ? '+' : '−', cx, cy + 1);
+                c.fillText(couleur === 'rouge' ? '+' : '−', j.x, j.y + 1);
+                c.globalAlpha = 1;
+                if (choisie) {
+                    // Choisie, elle attend sa partenaire : un halo, pas une
+                    // couleur — la couleur, ici, porte le signe.
+                    c.strokeStyle = '#0f172a'; c.lineWidth = 3;
+                    c.beginPath(); c.arc(j.x, j.y, r + 4, 0, Math.PI * 2); c.stroke();
+                }
                 if (barre) {
-                    c.globalAlpha = 1;
                     c.strokeStyle = '#0f172a'; c.lineWidth = 3; c.lineCap = 'round';
                     c.beginPath();
-                    c.moveTo(cx - r * 0.8, cy - r * 0.8); c.lineTo(cx + r * 0.8, cy + r * 0.8);
+                    c.moveTo(j.x - r * 0.75, j.y - r * 0.75); c.lineTo(j.x + r * 0.75, j.y + r * 0.75);
                     c.stroke();
                 }
                 c.restore();
             }
         };
-        // Les positifs en HAUT, les négatifs en dessous : le même ordre que la
-        // droite graduée et que le tableau à deux colonnes.
-        poser(rouges, 'rouge', h * 0.33, Math.min(etat.apparies, rouges));
-        poser(bleues, 'bleu', h * 0.69, Math.min(etat.apparies, bleues));
+        peindre(plan.rouge, 'rouge', etat.barreR);
+        peindre(plan.bleu, 'bleu', etat.barreB);
 
         // Les traits d'appariement : c'est eux qui font voir la paire.
-        if (etat.apparies > 0) {
-            c.save();
-            c.strokeStyle = 'rgba(15,23,42,.35)'; c.lineWidth = 2; c.setLineDash([4, 4]);
-            for (let i = 0; i < Math.min(etat.apparies, paires); i++) {
-                const cxHaut = w / 2 + ((i % parRangee) - (Math.min(rouges, parRangee) - 1) / 2) * (r * 2.3);
-                const cxBas = w / 2 + ((i % parRangee) - (Math.min(bleues, parRangee) - 1) / 2) * (r * 2.3);
-                c.beginPath();
-                c.moveTo(cxHaut, h * 0.33 + Math.floor(i / parRangee) * (r * 2.3) + r);
-                c.lineTo(cxBas, h * 0.69 + Math.floor(i / parRangee) * (r * 2.3) - r);
-                c.stroke();
-            }
-            c.restore();
+        c.save();
+        c.strokeStyle = 'rgba(15,23,42,.4)'; c.lineWidth = 2; c.setLineDash([5, 4]);
+        for (const p of etat.paires) {
+            const jr = plan.rouge.jetons[p.r], jb = plan.bleu.jetons[p.b];
+            if (!jr || !jb) continue;
+            c.beginPath(); c.moveTo(jr.x, jr.y + r); c.lineTo(jb.x, jb.y - r); c.stroke();
         }
+        c.restore();
+    }
+
+    /** La pastille sous le doigt, ou null. */
+    function pastilleEn(x, y) {
+        if (!etat || !etat.vue) return null;
+        const plan = disposerPastilles(etat.vue.w, etat.vue.h);
+        const marge = plan.r * 1.25;   // viser un rond de 20 px au doigt est pénible
+        for (const [couleur, groupe] of [['rouge', plan.rouge], ['bleu', plan.bleu]]) {
+            for (const j of groupe.jetons) {
+                if (Math.hypot(j.x - x, j.y - y) <= marge) return { couleur, i: j.i };
+            }
+        }
+        return null;
+    }
+
+    /** Un appui sur le plateau de pastilles : on choisit, puis on apparie. */
+    function toucherPastille(x, y) {
+        if (!etat || etat.fige || etat.modele !== 'pastilles') return;
+        const p = pastilleEn(x, y);
+        if (!p) { etat.choix = null; return; }
+        const barres = p.couleur === 'rouge' ? etat.barreR : etat.barreB;
+        if (barres.has(p.i)) return;                       // déjà barrée
+        if (!etat.choix || etat.choix.couleur === p.couleur) { etat.choix = p; majCompte(); return; }
+
+        // Une rouge et une bleue : la paire vaut zéro, on la barre.
+        const rouge = p.couleur === 'rouge' ? p.i : etat.choix.i;
+        const bleu = p.couleur === 'bleu' ? p.i : etat.choix.i;
+        etat.barreR.add(rouge); etat.barreB.add(bleu);
+        etat.paires.push({ r: rouge, b: bleu });
+        etat.apparies = etat.paires.length;
+        etat.choix = null;
+        majCompte();
     }
 
     function fleche(c, x, y, vertical, couleur, sens = 1) {
@@ -397,16 +505,26 @@ export function mount(container, session) {
             if (destroyed || !etat) { resolve(false); return; }
             etat.fige = true;
             if (etat.modele === 'pastilles') {
-                const paires = Math.min(Math.abs(etat.depart), Math.abs(etat.deplacements[0]));
-                let i = 0;
+                const paires = Math.min(etat.rouges, etat.bleues);
                 const suivant = () => {
                     if (destroyed) { resolve(false); return; }
-                    if (i >= paires) {
-                        etat.curseur = etat.total; etat.fige = false; majCompte(); resolve(true); return;
+                    if (etat.paires.length >= paires) {
+                        etat.curseur = etat.total; etat.fige = false; etat.choix = null;
+                        majCompte(); resolve(true); return;
                     }
-                    etat.apparies = ++i;
+                    // On barre la première pastille libre de chaque côté : le
+                    // même geste que celui de l'élève, à sa place.
+                    const libre = (n, barres) => {
+                        for (let i = 0; i < n; i++) if (!barres.has(i)) return i;
+                        return -1;
+                    };
+                    const r = libre(etat.rouges, etat.barreR), b = libre(etat.bleues, etat.barreB);
+                    if (r < 0 || b < 0) { etat.fige = false; majCompte(); resolve(true); return; }
+                    etat.barreR.add(r); etat.barreB.add(b);
+                    etat.paires.push({ r, b });
+                    etat.apparies = etat.paires.length;
                     majCompte();
-                    regTimeout(suivant, 380);
+                    regTimeout(suivant, 420);
                 };
                 regTimeout(suivant, 260);
                 return;
@@ -500,6 +618,20 @@ export function mount(container, session) {
         container.querySelectorAll('[data-choix]').forEach(b => {
             b.onclick = () => repondre(parseInt(b.dataset.choix, 10));
         });
+
+        // LE PLATEAU DE PASTILLES SE TOUCHE. Sans cela, l'énoncé demandait
+        // d'associer une rouge et une bleue devant une image inerte.
+        if (etat.modele === 'pastilles' && cnv) {
+            const surPointeur = (e) => {
+                if (session.locked) return;
+                const r = cnv.getBoundingClientRect();
+                toucherPastille(e.clientX - r.left, e.clientY - r.top);
+            };
+            cnv.addEventListener('pointerdown', surPointeur);
+            cnv.style.touchAction = 'manipulation';
+            cnv.style.cursor = 'pointer';
+            nettoyeurs.push(() => cnv && cnv.removeEventListener('pointerdown', surPointeur));
+        }
     }
 
     /**
