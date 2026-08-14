@@ -9,6 +9,13 @@ export const donneesExercises = [
     {
         id: 'don-tableur', status: STATUS.TEST, title: "L'École du Tableur",
         activityId: 'tableur',
+        // SUR LE PAPIER, RIEN NE CALCULE À LA PLACE DE L'ÉLÈVE. Devant le
+        // tableur, taper « =12+15 » donne 27 et le logiciel dit oui : la faute
+        // passe. Sur la feuille, la seule chose demandée est justement celle
+        // qu'il avait sautée — écrire =B2+B3.
+        printable: 'tableur', printGeneratorId: 'don.tableur-fiche',
+        printParams: { quoi: 'melange', plages: true },
+        consignePapier: "Écris le nom exact, avec la majuscule de la colonne.",
         params: { startLevel: 1, goal: 3 },
         paramSchema: [
             { id: 'startLevel', type: 'number', label: 'Leçon de départ', min: 1, max: 9, default: 1 },

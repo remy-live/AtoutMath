@@ -2415,6 +2415,214 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- LE TABLEUR ----------------------------------------------------------------
+//
+// Une grille de tableur, avec sa barre de lettres en haut et sa colonne de
+// numéros à gauche : c'est ce liseré gris qui fait reconnaître un tableur, et
+// c'est aussi lui qui porte tout le repérage.
+//
+// Trois exercices sur le même dessin — nommer la zone coloriée, colorier la
+// zone nommée, écrire la formule sous une colonne de nombres — et une seule
+// géométrie, parce que ce sont les mêmes cases.
+
+function geoTableur(item, slot) {
+    const m = item.meta;
+    const formule = m.quoi === 'formule';
+    // Le tableau de la formule : deux colonnes (libellé, nombre) et une ligne
+    // de plus que les données — celle qui reçoit la formule.
+    const cols = formule ? 2 : m.cols;
+    const rows = formule ? m.derniere + 1 : m.rows;
+    const lignes = formule ? 2 : 1;                  // la place pour répondre
+    const ligneH = slot.taille * 0.115;
+    const zone = slot.taille - lignes * ligneH;
+
+    // L'en-tête (les lettres) et la gouttière (les numéros) sont plus minces
+    // qu'une case : sur un vrai tableur aussi.
+    const cellW = Math.min(slot.taille * 0.9 / (cols + 0.55), formule ? slot.taille * 0.42 : 99);
+    const enTeteH = Math.min(zone / (rows + 1.4), cellW * 0.62);
+    const cellH = Math.min((zone - enTeteH) / rows, cellW * 0.68);
+    const gouttiereW = cellW * 0.55;
+    const largeur = gouttiereW + cols * cellW;
+    const hauteur = enTeteH + rows * cellH;
+    return {
+        m, formule, cols, rows, cellW, cellH, enTeteH, gouttiereW, largeur, hauteur, ligneH,
+        x0: slot.x + (slot.taille - largeur) / 2,
+        y0: slot.y + (zone - hauteur) / 2,
+        ligneY: slot.y + zone
+    };
+}
+
+/** Le coin haut-gauche d'une case, en millimètres. */
+const caseTableur = (g, c, r) => ({
+    x: g.x0 + g.gouttiereW + c * g.cellW,
+    y: g.y0 + g.enTeteH + r * g.cellH
+});
+
+const LETTRES_T = 'ABCDEFGH';
+
+/** Le texte d'une case du tableau de formule — vide si rien n'y va. */
+function contenuTableur(m, c, r) {
+    if (r === 0) return m.entetes[c];
+    const i = r - 1;
+    if (i < m.valeurs.length) return c === 0 ? m.libelles[i] : String(m.valeurs[i]);
+    return c === 0 ? m.etiquette : '';
+}
+
+function tableurPreviewHtml(item, slot, k, solution) {
+    const g = geoTableur(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    const zone = m.zone;
+    // La zone est coloriée d'emblée quand on demande son nom ; sur la
+    // correction, elle l'est aussi quand c'était à l'élève de le faire.
+    const teinter = !g.formule && (m.quoi === 'nommer' || solution);
+    const dansZone = (c, r) => zone && c >= zone.c1 && c <= zone.c2 && r >= zone.r1 && r <= zone.r2;
+
+    let d = '';
+    for (let r = 0; r < g.rows; r++) {
+        for (let c = 0; c < g.cols; c++) {
+            const q = caseTableur(g, c, r);
+            const chaude = teinter && dansZone(c, r);
+            d += `<rect x="${T(q.x)}" y="${T(q.y)}" width="${T(g.cellW)}" height="${T(g.cellH)}"
+                fill="${chaude ? '#c9dcf7' : '#fff'}" stroke="#8a93a3" stroke-width="${T(0.22)}"/>`;
+            if (g.formule) {
+                const texte = contenuTableur(m, c, r);
+                const cible = r === g.rows - 1 && c === 1;
+                if (texte || (cible && solution)) {
+                    d += `<text x="${T(q.x + (c === 0 ? g.cellW * 0.08 : g.cellW / 2))}"
+                        y="${T(q.y + g.cellH / 2)}"
+                        text-anchor="${c === 0 ? 'start' : 'middle'}" dominant-baseline="central"
+                        font-size="${T(Math.min(g.cellH * 0.42, 3.2))}"
+                        font-weight="${r === 0 || c === 0 ? 700 : 500}"
+                        fill="#1a202c">${echapperSheet(
+                            cible ? String(m.resultat).replace('.', ',') : texte)}</text>`;
+                }
+            }
+        }
+    }
+    // L'en-tête des colonnes et la gouttière des lignes : le liseré gris.
+    for (let c = 0; c < g.cols; c++) {
+        const x = g.x0 + g.gouttiereW + c * g.cellW;
+        d += `<rect x="${T(x)}" y="${T(g.y0)}" width="${T(g.cellW)}" height="${T(g.enTeteH)}"
+            fill="#e7eaf0" stroke="#8a93a3" stroke-width="${T(0.22)}"/>
+            <text x="${T(x + g.cellW / 2)}" y="${T(g.y0 + g.enTeteH / 2)}" text-anchor="middle"
+            dominant-baseline="central" font-size="${T(Math.min(g.enTeteH * 0.6, 3))}"
+            font-weight="700" fill="#4a5568">${LETTRES_T[c]}</text>`;
+    }
+    for (let r = 0; r < g.rows; r++) {
+        const y = g.y0 + g.enTeteH + r * g.cellH;
+        d += `<rect x="${T(g.x0)}" y="${T(y)}" width="${T(g.gouttiereW)}" height="${T(g.cellH)}"
+            fill="#e7eaf0" stroke="#8a93a3" stroke-width="${T(0.22)}"/>
+            <text x="${T(g.x0 + g.gouttiereW / 2)}" y="${T(y + g.cellH / 2)}" text-anchor="middle"
+            dominant-baseline="central" font-size="${T(Math.min(g.cellH * 0.5, 3))}"
+            font-weight="700" fill="#4a5568">${r + 1}</text>`;
+    }
+
+    let html = `<svg class="fx-tb-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    html += lignesReponseTableur(m, g, k, solution, slot);
+    return html;
+}
+
+/** Les lignes sous la grille : la question, puis la place pour répondre. */
+function lignesReponseTableur(m, g, k, solution, slot) {
+    const dire = [];
+    if (m.quoi === 'nommer') {
+        dire.push(['La zone coloriée s\'appelle', solution ? m.nom : '..................']);
+    } else if (m.quoi === 'colorier') {
+        dire.push([`Colorie ${m.nom}`, solution ? `${m.combien} case${m.combien > 1 ? 's' : ''}` : '']);
+    } else {
+        dire.push([`En B${m.derniere + 1} :`, solution ? m.formule : '=..............................']);
+        dire.push(['', solution ? '' : '']);
+    }
+    return dire.map(([gauche, droite], i) => {
+        if (!gauche && !droite) return '';
+        return `<div class="fx-tb-ligne" style="left:${slot.x * k}px;
+            top:${(g.ligneY + i * g.ligneH) * k}px; width:${slot.taille * k}px;
+            height:${g.ligneH * k}px; font-size:${g.ligneH * 0.44 * k}px">
+            <b>${echapperSheet(gauche)}</b><i>${echapperSheet(droite)}</i></div>`;
+    }).join('');
+}
+
+function dessinerTableurPdf(doc, item, slot, solution, champ) {
+    const g = geoTableur(item, slot);
+    const m = g.m;
+    const zone = m.zone;
+    const teinter = !g.formule && (m.quoi === 'nommer' || solution);
+    const dansZone = (c, r) => zone && c >= zone.c1 && c <= zone.c2 && r >= zone.r1 && r <= zone.r2;
+
+    doc.setDrawColor(138, 147, 163);
+    doc.setLineWidth(0.22);
+    for (let r = 0; r < g.rows; r++) {
+        for (let c = 0; c < g.cols; c++) {
+            const q = caseTableur(g, c, r);
+            if (teinter && dansZone(c, r)) {
+                doc.setFillColor(201, 220, 247);
+                doc.rect(q.x, q.y, g.cellW, g.cellH, 'FD');
+            } else {
+                // Un fond blanc explicite : sans lui, la case garderait la
+                // teinte laissée par le dernier texte écrit.
+                doc.setFillColor(255, 255, 255);
+                doc.rect(q.x, q.y, g.cellW, g.cellH, 'FD');
+            }
+            if (!g.formule) continue;
+            const cible = r === g.rows - 1 && c === 1;
+            const texte = cible && solution
+                ? String(m.resultat).replace('.', ',')
+                : contenuTableur(m, c, r);
+            if (!texte) continue;
+            doc.setFont('helvetica', (r === 0 || c === 0) ? 'bold' : 'normal');
+            doc.setFontSize(Math.max(5, Math.min(g.cellH * 1.6, 9)));
+            doc.setTextColor(...ENCRE.texte);
+            if (c === 0) doc.text(pourPdf(texte), q.x + g.cellW * 0.08, q.y + g.cellH * 0.66);
+            else doc.text(pourPdf(texte), q.x + g.cellW / 2, q.y + g.cellH * 0.66, { align: 'center' });
+        }
+    }
+
+    // ATTENTION : `setTextColor` change AUSSI la couleur de remplissage dans
+    // jsPDF — un texte est peint avec le « fill ». Sans redire la teinte du
+    // liseré avant chaque case, la première sortait grise et toutes les
+    // suivantes en bleu nuit, lettres invisibles dessus.
+    doc.setFont('helvetica', 'bold');
+    for (let c = 0; c < g.cols; c++) {
+        const x = g.x0 + g.gouttiereW + c * g.cellW;
+        doc.setFillColor(231, 234, 240);
+        doc.rect(x, g.y0, g.cellW, g.enTeteH, 'FD');
+        doc.setFontSize(Math.max(5, Math.min(g.enTeteH * 1.7, 9)));
+        doc.setTextColor(74, 85, 104);
+        doc.text(LETTRES_T[c], x + g.cellW / 2, g.y0 + g.enTeteH * 0.72, { align: 'center' });
+    }
+    for (let r = 0; r < g.rows; r++) {
+        const y = g.y0 + g.enTeteH + r * g.cellH;
+        doc.setFillColor(231, 234, 240);
+        doc.rect(g.x0, y, g.gouttiereW, g.cellH, 'FD');
+        doc.setFontSize(Math.max(5, Math.min(g.cellH * 1.4, 9)));
+        doc.setTextColor(74, 85, 104);
+        doc.text(String(r + 1), g.x0 + g.gouttiereW / 2, y + g.cellH * 0.68, { align: 'center' });
+    }
+
+    const y = g.ligneY + g.ligneH * 0.7;
+    const x0 = slot.x + slot.taille * 0.04;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.3, 10)));
+    doc.setTextColor(...ENCRE.texte);
+    const etiquette = pourPdf(m.quoi === 'formule'
+        ? `En B${m.derniere + 1} :`
+        : (m.quoi === 'nommer' ? 'La zone coloriée s\'appelle' : `Colorie ${m.nom}`));
+    doc.text(etiquette, x0, y);
+    if (m.quoi === 'colorier' && !solution) return;
+
+    const xr = x0 + doc.getTextWidth(etiquette) + slot.taille * 0.03;
+    if (solution) {
+        doc.text(pourPdf(m.quoi === 'formule' ? m.formule
+            : (m.quoi === 'nommer' ? m.nom : `${m.combien} case${m.combien > 1 ? 's' : ''}`)), xr, y);
+        return;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(m.quoi === 'formule' ? '=..............................' : '..................', xr, y);
+    if (champ) champ(xr, y - g.ligneH * 0.6, slot.x + slot.taille * 0.96 - xr, g.ligneH * 0.8);
+}
+
 // --- LES MOTS CACHÉS -----------------------------------------------------------
 //
 // La grille prend la hauteur de la page, la liste des mots se range à côté.
@@ -2600,6 +2808,19 @@ export const RENDUS = {
         previewGrille: rectanglePreviewHtml,
         pdfGrille: dessinerRectanglePdf,
         nomBloc: 'Rectangle',
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
+    },
+
+    tableur: {
+        titre: 'Le tableur sur le papier',
+        consigne: () => 'Une case porte le nom de sa colonne et de sa ligne : B3. Une plage '
+            + 'porte le nom de ses deux coins : A1:C2. ET UNE FORMULE COMMENCE PAR « = » ET '
+            + 'N\'UTILISE QUE DES RÉFÉRENCES — jamais les nombres recopiés, sinon rien ne se '
+            + 'recalcule quand une donnée change.',
+        previewGrille: tableurPreviewHtml,
+        pdfGrille: dessinerTableurPdf,
+        nomBloc: 'Exercice',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
     },
