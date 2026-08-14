@@ -2496,7 +2496,10 @@ export const RENDUS = {
         pdfGrille: dessinerProportionPdf,
         nomBloc: 'Tableau',
         titreAGauche: true,
-        disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
+        // Trois par ligne tient : la colonne des libellés se resserre, les
+        // cases restent au-dessus de neuf millimètres. Au-delà, un « 12,5 » ne
+        // rentrerait plus dans sa case.
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2
     },
 
@@ -2731,9 +2734,17 @@ function assurerModale() {
             <h3 class="modal-title">📄 Fiche à imprimer</h3>
             <div class="fp-controles">
                 <label>Colonnes
-                    <input type="number" id="fp-cols" class="cfg-input cfg-input--num" min="1" max="5" value="3"></label>
+                    <span class="fp-pas">
+                        <button type="button" class="fp-pas-btn" data-pas="-1" data-cible="fp-cols" aria-label="Une colonne de moins">−</button>
+                        <input type="number" id="fp-cols" class="cfg-input cfg-input--num" min="1" max="5" value="3">
+                        <button type="button" class="fp-pas-btn" data-pas="1" data-cible="fp-cols" aria-label="Une colonne de plus">+</button>
+                    </span></label>
                 <label>Lignes
-                    <input type="number" id="fp-rows" class="cfg-input cfg-input--num" min="1" max="5" value="4"></label>
+                    <span class="fp-pas">
+                        <button type="button" class="fp-pas-btn" data-pas="-1" data-cible="fp-rows" aria-label="Une ligne de moins">−</button>
+                        <input type="number" id="fp-rows" class="cfg-input cfg-input--num" min="1" max="5" value="4">
+                        <button type="button" class="fp-pas-btn" data-pas="1" data-cible="fp-rows" aria-label="Une ligne de plus">+</button>
+                    </span></label>
                 <span class="fp-total" id="fp-total"></span>
                 <label>Impression
                     <select id="fp-couleur" class="cfg-input">
@@ -2877,8 +2888,24 @@ export function ouvrirFicheModal(exo, params) {
         items.length = total;
     };
 
+    // LE CHAMP DOIT DIRE LA VÉRITÉ. Un tableau de proportionnalité ne tient
+    // qu'à deux par ligne ; taper « 3 » donnait bien deux colonnes, mais le
+    // champ affichait toujours 3 et le compte ne bougeait pas — on croyait
+    // l'interface cassée alors qu'elle bornait en silence. On réécrit donc la
+    // valeur retenue, et les boutons − / + s'éteignent aux bornes.
+    const recaler = (cols, rows) => {
+        if (colsEl.value !== '') colsEl.value = String(cols);
+        if (rowsEl.value !== '') rowsEl.value = String(rows);
+        modal.querySelectorAll('.fp-pas-btn').forEach(b => {
+            const v = b.dataset.cible === 'fp-cols' ? cols : rows;
+            const maxi = b.dataset.cible === 'fp-cols' ? (dispo.maxCols || 5) : (dispo.maxRows || 5);
+            b.disabled = Number(b.dataset.pas) > 0 ? v >= maxi : v <= 1;
+        });
+    };
+
     const rendre = () => {
         const { cols, rows } = lireDisposition();
+        recaler(cols, rows);
         completer(cols * rows);
         // « tableaus », « bateaus »… Un pluriel fautif dans une interface de
         // professeur de français-et-maths ne passe pas : le rendu peut donner
@@ -2932,8 +2959,20 @@ export function ouvrirFicheModal(exo, params) {
     rowsEl.value = String(dispo.rows);
     colsEl.max = String(dispo.maxCols || 5);
     rowsEl.max = String(dispo.maxRows || 5);
+    // « input » et pas seulement « change » : la feuille suit la frappe, sans
+    // qu'il faille sortir du champ pour voir ce qu'on a demandé.
+    colsEl.oninput = rendre;
+    rowsEl.oninput = rendre;
     colsEl.onchange = rendre;
     rowsEl.onchange = rendre;
+    modal.querySelectorAll('.fp-pas-btn').forEach(b => {
+        b.onclick = () => {
+            const champ = b.dataset.cible === 'fp-cols' ? colsEl : rowsEl;
+            const defaut = b.dataset.cible === 'fp-cols' ? dispo.cols : dispo.rows;
+            champ.value = String((Number(champ.value) || defaut) + Number(b.dataset.pas));
+            rendre();
+        };
+    });
     // Le choix couleur / noir et blanc : il vaut pour CETTE fiche, et devient
     // le choix par défaut des suivantes. Un professeur qui imprime en noir et
     // blanc le fait pour toute l'année, pas pour une feuille.

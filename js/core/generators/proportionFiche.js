@@ -27,7 +27,15 @@ export const proportionFicheGenerator = {
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const t = tirerTableau((params || {}).niveau || 'facile', rng);
+        const niveau = (params || {}).niveau || 'facile';
+        // DOUZE TABLEAUX SUR UNE FEUILLE, ET TROIS QUI PARLENT DE MENTHE À
+        // L'EAU : l'élève ne lit plus la situation, il reconnaît la ligne. On
+        // retire donc tant que le contexte a déjà servi sur cette fiche — la
+        // réserve est finie, alors on s'arrête au bout de quelques essais
+        // plutôt que de boucler.
+        const deja = new Set(ctx.themesExclus || []);
+        let t = tirerTableau(niveau, rng);
+        for (let i = 0; i < 30 && deja.has(t.contexte.sujet); i++) t = tirerTableau(niveau, rng);
         const reponses = t.trous.map(trou => ecrire(attendu(t, trou)));
         return makeItem({
             seed: rng.seed,
@@ -47,7 +55,9 @@ export const proportionFicheGenerator = {
             difficulty: t.niveau === 'difficile' ? 3 : (t.niveau === 'moyen' ? 2 : 1),
             meta: {
                 contexte: t.contexte, coef: t.coef,
-                a: t.a, b: t.b, trous: t.trous, niveau: t.niveau
+                a: t.a, b: t.b, trous: t.trous, niveau: t.niveau,
+                // Le canal par lequel la fiche dit ce qu'elle a déjà servi.
+                theme: t.contexte.sujet
             }
         });
     }

@@ -365,6 +365,19 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-controles { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .fp-controles label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .92rem; }
 .fp-controles .cfg-input--num { width: 58px; }
+/* Le compteur : − champ + . On garde le champ — un professeur qui veut
+   quatre lignes tape 4 plutôt que de cliquer trois fois. */
+.fp-pas { display: inline-flex; align-items: center; gap: 4px; }
+.fp-pas .cfg-input--num { width: 46px; text-align: center; }
+.fp-pas-btn {
+    width: 28px; height: 28px; flex: 0 0 auto; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-2, rgba(127, 127, 127, .12));
+    color: var(--text); font-size: 1.05rem; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, opacity .12s;
+}
+.fp-pas-btn:hover:not(:disabled) { background: var(--primary); color: #fff; }
+.fp-pas-btn:disabled { opacity: .32; cursor: default; }
 .fp-total { color: var(--text-muted); font-size: .9rem; margin-right: auto; }
 
 /* La feuille : format A4 paysage exact, ombre de papier posé. */

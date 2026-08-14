@@ -87,7 +87,11 @@ function assurerModale() {
             <h3 class="modal-title">📝 Fiche d'exercices</h3>
             <div class="fp-controles">
                 <label>Questions
-                    <input type="number" id="fq-nb" class="cfg-input cfg-input--num" min="4" max="80" value="20"></label>
+                    <span class="fp-pas">
+                        <button type="button" class="fp-pas-btn" data-pas="-2" aria-label="Deux questions de moins">−</button>
+                        <input type="number" id="fq-nb" class="cfg-input cfg-input--num" min="4" max="80" value="20">
+                        <button type="button" class="fp-pas-btn" data-pas="2" aria-label="Deux questions de plus">+</button>
+                    </span></label>
                 <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
                 <span class="fp-total" id="fq-total"></span>
                 <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
@@ -317,6 +321,15 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     consigneEl.oninput = rendre;
     lignesRepEl.onchange = rendre;
     nbEl.oninput = rendre;
+    // Le champ dit la vérité : au-delà de quatre-vingts questions, la borne
+    // s'applique, et il faut la VOIR s'appliquer.
+    nbEl.onchange = () => { nbEl.value = String(lire().nb); rendre(); };
+    modal.querySelectorAll('.fp-pas-btn').forEach(b => {
+        b.onclick = () => {
+            nbEl.value = String(Math.max(4, Math.min(80, lire().nb + Number(b.dataset.pas))));
+            rendre();
+        };
+    });
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
     colSol.onchange = rendre;
