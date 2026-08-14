@@ -20,6 +20,10 @@ import { makeRng } from '../core/ids.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
+import {
+    dessiner as dessinerNoyau, aretesCachees as aretesCacheesNoyau,
+    facesVisibles as facesVisiblesNoyau
+} from '../core/solides.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -1405,7 +1409,110 @@ function dessinerMarque(doc, id, cx, cy, r, encre) {
     else { doc.rect(cx - r * 0.7, cy - r * 0.7, r * 1.4, r * 1.4, 'S'); doc.circle(cx, cy, r * 0.3, 'F'); }
 }
 
+// --- Compter sur un solide --------------------------------------------------
+
+/** Le solide dessiné dans son emplacement, plus la place du tableau. */
+function geoSolide(item, slot) {
+    // Le tableau prend le tiers du bas : trois cases à remplir au crayon
+    // demandent de la hauteur, et un dessin trop grand ne laisse pas écrire.
+    const tabH = slot.taille * 0.30;
+    const cote = slot.taille - tabH;
+    const d = dessinerSolide(item.meta, cote, cote * 0.10);
+    return { d, cote, tabH, x0: slot.x + (slot.taille - cote) / 2, y0: slot.y, tabY: slot.y + cote };
+}
+
+/** La projection, reprise du noyau : une seule perspective dans tout le logiciel. */
+function dessinerSolide(meta, cote, marge) {
+    const solide = { ...meta, sommets: meta.sommets, faces: meta.faces, aretes: meta.aretes };
+    return {
+        plan: dessinerNoyau(solide, cote, marge),
+        cachees: aretesCacheesNoyau(solide),
+        vues: facesVisiblesNoyau(solide)
+    };
+}
+
+function solidesPreviewHtml(item, slot, k, solution) {
+    const g = geoSolide(item, slot);
+    const m = item.meta;
+    const P = (i) => g.d.plan.points[i];
+    const X = (i) => g.x0 + P(i)[0];
+    const Y = (i) => g.y0 + P(i)[1];
+    let html = '';
+
+    // Les arêtes cachées d'abord, sous les pleines : un pointillé qui passe
+    // par-dessus un trait plein donne un dessin sale.
+    const arete = (idx, cachee) => {
+        const [a, b] = m.aretes[idx];
+        const x1 = X(a), y1 = Y(a), x2 = X(b), y2 = Y(b);
+        const l = Math.hypot(x2 - x1, y2 - y1);
+        const ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        return `<div class="fx-sd-arete${cachee ? ' fx-sd-arete--cachee' : ''}"
+            style="left:${x1 * k}px; top:${y1 * k}px; width:${l * k}px;
+                   transform:rotate(${ang}deg)"></div>`;
+    };
+    html += m.aretes.map((_, i) => (g.d.cachees[i] ? arete(i, true) : '')).join('');
+    html += m.aretes.map((_, i) => (g.d.cachees[i] ? '' : arete(i, false))).join('');
+
+    // Le tableau à remplir : trois colonnes, et la solution s'y écrit.
+    const cols = [['Sommets', m.compte.S], ['Arêtes', m.compte.A], ['Faces', m.compte.F]];
+    const largeur = g.cote / 3;
+    html += cols.map(([titre, valeur], i) => `
+        <div class="fx-sd-case" style="left:${(g.x0 + i * largeur) * k}px; top:${g.tabY * k}px;
+            width:${largeur * k}px; height:${g.tabH * k}px; font-size:${g.tabH * 0.22 * k}px">
+            <span class="fx-sd-tete">${titre}</span>
+            <span class="fx-sd-rep">${solution ? valeur : ''}</span>
+        </div>`).join('');
+    return html;
+}
+
+function dessinerSolidesPdf(doc, item, slot, solution) {
+    const g = geoSolide(item, slot);
+    const m = item.meta;
+    const X = (i) => g.x0 + g.d.plan.points[i][0];
+    const Y = (i) => g.y0 + g.d.plan.points[i][1];
+
+    m.aretes.forEach(([a, b], i) => {
+        doc.setDrawColor(...(g.d.cachees[i] ? ENCRE.grille : ENCRE.trait));
+        doc.setLineWidth(g.d.cachees[i] ? 0.25 : 0.45);
+        if (g.d.cachees[i] && doc.setLineDashPattern) doc.setLineDashPattern([0.9, 0.8], 0);
+        doc.line(X(a), Y(a), X(b), Y(b));
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+    });
+
+    const cols = [['Sommets', m.compte.S], ['Arêtes', m.compte.A], ['Faces', m.compte.F]];
+    const largeur = g.cote / 3;
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...ENCRE.trait);
+    cols.forEach(([titre, valeur], i) => {
+        const x = g.x0 + i * largeur;
+        doc.rect(x, g.tabY, largeur, g.tabH);
+        doc.setFontSize(5.4);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(titre), x + largeur / 2, g.tabY + g.tabH * 0.32, { align: 'center' });
+        if (solution) {
+            doc.setFontSize(11);
+            doc.setTextColor(...ENCRE.trait);
+            doc.text(String(valeur), x + largeur / 2, g.tabY + g.tabH * 0.82, { align: 'center' });
+        }
+    });
+}
+
 export const RENDUS = {
+    solides: {
+        titre: 'Compter sur un solide',
+        consigne: () => 'Compte les sommets, les arêtes et les faces de chaque solide, et '
+            + 'écris les trois nombres dans le tableau. Les traits en POINTILLÉS sont les '
+            + 'arêtes de derrière : on ne les voit pas, mais elles comptent. Pour te '
+            + 'relire : sommets − arêtes + faces = 2, toujours.',
+        previewGrille: solidesPreviewHtml,
+        pdfGrille: dessinerSolidesPdf,
+        // SIX PAR PAGE. Un solide qu'on doit compter à l'œil ne se dessine pas
+        // en timbre-poste : sous quatre centimètres, deux arêtes voisines se
+        // confondent et l'exercice devient un test de vue.
+        disposition: { cols: 3, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 3
+    },
+
     relier: {
         titre: 'Relier les points',
         consigne: () => 'Relie les deux points de MÊME MARQUE par un chemin qui suit les cases, '

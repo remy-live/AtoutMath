@@ -231,6 +231,10 @@ export const geometrieExercises = [
         id: 'geo-solides-denombrer', status: STATUS.TEST,
         title: 'Compter sur un solide',
         activityId: 'solides',
+        // Sur le papier, on compte au crayon et l'on écrit trois nombres dans
+        // un tableau : c'est l'exercice que l'écran ne sait pas donner, où le
+        // compte s'efface avec la marque.
+        generatorId: 'geo.solides', printable: 'solides',
         params: { niveau: 'tous', aspect: 'tous' },
         paramSchema: [
             {
