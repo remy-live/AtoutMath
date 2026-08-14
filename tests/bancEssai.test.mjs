@@ -7,7 +7,7 @@ import './helpers.mjs';
 import {
     CRITERES, VERDICTS, FORMAT, decrireAppareil, nommerAppareil, nouveauCarnet,
     noter, ligneDe, avancement, ennuis, resume, fusionner, lire, versMarkdown, clefLigne,
-    direClassement
+    direClassement, remarques
 } from '../js/core/bancEssai.js';
 
 const faussetteFenetre = (over = {}) => ({
@@ -271,4 +271,34 @@ test('reprendre un carnet AJOUTE, il ne remplace pas', () => {
     assert.equal(surTangram.length, 2, 'le verdict du téléphone survit à la reprise');
     assert.ok(surTangram.some(l => l.verdicts.marche === 'ko'));
     assert.ok(surTangram.some(l => l.verdicts.marche === 'ok'));
+});
+
+test('une remarque écrite sous des verdicts tout verts ressort quand même', () => {
+    // On peut trouver un exercice bon et vouloir dire quelque chose : « la
+    // consigne gagnerait à parler de gauche à droite ». Écrire une phrase à la
+    // main est toujours un geste délibéré — la laisser dans une case de
+    // tableau, entre deux coches, c'est la perdre.
+    let c = nouveauCarnet({ appareil: decrireAppareil(faussetteFenetre()) });
+    c = noter(c, {
+        exercice: 'num-parties', titre: 'Parties', date: 1,
+        verdicts: { marche: 'ok', indices: 'ok', robot: 'ok', fiche: 'na',
+            'mise-en-page': 'ok', classement: 'ok' },
+        note: 'Il faudrait une variante à trois chiffres.',
+        classement: { chemin: ['Numérique', 'Numération'], niveaux: ['6ème'] }
+    });
+    const dites = remarques(c);
+    assert.equal(dites.length, 1);
+    assert.equal(dites[0].exercice, 'num-parties');
+
+    const md = versMarkdown(c);
+    assert.match(md, /## Noté au passage/);
+    assert.match(md, /Il faudrait une variante à trois chiffres/);
+    assert.match(md, /_Numérique > Numération — 6ème_/);
+    // Et la section reste AVANT le tableau : on la lit, on ne la cherche pas.
+    assert.ok(md.indexOf('## Noté au passage') < md.indexOf('## Le détail'));
+
+    // Une remarque qui accompagne un vrai défaut n'est pas répétée ici : elle
+    // est déjà dans « Ce qui ne va pas », avec sa cause.
+    assert.equal(remarques(carnetType()).length, 0);
+    assert.ok(!/## Noté au passage/.test(versMarkdown(carnetType())));
 });

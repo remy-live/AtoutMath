@@ -449,13 +449,30 @@ async function ouvrirFiche(id) {
         </div>`;
 
     fiche.classList.add('banc-fiche--ouverte');
+
+    // LE BOUTON DIT CE QU'IL VA FAIRE. « Tout bon → suivant » sous une
+    // remarque qu'on vient d'écrire laisse croire que la remarque part à la
+    // poubelle — elle est bien enregistrée, mais rien ne le dit. Le libellé
+    // suit donc l'état réel de la fiche.
+    const boutonSuivant = fiche.querySelector('[data-suivant]');
+    const majSuivant = () => {
+        const note = (fiche.querySelector('[data-note]').value || '').trim();
+        const parfait = !note && CRITERES.every(c => ['ok', 'na'].includes(verdicts[c.id]));
+        boutonSuivant.textContent = parfait ? 'Tout bon → suivant' : 'Enregistrer → suivant';
+        boutonSuivant.classList.toggle('banc-btn--vert', parfait);
+        boutonSuivant.classList.toggle('banc-btn--fort', !parfait);
+    };
+
     fiche.querySelectorAll('[data-verdict]').forEach(b => {
         b.onclick = () => {
             verdicts[b.dataset.critere] = b.dataset.verdict;
             fiche.querySelectorAll(`[data-critere="${b.dataset.critere}"]`)
                 .forEach(x => x.classList.toggle('banc-v--pris', x === b));
+            majSuivant();
         };
     });
+    fiche.querySelector('[data-note]').oninput = majSuivant;
+    majSuivant();
     fiche.querySelectorAll('[data-niveau]').forEach(b => {
         b.onclick = () => {
             const n = b.dataset.niveau;

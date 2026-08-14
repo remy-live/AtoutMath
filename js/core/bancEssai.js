@@ -198,6 +198,25 @@ export function ennuis(carnet) {
         || a.exercice.localeCompare(b.exercice));
 }
 
+/**
+ * LES REMARQUES SANS VERDICT MAUVAIS.
+ *
+ * On peut trouver un exercice bon et vouloir dire quelque chose quand même :
+ * « la consigne gagnerait à parler de gauche à droite », « il faudrait une
+ * variante à trois chiffres ». Écrire une phrase à la main est toujours un
+ * geste délibéré — la laisser dans une case de tableau, entre deux coches,
+ * c'est la perdre.
+ */
+export function remarques(carnet) {
+    return carnet.lignes
+        .filter(l => (l.note || '').trim()
+            && !CRITERES.some(c => ['ko', 'moyen'].includes(l.verdicts && l.verdicts[c.id])))
+        .map(l => ({
+            exercice: l.exercice, titre: l.titre, activite: l.activite,
+            note: l.note, appareil: l.appareilNom, classement: l.classement
+        }));
+}
+
 /** Combien de chaque verdict, par critère : le tableau de bord d'une passe. */
 export function resume(carnet) {
     const par = {};
@@ -305,6 +324,17 @@ export function versMarkdown(carnet, { titre = 'Banc d\'essai' } = {}) {
         if (s.note) l.push('', `> ${s.note.split('\n').join('\n> ')}`);
         l.push('');
     });
+
+    const dites = remarques(carnet);
+    if (dites.length) {
+        l.push('## Noté au passage', '');
+        l.push('_Rien de cassé, mais quelque chose à dire._', '');
+        dites.forEach(r => {
+            l.push(`### ${r.titre} (\`${r.exercice}\`${r.activite ? `, jeu \`${r.activite}\`` : ''})`);
+            if (r.classement) l.push(`_${direClassement(r.classement)}_`);
+            l.push('', `> ${r.note.split('\n').join('\n> ')}`, '');
+        });
+    }
 
     l.push('## Le détail, exercice par exercice', '');
     l.push(`| Exercice | Niveaux | ${CRITERES.map(c => c.label).join(' | ')} | Remarque |`);
