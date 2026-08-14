@@ -1,172 +1,321 @@
-// Skweek : on peut toujours tout repeindre sans marcher sur une erreur.
-
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import {
-    TROU, BLEUE, ROSE, CASSEE, REGLES, regleDe, NIVEAUX, niveauDe,
-    calculPour, genererNiveau, caseDe, praticable, deplacer, avancerEnnemis,
-    toucheJoueur, tirer, avancerTirs, avancement, accessibles
-} from '../js/core/skweek.js';
 import { makeRng } from '../js/core/ids.js';
+import {
+    creerNiveau, NIVEAUX, REGLES, NOMS_REGLES, SOL, VIDE,
+    bougerHeros, bougerEnnemis, bougerTirs, tirer, contact, compte,
+    praticable, dalleEn, caseDe, peindreSous, RAYON, VITESSE
+} from '../js/core/skweek.js';
 
-test('chaque calcul d\'une dalle vaut bien ce qu\'il annonce', () => {
-    // Une dalle qui mentirait sur sa valeur rendrait le tri impossible : c'est
-    // la promesse de base du sol.
-    const rng = makeRng('calc');
-    for (let v = 2; v <= 60; v++) {
-        for (let k = 0; k < 4; k++) {
-            const texte = calculPour(v, rng);
-            const [, a, op, b] = /^(\d+) ([+×−]) (\d+)$/.exec(texte) || [];
-            assert.ok(a, `écriture illisible : « ${texte} »`);
-            const calc = op === '+' ? Number(a) + Number(b)
-                : op === '×' ? Number(a) * Number(b) : Number(a) - Number(b);
-            assert.equal(calc, v, `« ${texte} » ne vaut pas ${v}`);
+const niveau = (n, i = 0, regle = null) =>
+    creerNiveau({ niveau: n, rng: makeRng(`sk_${n}_${i}`), regle });
+
+const VOISINS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/** Les cases atteignables à pied depuis le départ. */
+function atteignables(e, filtre = () => true) {
+    const cle = (x, y) => `${x},${y}`;
+    const vus = new Set([cle(e.depart.x, e.depart.y)]);
+    const pile = [e.depart];
+    while (pile.length) {
+        const c = pile.pop();
+        for (const [dx, dy] of VOISINS) {
+            const nx = c.x + dx, ny = c.y + dy;
+            if (vus.has(cle(nx, ny)) || !praticable(e, nx, ny)) continue;
+            const d = dalleEn(e, nx, ny);
+            if (!filtre(d)) continue;
+            vus.add(cle(nx, ny));
+            pile.push({ x: nx, y: ny });
+        }
+    }
+    return vus;
+}
+
+// --- Le sol ---------------------------------------------------------------------
+
+test('le sol n\'est jamais coupé en deux : tout se rejoint à pied', () => {
+    // Un trou posé au hasard peut isoler un coin, et l'on demanderait alors de
+    // peindre des dalles qu'aucun chemin n'atteint.
+    for (let n = 1; n <= NIVEAUX.length; n++) {
+        for (let i = 0; i < 12; i++) {
+            const e = niveau(n, i);
+            const total = e.sol.filter(v => v === SOL).length;
+            assert.equal(atteignables(e).size, total,
+                `niveau ${n} (tirage ${i}) : ${total - atteignables(e).size} dalle(s) inaccessibles`);
         }
     }
 });
 
-test('une dalle à peindre vérifie la règle, une dalle piégée ne la vérifie pas', () => {
-    for (const niv of NIVEAUX) {
-        const e = genererNiveau({ niveau: niv.id }, makeRng(`r${niv.id}`));
-        const regle = regleDe(niv.regle);
-        e.cases.forEach((c, i) => {
-            if (c.etat === TROU) return;
-            assert.equal(regle.test(c.valeur), !!c.bonne,
-                `niveau ${niv.id}, case ${i} : ${c.calcul} = ${c.valeur} et bonne=${c.bonne}`);
+test('le personnage démarre debout sur une dalle, jamais dans un trou', () => {
+    for (let n = 1; n <= NIVEAUX.length; n++) {
+        for (let i = 0; i < 12; i++) {
+            const e = niveau(n, i);
+            assert.equal(e.sol[e.depart.y * e.cols + e.depart.x], SOL);
+            assert.deepEqual(caseDe(e.heros), e.depart);
+            // Et sa dalle est déjà peinte : le compteur ne doit pas annoncer
+            // zéro alors qu'on est dessus.
+            assert.equal(dalleEn(e, e.depart.x, e.depart.y).etat, 'peinte');
+            assert.equal(e.peintes, 1);
+        }
+    }
+});
+
+test('chaque dalle est soit du sol, soit un trou — et le compte tombe juste', () => {
+    const e = niveau(3);
+    assert.equal(e.dalles.length, e.sol.filter(v => v === SOL).length);
+    e.dalles.forEach(d => assert.ok(praticable(e, d.x, d.y)));
+    e.sol.forEach(v => assert.ok(v === SOL || v === VIDE));
+});
+
+// --- Le tri ------------------------------------------------------------------------
+
+test('la région à peindre est d\'un seul tenant : on peut tout faire sans faute', () => {
+    // C'EST L'INVARIANT QUI REND LE SANS-FAUTE POSSIBLE. Sans lui, il faudrait
+    // traverser des dalles interdites pour atteindre les bonnes, et le jeu
+    // punirait ce qu'il n'a pas rendu évitable.
+    for (let n = 4; n <= NIVEAUX.length; n++) {
+        for (let i = 0; i < 15; i++) {
+            const e = niveau(n, i);
+            const bonnes = e.dalles.filter(d => d.bonne).length;
+            const joignables = atteignables(e, d => d && d.bonne);
+            assert.equal(joignables.size, bonnes,
+                `niveau ${n} (tirage ${i}) : ${bonnes - joignables.size} bonne(s) dalle(s) hors d'atteinte`);
+        }
+    }
+});
+
+test('le nombre écrit sur une dalle décide vraiment de sa couleur', () => {
+    for (const nom of NOMS_REGLES) {
+        for (let i = 0; i < 10; i++) {
+            const e = creerNiveau({ niveau: 5, rng: makeRng(`r_${nom}_${i}`), regle: nom });
+            assert.equal(e.regle.id, nom);
+            const R = REGLES[nom];
+            e.dalles.forEach(d => {
+                assert.ok(d.texte !== '', `dalle sans nombre en ${d.x},${d.y}`);
+                assert.equal(R.convient(d.valeur, e.regle.params), d.bonne,
+                    `« ${d.texte} » : la règle « ${e.regle.dit} » dit le contraire de la dalle`);
+            });
+        }
+    }
+});
+
+test('un niveau de tri a de quoi se tromper, et de quoi réussir', () => {
+    for (let n = 4; n <= NIVEAUX.length; n++) {
+        for (let i = 0; i < 12; i++) {
+            const e = niveau(n, i);
+            const bonnes = e.dalles.filter(d => d.bonne).length;
+            const mauvaises = e.dalles.length - bonnes;
+            assert.ok(bonnes >= 4, `niveau ${n} : seulement ${bonnes} dalles à peindre`);
+            assert.ok(mauvaises >= 3, `niveau ${n} : seulement ${mauvaises} pièges`);
+            assert.equal(e.aFaire, bonnes);
+        }
+    }
+});
+
+test('les trois premiers niveaux demandent tout le sol, sans nombre ni règle', () => {
+    for (let n = 1; n <= 3; n++) {
+        const e = niveau(n);
+        assert.equal(e.but, 'tout');
+        assert.equal(e.regle, null);
+        assert.equal(e.aFaire, e.dalles.length);
+        e.dalles.forEach(d => { assert.equal(d.bonne, true); assert.equal(d.texte, ''); });
+    }
+});
+
+test('une règle qui doit produire un « oui » en produit un — toujours', () => {
+    // LE CŒUR DE LA GARANTIE. Le tirage à l'essai abandonnait au bout de deux
+    // cents coups et gardait le dernier venu : la dalle basculait alors de
+    // camp en silence, et la région à peindre se trouait. Ici on demande, et
+    // l'on obtient — sur toutes les règles, tous les paramètres, mille fois.
+    for (const nom of NOMS_REGLES) {
+        const R = REGLES[nom];
+        const rng = makeRng('force_' + nom);
+        for (let i = 0; i < 40; i++) {
+            const params = R.parametres(rng);
+            for (let k = 0; k < 25; k++) {
+                for (const veut of [true, false]) {
+                    const t = R.forcer(rng, params, veut);
+                    const v = typeof t === 'object' ? t.valeur : t;
+                    assert.equal(R.convient(v, params), veut,
+                        `« ${R.label} » (${JSON.stringify(params)}) : ${JSON.stringify(t)} devait `
+                        + `${veut ? 'convenir' : 'ne pas convenir'}`);
+                }
+            }
+        }
+    }
+});
+
+test('les nombres écrits restent lisibles par un élève', () => {
+    for (const nom of NOMS_REGLES) {
+        const R = REGLES[nom];
+        const rng = makeRng('lis_' + nom);
+        const params = R.parametres(rng);
+        for (let k = 0; k < 200; k++) {
+            for (const veut of [true, false]) {
+                const t = R.forcer(rng, params, veut);
+                const texte = typeof t === 'object' ? t.texte : String(t);
+                const v = typeof t === 'object' ? t.valeur : t;
+                // Ni négatif, ni zéro, ni décimale à rallonge sur la dalle.
+                assert.match(texte, /^\d+([+/]\d+)?$/, `« ${texte} » ne tient pas sur une dalle`);
+                assert.ok(v > 0, `« ${texte} » vaut ${v}`);
+            }
+        }
+    }
+});
+
+// --- Le mouvement ------------------------------------------------------------------
+
+test('le personnage ne traverse ni les trous ni les bords', () => {
+    for (let i = 0; i < 8; i++) {
+        const e = niveau(3, i);
+        const rng = makeRng('marche' + i);
+        for (let pas = 0; pas < 4000; pas++) {
+            bougerHeros(e, { x: rng.int(-1, 1), y: rng.int(-1, 1) }, 1 / 60);
+            const c = caseDe(e.heros);
+            assert.ok(praticable(e, c.x, c.y),
+                `le personnage est dans le vide en ${c.x},${c.y}`);
+            // Et son cercle entier reste sur du sol praticable.
+            for (const [dx, dy] of [[-RAYON, -RAYON], [RAYON, -RAYON], [-RAYON, RAYON], [RAYON, RAYON]]) {
+                const q = caseDe({ x: e.heros.x + dx, y: e.heros.y + dy });
+                assert.ok(praticable(e, q.x, q.y), `un bord du personnage déborde en ${q.x},${q.y}`);
+            }
+        }
+    }
+});
+
+test('une diagonale ne va pas plus vite que les quatre directions', () => {
+    // Le vieux défaut des jeux à huit directions : sans normaliser la poussée,
+    // aller en biais donne 41 % de vitesse en plus.
+    const droit = creerNiveau({ niveau: 1, rng: makeRng('vit_a') });
+    const biais = creerNiveau({ niveau: 1, rng: makeRng('vit_a') });
+    const d0 = { ...droit.heros }, b0 = { ...biais.heros };
+    bougerHeros(droit, { x: 1, y: 0 }, 0.05);
+    bougerHeros(biais, { x: 1, y: 1 }, 0.05);
+    const dDroit = Math.hypot(droit.heros.x - d0.x, droit.heros.y - d0.y);
+    const dBiais = Math.hypot(biais.heros.x - b0.x, biais.heros.y - b0.y);
+    assert.ok(Math.abs(dDroit - dBiais) < 1e-9, `${dDroit} contre ${dBiais}`);
+    assert.ok(Math.abs(dDroit - VITESSE * 0.05) < 1e-9);
+});
+
+test('la dalle se peint entièrement dès que le centre y entre', () => {
+    const e = niveau(1);
+    const avant = e.peintes;
+    const depart = { ...e.heros };
+    // On avance jusqu'à changer de case, pas plus.
+    let bougé = false;
+    for (let i = 0; i < 60 && !bougé; i++) {
+        bougerHeros(e, { x: 1, y: 0 }, 1 / 60);
+        bougé = caseDe(e.heros).x !== caseDe(depart).x;
+    }
+    assert.ok(bougé, 'le personnage n\'a pas changé de case');
+    assert.equal(e.peintes, avant + 1, 'une case franchie, une case peinte');
+    // Repasser dessus ne compte pas deux fois.
+    peindreSous(e);
+    assert.equal(e.peintes, avant + 1);
+});
+
+test('marcher sur une mauvaise dalle la salit, et la tache reste', () => {
+    const e = niveau(4, 3);
+    const mauvaise = e.dalles.find(d => !d.bonne);
+    e.heros.x = mauvaise.x + 0.5;
+    e.heros.y = mauvaise.y + 0.5;
+    peindreSous(e);
+    assert.equal(mauvaise.etat, 'salie');
+    assert.equal(e.salies, 1);
+    assert.equal(e.peintes, 1, 'une tache ne fait pas avancer le compteur');
+    // Elle ne se nettoie pas en repassant : c'est ce qui la rend coûteuse.
+    peindreSous(e);
+    assert.equal(mauvaise.etat, 'salie');
+    assert.equal(e.salies, 1);
+});
+
+test('le niveau est fini quand toutes les bonnes dalles sont peintes', () => {
+    const e = niveau(4, 5);
+    assert.equal(e.fini, false);
+    e.dalles.filter(d => d.bonne).forEach(d => {
+        e.heros.x = d.x + 0.5; e.heros.y = d.y + 0.5;
+        peindreSous(e);
+    });
+    assert.equal(e.fini, true);
+    assert.equal(compte(e).pourcentage, 100);
+    // Les taches ne l'empêchent pas de finir — elles se paient au score.
+    assert.equal(e.salies, 0);
+});
+
+// --- Les ennemis et le tir ----------------------------------------------------------
+
+test('les ennemis démarrent loin, et restent sur le sol', () => {
+    for (let i = 0; i < 8; i++) {
+        const e = niveau(3, i);
+        const rng = makeRng('enn' + i);
+        e.ennemis.forEach(m => {
+            const d = Math.abs(m.x - e.heros.x) + Math.abs(m.y - e.heros.y);
+            assert.ok(d >= 3, `un ennemi démarre à ${d.toFixed(1)} case(s) du personnage`);
         });
-    }
-});
-
-test('les dalles à repeindre forment UNE région, atteignable depuis le départ', () => {
-    // C'est l'exigence qui rend le jeu jouable : un élève prudent peut finir
-    // sans casser une seule dalle. Un îlot séparé rendrait le niveau perdu
-    // d'avance.
-    for (const niv of NIVEAUX) {
-        for (let g = 0; g < 4; g++) {
-            const e = genererNiveau({ niveau: niv.id }, makeRng(`c${niv.id}-${g}`));
-            assert.ok(e.aRepeindre > 10, `niveau ${niv.id} : trop peu de dalles`);
-            // Skweek a déjà peint la dalle sous ses pieds ; tout le reste
-            // doit être atteignable sans traverser une seule mauvaise dalle.
-            assert.equal(accessibles(e).length, e.aRepeindre - e.repeintes,
-                `niveau ${niv.id}, graine ${g} : région coupée en deux`);
+        for (let pas = 0; pas < 3000; pas++) {
+            bougerEnnemis(e, 1 / 60, rng);
+            e.ennemis.forEach(m => {
+                if (!m.vivant) return;
+                const c = caseDe(m);
+                assert.ok(praticable(e, c.x, c.y), `un ennemi est dans le vide en ${c.x},${c.y}`);
+            });
         }
     }
 });
 
-test('marcher sur une bonne dalle la repeint, une seule fois', () => {
-    const e = genererNiveau({ niveau: 1 }, makeRng('peint'));
-    // On cherche une bonne dalle voisine du départ.
-    const voisines = ['droite', 'gauche', 'haut', 'bas'];
-    const dir = voisines.find(d => {
-        const dd = { droite: [1, 0], gauche: [-1, 0], haut: [0, -1], bas: [0, 1] }[d];
-        const c = caseDe(e, e.joueur.x + dd[0], e.joueur.y + dd[1]);
-        return c && c.bonne && c.etat === BLEUE;
-    });
-    assert.ok(dir, 'le départ doit toucher au moins une dalle à repeindre');
-    const avant = e.repeintes;
-    const r1 = deplacer(e, dir);
-    assert.ok(r1.bouge && r1.peint);
-    assert.equal(e.repeintes, avant + 1);
-    assert.equal(r1.case.etat, ROSE);
-    // On revient, on repasse : la dalle est déjà rose, rien ne s'ajoute.
-    const inverse = { droite: 'gauche', gauche: 'droite', haut: 'bas', bas: 'haut' }[dir];
-    deplacer(e, inverse);
-    const r2 = deplacer(e, dir);
-    assert.ok(r2.bouge && !r2.peint);
-    assert.equal(e.repeintes, avant + 1, 'une dalle ne compte qu\'une fois');
+test('un seul tir en vol : le bouton demande de viser', () => {
+    const e = niveau(1);
+    assert.ok(tirer(e));
+    assert.equal(tirer(e), null, 'deux tirs à la fois');
+    assert.equal(e.tirs.length, 1);
+    // Le tir part dans la direction du regard, pas au hasard.
+    bougerHeros(e, { x: 0, y: 1 }, 1 / 60);
+    e.tirs.length = 0;
+    const t = tirer(e);
+    assert.ok(t.vy > 0 && Math.abs(t.vx) < 1e-9);
 });
 
-test('marcher sur une mauvaise dalle la casse, et Skweek ne tombe pas dedans', () => {
-    const e = genererNiveau({ niveau: 2 }, makeRng('casse'));
-    // Une dalle piégée voisine : on la cherche en promenant Skweek.
-    let trouve = null;
-    for (let x = 0; x < e.cols && !trouve; x++) for (let y = 0; y < e.lignes && !trouve; y++) {
-        const c = caseDe(e, x, y);
-        if (!c || c.etat !== BLEUE || c.bonne) continue;
-        for (const [d, dd] of Object.entries({ droite: [1, 0], gauche: [-1, 0], haut: [0, -1], bas: [0, 1] })) {
-            if (praticable(e, x - dd[0], y - dd[1])) { trouve = { x: x - dd[0], y: y - dd[1], dir: d, cible: c }; break; }
-        }
-    }
-    assert.ok(trouve, 'un niveau doit avoir des dalles piégées');
-    e.joueur.x = trouve.x; e.joueur.y = trouve.y;
-    const r = deplacer(e, trouve.dir);
-    assert.ok(r.casse);
-    assert.equal(trouve.cible.etat, CASSEE);
-    assert.equal(e.joueur.x, trouve.x, 'Skweek reste où il était');
-    assert.equal(e.joueur.y, trouve.y);
-    assert.ok(!praticable(e, trouve.cible === caseDe(e, e.joueur.x, e.joueur.y) ? -1 : e.joueur.x, -1));
-});
-
-test('on ne marche ni hors du terrain ni dans un trou', () => {
-    const e = genererNiveau({ niveau: 1 }, makeRng('mur'));
-    e.joueur.x = 0; e.joueur.y = 0;
-    const r = deplacer(e, 'gauche');
-    assert.ok(!r.bouge && r.mur);
-    assert.equal(e.joueur.x, 0);
-});
-
-test('le niveau se gagne quand toutes les bonnes dalles sont roses', () => {
-    // On repeint tout à la main : le drapeau de victoire doit tomber à la
-    // dernière, pas avant.
-    const e = genererNiveau({ niveau: 1 }, makeRng('gagne'));
-    let gagne = e.repeintes >= e.aRepeindre;
-    e.cases.forEach(c => {
-        if (!c.bonne || c.etat === ROSE) return;
-        c.etat = ROSE;
-        e.repeintes++;
-        if (e.repeintes >= e.aRepeindre) gagne = true;
-        else assert.ok(!gagne);
-    });
-    assert.ok(gagne);
-    assert.equal(avancement(e), 100);
-});
-
-test('les ennemis restent sur le terrain praticable', () => {
-    const e = genererNiveau({ niveau: 6 }, makeRng('enn'));
-    const rng = makeRng('pas');
-    assert.ok(e.ennemis.length >= 2);
-    for (let t = 0; t < 500; t++) {
-        avancerEnnemis(e, rng);
-        e.ennemis.forEach(en => assert.ok(praticable(e, en.x, en.y),
-            `ennemi hors piste en ${en.x},${en.y}`));
-    }
-});
-
-test('un tir file tout droit et retire l\'ennemi touché', () => {
-    const e = genererNiveau({ niveau: 3 }, makeRng('tir'));
-    // On place un ennemi juste à droite, dans une ligne praticable.
-    let x = e.joueur.x;
-    while (praticable(e, x + 1, e.joueur.y) && x < e.joueur.x + 3) x++;
-    assert.ok(x > e.joueur.x, 'il faut de la place à droite');
-    e.ennemis = [{ x, y: e.joueur.y, dx: 0, dy: 0 }];
-    e.joueur.dir = 'droite';
+test('un tir meurt au mur, et assomme l\'ennemi qu\'il touche', () => {
+    const e = niveau(1);
+    // On pose un ennemi juste devant, et l'on regarde vers lui.
+    e.heros.regard = { x: 1, y: 0 };
+    e.ennemis[0].x = e.heros.x + 1.2;
+    e.ennemis[0].y = e.heros.y;
+    e.ennemis[0].vivant = true;
     tirer(e);
-    let touches = 0;
-    for (let k = 0; k < 6 && !touches; k++) touches += avancerTirs(e);
-    assert.equal(touches, 1);
-    assert.equal(e.ennemis.length, 0);
+    let touche = [];
+    for (let i = 0; i < 30 && !touche.length; i++) touche = bougerTirs(e, 1 / 60);
+    assert.equal(touche.length, 1);
+    assert.equal(e.ennemis[0].vivant, false);
+    assert.equal(e.tirs.length, 0, 'le tir disparaît en touchant');
+
+    // Et il revient — loin.
+    const rng = makeRng('retour');
+    for (let i = 0; i < 400; i++) bougerEnnemis(e, 1 / 60, rng);
+    assert.equal(e.ennemis[0].vivant, true);
+    const d = Math.abs(e.ennemis[0].x - e.heros.x) + Math.abs(e.ennemis[0].y - e.heros.y);
+    assert.ok(d >= 4, `l'ennemi revient à ${d.toFixed(1)} case(s) — c'est une punition, pas un retour`);
 });
 
-test('un ennemi sur Skweek se voit', () => {
-    const e = genererNiveau({ niveau: 2 }, makeRng('touche'));
-    assert.ok(!toucheJoueur(e), 'les ennemis démarrent loin');
-    e.ennemis.push({ x: e.joueur.x, y: e.joueur.y, dx: 0, dy: 0 });
-    assert.ok(toucheJoueur(e));
+test('le contact renvoie au départ, avec un moment de grâce', () => {
+    const e = niveau(1);
+    e.ennemis[0].x = e.heros.x;
+    e.ennemis[0].y = e.heros.y;
+    e.ennemis[0].vivant = true;
+    assert.equal(contact(e), true);
+    assert.deepEqual(caseDe(e.heros), e.depart);
+    // Pendant la grâce, un second contact ne compte pas : sinon on perdrait
+    // trois vies d'un coup en réapparaissant.
+    assert.equal(contact(e), false);
+    for (let i = 0; i < 200; i++) bougerHeros(e, { x: 0, y: 0 }, 1 / 60);
+    assert.equal(e.heros.grace, 0);
 });
 
-test('six niveaux, des règles toutes différentes', () => {
-    assert.equal(NIVEAUX.length, 6);
-    assert.equal(new Set(NIVEAUX.map(n => n.regle)).size, 6);
-    NIVEAUX.forEach(n => assert.ok(regleDe(n.regle).consigne.length > 5));
-    assert.equal(niveauDe(99).id, 1, 'niveau inconnu : on repart du premier');
-    // Chaque règle sait trier.
-    REGLES.forEach(r => assert.equal(typeof r.test(12), 'boolean'));
-});
-
-test('le même tirage donne le même niveau', () => {
-    const a = genererNiveau({ niveau: 4 }, makeRng('st'));
-    const b = genererNiveau({ niveau: 4 }, makeRng('st'));
-    assert.deepEqual(a.cases.map(c => c.calcul), b.cases.map(c => c.calcul));
-    assert.deepEqual(a.joueur, b.joueur);
+test('la même graine redonne exactement le même niveau', () => {
+    const a = creerNiveau({ niveau: 5, rng: makeRng('graine') });
+    const b = creerNiveau({ niveau: 5, rng: makeRng('graine') });
+    assert.deepEqual(a.sol, b.sol);
+    assert.deepEqual(a.dalles, b.dalles);
+    assert.deepEqual(a.regle, b.regle);
 });
