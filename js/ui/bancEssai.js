@@ -352,9 +352,8 @@ function guetterRetour() {
 
 /** Cet exercice a-t-il une fiche papier ? Sinon le critère est sans objet. */
 async function aUneFiche(exo) {
-    const { getGenerator } = await import('../core/registry.js');
-    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
-    return !!(exo.printable || (gen && gen.ecrit));
+    const { aUneFichePapier } = await import('../core/registry.js');
+    return aUneFichePapier(exo);
 }
 
 /** L'aperçu papier. Tous les exercices n'en ont pas : on le dit. */
@@ -362,9 +361,8 @@ function apercuFiche(id) {
     const exo = exercices.find(e => e.id === id);
     if (!exo) return;
     import('./printSheet.js').then(m => {
-        import('../core/registry.js').then(({ getGenerator }) => {
-            const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
-            if (!exo.printable && !(gen && gen.ecrit)) {
+        import('../core/registry.js').then(({ aUneFichePapier }) => {
+            if (!aUneFichePapier(exo)) {
                 import('./modal.js').then(x => x.showToast(
                     'Cet exercice n\'a pas de fiche papier : c\'est une activité à l\'écran.', 'warning'));
                 return;

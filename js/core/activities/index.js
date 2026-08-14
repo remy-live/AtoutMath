@@ -39,6 +39,8 @@ import { relierGenerator } from '../generators/relier.js';
 import { solidesGenerator } from '../generators/solides.js';
 import { repereFicheGenerator } from '../generators/repereFiche.js';
 import { slitherlinkGenerator } from '../generators/slitherlink.js';
+import { virguleFicheGenerator } from '../generators/virguleFiche.js';
+import { problemesFicheGenerator } from '../generators/problemesFiche.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -55,7 +57,8 @@ import { slitherlinkGenerator } from '../generators/slitherlink.js';
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator, futoshikiGenerator,
-    slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator
+    slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
+    virguleFicheGenerator, problemesFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

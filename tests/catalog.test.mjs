@@ -51,3 +51,37 @@ test('chaque exercice est rangé dans un chemin entièrement nommé', () => {
     });
     assert.deepEqual(fautifs.map(e => e.id), []);
 });
+
+// --- La fiche papier : une seule question, une seule réponse ------------------
+
+test('un exercice qui déclare un générateur de fiche a bien une fiche', async () => {
+    const { generateurDeFiche, aUneFichePapier } = await import('../js/core/registry.js');
+    await import('../js/core/activities/index.js');
+    for (const exo of exercices) {
+        if (!exo.printGeneratorId) continue;
+        const g = generateurDeFiche(exo);
+        assert.ok(g, `${exo.id} : générateur de fiche « ${exo.printGeneratorId} » introuvable`);
+        // Le bouton « travailler sur papier » se décide avec cette fonction :
+        // sans elle, un exercice sans `generatorId` — parce qu'il n'existe qu'à
+        // l'écran — n'aurait jamais proposé sa fiche.
+        assert.ok(aUneFichePapier(exo), `${exo.id} : sa fiche ne serait pas proposée`);
+    }
+});
+
+test('tout exercice imprimable sait produire des items pour sa fiche', async () => {
+    const { generateurDeFiche, aUneFichePapier } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+    for (const exo of exercices) {
+        if (!aUneFichePapier(exo)) continue;
+        const g = generateurDeFiche(exo);
+        if (!g) continue;                       // grille dessinée sans générateur propre
+        const reglages = { ...(exo.params || {}), ...(exo.printParams || {}) };
+        for (let i = 0; i < 3; i++) {
+            const item = g.generate(reglages, { rng: makeRng(`${exo.id}#${i}`), index: i });
+            assert.ok(item && item.prompt, `${exo.id} : item sans énoncé`);
+            assert.ok(item.answer !== undefined && item.answer !== null,
+                `${exo.id} : item sans réponse — la page des solutions serait vide`);
+        }
+    }
+});

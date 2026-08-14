@@ -395,6 +395,12 @@ export const numerationExercises = [
         // dire le contraire du professeur.
         id: 'num-virgule', status: STATUS.TEST, title: 'La Virgule qui se décale',
         activityId: 'virgule',
+        // Sur le papier, le glissement dans le tableau de numération n'a pas
+        // d'équivalent — c'est justement ce que l'écran apporte. Reste
+        // l'égalité à compléter, qui est l'entraînement classique du chapitre.
+        printGeneratorId: 'num.virgule-fiche',
+        consignePapier: "Complète. Attention : « ×10, on ajoute un zéro » est faux dès qu'il y a une virgule.",
+        colonnesPapier: 3,
         params: { niveau: 'facile', parPhase: 3 },
         paramSchema: [
             {

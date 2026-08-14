@@ -19,7 +19,7 @@
 //    place chaque item UNE fois pour les deux). Ce qu'on voit à l'écran est ce
 //    qui sort de l'imprimante.
 
-import { getGenerator } from '../core/registry.js';
+import { generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
 import {
@@ -186,7 +186,10 @@ function pdfSolutions(pdf, page, o) {
  * @param {Function} chargerJsPDF
  */
 export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
-    const generator = getGenerator(exo.generatorId);
+    // La FICHE peut avoir son propre générateur (`printGeneratorId`) : la
+    // virgule se fait glisser à l'écran et s'écrit sur le papier. On passe donc
+    // par le même choix que partout ailleurs.
+    const generator = generateurDeFiche(exo);
     if (!generator) return;
 
     const modal = assurerModale();
@@ -209,7 +212,11 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     // La consigne de la feuille. Celle de l'écran parle de toucher, de glisser
     // et de boutons : sur papier elle n'a aucun sens. On propose donc la
     // première phrase de l'énoncé, et le professeur la réécrit.
-    consigneEl.value = premierePhrase(exo.instruction || '');
+    // `consignePapier` d'abord : c'est la consigne écrite POUR LA FEUILLE.
+    // La première phrase de l'instruction d'écran est un repli — elle parle
+    // souvent du geste (« Trois temps. », « Glisse la virgule »), qui n'a pas
+    // de sens sur du papier.
+    consigneEl.value = exo.consignePapier || premierePhrase(exo.instruction || '');
 
     // Le QCM n'a de sens que si le générateur produit des choix : sur un
     // exercice à réponse libre, la case n'aurait rien à cocher.

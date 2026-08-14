@@ -24,7 +24,7 @@
 // manœuvrer — sont ANNONCÉES comme telles plutôt que silencieusement omises.
 
 import { hydratePath } from '../core/path.js';
-import { getGenerator } from '../core/registry.js';
+import { generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
@@ -41,7 +41,7 @@ export function analyserParcours(chemin) {
     const { steps } = hydratePath(chemin);
     const papier = [], ecran = [];
     for (const s of steps) {
-        const gen = s.exercise.generatorId ? getGenerator(s.exercise.generatorId) : null;
+        const gen = generateurDeFiche(s.exercise);
         // Deux façons d'aller sur le papier, et la seconde manquait : un
         // sudoku, un binairo, un garam n'ont pas de « questions » mais des
         // GRILLES, et ce sont justement les exercices qu'on fait le plus

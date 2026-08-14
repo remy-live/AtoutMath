@@ -7,7 +7,7 @@
 
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
 import { seuilDe } from '../core/recompenses.js';
-import { getGenerator } from '../core/registry.js';
+import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 
 // --- Champs -----------------------------------------------------------------
@@ -496,7 +496,7 @@ export function showStudentConfigModal(exo, onStart) {
     // générateur dont les énoncés se suffisent en texte (`ecrit`). Le bouton
     // ouvre une modale d'aperçu ; les réglages choisis ICI (tables, opérations,
     // difficulté) sont ceux de la fiche, il n'y a pas deux endroits à régler.
-    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
+    const gen = generateurDeFiche(exo);
     const surPapier = exo.printable ? 'grille' : (gen && gen.ecrit ? 'ecrit' : null);
     const impression = surPapier ? `
         <button type="button" class="cfg-print-btn cfg-print-btn--seul" id="btn-print-sheet">

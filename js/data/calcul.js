@@ -839,6 +839,13 @@ export const calculExercises = [
         // empêche de reconnaître l'opération sans lire.
         id: 'num-problemes', status: STATUS.TEST, title: 'Histoires en Pagaille',
         activityId: 'problemes',
+        // C'est l'exercice qui appelle le plus la feuille : un problème se
+        // relit, se souligne, se schématise dans la marge. Sur le papier on
+        // ÉCRIT la réponse — reconnaître la bonne dans une liste de quatre
+        // n'est pas la trouver.
+        printGeneratorId: 'num.problemes-fiche',
+        consignePapier: "Lis chaque énoncé, écris ton calcul, puis la réponse avec son unité.",
+        colonnesPapier: 1,
         params: { niveau: 'tout', familles: [] },
         paramSchema: [
             {

@@ -15,7 +15,7 @@
 // `printable: '<cle>'` au catalogue et en fournissant son dessin de grille ;
 // la page, l'en-tête et la page des solutions sont communs.
 
-import { getGenerator } from '../core/registry.js';
+import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
@@ -2147,7 +2147,7 @@ export function ouvrirFicheModal(exo, params) {
     // axes. Le même exercice a donc le droit d'avoir un générateur de FICHE
     // distinct — plutôt que de doubler le catalogue d'entrées « à imprimer »
     // que personne ne cherche.
-    const generator = getGenerator(exo.printGeneratorId || exo.generatorId);
+    const generator = generateurDeFiche(exo);
     const rendu = RENDUS[exo.printable];
     // Deux papiers pour deux natures d'exercice : une GRILLE se dessine (on y
     // rature, on y note ses candidats), une QUESTION s'écrit sur une ligne.

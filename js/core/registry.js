@@ -72,6 +72,30 @@ export function getGenerator(id) {
     return generators.get(id) || null;
 }
 
+/**
+ * LE GÉNÉRATEUR DE LA FICHE — un seul endroit qui le sait.
+ *
+ * Un exercice peut IMPRIMER AUTRE CHOSE qu'il ne joue : le repérage pose un
+ * point à l'écran et six sur la feuille, la virgule se fait glisser à l'écran
+ * et s'écrit sur le papier. C'est `printGeneratorId` qui le dit.
+ *
+ * La règle était appliquée dans la modale d'impression seulement, et quatre
+ * autres endroits décidaient encore « cet exercice a-t-il une fiche ? » en
+ * regardant `generatorId` tout court : le bouton n'apparaissait donc jamais
+ * pour les exercices qui n'existent qu'à l'écran ET ont une fiche dédiée. Une
+ * seule fonction, et la question ne peut plus recevoir deux réponses.
+ */
+export function generateurDeFiche(exo) {
+    if (!exo) return null;
+    return getGenerator(exo.printGeneratorId || exo.generatorId);
+}
+
+/** Cet exercice a-t-il une fiche papier — grille dessinée ou questions écrites ? */
+export function aUneFichePapier(exo) {
+    const g = generateurDeFiche(exo);
+    return !!(exo && (exo.printable || (g && g.ecrit)));
+}
+
 export function getActivity(id) {
     return activities.get(id) || null;
 }
