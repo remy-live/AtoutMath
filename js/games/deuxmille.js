@@ -63,16 +63,58 @@ class DeuxMille extends BaseGame {
                 .dm2-case {
                     border-radius: 8px; background: color-mix(in srgb, var(--text-main) 5%, var(--bg-panel));
                 }
+                /* LA POSITION PASSE PAR « translate », PAS PAR « transform ».
+                   Les animations font grossir la tuile avec la propriété
+                   « scale » ; or le navigateur compose translate → rotate →
+                   scale → transform, donc un « transform: translate(x, y) » se
+                   retrouve MULTIPLIÉ par l'échelle. La tuile qui fusionnait
+                   s'envolait d'autant plus loin qu'elle était bas dans la
+                   grille — jusqu'à en sortir par le bas — et la tuile qui
+                   apparaissait (échelle 0,4) surgissait du coin haut-gauche.
+                   Avec la propriété « translate », l'échelle s'applique APRÈS le
+                   placement, c'est-à-dire autour du centre de la case. */
                 .dm2-tuile {
                     position: absolute; left: 0; top: 0; border-radius: 8px;
                     display: flex; align-items: center; justify-content: center;
-                    font-weight: 900; will-change: transform;
-                    transition: transform .13s ease-in-out;
+                    font-weight: 900; will-change: translate;
+                    transition: translate .13s ease-in-out;
                 }
                 .dm2-tuile--pop { animation: dm2-pop .22s ease; }
                 @keyframes dm2-pop { from { scale: .4; } }
-                .dm2-tuile--fusion { animation: dm2-fusion .26s ease; }
-                @keyframes dm2-fusion { 45% { scale: 1.2; } }
+                /* LA FUSION SE VOIT. Un simple grossissement de 20 % en un
+                   quart de seconde passait inaperçu : on découvrait le
+                   doublement en relisant le nombre, alors que c'est LE moment
+                   du jeu — 8 + 8 = 16 sous les yeux. La tuile enfle, s'éclaire,
+                   et une onde part de ses bords ; la somme s'envole au-dessus.
+                   Le mouvement reste court : on enchaîne les coups. */
+                .dm2-tuile--fusion { animation: dm2-fusion .34s cubic-bezier(.2, 1.4, .4, 1); z-index: 3; }
+                @keyframes dm2-fusion {
+                    0%   { scale: 1; filter: brightness(1); }
+                    38%  { scale: 1.3; filter: brightness(1.75) drop-shadow(0 0 16px rgba(255,255,255,.9)); }
+                    100% { scale: 1; filter: brightness(1); }
+                }
+                .dm2-tuile--fusion::after {
+                    content: ''; position: absolute; inset: -5px; border-radius: inherit;
+                    border: 3px solid rgba(255,255,255,.9); pointer-events: none;
+                    animation: dm2-onde .42s ease-out forwards;
+                }
+                @keyframes dm2-onde { from { scale: .82; opacity: .95; } to { scale: 1.4; opacity: 0; } }
+                /* Le calcul qui vient d'être fait, écrit là où il s'est fait. */
+                .dm2-somme {
+                    position: absolute; pointer-events: none; z-index: 4;
+                    font-weight: 900; color: var(--text-main);
+                    text-shadow: 0 1px 0 #fff, 0 0 8px rgba(255,255,255,.9);
+                    animation: dm2-somme .85s ease-out forwards;
+                }
+                @keyframes dm2-somme {
+                    0%   { opacity: 0; translate: 0 0; scale: .7; }
+                    22%  { opacity: 1; scale: 1; }
+                    100% { opacity: 0; translate: 0 -34px; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .dm2-tuile--fusion, .dm2-tuile--fusion::after, .dm2-somme { animation: none; }
+                    .dm2-somme { display: none; }
+                }
                 .dm2-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
                 .dm2-btn {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
@@ -144,7 +186,7 @@ class DeuxMille extends BaseGame {
         const { marge, ecart, cote } = this.geometrie();
         el.style.width = `${cote}px`;
         el.style.height = `${cote}px`;
-        el.style.transform = `translate(${marge + (i % 4) * (cote + ecart)}px, ${marge + Math.floor(i / 4) * (cote + ecart)}px)`;
+        el.style.translate = `${marge + (i % 4) * (cote + ecart)}px ${marge + Math.floor(i / 4) * (cote + ecart)}px`;
     }
 
     habiller(el, v) {
@@ -165,6 +207,30 @@ class DeuxMille extends BaseGame {
         this.grilleEl.appendChild(el);
         this.tuiles.push({ el, valeur: v, case: i });
         return el;
+    }
+
+    /**
+     * La somme qui vient d'être faite, écrite au-dessus de la case où elle
+     * s'est faite, puis qui s'envole.
+     *
+     * Le bandeau sous la grille disait déjà « 8 + 8 = 16 », mais loin de
+     * l'endroit où l'on regarde : on ne lisait pas les deux à la fois. Ici,
+     * c'est le seul moment où le jeu FAIT une addition — il vaut d'être vu là
+     * où il se produit.
+     */
+    direSomme(f) {
+        if (!this.grilleEl) return;
+        const { marge, ecart, cote } = this.geometrie();
+        const bulle = document.createElement('div');
+        bulle.className = 'dm2-somme';
+        bulle.textContent = `${f.valeur / 2} + ${f.valeur / 2} = ${f.valeur}`;
+        bulle.style.fontSize = `${Math.round(cote * 0.24)}px`;
+        bulle.style.left = `${marge + (f.case % 4) * (cote + ecart)}px`;
+        bulle.style.top = `${marge + Math.floor(f.case / 4) * (cote + ecart) - cote * 0.16}px`;
+        bulle.style.width = `${cote}px`;
+        bulle.style.textAlign = 'center';
+        this.grilleEl.appendChild(bulle);
+        setTimeout(() => bulle.remove(), 900);
     }
 
     replacerTuiles() {
@@ -236,6 +302,7 @@ class DeuxMille extends BaseGame {
                     dessus[0].valeur = f.valeur;
                     this.habiller(dessus[0].el, f.valeur);
                     dessus[0].el.classList.add('dm2-tuile--fusion');
+                    this.direSomme(f);
                 }
             }
             this.tuiles.forEach(t => { t.enRoute = false; });
