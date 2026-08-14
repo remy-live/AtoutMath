@@ -44,6 +44,51 @@ export const SYMBOLES = ['●', '■', '▲', '◆', '★', '✚', '♥', '⬢']
 
 export const MAX_PAIRES = COULEURS.length;
 
+/**
+ * LES MARQUES SE DESSINENT, ELLES NE S'ÉCRIVENT PAS.
+ *
+ * « ● ■ ▲ ◆ ★ » posés comme du texte ne s'alignent jamais : chaque glyphe a
+ * son propre centre optique, ses propres approches, et sa propre hauteur dans
+ * le cadratin. Le disque paraît trop haut, le triangle trop bas, l'étoile
+ * décalée à droite — et aucun réglage de police ne rattrape cela, puisque
+ * c'est la police qui décide.
+ *
+ * Une forme TRACÉE, elle, est centrée sur le point qu'on lui donne. C'est déjà
+ * ce que fait le PDF (les polices standard n'ont pas ces caractères) : l'écran
+ * et le papier dessinent maintenant la même chose, de la même façon.
+ *
+ * @returns {string} le contenu SVG de la marque, centré sur (cx, cy).
+ */
+export function marqueSvg(index, cx, cy, r, { fond = 'currentColor', trait = 'none', ep = 0 } = {}) {
+    const style = `fill="${fond}" stroke="${trait}" stroke-width="${ep}" stroke-linecap="round"`;
+    const pts = (liste) => liste.map(([x, y]) => `${cx + x * r},${cy + y * r}`).join(' ');
+    switch (index % 8) {
+    case 0:   // le disque
+        return `<circle cx="${cx}" cy="${cy}" r="${r * 0.92}" ${style}/>`;
+    case 1:   // le carré
+        return `<rect x="${cx - r * 0.82}" y="${cy - r * 0.82}" width="${r * 1.64}"
+            height="${r * 1.64}" rx="${r * 0.12}" ${style}/>`;
+    case 2:   // le triangle, posé sur sa base et centré sur son CENTRE DE
+        //     GRAVITÉ, pas sur le milieu de sa boîte : sinon il paraît haut.
+        return `<polygon points="${pts([[0, -1.05], [0.95, 0.62], [-0.95, 0.62]])}" ${style}/>`;
+    case 3:   // le losange
+        return `<polygon points="${pts([[0, -1.05], [1.05, 0], [0, 1.05], [-1.05, 0]])}" ${style}/>`;
+    case 4:   // la croix droite
+        return `<path d="M${cx - r} ${cy} H${cx + r} M${cx} ${cy - r} V${cy + r}"
+            fill="none" stroke="${fond}" stroke-width="${r * 0.62}" stroke-linecap="round"/>`;
+    case 5:   // la croix oblique
+        return `<path d="M${cx - r * 0.8} ${cy - r * 0.8} L${cx + r * 0.8} ${cy + r * 0.8}
+            M${cx - r * 0.8} ${cy + r * 0.8} L${cx + r * 0.8} ${cy - r * 0.8}"
+            fill="none" stroke="${fond}" stroke-width="${r * 0.62}" stroke-linecap="round"/>`;
+    case 6:   // l'anneau
+        return `<circle cx="${cx}" cy="${cy}" r="${r * 0.7}" fill="none"
+            stroke="${fond}" stroke-width="${r * 0.5}"/>`;
+    default:  // l'hexagone
+        return `<polygon points="${pts([[0.55, -0.95], [1.05, 0], [0.55, 0.95],
+            [-0.55, 0.95], [-1.05, 0], [-0.55, -0.95]])}" ${style}/>`;
+    }
+}
+
 export const clef = (x, y) => `${x},${y}`;
 export const voisines = ([x, y]) => [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
 export const dedans = ([x, y], l, h) => x >= 0 && y >= 0 && x < l && y < h;

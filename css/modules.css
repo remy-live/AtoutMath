@@ -3507,28 +3507,16 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    photocopiée en gris. La couleur ne fait que doubler cette information. */
 .fx-rl-case { position: absolute; border: .8px solid #b0b6c5; box-sizing: border-box; }
 .fx-rl-trait { position: absolute; border-radius: 2px; opacity: .85; }
-.fx-rl-marque {
-    position: absolute; display: flex; align-items: center; justify-content: center;
-    font-weight: 800; opacity: .85; pointer-events: none;
-}
-.fx-rl-borne {
-    position: absolute; display: flex; align-items: center; justify-content: center;
-    border: 1.2px solid #1a202c; border-radius: 50%; font-weight: 800; box-sizing: border-box;
-}
+.fx-rl-marque { position: absolute; opacity: .85; pointer-events: none; overflow: visible; }
+.fx-rl-borne { position: absolute; overflow: visible; }
 
 /* RELIER LES POINTS, sur la feuille. La marque de forme est toujours là :
    c'est elle qui dit quelle borne va avec quelle autre une fois la page
    photocopiée en gris. La couleur ne fait que doubler cette information. */
 .fx-rl-case { position: absolute; border: .8px solid #b0b6c5; box-sizing: border-box; }
 .fx-rl-trait { position: absolute; border-radius: 2px; opacity: .85; }
-.fx-rl-marque {
-    position: absolute; display: flex; align-items: center; justify-content: center;
-    font-weight: 800; opacity: .85; pointer-events: none;
-}
-.fx-rl-borne {
-    position: absolute; display: flex; align-items: center; justify-content: center;
-    border: 1.2px solid #1a202c; border-radius: 50%; font-weight: 800; box-sizing: border-box;
-}
+.fx-rl-marque { position: absolute; opacity: .85; pointer-events: none; overflow: visible; }
+.fx-rl-borne { position: absolute; overflow: visible; }
 
 /* COMPTER SUR UN SOLIDE, sur la feuille. Les arêtes cachées restent en
    pointillés : ce sont elles qui font l'exercice — sans elles on compte ce
@@ -3545,3 +3533,33 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .fx-sd-tete { font-size: .62em; color: #6e7684; font-weight: 700; white-space: nowrap; }
 .fx-sd-rep { font-weight: 800; font-size: 1.5em; color: #1a202c; }
+
+/* REPÈRE ET COORDONNÉES, sur la feuille. Le point se marque d'une CROIX : elle
+   désigne exactement son centre, là où un rond laisse hésiter entre son bord
+   et son milieu — et à l'intersection de deux graduations, ça se voit. */
+.fx-rp-grille { position: absolute; border-top: .5px solid #c9cfdb; border-left: .5px solid #c9cfdb; }
+.fx-rp-axe { position: absolute; border-top: 1.4px solid #1a202c; border-left: 1.4px solid #1a202c; }
+.fx-rp-grad { position: absolute; text-align: center; color: #6e7684; font-weight: 700; }
+.fx-rp-grad--y { text-align: right; }
+.fx-rp-croix {
+    position: absolute;
+    background:
+        linear-gradient(to bottom right, transparent calc(50% - .7px), #1a202c calc(50% - .7px),
+            #1a202c calc(50% + .7px), transparent calc(50% + .7px)),
+        linear-gradient(to bottom left, transparent calc(50% - .7px), #1a202c calc(50% - .7px),
+            #1a202c calc(50% + .7px), transparent calc(50% + .7px));
+}
+.fx-rp-etiq { position: absolute; font-weight: 800; color: #1a202c; }
+.fx-rp-liste {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-weight: 700; color: #1a202c; flex-wrap: wrap;
+}
+/* DEUX RÉPONSES PAR LIGNE. Empilées une par une, six couples débordaient sur
+   le repère du dessous — et l'élève écrivait dans le titre de la grille
+   suivante. */
+.fx-rp-reponses {
+    position: absolute; display: flex; flex-wrap: wrap; align-content: flex-start;
+    gap: .3em .4em; color: #1a202c; font-weight: 600; overflow: hidden;
+}
+.fx-rp-rep { white-space: nowrap; width: 47%; }
+.fx-rp-trou { display: inline-block; min-width: 2.4em; border-bottom: 1px dotted #9aa3b2; text-align: center; }

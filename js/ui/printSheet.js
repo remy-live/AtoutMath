@@ -20,6 +20,7 @@ import { makeRng } from '../core/ids.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
+import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import {
     dessiner as dessinerNoyau, aretesCachees as aretesCacheesNoyau,
     facesVisibles as facesVisiblesNoyau
@@ -1321,10 +1322,10 @@ function relierPreviewHtml(item, slot, k, solution) {
                         top:${(y1 - ep / 2) * k}px; width:${(l + ep) * k}px; height:${(h + ep) * k}px;
                         background:${couleur ? p.couleur : '#94a3b8'}"></div>`;
                 }
-                html += `<div class="fx-rl-marque" style="left:${(g.cx(c[0]) - g.pas / 2) * k}px;
-                    top:${(g.cy(c[1]) - g.pas / 2) * k}px; width:${g.pas * k}px; height:${g.pas * k}px;
-                    font-size:${g.pas * 0.34 * k}px; color:${couleur ? p.couleur : '#334155'}"
-                    >${p.symbole}</div>`;
+                html += `<svg class="fx-rl-marque" style="left:${(g.cx(c[0]) - g.pas / 2) * k}px;
+                    top:${(g.cy(c[1]) - g.pas / 2) * k}px" width="${g.pas * k}" height="${g.pas * k}"
+                    viewBox="0 0 10 10">${marqueSvgRelier(p.id, 5, 5, 1.7,
+        { fond: couleur ? p.couleur : '#334155' })}</svg>`;
             });
         });
     }
@@ -1333,11 +1334,16 @@ function relierPreviewHtml(item, slot, k, solution) {
     g.m.paires.forEach(p => {
         [p.a, p.b].forEach(([x, y]) => {
             const d = g.pas * 0.62;
-            html += `<div class="fx-rl-borne" style="left:${(g.cx(x) - d / 2) * k}px;
-                top:${(g.cy(y) - d / 2) * k}px; width:${d * k}px; height:${d * k}px;
-                font-size:${d * 0.6 * k}px;
-                background:${couleur ? p.couleur : '#ffffff'};
-                color:${couleur ? '#ffffff' : '#0f172a'}">${p.symbole}</div>`;
+            // LA MARQUE EST TRACÉE, pas écrite : un glyphe « ▲ » n'est jamais
+            // centré dans son cadratin, et sur une borne de cinq millimètres
+            // le décalage se voit. La forme, elle, se centre exactement.
+            html += `<svg class="fx-rl-borne" style="left:${(g.cx(x) - d / 2) * k}px;
+                top:${(g.cy(y) - d / 2) * k}px" width="${d * k}" height="${d * k}"
+                viewBox="0 0 10 10">
+                <circle cx="5" cy="5" r="4.4" fill="${couleur ? p.couleur : '#ffffff'}"
+                    stroke="#0f172a" stroke-width="0.7"/>
+                ${marqueSvgRelier(p.id, 5, 5, 2.5, { fond: couleur ? '#ffffff' : '#0f172a' })}
+            </svg>`;
         });
     });
     return html;
@@ -1497,7 +1503,162 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- Un repère, plusieurs points --------------------------------------------
+
+/** Le repère dans son emplacement : axes, graduations, et la place d'écrire. */
+function geoRepere(item, slot) {
+    const m = item.meta;
+    const mini = m.relatifs ? -m.max : 0;
+    const etendue = m.max - mini;
+    // Le bas de l'emplacement porte la liste (à placer) ou les lignes (à lire).
+    const listeH = slot.taille * (m.mode === 'placer' ? 0.16 : 0.30);
+    const cote = slot.taille - listeH;
+    const marge = cote * 0.10;
+    const pas = (cote - 2 * marge) / etendue;
+    const x0 = slot.x + (slot.taille - cote) / 2 + marge;
+    const y0 = slot.y + marge;
+    return {
+        m, mini, pas, cote, listeH, listeY: slot.y + cote, xGauche: slot.x + (slot.taille - cote) / 2,
+        px: (x) => x0 + (x - mini) * pas,
+        py: (y) => y0 + (m.max - y) * pas
+    };
+}
+
+function reperePreviewHtml(item, slot, k, solution) {
+    const g = geoRepere(item, slot);
+    const m = g.m;
+    const montrer = m.mode === 'lire' || solution;      // les croix sont-elles tracées ?
+    let html = '';
+
+    // Le quadrillage, puis les deux axes par-dessus.
+    for (let i = g.mini; i <= m.max; i++) {
+        html += `<div class="fx-rp-grille" style="left:${g.px(i) * k}px; top:${g.py(m.max) * k}px;
+            width:0; height:${(g.py(g.mini) - g.py(m.max)) * k}px"></div>`;
+        html += `<div class="fx-rp-grille" style="left:${g.px(g.mini) * k}px; top:${g.py(i) * k}px;
+            width:${(g.px(m.max) - g.px(g.mini)) * k}px; height:0"></div>`;
+    }
+    html += `<div class="fx-rp-axe" style="left:${g.px(g.mini) * k}px; top:${g.py(0) * k}px;
+        width:${(g.px(m.max) - g.px(g.mini)) * k}px; height:0"></div>`;
+    html += `<div class="fx-rp-axe" style="left:${g.px(0) * k}px; top:${g.py(m.max) * k}px;
+        width:0; height:${(g.py(g.mini) - g.py(m.max)) * k}px"></div>`;
+
+    // Les graduations chiffrées : sans elles, on ne lit rien.
+    for (let i = g.mini; i <= m.max; i++) {
+        if (i === 0) continue;
+        html += `<div class="fx-rp-grad" style="left:${(g.px(i) - g.pas / 2) * k}px;
+            top:${(g.py(0) + g.pas * 0.12) * k}px; width:${g.pas * k}px;
+            font-size:${g.pas * 0.42 * k}px">${i}</div>`;
+        html += `<div class="fx-rp-grad fx-rp-grad--y" style="left:${(g.px(0) - g.pas * 1.05) * k}px;
+            top:${(g.py(i) - g.pas * 0.3) * k}px; width:${g.pas * 0.9 * k}px;
+            font-size:${g.pas * 0.42 * k}px">${i}</div>`;
+    }
+    html += `<div class="fx-rp-grad" style="left:${(g.px(0) - g.pas * 1.05) * k}px;
+        top:${(g.py(0) + g.pas * 0.12) * k}px; width:${g.pas * 0.9 * k}px;
+        font-size:${g.pas * 0.42 * k}px">O</div>`;
+
+    // LES POINTS SE MARQUENT D'UNE CROIX : elle désigne exactement son centre,
+    // là où un rond laisse hésiter entre son bord et son milieu.
+    if (montrer) {
+        m.points.forEach(pt => {
+            const r = g.pas * 0.26;
+            html += `<div class="fx-rp-croix" style="left:${(g.px(pt.x) - r) * k}px;
+                top:${(g.py(pt.y) - r) * k}px; width:${2 * r * k}px; height:${2 * r * k}px"></div>`;
+            html += `<div class="fx-rp-etiq" style="left:${(g.px(pt.x) + r * 0.9) * k}px;
+                top:${(g.py(pt.y) - r * 2.6) * k}px; font-size:${g.pas * 0.5 * k}px">${pt.label}</div>`;
+        });
+    }
+
+    // Sous le repère : les coordonnées à placer, ou les lignes à remplir.
+    if (m.mode === 'placer') {
+        html += `<div class="fx-rp-liste" style="left:${g.xGauche * k}px; top:${g.listeY * k}px;
+            width:${g.cote * k}px; height:${g.listeH * k}px; font-size:${g.listeH * 0.28 * k}px">
+            ${m.points.map(p => `${p.label} (${p.x} ; ${p.y})`).join(' &nbsp; ')}</div>`;
+    } else {
+        const parLigne = 2;
+        html += `<div class="fx-rp-reponses" style="left:${g.xGauche * k}px; top:${g.listeY * k}px;
+            width:${g.cote * k}px; height:${g.listeH * k}px; font-size:${g.listeH * 0.16 * k}px">
+            ${m.points.map(p => `<span class="fx-rp-rep">${p.label} ( <span class="fx-rp-trou"
+                >${solution ? p.x : ''}</span> ; <span class="fx-rp-trou"
+                >${solution ? p.y : ''}</span> )</span>`).join('')}</div>`;
+    }
+    return html;
+}
+
+function dessinerRepPdf(doc, item, slot, solution) {
+    const g = geoRepere(item, slot);
+    const m = g.m;
+    const montrer = m.mode === 'lire' || solution;
+
+    doc.setLineWidth(0.15);
+    doc.setDrawColor(...ENCRE.grille);
+    for (let i = g.mini; i <= m.max; i++) {
+        doc.line(g.px(i), g.py(m.max), g.px(i), g.py(g.mini));
+        doc.line(g.px(g.mini), g.py(i), g.px(m.max), g.py(i));
+    }
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.line(g.px(g.mini), g.py(0), g.px(m.max), g.py(0));
+    doc.line(g.px(0), g.py(m.max), g.px(0), g.py(g.mini));
+
+    doc.setFontSize(Math.max(4.5, g.pas * 1.1));
+    doc.setTextColor(...ENCRE.gris);
+    for (let i = g.mini; i <= m.max; i++) {
+        if (i === 0) continue;
+        doc.text(String(i), g.px(i), g.py(0) + g.pas * 0.62, { align: 'center' });
+        doc.text(String(i), g.px(0) - g.pas * 0.35, g.py(i) + g.pas * 0.18, { align: 'right' });
+    }
+    doc.text('O', g.px(0) - g.pas * 0.35, g.py(0) + g.pas * 0.62, { align: 'right' });
+
+    if (montrer) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.45);
+        doc.setTextColor(...ENCRE.trait);
+        m.points.forEach(pt => {
+            const r = g.pas * 0.26, x = g.px(pt.x), y = g.py(pt.y);
+            doc.line(x - r, y - r, x + r, y + r);
+            doc.line(x - r, y + r, x + r, y - r);
+            doc.setFontSize(Math.max(5, g.pas * 1.2));
+            doc.text(pt.label, x + r * 1.1, y - r * 0.9);
+        });
+    }
+
+    doc.setTextColor(...ENCRE.texte);
+    if (m.mode === 'placer') {
+        doc.setFontSize(Math.max(5, g.listeH * 0.7));
+        const texte = m.points.map(p => `${p.label} (${p.x} ; ${p.y})`).join('   ');
+        doc.text(pourPdf(texte), g.xGauche + g.cote / 2, g.listeY + g.listeH * 0.6, { align: 'center' });
+    } else {
+        doc.setFontSize(Math.max(5, g.pas * 0.9));
+        const parLigne = 2;
+        m.points.forEach((p, i) => {
+            const col = i % parLigne, rang = Math.floor(i / parLigne);
+            const x = g.xGauche + col * (g.cote / parLigne) + 1;
+            const y = g.listeY + (rang + 0.8) * (g.listeH / Math.ceil(m.points.length / parLigne));
+            const rep = solution ? `${p.x} ; ${p.y}` : '.......  ;  .......';
+            doc.text(pourPdf(`${p.label} ( ${rep} )`), x, y);
+        });
+    }
+}
+
 export const RENDUS = {
+    repere: {
+        titre: 'Repère et coordonnées',
+        consigne: (items) => ((items[0] && items[0].meta.mode === 'placer')
+            ? 'Place chaque point dans le repère et marque-le d\'une CROIX, puis écris sa '
+                + 'lettre à côté. Le premier nombre dit de combien on avance vers la droite, '
+                + 'le second de combien on monte.'
+            : 'Lis les coordonnées de chaque point et écris-les dans les parenthèses. '
+                + 'On donne toujours l\'abscisse d\'abord — de combien on avance vers la '
+                + 'droite — puis l\'ordonnée.'),
+        previewGrille: reperePreviewHtml,
+        pdfGrille: dessinerRepPdf,
+        // QUATRE PAR PAGE. Un repère gradué demande de la place : sous six
+        // centimètres, deux graduations voisines se touchent et l'on ne peut
+        // plus tracer une croix entre elles.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
     solides: {
         titre: 'Compter sur un solide',
         consigne: () => 'Compte les sommets, les arêtes et les faces de chaque solide, et '
@@ -1522,9 +1683,12 @@ export const RENDUS = {
             + 'est donc presque toujours obligé.',
         previewGrille: relierPreviewHtml,
         pdfGrille: dessinerRelierPdf,
-        // QUATRE par page. On trace au crayon entre des cases : sous huit
-        // millimètres de côté, le trait ne se corrige plus à la gomme.
-        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        // QUATRE par page PAR DÉFAUT — on trace au crayon entre des cases, et
+        // sous huit millimètres de côté le trait ne se corrige plus à la
+        // gomme. Mais le plafond monte à cinq : sur une page couchée, ou pour
+        // des grilles de 5 × 5, une planche de vingt tient très bien, et c'est
+        // au professeur d'en juger devant l'aperçu.
+        disposition: { cols: 2, rows: 2, maxCols: 5, maxRows: 5 },
         parLigneDefaut: 2
     },
 
@@ -1782,7 +1946,15 @@ function construirePdf(jsPDF, rendu, items, cols, rows) {
  * @param {Object} params - réglages courants (chiffres, opérations, difficulté)
  */
 export function ouvrirFicheModal(exo, params) {
-    const generator = getGenerator(exo.generatorId);
+    // UN EXERCICE PEUT IMPRIMER AUTRE CHOSE QU'IL NE JOUE.
+    //
+    // À l'écran, le repérage pose UN point à la fois : c'est ce qu'il faut
+    // pour corriger tout de suite. Sur le papier, un repère qui ne porte qu'un
+    // point gâche une demi-page, et l'élève passe son temps à retracer des
+    // axes. Le même exercice a donc le droit d'avoir un générateur de FICHE
+    // distinct — plutôt que de doubler le catalogue d'entrées « à imprimer »
+    // que personne ne cherche.
+    const generator = getGenerator(exo.printGeneratorId || exo.generatorId);
     const rendu = RENDUS[exo.printable];
     // Deux papiers pour deux natures d'exercice : une GRILLE se dessine (on y
     // rature, on y note ses candidats), une QUESTION s'écrit sur une ligne.
@@ -1790,7 +1962,7 @@ export function ouvrirFicheModal(exo, params) {
     if (!rendu) {
         if (generator && generator.ecrit) {
             import('./printQuestions.js')
-                .then(m => m.ouvrirFicheQuestions(exo, params, chargerJsPDF));
+                .then(m => m.ouvrirFicheQuestions(exo, { ...(params || {}), ...(exo.printParams || {}) }, chargerJsPDF));
         }
         return;
     }
@@ -1803,6 +1975,7 @@ export function ouvrirFicheModal(exo, params) {
     const totalEl = modal.querySelector('#fp-total');
     const btnSol = modal.querySelector('#fp-voir-sol');
 
+    const reglages = { ...(params || {}), ...(exo.printParams || {}) };
     let items = [];
     let solutionsVisibles = false;
 
@@ -1822,7 +1995,7 @@ export function ouvrirFicheModal(exo, params) {
             // On passe au générateur ce qui a DÉJÀ été tiré : un logigramme
             // change alors d'histoire à chaque grille au lieu de resservir la
             // boulangerie trois fois sur la même feuille.
-            items.push(generator.generate(params, {
+            items.push(generator.generate(reglages, {
                 rng: makeRng(), index: items.length,
                 themesExclus: items.map(it => it.meta && it.meta.theme).filter(Boolean)
             }));

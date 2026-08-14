@@ -21,7 +21,8 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     genererGrille, bornes, traceVide, poserTrace, occupant, reliee, verifier,
-    solutionComplete, prochainPas, conseil, adjacentes, memeCase, clef, CONSIGNE
+    solutionComplete, prochainPas, conseil, adjacentes, memeCase, clef, CONSIGNE,
+    marqueSvg
 } from '../core/relier.js';
 
 const COMPETENCE = 'geo.espace.reperage';
@@ -67,13 +68,9 @@ class Relier extends BaseGame {
                 /* Le trait est GROS : c'est un tuyau qu'on suit des yeux, pas un
                    trait de crayon. Les bouts ronds font les virages sans angle. */
                 .rl-trait { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-                .rl-borne { stroke: var(--bg-panel); stroke-width: 1.2; }
-                .rl-symbole {
-                    font-weight: 800; text-anchor: middle; dominant-baseline: central;
-                    pointer-events: none;
-                }
+                .rl-borne { pointer-events: none; }
+                .rl-borne--active circle { stroke-width: .9; }
                 .rl-cible { fill: transparent; cursor: pointer; }
-                .rl-borne--active { stroke: var(--text-main); stroke-width: 2; }
 
                 .rl-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .rl-btn {
@@ -188,17 +185,18 @@ class Relier extends BaseGame {
                 stroke-width="${c * 0.42}" opacity="${avecCouleur ? .95 : .55}"></path>`;
         });
 
-        // Les bornes : un disque, et le symbole par-dessus s'il est demandé.
+        // LES BORNES SONT DES FORMES, dessinées et centrées. En mode
+        // « couleurs seules » toutes les paires prennent le disque : c'est la
+        // couleur qui distingue, et huit formes en plus n'aideraient personne.
         g.paires.forEach(p => {
             [p.a, p.b].forEach(([x, y]) => {
                 const cx = x * c + c / 2, cy = y * c + c / 2;
-                html += `<circle class="rl-borne ${p.id === this.enCours ? 'rl-borne--active' : ''}"
-                    cx="${cx}" cy="${cy}" r="${c * 0.33}" fill="${encre(p)}"></circle>`;
-                if (avecSymbole) {
-                    html += `<text class="rl-symbole" x="${cx}" y="${cy}"
-                        font-size="${c * 0.42}" fill="${avecCouleur ? '#fff' : 'var(--bg-panel)'}"
-                        >${p.symbole}</text>`;
-                }
+                const forme = avecSymbole ? p.id : 0;
+                html += `<g class="rl-borne ${p.id === this.enCours ? 'rl-borne--active' : ''}">
+                    <circle cx="${cx}" cy="${cy}" r="${c * 0.36}"
+                        fill="var(--bg-panel)" stroke="${encre(p)}" stroke-width="${c * 0.06}"/>
+                    ${marqueSvg(forme, cx, cy, c * 0.23, { fond: encre(p) })}
+                </g>`;
             });
         });
 
