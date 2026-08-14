@@ -21,6 +21,7 @@ import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
+import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import {
     dessiner as dessinerNoyau, aretesCachees as aretesCacheesNoyau,
     facesVisibles as facesVisiblesNoyau
@@ -1814,6 +1815,162 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
     doc.text(pourPdf(ligne), slot.x + slot.taille / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
 }
 
+
+// --- LA PIZZERIA DES FRACTIONS ------------------------------------------------
+//
+// La pizza est partagée en parts égales — le PPCM des dénominateurs — et la
+// commande est écrite dessous. L'élève convertit chaque fraction en NOMBRE DE
+// PARTS, puis colorie.
+//
+// Chaque garniture a sa MARQUE (disque, carré, triangle…), pas seulement sa
+// couleur : sur un polycopié en noir et blanc, deux gris voisins ne se
+// distinguent pas, et l'élève doit pouvoir travailler au crayon. La marque
+// figure dans la légende et, sur la page des solutions, dans chaque part.
+
+function geoPizza(item, slot) {
+    const n = item.meta.fractions.length;
+    // La commande prend une ligne par garniture, plus une ligne pour écrire la
+    // conversion : c'est elle qu'on veut voir apparaître sur la feuille.
+    const listeH = Math.max(slot.taille * 0.22, n * slot.taille * 0.10);
+    const cote = slot.taille - listeH;
+    return {
+        cote, listeH, n,
+        r: cote * 0.45,
+        cx: slot.x + slot.taille / 2, cy: slot.y + cote / 2,
+        x0: slot.x, listeY: slot.y + cote
+    };
+}
+
+/** L'angle du milieu de la part `k`, pour y poser sa marque. */
+const milieuPart = (k, parts) => (k + 0.5) / parts * Math.PI * 2 - Math.PI / 2;
+
+/** À quelle garniture revient chaque part, dans l'ordre de la commande. */
+function partsDeLaPizza(m) {
+    const out = [];
+    m.fractions.forEach((f, i) => {
+        for (let k = 0; k < (m.cible[f.ingredient] || 0); k++) out.push(i);
+    });
+    while (out.length < m.parts) out.push(-1);      // le reste : nature
+    return out.slice(0, m.parts);
+}
+
+function pizzaPreviewHtml(item, slot, k, solution) {
+    const g = geoPizza(item, slot);
+    const m = item.meta;
+    const couleur = polycopieEnCouleur();
+    const T = (v) => (v * k).toFixed(2);
+    const attribution = partsDeLaPizza(m);
+    let d = '';
+
+    d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r)}" fill="#fff"
+          stroke="#1a202c" stroke-width="${T(g.r * 0.05)}"/>`;
+    for (let i = 0; i < m.parts; i++) {
+        const a = i / m.parts * Math.PI * 2 - Math.PI / 2;
+        d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}"
+              x2="${T(g.cx + Math.cos(a) * g.r)}" y2="${T(g.cy + Math.sin(a) * g.r)}"
+              stroke="#1a202c" stroke-width="${T(g.r * 0.022)}"/>`;
+    }
+    if (solution) {
+        attribution.forEach((idx, i) => {
+            if (idx < 0) return;
+            const a = milieuPart(i, m.parts);
+            const px = g.cx + Math.cos(a) * g.r * 0.62;
+            const py = g.cy + Math.sin(a) * g.r * 0.62;
+            const rr = Math.min(g.r * 0.2, (g.r * 2.6) / m.parts);
+            d += `<circle cx="${T(px)}" cy="${T(py)}" r="${T(rr)}"
+                  fill="${couleur ? teinteIngredient(m.fractions[idx].ingredient) : '#fff'}"
+                  stroke="#1a202c" stroke-width="${T(rr * 0.16)}"/>`;
+            d += `<svg class="fx-pz-marque" x="${T(px - rr * 0.62)}" y="${T(py - rr * 0.62)}"
+                  width="${T(rr * 1.24)}" height="${T(rr * 1.24)}" viewBox="0 0 10 10">${
+    marqueSvgRelier(idx, 5, 5, 3.4, { fond: couleur ? '#fff' : '#1a202c',
+        trait: couleur ? '#fff' : '#1a202c', ep: 1.5 })}</svg>`;
+        });
+    }
+
+    let html = `<svg class="fx-pz-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    const hLigne = g.listeH / Math.max(1, g.n);
+    m.fractions.forEach((f, i) => {
+        html += `<div class="fx-pz-ligne" style="left:${g.x0 * k}px;
+            top:${(g.listeY + i * hLigne) * k}px; width:${slot.taille * k}px;
+            height:${hLigne * k}px; font-size:${Math.min(hLigne * 0.42, slot.taille * 0.05) * k}px">
+            <svg class="fx-pz-cle" width="${T(hLigne * 0.5)}" height="${T(hLigne * 0.5)}"
+                 viewBox="0 0 10 10">${marqueSvgRelier(i, 5, 5, 3.6,
+        { fond: couleur ? teinteIngredient(f.ingredient) : '#1a202c',
+            trait: couleur ? teinteIngredient(f.ingredient) : '#1a202c', ep: 1.6 })}</svg>
+            <b>${echapperSheet(fractionEcrite(f.num, f.den))}</b>
+            <span>de ${echapperSheet(f.nom)}</span>
+            <i>${solution ? `= ${direParts(m.cible[f.ingredient])}` : '= ....... parts'}</i>
+        </div>`;
+    });
+    return html;
+}
+
+const teinteIngredient = (id) => (INGREDIENTS_FICHE.find(i => i.id === id) || {}).teinte || '#64748b';
+
+/** La même teinte, en composantes, pour jsPDF. */
+const rvbIngredient = (id) => {
+    const h = teinteIngredient(id);
+    return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+};
+
+/** « 1/2 » écrit en fraction, barre oblique comprise — la feuille l'accepte. */
+const fractionEcrite = (num, den) => `${num}/${den}`;
+
+/** « 1 part », « 3 parts » : un singulier fautif se remarque sur une fiche. */
+const direParts = (n) => `${n} part${n > 1 ? 's' : ''}`;
+
+function dessinerPizzaPdf(doc, item, slot, solution) {
+    const g = geoPizza(item, slot);
+    const m = item.meta;
+    const couleur = polycopieEnCouleur();
+    const attribution = partsDeLaPizza(m);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setFillColor(255, 255, 255);
+    doc.setLineWidth(Math.max(0.4, g.r * 0.05));
+    doc.circle(g.cx, g.cy, g.r, 'FD');
+    doc.setLineWidth(Math.max(0.2, g.r * 0.022));
+    for (let i = 0; i < m.parts; i++) {
+        const a = i / m.parts * Math.PI * 2 - Math.PI / 2;
+        doc.line(g.cx, g.cy, g.cx + Math.cos(a) * g.r, g.cy + Math.sin(a) * g.r);
+    }
+    if (solution) {
+        attribution.forEach((idx, i) => {
+            if (idx < 0) return;
+            const a = milieuPart(i, m.parts);
+            const px = g.cx + Math.cos(a) * g.r * 0.62;
+            const py = g.cy + Math.sin(a) * g.r * 0.62;
+            const rr = Math.min(g.r * 0.2, (g.r * 2.6) / m.parts);
+            doc.setLineWidth(Math.max(0.2, rr * 0.16));
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setFillColor(...(couleur ? rvbIngredient(m.fractions[idx].ingredient) : [255, 255, 255]));
+            doc.circle(px, py, rr, 'FD');
+            dessinerMarque(doc, idx, px, py, rr * 0.62,
+                couleur ? [255, 255, 255] : ENCRE.trait);
+        });
+    }
+
+    const hLigne = g.listeH / Math.max(1, g.n);
+    m.fractions.forEach((f, i) => {
+        const y = g.listeY + i * hLigne + hLigne * 0.62;
+        const cx = slot.x + hLigne * 0.32;
+        doc.setLineWidth(0.3);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setFillColor(...(couleur ? rvbIngredient(f.ingredient) : [255, 255, 255]));
+        doc.circle(cx, y - hLigne * 0.16, hLigne * 0.24, 'FD');
+        dessinerMarque(doc, i, cx, y - hLigne * 0.16, hLigne * 0.15,
+            couleur ? [255, 255, 255] : ENCRE.trait);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(6, Math.min(hLigne * 1.5, slot.taille * 0.16)));
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(`${fractionEcrite(f.num, f.den)} de ${f.nom}`), cx + hLigne * 0.42, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(solution ? `= ${direParts(m.cible[f.ingredient])}` : '= ....... parts'),
+            slot.x + slot.taille, y, { align: 'right' });
+    });
+}
+
 export const RENDUS = {
     repere: {
         titre: 'Repère et coordonnées',
@@ -1829,6 +1986,20 @@ export const RENDUS = {
         // QUATRE PAR PAGE. Un repère gradué demande de la place : sous six
         // centimètres, deux graduations voisines se touchent et l'on ne peut
         // plus tracer une croix entre elles.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
+    pizza: {
+        titre: 'Fractions d\'une pizza',
+        consigne: () => 'La pizza est déjà partagée en parts égales. Pour chaque garniture, '
+            + 'écris d\'abord COMBIEN DE PARTS elle représente, puis colorie-les. La marque '
+            + 'de la légende sert à s\'y retrouver sans couleur.',
+        previewGrille: pizzaPreviewHtml,
+        pdfGrille: dessinerPizzaPdf,
+        nomBloc: 'Pizza',
+        // QUATRE PAR PAGE. Une pizza en douze parts qui tient dans quatre
+        // centimètres a des parts de six millimètres : on ne les colorie pas.
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 2
     },

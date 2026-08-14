@@ -66,6 +66,11 @@ export const fractionsExercises = [
         // numérateur.
         id: 'frac-pizza', status: STATUS.TEST, title: 'La Pizzeria des Fractions',
         activityId: 'pizza',
+        // Sur le papier, la fraction se CONVERTIT avant de se colorier : « la
+        // moitié d'une pizza en 6 parts, c'est 3 parts ». Ce passage est
+        // invisible à l'écran, où l'on tape sur des secteurs jusqu'à ce que le
+        // compte tombe juste.
+        printable: 'pizza', printGeneratorId: 'frac.pizza-fiche',
         params: { niveau: 'moyen' },
         paramSchema: [
             {

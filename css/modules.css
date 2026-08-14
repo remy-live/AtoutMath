@@ -3583,3 +3583,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; display: flex; align-items: center; justify-content: center;
     font-weight: 800; color: #2d3748; letter-spacing: .02em; white-space: nowrap;
 }
+
+/* --- Fiche « Fractions d'une pizza » -------------------------------------
+   Le disque et ses parts sont un SVG unique ; la commande vit dessous, une
+   ligne par garniture, avec sa marque en clef et la place pour écrire la
+   conversion en nombre de parts. */
+.fx-pz-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-pz-ligne {
+    position: absolute; display: flex; align-items: center; gap: .5em;
+    color: #2d3748; box-sizing: border-box; padding: 0 .3em; white-space: nowrap;
+}
+.fx-pz-ligne b { font-weight: 800; }
+.fx-pz-ligne span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.fx-pz-ligne i { font-style: normal; color: #6e7684; font-weight: 700; }
+.fx-pz-cle { flex: 0 0 auto; overflow: visible; }
