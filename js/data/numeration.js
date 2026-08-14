@@ -176,6 +176,9 @@ export const numerationExercises = [
         // une plus grande arrive.
         id: 'num-amis-de-dix', status: STATUS.TEST, title: 'Les Amis de Dix',
         activityId: 'dix',
+        // Sur le papier, on TRACE le trait au lieu de taper deux cartes : c'est
+        // la forme qu'on retrouve en évaluation.
+        printable: 'paires', printGeneratorId: 'num.paires-fiche',
         sansRevision: true,
         skills: ['num.complement'],
         params: { cible: [10], vies: 3 },

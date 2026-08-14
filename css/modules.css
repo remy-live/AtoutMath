@@ -3613,3 +3613,25 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-pr-tete { background: #eef0fa; font-weight: 700; justify-content: flex-start; padding: 0 .35em; }
 .fx-pr-case { font-weight: 600; }
 .fx-pr-case--vide { background: #fff; }
+
+/* --- Fiche « Relier les compléments » ------------------------------------
+   Deux colonnes de cases et, au bord intérieur de chacune, la pastille d'où
+   part le trait : sans elle, les traits partent du milieu des chiffres et la
+   feuille devient illisible dès la troisième paire. */
+.fx-pa-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-pa-case {
+    position: absolute; box-sizing: border-box; border: .35px solid #1a202c;
+    border-radius: 2.5px; background: #fff; color: #2d3748; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+}
+.fx-pa-point { position: absolute; border-radius: 50%; background: #1a202c; }
+
+/* --- Fiche « Angles » ------------------------------------------------------
+   Le dessin est un SVG unique : deux côtés, l'arc, et — sur la page des
+   solutions — le demi-cercle gradué posé sur le sommet. La ligne du bas porte
+   la mesure à écrire, ou celle à construire. */
+.fx-ag-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-ag-ligne {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #2d3748; white-space: nowrap;
+}

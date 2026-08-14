@@ -124,6 +124,10 @@ export const geometrieExercises = [
     {
         id: 'geo-angles-mesurer', status: STATUS.TEST, title: 'Angle Master : Mesurer',
         generatorId: 'geo.angles', activityId: 'angles',
+        // C'est l'exercice qu'un écran ne remplace pas : le rapporteur de
+        // plastique se pose de travers, et c'est en le redressant qu'on
+        // comprend à quoi sert son repère central.
+        printable: 'angles',
         params: { mode: 'mesurer', plage: 'tous', tolerance: 3 },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Estime d'abord si l'angle est aigu ou obtus, puis mesure-le : déplace le rapporteur sur le sommet, tourne-le par ses poignées pour aligner le zéro, et saisis la valeur lue."
@@ -131,6 +135,7 @@ export const geometrieExercises = [
     {
         id: 'geo-angles-construire', status: STATUS.TEST, title: 'Angle Master : Construire',
         generatorId: 'geo.angles', activityId: 'angles',
+        printable: 'angles',
         params: { mode: 'construire', plage: 'tous', tolerance: 3 },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Construis l'angle demandé : place le rapporteur, repère la graduation, puis amène le côté rouge dessus en tirant sa poignée."

@@ -2066,6 +2066,250 @@ function dessinerProportionPdf(doc, item, slot, solution, champ) {
     ligne(m.contexte.b, m.contexte.uB, m.b, 'b', 1);
 }
 
+
+// --- RELIER LES COMPLÉMENTS ----------------------------------------------------
+//
+// Deux colonnes de nombres, et un trait à tracer entre chaque nombre et son
+// complément. La pastille au bord intérieur de chaque case dit OÙ partir et où
+// arriver : sans elle, les traits partent du milieu des chiffres et la feuille
+// devient illisible dès la troisième paire.
+
+function geoPaires(item, slot) {
+    const m = item.meta;
+    const n = Math.max(m.gauche.length, m.droite.length);
+    const b = slot.boite;
+    const h = Math.min(b.h / (n + 0.6), 13);
+    const largeur = Math.min(b.w * 0.3, 26);
+    const y0 = b.y + (b.h - n * h) / 2;
+    return {
+        m, n, b, h, largeur, y0,
+        xG: b.x + b.w * 0.06,
+        xD: b.x + b.w * 0.94 - largeur,
+        // Le point d'attache : au bord INTÉRIEUR, à mi-hauteur de la case.
+        py: (i) => y0 + i * h + h / 2,
+        pxG: b.x + b.w * 0.06 + largeur,
+        pxD: b.x + b.w * 0.94 - largeur
+    };
+}
+
+function pairesPreviewHtml(item, slot, k, solution) {
+    const g = geoPaires(item, slot);
+    const m = g.m;
+    let html = '';
+    const T = (v) => (v * k).toFixed(2);
+
+    if (solution) {
+        let d = '';
+        m.lien.forEach((j, i) => {
+            if (j < 0) return;
+            d += `<line x1="${T(g.pxG + 1)}" y1="${T(g.py(i))}" x2="${T(g.pxD - 1)}" y2="${T(g.py(j))}"
+                  stroke="#4f46e5" stroke-width="${T(0.5)}" stroke-linecap="round"/>`;
+        });
+        html += `<svg class="fx-pa-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    }
+
+    const colonne = (valeurs, x, cote) => valeurs.map((v, i) => `
+        <div class="fx-pa-case fx-pa-case--${cote}" style="left:${x * k}px; top:${(g.y0 + i * g.h) * k}px;
+            width:${g.largeur * k}px; height:${(g.h * 0.82) * k}px;
+            font-size:${Math.min(g.h * 0.5, 5) * k}px">${v}</div>
+        <div class="fx-pa-point" style="left:${((cote === 'g' ? g.pxG : g.pxD) - 0.9) * k}px;
+            top:${(g.py(i) - 0.9) * k}px; width:${1.8 * k}px; height:${1.8 * k}px"></div>`).join('');
+    html += colonne(m.gauche, g.xG, 'g');
+    html += colonne(m.droite, g.xD, 'd');
+    return html;
+}
+
+function dessinerPairesPdf(doc, item, slot, solution) {
+    const g = geoPaires(item, slot);
+    const m = g.m;
+
+    if (solution) {
+        doc.setDrawColor(79, 70, 229);
+        doc.setLineWidth(0.5);
+        m.lien.forEach((j, i) => {
+            if (j < 0) return;
+            doc.line(g.pxG + 1, g.py(i), g.pxD - 1, g.py(j));
+        });
+    }
+
+    const colonne = (valeurs, x, cote) => {
+        valeurs.forEach((v, i) => {
+            const y = g.y0 + i * g.h;
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setFillColor(255, 255, 255);
+            doc.setLineWidth(0.35);
+            doc.roundedRect(x, y, g.largeur, g.h * 0.82, 1.2, 1.2, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(7, Math.min(g.h * 1.4, 13)));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(String(v), x + g.largeur / 2, y + g.h * 0.58, { align: 'center' });
+            doc.setFillColor(...ENCRE.trait);
+            doc.circle(cote === 'g' ? g.pxG : g.pxD, g.py(i), 0.7, 'F');
+        });
+    };
+    colonne(m.gauche, g.xG, 'g');
+    colonne(m.droite, g.xD, 'd');
+}
+
+
+// --- LES ANGLES ----------------------------------------------------------------
+//
+// Deux exercices, un seul dessin :
+//
+//   MESURER    — l'angle est tracé, l'élève pose SON rapporteur dessus et
+//                écrit la mesure. C'est l'exercice qu'un écran ne remplace
+//                pas : le rapporteur de plastique se pose de travers, et c'est
+//                en le redressant qu'on comprend à quoi sert le repère central.
+//   CONSTRUIRE — un seul côté est tracé, la mesure est donnée, l'élève trace
+//                le second côté.
+//
+// LA PAGE DES SOLUTIONS PORTE LE RAPPORTEUR. Un angle corrigé par un simple
+// nombre ne dit pas où l'élève s'est trompé — presque toujours, il a lu la
+// mauvaise graduation (130 au lieu de 50). Le demi-cercle gradué, posé sur le
+// sommet et aligné sur le côté d'origine, montre la lecture elle-même.
+
+function geoAngle(item, slot) {
+    const ligneH = slot.taille * 0.16;
+    const cote = slot.taille - ligneH;
+    // LE SOMMET EST EN BAS AU MILIEU, et le côté d'origine PRESQUE horizontal.
+    //
+    // Posé à gauche et incliné n'importe comment, le demi-cercle du rapporteur
+    // sortait du bloc et venait écrire ses graduations sur le voisin. Le
+    // rapporteur occupe les deux côtés du sommet : il lui faut donc la moitié
+    // de la largeur de chaque côté, et le sommet ne peut être qu'au centre.
+    // L'inclinaison résiduelle (±25°) suffit à empêcher la lecture directe sans
+    // faire déborder l'arc sous la ligne de réponse.
+    const r = Math.min(cote * 0.78, slot.taille * 0.42);
+    return {
+        cote, ligneH, r,
+        sx: slot.x + slot.taille / 2,
+        sy: slot.y + cote * 0.82,
+        x0: slot.x, ligneY: slot.y + cote
+    };
+}
+
+/** Les deux côtés de l'angle, en coordonnées absolues. */
+function cotesAngle(g, m) {
+    // L'inclinaison du côté d'origine, ramenée dans ±25° sans perdre la
+    // variété : deux angles voisins ne se dessinent pas pareil.
+    const penche = (((m.baseDeg % 50) + 50) % 50) - 25;
+    const a0 = -penche * Math.PI / 180;
+    const a1 = -(penche + m.target) * Math.PI / 180;
+    return {
+        a0, a1,
+        b: { x: g.sx + Math.cos(a0) * g.r, y: g.sy + Math.sin(a0) * g.r },
+        r: { x: g.sx + Math.cos(a1) * g.r, y: g.sy + Math.sin(a1) * g.r }
+    };
+}
+
+function anglePreviewHtml(item, slot, k, solution) {
+    const g = geoAngle(item, slot);
+    const m = item.meta;
+    const c = cotesAngle(g, m);
+    const T = (v) => (v * k).toFixed(2);
+    const construire = m.mode === 'construire';
+    let d = '';
+
+    // LE RAPPORTEUR DE LA CORRECTION, sous les côtés : un trait plein par-dessus
+    // un demi-cercle gradué reste lisible, l'inverse non.
+    if (solution) {
+        const rr = g.r * 0.9;
+        d += `<path d="M ${T(g.sx + Math.cos(c.a0) * rr)} ${T(g.sy + Math.sin(c.a0) * rr)}
+              A ${T(rr)} ${T(rr)} 0 0 0 ${T(g.sx - Math.cos(c.a0) * rr)} ${T(g.sy - Math.sin(c.a0) * rr)}"
+              fill="none" stroke="#c7b8f5" stroke-width="${T(0.5)}"/>`;
+        for (let deg = 0; deg <= 180; deg += 10) {
+            const a = c.a0 - deg * Math.PI / 180;
+            const gros = deg % 30 === 0;
+            const r1 = rr - g.r * (gros ? 0.13 : 0.07);
+            d += `<line x1="${T(g.sx + Math.cos(a) * r1)}" y1="${T(g.sy + Math.sin(a) * r1)}"
+                  x2="${T(g.sx + Math.cos(a) * rr)}" y2="${T(g.sy + Math.sin(a) * rr)}"
+                  stroke="#a78bfa" stroke-width="${T(gros ? 0.4 : 0.25)}"/>`;
+            if (!gros) continue;
+            const rt = rr - g.r * 0.24;
+            d += `<text x="${T(g.sx + Math.cos(a) * rt)}" y="${T(g.sy + Math.sin(a) * rt)}"
+                  text-anchor="middle" dominant-baseline="central"
+                  font-size="${T(g.r * 0.1)}" fill="#7c3aed">${deg}</text>`;
+        }
+    }
+
+    // L'arc de l'angle, puis les deux côtés.
+    const ra = g.r * 0.26;
+    d += `<path d="M ${T(g.sx + Math.cos(c.a0) * ra)} ${T(g.sy + Math.sin(c.a0) * ra)}
+          A ${T(ra)} ${T(ra)} 0 0 ${m.target > 180 ? 1 : 0}
+          ${T(g.sx + Math.cos(c.a1) * ra)} ${T(g.sy + Math.sin(c.a1) * ra)}"
+          fill="none" stroke="#1a202c" stroke-width="${T(0.3)}"
+          stroke-dasharray="${construire && !solution ? `${T(0.8)} ${T(0.8)}` : 'none'}"/>`;
+    d += `<line x1="${T(g.sx)}" y1="${T(g.sy)}" x2="${T(c.b.x)}" y2="${T(c.b.y)}"
+          stroke="#1a202c" stroke-width="${T(0.55)}" stroke-linecap="round"/>`;
+    if (!construire || solution) {
+        d += `<line x1="${T(g.sx)}" y1="${T(g.sy)}" x2="${T(c.r.x)}" y2="${T(c.r.y)}"
+              stroke="${construire ? '#dc2626' : '#1a202c'}" stroke-width="${T(0.55)}" stroke-linecap="round"/>`;
+    }
+    d += `<circle cx="${T(g.sx)}" cy="${T(g.sy)}" r="${T(0.7)}" fill="#1a202c"/>`;
+
+    const ligne = construire
+        ? `Construis un angle de ${m.target}°`
+        : (solution ? `${m.target}°` : 'L\'angle mesure  .......  °');
+    return `<svg class="fx-ag-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`
+        + `<div class="fx-ag-ligne" style="left:${g.x0 * k}px; top:${g.ligneY * k}px;
+             width:${slot.taille * k}px; height:${g.ligneH * k}px;
+             font-size:${g.ligneH * 0.42 * k}px">${echapperSheet(ligne)}</div>`;
+}
+
+function dessinerAnglePdf(doc, item, slot, solution) {
+    const g = geoAngle(item, slot);
+    const m = item.meta;
+    const c = cotesAngle(g, m);
+    const construire = m.mode === 'construire';
+
+    if (solution) {
+        const rr = g.r * 0.9;
+        doc.setDrawColor(167, 139, 250);
+        doc.setLineWidth(0.25);
+        // Le demi-cercle, en segments : jsPDF n'a pas d'arc partiel.
+        let px = g.sx + Math.cos(c.a0) * rr, py = g.sy + Math.sin(c.a0) * rr;
+        for (let deg = 2; deg <= 180; deg += 2) {
+            const a = c.a0 - deg * Math.PI / 180;
+            const nx = g.sx + Math.cos(a) * rr, ny = g.sy + Math.sin(a) * rr;
+            doc.line(px, py, nx, ny); px = nx; py = ny;
+        }
+        for (let deg = 0; deg <= 180; deg += 10) {
+            const a = c.a0 - deg * Math.PI / 180;
+            const gros = deg % 30 === 0;
+            const r1 = rr - g.r * (gros ? 0.13 : 0.07);
+            doc.setLineWidth(gros ? 0.35 : 0.2);
+            doc.line(g.sx + Math.cos(a) * r1, g.sy + Math.sin(a) * r1,
+                g.sx + Math.cos(a) * rr, g.sy + Math.sin(a) * rr);
+            if (!gros) continue;
+            const rt = rr - g.r * 0.24;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(Math.max(4, g.r * 0.26));
+            doc.setTextColor(124, 58, 237);
+            doc.text(String(deg), g.sx + Math.cos(a) * rt, g.sy + Math.sin(a) * rt + 0.6,
+                { align: 'center' });
+        }
+    }
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.line(g.sx, g.sy, c.b.x, c.b.y);
+    if (!construire || solution) {
+        if (construire) doc.setDrawColor(220, 38, 38);
+        doc.line(g.sx, g.sy, c.r.x, c.r.y);
+        doc.setDrawColor(...ENCRE.trait);
+    }
+    doc.setFillColor(...ENCRE.trait);
+    doc.circle(g.sx, g.sy, 0.7, 'F');
+
+    const ligne = construire
+        ? `Construis un angle de ${m.target}°`
+        : (solution ? `${m.target}°` : 'L\'angle mesure  .......  °');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(7, g.ligneH * 1.5));
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(ligne), slot.x + slot.taille / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
+}
+
 export const RENDUS = {
     repere: {
         titre: 'Repère et coordonnées',
@@ -2081,6 +2325,41 @@ export const RENDUS = {
         // QUATRE PAR PAGE. Un repère gradué demande de la place : sous six
         // centimètres, deux graduations voisines se touchent et l'on ne peut
         // plus tracer une croix entre elles.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
+    angles: {
+        titre: 'Mesurer et construire des angles',
+        consigne: (items) => ((items[0] && items[0].meta.mode === 'construire')
+            ? 'Un seul côté est tracé, et l\'angle à obtenir est écrit dessous. Pose ton '
+                + 'rapporteur : le centre sur le sommet, le zéro sur le côté tracé. Marque la '
+                + 'graduation demandée, puis trace le second côté à la règle.'
+            : 'Mesure chaque angle avec ton rapporteur, puis écris sa mesure. Le centre du '
+                + 'rapporteur va sur le SOMMET, et le zéro sur l\'un des deux côtés — c\'est à '
+                + 'partir de ce zéro qu\'on lit, jamais l\'autre échelle.'),
+        previewGrille: anglePreviewHtml,
+        pdfGrille: dessinerAnglePdf,
+        nomBloc: 'Angle',
+        // QUATRE PAR PAGE. Un angle qu'on mesure au rapporteur de plastique
+        // demande des côtés d'au moins cinq centimètres : plus court, l'erreur
+        // de lecture vient de l'outil et non de l'élève.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
+    paires: {
+        titre: 'Relier les compléments',
+        consigne: (items) => {
+            const c = (items[0] && items[0].meta.cible) || 10;
+            return `Relie chaque nombre de gauche au nombre de droite qui le complète à ${c}. `
+                + 'Trace un trait d\'une pastille à l\'autre, à la règle. Chaque nombre a un '
+                + 'partenaire et un seul.';
+        },
+        previewGrille: pairesPreviewHtml,
+        pdfGrille: dessinerPairesPdf,
+        nomBloc: 'Grille',
+        titreAGauche: true,
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 2
     },
