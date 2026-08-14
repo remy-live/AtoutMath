@@ -1052,5 +1052,55 @@ export const calculExercises = [
         skills: ['num.proportion.tableau'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Touche une case bleue, tape le nombre au pavé, puis ✓. La colonne surlignée en jaune est complète : c'est elle qui donne le lien entre les deux lignes. Le piège à éviter : compléter en ajoutant l'écart d'une colonne à l'autre. Dans un tableau de proportionnalité, on passe d'une ligne à l'autre en MULTIPLIANT, toujours par le même nombre. Appuie sur « Montrer le lien » pour faire apparaître ce coefficient — et la valeur pour 1, qui est l'autre chemin."
+    },
+    {
+        // LE POINT À POINT. Les pastilles ne portent pas de numéro : elles
+        // portent un CALCUL, et son résultat donne le rang. Chercher « celui
+        // qui vaut 13 » retourne le geste habituel — on part du résultat et
+        // l'on balaie les opérations — et l'élève calcule vingt fois de tête
+        // sans qu'on le lui demande, parce qu'il veut voir l'image.
+        id: 'calc-point-a-point', status: STATUS.TEST, title: 'Le Point à Point',
+        activityId: 'point-a-point',
+        sansRevision: true,
+        skills: ['num.calc.recherche'],
+        params: { dessin: '', famille: 'melange', verification: 'immediate' },
+        paramSchema: [
+            {
+                id: 'famille', type: 'select', label: 'Calculs sur les points',
+                options: [
+                    { value: 'melange', label: 'Mélange — les quatre opérations' },
+                    { value: 'addition', label: 'Additions' },
+                    { value: 'soustraction', label: 'Soustractions' },
+                    { value: 'tables', label: 'Tables de multiplication' },
+                    { value: 'doubles', label: 'Doubles et moitiés' }
+                ],
+                default: 'melange'
+            },
+            {
+                id: 'dessin', type: 'select', label: 'Image à faire apparaître',
+                options: [
+                    { value: '', label: 'Au hasard — surprise' },
+                    { value: 'maison', label: 'La maison (11 points)' },
+                    { value: 'poisson', label: 'Le poisson (9 points)' },
+                    { value: 'etoile', label: 'L\'étoile (10 points)' },
+                    { value: 'voilier', label: 'Le voilier (12 points)' },
+                    { value: 'fusee', label: 'La fusée (11 points)' },
+                    { value: 'chat', label: 'Le chat (12 points)' },
+                    { value: 'cle', label: 'La clé (16 points)' }
+                ],
+                default: ''
+            },
+            {
+                id: 'verification', type: 'select', label: 'Correction',
+                aide: 'Au fur et à mesure, un mauvais point est refusé tout de suite et l\'image ne peut pas se déformer — sans jamais dire quel point il fallait. À la fin, tout passe et les fautes se découvrent au bout : c\'est un contrôle.',
+                options: [
+                    { value: 'immediate', label: 'Au fur et à mesure' },
+                    { value: 'fin', label: 'À la fin — plus difficile' }
+                ],
+                default: 'immediate'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Les points ne sont pas numérotés : chacun porte un calcul, et son résultat donne son rang. Cherche le calcul qui vaut 1, clique dessus ; puis celui qui vaut 2, et ainsi de suite. Le truc, c'est de ne pas calculer les vingt étiquettes une par une : demande-toi d'abord ce que le nombre cherché peut être — 12, c'est 3 × 4, le double de 6, 10 + 2 — puis balaie le dessin. À la fin, les calculs s'effacent et l'image reste."
     }
 ];

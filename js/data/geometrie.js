@@ -332,5 +332,93 @@ export const geometrieExercises = [
         skills: ['geo.espace.programme'],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Le programme est déjà écrit : c'est toi l'ordinateur. Exécute-le bloc après bloc. Pour « avancer de 3 », touche la case où le robot arrive — trois cases droit devant LUI, pas devant toi. Pour tourner, utilise les boutons (ou les flèches du clavier). Le bloc allumé dit où on en est dans le programme : quand la boucle arrive au bout de son corps, il REMONTE, et le compteur passe au tour suivant. C'est ça, répéter."
+    },
+    {
+        // LES DÉDALES DE FORME. Un labyrinthe PARFAIT — un seul chemin entre
+        // deux cases — creusé dans un cœur, une étoile, un rond. Se déplacer
+        // dans un plan sans le voir d'en haut, c'est la compétence ; la forme,
+        // elle, est là pour qu'on ait envie de la traverser.
+        id: 'geo-dedale-forme', status: STATUS.TEST, title: 'Les Dédales',
+        activityId: 'dedale',
+        sansRevision: true,
+        skills: ['geo.espace.deplacement'],
+        params: { mode: 'forme', forme: '', taille: 'moyen', trace: 'fil' },
+        paramSchema: [
+            {
+                id: 'forme', type: 'select', label: 'Forme du dédale',
+                options: [
+                    { value: '', label: 'Au hasard, une forme différente à chaque fois' },
+                    { value: 'rectangle', label: 'Rectangle' },
+                    { value: 'rond', label: 'Rond' },
+                    { value: 'coeur', label: 'Cœur' },
+                    { value: 'losange', label: 'Losange' },
+                    { value: 'croix', label: 'Croix' },
+                    { value: 'etoile', label: 'Étoile' }
+                ],
+                default: ''
+            },
+            {
+                id: 'taille', type: 'select', label: 'Taille',
+                aide: 'Le départ et l\'arrivée sont toujours les deux cases LES PLUS ÉLOIGNÉES du dédale : une grande grille est vraiment plus longue, pas seulement plus large.',
+                options: [
+                    { value: 'petit', label: '11 × 11 — pour commencer' },
+                    { value: 'moyen', label: '15 × 15' },
+                    { value: 'grand', label: '21 × 21 — long' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'trace', type: 'select', label: 'La trace laissée derrière soi',
+                aide: 'Le fil se rembobine quand on revient sur ses pas : il ne montre donc que la route qu\'on garde. Tout garder aide à ne pas tourner en rond ; ne rien laisser oblige à retenir où l\'on est passé.',
+                options: [
+                    { value: 'fil', label: 'Le fil d\'Ariane — il se rembobine' },
+                    { value: 'tout', label: 'Tout ce que j\'ai exploré reste marqué' },
+                    { value: 'rien', label: 'Aucune trace' }
+                ],
+                default: 'fil'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Va du rond vert à l'étoile. Flèches du clavier, croix tactile, ou promène ton doigt sur le dédale — on ne traverse jamais un mur. Entre deux cases il n'existe qu'un seul chemin : si tu tournes en rond, c'est que tu es dans une impasse, et il faut revenir. Le fil rose derrière toi se rembobine quand tu reviens sur tes pas : ce qui reste tracé est toujours la route que tu tiens."
+    },
+    {
+        // LE DÉDALE QUI DESSINE. Le chemin unique de la sortie N'EST PAS
+        // quelconque : c'est un dessin, tracé d'un seul trait, et les impasses
+        // ne sont que des greffes autour de lui. Arriver au bout, c'est avoir
+        // dessiné — et l'image ne peut pas se voir en arrivant.
+        id: 'geo-dedale-dessin', status: STATUS.TEST, title: 'Le Dédale qui Dessine',
+        activityId: 'dedale',
+        sansRevision: true,
+        skills: ['geo.espace.deplacement'],
+        params: { mode: 'dessin', dessin: '', marge: 2, trace: 'fil' },
+        paramSchema: [
+            {
+                id: 'dessin', type: 'select', label: 'Image cachée',
+                aide: 'Laisse « au hasard » pour que l\'élève ne sache pas ce qu\'il va trouver — c\'est toute la récompense.',
+                options: [
+                    { value: '', label: 'Au hasard — surprise' },
+                    { value: 'marches', label: 'Un escalier' },
+                    { value: 'creneau', label: 'Un château' },
+                    { value: 'zigzag', label: 'L\'éclair' },
+                    { value: 'peigne', label: 'Le peigne' },
+                    { value: 'spirale', label: 'La spirale' },
+                    { value: 'serpent', label: 'Le serpent' }
+                ],
+                default: ''
+            },
+            {
+                id: 'marge', type: 'select', label: 'Fausses pistes autour du dessin',
+                aide: 'Sans marge, le dessin EST le labyrinthe et se lit d\'un coup d\'œil. Chaque anneau de marge ajoute des impasses tout autour : le chemin reste unique, mais il faut le chercher.',
+                options: [
+                    { value: 0, label: 'Aucune — le tracé nu' },
+                    { value: 1, label: 'Un peu' },
+                    { value: 2, label: 'Normal' },
+                    { value: 3, label: 'Beaucoup — on cherche vraiment' }
+                ],
+                default: 2
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Va du rond vert à l'étoile. Ce dédale cache une image : le chemin de la sortie EST un dessin, et il n'y en a qu'un — impossible de le deviner d'avance, il apparaît sous tes pas. Les couloirs qui partent sur le côté sont des impasses ; quand tu y entres, ton fil s'y engage, et il se rembobine dès que tu reviens. À l'arrivée, il ne reste que le dessin."
     }
 ];

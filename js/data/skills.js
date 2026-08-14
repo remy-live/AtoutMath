@@ -336,6 +336,19 @@ const BASE = {
         descriptor: 'Passer d\'une unit\u00e9 \u00e0 une autre en lisant le m\u00eame nombre dans une autre colonne.',
         lesson: 'Convertir n\'est pas multiplier par une puissance de dix apprise par c\u0153ur : c\'est LIRE LE M\u00caME NOMBRE dans une autre colonne. Trois gestes, toujours les m\u00eames. UN : le chiffre des unit\u00e9s va dans la colonne de SON unit\u00e9 \u2014 3,45 m, le 3 sous les m\u00e8tres, et le reste suit. DEUX : la virgule se pose juste apr\u00e8s la colonne de l\'unit\u00e9 demand\u00e9e, jamais ailleurs. TROIS : toute case vide ENTRE les chiffres et la virgule prend un z\u00e9ro \u2014 c\'est le 0,00 de 0,00345 km, et un seul oubli fait perdre un facteur dix. V\u00e9rifie toujours le sens : vers une plus petite unit\u00e9, le nombre grandit.'
     },
+    // CHERCHER LE CALCUL QUI VAUT UN NOMBRE, c'est l'inverse du geste
+    // habituel : on ne part plus de l'opération pour trouver le résultat, on
+    // part du résultat et l'on balaie les opérations. Un élève qui sait ses
+    // tables « dans le sens de la récitation » et pas dans l'autre butera ici,
+    // et c'est précisément ce qu'on veut voir.
+    'num.calc.recherche': {
+        label: 'Chercher le calcul qui vaut un nombre',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Parmi plusieurs calculs, reconnaître celui dont le résultat est un nombre donné.',
+        lesson: 'Trouver « le calcul qui vaut 12 » ne se fait pas en calculant les vingt calculs un par un jusqu\'à tomber dessus. On lit d\'abord le nombre cherché et on se demande ce qu\'il peut ÊTRE : 12, c\'est 2 × 6, 3 × 4, 10 + 2, le double de 6, la moitié de 24. Ces écritures-là viennent en tête d\'un coup quand on connaît ses tables dans les deux sens. Ensuite seulement on balaie les calculs proposés, et l\'on saute d\'un coup d\'œil tous ceux qui sont manifestement trop grands ou trop petits — un ordre de grandeur suffit à éliminer, sans calculer.'
+    },
     'num.calc.tri': {
         label: 'Trier des r\u00e9sultats selon une r\u00e8gle',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
