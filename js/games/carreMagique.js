@@ -1,6 +1,10 @@
 // LE CARRÉ MAGIQUE — à l'écran.
 //
-// La grille, la somme affichée en gros, et des cases à remplir au clavier.
+// La grille, la somme affichée en gros, et LES NOMBRES MANQUANTS EN JETONS
+// qu'on fait glisser dans les cases. C'est la forme classique de l'exercice —
+// « place les nombres de 1 à 9 pour que… » — et c'est aussi celle qui fait le
+// moins d'histoires : pas de faute de frappe, on essaie une case, on déplace,
+// on recommence. Le simple appui reste possible : un jeton, puis une case.
 // L'aide donne la DÉDUCTION suivante — la ligne où il ne manque qu'une case
 // et la soustraction qui la comble — jamais la valeur seule. Le robot déroule
 // le même journal, dans l'ordre où le carré se démonte.
@@ -8,6 +12,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 import { genererCarreMagique, verifierSaisie, lignesDe } from '../core/carreMagique.js';
 
 const COMPETENCE = 'num.logique.carre-magique';
@@ -23,10 +28,14 @@ class CarreMagique extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                ${CSS_GLISSER}
                 .cm-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 12px;
                     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
-                    color: var(--text-main); overflow-y: auto; container-type: inline-size;
+                    /* « size » : le carré doit se borner à la HAUTEUR autant
+                       qu'à la largeur — voir la disposition en deux colonnes
+                       des écrans couchés, plus bas. */
+                    color: var(--text-main); overflow-y: auto; container-type: size;
                 }
                 .cm-tete { text-align: center; font-size: .95rem; }
                 .cm-somme { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
@@ -82,14 +91,29 @@ class CarreMagique extends BaseGame {
 
                 /* LE PAVÉ MAISON. Le clavier de l'iPhone recouvrait le carré et
                    les boutons : on ne voyait plus ce qu'on remplissait. */
-                .cm-pave { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 320px; }
-                .cm-touche {
-                    width: 44px; height: 44px; border-radius: 11px; cursor: pointer;
-                    border: 1px solid var(--border); background: var(--bg-panel);
-                    color: var(--text-main); font: inherit; font-weight: 900; font-size: 1.1rem;
-                    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+                /* LA RÉSERVE : les nombres qui manquent, en vrac, à poser. Elle
+                   est cernée en pointillés parce qu'elle est aussi la ZONE DE
+                   RETOUR — on y ramène un jeton mal placé. */
+                .cm-reserve {
+                    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+                    max-width: 420px; min-height: 52px; padding: 6px 10px;
+                    border: 2px dashed var(--border); border-radius: 12px;
                 }
-                .cm-touche:active { background: var(--primary); color: #fff; }
+                .cm-jeton {
+                    min-width: 46px; height: 46px; padding: 0 8px; border-radius: 11px;
+                    display: inline-flex; align-items: center; justify-content: center;
+                    border: 2px solid var(--primary); font: inherit; font-weight: 900;
+                    font-size: 1.15rem; cursor: pointer; color: var(--text-main);
+                    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+                    box-shadow: 0 2px 0 rgba(15,23,42,.14);
+                    -webkit-tap-highlight-color: transparent;
+                }
+                .cm-jeton--choisi { outline: 3px solid var(--primary); outline-offset: 2px; }
+                .cm-jeton--place { display: none; }
+                .cm-reserve--vide::after {
+                    content: 'Tous les jetons sont posés.'; color: var(--text-muted);
+                    font-size: .84rem; align-self: center;
+                }
                 .cm-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
                 .cm-btn {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
@@ -100,12 +124,37 @@ class CarreMagique extends BaseGame {
                     color: var(--text-muted); max-width: 620px; }
                 .cm-note--ok { color: var(--success, #16a34a); font-weight: 700; }
                 .cm-note--ko { color: var(--danger, #dc2626); font-weight: 600; }
+
+                /* TÉLÉPHONE COUCHÉ : empilés, le carré et sa réserve sortent de
+                   l'écran — on ne pouvait plus atteindre les jetons, donc plus
+                   jouer du tout. Le carré passe à gauche, tout le reste à
+                   droite, et les cases se bornent à la hauteur disponible. */
+                @container (max-height: 470px) {
+                    .cm-wrap {
+                        display: grid; gap: 6px 16px;
+                        grid-template-columns: auto minmax(0, 1fr);
+                        grid-template-areas:
+                            "tete    tete"
+                            "plateau reserve"
+                            "plateau barre"
+                            "plateau note";
+                        align-content: center; align-items: center; justify-items: center;
+                    }
+                    .cm-tete { grid-area: tete; }
+                    .cm-plateau { grid-area: plateau; }
+                    .cm-reserve { grid-area: reserve; max-width: none; min-height: 0; }
+                    .cm-barre { grid-area: barre; }
+                    .cm-note { grid-area: note; min-height: 0; font-size: .8rem; }
+                    .cm-case { width: min(56px, 11cqh); font-size: min(20px, 5cqh); }
+                    .cm-jeton { min-width: 38px; height: 38px; font-size: 1rem; }
+                    .cm-btn { padding: 5px 10px; font-size: .84rem; }
+                }
             </style>
             <div class="cm-wrap">
                 <div class="cm-tete">Toutes les lignes, colonnes et diagonales font
                     <span class="cm-somme" data-somme></span></div>
                 <div class="cm-plateau" data-grille></div>
-                <div class="cm-pave" data-pave></div>
+                <div class="cm-reserve" data-reserve></div>
                 <div class="cm-barre">
                     <button type="button" class="cm-btn" data-aide>💡 Aide-moi</button>
                     <button type="button" class="cm-btn" data-effacer>↺ Effacer</button>
@@ -115,13 +164,7 @@ class CarreMagique extends BaseGame {
                 <div class="cm-note" data-note></div>
             </div>`;
         this.grilleEl = this.container.querySelector('[data-grille]');
-        this.paveEl = this.container.querySelector('[data-pave]');
-        this.paveEl.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-            .map(n => `<button type="button" class="cm-touche" data-t="${n}">${n}</button>`).join('')
-            + '<button type="button" class="cm-touche" data-t="eff" aria-label="Effacer">⌫</button>';
-        this.paveEl.querySelectorAll('[data-t]').forEach(b => {
-            b.onclick = () => this.taper(b.dataset.t);
-        });
+        this.reserveEl = this.container.querySelector('[data-reserve]');
         this.sommeEl = this.container.querySelector('[data-somme]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
@@ -162,36 +205,104 @@ class CarreMagique extends BaseGame {
         html += `<div class="cm-total cm-total--cible" data-tot="cible">${p.somme}</div>`;
         this.grilleEl.innerHTML = html;
         this.grilleEl.querySelectorAll('.cm-case--trou').forEach(el => {
-            el.onclick = () => this.choisir(el);
+            el.onclick = () => this.deposerChoisi(el);
         });
+        this.garnirReserve();
         this.majTotaux();
     }
 
-    choisir(el) {
-        if (this.isDemo) return;
-        this.grilleEl.querySelectorAll('.cm-case--choisie')
-            .forEach(c => c.classList.remove('cm-case--choisie'));
-        el.classList.add('cm-case--choisie');
-        this.choisie = Number(el.dataset.i);
+    /**
+     * LES NOMBRES QUI MANQUENT, en vrac.
+     *
+     * On les mélange : rangés dans l'ordre, ils désigneraient les cases par
+     * leur place dans la réserve, et l'élève poserait sans calculer.
+     */
+    garnirReserve() {
+        const p = this.puzzle;
+        this.jetons = [];
+        this.jetonChoisi = null;
+        this.reserveEl.innerHTML = '';
+        const valeurs = this.rng.shuffle(p.trous.map(i => p.cases[i]));
+        valeurs.forEach((v, k) => {
+            const el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'cm-jeton';
+            el.textContent = String(v);
+            el.dataset.v = String(v);
+            el.dataset.k = String(k);
+            el.onclick = () => this.choisirJeton(el);
+            rendreGlissable(el, {
+                cibles: '.cm-case--trou',
+                deposer: (cible) => this.poserJeton(el, cible),
+                retirer: () => this.rendreJeton(el),
+                zoneRetour: this.reserveEl,
+                actif: () => !this.isDemo,
+                marquerGlissement: (v) => { this.vientDeGlisser = v; }
+            });
+            this.reserveEl.appendChild(el);
+            this.jetons.push(el);
+        });
+        this.majReserve();
     }
 
-    /** Le pavé écrit dans la case choisie, chiffre par chiffre. */
-    taper(t) {
-        if (this.isDemo) return;
-        if (this.choisie === null) {
-            this.note('Touche d\'abord une case à compléter, puis tape son nombre.');
-            return;
+    majReserve() {
+        const restants = this.jetons.filter(j => !j.dataset.pose);
+        restants.forEach(j => j.classList.remove('cm-jeton--place'));
+        this.reserveEl.classList.toggle('cm-reserve--vide', restants.length === 0);
+    }
+
+    choisirJeton(el) {
+        if (this.isDemo || this.vientDeGlisser) return;
+        const deja = el === this.jetonChoisi;
+        this.jetons.forEach(j => j.classList.remove('cm-jeton--choisi'));
+        this.jetonChoisi = deja ? null : el;
+        if (this.jetonChoisi) {
+            el.classList.add('cm-jeton--choisi');
+            this.note('Touche maintenant la case où ce nombre doit aller.');
         }
-        const el = this.grilleEl.querySelector(`.cm-case[data-i="${this.choisie}"]`);
-        if (!el) return;
-        const actuel = el.textContent.trim();
-        const suivant = t === 'eff' ? actuel.slice(0, -1)
-            : (actuel.length >= 3 ? actuel : actuel + t);
-        el.textContent = suivant;
-        el.classList.remove('cm-case--faute');
-        if (suivant === '') delete this.valeurs[this.choisie];
-        else this.valeurs[this.choisie] = Number(suivant);
+    }
+
+    /** Un appui sur une case : elle reçoit le jeton choisi, ou rend le sien. */
+    deposerChoisi(cible) {
+        if (this.isDemo) return;
+        if (this.jetonChoisi) { this.poserJeton(this.jetonChoisi, cible); return; }
+        // Pas de jeton en main : la case rend le sien à la réserve.
+        const i = Number(cible.dataset.i);
+        const pose = this.jetons.find(j => Number(j.dataset.pose) === i);
+        if (pose) this.rendreJeton(pose);
+        else this.note('Prends d\'abord un nombre dans la réserve, puis touche sa case.');
+    }
+
+    poserJeton(el, cible) {
+        if (this.isDemo) return;
+        const i = Number(cible.dataset.i);
+        // La case était occupée : son jeton retourne à la réserve.
+        const occupant = this.jetons.find(j => Number(j.dataset.pose) === i);
+        if (occupant && occupant !== el) this.rendreJeton(occupant, true);
+
+        el.dataset.pose = String(i);
+        el.classList.add('cm-jeton--place');
+        el.classList.remove('cm-jeton--choisi');
+        if (this.jetonChoisi === el) this.jetonChoisi = null;
+        this.valeurs[i] = Number(el.dataset.v);
+        cible.textContent = el.dataset.v;
+        cible.classList.remove('cm-case--faute');
+        this.majReserve();
         this.majTotaux();
+        this.note('');
+    }
+
+    rendreJeton(el, silencieux) {
+        const i = Number(el.dataset.pose);
+        if (!Number.isFinite(i)) return;
+        delete el.dataset.pose;
+        el.classList.remove('cm-jeton--place');
+        delete this.valeurs[i];
+        const cible = this.grilleEl.querySelector(`.cm-case[data-i="${i}"]`);
+        if (cible) { cible.textContent = ''; cible.classList.remove('cm-case--faute'); }
+        this.majReserve();
+        this.majTotaux();
+        if (!silencieux) this.note('');
     }
 
     /** Le total de chaque rangée, en direct : c'est l'outil de résolution. */
@@ -223,6 +334,12 @@ class CarreMagique extends BaseGame {
             el.textContent = '';
             el.classList.remove('cm-case--faute');
         });
+        (this.jetons || []).forEach(j => {
+            delete j.dataset.pose;
+            j.classList.remove('cm-jeton--place', 'cm-jeton--choisi');
+        });
+        this.jetonChoisi = null;
+        this.majReserve();
         this.majTotaux();
         this.note('');
     }
@@ -317,12 +434,19 @@ class CarreMagique extends BaseGame {
             if (!await gate.waitTurn() || !this.isRunning) return fin();
             const el = this.grilleEl.querySelector(`.cm-case[data-i="${e.case}"]`);
             cur.say(`${e.raison}.`, el || this.grilleEl);
-            if (el && !await cur.tap(el)) return fin();
-            if (el) {
+            // Le robot va CHERCHER le jeton, puis le pose : c'est le geste
+            // que l'élève devra faire, pas une valeur qui apparaît.
+            const jeton = (this.jetons || []).find(j => !j.dataset.pose
+                && Number(j.dataset.v) === e.valeur);
+            if (jeton && el) {
+                if (!await cur.dragFromTo(jeton, el)) return fin();
+                jeton.dataset.pose = String(e.case);
+                jeton.classList.add('cm-jeton--place');
                 el.textContent = String(e.valeur);
                 this.valeurs[e.case] = e.valeur;
+                this.majReserve();
                 this.majTotaux();
-            }
+            } else if (el && !await cur.tap(el)) { return fin(); }
             if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
         }
 
