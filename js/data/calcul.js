@@ -102,6 +102,36 @@ export const calculExercises = [
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Calcule l'expression en respectant les priorités opératoires."
     },
+    {
+        // LA RÉÉCRITURE LIGNE À LIGNE. Les deux exercices ci-dessus posent la
+        // question en QCM : quelle opération, ou quel résultat. Celui-ci fait
+        // ÉCRIRE la suite du calcul — et c'est là qu'apparaît la faute qui
+        // coûte vraiment des points : calculer 4 × 5 juste, puis oublier le
+        // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
+        id: 'calc-prio-cascade', status: STATUS.TEST, title: 'Priorités : ligne par ligne',
+        activityId: 'priorites',
+        skills: ['num.prio'],
+        params: { niveau: 2, parentheses: true },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté',
+                options: [
+                    { value: 1, label: '1 — Deux opérations, sans parenthèses' },
+                    { value: 2, label: '2 — Jusqu\'à trois opérations' },
+                    { value: 3, label: '3 — Les parenthèses arrivent' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses' }
+                ],
+                default: 2
+            },
+            {
+                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
+                aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le tirage garantit qu\'un calcul de gauche à droite donne toujours faux.',
+                default: true
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 »."
+    },
 
     // --- Arcade : mêmes notions, autre présentation ---
     {

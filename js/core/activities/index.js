@@ -312,6 +312,7 @@ const legacy = [
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
     ['skweek', 'Skweek (repeindre le sol)', 'skweek', 'engineSkweek'],
+    ['priorites', 'Priorités : la réécriture', 'priorites', 'enginePriorites'],
     ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
     ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram'],
     ['solides', 'Compter sur un solide', 'solides', 'engineSolides'],
