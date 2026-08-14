@@ -70,7 +70,7 @@ class Canon extends BaseGame {
                 .cn-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
                     width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
-                    color: var(--text-main); overflow-y: auto; container-type: inline-size;
+                    color: var(--text-main); overflow-y: auto; container-type: size;
                 }
                 .cn-tete { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
                     justify-content: center; font-size: .92rem; }
@@ -83,8 +83,14 @@ class Canon extends BaseGame {
                    où passer. Dans le vide il n'y a ni haut ni bas — les voies
                    se répartissent librement, on peut en ouvrir plus, et les
                    astéroïdes arrivent de partout à la fois. */
+                /* LE TERRAIN PREND LA HAUTEUR QU'ON LUI DONNE. Figé à 320 px,
+                   il laissait la moitié basse d'un écran d'ordinateur vide et
+                   les astéroïdes traversaient une meurtrière. Il grandit avec
+                   l'écran, sans jamais descendre sous la taille où l'on ne
+                   distingue plus les voies. */
                 .cn-terrain {
-                    position: relative; width: min(94cqw, 700px); height: 320px;
+                    position: relative; width: min(94cqw, 860px);
+                    height: clamp(260px, 66cqh, 520px);
                     border-radius: 14px; overflow: hidden;
                     border: 3px solid color-mix(in srgb, var(--text-main) 70%, transparent);
                     background:
@@ -123,17 +129,22 @@ class Canon extends BaseGame {
 
                 /* LA PLANÈTE : un repère de profondeur, posé au fond. Elle
                    donne l'échelle, et le vide cesse d'être un fond uni. */
+                /* Elle occupait 46 % du terrain, posée juste sous le canon :
+                   un disque bleu plus large que haut l'arène, qui prenait le
+                   premier plan alors qu'il est un DÉCOR. Réduite et effacée,
+                   elle redonne la profondeur qu'on lui demandait sans se
+                   mettre devant le jeu. */
                 .cn-planete {
                     position: absolute; border-radius: 50%; pointer-events: none;
-                    left: -14%; bottom: -34%; width: 46%; aspect-ratio: 1;
+                    left: -12%; bottom: -30%; width: 28%; aspect-ratio: 1;
                     background:
                         radial-gradient(circle at 34% 26%, #93c5fd 0%, #3b82f6 34%, #1d4ed8 62%, #0b1a52 100%);
-                    box-shadow: 0 0 60px rgba(59,130,246,.35), inset -22px -18px 46px rgba(0,0,0,.6);
-                    opacity: .85;
+                    box-shadow: 0 0 42px rgba(59,130,246,.25), inset -14px -12px 32px rgba(0,0,0,.6);
+                    opacity: .55;
                 }
                 .cn-planete::after {
-                    content: ''; position: absolute; inset: -18% -34%;
-                    border-radius: 50%; border: 5px solid rgba(148,163,184,.30);
+                    content: ''; position: absolute; inset: -16% -30%;
+                    border-radius: 50%; border: 3px solid rgba(148,163,184,.18);
                     transform: rotate(-18deg);
                 }
 
@@ -203,7 +214,10 @@ class Canon extends BaseGame {
                 @keyframes cn-boum { from { scale: .3; opacity: 1; } to { scale: 2.6; opacity: 0; } }
 
                 /* LE CANON : dessiné, pas un émoji — et il recule au tir. */
-                .cn-canon { position: absolute; width: 74px; height: 60px; pointer-events: none; }
+                /* Le canon suivait une taille fixe de 74 px : dans une arène
+                   deux fois plus grande, il devenait une vignette. */
+                .cn-canon { position: absolute; width: clamp(74px, 11cqw, 118px);
+                    aspect-ratio: 74 / 60; pointer-events: none; }
                 .cn-canon svg { width: 100%; height: 100%; overflow: visible; }
                 .cn-canon--tire { animation: cn-recul .28s ease-out; }
                 @keyframes cn-recul {
@@ -392,7 +406,7 @@ class Canon extends BaseGame {
         // choisir lequel traiter d'abord. C'est là que le complément doit être
         // devenu automatique, pas seulement calculable.
         this.prochainBoulet -= 28;
-        const simultanes = Math.min(this.voies * 2 + 1, this.voies + Math.floor(this.niveau / 2));
+        const simultanes = Math.min(this.voies * 2 + 1, this.voies + Math.floor((this.niveau + 1) / 2));
         if (this.boulets.length < Math.max(1, simultanes) && this.prochainBoulet <= 0) {
             // Si toutes les voies sont encombrées à l'entrée, on repasse dans
             // un instant plutôt que d'attendre un cycle entier.
@@ -401,7 +415,12 @@ class Canon extends BaseGame {
         }
 
         // Les ennemis avancent vers le canon.
-        const vitesse = (0.028 + this.niveau * 0.004) * longueur / 60;
+        // « Trop lent » : à 0,028, un astéroïde mettait près d'une minute à
+        // traverser. Le complément se calcule en quelques secondes ; ce qui
+        // reste à faire ensuite, c'est viser. À 0,11, la traversée dure une
+        // douzaine de secondes au premier niveau et sept au huitième — assez
+        // pour penser, trop peu pour s'ennuyer.
+        const vitesse = (0.11 + this.niveau * 0.014) * longueur / 60;
         for (const b of [...this.boulets]) {
             b.avancee += vitesse;
             this.placerEnnemi(b);
