@@ -1,11 +1,16 @@
-// SKWEEK — à l'écran.
+// LE PEINTRE — à l'écran.
+//
+// (Le jeu s'appelait Skweek, d'après le jeu de Loriciels dont il reprend
+// l'idée ; les identifiants internes ont gardé ce nom pour ne pas casser les
+// statistiques et les parcours déjà enregistrés. Ce que l'élève lit, lui,
+// c'est « Le Peintre ».)
 //
 // Le noyau (core/skweek.js) porte le sol, la règle du niveau, les
 // déplacements et les ennemis. Ici : le décor, la caméra, et les commandes.
 //
-// TROIS CHOSES ONT COMMANDÉ CE FICHIER.
+// QUATRE CHOSES ONT COMMANDÉ CE FICHIER.
 //
-//   · LA CAMÉRA SUIT SKWEEK. Le terrain est plus grand que l'écran dès le
+//   · LA CAMÉRA SUIT LE PEINTRE. Le terrain est plus grand que l'écran dès le
 //     niveau 3, et sur un téléphone dès le premier : le monde se déplace sous
 //     le personnage, qui reste au centre. Sans cela, il faudrait choisir entre
 //     des dalles minuscules et un terrain qu'on ne voit pas.
@@ -15,13 +20,19 @@
 //   · CHAQUE DALLE SE LIT. Le calcul est écrit dessus, en gros ; la dalle
 //     peinte garde son calcul mais change de couleur — l'élève doit pouvoir
 //     revenir en arrière du regard et vérifier ce qu'il a trié.
+//   · ON VISE SANS AVANCER. Le pas reste calé sur les cases : c'est ce qui
+//     fait qu'on trie dalle par dalle, et un déplacement libre casserait
+//     l'exercice. Mais on ne tire que devant soi — donc viser un blob
+//     obligeait à marcher vers lui, c'est-à-dire à repeindre une dalle qu'on
+//     n'avait pas choisie. Le bouton 🎯 (ou MAJ + flèche) tourne la tête, et
+//     rien d'autre.
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     TROU, BLEUE, ROSE, CASSEE, NIVEAUX, niveauDe, genererNiveau, caseDe,
-    deplacer, avancerEnnemis, toucheJoueur, tirer, avancerTirs, avancement, accessibles
+    deplacer, viser, avancerEnnemis, toucheJoueur, tirer, avancerTirs, avancement, accessibles
 } from '../core/skweek.js';
 
 const COMPETENCE = 'num.calc.tri';
@@ -105,7 +116,7 @@ class Skweek extends BaseGame {
                 }
                 @keyframes sk-tombe { from { scale: 1; opacity: 1; } to { scale: .55; opacity: 1; } }
 
-                /* SKWEEK : une boule rose à deux yeux, qui rebondit en marchant. */
+                /* LE PEINTRE : une boule rose à deux yeux, qui rebondit en marchant. */
                 .sk-heros {
                     position: absolute; border-radius: 50%; z-index: 3;
                     background: radial-gradient(circle at 35% 28%, #fff 0%, #f9a8d4 35%, #ec4899 75%, #be185d 100%);
@@ -170,6 +181,21 @@ class Skweek extends BaseGame {
                     box-shadow: 0 4px 10px rgba(180,83,9,.5); touch-action: manipulation;
                 }
                 .sk-feu:active { scale: .9; }
+                /* LA VISÉE. Un interrupteur, pas un geste caché : tant qu'il
+                   est allumé, les flèches tournent la tête sans faire un pas.
+                   Au clavier, Maj + flèche fait la même chose sans mode. */
+                .sk-viser {
+                    width: 46px; height: 46px; border-radius: 50%; border: 0; cursor: pointer;
+                    font-size: 1.1rem; font-family: inherit; touch-action: manipulation;
+                    background: color-mix(in srgb, var(--text-main) 12%, var(--bg-panel));
+                    -webkit-tap-highlight-color: transparent;
+                }
+                .sk-viser[aria-pressed="true"] {
+                    background: radial-gradient(circle at 35% 30%, #fecaca, #ef4444 65%, #991b1b);
+                    box-shadow: 0 0 0 3px rgba(239,68,68,.35);
+                }
+                /* Le peintre en visée : un halo qui dit qu'un pas ne partira pas. */
+                .sk-heros--vise { box-shadow: 0 0 0 3px rgba(239,68,68,.75), 0 4px 12px rgba(0,0,0,.45); }
                 .sk-note { min-height: 1.9em; text-align: center; font-size: .84rem;
                     color: var(--text-muted); flex: 0 0 auto; max-width: 640px; }
                 .sk-note--ok { color: var(--success, #16a34a); font-weight: 700; }
@@ -205,7 +231,7 @@ class Skweek extends BaseGame {
                     <span data-chrono></span>
                 </div>
                 <div class="sk-corps">
-                    <div class="sk-vue" data-vue tabindex="0" aria-label="Terrain de Skweek">
+                    <div class="sk-vue" data-vue tabindex="0" aria-label="Terrain du Peintre">
                         <div class="sk-monde" data-monde></div>
                     </div>
                     <div class="sk-pied">
@@ -216,6 +242,8 @@ class Skweek extends BaseGame {
                             <button type="button" class="sk-fleche" data-dir="droite">▶</button>
                             <span></span><button type="button" class="sk-fleche" data-dir="bas">▼</button><span></span>
                         </div>
+                        <button type="button" class="sk-viser" data-viser
+                            aria-pressed="false" title="Tourner sans avancer">🎯</button>
                         <button type="button" class="sk-feu" data-feu>TIR</button>
                     </div>
                 </div>
@@ -247,19 +275,35 @@ class Skweek extends BaseGame {
         });
         this.container.querySelector('[data-feu]').onclick = () => this.feu();
 
-        // Le clavier : flèches et ZQSD, espace pour tirer.
+        // L'INTERRUPTEUR DE VISÉE. Tant qu'il est allumé, les flèches tournent
+        // la tête sans faire un pas : on choisit sa direction de tir sans
+        // repeindre une dalle qu'on n'avait pas décidé de repeindre.
+        this.viseSeulement = false;
+        const bViser = this.container.querySelector('[data-viser]');
+        bViser.onclick = () => {
+            this.viseSeulement = !this.viseSeulement;
+            bViser.setAttribute('aria-pressed', String(this.viseSeulement));
+            this.herosEl?.classList.toggle('sk-heros--vise', this.viseSeulement);
+            this.note(this.viseSeulement
+                ? '🎯 Visée : les flèches tournent la tête, elles ne font plus avancer. '
+                  + 'Appuie sur TIR, puis rappuie sur 🎯 pour repartir.'
+                : 'Les flèches font de nouveau avancer.');
+        };
+
+        // Le clavier : flèches et ZQSD, espace pour tirer. MAJ + flèche vise
+        // sans avancer — pas de mode à retenir pour qui a un clavier.
         this.surTouche = (e) => {
             if (this.isDemo || !this.isRunning) return;
             const dir = {
                 ArrowLeft: 'gauche', ArrowRight: 'droite', ArrowUp: 'haut', ArrowDown: 'bas',
                 q: 'gauche', d: 'droite', z: 'haut', s: 'bas'
             }[e.key] || {}[e.key];
-            if (dir) { e.preventDefault(); this.aller(dir); }
+            if (dir) { e.preventDefault(); this.aller(dir, e.shiftKey); }
             else if (e.key === ' ') { e.preventDefault(); this.feu(); }
         };
         document.addEventListener('keydown', this.surTouche);
 
-        // SKWEEK SUIT LE DOIGT. On touche une dalle voisine, il y va ; on garde
+        // LE PEINTRE SUIT LE DOIGT. On touche une dalle voisine, il y va ; on garde
         // le doigt posé et on le promène, il suit dalle par dalle, en tournant
         // la tête vers là où il marche. C'est le geste le plus direct : on
         // désigne la case où l'on veut aller, on ne compose pas une direction.
@@ -274,7 +318,7 @@ class Skweek extends BaseGame {
             };
         };
         // Un pas AU PLUS par événement, vers la case visée : un doigt rapide
-        // saute des dalles, et Skweek ne doit pas les sauter avec lui — il
+        // saute des dalles, et le peintre ne doit pas les sauter avec lui — il
         // les repeint une à une, ou s'arrête sur la première qui casse.
         const versLa = (ev) => {
             const but = versDalle(ev);
@@ -352,7 +396,7 @@ class Skweek extends BaseGame {
         for (let y = 0; y < e.lignes; y++) for (let x = 0; x < e.cols; x++) {
             const c = caseDe(e, x, y);
             if (c.etat === TROU) continue;
-            // La dalle du départ est DÉJÀ rose : Skweek se tient dessus. La
+            // La dalle du départ est DÉJÀ rose : le peintre se tient dessus. La
             // dessiner en bleu la laisserait bleue pour toujours — majDalle ne
             // repasse que sur les dalles qu'on foule.
             html += `<div class="sk-dalle ${c.etat === ROSE ? 'sk-dalle--rose' : 'sk-dalle--bleue'}"
@@ -378,13 +422,14 @@ class Skweek extends BaseGame {
         const CASE = this.cote, marge = Math.round(CASE * 0.13);
         this.herosEl.style.left = `${x * CASE + marge}px`;
         this.herosEl.style.top = `${y * CASE + marge}px`;
+        this.herosEl.classList.toggle('sk-heros--vise', !!this.viseSeulement);
         this.herosEl.classList.remove('sk-heros--bond');
         void this.herosEl.offsetWidth;
         this.herosEl.classList.add('sk-heros--bond');
         this.cadrer();
     }
 
-    /** LA CAMÉRA : Skweek au centre, sans jamais montrer le vide au-delà. */
+    /** LA CAMÉRA : le peintre au centre, sans jamais montrer le vide au-delà. */
     cadrer() {
         const e = this.etat, CASE = this.cote;
         const vw = this.vueEl.clientWidth, vh = this.vueEl.clientHeight;
@@ -444,8 +489,15 @@ class Skweek extends BaseGame {
 
     // --- Jouer ------------------------------------------------------------------
 
-    aller(direction) {
+    aller(direction, viseSeulement = false) {
         if (this.isDemo || !this.etat || this.finie) return;
+        // VISER, C'EST TOURNER LA TÊTE. Aucun pas, donc aucune dalle repeinte,
+        // donc aucune réponse enregistrée : on sort tout de suite.
+        if (viseSeulement || this.viseSeulement) {
+            viser(this.etat, direction);
+            this.placerHeros();
+            return;
+        }
         const r = deplacer(this.etat, direction);
         if (r.case) this.majDalle(this.etat.joueur.x + (r.casse ? DECAL[direction][0] : 0),
             this.etat.joueur.y + (r.casse ? DECAL[direction][1] : 0));
@@ -486,7 +538,7 @@ class Skweek extends BaseGame {
         this.finie = true;
         this.note(`🎉 Niveau ${this.etat.niveau} terminé : tout est rose !`, 'ok');
         this.onCorrectAnswer(null, COMPETENCE, {
-            questionText: `Skweek niveau ${this.etat.niveau} — ${this.etat.regle.consigne}`,
+            questionText: `Le Peintre niveau ${this.etat.niveau} — ${this.etat.regle.consigne}`,
             expected: 'sol repeint', given: 'sol repeint',
             points: 15 + this.etat.niveau * 5
         });
@@ -618,8 +670,10 @@ class Skweek extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On lit, on calcule, PUIS on avance. Et le bouton TIR sert aux blobs verts : '
-            + 'ils ne se calculent pas, eux.', this.container.querySelector('[data-feu]'));
+        cur.say('On lit, on calcule, PUIS on avance. Le bouton TIR sert aux blobs verts — '
+            + 'ils ne se calculent pas, eux — et le 🎯 tourne la tête SANS avancer, pour '
+            + 'les viser sans repeindre une dalle au passage.',
+        this.container.querySelector('[data-viser]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

@@ -311,7 +311,7 @@ const legacy = [
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
-    ['skweek', 'Skweek (repeindre le sol)', 'skweek', 'engineSkweek'],
+    ['skweek', 'Le Peintre (repeindre le sol)', 'skweek', 'engineSkweek'],
     ['priorites', 'Priorités : la réécriture', 'priorites', 'enginePriorites'],
     ['compte-est-bon', 'Le Compte est Bon', 'compteEstBon', 'engineCompteEstBon'],
     ['conversion', 'Le tableau de conversion', 'conversion', 'engineConversion'],
@@ -331,7 +331,9 @@ const legacy = [
     ['proportion', 'Tableau de Proportionnalité', 'proportion', 'engineProportion'],
     ['virgule', 'La Virgule qui ne bouge pas', 'virgule', 'engineVirgule'],
     ['dedale', 'Les Dédales', 'dedale', 'engineDedale'],
-    ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint']
+    ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint'],
+    ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication'],
+    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

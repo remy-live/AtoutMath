@@ -168,7 +168,24 @@ export const praticable = (e, x, y) => {
 const DIRS = { droite: [1, 0], gauche: [-1, 0], haut: [0, -1], bas: [0, 1] };
 
 /**
- * Déplace Skweek d'une case. Renvoie ce qui s'est passé — c'est ce compte
+ * VISER SANS AVANCER.
+ *
+ * Le peintre est calé sur les cases : c'est ce qui fait qu'il TRIE dalle par
+ * dalle, et un déplacement libre casserait tout l'exercice. Mais il ne tire
+ * que devant lui, et devant lui c'est là où il vient de marcher — donc viser
+ * un blob demandait de marcher vers lui, c'est-à-dire de repeindre une dalle
+ * qu'on n'a pas choisie, parfois une mauvaise.
+ *
+ * D'où ce geste, et lui seul : tourner la tête sans faire un pas.
+ */
+export function viser(etat, direction) {
+    if (!DIRS[direction]) return false;
+    etat.joueur.dir = direction;
+    return true;
+}
+
+/**
+ * Déplace le peintre d'une case. Renvoie ce qui s'est passé — c'est ce compte
  * rendu qui fait l'affichage, le son et la note de l'élève.
  * @returns {{bouge:boolean, peint?:boolean, casse?:boolean, case?:Object, gagne?:boolean}}
  */

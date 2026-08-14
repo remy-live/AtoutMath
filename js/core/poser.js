@@ -209,13 +209,147 @@ export function colonnesMultiplication(a, b) {
     };
 }
 
+/**
+ * LE DÉTAIL D'UNE LIGNE DE PRODUIT PARTIEL — celui qu'on écrit vraiment.
+ *
+ * `colonnesMultiplication` donne la valeur de chaque ligne ; il faut de plus
+ * savoir comment on l'écrit CHIFFRE PAR CHIFFRE, avec ses retenues, parce que
+ * c'est là que ça se joue : 7 × 8 = 56, on pose 6 et on retient 5, et la
+ * retenue de la multiplication S'AJOUTE APRÈS le produit suivant (d × c + r),
+ * elle ne s'ajoute pas au chiffre du multiplicande comme à l'addition. C'est
+ * l'erreur classique, et une activité qui ne montrerait que le total ne la
+ * verrait jamais.
+ *
+ * Les positions sont comptées EN ENTIER, depuis les unités du produit : la
+ * virgule ne se pose qu'à la fin, en comptant les décimales des deux facteurs.
+ */
+export function lignesMultiplication(a, b) {
+    const base = colonnesMultiplication(a, b);
+    const [entA] = base.entiers;
+    const chiffresA = String(entA).split('').reverse().map(Number);
+
+    const lignes = base.partiels.map(p => {
+        const cases = [];
+        let retenue = 0;
+        chiffresA.forEach((d, k) => {
+            const total = d * p.chiffre + retenue;
+            cases.push({
+                position: k + p.decalage,
+                chiffreA: d,
+                retenueEntrante: retenue,
+                total,
+                chiffre: total % 10,
+                retenueSortante: Math.floor(total / 10)
+            });
+            retenue = Math.floor(total / 10);
+        });
+        // LA DERNIÈRE RETENUE S'ÉCRIT TELLE QUELLE : il n'y a plus de chiffre
+        // du multiplicande en face, et l'oublier ampute le produit d'un rang.
+        if (retenue) {
+            cases.push({
+                position: chiffresA.length + p.decalage,
+                chiffreA: null, retenueEntrante: retenue,
+                total: retenue, chiffre: retenue, retenueSortante: 0
+            });
+        }
+        return { ...p, cases, retenueMax: cases.reduce((m, c) => Math.max(m, c.retenueSortante), 0) };
+    });
+
+    // Les lignes utiles : un chiffre nul du multiplicateur donne une ligne de
+    // zéros qu'on n'écrit pas au tableau — mais le DÉCALAGE, lui, reste.
+    return {
+        ...base, lignes,
+        largeur: String(base.produitEntier).length,
+        // L'addition finale ne se pose que s'il y a plusieurs lignes.
+        sommeAPoser: lignes.length > 1
+    };
+}
+
+// --- LA DIVISION (la potence) --------------------------------------------------------
+
+/**
+ * UNE DIVISION POSÉE, pas à pas.
+ *
+ * L'algorithme n'est pas en colonnes : c'est une SUITE D'ÉTAPES, chacune
+ * identique à la précédente — j'abaisse un chiffre, je cherche combien de fois
+ * le diviseur tient dedans, je multiplie, je soustrais. Le noyau rend donc une
+ * liste d'étapes, et l'écran n'a plus qu'à les faire remplir dans l'ordre.
+ *
+ * LE RANG EST L'INVARIANT, ici aussi, et il explique la règle qu'on récite
+ * sans la comprendre : le chiffre du quotient obtenu en abaissant le chiffre
+ * de rang r EST le chiffre de rang r du quotient. C'est pour cela que la
+ * virgule du quotient tombe exactement quand on abaisse celle du dividende —
+ * ce n'est pas une convention, c'est une conséquence.
+ *
+ * `decimalesMax` : au-delà du dividende, on continue en abaissant des zéros.
+ * À zéro, on s'arrête sur le quotient entier et son reste.
+ */
+export function colonnesDivision(dividende, diviseur, { decimalesMax = 0 } = {}) {
+    if (!diviseur) throw new Error('division par zéro');
+    if (!Number.isInteger(diviseur) || diviseur <= 0) {
+        // On ne pose pas une division par un décimal : à l'école, on commence
+        // par déplacer la virgule des DEUX nombres, et c'est un autre exercice.
+        throw new Error(`diviseur entier attendu, reçu ${diviseur}`);
+    }
+    if (dividende < 0) throw new Error('dividende négatif');
+
+    const rangs = rangsDe(dividende);
+    const basDividende = rangs[rangs.length - 1];
+    const etapes = [];
+    let courant = 0;
+    let commence = false;          // a-t-on écrit un premier chiffre du quotient ?
+    let quotient = 0;
+
+    const derniere = basDividende - decimalesMax;
+    for (let r = rangs[0]; r >= derniere; r--) {
+        const abaisse = r >= basDividende ? chiffreAuRang(dividende, r) : 0;
+        const avant = courant;
+        courant = courant * 10 + abaisse;
+        const chiffre = Math.floor(courant / diviseur);
+        const produit = chiffre * diviseur;
+        const reste = courant - produit;
+        // UN ZÉRO DE TÊTE NE S'ÉCRIT PAS : 12 ÷ 5 donne « 2 », pas « 02 ». Mais
+        // un zéro à l'intérieur s'écrit — 816 ÷ 4 = 204, et l'oublier fait
+        // perdre un facteur dix.
+        if (chiffre > 0) commence = true;
+        etapes.push({
+            rang: r,
+            chiffreAbaisse: abaisse,
+            avant,                       // le reste de l'étape précédente
+            courant,                     // ce sur quoi on divise à cette étape
+            chiffre,
+            ecrit: commence,
+            produit,
+            reste,
+            // Le premier chiffre du quotient qui vaut moins que le diviseur :
+            // c'est là qu'on prend « les deux premiers chiffres » du dividende.
+            apresVirgule: r < 0
+        });
+        if (commence) quotient += chiffre * Math.pow(10, r);
+        courant = reste;
+    }
+
+    return {
+        operation: '÷', operandes: [dividende, diviseur],
+        etapes,
+        // Un quotient calculé par sommes de puissances de dix traîne des
+        // flottants : on le rend au rang le plus fin qu'on a écrit.
+        quotient: Number(quotient.toFixed(Math.max(0, -derniere))),
+        reste: Number((courant * Math.pow(10, derniere)).toFixed(PRECISION)),
+        exacte: courant === 0,
+        decimalesQuotient: Math.max(0, -derniere),
+        rangVirgule: basDividende
+    };
+}
+
 // --- L'aiguillage ------------------------------------------------------------------------
 
 /** Le tableau complet d'une opération posée, quelle qu'elle soit. */
-export function poser(operation, operandes) {
+export function poser(operation, operandes, options = {}) {
     if (operation === '+') return colonnesAddition(operandes);
     if (operation === '-') return colonnesSoustraction(operandes[0], operandes[1]);
-    if (operation === '×') return colonnesMultiplication(operandes[0], operandes[1]);
+    if (operation === '×') return lignesMultiplication(operandes[0], operandes[1]);
+    if (operation === '÷') return colonnesDivision(operandes[0], operandes[1], options);
     throw new Error(`opération inconnue : ${operation}`);
 }
 

@@ -6,7 +6,7 @@ import './helpers.mjs';
 import {
     TROU, BLEUE, ROSE, CASSEE, REGLES, regleDe, NIVEAUX, niveauDe,
     calculPour, genererNiveau, caseDe, praticable, deplacer, avancerEnnemis,
-    toucheJoueur, tirer, avancerTirs, avancement, accessibles
+    toucheJoueur, tirer, avancerTirs, avancement, accessibles, viser
 } from '../js/core/skweek.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -169,4 +169,29 @@ test('le même tirage donne le même niveau', () => {
     const b = genererNiveau({ niveau: 4 }, makeRng('st'));
     assert.deepEqual(a.cases.map(c => c.calcul), b.cases.map(c => c.calcul));
     assert.deepEqual(a.joueur, b.joueur);
+});
+
+// --- Viser sans avancer -----------------------------------------------------
+
+test('VISER TOURNE LA TÊTE ET NE FAIT PAS UN PAS', () => {
+    // C'est toute la raison d'être du geste : on choisit sa direction de tir
+    // sans repeindre au passage une dalle qu'on n'avait pas décidé de trier.
+    const e = genererNiveau({ niveau: 1, cols: 8, lignes: 8 }, makeRng('vise'));
+    const avant = { ...e.joueur };
+    const peintes = e.repeintes;
+    assert.equal(viser(e, 'haut'), true);
+    assert.equal(e.joueur.dir, 'haut');
+    assert.equal(e.joueur.x, avant.x, 'le peintre a bougé en visant');
+    assert.equal(e.joueur.y, avant.y, 'le peintre a bougé en visant');
+    assert.equal(e.repeintes, peintes, 'une dalle a été repeinte en visant');
+    // Et le tir part bien dans la direction visée, pas dans celle du dernier pas.
+    tirer(e);
+    assert.deepEqual([e.tirs[0].dx, e.tirs[0].dy], [0, -1]);
+});
+
+test('une direction inconnue ne vise rien', () => {
+    const e = genererNiveau({ niveau: 1, cols: 8, lignes: 8 }, makeRng('vise2'));
+    const dir = e.joueur.dir;
+    assert.equal(viser(e, 'nulle-part'), false);
+    assert.equal(e.joueur.dir, dir);
 });

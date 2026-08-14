@@ -227,6 +227,89 @@ export const calculExercises = [
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "D'abord ALIGNER : chaque chiffre glisse dans sa colonne. Puis soustraire, en partant de la droite. Quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : c'est là que se note la retenue, contre le nombre du dessous."
     },
+    {
+        // POSER UNE MULTIPLICATION. Une LIGNE par chiffre du multiplicateur,
+        // décalée d'un rang à chaque fois, puis l'addition des lignes. Et une
+        // retenue qui ne se comporte pas comme celle de l'addition : elle
+        // s'ajoute APRÈS le produit, jamais au chiffre avant de multiplier.
+        // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
+        id: 'calc-poser-multiplication', status: STATUS.TEST, title: 'Poser une multiplication',
+        activityId: 'poser-multiplication',
+        skills: ['num.mult.sens'],
+        params: { chiffres: 3, chiffresB: 2, decimales: false },
+        paramSchema: [
+            {
+                id: 'chiffres', type: 'select', label: 'Taille du premier nombre',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            },
+            {
+                id: 'chiffresB', type: 'select', label: 'Taille du multiplicateur',
+                aide: 'À un chiffre, il n\'y a qu\'une ligne et aucune addition : c\'est par là qu\'on commence. Chaque chiffre de plus ajoute une ligne, et un décalage.',
+                options: [
+                    { value: 1, label: '1 chiffre — une seule ligne' },
+                    { value: 2, label: '2 chiffres — deux lignes' },
+                    { value: 3, label: '3 chiffres — trois lignes' }
+                ],
+                default: 2
+            },
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
+                aide: 'La virgule ne sert à RIEN pendant le calcul : on multiplie les entiers, et on la place à la fin en comptant les décimales des deux facteurs. C\'est une étape de plus à l\'écran.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une ligne par chiffre du multiplicateur, en commençant par les unités. Attention à la retenue : elle s'ajoute APRÈS le produit — 2 × 4 + 2, et jamais (2 + 2) × 4. Écris-la dans le petit rond, elle doit se voir. Chaque ligne suivante se DÉCALE d'une colonne, parce que son chiffre vaut des dizaines, puis des centaines : les points marquent les colonnes sautées. On additionne enfin les lignes, et s'il y a des virgules, on les compte à la toute fin."
+    },
+    {
+        // POSER UNE DIVISION. La potence, et la même étape recommencée :
+        // j'abaisse, je cherche combien de fois, je multiplie, je soustrais.
+        // Le rang du chiffre abaissé donne le rang du chiffre du quotient —
+        // d'où la virgule du quotient, qu'on récite d'ordinaire sans la
+        // comprendre.
+        id: 'calc-poser-division', status: STATUS.TEST, title: 'Poser une division',
+        activityId: 'poser-division',
+        skills: ['num.div.quotient'],
+        params: { chiffres: 3, diviseurMax: 9, decimalesQuotient: 0 },
+        paramSchema: [
+            {
+                id: 'chiffres', type: 'select', label: 'Taille du dividende',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            },
+            {
+                id: 'diviseurMax', type: 'select', label: 'Diviseur',
+                aide: 'Jusqu\'à 9, tout se lit dans les tables. Au-delà, il faut estimer — c\'est un autre travail, et il vient plus tard.',
+                options: [
+                    { value: 5, label: 'Jusqu\'à 5' },
+                    { value: 9, label: 'Jusqu\'à 9 — dans les tables' },
+                    { value: 25, label: 'Jusqu\'à 25 — à deux chiffres' }
+                ],
+                default: 9
+            },
+            {
+                id: 'decimalesQuotient', type: 'select', label: 'Quotient décimal',
+                aide: 'À zéro, la division tombe juste et l\'on s\'arrête au quotient entier. Sinon on continue en abaissant des zéros — et la virgule du quotient tombe pile quand on abaisse celle du dividende.',
+                options: [
+                    { value: 0, label: 'Non — division exacte' },
+                    { value: 1, label: 'Un chiffre après la virgule' },
+                    { value: 2, label: 'Deux chiffres après la virgule' }
+                ],
+                default: 0
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "La potence, et toujours la même étape : j'abaisse un chiffre, je cherche combien de fois le diviseur tient dedans, je multiplie, je soustrais. Trois réponses par étape, dans cet ordre. La vérification qui ne trompe pas : le reste est TOUJOURS plus petit que le diviseur — s'il est plus grand, c'est que le chiffre du quotient était trop petit. Et le chiffre du quotient se place à la colonne du chiffre qu'on vient d'abaisser : c'est pour cela que la virgule du quotient tombe pile quand on abaisse celle du dividende."
+    },
 
 
     // --- Arcade : mêmes notions, autre présentation ---
@@ -748,12 +831,16 @@ export const calculExercises = [
         instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
     },
     {
-        // SKWEEK. Le jeu de Loriciels : une bête rose repeint le sol en
-        // marchant dessus. Ici chaque dalle porte un calcul et le niveau
-        // annonce sa règle : marcher sur une dalle qui la vérifie la repeint,
-        // marcher sur une autre la fait s'effriter. Soixante dalles, soixante
-        // calculs — et l'élève TRIE en se déplaçant au lieu de répondre.
-        id: 'calc-skweek', status: STATUS.TEST, title: 'Skweek',
+        // LE PEINTRE. D'après Skweek, le jeu de Loriciels : une bête rose
+        // repeint le sol en marchant dessus. Ici chaque dalle porte un calcul
+        // et le niveau annonce sa règle : marcher sur une dalle qui la vérifie
+        // la repeint, marcher sur une autre la fait s'effriter. Soixante
+        // dalles, soixante calculs — et l'élève TRIE en se déplaçant au lieu
+        // de répondre.
+        //
+        // L'identifiant reste « calc-skweek » : le renommer effacerait les
+        // statistiques et les parcours déjà enregistrés sous ce nom.
+        id: 'calc-skweek', status: STATUS.TEST, title: 'Le Peintre',
         activityId: 'skweek',
         sansRevision: true,
         skills: ['num.calc.tri'],
@@ -781,7 +868,7 @@ export const calculExercises = [
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain ; le bouton TIR élimine les blobs verts."
+        instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Le bouton TIR élimine les blobs verts, et le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
     },
     {
         // LE SLITHERLINK. Une seule boucle fermée sur un quadrillage de points,

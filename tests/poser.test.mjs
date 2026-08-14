@@ -4,6 +4,7 @@ import './helpers.mjs';
 import {
     decimales, chiffreAuRang, rangsDe, placementAttendu, etendue,
     colonnesAddition, colonnesSoustraction, colonnesMultiplication, poser,
+    lignesMultiplication, colonnesDivision,
     verifierPlacement, attenduEn, premierRang, rangSuivant
 } from '../js/core/poser.js';
 
@@ -245,7 +246,8 @@ test('« poser » aiguille vers la bonne opération, et refuse l\'inconnue', () 
     assert.equal(poser('+', [2, 3]).operation, '+');
     assert.equal(poser('-', [5, 3]).operation, '-');
     assert.equal(poser('×', [5, 3]).operation, '×');
-    assert.throws(() => poser('÷', [6, 3]), /opération inconnue/);
+    assert.equal(poser('÷', [6, 3]).operation, '÷');
+    assert.throws(() => poser('^', [6, 3]), /opération inconnue/);
 });
 
 test('une soustraction négative est refusée, pas maquillée', () => {
@@ -255,4 +257,141 @@ test('une soustraction négative est refusée, pas maquillée', () => {
     assert.throws(() => poser('-', [12.4, 324.5]), /impossible à poser/);
     // Et l'égalité passe : 52 − 52 = 0 se pose très bien.
     assert.equal(colonnesSoustraction(52, 52).resultat, 0);
+});
+
+// --- La multiplication, ligne à ligne ------------------------------------------------
+
+test('chaque ligne de produit partiel s\'écrit chiffre par chiffre, retenues comprises', () => {
+    const m = lignesMultiplication(347, 26);
+    assert.equal(m.resultat, 9022);
+    assert.equal(m.lignes.length, 2);
+
+    // 347 × 6 : 7×6 = 42 → j'écris 2, je retiens 4 ; 4×6 + 4 = 28 → 8, retenue 2 ;
+    // 3×6 + 2 = 20 → 0, retenue 2 ; puis la retenue seule : 2.
+    const l6 = m.lignes[0];
+    assert.equal(l6.chiffre, 6);
+    assert.equal(l6.decalage, 0);
+    assert.deepEqual(l6.cases.map(c => c.chiffre), [2, 8, 0, 2]);
+    assert.deepEqual(l6.cases.map(c => c.position), [0, 1, 2, 3]);
+    assert.deepEqual(l6.cases.map(c => c.retenueEntrante), [0, 4, 2, 2]);
+    // LA RETENUE FINALE N'A PAS DE CHIFFRE EN FACE : c'est ce qu'on oublie.
+    assert.equal(l6.cases[3].chiffreA, null);
+
+    // La deuxième ligne est DÉCALÉE d'un rang : 347 × 2 s'écrit à partir des dizaines.
+    const l2 = m.lignes[1];
+    assert.equal(l2.decalage, 1);
+    assert.equal(l2.cases[0].position, 1);
+    assert.equal(l2.pose, 6940);
+});
+
+test('la retenue de la multiplication s\'ajoute APRÈS le produit, pas avant', () => {
+    // 25 × 4 : 5×4 = 20 → 0 retenue 2 ; puis 2×4 = 8, PLUS 2 = 10.
+    // Un élève qui ajoute la retenue au chiffre écrirait (2+2)×4 = 16 : faux.
+    const m = lignesMultiplication(25, 4);
+    const c = m.lignes[0].cases;
+    assert.equal(c[0].chiffre, 0);
+    assert.equal(c[1].total, 10, '2 × 4 + 2 = 10, et non (2 + 2) × 4');
+    assert.equal(m.resultat, 100);
+});
+
+test('les décimales du produit sont celles des deux facteurs réunies', () => {
+    const m = lignesMultiplication(3.4, 1.2);
+    assert.deepEqual(m.entiers, [34, 12]);
+    assert.equal(m.decimales, 2);
+    assert.equal(m.resultat, 4.08);
+    // On multiplie 34 par 12 : les lignes ne connaissent aucune virgule.
+    assert.equal(m.produitEntier, 408);
+});
+
+test('un seul chiffre au multiplicateur : pas d\'addition à poser', () => {
+    assert.equal(lignesMultiplication(128, 7).sommeAPoser, false);
+    assert.equal(lignesMultiplication(128, 47).sommeAPoser, true);
+});
+
+// --- La division posée ------------------------------------------------------------
+
+test('la potence rend une étape par chiffre abaissé', () => {
+    const d = colonnesDivision(936, 4);
+    assert.equal(d.quotient, 234);
+    assert.equal(d.reste, 0);
+    assert.equal(d.exacte, true);
+    assert.deepEqual(d.etapes.map(e => e.chiffre), [2, 3, 4]);
+    // LE RANG DU CHIFFRE DU QUOTIENT EST CELUI DU CHIFFRE ABAISSÉ.
+    assert.deepEqual(d.etapes.map(e => e.rang), [2, 1, 0]);
+    assert.deepEqual(d.etapes.map(e => e.produit), [8, 12, 16]);
+    assert.deepEqual(d.etapes.map(e => e.reste), [1, 1, 0]);
+});
+
+test('un zéro DANS le quotient s\'écrit ; un zéro de tête, non', () => {
+    // 816 ÷ 4 = 204 : le zéro du milieu est indispensable.
+    const a = colonnesDivision(816, 4);
+    assert.equal(a.quotient, 204);
+    assert.deepEqual(a.etapes.map(e => e.ecrit), [true, true, true]);
+    assert.equal(a.etapes[1].chiffre, 0);
+
+    // 12 ÷ 5 : 1 ÷ 5 ne donne rien, on ne l'écrit pas — le quotient est « 2 »,
+    // pas « 02 ». C'est le « on prend les deux premiers chiffres » de l'école.
+    const b = colonnesDivision(12, 5, { decimalesMax: 1 });
+    assert.deepEqual(b.etapes.map(e => e.ecrit), [false, true, true]);
+    assert.equal(b.quotient, 2.4);
+});
+
+test('LA VIRGULE DU QUOTIENT TOMBE OÙ CELLE DU DIVIDENDE EST ABAISSÉE', () => {
+    // Ce n'est pas une convention à retenir : c'est la conséquence du rang.
+    const d = colonnesDivision(9.36, 4);
+    assert.equal(d.quotient, 2.34);
+    assert.equal(d.rangVirgule, -2);
+    const apres = d.etapes.filter(e => e.apresVirgule).map(e => e.chiffre);
+    assert.deepEqual(apres, [3, 4]);
+});
+
+test('on prolonge en abaissant des zéros, et le reste suit le rang atteint', () => {
+    const exact = colonnesDivision(12, 5, { decimalesMax: 2 });
+    assert.equal(exact.quotient, 2.4);
+    assert.equal(exact.exacte, true);
+    assert.equal(exact.reste, 0);
+
+    const sansFin = colonnesDivision(7, 3, { decimalesMax: 3 });
+    assert.equal(sansFin.quotient, 2.333);
+    assert.equal(sansFin.exacte, false);
+    // Le reste vaut ce qui traîne AU RANG ATTEINT, pas un entier nu.
+    assert.equal(sansFin.reste, 0.001);
+});
+
+test('la division entière garde son reste', () => {
+    const d = colonnesDivision(47, 6);
+    assert.equal(d.quotient, 7);
+    assert.equal(d.reste, 5);
+    assert.equal(d.exacte, false);
+    assert.equal(d.decimalesQuotient, 0);
+});
+
+test('ce qu\'on ne pose pas : diviser par zéro, par un décimal, un dividende négatif', () => {
+    // Diviser par 0,4 se fait en déplaçant la virgule des DEUX nombres : c'est
+    // un autre exercice, et le faire silencieusement enseignerait une méthode
+    // que l'élève ne verra nulle part ailleurs.
+    assert.throws(() => colonnesDivision(12, 0), /zéro/);
+    assert.throws(() => colonnesDivision(12, 0.4), /entier/);
+    assert.throws(() => colonnesDivision(-12, 4), /négatif/);
+});
+
+test('poser() aiguille vers les quatre opérations', () => {
+    assert.equal(poser('×', [347, 26]).lignes.length, 2);
+    assert.equal(poser('÷', [936, 4]).quotient, 234);
+    assert.equal(poser('÷', [7, 2], { decimalesMax: 1 }).quotient, 3.5);
+    assert.throws(() => poser('^', [2, 3]), /inconnue/);
+});
+
+test('la potence tombe juste sur cent divisions tirées au hasard', () => {
+    // Une vérification par le résultat : quotient × diviseur + reste = dividende.
+    // C'est l'égalité euclidienne, et elle ne pardonne rien.
+    let graine = 7;
+    const suivant = (n) => (graine = (graine * 1103515245 + 12345) % 2147483648) % n;
+    for (let i = 0; i < 100; i++) {
+        const a = suivant(9000) + 10;
+        const b = suivant(20) + 2;
+        const d = colonnesDivision(a, b);
+        assert.equal(d.quotient * b + d.reste, a, `${a} ÷ ${b}`);
+        assert.ok(d.reste >= 0 && d.reste < b, `reste hors bornes pour ${a} ÷ ${b}`);
+    }
 });
