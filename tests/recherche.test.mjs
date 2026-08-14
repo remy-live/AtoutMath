@@ -189,3 +189,21 @@ test('aucun titre du catalogue ne devient introuvable par son propre nom', () =>
     }
     assert.deepEqual(perdus, []);
 });
+
+test('les mots-clefs du catalogue se cherchent', () => {
+    // Ils remplacent le troisième niveau de chemin : « Tables de
+    // Multiplication » coupait le calcul mental en deux dans l'arbre, et l'on
+    // n'y retrouvait plus les tables. Un mot-clef ne range rien — il se
+    // cherche, et c'est tout ce qu'on lui demandait.
+    const fiches = [
+        preparer({ id: 'a', titre: 'Flash Mult', chemin: ['Numérique', 'Calcul Mental'],
+            niveaux: ['6ème'], motsCles: ['tables', 'multiplication'], texte: '' }),
+        preparer({ id: 'b', titre: 'Additions Mystères', chemin: ['Numérique', 'Calcul Mental'],
+            niveaux: ['6ème'], motsCles: [], texte: '' })
+    ];
+    const trouves = chercher(fiches, 'tables').map(r => r.fiche.id);
+    assert.deepEqual(trouves, ['a'], 'le mot-clef doit suffire à retrouver la fiche');
+    // Et il RESSERRE comme les autres mots : « tables 6e » ne rend que celle-là.
+    assert.deepEqual(chercher(fiches, 'tables 6ème').map(r => r.fiche.id), ['a']);
+    assert.deepEqual(chercher(fiches, 'mystères').map(r => r.fiche.id), ['b']);
+});

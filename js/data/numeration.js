@@ -99,6 +99,7 @@ export const numerationExercises = [
         title: 'Décomposer, Recomposer',
         generatorId: 'num.decomposition', activityId: 'numpad',
         params: { sens: 'libre' },
+        motsClefs: ['décomposition'],
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
         instruction: "Retrouve le nombre, ou le terme qui manque dans sa décomposition."
     },
@@ -122,6 +123,7 @@ export const numerationExercises = [
         id: 'num-egypte', title: 'Les Nombres des Pharaons',
         generatorId: 'num.egypte', activityId: 'numpad',
         params: { max: 10000 },
+        motsClefs: ['égypte', 'hiéroglyphes'],
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
         instruction: "Bâton = 1, anse = 10, corde = 100, lotus = 1 000, doigt = 10 000. Additionne !"
     },
@@ -129,6 +131,7 @@ export const numerationExercises = [
         id: 'num-egypte-qcm', title: 'Hiéroglyphes Express',
         generatorId: 'num.egypte', activityId: 'bubbles',
         params: { max: 1000 },
+        motsClefs: ['égypte', 'hiéroglyphes'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
         instruction: "Lis le nombre égyptien et choisis la bonne réponse."
     },

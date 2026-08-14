@@ -160,9 +160,18 @@ export function genererVague(etat, rng) {
     const veut = etat.mode === 'positifs' ? 'positif' : 'negatif';
     const contraire = veut === 'positif' ? 'negatif' : 'positif';
     objets = [];
-    // Au moins un de chaque, le reste au hasard : c'est ce qui garantit qu'il
-    // y a réellement à trier.
-    const plan = [veut, contraire, ...Array.from({ length: n - 2 }, () => (rng.bool() ? veut : contraire))];
+    // MOITIÉ-MOITIÉ, et non un tirage à pile ou face par objet.
+    //
+    // Au hasard, une vague de six pouvait ne contenir qu'UNE seule cible : si
+    // elle passait pendant qu'on calculait les cinq autres, on perdait un cœur
+    // sans avoir rien fait de faux, et le jeu paraissait injuste. Une vague
+    // équilibrée donne toujours de quoi trancher, et le tri reste entier — il
+    // faut encore décider, pour chaque objet, de quel côté il tombe.
+    const cibles = Math.max(1, Math.round(n / 2));
+    const plan = [
+        ...Array.from({ length: cibles }, () => veut),
+        ...Array.from({ length: n - cibles }, () => contraire)
+    ];
     for (const quoi of rng.shuffle(plan)) {
         const c = tirerCalcul(rng, quoi);
         objets.push({

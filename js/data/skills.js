@@ -48,7 +48,7 @@ const BASE = {
     },
     'num.mult.sens': {
         label: 'Sens de la multiplication',
-        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL, TAGS.THEME.TABLES],
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
         niveaux: [N.CM2, N.SIXIEME],
         prereqs: ['num.add.entiers'],
         descriptor: 'Comprendre la multiplication comme une addition répétée.',
@@ -56,7 +56,7 @@ const BASE = {
     },
     'num.mult.facteur-manquant': {
         label: 'Trouver un facteur manquant',
-        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL, TAGS.THEME.TABLES],
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
         niveaux: [N.SIXIEME, N.CINQUIEME],
         prereqs: ['num.mult.sens'],
         descriptor: 'Résoudre 7 × ? = 56 en mobilisant la table correspondante.',
@@ -623,7 +623,7 @@ const TABLE_NIVEAUX = { 1: [N.CM2], 2: [N.CM2], 3: [N.CM2], 4: [N.CM2], 5: [N.CM
 for (let t = 1; t <= 10; t++) {
     BASE[`num.mult.table.${t}`] = {
         label: `Table de ${t}`,
-        chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES],
+        chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
         niveaux: [...(TABLE_NIVEAUX[t] || []), N.SIXIEME],
         prereqs: ['num.mult.sens'],
         descriptor: `Restituer instantanément les produits de la table de ${t}.`,

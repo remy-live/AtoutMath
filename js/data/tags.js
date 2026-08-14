@@ -21,10 +21,10 @@ export const TAGS = {
         DUREES: "Heures et Durées",
         PROBLEMES: "Résolution de Problèmes"
     },
-    // Niveau de regroupement optionnel, sous un SOUS_DOMAINE (ex: Numérique > Calcul Mental > Tables de Multiplication)
-    THEME: {
-        TABLES: "Tables de Multiplication"
-    },
+    // Le troisième niveau de chemin a été retiré : « Tables de Multiplication »
+    // coupait le calcul mental en deux dans l'arbre, et l'on ne trouvait plus
+    // les tables sous « Calcul Mental ». C'est devenu un MOT-CLEF, qui se
+    // cherche et ne range rien.
     NIVEAU: {
         CM2: "CM2",
         SIXIEME: "6ème",

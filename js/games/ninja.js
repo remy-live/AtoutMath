@@ -48,6 +48,18 @@ const COEUR = 0.7;
  */
 const LENTEUR_ZEROS = 1.7;
 
+/**
+ * ET UN CALCUL DEMANDE PLUS QU'UNE LECTURE. « −7 + 4 » n'est pas « 7 » : il
+ * faut poser l'opération dans sa tête avant de savoir si le résultat est
+ * positif. À pleine vitesse, l'élève tranche au flair — ou regarde passer la
+ * seule bonne réponse de la vague, et perd un cœur sans avoir rien fait de
+ * faux. Un tiers de temps en plus suffit à rendre la décision possible.
+ */
+const LENTEUR_CALCUL = 1.35;
+
+const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS
+    : (mode === 'positifs' || mode === 'negatifs' ? LENTEUR_CALCUL : 1));
+
 function auCoeur(el, x, y) {
     const r = el.getBoundingClientRect();
     const dx = (x - (r.left + r.width / 2)) / (r.width / 2);
@@ -393,7 +405,7 @@ class Ninja extends BaseGame {
         // secondes et demie de vol, et un sommet qui frôle le haut de la
         // scène. La cloche précédente montait moins et allait plus vite : on
         // voyait la bulle avant d'avoir fini de lire le calcul qu'elle porte.
-        const g = haut * 0.000104 / (this.mode === 'zeros' ? LENTEUR_ZEROS * LENTEUR_ZEROS : 1);
+        const g = haut * 0.000104 / (lenteurDe(this.mode) ** 2);
         let vivantes = 0;
         this.majSabre();
 

@@ -43,7 +43,14 @@ export function ficheDe(exo) {
             titre: exo.title,
             chemin: exo.tags?.chemin || [],
             niveaux: exo.tags?.niveaux || [],
-            motsCles: [isGame(exo) ? 'jeu jeux' : '', estADeux(exo) ? 'deux joueurs duo a deux' : ''].filter(Boolean),
+            // Les mots-clefs du catalogue entrent ici : c'est ce qui remplace
+            // le troisième niveau de chemin. « tables » ne RANGE plus rien,
+            // mais il se cherche — et c'est tout ce qu'on lui demandait.
+            motsCles: [
+                isGame(exo) ? 'jeu jeux' : '',
+                estADeux(exo) ? 'deux joueurs duo a deux' : '',
+                ...(exo.motsClefs || [])
+            ].filter(Boolean),
             texte: exo.instruction || '',
             jeu: isGame(exo),
             duo: estADeux(exo)

@@ -46,7 +46,8 @@ export const calculExercises = [
         title: 'Flash Mult',
         generatorId: 'calc.mult.fact', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Choisis la bulle qui contient le résultat correct de la multiplication."
     },
     {
@@ -56,7 +57,8 @@ export const calculExercises = [
         title: 'Table de Pythagore',
         generatorId: 'calc.mult.fact', activityId: 'pythagore',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Le résultat est donné, la table est vide : clique une case dont ligne × colonne fait ce résultat. Toutes les décompositions justes sont acceptées (6×7 comme 7×6)."
     },
     {
@@ -66,7 +68,8 @@ export const calculExercises = [
         title: 'Facteur Manquant',
         generatorId: 'calc.mult.missing', activityId: 'digicode',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Trouve le nombre manquant dans l'égalité et sélectionne-le sur le digicode."
     },
     {
@@ -128,7 +131,8 @@ export const calculExercises = [
         title: 'Taupes des Tables',
         generatorId: 'calc.mult.fact', activityId: 'moles',
         params: { tables: [6, 7, 8, 9], timeLimit: 60, minScore: 10 },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Tape sur la taupe qui porte le bon produit !"
     },
 
@@ -141,7 +145,8 @@ export const calculExercises = [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['easy', 'medium', 'hard'], default: 'medium' }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Ton vaisseau suit ta souris (ou ton doigt). Tire sur toutes les météorites qui portent un MAUVAIS résultat, et attrape la BONNE réponse avec ton vaisseau !"
     },
     {
@@ -152,7 +157,8 @@ export const calculExercises = [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'pairs', type: 'select', label: 'Nombre de paires', options: [4, 6, 8, 10], default: 6 }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Associe chaque opération à son résultat pour nettoyer le plateau !"
     },
     {
@@ -202,7 +208,8 @@ export const calculExercises = [
             { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
             { id: 'entrePortes', type: 'number', label: 'Secondes entre deux murs', min: 8, max: 40, default: 18 }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul — doigt posé pour charger le rayon lourd, double tape pour la bombe NOVA. Deux épreuves de calcul alternent : les MURS (franchis la porte du bon résultat) et les CONVOIS (place-toi sous le transporteur du bon résultat pour l'abattre). Chaque bonne porte ouvre le secteur suivant, plus dur : chasseurs, plongeurs kamikazes, blindés, tireurs d'élite — et tout ce qui te touche fait mal."
     },
     {
@@ -224,7 +231,8 @@ export const calculExercises = [
                 ]
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
     },
     {
@@ -313,7 +321,8 @@ export const calculExercises = [
             { id: 'tables', type: 'multiselect', label: 'Tables', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'speed', type: 'number', label: 'Vitesse de chute (ms)', default: 1000 }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Combine les blocs pour que leur produit donne la cible demandée !"
     },
     {
@@ -343,7 +352,8 @@ export const calculExercises = [
                 default: 'mul'
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         deuxJoueurs: true,
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
@@ -381,7 +391,8 @@ export const calculExercises = [
                 default: false
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "À DEUX sur la même tablette. Un nombre de la table de Pythagore tombe — 36 — et celui dont c'est le tour clôture une parcelle de 36 cases : 6 × 6, 4 × 9, 3 × 12, comme il veut, où il veut. Glisse le doigt d'un coin à l'autre : l'aire s'affiche pendant le tracé. Le premier qui ne peut plus poser a perdu. Rien n'est enregistré dans le profil : c'est un duel."
     },
     {
@@ -453,7 +464,8 @@ export const calculExercises = [
                 default: 'ch1'
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat. Un bloc poussé GLISSE jusqu'au premier obstacle : s'il s'arrête sur la dalle qui porte son résultat, il se pose — et devient lui-même un mur. Touche un bloc, puis la case d'arrivée (ou balaye du doigt). Sur les derniers niveaux, deux blocs valent la même chose : le calcul ne suffit plus, il faut choisir lequel va où."
     },
     {
@@ -537,7 +549,7 @@ export const calculExercises = [
                 default: 'moyen'
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
         instruction: "Les règles complètes : roque, prise en passant, promotion (à la dame), pat. Le but n'est pas de tout prendre — c'est le roi adverse. Touche une pièce pour voir ses coups ; ton roi s'allume en rouge quand il est en échec. Contre l'ordinateur, commence en Débutant : il voit un coup devant lui et se trompe souvent, c'est fait pour."
     },
     {
@@ -585,7 +597,7 @@ export const calculExercises = [
                 default: ''
             }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
         instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
     },
     {

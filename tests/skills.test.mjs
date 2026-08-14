@@ -49,14 +49,18 @@ test('aucune compétence n\'est son propre prérequis, ni ne boucle', () => {
 test('les chemins n\'utilisent que des étiquettes déclarées', () => {
     // Un segment inventé crée un dossier fantôme dans le catalogue — c'est
     // exactement ce qui avait rangé l'Escadrille des Tables dans « undefined ».
+    // Deux niveaux, et deux seulement : domaine puis sous-domaine. Le
+    // troisième niveau (« Tables de Multiplication ») a été retiré — il
+    // coupait le calcul mental en deux et l'on n'y retrouvait plus les tables.
     const connus = new Set([
         ...Object.values(TAGS.DOMAINE),
-        ...Object.values(TAGS.SOUS_DOMAINE),
-        ...Object.values(TAGS.THEME)
+        ...Object.values(TAGS.SOUS_DOMAINE)
     ]);
     const inconnus = [];
     for (const id of IDS) {
-        SKILLS[id].chemin.forEach(seg => {
+        const chemin = SKILLS[id].chemin;
+        if (chemin.length > 2) inconnus.push(`${id} : chemin à ${chemin.length} niveaux`);
+        chemin.forEach(seg => {
             if (typeof seg !== 'string' || !connus.has(seg)) inconnus.push(`${id} : ${seg}`);
         });
     }

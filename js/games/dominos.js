@@ -144,8 +144,13 @@ class Dominos extends BaseGame {
                 }
                 .dm-piece--reserve .dm-demi + .dm-demi { border-top: 2px solid var(--text-main); border-left: 0; }
                 .dm-piece--reserve:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.17); }
+                /* LA PIÈCE QUI VOLE PASSE AU-DESSUS DE LA COUCHE DE JEU.
+                   Avec un z-index de 9999 elle glissait SOUS cette couche, qui
+                   est à 10000 : le fantôme existait, suivait le doigt, et ne se
+                   voyait pas. Une pièce qu'on déplace doit être au-dessus de
+                   TOUT — c'est la seule chose qui bouge à ce moment-là. */
                 .dm-piece--vole {
-                    position: fixed; z-index: 9999; pointer-events: none; cursor: grabbing;
+                    position: fixed; z-index: 100000; pointer-events: none; cursor: grabbing;
                     box-shadow: 0 10px 26px rgba(0,0,0,.3); opacity: .95;
                 }
 
