@@ -292,13 +292,33 @@ export function lireRetest(texte) {
  * Remet les exercices repris dans la liste « à faire », en gardant leur
  * ancienne note. On n'EFFACE pas le verdict précédent : savoir que c'était
  * cassé la dernière fois est utile pendant qu'on reteste.
+ *
+ * UN EXERCICE ABSENT DU CARNET EST AJOUTÉ. La consigne ne marquait que les
+ * lignes déjà présentes : sur un appareil neuf, ou après un carnet vidé, une
+ * chaîne de cinquante exercices ne produisait AUCUNE ligne à retester et la
+ * liste restait vide sans qu'on comprenne pourquoi. La demande de vérification
+ * ne dépend pas de ce qu'on avait déjà noté — elle dit ce qui a changé.
  */
 export function marquerARetester(carnet, consigne, quand = 0) {
     if (!consigne) return carnet;
     const parId = new Map(consigne.exercices.map(e => [e.exercice, e]));
-    const lignes = carnet.lignes.map(l => (parId.has(l.exercice)
-        ? { ...l, aRetester: { version: consigne.version, quoi: parId.get(l.exercice).quoi, depuis: quand } }
-        : l));
+    const marque = (e) => ({ version: consigne.version, quoi: e.quoi, depuis: quand });
+    const vus = new Set();
+    const lignes = carnet.lignes.map(l => {
+        if (!parId.has(l.exercice)) return l;
+        vus.add(l.exercice);
+        return { ...l, aRetester: marque(parId.get(l.exercice)) };
+    });
+    for (const [id, e] of parId) {
+        if (vus.has(id)) continue;
+        lignes.push({
+            exercice: id, titre: '', activite: '',
+            appareilNom: nommerAppareil(carnet.appareil),
+            version: carnet.version || '', date: 0,
+            verdicts: {}, note: '', classement: null, tags: null,
+            aRetester: marque(e)
+        });
+    }
     return { ...carnet, lignes };
 }
 

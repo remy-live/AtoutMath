@@ -319,8 +319,11 @@ test('une consigne de RETEST se colle et remet les exercices à faire', () => {
     assert.match(consigne.exercices[0].quoi, /silhouette/);
 
     const c1 = marquerARetester(c0, consigne, 42);
-    assert.equal(aRetester(c1).length, 1, 'seul l\'exercice déjà noté est repris');
-    assert.equal(aRetester(c1)[0].exercice, 'geo-tangram');
+    // LES DEUX sont à retester, y compris celui qui n'était pas encore noté :
+    // la consigne dit ce qui a CHANGÉ, pas ce qu'on avait déjà vu.
+    assert.equal(aRetester(c1).length, 2);
+    assert.deepEqual(aRetester(c1).map(l => l.exercice).sort(),
+        ['geo-tangram', 'logi-dominos']);
     // Il redevient « à faire » : son ancien verdict ne dit plus rien de la
     // version qu'on a sous les yeux.
     const apres = avancement(c1, [{ id: 'geo-tangram' }, { id: 'geo-solides-denombrer' }]);
@@ -328,6 +331,15 @@ test('une consigne de RETEST se colle et remet les exercices à faire', () => {
     assert.deepEqual(apres.restants, ['geo-tangram']);
     // Mais l'ancienne note reste lisible pendant qu'on reteste.
     assert.equal(ligneDe(c1, 'geo-tangram', nommerAppareil(c1.appareil)).verdicts.marche, 'ko');
+
+    // SUR UN CARNET VIDE — appareil neuf, ou carnet effacé — la consigne doit
+    // quand même produire une liste à retester. Sinon on colle cinquante
+    // exercices et il ne se passe rien, sans qu'on comprenne pourquoi.
+    const neuf = marquerARetester(
+        nouveauCarnet({ appareil: { nom: 'Tablette' }, version: 'v175' }), consigne, 42);
+    assert.equal(aRetester(neuf).length, 2);
+    assert.equal(aRetester(neuf)[0].verdicts && Object.keys(aRetester(neuf)[0].verdicts).length, 0,
+        'une ligne créée par la consigne ne prétend pas avoir été testée');
 
     // Et un texte qui n'est pas une consigne ne l'est pas.
     assert.equal(lireRetest('bonjour, peux-tu corriger le tangram ?'), null);
