@@ -1433,12 +1433,22 @@ export const RENDUS = {
         previewGrille: redactionPreviewHtml,
         pdfGrille: dessinerRedactionPdf,
         // Ce bloc n'est pas carré : il lui faut la largeur d'une colonne et la
-        // hauteur d'une figure plus trois lignes d'écriture.
-        proportions: { w: 1, h: 0.72 },
+        // hauteur d'une figure plus SEPT lignes d'écriture — deux pour « Je
+        // sais que », trois pour « Or » (qui porte la propriété du cours), deux
+        // pour « Donc ». À 0,72 les interlignes se serraient au point qu'on ne
+        // pouvait plus écrire entre deux pointillés.
+        proportions: { w: 1, h: 0.88 },
         // DEUX PAR LIGNE, et pas ce que la largeur permettrait. Une grille se
         // contente d'être lisible ; ici l'élève doit ÉCRIRE trois phrases sur
         // la ligne, dont la propriété du cours en entier. À trois par ligne,
         // il reste cinq centimètres par phrase.
+        //
+        // `parLigneDefaut` ne réglait que la fiche composée : la fenêtre
+        // d'impression, elle, restait sur son 3 × 4 d'usine et servait douze
+        // rédactions par page, à onze pixels d'interligne. La disposition le
+        // dit maintenant aussi — six par page, et de quoi écrire entre les
+        // pointillés.
+        disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
         parLigneDefaut: 2
     },
     sudoku: {

@@ -61,13 +61,24 @@ export function texteImprime(texte, reponse) {
     // laissait un « = + 40 » qui ne veut rien dire. D'où l'ancrage en fin.
     let t = String(texte ?? '').replace(/([=\u2248])\s*\?\s*$/, '$1');
     // Assez large pour la réponse, et jamais moins que la marque remplacée.
-    const large = Math.max(TROU_MIN + 1, String(reponse ?? '').length + 2);
+    // Trois caractères de plus que la réponse attendue : un élève de sixième
+    // n'écrit pas au millimètre, et un « 7 000 » posé dans la largeur exacte
+    // de « 7 000 » déborde sur le signe d'après.
+    const large = Math.max(TROU_MIN + 2, String(reponse ?? '').length + 3);
+    // LE TROU NE TOUCHE PAS LES SIGNES QUI L'ENTOURENT.
+    //
+    // « 8 + ? = 10 » devenait « 8 +.........= 10 » : la mise en page prend
+    // toute suite de trois espaces pour un trou, y compris les espaces de
+    // ponctuation qui bordent le « ? ». Les pointillés partaient donc du « + »
+    // et venaient buter contre le « = ». On borde le trou d'espaces INSÉCABLES,
+    // que le repérage ne ramasse pas : « 8 + ......... = 10 ».
+    const trou = `\u00A0${' '.repeat(large)}\u00A0`;
     // Un trou peut aussi FINIR l'énoncé — « 7 677 = 7 000 + 600 + 70 + ? ».
     // Ce qui distingue ce « ? » de celui d'une vraie question, c'est ce qui le
     // précède : un opérateur, jamais un mot.
-    t = t.replace(/([+\-\u2212\u00D7\u00F7*/])(\s*)\?\s*$/, (m, op) => op + ' '.repeat(large));
-    t = t.replace(/(\?|…|\.{2,})(?=\s*\S)/g, ' '.repeat(large));
-    return t.replace(/\s+$/, '');
+    t = t.replace(/([+\-\u2212\u00D7\u00F7*/])(\s*)\?\s*$/, (m, op) => op + trou);
+    t = t.replace(/(\?|…|\.{2,})(?=\s*\S)/g, trou);
+    return t.replace(/[\s\u00A0]+$/, '');
 }
 
 /**
@@ -116,7 +127,10 @@ export function couperEnLignes(texte, largeur, taille, mesurer) {
         // espaces » écrasait la place laissée pour écrire : « 52 085 =    +
         // 2 000 » redevenait « 52 085 = + 2 000 », un énoncé sans trou et sans
         // le moindre sens. On isole donc les blancs longs avant de découper.
-        const mots = paragraphe.split(/( {3,})|\s+/).filter(Boolean);
+        // On ne coupe QUE sur les espaces ordinaires : l'insécable qui borde un
+        // trou fait corps avec le signe qu'il protège, et c'est lui qui garde
+        // les pointillés à distance du « + » et du « = ».
+        const mots = paragraphe.split(/( {3,})|[ \t\r\n]+/).filter(Boolean);
         if (!mots.length) { lignes.push(''); continue; }
         let courante = '';
         for (let mot of mots) {

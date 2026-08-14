@@ -110,6 +110,13 @@ function assurerModale() {
                         <option value="3">3</option><option value="4">4</option>
                         <option value="5">5</option><option value="6">6</option>
                     </select></label>
+                <label>Place pour répondre
+                    <select id="fq-lignes-rep" class="cfg-input">
+                        <option value="0">Sur la ligne</option>
+                        <option value="1">1 ligne dessous</option>
+                        <option value="3">3 lignes — « Je sais que… »</option>
+                        <option value="5">5 lignes — rédaction complète</option>
+                    </select></label>
                 <label class="fq-case"><input type="checkbox" id="fq-champs">
                     Champs remplissables (PDF)</label>
                 <label class="fq-case"><input type="checkbox" id="fq-numeroter" checked>
@@ -196,6 +203,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');
     const consigneEl = modal.querySelector('#fq-consigne');
+    const lignesRepEl = modal.querySelector('#fq-lignes-rep');
     const mesurer = mesureur();
 
     // La consigne de la feuille. Celle de l'écran parle de toucher, de glisser
@@ -219,7 +227,12 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         orientation: orientEl.value,
         champs: champsEl.checked,
         numeroter: numEl.checked,
-        colonnes: colsEl.value === 'auto' ? null : Number(colsEl.value)
+        colonnes: colsEl.value === 'auto' ? null : Number(colsEl.value),
+        // LA PLACE POUR RÉDIGER. Un « Je sais que… / or… / donc… » ne tient
+        // pas au bout d'une ligne de pointillés : il lui faut trois lignes
+        // pleine largeur, et c'est au professeur de le décider — lui seul sait
+        // s'il attend un résultat ou un raisonnement.
+        lignesReponse: Number(lignesRepEl.value) || 0
     });
 
     // Le nombre de colonnes de la feuille de solutions n'est pas un réglage à
@@ -240,13 +253,18 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
         questions.length = nb;
     };
 
+    // `ligneReponse` est une HAUTEUR en millimètres : n lignes d'écriture en
+    // valent n fois une. Zéro laisse la réponse au bout de l'énoncé.
     const composer = (o) => composerBlocs([{
         titre: exo.title,
         consigne: consigneEl.value,
         questions,
         colonnes: o.colonnes,
         numeroter: o.numeroter
-    }], { avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs }, mesurer);
+    }], {
+        avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs,
+        ...(o.lignesReponse ? { ligneReponse: 7 * o.lignesReponse, interrogation: true } : {})
+    }, mesurer);
 
     const rendre = () => {
         const o = lire();
@@ -290,6 +308,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     };
 
     consigneEl.oninput = rendre;
+    lignesRepEl.onchange = rendre;
     nbEl.oninput = rendre;
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;

@@ -3344,11 +3344,15 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     overflow: hidden;
 }
 .fx-red-ligne b { font-weight: 800; }
-/* Sans réponse, la place à écrire est un filet pointillé, comme sur la fiche. */
+/* Sans réponse, la place à écrire est un filet pointillé, comme sur la fiche.
+   Il court jusqu'au BOUT de la ligne : à 60 % de la largeur, il s'arrêtait au
+   milieu de la page et l'élève croyait devoir tenir dans ce qui restait —
+   alors qu'on lui demande d'écrire une propriété du cours en entier. */
 .fx-red-vide {
-    display: inline-block; width: 60%; border-bottom: 1px dotted #a8b0bf;
-    vertical-align: bottom; height: .9em;
+    display: inline-block; width: auto; flex: 1 1 auto;
+    border-bottom: 1px dotted #a8b0bf; vertical-align: bottom; height: .9em;
 }
+.fx-red-ligne { display: flex; align-items: baseline; gap: 4px; }
 .fx-red-sol { color: #3c4658; }
 /* Une case (ou une ligne) qui deviendra un champ de saisie dans le PDF : on la
    TEINTE dans l'aperçu, pour que le professeur voie où l'élève pourra écrire
