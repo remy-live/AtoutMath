@@ -2896,6 +2896,15 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 6px; width: min(230px, 68vw);
 }
+/* ÉCRAN COURT : le pavé cède avant le plateau. Sur un téléphone, la colonne
+   entière ne tenait pas et c'est la scène qui se tassait à son plancher — or
+   c'est elle qu'on regarde, l'immeuble et ses étages. Onze touches un peu
+   moins hautes lui rendent une soixantaine de pixels, et restent larges au
+   doigt. */
+@container plateau (max-height: 780px) {
+    .rl-touche { padding: 7px 0; font-size: 1.05rem; }
+    .rl-champ b { min-width: 74px; padding: 4px 10px; font-size: 1.3rem; }
+}
 .rl-touche {
     padding: 10px 0; border-radius: 10px; border: 2px solid var(--border);
     background: var(--bg-panel); color: var(--text-main);

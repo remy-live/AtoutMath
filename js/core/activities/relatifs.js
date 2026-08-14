@@ -29,6 +29,9 @@ export function mount(container, session) {
     let destroyed = false;
     let cursor = null, gate = null;
     let cnv = null, ctx = null, item = null, etat = null;
+    // Le pavé de la question courante : le plateau y écrit quand un geste vaut
+    // une réponse (voir la cabine de l'ascenseur).
+    let pave = null;
     let rafId = null;
     let observateur = null;
     const nettoyeurs = [];
@@ -86,6 +89,7 @@ export function mount(container, session) {
             rouges: Math.max(0, m.depart) + Math.max(0, m.deplacements[0]),
             bleues: -Math.min(0, m.depart) - Math.min(0, m.deplacements[0]),
             barreR: new Set(), barreB: new Set(), paires: [], choix: null,
+            prise: false,           // la cabine de l'ascenseur est-elle tenue ?
             juste: null,
             fige: false
         };
@@ -154,7 +158,11 @@ export function mount(container, session) {
             : (d >= 0 ? 'vers le haut' : 'vers le bas');
         el.textContent = etat.pas > 0
             ? `${nb(etat.depart)} puis ${etat.pas} cran${etat.pas > 1 ? 's' : ''} ${sens} → ${nb(Math.round(etat.curseur))}`
-            : `On part de ${nb(etat.depart)}.`;
+            // On DIT que la cabine se tire : un plateau manipulable dont
+            // personne ne sait qu'il l'est ne vaut pas mieux qu'une image.
+            : (etat.modele === 'ascenseur'
+                ? `On part du ${etiquetteEtage(etat.depart) === 'RDC' ? 'rez-de-chaussée' : `${etiquetteEtage(etat.depart)}e étage`}. Tire la cabine jusqu'à l'étage d'arrivée.`
+                : `On part de ${nb(etat.depart)}.`);
     }
 
     // --- Dessin ---------------------------------------------------------------
@@ -175,6 +183,7 @@ export function mount(container, session) {
         ctx.clearRect(0, 0, w, h);
         if (etat.modele === 'pastilles') dessinerPastilles(w, h);
         else if (etat.modele === 'ecriture') dessinerDroite(w, h);
+        else if (etat.modele === 'ascenseur') dessinerAscenseur(w, h);
         else dessinerColonne(w, h);
     }
 
@@ -186,7 +195,165 @@ export function mount(container, session) {
         return { pas: utile / n, zero: marge, place: (v) => marge + (v - etat.min) * (utile / n) };
     }
 
-    /** La colonne verticale : ascenseur ou thermomètre. */
+    // --- L'ASCENSEUR -----------------------------------------------------------
+    //
+    // C'était une gouttière grise et une pastille bleue portant « ▮▮ » : rien
+    // n'y disait l'immeuble, donc rien n'y disait qu'un étage NÉGATIF est un
+    // sous-sol — c'est pourtant tout ce que ce décor a à apprendre. On dessine
+    // maintenant la façade, ses paliers, ses fenêtres, la ligne de sol qui
+    // sépare les étages des sous-sols, la cage et son câble.
+    //
+    // ET LA CABINE SE TIRE. L'élève tapait le résultat d'un calcul qu'il
+    // faisait ailleurs ; il peut désormais AMENER l'ascenseur à l'étage
+    // d'arrivée, ce qui est exactement le geste que le modèle raconte. La
+    // cabine s'aimante au palier le plus proche et inscrit l'étage dans le
+    // pavé — la validation reste au même endroit qu'avant.
+
+    /** La géométrie de l'immeuble, partagée par le dessin et par le doigt. */
+    function plansAscenseur(w, h) {
+        const e = echelle(h);
+        const y = (v) => h - e.place(v);
+        const axeX = w * 0.46;
+        const pas = e.pas;
+        // La cabine ne dépasse jamais la hauteur d'un palier : plus haute, elle
+        // ne serait plus « à un étage ».
+        const cage = Math.max(34, Math.min(w * 0.24, pas * 1.6));
+        const cabineH = Math.max(16, Math.min(pas * 0.86, cage * 0.9));
+        return {
+            e, y, axeX, pas, cage, cabineH,
+            gauche: axeX - cage / 2, droite: axeX + cage / 2,
+            faceG: axeX - cage / 2 - cage * 0.9, faceD: axeX + cage / 2 + cage * 0.9,
+            haut: y(etat.max) - pas * 0.55, bas: y(etat.min) + pas * 0.55
+        };
+    }
+
+    function dessinerAscenseur(w, h) {
+        const c = ctx;
+        const g = plansAscenseur(w, h);
+        const { y, axeX, pas, cage, cabineH, gauche, droite, faceG, faceD, haut, bas } = g;
+
+        // 1. L'IMMEUBLE, et le sol qui coupe les étages des sous-sols.
+        c.save();
+        c.fillStyle = 'rgba(148,163,184,.13)';
+        c.strokeStyle = 'rgba(100,116,139,.34)'; c.lineWidth = 1.5;
+        c.beginPath(); c.roundRect(faceG, haut, faceD - faceG, bas - haut, 9); c.fill(); c.stroke();
+        if (etat.min < 0) {
+            c.fillStyle = 'rgba(30,41,59,.13)';
+            c.beginPath(); c.rect(faceG, y(0), faceD - faceG, bas - y(0)); c.fill();
+        }
+        // Le toit : un simple débord, mais il dit « immeuble » d'un coup d'œil.
+        c.fillStyle = 'rgba(100,116,139,.32)';
+        c.beginPath(); c.roundRect(faceG - 6, haut - 8, faceD - faceG + 12, 8, 3); c.fill();
+        c.restore();
+
+        // 2. LES PALIERS et leurs fenêtres. Les fenêtres allumées sont tirées du
+        //    numéro d'étage, jamais du hasard : sinon elles clignoteraient à
+        //    chaque image.
+        c.save();
+        const fenH = Math.max(4, Math.min(pas * 0.34, cage * 0.34));
+        const fenW = Math.max(5, cage * 0.44);
+        for (let v = etat.min; v <= etat.max; v++) {
+            const yy = y(v);
+            c.strokeStyle = v === 0 ? 'rgba(15,23,42,.62)' : 'rgba(100,116,139,.28)';
+            c.lineWidth = v === 0 ? 2.6 : 1;
+            c.beginPath();
+            c.moveTo(faceG - (v === 0 ? 7 : 0), yy + pas * 0.5);
+            c.lineTo(faceD + (v === 0 ? 7 : 0), yy + pas * 0.5);
+            c.stroke();
+            if (fenH < 4.5) continue;
+            for (const cx of [(faceG + gauche) / 2, (droite + faceD) / 2]) {
+                const allumee = ((v * 7 + Math.round(cx)) % 3) === 0;
+                c.fillStyle = allumee ? 'rgba(251,191,36,.55)' : 'rgba(226,232,240,.75)';
+                c.strokeStyle = 'rgba(100,116,139,.45)'; c.lineWidth = 1;
+                c.beginPath(); c.roundRect(cx - fenW / 2, yy - fenH / 2, fenW, fenH, 2);
+                c.fill(); c.stroke();
+            }
+        }
+        c.restore();
+
+        // 3. LA CAGE et ses rails.
+        c.save();
+        c.fillStyle = 'rgba(15,23,42,.10)';
+        c.beginPath(); c.rect(gauche, haut, cage, bas - haut); c.fill();
+        c.strokeStyle = 'rgba(71,85,105,.45)'; c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(gauche + 2.5, haut); c.lineTo(gauche + 2.5, bas);
+        c.moveTo(droite - 2.5, haut); c.lineTo(droite - 2.5, bas);
+        c.stroke();
+        c.restore();
+
+        // 4. LES ÉTIQUETTES D'ÉTAGE, à gauche de la façade.
+        c.save();
+        c.textAlign = 'right'; c.textBaseline = 'middle';
+        const police = Math.max(9, Math.min(15, pas * 0.82));
+        for (let v = etat.min; v <= etat.max; v++) {
+            const zero = v === 0;
+            c.fillStyle = zero ? '#0f172a' : '#64748b';
+            c.font = `${zero ? 900 : 700} ${police}px 'Inter', system-ui, sans-serif`;
+            c.fillText(etiquetteEtage(v), faceG - 9, y(v));
+        }
+        c.restore();
+
+        // 5. LE TRAJET PARCOURU, le long de la façade.
+        if (etat.pas > 0) {
+            const monte = etat.curseur >= etat.depart;
+            c.save();
+            c.strokeStyle = monte ? '#22c55e' : '#f97316';
+            c.lineWidth = 5; c.lineCap = 'round';
+            c.beginPath();
+            c.moveTo(faceD + 15, y(etat.depart)); c.lineTo(faceD + 15, y(etat.curseur));
+            c.stroke();
+            fleche(c, faceD + 15, y(etat.curseur), monte ? -1 : 1, monte ? '#22c55e' : '#f97316');
+            c.restore();
+        }
+
+        // 6. LE CÂBLE, puis LA CABINE : deux portes, un bandeau lumineux.
+        const yc = y(etat.curseur);
+        c.save();
+        c.strokeStyle = 'rgba(71,85,105,.7)'; c.lineWidth = 1.6;
+        c.beginPath(); c.moveTo(axeX, haut); c.lineTo(axeX, yc - cabineH / 2); c.stroke();
+
+        const l = cage - 7;
+        c.fillStyle = etat.juste === false ? '#fecaca' : (etat.prise ? '#e0f2fe' : '#f1f5f9');
+        c.strokeStyle = etat.juste === false ? '#dc2626' : '#0369a1';
+        c.lineWidth = etat.prise ? 3 : 2.2;
+        c.beginPath(); c.roundRect(axeX - l / 2, yc - cabineH / 2, l, cabineH, 4);
+        c.fill(); c.stroke();
+        // Le bandeau : la cabine affiche l'étage où elle est, comme les vraies.
+        c.fillStyle = '#0f172a';
+        c.beginPath(); c.roundRect(axeX - l / 2 + 2, yc - cabineH / 2 + 2, l - 4, Math.max(5, cabineH * 0.3), 2);
+        c.fill();
+        c.fillStyle = '#fbbf24';
+        c.font = `900 ${Math.max(6, Math.min(11, cabineH * 0.26))}px 'Inter', system-ui, sans-serif`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(etiquetteEtage(Math.round(etat.curseur)), axeX,
+            yc - cabineH / 2 + 2 + Math.max(5, cabineH * 0.3) / 2);
+        // La fente des portes.
+        c.strokeStyle = 'rgba(3,105,161,.55)'; c.lineWidth = 1.4;
+        c.beginPath();
+        c.moveTo(axeX, yc - cabineH / 2 + Math.max(6, cabineH * 0.34));
+        c.lineTo(axeX, yc + cabineH / 2 - 2);
+        c.stroke();
+        c.restore();
+    }
+
+    /** La cabine est-elle sous ce point ? (marge large : on vise au doigt) */
+    function surCabine(x, yy) {
+        if (!etat || !etat.vue || etat.modele !== 'ascenseur') return false;
+        const g = plansAscenseur(etat.vue.w, etat.vue.h);
+        const yc = g.y(etat.curseur);
+        return Math.abs(x - g.axeX) <= g.cage * 0.75 + 8
+            && Math.abs(yy - yc) <= Math.max(18, g.cabineH * 0.75);
+    }
+
+    /** L'étage visé par un point de l'écran, borné à l'immeuble. */
+    function etageEn(yy) {
+        const e = echelle(etat.vue.h);
+        const v = etat.min + ((etat.vue.h - yy) - e.zero) / e.pas;
+        return Math.max(etat.min, Math.min(etat.max, v));
+    }
+
+    /** La colonne verticale : le thermomètre. */
     function dessinerColonne(w, h) {
         const c = ctx;
         const e = echelle(h);
@@ -550,6 +717,7 @@ export function mount(container, session) {
     // --- Saisie ---------------------------------------------------------------
 
     function brancher() {
+        pave = null;
         const repondre = (valeur) => {
             if (destroyed || etat.fige) return;
             if (!Number.isFinite(valeur)) return;
@@ -614,10 +782,58 @@ export function mount(container, session) {
             document.addEventListener('keydown', surTouche);
             nettoyeurs.push(() => document.removeEventListener('keydown', surTouche));
             peindre();
+            // Le plateau écrit dans le pavé : amener la cabine à un étage, c'est
+            // répondre. La VALIDATION, elle, reste au même endroit qu'avant —
+            // un geste ne doit pas valider tout seul, on se reprend souvent.
+            pave = { poser: (v) => { saisie = String(v); peindre(); } };
         }
         container.querySelectorAll('[data-choix]').forEach(b => {
             b.onclick = () => repondre(parseInt(b.dataset.choix, 10));
         });
+
+        // LA CABINE SE TIRE. Le doigt la prend, elle suit, elle s'aimante au
+        // palier le plus proche et écrit son étage dans le pavé.
+        if (etat.modele === 'ascenseur' && cnv) {
+            const point = (e) => {
+                const r = cnv.getBoundingClientRect();
+                return { x: e.clientX - r.left, y: e.clientY - r.top };
+            };
+            const prendre = (e) => {
+                if (session.locked || etat.fige) return;
+                const p = point(e);
+                if (!surCabine(p.x, p.y)) return;
+                etat.prise = true;
+                cnv.setPointerCapture(e.pointerId);
+                e.preventDefault();
+            };
+            const bouger = (e) => {
+                if (!etat.prise) return;
+                etat.curseur = etageEn(point(e).y);
+                etat.pas = Math.abs(Math.round(etat.curseur) - etat.depart);
+                majCompte();
+            };
+            const lacher = () => {
+                if (!etat.prise) return;
+                etat.prise = false;
+                etat.curseur = Math.round(etat.curseur);
+                etat.pas = Math.abs(etat.curseur - etat.depart);
+                majCompte();
+                if (pave) pave.poser(etat.curseur);
+            };
+            cnv.addEventListener('pointerdown', prendre);
+            cnv.addEventListener('pointermove', bouger);
+            cnv.addEventListener('pointerup', lacher);
+            cnv.addEventListener('pointercancel', lacher);
+            cnv.style.touchAction = 'none';
+            cnv.style.cursor = 'grab';
+            nettoyeurs.push(() => {
+                if (!cnv) return;
+                cnv.removeEventListener('pointerdown', prendre);
+                cnv.removeEventListener('pointermove', bouger);
+                cnv.removeEventListener('pointerup', lacher);
+                cnv.removeEventListener('pointercancel', lacher);
+            });
+        }
 
         // LE PLATEAU DE PASTILLES SE TOUCHE. Sans cela, l'énoncé demandait
         // d'associer une rouge et une bleue devant une image inerte.
