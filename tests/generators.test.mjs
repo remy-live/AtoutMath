@@ -198,3 +198,53 @@ test('facteur manquant : le robot désigne l\'égalité, pas le titre du jeu', (
         assert.ok(!/Facteur/.test(vise), 'le titre du jeu n\'est pas l\'énoncé');
     }
 });
+
+// --- La fiche « périmètre et aire » ------------------------------------------
+//
+// Sur le papier, la figure est dessinée, et le dessin peut mentir : deux
+// rectangles à la même échelle doivent avoir des tailles différentes si leurs
+// dimensions diffèrent. Ces trois tests gardent ce qui rend le dessin honnête.
+
+import { rectangleFicheGenerator } from '../js/core/generators/rectangleFiche.js';
+
+test('un rectangle de fiche n\'est jamais un carré, et sa longueur se voit', () => {
+    for (let i = 0; i < 300; i++) {
+        const it = rectangleFicheGenerator.generate({ max: 12, quoi: 'les-deux' },
+            { rng: makeRng('rc_' + i) });
+        const { L, l, max } = it.meta;
+        assert.notEqual(L, l, 'un carré ferait croire que les deux côtés se valent');
+        assert.ok(l < L, `${L} × ${l} : la largeur doit être la plus petite`);
+        // L'échelle de la fiche est commune : sous 60 % du maximum, la figure
+        // serait un timbre-poste à côté de ses voisines.
+        assert.ok(L >= Math.ceil(max * 0.6) && L <= max, `longueur hors plage : ${L}`);
+        assert.ok(l <= Math.floor(L * 0.7), `${L} × ${l} : trop proche du carré`);
+    }
+});
+
+test('périmètre et aire sont ceux du rectangle dessiné', () => {
+    for (let i = 0; i < 200; i++) {
+        const it = rectangleFicheGenerator.generate({ max: 10, quoi: 'les-deux', unite: 'm' },
+            { rng: makeRng('rcv_' + i) });
+        const { L, l, u, perimetre, aire } = it.meta;
+        assert.equal(u, 'm');
+        assert.equal(perimetre, 2 * (L + l));
+        assert.equal(aire, L * l);
+        // La page des solutions se lit sur cette chaîne : les deux réponses,
+        // chacune avec SON unité — c'est là que se joue la confusion.
+        assert.equal(it.answer, `${perimetre} m | ${aire} m²`);
+    }
+});
+
+test('la fiche ne resert pas deux fois le même rectangle', () => {
+    // On simule ce que fait la modale : chaque nouvelle grille reçoit la liste
+    // de ce qui a déjà été tiré.
+    for (let essai = 0; essai < 40; essai++) {
+        const vus = [];
+        for (let k = 0; k < 6; k++) {
+            const it = rectangleFicheGenerator.generate({ max: 10 },
+                { rng: makeRng(`rcd_${essai}_${k}`), themesExclus: vus });
+            vus.push(it.meta.theme);
+        }
+        assert.equal(new Set(vus).size, vus.length, `doublon sur la feuille : ${vus}`);
+    }
+});

@@ -10,6 +10,11 @@ export const mesuresExercises = [
     {
         id: 'mes-perimetre', title: 'Le Tour du Rectangle',
         generatorId: 'mes.perimetre', activityId: 'numpad',
+        // Sur le papier, le rectangle est DESSINÉ : c'est en le regardant qu'on
+        // comprend que le périmètre fait le tour.
+        printable: 'rectangle', printGeneratorId: 'mes.rectangle-fiche',
+        printParams: { quoi: 'perimetre', max: 12, unite: 'cm' },
+        consignePapier: "Écris le calcul, puis le résultat avec son unité.",
         params: { max: 12, unite: 'cm' },
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Calcule le périmètre du rectangle et saisis ta réponse."
@@ -24,6 +29,12 @@ export const mesuresExercises = [
     {
         id: 'mes-aire', title: 'Carreaux et Surfaces',
         generatorId: 'mes.aire', activityId: 'numpad',
+        // La fiche demande les DEUX sur la même figure : c'est la confusion du
+        // périmètre et de l'aire qui coûte le plus cher, et on ne la lève qu'en
+        // les faisant cohabiter.
+        printable: 'rectangle', printGeneratorId: 'mes.rectangle-fiche',
+        printParams: { quoi: 'les-deux', max: 10, unite: 'cm' },
+        consignePapier: "Écris le calcul, puis le résultat avec son unité.",
         params: { max: 10, unite: 'cm' },
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Calcule l'aire du rectangle et saisis ta réponse."

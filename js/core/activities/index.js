@@ -44,6 +44,7 @@ import { problemesFicheGenerator } from '../generators/problemesFiche.js';
 import { pizzaFicheGenerator } from '../generators/pizzaFiche.js';
 import { proportionFicheGenerator } from '../generators/proportionFiche.js';
 import { pairesFicheGenerator } from '../generators/pairesFiche.js';
+import { rectangleFicheGenerator } from '../generators/rectangleFiche.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -62,7 +63,7 @@ import { pairesFicheGenerator } from '../generators/pairesFiche.js';
     pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
-    proportionFicheGenerator, pairesFicheGenerator
+    proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

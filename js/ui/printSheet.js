@@ -2310,6 +2310,111 @@ function dessinerAnglePdf(doc, item, slot, solution) {
     doc.text(pourPdf(ligne), slot.x + slot.taille / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
 }
 
+
+// --- PÉRIMÈTRE ET AIRE : LE RECTANGLE COTÉ ------------------------------------
+//
+// Le rectangle est dessiné À L'ÉCHELLE de ses dimensions — un 12 × 3 est long
+// et plat, un 5 × 4 est presque carré. C'est ce qui permet de VOIR qu'un
+// périmètre fait le tour et qu'une aire remplit, et cette confusion-là est
+// celle qui coûte le plus de points.
+//
+// Les cotes sont écrites sur les côtés, pas dans un énoncé : sur une fiche de
+// géométrie, une longueur se lit sur la figure.
+
+function geoRectangle(item, slot) {
+    const m = item.meta;
+    const lignes = m.demande.length;
+    const ligneH = slot.taille * 0.13;
+    const zone = slot.taille - lignes * ligneH;
+    // Le rectangle occupe au plus 78 % de la zone, cotes comprises.
+    const dispoW = slot.taille * 0.68, dispoH = zone * 0.66;
+    // L'ÉCHELLE EST CELLE DE LA FICHE, PAS CELLE DU RECTANGLE. On la calcule
+    // sur la plus grande dimension permise (meta.max), jamais sur les côtés de
+    // cette figure-ci : sinon un 4 cm et un 10 cm seraient dessinés de la même
+    // longueur, ce qui est faux — et sur une fiche de géométrie, c'est le
+    // dessin qui ment en premier. Le facteur 0,7 est la largeur maximale que
+    // le générateur s'autorise, il borne donc la hauteur.
+    const grand = Math.max(m.max || m.L, m.L);
+    const ech = Math.min(dispoW / grand, dispoH / (grand * 0.7));
+    const w = m.L * ech, h = m.l * ech;
+    return {
+        m, lignes, ligneH, w, h,
+        x: slot.x + (slot.taille - w) / 2,
+        y: slot.y + (zone - h) / 2,
+        x0: slot.x, ligneY: slot.y + zone
+    };
+}
+
+const nomDemande = (d) => (d === 'aire' ? 'Aire' : 'Périmètre');
+const uniteDemande = (d, u) => (d === 'aire' ? `${u}²` : u);
+
+function rectanglePreviewHtml(item, slot, k, solution) {
+    const g = geoRectangle(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    let d = `<rect x="${T(g.x)}" y="${T(g.y)}" width="${T(g.w)}" height="${T(g.h)}"
+             fill="none" stroke="#1a202c" stroke-width="${T(0.5)}"/>`;
+    // Les cotes : la longueur sous la figure, la largeur à gauche.
+    d += `<text x="${T(g.x + g.w / 2)}" y="${T(g.y + g.h + slot.taille * 0.055)}"
+          text-anchor="middle" font-size="${T(slot.taille * 0.055)}" font-weight="700"
+          fill="#2d3748">${m.L} ${m.u}</text>`;
+    d += `<text x="${T(g.x - slot.taille * 0.02)}" y="${T(g.y + g.h / 2)}"
+          text-anchor="end" dominant-baseline="central"
+          font-size="${T(slot.taille * 0.055)}" font-weight="700"
+          fill="#2d3748">${m.l} ${m.u}</text>`;
+
+    let html = `<svg class="fx-rc-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    m.demande.forEach((q, i) => {
+        const valeur = solution
+            ? `${q === 'aire' ? m.aire : m.perimetre} ${uniteDemande(q, m.u)}`
+            : `.............. ${uniteDemande(q, m.u)}`;
+        html += `<div class="fx-rc-ligne" style="left:${g.x0 * k}px;
+            top:${(g.ligneY + i * g.ligneH) * k}px; width:${slot.taille * k}px;
+            height:${g.ligneH * k}px; font-size:${g.ligneH * 0.46 * k}px">
+            <b>${nomDemande(q)}</b><span>=</span><i>${valeur}</i></div>`;
+    });
+    return html;
+}
+
+function dessinerRectanglePdf(doc, item, slot, solution, champ) {
+    const g = geoRectangle(item, slot);
+    const m = g.m;
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.rect(g.x, g.y, g.w, g.h, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6, Math.min(slot.taille * 0.13, 10)));
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(`${m.L} ${m.u}`), g.x + g.w / 2, g.y + g.h + slot.taille * 0.062,
+        { align: 'center' });
+    doc.text(pourPdf(`${m.l} ${m.u}`), g.x - slot.taille * 0.02, g.y + g.h / 2 + 1,
+        { align: 'right' });
+
+    m.demande.forEach((q, i) => {
+        const y = g.ligneY + i * g.ligneH + g.ligneH * 0.68;
+        const x0 = slot.x + slot.taille * 0.06;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.4, 11)));
+        doc.setTextColor(...ENCRE.texte);
+        const etiquette = pourPdf(`${nomDemande(q)} =`);
+        doc.text(etiquette, x0, y);
+        // LA RÉPONSE SUIT LE SIGNE « = ». Alignée à droite du bloc, elle
+        // laissait un blanc au milieu de la ligne, et un élève lit ce blanc
+        // comme une case à remplir de plus.
+        const xr = x0 + doc.getTextWidth(etiquette) + slot.taille * 0.04;
+        if (solution) {
+            doc.text(pourPdf(`${q === 'aire' ? m.aire : m.perimetre} ${uniteDemande(q, m.u)}`),
+                xr, y);
+            return;
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(`.............. ${uniteDemande(q, m.u)}`), xr, y);
+        if (champ) champ(xr, y - g.ligneH * 0.6, slot.x + slot.taille * 0.94 - xr, g.ligneH * 0.8);
+    });
+}
+
 export const RENDUS = {
     repere: {
         titre: 'Repère et coordonnées',
@@ -2327,6 +2432,24 @@ export const RENDUS = {
         // plus tracer une croix entre elles.
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 2
+    },
+
+    rectangle: {
+        titre: 'Périmètre et aire',
+        consigne: (items) => {
+            const q = (items[0] && items[0].meta.quoi) || 'les-deux';
+            const commun = 'Les dimensions sont écrites sur la figure. ';
+            if (q === 'aire') return `${commun}Calcule l\'aire de chaque rectangle — la surface qu\'il couvre.`;
+            if (q === 'perimetre') return `${commun}Calcule le périmètre de chaque rectangle — le tour de la figure.`;
+            return `${commun}Pour chaque rectangle, calcule le PÉRIMÈTRE (le tour) puis l\'AIRE `
+                + '(la surface). Les deux se demandent sur la même figure : c\'est en les faisant '
+                + 'côte à côte qu\'on cesse de les confondre. Attention aux unités.';
+        },
+        previewGrille: rectanglePreviewHtml,
+        pdfGrille: dessinerRectanglePdf,
+        nomBloc: 'Rectangle',
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
     },
 
     angles: {

@@ -3635,3 +3635,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; display: flex; align-items: center; justify-content: center;
     font-weight: 800; color: #2d3748; white-space: nowrap;
 }
+
+/* --- Fiche « Périmètre et aire » -----------------------------------------
+   Le rectangle est à l'échelle de ses dimensions ; ses cotes sont écrites sur
+   les côtés, comme sur une figure de géométrie, et non dans un énoncé. Sous
+   lui, une ligne par grandeur demandée. */
+.fx-rc-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-rc-ligne {
+    position: absolute; display: flex; align-items: center; gap: .4em;
+    padding: 0 6%; box-sizing: border-box; color: #2d3748; white-space: nowrap;
+}
+.fx-rc-ligne b { font-weight: 800; }
+/* Les pointillés suivent le signe « = » : un blanc au milieu de la ligne
+   laisserait croire qu'il manque quelque chose entre les deux. */
+.fx-rc-ligne i { font-style: normal; color: #6e7684; font-weight: 700; }
