@@ -174,7 +174,10 @@ export function mount(container, session) {
         // aucun nombre n'en croise un autre — sur le premier essai, les « 55 »
         // rouges se posaient à côté des « 11 » noirs et l'on ne savait plus
         // laquelle des deux échelles on était en train de lire.
-        const bordure = item.meta.reperes ? 0.82 : 0.96;
+        // Avec l'anneau des minutes, les graduations reculent : il faut de la
+        // place ENTRE elles et le boîtier pour y loger les nombres rouges sans
+        // qu'ils mordent sur le cerclage.
+        const bordure = item.meta.reperes ? 0.78 : 0.96;
 
         for (let i = 0; i < 60; i++) {
             const a = angleMinutes(i) - Math.PI / 2;
@@ -194,10 +197,12 @@ export function mount(container, session) {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         if (item.meta.reperes) {
             ctx.fillStyle = '#dc2626';
-            ctx.font = `700 ${Math.round(R * 0.088)}px 'Inter', system-ui, sans-serif`;
+            ctx.font = `700 ${Math.round(R * 0.082)}px 'Inter', system-ui, sans-serif`;
             for (let n = 0; n < 12; n++) {
                 const a = (n / 12) * Math.PI * 2 - Math.PI / 2;
-                const rr = rayon * 0.93;
+                // 0,87 et non 0,93 : à 0,93 un « 45 » de deux chiffres passait
+                // sous le cerclage du boîtier et s'y coupait en deux.
+                const rr = rayon * 0.87;
                 ctx.fillText(String(n * 5), cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
             }
         }

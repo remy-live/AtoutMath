@@ -52,10 +52,16 @@ class Tangram extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                /* « size » et non « inline-size » : le plateau doit se borner à la
+                   HAUTEUR disponible autant qu'à la largeur. Sans cela, un
+                   téléphone couché offrait 780 px de large pour 390 de haut, le
+                   plateau prenait ses 560 px de côté, et la réserve de pièces —
+                   c'est-à-dire tout ce qu'on doit attraper — tombait sous
+                   l'écran. */
                 .tg-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
                     width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
-                    color: var(--text-main); overflow-y: auto; container-type: inline-size;
+                    color: var(--text-main); overflow-y: auto; container-type: size;
                 }
                 .tg-tete { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
                     justify-content: center; font-size: .9rem; }
@@ -65,7 +71,10 @@ class Tangram extends BaseGame {
                 .tg-compte { color: var(--text-muted); font-weight: 700; }
 
                 .tg-plateau {
-                    width: 100%; max-width: min(96cqw, 560px);
+                    /* « --tg-ratio » (largeur / hauteur du monde) est posé par le
+                       jeu : il permet de convertir une contrainte de hauteur en
+                       contrainte de largeur, la seule que le SVG suive. */
+                    width: min(96cqw, 560px, 62cqh * var(--tg-ratio, 1)); max-width: 100%;
                     background: var(--bg-panel); border: 2px solid var(--border);
                     border-radius: 14px; padding: 4px; box-sizing: border-box;
                     touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
@@ -121,6 +130,13 @@ class Tangram extends BaseGame {
                 @container (max-width: 430px) {
                     .tg-btn { padding: 6px 9px; font-size: .84rem; }
                     .tg-tete { font-size: .82rem; }
+                }
+                /* Écran couché : la note de bas de plateau ne réserve plus deux
+                   lignes vides, elles poussaient la barre d'outils dehors. */
+                @container (max-height: 460px) {
+                    .tg-wrap { gap: 5px; padding: 5px; }
+                    .tg-note { min-height: 0; font-size: .8rem; }
+                    .tg-btn { padding: 5px 9px; font-size: .82rem; }
                 }
             </style>
             <div class="tg-wrap">
@@ -232,6 +248,9 @@ class Tangram extends BaseGame {
             svg += this.svgPiece(p);
         }
         svg += '</svg>';
+        // Les proportions du monde changent avec la figure : la feuille de style
+        // en a besoin pour borner le plateau en hauteur (voir `--tg-ratio`).
+        this.plateauEl.style.setProperty('--tg-ratio', (this.mondeL / this.mondeH).toFixed(4));
         this.plateauEl.innerHTML = svg;
         this.svgEl = this.plateauEl.querySelector('svg');
         this.brancherGestes();

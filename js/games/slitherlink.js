@@ -40,11 +40,17 @@ class Slitherlink extends BaseGame {
                 .sl-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 10px;
                     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
-                    color: var(--text-main); overflow-y: auto; container-type: inline-size;
+                    /* « size » : la grille doit se borner à la hauteur autant
+                       qu'à la largeur — c'est la hauteur qui manque dès qu'on
+                       couche le téléphone. */
+                    color: var(--text-main); overflow-y: auto; container-type: size;
                 }
                 .sl-tete { text-align: center; font-size: .9rem; color: var(--text-muted); max-width: 640px; }
                 .sl-plateau {
-                    width: 100%; max-width: min(96cqw, 620px);
+                    /* « --sl-ratio » (largeur / hauteur de la grille) vient du
+                       jeu : les grilles ne sont pas toutes carrées, et une
+                       borne en hauteur ne se traduit en largeur qu'avec lui. */
+                    width: 100%; max-width: min(96cqw, 620px, 72cqh * var(--sl-ratio, 1));
                     background: var(--bg-panel); border: 2px solid var(--border);
                     border-radius: 14px; padding: 6px; box-sizing: border-box;
                     touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
@@ -113,7 +119,8 @@ class Slitherlink extends BaseGame {
                         grid-template-rows: auto auto auto; align-items: center;
                         gap: 6px 14px; align-content: center;
                     }
-                    .sl-plateau { grid-area: 1 / 1 / 4 / 2; max-width: min(52vw, 82vh); }
+                    .sl-plateau { grid-area: 1 / 1 / 4 / 2;
+                        max-width: min(52cqw, 94cqh * var(--sl-ratio, 1)); }
                     .sl-tete { grid-area: 1 / 2; font-size: .8rem; }
                     .sl-barre { grid-area: 2 / 2; }
                     .sl-note { grid-area: 3 / 2; min-height: 2em; font-size: .82rem; }
@@ -204,6 +211,9 @@ class Slitherlink extends BaseGame {
             svg += `<circle class="sl-point" cx="${px(x)}" cy="${py(y)}" r="${PAS * 0.075}"></circle>`;
         }
         svg += '</svg>';
+        // Les proportions de la grille, pour que la feuille de style puisse la
+        // borner en hauteur (voir `--sl-ratio`).
+        this.plateauEl.style.setProperty('--sl-ratio', (W / H).toFixed(4));
         this.plateauEl.innerHTML = svg;
         this.svgEl = this.plateauEl.querySelector('svg');
         this.brancherGestes();
