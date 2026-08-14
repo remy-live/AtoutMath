@@ -85,3 +85,29 @@ test('tout exercice imprimable sait produire des items pour sa fiche', async () 
         }
     }
 });
+
+test('un générateur qui écrit des fractions le déclare', async () => {
+    // SUR LE PAPIER, UNE FRACTION S'ÉCRIT EN COLONNE — numérateur sur
+    // dénominateur, séparés d'un trait. La barre oblique est une commodité
+    // d'écran, et une feuille qui l'imprime enseigne le contraire du cours.
+    // Le rendu sait empiler ; encore faut-il qu'il sache qu'il y a une
+    // fraction, et c'est ce drapeau qui le lui dit.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+    const fautifs = [];
+    for (const exo of exercices) {
+        const g = generateurDeFiche(exo);
+        if (!g || !g.ecrit || g.fractions) continue;
+        const reglages = { ...(exo.params || {}), ...(exo.printParams || {}) };
+        for (let i = 0; i < 25; i++) {
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`fr_${exo.id}_${i}`), index: i }); }
+            catch { break; }
+            const texte = (it.prompt && (it.prompt.papier || it.prompt.text)) || '';
+            // « 3/4 » entre deux chiffres : c'est une fraction, pas une date.
+            if (/\d\s*\/\s*\d/.test(texte)) { fautifs.push(`${g.id} : « ${texte} »`); break; }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});

@@ -19,6 +19,10 @@ export const problemesFicheGenerator = {
     skills: ['num.problemes'],
     answerKinds: ['numeric'],
     ecrit: true,
+    // La famille « fraction d'une quantité » écrit « les 2/5 sont abîmés » :
+    // sur le papier, cela se compose en colonne, numérateur sur dénominateur.
+    // La barre oblique est une commodité d'écran.
+    fractions: true,
     params: [
         {
             id: 'niveau', type: 'select', label: 'Familles proposées', default: 'tout',

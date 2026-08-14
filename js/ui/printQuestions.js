@@ -55,6 +55,13 @@ function tirerQuestions(generator, params, nb) {
         vus.add(texte);
         out.push({
             texte,
+            // SUR LE PAPIER, UNE FRACTION S'ÉCRIT EN COLONNE — numérateur sur
+            // dénominateur, séparés d'un trait. La barre oblique est une
+            // commodité d'écran ; ce n'est pas ce qu'on demande d'écrire à
+            // l'élève, et une feuille qui l'imprime enseigne le contraire du
+            // cours. Le générateur le déclare (`fractions: true`) ; la fiche
+            // du parcours le lisait déjà, celle-ci l'oubliait.
+            fractions: !!generator.fractions,
             choix: item.choices ? item.choices.map(c => String(c.label ?? c.value)) : null,
             reponse: formaterReponse(item),
             // L'explication du générateur : elle ne sert qu'à la feuille de
