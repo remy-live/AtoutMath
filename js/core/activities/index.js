@@ -49,6 +49,7 @@ import { motsCachesFicheGenerator } from '../generators/motsCachesFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
 import { echecsFicheGenerator } from '../generators/echecsFiche.js';
+import { matFicheGenerator } from '../generators/matFiche.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -69,7 +70,7 @@ import { echecsFicheGenerator } from '../generators/echecsFiche.js';
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
-    echecsFicheGenerator
+    echecsFicheGenerator, matFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -333,7 +334,8 @@ const legacy = [
     ['dedale', 'Les Dédales', 'dedale', 'engineDedale'],
     ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint'],
     ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication'],
-    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision']
+    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision'],
+    ['mat-echecs', 'Mat en un, mat en deux', 'matEchecs', 'engineMatEchecs']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

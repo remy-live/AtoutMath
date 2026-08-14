@@ -420,5 +420,46 @@ export const geometrieExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Va du rond vert à l'étoile. Ce dédale cache une image : le chemin de la sortie EST un dessin, et il n'y en a qu'un — impossible de le deviner d'avance, il apparaît sous tes pas. Les couloirs qui partent sur le côté sont des impasses ; quand tu y entres, ton fil s'y engage, et il se rembobine dès que tu reviens. À l'arrivée, il ne reste que le dessin."
+    },
+    {
+        // MAT EN UN, MAT EN DEUX. Un problème d'échecs, ce n'est pas jouer :
+        // c'est CHERCHER, dans une position figée, le coup qui ne laisse aucune
+        // issue. On y raisonne exactement comme sur une figure — j'énumère les
+        // cases, j'élimine celles qui sont couvertes, je conclus — et l'on
+        // vérifie une propriété (« aucun coup légal ET en échec ») au lieu de
+        // deviner.
+        //
+        // Chaque position est passée au solveur par les tests : une solution,
+        // et une seule. Un problème à deux solutions donnerait tort à l'élève
+        // qui trouve l'autre.
+        id: 'geo-mat-echecs', status: STATUS.TEST, title: 'Échecs : mat en un, mat en deux',
+        activityId: 'mat-echecs',
+        // Sur le papier, c'est le MÊME problème, en plus exigeant : devant
+        // l'écran on essaie et l'on voit ; sur la feuille il faut tout prévoir
+        // avant d'écrire le coup.
+        generatorId: 'logi.mat-fiche', printable: 'mat',
+        printParams: { coups: 1 },
+        consignePapier: 'Les Blancs jouent et matent. Écris le coup en notation.',
+        sansRevision: true,
+        skills: ['geo.espace.reperage'],
+        params: { coups: 1, aideCoups: true },
+        paramSchema: [
+            {
+                id: 'coups', type: 'select', label: 'Longueur du problème',
+                aide: 'Le mat en un se cherche case par case. Le mat en deux demande de prévoir TOUTES les réponses adverses, pas seulement la plus naturelle — c\'est un raisonnement complet, pas une intuition.',
+                options: [
+                    { value: 1, label: 'Mat en un coup' },
+                    { value: 2, label: 'Mat en deux coups' }
+                ],
+                default: 1
+            },
+            {
+                id: 'aideCoups', type: 'checkbox', label: 'Montrer où la pièce choisie peut aller',
+                aide: 'L\'exercice est de trouver le mat, pas de réviser la marche du cavalier. En retirant cette aide, on ajoute la connaissance des déplacements à la difficulté.',
+                default: true
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Les Blancs jouent et matent. Clique une pièce blanche : ses cases d'arrivée s'allument, un point pour une case vide, un anneau pour une prise. Un mat, c'est un échec dont le roi ne peut pas sortir — ni FUIR, ni PARER en s'interposant, ni PRENDRE la pièce qui attaque. Quand ton coup n'est pas le bon, on ne te donne pas la réponse : on te dit ce qui manque, par exemple « le roi s'échappe en g7 ». Attention au PAT : les Noirs sans coup mais SANS être en échec, c'est une partie nulle, pas une victoire."
     }
 ];

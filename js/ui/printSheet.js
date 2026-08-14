@@ -21,6 +21,7 @@ import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
+import { pieceSvg, dessinerPiecePdf } from './piecesEchecs.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import { ecrire as ecrireProp } from '../core/proportion.js';
 import {
@@ -2527,6 +2528,105 @@ function lignesEchiquier(m, solution) {
         : `Marque d'une croix toutes les cases où ${m.nom === 'tour' ? 'la tour' : `le ${m.nom}`} peut aller.`];
 }
 
+// --- LES PROBLÈMES DE MAT ------------------------------------------------------
+//
+// LES PIÈCES SONT DESSINÉES, PAS ÉCRITES. Une pastille marquée « C » oblige à
+// traduire à chaque coup d'œil ; sur un diagramme de problème, où l'élève
+// balaie la position vingt fois, cela suffit à rendre l'exercice pénible. Le
+// module ui/piecesEchecs.js donne les mêmes silhouettes à l'écran et au PDF —
+// et c'est la seule raison pour laquelle l'aperçu ne peut pas mentir sur ce
+// qui sortira de l'imprimante.
+
+function geoMat(item, slot) {
+    const ligneH = slot.taille * 0.085;
+    const zone = slot.taille - ligneH;
+    const marge = Math.min(zone * 0.09, slot.taille * 0.08);
+    const cote = Math.max(12, Math.min(slot.taille - marge, zone - marge));
+    return {
+        m: item.meta, ligneH, cote, marge, cell: cote / 8,
+        x0: slot.x + marge + (slot.taille - marge - cote) / 2,
+        y0: slot.y + (zone - marge - cote) / 2,
+        ligneY: slot.y + zone
+    };
+}
+
+function matPreviewHtml(item, slot, k, solution) {
+    const g = geoMat(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let d = '';
+    for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+            d += `<rect x="${T(g.x0 + x * g.cell)}" y="${T(g.y0 + y * g.cell)}"
+                width="${T(g.cell)}" height="${T(g.cell)}"
+                fill="${(x + y) % 2 ? '#dfe5ee' : '#ffffff'}" stroke="#9aa3b2"
+                stroke-width="${T(0.12)}"/>`;
+        }
+    }
+    d += `<rect x="${T(g.x0)}" y="${T(g.y0)}" width="${T(g.cote)}" height="${T(g.cote)}"
+        fill="none" stroke="#2d3748" stroke-width="${T(0.42)}"/>`;
+    for (let i = 0; i < 8; i++) {
+        const taille = T(Math.min(g.marge * 0.62, g.cell * 0.5));
+        d += `<text x="${T(g.x0 + (i + 0.5) * g.cell)}" y="${T(g.y0 + g.cote + g.marge * 0.55)}"
+            text-anchor="middle" dominant-baseline="central" font-size="${taille}"
+            font-weight="700" fill="#4a5568">${'abcdefgh'[i]}</text>
+            <text x="${T(g.x0 - g.marge * 0.45)}" y="${T(g.y0 + (i + 0.5) * g.cell)}"
+            text-anchor="middle" dominant-baseline="central" font-size="${taille}"
+            font-weight="700" fill="#4a5568">${8 - i}</text>`;
+    }
+    (g.m.pieces || []).forEach(p => {
+        d += pieceSvg(p.type, p.noir, (g.x0 + p.x * g.cell) * k, (g.y0 + p.y * g.cell) * k,
+            g.cell * k, 0.03);
+    });
+
+    const texte = solution
+        ? `Solution : ${g.m.solution}`
+        : `Coup des Blancs : ......................`;
+    let html = `<svg class="fx-ec-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    html += `<div class="fx-ec-ligne" style="left:${slot.x * k}px; top:${g.ligneY * k}px;
+        width:${slot.taille * k}px; height:${g.ligneH * k}px;
+        font-size:${Math.min(g.ligneH * 0.55, 3.4) * k}px">${echapperSheet(texte)}</div>`;
+    return html;
+}
+
+function dessinerMatPdf(doc, item, slot, solution) {
+    const g = geoMat(item, slot);
+    doc.setDrawColor(154, 163, 178);
+    doc.setLineWidth(0.12);
+    for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+            // Le remplissage est redit à chaque case : dans jsPDF, écrire du
+            // texte change la couleur de remplissage.
+            if ((x + y) % 2) doc.setFillColor(223, 229, 238);
+            else doc.setFillColor(255, 255, 255);
+            doc.rect(g.x0 + x * g.cell, g.y0 + y * g.cell, g.cell, g.cell, 'FD');
+        }
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.42);
+    doc.rect(g.x0, g.y0, g.cote, g.cote, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(5, Math.min(g.cell * 1.3, 9)));
+    doc.setTextColor(74, 85, 104);
+    for (let i = 0; i < 8; i++) {
+        doc.text('abcdefgh'[i], g.x0 + (i + 0.5) * g.cell, g.y0 + g.cote + g.marge * 0.7,
+            { align: 'center' });
+        doc.text(String(8 - i), g.x0 - g.marge * 0.45, g.y0 + (i + 0.6) * g.cell,
+            { align: 'center' });
+    }
+
+    (item.meta.pieces || []).forEach(p => {
+        dessinerPiecePdf(doc, p.type, p.noir, g.x0 + p.x * g.cell, g.y0 + p.y * g.cell,
+            g.cell, Math.max(0.12, g.cell * 0.035));
+    });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6, Math.min(g.ligneH * 0.55, 9)));
+    doc.setTextColor(...ENCRE.trait);
+    doc.text(solution ? `Solution : ${item.meta.solution}` : 'Coup des Blancs : ......................',
+        slot.x, g.ligneY + g.ligneH * 0.62);
+}
+
 function dessinerEchiquierPdf(doc, item, slot, solution) {
     const g = geoEchiquier(item, slot);
     const m = g.m;
@@ -3143,6 +3243,26 @@ export const RENDUS = {
         nomBloc: 'Rectangle',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    mat: {
+        titre: 'Échecs : mat en un, mat en deux',
+        consigne: (items) => {
+            const n = items[0]?.meta?.coups || 1;
+            return n === 1
+                ? 'LES BLANCS JOUENT ET MATENT EN UN COUP. Écris le coup en notation : '
+                  + 'l\'initiale de la pièce (T tour, C cavalier, F fou, D dame, R roi ; rien '
+                  + 'pour un pion) puis la case d\'arrivée — par exemple Ta8. Un mat est un '
+                  + 'échec dont le roi ne peut pas sortir : ni fuir, ni parer, ni prendre.'
+                : 'LES BLANCS JOUENT ET MATENT EN DEUX COUPS. Écris le PREMIER coup en '
+                  + 'notation (par exemple Tc6). Attention : il doit gagner contre TOUTES les '
+                  + 'réponses noires, pas seulement contre la plus naturelle.';
+        },
+        previewGrille: matPreviewHtml,
+        pdfGrille: dessinerMatPdf,
+        nomBloc: 'Problème de mat', nomBlocs: 'problèmes de mat',
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
     },
 
     echiquier: {
