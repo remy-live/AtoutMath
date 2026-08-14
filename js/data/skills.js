@@ -328,6 +328,14 @@ const BASE = {
         descriptor: 'Lire et estimer une part d\'aire exprim\u00e9e en pourcentage.',
         lesson: 'Un pourcentage d\'aire, c\'est une PART : 75 %, c\'est trois quarts du terrain. Pour estimer, d\u00e9coupe en morceaux simples \u2014 la moiti\u00e9 fait 50 %, le quart 25 %, le dixi\u00e8me 10 % \u2014 et additionne. Et retiens ce que montre le jeu : couper en deux CE QUI RESTE rapporte de moins en moins. Passer de 50 % \u00e0 75 %, c\'est reconqu\u00e9rir la moiti\u00e9 du reste ; de 75 % \u00e0 87 %, encore la moiti\u00e9 du reste \u2014 chaque pas vaut moiti\u00e9 moins.'
     },
+    'num.conversion': {
+        label: 'Convertir avec le tableau',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Passer d\'une unit\u00e9 \u00e0 une autre en lisant le m\u00eame nombre dans une autre colonne.',
+        lesson: 'Convertir n\'est pas multiplier par une puissance de dix apprise par c\u0153ur : c\'est LIRE LE M\u00caME NOMBRE dans une autre colonne. Trois gestes, toujours les m\u00eames. UN : le chiffre des unit\u00e9s va dans la colonne de SON unit\u00e9 \u2014 3,45 m, le 3 sous les m\u00e8tres, et le reste suit. DEUX : la virgule se pose juste apr\u00e8s la colonne de l\'unit\u00e9 demand\u00e9e, jamais ailleurs. TROIS : toute case vide ENTRE les chiffres et la virgule prend un z\u00e9ro \u2014 c\'est le 0,00 de 0,00345 km, et un seul oubli fait perdre un facteur dix. V\u00e9rifie toujours le sens : vers une plus petite unit\u00e9, le nombre grandit.'
+    },
     'num.calc.tri': {
         label: 'Trier des r\u00e9sultats selon une r\u00e8gle',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],

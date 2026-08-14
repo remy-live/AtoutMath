@@ -314,6 +314,7 @@ const legacy = [
     ['skweek', 'Skweek (repeindre le sol)', 'skweek', 'engineSkweek'],
     ['priorites', 'Priorités : la réécriture', 'priorites', 'enginePriorites'],
     ['compte-est-bon', 'Le Compte est Bon', 'compteEstBon', 'engineCompteEstBon'],
+    ['conversion', 'Le tableau de conversion', 'conversion', 'engineConversion'],
     ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
     ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram'],
     ['solides', 'Compter sur un solide', 'solides', 'engineSolides'],

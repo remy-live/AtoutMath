@@ -40,6 +40,45 @@ export const mesuresExercises = [
         instruction: "Calcule l'aire du rectangle et saisis ta réponse."
     },
     {
+        // LE TABLEAU DE CONVERSION, en trois temps. Chaque \u00e9tape isole une
+        // erreur : l'ordre des unit\u00e9s, le rang du nombre, la place de la
+        // virgule. Les m\u00e9langer, c'est ne jamais savoir laquelle a co\u00fbt\u00e9 la
+        // r\u00e9ponse.
+        id: 'mes-conversion', status: STATUS.TEST, title: 'Le Tableau de Conversion',
+        activityId: 'conversion',
+        skills: ['num.conversion'],
+        params: { famille: 'longueur', ecart: 3, decimales: false },
+        paramSchema: [
+            {
+                id: 'famille', type: 'select', label: 'Unit\u00e9s',
+                options: [
+                    { value: 'longueur', label: 'Longueurs (km \u2192 mm)' },
+                    { value: 'masse', label: 'Masses (kg \u2192 mg)' },
+                    { value: 'capacite', label: 'Contenances (hL \u2192 mL)' }
+                ],
+                default: 'longueur'
+            },
+            {
+                id: 'ecart', type: 'select', label: '\u00c9cart entre les unit\u00e9s',
+                aide: 'Une seule colonne d\'\u00e9cart pour commencer : m \u2192 dm. Trois colonnes, c\'est d\u00e9j\u00e0 m \u2192 km.',
+                options: [
+                    { value: 1, label: '1 colonne \u2014 pour commencer' },
+                    { value: 2, label: 'Jusqu\'\u00e0 2 colonnes' },
+                    { value: 3, label: 'Jusqu\'\u00e0 3 colonnes' },
+                    { value: 6, label: 'Tout le tableau' }
+                ],
+                default: 3
+            },
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres \u00e0 virgule au d\u00e9part',
+                aide: 'Sans cela, on part toujours d\'un entier \u2014 la virgule n\'appara\u00eet qu\'\u00e0 l\'arriv\u00e9e.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trois \u00e9tapes, et chacune sert \u00e0 quelque chose. D'abord tu ranges les unit\u00e9s dans les colonnes \u2014 une seule fois, le tableau reste ensuite. Puis tu fais glisser le nombre : le chiffre des unit\u00e9s va dans la colonne de SON unit\u00e9, et le fant\u00f4me te montre o\u00f9 il tomberait. Enfin tu poses la virgule apr\u00e8s la colonne demand\u00e9e, tu combles de z\u00e9ros les cases vides qui la pr\u00e9c\u00e8dent, et tu lis la r\u00e9ponse."
+    },
+    {
         // TEMPS, DISTANCE, VITESSE. Une seule formule (d = v × t), la question
         // qui tourne, et les nombres qui tombent juste par construction : on
         // tire la vitesse et la durée, la distance en découle.
