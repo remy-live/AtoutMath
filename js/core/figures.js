@@ -176,27 +176,43 @@ const GLYPHES = {
     10: '<path d="M2 29 V15 C2 7 6.4 2.5 12 2.5 C17.6 2.5 22 7 22 15 V29 H16.5 V15'
         + ' C16.5 10.2 14.6 8 12 8 C9.4 8 7.5 10.2 7.5 15 V29 Z" />',
 
-    // Corde enroulée : une centaine. Une vraie spirale qui rentre vers son
-    // centre — dessinée au trait, parce qu'une spirale pleine n'est plus une
-    // spirale.
-    // Deux tours seulement, bien écartés : à quatre tours les spires se
-    // touchaient et la spirale se lisait comme un disque.
-    100: '<path class="egy-trait egy-spirale" d="M12 27 A11 11 0 1 1 23 16 A7 7 0 1 0 12 23'
-        + ' A3 3 0 1 1 15 16" />',
+    // Corde enroulée : une centaine. Une VRAIE spirale, échantillonnée point
+    // par point — deux arcs de cercle emboîtés donnaient un « C » suivi d'une
+    // boucle, qui ne ressemblait à aucune corde. Presque deux tours, du bord
+    // vers le centre, avec un pas régulier : c'est ce qui se lit comme un
+    // enroulement plutôt que comme un disque.
+    100: '<path class="egy-trait egy-spirale" d="M12.0 5.6 L14.3 6.0 L16.4 6.9 L18.3 8.1'
+        + ' L19.8 9.7 L21.0 11.6 L21.7 13.7 L21.9 15.8 L21.7 17.9 L21.1 19.9 L20.1 21.7'
+        + ' L18.7 23.2 L17.1 24.3 L15.3 25.1 L13.4 25.4 L11.5 25.4 L9.7 24.9 L8.1 24.1'
+        + ' L6.6 23.0 L5.5 21.7 L4.7 20.1 L4.3 18.5 L4.2 16.8 L4.5 15.2 L5.1 13.7 L6.0 12.4'
+        + ' L7.1 11.3 L8.5 10.5 L9.9 10.0 L11.3 9.9 L12.7 10.0 L14.1 10.5 L15.2 11.2'
+        + ' L16.2 12.1 L16.9 13.2 L17.4 14.4 L17.6 15.6 L17.6 16.8 L17.3 17.9 L16.7 18.9'
+        + ' L16.0 19.8 L15.2 20.5 L14.2 20.9 L13.2 21.1 L12.2 21.2 L11.3 20.9 L10.4 20.6'
+        + ' L9.7 20.0 L9.1 19.3 L8.7 18.6 L8.5 17.8 L8.5 17.0 L8.6 16.3 L8.9 15.6 L9.3 15.1'
+        + ' L9.8 14.6 L10.4 14.3" />',
 
-    // Fleur de lotus : un millier. Une tige et trois pétales.
-    1000: '<path class="egy-trait" d="M12 30 V17" />'
-        + '<path d="M12 18.5 C5.5 17.4 1.5 12 2.2 5 C8 5.8 11 9.6 12 15.5'
-        + ' C13 9.6 16 5.8 21.8 5 C22.5 12 18.5 17.4 12 18.5 Z" />'
-        + '<path d="M12 17 C9.2 12.4 9.2 6 12 1.5 C14.8 6 14.8 12.4 12 17 Z" />',
+    // Fleur de lotus : un millier. Une tige, deux feuilles à mi-hauteur, et
+    // une fleur à trois pétales — le pétale central droit, les deux autres
+    // ouverts. Le dessin précédent, deux gros lobes en cœur, se lisait comme
+    // un germe de haricot.
+    1000: '<path class="egy-trait" d="M12 30.5 C11.3 26 11.4 23 12 19.5" />'
+        + '<path d="M11.6 24.4 C8.6 24.2 6.4 22.4 5.6 19.6 C8.6 19.4 10.8 21.2 11.6 24.4 Z" />'
+        + '<path d="M12.4 24.4 C13.2 21.2 15.4 19.4 18.4 19.6 C17.6 22.4 15.4 24.2 12.4 24.4 Z" />'
+        + '<path d="M12 20 C10.6 15.6 10.6 9.4 12 3.4 C13.4 9.4 13.4 15.6 12 20 Z" />'
+        + '<path d="M11.8 20.2 C8.2 17.4 6 12.8 6.2 7.6 C9.6 10 11.4 14.6 11.8 20.2 Z" />'
+        + '<path d="M12.2 20.2 C12.6 14.6 14.4 10 17.8 7.6 C18 12.8 15.8 17.4 12.2 20.2 Z" />',
 
-    // Doigt levé : dix milliers. Une phalange, un ongle, une articulation.
-    // Plus large que le bâton, et creusé de deux articulations : à silhouette
-    // égale, on confondait le doigt (10 000) avec l'unité.
-    10000: '<path d="M6.4 30 V13 C6.4 6 8.8 1.8 12 1.8 C15.2 1.8 17.6 6 17.6 13 V30 Z" />'
-        + '<path class="egy-creux" d="M9 8.4 C9.8 6 14.2 6 15 8.4 C14 7.4 10 7.4 9 8.4 Z" />'
-        + '<path class="egy-creux" d="M6.4 15.6 H17.6 V18 H6.4 Z" />'
-        + '<path class="egy-creux" d="M6.4 22 H17.6 V24 H6.4 Z" />'
+    // Doigt : dix milliers. COUCHÉ, ongle à droite, deux plis de phalange —
+    // c'est ainsi qu'il est gravé, et surtout c'est ce qui le distingue d'un
+    // coup d'œil du bâton des unités, avec lequel on le confondait quand il
+    // était dessiné debout.
+    10000: '<path d="M2.8 13.8 L2.8 22.2 C7 22.9 11.4 23.1 15.6 22.6 C19.2 22.2 21.6 20.1 21.6 17'
+        + ' C21.6 13.9 19.2 11.8 15.6 12.3 C11.4 12.8 7 13.1 2.8 13.8 Z" />'
+        + '<path class="egy-creux" d="M17.2 14 C19.2 14.8 20.2 15.9 20.2 17.2'
+        + ' C20.2 18.5 19.2 19.6 17.3 20.4 C18.4 19.4 18.9 18.3 18.9 17.2'
+        + ' C18.9 16.1 18.3 14.9 17.2 14 Z" />'
+        + '<path class="egy-creux" d="M11.6 12.9 L12.4 22.9 H11.2 L10.4 13.0 Z" />'
+        + '<path class="egy-creux" d="M7.2 13.5 L8.0 23.2 H6.8 L6.0 13.7 Z" />'
 };
 
 /**

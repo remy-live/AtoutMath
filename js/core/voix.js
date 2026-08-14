@@ -33,26 +33,39 @@ let attente = null;
  * l'attente, la première dictée de la séance se dit avec l'accent du système,
  * ce qui rend « quatre-vingts » incompréhensible.
  */
+function chercherVoixFr() {
+    const toutes = window.speechSynthesis.getVoices() || [];
+    // `fr_FR` autant que `fr-FR` : les deux écritures circulent selon le moteur.
+    const fr = toutes.filter(v => (v.lang || '').replace('_', '-').toLowerCase().startsWith('fr'));
+    // Une voix locale plutôt qu'une voix distante : elle démarre sans
+    // délai réseau, ce qui compte quand on réécoute dix fois de suite.
+    return fr.find(v => v.localService) || fr[0] || null;
+}
+
 export function preparerVoix() {
     if (!voixDisponible()) return Promise.resolve(null);
     if (voixFr) return Promise.resolve(voixFr);
     if (attente) return attente;
 
-    const choisir = () => {
-        const toutes = window.speechSynthesis.getVoices() || [];
-        const fr = toutes.filter(v => (v.lang || '').toLowerCase().startsWith('fr'));
-        // Une voix locale plutôt qu'une voix distante : elle démarre sans
-        // délai réseau, ce qui compte quand on réécoute dix fois de suite.
-        voixFr = fr.find(v => v.localService) || fr[0] || null;
-        return voixFr;
-    };
+    voixFr = chercherVoixFr();
+    if (voixFr) return Promise.resolve(voixFr);
 
-    if (choisir()) return Promise.resolve(voixFr);
+    // ON NE RETIENT PAS L'ÉCHEC. Le premier essai était unique : un seul
+    // `voiceschanged`, un filet à 1,2 s, et si la liste n'était pas encore
+    // arrivée on gardait `null` — pour toute la séance. La dictée se disait
+    // alors avec la voix par défaut du système, c'est-à-dire en anglais, et
+    // rouvrir l'exercice n'y changeait rien. On réessaie donc, et l'absence de
+    // voix française n'est jamais mémorisée : c'est presque toujours un retard,
+    // pas un manque.
     attente = new Promise((resolve) => {
-        const fini = () => { resolve(choisir()); };
+        let restant = 12;                       // ≈ 3 s de patience
+        const fini = () => {
+            voixFr = chercherVoixFr();
+            if (voixFr || restant-- <= 0) { attente = null; resolve(voixFr); return; }
+            setTimeout(fini, 250);
+        };
         window.speechSynthesis.addEventListener('voiceschanged', fini, { once: true });
-        // Filet : certains navigateurs n'émettent jamais l'événement.
-        setTimeout(fini, 1200);
+        setTimeout(fini, 250);
     });
     return attente;
 }
@@ -72,7 +85,9 @@ export function setDebit(v) {
  */
 export async function parler(texte, options = {}) {
     if (!voixDisponible() || !texte) return false;
-    const voix = await preparerVoix();
+    // Dernière chance juste avant de parler : la liste a pu se remplir entre
+    // l'ouverture de l'exercice et le premier appui sur « Écouter ».
+    const voix = await preparerVoix() || chercherVoixFr();
     return new Promise((resolve) => {
         try {
             window.speechSynthesis.cancel();

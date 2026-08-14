@@ -146,7 +146,13 @@ class Dictee extends BaseGame {
         };
         document.addEventListener('keydown', this.surTouche);
 
-        if (!this.muet) preparerVoix();
+        // PLUTÔT MUET QU'ANGLAIS. La synthèse existe sur presque tous les
+        // appareils, mais pas toujours avec une voix française : le nombre se
+        // disait alors avec l'accent du système, et « quatre-vingt-treize mille »
+        // devenait inaudible. Dès qu'on sait qu'aucune voix française n'est
+        // installée, on bascule sur la lecture en lettres, qui fait le même
+        // exercice sans faire semblant.
+        if (!this.muet) preparerVoix().then(v => { if (!v) this.sansVoix(); });
         this.question();
     }
 
@@ -165,6 +171,30 @@ class Dictee extends BaseGame {
             ? 'Écris ce nombre en chiffres.'
             : 'Appuie sur le haut-parleur pour entendre le nombre. Tu peux le réécouter autant de fois que tu veux.');
         if (!this.muet && !this.isDemo) this.dire();
+    }
+
+    /** Aucune voix française : le haut-parleur cède la place au nombre en lettres. */
+    sansVoix() {
+        if (this.muet || !this.container.isConnected) return;
+        this.muet = true;
+        taire();
+        const consigne = this.container.querySelector('.di-consigne');
+        if (consigne) {
+            consigne.textContent = 'Aucune voix française n\'est installée sur cet appareil : '
+                + 'lis le nombre en lettres et écris-le en chiffres.';
+        }
+        if (this.btnEcouter) {
+            const lettres = document.createElement('div');
+            lettres.className = 'di-lettres';
+            lettres.setAttribute('data-lettres', '');
+            this.btnEcouter.replaceWith(lettres);
+            this.lettresEl = lettres;
+            this.btnEcouter = null;
+        }
+        const lent = this.container.querySelector('[data-lent]');
+        if (lent) lent.remove();
+        if (this.lettresEl && this.valeur) this.lettresEl.textContent = spellInteger(this.valeur);
+        this.note('Écris ce nombre en chiffres.');
     }
 
     async dire() {
