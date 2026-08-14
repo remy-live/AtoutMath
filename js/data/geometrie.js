@@ -182,6 +182,43 @@ export const geometrieExercises = [
         instruction: "Conduis la voiture jusqu'au lieu demandé en suivant la feuille de route : « prends la deuxième à gauche », « puis la première à droite ». Les trois boutons — et les flèches du clavier — sont ceux du CONDUCTEUR : quand la voiture descend, sa gauche est à droite de l'écran. Avant chaque virage, demande-toi dans quel sens elle roule. Et « la deuxième à gauche » compte les rues qui partent à gauche, pas les carrefours."
     },
     {
+        // RELIER LES POINTS. Le jeu de liens, avec sa règle complète : les
+        // chemins ne se croisent pas ET aucune case ne reste vide. C'est la
+        // seconde moitié qui fait le raisonnement — relier deux points est
+        // facile, les relier de façon que tous les autres puissent encore
+        // passer ne l'est pas. La grille est tirée d'un chemin qui couvre
+        // déjà toute la surface : elle est donc résoluble par construction.
+        id: 'geo-relier-points', status: STATUS.TEST, title: 'Relie les points',
+        activityId: 'relier',
+        params: { taille: 'moyen', marques: 'les-deux' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'La grille',
+                aide: 'Plus la grille est grande, plus les chemins doivent se céder la place. En 5×5 à trois paires, on voit la solution ; en 8×8 à six paires, il faut vraiment commencer par les coins.',
+                options: [
+                    { value: 'petit', label: '5 × 5 — trois paires' },
+                    { value: 'moyen', label: '6 × 6 — quatre paires' },
+                    { value: 'grand', label: '7 × 7 — cinq paires' },
+                    { value: 'geant', label: '8 × 8 — six paires' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'marques', type: 'select', label: 'Comment les paires se distinguent',
+                aide: 'La couleur seule exclut les élèves qui distinguent mal le rouge du vert — et disparaît sur une photocopie. Les symboles marchent partout. « Couleurs + symboles » convient à tout le monde ; « symboles seuls » donne à l\'écran ce que donnera le polycopié en noir et blanc.',
+                options: [
+                    { value: 'les-deux', label: 'Couleurs et symboles' },
+                    { value: 'couleurs', label: 'Couleurs seules' },
+                    { value: 'symboles', label: 'Symboles seuls' }
+                ],
+                default: 'les-deux'
+            }
+        ],
+        skills: ['geo.espace.reperage'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Relie les deux points qui portent la m\u00eame marque par un chemin qui suit les cases, sans diagonale. Pose le doigt sur un point et glisse ; pour effacer, reviens en arri\u00e8re ou touche le milieu d'un chemin. Deux r\u00e8gles, et c'est la seconde qui fait chercher : les chemins ne se croisent JAMAIS, et \u00e0 la fin il ne doit rester AUCUNE case vide. Commence par les coins : un coin n'a que deux voisines, le chemin qui y passe est donc presque toujours oblig\u00e9."
+    },
+    {
         // DÉNOMBRER SUR UN SOLIDE. L'exercice a l'air simple et ne l'est pas :
         // sur une perspective cavalière, une partie du solide est derrière, et
         // l'élève qui compte ce qu'il voit trouve toujours trop peu. Le jeu

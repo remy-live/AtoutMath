@@ -298,6 +298,7 @@ const legacy = [
     ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
     ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram'],
     ['solides', 'Compter sur un solide', 'solides', 'engineSolides'],
+    ['relier', 'Relier les points', 'relier', 'engineRelier'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],

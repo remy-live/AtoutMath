@@ -472,6 +472,14 @@ const BASE = {
         descriptor: 'Compter les sommets, les arêtes et les faces d\'un solide dessiné en perspective cavalière.',
         lesson: "Sur une perspective cavalière, une partie du solide est DERRIÈRE : elle se dessine en pointillés. Celui qui compte seulement ce qu'il voit trouve toujours trop peu. Compte donc en marquant, une par une, sans oublier les pointillés. Et surtout, raisonne par familles plutôt que d'apprendre des nombres : un PRISME a deux bases identiques, donc 2 × n sommets, 3 × n arêtes (les n côtés du bas, les n du haut, les n montants) et n + 2 faces. Une PYRAMIDE a une base et un sommet, donc n + 1 sommets, 2 × n arêtes (les n côtés de la base, les n qui montent) et n + 1 faces. Enfin, une vérification vaut pour tous ces solides : sommets − arêtes + faces = 2. Si tu ne tombes pas sur 2, l'un des trois comptes est faux."
     },
+    'geo.espace.reperage': {
+        label: 'Se repérer et tracer un chemin sur une grille',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Tracer des chemins sur un quadrillage sous une contrainte de non-croisement et de recouvrement complet.',
+        lesson: "Relier deux points est facile ; les relier DE FAÇON QUE TOUS LES AUTRES PUISSENT ENCORE PASSER est un vrai raisonnement. Deux idées suffisent presque toujours. D'abord, les COINS : une case de coin n'a que deux voisines, donc le chemin qui y passe est pratiquement forcé — commence par là, et remonte le long des bords, qui n'ont que trois voisines. Ensuite, le chemin le plus COURT est rarement le bon : puisqu'aucune case ne doit rester vide, un chemin doit souvent faire un détour pour occuper une zone que personne d'autre n'atteindrait. Quand il te reste une case vide alors que tout est relié, ne recommence pas tout : cherche le chemin qui passe à côté d'elle et fais-lui faire le crochet."
+    },
     'geo.espace.deplacement': {
         label: 'Suivre un déplacement sur un plan',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],
