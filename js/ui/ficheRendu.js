@@ -79,7 +79,11 @@ const HORS_TABLE = {
     '\u2610': '[ ]', '\u2611': '[x]',
     '\u2153': '1/3', '\u2154': '2/3', '\u00BC': '1/4', '\u00BE': '3/4',
     '\u2218': 'o', '\u2032': "'", '\u2033': '"',
-    '\u2261': '=', '\u221A': 'V', '\u03C0': 'pi'
+    '\u2261': '=', '\u221A': 'V', '\u03C0': 'pi',
+    // Les fl\u00E8ches de rotation du chat g\u00E9om\u00E8tre. \u00AB \u00E0 droite \u00BB est d\u00E9j\u00E0 \u00E9crit \u00E0
+    // c\u00F4t\u00E9 : la fl\u00E8che est un ornement, et un \u00AB ? \u00BB au milieu d'un programme
+    // de construction se lit comme une donn\u00E9e manquante.
+    '\u21BB': '', '\u21BA': ''
 };
 
 /**

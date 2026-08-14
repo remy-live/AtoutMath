@@ -47,6 +47,7 @@ import { pairesFicheGenerator } from '../generators/pairesFiche.js';
 import { rectangleFicheGenerator } from '../generators/rectangleFiche.js';
 import { motsCachesFicheGenerator } from '../generators/motsCachesFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
+import { chatFicheGenerator } from '../generators/chatFiche.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -66,7 +67,7 @@ import { tableurFicheGenerator } from '../generators/tableurFiche.js';
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
-    motsCachesFicheGenerator, tableurFicheGenerator
+    motsCachesFicheGenerator, tableurFicheGenerator, chatFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

@@ -3642,6 +3642,16 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    lui, une ligne par grandeur demandée. */
 .fx-rc-svg { position: absolute; overflow: visible; pointer-events: none; }
 
+/* Le chat géomètre : le programme à gauche, le quadrillage à droite. */
+.fx-ch-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-ch-prog { position: absolute; color: #1a202c; font-weight: 600; }
+.fx-ch-ligne {
+    position: absolute; display: flex; align-items: center; gap: .4em;
+    box-sizing: border-box; color: #2d3748; white-space: nowrap;
+}
+.fx-ch-ligne b { font-weight: 800; }
+.fx-ch-ligne i { font-style: normal; color: #6e7684; font-weight: 700; }
+
 /* Le tableur : la grille en SVG, la ligne de réponse dessous. */
 .fx-tb-svg { position: absolute; overflow: visible; pointer-events: none; }
 .fx-tb-ligne {

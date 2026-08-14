@@ -143,6 +143,13 @@ export const geometrieExercises = [
     {
         id: 'geo-chat-geometre', status: STATUS.TEST, title: 'Le Chat Géomètre',
         generatorId: 'geo.scratch', activityId: 'scratch',
+        // SUR LE PAPIER, ON RENVERSE L'EXERCICE : le programme est donné, la
+        // figure est à tracer. Tant qu'on peut lancer, on ne prévoit pas ; ici
+        // rien ne s'exécute, et c'est exactement le « programme de
+        // construction » du brevet.
+        printable: 'chat', printGeneratorId: 'geo.chat-fiche',
+        printParams: { quoi: 'melange', niveau: 'moyen' },
+        consignePapier: "Trace au crayon, côté par côté, en comptant les carreaux.",
         params: { depart: 1, saisie: 'auto' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Programme le chat pour qu'il repasse la figure : pose des blocs « avancer » et « tourner », puis lance. Douze niveaux, du trait unique à la rosace — c'est le tracé obtenu qui compte, pas la forme du programme."

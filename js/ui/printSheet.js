@@ -2415,6 +2415,163 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- LE CHAT GÉOMÈTRE ----------------------------------------------------------
+//
+// Le programme à gauche, le quadrillage à droite. Un carreau vaut dix pas de
+// chat : c'est ce qui permet de compter les côtés au lieu de les mesurer, et
+// c'est pour cela que les figures n'avancent que par multiples de dix.
+//
+// Le chat de départ est un triangle posé sur le quadrillage, la pointe dans la
+// direction où il regarde. Sans lui, « avancer de 40 » n'a pas d'origine.
+
+function geoChat(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    const ligneH = b.h * 0.1;
+    const zone = b.h - ligneH;
+    const progW = Math.max(42, Math.min(b.w * 0.42, 84));
+    const cote = Math.max(20, Math.min(b.w - progW - 5, zone));
+    return {
+        m, b, cote, progW, ligneH,
+        pas: cote / m.cases,
+        x0: b.x + progW + 5, y0: b.y + (zone - cote) / 2,
+        ligneY: b.y + zone
+    };
+}
+
+/** Un point du chat (en pas) vers le papier (en millimètres). */
+function pointChat(g, p) {
+    return {
+        x: g.x0 + g.cote / 2 + (p.x / 10) * g.pas,
+        // L'axe du chat monte, celui du papier descend : on retourne.
+        y: g.y0 + g.cote / 2 - (p.y / 10) * g.pas
+    };
+}
+
+/** Les trois sommets du petit chat de départ, en millimètres. */
+function trianguleChat(g) {
+    const c = pointChat(g, g.m.depart);
+    const rad = (g.m.depart.dir || 90) * Math.PI / 180;
+    const r = g.pas * 0.42;
+    const bout = { x: c.x + Math.sin(rad) * r, y: c.y - Math.cos(rad) * r };
+    const cote = (s) => ({
+        x: c.x + Math.sin(rad + s) * r * 0.72,
+        y: c.y - Math.cos(rad + s) * r * 0.72
+    });
+    return [bout, cote(2.4), cote(-2.4)];
+}
+
+function chatPreviewHtml(item, slot, k, solution) {
+    const g = geoChat(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    // Le tracé est visible d'emblée quand c'est l'angle qu'on cherche : la
+    // figure est alors une DONNÉE, pas la réponse.
+    const montrer = solution || m.quoi === 'angle';
+
+    let d = '';
+    for (let i = 0; i <= m.cases; i++) {
+        const p = i * g.pas;
+        d += `<line x1="${T(g.x0)}" y1="${T(g.y0 + p)}" x2="${T(g.x0 + g.cote)}" y2="${T(g.y0 + p)}"
+            stroke="#c9cfda" stroke-width="${T(0.18)}"/>
+            <line x1="${T(g.x0 + p)}" y1="${T(g.y0)}" x2="${T(g.x0 + p)}" y2="${T(g.y0 + g.cote)}"
+            stroke="#c9cfda" stroke-width="${T(0.18)}"/>`;
+    }
+    d += `<rect x="${T(g.x0)}" y="${T(g.y0)}" width="${T(g.cote)}" height="${T(g.cote)}"
+        fill="none" stroke="#8a93a3" stroke-width="${T(0.34)}"/>`;
+
+    if (montrer) {
+        m.traces.forEach(trait => {
+            if (trait.length < 2) return;
+            const pts = trait.map(p => { const q = pointChat(g, p); return `${T(q.x)},${T(q.y)}`; });
+            d += `<polyline points="${pts.join(' ')}" fill="none" stroke="#1a202c"
+                stroke-width="${T(0.55)}" stroke-linejoin="round" stroke-linecap="round"/>`;
+        });
+    }
+    const t = trianguleChat(g);
+    d += `<polygon points="${t.map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
+        fill="#e11d48" opacity="0.85"/>`;
+
+    let html = `<svg class="fx-ch-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    // Le programme, une ligne par bloc, indenté sous « répéter ».
+    const pas = Math.min(g.cote / Math.max(m.lignes.length + 1, 6), 8);
+    html += `<div class="fx-ch-prog" style="left:${g.b.x * k}px; top:${g.y0 * k}px;
+        width:${g.progW * k}px; font-size:${Math.min(pas * 0.44, 3.5) * k}px;
+        line-height:${pas * k}px">`
+        + m.lignes.map(l => `<div style="padding-left:${l.creux * 1.4}em">${echapperSheet(l.texte)}</div>`).join('')
+        + '</div>';
+
+    const rep = m.quoi === 'angle'
+        ? [`L'angle vaut`, solution ? `${m.angle}°` : '……… °']
+        : ['La figure obtenue est', solution ? m.nom : '..................'];
+    html += `<div class="fx-ch-ligne" style="left:${g.b.x * k}px; top:${g.ligneY * k}px;
+        width:${g.b.w * k}px; height:${g.ligneH * k}px;
+        font-size:${Math.min(g.ligneH * 0.42, 3.6) * k}px">
+        <b>${rep[0]}</b><i>${echapperSheet(rep[1])}</i></div>`;
+    return html;
+}
+
+function dessinerChatPdf(doc, item, slot, solution, champ) {
+    const g = geoChat(item, slot);
+    const m = g.m;
+    const montrer = solution || m.quoi === 'angle';
+
+    doc.setDrawColor(201, 207, 218);
+    doc.setLineWidth(0.18);
+    for (let i = 0; i <= m.cases; i++) {
+        const p = i * g.pas;
+        doc.line(g.x0, g.y0 + p, g.x0 + g.cote, g.y0 + p);
+        doc.line(g.x0 + p, g.y0, g.x0 + p, g.y0 + g.cote);
+    }
+    doc.setDrawColor(138, 147, 163);
+    doc.setLineWidth(0.34);
+    doc.rect(g.x0, g.y0, g.cote, g.cote, 'S');
+
+    if (montrer) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.55);
+        m.traces.forEach(trait => {
+            for (let i = 1; i < trait.length; i++) {
+                const a = pointChat(g, trait[i - 1]), z = pointChat(g, trait[i]);
+                doc.line(a.x, a.y, z.x, z.y);
+            }
+        });
+    }
+    const t = trianguleChat(g);
+    doc.setFillColor(225, 29, 72);
+    doc.triangle(t[0].x, t[0].y, t[1].x, t[1].y, t[2].x, t[2].y, 'F');
+
+    // Le programme. Chaque ligne est découpée à la largeur de sa colonne : un
+    // « répéter 8 fois : » sous-indenté sortait par la droite.
+    const taille = Math.max(5.5, Math.min(g.cote / (m.lignes.length + 2) * 1.7, 9));
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(taille);
+    doc.setTextColor(...ENCRE.texte);
+    let y = g.y0 + taille * 0.45;
+    m.lignes.forEach(l => {
+        const x = g.b.x + l.creux * taille * 0.5;
+        doc.splitTextToSize(pourPdf(l.texte), g.progW - l.creux * taille * 0.5).forEach(part => {
+            doc.text(part, x, y);
+            y += taille * 0.46;
+        });
+    });
+
+    const yl = g.ligneY + g.ligneH * 0.66;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.2, 10)));
+    const etiquette = pourPdf(m.quoi === 'angle' ? 'L\'angle vaut' : 'La figure obtenue est');
+    doc.text(etiquette, g.b.x, yl);
+    const xr = g.b.x + doc.getTextWidth(etiquette) + 3;
+    if (solution) {
+        doc.text(pourPdf(m.quoi === 'angle' ? `${m.angle}°` : m.nom), xr, yl);
+        return;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(m.quoi === 'angle' ? pourPdf('......... °') : '..................', xr, yl);
+    if (champ) champ(xr, yl - g.ligneH * 0.55, g.b.x + g.b.w - xr, g.ligneH * 0.8);
+}
+
 // --- LE TABLEUR ----------------------------------------------------------------
 //
 // Une grille de tableur, avec sa barre de lettres en haut et sa colonne de
@@ -2810,6 +2967,20 @@ export const RENDUS = {
         nomBloc: 'Rectangle',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    chat: {
+        titre: 'Le chat géomètre — programmes de construction',
+        consigne: () => 'UN CARREAU VAUT DIX PAS. Le chat rouge montre où il part et dans '
+            + 'quelle direction il regarde. Lis le programme et trace la figure au crayon, '
+            + 'côté par côté — rien ne s\'exécute ici, il faut prévoir. Un polygone régulier '
+            + 'à n côtés se ferme en tournant à chaque sommet de 360 ÷ n.',
+        previewGrille: chatPreviewHtml,
+        pdfGrille: dessinerChatPdf,
+        nomBloc: 'Programme',
+        titreAGauche: true,
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
     },
 
     tableur: {
