@@ -83,20 +83,55 @@ export const mesuresExercises = [
     {
         id: 'mes-heure-lire', title: 'Quelle heure est-il ?',
         generatorId: 'mes.horloge', activityId: 'horloge',
+        printable: 'horloge',
         params: { niveau: 'progressif', question: 'lire', reperes: 'auto' },
+        // Les réglages de l'écran valent aussi pour la fiche : « avec ou sans
+        // les nombres des minutes » est une AIDE qu'on retire quand la lecture
+        // est acquise, sur le papier comme à l'écran.
+        paramSchema: [
+            {
+                id: 'reperes', type: 'select', label: 'Nombres des minutes',
+                aide: 'La couronne rouge des multiples de cinq aide à lire la grande aiguille. On la retire quand la lecture est acquise.',
+                options: [
+                    { value: 'auto', label: 'Selon le niveau (recommandé)' },
+                    { value: 'toujours', label: 'Toujours affichés' },
+                    { value: 'jamais', label: 'Jamais (pendule ordinaire)' }
+                ],
+                default: 'auto'
+            }
+        ],
+
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Lis l'heure sur la pendule : la petite aiguille donne les heures, la grande les minutes."
     },
     {
         id: 'mes-heure-placer', title: 'Règle la pendule',
         generatorId: 'mes.horloge', activityId: 'horloge',
+        printable: 'horloge',
         params: { niveau: 'progressif', question: 'placer', reperes: 'auto' },
+        // Les réglages de l'écran valent aussi pour la fiche : « avec ou sans
+        // les nombres des minutes » est une AIDE qu'on retire quand la lecture
+        // est acquise, sur le papier comme à l'écran.
+        paramSchema: [
+            {
+                id: 'reperes', type: 'select', label: 'Nombres des minutes',
+                aide: 'La couronne rouge des multiples de cinq aide à lire la grande aiguille. On la retire quand la lecture est acquise.',
+                options: [
+                    { value: 'auto', label: 'Selon le niveau (recommandé)' },
+                    { value: 'toujours', label: 'Toujours affichés' },
+                    { value: 'jamais', label: 'Jamais (pendule ordinaire)' }
+                ],
+                default: 'auto'
+            }
+        ],
+
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Tire les aiguilles pour afficher l'heure demandée."
     },
     {
         id: 'mes-heure-24', title: 'Le tour de midi (24 heures)',
         generatorId: 'mes.horloge', activityId: 'horloge',
+        printable: 'horloge',
         params: { niveau: 'apresmidi', question: 'mixte', reperes: 'jamais' },
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "La pendule ne compte que jusqu'à 12 : l'après-midi, ajoute 12 pour donner l'heure en 24 heures."

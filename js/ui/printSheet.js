@@ -1660,6 +1660,160 @@ function dessinerRepPdf(doc, item, slot, solution) {
     }
 }
 
+
+// --- LA PENDULE --------------------------------------------------------------
+//
+// Deux exercices sur le même cadran, et c'est le mode qui les sépare :
+//
+//   LIRE   — les aiguilles sont tracées, l'élève écrit « …… h …… » dessous.
+//   PLACER — l'heure est écrite dessous, le cadran est nu, l'élève trace les
+//            deux aiguilles.
+//
+// « Avec ou sans minutes » est le réglage de l'écran, repris tel quel : la
+// couronne rouge des multiples de cinq est une AIDE qu'on retire quand la
+// lecture est acquise, pas une décoration.
+//
+// La grande aiguille est plus LONGUE, la petite plus ÉPAISSE : c'est la seule
+// façon de les distinguer sur un polycopié en noir et blanc, où la couleur de
+// l'écran ne survit pas.
+
+function geoHorloge(item, slot) {
+    // Un tiers du bas pour la ligne de réponse : « …… h …… » écrit au crayon
+    // demande de la place, et un cadran qui la mange rend la fiche inutilisable.
+    const ligneH = slot.taille * 0.20;
+    const cote = slot.taille - ligneH;
+    const r = cote * 0.44;
+    return {
+        cote, ligneH, r,
+        cx: slot.x + slot.taille / 2, cy: slot.y + cote / 2,
+        ligneY: slot.y + cote, x0: slot.x
+    };
+}
+
+/** Les bouts d'une aiguille, en coordonnées absolues. */
+function aiguilleHorloge(g, tours, longueur) {
+    const a = tours * Math.PI * 2 - Math.PI / 2;
+    return { x: g.cx + Math.cos(a) * longueur, y: g.cy + Math.sin(a) * longueur };
+}
+
+const horlogeAngles = (m) => ({
+    minutes: m.m / 60,
+    heures: (((m.mode === 'placer' ? m.h12 : m.h) % 12) + m.m / 60) / 12
+});
+
+function horlogePreviewHtml(item, slot, k, solution) {
+    const g = geoHorloge(item, slot);
+    const m = item.meta;
+    const tracer = m.mode === 'lire' || solution;
+    const a = horlogeAngles(m);
+    const T = (v) => (v * k).toFixed(2);
+    let d = '';
+
+    // Le boîtier, les soixante graduations, et la couronne des minutes.
+    d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r)}" fill="#fff" stroke="#1a202c" stroke-width="${T(g.r * 0.045)}"/>`;
+    for (let i = 0; i < 60; i++) {
+        const ang = i / 60 * Math.PI * 2 - Math.PI / 2;
+        const gros = i % 5 === 0;
+        const r2 = g.r * 0.94, r1 = r2 - g.r * (gros ? 0.085 : 0.045);
+        d += `<line x1="${T(g.cx + Math.cos(ang) * r1)}" y1="${T(g.cy + Math.sin(ang) * r1)}"
+              x2="${T(g.cx + Math.cos(ang) * r2)}" y2="${T(g.cy + Math.sin(ang) * r2)}"
+              stroke="${gros ? '#1a202c' : '#94a3b8'}" stroke-width="${T(g.r * (gros ? 0.035 : 0.014))}"/>`;
+    }
+    for (let n = 1; n <= 12; n++) {
+        const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
+        const rr = g.r * (m.reperes ? 0.55 : 0.74);
+        d += `<text x="${T(g.cx + Math.cos(ang) * rr)}" y="${T(g.cy + Math.sin(ang) * rr)}"
+              text-anchor="middle" dominant-baseline="central"
+              font-size="${T(g.r * 0.24)}" font-weight="700" fill="#1a202c">${n}</text>`;
+    }
+    if (m.reperes) {
+        for (let n = 0; n < 12; n++) {
+            const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
+            const rr = g.r * 0.78;
+            d += `<text x="${T(g.cx + Math.cos(ang) * rr)}" y="${T(g.cy + Math.sin(ang) * rr)}"
+                  text-anchor="middle" dominant-baseline="central"
+                  font-size="${T(g.r * 0.155)}" font-weight="700" fill="#8a93a5">${n * 5}</text>`;
+        }
+    }
+    if (tracer) {
+        const gm = aiguilleHorloge(g, a.minutes, g.r * 0.84);
+        const gh = aiguilleHorloge(g, a.heures, g.r * 0.50);
+        d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}" x2="${T(gh.x)}" y2="${T(gh.y)}"
+              stroke="#1a202c" stroke-width="${T(g.r * 0.085)}" stroke-linecap="round"/>`;
+        d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}" x2="${T(gm.x)}" y2="${T(gm.y)}"
+              stroke="#1a202c" stroke-width="${T(g.r * 0.045)}" stroke-linecap="round"/>`;
+    }
+    d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r * 0.05)}" fill="#1a202c"/>`;
+
+    const ligne = m.mode === 'lire'
+        ? (solution ? `${m.h} h ${String(m.m).padStart(2, '0')}` : '.......   h   .......')
+        : `${m.h} h ${String(m.m).padStart(2, '0')}`;
+    return `<svg class="fx-hg-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`
+        + `<div class="fx-hg-ligne" style="left:${g.x0 * k}px; top:${g.ligneY * k}px;
+             width:${slot.taille * k}px; height:${g.ligneH * k}px;
+             font-size:${g.ligneH * 0.44 * k}px">${echapperSheet(ligne)}</div>`;
+}
+
+function dessinerHorlogePdf(doc, item, slot, solution) {
+    const g = geoHorloge(item, slot);
+    const m = item.meta;
+    const tracer = m.mode === 'lire' || solution;
+    const a = horlogeAngles(m);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setFillColor(255, 255, 255);
+    doc.setLineWidth(Math.max(0.35, g.r * 0.045));
+    doc.circle(g.cx, g.cy, g.r, 'FD');
+
+    for (let i = 0; i < 60; i++) {
+        const ang = i / 60 * Math.PI * 2 - Math.PI / 2;
+        const gros = i % 5 === 0;
+        const r2 = g.r * 0.94, r1 = r2 - g.r * (gros ? 0.085 : 0.045);
+        doc.setDrawColor(...(gros ? ENCRE.trait : ENCRE.gris));
+        doc.setLineWidth(Math.max(0.12, g.r * (gros ? 0.035 : 0.014)));
+        doc.line(g.cx + Math.cos(ang) * r1, g.cy + Math.sin(ang) * r1,
+            g.cx + Math.cos(ang) * r2, g.cy + Math.sin(ang) * r2);
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.max(5, g.r * 0.24 * 2.6));
+    for (let n = 1; n <= 12; n++) {
+        const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
+        const rr = g.r * (m.reperes ? 0.55 : 0.74);
+        doc.text(String(n), g.cx + Math.cos(ang) * rr, g.cy + Math.sin(ang) * rr + g.r * 0.08,
+            { align: 'center' });
+    }
+    if (m.reperes) {
+        doc.setFontSize(Math.max(4, g.r * 0.155 * 2.6));
+        doc.setTextColor(...ENCRE.gris);
+        for (let n = 0; n < 12; n++) {
+            const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
+            const rr = g.r * 0.78;
+            doc.text(String(n * 5), g.cx + Math.cos(ang) * rr, g.cy + Math.sin(ang) * rr + g.r * 0.05,
+                { align: 'center' });
+        }
+    }
+    if (tracer) {
+        const gm = aiguilleHorloge(g, a.minutes, g.r * 0.84);
+        const gh = aiguilleHorloge(g, a.heures, g.r * 0.50);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(Math.max(0.5, g.r * 0.085));
+        doc.line(g.cx, g.cy, gh.x, gh.y);
+        doc.setLineWidth(Math.max(0.3, g.r * 0.045));
+        doc.line(g.cx, g.cy, gm.x, gm.y);
+    }
+    doc.setFillColor(...ENCRE.trait);
+    doc.circle(g.cx, g.cy, Math.max(0.5, g.r * 0.05), 'F');
+
+    const ligne = m.mode === 'lire'
+        ? (solution ? `${m.h} h ${String(m.m).padStart(2, '0')}` : '.......   h   .......')
+        : `${m.h} h ${String(m.m).padStart(2, '0')}`;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(7, g.ligneH * 1.5));
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(ligne), slot.x + slot.taille / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
+}
+
 export const RENDUS = {
     repere: {
         titre: 'Repère et coordonnées',
@@ -1677,6 +1831,25 @@ export const RENDUS = {
         // plus tracer une croix entre elles.
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 2
+    },
+
+    horloge: {
+        titre: 'La pendule',
+        consigne: (items) => ((items[0] && items[0].meta.mode === 'placer')
+            ? 'Trace les deux aiguilles pour afficher l\'heure écrite sous chaque pendule. '
+                + 'La grande aiguille (les minutes) est LONGUE, la petite (les heures) est '
+                + 'courte et épaisse — et elle se décale un peu vers le nombre suivant.'
+            : 'Écris sous chaque pendule l\'heure qu\'elle affiche. La PETITE aiguille donne '
+                + 'les heures, la GRANDE donne les minutes — et chaque nombre du cadran vaut '
+                + 'CINQ minutes pour la grande.'),
+        previewGrille: horlogePreviewHtml,
+        pdfGrille: dessinerHorlogePdf,
+        nomBloc: 'Pendule',
+        // SIX PAR PAGE. Sous quatre centimètres, une aiguille sur le 7 et une
+        // aiguille sur le 8 ne se distinguent plus : l'exercice devient un test
+        // de vue au lieu d'une lecture.
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
     },
 
     solides: {

@@ -3572,3 +3572,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .fx-rp-rep { white-space: nowrap; width: 47%; }
 .fx-rp-trou { display: inline-block; min-width: 2.4em; border-bottom: 1px dotted #9aa3b2; text-align: center; }
+
+/* --- Fiche « Lire l'heure » ---------------------------------------------
+   Le cadran est un SVG unique posé sur tout l'emplacement : un cercle, ses
+   soixante graduations et deux aiguilles se décrivent en géométrie, pas en
+   boîtes empilées. Sous lui, la ligne de réponse — « ....... h ....... » à
+   remplir, ou l'heure donnée quand c'est l'élève qui doit tracer. */
+.fx-hg-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-hg-ligne {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #2d3748; letter-spacing: .02em; white-space: nowrap;
+}
