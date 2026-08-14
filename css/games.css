@@ -67,6 +67,13 @@
 }
 .game-question .nb-highlight,
 .game-question b { white-space: nowrap; }
+/* Le morceau d'énoncé que la démonstration désigne (« 8 × 6 » dans
+   « 8 × 6 + 3 »). Invisible tant que le robot n'en parle pas : il ne doit pas
+   souffler la priorité à l'élève qui cherche seul. */
+.game-question [data-vise] { white-space: nowrap; }
+/* Cerclé, il devient un bloc : sur un texte en ligne, le cadre se referme mal
+   et déborde sur les lignes voisines. */
+.game-question .demo-cible { display: inline-block; }
 
 /* Objets du jeu */
 /* LES BULLES TIENNENT TOUTES SUR UNE LIGNE.
@@ -87,7 +94,7 @@
 .bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px rgba(79, 70, 229, 0.5); }
 .bubble:active { transform: translateY(2px) scale(0.95); }
 
-.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
+.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target, .ad-choix-btn.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
 
 /* Grille Tactile (Chasseur) */
 .tactile-grid { display: grid; grid-template-columns: repeat(5, 60px); grid-template-rows: repeat(5, 60px); gap: 6px; background: rgba(255,255,255,0.5); border: 1px solid var(--border); padding: 10px; border-radius: 16px; box-shadow: var(--shadow-lg); backdrop-filter: blur(5px); }

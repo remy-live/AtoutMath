@@ -150,3 +150,51 @@ test('comparer des fractions : la méthode annoncée correspond à la situation'
         assert.equal(item.answer, attendu);
     }
 });
+
+// --- Ce que le robot désigne dans l'énoncé -----------------------------------
+//
+// Le premier indice d'une démonstration parle d'un MORCEAU de l'énoncé :
+// « Commence par 8 × 6 » dans « 8 × 6 + 3 », « combien de fois 4 tient-il dans
+// 24 » sur l'égalité « ? × 4 = 24 ». L'activité de choix cercle l'élément
+// `data-vise` s'il existe ; ces tests garantissent qu'il existe, qu'il désigne
+// la bonne chose, et qu'il ne change rien à ce que l'élève lit.
+
+/** Le texte affiché, balises retirées — ce que l'élève voit vraiment. */
+const texteVisible = (html) => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+
+/** Le contenu du premier élément marqué `data-vise`. */
+const partieVisee = (html) => (/<[a-z]+ data-vise[^>]*>([^<]*)</.exec(html) || [])[1];
+
+test('priorités, mode résultat : le robot désigne l\'opération à faire d\'abord', () => {
+    for (let i = 0; i < 200; i++) {
+        const item = prioriteGenerator.generate({ mode: 'resultat' }, { rng: makeRng('prio_r_' + i) });
+        const html = item.prompt.html;
+        // Le morceau désigné est exactement l'opération prioritaire, celle dont
+        // parle le premier indice.
+        assert.equal(partieVisee(html), item.meta.right, html);
+        assert.equal(item.hints[0], `Commence par ${item.meta.right}.`);
+        // Et l'énoncé lu reste le même : le balisage ne souffle rien.
+        assert.equal(texteVisible(html), `${item.meta.eq} = ?`);
+    }
+});
+
+test('priorités, mode opération : on ne désigne jamais la réponse cherchée', () => {
+    for (let i = 0; i < 200; i++) {
+        const item = prioriteGenerator.generate({ mode: 'operation' }, { rng: makeRng('prio_o_' + i) });
+        const vise = partieVisee(item.prompt.html);
+        // Ici la bonne réponse EST l'opération prioritaire : le robot ne peut
+        // désigner que l'expression entière, sous peine de tout donner.
+        assert.equal(vise, item.meta.eq);
+        assert.notEqual(vise, item.meta.right);
+    }
+});
+
+test('facteur manquant : le robot désigne l\'égalité, pas le titre du jeu', () => {
+    for (let i = 0; i < 100; i++) {
+        const item = multMissingGenerator.generate({ tables: [3, 4, 8] }, { rng: makeRng('fm_' + i) });
+        const vise = partieVisee(item.prompt.html);
+        assert.ok(vise && /[×x]/.test(vise) && vise.includes('='),
+            `le morceau désigné doit être l'égalité, reçu : ${vise}`);
+        assert.ok(!/Facteur/.test(vise), 'le titre du jeu n\'est pas l\'énoncé');
+    }
+});

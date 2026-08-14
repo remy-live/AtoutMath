@@ -31,6 +31,10 @@ export function mount(container, session) {
     let destroyed = false;
     let cursor = null, gate = null;
     let item = null, etat = null;
+    // Le pavé de la question courante, pour que la démonstration puisse taper
+    // dessus : le curseur du robot n'émet pas de vrais clics, et un robot qui
+    // mime la frappe sur un afficheur resté à « ? » ne montre rien.
+    let pave = null;
     const nettoyeurs = [];
 
     function renderNext() {
@@ -69,6 +73,15 @@ export function mount(container, session) {
 
         majCalcul();
         brancher();
+
+        if (session.isDemo) {
+            // La démonstration REPART à chaque question. Lancée une seule fois
+            // au montage, elle jouait la première marche puis se taisait pour
+            // les onze suivantes : on regardait un robot immobile devant un
+            // exercice qui, lui, continuait.
+            if (!session.frozen) runDemo();
+            return;
+        }
 
         wireHint(container, session);
         wireShowMe(container, session, {
@@ -227,6 +240,7 @@ export function mount(container, session) {
         // Le pavé vit DANS la page : un <input> ferait monter le clavier du
         // téléphone par-dessus le tableau de pastilles, c'est-à-dire par-dessus
         // ce dont on a besoin pour répondre.
+        pave = null;
         const affiche = container.querySelector('[data-affiche]');
         const btn = container.querySelector('[data-valider]');
         if (affiche && btn) {
@@ -263,6 +277,7 @@ export function mount(container, session) {
             document.addEventListener('keydown', surTouche);
             nettoyeurs.push(() => document.removeEventListener('keydown', surTouche));
             peindre();
+            pave = { frappe };
         }
 
         // En choix, la valeur peut être un NOMBRE (un total) ou une CHAÎNE
@@ -275,29 +290,55 @@ export function mount(container, session) {
 
     // --- Le robot -------------------------------------------------------------
 
+    /**
+     * Où le robot regarde quand il parle.
+     *
+     * Il visait `container` — le centre géométrique de la zone de jeu, c'est-à-dire
+     * un point entre les éléments plutôt que sur l'un d'eux : la flèche se posait
+     * dans le vide, et la bulle s'étalait par-dessus les pastilles dont elle
+     * parlait. Chaque phrase désigne maintenant ce qu'elle commente.
+     */
+    const vise = (...selecteurs) => {
+        for (const s of selecteurs) {
+            const el = container.querySelector(s);
+            // La ligne de calcul est vide sur les marches d'écriture : la viser
+            // reviendrait à désigner un point de hauteur nulle.
+            if (el && el.getBoundingClientRect().height > 2) return el;
+        }
+        return container;
+    };
+
     async function runDemo() {
-        cursor = createDemoCursor();
-        gate = createDemoGate(container);
+        if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
         const fin = () => { cursor?.hideBubble(); return true; };
         const m = item.meta;
 
+        // Tableau, ligne de calcul, pavé : rien de tout cela ne doit passer
+        // sous une bulle. C'est exactement ce qu'on demande de regarder.
+        cursor.protegerZone([...container.querySelectorAll('.ad-layout > *')]
+            .filter(el => !el.classList.contains('hint-bar')));
+
         if (!await cursor.pause(500)) return fin();
         if (m.texteLecon) {
-            cursor.say(m.texteLecon, container);
+            cursor.say(m.texteLecon, vise('[data-tableau]', '[data-calcul]', '.game-question'));
             if (!await cursor.pause(DEMO_SPEED.between)) return fin();
         }
 
         if (!await gate.waitTurn()) return fin();
         if (m.question === 'ecriture') {
             cursor.say(`On n'écrit jamais deux signes à la suite. Dans ${item.prompt.text.replace('Écris ce calcul plus simplement : ', '')}, `
-                + `le « + » et le signe du deuxième nombre se réduisent à un seul signe.`, container);
+                + `le « + » et le signe du deuxième nombre se réduisent à un seul signe.`, vise('.game-question'));
             if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
             const bon = item.choices.findIndex(c => c.correct);
             const cible = container.querySelector(`[data-choix="${bon}"]`);
             if (cible && !await cursor.tap(cible)) return fin();
+            if (cible) cible.classList.add('demo-target');
             cursor.say(`On écrit donc ${item.answer}. Le calcul, lui, n'a pas changé.`, cible || container);
             if (!await cursor.pause(DEMO_SPEED.between)) return fin();
-            return fin();
+            fin();
+            renderNext();
+            return true;
         }
 
         const memeSigne = (m.a >= 0) === (m.b >= 0);
@@ -305,17 +346,18 @@ export function mount(container, session) {
             cursor.say(memeSigne
                 ? `Toutes les pastilles sont dans la même colonne : il n'y a aucune paire à éliminer, on compte.`
                 : `Il y a des pastilles des deux couleurs. Une rouge et une bleue valent zéro ensemble : je les élimine deux par deux, une de chaque côté.`,
-                container.querySelector('[data-tableau]') || container);
+                vise('[data-tableau]'));
             if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
             await animerElimination();
         } else {
-            cursor.say(`${item.prompt.text.replace(' = ?', '')} s'écrit plus simplement ${m.simplifiee}.`, container);
+            cursor.say(`${item.prompt.text.replace(' = ?', '')} s'écrit plus simplement ${m.simplifiee}.`,
+                vise('[data-calcul]', '.game-question'));
             if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
             await animerEcriture();
         }
 
         if (!await gate.waitTurn()) return fin();
-        cursor.say(item.explanation, container);
+        cursor.say(item.explanation, vise('[data-calcul]', '[data-tableau]', '.game-question'));
         if (!await cursor.pause(DEMO_SPEED.between)) return fin();
 
         // Puis on tape la réponse, chiffre par chiffre — la virgule comprise,
@@ -325,14 +367,21 @@ export function mount(container, session) {
             const k = c === '−' ? '−' : c === ',' ? ',' : c;
             const t = container.querySelector(`[data-touche="${k}"]`);
             if (t && !await cursor.tap(t)) return fin();
+            if (pave) pave.frappe(k);   // le chiffre s'inscrit vraiment
         }
         const valider = container.querySelector('[data-valider]');
         if (valider && !await cursor.tap(valider)) return fin();
-        return fin();
+        if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
+
+        // ON ENCHAÎNE. La démonstration s'arrêtait ici : elle jouait la marche 1
+        // et laissait le robot planté devant, alors que l'exercice en compte
+        // douze — c'est précisément la progression qu'il fallait montrer.
+        fin();
+        renderNext();
+        return true;
     }
 
     renderNext();
-    if (session.isDemo && !session.frozen) runDemo();
 
     return {
         showNext: renderNext,

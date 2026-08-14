@@ -56,6 +56,21 @@ const VARIANTS = {
 
 const DELAYS = { success: 1200, reveal: 1500, pause: 1500 };
 
+/**
+ * Le morceau d'énoncé que le premier indice commente, ou l'énoncé entier.
+ *
+ * `data-vise` est explicite (l'opération prioritaire de « 8 × 6 + 3 ») ;
+ * `nb-highlight` est le nombre que la plupart des générateurs de numération
+ * mettent déjà en avant — c'est très exactement ce dont l'indice parle.
+ */
+function viseDansEnonce(container) {
+    return container.querySelector('[data-vise]')
+        || container.querySelector('.game-question .nb-highlight')
+        || container.querySelector('.game-question')
+        || container.querySelector('.question-prompt')
+        || container;
+}
+
 export function mount(container, session, opts = {}) {
     const variant = VARIANTS[opts.variant] || VARIANTS.bubbles;
     let destroyed = false;
@@ -191,6 +206,14 @@ export function mount(container, session, opts = {}) {
 
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+
+        // LA BULLE NE SE POSE PAS SUR CE DONT ELLE PARLE. « 28,97 ≈ ? » se lit
+        // sous une explication qui recouvrait précisément le nombre : le robot
+        // cachait la seule chose à regarder. Tout ce qui n'est pas la barre
+        // d'aide — énoncé, support, propositions — est déclaré intouchable, et
+        // la bulle se range autour.
+        cursor.protegerZone([...container.children].filter(el => !el.classList.contains('hint-bar')));
+
         if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
 
@@ -200,7 +223,12 @@ export function mount(container, session, opts = {}) {
         // démonstration est exactement celui-là. Accessoirement, « Arrière »
         // rappelle les explications passées : sans une seule explication, il
         // n'avait rien à rappeler et semblait cassé.
-        cursor.say(phraseDepart(item), container.querySelector('.question-prompt') || container);
+        // IL MONTRE CE DONT IL PARLE. « Commence par 8 × 6 » laissait l'élève
+        // chercher où sont ces 8 × 6 dans « 8 × 6 + 3 » — c'est pourtant TOUTE
+        // la question. Un générateur peut désigner le morceau d'énoncé sur
+        // lequel porte son premier indice (`data-vise`) ; à défaut, c'est
+        // l'énoncé entier qui est cerclé, et jamais le vide.
+        cursor.say(phraseDepart(item), viseDansEnonce(container));
         if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
         if (!await gate.waitTurn() || destroyed) return;
 

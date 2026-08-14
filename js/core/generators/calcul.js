@@ -200,8 +200,12 @@ export const multMissingGenerator = {
             answerKind: 'choice',
             prompt: {
                 text: eq.replace('?', '...'),
+                // `data-vise` désigne l'ÉGALITÉ, pas le titre : c'est elle que
+                // la démonstration doit cercler en disant « combien de fois 4
+                // tient-il dans 24 ? ». Sans repère, le robot entourait
+                // « Facteur Manquant » — le nom du jeu.
                 html: `<div class="game-question" style="margin-bottom:0;">Facteur Manquant</div>
-                       <div style="font-size:2.2rem; font-weight:bold; color:var(--primary);">${eq}</div>`
+                       <div data-vise style="font-size:2.2rem; font-weight:bold; color:var(--primary);">${eq}</div>`
             },
             answer: missing,
             choices,
@@ -287,7 +291,16 @@ export const prioriteGenerator = {
             return makeItem({
                 seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
                 answerKind: 'choice',
-                prompt: { text: `${tpl.eq} = ?`, html: `<div class="game-question">${tpl.eq} = ?</div>` },
+                // L'OPÉRATION PRIORITAIRE EST DÉSIGNABLE. L'indice dit
+                // « Commence par 8 × 6 » ; sans repère dans l'énoncé, le robot
+                // le disait en montrant le vide, et l'élève devait retrouver
+                // lui-même de quel morceau on parle. Le balisage ne change rien
+                // à l'affichage : c'est la démonstration qui le fait ressortir,
+                // au moment où elle en parle.
+                prompt: {
+                    text: `${tpl.eq} = ?`,
+                    html: `<div class="game-question">${tpl.eq.replace(tpl.right, `<span data-vise>${tpl.right}</span>`)} = ?</div>`
+                },
                 answer: tpl.value,
                 choices: finalizeChoices(rng, [
                     { value: tpl.value, correct: true },
@@ -306,7 +319,9 @@ export const prioriteGenerator = {
             answerKind: 'choice',
             prompt: {
                 text: `Quelle opération est prioritaire dans ${tpl.eq} ?`,
-                html: `<div class="game-question">Priorité ?<br><span style="color:var(--primary)">${tpl.eq}</span></div>`
+                // Ici, l'opération prioritaire EST la réponse : on ne désigne
+                // que l'expression entière, jamais le morceau cherché.
+                html: `<div class="game-question">Priorité ?<br><span data-vise style="color:var(--primary)">${tpl.eq}</span></div>`
             },
             answer: tpl.right,
             choices: finalizeChoices(rng, [

@@ -484,9 +484,18 @@ export function createDemoCursor() {
                 const marge = 10;
                 // Plancher haut : sous la bannière et les commandes du robot,
                 // qu'une bulle posée par-dessus rendait illisibles.
-                const chrome = document.getElementById('demo-controls-host');
-                const bas = chrome && chrome.getBoundingClientRect().bottom;
-                const margeHaut = bas > 0 ? bas + 8 : marge;
+                //
+                // On mesure la BARRE autant que son hôte. L'emplacement partagé
+                // ne se met pas en page (rectangle nul) : le plancher retombait
+                // sur 10 px, et la bulle se posait pile sur « Pause » et « Un
+                // pas » — les deux boutons dont on a besoin quand on trouve
+                // qu'une explication va trop vite.
+                const margeHaut = Math.max(marge, ...['#demo-controls-host', '.demo-controls']
+                    .map(sel => {
+                        const el = document.querySelector(sel);
+                        const r = el && el.getBoundingClientRect();
+                        return r && r.height > 0 ? r.bottom + 8 : 0;
+                    }));
 
                 const centrerSurAncre = () => Math.max(marge,
                     Math.min(ancre.x - b.width / 2, window.innerWidth - b.width - marge));
@@ -494,8 +503,7 @@ export function createDemoCursor() {
                 // Zone protégée (la grille du jeu) : la bulle se pose AUTOUR,
                 // jamais dessus. Sans elle, l'explication du sudoku couvrait la
                 // ligne de chiffres sur laquelle porte le raisonnement.
-                const zr = zoneProtegee && document.contains(zoneProtegee)
-                    ? zoneProtegee.getBoundingClientRect() : null;
+                const zr = rectProtege();
                 let pose = null;
                 if (zr) {
                     const tient = (l, t) => l >= marge && l + b.width <= window.innerWidth - marge
@@ -533,8 +541,13 @@ export function createDemoCursor() {
         /**
          * Déclare la zone que la bulle ne doit jamais recouvrir — la grille du
          * jeu, typiquement. À appeler une fois, après le rendu du plateau.
+         *
+         * On accepte une LISTE d'éléments, et pas seulement un plateau unique :
+         * dans un exercice à propositions, ce qu'il ne faut pas cacher est
+         * l'énoncé ET les réponses, qui n'ont aucun ancêtre commun autre que
+         * toute la zone de jeu. C'est leur enveloppe qui est protégée.
          */
-        protegerZone(el) { zoneProtegee = el || null; },
+        protegerZone(cible) { zoneProtegee = cible || null; },
 
         hideBubble() {
             if (bulle) bulle.classList.remove('demo-bubble--on');
@@ -645,6 +658,20 @@ export function createDemoCursor() {
             el.remove();
         }
     };
+
+    /** L'enveloppe des éléments protégés, ou null s'il n'y en a aucun de vivant. */
+    function rectProtege() {
+        const liste = (Array.isArray(zoneProtegee) ? zoneProtegee : [zoneProtegee])
+            .filter(e => e && e.getBoundingClientRect && document.contains(e));
+        let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+        for (const e of liste) {
+            const q = e.getBoundingClientRect();
+            if (!q.width && !q.height) continue;   // élément replié : il ne cache rien
+            l = Math.min(l, q.left); t = Math.min(t, q.top);
+            r = Math.max(r, q.right); b = Math.max(b, q.bottom);
+        }
+        return l === Infinity ? null : { left: l, top: t, right: r, bottom: b };
+    }
 
     // La position courante du pointeur, pour ancrer la bulle quand aucun
     // élément cible n'est fourni.
