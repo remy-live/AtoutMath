@@ -35,7 +35,9 @@ export const calculExercises = [
         colonnesPapier: 4,
         title: 'Soustractions Éclair',
         generatorId: 'calc.soustraction', activityId: 'bubbles',
-        params: { max: 20 },
+        // La seconde moitié se répond au pavé : reconnaître 13 parmi trois
+        // nombres n'est pas produire 13.
+        params: { max: 20, saisie: 'moitie' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Calcule la différence et clique sur la bonne bulle."
     },
@@ -45,7 +47,7 @@ export const calculExercises = [
         colonnesPapier: 4,
         title: 'Flash Mult',
         generatorId: 'calc.mult.fact', activityId: 'bubbles',
-        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], saisie: 'moitie' },
         motsClefs: ['tables', 'multiplication'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Choisis la bulle qui contient le résultat correct de la multiplication."

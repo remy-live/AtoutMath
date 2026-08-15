@@ -79,10 +79,52 @@ export function mount(container, session, opts = {}) {
     let cursor = null;
     let gate = null;
 
+    // LE QCM S'ARRÊTE, ET L'ÉLÈVE DONNE SA RÉPONSE.
+    //
+    // Rémy, sur les Soustractions Éclair et Flash Mult : « à la fin de
+    // l'exercice, demander la réponse » ; et plus tôt : « on pourrait proposer
+    // à l'élève de donner sa proposition au bout de la moitié de l'exercice ».
+    //
+    // C'est la bonne façon de sortir du QCM. Reconnaître 42 parmi trois
+    // nombres n'est pas produire 42 : on peut éliminer, deviner, revenir. Mais
+    // commencer d'emblée au clavier ferme la porte à l'élève qui hésite. On
+    // fait donc les deux dans la même séance — le QCM porte, puis se retire.
+    //
+    // Le passage est SANS RETOUR : une fois au pavé, on y reste. Alterner
+    // ferait croire à une sanction (« tu as bien répondu, donc c'est plus
+    // dur »), là où c'est simplement la seconde moitié de l'exercice.
+    const SEUILS = { moitie: 0.5, quart: 0.75 };
+    let releve = null;                     // l'activité qui a pris la main
+    const totalPrevu = () => Math.max(2, session.nbItems
+        || Number(session.params && session.params.nbQuestions) || 10);
+    const seuilSaisie = () => {
+        const s = SEUILS[(session.params || {}).saisie];
+        return s ? Math.ceil(totalPrevu() * s) : Infinity;
+    };
+
     function renderNext() {
         if (destroyed) return;
         const item = session.next();
+        // `history` contient déjà la graine de la question en cours : c'est son
+        // rang, à partir de 1.
+        const rang = session.history.length;
+        // Et seulement si la réponse est un NOMBRE : « quelle opération est
+        // prioritaire » se répond « 5 × 7 », qui ne se tape pas sur un pavé.
+        const chiffrable = item.answer !== null && item.answer !== ''
+            && Number.isFinite(Number(item.answer));
+        if (!releve && rang > seuilSaisie() && chiffrable) return passerAuPave(item);
         render(item);
+    }
+
+    async function passerAuPave(item) {
+        const mod = await import('./numeric.js');
+        if (destroyed) return;
+        if (cursor) { cursor.destroy(); cursor = null; }
+        if (gate) { gate.destroy(); gate = null; }
+        releve = mod.mount(container, session, {
+            item,
+            avis: 'À toi d\'écrire : plus de propositions, tu tapes le résultat.'
+        });
     }
 
     function render(item) {
@@ -264,12 +306,20 @@ export function mount(container, session, opts = {}) {
     return {
         // Passer d'une question à l'autre sans répondre : utilisé par le
         // chronomètre par question et par la navigation du professeur.
-        showNext: renderNext,
-        showPrevious() { if (session.rewind()) renderNext(); },
+        // Une fois le pavé en place, c'est LUI qui répond au professeur : deux
+        // activités qui pilotent le même conteneur en même temps se marchent
+        // dessus, et `session.finish()` appelé deux fois clôt la séance deux
+        // fois.
+        showNext() { (releve || { showNext: renderNext }).showNext(); },
+        showPrevious() {
+            if (releve) return releve.showPrevious();
+            if (session.rewind()) renderNext();
+        },
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
+            if (releve) { const r = releve; releve = null; return r.destroy(); }
             container.innerHTML = '';
             session.finish();
         }

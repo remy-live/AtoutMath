@@ -53,6 +53,11 @@ const ICON_BACKSPACE = `<svg viewBox="0 0 24 24" width="24" height="24" fill="no
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let buffer = '';
+    // UN MOT QUAND LA FORME CHANGE. Le QCM qui passe au pavé au milieu de
+    // l'exercice surprend : sans un mot, l'élève croit s'être trompé de jeu.
+    // Il ne s'affiche qu'une fois — la question suivante n'est plus une
+    // surprise.
+    let avis = opts.avis || '';
     let cursor = null;
     let gate = null;
 
@@ -76,7 +81,9 @@ export function mount(container, session, opts = {}) {
         // défilement au milieu d'une question.
         container.innerHTML = `
             <div class="numpad-layout">
-                <div class="numpad-context">${item.prompt.html}</div>
+                <div class="numpad-context">
+                    ${avis ? `<div class="numpad-avis">${avis}</div>` : ''}
+                    ${item.prompt.html}</div>
                 <div class="numpad-panel">
                     <div class="numpad-device">
                     <div class="numpad-screen" aria-live="polite">
@@ -97,6 +104,7 @@ export function mount(container, session, opts = {}) {
                 </div>
             </div>`;
 
+        avis = '';
         const display = container.querySelector('[data-display]');
         const screen = container.querySelector('.numpad-screen');
         // LE NOMBRE SE GROUPE SOUS LES DOIGTS. « 62307 » ne s'écrit pas :
@@ -230,7 +238,11 @@ export function mount(container, session, opts = {}) {
         renderNext();
     }
 
-    renderNext();
+    // UNE QUESTION DÉJÀ TIRÉE PEUT ÊTRE PASSÉE EN ARRIVANT (`opts.item`).
+    // C'est ce qui permet au QCM de passer la main au pavé en cours
+    // d'exercice : il a fallu générer la question pour savoir si sa réponse
+    // était un nombre, et la retirer ici en poserait une autre.
+    if (opts.item) render(opts.item); else renderNext();
 
     return {
         showNext: renderNext,

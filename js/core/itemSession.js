@@ -25,6 +25,7 @@ export class ItemSession {
      * @param {string} [cfg.stepId]
      * @param {boolean} [cfg.isDemo]
      * @param {boolean} [cfg.frozen]  - aperçu immobile : la question est dessinée, rien ne se joue
+     * @param {number} [cfg.nbItems]   - nombre de questions prévu pour l'étape
      * @param {string} [cfg.forceSeed] - rejoue exactement une question passée
      * @param {'choice'|'numeric'|'point'} [cfg.preferredKind] - genre attendu par l'activité
      */
@@ -41,6 +42,10 @@ export class ItemSession {
         this.frozen = !!cfg.frozen;
         this.forceSeed = cfg.forceSeed || null;
         this.preferredKind = cfg.preferredKind || null;
+        // Le nombre de questions prévu pour l'étape, quand on le connaît. La
+        // session ne l'utilise pas elle-même — c'est le Runner qui arrête —,
+        // mais une activité qui change de forme en cours de route en a besoin.
+        this.nbItems = Number(cfg.nbItems) || null;
 
         this.item = null;
         this.attemptIndex = 0;

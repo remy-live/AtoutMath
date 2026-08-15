@@ -87,11 +87,32 @@ import {
 
 const choiceModule = () => import('./choice.js');
 
+// LE MOMENT OÙ L'ON SORT DU QCM. Réglage d'ACTIVITÉ, pas de générateur : il ne
+// dit rien du contenu des questions, seulement de la façon d'y répondre. Il
+// vaut donc pour tout ce qui se joue en propositions.
+//
+// Rémy : « à la fin de l'exercice, demander la réponse », et « on pourrait
+// proposer à l'élève de donner sa proposition au bout de la moitié ».
+// Reconnaître 42 parmi trois nombres n'est pas produire 42 — on peut éliminer,
+// deviner, revenir. Mais commencer au clavier ferme la porte à qui hésite.
+const PARAM_SAISIE = [{
+    id: 'saisie', type: 'select', label: 'Passer à la saisie', default: 'jamais',
+    aide: 'Les premières questions se répondent en choisissant ; les suivantes '
+        + 'en tapant le nombre au pavé. Une question dont la réponse n\'est pas '
+        + 'un nombre reste en propositions.',
+    options: [
+        { value: 'jamais', label: 'Jamais — des propositions du début à la fin' },
+        { value: 'moitie', label: 'À la moitié de l\'exercice' },
+        { value: 'quart', label: 'Sur le dernier quart' }
+    ]
+}];
+
 registerActivity({
     id: 'bubbles',
     label: 'Bulles',
     accepts: ['choice', 'numeric'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: PARAM_SAISIE,
     load: choiceModule,
     mountOptions: { variant: 'bubbles' }
 });
@@ -101,6 +122,7 @@ registerActivity({
     label: 'Digicode',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: PARAM_SAISIE,
     load: choiceModule,
     mountOptions: { variant: 'digicode' }
 });

@@ -338,7 +338,12 @@ export class Runner {
             runId: this.runId,
             stepId: step.stepId,
             forceSeed: step.forceSeed || null,
-            preferredKind: activity.accepts[0]
+            preferredKind: activity.accepts[0],
+            // COMBIEN DE QUESTIONS COMPTE L'ÉTAPE. La session ne le savait
+            // pas : c'est le Runner qui arrête l'étape. Une activité qui
+            // change de forme en cours de route — le QCM qui passe au pavé à
+            // la moitié — a besoin de savoir où est la moitié.
+            nbItems: step.nbItems
         });
 
         // Le compteur suit toute nouvelle question, d'où qu'elle vienne :

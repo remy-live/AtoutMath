@@ -205,6 +205,14 @@
     text-wrap: balance;
 }
 .numpad-context .figure-wrap { margin: 0 auto 6px; }
+/* Le mot qui annonce le changement de forme, quand le QCM passe au pavé. Il
+   ne paraît qu'une fois : la question suivante n'est plus une surprise. */
+.numpad-avis {
+    align-self: stretch; margin-bottom: 10px; padding: 8px 12px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+    color: var(--text-main); font-weight: 700; font-size: .92rem; text-align: center;
+}
 /* La hauteur rendue d'une figure dépend de la forme du rectangle tiré : un
    carré occupe bien plus de place qu'un rectangle allongé. Sans plafond en
    `vh`, certaines questions débordaient et d'autres non — un défilement qui
