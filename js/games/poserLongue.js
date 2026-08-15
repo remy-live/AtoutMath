@@ -773,7 +773,16 @@ class PoserDivision extends PoserLongue {
             if (this.d.etapes.filter(e => e.ecrit).length < 2) continue;
             break;
         }
-        this.etape = 0;
+        // ON NE COMMENCE PAS AU PREMIER CHIFFRE, mais au premier qui S'ÉCRIT.
+        //
+        // Pour 413 ÷ 7, on ne demande pas « combien de fois 7 dans 4 ? » pour
+        // faire écrire un zéro : au tableau, on regarde le 4, on dit « ce
+        // n'est pas possible », on prend 41 — et l'on n'écrit RIEN. Le jeu
+        // posait la question, faisait taper 0, puis dessinait « − 0 » et son
+        // reste sous le premier chiffre, et le zéro du quotient tombait à
+        // gauche de la potence. Trois lignes fausses avant d'avoir commencé.
+        this.debut = premierEcrit(this.d);
+        this.etape = this.debut;
         this.attente = 'quotient';       // quotient → produit → reste
         this.saisie = '';
         this.faits = this.d.etapes.map(() => ({}));
@@ -849,8 +858,10 @@ class PoserDivision extends PoserLongue {
         // Les étapes : le produit qu'on retranche, puis le reste.
         this.d.etapes.forEach((et, i) => {
             const f = this.faits[i];
-            if (i > this.etape) return;
-            const ligneProduit = ligne + i * 2;
+            if (i > this.etape || i < this.debut) return;
+            // Les lignes se serrent en haut : une étape sautée ne laisse pas
+            // deux lignes vides derrière elle.
+            const ligneProduit = ligne + (i - this.debut) * 2;
             const ligneReste = ligneProduit + 1;
             if (f.produit !== undefined || (i === this.etape && this.attente === 'produit')) {
                 const texte = f.produit !== undefined ? String(f.produit) : '';
@@ -860,7 +871,11 @@ class PoserDivision extends PoserLongue {
             if (f.reste !== undefined || (i === this.etape && this.attente === 'reste')) {
                 const t = document.createElement('div');
                 t.className = 'pl-trait';
-                t.style.gridColumn = `2 / ${col(i) + 1}`;
+                // LE TRAIT FAIT LA LARGEUR DE CE QU'ON RETRANCHE, pas celle de
+                // tout le dividende : parti de la marge, il soulignait des
+                // colonnes où il n'y avait rien à soustraire.
+                const large = String(et.produit).length;
+                t.style.gridColumn = `${Math.max(2, col(i) - large + 1)} / ${col(i) + 1}`;
                 t.style.gridRow = String(ligneProduit + 1);
                 t.style.alignSelf = 'end';
                 g.appendChild(t);
@@ -873,18 +888,28 @@ class PoserDivision extends PoserLongue {
         this.dessinerCommandes();
     }
 
-    /** Écrit un nombre aligné à DROITE sur la colonne de l'étape i. */
+    /**
+     * Écrit un nombre aligné à DROITE sur la colonne de l'étape i.
+     *
+     * SUR LA COLONNE, PAS À CÔTÉ. Le chiffre i du dividende est posé en
+     * `col(i) − 1` ; écrire ici en `col(i)` décalait tout d'une colonne vers la
+     * droite, et l'on voyait « 710 ÷ 2 » retrancher son 6 sous le 1 au lieu du
+     * 7 — une potence dont les colonnes ne s'alignent plus n'enseigne rien,
+     * elle apprend le contraire.
+     */
     poserNombre(texte, ligne, col, i, attendu, signe, actif) {
         const n = Math.max(String(attendu).length, texte.length, 1);
         const chiffres = (texte || '').padStart(n, ' ').split('');
         chiffres.forEach((ch, k) => {
-            const c = this.caseA(col(i) - (n - 1 - k), ligne, ch.trim(),
+            const c = this.caseA(col(i) - 1 - (n - 1 - k), ligne, ch.trim(),
                 (ch.trim() ? 'pl-case--ecrit' : '') + (actif ? ' pl-case--active' : ''));
             if (actif && !ch.trim()) c.textContent = '';
         });
         if (signe) {
             const s = document.createElement('div');
             s.className = 'pl-signe';
+            // Juste à gauche du nombre : celui-ci occupe les colonnes de
+            // grille col(i) − n + 1 à col(i), le signe prend la précédente.
             s.style.gridColumn = String(Math.max(1, col(i) - n));
             s.style.gridRow = String(ligne + 1);
             s.textContent = signe;
@@ -1045,7 +1070,7 @@ class PoserDivision extends PoserLongue {
             cur.say('Une division posée, c\'est toujours la même étape recommencée : j\'abaisse, '
                 + 'je cherche combien de fois, je multiplie, je soustrais.', this.grilleEl);
             await gate.wait(3400 * DEMO_SPEED);
-            for (let i = 0; i < this.d.etapes.length && this.isRunning; i++) {
+            for (let i = this.debut; i < this.d.etapes.length && this.isRunning; i++) {
                 const e = this.d.etapes[i];
                 this.etape = i;
                 this.faits[i] = { chiffre: e.chiffre, produit: e.produit, reste: e.reste };
