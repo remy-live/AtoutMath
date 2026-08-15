@@ -17,7 +17,10 @@ body.teacher-mode .student-only { display: none !important; }
 }
 /* Pendant le déplacement, aucune transition : la palette doit coller au
    pointeur, pas le suivre avec un temps de retard. */
-#debug-toolbar.dbg--dragging { transition: none; cursor: grabbing; user-select: none; }
+/* Pendant le glissé : pas de transition (elle ferait traîner le panneau
+   derrière le doigt) et pas de sélection de texte. La classe est posée par
+   ui/flottant.js, donc la même pour tout ce qui flotte. */
+.flot--glisse { transition: none !important; cursor: grabbing; user-select: none; }
 
 .dbg-tools { display: flex; align-items: center; gap: 4px; }
 #debug-toolbar.dbg--folded .dbg-tools { display: none; }
@@ -597,14 +600,29 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    Elle reste POSÉE PAR-DESSUS LE JEU : c'est tout son intérêt. En bas, parce
    que le haut de l'écran porte l'en-tête de l'exercice — titre, progression,
    chronomètre —, c'est-à-dire ce qu'on regarde en testant. */
+/* ELLE SE DÉPLACE. Collée en bas sur toute la largeur, elle se posait très
+   exactement là où beaucoup de jeux mettent leur pavé de réponse ou leur
+   consigne — et il fallait la fermer pour voir dessous. La position vient donc
+   du JavaScript (ui/flottant.js), et elle est retenue d'une fois sur l'autre. */
 #banc-barre {
-    position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 100001;
+    position: fixed; z-index: 100001;
+    width: min(760px, calc(100vw - 16px));
     display: flex; align-items: center; gap: 6px;
     padding: 6px 8px; border-radius: 12px;
     background: var(--bg-panel); border: 1px solid var(--border);
     box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
     font-size: 13px; color: var(--text-main);
 }
+.bb-grip {
+    flex: 0 0 auto; width: 16px; height: 26px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--text-muted);
+    font-size: 1rem; line-height: 1; cursor: grab;
+    /* Le navigateur ne doit pas prendre le glissement pour un défilement. */
+    touch-action: none;
+}
+.bb-grip:hover { color: var(--text-main); }
+.bb-grip:active { cursor: grabbing; }
 .bb-btn {
     flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -613,7 +631,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font: inherit; font-size: 14px; font-weight: 800;
 }
 .bb-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-.bb-btn--fermer:hover { background: var(--danger); border-color: var(--danger); }
+.bb-btn--fermer:hover, .bb-btn--vider:hover { background: var(--danger); border-color: var(--danger); }
 /* Le titre est un bouton : le toucher relance l'exercice qu'on regarde. */
 .bb-titre {
     flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 7px;

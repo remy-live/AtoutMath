@@ -18,6 +18,7 @@ import {
     ligneDe, avancement, versMarkdown, lire, fusionner, direClassement,
     lireRetest, marquerARetester, aRetester
 } from '../core/bancEssai.js';
+import { placer, restaurer, rendreDeplacable, isolerClavier } from './flottant.js';
 
 const CLE = 'mathbox-banc-essai';
 let carnet = null;
@@ -54,6 +55,27 @@ function garder() {
 }
 
 // --- L'écran ----------------------------------------------------------------
+
+/**
+ * REPARTIR DE ZÉRO. Un carnet de test est un brouillon : on refait une passe
+ * complète après un gros correctif, et les notes de la passe précédente ne
+ * disent plus rien de la version qu'on regarde.
+ *
+ * On efface le carnet ET le rang de la barre — sinon « recommencer » redémarre
+ * au quarante-huitième exercice, ce qui n'est pas recommencer. La POSITION de
+ * la barre, elle, est un réglage de confort : elle survit.
+ */
+function viderCarnet(apres) {
+    window.appConfirm('Vider le carnet de test',
+        'Effacer toutes les notes de cet appareil et repartir du premier exercice ?<br><br>'
+        + 'Ce qui a été exporté ou copié ailleurs n\'est pas touché.', () => {
+            carnet = nouveauCarnet({ appareil, version: versionChargee(), date: Date.now() });
+            garder();
+            rangCourant = 0;
+            try { window.localStorage.removeItem(CLE_BARRE); } catch (e) { /* privé */ }
+            if (apres) apres();
+        });
+}
 
 function assurerPanneau() {
     let el = document.getElementById('banc-essai');
@@ -183,6 +205,10 @@ function assurerPanneau() {
         <div class="banc-corps" data-corps></div>
         <div class="banc-fiche" data-fiche></div>`;
     document.body.appendChild(el);
+    // Le panneau se pose PAR-DESSUS un jeu qui tourne encore : ses écouteurs
+    // clavier voyaient chaque touche tapée dans une remarque, et en mangeaient
+    // une partie. Le clavier appartient au champ qui a le focus.
+    isolerClavier(el);
 
     el.querySelector('[data-fermer]').onclick = () => fermer();
     el.querySelector('[data-passe]').onclick = () => {
@@ -194,12 +220,7 @@ function assurerPanneau() {
     el.querySelector('[data-copier]').onclick = () => copierRapport();
     el.querySelector('[data-fichier]').onclick = () => telechargerRapport();
     el.querySelector('[data-reprendre]').onclick = () => demanderCarnet();
-    el.querySelector('[data-vider]').onclick = () => {
-        window.appConfirm('Vider le carnet', 'Effacer toutes les notes de cet appareil ?', () => {
-            carnet = nouveauCarnet({ appareil, version: versionChargee(), date: Date.now() });
-            garder(); peindre();
-        });
-    };
+    el.querySelector('[data-vider]').onclick = () => viderCarnet(() => peindre());
     return el;
 }
 
@@ -698,8 +719,10 @@ if (typeof window !== 'undefined') {
 // dépose une remarque, elle ne signe pas une notation.
 
 const CLE_BARRE = 'mathbox-banc-barre';
+const CLE_BARRE_POS = 'mathbox-banc-barre-pos';
 
 let barre = null;
+let debrancherGlisse = null;
 let rangCourant = 0;
 let minuteurNote = null;
 
@@ -714,6 +737,7 @@ export function basculerBarreBanc() {
 
 function fermerBarre() {
     ecrireNote(true);
+    if (debrancherGlisse) { debrancherGlisse(); debrancherGlisse = null; }
     if (barre) barre.remove();
     barre = null;
     try { window.localStorage.removeItem(CLE_BARRE); } catch (e) { /* privé */ }
@@ -731,6 +755,8 @@ function ouvrirBarre() {
     barre.setAttribute('role', 'toolbar');
     barre.setAttribute('aria-label', 'Barre de passe du banc d\'essai');
     barre.innerHTML = `
+        <button type="button" class="bb-grip" data-grip title="Déplacer la barre"
+            aria-label="Déplacer la barre de passe">⠿</button>
         <button type="button" class="bb-btn" data-prec title="Exercice précédent"
             aria-label="Exercice précédent">◀</button>
         <button type="button" class="bb-titre" data-jouer
@@ -753,9 +779,26 @@ function ouvrirBarre() {
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/>
                 <path d="M4 20h16"/></svg></button>
+        <button type="button" class="bb-btn bb-btn--vider" data-vider
+            title="Vider le carnet de test et repartir du début"
+            aria-label="Vider le carnet de test">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 6.5h16"/><path d="M9.5 6.5V4h5v2.5"/>
+                <path d="M6.5 6.5 7.5 20h9l1-13.5"/><path d="M10.5 10v6M13.5 10v6"/></svg></button>
         <button type="button" class="bb-btn bb-btn--fermer" data-fermer title="Fermer la barre"
             aria-label="Fermer la barre">✕</button>`;
     document.body.appendChild(barre);
+
+    // ELLE SE DÉPLACE, ET ELLE RETIENT SA PLACE. Posée en bas sur toute la
+    // largeur, elle recouvrait le pavé de réponse d'un jeu sur trois.
+    restaurer(barre, CLE_BARRE_POS, (el) => placer(el,
+        (window.innerWidth - el.offsetWidth) / 2, window.innerHeight));
+    debrancherGlisse = rendreDeplacable(barre, barre.querySelector('[data-grip]'), CLE_BARRE_POS);
+    // ON PEUT ÉCRIRE DEDANS MÊME AU-DESSUS D'UN JEU. Sans cela, les écouteurs
+    // clavier du jeu qui tourne dessous mangent les touches — et certaines
+    // lettres ne s'écrivaient tout bonnement pas.
+    isolerClavier(barre);
 
     barre.querySelector('[data-prec]').onclick = () => aller(-1);
     barre.querySelector('[data-suiv]').onclick = () => aller(1);
@@ -763,6 +806,7 @@ function ouvrirBarre() {
     barre.querySelector('[data-fiche]').onclick = () => apercuFiche(listeBarre()[rangCourant].id);
     barre.querySelector('[data-export]').onclick = () => telechargerRapport();
     barre.querySelector('[data-fermer]').onclick = () => fermerBarre();
+    barre.querySelector('[data-vider]').onclick = () => viderDepuisLaBarre();
 
     const champ = barre.querySelector('[data-note]');
     // ON N'ATTEND PAS LA VALIDATION : il n'y en a pas. Un demi-battement après
@@ -775,6 +819,15 @@ function ouvrirBarre() {
     champ.onblur = () => ecrireNote(true);
 
     peindreBarre();
+}
+
+/** Vider depuis la barre : on efface, et l'on revient au premier exercice. */
+function viderDepuisLaBarre() {
+    viderCarnet(() => {
+        peindreBarre();
+        import('./modal.js').then(m => m.showToast(
+            'Carnet vidé — on repart du premier exercice.', 'success'));
+    });
 }
 
 /** On change d'exercice — la remarque en cours part au carnet AVANT. */
