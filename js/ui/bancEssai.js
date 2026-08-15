@@ -18,7 +18,7 @@ import {
     ligneDe, avancement, versMarkdown, lire, fusionner, direClassement,
     lireRetest, marquerARetester, aRetester
 } from '../core/bancEssai.js';
-import { placer, restaurer, rendreDeplacable, isolerClavier } from './flottant.js';
+import { placer, restaurer, rendreDeplacable, isolerClavier, estDetache } from './flottant.js';
 
 const CLE = 'mathbox-banc-essai';
 let carnet = null;
@@ -441,9 +441,15 @@ function basculerApercuFlottant() {
     majBoutonFiche();
 }
 
-/** À chaque changement d'exercice, la fenêtre suit — si elle est ouverte. */
+/**
+ * À chaque changement d'exercice, la fenêtre suit — si elle est ouverte ET
+ * toujours détachée. Le professeur peut l'ancrer d'un bouton : elle redevient
+ * alors une modale ordinaire, qui bloque, et qui n'a plus rien à accompagner.
+ */
 function suivreApercuFlottant() {
     if (!apercuFlottant) return;
+    const m = modaleFicheVisible();
+    if (m && !estDetache(m)) { apercuFlottant = false; majBoutonFiche(); return; }
     apercuFiche(listeBarre()[rangCourant].id, true);
 }
 

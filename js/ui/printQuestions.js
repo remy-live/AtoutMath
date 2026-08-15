@@ -20,7 +20,7 @@
 //    qui sort de l'imprimante.
 
 import { generateurDeFiche } from '../core/registry.js';
-import { detacher } from './flottant.js';
+import { equiperFenetre } from './flottant.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
 import { espacerMilliers } from '../core/nombres.js';
@@ -28,6 +28,14 @@ import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
     apercuSolutions, pdfSolutions
 } from './ficheRendu.js';
+
+// Ancrée ou détachée : le choix se retient, et il est le même pour les deux
+// fiches — c'est une préférence de travail, pas une propriété de l'exercice.
+const CLE_FENETRE = 'mathbox-fiche-flottante';
+const lireModeFenetre = () => {
+    try { return localStorage.getItem(`${CLE_FENETRE}-mode`); } catch (e) { return null; }
+};
+let fenetreFiche = null;
 
 /**
  * La première phrase d'un énoncé, pour amorcer la consigne de la feuille.
@@ -180,6 +188,9 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    // Ancrer / détacher, et replier les réglages : les deux commandes vivent
+    // dans le titre, comme sur la fiche de grilles.
+    fenetreFiche = equiperFenetre(modal, CLE_FENETRE);
     return modal;
 }
 
@@ -389,10 +400,15 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // Le nombre de colonnes que l'exercice sait lui convenir — le professeur
     // reste libre de le changer.
     colsEl.value = exo.colonnesPapier ? String(exo.colonnesPapier) : 'auto';
+    // De quoi se redessiner quand la fenêtre change de taille : l'aperçu
+    // calcule son échelle sur la largeur disponible.
+    modal._flotRendre = () => rendre();
     modal.style.display = 'flex';
     // Détachée, la fiche se pose à côté du jeu au lieu de barrer la route :
     // c'est ce que demande une passe de test, où l'on regarde cent fiches à
     // la suite sans vouloir en fermer une seule.
-    if (opts.flottant) detacher(modal, 'mathbox-fiche-flottante');
+    if (opts.flottant) fenetreFiche.detacher();
+    else if (lireModeFenetre() === 'ancre') fenetreFiche.ancrer();
+    else if (lireModeFenetre() === 'detache') fenetreFiche.detacher();
     rendre();
 }

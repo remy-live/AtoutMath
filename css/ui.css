@@ -690,6 +690,25 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .flot-poignee { cursor: grab; touch-action: none; user-select: none; }
 .flot-poignee:active { cursor: grabbing; }
+
+/* LES DEUX COMMANDES DE FENÊTRE, DANS SON TITRE : ancrer / détacher, et
+   replier les réglages. Elles sont là où l'on regarde déjà, et elles ne
+   prennent la place de rien — le titre avait de la marge à droite. */
+.modal-title { display: flex; align-items: center; gap: 8px; }
+.flot-cmd { margin-left: auto; display: flex; gap: 4px; flex: 0 0 auto; }
+.flot-cmd button {
+    width: 28px; height: 28px; padding: 0; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    background: var(--bg-hover); color: var(--text-muted);
+}
+.flot-cmd button:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* REPLIÉS, LES RÉGLAGES DISPARAISSENT ET LA FEUILLE PREND TOUT. C'est ce qu'on
+   veut neuf fois sur dix : on a réglé une fois, on regarde ensuite cent
+   feuilles. Ils reviennent d'un bouton, sans rien perdre de ce qu'on avait
+   choisi — ils sont cachés, pas détruits. */
+.flot-replie .fp-controles { display: none; }
 /* Détachée, la fenêtre est étroite : les réglages passent à la ligne au lieu
    de pousser l'aperçu hors du cadre.
 

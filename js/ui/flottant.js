@@ -145,29 +145,148 @@ export function estChampTexte(n) {
     return !['checkbox', 'radio', 'button', 'submit', 'range'].includes(n.type);
 }
 
-// --- DÉTACHER UNE MODALE ----------------------------------------------------
+// --- ANCRÉE OU DÉTACHÉE : LES DEUX, AU CHOIX ---------------------------------
 //
-// Une modale bloque : elle assombrit la page, prend tous les clics, et il faut
-// la refermer pour faire autre chose. C'est ce qu'on veut d'une fiche qu'on
-// vient régler une fois — et exactement ce qu'on ne veut pas pendant une passe
-// de test, où l'on regarde cent fiches à la suite : ouvrir, refermer, avancer,
-// rouvrir.
+// Une modale BLOQUE : elle assombrit la page, prend tous les clics, et il faut
+// la refermer pour faire autre chose. C'est ce qu'on veut quand on prépare UNE
+// fiche : rien d'autre à l'écran, tout l'espace pour la regarder. Et c'est
+// exactement ce qu'on ne veut pas pendant une passe de test, où l'on regarde
+// cent fiches à la suite — ouvrir, lire, refermer, avancer, rouvrir.
 //
-// DÉTACHÉE, c'est la MÊME modale : mêmes réglages, même aperçu, même PDF. On
-// ne lui retire que ce qui bloque — le fond sombre et la capture des clics —,
-// et on lui ajoute ce qui manque : une poignée, une taille qu'on tire au coin,
-// et la mémoire des deux.
+// Les deux ont raison, alors la fenêtre fait les deux, et le bouton est DANS
+// son titre. DÉTACHÉE, c'est la même fiche : mêmes réglages, même aperçu, même
+// PDF. On ne lui retire que ce qui bloque — le fond sombre et la capture des
+// clics —, et on lui ajoute une poignée, un coin qu'on tire, et la mémoire des
+// deux.
+//
+// ET LES RÉGLAGES SE REPLIENT. Dans une fenêtre de soixante centimètres
+// carrés, huit réglages en tête repoussent la feuille sous le bord bas : on
+// ouvre un aperçu pour ne voir que des menus. Repliés, la feuille prend toute
+// la fenêtre — et ils reviennent d'un bouton, sans rien perdre de ce qu'on
+// avait choisi.
+
+const ICONE_DETACHER = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><rect x="3" y="7" width="12" height="12" rx="2"/>
+    <path d="M9 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2"/></svg>`;
+const ICONE_ANCRER = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/>
+    <path d="M3 9h18"/></svg>`;
+const CHEVRON_HAUT = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+    stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>`;
+const CHEVRON_BAS = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+    stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
+
+/** La fenêtre est-elle posée à côté, plutôt qu'en travers ? */
+export const estDetache = (overlay) => !!overlay && overlay.classList.contains('flot-detache');
 
 /**
+ * Équipe une modale des deux commandes : ancrer / détacher, et replier les
+ * réglages. À n'appeler qu'UNE FOIS par modale, à sa création.
+ *
  * @param {HTMLElement} overlay - la couche `.modal-overlay`
- * @param {string} cle          - où retenir place et taille
- * @returns {() => void} de quoi la rattacher
+ * @param {string} cle          - où retenir place, taille, mode et repli
+ * @returns {{detacher:Function, ancrer:Function, basculer:Function,
+ *            replier:Function, estDetache:Function}}
  */
-export function detacher(overlay, cle) {
+export function equiperFenetre(overlay, cle) {
+    // REDESSINER APRÈS COUP. L'aperçu calcule son échelle sur la largeur
+    // DISPONIBLE au moment où il se dessine : détacher, replier ou tirer le
+    // coin change cette largeur sans que personne le lui dise, et la feuille
+    // restait coupée à droite. La modale dépose ici de quoi se redessiner.
+    const retracer = () => {
+        try { if (typeof overlay._flotRendre === 'function') overlay._flotRendre(); }
+        catch (e) { /* la fenêtre s'est refermée entre-temps */ }
+    };
     const panneau = overlay.querySelector('.glass-panel');
-    if (!panneau || overlay.classList.contains('flot-detache')) return () => {};
-    const titre = panneau.querySelector('.modal-title') || panneau.firstElementChild;
+    const titre = panneau && (panneau.querySelector('.modal-title') || panneau.firstElementChild);
+    if (!panneau || !titre || panneau.dataset.flotEquipe) return commandesVides();
+    panneau.dataset.flotEquipe = '1';
 
+    const cmd = document.createElement('span');
+    cmd.className = 'flot-cmd';
+    cmd.innerHTML = `
+        <button type="button" data-flot-replier></button>
+        <button type="button" data-flot-mode></button>`;
+    titre.appendChild(cmd);
+    const bReplier = cmd.querySelector('[data-flot-replier]');
+    const bMode = cmd.querySelector('[data-flot-mode]');
+
+    let defaire = null;
+
+    const majBoutons = () => {
+        const off = estDetache(overlay);
+        bMode.innerHTML = off ? ICONE_ANCRER : ICONE_DETACHER;
+        bMode.title = off
+            ? 'Ancrer la fenêtre au centre, comme une fiche qu\'on prépare'
+            : 'Détacher la fenêtre : elle se pose à côté et ne bloque plus rien';
+        bMode.setAttribute('aria-label', bMode.title);
+        const replie = panneau.classList.contains('flot-replie');
+        bReplier.innerHTML = replie ? CHEVRON_BAS : CHEVRON_HAUT;
+        bReplier.title = replie ? 'Montrer les réglages' : 'Replier les réglages pour voir la feuille';
+        bReplier.setAttribute('aria-label', bReplier.title);
+        bReplier.setAttribute('aria-expanded', String(!replie));
+    };
+
+    const detacherIci = () => {
+        if (estDetache(overlay)) return;
+        defaire = poserFlottante(overlay, panneau, titre, cle, retracer);
+        retenir(`${cle}-mode`, 'detache');
+        majBoutons();
+        retracer();
+    };
+    const ancrerIci = () => {
+        if (!estDetache(overlay)) return;
+        if (defaire) { defaire(); defaire = null; }
+        retenir(`${cle}-mode`, 'ancre');
+        majBoutons();
+        retracer();
+    };
+    const replier = (veut) => {
+        const replie = veut === undefined ? !panneau.classList.contains('flot-replie') : !!veut;
+        panneau.classList.toggle('flot-replie', replie);
+        retenir(`${cle}-replie`, replie ? '1' : '0');
+        majBoutons();
+        retracer();
+    };
+
+    bMode.onclick = () => (estDetache(overlay) ? ancrerIci() : detacherIci());
+    bReplier.onclick = () => replier();
+
+    // Ce qu'on avait choisi la dernière fois : le repli suit l'auteur d'une
+    // fiche à l'autre, c'est un réglage de confort et pas une propriété de
+    // l'exercice.
+    replier(lire(`${cle}-replie`) === '1');
+    majBoutons();
+
+    return {
+        detacher: detacherIci, ancrer: ancrerIci,
+        basculer: () => (estDetache(overlay) ? ancrerIci() : detacherIci()),
+        replier, estDetache: () => estDetache(overlay)
+    };
+}
+
+const commandesVides = () => ({
+    detacher() {}, ancrer() {}, basculer() {}, replier() {}, estDetache: () => false
+});
+
+function retenir(cle, valeur) {
+    try { localStorage.setItem(cle, valeur); } catch (e) { /* privé */ }
+}
+function lire(cle) {
+    try { return localStorage.getItem(cle); } catch (e) { return null; }
+}
+
+/**
+ * Le passage effectif en fenêtre posée à côté. Interne : on y entre par
+ * `equiperFenetre`, qui tient le bouton et la mémoire du mode.
+ *
+ * @returns {() => void} de quoi la rattacher au centre
+ */
+function poserFlottante(overlay, panneau, titre, cle, retracer) {
     overlay.classList.add('flot-detache');
     panneau.classList.add('flot-fenetre');
     if (titre) titre.classList.add('flot-poignee');
@@ -191,6 +310,7 @@ export function detacher(overlay, cle) {
                 panneau.style.height = `${panneau.offsetHeight}px`;
                 memoriser(panneau, cle);
                 placer(panneau, panneau.offsetLeft, panneau.offsetTop);
+                if (retracer) retracer();
             }, 250);
         });
         obs.observe(panneau);

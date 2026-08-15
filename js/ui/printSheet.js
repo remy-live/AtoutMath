@@ -21,7 +21,7 @@ import { dessinerChemin } from '../core/cheminSvg.js';
 import { GLYPHES, egyptianSvg } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
-import { detacher } from './flottant.js';
+import { equiperFenetre } from './flottant.js';
 import {
     ajusterAuCarre, insecable, cheminSerpentin, boiteDe as boiteCaseDomino, cellulesDe
 } from '../core/dominos.js';
@@ -5126,6 +5126,12 @@ export const RENDUS = {
 
 // --- La modale ---------------------------------------------------------------
 
+const CLE_FENETRE = 'mathbox-fiche-flottante';
+const lireModeFenetre = () => {
+    try { return localStorage.getItem(`${CLE_FENETRE}-mode`); } catch (e) { return null; }
+};
+let fenetreFiche = null;
+
 function assurerModale() {
     let modal = document.getElementById('print-sheet-modal');
     if (modal) return modal;
@@ -5169,6 +5175,9 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    // Les deux commandes de fenêtre — ancrer/détacher, replier les réglages —
+    // sont posées dans le titre une fois pour toutes.
+    fenetreFiche = equiperFenetre(modal, CLE_FENETRE);
     return modal;
 }
 
@@ -5501,9 +5510,16 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         rowsEl.value = String(Math.max(1, Math.min(dispo.maxRows || 3,
             Math.ceil(n / Math.min(dispo.maxCols || 3, n > 1 ? 2 : 1)))));
     }
+    // De quoi se redessiner quand la fenêtre change de taille : détacher,
+    // replier ou tirer le coin change la largeur disponible, et l'aperçu
+    // calcule son échelle dessus.
+    modal._flotRendre = () => rendre();
     modal.style.display = 'flex';
-    // DÉTACHÉE, elle ne bloque plus rien : on continue à jouer et à changer
-    // d'exercice pendant qu'elle est là. C'est le banc d'essai qui le demande.
-    if (opts.flottant) detacher(modal, 'mathbox-fiche-flottante');
+    // ANCRÉE OU DÉTACHÉE, AU CHOIX. Le bouton est dans le titre, et le choix
+    // se retient. La barre de passe, elle, l'exige détachée : une modale qui
+    // bloque ne peut pas accompagner une passe de cent exercices.
+    if (opts.flottant) fenetreFiche.detacher();
+    else if (lireModeFenetre() === 'ancre') fenetreFiche.ancrer();
+    else if (lireModeFenetre() === 'detache') fenetreFiche.detacher();
     rendre();
 }
