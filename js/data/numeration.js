@@ -64,7 +64,7 @@ export const numerationExercises = [
     {
         id: 'num-rang-decimal',
         consignePapier: "",
-        title: 'Dizaines ou Dixièmes ?',
+        title: 'Rang dans un nombre',
         generatorId: 'num.chiffre-rang', activityId: 'bubbles',
         params: { partie: 'les deux', decimales: 3 },
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },

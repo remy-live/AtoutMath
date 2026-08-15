@@ -382,46 +382,6 @@ export const geometrieExercises = [
         instruction: "Va du rond vert à l'étoile. Flèches du clavier, croix tactile, ou promène ton doigt sur le dédale — on ne traverse jamais un mur. Entre deux cases il n'existe qu'un seul chemin : si tu tournes en rond, c'est que tu es dans une impasse, et il faut revenir. Le fil rose derrière toi se rembobine quand tu reviens sur tes pas : ce qui reste tracé est toujours la route que tu tiens."
     },
     {
-        // LE DÉDALE QUI DESSINE. Le chemin unique de la sortie N'EST PAS
-        // quelconque : c'est un dessin, tracé d'un seul trait, et les impasses
-        // ne sont que des greffes autour de lui. Arriver au bout, c'est avoir
-        // dessiné — et l'image ne peut pas se voir en arrivant.
-        id: 'geo-dedale-dessin', status: STATUS.TEST, title: 'Le Dédale qui Dessine',
-        activityId: 'dedale',
-        sansRevision: true,
-        skills: ['geo.espace.deplacement'],
-        params: { mode: 'dessin', dessin: '', marge: 2, trace: 'fil' },
-        paramSchema: [
-            {
-                id: 'dessin', type: 'select', label: 'Image cachée',
-                aide: 'Laisse « au hasard » pour que l\'élève ne sache pas ce qu\'il va trouver — c\'est toute la récompense.',
-                options: [
-                    { value: '', label: 'Au hasard — surprise' },
-                    { value: 'marches', label: 'Un escalier' },
-                    { value: 'creneau', label: 'Un château' },
-                    { value: 'zigzag', label: 'L\'éclair' },
-                    { value: 'peigne', label: 'Le peigne' },
-                    { value: 'spirale', label: 'La spirale' },
-                    { value: 'serpent', label: 'Le serpent' }
-                ],
-                default: ''
-            },
-            {
-                id: 'marge', type: 'select', label: 'Fausses pistes autour du dessin',
-                aide: 'Sans marge, le dessin EST le labyrinthe et se lit d\'un coup d\'œil. Chaque anneau de marge ajoute des impasses tout autour : le chemin reste unique, mais il faut le chercher.',
-                options: [
-                    { value: 0, label: 'Aucune — le tracé nu' },
-                    { value: 1, label: 'Un peu' },
-                    { value: 2, label: 'Normal' },
-                    { value: 3, label: 'Beaucoup — on cherche vraiment' }
-                ],
-                default: 2
-            }
-        ],
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Va du rond vert à l'étoile. Ce dédale cache une image : le chemin de la sortie EST un dessin, et il n'y en a qu'un — impossible de le deviner d'avance, il apparaît sous tes pas. Les couloirs qui partent sur le côté sont des impasses ; quand tu y entres, ton fil s'y engage, et il se rembobine dès que tu reviens. À l'arrivée, il ne reste que le dessin."
-    },
-    {
         // MAT EN UN, MAT EN DEUX. Un problème d'échecs, ce n'est pas jouer :
         // c'est CHERCHER, dans une position figée, le coup qui ne laisse aucune
         // issue. On y raisonne exactement comme sur une figure — j'énumère les
