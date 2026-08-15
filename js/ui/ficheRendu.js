@@ -260,11 +260,19 @@ export function apercuItems(page, k, o) {
             if (r) {
                 // `n` vaut null quand le professeur a décoché la numérotation
                 // de cet exercice : on n'écrit alors rien du tout.
-                if (it.n != null) {
+                //
+                // CERTAINS BLOCS PLACENT LEUR NUMÉRO EUX-MÊMES. Une cascade de
+                // priorités s'écrit « 1. 2 × 6 + 7 − 2 » sur une seule ligne,
+                // comme dans un cahier ; le numéro posé au-dessus lui faisait
+                // perdre une ligne entière et cassait l'alignement. Le rendu le
+                // reçoit alors dans son emplacement, et le pose où il veut.
+                if (it.n != null && !r.numeroInterne) {
                     html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
                         font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
                 }
-                html += r.previewGrille(it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite },
+                html += r.previewGrille(it.item,
+                    { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
+                        numero: r.numeroInterne ? it.n : null },
                     k, !!o.solution, !!o.champs && !o.solution);
             }
             continue;
@@ -532,13 +540,15 @@ export function pdfItems(pdf, page, o) {
                 pdf.setFont('helvetica', 'bold');
                 pdf.setFontSize(o.tailleConsigne * 2.83);
                 pdf.setTextColor(...ENCRE.gris);
-                if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
+                if (it.n != null && !r.numeroInterne) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
                 // Le rendu de la grille appelle ce crayon pour chaque case
                 // vide, quand la fiche est déclarée remplissable.
                 const champ = (o.champs && !o.solution)
                     ? (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`)
                     : null;
-                r.pdfGrille(pdf, it.item, { x: it.x, y: it.y, taille: it.taille, boite: it.boite },
+                r.pdfGrille(pdf, it.item,
+                    { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
+                        numero: r.numeroInterne ? it.n : null },
                     !!o.solution, champ);
             }
             continue;

@@ -3541,23 +3541,40 @@ function geoPriorites(item, slot) {
     // et le carré lui laissait un quart de bloc vide sur la gauche.
     const b = slot.boite;
     const rangs = m.etapes + 1;   // l'énoncé, puis une ligne par étape
-    // LES LIGNES NE S'ÉTIRENT PAS POUR REMPLIR LE BLOC. Au-delà d'un
-    // centimètre d'écart, on n'écrit plus une cascade : on écrit dans le vide,
-    // et l'œil ne relie plus une ligne à la suivante.
-    const ligneH = Math.min(b.h / (rangs + 0.5), 11);
+    // LE NUMÉRO EST SUR LA MÊME LIGNE QUE LE CALCUL, comme dans un cahier :
+    // « 1.  2 × 6 + 7 − 2 ». Posé au-dessus du bloc, il coûtait une ligne
+    // entière et le calcul flottait sans rien à quoi s'aligner.
+    const gouttiere = slot.numero != null ? 7 : 0;
+    // LES LIGNES NE S'ÉTIRENT PAS POUR REMPLIR LE BLOC — mais elles ne se
+    // perdent pas non plus dedans. Neuf millimètres, c'est l'interligne d'un
+    // cahier de collège : au-delà on n'écrit plus une cascade, on écrit dans
+    // le vide, et l'œil ne relie plus une ligne à la suivante.
+    const ligneH = Math.min(b.h / (rangs + 0.3), 9);
     return {
-        m, rangs, ligneH,
-        x0: b.x + b.w * 0.03,
-        largeur: b.w * 0.62,
-        y0: b.y + ligneH * 0.2,
-        // Le texte, posé SUR sa ligne d'écriture et non dessus.
-        taille: Math.max(8, Math.min(ligneH * 1.35, 13))
+        m, rangs, ligneH, gouttiere,
+        numero: slot.numero,
+        x0: b.x + gouttiere,
+        largeur: b.w - gouttiere - 2,
+        y0: b.y,
+        // LA MÊME TAILLE POUR TOUS LES CALCULS DE LA FEUILLE. Elle se prenait
+        // sur l'interligne, qui dépend du nombre d'étapes : un calcul en deux
+        // étapes s'imprimait à côté d'un calcul en trois, moitié plus gros, et
+        // la feuille avait l'air bricolée. Elle ne dépend plus que du bloc,
+        // le même pour tout le monde.
+        taille: Math.max(7.5, Math.min(b.h * 0.3, 11))
     };
 }
 
 function prioritesPreviewHtml(item, slot, k, solution) {
     const g = geoPriorites(item, slot);
     let html = '';
+    // Le numéro, dans la marge, à la hauteur du calcul.
+    if (g.numero != null) {
+        html += `<div style="position:absolute; left:${slot.boite.x * k}px; top:${g.y0 * k}px;
+            width:${(g.gouttiere - 1) * k}px; height:${g.ligneH * k}px;
+            display:flex; align-items:center; font-weight:800; color:#6e7684;
+            font-size:${g.taille * 0.3 * k}px">${g.numero}.</div>`;
+    }
     for (let i = 0; i < g.rangs; i++) {
         const y = g.y0 + i * g.ligneH;
         const texte = (i === 0 || solution) ? (g.m.lignes[i] || '') : '';
@@ -3583,6 +3600,12 @@ function prioritesPreviewHtml(item, slot, k, solution) {
 
 function dessinerPrioritesPdf(doc, item, slot, solution) {
     const g = geoPriorites(item, slot);
+    if (g.numero != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.taille * 0.85);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(`${g.numero}.`, slot.boite.x, g.y0 + g.ligneH * 0.7);
+    }
     for (let i = 0; i < g.rangs; i++) {
         const y = g.y0 + i * g.ligneH;
         if (i > 0) {
@@ -3615,10 +3638,18 @@ export const RENDUS = {
         pdfGrille: dessinerPrioritesPdf,
         nomBloc: 'Calcul', nomBlocs: 'calculs',
         titreAGauche: true,
-        // HUIT PAR PAGE. Une cascade est large et courte : c'est en LIGNES
+        // LE NUMÉRO EST POSÉ PAR LE BLOC LUI-MÊME, sur la ligne du calcul :
+        // « 1.  2 × 6 + 7 − 2 », comme dans un cahier. Écrit au-dessus par la
+        // mise en page, il coûtait une ligne entière pour trois caractères.
+        numeroInterne: true,
+        // ET LE BLOC EST BAS. Une cascade de trois étapes tient sur quatre
+        // lignes de cahier : lui donner un carré de huit centimètres laissait
+        // la moitié de sa hauteur en blanc.
+        proportions: { w: 1, h: 0.46 },
+        // DIX PAR PAGE. Une cascade est large et courte : c'est en LIGNES
         // qu'il en faut, pas en colonnes — au-delà de deux colonnes,
         // « (2 + 3) × (4 + 1) » sort de son bloc.
-        disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 5 },
+        disposition: { cols: 2, rows: 5, maxCols: 3, maxRows: 6 },
         parLigneDefaut: 2
     },
 
