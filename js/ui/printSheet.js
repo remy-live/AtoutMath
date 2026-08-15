@@ -562,6 +562,24 @@ function geometrieLogi(item, boite) {
 const logiVisible = (r, c) => r === 0 || c < r;
 
 /**
+ * LA PLUS GRANDE POLICE QUI TIENT, en millimètres.
+ *
+ * Les libellés d'un logigramme sont écrits dans des bandeaux étroits, souvent
+ * de biais : « Chorale » posé verticalement le long de trois cases de trois
+ * millimètres a besoin de neuf millimètres et en réclame douze. Il débordait
+ * alors des deux côtés de son bandeau, par-dessus l'en-tête et par-dessus la
+ * première ligne — et « Observateur » sortait carrément du bloc.
+ *
+ * 0,58 est la largeur moyenne d'un caractère d'Helvetica gras, en cadratins.
+ */
+function policeLogi(texte, place, plafond) {
+    const n = Math.max(1, String(texte ?? '').length);
+    return Math.max(1.3, Math.min(plafond, (place * 0.92) / (n * 0.58)));
+}
+/** La même, en points — l'unité de jsPDF. 1 pt ≈ 0,3528 mm. */
+const policeLogiPt = (texte, place, plafond) => policeLogi(texte, place, plafond) / 0.3528;
+
+/**
  * La solution en toutes lettres, une ligne par personnage.
  *
  * Le générateur la compose déjà pour l'explication de l'écran (« Malo · le roi ;
@@ -595,12 +613,14 @@ function logigrammePreviewHtml(item, slot, k, solution) {
         const x = x0 + ci * n * cote;
         html += `<div class="fx-logi-cat" style="left:${x * k}px; top:${(y0 - g.entete) * k}px;
             width:${(n * cote) * k}px; height:${g.bandeau * k}px; background:${rgb(c, .55)};
-            font-size:${Math.min(2.6, cote * 0.55) * k}px">${echapperSheet(p.categories[c].label)}</div>`;
+            font-size:${policeLogi(p.categories[c].label, n * cote, Math.min(2.6, cote * 0.55)) * k}px"
+            >${echapperSheet(p.categories[c].label)}</div>`;
         for (let j = 0; j < n; j++) {
             html += `<div class="fx-logi-vert" style="left:${(x + j * cote) * k}px;
                 top:${(y0 - libH) * k}px; width:${cote * k}px;
                 height:${libH * k}px; background:${rgb(c, .18)};
-                font-size:${Math.min(2.5, cote * 0.5) * k}px">${echapperSheet(etiquetteLogi(p.categories[c], j))}</div>`;
+                font-size:${policeLogi(etiquetteLogi(p.categories[c], j), libH, Math.min(2.5, cote * 0.5)) * k}px"
+                >${echapperSheet(etiquetteLogi(p.categories[c], j))}</div>`;
         }
     });
 
@@ -608,11 +628,14 @@ function logigrammePreviewHtml(item, slot, k, solution) {
         const y = y0 + ri * n * cote;
         html += `<div class="fx-logi-catlig" style="left:${g.xCat * k}px; top:${y * k}px;
             width:${g.bandeau * k}px; height:${(n * cote) * k}px; background:${rgb(r, .55)};
-            font-size:${Math.min(2.6, cote * 0.55) * k}px">${echapperSheet(p.categories[r].label)}</div>`;
+            font-size:${policeLogi(p.categories[r].label, n * cote, Math.min(2.6, cote * 0.55)) * k}px"
+            >${echapperSheet(p.categories[r].label)}</div>`;
         for (let i = 0; i < n; i++) {
             html += `<div class="fx-logi-lig" style="left:${(g.xCat + g.bandeau) * k}px;
                 top:${(y + i * cote) * k}px; width:${g.etiq * k}px; height:${cote * k}px;
-                background:${rgb(r, .18)}; font-size:${Math.min(2.5, cote * 0.5) * k}px">${echapperSheet(etiquetteLogi(p.categories[r], i))}</div>`;
+                background:${rgb(r, .18)};
+                font-size:${policeLogi(etiquetteLogi(p.categories[r], i), g.etiq, Math.min(2.5, cote * 0.5)) * k}px"
+                >${echapperSheet(etiquetteLogi(p.categories[r], i))}</div>`;
         }
         colonnes.forEach((c, ci) => {
             if (!logiVisible(r, c)) return;
@@ -671,7 +694,7 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         doc.setLineWidth(0.15);
         doc.setFillColor(...pastel(c, 0.55));
         doc.rect(x, y0 - g.entete, n * cote, g.bandeau, 'FD');
-        doc.setFontSize(Math.min(8, cote * 1.3));
+        doc.setFontSize(policeLogiPt(p.categories[c].label, n * cote, Math.min(2.8, cote * 0.46)));
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(p.categories[c].label), x + n * cote / 2, y0 - g.entete + g.bandeau * 0.72,
@@ -679,7 +702,11 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         doc.setFillColor(...pastel(c, 0.18));
         for (let j = 0; j < n; j++) doc.rect(x + j * cote, y0 - libH, cote, libH, 'FD');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(Math.min(7.5, cote * 1.2));
+        // Ces libellés-ci sont COUCHÉS : c'est la hauteur de l'en-tête qui les
+        // borne, pas la largeur d'une case.
+        const plusLong = Math.max(...Array.from({ length: n },
+            (_, j) => String(etiquetteLogi(p.categories[c], j)).length));
+        doc.setFontSize(policeLogiPt('x'.repeat(plusLong), libH, Math.min(2.6, cote * 0.42)));
         for (let j = 0; j < n; j++) {
             doc.text(pourPdf(etiquetteLogi(p.categories[c], j)),
                 x + j * cote + cote * 0.68, y0 - 1.2, { angle: 90 });
@@ -694,14 +721,16 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         doc.setFillColor(...pastel(r, 0.55));
         doc.rect(xCat, y0r, g.bandeau, n * cote, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.min(8, cote * 1.3));
+        doc.setFontSize(policeLogiPt(p.categories[r].label, n * cote, Math.min(2.8, cote * 0.46)));
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(p.categories[r].label), xCat + g.bandeau * 0.72, y0r + n * cote / 2,
             { align: 'center', angle: 90 });
         doc.setFillColor(...pastel(r, 0.18));
         for (let i = 0; i < n; i++) doc.rect(xCat + g.bandeau, y0r + i * cote, g.etiq, cote, 'FD');
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(Math.min(7.5, cote * 1.2));
+        const plusLongR = Math.max(...Array.from({ length: n },
+            (_, i) => String(etiquetteLogi(p.categories[r], i)).length));
+        doc.setFontSize(policeLogiPt('x'.repeat(plusLongR), g.etiq, Math.min(2.6, cote * 0.42)));
         for (let i = 0; i < n; i++) {
             doc.text(pourPdf(etiquetteLogi(p.categories[r], i)),
                 x0 - 1.5, y0r + i * cote + cote * 0.62, { align: 'right' });

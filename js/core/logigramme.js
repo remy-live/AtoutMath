@@ -470,7 +470,7 @@ export const THEMES = [
         id: 'etoiles',
         titre: 'La nuit des étoiles',
         decor: 'Chacun a pointé la lunette vers un astre.',
-        sujet: { id: 'observateur', label: 'Observ.', valeurs: PRENOMS },
+        sujet: { id: 'observateur', label: 'Observateur', valeurs: PRENOMS },
         attributs: [
             {
                 id: 'astre', label: 'Astre',
