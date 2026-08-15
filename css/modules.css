@@ -3454,7 +3454,10 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* --- La planche de dominos à découper ------------------------------------- */
 .fx-dom-piece {
     position: absolute; display: flex; align-items: stretch; box-sizing: border-box;
-    border: 1.4px solid #1a202c; border-radius: 3px; background: #fff; overflow: hidden;
+    /* Coins CARRÉS : les pièces sont imprimées collées, pour qu'un coup de
+       ciseau droit en débite toute une rangée. Deux angles arrondis mis bord à
+       bord laisseraient une encoche, et le trait à suivre se casserait. */
+    border: 1.4px solid #1a202c; background: #fff; overflow: hidden;
 }
 /* Une pièce DEBOUT : c'est le virage du serpentin. Les deux moitiés
    s'empilent, et le pli passe à l'horizontale. */

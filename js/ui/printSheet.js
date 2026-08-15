@@ -22,6 +22,7 @@ import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
+import { paramSchemaOf } from '../data/catalog.js';
 import {
     ajusterAuCarre, insecable, cheminSerpentin, boiteDe as boiteCaseDomino, cellulesDe
 } from '../core/dominos.js';
@@ -790,7 +791,15 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
 // montre la même chaîne dans l'ordre — le professeur corrige d'un regard.
 
 const DOM_LIGNE = 3.5;          // hauteur d'une ligne de texte dans une pièce, en mm
-const DOM_ECART = 2.4;          // le blanc entre deux pièces : la marge du ciseau
+// LES PIÈCES SE TOUCHENT, ET C'EST POUR LE CISEAU. Rémy : « ce serait bien que
+// les dominos à découper soient collés car sinon c'est long à découper ». Avec
+// un blanc de 2,4 mm autour de chaque pièce, il fallait faire le tour des
+// vingt-quatre — quatre-vingt-seize coups de ciseau. Collées, elles partagent
+// leurs traits : cinq coups droits dans un sens, sept dans l'autre, et la
+// planche est débitée. C'est la raison pour laquelle les coins sont carrés
+// (deux angles arrondis mis bord à bord laissent une encoche) et pour laquelle
+// le pli reste plus fin que le contour — sinon on ne sait plus où couper.
+const DOM_ECART = 0;
 
 /**
  * La géométrie d'une planche — EN DEUX ZONES.
@@ -993,7 +1002,10 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.5);
         doc.setFillColor(255, 255, 255);
-        doc.roundedRect(x, y, w, h, 1.2, 1.2, 'FD');
+        // Coins CARRÉS : deux pièces mises bord à bord ne doivent pas laisser
+        // d'encoche entre leurs angles, sans quoi le trait à suivre au ciseau
+        // se casse quatre fois par pièce.
+        doc.rect(x, y, w, h, 'FD');
         // Le pli du domino : vertical sur une pièce couchée, horizontal sur
         // une pièce debout. PLUS FIN QUE LE CONTOUR — sur le parcours rempli
         // les pièces se touchent, et si le pli avait le même trait que la
@@ -5248,6 +5260,13 @@ function assurerModale() {
                 <button type="button" class="btn-hint" id="fp-atelier" style="display:none">♟ Composer mes échiquiers…</button>
                 <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
+            <!-- LES RÉGLAGES DE L'EXERCICE, sur la fiche elle-même. Rémy :
+                 « peut-on demander des sudokus autres que 6 × 6 pour les
+                 PDF ? ». On le pouvait — mais seulement en ressortant de la
+                 fiche pour aller régler l'exercice, puis en y revenant. La
+                 feuille du parcours montrait déjà ces réglages ; la fiche d'un
+                 exercice seul les ignorait. -->
+            <div class="fp-contenu" id="fp-contenu" hidden></div>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu" id="fp-apercu"></div>
             </div>
@@ -5534,6 +5553,49 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     const couleurEl = modal.querySelector('#fp-couleur');
     couleurEl.value = polycopieEnCouleur() ? '1' : '0';
     couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
+
+    // --- LES RÉGLAGES DE L'EXERCICE, dans la fiche ---------------------------
+    //
+    // Le générateur dit ce qu'il sait faire varier ; le catalogue dit lesquels
+    // de ces réglages le professeur a le droit de toucher. On garde
+    // l'intersection — et l'on n'affiche rien du tout pour un atelier, où les
+    // diagrammes sont composés à la main.
+    const contenuEl = modal.querySelector('#fp-contenu');
+    const schemaContenu = (() => {
+        if (atelier || !generator) return [];
+        const connus = new Set((generator.params || []).map(p => p.id));
+        const gardes = (paramSchemaOf(exo) || []).filter(p => p && connus.has(p.id));
+        return gardes.length ? gardes : (generator.params || []);
+    })();
+    contenuEl.hidden = !schemaContenu.length;
+    contenuEl.innerHTML = '';
+    // Les champs viennent du panneau de configuration, pas d'une copie. Chargé
+    // À LA DEMANDE : games/configUI.js pose des écouteurs sur `document` dès
+    // son import, et ce module-ci est lu par le rendu commun des fiches, qui
+    // doit rester chargeable hors navigateur.
+    if (schemaContenu.length) {
+        import('../games/configUI.js').then(({ fieldHtml, readParams, wireTips }) => {
+            contenuEl.innerHTML = `<span class="fp-contenu-titre">Contenu</span>`
+                + schemaContenu.map(p => fieldHtml(p,
+                    reglages[p.id] !== undefined ? reglages[p.id] : p.default)).join('');
+            wireTips(contenuEl);
+            // Un réglage changé RETIRE les grilles : elles ont été tirées avec
+            // l'ancien, et garder un sudoku 6 × 6 sur une fiche réglée en 9 × 9
+            // ferait mentir l'aperçu. On relit tout le panneau d'un seul coup —
+            // un seul chemin, donc jamais deux réglages qui divergent.
+            const relire = () => {
+                Object.assign(reglages, readParams(contenuEl, schemaContenu));
+                items = [];
+                rendre();
+            };
+            contenuEl.addEventListener('change', relire);
+            // Les bascules « Oui / Non » n'émettent pas `change` : leur écouteur
+            // global ne fait que basculer la classe. On repasse derrière lui.
+            contenuEl.addEventListener('click', (ev) => {
+                if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
+            });
+        });
+    }
 
     const btnRegen = modal.querySelector('#fp-regen');
     btnRegen.onclick = () => { items = []; rendre(); };
