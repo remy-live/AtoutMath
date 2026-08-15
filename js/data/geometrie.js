@@ -340,6 +340,12 @@ export const geometrieExercises = [
         // elle, est là pour qu'on ait envie de la traverser.
         id: 'geo-dedale-forme', status: STATUS.TEST, title: 'Les Dédales',
         activityId: 'dedale',
+        // SUR LE PAPIER : le dédale imprimé, à parcourir au crayon. C'est
+        // l'exercice d'origine — l'écran n'y ajoutait que le fil qui se
+        // rembobine.
+        printable: 'dedale', printGeneratorId: 'geo.dedale-fiche',
+        printParams: { forme: 'rond', taille: 15 },
+        consignePapier: 'Va du rond au carré sans traverser de mur.',
         sansRevision: true,
         skills: ['geo.espace.deplacement'],
         params: { mode: 'forme', forme: '', taille: 'moyen', trace: 'fil' },

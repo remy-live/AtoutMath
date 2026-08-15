@@ -4233,7 +4233,112 @@ function dessinerPointAPointPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LE DÉDALE, SUR LE PAPIER ---------------------------------------------------
+
+/**
+ * Un dédale imprimé, c'est UN QUADRILLAGE DE MURS — pas un dessin de couloirs.
+ * On ne trace que les côtés fermés de chaque case ; les côtés ouverts ne
+ * s'écrivent pas, et c'est leur absence qui fait le chemin.
+ */
+function geoDedale(item, slot) {
+    const m = item.meta;
+    const cote = slot.taille;
+    const pas = cote / Math.max(m.cols, m.lignes);
+    return {
+        m, pas, cote,
+        // Le dédale est centré dans son carré : une forme ronde n'occupe pas
+        // le rectangle entier de ses colonnes.
+        x0: slot.x + (cote - m.cols * pas) / 2,
+        y0: slot.y + (cote - m.lignes * pas) / 2
+    };
+}
+
+/** Les deux bouts d'un mur, en millimètres. */
+function segmentMur(g, [x, y, dx, dy]) {
+    const X = g.x0 + x * g.pas, Y = g.y0 + y * g.pas, p = g.pas;
+    if (dx === 1) return [X + p, Y, X + p, Y + p];
+    if (dx === -1) return [X, Y, X, Y + p];
+    if (dy === 1) return [X, Y + p, X + p, Y + p];
+    return [X, Y, X + p, Y];
+}
+
+function dedalePreviewHtml(item, slot, k, solution) {
+    const g = geoDedale(item, slot);
+    const m = g.m;
+    let html = '';
+    if (solution) {
+        // Le chemin, tracé au milieu des cases.
+        for (let i = 1; i < m.solution.length; i++) {
+            const [ax, ay] = m.solution[i - 1], [bx, by] = m.solution[i];
+            const x1 = g.x0 + (ax + 0.5) * g.pas, y1 = g.y0 + (ay + 0.5) * g.pas;
+            const x2 = g.x0 + (bx + 0.5) * g.pas, y2 = g.y0 + (by + 0.5) * g.pas;
+            html += `<div style="position:absolute; left:${Math.min(x1, x2) * k}px;
+                top:${Math.min(y1, y2) * k}px;
+                width:${(Math.abs(x2 - x1) + g.pas * 0.22) * k}px;
+                height:${(Math.abs(y2 - y1) + g.pas * 0.22) * k}px;
+                background:#c4b5fd; border-radius:${g.pas * 0.11 * k}px;
+                transform:translate(${-g.pas * 0.11 * k}px, ${-g.pas * 0.11 * k}px)"></div>`;
+        }
+    }
+    for (const mur of m.murs) {
+        const [x1, y1, x2, y2] = segmentMur(g, mur);
+        html += `<div style="position:absolute; left:${x1 * k}px; top:${y1 * k}px;
+            width:${Math.max(1, (x2 - x1) * k || 1.2)}px;
+            height:${Math.max(1, (y2 - y1) * k || 1.2)}px; background:#1a202c"></div>`;
+    }
+    const rond = (c, cls) => {
+        const cx = g.x0 + (c[0] + 0.5) * g.pas, cy = g.y0 + (c[1] + 0.5) * g.pas;
+        const r = g.pas * 0.3;
+        return `<div style="position:absolute; left:${(cx - r) * k}px; top:${(cy - r) * k}px;
+            width:${r * 2 * k}px; height:${r * 2 * k}px; background:#1a202c;
+            border-radius:${cls === 'rond' ? '50%' : '0'}"></div>`;
+    };
+    html += rond(m.depart, 'rond') + rond(m.arrivee, 'carre');
+    return html;
+}
+
+function dessinerDedalePdf(doc, item, slot, solution) {
+    const g = geoDedale(item, slot);
+    const m = g.m;
+    if (solution) {
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(g.pas * 0.42);
+        doc.setLineJoin('round');
+        for (let i = 1; i < m.solution.length; i++) {
+            const [ax, ay] = m.solution[i - 1], [bx, by] = m.solution[i];
+            doc.line(g.x0 + (ax + 0.5) * g.pas, g.y0 + (ay + 0.5) * g.pas,
+                g.x0 + (bx + 0.5) * g.pas, g.y0 + (by + 0.5) * g.pas);
+        }
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(Math.max(0.35, g.pas * 0.11));
+    for (const mur of m.murs) {
+        const [x1, y1, x2, y2] = segmentMur(g, mur);
+        doc.line(x1, y1, x2, y2);
+    }
+    doc.setFillColor(...ENCRE.trait);
+    const r = g.pas * 0.3;
+    doc.circle(g.x0 + (m.depart[0] + 0.5) * g.pas, g.y0 + (m.depart[1] + 0.5) * g.pas, r, 'F');
+    doc.rect(g.x0 + (m.arrivee[0] + 0.5) * g.pas - r, g.y0 + (m.arrivee[1] + 0.5) * g.pas - r,
+        r * 2, r * 2, 'F');
+}
+
 export const RENDUS = {
+    dedale: {
+        titre: 'Le dédale',
+        consigne: () => 'Va du ROND au CARRÉ sans traverser de mur. Entre deux cases il '
+            + 'n\'existe qu\'un seul chemin : si tu tournes en rond, c\'est que tu es dans '
+            + 'une impasse — reviens sur tes pas et essaie l\'autre couloir. Repasse ton '
+            + 'trajet au crayon.',
+        previewGrille: dedalePreviewHtml,
+        pdfGrille: dessinerDedalePdf,
+        nomBloc: 'Dédale', nomBlocs: 'dédales',
+        proportions: { w: 1, h: 1 },
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
+        parLigneDefaut: 2,
+        grilleMax: 120
+    },
+
     compte: {
         titre: 'Le compte est bon',
         consigne: () => 'Atteins le nombre écrit en haut avec les six plaques. Chaque '

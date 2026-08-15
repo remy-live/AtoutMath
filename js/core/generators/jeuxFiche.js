@@ -15,6 +15,7 @@
 import { makeItem } from '../items.js';
 import { tirerPartie } from '../compteEstBon.js';
 import { tirerPointAPoint, NOMS_DESSINS, NOMS_FAMILLES } from '../pointAPoint.js';
+import { creerDedale, NOMS_FORMES, ouvert, cle } from '../dedale.js';
 
 const SIGNE = { '+': '+', '-': '−', '*': '×', '/': '÷', '×': '×', '÷': '÷' };
 
@@ -128,6 +129,85 @@ export const pointAPointFicheGenerator = {
                 points: e.points.map(p => ({ x: p.x, y: p.y, ordre: p.ordre, texte: p.texte })),
                 segments: e.segments,
                 theme: e.dessin
+            }
+        });
+    }
+};
+
+// --- LE DÉDALE --------------------------------------------------------------
+
+export const dedaleFicheGenerator = {
+    id: 'geo.dedale-fiche',
+    label: 'Le dédale (fiche)',
+    answerKinds: ['numeric'],
+    skills: ['geo.espace.deplacement'],
+    params: [
+        {
+            id: 'forme', type: 'select', label: 'Forme du dédale', default: 'rond',
+            options: NOMS_FORMES.map(f => ({ value: f, label: f }))
+        },
+        {
+            id: 'taille', type: 'select', label: 'Taille', default: 15,
+            aide: 'Sur une feuille, au-delà de vingt et une cases les couloirs '
+                + 'deviennent trop fins pour y passer un crayon.',
+            options: [
+                { value: 11, label: '11 × 11 — court' },
+                { value: 15, label: '15 × 15' },
+                { value: 21, label: '21 × 21 — long' }
+            ]
+        }
+    ],
+
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        params = params || {};
+        const n = Math.max(11, Math.min(21, Number(params.taille) || 15));
+        const d = creerDedale({
+            rng,
+            forme: NOMS_FORMES.includes(params.forme) ? params.forme : 'rond',
+            cols: n, lignes: n
+        });
+
+        // LES MURS, CALCULÉS UNE FOIS ICI. Le rendu ne doit pas rejouer
+        // l'algorithme : deux dessins du même dédale qui ne s'accorderaient
+        // pas, c'est un labyrinthe sans solution sur la photocopie.
+        const murs = [];
+        for (const k of d.dans) {
+            const [x, y] = k.split(',').map(Number);
+            // Le mur de DROITE et celui du BAS suffisent : celui de gauche est
+            // le mur de droite du voisin.
+            for (const [dx, dy] of [[1, 0], [0, 1]]) {
+                const v = [x + dx, y + dy];
+                const dedans = d.dans.has(cle(v[0], v[1]));
+                if (!dedans || !ouvert(d, [x, y], v)) murs.push([x, y, dx, dy]);
+            }
+            // Et les bords : à gauche et en haut, si le voisin est hors forme.
+            for (const [dx, dy] of [[-1, 0], [0, -1]]) {
+                if (!d.dans.has(cle(x + dx, y + dy))) murs.push([x, y, dx, dy]);
+            }
+        }
+
+        return makeItem({
+            seed: rng.seed,
+            generatorId: 'geo.dedale-fiche',
+            skillId: 'geo.espace.deplacement',
+            answerKind: 'numeric',
+            prompt: {
+                text: 'Va du rond au carré sans traverser de mur',
+                papier: 'Va du rond au carré',
+                html: '<div class="game-question">Va du rond au carré</div>'
+            },
+            answer: d.solution.length,
+            explanation: `Le chemin fait ${d.solution.length} cases.`,
+            explicationPapier: `Le chemin fait ${d.solution.length} cases.`,
+            difficulty: n >= 21 ? 4 : 2,
+            meta: {
+                cols: d.cols, lignes: d.lignes, forme: d.forme,
+                cases: [...d.dans].map(k => k.split(',').map(Number)),
+                murs,
+                depart: d.depart, arrivee: d.arrivee,
+                solution: d.solution,
+                theme: `${d.forme}-${d.depart.join(',')}-${d.arrivee.join(',')}`
             }
         });
     }
