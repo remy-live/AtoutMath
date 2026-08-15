@@ -23,8 +23,10 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     poser, etendue, placementAttendu, verifierPlacement, attenduEn,
-    premierRang, rangSuivant, decimales, chiffreAuRang, rangsDe
+    premierRang, rangSuivant, decimales, chiffreAuRang, rangsDe,
+    apercuPose, verifierPose
 } from '../core/poser.js';
+import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 
 const COMPETENCE = 'num.add.entiers';
 const SIGNES = { '+': '+', '-': '−' };
@@ -49,6 +51,28 @@ class PoserOperation extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                ${CSS_GLISSER}
+                /* LE JETON EST LE NOMBRE ENTIER. On ne fait plus glisser des
+                   chiffres un par un : poser une opération, c'est décider où va
+                   LE NOMBRE, et découper cette décision en quatre gestes la
+                   faisait disparaître. */
+                .po-nombre {
+                    display: inline-flex; align-items: center; gap: 1px;
+                    padding: 5px 10px; border-radius: 10px; cursor: grab;
+                    background: color-mix(in srgb, var(--primary) 16%, transparent);
+                    border: 2px solid var(--primary); font-weight: 900;
+                    font-variant-numeric: tabular-nums;
+                    font-size: clamp(18px, 5cqw, 26px);
+                }
+                .po-nombre[hidden] { display: none; }
+                .po-nombre b { font-weight: 900; pointer-events: none; }
+                /* L'APERÇU : là où le nombre tomberait si l'on lâchait. C'est
+                   lui qui fait VOIR le décalage avant de le commettre. */
+                .po-case--apercu {
+                    outline: 2px dashed var(--primary);
+                    background: color-mix(in srgb, var(--primary) 10%, transparent);
+                }
+                .po-fantome { opacity: .45; font-weight: 900; }
                 .po-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 10px;
                     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
@@ -184,6 +208,7 @@ class PoserOperation extends BaseGame {
         this.rangCourant = null;
         this.resultats = {};
         this.retenues = {};
+        this.note('');
         this.dessiner();
         return true;
     }
@@ -283,59 +308,117 @@ class PoserOperation extends BaseGame {
     // --- Étape 1 : l'alignement ------------------------------------------------
 
     dessinerJetons() {
-        this.note('Fais glisser chaque chiffre dans SA colonne. Les unités sous les unités, '
-            + 'les dixièmes sous les dixièmes.');
+        // LA CONSIGNE NE DOIT PAS ÉCRASER LA CORRECTION. Le refus d'un dépôt
+        // redessine l'écran quatre dixièmes de seconde plus tard ; si la
+        // consigne se réécrit à ce moment-là, l'élève voit passer « décalé
+        // d'une colonne » puis plus rien, et croit que rien ne s'est produit.
+        const dejaDit = /po-note--(ok|ko)/.test(this.noteEl.className);
+        if (!dejaDit) this.note('Fais glisser CHAQUE NOMBRE dans la grille — en entier. Attrape-le par '
+            + 'n\'importe lequel de ses chiffres : celui que tu tiens tombe dans la colonne '
+            + 'que tu survoles, et les autres suivent. Les unités sous les unités.');
         this.attendu.forEach((att, i) => {
             const ligne = document.createElement('div');
             ligne.className = 'po-ligne-jetons';
-            const b = document.createElement('b');
-            b.textContent = `${String(att.valeur).replace('.', ',')} :`;
-            ligne.appendChild(b);
-            att.chiffres.forEach(c => {
-                const j = document.createElement('div');
-                j.className = 'po-jeton';
-                j.textContent = c.chiffre;
-                j.hidden = this.pose[i].some(m => m.rang === c.rang && m.chiffre === c.chiffre);
-                j.addEventListener('pointerdown', (ev) => this.prendreJeton(ev, i, c));
-                ligne.appendChild(j);
+            const jeton = document.createElement('div');
+            jeton.className = 'po-nombre';
+            jeton.hidden = this.pose[i].length > 0;
+            // Chaque chiffre est un élément à lui : c'est ainsi qu'on sait
+            // LEQUEL a été attrapé, sans mesurer des pixels à la main.
+            att.chiffres.forEach((c, j) => {
+                const b = document.createElement('b');
+                b.textContent = c.chiffre;
+                b.dataset.index = String(j);
+                jeton.appendChild(b);
+                // La virgule se dessine entre les unités et les dixièmes : elle
+                // ne compte pas comme un chiffre, elle sépare.
+                if (c.rang === 0 && att.chiffres.some(x => x.rang < 0)) {
+                    const v = document.createElement('span');
+                    v.textContent = ',';
+                    v.style.pointerEvents = 'none';
+                    jeton.appendChild(v);
+                }
             });
+            this.brancherJeton(jeton, i);
+            ligne.appendChild(jeton);
             this.zoneEl.appendChild(ligne);
         });
     }
 
-    prendreJeton(ev, operande, chiffre) {
-        ev.preventDefault();
-        const finir = (e) => {
-            const cible = document.elementFromPoint(e.clientX, e.clientY);
-            const c = cible && cible.closest('[data-operande]');
-            if (!c) return;
-            if (Number(c.dataset.operande) !== operande) {
-                this.note('Ce chiffre appartient à l\'autre nombre : chaque ligne a la sienne.', 'ko');
-                return;
-            }
-            const rang = Number(c.dataset.rang);
-            if (rang !== chiffre.rang) {
-                c.classList.add('po-case--faux');
-                const ecart = rang - chiffre.rang;
-                this.note(`Non : ce chiffre vaut des ${this.nomRang(chiffre.rang)}, tu l'as mis `
-                    + `dans les ${this.nomRang(rang)} — décalé de ${Math.abs(ecart)} colonne(s).`, 'ko');
-                setTimeout(() => this.dessiner(), 380);
-                return;
-            }
-            this.pose[operande].push({ rang, chiffre: chiffre.chiffre });
-            const v = verifierPlacement(this.operandes, this.pose);
-            if (v.ok) {
-                this.etape = 2;
-                this.rangCourant = premierRang(this.tableau);
-                this.note('✅ Bien aligné. Maintenant on calcule, en partant de la droite.', 'ok');
-                this.onCorrectAnswer(null, COMPETENCE, {
-                    questionText: `Aligner ${this.operandes.map(x => String(x).replace('.', ',')).join(` ${this.operation} `)}`,
-                    expected: 'aligné sur la virgule', given: 'juste', points: 8
-                });
-            }
-            this.dessiner();
+    brancherJeton(jeton, operande) {
+        // L'index du chiffre saisi se lit sur l'élément touché, AVANT que le
+        // glisser ne commence : c'est ce qui permet d'attraper le nombre par
+        // n'importe quel chiffre.
+        const noter = (ev) => {
+            const cible = ev.target && ev.target.closest('b[data-index]');
+            this.chiffrePris = cible ? Number(cible.dataset.index) : 0;
         };
-        document.addEventListener('pointerup', finir, { once: true });
+        jeton.addEventListener('pointerdown', noter);
+        jeton.addEventListener('touchstart', noter, { passive: true });
+
+        rendreGlissable(jeton, {
+            cibles: '[data-operande]',
+            actif: () => !this.isDemo && this.etape === 1,
+            survoler: (cible) => this.apercu(cible, operande),
+            deposer: (cible) => this.deposerNombre(cible, operande)
+        });
+    }
+
+    /** Le fantôme dans la grille : ce que donnerait le lâcher, à cet instant. */
+    apercu(cible, operande) {
+        this.grilleEl.querySelectorAll('.po-case--apercu').forEach(c => {
+            c.classList.remove('po-case--apercu');
+            const f = c.querySelector('.po-fantome');
+            if (f) f.remove();
+        });
+        if (!cible || Number(cible.dataset.operande) !== operande) return;
+        const rang = Number(cible.dataset.rang);
+        apercuPose(this.operandes[operande], this.chiffrePris || 0, rang).forEach(c => {
+            const q = this.grilleEl.querySelector(
+                `[data-operande="${operande}"][data-rang="${c.rang}"]`);
+            if (!q || q.textContent.trim()) return;
+            q.classList.add('po-case--apercu');
+            const f = document.createElement('span');
+            f.className = 'po-fantome';
+            f.textContent = c.chiffre;
+            q.appendChild(f);
+        });
+    }
+
+    deposerNombre(cible, operande) {
+        if (Number(cible.dataset.operande) !== operande) {
+            this.note('Ce nombre appartient à l\'autre ligne : chaque nombre a la sienne.', 'ko');
+            this.dessiner();
+            return;
+        }
+        const rang = Number(cible.dataset.rang);
+        const valeur = this.operandes[operande];
+        const v = verifierPose(valeur, this.chiffrePris || 0, rang);
+        if (!v.ok) {
+            cible.classList.add('po-case--faux');
+            const dix = Math.abs(v.ecart);
+            this.note(`Décalé de ${dix} colonne${dix > 1 ? 's' : ''} : le nombre est `
+                + `${dix === 1 ? 'dix' : `10^${dix}`} fois trop ${v.ecart > 0 ? 'grand' : 'petit'}. `
+                + 'C\'est la VIRGULE qui aligne, pas le bord droit.', 'ko');
+            setTimeout(() => this.dessiner(), 420);
+            return;
+        }
+        // Le nombre entier se pose d'un coup : c'était une seule décision.
+        this.pose[operande] = apercuPose(valeur, this.chiffrePris || 0, rang)
+            .map(c => ({ rang: c.rang, chiffre: c.chiffre }));
+
+        const juste = verifierPlacement(this.operandes, this.pose);
+        if (juste.ok) {
+            this.etape = 2;
+            this.rangCourant = premierRang(this.tableau);
+            this.note('✅ Bien aligné. Maintenant on calcule, en partant de la droite.', 'ok');
+            this.onCorrectAnswer(null, COMPETENCE, {
+                questionText: `Aligner ${this.operandes.map(x => String(x).replace('.', ',')).join(` ${this.operation} `)}`,
+                expected: 'aligné sur la virgule', given: 'juste', points: 8
+            });
+        } else {
+            this.note('Ce nombre est bien placé. Pose l\'autre.', 'ok');
+        }
+        this.dessiner();
     }
 
     nomRang(r) {

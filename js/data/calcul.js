@@ -201,7 +201,7 @@ export const calculExercises = [
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "D'abord ALIGNER : chaque chiffre glisse dans sa colonne, les unités sous les unités. Puis calculer, colonne par colonne, en partant de la droite. La retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2."
+        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille. Attrape-le par n'importe lequel de ses chiffres — celui que tu tiens tombe dans la colonne que tu survoles, et les autres suivent. Un fantôme te montre où il tomberait avant que tu lâches. Les unités sous les unités : c'est la virgule qui aligne, pas le bord droit. Puis calculer, colonne par colonne, en partant de la droite. La retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2."
     },
     {
         id: 'calc-poser-soustraction', status: STATUS.TEST, title: 'Poser une soustraction',
@@ -225,7 +225,7 @@ export const calculExercises = [
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "D'abord ALIGNER : chaque chiffre glisse dans sa colonne. Puis soustraire, en partant de la droite. Quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : c'est là que se note la retenue, contre le nombre du dessous."
+        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille, attrapé par le chiffre que tu veux — un fantôme montre où il tomberait. Puis soustraire, en partant de la droite. Quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : c'est là que se note la retenue, contre le nombre du dessous."
     },
     {
         // POSER UNE MULTIPLICATION. Une LIGNE par chiffre du multiplicateur,

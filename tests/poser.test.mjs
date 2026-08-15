@@ -4,7 +4,7 @@ import './helpers.mjs';
 import {
     decimales, chiffreAuRang, rangsDe, placementAttendu, etendue,
     colonnesAddition, colonnesSoustraction, colonnesMultiplication, poser,
-    lignesMultiplication, colonnesDivision,
+    lignesMultiplication, colonnesDivision, apercuPose, verifierPose,
     verifierPlacement, attenduEn, premierRang, rangSuivant
 } from '../js/core/poser.js';
 
@@ -394,4 +394,47 @@ test('la potence tombe juste sur cent divisions tirées au hasard', () => {
         assert.equal(d.quotient * b + d.reste, a, `${a} ÷ ${b}`);
         assert.ok(d.reste >= 0 && d.reste < b, `reste hors bornes pour ${a} ÷ ${b}`);
     }
+});
+
+// --- Le nombre se dépose ENTIER ------------------------------------------------
+
+test('le nombre se prend par n\'importe lequel de ses chiffres, et les autres suivent', () => {
+    // 324,5 tenu par son « 3 » (index 0) lâché sur la colonne des centaines :
+    // tout tombe à sa place.
+    assert.deepEqual(apercuPose(324.5, 0, 2).map(c => [c.rang, c.chiffre]),
+        [[2, 3], [1, 2], [0, 4], [-1, 5]]);
+    // Le même nombre tenu par son « 5 » (index 3) sur la colonne des unités :
+    // il est décalé d'un rang — c'est l'erreur du « collé à droite ».
+    assert.deepEqual(apercuPose(324.5, 3, 0).map(c => [c.rang, c.chiffre]),
+        [[3, 3], [2, 2], [1, 4], [0, 5]]);
+});
+
+test('l\'aperçu et la vérification disent la MÊME chose', () => {
+    // Ce serait le pire des bogues : un fantôme qui montre juste et un dépôt
+    // qui refuse. Les deux lisent la même fonction, on le vérifie.
+    for (const v of [324.5, 12, 7.25, 1000]) {
+        const n = String(v).replace('.', '').length;
+        for (let i = 0; i < n; i++) {
+            for (let r = -3; r <= 4; r++) {
+                const pose = apercuPose(v, i, r);
+                const verdict = verifierPose(v, i, r);
+                const justes = pose.every(c => chiffreAuRang(v, c.rang) === c.chiffre
+                    && rangsDe(v).includes(c.rang));
+                assert.equal(verdict.ok, justes, `${v} pris en ${i}, lâché en ${r}`);
+            }
+        }
+    }
+});
+
+test('l\'écart se compte en colonnes : c\'est ce qu\'on dit à l\'élève', () => {
+    assert.equal(verifierPose(324.5, 3, -1).ecart, 0);
+    assert.equal(verifierPose(324.5, 3, 1).ecart, 2);
+    assert.equal(verifierPose(324.5, 0, 0).ecart, -2);
+});
+
+test('un index de prise aberrant est ramené dans les bornes, pas planté', () => {
+    // Le doigt peut tomber au bord de l'étiquette : mieux vaut le premier ou
+    // le dernier chiffre qu'une exception au milieu d'un geste.
+    assert.deepEqual(apercuPose(12, -5, 1), apercuPose(12, 0, 1));
+    assert.deepEqual(apercuPose(12, 99, 0), apercuPose(12, 1, 0));
 });

@@ -55,9 +55,15 @@ export const CSS_GLISSER = `
  * @param {(v:boolean)=>void} [opts.marquerGlissement] prévient l'appelant qu'un
  *        glissement vient d'avoir lieu, pour que le clic qui suit ne
  *        re-sélectionne pas l'étiquette déposée.
+ * @param {(cible:HTMLElement|null)=>void} [opts.survoler] appelé à CHAQUE
+ *        changement de cible pendant le vol, et une dernière fois avec `null`
+ *        au lâcher. C'est ce qui permet d'écrire un aperçu dans la grille —
+ *        « voilà où le nombre tomberait » — plutôt que de se contenter
+ *        d'allumer la case : sans lui, un exercice d'alignement ne montre
+ *        jamais la conséquence du geste avant qu'il soit fait.
  */
 export function rendreGlissable(el, opts) {
-    const { cibles, deposer, retirer, zoneRetour, actif, marquerGlissement } = opts;
+    const { cibles, deposer, retirer, zoneRetour, actif, marquerGlissement, survoler } = opts;
     el.classList.add('gd-glissable');
     let fantome = null, cible = null;
 
@@ -68,6 +74,7 @@ export function rendreGlissable(el, opts) {
         if (cible) cible.classList.remove('gd-survol');
         cible = c;
         if (cible) cible.classList.add('gd-survol');
+        if (survoler) survoler(cible);
     };
 
     const bouger = (x, y) => {
@@ -95,6 +102,9 @@ export function rendreGlissable(el, opts) {
         const c = cible;
         if (cible) cible.classList.remove('gd-survol');
         cible = null;
+        // L'aperçu s'efface AVANT que le dépôt ne redessine : sinon un fantôme
+        // resterait écrit dans la grille par-dessus le vrai chiffre.
+        if (survoler) survoler(null);
         if (marquerGlissement) marquerGlissement(true);
         setTimeout(() => { if (marquerGlissement) marquerGlissement(false); }, 350);
         if (c) deposer(c);

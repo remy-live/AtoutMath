@@ -17,6 +17,7 @@
 // facteur dix, au lieu de se le faire dire après coup.
 
 import { BaseGame } from '../core/BaseGame.js';
+import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
@@ -44,6 +45,7 @@ class Conversion extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                ${CSS_GLISSER}
                 .cv-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 10px;
                     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
@@ -230,20 +232,17 @@ class Conversion extends BaseGame {
             el.className = 'cv-etiquette';
             el.textContent = sym;
             el.hidden = Object.values(this.unitesPosees).includes(sym);
-            el.addEventListener('pointerdown', (ev) => this.prendreEtiquette(ev, el, sym));
+            rendreGlissable(el, {
+                cibles: 'th[data-rang]',
+                actif: () => !this.isDemo && this.etape === 1,
+                deposer: (th) => this.poserEtiquette(th, sym)
+            });
             this.etiquettesEl.appendChild(el);
         });
     }
 
-    prendreEtiquette(ev, el, sym) {
-        ev.preventDefault();
-        el.classList.add('cv-etiquette--prise');
-        const finir = (e) => {
-            el.classList.remove('cv-etiquette--prise');
-            document.removeEventListener('pointerup', finir);
-            const cible = document.elementFromPoint(e.clientX, e.clientY);
-            const th = cible && cible.closest('th[data-rang]');
-            if (!th) return;
+    poserEtiquette(th, sym) {
+        {
             const rang = Number(th.dataset.rang);
             this.unitesPosees[rang] = sym;
             const v = verifierUnites(this.famille, this.unitesPosees);
@@ -257,8 +256,7 @@ class Conversion extends BaseGame {
                 });
             }
             this.dessiner();
-        };
-        document.addEventListener('pointerup', finir, { once: true });
+        }
     }
 
     // --- Étape 2 : le nombre, avec le fantôme --------------------------------------
@@ -270,37 +268,37 @@ class Conversion extends BaseGame {
         const el = document.createElement('div');
         el.className = 'cv-nombre';
         el.textContent = String(ex.valeur).replace('.', ',');
-        el.addEventListener('pointerdown', (ev) => this.prendreNombre(ev, el));
+        rendreGlissable(el, {
+            cibles: 'td[data-rang]',
+            actif: () => !this.isDemo && this.etape === 2,
+            survoler: (td) => this.apercuNombre(td),
+            deposer: (td) => this.poserNombre(td)
+        });
         this.zoneEl.appendChild(el);
     }
 
-    prendreNombre(ev, el) {
-        ev.preventDefault();
+    /** L'APERÇU : le nombre écrit en transparence là où il tomberait. C'est ce
+     *  qui fait VOIR le facteur dix avant de le commettre. */
+    apercuNombre(td) {
         const ex = this.exercice;
-        // LE FANTÔME : à chaque mouvement, on écrit le nombre en transparence
-        // là où il tomberait. C'est ce qui fait VOIR le facteur dix.
-        const bouger = (e) => {
-            const cible = document.elementFromPoint(e.clientX, e.clientY);
-            const td = cible && cible.closest('td[data-rang]');
-            this.tableEl.querySelectorAll('td').forEach(c => {
-                c.classList.remove('cv-case--survol');
-                if (!c.querySelector('.cv-chiffre')) c.innerHTML = '';
-            });
-            if (!td) return;
-            const rang = Number(td.dataset.rang);
-            apercuPlacement(ex.valeur, rang).forEach(c => {
-                const q = this.tableEl.querySelector(`td[data-rang="${c.colonne}"]`);
-                if (q) {
-                    q.innerHTML = `<span class="cv-fantome">${c.chiffre}</span>`;
-                    q.classList.add('cv-case--survol');
-                }
-            });
-        };
-        const finir = (e) => {
-            document.removeEventListener('pointermove', bouger);
-            const cible = document.elementFromPoint(e.clientX, e.clientY);
-            const td = cible && cible.closest('td[data-rang]');
-            if (!td) { this.dessiner(); return; }
+        this.tableEl.querySelectorAll('td').forEach(c => {
+            c.classList.remove('cv-case--survol');
+            if (!c.querySelector('.cv-chiffre')) c.innerHTML = '';
+        });
+        if (!td) return;
+        const rang = Number(td.dataset.rang);
+        apercuPlacement(ex.valeur, rang).forEach(c => {
+            const q = this.tableEl.querySelector(`td[data-rang="${c.colonne}"]`);
+            if (q) {
+                q.innerHTML = `<span class="cv-fantome">${c.chiffre}</span>`;
+                q.classList.add('cv-case--survol');
+            }
+        });
+    }
+
+    poserNombre(td) {
+        const ex = this.exercice;
+        {
             const rang = Number(td.dataset.rang);
             const v = verifierNombre(ex.valeur, this.famille, ex.depart, rang);
             if (!v.ok) {
@@ -321,9 +319,7 @@ class Conversion extends BaseGame {
             this.etape = 3;
             this.note(`✅ Bien placé. Maintenant : où mettre la virgule pour lire des ${ex.arrivee} ?`, 'ok');
             this.dessiner();
-        };
-        document.addEventListener('pointermove', bouger);
-        document.addEventListener('pointerup', finir, { once: true });
+        }
     }
 
     // --- Étape 3 : la virgule, les zéros, la réponse ---------------------------------

@@ -78,6 +78,48 @@ export function placementAttendu(operandes) {
 }
 
 /**
+ * ON DÉPOSE LE NOMBRE ENTIER, PAS SES CHIFFRES UN PAR UN.
+ *
+ * Poser une opération, ce n'est pas ranger quatre chiffres : c'est décider OÙ
+ * VA LE NOMBRE. Le faire glisser chiffre par chiffre transforme une décision
+ * unique en quatre gestes, et l'élève peut « réussir » l'alignement en plaçant
+ * trois chiffres au hasard et le quatrième bien.
+ *
+ * Le nombre se prend donc d'un bloc, par n'importe lequel de ses chiffres :
+ * celui qu'on tient tombe dans la colonne survolée, et les autres suivent. On
+ * rend ici ce que donnerait le lâcher — c'est ce qu'affiche le fantôme, et
+ * c'est aussi ce qu'on vérifie au dépôt : les deux lisent la même fonction, ils
+ * ne peuvent donc pas se contredire.
+ *
+ * @param {number} valeur
+ * @param {number} indexPris - le rang du chiffre saisi dans l'écriture (0 = à gauche)
+ * @param {number} rangCible - le rang de la colonne survolée
+ * @returns {{rang:number, chiffre:number, index:number}[]}
+ */
+export function apercuPose(valeur, indexPris, rangCible) {
+    const rangs = rangsDe(valeur);
+    const i = Math.max(0, Math.min(rangs.length - 1, indexPris));
+    const decalage = rangCible - rangs[i];
+    return rangs.map((r, j) => ({
+        rang: r + decalage,
+        chiffre: chiffreAuRang(valeur, r),
+        index: j
+    }));
+}
+
+/**
+ * Le nombre est-il tombé juste ?
+ * `ecart` compte les colonnes de décalage — c'est ce qu'on dit à l'élève,
+ * parce que « décalé d'une colonne » se comprend, pas « faux ».
+ */
+export function verifierPose(valeur, indexPris, rangCible) {
+    const rangs = rangsDe(valeur);
+    const i = Math.max(0, Math.min(rangs.length - 1, indexPris));
+    const ecart = rangCible - rangs[i];
+    return { ok: ecart === 0, ecart };
+}
+
+/**
  * L'étendue des colonnes de la feuille : du rang le plus fort du résultat au
  * rang le plus faible de tout ce qui est écrit.
  */
