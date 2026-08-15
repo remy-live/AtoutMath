@@ -21,7 +21,7 @@ import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
-import { pieceSvg, dessinerPiecePdf, direPiece } from './piecesEchecs.js';
+import { pieceSvg, dessinerPiecePdf, direPiece, MENTION_PIECES } from './piecesEchecs.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import { ecrire as ecrireProp } from '../core/proportion.js';
 import {
@@ -3645,7 +3645,7 @@ function assurerModale() {
 
 // --- Mathdoku ----------------------------------------------------------------
 
-function entetePdf(doc, titre, sousTitre, consigne) {
+function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...ENCRE.texte);
@@ -3666,15 +3666,23 @@ function entetePdf(doc, titre, sousTitre, consigne) {
     doc.line(PAGE.marge, PAGE.marge + 8, PAGE.w - PAGE.marge, PAGE.marge + 8);
     doc.setFontSize(6.5);
     doc.setTextColor(150, 155, 165);
-    doc.text('Fiche générée par AtoutMath', PAGE.w / 2, PAGE.h - 4, { align: 'center' });
+    // LA MENTION DE LICENCE VOYAGE AVEC LA FEUILLE. Un jeu de pièces importé
+    // peut être sous CC BY-SA : la citation doit figurer là où le dessin est
+    // distribué, c'est-à-dire sur la feuille elle-même, pas seulement dans le
+    // code. Elle ne s'affiche que sur les fiches qui montrent des pièces.
+    doc.text('Fiche générée par AtoutMath' + (mention ? ` — ${mention}` : ''),
+        PAGE.w / 2, PAGE.h - 4, { align: 'center' });
 }
 
 function construirePdf(jsPDF, rendu, items, cols, rows) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const { slots, traits } = calculerFiche(cols, rows);
 
+    // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
+    const avecPieces = rendu === RENDUS.mat || rendu === RENDUS.echiquier;
     const page = (solution) => {
-        entetePdf(doc, rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items));
+        entetePdf(doc, rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items),
+            avecPieces ? MENTION_PIECES : '');
         if (rendu.separateurs) {
             doc.setDrawColor(...ENCRE.trait);
             doc.setLineWidth(0.35);

@@ -21,6 +21,11 @@
 // détails intérieurs (la fente du fou, l'œil du cavalier) se dessinent dans la
 // couleur opposée pour rester visibles sur les deux.
 
+import { dessinerCheminPdf, deroulerChemin } from './cheminSvg.js';
+import { PIECES_IMPORTEES, CADRE_IMPORTE, MENTION_PIECES } from './piecesImportees.js';
+
+export { MENTION_PIECES };
+
 /**
  * @typedef {{k:'cercle', c:[number,number], r:number, creux?:boolean}
  *   | {k:'poly', p:number[][], creux?:boolean}
@@ -155,6 +160,8 @@ const hex = (c) => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`;
  * @param {boolean} noir
  */
 export function pieceSvg(type, noir, x, y, cote, trait = 0.035) {
+    const importee = PIECES_IMPORTEES && PIECES_IMPORTEES[`${type}${noir ? 'n' : 'b'}`];
+    if (importee) return pieceImporteeSvg(importee, x, y, cote);
     const formes = DESSINS[type] || DESSINS.P;
     const corps = noir ? CORPS_NOIR : CORPS_BLANC;
     const oppose = noir ? CORPS_BLANC : CORPS_NOIR;
@@ -184,6 +191,43 @@ export function pieceSvg(type, noir, x, y, cote, trait = 0.035) {
 }
 
 /**
+ * LE JEU IMPORTÉ — des chemins SVG, recalés dans la case.
+ *
+ * On garde les couleurs du fichier : un jeu de pièces sérieux distingue le
+ * blanc du noir par le remplissage ET par des traits intérieurs, et les
+ * remplacer par nos deux couleurs effacerait la moitié du dessin.
+ */
+function repereImporte(x, y, cote) {
+    const c = CADRE_IMPORTE;
+    const k = cote / Math.max(c.x1 - c.x0, c.y1 - c.y0);
+    // Centré dans la case, et à la même échelle pour les douze pièces : un
+    // pion reste plus petit qu'un roi.
+    const mx = (cote - (c.x1 - c.x0) * k) / 2;
+    const my = (cote - (c.y1 - c.y0) * k) / 2;
+    return (u, v) => [x + mx + (u - c.x0) * k, y + my + (v - c.y0) * k];
+}
+
+function pieceImporteeSvg(piece, x, y, cote) {
+    const placer = repereImporte(x, y, cote);
+    const c = CADRE_IMPORTE;
+    const k = cote / Math.max(c.x1 - c.x0, c.y1 - c.y0);
+    return piece.formes.map(f => {
+        const d = deroulerChemin(f.d, placer).map(sc => {
+            let t = `M ${sc.depart[0].toFixed(2)} ${sc.depart[1].toFixed(2)}`;
+            sc.pas.forEach(p => {
+                t += p.l ? ` L ${p.l[0].toFixed(2)} ${p.l[1].toFixed(2)}`
+                    : ` C ${p.c.map(v => v.toFixed(2)).join(' ')}`;
+            });
+            return t + (sc.ferme ? ' Z' : '');
+        }).join(' ');
+        const e = ((f.largeur || 1.5) * k).toFixed(2);
+        return `<path d="${d}" fill="${f.remplit ? (f.fill || '#fff') : 'none'}"
+            stroke="${f.stroke || '#000'}" stroke-width="${e}"
+            stroke-linejoin="round" stroke-linecap="round"/>`;
+    }).join('');
+}
+
+/**
  * La même pièce, dessinée dans un PDF jsPDF.
  *
  * jsPDF n'a pas de « polygone » : `lines` prend une suite de DÉPLACEMENTS
@@ -191,6 +235,19 @@ export function pieceSvg(type, noir, x, y, cote, trait = 0.035) {
  * donc les sommets en écarts successifs — c'est la seule subtilité du module.
  */
 export function dessinerPiecePdf(doc, type, noir, x, y, cote, epaisseur = 0.22) {
+    const importee = PIECES_IMPORTEES && PIECES_IMPORTEES[`${type}${noir ? 'n' : 'b'}`];
+    if (importee) {
+        const placer = repereImporte(x, y, cote);
+        const c = CADRE_IMPORTE;
+        const k = cote / Math.max(c.x1 - c.x0, c.y1 - c.y0);
+        importee.formes.forEach(f => {
+            doc.setFillColor(...couleurPdf(f.fill, [255, 255, 255]));
+            doc.setDrawColor(...couleurPdf(f.stroke, TRAIT));
+            doc.setLineWidth(Math.max(0.08, (f.largeur || 1.5) * k));
+            dessinerCheminPdf(doc, f.d, placer, f.remplit ? 'FD' : 'S');
+        });
+        return;
+    }
     const formes = DESSINS[type] || DESSINS.P;
     const corps = noir ? CORPS_NOIR : CORPS_BLANC;
     const oppose = noir ? CORPS_BLANC : CORPS_NOIR;
@@ -222,6 +279,18 @@ export function dessinerPiecePdf(doc, type, noir, x, y, cote, epaisseur = 0.22) 
         }
         doc.lines(ecarts, pts[0][0], pts[0][1], [1, 1], 'FD', true);
     });
+}
+
+/** « #ffffff », « #fff », « white », « none » → un triplet pour jsPDF. */
+function couleurPdf(v, defaut) {
+    if (!v || v.toLowerCase() === 'none') return defaut;
+    const t = v.trim().toLowerCase();
+    const noms = { white: [255, 255, 255], black: [0, 0, 0], none: defaut };
+    if (noms[t]) return noms[t];
+    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(t);
+    if (!m) return defaut;
+    const h = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }
 
 /** Le nom français d'une pièce — pour les phrases et les corrections. */
