@@ -184,6 +184,13 @@ export const calculExercises = [
     {
         id: 'calc-poser-addition', status: STATUS.TEST, title: 'Poser une addition',
         activityId: 'poser-operation',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        printParams: { operation: '+', chiffres: 3, nombres: 2, retenue: true },
+        consignePapier: 'Effectue ces additions posées.',
         skills: ['num.add.entiers'],
         params: { operation: '+', decimales: false, chiffres: 3 },
         paramSchema: [
@@ -217,6 +224,13 @@ export const calculExercises = [
     {
         id: 'calc-poser-soustraction', status: STATUS.TEST, title: 'Poser une soustraction',
         activityId: 'poser-operation',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        printParams: { operation: '-', chiffres: 3, nombres: 2, retenue: true },
+        consignePapier: 'Effectue ces soustractions posées.',
         skills: ['num.add.entiers'],
         params: { operation: '-', decimales: false, chiffres: 3 },
         paramSchema: [
@@ -246,6 +260,13 @@ export const calculExercises = [
         // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
         id: 'calc-poser-multiplication', status: STATUS.TEST, title: 'Poser une multiplication',
         activityId: 'poser-multiplication',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        printParams: { operation: '×', chiffres: 3, nombres: 2, retenue: true },
+        consignePapier: 'Effectue ces multiplications posées.',
         skills: ['num.mult.sens'],
         params: { chiffres: 3, chiffresB: 2, decimales: false },
         paramSchema: [
@@ -285,6 +306,13 @@ export const calculExercises = [
         // comprendre.
         id: 'calc-poser-division', status: STATUS.TEST, title: 'Poser une division',
         activityId: 'poser-division',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        printParams: { operation: '÷', chiffres: 3, nombres: 2, retenue: true },
+        consignePapier: 'Effectue ces divisions posées.',
         skills: ['num.div.quotient'],
         params: { chiffres: 3, diviseurMax: 9, decimalesQuotient: 0 },
         paramSchema: [

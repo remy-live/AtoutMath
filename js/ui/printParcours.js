@@ -50,7 +50,15 @@ export function analyserParcours(chemin) {
         // volontiers sur feuille — on y rature, on note ses candidats, on
         // gomme. Ils étaient rangés en « écran seulement », ce qui est faux.
         const grille = s.exercise.printable && RENDUS[s.exercise.printable] ? s.exercise.printable : null;
-        if (gen && (gen.ecrit || grille)) papier.push({ ...s, generator: gen, grille });
+        // LES RÉGLAGES DU PAPIER PAR-DESSUS CEUX DE L'ÉCRAN. Un exercice peut
+        // demander autre chose sur la feuille que dans le jeu — « Poser une
+        // multiplication » se joue avec le réglage d'écran mais s'imprime avec
+        // `operation: '×'`, que le générateur de fiche est seul à comprendre.
+        // Le champ existait, il n'était lu que par la fiche d'UN exercice :
+        // dans un parcours, les quatre opérations posées sortaient toutes en
+        // additions.
+        const params = { ...(s.params || {}), ...(s.exercise.printParams || {}) };
+        if (gen && (gen.ecrit || grille)) papier.push({ ...s, params, generator: gen, grille });
         else ecran.push(s);
     }
     return { papier, ecran, total: steps.length };

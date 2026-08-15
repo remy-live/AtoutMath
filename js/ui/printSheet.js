@@ -3625,7 +3625,326 @@ function dessinerPrioritesPdf(doc, item, slot, solution) {
     }
 }
 
+// --- POSER UNE OPÉRATION, SUR LE PAPIER -----------------------------------------
+
+/**
+ * LA GÉOMÉTRIE D'UNE OPÉRATION POSÉE, commune à l'aperçu et au PDF.
+ *
+ * Tout se joue sur une grille de colonnes de largeur fixe : c'est elle qui
+ * met les unités sous les unités. Les nombres sont imprimés DÉJÀ ALIGNÉS —
+ * l'alignement se travaille à l'écran, où l'on peut recommencer ; sur une
+ * photocopie, un élève qui aligne mal n'a plus qu'à raturer.
+ *
+ * Le nombre de rangées dépend de l'opération, et c'est ce qui donne « la bonne
+ * hauteur » que Rémy réclamait pour la division : une potence a besoin de deux
+ * lignes par étape — le produit qu'on écrit, et le reste qu'on trouve.
+ */
+/**
+ * Les étapes d'une division QU'ON ÉCRIT VRAIMENT au tableau.
+ *
+ * Le noyau rend une étape par chiffre du dividende, y compris celles où le
+ * diviseur « ne va pas » — « 2 ÷ 64 », puis « 22 ÷ 64 ». On ne les pose pas :
+ * on prend les trois premiers chiffres d'un coup, et c'est ce que fait tout
+ * élève. Les dessiner remplissait la potence de zéros parasites ; les compter
+ * la faisait deux fois trop haute.
+ */
+function etapesEcrites(t) {
+    return (t.etapes || []).filter(e => e.ecrit);
+}
+
+function geoPose(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    const t = m.table;
+    const op = m.operation;
+    const gouttiere = slot.numero != null ? 7 : 0;
+    const x0 = b.x + gouttiere;
+    const large = b.w - gouttiere - 1;
+
+    // Combien de colonnes de chiffres, et combien de rangées d'écriture ?
+    let nCol, rangs, lignesOperandes = m.operandes.length;
+    if (op === '+' || op === '-') {
+        nCol = t.colonnes.length;
+        // Une rangée de retenues, les opérandes, le trait, le résultat.
+        rangs = 1 + lignesOperandes + 1;
+    } else if (op === '×') {
+        nCol = String(t.produitEntier).length;
+        // Les deux facteurs, le trait, un produit partiel par ligne, puis —
+        // s'il y en a plusieurs — le trait et la somme.
+        rangs = 1 + 2 + t.lignes.length + (t.sommeAPoser ? 1 : 0);
+    } else {
+        // LA DIVISION : deux lignes par étape. C'est exactement la place qu'il
+        // faut pour écrire le produit sous le nombre courant, tirer le trait,
+        // et poser le reste dessous — « il faut la soustraction étape par
+        // étape », et sans la hauteur, elle ne tient pas.
+        nCol = String(m.operandes[0]).length + 1;
+        // Deux lignes par étape ÉCRITE — le produit qu'on pose, le reste qu'on
+        // trouve. Les étapes muettes (« 2 ÷ 64, ça ne va pas ») ne s'écrivent
+        // pas au tableau : les compter donnait une potence deux fois trop
+        // haute, et les dessiner remplissait la page de zéros parasites.
+        rangs = 1 + etapesEcrites(t).length * 2;
+    }
+    nCol = Math.max(2, nCol);
+
+    // La colonne : assez large pour un chiffre lisible, jamais plus large que
+    // ce que le bloc peut offrir. Sur la division, il faut la place du
+    // diviseur à droite de la potence.
+    const colonnesTotales = op === '÷' ? nCol + String(m.operandes[1]).length + 1 : nCol + 1.2;
+    const cw = Math.max(3.2, Math.min(large / colonnesTotales, b.h / (rangs + 0.6), 7));
+    const rh = cw * 1.32;
+    const hauteur = rangs * rh;
+    // Centré verticalement dans le bloc : une addition à trois rangées et une
+    // division à sept ne doivent pas flotter chacune à sa façon.
+    const y0 = b.y + Math.max(0, (b.h - hauteur) / 2);
+    // La grille des chiffres est calée à DROITE de sa zone, comme au cahier.
+    const droite = op === '÷' ? x0 + nCol * cw : x0 + Math.min(large - 1, (nCol + 1.2) * cw);
+
+    return {
+        m, t, op, cw, rh, rangs, nCol, y0, x0, droite, gouttiere,
+        numero: slot.numero,
+        taille: Math.max(6, Math.min(cw * 2.1, 13)),
+        /** L'abscisse du centre de la colonne d'indice `i` en partant de la droite. */
+        colX: (i) => droite - (i + 0.5) * cw,
+        ligneY: (r) => y0 + r * rh
+    };
+}
+
+/** Les chiffres d'un nombre, du rang le plus faible au plus fort. */
+const chiffresDroiteGauche = (v) => String(v).split('').reverse();
+
+/**
+ * Ce qu'il y a à écrire dans une opération posée : une liste de
+ * `{ x, y, texte, gras, creux }` en millimètres, plus les traits.
+ *
+ * Le même plan sert deux fois : l'aperçu le pose en HTML, le PDF l'écrit tel
+ * quel. C'est la seule façon d'être sûr que les deux tombent au même endroit —
+ * et sur une opération posée, un décalage d'un demi-millimètre entre deux
+ * colonnes se voit tout de suite.
+ */
+function planPose(g, solution) {
+    const { m, t, op, cw, rh } = g;
+    const cases = [];
+    const traits = [];
+    const cercles = [];
+    const pose = (col, rang, texte, o = {}) =>
+        cases.push({ x: g.colX(col), y: g.ligneY(rang) + rh * 0.5, texte: String(texte), ...o });
+
+    if (op === '+' || op === '-') {
+        // Les retenues : au-DESSUS pour l'addition, au-dessous du chiffre du
+        // bas pour la soustraction — ce n'est pas un détail de présentation,
+        // c'est la méthode française de compensation.
+        const hautRetenues = op === '+';
+        m.operandes.forEach((v, i) => {
+            chiffresDroiteGauche(v).forEach((d, c) => pose(c, 1 + i, d));
+        });
+        // Le signe, à gauche du dernier opérande.
+        pose(g.nCol, m.operandes.length, op === '+' ? '+' : '−', { signe: true });
+        const yTrait = g.ligneY(m.operandes.length + 1) - rh * 0.12;
+        traits.push({ x1: g.colX(g.nCol - 0.2), x2: g.droite, y: yTrait, epais: true });
+        // LES RONDS DE RETENUE SONT SUR TOUTES LES COLONNES, y compris celles
+        // qui n'en portent pas. N'en dessiner que là où il y a une retenue
+        // donnait la réponse : l'élève voyait d'un coup d'œil quelles colonnes
+        // retiennent, c'est-à-dire précisément ce qu'on lui demande de
+        // trouver. Un rond vide fait partie du travail.
+        for (let c = 0; c < g.nCol - 1; c++) {
+            const col = t.colonnes[c];
+            const sortante = col ? col.retenueSortante : 0;
+            const rangRetenue = hautRetenues ? 0.62 : m.operandes.length - 0.38;
+            cercles.push({
+                x: g.colX(c + 1) + cw * 0.34, y: g.ligneY(rangRetenue) + rh * 0.5,
+                r: cw * 0.3, texte: solution && sortante ? String(sortante) : ''
+            });
+        }
+        if (solution) {
+            chiffresDroiteGauche(t.resultat).forEach((d, c) => pose(c, m.operandes.length + 1, d, { reponse: true }));
+        }
+        return { cases, traits, cercles };
+    }
+
+    if (op === '×') {
+        const [a, b] = m.operandes;
+        chiffresDroiteGauche(a).forEach((d, c) => pose(c, 1, d));
+        chiffresDroiteGauche(b).forEach((d, c) => pose(c, 2, d));
+        pose(g.nCol, 2, '×', { signe: true });
+        traits.push({ x1: g.colX(g.nCol - 0.2), x2: g.droite, y: g.ligneY(3) - rh * 0.12, epais: true });
+        t.lignes.forEach((l, i) => {
+            if (!solution) return;
+            const valeur = l.chiffre * Number(String(t.entiers[0]));
+            chiffresDroiteGauche(valeur).forEach((d, c) => pose(c + l.decalage, 3 + i, d, { reponse: true }));
+        });
+        if (t.sommeAPoser) {
+            const yT = g.ligneY(3 + t.lignes.length) - rh * 0.12;
+            traits.push({ x1: g.colX(g.nCol - 0.2), x2: g.droite, y: yT, epais: true });
+            pose(g.nCol, 3 + t.lignes.length - 1, '+', { signe: true });
+            if (solution) {
+                chiffresDroiteGauche(t.produitEntier)
+                    .forEach((d, c) => pose(c, 3 + t.lignes.length, d, { reponse: true }));
+            }
+        }
+        // PAS DE RONDS DE RETENUE SUR L'ADDITION FINALE : Rémy, « ne mets pas
+        // les petits ronds de retenue pour l'addition finale ». Ils sont déjà
+        // portés par chaque produit partiel, et les répéter en bas donne un
+        // fouillis de bulles qu'on ne relie plus à rien.
+        return { cases, traits, cercles };
+    }
+
+    // LA POTENCE. Le dividende à gauche, la barre verticale, le diviseur à
+    // droite, le trait sous le diviseur, et le quotient dessous.
+    const [dividende, diviseur] = m.operandes;
+    chiffresDroiteGauche(dividende).forEach((d, c) => pose(c + 1, 0, d));
+    const xBarre = g.droite + cw * 0.1;
+    traits.push({ x1: xBarre, x2: xBarre, y: g.ligneY(0) + rh * 0.1, y2: g.ligneY(g.rangs) - rh * 0.2, vertical: true });
+    String(diviseur).split('').forEach((d, i) => {
+        cases.push({ x: xBarre + (i + 0.6) * cw, y: g.ligneY(0) + rh * 0.5, texte: d });
+    });
+    const largeurDiv = String(diviseur).length;
+    traits.push({
+        x1: xBarre, x2: xBarre + (largeurDiv + 0.4) * cw,
+        y: g.ligneY(1) - rh * 0.12, epais: true
+    });
+    if (solution) {
+        String(t.quotient).split('').forEach((d, i) => {
+            cases.push({
+                x: xBarre + (i + 0.6) * cw, y: g.ligneY(1) + rh * 0.5,
+                texte: d, reponse: true
+            });
+        });
+    }
+    // LES SOUSTRACTIONS SUCCESSIVES, étape par étape — c'est ce que Rémy
+    // demandait : « il faut la soustraction étape par étape ».
+    //
+    // L'ALIGNEMENT SUIT LE RANG, et c'est toute la méthode : le chiffre du
+    // quotient obtenu en abaissant le chiffre de rang r se pose au rang r, et
+    // le produit qu'on soustrait se termine sur cette même colonne. Aligner
+    // sur le numéro de l'étape — ce que je faisais — décalait tout dès qu'une
+    // étape muette passait devant.
+    if (solution) {
+        let rang = 1;
+        for (const e of etapesEcrites(t)) {
+            // La colonne du rang e.rang : les chiffres du dividende sont posés
+            // décalés d'une colonne, le produit s'y aligne donc aussi.
+            const col0 = e.rang + 1;
+            chiffresDroiteGauche(e.produit).forEach((d, c) => {
+                cases.push({ x: g.colX(c + col0), y: g.ligneY(rang) + rh * 0.5, texte: d, reponse: true });
+            });
+            const largeurBloc = Math.max(String(e.produit).length, String(e.reste).length);
+            traits.push({
+                x1: g.colX(col0 + largeurBloc - 0.5),
+                x2: g.colX(col0 - 0.5), y: g.ligneY(rang + 1) - rh * 0.12
+            });
+            chiffresDroiteGauche(e.reste).forEach((d, c) => {
+                cases.push({ x: g.colX(c + col0), y: g.ligneY(rang + 1) + rh * 0.5, texte: d, reponse: true });
+            });
+            rang += 2;
+        }
+    }
+    return { cases, traits, cercles };
+}
+
+function posePreviewHtml(item, slot, k, solution) {
+    const g = geoPose(item, slot);
+    const plan = planPose(g, solution);
+    let html = '';
+    if (g.numero != null) {
+        html += `<div style="position:absolute; left:${slot.boite.x * k}px; top:${g.y0 * k}px;
+            width:${(g.gouttiere - 1) * k}px; height:${g.rh * k}px; display:flex;
+            align-items:center; font-weight:800; color:#6e7684;
+            font-size:${g.taille * 0.34 * k}px">${g.numero}.</div>`;
+    }
+    for (const t of plan.traits) {
+        if (t.vertical) {
+            html += `<div style="position:absolute; left:${t.x1 * k}px; top:${t.y * k}px;
+                width:${Math.max(1, 0.5 * k)}px; height:${(t.y2 - t.y) * k}px;
+                background:#1a202c"></div>`;
+        } else {
+            html += `<div style="position:absolute; left:${t.x1 * k}px; top:${t.y * k}px;
+                width:${(t.x2 - t.x1) * k}px; height:${Math.max(1, (t.epais ? 0.5 : 0.35) * k)}px;
+                background:#1a202c"></div>`;
+        }
+    }
+    for (const c of plan.cercles) {
+        html += `<div style="position:absolute; left:${(c.x - c.r) * k}px; top:${(c.y - c.r) * k}px;
+            width:${c.r * 2 * k}px; height:${c.r * 2 * k}px; border-radius:50%;
+            border:1px dashed #9aa3b2; display:flex; align-items:center; justify-content:center;
+            font-size:${g.taille * 0.22 * k}px; color:#6e7684; font-weight:700">${echapperSheet(c.texte)}</div>`;
+    }
+    for (const c of plan.cases) {
+        html += `<div style="position:absolute; left:${(c.x - g.cw / 2) * k}px;
+            top:${(c.y - g.rh / 2) * k}px; width:${g.cw * k}px; height:${g.rh * k}px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:${g.taille * 0.3528 * k}px; font-weight:${c.signe ? 700 : 800};
+            color:${c.reponse ? '#6e7684' : '#1a202c'}">${echapperSheet(c.texte)}</div>`;
+    }
+    return html;
+}
+
+function dessinerPosePdf(doc, item, slot, solution) {
+    const g = geoPose(item, slot);
+    const plan = planPose(g, solution);
+    if (g.numero != null) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.taille * 0.9);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(`${g.numero}.`, slot.boite.x, g.y0 + g.rh * 0.7);
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    for (const t of plan.traits) {
+        doc.setLineWidth(t.epais ? 0.5 : 0.32);
+        if (t.vertical) doc.line(t.x1, t.y, t.x1, t.y2);
+        else doc.line(t.x1, t.y, t.x2, t.y);
+    }
+    // Les ronds de retenue : en POINTILLÉ, pour qu'on voie qu'ils sont à
+    // remplir et non déjà écrits.
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    doc.setLineDashPattern([0.6, 0.7], 0);
+    for (const c of plan.cercles) doc.circle(c.x, c.y, c.r, 'S');
+    doc.setLineDashPattern([], 0);
+    doc.setFont('helvetica', 'bold');
+    for (const c of plan.cercles) {
+        if (!c.texte) continue;
+        doc.setFontSize(g.taille * 0.62);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(c.texte, c.x, c.y + g.taille * 0.2, { align: 'center' });
+    }
+    for (const c of plan.cases) {
+        doc.setFontSize(g.taille);
+        doc.setTextColor(...(c.reponse ? ENCRE.gris : ENCRE.trait));
+        doc.setFont('helvetica', c.signe ? 'normal' : 'bold');
+        doc.text(pourPdf(c.texte), c.x, c.y + g.taille * 0.35, { align: 'center' });
+    }
+    doc.setTextColor(...ENCRE.trait);
+}
+
 export const RENDUS = {
+    pose: {
+        titre: 'Poser et effectuer',
+        consigne: (items) => {
+            const noms = [...new Set(items.map(i => i.meta && i.meta.nom).filter(Boolean))];
+            const quoi = noms.length === 1 ? `Ces ${noms[0]}s sont posées` : 'Ces opérations sont posées';
+            return `${quoi} et alignées : il ne reste qu'à calculer. Écris les retenues `
+                + 'dans les petits ronds, colonne par colonne, en partant de la DROITE. '
+                + 'Une division se fait par étapes : on abaisse un chiffre, on cherche '
+                + 'combien de fois le diviseur tient dedans, on multiplie, on soustrait — '
+                + 'et le reste est toujours plus petit que le diviseur.';
+        },
+        previewGrille: posePreviewHtml,
+        pdfGrille: dessinerPosePdf,
+        nomBloc: 'Opération', nomBlocs: 'opérations',
+        // Le numéro sur la ligne du calcul, comme au cahier — pas au-dessus,
+        // où il coûterait une ligne entière pour trois caractères.
+        numeroInterne: true,
+        titreAGauche: true,
+        // UNE OPÉRATION POSÉE EST HAUTE ET ÉTROITE : trois rangées pour une
+        // addition, sept pour une division. Le bloc suit, et c'est en colonnes
+        // qu'on en met — six additions sur une ligne de feuille, comme dans
+        // tous les cahiers de calcul.
+        proportions: { w: 1, h: 1.05 },
+        disposition: { cols: 4, rows: 3, maxCols: 6, maxRows: 4 },
+        parLigneDefaut: 4,
+        grilleMax: 60
+    },
+
     priorites: {
         titre: 'Priorités opératoires — ligne par ligne',
         consigne: () => 'UNE OPÉRATION PAR LIGNE, ET ON RECOPIE TOUT LE RESTE. Souligne '
