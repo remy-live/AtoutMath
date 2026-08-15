@@ -161,6 +161,27 @@ export function reduire(jetons, index, valeur) {
     return nettoyerParentheses(out);
 }
 
+/**
+ * LA LIGNE SUIVANTE, AVEC UN TROU À LA PLACE DU RÉSULTAT.
+ *
+ * C'est ainsi qu'on écrit une cascade au tableau : on souligne l'opération
+ * prioritaire, on passe à la ligne, et l'on RECOPIE le reste en laissant un
+ * blanc là où le résultat va tomber. « 2 × 3 + 9 » souligné donne « ___ + 9 ».
+ *
+ * On rend aussi la POSITION du trou : sans elle, l'écran devrait la deviner,
+ * et les parenthèses devenues inutiles (« (5) » → « 5 ») décalent tout.
+ *
+ * @returns {{jetons:Object[], trou:number}}
+ */
+export function reduirePourEcrire(jetons, index) {
+    const marque = { type: 'n', valeur: null, trou: true };
+    const out = jetons.slice(0, index - 1)
+        .concat([marque])
+        .concat(jetons.slice(index + 2));
+    const propre = nettoyerParentheses(out);
+    return { jetons: propre, trou: propre.indexOf(marque) };
+}
+
 function nettoyerParentheses(jetons) {
     for (let i = 0; i < jetons.length - 2; i++) {
         if (jetons[i].type === '(' && jetons[i + 1].type === 'n' && jetons[i + 2].type === ')') {

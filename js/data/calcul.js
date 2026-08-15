@@ -110,6 +110,12 @@ export const calculExercises = [
         // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
         id: 'calc-prio-cascade', status: STATUS.TEST, title: 'Priorités : ligne par ligne',
         activityId: 'priorites',
+        // Sur le papier, c'est le MÊME exercice en plus exigeant : à l'écran
+        // la machine recopie le reste de la ligne, sur la feuille personne ne
+        // le fait à la place de l'élève — et c'est là qu'on perd ses points.
+        printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
+        printParams: { niveau: 2, parentheses: true },
+        consignePapier: 'Souligne l\'opération prioritaire, passe à la ligne et recopie le reste.',
         skills: ['num.prio'],
         params: { niveau: 2, parentheses: true },
         paramSchema: [

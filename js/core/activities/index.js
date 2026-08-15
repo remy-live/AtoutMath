@@ -50,6 +50,7 @@ import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
 import { echecsFicheGenerator } from '../generators/echecsFiche.js';
 import { matFicheGenerator } from '../generators/matFiche.js';
+import { prioritesFicheGenerator } from '../generators/prioritesFiche.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -70,7 +71,7 @@ import { matFicheGenerator } from '../generators/matFiche.js';
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
-    echecsFicheGenerator, matFicheGenerator
+    echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

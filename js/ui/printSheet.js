@@ -3204,7 +3204,100 @@ function dessinerMotsPdf(doc, item, slot, solution) {
     });
 }
 
+// --- Priorités : la cascade ---------------------------------------------------
+//
+// L'expression en haut, puis AUTANT DE LIGNES VIDES QUE LE CALCUL A D'ÉTAPES.
+// Ni une de plus — ce serait un piège, l'élève chercherait une étape qui
+// n'existe pas —, ni une de moins : la dernière ligne porte le résultat seul,
+// et sans elle il faudrait l'écrire dans la marge.
+
+function geoPriorites(item, slot) {
+    const m = item.meta;
+    // LA BOÎTE ENTIÈRE, pas le carré inscrit : une cascade est large et courte,
+    // et le carré lui laissait un quart de bloc vide sur la gauche.
+    const b = slot.boite;
+    const rangs = m.etapes + 1;   // l'énoncé, puis une ligne par étape
+    // LES LIGNES NE S'ÉTIRENT PAS POUR REMPLIR LE BLOC. Au-delà d'un
+    // centimètre d'écart, on n'écrit plus une cascade : on écrit dans le vide,
+    // et l'œil ne relie plus une ligne à la suivante.
+    const ligneH = Math.min(b.h / (rangs + 0.5), 11);
+    return {
+        m, rangs, ligneH,
+        x0: b.x + b.w * 0.03,
+        largeur: b.w * 0.62,
+        y0: b.y + ligneH * 0.2,
+        // Le texte, posé SUR sa ligne d'écriture et non dessus.
+        taille: Math.max(8, Math.min(ligneH * 1.35, 13))
+    };
+}
+
+function prioritesPreviewHtml(item, slot, k, solution) {
+    const g = geoPriorites(item, slot);
+    let html = '';
+    for (let i = 0; i < g.rangs; i++) {
+        const y = g.y0 + i * g.ligneH;
+        const texte = (i === 0 || solution) ? (g.m.lignes[i] || '') : '';
+        // La ligne d'écriture s'arrête sous la première ligne : l'énoncé est
+        // imprimé, on n'écrit pas dessus.
+        if (i > 0) {
+            html += `<div style="position:absolute; left:${g.x0 * k}px;
+                top:${(y + g.ligneH * 0.86) * k}px; width:${g.largeur * k}px;
+                height:1px; background:#b0b6c5"></div>`;
+        }
+        if (!texte) continue;
+        // LA TAILLE DU PDF EST EN POINTS, l'aperçu travaille en millimètres :
+        // 1 pt ≈ 0,3528 mm. Sans la conversion, l'aperçu écrivait presque trois
+        // fois trop gros et les lignes se chevauchaient.
+        html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
+            width:${g.largeur * k}px; height:${g.ligneH * k}px;
+            display:flex; align-items:center; font-size:${g.taille * 0.3528 * k}px;
+            font-weight:${i === 0 ? 800 : 600}; color:${i === 0 ? '#1a202c' : '#2f855a'};
+            white-space:nowrap">${texte}</div>`;
+    }
+    return html;
+}
+
+function dessinerPrioritesPdf(doc, item, slot, solution) {
+    const g = geoPriorites(item, slot);
+    for (let i = 0; i < g.rangs; i++) {
+        const y = g.y0 + i * g.ligneH;
+        if (i > 0) {
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.22);
+            const yl = y + g.ligneH * 0.86;
+            doc.line(g.x0, yl, g.x0 + g.largeur, yl);
+        }
+        const texte = (i === 0 || solution) ? (g.m.lignes[i] || '') : '';
+        if (!texte) continue;
+        doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+        doc.setFontSize(g.taille);
+        // Les lignes de la solution en gris : sur la page des solutions, on
+        // distingue d'un coup d'œil ce qui était donné de ce qui était à faire.
+        doc.setTextColor(...(i === 0 ? ENCRE.texte : ENCRE.gris));
+        doc.text(pourPdf(texte), g.x0, y + g.ligneH * 0.7);
+    }
+}
+
 export const RENDUS = {
+    priorites: {
+        titre: 'Priorités opératoires — ligne par ligne',
+        consigne: () => 'UNE OPÉRATION PAR LIGNE, ET ON RECOPIE TOUT LE RESTE. Souligne '
+            + 'l\'opération qu\'il faut faire en premier — les parenthèses d\'abord, puis '
+            + 'les × et les ÷ avant les + et les −, et à priorité égale de gauche à droite. '
+            + 'Passe à la ligne, écris son résultat À SA PLACE et recopie le reste sans y '
+            + 'toucher. Recommence jusqu\'à ce qu\'il ne reste qu\'un nombre. Il y a '
+            + 'exactement autant de lignes que d\'étapes.',
+        previewGrille: prioritesPreviewHtml,
+        pdfGrille: dessinerPrioritesPdf,
+        nomBloc: 'Calcul', nomBlocs: 'calculs',
+        titreAGauche: true,
+        // HUIT PAR PAGE. Une cascade est large et courte : c'est en LIGNES
+        // qu'il en faut, pas en colonnes — au-delà de deux colonnes,
+        // « (2 + 3) × (4 + 1) » sort de son bloc.
+        disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 5 },
+        parLigneDefaut: 2
+    },
+
     repere: {
         titre: 'Repère et coordonnées',
         consigne: (items) => ((items[0] && items[0].meta.mode === 'placer')

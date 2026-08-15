@@ -4,8 +4,8 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     nombre, operateur, ouvrante, fermante, ecrire, calculer,
-    groupeInterieur, operationPrioritaire, critiquer, reduire, terminee,
-    etapes, valeurFinale, tirerExpression, naif
+    groupeInterieur, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
+    terminee, etapes, valeurFinale, tirerExpression, naif
 } from '../js/core/priorites.js';
 
 /** Écrit une expression rapidement : « 3 + 4 × 5 » depuis un gabarit. */
@@ -119,6 +119,67 @@ test('les parenthèses devenues inutiles disparaissent toutes seules', () => {
     const k = exp('(', '(', 3, '+', 4, ')', ')', '×', 2);
     assert.equal(ecrire(reduire(k, 3, 7)), '7 × 2');
 });
+
+test('la ligne du dessous se recopie avec un trou à la bonne place', () => {
+    // C'est le geste du tableau : on souligne « 2 × 3 », on passe à la ligne,
+    // et l'on écrit « ___ + 9 ». Le trou est là où le calcul était.
+    const j = exp(2, '×', 3, '+', 9);
+    const r = reduirePourEcrire(j, 1);
+    assert.equal(r.trou, 0);
+    assert.equal(dessiner(r), '___ + 9');
+
+    // Le trou n'est pas toujours au début : « 9 + 2 × 3 » donne « 9 + ___ ».
+    const k = reduirePourEcrire(exp(9, '+', 2, '×', 3), 3);
+    assert.equal(k.trou, 2);
+    assert.equal(dessiner(k), '9 + ___');
+});
+
+test('le trou suit le décalage des parenthèses qui tombent', () => {
+    // « (3 + 4) × 2 » : les parenthèses devenues inutiles disparaissent, ce
+    // qui décale tout d'un cran. Deviner la position donnerait « ( ___ ) ».
+    const r = reduirePourEcrire(exp('(', 3, '+', 4, ')', '×', 2), 2);
+    assert.equal(r.trou, 0);
+    assert.equal(dessiner(r), '___ × 2');
+
+    const s = reduirePourEcrire(exp(5, '×', '(', 8, '-', 3, ')'), 4);
+    assert.equal(s.trou, 2);
+    assert.equal(dessiner(s), '5 × ___');
+});
+
+test('la dernière ligne n\'est plus qu\'un trou', () => {
+    const r = reduirePourEcrire(exp(6, '+', 9), 1);
+    assert.deepEqual(r.jetons.length, 1);
+    assert.equal(r.trou, 0);
+});
+
+test('la ligne trouée est la ligne réduite, au résultat près', () => {
+    // Les deux fonctions ne doivent JAMAIS diverger : le trou de l'une est la
+    // place du nombre de l'autre, sinon la réponse tomberait ailleurs.
+    for (let i = 0; i < 200; i++) {
+        const e = tirerExpression({ rng: makeRng('tr' + i), niveau: 3 });
+        let j = e.jetons;
+        while (!terminee(j)) {
+            const p = operationPrioritaire(j);
+            const trouee = reduirePourEcrire(j, p.index);
+            const pleine = reduire(j, p.index, p.valeur);
+            assert.equal(trouee.jetons.length, pleine.length, e.texte);
+            assert.equal(pleine[trouee.trou].valeur, p.valeur, e.texte);
+            // Hors du trou, les deux lignes sont le MÊME texte : ce qui est
+            // recopié l'est à l'identique des deux côtés.
+            assert.equal(
+                trouee.jetons.map((x, i) => (i === trouee.trou ? '' : ecrire([x]))).join('|'),
+                pleine.map((x, i) => (i === trouee.trou ? '' : ecrire([x]))).join('|'),
+                e.texte);
+            j = pleine;
+        }
+    }
+});
+
+/** La ligne trouée, telle qu'elle s'affiche : « ___ + 9 ». */
+const dessiner = (r) => r.jetons
+    .map((x, i) => (i === r.trou ? '___' : ecrire([x])))
+    .join(' ')
+    .replace(/\(\s/g, '(').replace(/\s\)/g, ')');
 
 test('la suite des lignes est celle qu\'on écrirait au tableau', () => {
     const l = etapes(exp(3, '+', 4, '×', 5, '-', 2));
