@@ -26,6 +26,7 @@ import * as dames from '../core/dames.js';
 import * as echecs from '../core/echecs.js';
 import { critiquer, defense, nommerCoup, estMat, preparer } from '../core/mat.js';
 import { POSITIONS_MAT, FAMILLES_MAT, COMBIEN_MAT } from '../data/matProblemes.js';
+import { pieceSvg } from '../ui/piecesEchecs.js';
 
 // LE SÉLECTEUR DE VARIANTE ︎ N'EST PAS DÉCORATIF.
 //
@@ -97,10 +98,23 @@ const ADAPTATEURS = {
         // dans le plateau.
         deDe: (c) => ({ x: c.de % 8, y: Math.floor(c.de / 8) }),
         versDe: (c) => ({ x: c.vers % 8, y: Math.floor(c.vers / 8) }),
+        // LES PIÈCES SONT DESSINÉES, PLUS ÉCRITES.
+        //
+        // On affichait les caractères Unicode (♛ ♚). Le problème n'est pas
+        // qu'ils soient laids : c'est que leur taille et leur place dans la
+        // ligne dépendent de LA POLICE DE L'APPAREIL. Sur iPhone les pièces
+        // flottaient en bas de leur case, et petites — et aucun réglage de
+        // `font-size` n'y peut rien, puisque le vide autour du glyphe fait
+        // partie du glyphe.
+        //
+        // Un SVG remplit sa case exactement, sur tous les appareils. Et c'est
+        // le MÊME dessin que celui de la fiche imprimée : ce qu'on voit à
+        // l'écran est ce qui sortira de l'imprimante.
         pieceHtml(p) {
             if (!p) return '';
-            const blanche = p === p.toUpperCase();
-            return `<span class="pl-glyphe ${blanche ? 'pl-glyphe--blanc' : 'pl-glyphe--noir'}">${GLYPHES[p.toUpperCase()]}</span>`;
+            const noir = p === p.toLowerCase();
+            return '<svg class="pl-piece" viewBox="0 0 100 100" aria-hidden="true">'
+                + pieceSvg(p.toUpperCase(), noir, 3, 3, 94, 0.03) + '</svg>';
         },
         verdict(t) { return t.raison === 'échec et mat' ? 'Échec et mat.' : `Partie nulle : ${t.raison}.`; },
         bulles: [
@@ -148,7 +162,8 @@ class Plateau extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .pl-wrap {
-                    display: flex; flex-direction: column; align-items: center; gap: 7px;
+                    display: flex; flex-direction: column; align-items: center;
+                    justify-content: center; gap: 7px;
                     width: 100%; height: 100%; color: var(--text-main);
                     user-select: none; -webkit-user-select: none;
                 }
@@ -166,8 +181,14 @@ class Plateau extends BaseGame {
                 }
                 .pl-btn:hover { background: var(--bg-hover); }
 
+                /* LA SCÈNE NE PREND QUE LA PLACE DU DAMIER. En « flex: 1 » elle
+                   occupait toute la hauteur restante et centrait le damier
+                   dedans : sur un téléphone, deux cent vingt pixels de vide
+                   au-dessus, et la consigne repoussée derrière la barre du
+                   navigateur. Le damier et sa consigne se suivent maintenant,
+                   et c'est le groupe qui est centré. */
                 .pl-scene {
-                    flex: 1 1 auto; min-height: 0; width: 100%;
+                    flex: 0 1 auto; min-height: 0; width: 100%;
                     display: flex; align-items: center; justify-content: center;
                     position: relative;
                 }
@@ -215,6 +236,7 @@ class Plateau extends BaseGame {
                     pointer-events: none; z-index: 2;
                 }
                 .pl-case--but:has(.pl-pion)::before, .pl-case--but:has(.pl-glyphe)::before,
+                .pl-case--but:has(.pl-piece)::before,
                 .pl-case--but:has(.pl-disque)::before {
                     width: 86%; height: 86%; background: none;
                     border: 4px solid rgba(15, 23, 42, .35);
@@ -240,6 +262,12 @@ class Plateau extends BaseGame {
                 .pl-pion--blanc i { color: #a16207; }
                 .pl-pion--noir i { color: #fbbf24; }
 
+                /* La pièce dessinée remplit sa case : plus rien ne dépend de
+                   la police de l'appareil. */
+                .pl-piece {
+                    width: 100%; height: 100%; display: block;
+                    filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));
+                }
                 .pl-glyphe {
                     /* Les pièces remplissent VRAIMENT leur case : à 6.4 elles
                        flottaient au milieu d'un carré trop grand, et sur un
@@ -318,7 +346,12 @@ class Plateau extends BaseGame {
         this.tourEl = this.container.querySelector('[data-tour]');
         this.jetonEl = this.container.querySelector('[data-jeton]');
         this.scoreEl = this.container.querySelector('[data-score]');
-        this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouvellePartie());
+        const bNeuf = this.container.querySelector('[data-neuf]');
+        // EN MODE EXERCICE, « nouvelle partie » ne veut rien dire : on passe au
+        // problème suivant.
+        if (this.exercice) bNeuf.textContent = '↺ Problème suivant';
+        bNeuf.addEventListener('click',
+            () => this.exercice ? this.poserProbleme(1) : this.nouvellePartie());
 
         const cases = [];
         for (let y = 0; y < n; y++) {
@@ -372,8 +405,7 @@ class Plateau extends BaseGame {
         this.dernier = null;
         this.finie = null;
         this.peindre();
-        this.note(`<b>Problème ${this.indexProbleme + 1} / ${COMBIEN_MAT.total}</b> — `
-            + `${this.famille.titre}. Les Blancs jouent et matent en `
+        this.note(`${this.famille.titre} — les Blancs jouent et matent en `
             + `<b>${p.coups} coup${p.coups > 1 ? 's' : ''}</b>. `
             + 'Touche une pièce blanche, puis sa case d\'arrivée.');
     }
@@ -516,6 +548,14 @@ class Plateau extends BaseGame {
 
     majBandeau() {
         const trait = this.etat.trait;
+        // EN MODE EXERCICE, LE BANDEAU DIT OÙ L'ON EN EST dans la progression :
+        // « à qui le tour » n'apprend rien quand c'est toujours aux Blancs.
+        if (this.exercice) {
+            this.jetonEl.style.background = '#f8fafc';
+            this.scoreEl.textContent = `${this.resolus} résolu${this.resolus > 1 ? 's' : ''}`;
+            this.tourEl.textContent = `Problème ${this.indexProbleme + 1} / ${COMBIEN_MAT.total}`;
+            return;
+        }
         this.jetonEl.style.background = trait === 'B' || (this.ad.id === 'othello' && trait === 'B')
             ? '#f8fafc' : '#0f172a';
         if (this.ad.id === 'othello') {

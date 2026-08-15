@@ -21,7 +21,7 @@ import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
-import { pieceSvg, dessinerPiecePdf } from './piecesEchecs.js';
+import { pieceSvg, dessinerPiecePdf, direPiece } from './piecesEchecs.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import { ecrire as ecrireProp } from '../core/proportion.js';
 import {
@@ -2488,14 +2488,14 @@ function echiquierPreviewHtml(item, slot, k, solution) {
     }
 
     if (montrerPieces) {
+        // LA PIÈCE EST DESSINÉE, ET ELLE REMPLIT SA CASE. Une pastille marquée
+        // « C » se traduit à chaque coup d'œil ; un cavalier se reconnaît. Et
+        // elle était petite : un disque de 0,36 de côté dans une case, c'est
+        // moins de la moitié de la place disponible.
         m.posees.forEach(p => {
             const q = caseEchiquier(g, p.x, p.y);
-            const cx = q.x + g.cell / 2, cy = q.y + g.cell / 2;
-            d += `<circle cx="${T(cx)}" cy="${T(cy)}" r="${T(g.cell * 0.36)}"
-                fill="${p.noir ? '#2d3748' : '#ffffff'}" stroke="#1a202c" stroke-width="${T(0.3)}"/>
-                <text x="${T(cx)}" y="${T(cy)}" text-anchor="middle" dominant-baseline="central"
-                font-size="${T(g.cell * 0.44)}" font-weight="800"
-                fill="${p.noir ? '#ffffff' : '#1a202c'}">${p.lettre}</text>`;
+            d += pieceSvg(p.type, p.noir, (q.x + g.cell * 0.02) * k, (q.y + g.cell * 0.02) * k,
+                g.cell * 0.96 * k, 0.026);
         });
     }
 
@@ -2516,12 +2516,15 @@ function echiquierPreviewHtml(item, slot, k, solution) {
 
 /** Ce qui s'écrit sous le damier — une ligne par pièce, ou une consigne. */
 function lignesEchiquier(m, solution) {
+    // LES PIÈCES ÉTANT DESSINÉES, on ne peut plus les désigner par une
+    // initiale posée sur elles : on les NOMME. « la dame blanche » se cherche
+    // sur le damier aussi vite qu'un D, et c'est du français.
     if (m.quoi === 'nommer') {
         return m.posees.slice(0, 6)
-            .map(p => `${p.lettre} ${p.noir ? '(noir)' : '(blanc)'} : ${solution ? p.case : '..........'}`);
+            .map(p => `${direPiece(p.type, p.noir)} : ${solution ? p.case : '..........'}`);
     }
     if (m.quoi === 'placer') {
-        return [`À placer : ${m.posees.map(p => `${p.lettre} en ${p.case}`).join(', ')}`];
+        return [`À placer : ${m.posees.map(p => `${direPiece(p.type, p.noir)} en ${p.case}`).join(', ')}`];
     }
     return [solution
         ? `${m.noms.length} cases : ${m.noms.join(', ')}`
@@ -2669,15 +2672,8 @@ function dessinerEchiquierPdf(doc, item, slot, solution) {
     if (montrerPieces) {
         m.posees.forEach(p => {
             const q = caseEchiquier(g, p.x, p.y);
-            const cx = q.x + g.cell / 2, cy = q.y + g.cell / 2;
-            doc.setDrawColor(...ENCRE.trait);
-            doc.setLineWidth(0.3);
-            if (p.noir) doc.setFillColor(45, 55, 72);
-            else doc.setFillColor(255, 255, 255);
-            doc.circle(cx, cy, g.cell * 0.36, 'FD');
-            doc.setFontSize(Math.max(5, Math.min(g.cell * 1.25, 10)));
-            doc.setTextColor(...(p.noir ? [255, 255, 255] : ENCRE.texte));
-            doc.text(p.lettre, cx, cy + g.cell * 0.15, { align: 'center' });
+            dessinerPiecePdf(doc, p.type, p.noir, q.x + g.cell * 0.02, q.y + g.cell * 0.02,
+                g.cell * 0.96, Math.max(0.1, g.cell * 0.026));
         });
     }
 
@@ -3268,9 +3264,8 @@ export const RENDUS = {
     echiquier: {
         titre: 'L\'échiquier, une grille à deux entrées',
         consigne: () => 'Une case d\'échiquier se nomme comme un point dans un repère : LA '
-            + 'LETTRE DE SA COLONNE, PUIS LE CHIFFRE DE SA LIGNE — e4, pas 4e. Les pièces '
-            + 'portent leur initiale : T tour, C cavalier, F fou, D dame, P pion ; les jetons '
-            + 'noirs sont les pièces noires.',
+            + 'LETTRE DE SA COLONNE, PUIS LE CHIFFRE DE SA LIGNE — e4, pas 4e. Les pièces sont '
+            + 'dessinées : les claires sont blanches, les pleines sont noires.',
         previewGrille: echiquierPreviewHtml,
         pdfGrille: dessinerEchiquierPdf,
         nomBloc: 'Échiquier',

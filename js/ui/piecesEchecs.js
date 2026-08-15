@@ -64,7 +64,7 @@ export const DESSINS = {
         { k: 'poly', p: [[0.50, 0.16], [0.68, 0.38], [0.62, 0.50], [0.38, 0.50], [0.32, 0.38]] },
         { k: 'cercle', c: [0.50, 0.12], r: 0.055 },
         // La fente : c'est elle qui distingue le fou d'un pion géant.
-        { k: 'poly', p: [[0.52, 0.22], [0.63, 0.36], [0.58, 0.39], [0.47, 0.25]], creux: true }
+        { k: 'poly', p: [[0.505, 0.245], [0.60, 0.355], [0.578, 0.378], [0.483, 0.268]], creux: true }
     ],
 
     // LE CAVALIER : un profil de cheval. Museau à gauche, crinière à droite,
@@ -82,7 +82,7 @@ export const DESSINS = {
                 [0.24, 0.35], [0.34, 0.29], [0.43, 0.23], [0.47, 0.20], [0.50, 0.09],
                 [0.57, 0.23], [0.68, 0.35], [0.75, 0.52], [0.75, 0.68], [0.72, 0.80]]
         },
-        { k: 'cercle', c: [0.36, 0.38], r: 0.032, creux: true }
+        { k: 'cercle', c: [0.36, 0.38], r: 0.028, creux: true }
     ],
 
     // LA DAME : une couronne à pointes, chacune surmontée d'une perle.
@@ -113,6 +113,36 @@ export const DESSINS = {
 
 export const TYPES = Object.keys(DESSINS);
 
+/**
+ * LE CADRAGE COMMUN — pourquoi les pièces paraissaient petites.
+ *
+ * Chaque dessin laisse du vide autour de lui dans son carré unité : le socle
+ * va de 0,20 à 0,80, le sommet commence vers 0,06. Une pièce posée à 92 % de
+ * sa case n'occupait donc que les deux tiers de la case, et sur un téléphone
+ * elle flottait.
+ *
+ * On mesure ici, une fois pour toutes, la boîte qui contient TOUTE la série,
+ * et les deux rendus s'y recalent. Un seul cadre pour les six pièces : les
+ * tailles relatives sont conservées — un pion reste plus petit qu'un roi —
+ * mais l'ensemble remplit vraiment la case.
+ */
+const CADRE = (() => {
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    const point = (u, v) => { x0 = Math.min(x0, u); x1 = Math.max(x1, u); y0 = Math.min(y0, v); y1 = Math.max(y1, v); };
+    Object.values(DESSINS).forEach(formes => formes.forEach(f => {
+        if (f.k === 'cercle') { point(f.c[0] - f.r, f.c[1] - f.r); point(f.c[0] + f.r, f.c[1] + f.r); }
+        else if (f.k === 'rect') { point(f.x, f.y); point(f.x + f.w, f.y + f.h); }
+        else f.p.forEach(([u, v]) => point(u, v));
+    }));
+    const k = 1 / Math.max(x1 - x0, y1 - y0);
+    return {
+        // Recale et agrandit, en gardant le dessin centré dans sa case.
+        u: (u) => (u - x0) * k + (1 - (x1 - x0) * k) / 2,
+        v: (v) => (v - y0) * k + (1 - (y1 - y0) * k) / 2,
+        k
+    };
+})();
+
 const CORPS_BLANC = [255, 255, 255];
 const CORPS_NOIR = [38, 45, 58];
 const TRAIT = [17, 24, 39];
@@ -128,19 +158,23 @@ export function pieceSvg(type, noir, x, y, cote, trait = 0.035) {
     const formes = DESSINS[type] || DESSINS.P;
     const corps = noir ? CORPS_NOIR : CORPS_BLANC;
     const oppose = noir ? CORPS_BLANC : CORPS_NOIR;
-    const X = (u) => (x + u * cote).toFixed(2);
-    const Y = (v) => (y + v * cote).toFixed(2);
-    const e = (trait * cote).toFixed(2);
+    const X = (u) => (x + CADRE.u(u) * cote).toFixed(2);
+    const Y = (v) => (y + CADRE.v(v) * cote).toFixed(2);
+    const L = (t) => (t * CADRE.k * cote).toFixed(2);
     return formes.map(f => {
         const remplir = hex(f.creux ? oppose : corps);
         const bord = hex(f.creux ? oppose : TRAIT);
+        // LE TRAIT D'UN DÉTAIL CREUX EST DE SA PROPRE COULEUR : il ne cerne
+        // pas la forme, il l'ÉLARGIT. À pleine épaisseur, la fente du fou
+        // doublait de largeur et se lisait comme une tache blanche.
+        const e = ((f.creux ? trait * 0.35 : trait) * cote).toFixed(2);
         if (f.k === 'cercle') {
-            return `<circle cx="${X(f.c[0])}" cy="${Y(f.c[1])}" r="${(f.r * cote).toFixed(2)}"
+            return `<circle cx="${X(f.c[0])}" cy="${Y(f.c[1])}" r="${L(f.r)}"
                 fill="${remplir}" stroke="${bord}" stroke-width="${e}"/>`;
         }
         if (f.k === 'rect') {
-            return `<rect x="${X(f.x)}" y="${Y(f.y)}" width="${(f.w * cote).toFixed(2)}"
-                height="${(f.h * cote).toFixed(2)}" fill="${remplir}" stroke="${bord}"
+            return `<rect x="${X(f.x)}" y="${Y(f.y)}" width="${L(f.w)}"
+                height="${L(f.h)}" fill="${remplir}" stroke="${bord}"
                 stroke-width="${e}"/>`;
         }
         const points = f.p.map(([u, v]) => `${X(u)},${Y(v)}`).join(' ');
@@ -160,24 +194,28 @@ export function dessinerPiecePdf(doc, type, noir, x, y, cote, epaisseur = 0.22) 
     const formes = DESSINS[type] || DESSINS.P;
     const corps = noir ? CORPS_NOIR : CORPS_BLANC;
     const oppose = noir ? CORPS_BLANC : CORPS_NOIR;
-    doc.setLineWidth(epaisseur);
     formes.forEach(f => {
         const remplir = f.creux ? oppose : corps;
         const bord = f.creux ? oppose : TRAIT;
+        // Même raison qu'en SVG : un détail creux ne se cerne pas, il se pose.
+        doc.setLineWidth(f.creux ? epaisseur * 0.35 : epaisseur);
         // ORDRE IMPORTANT : dans jsPDF, `setTextColor` et `setDrawColor`
         // touchent des états distincts, mais le remplissage doit être redit
         // avant CHAQUE forme — un appel intermédiaire peut l'avoir changé.
         doc.setFillColor(...remplir);
         doc.setDrawColor(...bord);
+        const X = (u) => x + CADRE.u(u) * cote;
+        const Y = (v) => y + CADRE.v(v) * cote;
+        const L = (t) => t * CADRE.k * cote;
         if (f.k === 'cercle') {
-            doc.circle(x + f.c[0] * cote, y + f.c[1] * cote, f.r * cote, 'FD');
+            doc.circle(X(f.c[0]), Y(f.c[1]), L(f.r), 'FD');
             return;
         }
         if (f.k === 'rect') {
-            doc.rect(x + f.x * cote, y + f.y * cote, f.w * cote, f.h * cote, 'FD');
+            doc.rect(X(f.x), Y(f.y), L(f.w), L(f.h), 'FD');
             return;
         }
-        const pts = f.p.map(([u, v]) => [x + u * cote, y + v * cote]);
+        const pts = f.p.map(([u, v]) => [X(u), Y(v)]);
         const ecarts = [];
         for (let i = 1; i < pts.length; i++) {
             ecarts.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
