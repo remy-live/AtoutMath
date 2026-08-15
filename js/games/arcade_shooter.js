@@ -17,6 +17,9 @@ import { generateMultFact, multDistractors } from '../core/generators.js';
 import { getWeakTables } from '../core/stats.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
+/** La vitesse d'approche, par réglage. Le nombre est un pas par image. */
+const APPROCHES = { 'tres-lente': 0.3, easy: 0.5, medium: 0.75, hard: 1.1 };
+
 const METEOR_SIZE = 60;
 const SHIP_SIZE = 64;
 const ZONE_TIR = 80;          // rayon autour du vaisseau où le tap déclenche le tir
@@ -133,7 +136,14 @@ class ArcadeShooter extends BaseGame {
 
         this.meteors = [];
         this.lasers = [];
-        this.approche = this.params.difficulty === 'hard' ? 1.1 : (this.params.difficulty === 'easy' ? 0.5 : 0.75);
+        // LA VITESSE D'APPROCHE, RÉGLÉE PAR LE PROFESSEUR. C'est le seul
+        // réglage qui décide si l'élève CALCULE ou tire au flair : trop vite,
+        // il vise la météorite qui arrive plutôt que celle qui porte le bon
+        // résultat. « Très lente » existe pour la première séance.
+        this.approche = APPROCHES[this.params.difficulty] ?? APPROCHES.medium;
+        // Combien de leurres autour de la bonne réponse. Trois par défaut :
+        // à deux, la moitié de l'écran restait vide.
+        this.leurres = Math.max(2, Math.min(6, parseInt(this.params.leurres) || 3));
         this.laserSpeed = 11;
         this.score = 0;
         this.wrongDestroyed = 0;
@@ -447,7 +457,7 @@ class ArcadeShooter extends BaseGame {
         this.lasers.forEach(l => { if (l.el) l.el.remove(); });
         this.lasers = [];
 
-        const answers = multDistractors(this.currentT, this.currentAns, 2);
+        const answers = multDistractors(this.currentT, this.currentAns, this.leurres);
         const w = this.arena.offsetWidth, h = this.arena.offsetHeight;
         const rayonDepart = Math.hypot(w, h) / 2 + METEOR_SIZE;
 

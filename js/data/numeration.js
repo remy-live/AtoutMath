@@ -286,8 +286,18 @@ export const numerationExercises = [
         // l'affiche tout de suite, mais on ne surcharge pas le carnet avec les
         // ratés de vitesse.
         sansRevision: true,
-        params: { mode: 'zeros', vies: 3 },
+        params: { vitesse: 'normale', mode: 'zeros', vies: 3 },
         paramSchema: [
+            {
+                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
+                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
+                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
+                    { value: 'normale', label: 'Normale' },
+                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
+                ]
+            },
             {
                 id: 'vies', type: 'select', label: 'Vies',
                 options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
@@ -321,8 +331,18 @@ export const numerationExercises = [
         id: 'num-ninja-negatifs', status: STATUS.TEST, title: 'Ninja des Résultats Négatifs',
         activityId: 'ninja',
         sansRevision: true,
-        params: { mode: 'negatifs', vies: 3, parVague: 5 },
+        params: { vitesse: 'normale', mode: 'negatifs', vies: 3, parVague: 5 },
         paramSchema: [
+            {
+                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
+                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
+                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
+                    { value: 'normale', label: 'Normale' },
+                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
+                ]
+            },
             {
                 id: 'vies', type: 'select', label: 'Vies',
                 options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
@@ -341,8 +361,18 @@ export const numerationExercises = [
         id: 'num-ninja-positifs', status: STATUS.TEST, title: 'Tir sur les Résultats Positifs',
         activityId: 'ninja',
         sansRevision: true,
-        params: { mode: 'positifs', vies: 3, parVague: 5 },
+        params: { vitesse: 'normale', mode: 'positifs', vies: 3, parVague: 5 },
         paramSchema: [
+            {
+                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
+                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
+                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
+                    { value: 'normale', label: 'Normale' },
+                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
+                ]
+            },
             {
                 id: 'vies', type: 'select', label: 'Vies',
                 options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],

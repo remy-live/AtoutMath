@@ -60,6 +60,29 @@ const LENTEUR_CALCUL = 1.35;
 const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS
     : (mode === 'positifs' || mode === 'negatifs' ? LENTEUR_CALCUL : 1));
 
+/**
+ * L'ALLURE, RÉGLABLE PAR LE PROFESSEUR.
+ *
+ * Le bon rythme n'est pas le même pour tous : celui qui lit vite s'ennuie à
+ * regarder monter une bulle, celui qui pose « −7 + 4 » dans sa tête n'a pas
+ * fini qu'elle est déjà redescendue. Aucun réglage automatique ne peut le
+ * savoir — la classe, elle, le sait.
+ *
+ * Le nombre MULTIPLIE la durée du vol : 1,5 veut dire « moitié plus de temps ».
+ * On divise la vitesse de lancement par l'allure et la gravité par son carré :
+ * la cloche garde EXACTEMENT le même sommet, elle prend juste plus ou moins de
+ * temps à le parcourir. Sans le carré, les bulles sortiraient par le haut de
+ * l'écran au réglage lent.
+ */
+const ALLURES = {
+    tranquille: 1.6, posee: 1.3, normale: 1, rapide: 0.75,
+    // Les noms de l'ancien réglage « rythme » du Ninja des Nombres : il ne
+    // faisait rien du tout, faute d'être lu. Les garder évite qu'un parcours
+    // déjà enregistré change d'allure sans prévenir.
+    lent: 1.6, normal: 1
+};
+const allureDe = (p) => ALLURES[p.vitesse] || ALLURES[p.rythme] || 1;
+
 function auCoeur(el, x, y) {
     const r = el.getBoundingClientRect();
     const dx = (x - (r.left + r.width / 2)) / (r.width / 2);
@@ -72,6 +95,7 @@ class Ninja extends BaseGame {
         super(container, isDemo, params, 'ninja');
         this.mode = MODES[this.params.mode] ? this.params.mode : 'negatifs';
         this.def = MODES[this.mode];
+        this.allure = allureDe(this.params);
         this.rng = makeRng(this.params.seed);
         this.etat = creerPartie({
             mode: this.mode,
@@ -373,14 +397,17 @@ class Ninja extends BaseGame {
         // lancement, pas par la hauteur de départ.
         if (this.mode === 'zeros') {
             this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0,
-                -(haut * 0.0138) / LENTEUR_ZEROS, larg, haut, 'chiffre'));
+                -(haut * 0.0138) / LENTEUR_ZEROS / this.allure, larg, haut, 'chiffre'));
         } else {
             const type = 'bulle';
             v.objets.forEach((o, i) => {
                 const x = larg * (0.16 + 0.68 * (i + 0.5) / v.objets.length);
                 const e = this.creerEntite([o], x, haut + 60, (this.rng.int(-3, 3)) / 14,
-                    -(haut * 0.0143) - this.rng.int(0, 3) / 100, larg, haut, type);
-                e.retard = i * 520;
+                    (-(haut * 0.0143) - this.rng.int(0, 3) / 100) / this.allure, larg, haut, type);
+                // L'ÉCART ENTRE DEUX LANCERS SUIT L'ALLURE : sans cela, au
+                // réglage lent les cinq bulles partiraient au rythme rapide et
+                // se retrouveraient toutes en l'air en même temps.
+                e.retard = i * 520 * this.allure;
                 this.entites.push(e);
             });
         }
@@ -405,7 +432,7 @@ class Ninja extends BaseGame {
         // secondes et demie de vol, et un sommet qui frôle le haut de la
         // scène. La cloche précédente montait moins et allait plus vite : on
         // voyait la bulle avant d'avoir fini de lire le calcul qu'elle porte.
-        const g = haut * 0.000104 / (lenteurDe(this.mode) ** 2);
+        const g = haut * 0.000104 / ((lenteurDe(this.mode) * this.allure) ** 2);
         let vivantes = 0;
         this.majSabre();
 
@@ -453,10 +480,19 @@ class Ninja extends BaseGame {
             this.enTransition = true;
             if (vagueFinie(this.etat) && !toutesSorties) {
                 this.note(`Vague ${this.etat.vagues} réussie !`, 'ok');
-                this.onCorrectAnswer(null, this.def.skill, {
-                    points: 15, questionText: this.consigneEl.textContent,
-                    given: 'trié', expected: 'trié'
-                });
+                // LA VAGUE EST UN NOMBRE, en mode « zéros » : c'est ICI que se
+                // compte l'unique bonne réponse, quand il ne reste plus un seul
+                // zéro inutile. Ailleurs, chaque bulle a déjà été comptée — une
+                // prime de vague y ajoutait une réponse qui n'existait pas.
+                const v = this.etat.vague;
+                const zeros = v && v.objets ? v.objets.filter(o => o.cible).length : 0;
+                if (this.mode === 'zeros' && zeros) {
+                    this.onCorrectAnswer(null, this.def.skill, {
+                        points: 10 + 5 * zeros,
+                        questionText: `Enlever les zéros inutiles de ${v.nombre}`,
+                        given: v.attendu, expected: v.attendu
+                    });
+                }
             }
             this.timerId = setTimeout(() => {
                 this.enTransition = false;
@@ -534,13 +570,20 @@ class Ninja extends BaseGame {
 
         if (r.ok) {
             el.classList.add('nj-obj--pris');
-            this.onCorrectAnswer(null, this.def.skill, {
-                points: 10,
-                questionText: this.mode === 'zeros'
-                    ? `Trancher un zéro inutile de ${this.etat.vague.nombre}`
-                    : `${r.objet.texte} — ${this.def.consigne}`,
-                given: r.objet.texte, expected: r.objet.texte
-            });
+            // EN MODE « ZÉROS », LA RÉPONSE EST LE NOMBRE, PAS LE CHIFFRE.
+            // Nettoyer « 0,4500 » demande trois coups de lame, mais ce n'est
+            // pas trois bonnes réponses : c'est UN nombre bien écrit. On
+            // compte donc à la fin de la vague, quand le nombre est propre.
+            if (this.mode !== 'zeros') {
+                this.onCorrectAnswer(null, this.def.skill, {
+                    // Les points de l'ancienne prime de vague sont versés ici :
+                    // la prime enregistrait une réponse de plus, alors que rien
+                    // de nouveau n'avait été répondu.
+                    points: 13,
+                    questionText: `${r.objet.texte} — ${this.def.consigne}`,
+                    given: r.objet.texte, expected: r.objet.texte
+                });
+            }
             const reste = resteAPrendre(this.etat);
             this.note(reste ? `Encore ${reste} à prendre.` : '');
         } else {

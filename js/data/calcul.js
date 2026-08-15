@@ -355,10 +355,31 @@ export const calculExercises = [
     {
         id: 'calc-arcade-shooter', status: STATUS.TEST, title: 'Météorites Mathématiques',
         activityId: 'shooter',
-        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium' },
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium', leurres: 3 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['easy', 'medium', 'hard'], default: 'medium' }
+            {
+                // « easy / medium / hard » s'affichait tel quel, en anglais, et
+                // ne disait pas de QUOI il s'agissait : ce réglage ne change
+                // pas les tables, il change la vitesse d'approche.
+                id: 'difficulty', type: 'select', label: 'Vitesse des météorites', default: 'medium',
+                aide: 'C\'est le temps qu\'on a pour calculer avant de tirer. Trop rapide, l\'élève vise ce qui arrive au lieu de viser ce qui est faux.',
+                options: [
+                    { value: 'tres-lente', label: 'Très lente — tout le temps de calculer' },
+                    { value: 'easy', label: 'Lente' },
+                    { value: 'medium', label: 'Normale' },
+                    { value: 'hard', label: 'Rapide' }
+                ]
+            },
+            {
+                id: 'leurres', type: 'select', label: 'Météorites par question', default: 3,
+                options: [
+                    { value: 2, label: '3 météorites' },
+                    { value: 3, label: '4 météorites' },
+                    { value: 4, label: '5 météorites' },
+                    { value: 5, label: '6 météorites' }
+                ]
+            }
         ],
         motsClefs: ['tables', 'multiplication'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
