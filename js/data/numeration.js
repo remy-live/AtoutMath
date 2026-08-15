@@ -122,6 +122,12 @@ export const numerationExercises = [
     {
         id: 'num-egypte', title: 'Les Nombres des Pharaons',
         generatorId: 'num.egypte', activityId: 'numpad',
+        // SUR LE PAPIER : les glyphes tracés au PDF, à partir du dessin de
+        // Rémy. Deux sens — lire les symboles, ou les écrire ; c'est en les
+        // CHOISISSANT qu'on découvre que leur position ne compte pas.
+        printable: 'egypte', printGeneratorId: 'num.egypte-fiche',
+        printParams: { max: 10000, sens: 'lire' },
+        consignePapier: 'Quel nombre est écrit ?',
         params: { max: 10000 },
         motsClefs: ['égypte', 'hiéroglyphes'],
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
@@ -130,6 +136,12 @@ export const numerationExercises = [
     {
         id: 'num-egypte-qcm', title: 'Hiéroglyphes Express',
         generatorId: 'num.egypte', activityId: 'bubbles',
+        // SUR LE PAPIER : les glyphes tracés au PDF, à partir du dessin de
+        // Rémy. Deux sens — lire les symboles, ou les écrire ; c'est en les
+        // CHOISISSANT qu'on découvre que leur position ne compte pas.
+        printable: 'egypte', printGeneratorId: 'num.egypte-fiche',
+        printParams: { max: 10000, sens: 'ecrire' },
+        consignePapier: 'Écris chaque nombre en hiéroglyphes.',
         params: { max: 1000 },
         motsClefs: ['égypte', 'hiéroglyphes'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },

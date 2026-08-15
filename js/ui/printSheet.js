@@ -17,6 +17,8 @@
 
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
+import { dessinerChemin } from '../core/cheminSvg.js';
+import { GLYPHES, egyptianSvg } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { ajusterAuCarre, insecable } from '../core/dominos.js';
@@ -4323,7 +4325,162 @@ function dessinerDedalePdf(doc, item, slot, solution) {
         r * 2, r * 2, 'F');
 }
 
+/**
+ * LES TRACÉS D'UN GLYPHE, LUS UNE FOIS ET RETENUS.
+ *
+ * `GLYPHES` (core/figures.js) porte, pour chaque valeur, un groupe SVG :
+ * un « translate … scale » suivi d'un ou plusieurs chemins. Le navigateur sait
+ * le lire ; le PDF, non. On en extrait donc ce dont jsPDF a besoin — le tracé,
+ * sa transformation, son style — et on le garde : relire la même chaîne à
+ * chaque hiéroglyphe imprimé, sur une feuille qui en compte cent, se paie.
+ */
+const TRACES_GLYPHES = new Map();
+
+function tracesDuGlyphe(valeur) {
+    if (TRACES_GLYPHES.has(valeur)) return TRACES_GLYPHES.get(valeur);
+    const src = GLYPHES[valeur] || '';
+    const tr = /translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)/.exec(src);
+    const tx = tr ? parseFloat(tr[1]) : 0;
+    const ty = tr ? parseFloat(tr[2]) : 0;
+    const k = tr ? parseFloat(tr[3]) : 1;
+    const out = [];
+    for (const m of src.matchAll(/<path\b([^>]*)\/>/g)) {
+        const attrs = m[1];
+        const d = (/\sd="([^"]+)"/.exec(attrs) || [])[1];
+        if (!d) continue;
+        const rempli = /fill="currentColor"/.test(attrs);
+        const creux = /class="egy-creux"/.test(attrs);
+        const trait = /stroke="currentColor"/.test(attrs);
+        const ep = (/stroke-width="([\d.]+)"/.exec(attrs) || [])[1];
+        // Un chemin sans remplissage NI trait ne dessine rien : on l'écarte
+        // plutôt que d'appeler jsPDF avec un style vide, qui remplirait en noir.
+        if (!rempli && !creux && !trait) continue;
+        out.push({
+            d, tx, ty, k, creux,
+            style: (rempli || creux ? 'F' : '') + (trait ? 'D' : ''),
+            epaisseur: ep ? parseFloat(ep) : 10
+        });
+    }
+    TRACES_GLYPHES.set(valeur, out);
+    return out;
+}
+
+// --- LES NOMBRES DES PHARAONS, SUR LE PAPIER ------------------------------------
+
+/**
+ * Un rang par ligne, du plus grand au plus petit — comme à l'écran.
+ *
+ * DEUX SENS. « Lire » imprime les glyphes et laisse une ligne pour le nombre ;
+ * « écrire » imprime le nombre et laisse un cadre vide à remplir. Le second est
+ * le plus instructif : c'est en CHOISISSANT les symboles qu'on découvre que
+ * leur position ne compte pas.
+ */
+function geoEgypte(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    const rangs = m.symboles.length;
+    const colonnes = Math.max(...m.symboles.map(s => s.n));
+    // La ligne de réponse, en bas, prend sa part de la hauteur.
+    const hDispo = b.h - 8;
+    const cell = Math.min(b.w / (colonnes + 0.5), hDispo / (rangs + 0.3), 16);
+    return {
+        m, b, rangs, colonnes, cell,
+        x0: b.x + 1,
+        y0: b.y + 1,
+        yReponse: b.y + 2 + rangs * cell,
+        // Les glyphes sont dessinés dans une case de 24 × 32.
+        k: cell / 32
+    };
+}
+
+function egyptePreviewHtml(item, slot, k, solution) {
+    const g = geoEgypte(item, slot);
+    const m = g.m;
+    let html = '';
+    if (m.sens === 'lire' || solution) {
+        // L'aperçu est du HTML : le SVG des glyphes s'y pose tel quel.
+        html += `<div style="position:absolute; left:${g.x0 * k}px; top:${g.y0 * k}px;
+            width:${(g.colonnes * g.cell) * k}px; height:${(g.rangs * g.cell) * k}px;
+            color:#1a202c">${egyptianSvg(m.symboles.map(s => ({ value: s.value, n: s.n })))
+        .replace('<svg ', `<svg style="width:100%;height:100%" preserveAspectRatio="xMinYMin meet" `)}</div>`;
+    }
+    const bas = m.sens === 'lire'
+        ? (solution ? String(m.total) : '')
+        : String(m.total);
+    html += `<div style="position:absolute; left:${g.b.x * k}px; top:${g.yReponse * k}px;
+        width:${g.b.w * k}px; height:${6 * k}px; display:flex; align-items:center;
+        ${m.sens === 'lire' ? 'justify-content:flex-start' : 'justify-content:center'};
+        border-top:1px dotted #9aa3b2; font-weight:800;
+        color:${solution && m.sens === 'lire' ? '#6e7684' : '#1a202c'};
+        font-size:${4.2 * k}px">${echapperSheet(bas)}</div>`;
+    return html;
+}
+
+function dessinerEgyptePdf(doc, item, slot, solution) {
+    const g = geoEgypte(item, slot);
+    const m = g.m;
+    if (m.sens === 'lire' || solution) {
+        m.symboles.forEach((s, ligne) => {
+            const traces = tracesDuGlyphe(s.value);
+            for (let i = 0; i < s.n; i++) {
+                const x = g.x0 + i * g.cell;
+                const y = g.y0 + ligne * g.cell;
+                for (const t of traces) {
+                    // Le tracé est écrit dans les coordonnées du dessin de
+                    // Rémy ; « translate » et « scale » du groupe le ramènent
+                    // dans sa case de 24 × 32, et g.k dans le bloc imprimé.
+                    const k = t.k * g.cell / 32;
+                    if (t.style.includes('F')) {
+                        doc.setFillColor(...(t.creux ? [255, 255, 255] : ENCRE.trait));
+                    }
+                    if (t.style.includes('S')) {
+                        doc.setDrawColor(...ENCRE.trait);
+                        doc.setLineWidth(Math.max(0.18, (t.epaisseur || 10) * k));
+                        doc.setLineJoin('round');
+                    }
+                    dessinerChemin(doc, t.d, {
+                        x: x + t.tx * g.cell / 32,
+                        y: y + t.ty * g.cell / 32,
+                        k,
+                        // La couleur à reprendre après avoir évidé un trou.
+                        encre: t.creux ? [255, 255, 255] : ENCRE.trait
+                    }, t.style);
+                }
+            }
+        });
+    }
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    doc.line(g.b.x, g.yReponse, g.b.x + g.b.w, g.yReponse);
+    const bas = m.sens === 'lire' ? (solution ? String(m.total) : '') : String(m.total);
+    if (!bas) return;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...(solution && m.sens === 'lire' ? ENCRE.gris : ENCRE.trait));
+    doc.text(bas, m.sens === 'lire' ? g.b.x + 2 : g.b.x + g.b.w / 2, g.yReponse + 5,
+        { align: m.sens === 'lire' ? 'left' : 'center' });
+    doc.setTextColor(...ENCRE.trait);
+}
+
 export const RENDUS = {
+    egypte: {
+        titre: 'Les nombres des pharaons',
+        consigne: (items) => (items[0] && items[0].meta.sens === 'ecrire')
+            ? 'Écris chaque nombre en hiéroglyphes. Bâton 1, anse 10, corde 100, lotus '
+            + '1 000, doigt 10 000, têtard 100 000, dieu Heh 1 000 000. L\'ordre des '
+            + 'symboles n\'a aucune importance : c\'est une numération ADDITIVE.'
+            : 'Additionne la valeur des symboles. Bâton 1, anse 10, corde 100, lotus '
+            + '1 000, doigt 10 000, têtard 100 000, dieu Heh 1 000 000. Attention : on '
+            + 'ne compte pas les symboles, on additionne ce qu\'ils valent.',
+        previewGrille: egyptePreviewHtml,
+        pdfGrille: dessinerEgyptePdf,
+        nomBloc: 'Nombre', nomBlocs: 'nombres',
+        proportions: { w: 1, h: 0.9 },
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3,
+        grilleMax: 70
+    },
+
     dedale: {
         titre: 'Le dédale',
         consigne: () => 'Va du ROND au CARRÉ sans traverser de mur. Entre deux cases il '

@@ -16,6 +16,7 @@ import { makeItem } from '../items.js';
 import { tirerPartie } from '../compteEstBon.js';
 import { tirerPointAPoint, NOMS_DESSINS, NOMS_FAMILLES } from '../pointAPoint.js';
 import { creerDedale, NOMS_FORMES, ouvert, cle } from '../dedale.js';
+import { EGYPTE } from './numeration.js';
 
 const SIGNE = { '+': '+', '-': '−', '*': '×', '/': '÷', '×': '×', '÷': '÷' };
 
@@ -209,6 +210,67 @@ export const dedaleFicheGenerator = {
                 solution: d.solution,
                 theme: `${d.forme}-${d.depart.join(',')}-${d.arrivee.join(',')}`
             }
+        });
+    }
+};
+
+// --- LES NOMBRES DES PHARAONS -----------------------------------------------
+
+export const egypteFicheGenerator = {
+    id: 'num.egypte-fiche',
+    label: 'Les nombres des pharaons (fiche)',
+    answerKinds: ['numeric'],
+    skills: ['num.numeration.egypte'],
+    params: [
+        {
+            id: 'max', type: 'select', label: 'Jusqu\'à', default: 10000,
+            options: [
+                { value: 1000, label: '1 000' }, { value: 10000, label: '10 000' },
+                { value: 100000, label: '100 000' }, { value: 1000000, label: '1 000 000' }
+            ]
+        },
+        {
+            id: 'sens', type: 'select', label: 'Dans quel sens', default: 'lire',
+            aide: 'Lire, c\'est additionner les symboles ; écrire, c\'est les choisir — '
+                + 'et c\'est là qu\'on comprend que la position ne compte pas.',
+            options: [
+                { value: 'lire', label: 'Lire : les glyphes sont donnés' },
+                { value: 'ecrire', label: 'Écrire : le nombre est donné' }
+            ]
+        }
+    ],
+
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        params = params || {};
+        const max = Number(params.max) || 10000;
+        const sens = params.sens === 'ecrire' ? 'ecrire' : 'lire';
+        const dispo = EGYPTE.filter(s => s.value <= max);
+
+        // Deux ou trois rangs, peu de symboles par rang : un nombre égyptien
+        // se lit en comptant, il ne doit pas devenir un dénombrement.
+        const choisis = rng.shuffle(dispo).slice(0, rng.int(2, 3));
+        const compte = choisis.map(s => ({ value: s.value, nom: s.nom, n: rng.int(1, 4) }))
+            .sort((a, b) => b.value - a.value);
+        const total = compte.reduce((s, c) => s + c.value * c.n, 0);
+        const detail = compte.map(c => `${c.n} × ${c.value}`).join(' + ');
+
+        return makeItem({
+            seed: rng.seed,
+            generatorId: 'num.egypte-fiche',
+            skillId: 'num.numeration.egypte',
+            answerKind: 'numeric',
+            prompt: {
+                text: sens === 'lire' ? 'Quel nombre est écrit ici ?' : `Écris ${total} en hiéroglyphes`,
+                papier: sens === 'lire' ? 'Quel nombre ?' : `${total}`,
+                html: `<div class="game-question">${sens === 'lire'
+                    ? 'Quel nombre est écrit ici ?' : `Écris ${total} en hiéroglyphes`}</div>`
+            },
+            answer: total,
+            explanation: `${detail} = ${total}.`,
+            explicationPapier: `${detail} = ${total}.`,
+            difficulty: 3,
+            meta: { total, symboles: compte, sens, detail, theme: String(total) }
         });
     }
 };

@@ -181,7 +181,7 @@ export function rectangleSvg(L, l, unit = 'cm') {
  * par `currentColor`, que le thème fixe. Pour retoucher un glyphe, on retouche
  * le dessin et on ré-exporte : le fichier source est là pour ça.
  */
-const GLYPHES = {
+export const GLYPHES = {
     //  Le bâton : une unité. Un trait, rien de plus — et c'est ce qui le rend
     //  reconnaissable à côté de tous les autres.
     1: '<g transform="translate(-518.52 -650.92) scale(0.05068)"><path fill="currentColor" stroke="none" d="M 10493,12904 C 10493,13018 10493,13302 10493,13415 10493,13425 10444,13425 10444,13415 10444,13302 10444,13018 10444,12904 10444,12895 10493,12895 10493,12904 Z "/></g>',
