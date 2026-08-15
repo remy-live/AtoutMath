@@ -38,8 +38,15 @@ function resumeListe(cochees, total, mot) {
  * le permet. Les explications passent dans une infobulle sur « ? » plutôt que
  * sous le champ : trois paragraphes d'aide empilés rendaient le panneau
  * illisible et repoussaient les réglages suivants hors de l'écran.
+ *
+ * EXPORTÉ, avec `readParams` et `wireTips` : la fiche à imprimer règle les
+ * mêmes choses — le niveau, les tables, la difficulté — et redessiner ces
+ * champs de son côté aurait donné deux dessins du même réglage, dont un seul
+ * aurait profité des corrections. Les commandes (− / +, molette, glissé,
+ * infobulles) sont branchées sur `document` une fois pour toutes : un panneau
+ * qui pose ce HTML n'a rien d'autre à faire.
  */
-function fieldHtml(param, value, options = {}) {
+export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
     const wide = param.type === 'multiselect';   // les puces prennent toute la largeur
     let control = '';
@@ -210,7 +217,7 @@ function hideTip() {
 }
 
 /** Survol et focus pour la souris et le clavier, clic pour le tactile. */
-function wireTips(root) {
+export function wireTips(root) {
     root.querySelectorAll('.cfg-info').forEach(btn => {
         btn.onmouseenter = () => showTip(btn);
         btn.onmouseleave = hideTip;
@@ -339,7 +346,7 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { glisse = null; });
 
-function readParams(root, schema) {
+export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
         if (param.type === 'multiselect') {

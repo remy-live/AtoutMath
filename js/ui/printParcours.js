@@ -25,6 +25,8 @@
 
 import { hydratePath } from '../core/path.js';
 import { generateurDeFiche } from '../core/registry.js';
+import { paramSchemaOf } from '../data/catalog.js';
+import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../core/fiche.js';
@@ -62,6 +64,30 @@ export function analyserParcours(chemin) {
         else ecran.push(s);
     }
     return { papier, ecran, total: steps.length };
+}
+
+/**
+ * LES RÉGLAGES DE CONTENU D'UNE ÉTAPE, tels que la FEUILLE les comprend.
+ *
+ * On réglait la mise en page — combien de questions, sur combien de colonnes —
+ * et rien du contenu : pour changer les tables d'une fiche de multiplications,
+ * il fallait ressortir de la fiche, rouvrir l'exercice, régler, et revenir.
+ * Ce sont pourtant les réglages qu'on touche le plus.
+ *
+ * Le catalogue propose un schéma taillé pour l'exercice (`paramSchema`) : on
+ * le préfère, il est écrit pour le professeur, avec ses libellés et ses aides.
+ * Mais on n'en garde que ce que le GÉNÉRATEUR DE FICHE sait lire — un réglage
+ * d'activité (la vitesse du jeu, le chronomètre) n'a aucun effet sur une
+ * photocopie, et le montrer là ferait croire le contraire. Quand la feuille a
+ * son propre générateur (`printGeneratorId`), ce sont ses réglages à lui qu'on
+ * montre : c'est lui qui fait le papier.
+ */
+function schemaPapier(etape) {
+    const params = (etape.generator && etape.generator.params) || [];
+    if (!params.length) return [];
+    const connus = new Set(params.map(p => p.id));
+    const gardes = (paramSchemaOf(etape.exercise) || []).filter(p => p && connus.has(p.id));
+    return gardes.length ? gardes : params;
 }
 
 /** Les grilles d'une étape à grilles, tirées comme les questions. */
@@ -678,6 +704,13 @@ export function ouvrirFicheParcours(chemin) {
     // de colonnes, numéroté ou non, le barème quand c'est une interrogation.
     // La consigne et l'ordre restent dans la liste, qui les montre TOUS en même
     // temps, ce qu'un panneau collé à un seul bandeau ne peut pas faire.
+    //
+    // ET LE CONTENU, depuis peu : les tables, le niveau, la difficulté. On ne
+    // réglait ici que la mise en page ; pour changer les tables d'une fiche de
+    // multiplications il fallait sortir de la fiche, rouvrir l'exercice,
+    // régler, revenir — et refaire le tour à chaque essai. Les champs sont
+    // ceux du panneau de configuration, pas une copie : `fieldHtml` et
+    // `readParams` viennent de games/configUI.js.
     let panneau = null;
 
     const fermerRoue = () => {
@@ -700,6 +733,7 @@ export function ouvrirFicheParcours(chemin) {
         const e = parId.get(id);
         if (!e) return;
         const unite = e.grille ? 'Grilles' : 'Questions';
+        const schema = schemaPapier(e);
         panneau = document.createElement('div');
         panneau.className = 'pp-roue-panneau';
         panneau.dataset.pour = id;
@@ -718,6 +752,11 @@ export function ouvrirFicheParcours(chemin) {
             <label class="pp-roue-champ" data-r-bareme ${interro.checked ? '' : 'hidden'}>Barème
                 ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num" data-r-pts
                     min="0" max="40" value="${points[id]}">`)}</label>
+            ${schema.length ? `<div class="pp-roue-contenu" data-r-contenu>
+                <div class="pp-roue-sous-titre">Contenu des questions</div>
+                ${schema.map(p => fieldHtml(p,
+        e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('')}
+            </div>` : ''}
             <button type="button" class="pp-roue-autres" data-r-neuf>🎲 Autres questions</button>`;
         document.body.appendChild(panneau);
 
@@ -755,6 +794,28 @@ export function ouvrirFicheParcours(chemin) {
             rendre();
         };
         panneau.querySelector('[data-r-neuf]').onclick = () => { blocs = null; rendre(); };
+
+        // LE CONTENU. Un réglage changé retire les questions à neuf : elles ont
+        // été tirées avec l'ancien, les garder afficherait des tables qu'on
+        // vient de décocher. On écoute `change` — et `input` pour les champs
+        // texte et nombre, qui ne l'émettent qu'à la sortie —, et l'on relit
+        // TOUT le panneau : un seul chemin, donc jamais deux réglages qui
+        // divergent.
+        const contenu = panneau.querySelector('[data-r-contenu]');
+        if (contenu) {
+            wireTips(contenu);
+            const relire = () => {
+                Object.assign(e.params, readParams(contenu, schema));
+                blocs = null;
+                rendre();
+            };
+            contenu.addEventListener('change', relire);
+            // Les boutons « Oui / Non » n'émettent rien : leur écouteur global
+            // ne fait que basculer la classe. On repasse derrière, après lui.
+            contenu.addEventListener('click', (ev) => {
+                if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
+            });
+        }
         nb.focus();
         nb.select();
         document.addEventListener('pointerdown', surClicDehors, true);

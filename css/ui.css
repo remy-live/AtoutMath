@@ -462,6 +462,34 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .pp-roue-champ .cfg-input { max-width: 92px; }
 .pp-roue-case { display: flex; align-items: center; gap: 7px; font-weight: 600; cursor: pointer; }
+/* LE CONTENU DES QUESTIONS, dans le même panneau que la mise en page. Les
+   champs viennent du panneau de configuration : ils savent déjà se dessiner,
+   on ne leur donne ici qu'une largeur et une hauteur maximale — un exercice à
+   dix tables et quatre difficultés ferait sinon un panneau plus haut que
+   l'écran, et le bouton du bas deviendrait inatteignable. */
+.pp-roue-contenu {
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: 270px; max-height: min(46vh, 340px); overflow-y: auto;
+    padding-top: 8px; border-top: 1px solid var(--border);
+}
+.pp-roue-sous-titre {
+    font-weight: 800; font-size: 11px; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+/* Les pavés « − 10 + » du panneau de configuration sont taillés pour une
+   colonne de réglages ; ici ils sortaient du panneau par la droite, le « + »
+   coupé en deux. On les resserre, et le libellé garde sa place. */
+.pp-roue-contenu .cfg-field { margin: 0; }
+.pp-roue-contenu .cfg-field:not(.cfg-field--wide) {
+    grid-template-columns: minmax(5rem, 1fr) minmax(0, auto);
+}
+.pp-roue-contenu .cfg-stepper .cfg-input--num { width: 56px; }
+.pp-roue-contenu .cfg-step { width: 32px; font-size: 1.1rem; }
+/* CINQ TUILES PAR RANGÉE, quelle que soit la largeur de l'écran. Le panneau de
+   configuration s'élargit sur un grand écran et affiche alors ses dix tables
+   sur une ligne ; celui-ci est collé à un bandeau et reste étroit. Les dix
+   colonnes y tombaient à dix-sept pixels — des pastilles qui se chevauchent. */
+.pp-roue-contenu .cfg-chips--grille { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .pp-roue-autres {
     border: 1px solid var(--border); background: var(--bg-hover);
     color: var(--text-main); border-radius: 9px; cursor: pointer;
