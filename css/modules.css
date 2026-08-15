@@ -3443,6 +3443,18 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; display: flex; align-items: center; justify-content: center;
     color: #6b7280; font-weight: 800;
 }
+/* LE PLATEAU : un emplacement vide par pièce, numéroté. C'est là qu'on colle
+   ce qu'on vient de découper — sans lui, la chaîne se défait au premier coup
+   de coude et l'élève ne sait plus où il en était. */
+.fx-dom-vide {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    box-sizing: border-box; border: 1.2px dashed #b0b6c5; border-radius: 3px;
+    color: #c3c8d2; font-weight: 800; background: #fff;
+}
+.fx-dom-zone {
+    position: absolute; font-weight: 700; color: #6b7280;
+    text-transform: uppercase; letter-spacing: .04em;
+}
 .fx-red-rail--champ { border-bottom-color: #6366f1; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------

@@ -758,11 +758,28 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
 const DOM_LIGNE = 3.5;          // hauteur d'une ligne de texte dans une pièce, en mm
 const DOM_ECART = 2.4;          // le blanc entre deux pièces : la marge du ciseau
 
-/** La géométrie d'une planche : combien de pièces par ligne, et de quelle taille. */
+/**
+ * La géométrie d'une planche — EN DEUX ZONES.
+ *
+ * On imprimait les pièces, et rien d'autre : l'élève découpait, puis cherchait
+ * où les poser. Sur une table de classe, la chaîne se défait au premier coup
+ * de coude. Il lui faut un PLATEAU : autant d'emplacements vides que de
+ * pièces, dans l'ordre de lecture, sur lesquels on colle.
+ *
+ *   · en haut  — le plateau, des emplacements en pointillés ;
+ *   · en bas   — les pièces à découper, mélangées.
+ *
+ * Les deux zones partagent la MÊME taille de pièce : un emplacement où la
+ * pièce ne rentre pas ne sert à rien.
+ */
+const DOM_TITRE = 4.2;          // la hauteur d'un intertitre de zone
+
 function geometrieDominos(item, boite) {
     const pieces = item.meta.pieces || [];
     const plusLongue = Math.max(4, ...pieces.map(p =>
         Math.max(String(p.droite).length, String(p.gauche).length)));
+    // Chaque zone reçoit la moitié de la hauteur, son intertitre déduit.
+    const zoneH = Math.max(12, (boite.h - 2 * DOM_TITRE - 3) / 2);
     // UN DOMINO EST FAIT DE DEUX CARRÉS, comme le vrai. On choisit donc le
     // nombre de colonnes qui donne les plus grandes pièces au format 2:1 —
     // trois colonnes pour des tables, deux pour des périmètres, mais toujours
@@ -771,13 +788,29 @@ function geometrieDominos(item, boite) {
     const rangs = (c) => Math.ceil(pieces.length / c);
     const coteDe = (c) => {
         const w = ((boite.w - DOM_ECART * (c - 1)) / c) / 2;   // le carré, par la largeur
-        const h = (boite.h - DOM_ECART * (rangs(c) - 1)) / rangs(c);
+        const h = (zoneH - DOM_ECART * (rangs(c) - 1)) / rangs(c);
         return Math.min(w, h, 24);
     };
     let cols = 2;
     for (const c of [3, 4]) if (coteDe(c) >= coteDe(cols) - 0.01 && plusLongue <= (c === 3 ? 26 : 12)) cols = c;
-    const cote = Math.max(10, coteDe(cols));
-    return { pieces, cols, pieceW: cote * 2, pieceH: cote, gaucheW: cote, droiteW: cote };
+    const cote = Math.max(8, coteDe(cols));
+    return {
+        pieces, cols, pieceW: cote * 2, pieceH: cote, gaucheW: cote, droiteW: cote,
+        zoneH,
+        plateauY: boite.y + DOM_TITRE,
+        piecesY: boite.y + DOM_TITRE + zoneH + 3 + DOM_TITRE
+    };
+}
+
+/** Le coin haut-gauche de la case `rang` d'une zone qui commence en `yZone`. */
+function placeDomino(g, boite, ordreLong, rang, yZone) {
+    const rangs = Math.ceil(ordreLong / g.cols);
+    const x0 = boite.x + Math.max(0, (boite.w - (g.cols * g.pieceW + (g.cols - 1) * DOM_ECART)) / 2);
+    const y0 = yZone + Math.max(0, (g.zoneH - (rangs * g.pieceH + (rangs - 1) * DOM_ECART)) / 2);
+    return {
+        x: x0 + (rang % g.cols) * (g.pieceW + DOM_ECART),
+        y: y0 + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART)
+    };
 }
 
 /** L'ordre d'affichage : mélangé sur la planche, dans l'ordre sur la correction. */
@@ -795,30 +828,51 @@ function dominosPreviewHtml(item, slot, k, solution) {
     const b = slot.boite;
     const g = geometrieDominos(item, b);
     const ordre = ordreDominos(item, solution);
-    // La grille de pièces est centrée dans son bloc : collée en haut à gauche
-    // d'une page presque vide, la planche avait l'air d'une erreur de marge.
-    const rangs = Math.ceil(ordre.length / g.cols);
-    const x0 = b.x + Math.max(0, (b.w - (g.cols * g.pieceW + (g.cols - 1) * DOM_ECART)) / 2);
-    const y0 = b.y + Math.max(0, (b.h - (rangs * g.pieceH + (rangs - 1) * DOM_ECART)) / 2);
+    const chaine = (item.meta.pieces || []).map(p => p.id);
     let html = '';
-    ordre.forEach((id, rang) => {
-        const p = g.pieces[id];
-        if (!p) return;
-        const x = x0 + (rang % g.cols) * (g.pieceW + DOM_ECART);
-        const y = y0 + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
-        if (y + g.pieceH > b.y + b.h + 1) return;
+
+    const intertitre = (texte, y) => `<div class="fx-dom-zone" style="left:${b.x * k}px;
+        top:${y * k}px; width:${b.w * k}px; font-size:${2.9 * k}px">${echapperSheet(texte)}</div>`;
+
+    const poser = (p, x, y, avecFleche) => {
         const demi = (t, cls) => `<div class="fx-dom-demi ${cls}" style="width:${g.gaucheW * k}px;
             font-size:${policeDomino(t, g.pieceH) * k}px">${echapperSheet(insecable(t))}</div>`;
-        html += `<div class="fx-dom-piece" style="left:${x * k}px; top:${y * k}px;
+        let out = `<div class="fx-dom-piece" style="left:${x * k}px; top:${y * k}px;
             width:${g.pieceW * k}px; height:${g.pieceH * k}px">
             ${demi(p.gauche, 'fx-dom-demi--g')}
             ${demi(p.droite, 'fx-dom-demi--d')}</div>`;
         // La flèche de la correction : elle dit dans quel sens se lit la chaîne.
-        if (solution && rang < ordre.length - 1 && (rang % g.cols) !== g.cols - 1) {
-            html += `<div class="fx-dom-fleche" style="left:${(x + g.pieceW) * k}px;
+        if (avecFleche) {
+            out += `<div class="fx-dom-fleche" style="left:${(x + g.pieceW) * k}px;
                 top:${(y + g.pieceH / 2 - 1.4) * k}px; width:${DOM_ECART * k}px;
                 font-size:${2.4 * k}px">›</div>`;
         }
+        return out;
+    };
+
+    // --- LE PLATEAU. Vide sur la fiche, rempli sur la correction.
+    html += intertitre(solution ? 'La chaîne, dans l\'ordre' : 'Le plateau — colle les pièces ici, dans l\'ordre',
+        b.y);
+    chaine.forEach((id, rang) => {
+        const { x, y } = placeDomino(g, b, chaine.length, rang, g.plateauY);
+        if (solution) {
+            const p = g.pieces[id];
+            if (p) html += poser(p, x, y, rang < chaine.length - 1 && (rang % g.cols) !== g.cols - 1);
+            return;
+        }
+        html += `<div class="fx-dom-vide" style="left:${x * k}px; top:${y * k}px;
+            width:${g.pieceW * k}px; height:${g.pieceH * k}px;
+            font-size:${Math.min(g.pieceH * 0.3, 3.4) * k}px">${rang + 1}</div>`;
+    });
+    if (solution) return html;
+
+    // --- LES PIÈCES À DÉCOUPER, mélangées.
+    html += intertitre('À découper', g.piecesY - DOM_TITRE);
+    ordre.forEach((id, rang) => {
+        const p = g.pieces[id];
+        if (!p) return;
+        const { x, y } = placeDomino(g, b, ordre.length, rang, g.piecesY);
+        html += poser(p, x, y, false);
     });
     return html;
 }
@@ -827,15 +881,40 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
     const b = slot.boite;
     const g = geometrieDominos(item, b);
     const ordre = ordreDominos(item, solution);
-    const rangs = Math.ceil(ordre.length / g.cols);
-    const x0 = b.x + Math.max(0, (b.w - (g.cols * g.pieceW + (g.cols - 1) * DOM_ECART)) / 2);
-    const y0 = b.y + Math.max(0, (b.h - (rangs * g.pieceH + (rangs - 1) * DOM_ECART)) / 2);
+    const chaine = (item.meta.pieces || []).map(p => p.id);
+
+    const intertitre = (texte, y) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(texte), b.x, y + 3);
+    };
+
+    // --- LE PLATEAU : des emplacements vides, numérotés dans l'ordre de la
+    // chaîne. C'est là qu'on colle, et sans lui la chaîne se défait au premier
+    // coup de coude.
+    intertitre(solution ? 'La chaîne, dans l\'ordre' : 'Le plateau — colle les pièces ici, dans l\'ordre', b.y);
+    if (!solution) {
+        chaine.forEach((id, rang) => {
+            const { x, y } = placeDomino(g, b, chaine.length, rang, g.plateauY);
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.35);
+            if (doc.setLineDashPattern) doc.setLineDashPattern([1.4, 1.1], 0);
+            doc.roundedRect(x, y, g.pieceW, g.pieceH, 1.2, 1.2, 'S');
+            if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(5, Math.min(g.pieceH * 0.8, 9)));
+            doc.setTextColor(...ENCRE.grille);
+            doc.text(String(rang + 1), x + g.pieceW / 2, y + g.pieceH / 2 + 1.4, { align: 'center' });
+        });
+        intertitre('À découper', g.piecesY - DOM_TITRE);
+    }
+
+    const zoneY = solution ? g.plateauY : g.piecesY;
     ordre.forEach((id, rang) => {
         const p = g.pieces[id];
         if (!p) return;
-        const x = x0 + (rang % g.cols) * (g.pieceW + DOM_ECART);
-        const y = y0 + Math.floor(rang / g.cols) * (g.pieceH + DOM_ECART);
-        if (y + g.pieceH > b.y + b.h + 1) return;
+        const { x, y } = placeDomino(g, b, ordre.length, rang, zoneY);
 
         // Le trait de découpe : franc, et le même tout autour de la pièce.
         doc.setDrawColor(...ENCRE.trait);
@@ -3805,15 +3884,18 @@ export const RENDUS = {
     },
     dominos: {
         titre: 'Dominos',
-        consigne: (items) => `Découpe les ${(items[0] && items[0].meta.pieces.length) || ''} pièces et remets-les `
-            + 'bout à bout : chaque question doit toucher sa réponse. On part de la pièce DÉPART, '
-            + 'on lit le bout ouvert, on le calcule, et on cherche ce résultat à GAUCHE d\'une autre pièce. '
-            + 'Quand la pièce ARRIVÉE est posée et qu\'il ne reste rien, tout est juste.',
+        consigne: (items) => `Découpe les ${(items[0] && items[0].meta.pieces.length) || ''} pièces du bas, `
+            + 'puis colle-les sur le plateau, dans l\'ordre : chaque question doit toucher sa réponse. '
+            + 'On part de la pièce DÉPART, on lit le bout ouvert, on le calcule, et on cherche ce '
+            + 'résultat à GAUCHE d\'une autre pièce. Quand la pièce ARRIVÉE est posée et qu\'il ne '
+            + 'reste rien, tout est juste.',
         previewGrille: dominosPreviewHtml,
         pdfGrille: dessinerDominosPdf,
         // Une planche prend une demi-page : les pièces doivent rester assez
-        // grandes pour être découpées et manipulées par des doigts d'élève.
-        proportions: { w: 1, h: 0.62 },
+        // grandes pour être découpées et manipulées par des doigts d'élève —
+        // et il en faut désormais DEUX fois la place, le plateau vide au-dessus
+        // et les pièces à découper en dessous.
+        proportions: { w: 1, h: 0.95 },
         parLigneDefaut: 1,
         // Sur la fiche autonome : UNE planche par page. Deux jeux de dominos
         // découpés sur la même feuille finiraient mélangés dans l'enveloppe.
