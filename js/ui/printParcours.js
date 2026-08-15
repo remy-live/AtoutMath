@@ -160,8 +160,8 @@ function assurerModale() {
                     <label class="fq-case"><input type="checkbox" id="pp-c-date" checked> Date</label>
                 </span>
                 <span class="pp-champs" role="group" aria-label="Cartouche de correction">
-                    <label class="fq-case"><input type="checkbox" id="pp-c-note"> Case Note</label>
-                    <label class="fq-case"><input type="checkbox" id="pp-c-com"> Case Commentaire</label>
+                    <label class="fq-case"><input type="checkbox" id="pp-c-note"> Case note</label>
+                    <label class="fq-case"><input type="checkbox" id="pp-c-com"> Case commentaire</label>
                 </span>
             </div>
             <div class="fp-controles pp-sol-reglages">

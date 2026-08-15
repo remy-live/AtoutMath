@@ -685,3 +685,34 @@ test('fractions : on les mesure telles qu\'elles s\'impriment', () => {
     assert.ok(avec[0].fractions && avec[0].dy > 0, 'et le texte descend pour loger le numérateur');
     assert.ok(!sans[0].dy, 'une question sans fraction ne descend pas');
 });
+
+// LE CARTOUCHE NE COÛTE QUE SA PAGE. Il ne s'imprime que sur la première ;
+// lui réserver sa bande sur les quatre pages d'un contrôle, c'était perdre
+// cinq questions par page pour un cadre absent.
+test('blocs : `enteteH1` abaisse la première page, et elle seule', () => {
+    const exos = [exoCourt('Tables', 200)];
+    const sans = composerBlocs(exos, {}, mesurer);
+    const avec = composerBlocs(exos, { enteteH1: A4.enteteH + 17 }, mesurer);
+    assert.ok(sans.pages.length >= 2 && avec.pages.length >= 2, 'il faut au moins deux pages');
+
+    const haut = (page) => Math.min(...page.items.map(i => i.y));
+    assert.ok(haut(avec.pages[0]) - haut(sans.pages[0]) > 16,
+        'la première page doit descendre de la hauteur du cartouche');
+    assert.equal(Math.round(haut(avec.pages[1])), Math.round(haut(sans.pages[1])),
+        'la deuxième page part au même endroit dans les deux cas');
+});
+
+test('blocs : le cartouche ne pousse rien dans le pied de page', () => {
+    // Ce qui doit tenir, c'est le BAS : le cartouche prend de la place en
+    // haut, la page en porte une rangée de moins, mais rien ne descend sous
+    // la marge basse — sinon la dernière ligne s'imprime dans le pli.
+    const exos = [exoCourt('Tables', 200)];
+    const limite = A4.h - A4.marge - A4.piedH;
+    for (const opts of [{}, { enteteH1: A4.enteteH + 17 }]) {
+        const m = composerBlocs(exos, opts, mesurer);
+        m.pages.forEach((page, i) => page.items.forEach(it => {
+            assert.ok(it.y + (it.h || 0) <= limite + 0.01,
+                `page ${i + 1} : un élément descend à ${(it.y + (it.h || 0)).toFixed(1)} mm`);
+        }));
+    }
+});
