@@ -3610,12 +3610,26 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* DEUX RÉPONSES PAR LIGNE. Empilées une par une, six couples débordaient sur
    le repère du dessous — et l'élève écrivait dans le titre de la grille
    suivante. */
+/* DEUX COLONNES QUI TIENNENT LEUR LARGEUR. En flex à 47 %, les deux
+   coordonnées d'un point débordaient de leur moitié dès qu'on a allongé les
+   pointillés : le « ) » d'un point venait se poser sur le « A ( » du suivant.
+   Une grille de deux colonnes ne peut pas déborder — chacune a sa part, et le
+   contenu s'y adapte. */
 .fx-rp-reponses {
-    position: absolute; display: flex; flex-wrap: wrap; align-content: flex-start;
-    gap: .3em .4em; color: #1a202c; font-weight: 600; overflow: hidden;
+    position: absolute; display: grid; grid-template-columns: 1fr 1fr;
+    align-content: start; gap: .35em .8em;
+    color: #1a202c; font-weight: 600; overflow: hidden;
 }
-.fx-rp-rep { white-space: nowrap; width: 47%; }
-.fx-rp-trou { display: inline-block; min-width: 2.4em; border-bottom: 1px dotted #9aa3b2; text-align: center; }
+.fx-rp-rep {
+    display: grid; grid-template-columns: auto 1fr auto 1fr auto;
+    align-items: baseline; gap: 0 .3em; min-width: 0; white-space: nowrap;
+}
+/* DE LA PLACE POUR ÉCRIRE LA COORDONNÉE. À 2,4 em, un nombre à deux chiffres
+   arrivait au bord et l'élève empiétait sur le « ; ». */
+.fx-rp-trou {
+    display: inline-block; min-width: 0; border-bottom: 1px dotted #9aa3b2;
+    text-align: center;
+}
 
 /* --- Fiche « Lire l'heure » ---------------------------------------------
    Le cadran est un SVG unique posé sur tout l'emplacement : un cercle, ses

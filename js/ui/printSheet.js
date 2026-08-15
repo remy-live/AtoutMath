@@ -1812,10 +1812,11 @@ function reperePreviewHtml(item, slot, k, solution) {
     // là où un rond laisse hésiter entre son bord et son milieu.
     if (montrer) {
         m.points.forEach(pt => {
-            // UNE CROIX DÉSIGNE UN POINT, elle ne le recouvre pas : à un quart
-            // de carreau, ses branches mordaient sur les cases voisines et
-            // l'on ne savait plus laquelle était visée.
-            const r = g.pas * 0.17;
+            // UNE CROIX DÉSIGNE UN POINT, elle ne le recouvre pas. À un quart
+            // de carreau ses branches mordaient sur les cases voisines ; à un
+            // sixième, elle marque le croisement sans le cacher — c'est ce
+            // qu'on trace au tableau, et c'est ce que Rémy demande.
+            const r = g.pas * 0.11;
             html += `<div class="fx-rp-croix" style="left:${(g.px(pt.x) - r) * k}px;
                 top:${(g.py(pt.y) - r) * k}px; width:${2 * r * k}px; height:${2 * r * k}px"></div>`;
             html += `<div class="fx-rp-etiq" style="left:${(g.px(pt.x) + r * 0.9) * k}px;
@@ -1829,12 +1830,17 @@ function reperePreviewHtml(item, slot, k, solution) {
             width:${g.cote * k}px; height:${g.listeH * k}px; font-size:${g.listeH * 0.28 * k}px">
             ${m.points.map(p => `${p.label} (${p.x} ; ${p.y})`).join(' &nbsp; ')}</div>`;
     } else {
-        const parLigne = 2;
+        // CHAQUE LIGNE EST UNE PETITE GRILLE : « A ( », le trou, « ; », le
+        // trou, « ) ». Les deux trous prennent tout ce qui reste, à parts
+        // égales — ils ne peuvent donc ni déborder sur le point voisin, ni
+        // rester trop courts pour y écrire un nombre. En largeur fixe, allonger
+        // les pointillés faisait sortir le « ) » d'un point sur le « A ( » du
+        // suivant.
         html += `<div class="fx-rp-reponses" style="left:${g.xGauche * k}px; top:${g.listeY * k}px;
             width:${g.cote * k}px; height:${g.listeH * k}px; font-size:${g.listeH * 0.16 * k}px">
-            ${m.points.map(p => `<span class="fx-rp-rep">${p.label} ( <span class="fx-rp-trou"
-                >${solution ? p.x : ''}</span> ; <span class="fx-rp-trou"
-                >${solution ? p.y : ''}</span> )</span>`).join('')}</div>`;
+            ${m.points.map(p => `<span class="fx-rp-rep"><b>${p.label} (</b><span class="fx-rp-trou"
+                >${solution ? p.x : ''}</span><b>;</b><span class="fx-rp-trou"
+                >${solution ? p.y : ''}</span><b>)</b></span>`).join('')}</div>`;
     }
     return html;
 }
@@ -1876,7 +1882,7 @@ function dessinerRepPdf(doc, item, slot, solution) {
         doc.setLineWidth(0.45);
         doc.setTextColor(...ENCRE.trait);
         m.points.forEach(pt => {
-            const r = g.pas * 0.17, x = g.px(pt.x), y = g.py(pt.y);
+            const r = g.pas * 0.11, x = g.px(pt.x), y = g.py(pt.y);
             doc.line(x - r, y - r, x + r, y + r);
             doc.line(x - r, y + r, x + r, y - r);
             doc.setFontSize(Math.max(5, g.pas * 1.2));
@@ -1892,12 +1898,24 @@ function dessinerRepPdf(doc, item, slot, solution) {
     } else {
         doc.setFontSize(Math.max(5, g.pas * 0.9));
         const parLigne = 2;
+        // LES POINTILLÉS REMPLISSENT LA PLACE, ils ne sont pas comptés d'avance.
+        // Une longueur fixe est soit trop courte pour écrire un nombre à deux
+        // chiffres, soit assez longue pour sortir de sa demi-colonne : le
+        // nombre de points se déduit donc de ce qui reste, mesuré.
+        const largeurCol = g.cote / parLigne - 2;
         m.points.forEach((p, i) => {
             const col = i % parLigne, rang = Math.floor(i / parLigne);
             const x = g.xGauche + col * (g.cote / parLigne) + 1;
             const y = g.listeY + (rang + 0.8) * (g.listeH / Math.ceil(m.points.length / parLigne));
-            const rep = solution ? `${p.x} ; ${p.y}` : '.......  ;  .......';
-            doc.text(pourPdf(`${p.label} ( ${rep} )`), x, y);
+            if (solution) {
+                doc.text(pourPdf(`${p.label} ( ${p.x}  ;  ${p.y} )`), x, y);
+                return;
+            }
+            const fixe = doc.getTextWidth(pourPdf(`${p.label} (  ;  )`));
+            const unPoint = Math.max(0.4, doc.getTextWidth('.'));
+            const combien = Math.max(4, Math.floor((largeurCol - fixe) / (2 * unPoint)));
+            const trou = '.'.repeat(combien);
+            doc.text(pourPdf(`${p.label} ( ${trou} ; ${trou} )`), x, y);
         });
     }
 }
@@ -2472,13 +2490,22 @@ function anglePreviewHtml(item, slot, k, solution) {
         }
     }
 
-    // L'arc de l'angle, puis les deux côtés.
+    // L'ARC MARQUE UN ANGLE QUI EXISTE, JAMAIS UN ANGLE À TRACER.
+    //
+    // En mode « construire », il était dessiné en pointillé pour montrer où
+    // l'angle devait aller : c'est donner la moitié de la réponse — la
+    // direction —, et sur une feuille où l'élève doit poser son rapporteur
+    // lui-même, cela ne laisse plus qu'à recopier. Rémy : « enlève sur le pdf
+    // les arcs de cercle en pointillés ! ». Le PDF, lui, n'en dessinait aucun :
+    // l'aperçu montrait donc autre chose que la feuille, des deux côtés à la
+    // fois. Un seul arc, plein, quand il y a un angle à voir.
     const ra = g.r * 0.26;
-    d += `<path d="M ${T(g.sx + Math.cos(c.a0) * ra)} ${T(g.sy + Math.sin(c.a0) * ra)}
-          A ${T(ra)} ${T(ra)} 0 0 ${m.target > 180 ? 1 : 0}
-          ${T(g.sx + Math.cos(c.a1) * ra)} ${T(g.sy + Math.sin(c.a1) * ra)}"
-          fill="none" stroke="#1a202c" stroke-width="${T(0.3)}"
-          stroke-dasharray="${construire && !solution ? `${T(0.8)} ${T(0.8)}` : 'none'}"/>`;
+    if (!construire || solution) {
+        d += `<path d="M ${T(g.sx + Math.cos(c.a0) * ra)} ${T(g.sy + Math.sin(c.a0) * ra)}
+              A ${T(ra)} ${T(ra)} 0 0 ${m.target > 180 ? 1 : 0}
+              ${T(g.sx + Math.cos(c.a1) * ra)} ${T(g.sy + Math.sin(c.a1) * ra)}"
+              fill="none" stroke="#1a202c" stroke-width="${T(0.3)}"/>`;
+    }
     d += `<line x1="${T(g.sx)}" y1="${T(g.sy)}" x2="${T(c.b.x)}" y2="${T(c.b.y)}"
           stroke="#1a202c" stroke-width="${T(0.55)}" stroke-linecap="round"/>`;
     if (!construire || solution) {
@@ -2531,6 +2558,20 @@ function dessinerAnglePdf(doc, item, slot, solution) {
     }
 
     doc.setDrawColor(...ENCRE.trait);
+    // L'arc de l'angle — le même qu'à l'aperçu, et seulement quand il y a un
+    // angle à voir. Il manquait ici : la feuille et son aperçu ne montraient
+    // pas la même figure.
+    if (!construire || solution) {
+        const ra = g.r * 0.26;
+        doc.setLineWidth(0.3);
+        const pas = (c.a1 - c.a0) / 24;
+        let ax = g.sx + Math.cos(c.a0) * ra, ay = g.sy + Math.sin(c.a0) * ra;
+        for (let i = 1; i <= 24; i++) {
+            const a = c.a0 + pas * i;
+            const nx = g.sx + Math.cos(a) * ra, ny = g.sy + Math.sin(a) * ra;
+            doc.line(ax, ay, nx, ny); ax = nx; ay = ny;
+        }
+    }
     doc.setLineWidth(0.55);
     doc.line(g.sx, g.sy, c.b.x, c.b.y);
     if (!construire || solution) {
@@ -4042,7 +4083,12 @@ function geoConversion(item, slot) {
     // « 505,4 mm = ……… dam » : il faut la place de l'écrire d'un trait, sinon
     // l'énoncé passe à la ligne et le tableau se décale d'une conversion à
     // l'autre.
-    const enonceW = Math.min(Math.max(b.w * 0.3, 34), 46);
+    // LA COLONNE DE L'ÉNONCÉ PORTE AUSSI LA RÉPONSE : « 1,3 km = …… m » —
+    // c'est sur ces pointillés-là qu'on écrit, et ils étaient trop courts pour
+    // un nombre à virgule. Rémy : « mets un peu plus de pointillés pour noter
+    // la réponse ». La colonne s'élargit d'autant : allonger les points sans
+    // élargir la colonne les aurait simplement coupés.
+    const enonceW = Math.min(Math.max(b.w * 0.34, 40), 56);
     const cw = Math.min((b.w - enonceW - 2) / nCol, 15);
     // Une rangée d'en-tête, puis une par conversion. Une case de tableau de
     // conversion doit accueillir un chiffre écrit à la main : sept
@@ -4270,8 +4316,9 @@ function geoPointAPoint(item, slot) {
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const larg = Math.max(1, maxX - minX), haut = Math.max(1, maxY - minY);
     // La marge laisse la place aux étiquettes des points du bord, qui
-    // s'écrivent SOUS le point et déborderaient du cadre.
-    const marge = 7;
+    // s'écrivent SOUS le point et déborderaient du cadre. Elle a grandi avec
+    // elles.
+    const marge = 9;
     const k = Math.min((b.w - marge * 2) / larg, (b.h - marge * 2.4) / haut);
     const dessinW = larg * k, dessinH = haut * k;
     const ox = b.x + (b.w - dessinW) / 2;
@@ -4281,8 +4328,14 @@ function geoPointAPoint(item, slot) {
         m, cote, x0: ox, y0: oy,
         px: (p) => ox + (p.x - minX) * k,
         py: (p) => oy + (p.y - minY) * k,
-        r: Math.max(1.1, cote * 0.016),
-        taille: Math.max(6, Math.min(cote * 0.05, 10))
+        // LE POINT EST UN REPÈRE, PAS UNE PASTILLE. Rémy : « fais des cercles
+        // bien plus petits et sur le pdf une écriture un peu plus grande ».
+        // C'est le bon ordre des choses : ce qu'on lit, c'est le CALCUL écrit
+        // à côté du point ; le point, lui, n'a qu'à dire où poser le crayon.
+        // Gros, il mangeait la place de son étiquette et faisait croire qu'on
+        // devait le colorier.
+        r: Math.max(0.55, cote * 0.008),
+        taille: Math.max(7, Math.min(cote * 0.075, 13))
     };
 }
 

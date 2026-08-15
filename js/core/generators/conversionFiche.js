@@ -102,7 +102,7 @@ export const conversionFicheGenerator = {
             conversions.push({
                 valeur: c.valeur, depart: c.depart, arrivee: c.arrivee,
                 attendu: c.attendu,
-                enonce: `${NOMBRE_FR(c.valeur)} ${c.depart} = ……… ${c.arrivee}`,
+                enonce: `${NOMBRE_FR(c.valeur)} ${c.depart} = ……………… ${c.arrivee}`,
                 complet: `${NOMBRE_FR(c.valeur)} ${c.depart} = ${NOMBRE_FR(c.attendu)} ${c.arrivee}`,
                 reponse: `${NOMBRE_FR(c.attendu)} ${c.arrivee}`,
                 cases,
