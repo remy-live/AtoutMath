@@ -77,14 +77,23 @@ class Dedale extends BaseGame {
                     background: linear-gradient(90deg, #34d399, #059669);
                 }
 
+                /* LA CROIX PASSE SOUS LE DÉDALE, jamais à côté.
+                   Elle était posée À DROITE : sur un téléphone tenu debout, elle
+                   prenait deux cents pixels de largeur, le dédale n'avait plus
+                   la place et sortait de son cadre — on n'en voyait que la
+                   moitié gauche. Le dédale est CARRÉ : c'est la largeur qui le
+                   dimensionne, et il faut la lui laisser entière. La croix ne
+                   revient à côté qu'en paysage, où c'est la hauteur qui manque. */
                 .dd-corps {
-                    display: flex; align-items: center; justify-content: center; gap: 12px;
+                    display: flex; flex-direction: column;
+                    align-items: center; justify-content: center; gap: 10px;
                     flex: 1 1 auto; width: 100%; min-height: 0;
                 }
                 .dd-vue {
-                    position: relative; flex: 1 1 auto; height: 100%; min-height: 0;
+                    position: relative; flex: 1 1 auto; width: 100%; min-height: 0;
                     display: flex; align-items: center; justify-content: center;
                     touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
+                    overflow: hidden;
                 }
                 .dd-plateau { position: relative; }
 
@@ -164,8 +173,11 @@ class Dedale extends BaseGame {
                 .dd-note--ko { color: var(--danger, #dc2626); font-weight: 600; }
 
                 @container (min-width: 760px) { .dd-croix { opacity: .6; } }
+                /* Téléphone couché : plus assez de hauteur pour empiler. La
+                   croix revient à côté, et le dédale prend ce qui reste. */
                 @media (max-height: 560px) {
-                    .dd-corps { gap: 8px; }
+                    .dd-corps { flex-direction: row; gap: 8px; }
+                    .dd-vue { width: auto; height: 100%; }
                     .dd-croix { grid-template-columns: repeat(3, 38px); grid-template-rows: repeat(3, 32px); }
                     .dd-pied { flex-direction: column; gap: 6px; }
                     .dd-note { min-height: 1.2em; font-size: .76rem; }
@@ -240,7 +252,7 @@ class Dedale extends BaseGame {
                 ? (dx > 0 ? 'd' : 'g') : (dy > 0 ? 'b' : 'h'), true);
         };
         this.vueEl.onpointerdown = (ev) => {
-            if (this.isDemo) return;
+            if (this.isDemo || ev.pointerType === 'touch') return;   // le doigt : plus bas
             ev.preventDefault();
             suit = true;
             try { this.vueEl.setPointerCapture(ev.pointerId); } catch { /* sans capture */ }
@@ -250,6 +262,20 @@ class Dedale extends BaseGame {
         const lacher = () => { suit = false; };
         this.vueEl.onpointerup = lacher;
         this.vueEl.onpointercancel = lacher;
+
+        // LE DOIGT PASSE PAR LES ÉVÉNEMENTS TOUCH, pas par les pointeurs :
+        // Safari émet un « pointercancel » dès qu'il décide qu'un geste est un
+        // défilement, et le trajet mourait à mi-chemin. C'est la même leçon
+        // que pour le glisser-déposer (core/glisserDeposer.js).
+        this.vueEl.addEventListener('touchstart', (ev) => {
+            if (this.isDemo) return;
+            versLa(ev.touches[0]);
+        }, { passive: true });
+        this.vueEl.addEventListener('touchmove', (ev) => {
+            if (this.isDemo) return;
+            ev.preventDefault();                 // on prend la main sur le défilement
+            versLa(ev.touches[0]);
+        }, { passive: false });
     }
 
     startGameLoop() { this.poser(); }
@@ -284,9 +310,11 @@ class Dedale extends BaseGame {
             : (FORMES[this.etat.forme] || FORMES.rectangle).nom;
         this.dessiner();
         this.majTete();
+        // COURT : deux lignes de consigne passent derrière la barre du
+        // navigateur sur un téléphone, et l'élève ne les lit jamais.
         this.note(this.mode === 'dessin'
-            ? 'Va du rond vert à l\'étoile. Le fil rose que tu laisses derrière toi finira par former une image — et si tu reviens sur tes pas, il se rembobine.'
-            : 'Va du rond vert à l\'étoile. Flèches du clavier, croix, ou promène ton doigt sur le dédale.');
+            ? 'Du rond vert à l\'étoile — ton fil dessinera quelque chose.'
+            : 'Du rond vert à l\'étoile. Promène ton doigt, ou les flèches.');
         return true;
     }
 
