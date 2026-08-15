@@ -514,10 +514,22 @@ function hauteurLibelles(p, colonnes) {
 const largeurTexte = (s, pt) => String(s).length * pt * 0.48 * 0.3528;
 
 /** La hauteur qu'occupe l'énigme (titre, décor, indices numérotés) à cette largeur. */
+/**
+ * Le corps du texte de l'énigme, en points, pour un bloc de cette largeur.
+ *
+ * Fixé à 8 pt, il convenait à un bloc de parcours large de six centimètres ;
+ * sur une fiche autonome, où le bloc fait une demi-page paysage, l'histoire
+ * s'écrivait en pattes de mouche sous une grille de deux centimètres de case.
+ */
+const policeTexteLogi = (largeur) => Math.min(Math.max(8, largeur * 0.075), 11.5);
+
 function hauteurTexteLogi(p, largeur) {
-    const lignes = (s, pt, l) => Math.max(1, Math.ceil(largeurTexte(s, pt) / Math.max(10, l)));
-    let h = 4 + lignes(p.decor, 7.6, largeur) * 3.4 + 1.5;
-    p.indices.forEach((ind, k) => { h += lignes(`${k + 1}. ${ind.texte}`, 8, largeur - 2) * 3.9; });
+    const pt = policeTexteLogi(largeur);
+    const lignes = (s, taille, l) => Math.max(1, Math.ceil(largeurTexte(s, taille) / Math.max(10, l)));
+    let h = pt * 0.5 + lignes(p.decor, pt * 0.95, largeur) * pt * 0.45 + 1.5;
+    p.indices.forEach((ind, k) => {
+        h += lignes(`${k + 1}. ${ind.texte}`, pt, largeur - 2) * pt * 0.49;
+    });
     return h;
 }
 
@@ -538,30 +550,69 @@ function geometrieLogi(item, boite) {
     const lignes = [0]; for (let r = nc - 1; r >= 2; r--) lignes.push(r);
 
     const bandeau = LOGI_BANDEAU;
-    const etiq = Math.max(11, Math.min(17, boite.w * 0.13));
-    const entete = bandeau + hauteurLibelles(p, colonnes);
     const nx = colonnes.length * n, ny = lignes.length * n;
-    const cases = (largeur, hautDispo) => Math.min(
-        (largeur - bandeau - etiq) / nx, (hautDispo - entete - 2) / ny, 14);
+    // LE PLAFOND EST CELUI DU CRAYON, PAS CELUI DE LA PAGE. À 14 mm, la grille
+    // d'une fiche autonome — une demi-page paysage par énigme — flottait au
+    // coin d'un bloc aux trois quarts vide : Rémy, « le rendu sur le PDF n'est
+    // pas joli par rapport au rendu sur l'écran de jeu ». Vingt-deux
+    // millimètres restent une case où l'on coche et où l'on barre, et le
+    // dessin occupe enfin la place qu'on lui a donnée.
+    const PLAFOND_CASE = 22;
+
+    // LES BANDES D'ÉTIQUETTES GRANDISSENT AVEC LES CASES. Leur largeur (à
+    // gauche) et leur hauteur (en haut) étaient bornées à 17 mm : à côté d'une
+    // case de deux centimètres, « madeleines » écrit dans 13 mm faisait une
+    // note de bas de page. Elles sont donc calculées DEUX FOIS — une première
+    // pour connaître la taille des cases, une seconde pour s'y accorder.
+    const libellesMin = hauteurLibelles(p, colonnes);
+    const bandeDe = (cote) => Math.max(libellesMin, Math.min(cote * 1.5, 34));
+    const etiqDe = (cote) => Math.max(11, Math.min(boite.w * 0.13, Math.max(17, cote * 1.1), 34));
+
+    const texteW = Math.max(58, Math.min(boite.w * 0.44, 118));
+    const texteH = hauteurTexteLogi(p, boite.w);
+    /** La plus grande case qui tienne, pour une bande d'étiquettes donnée. */
+    const cases = (largeur, hautDispo, etiqL, bandeL) => Math.min(
+        (largeur - bandeau - etiqL) / nx,
+        (hautDispo - bandeau - bandeL - 2) / ny, PLAFOND_CASE);
+    /** Deux passes : la seconde tient compte des bandes que la première permet. */
+    const ajuster = (largeur, hautDispo) => {
+        let c = cases(largeur, hautDispo, etiqDe(0), bandeDe(0));
+        for (let i = 0; i < 2; i++) c = cases(largeur, hautDispo, etiqDe(c), bandeDe(c));
+        return c;
+    };
 
     // À côté : le texte tient dans une colonne, la grille occupe le reste.
-    const texteW = Math.max(58, Math.min(boite.w * 0.44, 118));
-    const coteA = cases(boite.w - texteW - 6, boite.h);
+    const coteA = ajuster(boite.w - texteW - 6, boite.h);
     // Empilée : le texte prend toute la largeur, la grille toute la hauteur qui reste.
-    const texteH = hauteurTexteLogi(p, boite.w);
-    const coteB = cases(boite.w, boite.h - texteH - 3);
+    const coteB = ajuster(boite.w, boite.h - texteH - 3);
 
-    const empile = coteB > coteA;
+    // ON PRÉFÈRE L'EMPILÉ, et il faut qu'il coûte plus de 15 % de la taille des
+    // cases pour qu'on y renonce. C'est la disposition de l'écran — l'histoire
+    // et ses indices en haut, la grille en dessous — et celle des logigrammes
+    // de magazine ; les mettre côte à côte pour gagner un millimètre de case
+    // change la feuille sans que personne l'ait demandé.
+    const empile = coteB >= coteA * 0.85;
     const cote = Math.max(3, empile ? coteB : coteA);
+    const etiq = etiqDe(cote);
+    const entete = bandeau + bandeDe(cote);
     const largeurTotale = bandeau + etiq + cote * nx;
     const zoneX = empile ? boite.x : boite.x + texteW + 6;
     const zoneW = empile ? boite.w : boite.w - texteW - 6;
     const xCat = zoneX + Math.max(0, (zoneW - largeurTotale) / 2);
+    // ET LA GRILLE EST CENTRÉE DANS CE QUI RESTE. Collée en haut du bloc, elle
+    // laissait sous elle une clairière blanche aussi haute qu'elle.
+    const hautGrille = entete + ny * cote;
+    const hautLibre = boite.h - (empile ? texteH + 3 : 0);
+    const yZone = (empile ? boite.y + texteH + 3 : boite.y)
+        + Math.max(0, (hautLibre - hautGrille) / 2);
+    const indicesW = empile ? boite.w : texteW;
     return {
         p, n, nc, colonnes, lignes, cote, bandeau, etiq, entete, xCat,
         x0: xCat + bandeau + etiq,
-        y0: (empile ? boite.y + texteH + 3 : boite.y) + entete + 1,
-        empile, indicesW: empile ? boite.w : texteW
+        y0: yZone + entete + 1,
+        empile, indicesW,
+        // Le corps du texte suit la largeur qui lui est vraiment donnée.
+        pt: policeTexteLogi(indicesW)
     };
 }
 
@@ -578,6 +629,20 @@ const logiVisible = (r, c) => r === 0 || c < r;
  *
  * 0,58 est la largeur moyenne d'un caractère d'Helvetica gras, en cadratins.
  */
+/**
+ * Le plafond de police SUIT la taille des cases.
+ *
+ * Il était fixe — 2,6 mm pour un bandeau, 2,5 mm pour une étiquette — parce
+ * que les cases n'avaient jamais plus de 14 mm. Sur une fiche autonome, où
+ * elles en font maintenant 22, la même étiquette de 2,5 mm à côté d'une case
+ * de deux centimètres se lisait comme une note de bas de page : c'est une
+ * bonne part du « pas joli » vu par Rémy.
+ */
+const PLAFOND_LOGI = {
+    bandeau: (cote) => Math.min(Math.max(2.6, cote * 0.22), 4.6),
+    etiquette: (cote) => Math.min(Math.max(2.5, cote * 0.2), 4)
+};
+
 function policeLogi(texte, place, plafond) {
     const n = Math.max(1, String(texte ?? '').length);
     return Math.max(1.3, Math.min(plafond, (place * 0.92) / (n * 0.58)));
@@ -608,7 +673,7 @@ function logigrammePreviewHtml(item, slot, k, solution) {
     // de croix n'aide personne : celui qui corrige trente copies veut lire
     // « Malo · le roi », pas déchiffrer un tableau une deuxième fois.
     html += `<div class="fx-logi-texte" style="left:${b.x * k}px; top:${b.y * k}px;
-        width:${g.indicesW * k}px; font-size:${2.82 * k}px">
+        width:${g.indicesW * k}px; font-size:${g.pt * 0.3528 * k}px">
         <b>${echapperSheet(p.titre)}</b> — <i>${echapperSheet(solution ? 'Solution' : p.decor)}</i>
         <ol>${(solution ? phrasesSolutionLogi(item) : p.indices.map(i => i.texte))
         .map(t => `<li>${echapperSheet(t)}</li>`).join('')}</ol></div>`;
@@ -619,13 +684,13 @@ function logigrammePreviewHtml(item, slot, k, solution) {
         const x = x0 + ci * n * cote;
         html += `<div class="fx-logi-cat" style="left:${x * k}px; top:${(y0 - g.entete) * k}px;
             width:${(n * cote) * k}px; height:${g.bandeau * k}px; background:${rgb(c, .55)};
-            font-size:${policeLogi(p.categories[c].label, n * cote, Math.min(2.6, cote * 0.55)) * k}px"
+            font-size:${policeLogi(p.categories[c].label, n * cote, PLAFOND_LOGI.bandeau(cote)) * k}px"
             >${echapperSheet(p.categories[c].label)}</div>`;
         for (let j = 0; j < n; j++) {
             html += `<div class="fx-logi-vert" style="left:${(x + j * cote) * k}px;
                 top:${(y0 - libH) * k}px; width:${cote * k}px;
                 height:${libH * k}px; background:${rgb(c, .18)};
-                font-size:${policeLogi(etiquetteLogi(p.categories[c], j), libH, Math.min(2.5, cote * 0.5)) * k}px"
+                font-size:${policeLogi(etiquetteLogi(p.categories[c], j), libH, PLAFOND_LOGI.etiquette(cote)) * k}px"
                 >${echapperSheet(etiquetteLogi(p.categories[c], j))}</div>`;
         }
     });
@@ -634,13 +699,13 @@ function logigrammePreviewHtml(item, slot, k, solution) {
         const y = y0 + ri * n * cote;
         html += `<div class="fx-logi-catlig" style="left:${g.xCat * k}px; top:${y * k}px;
             width:${g.bandeau * k}px; height:${(n * cote) * k}px; background:${rgb(r, .55)};
-            font-size:${policeLogi(p.categories[r].label, n * cote, Math.min(2.6, cote * 0.55)) * k}px"
+            font-size:${policeLogi(p.categories[r].label, n * cote, PLAFOND_LOGI.bandeau(cote)) * k}px"
             >${echapperSheet(p.categories[r].label)}</div>`;
         for (let i = 0; i < n; i++) {
             html += `<div class="fx-logi-lig" style="left:${(g.xCat + g.bandeau) * k}px;
                 top:${(y + i * cote) * k}px; width:${g.etiq * k}px; height:${cote * k}px;
                 background:${rgb(r, .18)};
-                font-size:${policeLogi(etiquetteLogi(p.categories[r], i), g.etiq, Math.min(2.5, cote * 0.5)) * k}px"
+                font-size:${policeLogi(etiquetteLogi(p.categories[r], i), g.etiq, PLAFOND_LOGI.etiquette(cote)) * k}px"
                 >${echapperSheet(etiquetteLogi(p.categories[r], i))}</div>`;
         }
         colonnes.forEach((c, ci) => {
@@ -670,17 +735,17 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
     // L'histoire, puis les indices numérotés — ou la réponse en toutes lettres
     // sur la page des solutions (voir `phrasesSolutionLogi`).
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(g.pt * 1.15);
     doc.setTextColor(...ENCRE.texte);
-    let y = b.y + 4;
+    let y = b.y + g.pt * 0.5;
     doc.text(pourPdf(p.titre), b.x, y);
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7.6);
+    doc.setFontSize(g.pt * 0.95);
     doc.setTextColor(...ENCRE.gris);
     doc.splitTextToSize(pourPdf(solution ? 'Solution' : p.decor), g.indicesW)
-        .forEach(l => { y += 3.4; doc.text(l, b.x, y); });
+        .forEach(l => { y += g.pt * 0.45; doc.text(l, b.x, y); });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(g.pt);
     doc.setTextColor(...ENCRE.texte);
     y += 1.5;
     const textes = solution
@@ -688,7 +753,7 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         : p.indices.map(ind => ind.texte);
     textes.forEach((t, k) => {
         const lignesTexte = doc.splitTextToSize(pourPdf(`${k + 1}. ${t}`), g.indicesW - 2);
-        lignesTexte.forEach((l, li) => { y += 3.9; doc.text(l, b.x + (li ? 3 : 0), y); });
+        lignesTexte.forEach((l, li) => { y += g.pt * 0.49; doc.text(l, b.x + (li ? 3 : 0), y); });
     });
 
     // Les bandeaux de colonne. Cernés eux aussi : le trait noir court sur
@@ -700,7 +765,7 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         doc.setLineWidth(0.15);
         doc.setFillColor(...pastel(c, 0.55));
         doc.rect(x, y0 - g.entete, n * cote, g.bandeau, 'FD');
-        doc.setFontSize(policeLogiPt(p.categories[c].label, n * cote, Math.min(2.8, cote * 0.46)));
+        doc.setFontSize(policeLogiPt(p.categories[c].label, n * cote, PLAFOND_LOGI.bandeau(cote)));
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(p.categories[c].label), x + n * cote / 2, y0 - g.entete + g.bandeau * 0.72,
@@ -712,7 +777,7 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         // borne, pas la largeur d'une case.
         const plusLong = Math.max(...Array.from({ length: n },
             (_, j) => String(etiquetteLogi(p.categories[c], j)).length));
-        doc.setFontSize(policeLogiPt('x'.repeat(plusLong), libH, Math.min(2.6, cote * 0.42)));
+        doc.setFontSize(policeLogiPt('x'.repeat(plusLong), libH, PLAFOND_LOGI.etiquette(cote)));
         for (let j = 0; j < n; j++) {
             doc.text(pourPdf(etiquetteLogi(p.categories[c], j)),
                 x + j * cote + cote * 0.68, y0 - 1.2, { angle: 90 });
@@ -727,7 +792,7 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         doc.setFillColor(...pastel(r, 0.55));
         doc.rect(xCat, y0r, g.bandeau, n * cote, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(policeLogiPt(p.categories[r].label, n * cote, Math.min(2.8, cote * 0.46)));
+        doc.setFontSize(policeLogiPt(p.categories[r].label, n * cote, PLAFOND_LOGI.bandeau(cote)));
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(p.categories[r].label), xCat + g.bandeau * 0.72, y0r + n * cote / 2,
             { align: 'center', angle: 90 });
@@ -736,7 +801,7 @@ function dessinerLogigrammePdf(doc, item, slot, solution, champ) {
         doc.setFont('helvetica', 'normal');
         const plusLongR = Math.max(...Array.from({ length: n },
             (_, i) => String(etiquetteLogi(p.categories[r], i)).length));
-        doc.setFontSize(policeLogiPt('x'.repeat(plusLongR), g.etiq, Math.min(2.6, cote * 0.42)));
+        doc.setFontSize(policeLogiPt('x'.repeat(plusLongR), g.etiq, PLAFOND_LOGI.etiquette(cote)));
         for (let i = 0; i < n; i++) {
             doc.text(pourPdf(etiquetteLogi(p.categories[r], i)),
                 x0 - 1.5, y0r + i * cote + cote * 0.62, { align: 'right' });
