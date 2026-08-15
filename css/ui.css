@@ -394,8 +394,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fp-entete {
     position: absolute; display: flex; align-items: baseline;
-    /* Le titre a sa ligne à lui : il la partageait avec le « Nom / Date », et
-       un titre un peu long venait buter dans la case de la note. */
+    /* CENTRÉ : c'est le titre du devoir. Il a sa ligne à lui — il la partageait
+       avec le « Nom / Date », et un titre un peu long venait buter dedans. */
+    justify-content: center; text-align: center;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .fp-entete b { overflow: hidden; text-overflow: ellipsis; }

@@ -30,7 +30,8 @@ import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../cor
 import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
-    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE
+    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
+    cartoucheDe, hauteurEntete1
 } from './ficheRendu.js';
 
 /**
@@ -158,6 +159,10 @@ function assurerModale() {
                     <label class="fq-case"><input type="checkbox" id="pp-c-classe"> Classe</label>
                     <label class="fq-case"><input type="checkbox" id="pp-c-date" checked> Date</label>
                 </span>
+                <span class="pp-champs" role="group" aria-label="Cartouche de correction">
+                    <label class="fq-case"><input type="checkbox" id="pp-c-note"> Case Note</label>
+                    <label class="fq-case"><input type="checkbox" id="pp-c-com"> Case Commentaire</label>
+                </span>
             </div>
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
@@ -209,6 +214,8 @@ export function ouvrirFicheParcours(chemin) {
     const titreEl = m.querySelector('#pp-titre');
     const CHAMPS = ['nom', 'prenom', 'classe', 'date'];
     const casesChamps = CHAMPS.map(c => m.querySelector(`#pp-c-${c}`));
+    const noteCase = m.querySelector('#pp-c-note');
+    const comCase = m.querySelector('#pp-c-com');
     const modeSol = m.querySelector('#pp-sol-mode');
     const colSol = m.querySelector('#pp-sol-colonnes');
     const ouSol = m.querySelector('#pp-sol-ou');
@@ -276,7 +283,19 @@ export function ouvrirFicheParcours(chemin) {
     };
     repartirPoints();
 
-    const options = () => ({
+    const options = () => {
+      const entete = {
+        titre: titreEl.value.trim() || (chemin.name || 'Parcours'),
+        champs: CHAMPS.filter((c, i) => casesChamps[i].checked),
+        // LE CARTOUCHE DE CORRECTION. La note se coche d'elle-même sur une
+        // interrogation — c'est ce qu'on veut neuf fois sur dix — mais le
+        // professeur reste libre de la retirer, ou de mettre une case
+        // d'appréciation sur une simple fiche d'entraînement.
+        note: noteCase.checked,
+        commentaire: comCase.checked,
+        noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20))
+      };
+      return {
         interrogation: interro.checked,
         avecChoix: choixEl.checked,
         modeSolution: modeSol.value,
@@ -293,11 +312,15 @@ export function ouvrirFicheParcours(chemin) {
         // nom du parcours, mais « Tout sur papier (72 exercices) » n'est pas ce
         // qu'on écrit en haut d'un contrôle. Et les champs d'identité varient :
         // une fiche d'entraînement n'a pas besoin de la classe, un contrôle si.
-        entete: {
-            titre: titreEl.value.trim() || (chemin.name || 'Parcours'),
-            champs: CHAMPS.filter((c, i) => casesChamps[i].checked)
-        }
-    });
+        entete,
+        // LA PREMIÈRE PAGE DESCEND DE LA HAUTEUR DU CARTOUCHE, les autres non :
+        // le cadre « Note / Commentaire » ne s'imprime qu'une fois, et lui
+        // réserver sa bande sur les quatre pages, c'est perdre des questions
+        // pour un cadre absent.
+        enteteH1: hauteurEntete1(pageDe(orientEl.value),
+            cartoucheDe(entete, interro.checked))
+      };
+    };
 
     // La liste des étapes : le nombre de questions de chacune, ET leur ordre
     // sur la feuille — chaque ligne se glisse plus haut ou plus bas par sa
@@ -798,7 +821,7 @@ export function ouvrirFicheParcours(chemin) {
                 numerotation: o.numerotation, colonnesSolutions: o.colonnesSolutions }, mesurer)
             : null;
         const blocsSol = (avecSolutions && aGrilles.length)
-            ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false }, mesurer)
+            ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false, enteteH1: 0 }, mesurer)
             : null;
         const pg = mise.page || pageDe(o.orientation);
 
@@ -807,15 +830,15 @@ export function ouvrirFicheParcours(chemin) {
         apercu.style.width = `${pg.w * k}px`;
 
         const nom = o.entete.titre;
-        const note = o.interrogation ? { sur: o.noteSur } : null;
+        const note = cartoucheDe(o.entete, o.interrogation);
         // Les pages, dans l'ordre du document : les questions, la liste des
         // réponses, puis les blocs corrigés (le sudoku rempli, la rédaction
         // écrite — leur solution est une figure, pas une ligne dans une liste).
         const vues = [
-            ...mise.pages.map(p => ({
-                page: p, opts: mise.opts, liste: false,
-                sousTitre: o.interrogation ? 'Interrogation' : ''
-            })),
+            // LE TITRE NE DIT QUE LE TITRE. Le logiciel y ajoutait
+            // « — Interrogation » : c'est au professeur d'écrire ce qu'est sa
+            // feuille, et il l'a déjà fait dans le champ d'en-tête.
+            ...mise.pages.map(p => ({ page: p, opts: mise.opts, liste: false, sousTitre: '' })),
             ...(listeSol ? listeSol.pages.map(p => ({
                 page: p, opts: listeSol.opts, liste: true, sousTitre: 'Solutions', sol: true
             })) : []),
@@ -847,7 +870,7 @@ export function ouvrirFicheParcours(chemin) {
         morceaux.push(o.orientation === 'paysage' ? 'paysage' : 'portrait');
         totalEl.textContent = morceaux.join(' · ');
 
-        noteSurChamp.hidden = !o.interrogation;
+        noteSurChamp.hidden = !o.entete.note;
         const total = totalPoints();
         noteEl.textContent = o.interrogation
             ? `Interrogation : pas de consigne imprimée, un barème par exercice (total ${total} pt${total > 1 ? 's' : ''}), `
@@ -863,7 +886,14 @@ export function ouvrirFicheParcours(chemin) {
     titreEl.value = chemin.name || 'Parcours';
     titreEl.oninput = rendre;
     casesChamps.forEach(c => { c.onchange = rendre; });
-    interro.onchange = () => { blocs = null; rendreListe(); rendre(); };
+    noteCase.onchange = comCase.onchange = rendre;
+    // COCHER « interrogation » COCHE LA NOTE. C'est ce qu'on veut neuf fois sur
+    // dix, et l'oublier fait rendre une copie sans endroit où poser le chiffre.
+    // Le professeur peut la décocher ensuite : on ne la recoche pas de force.
+    interro.onchange = () => {
+        if (interro.checked) noteCase.checked = true;
+        blocs = null; rendreListe(); rendre();
+    };
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
     colSol.onchange = rendre;
@@ -961,8 +991,13 @@ function telecharger(modal, chemin, lire) {
             const mise = composerBlocs(exos, options, mesurer);
             mise.pages.forEach((page, i) => {
                 if (i) pdf.addPage('a4', sens);
-                entetePdf(pdf, nom, options.interrogation ? 'Interrogation' : `page ${i + 1}/${mise.pages.length}`,
-                    i === 0 ? bareme : '', i === 0 ? note : null, mise.page, options.entete);
+                // Le titre seul, centré ; la pagination descend au pied de
+                // page — un « — page 2/4 » collé au titre, c'est le titre qui
+                // n'est plus centré.
+                entetePdf(pdf, nom, '',
+                    i === 0 ? bareme : '', i === 0 ? note : null, mise.page,
+                    { ...options.entete,
+                      pagination: mise.pages.length > 1 ? `page ${i + 1}/${mise.pages.length}` : '' });
                 pdfItems(pdf, page, mise.opts);
             });
 
@@ -985,7 +1020,7 @@ function telecharger(modal, chemin, lire) {
                 // Les blocs corrigés : le sudoku rempli, la rédaction écrite.
                 if (aGrilles.length) {
                     const bs = composerBlocs(aGrilles,
-                        { ...options, solution: true, interrogation: false }, mesurer);
+                        { ...options, solution: true, interrogation: false, enteteH1: 0 }, mesurer);
                     bs.pages.forEach((page) => {
                         nouvelle();
                         entetePdf(doc, nom, 'Solutions', '', null, bs.page, { champs: [] });

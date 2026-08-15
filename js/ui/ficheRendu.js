@@ -345,58 +345,104 @@ function champsDe(liste, place) {
 }
 
 /**
+ * LE CARTOUCHE « NOTE / COMMENTAIRE » : un tableau à deux colonnes, sous
+ * l'en-tête de la première page.
+ *
+ * La petite case « … / 20 » en haut à droite disait la note et rien d'autre.
+ * Or ce qu'un professeur rend à un élève, ce n'est pas un chiffre : c'est un
+ * chiffre ET une phrase. Sans place prévue, l'appréciation s'écrit en travers
+ * de la première question, ou pas du tout.
+ *
+ * Les deux colonnes sont indépendantes : une fiche d'entraînement peut ne
+ * vouloir que le commentaire, un contrôle rapide que la note.
+ *
+ *   { note: bool, commentaire: bool, sur: 20 }  →  null si aucune des deux.
+ */
+export const CARTOUCHE_H = 17;   // mm réservés à l'ensemble, air compris
+
+export function cartoucheDe(entete = {}, interrogation = false) {
+    const note = entete.note ?? interrogation;
+    const com = entete.commentaire ?? false;
+    if (!note && !com) return null;
+    return { note: !!note, commentaire: !!com, sur: entete.noteSur || 20 };
+}
+
+/** La hauteur d'en-tête à réserver sur la PREMIÈRE page, cartouche compris. */
+export function hauteurEntete1(page, cartouche) {
+    return (page || A4).enteteH + (cartouche ? CARTOUCHE_H : 0);
+}
+
+/** Les deux colonnes du cartouche, en mm : [{x, w, label, valeur}]. */
+function colonnesCartouche(P, c) {
+    const L = P.w - 2 * P.marge;
+    // La note tient dans trente millimètres ; tout le reste va au commentaire,
+    // qui en a bien plus besoin — on n'écrit pas « Il faut apprendre les
+    // tables de multiplication » dans deux centimètres.
+    const noteW = c.commentaire ? 30 : L;
+    const cols = [];
+    if (c.note) cols.push({ x: 0, w: noteW, label: 'Note', valeur: `… / ${c.sur}` });
+    if (c.commentaire) {
+        cols.push({
+            x: c.note ? noteW : 0, w: c.note ? L - noteW : L,
+            label: 'Commentaire', valeur: ''
+        });
+    }
+    return cols;
+}
+
+/**
  * L'en-tête d'une page.
  *
- * DEUX LIGNES, PAS UNE. Le titre et l'identité se partageaient une ligne : un
- * titre un peu long — « Tout sur papier (72 exercices) — Interrogation » — et
- * le « Nom / Date » venait buter dans la case de la note. Le titre a
- * maintenant sa ligne, l'identité la sienne, et le filet s'arrête AVANT la
- * case : il la traversait, et la case débordait sous lui.
+ * LE TITRE EST CENTRÉ, et il ne dit QUE le titre. Il portait autrefois une
+ * mention « — Interrogation » ajoutée par le logiciel : c'est au professeur
+ * d'écrire ce qu'est sa feuille, pas au générateur de le décider pour lui.
  *
- * @param {Object} [entete] - { champs: ['nom','date'], titre, sousTitre }
+ * Le titre a sa ligne, l'identité la sienne, et le cartouche — s'il est
+ * demandé — vient sous le filet, sur toute la largeur.
+ *
+ * @param {Object} [entete] - { champs: ['nom','date'] }
+ * @param {Object|null} note - le cartouche, sur la première page seulement.
  */
 export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     const P = page || A4;
-    const droiteMm = P.w - P.marge - (note ? 30 : 0);
-    const champs = champsDe(entete.champs, droiteMm - P.marge);
-    // LA CASE DE LA NOTE. Sur une interrogation, elle est le premier endroit
-    // que regarde l'élève et le dernier que remplit le professeur : elle mérite
-    // un cadre à elle, en haut à droite, pas une mention perdue dans une ligne
-    // de texte. Le total du barème y est imprimé — « … / 20 » — pour que la
-    // note se pose sans avoir à chercher sur combien elle compte.
-    const cadre = note ? `
-        <div class="fp-note-case" style="right:${P.marge * k}px; top:${(P.marge + 0.5) * k}px;
-            width:${26 * k}px; height:${13 * k}px; font-size:${4.4 * k}px">… / ${echapper(String(note.sur))}</div>` : '';
-    const droite = P.marge + (note ? 30 : 0);
+    const champs = champsDe(entete.champs, P.w - 2 * P.marge);
     const lignes = champs.map(c => `<span class="fp-champ"><i>${c.label} :</i>
         <u style="width:${c.large * k}px"></u></span>`).join('');
+    const yFilet = P.marge + (champs.length ? 14 : 9);
+    // Le cadre est haut de treize millimètres : deux lignes d'écriture adulte.
+    const hCadre = CARTOUCHE_H - 4;
+    const cadre = note ? colonnesCartouche(P, note).map(c => `
+        <div class="fp-cart" style="left:${(P.marge + c.x) * k}px; top:${(yFilet + 2) * k}px;
+             width:${c.w * k}px; height:${hCadre * k}px">
+            <i style="font-size:${2.9 * k}px">${c.label}</i>
+            <b style="font-size:${4.6 * k}px">${echapper(c.valeur)}</b>
+        </div>`).join('') : '';
     return `
-        <div class="fp-entete" style="left:${P.marge * k}px; right:${droite * k}px;
-            top:${(P.marge + 1) * k}px; font-size:${4.6 * k}px">
+        <div class="fp-entete" style="left:${P.marge * k}px; right:${P.marge * k}px;
+            top:${(P.marge + 1) * k}px; font-size:${4.8 * k}px">
             <b>${echapper(titre)}${sousTitre ? ' — ' + echapper(sousTitre) : ''}</b>
         </div>
-        ${champs.length ? `<div class="fp-identite" style="left:${P.marge * k}px; right:${droite * k}px;
+        ${champs.length ? `<div class="fp-identite" style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${(P.marge + 7.4) * k}px; font-size:${3.3 * k}px; gap:${5 * k}px">${lignes}</div>` : ''}
-        ${cadre}
-        <div class="fp-ligne" style="left:${P.marge * k}px; right:${droite * k}px;
-            top:${(P.marge + (champs.length ? 14 : 9)) * k}px;"></div>`;
+        <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px;
+            top:${yFilet * k}px;"></div>
+        ${cadre}`;
 }
 
 // --- PDF ---------------------------------------------------------------------
 
 export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}) {
     const P = page || A4;
-    const champs = champsDe(entete.champs, P.w - 2 * P.marge - (note ? 30 : 0));
+    const champs = champsDe(entete.champs, P.w - 2 * P.marge);
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.5);
     pdf.setTextColor(...ENCRE.texte);
-    // LE TITRE A SA LIGNE. Il la partageait avec le « Nom / Date » : un titre
-    // un peu long venait buter dans la case de la note, et les deux textes se
-    // chevauchaient sans que rien ne l'empêche.
-    const droite = P.w - P.marge - (note ? 30 : 0);
+    // LE TITRE A SA LIGNE, ET IL EST CENTRÉ : c'est le titre du devoir, pas une
+    // étiquette de classeur. Il ne porte que ce que le professeur a écrit.
+    const droite = P.w - P.marge;
     pdf.splitTextToSize(pourPdf(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`),
         droite - P.marge).slice(0, 1)
-        .forEach(l => pdf.text(l, P.marge, P.marge + 5.6));
+        .forEach(l => pdf.text(l, P.w / 2, P.marge + 5.6, { align: 'center' }));
 
     // L'IDENTITÉ SUR SA PROPRE LIGNE, chaque champ avec sa longueur : un
     // « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé.
@@ -412,30 +458,51 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
         x += large + 5;
     });
     pdf.setTextColor(...ENCRE.texte);
-    if (note) {
-        pdf.setDrawColor(...ENCRE.trait);
-        pdf.setLineWidth(0.5);
-        pdf.roundedRect(P.w - P.marge - 26, P.marge + 0.5, 26, 13, 1.5, 1.5, 'S');
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(13);
-        pdf.setTextColor(...ENCRE.gris);
-        pdf.text(`… / ${note.sur}`, P.w - P.marge - 13, P.marge + 8.6, { align: 'center' });
-        pdf.setTextColor(...ENCRE.texte);
-    }
-    // LE FILET S'ARRÊTE AVANT LA CASE DE LA NOTE : il la traversait de part en
-    // part, et la case, plus haute que lui, débordait dessous.
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.4);
     const yFilet = P.marge + (champs.length ? 13.5 : 9);
     pdf.line(P.marge, yFilet, droite, yFilet);
+
+    // LE CARTOUCHE, sur toute la largeur : la note à gauche dans sa colonne
+    // étroite, l'appréciation à droite dans tout ce qui reste. Un tableau, pas
+    // deux cases posées côte à côte : le trait du milieu se partage.
+    let yBas = yFilet;
+    if (note) {
+        const hCadre = CARTOUCHE_H - 4;
+        const y0 = yFilet + 2;
+        pdf.setLineWidth(0.5);
+        colonnesCartouche(P, note).forEach((c) => {
+            pdf.rect(P.marge + c.x, y0, c.w, hCadre, 'S');
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(7);
+            pdf.setTextColor(...ENCRE.gris);
+            pdf.text(pourPdf(c.label), P.marge + c.x + 1.8, y0 + 3.2);
+            if (c.valeur) {
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(13);
+                pdf.text(pourPdf(c.valeur), P.marge + c.x + c.w / 2, y0 + 9.6, { align: 'center' });
+            }
+        });
+        pdf.setTextColor(...ENCRE.texte);
+        yBas = y0 + hCadre;
+    }
     if (bareme) {
+        pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(8.6);
         pdf.setTextColor(...ENCRE.gris);
-        pdf.text(pourPdf(bareme), P.marge, yFilet + 4.4);
+        pdf.text(pourPdf(bareme), P.marge, yBas + 4.4);
+        pdf.setTextColor(...ENCRE.texte);
     }
+    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(6.5);
     pdf.setTextColor(160, 165, 175);
     pdf.text('Fiche générée par AtoutMath', P.w / 2, P.h - 4, { align: 'center' });
+    // LA PAGINATION EST EN BAS, PAS DANS LE TITRE. « Contrôle n° 3 — page 2/4 »
+    // au milieu d'un titre centré, c'est le titre qui n'est plus centré.
+    if (entete.pagination) {
+        pdf.text(pourPdf(entete.pagination), P.w - P.marge, P.h - 4, { align: 'right' });
+    }
+    pdf.setTextColor(...ENCRE.texte);
 }
 
 function pointilles(pdf, x, y, largeur) {

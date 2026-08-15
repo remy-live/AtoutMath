@@ -337,13 +337,23 @@ export const DEFAUTS_BLOCS = {
 export function composerBlocs(exos, opts, mesurer) {
     const o = { ...DEFAUTS_BLOCS, ...(opts || {}) };
     const page0 = o.page || pageDe(o.orientation);
+    // LA PREMIÈRE PAGE PEUT AVOIR UN EN-TÊTE PLUS HAUT QUE LES SUIVANTES.
+    //
+    // Le cartouche « Note / Commentaire » d'une interrogation ne s'imprime
+    // qu'une fois, sur la première page : lui réserver ses quinze millimètres
+    // sur les quatre pages du contrôle, c'est jeter une bande blanche en haut
+    // de chacune — soit, sur une feuille en trois colonnes, cinq questions
+    // perdues pour un cadre qui n'est pas là.
+    //
+    // Le BAS, lui, ne bouge pas : il ne dépend pas de la hauteur de l'en-tête.
+    const enteteH1 = Math.max(page0.enteteH, o.enteteH1 || 0);
     const zone = {
         x: page0.marge,
-        y: page0.marge + page0.enteteH,
+        y: page0.marge + enteteH1,
         w: page0.w - page0.marge * 2,
-        h: page0.h - page0.marge * 2 - page0.enteteH - page0.piedH
+        h: page0.h - page0.marge * 2 - enteteH1 - page0.piedH
     };
-    const basPage = zone.y + zone.h;
+    const basPage = page0.h - page0.marge - page0.piedH;
     // COMBIEN DE COLONNES AU MAXIMUM ? Cela dépend de la largeur réelle du
     // papier, pas d'un chiffre écrit une fois pour toutes : une page couchée
     // en tient davantage. On compte en largeur minimale de cellule — au-dessous
@@ -356,7 +366,10 @@ export function composerBlocs(exos, opts, mesurer) {
 
     const pages = [];
     let page = { items: [] };
-    let y = zone.y;
+    /** Le haut utile de la page en cours : plus bas sur la première si elle
+     *  porte le cartouche, au ras de l'en-tête ordinaire sur les suivantes. */
+    const haut = () => page0.marge + (pages.length === 0 ? enteteH1 : page0.enteteH);
+    let y = haut();
     // DEUX COMPTEURS, ET C'EST NÉCESSAIRE.
     //
     // `numero` est ce qui s'IMPRIME : il repart à 1 à chaque exercice quand on
@@ -377,7 +390,7 @@ export function composerBlocs(exos, opts, mesurer) {
     const nouvellePage = () => {
         if (page.items.length) pages.push(page);
         page = { items: [] };
-        y = zone.y;
+        y = haut();
     };
 
     exos.forEach((exo, iExo) => {
@@ -447,7 +460,7 @@ export function composerBlocs(exos, opts, mesurer) {
                 ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)
                 : [];
             const enteteH = o.bandeauH + consigneLignes.length * (o.tailleConsigne * 1.45) + o.apresBandeau;
-            if (iExo > 0 && page.items.length && y > zone.y) y += o.entreExercices - o.entreQuestions;
+            if (iExo > 0 && page.items.length && y > haut()) y += o.entreExercices - o.entreQuestions;
             if (page.items.length && y + enteteH + hauteurBloc2 > basPage) nouvellePage();
 
             page.items.push({
@@ -593,7 +606,7 @@ export function composerBlocs(exos, opts, mesurer) {
         // consigne et au moins la première rangée — un bandeau seul en bas de
         // page est exactement ce qui fait « amateur ».
         const premiereRangeeH = Math.max(...cellules.slice(0, cols).map(c => c.h));
-        if (iExo > 0 && page.items.length && y > zone.y) y += o.entreExercices - o.entreQuestions;
+        if (iExo > 0 && page.items.length && y > haut()) y += o.entreExercices - o.entreQuestions;
         if (page.items.length && y + enteteH + premiereRangeeH > basPage) nouvellePage();
 
         const poserBandeau = (suite) => {

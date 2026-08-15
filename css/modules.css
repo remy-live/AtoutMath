@@ -3267,14 +3267,21 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     accent-color: var(--primary); cursor: pointer;
 }
 
-/* La case de la note d'une interrogation, dans l'aperçu de la fiche. Un cadre
-   à elle en haut à droite : c'est le premier endroit que regarde l'élève et le
-   dernier que remplit le professeur. */
-.fp-note-case {
-    position: absolute; display: flex; align-items: center; justify-content: center;
-    border: 1.5px solid #1a202c; border-radius: 3px;
-    font-weight: 800; color: #6e7684; box-sizing: border-box;
+/* LE CARTOUCHE « NOTE / COMMENTAIRE » de l'aperçu : un tableau à deux colonnes
+   sous le filet de l'en-tête. Ce qu'un professeur rend à un élève n'est pas un
+   chiffre, c'est un chiffre ET une phrase — sans place prévue, l'appréciation
+   s'écrit en travers de la première question. Les bordures se recouvrent d'un
+   trait : les deux cases partagent leur trait du milieu, comme un vrai tableau. */
+.fp-cart {
+    position: absolute; box-sizing: border-box;
+    border: 1.5px solid #1a202c; margin-left: -0.75px;
+    display: flex; align-items: center; justify-content: center;
 }
+.fp-cart i {
+    position: absolute; left: .35em; top: .3em;
+    font-style: normal; color: #6e7684; font-weight: 600;
+}
+.fp-cart b { font-weight: 800; color: #6e7684; }
 .fx-grille-num { position: absolute; font-weight: 800; color: #6e7684; }
 
 /* Les réglages des solutions et le barème, dans la fiche du parcours. */
