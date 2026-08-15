@@ -2617,10 +2617,20 @@ function dessinerAnglePdf(doc, item, slot, solution) {
 function geoRectangle(item, slot) {
     const m = item.meta;
     const lignes = m.demande.length;
-    const ligneH = slot.taille * 0.13;
-    const zone = slot.taille - lignes * ligneH;
-    // Le rectangle occupe au plus 78 % de la zone, cotes comprises.
-    const dispoW = slot.taille * 0.68, dispoH = zone * 0.66;
+    // TOUTE LA BOÎTE, PAS LE CARRÉ INSCRIT. Rémy : « je pense que tu peux
+    // faire quelque chose de plus compact ». Un rectangle de 11 × 5 et une
+    // ligne de réponse tenaient dans un emplacement CARRÉ : la moitié droite
+    // de chaque bloc restait blanche, et six figures mangeaient une page
+    // entière. Sur la boîte réelle — large et basse en trois colonnes — la
+    // figure grandit ET l'on tient neuf rectangles au lieu de six.
+    const b = slot.boite;
+    const ligneH = Math.max(4, Math.min(b.h * 0.2, 6));
+    const zone = b.h - lignes * ligneH;
+    // La place des cotes : le nombre à gauche de la figure, le nombre dessous.
+    const coteW = Math.min(b.w * 0.15, 12);
+    const coteH = Math.min(zone * 0.26, 6);
+    const dispoW = Math.max(6, b.w - coteW - 2);
+    const dispoH = Math.max(6, zone - coteH - 1);
     // L'ÉCHELLE EST CELLE DE LA FICHE, PAS CELLE DU RECTANGLE. On la calcule
     // sur la plus grande dimension permise (meta.max), jamais sur les côtés de
     // cette figure-ci : sinon un 4 cm et un 10 cm seraient dessinés de la même
@@ -2631,10 +2641,13 @@ function geoRectangle(item, slot) {
     const ech = Math.min(dispoW / grand, dispoH / (grand * 0.7));
     const w = m.L * ech, h = m.l * ech;
     return {
-        m, lignes, ligneH, w, h,
-        x: slot.x + (slot.taille - w) / 2,
-        y: slot.y + (zone - h) / 2,
-        x0: slot.x, ligneY: slot.y + zone
+        m, lignes, ligneH, w, h, b,
+        // La police des cotes ne dépend plus d'un carré qui n'existe pas :
+        // elle suit la hauteur du bloc, comme le reste.
+        police: Math.max(2.1, Math.min(b.h * 0.075, 3.6)),
+        x: b.x + coteW + (dispoW - w) / 2,
+        y: b.y + (dispoH - h) / 2,
+        x0: b.x, ligneY: b.y + zone
     };
 }
 
@@ -2648,12 +2661,12 @@ function rectanglePreviewHtml(item, slot, k, solution) {
     let d = `<rect x="${T(g.x)}" y="${T(g.y)}" width="${T(g.w)}" height="${T(g.h)}"
              fill="none" stroke="#1a202c" stroke-width="${T(0.5)}"/>`;
     // Les cotes : la longueur sous la figure, la largeur à gauche.
-    d += `<text x="${T(g.x + g.w / 2)}" y="${T(g.y + g.h + slot.taille * 0.055)}"
-          text-anchor="middle" font-size="${T(slot.taille * 0.055)}" font-weight="700"
+    d += `<text x="${T(g.x + g.w / 2)}" y="${T(g.y + g.h + g.police * 1.1)}"
+          text-anchor="middle" font-size="${T(g.police)}" font-weight="700"
           fill="#2d3748">${m.L} ${m.u}</text>`;
-    d += `<text x="${T(g.x - slot.taille * 0.02)}" y="${T(g.y + g.h / 2)}"
+    d += `<text x="${T(g.x - g.police * 0.5)}" y="${T(g.y + g.h / 2)}"
           text-anchor="end" dominant-baseline="central"
-          font-size="${T(slot.taille * 0.055)}" font-weight="700"
+          font-size="${T(g.police)}" font-weight="700"
           fill="#2d3748">${m.l} ${m.u}</text>`;
 
     let html = `<svg class="fx-rc-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
@@ -2662,7 +2675,7 @@ function rectanglePreviewHtml(item, slot, k, solution) {
             ? `${q === 'aire' ? m.aire : m.perimetre} ${uniteDemande(q, m.u)}`
             : `.............. ${uniteDemande(q, m.u)}`;
         html += `<div class="fx-rc-ligne" style="left:${g.x0 * k}px;
-            top:${(g.ligneY + i * g.ligneH) * k}px; width:${slot.taille * k}px;
+            top:${(g.ligneY + i * g.ligneH) * k}px; width:${g.b.w * k}px;
             height:${g.ligneH * k}px; font-size:${g.ligneH * 0.46 * k}px">
             <b>${nomDemande(q)}</b><span>=</span><i>${valeur}</i></div>`;
     });
@@ -2677,16 +2690,16 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
     doc.setLineWidth(0.5);
     doc.rect(g.x, g.y, g.w, g.h, 'S');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(Math.max(6, Math.min(slot.taille * 0.13, 10)));
+    doc.setFontSize(g.police * 2.83);
     doc.setTextColor(...ENCRE.texte);
-    doc.text(pourPdf(`${m.L} ${m.u}`), g.x + g.w / 2, g.y + g.h + slot.taille * 0.062,
+    doc.text(pourPdf(`${m.L} ${m.u}`), g.x + g.w / 2, g.y + g.h + g.police * 1.1,
         { align: 'center' });
-    doc.text(pourPdf(`${m.l} ${m.u}`), g.x - slot.taille * 0.02, g.y + g.h / 2 + 1,
+    doc.text(pourPdf(`${m.l} ${m.u}`), g.x - g.police * 0.5, g.y + g.h / 2 + g.police * 0.35,
         { align: 'right' });
 
     m.demande.forEach((q, i) => {
         const y = g.ligneY + i * g.ligneH + g.ligneH * 0.68;
-        const x0 = slot.x + slot.taille * 0.06;
+        const x0 = g.b.x + 2;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.4, 11)));
         doc.setTextColor(...ENCRE.texte);
@@ -2695,7 +2708,7 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
         // LA RÉPONSE SUIT LE SIGNE « = ». Alignée à droite du bloc, elle
         // laissait un blanc au milieu de la ligne, et un élève lit ce blanc
         // comme une case à remplir de plus.
-        const xr = x0 + doc.getTextWidth(etiquette) + slot.taille * 0.04;
+        const xr = x0 + doc.getTextWidth(etiquette) + 2;
         if (solution) {
             doc.text(pourPdf(`${q === 'aire' ? m.aire : m.perimetre} ${uniteDemande(q, m.u)}`),
                 xr, y);
@@ -2704,7 +2717,7 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...ENCRE.gris);
         doc.text(pourPdf(`.............. ${uniteDemande(q, m.u)}`), xr, y);
-        if (champ) champ(xr, y - g.ligneH * 0.6, slot.x + slot.taille * 0.94 - xr, g.ligneH * 0.8);
+        if (champ) champ(xr, y - g.ligneH * 0.6, g.b.x + g.b.w - 2 - xr, g.ligneH * 0.8);
     });
 }
 
@@ -4846,7 +4859,10 @@ export const RENDUS = {
         previewGrille: rectanglePreviewHtml,
         pdfGrille: dessinerRectanglePdf,
         nomBloc: 'Rectangle',
-        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        // Une figure basse et une ligne de réponse : le bloc n'a pas besoin
+        // d'être haut. Trois rangées au lieu de deux, et jusqu'à quatre.
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        proportions: { w: 1, h: 0.5 },
         parLigneDefaut: 3
     },
 
