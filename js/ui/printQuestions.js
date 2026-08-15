@@ -20,6 +20,7 @@
 //    qui sort de l'imprimante.
 
 import { generateurDeFiche } from '../core/registry.js';
+import { detacher } from './flottant.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
 import { espacerMilliers } from '../core/nombres.js';
@@ -188,7 +189,7 @@ function assurerModale() {
  * @param {Object} params - réglages courants (tables, opérations, difficulté…)
  * @param {Function} chargerJsPDF
  */
-export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
+export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // La FICHE peut avoir son propre générateur (`printGeneratorId`) : la
     // virgule se fait glisser à l'écran et s'écrit sur le papier. On passe donc
     // par le même choix que partout ailleurs.
@@ -389,5 +390,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF) {
     // reste libre de le changer.
     colsEl.value = exo.colonnesPapier ? String(exo.colonnesPapier) : 'auto';
     modal.style.display = 'flex';
+    // Détachée, la fiche se pose à côté du jeu au lieu de barrer la route :
+    // c'est ce que demande une passe de test, où l'on regarde cent fiches à
+    // la suite sans vouloir en fermer une seule.
+    if (opts.flottant) detacher(modal, 'mathbox-fiche-flottante');
     rendre();
 }

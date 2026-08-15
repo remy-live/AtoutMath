@@ -21,6 +21,7 @@ import { dessinerChemin } from '../core/cheminSvg.js';
 import { GLYPHES, egyptianSvg } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
+import { detacher } from './flottant.js';
 import {
     ajusterAuCarre, insecable, cheminSerpentin, boiteDe as boiteCaseDomino, cellulesDe
 } from '../core/dominos.js';
@@ -5246,7 +5247,7 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
  * @param {Object} exo    - entrée de catalogue portant `printable`
  * @param {Object} params - réglages courants (chiffres, opérations, difficulté)
  */
-export function ouvrirFicheModal(exo, params, atelier = null) {
+export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // DES GRILLES FAITES À LA MAIN, PAS TIRÉES AU SORT.
     //
     // L'atelier d'échiquiers compose ses diagrammes pièce par pièce : il n'y a
@@ -5271,7 +5272,8 @@ export function ouvrirFicheModal(exo, params, atelier = null) {
         if (atelier) return;
         if (generator && generator.ecrit) {
             import('./printQuestions.js')
-                .then(m => m.ouvrirFicheQuestions(exo, { ...(params || {}), ...(exo.printParams || {}) }, chargerJsPDF));
+                .then(m => m.ouvrirFicheQuestions(exo, { ...(params || {}), ...(exo.printParams || {}) },
+                    chargerJsPDF, opts));
         }
         return;
     }
@@ -5500,5 +5502,8 @@ export function ouvrirFicheModal(exo, params, atelier = null) {
             Math.ceil(n / Math.min(dispo.maxCols || 3, n > 1 ? 2 : 1)))));
     }
     modal.style.display = 'flex';
+    // DÉTACHÉE, elle ne bloque plus rien : on continue à jouer et à changer
+    // d'exercice pendant qu'elle est là. C'est le banc d'essai qui le demande.
+    if (opts.flottant) detacher(modal, 'mathbox-fiche-flottante');
     rendre();
 }

@@ -667,3 +667,52 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    — le gras seul se perd sur une photocopie grise, le trait seul se confond
    avec la ligne à remplir d'un énoncé. */
 .fq-rep { font-weight: 800; border-bottom: 1px solid #1a202c; }
+
+/* --- UNE MODALE DÉTACHÉE ----------------------------------------------------
+   La même fiche, mais posée à côté au lieu de barrer la route. On lui retire
+   le fond sombre et la capture des clics — on continue à jouer, à écrire dans
+   la barre de passe, à changer d'exercice pendant qu'elle est là — et on lui
+   donne une poignée, un coin qu'on tire, et la mémoire des deux. */
+.modal-overlay.flot-detache {
+    background: transparent; backdrop-filter: none;
+    pointer-events: none; padding: 0;
+}
+.modal-overlay.flot-detache > .glass-panel {
+    pointer-events: auto;
+    position: fixed; margin: 0;
+    width: 620px; height: 72vh;
+    max-width: calc(100vw - 12px); max-height: calc(100vh - 12px);
+    min-width: 320px; min-height: 220px;
+    /* La poignée du navigateur, en bas à droite. C'est la seule qui se
+       comporte bien au doigt comme à la souris sans qu'on l'écrive. */
+    resize: both; overflow: auto;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .34);
+}
+.flot-poignee { cursor: grab; touch-action: none; user-select: none; }
+.flot-poignee:active { cursor: grabbing; }
+/* Détachée, la fenêtre est étroite : les réglages passent à la ligne au lieu
+   de pousser l'aperçu hors du cadre.
+
+   ET C'EST L'APERÇU QUI PREND LA PLACE. Dans une modale pleine page, huit
+   réglages en haut ne coûtent rien ; dans une fenêtre de soixante centimètres
+   carrés, ils repoussaient la feuille entièrement sous le bord bas — on
+   ouvrait un aperçu pour ne voir que des menus. Les réglages gardent leur
+   hauteur, la feuille prend tout le reste et défile toute seule, et les
+   boutons du bas restent visibles. */
+.flot-detache .fp-controles { flex-wrap: wrap; gap: 8px 12px; padding: 0; }
+.flot-detache > .glass-panel { padding: 16px 18px; gap: 10px; overflow: hidden; }
+.flot-detache .fp-apercu-cadre {
+    flex: 1 1 auto; min-height: 120px; max-height: none; overflow: auto;
+}
+.flot-detache .modal-title { font-size: 1.05rem; margin: 0; }
+.flot-detache .fp-note { display: none; }
+/* Le coin qu'on tire doit rester attrapable : sans ce dégagement, la barre de
+   défilement de l'aperçu passe par-dessus. */
+.flot-detache > .glass-panel::after {
+    content: ''; position: absolute; right: 0; bottom: 0; width: 18px; height: 18px;
+    pointer-events: none;
+}
+/* Le bouton de la barre reste ALLUMÉ tant que l'aperçu suit les exercices :
+   une fenêtre qui revient toute seule au troisième exercice passe pour un bug
+   si rien ne dit qu'on l'a demandée. */
+.bb-btn--actif { background: var(--primary); color: #fff; border-color: var(--primary); }

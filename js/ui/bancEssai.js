@@ -377,20 +377,84 @@ async function aUneFiche(exo) {
     return aUneFichePapier(exo);
 }
 
-/** L'aperçu papier. Tous les exercices n'en ont pas : on le dit. */
-function apercuFiche(id) {
+/**
+ * L'aperçu papier. Tous les exercices n'en ont pas : on le dit.
+ *
+ * @param {string} id
+ * @param {boolean} [flottant] - posé À CÔTÉ plutôt qu'en travers : la fenêtre
+ *   reste ouverte pendant qu'on joue, qu'on écrit une remarque et qu'on passe
+ *   à l'exercice suivant. C'est le mode de la barre de passe.
+ */
+function apercuFiche(id, flottant) {
     const exo = exercices.find(e => e.id === id);
     if (!exo) return;
     import('./printSheet.js').then(m => {
         import('../core/registry.js').then(({ aUneFichePapier }) => {
             if (!aUneFichePapier(exo)) {
+                if (flottant) { fermerApercuFlottant(); return; }
                 import('./modal.js').then(x => x.showToast(
                     'Cet exercice n\'a pas de fiche papier : c\'est une activité à l\'écran.', 'warning'));
                 return;
             }
-            m.ouvrirFicheModal(exo, { ...(exo.params || {}) });
+            m.ouvrirFicheModal(exo, { ...(exo.params || {}) }, null, { flottant: !!flottant });
         });
     });
+}
+
+// --- L'APERÇU QUI RESTE OUVERT ----------------------------------------------
+//
+// Regarder cent fiches à la suite, c'était cent fois : ouvrir la modale, la
+// lire, la refermer, avancer d'un exercice, rouvrir. La fenêtre reste donc
+// posée à côté, et c'est ELLE qui suit : à chaque ◀ ▶, elle se redessine sur
+// l'exercice qu'on regarde.
+//
+// Un exercice sans fiche papier ne la vide pas d'un message d'erreur : elle se
+// referme, et se rouvrira au prochain exercice qui en a une. Un avertissement
+// répété tous les trois exercices pendant une passe n'est plus un
+// avertissement, c'est du bruit.
+
+const IDS_FICHE = ['print-sheet-modal', 'print-questions-modal'];
+let apercuFlottant = false;
+
+const modaleFicheVisible = () => IDS_FICHE
+    .map(i => document.getElementById(i))
+    .find(m => m && m.style.display !== 'none') || null;
+
+function fermerApercuFlottant() {
+    IDS_FICHE.forEach(i => {
+        const m = document.getElementById(i);
+        if (m && m.classList.contains('flot-detache')) m.style.display = 'none';
+    });
+}
+
+/**
+ * Ouvrir ou refermer l'aperçu qui accompagne la passe.
+ *
+ * L'état est PORTÉ PAR LE BOUTON de la barre, allumé tant que la fenêtre
+ * suit. Sans ce témoin, un aperçu qui revient tout seul au troisième exercice
+ * passe pour un bug — alors que c'est précisément ce qu'on a demandé.
+ */
+function basculerApercuFlottant() {
+    apercuFlottant = !apercuFlottant;
+    if (!apercuFlottant) fermerApercuFlottant();
+    else apercuFiche(listeBarre()[rangCourant].id, true);
+    majBoutonFiche();
+}
+
+/** À chaque changement d'exercice, la fenêtre suit — si elle est ouverte. */
+function suivreApercuFlottant() {
+    if (!apercuFlottant) return;
+    apercuFiche(listeBarre()[rangCourant].id, true);
+}
+
+function majBoutonFiche() {
+    const b = barre && barre.querySelector('[data-fiche]');
+    if (!b) return;
+    b.classList.toggle('bb-btn--actif', apercuFlottant);
+    b.setAttribute('aria-pressed', String(apercuFlottant));
+    b.title = apercuFlottant
+        ? 'L\'aperçu suit les exercices — appuie pour l\'arrêter'
+        : 'Garder l\'aperçu de la fiche à côté, d\'un exercice à l\'autre';
 }
 
 // --- La fiche de notation ---------------------------------------------------
@@ -737,6 +801,10 @@ export function basculerBarreBanc() {
 
 function fermerBarre() {
     ecrireNote(true);
+    // La fenêtre d'aperçu appartient à la barre : elle s'en va avec elle.
+    apercuFlottant = false;
+    fermerApercuFlottant();
+
     if (debrancherGlisse) { debrancherGlisse(); debrancherGlisse = null; }
     if (barre) barre.remove();
     barre = null;
@@ -803,7 +871,8 @@ function ouvrirBarre() {
     barre.querySelector('[data-prec]').onclick = () => aller(-1);
     barre.querySelector('[data-suiv]').onclick = () => aller(1);
     barre.querySelector('[data-jouer]').onclick = () => lancerCourant();
-    barre.querySelector('[data-fiche]').onclick = () => apercuFiche(listeBarre()[rangCourant].id);
+    barre.querySelector('[data-fiche]').onclick = () => basculerApercuFlottant();
+    majBoutonFiche();
     barre.querySelector('[data-export]').onclick = () => telechargerRapport();
     barre.querySelector('[data-fermer]').onclick = () => fermerBarre();
     barre.querySelector('[data-vider]').onclick = () => viderDepuisLaBarre();
@@ -837,6 +906,7 @@ function aller(pas) {
     rangCourant = (rangCourant + pas + suite.length) % suite.length;
     try { window.localStorage.setItem(CLE_BARRE, String(rangCourant)); } catch (e) { /* privé */ }
     peindreBarre();
+    suivreApercuFlottant();
     lancerCourant();
 }
 

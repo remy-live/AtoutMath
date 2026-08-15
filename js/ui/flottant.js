@@ -144,3 +144,65 @@ export function estChampTexte(n) {
     // retenu, et c'est le seul geste clavier qu'elle attend.
     return !['checkbox', 'radio', 'button', 'submit', 'range'].includes(n.type);
 }
+
+// --- DÉTACHER UNE MODALE ----------------------------------------------------
+//
+// Une modale bloque : elle assombrit la page, prend tous les clics, et il faut
+// la refermer pour faire autre chose. C'est ce qu'on veut d'une fiche qu'on
+// vient régler une fois — et exactement ce qu'on ne veut pas pendant une passe
+// de test, où l'on regarde cent fiches à la suite : ouvrir, refermer, avancer,
+// rouvrir.
+//
+// DÉTACHÉE, c'est la MÊME modale : mêmes réglages, même aperçu, même PDF. On
+// ne lui retire que ce qui bloque — le fond sombre et la capture des clics —,
+// et on lui ajoute ce qui manque : une poignée, une taille qu'on tire au coin,
+// et la mémoire des deux.
+
+/**
+ * @param {HTMLElement} overlay - la couche `.modal-overlay`
+ * @param {string} cle          - où retenir place et taille
+ * @returns {() => void} de quoi la rattacher
+ */
+export function detacher(overlay, cle) {
+    const panneau = overlay.querySelector('.glass-panel');
+    if (!panneau || overlay.classList.contains('flot-detache')) return () => {};
+    const titre = panneau.querySelector('.modal-title') || panneau.firstElementChild;
+
+    overlay.classList.add('flot-detache');
+    panneau.classList.add('flot-fenetre');
+    if (titre) titre.classList.add('flot-poignee');
+
+    // À droite, et haut : la barre de passe vit en bas, le jeu au milieu.
+    restaurer(panneau, cle, (el) => placer(el, window.innerWidth - el.offsetWidth - 16, 16));
+
+    const debrancher = titre ? rendreDeplacable(panneau, titre, cle) : () => {};
+
+    // LA TAILLE SE RETIENT AUSSI. `resize: both` est une poignée du navigateur :
+    // elle ne prévient personne, seul un observateur la voit passer. Sans cela,
+    // la fenêtre qu'on vient d'agrandir pour lire une consigne redevient petite
+    // à l'exercice suivant.
+    let obs = null;
+    if (typeof ResizeObserver !== 'undefined') {
+        let minuteur = null;
+        obs = new ResizeObserver(() => {
+            clearTimeout(minuteur);
+            minuteur = setTimeout(() => {
+                panneau.style.width = `${panneau.offsetWidth}px`;
+                panneau.style.height = `${panneau.offsetHeight}px`;
+                memoriser(panneau, cle);
+                placer(panneau, panneau.offsetLeft, panneau.offsetTop);
+            }, 250);
+        });
+        obs.observe(panneau);
+    }
+
+    return () => {
+        if (obs) obs.disconnect();
+        debrancher();
+        overlay.classList.remove('flot-detache');
+        panneau.classList.remove('flot-fenetre');
+        if (titre) titre.classList.remove('flot-poignee');
+        panneau.style.left = panneau.style.top = '';
+        panneau.style.width = panneau.style.height = '';
+    };
+}
