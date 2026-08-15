@@ -7,6 +7,7 @@
 // posé). Aucun générateur n'a eu besoin d'être modifié pour en profiter.
 
 import { regTimeout } from '../timers.js';
+import { espacerMilliers, FINE } from '../nombres.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
@@ -98,9 +99,27 @@ export function mount(container, session, opts = {}) {
 
         const display = container.querySelector('[data-display]');
         const screen = container.querySelector('.numpad-screen');
+        // LE NOMBRE SE GROUPE SOUS LES DOIGTS. « 62307 » ne s'écrit pas :
+        // on écrit « 62 307 », et c'est ce découpage de trois en trois qui
+        // permet de LIRE le nombre à voix haute. Un élève de numération qui
+        // tape six chiffres à la file et voit « 620307 » ne peut pas se
+        // relire — c'est précisément l'erreur qu'on veut lui faire éviter.
+        //
+        // Seul l'AFFICHAGE est groupé : `buffer` garde les chiffres nus, et
+        // c'est lui qu'on envoie à la validation.
         const setBuffer = (v) => {
             buffer = v;
-            display.textContent = buffer;
+            // UN GROUPE PAR ÉLÉMENT, pas une simple espace fine dans le texte :
+            // à la taille de l'écran du pavé, la fine ne se voit pas, et
+            // « 1234567 » restait un mur de chiffres. C'est la CSS qui donne
+            // au blanc la largeur qu'il faut.
+            display.textContent = '';
+            espacerMilliers(buffer).split(FINE).forEach(groupe => {
+                const g = document.createElement('span');
+                g.className = 'numpad-groupe';
+                g.textContent = groupe;
+                display.appendChild(g);
+            });
             screen.classList.toggle('numpad-screen--empty', buffer === '');
         };
         setBuffer('');

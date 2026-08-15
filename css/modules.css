@@ -274,6 +274,13 @@
    l'unité alignée dessus remontait tant qu'aucun chiffre n'était saisi. Ce
    caractère donne au champ une ligne de base constante, vide ou non. */
 .numpad-value::before { content: "\200B"; }
+/* LES TRANCHES DE TROIS CHIFFRES. Un grand nombre se lit en le découpant de
+   trois en trois — c'est ce découpage qui permet de dire « soixante-deux mille
+   trois cent sept » au lieu de « six cent vingt-trois mille sept ». L'espace
+   fine du texte ne se voit pas à cette taille : on écarte donc les tranches
+   nous-mêmes, d'un quart de cadratin, assez pour séparer sans faire deux
+   nombres. */
+.numpad-groupe + .numpad-groupe { margin-left: .26em; }
 .numpad-unit {
     font-size: 1.05rem; font-weight: 700;
     color: var(--screen-muted, var(--text-muted));

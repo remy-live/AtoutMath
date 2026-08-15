@@ -68,6 +68,11 @@ export const ENCRE = {
  * × ÷ ° ² ³ ½ « » — sont dans la table, eux, et passent intacts.
  */
 const HORS_TABLE = {
+    // L'ESPACE FINE INSÉCABLE des milliers (« 62 307 ») n'existe pas en
+    // WinAnsi : elle sortait en « ? » au milieu de chaque grand nombre. On la
+    // remplace par l'insécable ordinaire, qui, elle, y est — le nombre reste
+    // d'un seul tenant, il respire seulement un peu plus.
+    '\u202F': '\u00A0',
     '\u2212': '-',      // le vrai signe moins
     '\u2192': '->', '\u2190': '<-',
     '\u2248': '~',      // « à peu près égal »

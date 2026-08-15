@@ -102,7 +102,18 @@ export function finalizeChoices(rng, choices, { count = 4, filler = null } = {})
 
 /** Comparaison tolérante : "12" == 12, " 3,5 " == "3.5". */
 export function sameAnswer(a, b) {
-    const norm = v => String(v === undefined || v === null ? '' : v).trim().replace(',', '.').toLowerCase();
+    const norm = v => {
+        let s = String(v === undefined || v === null ? '' : v).trim().replace(',', '.').toLowerCase();
+        // « 62 307 » ET « 62307 » SONT LE MÊME NOMBRE. Depuis qu'on écrit les
+        // grands nombres par groupes de trois — c'est la règle, et c'est ce
+        // qui permet de les lire —, une réponse qui porte ses espaces doit
+        // valoir autant qu'une réponse sans. On ne les retire que si ce qui
+        // reste est bien UN NOMBRE : sinon « trois cent deux » deviendrait
+        // « troiscentdeux » et ne ressemblerait plus à rien.
+        const nu = s.replace(/[\s\u00A0\u202F]/g, '');
+        if (/^[-+]?\d*\.?\d+$/.test(nu)) s = nu;
+        return s;
+    };
     const na = norm(a), nb = norm(b);
     if (na === nb) return true;
     const fa = parseFloat(na), fb = parseFloat(nb);
