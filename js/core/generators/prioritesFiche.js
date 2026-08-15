@@ -18,7 +18,7 @@
 // elle vient de core/priorites.js, jamais d'un calcul refait ici.
 
 import { makeItem } from '../items.js';
-import { tirerExpression, etapes } from '../priorites.js';
+import { tirerExpression, etapes, etapesMax } from '../priorites.js';
 
 export const prioritesFicheGenerator = {
     id: 'calc.priorites-fiche',
@@ -85,6 +85,11 @@ export const prioritesFicheGenerator = {
                 // Autant de lignes vides que d'étapes — la première ligne est
                 // déjà écrite, il reste donc « etapes » lignes à remplir.
                 etapes: e.etapes,
+                // ET LE MAXIMUM DU RÉGLAGE, pour que tous les calculs de la
+                // feuille aient la MÊME hauteur. Donner à chacun le compte
+                // exact de ses étapes écrit la réponse en creux : trois lignes
+                // vides disent « il reste trois opérations ».
+                etapesMax: etapesMax({ niveau, parentheses }),
                 resultat: e.resultat,
                 niveau,
                 // Ce que la fiche exclura pour le bloc suivant.

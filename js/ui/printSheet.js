@@ -3696,7 +3696,20 @@ function geoPriorites(item, slot) {
     // LA BOÎTE ENTIÈRE, pas le carré inscrit : une cascade est large et courte,
     // et le carré lui laissait un quart de bloc vide sur la gauche.
     const b = slot.boite;
-    const rangs = m.etapes + 1;   // l'énoncé, puis une ligne par étape
+    // AUTANT DE LIGNES POUR TOUS LES CALCULS DE LA FEUILLE.
+    //
+    // On donnait exactement le nombre d'étapes de CE calcul : deux lignes ici,
+    // quatre là. Rémy : « mets le même nombre de lignes à chaque fois ». Deux
+    // raisons, et la seconde est la vraie. La feuille d'abord : des blocs de
+    // hauteurs différentes se rangent mal et l'on voit un escalier. Mais
+    // surtout, le nombre de lignes DIT COMBIEN D'ÉTAPES IL Y A — c'est-à-dire
+    // une partie de la réponse. Un élève qui compte trois lignes sait qu'il
+    // lui reste trois opérations, et n'a plus à se demander s'il a fini.
+    //
+    // Le maximum du RÉGLAGE, pas un nombre inventé : le générateur le calcule
+    // sur les formes qu'il peut tirer (`etapesMax`), et il est donc le même
+    // pour tous les calculs d'une même fiche.
+    const rangs = Math.max(m.etapes, m.etapesMax || 0) + 1;
     // LE NUMÉRO EST SUR LA MÊME LIGNE QUE LE CALCUL, comme dans un cahier :
     // « 1.  2 × 6 + 7 − 2 ». Posé au-dessus du bloc, il coûtait une ligne
     // entière et le calcul flottait sans rien à quoi s'aligner.
@@ -4745,12 +4758,14 @@ export const RENDUS = {
 
     priorites: {
         titre: 'Priorités opératoires — ligne par ligne',
-        consigne: () => 'UNE OPÉRATION PAR LIGNE, ET ON RECOPIE TOUT LE RESTE. Souligne '
-            + 'l\'opération qu\'il faut faire en premier — les parenthèses d\'abord, puis '
-            + 'les × et les ÷ avant les + et les −, et à priorité égale de gauche à droite. '
-            + 'Passe à la ligne, écris son résultat À SA PLACE et recopie le reste sans y '
-            + 'toucher. Recommence jusqu\'à ce qu\'il ne reste qu\'un nombre. Il y a '
-            + 'exactement autant de lignes que d\'étapes.',
+        // COURTE. Rémy : « pour l'énoncé, mets juste Calcule en respectant les
+        // priorités, écris les calculs ». Six lignes de méthode en tête de
+        // feuille ne se lisent pas — la méthode s'enseigne au tableau, la
+        // consigne rappelle ce qu'on attend. Et la dernière phrase était
+        // devenue fausse : les lignes sont maintenant les mêmes pour tous les
+        // calculs, elles ne comptent plus les étapes de celui-là.
+        consigne: () => 'Calcule en respectant les priorités, et écris les calculs : '
+            + 'une opération par ligne, en recopiant tout le reste.',
         previewGrille: prioritesPreviewHtml,
         pdfGrille: dessinerPrioritesPdf,
         nomBloc: 'Calcul', nomBlocs: 'calculs',

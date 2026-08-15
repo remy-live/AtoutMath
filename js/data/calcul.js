@@ -171,7 +171,7 @@ export const calculExercises = [
         // le fait à la place de l'élève — et c'est là qu'on perd ses points.
         printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
         printParams: { niveau: 2, parentheses: true },
-        consignePapier: 'Souligne l\'opération prioritaire, passe à la ligne et recopie le reste.',
+        consignePapier: 'Calcule en respectant les priorités, écris les calculs.',
         skills: ['num.prio'],
         params: { niveau: 2, parentheses: true },
         paramSchema: [

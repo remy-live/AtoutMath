@@ -791,6 +791,24 @@ export function composerSolutions(questions, opts, mesurer) {
         colonnes: Math.max(1, Math.min(5, (opts && opts.colonnesSolutions) || colonnes))
     };
 
+    /**
+     * L'explication ne fait-elle que redire l'énoncé complété ?
+     *
+     * On compare ce qui compte — les chiffres, les signes et les lettres —
+     * en ignorant les espaces, la ponctuation finale et la casse : « 7 × 8 =
+     * 56. » et « 7 × 8 = » + « 56 » sont alors le même texte, et l'on n'écrit
+     * pas deux fois la même ligne.
+     */
+    const noyau = (t) => String(t ?? '').toLowerCase()
+        // Les blancs, la ponctuation de fin, les marques de réponse et le
+        // « ? » de l'énoncé d'écran : rien de tout cela ne change ce qui est
+        // DIT, et tout cela suffisait à faire croire deux textes différents.
+        .replace(/[\u0001\u0002]/g, '')
+        .replace(/[\s\u00A0\u202F.?…]/g, '');
+    // On compare l'explication à LA LIGNE DÉJÀ COMPOSÉE — énoncé + réponse en
+    // place —, pas au texte brut : c'est elle qui sera imprimée juste au-dessus.
+    const redit = (expl, pose) => noyau(expl) === noyau(pose);
+
     // La ligne d'une réponse. La FLÈCHE a disparu : elle n'existe pas dans les
     // polices d'un PDF, et « 7 × 8 = 56 » est de toute façon ce qu'on écrit au
     // tableau en corrigeant.
@@ -803,8 +821,16 @@ export function composerSolutions(questions, opts, mesurer) {
         // une égalité fausse avec le trou toujours vide.
         const pose = reponseEnPlace(nettoyer(q.texte), rep);
         if (mode === 'normal') return `${tete}${pose}`;
+        // UNE EXPLICATION QUI REDIT L'ÉNONCÉ N'EXPLIQUE RIEN.
+        //
+        // « 7 × 8 = » suivi de « 7 × 8 = 56. » écrit deux fois le même calcul,
+        // et la seconde ligne n'apprend rien de plus que la première complétée.
+        // Rémy : « tu marques deux fois le calcul = la solution, ça n'a pas
+        // d'intérêt ». On la retire quand elle ne fait que reprendre l'énoncé
+        // et sa réponse ; on la garde dès qu'elle dit AUTRE CHOSE — « car
+        // 4 × 9 = 36 », la cascade d'une priorité, le chemin d'un problème.
         const expl = (q.explication || '').trim();
-        return `${tete}${pose}${expl ? '\n' + expl : ''}`;
+        return `${tete}${pose}${expl && !redit(expl, pose) ? '\n' + expl : ''}`;
     };
 
     // LES SECTIONS. Une feuille de solutions qui aligne « 1. 2  2. 9  3. 4 »

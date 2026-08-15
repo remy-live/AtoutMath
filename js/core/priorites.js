@@ -253,6 +253,29 @@ const FORMES = {
 };
 
 /**
+ * COMBIEN D'ÉTAPES, AU MAXIMUM, POUR CE RÉGLAGE ?
+ *
+ * La feuille en a besoin pour donner à TOUS les calculs le même nombre de
+ * lignes. Le nombre d'étapes d'une cascade est le nombre d'opérations de son
+ * expression : on le lit sur les formes, avec le même filtrage que le tirage —
+ * sinon on réserverait de la place pour une forme qui ne sortira jamais.
+ *
+ * Donner exactement les lignes de CE calcul-là revient à écrire la réponse en
+ * creux : trois lignes vides disent « il reste trois opérations ».
+ */
+export function etapesMax({ niveau = 2, parentheses = true, imposer = false } = {}) {
+    const n = Math.max(1, Math.min(4, niveau));
+    let formes = FORMES[n] || FORMES[2];
+    if (!parentheses) formes = formes.filter(f => !f.includes('('));
+    else if (imposer) {
+        const avec = formes.filter(f => f.includes('('));
+        if (avec.length) formes = avec;
+    }
+    if (!formes.length) formes = FORMES[2];
+    return Math.max(...formes.map(f => f.filter(t => t === 'op').length));
+}
+
+/**
  * Une expression jouable.
  *
  * @param {Object} o
