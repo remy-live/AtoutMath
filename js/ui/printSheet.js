@@ -3916,7 +3916,167 @@ function dessinerPosePdf(doc, item, slot, solution) {
     doc.setTextColor(...ENCRE.trait);
 }
 
+// --- LE TABLEAU DE CONVERSION, SUR LE PAPIER ------------------------------------
+
+/**
+ * La géométrie d'un tableau de conversion : les colonnes d'unités, une ligne
+ * par conversion, et l'énoncé de chacune écrit à gauche de sa ligne.
+ */
+function geoConversion(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    const nCol = m.unites.length;
+    const nLignes = m.conversions.length;
+    // L'énoncé « 505 mm = ……… m » à gauche, le tableau à droite. L'énoncé
+    // prend le tiers : moins, il passe à la ligne et le tableau se décale.
+    // « 505,4 mm = ……… dam » : il faut la place de l'écrire d'un trait, sinon
+    // l'énoncé passe à la ligne et le tableau se décale d'une conversion à
+    // l'autre.
+    const enonceW = Math.min(Math.max(b.w * 0.3, 34), 46);
+    const cw = Math.min((b.w - enonceW - 2) / nCol, 15);
+    // Une rangée d'en-tête, puis une par conversion. Une case de tableau de
+    // conversion doit accueillir un chiffre écrit à la main : sept
+    // millimètres, c'est l'interligne d'un cahier.
+    const rh = Math.max(6.5, Math.min((b.h - 2) / (nLignes + 1.2), 9.5));
+    const x0 = b.x + enonceW;
+    const y0 = b.y + 1;
+    return {
+        m, b, nCol, nLignes, cw, rh, x0, y0, enonceW,
+        largeur: nCol * cw,
+        // En POINTS, comme tout ce qui va dans le PDF ; l'aperçu convertit.
+        taille: Math.max(7.5, Math.min(cw * 1.5, rh * 1.15, 12))
+    };
+}
+
+function conversionPreviewHtml(item, slot, k, solution) {
+    const g = geoConversion(item, slot);
+    const m = g.m;
+    let html = '';
+    // Le quadrillage.
+    for (let c = 0; c <= g.nCol; c++) {
+        const x = g.x0 + c * g.cw;
+        html += `<div style="position:absolute; left:${x * k}px; top:${g.y0 * k}px;
+            width:1px; height:${((g.nLignes + 1) * g.rh) * k}px; background:#8d94a5"></div>`;
+    }
+    for (let r = 0; r <= g.nLignes + 1; r++) {
+        const y = g.y0 + r * g.rh;
+        html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
+            width:${g.largeur * k}px; height:${r === 1 ? 2 : 1}px;
+            background:${r === 1 ? '#1a202c' : '#8d94a5'}"></div>`;
+    }
+    // Les en-têtes — donnés, ou à écrire.
+    m.unites.forEach((u, c) => {
+        const texte = (m.entetes || solution) ? u : '';
+        html += `<div style="position:absolute; left:${(g.x0 + c * g.cw) * k}px; top:${g.y0 * k}px;
+            width:${g.cw * k}px; height:${g.rh * k}px; display:flex; align-items:center;
+            justify-content:center; font-weight:800;
+            color:${m.entetes ? '#1a202c' : '#6e7684'};
+            font-size:${g.taille * 0.3528 * k}px">${echapperSheet(texte)}</div>`;
+    });
+    // Les énoncés — et, sur la page des solutions, l'égalité complète PLUS le
+    // tableau rempli : c'est le placement des chiffres qui est la leçon, et
+    // un corrigé qui donne « 1 300 m » sans dire où tombe le 1 n'explique rien.
+    m.conversions.forEach((cv, r) => {
+        const y = g.y0 + (r + 1) * g.rh;
+        html += `<div style="position:absolute; left:${g.b.x * k}px; top:${y * k}px;
+            width:${(g.enonceW - 2) * k}px; height:${g.rh * k}px; display:flex;
+            align-items:center; font-size:${g.taille * 0.3528 * k}px;
+            color:#1a202c; white-space:nowrap; overflow:hidden"
+            >${echapperSheet(solution ? cv.complet : cv.enonce)}</div>`;
+        if (!solution) return;
+        (cv.cases || []).forEach(c => {
+            html += `<div style="position:absolute; left:${(g.x0 + c.col * g.cw) * k}px;
+                top:${y * k}px; width:${g.cw * k}px; height:${g.rh * k}px; display:flex;
+                align-items:center; justify-content:center; font-weight:800; color:#6e7684;
+                font-size:${g.taille * 0.3528 * k}px">${c.chiffre}</div>`;
+        });
+        // La virgule, juste après la colonne demandée.
+        if (cv.virguleApres >= 0 && cv.virguleApres < g.nCol - 1) {
+            html += `<div style="position:absolute;
+                left:${(g.x0 + (cv.virguleApres + 1) * g.cw - g.cw * 0.14) * k}px;
+                top:${(y + g.rh * 0.3) * k}px; width:${g.cw * 0.28 * k}px;
+                height:${g.rh * 0.7 * k}px; display:flex; align-items:flex-end;
+                justify-content:center; font-weight:900; color:#1a202c;
+                font-size:${g.taille * 0.42 * k}px">,</div>`;
+        }
+    });
+    return html;
+}
+
+function dessinerConversionPdf(doc, item, slot, solution) {
+    const g = geoConversion(item, slot);
+    const m = g.m;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let c = 0; c <= g.nCol; c++) {
+        const x = g.x0 + c * g.cw;
+        doc.line(x, g.y0, x, g.y0 + (g.nLignes + 1) * g.rh);
+    }
+    for (let r = 0; r <= g.nLignes + 1; r++) {
+        const y = g.y0 + r * g.rh;
+        // Le trait sous les en-têtes est FRANC : c'est lui qui sépare les
+        // unités du travail de l'élève.
+        doc.setDrawColor(...(r === 1 ? ENCRE.trait : ENCRE.grille));
+        doc.setLineWidth(r === 1 ? 0.5 : 0.25);
+        doc.line(g.x0, y, g.x0 + g.largeur, y);
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille);
+    m.unites.forEach((u, c) => {
+        if (!m.entetes && !solution) return;
+        doc.setTextColor(...(m.entetes ? ENCRE.trait : ENCRE.gris));
+        doc.text(pourPdf(u), g.x0 + (c + 0.5) * g.cw, g.y0 + g.rh * 0.68, { align: 'center' });
+    });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...ENCRE.trait);
+    m.conversions.forEach((cv, r) => {
+        const y = g.y0 + (r + 1) * g.rh;
+        doc.setFontSize(g.taille * 0.92);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(pourPdf(solution ? cv.complet : cv.enonce), g.b.x, y + g.rh * 0.68);
+        if (!solution) return;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...ENCRE.gris);
+        doc.setFontSize(g.taille);
+        (cv.cases || []).forEach(c => {
+            doc.text(String(c.chiffre), g.x0 + (c.col + 0.5) * g.cw, y + g.rh * 0.68, { align: 'center' });
+        });
+        if (cv.virguleApres >= 0 && cv.virguleApres < g.nCol - 1) {
+            doc.setTextColor(...ENCRE.trait);
+            doc.setFontSize(g.taille * 1.3);
+            doc.text(',', g.x0 + (cv.virguleApres + 1) * g.cw, y + g.rh * 0.78, { align: 'center' });
+        }
+        doc.setFont('helvetica', 'normal');
+    });
+    doc.setTextColor(...ENCRE.trait);
+}
+
 export const RENDUS = {
+    conversion: {
+        titre: 'Le tableau de conversion',
+        consigne: (items) => {
+            const donnes = items.every(i => i.meta && i.meta.entetes);
+            return (donnes
+                ? 'Le tableau est prêt : ses unités sont écrites. '
+                : 'Écris d\'abord les unités en haut des colonnes — attention, hecto vient avant déca. ')
+                + 'Pour chaque conversion, écris le nombre de départ dans le tableau — le '
+                + 'chiffre des unités dans la colonne de SON unité — puis pose la virgule '
+                + 'après la colonne demandée, comble les cases vides avec des zéros, et '
+                + 'lis la réponse.';
+        },
+        previewGrille: conversionPreviewHtml,
+        pdfGrille: dessinerConversionPdf,
+        nomBloc: 'Tableau', nomBlocs: 'tableaux',
+        titreAGauche: true,
+        // Un tableau est LARGE : sept colonnes d'unités plus la place des
+        // énoncés. Un par ligne de feuille, deux au maximum.
+        proportions: { w: 1, h: 0.42 },
+        disposition: { cols: 1, rows: 4, maxCols: 2, maxRows: 5 },
+        parLigneDefaut: 1,
+        separateurs: true,
+        grilleMax: 300
+    },
+
     pose: {
         titre: 'Poser et effectuer',
         consigne: (items) => {

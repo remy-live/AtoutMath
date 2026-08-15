@@ -80,3 +80,47 @@ test('trois nombres à l\'addition, jamais ailleurs', () => {
     assert.equal(tirer({ operation: '+', chiffres: 2, nombres: 3 }, 5)[0].meta.operandes.length, 3);
     assert.equal(tirer({ operation: '-', chiffres: 2, nombres: 3 }, 5)[0].meta.operandes.length, 2);
 });
+
+// --- LE TABLEAU DE CONVERSION SUR LE PAPIER ---------------------------------
+
+import { conversionFicheGenerator } from '../js/core/generators/conversionFiche.js';
+import { familleDe } from '../js/core/conversion.js';
+
+const tables = (params, n = 25) => Array.from({ length: n }, () =>
+    conversionFicheGenerator.generate(params, { rng: makeRng(), themesExclus: [] }));
+
+test('conversion : chaque nombre tient dans le tableau', () => {
+    for (const famille of ['longueur', 'masse', 'capacite']) {
+        const n = familleDe(famille).unites.length;
+        for (const item of tables({ famille, ecart: 6 })) {
+            for (const cv of item.meta.conversions) {
+                for (const c of cv.cases) {
+                    assert.ok(c.col >= 0 && c.col < n,
+                        `${cv.enonce} : le chiffre ${c.chiffre} tombe hors du tableau`);
+                }
+                // Et les chiffres posés reforment bien le nombre de départ.
+                assert.equal(cv.cases.length, String(cv.valeur).replace(/[^0-9]/g, '').length,
+                    `${cv.enonce} : il manque des chiffres`);
+            }
+        }
+    }
+});
+
+test('conversion : la réponse est juste, et la virgule à sa place', () => {
+    for (const item of tables({ famille: 'longueur', decimales: true })) {
+        for (const cv of item.meta.conversions) {
+            assert.ok(cv.virguleApres >= 0, `${cv.enonce} : pas de colonne d'arrivée`);
+            assert.match(cv.complet, /=/);
+            // « 13 hm = 1300 m » : la valeur d'arrivée se relit dans le texte.
+            assert.ok(cv.complet.includes(String(cv.attendu).replace('.', ',')),
+                `${cv.complet} ne contient pas ${cv.attendu}`);
+        }
+    }
+});
+
+test('conversion : pas deux fois la même ligne dans un tableau', () => {
+    for (const item of tables({ famille: 'masse', lignes: 6 })) {
+        const vues = item.meta.conversions.map(c => c.enonce);
+        assert.equal(new Set(vues).size, vues.length, vues.join(' | '));
+    }
+});

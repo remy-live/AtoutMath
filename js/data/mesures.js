@@ -46,6 +46,13 @@ export const mesuresExercises = [
         // r\u00e9ponse.
         id: 'mes-conversion', status: STATUS.TEST, title: 'Le Tableau de Conversion',
         activityId: 'conversion',
+        // SUR LE PAPIER : le tableau des cahiers, une ligne par conversion.
+        // Les en-têtes se donnent ou se laissent vides — donnés, on travaille
+        // la conversion ; à remplir, on travaille l'ordre des unités, et c'est
+        // là qu'on se trompe.
+        printable: 'conversion', printGeneratorId: 'mes.conversion-fiche',
+        printParams: { famille: 'longueur', lignes: 4, entetes: true, ecart: 3 },
+        consignePapier: 'Complète le tableau et effectue les conversions.',
         skills: ['num.conversion'],
         params: { famille: 'longueur', ecart: 3, decimales: false },
         paramSchema: [
