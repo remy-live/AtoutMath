@@ -418,7 +418,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border-bottom: 1px dotted #9aa3b2; height: .85em;
 }
 .fp-ligne { position: absolute; border-top: 1.4px solid #1a202c; }
-.fp-consigne { position: absolute; color: #5a6270; line-height: 1.2; }
+/* DEUX LIGNES, COMME À L'IMPRESSION. Le PDF de la fiche autonome coupe la
+   consigne à deux lignes ; l'aperçu, lui, la laissait couler et venait écrire
+   par-dessus le titre du premier bloc. Un aperçu qui montre autre chose que la
+   feuille ne sert à rien : on coupe des deux côtés. */
+.fp-consigne {
+    position: absolute; color: #5a6270; line-height: 1.2;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden;
+}
 .fp-titre { position: absolute; text-align: center; font-weight: 700; }
 
 /* L'ENGRENAGE DU BANDEAU, et son panneau. N'existent que dans l'aperçu : le

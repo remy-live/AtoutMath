@@ -3443,22 +3443,37 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; display: flex; align-items: stretch; box-sizing: border-box;
     border: 1.4px solid #1a202c; border-radius: 3px; background: #fff; overflow: hidden;
 }
+/* Une pièce DEBOUT : c'est le virage du serpentin. Les deux moitiés
+   s'empilent, et le pli passe à l'horizontale. */
+.fx-dom-piece--v { flex-direction: column; }
 .fx-dom-demi {
+    flex: 1 1 0; min-width: 0;
     display: flex; align-items: center; justify-content: center; text-align: center;
     color: #1a202c; font-weight: 700; line-height: 1.15; padding: 1px 2px; box-sizing: border-box;
 }
-.fx-dom-demi--g { border-right: 1.4px solid #1a202c; }
+/* Le pli, plus léger que la découpe : sur le parcours rempli les pièces se
+   touchent, et deux traits identiques feraient perdre la jointure. */
+.fx-dom-demi--g { border-right: 1px solid #7b8494; }
+.fx-dom-piece--v .fx-dom-demi--g { border-right: 0; border-bottom: 1px solid #7b8494; }
 .fx-dom-fleche {
     position: absolute; display: flex; align-items: center; justify-content: center;
     color: #6b7280; font-weight: 800;
 }
-/* LE PLATEAU : un emplacement vide par pièce, numéroté. C'est là qu'on colle
-   ce qu'on vient de découper — sans lui, la chaîne se défait au premier coup
-   de coude et l'élève ne sait plus où il en était. */
+/* LE PARCOURS : un emplacement vide par pièce, et les emplacements SE
+   TOUCHENT. On imprimait une grille de rangement 3 × 3 ; deux pièces voisines
+   n'y avaient aucun bord commun, donc aucune jointure à lire. Le serpentin,
+   lui, montre exactement ce qu'on demande : la question contre sa réponse. */
 .fx-dom-vide {
+    position: absolute; box-sizing: border-box;
+    border: 1.2px dashed #b0b6c5; border-radius: 3px; background: #fff;
+}
+/* Le pli, entre les deux moitiés de l'emplacement. */
+.fx-dom-pli { position: absolute; display: block; }
+.fx-dom-pli--h { left: 50%; top: 12%; bottom: 12%; border-left: 1px dashed #d5d9e2; }
+.fx-dom-pli--v { top: 50%; left: 12%; right: 12%; border-top: 1px dashed #d5d9e2; }
+.fx-dom-num {
     position: absolute; display: flex; align-items: center; justify-content: center;
-    box-sizing: border-box; border: 1.2px dashed #b0b6c5; border-radius: 3px;
-    color: #c3c8d2; font-weight: 800; background: #fff;
+    color: #c3c8d2; font-weight: 800; pointer-events: none;
 }
 .fx-dom-zone {
     position: absolute; font-weight: 700; color: #6b7280;
