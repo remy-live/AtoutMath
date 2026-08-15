@@ -408,7 +408,6 @@ export const geometrieExercises = [
         // l'écran on essaie et l'on voit ; sur la feuille il faut tout prévoir
         // avant d'écrire le coup.
         generatorId: 'logi.mat-fiche', printable: 'mat',
-        printParams: { coups: 1 },
         consignePapier: 'Les Blancs jouent et matent. Écris le coup en notation.',
         sansRevision: true,
         skills: ['geo.espace.reperage'],

@@ -438,6 +438,11 @@
     display: flex; justify-content: center;
 }
 .figure-wrap--interactive { margin-bottom: 14px; }
+/* UN NOMBRE ÉGYPTIEN EST LARGE ET BAS depuis qu'il s'écrit à la suite : la
+   largeur de 360 px, taillée pour une figure à peu près carrée, réduisait ses
+   glyphes à des traits qu'on ne distingue plus — or l'exercice consiste à les
+   COMPTER. */
+.figure-wrap:has(.egy-svg) { width: min(600px, 97%); }
 .fig-svg, .rep-svg { width: 100%; height: auto; max-height: 46cqh; overflow: visible; }
 
 .fig-shape { fill: var(--tag-dom-bg); stroke: var(--primary); stroke-width: 2.5; }

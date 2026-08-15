@@ -244,3 +244,23 @@ test('la progression va du plus simple au plus fourni, sans trou de niveau', asy
         assert.ok(f.titre.length > 5, `${id} : titre trop court`);
     });
 });
+
+// --- LA FEUILLE SUIT LE RÉGLAGE DE L'ÉCRAN -------------------------------------
+//
+// L'exercice s'appelle « mat en un, mat en deux ». Le catalogue forçait
+// pourtant `coups: 1` à l'impression : le professeur qui choisissait « aux
+// mats en deux coups » et cliquait sur l'imprimante recevait des mats en un,
+// sans que rien ne le prévienne.
+
+test('« directement aux mats en deux coups » imprime bien des mats en deux', async () => {
+    const { matFicheGenerator } = await import('../js/core/generators/matFiche.js');
+    for (const params of [{ depart: 'deux' }, { coups: 2 }]) {
+        const it = matFicheGenerator.generate(params, { rng: makeRng('deux'), themesExclus: [] });
+        assert.equal(it.meta.coups, 2, JSON.stringify(params));
+        // Et la solution annoncée est bien celle d'un mat en deux.
+        assert.match(it.prompt.papier, /en 2 coups/);
+    }
+    const un = matFicheGenerator.generate({ depart: 'debut' },
+        { rng: makeRng('un'), themesExclus: [] });
+    assert.equal(un.meta.coups, 1);
+});

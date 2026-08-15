@@ -18,7 +18,7 @@
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
-import { GLYPHES, egyptianSvg } from '../core/figures.js';
+import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
@@ -2913,9 +2913,15 @@ function matPreviewHtml(item, slot, k, solution) {
             g.cell * k, 0.03);
     });
 
+    // EN COMBIEN DE COUPS ? Rémy : « comment on sait en combien de coups il
+    // faut faire mat ? ». C'était écrit en tête de feuille, d'après le PREMIER
+    // problème — donc faux dès qu'une feuille mêle des mats en un et des mats
+    // en deux, et de toute façon loin du diagramme qu'on regarde. Chaque
+    // problème porte maintenant le sien.
+    const enCombien = `Mat en ${g.m.coups || 1}`;
     const texte = solution
-        ? `Solution : ${g.m.solution}`
-        : `Coup des Blancs : ......................`;
+        ? `${enCombien} — solution : ${g.m.solution}`
+        : `${enCombien} — coup des Blancs : ...................`;
     let html = `<svg class="fx-ec-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
     html += `<div class="fx-ec-ligne" style="left:${slot.x * k}px; top:${g.ligneY * k}px;
         width:${slot.taille * k}px; height:${g.ligneH * k}px;
@@ -2958,8 +2964,11 @@ function dessinerMatPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(Math.max(6, Math.min(g.ligneH * 0.55, 9)));
     doc.setTextColor(...ENCRE.trait);
-    doc.text(solution ? `Solution : ${item.meta.solution}` : 'Coup des Blancs : ......................',
-        slot.x, g.ligneY + g.ligneH * 0.62);
+    const enCombien = `Mat en ${item.meta.coups || 1}`;
+    doc.text(pourPdf(solution
+        ? `${enCombien} — solution : ${item.meta.solution}`
+        : `${enCombien} — coup des Blancs : ...................`),
+    slot.x, g.ligneY + g.ligneH * 0.62);
 }
 
 function dessinerEchiquierPdf(doc, item, slot, solution) {
@@ -4552,16 +4561,22 @@ function tracesDuGlyphe(valeur) {
 function geoEgypte(item, slot) {
     const m = item.meta;
     const b = slot.boite;
-    const rangs = m.symboles.length;
-    const colonnes = Math.max(...m.symboles.map(s => s.n));
+    // LES SYMBOLES S'ÉCRIVENT À LA SUITE, comme à l'écran : c'est le même
+    // placement, calculé au même endroit (core/figures.js). Un rang par ligne
+    // donnait au nombre l'allure d'un tableau de numération, et la feuille ne
+    // disait pas la même chose que le jeu.
+    const plan = placerGlyphes(m.symboles);
+    const INTERLIGNE = 0.16;
+    const hautCases = plan.lignes + (plan.lignes - 1) * INTERLIGNE;
     // La ligne de réponse, en bas, prend sa part de la hauteur.
     const hDispo = b.h - 8;
-    const cell = Math.min(b.w / (colonnes + 0.5), hDispo / (rangs + 0.3), 16);
+    const cell = Math.min(b.w / (plan.largeur + 0.3), hDispo / (hautCases + 0.3), 16);
     return {
-        m, b, rangs, colonnes, cell,
+        m, b, plan, cell, interligne: INTERLIGNE,
+        rangs: plan.lignes, colonnes: plan.largeur,
         x0: b.x + 1,
         y0: b.y + 1,
-        yReponse: b.y + 2 + rangs * cell,
+        yReponse: b.y + 2 + hautCases * cell,
         // Les glyphes sont dessinés dans une case de 24 × 32.
         k: cell / 32
     };
@@ -4594,32 +4609,30 @@ function dessinerEgyptePdf(doc, item, slot, solution) {
     const g = geoEgypte(item, slot);
     const m = g.m;
     if (m.sens === 'lire' || solution) {
-        m.symboles.forEach((s, ligne) => {
-            const traces = tracesDuGlyphe(s.value);
-            for (let i = 0; i < s.n; i++) {
-                const x = g.x0 + i * g.cell;
-                const y = g.y0 + ligne * g.cell;
-                for (const t of traces) {
-                    // Le tracé est écrit dans les coordonnées du dessin de
-                    // Rémy ; « translate » et « scale » du groupe le ramènent
-                    // dans sa case de 24 × 32, et g.k dans le bloc imprimé.
-                    const k = t.k * g.cell / 32;
-                    if (t.style.includes('F')) {
-                        doc.setFillColor(...(t.creux ? [255, 255, 255] : ENCRE.trait));
-                    }
-                    if (t.style.includes('S')) {
-                        doc.setDrawColor(...ENCRE.trait);
-                        doc.setLineWidth(Math.max(0.18, (t.epaisseur || 10) * k));
-                        doc.setLineJoin('round');
-                    }
-                    dessinerChemin(doc, t.d, {
-                        x: x + t.tx * g.cell / 32,
-                        y: y + t.ty * g.cell / 32,
-                        k,
-                        // La couleur à reprendre après avoir évidé un trou.
-                        encre: t.creux ? [255, 255, 255] : ENCRE.trait
-                    }, t.style);
+        g.plan.cases.forEach((c) => {
+            const traces = tracesDuGlyphe(c.value);
+            const x = g.x0 + c.col * g.cell;
+            const y = g.y0 + c.ligne * (1 + g.interligne) * g.cell;
+            for (const t of traces) {
+                // Le tracé est écrit dans les coordonnées du dessin de Rémy ;
+                // « translate » et « scale » du groupe le ramènent dans sa
+                // case de 24 × 32, et g.k dans le bloc imprimé.
+                const k = t.k * g.cell / 32;
+                if (t.style.includes('F')) {
+                    doc.setFillColor(...(t.creux ? [255, 255, 255] : ENCRE.trait));
                 }
+                if (t.style.includes('S')) {
+                    doc.setDrawColor(...ENCRE.trait);
+                    doc.setLineWidth(Math.max(0.18, (t.epaisseur || 10) * k));
+                    doc.setLineJoin('round');
+                }
+                dessinerChemin(doc, t.d, {
+                    x: x + t.tx * g.cell / 32,
+                    y: y + t.ty * g.cell / 32,
+                    k,
+                    // La couleur à reprendre après avoir évidé un trou.
+                    encre: t.creux ? [255, 255, 255] : ENCRE.trait
+                }, t.style);
             }
         });
     }
@@ -4649,9 +4662,13 @@ export const RENDUS = {
         previewGrille: egyptePreviewHtml,
         pdfGrille: dessinerEgyptePdf,
         nomBloc: 'Nombre', nomBlocs: 'nombres',
-        proportions: { w: 1, h: 0.9 },
-        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
-        parLigneDefaut: 3,
+        // UN NOMBRE TIENT SUR UNE LIGNE de symboles : le bloc n'a plus besoin
+        // d'être carré. En hauteur, il ne lui faut que la ligne de glyphes et
+        // la ligne de réponse — d'où huit nombres par page au lieu de six, et
+        // des glyphes plus grands parce que le bloc est deux fois plus large.
+        proportions: { w: 1, h: 0.34 },
+        disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 6 },
+        parLigneDefaut: 2,
         grilleMax: 70
     },
 
@@ -4823,16 +4840,19 @@ export const RENDUS = {
 
     mat: {
         titre: 'Échecs : mat en un, mat en deux',
+        // LE NOMBRE DE COUPS EST SOUS CHAQUE DIAGRAMME, pas en tête de
+        // feuille : il se lit d'après le premier problème, et une feuille qui
+        // mêle des mats en un et des mats en deux annonçait alors le mauvais
+        // pour la moitié de ses cases.
         consigne: (items) => {
-            const n = items[0]?.meta?.coups || 1;
-            return n === 1
-                ? 'LES BLANCS JOUENT ET MATENT EN UN COUP. Écris le coup en notation : '
-                  + 'l\'initiale de la pièce (T tour, C cavalier, F fou, D dame, R roi ; rien '
-                  + 'pour un pion) puis la case d\'arrivée — par exemple Ta8. Un mat est un '
-                  + 'échec dont le roi ne peut pas sortir : ni fuir, ni parer, ni prendre.'
-                : 'LES BLANCS JOUENT ET MATENT EN DEUX COUPS. Écris le PREMIER coup en '
-                  + 'notation (par exemple Tc6). Attention : il doit gagner contre TOUTES les '
-                  + 'réponses noires, pas seulement contre la plus naturelle.';
+            const deux = (items || []).some(i => (i.meta && i.meta.coups) > 1);
+            return 'LES BLANCS JOUENT ET MATENT — le nombre de coups est écrit sous chaque '
+                + 'diagramme. Écris le coup en notation : l\'initiale de la pièce (T tour, '
+                + 'C cavalier, F fou, D dame, R roi ; rien pour un pion) puis la case '
+                + 'd\'arrivée — par exemple Ta8. Un mat est un échec dont le roi ne peut pas '
+                + 'sortir : ni fuir, ni parer, ni prendre.'
+                + (deux ? ' En deux coups, écris le PREMIER : il doit gagner contre TOUTES '
+                    + 'les réponses noires, pas seulement contre la plus naturelle.' : '');
         },
         previewGrille: matPreviewHtml,
         pdfGrille: dessinerMatPdf,
@@ -5430,7 +5450,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         const { slots, traits } = calculerFiche(cols, rows);
         const en = PAGE.marge * k;
         let html = `
-            <div class="fp-entete" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
+            <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
                 <b>${titreFiche}${solutionsVisibles ? ' — Solutions' : ''}</b>
                 <span>Nom : ............  Date : ......</span>
             </div>

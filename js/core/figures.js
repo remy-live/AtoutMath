@@ -214,33 +214,77 @@ export const GLYPHES = {
 /**
  * @param {Array<{value:number, n:number}>} symboles - déjà triés par valeur décroissante
  */
+/**
+ * LA PLACE DE CHAQUE HIÉROGLYPHE, en cases.
+ *
+ * Les symboles s'écrivent À LA SUITE, comme des caractères — parce que c'est
+ * ce qu'ils sont. On mettait un rang par ligne : deux lotus, retour à la
+ * ligne, trois anses, retour à la ligne… Cela donnait au nombre l'allure d'un
+ * tableau de numération, c'est-à-dire exactement la chose que ce système n'a
+ * pas : un hiéroglyphe vaut ce qu'il vaut, où qu'il soit posé, et c'est toute
+ * la leçon.
+ *
+ * Le groupement reste visible sans retour à la ligne : un blanc plus large
+ * entre deux valeurs différentes. On lit toujours « deux lotus, trois anses,
+ * un bâton » — le découpage du calcul — mais sur une ligne.
+ *
+ * Les positions sont en CASES (1 = une case pleine), à charge de l'appelant de
+ * les multiplier par la taille qu'il donne à une case.
+ *
+ * @param {Array<{value:number, n:number}>} symboles - du plus fort au plus faible
+ * @param {Object} [o]
+ * @param {number} [o.gap]        - blanc entre deux symboles de même valeur
+ * @param {number} [o.gapGroupe]  - blanc entre deux valeurs différentes
+ * @param {number} [o.maxParLigne]
+ * @returns {{cases: Array<{value:number, col:number, ligne:number}>,
+ *            lignes:number, largeur:number}}
+ */
+export function placerGlyphes(symboles, o = {}) {
+    const gap = o.gap ?? 0.16;
+    const gapGroupe = o.gapGroupe ?? 0.45;
+    const maxParLigne = o.maxParLigne ?? 9;
+
+    const suite = [];
+    (symboles || []).forEach((s, rang) => {
+        for (let i = 0; i < s.n; i++) {
+            suite.push({ value: s.value, avant: i === 0 && rang > 0 ? gapGroupe : gap });
+        }
+    });
+
+    const cases = [];
+    let ligne = 0, col = 0, dansLaLigne = 0, largeur = 0;
+    suite.forEach((g, i) => {
+        if (dansLaLigne >= maxParLigne) { ligne++; col = 0; dansLaLigne = 0; }
+        if (dansLaLigne > 0 || (i === 0 && false)) col += g.avant;
+        cases.push({ value: g.value, col, ligne });
+        col += 1;
+        largeur = Math.max(largeur, col);
+        dansLaLigne++;
+    });
+    return { cases, lignes: Math.max(1, ligne + 1), largeur: Math.max(1, largeur) };
+}
+
 export function egyptianSvg(symboles) {
-    // Un rang par ligne, du plus grand au plus petit. Deux raisons : la
-    // figure reste étroite, donc chaque glyphe est rendu plus grand ; et
-    // l'élève voit d'un coup d'œil « 2 lotus, 3 anses, 1 bâton », ce qui est
-    // exactement le découpage du calcul à faire.
     // Des cases de 44 px : l'exercice consiste à COMPTER des symboles, ce qui
     // suppose de les distinguer sans se pencher. La feuille reste bornée en
     // hauteur par le CSS, qui la réduira si le plateau est court.
-    const CELL = 44, GAP = 9, PAD = 12;
-    const colonnes = Math.max(...symboles.map(s => s.n));
-    const W = colonnes * CELL + (colonnes - 1) * GAP + PAD * 2;
-    const H = symboles.length * CELL + (symboles.length - 1) * GAP + PAD * 2;
+    const CELL = 44, PAD = 12, INTERLIGNE = 0.16;
+    const plan = placerGlyphes(symboles);
+    const W = plan.largeur * CELL + PAD * 2;
+    const H = (plan.lignes + (plan.lignes - 1) * INTERLIGNE) * CELL + PAD * 2;
 
     // Les tracés sont dessinés dans une case de 24 × 32 ; on les met à
     // l'échelle de la cellule plutôt que de réécrire chaque chemin.
     const echelle = (CELL / 32).toFixed(3);
-
-    const contenu = symboles.map((s, ligne) => {
-        const y = PAD + ligne * (CELL + GAP);
-        return Array.from({ length: s.n }, (_, i) =>
-            `<g class="egy-glyph" transform="translate(${PAD + i * (CELL + GAP)}, ${y}) scale(${echelle})">${GLYPHES[s.value]}</g>`
-        ).join('');
+    const contenu = plan.cases.map(c => {
+        const x = PAD + c.col * CELL;
+        const y = PAD + c.ligne * (1 + INTERLIGNE) * CELL;
+        return `<g class="egy-glyph" transform="translate(${x.toFixed(1)}, ${y.toFixed(1)}) scale(${echelle})">${GLYPHES[c.value]}</g>`;
     }).join('');
 
-    const description = symboles.map(s => `${s.n} × ${s.value}`).join(', ');
+    const description = (symboles || []).map(s => `${s.n} × ${s.value}`).join(', ');
     return `
-    <svg class="fig-svg egy-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
+    <svg class="fig-svg egy-svg" viewBox="0 0 ${+W.toFixed(1)} ${+H.toFixed(1)}" width="${+W.toFixed(1)}" height="${+H.toFixed(1)}"
          role="img" aria-label="Nombre en hiéroglyphes égyptiens : ${description}">
         ${contenu}
     </svg>`;

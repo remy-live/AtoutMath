@@ -404,6 +404,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fp-entete b { overflow: hidden; text-overflow: ellipsis; }
 .fp-entete span { color: #4a5568; }
+/* LA LIGNE PARTAGÉE avec le « Nom / Date ». Centrer deux textes dans la même
+   boîte les colle l'un à l'autre dès que le titre s'allonge — « Échecs : mat
+   en un, mat en deux » venait s'écrire par-dessus le « Nom ». Comme sur le
+   PDF : le titre à gauche, l'identité à droite, et c'est le titre qui cède. */
+.fp-entete--partage { justify-content: space-between; text-align: left; gap: 4%; }
+.fp-entete--partage b { min-width: 0; flex: 0 1 auto; }
+.fp-entete--partage span { flex: 0 0 auto; }
 /* LA LIGNE D'IDENTITÉ : chaque champ avec SA longueur de pointillés. Un
    « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé —
    la largeur est une donnée pédagogique, pas une décoration. */

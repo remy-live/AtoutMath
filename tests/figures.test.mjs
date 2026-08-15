@@ -36,9 +36,30 @@ test('chaque glyphe tient dans sa case de 24 × 32', () => {
     }
 });
 
-test('les rangs se lisent du plus grand au plus petit, un par ligne', () => {
+test('les symboles s\'écrivent à la suite, pas un rang par ligne', () => {
+    // SIX GLYPHES SUR UNE LIGNE. Un rang par ligne donnait au nombre l'allure
+    // d'un tableau de numération — la seule chose que ce système n'a pas.
     const svg = egyptianSvg([{ value: 100, n: 2 }, { value: 10, n: 3 }, { value: 1, n: 1 }]);
-    // Trois lignes de 44 px, deux écarts de 9, deux marges de 12.
-    assert.match(svg, /viewBox="0 0 \d+ 174"/);
+    assert.match(svg, /viewBox="0 0 [\d.]+ 68"/, 'une seule ligne de 44 px, deux marges de 12');
     assert.equal((svg.match(/class="egy-glyph"/g) || []).length, 6);
+    // Les six sont sur la MÊME ordonnée.
+    const ys = [...svg.matchAll(/translate\(([-\d.]+), ([-\d.]+)\)/g)].map(m => Number(m[2]));
+    assert.deepEqual([...new Set(ys)], [12]);
+});
+
+test('au-delà de neuf symboles, on passe à la ligne comme un texte', () => {
+    const svg = egyptianSvg([{ value: 1, n: 12 }]);
+    assert.equal((svg.match(/class="egy-glyph"/g) || []).length, 12);
+    const ys = [...new Set([...svg.matchAll(/translate\(([-\d.]+), ([-\d.]+)\)/g)]
+        .map(m => Number(m[2])))];
+    assert.equal(ys.length, 2, 'douze bâtons tiennent sur deux lignes');
+});
+
+test('un blanc plus large sépare deux valeurs différentes', () => {
+    const svg = egyptianSvg([{ value: 10, n: 2 }, { value: 1, n: 2 }]);
+    const xs = [...svg.matchAll(/translate\(([-\d.]+), [-\d.]+\)/g)].map(m => Number(m[1]));
+    const dansLeGroupe = xs[1] - xs[0];
+    const entreGroupes = xs[2] - xs[1];
+    assert.ok(entreGroupes > dansLeGroupe,
+        `le groupement doit rester visible : ${dansLeGroupe} puis ${entreGroupes}`);
 });

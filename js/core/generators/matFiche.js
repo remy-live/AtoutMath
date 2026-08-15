@@ -38,7 +38,12 @@ export const matFicheGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         params = params || {};
-        const n = Number(params.coups) === 2 ? 2 : 1;
+        // LA FEUILLE SUIT LE RÉGLAGE DE L'ÉCRAN. Le catalogue forçait
+        // `coups: 1` à l'impression : un exercice qui s'appelle « mat en un,
+        // mat en deux » ne savait donc imprimer que des mats en un, quel que
+        // soit le point de départ choisi. `depart: 'deux'` veut dire « aux
+        // mats en deux coups » — sur le papier aussi.
+        const n = Number(params.coups) === 2 || params.depart === 'deux' ? 2 : 1;
         // LA FICHE PUISE DANS LA MÊME BIBLIOTHÈQUE QUE L'ÉCRAN : cent neuf
         // positions vérifiées, au lieu d'une petite liste à part qui aurait
         // divergé au premier ajout.
