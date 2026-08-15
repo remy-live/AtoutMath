@@ -105,7 +105,15 @@ function questionsDe(etape, nb) {
 function formaterReponse(item) {
     if (item.answerKind === 'choice' && item.choices) {
         const bonne = item.choices.find(c => c.correct);
-        if (bonne) return String(bonne.label ?? bonne.value);
+        // LE LIBELLÉ D'UNE RÉPONSE EST FAIT POUR L'ÉCRAN, pas pour le papier :
+        // une fraction y est du HTML — deux span empilés — et le corrigé
+        // imprimait « 5/7 + 4/7 = <span class="fraction"><span class=… ». Sur
+        // le papier, c'est la VALEUR qu'on écrit ; la mise en fraction, la
+        // feuille sait la faire toute seule.
+        if (bonne) {
+            const brut = String(bonne.label ?? bonne.value ?? '');
+            return /[<>]/.test(brut) ? String(bonne.value ?? '') : brut;
+        }
     }
     // LES MILLIERS SE GROUPENT DANS LE CORRIGÉ AUSSI. L'énoncé écrit
     // « 92 202 » et le corrigé répondait « 90000 » : deux écritures du même

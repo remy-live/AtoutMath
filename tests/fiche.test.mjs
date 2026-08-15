@@ -767,3 +767,31 @@ test('corrigé : un trou en tête d\'énoncé survit aussi', () => {
     const ligne = reponseEnPlace(texteImprime('? × 5 = 40'), '8');
     assert.equal(sansMarques(ligne).replace(/[ \s]+/g, ' ').trim(), '8 × 5 = 40');
 });
+
+test('corrigé : une marque orpheline ne s\'imprime jamais', () => {
+    // Une réponse longue peut être coupée entre deux lignes : l'ouvrante reste
+    // d'un côté, la fermante part de l'autre. Sans nettoyage, le caractère de
+    // contrôle sortait tel quel — un rectangle noir au milieu du corrigé.
+    const debut = morceauxReponse(`21. 5/7 + 4/7 = ${DEBUT_REP}9`);
+    assert.deepEqual(debut, [{ texte: '21. 5/7 + 4/7 = ' }, { texte: '9', reponse: true }]);
+    const fin = morceauxReponse(`/7${FIN_REP} exactement`);
+    assert.deepEqual(fin, [{ texte: '/7', reponse: true }, { texte: ' exactement' }]);
+    // Et dans tous les cas, plus aucune marque dans le texte rendu.
+    for (const bout of [...debut, ...fin]) {
+        assert.equal(bout.texte, sansMarques(bout.texte));
+    }
+});
+
+test('corrigé : les fractions se mesurent empilées, pas à la barre oblique', () => {
+    const q = Array.from({ length: 8 }, (_, i) => ({
+        texte: `${i + 1}/12 ... ${i + 2}/12`, reponse: '<', fractions: true
+    }));
+    const avec = composerSolutions(q, { mode: 'normal' }, mesurer);
+    const sans = composerSolutions(q.map(x => ({ ...x, fractions: false })), { mode: 'normal' }, mesurer);
+    assert.equal(avec.opts.fractions, true, 'la feuille doit savoir qu\'elle porte des fractions');
+    assert.equal(sans.opts.fractions, false);
+    // Une fraction empilée est haute comme deux lignes : le corrigé doit lui
+    // laisser plus de place, sinon le numéro 6 s'écrit sur le numéro 7.
+    assert.ok(avec.opts.interligne > sans.opts.interligne,
+        `interligne ${avec.opts.interligne} contre ${sans.opts.interligne}`);
+});

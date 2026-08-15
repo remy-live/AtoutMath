@@ -812,11 +812,27 @@ export function composerSolutions(questions, opts, mesurer) {
     // En détaillé les entrées respirent : deux explications collées l'une à
     // l'autre se lisent comme un seul paragraphe.
     const entre = mode === 'detaille' ? 2.6 : 1.4;
+    // LES FRACTIONS S'EMPILENT SUR LE CORRIGÉ AUSSI. La feuille de questions
+    // les écrit numérateur sur dénominateur ; le corrigé les écrivait « 5/7 »,
+    // à la barre oblique. Deux écritures de la même fraction dans le même
+    // document, et celle du corrigé n'est pas celle qu'on demande à l'élève.
+    // Il faut aussi les MESURER comme telles, sans quoi la ligne passe à la
+    // ligne pour une largeur qu'elle n'occupe pas.
+    const avecFractions = (sections && sections.length
+        ? sections.flatMap(sec => sec.questions || [])
+        : questions).some(q => q && q.fractions);
+    // UNE FRACTION EMPILÉE EST HAUTE COMME DEUX LIGNES. L'interligne du
+    // corrigé est calculé pour du texte : les fractions du numéro 6 venaient
+    // s'écrire par-dessus celles du numéro 7. La feuille de questions le sait
+    // déjà — elle ajoute sa marge —, le corrigé l'ignorait.
     return composerFiche(items, {
-        ...o, ligneReponse: 0, entreQuestions: entre, numeroL: 0,
+        ...o, ligneReponse: 0, numeroL: 0,
+        interligne: o.interligne * (avecFractions ? 1.5 : 1),
+        entreQuestions: entre + (avecFractions ? o.interligne * 0.9 : 0),
+        fractions: avecFractions,
         // Le compact n'a de sens que rempli : c'est la feuille d'UNE page.
         equilibrer: mode !== 'detaille'
-    }, mesurer);
+    }, avecFractions ? mesureurFractions(mesurer) : mesurer);
 }
 
 /**
@@ -878,7 +894,17 @@ export function reponseEnPlace(texte, reponse) {
     return `${nettoyer(t)} = ${marquee}`;
 }
 
-/** Les morceaux d'une ligne de corrigé : { texte, reponse? }. */
+/**
+ * Les morceaux d'une ligne de corrigé : { texte, reponse? }.
+ *
+ * UNE MARQUE ORPHELINE NE S'IMPRIME PAS. Une réponse très longue peut être
+ * coupée en deux lignes par la mise en page : l'ouvrante reste sur la
+ * première, la fermante part sur la seconde, et la paire ne se retrouve
+ * plus. Sans ce nettoyage, le caractère de contrôle sortait tel quel — un
+ * petit rectangle noir au milieu du corrigé. On souligne alors depuis la
+ * marque jusqu'au bout de la ligne, ce qui est exactement ce qu'on veut voir
+ * d'une réponse à cheval.
+ */
 export function morceauxReponse(ligne) {
     const out = [];
     const re = /\u0001([^\u0002]*)\u0002/g;
@@ -888,8 +914,22 @@ export function morceauxReponse(ligne) {
         out.push({ texte: m[1], reponse: true });
         dernier = m.index + m[0].length;
     }
-    if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
-    return out.length ? out : [{ texte: ligne }];
+    let reste = ligne.slice(dernier);
+    // Une ouvrante seule : tout ce qui suit est la réponse.
+    const ouvre = reste.indexOf(DEBUT_REP);
+    if (ouvre >= 0) {
+        if (ouvre > 0) out.push({ texte: reste.slice(0, ouvre) });
+        out.push({ texte: sansMarques(reste.slice(ouvre + 1)), reponse: true });
+        reste = '';
+    }
+    // Une fermante seule : tout ce qui précède l'était.
+    const ferme = reste.indexOf(FIN_REP);
+    if (ferme >= 0) {
+        out.push({ texte: reste.slice(0, ferme), reponse: true });
+        reste = sansMarques(reste.slice(ferme + 1));
+    }
+    if (reste) out.push({ texte: reste });
+    return out.length ? out : [{ texte: sansMarques(ligne) }];
 }
 
 /** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */

@@ -672,9 +672,15 @@ export function apercuSolutions(page, k, o) {
     let html = '';
     for (const b of page.blocs) {
         b.lignes.forEach((ligne, i) => {
-            const corps = morceauxReponse(ligne).map(m => m.reponse
-                ? `<b class="fq-rep">${echapper(m.texte)}</b>`
-                : echapper(m.texte)).join('');
+            const corps = morceauxReponse(ligne).map(m => {
+                // LES FRACTIONS S'EMPILENT ICI AUSSI. Le corrigé les écrivait
+                // « 5/7 » à la barre oblique, alors que la feuille de
+                // questions, elle, les empile : deux écritures de la même
+                // fraction dans le même document, et celle du corrigé n'est pas
+                // celle qu'on demande à l'élève.
+                const t = ligneHtml(m.texte, o.fractions, o);
+                return m.reponse ? `<b class="fq-rep">${t}</b>` : t;
+            }).join('');
             html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
                 width:${b.largeur * k}px; font-size:${o.taille * k}px">${corps}</div>`;
         });
@@ -691,15 +697,13 @@ export function pdfSolutions(pdf, page, o) {
             let x = b.x;
             for (const m of morceauxReponse(ligne)) {
                 pdf.setFont('helvetica', m.reponse ? 'bold' : 'normal');
-                const t = pourPdf(m.texte);
-                pdf.text(t, x, y);
-                const w = pdf.getTextWidth(t);
+                const debut = x;
+                x = dessinerLigne(pdf, m.texte, x, y, o, o.fractions);
                 if (m.reponse) {
                     pdf.setDrawColor(...ENCRE.texte);
                     pdf.setLineWidth(0.22);
-                    pdf.line(x, y + o.taille * 0.32, x + w, y + o.taille * 0.32);
+                    pdf.line(debut, y + o.taille * 0.32, x, y + o.taille * 0.32);
                 }
-                x += w;
             }
         });
     }
