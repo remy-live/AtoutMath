@@ -556,12 +556,12 @@ class PoserOperation extends BaseGame {
             await gate.wait(500);
             cur.say('D\'abord aligner : les unités sous les unités. C\'est la virgule qui commande, '
                 + 'pas le bord droit.', this.grilleEl);
-            await gate.wait(3000 * DEMO_SPEED);
+            await gate.wait(3000);
             this.pose = this.attendu.map(a => a.chiffres.map(c => ({ rang: c.rang, chiffre: c.chiffre })));
             this.etape = 2;
             this.rangCourant = premierRang(this.tableau);
             this.dessiner();
-            await gate.wait(1000 * DEMO_SPEED);
+            await gate.wait(1000);
 
             for (const c of this.tableau.colonnes) {
                 if (!this.isRunning) break;
@@ -572,7 +572,7 @@ class PoserOperation extends BaseGame {
                     : `Colonne des ${this.nomRang(c.rang)} : ${c.resultat}`
                         + `${c.emprunte ? ' — j\'ai ajouté dix en haut, et un en bas à la colonne suivante.' : '.'}`,
                 this.grilleEl);
-                await gate.wait(2500 * DEMO_SPEED);
+                await gate.wait(2500);
                 this.resultats[c.rang] = c.resultat;
                 const s = rangSuivant(this.tableau, c.rang);
                 if (s !== null) {
@@ -581,10 +581,10 @@ class PoserOperation extends BaseGame {
                 }
                 this.rangCourant = s;
                 this.dessiner();
-                await gate.wait(700 * DEMO_SPEED);
+                await gate.wait(700);
             }
             cur.say('Et les retenues restent ÉCRITES : en contrôle, elles se voient.', this.grilleEl);
-            await gate.wait(2800 * DEMO_SPEED);
+            await gate.wait(2800);
         } catch (e) { /* démonstration coupée */ }
         fin();
     }

@@ -711,7 +711,7 @@ class PoserMultiplication extends PoserLongue {
             await gate.wait(500);
             cur.say('Une multiplication posée, c\'est une LIGNE par chiffre du multiplicateur — '
                 + 'et chaque ligne se décale d\'un rang.', this.grilleEl);
-            await gate.wait(3200 * DEMO_SPEED);
+            await gate.wait(3200);
             for (let i = 0; i < this.m.lignes.length && this.isRunning; i++) {
                 this.ligne = i;
                 const l = this.m.lignes[i];
@@ -726,12 +726,12 @@ class PoserMultiplication extends PoserLongue {
                           + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total}`
                           + `${c.retenueSortante ? `, je pose ${c.chiffre} et je retiens ${c.retenueSortante}` : ''}.`,
                     this.grilleEl);
-                    await gate.wait(1800 * DEMO_SPEED);
+                    await gate.wait(1800);
                 }
             }
             cur.say('Puis on additionne les lignes — et la virgule se pose à la toute fin, '
                 + 'en comptant les décimales des deux facteurs.', this.grilleEl);
-            await gate.wait(3000 * DEMO_SPEED);
+            await gate.wait(3000);
         } catch (e) { /* démonstration coupée */ }
         cur.destroy(); gate.destroy();
         this.demoCursor = null; this.demoGate = null;
@@ -1069,7 +1069,7 @@ class PoserDivision extends PoserLongue {
             await gate.wait(500);
             cur.say('Une division posée, c\'est toujours la même étape recommencée : j\'abaisse, '
                 + 'je cherche combien de fois, je multiplie, je soustrais.', this.grilleEl);
-            await gate.wait(3400 * DEMO_SPEED);
+            await gate.wait(3400);
             for (let i = this.debut; i < this.d.etapes.length && this.isRunning; i++) {
                 const e = this.d.etapes[i];
                 this.etape = i;
@@ -1079,13 +1079,13 @@ class PoserDivision extends PoserLongue {
                 cur.say(`${this.d.operandes[1]} dans ${e.courant} : ${e.chiffre} fois. `
                     + `${this.d.operandes[1]} × ${e.chiffre} = ${e.produit}, `
                     + `et ${e.courant} − ${e.produit} = ${e.reste}.`, this.grilleEl);
-                await gate.wait(2600 * DEMO_SPEED);
+                await gate.wait(2600);
             }
             this.etape = this.d.etapes.length;
             this.dessiner();
             cur.say('Et le reste est toujours plus petit que le diviseur : c\'est la vérification '
                 + 'qui ne trompe pas.', this.grilleEl);
-            await gate.wait(3000 * DEMO_SPEED);
+            await gate.wait(3000);
         } catch (e) { /* démonstration coupée */ }
         cur.destroy(); gate.destroy();
         this.demoCursor = null; this.demoGate = null;

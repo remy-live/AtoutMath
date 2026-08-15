@@ -46,7 +46,13 @@ const VITESSES = [
 ];
 
 let facteurVitesse = (() => {
-    const v = parseFloat(localStorage.getItem('mathbox-demo-speed'));
+    // LA LECTURE EST PROTÉGÉE, comme l'écriture l'est déjà deux lignes plus
+    // bas. Un navigateur en navigation privée peut refuser `getItem` — et
+    // comme cet appel est au CHARGEMENT du module, l'exception emportait tout
+    // le robot avec elle, sans rapport avec la démonstration en cours.
+    let brut = null;
+    try { brut = globalThis.localStorage?.getItem('mathbox-demo-speed'); } catch { brut = null; }
+    const v = parseFloat(brut);
     if (!(v > 0)) return 1;
     if (VITESSES.some(o => o.facteur === v)) return v;
     // Les anciens facteurs (1,7 et 0,6) ne sont plus dans la liste. On les
@@ -59,7 +65,7 @@ let facteurVitesse = (() => {
 
 export function setDemoSpeedFactor(f) {
     facteurVitesse = f;
-    try { localStorage.setItem('mathbox-demo-speed', String(f)); } catch { /* stockage plein ou privé */ }
+    try { globalThis.localStorage?.setItem('mathbox-demo-speed', String(f)); } catch { /* stockage plein ou privé */ }
 }
 
 /**
@@ -243,7 +249,12 @@ function marquerCible(cible) {
 }
 
 /** Commande inerte : une vignette de catalogue n'a pas à porter de barre. */
-const BARRE_MUETTE = { get paused() { return false; }, async waitTurn() { return true; }, destroy() {} };
+const BARRE_MUETTE = {
+    get paused() { return false; },
+    async waitTurn() { return true; },
+    async wait(ms) { await new Promise(r => setTimeout(r, Math.max(0, ms))); return true; },
+    destroy() {}
+};
 
 export function createDemoGate(host) {
     // En muet (vignettes du catalogue, mode présentation), la démonstration
@@ -254,6 +265,9 @@ export function createDemoGate(host) {
     let paused = false;
     let destroyed = false;
     let attentes = [];
+    // Les délais du robot en cours. Séparés des attentes de pause : reprendre
+    // ne doit pas escamoter le temps qu'il reste à patienter.
+    const minuteurs = new Set();
 
     // Nouvelle démonstration, nouvel historique : « en arrière » ne doit pas
     // remonter dans les explications d'une question déjà quittée.
@@ -345,10 +359,52 @@ export function createDemoGate(host) {
             if (!paused) return true;
             return new Promise(res => attentes.push(() => res(!destroyed)));
         },
+        /**
+         * ATTENDRE UN MOMENT, PUIS SON TOUR.
+         *
+         * Cinq démonstrations appelaient déjà cette méthode — le Compte est
+         * Bon, les priorités, le tableau de conversion et les deux poses
+         * d'opération — et elle n'existait pas. Le robot mourait sur son
+         * PREMIER `await`, dans un `catch` qui disait « démonstration coupée » :
+         * pas d'erreur en console, pas de curseur à l'écran, rien. On ne
+         * pouvait qu'en conclure, comme Rémy, que « le robot ne fonctionne
+         * pas ».
+         *
+         * L'attente est coupée net si la barre est détruite — inutile de faire
+         * parler un robot qu'on vient de fermer — et elle rend la main
+         * seulement quand la pause est levée.
+         */
+        async wait(ms) {
+            if (destroyed) return false;
+            // UN DÉLAI QUI N'EN EST PAS UN NE PASSE PAS INAPERÇU. Cinq jeux
+            // écrivaient « gate.wait(2500 * DEMO_SPEED) » — mais DEMO_SPEED est
+            // un TABLEAU de durées nommées, pas un facteur : le produit valait
+            // NaN, `setTimeout` le prenait pour zéro, et le robot jouait toute
+            // sa démonstration en quelques millisecondes. Rien à voir à
+            // l'écran, aucune erreur : « le robot ne fonctionne pas ».
+            // On rattrape ici ce qui n'est pas un nombre, plutôt que de laisser
+            // le prochain appel douteux repasser sans bruit.
+            const duree = Number.isFinite(ms) ? Math.max(0, ms) : DEMO_SPEED.settle;
+            // Et l'allure choisie par le professeur s'applique aussi à ces
+            // pauses-là : « Lent » ne ralentissait que les déplacements.
+            await new Promise((res) => {
+                let t;
+                const fini = () => { clearTimeout(t); minuteurs.delete(fini); res(); };
+                t = setTimeout(fini, duree * facteurVitesse);
+                minuteurs.add(fini);
+            });
+            // Puis son tour : si l'on a mis en pause pendant l'attente, le
+            // robot reste arrêté jusqu'à la reprise.
+            return this.waitTurn();
+        },
         destroy() {
             destroyed = true;
             // Une barre détruite en pause laisserait le jeu gelé pour de bon.
             if (paused) { paused = false; document.dispatchEvent(new CustomEvent('demo_pause', { detail: false })); }
+            // Et un robot qu'on ferme ne doit pas continuer à parler dans le
+            // vide pendant les deux secondes de son dernier délai.
+            [...minuteurs].forEach(f => f());
+            minuteurs.clear();
             liberer();
             bar.remove();
         }

@@ -510,36 +510,36 @@ class Conversion extends BaseGame {
             if (this.etape === 1) {
                 cur.say('D\'abord les unités, une fois pour toutes : kilo, hecto, déca, '
                     + 'l\'unité, déci, centi, milli.', this.etiquettesEl);
-                await gate.wait(3000 * DEMO_SPEED);
+                await gate.wait(3000);
                 f.unites.forEach(u => { this.unitesPosees[u.rang] = u.symbole; });
                 this.tableauGarni = true;
                 this.etape = 2;
                 this.dessiner();
-                await gate.wait(900 * DEMO_SPEED);
+                await gate.wait(900);
             }
             const ex = this.exercice;
             cur.say(`${String(ex.valeur).replace('.', ',')} ${ex.depart} : le chiffre des unités `
                 + `va sous ${ex.depart}. Pas ailleurs.`, this.tableEl);
-            await gate.wait(3000 * DEMO_SPEED);
+            await gate.wait(3000);
             this.colonneNombre = uniteDe(this.famille, ex.depart).rang;
             this.etape = 3;
             this.dessiner();
-            await gate.wait(900 * DEMO_SPEED);
+            await gate.wait(900);
 
             const a = convertir(ex.valeur, this.famille, ex.depart, ex.arrivee);
             cur.say(`On veut des ${ex.arrivee} : la virgule se pose juste après cette colonne.`,
                 this.tableEl);
-            await gate.wait(2800 * DEMO_SPEED);
+            await gate.wait(2800);
             this.virgule = a.colonneVirgule;
             a.zeros.forEach(z => this.zeros.add(z));
             this.majEtape3();
-            await gate.wait(900 * DEMO_SPEED);
+            await gate.wait(900);
             cur.say(a.zeros.length
                 ? `Les ${a.zeros.length} cases vides avant la virgule prennent un zéro — `
                     + `et l'on lit ${String(ex.attendu).replace('.', ',')} ${ex.arrivee}.`
                 : `Et l'on lit directement ${String(ex.attendu).replace('.', ',')} ${ex.arrivee}.`,
             this.tableEl);
-            await gate.wait(3200 * DEMO_SPEED);
+            await gate.wait(3200);
         } catch (e) { /* démonstration coupée */ }
         fin();
     }

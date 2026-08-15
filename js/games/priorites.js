@@ -369,7 +369,7 @@ class Priorites extends BaseGame {
             await gate.wait(500);
             cur.say(`Voilà « ${this.expression.texte} ». On ne calcule PAS de gauche à droite.`,
                 this.cascadeEl);
-            await gate.wait(2600 * DEMO_SPEED);
+            await gate.wait(2600);
 
             for (let tour = 0; tour < 6 && this.isRunning; tour++) {
                 const p = operationPrioritaire(this.courant);
@@ -379,22 +379,22 @@ class Priorites extends BaseGame {
                 const ops = [...this.cascadeEl.querySelectorAll('.pr-ligne:last-child .pr-jeton')];
                 const cible = ops[p.index];
                 cur.say(p.raison, cible || this.cascadeEl);
-                await gate.wait(2200 * DEMO_SPEED);
+                await gate.wait(2200);
                 if (cible) await cur.tap(cible);
                 this.choisir(p.index, cible || document.createElement('span'));
-                await gate.wait(900 * DEMO_SPEED);
+                await gate.wait(900);
 
                 const trou = this.cascadeEl.querySelector('.pr-trou');
                 cur.say(`Je souligne, je passe à la ligne, je RECOPIE le reste sans y toucher. `
                     + `Et dans le trou : ${p.gauche} ${ecrire([{ type: 'op', op: p.op }])} `
                     + `${p.droite} = ${p.valeur}.`, trou || this.cascadeEl);
-                await gate.wait(2400 * DEMO_SPEED);
+                await gate.wait(2400);
                 if (trou) { trou.value = String(p.valeur); this.valider(trou); }
-                await gate.wait(1000 * DEMO_SPEED);
+                await gate.wait(1000);
             }
             cur.say('C\'est la recopie qui coûte des points en contrôle, pas la règle.',
                 this.cascadeEl);
-            await gate.wait(2600 * DEMO_SPEED);
+            await gate.wait(2600);
         } catch (e) { /* démonstration coupée */ }
         fin();
     }

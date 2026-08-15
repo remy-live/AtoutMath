@@ -381,10 +381,10 @@ class CompteEstBon extends BaseGame {
             cur.protegerZone([this.plaquesEl, this.signesEl, this.ligneEl]);
             await gate.wait(500);
             cur.say(`Il faut atteindre ${this.etat.but} avec ces six plaques.`, this.butEl);
-            await gate.wait(2500 * DEMO_SPEED);
+            await gate.wait(2500);
             cur.say('Les grandes plaques — 25, 50, 75, 100 — sont là pour ça : '
                 + 'ce sont leurs multiples qu\'il faut avoir en tête.', this.plaquesEl);
-            await gate.wait(2800 * DEMO_SPEED);
+            await gate.wait(2800);
 
             for (const etape of this.partie.solution.slice(0, 3)) {
                 if (!this.isRunning) break;
@@ -392,18 +392,18 @@ class CompteEstBon extends BaseGame {
                 const idB = this.etat.nombres.find(n => n.valeur === etape.b && n.id !== idA)?.id;
                 if (!idA || !idB) break;
                 cur.say(`Je prends ${etape.a} et ${etape.b}.`, this.plaquesEl);
-                await gate.wait(1800 * DEMO_SPEED);
+                await gate.wait(1800);
                 this.choix = { a: idA, op: etape.op };
                 this.dessiner();
-                await gate.wait(700 * DEMO_SPEED);
+                await gate.wait(700);
                 cur.say(`${etape.a} ${SIGNE[etape.op]} ${etape.b} — et c'est MOI qui donne le résultat : `
                     + `${etape.resultat}.`, this.ligneEl);
-                await gate.wait(2400 * DEMO_SPEED);
+                await gate.wait(2400);
                 this.poserEtape(idB, etape.resultat);
-                await gate.wait(900 * DEMO_SPEED);
+                await gate.wait(900);
             }
             cur.say('La machine ne calcule jamais à ta place : c\'est tout l\'exercice.', this.ligneEl);
-            await gate.wait(2600 * DEMO_SPEED);
+            await gate.wait(2600);
         } catch (e) { /* démonstration coupée */ }
         fin();
     }
