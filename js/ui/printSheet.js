@@ -960,9 +960,15 @@ function dessinerFutoshikiPdf(doc, item, slot, solution, champ) {
 /** La grille n'est pas carrée : on la centre dans le carré du slot. */
 function geoSlither(item, slot) {
     const { cols, lignes } = item.meta;
-    const pas = Math.min(slot.taille / cols, slot.taille / lignes);
+    // DE L'AIR AU-DESSUS ET AU-DESSOUS. Les points de la grille touchaient le
+    // bord du bloc : sur une fiche composée, la première rangée se retrouvait
+    // à la hauteur du numéro de l'exercice et la dernière contre le numéro du
+    // suivant. On ne savait plus quel « 0 » appartenait à quel énoncé.
+    const air = Math.max(2, slot.taille * 0.05);
+    const haut = slot.taille - 2 * air;
+    const pas = Math.min(slot.taille / cols, haut / lignes);
     const x0 = slot.x + (slot.taille - cols * pas) / 2;
-    const y0 = slot.y + (slot.taille - lignes * pas) / 2;
+    const y0 = slot.y + air + (haut - lignes * pas) / 2;
     return { cols, lignes, pas, px: (x) => x0 + x * pas, py: (y) => y0 + y * pas };
 }
 
@@ -1028,12 +1034,24 @@ function dessinerSlitherlinkPdf(doc, item, slot, solution) {
 
 // --- Le carré magique ------------------------------------------------------------
 
+/**
+ * Le carré et sa somme, DANS l'emplacement — pas un millimètre dessous.
+ *
+ * La somme s'écrivait sous le carré, au-delà du bloc : sur une fiche composée,
+ * elle tombait sur le numéro de l'exercice suivant et les deux devenaient
+ * illisibles. Le carré cède la hauteur de la ligne, et tout tient.
+ */
+function geoCarreMagique(item, slot) {
+    const { n } = item.meta;
+    const sommeH = Math.max(4, Math.min(slot.taille * 0.1, 6));
+    const cote = (slot.taille - sommeH) / n;
+    return { n, cote, sommeH, sommeY: slot.y + cote * n };
+}
+
 function carreMagiquePreviewHtml(item, slot, k, solution, champs) {
-    const { n, cases, trous, somme } = item.meta;
-    const cote = slot.taille / n;
-    // La somme s'écrit SOUS le carré : au-dessus, elle se battait avec le
-    // titre « Grille N » de la fiche.
-    let html = `<div class="fx-cm-somme" style="left:${slot.x * k}px; top:${(slot.y + slot.taille + 1.2) * k}px;
+    const { cases, trous, somme } = item.meta;
+    const { n, cote, sommeH, sommeY } = geoCarreMagique(item, slot);
+    let html = `<div class="fx-cm-somme" style="left:${slot.x * k}px; top:${(sommeY + sommeH * 0.15) * k}px;
         width:${slot.taille * k}px; font-size:${3 * k}px">Somme magique : <b>${somme}</b></div>`;
     for (let i = 0; i < cases.length; i++) {
         const x = slot.x + (i % n) * cote, y = slot.y + Math.floor(i / n) * cote;
@@ -1046,12 +1064,12 @@ function carreMagiquePreviewHtml(item, slot, k, solution, champs) {
 }
 
 function dessinerCarreMagiquePdf(doc, item, slot, solution, champ) {
-    const { n, cases, trous, somme } = item.meta;
-    const cote = slot.taille / n;
+    const { cases, trous, somme } = item.meta;
+    const { n, cote, sommeH, sommeY } = geoCarreMagique(item, slot);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(Math.max(6, Math.min(sommeH * 1.5, 9)));
     doc.setTextColor(...ENCRE.texte);
-    doc.text(pourPdf(`Somme magique : ${somme}`), slot.x + (cote * n) / 2, slot.y + cote * n + 4.4,
+    doc.text(pourPdf(`Somme magique : ${somme}`), slot.x + (cote * n) / 2, sommeY + sommeH * 0.78,
         { align: 'center' });
     for (let i = 0; i < cases.length; i++) {
         const x = slot.x + (i % n) * cote, y = slot.y + Math.floor(i / n) * cote;
@@ -1560,10 +1578,23 @@ function reperePreviewHtml(item, slot, k, solution) {
         html += `<div class="fx-rp-grille" style="left:${g.px(g.mini) * k}px; top:${g.py(i) * k}px;
             width:${(g.px(m.max) - g.px(g.mini)) * k}px; height:0"></div>`;
     }
+    // LES DEUX AXES, ET ILS PORTENT UNE FLÈCHE. Sans elle, ce sont deux traits
+    // du quadrillage un peu plus épais que les autres : l'élève ne voit pas
+    // qu'il regarde un repère, et le sens de lecture ne se lit nulle part.
+    // La flèche dépasse le dernier carreau — c'est ainsi qu'on trace au tableau.
+    const bout = g.pas * 0.55;
     html += `<div class="fx-rp-axe" style="left:${g.px(g.mini) * k}px; top:${g.py(0) * k}px;
-        width:${(g.px(m.max) - g.px(g.mini)) * k}px; height:0"></div>`;
-    html += `<div class="fx-rp-axe" style="left:${g.px(0) * k}px; top:${g.py(m.max) * k}px;
-        width:0; height:${(g.py(g.mini) - g.py(m.max)) * k}px"></div>`;
+        width:${(g.px(m.max) - g.px(g.mini) + bout) * k}px; height:0"></div>`;
+    html += `<div class="fx-rp-axe" style="left:${g.px(0) * k}px; top:${(g.py(m.max) - bout) * k}px;
+        width:0; height:${(g.py(g.mini) - g.py(m.max) + bout) * k}px"></div>`;
+    const fl = g.pas * 0.26;
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <path d="M ${((g.px(m.max) + bout) * k).toFixed(2)} ${(g.py(0) * k).toFixed(2)}
+                 l ${(-fl * k).toFixed(2)} ${(-fl * 0.5 * k).toFixed(2)}
+                 l 0 ${(fl * k).toFixed(2)} Z" fill="#1a202c"/>
+        <path d="M ${(g.px(0) * k).toFixed(2)} ${((g.py(m.max) - bout) * k).toFixed(2)}
+                 l ${(-fl * 0.5 * k).toFixed(2)} ${(fl * k).toFixed(2)}
+                 l ${(fl * k).toFixed(2)} 0 Z" fill="#1a202c"/></svg>`;
 
     // Les graduations chiffrées : sans elles, on ne lit rien.
     for (let i = g.mini; i <= m.max; i++) {
@@ -1575,15 +1606,21 @@ function reperePreviewHtml(item, slot, k, solution) {
             top:${(g.py(i) - g.pas * 0.3) * k}px; width:${g.pas * 0.9 * k}px;
             font-size:${g.pas * 0.42 * k}px">${i}</div>`;
     }
-    html += `<div class="fx-rp-grad" style="left:${(g.px(0) - g.pas * 1.05) * k}px;
-        top:${(g.py(0) + g.pas * 0.12) * k}px; width:${g.pas * 0.9 * k}px;
-        font-size:${g.pas * 0.42 * k}px">O</div>`;
+    // LE ZÉRO SE POSE À L'ORIGINE, pas à un carreau de là. Il était écrit une
+    // largeur de carreau à gauche et presque un demi-carreau plus bas : sur un
+    // repère gradué de un en un, cela le mettait en face du −1.
+    html += `<div class="fx-rp-grad" style="left:${(g.px(0) - g.pas * 0.62) * k}px;
+        top:${(g.py(0) + g.pas * 0.06) * k}px; width:${g.pas * 0.5 * k}px;
+        font-size:${g.pas * 0.42 * k}px">0</div>`;
 
     // LES POINTS SE MARQUENT D'UNE CROIX : elle désigne exactement son centre,
     // là où un rond laisse hésiter entre son bord et son milieu.
     if (montrer) {
         m.points.forEach(pt => {
-            const r = g.pas * 0.26;
+            // UNE CROIX DÉSIGNE UN POINT, elle ne le recouvre pas : à un quart
+            // de carreau, ses branches mordaient sur les cases voisines et
+            // l'on ne savait plus laquelle était visée.
+            const r = g.pas * 0.17;
             html += `<div class="fx-rp-croix" style="left:${(g.px(pt.x) - r) * k}px;
                 top:${(g.py(pt.y) - r) * k}px; width:${2 * r * k}px; height:${2 * r * k}px"></div>`;
             html += `<div class="fx-rp-etiq" style="left:${(g.px(pt.x) + r * 0.9) * k}px;
@@ -1620,8 +1657,15 @@ function dessinerRepPdf(doc, item, slot, solution) {
     }
     doc.setLineWidth(0.5);
     doc.setDrawColor(...ENCRE.trait);
-    doc.line(g.px(g.mini), g.py(0), g.px(m.max), g.py(0));
-    doc.line(g.px(0), g.py(m.max), g.px(0), g.py(g.mini));
+    const bout = g.pas * 0.55, fl = g.pas * 0.26;
+    doc.line(g.px(g.mini), g.py(0), g.px(m.max) + bout, g.py(0));
+    doc.line(g.px(0), g.py(m.max) - bout, g.px(0), g.py(g.mini));
+    // Les pointes : deux petits triangles pleins, comme au tableau.
+    doc.setFillColor(...ENCRE.trait);
+    doc.triangle(g.px(m.max) + bout, g.py(0), g.px(m.max) + bout - fl, g.py(0) - fl * 0.5,
+        g.px(m.max) + bout - fl, g.py(0) + fl * 0.5, 'F');
+    doc.triangle(g.px(0), g.py(m.max) - bout, g.px(0) - fl * 0.5, g.py(m.max) - bout + fl,
+        g.px(0) + fl * 0.5, g.py(m.max) - bout + fl, 'F');
 
     doc.setFontSize(Math.max(4.5, g.pas * 1.1));
     doc.setTextColor(...ENCRE.gris);
@@ -1630,14 +1674,14 @@ function dessinerRepPdf(doc, item, slot, solution) {
         doc.text(String(i), g.px(i), g.py(0) + g.pas * 0.62, { align: 'center' });
         doc.text(String(i), g.px(0) - g.pas * 0.35, g.py(i) + g.pas * 0.18, { align: 'right' });
     }
-    doc.text('O', g.px(0) - g.pas * 0.35, g.py(0) + g.pas * 0.62, { align: 'right' });
+    doc.text('0', g.px(0) - g.pas * 0.16, g.py(0) + g.pas * 0.52, { align: 'right' });
 
     if (montrer) {
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.45);
         doc.setTextColor(...ENCRE.trait);
         m.points.forEach(pt => {
-            const r = g.pas * 0.26, x = g.px(pt.x), y = g.py(pt.y);
+            const r = g.pas * 0.17, x = g.px(pt.x), y = g.py(pt.y);
             doc.line(x - r, y - r, x + r, y + r);
             doc.line(x - r, y + r, x + r, y - r);
             doc.setFontSize(Math.max(5, g.pas * 1.2));
@@ -3137,16 +3181,36 @@ function geoMots(item, slot) {
     const listeW = seulsMots
         ? Math.max(34, Math.min(b.w * 0.20, 58))
         : Math.max(58, Math.min(b.w * 0.42, 118));
-    const cote = Math.max(10, Math.min(b.w - listeW - 8, b.h));
+
+    // DEUX DISPOSITIONS, ET ON GARDE CELLE QUI DONNE LA PLUS GRANDE GRILLE.
+    //
+    // Toujours à côté, le bloc d'une fiche composée — presque carré — donnait
+    // une grille bornée par sa largeur amputée de la colonne de mots, avec
+    // quatre centimètres de blanc au-dessus ET au-dessous. C'est exactement ce
+    // qu'on voyait : une grille perdue au milieu de sa page.
+    const coteA = Math.max(10, Math.min(b.w - listeW - 8, b.h));
+    // Empilée : les mots passent SOUS la grille, sur plusieurs colonnes.
+    const parCol = Math.max(3, Math.ceil(m.mots.length / (seulsMots ? 3 : 2)));
+    const listeH = parCol * (seulsMots ? 4.6 : 4) + 2;
+    const coteB = Math.max(10, Math.min(b.w, b.h - listeH - 3));
+    const empile = coteB > coteA + 2;
+    const cote = empile ? coteB : coteA;
     const cell = cote / m.taille;
-    // L'ensemble grille + liste est centré : la grille est bornée par la
-    // HAUTEUR de la page, donc collée à gauche elle laissait cinq centimètres
-    // de blanc à droite, comme une feuille mal cadrée.
-    const x0 = b.x + Math.max(0, (b.w - cote - 8 - listeW) / 2);
+
+    // L'ensemble est centré : collée à gauche, la grille laissait cinq
+    // centimètres de blanc à droite, comme une feuille mal cadrée.
+    const x0 = empile
+        ? b.x + Math.max(0, (b.w - cote) / 2)
+        : b.x + Math.max(0, (b.w - cote - 8 - listeW) / 2);
+    const y0 = empile ? b.y : b.y + (b.h - cote) / 2;
     return {
-        m, b, cell, cote, listeW,
-        x0, y0: b.y + (b.h - cote) / 2,
-        listeX: x0 + cote + 8
+        m, b, cell, cote, empile,
+        listeW: empile ? b.w : listeW,
+        listeColonnes: empile ? (seulsMots ? 3 : 2) : 1,
+        x0, y0,
+        listeX: empile ? b.x : x0 + cote + 8,
+        listeY: empile ? y0 + cote + 3 : y0,
+        listeH: empile ? listeH : cote
     };
 }
 
@@ -3203,9 +3267,11 @@ function motsPreviewHtml(item, slot, k, solution) {
 
     let html = `<svg class="fx-mc-svg" style="left:0; top:0; width:100%; height:100%">${svg}</svg>`;
     const lignes = indicesMots(m);
-    const pas = Math.min(g.cote / Math.max(lignes.length, 8), m.indices === 'mots' ? 8 : 12);
-    html += `<div class="fx-mc-liste" style="left:${g.listeX * k}px; top:${g.y0 * k}px;
-        width:${g.listeW * k}px; height:${g.cote * k}px;
+    const parCol = Math.ceil(lignes.length / g.listeColonnes);
+    const pas = Math.min(g.listeH / Math.max(parCol, 8), m.indices === 'mots' ? 8 : 12);
+    html += `<div class="fx-mc-liste" style="left:${g.listeX * k}px; top:${g.listeY * k}px;
+        width:${g.listeW * k}px; height:${g.listeH * k}px;
+        column-count:${g.listeColonnes}; column-gap:${4 * k}px;
         font-size:${Math.min(pas * 0.42, 4) * k}px; line-height:${pas * k}px">`
         + lignes.map(l => `<div>${echapperSheet(l)}</div>`).join('') + '</div>';
     return html;
@@ -3256,14 +3322,24 @@ function dessinerMotsPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', m.indices === 'mots' ? 'bold' : 'normal');
     doc.setFontSize(taille);
     doc.setTextColor(...ENCRE.texte);
+    // EN COLONNES QUAND LA LISTE EST SOUS LA GRILLE. Une seule colonne y
+    // aurait tiré huit mots sur toute la hauteur laissée libre, ou débordé.
+    const colW = (g.listeW - 4 * (g.listeColonnes - 1)) / g.listeColonnes;
+    const parCol = Math.ceil(lignes.length / g.listeColonnes);
+    const interligne = taille * 0.42;
+    let col = 0;
+    let y = g.listeY + taille * 0.5;
+    let dansLaColonne = 0;
     // Chaque indice est découpé à la largeur de sa colonne : une définition
     // d'un seul tenant sortait par la droite de la feuille.
-    let y = g.y0 + taille * 0.5;
-    const interligne = taille * 0.42;
     lignes.forEach(l => {
-        doc.splitTextToSize(pourPdf(l), g.listeW).forEach(part => {
-            if (y > g.y0 + g.cote) return;
-            doc.text(part, g.listeX, y);
+        if (dansLaColonne >= parCol && col < g.listeColonnes - 1) {
+            col++; dansLaColonne = 0; y = g.listeY + taille * 0.5;
+        }
+        dansLaColonne++;
+        doc.splitTextToSize(pourPdf(l), colW).forEach(part => {
+            if (y > g.listeY + g.listeH) return;
+            doc.text(part, g.listeX + col * (colW + 4), y);
             y += interligne;
         });
         y += interligne * 0.55;
