@@ -340,10 +340,16 @@ export const relatifsAdditionGenerator = {
 
         const avecParentheses = !etape.melangeEcriture || rng.bool();
         const ecriture = avecParentheses ? complete(a, b) : simplifiee(a, b);
-        const enonce = etape.modele === 'pastilles'
-            ? `${ecriture} = ?`
-            : `${ecriture} = ?`;
+        // L'énoncé est le MÊME dans les deux modèles : c'est le tableau dessiné
+        // à côté qui change, pas le calcul.
+        const enonce = `${ecriture} = ?`;
         const explication = expliquer(etape, a, b, total);
+        // SUR LE PAPIER, IL N'Y A PAS DE TABLEAU DE PASTILLES : l'énoncé est un
+        // calcul écrit en chiffres, et une correction qui parle de paires
+        // rouge-bleu envoie l'élève chercher un dessin qui n'existe pas. On y
+        // écrit le raisonnement sur les signes et les distances à zéro.
+        const explicationPapier = etape.modele === 'pastilles'
+            ? expliquer({ ...etape, modele: 'ecriture' }, a, b, total) : '';
         const modeReponse = params?.reponse === 'choix' ? 'choice' : 'numeric';
 
         return makeItem({
@@ -360,6 +366,7 @@ export const relatifsAdditionGenerator = {
                 : null,
             hints: [etape.aide, explication],
             explanation: explication,
+            explicationPapier,
             difficulty: etape.difficulte,
             meta: {
                 modele: etape.modele, question: 'calcul', a, b, total,

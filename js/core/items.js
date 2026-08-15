@@ -32,6 +32,10 @@
  * @property {Choice[]} [choices]
  * @property {string[]} hints       - aides graduées, de la plus légère à la plus explicite
  * @property {string} explanation   - correction affichée après coup
+ * @property {string} [explicationPapier] - la même, POUR LA FEUILLE IMPRIMÉE,
+ *   quand l'écran s'appuie sur un dessin que le papier n'a pas. Une correction
+ *   qui parle de pastilles rouges et bleues sous un calcul écrit en chiffres
+ *   ne décrit rien : l'élève cherche un dessin qui n'existe pas.
  * @property {number} difficulty    - 1 (facile) à 5
  * @property {Object} meta          - contexte libre pour le rendu (grille, table…)
  */
@@ -48,6 +52,9 @@ export function makeItem(spec) {
         choices: spec.choices || null,
         hints: spec.hints || [],
         explanation: spec.explanation || '',
+        // Vide = l'explication de l'écran convient au papier. C'est le cas
+        // général : on ne double que les corrections qui décrivent une image.
+        explicationPapier: spec.explicationPapier || '',
         difficulty: spec.difficulty || 2,
         meta: spec.meta || {}
     };

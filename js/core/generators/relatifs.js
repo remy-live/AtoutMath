@@ -246,6 +246,19 @@ export const relatifsGenerator = {
 
         const enonce = enonceDe(niveau.modele, depart, deplacements);
         const explication = expliquer(niveau.modele, depart, deplacements, total);
+        // SUR LE PAPIER, IL N'Y A PAS DE PASTILLES.
+        //
+        // À l'écran, le plateau est dessiné : « on forme trois paires, une
+        // bleue avec une rouge » décrit ce que l'élève a sous les yeux. Sur la
+        // feuille de solutions, l'énoncé est « Combien font (+5) et (−3)
+        // ensemble ? » et il n'y a aucun dessin : la même phrase envoie
+        // chercher une image qui n'existe pas. On y écrit donc le
+        // raisonnement en nombres.
+        //
+        // L'ascenseur et le thermomètre, eux, POSENT leur décor dans l'énoncé :
+        // leur explication reste la bonne des deux côtés.
+        const explicationPapier = niveau.modele === 'pastilles'
+            ? expliquer('ecriture', depart, deplacements, total) : '';
 
         // Les aides montent d'un cran à la fois : d'abord où regarder, puis
         // le geste, puis le raisonnement complet. Jamais la réponse seule.
@@ -271,6 +284,7 @@ export const relatifsGenerator = {
                 text: enonce,
                 html: `<div class="game-question">${enonce}</div>`
             },
+            explicationPapier,
             answer: total,
             choices: modeReponse === 'choice'
                 ? [{ value: total, label: nb(total), correct: true },

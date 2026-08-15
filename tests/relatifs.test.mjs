@@ -144,3 +144,28 @@ test('les rangs se disent à la française', () => {
     assert.equal(rang(2), '2e');
     assert.equal(rang(4), '4e');
 });
+
+test('sur le papier, la correction ne parle pas d\'un dessin absent', () => {
+    // À l'écran, le plateau de pastilles est là : « on forme trois paires »
+    // décrit ce que l'élève a sous les yeux. Sur la feuille de solutions,
+    // l'énoncé est un calcul écrit en chiffres et il n'y a AUCUN dessin — la
+    // même phrase envoie chercher une image qui n'existe pas.
+    let vu = 0;
+    for (let i = 0; i < 200; i++) {
+        const it = relatifsGenerator.generate({ niveau: 'pastilles' }, { rng: makeRng('pap' + i) });
+        if (it.meta.modele !== 'pastilles') continue;
+        vu++;
+        assert.match(it.explanation, /pastille|paire/i, 'l\'écran garde son modèle');
+        assert.ok(it.explicationPapier, 'le papier a sa propre correction');
+        assert.doesNotMatch(it.explicationPapier, /pastille|rouge|bleue/i,
+            `le papier parle encore du dessin : « ${it.explicationPapier} »`);
+    }
+    assert.ok(vu > 0, 'aucun item « pastilles » tiré');
+
+    // L'ascenseur et le thermomètre POSENT leur décor dans l'énoncé : leur
+    // correction reste la bonne des deux côtés, et ne se double donc pas.
+    for (let i = 0; i < 40; i++) {
+        const it = relatifsGenerator.generate({ niveau: 'thermometre' }, { rng: makeRng('th' + i) });
+        if (it.meta.modele === 'thermometre') assert.equal(it.explicationPapier, '');
+    }
+});

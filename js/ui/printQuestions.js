@@ -66,7 +66,9 @@ function tirerQuestions(generator, params, nb) {
             reponse: formaterReponse(item),
             // L'explication du générateur : elle ne sert qu'à la feuille de
             // solutions détaillée, celle qu'on distribue après le contrôle.
-            explication: item.explanation || ''
+            // LA VERSION PAPIER D'ABORD quand elle existe : une correction qui
+            // décrit un dessin absent de la feuille n'explique rien.
+            explication: item.explicationPapier || item.explanation || ''
         });
     }
     return out;
