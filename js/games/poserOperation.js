@@ -132,6 +132,17 @@ class PoserOperation extends BaseGame {
                     color: var(--danger); cursor: pointer; background: transparent;
                 }
                 .po-rond--plein { border-style: solid; }
+                /* AU COIN DU CHIFFRE, pour la soustraction. Il déborde un peu
+                   de la case sur la gauche : c'est ainsi qu'on l'écrit au
+                   crayon, entre les deux colonnes, et c'est ce débordement qui
+                   dit à quel chiffre il s'ajoute. */
+                .po-case--porte-rond { position: relative; overflow: visible; }
+                .po-rond--coin {
+                    position: absolute; left: -6px; bottom: -4px;
+                    width: clamp(14px, 3.6cqw, 19px); height: clamp(14px, 3.6cqw, 19px);
+                    font-size: clamp(9px, 2.4cqw, 12px);
+                    background: var(--bg-panel);
+                }
 
                 .po-pave { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 340px; }
                 .po-touche {
@@ -232,7 +243,7 @@ class PoserOperation extends BaseGame {
         g.style.gridTemplateColumns = `auto repeat(${rangs.length}, auto)`;
 
         // La rangée des retenues — en haut seulement pour l'addition.
-        if (this.operation === '+') this.rangeeRetenues(rangs, 'haut');
+        if (this.operation === '+') this.rangeeRetenues(rangs);
 
         this.operandes.forEach((v, i) => {
             const signe = document.createElement('div');
@@ -242,9 +253,13 @@ class PoserOperation extends BaseGame {
             rangs.forEach(r => g.appendChild(this.caseOperande(i, r)));
         });
 
-        // La rangée des retenues du BAS, pour la soustraction : elles se notent
-        // contre le chiffre du soustracteur.
-        if (this.operation === '-') this.rangeeRetenues(rangs, 'bas');
+        // POUR LA SOUSTRACTION, LE PETIT ROND N'A PAS DE RANGÉE À LUI. Il se
+        // note EN BAS À GAUCHE du chiffre du nombre du bas — c'est ainsi qu'on
+        // écrit la compensation au tableau, et c'est ce qui la rend lisible :
+        // le « 1 » qu'on ajoute appartient à CE chiffre-là, pas à la colonne
+        // en général. Sur sa propre rangée, il flottait sous le trait et l'on
+        // ne savait plus à quel nombre il se rapportait. Il est posé dans la
+        // case, par `caseOperande`.
 
         const trait = document.createElement('div');
         trait.className = 'po-trait';
@@ -255,25 +270,37 @@ class PoserOperation extends BaseGame {
         rangs.forEach(r => g.appendChild(this.caseResultat(r)));
     }
 
-    rangeeRetenues(rangs, ou) {
+    /**
+     * Le petit rond d'une colonne, ou null s'il n'y a pas de retenue possible
+     * à ce rang — ou si l'on n'en est pas encore à calculer.
+     *
+     * @param {number} rang
+     * @param {boolean} [auCoin] - posé au coin du chiffre plutôt que sur sa
+     *   propre rangée : c'est la compensation de la soustraction.
+     */
+    rondRetenue(rang, auCoin) {
+        if (auCoin !== undefined && !auCoin) return null;
+        if (this.etape !== 2) return null;
+        if (attenduEn(this.tableau, rang, 'retenue') === null) return null;
+        const rond = document.createElement('button');
+        rond.type = 'button';
+        rond.className = 'po-rond' + (this.retenues[rang] ? ' po-rond--plein' : '')
+            + (auCoin ? ' po-rond--coin' : '');
+        rond.textContent = this.retenues[rang] ?? '';
+        rond.dataset.rang = rang;
+        rond.title = 'La retenue de cette colonne';
+        rond.addEventListener('click', (ev) => { ev.stopPropagation(); this.tournerRetenue(rang); });
+        return rond;
+    }
+
+    rangeeRetenues(rangs) {
         const g = this.grilleEl;
-        const vide = document.createElement('div');
-        g.appendChild(vide);
+        g.appendChild(document.createElement('div'));
         rangs.forEach(r => {
             const cell = document.createElement('div');
             cell.className = 'po-retenue';
-            // Une retenue ne se note que là où il peut y en avoir une.
-            const attendue = attenduEn(this.tableau, r, 'retenue');
-            if (this.etape === 2 && attendue !== null) {
-                const rond = document.createElement('button');
-                rond.type = 'button';
-                rond.className = 'po-rond' + (this.retenues[r] ? ' po-rond--plein' : '');
-                rond.textContent = this.retenues[r] ?? '';
-                rond.dataset.rang = r;
-                rond.dataset.ou = ou;
-                rond.addEventListener('click', () => this.tournerRetenue(r));
-                cell.appendChild(rond);
-            }
+            const rond = this.rondRetenue(r);
+            if (rond) cell.appendChild(rond);
             g.appendChild(cell);
         });
     }
@@ -289,6 +316,10 @@ class PoserOperation extends BaseGame {
             el.dataset.operande = i;
             el.dataset.rang = rang;
         }
+        // Le petit rond de compensation, au coin bas-gauche du chiffre du
+        // soustracteur — et sur lui seul : c'est à ce chiffre qu'on ajoute.
+        const rond = this.rondRetenue(rang, i === this.operandes.length - 1 && this.operation === '-');
+        if (rond) { el.classList.add('po-case--porte-rond'); el.appendChild(rond); }
         return el;
     }
 

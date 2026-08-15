@@ -40,7 +40,7 @@ function entier(rng, n) {
  * de quarante essais on accepte ce qu'on a, plutôt que de faire tourner le
  * navigateur pour un cas de bord.
  */
-function tirer(rng, operation, chiffres, nombres, avecRetenue) {
+function tirer(rng, operation, chiffres, nombres, avecRetenue, diviseur) {
     for (let essai = 0; essai < 40; essai++) {
         let ops;
         if (operation === '+') {
@@ -55,11 +55,19 @@ function tirer(rng, operation, chiffres, nombres, avecRetenue) {
         } else if (operation === '×') {
             ops = [entier(rng, chiffres), entier(rng, Math.max(1, chiffres - 1))];
         } else {
-            // La division : un diviseur court, et un dividende qui donne un
-            // quotient d'au moins deux chiffres — sinon la potence n'a qu'une
-            // étape et ne montre rien de la méthode.
-            const d = entier(rng, Math.min(2, Math.max(1, chiffres - 1)));
-            const q = entier(rng, Math.max(2, chiffres - 1));
+            // LE DIVISEUR EST LE RÉGLAGE QUI COMPTE, et il tirait à deux
+            // chiffres dès que les nombres en faisaient trois. « 4 173 ÷ 67 »
+            // n'est pas la même chose que « 4 173 ÷ 7 » : la première demande
+            // d'estimer un quotient partiel à chaque étape, ce qui n'a plus
+            // rien d'une division apprise en CM2. Rémy : « les divisions du pdf
+            // sont super dures !!! ». Un chiffre par défaut ; deux, quand on
+            // le demande.
+            //
+            // Le quotient, lui, garde au moins deux chiffres : sinon la
+            // potence n'a qu'une étape et ne montre rien de la méthode.
+            const nd = Math.max(1, Math.min(2, Number(diviseur) || 1));
+            const d = entier(rng, nd);
+            const q = entier(rng, Math.max(2, chiffres - nd));
             const reste = rng.int(0, Math.max(0, d - 1));
             ops = [q * d + reste, d];
         }
@@ -107,6 +115,16 @@ export const poserFicheGenerator = {
             options: [{ value: 2, label: 'Deux' }, { value: 3, label: 'Trois' }]
         },
         {
+            id: 'diviseur', type: 'select', label: 'Diviseur (division)', default: 1,
+            aide: 'À un chiffre, on lit le quotient dans la table. À deux, il faut '
+                + 'l\'ESTIMER à chaque étape, puis se corriger : c\'est un autre '
+                + 'exercice, et il arrive bien plus tard.',
+            options: [
+                { value: 1, label: 'Un chiffre — 4 173 ÷ 7' },
+                { value: 2, label: 'Deux chiffres — 4 173 ÷ 67' }
+            ]
+        },
+        {
             id: 'retenue', type: 'checkbox', label: 'Garantir au moins une retenue', default: true,
             aide: 'Une addition sans retenue ne s\'appelle pas « poser une addition » : '
                 + 'c\'est aligner des chiffres.'
@@ -122,7 +140,8 @@ export const poserFicheGenerator = {
         const operation = SIGNE[params.operation] ? params.operation : '+';
         const chiffres = Math.max(2, Math.min(5, Number(params.chiffres) || 3));
         const nombres = operation === '+' ? Math.max(2, Math.min(3, Number(params.nombres) || 2)) : 2;
-        const { ops, table } = tirer(rng, operation, chiffres, nombres, params.retenue !== false);
+        const { ops, table } = tirer(rng, operation, chiffres, nombres,
+            params.retenue !== false, params.diviseur);
 
         const texte = ops.join(` ${SIGNE[operation]} `);
         const resultat = operation === '÷' ? table.quotient : table.resultat;

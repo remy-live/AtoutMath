@@ -3848,7 +3848,6 @@ function planPose(g, solution) {
         // Les retenues : au-DESSUS pour l'addition, au-dessous du chiffre du
         // bas pour la soustraction — ce n'est pas un détail de présentation,
         // c'est la méthode française de compensation.
-        const hautRetenues = op === '+';
         m.operandes.forEach((v, i) => {
             chiffresDroiteGauche(v).forEach((d, c) => pose(c, 1 + i, d));
         });
@@ -3856,20 +3855,16 @@ function planPose(g, solution) {
         pose(g.nCol, m.operandes.length, op === '+' ? '+' : '−', { signe: true });
         const yTrait = g.ligneY(m.operandes.length + 1) - rh * 0.12;
         traits.push({ x1: g.colX(g.nCol - 0.2), x2: g.droite, y: yTrait, epais: true });
-        // LES RONDS DE RETENUE SONT SUR TOUTES LES COLONNES, y compris celles
-        // qui n'en portent pas. N'en dessiner que là où il y a une retenue
-        // donnait la réponse : l'élève voyait d'un coup d'œil quelles colonnes
-        // retiennent, c'est-à-dire précisément ce qu'on lui demande de
-        // trouver. Un rond vide fait partie du travail.
-        for (let c = 0; c < g.nCol - 1; c++) {
-            const col = t.colonnes[c];
-            const sortante = col ? col.retenueSortante : 0;
-            const rangRetenue = hautRetenues ? 0.62 : m.operandes.length - 0.38;
-            cercles.push({
-                x: g.colX(c + 1) + cw * 0.34, y: g.ligneY(rangRetenue) + rh * 0.5,
-                r: cw * 0.3, texte: solution && sortante ? String(sortante) : ''
-            });
-        }
+        // PAS DE RONDS DE RETENUE SUR LA FEUILLE. Rémy : « pour le pdf, ne
+        // mets pas le rond des retenues », « ne mets pas les cercles ».
+        //
+        // À l'écran ils ont un rôle : ils se cliquent, ils comptent dans la
+        // correction, et ils obligent à ÉCRIRE la retenue au lieu de la
+        // penser. Sur le papier, ils ne font qu'imposer une façon d'écrire —
+        // et pas celle du cahier, où la retenue se glisse où l'on veut, au
+        // crayon, petite. Un rond imprimé dit à l'élève « pose-la ICI », ce
+        // que le professeur ne demande pas. La place, elle, reste : la rangée
+        // du haut est comptée dans la hauteur du bloc.
         if (solution) {
             chiffresDroiteGauche(t.resultat).forEach((d, c) => pose(c, m.operandes.length + 1, d, { reponse: true }));
         }
@@ -4671,11 +4666,12 @@ export const RENDUS = {
         consigne: (items) => {
             const noms = [...new Set(items.map(i => i.meta && i.meta.nom).filter(Boolean))];
             const quoi = noms.length === 1 ? `Ces ${noms[0]}s sont posées` : 'Ces opérations sont posées';
-            return `${quoi} et alignées : il ne reste qu'à calculer. Écris les retenues `
-                + 'dans les petits ronds, colonne par colonne, en partant de la DROITE. '
-                + 'Une division se fait par étapes : on abaisse un chiffre, on cherche '
-                + 'combien de fois le diviseur tient dedans, on multiplie, on soustrait — '
-                + 'et le reste est toujours plus petit que le diviseur.';
+            return `${quoi} et alignées : il ne reste qu'à calculer, colonne par `
+                + 'colonne, en partant de la DROITE. Écris tes retenues au crayon, '
+                + 'là où tu as l\'habitude de les mettre. Une division se fait par étapes : '
+                + 'on abaisse un chiffre, on cherche combien de fois le diviseur tient '
+                + 'dedans, on multiplie, on soustrait — et le reste est toujours plus '
+                + 'petit que le diviseur.';
         },
         previewGrille: posePreviewHtml,
         pdfGrille: dessinerPosePdf,
