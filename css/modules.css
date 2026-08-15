@@ -3744,3 +3744,84 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* Les pointillés suivent le signe « = » : un blanc au milieu de la ligne
    laisserait croire qu'il manque quelque chose entre les deux. */
 .fx-rc-ligne i { font-style: normal; color: #6e7684; font-weight: 700; }
+
+/* --- L'ATELIER D'ÉCHIQUIERS ------------------------------------------------
+   Composer une position et l'imprimer. Deux colonnes : le damier qu'on
+   compose à gauche, la planche des diagrammes déjà retenus à droite. Sur un
+   téléphone elles s'empilent — mais c'est un outil de professeur, préparé sur
+   un ordinateur ; la planche passe alors dessous plutôt que de rétrécir le
+   damier au point qu'on ne puisse plus viser une case. */
+.ea-panel { display: flex; flex-direction: column; gap: 10px; max-height: 92vh; }
+.ea-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ea-titre { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
+.ea-x {
+    border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-main);
+    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 800;
+}
+.ea-aide { margin: 0; color: var(--text-muted); font-size: .9rem; line-height: 1.35; }
+.ea-corps { display: flex; gap: 18px; align-items: flex-start; overflow: auto; }
+.ea-gauche { display: flex; flex-direction: column; gap: 10px; flex: 0 0 auto; }
+.ea-droite { flex: 1 1 260px; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
+
+.ea-reserve { display: flex; flex-direction: column; gap: 5px; }
+.ea-rangee { display: flex; gap: 5px; }
+.ea-piece {
+    width: 46px; height: 46px; padding: 2px; cursor: grab;
+    border: 2px solid var(--border); border-radius: 10px; background: var(--bg-panel);
+    display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+}
+.ea-piece:hover { border-color: var(--primary); }
+.ea-piece--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel)); }
+.ea-gomme { cursor: pointer; }
+
+/* LE DAMIER RESTE CARRÉ, ET SES CASES AUSSI. Une grille en pourcentages se
+   déforme dès que la fenêtre change de proportion — c'est exactement ce que
+   Rémy signalait sur les jeux de plateau. On fixe le côté, les cases suivent. */
+.ea-damier-wrap { width: 368px; max-width: 78vw; }
+.ea-damier {
+    display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+    width: 100%; aspect-ratio: 1 / 1;
+    border: 2px solid #2d3748; border-radius: 4px; overflow: hidden;
+}
+.ea-case {
+    position: relative; background: #ffffff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.ea-case--sombre { background: #dfe5ee; }
+.ea-case--vise { box-shadow: inset 0 0 0 3px var(--primary); }
+.ea-case > .ea-sur { width: 100%; height: 100%; cursor: grab; }
+
+.ea-outils { display: flex; gap: 8px; flex-wrap: wrap; }
+.ea-btn {
+    border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-main);
+    border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; font-size: .85rem;
+    padding: 7px 11px;
+}
+.ea-btn:hover { border-color: var(--primary); }
+.ea-btn--fort { background: var(--primary); color: #fff; border-color: var(--primary); }
+.ea-legende { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: .82rem; color: var(--text-muted); }
+.ea-legende input {
+    border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px;
+    font: inherit; font-size: .9rem; background: var(--bg-app); color: var(--text-main);
+}
+
+.ea-planche-titre { font-weight: 800; font-size: .85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.ea-planche { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+.ea-vide { color: var(--text-muted); font-size: .88rem; line-height: 1.4; max-width: 30ch; }
+.ea-vignette {
+    position: relative; width: 118px; padding: 5px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel);
+}
+.ea-vignette svg { display: block; width: 108px; height: 108px; }
+.ea-vignette-txt { margin-top: 4px; font-size: .7rem; line-height: 1.25; color: var(--text-muted); }
+.ea-retirer {
+    position: absolute; top: -7px; right: -7px; width: 22px; height: 22px;
+    border-radius: 50%; border: 2px solid var(--bg-panel); background: var(--danger, #e11d48);
+    color: #fff; cursor: pointer; font-size: .7rem; font-weight: 800; line-height: 1;
+}
+.ea-pied { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 860px) {
+    .ea-corps { flex-direction: column; }
+    .ea-damier-wrap { width: min(368px, 84vw); }
+}

@@ -2789,6 +2789,13 @@ function texteEchiquier(m, solution) {
             reponse: p.case
         };
     }
+    // UN DIAGRAMME COMPOSÉ À LA MAIN. L'atelier ne pose pas de question : le
+    // professeur écrit la sienne sous le damier, ou n'en écrit aucune — c'est
+    // sa feuille. On garde la LIGNE de réponse même quand la légende est vide,
+    // pour que tous les blocs d'une même page fassent la même taille.
+    if (m.quoi === 'atelier') {
+        return { consigne: m.consigne || '', question: m.question || '', reponse: '' };
+    }
     if (m.quoi === 'placer') {
         // LE MODE D'EMPLOI EST EN HAUT DE LA FEUILLE, pas répété dans chaque
         // bloc : la phrase « dessine une croix et écris l'initiale » mangeait
@@ -4771,7 +4778,11 @@ export const RENDUS = {
 
     echiquier: {
         titre: 'L\'échiquier, une grille à deux entrées',
-        consigne: () => 'Une case d\'échiquier se nomme comme un point dans un repère : LA '
+        // Un diagramme composé à l'atelier n'a pas à porter le mode d'emploi
+        // du repérage : le professeur écrit sa propre légende sous chaque
+        // damier, et la feuille dit ce qu'il a voulu dire.
+        consigne: (items) => (items && items.length && items.every(i => i.meta.quoi === 'atelier'))
+            ? '' : 'Une case d\'échiquier se nomme comme un point dans un repère : LA '
             + 'LETTRE DE SA COLONNE, PUIS LE CHIFFRE DE SA LIGNE — e4, pas 4e. Les pièces sont '
             + 'dessinées : les claires sont blanches, les pleines sont noires. Quand des pièces '
             + 'sont À PLACER, marque leur case d\'une croix et écris à côté l\'initiale de la '
@@ -5143,12 +5154,13 @@ function assurerModale() {
                         <option value="1">En couleur</option>
                     </select></label>
                 <button type="button" class="btn-hint" id="fp-regen">🎲 Autres grilles</button>
+                <button type="button" class="btn-hint" id="fp-atelier" style="display:none">♟ Composer mes échiquiers…</button>
                 <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu" id="fp-apercu"></div>
             </div>
-            <div class="fp-note">Page 1 : les grilles, avec un en-tête Nom / Date.
+            <div class="fp-note" id="fp-note">Page 1 : les grilles, avec un en-tête Nom / Date.
                 Page 2 : les solutions — à garder pour soi ou à donner après.</div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="fp-fermer">Fermer</button>
@@ -5190,14 +5202,14 @@ function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
         PAGE.w / 2, PAGE.h - 4, { align: 'center' });
 }
 
-function construirePdf(jsPDF, rendu, items, cols, rows) {
+function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSolutions = false) {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const { slots, traits } = calculerFiche(cols, rows);
 
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
     const avecPieces = rendu === RENDUS.mat || rendu === RENDUS.echiquier;
     const page = (solution) => {
-        entetePdf(doc, rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items),
+        entetePdf(doc, titre || rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items),
             avecPieces ? MENTION_PIECES : '');
         if (rendu.separateurs) {
             doc.setDrawColor(...ENCRE.trait);
@@ -5219,8 +5231,13 @@ function construirePdf(jsPDF, rendu, items, cols, rows) {
     };
 
     page(false);
-    doc.addPage('a4', 'landscape');
-    page(true);
+    // UNE PLANCHE COMPOSÉE À LA MAIN N'A PAS DE CORRIGÉ. La page « Solutions »
+    // y recopiait la première à l'identique : une feuille de plus à imprimer,
+    // et rien de plus à lire dessus.
+    if (!sansSolutions) {
+        doc.addPage('a4', 'landscape');
+        page(true);
+    }
     return doc;
 }
 
@@ -5229,7 +5246,14 @@ function construirePdf(jsPDF, rendu, items, cols, rows) {
  * @param {Object} exo    - entrée de catalogue portant `printable`
  * @param {Object} params - réglages courants (chiffres, opérations, difficulté)
  */
-export function ouvrirFicheModal(exo, params) {
+export function ouvrirFicheModal(exo, params, atelier = null) {
+    // DES GRILLES FAITES À LA MAIN, PAS TIRÉES AU SORT.
+    //
+    // L'atelier d'échiquiers compose ses diagrammes pièce par pièce : il n'y a
+    // pas de générateur derrière, et « d'autres grilles » n'aurait aucun sens
+    // — on jetterait ce que le professeur vient de poser. Le reste de la
+    // modale ne change pas : c'est le même aperçu, la même mise en page, le
+    // même PDF.
     // UN EXERCICE PEUT IMPRIMER AUTRE CHOSE QU'IL NE JOUE.
     //
     // À l'écran, le repérage pose UN point à la fois : c'est ce qu'il faut
@@ -5238,19 +5262,20 @@ export function ouvrirFicheModal(exo, params) {
     // axes. Le même exercice a donc le droit d'avoir un générateur de FICHE
     // distinct — plutôt que de doubler le catalogue d'entrées « à imprimer »
     // que personne ne cherche.
-    const generator = generateurDeFiche(exo);
+    const generator = atelier ? null : generateurDeFiche(exo);
     const rendu = RENDUS[exo.printable];
     // Deux papiers pour deux natures d'exercice : une GRILLE se dessine (on y
     // rature, on y note ses candidats), une QUESTION s'écrit sur une ligne.
     // Le second cas est de loin le plus fréquent, et n'existait pas.
     if (!rendu) {
+        if (atelier) return;
         if (generator && generator.ecrit) {
             import('./printQuestions.js')
                 .then(m => m.ouvrirFicheQuestions(exo, { ...(params || {}), ...(exo.printParams || {}) }, chargerJsPDF));
         }
         return;
     }
-    if (!generator) return;
+    if (!generator && !atelier) return;
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fp-apercu');
@@ -5260,6 +5285,11 @@ export function ouvrirFicheModal(exo, params) {
     const btnSol = modal.querySelector('#fp-voir-sol');
 
     const reglages = { ...(params || {}), ...(exo.printParams || {}) };
+    // Le titre imprimé. « L'échiquier, une grille à deux entrées » est le titre
+    // de l'exercice de repérage ; une planche composée à la main n'est pas cet
+    // exercice-là, et coiffer la feuille du professeur d'une consigne qu'il
+    // n'a pas écrite serait la lui prendre.
+    const titreFiche = (atelier && atelier.titre) || rendu.titre;
     let items = [];
     let solutionsVisibles = false;
 
@@ -5275,6 +5305,9 @@ export function ouvrirFicheModal(exo, params) {
     // sont RETIRÉES qu'en cas de besoin (plus de cases), jamais régénérées à
     // l'ouverture des solutions — l'aperçu doit montrer les mêmes grilles.
     const completer = (total) => {
+        // Les diagrammes de l'atelier sont donnés : on ne complète pas, et on
+        // ne rogne pas non plus — la feuille montre ce qui a été composé.
+        if (atelier) return;
         while (items.length < total) {
             // On passe au générateur ce qui a DÉJÀ été tiré : un logigramme
             // change alors d'histoire à chaque grille au lieu de resservir la
@@ -5323,7 +5356,7 @@ export function ouvrirFicheModal(exo, params) {
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
-                <b>${rendu.titre}${solutionsVisibles ? ' — Solutions' : ''}</b>
+                <b>${titreFiche}${solutionsVisibles ? ' — Solutions' : ''}</b>
                 <span>Nom : ............  Date : ......</span>
             </div>
             <div class="fp-ligne" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 8) * k}px;"></div>`;
@@ -5356,6 +5389,7 @@ export function ouvrirFicheModal(exo, params) {
             // grille ne convient pas — trop facile, un mot qu'on ne veut pas,
             // une position déjà donnée l'an dernier —, on perdait les onze
             // autres pour la remplacer. Le bloc lui-même est donc un bouton.
+            if (atelier) return;
             const bo = slot.boite;
             html += `<button type="button" class="fp-bloc" data-bloc="${i}"
                 title="Changer cette grille"
@@ -5406,7 +5440,29 @@ export function ouvrirFicheModal(exo, params) {
     couleurEl.value = polycopieEnCouleur() ? '1' : '0';
     couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
 
-    modal.querySelector('#fp-regen').onclick = () => { items = []; rendre(); };
+    const btnRegen = modal.querySelector('#fp-regen');
+    btnRegen.onclick = () => { items = []; rendre(); };
+    // Rien à retirer au sort, et rien à corriger : l'atelier n'a ni tirage ni
+    // solution. Les deux boutons se cachent plutôt que de ne rien faire.
+    btnRegen.style.display = atelier ? 'none' : '';
+    btnSol.style.display = atelier ? 'none' : '';
+
+    // L'ATELIER SE TROUVE OÙ L'ON PENSE DÉJÀ À IMPRIMER. Le professeur qui
+    // regarde une fiche d'échiquiers tirée au sort est exactement celui qui
+    // voudra poser SA position — et il ne le cherchera pas dans un menu.
+    // Une planche composée à la main n'a pas de corrigé à produire : promettre
+    // une page de solutions qui ne viendra pas serait un mensonge d'interface.
+    modal.querySelector('#fp-note').textContent = atelier
+        ? 'Une page, avec un en-tête Nom / Date. Reviens à l\'atelier pour ajouter ou retirer un damier.'
+        : 'Page 1 : les grilles, avec un en-tête Nom / Date. '
+          + 'Page 2 : les solutions — à garder pour soi ou à donner après.';
+
+    const btnAtelier = modal.querySelector('#fp-atelier');
+    btnAtelier.style.display = (!atelier && exo.printable === 'echiquier') ? '' : 'none';
+    btnAtelier.onclick = () => {
+        modal.style.display = 'none';
+        import('./echiquierAtelier.js').then(m => m.ouvrirAtelierEchiquier());
+    };
     btnSol.onclick = () => {
         solutionsVisibles = !solutionsVisibles;
         btnSol.textContent = solutionsVisibles ? 'Voir les grilles' : 'Voir les solutions';
@@ -5421,8 +5477,8 @@ export function ouvrirFicheModal(exo, params) {
         const { cols, rows } = lireDisposition();
         chargerJsPDF()
             .then(jsPDF => {
-                const doc = construirePdf(jsPDF, rendu, items, cols, rows);
-                doc.save(`${exo.printable}-${cols}x${rows}.pdf`);
+                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreFiche, !!atelier);
+                doc.save(`${(atelier && atelier.nom) || exo.printable}-${cols}x${rows}.pdf`);
             })
             .catch(() => {
                 import('./modal.js').then(m => m.showAlert(
@@ -5432,9 +5488,17 @@ export function ouvrirFicheModal(exo, params) {
             .finally(() => { btnDl.disabled = false; });
     };
 
-    items = [];
+    items = atelier ? atelier.items.slice() : [];
     solutionsVisibles = false;
     btnSol.textContent = 'Voir les solutions';
+    // La disposition part du NOMBRE de diagrammes composés : deux échiquiers
+    // demandés ne s'impriment pas sur une grille de quatre cases vides.
+    if (atelier) {
+        const n = Math.max(1, items.length);
+        colsEl.value = String(Math.min(dispo.maxCols || 3, n > 1 ? 2 : 1));
+        rowsEl.value = String(Math.max(1, Math.min(dispo.maxRows || 3,
+            Math.ceil(n / Math.min(dispo.maxCols || 3, n > 1 ? 2 : 1)))));
+    }
     modal.style.display = 'flex';
     rendre();
 }
