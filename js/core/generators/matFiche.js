@@ -15,7 +15,8 @@
 // les tests le vérifient position par position.
 
 import { makeItem } from '../items.js';
-import { PROBLEMES, preparer, piecesDe } from '../mat.js';
+import { preparer, piecesDe } from '../mat.js';
+import { POSITIONS_MAT, FAMILLES_MAT } from '../../data/matProblemes.js';
 
 export const matFicheGenerator = {
     id: 'logi.mat-fiche',
@@ -38,16 +39,23 @@ export const matFicheGenerator = {
         const rng = ctx.rng;
         params = params || {};
         const n = Number(params.coups) === 2 ? 2 : 1;
-        const utiles = PROBLEMES.filter(p => p.coups === n);
+        // LA FICHE PUISE DANS LA MÊME BIBLIOTHÈQUE QUE L'ÉCRAN : cent neuf
+        // positions vérifiées, au lieu d'une petite liste à part qui aurait
+        // divergé au premier ajout.
+        const utiles = POSITIONS_MAT.filter(p => p.coups === n);
         // `themesExclus` est le canal par lequel la fiche dit au générateur ce
         // qu'elle a déjà tiré — et il arrive par le CONTEXTE, pas par les
         // réglages. Le lire au mauvais endroit ne casse rien de visible dans
         // les tests : la fiche imprime simplement trois fois la même position.
         const dejaVus = new Set(ctx.themesExclus || []);
         const libres = utiles.filter(p => !dejaVus.has(p.id));
-        const choisi = (libres.length ? libres : utiles)[
-            rng.int(0, (libres.length ? libres : utiles).length - 1)];
-        const p = preparer(choisi);
+        const pool = libres.length ? libres : utiles;
+        const choisi = pool[rng.int(0, pool.length - 1)];
+        const famille = FAMILLES_MAT[choisi.famille];
+        // On repasse la position au solveur plutôt que de croire le fichier :
+        // c'est gratuit, et une fiche ne doit jamais annoncer une solution
+        // qu'elle n'a pas vérifiée.
+        const p = preparer({ ...choisi, theme: famille.titre, lecon: famille.lecon });
         const solution = p.notations[0];
 
         return makeItem({
@@ -61,12 +69,12 @@ export const matFicheGenerator = {
                 html: `<div class="game-question">Mat en ${n}</div>`
             },
             answer: solution,
-            explanation: `${solution} — ${choisi.theme}. ${choisi.lecon}`,
+            explanation: `${solution} — ${famille.titre}. ${famille.lecon}`,
             difficulty: n === 1 ? 2 : 4,
             meta: {
                 probleme: choisi.id,
                 theme: choisi.id,           // ce que la fiche exclura ensuite
-                titre: choisi.theme,
+                titre: famille.titre,
                 coups: n,
                 fen: choisi.fen,
                 solution,

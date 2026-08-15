@@ -334,8 +334,7 @@ const legacy = [
     ['dedale', 'Les Dédales', 'dedale', 'engineDedale'],
     ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint'],
     ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication'],
-    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision'],
-    ['mat-echecs', 'Mat en un, mat en deux', 'matEchecs', 'engineMatEchecs']
+    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision']
 ];
 
 legacy.forEach(([id, label, file, fn]) => {

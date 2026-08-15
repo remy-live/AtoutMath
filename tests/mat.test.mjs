@@ -197,3 +197,50 @@ test('dans un mat en deux, on nomme LA défense qui tient', () => {
     assert.equal(c.raison, 'defense');
     assert.ok(c.detail && c.detail.length > 1, 'la défense doit être écrite');
 });
+
+// --- LA BIBLIOTHÈQUE DE CENT POSITIONS ------------------------------------------
+
+test('les cent neuf positions tiennent leurs trois promesses', async () => {
+    // Légale, solution unique, longueur exacte. On les repasse TOUTES au
+    // solveur à chaque exécution : un fichier de données ne peut pas se
+    // dégrader en silence, et une position fausse est pire qu'une absente.
+    const { POSITIONS_MAT, FAMILLES_MAT, COMBIEN_MAT } = await import('../js/data/matProblemes.js');
+    assert.ok(POSITIONS_MAT.length >= 100, `${POSITIONS_MAT.length} positions seulement`);
+    assert.equal(COMBIEN_MAT.total, POSITIONS_MAT.length);
+
+    const ids = new Set();
+    for (const p of POSITIONS_MAT) {
+        assert.ok(!ids.has(p.id), `id en double : ${p.id}`);
+        ids.add(p.id);
+        assert.ok(FAMILLES_MAT[p.famille], `${p.id} : famille inconnue`);
+
+        const etat = fenVersEtat(p.fen);
+        assert.equal(etat.trait, 'B', `${p.id} : ce n'est pas aux Blancs de jouer`);
+        assert.equal(enEchec(etat, 'N'), false, `${p.id} : illégale, les Noirs sont déjà en échec`);
+        if (p.coups === 2) {
+            assert.equal(matsEnUn(etat).length, 0, `${p.id} : annoncée en deux, se mate en un`);
+        }
+        const s = matsEn(etat, p.coups);
+        assert.equal(s.length, 1, `${p.id} : ${s.length} solutions`);
+        assert.equal(nommerCoup(etat, s[0]), p.solution,
+            `${p.id} : la solution écrite ne correspond pas`);
+    }
+});
+
+test('la progression va du plus simple au plus fourni, sans trou de niveau', async () => {
+    const { POSITIONS_MAT, FAMILLES_MAT } = await import('../js/data/matProblemes.js');
+    const niveaux = POSITIONS_MAT.map(p => p.niveau);
+    // Rangées : on ne redescend jamais de niveau au fil de la liste.
+    for (let i = 1; i < niveaux.length; i++) {
+        assert.ok(niveaux[i] >= niveaux[i - 1], `niveau qui redescend à la position ${i}`);
+    }
+    // Les mats en un viennent tous avant les mats en deux.
+    const dernierUn = POSITIONS_MAT.map(p => p.coups).lastIndexOf(1);
+    const premierDeux = POSITIONS_MAT.map(p => p.coups).indexOf(2);
+    assert.ok(dernierUn < premierDeux, 'un mat en deux se glisse avant la fin des mats en un');
+    // Chaque famille porte une leçon digne de ce nom.
+    Object.entries(FAMILLES_MAT).forEach(([id, f]) => {
+        assert.ok(f.lecon.length > 80, `${id} : leçon trop courte`);
+        assert.ok(f.titre.length > 5, `${id} : titre trop court`);
+    });
+});

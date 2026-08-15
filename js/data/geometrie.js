@@ -433,7 +433,11 @@ export const geometrieExercises = [
         // et une seule. Un problème à deux solutions donnerait tort à l'élève
         // qui trouve l'autre.
         id: 'geo-mat-echecs', status: STATUS.TEST, title: 'Échecs : mat en un, mat en deux',
-        activityId: 'mat-echecs',
+        // C'EST LE JEU D'ÉCHECS LUI-MÊME, en mode exercice. Un second écran
+        // aurait redemandé à l'élève d'apprendre un damier, des pièces et des
+        // gestes qu'il connaît déjà — et il aurait fallu les tenir à jour deux
+        // fois.
+        activityId: 'echecs',
         // Sur le papier, c'est le MÊME problème, en plus exigeant : devant
         // l'écran on essaie et l'on voit ; sur la feuille il faut tout prévoir
         // avant d'écrire le coup.
@@ -442,21 +446,17 @@ export const geometrieExercises = [
         consignePapier: 'Les Blancs jouent et matent. Écris le coup en notation.',
         sansRevision: true,
         skills: ['geo.espace.reperage'],
-        params: { coups: 1, aideCoups: true },
+        params: { mode: 'exercice', depart: 'debut', niveau: 'moyen' },
         paramSchema: [
             {
-                id: 'coups', type: 'select', label: 'Longueur du problème',
-                aide: 'Le mat en un se cherche case par case. Le mat en deux demande de prévoir TOUTES les réponses adverses, pas seulement la plus naturelle — c\'est un raisonnement complet, pas une intuition.',
+                id: 'depart', type: 'select', label: 'Où commencer',
+                aide: 'La progression est dans le MATÉRIEL : on commence par une dame qui fait tout le travail, on passe aux tours qui ont besoin du roi, et l\'on finit par deux tours à coordonner en deux coups. Cent neuf positions, toutes vérifiées : une solution, et une seule.',
                 options: [
-                    { value: 1, label: 'Mat en un coup' },
-                    { value: 2, label: 'Mat en deux coups' }
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
                 ],
-                default: 1
-            },
-            {
-                id: 'aideCoups', type: 'checkbox', label: 'Montrer où la pièce choisie peut aller',
-                aide: 'L\'exercice est de trouver le mat, pas de réviser la marche du cavalier. En retirant cette aide, on ajoute la connaissance des déplacements à la difficulté.',
-                default: true
+                default: 'debut'
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },

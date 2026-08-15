@@ -698,15 +698,27 @@ export const calculExercises = [
         // vivent chacune dans leur module — les échecs validés au perft.
         id: 'logi-othello', status: STATUS.TEST, title: 'Othello',
         activityId: 'othello',
-        params: { mode: 'ia', niveau: 'moyen' },
+        params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
             {
-                id: 'mode', type: 'select', label: 'Adversaire',
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                aide: 'Le mode EXERCICE ne joue pas de partie : il pose une position figée et demande le mat. Cent neuf positions rangées du plus simple au plus difficile, toutes vérifiées par le solveur — une solution, et une seule.',
                 options: [
-                    { value: 'ia', label: "Contre l'ordinateur" },
-                    { value: 'deux', label: 'À deux sur le même écran' }
+                    { value: 'ia', label: "Une partie contre l'ordinateur" },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' },
+                    { value: 'exercice', label: 'Exercices : mat en un, mat en deux' }
                 ],
                 default: 'ia'
+            },
+            {
+                id: 'depart', type: 'select', label: 'Où commencer les exercices',
+                aide: 'La progression est dans le matériel : on commence par une dame qui fait tout le travail, on finit par deux tours qui doivent se coordonner en deux coups.',
+                options: [
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
+                ],
+                default: 'debut'
             },
             {
                 id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
@@ -725,15 +737,27 @@ export const calculExercises = [
     {
         id: 'logi-dames', status: STATUS.TEST, title: 'Jeu de Dames',
         activityId: 'dames',
-        params: { mode: 'ia', niveau: 'moyen' },
+        params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
             {
-                id: 'mode', type: 'select', label: 'Adversaire',
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                aide: 'Le mode EXERCICE ne joue pas de partie : il pose une position figée et demande le mat. Cent neuf positions rangées du plus simple au plus difficile, toutes vérifiées par le solveur — une solution, et une seule.',
                 options: [
-                    { value: 'ia', label: "Contre l'ordinateur" },
-                    { value: 'deux', label: 'À deux sur le même écran' }
+                    { value: 'ia', label: "Une partie contre l'ordinateur" },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' },
+                    { value: 'exercice', label: 'Exercices : mat en un, mat en deux' }
                 ],
                 default: 'ia'
+            },
+            {
+                id: 'depart', type: 'select', label: 'Où commencer les exercices',
+                aide: 'La progression est dans le matériel : on commence par une dame qui fait tout le travail, on finit par deux tours qui doivent se coordonner en deux coups.',
+                options: [
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
+                ],
+                default: 'debut'
             },
             {
                 id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
@@ -758,15 +782,27 @@ export const calculExercises = [
         printable: 'echiquier', printGeneratorId: 'logi.echecs-fiche',
         printParams: { quoi: 'melange', pieces: 4 },
         consignePapier: "La lettre d'abord, le chiffre ensuite : e4.",
-        params: { mode: 'ia', niveau: 'moyen' },
+        params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
             {
-                id: 'mode', type: 'select', label: 'Adversaire',
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                aide: 'Le mode EXERCICE ne joue pas de partie : il pose une position figée et demande le mat. Cent neuf positions rangées du plus simple au plus difficile, toutes vérifiées par le solveur — une solution, et une seule.',
                 options: [
-                    { value: 'ia', label: "Contre l'ordinateur" },
-                    { value: 'deux', label: 'À deux sur le même écran' }
+                    { value: 'ia', label: "Une partie contre l'ordinateur" },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' },
+                    { value: 'exercice', label: 'Exercices : mat en un, mat en deux' }
                 ],
                 default: 'ia'
+            },
+            {
+                id: 'depart', type: 'select', label: 'Où commencer les exercices',
+                aide: 'La progression est dans le matériel : on commence par une dame qui fait tout le travail, on finit par deux tours qui doivent se coordonner en deux coups.',
+                options: [
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
+                ],
+                default: 'debut'
             },
             {
                 id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
@@ -780,7 +816,7 @@ export const calculExercises = [
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
-        instruction: "Les règles complètes : roque, prise en passant, promotion (à la dame), pat. Le but n'est pas de tout prendre — c'est le roi adverse. Touche une pièce pour voir ses coups ; ton roi s'allume en rouge quand il est en échec. Contre l'ordinateur, commence en Débutant : il voit un coup devant lui et se trompe souvent, c'est fait pour."
+        instruction: "Trois usages. UNE PARTIE, contre l'ordinateur ou à deux : touche une pièce, ses coups s'allument, touche la case d'arrivée. Toutes les règles y sont, roque et prise en passant compris. Ou bien les EXERCICES : cent neuf positions figées où les Blancs jouent et matent, rangées du plus simple au plus difficile. Un mat, c'est un échec dont le roi ne peut pas sortir — ni fuir, ni parer en s'interposant, ni prendre la pièce qui attaque. Quand ton coup n'est pas le bon, on ne te donne pas la réponse : on te dit ce qui manque. Et méfie-toi du PAT — les Noirs sans coup mais SANS être en échec, c'est une partie nulle, pas une victoire."
     },
     {
         // LE LOGIGRAMME. Un seul exercice, six niveaux : c'est la MÊME grille de

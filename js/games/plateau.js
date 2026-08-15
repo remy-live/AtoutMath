@@ -24,6 +24,8 @@ import { meilleurCoup } from '../core/ia.js';
 import * as othello from '../core/othello.js';
 import * as dames from '../core/dames.js';
 import * as echecs from '../core/echecs.js';
+import { critiquer, defense, nommerCoup, estMat, preparer } from '../core/mat.js';
+import { POSITIONS_MAT, FAMILLES_MAT, COMBIEN_MAT } from '../data/matProblemes.js';
 
 // LE SÉLECTEUR DE VARIANTE ︎ N'EST PAS DÉCORATIF.
 //
@@ -113,13 +115,29 @@ class Plateau extends BaseGame {
     constructor(container, isDemo, params, adaptateur) {
         super(container, isDemo, params, adaptateur.id);
         this.ad = adaptateur;
-        this.mode = this.params.mode === 'deux' ? 'deux' : 'ia';
+        // TROIS MODES, et le troisième n'est pas une partie : « exercice »
+        // pose une position figée et demande le mat. On le fait vivre DANS le
+        // jeu d'échecs plutôt qu'à côté — même damier, mêmes pièces, mêmes
+        // coups qui s'allument : ce qui est déjà appris ne se réapprend pas.
+        this.mode = ['deux', 'exercice'].includes(this.params.mode) ? this.params.mode : 'ia';
+        if (this.mode === 'exercice' && adaptateur.id !== 'echecs') this.mode = 'ia';
+        this.exercice = this.mode === 'exercice';
+        this.indexProbleme = this.premierIndex();
+        this.resolus = 0;
         const [profondeur, fantaisie] = NIVEAUX[adaptateur.id][this.params.niveau] || NIVEAUX[adaptateur.id].moyen;
         this.ia = { profondeur, fantaisie };
         this.rng = makeRng(this.params.seed);
         this.humain = adaptateur.premier;                  // l'humain ouvre toujours
         this.selection = null;
         this.dernier = null;
+    }
+
+    /** Où l'on entre dans la progression : au début, ou directement aux mats en deux. */
+    premierIndex() {
+        const d = this.params.depart;
+        if (d === 'deux') return POSITIONS_MAT.findIndex(p => p.coups === 2);
+        if (d === 'milieu') return Math.floor(POSITIONS_MAT.length / 3);
+        return 0;
     }
 
     // --- Mise en place ---------------------------------------------------------
@@ -324,6 +342,7 @@ class Plateau extends BaseGame {
     startGameLoop() { /* Au tour par tour : rien à animer en continu. */ }
 
     nouvellePartie() {
+        if (this.exercice) return this.poserProbleme();
         clearTimeout(this.timerIA);
         this.fermerPromotion();
         this.etat = this.ad.module.initial();
@@ -335,6 +354,118 @@ class Plateau extends BaseGame {
             ? `Tu joues les <b>${this.ad.noms[this.humain]}</b> contre l'ordinateur.`
             : 'À deux sur le même écran : chacun joue à son tour.';
         this.note(`${contre} ${this.ad.destinationSeule ? 'Touche une case allumée.' : 'Touche une pièce, puis sa destination.'}`);
+    }
+
+    // --- Le mode exercice ------------------------------------------------------
+
+    poserProbleme(avance = 0) {
+        clearTimeout(this.timerIA);
+        this.fermerPromotion();
+        this.indexProbleme = (this.indexProbleme + avance + POSITIONS_MAT.length) % POSITIONS_MAT.length;
+        const p = POSITIONS_MAT[this.indexProbleme];
+        this.probleme = p;
+        this.famille = FAMILLES_MAT[p.famille];
+        this.etat = echecs.fenVersEtat(p.fen);
+        this.depart = this.etat;                 // pour revenir en arrière
+        this.coupsJoues = 0;
+        this.selection = null;
+        this.dernier = null;
+        this.finie = null;
+        this.peindre();
+        this.note(`<b>Problème ${this.indexProbleme + 1} / ${COMBIEN_MAT.total}</b> — `
+            + `${this.famille.titre}. Les Blancs jouent et matent en `
+            + `<b>${p.coups} coup${p.coups > 1 ? 's' : ''}</b>. `
+            + 'Touche une pièce blanche, puis sa case d\'arrivée.');
+    }
+
+    /**
+     * UN COUP D'EXERCICE : on ne le joue que s'il est le bon.
+     *
+     * On ne dit jamais quel coup il fallait — le chercher EST l'exercice. On
+     * dit ce qui manque : pas d'échec du tout, le roi s'échappe par g7, les
+     * Noirs parent, ou bien c'est un PAT et l'on a perdu la victoire.
+     */
+    coupExercice(coup) {
+        const restants = this.probleme.coups - this.coupsJoues;
+        const texte = nommerCoup(this.etat, coup);
+        const verdict = critiquer(this.etat, coup, restants);
+        this.selection = null;
+
+        if (verdict.raison !== 'bon') {
+            this.peindre();
+            this.note(`<b>${texte}</b> — ${this.expliquerMat(verdict)}`, 'ko');
+            this.onWrongAnswer(null, {
+                concept: 'geo.espace.reperage',
+                questionText: `${this.famille.titre} — mat en ${this.probleme.coups}`,
+                input: texte, expected: 'le coup qui mate',
+                customMessage: this.expliquerMat(verdict).replace(/<[^>]+>/g, '')
+            });
+            return;
+        }
+
+        this.dernier = this.casesDuCoup(coup);
+        this.etat = echecs.jouer(this.etat, coup);
+        this.coupsJoues++;
+        this.onCorrectAnswer(null, 'geo.espace.reperage', {
+            questionText: `${this.famille.titre} — coup ${this.coupsJoues}`,
+            expected: texte, given: texte, points: 6
+        });
+
+        if (estMat(this.etat)) {
+            this.finie = { gagnant: 'B', raison: 'échec et mat' };
+            this.resolus++;
+            this.peindre();
+            this.note(`🎉 <b>${texte}</b> — échec et mat ! <br><b>${this.famille.titre}.</b> `
+                + this.famille.lecon, 'ok');
+            this.onCorrectAnswer(null, 'geo.espace.reperage', {
+                questionText: `${this.famille.titre} — mat en ${this.probleme.coups}`,
+                expected: this.probleme.solution, given: texte,
+                points: 10 + this.probleme.coups * 6
+            });
+            // On enchaîne : la progression est le cœur du mode exercice.
+            this.timerIA = setTimeout(() => {
+                if (this.isRunning) this.poserProbleme(1);
+            }, 3400);
+            return;
+        }
+
+        // Mat en deux : les Noirs se défendent — et l'on prend la MEILLEURE
+        // défense, celle qui laisse le plus de jeu, pas un abandon.
+        const rep = defense(this.etat, this.rng);
+        const nomRep = rep ? nommerCoup(this.etat, rep) : null;
+        if (rep) {
+            this.dernier = this.casesDuCoup(rep);
+            this.etat = echecs.jouer(this.etat, rep);
+        }
+        this.peindre();
+        this.note(`✅ <b>${texte}</b> : c'est le bon premier coup. Les Noirs se défendent par `
+            + `<b>${nomRep}</b> — maintenant, le mat.`, 'ok');
+    }
+
+    /** Ce qui manque, en une phrase. Jamais le coup à jouer. */
+    expliquerMat(verdict) {
+        switch (verdict.raison) {
+        case 'pas-echec':
+            return 'ce coup ne donne pas échec. Un mat est toujours un échec dont on ne peut '
+                + 'pas sortir : commence par ATTAQUER le roi noir.';
+        case 'fuite':
+            return `c'est bien un échec, mais le roi noir s'échappe en <b>${verdict.detail}</b>. `
+                + 'Un mat ne laisse aucune case libre.';
+        case 'parade':
+            return `c'est bien un échec, mais les Noirs parent par <b>${verdict.detail}</b> : `
+                + 'ils bouchent ou ils prennent. Un mat ne se pare pas.';
+        case 'pat':
+            return 'attention : les Noirs n\'ont plus AUCUN coup, mais ils ne sont pas en échec. '
+                + 'C\'est un PAT — partie nulle. Le pire résultat quand on gagnait.';
+        case 'mate-trop-tot':
+            return 'ce coup mate tout de suite ; ce problème demande deux coups.';
+        case 'defense':
+            return `après ce coup, les Noirs tiennent par <b>${verdict.detail}</b> et le mat `
+                + 'n\'arrive plus. Un premier coup de mat en deux doit battre TOUTES les '
+                + 'réponses, pas seulement la plus naturelle.';
+        default:
+            return 'ce n\'est pas le mat.';
+        }
     }
 
     // --- L'affichage -----------------------------------------------------------
@@ -499,6 +630,7 @@ class Plateau extends BaseGame {
     }
 
     jouerCoup(coup) {
+        if (this.exercice) return this.coupExercice(coup);
         const m = this.ad.module;
         this.dernier = this.casesDuCoup(coup);
         this.etat = m.jouer(this.etat, coup);
