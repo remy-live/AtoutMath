@@ -189,8 +189,66 @@ class PointAPoint extends BaseGame {
         this.sceneEl.querySelectorAll('.pp-point').forEach(el => {
             const r = Math.max(9, Math.round(cote * 0.032));
             el.querySelector('b').style.cssText = `width:${r * 2}px; height:${r * 2}px`;
-            el.querySelector('span').style.fontSize = `${Math.max(9, Math.round(cote * 0.036))}px`;
+            // Un cran plus petit qu'avant : « les calculs sont un peu gros ».
+            // Ce qui doit se lire d'un coup d'œil, c'est le RÉSULTAT qu'on
+            // cherche, pas le calcul — celui-là, on le pose dans sa tête.
+            el.querySelector('span').style.fontSize = `${Math.max(9, Math.round(cote * 0.030))}px`;
         });
+        this.ecarterEtiquettes();
+    }
+
+    /**
+     * LES CALCULS NE SE MARCHENT PLUS DESSUS.
+     *
+     * Chaque étiquette était posée sous son point, sans regarder les voisines :
+     * deux points proches donnaient « 9 + 418 − 8 » — deux calculs imbriqués
+     * l'un dans l'autre, illisibles tous les deux. Or le jeu consiste
+     * précisément à LIRE les calculs pour trouver celui qui vaut le rang
+     * suivant : une étiquette illisible n'est pas un défaut de présentation,
+     * c'est une question qu'on ne peut pas poser.
+     *
+     * On essaie donc des places, dans l'ordre : dessous (le défaut, c'est là
+     * qu'on l'attend), dessus, puis décalé de plus en plus loin sur le côté.
+     * La première qui ne touche personne est retenue. Le point, lui, ne bouge
+     * jamais : c'est lui qu'on relie, et le dessin en dépend.
+     */
+    ecarterEtiquettes() {
+        const spans = [...this.sceneEl.querySelectorAll('.pp-point span')];
+        if (!spans.length) return;
+        spans.forEach(s => { s.style.transform = ''; });
+        const scene = this.sceneEl.getBoundingClientRect();
+        const chevauche = (a, b) => !(a.right <= b.left || b.right <= a.left
+            || a.bottom <= b.top || b.bottom <= a.top);
+        // En proportion de la boîte de l'étiquette, pour rester juste à toutes
+        // les tailles d'écran.
+        const essais = [[0, 0], [0, -2.2], [0, 1.2], [0, -3.4],
+            [0.7, 0], [-0.7, 0], [0.7, -2.2], [-0.7, -2.2],
+            [1.25, 0], [-1.25, 0], [1.25, -2.2], [-1.25, -2.2]];
+        const posees = [];
+        for (const s of spans) {
+            const b0 = s.getBoundingClientRect();
+            let choix = null;
+            for (const [fx, fy] of essais) {
+                const dx = fx * b0.width, dy = fy * b0.height;
+                const b = { left: b0.left + dx, right: b0.right + dx,
+                    top: b0.top + dy, bottom: b0.bottom + dy };
+                // Une étiquette peut mordre un peu sur la marge — elle est
+                // faite pour ça — mais pas s'échapper de la scène.
+                if (b.left < scene.left - 26 || b.right > scene.right + 26) continue;
+                if (b.top < scene.top - 26 || b.bottom > scene.bottom + 26) continue;
+                if (posees.some(o => chevauche(b, o))) continue;
+                choix = { dx, dy, b };
+                break;
+            }
+            // Rien de libre : on laisse à sa place plutôt que de l'envoyer au
+            // hasard. Mieux vaut un chevauchement qu'une étiquette égarée loin
+            // de son point.
+            if (!choix) choix = { dx: 0, dy: 0, b: b0 };
+            if (choix.dx || choix.dy) {
+                s.style.transform = `translate(${Math.round(choix.dx)}px, ${Math.round(choix.dy)}px)`;
+            }
+            posees.push(choix.b);
+        }
     }
 
     dessinerPoints() {
