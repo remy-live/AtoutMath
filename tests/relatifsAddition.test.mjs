@@ -241,3 +241,43 @@ test('le rang annoncé situe l\'élève dans les DOUZE marches, même sur une se
     assert.equal(t.meta.total_etapes, 12);
     assert.ok(t.meta.rang >= 10, 'le temps C commence à la dixième marche');
 });
+
+// --- LE MOT DU PROGRAMME -------------------------------------------------------
+//
+// Rémy : « dans le nouveau programme, on parle aussi de valeur absolue (tu
+// peux mettre cela entre parenthèses, du coup) ». La distance à zéro reste la
+// formulation qui EXPLIQUE — c'est elle que les pastilles montrent — mais
+// l'élève doit rencontrer le terme officiel, sans quoi il ne le reconnaîtra
+// pas dans son manuel.
+
+test('la correction nomme la valeur absolue à côté de la distance à zéro', () => {
+    for (const etape of ['a3-ecritures-meme', 'b3-ecritures-opposes']) {
+        const q = item({ etape }, 1, `va-${etape}`);
+        assert.match(q.explanation, /distances? à zéro/, etape);
+        assert.match(q.explanation, /valeurs? absolues?/, `${etape} : le terme du programme manque`);
+    }
+});
+
+test('la leçon de la marche donne la notation |−5| = 5', () => {
+    const q = item({ etape: 'a3-ecritures-meme' }, 1);
+    assert.match(q.meta.texteLecon, /\|−5\| et vaut 5/);
+});
+
+// --- LES NÉGATIFS À GAUCHE -----------------------------------------------------
+//
+// Rémy : « je voudrais les pastilles − et leur contenant à gauche et les
+// pastilles rouges et leur contenant à droite ». C'est le sens de la droite
+// graduée, celle qu'on lui a montrée deux exercices plus tôt : à gauche de
+// zéro les négatifs, à droite les positifs. Le tableau vit dans l'activité, qui
+// a besoin d'un vrai DOM — on vérifie donc l'ORDRE dans la source, ce qui suffit
+// à attraper une inversion faite par mégarde.
+
+test('le tableau de pastilles écrit la colonne des négatifs avant celle des positifs', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../js/core/activities/addRelatifs.js', import.meta.url), 'utf8');
+    const tableau = src.slice(src.indexOf('function tableauHtml'));
+    const moins = tableau.indexOf('ad-col--moins');
+    const plus = tableau.indexOf('ad-col--plus');
+    assert.ok(moins > 0 && plus > 0, 'les deux colonnes doivent être dessinées');
+    assert.ok(moins < plus, 'la colonne des négatifs doit venir en premier, donc à gauche');
+});

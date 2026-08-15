@@ -830,3 +830,27 @@ test('blocs : un énoncé à trou ne se coupe pas en deux lignes', () => {
     aTrou.forEach(q => assert.equal(q.lignes.length, 1,
         'un énoncé à trou tient sur une ligne — la colonne a été retirée'));
 });
+
+// --- LE NUMÉRO, LA FRACTION ET LE POINT D'INTERROGATION ------------------------
+
+test('seul un texte qui porte VRAIMENT une fraction réclame de la hauteur', async () => {
+    const { porteUneFraction } = await import('../js/core/fiche.js');
+    // Le générateur déclare `fractions: true` dès qu'il PEUT en produire ; la
+    // fiche réservait alors la hauteur d'une fraction empilée à chaque
+    // question, et le numéro se retrouvait un demi-interligne au-dessus de sa
+    // phrase — le décalage vu sur la feuille de problèmes.
+    assert.equal(porteUneFraction('Les 3/5 des cartes sont abîmées.'), true);
+    assert.equal(porteUneFraction('Adam a 30 timbres bleus et 11 timbres verts.'), false);
+    // La réponse compte autant que l'énoncé : le corrigé l'empile aussi.
+    assert.equal(porteUneFraction('Simplifie.', '4/6'), true);
+    assert.equal(porteUneFraction(null, undefined), false);
+});
+
+test('une question posée en toutes lettres reçoit « Réponse : », pas « = »', async () => {
+    const { reponseEnPlace } = await import('../js/core/fiche.js');
+    const prose = reponseEnPlace('Combien Inès a-t-elle de bonbons en tout ?', '67 bonbons');
+    assert.match(prose, /en tout \? Réponse : /);
+    assert.ok(!/\? = /.test(prose), '« ? = 67 » n\'est pas du français');
+    // Un calcul, lui, garde son signe d'égalité.
+    assert.match(reponseEnPlace('7 × 8', '56'), / = /);
+});

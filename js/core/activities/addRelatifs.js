@@ -101,20 +101,25 @@ export function mount(container, session) {
         ).join('');
     }
 
+    // LES NÉGATIFS À GAUCHE, LES POSITIFS À DROITE — demande de Rémy, et elle
+    // remet le tableau dans le sens de la droite graduée : à gauche de zéro les
+    // nombres négatifs, à droite les positifs. Les deux colonnes étaient dans
+    // l'ordre inverse, ce qui obligeait l'élève à retourner mentalement l'image
+    // qu'on lui avait donnée du nombre relatif deux exercices plus tôt.
     function tableauHtml(a, b) {
         const plus = (a > 0 ? a : 0) + (b > 0 ? b : 0);
         const moins = (a < 0 ? -a : 0) + (b < 0 ? -b : 0);
         return `
             <div class="ad-tableau" data-tableau>
-                <div class="ad-col ad-col--plus">
-                    <div class="ad-col-titre">+</div>
-                    <div class="ad-jetons" data-col="plus">${jetons(plus, 'plus')}</div>
-                    <div class="ad-col-compte" data-compte="plus">${plus}</div>
-                </div>
                 <div class="ad-col ad-col--moins">
                     <div class="ad-col-titre">−</div>
                     <div class="ad-jetons" data-col="moins">${jetons(moins, 'moins')}</div>
                     <div class="ad-col-compte" data-compte="moins">${moins}</div>
+                </div>
+                <div class="ad-col ad-col--plus">
+                    <div class="ad-col-titre">+</div>
+                    <div class="ad-jetons" data-col="plus">${jetons(plus, 'plus')}</div>
+                    <div class="ad-col-compte" data-compte="plus">${plus}</div>
                 </div>
             </div>`;
     }

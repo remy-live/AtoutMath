@@ -470,7 +470,11 @@ export const FAMILLES = {
             const billet = [10, 20, 50].find(b => b > cout + 1) || 50;
             const rendu = +(billet - cout).toFixed(2);
             return {
-                enonce: `${qui} achète ${n} ${m.p} à ${prix(pu)} l'un et paie avec un billet de ${prix(billet)}.`,
+                // « à 2,50 € l'un » ou « l'une », selon la marchandise : cinq
+                // gommes ne se comptent pas au masculin, et une faute de langue
+                // dans un énoncé arrête un élève qui lisait.
+                enonce: `${qui} achète ${n} ${m.p} à ${prix(pu)} ${m.g === 'f' ? 'l\'une' : 'l\'un'} `
+                    + `et paie avec un billet de ${prix(billet)}.`,
                 question: 'Combien lui rend-on ?',
                 reponse: rendu, unite: '€',
                 faux: [

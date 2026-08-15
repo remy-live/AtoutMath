@@ -29,7 +29,7 @@ import { paramSchemaOf } from '../data/catalog.js';
 import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
-import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../core/fiche.js';
+import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
@@ -125,7 +125,7 @@ function questionsDe(etape, nb) {
             reponse: formaterReponse(item),
             // Le générateur dit si ses questions portent des fractions : la
             // mise en page les écrira alors en colonne.
-            fractions: !!etape.generator.fractions,
+            fractions: !!etape.generator.fractions && porteUneFraction(texte, item.answer),
             // L'explication du générateur : c'est elle qui fait la feuille de
             // solutions détaillée, celle qu'on distribue après le contrôle.
             // LA VERSION PAPIER D'ABORD quand elle existe : une correction qui

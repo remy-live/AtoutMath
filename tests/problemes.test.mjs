@@ -285,3 +285,46 @@ test('chaque famille rend un schéma non vide', () => {
         assert.ok(!/undefined|NaN/.test(svg), `${f} : trou dans le dessin — ${svg.slice(0, 120)}`);
     }
 });
+
+// --- LA CORRECTION DÉTAILLÉE ---------------------------------------------------
+//
+// Rémy, du banc d'essai : « pour la solution détaillée, il faudrait détailler,
+// quitte à faire un schéma ». Le corrigé écrivait « Réponse : 41 timbres. » —
+// c'est-à-dire exactement ce que la ligne du dessus venait de dire.
+
+test('chaque famille donne un raisonnement, pas seulement un nombre', async () => {
+    const { detailler, direSchema } = await import('../js/core/generators/problemesFiche.js');
+    for (const id of TOUTES) {
+        const p = tirerProbleme(id, makeRng(`detail-${id}`));
+        assert.ok(p, `${id} : aucun problème tiré`);
+        const texte = detailler(p);
+        const lignes = texte.split('\n').filter(Boolean);
+        assert.ok(lignes.length >= 3, `${id} : corrigé en ${lignes.length} ligne(s) — « ${texte} »`);
+        // Un corrigé qui ne pose aucun calcul n'apprend pas à en poser un.
+        assert.match(texte, /[+×÷=−]/, `${id} : aucun calcul écrit`);
+        assert.ok(!texte.includes('undefined'), `${id} : un morceau manque`);
+    }
+    assert.equal(direSchema(null), '');
+    assert.equal(direSchema({ genre: 'inconnu' }), '');
+});
+
+test('le schéma décrit dit ce qui est CHERCHÉ, il n\'écrit pas « ? »', async () => {
+    const { direSchema } = await import('../js/core/generators/problemesFiche.js');
+    const t = direSchema({ genre: 'barres', parts: [{ n: 30, nom: 'bleus' }], total: '?' });
+    assert.match(t, /le tout est cherché/);
+    assert.ok(!t.includes('?'), `« ${t} » laisse un point d'interrogation à lire`);
+});
+
+test('« à 2,50 € l\'une » quand la marchandise est féminine', () => {
+    // Une faute de langue dans un énoncé arrête un élève qui lisait.
+    const vus = new Set();
+    for (let i = 0; i < 40; i++) {
+        const p = tirerProbleme('deuxEtapes', makeRng(`genre-${i}`));
+        if (!p) continue;
+        const m = /(\d+) (\w+) à .* (l'une?|l'un)/.exec(p.enonce);
+        if (m) vus.add(`${m[2]} ${m[3]}`);
+        assert.ok(!/gommes à .* l'un /.test(p.enonce), p.enonce);
+        assert.ok(!/règles à .* l'un /.test(p.enonce), p.enonce);
+        assert.ok(!/stylos à .* l'une /.test(p.enonce), p.enonce);
+    }
+});

@@ -279,7 +279,11 @@ export function apercuItems(page, k, o) {
         }
         // type 'q'
         if (it.n != null) {
-            html += `<div class="fq-num" style="left:${it.x * k}px; top:${it.y * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
+            // LE NUMÉRO EST SUR LA LIGNE DE L'ÉNONCÉ, pas au-dessus. Il était
+            // posé à `y` quand le texte commençait à `y + dy` : dès qu'une
+            // question réservait de la place pour une fraction, le « 6. » se
+            // retrouvait un demi-interligne plus haut que sa phrase.
+            html += `<div class="fq-num" style="left:${it.x * k}px; top:${(it.y + (it.dy || 0)) * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
         }
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
@@ -623,7 +627,9 @@ export function pdfItems(pdf, page, o) {
         pdf.setTextColor(...ENCRE.texte);
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(o.taille * 2.83);
-        if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + o.taille);
+        // Sur la MÊME ligne de base que la première ligne de l'énoncé : voir
+        // le commentaire de l'aperçu, plus haut.
+        if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + (it.dy || 0) + o.taille);
         pdf.setFont('helvetica', 'normal');
         it.lignes.forEach((ligne, i) => {
             dessinerLigne(pdf, ligne, it.texteX, it.y + (it.dy || 0) + o.taille + i * o.interligne, o, it.fractions);

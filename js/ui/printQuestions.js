@@ -22,7 +22,7 @@
 import { generateurDeFiche } from '../core/registry.js';
 import { equiperFenetre } from './flottant.js';
 import { makeRng } from '../core/ids.js';
-import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
+import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../core/fiche.js';
 import { espacerMilliers } from '../core/nombres.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
@@ -72,7 +72,7 @@ function tirerQuestions(generator, params, nb) {
             // l'élève, et une feuille qui l'imprime enseigne le contraire du
             // cours. Le générateur le déclare (`fractions: true`) ; la fiche
             // du parcours le lisait déjà, celle-ci l'oubliait.
-            fractions: !!generator.fractions,
+            fractions: !!generator.fractions && porteUneFraction(texte, item.answer),
             choix: item.choices ? item.choices.map(c => String(c.label ?? c.value)) : null,
             reponse: formaterReponse(item),
             // L'explication du générateur : elle ne sert qu'à la feuille de

@@ -85,7 +85,13 @@ export const ETAPES = [
         titre: 'Écritures mêlées (même signe)',
         signes: 'meme', mode: 'calcul', melangeEcriture: true, difficulte: 2,
         aide: 'Avec ou sans parenthèses, c\'est le même calcul : repère d\'abord le signe de chaque nombre.',
-        lecon: 'Même signe : on ajoute les distances à zéro, et on garde le signe commun.'
+        // LE MOT DU PROGRAMME. Rémy : « dans le nouveau programme, on parle
+        // aussi de valeur absolue ». La distance à zéro reste la formulation
+        // qui explique ; le terme officiel l'accompagne entre parenthèses,
+        // avec sa notation, là où la règle est énoncée pour la première fois.
+        lecon: 'Même signe : on ajoute les distances à zéro (on dit aussi les valeurs '
+            + 'absolues — la valeur absolue de −5 se note |−5| et vaut 5), et on garde '
+            + 'le signe commun.'
     },
     {
         id: 'a4-decimaux-meme', temps: 'A', marche: 4, modele: 'ecriture',
@@ -115,14 +121,17 @@ export const ETAPES = [
         titre: 'Écritures mêlées (signes différents)',
         signes: 'opposes', mode: 'calcul', melangeEcriture: true, difficulte: 3,
         aide: 'Cherche lequel des deux est le plus loin de zéro : c\'est son signe que gardera le résultat.',
-        lecon: 'Signes différents : on retire la plus petite distance à zéro de la plus grande, et on garde le signe du nombre le plus éloigné de zéro.'
+        lecon: 'Signes différents : on retire la plus petite distance à zéro (la plus petite '
+            + 'valeur absolue) de la plus grande, et on garde le signe du nombre le plus '
+            + 'éloigné de zéro.'
     },
     {
         id: 'b4-decimaux-opposes', temps: 'B', marche: 4, modele: 'ecriture',
         titre: 'Avec une virgule (signes différents)',
         signes: 'opposes', mode: 'calcul', decimal: true, melangeEcriture: true, difficulte: 4,
         aide: 'Retire les dixièmes, puis les unités : ici, il n\'y a jamais d\'emprunt à faire.',
-        lecon: 'La règle des signes ne dépend pas de la virgule : on compare les distances à zéro exactement de la même façon.'
+        lecon: 'La règle des signes ne dépend pas de la virgule : on compare les distances '
+            + 'à zéro (les valeurs absolues) exactement de la même façon.'
     },
 
     // --- C. Le mélange -------------------------------------------------------
@@ -222,13 +231,14 @@ export function expliquer(etape, a, b, total) {
     }
     if (memeSigne) {
         return `${complete(a, b)} s'écrit ${simplifiee(a, b)}. Les deux nombres ont le même signe : `
-            + `on ajoute les distances à zéro (${fmt(Math.abs(a))} + ${fmt(Math.abs(b))} = ${fmt(Math.abs(a) + Math.abs(b))}) `
+            + `on ajoute les distances à zéro (les valeurs absolues) : `
+            + `${fmt(Math.abs(a))} + ${fmt(Math.abs(b))} = ${fmt(Math.abs(a) + Math.abs(b))}, `
             + `et on garde ce signe : ${fmt(total)}.`;
     }
     const grand = Math.abs(a) >= Math.abs(b) ? a : b;
     return `${complete(a, b)} s'écrit ${simplifiee(a, b)}. Les signes sont différents : `
-        + `on retire la plus petite distance à zéro de la plus grande `
-        + `(${fmt(Math.max(Math.abs(a), Math.abs(b)))} − ${fmt(Math.min(Math.abs(a), Math.abs(b)))} = ${fmt(Math.abs(total))}), `
+        + `on retire la plus petite distance à zéro (la plus petite valeur absolue) de la plus grande : `
+        + `${fmt(Math.max(Math.abs(a), Math.abs(b)))} − ${fmt(Math.min(Math.abs(a), Math.abs(b)))} = ${fmt(Math.abs(total))}, `
         + `et on garde le signe de ${fmt(grand)}, le plus éloigné de zéro : ${fmt(total)}.`;
 }
 

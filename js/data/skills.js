@@ -451,7 +451,7 @@ const BASE = {
         niveaux: [N.CINQUIEME, N.QUATRIEME],
         prereqs: ['num.relatifs.sens'],
         descriptor: 'Calculer la somme de deux ou trois nombres relatifs, avec ou sans support.',
-        lesson: 'Deux cas, et deux seulement. MÊME SIGNE : on ajoute les distances à zéro et on garde le signe — (−3) + (−4) = −7. SIGNES DIFFÉRENTS : on retire la plus petite distance à zéro de la plus grande, et on garde le signe du plus éloigné de zéro — (−7) + (+4) = −3, parce que 7 − 4 = 3 et que le 7 était négatif. Les pastilles expliquent pourquoi : une bleue et une rouge forment une paire qui vaut 0, et il ne reste que le surplus.'
+        lesson: 'La distance à zéro d\'un nombre s\'appelle aussi sa VALEUR ABSOLUE, et se note entre deux barres : |−5| = 5, |+5| = 5. Deux cas, et deux seulement. MÊME SIGNE : on ajoute les distances à zéro (les valeurs absolues) et on garde le signe — (−3) + (−4) = −7. SIGNES DIFFÉRENTS : on retire la plus petite distance à zéro de la plus grande, et on garde le signe du plus éloigné de zéro — (−7) + (+4) = −3, parce que 7 − 4 = 3 et que le 7 était négatif. Les pastilles expliquent pourquoi : une bleue et une rouge forment une paire qui vaut 0, et il ne reste que le surplus.'
     },
     'geo.angles.mesure': {
         label: 'Mesurer un angle au rapporteur',

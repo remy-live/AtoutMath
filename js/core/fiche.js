@@ -105,6 +105,20 @@ export function mesureurFractions(mesurer) {
         taille);
 }
 
+/**
+ * CE TEXTE-CI porte-t-il vraiment une fraction ?
+ *
+ * Le générateur déclare `fractions: true` dès qu'il PEUT en produire — et les
+ * problèmes en produisent une fois sur dix. La fiche prenait la déclaration
+ * pour argent comptant et réservait à CHAQUE question la hauteur d'une fraction
+ * empilée : dix-neuf énoncés sur vingt descendaient d'un demi-interligne sous
+ * leur numéro, pour une fraction qui n'y était pas. C'est le décalage que Rémy
+ * a vu sur la feuille de problèmes.
+ */
+export function porteUneFraction(...textes) {
+    return textes.some(t => /\d\s*\/\s*\d/.test(String(t ?? '')));
+}
+
 /** L'emplacement du trou dans une ligne déjà composée, ou null. */
 export function trouDe(ligne) {
     const m = / {3,}/.exec(ligne || '');
@@ -943,7 +957,14 @@ export function reponseEnPlace(texte, reponse) {
         // et la réponse flottait au milieu d'un blanc.
         return t.slice(0, trou.debut) + marquee + t.slice(trou.fin);
     }
-    return `${nettoyer(t)} = ${marquee}`;
+    // UN SIGNE « = » APRÈS UN POINT D'INTERROGATION N'EST PAS DU FRANÇAIS.
+    // « Combien Inès a-t-elle de bonbons en tout ? = 67 bonbons » : le « = »
+    // convient à un calcul, pas à une question posée en toutes lettres. Les
+    // problèmes sont le seul exercice où l'énoncé est une phrase, et c'est
+    // aussi le seul où l'on écrit une phrase de réponse.
+    const propre = nettoyer(t);
+    if (/[?!.:]$/.test(propre.trim())) return `${propre} Réponse : ${marquee}`;
+    return `${propre} = ${marquee}`;
 }
 
 /**

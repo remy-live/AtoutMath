@@ -134,11 +134,13 @@ export function expliquer(modele, depart, deplacements, resultat) {
     const a = depart, b = deplacements[0];
     if ((a >= 0) === (b >= 0)) {
         return `${ecrire(a)} et ${ecrire(b)} ont le même signe : on ajoute les distances à zéro `
-            + `(${Math.abs(a)} + ${Math.abs(b)} = ${Math.abs(a) + Math.abs(b)}) et on garde ce signe : ${nb(total)}.`;
+            + `(les valeurs absolues) : ${Math.abs(a)} + ${Math.abs(b)} = ${Math.abs(a) + Math.abs(b)}, `
+            + `et on garde ce signe : ${nb(total)}.`;
     }
     const grand = Math.abs(a) >= Math.abs(b) ? a : b;
-    return `Les signes sont différents : on retire la plus petite distance à zéro de la plus grande `
-        + `(${Math.max(Math.abs(a), Math.abs(b))} − ${Math.min(Math.abs(a), Math.abs(b))} = ${Math.abs(total)}), `
+    return `Les signes sont différents : on retire la plus petite distance à zéro `
+        + `(la plus petite valeur absolue) de la plus grande : `
+        + `${Math.max(Math.abs(a), Math.abs(b))} − ${Math.min(Math.abs(a), Math.abs(b))} = ${Math.abs(total)}, `
         + `et on garde le signe de ${ecrire(grand)}, le plus éloigné de zéro : ${nb(total)}.`;
 }
 
