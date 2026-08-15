@@ -79,6 +79,14 @@ class Conversion extends BaseGame {
                 .cv-table th { background: var(--bg-hover); font-size: clamp(11px, 3cqw, 15px); }
                 .cv-tete-vide { background: color-mix(in srgb, var(--danger) 12%, transparent); }
                 .cv-tete-vide.cv-cible { outline: 3px dashed var(--primary); outline-offset: -4px; }
+                /* UNE ÉTIQUETTE POSÉE SE REPREND. Le curseur et le survol le
+                   disent : sans indice visible, on n'essaie pas de cliquer un
+                   en-tête de tableau — et on reste bloqué sur son erreur. */
+                .cv-tete-posee { cursor: pointer; }
+                .cv-tete-posee:hover {
+                    background: color-mix(in srgb, var(--primary) 14%, transparent);
+                    outline: 2px solid var(--primary); outline-offset: -3px;
+                }
 
                 /* Le chiffre posé, et le fantôme pendant le glissement. */
                 .cv-chiffre { color: var(--text-main); }
@@ -186,9 +194,27 @@ class Conversion extends BaseGame {
             const pose = this.unitesPosees[u.rang];
             th.textContent = pose || '';
             th.className = pose ? '' : 'cv-tete-vide';
-            if (!pose && this.etape === 1) {
-                th.classList.add('cv-cible');
+            // TOUTE COLONNE RESTE UNE CIBLE, occupée ou non. Une étiquette
+            // lâchée dans la mauvaise colonne y restait pour toujours : la
+            // case n'était plus une cible, et l'étiquette avait disparu du
+            // bandeau. On ne pouvait ni la reprendre ni la remplacer — il
+            // fallait relancer l'exercice. Déposer sur une colonne occupée
+            // renvoie maintenant l'ancienne au bandeau.
+            if (this.etape === 1) {
                 th.dataset.rang = u.rang;
+                if (!pose) th.classList.add('cv-cible');
+                else {
+                    // ET ON PEUT LA REPRENDRE D'UN CLIC. C'est le geste qu'on
+                    // essaie d'abord quand on s'est trompé.
+                    th.classList.add('cv-tete-posee');
+                    th.title = 'Clique pour reprendre cette étiquette';
+                    th.addEventListener('click', () => {
+                        if (this.isDemo) return;
+                        delete this.unitesPosees[u.rang];
+                        this.dessiner();
+                        this.note(`« ${pose} » est revenue en bas — repose-la où tu veux.`);
+                    });
+                }
             }
             entetes.appendChild(th);
 
@@ -244,18 +270,39 @@ class Conversion extends BaseGame {
     poserEtiquette(th, sym) {
         {
             const rang = Number(th.dataset.rang);
+            // Une étiquette ne peut être qu'à un endroit : si elle était déjà
+            // posée ailleurs, elle déménage au lieu de se dédoubler.
+            for (const [r, s] of Object.entries(this.unitesPosees)) {
+                if (s === sym) delete this.unitesPosees[r];
+            }
             this.unitesPosees[rang] = sym;
             const v = verifierUnites(this.famille, this.unitesPosees);
             if (v.ok) {
                 this.tableauGarni = true;
                 this.etape = 2;
-                this.note('✅ Le tableau est prêt — et il le restera pour les conversions suivantes.', 'ok');
                 this.onCorrectAnswer(null, COMPETENCE, {
                     questionText: `Ranger les unités de ${familleDe(this.famille).nom.toLowerCase()}`,
                     expected: 'km hm dam m dm cm mm', given: 'juste', points: 8
                 });
+                this.dessiner();
+                this.note('✅ Le tableau est prêt — et il le restera pour les conversions suivantes.', 'ok');
+                return;
             }
             this.dessiner();
+            // TOUT EST POSÉ MAIS C'EST FAUX : on le DIT. L'élève restait devant
+            // un tableau plein qui ne se validait pas, à chercher un bouton qui
+            // n'existe pas. Le message vient APRÈS le redessin : celui-ci
+            // réécrit la consigne de l'étape, et l'effaçait.
+            const nb = Object.keys(this.unitesPosees).length;
+            if (nb >= familleDe(this.famille).unites.length) {
+                const mal = v.fautes.filter(f => f.recu).map(f => f.recu);
+                // On en NOMME trois au plus : la liste des sept déplacées se
+                // lit comme un reproche, et ne dit pas par où commencer.
+                const cites = mal.slice(0, 3).join(', ') + (mal.length > 3 ? ' et d\'autres' : '');
+                this.note(`Le tableau est complet, mais ${mal.length > 1
+                    ? `${mal.length} unités ne sont pas à leur place` : 'une unité n\'est pas à sa place'}`
+                    + ` : ${cites}. Clique une étiquette du tableau pour la reprendre.`, 'ko');
+            }
         }
     }
 
