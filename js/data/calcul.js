@@ -147,17 +147,22 @@ export const calculExercises = [
         id: 'calc-compte-est-bon', status: STATUS.TEST, title: 'Le Compte est Bon',
         activityId: 'compte-est-bon',
         skills: ['num.calc.tri'],
-        params: { operations: 3, tous: false, grands: 1 },
+        // DEUX OPÉRATIONS PAR DÉFAUT, pas trois. Le compte est bon est un jeu
+        // d'adultes : à trois opérations, l'élève de CM2 cherche à l'aveugle et
+        // renonce avant d'avoir rien calculé. À deux, il voit le chemin, il le
+        // pose, il gagne — et c'est en gagnant qu'on accepte d'en faire trois.
+        params: { operations: 2, tous: false, grands: 1 },
         paramSchema: [
             {
                 id: 'operations', type: 'select', label: 'Opérations pour y arriver',
+                aide: 'C\'est le vrai réglage de difficulté : chaque opération de plus multiplie le nombre de chemins à essayer.',
                 options: [
                     { value: 2, label: '2 — pour commencer' },
                     { value: 3, label: '3' },
                     { value: 4, label: '4' },
                     { value: 5, label: '5 — le tirage complet' }
                 ],
-                default: 3
+                default: 2
             },
             {
                 id: 'tous', type: 'checkbox', label: 'Utiliser TOUTES les plaques',
