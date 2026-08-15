@@ -11,6 +11,7 @@
 // remplacer « Faux ! » par « tu as additionné au lieu de multiplier ».
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
 
 // --- Addition ---------------------------------------------------------------
 
@@ -262,13 +263,66 @@ export const divisionGenerator = {
 };
 
 // --- Priorités opératoires --------------------------------------------------
+//
+// LES EXPRESSIONS VIENNENT DU NOYAU, plus de gabarits écrits ici.
+//
+// Cet exercice ne connaissait que quatre formes — « a + b × c » et ses trois
+// sœurs — avec des nombres de 2 à 9. Ni parenthèses, ni quatre termes, ni
+// division : trois réglages de moins que la fiche papier du même sujet, qui
+// s'appuie, elle, sur core/priorites.js depuis toujours. Rémy : « avoir la
+// possibilité d'avoir des calculs plus grands, et tu m'en fais un autre avec
+// des parenthèses ».
+//
+// On tire donc par `tirerExpression`, comme la fiche : même moteur, mêmes
+// garanties (toutes les étapes tombent juste, aucun négatif en cours de
+// route, et sans parenthèses le calcul de gauche à droite donne toujours une
+// AUTRE réponse — sinon l'élève qui ignore la règle tombe juste par hasard).
 
-const PRIORITY_TEMPLATES = [
-    (a, b, c) => ({ eq: `${a} + ${b} × ${c}`, right: `${b} × ${c}`, wrong: `${a} + ${b}`, value: a + b * c }),
-    (a, b, c) => ({ eq: `${a} × ${b} + ${c}`, right: `${a} × ${b}`, wrong: `${b} + ${c}`, value: a * b + c }),
-    (a, b, c) => ({ eq: `${a} - ${b} × ${c}`, right: `${b} × ${c}`, wrong: `${a} - ${b}`, value: a - b * c }),
-    (a, b, c) => ({ eq: `${a} × ${b} - ${c}`, right: `${a} × ${b}`, wrong: `${b} - ${c}`, value: a * b - c })
-];
+/**
+ * Les opérations lisibles dans l'expression, chacune avec ses deux opérandes
+ * TELS QU'ILS SONT ÉCRITS.
+ *
+ * Un opérande n'est pas toujours un nombre : dans « (2 × 7) + 8 », le membre
+ * gauche du « + » est le groupe entier. En n'acceptant que des nombres, on ne
+ * trouvait qu'UNE opération dans une expression parenthésée — et le QCM
+ * n'avait plus qu'une seule case à cocher.
+ */
+function bornerGauche(jetons, i) {
+    const j = jetons[i - 1];
+    if (!j) return -1;
+    if (j.type === 'n') return i - 1;
+    if (j.type !== ')') return -1;
+    let prof = 0;
+    for (let k = i - 1; k >= 0; k--) {
+        if (jetons[k].type === ')') prof++;
+        else if (jetons[k].type === '(' && --prof === 0) return k;
+    }
+    return -1;
+}
+
+function bornerDroite(jetons, i) {
+    const j = jetons[i + 1];
+    if (!j) return -1;
+    if (j.type === 'n') return i + 1;
+    if (j.type !== '(') return -1;
+    let prof = 0;
+    for (let k = i + 1; k < jetons.length; k++) {
+        if (jetons[k].type === '(') prof++;
+        else if (jetons[k].type === ')' && --prof === 0) return k;
+    }
+    return -1;
+}
+
+function fragmentsDe(jetons) {
+    const out = [];
+    for (let i = 0; i < jetons.length; i++) {
+        if (jetons[i].type !== 'op') continue;
+        const g = bornerGauche(jetons, i), d = bornerDroite(jetons, i);
+        if (g < 0 || d < 0) continue;
+        out.push({ index: i, texte: ecrire(jetons.slice(g, d + 1)) });
+    }
+    return out;
+}
 
 export const prioriteGenerator = {
     id: 'calc.priorites',
@@ -277,61 +331,132 @@ export const prioriteGenerator = {
     answerKinds: ['choice'],
     ecrit: true,
     params: [
-        { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' }
+        { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' },
+        {
+            id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
+            options: [
+                { value: 1, label: '1 — Trois nombres, deux opérations' },
+                { value: 2, label: '2 — Jusqu\'à quatre nombres' },
+                { value: 3, label: '3 — Les parenthèses arrivent' },
+                { value: 4, label: '4 — Deux groupes de parenthèses' }
+            ]
+        },
+        {
+            id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
+            aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu. '
+                + 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
+        },
+        {
+            id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
+            aide: 'Les nombres montent jusqu\'à 20 et le résultat jusqu\'à 2 000 : '
+                + 'la règle est la même, mais elle ne se devine plus de tête.'
+        }
     ],
+
     generate(params, ctx) {
         const rng = ctx.rng;
-        const a = rng.int(2, 9), b = rng.int(2, 9), c = rng.int(2, 9);
-        const tpl = PRIORITY_TEMPLATES[rng.int(0, PRIORITY_TEMPLATES.length - 1)](a, b, c);
+        params = params || {};
+        const grands = !!params.grands;
+        const e = tirerExpression({
+            rng,
+            niveau: Math.max(1, Math.min(4, Number(params.niveau) || 2)),
+            parentheses: !!params.parentheses,
+            imposer: !!params.parentheses,
+            max: grands ? 20 : 9,
+            plafond: grands ? 2000 : 400
+        });
+        const p = operationPrioritaire(e.jetons);
+        const tous = fragmentsDe(e.jetons);
+        const bon = tous.find(f => f.index === (p && p.index));
+        const prioritaire = bon ? bon.texte : tous[0].texte;
+        const valeurPrio = p && p.valeur !== null ? p.valeur : null;
+        // Le morceau d'énoncé que le robot montrera. `data-vise` ne change
+        // rien à l'affichage : c'est la démonstration qui le fait ressortir,
+        // au moment exact où elle en parle.
+        const marque = e.texte.replace(prioritaire, `<span data-vise>${prioritaire}</span>`);
+        const commun = {
+            seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
+            answerKind: 'choice',
+            meta: {
+                eq: e.texte, right: prioritaire, value: e.resultat,
+                etapes: e.etapes, avecParentheses: e.avecParentheses,
+                theme: e.texte
+            }
+        };
 
         // Deux façons d'interroger la même compétence : identifier l'opération
         // prioritaire, ou calculer le résultat. La seconde est plus exigeante.
         if (params.mode === 'resultat') {
-            const naive = evalLeftToRight(tpl.eq);
+            // Le distracteur le plus instructif est le résultat de celui qui
+            // calcule de gauche à droite : il révèle exactement la règle
+            // manquante. Avec des parenthèses il n'existe pas — on ne lit pas
+            // « (3 + 4) × 5 » de gauche à droite —, et le remplissage prend le
+            // relais.
+            const naive = naif(e.jetons);
             return makeItem({
-                seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
-                answerKind: 'choice',
-                // L'OPÉRATION PRIORITAIRE EST DÉSIGNABLE. L'indice dit
-                // « Commence par 8 × 6 » ; sans repère dans l'énoncé, le robot
-                // le disait en montrant le vide, et l'élève devait retrouver
-                // lui-même de quel morceau on parle. Le balisage ne change rien
-                // à l'affichage : c'est la démonstration qui le fait ressortir,
-                // au moment où elle en parle.
+                ...commun,
                 prompt: {
-                    text: `${tpl.eq} = ?`,
-                    html: `<div class="game-question">${tpl.eq.replace(tpl.right, `<span data-vise>${tpl.right}</span>`)} = ?</div>`
+                    text: `${e.texte} = ?`,
+                    papier: `${e.texte} =`,
+                    html: `<div class="game-question">${marque} = ?</div>`
                 },
-                answer: tpl.value,
+                answer: e.resultat,
                 choices: finalizeChoices(rng, [
-                    { value: tpl.value, correct: true },
-                    { value: naive, why: 'Tu as calculé de gauche à droite : la multiplication passe avant.' },
-                    { value: tpl.value + b }
-                ], { count: 3, filler: r => tpl.value + r.int(2, 12) }),
-                hints: [`Commence par ${tpl.right}.`, `${tpl.right} = ${evalSimple(tpl.right)}.`],
-                explanation: `On calcule d'abord ${tpl.right} = ${evalSimple(tpl.right)}, donc ${tpl.eq} = ${tpl.value}.`,
-                difficulty: 4,
-                meta: tpl
+                    { value: e.resultat, correct: true },
+                    naive !== null && naive !== e.resultat
+                        ? { value: naive, why: 'Tu as calculé de gauche à droite : la multiplication et la division passent avant.' }
+                        : null
+                ].filter(Boolean), {
+                    count: 3,
+                    // JAMAIS DE DISTRACTEUR NÉGATIF. Les priorités s'apprennent
+                    // avant les relatifs : proposer « −7 » comme réponse
+                    // possible à « 7 − 2 × 2 + 2 » introduit une notion qui
+                    // n'est pas encore là, et n'apprend rien de la règle.
+                    filler: (r) => {
+                        const d = r.int(1, 12);
+                        return (e.resultat - d >= 1 && r.bool(0.5)) ? e.resultat - d : e.resultat + d;
+                    }
+                }),
+                hints: [
+                    `Commence par ${prioritaire}.`,
+                    valeurPrio !== null ? `${prioritaire} = ${valeurPrio}.` : (p ? p.raison : '')
+                ].filter(Boolean),
+                explanation: valeurPrio !== null
+                    ? `On calcule d'abord ${prioritaire} = ${valeurPrio}, donc ${e.texte} = ${e.resultat}.`
+                    : `${e.texte} = ${e.resultat}.`,
+                difficulty: Math.min(5, 2 + e.etapes),
+                explicationPapier: (e.lignes || []).map(l => l.texte).join(' → ')
             });
         }
 
+        // Les autres opérations de l'expression font les distracteurs : elles
+        // sont VISIBLES dans l'énoncé, donc chacune est une réponse qu'un
+        // élève donne vraiment. Un nombre tiré au hasard ne l'est pas.
+        // Et chacune porte SA raison, pas une raison générique : « il reste des
+        // parenthèses », « elle passe avant les additions », « à priorité
+        // égale on va de gauche à droite ». C'est le noyau qui la donne — les
+        // trois phrases SONT la leçon.
+        const autres = tous.filter(f => f.texte !== prioritaire)
+            .map(f => ({ value: f.texte, why: critiquer(e.jetons, f.index) || '' }));
         return makeItem({
-            seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
-            answerKind: 'choice',
+            ...commun,
             prompt: {
-                text: `Quelle opération est prioritaire dans ${tpl.eq} ?`,
+                text: `Quelle opération est prioritaire dans ${e.texte} ?`,
+                papier: `Dans ${e.texte}, quelle opération d'abord ?`,
                 // Ici, l'opération prioritaire EST la réponse : on ne désigne
                 // que l'expression entière, jamais le morceau cherché.
-                html: `<div class="game-question">Priorité ?<br><span data-vise style="color:var(--primary)">${tpl.eq}</span></div>`
+                html: `<div class="game-question">Priorité ?<br><span data-vise style="color:var(--primary)">${e.texte}</span></div>`
             },
-            answer: tpl.right,
-            choices: finalizeChoices(rng, [
-                { value: tpl.right, correct: true },
-                { value: tpl.wrong, why: 'On ne calcule pas de gauche à droite : la multiplication est prioritaire.' }
-            ], { count: 2 }),
-            hints: ['Cherche la multiplication ou la division.', `C'est ${tpl.right}.`],
-            explanation: `La multiplication est prioritaire sur l'addition et la soustraction : on calcule d'abord ${tpl.right}.`,
-            difficulty: 3,
-            meta: tpl
+            answer: prioritaire,
+            choices: finalizeChoices(rng,
+                [{ value: prioritaire, correct: true }, ...autres],
+                { count: Math.min(4, 1 + autres.length) }),
+            hints: [
+                e.avecParentheses ? 'Regarde d\'abord les parenthèses.' : 'Cherche la multiplication ou la division.',
+                `C'est ${prioritaire}.`
+            ],
+            explanation: `${p ? p.raison : ''} On calcule d'abord ${prioritaire}.`.trim(),
+            difficulty: e.avecParentheses ? 4 : 3
         });
     }
 };
@@ -381,26 +506,3 @@ export const mixteGenerator = {
     }
 };
 
-function evalSimple(expr) {
-    const m = /^(\d+)\s*([+\-×*])\s*(\d+)$/.exec(expr.replace(/\s+/g, ' ').trim());
-    if (!m) return NaN;
-    const [, x, op, y] = m;
-    const a = Number(x), b = Number(y);
-    if (op === '+') return a + b;
-    if (op === '-') return a - b;
-    return a * b;
-}
-
-// Résultat qu'obtiendrait un élève qui ignore les priorités : c'est le
-// distracteur le plus instructif, il révèle exactement la règle manquante.
-function evalLeftToRight(eq) {
-    const tokens = eq.split(' ');
-    let acc = Number(tokens[0]);
-    for (let i = 1; i < tokens.length; i += 2) {
-        const op = tokens[i], v = Number(tokens[i + 1]);
-        if (op === '+') acc += v;
-        else if (op === '-') acc -= v;
-        else acc *= v;
-    }
-    return acc;
-}

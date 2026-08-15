@@ -85,12 +85,66 @@ export const calculExercises = [
     {
         id: 'calc-prio',
         consignePapier: "Quelle opération faut-il effectuer en premier ?",
-        colonnesPapier: 1,
+        colonnesPapier: 2,
         title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
-        params: { mode: 'operation' },
+        // Le niveau et la taille des nombres se règlent : les expressions
+        // venaient de quatre gabarits fixes, à trois nombres de moins de dix.
+        params: { mode: 'operation', niveau: 2, parentheses: false, grands: false },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
+                options: [
+                    { value: 1, label: '1 — Trois nombres, deux opérations' },
+                    { value: 2, label: '2 — Jusqu\'à quatre nombres' },
+                    { value: 3, label: '3 — Les parenthèses arrivent' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses' }
+                ]
+            },
+            {
+                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
+                aide: 'Les nombres montent jusqu\'à 20 : la règle est la même, mais '
+                    + 'elle ne se devine plus de tête.'
+            },
+            {
+                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
+                aide: 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
+            }
+        ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Sélectionne l'opération à effectuer en premier selon les règles de priorité."
+    },
+    {
+        // LES PARENTHÈSES, À PART. Rémy : « tu m'en fais un autre avec des
+        // parenthèses ». C'est bien un autre exercice, et non un réglage caché
+        // du premier : la règle change de nature. « × et ÷ avant + et − » se
+        // décide en regardant les SIGNES ; « les parenthèses d'abord » se
+        // décide en regardant la FORME, avant même de lire les signes. Un
+        // élève peut tenir la seconde et rater la première, ou l'inverse — et
+        // c'est ce qu'on veut voir séparément.
+        id: 'calc-prio-parentheses',
+        consignePapier: "Quelle opération faut-il effectuer en premier ?",
+        colonnesPapier: 2,
+        title: 'Prio-Bot Parenthèses',
+        generatorId: 'calc.priorites', activityId: 'buttons',
+        params: { mode: 'operation', niveau: 3, parentheses: true, grands: false },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', default: 3,
+                options: [
+                    { value: 3, label: '3 — Un groupe de parenthèses' },
+                    { value: 4, label: '4 — Deux groupes, ou un groupe de trois nombres' }
+                ]
+            },
+            {
+                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
+                aide: 'Les nombres montent jusqu\'à 20.'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les parenthèses passent AVANT tout le reste — avant même les multiplications. "
+            + "S'il y en a plusieurs, on commence par le groupe le plus intérieur. Sélectionne "
+            + "l'opération à effectuer en premier."
     },
     {
         id: 'calc-prio-resultat',

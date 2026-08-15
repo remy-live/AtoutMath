@@ -259,26 +259,43 @@ const FORMES = {
  * @param {Object} o.rng
  * @param {number} [o.niveau]        - 1 à 4
  * @param {boolean} [o.parentheses]  - autoriser les parenthèses
+ * @param {number} [o.max]           - le plus grand nombre écrit dans l'expression
+ * @param {number} [o.plafond]       - au-delà, le résultat n'est plus de tête
+ *
+ * DES CALCULS PLUS GRANDS, SUR DEMANDE. Les nombres allaient de 2 à 9 et le
+ * résultat ne dépassait pas 400 : c'est le bon calibre pour découvrir la
+ * règle, et c'est trop court pour la travailler ensuite. Rémy : « avoir la
+ * possibilité d'avoir des calculs plus grands ». Les deux bornes sont donc
+ * des réglages, et leurs valeurs par défaut ne changent rien à l'existant.
  */
-export function tirerExpression({ rng, niveau = 2, parentheses = true } = {}) {
+export function tirerExpression({
+    rng, niveau = 2, parentheses = true, max = 9, plafond = 400, imposer = false
+} = {}) {
     const n = Math.max(1, Math.min(4, niveau));
+    const grand = Math.max(3, Math.round(max));
     let formes = FORMES[n] || FORMES[2];
     if (!parentheses) {
         formes = formes.filter(f => !f.includes('('));
         if (!formes.length) formes = FORMES[2].filter(f => !f.includes('('));
+    } else if (imposer) {
+        // UN EXERCICE SUR LES PARENTHÈSES DOIT EN AVOIR. Le niveau 3 mélange
+        // des formes avec et sans : une question sur deux tombait sans
+        // parenthèse, et l'exercice ne portait plus sur ce qu'il annonce.
+        const avec = formes.filter(f => f.includes('('));
+        if (avec.length) formes = avec;
     }
 
     for (let essai = 0; essai < 600; essai++) {
         const forme = formes[rng.int(0, formes.length - 1)];
         const jetons = forme.map(t => {
-            if (t === 'n') return nombre(rng.int(2, 9));
+            if (t === 'n') return nombre(rng.int(2, grand));
             if (t === 'op') return operateur(rng.pick(['+', '-', '×', '÷']));
             return t === '(' ? ouvrante() : fermante();
         });
         const lignes = etapes(jetons);
         if (!lignes) continue;                          // une étape interdite
         const finale = lignes[lignes.length - 1].jetons[0].valeur;
-        if (finale < 0 || finale > 400) continue;
+        if (finale < 0 || finale > plafond) continue;
         // AU MOINS DEUX ÉTAPES, sinon il n'y a pas de priorité à trancher.
         if (lignes.length < 3) continue;
         // Et l'ordre naïf de gauche à droite doit donner AUTRE CHOSE : sans
