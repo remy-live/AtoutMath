@@ -795,3 +795,38 @@ test('corrigé : les fractions se mesurent empilées, pas à la barre oblique', 
     assert.ok(avec.opts.interligne > sans.opts.interligne,
         `interligne ${avec.opts.interligne} contre ${sans.opts.interligne}`);
 });
+
+// --- Les pointillés : ni trop courts, ni à perte de vue ----------------------
+
+test('blocs : les pointillés d\'une même ligne ne dépassent pas repMax', () => {
+    // Ils couraient jusqu'au bord de la cellule : cinq centimètres de
+    // pointillés pour écrire « 42 », et deux colonnes voisines qui se
+    // touchent visuellement. Rémy : « un peu moins de pointillés ».
+    const { pages, opts } = composerBlocs(
+        [{ titre: 'Tables', consigne: '', colonnes: 1,
+            questions: Array.from({ length: 4 }, (_, i) => ({ texte: '7 × 8 =', reponse: 56 + i })) }],
+        {}, mesurer);
+    const qs = pages[0].items.filter(i => i.type === 'q');
+    assert.ok(qs.length, 'des questions ont été posées');
+    qs.forEach(q => {
+        assert.ok(q.rep.w <= opts.repMax + 0.01,
+            `pointillés trop longs : ${q.rep.w.toFixed(1)} mm pour un maximum de ${opts.repMax}`);
+        assert.ok(q.rep.w >= opts.repMin, 'et assez longs pour y écrire');
+    });
+});
+
+test('blocs : un énoncé à trou ne se coupe pas en deux lignes', () => {
+    // « 660 +  …  = 1 000 » coupé laisse le trou sur la première ligne et le
+    // « = 1 000 » sur la seconde : on écrit dans un blanc dont on ne voit plus
+    // la consigne. Quatre colonnes demandées, mais l'énoncé n'y tient pas.
+    const texte = 'Six cent soixante + ? = mille cinquante-deux';
+    const { pages } = composerBlocs(
+        [{ titre: 'Compléments', consigne: '', colonnes: 4,
+            questions: Array.from({ length: 8 }, () => ({ texte, reponse: 392 })) }],
+        {}, mesurer);
+    const qs = pages[0].items.filter(i => i.type === 'q');
+    const aTrou = qs.filter(q => q.rep && q.rep.dansLeTexte);
+    assert.ok(aTrou.length, 'les énoncés portent bien un trou');
+    aTrou.forEach(q => assert.equal(q.lignes.length, 1,
+        'un énoncé à trou tient sur une ligne — la colonne a été retirée'));
+});

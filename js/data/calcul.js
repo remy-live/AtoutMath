@@ -22,7 +22,7 @@ export const calculExercises = [
     {
         id: 'calc-add',
         consignePapier: "Calcule.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Additions Mystères',
         generatorId: 'calc.addition', activityId: 'bubbles',
         params: { max: 10 },
@@ -32,7 +32,7 @@ export const calculExercises = [
     {
         id: 'calc-sub',
         consignePapier: "Calcule.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Soustractions Éclair',
         generatorId: 'calc.soustraction', activityId: 'bubbles',
         params: { max: 20 },
@@ -42,7 +42,7 @@ export const calculExercises = [
     {
         id: 'calc-mult-flash',
         consignePapier: "Calcule.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Flash Mult',
         generatorId: 'calc.mult.fact', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -64,7 +64,7 @@ export const calculExercises = [
     {
         id: 'calc-mult-missing',
         consignePapier: "Complète.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Facteur Manquant',
         generatorId: 'calc.mult.missing', activityId: 'digicode',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -75,7 +75,7 @@ export const calculExercises = [
     {
         id: 'calc-division',
         consignePapier: "Calcule.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Divisions Express',
         generatorId: 'calc.division', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -360,7 +360,7 @@ export const calculExercises = [
     {
         id: 'calc-arcade-sprint',
         consignePapier: "Calcule.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Sprint Chrono',
         generatorId: 'calc.mixte', activityId: 'bubbles',
         params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },

@@ -307,9 +307,27 @@ export const DEFAUTS_BLOCS = {
     interligne: 5.2,
     numeroL: 7.5,         // gouttière du « 12. »
     gouttiere: 9,         // entre deux colonnes internes
-    repMin: 16,           // longueur minimale de pointillés sur la même ligne
+    // LES POINTILLÉS : DEUX BORNES, ET LA SECONDE MANQUAIT.
+    //
+    // `repMin` dit à partir de quand on peut écrire la réponse SUR la ligne de
+    // l'énoncé plutôt que dessous. Il valait 16 mm : à quatre colonnes sur une
+    // A4 portrait, une cellule fait 38 mm, et il n'en restait pas 16 derrière
+    // « 10 × 9 = ». Toutes les réponses passaient donc à la ligne du dessous —
+    // c'est-à-dire qu'une feuille de calcul mental ne pouvait PAS s'imprimer
+    // en quatre colonnes, quoi qu'en demande le professeur. Onze millimètres
+    // suffisent pour deux ou trois chiffres écrits à la main.
+    //
+    // `repMax` est nouveau : les pointillés couraient jusqu'au bord de la
+    // cellule. Sur une réponse à deux chiffres, cela fait cinq centimètres de
+    // pointillés pour écrire « 42 » — et les colonnes se touchent
+    // visuellement, chaque trait venant buter sur la question d'à côté. Rémy :
+    // « quatre colonnes avec un peu moins de pointillés », « toujours faire
+    // attention que les colonnes ne débordent pas ». On borne, et le blanc
+    // gagné sépare les colonnes bien mieux qu'une gouttière.
+    repMin: 11,           // longueur minimale de pointillés sur la même ligne
+    repMax: 30,           // et la longueur au-delà de laquelle ils ne servent plus
     ligneReponse: 7,      // hauteur d'une réponse écrite SOUS la question
-    entreQuestions: 3.4,  // entre deux rangées de questions
+    entreQuestions: 4.4,  // entre deux rangées de questions
     bandeauH: 8,          // le bandeau « Exercice N »
     apresBandeau: 3.4,
     entreExercices: 7,
@@ -557,15 +575,20 @@ export function composerBlocs(exos, opts, mesurer) {
         // plus ce qu'on compare. Quand la colonne demandée est trop étroite
         // pour les tenir, on en retire une — le réglage du professeur est un
         // souhait, pas un ordre de rendre la feuille illisible.
-        const aDesFractions = questions.some(q => q.fractions);
+        // ET UN ÉNONCÉ À TROU NON PLUS. « 660 +  …  = 1 000 » coupé en deux
+        // laisse le trou sur la première ligne et le « = 1 000 » sur la
+        // seconde : l'élève écrit dans un blanc dont il ne voit plus la
+        // consigne. Un texte ordinaire, lui, passe à la ligne sans dommage —
+        // c'est pour cela qu'on ne regarde que les cellules à fraction ou à
+        // trou.
         let cellW, texteW, cellules;
         for (;;) {
             cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
             gouttiereNum = gouttiere(cellW);
             texteW = cellW - gouttiereNum;
             cellules = mesurerCellules();
-            if (!aDesFractions || cols <= 1) break;
-            if (!cellules.some(c => c.fractions && c.lignes.length > 1)) break;
+            if (cols <= 1) break;
+            if (!cellules.some(c => c.lignes.length > 1 && (c.fractions || c.trou))) break;
             cols--;
         }
         colonnesParExo.push(cols);
@@ -668,7 +691,10 @@ export function composerBlocs(exos, opts, mesurer) {
                     // Les pointillés continuent la ligne d'écriture : même
                     // hauteur que la ligne de base du texte.
                     const finTexte = texteX + cell.mes(cell.lignes[0], o.taille) + 2;
-                    rep = { x: finTexte, y: y + cell.dy + o.taille, w: x + cellW - finTexte };
+                    rep = {
+                        x: finTexte, y: y + cell.dy + o.taille,
+                        w: Math.min(x + cellW - finTexte, o.repMax)
+                    };
                 } else {
                     rep = {
                         x: texteX,

@@ -174,7 +174,7 @@ export const numerationExercises = [
     {
         id: 'num-complement-10',
         consignePapier: "Complète.",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         title: 'Amis de 10',
         generatorId: 'num.complement', activityId: 'bubbles',
         params: { cible: [10] },
