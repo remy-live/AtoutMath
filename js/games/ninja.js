@@ -220,10 +220,39 @@ class Ninja extends BaseGame {
                     border-radius: 50%; font-size: clamp(13px, 3.4cqw, 21px);
                 }
                 .nj-obj--bulle { background: radial-gradient(circle at 35% 30%, #a78bfa, #6d28d9); box-shadow: 0 4px 0 rgba(0,0,0,.24); }
+                /* LE COMPTE À REBOURS, ÉCRIT AUTOUR DE LA CIBLE.
+                   Une bulle qui redescend montre son délai : on VOIT qu'elle
+                   va sortir. Une cible du stand, elle, se baissait d'un coup,
+                   sur une horloge que rien n'affichait — on tirait juste ici,
+                   une autre cible tombait là, et on perdait un cœur sans
+                   comprendre. L'anneau qui se vide rend l'échéance visible :
+                   on sait laquelle presse, et on choisit. */
                 .nj-obj--cible {
-                    background: radial-gradient(circle at 50% 50%, #fecaca 0 24%, #ef4444 24% 42%, #fff 42% 58%, #ef4444 58% 76%, #fecaca 76%);
+                    --nj-reste: 1;
+                    position: relative;
+                    background: radial-gradient(circle at 50% 50%, #fecaca 0 24%, #ef4444 24% 42%,
+                        #fff 42% 58%, #ef4444 58% 76%, #fecaca 76%);
                     color: #111827; box-shadow: 0 4px 0 rgba(0,0,0,.22);
                 }
+                /* UN ANNEAU, PAS UN CAMEMBERT. Un dégradé conique posé sur le
+                   fond de la cible recouvre la cible : on obtient une part de
+                   tarte sur les anneaux, et on ne voit plus ni l'un ni l'autre.
+                   Le masque radial ne garde que la couronne extérieure — le
+                   centre reste percé, la cible reste une cible. */
+                .nj-obj--cible::before {
+                    content: ''; position: absolute; inset: -7px; border-radius: 50%;
+                    pointer-events: none;
+                    background: conic-gradient(from -90deg,
+                        var(--nj-jauge, #22c55e) 0 calc(var(--nj-reste) * 360deg),
+                        rgba(255, 255, 255, .18) calc(var(--nj-reste) * 360deg) 360deg);
+                    -webkit-mask: radial-gradient(circle, #0000 calc(50% - 6px), #000 calc(50% - 6px));
+                    mask: radial-gradient(circle, #0000 calc(50% - 6px), #000 calc(50% - 6px));
+                }
+                /* Le dernier tiers vire à l'orange, le dernier sixième au rouge
+                   et la cible se met à battre : c'est le moment de décider. */
+                .nj-obj--presse { --nj-jauge: #f59e0b; }
+                .nj-obj--urgent { --nj-jauge: #dc2626; animation: nj-battre .55s ease-in-out infinite; }
+                @keyframes nj-battre { 50% { transform: scale(1.06); } }
                 .nj-etiq { font-style: normal; }
                 /* Le calcul posé sur les anneaux d'une cible devient illisible :
                    il lui faut son propre fond. On ne demande pas à un élève de
@@ -232,12 +261,22 @@ class Ninja extends BaseGame {
                     background: rgba(255, 255, 255, .95); border-radius: 999px;
                     padding: 2px 9px; box-shadow: 0 1px 4px rgba(0,0,0,.25);
                 }
-                .nj-obj--pris { transform: scale(1.5) rotate(14deg); opacity: 0; }
+                /* UN OBJET DÉJÀ RÉGLÉ NE SE VISE PLUS. Il reste trois dixièmes
+                   de seconde à l'écran, le temps de son animation — agrandi de
+                   moitié ou descendu sur ses voisins, il interceptait des tirs
+                   qui ne lui étaient pas destinés. */
+                .nj-obj--pris {
+                    transform: scale(1.5) rotate(14deg); opacity: 0;
+                    pointer-events: none; animation: none;
+                }
                 /* Le lever et le baisser d'une cible s'animent sur L'OBJET, pas
                    sur le groupe : le groupe porte déjà le transform qui le
                    place, et l'écraser renverrait la cible en haut à gauche. */
                 .nj-obj.nj-leve { animation: nj-lever .34s cubic-bezier(.2,1.3,.4,1); }
-                .nj-obj.nj-baisse { transform: translateY(60%) scale(.7); opacity: 0; }
+                .nj-obj.nj-baisse {
+                    transform: translateY(60%) scale(.7); opacity: 0;
+                    pointer-events: none; animation: none;
+                }
                 @keyframes nj-lever { from { transform: translateY(70%) scale(.7); opacity: 0; } }
                 .nj-obj--rate {
                     animation: nj-secousse .34s ease;
@@ -368,6 +407,23 @@ class Ninja extends BaseGame {
         // baissent. C'est un autre geste et un autre rythme — on vise, on lit,
         // on décide. Une cible en cloche ne laisse le temps de rien.
         if (this.mode === 'positifs') {
+            // COMBIEN DE TEMPS UNE CIBLE RESTE-T-ELLE DEBOUT ? Autant qu'il en
+            // faut pour venir jusqu'à elle.
+            //
+            // Cinq secondes et demie, c'était cinq secondes et demie pour
+            // CHACUNE — mais leurs horloges tournent ENSEMBLE. Pendant qu'on
+            // lisait la cinquième cible, la première se baissait ; et comme
+            // laisser filer coûte une vie, on perdait un cœur à l'instant même
+            // où l'on tirait juste ailleurs. Le compte était bon, le jeu
+            // injouable, et le message affiché parlait d'une autre cible que
+            // celle qu'on venait de toucher : impossible de comprendre.
+            //
+            // Le délai suit donc le TRAVAIL RESTANT — lire un calcul signé,
+            // décider, viser, c'est deux bonnes secondes, et il y en a autant
+            // que de cibles — et il suit l'allure réglée par le professeur, que
+            // le stand ignorait complètement : le réglage n'agissait que sur
+            // les bulles en cloche des deux autres modes.
+            const duree = (4200 + 2100 * v.objets.length) * this.allure;
             v.objets.forEach((o, i) => {
                 const colonnes = Math.min(4, v.objets.length);
                 const col = i % colonnes, rang = Math.floor(i / colonnes);
@@ -375,9 +431,11 @@ class Ninja extends BaseGame {
                 const y = haut * (0.30 + rang * 0.30);
                 const e = this.creerEntite([o], x, y, 0, 0, larg, haut, 'cible');
                 e.stand = true;
-                e.retard = i * 420;
-                // Le temps de LIRE un calcul signé, pas celui de réagir.
-                e.vie = 5200 + this.rng.int(0, 1400);
+                e.retard = i * 420 * this.allure;
+                // Décalées aussi à l'extinction : cinq cibles qui se baissent
+                // dans la même seconde, c'est plusieurs vies d'un coup pour qui
+                // n'a hésité qu'une fois.
+                e.vieMax = e.vie = duree + i * 800 * this.allure;
                 e.el.style.opacity = '0';
                 this.entites.push(e);
             });
@@ -414,6 +472,25 @@ class Ninja extends BaseGame {
         this.note('');
     }
 
+    /**
+     * L'ANNEAU QUI SE VIDE AUTOUR D'UNE CIBLE DU STAND.
+     *
+     * On n'écrit dans le style que si la valeur a bougé d'un centième : à
+     * soixante images par seconde et cinq cibles, poser une propriété
+     * personnalisée à chaque image fait recalculer cinq dégradés coniques
+     * trois cents fois par seconde pour un résultat identique à l'œil.
+     */
+    montrerReste(e) {
+        const obj = e.el.firstElementChild;
+        if (!obj || !e.vieMax) return;
+        const reste = Math.max(0, e.vie / e.vieMax);
+        if (e.dernierReste != null && Math.abs(reste - e.dernierReste) < 0.01) return;
+        e.dernierReste = reste;
+        obj.style.setProperty('--nj-reste', reste.toFixed(3));
+        obj.classList.toggle('nj-obj--presse', reste <= 0.34 && reste > 0.16);
+        obj.classList.toggle('nj-obj--urgent', reste <= 0.16);
+    }
+
     creerEntite(objets, x, y, vx, vy, larg, haut, type) {
         const el = document.createElement('div');
         el.className = 'nj-groupe';
@@ -448,6 +525,7 @@ class Ninja extends BaseGame {
             // Au stand, la cible reste en place puis se baisse.
             if (e.stand) {
                 e.vie -= k * 16.7;
+                this.montrerReste(e);
                 if (e.vie <= 0) {
                     e.sortie = true;
                     e.el.firstElementChild?.classList.add('nj-baisse');
