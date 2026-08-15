@@ -559,9 +559,19 @@ export function composerBlocs(exos, opts, mesurer) {
             }
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
+            //
+            // UNE INTERROGATION SUIT LA MÊME RÈGLE QUE LE RESTE.
+            //
+            // Elle renvoyait TOUTES les réponses à la ligne du dessous, même
+            // « quatre cent cinquante-neuf = » dont la réponse tient en trois
+            // chiffres : une demi-page de blanc, et deux fois moins de
+            // questions par feuille. L'idée était de laisser de la place pour
+            // écrire — mais la place, ce sont les pointillés qui vont JUSQU'AU
+            // BOUT DE LA COLONNE, et ils y vont déjà. Quand l'énoncé ne laisse
+            // pas de quoi écrire, la réponse passe dessous : c'est la même
+            // règle, et elle suffit.
             const memeLigne = !trou && !choix && lignes.length === 1
-                && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= o.repMin
-                && !o.interrogation;
+                && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= o.repMin;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
             // faut donc plus d'une ligne de hauteur, et le texte descend

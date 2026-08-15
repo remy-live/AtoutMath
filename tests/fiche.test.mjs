@@ -245,12 +245,25 @@ test('blocs : la numérotation est continue à travers exercices et pages', () =
     assert.deepEqual(numeros, numeros.map((_, i) => i + 1));
 });
 
-test('blocs : l\'interrogation laisse de la place pour écrire sous chaque question', () => {
+test('blocs : l\'interrogation laisse de la place pour écrire', () => {
+    // DES POINTILLÉS JUSQU'AU BOUT DE LA COLONNE, pas une ligne entière par
+    // question. Renvoyer toutes les réponses sous leur énoncé donnait une
+    // demi-page de blanc pour des réponses de trois chiffres.
     const { pages, opts } = composerBlocs([exoCourt('A', 6)], { interrogation: true }, mesurer);
     const qs = pages[0].items.filter(i => i.type === 'q');
     qs.forEach(q => {
         assert.ok(q.rep, 'chaque question a sa zone de réponse');
-        assert.ok(q.rep.y >= q.y + opts.interligne, 'la réponse est SOUS la question, pas sur sa ligne');
+        assert.ok(q.rep.w >= opts.repMin,
+            `pointillés trop courts pour une interrogation : ${q.rep.w.toFixed(1)} mm`);
+    });
+
+    // Un énoncé long, lui, garde sa ligne à part : il ne reste plus la place.
+    const longues = { titre: 'B', questions: Array.from({ length: 4 }, () => ({
+        texte: 'Un énoncé nettement plus long, qui occupe toute la largeur de sa colonne et '
+            + 'déborde largement sur une deuxième ligne, comme un problème rédigé en fait toujours' })) };
+    const large = composerBlocs([longues], { interrogation: true }, mesurer);
+    large.pages[0].items.filter(i => i.type === 'q').forEach(q => {
+        assert.ok(q.rep.y >= q.y + large.opts.interligne, 'la réponse passe sous la question');
     });
 });
 

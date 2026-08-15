@@ -148,6 +148,17 @@ function assurerModale() {
                         <option value="exercice">Qui repartent à 1 à chaque exercice</option>
                     </select></label>
             </div>
+            <div class="fp-controles">
+                <label class="pp-titre-champ">En-tête
+                    <input type="text" id="pp-titre" class="cfg-input" maxlength="80"
+                        aria-label="Titre imprimé en haut de la feuille"></label>
+                <span class="pp-champs" role="group" aria-label="Champs de l'en-tête">
+                    <label class="fq-case"><input type="checkbox" id="pp-c-nom" checked> Nom</label>
+                    <label class="fq-case"><input type="checkbox" id="pp-c-prenom"> Prénom</label>
+                    <label class="fq-case"><input type="checkbox" id="pp-c-classe"> Classe</label>
+                    <label class="fq-case"><input type="checkbox" id="pp-c-date" checked> Date</label>
+                </span>
+            </div>
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
                     <select id="pp-sol-mode" class="cfg-input">
@@ -195,6 +206,9 @@ export function ouvrirFicheParcours(chemin) {
     const noteEl = m.querySelector('#pp-note');
     const listeEl = m.querySelector('#pp-etapes');
 
+    const titreEl = m.querySelector('#pp-titre');
+    const CHAMPS = ['nom', 'prenom', 'classe', 'date'];
+    const casesChamps = CHAMPS.map(c => m.querySelector(`#pp-c-${c}`));
     const modeSol = m.querySelector('#pp-sol-mode');
     const colSol = m.querySelector('#pp-sol-colonnes');
     const ouSol = m.querySelector('#pp-sol-ou');
@@ -274,7 +288,15 @@ export function ouvrirFicheParcours(chemin) {
         orientation: orientEl.value,
         champs: champsEl.checked,
         numerotation: numEl.value,
-        noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20))
+        noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20)),
+        // L'EN-TÊTE EST À LA CLASSE, PAS AU LOGICIEL. Le titre par défaut est le
+        // nom du parcours, mais « Tout sur papier (72 exercices) » n'est pas ce
+        // qu'on écrit en haut d'un contrôle. Et les champs d'identité varient :
+        // une fiche d'entraînement n'a pas besoin de la classe, un contrôle si.
+        entete: {
+            titre: titreEl.value.trim() || (chemin.name || 'Parcours'),
+            champs: CHAMPS.filter((c, i) => casesChamps[i].checked)
+        }
     });
 
     // La liste des étapes : le nombre de questions de chacune, ET leur ordre
@@ -784,7 +806,7 @@ export function ouvrirFicheParcours(chemin) {
         const k = Math.min(large, 700) / pg.w;
         apercu.style.width = `${pg.w * k}px`;
 
-        const nom = chemin.name || 'Parcours';
+        const nom = o.entete.titre;
         const note = o.interrogation ? { sur: o.noteSur } : null;
         // Les pages, dans l'ordre du document : les questions, la liste des
         // réponses, puis les blocs corrigés (le sudoku rempli, la rédaction
@@ -805,7 +827,8 @@ export function ouvrirFicheParcours(chemin) {
         apercu.innerHTML = vues.map((v, i) => `
             <div class="fq-page${v.sol ? ' fq-page--sol' : ''}"
                  style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
-                ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg)}
+                ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg,
+        v.sol ? { champs: [] } : o.entete)}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts)
         : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol })}
             </div>`).join('');
@@ -835,6 +858,11 @@ export function ouvrirFicheParcours(chemin) {
     };
     let derniers = null;
 
+    // Le titre par défaut est le nom du parcours — mais « Tout sur papier
+    // (72 exercices) » n'est pas ce qu'on écrit en haut d'un contrôle.
+    titreEl.value = chemin.name || 'Parcours';
+    titreEl.oninput = rendre;
+    casesChamps.forEach(c => { c.onchange = rendre; });
     interro.onchange = () => { blocs = null; rendreListe(); rendre(); };
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
@@ -916,7 +944,8 @@ function telecharger(modal, chemin, lire) {
     if (!exos.length) { btn.disabled = false; return; }
     chargerJsPDF()
         .then(jsPDF => {
-            const nom = chemin.name || 'Parcours';
+            // Le titre choisi par le professeur, et le nom du parcours à défaut.
+            const nom = (options.entete && options.entete.titre) || chemin.name || 'Parcours';
             const base = nom.replace(/[^\w\-]+/g, '-').toLowerCase();
             const bareme = options.interrogation
                 ? `Barème sur ${total} point${total > 1 ? 's' : ''} — ramené à ${options.noteSur}.`
@@ -933,7 +962,7 @@ function telecharger(modal, chemin, lire) {
             mise.pages.forEach((page, i) => {
                 if (i) pdf.addPage('a4', sens);
                 entetePdf(pdf, nom, options.interrogation ? 'Interrogation' : `page ${i + 1}/${mise.pages.length}`,
-                    i === 0 ? bareme : '', i === 0 ? note : null, mise.page);
+                    i === 0 ? bareme : '', i === 0 ? note : null, mise.page, options.entete);
                 pdfItems(pdf, page, mise.opts);
             });
 
@@ -947,7 +976,9 @@ function telecharger(modal, chemin, lire) {
                           colonnesSolutions: options.colonnesSolutions }, mesurer);
                     sol.pages.forEach((page) => {
                         nouvelle();
-                        entetePdf(doc, nom, 'Solutions', '', null, sol.page);
+                        // La feuille de solutions est POUR LE PROFESSEUR : elle
+                        // n'a pas de « Nom » ni de « Date » à remplir.
+                        entetePdf(doc, nom, 'Solutions', '', null, sol.page, { champs: [] });
                         pdfSolutions(doc, page, sol.opts);
                     });
                 }
@@ -957,7 +988,7 @@ function telecharger(modal, chemin, lire) {
                         { ...options, solution: true, interrogation: false }, mesurer);
                     bs.pages.forEach((page) => {
                         nouvelle();
-                        entetePdf(doc, nom, 'Solutions', '', null, bs.page);
+                        entetePdf(doc, nom, 'Solutions', '', null, bs.page, { champs: [] });
                         pdfItems(doc, page, bs.opts);
                     });
                 }

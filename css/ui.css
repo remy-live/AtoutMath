@@ -392,8 +392,30 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     box-shadow: 0 8px 26px rgba(0, 0, 0, .18);
     color: #1a202c;
 }
-.fp-entete { position: absolute; display: flex; justify-content: space-between; font-size: 11px; }
+.fp-entete {
+    position: absolute; display: flex; align-items: baseline;
+    /* Le titre a sa ligne à lui : il la partageait avec le « Nom / Date », et
+       un titre un peu long venait buter dans la case de la note. */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp-entete b { overflow: hidden; text-overflow: ellipsis; }
 .fp-entete span { color: #4a5568; }
+/* LA LIGNE D'IDENTITÉ : chaque champ avec SA longueur de pointillés. Un
+   « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé —
+   la largeur est une donnée pédagogique, pas une décoration. */
+.fp-identite { position: absolute; display: flex; align-items: baseline; overflow: hidden; }
+/* Les réglages de l'en-tête : le titre prend la place qui reste, les quatre
+   cases restent SUR UNE LIGNE — empilées, elles doublaient la hauteur de la
+   barre pour quatre mots. */
+.pp-titre-champ { flex: 1 1 240px; display: flex; align-items: center; gap: 8px; }
+.pp-titre-champ .cfg-input { flex: 1 1 auto; min-width: 0; }
+.pp-champs { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.fp-champ { display: inline-flex; align-items: baseline; gap: .35em; white-space: nowrap; }
+.fp-champ i { font-style: normal; color: #4a5568; }
+.fp-champ u {
+    display: inline-block; text-decoration: none;
+    border-bottom: 1px dotted #9aa3b2; height: .85em;
+}
 .fp-ligne { position: absolute; border-top: 1.4px solid #1a202c; }
 .fp-consigne { position: absolute; color: #5a6270; line-height: 1.2; }
 .fp-titre { position: absolute; text-align: center; font-weight: 700; }

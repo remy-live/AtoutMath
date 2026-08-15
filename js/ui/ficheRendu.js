@@ -295,8 +295,62 @@ export function apercuItems(page, k, o) {
 }
 
 /** L'en-tête d'une page d'aperçu (titre, Nom/Date, filet). */
-export function apercuEntete(k, titre, sousTitre, note, page) {
+/**
+ * LES CHAMPS D'IDENTITÉ DE L'EN-TÊTE, et la place qu'il leur faut.
+ *
+ * Un « Nom » qui n'a que quatre centimètres de pointillés reçoit une écriture
+ * tassée ou un nom coupé : la largeur est ici une donnée pédagogique, pas une
+ * décoration. Le professeur choisit LESQUELS il imprime — une fiche
+ * d'entraînement n'a pas besoin de la classe, un contrôle si.
+ */
+export const CHAMPS_ENTETE = {
+    nom: { label: 'Nom', large: 44 },
+    prenom: { label: 'Prénom', large: 36 },
+    classe: { label: 'Classe', large: 18 },
+    date: { label: 'Date', large: 24 }
+};
+export const CHAMPS_DEFAUT = ['nom', 'date'];
+
+/**
+ * Les champs demandés, dans l'ordre du modèle, AVEC LA LARGEUR QUI TIENT.
+ *
+ * Quatre champs demandent plus que la ligne n'offre une fois la case de la
+ * note posée. On les rétrécit tous du même facteur plutôt que d'en laisser
+ * tomber un : un professeur qui coche « Classe » et ne la voit pas imprimée
+ * croit à un bogue — et c'en est un.
+ *
+ * Jamais sous douze millimètres : au-dessous, on n'écrit plus un prénom, on
+ * l'entasse.
+ */
+function champsDe(liste, place) {
+    const champs = (Array.isArray(liste) ? liste : CHAMPS_DEFAUT).filter(c => CHAMPS_ENTETE[c]);
+    if (!champs.length || !place) return champs.map(c => ({ id: c, ...CHAMPS_ENTETE[c] }));
+    // L'étiquette « Prénom : » et l'écart entre deux champs : mesurés au plus
+    // juste, ils suffisent à ne pas promettre une place qui n'existe pas.
+    const fixe = champs.reduce((s, c) => s + CHAMPS_ENTETE[c].label.length * 1.9 + 8, 0);
+    const voulu = champs.reduce((s, c) => s + CHAMPS_ENTETE[c].large, 0);
+    const k = Math.min(1, Math.max(0, place - fixe) / Math.max(1, voulu));
+    return champs.map(c => ({
+        id: c, label: CHAMPS_ENTETE[c].label,
+        large: Math.max(12, CHAMPS_ENTETE[c].large * k)
+    }));
+}
+
+/**
+ * L'en-tête d'une page.
+ *
+ * DEUX LIGNES, PAS UNE. Le titre et l'identité se partageaient une ligne : un
+ * titre un peu long — « Tout sur papier (72 exercices) — Interrogation » — et
+ * le « Nom / Date » venait buter dans la case de la note. Le titre a
+ * maintenant sa ligne, l'identité la sienne, et le filet s'arrête AVANT la
+ * case : il la traversait, et la case débordait sous lui.
+ *
+ * @param {Object} [entete] - { champs: ['nom','date'], titre, sousTitre }
+ */
+export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     const P = page || A4;
+    const droiteMm = P.w - P.marge - (note ? 30 : 0);
+    const champs = champsDe(entete.champs, droiteMm - P.marge);
     // LA CASE DE LA NOTE. Sur une interrogation, elle est le premier endroit
     // que regarde l'élève et le dernier que remplit le professeur : elle mérite
     // un cadre à elle, en haut à droite, pas une mention perdue dans une ligne
@@ -305,29 +359,51 @@ export function apercuEntete(k, titre, sousTitre, note, page) {
     const cadre = note ? `
         <div class="fp-note-case" style="right:${P.marge * k}px; top:${(P.marge + 0.5) * k}px;
             width:${26 * k}px; height:${13 * k}px; font-size:${4.4 * k}px">… / ${echapper(String(note.sur))}</div>` : '';
+    const droite = P.marge + (note ? 30 : 0);
+    const lignes = champs.map(c => `<span class="fp-champ"><i>${c.label} :</i>
+        <u style="width:${c.large * k}px"></u></span>`).join('');
     return `
-        <div class="fp-entete" style="left:${P.marge * k}px; right:${(P.marge + (note ? 30 : 0)) * k}px; top:${(P.marge + 1) * k}px;">
+        <div class="fp-entete" style="left:${P.marge * k}px; right:${droite * k}px;
+            top:${(P.marge + 1) * k}px; font-size:${4.6 * k}px">
             <b>${echapper(titre)}${sousTitre ? ' — ' + echapper(sousTitre) : ''}</b>
-            <span>Nom : ............  Date : ......</span>
         </div>
+        ${champs.length ? `<div class="fp-identite" style="left:${P.marge * k}px; right:${droite * k}px;
+            top:${(P.marge + 7.4) * k}px; font-size:${3.3 * k}px; gap:${5 * k}px">${lignes}</div>` : ''}
         ${cadre}
-        <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px; top:${(P.marge + 9) * k}px;"></div>`;
+        <div class="fp-ligne" style="left:${P.marge * k}px; right:${droite * k}px;
+            top:${(P.marge + (champs.length ? 14 : 9)) * k}px;"></div>`;
 }
 
 // --- PDF ---------------------------------------------------------------------
 
-export function entetePdf(pdf, titre, sousTitre, bareme, note, page) {
+export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}) {
     const P = page || A4;
+    const champs = champsDe(entete.champs, P.w - 2 * P.marge - (note ? 30 : 0));
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.5);
     pdf.setTextColor(...ENCRE.texte);
-    pdf.text(pourPdf(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`), P.marge, P.marge + 6);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9.5);
-    // La case de la note mange le coin droit : le « Nom / Date » se décale.
+    // LE TITRE A SA LIGNE. Il la partageait avec le « Nom / Date » : un titre
+    // un peu long venait buter dans la case de la note, et les deux textes se
+    // chevauchaient sans que rien ne l'empêche.
     const droite = P.w - P.marge - (note ? 30 : 0);
-    pdf.text('Nom : ...........................   Date : ..............',
-        droite, P.marge + 6, { align: 'right' });
+    pdf.splitTextToSize(pourPdf(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`),
+        droite - P.marge).slice(0, 1)
+        .forEach(l => pdf.text(l, P.marge, P.marge + 5.6));
+
+    // L'IDENTITÉ SUR SA PROPRE LIGNE, chaque champ avec sa longueur : un
+    // « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé.
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8.6);
+    pdf.setTextColor(...ENCRE.gris);
+    let x = P.marge;
+    champs.forEach(({ label, large }) => {
+        const etiquette = pourPdf(`${label} :`);
+        pdf.text(etiquette, x, P.marge + 10.6);
+        x += pdf.getTextWidth(etiquette) + 1.5;
+        pointilles(pdf, x, P.marge + 10.9, large);
+        x += large + 5;
+    });
+    pdf.setTextColor(...ENCRE.texte);
     if (note) {
         pdf.setDrawColor(...ENCRE.trait);
         pdf.setLineWidth(0.5);
@@ -338,13 +414,16 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page) {
         pdf.text(`… / ${note.sur}`, P.w - P.marge - 13, P.marge + 8.6, { align: 'center' });
         pdf.setTextColor(...ENCRE.texte);
     }
+    // LE FILET S'ARRÊTE AVANT LA CASE DE LA NOTE : il la traversait de part en
+    // part, et la case, plus haute que lui, débordait dessous.
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.4);
-    pdf.line(P.marge, P.marge + 9, P.w - P.marge, P.marge + 9);
+    const yFilet = P.marge + (champs.length ? 13.5 : 9);
+    pdf.line(P.marge, yFilet, droite, yFilet);
     if (bareme) {
         pdf.setFontSize(8.6);
         pdf.setTextColor(...ENCRE.gris);
-        pdf.text(pourPdf(bareme), P.marge, P.marge + 14);
+        pdf.text(pourPdf(bareme), P.marge, yFilet + 4.4);
     }
     pdf.setFontSize(6.5);
     pdf.setTextColor(160, 165, 175);
