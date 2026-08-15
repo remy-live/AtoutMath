@@ -441,7 +441,12 @@ export const EGYPTE = [
     { value: 10, nom: 'anse' },
     { value: 100, nom: 'corde enroulée' },
     { value: 1000, nom: 'fleur de lotus' },
-    { value: 10000, nom: 'doigt' }
+    { value: 10000, nom: 'doigt' },
+    // Les deux derniers rangs existent aussi, et ce sont les plus beaux à
+    // montrer : le têtard, dont le Nil charriait des milliers après la crue,
+    // et le dieu Heh qui tient les années dans ses bras levés.
+    { value: 100000, nom: 'têtard' },
+    { value: 1000000, nom: 'dieu Heh' }
 ];
 
 export const egypteGenerator = {
@@ -450,7 +455,8 @@ export const egypteGenerator = {
     skills: ['num.numeration.egypte'],
     answerKinds: ['numeric', 'choice'],
     params: [
-        { id: 'max', type: 'select', label: 'Jusqu\'à', options: [1000, 10000, 50000], default: 10000 }
+        { id: 'max', type: 'select', label: 'Jusqu\'à',
+          options: [1000, 10000, 100000, 1000000], default: 10000 }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -483,7 +489,8 @@ export const egypteGenerator = {
                 { value: total * 10, label: formatFr(total * 10), why: 'Attention à la valeur de chaque symbole.' }
             ], { count: 3 }),
             hints: [
-                'Chaque symbole a une valeur : bâton 1, anse 10, corde 100, lotus 1 000, doigt 10 000.',
+                `Chaque symbole a sa valeur : ${EGYPTE.filter(x => x.value <= max)
+                    .map(x => `${x.nom} ${formatFr(x.value)}`).join(', ')}.`,
                 `Additionne : ${ordonne.map(s => `${s.n} × ${formatFr(s.value)}`).join(' + ')}.`
             ],
             explanation: `${ordonne.map(s => `${s.n} × ${formatFr(s.value)}`).join(' + ')} = ${formatFr(total)}.`,

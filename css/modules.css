@@ -440,20 +440,15 @@
    inégalement pris en charge selon les navigateurs. */
 .fig-arrow-head { fill: var(--text-muted); }
 
-/* Hiéroglyphes : des tracés, pas des aplats. Sans `fill: none`, les chemins
-   se remplissent en noir et les symboles deviennent des taches. */
-/* Par défaut, un glyphe se REMPLIT ; seules les formes qui n'ont de sens
-   qu'en trait continu — la spirale de la centaine, la tige du lotus — portent
-   `egy-trait`. */
-.egy-glyph path, .egy-glyph rect { fill: var(--text-main); stroke: none; }
-.egy-glyph .egy-trait {
-    fill: none; stroke: var(--text-main); stroke-width: 2.6;
-    stroke-linecap: round; stroke-linejoin: round;
-}
-.egy-glyph .egy-spirale { stroke-width: 2.2; }
-/* Les creux du doigt : ils reprennent la couleur du FOND, pas du trait — un
-   sillon se voit parce qu'il enlève de la matière. */
-.egy-glyph .egy-creux { fill: var(--bg-plateau); stroke: none; }
+/* HIÉROGLYPHES. Les tracés viennent du dessin de Rémy et portent DÉJÀ leur
+   remplissage et leur trait : on ne les écrase plus depuis la feuille de
+   style — un `fill` imposé transformait la corde enroulée en disque noir et
+   le dieu Heh en tache. On leur donne seulement la couleur du thème, que
+   `currentColor` va chercher ici. */
+.egy-glyph { color: var(--text-main); }
+/* L'ongle du doigt : il reprend la couleur du FOND, pas du trait — un creux
+   se voit parce qu'il enlève de la matière. */
+.egy-glyph .egy-creux { fill: var(--bg-plateau); }
 .egy-svg { max-height: clamp(90px, 22cqh, 200px); }
 
 /* Mises en valeur des énoncés de numération. */
