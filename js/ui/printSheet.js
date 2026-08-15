@@ -2429,10 +2429,14 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ) {
 
 function geoEchiquier(item, slot) {
     const m = item.meta;
-    // Une ligne de réponse par pièce à nommer ; deux pour la liste des cases
-    // atteignables, qui ne tient pas sur une (« 14 cases : a4, b4, c4… »).
-    const lignes = m.quoi === 'nommer' ? Math.min(m.posees.length, 6)
-        : (m.quoi === 'deplacements' ? 2 : 1);
+    // TOUJOURS LA MÊME HAUTEUR DE TEXTE, DONC TOUJOURS LE MÊME DAMIER.
+    //
+    // Le nombre de lignes suivait l'exercice : six pour « nommer », une pour
+    // « placer ». Sur une même feuille, les échiquiers n'avaient donc pas la
+    // même taille — celui de « placer » était le plus grand, et sa longue
+    // liste de pièces sortait par le bas du bloc. Trois lignes pour tout le
+    // monde : deux pour la consigne, une pour la réponse.
+    const lignes = 3;
     const ligneH = slot.taille * 0.072;
     const zone = slot.taille - lignes * ligneH;
     const marge = Math.min(zone * 0.1, slot.taille * 0.09);   // les graduations
@@ -2500,36 +2504,77 @@ function echiquierPreviewHtml(item, slot, k, solution) {
     }
 
     let html = `<svg class="fx-ec-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
-    const dire = lignesEchiquier(m, solution);
-    // Une seule phrase : elle occupe toute la place et a le droit de passer à
-    // la ligne. Plusieurs : une par pièce, chacune sur sa ligne.
-    const seule = dire.length === 1;
-    dire.forEach((texte, i) => {
-        html += `<div class="fx-ec-ligne${seule ? ' fx-ec-ligne--longue' : ''}"
-            style="left:${slot.x * k}px; top:${(g.ligneY + i * g.ligneH) * k}px;
-            width:${slot.taille * k}px;
-            height:${(seule ? g.lignes : 1) * g.ligneH * k}px;
-            font-size:${Math.min(g.ligneH * 0.62, 3.2) * k}px">${echapperSheet(texte)}</div>`;
-    });
+    const t = texteEchiquier(m, solution);
+    const police = Math.min(g.ligneH * 0.62, 3.2) * k;
+    // La consigne, sur deux lignes au plus.
+    html += `<div class="fx-ec-ligne fx-ec-ligne--longue"
+        style="left:${slot.x * k}px; top:${g.ligneY * k}px; width:${slot.taille * k}px;
+        height:${2 * g.ligneH * k}px; font-size:${police}px">${echapperSheet(t.consigne)}</div>`;
+    if (t.question) {
+        html += `<div class="fx-ec-ligne"
+            style="left:${slot.x * k}px; top:${(g.ligneY + 2 * g.ligneH) * k}px;
+            width:${slot.taille * k}px; height:${g.ligneH * k}px; font-size:${police}px;
+            overflow:hidden; white-space:nowrap">
+            <b>${echapperSheet(t.question)}</b>&nbsp;${solution
+        ? `<span style="color:#2f855a">${echapperSheet(t.reponse)}</span>`
+        : POINTILLES}</div>`;
+    }
     return html;
 }
 
-/** Ce qui s'écrit sous le damier — une ligne par pièce, ou une consigne. */
-function lignesEchiquier(m, solution) {
-    // LES PIÈCES ÉTANT DESSINÉES, on ne peut plus les désigner par une
-    // initiale posée sur elles : on les NOMME. « la dame blanche » se cherche
-    // sur le damier aussi vite qu'un D, et c'est du français.
+/**
+ * UN EXERCICE = UN DAMIER, UNE CONSIGNE, UNE LIGNE DE POINTILLÉS.
+ *
+ * C'est la forme d'un exercice de manuel, et c'est celle que la fiche prend
+ * partout. Avant, « nommer » alignait six questions sous un damier rétréci et
+ * « placer » posait une phrase à rallonge qui sortait du bloc.
+ *
+ * LES PIÈCES ÉTANT DESSINÉES, on ne les désigne pas par une initiale posée
+ * dessus : on les NOMME. « la dame blanche » se cherche sur le damier aussi
+ * vite qu'un D, et c'est du français.
+ *
+ * @returns {{consigne:string, question:string, reponse:string}}
+ *          `question` vide = pas de ligne à remplir (« placer » se fait sur le
+ *          damier lui-même), mais la place reste prise pour que tous les blocs
+ *          gardent la même taille.
+ */
+function texteEchiquier(m, solution) {
     if (m.quoi === 'nommer') {
-        return m.posees.slice(0, 6)
-            .map(p => `${direPiece(p.type, p.noir)} : ${solution ? p.case : '..........'}`);
+        // UNE SEULE PIÈCE EST DEMANDÉE, les autres sont là pour qu'il faille
+        // la chercher. Six questions sur un damier de quatre centimètres ne
+        // laissaient de place ni pour écrire ni pour regarder.
+        const p = m.posees[0];
+        const nom = direPiece(p.type, p.noir);
+        return {
+            consigne: `Sur quelle case se trouve ${nom} ?`,
+            question: 'Réponse :',
+            reponse: p.case
+        };
     }
     if (m.quoi === 'placer') {
-        return [`À placer : ${m.posees.map(p => `${direPiece(p.type, p.noir)} en ${p.case}`).join(', ')}`];
+        // LE MODE D'EMPLOI EST EN HAUT DE LA FEUILLE, pas répété dans chaque
+        // bloc : la phrase « dessine une croix et écris l'initiale » mangeait
+        // une ligne sur deux, et la liste des pièces sortait du cadre.
+        return {
+            consigne: `À placer : ${m.posees.map(p =>
+                `${direPiece(p.type, p.noir)} en ${p.case}`).join(', ')}.`,
+            question: '', reponse: ''
+        };
     }
-    return [solution
-        ? `${m.noms.length} cases : ${m.noms.join(', ')}`
-        : `Marque d'une croix toutes les cases où ${m.nom === 'tour' ? 'la tour' : `le ${m.nom}`} peut aller.`];
+    const quelle = m.nom === 'tour' || m.nom === 'dame' ? `la ${m.nom}` : `le ${m.nom}`;
+    return {
+        consigne: `Marque d'une croix toutes les cases où ${quelle} peut aller.`,
+        question: 'Combien de cases en tout ?',
+        // Le compte, pas la liste : « 14 cases : a4, b4, c4… » ne tenait pas
+        // sur une ligne, et personne ne recopie quatorze cases.
+        reponse: `${m.noms.length} cases`
+    };
 }
+
+// Assez de points pour atteindre le bord du bloc quelle que soit la question ;
+// le débordement est coupé. Une longueur fixe laissait un blanc à droite, et
+// l'élève finit toujours par écrire dans ce blanc.
+const POINTILLES = '.'.repeat(120);
 
 // --- LES PROBLÈMES DE MAT ------------------------------------------------------
 //
@@ -2677,14 +2722,35 @@ function dessinerEchiquierPdf(doc, item, slot, solution) {
         });
     }
 
+    const t = texteEchiquier(m, solution);
+    const police = Math.max(6, Math.min(g.ligneH * 1.5, 9));
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(Math.max(6, Math.min(g.ligneH * 1.5, 9)));
+    doc.setFontSize(police);
     doc.setTextColor(...ENCRE.texte);
-    lignesEchiquier(m, solution).forEach((texte, i) => {
-        const y = g.ligneY + i * g.ligneH + g.ligneH * 0.72;
-        doc.splitTextToSize(pourPdf(texte), slot.taille).slice(0, 2)
-            .forEach((part, j) => doc.text(part, slot.x, y + j * g.ligneH * 0.8));
+    // La consigne, deux lignes au plus : au-delà elle mordrait sur la ligne
+    // de réponse, et c'est justement ce qui débordait avant.
+    doc.splitTextToSize(pourPdf(t.consigne), slot.taille).slice(0, 2).forEach((part, j) => {
+        doc.text(part, slot.x, g.ligneY + g.ligneH * 0.72 + j * g.ligneH * 0.86);
     });
+    if (!t.question) return;
+
+    const y = g.ligneY + 2 * g.ligneH + g.ligneH * 0.78;
+    doc.setFont('helvetica', 'bold');
+    const etiquette = pourPdf(`${t.question} `);
+    doc.text(etiquette, slot.x, y);
+    const x = slot.x + doc.getTextWidth(etiquette);
+    if (solution) {
+        doc.setTextColor(47, 133, 90);
+        doc.text(pourPdf(t.reponse), x, y);
+        return;
+    }
+    // LA LIGNE DE POINTILLÉS VA JUSQU'AU BORD DU BLOC. Une longueur fixe
+    // laissait un blanc à droite, et l'élève écrivait dans la marge.
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...ENCRE.gris);
+    const large = slot.x + slot.taille - x;
+    const unPoint = doc.getTextWidth('.');
+    doc.text('.'.repeat(Math.max(4, Math.floor(large / unPoint))), x, y);
 }
 
 // --- LE CHAT GÉOMÈTRE ----------------------------------------------------------
@@ -3358,7 +3424,9 @@ export const RENDUS = {
         titre: 'L\'échiquier, une grille à deux entrées',
         consigne: () => 'Une case d\'échiquier se nomme comme un point dans un repère : LA '
             + 'LETTRE DE SA COLONNE, PUIS LE CHIFFRE DE SA LIGNE — e4, pas 4e. Les pièces sont '
-            + 'dessinées : les claires sont blanches, les pleines sont noires.',
+            + 'dessinées : les claires sont blanches, les pleines sont noires. Quand des pièces '
+            + 'sont À PLACER, marque leur case d\'une croix et écris à côté l\'initiale de la '
+            + 'pièce (T tour, C cavalier, F fou, D dame, P pion).',
         previewGrille: echiquierPreviewHtml,
         pdfGrille: dessinerEchiquierPdf,
         nomBloc: 'Échiquier',
@@ -3397,9 +3465,12 @@ export const RENDUS = {
         titre: 'Mots cachés du vocabulaire',
         consigne: (items) => {
             const m = (items[0] && items[0].meta) || {};
-            const commun = 'Les mots se lisent dans tous les sens : horizontalement, '
-                + 'verticalement, en diagonale — et parfois à l\'envers. Entoure chacun '
-                + 'dans la grille.';
+            // LA CONSIGNE COMMENCE PAR CE QU'IL FAUT FAIRE. Le reste est du
+            // mode d'emploi : un élève qui lit trois lignes avant de savoir
+            // ce qu'on lui demande a déjà décroché.
+            const commun = 'TROUVE LES MOTS CACHÉS. Ils se lisent dans tous les sens : '
+                + 'horizontalement, verticalement, en diagonale — et parfois à l\'envers. '
+                + 'Entoure chacun dans la grille.';
             if (m.indices === 'definitions') {
                 return `${commun} Ici les mots ne sont pas donnés : chaque définition en `
                     + 'désigne un seul. Écris-le sur la ligne, puis va le chercher.';
