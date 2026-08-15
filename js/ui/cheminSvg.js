@@ -12,11 +12,17 @@
 // et c'est lui qui permet d'utiliser N'IMPORTE QUEL dessin SVG dans la fiche
 // imprimée — y compris ceux qu'on n'a pas dessinés soi-même.
 //
-// CE QU'IL SAIT LIRE : M m L l H h V v C c S s Q q T t Z z. Les commandes
+// CE QU'IL SAIT LIRE : M m L l H h V v C c S s Q q T t A a Z z. Les commandes
 // courtes (S, T) s'appuient sur le point de contrôle précédent, comme le veut
-// la spécification. Les arcs (A) sont approchés par un segment — aucune des
-// pièces qu'on utilise n'en contient, et un arc silencieusement faux serait
-// pire qu'un arc grossier signalé.
+// la spécification.
+//
+// LES ARCS SONT DE VRAIS ARCS. La planche de pièces de Cburnett dessine les
+// boules de la couronne, la mitre du fou et l'œil du cavalier avec des arcs
+// elliptiques (« A »). Les approcher par un segment aurait remplacé chaque
+// boule par un trait — on ne s'en serait aperçu qu'à l'écran. On convertit
+// donc l'arc en courbes de Bézier, par la méthode de la spécification :
+// paramétrage par le centre, puis découpe en morceaux d'au plus un quart de
+// tour, où l'approximation d'un arc par une cubique est exacte à 10⁻⁴ près.
 
 /** Découpe la chaîne `d` en commandes { c, args[] }. */
 export function lireChemin(d) {
@@ -128,13 +134,14 @@ export function deroulerChemin(d, placer = (x, y) => [x, y]) {
             cx = qx; cy = qy;
             break;
         }
-        case 'A':
-            // Aucune des pièces utilisées n'en contient. Plutôt qu'un arc faux
-            // qui passerait inaperçu, on tire le segment et l'on laisse la
-            // trace visible : `arcs` le signale à l'appelant.
-            ligne(rel ? x + a[5] : a[5], rel ? y + a[6] : a[6]);
-            (chemins.arcs = chemins.arcs || []).push(a);
+        case 'A': {
+            const ex = rel ? x + a[5] : a[5], ey = rel ? y + a[6] : a[6];
+            const morceaux = arcVersCourbes(x, y, a[0], a[1], a[2], a[3], a[4], ex, ey);
+            if (!morceaux.length) ligne(ex, ey);          // rayon nul : c'est un segment
+            else morceaux.forEach(m => courbe(m[0], m[1], m[2], m[3], m[4], m[5]));
+            cx = cy = null;
             break;
+        }
         case 'Z':
             if (cur) { cur.ferme = true; x = dx; y = dy; }
             cur = null;
@@ -175,6 +182,147 @@ export function dessinerCheminPdf(doc, d, placer, style = 'FD') {
         doc.lines(ecarts, sc.depart[0], sc.depart[1], [1, 1], style, sc.ferme);
     });
 }
+
+/**
+ * UN ARC ELLIPTIQUE EN COURBES DE BÉZIER.
+ *
+ * La spécification SVG donne l'arc par ses EXTRÉMITÉS ; pour le dessiner il
+ * faut son CENTRE. La conversion est celle de l'annexe F.6 de la
+ * spécification : on ramène l'ellipse au cercle, on trouve le centre, on en
+ * tire les angles de départ et de balayage, puis on découpe en morceaux d'au
+ * plus un quart de tour — au-delà, l'approximation par une cubique se voit.
+ *
+ * @returns {number[][]} des sextuplets [x1,y1,x2,y2,x,y], absolus
+ */
+export function arcVersCourbes(x1, y1, rx, ry, angle, grand, sens, x2, y2) {
+    rx = Math.abs(rx); ry = Math.abs(ry);
+    if (!rx || !ry || (x1 === x2 && y1 === y2)) return [];
+    const phi = (angle * Math.PI) / 180;
+    const cos = Math.cos(phi), sin = Math.sin(phi);
+
+    // 1. Le segment, ramené dans le repère de l'ellipse.
+    const dx2 = (x1 - x2) / 2, dy2 = (y1 - y2) / 2;
+    const ux = cos * dx2 + sin * dy2;
+    const uy = -sin * dx2 + cos * dy2;
+
+    // 2. Des rayons trop petits ne peuvent pas joindre les deux points : la
+    //    spécification demande de les AGRANDIR, pas de renoncer.
+    const trop = (ux * ux) / (rx * rx) + (uy * uy) / (ry * ry);
+    if (trop > 1) { const k = Math.sqrt(trop); rx *= k; ry *= k; }
+
+    // 3. Le centre.
+    const num = rx * rx * ry * ry - rx * rx * uy * uy - ry * ry * ux * ux;
+    const den = rx * rx * uy * uy + ry * ry * ux * ux;
+    let coef = Math.sqrt(Math.max(0, num / den));
+    if (grand === sens) coef = -coef;
+    const cxp = (coef * rx * uy) / ry;
+    const cyp = (-coef * ry * ux) / rx;
+    const cx = cos * cxp - sin * cyp + (x1 + x2) / 2;
+    const cy = sin * cxp + cos * cyp + (y1 + y2) / 2;
+
+    // 4. Les angles.
+    const angleDe = (vx, vy) => {
+        const n = Math.hypot(vx, vy);
+        const a = Math.acos(Math.min(1, Math.max(-1, vx / n)));
+        return vy < 0 ? -a : a;
+    };
+    const t1 = angleDe((ux - cxp) / rx, (uy - cyp) / ry);
+    let dt = angleDe((ux - cxp) / rx, (uy - cyp) / ry)
+        - angleDe((-ux - cxp) / rx, (-uy - cyp) / ry);
+    dt = -dt;
+    if (!sens && dt > 0) dt -= 2 * Math.PI;
+    if (sens && dt < 0) dt += 2 * Math.PI;
+
+    // 5. La découpe : un quart de tour au plus par morceau.
+    const morceaux = Math.ceil(Math.abs(dt) / (Math.PI / 2));
+    const pas = dt / morceaux;
+    // Le facteur qui rend la cubique tangente à l'arc à ses deux bouts.
+    const k = (4 / 3) * Math.tan(pas / 4);
+    const point = (t) => {
+        const c = Math.cos(t), s = Math.sin(t);
+        return [cx + rx * cos * c - ry * sin * s, cy + rx * sin * c + ry * cos * s];
+    };
+    const derivee = (t) => {
+        const c = Math.cos(t), s = Math.sin(t);
+        return [-rx * cos * s - ry * sin * c, -rx * sin * s + ry * cos * c];
+    };
+
+    const out = [];
+    let t = t1;
+    for (let i = 0; i < morceaux; i++) {
+        const tt = t + pas;
+        const [px, py] = point(t), [qx, qy] = point(tt);
+        const [dpx, dpy] = derivee(t), [dqx, dqy] = derivee(tt);
+        out.push([px + k * dpx, py + k * dpy, qx - k * dqx, qy - k * dqy, qx, qy]);
+        t = tt;
+    }
+    return out;
+}
+
+/**
+ * Réécrit des sous-chemins déroulés en attribut « d ».
+ * Sert à FIGER une transformation : le dessin sorti n'en porte plus aucune.
+ */
+export function ecrireChemin(chemins, decimales = 2) {
+    const n = (v) => Number(v.toFixed(decimales));
+    return chemins.map(sc => {
+        let t = `M ${n(sc.depart[0])} ${n(sc.depart[1])}`;
+        sc.pas.forEach(p => {
+            t += p.l ? ` L ${n(p.l[0])} ${n(p.l[1])}`
+                : ` C ${p.c.map(n).join(' ')}`;
+        });
+        return t + (sc.ferme ? ' Z' : '');
+    }).join(' ');
+}
+
+/**
+ * LES TRANSFORMATIONS SVG, réduites à une matrice.
+ *
+ * Un fichier réel en pose sur les groupes ET sur les formes : la planche de
+ * Cburnett décale chaque pièce d'un « translate », et incline l'œil du
+ * cavalier d'un « matrix ». Les ignorer empilerait les douze pièces au même
+ * endroit.
+ *
+ * La matrice est [a, b, c, d, e, f], comme en SVG : x' = a·x + c·y + e.
+ */
+export const IDENTITE = [1, 0, 0, 1, 0, 0];
+
+export function lireTransformation(texte) {
+    let m = IDENTITE;
+    if (!texte) return m;
+    const re = /(matrix|translate|scale|rotate)\s*\(([^)]*)\)/gi;
+    let t;
+    while ((t = re.exec(texte))) {
+        const v = t[2].trim().split(/[\s,]+/).map(Number);
+        let n = IDENTITE;
+        if (t[1] === 'matrix') n = v.slice(0, 6);
+        else if (t[1] === 'translate') n = [1, 0, 0, 1, v[0] || 0, v[1] || 0];
+        else if (t[1] === 'scale') n = [v[0] || 1, 0, 0, v.length > 1 ? v[1] : v[0] || 1, 0, 0];
+        else if (t[1] === 'rotate') {
+            const r = ((v[0] || 0) * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+            n = [c, s, -s, c, 0, 0];
+            if (v.length === 3) {
+                n = composer([1, 0, 0, 1, v[1], v[2]], composer(n, [1, 0, 0, 1, -v[1], -v[2]]));
+            }
+        }
+        m = composer(m, n);
+    }
+    return m;
+}
+
+/** A puis B — dans l'ordre où le SVG les applique. */
+export function composer(A, B) {
+    return [
+        A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1],
+        A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3],
+        A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]
+    ];
+}
+
+export const appliquer = (M, x, y) => [M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]];
+
+/** L'échelle moyenne d'une matrice — pour ajuster l'épaisseur d'un trait. */
+export const echelleDe = (M) => Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2])) || 1;
 
 /** La boîte englobante d'un chemin — sommets et points de contrôle compris. */
 export function boiteChemin(d) {

@@ -199,7 +199,10 @@ export function pieceSvg(type, noir, x, y, cote, trait = 0.035) {
  */
 function repereImporte(x, y, cote) {
     const c = CADRE_IMPORTE;
-    const k = cote / Math.max(c.x1 - c.x0, c.y1 - c.y0);
+    // On réserve la place du CONTOUR : la moitié de son épaisseur déborde de
+    // chaque côté du tracé, donc l'encombrement réel vaut la boîte plus une
+    // épaisseur entière. Sans cela, la pièce sort de sa case.
+    const k = cote / (Math.max(c.x1 - c.x0, c.y1 - c.y0) + (c.trait || 0));
     // Centré dans la case, et à la même échelle pour les douze pièces : un
     // pion reste plus petit qu'un roi.
     const mx = (cote - (c.x1 - c.x0) * k) / 2;
@@ -210,7 +213,7 @@ function repereImporte(x, y, cote) {
 function pieceImporteeSvg(piece, x, y, cote) {
     const placer = repereImporte(x, y, cote);
     const c = CADRE_IMPORTE;
-    const k = cote / Math.max(c.x1 - c.x0, c.y1 - c.y0);
+    const k = cote / (Math.max(c.x1 - c.x0, c.y1 - c.y0) + (c.trait || 0));
     return piece.formes.map(f => {
         const d = deroulerChemin(f.d, placer).map(sc => {
             let t = `M ${sc.depart[0].toFixed(2)} ${sc.depart[1].toFixed(2)}`;
@@ -239,7 +242,7 @@ export function dessinerPiecePdf(doc, type, noir, x, y, cote, epaisseur = 0.22) 
     if (importee) {
         const placer = repereImporte(x, y, cote);
         const c = CADRE_IMPORTE;
-        const k = cote / Math.max(c.x1 - c.x0, c.y1 - c.y0);
+        const k = cote / (Math.max(c.x1 - c.x0, c.y1 - c.y0) + (c.trait || 0));
         importee.formes.forEach(f => {
             doc.setFillColor(...couleurPdf(f.fill, [255, 255, 255]));
             doc.setDrawColor(...couleurPdf(f.stroke, TRAIT));

@@ -182,3 +182,38 @@ test('un dossier de SVG devient un module de pièces utilisable', async () => {
     assert.ok(appels.length >= 1, 'aucun tracé produit pour le PDF');
     assert.ok(appels[0][0].some(e => e.length === 6), 'les courbes doivent survivre au trajet');
 });
+
+// --- LA PLANCHE DE PIÈCES RÉELLE ---------------------------------------------------
+
+test('la planche livrée donne bien douze pièces, avec leurs courbes', async () => {
+    // Le fichier de Cburnett est dans le dépôt : on vérifie qu'il s'importe
+    // toujours, et surtout que les ARCS deviennent des courbes. Sans eux, les
+    // boules de la couronne et l'œil du cavalier seraient des traits droits.
+    const { PIECES_IMPORTEES, CADRE_IMPORTE, MENTION_PIECES } =
+        await import('../js/ui/piecesImportees.js');
+    if (!PIECES_IMPORTEES) return;                 // jeu maison : rien à vérifier
+
+    assert.equal(Object.keys(PIECES_IMPORTEES).length, 12);
+    for (const [cle, p] of Object.entries(PIECES_IMPORTEES)) {
+        assert.ok(p.formes.length > 0, `${cle} : aucune forme`);
+        p.formes.forEach(f => {
+            assert.ok(/^M /.test(f.d), `${cle} : un tracé qui ne commence pas par M`);
+            // Les transformations ont été FIGÉES : plus rien ne doit traîner.
+            assert.ok(!/[Aa]\s/.test(f.d), `${cle} : un arc a survécu à l'import`);
+        });
+    }
+
+    // La dame a des courbes (sa couronne), et le cavalier aussi (sa tête).
+    const courbes = (p) => p.formes.filter(f => f.d.includes(' C ')).length;
+    assert.ok(courbes(PIECES_IMPORTEES.Qb) > 0, 'la dame blanche n\'a aucune courbe');
+    assert.ok(courbes(PIECES_IMPORTEES.Nb) > 0, 'le cavalier blanc n\'a aucune courbe');
+
+    // Les couleurs distinguent bien les deux camps.
+    const remplissage = (p) => p.formes.filter(f => f.remplit).map(f => f.fill.toLowerCase());
+    assert.ok(remplissage(PIECES_IMPORTEES.Pb).includes('#ffffff'), 'le pion blanc n\'est pas blanc');
+    assert.ok(remplissage(PIECES_IMPORTEES.Pn).includes('#000000'), 'le pion noir n\'est pas noir');
+
+    // Le cadre commun réserve la place du contour.
+    assert.ok(CADRE_IMPORTE.trait > 0, 'le contour n\'est pas compté dans le cadre');
+    assert.ok(MENTION_PIECES.length > 10, 'la mention de licence manque');
+});

@@ -10,10 +10,18 @@ pas écrites avec une police. C'est un choix imposé par deux contraintes :
 - **Le PDF ne connaît pas ces caractères.** La police du document est en
   WinAnsi : `♛` n'y existe pas et sort en `?`.
 
-Les dessins livrés avec l'application sont faits maison (`js/ui/piecesEchecs.js`),
-en formes simples. Ils sont lisibles à petite taille, mais on peut faire mieux.
+**Le jeu installé est celui de Cburnett** (`icons/pieces/Chess_Pieces_Sprite.svg`,
+Wikimedia Commons, CC BY-SA 3.0) : c'est celui qu'on voit partout, en courbes.
+Les dessins faits maison (`js/ui/piecesEchecs.js`) restent en réserve et
+reprennent la main si le fichier engendré est vidé.
 
-## Installer un jeu de pièces
+## Réinstaller le jeu livré
+
+```
+node outils/importerPlanche.mjs icons/pieces/Chess_Pieces_Sprite.svg
+```
+
+## Installer un AUTRE jeu de pièces, livré en douze fichiers
 
 1. Récupérer douze fichiers SVG, un par pièce et par couleur. Sur
    [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces),
