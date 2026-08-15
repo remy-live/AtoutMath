@@ -26,12 +26,13 @@
 import { hydratePath } from '../core/path.js';
 import { generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
+import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
-    cartoucheDe, hauteurEntete1
+    cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions
 } from './ficheRendu.js';
 
 /**
@@ -106,7 +107,12 @@ function formaterReponse(item) {
         const bonne = item.choices.find(c => c.correct);
         if (bonne) return String(bonne.label ?? bonne.value);
     }
-    return String(item.answer).replace('.', ',');
+    // LES MILLIERS SE GROUPENT DANS LE CORRIGÉ AUSSI. L'énoncé écrit
+    // « 92 202 » et le corrigé répondait « 90000 » : deux écritures du même
+    // nombre sur la même ligne, dont une que l'on n'accepterait pas d'un
+    // élève. `espacerMilliers` laisse intacte toute réponse qui n'est pas un
+    // nombre — un mot, une fraction, une expression.
+    return espacerMilliers(String(item.answer).replace('.', ','));
 }
 
 // --- La modale ------------------------------------------------------------------
@@ -933,30 +939,7 @@ export function ouvrirFicheParcours(chemin) {
     rendre();
 }
 
-/** La page des solutions en aperçu — l'ancienne mise compacte, en colonnes. */
-function apercuSolutions(page, k, o) {
-    let html = '';
-    for (const b of page.blocs) {
-        b.lignes.forEach((ligne, i) => {
-            html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
-                width:${b.largeur * k}px; font-size:${o.taille * k}px">${echapper(ligne)}</div>`;
-        });
-    }
-    return html;
-}
-
 // --- Le PDF -----------------------------------------------------------------------
-
-function pdfSolutions(pdf, page, o) {
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(o.taille * 2.83);
-    pdf.setTextColor(...ENCRE.texte);
-    for (const b of page.blocs) {
-        b.lignes.forEach((ligne, i) => {
-            pdf.text(pourPdf(ligne), b.x, b.y + o.taille + i * o.interligne);
-        });
-    }
-}
 
 /**
  * LE FICHIER — un ou deux, au choix.

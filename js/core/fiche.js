@@ -76,9 +76,18 @@ export function texteImprime(texte, reponse) {
     // Un trou peut aussi FINIR l'énoncé — « 7 677 = 7 000 + 600 + 70 + ? ».
     // Ce qui distingue ce « ? » de celui d'une vraie question, c'est ce qui le
     // précède : un opérateur, jamais un mot.
-    t = t.replace(/([+\-\u2212\u00D7\u00F7*/])(\s*)\?\s*$/, (m, op) => op + trou);
+    //
+    // ET IL DOIT SURVIVRE AU ROGNAGE. Le nettoyage de fin de ligne, juste
+    // dessous, emportait le trou qu'on venait de poser : « 5 053 = 5 000 + 50
+    // + ? » ressortait « 5 053 = 5 000 + 50 + », sans nulle part où écrire, et
+    // le corrigé y accolait « = 3 » derrière un signe plus orphelin.
+    let trouFinal = false;
+    t = t.replace(/([+\-\u2212\u00D7\u00F7*/])(\s*)\?\s*$/, (m, op) => {
+        trouFinal = true;
+        return op + trou;
+    });
     t = t.replace(/(\?|…|\.{2,})(?=\s*\S)/g, trou);
-    return t.replace(/[\s\u00A0]+$/, '');
+    return trouFinal ? t : t.replace(/[\s\u00A0]+$/, '');
 }
 
 /**
@@ -121,6 +130,11 @@ export const DEFAUTS = {
  * une fiche, un débordement n'est pas rattrapable après impression.
  */
 export function couperEnLignes(texte, largeur, taille, mesurer) {
+    // Les marques de réponse d'un corrigé (\u0001 … \u0002) ne s'impriment
+    // pas : elles ne doivent pas peser dans la largeur non plus, sans quoi une
+    // ligne juste à la limite passerait à la ligne pour deux caractères
+    // invisibles.
+    const mes = (t, taille2) => mesurer(sansMarques(t), taille2);
     const lignes = [];
     for (const paragraphe of String(texte ?? '').split('\n')) {
         // LE TROU EST UN MOT COMME UN AUTRE. Découper sur « un ou plusieurs
@@ -138,11 +152,11 @@ export function couperEnLignes(texte, largeur, taille, mesurer) {
             // lui, l'espace.
             const blanc = / {3,}/.test(mot);
             const essai = (courante && !blanc) ? `${courante} ${mot}` : courante + mot;
-            if (mesurer(essai, taille) <= largeur) { courante = essai; continue; }
+            if (mes(essai, taille) <= largeur) { courante = essai; continue; }
             if (courante) { lignes.push(courante); courante = ''; }
-            while (mesurer(mot, taille) > largeur && mot.length > 1) {
+            while (mes(mot, taille) > largeur && mot.length > 1) {
                 let n = 1;
-                while (n < mot.length && mesurer(mot.slice(0, n + 1), taille) <= largeur) n++;
+                while (n < mot.length && mes(mot.slice(0, n + 1), taille) <= largeur) n++;
                 lignes.push(mot.slice(0, n));
                 mot = mot.slice(n);
             }
@@ -757,10 +771,14 @@ export function composerSolutions(questions, opts, mesurer) {
     const ligneDe = (q, n) => {
         const rep = q.reponse ?? '';
         const tete = n == null ? '' : `${n}. `;      // un exercice non numéroté n'invente pas de numéro
-        if (mode === 'compact') return `${tete}${rep}`;
-        if (mode === 'normal') return `${tete}${nettoyer(q.texte)} = ${rep}`;
+        if (mode === 'compact') return `${tete}${DEBUT_REP}${rep}${FIN_REP}`;
+        // La réponse va DANS le trou de l'énoncé quand il y en a un : la
+        // recopier au bout donnait « 92 202 =    + 2 000 + 200 + 2 = 90 000 »,
+        // une égalité fausse avec le trou toujours vide.
+        const pose = reponseEnPlace(nettoyer(q.texte), rep);
+        if (mode === 'normal') return `${tete}${pose}`;
         const expl = (q.explication || '').trim();
-        return `${tete}${nettoyer(q.texte)} = ${rep}${expl ? '\n' + expl : ''}`;
+        return `${tete}${pose}${expl ? '\n' + expl : ''}`;
     };
 
     // LES SECTIONS. Une feuille de solutions qui aligne « 1. 2  2. 9  3. 4 »
@@ -809,6 +827,70 @@ export function composerSolutions(questions, opts, mesurer) {
  * « 7 × 8 = → 56 » fait buter l'œil sur deux signes qui disent la même chose.
  */
 function nettoyer(texte) {
-    return texteImprime(String(texte ?? '').replace(/\s*\n\s*/g, ' '))
-        .replace(/\s*=\s*$/, '').trim();
+    const t = texteImprime(String(texte ?? '').replace(/\s*\n\s*/g, ' '));
+    const trou = trouDe(t);
+    if (!trou) return t.replace(/\s*=\s*$/, '').trim();
+    // UN ÉNONCÉ À TROU GARDE SON TROU, OÙ QU'IL SOIT — en tête (« ? × 2 = 10 »),
+    // au milieu (« 92 202 = ? + 2 000 »), ou en queue (« 5 053 = 5 000 + 50 +
+    // ? »). Le rognage l'emportait aux deux bouts, et le corrigé écrivait
+    // « × 2 = 10 = 5 » ou « 5 000 + 50 + = 3 » : l'énoncé amputé de sa
+    // question, et la réponse posée derrière un second signe égal.
+    //
+    // On rogne donc CHAQUE CÔTÉ du trou séparément, jamais le trou lui-même.
+    return t.slice(0, trou.debut).replace(/^[\s\u00A0]+/, '')
+        + t.slice(trou.debut, trou.fin)
+        + t.slice(trou.fin).replace(/[\s\u00A0]+$/, '');
 }
+
+/**
+ * LA RÉPONSE SE MET LÀ OÙ ELLE MANQUE — pas au bout de la ligne.
+ *
+ * Le corrigé écrivait la réponse en queue d'énoncé, quel que soit l'endroit du
+ * trou. Sur un complément à dix, cela passait encore ; sur une décomposition,
+ * cela donnait ceci :
+ *
+ *     92 202 =        + 2 000 + 200 + 2 = 90 000
+ *
+ * — une égalité fausse, avec le trou toujours béant et la réponse posée
+ * derrière un second signe égal. Le professeur qui corrige lit une ligne qui
+ * ne veut rien dire, et l'élève à qui on distribue le corrigé encore moins.
+ *
+ * La réponse va donc DANS le trou quand il y en a un, et seulement au bout
+ * quand l'énoncé n'en a pas. Elle est encadrée de deux marques invisibles —
+ * on ne les mesure pas et on ne les imprime pas — qui disent aux deux rendus
+ * quelle partie de la ligne est la réponse : c'est elle qu'on souligne, pour
+ * qu'on la trouve sans relire.
+ */
+export const DEBUT_REP = '\u0001';
+export const FIN_REP = '\u0002';
+
+export function reponseEnPlace(texte, reponse) {
+    const rep = String(reponse ?? '');
+    const t = String(texte ?? '');
+    const marquee = DEBUT_REP + rep + FIN_REP;
+    const trou = trouDe(t);
+    if (trou) {
+        // Le trou est DÉJÀ bordé des insécables que `texteImprime` a posées
+        // pour l'écarter du « + » et du « = » : en rajouter doublait l'écart,
+        // et la réponse flottait au milieu d'un blanc.
+        return t.slice(0, trou.debut) + marquee + t.slice(trou.fin);
+    }
+    return `${nettoyer(t)} = ${marquee}`;
+}
+
+/** Les morceaux d'une ligne de corrigé : { texte, reponse? }. */
+export function morceauxReponse(ligne) {
+    const out = [];
+    const re = /\u0001([^\u0002]*)\u0002/g;
+    let dernier = 0, m;
+    while ((m = re.exec(ligne))) {
+        if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
+        out.push({ texte: m[1], reponse: true });
+        dernier = m.index + m[0].length;
+    }
+    if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
+    return out.length ? out : [{ texte: ligne }];
+}
+
+/** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */
+export const sansMarques = (t) => String(t ?? '').replace(/[\u0001\u0002]/g, '');

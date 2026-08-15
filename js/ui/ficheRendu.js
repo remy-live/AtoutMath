@@ -8,7 +8,7 @@
 // Ce module est partagé par la fiche d'un exercice (printQuestions) et la
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
-import { A4 } from '../core/fiche.js';
+import { A4, morceauxReponse } from '../core/fiche.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
 import { RENDUS } from './printSheet.js';
@@ -652,4 +652,56 @@ export function pdfItems(pdf, page, o) {
             else pointilles(pdf, it.rep.x, it.rep.y, it.rep.w);
         }
     }
+}
+
+/**
+ * LA PAGE DES SOLUTIONS — en aperçu et en PDF, écrite une seule fois.
+ *
+ * Ces deux fonctions vivaient en double, une copie dans la fiche d'un exercice
+ * et une dans la fiche d'un parcours. Corriger la présentation d'un corrigé
+ * demandait donc de la corriger deux fois — et la seconde se corrigeait un
+ * commit plus tard, ou pas du tout.
+ *
+ * LA RÉPONSE EST SOULIGNÉE. Sur un corrigé, ce qu'on cherche n'est pas la
+ * ligne, c'est le nombre DANS la ligne : « 92 202 = 90 000 + 2 000 + 200 + 2 »
+ * ne dit pas lequel des quatre nombres était la question. En gras ET souligné :
+ * le gras seul se perd sur une photocopie grise, le trait seul se confond avec
+ * la ligne à remplir d'un énoncé.
+ */
+export function apercuSolutions(page, k, o) {
+    let html = '';
+    for (const b of page.blocs) {
+        b.lignes.forEach((ligne, i) => {
+            const corps = morceauxReponse(ligne).map(m => m.reponse
+                ? `<b class="fq-rep">${echapper(m.texte)}</b>`
+                : echapper(m.texte)).join('');
+            html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
+                width:${b.largeur * k}px; font-size:${o.taille * k}px">${corps}</div>`;
+        });
+    }
+    return html;
+}
+
+export function pdfSolutions(pdf, page, o) {
+    pdf.setFontSize(o.taille * 2.83);
+    pdf.setTextColor(...ENCRE.texte);
+    for (const b of page.blocs) {
+        b.lignes.forEach((ligne, i) => {
+            const y = b.y + o.taille + i * o.interligne;
+            let x = b.x;
+            for (const m of morceauxReponse(ligne)) {
+                pdf.setFont('helvetica', m.reponse ? 'bold' : 'normal');
+                const t = pourPdf(m.texte);
+                pdf.text(t, x, y);
+                const w = pdf.getTextWidth(t);
+                if (m.reponse) {
+                    pdf.setDrawColor(...ENCRE.texte);
+                    pdf.setLineWidth(0.22);
+                    pdf.line(x, y + o.taille * 0.32, x + w, y + o.taille * 0.32);
+                }
+                x += w;
+            }
+        });
+    }
+    pdf.setFont('helvetica', 'normal');
 }

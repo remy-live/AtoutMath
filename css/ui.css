@@ -606,3 +606,10 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     .bb-titre span { display: none; }
     #banc-barre { gap: 4px; padding: 5px; }
 }
+
+/* LA RÉPONSE DANS UN CORRIGÉ. Sur une feuille de solutions, ce qu'on cherche
+   n'est pas la ligne mais le nombre DANS la ligne : « 92 202 = 90 000 + 2 000
+   + 200 + 2 » ne dit pas lequel des quatre était la question. Gras ET souligné
+   — le gras seul se perd sur une photocopie grise, le trait seul se confond
+   avec la ligne à remplir d'un énoncé. */
+.fq-rep { font-weight: 800; border-bottom: 1px solid #1a202c; }

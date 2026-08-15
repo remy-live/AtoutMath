@@ -22,8 +22,10 @@
 import { generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe } from '../core/fiche.js';
+import { espacerMilliers } from '../core/nombres.js';
 import {
-    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE
+    mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
+    apercuSolutions, pdfSolutions
 } from './ficheRendu.js';
 
 /**
@@ -80,7 +82,9 @@ function formaterReponse(item) {
         if (bonne) return String(bonne.label ?? bonne.value);
     }
     // La virgule française : une fiche de mathématiques n'écrit pas « 0.2 ».
-    return String(item.answer).replace('.', ',');
+    // Et les milliers se groupent, dans le corrigé comme dans l'énoncé : celui-ci
+    // écrivait « 92 202 » et celui-là répondait « 90000 ».
+    return espacerMilliers(String(item.answer).replace('.', ','));
 }
 
 // --- La modale ---------------------------------------------------------------
@@ -168,28 +172,6 @@ function assurerModale() {
         </div>`;
     document.body.appendChild(modal);
     return modal;
-}
-
-function apercuSolutions(page, k, o) {
-    let html = '';
-    for (const b of page.blocs) {
-        b.lignes.forEach((ligne, i) => {
-            html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
-                width:${b.largeur * k}px; font-size:${o.taille * k}px">${echapper(ligne)}</div>`;
-        });
-    }
-    return html;
-}
-
-function pdfSolutions(pdf, page, o) {
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(o.taille * 2.83);
-    pdf.setTextColor(...ENCRE.texte);
-    for (const b of page.blocs) {
-        b.lignes.forEach((ligne, i) => {
-            pdf.text(pourPdf(ligne), b.x, b.y + o.taille + i * o.interligne);
-        });
-    }
 }
 
 /**

@@ -112,8 +112,8 @@ test('la page des solutions reprend la même numérotation, en plus dense', () =
     const sol = composerSolutions(questions, {}, mesurer);
     const blocs = sol.pages.flatMap(p => p.blocs);
     assert.equal(blocs.length, 12);
-    assert.equal(blocs[0].lignes[0], '1. 3');
-    assert.equal(blocs[11].lignes[0], '12. 36');
+    assert.equal(sansMarques(blocs[0].lignes[0]), '1. 3');
+    assert.equal(sansMarques(blocs[11].lignes[0]), '12. 36');
     // Douze réponses courtes doivent tenir très largement sur une seule page.
     assert.equal(sol.pages.length, 1);
 });
@@ -175,7 +175,11 @@ test('un intertitre ne reste jamais seul en bas d\'une colonne', () => {
 
 // --- La fiche en blocs d'exercices ------------------------------------------
 
-import { composerBlocs, DEFAUTS_BLOCS } from '../js/core/fiche.js';
+import {
+    composerBlocs, DEFAUTS_BLOCS, sansMarques, reponseEnPlace, morceauxReponse,
+    DEBUT_REP, FIN_REP
+} from '../js/core/fiche.js';
+// `texteImprime` est déjà importé plus haut, avec le reste du noyau.
 
 const exoCourt = (titre, n, texte = '7 × 8 = ?') => ({
     titre, consigne: '',
@@ -293,7 +297,7 @@ test('les trois modes de solutions disent trois choses différentes', () => {
         { texte: '6 × 9', reponse: '54', explication: 'Le double de 27.' }
     ];
     const ligne = (m) => composerSolutions(questions, { mode: m }, mesurer)
-        .pages.flatMap(p => p.blocs)[0].lignes;
+        .pages.flatMap(p => p.blocs)[0].lignes.map(sansMarques);
 
     // COMPACT : le numéro et la réponse, rien d'autre. C'est la feuille qu'on
     // tient d'une main en corrigeant.
@@ -478,8 +482,8 @@ test('pageDe rend une COPIE : personne ne peut abîmer la géométrie A4', () =>
 
 test('la feuille de solutions écrit l\'énoncé comme la fiche', () => {
     const questions = [{ texte: '7 × 8 = ?', reponse: '56', explication: 'La table de 7.' }];
-    const ligne = (m) => composerSolutions(questions, { mode: m }, mesurer)
-        .pages.flatMap(p => p.blocs)[0].lignes[0];
+    const ligne = (m) => sansMarques(composerSolutions(questions, { mode: m }, mesurer)
+        .pages.flatMap(p => p.blocs)[0].lignes[0]);
     // Le « = ? » disparaît, et le signe égal unique reste celui du corrigé.
     assert.equal(ligne('normal'), '1. 7 × 8 = 56');
     assert.equal(ligne('detaille'), '1. 7 × 8 = 56');
@@ -506,7 +510,7 @@ test('la feuille de solutions dit à quel exercice on en est', () => {
         { titre: 'Soustractions', points: 4, questions: q(2, 10) }
     ];
     const mise = composerSolutions([], { mode: 'compact', sections }, mesurer);
-    const lignes = mise.pages.flatMap(p => p.blocs).map(b => b.lignes.join(' '));
+    const lignes = mise.pages.flatMap(p => p.blocs).map(b => sansMarques(b.lignes.join(' ')));
     assert.ok(lignes.includes('Exercice 1 — Amis de 10 — 6 pts'), lignes.join(' | '));
     assert.ok(lignes.includes('Exercice 2 — Soustractions — 4 pts'), lignes.join(' | '));
     // La numérotation reste CONTINUE d'un exercice à l'autre.
@@ -597,7 +601,7 @@ test('numéros : le corrigé suit exactement la feuille', () => {
     ];
     const toutes = sections.flatMap(s => s.questions);
     const reponses = (mise) => mise.pages.flatMap(p => p.blocs)
-        .filter(b => !b.titre).map(b => b.lignes[0]);
+        .filter(b => !b.titre).map(b => sansMarques(b.lignes[0]));
 
     // En continu, l'exercice B poursuit la numérotation de A.
     assert.deepEqual(
@@ -715,4 +719,51 @@ test('blocs : le cartouche ne pousse rien dans le pied de page', () => {
                 `page ${i + 1} : un élément descend à ${(it.y + (it.h || 0)).toFixed(1)} mm`);
         }));
     }
+});
+
+// LA RÉPONSE VA DANS LE TROU, PAS AU BOUT DE LA LIGNE.
+//
+// Rémy, sur la décomposition : « tu écris cela : 92 202 =    + 2 000 + 200 + 2
+// = 90000 alors qu'il faudrait écrire 92 202 = 90 000 + 2 000 + 200 + 2 et
+// souligne la réponse ». Le corrigé donnait une égalité fausse, le trou
+// toujours vide et la réponse posée derrière un second signe égal.
+test('corrigé : la réponse comble le trou de l\'énoncé', () => {
+    const enonce = texteImprime('92 202 = ? + 2 000 + 200 + 2');
+    const ligne = reponseEnPlace(enonce, '90 000');
+    assert.equal(sansMarques(ligne).replace(/[ \s]+/g, ' ').trim(),
+        '92 202 = 90 000 + 2 000 + 200 + 2');
+    // Un seul signe égal : c'est une égalité, pas une suite de deux.
+    assert.equal((sansMarques(ligne).match(/=/g) || []).length, 1);
+    // Et la réponse est marquée, pour être soulignée au rendu.
+    assert.deepEqual(morceauxReponse(ligne).filter(m => m.reponse), [{ texte: '90 000', reponse: true }]);
+});
+
+test('corrigé : sans trou, la réponse se met au bout', () => {
+    const ligne = reponseEnPlace(texteImprime('7 × 8 = ?'), '56');
+    assert.equal(sansMarques(ligne), '7 × 8 = 56');
+});
+
+test('corrigé : le complément à dix se lit comme une addition entière', () => {
+    // « 5 +          = 10 » suivi de « = 5 » ne veut rien dire ; « 5 + 5 = 10 »
+    // est ce qu'on écrit au tableau.
+    const ligne = reponseEnPlace(texteImprime('5 + ? = 10'), '5');
+    assert.equal(sansMarques(ligne).replace(/[ \s]+/g, ' ').trim(), '5 + 5 = 10');
+});
+
+test('les marques de réponse ne pèsent rien dans la mesure', () => {
+    const nu = couperEnLignes('1. 7 × 8 = 56', 30, 4, mesurer);
+    const marque = couperEnLignes(`1. 7 × 8 = ${DEBUT_REP}56${FIN_REP}`, 30, 4, mesurer);
+    assert.deepEqual(marque.map(sansMarques), nu, 'le découpage doit être identique');
+});
+
+test('corrigé : un trou en queue d\'énoncé survit aussi', () => {
+    // « 5 053 = 5 000 + 50 + ? » donnait « 5 000 + 50 + = 3 » : le trou rogné
+    // et la réponse derrière un second égal.
+    const ligne = reponseEnPlace(texteImprime('5 053 = 5 000 + 50 + ?'), '3');
+    assert.equal(sansMarques(ligne).replace(/[ \s]+/g, ' ').trim(), '5 053 = 5 000 + 50 + 3');
+});
+
+test('corrigé : un trou en tête d\'énoncé survit aussi', () => {
+    const ligne = reponseEnPlace(texteImprime('? × 5 = 40'), '8');
+    assert.equal(sansMarques(ligne).replace(/[ \s]+/g, ' ').trim(), '8 × 5 = 40');
 });
