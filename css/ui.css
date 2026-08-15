@@ -369,6 +369,10 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    quatre lignes tape 4 plutôt que de cliquer trois fois. */
 .fp-pas { display: inline-flex; align-items: center; gap: 4px; }
 .fp-pas .cfg-input--num { width: 46px; text-align: center; }
+/* Le choix des colonnes est une LISTE, pas un nombre : « auto » ne tient pas
+   dans les quarante-six pixels d'un champ de chiffres, et le menu sortait
+   vide. Il garde ses crans « − » et « + », mais sa propre largeur. */
+.fp-pas select.cfg-input { width: 72px; text-align: center; padding: 0 4px 0 8px; }
 .fp-pas-btn {
     width: 28px; height: 28px; flex: 0 0 auto; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--border); background: var(--surface-2, rgba(127, 127, 127, .12));

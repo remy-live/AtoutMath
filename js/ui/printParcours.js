@@ -290,6 +290,85 @@ export function ouvrirFicheParcours(chemin) {
     const CHEVRON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"'
         + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
+    // LES DEUX RÉGLAGES QU'ON TOUCHE LE PLUS : combien, et sur combien de
+    // colonnes. On les change au clavier — c'est le plus rapide quand on sait
+    // déjà — OU d'un « − » et d'un « + » : essayer trois colonnes puis quatre
+    // pour voir laquelle tient, ça se fait au doigt, pas en tapant un chiffre.
+    const COLONNES_POSSIBLES = ['auto', 1, 2, 3, 4, 5, 6];
+    const bornerNb = (v) => Math.max(0, Math.min(40, Number(v) || 0));
+
+    /** Le pavé « − [champ] + », en HTML — le même partout. */
+    const pas = (cible, id, dedans) => `<span class="fp-pas">
+        <button type="button" class="fp-pas-btn" data-pas="${cible}" data-pour="${id}"
+            data-sens="-1" aria-label="Moins">−</button>
+        ${dedans}
+        <button type="button" class="fp-pas-btn" data-pas="${cible}" data-pour="${id}"
+            data-sens="1" aria-label="Plus">+</button></span>`;
+
+    const changerQuantite = (id, v) => {
+        quantites[id] = bornerNb(v);
+        blocs = null;                        // le nombre change : on retire à neuf
+        if (!baremeTouche) repartirPoints();
+        rendreListe();
+        majRoue(id);
+        rendre();
+    };
+    const changerColonnes = (id, v) => {
+        colonnes[id] = v;
+        rendreListe();
+        majRoue(id);
+        rendre();
+    };
+    /** Un cran de plus ou de moins, sans jamais sortir de la liste. */
+    const crantColonnes = (id, sens) => {
+        const i = COLONNES_POSSIBLES.findIndex(v => String(v) === String(colonnes[id]));
+        const j = Math.max(0, Math.min(COLONNES_POSSIBLES.length - 1, (i < 0 ? 0 : i) + sens));
+        changerColonnes(id, String(COLONNES_POSSIBLES[j]));
+    };
+
+    const changerPoints = (id, v) => {
+        points[id] = bornerNb(v);
+        baremeTouche = true;                 // à partir d'ici, le barème est le sien
+        rendreListe();
+        majRoue(id);
+        rendre();
+    };
+
+    /** Brancher les « − » et « + » d'une zone, liste ou panneau. */
+    const brancherPas = (zone) => {
+        zone.querySelectorAll('[data-pas]').forEach(b => {
+            // Un bouton DANS un <label> : sans cela, le clic se propage au
+            // label et redonne le focus au champ, ce qui rouvre le clavier
+            // logiciel sur une tablette à chaque cran.
+            b.onclick = (ev) => {
+                ev.preventDefault();
+                const id = b.dataset.pour, sens = Number(b.dataset.sens);
+                if (b.dataset.pas === 'nb') changerQuantite(id, (quantites[id] || 0) + sens);
+                else if (b.dataset.pas === 'pts') changerPoints(id, (points[id] || 0) + sens);
+                else crantColonnes(id, sens);
+            };
+        });
+    };
+
+    /**
+     * Le panneau ouvert reflète ce qu'on vient de changer AILLEURS.
+     *
+     * On règle des deux côtés — la liste et l'engrenage —, et deux affichages
+     * du même nombre qui divergent valent moins que pas d'affichage du tout :
+     * on ne sait plus lequel croire.
+     */
+    const majRoue = (id) => {
+        if (!panneau || panneau.dataset.pour !== id) return;
+        const nb = panneau.querySelector('[data-r-nb]');
+        const col = panneau.querySelector('[data-r-col]');
+        const pts = panneau.querySelector('[data-r-pts]');
+        if (nb && nb !== document.activeElement) nb.value = quantites[id];
+        if (col) col.value = String(colonnes[id]);
+        if (pts && pts !== document.activeElement) pts.value = points[id];
+        const bareme = panneau.querySelector('[data-r-bareme]');
+        if (bareme) bareme.hidden = !interro.checked;
+    };
+
     const rendreListe = () => {
         listeEl.innerHTML = ordre.map((id, i) => {
             const e = parId.get(id);
@@ -327,33 +406,35 @@ export function ouvrirFicheParcours(chemin) {
                             placeholder="(aucune consigne imprimée)"
                             aria-label="Consigne imprimée de « ${nom} »"></label>
                     <label class="pp-etape-champ">${unite === 'grilles' ? 'Grilles' : 'Questions'}
-                        <input type="number" class="cfg-input cfg-input--num" data-etape="${id}"
-                            min="0" max="40" value="${quantites[id]}"></label>
+                        ${pas('nb', id, `<input type="number" class="cfg-input cfg-input--num"
+                            data-etape="${id}" min="0" max="40" value="${quantites[id]}">`)}</label>
                     <label class="pp-etape-champ">${e.grille ? 'Par ligne' : 'Colonnes'}
-                        <select class="cfg-input" data-colonnes="${id}"
+                        ${pas('col', id, `<select class="cfg-input cfg-input--num" data-colonnes="${id}"
                             aria-label="Mise en page de « ${nom} »">
-                            ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
+                            ${COLONNES_POSSIBLES.map(v => `<option value="${v}"
                                 ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
-                        </select></label>
+                        </select>`)}</label>
                     <label class="pp-etape-champ pp-etape-case">
                         <input type="checkbox" data-numeroter="${id}"
                             ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
                     <label class="pp-etape-champ pp-etape-pts" ${interro.checked ? '' : 'hidden'}>Barème
-                        <input type="number" class="cfg-input cfg-input--num" data-points="${id}"
-                            min="0" max="40" value="${points[id]}"
-                            aria-label="Points de « ${nom} »"></label>
+                        ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num"
+                            data-points="${id}" min="0" max="40" value="${points[id]}"
+                            aria-label="Points de « ${nom} »">`)}</label>
                 </div>
             </details>`;
         }).join('')
             + (ecran.length ? `<div class="pp-ecran">Sur écran seulement : ${[...new Set(ecran.map(e => e.title))].map(echapper).join(', ')}
                  — ${ecran.length > 1 ? 'ces activités demandent' : 'cette activité demande'} de manipuler, elles ne se photocopient pas.</div>` : '');
 
+        brancherPas(listeEl);
         listeEl.querySelectorAll('[data-etape]').forEach(inp => {
             inp.oninput = () => {
-                quantites[inp.dataset.etape] = Math.max(0, Math.min(40, Number(inp.value) || 0));
+                quantites[inp.dataset.etape] = bornerNb(inp.value);
                 blocs = null;
                 if (!baremeTouche) repartirPoints();
                 majChiffres();
+                majRoue(inp.dataset.etape);
                 rendre();
             };
             // Le rabotage (0 à 40) ne s'écrit dans le champ qu'à la sortie :
@@ -377,15 +458,13 @@ export function ouvrirFicheParcours(chemin) {
             };
         });
         listeEl.querySelectorAll('[data-colonnes]').forEach(sel => {
-            sel.onchange = () => {
-                colonnes[sel.dataset.colonnes] = sel.value;
-                rendre();
-            };
+            sel.onchange = () => changerColonnes(sel.dataset.colonnes, sel.value);
         });
         listeEl.querySelectorAll('[data-points]').forEach(inp => {
             inp.oninput = () => {
-                points[inp.dataset.points] = Math.max(0, Math.min(40, Number(inp.value) || 0));
+                points[inp.dataset.points] = bornerNb(inp.value);
                 baremeTouche = true;     // à partir d'ici, le barème est le sien
+                majRoue(inp.dataset.points);
                 rendre();
             };
             inp.onchange = () => { inp.value = points[inp.dataset.points]; };
@@ -558,18 +637,18 @@ export function ouvrirFicheParcours(chemin) {
         panneau.innerHTML = `
             <div class="pp-roue-titre">${echapper(e.title)}</div>
             <label class="pp-roue-champ">${unite}
-                <input type="number" class="cfg-input cfg-input--num" data-r-nb
-                    min="0" max="40" value="${quantites[id]}"></label>
+                ${pas('nb', id, `<input type="number" class="cfg-input cfg-input--num" data-r-nb
+                    min="0" max="40" value="${quantites[id]}">`)}</label>
             <label class="pp-roue-champ">${e.grille ? 'Par ligne' : 'Colonnes'}
-                <select class="cfg-input" data-r-col>
-                    ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
+                ${pas('col', id, `<select class="cfg-input cfg-input--num" data-r-col>
+                    ${COLONNES_POSSIBLES.map(v => `<option value="${v}"
                         ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
-                </select></label>
+                </select>`)}</label>
             <label class="pp-roue-case">
                 <input type="checkbox" data-r-num ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
-            <label class="pp-roue-champ" ${interro.checked ? '' : 'hidden'}>Barème
-                <input type="number" class="cfg-input cfg-input--num" data-r-pts
-                    min="0" max="40" value="${points[id]}"></label>
+            <label class="pp-roue-champ" data-r-bareme ${interro.checked ? '' : 'hidden'}>Barème
+                ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num" data-r-pts
+                    min="0" max="40" value="${points[id]}">`)}</label>
             <button type="button" class="pp-roue-autres" data-r-neuf>🎲 Autres questions</button>`;
         document.body.appendChild(panneau);
 
@@ -583,22 +662,17 @@ export function ouvrirFicheParcours(chemin) {
         panneau.style.left = `${x}px`;
         panneau.style.top = `${y}px`;
 
+        brancherPas(panneau);
         const nb = panneau.querySelector('[data-r-nb]');
-        nb.oninput = () => {
-            quantites[id] = Math.max(0, Math.min(40, Number(nb.value) || 0));
-            blocs = null;
-            if (!baremeTouche) repartirPoints();
-            majChiffres();
-            rendre();
-        };
+        // ON NE PASSE PAS PAR « majChiffres » : il n'existe qu'à l'intérieur de
+        // « rendreListe », et l'appeler d'ici levait une exception AVANT le
+        // redessin — le nombre de questions ne bougeait donc jamais quand on le
+        // changeait depuis l'aperçu. Le chemin commun rafraîchit les deux.
+        nb.oninput = () => changerQuantite(id, nb.value);
         // Le rabotage ne s'écrit qu'à la sortie : pendant la frappe, réécrire
         // ce que l'on tape empêche de taper.
         nb.onchange = () => { nb.value = quantites[id]; };
-        panneau.querySelector('[data-r-col]').onchange = (ev) => {
-            colonnes[id] = ev.target.value;
-            rendreListe();
-            rendre();
-        };
+        panneau.querySelector('[data-r-col]').onchange = (ev) => changerColonnes(id, ev.target.value);
         panneau.querySelector('[data-r-num]').onchange = (ev) => {
             numeroter[id] = ev.target.checked;
             rendreListe();
