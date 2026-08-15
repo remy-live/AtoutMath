@@ -228,13 +228,26 @@ export function mount(container, session, opts = {}) {
         // la question. Un générateur peut désigner le morceau d'énoncé sur
         // lequel porte son premier indice (`data-vise`) ; à défaut, c'est
         // l'énoncé entier qui est cerclé, et jamais le vide.
-        cursor.say(phraseDepart(item), viseDansEnonce(container));
+        // ET IL LE SURLIGNE. Pointer la bulle vers « 6 × 6 » ne suffisait pas :
+        // dans « 6 × 6 − 8 », la pointe tombe entre deux chiffres et l'on ne
+        // sait pas où commence le morceau dont on parle. Rémy : « le robot ne
+        // montre pas le bon calcul ». Le fragment visé s'allume donc pendant
+        // qu'on en parle, et s'éteint quand on passe à la réponse — sans quoi
+        // la feuille garderait un surlignage qui ne veut plus rien dire.
+        const cible = viseDansEnonce(container);
+        if (cible !== container) cible.classList.add('demo-vise');
+        cursor.say(phraseDepart(item), cible);
         if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
         if (!await gate.waitTurn() || destroyed) return;
 
+        // Le surlignage tient PENDANT le trajet du doigt : la bulle affiche
+        // encore « Commence par 4 × 2 » tout le temps que le pointeur met à
+        // rejoindre la réponse, et l'éteindre avant laissait la phrase parler
+        // d'un morceau d'énoncé qui ne s'allumait plus.
         const fait = (opts.dragToSlot && slot)
             ? await cursor.dragFromTo(el, slot)
             : await cursor.tap(el);
+        cible.classList.remove('demo-vise');
         if (!fait || destroyed) return;
 
         el.classList.add('demo-target');

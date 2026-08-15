@@ -96,6 +96,23 @@
 
 .bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target, .ad-choix-btn.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
 
+/* CE DONT LE ROBOT PARLE, DANS L'ÉNONCÉ.
+   La bulle pointait « 6 × 6 » dans « 6 × 6 − 8 » : la pointe tombait entre
+   deux chiffres, et rien ne disait où commençait le morceau. Un surlignage,
+   comme au feutre sur un cahier — il s'allume le temps de l'explication, et
+   s'éteint dès qu'on passe à la réponse. */
+.demo-vise {
+    background: linear-gradient(180deg, transparent 12%, rgba(250, 204, 21, .55) 12%);
+    border-radius: 5px; padding: 0 .12em; box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    animation: demo-vise-pouls 1.6s ease-in-out infinite;
+}
+@keyframes demo-vise-pouls {
+    0%, 100% { filter: none; }
+    50% { filter: brightness(1.12) saturate(1.2); }
+}
+@media (prefers-reduced-motion: reduce) { .demo-vise { animation: none; } }
+
 /* Grille Tactile (Chasseur) */
 .tactile-grid { display: grid; grid-template-columns: repeat(5, 60px); grid-template-rows: repeat(5, 60px); gap: 6px; background: rgba(255,255,255,0.5); border: 1px solid var(--border); padding: 10px; border-radius: 16px; box-shadow: var(--shadow-lg); backdrop-filter: blur(5px); }
 .grid-cell { background: white; cursor: pointer; display: flex; justify-content: center; align-items: center; border-radius: 8px; font-weight: 700; font-size: 1.2rem; color: var(--text-main); box-shadow: var(--shadow-sm); transition: 0.2s; border: 2px solid transparent; }
