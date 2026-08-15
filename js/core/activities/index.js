@@ -53,6 +53,9 @@ import { matFicheGenerator } from '../generators/matFiche.js';
 import { prioritesFicheGenerator } from '../generators/prioritesFiche.js';
 import { poserFicheGenerator } from '../generators/poserFiche.js';
 import { conversionFicheGenerator } from '../generators/conversionFiche.js';
+import {
+    compteFicheGenerator, pointAPointFicheGenerator
+} from '../generators/jeuxFiche.js';
 
 // --- Générateurs ------------------------------------------------------------
 
@@ -74,7 +77,8 @@ import { conversionFicheGenerator } from '../generators/conversionFiche.js';
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
-    poserFicheGenerator, conversionFicheGenerator
+    poserFicheGenerator, conversionFicheGenerator,
+    compteFicheGenerator, pointAPointFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

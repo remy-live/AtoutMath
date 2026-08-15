@@ -146,6 +146,11 @@ export const calculExercises = [
         // réflexes.
         id: 'calc-compte-est-bon', status: STATUS.TEST, title: 'Le Compte est Bon',
         activityId: 'compte-est-bon',
+        // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
+        // on rature, on recommence — ce que l'écran ne remplace pas.
+        printable: 'compte', printGeneratorId: 'calc.compte-fiche',
+        printParams: { operations: 3, grands: 1 },
+        consignePapier: 'Trouve le compte. Une opération par ligne.',
         skills: ['num.calc.tri'],
         // DEUX OPÉRATIONS PAR DÉFAUT, pas trois. Le compte est bon est un jeu
         // d'adultes : à trois opérations, l'élève de CM2 cherche à l'aveugle et
@@ -1244,6 +1249,11 @@ export const calculExercises = [
         // sans qu'on le lui demande, parce qu'il veut voir l'image.
         id: 'calc-point-a-point', status: STATUS.TEST, title: 'Le Point à Point',
         activityId: 'point-a-point',
+        // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
+        // on rature, on recommence — ce que l'écran ne remplace pas.
+        printable: 'pointapoint', printGeneratorId: 'calc.point-a-point-fiche',
+        printParams: { dessin: '', famille: 'melange' },
+        consignePapier: 'Relie les points dans l’ordre des résultats.',
         sansRevision: true,
         skills: ['num.calc.recherche'],
         params: { dessin: '', famille: 'melange', verification: 'immediate' },

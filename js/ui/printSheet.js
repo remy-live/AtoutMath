@@ -4051,7 +4051,221 @@ function dessinerConversionPdf(doc, item, slot, solution) {
     doc.setTextColor(...ENCRE.trait);
 }
 
+// --- LE COMPTE EST BON, SUR LE PAPIER -------------------------------------------
+
+/**
+ * Le but en gros, les six plaques en dessous, et des lignes vides pour
+ * chercher. C'est exactement la feuille qu'on distribue en début d'heure.
+ *
+ * AUTANT DE LIGNES QUE LA SOLUTION EN DEMANDE, PLUS UNE. Une solution plus
+ * longue que celle qui a servi à fabriquer le tirage est parfaitement
+ * recevable ; une feuille qui n'en laisse pas la place dit le contraire.
+ */
+function geoCompte(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    const nP = m.plaques.length;
+    const plaqueW = Math.min((b.w - 2) / nP - 2, 15);
+    const plaqueH = Math.min(plaqueW * 0.72, 10);
+    const butH = Math.min(b.h * 0.2, 12);
+    const y0 = b.y + 1;
+    const yPlaques = y0 + butH + 1.5;
+    const yLignes = yPlaques + plaqueH + 3;
+    const ligneH = Math.max(5.5, Math.min((b.y + b.h - yLignes - 1) / m.lignes, 8));
+    return { m, b, nP, plaqueW, plaqueH, butH, y0, yPlaques, yLignes, ligneH,
+        taille: Math.max(7, Math.min(plaqueW * 0.9, 12)) };
+}
+
+function comptePreviewHtml(item, slot, k, solution) {
+    const g = geoCompte(item, slot);
+    const m = g.m;
+    let html = `<div style="position:absolute; left:${g.b.x * k}px; top:${g.y0 * k}px;
+        width:${g.b.w * k}px; height:${g.butH * k}px; display:flex; align-items:center;
+        justify-content:center; font-weight:900; color:#4c1d95;
+        font-size:${g.butH * 0.78 * k}px">${m.but}</div>`;
+    const largeurTotale = g.nP * g.plaqueW + (g.nP - 1) * 2;
+    const xP = g.b.x + (g.b.w - largeurTotale) / 2;
+    m.plaques.forEach((p, i) => {
+        html += `<div style="position:absolute; left:${(xP + i * (g.plaqueW + 2)) * k}px;
+            top:${g.yPlaques * k}px; width:${g.plaqueW * k}px; height:${g.plaqueH * k}px;
+            border:1.5px solid #b45309; border-radius:${2 * k}px; background:#fef3c7;
+            display:flex; align-items:center; justify-content:center; font-weight:900;
+            color:#78350f; font-size:${g.taille * 0.3528 * k}px">${p}</div>`;
+    });
+    for (let i = 0; i < m.lignes; i++) {
+        const y = g.yLignes + i * g.ligneH;
+        const texte = solution ? (m.etapes[i] || '') : '';
+        html += `<div style="position:absolute; left:${g.b.x * k}px;
+            top:${(y + g.ligneH * 0.88) * k}px; width:${g.b.w * k}px; height:1px;
+            background:#b0b6c5"></div>`;
+        if (!texte) continue;
+        html += `<div style="position:absolute; left:${g.b.x * k}px; top:${y * k}px;
+            width:${g.b.w * k}px; height:${g.ligneH * k}px; display:flex; align-items:center;
+            font-weight:700; color:#6e7684;
+            font-size:${g.taille * 0.32 * k}px">${echapperSheet(texte)}</div>`;
+    }
+    return html;
+}
+
+function dessinerComptePdf(doc, item, slot, solution) {
+    const g = geoCompte(item, slot);
+    const m = g.m;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.butH * 2.2);
+    doc.setTextColor(...ENCRE.trait);
+    doc.text(String(m.but), g.b.x + g.b.w / 2, g.y0 + g.butH * 0.85, { align: 'center' });
+
+    const largeurTotale = g.nP * g.plaqueW + (g.nP - 1) * 2;
+    const xP = g.b.x + (g.b.w - largeurTotale) / 2;
+    doc.setFontSize(g.taille);
+    m.plaques.forEach((p, i) => {
+        const x = xP + i * (g.plaqueW + 2);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(x, g.yPlaques, g.plaqueW, g.plaqueH, 1.2, 1.2, 'S');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(String(p), x + g.plaqueW / 2, g.yPlaques + g.plaqueH * 0.68, { align: 'center' });
+    });
+    for (let i = 0; i < m.lignes; i++) {
+        const y = g.yLignes + i * g.ligneH;
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.22);
+        doc.line(g.b.x, y + g.ligneH * 0.88, g.b.x + g.b.w, y + g.ligneH * 0.88);
+        if (!solution || !m.etapes[i]) continue;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(g.taille * 0.9);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(m.etapes[i]), g.b.x + 1, y + g.ligneH * 0.72);
+        doc.setFont('helvetica', 'bold');
+    }
+    doc.setTextColor(...ENCRE.trait);
+}
+
+// --- LE POINT À POINT, SUR LE PAPIER --------------------------------------------
+
+/**
+ * Les points sont donnés en pour-cent — mais AUCUN DESSIN N'OCCUPE LES CENT
+ * POUR CENT. Un poisson tient dans une bande large et basse, une maison dans un
+ * carré plus haut que large. Rapportés tels quels au bloc, ils s'y perdaient
+ * dans un coin, minuscules, avec leurs calculs collés les uns aux autres.
+ *
+ * On recadre donc sur l'étendue RÉELLE des points, en gardant la proportion :
+ * le dessin remplit son bloc, et les étiquettes s'écartent d'autant.
+ */
+function geoPointAPoint(item, slot) {
+    const m = item.meta;
+    const b = slot.boite;
+    const xs = m.points.map(p => p.x), ys = m.points.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const larg = Math.max(1, maxX - minX), haut = Math.max(1, maxY - minY);
+    // La marge laisse la place aux étiquettes des points du bord, qui
+    // s'écrivent SOUS le point et déborderaient du cadre.
+    const marge = 7;
+    const k = Math.min((b.w - marge * 2) / larg, (b.h - marge * 2.4) / haut);
+    const dessinW = larg * k, dessinH = haut * k;
+    const ox = b.x + (b.w - dessinW) / 2;
+    const oy = b.y + (b.h - dessinH) / 2 - marge * 0.2;
+    const cote = Math.max(dessinW, dessinH);
+    return {
+        m, cote, x0: ox, y0: oy,
+        px: (p) => ox + (p.x - minX) * k,
+        py: (p) => oy + (p.y - minY) * k,
+        r: Math.max(1.1, cote * 0.016),
+        taille: Math.max(6, Math.min(cote * 0.05, 10))
+    };
+}
+
+function pointAPointPreviewHtml(item, slot, k, solution) {
+    const g = geoPointAPoint(item, slot);
+    const m = g.m;
+    let html = '';
+    if (solution) {
+        // Le dessin, tracé : c'est la seule correction qui vaille.
+        const pts = m.points.slice().sort((a, b) => a.ordre - b.ordre);
+        m.segments.forEach(([a, b]) => {
+            const A = pts[a - 1], B = pts[b - 1];
+            if (!A || !B) return;
+            const x1 = g.px(A), y1 = g.py(A), x2 = g.px(B), y2 = g.py(B);
+            const L = Math.hypot(x2 - x1, y2 - y1);
+            const ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            html += `<div style="position:absolute; left:${x1 * k}px; top:${y1 * k}px;
+                width:${L * k}px; height:${Math.max(1, 0.5 * k)}px; background:#6e7684;
+                transform-origin:0 50%; transform:rotate(${ang}deg)"></div>`;
+        });
+    }
+    m.points.forEach(p => {
+        const x = g.px(p), y = g.py(p);
+        html += `<div style="position:absolute; left:${(x - g.r) * k}px; top:${(y - g.r) * k}px;
+            width:${g.r * 2 * k}px; height:${g.r * 2 * k}px; border-radius:50%;
+            border:1.2px solid #1a202c; background:#fff"></div>`;
+        html += `<div style="position:absolute; left:${(x - 12) * k}px; top:${(y + g.r + 0.4) * k}px;
+            width:${24 * k}px; text-align:center; font-weight:800; color:#1a202c;
+            font-size:${g.taille * 0.3528 * k}px; white-space:nowrap"
+            >${echapperSheet(solution ? String(p.ordre) : p.texte)}</div>`;
+    });
+    return html;
+}
+
+function dessinerPointAPointPdf(doc, item, slot, solution) {
+    const g = geoPointAPoint(item, slot);
+    const m = g.m;
+    if (solution) {
+        const pts = m.points.slice().sort((a, b) => a.ordre - b.ordre);
+        doc.setDrawColor(...ENCRE.gris);
+        doc.setLineWidth(0.45);
+        m.segments.forEach(([a, b]) => {
+            const A = pts[a - 1], B = pts[b - 1];
+            if (A && B) doc.line(g.px(A), g.py(A), g.px(B), g.py(B));
+        });
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setFillColor(255, 255, 255);
+    doc.setLineWidth(0.35);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille);
+    doc.setTextColor(...ENCRE.trait);
+    m.points.forEach(p => {
+        const x = g.px(p), y = g.py(p);
+        doc.circle(x, y, g.r, 'FD');
+        doc.text(pourPdf(solution ? String(p.ordre) : p.texte),
+            x, y + g.r + g.taille * 0.42, { align: 'center' });
+    });
+}
+
 export const RENDUS = {
+    compte: {
+        titre: 'Le compte est bon',
+        consigne: () => 'Atteins le nombre écrit en haut avec les six plaques. Chaque '
+            + 'plaque ne sert QU\'UNE FOIS, et le résultat d\'une opération peut '
+            + 'resservir. Écris une opération par ligne. Aucun nombre négatif, et une '
+            + 'division doit tomber juste. Il y a plusieurs solutions : la tienne compte '
+            + 'si elle arrive au but.',
+        previewGrille: comptePreviewHtml,
+        pdfGrille: dessinerComptePdf,
+        nomBloc: 'Tirage', nomBlocs: 'tirages',
+        titreAGauche: true,
+        proportions: { w: 1, h: 0.85 },
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2,
+        separateurs: true,
+        grilleMax: 90
+    },
+
+    pointapoint: {
+        titre: 'Le point à point',
+        consigne: () => 'Cherche le calcul qui vaut 1 et pars de là : relie ensuite '
+            + 'celui qui vaut 2, puis 3, et ainsi de suite jusqu\'au dernier. Une image '
+            + 'apparaît — mais on ne la devine qu\'à la fin.',
+        previewGrille: pointAPointPreviewHtml,
+        pdfGrille: dessinerPointAPointPdf,
+        nomBloc: 'Dessin', nomBlocs: 'dessins',
+        proportions: { w: 1, h: 1 },
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
+        parLigneDefaut: 1,
+        grilleMax: 130
+    },
+
     conversion: {
         titre: 'Le tableau de conversion',
         consigne: (items) => {
