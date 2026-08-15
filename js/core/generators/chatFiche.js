@@ -68,16 +68,28 @@ const FIGURES = [
 ];
 
 /** Le programme mis en toutes lettres, une ligne par bloc, indentée. */
+/**
+ * Le programme, ligne par ligne — ET LE GENRE DE CHAQUE BLOC.
+ *
+ * La fiche ne se contente plus d'écrire du texte indenté : elle dessine de
+ * VRAIS blocs, aux couleurs de Scratch. Le « genre » dit lequel — Mouvement
+ * (bleu) ou Contrôle (jaune) —, et « fin » ferme le C d'un « répéter ». Un
+ * élève qui a le logiciel sous les yeux doit reconnaître la même chose sur sa
+ * feuille : un programme recopié en lignes de texte est déjà une traduction.
+ */
 export function ecrireProgramme(script, angleCache) {
     const out = [];
     const aller = (blocs, creux) => {
         for (const b of blocs) {
             if (b.type === 'repeter') {
-                out.push({ creux, texte: `répéter ${b.valeur} fois :` });
+                out.push({ creux, texte: `répéter ${b.valeur} fois`, genre: 'controle' });
                 aller(b.corps || [], creux + 1);
+                // La barre du bas qui referme le C. Sans elle, on ne voit pas
+                // où la répétition s'arrête — et c'est justement la question.
+                out.push({ creux, texte: '', genre: 'controle', fin: true });
                 continue;
             }
-            if (b.type === 'avancer') { out.push({ creux, texte: `avancer de ${b.valeur} pas` }); continue; }
+            if (b.type === 'avancer') { out.push({ creux, texte: `avancer de ${b.valeur} pas`, genre: 'mouvement' }); continue; }
             // Pas de flèche ↻ : elle n'existe pas dans la police du PDF, et
             // « à droite » le dit déjà. L'aperçu et la feuille imprimée
             // doivent porter le même texte, sans quoi l'un des deux ment.
@@ -85,7 +97,7 @@ export function ecrireProgramme(script, angleCache) {
             // LE TROU EST À LA PLACE DU NOMBRE, pas de la ligne entière : on
             // doit voir qu'il s'agit d'un angle, et lequel.
             const val = (angleCache && b.valeur === angleCache) ? '……' : b.valeur;
-            out.push({ creux, texte: `tourner ${sens} de ${val}°` });
+            out.push({ creux, texte: `tourner ${sens} de ${val}°`, genre: 'mouvement' });
         }
     };
     aller(script, 0);

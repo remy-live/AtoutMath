@@ -10,10 +10,14 @@ const tirer = (params, i) => G.generate(params, { rng: makeRng('cf' + i) });
 test('le programme écrit dit exactement ce que le script fait', () => {
     const script = [{ type: 'repeter', valeur: 4, corps: [
         { type: 'avancer', valeur: 50 }, { type: 'droite', valeur: 90 }] }];
+    // Le « genre » désigne la famille du bloc — Mouvement ou Contrôle : c'est
+    // lui qui donne sa couleur à la fiche. Et le C d'un « répéter » se referme
+    // par une barre, sans quoi on ne voit pas où la répétition s'arrête.
     assert.deepEqual(ecrireProgramme(script), [
-        { creux: 0, texte: 'répéter 4 fois :' },
-        { creux: 1, texte: 'avancer de 50 pas' },
-        { creux: 1, texte: 'tourner à droite de 90°' }
+        { creux: 0, texte: 'répéter 4 fois', genre: 'controle' },
+        { creux: 1, texte: 'avancer de 50 pas', genre: 'mouvement' },
+        { creux: 1, texte: 'tourner à droite de 90°', genre: 'mouvement' },
+        { creux: 0, texte: '', genre: 'controle', fin: true }
     ]);
     // Le trou remplace LE NOMBRE, pas la ligne : on doit voir qu'il s'agit
     // d'un angle, et à quel endroit du programme.

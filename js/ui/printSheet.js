@@ -2929,6 +2929,42 @@ function geoChat(item, slot) {
     };
 }
 
+/**
+ * DE VRAIS BLOCS SCRATCH, pas des lignes de texte indentées.
+ *
+ * L'élève a le logiciel sous les yeux : des briques bleues « avancer de 50 pas »
+ * empilées dans une brique jaune « répéter 4 fois » qui les enveloppe en C.
+ * Recopier cela en texte indenté, c'est déjà une TRADUCTION — et la première
+ * difficulté devient de retrouver le programme derrière le texte, alors que
+ * l'exercice porte sur la figure.
+ *
+ * Les couleurs sont celles de Scratch 3 : Mouvement #4C97FF, Contrôle #FFAB19.
+ * Elles restent lisibles en noir et blanc — le bleu tombe en gris moyen, le
+ * jaune en gris clair —, et le texte est écrit en blanc sur le premier, en
+ * noir sur le second, comme dans le logiciel.
+ */
+const BLOC_SCRATCH = {
+    mouvement: { fond: [76, 151, 255], bord: [60, 120, 210], encre: [255, 255, 255] },
+    controle: { fond: [255, 171, 25], bord: [207, 139, 23], encre: [40, 30, 0] }
+};
+
+/** La géométrie de la pile de blocs : un bloc par ligne, indenté sous son C. */
+function geoBlocsChat(g) {
+    const lignes = g.m.lignes;
+    // La pile occupe la hauteur du quadrillage : c'est ce qui la rend lisible
+    // sans déborder, quel que soit le nombre de blocs.
+    const pas = Math.min(g.cote / Math.max(lignes.length + 1, 5), 7.5);
+    const h = pas * 0.82;                 // le bloc, l'écart entre deux déduit
+    const retrait = Math.min(pas * 0.55, 3);
+    return {
+        lignes, pas, h, retrait,
+        taille: Math.max(1.5, Math.min(h * 0.5, 3.1)),   // la police, en mm
+        x: g.b.x,
+        y: g.y0,
+        largeur: g.progW
+    };
+}
+
 /** Un point du chat (en pas) vers le papier (en millimètres). */
 function pointChat(g, p) {
     return {
@@ -2983,13 +3019,35 @@ function chatPreviewHtml(item, slot, k, solution) {
         fill="#e11d48" opacity="0.85"/>`;
 
     let html = `<svg class="fx-ch-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
-    // Le programme, une ligne par bloc, indenté sous « répéter ».
-    const pas = Math.min(g.cote / Math.max(m.lignes.length + 1, 6), 8);
-    html += `<div class="fx-ch-prog" style="left:${g.b.x * k}px; top:${g.y0 * k}px;
-        width:${g.progW * k}px; font-size:${Math.min(pas * 0.44, 3.5) * k}px;
-        line-height:${pas * k}px">`
-        + m.lignes.map(l => `<div style="padding-left:${l.creux * 1.4}em">${echapperSheet(l.texte)}</div>`).join('')
-        + '</div>';
+    // LE PROGRAMME, EN BLOCS. Un bloc par ligne, empilés, et le « répéter »
+    // enveloppe les siens dans un C — comme dans le logiciel.
+    const bl = geoBlocsChat(g);
+    bl.lignes.forEach((l, i) => {
+        const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
+        const x = bl.x + l.creux * bl.retrait;
+        const y = bl.y + i * bl.pas;
+        const fond = `rgb(${c.fond.join(',')})`;
+        if (l.fin) {
+            // La barre du bas du C : plus courte, et sans texte.
+            html += `<div class="fx-ch-bloc fx-ch-bloc--fin" style="left:${x * k}px; top:${y * k}px;
+                width:${(bl.largeur * 0.42) * k}px; height:${(bl.h * 0.62) * k}px;
+                background:${fond}"></div>`;
+            return;
+        }
+        // Le dos du C : une colonne de couleur qui court le long des blocs
+        // enveloppés, jusqu'à la barre du bas.
+        if (l.genre === 'controle') {
+            const jusqua = bl.lignes.findIndex((z, j) => j > i && z.fin && z.creux === l.creux);
+            const bas = (jusqua < 0 ? bl.lignes.length : jusqua) * bl.pas;
+            html += `<div class="fx-ch-dos" style="left:${x * k}px; top:${(y + bl.h) * k}px;
+                width:${bl.retrait * k}px; height:${(bl.y + bas - y - bl.h) * k}px;
+                background:${fond}"></div>`;
+        }
+        html += `<div class="fx-ch-bloc" style="left:${x * k}px; top:${y * k}px;
+            width:${(bl.largeur - l.creux * bl.retrait) * k}px; height:${bl.h * k}px;
+            background:${fond}; color:rgb(${c.encre.join(',')});
+            font-size:${bl.taille * k}px">${echapperSheet(l.texte)}</div>`;
+    });
 
     const rep = m.quoi === 'angle'
         ? [`L'angle vaut`, solution ? `${m.angle}°` : '……… °']
@@ -3031,24 +3089,40 @@ function dessinerChatPdf(doc, item, slot, solution, champ) {
     doc.setFillColor(225, 29, 72);
     doc.triangle(t[0].x, t[0].y, t[1].x, t[1].y, t[2].x, t[2].y, 'F');
 
-    // Le programme. Chaque ligne est découpée à la largeur de sa colonne : un
-    // « répéter 8 fois : » sous-indenté sortait par la droite.
-    const taille = Math.max(5.5, Math.min(g.cote / (m.lignes.length + 2) * 1.7, 9));
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(taille);
-    doc.setTextColor(...ENCRE.texte);
-    let y = g.y0 + taille * 0.45;
-    m.lignes.forEach(l => {
-        const x = g.b.x + l.creux * taille * 0.5;
-        doc.splitTextToSize(pourPdf(l.texte), g.progW - l.creux * taille * 0.5).forEach(part => {
-            doc.text(part, x, y);
-            y += taille * 0.46;
-        });
+    // LE PROGRAMME, EN BLOCS — les mêmes qu'à l'écran, et les mêmes que dans
+    // le logiciel : c'est tout l'intérêt.
+    const bl = geoBlocsChat(g);
+    bl.lignes.forEach((l, i) => {
+        const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
+        const x = bl.x + l.creux * bl.retrait;
+        const y = bl.y + i * bl.pas;
+        doc.setFillColor(...c.fond);
+        doc.setDrawColor(...c.bord);
+        doc.setLineWidth(0.18);
+        if (l.fin) {
+            doc.roundedRect(x, y, bl.largeur * 0.42, bl.h * 0.62, 0.7, 0.7, 'FD');
+            return;
+        }
+        if (l.genre === 'controle') {
+            const jusqua = bl.lignes.findIndex((z, j) => j > i && z.fin && z.creux === l.creux);
+            const bas = (jusqua < 0 ? bl.lignes.length : jusqua) * bl.pas;
+            doc.rect(x, y + bl.h, bl.retrait, bl.y + bas - y - bl.h, 'F');
+        }
+        doc.roundedRect(x, y, bl.largeur - l.creux * bl.retrait, bl.h, 0.9, 0.9, 'FD');
+        doc.setFont('helvetica', 'bold');
+        // 1 pt ≈ 0,3528 mm : la police du bloc est donnée en millimètres, comme
+        // sa hauteur, pour que l'aperçu et la feuille soient identiques.
+        doc.setFontSize(bl.taille / 0.3528);
+        doc.setTextColor(...c.encre);
+        doc.text(pourPdf(l.texte), x + 1.4, y + bl.h * 0.68);
     });
 
     const yl = g.ligneY + g.ligneH * 0.66;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.2, 10)));
+    // ON REDIT L'ENCRE : le dernier bloc du programme vient de la passer en
+    // blanc, et la question s'imprimait en blanc sur blanc.
+    doc.setTextColor(...ENCRE.texte);
     const etiquette = pourPdf(m.quoi === 'angle' ? 'L\'angle vaut' : 'La figure obtenue est');
     doc.text(etiquette, g.b.x, yl);
     const xr = g.b.x + doc.getTextWidth(etiquette) + 3;
