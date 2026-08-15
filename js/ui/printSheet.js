@@ -4185,8 +4185,35 @@ export function ouvrirFicheModal(exo, params) {
                     font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`
                 : `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`;
             html += rendu.previewGrille(item, slot, k, solutionsVisibles);
+            // ON CHANGE UNE GRILLE EN CLIQUANT DESSUS.
+            //
+            // « Autres grilles » refait la feuille entière : quand une seule
+            // grille ne convient pas — trop facile, un mot qu'on ne veut pas,
+            // une position déjà donnée l'an dernier —, on perdait les onze
+            // autres pour la remplacer. Le bloc lui-même est donc un bouton.
+            const bo = slot.boite;
+            html += `<button type="button" class="fp-bloc" data-bloc="${i}"
+                title="Changer cette grille"
+                style="left:${bo.x * k}px; top:${(bo.y - 4) * k}px;
+                width:${bo.w * k}px; height:${(bo.h + 4) * k}px"><span>🎲 Autre</span></button>`;
         });
         apercu.innerHTML = html;
+
+        apercu.querySelectorAll('[data-bloc]').forEach(b => {
+            b.onclick = () => {
+                const i = Number(b.dataset.bloc);
+                // On exclut ce que portent les AUTRES blocs, pas celui-ci :
+                // sinon la grille qu'on veut changer s'interdit elle-même de
+                // revenir, et le tirage se rétrécit à chaque clic.
+                items[i] = generator.generate(reglages, {
+                    rng: makeRng(), index: i,
+                    themesExclus: items
+                        .filter((_, j) => j !== i)
+                        .map(it => it.meta && it.meta.theme).filter(Boolean)
+                });
+                rendre();
+            };
+        });
     };
 
     colsEl.value = String(dispo.cols);

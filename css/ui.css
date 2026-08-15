@@ -393,6 +393,28 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-ligne { position: absolute; border-top: 1.4px solid #1a202c; }
 .fp-consigne { position: absolute; color: #5a6270; line-height: 1.2; }
 .fp-titre { position: absolute; text-align: center; font-weight: 700; }
+
+/* UNE GRILLE SE CHANGE EN CLIQUANT DESSUS. « Autres grilles » refait la feuille
+   entière : quand une seule ne convient pas, on perdait les onze autres pour la
+   remplacer. Le bloc est donc un bouton — invisible tant qu'on ne le survole
+   pas, pour que l'aperçu montre la feuille et non l'outil. */
+.fp-bloc {
+    position: absolute; padding: 0; background: transparent; cursor: pointer;
+    border: 1.5px dashed transparent; border-radius: 7px; z-index: 3;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    transition: background .12s, border-color .12s;
+}
+.fp-bloc > span {
+    opacity: 0; font: inherit; font-size: 11px; font-weight: 700;
+    background: var(--primary); color: #fff; border-radius: 0 5px 0 6px;
+    padding: 2px 7px; transition: opacity .12s; pointer-events: none;
+}
+.fp-bloc:hover {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.fp-bloc:hover > span, .fp-bloc:focus-visible > span { opacity: 1; }
+.fp-bloc:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .fp-grille { position: absolute; border-collapse: collapse; }
 .fp-grille td {
     border: 0.5px solid #b8bec9; text-align: center; vertical-align: middle;
