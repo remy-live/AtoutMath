@@ -192,20 +192,30 @@ class Plateau extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     position: relative;
                 }
-                /* Le damier est un CARRÉ borné par la place disponible, sans
-                   calcul : aspect-ratio fait le travail dans les deux sens. */
+                /* LE CÔTÉ DU DAMIER EST CALCULÉ, PAS NÉGOCIÉ.
+                   Il valait « min(100cqw, 92cqh) » avec un plafond de hauteur
+                   par-dessus — deux contraintes qui se contredisaient, et ce
+                   n'est jamais celle qu'on croit qui l'emporte : la largeur
+                   restait à 600 pendant que la hauteur tombait à 578. D'où un
+                   damier rectangulaire, et des cases de 73,5 × 70,8.
+                   Le « 92cqh » se mesurait d'ailleurs sur le conteneur du JEU,
+                   bandeau et consigne compris, avec un neuf-pour-cent réglé à
+                   vue de nez pour les retrancher — faux dès que le bandeau
+                   passait sur deux lignes.
+                   La place réellement libre, elle, se mesure : c'est
+                   mesurerDamier() qui la calcule et pose la variable. */
                 /* Colonnes ET rangées en 1fr. Sans la seconde ligne, les
                    rangées se dimensionnent au CONTENU : une case vide
                    s'écrase, une case avec pièce s'étire — les cases n'étaient
                    carrées que peuplées. */
                 .pl-damier {
-                    aspect-ratio: 1; max-width: 100%; max-height: 100%;
+                    width: var(--pl-cote, 300px); height: var(--pl-cote, 300px);
                     display: grid;
                     grid-template-columns: repeat(${n}, 1fr);
                     grid-template-rows: repeat(${n}, 1fr);
                     border: 6px solid ${co.bord}; border-radius: 10px;
                     box-shadow: var(--shadow-md); touch-action: manipulation;
-                    width: min(100cqw, 92cqh);
+                    box-sizing: border-box;
                 }
                 .pl-case {
                     position: relative; border: 0; padding: 0; margin: 0;
@@ -343,6 +353,8 @@ class Plateau extends BaseGame {
         this.damierEl = this.container.querySelector('[data-damier]');
         this.promoEl = this.container.querySelector('[data-promo]');
         this.noteEl = this.container.querySelector('[data-note]');
+        this.wrapEl = this.container.querySelector('.pl-wrap');
+        this.brancherMesure();
         this.tourEl = this.container.querySelector('[data-tour]');
         this.jetonEl = this.container.querySelector('[data-jeton]');
         this.scoreEl = this.container.querySelector('[data-score]');
@@ -758,7 +770,48 @@ class Plateau extends BaseGame {
         fin();
     }
 
+    /**
+     * LE PLUS GRAND CARRÉ QUI TIENT, mesuré plutôt que négocié.
+     *
+     * On ne peut pas demander à la scène sa hauteur disponible : elle se serre
+     * autour du damier — c'est ce qui garde la consigne collée sous le plateau
+     * au lieu de la renvoyer au bas de l'écran, derrière la barre du
+     * navigateur. Lui donner une hauteur définie corrige les cases et casse la
+     * mise en page ; la lui laisser au contenu fait l'inverse.
+     *
+     * On mesure donc la place à partir du CADRE, dont la hauteur ne dépend pas
+     * du damier : la hauteur totale, moins le bandeau du haut, moins la
+     * consigne, moins les gouttières. Rien de circulaire là-dedans, et rien à
+     * régler à vue de nez.
+     */
+    mesurerDamier() {
+        if (!this.wrapEl || !this.damierEl) return;
+        const cadre = this.wrapEl.getBoundingClientRect();
+        if (!cadre.height || !cadre.width) return;
+        const style = getComputedStyle(this.wrapEl);
+        const gouttiere = parseFloat(style.gap) || 0;
+        let pris = 0, freres = 0;
+        for (const el of this.wrapEl.children) {
+            if (el.contains(this.damierEl)) continue;
+            pris += el.getBoundingClientRect().height;
+            freres++;
+        }
+        const dispo = cadre.height - pris - gouttiere * freres;
+        const cote = Math.max(140, Math.floor(Math.min(cadre.width, dispo)));
+        this.damierEl.style.setProperty('--pl-cote', `${cote}px`);
+    }
+
+    brancherMesure() {
+        this.mesurerDamier();
+        if (typeof ResizeObserver !== 'function') return;
+        // On observe le CADRE, jamais le damier : s'observer soi-même pour se
+        // redimensionner est une boucle qui ne s'arrête pas.
+        this.observateur = new ResizeObserver(() => this.mesurerDamier());
+        this.observateur.observe(this.wrapEl);
+    }
+
     destroy() {
+        if (this.observateur) { this.observateur.disconnect(); this.observateur = null; }
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         this.fermerPromotion();
         clearTimeout(this.timerIA);
