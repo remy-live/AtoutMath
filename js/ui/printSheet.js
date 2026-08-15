@@ -3356,6 +3356,9 @@ function dessinerTableurPdf(doc, item, slot, solution, champ) {
 // lettres de bourrage et l'on trace un trait d'un bout à l'autre de chaque mot.
 // C'est exactement le geste qu'on demande à l'élève, et ça se photocopie.
 
+/** La largeur dont dispose la liste quand elle passe sous la grille. */
+const empileLargeur = (b) => b.w;
+
 function geoMots(item, slot) {
     const m = item.meta;
     const b = slot.boite;
@@ -3375,7 +3378,7 @@ function geoMots(item, slot) {
     const coteA = Math.max(10, Math.min(b.w - listeW - 8, b.h));
     // Empilée : les mots passent SOUS la grille, sur plusieurs colonnes.
     const parCol = Math.max(3, Math.ceil(m.mots.length / (seulsMots ? 3 : 2)));
-    const listeH = parCol * (seulsMots ? 4.6 : 4) + 2;
+    const listeH = parCol * (seulsMots ? 6.1 : 4.6) + 2;
     const coteB = Math.max(10, Math.min(b.w, b.h - listeH - 3));
     const empile = coteB > coteA + 2;
     const cote = empile ? coteB : coteA;
@@ -3387,10 +3390,29 @@ function geoMots(item, slot) {
         ? b.x + Math.max(0, (b.w - cote) / 2)
         : b.x + Math.max(0, (b.w - cote - 8 - listeW) / 2);
     const y0 = empile ? b.y : b.y + (b.h - cote) / 2;
+    // LA TAILLE DES MOTS À CHERCHER, CALCULÉE UNE FOIS POUR LES DEUX RENDUS.
+    //
+    // Rémy : « les mots à chercher sont écrits très petit ». Ils l'étaient
+    // deux fois : neuf points sur le PDF, et dans l'aperçu une taille déduite
+    // de la hauteur disponible qui tombait à six. Or ces mots-là, on les relit
+    // à chaque lettre trouvée — c'est la ligne la plus lue de la feuille.
+    //
+    // Une liste de mots seuls peut être franche ; des définitions, plus
+    // longues, tiennent un cran en dessous. En POINTS, comme le PDF ; l'aperçu
+    // convertit.
+    const taille = seulsMots ? 11.5 : 8.5;
+    // LE NOMBRE DE COLONNES SUIT LE MOT LE PLUS LONG, pas un chiffre décidé
+    // d'avance. Trois colonnes fixes convenaient à « ANGLE » et « SOMME » ;
+    // « DENOMINATEUR » débordait sur sa voisine et les deux devenaient
+    // illisibles — juste à l'endroit qu'on relit à chaque lettre trouvée.
+    const plusLong = Math.max(...indicesMots(m).map(l => l.length), 1);
+    const largeurMot = plusLong * taille * 0.3528 * 0.62 + 4;
+    const colonnesTient = Math.max(1, Math.floor((empileLargeur(b) || b.w) / largeurMot));
     return {
-        m, b, cell, cote, empile,
+        m, b, cell, cote, empile, taille,
         listeW: empile ? b.w : listeW,
-        listeColonnes: empile ? (seulsMots ? 3 : 2) : 1,
+        listeColonnes: empile
+            ? Math.max(1, Math.min(seulsMots ? 3 : 2, colonnesTient)) : 1,
         x0, y0,
         listeX: empile ? b.x : x0 + cote + 8,
         listeY: empile ? y0 + cote + 3 : y0,
@@ -3451,12 +3473,11 @@ function motsPreviewHtml(item, slot, k, solution) {
 
     let html = `<svg class="fx-mc-svg" style="left:0; top:0; width:100%; height:100%">${svg}</svg>`;
     const lignes = indicesMots(m);
-    const parCol = Math.ceil(lignes.length / g.listeColonnes);
-    const pas = Math.min(g.listeH / Math.max(parCol, 8), m.indices === 'mots' ? 8 : 12);
     html += `<div class="fx-mc-liste" style="left:${g.listeX * k}px; top:${g.listeY * k}px;
         width:${g.listeW * k}px; height:${g.listeH * k}px;
         column-count:${g.listeColonnes}; column-gap:${4 * k}px;
-        font-size:${Math.min(pas * 0.42, 4) * k}px; line-height:${pas * k}px">`
+        font-weight:${m.indices === 'mots' ? 800 : 600};
+        font-size:${g.taille * 0.3528 * k}px; line-height:${g.taille * 0.53 * k}px">`
         + lignes.map(l => `<div>${echapperSheet(l)}</div>`).join('') + '</div>';
     return html;
 }
@@ -3502,7 +3523,7 @@ function dessinerMotsPdf(doc, item, slot, solution) {
     });
 
     const lignes = indicesMots(m);
-    const taille = m.indices === 'mots' ? 9 : 7;
+    const taille = g.taille;
     doc.setFont('helvetica', m.indices === 'mots' ? 'bold' : 'normal');
     doc.setFontSize(taille);
     doc.setTextColor(...ENCRE.texte);
@@ -3510,7 +3531,7 @@ function dessinerMotsPdf(doc, item, slot, solution) {
     // aurait tiré huit mots sur toute la hauteur laissée libre, ou débordé.
     const colW = (g.listeW - 4 * (g.listeColonnes - 1)) / g.listeColonnes;
     const parCol = Math.ceil(lignes.length / g.listeColonnes);
-    const interligne = taille * 0.42;
+    const interligne = taille * 0.53;
     let col = 0;
     let y = g.listeY + taille * 0.5;
     let dansLaColonne = 0;
