@@ -451,7 +451,10 @@ export function composerBlocs(exos, opts, mesurer) {
             if (page.items.length && y + enteteH + hauteurBloc2 > basPage) nouvellePage();
 
             page.items.push({
-                type: 'exo', n: iExo + 1, suite: false,
+                // L'IDENTIFIANT SUIT LE BANDEAU. L'aperçu accroche dessus un
+                // engrenage qui ouvre les réglages de CET exercice : sans lui,
+                // il faudrait deviner de quel exercice vient un bandeau.
+                type: 'exo', n: iExo + 1, suite: false, id: exo.id ?? null,
                 titre: exo.titre, points: exo.points ?? null,
                 x: zone.x, y, w: zone.w, h: o.bandeauH
             });
@@ -467,7 +470,7 @@ export function composerBlocs(exos, opts, mesurer) {
                 if (y + hauteurBloc2 + o.entreQuestions > basPage) {
                     nouvellePage();
                     page.items.push({
-                        type: 'exo', n: iExo + 1, suite: true,
+                        type: 'exo', n: iExo + 1, suite: true, id: exo.id ?? null,
                         titre: exo.titre, points: null,
                         x: zone.x, y, w: zone.w, h: o.bandeauH
                     });
@@ -585,7 +588,7 @@ export function composerBlocs(exos, opts, mesurer) {
 
         const poserBandeau = (suite) => {
             page.items.push({
-                type: 'exo', n: iExo + 1, suite,
+                type: 'exo', n: iExo + 1, suite, id: exo.id ?? null,
                 titre: exo.titre, points: exo.points ?? null,
                 x: zone.x, y, w: zone.w, h: o.bandeauH
             });

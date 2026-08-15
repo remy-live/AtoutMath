@@ -518,8 +518,112 @@ export function ouvrirFicheParcours(chemin) {
         });
     };
 
+    // --- L'ENGRENAGE DU BANDEAU ---------------------------------------------
+    //
+    // Les réglages d'un exercice vivaient dans la liste de gauche : on réglait
+    // d'un côté, on regardait de l'autre, et il fallait à chaque fois retrouver
+    // quelle ligne de la liste correspondait au bandeau qu'on avait sous les
+    // yeux. Le bouton est donc SUR le bandeau, et son panneau s'ouvre collé à
+    // lui — on règle là où l'on regarde.
+    //
+    // Il ne double PAS la liste : on y met le nécessaire — combien, sur combien
+    // de colonnes, numéroté ou non, le barème quand c'est une interrogation.
+    // La consigne et l'ordre restent dans la liste, qui les montre TOUS en même
+    // temps, ce qu'un panneau collé à un seul bandeau ne peut pas faire.
+    let panneau = null;
+
+    const fermerRoue = () => {
+        if (!panneau) return;
+        panneau.remove();
+        panneau = null;
+        document.removeEventListener('pointerdown', surClicDehors, true);
+        document.removeEventListener('keydown', surEchap, true);
+    };
+    function surClicDehors(ev) {
+        if (panneau && !panneau.contains(ev.target) && !ev.target.closest('[data-reglage]')) fermerRoue();
+    }
+    function surEchap(ev) { if (ev.key === 'Escape') fermerRoue(); }
+
+    function ouvrirRoue(bouton, id) {
+        const dejaLa = panneau && panneau.dataset.pour === id;
+        fermerRoue();
+        if (dejaLa) return;                    // deuxième clic sur la même roue : on referme
+
+        const e = parId.get(id);
+        if (!e) return;
+        const unite = e.grille ? 'Grilles' : 'Questions';
+        panneau = document.createElement('div');
+        panneau.className = 'pp-roue-panneau';
+        panneau.dataset.pour = id;
+        panneau.innerHTML = `
+            <div class="pp-roue-titre">${echapper(e.title)}</div>
+            <label class="pp-roue-champ">${unite}
+                <input type="number" class="cfg-input cfg-input--num" data-r-nb
+                    min="0" max="40" value="${quantites[id]}"></label>
+            <label class="pp-roue-champ">${e.grille ? 'Par ligne' : 'Colonnes'}
+                <select class="cfg-input" data-r-col>
+                    ${['auto', 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"
+                        ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
+                </select></label>
+            <label class="pp-roue-case">
+                <input type="checkbox" data-r-num ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
+            <label class="pp-roue-champ" ${interro.checked ? '' : 'hidden'}>Barème
+                <input type="number" class="cfg-input cfg-input--num" data-r-pts
+                    min="0" max="40" value="${points[id]}"></label>
+            <button type="button" class="pp-roue-autres" data-r-neuf>🎲 Autres questions</button>`;
+        document.body.appendChild(panneau);
+
+        // COLLÉ À L'ENGRENAGE, et rabattu s'il devait sortir de l'écran : un
+        // panneau à moitié hors du cadre ne se règle pas, il se subit.
+        const r = bouton.getBoundingClientRect();
+        const large = panneau.offsetWidth, haut = panneau.offsetHeight;
+        const x = Math.max(8, Math.min(r.left, window.innerWidth - large - 8));
+        const y = r.bottom + 6 + haut > window.innerHeight
+            ? Math.max(8, r.top - haut - 6) : r.bottom + 6;
+        panneau.style.left = `${x}px`;
+        panneau.style.top = `${y}px`;
+
+        const nb = panneau.querySelector('[data-r-nb]');
+        nb.oninput = () => {
+            quantites[id] = Math.max(0, Math.min(40, Number(nb.value) || 0));
+            blocs = null;
+            if (!baremeTouche) repartirPoints();
+            majChiffres();
+            rendre();
+        };
+        // Le rabotage ne s'écrit qu'à la sortie : pendant la frappe, réécrire
+        // ce que l'on tape empêche de taper.
+        nb.onchange = () => { nb.value = quantites[id]; };
+        panneau.querySelector('[data-r-col]').onchange = (ev) => {
+            colonnes[id] = ev.target.value;
+            rendreListe();
+            rendre();
+        };
+        panneau.querySelector('[data-r-num]').onchange = (ev) => {
+            numeroter[id] = ev.target.checked;
+            rendreListe();
+            rendre();
+        };
+        const pts = panneau.querySelector('[data-r-pts]');
+        pts.oninput = () => {
+            points[id] = Math.max(0, Math.min(40, Number(pts.value) || 0));
+            baremeTouche = true;             // à partir d'ici, le barème est le sien
+            rendreListe();
+            rendre();
+        };
+        panneau.querySelector('[data-r-neuf]').onclick = () => { blocs = null; rendre(); };
+        nb.focus();
+        nb.select();
+        document.addEventListener('pointerdown', surClicDehors, true);
+        document.addEventListener('keydown', surEchap, true);
+    }
+
     const rendre = () => {
         const o = options();
+        // LE PANNEAU SURVIT AU REDESSIN. Il vit sur le corps du document, pas
+        // dans l'aperçu : le fermer ici le ferait disparaître au premier
+        // réglage qu'on y change — c'est-à-dire toujours.
+        //
         // Les questions ne sont retirées que si nécessaire (« D'autres
         // questions », changement de quantité) : changer un réglage de mise en
         // page garde les mêmes questions.
@@ -544,6 +648,10 @@ export function ouvrirFicheParcours(chemin) {
                 // « auto » ne descend pas jusqu'au moteur : c'est son défaut.
                 const col = colonnes[id] === 'auto' ? null : Number(colonnes[id]);
                 return {
+                    // L'IDENTIFIANT VOYAGE AVEC L'EXERCICE : c'est lui que le
+                    // bandeau de l'aperçu portera, et sur lequel l'engrenage
+                    // ouvrira les bons réglages.
+                    id,
                     titre: e.title,
                     consigne: o.interrogation ? '' : (e.grille ? consigneGrille : consignes[id]),
                     points: o.interrogation ? (points[id] || null) : null,
@@ -622,8 +730,13 @@ export function ouvrirFicheParcours(chemin) {
             <div class="fq-page${v.sol ? ' fq-page--sol' : ''}"
                  style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
                 ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg)}
-                ${v.liste ? apercuSolutions(v.page, k, v.opts) : apercuItems(v.page, k, v.opts)}
+                ${v.liste ? apercuSolutions(v.page, k, v.opts)
+        : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol })}
             </div>`).join('');
+
+        apercu.querySelectorAll('[data-reglage]').forEach(b => {
+            b.onclick = (ev) => { ev.stopPropagation(); ouvrirRoue(b, b.dataset.reglage); };
+        });
 
         const nbGrilles = exos.reduce((s, x) => s + x.grilles.length, 0);
         const morceaux = [];
@@ -659,7 +772,9 @@ export function ouvrirFicheParcours(chemin) {
         rendre();
     };
     m.querySelector('#pp-regen').onclick = () => { blocs = null; rendre(); };
-    m.querySelector('#pp-fermer').onclick = () => { m.style.display = 'none'; };
+    // Le panneau vit sur le corps du document : il resterait à l'écran après
+    // la fermeture de la fiche, orphelin et sans rien à régler.
+    m.querySelector('#pp-fermer').onclick = () => { fermerRoue(); m.style.display = 'none'; };
     m.querySelector('#pp-dl').onclick = () => telecharger(m, chemin, () => ({
         exos: derniers ? derniers.exos : [],
         toutes: derniers ? derniers.toutes : [],

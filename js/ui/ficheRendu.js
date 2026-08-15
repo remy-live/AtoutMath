@@ -207,6 +207,12 @@ export function mesureur() {
     };
 }
 
+/** L'engrenage de l'aperçu — dessiné, pas un emoji : il doit rester net. */
+const ROUE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+
 /** Le libellé d'un bandeau d'exercice. */
 const titreExo = (it) => `Exercice ${it.n} — ${it.titre}${it.suite ? ' (suite)' : ''}`;
 
@@ -217,10 +223,28 @@ export function apercuItems(page, k, o) {
     let html = '';
     for (const it of page.items) {
         if (it.type === 'exo') {
+            // L'ENGRENAGE N'EXISTE QUE DANS L'APERÇU.
+            //
+            // Les réglages d'un exercice — combien de questions, sur combien de
+            // colonnes, numéroté ou non — vivaient dans une liste, à côté de la
+            // feuille : on réglait d'un côté et l'on regardait de l'autre, en
+            // cherchant à chaque fois quelle ligne de la liste correspondait au
+            // bandeau qu'on avait sous les yeux. Le bouton est donc SUR le
+            // bandeau.
+            //
+            // Il n'est posé que si l'appelant le demande (`o.reglable`), et
+            // l'appelant, c'est l'aperçu : le PDF passe par `pdfItems`, qui ne
+            // connaît pas ce bouton et ne peut donc pas l'imprimer.
+            const roue = (o.reglable && it.id && !it.suite)
+                ? `<button type="button" class="fx-roue" data-reglage="${echapper(it.id)}"
+                     title="Réglages de cet exercice"
+                     aria-label="Réglages de « ${echapper(it.titre)} »">${ROUE}</button>`
+                : '';
             html += `<div class="fx-bandeau" style="left:${it.x * k}px; top:${it.y * k}px;
                 width:${it.w * k}px; height:${it.h * k}px; font-size:${o.taille * k * 1.02}px">
                 <span>${echapper(titreExo(it))}</span>
-                ${it.points ? `<span class="fx-points">… / ${it.points}</span>` : ''}</div>`;
+                ${it.points ? `<span class="fx-points">… / ${it.points}</span>` : ''}
+                ${roue}</div>`;
             continue;
         }
         if (it.type === 'consigne') {

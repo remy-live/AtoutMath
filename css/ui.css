@@ -394,6 +394,46 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-consigne { position: absolute; color: #5a6270; line-height: 1.2; }
 .fp-titre { position: absolute; text-align: center; font-weight: 700; }
 
+/* L'ENGRENAGE DU BANDEAU, et son panneau. N'existent que dans l'aperçu : le
+   PDF passe par un autre chemin de rendu, qui ne les connaît pas. */
+.fx-roue {
+    margin-left: auto; flex: 0 0 auto; display: inline-flex;
+    align-items: center; justify-content: center;
+    width: 20px; height: 20px; margin-right: 5px; padding: 0; border: 0;
+    border-radius: 6px; background: transparent; color: inherit;
+    opacity: .45; cursor: pointer; transition: opacity .12s, background .12s;
+}
+.fx-roue:hover, .fx-roue:focus-visible { opacity: 1; background: rgba(0, 0, 0, .07); }
+.fx-roue:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.pp-roue-panneau {
+    /* AU-DESSUS DE LA MODALE QUI L'A OUVERT : la fiche vit dans une
+       « modal-overlay--top » à z-index 999999, et un panneau posé en dessous
+       existe sans se voir — le pire des deux mondes. */
+    position: fixed; z-index: 1000001; min-width: 190px;
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px; border-radius: 12px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
+    font-size: 13px; color: var(--text-main);
+}
+.pp-roue-titre {
+    font-weight: 800; font-size: 13px; line-height: 1.25;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.pp-roue-champ {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; font-weight: 600;
+}
+.pp-roue-champ .cfg-input { max-width: 92px; }
+.pp-roue-case { display: flex; align-items: center; gap: 7px; font-weight: 600; cursor: pointer; }
+.pp-roue-autres {
+    border: 1px solid var(--border); background: var(--bg-hover);
+    color: var(--text-main); border-radius: 9px; cursor: pointer;
+    font: inherit; font-weight: 700; font-size: 12px; padding: 6px 10px;
+}
+.pp-roue-autres:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
 /* UNE GRILLE SE CHANGE EN CLIQUANT DESSUS. « Autres grilles » refait la feuille
    entière : quand une seule ne convient pas, on perdait les onze autres pour la
    remplacer. Le bloc est donc un bouton — invisible tant qu'on ne le survole
