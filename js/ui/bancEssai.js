@@ -676,3 +676,178 @@ const echapper = (s) => String(s ?? '')
 if (typeof window !== 'undefined') {
     window.bancEssai = { ouvrir: ouvrirBancEssai, importer: importerCarnet };
 }
+
+// --- LA BARRE DE PASSE ------------------------------------------------------
+//
+// Le panneau du banc est une PAGE : il recouvre l'écran, il faut le fermer
+// pour jouer, le rouvrir pour noter. Pour une passe de cent exercices, c'est
+// le bon outil — on note six critères, on corrige un classement.
+//
+// Mais tester, la plupart du temps, ce n'est pas cela : c'est enchaîner les
+// exercices en griffonnant une remarque quand quelque chose cloche. Cette
+// barre-là tient sur une ligne, reste posée par-dessus le jeu, et ne sait
+// faire que quatre choses : reculer, avancer, imprimer, écrire.
+//
+// LA REMARQUE S'ENREGISTRE TOUTE SEULE. Un champ de test qu'il faut penser à
+// valider perd ce qu'on y a écrit dès qu'on change d'exercice — et l'on ne
+// s'en aperçoit qu'à l'export, quand il est trop tard pour se souvenir.
+//
+// ELLE N'INVENTE AUCUN VERDICT. Écrire « le robot ne montre pas le nombre »
+// dit qu'il y a quelque chose à voir, pas que les cinq autres critères sont
+// bons. L'exercice reste donc « à faire » dans la passe complète : la barre
+// dépose une remarque, elle ne signe pas une notation.
+
+const CLE_BARRE = 'mathbox-banc-barre';
+
+let barre = null;
+let rangCourant = 0;
+let minuteurNote = null;
+
+/** L'ordre de la barre : le catalogue entier, dans son ordre à lui. */
+const listeBarre = () => exercices;
+
+export function basculerBarreBanc() {
+    if (barre) { fermerBarre(); return; }
+    if (!carnet) charger();
+    ouvrirBarre();
+}
+
+function fermerBarre() {
+    ecrireNote(true);
+    if (barre) barre.remove();
+    barre = null;
+    try { window.localStorage.removeItem(CLE_BARRE); } catch (e) { /* privé */ }
+}
+
+function ouvrirBarre() {
+    const suite = listeBarre();
+    if (!suite.length) return;
+    let repris = 0;
+    try { repris = Number(window.localStorage.getItem(CLE_BARRE)) || 0; } catch (e) { repris = 0; }
+    rangCourant = Math.max(0, Math.min(suite.length - 1, repris));
+
+    barre = document.createElement('div');
+    barre.id = 'banc-barre';
+    barre.setAttribute('role', 'toolbar');
+    barre.setAttribute('aria-label', 'Barre de passe du banc d\'essai');
+    barre.innerHTML = `
+        <button type="button" class="bb-btn" data-prec title="Exercice précédent"
+            aria-label="Exercice précédent">◀</button>
+        <button type="button" class="bb-titre" data-jouer
+            title="Rejouer cet exercice"><span data-nom></span><b data-compte></b></button>
+        <button type="button" class="bb-btn" data-suiv title="Exercice suivant"
+            aria-label="Exercice suivant">▶</button>
+        <button type="button" class="bb-btn" data-fiche title="Voir la fiche à imprimer"
+            aria-label="Voir la fiche à imprimer">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 9V3h12v6"/><rect x="3.5" y="9" width="17" height="7" rx="2"/>
+                <path d="M6 16h12v5H6z"/></svg></button>
+        <textarea class="bb-note" data-note rows="1" maxlength="2000"
+            placeholder="Une remarque sur cet exercice…"
+            aria-label="Remarque sur cet exercice"></textarea>
+        <span class="bb-etat" data-etat aria-live="polite"></span>
+        <button type="button" class="bb-btn" data-export title="Exporter les remarques"
+            aria-label="Exporter les remarques">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/>
+                <path d="M4 20h16"/></svg></button>
+        <button type="button" class="bb-btn bb-btn--fermer" data-fermer title="Fermer la barre"
+            aria-label="Fermer la barre">✕</button>`;
+    document.body.appendChild(barre);
+
+    barre.querySelector('[data-prec]').onclick = () => aller(-1);
+    barre.querySelector('[data-suiv]').onclick = () => aller(1);
+    barre.querySelector('[data-jouer]').onclick = () => lancerCourant();
+    barre.querySelector('[data-fiche]').onclick = () => apercuFiche(listeBarre()[rangCourant].id);
+    barre.querySelector('[data-export]').onclick = () => telechargerRapport();
+    barre.querySelector('[data-fermer]').onclick = () => fermerBarre();
+
+    const champ = barre.querySelector('[data-note]');
+    // ON N'ATTEND PAS LA VALIDATION : il n'y en a pas. Un demi-battement après
+    // la dernière frappe, la remarque est dans le carnet.
+    champ.oninput = () => {
+        clearTimeout(minuteurNote);
+        marquerEtat('…');
+        minuteurNote = setTimeout(() => ecrireNote(), 500);
+    };
+    champ.onblur = () => ecrireNote(true);
+
+    peindreBarre();
+}
+
+/** On change d'exercice — la remarque en cours part au carnet AVANT. */
+function aller(pas) {
+    ecrireNote(true);
+    const suite = listeBarre();
+    rangCourant = (rangCourant + pas + suite.length) % suite.length;
+    try { window.localStorage.setItem(CLE_BARRE, String(rangCourant)); } catch (e) { /* privé */ }
+    peindreBarre();
+    lancerCourant();
+}
+
+/**
+ * On lance l'exercice comme un élève le lancerait — mais SANS le guet de
+ * retour du panneau : ici on ne revient pas sur une fiche de notation, on
+ * reste dans la barre.
+ */
+function lancerCourant() {
+    const exo = listeBarre()[rangCourant];
+    if (!exo) return;
+    import('../games/engine.js').then(m => {
+        m.openGameLayer({ ...exo, internalStudentConfig: true, params: { ...(exo.params || {}) } });
+    });
+}
+
+function peindreBarre() {
+    if (!barre) return;
+    const suite = listeBarre();
+    const exo = suite[rangCourant];
+    barre.querySelector('[data-nom]').textContent = exo.title;
+    barre.querySelector('[data-compte]').textContent = `${rangCourant + 1} / ${suite.length}`;
+    const l = ligneDe(carnet, exo.id, nomAppareil);
+    barre.querySelector('[data-note]').value = (l && l.note) || '';
+    marquerEtat(l && l.note ? '✓' : '');
+}
+
+function marquerEtat(texte) {
+    const e = barre && barre.querySelector('[data-etat]');
+    if (e) e.textContent = texte;
+}
+
+/**
+ * La remarque dans le carnet, SANS toucher aux verdicts.
+ *
+ * Une remarque n'est pas une notation : elle dit qu'il y a quelque chose à
+ * voir, pas que les cinq autres critères sont bons. On garde donc les verdicts
+ * déjà rendus s'il y en a, et l'on n'en invente aucun sinon — l'exercice reste
+ * « à faire » dans la passe complète, ce qui est la vérité.
+ */
+function ecrireNote(immediat) {
+    if (!barre) return;
+    clearTimeout(minuteurNote);
+    const exo = listeBarre()[rangCourant];
+    const champ = barre.querySelector('[data-note]');
+    if (!exo || !champ) return;
+    const texte = champ.value.trim();
+    const l = ligneDe(carnet, exo.id, nomAppareil);
+    if ((l ? l.note || '' : '') === texte) { if (immediat) marquerEtat(texte ? '✓' : ''); return; }
+    // Rien à dire ET rien de noté : on n'ouvre pas une ligne pour du vide.
+    if (!texte && !l) return;
+    carnet = noter(carnet, {
+        exercice: exo.id,
+        titre: exo.title,
+        activite: exo.activityId || '',
+        appareilNom: nomAppareil,
+        version: versionChargee(),
+        date: Date.now(),
+        verdicts: l ? l.verdicts : {},
+        note: texte,
+        classement: l ? l.classement : direClassement(exo),
+        aRetester: l ? l.aRetester : null,
+        tags: l ? l.tags : null
+    });
+    garder();
+    marquerEtat(texte ? '✓' : '');
+}

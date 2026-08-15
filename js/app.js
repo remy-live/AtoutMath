@@ -631,6 +631,11 @@ function initDebugToolbar() {
     const btnBanc = document.getElementById('db-banc');
     if (btnBanc) btnBanc.onclick = () => import('./ui/bancEssai.js').then(m => m.ouvrirBancEssai());
 
+    // La barre de passe : la version d'une ligne du banc, posée par-dessus le
+    // jeu. On l'allume et on l'éteint du même bouton.
+    const btnBarre = document.getElementById('db-banc-barre');
+    if (btnBarre) btnBarre.onclick = () => import('./ui/bancEssai.js').then(m => m.basculerBarreBanc());
+
     // Passer la question en cours, ou revenir sur la précédente, quel que soit
     // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
     // voulait examiner et il fallait relancer l'exercice depuis le début.
