@@ -67,14 +67,19 @@ class Tableur extends BaseGame {
                     /* UNE grille de six colonnes : elle a de la place. */
                     --tab-entete: 26px;
                     --tab-cell: clamp(30px, min((100cqw - 80px) / 7, (100cqh - 210px) / 8), 64px);
-                    --tab-hauteur: clamp(26px, (100cqh - 210px) / 8, 42px);
+                    /* UNE LIGNE DE TABLEUR EST PLATE. À hauteur égale à la
+                       largeur, la grille ressemblait à un damier et mangeait
+                       tout l'écran d'un téléphone : Rémy, « lignes moins
+                       hautes ». C'est aussi la forme d'un vrai tableur — c'est
+                       elle qu'on doit reconnaître. */
+                    --tab-hauteur: clamp(22px, (100cqh - 210px) / 11, 34px);
                 }
                 /* DEUX grilles côte à côte : la largeur se partage, et il faut
                    aussi la place du titre de chacune. */
                 .tab-duo { --tab-entete: 22px; }
                 .tab-duo .tab-grille {
                     --tab-cell: clamp(20px, min((100cqw - 130px) / 12, (100cqh - 250px) / 8), 54px);
-                    --tab-hauteur: clamp(20px, (100cqh - 250px) / 8, 44px);
+                    --tab-hauteur: clamp(18px, (100cqh - 250px) / 11, 34px);
                 }
                 .tab-top { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 10px 4px; flex-wrap: wrap; }
                 .tab-menu-label { font-size: .82rem; font-weight: 700; color: #778; margin-right: 4px; }

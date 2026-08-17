@@ -60,8 +60,11 @@ export class MathCrush extends BaseGame {
         this.helpBtn = document.createElement('button');
         this.helpBtn.innerHTML = '💡 Indice (-20)';
         this.helpBtn.style.position = 'absolute';
-        this.helpBtn.style.top = '20px';
-        this.helpBtn.style.right = '20px';
+        // EN BAS À DROITE, pas en haut : sur un téléphone, le bouton posé en
+        // haut à droite venait s'asseoir sur « Cible : 7 » — l'unique chose
+        // qu'il faut lire avant de jouer.
+        this.helpBtn.style.bottom = '10px';
+        this.helpBtn.style.right = '10px';
         this.helpBtn.style.zIndex = '10';
         this.helpBtn.style.padding = '8px 12px';
         this.helpBtn.style.borderRadius = '20px';
@@ -464,6 +467,21 @@ export class MathCrush extends BaseGame {
 
     draw() {
         if(!this.ctx) return;
+        // LE CANEVAS DOIT AVOIR LA FORME DE SA BOÎTE.
+        //
+        // Sa taille interne était fixée UNE SEULE FOIS au montage, puis étirée
+        // en CSS à 100 % : dès que le conteneur changeait de proportions — ce
+        // qu'il fait toujours, la mise en page se terminant après le montage —,
+        // l'image se déformait et les cases CARRÉES s'affichaient en
+        // rectangles. Rémy, sur iPhone : « cases pas carrées ». On
+        // resynchronise juste avant de dessiner : c'est le seul moment où la
+        // taille réellement affichée est connue.
+        const large = Math.round(this.canvas.clientWidth || this.container.clientWidth || 800);
+        const haut = Math.round(this.canvas.clientHeight || this.container.clientHeight || 600);
+        if (large > 0 && haut > 0 && (this.canvas.width !== large || this.canvas.height !== haut)) {
+            this.canvas.width = large;
+            this.canvas.height = haut;
+        }
         const w = this.canvas.width;
         const h = this.canvas.height;
         this.ctx.clearRect(0, 0, w, h);

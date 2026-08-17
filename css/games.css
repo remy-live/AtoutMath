@@ -263,6 +263,12 @@
     background: linear-gradient(135deg, var(--warning), #fbbf24) !important;
     border-color: #fff !important;
 }
-@media (max-width: 330px) {
+/* DEUX CARTES PAR LIGNE, MÊME SUR UN TÉLÉPHONE ÉTROIT. Le repli à une colonne
+   se déclenchait à 330 px — c'est-à-dire sur les iPhone que Rémy utilise pour
+   tester —, et quatre propositions empilées poussaient « Un indice » et
+   « Montre-moi » hors de l'écran. Une carte de moitié de 326 px fait encore
+   150 px : « 707,452 » y tient trois fois. On ne retombe à une colonne que sur
+   les écrans vraiment minuscules. */
+@media (max-width: 260px) {
     .choice-cartes { grid-template-columns: 1fr; }
 }

@@ -127,13 +127,25 @@
    élargit la bulle en capsule quand le contenu l'exige — plutôt que de
    rapetisser tout le monde pour le pire cas. */
 
-.bubble.choice--l { font-size: 1.7rem; }
-.bubble.choice--xl { font-size: 1.35rem; width: auto; min-width: 110px; padding: 0 18px; border-radius: 56px; }
-.bubble.choice--xxl { font-size: 1.15rem; width: auto; min-width: 110px; padding: 0 16px; border-radius: 56px; }
+/* LA TAILLE DU TEXTE SUIT LE DIAMÈTRE DE LA BULLE, pas seulement la longueur
+   du contenu. Ces trois classes posaient un corps FIXE : sur un téléphone où
+   la bulle tombe à soixante-dix pixels pour tenir à quatre sur la ligne,
+   « 43,95 » en 1,7 rem sortait du cercle des deux côtés. Le plafond en rem
+   reste — c'est la taille au-delà de laquelle on n'a plus rien à gagner sur un
+   grand écran —, mais il ne peut plus dépasser ce que la bulle peut porter. */
+.bubble.choice--l { font-size: min(1.7rem, calc(var(--bulle) * .285)); }
+.bubble.choice--xl {
+    font-size: min(1.35rem, calc(var(--bulle) * .22));
+    width: auto; min-width: 110px; padding: 0 18px; border-radius: 56px;
+}
+.bubble.choice--xxl {
+    font-size: min(1.15rem, calc(var(--bulle) * .17));
+    width: auto; min-width: 110px; padding: 0 16px; border-radius: 56px;
+}
 
-.device-simulator .bubble.choice--l { font-size: 1.3rem; }
-.device-simulator .bubble.choice--xl { font-size: 1.05rem; min-width: 80px; padding: 0 14px; }
-.device-simulator .bubble.choice--xxl { font-size: .92rem; min-width: 80px; padding: 0 12px; }
+.device-simulator .bubble.choice--l { font-size: min(1.3rem, calc(var(--bulle) * .285)); }
+.device-simulator .bubble.choice--xl { font-size: min(1.05rem, calc(var(--bulle) * .22)); min-width: 80px; padding: 0 14px; }
+.device-simulator .bubble.choice--xxl { font-size: min(.92rem, calc(var(--bulle) * .17)); min-width: 80px; padding: 0 12px; }
 
 .missing-cell.choice--l, .prio-btn.choice--l { font-size: .95em; }
 .missing-cell.choice--xl, .prio-btn.choice--xl { font-size: .85em; }
