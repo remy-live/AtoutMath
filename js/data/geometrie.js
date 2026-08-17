@@ -267,7 +267,7 @@ export const geometrieExercises = [
         // un tableau : c'est l'exercice que l'écran ne sait pas donner, où le
         // compte s'efface avec la marque.
         generatorId: 'geo.solides', printable: 'solides',
-        params: { niveau: 'tous', aspect: 'tous' },
+        params: { niveau: 'tous', aspect: 'tous', numeros: 'progressif', facesColorees: true },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Les solides proposés',
@@ -289,6 +289,21 @@ export const geometrieExercises = [
                     { value: 'faces', label: 'Les faces seulement' }
                 ],
                 default: 'tous'
+            },
+            {
+                id: 'numeros', type: 'select', label: 'Le numéro sur chaque marque',
+                aide: 'Le numéro qui s\'inscrit sur la marque fait la moitié du travail : l\'élève LIT son total au lieu de le compter. Il sert à installer la méthode — marquer une par une, ne pas repasser — puis il gêne. Par défaut, il disparaît après trois questions réussies.',
+                options: [
+                    { value: 'progressif', label: 'Il disparaît après 3 réussites' },
+                    { value: 'toujours', label: 'Toujours affiché' },
+                    { value: 'jamais', label: 'Jamais affiché' }
+                ],
+                default: 'progressif'
+            },
+            {
+                id: 'facesColorees', type: 'checkbox', label: 'Colorer les faces comptées',
+                aide: 'Une face comptée se remplit d\'un vert transparent au lieu de porter une simple pastille : on voit d\'un coup d\'œil celles qui restent, et les arêtes continuent de se lire dessous.',
+                default: true
             }
         ],
         skills: ['geo.espace.denombrer'],

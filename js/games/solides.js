@@ -41,6 +41,23 @@ class Solides extends BaseGame {
         this.marques = new Set();
         this.saisie = '';
         this.precedent = null;
+        // LE NUMÉRO EST UNE BÉQUILLE, et une béquille se retire. Rémy : « après
+        // quelques questions, ne mets plus le chiffre ». Tant qu'il s'inscrit,
+        // l'élève LIT son total au lieu de le compter ; une fois la méthode
+        // installée — marquer une par une, ne pas repasser — la marque suffit,
+        // et le comptage redevient un comptage.
+        this.numeros = this.params.numeros || 'progressif';
+        // Les faces comptées se colorent : sur un solide, une pastille au
+        // centre d'une face se confond avec un sommet, alors qu'une face
+        // teintée se voit d'un coup d'œil — et l'on voit ce qui reste.
+        this.facesColorees = this.params.facesColorees !== false;
+    }
+
+    /** Le numéro s'inscrit-il encore sur les marques ? */
+    get avecNumeros() {
+        if (this.numeros === 'toujours') return true;
+        if (this.numeros === 'jamais') return false;
+        return this.reussis < 3;
     }
 
     render() {
@@ -88,6 +105,13 @@ class Solides extends BaseGame {
                 .sd-marque { pointer-events: none; }
                 .sd-marque--arete { stroke: var(--success, #16a34a); stroke-width: 3.2; stroke-linecap: round; opacity: .8; }
                 .sd-marque--point { fill: var(--success, #16a34a); }
+                /* Assez opaque pour se voir, assez transparente pour laisser
+                   passer les arêtes — c'est le dessin qu'on compte, pas
+                   l'aplat. */
+                .sd-face--comptee {
+                    fill: var(--success, #16a34a); fill-opacity: .26;
+                    stroke: var(--success, #16a34a); stroke-width: .8; stroke-opacity: .6;
+                }
                 .sd-numero { fill: #fff; font-size: 4.4px; font-weight: 800; text-anchor: middle; pointer-events: none; }
                 .sd-oubli { animation: sd-oubli 1s ease 3; }
                 @keyframes sd-oubli {
@@ -249,7 +273,17 @@ class Solides extends BaseGame {
         const s = this.q.solide;
         const P = (i) => this.plan.points[i];
         const ordre = [...this.marques];
-        this.marquesEl.innerHTML = ordre.map((k, rang) => {
+        const numeroter = this.avecNumeros;
+        // LA FACE COMPTÉE SE TEINTE. Une pastille posée au centre d'une face se
+        // confond avec un sommet, et sur une face cachée elle flotte au milieu
+        // du dessin sans qu'on sache à quoi elle appartient. Un aplat vert
+        // translucide, lui, dit exactement quelle face est prise — et laisse
+        // voir les arêtes qui passent dessous.
+        const teintes = (this.q.aspect === 'faces' && this.facesColorees)
+            ? ordre.map(k => `<polygon class="sd-marque sd-face--comptee"
+                points="${s.faces[k].map(i => P(i).join(',')).join(' ')}"></polygon>`).join('')
+            : '';
+        this.marquesEl.innerHTML = teintes + ordre.map((k, rang) => {
             const n = rang + 1;
             if (this.q.aspect === 'aretes') {
                 const [a, b] = s.aretes[k];
@@ -257,11 +291,11 @@ class Solides extends BaseGame {
                 return `<line class="sd-marque sd-marque--arete" x1="${P(a)[0]}" y1="${P(a)[1]}"
                         x2="${P(b)[0]}" y2="${P(b)[1]}"></line>
                     <circle class="sd-marque sd-marque--point" cx="${mx}" cy="${my}" r="3.4"></circle>
-                    <text class="sd-numero" x="${mx}" y="${my + 1.6}">${n}</text>`;
+                    ${numeroter ? `<text class="sd-numero" x="${mx}" y="${my + 1.6}">${n}</text>` : ''}`;
             }
             const p = this.q.aspect === 'sommets' ? P(k) : this.plan.centres[k];
             return `<circle class="sd-marque sd-marque--point" cx="${p[0]}" cy="${p[1]}" r="3.6"></circle>
-                <text class="sd-numero" x="${p[0]}" y="${p[1] + 1.6}">${n}</text>`;
+                ${numeroter ? `<text class="sd-numero" x="${p[0]}" y="${p[1] + 1.6}">${n}</text>` : ''}`;
         }).join('');
     }
 

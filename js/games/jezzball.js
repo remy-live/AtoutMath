@@ -83,7 +83,35 @@ class JezzBall extends BaseGame {
         this.sensEl = this.container.querySelector('[data-sens]');
         this.sensEl.onclick = () => { this.vertical = !this.vertical; this.majSens(); };
         this.container.querySelector('[data-neuf]').onclick = () => { this.niveau = 1; this.poser(); };
-        this.toile.onpointerdown = (e) => this.cliquer(e);
+        // LE SENS SE DONNE AU GESTE. Rémy, sur iPhone : « le trait horizontal
+        // et vertical n'est pas reconnu au mouvement, je n'ai que du vertical ».
+        // Il avait raison de s'y attendre : au doigt, aller chercher un bouton
+        // avant chaque mur casse tout le rythme du jeu, et rien ne disait que
+        // ce bouton existait. On tire donc dans le sens voulu — un glissement
+        // vers le bas ou le haut pose un mur vertical, un glissement de côté un
+        // mur horizontal — et le mur part du point TOUCHÉ, pas du point lâché.
+        // Une simple tape reste servie par le bouton, pour qui préfère viser.
+        this.depart = null;
+        this.toile.onpointerdown = (e) => {
+            if (this.isDemo || !this.p || this.finie) return;
+            this.depart = { x: e.clientX, y: e.clientY };
+            try { this.toile.setPointerCapture(e.pointerId); } catch (err) { /* souris sans capture */ }
+            if (e.cancelable) e.preventDefault();
+        };
+        this.toile.onpointerup = (e) => {
+            if (!this.depart) return;
+            const d = this.depart;
+            this.depart = null;
+            const dx = e.clientX - d.x, dy = e.clientY - d.y;
+            // Vingt pixels : en dessous, c'est une tape et non un geste — un
+            // doigt bouge toujours un peu en se posant.
+            if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+                this.vertical = Math.abs(dy) >= Math.abs(dx);
+                this.majSens();
+            }
+            this.lancerSous(d.x, d.y);
+        };
+        this.toile.onpointercancel = () => { this.depart = null; };
         // LES TOUCHES H ET V : à la souris, le geste le plus rapide est de ne
         // pas viser le bouton — H lance un mur horizontal là où est le
         // curseur, V un vertical. On suit donc la souris en permanence. Sur
@@ -121,7 +149,9 @@ class JezzBall extends BaseGame {
         this.p = creerPartie(26, 17, Math.min(6, 1 + this.niveau), this.rng);
         this.majTete();
         this.note(`Coupe le terrain : il faut conquérir ${CIBLE} % de l'aire. `
-            + 'Chaque région fermée SANS balle est gagnée.');
+            + 'Chaque région fermée SANS balle est gagnée. '
+            + 'Tire du doigt dans le sens du mur — de haut en bas pour un mur vertical, '
+            + 'de côté pour un mur horizontal.');
         return true;
     }
 
@@ -134,11 +164,7 @@ class JezzBall extends BaseGame {
         this.container.querySelector('[data-pc]').textContent = `${pc} %`;
     }
 
-    cliquer(e) {
-        this.lancerSous(e.clientX, e.clientY);
-    }
-
-    /** Lance un mur sous un point de l'écran — le clic et les touches H/V y passent. */
+    /** Lance un mur sous un point de l'écran — le geste et les touches H/V y passent. */
     lancerSous(clientX, clientY) {
         if (this.isDemo || !this.p || this.finie) return;
         const r = this.toile.getBoundingClientRect();
