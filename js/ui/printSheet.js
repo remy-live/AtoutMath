@@ -1881,6 +1881,108 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LE MEMORY DES TABLES, À DÉCOUPER -----------------------------------------
+//
+// Rémy : « on va permettre de créer un jeu de memory que l'utilisateur pourra
+// découper et coller, tu t'occupes du recto et du verso ». C'est un jeu de
+// classe, pas un jeu d'écran : on imprime, on découpe, on colle dos à dos — ou
+// l'on imprime en recto-verso —, et le paquet resservira toute l'année.
+//
+// UN BLOC = UNE PAIRE, deux cartes côte à côte : le calcul et son résultat. La
+// PAGE DES SOLUTIONS porte les DOS, aux mêmes emplacements : tous identiques,
+// donc rien à retourner ni à aligner au millimètre.
+
+/** Les deux cartes d'une paire dans leur emplacement, et leurs traits de coupe. */
+function geoMemory(slot, item) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    // Un écart entre les deux cartes : on passe les ciseaux entre elles, et un
+    // trait unique partagé ferait deux cartes collées d'un demi-millimètre.
+    const ecart = 3;
+    const w = (b.w - ecart) / 2;
+    // UNE CARTE À JOUER EST PLUS HAUTE QUE LARGE, mais jamais plus haute que son
+    // bloc : au-delà, deux rangées se chevaucheraient.
+    const h = Math.min(b.h, w * 1.35);
+    // LE CORPS SUIT LE PLUS LONG DES DEUX LIBELLÉS. « 10 × 10 » et « 16 » ne
+    // font pas la même longueur, et un corps calculé sur la carte laissait le
+    // calcul toucher les deux bords pendant que le résultat flottait au milieu.
+    const m = (item && item.meta) || {};
+    const large = (t) => [...String(t || '')]
+        .reduce((n, c) => n + (c === ' ' ? 0.3 : 0.62), 0);
+    const pire = Math.max(1.6, large(m.calcul), large(m.resultat));
+    const corps = Math.min(h * 0.3, (w - 4) / pire);
+    return { b, w, h, ecart, corps, y: b.y + (b.h - h) / 2 };
+}
+
+function memoryPreviewHtml(item, slot, k, solution) {
+    const g = geoMemory(slot, item);
+    const m = item.meta;
+    const couleur = polycopieEnCouleur();
+    const T = (v) => (v * k).toFixed(2);
+    const corps = g.corps;
+    let html = '';
+
+    [0, 1].forEach((i) => {
+        const x = g.b.x + i * (g.w + g.ecart);
+        const dos = !!solution;
+        html += `<div class="fx-mm-carte${dos ? ' fx-mm-carte--dos' : ''}"
+            style="left:${x * k}px; top:${g.y * k}px; width:${g.w * k}px; height:${g.h * k}px;
+            ${dos && couleur ? 'background:#eef2ff;' : ''}"></div>`;
+        if (dos) {
+            // Le dos : un cadre intérieur et un « × » — le signe du jeu. Rien de
+            // plus : un dos chargé, photocopié cent fois, mange une cartouche.
+            html += `<div class="fx-mm-dos-cadre" style="left:${(x + g.w * 0.12) * k}px;
+                top:${(g.y + g.h * 0.12) * k}px; width:${(g.w * 0.76) * k}px;
+                height:${(g.h * 0.76) * k}px"></div>`;
+            html += `<div class="fx-mm-dos-signe" style="left:${x * k}px; top:${g.y * k}px;
+                width:${g.w * k}px; height:${g.h * k}px;
+                font-size:${corps * 1.4 * k}px">×</div>`;
+            return;
+        }
+        html += `<div class="fx-mm-texte" style="left:${x * k}px; top:${g.y * k}px;
+            width:${g.w * k}px; height:${g.h * k}px; font-size:${corps * k}px">${
+    echapperSheet(i === 0 ? m.calcul : m.resultat)}</div>`;
+    });
+    return html;
+}
+
+function dessinerMemoryPdf(doc, item, slot, solution) {
+    const g = geoMemory(slot, item);
+    const m = item.meta;
+    const couleur = polycopieEnCouleur();
+    const corps = g.corps;
+
+    [0, 1].forEach((i) => {
+        const x = g.b.x + i * (g.w + g.ecart);
+        // LE TRAIT DE COUPE EST EN POINTILLÉS : c'est ce qui dit « ici, les
+        // ciseaux » plutôt que « voici un cadre ».
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.3);
+        if (solution && couleur) {
+            doc.setFillColor(238, 242, 255);
+            doc.roundedRect(x, g.y, g.w, g.h, 1.6, 1.6, 'F');
+        }
+        if (doc.setLineDashPattern) doc.setLineDashPattern([1.2, 1], 0);
+        doc.roundedRect(x, g.y, g.w, g.h, 1.6, 1.6, 'S');
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+        if (solution) {
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(x + g.w * 0.12, g.y + g.h * 0.12, g.w * 0.76, g.h * 0.76, 1.2, 1.2, 'S');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(corps * 1.4 / 0.3528);
+            doc.setTextColor(...ENCRE.grille);
+            doc.text('x', x + g.w / 2, g.y + g.h / 2 + corps * 0.5, { align: 'center' });
+            return;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(corps / 0.3528);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(i === 0 ? m.calcul : m.resultat),
+            x + g.w / 2, g.y + g.h / 2 + corps * 0.35, { align: 'center' });
+    });
+}
+
 // --- LE TANGRAM : UN CARRÉ À DÉCOUPER, DES SILHOUETTES À REMPLIR ---------------
 //
 // Rémy : « PDF d'un tangram à découper (avec ou sans couleur) plus les
@@ -5775,6 +5877,23 @@ export const RENDUS = {
         parLigneDefaut: 2
     },
 
+    memory: {
+        titre: 'Memory des tables',
+        consigne: () => 'DÉCOUPE les cartes le long des pointillés. La page 2 porte les '
+            + 'DOS : imprime-la au verso, ou découpe-la aussi et colle chaque dos derrière '
+            + 'sa carte. Puis mélange, étale face cachée, et retourne deux cartes à la '
+            + 'fois : on garde la paire quand le calcul et son résultat se rencontrent.',
+        previewGrille: memoryPreviewHtml,
+        pdfGrille: dessinerMemoryPdf,
+        nomBloc: 'Paire', nomBlocs: 'paires',
+        nomSolutions: 'les dos à coller',
+        // Une paire = deux cartes. Douze paires font vingt-quatre cartes, ce qui
+        // est déjà un long memory pour une classe de sixième.
+        proportions: { w: 1, h: 0.62 },
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        parLigneDefaut: 3
+    },
+
     tangram: {
         titre: 'Le tangram',
         consigne: (items) => (items.some(i => i.meta && i.meta.quoi === 'decouper')
@@ -6144,7 +6263,10 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
     const avecPieces = rendu === RENDUS.mat || rendu === RENDUS.echiquier;
     const page = (solution) => {
-        entetePdf(doc, titre || rendu.titre, solution ? 'Solutions' : '', solution ? '' : rendu.consigne(items),
+        // LA SECONDE PAGE N'EST PAS TOUJOURS UN CORRIGÉ : celle du memory
+        // porte les DOS des cartes, et l'appeler « Solutions » ferait croire
+        // à une feuille de réponses qu'on garde pour soi.
+        entetePdf(doc, titre || rendu.titre, solution ? (rendu.nomSolutions || 'Solutions') : '', solution ? '' : rendu.consigne(items),
             avecPieces ? MENTION_PIECES : '');
         if (rendu.separateurs) {
             doc.setDrawColor(...ENCRE.trait);
@@ -6294,7 +6416,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
-                <b>${titreFiche}${solutionsVisibles ? ' — Solutions' : ''}</b>
+                <b>${titreFiche}${solutionsVisibles ? ' — ' + (rendu.nomSolutions || 'Solutions') : ''}</b>
                 <span>Nom : ............  Date : ......</span>
             </div>
             <div class="fp-ligne" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 8) * k}px;"></div>`;

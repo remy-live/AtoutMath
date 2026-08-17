@@ -54,6 +54,7 @@ import { prioritesFicheGenerator } from '../generators/prioritesFiche.js';
 import { poserFicheGenerator } from '../generators/poserFiche.js';
 import { conversionFicheGenerator } from '../generators/conversionFiche.js';
 import { tangramFicheGenerator } from '../generators/tangramFiche.js';
+import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -79,7 +80,8 @@ import {
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
-    poserFicheGenerator, conversionFicheGenerator, tangramFicheGenerator,
+    poserFicheGenerator, conversionFicheGenerator,
+    tangramFicheGenerator, memoryFicheGenerator,
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
 ].forEach(registerGenerator);

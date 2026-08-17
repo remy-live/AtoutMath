@@ -482,6 +482,12 @@ export const calculExercises = [
     {
         id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
         activityId: 'memory',
+        // SUR LE PAPIER, ON FABRIQUE LE JEU. Page 1 : les cartes, une paire par
+        // bloc — le calcul et son résultat. Page 2 : les dos, aux mêmes
+        // emplacements. On découpe, on colle dos à dos (ou l'on imprime en
+        // recto-verso), et le paquet resservira toute l'année.
+        printable: 'memory', printGeneratorId: 'calc.memory-fiche',
+        printParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], maxFacteur: 10 },
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], pairs: 6 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },

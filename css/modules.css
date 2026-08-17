@@ -3956,3 +3956,21 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; text-align: center; font-weight: 800; color: #2d3748;
     white-space: nowrap;
 }
+
+/* --- Fiche « Memory des tables » -----------------------------------------
+   Une paire par bloc : le calcul et son résultat, chacun dans son trait de
+   coupe en pointillés — c'est ce qui dit « ici, les ciseaux » plutôt que
+   « voici un cadre ». La page des solutions porte les dos, tous identiques. */
+.fx-mm-carte {
+    position: absolute; box-sizing: border-box;
+    border: 1px dashed #1a202c; border-radius: 6px;
+}
+.fx-mm-dos-cadre {
+    position: absolute; box-sizing: border-box;
+    border: 1.5px solid #b0b6c5; border-radius: 4px;
+}
+.fx-mm-texte, .fx-mm-dos-signe {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #1a202c; white-space: nowrap;
+}
+.fx-mm-dos-signe { color: #b0b6c5; }
