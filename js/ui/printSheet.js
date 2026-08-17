@@ -5698,11 +5698,21 @@ export const RENDUS = {
                 return `${commun} Ici les mots ne sont pas donnés : chaque définition en `
                     + 'désigne un seul. Écris-le sur la ligne, puis va le chercher.';
             }
+            // COMBIEN DE LETTRES SONT DU BRUIT. Rémy le veut écrit : dans une
+            // grille serrée, savoir qu'il ne reste que douze lettres au hasard
+            // change la façon de chercher — presque tout ce qu'on voit fait
+            // partie d'un mot. C'est une information de jeu, pas une
+            // statistique.
+            const n = Number(m.aleatoires);
+            const bruit = Number.isFinite(n)
+                ? ` Dans cette grille, ${n} lettre${n > 1 ? 's' : ''} seulement `
+                    + `${n > 1 ? 'ont été tirées' : 'a été tirée'} au hasard.`
+                : '';
             if (m.indices === 'les-deux') {
                 return `${commun} La définition est là pour que le mot veuille dire quelque `
-                    + 'chose — relis-la une fois le mot trouvé.';
+                    + 'chose — relis-la une fois le mot trouvé.' + bruit;
             }
-            return commun;
+            return commun + bruit;
         },
         previewGrille: motsPreviewHtml,
         pdfGrille: dessinerMotsPdf,

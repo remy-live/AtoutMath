@@ -14,7 +14,7 @@
 //     une classe où tout le monde n'en est pas au même point.
 
 import { makeItem } from '../items.js';
-import { tirerMots, creerGrille, THEMES } from '../motsCaches.js';
+import { tirerMots, creerGrille, grilleLaPlusPetite, THEMES } from '../motsCaches.js';
 
 export const motsCachesFicheGenerator = {
     id: 'voc.mots-caches-fiche',
@@ -28,7 +28,11 @@ export const motsCachesFicheGenerator = {
         },
         {
             id: 'taille', type: 'select', label: 'Taille de la grille', default: 12,
+            aide: 'La plus petite possible serre les mots les uns contre les autres : '
+                + 'il reste peu de lettres au hasard, et presque tout ce qu\'on voit '
+                + 'fait partie d\'un mot.',
             options: [
+                { value: 'auto', label: 'La plus petite possible' },
                 { value: 10, label: '10 × 10' },
                 { value: 12, label: '12 × 12' },
                 { value: 14, label: '14 × 14' },
@@ -55,15 +59,19 @@ export const motsCachesFicheGenerator = {
         const rng = ctx.rng;
         const p = params || {};
         const theme = THEMES[p.theme] ? p.theme : 'tout';
+        const auto = String(p.taille) === 'auto';
         const taille = [10, 12, 14, 16].includes(Number(p.taille)) ? Number(p.taille) : 12;
         const nbMots = Math.max(4, Math.min(16, Number(p.nbMots) || 10));
         const indices = ['mots', 'definitions', 'les-deux'].includes(p.indices) ? p.indices : 'mots';
 
         const dispo = tirerMots({ theme, nbMots, rng });
-        const g = creerGrille({
-            taille, mots: dispo, nbMots, rng,
+        const reglages = {
+            mots: dispo, nbMots, rng,
             diagonales: p.diagonales !== false, envers: p.envers === true
-        });
+        };
+        const g = auto
+            ? grilleLaPlusPetite({ ...reglages, graine: rng.seed })
+            : creerGrille({ ...reglages, taille });
 
         const liste = g.mots.map(m => m.mot).join(', ');
         return makeItem({
@@ -74,7 +82,7 @@ export const motsCachesFicheGenerator = {
             prompt: {
                 text: `Retrouve ${g.mots.length} mots dans la grille.`,
                 papier: `Retrouve ${g.mots.length} mots dans la grille.`,
-                html: `<div class="game-question">Grille ${taille} × ${taille}</div>`
+                html: `<div class="game-question">Grille ${g.taille} × ${g.taille}</div>`
             },
             answer: liste,
             // La correction se lit sans la grille : le mot, sa case de départ
@@ -83,7 +91,10 @@ export const motsCachesFicheGenerator = {
                 .map(m => `${m.mot} (${m.x + 1}-${m.y + 1}, ${m.direction})`).join(' ; ') + '.',
             difficulty: indices === 'definitions' ? 3 : (p.envers ? 2 : 1),
             meta: {
-                taille, vocabulaire: theme, indices,
+                taille: g.taille, vocabulaire: theme, indices,
+                // Combien de lettres, dans la grille, ne servent à rien : c'est
+                // écrit sur la feuille, et ça change la façon de chercher.
+                aleatoires: g.aleatoires,
                 grille: g.grille, mots: g.mots,
                 // Deux feuilles d'affilée ne servent pas la même grille : le
                 // canal « theme » est celui par lequel la fiche dit ce qui a

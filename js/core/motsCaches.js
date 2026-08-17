@@ -236,15 +236,58 @@ export function creerGrille({ taille = 12, mots = [], nbMots = 10, rng = makeRng
     // sur-représente les voyelles — sans quoi la grille est un mur de
     // consonnes où les mots se repèrent à l'œil sans être cherchés.
     const grille = [];
+    // COMBIEN DE LETTRES SONT DU BRUIT. Rémy le veut écrit sur la feuille : dans
+    // une grille serrée, savoir qu'il ne reste que douze lettres au hasard
+    // change la façon de chercher — on sait que presque tout ce qu'on voit fait
+    // partie d'un mot. C'est une information de jeu, pas une statistique.
+    let aleatoires = 0;
     for (let y = 0; y < taille; y++) {
         const ligne = [];
         for (let x = 0; x < taille; x++) {
-            ligne.push(cases[cle(x, y)] || rng.pick(ALPHABET));
+            const posee = cases[cle(x, y)];
+            if (!posee) aleatoires++;
+            ligne.push(posee || rng.pick(ALPHABET));
         }
         grille.push(ligne);
     }
 
-    return { taille, grille, mots: places.sort((a, b) => a.mot.localeCompare(b.mot)) };
+    return {
+        taille, grille, aleatoires,
+        mots: places.sort((a, b) => a.mot.localeCompare(b.mot))
+    };
+}
+
+/**
+ * LA PLUS PETITE GRILLE QUI TIENNE LES MOTS.
+ *
+ * Rémy : « option grille la plus petite possible ». Seize sur seize pour huit
+ * mots courts, c'est deux cents lettres au hasard autour de quarante lettres
+ * utiles : on cherche une aiguille dans une meule de foin qu'on a soi-même
+ * construite. On essaie donc les tailles en montant et l'on s'arrête à la
+ * première qui les place TOUS — celle où la grille est pleine de mots, ce qui
+ * est aussi la plus difficile à lire, et la plus intéressante.
+ */
+export function grilleLaPlusPetite(opts) {
+    const mots = opts.mots || [];
+    const voulus = Math.min(Number(opts.nbMots) || mots.length, mots.length);
+    const plancher = Math.max(6, ...mots.slice(0, voulus).map(m => m.mot.length));
+    let secours = null;
+    for (let n = plancher; n <= 16; n++) {
+        // TROIS ESSAIS PAR TAILLE. Le placement est aléatoire : une grille de
+        // dix qui échoue une fois peut réussir à la deuxième, et se rabattre
+        // sur douze pour un seul mauvais tirage, ce sont cent lettres de bruit
+        // en plus. La graine est REJOUÉE à chaque essai — sans cela, deux
+        // essais de suite consommeraient le même flux et la grille retenue ne
+        // serait pas celle qu'on vient de mesurer.
+        for (let essai = 0; essai < 3; essai++) {
+            const g = creerGrille({
+                ...opts, taille: n, rng: makeRng(`${opts.graine || 'auto'}-${n}-${essai}`)
+            });
+            if (g.mots.length >= voulus) return g;
+            if (!secours || g.mots.length > secours.mots.length) secours = g;
+        }
+    }
+    return secours || creerGrille({ ...opts, taille: 16 });
 }
 
 /** Les cases traversées par un glissement, si la ligne est droite. */
