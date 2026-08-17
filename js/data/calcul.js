@@ -1007,7 +1007,7 @@ export const calculExercises = [
         activityId: 'skweek',
         sansRevision: true,
         skills: ['num.calc.tri'],
-        params: { niveau: 1, vies: 3 },
+        params: { niveau: 1, vies: 3, ennemis: 'non' },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Niveau de départ',
@@ -1028,10 +1028,19 @@ export const calculExercises = [
                     { value: 5, label: '5 vies' }
                 ],
                 default: 3
+            },
+            {
+                id: 'ennemis', type: 'select', label: 'Les blobs verts',
+                aide: 'Au doigt, esquiver un blob pendant qu\'on décide si 7 × 4 est pair fait un jeu d\'adresse là où l\'on voulait un jeu de calcul — et l\'adresse, sur un écran de téléphone, est celle du matériel plutôt que celle de l\'élève. Ils sont retirés par défaut ; au clavier, ils rendent les derniers niveaux plus vifs.',
+                options: [
+                    { value: 'non', label: 'Pas de blobs — que du calcul' },
+                    { value: 'oui', label: 'Avec les blobs, à partir du niveau 2' }
+                ],
+                default: 'non'
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Le bouton TIR élimine les blobs verts, et le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
+        instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Les blobs verts sont retirés par défaut — le réglage les rend, et alors le bouton TIR les élimine, tandis que le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
     },
     {
         // LE SLITHERLINK. Une seule boucle fermée sur un quadrillage de points,

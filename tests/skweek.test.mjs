@@ -122,8 +122,13 @@ test('le niveau se gagne quand toutes les bonnes dalles sont roses', () => {
     assert.equal(avancement(e), 100);
 });
 
-test('les ennemis restent sur le terrain praticable', () => {
+test('pas de blobs sans le réglage : c\'est le défaut demandé', () => {
     const e = genererNiveau({ niveau: 6 }, makeRng('enn'));
+    assert.equal(e.ennemis.length, 0);
+});
+
+test('les ennemis restent sur le terrain praticable', () => {
+    const e = genererNiveau({ niveau: 6, ennemis: 'oui' }, makeRng('enn'));
     const rng = makeRng('pas');
     assert.ok(e.ennemis.length >= 2);
     for (let t = 0; t < 500; t++) {
@@ -134,7 +139,7 @@ test('les ennemis restent sur le terrain praticable', () => {
 });
 
 test('un tir file tout droit et retire l\'ennemi touché', () => {
-    const e = genererNiveau({ niveau: 3 }, makeRng('tir'));
+    const e = genererNiveau({ niveau: 3, ennemis: 'oui' }, makeRng('tir'));
     // On place un ennemi juste à droite, dans une ligne praticable.
     let x = e.joueur.x;
     while (praticable(e, x + 1, e.joueur.y) && x < e.joueur.x + 3) x++;

@@ -132,7 +132,14 @@ export function genererNiveau(params, rng) {
     const libres = cases.map((c, i) => c.etat !== TROU && i !== idx(depart.x, depart.y) ? i : -1)
         .filter(i => i >= 0)
         .filter(i => Math.abs((i % cols) - depart.x) + Math.abs(Math.floor(i / cols) - depart.y) > 4);
-    const ennemis = rng.shuffle(libres).slice(0, niv.ennemis).map(i => ({
+    // COMBIEN D'ENNEMIS ? Rémy, sur iPhone : « enlève les ennemis ». Au doigt,
+    // sur une grille de dix-neuf colonnes, esquiver une bestiole pendant qu'on
+    // décide si 7 × 4 est pair, cela fait un jeu d'adresse là où l'on voulait
+    // un jeu de calcul — et l'adresse, sur un écran de téléphone, est celle du
+    // matériel, pas de l'élève. On les retire donc par défaut ; le professeur
+    // peut les rendre, ils restent un vrai ressort de jeu au clavier.
+    const combien = (params && params.ennemis === 'oui') ? niv.ennemis : 0;
+    const ennemis = rng.shuffle(libres).slice(0, combien).map(i => ({
         x: i % cols, y: Math.floor(i / cols),
         dx: rng.pick([1, -1, 0]), dy: rng.pick([1, -1, 0])
     }));

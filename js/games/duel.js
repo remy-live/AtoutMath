@@ -323,6 +323,21 @@ class Duel extends BaseGame {
                         grid-auto-columns: auto;
                     }
                     .du-pave, .du-tables { height: clamp(74px, 16cqh, 124px); }
+                    /* TOUT CE QUE L'ÉCRAN A. Rémy, deux bancs de suite : « on ne
+                       voit toujours pas bien pour le duel ». Sur un iPhone, le
+                       plateau perdait quarante pixels de large et autant de haut
+                       dans la marge du cadre de jeu — un huitième de la surface,
+                       pris à un jeu où DEUX joueurs se partagent déjà l'écran.
+                       Le duel est le seul jeu qui se joue à deux sur le même
+                       appareil : c'est celui qui a le plus besoin de ses bords. */
+                    .du-tete { font-size: clamp(.72rem, 2.8cqh, .95rem); }
+                    .du-saisie { font-size: clamp(1.4rem, 6.4cqh, 2.3rem); }
+                    .du-touche { font-size: clamp(1.05rem, 5cqh, 1.7rem); }
+                    .du-table { font-size: clamp(.82rem, 3.8cqh, 1.25rem); }
+                }
+                @media (max-width: 560px) {
+                    .canvas-area:has(.du-plateau) { padding: 0; }
+                    .du-plateau { border-radius: 0; }
                 }
                 /* Même règle en bande latérale, où la touche tombait à dix-neuf
                    pixels. La profondeur de la bande se mesure alors sur la

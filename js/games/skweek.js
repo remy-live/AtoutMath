@@ -348,7 +348,11 @@ class Skweek extends BaseGame {
     }
 
     poser() {
-        this.etat = genererNiveau({ niveau: this.niveauCourant, ...this.tailleTerrain() }, this.rng);
+        this.etat = genererNiveau({
+            niveau: this.niveauCourant,
+            ennemis: this.params.ennemis || 'non',
+            ...this.tailleTerrain()
+        }, this.rng);
         this.reste = this.etat.secondes;
         this.finie = false;
         this.container.querySelector('[data-regle]').textContent =
