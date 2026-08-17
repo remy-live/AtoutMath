@@ -1,4 +1,11 @@
 .DS_Store
+# SANS LA BARRE OBLIQUE. « node_modules/ » n'ignore qu'un RÉPERTOIRE : un lien
+# symbolique de ce nom — celui que pose un environnement de développement pour
+# emprunter les paquets d'ailleurs — passait au travers et se retrouvait
+# committé. Sur le runner de GitHub Pages, sa cible n'existe pas : le tar de
+# l'artéfact s'arrêtait sur « File removed before we read it », et le
+# déploiement échouait en cinq secondes.
+node_modules
 node_modules/
 .claude/settings.local.json
 
