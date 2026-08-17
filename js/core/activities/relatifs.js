@@ -162,7 +162,13 @@ export function mount(container, session) {
             // personne ne sait qu'il l'est ne vaut pas mieux qu'une image.
             : (etat.modele === 'ascenseur'
                 ? `On part du ${etiquetteEtage(etat.depart) === 'RDC' ? 'rez-de-chaussée' : `${etiquetteEtage(etat.depart)}e étage`}. Tire la cabine jusqu'à l'étage d'arrivée.`
-                : `On part de ${nb(etat.depart)}.`);
+                // Les trois modèles se manipulent, et tous doivent le DIRE :
+                // un curseur qu'on peut tirer sans le savoir ne sert à rien.
+                : etat.modele === 'thermometre'
+                    ? `On part de ${nb(etat.depart)}. Fais glisser le liquide jusqu'à la température d'arrivée.`
+                    : etat.modele === 'ecriture'
+                        ? `On part de ${nb(etat.depart)}. Fais glisser le point jusqu'au nombre d'arrivée.`
+                        : `On part de ${nb(etat.depart)}. Fais glisser le curseur jusqu'à l'arrivée.`);
     }
 
     // --- Dessin ---------------------------------------------------------------
@@ -337,20 +343,33 @@ export function mount(container, session) {
         c.restore();
     }
 
-    /** La cabine est-elle sous ce point ? (marge large : on vise au doigt) */
-    function surCabine(x, yy) {
-        if (!etat || !etat.vue || etat.modele !== 'ascenseur') return false;
-        const g = plansAscenseur(etat.vue.w, etat.vue.h);
-        const yc = g.y(etat.curseur);
-        return Math.abs(x - g.axeX) <= g.cage * 0.75 + 8
-            && Math.abs(yy - yc) <= Math.max(18, g.cabineH * 0.75);
-    }
-
-    /** L'étage visé par un point de l'écran, borné à l'immeuble. */
-    function etageEn(yy) {
-        const e = echelle(etat.vue.h);
-        const v = etat.min + ((etat.vue.h - yy) - e.zero) / e.pas;
-        return Math.max(etat.min, Math.min(etat.max, v));
+    /**
+     * OÙ LE DOIGT PREND LE CURSEUR, et quelle valeur il désigne — un objet par
+     * modèle, partagé avec le dessin par les mêmes formules d'échelle.
+     *
+     * La zone est volontairement LARGE : une colonne entière, une bande le long
+     * de la droite. Sur un téléphone tenu d'une main, viser une cabine de seize
+     * pixels revient à ne pas pouvoir jouer.
+     */
+    function zoneCurseur() {
+        if (!etat || !etat.vue || etat.modele === 'pastilles') return null;
+        const { w, h } = etat.vue;
+        const borner = (v) => Math.max(etat.min, Math.min(etat.max, v));
+        if (etat.modele === 'ecriture') {
+            const e = echelle(w), axeY = h * 0.56;
+            return {
+                dansZone: (p) => Math.abs(p.y - axeY) <= Math.max(52, h * 0.4),
+                valeurEn: (p) => borner(etat.min + (p.x - e.zero) / e.pas)
+            };
+        }
+        const e = echelle(h);
+        const axeX = etat.modele === 'ascenseur' ? w * 0.46 : w * 0.42;
+        const large = etat.modele === 'ascenseur'
+            ? Math.max(46, plansAscenseur(w, h).cage * 0.95) : 56;
+        return {
+            dansZone: (p) => Math.abs(p.x - axeX) <= large,
+            valeurEn: (p) => borner(etat.min + ((h - p.y) - e.zero) / e.pas)
+        };
     }
 
     /** La colonne verticale : le thermomètre. */
@@ -791,26 +810,42 @@ export function mount(container, session) {
             b.onclick = () => repondre(parseInt(b.dataset.choix, 10));
         });
 
-        // LA CABINE SE TIRE. Le doigt la prend, elle suit, elle s'aimante au
-        // palier le plus proche et écrit son étage dans le pavé.
-        if (etat.modele === 'ascenseur' && cnv) {
+        // LE CURSEUR SE TIRE — sur les TROIS modèles à axe, pas seulement dans
+        // l'ascenseur. Rémy, sur iPhone : « on ne peut bouger le curseur »
+        // (thermomètre), « ce serait bien de pouvoir bouger le curseur »
+        // (sommes de relatifs). Il fallait auparavant attraper la cabine à
+        // quelques pixels près : au doigt, sur un plateau de téléphone où un
+        // palier fait quinze pixels de haut, c'était intenable.
+        //
+        // On prend donc TOUTE LA COLONNE (ou toute la bande de la droite
+        // graduée) : poser le doigt dans le tube y amène le curseur, et le
+        // glissement suit. C'est le geste que le modèle raconte — on déplace
+        // une position, on n'attrape pas un objet.
+        if (etat.modele !== 'pastilles' && cnv) {
             const point = (e) => {
                 const r = cnv.getBoundingClientRect();
                 return { x: e.clientX - r.left, y: e.clientY - r.top };
             };
+            const suivre = (p) => {
+                const z = zoneCurseur();
+                if (!z) return;
+                etat.curseur = z.valeurEn(p);
+                etat.pas = Math.abs(Math.round(etat.curseur) - etat.depart);
+                majCompte();
+            };
             const prendre = (e) => {
                 if (session.locked || etat.fige) return;
                 const p = point(e);
-                if (!surCabine(p.x, p.y)) return;
+                const z = zoneCurseur();
+                if (!z || !z.dansZone(p)) return;
                 etat.prise = true;
                 cnv.setPointerCapture(e.pointerId);
                 e.preventDefault();
+                suivre(p);
             };
             const bouger = (e) => {
                 if (!etat.prise) return;
-                etat.curseur = etageEn(point(e).y);
-                etat.pas = Math.abs(Math.round(etat.curseur) - etat.depart);
-                majCompte();
+                suivre(point(e));
             };
             const lacher = () => {
                 if (!etat.prise) return;

@@ -2952,8 +2952,15 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    premier : une droite graduée réduite à 80 px ne se compte plus. */
 .rl-layout {
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: clamp(6px, 1.4cqh, 14px);
+    /* L'ÉNONCÉ RESTE À L'ÉCRAN. Rémy, sur iPhone, quatre fois : « on ne voit
+       pas le calcul ». Avec un simple `center`, une colonne trop haute déborde
+       des DEUX côtés : le calcul passait au-dessus du plateau, hors d'atteinte
+       même en faisant défiler. `safe center` cale en haut dès que ça déborde. */
+    justify-content: center;
+    justify-content: safe center;
+    gap: clamp(6px, 1.4cqh, 14px);
     width: 100%; max-width: 720px; height: 100%; margin: 0 auto; padding: 8px;
+    overflow-y: auto; overflow-x: hidden;
 }
 .rl-layout > :not(.rl-scene) { flex-shrink: 0; }
 .rl-niveau {
@@ -3025,6 +3032,26 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 }
 .rl-choix-btn:hover { border-color: var(--primary); color: var(--primary); }
 .rl-choix-btn:active { transform: translateY(2px); box-shadow: none; }
+
+/* TÉLÉPHONE : le pavé passe de quatre rangées à deux. Douze touches en trois
+   colonnes prenaient deux cent dix pixels de haut — l'énoncé et le bouton
+   « Valider » sortaient de l'écran par les deux bouts. En six colonnes elles
+   restent larges au doigt et rendent une centaine de pixels à la scène. */
+@media (max-width: 480px) {
+    .rl-pave { grid-template-columns: repeat(6, 1fr); width: min(348px, 97%); gap: 5px; }
+    .rl-touche { padding: 9px 0; font-size: 1.05rem; border-width: 2px; }
+    .rl-saisie { gap: 8px; }
+    .rl-champ { gap: 6px; font-size: .9rem; }
+    .rl-champ b { min-width: 62px; padding: 3px 8px; font-size: 1.2rem; }
+    .rl-scene { min-height: 130px; height: clamp(150px, 46cqh, 420px); }
+    .rl-compte { font-size: .82rem; padding: 4px 10px; }
+    .rl-niveau { font-size: .72rem; padding: 2px 10px; }
+    /* « Il fait −3 °C. La température baisse de 2 degrés. Quelle température
+       fait-il ? » tenait sur QUATRE lignes de titre — cent quatre-vingts
+       pixels rien que pour l'énoncé. Écrit plus sobrement, il en fait deux et
+       laisse la place au thermomètre qui le raconte. */
+    .rl-layout > .game-question { font-size: clamp(1rem, 4.4vw, 1.3rem); margin-bottom: 0; }
+}
 
 /* Écran large et court : la scène à gauche, tout ce qui répond à droite —
    même traitement que la pendule et le treillis de Garam. */
