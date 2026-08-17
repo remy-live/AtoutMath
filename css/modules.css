@@ -3947,3 +3947,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pav-touche--eff { color: var(--accent); }
 .pav-touche--signe { color: var(--primary); }
 .pav-touche--ok { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* --- Fiche « Le tangram » ------------------------------------------------
+   Le carré porte ses traits de découpe ; une silhouette n'est qu'un contour
+   plein — surtout pas ses lignes intérieures, qui donneraient la solution. */
+.fx-tg-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-tg-nom {
+    position: absolute; text-align: center; font-weight: 800; color: #2d3748;
+    white-space: nowrap;
+}

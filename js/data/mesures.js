@@ -22,6 +22,13 @@ export const mesuresExercises = [
     {
         id: 'mes-perimetre-qcm', title: 'Périmètre : à toi de choisir',
         generatorId: 'mes.perimetre', activityId: 'bubbles',
+        // SUR LE PAPIER, MÊME FEUILLE QUE SON JUMEAU : le rectangle dessiné,
+        // coté et colorié. Choisir entre trois nombres est un geste d'écran ;
+        // sur une feuille, ce qu'on regarde c'est la figure — et une fiche de
+        // périmètre sans figure n'apprend pas que le périmètre fait le tour.
+        printable: 'rectangle', printGeneratorId: 'mes.rectangle-fiche',
+        printParams: { quoi: 'perimetre', max: 10, unite: 'cm' },
+        consignePapier: "Écris le calcul, puis le résultat avec son unité.",
         params: { max: 10, unite: 'cm' },
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Choisis le bon périmètre parmi les propositions."
@@ -132,6 +139,11 @@ export const mesuresExercises = [
         // question d'aire : sans elle, il ne resterait qu'un casse-tête.
         id: 'geo-tangram', status: STATUS.TEST, title: 'Le Tangram',
         activityId: 'tangram',
+        // SUR LE PAPIER : le carré à découper une fois, puis les silhouettes à
+        // remplir avec les pièces découpées. C'est ainsi que le tangram vit en
+        // classe, et l'écran ne remplace pas le geste de tourner une pièce
+        // entre ses doigts pour voir si elle rentre.
+        printable: 'tangram', printGeneratorId: 'geo.tangram-fiche',
         sansRevision: true,
         skills: ['geo.aires.tangram'],
         params: {},

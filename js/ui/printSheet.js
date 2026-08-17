@@ -39,6 +39,7 @@ import {
 import {
     cotesDe as cotesDePythagore, etapesCalcul as etapesCalculPythagore
 } from '../core/pythagore.js';
+import { boite as boiteTangram } from '../core/tangram.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -1869,6 +1870,101 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
         }
     });
 }
+
+// --- LE TANGRAM : UN CARRÉ À DÉCOUPER, DES SILHOUETTES À REMPLIR ---------------
+//
+// Rémy : « PDF d'un tangram à découper (avec ou sans couleur) plus les
+// silhouettes ». C'est ainsi que le tangram vit en classe : on découpe UNE
+// fois, on garde les sept pièces dans une pochette, et l'on ressort les
+// silhouettes à chaque séance. Le carré porte ses traits de découpe ; la
+// silhouette n'est qu'un contour plein — surtout pas ses lignes intérieures,
+// qui donneraient la solution.
+
+/** Le polygone mis à l'échelle de son emplacement, centré. */
+function cadrerTangram(poly, b, marge) {
+    const bb = boiteTangram(poly);
+    const w = bb.x1 - bb.x0, h = bb.y1 - bb.y0;
+    const e = Math.min((b.w - 2 * marge) / w, (b.h - 2 * marge) / h);
+    return {
+        e,
+        px: (x) => b.x + (b.w - w * e) / 2 + (x - bb.x0) * e,
+        py: (y) => b.y + (b.h - h * e) / 2 + (y - bb.y0) * e
+    };
+}
+
+function tangramPreviewHtml(item, slot, k, solution) {
+    const m = item.meta;
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const couleur = polycopieEnCouleur();
+    const decouper = m.quoi === 'decouper';
+    // Le cadrage se fait sur la SILHOUETTE, jamais sur les pièces : elles
+    // dépassent parfois d'un cheveu et la figure sauterait d'un bloc à l'autre.
+    const ref = decouper ? m.pieces.flatMap(p => p.sommets) : m.silhouette;
+    // UNE SILHOUETTE PORTE SON NOM DESSOUS : on lui réserve la bande, sinon le
+    // carré remplit tout le bloc et son nom s'écrit par-dessus lui.
+    const g = cadrerTangram(ref, decouper ? b : { ...b, h: b.h - 5 }, 2);
+    const T = (v) => (v * k).toFixed(2);
+    const chemin = (pts) => pts.map(([x, y]) => `${T(g.px(x))},${T(g.py(y))}`).join(' ');
+    let d = '';
+
+    // La silhouette : un contour plein, gris clair, SANS ses lignes intérieures.
+    if (!decouper) {
+        d += `<polygon points="${chemin(m.silhouette)}" fill="#e6e9f0"
+              stroke="#1a202c" stroke-width="${T(0.7)}" stroke-linejoin="round"/>`;
+    }
+    // Les pièces : toujours pour le carré à découper, et sur le corrigé d'une
+    // silhouette — c'est la seule correction possible d'un pavage.
+    if (decouper || solution) {
+        m.pieces.forEach(p => {
+            d += `<polygon points="${chemin(p.sommets)}"
+                  fill="${couleur ? p.couleur : '#fff'}" fill-opacity="${couleur ? 0.85 : 1}"
+                  stroke="#1a202c" stroke-width="${T(decouper ? 0.5 : 0.35)}"
+                  stroke-linejoin="round"/>`;
+        });
+    }
+    let html = `<svg class="fx-tg-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    if (!decouper) {
+        html += `<div class="fx-tg-nom" style="left:${b.x * k}px; top:${(b.y + b.h - 4.4) * k}px;
+            width:${b.w * k}px; font-size:${3.2 * k}px">${echapperSheet(m.nom)}</div>`;
+    }
+    return html;
+}
+
+function dessinerTangramPdf(doc, item, slot, solution) {
+    const m = item.meta;
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const couleur = polycopieEnCouleur();
+    const decouper = m.quoi === 'decouper';
+    const ref = decouper ? m.pieces.flatMap(p => p.sommets) : m.silhouette;
+    const g = cadrerTangram(ref, decouper ? b : { ...b, h: b.h - 5 }, 2);
+    const mm = (pts) => pts.map(([x, y]) => [g.px(x), g.py(y)]);
+
+    if (!decouper) {
+        doc.setFillColor(230, 233, 240);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.7);
+        tracerPolygone(doc, mm(m.silhouette), 'FD');
+    }
+    if (decouper || solution) {
+        doc.setLineWidth(decouper ? 0.5 : 0.35);
+        doc.setDrawColor(...ENCRE.trait);
+        m.pieces.forEach(p => {
+            if (couleur) doc.setFillColor(...rvbHex(p.couleur));
+            else doc.setFillColor(255, 255, 255);
+            tracerPolygone(doc, mm(p.sommets), 'FD');
+        });
+    }
+    if (!decouper) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(m.nom), b.x + b.w / 2, b.y + b.h - 1, { align: 'center' });
+    }
+}
+
+/** « #ef4444 » en composantes, pour jsPDF. */
+const rvbHex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16),
+    parseInt(h.slice(5, 7), 16)];
 
 // --- LE THÉORÈME DE PYTHAGORE, RÉDIGÉ ----------------------------------------
 //
@@ -5657,6 +5753,26 @@ export const RENDUS = {
         // rentrerait plus dans sa case.
         disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2
+    },
+
+    tangram: {
+        titre: 'Le tangram',
+        consigne: (items) => (items.some(i => i.meta && i.meta.quoi === 'decouper')
+            ? 'Découpe le carré le long des traits : tu obtiens les sept pièces du '
+                + 'tangram. Range-les dans une pochette — elles resserviront. Puis remplis '
+                + 'chaque silhouette avec les SEPT pièces, sans trou ni chevauchement : on '
+                + 'a le droit de les tourner, et le parallélogramme a le droit d\'être retourné.'
+            : 'Remplis chaque silhouette avec les SEPT pièces de ton tangram, sans trou ni '
+                + 'chevauchement. On a le droit de tourner les pièces, et le parallélogramme '
+                + 'a le droit d\'être retourné.'),
+        previewGrille: tangramPreviewHtml,
+        pdfGrille: dessinerTangramPdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // Le carré à découper veut de la place — on ne découpe pas au ciseau
+        // dans quatre centimètres — et les silhouettes suivent la même taille.
+        proportions: { w: 1, h: 1 },
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
     },
 
     pythagore: {
