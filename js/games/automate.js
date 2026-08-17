@@ -105,12 +105,52 @@ class Automate extends BaseGame {
                 }
                 .au-plan { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; }
                 .au-svg { width: 100%; height: 100%; display: block; }
+                /* TÉLÉPHONE : LES BLOCS EN COLONNE, LES COMMANDES À LEUR DROITE.
+                   Rémy : « il faut que les blocs soient les uns en dessous des
+                   autres, et du coup tu mets les commandes à droite de ces blocs
+                   pour ne pas perdre un espace inutile ».
+                   Il a doublement raison. Un programme est une SUITE
+                   d'instructions — c'est ce que dit Scratch, et c'est ce qu'on
+                   veut lire : la pile se parcourt du haut vers le bas, alors
+                   qu'à plat sur deux ou trois lignes qui se replient, l'ordre
+                   devient une devinette. Et les trois commandes, mises en
+                   colonne à droite de cette pile, occupent une place qui, sinon,
+                   reste vide : rien n'est pris au quadrillage.
+                   La règle « display: contents » sort le corps de la mise en
+                   page pour que la pile et le quadrillage se placent
+                   directement dans la grille de l'enveloppe. */
                 @media (max-width: 620px), (orientation: portrait) {
-                    .au-corps { flex-direction: column; align-items: center; }
-                    .au-prog {
-                        flex: 0 0 auto; max-width: 100%; width: 100%; max-height: 34%;
-                        flex-direction: row; flex-wrap: wrap; align-items: flex-start;
+                    .au-wrap {
+                        display: grid;
+                        grid-template-columns: minmax(0, 1fr) auto;
+                        grid-template-rows: auto minmax(90px, 1fr) auto auto;
+                        /* L'enveloppe est une boîte flexible centrée à
+                           l'origine ; en grille, un alignement centré
+                           empêcherait les cases de s'étirer — le quadrillage
+                           garderait sa taille carrée et déborderait par-dessus
+                           les blocs. */
+                        align-items: stretch;
+                        grid-template-areas:
+                            "haut haut"
+                            "plan plan"
+                            "prog cmds"
+                            "note note";
+                        column-gap: 10px;
                     }
+                    .au-corps { display: contents; }
+                    .au-haut { grid-area: haut; }
+                    .au-plan { grid-area: plan; min-height: 0; overflow: hidden; }
+                    .au-prog {
+                        grid-area: prog; align-self: stretch; justify-self: stretch;
+                        flex-direction: column; flex-wrap: nowrap; align-items: flex-start;
+                        width: auto; max-width: none; max-height: 30vh;
+                    }
+                    .au-cmds {
+                        grid-area: cmds; align-self: center;
+                        flex-direction: column; flex-wrap: nowrap; gap: 6px;
+                    }
+                    .au-cmd { min-width: 64px; padding: 6px 10px; }
+                    .au-note { grid-area: note; }
                 }
 
                 /* LES BLOCS. Les couleurs de Scratch, parce que ce sont celles
