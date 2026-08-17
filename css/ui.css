@@ -767,3 +767,30 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    une fenêtre qui revient toute seule au troisième exercice passe pour un bug
    si rien ne dit qu'on l'a demandée. */
 .bb-btn--actif { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* --- LES DEUX GESTES SUR UNE QUESTION, AU SURVOL ------------------------------
+   On ne retouche pas le texte d'une question — sa réponse vient du générateur,
+   et un énoncé réécrit laisserait le corrigé sur l'ancienne valeur. On peut en
+   revanche en retirer une autre au sort à cette place, ou la supprimer. Les
+   boutons ne paraissent qu'au survol de la question : une feuille couverte de
+   petites croix ne se relit plus. */
+.fx-qgestes {
+    position: absolute; display: flex; align-items: flex-start; justify-content: flex-end;
+    gap: 3px; padding-right: 1px; opacity: 0; transition: opacity .12s ease;
+    pointer-events: none;
+}
+.fx-qgestes:hover, .fq-page:hover .fx-qgestes:focus-within { opacity: 1; }
+/* La zone reste sensible au pointeur même invisible, sinon on ne peut pas la
+   survoler pour la faire paraître. */
+.fx-qgestes { pointer-events: auto; }
+.fx-qgeste {
+    flex: 0 0 auto; width: 17px; height: 17px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 5px;
+    background: var(--bg-panel); color: var(--text-muted);
+    font-size: 9px; line-height: 1; cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .16);
+}
+.fx-qgeste:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+.fx-qgeste--sup:hover { background: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+.fx-qgeste:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }

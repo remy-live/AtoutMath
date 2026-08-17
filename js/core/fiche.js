@@ -609,7 +609,7 @@ export function composerBlocs(exos, opts, mesurer) {
 
         // Les cellules, pré-mesurées : la pagination a besoin des hauteurs
         // avant de poser quoi que ce soit.
-        function mesurerCellules() { return questions.map(q => {
+        function mesurerCellules() { return questions.map((q, iQ) => {
             const mes = q.fractions ? mesureurFractions(mesurer) : mesurer;
             const lignes = couperEnLignes(texteImprime(q.texte, q.reponse), texteW, o.taille, mes);
             const choix = (o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null;
@@ -645,7 +645,11 @@ export function composerBlocs(exos, opts, mesurer) {
             const h = supp + lignes.length * o.interligne
                 + (choix ? o.interligne : 0)
                 + (trou || memeLigne ? 0 : ligneRep);
-            return { lignes, choix, memeLigne, trou, h, dy: supp, mes, fractions: !!q.fractions };
+            // `iQ` : le rang de la question DANS SON EXERCICE. C'est la seule
+            // chose qui permette, depuis l'aperçu, de désigner celle qu'on
+            // veut retirer ou retirer au sort — le numéro imprimé, lui, court
+            // sur toute la feuille et saute les exercices non numérotés.
+            return { lignes, choix, memeLigne, trou, h, dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
 
         const consigneLignes = exo.consigne
@@ -727,6 +731,8 @@ export function composerBlocs(exos, opts, mesurer) {
                 rep.nom = `q${total}`;
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
+                    // D'où vient cette question : de quel exercice, à quel rang.
+                    exoId: exo.id ?? null, iQ: cell.iQ,
                     lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,
                     fractions: cell.fractions,
                     choix: cell.choix,

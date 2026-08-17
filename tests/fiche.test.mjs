@@ -854,3 +854,21 @@ test('une question posée en toutes lettres reçoit « Réponse : », pas « = �
     // Un calcul, lui, garde son signe d'égalité.
     assert.match(reponseEnPlace('7 × 8', '56'), / = /);
 });
+
+test('chaque question sait de quel exercice et de quel rang elle vient', async () => {
+    // C'est ce qui permet à l'aperçu de désigner LA question sur laquelle on
+    // vient de cliquer, pour la retirer ou en retirer une autre au sort. Le
+    // numéro imprimé ne suffit pas : il court sur toute la feuille et saute
+    // les exercices non numérotés.
+    const { composerBlocs } = await import('../js/core/fiche.js');
+    const q = (t) => ({ texte: t, reponse: '' });
+    const mise = composerBlocs([
+        { id: 'alpha', titre: 'A', questions: [q('7 × 8 ='), q('9 × 3 =')] },
+        { id: 'beta', titre: 'B', questions: [q('12 + 5 =')] }
+    ], { colonnes: 1 }, mesurer);
+
+    const posees = mise.pages.flatMap(p => p.items).filter(i => i.type === 'q');
+    assert.equal(posees.length, 3);
+    assert.deepEqual(posees.map(i => [i.exoId, i.iQ]),
+        [['alpha', 0], ['alpha', 1], ['beta', 0]]);
+});

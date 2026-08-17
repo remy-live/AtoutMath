@@ -281,6 +281,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // valent n fois une. Zéro laisse la réponse au bout de l'énoncé.
     const composer = (o) => composerBlocs([{
         titre: exo.title,
+        // L'identifiant du bloc : c'est par lui que l'aperçu désigne la
+        // question sur laquelle on vient de cliquer.
+        id: exo.id || 'fiche',
         consigne: consigneEl.value,
         questions,
         colonnes: o.colonnes,
@@ -316,7 +319,8 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
             <div class="fq-page${v.liste ? ' fq-page--sol' : ''}"
                  style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
                 ${apercuEntete(k, exo.title, v.sousTitre, null, pg)}
-                ${v.liste ? apercuSolutions(v.page, k, v.opts) : apercuItems(v.page, k, v.opts)}
+                ${v.liste ? apercuSolutions(v.page, k, v.opts)
+        : apercuItems(v.page, k, { ...v.opts, reglable: true })}
             </div>`).join('');
 
         const enCol = mise.colonnes && mise.colonnes[0];
@@ -352,6 +356,42 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     numEl.onchange = rendre;
     ouSol.onchange = rendre;
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
+
+    // --- LES DEUX GESTES SUR UNE QUESTION ------------------------------------
+    //
+    // On ne retouche pas le TEXTE d'une question : sa réponse vient du
+    // générateur, et un énoncé réécrit à la main laisserait le corrigé sur
+    // l'ancienne valeur. Deux gestes suffisent, et gardent toujours l'énoncé
+    // avec sa réponse :
+    //
+    //   🎲 EN RETIRER UNE AUTRE À CETTE PLACE — celle-ci ne convient pas
+    //     (nombres trop gros, doublon, tournure), on en veut une autre SANS
+    //     refaire toute la feuille. C'est le geste qui rend « D'autres
+    //     questions » inutile la plupart du temps.
+    //   ✕ LA RETIRER — la feuille en compte une de moins, et le champ du
+    //     nombre suit : sinon `completer` en remettrait aussitôt une à la
+    //     place, et le clic n'aurait l'air de rien faire.
+    //
+    // L'écouteur est posé sur l'aperçu, pas sur les boutons : ceux-ci sont
+    // redessinés à chaque rendu.
+    apercu.addEventListener('click', (ev) => {
+        const neuf = ev.target.closest('[data-q-neuf]');
+        const sup = ev.target.closest('[data-q-sup]');
+        const btn = neuf || sup;
+        if (!btn) return;
+        const rang = Number(btn.dataset.qRang);
+        if (!Number.isInteger(rang) || rang < 0 || rang >= questions.length) return;
+        if (neuf) {
+            const [remplacante] = tirerQuestions(generator, params, 1);
+            if (remplacante) questions[rang] = remplacante;
+        } else {
+            questions.splice(rang, 1);
+            // La modale borne le nombre à quatre : afficher trois ferait
+            // revenir une question au rendu suivant, sans qu'on comprenne.
+            nbEl.value = String(Math.max(4, questions.length));
+        }
+        rendre();
+    });
     modal.querySelector('#fq-fermer').onclick = () => { modal.style.display = 'none'; };
 
     const btnDl = modal.querySelector('#fq-telecharger');

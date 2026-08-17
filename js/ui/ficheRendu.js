@@ -285,6 +285,28 @@ export function apercuItems(page, k, o) {
             // retrouvait un demi-interligne plus haut que sa phrase.
             html += `<div class="fq-num" style="left:${it.x * k}px; top:${(it.y + (it.dy || 0)) * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
         }
+        // LES DEUX GESTES SUR UNE QUESTION, AU SURVOL.
+        //
+        // On ne retouche PAS le texte d'une question : sa réponse vient du
+        // générateur, pas de l'énoncé. Réécrire « 7 × 8 = » en « 9 × 8 = »
+        // laisserait la page des solutions écrire 56 — une fiche dont le
+        // corrigé ment est pire que pas de fiche. On peut en revanche la
+        // retirer, ou en retirer une autre au sort : les deux gardent l'énoncé
+        // et sa réponse ensemble.
+        //
+        // Comme l'engrenage des exercices, ces boutons n'existent que dans
+        // l'aperçu : le PDF passe par `pdfItems`, qui ne les connaît pas.
+        if (o.reglable && it.exoId != null && it.iQ != null) {
+            html += `<div class="fx-qgestes" style="left:${it.x * k}px; top:${it.y * k}px;
+                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
+                <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
+                    title="Retirer une autre question au sort à cette place"
+                    aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">🎲</button>
+                <button type="button" class="fx-qgeste fx-qgeste--sup" data-q-sup="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
+                    title="Retirer cette question de la fiche"
+                    aria-label="Supprimer la question ${it.n ?? it.iQ + 1}">✕</button>
+            </div>`;
+        }
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
                 width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
