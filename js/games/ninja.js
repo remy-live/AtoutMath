@@ -424,11 +424,24 @@ class Ninja extends BaseGame {
             // le stand ignorait complètement : le réglage n'agissait que sur
             // les bulles en cloche des deux autres modes.
             const duree = (4200 + 2100 * v.objets.length) * this.allure;
+            // COMBIEN DE CIBLES PAR RANGÉE ? Autant qu'il en tient, pas quatre
+            // d'office. Rémy, sur iPhone : « les cercles de progression se
+            // superposent ». Quatre colonnes sur une scène de 340 px laissent
+            // 73 px d'axe en axe, alors qu'une cible mesure 66 px et que son
+            // anneau de compte à rebours en ajoute encore quatorze : les
+            // anneaux mordaient les uns sur les autres et l'on ne savait plus
+            // lequel se vidait. On calcule donc les colonnes d'après la place.
+            const diametre = Math.min(118, Math.max(66, larg * 0.17)) + 16;
+            const colonnes = Math.max(1, Math.min(4, v.objets.length,
+                Math.floor(larg * 0.94 / diametre)));
+            const lignes = Math.ceil(v.objets.length / colonnes);
             v.objets.forEach((o, i) => {
-                const colonnes = Math.min(4, v.objets.length);
                 const col = i % colonnes, rang = Math.floor(i / colonnes);
                 const x = larg * (0.5 + (col - (colonnes - 1) / 2) * (0.86 / colonnes));
-                const y = haut * (0.30 + rang * 0.30);
+                // Les rangées se répartissent sur la hauteur disponible : avec
+                // trois rangées, un pas fixe de 0,30 posait la dernière sur le
+                // sol du stand.
+                const y = haut * (lignes < 2 ? 0.45 : 0.30 + rang * (0.40 / (lignes - 1)));
                 const e = this.creerEntite([o], x, y, 0, 0, larg, haut, 'cible');
                 e.stand = true;
                 e.retard = i * 420 * this.allure;

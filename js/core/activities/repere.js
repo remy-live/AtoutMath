@@ -76,12 +76,19 @@ export function mount(container, session) {
         const cy = hit.getAttribute('cy');
         const ns = 'http://www.w3.org/2000/svg';
 
-        const dot = document.createElementNS(ns, 'circle');
-        dot.setAttribute('cx', cx);
-        dot.setAttribute('cy', cy);
-        dot.setAttribute('r', '7');
-        dot.setAttribute('class', `rep-mark rep-mark--${kind}`);
-        svg.appendChild(dot);
+        // Une croix, comme sur la fiche imprimée et comme au tableau : elle
+        // désigne le nœud du quadrillage au lieu de le recouvrir.
+        const croix = document.createElementNS(ns, 'g');
+        croix.setAttribute('class', `rep-mark rep-mark--${kind}`);
+        [[-7, -7, 7, 7], [-7, 7, 7, -7]].forEach(([dx1, dy1, dx2, dy2]) => {
+            const l = document.createElementNS(ns, 'line');
+            l.setAttribute('x1', String(Number(cx) + dx1));
+            l.setAttribute('y1', String(Number(cy) + dy1));
+            l.setAttribute('x2', String(Number(cx) + dx2));
+            l.setAttribute('y2', String(Number(cy) + dy2));
+            croix.appendChild(l);
+        });
+        svg.appendChild(croix);
 
         if (label) {
             const text = document.createElementNS(ns, 'text');

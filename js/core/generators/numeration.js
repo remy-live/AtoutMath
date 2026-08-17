@@ -418,11 +418,21 @@ export const ordreGrandeurGenerator = {
                 html: `<div class="game-question"><span class="nb-highlight">${affiche}</span> &asymp; ?</div>`
             },
             answer,
+            // QUATRE PROPOSITIONS, demande de Rémy. Avec trois, une élimination
+            // suffisait : on écarte le nombre manifestement trop grand, il en
+            // reste deux, et l'on tranche à pile ou face. La quatrième est
+            // l'erreur symétrique de la troisième — un rang en dessous plutôt
+            // qu'un rang au-dessus : il faut alors vraiment compter les zéros.
             choices: finalizeChoices(rng, [
                 { value: answer, label: formatFr(answer), correct: true },
                 { value: voisin, label: formatFr(voisin), why: 'Ce n\'est pas le nombre rond le plus proche : regarde de quel côté il penche.' },
-                { value: answer * 10, label: formatFr(answer * 10), why: 'Attention au nombre de zéros.' }
-            ], { count: 3 }),
+                { value: answer * 10, label: formatFr(answer * 10), why: 'Attention au nombre de zéros : c\'est un rang trop haut.' },
+                {
+                    value: Number((answer / 10).toFixed(2)),
+                    label: formatFr(Number((answer / 10).toFixed(2))),
+                    why: 'Attention au nombre de zéros : c\'est un rang trop bas.'
+                }
+            ], { count: 4 }),
             hints: [
                 'Un ordre de grandeur, c\'est le nombre rond le plus proche.',
                 'Il sert à vérifier qu\'on n\'a pas fait une erreur grossière.'

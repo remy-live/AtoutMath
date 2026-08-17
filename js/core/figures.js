@@ -63,7 +63,16 @@ export function repereSvg({ max = 5, relatifs = false, point = null, interactive
         // évidente, et c'est la méthode qu'on veut voir reproduite.
         parts.push(`<line class="rep-helper" x1="${sx(0)}" y1="${py}" x2="${px}" y2="${py}"/>`);
         parts.push(`<line class="rep-helper" x1="${px}" y1="${sy(0)}" x2="${px}" y2="${py}"/>`);
-        parts.push(`<circle class="rep-point" cx="${px}" cy="${py}" r="6"/>`);
+        // UNE CROIX, PAS UN DISQUE. Rémy : « fais une croix pour le point ».
+        // C'est la convention du tableau et du cahier, et elle n'est pas
+        // décorative : un disque de six pixels de rayon COUVRE le nœud du
+        // quadrillage, alors que les deux traits d'une croix se coupent
+        // exactement dessus. L'élève lit la position, il ne la devine plus.
+        parts.push(
+            `<g class="rep-point">`
+            + `<line x1="${px - 7}" y1="${py - 7}" x2="${px + 7}" y2="${py + 7}"/>`
+            + `<line x1="${px - 7}" y1="${py + 7}" x2="${px + 7}" y2="${py - 7}"/>`
+            + `</g>`);
         parts.push(`<text class="rep-point-label" x="${px + 11}" y="${py - 10}">${point.label || 'A'}</text>`);
     }
 

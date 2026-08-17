@@ -501,16 +501,16 @@
 .rep-origin { fill: var(--text-main); font-weight: 800; }
 .rep-axis-name { fill: var(--text-main); font-size: 14px; font-style: italic; font-weight: 700; }
 .rep-helper { stroke: var(--primary); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: .65; }
-.rep-point { fill: var(--primary); stroke: #fff; stroke-width: 2; }
+.rep-point line { stroke: var(--primary); stroke-width: 3.4; stroke-linecap: round; }
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
 .rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }
 .rep-hit:hover, .rep-hit:focus-visible { fill: rgba(99, 102, 241, .22); }
 
-.rep-mark { stroke: #fff; stroke-width: 2; }
-.rep-mark--ok { fill: var(--success); }
-.rep-mark--ko { fill: var(--danger); }
-.rep-mark--demo { fill: var(--warning); }
+.rep-mark line { stroke-width: 3.4; stroke-linecap: round; }
+.rep-mark--ok line { stroke: var(--success); }
+.rep-mark--ko line { stroke: var(--danger); }
+.rep-mark--demo line { stroke: var(--warning); }
 .rep-mark-label { font-size: 13px; font-weight: 800; }
 .rep-mark-label--ko { fill: var(--danger); }
 .rep-mark-label--demo { fill: var(--warning); }
