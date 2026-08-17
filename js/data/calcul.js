@@ -1125,6 +1125,34 @@ export const calculExercises = [
         instruction: "Toutes les lignes, colonnes ET diagonales font la même somme — elle est affichée. Cherche une ligne où il ne manque qu'une case : additionne ce que tu connais, soustrais de la somme magique, écris. Chaque case trouvée en débloque d'autres. On ne devine jamais."
     },
     {
+        // L'HEXAGRILLE. À côté du carré magique, elle apporte ce qu'il n'a
+        // pas : des files de LONGUEURS DIFFÉRENTES, chacune avec sa propre
+        // somme. Une somme de 3 sur deux cases ne laisse aucun choix, et c'est
+        // par là qu'on entre. On ne récite pas une somme magique, on croise
+        // des décompositions.
+        id: 'logi-hexagrille', status: STATUS.TEST, title: 'L\'Hexagrille',
+        activityId: 'hexagrille',
+        sansRevision: true,
+        skills: ['num.logique.hexagrille'],
+        params: { niveau: 'facile' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', default: 'facile',
+                aide: 'La difficulté ne tient pas aux calculs — ils restent des additions de un chiffre — '
+                    + 'mais au nombre d\'appuis : combien de cases sont déjà écrites, et combien de flèches '
+                    + 'sont données. Chaque grille reste résoluble par déduction pure, sans jamais deviner.',
+                options: [
+                    { value: 'facile', label: 'Trois cases données' },
+                    { value: 'moyen', label: 'Une seule case donnée' },
+                    { value: 'difficile', label: 'Aucune case donnée' }
+                ]
+            }
+        ],
+        motsClefs: ['hexagrille', 'sommes', 'logique', 'addition'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les neuf cases portent les chiffres de 1 à 9, chacun une seule fois. Chaque flèche donne la somme de la file qu'elle désigne. On ne devine jamais : on cherche une file où il ne manque QU'UNE case, on additionne ce qu'on y a déjà, et on soustrait de la somme visée. Les files courtes sont les plus bavardes — une somme de 3 sur deux cases, c'est 1 et 2, et rien d'autre."
+    },
+    {
         // 2048. Un jeu de puissances de deux qui n'a pas besoin d'être
         // déguisé : chaque fusion est un doublement énoncé, et chaque coup
         // s'anticipe. Le robot montre la seule chose qui compte : on ne glisse

@@ -492,6 +492,14 @@ const BASE = {
         descriptor: 'Reconnaître et savoir dire les mots du cours : hypoténuse, quotient, médiatrice, dénominateur.',
         lesson: 'Un mot de mathématiques désigne UNE chose précise, et cette précision est ce qui rend les énoncés lisibles. « Somme » n\'est pas « produit », « diviseur » n\'est pas « division », « médiatrice » n\'est pas « bissectrice ». La plupart des blocages en résolution de problème ne viennent pas du calcul mais d\'un mot de la question qu\'on n\'a pas su relier à ce qu\'on sait faire.'
     },
+    'num.logique.hexagrille': {
+        label: 'L\'hexagrille',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Placer les chiffres de 1 à 9 pour que chaque file atteigne la somme fléchée.',
+        lesson: 'On ne devine jamais : on cherche une file où il ne manque QU\'UNE case, on additionne ce qu\'on y a déjà, et on soustrait de la somme visée. Les files courtes sont les plus bavardes — une somme de 3 sur deux cases, c\'est 1 et 2, et rien d\'autre.'
+    },
     'num.logique.dichotomie': {
         label: 'Encadrer un nombre (dichotomie)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

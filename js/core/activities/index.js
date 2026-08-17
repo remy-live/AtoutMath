@@ -350,6 +350,7 @@ const legacy = [
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique'],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
+    ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille'],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
     ['skweek', 'Le Peintre (repeindre le sol)', 'skweek', 'engineSkweek'],
