@@ -17,7 +17,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     creerPartie, idx, libre, placementPossible, tirerCible, poser,
-    restant, score, conseil, formes, utiliserJoker
+    restant, score, conseil, formes, utiliserJoker, coupOrdinateur, jokerUtile
 } from '../core/arpenteurs.js';
 
 const TAILLES = {
@@ -39,13 +39,22 @@ class Arpenteurs extends BaseGame {
         const cols = portrait ? t.rows : t.cols;
         const rows = portrait ? t.cols : t.rows;
         this.solo = String(this.params.joueurs) === '1';
+        // CONTRE L'ORDINATEUR. Rémy : « j'aimerais bien pouvoir jouer contre
+        // l'ordinateur ». Le jeu se joue à deux — la version solo mesure une
+        // surface, elle ne fait pas jouer — et un élève seul devant l'écran
+        // n'a personne. La machine tient donc le joueur 2.
+        this.contreMachine = !this.solo && String(this.params.joueurs) === 'ia';
+        this.forceIA = ['debutant', 'normal', 'fort'].includes(this.params.forceIA)
+            ? this.params.forceIA : 'normal';
         this.etat = creerPartie({
             cols, rows,
             table: parseInt(this.params.table) || 10,
             minCote: this.params.bandes ? 1 : 2,
             joueurs: this.solo ? 1 : 2
         });
-        this.noms = [null, this.params.nom1 || 'Joueur 1', this.params.nom2 || 'Joueur 2'];
+        this.noms = [null,
+            this.params.nom1 || 'Joueur 1',
+            this.contreMachine ? 'L\'ordinateur' : (this.params.nom2 || 'Joueur 2')];
     }
 
     render() {
@@ -233,10 +242,42 @@ class Arpenteurs extends BaseGame {
         const n = tirerCible(this.etat, this.rng);
         this.majBandeau();
         if (n === null) return this.finir();
+        if (this.contreMachine && this.etat.joueur === 2) return this.jouerMachine();
         this.note(this.solo
             ? `Clôture une parcelle de <b>${n}</b> cases. Glisse d'un coin à l'autre.`
             : `Au tour de <b>${this.noms[this.etat.joueur]}</b> : clôture une parcelle de <b>${n}</b> cases. `
                 + `Glisse d'un coin à l'autre.`);
+    }
+
+    /**
+     * LE TOUR DE LA MACHINE. Elle réfléchit une seconde — pas parce qu'elle en
+     * a besoin, mais parce qu'un rectangle qui apparaît instantanément ne se
+     * regarde pas : on veut que l'élève VOIE où elle pose, et pourquoi.
+     */
+    jouerMachine() {
+        this.note('L\'ordinateur réfléchit…');
+        this.timerId = setTimeout(() => {
+            if (!this.isRunning) return;
+            // Son joker, comme celui de l'élève : une fois, quand le nombre
+            // tiré l'obligerait à couper le terrain en deux.
+            if (jokerUtile(this.etat, this.rng)) {
+                const avant = this.etat.cible;
+                const r = utiliserJoker(this.etat, this.rng);
+                if (r.ok) {
+                    this.majBandeau();
+                    this.note(`L'ordinateur refuse le ${avant} et joue son joker : ce sera `
+                        + `<b>${r.cible}</b>.`);
+                }
+            }
+            const coup = coupOrdinateur(this.etat, this.rng, this.forceIA);
+            if (!coup) return this.finir();
+            const res = poser(this.etat, coup.x, coup.y, coup.w, coup.h);
+            if (!res.ok) return this.finir();
+            this.peindre(res.parcelle);
+            this.note(`L'ordinateur clôture <b>${res.message}</b>.`);
+            this.majBandeau();
+            this.timerId = setTimeout(() => { if (this.isRunning) this.tourSuivant(); }, 900);
+        }, 850);
     }
 
     /** Le joker : on refuse le nombre tiré, une fois par partie. */

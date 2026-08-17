@@ -212,3 +212,114 @@ export function conseil(e) {
         ? `${e.cible} ne s'écrit que d'une façon : ${liste}. Tu n'as pas le choix de la forme, seulement de la place.`
         : `${e.cible} s'écrit de ${liste2.length} façons : ${liste}. Choisis celle qui abîme le moins le terrain.`;
 }
+
+/**
+ * L'ADVERSAIRE DE LA MACHINE — Rémy : « j'aimerais bien pouvoir jouer contre
+ * l'ordinateur ».
+ *
+ * Le jeu se joue à deux, et à deux seulement : la version solo mesure une
+ * surface, elle ne fait pas jouer. Or un élève seul devant l'écran n'a
+ * personne — et c'est précisément lui qu'on veut faire travailler.
+ *
+ * CE QUE LA MACHINE CHERCHE. Pas la plus grande parcelle : elles font toutes
+ * exactement l'aire tirée. Ce qui se joue, c'est ce qu'on LAISSE — une
+ * parcelle collée au bord ou à une clôture existante ne coupe pas le terrain
+ * en deux, alors qu'une parcelle posée au milieu crée deux bandes trop
+ * étroites pour rien. On note donc chaque placement par son CONTACT : le
+ * nombre de côtés de cases qui touchent un bord du terrain ou une parcelle
+ * déjà posée. C'est le raisonnement qu'on veut voir chez l'élève, et il est
+ * assez simple pour qu'il puisse le rattraper.
+ *
+ * TROIS FORCES. « Débutant » joue au hasard parmi les coups valables — on peut
+ * le battre en réfléchissant, ce qui est le but. « Normal » prend le meilleur
+ * contact, avec un peu de désordre pour ne pas être prévisible. « Fort » prend
+ * toujours le meilleur.
+ */
+export function contact(e, x, y, w, h) {
+    let n = 0;
+    for (let j = 0; j < h; j++) {
+        for (let i = 0; i < w; i++) {
+            const cx = x + i, cy = y + j;
+            // Un côté ne compte que s'il regarde VERS L'EXTÉRIEUR de la
+            // parcelle : les côtés intérieurs sont les mêmes pour tous les
+            // placements de même forme et ne départageraient rien.
+            const bords = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            for (const [dx, dy] of bords) {
+                const vx = cx + dx, vy = cy + dy;
+                const dedans = vx >= x && vx < x + w && vy >= y && vy < y + h;
+                if (dedans) continue;
+                const horsTerrain = vx < 0 || vy < 0 || vx >= e.cols || vy >= e.rows;
+                if (horsTerrain || e.cases[idx(e, vx, vy)] !== VIDE) n++;
+            }
+        }
+    }
+    return n;
+}
+
+/** Tous les placements valables pour l'aire visée, notés par leur contact. */
+export function placements(e, n) {
+    const out = [];
+    for (const [a, b] of formes(e, n)) {
+        for (const [w, h] of (a === b ? [[a, b]] : [[a, b], [b, a]])) {
+            for (let y = 0; y + h <= e.rows; y++) {
+                for (let x = 0; x + w <= e.cols; x++) {
+                    if (!libre(e, x, y, w, h)) continue;
+                    const c = contact(e, x, y, w, h);
+                    // LA QUALITÉ, PAS LE CONTACT BRUT. Une bande 2 × 18 a
+                    // quarante côtés à offrir et un carré 6 × 6 seulement
+                    // vingt-quatre : à contact égal, le contact brut choisirait
+                    // toujours la bande — celle qui coupe le terrain en deux.
+                    // On rapporte donc le contact au périmètre : c'est la part
+                    // de la clôture qui s'appuie sur quelque chose.
+                    out.push({ x, y, w, h, contact: c, qualite: c / (2 * (w + h)) });
+                }
+            }
+        }
+    }
+    return out;
+}
+
+/**
+ * Le coup de la machine, ou `null` si elle ne peut pas jouer.
+ *
+ * @param {Object} e     - la partie
+ * @param {Object} rng   - le tirage ensemencé
+ * @param {'debutant'|'normal'|'fort'} [force]
+ */
+export function coupOrdinateur(e, rng, force = 'normal') {
+    if (!e.cible) return null;
+    const choix = placements(e, e.cible);
+    if (!choix.length) return null;
+    if (force === 'debutant') return rng.pick(choix);
+    const meilleur = Math.max(...choix.map(c => c.qualite));
+    // « Normal » accepte un peu moins bien : cela suffit à varier ses parties
+    // sans qu'il joue mal.
+    const seuil = force === 'fort' ? meilleur - 1e-9 : meilleur - 0.12;
+    const bons = choix.filter(c => c.qualite >= seuil);
+    return rng.pick(bons);
+}
+
+/**
+ * La machine doit-elle brûler son joker ?
+ *
+ * Seulement quand le nombre tiré ne se pose NULLE PART correctement : sa
+ * meilleure place laisse la moitié de sa clôture en l'air, alors qu'un autre
+ * nombre se logerait proprement. On compare des qualités, jamais des tailles —
+ * sinon la machine dépenserait son joker à chaque tour pour obtenir un plus
+ * gros nombre, ce qui n'est pas ce que le joker sert à faire.
+ */
+export function jokerUtile(e, rng) {
+    if (!e.jokers[e.joueur] || !e.cible) return false;
+    const ici = placements(e, e.cible);
+    if (!ici.length) return true;
+    const meilleurIci = Math.max(...ici.map(c => c.qualite));
+    // Une place déjà correcte ne se refuse pas.
+    if (meilleurIci >= 0.45) return false;
+    const autres = ciblesPossibles(e).filter(n => n !== e.cible);
+    if (!autres.length) return false;
+    const ailleurs = Math.max(...autres.map(n => {
+        const p = placements(e, n);
+        return p.length ? Math.max(...p.map(c => c.qualite)) : 0;
+    }));
+    return ailleurs - meilleurIci >= 0.3;
+}

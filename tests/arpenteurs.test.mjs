@@ -245,3 +245,61 @@ test('en solo, la main ne change jamais de joueur', () => {
     assert.ok(score(e, 1) > 0, 'le joueur solo a bien clôturé');
     assert.equal(score(e, 2), 0, 'aucune case ne doit appartenir à un second joueur');
 });
+
+// --- L'adversaire de la machine ---------------------------------------------
+
+test('le contact compte les côtés qui touchent un bord ou une clôture', async () => {
+    const { creerPartie, contact, poser, tirerCible } = await import('../js/core/arpenteurs.js');
+    const e = creerPartie({ cols: 10, rows: 10, table: 6 });
+    // Un carré 2 × 2 dans le coin : quatre côtés touchent les deux bords.
+    assert.equal(contact(e, 0, 0, 2, 2), 4);
+    // Le même carré en plein milieu ne touche rien.
+    assert.equal(contact(e, 4, 4, 2, 2), 0);
+});
+
+test('la machine préfère se coller aux bords', async () => {
+    const { creerPartie, coupOrdinateur, placements } = await import('../js/core/arpenteurs.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    const e = creerPartie({ cols: 10, rows: 10, table: 6 });
+    e.cible = 4;
+    const tous = placements(e, 4);
+    const meilleure = Math.max(...tous.map(c => c.qualite));
+    for (let i = 0; i < 20; i++) {
+        const c = coupOrdinateur(e, makeRng(`f${i}`), 'fort');
+        assert.ok(Math.abs(c.qualite - meilleure) < 1e-9,
+            'le mode fort doit prendre la meilleure place');
+        assert.equal(c.w * c.h, 4);
+    }
+});
+
+test('la machine remplit un terrain sans jamais poser un coup illégal', async () => {
+    const { creerPartie, tirerCible, coupOrdinateur, poser, restant } = await import('../js/core/arpenteurs.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    const rng = makeRng('remplir');
+    const e = creerPartie({ cols: 12, rows: 9, table: 6 });
+    let coups = 0;
+    while (coups < 40) {
+        tirerCible(e, rng);
+        if (!e.cible) break;
+        const c = coupOrdinateur(e, rng, 'normal');
+        if (!c) break;
+        const r = poser(e, c.x, c.y, c.w, c.h);
+        assert.ok(r.ok, `coup refusé : ${r.raison}`);
+        coups++;
+    }
+    assert.ok(coups > 5, `la machine n'a joué que ${coups} coups`);
+    // Elle laisse peu de place perdue : c'est tout l'intérêt de l'heuristique.
+    assert.ok(restant(e) < 12 * 9 * 0.25, `${restant(e)} cases laissées libres`);
+});
+
+test('la machine ne joue son joker que si un autre nombre vaut nettement mieux', async () => {
+    const { creerPartie, jokerUtile } = await import('../js/core/arpenteurs.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    const e = creerPartie({ cols: 10, rows: 10, table: 6 });
+    // Terrain vide, cible 4 : il y a des coins partout, aucun besoin de joker.
+    e.cible = 4;
+    assert.equal(jokerUtile(e, makeRng('j')), false);
+    // Sans joker en réserve, jamais.
+    e.jokers[e.joueur] = 0;
+    assert.equal(jokerUtile(e, makeRng('j')), false);
+});

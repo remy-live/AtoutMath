@@ -709,16 +709,26 @@ export const calculExercises = [
         // statistiques de l'autre ne voudrait rien dire. Rien n'est enregistré,
         // comme pour le Duel des Tables.
         sansRevision: true,
-        params: { terrain: 'moyen', table: 10, bandes: false, joueurs: 2 },
+        params: { terrain: 'moyen', table: 10, bandes: false, joueurs: 2, forceIA: 'normal' },
         paramSchema: [
             {
                 id: 'joueurs', type: 'select', label: 'Qui joue ?',
-                aide: 'Seul, on clôture jusqu\'à ce que plus rien ne rentre et la partie se juge à la surface conquise — même jeu, même calcul, sans partenaire.',
+                aide: 'Contre l\'ordinateur, la machine cherche les parcelles qui abîment le moins le terrain — celles qui se collent à un bord ou à une clôture déjà posée. C\'est exactement le raisonnement qu\'on veut voir chez l\'élève, et il peut le rattraper. Seul, on clôture jusqu\'à ce que plus rien ne rentre, et la partie se juge à la surface conquise.',
                 options: [
                     { value: 2, label: 'À deux, sur la même tablette' },
+                    { value: 'ia', label: 'Contre l\'ordinateur' },
                     { value: 1, label: 'Seul, contre le terrain' }
                 ],
                 default: 2
+            },
+            {
+                id: 'forceIA', type: 'select', label: 'Force de l\'ordinateur', default: 'normal',
+                aide: 'Débutant pose au hasard parmi les coups valables : on le bat en réfléchissant, ce qui est le but. Normal choisit la parcelle qui touche le plus de bords et de clôtures, avec un peu de désordre. Fort prend toujours la meilleure. N\'a d\'effet que contre l\'ordinateur.',
+                options: [
+                    { value: 'debutant', label: 'Débutant — joue au hasard' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'fort', label: 'Fort — ne laisse rien' }
+                ]
             },
             {
                 id: 'terrain', type: 'select', label: 'Taille du terrain',
@@ -746,7 +756,7 @@ export const calculExercises = [
         ],
         motsClefs: ['tables', 'multiplication'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "À DEUX sur la même tablette. Un nombre de la table de Pythagore tombe — 36 — et celui dont c'est le tour clôture une parcelle de 36 cases : 6 × 6, 4 × 9, 3 × 12, comme il veut, où il veut. Glisse le doigt d'un coin à l'autre : l'aire s'affiche pendant le tracé. Le premier qui ne peut plus poser a perdu. Rien n'est enregistré dans le profil : c'est un duel."
+        instruction: "À DEUX sur la même tablette, ou CONTRE L'ORDINATEUR. Un nombre de la table de Pythagore tombe — 36 — et celui dont c'est le tour clôture une parcelle de 36 cases : 6 × 6, 4 × 9, 3 × 12, comme il veut, où il veut. Glisse le doigt d'un coin à l'autre : l'aire s'affiche pendant le tracé. Le premier qui ne peut plus poser a perdu. Rien n'est enregistré dans le profil : c'est un duel."
     },
     {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
