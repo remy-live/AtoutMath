@@ -66,6 +66,21 @@ class Dominos extends BaseGame {
                 }
                 .dm-tete { text-align: center; font-size: .95rem; flex: 0 0 auto; }
                 .dm-consigne { color: var(--text-muted); font-size: .82rem; }
+                /* EXPLIQUER, PUIS S'EFFACER. Rémy : « expliquer puis cacher la
+                   consigne ». Quatre lignes de règle en haut d'un écran de
+                   téléphone, c'est un quart de la planche — et elles n'ont
+                   d'utilité que les dix premières secondes. Elles se replient
+                   donc dès la PREMIÈRE pièce posée : à ce moment-là, l'élève a
+                   compris en faisant, ce qui vaut mieux que d'avoir lu. La
+                   pastille « ℹ La règle » les rappelle d'un doigt. */
+                .dm-consigne--repliee { display: none; }
+                .dm-rappel {
+                    border: 1px solid var(--border); background: var(--bg-panel);
+                    color: var(--text-muted); border-radius: 999px; padding: 2px 10px;
+                    font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer;
+                    margin-left: 8px; vertical-align: middle;
+                }
+                .dm-rappel[hidden] { display: none; }
                 .dm-zone {
                     font-size: .74rem; font-weight: 800; color: var(--text-muted);
                     letter-spacing: .04em; text-transform: uppercase; align-self: flex-start;
@@ -229,14 +244,39 @@ class Dominos extends BaseGame {
         return true;
     }
 
+    /** Replie la règle et fait apparaître la pastille qui la rappelle. */
+    replierConsigne() {
+        if (this.consigneVue) return;
+        this.consigneVue = true;
+        const texte = this.teteEl && this.teteEl.querySelector('[data-consigne]');
+        const rappel = this.teteEl && this.teteEl.querySelector('[data-rappel]');
+        if (texte) texte.classList.add('dm-consigne--repliee');
+        if (rappel) rappel.hidden = false;
+        this.mesurer();
+        this.dessiner();
+    }
+
+    /** La pastille : on redéplie, on replie. */
+    basculerConsigne() {
+        const texte = this.teteEl && this.teteEl.querySelector('[data-consigne]');
+        if (!texte) return;
+        texte.classList.toggle('dm-consigne--repliee');
+        this.mesurer();
+        this.dessiner();
+    }
+
     recommencer() {
         this.etat = plateauVide(this.chaine.pieces.length);
         this.reserve = reserveMelangee(this.chaine, this.rng);
         this.choisie = -1;
         this.derniere = -1;
-        this.teteEl.innerHTML = `<b>Dominos — ${echapper(this.source.label)}</b><br>
-            <span class="dm-consigne">La planche est tracée : range chaque pièce dans son emplacement.
+        this.consigneVue = false;
+        this.teteEl.innerHTML = `<b>Dominos — ${echapper(this.source.label)}</b>
+            <button type="button" class="dm-rappel" data-rappel hidden>ℹ La règle</button><br>
+            <span class="dm-consigne" data-consigne>La planche est tracée : range chaque pièce dans son emplacement.
             Glisse-la, ou touche-la simplement. « Vérifier » entoure les jointures fausses.</span>`;
+        const rappel = this.teteEl.querySelector('[data-rappel]');
+        if (rappel) rappel.onclick = () => this.basculerConsigne();
         this.mesurer();
         this.dessiner();
         this.note('');
@@ -458,6 +498,9 @@ class Dominos extends BaseGame {
     }
 
     accepter(pose) {
+        // La règle a fait son travail : on a posé une pièce, donc on a compris.
+        // Elle se replie et rend sa place à la planche.
+        this.replierConsigne();
         const dedans = casePiece(this.etat, pose.id);
         this.etat = poserEnCase(this.etat, pose.index, pose.id, pose.retourne);
         this.reserve = this.reserve.filter(x => x !== pose.id);

@@ -78,12 +78,30 @@ class Escadrille extends BaseGame {
                     background: radial-gradient(ellipse at 50% 0%, #1e1b4b 0%, #0b1020 60%, #05070f 100%); }
                 .esc-canvas { position: absolute; inset: 0; display: block; }
                 .esc-hud { position: absolute; top: 0; left: 0; right: 0; z-index: 5;
-                    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+                    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                    padding: 8px 12px;
                     pointer-events: none; font-family: 'Inter', system-ui, sans-serif; }
-                .esc-mission { flex: 1; min-width: 0; color: #e0e7ff; font-weight: 800; font-size: .92rem;
-                    text-shadow: 0 2px 6px rgba(0,0,0,.8); line-height: 1.25; }
-                .esc-mission b { color: #fcd34d; font-size: 1.15em; }
-                .esc-sous { display: block; font-weight: 600; color: #a5b4fc; font-size: .82em; }
+                /* LA RÈGLE AU MILIEU, PAS DANS UN COIN. Rémy, sur iPhone :
+                   « consigne pas claire et dans un coin ». Elle était écrite en
+                   petit en haut à gauche, entre le niveau et les cœurs : dans
+                   une pluie de nombres qui descendent, personne ne va la lire
+                   là. Elle occupe maintenant sa propre ligne, centrée, sur un
+                   fond assombri — et elle reste affichée toute la partie,
+                   parce que c'est ELLE qu'on oublie au bout de trente secondes,
+                   pas le score. */
+                .esc-regle {
+                    position: absolute; top: 34px; left: 0; right: 0; z-index: 5;
+                    display: flex; justify-content: center; pointer-events: none;
+                    font-family: 'Inter', system-ui, sans-serif;
+                }
+                .esc-regle span {
+                    background: rgba(5, 7, 15, .62); border: 1px solid rgba(165,180,252,.28);
+                    border-radius: 999px; padding: 5px 16px; max-width: 94%;
+                    color: #e0e7ff; font-weight: 800; text-align: center; line-height: 1.25;
+                    font-size: clamp(.85rem, 3.6vw, 1.1rem);
+                    text-shadow: 0 2px 6px rgba(0,0,0,.8);
+                }
+                .esc-regle b { color: #fcd34d; }
                 .esc-vies { color: #f87171; font-size: 1.15rem; letter-spacing: 1px; flex-shrink: 0; }
                 .esc-score { color: #fcd34d; font-weight: 900; font-size: 1rem; flex-shrink: 0;
                     font-variant-numeric: tabular-nums; }
@@ -92,19 +110,19 @@ class Escadrille extends BaseGame {
                     color: #94a3b8; font-size: .78rem; z-index: 5; pointer-events: none;
                     font-family: 'Inter', system-ui, sans-serif; }
                 @media (max-width: 620px) {
-                    .esc-mission { font-size: .8rem; }
                     .esc-aide { font-size: .7rem; }
+                    .esc-regle { top: 30px; }
+                    .esc-regle span { padding: 4px 12px; }
                 }
             </style>
             <div class="esc-arene">
                 <canvas class="esc-canvas"></canvas>
                 <div class="esc-hud">
-                    <div class="esc-mission">Table de <b>${this.table}</b>
-                        <span class="esc-sous">abats ce qui n'y est pas</span></div>
                     <div class="esc-niv" data-niv></div>
                     <div class="esc-vies" data-vies></div>
                     <div class="esc-score" data-score>0</div>
                 </div>
+                <div class="esc-regle"><span>Abats ce qui n'est <b>PAS</b> dans la table de <b>${this.table}</b></span></div>
                 <div class="esc-aide">Glisse (ou bouge la souris) pour piloter · tape pour tirer</div>
             </div>`;
 
