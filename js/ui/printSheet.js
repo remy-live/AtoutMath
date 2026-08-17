@@ -36,6 +36,9 @@ import {
     dessiner as dessinerNoyau, aretesCachees as aretesCacheesNoyau,
     facesVisibles as facesVisiblesNoyau
 } from '../core/solides.js';
+import {
+    cotesDe as cotesDePythagore, etapesCalcul as etapesCalculPythagore
+} from '../core/pythagore.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -1823,22 +1826,319 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LE THÉORÈME DE PYTHAGORE, RÉDIGÉ ----------------------------------------
+//
+// « Je sais que… Or… Donc… » : c'est la rédaction du cahier, et c'est elle
+// qu'on note. Une fiche de Pythagore qui aligne vingt énoncés et se corrige par
+// un nombre n'apprend pas à la produire — Rémy : « rédaction Je sais que / Or /
+// Donc avec les bons symboles, texte OU schéma au choix, place pour rédiger ».
+//
+// Chaque bloc porte donc l'énoncé — en toutes lettres ou en figure codée —, les
+// trois amorces imprimées en gris, et des lignes pour écrire dessous. La feuille
+// de solutions remplit exactement les mêmes lignes.
+
+const AMORCES = [
+    { mot: 'Je sais que', lignes: 2 },
+    { mot: 'Or', lignes: 2 },
+    { mot: 'Donc', lignes: 4 }
+];
+
+/** L'énoncé en toutes lettres, tel que le générateur l'écrit pour le papier. */
+const enoncePythagore = (item) =>
+    (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
+
+function geoPythagoreFiche(item, slot) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const schema = item.meta.presentation === 'schema';
+    const gaucheW = b.w * 0.32;
+    const corps = Math.max(2.2, Math.min(b.h * 0.072, 3.3));
+    const nLignes = AMORCES.reduce((s, a) => s + a.lignes, 0);
+    const pas = Math.max(3.4, (b.h - AMORCES.length * corps * 1.35) / nLignes);
+    // LA FIGURE A BESOIN DE SES MARGES. Une longueur s'écrit À CÔTÉ du côté
+    // qu'elle mesure, la lettre d'un sommet À CÔTÉ du sommet, et la question
+    // SOUS le tout : sans ces bandes réservées, « Calcule LM. » venait se poser
+    // sur le sommet du bas et sur la longueur de la base.
+    const gaucheMarge = corps * 3.2;             // les longueurs portées à gauche
+    const basMarge = corps * 3.4;                // la base, sa mesure, puis la question
+    return {
+        b, schema, gaucheW, corps, pas,
+        figX: b.x + gaucheMarge, figY: b.y + corps * 0.9,
+        figW: Math.max(6, gaucheW - gaucheMarge - corps * 1.6),
+        figH: Math.max(6, b.h - corps * 0.9 - basMarge),
+        questionY: b.y + b.h - corps * 0.5,
+        droiteX: b.x + gaucheW + 3, droiteW: b.w - gaucheW - 3
+    };
+}
+
+/** Les trois sommets du triangle, à l'échelle, dans l'ordre de `t.sommets`. */
+function pointsTriangle(item, larg, haut) {
+    const t = item.meta.triangle;
+    const [a, b] = t.triplet;
+    const droit = t.angleDroit;
+    const autres = [0, 1, 2].filter(i => i !== droit);
+    const s = Math.min(larg / a, haut / b);
+    const P = [];
+    P[droit] = [0, haut];
+    P[autres[0]] = [a * s, haut];
+    P[autres[1]] = [0, haut - b * s];
+    return { P, droit, autres, s };
+}
+
+/**
+ * Ce que porte chaque côté de la figure : la longueur connue, ou le « ? » du
+ * côté cherché. C'est le codage d'une figure d'énoncé — sans lui, le dessin ne
+ * dit rien de plus que trois traits.
+ */
+function cotesCodes(item) {
+    const t = item.meta.triangle;
+    const { hypo, cathetes } = cotesDePythagore(t);
+    const cherche = item.meta.chercher || hypo.nom;
+    const dit = (c) => (c.nom === cherche ? '?' : `${c.longueur} cm`);
+    return { hypo: { ...hypo, texte: dit(hypo) }, cathetes: cathetes.map(c => ({ ...c, texte: dit(c) })) };
+}
+
+function pythagorePreviewHtml(item, slot, k, solution) {
+    const g = geoPythagoreFiche(item, slot);
+    const b = g.b;
+    const T = (v) => (v * k).toFixed(2);
+    let html = '';
+
+    // À gauche : la figure codée, ou l'énoncé en toutes lettres.
+    if (g.schema) {
+        const { P, droit, autres } = pointsTriangle(item, g.figW, g.figH);
+        const X = (i) => g.figX + P[i][0];
+        const Y = (i) => g.figY + P[i][1];
+        const t = item.meta.triangle;
+        const codes = cotesCodes(item);
+        const cote = (i, j) => {
+            const nom = [t.sommets[i], t.sommets[j]].join('');
+            const inv = [t.sommets[j], t.sommets[i]].join('');
+            const tous = [codes.hypo, ...codes.cathetes];
+            const c = tous.find(x => x.nom === nom || x.nom === inv);
+            return c ? c.texte : '';
+        };
+        const carre = Math.min(3.2, g.corps);
+        html += `<svg class="fx-py-svg" style="left:0; top:0; width:100%; height:100%">
+            <polygon points="${[droit, autres[0], autres[1]].map(i => `${T(X(i))},${T(Y(i))}`).join(' ')}"
+                fill="none" stroke="#1a202c" stroke-width="${T(0.45)}"/>
+            <polyline points="${T(X(droit) + carre)},${T(Y(droit))}
+                ${T(X(droit) + carre)},${T(Y(droit) - carre)} ${T(X(droit))},${T(Y(droit) - carre)}"
+                fill="none" stroke="#1a202c" stroke-width="${T(0.3)}"/></svg>`;
+        // Les lettres des sommets, puis ce que porte chaque côté.
+        const etiq = (x, y, texte, cls) => `<div class="fx-py-etiq${cls || ''}"
+            style="left:${T(x)}px; top:${T(y)}px; font-size:${T(g.corps)}px">${echapperSheet(texte)}</div>`;
+        html += etiq(X(droit) - g.corps * 1.4, Y(droit) + g.corps * 0.15, t.sommets[droit]);
+        html += etiq(X(autres[0]) + g.corps * 0.35, Y(autres[0]) + g.corps * 0.15, t.sommets[autres[0]]);
+        html += etiq(X(autres[1]) - g.corps * 1.4, Y(autres[1]) - g.corps * 1.15, t.sommets[autres[1]]);
+        html += etiq((X(droit) + X(autres[0])) / 2 - g.corps, Y(droit) + g.corps * 0.9,
+            cote(droit, autres[0]), ' fx-py-etiq--mesure');
+        html += etiq(b.x, (Y(droit) + Y(autres[1])) / 2 - g.corps * 0.5,
+            cote(droit, autres[1]), ' fx-py-etiq--mesure');
+        html += etiq((X(autres[0]) + X(autres[1])) / 2 + g.corps * 0.2,
+            (Y(autres[0]) + Y(autres[1])) / 2 - g.corps * 1.3,
+            cote(autres[0], autres[1]), ' fx-py-etiq--mesure');
+    }
+    html += `<div class="fx-py-enonce" style="left:${T(b.x)}px;
+        top:${T(g.schema ? g.questionY - g.corps : b.y)}px;
+        width:${T(g.gaucheW)}px; font-size:${T(g.corps)}px">${echapperSheet(
+        g.schema ? `Calcule ${item.meta.chercher || cotesDePythagore(item.meta.triangle).hypo.nom}.`
+            : enoncePythagore(item))}</div>`;
+
+    // À droite : les trois amorces et leurs lignes.
+    const rempli = solution ? redactionPapier(item) : null;
+    let y = b.y;
+    AMORCES.forEach((a, iA) => {
+        html += `<div class="fx-py-amorce" style="left:${T(g.droiteX)}px; top:${T(y)}px;
+            font-size:${T(g.corps)}px">${a.mot}</div>`;
+        y += g.corps * 1.35;
+        for (let i = 0; i < a.lignes; i++) {
+            const texte = rempli ? (rempli[iA][i] || '') : '';
+            html += `<div class="fx-py-ligne" style="left:${T(g.droiteX)}px; top:${T(y + g.pas * 0.82)}px;
+                width:${T(g.droiteW)}px"></div>`;
+            if (texte) {
+                html += `<div class="fx-py-ecrit" style="left:${T(g.droiteX + 2)}px;
+                    top:${T(y + g.pas * 0.12)}px; width:${T(g.droiteW - 2)}px;
+                    font-size:${T(g.corps)}px">${echapperSheet(texte)}</div>`;
+            }
+            y += g.pas;
+        }
+    });
+    return html;
+}
+
+/**
+ * La rédaction découpée en lignes, une par ligne imprimée. C'est le même texte
+ * que `redactionComplete`, mais réparti sur les trois zones de la feuille — et
+ * le « Donc » y déroule le calcul étape par étape, comme au cahier.
+ */
+function redactionPapier(item) {
+    const t = item.meta.triangle;
+    const chercher = item.meta.chercher;
+    const { hypo, cathetes } = cotesDePythagore(t);
+    const calc = etapesCalculPythagore(t, chercher);
+    const donnees = chercher && chercher !== hypo.nom
+        ? [`${hypo.nom} = ${hypo.longueur} cm`,
+            `${cathetes.find(x => x.nom !== chercher).nom} = ${cathetes.find(x => x.nom !== chercher).longueur} cm`]
+        : [`${cathetes[0].nom} = ${cathetes[0].longueur} cm`,
+            `${cathetes[1].nom} = ${cathetes[1].longueur} cm`];
+    return [
+        [`le triangle ${t.nom} est rectangle en ${t.sommets[t.angleDroit]},`,
+            `avec ${donnees.join(' et ')}.`],
+        ['dans un triangle rectangle, le carré de l\'hypoténuse',
+            'est égal à la somme des carrés des deux autres côtés.'],
+        [...calc.lignes.map((l, i) => (i === calc.lignes.length - 1
+            ? `${l.texte}${calc.resultat}` : l.texte.replace(/ = $/, ''))),
+        `${calc.cherche} = ${calc.resultat} cm.`]
+    ];
+}
+
+function dessinerPythagorePdf(doc, item, slot, solution) {
+    const g = geoPythagoreFiche(item, slot);
+    const b = g.b;
+
+    if (g.schema) {
+        const { P, droit, autres } = pointsTriangle(item, g.figW, g.figH);
+        const X = (i) => g.figX + P[i][0];
+        const Y = (i) => g.figY + P[i][1];
+        const t = item.meta.triangle;
+        const codes = cotesCodes(item);
+        const cote = (i, j) => {
+            const nom = [t.sommets[i], t.sommets[j]].join('');
+            const inv = [t.sommets[j], t.sommets[i]].join('');
+            const c = [codes.hypo, ...codes.cathetes].find(x => x.nom === nom || x.nom === inv);
+            return c ? c.texte : '';
+        };
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.45);
+        doc.lines([
+            [X(autres[0]) - X(droit), Y(autres[0]) - Y(droit)],
+            [X(autres[1]) - X(autres[0]), Y(autres[1]) - Y(autres[0])],
+            [X(droit) - X(autres[1]), Y(droit) - Y(autres[1])]
+        ], X(droit), Y(droit), [1, 1], 'S', true);
+        // Le petit carré de l'angle droit : sans lui, la figure ne code rien.
+        const c = Math.min(3.2, g.corps);
+        doc.setLineWidth(0.3);
+        doc.line(X(droit) + c, Y(droit), X(droit) + c, Y(droit) - c);
+        doc.line(X(droit) + c, Y(droit) - c, X(droit), Y(droit) - c);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.corps / 0.3528);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(t.sommets[droit], X(droit) - g.corps * 0.4, Y(droit) + g.corps, { align: 'right' });
+        doc.text(t.sommets[autres[0]], X(autres[0]) + g.corps * 0.3, Y(autres[0]) + g.corps);
+        doc.text(t.sommets[autres[1]], X(autres[1]) - g.corps * 0.4, Y(autres[1]) - g.corps * 0.3, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(cote(droit, autres[0])), (X(droit) + X(autres[0])) / 2,
+            Y(droit) + g.corps * 2, { align: 'center' });
+        doc.text(pourPdf(cote(droit, autres[1])), b.x,
+            (Y(droit) + Y(autres[1])) / 2 + g.corps * 0.35);
+        doc.text(pourPdf(cote(autres[0], autres[1])),
+            (X(autres[0]) + X(autres[1])) / 2 + g.corps * 0.4,
+            (Y(autres[0]) + Y(autres[1])) / 2 - g.corps * 0.3);
+    }
+
+    // L'énoncé : la question sous la figure, ou le texte entier à gauche.
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.corps / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    const enonce = g.schema
+        ? `Calcule ${item.meta.chercher || cotesDePythagore(item.meta.triangle).hypo.nom}.`
+        : enoncePythagore(item);
+    doc.text(doc.splitTextToSize(pourPdf(enonce), g.gaucheW - 2), b.x,
+        g.schema ? g.questionY : b.y + g.corps);
+
+    // Les trois amorces, et les lignes où l'on écrit.
+    const rempli = solution ? redactionPapier(item) : null;
+    let y = b.y;
+    AMORCES.forEach((a, iA) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...ENCRE.gris);
+        doc.setFontSize(g.corps / 0.3528);
+        doc.text(pourPdf(a.mot), g.droiteX, y + g.corps);
+        y += g.corps * 1.35;
+        for (let i = 0; i < a.lignes; i++) {
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.2);
+            doc.line(g.droiteX, y + g.pas * 0.82, g.droiteX + g.droiteW, y + g.pas * 0.82);
+            const texte = rempli ? (rempli[iA][i] || '') : '';
+            if (texte) {
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...ENCRE.texte);
+                ecrireAvecRacines(doc, texte, g.droiteX + 1.5, y + g.pas * 0.66, g.corps);
+            }
+            y += g.pas;
+        }
+    });
+}
+
+/**
+ * Le texte d'une ligne de rédaction, RACINES COMPRISES. Les polices standard
+ * d'un PDF ne connaissent pas « √ » — il en sortait un « V », et « V225 » n'est
+ * pas ce qu'on demande d'écrire. On trace donc le radical : la potence et sa
+ * barre au-dessus du nombre.
+ */
+function ecrireAvecRacines(doc, texte, x0, y, corps) {
+    let x = x0;
+    for (const morceau of String(texte).split(/(√\d+)/)) {
+        if (!morceau) continue;
+        const rac = /^√(\d+)$/.exec(morceau);
+        if (!rac) { doc.text(pourPdf(morceau), x, y); x += doc.getTextWidth(pourPdf(morceau)); continue; }
+        const n = rac[1];
+        const w = doc.getTextWidth(n);
+        const h = corps * 0.72;
+        doc.setLineWidth(Math.max(0.15, corps * 0.05));
+        doc.setDrawColor(...ENCRE.texte);
+        doc.lines([[corps * 0.14, corps * 0.2], [corps * 0.2, -h], [w + corps * 0.2, 0]],
+            x + corps * 0.05, y - h * 0.42, [1, 1], 'S', false);
+        doc.text(n, x + corps * 0.42, y);
+        x += w + corps * 0.62;
+    }
+    return x;
+}
+
 // --- Un repère, plusieurs points --------------------------------------------
+
+/** Le repère dans son emplacement : axes, graduations, et la place d'écrire. */
+/**
+ * LES POINTS SE RANGENT EN TABLEAU, SANS BORDURE EXTÉRIEURE.
+ *
+ * Rémy : « un tableau sans bordure extérieure, 3 colonnes 2 lignes, adapté au
+ * nombre de points ». Alignés en une seule ligne courante, six couples se
+ * lisaient comme une phrase — on cherchait où finissait l'un et où commençait
+ * le suivant. En colonnes, chaque point a sa case ; et le filet ne fait que
+ * séparer les cases, il n'encadre pas la liste : ce n'est pas un cadre, c'est
+ * une mise en colonnes.
+ */
+function grilleDesPoints(n) {
+    const cols = Math.min(3, n % 3 === 0 ? 3 : (n % 2 === 0 ? 2 : n));
+    return { cols: Math.max(1, cols), rows: Math.ceil(n / Math.max(1, cols)) };
+}
 
 /** Le repère dans son emplacement : axes, graduations, et la place d'écrire. */
 function geoRepere(item, slot) {
     const m = item.meta;
     const mini = m.relatifs ? -m.max : 0;
     const etendue = m.max - mini;
-    // Le bas de l'emplacement porte la liste (à placer) ou les lignes (à lire).
-    const listeH = slot.taille * (m.mode === 'placer' ? 0.16 : 0.30);
+    // Le bas de l'emplacement porte le tableau des points : les coordonnées à
+    // placer, ou les cases où écrire celles qu'on a lues.
+    const { cols, rows } = grilleDesPoints(m.points.length);
+    const hRang = slot.taille * (m.mode === 'placer' ? 0.105 : 0.125);
+    const listeH = hRang * rows + slot.taille * 0.03;
     const cote = slot.taille - listeH;
     const marge = cote * 0.10;
     const pas = (cote - 2 * marge) / etendue;
     const x0 = slot.x + (slot.taille - cote) / 2 + marge;
     const y0 = slot.y + marge;
+    // LE TABLEAU PREND TOUTE LA LARGEUR DU BLOC, pas seulement celle du repère :
+    // c'est là qu'on écrit, et deux millimètres de plus par case, ce sont deux
+    // millimètres de pointillés en plus.
+    const b = slot.boite || { x: slot.x, w: slot.taille };
     return {
-        m, mini, pas, cote, listeH, listeY: slot.y + cote, xGauche: slot.x + (slot.taille - cote) / 2,
+        m, mini, pas, cote, listeH, cols, rows, hRang,
+        listeY: slot.y + cote + slot.taille * 0.03,
+        xGauche: slot.x + (slot.taille - cote) / 2,
+        tabX: b.x, tabW: b.w,
         px: (x) => x0 + (x - mini) * pas,
         py: (y) => y0 + (m.max - y) * pas
     };
@@ -1908,24 +2208,29 @@ function reperePreviewHtml(item, slot, k, solution) {
         });
     }
 
-    // Sous le repère : les coordonnées à placer, ou les lignes à remplir.
-    if (m.mode === 'placer') {
-        html += `<div class="fx-rp-liste" style="left:${g.xGauche * k}px; top:${g.listeY * k}px;
-            width:${g.cote * k}px; height:${g.listeH * k}px; font-size:${g.listeH * 0.28 * k}px">
-            ${m.points.map(p => `${p.label} (${p.x} ; ${p.y})`).join(' &nbsp; ')}</div>`;
-    } else {
-        // CHAQUE LIGNE EST UNE PETITE GRILLE : « A ( », le trou, « ; », le
-        // trou, « ) ». Les deux trous prennent tout ce qui reste, à parts
-        // égales — ils ne peuvent donc ni déborder sur le point voisin, ni
-        // rester trop courts pour y écrire un nombre. En largeur fixe, allonger
-        // les pointillés faisait sortir le « ) » d'un point sur le « A ( » du
-        // suivant.
-        html += `<div class="fx-rp-reponses" style="left:${g.xGauche * k}px; top:${g.listeY * k}px;
-            width:${g.cote * k}px; height:${g.listeH * k}px; font-size:${g.listeH * 0.16 * k}px">
-            ${m.points.map(p => `<span class="fx-rp-rep"><b>${p.label} (</b><span class="fx-rp-trou"
+    // Sous le repère, le tableau des points : les coordonnées à placer, ou les
+    // cases où écrire celles qu'on vient de lire. Le filet sépare les cases et
+    // n'encadre pas l'ensemble — pas de bordure extérieure.
+    //
+    // DANS CHAQUE CASE À REMPLIR, une petite grille : « A ( », le trou, « ; »,
+    // le trou, « ) ». Les deux trous prennent tout ce qui reste, à parts
+    // égales — ils ne peuvent donc ni déborder sur le point voisin, ni rester
+    // trop courts pour y écrire un nombre.
+    const cellules = m.points.map((p, i) => {
+        const dedans = m.mode === 'placer'
+            ? `<b>${p.label} (${p.x} ; ${p.y})</b>`
+            : `<span class="fx-rp-rep"><b>${p.label} (</b><span class="fx-rp-trou"
                 >${solution ? p.x : ''}</span><b>;</b><span class="fx-rp-trou"
-                >${solution ? p.y : ''}</span><b>)</b></span>`).join('')}</div>`;
-    }
+                >${solution ? p.y : ''}</span><b>)</b></span>`;
+        const cls = 'fx-rp-cell'
+            + (i % g.cols ? ' fx-rp-cell--filet-g' : '')
+            + (i >= g.cols ? ' fx-rp-cell--filet-h' : '');
+        return `<div class="${cls}">${dedans}</div>`;
+    }).join('');
+    html += `<div class="fx-rp-tab" style="left:${g.tabX * k}px; top:${g.listeY * k}px;
+        width:${g.tabW * k}px; height:${(g.hRang * g.rows) * k}px;
+        grid-template-columns:repeat(${g.cols}, 1fr);
+        font-size:${g.hRang * 0.34 * k}px">${cellules}</div>`;
     return html;
 }
 
@@ -1974,34 +2279,40 @@ function dessinerRepPdf(doc, item, slot, solution) {
         });
     }
 
+    // LE TABLEAU DES POINTS, SANS BORDURE EXTÉRIEURE : on ne trace que les
+    // filets INTÉRIEURS, ceux qui séparent une case de sa voisine.
     doc.setTextColor(...ENCRE.texte);
-    if (m.mode === 'placer') {
-        doc.setFontSize(Math.max(5, g.listeH * 0.7));
-        const texte = m.points.map(p => `${p.label} (${p.x} ; ${p.y})`).join('   ');
-        doc.text(pourPdf(texte), g.xGauche + g.cote / 2, g.listeY + g.listeH * 0.6, { align: 'center' });
-    } else {
-        doc.setFontSize(Math.max(5, g.pas * 0.9));
-        const parLigne = 2;
-        // LES POINTILLÉS REMPLISSENT LA PLACE, ils ne sont pas comptés d'avance.
-        // Une longueur fixe est soit trop courte pour écrire un nombre à deux
-        // chiffres, soit assez longue pour sortir de sa demi-colonne : le
-        // nombre de points se déduit donc de ce qui reste, mesuré.
-        const largeurCol = g.cote / parLigne - 2;
-        m.points.forEach((p, i) => {
-            const col = i % parLigne, rang = Math.floor(i / parLigne);
-            const x = g.xGauche + col * (g.cote / parLigne) + 1;
-            const y = g.listeY + (rang + 0.8) * (g.listeH / Math.ceil(m.points.length / parLigne));
-            if (solution) {
-                doc.text(pourPdf(`${p.label} ( ${p.x}  ;  ${p.y} )`), x, y);
-                return;
-            }
-            const fixe = doc.getTextWidth(pourPdf(`${p.label} (  ;  )`));
-            const unPoint = Math.max(0.4, doc.getTextWidth('.'));
-            const combien = Math.max(4, Math.floor((largeurCol - fixe) / (2 * unPoint)));
-            const trou = '.'.repeat(combien);
-            doc.text(pourPdf(`${p.label} ( ${trou} ; ${trou} )`), x, y);
-        });
+    const larg = g.tabW / g.cols;
+    const hautTab = g.hRang * g.rows;
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(...ENCRE.grille);
+    for (let c = 1; c < g.cols; c++) {
+        const x = g.tabX + c * larg;
+        doc.line(x, g.listeY, x, g.listeY + hautTab);
     }
+    for (let r = 1; r < g.rows; r++) {
+        const y = g.listeY + r * g.hRang;
+        doc.line(g.tabX, y, g.tabX + g.tabW, y);
+    }
+
+    doc.setFontSize(Math.max(5, g.hRang * 0.95));
+    // LES POINTILLÉS REMPLISSENT LA PLACE, ils ne sont pas comptés d'avance.
+    // Une longueur fixe est soit trop courte pour écrire un nombre à deux
+    // chiffres, soit assez longue pour sortir de sa case.
+    m.points.forEach((p, i) => {
+        const col = i % g.cols, rang = Math.floor(i / g.cols);
+        const cx = g.tabX + (col + 0.5) * larg;
+        const y = g.listeY + (rang + 0.68) * g.hRang;
+        if (m.mode === 'placer' || solution) {
+            doc.text(pourPdf(`${p.label} (${p.x} ; ${p.y})`), cx, y, { align: 'center' });
+            return;
+        }
+        const fixe = doc.getTextWidth(pourPdf(`${p.label} (  ;  )`));
+        const unPoint = Math.max(0.4, doc.getTextWidth('.'));
+        const combien = Math.max(3, Math.floor((larg - 2 - fixe) / (2 * unPoint)));
+        const trou = '.'.repeat(combien);
+        doc.text(pourPdf(`${p.label} ( ${trou} ; ${trou} )`), cx, y, { align: 'center' });
+    });
 }
 
 
@@ -5129,6 +5440,23 @@ export const RENDUS = {
         // cases restent au-dessus de neuf millimètres. Au-delà, un « 12,5 » ne
         // rentrerait plus dans sa case.
         disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2
+    },
+
+    pythagore: {
+        titre: 'Le théorème de Pythagore',
+        consigne: () => 'Rédige comme au cahier : « Je sais que » les données de '
+            + 'l\'énoncé, « Or » le théorème, « Donc » l\'égalité puis le calcul — '
+            + 'et n\'oublie pas la dernière ligne, celle qui revient du carré à la '
+            + 'longueur.',
+        previewGrille: pythagorePreviewHtml,
+        pdfGrille: dessinerPythagorePdf,
+        nomBloc: 'Exercice', nomBlocs: 'exercices',
+        // Un bloc LARGE et BAS : l'énoncé à gauche, les lignes à droite. Six par
+        // page, ce qui est déjà beaucoup à rédiger pour une séance.
+        proportions: { w: 1, h: 0.36 },
+        titreAGauche: true,
+        disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
         parLigneDefaut: 2
     },
 

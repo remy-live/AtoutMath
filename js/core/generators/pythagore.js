@@ -6,7 +6,9 @@
 // BC. » La correction déroule les trois lignes du cahier.
 
 import { makeItem } from '../items.js';
-import { tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe } from '../pythagore.js';
+import {
+    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, redactionComplete
+} from '../pythagore.js';
 
 export const pythagoreGenerator = {
     id: 'geo.pythagore',
@@ -24,6 +26,20 @@ export const pythagoreGenerator = {
                 { value: 'hypotenuse', label: 'L\'hypoténuse (on additionne)' },
                 { value: 'cote', label: 'Un côté de l\'angle droit (on soustrait)' },
                 { value: 'melange', label: 'Mélangé' }
+            ]
+        },
+        // TEXTE OU SCHÉMA, AU CHOIX. Lire un énoncé et lire une figure codée ne
+        // s'apprennent pas ensemble : au collège, le même exercice se donne
+        // tantôt d'une façon, tantôt de l'autre, et c'est au professeur de dire
+        // laquelle il travaille aujourd'hui.
+        {
+            id: 'presentation', type: 'select', label: 'Énoncé', default: 'texte',
+            aide: 'En toutes lettres, ou en figure codée — l\'angle droit marqué, '
+                + 'les longueurs connues portées sur les côtés et un « ? » sur celui '
+                + 'qu\'on cherche.',
+            options: [
+                { value: 'texte', label: 'En toutes lettres' },
+                { value: 'schema', label: 'Une figure codée' }
             ]
         }
     ],
@@ -65,8 +81,16 @@ export const pythagoreGenerator = {
             ],
             explanation: calc.lignes.map(l => l.texte.replace(/ = $/, '')).join(' ; ')
                 + ` = ${calc.resultat}, donc ${calc.cherche} = ${calc.resultat} cm.`,
+            // SUR LE PAPIER, ON CORRIGE COMME ON RÉDIGE. Un corrigé qui répond
+            // « 15 » ne dit pas ce qu'on attendait de l'élève : ce qu'on note,
+            // c'est la rédaction — Je sais que, Or, Donc — et c'est elle que la
+            // feuille de solutions doit porter.
+            explicationPapier: redactionComplete(t, chercher).join('\n'),
             difficulty: versHypo ? 2 : 3,
-            meta: { triangle: t, chercher, niveau: niveauDe(versHypo ? 4 : 5).id }
+            meta: {
+                triangle: t, chercher, niveau: niveauDe(versHypo ? 4 : 5).id,
+                presentation: (params && params.presentation) === 'schema' ? 'schema' : 'texte'
+            }
         });
     }
 };

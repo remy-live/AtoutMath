@@ -41,7 +41,11 @@ export const geometrieExercises = [
         activityId: 'pythagore-theoreme',
         // Le générateur sert au PAPIER : les énoncés de calcul, avec la
         // correction en trois lignes.
-        generatorId: 'geo.pythagore', printable: null,
+        // Le générateur sert au PAPIER, et la feuille porte la RÉDACTION :
+        // énoncé à gauche — en toutes lettres ou en figure codée —, puis « Je
+        // sais que / Or / Donc » et la place d'écrire. Une fiche de Pythagore
+        // qui se corrige par un nombre n'apprend pas ce qu'on note.
+        generatorId: 'geo.pythagore', printable: 'pythagore',
         sansRevision: true,
         skills: ['geo.pythagore'],
         params: { niveau: 1 },
