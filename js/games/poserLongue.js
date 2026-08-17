@@ -68,6 +68,12 @@ const STYLE = `
     }
     @keyframes pl-bat { 50% { outline-color: color-mix(in srgb, var(--primary) 40%, transparent); } }
     .pl-case--faux { animation: pl-non .34s ease; }
+    /* La colonne fausse, montrée AVANT d'être effacée : c'est ce temps-là qui
+       apprend. Le chiffre reste lisible, en rouge, sur son fond rouge pâle. */
+    .pl-case--erreur {
+        background: color-mix(in srgb, var(--danger) 22%, transparent);
+        color: var(--danger); outline: 2px solid var(--danger);
+    }
     @keyframes pl-non { 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
     .pl-case--virgule::after {
         content: ''; position: absolute; right: -3px; bottom: 2px;
@@ -187,12 +193,6 @@ class PoserLongue extends BaseGame {
         this.zoneEl.innerHTML = '';
         const ligne = document.createElement('div');
         ligne.style.cssText = 'display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;';
-        if (avecValider) {
-            this.saisieEl = document.createElement('div');
-            this.saisieEl.className = 'pl-saisie';
-            this.saisieEl.textContent = this.saisie || '';
-            ligne.appendChild(this.saisieEl);
-        }
         this.zoneEl.appendChild(ligne);
 
         const pave = document.createElement('div');
@@ -212,7 +212,7 @@ class PoserLongue extends BaseGame {
             eff.textContent = '⌫';
             eff.addEventListener('click', () => {
                 this.saisie = (this.saisie || '').slice(0, -1);
-                if (this.saisieEl) this.saisieEl.textContent = this.saisie;
+                this.dessiner();
             });
             pave.appendChild(eff);
             const ok = document.createElement('button');
@@ -243,6 +243,17 @@ class PoserMultiplication extends PoserLongue {
         this.chiffresA = Math.max(2, Math.min(4, parseInt(this.params.chiffres) || 3));
         this.chiffresB = Math.max(1, Math.min(3, parseInt(this.params.chiffresB) || 2));
         this.avecVirgule = this.params.decimales === true;
+        // QUAND CORRIGE-T-ON ? Rémy : « pour les suivants, dans les questions,
+        // on vérifie à la fin mais on signale les erreurs ».
+        //
+        // Refuser un chiffre faux à l'instant où il est tapé enseigne bien la
+        // première fois — l'élève ne construit jamais sur une erreur. Mais cela
+        // ne ressemble plus à une multiplication posée : sur le cahier, on
+        // écrit toute la ligne, PUIS on regarde. Et c'est ce regard-là qu'il
+        // faut apprendre. On écrit donc la ligne entière, on la vérifie au
+        // bout, et l'on montre exactement quelles colonnes sont fausses.
+        this.verifAuFil = this.params.verification === 'immediate';
+        this.fautes = new Set();
     }
 
     poser() {
@@ -324,8 +335,10 @@ class PoserMultiplication extends PoserLongue {
             l.cases.forEach(c => {
                 const fait = ecrits[c.position] !== undefined;
                 const actif = this.phase === 'lignes' && i === this.ligne && c.position === this.positionCourante();
+                const fautive = i === this.ligne && this.fautes && this.fautes.has(c.position);
                 this.caseA(col(c.position), ligneGrille, fait ? ecrits[c.position] : '',
-                    (fait ? 'pl-case--ecrit' : '') + (actif ? ' pl-case--active' : ''));
+                    (fait ? 'pl-case--ecrit' : '') + (actif ? ' pl-case--active' : '')
+                    + (fautive ? ' pl-case--erreur' : ''));
             });
             // Le décalage se VOIT : on marque d'un point les colonnes sautées,
             // sinon la ligne semble mal recopiée au lieu d'être décalée.
@@ -508,6 +521,16 @@ class PoserMultiplication extends PoserLongue {
         const p = this.positionCourante();
         if (p === null) return;
         const c = l.cases.find(x => x.position === p);
+        // MODE « on vérifie à la fin » : le chiffre s'écrit, quel qu'il soit.
+        // La ligne se relit au bout, et les colonnes fausses se montrent.
+        if (!this.verifAuFil) {
+            this.ecrits[this.ligne][p] = n;
+            this.fautes.delete(p);
+            if (this.positionCourante() === null) return this.finirLigne();
+            this.dessiner();
+            this.direLigne();
+            return;
+        }
         // LA RETENUE D'ABORD. On ne laisse pas continuer sans l'avoir écrite :
         // l'oublier est l'erreur du chapitre, et la rattraper à la fin serait
         // la signaler trop tard pour qu'elle serve.
@@ -553,8 +576,45 @@ class PoserMultiplication extends PoserLongue {
     }
 
     finirLigne() {
-        // Toutes les retenues de la ligne doivent être posées.
         const l = this.m.lignes[this.ligne];
+        // LA RELECTURE. En mode « à la fin », c'est ici que la ligne se juge —
+        // et l'on ne dit pas « c'est faux » : on dit QUELLES colonnes le sont,
+        // avec le calcul de chacune. L'élève efface et recommence CES
+        // colonnes-là, pas toute la ligne.
+        if (!this.verifAuFil) {
+            const fautes = l.cases.filter(c => this.ecrits[this.ligne][c.position] !== c.chiffre);
+            if (fautes.length) {
+                this.fautes = new Set(fautes.map(c => c.position));
+                const dit = (c) => `${c.chiffreA} × ${l.chiffre}`
+                    + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total}`;
+                this.note(`${fautes.length} colonne${fautes.length > 1 ? 's' : ''} à revoir : `
+                    + fautes.map(dit).join(' ; ') + '. Les cases en rouge s\'effacent, réécris-les.', 'ko');
+                this.onWrongAnswer(null, {
+                    concept: COMP_MULT,
+                    questionText: `Ligne ${this.m.entiers[0]} × ${l.chiffre}`,
+                    input: 'ligne écrite', expected: 'ligne juste',
+                    customMessage: fautes.map(dit).join(' ; ') + '.',
+                    silencieux: true
+                });
+                this.dessiner();
+                // Les chiffres fautifs restent VISIBLES un instant, en rouge :
+                // c'est ce moment-là qui apprend. Puis leurs cases se vident.
+                setTimeout(() => {
+                    if (!this.isRunning) return;
+                    fautes.forEach(c => { delete this.ecrits[this.ligne][c.position]; });
+                    this.fautes.clear();
+                    this.dessiner();
+                    this.direLigne();
+                }, 1600);
+                return;
+            }
+            // Toute la ligne est juste : on crédite chaque colonne d'un coup.
+            l.cases.forEach(c => this.onCorrectAnswer(null, COMP_MULT, {
+                questionText: `${c.chiffreA} × ${l.chiffre}${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''}`,
+                expected: String(c.chiffre), given: String(c.chiffre), points: 2
+            }));
+        }
+        // Toutes les retenues de la ligne doivent être posées.
         const oubli = l.cases.find(c => c.retenueSortante
             && this.retenues[this.ligne][c.position + 1] !== c.retenueSortante);
         if (oubli) {
@@ -864,9 +924,15 @@ class PoserDivision extends PoserLongue {
             const ligneProduit = ligne + (i - this.debut) * 2;
             const ligneReste = ligneProduit + 1;
             if (f.produit !== undefined || (i === this.etape && this.attente === 'produit')) {
-                const texte = f.produit !== undefined ? String(f.produit) : '';
-                this.poserNombre(texte, ligneProduit, col, i, et.produit, '−',
-                    i === this.etape && this.attente === 'produit');
+                // ON ÉCRIT DANS LES CASES. Rémy : « ce serait bien de pouvoir
+                // écrire directement dans les cases ». Les chiffres tapés
+                // s'affichaient sur une bande à part, sous la potence, et la
+                // case restait vide jusqu'à la validation : on posait une
+                // division sans jamais voir la division se poser.
+                const enCours = i === this.etape && this.attente === 'produit';
+                const texte = f.produit !== undefined ? String(f.produit)
+                    : (enCours ? (this.saisie || '') : '');
+                this.poserNombre(texte, ligneProduit, col, i, et.produit, '−', enCours, enCours);
             }
             if (f.reste !== undefined || (i === this.etape && this.attente === 'reste')) {
                 const t = document.createElement('div');
@@ -879,9 +945,10 @@ class PoserDivision extends PoserLongue {
                 t.style.gridRow = String(ligneProduit + 1);
                 t.style.alignSelf = 'end';
                 g.appendChild(t);
-                const texte = f.reste !== undefined ? String(f.reste) : '';
-                this.poserNombre(texte, ligneReste, col, i, et.reste, '',
-                    i === this.etape && this.attente === 'reste');
+                const enCoursR = i === this.etape && this.attente === 'reste';
+                const texte = f.reste !== undefined ? String(f.reste)
+                    : (enCoursR ? (this.saisie || '') : '');
+                this.poserNombre(texte, ligneReste, col, i, et.reste, '', enCoursR, enCoursR);
             }
         });
 
@@ -897,12 +964,19 @@ class PoserDivision extends PoserLongue {
      * 7 — une potence dont les colonnes ne s'alignent plus n'enseigne rien,
      * elle apprend le contraire.
      */
-    poserNombre(texte, ligne, col, i, attendu, signe, actif) {
+    poserNombre(texte, ligne, col, i, attendu, signe, actif, enCours = false) {
         const n = Math.max(String(attendu).length, texte.length, 1);
-        const chiffres = (texte || '').padStart(n, ' ').split('');
+        // PENDANT LA FRAPPE, ON REMPLIT DE GAUCHE À DROITE — c'est le sens dans
+        // lequel on écrit un nombre sous une potence. Une fois le nombre validé
+        // il retrouve son alignement à droite ; comme il a alors exactement la
+        // largeur attendue, les deux coïncident.
+        const chiffres = (enCours ? (texte || '').padEnd(n, ' ') : (texte || '').padStart(n, ' ')).split('');
         chiffres.forEach((ch, k) => {
+            // La case ACTIVE est celle qu'on est en train de remplir : la
+            // première encore vide, et non toute la ligne.
+            const cetteCase = actif && k === (texte || '').length;
             const c = this.caseA(col(i) - 1 - (n - 1 - k), ligne, ch.trim(),
-                (ch.trim() ? 'pl-case--ecrit' : '') + (actif ? ' pl-case--active' : ''));
+                (ch.trim() ? 'pl-case--ecrit' : '') + (cetteCase ? ' pl-case--active' : ''));
             if (actif && !ch.trim()) c.textContent = '';
         });
         if (signe) {
@@ -926,8 +1000,15 @@ class PoserDivision extends PoserLongue {
             avecValider: !seul,
             surChiffre: (n) => {
                 if (seul) return this.repondre(String(n));
+                // On ne dépasse pas la largeur attendue : au-delà, le nombre
+                // sortirait de sa colonne et l'alignement, qui EST la leçon de
+                // la potence, ne voudrait plus rien dire.
+                const large = String(this.attente === 'produit'
+                    ? this.d.etapes[this.etape].produit
+                    : this.d.etapes[this.etape].reste).length;
+                if ((this.saisie || '').length >= large) return;
                 this.saisie = (this.saisie || '') + String(n);
-                if (this.saisieEl) this.saisieEl.textContent = this.saisie;
+                this.dessiner();
             },
             surValider: () => this.repondre(this.saisie)
         });
@@ -980,7 +1061,7 @@ class PoserDivision extends PoserLongue {
                     customMessage: `${this.d.operandes[1]} × ${f.chiffre} = ${e.produit}.`
                 });
                 this.saisie = '';
-                if (this.saisieEl) this.saisieEl.textContent = '';
+                this.dessiner();
                 return;
             }
             f.produit = n;
@@ -1006,7 +1087,7 @@ class PoserDivision extends PoserLongue {
                     + `plus petit que le diviseur (${this.d.operandes[1]}).`
             });
             this.saisie = '';
-            if (this.saisieEl) this.saisieEl.textContent = '';
+            this.dessiner();
             return;
         }
         f.reste = n;

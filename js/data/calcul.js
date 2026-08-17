@@ -329,7 +329,7 @@ export const calculExercises = [
         printParams: { operation: '×', chiffres: 3, nombres: 2, retenue: true },
         consignePapier: 'Effectue ces multiplications posées.',
         skills: ['num.mult.sens'],
-        params: { chiffres: 3, chiffresB: 2, decimales: false },
+        params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'fin' },
         paramSchema: [
             {
                 id: 'chiffres', type: 'select', label: 'Taille du premier nombre',
@@ -354,6 +354,14 @@ export const calculExercises = [
                 id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
                 aide: 'La virgule ne sert à RIEN pendant le calcul : on multiplie les entiers, et on la place à la fin en comptant les décimales des deux facteurs. C\'est une étape de plus à l\'écran.',
                 default: false
+            },
+            {
+                id: 'verification', type: 'select', label: 'Quand corriger', default: 'fin',
+                aide: 'Refuser un chiffre faux à l\'instant où il est tapé évite de construire sur une erreur — c\'est ce qu\'il faut la toute première fois. Mais sur le cahier on écrit la ligne ENTIÈRE, puis on la relit : c\'est ce regard-là qu\'il faut apprendre, et c\'est le réglage par défaut. Les colonnes fausses sont alors montrées une par une, avec leur calcul.',
+                options: [
+                    { value: 'fin', label: 'À la fin de chaque ligne' },
+                    { value: 'immediate', label: 'À chaque chiffre tapé' }
+                ]
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
