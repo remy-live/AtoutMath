@@ -74,7 +74,7 @@ class Tangram extends BaseGame {
                     /* « --tg-ratio » (largeur / hauteur du monde) est posé par le
                        jeu : il permet de convertir une contrainte de hauteur en
                        contrainte de largeur, la seule que le SVG suive. */
-                    width: min(96cqw, 560px, 62cqh * var(--tg-ratio, 1)); max-width: 100%;
+                    width: min(100cqw, 560px, 72cqh * var(--tg-ratio, 1)); max-width: 100%;
                     background: var(--bg-panel); border: 2px solid var(--border);
                     border-radius: 14px; padding: 4px; box-sizing: border-box;
                     touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
@@ -127,9 +127,21 @@ class Tangram extends BaseGame {
                 .tg-choix button.tg-faux { border-color: var(--danger, #dc2626);
                     background: color-mix(in srgb, var(--danger, #dc2626) 14%, var(--bg-panel)); }
 
+                /* TÉLÉPHONE : LE PLATEAU PREND TOUT. Rémy : « que c'est petit
+                   sur iPhone ». Le monde du tangram tient la silhouette ET la
+                   réserve de pièces : chaque pièce n'a donc qu'un tiers du côté
+                   du plateau, et tout ce que le plateau perd, la pièce le perd
+                   trois fois. On lui rend les quarante pixels de marge du cadre
+                   de jeu, et les commandes se resserrent pour lui laisser la
+                   hauteur — c'est le seul jeu de l'application où l'on doit
+                   attraper un objet du bout du doigt. */
                 @container (max-width: 430px) {
-                    .tg-btn { padding: 6px 9px; font-size: .84rem; }
-                    .tg-tete { font-size: .82rem; }
+                    .tg-btn { padding: 5px 8px; font-size: .78rem; }
+                    .tg-tete { font-size: .78rem; gap: 6px; }
+                    .tg-nom { padding: 2px 10px; }
+                    .tg-wrap { gap: 5px; padding: 4px; }
+                    .tg-barre { gap: 5px; }
+                    .tg-note { min-height: 0; font-size: .78rem; line-height: 1.3; }
                 }
                 /* Écran couché : la note de bas de plateau ne réserve plus deux
                    lignes vides, elles poussaient la barre d'outils dehors. */
@@ -137,6 +149,12 @@ class Tangram extends BaseGame {
                     .tg-wrap { gap: 5px; padding: 5px; }
                     .tg-note { min-height: 0; font-size: .8rem; }
                     .tg-btn { padding: 5px 9px; font-size: .82rem; }
+                }
+                /* Le cadre de jeu garde vingt pixels de marge de chaque côté :
+                   sur un téléphone, c'est un huitième de la surface du plateau,
+                   et donc un huitième de chaque pièce. */
+                @media (max-width: 560px) {
+                    .canvas-area:has(.tg-wrap) { padding: 0; }
                 }
             </style>
             <div class="tg-wrap">
