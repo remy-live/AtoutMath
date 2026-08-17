@@ -80,6 +80,10 @@ class PointAPoint extends BaseGame {
                 /* LA PASTILLE. Le disque de clic est plus large que le rond
                    visible : au doigt, viser un point ne doit pas être l'exercice. */
                 .pp-point {
+                    /* LA CIBLE TACTILE RESTE GRANDE même si le rond rétrécit :
+                       le bouton garde 34 px, centré sur le point — la pastille
+                       n'est que ce qu'on voit, pas ce qu'on vise. */
+                    min-width: 34px; min-height: 34px;
                     position: absolute; translate: -50% -50%; border: 0; padding: 0;
                     background: none; cursor: pointer; font-family: inherit;
                     display: flex; flex-direction: column; align-items: center;
@@ -187,7 +191,13 @@ class PointAPoint extends BaseGame {
         this.sceneEl.style.width = `${cote}px`;
         this.sceneEl.style.height = `${cote}px`;
         this.sceneEl.querySelectorAll('.pp-point').forEach(el => {
-            const r = Math.max(9, Math.round(cote * 0.032));
+            // DES CERCLES PLUS PETITS, demandé deux fois : « fais des cercles
+            // plus petits » sur ordinateur, « sur téléphone les ronds sont
+            // gros ». Un point à point se joue sur des POINTS ; à 45 pixels de
+            // diamètre, le tracé disparaissait sous ses propres pastilles. Le
+            // plancher descend aussi : c'est lui qui décidait sur un écran
+            // étroit. La zone qu'on touche, elle, reste large (voir le CSS).
+            const r = Math.max(6, Math.round(cote * 0.022));
             el.querySelector('b').style.cssText = `width:${r * 2}px; height:${r * 2}px`;
             // Un cran plus petit qu'avant : « les calculs sont un peu gros ».
             // Ce qui doit se lire d'un coup d'œil, c'est le RÉSULTAT qu'on

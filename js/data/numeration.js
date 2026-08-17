@@ -220,8 +220,19 @@ export const numerationExercises = [
         activityId: 'canon',
         sansRevision: true,
         skills: ['num.complement'],
-        params: { cible: 100, vies: 3 },
+        params: { cible: 100, vies: 3, vitesse: 'normale' },
         paramSchema: [
+            {
+                id: 'vitesse', type: 'select', label: 'Allure',
+                aide: 'Le temps de descente d\'un astéroïde, pas la difficulté du calcul. « Tranquille » laisse presque le double de temps — c\'est souvent ce qu\'il faut pour découvrir les compléments à 100.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — tout le temps de calculer' },
+                    { value: 'posee', label: 'Posée — un quart de temps en plus' },
+                    { value: 'normale', label: 'Normale' },
+                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
+                ],
+                default: 'normale'
+            },
             {
                 id: 'cible', type: 'select', label: 'Compléter à',
                 options: [

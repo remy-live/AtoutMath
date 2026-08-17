@@ -455,13 +455,13 @@ class Ninja extends BaseGame {
         // lancement, pas par la hauteur de départ.
         if (this.mode === 'zeros') {
             this.entites.push(this.creerEntite(v.objets, larg / 2, haut + 60, 0,
-                -(haut * 0.0138) / LENTEUR_ZEROS / this.allure, larg, haut, 'chiffre'));
+                -(haut * 0.0110) / LENTEUR_ZEROS / this.allure, larg, haut, 'chiffre'));
         } else {
             const type = 'bulle';
             v.objets.forEach((o, i) => {
                 const x = larg * (0.16 + 0.68 * (i + 0.5) / v.objets.length);
                 const e = this.creerEntite([o], x, haut + 60, (this.rng.int(-3, 3)) / 14,
-                    (-(haut * 0.0143) - this.rng.int(0, 3) / 100) / this.allure, larg, haut, type);
+                    (-(haut * 0.0114) - this.rng.int(0, 3) / 100) / this.allure, larg, haut, type);
                 // L'ÉCART ENTRE DEUX LANCERS SUIT L'ALLURE : sans cela, au
                 // réglage lent les cinq bulles partiraient au rythme rapide et
                 // se retrouveraient toutes en l'air en même temps.
@@ -505,11 +505,14 @@ class Ninja extends BaseGame {
     avancer(k) {
         const r = this.scene.getBoundingClientRect();
         const haut = r.height;
-        // La gravité, réglée avec la vitesse de lancement : environ quatre
-        // secondes et demie de vol, et un sommet qui frôle le haut de la
-        // scène. La cloche précédente montait moins et allait plus vite : on
-        // voyait la bulle avant d'avoir fini de lire le calcul qu'elle porte.
-        const g = haut * 0.000104 / ((lenteurDe(this.mode) * this.allure) ** 2);
+        // La gravité, réglée avec la vitesse de lancement. LE SOMMET EST À
+        // 80 % DE LA SCÈNE, plus à 98 : Rémy, deux fois, « les bulles montent
+        // trop haut » — une bulle qui frôle le bord passe le plus clair de son
+        // vol là où le regard ne va pas, et sur un écran étroit son cercle
+        // dépassait carrément. La DURÉE ne change pas : diviser la vitesse de
+        // lancement ET la gravité par le même facteur abaisse le sommet en
+        // gardant le temps de vol (H ∝ v²/g, T ∝ v/g).
+        const g = haut * 0.0000832 / ((lenteurDe(this.mode) * this.allure) ** 2);
         let vivantes = 0;
         this.majSabre();
 

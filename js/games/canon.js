@@ -26,6 +26,13 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { CSS_GLISSER } from '../core/glisserDeposer.js';
 
+/**
+ * De quoi laisser le temps de calculer — ou de ne pas s'ennuyer. « Tranquille »
+ * double presque le temps de traversée : au premier niveau, un astéroïde met
+ * une vingtaine de secondes à descendre au lieu d'une douzaine.
+ */
+const ALLURES = { tranquille: 0.55, posee: 0.75, normale: 1, rapide: 1.35 };
+
 const COMPETENCE = 'num.complement';
 
 /**
@@ -61,6 +68,12 @@ class Canon extends BaseGame {
         this.cible = Number(this.params.cible) || 100;
         this.voies = this.cible === 10 ? 1 : (this.cible === 100 ? 2 : 3);
         this.viesDepart = Number(this.params.vies) || 3;
+        // L'ALLURE EST RÉGLABLE. Rémy : « il est un peu rapide, on pourrait
+        // paramétrer la vitesse ? » — et c'est la même question pour un CM2
+        // qui découvre les compléments et pour un sixième qui les révise.
+        // Le facteur multiplie la vitesse de croisière, il ne la remplace
+        // pas : la montée en régime au fil des niveaux est conservée.
+        this.allure = ALLURES[this.params.vitesse] ?? ALLURES.normale;
         this.rafId = null;
     }
 
@@ -420,7 +433,7 @@ class Canon extends BaseGame {
         // reste à faire ensuite, c'est viser. À 0,11, la traversée dure une
         // douzaine de secondes au premier niveau et sept au huitième — assez
         // pour penser, trop peu pour s'ennuyer.
-        const vitesse = (0.11 + this.niveau * 0.014) * longueur / 60;
+        const vitesse = (0.11 + this.niveau * 0.014) * this.allure * longueur / 60;
         for (const b of [...this.boulets]) {
             b.avancee += vitesse;
             this.placerEnnemi(b);
