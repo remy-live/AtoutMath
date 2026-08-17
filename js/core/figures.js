@@ -308,6 +308,60 @@ export function egyptianSvg(symboles) {
     </svg>`;
 }
 
+/**
+ * SEGMENT, DROITE, DEMI-DROITE — le dessin qui va avec la notation.
+ *
+ * Trois objets qui ne diffèrent QUE par ce qui se passe au-delà des deux
+ * points, et une notation qui code exactement cela : le crochet ferme, la
+ * parenthèse laisse filer. [AB] s'arrête aux deux bouts, (AB) ne s'arrête
+ * jamais, [AB) part de A et continue au-delà de B.
+ *
+ * Le dessin dit donc la même chose que les signes, et c'est tout l'exercice :
+ * l'élève qui écrit (AB) pour un segment n'a pas mal appris une règle, il n'a
+ * pas vu que le crochet est un mur.
+ *
+ * @param {Object} cfg
+ * @param {'segment'|'droite'|'demi-droite'} cfg.type
+ * @param {string} cfg.a - le premier point (l'origine, pour une demi-droite)
+ * @param {string} cfg.b
+ * @param {number} [cfg.echelle] - 1 pour l'énoncé, 0,62 pour une proposition
+ */
+export function traceSvg({ type, a = 'A', b = 'B', echelle = 1 } = {}) {
+    const W = 210, H = 62;
+    const y = 40;
+    // Les deux points sont au tiers et aux deux tiers : ce qui dépasse de part
+    // et d'autre doit rester assez long pour se voir d'un coup d'œil.
+    const xa = 70, xb = 140;
+    const BORD = 8;
+    const debut = type === 'droite' ? BORD : xa;
+    const fin = type === 'segment' ? xb : W - BORD;
+
+    // Une croix par point, comme au cahier — jamais une pastille : un disque
+    // couvre le point qu'il prétend marquer.
+    const croix = (x, nom) => `
+        <g class="tr-pt">
+            <line x1="${x - 5}" y1="${y - 5}" x2="${x + 5}" y2="${y + 5}"/>
+            <line x1="${x - 5}" y1="${y + 5}" x2="${x + 5}" y2="${y - 5}"/>
+        </g>
+        <text class="tr-nom" x="${x}" y="${y - 12}" text-anchor="middle">${nom}</text>`;
+
+    const nom = type === 'segment' ? `segment [${a}${b}]`
+        : type === 'droite' ? `droite (${a}${b})` : `demi-droite [${a}${b})`;
+
+    // Une vignette de proposition se pose sur une bulle colorée : elle porte sa
+    // propre classe pour s'y dessiner en blanc, sans dépendre de la forme —
+    // ronde ou rectangulaire — que le QCM aura choisie.
+    const mini = echelle < 1 ? ' tr-svg--mini' : '';
+    return `
+    <svg class="fig-svg tr-svg${mini}" viewBox="0 0 ${W} ${H}"
+         width="${Math.round(W * echelle)}" height="${Math.round(H * echelle)}"
+         role="img" aria-label="${nom}">
+        <line class="tr-trait" x1="${debut}" y1="${y}" x2="${fin}" y2="${y}"/>
+        ${croix(xa, a)}
+        ${croix(xb, b)}
+    </svg>`;
+}
+
 /** Enveloppe une figure pour qu'elle occupe une largeur stable et centrée. */
 export function figure(svg) {
     return `<div class="figure-wrap">${svg}</div>`;

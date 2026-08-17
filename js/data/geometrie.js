@@ -7,6 +7,44 @@ import { STATUS } from './status.js';
 // point, lire des coordonnées — et une déclinaison en nombres relatifs.
 
 export const geometrieExercises = [
+    // --- La notation des objets de base (fiche 4ᵉ § G) ---
+    // [AB], (AB), [AB) : une notation ne se devine pas, et c'est pour cela
+    // qu'on la perd. Des points partent chaque année sur « (AB) » écrit à la
+    // place de « [AB] », dans des copies où la construction est juste.
+    {
+        id: 'geo-notation',
+        title: 'Segment, Droite ou Demi-droite ?',
+        consignePapier: "Réponds.",
+        colonnesPapier: 2,
+        generatorId: 'geo.notation', activityId: 'bubbles',
+        params: {
+            objets: ['segment', 'droite', 'demi-droite'],
+            sens: ['ecrire', 'dessin', 'dire']
+        },
+        motsClefs: ['segment', 'droite', 'demi-droite', 'notation', 'crochet'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Le crochet est un mur, la parenthèse laisse filer. [AB] s'arrête aux deux points, (AB) ne s'arrête jamais, [AB) part de A et continue au-delà de B. Attention à la demi-droite : le PREMIER point nommé est l'origine, donc [AB) et [BA) ne sont pas la même chose."
+    },
+    {
+        id: 'geo-notation-segment-droite',
+        title: 'Segment ou Droite ?',
+        consignePapier: "Réponds.",
+        colonnesPapier: 2,
+        generatorId: 'geo.notation', activityId: 'bubbles',
+        // La demi-droite est mise de côté : elle seule a une origine, et l'on
+        // ne peut pas comprendre ce que code un crochet en découvrant en même
+        // temps qu'il y a un sens de parcours.
+        params: { objets: ['segment', 'droite'], sens: ['ecrire', 'dessin', 'dire'] },
+        motsClefs: ['segment', 'droite', 'notation'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME]
+        },
+        instruction: "Deux objets seulement pour commencer : le segment [AB], qui s'arrête aux deux points, et la droite (AB), qui ne s'arrête jamais. Deux crochets, ou deux parenthèses."
+    },
     {
         id: 'geo-redaction-para-perp', status: STATUS.TEST, title: 'Rédiger : Parallèles et Perpendiculaires',
         activityId: 'redaction',

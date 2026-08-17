@@ -266,6 +266,34 @@ const BASE = {
         descriptor: 'Nommer les quatre nombres d\'une division posée.',
         lesson: 'On partage le DIVIDENDE par le DIVISEUR ; on obtient le QUOTIENT et il reste le RESTE. Toujours : dividende = diviseur × quotient + reste.'
     },
+    // LA NOTATION DES OBJETS DE BASE. Trois compétences, parce qu'écrire
+    // [AB] devant un dessin, reconnaître le dessin de [AB) et lire [AB) à voix
+    // haute ne s'acquièrent pas ensemble — et que la demi-droite, seule des
+    // trois à avoir une origine, se rate d'une autre façon que les autres.
+    'geo.notation.ecrire': {
+        label: 'Noter un segment, une droite, une demi-droite',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Écrire la notation qui correspond à une figure tracée.',
+        lesson: 'Le crochet est un mur, la parenthèse laisse filer : [AB] s\'arrête aux deux points, (AB) ne s\'arrête jamais, [AB) part de A et continue après B.'
+    },
+    'geo.notation.lire': {
+        label: 'Reconnaître la figure d\'une notation',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.ecrire'],
+        descriptor: 'Retrouver le dessin que désigne [AB], (AB) ou [AB).',
+        lesson: 'Dans [AB), le premier point nommé est l\'ORIGINE : le trait s\'arrête en A et continue au-delà de B. [BA) est une autre demi-droite.'
+    },
+    'geo.notation.dire': {
+        label: 'Lire une notation en toutes lettres',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.ecrire'],
+        descriptor: 'Dire « le segment [AB] », « la droite (AB) », « la demi-droite [AB) ».',
+        lesson: 'Deux crochets fermants : un segment. Deux parenthèses : une droite. Un crochet puis une parenthèse : une demi-droite.'
+    },
     'num.complement': {
         label: 'Compléments à 10, 100, 1000',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],

@@ -508,6 +508,20 @@
 .rep-axis-name { fill: var(--text-main); font-size: 14px; font-style: italic; font-weight: 700; }
 .rep-helper { stroke: var(--primary); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: .65; }
 .rep-point line { stroke: var(--primary); stroke-width: 3.4; stroke-linecap: round; }
+
+/* --- Segment, droite, demi-droite ---------------------------------------
+   Le trait est noir et fin comme au cahier ; les points sont des CROIX, dont
+   le centre est le point — un disque le recouvrirait. Le nom se pose
+   au-dessus, jamais dessus. */
+.tr-svg { display: block; margin: 0 auto; overflow: visible; }
+.tr-trait { stroke: var(--text-main); stroke-width: 2.2; stroke-linecap: round; }
+.tr-pt line { stroke: var(--text-main); stroke-width: 2.2; stroke-linecap: round; }
+.tr-nom { fill: var(--primary); font-size: 17px; font-weight: 800; }
+/* Dans une proposition de QCM, le dessin remplace le texte : il se dessine en
+   blanc, quelle que soit la forme — bulle ronde ou carte — que le QCM a
+   choisie pour ses propositions. */
+.tr-svg--mini .tr-trait, .tr-svg--mini .tr-pt line { stroke: #fff; stroke-width: 2.6; }
+.tr-svg--mini .tr-nom { fill: #fff; font-size: 19px; }
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
 .rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }

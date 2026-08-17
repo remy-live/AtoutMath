@@ -436,6 +436,10 @@ function canShowMe(session) {
 function answerLabelOf(item) {
     if (item.choices) {
         const good = item.choices.find(c => c.correct);
+        // `texte` l'emporte sur `label` : une proposition peut être un DESSIN
+        // (les notations [AB], (AB), [AB) se choisissent sur un schéma), et
+        // « la réponse est <svg…> » ne dirait rien à personne.
+        if (good && good.texte) return String(good.texte);
         if (good) return String(good.label !== undefined ? good.label : good.value);
     }
     if (item.answerKind === 'point' && item.meta && item.meta.x !== undefined) {
