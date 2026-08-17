@@ -248,7 +248,7 @@ export const numerationExercises = [
         printable: 'paires', printGeneratorId: 'num.paires-fiche',
         sansRevision: true,
         skills: ['num.complement'],
-        params: { cible: [10], vies: 3 },
+        params: { cible: [10], vies: 3, mouvement: 'apres' },
         paramSchema: [
             {
                 id: 'cible', type: 'multiselect', label: 'Compléter à',
@@ -261,10 +261,19 @@ export const numerationExercises = [
                     { value: 5, label: '5 vies' }
                 ],
                 default: 3
+            },
+            {
+                id: 'mouvement', type: 'select', label: 'Les cartes qui bougent', default: 'apres',
+                aide: 'Sur une table immobile, un élève finit par ne plus calculer : il RETIENT où sont les cartes et cherche des yeux celle qu\'il a repérée tout à l\'heure. Dès qu\'elles dérivent, cette béquille disparaît, et il ne reste que « quel nombre va avec celui-là ». La dérive commence après deux tables vidées et s\'accélère très doucement.',
+                options: [
+                    { value: 'apres', label: 'Après deux tables vidées' },
+                    { value: 'jamais', label: 'Jamais — table immobile' },
+                    { value: 'toujours', label: 'Dès la première table' }
+                ]
             }
         ],
         tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME] },
-        instruction: "Toutes les cartes sont visibles, et chacune a son amie : tape deux cartes dont la somme fait la cible. Ne cherche pas au hasard — choisis UNE carte, calcule ce qui lui manque, puis cherche ce nombre des yeux."
+        instruction: "Toutes les cartes sont visibles, et chacune a son amie : tape deux cartes dont la somme fait la cible. Ne cherche pas au hasard — choisis UNE carte, calcule ce qui lui manque, puis cherche ce nombre des yeux. Au bout de deux tables vidées, les cartes se mettent à DÉRIVER : on ne peut plus retenir où elles sont, il faut vraiment calculer."
     },
     {
         // LE CANON. Le complément se PRÉPARE avant de tirer : un boulet

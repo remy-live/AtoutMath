@@ -41,6 +41,20 @@ class AmisDeDix extends BaseGame {
         this.cibles = (this.params.cible && this.params.cible.length) ? this.params.cible : [10];
         this.vies = Number(this.params.vies) || 3;
         this.tablesVidees = 0;
+        // LES CARTES QUI BOUGENT. Rémy : « on pourrait faire, après quelques
+        // questions, le même type mais les cases bougent et rebondissent sur
+        // l'écran ».
+        //
+        // Ce n'est pas un habillage. Sur une table immobile, un élève finit par
+        // ne plus calculer du tout : il RETIENT où sont les cartes, et cherche
+        // des yeux la case qu'il a repérée tout à l'heure. Dès qu'elles
+        // dérivent, la mémoire de position ne sert plus à rien — il ne reste
+        // que « quel nombre va avec celui-là ». C'est le même exercice, débarrassé
+        // de sa béquille.
+        this.mouvement = ['jamais', 'apres', 'toujours'].includes(this.params.mouvement)
+            ? this.params.mouvement : 'apres';
+        this.flotte = [];
+        this.rafId = null;
     }
 
     render() {
@@ -70,6 +84,23 @@ class AmisDeDix extends BaseGame {
                     transition: transform .1s ease, opacity .25s ease, box-shadow .1s ease;
                 }
                 .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                /* LA TABLE QUI DÉRIVE. Les cartes quittent la grille et se
+                   placent au pixel près : on les anime par leur position, et
+                   non par une transformation — celle-ci reste aux états (prise,
+                   partie, faute), qui s'en servent pour leurs animations. */
+                .dx-table--mouvante {
+                    display: block; position: relative; width: 100%;
+                    height: min(58cqh, 420px); flex: 1 1 auto; min-height: 220px;
+                    border: 2px dashed color-mix(in srgb, var(--text-main) 18%, transparent);
+                    border-radius: 16px; overflow: hidden;
+                }
+                .dx-table--mouvante .dx-carte {
+                    position: absolute; aspect-ratio: auto;
+                    width: var(--dx-cote, 62px); height: var(--dx-cote, 62px);
+                    font-size: clamp(15px, 5.4cqw, 26px);
+                    transition: opacity .25s ease, box-shadow .1s ease;
+                }
+                .dx-table--mouvante .dx-carte:hover { transform: none; }
                 .dx-carte--prise {
                     border-color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
@@ -105,6 +136,14 @@ class AmisDeDix extends BaseGame {
         this.poserTable();
     }
 
+    /** La table dérive-t-elle sur cette manche ? */
+    get enMouvement() {
+        if (this.mouvement === 'jamais') return false;
+        if (this.mouvement === 'toujours') return true;
+        // Deux tables immobiles pour installer le geste, puis ça bouge.
+        return this.tablesVidees >= 2;
+    }
+
     poserTable() {
         this.cible = this.rng.pick(this.cibles);
         // La table grandit avec la réussite : 4 paires, puis 5, puis 6 —
@@ -121,7 +160,103 @@ class AmisDeDix extends BaseGame {
         this.tableEl.querySelectorAll('.dx-carte').forEach(b => {
             b.onclick = () => this.taper(b);
         });
-        this.note('');
+        this.tableEl.classList.toggle('dx-table--mouvante', this.enMouvement);
+        if (this.enMouvement) this.lancerDerive();
+        else this.arreterDerive();
+        this.note(this.enMouvement && this.tablesVidees === 2
+            ? 'Attention : les cartes se mettent à bouger ! C\'est le même jeu — '
+              + 'mais on ne peut plus retenir où elles sont.' : '');
+    }
+
+    // --- La dérive ------------------------------------------------------------
+
+    /** Place les cartes au hasard, leur donne une vitesse, et démarre. */
+    lancerDerive() {
+        this.arreterDerive();
+        const boite = this.tableEl.getBoundingClientRect();
+        const W = boite.width || 320, H = boite.height || 260;
+        // La carte se dimensionne sur le plateau : à douze cartes sur un
+        // téléphone, 62 px les feraient se chevaucher en permanence.
+        const cote = Math.max(40, Math.min(66, Math.sqrt(W * H / (this.cartes.length * 4.2))));
+        this.tableEl.style.setProperty('--dx-cote', `${Math.round(cote)}px`);
+        // La vitesse monte doucement : la troisième table dérive à peine, et
+        // l'on ne se retrouve jamais à courir après une carte.
+        const v = 0.22 + Math.min(0.5, (this.tablesVidees - 2) * 0.09);
+        // ON PART D'UNE GRILLE, PAS DU HASARD PUR. Tiré au sort, un jeu de six
+        // cartes en pose régulièrement trois l'une sur l'autre dès la première
+        // image : on croit à un bogue, et la carte du dessous est intouchable.
+        // Une grille lâche, secouée d'un peu de désordre, les sépare d'emblée —
+        // la dérive fera le reste.
+        const n = this.cartes.length;
+        const colsD = Math.max(1, Math.round(Math.sqrt(n * (W / Math.max(1, H)))));
+        const lignesD = Math.ceil(n / colsD);
+        const caseW = W / colsD, caseH = H / lignesD;
+        this.flotte = [...this.tableEl.querySelectorAll('.dx-carte')].map((el, k) => {
+            const angle = this.rng.int(0, 359) * Math.PI / 180;
+            const cx = (k % colsD) * caseW + caseW / 2;
+            const cy = Math.floor(k / colsD) * caseH + caseH / 2;
+            const jitter = (t) => this.rng.int(-Math.max(0, Math.floor(t)), Math.max(0, Math.floor(t)));
+            return {
+                el,
+                x: Math.max(0, Math.min(W - cote, cx - cote / 2 + jitter((caseW - cote) / 2))),
+                y: Math.max(0, Math.min(H - cote, cy - cote / 2 + jitter((caseH - cote) / 2))),
+                vx: Math.cos(angle) * v, vy: Math.sin(angle) * v
+            };
+        });
+        this.flotte.forEach(c => { c.el.style.left = `${c.x}px`; c.el.style.top = `${c.y}px`; });
+        this.dernier = performance.now();
+        const pas = (t) => {
+            if (!this.isRunning || !this.enMouvement) { this.rafId = null; return; }
+            const dt = Math.min(50, t - this.dernier);
+            this.dernier = t;
+            const r = this.tableEl.getBoundingClientRect();
+            const maxX = Math.max(0, r.width - cote), maxY = Math.max(0, r.height - cote);
+            for (const c of this.flotte) {
+                // Une carte appariée s'efface : elle cesse de dériver, sinon on
+                // verrait un fantôme rebondir dans le coin de l'écran.
+                if (c.el.classList.contains('dx-carte--partie')) continue;
+                c.x += c.vx * dt; c.y += c.vy * dt;
+                if (c.x <= 0) { c.x = 0; c.vx = Math.abs(c.vx); }
+                if (c.x >= maxX) { c.x = maxX; c.vx = -Math.abs(c.vx); }
+                if (c.y <= 0) { c.y = 0; c.vy = Math.abs(c.vy); }
+                if (c.y >= maxY) { c.y = maxY; c.vy = -Math.abs(c.vy); }
+            }
+            // ELLES REBONDISSENT AUSSI ENTRE ELLES. Sans cela, deux cartes
+            // finissent par se superposer et l'une devient intouchable — on
+            // perd une vie sur un jeu qu'on jouait juste.
+            const vivantes = this.flotte.filter(c => !c.el.classList.contains('dx-carte--partie'));
+            for (let i = 0; i < vivantes.length; i++) {
+                for (let j = i + 1; j < vivantes.length; j++) {
+                    const a = vivantes[i], b = vivantes[j];
+                    const dx = (b.x - a.x), dy = (b.y - a.y);
+                    const d = Math.hypot(dx, dy);
+                    if (d >= cote * 0.98 || d === 0) continue;
+                    const ux = dx / d, uy = dy / d;
+                    const chevauche = (cote * 0.98 - d) / 2;
+                    a.x -= ux * chevauche; a.y -= uy * chevauche;
+                    b.x += ux * chevauche; b.y += uy * chevauche;
+                    // Échange des vitesses le long de l'axe du choc : c'est le
+                    // rebond d'une bille, et il se lit tout de suite.
+                    const va = a.vx * ux + a.vy * uy, vb = b.vx * ux + b.vy * uy;
+                    a.vx += (vb - va) * ux; a.vy += (vb - va) * uy;
+                    b.vx += (va - vb) * ux; b.vy += (va - vb) * uy;
+                }
+            }
+            for (const c of vivantes) {
+                c.x = Math.max(0, Math.min(maxX, c.x));
+                c.y = Math.max(0, Math.min(maxY, c.y));
+                c.el.style.left = `${Math.round(c.x)}px`;
+                c.el.style.top = `${Math.round(c.y)}px`;
+            }
+            this.rafId = requestAnimationFrame(pas);
+        };
+        this.rafId = requestAnimationFrame(pas);
+    }
+
+    arreterDerive() {
+        if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+        this.flotte = [];
+        this.tableEl.style.removeProperty('--dx-cote');
     }
 
     majVies() {
@@ -242,6 +377,7 @@ class AmisDeDix extends BaseGame {
     }
 
     destroy() {
+        this.arreterDerive();
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
     }
