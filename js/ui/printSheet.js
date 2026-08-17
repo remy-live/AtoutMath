@@ -1741,10 +1741,19 @@ function dessinerMarque(doc, id, cx, cy, r, encre) {
 // --- Compter sur un solide --------------------------------------------------
 
 /** Le solide dessiné dans son emplacement, plus la place du tableau. */
+/* LES FACES VUES SONT TEINTÉES. Un solide en fil de fer se compte mal : on ne
+   sait plus quelle face on a déjà comptée. Trois tons doux, pris à tour de
+   rôle, séparent les faces sans transformer la fiche en vitrail — et le noir et
+   blanc reste disponible pour la photocopieuse. */
+const TEINTES_SOLIDE = [[219, 234, 254], [224, 231, 255], [237, 233, 254]];
+const hexTeinte = (rvb) => '#' + rvb.map(v => v.toString(16).padStart(2, '0')).join('');
+
+/** Le solide dessiné dans son emplacement, plus la place du tableau. */
 function geoSolide(item, slot) {
-    // Le tableau prend le tiers du bas : trois cases à remplir au crayon
-    // demandent de la hauteur, et un dessin trop grand ne laisse pas écrire.
-    const tabH = slot.taille * 0.30;
+    // LE TABLEAU EST UNE BANDE, pas un tiers de page. Il prenait la hauteur de
+    // trois lignes d'écriture pour trois nombres à un chiffre : autant de moins
+    // pour le dessin, qui est le seul endroit où l'on compte vraiment.
+    const tabH = slot.taille * 0.17;
     const cote = slot.taille - tabH;
     const d = dessinerSolide(item.meta, cote, cote * 0.10);
     return { d, cote, tabH, x0: slot.x + (slot.taille - cote) / 2, y0: slot.y, tabY: slot.y + cote };
@@ -1766,7 +1775,21 @@ function solidesPreviewHtml(item, slot, k, solution) {
     const P = (i) => g.d.plan.points[i];
     const X = (i) => g.x0 + P(i)[0];
     const Y = (i) => g.y0 + P(i)[1];
+    const couleur = polycopieEnCouleur();
     let html = '';
+
+    // Les faces vues d'abord, teintées : elles passent SOUS les arêtes.
+    // `vues` est un tableau de booléens PARALLÈLE aux faces, pas une liste
+    // d'indices : c'est le contrat du noyau.
+    if (couleur) {
+        const polys = m.faces.map((face, iF) => {
+            if (!g.d.vues[iF] || !Array.isArray(face) || face.length < 3) return '';
+            const pts = face.map(i => `${(X(i) * k).toFixed(2)},${(Y(i) * k).toFixed(2)}`);
+            return `<polygon points="${pts.join(' ')}"
+                fill="${hexTeinte(TEINTES_SOLIDE[iF % TEINTES_SOLIDE.length])}" stroke="none"/>`;
+        }).join('');
+        if (polys) html += `<svg class="fx-sd-svg" style="left:0; top:0; width:100%; height:100%">${polys}</svg>`;
+    }
 
     // Les arêtes cachées d'abord, sous les pleines : un pointillé qui passe
     // par-dessus un trait plein donne un dessin sale.
@@ -1786,8 +1809,9 @@ function solidesPreviewHtml(item, slot, k, solution) {
     const cols = [['Sommets', m.compte.S], ['Arêtes', m.compte.A], ['Faces', m.compte.F]];
     const largeur = g.cote / 3;
     html += cols.map(([titre, valeur], i) => `
-        <div class="fx-sd-case" style="left:${(g.x0 + i * largeur) * k}px; top:${g.tabY * k}px;
-            width:${largeur * k}px; height:${g.tabH * k}px; font-size:${g.tabH * 0.22 * k}px">
+        <div class="fx-sd-case${couleur ? ' fx-sd-case--couleur' : ''}"
+            style="left:${(g.x0 + i * largeur) * k}px; top:${g.tabY * k}px;
+            width:${largeur * k}px; height:${g.tabH * k}px; font-size:${g.tabH * 0.36 * k}px">
             <span class="fx-sd-tete">${titre}</span>
             <span class="fx-sd-rep">${solution ? valeur : ''}</span>
         </div>`).join('');
@@ -1799,6 +1823,17 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     const m = item.meta;
     const X = (i) => g.x0 + g.d.plan.points[i][0];
     const Y = (i) => g.y0 + g.d.plan.points[i][1];
+    const couleur = polycopieEnCouleur();
+
+    // Les faces vues, teintées, SOUS les arêtes.
+    if (couleur) {
+        m.faces.forEach((face, iF) => {
+            if (!g.d.vues[iF] || !Array.isArray(face) || face.length < 3) return;
+            doc.setFillColor(...TEINTES_SOLIDE[iF % TEINTES_SOLIDE.length]);
+            const suite = face.slice(1).map((s, j) => [X(s) - X(face[j]), Y(s) - Y(face[j])]);
+            doc.lines(suite, X(face[0]), Y(face[0]), [1, 1], 'F', true);
+        });
+    }
 
     m.aretes.forEach(([a, b], i) => {
         doc.setDrawColor(...(g.d.cachees[i] ? ENCRE.grille : ENCRE.trait));
@@ -1812,16 +1847,25 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     const largeur = g.cote / 3;
     doc.setLineWidth(0.3);
     doc.setDrawColor(...ENCRE.trait);
+    // L'EN-TÊTE EST UNE BANDE TEINTÉE, la case à remplir reste blanche : on voit
+    // d'un coup d'œil où l'on écrit.
+    const teteH = g.tabH * 0.42;
     cols.forEach(([titre, valeur], i) => {
         const x = g.x0 + i * largeur;
+        if (couleur) {
+            doc.setFillColor(...TEINTES_SOLIDE[i % TEINTES_SOLIDE.length]);
+            doc.rect(x, g.tabY, largeur, teteH, 'F');
+        }
+        doc.setDrawColor(...ENCRE.trait);
         doc.rect(x, g.tabY, largeur, g.tabH);
-        doc.setFontSize(5.4);
+        doc.line(x, g.tabY + teteH, x + largeur, g.tabY + teteH);
+        doc.setFontSize(Math.max(5, g.tabH * 0.9));
         doc.setTextColor(...ENCRE.gris);
-        doc.text(pourPdf(titre), x + largeur / 2, g.tabY + g.tabH * 0.32, { align: 'center' });
+        doc.text(pourPdf(titre), x + largeur / 2, g.tabY + teteH * 0.72, { align: 'center' });
         if (solution) {
-            doc.setFontSize(11);
+            doc.setFontSize(Math.max(8, g.tabH * 1.5));
             doc.setTextColor(...ENCRE.trait);
-            doc.text(String(valeur), x + largeur / 2, g.tabY + g.tabH * 0.82, { align: 'center' });
+            doc.text(String(valeur), x + largeur / 2, g.tabY + g.tabH * 0.92, { align: 'center' });
         }
     });
 }
@@ -2910,17 +2954,23 @@ function anglePreviewHtml(item, slot, k, solution) {
 
     // LE RAPPORTEUR DE LA CORRECTION, sous les côtés : un trait plein par-dessus
     // un demi-cercle gradué reste lisible, l'inverse non.
+    // UN RAPPORTEUR, PAS UN ARC GRADUÉ QUI FLOTTE. Il lui manquait sa RÈGLE —
+    // le bord droit qui joint le 0 au 180 — et son REPÈRE CENTRAL, les deux
+    // choses par lesquelles on le pose. Sans elles, le demi-cercle ne montrait
+    // pas le geste qu'on demande à l'élève : centre sur le sommet, zéro sur le
+    // côté tracé. Rémy : « dessiner le rapporteur bien placé dans la solution ».
     if (solution) {
         const rr = g.r * 0.9;
-        d += `<path d="M ${T(g.sx + Math.cos(c.a0) * rr)} ${T(g.sy + Math.sin(c.a0) * rr)}
-              A ${T(rr)} ${T(rr)} 0 0 0 ${T(g.sx - Math.cos(c.a0) * rr)} ${T(g.sy - Math.sin(c.a0) * rr)}"
-              fill="none" stroke="#c7b8f5" stroke-width="${T(0.5)}"/>`;
+        const P = (ang, ray) => `${T(g.sx + Math.cos(ang) * ray)} ${T(g.sy + Math.sin(ang) * ray)}`;
+        // Le corps du rapporteur : demi-disque translucide, bord droit compris.
+        d += `<path d="M ${P(c.a0, rr)} A ${T(rr)} ${T(rr)} 0 0 0 ${P(c.a0 + Math.PI, rr)} Z"
+              fill="rgba(167,139,250,.10)" stroke="#a78bfa" stroke-width="${T(0.45)}"/>`;
         for (let deg = 0; deg <= 180; deg += 10) {
             const a = c.a0 - deg * Math.PI / 180;
             const gros = deg % 30 === 0;
             const r1 = rr - g.r * (gros ? 0.13 : 0.07);
-            d += `<line x1="${T(g.sx + Math.cos(a) * r1)}" y1="${T(g.sy + Math.sin(a) * r1)}"
-                  x2="${T(g.sx + Math.cos(a) * rr)}" y2="${T(g.sy + Math.sin(a) * rr)}"
+            d += `<line x1="${P(a, r1).split(' ')[0]}" y1="${P(a, r1).split(' ')[1]}"
+                  x2="${P(a, rr).split(' ')[0]}" y2="${P(a, rr).split(' ')[1]}"
                   stroke="#a78bfa" stroke-width="${T(gros ? 0.4 : 0.25)}"/>`;
             if (!gros) continue;
             const rt = rr - g.r * 0.24;
@@ -2928,6 +2978,22 @@ function anglePreviewHtml(item, slot, k, solution) {
                   text-anchor="middle" dominant-baseline="central"
                   font-size="${T(g.r * 0.1)}" fill="#7c3aed">${deg}</text>`;
         }
+        // LE REPÈRE CENTRAL : la petite croix qu'on fait coïncider avec le
+        // sommet. C'est elle qu'on cherche quand on pose l'instrument.
+        const cr = g.r * 0.09;
+        d += `<line x1="${T(g.sx - cr)}" y1="${T(g.sy)}" x2="${T(g.sx + cr)}" y2="${T(g.sy)}"
+              stroke="#7c3aed" stroke-width="${T(0.3)}"/>
+              <line x1="${T(g.sx)}" y1="${T(g.sy - cr)}" x2="${T(g.sx)}" y2="${T(g.sy + cr)}"
+              stroke="#7c3aed" stroke-width="${T(0.3)}"/>`;
+        // LA GRADUATION LUE, en évidence : c'est la lecture elle-même qui se
+        // corrige, pas le nombre écrit en dessous.
+        const al = c.a0 - m.target * Math.PI / 180;
+        d += `<line x1="${T(g.sx + Math.cos(al) * (rr - g.r * 0.2))}" y1="${T(g.sy + Math.sin(al) * (rr - g.r * 0.2))}"
+              x2="${T(g.sx + Math.cos(al) * (rr + g.r * 0.06))}" y2="${T(g.sy + Math.sin(al) * (rr + g.r * 0.06))}"
+              stroke="#dc2626" stroke-width="${T(0.55)}"/>
+              <text x="${T(g.sx + Math.cos(al) * (rr + g.r * 0.2))}" y="${T(g.sy + Math.sin(al) * (rr + g.r * 0.2))}"
+              text-anchor="middle" dominant-baseline="central"
+              font-size="${T(g.r * 0.13)}" fill="#dc2626" font-weight="700">${m.target}°</text>`;
     }
 
     // L'ARC MARQUE UN ANGLE QUI EXISTE, JAMAIS UN ANGLE À TRACER.
@@ -2980,6 +3046,12 @@ function dessinerAnglePdf(doc, item, slot, solution) {
             const nx = g.sx + Math.cos(a) * rr, ny = g.sy + Math.sin(a) * rr;
             doc.line(px, py, nx, ny); px = nx; py = ny;
         }
+        // LE BORD DROIT DE L'INSTRUMENT, du 0 au 180 : c'est lui qu'on aligne
+        // sur le côté tracé, et il manquait.
+        doc.setLineWidth(0.4);
+        doc.line(g.sx + Math.cos(c.a0) * rr, g.sy + Math.sin(c.a0) * rr,
+            g.sx - Math.cos(c.a0) * rr, g.sy - Math.sin(c.a0) * rr);
+        doc.setLineWidth(0.25);
         for (let deg = 0; deg <= 180; deg += 10) {
             const a = c.a0 - deg * Math.PI / 180;
             const gros = deg % 30 === 0;
@@ -2995,6 +3067,24 @@ function dessinerAnglePdf(doc, item, slot, solution) {
             doc.text(String(deg), g.sx + Math.cos(a) * rt, g.sy + Math.sin(a) * rt + 0.6,
                 { align: 'center' });
         }
+        // Le repère central — la croix qu'on pose sur le sommet.
+        const cr = g.r * 0.09;
+        doc.setDrawColor(124, 58, 237);
+        doc.setLineWidth(0.3);
+        doc.line(g.sx - cr, g.sy, g.sx + cr, g.sy);
+        doc.line(g.sx, g.sy - cr, g.sx, g.sy + cr);
+        // Et la graduation LUE, en rouge : c'est la lecture qui se corrige.
+        const al = c.a0 - m.target * Math.PI / 180;
+        doc.setDrawColor(220, 38, 38);
+        doc.setLineWidth(0.55);
+        doc.line(g.sx + Math.cos(al) * (rr - g.r * 0.2), g.sy + Math.sin(al) * (rr - g.r * 0.2),
+            g.sx + Math.cos(al) * (rr + g.r * 0.06), g.sy + Math.sin(al) * (rr + g.r * 0.06));
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5, g.r * 0.34));
+        doc.setTextColor(220, 38, 38);
+        doc.text(pourPdf(`${m.target}°`), g.sx + Math.cos(al) * (rr + g.r * 0.22),
+            g.sy + Math.sin(al) * (rr + g.r * 0.22) + 0.7, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
     }
 
     doc.setDrawColor(...ENCRE.trait);
@@ -3545,6 +3635,55 @@ const BLOC_SCRATCH = {
     controle: { fond: [255, 171, 25], bord: [207, 139, 23], encre: [40, 30, 0] }
 };
 
+/**
+ * LA SILHOUETTE D'UN BLOC SCRATCH : LE CRAN.
+ *
+ * C'est lui qu'on reconnaît — la bosse du bas qui s'emboîte dans le creux du
+ * bloc suivant. Un rectangle arrondi coloré n'est pas un bloc : il ne dit pas
+ * que les briques s'accrochent, et c'est précisément ce que l'élève voit à
+ * l'écran. Rémy : « de vrais blocs Scratch pour le PDF ».
+ */
+const cranScratch = (h) => ({ d: h * 0.17, debut: h * 0.42, large: h * 0.85 });
+
+/** Le contour d'un bloc simple, du coin haut-gauche, dans le sens horaire. */
+function contourBloc(x, y, w, h) {
+    const c = cranScratch(h);
+    const s = x + c.debut, f = s + c.large;
+    return [
+        [x, y], [s, y], [s + c.d, y + c.d], [f - c.d, y + c.d], [f, y], [x + w, y],
+        [x + w, y + h], [f, y + h], [f - c.d, y + h + c.d], [s + c.d, y + h + c.d],
+        [s, y + h], [x, y + h]
+    ];
+}
+
+/**
+ * Le contour d'un bloc en C — l'anse du haut, le dos, et le bras du bas — en
+ * UN SEUL tracé. Dessiné en trois morceaux séparés, le « répéter » laissait des
+ * coutures blanches entre son dos et ses bras : on voyait trois rectangles, pas
+ * une brique qui enveloppe.
+ */
+function contourC(x, y, w, h, creux, bras, dos) {
+    const c = cranScratch(h);
+    const s = x + c.debut, f = s + c.large;
+    const si = x + dos + c.debut, fi = si + c.large;      // le cran intérieur
+    const yb = y + h + creux;                             // le haut du bras
+    const yf = yb + bras;                                 // le bas du bras
+    const wBras = Math.max(dos + c.large + c.debut * 2, w * 0.58);
+    return [
+        [x, y], [s, y], [s + c.d, y + c.d], [f - c.d, y + c.d], [f, y], [x + w, y],
+        [x + w, y + h], [fi, y + h], [fi - c.d, y + h + c.d], [si + c.d, y + h + c.d],
+        [si, y + h], [x + dos, y + h],
+        [x + dos, yb], [x + wBras, yb], [x + wBras, yf],
+        [f, yf], [f - c.d, yf + c.d], [s + c.d, yf + c.d], [s, yf], [x, yf]
+    ];
+}
+
+/** Un polygone fermé dans le PDF, à partir de points absolus en millimètres. */
+function tracerPolygone(doc, pts, style) {
+    const suite = pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]);
+    doc.lines(suite, pts[0][0], pts[0][1], [1, 1], style, true);
+}
+
 /** La géométrie de la pile de blocs : un bloc par ligne, indenté sous son C. */
 function geoBlocsChat(g) {
     const lignes = g.m.lignes;
@@ -3615,36 +3754,34 @@ function chatPreviewHtml(item, slot, k, solution) {
     d += `<polygon points="${t.map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
         fill="#e11d48" opacity="0.85"/>`;
 
-    let html = `<svg class="fx-ch-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
-    // LE PROGRAMME, EN BLOCS. Un bloc par ligne, empilés, et le « répéter »
-    // enveloppe les siens dans un C — comme dans le logiciel.
+    // LE PROGRAMME, EN BLOCS. Un bloc par ligne, empilés avec leur cran, et le
+    // « répéter » les enveloppe dans un C — comme dans le logiciel.
     const bl = geoBlocsChat(g);
+    let textes = '';
     bl.lignes.forEach((l, i) => {
         const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
         const x = bl.x + l.creux * bl.retrait;
         const y = bl.y + i * bl.pas;
         const fond = `rgb(${c.fond.join(',')})`;
-        if (l.fin) {
-            // La barre du bas du C : plus courte, et sans texte.
-            html += `<div class="fx-ch-bloc fx-ch-bloc--fin" style="left:${x * k}px; top:${y * k}px;
-                width:${(bl.largeur * 0.42) * k}px; height:${(bl.h * 0.62) * k}px;
-                background:${fond}"></div>`;
-            return;
-        }
-        // Le dos du C : une colonne de couleur qui court le long des blocs
-        // enveloppés, jusqu'à la barre du bas.
-        if (l.genre === 'controle') {
-            const jusqua = bl.lignes.findIndex((z, j) => j > i && z.fin && z.creux === l.creux);
-            const bas = (jusqua < 0 ? bl.lignes.length : jusqua) * bl.pas;
-            html += `<div class="fx-ch-dos" style="left:${x * k}px; top:${(y + bl.h) * k}px;
-                width:${bl.retrait * k}px; height:${(bl.y + bas - y - bl.h) * k}px;
-                background:${fond}"></div>`;
-        }
-        html += `<div class="fx-ch-bloc" style="left:${x * k}px; top:${y * k}px;
-            width:${(bl.largeur - l.creux * bl.retrait) * k}px; height:${bl.h * k}px;
-            background:${fond}; color:rgb(${c.encre.join(',')});
+        const bord = `rgb(${c.bord.join(',')})`;
+        // La barre du bas d'un C est dessinée AVEC son C : rien à faire ici.
+        if (l.fin) return;
+        const w = bl.largeur - l.creux * bl.retrait;
+        const pts = (l.genre === 'controle')
+            ? (() => {
+                const j = bl.lignes.findIndex((z, n) => n > i && z.fin && z.creux === l.creux);
+                const yFin = bl.y + (j < 0 ? bl.lignes.length : j) * bl.pas;
+                return contourC(x, y, w, bl.h, yFin - y - bl.h, bl.h * 0.62, bl.retrait);
+            })()
+            : contourBloc(x, y, w, bl.h);
+        d += `<polygon points="${pts.map(p => `${T(p[0])},${T(p[1])}`).join(' ')}"
+            fill="${fond}" stroke="${bord}" stroke-width="${T(0.18)}" stroke-linejoin="round"/>`;
+        textes += `<div class="fx-ch-bloc" style="left:${x * k}px; top:${y * k}px;
+            width:${w * k}px; height:${bl.h * k}px; color:rgb(${c.encre.join(',')});
             font-size:${bl.taille * k}px">${echapperSheet(l.texte)}</div>`;
     });
+
+    let html = `<svg class="fx-ch-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>${textes}`;
 
     const rep = m.quoi === 'angle'
         ? [`L'angle vaut`, solution ? `${m.angle}°` : '……… °']
@@ -3696,16 +3833,15 @@ function dessinerChatPdf(doc, item, slot, solution, champ) {
         doc.setFillColor(...c.fond);
         doc.setDrawColor(...c.bord);
         doc.setLineWidth(0.18);
-        if (l.fin) {
-            doc.roundedRect(x, y, bl.largeur * 0.42, bl.h * 0.62, 0.7, 0.7, 'FD');
-            return;
-        }
+        if (l.fin) return;               // la barre du bas est tracée avec son C
+        const w = bl.largeur - l.creux * bl.retrait;
         if (l.genre === 'controle') {
-            const jusqua = bl.lignes.findIndex((z, j) => j > i && z.fin && z.creux === l.creux);
-            const bas = (jusqua < 0 ? bl.lignes.length : jusqua) * bl.pas;
-            doc.rect(x, y + bl.h, bl.retrait, bl.y + bas - y - bl.h, 'F');
+            const j = bl.lignes.findIndex((z, n) => n > i && z.fin && z.creux === l.creux);
+            const yFin = bl.y + (j < 0 ? bl.lignes.length : j) * bl.pas;
+            tracerPolygone(doc, contourC(x, y, w, bl.h, yFin - y - bl.h, bl.h * 0.62, bl.retrait), 'FD');
+        } else {
+            tracerPolygone(doc, contourBloc(x, y, w, bl.h), 'FD');
         }
-        doc.roundedRect(x, y, bl.largeur - l.creux * bl.retrait, bl.h, 0.9, 0.9, 'FD');
         doc.setFont('helvetica', 'bold');
         // 1 pt ≈ 0,3528 mm : la police du bloc est donnée en millimètres, comme
         // sa hauteur, pour que l'aperçu et la feuille soient identiques.
