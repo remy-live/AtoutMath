@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=251">
-    <link rel="stylesheet" href="css/layout.css?v=251">
-    <link rel="stylesheet" href="css/ui.css?v=251">
-    <link rel="stylesheet" href="css/games.css?v=251">
-    <link rel="stylesheet" href="css/components.css?v=251">
-    <link rel="stylesheet" href="css/modules.css?v=251">
+    <link rel="stylesheet" href="css/base.css?v=252">
+    <link rel="stylesheet" href="css/layout.css?v=252">
+    <link rel="stylesheet" href="css/ui.css?v=252">
+    <link rel="stylesheet" href="css/games.css?v=252">
+    <link rel="stylesheet" href="css/components.css?v=252">
+    <link rel="stylesheet" href="css/modules.css?v=252">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -414,13 +414,15 @@
                 <!-- PROFIL -->
                 <div id="view-profile">
                     <div class="profile-container">
+                        <!-- L'EN-TÊTE TIENT EN DEUX BANDES. Il en prenait sept
+                             cent trente sur un iPhone : l'élève ouvrait son
+                             profil et n'y voyait que son nom, son score et
+                             trois cartes empilées — le premier écran entier
+                             sans une seule information utile. Le sous-titre
+                             (« Voici un résumé de tes accomplissements ») n'a
+                             pas été remplacé : il n'apprenait rien. -->
                         <div class="profile-header">
-                            <div>
-                                <h1 class="view-heading-title">Mon Profil
-                                </h1>
-                                <p class="view-heading-subtitle">Voici un résumé de tes
-                                    accomplissements et de ta progression.</p>
-                            </div>
+                            <h1 class="view-heading-title">Mon Profil</h1>
                             <div class="profile-score-block">
                                 <div class="profile-score-emoji">⭐</div>
                                 <div id="profile-score-value" class="profile-score-value">0</div>
@@ -447,13 +449,18 @@
                             </div>
                         </div>
 
-                        <div class="section-header-row">
-                            <h3 class="section-title">Qui travaille ?</h3>
-                            <button id="btn-add-profile" class="btn-toggle btn-toggle--sm">➕ Nouveau profil</button>
+                        <!-- QUI TRAVAILLE ? SUR UNE SEULE LIGNE. Le titre de
+                             section et son paragraphe d'explication prenaient
+                             soixante-quatre pixels pour présenter une puce.
+                             L'explication reste, en infobulle du bouton : elle
+                             ne sert qu'une fois, le jour où l'on crée le
+                             deuxième profil. -->
+                        <div class="profile-qui">
+                            <span class="profile-qui-label">Qui travaille ?</span>
+                            <div id="profile-switcher" class="profile-switcher"></div>
+                            <button id="btn-add-profile" class="btn-toggle btn-toggle--sm"
+                                title="Plusieurs élèves peuvent utiliser ce poste : chacun garde sa progression et ses statistiques séparément.">➕ Nouveau profil</button>
                         </div>
-                        <p class="view-heading-subtitle">Plusieurs élèves peuvent utiliser ce poste : chacun garde sa
-                            progression et ses statistiques séparément.</p>
-                        <div id="profile-switcher" class="profile-switcher"></div>
 
                         <!-- QUATRE ONGLETS PLUTÔT QU'UNE COLONNE DE QUATRE MÈTRES.
                              Les quatre sections qui suivent étaient empilées : près

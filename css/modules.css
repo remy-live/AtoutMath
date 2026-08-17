@@ -931,14 +931,20 @@
 
 /* --- Profil : compétences, erreurs, badges ----------------- */
 
-.profile-rank { font-size: 1.15rem; font-weight: 700; color: var(--text-main); }
+/* « Calculateur Averti » sur le tiers d'un écran de 390 px se coupait au milieu
+   du mot : « Calculate / ur Averti ». La police suit la largeur, et le rang
+   passe à la ligne ENTRE les mots — un nom de rang tronqué ne se lit pas. */
+.profile-rank {
+    font-size: clamp(.78rem, 3vw, 1.15rem); font-weight: 700; color: var(--text-main);
+    overflow-wrap: normal; word-break: keep-all; hyphens: none;
+}
 .profile-rank-level { color: var(--primary); }
 .profile-xp-bar {
     margin-top: 10px; background: var(--bg-app); border: 1px solid var(--border);
     border-radius: 10px; height: 10px; max-width: 300px; overflow: hidden;
 }
 .profile-xp-bar > div { background: var(--primary); height: 100%; transition: width .5s ease; }
-.profile-xp-text { font-size: .8rem; color: var(--text-muted); margin-top: 5px; }
+.profile-xp-text { font-size: clamp(.68rem, 2.4vw, .8rem); color: var(--text-muted); margin-top: 5px; }
 
 .skill-group-title {
     font-weight: 700; color: var(--text-muted); font-size: .78rem;

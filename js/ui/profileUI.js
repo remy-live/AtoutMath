@@ -141,7 +141,7 @@ function renderHeader() {
         levelEl.innerHTML = `
             <div class="profile-rank">${rank} <span class="profile-rank-level">(Niveau ${level})</span></div>
             <div class="profile-xp-bar"><div style="width:${xpInLevel}%"></div></div>
-            <div class="profile-xp-text">${xpInLevel} / 100 XP avant le niveau ${level + 1}</div>`;
+            <div class="profile-xp-text">${xpInLevel} / 100 XP</div>`;
     }
 }
 
