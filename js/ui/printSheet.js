@@ -22,6 +22,8 @@ import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
+// Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
+import { fenetresDetachables } from './debugBar.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import {
     ajusterAuCarre, insecable, cheminSerpentin, boiteDe as boiteCaseDomino, cellulesDe
@@ -5361,7 +5363,7 @@ function assurerModale() {
     document.body.appendChild(modal);
     // Les deux commandes de fenêtre — ancrer/détacher, replier les réglages —
     // sont posées dans le titre une fois pour toutes.
-    fenetreFiche = equiperFenetre(modal, CLE_FENETRE);
+    fenetreFiche = equiperFenetre(modal, CLE_FENETRE, { peutDetacher: fenetresDetachables });
     return modal;
 }
 
@@ -5742,11 +5744,16 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // calcule son échelle dessus.
     modal._flotRendre = () => rendre();
     modal.style.display = 'flex';
-    // ANCRÉE OU DÉTACHÉE, AU CHOIX. Le bouton est dans le titre, et le choix
-    // se retient. La barre de passe, elle, l'exige détachée : une modale qui
-    // bloque ne peut pas accompagner une passe de cent exercices.
-    if (opts.flottant) fenetreFiche.detacher();
-    else if (lireModeFenetre() === 'ancre') fenetreFiche.ancrer();
-    else if (lireModeFenetre() === 'detache') fenetreFiche.detacher();
+    // ANCRÉE PAR DÉFAUT, POUR TOUT LE MONDE. La fiche est une modale : elle
+    // prend une partie de l'écran, on la lit, on la referme. Le mode détaché
+    // ne se restaure QUE si l'interrupteur d'auteur est allumé — sans quoi un
+    // seul clic pendant une passe de test laissait une fenêtre baladeuse à
+    // tous ceux qui ouvraient une fiche ensuite. La barre de passe, elle,
+    // l'exige détachée : une modale qui bloque ne peut pas accompagner une
+    // passe de cent exercices.
+    fenetreFiche.majDetachable();
+    if (opts.flottant) fenetreFiche.detacher(true);
+    else if (fenetresDetachables() && lireModeFenetre() === 'detache') fenetreFiche.detacher();
+    else fenetreFiche.ancrer();
     rendre();
 }

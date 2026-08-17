@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=245">
-    <link rel="stylesheet" href="css/layout.css?v=245">
-    <link rel="stylesheet" href="css/ui.css?v=245">
-    <link rel="stylesheet" href="css/games.css?v=245">
-    <link rel="stylesheet" href="css/components.css?v=245">
-    <link rel="stylesheet" href="css/modules.css?v=245">
+    <link rel="stylesheet" href="css/base.css?v=246">
+    <link rel="stylesheet" href="css/layout.css?v=246">
+    <link rel="stylesheet" href="css/ui.css?v=246">
+    <link rel="stylesheet" href="css/games.css?v=246">
+    <link rel="stylesheet" href="css/components.css?v=246">
+    <link rel="stylesheet" href="css/modules.css?v=246">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -85,6 +85,15 @@
             <button class="debug-btn" id="db-banc-barre" title="Barre de passe : enchaîner et noter"
                     aria-label="Barre de passe">
                 <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/></svg>
+            </button>
+            <!-- LES FICHES EN FENÊTRE DÉTACHABLE. Pour le professeur et pour
+                 l'élève, la fiche à imprimer est une MODALE : elle prend une
+                 partie de l'écran et on la referme. Pendant une passe de test,
+                 on en ouvre cent d'affilée et l'on veut la poser à côté du jeu.
+                 Cet interrupteur-là est donc ici, dans la palette d'auteur, et
+                 nulle part ailleurs. -->
+            <button class="debug-btn" id="db-fenetres" aria-pressed="false">
+                <svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="12" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2"/></svg>
             </button>
             <!-- LA SOLUTION, pour l'auteur seul. Un niveau qu'on vient
                  d'écrire se vérifie en le jouant, et rejouer douze poussées à

@@ -14,6 +14,42 @@ import { placer, restaurer, rendreDeplacable } from './flottant.js';
 const CLE = 'mathbox-debug-pos';
 const MARGE = 6;
 
+// --- LES FENÊTRES DÉTACHABLES SONT UN OUTIL D'AUTEUR --------------------------
+//
+// La fiche à imprimer savait se détacher — se poser à côté du jeu, se
+// déplacer, se redimensionner — et ce mode se retenait d'une ouverture à
+// l'autre. Un seul clic pendant une passe de test, et le professeur (ou
+// l'élève) retrouvait ensuite une fenêtre baladeuse là où il attendait une
+// modale. Rémy : « la modale d'impression pour le prof et l'élève (PDF) doit
+// être comme avant en prenant une partie de l'écran. Elle est en modale
+// bougeable que dans le mode debug. »
+//
+// Le détachement redevient donc ce qu'il est : un confort de mise au point,
+// derrière un interrupteur de la palette d'auteur. Éteint — l'état par défaut,
+// et celui de tout le monde — la fiche est une modale centrée, et le bouton de
+// détachement n'existe même pas dans son titre. Le REPLI des réglages, lui,
+// reste offert à tous : ce n'est pas une fenêtre qui bouge, c'est un aperçu
+// qu'on veut voir en grand.
+
+const CLE_FENETRES = 'mathbox-auteur-fenetres';
+const ECOUTEURS = new Set();
+
+/** Les fiches s'ouvrent-elles en fenêtre détachable ? Non, sauf demande. */
+export function fenetresDetachables() {
+    try { return localStorage.getItem(CLE_FENETRES) === '1'; } catch (e) { return false; }
+}
+
+/** Prévenir quand l'interrupteur bouge — une fiche ouverte doit suivre. */
+export function surFenetresDetachables(fn) {
+    ECOUTEURS.add(fn);
+    return () => ECOUTEURS.delete(fn);
+}
+
+function reglerFenetresDetachables(actif) {
+    try { localStorage.setItem(CLE_FENETRES, actif ? '1' : '0'); } catch (e) { /* privé */ }
+    ECOUTEURS.forEach(fn => { try { fn(actif); } catch (e) { /* un abonné mort */ } });
+}
+
 export function initDebugBar() {
     const bar = document.getElementById('debug-toolbar');
     const grip = document.getElementById('db-grip');
@@ -25,6 +61,21 @@ export function initDebugBar() {
     // qu'on regarde en testant. Le bas à gauche est le coin le plus vide.
     restaurer(bar, CLE, (el) => placer(el, MARGE, window.innerHeight));
     rendreDeplacable(bar, grip, CLE);
+
+    const fen = document.getElementById('db-fenetres');
+    if (fen) {
+        const majFen = () => {
+            const actif = fenetresDetachables();
+            fen.classList.toggle('active', actif);
+            fen.title = actif
+                ? 'Fiches en fenêtre détachable (mode auteur) — cliquer pour revenir à la modale'
+                : 'Fiches en modale, comme pour le professeur et l\'élève — cliquer pour les rendre détachables';
+            fen.setAttribute('aria-label', fen.title);
+            fen.setAttribute('aria-pressed', String(actif));
+        };
+        fen.onclick = () => { reglerFenetresDetachables(!fenetresDetachables()); majFen(); };
+        majFen();
+    }
 
     if (fold) {
         fold.onclick = () => {

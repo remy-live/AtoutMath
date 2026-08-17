@@ -687,7 +687,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    + 200 + 2 » ne dit pas lequel des quatre était la question. Gras ET souligné
    — le gras seul se perd sur une photocopie grise, le trait seul se confond
    avec la ligne à remplir d'un énoncé. */
-.fq-rep { font-weight: 800; border-bottom: 1px solid #1a202c; }
+/* LA RÉPONSE EST EN GRAS, ET RIEN DE PLUS. Elle était aussi SOULIGNÉE — un
+   trait sous chaque réponse de chaque corrigé. Rémy l'a noté quinze fois dans
+   la même passe : « pas la peine de souligner les solutions ». En mode
+   compact, où la ligne ENTIÈRE est la réponse, cela revenait à souligner toute
+   la page ; ailleurs, le gras distingue déjà la réponse de l'énoncé. */
+.fq-rep { font-weight: 800; }
 
 /* --- UNE MODALE DÉTACHÉE ----------------------------------------------------
    La même fiche, mais posée à côté au lieu de barrer la route. On lui retire

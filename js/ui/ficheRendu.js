@@ -702,14 +702,11 @@ export function pdfSolutions(pdf, page, o) {
             const y = b.y + o.taille + i * o.interligne;
             let x = b.x;
             for (const m of morceauxReponse(ligne)) {
+                // LE GRAS SUFFIT. La réponse portait en plus un trait dessous ;
+                // en mode compact, où toute la ligne EST la réponse, la page
+                // entière se retrouvait soulignée.
                 pdf.setFont('helvetica', m.reponse ? 'bold' : 'normal');
-                const debut = x;
                 x = dessinerLigne(pdf, m.texte, x, y, o, o.fractions);
-                if (m.reponse) {
-                    pdf.setDrawColor(...ENCRE.texte);
-                    pdf.setLineWidth(0.22);
-                    pdf.line(debut, y + o.taille * 0.32, x, y + o.taille * 0.32);
-                }
             }
         });
     }

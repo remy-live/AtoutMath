@@ -187,12 +187,21 @@ export const estDetache = (overlay) => !!overlay && overlay.classList.contains('
  * Équipe une modale des deux commandes : ancrer / détacher, et replier les
  * réglages. À n'appeler qu'UNE FOIS par modale, à sa création.
  *
+ * LE DÉTACHEMENT EST UN OUTIL D'AUTEUR, le repli est pour tout le monde. Poser
+ * une fiche à côté du jeu sert à qui en ouvre cent d'affilée ; le professeur
+ * qui prépare une feuille, et l'élève qui l'imprime, attendent une modale qui
+ * prend une partie de l'écran et qu'on referme. `peutDetacher` porte cette
+ * différence : à faux — le cas ordinaire —, la commande n'est pas même posée
+ * dans le titre, et rien ne peut détacher la fenêtre par mégarde.
+ *
  * @param {HTMLElement} overlay - la couche `.modal-overlay`
  * @param {string} cle          - où retenir place, taille, mode et repli
+ * @param {{peutDetacher?: () => boolean}} [opts]
  * @returns {{detacher:Function, ancrer:Function, basculer:Function,
- *            replier:Function, estDetache:Function}}
+ *            replier:Function, estDetache:Function, majDetachable:Function}}
  */
-export function equiperFenetre(overlay, cle) {
+export function equiperFenetre(overlay, cle, opts = {}) {
+    const peutDetacher = typeof opts.peutDetacher === 'function' ? opts.peutDetacher : () => false;
     // REDESSINER APRÈS COUP. L'aperçu calcule son échelle sur la largeur
     // DISPONIBLE au moment où il se dessine : détacher, replier ou tirer le
     // coin change cette largeur sans que personne le lui dise, et la feuille
@@ -219,6 +228,11 @@ export function equiperFenetre(overlay, cle) {
 
     const majBoutons = () => {
         const off = estDetache(overlay);
+        // Hors mode auteur, la commande disparaît purement et simplement : un
+        // bouton grisé se clique quand même, et laisse croire à une panne. Une
+        // fenêtre DÉJÀ détachée garde toutefois de quoi se rattacher — la
+        // barre de passe en ouvre ainsi, et il faut pouvoir les refermer.
+        bMode.hidden = !peutDetacher() && !off;
         bMode.innerHTML = off ? ICONE_ANCRER : ICONE_DETACHER;
         bMode.title = off
             ? 'Ancrer la fenêtre au centre, comme une fiche qu\'on prépare'
@@ -231,8 +245,11 @@ export function equiperFenetre(overlay, cle) {
         bReplier.setAttribute('aria-expanded', String(!replie));
     };
 
-    const detacherIci = () => {
-        if (estDetache(overlay)) return;
+    // `force` : la barre de passe du banc d'essai EXIGE une fenêtre posée à
+    // côté — une modale qui bloque ne peut pas accompagner une passe de cent
+    // exercices. C'est déjà un outil d'auteur, il n'a pas à demander deux fois.
+    const detacherIci = (force) => {
+        if (estDetache(overlay) || (!force && !peutDetacher())) return;
         defaire = poserFlottante(overlay, panneau, titre, cle, retracer);
         retenir(`${cle}-mode`, 'detache');
         majBoutons();
@@ -265,12 +282,17 @@ export function equiperFenetre(overlay, cle) {
     return {
         detacher: detacherIci, ancrer: ancrerIci,
         basculer: () => (estDetache(overlay) ? ancrerIci() : detacherIci()),
-        replier, estDetache: () => estDetache(overlay)
+        replier, estDetache: () => estDetache(overlay),
+        // L'interrupteur d'auteur peut basculer pendant qu'une fiche est
+        // ouverte : on la rattache alors sur-le-champ, sans quoi elle resterait
+        // baladeuse jusqu'à sa fermeture.
+        majDetachable: () => { if (!peutDetacher()) ancrerIci(); majBoutons(); }
     };
 }
 
 const commandesVides = () => ({
-    detacher() {}, ancrer() {}, basculer() {}, replier() {}, estDetache: () => false
+    detacher() {}, ancrer() {}, basculer() {}, replier() {},
+    estDetache: () => false, majDetachable() {}
 });
 
 function retenir(cle, valeur) {
