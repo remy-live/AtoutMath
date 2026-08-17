@@ -28,12 +28,14 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../../ui/paveTactile.js';
 
 const deuxChiffres = (n) => String(n).padStart(2, '0');
 
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null, gate = null;
+    let paveHorloge = null;
     let cnv = null, ctx = null, item = null, etat = null;
     let rafId = null;
     const nettoyeurs = [];
@@ -65,12 +67,25 @@ export function mount(container, session) {
                 <div class="hg-saisie">
                     <label class="hg-champ">
                         <span>heures</span>
-                        <input type="number" data-h min="0" max="23" placeholder="?" inputmode="numeric">
+                        <!-- LES BOUTONS − ET + SONT DEMANDÉS : « on ne peut
+                             écrire les chiffres sur iPhone, on pourrait avoir
+                             des + − aussi sur les input ». Ils règlent d'un
+                             cran ; pour 10 h 37, le pavé de chiffres posé
+                             dessous va plus vite que trente-sept appuis. -->
+                        <span class="hg-pas">
+                            <button type="button" class="hg-pas-btn" data-pas="-1" data-cible="h" aria-label="Une heure de moins">−</button>
+                            <input type="number" data-h min="0" max="23" placeholder="?" inputmode="numeric">
+                            <button type="button" class="hg-pas-btn" data-pas="1" data-cible="h" aria-label="Une heure de plus">+</button>
+                        </span>
                     </label>
                     <span class="hg-sep">h</span>
                     <label class="hg-champ">
                         <span>minutes</span>
-                        <input type="number" data-m min="0" max="59" placeholder="?" inputmode="numeric">
+                        <span class="hg-pas">
+                            <button type="button" class="hg-pas-btn" data-pas="-1" data-cible="m" aria-label="Une minute de moins">−</button>
+                            <input type="number" data-m min="0" max="59" placeholder="?" inputmode="numeric">
+                            <button type="button" class="hg-pas-btn" data-pas="1" data-cible="m" aria-label="Une minute de plus">+</button>
+                        </span>
                     </label>
                 </div>` : `
                 <div class="hg-affiche" data-affiche>— h —</div>`}
@@ -406,6 +421,47 @@ export function mount(container, session) {
                 if (e.key === 'Enter') { e.preventDefault(); valider(); }
             });
         });
+
+        // LES PAS. Ils bouclent — 23 h + 1 revient à 0 h, 59 min + 1 à 0 —
+        // comme une pendule, et non comme un compteur qui se bloque.
+        const champDe = (c) => container.querySelector(c === 'h' ? '[data-h]' : '[data-m]');
+        const borne = (c) => (c === 'h' ? 24 : 60);
+        container.querySelectorAll('.hg-pas-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                const el = champDe(b.dataset.cible);
+                if (!el) return;
+                const mod = borne(b.dataset.cible);
+                const actuel = el.value === '' ? 0 : Number(el.value);
+                el.value = String(((actuel + Number(b.dataset.pas)) % mod + mod) % mod);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+
+        // AU DOIGT, UN PAVÉ DE CHIFFRES. Les champs naissent avec la question,
+        // donc hors de tout geste de l'élève : iOS n'ouvre pas son clavier
+        // dessus. Le pavé écrit dans le champ TOUCHÉ EN DERNIER — les heures
+        // par défaut, puisque c'est par elles qu'on lit une heure.
+        if (auDoigt() && champDe('h')) {
+            let vise = 'h';
+            container.querySelectorAll('[data-h], [data-m]').forEach(inp => {
+                sansClavierSysteme(inp);
+                inp.addEventListener('pointerdown', () => {
+                    vise = inp.hasAttribute('data-h') ? 'h' : 'm';
+                    container.querySelectorAll('[data-h], [data-m]')
+                        .forEach(e => e.classList.toggle('hg-vise', e === inp));
+                });
+            });
+            champDe('h').classList.add('hg-vise');
+            const zone = container.querySelector('.hg-saisie').parentElement;
+            paveHorloge = poserPaveTactile(zone, {
+                champ: () => champDe(vise),
+                maxLong: 2,
+                valider,
+                // Sous la saisie et le bouton Valider, AVANT la barre d'indices :
+                // en toute fin de page, le pavé sortait de l'écran.
+                avant: zone.querySelector('.hint-bar')
+            });
+        }
     }
 
     /**

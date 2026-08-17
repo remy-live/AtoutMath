@@ -28,6 +28,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
 import {
     tirerExpression, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
     ecrire, terminee
@@ -141,6 +142,25 @@ class Priorites extends BaseGame {
         this.cascadeEl = this.container.querySelector('[data-cascade]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.scoreEl = this.container.querySelector('[data-score]');
+
+        // AU DOIGT, LE CLAVIER DU TÉLÉPHONE NE S'OUVRE PAS. Le champ de saisie
+        // naît d'un clic sur une opération, donc APRÈS le geste de l'élève :
+        // iOS refuse alors d'ouvrir son clavier, et l'on regardait un curseur
+        // clignoter sans pouvoir écrire. Le pavé est à nous, il s'ouvre
+        // toujours, et il vise le champ courant — recréé à chaque redessin.
+        if (auDoigt()) {
+            const zone = this.container.querySelector('.pr-wrap');
+            this.pave = poserPaveTactile(zone, {
+                // Sous la cascade, avant la note : en fin de page le pavé
+                // sortait de l'écran d'un téléphone.
+                avant: zone.querySelector('.pr-note'),
+                champ: () => this.container.querySelector('.pr-trou'),
+                valider: () => {
+                    const trou = this.container.querySelector('.pr-trou');
+                    if (trou && trou.value.trim()) this.valider(trou);
+                }
+            });
+        }
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());
         this.container.querySelector('[data-indice]').addEventListener('click', () => this.expliquer());
         this.poser();
@@ -245,7 +265,11 @@ class Priorites extends BaseGame {
             if (!this.valider(trou)) rendu = false;
         };
         trou.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') valider(); });
-        trou.addEventListener('blur', valider);
+        // AU DOIGT, PAS DE VALIDATION À LA PERTE DE FOCUS : toucher une touche
+        // du pavé fait sortir le champ, et la réponse serait partie au premier
+        // chiffre tapé. C'est le bouton OK du pavé qui valide.
+        if (!auDoigt()) trou.addEventListener('blur', valider);
+        sansClavierSysteme(trou);
         return trou;
     }
 

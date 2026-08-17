@@ -2789,6 +2789,20 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 
 .hg-saisie { display: flex; align-items: flex-end; gap: 8px; }
 .hg-champ { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+/* Le champ entre ses deux boutons de pas : un cran de plus, un cran de moins.
+   Ils bouclent comme une pendule — 23 h + 1 revient à 0 h. */
+.hg-pas { display: inline-flex; align-items: center; gap: 4px; }
+.hg-pas-btn {
+    width: 30px; height: 30px; flex: 0 0 auto;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main);
+    font: inherit; font-weight: 800; font-size: 1.05rem; line-height: 1; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.hg-pas-btn:active { background: var(--bg-app); transform: translateY(1px); }
+/* Quel champ le pavé de chiffres remplit-il ? Sans cette marque, on tape et
+   l'on ne sait pas où cela s'écrit. */
+.hg-vise { outline: 2px solid var(--primary); outline-offset: 1px; }
 .hg-champ span { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
 .hg-champ input {
     width: 84px; padding: 10px; text-align: center;
@@ -3853,3 +3867,28 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     .ea-corps { flex-direction: column; }
     .ea-damier-wrap { width: min(368px, 84vw); }
 }
+
+/* --- LE PAVÉ DE CHIFFRES TACTILE ---------------------------------------------
+   Deux rangées, et c'est la demande : un pavé de téléphone en quatre rangées
+   prend la moitié d'un écran de 662 points. En deux rangées de cinq, il tient
+   sous la question sans rien pousser hors de l'écran. Il n'apparaît que sur
+   les appareils où l'on répond au doigt : ailleurs, le vrai clavier fait mieux
+   le travail. */
+.pav-tactile {
+    display: flex; flex-direction: column; gap: 6px;
+    width: min(430px, 96%); margin: 10px auto 0;
+}
+.pav-rangee { display: flex; gap: 6px; }
+.pav-touche {
+    flex: 1 1 0; min-width: 0; height: clamp(38px, 7vh, 52px);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--text-main);
+    font: inherit; font-weight: 800; font-size: clamp(1rem, 4.4vw, 1.3rem);
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--shadow-sm);
+}
+.pav-touche:active { transform: translateY(1px); background: var(--bg-app); }
+.pav-touche--eff { color: var(--accent); }
+.pav-touche--signe { color: var(--primary); }
+.pav-touche--ok { background: var(--primary); border-color: var(--primary); color: #fff; }

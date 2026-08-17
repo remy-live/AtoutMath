@@ -15,6 +15,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
 import {
     tirerPartie, commencer, poserEtape, annulerEtape, gagnee, conseil,
     meilleurEcart, calculer, OPERATIONS, SIGNE
@@ -144,6 +145,22 @@ class CompteEstBon extends BaseGame {
         this.etapesEl = this.container.querySelector('[data-etapes]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.scoreEl = this.container.querySelector('[data-score]');
+
+        // « ON NE PEUT TAPER LES CHIFFRES SUR L'IPHONE. On pourrait avoir un
+        // clavier qui de base s'affiche en deux lignes. » Le champ apparaît
+        // après le choix des deux plaques, donc hors du geste de l'élève : iOS
+        // refuse d'ouvrir son clavier. Voici le nôtre, en deux rangées.
+        if (auDoigt()) {
+            const zone = this.container.querySelector('.cb-wrap');
+            this.pave = poserPaveTactile(zone, {
+                avant: zone.querySelector('.cb-etapes'),
+                champ: () => this.container.querySelector('.cb-trou'),
+                valider: () => {
+                    const trou = this.container.querySelector('.cb-trou');
+                    if (trou) trou.dispatchEvent(new Event('cb-valider'));
+                }
+            });
+        }
 
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());
         this.container.querySelector('[data-indice]').addEventListener('click', () => this.aider());
@@ -298,7 +315,11 @@ class CompteEstBon extends BaseGame {
             if (!this.poserEtape(idB, v)) rendu = false;   // calcul faux : on rouvre
         };
         trou.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') valider(); });
-        trou.addEventListener('blur', valider);
+        trou.addEventListener('cb-valider', valider);
+        // AU DOIGT, PAS DE VALIDATION À LA PERTE DE FOCUS : toucher le pavé
+        // fait sortir le champ, et le calcul partirait au premier chiffre.
+        if (!auDoigt()) trou.addEventListener('blur', valider);
+        sansClavierSysteme(trou);
         this.ligneEl.appendChild(trou);
         trou.focus();
     }

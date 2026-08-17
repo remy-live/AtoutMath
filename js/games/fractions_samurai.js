@@ -13,6 +13,7 @@
 // haute, remplit la décomposition, barre les facteurs — pause et pas-à-pas.
 
 import { BaseGame } from '../core/BaseGame.js';
+import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
@@ -63,6 +64,8 @@ class FracSamurai extends BaseGame {
                 .sam-shield { background: #364fc7; color: #fff; }
                 .sam-input1 { width: 90px; height: 50px; font-size: 1.5rem; text-align: center; border-radius: 10px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 900; }
                 .sam-input1:focus { outline: none; border-color: #fcc419; }
+                /* Quel champ le pavé tactile remplit-il ? */
+                .sam-vise { outline: 2px solid #fcc419; outline-offset: 1px; }
                 .sam-facteur { padding: 0 4px; position: relative; }
                 .sam-cible { cursor: pointer; border-radius: 6px; }
                 .sam-cible:hover { background: rgba(252,196,25,.25); }
@@ -162,6 +165,37 @@ class FracSamurai extends BaseGame {
         if (cfg.chrono && !this.isDemo) this.lancerChrono();
     }
 
+    /**
+     * AU DOIGT, LES CHAMPS NE REÇOIVENT RIEN. Rémy, sur iPhone : « on ne peut
+     * taper le nombre ». Les champs sont créés puis mis au point par le code,
+     * hors de tout geste de l'élève : iOS n'ouvre pas son clavier dessus. Le
+     * pavé, lui, écrit dans le champ touché en dernier — ou dans le premier,
+     * tant qu'on n'a touché à rien.
+     */
+    brancherPave() {
+        if (!auDoigt()) return;
+        if (this.pave) { this.pave.detruire(); this.pave = null; }
+        const champs = [...this.container.querySelectorAll('.sam-input1, .sam-mini')];
+        if (!champs.length) return;
+        champs.forEach(c => {
+            sansClavierSysteme(c);
+            c.addEventListener('pointerdown', () => {
+                this.champVise = c;
+                champs.forEach(e => e.classList.toggle('sam-vise', e === c));
+            });
+        });
+        this.champVise = champs[0];
+        champs[0].classList.add('sam-vise');
+        this.pave = poserPaveTactile(this.ui.controls.parentElement, {
+            champ: () => (this.champVise && this.champVise.isConnected ? this.champVise : champs[0]),
+            maxLong: 3,
+            valider: () => {
+                const b = this.ui.controls.querySelector('[data-couper], [data-verifier]');
+                if (b) b.click();
+            }
+        });
+    }
+
     montrerSaisie() {
         const cfg = NIVEAUX[this.level];
         this.message('');
@@ -174,6 +208,7 @@ class FracSamurai extends BaseGame {
             this.ui.controls.querySelector('[data-couper]').onclick = () => this.verifierSimple();
             this.message('Trouve un diviseur commun aux deux nombres.', 'info');
             if (!this.isDemo) regTimeout(() => this.ui.controls.querySelector('[data-simple]')?.focus(), 60);
+            this.brancherPave();
         } else {
             this.ui.eq.innerHTML = `
                 <div class="sam-frac"><div class="sam-num">${this.num}</div><div class="sam-bar"></div><div class="sam-den">${this.den}</div></div>
@@ -191,6 +226,7 @@ class FracSamurai extends BaseGame {
             if (bouclier) bouclier.onclick = () => this.utiliserBouclier();
             this.message('Décompose chaque nombre pour faire apparaître un facteur commun.', 'info');
             if (!this.isDemo) regTimeout(() => this.ui.eq.querySelector('[data-n1]')?.focus(), 60);
+            this.brancherPave();
         }
     }
 
