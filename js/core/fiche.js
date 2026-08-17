@@ -86,7 +86,21 @@ export function texteImprime(texte, reponse) {
         trouFinal = true;
         return op + trou;
     });
-    t = t.replace(/(\?|…|\.{2,})(?=\s*\S)/g, trou);
+    // UN POINT D'INTERROGATION DE PHRASE N'EST PAS UN TROU.
+    //
+    // « Quelle est sa vitesse moyenne ? Réponds en km/h. » sortait « … vitesse
+    // moyenne ......... Réponds en km/h. » : la question avait disparu, et l'élève
+    // lisait un blanc au milieu d'une phrase. Ce qui fait d'un « ? » un trou,
+    // c'est son VOISINAGE — un opérateur ou un signe d'égalité à côté, comme
+    // dans « 8 + ? = 10 » —, jamais un mot. Les points de suspension et les
+    // suites de points, eux, ne servent qu'à cela : ils restent des trous.
+    t = t.replace(/(…|\.{2,})(?=\s*\S)/g, trou);
+    t = t.replace(/\?(?=\s*\S)/g, (m, i) => {
+        const avant = t.slice(0, i).replace(/[\s\u00A0]+$/, '').slice(-1);
+        const apres = t.slice(i + 1).replace(/^[\s\u00A0]+/, '').slice(0, 1);
+        const signe = /[=+\-\u2212\u00D7\u00F7*/\u2248<>]/;
+        return (signe.test(avant) || signe.test(apres)) ? trou : '?';
+    });
     return trouFinal ? t : t.replace(/[\s\u00A0]+$/, '');
 }
 
@@ -739,11 +753,18 @@ export function composerBlocs(exos, opts, mesurer) {
                         w: Math.min(x + cellW - finTexte, o.repMax)
                     };
                 } else {
+                    // PLUSIEURS LIGNES POUR RÉDIGER, pas une seule au milieu du
+                    // blanc. Rémy, sur les vitesses : « place pour les calculs et
+                    // la réponse ». On demandait trois lignes et l'on obtenait
+                    // trois lignes de VIDE avec un unique trait au fond : on écrit
+                    // sur des lignes, on n'écrit pas dans une marge.
+                    const nRep = Math.max(1, Math.round(Number(o.lignesReponse) || 1));
+                    const pas = ligneRep / nRep;
                     rep = {
                         x: texteX,
                         y: y + cell.dy + cell.lignes.length * o.interligne
-                            + (cell.choix ? o.interligne : 0) + ligneRep * 0.62,
-                        w: texteW
+                            + (cell.choix ? o.interligne : 0) + pas * 0.72,
+                        w: texteW, lignes: nRep, pas
                     };
                 }
                 // LA BOÎTE DE SAISIE, pour la fiche remplissable. Les

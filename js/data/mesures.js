@@ -51,7 +51,7 @@ export const mesuresExercises = [
         // la conversion ; à remplir, on travaille l'ordre des unités, et c'est
         // là qu'on se trompe.
         printable: 'conversion', printGeneratorId: 'mes.conversion-fiche',
-        printParams: { famille: 'longueur', lignes: 4, entetes: true, ecart: 3 },
+        printParams: { famille: 'longueur', lignes: 8, entetes: true, ecart: 3, tableau: true },
         consignePapier: 'Complète le tableau et effectue les conversions.',
         skills: ['num.conversion'],
         params: { famille: 'longueur', ecart: 3, decimales: false },
@@ -90,8 +90,12 @@ export const mesuresExercises = [
         // qui tourne, et les nombres qui tombent juste par construction : on
         // tire la vitesse et la durée, la distance en découle.
         id: 'mes-vitesse',
-        consignePapier: "Réponds en indiquant l'unité demandée.",
+        consignePapier: "Écris la formule, remplace, calcule, et n'oublie pas l'unité.",
         colonnesPapier: 1,
+        // TROIS LIGNES POUR RÉDIGER. Une vitesse ne se répond pas au bout d'une
+        // ligne de pointillés : on pose d = v × t, on remplace, on calcule, on
+        // conclut avec l'unité — et c'est la conclusion qui se note.
+        lignesReponsePapier: 3,
         title: 'Temps, Distance, Vitesse',
         generatorId: 'mes.vitesse', activityId: 'numpad',
         params: { chercher: 'melange', difficulte: 1 },

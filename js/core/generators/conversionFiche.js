@@ -38,13 +38,23 @@ export const conversionFicheGenerator = {
             ]
         },
         {
-            id: 'lignes', type: 'select', label: 'Conversions par tableau', default: 4,
+            id: 'lignes', type: 'select', label: 'Conversions par tableau', default: 8,
             options: [
                 { value: 3, label: '3 lignes' },
                 { value: 4, label: '4 lignes' },
                 { value: 5, label: '5 lignes' },
-                { value: 6, label: '6 lignes' }
+                { value: 6, label: '6 lignes' },
+                { value: 8, label: '8 lignes' },
+                { value: 10, label: '10 lignes' }
             ]
+        },
+        // AVEC OU SANS LE TABLEAU. Le tableau est un ÉCHAFAUDAGE : il sert le
+        // temps qu'on apprend où tombent les chiffres, puis il gêne. Une fiche
+        // de fin de séquence demande la conversion toute seule, sur une ligne.
+        {
+            id: 'tableau', type: 'checkbox', label: 'Imprimer le tableau', default: true,
+            aide: 'Décoché, il ne reste que les conversions à faire, alignées sur '
+                + 'la feuille : c\'est l\'exercice une fois le tableau su.'
         },
         {
             id: 'entetes', type: 'checkbox', label: 'Donner les unités en en-tête', default: true,
@@ -71,7 +81,7 @@ export const conversionFicheGenerator = {
         params = params || {};
         const famille = NOMS_FAMILLES.includes(params.famille) ? params.famille : 'longueur';
         const f = familleDe(famille);
-        const nb = Math.max(3, Math.min(6, Number(params.lignes) || 4));
+        const nb = Math.max(3, Math.min(10, Number(params.lignes) || 8));
 
         // Des conversions TOUTES DIFFÉRENTES dans un même tableau : deux fois
         // « 505 mm = … m » sur la même feuille, c'est une ligne perdue.
@@ -131,6 +141,7 @@ export const conversionFicheGenerator = {
                 unites: f.unites.map(u => u.symbole),
                 conversions,
                 entetes: params.entetes !== false,
+                tableau: params.tableau !== false,
                 // Ce que la fiche exclura pour le tableau suivant.
                 theme: conversions.map(c => c.enonce).join('|')
             }

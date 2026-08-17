@@ -325,10 +325,17 @@ export function apercuItems(page, k, o) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
             // sinon le professeur découvre la différence à l'impression.
-            html += o.champs
-                ? `<div class="fx-champ" style="left:${it.rep.x * k}px; top:${it.rep.champY * k}px;
-                    width:${it.rep.w * k}px; height:${it.rep.h * k}px"></div>`
-                : `<div class="fq-reponse" style="left:${it.rep.x * k}px; top:${it.rep.y * k}px; width:${it.rep.w * k}px"></div>`;
+            if (o.champs) {
+                html += `<div class="fx-champ" style="left:${it.rep.x * k}px; top:${it.rep.champY * k}px;
+                    width:${it.rep.w * k}px; height:${it.rep.h * k}px"></div>`;
+            } else {
+                // Autant de traits que la fiche en réserve : on écrit SUR des
+                // lignes, on n'écrit pas dans une marge.
+                for (let i = 0; i < (it.rep.lignes || 1); i++) {
+                    html += `<div class="fq-reponse" style="left:${it.rep.x * k}px;
+                        top:${(it.rep.y + i * (it.rep.pas || 0)) * k}px; width:${it.rep.w * k}px"></div>`;
+                }
+            }
         }
     }
     return html;
@@ -683,7 +690,11 @@ export function pdfItems(pdf, page, o) {
         }
         if (it.rep) {
             if (o.champs) champSaisie(pdf, it.rep, ++nChamp);
-            else pointilles(pdf, it.rep.x, it.rep.y, it.rep.w);
+            else {
+                for (let i = 0; i < (it.rep.lignes || 1); i++) {
+                    pointilles(pdf, it.rep.x, it.rep.y + i * (it.rep.pas || 0), it.rep.w);
+                }
+            }
         }
     }
 }

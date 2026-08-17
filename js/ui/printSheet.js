@@ -2437,10 +2437,15 @@ function horlogePreviewHtml(item, slot, k, solution) {
     if (tracer) {
         const gm = aiguilleHorloge(g, a.minutes, g.r * 0.84);
         const gh = aiguilleHorloge(g, a.heures, g.r * 0.50);
+        // LA PETITE AIGUILLE RESTE UNE AIGUILLE. À huit centièmes de rayon et
+        // le bout coupé net, elle avait l'air d'un doigt posé sur le cadran :
+        // Rémy, « petite aiguille moche, trop grosse, non arrondie au bout ».
+        // Elle reste plus ÉPAISSE que la grande — c'est ce qui les distingue —,
+        // mais d'un tiers seulement, et les deux bouts sont arrondis.
         d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}" x2="${T(gh.x)}" y2="${T(gh.y)}"
-              stroke="#1a202c" stroke-width="${T(g.r * 0.085)}" stroke-linecap="round"/>`;
+              stroke="#1a202c" stroke-width="${T(g.r * 0.055)}" stroke-linecap="round"/>`;
         d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}" x2="${T(gm.x)}" y2="${T(gm.y)}"
-              stroke="#1a202c" stroke-width="${T(g.r * 0.045)}" stroke-linecap="round"/>`;
+              stroke="#1a202c" stroke-width="${T(g.r * 0.036)}" stroke-linecap="round"/>`;
     }
     d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r * 0.05)}" fill="#1a202c"/>`;
 
@@ -2496,10 +2501,15 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
         const gm = aiguilleHorloge(g, a.minutes, g.r * 0.84);
         const gh = aiguilleHorloge(g, a.heures, g.r * 0.50);
         doc.setDrawColor(...ENCRE.trait);
-        doc.setLineWidth(Math.max(0.5, g.r * 0.085));
+        // LE BOUT ARRONDI, dans le PDF aussi. L'aperçu arrondissait, la feuille
+        // coupait net : deux dessins pour la même pendule, et c'est la feuille
+        // qu'on donne aux élèves.
+        if (doc.setLineCap) doc.setLineCap('round');
+        doc.setLineWidth(Math.max(0.45, g.r * 0.055));
         doc.line(g.cx, g.cy, gh.x, gh.y);
-        doc.setLineWidth(Math.max(0.3, g.r * 0.045));
+        doc.setLineWidth(Math.max(0.28, g.r * 0.036));
         doc.line(g.cx, g.cy, gm.x, gm.y);
+        if (doc.setLineCap) doc.setLineCap('butt');
     }
     doc.setFillColor(...ENCRE.trait);
     doc.circle(g.cx, g.cy, Math.max(0.5, g.r * 0.05), 'F');
@@ -3172,12 +3182,40 @@ function geoRectangle(item, slot) {
 const nomDemande = (d) => (d === 'aire' ? 'Aire' : 'Périmètre');
 const uniteDemande = (d, u) => (d === 'aire' ? `${u}²` : u);
 
-function rectanglePreviewHtml(item, slot, k, solution) {
+/**
+ * LES FIGURES SONT EN COULEUR, ET PAS TOUTES DE LA MÊME.
+ *
+ * Rémy : « couleur sur le PDF, varier les couleurs dans l'exercice ». Neuf
+ * rectangles noirs identiques se confondent d'une ligne à l'autre — on ne sait
+ * plus quelle réponse va avec quelle figure. Et la couleur dit quelque chose :
+ * le TOUR pour le périmètre, la SURFACE pour l'aire. C'est très exactement la
+ * confusion qui coûte le plus de points.
+ */
+const TEINTES_FIGURE = [
+    { trait: [37, 99, 235], fond: [219, 234, 254] },     // bleu
+    { trait: [22, 163, 74], fond: [220, 252, 231] },     // vert
+    { trait: [219, 39, 119], fond: [252, 231, 243] },    // rose
+    { trait: [217, 119, 6], fond: [254, 243, 199] },     // ambre
+    { trait: [124, 58, 237], fond: [237, 233, 254] },    // violet
+    { trait: [13, 148, 136], fond: [204, 251, 241] }     // sarcelle
+];
+const teinteFigure = (i) => TEINTES_FIGURE[(i || 0) % TEINTES_FIGURE.length];
+const rvbCss = (c) => `rgb(${c.join(',')})`;
+
+function rectanglePreviewHtml(item, slot, k, solution, rang) {
     const g = geoRectangle(item, slot);
     const m = g.m;
     const T = (v) => (v * k).toFixed(2);
+    // Le périmètre est un TOUR : c'est le trait qu'on colore, et l'intérieur
+    // reste presque blanc. L'aire est une SURFACE : c'est elle qu'on remplit.
+    const couleur = polycopieEnCouleur();
+    const t = teinteFigure(rang);
+    const remplit = m.demande.includes('aire');
     let d = `<rect x="${T(g.x)}" y="${T(g.y)}" width="${T(g.w)}" height="${T(g.h)}"
-             fill="none" stroke="#1a202c" stroke-width="${T(0.5)}"/>`;
+             fill="${couleur ? rvbCss(t.fond) : 'none'}"
+             fill-opacity="${remplit ? 1 : 0.35}"
+             stroke="${couleur ? rvbCss(t.trait) : '#1a202c'}"
+             stroke-width="${T(remplit ? 0.5 : 0.8)}"/>`;
     // Les cotes : la longueur sous la figure, la largeur à gauche.
     d += `<text x="${T(g.x + g.w / 2)}" y="${T(g.y + g.h + g.police * 1.1)}"
           text-anchor="middle" font-size="${T(g.police)}" font-weight="700"
@@ -3200,13 +3238,23 @@ function rectanglePreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerRectanglePdf(doc, item, slot, solution, champ) {
+function dessinerRectanglePdf(doc, item, slot, solution, champ, rang) {
     const g = geoRectangle(item, slot);
     const m = g.m;
+    const couleur = polycopieEnCouleur();
+    const t = teinteFigure(rang);
+    const remplit = m.demande.includes('aire');
 
-    doc.setDrawColor(...ENCRE.trait);
-    doc.setLineWidth(0.5);
-    doc.rect(g.x, g.y, g.w, g.h, 'S');
+    if (couleur) {
+        doc.setDrawColor(...t.trait);
+        doc.setFillColor(...t.fond);
+        doc.setLineWidth(remplit ? 0.5 : 0.8);
+        doc.rect(g.x, g.y, g.w, g.h, remplit ? 'FD' : 'S');
+    } else {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.5);
+        doc.rect(g.x, g.y, g.w, g.h, 'S');
+    }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(g.police * 2.83);
     doc.setTextColor(...ENCRE.texte);
@@ -4699,19 +4747,38 @@ function geoConversion(item, slot) {
     // un nombre à virgule. Rémy : « mets un peu plus de pointillés pour noter
     // la réponse ». La colonne s'élargit d'autant : allonger les points sans
     // élargir la colonne les aurait simplement coupés.
-    const enonceW = Math.min(Math.max(b.w * 0.34, 40), 56);
-    const cw = Math.min((b.w - enonceW - 2) / nCol, 15);
+    // SANS TABLEAU, l'énoncé prend toute la largeur : c'est l'exercice une fois
+    // le tableau su, et il ne reste que les conversions à écrire.
+    const avecTableau = m.tableau !== false;
+    const enonceW = avecTableau
+        ? Math.min(Math.max(b.w * 0.34, 40), 56)
+        : b.w;
+    // DES CASES MOINS LARGES. À quinze millimètres, sept colonnes mangeaient
+    // toute la feuille pour y écrire un chiffre — et il ne tenait plus qu'un
+    // tableau par rangée. À onze, trois tableaux passent de front.
+    const cw = avecTableau ? Math.min((b.w - enonceW - 2) / nCol, 11) : 0;
     // Une rangée d'en-tête, puis une par conversion. Une case de tableau de
     // conversion doit accueillir un chiffre écrit à la main : sept
     // millimètres, c'est l'interligne d'un cahier.
     const rh = Math.max(6.5, Math.min((b.h - 2) / (nLignes + 1.2), 9.5));
     const x0 = b.x + enonceW;
     const y0 = b.y + 1;
+    const taille = Math.max(7.5, Math.min(rh * 1.15, 12));
+    // L'ÉNONCÉ NE DÉBORDE PAS SUR LE TABLEAU. Ses points de suspension sont des
+    // caractères PLEINE CHASSE — huit d'entre eux valent huit lettres larges —,
+    // et « 248 dam = ……………… km » venait s'écrire par-dessus la première colonne
+    // dès qu'on a resserré le tableau. On mesure la pire ligne et l'on ajuste.
+    const largeurEm = (t) => [...String(t)].reduce(
+        (s, ch) => s + (ch === '…' ? 1 : (/[\s.,]/.test(ch) ? 0.3 : 0.56)), 0);
+    const pire = Math.max(1, ...m.conversions.map(c => largeurEm(c.enonce)));
     return {
-        m, b, nCol, nLignes, cw, rh, x0, y0, enonceW,
+        m, b, nCol, nLignes, cw, rh, x0, y0, enonceW, avecTableau, taille,
         largeur: nCol * cw,
         // En POINTS, comme tout ce qui va dans le PDF ; l'aperçu convertit.
-        taille: Math.max(7.5, Math.min(cw * 1.5, rh * 1.15, 12))
+        tailleEnonce: Math.max(5, Math.min(taille * 0.92, (enonceW - 3) / 0.3528 / pire)),
+        // « dam » est le plus large des en-têtes : c'est lui qui fixe leur
+        // corps, sans quoi il déborde de sa case dès qu'on resserre le tableau.
+        tailleEntete: Math.max(5, Math.min(rh * 1.15, 12, (cw - 0.8) / 0.6))
     };
 }
 
@@ -4719,27 +4786,29 @@ function conversionPreviewHtml(item, slot, k, solution) {
     const g = geoConversion(item, slot);
     const m = g.m;
     let html = '';
-    // Le quadrillage.
-    for (let c = 0; c <= g.nCol; c++) {
-        const x = g.x0 + c * g.cw;
-        html += `<div style="position:absolute; left:${x * k}px; top:${g.y0 * k}px;
-            width:1px; height:${((g.nLignes + 1) * g.rh) * k}px; background:#8d94a5"></div>`;
+    if (g.avecTableau) {
+        // Le quadrillage.
+        for (let c = 0; c <= g.nCol; c++) {
+            const x = g.x0 + c * g.cw;
+            html += `<div style="position:absolute; left:${x * k}px; top:${g.y0 * k}px;
+                width:1px; height:${((g.nLignes + 1) * g.rh) * k}px; background:#8d94a5"></div>`;
+        }
+        for (let r = 0; r <= g.nLignes + 1; r++) {
+            const y = g.y0 + r * g.rh;
+            html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
+                width:${g.largeur * k}px; height:${r === 1 ? 2 : 1}px;
+                background:${r === 1 ? '#1a202c' : '#8d94a5'}"></div>`;
+        }
+        // Les en-têtes — donnés, ou à écrire.
+        m.unites.forEach((u, c) => {
+            const texte = (m.entetes || solution) ? u : '';
+            html += `<div style="position:absolute; left:${(g.x0 + c * g.cw) * k}px; top:${g.y0 * k}px;
+                width:${g.cw * k}px; height:${g.rh * k}px; display:flex; align-items:center;
+                justify-content:center; font-weight:800;
+                color:${m.entetes ? '#1a202c' : '#6e7684'};
+                font-size:${g.tailleEntete * 0.3528 * k}px">${echapperSheet(texte)}</div>`;
+        });
     }
-    for (let r = 0; r <= g.nLignes + 1; r++) {
-        const y = g.y0 + r * g.rh;
-        html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
-            width:${g.largeur * k}px; height:${r === 1 ? 2 : 1}px;
-            background:${r === 1 ? '#1a202c' : '#8d94a5'}"></div>`;
-    }
-    // Les en-têtes — donnés, ou à écrire.
-    m.unites.forEach((u, c) => {
-        const texte = (m.entetes || solution) ? u : '';
-        html += `<div style="position:absolute; left:${(g.x0 + c * g.cw) * k}px; top:${g.y0 * k}px;
-            width:${g.cw * k}px; height:${g.rh * k}px; display:flex; align-items:center;
-            justify-content:center; font-weight:800;
-            color:${m.entetes ? '#1a202c' : '#6e7684'};
-            font-size:${g.taille * 0.3528 * k}px">${echapperSheet(texte)}</div>`;
-    });
     // Les énoncés — et, sur la page des solutions, l'égalité complète PLUS le
     // tableau rempli : c'est le placement des chiffres qui est la leçon, et
     // un corrigé qui donne « 1 300 m » sans dire où tombe le 1 n'explique rien.
@@ -4747,10 +4816,10 @@ function conversionPreviewHtml(item, slot, k, solution) {
         const y = g.y0 + (r + 1) * g.rh;
         html += `<div style="position:absolute; left:${g.b.x * k}px; top:${y * k}px;
             width:${(g.enonceW - 2) * k}px; height:${g.rh * k}px; display:flex;
-            align-items:center; font-size:${g.taille * 0.3528 * k}px;
+            align-items:center; font-size:${g.tailleEnonce * 0.3528 * k}px;
             color:#1a202c; white-space:nowrap; overflow:hidden"
             >${echapperSheet(solution ? cv.complet : cv.enonce)}</div>`;
-        if (!solution) return;
+        if (!solution || !g.avecTableau) return;
         (cv.cases || []).forEach(c => {
             html += `<div style="position:absolute; left:${(g.x0 + c.col * g.cw) * k}px;
                 top:${y * k}px; width:${g.cw * k}px; height:${g.rh * k}px; display:flex;
@@ -4773,35 +4842,37 @@ function conversionPreviewHtml(item, slot, k, solution) {
 function dessinerConversionPdf(doc, item, slot, solution) {
     const g = geoConversion(item, slot);
     const m = g.m;
-    doc.setDrawColor(...ENCRE.grille);
-    doc.setLineWidth(0.25);
-    for (let c = 0; c <= g.nCol; c++) {
-        const x = g.x0 + c * g.cw;
-        doc.line(x, g.y0, x, g.y0 + (g.nLignes + 1) * g.rh);
+    if (g.avecTableau) {
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        for (let c = 0; c <= g.nCol; c++) {
+            const x = g.x0 + c * g.cw;
+            doc.line(x, g.y0, x, g.y0 + (g.nLignes + 1) * g.rh);
+        }
+        for (let r = 0; r <= g.nLignes + 1; r++) {
+            const y = g.y0 + r * g.rh;
+            // Le trait sous les en-têtes est FRANC : c'est lui qui sépare les
+            // unités du travail de l'élève.
+            doc.setDrawColor(...(r === 1 ? ENCRE.trait : ENCRE.grille));
+            doc.setLineWidth(r === 1 ? 0.5 : 0.25);
+            doc.line(g.x0, y, g.x0 + g.largeur, y);
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.tailleEntete);
+        m.unites.forEach((u, c) => {
+            if (!m.entetes && !solution) return;
+            doc.setTextColor(...(m.entetes ? ENCRE.trait : ENCRE.gris));
+            doc.text(pourPdf(u), g.x0 + (c + 0.5) * g.cw, g.y0 + g.rh * 0.68, { align: 'center' });
+        });
     }
-    for (let r = 0; r <= g.nLignes + 1; r++) {
-        const y = g.y0 + r * g.rh;
-        // Le trait sous les en-têtes est FRANC : c'est lui qui sépare les
-        // unités du travail de l'élève.
-        doc.setDrawColor(...(r === 1 ? ENCRE.trait : ENCRE.grille));
-        doc.setLineWidth(r === 1 ? 0.5 : 0.25);
-        doc.line(g.x0, y, g.x0 + g.largeur, y);
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(g.taille);
-    m.unites.forEach((u, c) => {
-        if (!m.entetes && !solution) return;
-        doc.setTextColor(...(m.entetes ? ENCRE.trait : ENCRE.gris));
-        doc.text(pourPdf(u), g.x0 + (c + 0.5) * g.cw, g.y0 + g.rh * 0.68, { align: 'center' });
-    });
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...ENCRE.trait);
     m.conversions.forEach((cv, r) => {
         const y = g.y0 + (r + 1) * g.rh;
-        doc.setFontSize(g.taille * 0.92);
+        doc.setFontSize(g.tailleEnonce);
         doc.setTextColor(...ENCRE.trait);
         doc.text(pourPdf(solution ? cv.complet : cv.enonce), g.b.x, y + g.rh * 0.68);
-        if (!solution) return;
+        if (!solution || !g.avecTableau) return;
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.gris);
         doc.setFontSize(g.taille);
@@ -5311,6 +5382,13 @@ export const RENDUS = {
     conversion: {
         titre: 'Le tableau de conversion',
         consigne: (items) => {
+            // SANS TABLEAU, la consigne ne parle plus d'un tableau absent : la
+            // feuille demande alors la conversion toute seule, et c'est un
+            // autre exercice — celui qu'on donne une fois le tableau su.
+            if (items.every(i => i.meta && i.meta.tableau === false)) {
+                return 'Effectue chaque conversion. Si tu as besoin du tableau, trace-le '
+                    + 'au brouillon : sur cette feuille, il ne reste que les réponses à écrire.';
+            }
             const donnes = items.every(i => i.meta && i.meta.entetes);
             return (donnes
                 ? 'Le tableau est prêt : ses unités sont écrites. '
@@ -5324,11 +5402,13 @@ export const RENDUS = {
         pdfGrille: dessinerConversionPdf,
         nomBloc: 'Tableau', nomBlocs: 'tableaux',
         titreAGauche: true,
-        // Un tableau est LARGE : sept colonnes d'unités plus la place des
-        // énoncés. Un par ligne de feuille, deux au maximum.
-        proportions: { w: 1, h: 0.42 },
-        disposition: { cols: 1, rows: 4, maxCols: 2, maxRows: 5 },
-        parLigneDefaut: 1,
+        // TROIS TABLEAUX DE FRONT. À quinze millimètres de case, il n'en tenait
+        // qu'un par rangée et la moitié droite de la feuille restait blanche ;
+        // les cases resserrées, trois passent — et chacun porte huit
+        // conversions, ce qui fait une vraie séance sur une seule feuille.
+        proportions: { w: 1, h: 0.72 },
+        disposition: { cols: 3, rows: 1, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 3,
         separateurs: true,
         grilleMax: 300
     },
@@ -5940,7 +6020,9 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
             const nom = `${rendu.nomBloc || 'Grille'} ${i + 1}`;
             if (rendu.titreAGauche) doc.text(nom, slot.boite.x, slot.titre.y);
             else doc.text(nom, slot.titre.x, slot.titre.y, { align: 'center' });
-            rendu.pdfGrille(doc, item, slot, solution);
+            // Le RANG du bloc sur la feuille : certains rendus en tirent leur
+            // couleur, pour que deux figures voisines ne soient pas jumelles.
+            rendu.pdfGrille(doc, item, slot, solution, null, i);
         });
     };
 
@@ -6097,7 +6179,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                     width:${slot.boite.w * k}px; top:${(slot.titre.y - 3.6) * k}px;
                     font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`
                 : `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`;
-            html += rendu.previewGrille(item, slot, k, solutionsVisibles);
+            html += rendu.previewGrille(item, slot, k, solutionsVisibles, i);
             // ON CHANGE UNE GRILLE EN CLIQUANT DESSUS.
             //
             // « Autres grilles » refait la feuille entière : quand une seule
@@ -6164,6 +6246,15 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     const contenuEl = modal.querySelector('#fp-contenu');
     const schemaContenu = (() => {
         if (atelier || !generator) return [];
+        // UN GÉNÉRATEUR DE FICHE A SES PROPRES RÉGLAGES. Quand la feuille tire
+        // ses questions ailleurs que l'écran (`printGeneratorId`), l'ordre du
+        // catalogue ne parle pas d'elle : l'intersection effaçait les boutons
+        // qui n'existent QUE sur le papier — le nombre de lignes du tableau de
+        // conversion, ou le tableau lui-même. On montre alors ce que le
+        // générateur de fiche sait faire varier.
+        if (exo && exo.printGeneratorId && exo.printGeneratorId !== exo.generatorId) {
+            return generator.params || [];
+        }
         const connus = new Set((generator.params || []).map(p => p.id));
         const gardes = (paramSchemaOf(exo) || []).filter(p => p && connus.has(p.id));
         return gardes.length ? gardes : (generator.params || []);

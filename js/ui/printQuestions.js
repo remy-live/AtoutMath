@@ -290,7 +290,12 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         numeroter: o.numeroter
     }], {
         avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs,
-        ...(o.lignesReponse ? { ligneReponse: 7 * o.lignesReponse, interrogation: true } : {})
+        // `lignesReponse` passe AUSSI à la mise en page : c'est elle qui trace
+        // les traits, un par ligne demandée. Sans lui, on réservait la hauteur
+        // de trois lignes et l'on n'en dessinait qu'une, tout au fond.
+        ...(o.lignesReponse
+            ? { ligneReponse: 7 * o.lignesReponse, lignesReponse: o.lignesReponse, interrogation: true }
+            : {})
     }, mesurer);
 
     const rendre = () => {
@@ -442,6 +447,12 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // Le nombre de colonnes que l'exercice sait lui convenir — le professeur
     // reste libre de le changer.
     colsEl.value = exo.colonnesPapier ? String(exo.colonnesPapier) : 'auto';
+    // ET LA PLACE POUR ÉCRIRE. Un exercice de vitesse ne se répond pas au bout
+    // d'une ligne de pointillés : il faut poser d = v × t, remplacer, calculer,
+    // et conclure avec l'unité. Rémy : « place pour les calculs et la réponse ».
+    // Le professeur reste libre d'en remettre ou d'en enlever.
+    lignesRepEl.value = exo.lignesReponsePapier != null
+        ? String(exo.lignesReponsePapier) : '0';
     // De quoi se redessiner quand la fenêtre change de taille : l'aperçu
     // calcule son échelle sur la largeur disponible.
     modal._flotRendre = () => rendre();
