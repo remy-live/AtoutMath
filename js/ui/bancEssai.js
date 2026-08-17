@@ -18,7 +18,7 @@ import {
     ligneDe, avancement, versMarkdown, lire, fusionner, direClassement,
     lireRetest, marquerARetester, aRetester
 } from '../core/bancEssai.js';
-import { placer, restaurer, rendreDeplacable, isolerClavier, estDetache } from './flottant.js';
+import { placer, restaurer, rendreDeplacable, isolerClavier } from './flottant.js';
 
 const CLE = 'mathbox-banc-essai';
 let carnet = null;
@@ -404,9 +404,15 @@ function apercuFiche(id, flottant) {
 // --- L'APERÇU QUI RESTE OUVERT ----------------------------------------------
 //
 // Regarder cent fiches à la suite, c'était cent fois : ouvrir la modale, la
-// lire, la refermer, avancer d'un exercice, rouvrir. La fenêtre reste donc
-// posée à côté, et c'est ELLE qui suit : à chaque ◀ ▶, elle se redessine sur
+// lire, la refermer, avancer d'un exercice, rouvrir. La fiche reste donc
+// OUVERTE et c'est ELLE qui suit : à chaque ◀ ▶, elle se redessine sur
 // l'exercice qu'on regarde.
+//
+// Elle reste une MODALE — Rémy : « quand la barre de début test, la modale
+// d'impression doit être comme avant en prenant une partie de l'écran ». Ce
+// qui la rendait incompatible avec une passe, c'est qu'elle capture les clics ;
+// c'est donc la BARRE qui passe par-dessus (voir son z-index), et la fiche
+// n'a rien à changer à ce qu'elle est.
 //
 // Un exercice sans fiche papier ne la vide pas d'un message d'erreur : elle se
 // referme, et se rouvrira au prochain exercice qui en a une. Un avertissement
@@ -416,14 +422,12 @@ function apercuFiche(id, flottant) {
 const IDS_FICHE = ['print-sheet-modal', 'print-questions-modal'];
 let apercuFlottant = false;
 
-const modaleFicheVisible = () => IDS_FICHE
-    .map(i => document.getElementById(i))
-    .find(m => m && m.style.display !== 'none') || null;
-
 function fermerApercuFlottant() {
+    // Toutes les fiches, ancrées comprises : l'aperçu de la passe est une
+    // modale ordinaire, et c'est bien elle qu'on referme.
     IDS_FICHE.forEach(i => {
         const m = document.getElementById(i);
-        if (m && m.classList.contains('flot-detache')) m.style.display = 'none';
+        if (m) m.style.display = 'none';
     });
 }
 
@@ -442,14 +446,17 @@ function basculerApercuFlottant() {
 }
 
 /**
- * À chaque changement d'exercice, la fenêtre suit — si elle est ouverte ET
- * toujours détachée. Le professeur peut l'ancrer d'un bouton : elle redevient
- * alors une modale ordinaire, qui bloque, et qui n'a plus rien à accompagner.
+ * À chaque changement d'exercice, la fiche suit — tant que le bouton de la
+ * barre est allumé.
+ *
+ * ELLE SUIVAIT AUTREFOIS « SI ELLE ÉTAIT ENCORE DÉTACHÉE », et s'arrêtait
+ * sinon. Maintenant que la fiche de la passe est une modale comme les autres,
+ * cette garde éteignait le suivi au tout premier ◀ ▶ : la barre avançait, la
+ * fiche restait sur le premier exercice. Le suivi ne regarde donc plus
+ * comment la fenêtre est posée, seulement si on le lui a demandé.
  */
 function suivreApercuFlottant() {
     if (!apercuFlottant) return;
-    const m = modaleFicheVisible();
-    if (m && !estDetache(m)) { apercuFlottant = false; majBoutonFiche(); return; }
     apercuFiche(listeBarre()[rangCourant].id, true);
 }
 

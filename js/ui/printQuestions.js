@@ -406,16 +406,20 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // calcule son échelle sur la largeur disponible.
     modal._flotRendre = () => rendre();
     modal.style.display = 'flex';
-    // ANCRÉE PAR DÉFAUT, POUR TOUT LE MONDE. La fiche est une modale : elle
-    // prend une partie de l'écran, on la lit, on la referme. Le mode détaché
-    // ne se restaure QUE si l'interrupteur d'auteur est allumé — sans quoi un
-    // seul clic pendant une passe de test laissait une fenêtre baladeuse à
-    // tous ceux qui ouvraient une fiche ensuite. La barre de passe, elle,
-    // l'exige détachée : une modale qui bloque ne peut pas accompagner une
-    // passe de cent exercices.
+    // ANCRÉE PAR DÉFAUT, POUR TOUT LE MONDE — Y COMPRIS SOUS LA BARRE DE PASSE.
+    // Rémy : « quand la barre de début test (le banc de test), la modale
+    // d'impression (PDF) doit être comme avant en prenant une partie de
+    // l'écran. » La barre de passe l'ouvrait détachée, au prétexte qu'une
+    // modale qui bloque ne peut pas accompagner une passe de cent exercices —
+    // c'est la BARRE qu'on a remontée au-dessus de la fiche, pas la fiche
+    // qu'on met de côté. `opts.flottant` ne dit donc plus « détache-toi » mais
+    // seulement « cette fiche suit l'exercice qu'on regarde ».
+    //
+    // Le mode détaché ne se restaure QUE si l'interrupteur d'auteur est
+    // allumé : sans cela, un seul clic pendant une passe laissait une fenêtre
+    // baladeuse à tous ceux qui ouvraient une fiche ensuite.
     fenetreFiche.majDetachable();
-    if (opts.flottant) fenetreFiche.detacher(true);
-    else if (fenetresDetachables() && lireModeFenetre() === 'detache') fenetreFiche.detacher();
+    if (fenetresDetachables() && lireModeFenetre() === 'detache') fenetreFiche.detacher();
     else fenetreFiche.ancrer();
     rendre();
 }

@@ -626,7 +626,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    consigne — et il fallait la fermer pour voir dessous. La position vient donc
    du JavaScript (ui/flottant.js), et elle est retenue d'une fois sur l'autre. */
 #banc-barre {
-    position: fixed; z-index: 100001;
+    /* AU-DESSUS DE LA FICHE À IMPRIMER. Celle-ci est une modale — elle prend
+       une partie de l'écran et assombrit le reste, y compris pendant une passe
+       de test. Pour qu'on puisse malgré tout passer à l'exercice suivant sans
+       la refermer, c'est la BARRE qui monte par-dessus, plutôt que la fiche
+       qui se met de côté : la fiche reste ce qu'elle a toujours été. La modale
+       est à 999999, son panneau de réglages à 1000001. */
+    position: fixed; z-index: 1000002;
     width: min(760px, calc(100vw - 16px));
     display: flex; align-items: center; gap: 6px;
     padding: 6px 8px; border-radius: 12px;
