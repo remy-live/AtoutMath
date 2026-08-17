@@ -170,6 +170,33 @@ export const numerationExercises = [
         instruction: "7,98 est presque 8. Trouve l'entier le plus proche."
     },
 
+    // --- Le vocabulaire du calcul (fiche 4ᵉ § 4, 5, 6, N) ---
+    // Le seul chapitre où la bonne réponse ne se déduit de rien : elle se sait.
+    // Un élève qui ignore « différence » rate une soustraction qu'il savait
+    // faire — c'est un exercice de lecture déguisé en exercice de calcul.
+    {
+        id: 'num-vocabulaire',
+        consignePapier: "Complète.",
+        colonnesPapier: 1,
+        title: 'Le Mot Juste',
+        generatorId: 'num.vocabulaire', activityId: 'bubbles',
+        params: { volets: ['resultat', 'nombres', 'phrase-vers-calcul', 'calcul-vers-phrase', 'multiples', 'posee'] },
+        motsClefs: ['somme', 'différence', 'produit', 'quotient', 'termes', 'facteurs', 'dividende', 'vocabulaire'],
+        tags: { chemin: [D, MENTAL], niveaux: [SIXIEME, CINQUIEME, QUATRIEME] },
+        instruction: "Somme, différence, produit, quotient : ces mots nomment le RÉSULTAT d'une opération, pas l'opération elle-même. Les nombres, eux, s'appellent les termes dans une addition et les facteurs dans une multiplication. Attention au petit mot de liaison : la somme de 3 ET 2, mais le produit de 3 PAR 2."
+    },
+    {
+        id: 'num-vocabulaire-traduire',
+        consignePapier: "Écris le calcul qui correspond à la phrase.",
+        colonnesPapier: 2,
+        title: 'De la Phrase au Calcul',
+        generatorId: 'num.vocabulaire', activityId: 'bubbles',
+        params: { volets: ['phrase-vers-calcul', 'calcul-vers-phrase', 'multiples'] },
+        motsClefs: ['somme', 'produit', 'double', 'triple', 'moitié', 'traduire'],
+        tags: { chemin: [D, MENTAL], niveaux: [SIXIEME, CINQUIEME, QUATRIEME] },
+        instruction: "Dans les deux sens : la phrase donne le calcul, et le calcul se dit en toutes lettres. « Le double » veut dire × 2, « le tiers » veut dire ÷ 3 — ces mots ne s'ajoutent jamais."
+    },
+
     // --- Questions flash (fiche § E, F, 29) ---
     {
         id: 'num-complement-10',

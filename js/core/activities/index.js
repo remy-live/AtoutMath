@@ -33,6 +33,7 @@ import { logigrammeGenerator } from '../generators/logigramme.js';
 import { dominosGenerator } from '../generators/dominos.js';
 import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
+import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
 import { relierGenerator } from '../generators/relier.js';
@@ -74,7 +75,7 @@ import {
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
-    pythagoreGenerator, vitesseGenerator, carreMagiqueGenerator, futoshikiGenerator,
+    pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,

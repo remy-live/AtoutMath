@@ -223,6 +223,49 @@ const BASE = {
         descriptor: 'Donner le nombre rond le plus proche pour vérifier un calcul.',
         lesson: '999 ≈ 1 000 et 7,98 ≈ 8. Estimer avant de calculer permet de repérer une erreur grossière.'
     },
+    // LE VOCABULAIRE, cinq compétences distinctes. Un élève peut savoir dire
+    // « produit » et ignorer « facteurs » : les séparer permet au carnet
+    // d'erreurs de dire lequel des cinq manque, plutôt que « vocabulaire ».
+    'num.vocabulaire.resultat': {
+        label: 'Somme, différence, produit, quotient',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Nommer le résultat de chacune des quatre opérations.',
+        lesson: 'Une addition a pour résultat la SOMME, une soustraction la DIFFÉRENCE, une multiplication le PRODUIT, une division le QUOTIENT. Le calcul EST l\'opération ; le mot nomme son résultat.'
+    },
+    'num.vocabulaire.nombres': {
+        label: 'Termes et facteurs',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.vocabulaire.resultat'],
+        descriptor: 'Nommer les nombres d\'un calcul selon l\'opération.',
+        lesson: 'Les nombres d\'une addition ou d\'une soustraction sont les TERMES ; ceux d\'une multiplication sont les FACTEURS.'
+    },
+    'num.vocabulaire.traduire': {
+        label: 'De la phrase au calcul',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.vocabulaire.resultat'],
+        descriptor: 'Passer d\'un énoncé en toutes lettres au calcul, et l\'inverse.',
+        lesson: 'La somme de 3 ET 2 s\'écrit 3 + 2 ; le produit de 3 PAR 2 s\'écrit 3 × 2. Somme et différence vont avec « et », produit et quotient avec « par ».'
+    },
+    'num.vocabulaire.multiples': {
+        label: 'Double, triple, moitié, tiers',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Reconnaître les mots qui cachent une multiplication ou une division.',
+        lesson: 'Le double, c\'est × 2 ; le triple, × 3. La moitié, c\'est ÷ 2 ; le tiers, ÷ 3. Ces mots ne s\'ajoutent jamais.'
+    },
+    'num.vocabulaire.division': {
+        label: 'Dividende, diviseur, quotient, reste',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.vocabulaire.resultat'],
+        descriptor: 'Nommer les quatre nombres d\'une division posée.',
+        lesson: 'On partage le DIVIDENDE par le DIVISEUR ; on obtient le QUOTIENT et il reste le RESTE. Toujours : dividende = diviseur × quotient + reste.'
+    },
     'num.complement': {
         label: 'Compléments à 10, 100, 1000',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
