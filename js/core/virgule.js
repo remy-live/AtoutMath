@@ -21,6 +21,8 @@
 // FORME DE TEXTE — jamais de flottants : 0.1 × 3 vaut 0.30000000000000004 en
 // binaire, et un exercice sur les décimaux ne peut pas se permettre ça.
 
+import { espacerMilliers } from './nombres.js';
+
 /** Les rangs, du plus grand au plus petit. La clé est l'exposant de 10. */
 export const RANGS = [
     { e: 4, nom: 'dizaines de mille', court: 'd. mille' },
@@ -243,7 +245,10 @@ export function expliquer(q) {
     return [
         `${q.op} ${q.facteur}, c'est décaler la virgule de ${k} rang${k > 1 ? 's' : ''} vers ${sens}.`,
         `Chaque chiffre change alors de valeur : le ${premier.chiffre} valait des ${nomRang(premier.e)}, il vaut maintenant des ${nomRang(arrivee)}.`,
-        `On lit ${q.resultat}.`
+        // LES MILLIERS SE GROUPENT ICI AUSSI. « On lit 450000 » demandait de
+        // compter les zéros du doigt, dans la phrase même qui explique où la
+        // virgule est passée.
+        `On lit ${espacerMilliers(String(q.resultat))}.`
     ];
 }
 

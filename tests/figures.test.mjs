@@ -47,12 +47,23 @@ test('les symboles s\'écrivent à la suite, pas un rang par ligne', () => {
     assert.deepEqual([...new Set(ys)], [12]);
 });
 
-test('au-delà de neuf symboles, on passe à la ligne comme un texte', () => {
-    const svg = egyptianSvg([{ value: 1, n: 12 }]);
-    assert.equal((svg.match(/class="egy-glyph"/g) || []).length, 12);
+test('au-delà de douze symboles, on passe à la ligne comme un texte', () => {
+    // DOUZE, et non neuf : les signes avancent maintenant de la largeur du
+    // dessin (24 unités sur 32) et non d'une case entière, donc douze tiennent
+    // dans la place qu'en occupaient neuf. Un nombre comme 3 centaines et
+    // 9 dizaines cesse ainsi de se couper en deux.
+    const svg = egyptianSvg([{ value: 1, n: 15 }]);
+    assert.equal((svg.match(/class="egy-glyph"/g) || []).length, 15);
     const ys = [...new Set([...svg.matchAll(/translate\(([-\d.]+), ([-\d.]+)\)/g)]
         .map(m => Number(m[2])))];
-    assert.equal(ys.length, 2, 'douze bâtons tiennent sur deux lignes');
+    assert.equal(ys.length, 2, 'quinze bâtons tiennent sur deux lignes');
+});
+
+test('douze symboles tiennent sur une seule ligne', () => {
+    const svg = egyptianSvg([{ value: 1, n: 12 }]);
+    const ys = [...new Set([...svg.matchAll(/translate\(([-\d.]+), ([-\d.]+)\)/g)]
+        .map(m => Number(m[2])))];
+    assert.deepEqual(ys, [12]);
 });
 
 test('un blanc plus large sépare deux valeurs différentes', () => {

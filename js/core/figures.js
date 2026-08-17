@@ -240,9 +240,16 @@ export const GLYPHES = {
  *            lignes:number, largeur:number}}
  */
 export function placerGlyphes(symboles, o = {}) {
-    const gap = o.gap ?? 0.16;
-    const gapGroupe = o.gapGroupe ?? 0.45;
-    const maxParLigne = o.maxParLigne ?? 9;
+    // ON AVANCE DE LA LARGEUR DU DESSIN, PAS DE CELLE DE LA CASE. Les tracés
+    // sont cadrés dans une boîte de 24 sur 32 : avancer d'une case entière
+    // laissait un quart de blanc à droite de CHAQUE signe, avant même d'ajouter
+    // l'écart. Rémy : « colle les caractères, il y a trop d'espaces ». Le pas
+    // vaut donc 24/32, et l'écart qui s'y ajoute est celui d'une écriture
+    // serrée — les hiéroglyphes se touchent presque, comme sur une stèle.
+    const PAS = o.pas ?? 0.75;
+    const gap = o.gap ?? 0.05;
+    const gapGroupe = o.gapGroupe ?? 0.28;
+    const maxParLigne = o.maxParLigne ?? 12;
 
     const suite = [];
     (symboles || []).forEach((s, rang) => {
@@ -253,11 +260,13 @@ export function placerGlyphes(symboles, o = {}) {
 
     const cases = [];
     let ligne = 0, col = 0, dansLaLigne = 0, largeur = 0;
-    suite.forEach((g, i) => {
+    suite.forEach((g) => {
         if (dansLaLigne >= maxParLigne) { ligne++; col = 0; dansLaLigne = 0; }
-        if (dansLaLigne > 0 || (i === 0 && false)) col += g.avant;
+        if (dansLaLigne > 0) col += g.avant;
         cases.push({ value: g.value, col, ligne });
-        col += 1;
+        // La dernière case compte sa largeur PLEINE : c'est elle qui borne le
+        // dessin, et un cadre trop court rognerait le dernier signe.
+        col += PAS;
         largeur = Math.max(largeur, col);
         dansLaLigne++;
     });

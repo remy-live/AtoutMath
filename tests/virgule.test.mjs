@@ -203,7 +203,12 @@ test('la correction énonce LA RÈGLE avant sa raison', () => {
             assert.match(e[0], q.rangs > 0 ? /DROITE/ : /GAUCHE/, `${n} ${g} : mauvais sens annoncé`);
             // La deuxième ligne nomme deux rangs DIFFÉRENTS : c'est la raison.
             assert.match(e[1], /valait des .+ vaut maintenant des .+/);
-            assert.ok(e[2].includes(q.resultat), `${n} ${g} : la correction ne donne pas le résultat`);
+            // On compare les CHIFFRES : la correction groupe les milliers
+            // (« On lit 45 000 »), et l'espace fine ne doit pas faire croire
+            // que le résultat manque.
+            const sansBlancs = (t) => String(t).replace(/[\s  ]/g, '');
+            assert.ok(sansBlancs(e[2]).includes(sansBlancs(q.resultat)),
+                `${n} ${g} : la correction ne donne pas le résultat — « ${e[2]} »`);
         }
     }
 });

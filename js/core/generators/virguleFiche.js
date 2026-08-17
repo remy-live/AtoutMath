@@ -13,6 +13,7 @@
 
 import { makeItem } from '../items.js';
 import { tirerQuestion, expliquer } from '../virgule.js';
+import { espacerMilliers } from '../nombres.js';
 
 export const virguleFicheGenerator = {
     id: 'num.virgule-fiche',
@@ -34,7 +35,9 @@ export const virguleFicheGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const q = tirerQuestion((params || {}).niveau || 'facile', rng);
-        const enonce = `${q.depart} ${q.op} ${q.facteur}`;
+        // LES MILLIERS SE GROUPENT DANS L'ÉNONCÉ AUSSI : « 4 500 × 1 000 » se
+        // lit, « 4500 × 1000 » se compte du doigt.
+        const enonce = `${espacerMilliers(q.depart)} ${q.op} ${espacerMilliers(String(q.facteur))}`;
         return makeItem({
             seed: rng.seed,
             generatorId: 'num.virgule-fiche',

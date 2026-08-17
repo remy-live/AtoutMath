@@ -3405,8 +3405,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: .4px solid #1a202c;
 }
 .fx-logi-catlig { writing-mode: vertical-rl; transform: rotate(180deg); }
+/* LES MOTS PARTENT TOUS DE LA GRILLE. Ils étaient CENTRÉS le long de leur
+   bande : « horloge » commençait donc plus bas que « labyrinthe », et les
+   étiquettes d'une même rangée ne s'alignaient sur rien — Rémy : « dans les
+   colonnes verticales les mots ne sont pas alignés horizontalement ». Après la
+   rotation de 180°, `flex-start` les colle au bord du BAS, celui qui touche la
+   grille : c'est le seul bord commun, et c'est déjà celui dont part le PDF. */
 .fx-logi-vert {
-    position: absolute; display: flex; align-items: flex-end; justify-content: center;
+    position: absolute; display: flex; align-items: flex-end; justify-content: flex-start;
     writing-mode: vertical-rl; transform: rotate(180deg); color: #1a202c;
     padding-top: 2px; overflow: hidden; border: .4px solid #1a202c;
 }

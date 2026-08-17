@@ -1384,7 +1384,12 @@ const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '
 
 const RED_LIGNES = ['Je sais que', 'Or', 'Donc'];
 // Combien de lignes d'écriture pour chacune, et où elles commencent.
-const RED_ECRITURE = [2, 3, 2];
+// Je sais que : 2 lignes · Or : 3 (elle porte la propriété du cours, écrite en
+// entier) · Donc : 1. Rémy, deux fois dans la même passe : « une seule ligne
+// suffit pour le Donc ». La conclusion tient en une phrase — « les droites
+// (d1) et (d2) sont parallèles » — et les deux lignes qu'on lui réservait
+// laissaient un blanc au bas de chaque bloc.
+const RED_ECRITURE = [2, 3, 1];
 const RED_TOTAL = RED_ECRITURE.reduce((a, b) => a + b, 0);
 const RED_DEBUT = RED_ECRITURE.reduce((acc, n) => (acc.push(acc[acc.length - 1] + n), acc), [0]);
 
