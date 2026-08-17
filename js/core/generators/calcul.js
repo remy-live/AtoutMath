@@ -384,6 +384,12 @@ export const prioriteGenerator = {
             id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
             aide: 'Les nombres montent jusqu\'à 20 et le résultat jusqu\'à 2 000 : '
                 + 'la règle est la même, mais elle ne se devine plus de tête.'
+        },
+        {
+            id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: false,
+            aide: 'Les quatre premières questions restent à trois nombres et deux opérations, '
+                + 'puis la difficulté monte d\'un cran toutes les quatre questions jusqu\'à celle '
+                + 'réglée ci-dessus. On installe la règle avant de la compliquer.'
         }
     ],
 
@@ -391,9 +397,18 @@ export const prioriteGenerator = {
         const rng = ctx.rng;
         params = params || {};
         const grands = !!params.grands;
+        // LA DIFFICULTÉ MONTE. Rémy : « je trouve les calculs un peu durs quand
+        // même dès le départ ». La première question d'une série sert à
+        // reconnaître la règle — « × avant + » — pas à la manier sur quatre
+        // nombres ; on part donc du cran le plus simple et l'on rejoint le
+        // niveau réglé au bout de quelques questions.
+        const plafondNiveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
+        const niveau = params.progressif
+            ? Math.min(plafondNiveau, 1 + Math.floor((Number(ctx.index) || 0) / 4))
+            : plafondNiveau;
         const e = tirerExpression({
             rng,
-            niveau: Math.max(1, Math.min(4, Number(params.niveau) || 2)),
+            niveau,
             parentheses: !!params.parentheses,
             imposer: !!params.parentheses,
             max: grands ? 20 : 9,

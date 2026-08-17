@@ -90,7 +90,12 @@
     font-size: 1.02rem; font-weight: 700; color: var(--success);
     background: #dcfce7; padding: 4px 14px; border-radius: 12px;
 }
-.fb-message { font-size: 1.1rem; font-weight: 600; line-height: 1.45; color: var(--text-main); }
+/* `pre-line` : un indice peut REVENIR À LA LIGNE. Rémy, sur la carte d'indice
+   de la vitesse : « donne les 3 formules, n'hésite pas à revenir à la ligne ».
+   Trois formules à la file dans un paragraphe ne se lisent pas comme trois
+   formules ; empilées, elles se retiennent. Le texte reste échappé, seul le
+   saut de ligne du texte source est honoré. */
+.fb-message { font-size: 1.1rem; font-weight: 600; line-height: 1.45; color: var(--text-main); white-space: pre-line; }
 /* L'exemple chiffré d'un indice, sur sa propre ligne : la coupure tombait au
    milieu de l'égalité (« 032,12 = » d'un côté, « 32,12. » de l'autre). */
 .fb-exemple {
@@ -100,7 +105,7 @@
 }
 .fb-detail .fb-exemple { font-size: 1rem; margin-top: 6px; }
 .fb-detail {
-    font-size: .95rem; line-height: 1.45; color: var(--text-muted);
+    font-size: .95rem; line-height: 1.45; color: var(--text-muted); white-space: pre-line;
     border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 4px;
 }
 
@@ -187,6 +192,7 @@
 
 .hint-text {
     max-width: 460px; text-align: center; font-size: .98rem; line-height: 1.5;
+    white-space: pre-line;
     color: var(--text-main); background: var(--tag-dom-bg); color: var(--tag-dom-txt);
     border-radius: 12px; padding: 10px 16px;
 }

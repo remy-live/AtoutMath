@@ -45,8 +45,16 @@ class ArcadeShooter extends BaseGame {
                     pointer-events: none;
                 }
                 .meteor.demo-target { box-shadow: 0 0 15px 5px var(--primary); }
+                /* LE VAISSEAU SE MESURE SUR L'ARÈNE. Rémy, sur iPhone :
+                   « vaisseau plus petit à faire ». Soixante-quatre pixels au
+                   milieu d'une arène de 340, c'est un cinquième du côté ; le
+                   cercle de tir en faisait la moitié, et il ne restait presque
+                   rien du couloir où les météorites arrivent. Les deux se
+                   calculent maintenant sur le plus petit côté, et gardent leur
+                   taille d'origine dès qu'il y a la place. */
                 .spaceship {
-                    position: absolute; width: ${SHIP_SIZE}px; height: ${SHIP_SIZE}px;
+                    position: absolute;
+                    width: var(--ship, ${SHIP_SIZE}px); height: var(--ship, ${SHIP_SIZE}px);
                     transform: translate(-50%, -50%);
                     display: flex; align-items: center; justify-content: center;
                     z-index: 10; pointer-events: none;
@@ -55,7 +63,8 @@ class ArcadeShooter extends BaseGame {
                 .spaceship svg { width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
                 .spaceship.catching svg { filter: drop-shadow(0 0 14px #22c55e); }
                 .ship-zone {
-                    position: absolute; width: ${ZONE_TIR * 2}px; height: ${ZONE_TIR * 2}px;
+                    position: absolute;
+                    width: calc(var(--zone, ${ZONE_TIR}px) * 2); height: calc(var(--zone, ${ZONE_TIR}px) * 2);
                     transform: translate(-50%, -50%); border-radius: 50%;
                     border: 2px dashed rgba(34, 211, 238, .25);
                     z-index: 4; pointer-events: none;
@@ -171,8 +180,16 @@ class ArcadeShooter extends BaseGame {
     }
 
     centrer() {
-        this.shipX = (this.arena.offsetWidth || 600) / 2;
-        this.shipY = (this.arena.offsetHeight || 400) / 2;
+        const larg = this.arena.offsetWidth || 600, haut = this.arena.offsetHeight || 400;
+        this.shipX = larg / 2;
+        this.shipY = haut / 2;
+        // Un cinquième du plus petit côté pour le vaisseau, un tiers pour la
+        // zone de tir : les mêmes proportions qu'on avait sur un grand écran.
+        const petit = Math.min(larg, haut);
+        this.shipSize = Math.max(34, Math.min(SHIP_SIZE, petit * 0.16));
+        this.zoneTir = Math.max(46, Math.min(ZONE_TIR, petit * 0.21));
+        this.arena.style.setProperty('--ship', `${Math.round(this.shipSize)}px`);
+        this.arena.style.setProperty('--zone', `${Math.round(this.zoneTir)}px`);
         this.spaceship.style.left = this.shipX + 'px';
         this.spaceship.style.top = this.shipY + 'px';
         this.shipZone.style.left = this.shipX + 'px';
@@ -219,7 +236,7 @@ class ArcadeShooter extends BaseGame {
             const rect = this.arena.getBoundingClientRect();
             const dx = (src.clientX - rect.left) - this.shipX;
             const dy = (src.clientY - rect.top) - this.shipY;
-            if (Math.hypot(dx, dy) <= ZONE_TIR) this.fireLaser();
+            if (Math.hypot(dx, dy) <= (this.zoneTir || ZONE_TIR)) this.fireLaser();
             else this.viserVers(src.clientX, src.clientY);
         };
 
@@ -257,8 +274,8 @@ class ArcadeShooter extends BaseGame {
 
         const el = document.createElement('div');
         el.className = 'laser';
-        const x = this.shipX + Math.cos(this.angle) * (SHIP_SIZE / 2);
-        const y = this.shipY + Math.sin(this.angle) * (SHIP_SIZE / 2);
+        const x = this.shipX + Math.cos(this.angle) * ((this.shipSize || SHIP_SIZE) / 2);
+        const y = this.shipY + Math.sin(this.angle) * ((this.shipSize || SHIP_SIZE) / 2);
         el.style.left = x + 'px';
         el.style.top = y + 'px';
         el.style.transform = `translate(-50%, -50%) rotate(${this.angle * 180 / Math.PI + 90}deg)`;
@@ -333,7 +350,7 @@ class ArcadeShooter extends BaseGame {
         if (this.roundOver) return;
         for (const m of this.meteors) {
             if (m.destroyed) continue;
-            if (m.dist > (METEOR_SIZE + SHIP_SIZE) / 2 - 8) continue;
+            if (m.dist > (METEOR_SIZE + (this.shipSize || SHIP_SIZE)) / 2 - 8) continue;
 
             m.destroyed = true;
             if (m.isCorrect) {
@@ -374,7 +391,7 @@ class ArcadeShooter extends BaseGame {
         regTimeout(() => this.spaceship.classList.remove('catching'), 600);
 
         const pts = 10 + this.wrongDestroyed * 5;
-        this.addFloat(this.shipX, this.shipY - SHIP_SIZE, `+${pts}`, '#22c55e');
+        this.addFloat(this.shipX, this.shipY - (this.shipSize || SHIP_SIZE), `+${pts}`, '#22c55e');
         this.setScore(this.score + pts);
 
         this.resolveRound(() => {

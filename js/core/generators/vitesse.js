@@ -120,10 +120,21 @@ export const vitesseGenerator = {
                 papier: `${texte} Réponds en ${unite}.`
             },
             answer: reponse,
+            // LES TROIS FORMULES, L'UNE SOUS L'AUTRE. Rémy : « donne les 3
+            // formules, n'hésite pas à revenir à la ligne ». Elles ne sont
+            // qu'une seule formule retournée trois fois, et c'est justement ce
+            // qu'on veut faire voir — écrites à la file dans un paragraphe,
+            // elles se lisent comme une phrase et ne se retiennent pas ;
+            // empilées, on les compare d'un coup d'œil et l'on choisit la
+            // bonne selon ce qu'on cherche.
             hints: [
-                'Tout vient d\'UNE formule : d = v × t. Écris-la, entoure ce que tu connais.',
-                `Ici on cherche ${quoi === 'distance' ? 'd, donc on multiplie' : quoi === 'vitesse' ? 'v, donc on divise la distance par le temps' : 't, donc on divise la distance par la vitesse'}.`
-                    + (conversion ? ` Attention : ${conversion.dit}.` : '')
+                'Tout vient d\'une seule formule, écrite de trois façons :\n'
+                    + 'd = v × t   (la distance)\n'
+                    + 'v = d ÷ t   (la vitesse)\n'
+                    + 't = d ÷ v   (le temps)\n'
+                    + 'Écris celle qui donne ce qu\'on cherche, puis entoure ce que tu connais.',
+                `Ici on cherche ${quoi === 'distance' ? 'la distance :\nd = v × t' : quoi === 'vitesse' ? 'la vitesse :\nv = d ÷ t' : 'le temps :\nt = d ÷ v'}.`
+                    + (conversion ? `\nAttention : ${conversion.dit}.` : '')
             ],
             explanation: `${formule} : ${correction}.`
                 + (conversion && quoi !== 'duree' ? ` (${conversion.dit}.)` : ''),

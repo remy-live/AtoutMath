@@ -154,7 +154,7 @@ export const calculExercises = [
         colonnesPapier: 2,
         title: 'Prio-Bot Calcul',
         generatorId: 'calc.priorites', activityId: 'bubbles',
-        params: { mode: 'resultat' },
+        params: { mode: 'resultat', niveau: 2, progressif: true },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Calcule l'expression en respectant les priorités opératoires."
     },
