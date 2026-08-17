@@ -142,7 +142,15 @@ export function mount(container, session) {
         const boite = container.querySelector('[data-cadran]');
         if (!cnv || !boite) return;
         const r = boite.getBoundingClientRect();
-        const cote = Math.max(150, Math.floor(Math.min(r.width, r.height)));
+        // LE CADRAN NE DÉPASSE JAMAIS DE SA BOÎTE. Il y avait ici un plancher
+        // de 150 px : sur un iPhone où la place manquait, la boîte tombait à
+        // 130 px, le canevas restait à 150 et débordait des deux côtés — la
+        // pastille « Niveau » passait par-dessus le cerclage, et plus haut
+        // encore la pendule se coupait sur le bord de l'écran. Rémy : « l'horloge
+        // est coupée en haut ». C'est la boîte qui garde une taille minimale,
+        // en CSS ; le canevas, lui, obéit.
+        const cote = Math.floor(Math.min(r.width, r.height));
+        if (cote < 40) return;
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         cnv.width = Math.round(cote * dpr);
         cnv.height = Math.round(cote * dpr);

@@ -126,6 +126,36 @@ class Tableur extends BaseGame {
                 .tab-fx-val { flex: 1; font-family: monospace; font-size: 1.05rem; color: #223; min-height: 1.4em; overflow-wrap: anywhere; text-align: left; }
                 .tab-fx-val:empty::before { content: 'Touche une case, puis tape…'; color: #99a; font-family: inherit; font-size: .88rem; }
                 .tab-fx-btn { padding: 8px 14px; font-size: .92rem; border-radius: 8px; }
+                /* TÉLÉPHONE : tout ce qui est AU-DESSUS de la grille se resserre.
+                   Rémy : « l'exercice est tronqué pour le tableau en bas ». À la
+                   leçon 9 — six lignes de facture — le menu des leçons passait sur
+                   deux rangées et l'invite « Touche une case, puis tape… » sur
+                   trois lignes : cent cinquante pixels perdus, et la dernière
+                   ligne du tableau sortait de l'écran. */
+                @media (max-width: 480px) {
+                    .tab-wrap { --tab-hauteur: clamp(20px, (100cqh - 150px) / 11, 34px); }
+                    .tab-top { padding: 5px 8px 2px; gap: 3px; }
+                    .tab-niv { width: 25px; height: 25px; font-size: .82rem; border-width: 2px; }
+                    .tab-menu-label { font-size: .72rem; margin-right: 2px; }
+                    .tab-corps { padding: 2px 6px 10px; gap: 6px; }
+                    .tab-titre { font-size: 1rem; }
+                    .tab-consigne { font-size: .88rem; min-height: 0; }
+                    .tab-msg { font-size: .85rem; min-height: 0; }
+                    .tab-fx { padding: 4px 6px 4px 8px; gap: 6px; margin-bottom: 4px; }
+                    /* L'invite tient sur UNE ligne, quitte à être rognée : ce
+                       n'est qu'un rappel, la formule tapée, elle, se replie. */
+                    .tab-fx-val:empty::before { content: 'Touche une case…'; }
+                    .tab-fx-val:empty { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .tab-fx-btn { padding: 6px 10px; font-size: .85rem; }
+                    .tab-fx-nom { padding: 2px 6px; min-width: 26px; font-size: .9rem; }
+                    /* « Produit », « Pomme », « PAYER » : les mots d'une facture
+                       sont plus longs qu'un nombre. Écrits plus petit, ils tiennent
+                       dans leur case au lieu de passer sous la suivante. On ne
+                       masque PAS le débordement : la case en cours de saisie doit
+                       pouvoir s'élargir par-dessus ses voisines. */
+                    .tab-cell { font-size: .78rem; }
+                    .tab-cell.entete { font-size: .72rem; }
+                }
             </style>
             <div class="tab-wrap">
                 <div class="tab-top" data-menu><span class="tab-menu-label">Leçons :</span></div>

@@ -62,17 +62,33 @@ export function poserPaveTactile(hote, opts = {}) {
     pave.setAttribute('role', 'group');
     pave.setAttribute('aria-label', 'Pavé de chiffres');
 
+    // DEUX RANGÉES DE MÊME LONGUEUR. Rémy, sur iPhone : « je trouve le clavier
+    // inégal, 5 au-dessus et 7 boutons en dessous ». Les touches se partagent
+    // la largeur de leur rangée (`flex: 1 1 0`), donc une rangée courte donne
+    // des touches larges et l'autre des touches étroites : le pavé penche.
+    //
+    // Les cinq chiffres de chaque rangée ne bougent pas — c'est l'ordre qu'un
+    // élève cherche du regard. Ce sont les touches d'appoint que l'on répartit :
+    // au départ « − » et « , » en haut, « ⌫ » et « OK » en bas, puis on fait
+    // glisser d'une rangée à l'autre tant que l'écart dépasse une touche.
+    const hautExtras = [];
+    if (opts.signe) hautExtras.push({ k: '−', cls: 'pav-touche--signe' });
+    if (opts.virgule) hautExtras.push({ k: ',', cls: 'pav-touche--signe' });
+    const basExtras = [{ k: '⌫', cls: 'pav-touche--eff', html: ICONE_EFF }];
+    if (opts.valider) basExtras.push({ k: '✓', cls: 'pav-touche--ok', html: 'OK' });
+
+    const longueur = (extras) => 5 + extras.length;
+    // Le « ⌫ » monte avant l'« OK » : la validation reste en bas à droite, là
+    // où le pouce la trouve, et l'effacement finit la rangée du haut.
+    while (longueur(basExtras) - longueur(hautExtras) >= 2) hautExtras.push(basExtras.shift());
+    while (longueur(hautExtras) - longueur(basExtras) >= 2) basExtras.unshift(hautExtras.pop());
+
     const touches = [];
-    RANGEES.forEach((rang, i) => {
+    [hautExtras, basExtras].forEach((extras, i) => {
         const ligne = document.createElement('div');
         ligne.className = 'pav-rangee';
-        rang.forEach(k => touches.push({ ligne, k }));
-        // Les touches d'appoint tiennent au bout des rangées plutôt que sur une
-        // troisième : c'est tout l'intérêt d'un pavé en deux lignes.
-        if (i === 0 && opts.signe) touches.push({ ligne, k: '−', cls: 'pav-touche--signe' });
-        if (i === 0 && opts.virgule) touches.push({ ligne, k: ',', cls: 'pav-touche--signe' });
-        if (i === 1) touches.push({ ligne, k: '⌫', cls: 'pav-touche--eff', html: ICONE_EFF });
-        if (i === 1 && opts.valider) touches.push({ ligne, k: '✓', cls: 'pav-touche--ok', html: 'OK' });
+        RANGEES[i].forEach(k => touches.push({ ligne, k }));
+        extras.forEach(t => touches.push({ ligne, ...t }));
         pave.appendChild(ligne);
     });
 

@@ -2800,9 +2800,15 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    de les confondre, et un rappel permanent coûte moins qu'une correction. */
 .hg-layout {
     display: flex; flex-direction: column; align-items: center;
+    /* `safe center` : centré tant qu'il y a la place, calé en HAUT dès que le
+       contenu déborde. Un simple `center` déborde des DEUX côtés — sur un
+       petit iPhone, l'énoncé et le haut de la pendule partaient au-dessus du
+       plateau, hors d'atteinte même en faisant défiler. */
     justify-content: center;
+    justify-content: safe center;
     gap: clamp(6px, 1.4cqh, 14px);
     width: 100%; max-width: 620px; height: 100%; margin: 0 auto; padding: 8px;
+    overflow-y: auto; overflow-x: hidden;
 }
 .hg-niveau {
     font-size: .8rem; font-weight: 700; color: var(--text-muted);
@@ -2815,8 +2821,8 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    `min-height: 0`, il prend la place qui reste et le canevas suit (il se
    dimensionne sur le plus petit côté de cette boîte). */
 .hg-cadran {
-    width: 100%; flex: 1 1 auto; min-height: 120px;
-    max-height: clamp(220px, 52cqh, 420px);
+    width: 100%; flex: 1 1 auto; min-height: 108px;
+    max-height: clamp(180px, 52cqh, 420px);
     display: flex; align-items: center; justify-content: center;
     touch-action: none; user-select: none; -webkit-user-select: none;
 }
@@ -2826,6 +2832,14 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .hg-legende {
     display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
     font-size: .82rem; color: var(--text-muted);
+}
+/* Sur un téléphone, la légende passait sur deux lignes et volait au cadran
+   une soixantaine de pixels. Les mêmes mots, plus serrés : « petite aiguille :
+   les heures » tient sur une ligne et la pendule récupère la place. */
+@media (max-width: 480px) {
+    .hg-legende { gap: 4px 12px; font-size: .72rem; line-height: 1.25; }
+    .hg-leg { gap: 4px; }
+    .hg-leg--m i { width: 20px; }
 }
 .hg-leg { display: inline-flex; align-items: center; gap: 6px; }
 .hg-leg i { display: inline-block; border-radius: 3px; }
@@ -2870,6 +2884,16 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .hg-affiche--corrige { color: #16a34a; border-color: #16a34a; }
 
 .hg-controles { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+/* Téléphone : la saisie se resserre pour que le pavé de chiffres et le bouton
+   « Valider » tiennent SOUS la pendule sans la faire reculer. */
+@media (max-width: 480px) {
+    .hg-champ input { width: 66px; padding: 5px; font-size: 1.25rem; }
+    .hg-pas-btn { width: 26px; height: 26px; font-size: .95rem; }
+    .hg-champ span { font-size: .64rem; }
+    .hg-sep { font-size: 1.2rem; padding-bottom: 6px; }
+    .hg-saisie { gap: 5px; }
+    .hg-affiche { font-size: 1.3rem; padding: 4px 14px; }
+}
 .hg-secoue { animation: hgSecoue .32s; }
 @keyframes hgSecoue {
     0%, 100% { transform: translateX(0); }
