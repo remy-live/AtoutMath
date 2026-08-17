@@ -3139,6 +3139,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    qui se suivent. */
 .ad-jeton--paire { transform: scale(1.22); box-shadow: 0 0 0 3px rgba(255,255,255,.75); }
 .ad-jeton--parti { transform: scale(0); opacity: 0; }
+/* Les pastilles se touchent : on le DIT au doigt (une cible plus grande) et à
+   l'œil (le curseur main). Une pastille choisie attend sa partenaire. */
+.ad-tableau--vivant { touch-action: manipulation; }
+.ad-tableau--vivant .ad-jeton { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ad-jeton--choisi {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 3px var(--bg-panel), 0 0 0 5px var(--primary);
+}
 
 .ad-col-compte {
     font-weight: 800; font-size: .95rem; color: var(--text-muted);

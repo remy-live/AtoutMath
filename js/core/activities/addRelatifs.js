@@ -168,6 +168,65 @@ export function mount(container, session) {
         }
     }
 
+    /**
+     * LES PAIRES S'ÉLIMINENT AU DOIGT. Rémy : « ce serait cool de pouvoir
+     * éliminer les paires en cliquant sur une bleue et une rouge ».
+     *
+     * C'était jusqu'ici le robot qui les éliminait, ou la correction — jamais
+     * l'élève. Or le geste EST la leçon : c'est en posant soi-même une rouge
+     * contre une bleue qu'on installe « +1 et −1, ça fait zéro », et personne
+     * n'apprend cela en regardant quelqu'un d'autre le faire.
+     *
+     * On touche une pastille, puis une de l'AUTRE couleur : elles grossissent
+     * ensemble un demi-temps, puis s'effacent. Deux pastilles de la même
+     * couleur ne forment pas une paire — on déplace simplement le choix.
+     */
+    function brancherJetons() {
+        const tableau = container.querySelector('[data-tableau]');
+        if (!tableau) return;
+        tableau.classList.add('ad-tableau--vivant');
+
+        const oublier = () => {
+            container.querySelectorAll('.ad-jeton--choisi')
+                .forEach(j => j.classList.remove('ad-jeton--choisi'));
+        };
+        const messageAide = () => {
+            const el = container.querySelector('[data-calcul]');
+            if (!el || item.meta.question === 'ecriture') return;
+            const restant = Math.min(
+                container.querySelectorAll('[data-col="plus"] .ad-jeton:not(.ad-jeton--parti)').length,
+                container.querySelectorAll('[data-col="moins"] .ad-jeton:not(.ad-jeton--parti)').length);
+            if (!restant) { majCalcul(); return; }
+            el.textContent = container.querySelector('.ad-jeton--choisi')
+                ? 'Touche maintenant une pastille de l\'autre couleur : la paire vaut 0.'
+                : 'Touche une rouge, puis une bleue : chaque paire vaut 0 et disparaît.';
+        };
+
+        const surJeton = (e) => {
+            const j = e.target.closest('[data-jeton]');
+            if (!j || etat.fige || session.locked) return;
+            if (j.classList.contains('ad-jeton--parti') || j.classList.contains('ad-jeton--paire')) return;
+            const choisi = container.querySelector('.ad-jeton--choisi');
+            if (!choisi) { j.classList.add('ad-jeton--choisi'); messageAide(); return; }
+            if (choisi === j) { oublier(); messageAide(); return; }
+            if (choisi.dataset.jeton === j.dataset.jeton) {
+                // Même couleur : ce n'est pas une paire, on change d'avis.
+                oublier(); j.classList.add('ad-jeton--choisi'); messageAide(); return;
+            }
+            oublier();
+            [choisi, j].forEach(el => {
+                el.classList.add('ad-jeton--paire');
+                regTimeout(() => { el.classList.add('ad-jeton--parti'); majCompte(); }, 420);
+            });
+            etat.elimines++;
+            regTimeout(messageAide, 460);
+        };
+
+        tableau.addEventListener('pointerdown', surJeton);
+        nettoyeurs.push(() => tableau.removeEventListener('pointerdown', surJeton));
+        messageAide();
+    }
+
     /** L'écriture qui se simplifie : (+7) + (−3), puis 7 − 3. */
     function animerEcriture() {
         const el = container.querySelector('[data-calcul]');
@@ -291,6 +350,8 @@ export function mount(container, session) {
         container.querySelectorAll('[data-choix]').forEach(b => {
             b.onclick = () => repondre(item.choices[Number(b.dataset.choix)].value);
         });
+
+        brancherJetons();
     }
 
     // --- Le robot -------------------------------------------------------------
