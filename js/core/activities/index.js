@@ -35,6 +35,7 @@ import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
 import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { notationGenerator } from '../generators/notation.js';
+import { graduationsGenerator } from '../generators/graduations.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
 import { relierGenerator } from '../generators/relier.js';
@@ -77,6 +78,7 @@ import {
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
+    graduationsGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,

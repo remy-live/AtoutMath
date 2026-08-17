@@ -170,6 +170,34 @@ export const numerationExercises = [
         instruction: "7,98 est presque 8. Trouve l'entier le plus proche."
     },
 
+    // --- La loupe sur la droite graduée (fiche 4ᵉ § C) ---
+    // Entre 3 et 4 les dixièmes, entre 3,5 et 3,6 les centièmes : le même
+    // geste à deux échelles. C'est ainsi qu'on installe l'idée qu'entre deux
+    // décimaux il y en a toujours d'autres — le tableau de numération, lui,
+    // ne la donne jamais.
+    {
+        id: 'num-graduations',
+        consignePapier: "Écris l'abscisse du point.",
+        colonnesPapier: 1,
+        title: 'La Loupe sur la Droite',
+        generatorId: 'num.graduations', activityId: 'numpad',
+        params: { zoom: 'progressif' },
+        motsClefs: ['graduation', 'abscisse', 'décimaux', 'intercaler', 'axe'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01."
+    },
+    {
+        id: 'num-graduations-centiemes',
+        consignePapier: "Écris l'abscisse du point.",
+        colonnesPapier: 1,
+        title: 'La Loupe : les Centièmes',
+        generatorId: 'num.graduations', activityId: 'numpad',
+        params: { zoom: 'centiemes' },
+        motsClefs: ['graduation', 'centièmes', 'décimaux', 'intercaler'],
+        tags: { chemin: [D, DEC], niveaux: [SIXIEME, CINQUIEME, QUATRIEME] },
+        instruction: "On zoome entre deux dixièmes voisins : entre 3,5 et 3,6, l'axe est encore coupé en dix, et chaque intervalle vaut 0,01."
+    },
+
     // --- Le vocabulaire du calcul (fiche 4ᵉ § 4, 5, 6, N) ---
     // Le seul chapitre où la bonne réponse ne se déduit de rien : elle se sait.
     // Un élève qui ignore « différence » rate une soustraction qu'il savait

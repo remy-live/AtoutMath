@@ -362,6 +362,64 @@ export function traceSvg({ type, a = 'A', b = 'B', echelle = 1 } = {}) {
     </svg>`;
 }
 
+/**
+ * UN AXE GRADUÉ ZOOMÉ, avec ses dix intervalles et un point à lire.
+ *
+ * Les deux bouts seuls sont chiffrés : si toutes les graduations portaient
+ * leur nombre, il n'y aurait plus rien à trouver. C'est exactement la figure
+ * de la fiche — deux repères, dix crans, et un point quelque part au milieu.
+ *
+ * @param {Object} cfg
+ * @param {number} cfg.debut  - l'abscisse du grand trait de gauche
+ * @param {number} cfg.fin    - celle du grand trait de droite
+ * @param {number} cfg.pas    - la valeur d'un intervalle
+ * @param {number} cfg.rang   - le nombre de décimales à écrire
+ * @param {number} [cfg.point]- l'abscisse du point rouge, s'il y en a un
+ */
+export function axeSvg({ debut = 0, fin = 1, pas = 0.1, rang = 1, point = null } = {}) {
+    const W = 340, H = 74;
+    const y = 40, G = 26, D = W - 26;
+    const n = Math.max(1, Math.round((fin - debut) / pas));
+    const x = (v) => G + ((v - debut) / (fin - debut)) * (D - G);
+    // « 3,50 » n'est pas faux, mais ce n'est pas ce qu'on écrit au tableau :
+    // on retire les zéros de queue, puis la virgule si elle reste seule.
+    const fr = (v) => v.toFixed(rang).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
+
+    const traits = [];
+    for (let k = 0; k <= n; k++) {
+        const bout = k === 0 || k === n;
+        const xx = x(debut + k * pas);
+        traits.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
+            x1="${xx.toFixed(1)}" y1="${(y - (bout ? 13 : 7)).toFixed(1)}"
+            x2="${xx.toFixed(1)}" y2="${(y + (bout ? 13 : 7)).toFixed(1)}"/>`);
+    }
+    // Seuls les deux bouts sont chiffrés : c'est l'énoncé, tout le reste est
+    // la question.
+    const nombres = [debut, fin].map(v =>
+        `<text class="ax-nb" x="${x(v).toFixed(1)}" y="${y + 30}" text-anchor="middle">${fr(v)}</text>`).join('');
+
+    const marque = point === null ? '' : `
+        <g class="ax-point">
+            <line x1="${(x(point) - 6).toFixed(1)}" y1="${y - 6}" x2="${(x(point) + 6).toFixed(1)}" y2="${y + 6}"/>
+            <line x1="${(x(point) - 6).toFixed(1)}" y1="${y + 6}" x2="${(x(point) + 6).toFixed(1)}" y2="${y - 6}"/>
+        </g>`;
+
+    return `
+    <svg class="fig-svg ax-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
+         role="img" aria-label="Axe gradué de ${fr(debut)} à ${fr(fin)} en ${n} intervalles">
+        <defs>
+            <marker id="ax-fleche" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+        </defs>
+        <line class="ax-axe" x1="8" y1="${y}" x2="${W - 6}" y2="${y}" marker-end="url(#ax-fleche)"/>
+        ${traits.join('\n        ')}
+        ${nombres}
+        ${marque}
+    </svg>`;
+}
+
 /** Enveloppe une figure pour qu'elle occupe une largeur stable et centrée. */
 export function figure(svg) {
     return `<div class="figure-wrap">${svg}</div>`;

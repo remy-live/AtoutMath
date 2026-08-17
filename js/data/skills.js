@@ -294,6 +294,14 @@ const BASE = {
         descriptor: 'Dire « le segment [AB] », « la droite (AB) », « la demi-droite [AB) ».',
         lesson: 'Deux crochets fermants : un segment. Deux parenthèses : une droite. Un crochet puis une parenthèse : une demi-droite.'
     },
+    'num.dec.graduations': {
+        label: 'Lire une graduation décimale',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Lire l\'abscisse d\'un point sur un axe gradué de 1 en 1, de 0,1 en 0,1 puis de 0,01 en 0,01.',
+        lesson: 'Entre deux grands traits, l\'axe est coupé en DIX. Entre 3 et 4, un intervalle vaut 0,1 ; entre 3,5 et 3,6, il vaut 0,01. On compte les INTERVALLES depuis le grand trait de gauche, jamais les traits — et l\'on peut toujours recommencer un cran plus bas : entre deux décimaux, il y en a encore une infinité.'
+    },
     'num.complement': {
         label: 'Compléments à 10, 100, 1000',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],

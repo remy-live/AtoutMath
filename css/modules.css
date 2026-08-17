@@ -522,6 +522,17 @@
    choisie pour ses propositions. */
 .tr-svg--mini .tr-trait, .tr-svg--mini .tr-pt line { stroke: #fff; stroke-width: 2.6; }
 .tr-svg--mini .tr-nom { fill: #fff; font-size: 19px; }
+
+/* --- L'axe gradué zoomé -------------------------------------------------
+   Les deux crans des bouts sont plus hauts et plus noirs : ce sont eux qui
+   portent les seuls nombres écrits, et c'est de l'un d'eux qu'on part pour
+   compter. Les huit autres sont fins — un intervalle, pas un repère. */
+.ax-svg { color: var(--text-main); display: block; margin: 0 auto; }
+.ax-axe { stroke: var(--text-main); stroke-width: 2; }
+.ax-cran { stroke: #94a3b8; stroke-width: 1.4; }
+.ax-cran--bout { stroke: var(--text-main); stroke-width: 2.6; }
+.ax-nb { fill: var(--text-main); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ax-point line { stroke: #dc2626; stroke-width: 3.4; stroke-linecap: round; }
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
 .rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }
