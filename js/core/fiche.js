@@ -595,6 +595,16 @@ export function composerBlocs(exos, opts, mesurer) {
         // consigne. Un texte ordinaire, lui, passe à la ligne sans dommage —
         // c'est pour cela qu'on ne regarde que les cellules à fraction ou à
         // trou.
+        //
+        // ET LES RÉPONSES SE RANGENT TOUTES AU MÊME ENDROIT. Sur une fiche
+        // d'additions de fractions, « 5/6 + 2/6 = » laissait la place d'écrire
+        // derrière, « 9/12 + 4/12 = » non : une question sur deux voyait sa
+        // réponse basculer sous l'énoncé, et la feuille prenait l'air d'un
+        // brouillon. Une colonne de moins remet tout le monde sur la ligne ;
+        // c'est plus lisible ET plus dense que de doubler la hauteur de chaque
+        // question. On ne le tente que sur un exercice homogène — vingt calculs
+        // du même moule — car dans des problèmes rédigés, longs et courts
+        // mélangés, la réponse sous l'énoncé est de toute façon la règle.
         let cellW, texteW, cellules;
         for (;;) {
             cellW = (zone.w - o.gouttiere * (cols - 1)) / cols;
@@ -602,8 +612,13 @@ export function composerBlocs(exos, opts, mesurer) {
             texteW = cellW - gouttiereNum;
             cellules = mesurerCellules();
             if (cols <= 1) break;
-            if (!cellules.some(c => c.lignes.length > 1 && (c.fractions || c.trou))) break;
-            cols--;
+            if (cellules.some(c => c.lignes.length > 1 && (c.fractions || c.trou))) { cols--; continue; }
+            if (cols > 2 && exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) { cols--; continue; }
+            break;
+        }
+        // Faute de mieux, on aligne par le bas : toutes les réponses dessous.
+        if (exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) {
+            for (const c of cellules) if (c.memeLigne) { c.memeLigne = false; c.h += ligneRep; }
         }
         colonnesParExo.push(cols);
 
@@ -651,6 +666,16 @@ export function composerBlocs(exos, opts, mesurer) {
             // sur toute la feuille et saute les exercices non numérotés.
             return { lignes, choix, memeLigne, trou, h, dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
+
+        /** Vingt questions du même moule : une ligne, pas de trou, pas de QCM. */
+        function exerciceHomogene(cells) {
+            return cells.length > 1
+                && cells.every(c => !c.trou && !c.choix && c.lignes.length === 1);
+        }
+        /** Les réponses sont-elles toutes au même endroit ? */
+        function reponsesRegulieres(cells) {
+            return cells.every(c => c.memeLigne) || cells.every(c => !c.memeLigne);
+        }
 
         const consigneLignes = exo.consigne
             ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)

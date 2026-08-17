@@ -588,11 +588,17 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* UNE FRACTION S'ÉCRIT EN COLONNE, sur la fiche comme au tableau : le
    numérateur sur le dénominateur, séparés d'un trait. « 5/7 » à la barre
    oblique laisse croire à une division déguisée — et ce n'est pas la forme
-   qu'on demande à l'élève d'écrire. */
+   qu'on demande à l'élève d'écrire.
+
+   LE TRAIT SE POSE SUR LA LIGNE D'ÉCRITURE. Centrée sur la hauteur des
+   caractères, la fraction montait tout entière au-dessus du texte : le numéro
+   « 1. » et le « + » semblaient écrits une ligne plus bas qu'elle. Le trait de
+   fraction est la ligne d'écriture — numérateur dessus, dénominateur dessous —
+   exactement comme on l'écrit au tableau. */
 .fx-frac {
     display: inline-flex; flex-direction: column; align-items: center;
-    vertical-align: middle; line-height: 1; margin: 0 .12em;
-    transform: translateY(-.30em);
+    vertical-align: baseline; line-height: 1; margin: 0 .12em;
+    transform: translateY(-.29em);
 }
 .fx-frac-n { border-bottom: 1px solid currentColor; padding: 0 .18em .04em; }
 .fx-frac-d { padding: .04em .18em 0; }
@@ -603,9 +609,6 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* LE TROU À REMPLIR, écrit dans la ligne : impossible qu'il dérive. */
 .fx-trou { border-bottom: 1px dotted #9aa3b2; }
 .fx-trou--champ { background: rgba(99, 102, 241, .10); border-bottom-color: #6366f1; }
-/* Devant des fractions, le trou s'aligne sur le TRAIT de fraction, pas sur la
-   ligne d'écriture : c'est la hauteur où l'œil attend le signe de comparaison. */
-.fx-trou--frac { position: relative; top: -.42em; }
 
 .fq-num { position: absolute; font-weight: 700; color: #1a202c; line-height: 1.05; }
 .fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }

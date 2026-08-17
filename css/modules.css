@@ -521,16 +521,21 @@
 
 /* --- Comparaison (< = >) ------------------------------------ */
 
+/* L'ÉGALITÉ S'ÉCRIT SUR UNE SEULE LIGNE. À 2,4 rem et 22 px d'écart, « 8/9 +
+   8/9 = ▢ » réclamait plus que la largeur d'un iPhone : la case-réponse
+   tombait sous le calcul, et l'on ne lisait plus une égalité mais deux lignes
+   sans rapport. Tout se règle donc sur la largeur disponible — la case
+   comprise, exprimée en em pour suivre le texte. */
 .compare-line {
     display: flex; align-items: center; justify-content: center;
-    gap: 22px; flex-wrap: wrap; margin-bottom: 34px;
-    font-size: 2.4rem; font-weight: 800; color: var(--text-main);
+    gap: clamp(8px, 3.5vw, 22px); flex-wrap: wrap; margin-bottom: 34px;
+    font-size: clamp(1.5rem, 7.5vw, 2.4rem); font-weight: 800; color: var(--text-main);
 }
 .compare-value { font-variant-numeric: tabular-nums; }
 .compare-op { color: var(--text-muted); font-weight: 700; }
 .compare-slot {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 68px; height: 68px; border-radius: 16px;
+    width: 1.78em; height: 1.78em; flex: 0 0 auto; border-radius: .42em;
     border: 3px dashed var(--primary); opacity: .5;
     color: var(--primary); transition: .18s;
 }
@@ -543,11 +548,20 @@
 .compare-slot--ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
 .compare-slot--ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
 
-.sign-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+/* LES TROIS SIGNES RESTENT SUR UNE LIGNE. Sur un téléphone étroit, trois
+   tuiles de 92 px et leurs deux gouttières dépassaient de quelques pixels : le
+   « > » tombait seul sous les deux autres, et l'on choisissait un signe de
+   comparaison dans un tableau à deux étages. Les tuiles rétrécissent — c'est
+   toujours mieux que de casser la rangée. */
+.sign-row {
+    display: flex; gap: clamp(8px, 3vw, 18px); justify-content: center;
+    flex-wrap: nowrap; width: 100%;
+}
 .sign-tile {
-    width: 92px; height: 92px; border-radius: 20px;
+    flex: 0 1 92px; min-width: 0; max-width: 92px;
+    aspect-ratio: 1; border-radius: 20px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 2.6rem; font-weight: 800; color: var(--primary);
+    font-size: clamp(1.7rem, 9vw, 2.6rem); font-weight: 800; color: var(--primary);
     background: var(--bg-panel); border: 2px solid var(--border);
     box-shadow: var(--shadow-sm); cursor: grab; transition: .15s;
     touch-action: none;          /* le geste est capté, pas interprété en défilement */
@@ -587,6 +601,20 @@
 }
 .fraction-num { padding: 0 .35em; }
 .fraction-den { padding: 0 .35em; border-top: 3px solid currentColor; }
+
+/* UNE FRACTION DANS UNE BULLE tient sur deux étages : elle se règle sur le
+   diamètre du rond, pas sur le nombre de caractères. Les classes de longueur
+   posaient 1,7 rem quelle que soit la place — sur un téléphone, « 17/10 »
+   débordait de la bulle par le haut et par le bas. */
+.bubble.choice--frac,
+.bubble.choice--frac.choice--l,
+.bubble.choice--frac.choice--xl,
+.bubble.choice--frac.choice--xxl {
+    width: var(--bulle); min-width: 0; padding: 0; border-radius: 50%;
+    font-size: min(1.5rem, calc(var(--bulle) * .3));
+}
+.bubble.choice--frac .fraction { line-height: 1.05; }
+.bubble.choice--frac .fraction-den { border-top-width: 2px; }
 
 .bubble--sign { font-size: 2.4rem !important; font-weight: 800; min-width: 90px; }
 
@@ -3677,18 +3705,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 
 /* --- Fiche « Fractions d'une pizza » -------------------------------------
-   Le disque et ses parts sont un SVG unique ; la commande vit dessous, une
-   ligne par garniture, avec sa marque en clef et la place pour écrire la
-   conversion en nombre de parts. */
+   Le disque et ses parts sont un SVG unique ; la commande vit À DROITE, une
+   entrée par garniture : sa marque en clef, sa fraction écrite en colonne
+   comme au tableau, puis la place où écrire la conversion en nombre de parts. */
 .fx-pz-svg { position: absolute; overflow: visible; pointer-events: none; }
-.fx-pz-ligne {
-    position: absolute; display: flex; align-items: center; gap: .5em;
-    color: #2d3748; box-sizing: border-box; padding: 0 .3em; white-space: nowrap;
+.fx-pz-entree {
+    position: absolute; display: flex; flex-direction: column; justify-content: center;
+    gap: .55em; color: #2d3748; box-sizing: border-box; padding: 0 .2em;
 }
-.fx-pz-ligne b { font-weight: 800; }
-.fx-pz-ligne span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
-.fx-pz-ligne i { font-style: normal; color: #6e7684; font-weight: 700; }
-.fx-pz-cle { flex: 0 0 auto; overflow: visible; }
+.fx-pz-ligne { display: flex; align-items: baseline; gap: .45em; white-space: nowrap; }
+.fx-pz-parts { color: #6e7684; font-weight: 700; padding-left: 1.9em; }
+.fx-pz-cle { flex: 0 0 auto; overflow: visible; align-self: center; }
 
 /* --- Fiche « Tableaux de proportionnalité » ------------------------------
    Deux lignes d'un vrai tableau : l'en-tête porte son unité sur fond gris, les

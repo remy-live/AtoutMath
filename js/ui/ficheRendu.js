@@ -153,9 +153,14 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
             x += o.taille * 1.25;
         } else {
             const w = largeurFraction(pdf, m);
-            const yTrait = y - o.taille * 0.34;
-            pdf.text(m.num, x + (w - pdf.getTextWidth(m.num)) / 2, yTrait - o.taille * 0.22);
-            pdf.text(m.den, x + (w - pdf.getTextWidth(m.den)) / 2, yTrait + o.taille * 1.02);
+            // LE TRAIT EST LA LIGNE D'ÉCRITURE. On le posait un tiers de corps
+            // plus haut, et la fraction entière flottait au-dessus du texte :
+            // le numéro de la question et le « + » paraissaient écrits une
+            // ligne plus bas. Numérateur dessus, dénominateur dessous, à
+            // distance égale du trait.
+            const yTrait = y;
+            pdf.text(m.num, x + (w - pdf.getTextWidth(m.num)) / 2, yTrait - o.taille * 0.28);
+            pdf.text(m.den, x + (w - pdf.getTextWidth(m.den)) / 2, yTrait + o.taille * 0.98);
             pdf.setLineWidth(0.28);
             pdf.setDrawColor(...ENCRE.texte);
             pdf.line(x + 0.4, yTrait, x + w - 0.4, yTrait);
@@ -175,9 +180,10 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
  * sa place dans le texte, il ne peut plus dériver du tout.
  */
 function ligneHtml(ligne, avecFractions, opts = {}) {
-    const trouCls = 'fx-trou'
-        + (opts.champs ? ' fx-trou--champ' : '')
-        + (avecFractions ? ' fx-trou--frac' : '');
+    // LE TROU RESTE SUR LA LIGNE D'ÉCRITURE, y compris entre deux fractions :
+    // depuis que le trait de fraction s'y pose lui aussi, le signe attendu et
+    // le trait sont à la même hauteur sans qu'on ait à relever le trou.
+    const trouCls = 'fx-trou' + (opts.champs ? ' fx-trou--champ' : '');
     const texteHtml = (t) => echapper(t).replace(/ {3,}/g,
         (blanc) => `<span class="${trouCls}">${blanc}</span>`);
     return morceauxLigne(ligne, avecFractions).map(m => {

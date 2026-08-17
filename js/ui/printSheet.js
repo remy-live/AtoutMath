@@ -2172,15 +2172,32 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
 
 function geoPizza(item, slot) {
     const n = item.meta.fractions.length;
-    // La commande prend une ligne par garniture, plus une ligne pour écrire la
-    // conversion : c'est elle qu'on veut voir apparaître sur la feuille.
-    const listeH = Math.max(slot.taille * 0.22, n * slot.taille * 0.10);
-    const cote = slot.taille - listeH;
+    // LA COMMANDE EST À DROITE DE LA PIZZA, pas dessous. Rémy : « les fractions
+    // des ingrédients à droite des pizzas ». Ce n'est pas qu'une question de
+    // goût — sous le disque, chaque garniture supplémentaire rognait la hauteur
+    // de la pizza, alors que c'est elle qu'on doit pouvoir colorier part par
+    // part. À côté, la pizza garde toute la hauteur du bloc, et l'œil lit la
+    // commande sans quitter le dessin.
+    // On travaille sur la BOÎTE, pas sur le carré inscrit : un bloc « disque à
+    // gauche, commande à droite » n'est pas carré, et le carré inscrit lui
+    // ferait perdre la moitié de sa largeur.
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const listeW = Math.min(b.w * 0.42, 42);
+    const cote = b.w - listeW;
+    // Deux lignes par garniture : la fraction et son nom, puis la place où
+    // écrire le nombre de parts.
+    const hLigne = Math.min(b.h / Math.max(1, n), b.h * 0.42);
+    // LE CORPS DE TEXTE SE DÉDUIT DU PLUS LONG NOM DE GARNITURE. « de sauce
+    // tomate » écrit au même corps que « de olives » sortait de la colonne et
+    // se faisait couper : c'est la ligne la plus longue qui fixe la taille, et
+    // toutes les garnitures d'une même pizza s'écrivent pareil.
+    const long = Math.max(...item.meta.fractions.map(f => `de ${f.nom}`.length), 8);
+    const corps = Math.max(2.1, Math.min(hLigne * 0.22, listeW / (3.6 + long * 0.5)));
     return {
-        cote, listeH, n,
-        r: cote * 0.45,
-        cx: slot.x + slot.taille / 2, cy: slot.y + cote / 2,
-        x0: slot.x, listeY: slot.y + cote
+        cote, listeW, n, hLigne, corps,
+        r: Math.min(cote, b.h) * 0.46,
+        cx: b.x + cote / 2, cy: b.y + b.h / 2,
+        x0: b.x + cote, listeY: b.y + Math.max(0, (b.h - n * hLigne) / 2)
     };
 }
 
@@ -2231,18 +2248,22 @@ function pizzaPreviewHtml(item, slot, k, solution) {
     }
 
     let html = `<svg class="fx-pz-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
-    const hLigne = g.listeH / Math.max(1, g.n);
+    const hLigne = g.hLigne;
+    const corps = g.corps;
     m.fractions.forEach((f, i) => {
-        html += `<div class="fx-pz-ligne" style="left:${g.x0 * k}px;
-            top:${(g.listeY + i * hLigne) * k}px; width:${slot.taille * k}px;
-            height:${hLigne * k}px; font-size:${Math.min(hLigne * 0.42, slot.taille * 0.05) * k}px">
-            <svg class="fx-pz-cle" width="${T(hLigne * 0.5)}" height="${T(hLigne * 0.5)}"
-                 viewBox="0 0 10 10">${marqueSvgRelier(i, 5, 5, 3.6,
+        html += `<div class="fx-pz-entree" style="left:${g.x0 * k}px;
+            top:${(g.listeY + i * hLigne) * k}px; width:${g.listeW * k}px;
+            height:${hLigne * k}px; font-size:${corps * k}px">
+            <div class="fx-pz-ligne">
+                <svg class="fx-pz-cle" width="${T(corps * 1.5)}" height="${T(corps * 1.5)}"
+                     viewBox="0 0 10 10">${marqueSvgRelier(i, 5, 5, 3.6,
         { fond: couleur ? teinteIngredient(f.ingredient) : '#1a202c',
             trait: couleur ? teinteIngredient(f.ingredient) : '#1a202c', ep: 1.6 })}</svg>
-            <b>${echapperSheet(fractionEcrite(f.num, f.den))}</b>
-            <span>de ${echapperSheet(f.nom)}</span>
-            <i>${solution ? `= ${direParts(m.cible[f.ingredient])}` : '= ....... parts'}</i>
+                <b class="fx-frac"><span class="fx-frac-n">${f.num}</span><span class="fx-frac-d">${f.den}</span></b>
+                <span>de ${echapperSheet(f.nom)}</span>
+            </div>
+            <div class="fx-pz-parts">${solution
+        ? `= ${echapperSheet(direParts(m.cible[f.ingredient]))}` : '= ....... parts'}</div>
         </div>`;
     });
     return html;
@@ -2293,25 +2314,49 @@ function dessinerPizzaPdf(doc, item, slot, solution) {
         });
     }
 
-    const hLigne = g.listeH / Math.max(1, g.n);
+    const hLigne = g.hLigne;
+    const mm = g.corps;                    // le corps en millimètres
+    const corps = mm / 0.3528;             // le même, en points, pour jsPDF
     m.fractions.forEach((f, i) => {
-        const y = g.listeY + i * hLigne + hLigne * 0.62;
-        const cx = slot.x + hLigne * 0.32;
+        const haut = g.listeY + i * hLigne;
+        const y = haut + hLigne * 0.42;          // la ligne d'écriture de la fraction
+        const cx = g.x0 + mm * 0.55;
         doc.setLineWidth(0.3);
         doc.setDrawColor(...ENCRE.trait);
         doc.setFillColor(...(couleur ? rvbIngredient(f.ingredient) : [255, 255, 255]));
-        doc.circle(cx, y - hLigne * 0.16, hLigne * 0.24, 'FD');
-        dessinerMarque(doc, i, cx, y - hLigne * 0.16, hLigne * 0.15,
+        doc.circle(cx, y - mm * 0.2, mm * 0.42, 'FD');
+        dessinerMarque(doc, i, cx, y - mm * 0.2, mm * 0.26,
             couleur ? [255, 255, 255] : ENCRE.trait);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.max(6, Math.min(hLigne * 1.5, slot.taille * 0.16)));
+        doc.setFontSize(corps);
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(`${fractionEcrite(f.num, f.den)} de ${f.nom}`), cx + hLigne * 0.42, y);
+        // LA FRACTION S'ÉCRIT EN COLONNE, comme partout ailleurs sur les fiches.
+        const x = fractionPdf(doc, f.num, f.den, cx + mm * 0.68, y, mm);
         doc.setFont('helvetica', 'normal');
+        doc.text(pourPdf(` de ${f.nom}`), x, y);
         doc.setTextColor(...ENCRE.gris);
+        doc.setFont('helvetica', 'bold');
         doc.text(pourPdf(solution ? `= ${direParts(m.cible[f.ingredient])}` : '= ....... parts'),
-            slot.x + slot.taille, y, { align: 'right' });
+            cx + mm * 0.68, haut + hLigne * 0.88);
     });
+}
+
+/**
+ * Une fraction empilée dans le PDF : numérateur au-dessus, dénominateur en
+ * dessous, et le trait POSÉ SUR LA LIGNE D'ÉCRITURE — la règle est la même que
+ * sur les fiches de questions. Rend l'abscisse atteinte, pour enchaîner le
+ * texte qui suit.
+ */
+function fractionPdf(doc, num, den, x, y, taille) {
+    const n = String(num), d = String(den);
+    const wn = doc.getTextWidth(n), wd = doc.getTextWidth(d);
+    const w = Math.max(wn, wd) + taille * 0.26;
+    doc.text(n, x + (w - wn) / 2, y - taille * 0.28);
+    doc.text(d, x + (w - wd) / 2, y + taille * 0.98);
+    doc.setLineWidth(Math.max(0.2, taille * 0.06));
+    doc.setDrawColor(...ENCRE.texte);
+    doc.line(x + taille * 0.06, y, x + w - taille * 0.06, y);
+    return x + w;
 }
 
 
@@ -5095,9 +5140,13 @@ export const RENDUS = {
         previewGrille: pizzaPreviewHtml,
         pdfGrille: dessinerPizzaPdf,
         nomBloc: 'Pizza',
-        // QUATRE PAR PAGE. Une pizza en douze parts qui tient dans quatre
-        // centimètres a des parts de six millimètres : on ne les colorie pas.
-        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        // LE BLOC EST LARGE ET BAS depuis que la commande est posée à droite du
+        // disque : la pizza n'a plus besoin de la hauteur qu'occupait la liste.
+        // Six par page au lieu de quatre, sans que le disque rétrécisse — une
+        // pizza en douze parts qui tient dans quatre centimètres a des parts de
+        // six millimètres, et on ne les colorie pas.
+        proportions: { w: 1, h: 0.62 },
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2
     },
 

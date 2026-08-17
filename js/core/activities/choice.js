@@ -548,16 +548,39 @@ function texteNu(label) {
  * par deux — c'est la règle convenue, et elle vaut aussi pour les nombres, pas
  * seulement pour les phrases.
  */
+/**
+ * UNE FRACTION EMPILÉE N'EST PAS UNE PHRASE. Écrite en colonne, « 17/10 »
+ * occupe deux étages et pas dix caractères — mais le texte nu de son balisage
+ * donne « 17 10 », espace compris, et la règle du dessus la classait avec « 17
+ * billes rouges ». Les quatre propositions d'une addition de fractions
+ * partaient alors en cartes, une par ligne sur un téléphone étroit : Rémy les
+ * voulait sur la même ligne, et elles y tiennent très bien. Ce sont ses deux
+ * étages, pris séparément, qui disent si elle entre dans un rond.
+ */
+const FRACTION_SEULE = /^\s*<span class="fraction">\s*<span class="fraction-num">([^<]*)<\/span>\s*<span class="fraction-den">([^<]*)<\/span>\s*<\/span>\s*$/;
+function fractionSeule(label) {
+    const m = FRACTION_SEULE.exec(String(label));
+    return m ? { num: m[1].trim(), den: m[2].trim() } : null;
+}
+
 function estLong(label) {
+    const f = fractionSeule(label);
+    if (f) return f.num.length > 3 || f.den.length > 3;
     const t = texteNu(label);
     return t.length > 5 || /\s/.test(t);
 }
 
 /** Classe de taille selon la longueur du libellé (balises HTML exclues). */
 function lengthClass(label) {
-    const n = String(label).replace(/<[^>]*>/g, '').replace(/\s/g, '').length;
-    if (n >= 8) return 'choice--xxl';
-    if (n >= 6) return 'choice--xl';
-    if (n >= 4) return 'choice--l';
-    return '';
+    // Une fraction se mesure à son étage le plus large, pas à la somme des deux.
+    const f = fractionSeule(label);
+    const n = f ? Math.max(f.num.length, f.den.length)
+        : String(label).replace(/<[^>]*>/g, '').replace(/\s/g, '').length;
+    // `choice--frac` prévient la mise en page qu'il y a deux étages à loger :
+    // une fraction se règle sur la HAUTEUR disponible, pas sur sa longueur.
+    const frac = f ? 'choice--frac ' : '';
+    if (n >= 8) return frac + 'choice--xxl';
+    if (n >= 6) return frac + 'choice--xl';
+    if (n >= 4) return frac + 'choice--l';
+    return frac.trim();
 }
