@@ -44,6 +44,31 @@ export function reglerPolycopieCouleur(oui) {
     try { window.localStorage.setItem(CLE_COULEUR, oui ? '1' : '0'); } catch (e) { /* privé */ }
 }
 
+/**
+ * PORTRAIT OU PAYSAGE, POUR LES FICHES À GRILLES.
+ *
+ * Elles sortaient toutes en paysage : c'est la bonne orientation pour six
+ * pendules ou neuf rectangles, et la mauvaise pour un treillis de Garam, plus
+ * haut que large. Rémy : « on ne pourrait pas choisir l'orientation ». Le
+ * choix se retient, comme celui de la couleur — un professeur qui imprime en
+ * portrait le fait pour une série de feuilles, pas pour une seule.
+ */
+const CLE_ORIENTATION = 'mathbox-fiche-portrait';
+let portraitEnMemoire = null;
+
+export function ficheEnPortrait() {
+    if (portraitEnMemoire !== null) return portraitEnMemoire;
+    let v = null;
+    try { v = window.localStorage.getItem(CLE_ORIENTATION); } catch (e) { v = null; }
+    portraitEnMemoire = v === '1';
+    return portraitEnMemoire;
+}
+
+export function reglerFichePortrait(oui) {
+    portraitEnMemoire = !!oui;
+    try { window.localStorage.setItem(CLE_ORIENTATION, oui ? '1' : '0'); } catch (e) { /* privé */ }
+}
+
 export const ENCRE = {
     texte: [30, 41, 59],
     gris: [110, 118, 132],
@@ -724,6 +749,7 @@ export function apercuSolutions(page, k, o) {
                 // fraction dans le même document, et celle du corrigé n'est pas
                 // celle qu'on demande à l'élève.
                 const t = ligneHtml(m.texte, o.fractions, o);
+                if (m.souligne) return `<u class="fq-soul">${t}</u>`;
                 return m.reponse ? `<b class="fq-rep">${t}</b>` : t;
             }).join('');
             html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
@@ -745,7 +771,16 @@ export function pdfSolutions(pdf, page, o) {
                 // en mode compact, où toute la ligne EST la réponse, la page
                 // entière se retrouvait soulignée.
                 pdf.setFont('helvetica', m.reponse ? 'bold' : 'normal');
+                const depart = x;
                 x = dessinerLigne(pdf, m.texte, x, y, o, o.fractions);
+                // LE CALCUL PRIORITAIRE EST SOULIGNÉ. Le gras est déjà pris par
+                // la réponse : il faut une seconde emphase, et c'est celle qu'on
+                // trace au tableau sous l'opération qu'on va faire.
+                if (m.souligne) {
+                    pdf.setLineWidth(0.25);
+                    pdf.setDrawColor(...ENCRE.texte);
+                    pdf.line(depart, y + o.taille * 0.22, x, y + o.taille * 0.22);
+                }
             }
         });
     }

@@ -797,3 +797,8 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fx-qgeste:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
 .fx-qgeste--sup:hover { background: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
 .fx-qgeste:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* LE CALCUL PRIORITAIRE, SOULIGNÉ dans le corrigé des priorités. Le gras est
+   déjà pris par la réponse : il faut une seconde emphase, et c'est celle qu'on
+   trace au tableau sous l'opération qu'on va faire. */
+.fq-soul { text-decoration: underline; text-underline-offset: .18em; }

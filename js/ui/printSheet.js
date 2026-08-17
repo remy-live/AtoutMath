@@ -19,7 +19,8 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
 import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
-import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur
+import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur,
+    ficheEnPortrait, reglerFichePortrait
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
 // Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
@@ -43,7 +44,16 @@ import { boite as boiteTangram } from '../core/tangram.js';
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
+// LA PAGE, ORIENTABLE. Le paysage convient à six pendules ou neuf rectangles ;
+// un treillis de Garam, plus haut que large, veut du portrait. On échange donc
+// la largeur et la hauteur au lieu de figer l'une des deux — tout le reste de
+// la mise en page se calcule à partir d'elles.
 const PAGE = { w: 297, h: 210, marge: 9, enteteH: 17, piedH: 6 };
+function orienterPage(portrait) {
+    const grand = Math.max(PAGE.w, PAGE.h), petit = Math.min(PAGE.w, PAGE.h);
+    PAGE.w = portrait ? petit : grand;
+    PAGE.h = portrait ? grand : petit;
+}
 const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240, 250],
     texte: [45, 55, 72], gris: [110, 118, 132] };
 
@@ -6048,6 +6058,11 @@ function assurerModale() {
                         <button type="button" class="fp-pas-btn" data-pas="1" data-cible="fp-rows" aria-label="Une ligne de plus">+</button>
                     </span></label>
                 <span class="fp-total" id="fp-total"></span>
+                <label>Format
+                    <select id="fp-orientation" class="cfg-input">
+                        <option value="paysage">A4 paysage</option>
+                        <option value="portrait">A4 portrait</option>
+                    </select></label>
                 <label>Impression
                     <select id="fp-couleur" class="cfg-input">
                         <option value="0">Noir et blanc</option>
@@ -6113,7 +6128,7 @@ function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
 }
 
 function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSolutions = false) {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' });
     const { slots, traits } = calculerFiche(cols, rows);
 
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
@@ -6147,7 +6162,7 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
     // y recopiait la première à l'identique : une feuille de plus à imprimer,
     // et rien de plus à lire dessus.
     if (!sansSolutions) {
-        doc.addPage('a4', 'landscape');
+        doc.addPage('a4', ficheEnPortrait() ? 'portrait' : 'landscape');
         page(true);
     }
     return doc;
@@ -6352,6 +6367,16 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     const couleurEl = modal.querySelector('#fp-couleur');
     couleurEl.value = polycopieEnCouleur() ? '1' : '0';
     couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
+    // L'ORIENTATION DE LA FEUILLE. Comme la couleur : elle vaut pour celle-ci,
+    // et devient le défaut des suivantes.
+    const orientEl = modal.querySelector('#fp-orientation');
+    orientEl.value = ficheEnPortrait() ? 'portrait' : 'paysage';
+    orienterPage(ficheEnPortrait());
+    orientEl.onchange = () => {
+        reglerFichePortrait(orientEl.value === 'portrait');
+        orienterPage(ficheEnPortrait());
+        rendre();
+    };
 
     // --- LES RÉGLAGES DE L'EXERCICE, dans la fiche ---------------------------
     //

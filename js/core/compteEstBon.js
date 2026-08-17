@@ -106,11 +106,17 @@ export function tirerPartie({ rng, operations = 3, tous = false, grands = 1 } = 
         // de tête et l'exercice disparaît ; au-dessus de 999 il devient un
         // concours de patience.
         if (but < 100 || but > 999) continue;
+        // TOUTES LES ÉTAPES DOIVENT SERVIR. Si l'élagage en retire une, le
+        // tirage est plus facile qu'annoncé — on en refait un plutôt que de
+        // mentir sur la difficulté, ou d'imprimer un calcul mort dans le
+        // corrigé.
+        const solution = elaguer(chemin);
+        if (solution.length !== cible) continue;
         return {
-            plaques, but, operations: chemin.length, tous,
+            plaques, but, operations: solution.length, tous,
             // La solution qui a servi à fabriquer le tirage : c'est celle que
             // le robot montrera, et elle est garantie valide.
-            solution: chemin
+            solution
         };
     }
     // Filet : un tirage simple vaut mieux qu'une page blanche.
@@ -128,7 +134,10 @@ export function tirerPartie({ rng, operations = 3, tous = false, grands = 1 } = 
  * des couples interdits.
  */
 function construire(plaques, combien, rng) {
-    let reserve = plaques.slice();
+    // CHAQUE NOMBRE PORTE SON ORIGINE : une plaque, ou l'étape qui l'a produit.
+    // C'est ce qui permet, à la fin, de ne garder que les calculs qui MÈNENT au
+    // compte — voir `elaguer`.
+    let reserve = plaques.map(v => ({ v, de: null }));
     const chemin = [];
     for (let k = 0; k < combien; k++) {
         const possibles = [];
@@ -136,8 +145,8 @@ function construire(plaques, combien, rng) {
             for (let j = 0; j < reserve.length; j++) {
                 if (i === j) continue;
                 for (const op of OPERATIONS) {
-                    if (utile(reserve[i], op, reserve[j])) {
-                        possibles.push({ i, j, op, resultat: calculer(reserve[i], op, reserve[j]) });
+                    if (utile(reserve[i].v, op, reserve[j].v)) {
+                        possibles.push({ i, j, op, resultat: calculer(reserve[i].v, op, reserve[j].v) });
                     }
                 }
             }
@@ -149,11 +158,39 @@ function construire(plaques, combien, rng) {
         if (!pool.length) return null;
         const choix = pool[rng.int(0, pool.length - 1)];
         const a = reserve[choix.i], b = reserve[choix.j];
-        chemin.push({ a, op: choix.op, b, resultat: choix.resultat });
+        chemin.push({ a: a.v, op: choix.op, b: b.v, resultat: choix.resultat, deA: a.de, deB: b.de });
         reserve = reserve.filter((_, n) => n !== choix.i && n !== choix.j);
-        reserve.push(choix.resultat);
+        reserve.push({ v: choix.resultat, de: chemin.length - 1 });
     }
     return chemin;
+}
+
+/**
+ * NE GARDER QUE LES CALCULS QUI SERVENT.
+ *
+ * Rémy, sur la feuille de solutions : « tu fais des calculs qui ne servent à
+ * rien, il faut que les calculs soient utiles — et on a le droit de ne pas se
+ * servir de certains nombres ». Le tirage se fabrique en enchaînant des
+ * opérations au hasard : rien n'oblige le résultat de la deuxième à entrer dans
+ * la troisième, et il restait alors sur la table, orphelin, au milieu du
+ * corrigé. On remonte donc depuis le résultat final et l'on ne conserve que ses
+ * ancêtres. Les plaques qui ne servent plus à rien restent sur la table : c'est
+ * la règle du jeu, et c'est même ce qui le rend intéressant.
+ */
+export function elaguer(chemin, depuis) {
+    if (!chemin || !chemin.length) return [];
+    const fin = depuis == null ? chemin.length - 1 : depuis;
+    if (fin < 0) return [];
+    const garder = new Set([fin]);
+    // Un pas en arrière suffit : `deA` et `deB` désignent toujours une étape
+    // ANTÉRIEURE, donc une seule passe descendante marque tout l'arbre.
+    for (let i = fin; i >= 0; i--) {
+        if (!garder.has(i)) continue;
+        if (chemin[i].deA != null) garder.add(chemin[i].deA);
+        if (chemin[i].deB != null) garder.add(chemin[i].deB);
+    }
+    return chemin.filter((_, i) => garder.has(i))
+        .map(({ a, op, b, resultat }) => ({ a, op, b, resultat }));
 }
 
 // --- La partie en cours -----------------------------------------------------------
@@ -256,34 +293,38 @@ export function resoudre(nombres, but, budget = 200000) {
     let noeuds = 0;
     const vus = new Set();
 
-    const noter = (chemin, valeur) => {
-        const ecart = Math.abs(valeur - but);
+    // LE CHEMIN RENDU NE GARDE QUE CE QUI MÈNE AU NOMBRE NOTÉ. En explorant, on
+    // empile des opérations dont certaines ne servent pas au résultat retenu :
+    // recopiées telles quelles dans un corrigé, ce sont des calculs morts.
+    const noter = (chemin, item) => {
+        const ecart = Math.abs(item.v - but);
+        const utileChemin = elaguer(chemin, item.de);
         if (!meilleur || ecart < meilleur.ecart
-            || (ecart === meilleur.ecart && chemin.length < meilleur.chemin.length)) {
-            meilleur = { ecart, chemin: chemin.slice(), valeur };
+            || (ecart === meilleur.ecart && utileChemin.length < meilleur.chemin.length)) {
+            meilleur = { ecart, chemin: utileChemin, valeur: item.v };
         }
     };
 
     const aller = (reserve, chemin) => {
         if (noeuds++ > budget) return;
-        for (const v of reserve) noter(chemin, v);
+        for (const item of reserve) noter(chemin, item);
         if (meilleur && meilleur.ecart === 0) return;
         if (reserve.length < 2) return;
 
-        const signature = reserve.slice().sort((x, y) => x - y).join(',');
+        const signature = reserve.map(x => x.v).sort((x, y) => x - y).join(',');
         if (vus.has(signature)) return;
         vus.add(signature);
 
         for (let i = 0; i < reserve.length; i++) {
             for (let j = i + 1; j < reserve.length; j++) {
-                const a = Math.max(reserve[i], reserve[j]);
-                const b = Math.min(reserve[i], reserve[j]);
+                const haut = reserve[i].v >= reserve[j].v ? reserve[i] : reserve[j];
+                const bas = reserve[i].v >= reserve[j].v ? reserve[j] : reserve[i];
                 const reste = reserve.filter((_, n) => n !== i && n !== j);
                 for (const op of OPERATIONS) {
-                    if (!utile(a, op, b)) continue;
-                    const r = calculer(a, op, b);
-                    chemin.push({ a, op, b, resultat: r });
-                    aller([...reste, r], chemin);
+                    if (!utile(haut.v, op, bas.v)) continue;
+                    const r = calculer(haut.v, op, bas.v);
+                    chemin.push({ a: haut.v, op, b: bas.v, resultat: r, deA: haut.de, deB: bas.de });
+                    aller([...reste, { v: r, de: chemin.length - 1 }], chemin);
                     chemin.pop();
                     if (meilleur && meilleur.ecart === 0) return;
                 }
@@ -291,7 +332,7 @@ export function resoudre(nombres, but, budget = 200000) {
         }
     };
 
-    aller(nombres.slice(), []);
+    aller(nombres.map(v => ({ v, de: null })), []);
     return meilleur;
 }
 

@@ -12,6 +12,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
+import { souligner } from '../fiche.js';
 
 // --- Addition ---------------------------------------------------------------
 
@@ -324,6 +325,39 @@ function fragmentsDe(jetons) {
     return out;
 }
 
+/**
+ * LA CASCADE DU CAHIER, EN COLONNE ET AVEC DES « = ».
+ *
+ * Rémy : « des = et non des flèches, souligner le calcul prioritaire, les
+ * calculs en colonne ». Le corrigé écrivait tout sur une ligne, séparé par des
+ * flèches — « 9 + 2 × 5 − 7 -> 9 + 10 − 7 -> 19 − 7 -> 12 ». Ce n'est pas ce
+ * qu'on demande d'écrire : au cahier, chaque étape va à la ligne, sous la
+ * précédente, précédée d'un signe égal — parce que ces expressions SONT égales,
+ * et que c'est toute la leçon. Sur chaque ligne, l'opération qu'on va faire est
+ * soulignée : c'est elle qui est prioritaire, et c'est tout ce que la règle
+ * demande de voir.
+ */
+function cascadePapier(lignes) {
+    if (!lignes || !lignes.length) return '';
+    const nombre = (v) => String(v).replace('.', ',');
+    const signe = (op) => (op === '-' ? '−' : op);
+    return lignes.map((l, i) => {
+        let texte = l.texte;
+        const f = lignes[i + 1] && lignes[i + 1].fait;
+        if (f && f.gauche !== null && f.droite !== null) {
+            const morceau = `${nombre(f.gauche)} ${signe(f.op)} ${nombre(f.droite)}`;
+            const ou = texte.indexOf(morceau);
+            // Introuvable : on n'invente pas de soulignement. Une ligne sans
+            // marque vaut mieux qu'une marque au mauvais endroit.
+            if (ou >= 0) {
+                texte = texte.slice(0, ou) + souligner(morceau)
+                    + texte.slice(ou + morceau.length);
+            }
+        }
+        return (i === 0 ? '' : '= ') + texte;
+    }).join('\n');
+}
+
 export const prioriteGenerator = {
     id: 'calc.priorites',
     label: 'Priorités opératoires',
@@ -425,7 +459,7 @@ export const prioriteGenerator = {
                     ? `On calcule d'abord ${prioritaire} = ${valeurPrio}, donc ${e.texte} = ${e.resultat}.`
                     : `${e.texte} = ${e.resultat}.`,
                 difficulty: Math.min(5, 2 + e.etapes),
-                explicationPapier: (e.lignes || []).map(l => l.texte).join(' → ')
+                explicationPapier: cascadePapier(e.lignes)
             });
         }
 

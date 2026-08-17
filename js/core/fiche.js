@@ -869,7 +869,7 @@ export function composerSolutions(questions, opts, mesurer) {
         // Les blancs, la ponctuation de fin, les marques de réponse et le
         // « ? » de l'énoncé d'écran : rien de tout cela ne change ce qui est
         // DIT, et tout cela suffisait à faire croire deux textes différents.
-        .replace(/[\u0001\u0002]/g, '')
+        .replace(/[\u0001-\u0004]/g, '')
         .replace(/[\s\u00A0\u202F.?…]/g, '');
     // On compare l'explication à LA LIGNE DÉJÀ COMPOSÉE — énoncé + réponse en
     // place —, pas au texte brut : c'est elle qui sera imprimée juste au-dessus.
@@ -1032,30 +1032,50 @@ export function reponseEnPlace(texte, reponse) {
  */
 export function morceauxReponse(ligne) {
     const out = [];
-    const re = /\u0001([^\u0002]*)\u0002/g;
-    let dernier = 0, m;
-    while ((m = re.exec(ligne))) {
-        if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
-        out.push({ texte: m[1], reponse: true });
-        dernier = m.index + m[0].length;
+    const t = String(ligne ?? '');
+    // UNE FERMANTE ORPHELINE : tout ce qui la précède l'était. Une réponse
+    // longue peut être coupée entre deux lignes — l'ouvrante reste d'un côté,
+    // la fermante part de l'autre —, et la moitié coupée doit garder son
+    // emphase plutôt que d'imprimer un rectangle noir.
+    const avantSeule = (ouvre, ferme) => {
+        const a = t.indexOf(ouvre), b = t.indexOf(ferme);
+        return b >= 0 && (a < 0 || b < a);
+    };
+    let courant = '';
+    let rep = avantSeule(DEBUT_REP, FIN_REP);
+    let soul = avantSeule(DEBUT_SOUL, FIN_SOUL);
+    const poser = () => {
+        if (!courant) return;
+        const m = { texte: courant };
+        if (rep) m.reponse = true;
+        if (soul) m.souligne = true;
+        out.push(m);
+        courant = '';
+    };
+    for (const ch of t) {
+        if (ch === DEBUT_REP || ch === FIN_REP || ch === DEBUT_SOUL || ch === FIN_SOUL) {
+            poser();
+            if (ch === DEBUT_REP) rep = true;
+            else if (ch === FIN_REP) rep = false;
+            else if (ch === DEBUT_SOUL) soul = true;
+            else soul = false;
+            continue;
+        }
+        courant += ch;
     }
-    let reste = ligne.slice(dernier);
-    // Une ouvrante seule : tout ce qui suit est la réponse.
-    const ouvre = reste.indexOf(DEBUT_REP);
-    if (ouvre >= 0) {
-        if (ouvre > 0) out.push({ texte: reste.slice(0, ouvre) });
-        out.push({ texte: sansMarques(reste.slice(ouvre + 1)), reponse: true });
-        reste = '';
-    }
-    // Une fermante seule : tout ce qui précède l'était.
-    const ferme = reste.indexOf(FIN_REP);
-    if (ferme >= 0) {
-        out.push({ texte: reste.slice(0, ferme), reponse: true });
-        reste = sansMarques(reste.slice(ferme + 1));
-    }
-    if (reste) out.push({ texte: reste });
+    poser();
     return out.length ? out : [{ texte: sansMarques(ligne) }];
 }
 
+/**
+ * SOULIGNER UN MORCEAU DE LIGNE. Une deuxième paire de marques, distincte de
+ * celle de la réponse : le corrigé des priorités doit montrer QUELLE opération
+ * est prioritaire, et la réponse, elle, se met en gras depuis que Rémy a fait
+ * retirer son trait. Deux emphases, deux marques.
+ */
+export const DEBUT_SOUL = '\u0003';
+export const FIN_SOUL = '\u0004';
+export const souligner = (t) => DEBUT_SOUL + t + FIN_SOUL;
+
 /** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */
-export const sansMarques = (t) => String(t ?? '').replace(/[\u0001\u0002]/g, '');
+export const sansMarques = (t) => String(t ?? '').replace(/[\u0001-\u0004]/g, '');
