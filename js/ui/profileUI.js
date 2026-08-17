@@ -22,16 +22,16 @@ import { listProfiles, getActiveProfileId, createProfile, renameProfile, deleteP
 import { showConfirm, showModal } from './modal.js';
 
 export function initProfileUI() {
-    document.addEventListener('errors_updated', () => { renderErrors(); renderPlan(); });
+    document.addEventListener('errors_updated', () => { renderErrors(); renderPlan(); majComptesOnglets(); });
     // Les médailles se rafraîchissent aussi sur les tentatives : leurs barres
     // suivent la série, la vitesse et la régularité, pas seulement le score.
     document.addEventListener('attempts_updated', () => {
-        renderSkills(); renderHeader(); renderPlan(); renderBadges();
+        renderSkills(); renderHeader(); renderPlan(); renderBadges(); majComptesOnglets();
     });
-    document.addEventListener('score_updated', () => { renderHeader(); renderBadges(); });
+    document.addEventListener('score_updated', () => { renderHeader(); renderBadges(); majComptesOnglets(); });
     document.addEventListener('time_updated', renderHeader);
-    document.addEventListener('badges_updated', renderBadges);
-    document.addEventListener('profiles_updated', renderProfiles);
+    document.addEventListener('badges_updated', () => { renderBadges(); majComptesOnglets(); });
+    document.addEventListener('profiles_updated', () => { renderProfiles(); majComptesOnglets(); });
 
     const btnRevision = document.getElementById('btn-start-revision');
     if (btnRevision) btnRevision.onclick = () => startErrorReview();
@@ -45,6 +45,7 @@ export function initProfileUI() {
     });
 
     initProfileSwitcher();
+    initOnglets();
 
     renderHeader();
     renderPlan();
@@ -52,6 +53,68 @@ export function initProfileUI() {
     renderErrors();
     renderBadges();
     renderProfiles();
+    majComptesOnglets();
+}
+
+// --- LES QUATRE ONGLETS -------------------------------------------------------
+//
+// La page empilait sept sections sur près de quatre mille pixels, dont mille
+// cinq cents pour le seul carnet d'erreurs : il fallait faire défiler cinq
+// écrans pour voir ses badges, et « ce qu'il faut faire maintenant » se
+// noyait au milieu du reste. Les quatre grandes sections deviennent quatre
+// onglets, et l'en-tête — score, niveau, profils — leur reste commun.
+//
+// LE COMPTEUR SUR L'ONGLET compte autant que l'onglet lui-même : il dit s'il y
+// a quelque chose à voir SANS avoir à cliquer. « Mes erreurs » vide et « Mes
+// erreurs (12) » n'appellent pas le même geste.
+
+const CLE_ONGLET = 'mathbox-profil-onglet';
+
+function initOnglets() {
+    const barre = document.querySelector('.prof-onglets');
+    if (!barre) return;
+    let vise = null;
+    try { vise = localStorage.getItem(CLE_ONGLET); } catch (e) { vise = null; }
+    const connus = [...barre.querySelectorAll('[data-onglet]')].map(b => b.dataset.onglet);
+    montrerOnglet(connus.includes(vise) ? vise : 'reviser');
+    barre.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-onglet]');
+        if (btn) montrerOnglet(btn.dataset.onglet);
+    });
+}
+
+function montrerOnglet(nom) {
+    document.querySelectorAll('.prof-onglets [data-onglet]').forEach(b => {
+        const actif = b.dataset.onglet === nom;
+        b.classList.toggle('prof-onglet-btn--actif', actif);
+        b.setAttribute('aria-selected', String(actif));
+    });
+    document.querySelectorAll('.prof-panneau').forEach(s => {
+        s.hidden = s.dataset.panneau !== nom;
+    });
+    try { localStorage.setItem(CLE_ONGLET, nom); } catch (e) { /* privé */ }
+}
+
+/**
+ * Ce que chaque onglet a dans le ventre. On COMPTE ce que l'élève verra, pas
+ * ce qui existe en base : un carnet filtré sur les seules erreurs révisables
+ * annoncerait sinon douze entrées pour en montrer trois.
+ */
+function majComptesOnglets() {
+    const poser = (cle, n, mot) => {
+        const el = document.querySelector(`[data-compte="${cle}"]`);
+        if (!el) return;
+        el.textContent = n ? String(n) : '';
+        el.hidden = !n;
+        if (mot) el.title = `${n} ${mot}${n > 1 ? 's' : ''}`;
+    };
+    poser('reviser', getDueSkills().length, 'notion à revoir');
+    poser('progres', computeSkillStats().length, 'notion travaillée');
+    poser('erreurs', state.errorHistory.filter(e => estRevisable(e.exoId)).length, 'erreur');
+    // `state.badges` est un OBJET { badgeId: date }, pas un tableau : compter
+    // sa `length` donnait toujours zéro, et l'onglet paraissait vide alors
+    // qu'il portait déjà six médailles.
+    poser('badges', Object.keys(state.badges || {}).length, 'badge');
 }
 
 // --- En-tête : score, niveau, temps -----------------------------------------

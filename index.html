@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=246">
-    <link rel="stylesheet" href="css/layout.css?v=246">
-    <link rel="stylesheet" href="css/ui.css?v=246">
-    <link rel="stylesheet" href="css/games.css?v=246">
-    <link rel="stylesheet" href="css/components.css?v=246">
-    <link rel="stylesheet" href="css/modules.css?v=246">
+    <link rel="stylesheet" href="css/base.css?v=247">
+    <link rel="stylesheet" href="css/layout.css?v=247">
+    <link rel="stylesheet" href="css/ui.css?v=247">
+    <link rel="stylesheet" href="css/games.css?v=247">
+    <link rel="stylesheet" href="css/components.css?v=247">
+    <link rel="stylesheet" href="css/modules.css?v=247">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -455,47 +455,85 @@
                             progression et ses statistiques séparément.</p>
                         <div id="profile-switcher" class="profile-switcher"></div>
 
+                        <!-- QUATRE ONGLETS PLUTÔT QU'UNE COLONNE DE QUATRE MÈTRES.
+                             Les quatre sections qui suivent étaient empilées : près
+                             de 3 800 pixels de haut, dont 1 559 pour le seul carnet
+                             d'erreurs. L'élève devait faire défiler cinq écrans pour
+                             voir ses badges, et « ce qu'il faut faire maintenant » se
+                             noyait au milieu. En onglets, chacune tient sur un écran,
+                             et le compteur posé sur l'onglet dit s'il y a quelque
+                             chose à y voir avant même de cliquer. L'en-tête — score,
+                             niveau, profils — reste au-dessus : c'est l'identité, elle
+                             vaut pour les quatre. -->
+                        <div class="prof-onglets" role="tablist" aria-label="Mes progrès">
+                            <button type="button" class="prof-onglet-btn" role="tab" data-onglet="reviser">
+                                <span class="prof-onglet-nom">À réviser</span>
+                                <span class="prof-onglet-compte" data-compte="reviser"></span>
+                            </button>
+                            <button type="button" class="prof-onglet-btn" role="tab" data-onglet="progres">
+                                <span class="prof-onglet-nom">Mes progrès</span>
+                                <span class="prof-onglet-compte" data-compte="progres"></span>
+                            </button>
+                            <button type="button" class="prof-onglet-btn" role="tab" data-onglet="erreurs">
+                                <span class="prof-onglet-nom">Mes erreurs</span>
+                                <span class="prof-onglet-compte" data-compte="erreurs"></span>
+                            </button>
+                            <button type="button" class="prof-onglet-btn" role="tab" data-onglet="badges">
+                                <span class="prof-onglet-nom">Badges</span>
+                                <span class="prof-onglet-compte" data-compte="badges"></span>
+                            </button>
+                        </div>
+
                         <!-- Ce qu'il faut réviser : la seule section qui dise à
                              l'élève quoi faire MAINTENANT, avec les exercices
-                             correspondants à portée de clic. -->
-                        <div class="section-header-row">
-                            <h3 class="section-title">Ce que tu dois réviser</h3>
-                            <button id="btn-seance-conseillee" class="btn-toggle">▶ Lancer la séance conseillée</button>
-                        </div>
-                        <div id="revision-plan-container"></div>
-
-                        <h3 class="section-title">Forces &amp; Points à Travailler</h3>
-                        <div id="skill-stats-container">
-                            <div class="empty-state-msg">Joue à quelques exercices pour voir apparaître tes points forts et tes points à travailler ici.</div>
-                        </div>
-
-                        <div class="section-header-row">
-                            <h3 class="section-title">Carnet d'Erreurs</h3>
-                            <div class="section-header-actions">
-                                <!-- Les jeux d'arcade produisent des dizaines de
-                                     fautes par partie : elles nourrissent le
-                                     modèle de maîtrise mais noieraient le carnet.
-                                     Elles sont donc repliées par défaut. -->
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="profile-show-games">
-                                    Inclure les jeux
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="profile-group-exo" checked>
-                                    Grouper par exercice
-                                </label>
-                                <button id="btn-start-revision" class="btn-toggle">Lancer
-                                    mon Plan de Révisions</button>
+                             correspondants à portée de clic. C'est elle qui s'ouvre
+                             en premier. -->
+                        <section class="prof-panneau" data-panneau="reviser" role="tabpanel">
+                            <div class="section-header-row">
+                                <h3 class="section-title">Ce que tu dois réviser</h3>
+                                <button id="btn-seance-conseillee" class="btn-toggle">▶ Lancer la séance conseillée</button>
                             </div>
-                        </div>
-                        <div id="error-log-container">
-                            <div class="empty-state-msg">
-                                Bravo ! Tu n'as aucune erreur en attente de révision.
-                            </div>
-                        </div>
+                            <div id="revision-plan-container"></div>
+                        </section>
 
-                        <h3 class="section-title">Badges</h3>
-                        <div id="profile-badges-container"></div>
+                        <section class="prof-panneau" data-panneau="progres" role="tabpanel" hidden>
+                            <h3 class="section-title">Forces &amp; Points à Travailler</h3>
+                            <div id="skill-stats-container">
+                                <div class="empty-state-msg">Joue à quelques exercices pour voir apparaître tes points forts et tes points à travailler ici.</div>
+                            </div>
+                        </section>
+
+                        <section class="prof-panneau" data-panneau="erreurs" role="tabpanel" hidden>
+                            <div class="section-header-row">
+                                <h3 class="section-title">Carnet d'Erreurs</h3>
+                                <div class="section-header-actions">
+                                    <!-- Les jeux d'arcade produisent des dizaines de
+                                         fautes par partie : elles nourrissent le
+                                         modèle de maîtrise mais noieraient le carnet.
+                                         Elles sont donc repliées par défaut. -->
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="profile-show-games">
+                                        Inclure les jeux
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="profile-group-exo" checked>
+                                        Grouper par exercice
+                                    </label>
+                                    <button id="btn-start-revision" class="btn-toggle">Lancer
+                                        mon Plan de Révisions</button>
+                                </div>
+                            </div>
+                            <div id="error-log-container">
+                                <div class="empty-state-msg">
+                                    Bravo ! Tu n'as aucune erreur en attente de révision.
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="prof-panneau" data-panneau="badges" role="tabpanel" hidden>
+                            <h3 class="section-title">Badges</h3>
+                            <div id="profile-badges-container"></div>
+                        </section>
                     </div>
                 </div>
             </main>

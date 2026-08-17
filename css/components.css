@@ -100,6 +100,40 @@
 .view-heading-subtitle { font-size: clamp(.95rem, 3.4vw, 1.1rem); color: var(--text-muted); }
 #view-path .view-heading-subtitle { margin-bottom: 40px; }
 
+/* --- LES ONGLETS DU PROFIL ---------------------------------------------------
+   Quatre sections empilées faisaient près de quatre mille pixels de haut, dont
+   mille cinq cents pour le seul carnet d'erreurs. En onglets, chacune tient sur
+   un écran. La barre COLLE EN HAUT quand on fait défiler : sur un carnet long,
+   revenir en arrière pour changer d'onglet est précisément le geste qu'on veut
+   éviter. */
+.prof-onglets {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin: 28px 0 18px; padding: 6px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow-sm);
+}
+.prof-onglet-btn {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 14px; border: 0; border-radius: 10px;
+    background: transparent; color: var(--text-muted);
+    font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+.prof-onglet-btn:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.prof-onglet-btn--actif { background: var(--primary); color: #fff; }
+/* Le compteur DIT S'IL Y A QUELQUE CHOSE À VOIR avant qu'on clique. Vide, il
+   disparaît : un « 0 » posé sur un onglet se lit comme une erreur. */
+.prof-onglet-compte {
+    min-width: 1.5em; padding: 1px 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--primary); font-size: .78rem; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.prof-onglet-btn--actif .prof-onglet-compte { background: rgba(255, 255, 255, .25); color: #fff; }
+.prof-onglet-compte[hidden] { display: none; }
+.prof-panneau[hidden] { display: none; }
+
 .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
 .section-title { color: var(--text-main); margin: 0 0 20px 0; }
 .section-header-row .section-title { margin-bottom: 0; }
