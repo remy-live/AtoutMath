@@ -3094,6 +3094,31 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     font-size: 1.15rem; font-weight: 900; line-height: 1;
 }
 
+/* TÉLÉPHONE : LE PLATEAU D'ABORD. Rémy, sur iPhone : « carrément pas maniable
+   et clair, et le plus-moins du zoom n'est pas terrible ».
+   Le plateau est la seule chose qu'on manipule ici — on y pose un rapporteur,
+   on le fait tourner, on lit une graduation — et il tombait à cent quarante
+   pixels de haut : l'énoncé sur deux lignes, la carte « à l'œil », deux rangées
+   de commandes, le bouton Valider et la barre d'aide lui prenaient tout. Tout
+   cela se resserre et tient sur une rangée ; le plateau récupère près du double
+   de sa hauteur, et l'on peut enfin viser une graduation.
+   Les touches de zoom, elles, deviennent de vraies cibles de 44 px portant la
+   loupe : « − » et « + » tout seuls ne disaient pas de quoi ils parlaient. */
+@media (max-width: 480px) {
+    .angles-layout > .game-question { font-size: clamp(1rem, 4.4vw, 1.3rem); margin-bottom: 0; }
+    .angles-layout { gap: 5px; padding: 5px; }
+    .angles-estimation { padding: 5px 8px; gap: 6px; }
+    .angles-estimation-label { font-size: .8rem; }
+    .angles-estimation .btn-hint { padding: 5px 9px; font-size: .84rem; }
+    .angles-board { min-height: 200px; height: clamp(200px, 58cqh, 480px); }
+    .angles-controls { gap: 6px; }
+    .angles-controls .btn-hint { padding: 6px 8px; font-size: .8rem; }
+    .angles-input-label { font-size: .82rem; gap: 4px; }
+    .angles-input { width: 58px; padding: 5px 6px; font-size: 1rem; }
+    .angles-zoom .btn-hint { min-width: 44px; padding: 6px 0; font-size: .95rem; }
+    .angles-layout .kk-btn-valider { padding: 7px 16px; font-size: .95rem; }
+}
+
 /* --- Additionner des relatifs : le tableau de pastilles -------------
    Deux colonnes, ROUGE pour les positifs et BLEU pour les négatifs. Les
    teintes sont pastel à dessein : ce sont des jetons de manipulation, pas

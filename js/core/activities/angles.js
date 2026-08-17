@@ -76,8 +76,8 @@ export function mount(container, session, opts = {}) {
                             <span class="angles-built" data-built>— côté rouge : 45°</span></span>`}
                     <button type="button" class="btn-hint" data-loupe>🔍 Loupe</button>
                     <span class="angles-zoom">
-                        <button type="button" class="btn-hint" data-zoom="-1" aria-label="Dézoomer">−</button>
-                        <button type="button" class="btn-hint" data-zoom="1" aria-label="Zoomer">+</button>
+                        <button type="button" class="btn-hint" data-zoom="-1" aria-label="Dézoomer" title="Dézoomer">🔍−</button>
+                        <button type="button" class="btn-hint" data-zoom="1" aria-label="Zoomer" title="Zoomer">🔍+</button>
                     </span>
                     <button type="button" class="btn-hint" data-recentre>🧭 Recentrer</button>
                     <button type="button" class="kk-btn-valider" data-valider>Valider</button>
@@ -517,13 +517,28 @@ export function mount(container, session, opts = {}) {
         ctx.translate(etat.pan.x, etat.pan.y);
         ctx.scale(etat.zoom, etat.zoom);
 
-        // Quadrillage discret
+        // QUADRILLAGE DISCRET, SUR TOUT CE QU'ON VOIT. Rémy : « quand on
+        // dézoome, le quadrillage n'est pas complet ». Il était tracé de 0 à la
+        // largeur du canevas — c'est-à-dire sur la vue NON transformée — alors
+        // qu'il se dessine après le déplacement et le zoom : dès qu'on
+        // s'éloignait ou qu'on faisait glisser la vue, on voyait le bord du
+        // papier et le carreau s'arrêtait au milieu de l'écran.
+        // On calcule donc le rectangle du monde réellement visible, et l'on
+        // trace les lignes en s'alignant sur le pas de 40.
         ctx.save();
         ctx.strokeStyle = 'rgba(100, 116, 139, 0.14)';
-        ctx.lineWidth = 1;
+        // Le trait garde son épaisseur à l'écran : sous le zoom, un trait de 1
+        // devient un trait de 4 quand on s'approche, et de 0,3 quand on
+        // s'éloigne — un carreau plus visible que l'angle, ou plus du tout.
+        ctx.lineWidth = 1 / etat.zoom;
+        const PAS = 40;
+        const gauche = -etat.pan.x / etat.zoom, droite = (w - etat.pan.x) / etat.zoom;
+        const haut = -etat.pan.y / etat.zoom, bas = (h - etat.pan.y) / etat.zoom;
+        const debutX = Math.floor(gauche / PAS) * PAS;
+        const debutY = Math.floor(haut / PAS) * PAS;
         ctx.beginPath();
-        for (let x = 0; x < w; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-        for (let y = 0; y < h; y += 40) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+        for (let x = debutX; x <= droite; x += PAS) { ctx.moveTo(x, haut); ctx.lineTo(x, bas); }
+        for (let y = debutY; y <= bas; y += PAS) { ctx.moveTo(gauche, y); ctx.lineTo(droite, y); }
         ctx.stroke();
         ctx.restore();
 
