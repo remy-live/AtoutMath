@@ -30,6 +30,8 @@ import {
     ajusterAuCarre, insecable, cheminSerpentin, boiteDe as boiteCaseDomino, cellulesDe
 } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
+import { caseCentrale } from '../core/quadrillageSvg.js';
+import { NOMS as NOMS_TRANSFO } from '../core/transformations.js';
 import { pieceSvg, dessinerPiecePdf, direPiece, MENTION_PIECES } from './piecesEchecs.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import { ecrire as ecrireProp } from '../core/proportion.js';
@@ -5898,7 +5900,128 @@ function dessinerQuadrillagePdf(doc, item, slot, solution) {
     doc.text(qLegende(m), g.boite.x + g.boite.w / 2, g.yLegende, { align: 'center' });
 }
 
+// --- Le pavage ----------------------------------------------------------------
+//
+// Même quadrillage, autre question : les pièces portent une LETTRE, et l'élève
+// écrit le nom de la transformation. Sur le papier il n'a pas les propositions
+// sous les yeux — c'est plus exigeant que l'écran, et c'est très bien : le
+// vocabulaire se retient en l'écrivant.
+//
+// La lettre fait tout le travail de désignation. La couleur, elle, ne survit
+// pas à une photocopie ; les pièces sont donc grises, et seules celles DONT
+// PARLE LA QUESTION sont cerclées de noir — sur cinq pièces éparpillées, les
+// retrouver prendrait plus de temps que de répondre.
+
+function geoPavage(item, slot) {
+    const g = geoQuadrillage(item, slot);
+    // Deux lignes sous la grille : la question, puis de quoi écrire.
+    return { ...g, yQuestion: g.boite.y + g.boite.h - g.pt * 0.3528 * 3.4 };
+}
+
+function pavagePreviewHtml(item, slot, k, solution) {
+    const g = geoPavage(item, slot);
+    const m = g.m;
+    let html = '';
+
+    (m.pieces || []).forEach((cases, i) => {
+        const vedette = i === m.de || i === m.vers;
+        cases.forEach(c => {
+            html += `<div style="position:absolute;
+                left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
+                width:${g.pas * k}px; height:${g.pas * k}px;
+                background:rgba(120,128,150,${vedette ? '.34' : '.18'});
+                ${vedette ? `outline:${Math.max(1, 0.45 * k)}px solid #1a202c; outline-offset:-1px;` : ''}"></div>`;
+        });
+        const c = caseCentrale(cases);
+        html += `<div style="position:absolute;
+            left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
+            width:${g.pas * k}px; height:${g.pas * k}px; display:flex;
+            align-items:center; justify-content:center;
+            font-size:${(g.pas * 0.6 * k).toFixed(2)}px; font-weight:800;
+            color:#1a202c">${(m.noms || [])[i] || ''}</div>`;
+    });
+
+    const traits = [];
+    for (let i = 0; i <= g.L; i++) {
+        traits.push(`<line x1="${((g.x0 + i * g.pas) * k).toFixed(2)}" y1="${(g.y0 * k).toFixed(2)}"
+            x2="${((g.x0 + i * g.pas) * k).toFixed(2)}" y2="${((g.y0 + g.H * g.pas) * k).toFixed(2)}"/>`);
+    }
+    for (let j = 0; j <= g.H; j++) {
+        traits.push(`<line x1="${(g.x0 * k).toFixed(2)}" y1="${((g.y0 + j * g.pas) * k).toFixed(2)}"
+            x2="${((g.x0 + g.L * g.pas) * k).toFixed(2)}" y2="${((g.y0 + j * g.pas) * k).toFixed(2)}"/>`);
+    }
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <g stroke="#b0b6c5" stroke-width="${Math.max(0.5, 0.2 * k).toFixed(2)}" fill="none">${traits.join('')}</g>
+    </svg>`;
+
+    const dit = solution
+        ? `${(m.noms || [])[m.vers]} est l'image de ${(m.noms || [])[m.de]} par une ${NOMS_TRANSFO[m.genre] || ''}.`
+        : `${(m.pieces || []).length ? questionDuPavage(m) : ''} ${'.'.repeat(30)}`;
+    html += `<div style="position:absolute; left:${g.boite.x * k}px;
+        top:${g.yQuestion * k}px; width:${g.boite.w * k}px;
+        font-size:${(g.pt * 0.3528 * k).toFixed(2)}px; line-height:1.35;
+        color:#2d3748">${dit}</div>`;
+    return html;
+}
+
+const questionDuPavage = (m) =>
+    `La pièce ${(m.noms || [])[m.vers]} est l'image de la pièce ${(m.noms || [])[m.de]} par :`;
+
+function dessinerPavagePdf(doc, item, slot, solution) {
+    const g = geoPavage(item, slot);
+    const m = g.m;
+
+    (m.pieces || []).forEach((cases, i) => {
+        const vedette = i === m.de || i === m.vers;
+        doc.setFillColor(...(vedette ? ENCRE.grille : ENCRE.donnee));
+        cases.forEach(c => doc.rect(g.x0 + c.x * g.pas, g.y0 + c.y * g.pas, g.pas, g.pas, 'F'));
+    });
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.2);
+    for (let i = 0; i <= g.L; i++) doc.line(g.x0 + i * g.pas, g.y0, g.x0 + i * g.pas, g.y0 + g.H * g.pas);
+    for (let j = 0; j <= g.H; j++) doc.line(g.x0, g.y0 + j * g.pas, g.x0 + g.L * g.pas, g.y0 + j * g.pas);
+
+    // Le contour des deux pièces de la question, tracé APRÈS le quadrillage :
+    // dessiné avant, les traits gris de la grille l'auraient recouvert.
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.45);
+    (m.pieces || []).forEach((cases, i) => {
+        if (i !== m.de && i !== m.vers) return;
+        cases.forEach(c => doc.rect(g.x0 + c.x * g.pas, g.y0 + c.y * g.pas, g.pas, g.pas, 'D'));
+    });
+
+    doc.setTextColor(...ENCRE.trait);
+    doc.setFontSize(Math.max(7, g.pas * 1.6));
+    (m.pieces || []).forEach((cases, i) => {
+        const c = caseCentrale(cases);
+        doc.text(String((m.noms || [])[i] || ''),
+            g.x0 + (c.x + 0.5) * g.pas, g.y0 + (c.y + 0.68) * g.pas, { align: 'center' });
+    });
+
+    doc.setFontSize(g.pt);
+    doc.setTextColor(...ENCRE.texte);
+    const dit = solution
+        ? `${(m.noms || [])[m.vers]} est l'image de ${(m.noms || [])[m.de]} par une ${NOMS_TRANSFO[m.genre] || ''}.`
+        : `${questionDuPavage(m)} ${'.'.repeat(28)}`;
+    doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w), g.boite.x, g.yQuestion);
+}
+
 export const RENDUS = {
+    pavage: {
+        titre: 'Reconnaître la transformation',
+        consigne: () => 'Chaque pièce porte une lettre. Pour chaque pavage, écris par quelle '
+            + 'transformation la seconde pièce est l\'image de la première : symétrie axiale, '
+            + 'symétrie centrale, translation ou rotation. Trois questions dans l\'ordre, et la '
+            + 'réponse tombe : la figure a-t-elle été RETOURNÉE (miroir) ? est-elle restée DROITE '
+            + '(translation) ? sinon elle a tourné — d\'un demi-tour (centrale) ou d\'un quart (rotation).',
+        previewGrille: pavagePreviewHtml,
+        pdfGrille: dessinerPavagePdf,
+        nomBloc: 'Pavage', nomBlocs: 'pavages',
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
     quadrillage: {
         titre: 'Tracer l\'image sur le quadrillage',
         consigne: (items) => {

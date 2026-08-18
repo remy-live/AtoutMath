@@ -49,6 +49,24 @@ const esc = (s) => String(s).replace(/[&<>"]/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /**
+ * La case d'une figure la plus proche de son centre de gravité.
+ *
+ * Le centre de gravité lui-même ne convient pas : pour un L ou un U, il tombe
+ * DANS LE CREUX, donc en dehors de la pièce — et la lettre irait s'écrire sur
+ * la voisine. On prend donc la case réelle la plus proche.
+ */
+export function caseCentrale(cases) {
+    const n = cases.length;
+    const cx = cases.reduce((s, p) => s + p.x, 0) / n;
+    const cy = cases.reduce((s, p) => s + p.y, 0) / n;
+    return cases.reduce((meilleure, p) => {
+        const d = (p.x - cx) ** 2 + (p.y - cy) ** 2;
+        const dm = (meilleure.x - cx) ** 2 + (meilleure.y - cy) ** 2;
+        return d < dm ? p : meilleure;
+    }, cases[0]);
+}
+
+/**
  * Le quadrillage complet.
  *
  * @param {Object} cfg
@@ -90,8 +108,12 @@ export function quadrillageSvg(cfg = {}) {
             parts.push(`<rect class="qd-case ${f.classe || ''}" x="${px(c.x)}" y="${px(c.y)}"
                 width="${u}" height="${u}"/>`);
         });
+        // L'ÉTIQUETTE SE POSE AU MILIEU DE LA PIÈCE, pas sur sa première case.
+        // Sur un pavage, la première case est souvent un bout de bras : la
+        // lettre se retrouvait au bord, collée à la pièce voisine, et l'on ne
+        // savait plus laquelle des deux elle nommait.
         if (f.etiquette && (f.cases || []).length) {
-            const c = f.cases[0];
+            const c = caseCentrale(f.cases);
             parts.push(`<text class="qd-etiquette" x="${px(c.x + 0.5)}" y="${px(c.y + 0.5)}"
                 text-anchor="middle" dominant-baseline="central">${esc(f.etiquette)}</text>`);
         }

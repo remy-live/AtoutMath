@@ -187,6 +187,36 @@ export const geometrieExercises = [
             + "se confondent souvent : le demi-tour est une symétrie centrale, jamais une rotation."
     },
 
+    {
+        // L'EXERCICE INVERSE DU PRÉCÉDENT, et c'est tout son intérêt. Tracer,
+        // c'est appliquer une règle qu'on vous donne ; reconnaître, c'est la
+        // retrouver — et cela demande de savoir ce que chaque transformation
+        // FAIT. On peut tracer une symétrie centrale sans avoir jamais vu
+        // qu'elle retourne la figure dans les deux sens à la fois.
+        id: 'geo-pavage', title: 'Le Pavage : Quelle Transformation ?',
+        consignePapier: 'Écris par quelle transformation la seconde pièce est l\'image de la première.',
+        generatorId: 'geo.transfo.pavage', activityId: 'bubbles',
+        printable: 'pavage',
+        skills: ['geo.transfo.reconnaitre'],
+        params: {
+            genres: ['axiale', 'centrale', 'translation', 'rotation'],
+            taille: 'moyen'
+        },
+        motsClefs: ['pavage', 'frise', 'transformation', 'reconnaître', 'symétrie',
+            'translation', 'rotation', 'damier'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Trois questions dans cet ordre, et la réponse tombe. UN : la pièce a-t-elle "
+            + "été RETOURNÉE, comme dans un miroir ? C'est la symétrie axiale — la seule des quatre "
+            + "qui retourne. DEUX : sinon, est-elle restée DROITE, dans la même position ? C'est une "
+            + "translation. TROIS : sinon elle a tourné — d'un demi-tour, c'est une symétrie centrale ; "
+            + "d'un quart de tour, c'est une rotation. "
+            + "Aucune question n'a deux réponses : les paires de pièces reliées par PLUSIEURS "
+            + "transformations — deux carrés voisins le sont — sont écartées avant d'être posées."
+    },
+
     // --- Angle Master : le rapporteur interactif ---
     {
         // Mesurer et construire sont les deux sens du même geste, et le

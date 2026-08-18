@@ -586,6 +586,20 @@
 .qd-posee { fill: rgba(22, 163, 74, .58); }
 .qd-etiquette { fill: #fff; font-size: 15px; font-weight: 800; }
 
+/* LES PIÈCES D'UN PAVAGE : six teintes, et une LETTRE sur chacune.
+   La couleur seule ne peut pas porter la question — un élève qui distingue mal
+   le vert du rouge, ou une feuille photocopiée, et « la pièce verte » ne veut
+   plus rien dire. C'est la lettre qui nomme, la couleur qui aide à séparer.
+   Les deux pièces DONT PARLE LA QUESTION sont en plus cerclées : sur cinq
+   pièces éparpillées, les retrouver prend plus de temps que de répondre. */
+.qd-piece-0 { fill: rgba(99, 102, 241, .62); }
+.qd-piece-1 { fill: rgba(20, 184, 166, .62); }
+.qd-piece-2 { fill: rgba(244, 114, 62, .62); }
+.qd-piece-3 { fill: rgba(168, 85, 247, .62); }
+.qd-piece-4 { fill: rgba(14, 165, 233, .62); }
+.qd-piece-5 { fill: rgba(132, 155, 40, .62); }
+.qd-piece--source, .qd-piece--cible { stroke: var(--text-main); stroke-width: 2.2; }
+
 /* La donnée de l'énoncé : axe, centre, vecteur. Le trait est épais — c'est
    l'élément qu'on regarde le plus longtemps. */
 .qd-marques { pointer-events: none; }
