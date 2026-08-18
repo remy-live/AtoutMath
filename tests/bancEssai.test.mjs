@@ -90,14 +90,14 @@ test('le MÊME exercice sur DEUX appareils fait deux lignes', () => {
 test('l\'avancement ne compte pour vu que ce qui a reçu un verdict', () => {
     // Ouvrir un exercice sans rien en dire, ce n'est pas l'avoir testé.
     const c = carnetType();
-    const liste = [{ id: 'geo-solides-denombrer' }, { id: 'geo-tangram' }, { id: 'num-lettres-mille' }];
+    const liste = [{ id: 'geo-solides-denombrer' }, { id: 'geo-tangram' }, { id: 'num-lettres' }];
     const a = avancement(c, liste);
     assert.equal(a.total, 3);
     assert.equal(a.vus, 2);
-    assert.deepEqual(a.restants, ['num-lettres-mille']);
+    assert.deepEqual(a.restants, ['num-lettres']);
     // Une ligne sans le verdict « ça marche » ne compte pas non plus.
     const partiel = noter(nouveauCarnet({ appareil: c.appareil }), {
-        exercice: 'num-lettres-mille', verdicts: { fiche: 'ok' }
+        exercice: 'num-lettres', verdicts: { fiche: 'ok' }
     });
     assert.equal(avancement(partiel, liste).vus, 0);
 });

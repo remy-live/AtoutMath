@@ -150,63 +150,21 @@ export const mesuresExercises = [
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Remplis la SILHOUETTE avec les sept pi\u00e8ces, sans trou ni chevauchement. Prends une pi\u00e8ce au doigt, tourne-la avec \u21bb (ou la touche R), et approche-la du bon endroit : elle se cale toute seule. Seul le parall\u00e9logramme se retourne, avec \u21c4. Si tu bloques, \u00ab Aide-moi \u00bb pose une pi\u00e8ce \u2014 mais la figure ne montre jamais o\u00f9 vont les autres. \u00c0 la fin, une question sur les aires : retiens que le carr\u00e9 et le triangle moyen couvrent la m\u00eame surface."
     },
-    // La pendule à aiguilles. Trois entrées plutôt qu'une : lire et placer
-    // sont deux gestes différents, et le professeur doit pouvoir donner l'un
-    // sans l'autre. La progression complète reste l'entrée principale.
+    // LA PENDULE À AIGUILLES, en un exercice. Lire et placer sont deux gestes
+    // différents et le professeur doit pouvoir donner l'un sans l'autre — c'est
+    // exactement ce que fait le réglage « Question », qui offre en prime
+    // l'alternance des deux. Les trois entrées d'avant portaient un
+    // `paramSchema` écrit à la main qui ne montrait QUE les nombres des
+    // minutes : le niveau et le type de question, pourtant déclarés sur le
+    // générateur, restaient hors d'atteinte. En le retirant, les trois
+    // réglages remontent d'eux-mêmes.
     {
-        id: 'mes-heure-lire', title: 'Quelle heure est-il ?',
+        id: 'mes-heure', title: 'Quelle heure est-il ?',
         generatorId: 'mes.horloge', activityId: 'horloge',
         printable: 'horloge',
         params: { niveau: 'progressif', question: 'lire', reperes: 'auto' },
-        // Les réglages de l'écran valent aussi pour la fiche : « avec ou sans
-        // les nombres des minutes » est une AIDE qu'on retire quand la lecture
-        // est acquise, sur le papier comme à l'écran.
-        paramSchema: [
-            {
-                id: 'reperes', type: 'select', label: 'Nombres des minutes',
-                aide: 'La couronne rouge des multiples de cinq aide à lire la grande aiguille. On la retire quand la lecture est acquise.',
-                options: [
-                    { value: 'auto', label: 'Selon le niveau (recommandé)' },
-                    { value: 'toujours', label: 'Toujours affichés' },
-                    { value: 'jamais', label: 'Jamais (pendule ordinaire)' }
-                ],
-                default: 'auto'
-            }
-        ],
-
+        motsClefs: ['pendule', 'aiguilles', 'placer', 'régler', '24 heures', 'après-midi'],
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Lis l'heure sur la pendule : la petite aiguille donne les heures, la grande les minutes."
-    },
-    {
-        id: 'mes-heure-placer', title: 'Règle la pendule',
-        generatorId: 'mes.horloge', activityId: 'horloge',
-        printable: 'horloge',
-        params: { niveau: 'progressif', question: 'placer', reperes: 'auto' },
-        // Les réglages de l'écran valent aussi pour la fiche : « avec ou sans
-        // les nombres des minutes » est une AIDE qu'on retire quand la lecture
-        // est acquise, sur le papier comme à l'écran.
-        paramSchema: [
-            {
-                id: 'reperes', type: 'select', label: 'Nombres des minutes',
-                aide: 'La couronne rouge des multiples de cinq aide à lire la grande aiguille. On la retire quand la lecture est acquise.',
-                options: [
-                    { value: 'auto', label: 'Selon le niveau (recommandé)' },
-                    { value: 'toujours', label: 'Toujours affichés' },
-                    { value: 'jamais', label: 'Jamais (pendule ordinaire)' }
-                ],
-                default: 'auto'
-            }
-        ],
-
-        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Tire les aiguilles pour afficher l'heure demandée."
-    },
-    {
-        id: 'mes-heure-24', title: 'Le tour de midi (24 heures)',
-        generatorId: 'mes.horloge', activityId: 'horloge',
-        printable: 'horloge',
-        params: { niveau: 'apresmidi', question: 'mixte', reperes: 'jamais' },
-        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "La pendule ne compte que jusqu'à 12 : l'après-midi, ajoute 12 pour donner l'heure en 24 heures."
+        instruction: "Lis l'heure sur la pendule : la petite aiguille donne les heures, la grande les minutes. Le réglage « Question » passe au geste inverse — tirer les aiguilles pour afficher une heure donnée — ou fait alterner les deux. Le réglage « Niveau » mène jusqu'au tour de midi : la pendule ne compte que jusqu'à 12, l'après-midi il faut ajouter 12 pour donner l'heure en 24 heures."
     }
 ];

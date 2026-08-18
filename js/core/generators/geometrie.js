@@ -22,8 +22,16 @@ export const repereGenerator = {
     answerKinds: ['point', 'choice'],
     params: [
         { id: 'relatifs', type: 'select', label: 'Coordonnées', options: ['positives', 'relatives'], default: 'positives' },
-        { id: 'max', type: 'number', label: 'Graduation maximale', default: 5, min: 3, max: 8 },
-        { id: 'mode', type: 'select', label: 'Question', options: ['auto', 'placer', 'lire'], default: 'auto' }
+        { id: 'max', type: 'number', label: 'Graduation maximale', default: 5, min: 3, max: 8 }
+        // `mode` (placer / lire) EST LU mais N'EST PAS un réglage.
+        //
+        // Il décide du type de réponse — un point à cliquer, ou un couple à
+        // choisir — et ce type est justement ce qu'une activité accepte ou
+        // non : « repère » ne prend que `point`, « lecture de coordonnées »
+        // que `choice`. Offert dans le panneau, il laissait donc choisir
+        // « Lire » dans l'exercice où l'on place, c'est-à-dire fabriquer une
+        // question que l'activité affichée ne sait pas poser. C'est le
+        // catalogue qui l'apparie à son activité, pas l'élève.
     ],
     generate(params, ctx) {
         const rng = ctx.rng;

@@ -139,7 +139,12 @@ export const poserFicheGenerator = {
         params = params || {};
         const operation = SIGNE[params.operation] ? params.operation : '+';
         const chiffres = Math.max(2, Math.min(5, Number(params.chiffres) || 3));
-        const nombres = operation === '+' ? Math.max(2, Math.min(3, Number(params.nombres) || 2)) : 2;
+        // `termes` en second : c'est le nom que porte le MÊME réglage à
+        // l'écran. Sans cet alias, choisir « trois nombres » avant d'imprimer
+        // n'avait aucun effet sur la feuille — le réglage était bien lu, mais
+        // sous un autre nom, et la fiche retombait sur son défaut.
+        const combien = Number(params.nombres ?? params.termes) || 2;
+        const nombres = operation === '+' ? Math.max(2, Math.min(3, combien)) : 2;
         const { ops, table } = tirer(rng, operation, chiffres, nombres,
             params.retenue !== false, params.diviseur);
 

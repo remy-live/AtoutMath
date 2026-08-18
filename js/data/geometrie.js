@@ -24,50 +24,29 @@ export const geometrieExercises = [
         motsClefs: ['segment', 'droite', 'demi-droite', 'notation', 'crochet'],
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
-            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Le crochet est un mur, la parenthèse laisse filer. [AB] s'arrête aux deux points, (AB) ne s'arrête jamais, [AB) part de A et continue au-delà de B. Attention à la demi-droite : le PREMIER point nommé est l'origine, donc [AB) et [BA) ne sont pas la même chose."
+        instruction: "Le crochet est un mur, la parenthèse laisse filer. [AB] s'arrête aux deux points, (AB) ne s'arrête jamais, [AB) part de A et continue au-delà de B. Attention à la demi-droite : le PREMIER point nommé est l'origine, donc [AB) et [BA) ne sont pas la même chose. "
+            + "Pour commencer, on peut retirer la demi-droite dans le réglage « Objets » : elle seule a une origine, et l'on ne comprend pas ce que code un crochet en découvrant en même temps qu'il y a un sens de parcours."
     },
     {
-        id: 'geo-notation-segment-droite',
-        title: 'Segment ou Droite ?',
-        consignePapier: "Réponds.",
-        colonnesPapier: 2,
-        generatorId: 'geo.notation', activityId: 'bubbles',
-        // La demi-droite est mise de côté : elle seule a une origine, et l'on
-        // ne peut pas comprendre ce que code un crochet en découvrant en même
-        // temps qu'il y a un sens de parcours.
-        params: { objets: ['segment', 'droite'], sens: ['ecrire', 'dessin', 'dire'] },
-        motsClefs: ['segment', 'droite', 'notation'],
-        tags: {
-            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
-            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME]
-        },
-        instruction: "Deux objets seulement pour commencer : le segment [AB], qui s'arrête aux deux points, et la droite (AB), qui ne s'arrête jamais. Deux crochets, ou deux parenthèses."
-    },
-    {
-        id: 'geo-redaction-para-perp', status: STATUS.TEST, title: 'Rédiger : Parallèles et Perpendiculaires',
+        // UNE PROPRIÉTÉ ET SA RÉCIPROQUE, dans le même exercice. Même figure,
+        // même rédaction en trois lignes ; ce qui change est le sens de la
+        // déduction — partir de deux parallèles, ou partir de deux angles
+        // droits. C'est la confusion la plus fréquente en sixième, et la
+        // séparer en deux entrées la rendait invisible : chacune s'annonçait
+        // dans son titre, donc il n'y avait plus rien à discriminer. Le
+        // réglage « Propriété travaillée » les offre côte à côte.
+        id: 'geo-redaction', status: STATUS.TEST, title: 'Rédiger une Justification',
         activityId: 'redaction',
         // Le générateur ne sert PAS à l'écran (l'activité est autonome) : il
         // sert au papier. Rédiger une justification, c'est écrire à la main —
         // c'est l'exercice qui gagne le plus à sortir de l'écran.
         generatorId: 'geo.redaction', printable: 'redaction',
         params: { propriete: 'para-perp' },
+        motsClefs: ['parallèles', 'perpendiculaires', 'réciproque', 'je sais que', 'or', 'donc'],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Une justification de géométrie a toujours trois lignes : JE SAIS QUE, OR, DONC. On les écrit une par une. D'abord tu remets la propriété du cours dans l'ordre, puis tu lis la figure — les droites en POINTILLÉS sont parallèles — puis la propriété s'écrit pendant que la figure montre de quoi elle parle, et enfin tu conclus."
-    },
-    {
-        // LA RÉCIPROQUE. Même figure, même rédaction en trois lignes, mais on
-        // part des DEUX angles droits pour conclure un parallélisme. C'est la
-        // confusion la plus fréquente en sixième : l'élève qui n'a qu'une
-        // propriété en tête écrit la première pour justifier un parallélisme.
-        id: 'geo-redaction-perp-perp', status: STATUS.TEST,
-        title: 'Rédiger : Deux Perpendiculaires à une Même Droite',
-        activityId: 'redaction',
-        generatorId: 'geo.redaction', printable: 'redaction',
-        params: { propriete: 'perp-perp' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Les deux angles droits sont DONNÉS sur la figure : c'est de là qu'on part. La propriété permet alors de conclure que les deux droites sont parallèles — attention à ne pas la confondre avec celle qui part de deux parallèles."
+        instruction: "Une justification de géométrie a toujours trois lignes : JE SAIS QUE, OR, DONC. On les écrit une par une. D'abord tu remets la propriété du cours dans l'ordre, puis tu lis la figure — les droites en POINTILLÉS sont parallèles — puis la propriété s'écrit pendant que la figure montre de quoi elle parle, et enfin tu conclus. Le réglage « Propriété travaillée » choisit le sens : partir de deux parallèles pour conclure un angle droit, ou partir de deux angles droits pour conclure un parallélisme."
     },
     {
         // PYTHAGORE, TRÈS PROGRESSIVEMENT. Six niveaux, six marches : montrer
@@ -117,16 +96,23 @@ export const geometrieExercises = [
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Les quatre instruments sont en haut de la feuille : règle, équerre, compas, rapporteur. On les prend, on les pose, on les tourne — à la souris comme au doigt — et on trace le long de leur bord. La figure de départ est déjà placée : lis la consigne, construis, puis appuie sur « Valider ma construction ». C'est la figure obtenue qui est jugée, pas l'outil choisi : la médiatrice au compas et la médiatrice à l'équerre valent pareil."
     },
+    // DEUX EXERCICES, ET NON QUATRE. Placer et lire sont bien deux gestes —
+    // deux activités, qui n'acceptent même pas le même type de réponse — mais
+    // « avec des négatifs » n'en est pas un troisième : c'est le réglage
+    // « Coordonnées ». `printParams` ne le répète plus, sans quoi la feuille
+    // imprimée restait dans les positifs quoi qu'on ait choisi à l'écran.
     {
         id: 'geo-repere-placer', title: 'Placer un Point',
         generatorId: 'geo.repere',
         // Sur le papier, UN repère porte SIX points : retracer des axes à
         // chaque question n'apprend rien, et gâche la moitié de la page.
         printable: 'repere', printGeneratorId: 'geo.repere-fiche',
-        printParams: { mode: 'placer', relatifs: 'positives', points: 6, max: 5 }, activityId: 'repere',
+        printParams: { mode: 'placer', points: 6 }, activityId: 'repere',
         params: { relatifs: 'positives', max: 5, mode: 'placer' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Clique dans le repère à l'endroit indiqué par les coordonnées. On lit l'abscisse en premier."
+        motsClefs: ['relatifs', 'négatifs', 'abscisse', 'ordonnée', 'coordonnées'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Clique dans le repère à l'endroit indiqué par les coordonnées. On lit l'abscisse en premier. "
+            + "Le réglage « Coordonnées » fait passer le repère dans les négatifs : attention alors aux signes."
     },
     {
         id: 'geo-repere-lire', title: 'Lire des Coordonnées',
@@ -134,53 +120,30 @@ export const geometrieExercises = [
         // Sur le papier, UN repère porte SIX points : retracer des axes à
         // chaque question n'apprend rien, et gâche la moitié de la page.
         printable: 'repere', printGeneratorId: 'geo.repere-fiche',
-        printParams: { mode: 'lire', relatifs: 'positives', points: 6, max: 5 }, activityId: 'repere-lecture',
+        printParams: { mode: 'lire', points: 6 }, activityId: 'repere-lecture',
         params: { relatifs: 'positives', max: 5, mode: 'lire' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Lis les coordonnées du point tracé et choisis le bon couple."
-    },
-    {
-        id: 'geo-repere-relatifs', title: 'Repère et Nombres Relatifs',
-        generatorId: 'geo.repere',
-        // Sur le papier, UN repère porte SIX points : retracer des axes à
-        // chaque question n'apprend rien, et gâche la moitié de la page.
-        printable: 'repere', printGeneratorId: 'geo.repere-fiche',
-        printParams: { mode: 'placer', relatifs: 'relatives', points: 6, max: 5 }, activityId: 'repere',
-        params: { relatifs: 'relatives', max: 5, mode: 'placer' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Le repère va maintenant dans les négatifs : attention aux signes de l'abscisse et de l'ordonnée."
-    },
-    {
-        id: 'geo-repere-relatifs-lire', title: 'Coordonnées Négatives',
-        generatorId: 'geo.repere',
-        // Sur le papier, UN repère porte SIX points : retracer des axes à
-        // chaque question n'apprend rien, et gâche la moitié de la page.
-        printable: 'repere', printGeneratorId: 'geo.repere-fiche',
-        printParams: { mode: 'lire', relatifs: 'relatives', points: 6, max: 5 }, activityId: 'repere-lecture',
-        params: { relatifs: 'relatives', max: 5, mode: 'lire' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Lis les coordonnées du point, sans oublier les signes."
+        motsClefs: ['relatifs', 'négatifs', 'abscisse', 'ordonnée', 'coordonnées'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Lis les coordonnées du point tracé et choisis le bon couple. "
+            + "Avec « Coordonnées » sur les relatives, il ne faut plus oublier les signes."
     },
 
     // --- Angle Master : le rapporteur interactif ---
     {
-        id: 'geo-angles-mesurer', status: STATUS.TEST, title: 'Angle Master : Mesurer',
+        // Mesurer et construire sont les deux sens du même geste, et le
+        // générateur les offre depuis toujours dans son réglage « Question » —
+        // qui propose même de les ALTERNER, ce qu'aucune des deux entrées
+        // séparées ne permettait d'atteindre.
+        id: 'geo-angles', status: STATUS.TEST, title: 'Angle Master',
         generatorId: 'geo.angles', activityId: 'angles',
         // C'est l'exercice qu'un écran ne remplace pas : le rapporteur de
         // plastique se pose de travers, et c'est en le redressant qu'on
         // comprend à quoi sert son repère central.
         printable: 'angles',
         params: { mode: 'mesurer', plage: 'tous', tolerance: 3 },
+        motsClefs: ['mesurer', 'construire', 'rapporteur', 'aigu', 'obtus', 'degrés'],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Estime d'abord si l'angle est aigu ou obtus, puis mesure-le : déplace le rapporteur sur le sommet, tourne-le par ses poignées pour aligner le zéro, et saisis la valeur lue."
-    },
-    {
-        id: 'geo-angles-construire', status: STATUS.TEST, title: 'Angle Master : Construire',
-        generatorId: 'geo.angles', activityId: 'angles',
-        printable: 'angles',
-        params: { mode: 'construire', plage: 'tous', tolerance: 3 },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Construis l'angle demandé : place le rapporteur, repère la graduation, puis amène le côté rouge dessus en tirant sa poignée."
+        instruction: "Estime d'abord si l'angle est aigu ou obtus, puis mesure-le : déplace le rapporteur sur le sommet, tourne-le par ses poignées pour aligner le zéro, et saisis la valeur lue. Le réglage « Question » passe à la construction — placer le rapporteur, repérer la graduation, amener le côté rouge dessus — ou fait alterner les deux."
     },
     {
         id: 'geo-chat-geometre', status: STATUS.TEST, title: 'Le Chat Géomètre',

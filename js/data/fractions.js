@@ -8,24 +8,21 @@ import { STATUS } from './status.js';
 
 export const fractionsExercises = [
     {
+        // Le réglage « Dénominateurs » EST la progression : identiques d'abord
+        // (on compare les numérateurs, rien d'autre), puis différents. C'était
+        // deux entrées de catalogue pour ce seul mot ; on part du plus facile,
+        // et le professeur ouvre quand la classe est prête.
         id: 'frac-compare',
         consignePapier: "Compare : écris <, = ou >.",
         colonnesPapier: 5,
         title: 'Duel de Fractions',
         generatorId: 'frac.compare', activityId: 'signs',
-        params: { memeDenominateur: 'libre', maxDen: 12 },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
-        instruction: "Compare les deux fractions et choisis le bon signe : <, = ou >."
-    },
-    {
-        id: 'frac-compare-facile',
-        consignePapier: "Compare : écris <, = ou >.",
-        colonnesPapier: 6,
-        title: 'Fractions : même dénominateur',
-        generatorId: 'frac.compare', activityId: 'signs',
         params: { memeDenominateur: 'identiques', maxDen: 10 },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Les dénominateurs sont identiques : compare les numérateurs."
+        motsClefs: ['même dénominateur', 'comparer', 'numérateur'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Compare les deux fractions et choisis le bon signe : <, = ou >. "
+            + "Tant que les dénominateurs sont identiques, il suffit de comparer les numérateurs ; "
+            + "le réglage « Dénominateurs » fait passer aux dénominateurs différents."
     },
     {
         id: 'frac-add',

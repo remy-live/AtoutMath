@@ -726,7 +726,7 @@ async function buildDiscoveryPath() {
     const steps = [
         makeStep('calc-add', {}, { nbItems: 5, threshold: 3 }),
         makeStep('calc-mult-flash', {}, { nbItems: 5, threshold: 3 }),
-        makeStep('frac-compare-facile', {}, { nbItems: 5, threshold: 3 }),
+        makeStep('frac-compare', { memeDenominateur: 'identiques' }, { nbItems: 5, threshold: 3 }),
         makeStep('mes-perimetre', {}, { nbItems: 4, threshold: 3 }),
         makeStep('calc-prio-resultat', {}, { nbItems: 5, threshold: 3 })
     ];

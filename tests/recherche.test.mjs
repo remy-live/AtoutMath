@@ -160,7 +160,7 @@ test('le catalogue réel répond aux recherches qu\'on tapera vraiment', () => {
         ['ville', 'geo-ville'],
         ['othello', 'logi-othello'],
         ['dames', 'logi-dames'],
-        ['rapporteur', 'geo-angles-mesurer'],
+        ['rapporteur', 'geo-angles'],
         // « Taupes des Tables » COMMENCE par le mot : il passe devant
         // « Chasse aux Taupes », qui ne fait que le contenir. C'est la règle,
         // et c'est le bon classement.
@@ -206,4 +206,34 @@ test('les mots-clefs du catalogue se cherchent', () => {
     // Et il RESSERRE comme les autres mots : « tables 6e » ne rend que celle-là.
     assert.deepEqual(chercher(fiches, 'tables 6ème').map(r => r.fiche.id), ['a']);
     assert.deepEqual(chercher(fiches, 'mystères').map(r => r.fiche.id), ['b']);
+});
+
+// --- Ce que les regroupements ont promis -------------------------------------
+
+test('les titres retirés par regroupement mènent encore à leur exercice', () => {
+    // Quand deux exercices n'en font plus qu'un, le titre qui disparaît devient
+    // un mot-clef. Sans ce test, la promesse « chercher thermomètre marche
+    // toujours » ne serait vérifiée par personne : c'est une donnée du
+    // catalogue, pas du code, donc rien ne casse quand elle s'oublie.
+    const fiches = exercices.map(e => preparer({
+        id: e.id, titre: e.title,
+        chemin: e.tags.chemin || [], niveaux: e.tags.niveaux || [],
+        motsCles: e.motsClefs || [], texte: e.instruction || ''
+    }));
+    const attendus = [
+        ['thermomètre', 'num-relatifs'],
+        ['pastilles', 'num-relatifs'],
+        ['grands nombres', 'num-lettres'],
+        ['centièmes', 'num-graduations'],
+        ['réciproque', 'geo-redaction'],
+        ['soustraction posée', 'calc-poser'],
+        ['zéros inutiles', 'num-ninja'],
+        ['même dénominateur', 'frac-compare'],
+        ['aiguilles', 'mes-heure']
+    ];
+    for (const [requete, id] of attendus) {
+        const trouves = chercher(fiches, requete, { max: 30 }).map(r => r.fiche.id);
+        assert.ok(trouves.includes(id),
+            `« ${requete} » ne mène plus à ${id} (trouvé : ${trouves.slice(0, 4).join(', ') || 'rien'})`);
+    }
 });

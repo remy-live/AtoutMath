@@ -38,7 +38,11 @@ test('AUCUN exercice du catalogue ne partage son code avec un autre', () => {
         vus.set(c, e.id);
     });
     assert.deepEqual(collisions, []);
-    assert.ok(exercices.length > 100, 'le catalogue doit être complet pour que ce test vaille');
+    // Le seuil dit seulement « le catalogue s'est bien chargé » : sans lui, un
+    // import cassé rendrait une liste vide, et le test passerait triomphalement
+    // sans avoir rien comparé. Il n'a pas à suivre la taille du catalogue —
+    // regrouper des exercices en réglages le fait légitimement diminuer.
+    assert.ok(exercices.length > 50, 'le catalogue doit être chargé pour que ce test vaille');
 });
 
 test('le code se recopie à la main sans se tromper', () => {

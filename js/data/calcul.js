@@ -243,18 +243,37 @@ export const calculExercises = [
         instruction: "Touche une plaque, un signe, une seconde plaque — puis ÉCRIS le résultat toi-même : la machine ne calcule jamais à ta place. Deux règles seulement : jamais de nombre négatif, et une division doit tomber juste. Une plaque ne sert qu'une fois, et le résultat obtenu revient sur la table."
     },
     {
-        id: 'calc-poser-addition', status: STATUS.TEST, title: 'Poser une addition',
+        // UN SEUL « POSER », le signe est un réglage. Le geste enseigné est le
+        // même — aligner les nombres, puis descendre colonne par colonne — et
+        // c'est justement ce qu'on veut faire sentir : ce qui change entre + et
+        // −, ce n'est pas la méthode, c'est l'endroit où se note la retenue.
+        // Les deux règles sont dites dans la consigne, l'une après l'autre.
+        id: 'calc-poser', status: STATUS.TEST, title: 'Poser une opération',
         activityId: 'poser-operation',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
         // imprime les nombres déjà en colonnes et laisse toute la place
         // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
         // banal d'une feuille de calcul — et il manquait.
+        //
+        // `printParams` ÉCRASE les réglages de l'écran (`{...params,
+        // ...printParams}` dans printSheet.js) : tout ce qu'on y répète devient
+        // un réglage sans effet sur la feuille. On n'y laisse donc QUE ce que
+        // l'écran ne règle pas — l'opération, la taille et le nombre de termes
+        // viennent maintenant du panneau, comme on s'y attend en le réglant.
         printable: 'pose', printGeneratorId: 'calc.poser-fiche',
-        printParams: { operation: '+', chiffres: 3, nombres: 2, retenue: true },
-        consignePapier: 'Effectue ces additions posées.',
+        printParams: { retenue: true },
+        consignePapier: 'Effectue ces opérations posées.',
         skills: ['num.add.entiers'],
-        params: { operation: '+', decimales: false, chiffres: 3 },
+        params: { operation: '+', decimales: false, chiffres: 3, termes: 2 },
         paramSchema: [
+            {
+                id: 'operation', type: 'select', label: 'Opération',
+                options: [
+                    { value: '+', label: 'Addition' },
+                    { value: '-', label: 'Soustraction' }
+                ],
+                default: '+'
+            },
             {
                 id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
                 aide: 'C\'est là que tout se joue : on aligne sur la VIRGULE, pas sur le bord droit.',
@@ -271,7 +290,7 @@ export const calculExercises = [
             },
             {
                 id: 'termes', type: 'select', label: 'Combien de nombres',
-                aide: 'À trois nombres, la retenue peut valoir 2 — et le petit rond le sait.',
+                aide: 'À trois nombres, la retenue peut valoir 2 — et le petit rond le sait. Sans effet sur une soustraction.',
                 options: [
                     { value: 2, label: 'Deux' },
                     { value: 3, label: 'Trois' }
@@ -279,39 +298,9 @@ export const calculExercises = [
                 default: 2
             }
         ],
+        motsClefs: ['addition posée', 'soustraction posée', 'retenue', 'colonnes', 'aligner'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille. Attrape-le par n'importe lequel de ses chiffres — celui que tu tiens tombe dans la colonne que tu survoles, et les autres suivent. Un fantôme te montre où il tomberait avant que tu lâches. Les unités sous les unités : c'est la virgule qui aligne, pas le bord droit. Puis calculer, colonne par colonne, en partant de la droite. La retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2."
-    },
-    {
-        id: 'calc-poser-soustraction', status: STATUS.TEST, title: 'Poser une soustraction',
-        activityId: 'poser-operation',
-        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
-        // imprime les nombres déjà en colonnes et laisse toute la place
-        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
-        // banal d'une feuille de calcul — et il manquait.
-        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
-        printParams: { operation: '-', chiffres: 3, nombres: 2, retenue: true },
-        consignePapier: 'Effectue ces soustractions posées.',
-        skills: ['num.add.entiers'],
-        params: { operation: '-', decimales: false, chiffres: 3 },
-        paramSchema: [
-            {
-                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
-                aide: 'C\'est là que tout se joue : on aligne sur la VIRGULE, pas sur le bord droit.',
-                default: false
-            },
-            {
-                id: 'chiffres', type: 'select', label: 'Taille des nombres',
-                options: [
-                    { value: 2, label: '2 chiffres' },
-                    { value: 3, label: '3 chiffres' },
-                    { value: 4, label: '4 chiffres' }
-                ],
-                default: 3
-            }
-        ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille, attrapé par le chiffre que tu veux — un fantôme montre où il tomberait. Puis soustraire, en partant de la droite. Quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : c'est là que se note la retenue, contre le nombre du dessous."
+        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille. Attrape-le par n'importe lequel de ses chiffres — celui que tu tiens tombe dans la colonne que tu survoles, et les autres suivent. Un fantôme te montre où il tomberait avant que tu lâches. Les unités sous les unités : c'est la virgule qui aligne, pas le bord droit. Puis calculer, colonne par colonne, en partant de la droite. Dans une ADDITION, la retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2. Dans une SOUSTRACTION, quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : la retenue se note contre le nombre du dessous."
     },
     {
         // POSER UNE MULTIPLICATION. Une LIGNE par chiffre du multiplicateur,
