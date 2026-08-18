@@ -1,111 +1,117 @@
-// LE PAVAGE : QUELLE PIÈCE EST L'IMAGE DE QUELLE AUTRE, ET PAR QUOI ?
+// LE PAVAGE : PAR RAPPORT À QUOI CES DEUX PIÈCES SONT-ELLES SYMÉTRIQUES ?
 //
-// C'est l'exercice ⑨ de la fiche de 4ᵉ de Rémy — le damier —, généralisé à
-// n'importe quel pavage : « la pièce D est l'image de la pièce B par quelle
-// transformation ? » Rémy : « reconnaître quelle pièce par quelle
-// transformation dans un pavage ».
+// Rémy, après une première version qui demandait le GENRE de transformation :
+// « je préférerais comme mon exercice avec des points, et on demande c'est
+// symétrique par rapport à quoi ». Il a raison, et l'écart entre les deux
+// questions est tout l'exercice.
 //
-// L'EXERCICE INVERSE DE « TRACER L'IMAGE », ET C'EST TOUT SON INTÉRÊT. Tracer,
-// c'est appliquer une règle qu'on vous donne ; reconnaître, c'est la retrouver
-// — et cela demande de savoir ce que chaque transformation FAIT, pas seulement
-// comment elle se calcule. Un élève peut tracer une symétrie centrale sans
-// jamais avoir vu qu'elle retourne la figure dans les deux sens à la fois.
+// NOMMER LA FAMILLE NE DEMANDE QUE DE RECONNAÎTRE UNE ALLURE. « C'est une
+// symétrie axiale » se devine au coup d'œil : la figure est retournée, donc
+// c'est un miroir. On n'a rien cherché.
 //
-// UNE SEULE RÉPONSE, TOUJOURS. C'est la difficulté du sujet, et elle est
-// mathématique, pas informatique : deux carrés voisins sont l'image l'un de
-// l'autre par une translation ET par une symétrie ; une pièce qui a elle-même
-// un axe de symétrie brouille tout. Une question à deux réponses justes en
-// compterait une fausse, et l'élève aurait raison contre la machine. Le noyau
-// sait énumérer TOUTES les transformations qui mènent d'une pièce à l'autre
-// (`genresEntre`) : on n'accepte une paire que s'il n'en trouve qu'une seule.
+// TROUVER L'ÉLÉMENT DEMANDE DE LE CHERCHER. Quelle droite, exactement ? Il faut
+// avoir compris qu'elle passe au MILIEU de chaque paire de points
+// correspondants, et qu'elle leur est perpendiculaire — c'est la définition, et
+// c'est elle qu'on travaille. Pour un centre, même chose : il est le milieu du
+// segment qui joint un point et son image.
 //
-// Ce filtre est la SEULE garantie, et il suffit : on n'a pas besoin d'écarter
-// les motifs symétriques par précaution. Un motif qui a un axe ou un centre de
-// symétrie donne simplement moins de paires utilisables — le tri les écarte
-// une à une, sans qu'on ait à deviner d'avance lesquelles.
+// C'EST POURQUOI PLUSIEURS CANDIDATS SONT TRACÉS, tous de la même façon. Si le
+// bon se distinguait par sa couleur ou son épaisseur, il n'y aurait plus rien à
+// chercher ; s'il était seul, la réponse serait donnée avec la question. Ils ne
+// diffèrent que par leur nom — (d₁), (d₂), O₁ — et l'un d'eux seulement
+// transforme la première pièce en la seconde.
+//
+// LES CANDIDATS TOMBENT SUR LES LIGNES ET LES NŒUDS DU QUADRILLAGE, jamais au
+// milieu d'une case. Ce n'est pas cosmétique : c'est ce qui fait que leurs
+// coordonnées sont des ENTIERS — « x = 4 », « (4 ; 7) » — au lieu de « x = 3,5 ».
+// On aurait sinon ajouté à l'exercice une difficulté de lecture décimale qui
+// n'a rien à voir avec la symétrie.
+//
+// PAS D'AXE OBLIQUE. Son équation n'a pas le même statut au collège que x = 4,
+// et l'élève de cinquième qui découvre la symétrie centrale n'a pas à trancher
+// entre les deux. L'oblique reste dans « Tracer l'image », où il se règle.
 
 import { makeItem, finalizeChoices } from '../items.js';
-import {
-    GESTES, NOMS, decrire, genresEntre, imageFigure, memeFigure,
-    transfosEntre
-} from '../transformations.js';
+import { imageFigure, memeFigure, parAxe, parCentre } from '../transformations.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
+import {
+    cleElement, ecrireElement, memeElement, nommerCandidat
+} from '../elementSymetrie.js';
 import { figure } from '../figures.js';
 
 /** Les lettres des pièces : on saute le I et le O, qui se lisent 1 et 0. */
 const LETTRES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 const TAILLES = {
-    petit: { l: 8, h: 8, cases: 3, pieces: 4 },
-    moyen: { l: 10, h: 10, cases: 4, pieces: 5 },
-    grand: { l: 12, h: 12, cases: 4, pieces: 6 }
+    petit: { l: 8, h: 8, cases: 3, pieces: 3, candidats: 3 },
+    moyen: { l: 10, h: 10, cases: 4, pieces: 4, candidats: 4 },
+    grand: { l: 12, h: 12, cases: 4, pieces: 5, candidats: 5 }
 };
 
-// --- Le motif -----------------------------------------------------------------
-
-/**
- * Les motifs de départ : des formes anguleuses, celles des pavages de fiches.
- *
- * Trois d'entre elles ont une symétrie propre — le coin a un axe oblique, le S
- * et l'escalier ont un centre —, et c'est sans conséquence : une pièce
- * symétrique se correspond à elle-même par plusieurs transformations, donc les
- * paires qu'elle formerait sont ambiguës, et `pairesSures` les écarte. On perd
- * quelques paires, jamais la justesse.
- */
+/** Les motifs de départ : les formes anguleuses des pavages de fiches. */
 export const MOTIFS = [
-    [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }],                    // le coin
-    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 1 }],    // le S
-    [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],    // le L
-    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }],    // le J couché
-    [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 2 }]     // l'escalier
+    [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }],
+    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 1 }],
+    [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }],
+    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }],
+    [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 2 }]
 ];
 
-/** Un motif a-t-il un axe ou un centre de symétrie ? */
-export function estSymetrique(motif) {
-    // On se compare à soi-même : si une transformation autre que l'identité
-    // laisse la figure en place, elle est symétrique.
-    return transfosEntre(motif, motif, { quarts: true })
-        .some(t => !(t.genre === 'translation' && !t.vecteur.x && !t.vecteur.y));
-}
-
 const cle = (p) => `${p.x}|${p.y}`;
-
 const decale = (f, dx, dy) => f.map(p => ({ x: p.x + dx, y: p.y + dy }));
 
 const dansLaGrille = (f, l, h) =>
     f.every(p => Number.isInteger(p.x) && Number.isInteger(p.y)
         && p.x >= 0 && p.x < l && p.y >= 0 && p.y < h);
 
-// --- Poser les pièces ---------------------------------------------------------
+// --- Les éléments de symétrie -------------------------------------------------
 
-/**
- * Les transformations dont on se sert pour ENGENDRER le pavage.
- *
- * Elles ne sont pas la réponse : ce qui relie deux pièces quelconques du
- * pavage est recalculé après coup par le noyau, et vaut souvent tout autre
- * chose que ce qui a servi à les poser. On veut seulement de la variété.
- */
-function transfoDeGeneration(rng, l, h) {
-    const genre = rng.pick(['axiale', 'axiale', 'centrale', 'translation', 'rotation']);
-    if (genre === 'axiale') {
-        const type = rng.pick(['v', 'h']);
-        return { genre, axe: { type, a: rng.int(0, (type === 'v' ? l : h) - 1) + rng.pick([0, 0.5]) } };
-    }
-    if (genre === 'centrale') {
-        return { genre, centre: { x: rng.int(0, l - 1) + rng.pick([0, 0.5]), y: rng.int(0, h - 1) + rng.pick([0, 0.5]) } };
-    }
-    if (genre === 'translation') {
-        return { genre, vecteur: { x: rng.int(-4, 4), y: rng.int(-4, 4) } };
-    }
-    return { genre, centre: { x: rng.int(0, l - 1), y: rng.int(0, h - 1) }, quarts: rng.pick([1, 3]) };
+/** Applique un élément à une figure : c'est ce qu'on demande de reconnaître. */
+export function parElement(f, el) {
+    if (!el) return f;
+    return el.genre === 'axe'
+        ? f.map(p => parAxe(p, el.axe))
+        : f.map(p => parCentre(p, el.centre));
 }
 
 /**
- * Un pavage : des pièces toutes superposables, aucune ne chevauchant l'autre.
- * Rend `null` si ce tirage-là n'aboutit pas — l'appelant retente.
+ * Tous les éléments possibles d'un quadrillage, posés sur les lignes et les
+ * nœuds. L'ensemble est modeste — quelques dizaines —, donc on l'ÉNUMÈRE au
+ * lieu de tirer au hasard et d'espérer : c'est ce qui permet d'affirmer qu'un
+ * élément est le seul possible, et non seulement qu'on n'en a pas trouvé
+ * d'autre.
+ */
+export function tousLesElements(l, h) {
+    const out = [];
+    for (let a = 0.5; a < l - 1; a += 1) out.push({ genre: 'axe', axe: { type: 'v', a } });
+    for (let a = 0.5; a < h - 1; a += 1) out.push({ genre: 'axe', axe: { type: 'h', a } });
+    for (let x = 0.5; x < l - 1; x += 1) {
+        for (let y = 0.5; y < h - 1; y += 1) out.push({ genre: 'point', centre: { x, y } });
+    }
+    return out;
+}
+
+/**
+ * L'élément qui envoie `a` sur `b`, s'il en existe UN SEUL.
+ *
+ * Rend `null` dès qu'il y en a deux : la question aurait alors deux bonnes
+ * réponses, et la correction en refuserait une. C'est exactement ce qui arrive
+ * avec une pièce symétrique — un carré, un T —, et c'est pour cela qu'on
+ * vérifie au lieu de faire confiance à la façon dont le pavage a été construit.
+ */
+export function elementUnique(a, b, l, h) {
+    const trouves = tousLesElements(l, h).filter(el => memeFigure(parElement(a, el), b));
+    return trouves.length === 1 ? trouves[0] : null;
+}
+
+// --- Poser les pièces ---------------------------------------------------------
+
+/**
+ * Un pavage : des pièces toutes superposables, aucune ne chevauchant l'autre,
+ * engendrées par des symétries — ce sont elles qu'on demandera de retrouver.
  */
 export function poserLePavage(rng, { l, h, cases, pieces }) {
-    const motif = rng.pick(MOTIFS.filter(m => m.length === cases || cases === 0));
+    const motif = rng.pick(MOTIFS.filter(m => m.length === cases));
     if (!motif) return null;
 
     const base = decale(motif, rng.int(1, l - 4), rng.int(1, h - 4));
@@ -113,12 +119,17 @@ export function poserLePavage(rng, { l, h, cases, pieces }) {
 
     const posees = [base];
     const prises = new Set(base.map(cle));
+    // L'ESPÈCE SE TIRE AVANT L'ÉLÉMENT. Un quadrillage porte l × h centres
+    // possibles contre l + h axes : tirer uniformément dans le tas engendrait
+    // des pavages presque uniquement centrés, et deux questions sur trois
+    // portaient sur un centre. Or l'axe s'apprend en premier — il ne peut pas
+    // être le cas rare.
+    const parEspece = ['axe', 'point'].map(g => tousLesElements(l, h).filter(el => el.genre === g));
 
     let garde = 0;
     while (posees.length < pieces && garde++ < 300) {
         const source = rng.pick(posees);
-        const t = transfoDeGeneration(rng, l, h);
-        const img = imageFigure(source, t);
+        const img = parElement(source, rng.pick(rng.pick(parEspece)));
         if (!dansLaGrille(img, l, h)) continue;
         if (img.some(p => prises.has(cle(p)))) continue;
         // Une pièce identique à une pièce déjà posée n'apporte rien, et deux
@@ -131,52 +142,120 @@ export function poserLePavage(rng, { l, h, cases, pieces }) {
 }
 
 /**
- * Les paires du pavage qui n'ont QU'UNE SEULE réponse.
+ * Les leurres : des éléments qui NE conviennent pas, mais qui ont l'air d'y
+ * prétendre.
  *
- * @returns {Array<{de: number, vers: number, genre: string, transfo: Object}>}
+ * On les prend dans le voisinage du bon — une ligne plus loin, un nœud à côté —
+ * parce qu'un axe posé à l'autre bout du quadrillage s'élimine sans réfléchir.
+ * Un bon leurre est celui qui oblige à VÉRIFIER.
+ *
+ * ET AU MOINS UN DE L'AUTRE ESPÈCE : si tous les candidats étaient des droites,
+ * la question « axe ou centre ? » ne se poserait plus — or c'est la première
+ * chose à trancher, et celle qui distingue la symétrie axiale de la centrale.
  */
-export function pairesSures(pieces, genresVoulus) {
-    const out = [];
-    for (let i = 0; i < pieces.length; i++) {
-        for (let j = 0; j < pieces.length; j++) {
-            if (i === j) continue;
-            const genres = genresEntre(pieces[i], pieces[j]);
-            // EXACTEMENT UN GENRE. Zéro : les deux pièces ne se correspondent
-            // par rien de ce qu'on enseigne. Deux ou plus : la question aurait
-            // plusieurs bonnes réponses, et la correction en refuserait une.
-            if (genres.length !== 1) continue;
-            if (genresVoulus && !genresVoulus.includes(genres[0])) continue;
-            const transfo = transfosEntre(pieces[i], pieces[j])[0];
-            out.push({ de: i, vers: j, genre: genres[0], transfo });
+export function leurres(rng, bon, pieces, de, vers, { l, h }, combien) {
+    const disponibles = tousLesElements(l, h)
+        .filter(el => !memeElement(el, bon))
+        // Un leurre qui marcherait aussi serait une seconde bonne réponse.
+        .filter(el => !memeFigure(parElement(pieces[de], el), pieces[vers]));
+
+    const pointDe = (el) => (el.genre === 'axe'
+        ? { x: el.axe.type === 'v' ? el.axe.a : l / 2, y: el.axe.type === 'h' ? el.axe.a : h / 2 }
+        : el.centre);
+    const ref = pointDe(bon);
+    const loin = (el) => {
+        const p = pointDe(el);
+        return Math.abs(p.x - ref.x) + Math.abs(p.y - ref.y);
+    };
+
+    // DEUX CANDIDATS NE DOIVENT PAS SE TOUCHER. Pris seulement « au plus près
+    // du bon », trois centres tombaient dans le même carreau : les trois croix
+    // se chevauchaient et leurs noms formaient un nœud illisible. On ne
+    // demandait plus de chercher un point, mais de démêler un dessin.
+    const separes = (a, b) => distanceEntre(a, b, l, h) >= ECART_MINIMAL;
+
+    const proches = (liste) => rng.shuffle(liste.sort((x, y) => loin(x) - loin(y)).slice(0, 14));
+    const autreEspece = proches(disponibles.filter(el => el.genre !== bon.genre));
+    const memeEspece = proches(disponibles.filter(el => el.genre === bon.genre));
+
+    const choisis = [];
+    const tenter = (liste, max) => {
+        for (const el of liste) {
+            if (choisis.length >= max) break;
+            if (choisis.some(c => memeElement(c, el))) continue;
+            if (![bon, ...choisis].every(c => separes(c, el))) continue;
+            choisis.push(el);
         }
+    };
+    // AU MOINS UN DE L'AUTRE ESPÈCE, puis on complète.
+    tenter(autreEspece, 1);
+    tenter(memeEspece, combien);
+    tenter(autreEspece, combien);
+    // En dernier ressort, on relâche l'écart plutôt que de rendre moins de
+    // candidats que promis : une question à deux propositions reste une
+    // question, un dessin illisible n'en est plus une — mais mieux vaut les
+    // deux que rien.
+    for (const el of [...memeEspece, ...autreEspece]) {
+        if (choisis.length >= combien) break;
+        if (!choisis.some(c => memeElement(c, el))) choisis.push(el);
     }
-    return out;
+    return choisis.slice(0, combien);
+}
+
+/** L'écart minimal entre deux candidats, en carreaux. */
+export const ECART_MINIMAL = 1.5;
+
+/**
+ * À quelle distance deux éléments se dessinent-ils l'un de l'autre ?
+ *
+ * Deux droites perpendiculaires se croisent : elles ne se confondent jamais,
+ * quel que soit l'endroit. Deux parallèles se jugent sur l'écart de leurs
+ * équations, un point et une droite sur la distance du point à la droite, et
+ * deux points sur la distance qui les sépare.
+ */
+export function distanceEntre(a, b, l, h) {
+    if (a.genre === 'axe' && b.genre === 'axe') {
+        return a.axe.type === b.axe.type ? Math.abs(a.axe.a - b.axe.a) : Infinity;
+    }
+    if (a.genre === 'point' && b.genre === 'point') {
+        return Math.hypot(a.centre.x - b.centre.x, a.centre.y - b.centre.y);
+    }
+    const [pt, dr] = a.genre === 'point' ? [a, b] : [b, a];
+    void l; void h;
+    return dr.axe.type === 'v'
+        ? Math.abs(pt.centre.x - dr.axe.a)
+        : Math.abs(pt.centre.y - dr.axe.a);
 }
 
 // --- Les mots -----------------------------------------------------------------
 
-/** Pourquoi ce n'est PAS celle-là — l'erreur que chaque proposition dénonce. */
-const POURQUOI = {
-    axiale: 'La symétrie axiale RETOURNE la figure, comme dans un miroir : '
-        + 'un détail qui était à gauche se retrouve à droite.',
-    centrale: 'La symétrie centrale est un DEMI-TOUR : la figure se retrouve à '
-        + 'l\'envers dans les deux sens à la fois, mais elle n\'est pas retournée.',
-    translation: 'La translation fait GLISSER sans rien tourner ni retourner : '
-        + 'la figure garde exactement son allure.',
-    rotation: 'La rotation d\'un quart de tour fait BASCULER la figure : '
-        + 'ce qui était couché se met debout.'
-};
+/** Ce qu'un mauvais candidat enseigne, quand on le choisit. */
+function pourquoiPas(el, bon) {
+    if (el.genre !== bon.genre) {
+        return bon.genre === 'axe'
+            ? 'Ce n\'est pas un point : la figure a été RETOURNÉE, comme dans un miroir. '
+            + 'Cherche une droite — elle passe au milieu de chaque paire de points correspondants.'
+            : 'Ce n\'est pas une droite : la figure n\'est pas retournée, elle a fait un DEMI-TOUR. '
+            + 'Cherche un point — il est le milieu du segment qui joint un point et son image.';
+    }
+    return el.genre === 'axe'
+        ? 'Bonne idée, mauvaise droite. Prends UN point et son image : la droite cherchée passe '
+        + 'exactement au milieu des deux. Vérifie ensuite sur un second point.'
+        : 'Bon type d\'élément, mauvais point. Le centre est le MILIEU du segment qui joint un '
+        + 'point à son image : vérifie-le sur deux points, pas sur un seul.';
+}
 
-/** La méthode, en trois questions — c'est elle qu'on veut voir passer. */
-function indices(genre) {
+/** La méthode, pas la réponse — sauf au dernier indice, qui la donne. */
+function indices(bon, hauteur) {
     return [
-        'Regarde d\'abord si la figure a été RETOURNÉE, comme dans un miroir. '
-        + 'Si oui, c\'est une symétrie axiale : c\'est la seule des quatre qui retourne.',
-        'Si elle n\'est pas retournée, est-elle restée DROITE, dans la même position ? '
-        + 'Alors elle a seulement glissé : c\'est une translation.',
-        genre === 'centrale'
-            ? 'Sinon elle a tourné. D\'un demi-tour : c\'est une symétrie centrale.'
-            : 'Sinon elle a tourné. D\'un quart de tour seulement : c\'est une rotation.'
+        'Repère d\'abord si la figure a été RETOURNÉE, comme dans un miroir. '
+        + 'Si oui, cherche une droite ; sinon, cherche un point.',
+        'Prends UN point de la première pièce et le point qui lui correspond dans la seconde. '
+        + 'Ce que tu cherches est au MILIEU de ces deux-là.',
+        bon.genre === 'axe'
+            ? 'La droite passe au milieu des deux points ET leur est perpendiculaire. '
+            + `Ici, c'est ${ecrireElement(hauteur, bon)}.`
+            : `Le centre est le milieu du segment. Ici, c'est le point ${ecrireElement(hauteur, bon)}.`
     ];
 }
 
@@ -184,21 +263,27 @@ function indices(genre) {
 
 export const pavageGenerator = {
     id: 'geo.transfo.pavage',
-    label: 'Reconnaître la transformation dans un pavage',
+    label: 'Par rapport à quoi ces pièces sont-elles symétriques ?',
     skills: ['geo.transfo.reconnaitre'],
-    answerKinds: ['choice'],
+    // 'element' : la réponse est une DROITE ou un POINT du quadrillage. Ni un
+    // nombre ni un mot — d'où une activité qui sait le faire choisir, cliquer
+    // ou écrire, les trois façons de désigner la même chose.
+    answerKinds: ['element'],
     params: [
         {
-            id: 'genres', type: 'multiselect', label: 'Transformations attendues',
-            default: ['axiale', 'centrale', 'translation', 'rotation'],
-            options: Object.keys(NOMS).map(g => ({ value: g, label: NOMS[g] }))
+            id: 'especes', type: 'multiselect', label: 'Ce qu\'on cherche',
+            default: ['axe', 'point'],
+            options: [
+                { value: 'axe', label: 'des axes de symétrie' },
+                { value: 'point', label: 'des centres de symétrie' }
+            ]
         },
         {
             id: 'taille', type: 'select', label: 'Le pavage', default: 'moyen',
             options: [
-                { value: 'petit', label: '8 × 8 — quatre pièces' },
-                { value: 'moyen', label: '10 × 10 — cinq pièces' },
-                { value: 'grand', label: '12 × 12 — six pièces' }
+                { value: 'petit', label: '8 × 8 — trois pièces, trois candidats' },
+                { value: 'moyen', label: '10 × 10 — quatre pièces, quatre candidats' },
+                { value: 'grand', label: '12 × 12 — cinq pièces, cinq candidats' }
             ]
         }
     ],
@@ -206,112 +291,119 @@ export const pavageGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        // Même prudence qu'au quadrillage : un réglage peut arriver sous forme
-        // de chaîne, et un générateur ne doit pas disparaître pour une virgule.
-        const brut = Array.isArray(p.genres) ? p.genres
-            : (typeof p.genres === 'string' ? p.genres.split(',') : []);
-        const voulus = brut.map(g => String(g).trim()).filter(g => NOMS[g]);
+        // Un réglage peut arriver en chaîne si le panneau a rendu un champ de
+        // texte : un générateur ne doit pas disparaître pour une virgule.
+        const brut = Array.isArray(p.especes) ? p.especes
+            : (typeof p.especes === 'string' ? p.especes.split(',') : []);
+        const demandees = brut.map(e => String(e).trim()).filter(e => e === 'axe' || e === 'point');
+        const especes = demandees.length ? demandees : ['axe', 'point'];
         const t = TAILLES[p.taille] || TAILLES.moyen;
 
-        let pieces = null, paire = null;
-        for (let i = 0; i < 80 && !paire; i++) {
-            pieces = poserLePavage(rng, t);
-            if (!pieces) continue;
-            const sures = pairesSures(pieces, voulus.length ? voulus : null);
-            if (sures.length) paire = rng.pick(sures);
-        }
-        // Faute de trouver une paire du genre demandé, on en accepte une de
-        // n'importe quel genre : mieux vaut une question hors réglage qu'un
-        // écran vide devant un élève.
-        for (let i = 0; i < 60 && !paire; i++) {
-            pieces = poserLePavage(rng, t);
-            if (!pieces) continue;
-            const sures = pairesSures(pieces, null);
-            if (sures.length) paire = rng.pick(sures);
-        }
-        if (!paire) return secours(rng);
+        const trouve = chercher(rng, t, especes)
+            || chercher(rng, t, ['axe', 'point'])
+            || secours();
+        const { pieces, de, vers, bon } = trouve;
 
         const noms = pieces.map((_, i) => LETTRES[i]);
+        const faux = leurres(rng, bon, pieces, de, vers, t, t.candidats - 1);
+
+        // LES CANDIDATS SONT MÉLANGÉS AVANT D'ÊTRE NOMMÉS. Nommés d'abord, le
+        // bon aurait toujours porté le même indice, et (d₁) serait devenu la
+        // réponse à tout.
+        const candidats = rng.shuffle([bon, ...faux]).map((el, i) => ({
+            ...el, id: `el${i}`, nom: nommerCandidat(el.genre, i)
+        }));
+        const juste = candidats.find(c => memeElement(c, bon));
+
         const svg = quadrillageSvg({
-            largeur: t.l, hauteur: t.h,
+            largeur: t.l, hauteur: t.h, repere: true,
             figures: pieces.map((cases, i) => ({
                 cases, etiquette: noms[i],
                 classe: `qd-piece qd-piece-${i % 6}`
-                    + (i === paire.de ? ' qd-piece--source' : '')
-                    + (i === paire.vers ? ' qd-piece--cible' : '')
-            }))
+                    + (i === de ? ' qd-piece--source' : '')
+                    + (i === vers ? ' qd-piece--cible' : '')
+            })),
+            elements: candidats
         });
 
-        const question = `Par quelle transformation la pièce ${noms[paire.vers]} `
-            + `est-elle l'image de la pièce ${noms[paire.de]} ?`;
-
-        const choix = finalizeChoices(rng, Object.keys(NOMS).map(g => ({
-            value: NOMS[g],
-            correct: g === paire.genre,
-            why: g === paire.genre ? undefined : POURQUOI[g]
-        })), { count: 4 });
+        const question = `Par rapport à quoi la pièce ${noms[vers]} `
+            + `est-elle le symétrique de la pièce ${noms[de]} ?`;
 
         return makeItem({
             seed: rng.seed,
             generatorId: 'geo.transfo.pavage',
             skillId: 'geo.transfo.reconnaitre',
-            answerKind: 'choice',
+            answerKind: 'element',
             prompt: {
                 text: question,
                 html: `<div class="game-question">${question}</div>${figure(svg)}`,
                 papier: question
             },
-            answer: NOMS[paire.genre],
-            choices: choix,
-            hints: indices(paire.genre),
-            // « une », et non « la » : les quatre noms sont féminins, et
-            // « C'est rotation » ne se dit pas.
-            explanation: `C'est une ${NOMS[paire.genre]} — ${GESTES[paire.genre]}. `
-                + `Précisément : ${decrire(paire.transfo)}.`,
-            // Sur la feuille, l'élève n'a pas les propositions sous les yeux :
-            // la correction doit se suffire à elle-même.
-            explicationPapier: `${noms[paire.vers]} est l'image de ${noms[paire.de]} par `
-                + `${decrire(paire.transfo)}.`,
-            difficulty: paire.genre === 'rotation' ? 4 : (paire.genre === 'centrale' ? 3 : 2),
+            // LA RÉPONSE EST L'ÉLÉMENT, PAS SON NOM. Le nom change d'une
+            // question à l'autre — (d₁) ici, (d₃) là — et deux élèves qui
+            // désignent la même droite doivent être comptés pareil, qu'ils
+            // l'aient choisie, cliquée ou écrite.
+            answer: cleElement(bon),
+            choices: finalizeChoices(rng, candidats.map(c => ({
+                value: c.nom,
+                correct: memeElement(c, bon),
+                why: memeElement(c, bon) ? undefined : pourquoiPas(c, bon)
+            })), { count: candidats.length }),
+            hints: indices(bon, t.h),
+            explanation: `C'est ${juste.nom}, ${bon.genre === 'axe' ? 'la droite' : 'le point'} `
+                + `${ecrireElement(t.h, bon)}. `
+                + (bon.genre === 'axe'
+                    ? 'Chaque point et son image sont à la même distance de cette droite, de part et d\'autre.'
+                    : 'Ce point est le milieu de chaque segment joignant un point à son image.'),
+            explicationPapier: `${noms[vers]} est le symétrique de ${noms[de]} par rapport à `
+                + `${bon.genre === 'axe' ? 'la droite' : 'le point'} ${ecrireElement(t.h, bon)} — ${juste.nom}.`,
+            difficulty: bon.genre === 'point' ? 4 : 3,
             meta: {
                 largeur: t.l, hauteur: t.h,
-                pieces, noms, de: paire.de, vers: paire.vers,
-                genre: paire.genre, transfo: paire.transfo
+                pieces, noms, de, vers,
+                candidats, bon, idJuste: juste.id,
+                genre: bon.genre
             }
         });
     }
 };
 
-/**
- * Le dernier recours : un pavage écrit à la main, dont on sait qu'il tient.
- * Un item vide bloquerait l'élève ; celui-ci est modeste mais juste.
- */
-function secours(rng) {
-    const motif = [{ x: 1, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 }];
-    const t = { genre: 'translation', vecteur: { x: 4, y: 0 } };
-    const pieces = [motif, imageFigure(motif, t)];
-    const noms = ['A', 'B'];
-    const svg = quadrillageSvg({
-        largeur: 8, hauteur: 8,
-        figures: pieces.map((cases, i) => ({ cases, etiquette: noms[i], classe: `qd-piece qd-piece-${i}` }))
-    });
-    const question = 'Par quelle transformation la pièce B est-elle l\'image de la pièce A ?';
-    return makeItem({
-        seed: rng.seed,
-        generatorId: 'geo.transfo.pavage',
-        skillId: 'geo.transfo.reconnaitre',
-        answerKind: 'choice',
-        prompt: { text: question, html: `<div class="game-question">${question}</div>${figure(svg)}`, papier: question },
-        answer: NOMS.translation,
-        choices: finalizeChoices(rng, Object.keys(NOMS).map(g => ({
-            value: NOMS[g], correct: g === 'translation',
-            why: g === 'translation' ? undefined : POURQUOI[g]
-        })), { count: 4 }),
-        hints: indices('translation'),
-        explanation: `C'est une ${NOMS.translation} — ${GESTES.translation}. Précisément : ${decrire(t)}.`,
-        difficulty: 2,
-        meta: { largeur: 8, hauteur: 8, pieces, noms, de: 0, vers: 1, genre: 'translation', transfo: t }
-    });
+/** Un pavage et une paire dont l'élément est unique — ou `null`. */
+function chercher(rng, t, especes) {
+    for (let i = 0; i < 60; i++) {
+        const pieces = poserLePavage(rng, t);
+        if (!pieces) continue;
+        const paires = [];
+        for (let a = 0; a < pieces.length; a++) {
+            for (let b = 0; b < pieces.length; b++) {
+                if (a === b) continue;
+                const el = elementUnique(pieces[a], pieces[b], t.l, t.h);
+                if (el && especes.includes(el.genre)) paires.push({ de: a, vers: b, bon: el });
+            }
+        }
+        if (!paires.length) continue;
+        // ON TIRE L'ESPÈCE AVANT LA PAIRE. Il y a beaucoup plus de centres
+        // possibles que d'axes sur un quadrillage — l × h contre l + h —, si
+        // bien qu'un tirage uniforme parmi les paires donnait deux questions
+        // sur trois portant sur un centre. Or l'axe est celui qui s'apprend en
+        // premier : il ne peut pas être le cas rare.
+        const parEspece = especes
+            .map(g => paires.filter(p => p.bon.genre === g))
+            .filter(liste => liste.length);
+        return { pieces, ...rng.pick(rng.pick(parEspece)) };
+    }
+    return null;
 }
 
-
+/**
+ * Le dernier recours, entièrement déterministe : deux pièces et un axe dont on
+ * sait qu'ils tiennent. Un item vide bloquerait l'élève.
+ */
+function secours() {
+    const motif = [{ x: 1, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 }];
+    const bon = { genre: 'axe', axe: { type: 'v', a: 3.5 } };
+    return {
+        pieces: [motif, imageFigure(motif, { genre: 'axiale', axe: bon.axe })],
+        de: 0, vers: 1, bon
+    };
+}

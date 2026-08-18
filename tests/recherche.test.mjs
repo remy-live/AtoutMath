@@ -160,6 +160,10 @@ test('le catalogue réel répond aux recherches qu\'on tapera vraiment', () => {
         ['ville', 'geo-ville'],
         ['othello', 'logi-othello'],
         ['dames', 'logi-dames'],
+        // UNE RACINE APPROCHÉE NE DEVANCE PAS UN MOT ÉCRIT. « Symétrique par
+        // Rapport à Quoi ? » partage sept lettres avec « rapporteur » et
+        // remontait devant Angle Master, qui porte pourtant le mot en toutes
+        // lettres dans sa consigne. Voir `POINTS.racineTitre`.
         ['rapporteur', 'geo-angles'],
         // « Taupes des Tables » COMMENCE par le mot : il passe devant
         // « Chasse aux Taupes », qui ne fait que le contenir. C'est la règle,
@@ -236,4 +240,28 @@ test('les titres retirés par regroupement mènent encore à leur exercice', () 
         assert.ok(trouves.includes(id),
             `« ${requete} » ne mène plus à ${id} (trouvé : ${trouves.slice(0, 4).join(', ') || 'rien'})`);
     }
+});
+
+test('UNE RACINE DE TITRE VAUT MOINS QU\'UN MOT ÉCRIT, UNE RACINE DE CHEMIN VAUT PLUS', () => {
+    // La règle en deux fiches. « rapporteur » : l'une n'a que la racine dans
+    // son titre, l'autre a le mot entier dans sa consigne — c'est la seconde
+    // qu'on cherche. Alors que « geometrie » sur un CHEMIN « Géométrique » est
+    // une classification, et elle doit primer.
+    const fiches = [
+        preparer({ id: 'racine-titre', titre: 'Symétrique par Rapport à Quoi ?',
+            chemin: ['Géométrique', 'Transformations'], niveaux: [], motsCles: [], texte: '' }),
+        preparer({ id: 'mot-ecrit', titre: 'Angle Master',
+            chemin: ['Géométrique', 'Angles'], niveaux: [], motsCles: [],
+            texte: 'Le rapporteur se pose de travers, et c\'est en le redressant qu\'on apprend.' })
+    ];
+    assert.equal(chercher(fiches, 'rapporteur')[0].fiche.id, 'mot-ecrit');
+
+    const parChemin = [
+        preparer({ id: 'dans-le-dossier', titre: 'Le Plan de Ville',
+            chemin: ['Géométrique', 'Repérage'], niveaux: [], motsCles: [], texte: '' }),
+        preparer({ id: 'mention-de-passage', titre: 'Duel de Fractions',
+            chemin: ['Numérique', 'Fractions'], niveaux: [], motsCles: [],
+            texte: 'Un peu de géométrie apparaît dans la troisième question.' })
+    ];
+    assert.equal(chercher(parChemin, 'geometrie')[0].fiche.id, 'dans-le-dossier');
 });

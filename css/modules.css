@@ -600,6 +600,63 @@
 .qd-piece-5 { fill: rgba(132, 155, 40, .62); }
 .qd-piece--source, .qd-piece--cible { stroke: var(--text-main); stroke-width: 2.2; }
 
+/* LES GRADUATIONS. Petites et grises : elles servent à LIRE une position, pas
+   à être regardées. Trop marquées, elles concurrencent les pièces. */
+.qd-gradu { fill: var(--text-muted); font-size: 12px; font-weight: 600; }
+
+/* LES CANDIDATS SONT TOUS DESSINÉS PAREIL, et c'est le cœur de l'exercice : si
+   le bon se distinguait par sa couleur ou son épaisseur, il n'y aurait plus
+   rien à chercher. Seul leur NOM les sépare. */
+.qd-candidat { stroke: #dc2626; stroke-width: 2.2; }
+.qd-candidat-point line { stroke: #dc2626; stroke-width: 3; stroke-linecap: round; }
+.qd-candidat-nom { fill: #dc2626; font-size: 14px; font-weight: 800; font-style: italic; }
+.qd-el-hit { fill: transparent; cursor: pointer; outline: none; }
+@media (hover: hover) and (pointer: fine) {
+    .qd-el-hit:hover { fill: rgba(220, 38, 38, .16); }
+}
+.qd-el-hit:focus-visible { fill: rgba(220, 38, 38, .22); }
+.qd-el-hit.sy-juste { fill: rgba(22, 163, 74, .3); }
+.qd-el-hit.sy-faux { fill: rgba(220, 38, 38, .28); }
+
+/* --- « Par rapport à quoi ? » : les trois façons de répondre -------------- */
+
+.sy-choix {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: center; margin: 4px auto 12px;
+}
+.sy-btn {
+    padding: 10px 22px; border-radius: 12px; border: 2px solid var(--border);
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.05rem; font-weight: 700; font-style: italic;
+    cursor: pointer; transition: border-color .15s, transform .15s;
+}
+.sy-btn:hover { border-color: var(--primary); transform: translateY(-2px); }
+.sy-btn.sy-juste { border-color: var(--success); background: rgba(22, 163, 74, .12); }
+.sy-btn.sy-faux { border-color: var(--danger); background: rgba(220, 38, 38, .1); }
+
+.sy-consigne {
+    text-align: center; color: var(--text-muted);
+    font-size: .92rem; font-weight: 600; margin: 2px auto 12px;
+}
+
+.sy-ecriture {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 10px; margin: 2px auto 6px;
+}
+.sy-label { flex: 1 1 100%; text-align: center; font-weight: 700; font-size: .95rem; }
+/* Le rappel de la notation est en petit : il aide sans dicter la réponse. */
+.sy-label span { display: block; font-weight: 500; font-size: .82rem; color: var(--text-muted); }
+.sy-champ {
+    width: min(190px, 60vw); padding: 10px 14px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    font-size: 1.15rem; font-weight: 700; text-align: center; color: var(--text-main);
+}
+.sy-champ:focus { outline: none; border-color: var(--primary); }
+.sy-statut {
+    min-height: 1.3em; text-align: center; margin: 0 auto 10px;
+    font-size: .9rem; font-weight: 600; color: var(--text-muted);
+}
+
 /* La donnée de l'énoncé : axe, centre, vecteur. Le trait est épais — c'est
    l'élément qu'on regarde le plus longtemps. */
 .qd-marques { pointer-events: none; }

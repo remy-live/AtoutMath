@@ -277,6 +277,30 @@ registerActivity({
     load: () => import('./sudoku.js')
 });
 
+// « Par rapport à quoi ? » : genre de réponse 'element' — la réponse est une
+// DROITE ou un POINT du quadrillage, et l'élève le désigne de trois façons de
+// plus en plus exigeantes : en le choisissant, en le cliquant, en l'écrivant.
+registerActivity({
+    id: 'symetrie-element',
+    label: 'Par rapport à quoi ?',
+    accepts: ['element'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [{
+        id: 'reponse', type: 'select', label: 'Comment on répond', default: 'progressive',
+        papier: false,
+        options: [
+            { value: 'progressive', label: 'Progressif : choisir, puis cliquer, puis écrire' },
+            { value: 'choisir', label: 'Choisir parmi les noms tracés' },
+            { value: 'cliquer', label: 'Cliquer l\'élément sur le dessin' },
+            { value: 'ecrire', label: 'Écrire son équation ou ses coordonnées' }
+        ],
+        aide: 'Choisir, c\'est reconnaître parmi quatre ; cliquer, c\'est désigner sans nom ; '
+            + 'écrire, c\'est en plus savoir le lire dans le repère. En progressif, '
+            + 'l\'exercice monte tout seul : un tiers de chaque.'
+    }],
+    load: () => import('./symetrieElement.js')
+});
+
 // Colorier l'image d'une figure sur un quadrillage : genre de réponse 'grid'
 // aussi — l'élève pose sa figure entière, puis la soumet, comme il rendrait
 // une feuille. Corriger au fil des clics en ferait un jeu de chaud-froid.

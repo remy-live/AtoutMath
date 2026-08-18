@@ -55,10 +55,22 @@ const POINTS = {
     // une consigne parle de beaucoup de choses, elle ne doit jamais passer
     // devant un titre.
     texte: 10,
-    // Deux mots de la même famille (voir `memeRacine`). En dernier, juste
-    // au-dessus de la consigne : c'est une approximation, elle ne doit jamais
-    // devancer un mot réellement écrit.
-    racine: 18
+    // DEUX MOTS DE LA MÊME FAMILLE (voir `memeRacine`), et deux poids, parce
+    // qu'une racine ne vaut pas la même chose selon où on la trouve.
+    //
+    // SUR LE CHEMIN, c'est une classification : taper « geometrie » quand le
+    // dossier s'appelle « Géométrique » doit remonter tout le dossier, devant
+    // une fiche dont la consigne mentionne le mot en passant.
+    //
+    // DANS LE TITRE, c'est une approximation, et elle passe DERRIÈRE un mot
+    // réellement écrit. Le contraire s'est produit : l'exercice « Symétrique
+    // par Rapport à Quoi ? » remontait devant Angle Master sur la recherche
+    // « rapporteur », parce que « rapport » partage sept lettres avec lui
+    // tandis qu'Angle Master ne porte le mot que dans sa consigne. Une
+    // approximation qui devance un mot écrit noir sur blanc, c'est une
+    // recherche qui se trompe de réponse.
+    racineChemin: 18,
+    racineTitre: 8
 };
 
 // Combien de lettres communes font une famille. Six, parce que « geometrie »
@@ -91,8 +103,8 @@ function scoreMot(fiche, mot) {
     if (fiche._niveaux.some(n => n.includes(mot))) return POINTS.niveau;
     if (fiche._motsCles.some(k => k.includes(mot))) return POINTS.motCle;
     if (fiche._texte.includes(mot)) return POINTS.texte;
-    if (titre.split(' ').some(m => memeRacine(m, mot))) return POINTS.racine;
-    if (fiche._chemin.some(c => c.split(' ').some(m => memeRacine(m, mot)))) return POINTS.racine;
+    if (fiche._chemin.some(c => c.split(' ').some(m => memeRacine(m, mot)))) return POINTS.racineChemin;
+    if (titre.split(' ').some(m => memeRacine(m, mot))) return POINTS.racineTitre;
     return 0;
 }
 

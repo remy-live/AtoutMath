@@ -190,31 +190,34 @@ export const geometrieExercises = [
     {
         // L'EXERCICE INVERSE DU PRÉCÉDENT, et c'est tout son intérêt. Tracer,
         // c'est appliquer une règle qu'on vous donne ; reconnaître, c'est la
-        // retrouver — et cela demande de savoir ce que chaque transformation
-        // FAIT. On peut tracer une symétrie centrale sans avoir jamais vu
-        // qu'elle retourne la figure dans les deux sens à la fois.
-        id: 'geo-pavage', title: 'Le Pavage : Quelle Transformation ?',
-        consignePapier: 'Écris par quelle transformation la seconde pièce est l\'image de la première.',
-        generatorId: 'geo.transfo.pavage', activityId: 'bubbles',
+        // retrouver. Encore faut-il demander la bonne chose : une première
+        // version demandait le GENRE de transformation, ce que Rémy a jugé
+        // « pas terrible » — et il avait raison. Nommer la famille ne demande
+        // que de reconnaître une allure ; trouver L'ÉLÉMENT — cette droite-là,
+        // ce point-là — demande de savoir qu'il passe au MILIEU de chaque paire
+        // de points correspondants. C'est la définition, et c'est elle qu'on
+        // travaille.
+        id: 'geo-pavage', title: 'Symétrique par Rapport à Quoi ?',
+        consignePapier: 'Écris par rapport à quelle droite ou à quel point les deux pièces sont symétriques.',
+        generatorId: 'geo.transfo.pavage', activityId: 'symetrie-element',
         printable: 'pavage',
         skills: ['geo.transfo.reconnaitre'],
-        params: {
-            genres: ['axiale', 'centrale', 'translation', 'rotation'],
-            taille: 'moyen'
-        },
-        motsClefs: ['pavage', 'frise', 'transformation', 'reconnaître', 'symétrie',
-            'translation', 'rotation', 'damier'],
+        params: { especes: ['axe', 'point'], taille: 'moyen' },
+        motsClefs: ['pavage', 'symétrie', 'axe', 'centre', 'par rapport à',
+            'reconnaître', 'médiatrice', 'milieu', 'damier'],
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: "Trois questions dans cet ordre, et la réponse tombe. UN : la pièce a-t-elle "
-            + "été RETOURNÉE, comme dans un miroir ? C'est la symétrie axiale — la seule des quatre "
-            + "qui retourne. DEUX : sinon, est-elle restée DROITE, dans la même position ? C'est une "
-            + "translation. TROIS : sinon elle a tourné — d'un demi-tour, c'est une symétrie centrale ; "
-            + "d'un quart de tour, c'est une rotation. "
-            + "Aucune question n'a deux réponses : les paires de pièces reliées par PLUSIEURS "
-            + "transformations — deux carrés voisins le sont — sont écartées avant d'être posées."
+        instruction: "Plusieurs droites et plusieurs points sont tracés sur le pavage, tous de la "
+            + "même façon : un seul envoie la première pièce sur la seconde. La méthode tient en "
+            + "deux gestes. D'abord, la figure a-t-elle été RETOURNÉE, comme dans un miroir ? "
+            + "Si oui, cherche une droite ; sinon, elle a fait un demi-tour, cherche un point. "
+            + "Ensuite, prends UN point et son image : ce que tu cherches est au MILIEU des deux. "
+            + "Le réglage « Comment on répond » donne trois marches — choisir parmi les noms, "
+            + "cliquer l'élément sur le dessin, écrire son équation. En progressif, l'exercice "
+            + "les monte tout seul. Aucune question n'a deux réponses : les paires reliées par "
+            + "plusieurs éléments sont écartées avant d'être posées."
     },
 
     // --- Angle Master : le rapporteur interactif ---

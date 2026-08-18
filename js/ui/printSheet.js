@@ -31,7 +31,7 @@ import {
 } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { caseCentrale } from '../core/quadrillageSvg.js';
-import { NOMS as NOMS_TRANSFO } from '../core/transformations.js';
+import { ecrireElement } from '../core/elementSymetrie.js';
 import { pieceSvg, dessinerPiecePdf, direPiece, MENTION_PIECES } from './piecesEchecs.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import { ecrire as ecrireProp } from '../core/proportion.js';
@@ -5950,13 +5950,39 @@ function pavagePreviewHtml(item, slot, k, solution) {
         traits.push(`<line x1="${(g.x0 * k).toFixed(2)}" y1="${((g.y0 + j * g.pas) * k).toFixed(2)}"
             x2="${((g.x0 + g.L * g.pas) * k).toFixed(2)}" y2="${((g.y0 + j * g.pas) * k).toFixed(2)}"/>`);
     }
+    // LES CANDIDATS, tous du même trait : c'est leur nom qui les sépare, jamais
+    // leur allure. Sur le papier ils sont noirs comme le reste — une photocopie
+    // ne garde pas la couleur, et cet exercice se corrige à l'œil.
+    const cands = [];
+    (m.candidats || []).forEach(el => {
+        if (el.genre === 'axe') {
+            const vert = el.axe.type === 'v';
+            const q = el.axe.a + 0.5;
+            const [x1, y1, x2, y2] = vert ? [q, 0, q, g.H] : [0, q, g.L, q];
+            cands.push(`<line x1="${((g.x0 + x1 * g.pas) * k).toFixed(2)}" y1="${((g.y0 + y1 * g.pas) * k).toFixed(2)}"
+                x2="${((g.x0 + x2 * g.pas) * k).toFixed(2)}" y2="${((g.y0 + y2 * g.pas) * k).toFixed(2)}"
+                stroke="#1a202c" stroke-width="${Math.max(1, 0.4 * k).toFixed(2)}"/>`);
+            cands.push(nomDuCandidat(g, k, el.nom,
+                vert ? g.x0 + q * g.pas : g.x0 + g.L * g.pas + g.pas * 0.15,
+                vert ? g.y0 - g.pas * 0.15 : g.y0 + q * g.pas, vert));
+        } else {
+            const cx = g.x0 + (el.centre.x + 0.5) * g.pas, cy = g.y0 + (el.centre.y + 0.5) * g.pas;
+            const r = g.pas * 0.28;
+            cands.push(`<g stroke="#1a202c" stroke-width="${Math.max(1, 0.5 * k).toFixed(2)}" stroke-linecap="round">
+                <line x1="${((cx - r) * k).toFixed(2)}" y1="${((cy - r) * k).toFixed(2)}" x2="${((cx + r) * k).toFixed(2)}" y2="${((cy + r) * k).toFixed(2)}"/>
+                <line x1="${((cx - r) * k).toFixed(2)}" y1="${((cy + r) * k).toFixed(2)}" x2="${((cx + r) * k).toFixed(2)}" y2="${((cy - r) * k).toFixed(2)}"/>
+            </g>`);
+            cands.push(nomDuCandidat(g, k, el.nom, cx + r * 1.3, cy - r, false));
+        }
+    });
+
     html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
         <g stroke="#b0b6c5" stroke-width="${Math.max(0.5, 0.2 * k).toFixed(2)}" fill="none">${traits.join('')}</g>
+        ${cands.join('')}
     </svg>`;
 
-    const dit = solution
-        ? `${(m.noms || [])[m.vers]} est l'image de ${(m.noms || [])[m.de]} par une ${NOMS_TRANSFO[m.genre] || ''}.`
-        : `${(m.pieces || []).length ? questionDuPavage(m) : ''} ${'.'.repeat(30)}`;
+    const dit = solution ? solutionDuPavage(m)
+        : `${(m.pieces || []).length ? questionDuPavage(m) : ''} ${'.'.repeat(24)}`;
     html += `<div style="position:absolute; left:${g.boite.x * k}px;
         top:${g.yQuestion * k}px; width:${g.boite.w * k}px;
         font-size:${(g.pt * 0.3528 * k).toFixed(2)}px; line-height:1.35;
@@ -5965,7 +5991,21 @@ function pavagePreviewHtml(item, slot, k, solution) {
 }
 
 const questionDuPavage = (m) =>
-    `La pièce ${(m.noms || [])[m.vers]} est l'image de la pièce ${(m.noms || [])[m.de]} par :`;
+    `${(m.noms || [])[m.vers]} est le symétrique de ${(m.noms || [])[m.de]} par rapport à :`;
+
+/** Le corrigé : le nom du candidat ET ce qu'il vaut, pour qu'il se relise. */
+const solutionDuPavage = (m) => {
+    const juste = (m.candidats || []).find(c => c.id === m.idJuste);
+    const quoi = m.genre === 'axe' ? 'la droite' : 'le point';
+    return `${(m.noms || [])[m.vers]} est le symétrique de ${(m.noms || [])[m.de]} par rapport à `
+        + `${quoi} ${juste ? juste.nom : ''} : ${ecrireElement(m.hauteur, m.bon)}.`;
+};
+
+const nomDuCandidat = (g, k, nom, x, y, centre) =>
+    `<text x="${(x * k).toFixed(2)}" y="${(y * k).toFixed(2)}"
+        text-anchor="${centre ? 'middle' : 'start'}" fill="#1a202c"
+        font-size="${(g.pt * 0.3528 * k).toFixed(2)}" font-weight="700"
+        font-style="italic">${nom || ''}</text>`;
 
 function dessinerPavagePdf(doc, item, slot, solution) {
     const g = geoPavage(item, slot);
@@ -5999,22 +6039,53 @@ function dessinerPavagePdf(doc, item, slot, solution) {
             g.x0 + (c.x + 0.5) * g.pas, g.y0 + (c.y + 0.68) * g.pas, { align: 'center' });
     });
 
+    // LES CANDIDATS, tous du même trait. C'est leur nom qui les sépare, jamais
+    // leur allure : le bon ne doit se distinguer par rien.
+    doc.setLineWidth(0.4);
+    doc.setFontSize(g.pt);
+    (m.candidats || []).forEach(el => {
+        if (el.genre === 'axe') {
+            const vert = el.axe.type === 'v';
+            const q = el.axe.a + 0.5;
+            if (vert) {
+                const x = g.x0 + q * g.pas;
+                doc.line(x, g.y0, x, g.y0 + g.H * g.pas);
+                doc.text(String(el.nom || ''), x, g.y0 - 0.6, { align: 'center' });
+            } else {
+                const y = g.y0 + q * g.pas;
+                doc.line(g.x0, y, g.x0 + g.L * g.pas, y);
+                doc.text(String(el.nom || ''), g.x0 + g.L * g.pas + 0.6, y + g.pt * 0.12);
+            }
+            return;
+        }
+        const cx = g.x0 + (el.centre.x + 0.5) * g.pas, cy = g.y0 + (el.centre.y + 0.5) * g.pas;
+        const r = g.pas * 0.28;
+        doc.setLineWidth(0.5);
+        doc.line(cx - r, cy - r, cx + r, cy + r);
+        doc.line(cx - r, cy + r, cx + r, cy - r);
+        doc.setLineWidth(0.4);
+        doc.text(String(el.nom || ''), cx + r * 1.3, cy - r * 0.6);
+    });
+
     doc.setFontSize(g.pt);
     doc.setTextColor(...ENCRE.texte);
-    const dit = solution
-        ? `${(m.noms || [])[m.vers]} est l'image de ${(m.noms || [])[m.de]} par une ${NOMS_TRANSFO[m.genre] || ''}.`
-        : `${questionDuPavage(m)} ${'.'.repeat(28)}`;
+    const dit = solution ? solutionDuPavage(m) : `${questionDuPavage(m)} ${'.'.repeat(24)}`;
     doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w), g.boite.x, g.yQuestion);
 }
 
 export const RENDUS = {
     pavage: {
-        titre: 'Reconnaître la transformation',
-        consigne: () => 'Chaque pièce porte une lettre. Pour chaque pavage, écris par quelle '
-            + 'transformation la seconde pièce est l\'image de la première : symétrie axiale, '
-            + 'symétrie centrale, translation ou rotation. Trois questions dans l\'ordre, et la '
-            + 'réponse tombe : la figure a-t-elle été RETOURNÉE (miroir) ? est-elle restée DROITE '
-            + '(translation) ? sinon elle a tourné — d\'un demi-tour (centrale) ou d\'un quart (rotation).',
+        titre: 'Symétrique par rapport à quoi ?',
+        // SUR LE PAPIER, ON RÉPOND PAR LE NOM. Écrire « x = 4 » demanderait un
+        // quadrillage gradué, et graduer quatre pavages sur une page les
+        // réduirait à des timbres. L'écran, lui, gradue et fait écrire
+        // l'équation : les deux exercices se complètent au lieu de se répéter.
+        consigne: () => 'Chaque pièce porte une lettre ; les droites et les points tracés portent '
+            + 'un nom. Pour chaque pavage, écris par rapport à quoi la seconde pièce est le '
+            + 'symétrique de la première. Deux gestes suffisent. UN : la figure a-t-elle été '
+            + 'RETOURNÉE, comme dans un miroir ? Si oui, cherche une droite ; sinon, elle a fait '
+            + 'un demi-tour, cherche un point. DEUX : prends UN point et son image — ce que tu '
+            + 'cherches est au MILIEU des deux.',
         previewGrille: pavagePreviewHtml,
         pdfGrille: dessinerPavagePdf,
         nomBloc: 'Pavage', nomBlocs: 'pavages',
