@@ -18,6 +18,12 @@ import { Shortcodes } from '../core/shortcodes.js';
 import { makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { creerHistorique } from '../core/historique.js';
+import {
+    mesuresParExercice, estimerEtape, estimerParcours,
+    direDuree, tensionDuree, PHRASES_TENSION
+} from '../core/dureeParcours.js';
+import { getGenerator, getActivity } from '../core/registry.js';
+import { chapitresDe } from '../core/chapitres.js';
 import { renderGameConfigUI, renderPolicyEditor } from '../games/configUI.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
 
@@ -530,10 +536,39 @@ function initHistorique() {
     majBoutonsHistorique();
 }
 
+/**
+ * « ≈ 25 à 40 min », coloré selon que la séance tient ou non dans l'heure.
+ *
+ * C'est le seul chiffre du bandeau qu'on lit pour DÉCIDER — le reste décrit ce
+ * qu'on a mis, celui-ci dit si ça passe.
+ */
+function pastilleDuree(steps) {
+    const etapes = steps.map(s => {
+        const exo = getExerciseById(s.exerciseId);
+        return exo
+            ? { exerciceId: exo.id, nature: natureDe(exo), questions: s.nbItems || 10 }
+            : { exerciceId: s.exerciseId, nature: 'notion', questions: s.nbItems || 10 };
+    });
+    const d = estimerParcours(etapes, mesuresDuJournal);
+    const tension = tensionDuree(d.max);
+
+    const el = document.createElement('span');
+    el.className = `path-duree path-duree--${tension}`;
+    el.textContent = `${d.mesurees === d.total && d.total ? '' : '≈ '}${direDuree(d.min, d.max)}`;
+    el.title = PHRASES_TENSION[tension]
+        + (d.mesurees
+            ? `\n${d.mesurees} activité${d.mesurees > 1 ? 's' : ''} sur ${d.total} : durée MESURÉE `
+              + 'sur les réponses déjà enregistrées.'
+            : '\nEstimation d\'après la nature des exercices — elle se précisera '
+              + 'dès que les élèves auront répondu.');
+    return el;
+}
+
 export function renderTeacherPath() {
     const pathBox = document.getElementById('path-container');
     if (!pathBox) return;
     retenirLEtat();
+    rafraichirLesMesures();
 
     pathBox.querySelectorAll('.path-step').forEach(el => el.remove());
 
@@ -547,14 +582,60 @@ export function renderTeacherPath() {
     const policy = resolvePolicy(state.currentPath.policy);
     const summary = document.getElementById('path-summary');
     if (summary) {
-        summary.textContent = steps.length
-            ? `${steps.length} activité${steps.length > 1 ? 's' : ''} • ${totalItems(state.currentPath)} questions • ${describePolicy(policy)}`
-            : '';
+        summary.innerHTML = '';
+        if (steps.length) {
+            const compte = document.createElement('span');
+            compte.textContent = `${steps.length} activité${steps.length > 1 ? 's' : ''}`
+                + ` • ${totalItems(state.currentPath)} questions • `;
+            summary.appendChild(compte);
+            summary.appendChild(pastilleDuree(steps));
+            const regle = document.createElement('span');
+            regle.textContent = ` • ${describePolicy(policy)}`;
+            summary.appendChild(regle);
+        }
         summary.classList.toggle('path-summary--eval', isEvaluation(policy));
     }
 
     steps.forEach((step, index) => pathBox.appendChild(stepRow(step, index, policy)));
     autoSavePath();
+}
+
+// --- Ce que dure une étape ---------------------------------------------------
+//
+// La NATURE de l'exercice décide de l'ordre de grandeur : un réflexe se répond
+// vite — c'est le but même d'un réflexe —, une notion demande de lire, de poser
+// et de vérifier, un jeu autonome ne se compte pas en questions.
+
+/** « 6ème » → « 6ᵉ » : trois niveaux tiennent alors sur une étiquette. */
+function abregerNiveau(n) {
+    const m = /^(\d+)\s*ème$/.exec(n);
+    return m ? `${m[1]}ᵉ` : n;
+}
+
+function natureDe(exo) {
+    const activite = getActivity(exo.activityId);
+    if (activite && activite.supports && activite.supports.autonomous && !exo.generatorId) return 'jeu';
+    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
+    return (gen && gen.duree) || 'notion';
+}
+
+// Les mesures sont recalculées une fois par rendu et non par étape : le journal
+// peut compter des dizaines de milliers d'événements.
+let mesuresDuJournal = {};
+
+function rafraichirLesMesures() {
+    try {
+        mesuresDuJournal = mesuresParExercice(state.attemptHistory || []);
+    } catch (e) {
+        mesuresDuJournal = {};
+    }
+}
+
+function dureeDeLEtape(exo, step) {
+    return estimerEtape(
+        { nature: natureDe(exo), questions: step.nbItems || 10 },
+        mesuresDuJournal[exo.id]
+    );
 }
 
 function stepRow(step, index, policy) {
@@ -611,6 +692,37 @@ function stepRow(step, index, policy) {
         + (extras.length ? `<span class="path-step-extras"> • ${escapeHtml(extras.join(' • '))}</span>` : '');
     head.appendChild(rule);
 
+    // SOUS LE TITRE, DE QUOI RECONNAÎTRE L'ÉTAPE SANS L'OUVRIR : son niveau,
+    // son chapitre, et le temps qu'elle prendra. Une liste de vingt lignes qui
+    // ne portent qu'un titre et « 7/10 » ne se relit pas — on ne sait ni ce
+    // qu'on a mis, ni si la séance tient dans l'heure.
+    const niveaux = (exo.tags && exo.tags.niveaux) || [];
+    // Un même chapitre existe dans deux progressions — « Divisions » en 6ᵉ et
+    // en 5ᵉ. Les afficher tous deux donnait « Divisions · Divisions », ce qui
+    // ne dit rien de plus et se lit comme un bogue.
+    const chapitres = [];
+    chapitresDe(exo)
+        .filter(c => !niveaux.length || niveaux.includes(c.niveau))
+        .forEach(c => { if (!chapitres.some(x => x.nom === c.nom)) chapitres.push(c); });
+    const duree = dureeDeLEtape(exo, step);
+
+    const dessous = document.createElement('div');
+    dessous.className = 'path-step-meta';
+    const morceaux = [];
+    if (niveaux.length) {
+        morceaux.push(`<span class="pstep-niveau" title="${escapeHtml(niveaux.join(', '))}">`
+            + `${escapeHtml(niveaux.map(abregerNiveau).join(' · '))}</span>`);
+    }
+    chapitres.slice(0, 2).forEach(c =>
+        morceaux.push(`<span class="pstep-chap">${escapeHtml(c.nom)}</span>`));
+    if (!chapitres.length) morceaux.push('<span class="pstep-chap pstep-chap--vide">hors chapitre</span>');
+    morceaux.push(`<span class="pstep-duree${duree.mesure ? ' pstep-duree--mesure' : ''}"`
+        + ` title="${duree.mesure
+            ? 'Mesuré sur les réponses déjà enregistrées, et non estimé.'
+            : 'Estimation d\'après la nature de l\'exercice.'}">`
+        + `${duree.mesure ? '' : '≈ '}${escapeHtml(direDuree(duree.min, duree.max))}</span>`);
+    dessous.innerHTML = morceaux.join('');
+
     const actions = document.createElement('div');
     actions.className = 'path-step-actions';
 
@@ -648,6 +760,11 @@ function stepRow(step, index, policy) {
     head.appendChild(toggle);
     head.appendChild(actions);
     row.appendChild(head);
+    row.appendChild(dessous);
+    // La couleur du liseré dit le DOMAINE : dans une liste de vingt étapes,
+    // c'est ce qui montre d'un coup d'œil qu'on a empilé six exercices de
+    // calcul et aucun de géométrie.
+    row.dataset.domaine = (exo.tags && exo.tags.chemin && exo.tags.chemin[0]) || '';
 
     return row;
 }
@@ -866,7 +983,10 @@ function initToolbar() {
 }
 
 export function autoSavePath() {
-    if (!state.currentPath.steps.length && !state.currentPathId) return;
+    if (!state.currentPath.steps.length && !state.currentPathId) {
+        direLEtat(null);
+        return;
+    }
     const snapshot = JSON.parse(JSON.stringify(state.currentPath));
     if (!state.currentPathId) {
         const saved = state.saveTeacherPath(state.currentPath.name, snapshot);
@@ -874,6 +994,35 @@ export function autoSavePath() {
     } else {
         state.updateTeacherPath(state.currentPathId, state.currentPath.name, snapshot);
     }
+    direLEtat(new Date());
+}
+
+/**
+ * DIRE QUE C'EST ENREGISTRÉ.
+ *
+ * Le parcours était déjà sauvegardé à chaque modification — mais rien ne le
+ * disait. Devant « Mon Parcours », on ne pouvait pas distinguer un travail à
+ * l'abri d'un brouillon qui va disparaître au prochain onglet fermé, et l'on
+ * n'ose pas fermer ce dont on n'est pas sûr.
+ */
+function direLEtat(quand) {
+    const el = document.getElementById('path-etat');
+    if (!el) return;
+    if (!quand) {
+        el.textContent = 'Brouillon';
+        el.className = 'path-etat path-etat--brouillon';
+        el.title = 'Ce parcours sera enregistré dès qu\'il aura une activité.';
+        return;
+    }
+    const heure = `${String(quand.getHours()).padStart(2, '0')}:${String(quand.getMinutes()).padStart(2, '0')}`;
+    el.textContent = `Enregistré ${heure}`;
+    el.className = 'path-etat path-etat--ok';
+    el.title = 'Enregistré sur ce poste, et retrouvable dans « Mes parcours ».';
+    // Un bref éclat : c'est ce qui fait comprendre que la mention vient de
+    // changer, sans quoi elle se confond avec le décor.
+    el.classList.remove('path-etat--eclat');
+    void el.offsetWidth;
+    el.classList.add('path-etat--eclat');
 }
 
 // --- Navigateur de parcours -------------------------------------------------

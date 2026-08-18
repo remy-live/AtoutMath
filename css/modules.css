@@ -5046,3 +5046,129 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 @media (max-width: 700px) {
     .outils-menu { min-width: min(268px, 82vw); max-width: calc(100vw - 16px); }
 }
+
+/* --- Le parcours se lit d'un coup d'œil -------------------------------------
+   Trois manques, trois réponses : on ne savait pas si c'était enregistré, une
+   étape ne disait que son titre, et rien ne disait si la séance tenait dans
+   l'heure. */
+
+/* L'état d'enregistrement, à côté du compte d'activités. */
+.path-etat {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    padding: 2px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex: none;
+}
+.path-etat--brouillon {
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+}
+.path-etat--ok {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 13%, transparent);
+    border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
+}
+@keyframes path-etat-eclat {
+    from { transform: scale(1.12); filter: brightness(1.25); }
+    to { transform: scale(1); filter: none; }
+}
+.path-etat--eclat { animation: path-etat-eclat .45s ease-out; }
+
+/* La durée totale : le seul chiffre du bandeau qu'on lit pour DÉCIDER. */
+.path-duree {
+    display: inline-block;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+}
+.path-duree--courte {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 13%, transparent);
+}
+.path-duree--seance {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 13%, transparent);
+}
+.path-duree--longue {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 16%, transparent);
+}
+
+/* L'étape tient désormais sur DEUX lignes : le titre et ses actions, puis les
+   étiquettes. La ligne d'origine était un `flex` horizontal — il faut donc
+   l'empiler, sinon les étiquettes se rangent à côté des boutons. */
+.path-step {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+/* La deuxième ligne d'une étape : niveau, chapitre, durée. */
+.path-step-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin: 4px 0 0 26px;
+    font-size: .7rem;
+    line-height: 1.4;
+}
+.pstep-niveau, .pstep-chap, .pstep-duree {
+    padding: 1px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.pstep-niveau {
+    font-weight: 700;
+    color: var(--tag-niv-txt);
+    background: var(--tag-niv-bg);
+}
+.pstep-chap {
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    max-width: 15em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pstep-chap--vide { font-style: italic; opacity: .8; }
+.pstep-duree {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+/* Une durée MESURÉE n'est pas une estimation : elle se distingue. */
+.pstep-duree--mesure {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    font-weight: 600;
+}
+
+/* Le liseré de gauche dit le DOMAINE : dans vingt étapes, c'est ce qui montre
+   qu'on a empilé six exercices de calcul et aucun de géométrie. */
+.path-step[data-domaine="Numérique"] { border-left-color: #6366f1; }
+.path-step[data-domaine="Géométrique"] { border-left-color: #0ea5e9; }
+.path-step[data-domaine="Grandeurs et Mesures"] { border-left-color: #f59e0b; }
+.path-step[data-domaine="Organisation de données"] { border-left-color: #10b981; }
+
+@media (max-width: 700px) {
+    .path-step-meta { margin-left: 0; }
+    .pstep-chap { max-width: 11em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .path-etat--eclat { animation: none; }
+}
+
+.path-bandeau {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px 14px;
+    flex-wrap: wrap;
+}
+.path-bandeau .path-summary { flex: 1 1 240px; min-width: 0; }
