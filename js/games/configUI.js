@@ -8,6 +8,7 @@
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
 import { seuilDe } from '../core/recompenses.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
+import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 
 // --- Champs -----------------------------------------------------------------
@@ -557,6 +558,20 @@ export function showStudentConfigModal(exo, onStart) {
     // panne que les réglages sans effet corrigés cette semaine. Le repli
     // s'ouvre donc DÉJÀ OUVERT dès qu'il contient une valeur modifiée, et le
     // compte est écrit sur sa poignée.
+    // COMBIEN DE QUESTIONS POUR VOIR TOUT L'EXERCICE.
+    //
+    // Dix, quoi qu'il arrive, tronquait toutes les progressions : « Additionner
+    // des Relatifs » annonce douze marches à deux questions et n'en montrait
+    // que cinq. Le générateur dit maintenant ce qu'il lui faut ; on le propose,
+    // et l'infobulle explique pourquoi le nombre n'est pas celui qu'on croit.
+    const generateurEcran = exo.generatorId ? getGenerator(exo.generatorId) : null;
+    const conseil = questionsConseillees(generateurEcran, current);
+    const nbConseille = current.nbQuestions || conseil;
+    const aideDuree = conseil > 10
+        ? `Cet exercice avance par marches : il en faut ${conseil} pour les parcourir toutes. `
+            + 'En mettre moins n\'est pas un problème — on verra les premières.'
+        : 'Autant de questions que l\'exercice en pose.';
+
     const valeurDe = (p) => current[p.id] !== undefined ? current[p.id] : p.default;
     const devant = schema.filter(p => !p.affiner);
     const derriere = schema.filter(p => p.affiner);
@@ -580,11 +595,11 @@ export function showStudentConfigModal(exo, onStart) {
     content.innerHTML = `
         ${devant.map(p => fieldHtml(p, valeurDe(p))).join('')}
         <div class="cfg-field">
-            <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
+            <label class="cfg-label" for="cfg-nbitems">Nombre de questions${infoBtn(aideDuree)}</label>
             <div class="cfg-stepper" data-stepper>
                 <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
                 <input type="number" inputmode="numeric" id="cfg-nbitems" class="cfg-input cfg-input--num"
-                    min="3" max="50" value="${current.nbQuestions || 10}">
+                    min="${MIN_QUESTIONS}" max="${MAX_QUESTIONS}" value="${nbConseille}">
                 <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
             </div>
         </div>

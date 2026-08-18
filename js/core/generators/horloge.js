@@ -131,6 +131,9 @@ export const horlogeGenerator = {
     label: 'Lire l\'heure sur une pendule',
     skills: [SKILL_LIRE, SKILL_PLACER],
     answerKinds: ['heure'],
+    // Six niveaux a deux questions, comme les relatifs : douze questions pour
+    // aller de « l'heure pile » au tour de midi.
+    conseil: (p) => (p && p.niveau === 'progressif') ? NIVEAUX.length * 2 : 10,
     params: [
         {
             id: 'niveau', type: 'select', label: 'Niveau',

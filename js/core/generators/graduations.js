@@ -69,6 +69,9 @@ export const graduationsGenerator = {
     skills: ['num.dec.graduations'],
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
+    // Trois echelles a trois questions : neuf pour aller des unites aux
+    // centiemes. Voir core/duree.js.
+    conseil: (p) => (p && p.zoom === 'progressif') ? ZOOMS.length * 3 : 10,
     params: [
         {
             id: 'zoom', type: 'select', label: 'Le pas de la graduation', default: 'progressif',

@@ -7,7 +7,7 @@
 
 import { makeItem } from '../items.js';
 import {
-    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, redactionComplete
+    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, redactionComplete, NIVEAUX
 } from '../pythagore.js';
 
 export const pythagoreGenerator = {
@@ -16,6 +16,11 @@ export const pythagoreGenerator = {
     skills: ['geo.pythagore'],
     answerKinds: ['numeric'],
     ecrit: true,
+    // Les six marches de l'exercice A L'ECRAN demandent douze questions —
+    // deux chacune. Le conseil vit ici parce que l'activite « pythagore-
+    // theoreme » est autonome et n'a pas de generateur a elle ; c'est bien
+    // du reglage `niveau` de l'exercice qu'il parle, pas de `chercher`.
+    conseil: (p) => (p && p.niveau === 'progressif') ? NIVEAUX.length * 2 : 10,
     // Le paramètre s'appelle « chercher », PAS « niveau » : l'exercice à
     // l'écran a le sien (les six marches), et deux réglages homonymes qui ne
     // parlent pas de la même chose finissent toujours par se marcher dessus.

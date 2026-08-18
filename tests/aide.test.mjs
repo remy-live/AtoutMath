@@ -272,3 +272,56 @@ test('en évaluation, l\'aide suit le calendrier et non l\'élève', () => {
     assert.deepEqual(aideSelonEtat(params, null, 2, 20), aideAuRang(params, 2, 20));
     assert.notDeepEqual(aideSelonEtat(params, monte, 2, 20), aideAuRang(params, 2, 20));
 });
+
+// --- Le nombre de questions doit suffire aux marches -------------------------
+
+test('une progression déclare de quoi la parcourir en entier', async () => {
+    await import('../js/core/activities/index.js');
+    const { getGenerator } = await import('../js/core/registry.js');
+    const { questionsConseillees, QUESTIONS_PAR_DEFAUT } = await import('../js/core/duree.js');
+
+    // Le défaut de dix tronquait toutes les progressions. Chacune dit
+    // maintenant ce qu'il lui faut, et ce nombre doit couvrir ses marches.
+    const attendus = [
+        ['num.relatifs', { niveau: 'progressif' }, 12],
+        ['mes.horloge', { niveau: 'progressif' }, 12],
+        ['num.relatifs.addition', { etape: 'progressif' }, 24],
+        ['geo.pythagore', { niveau: 'progressif' }, 12]
+    ];
+    for (const [id, params, n] of attendus) {
+        assert.equal(questionsConseillees(getGenerator(id), params), n, id);
+    }
+
+    // Hors progression, on retombe sur le nombre ordinaire : un exercice de
+    // calcul mental n'a aucune raison d'être plus long.
+    assert.equal(questionsConseillees(getGenerator('calc.addition'), {}), QUESTIONS_PAR_DEFAUT);
+    assert.equal(questionsConseillees(getGenerator('num.relatifs'), { niveau: 'thermometre' }),
+        QUESTIONS_PAR_DEFAUT);
+    // Un générateur sans conseil, ou absent, ne fait pas tomber le panneau.
+    assert.equal(questionsConseillees(null, {}), QUESTIONS_PAR_DEFAUT);
+});
+
+test('le conseil couvre toujours l\'escalier de l\'aide', async () => {
+    await import('../js/core/activities/index.js');
+    const { allGenerators } = await import('../js/core/registry.js');
+    const { questionsConseillees, MINIMUM_ESCALIER, MAX_QUESTIONS } = await import('../js/core/duree.js');
+    // Trois preuves, puis deux, puis au moins deux questions au clavier : en
+    // dessous, on ne produit jamais rien soi-même — ce qui était le but.
+    for (const g of allGenerators()) {
+        const n = questionsConseillees(g, {});
+        assert.ok(n >= MINIMUM_ESCALIER, `${g.id} : ${n} questions, trop court pour l'escalier`);
+        assert.ok(n <= MAX_QUESTIONS, `${g.id} : ${n} questions, c'est une punition`);
+    }
+});
+
+test('on sait dire combien de marches seront réellement vues', async () => {
+    const { marchesVues } = await import('../js/core/duree.js');
+    // Douze marches à deux questions : dix questions n'en montrent que cinq.
+    // C'est le chiffre qu'il fallait pouvoir écrire.
+    assert.equal(marchesVues(12, 2, 10), 5);
+    assert.equal(marchesVues(12, 2, 24), 12);
+    assert.equal(marchesVues(12, 2, 40), 12, 'plus de questions n\'invente pas de marches');
+    assert.equal(marchesVues(6, 2, 12), 6);
+    assert.equal(marchesVues(6, 2, 3), 2);
+    assert.equal(marchesVues(1, 1, 1), 1);
+});

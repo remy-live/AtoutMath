@@ -262,6 +262,17 @@ export const relatifsAdditionGenerator = {
     skills: [SKILL_SOMME, SKILL_ECRITURE],
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
+    // DEUX QUESTIONS PAR MARCHE, et le nombre de marches depend du reglage :
+    // douze en progressif, quatre pour un temps, une pour une marche seule.
+    // Le defaut de dix questions n'en montrait que CINQ sur douze — la
+    // moitie du chapitre ne s'affichait jamais. Voir core/duree.js.
+    conseil: (p) => {
+        const choix = (p && p.etape) || 'progressif';
+        if (choix === 'A' || choix === 'B' || choix === 'C') {
+            return ETAPES.filter(e => e.temps === choix).length * 2;
+        }
+        return choix === 'progressif' ? ETAPES.length * 2 : 6;
+    },
     params: [
         {
             id: 'etape', type: 'select', label: 'Étape',

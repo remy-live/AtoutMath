@@ -192,6 +192,10 @@ export const relatifsGenerator = {
     skills: [SKILL_SOMME, SKILL_SENS],
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
+    // Six niveaux a deux questions : la progression complete demande douze
+    // questions. Voir core/duree.js — le defaut de dix la tronquait, et
+    // l'ecriture (+3) + (-5), qui est la derniere marche, n'arrivait jamais.
+    conseil: (p) => (p && p.niveau === 'progressif') ? NIVEAUX.length * 2 : 10,
     params: [
         {
             id: 'niveau', type: 'select', label: 'Niveau',
