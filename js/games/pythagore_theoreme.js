@@ -15,7 +15,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    THEOREME, NIVEAUX, niveauDe, tirerTriangle, cotesDe, direTriangle,
+    THEOREME, NIVEAUX, niveauDe, niveauPour, tirerTriangle, cotesDe, direTriangle,
     egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase
 } from '../core/pythagore.js';
 import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
@@ -26,7 +26,13 @@ class Pythagore extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'pythagore');
         this.rng = makeRng(this.params.seed);
-        this.niveau = niveauDe(this.params.niveau);
+        // Le rang de la question : c'est lui qui fait monter l'escalier quand
+        // le réglage est « progressif ». Compté ici, et non déduit du nombre de
+        // réussites — une marche se quitte quand on l'a PARCOURUE, pas quand on
+        // l'a réussie, sinon l'élève qui bloque n'avance jamais.
+        this.rang = 0;
+        this.total = Math.max(1, Number(this.params.nbQuestions) || 10);
+        this.niveau = niveauPour(this.params, 1, this.total);
         this.reussis = 0;
     }
 
@@ -124,6 +130,8 @@ class Pythagore extends BaseGame {
     startGameLoop() { this.poser(); }
 
     poser() {
+        this.rang++;
+        this.niveau = niveauPour(this.params, this.rang, this.total);
         this.t = tirerTriangle(this.rng);
         this.infos = cotesDe(this.t);
         // Chercher l'hypoténuse au niveau 4, une cathète au niveau 5 ; au

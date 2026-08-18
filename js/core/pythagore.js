@@ -61,6 +61,38 @@ export const NIVEAUX = [
 export const niveauDe = (n) => NIVEAUX.find(x => x.id === Number(n)) || NIVEAUX[0];
 
 /**
+ * LES SIX MARCHES À LA SUITE.
+ *
+ * Les six niveaux existaient, mais seulement à choisir un par un : on montrait
+ * l'hypoténuse pendant dix questions, ou l'on rédigeait pendant dix questions.
+ * Or c'est l'ESCALIER qui enseigne — on ne demande jamais deux choses nouvelles
+ * à la fois, et chaque marche s'appuie sur celle d'en dessous.
+ *
+ * Les marches se partagent l'exercice à parts égales, et la dernière ramasse
+ * le reste : sur dix questions, ce sont deux marches de deux questions puis
+ * quatre de une, et non cinq marches suivies d'un saut. Les premières sont
+ * courtes à dessein — montrer l'hypoténuse du doigt s'acquiert vite, rédiger
+ * en entier demande d'y revenir.
+ *
+ * @param {number} rang   1 pour la première question
+ * @param {number} total  nombre de questions de l'exercice
+ */
+export function niveauProgressif(rang, total) {
+    const n = Math.max(1, Number(total) || 10);
+    const r = Math.max(1, Math.min(n, Number(rang) || 1));
+    const parMarche = Math.max(1, Math.floor(n / NIVEAUX.length));
+    const i = Math.min(NIVEAUX.length - 1, Math.floor((r - 1) / parMarche));
+    return NIVEAUX[i];
+}
+
+/** Le niveau à poser : une marche fixe, ou celle où l'escalier est arrivé. */
+export function niveauPour(params, rang, total) {
+    return (params && params.niveau === 'progressif')
+        ? niveauProgressif(rang, total)
+        : niveauDe(params && params.niveau);
+}
+
+/**
  * Un triangle rectangle : trois sommets, l'angle droit sur l'un d'eux, et un
  * triplet pour les longueurs. `angleDroit` est l'INDICE du sommet (0, 1 ou 2)
  * — jamais toujours le premier, sinon l'élève apprend une place au lieu d'une

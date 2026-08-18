@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { aideAuRang, reduireChoix, modeDe, affine, MODES } from '../js/core/aide.js';
+import { aideAuRang, reduireChoix, modeDe, affine, MODES, DEBUT_FACILE } from '../js/core/aide.js';
 import { finalizeChoices } from '../js/core/items.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -11,13 +11,13 @@ test('le mode progressif monte : 2 propositions, puis 4, puis le clavier', () =>
     const p = { aide: 'progressive' };
     const marche = (r) => aideAuRang(p, r, 12);
 
-    // Premier tiers (1 à 4 sur 12) : deux propositions.
-    for (const r of [1, 2, 3, 4]) {
+    // Les TROIS premières, quelle que soit la longueur : deux propositions.
+    for (const r of [1, 2, 3]) {
         assert.equal(marche(r).propositions, 2, `question ${r}`);
         assert.equal(marche(r).clavier, false, `question ${r}`);
     }
     // Ensuite quatre, tant qu'on choisit.
-    for (const r of [5, 6, 7, 8, 9]) {
+    for (const r of [4, 5, 6, 7, 8, 9]) {
         assert.equal(marche(r).propositions, 4, `question ${r}`);
         assert.equal(marche(r).clavier, false, `question ${r}`);
     }
@@ -26,13 +26,26 @@ test('le mode progressif monte : 2 propositions, puis 4, puis le clavier', () =>
 });
 
 test('l\'escalier tient sur un exercice court comme sur un long', () => {
-    // Trois questions : il reste UNE marche facile, et on finit au clavier.
+    // Trois questions : la marche facile ne peut pas tenir tout l'exercice —
+    // on garde deux propositions puis on finit au clavier, sans le palier à
+    // quatre. Un exercice de trois questions est un test rapide, pas une
+    // progression ; lui imposer les trois marches ne laisserait rien à chacune.
     assert.equal(aideAuRang({ aide: 'progressive' }, 1, 3).propositions, 2);
-    assert.equal(aideAuRang({ aide: 'progressive' }, 2, 3).propositions, 4);
+    assert.equal(aideAuRang({ aide: 'progressive' }, 2, 3).propositions, 2);
     assert.equal(aideAuRang({ aide: 'progressive' }, 3, 3).clavier, true);
-    // Cinquante questions : le tiers et le quart restent des proportions.
-    assert.equal(aideAuRang({ aide: 'progressive' }, 17, 50).propositions, 2);
-    assert.equal(aideAuRang({ aide: 'progressive' }, 18, 50).propositions, 4);
+    // Neuf questions : les trois marches y tiennent.
+    assert.equal(aideAuRang({ aide: 'progressive' }, 3, 9).propositions, 2);
+    assert.equal(aideAuRang({ aide: 'progressive' }, 4, 9).propositions, 4);
+    assert.equal(aideAuRang({ aide: 'progressive' }, 8, 9).clavier, true);
+    // Vingt questions : trois faciles, pas sept. C'est le point de Rémy —
+    // « pour une addition je peux très bien proposer 20 questions », et un
+    // tiers de vingt ferait sept vrai/faux d'affilée.
+    assert.equal(aideAuRang({ aide: 'progressive' }, 3, 20).propositions, 2);
+    assert.equal(aideAuRang({ aide: 'progressive' }, 4, 20).propositions, 4);
+    assert.equal(DEBUT_FACILE, 3);
+    // Cinquante questions : toujours trois, la marche ne s'étire pas.
+    assert.equal(aideAuRang({ aide: 'progressive' }, 3, 50).propositions, 2);
+    assert.equal(aideAuRang({ aide: 'progressive' }, 4, 50).propositions, 4);
     assert.equal(aideAuRang({ aide: 'progressive' }, 39, 50).clavier, true);
     assert.equal(aideAuRang({ aide: 'progressive' }, 38, 50).clavier, false);
 });

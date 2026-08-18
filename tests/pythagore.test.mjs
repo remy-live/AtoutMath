@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
-    THEOREME, TRIPLETS, NIVEAUX, niveauDe, tirerTriangle, cotesDe, direTriangle,
+    THEOREME, TRIPLETS, NIVEAUX, niveauDe, niveauProgressif, niveauPour,
+    tirerTriangle, cotesDe, direTriangle,
     egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase,
     redactionComplete
 } from '../js/core/pythagore.js';
@@ -112,4 +113,36 @@ test('le générateur écrit des énoncés complets pour la feuille', () => {
         assert.ok(!/undefined|NaN/.test(it.explanation));
         assert.match(it.explanation, /√/, 'la correction montre la racine');
     }
+});
+
+// --- Les six marches à la suite ---------------------------------------------
+
+test('en progressif, l\'escalier monte du doigt à la rédaction', () => {
+    // Douze questions, six marches : deux questions chacune.
+    const vus = [];
+    for (let r = 1; r <= 12; r++) vus.push(niveauProgressif(r, 12).id);
+    assert.deepEqual(vus, [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+
+    // On commence toujours par montrer l'hypoténuse et on finit par rédiger,
+    // quelle que soit la longueur.
+    for (const n of [6, 10, 12, 20, 30]) {
+        assert.equal(niveauProgressif(1, n).id, 1, `${n} questions : ne commence pas au niveau 1`);
+        assert.equal(niveauProgressif(n, n).id, NIVEAUX.length, `${n} questions : ne finit pas à la rédaction`);
+    }
+});
+
+test('un exercice trop court pour six marches ne les saute pas dans le désordre', () => {
+    // Trois questions : une marche par question, et l'escalier reste croissant.
+    const ids = [1, 2, 3].map(r => niveauProgressif(r, 3).id);
+    assert.deepEqual(ids, [...ids].sort((a, b) => a - b), 'l\'escalier redescend');
+    assert.equal(ids[0], 1);
+});
+
+test('un niveau fixé reste fixé, et un réglage absent ne plante pas', () => {
+    for (const r of [1, 5, 20]) {
+        assert.equal(niveauPour({ niveau: 4 }, r, 20).id, 4, `question ${r}`);
+        assert.equal(niveauPour({ niveau: '4' }, r, 20).id, 4, `question ${r} (chaîne)`);
+    }
+    assert.equal(niveauPour({}, 1, 10).id, 1);
+    assert.equal(niveauPour(null, 1, 10).id, 1);
 });

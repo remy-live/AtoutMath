@@ -65,11 +65,15 @@ export const geometrieExercises = [
         generatorId: 'geo.pythagore', printable: 'pythagore',
         sansRevision: true,
         skills: ['geo.pythagore'],
-        params: { niveau: 1 },
+        params: { niveau: 'progressif' },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Niveau',
+                aide: 'En progressif, les six marches s\'enchaînent au fil de l\'exercice — '
+                    + 'c\'est l\'escalier qui enseigne. Choisir une marche précise sert à '
+                    + 'reprendre un point qui coince.',
                 options: [
+                    { value: 'progressif', label: 'Progressif — les 6 marches à la suite' },
                     { value: 1, label: '1 — Montrer l\'hypoténuse' },
                     { value: 2, label: '2 — La phrase du théorème' },
                     { value: 3, label: '3 — Écrire l\'égalité' },
@@ -77,7 +81,7 @@ export const geometrieExercises = [
                     { value: 5, label: '5 — Calculer un côté de l\'angle droit' },
                     { value: 6, label: '6 — Rédiger en entier' }
                 ],
-                default: 1
+                default: 'progressif'
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },

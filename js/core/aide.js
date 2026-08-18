@@ -46,6 +46,9 @@ export const SEUILS_SAISIE = { moitie: 0.5, quart: 0.75, tiers: 1 / 3 };
 
 const MODE_PAR_DEFAUT = 'progressive';
 
+/** Combien de questions à deux propositions avant d'ouvrir à quatre. */
+export const DEBUT_FACILE = 3;
+
 /**
  * Le mode retenu, réglages en main.
  *
@@ -95,12 +98,18 @@ export function aideAuRang(params = {}, rang = 1, total = 10) {
         clavier = r > seuil;
     }
 
-    // Les propositions s'élargissent au PREMIER TIERS, pas à la moitié : deux
-    // choix pendant la moitié d'un exercice de dix questions, c'est cinq
-    // vrai/faux d'affilée, et l'élève s'installe dans l'élimination au lieu
-    // de chercher. Trois questions suffisent à mettre en confiance.
+    // TROIS QUESTIONS, ET PAS UN TIERS.
+    //
+    // Le tiers semblait plus élégant, il est faux : Rémy donne volontiers
+    // vingt additions, et un tiers de vingt fait sept vrai/faux d'affilée —
+    // l'élève s'installe alors dans l'élimination au lieu de chercher. La
+    // marche du début sert à METTRE EN CONFIANCE, pas à occuper le début de
+    // l'exercice : c'est une longueur en questions, pas une proportion.
+    //
+    // Bornée par la longueur de l'exercice, faute de quoi un exercice de
+    // trois questions n'aurait plus que la marche facile.
     let propositions = forceN !== undefined ? forceN
-        : (r <= Math.ceil(n / 3) ? m.debut : m.fin);
+        : (r <= Math.min(DEBUT_FACILE, Math.max(1, n - 1)) ? m.debut : m.fin);
     if (propositions !== null && !(propositions >= 2)) propositions = null;
 
     return { propositions, clavier };
