@@ -315,9 +315,55 @@ function handleDrop(e, pathBox) {
         return;
     }
 
+    const dossier = e.dataTransfer.getData('text/dossier');
+    if (dossier !== '') {
+        ajouterLeDossier(dossier === '' ? [] : dossier.split(' > '));
+        return;
+    }
+
     if (exerciseId && getExerciseById(exerciseId)) {
         addStep(exerciseId);
     }
+}
+
+/** Au-delà, on demande : un chapitre entier peut faire une heure et demie. */
+const LOT_SANS_QUESTION = 6;
+
+/**
+ * Verser un dossier entier dans le parcours.
+ *
+ * C'est le geste que le classement par chapitre rend possible : on tire
+ * « 6ème › Fractions » dans la colonne du milieu et la séance est montée. Au
+ * delà de six exercices on demande confirmation — un chapitre de vingt fait un
+ * parcours d'une heure et demie, et un glissement se fait vite.
+ */
+export async function ajouterLeDossier(path) {
+    const { exercicesDuDossier } = await import('./navigation.js');
+    const lot = exercicesDuDossier(path);
+    const nom = path.length ? path[path.length - 1] : 'tout le catalogue';
+
+    if (!lot.length) {
+        showToast(`« ${nom} » ne contient aucun exercice.`, 'error');
+        return;
+    }
+
+    const verser = () => {
+        lot.forEach(exo => {
+            const step = makeStep(exo.id, {}, { nbItems: 10, threshold: 7 });
+            state.currentPath.steps.push(step);
+        });
+        renderTeacherPath();
+        showToast(`${lot.length} exercices de « ${nom} » ajoutés au parcours.`, 'success');
+    };
+
+    if (lot.length > LOT_SANS_QUESTION) {
+        showConfirm(
+            `« ${nom} » contient ${lot.length} exercices. Les ajouter tous au parcours ?`,
+            verser
+        );
+        return;
+    }
+    verser();
 }
 
 export function addStep(exerciseId) {

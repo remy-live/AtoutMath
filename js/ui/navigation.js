@@ -6,6 +6,7 @@ import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
 import { correspond } from '../core/recherche.js';
+import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
 
 // L'APERÇU AU SURVOL, ET SA MISE À MORT.
@@ -97,7 +98,7 @@ export function createLibraryItem(exo) {
     // Glisser-déposer AU DOIGT vers le parcours : l'API HTML5 ci-dessus ne
     // fonctionne qu'à la souris. Sur tablette, on refait le geste avec les
     // Pointer Events — fantôme sous le doigt, dépôt sur la colonne du milieu.
-    enableTouchDragToPath(item, exo);
+    enableTouchDragToPath(item, () => import('./builder.js').then(m => m.addStep(exo.id)));
 
     item.onclick = () => {
         if(!state.isTeacherMode) {
@@ -162,7 +163,16 @@ export function createLibraryItem(exo) {
  * suite fait défiler la liste, comme d'habitude. Une fois armé, un fantôme
  * suit le doigt et le dépôt sur la colonne du milieu ajoute l'étape.
  */
-function enableTouchDragToPath(item, exo) {
+/**
+ * Glisser au doigt vers le parcours.
+ *
+ * @param {HTMLElement} item
+ * @param {Function} auDepot - ce qu'on ajoute une fois lâché sur la colonne.
+ *   Une fonction et non un exercice : le même geste sert à déposer un exercice
+ *   et à déposer un CHAPITRE ENTIER, et deux implémentations du même
+ *   glissement finiraient par ne plus se comporter pareil.
+ */
+function enableTouchDragToPath(item, auDepot) {
     let armTimer = null;
     let dragging = false;
     let ghost = null;
@@ -228,7 +238,7 @@ function enableTouchDragToPath(item, exo) {
                 const r = box.getBoundingClientRect();
                 const over = e.clientX >= r.left && e.clientX <= r.right
                     && e.clientY >= r.top && e.clientY <= r.bottom;
-                if (over) import('./builder.js').then(m => m.addStep(exo.id));
+                if (over) auDepot();
             }
         }
         cleanup();
@@ -287,20 +297,109 @@ export function refreshCatalogViews() {
 // chemin correspondent exactement à `path`. Selon la longueur de son chemin,
 // il est soit une feuille de ce noeud (chemin.length === path.length), soit
 // rangé dans un sous-dossier plus profond (chemin[path.length] donne son nom).
+// UN EXERCICE PEUT AVOIR PLUSIEURS CHEMINS. Rangé par domaine il n'en a qu'un,
+// mais rangé par chapitre il peut appartenir à deux chapitres — Pythagore aux
+// racines carrées et aux triangles rectangles. Les trois fonctions ci-dessous
+// raisonnent donc sur une liste de chemins : « au moins un de ses chemins
+// passe par ce dossier ».
 function matchesPath(exo, path) {
-    return path.every((v, i) => exo.tags.chemin[i] === v);
+    return cheminsDe(exo).some(ch => path.every((v, i) => ch[i] === v));
 }
 
 function getNodeLeaves(filtered, path) {
-    return filtered.filter(e => matchesPath(e, path) && e.tags.chemin.length === path.length);
+    return filtered.filter(e =>
+        cheminsDe(e).some(ch => ch.length === path.length && path.every((v, i) => ch[i] === v)));
 }
 
 function getNodeSubKeys(filtered, path) {
-    return [...new Set(
-        filtered
-            .filter(e => matchesPath(e, path) && e.tags.chemin.length > path.length)
-            .map(e => e.tags.chemin[path.length])
-    )].sort();
+    const clefs = new Set();
+    filtered.forEach(e => cheminsDe(e).forEach(ch => {
+        if (ch.length > path.length && path.every((v, i) => ch[i] === v)) clefs.add(ch[path.length]);
+    }));
+    // Deux exceptions à l'ordre alphabétique. Les NIVEAUX suivent la
+    // scolarité — CM2 avant la 6ᵉ, et non après la 4ᵉ comme le voudrait
+    // l'alphabet. Et « Hors chapitre » ferme la marche : c'est une corbeille à
+    // trier, pas un chapitre, elle n'a rien à faire entre « Fractions » et
+    // « Ordre ».
+    const rangNiveau = Object.values(TAGS.NIVEAU);
+    return [...clefs].sort((a, b) => {
+        if (a === HORS_CHAPITRE) return 1;
+        if (b === HORS_CHAPITRE) return -1;
+        const ia = rangNiveau.indexOf(a), ib = rangNiveau.indexOf(b);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        return a.localeCompare(b, 'fr');
+    });
+}
+
+/**
+ * La bascule « Domaines / Chapitres » au-dessus de l'arbre.
+ *
+ * Changer de rangement remet la navigation à la racine : le dossier ouvert
+ * — « Numérique › Calcul Mental » — n'existe pas dans l'autre rangement, et
+ * l'y laisser afficherait une grille vide sans dire pourquoi.
+ */
+export function initBasculeRangement() {
+    const boite = document.getElementById('rangement-bascule');
+    if (!boite) return;
+    const boutons = [...boite.querySelectorAll('.rang-btn')];
+
+    const peindre = () => {
+        const mode = modeRangement();
+        boutons.forEach(b => {
+            const actif = b.dataset.rangement === mode;
+            b.classList.toggle('active', actif);
+            b.setAttribute('aria-pressed', String(actif));
+        });
+    };
+
+    boutons.forEach(b => {
+        b.onclick = () => {
+            if (b.dataset.rangement === modeRangement()) return;
+            setModeRangement(b.dataset.rangement);
+            state.navStack = [];
+            peindre();
+            refreshCatalogViews();
+        };
+    });
+
+    // Le classement change dans l'écran des chapitres pendant que l'arbre est
+    // affiché derrière : il doit suivre, sans quoi le professeur croit que sa
+    // case n'a rien fait.
+    document.addEventListener('chapitres_updated', () => {
+        if (modeRangement() === RANGEMENTS.CHAPITRE) refreshCatalogViews();
+    });
+
+    peindre();
+}
+
+/**
+ * Les exercices d'un dossier, sous-dossiers compris, dans l'ordre du catalogue.
+ * C'est ce qu'on ajoute quand on lâche un chapitre entier sur le parcours.
+ */
+export function exercicesDuDossier(path) {
+    return getFilteredExercises().filter(e => matchesPath(e, path));
+}
+
+/**
+ * GLISSER UN CHAPITRE ENTIER DANS LE PARCOURS.
+ *
+ * « Je choisis mon chapitre, je le tire dans le parcours, et bam. » Le dossier
+ * porte l'information dans un type à part (`text/dossier`) : la colonne du
+ * milieu sait ainsi tout de suite qu'on lui donne un lot et non un exercice,
+ * et peut demander confirmation avant d'y verser vingt étapes.
+ */
+function rendreDossierDeposable(sommaire, path) {
+    sommaire.draggable = true;
+    sommaire.ondragstart = (e) => {
+        if (!state.isTeacherMode) { e.preventDefault(); return; }
+        // Sans cela, le navigateur remonte au parent et croit qu'on déplace
+        // l'exercice sélectionné à l'intérieur du dossier.
+        e.stopPropagation();
+        e.dataTransfer.setData('text/dossier', path.join(' > '));
+        e.dataTransfer.effectAllowed = 'copy';
+    };
+    enableTouchDragToPath(sommaire, () =>
+        import('./builder.js').then(m => m.ajouterLeDossier(path)));
 }
 
 export function initAccordion() {
@@ -329,11 +428,13 @@ export function initAccordion() {
             // Sur le clic, et non sur `toggle` : restaurer les dossiers ouverts
             // après un filtrage émet des `toggle` en série, qui feraient
             // dériver le dossier courant sans que personne n'ait rien demandé.
-            det.querySelector('summary').onclick = () => {
+            const sommaire = det.querySelector('summary');
+            sommaire.onclick = () => {
                 if (det.open) return;   // le clic précède l'ouverture
                 state.navStack = childPath.slice();
                 syncGridToSidebar();
             };
+            rendreDossierDeposable(sommaire, childPath);
             renderNode(det, childPath);
             container.appendChild(det);
         });
@@ -375,7 +476,11 @@ export function renderDrilldown() {
     }
 
     back.style.display = path.length === 0 ? 'none' : 'block';
-    bread.textContent = path.length === 0 ? 'Domaines' : path[path.length - 1];
+    // À la racine, le fil d'Ariane annonce le rangement en cours : « Domaines »
+    // au-dessus d'une liste de niveaux se lirait comme une erreur.
+    bread.textContent = path.length === 0
+        ? (modeRangement() === RANGEMENTS.CHAPITRE ? 'Chapitres' : 'Domaines')
+        : path[path.length - 1];
 
     getNodeSubKeys(filtered, path).forEach(key => {
         const b = document.createElement('button'); b.className = 'drill-item'; b.innerHTML = `<span>${key}</span><span>›</span>`;
@@ -428,7 +533,8 @@ export function initGridFilters() {
         container.className = 'grid-container';
 
         dansLeDossier
-            .filter(exo => actifs.length === 0 || actifs.includes(exo.tags.chemin[path.length]))
+            .filter(exo => actifs.length === 0
+                || cheminsDe(exo).some(ch => actifs.includes(ch[path.length])))
             .forEach(exo => container.appendChild(createCard(exo)));
 
         main.appendChild(container);

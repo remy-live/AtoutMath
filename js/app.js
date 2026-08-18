@@ -20,7 +20,7 @@ import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE, estRevisable, ge
 import { isGame } from './core/gameAccess.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
-    setSidebarMode, setTopNavMode, refreshCatalogViews
+    setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement
 } from './ui/navigation.js';
 import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
@@ -77,6 +77,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     initNiveauFilter();
     initImportExport();
+    initBasculeRangement();
     refreshViews();
     setSidebarMode('drill');
     setTopNavMode('grid');
