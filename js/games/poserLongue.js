@@ -89,7 +89,16 @@ const STYLE = `
 
     .pl-signe { display: flex; align-items: center; justify-content: flex-end;
         padding-right: 4px; font-weight: 900; }
-    .pl-trait { height: 3px; background: var(--text-main); margin: 3px 0; border-radius: 2px; }
+    /* LE TRAIT PASSE DEVANT LES CASES. Rémy : « tu oublies la barre sous le
+       5 − 4 ». Elle était bien créée, et posée au bon endroit — mais les cases
+       de la grille sont en position relative, et un élément positionné se
+       peint toujours par-dessus un frère qui ne l'est pas, quel que soit
+       l'ordre. La barre de soustraction se dessinait donc sous le fond des
+       chiffres, invisible, dans la potence comme dans la multiplication. */
+    .pl-trait {
+        height: 3px; background: var(--text-main); margin: 3px 0; border-radius: 2px;
+        position: relative; z-index: 2;
+    }
     /* La potence : le trait vertical entre dividende et diviseur, et le trait
        horizontal sous le diviseur. Deux traits, et tout le monde reconnaît. */
     .pl-potence-v { border-left: 3px solid var(--text-main); }
@@ -253,6 +262,12 @@ class PoserMultiplication extends PoserLongue {
         // faut apprendre. On écrit donc la ligne entière, on la vérifie au
         // bout, et l'on montre exactement quelles colonnes sont fausses.
         this.verifAuFil = this.params.verification === 'immediate';
+        // LES RETENUES SONT UNE AIDE, PAS UN PÉAGE. Rémy : « pas nécessaire
+        // pour l'élève de mettre les retenues ». Le petit rond reste offert à
+        // qui en a besoin ; refuser la colonne suivante à celui qui la tient
+        // de tête, c'est corriger une méthode au lieu d'un calcul. Le
+        // professeur peut les exiger, mais il doit le demander.
+        this.retenuesExigees = this.params.retenues === 'exigees';
         this.fautes = new Set();
     }
 
@@ -505,10 +520,15 @@ class PoserMultiplication extends PoserLongue {
         const p = this.positionCourante();
         if (p === null) return;
         const c = l.cases.find(x => x.position === p);
-        this.note(c.chiffreA === null
+        // `prefixe` porte ce que l'étape précédente avait à dire — l'annonce
+        // d'une retenue, par exemple. Sans lui, la consigne de la case
+        // suivante l'écrasait dans la milliseconde.
+        const avant = this.prefixe || '';
+        this.prefixe = '';
+        this.note(avant + (c.chiffreA === null
             ? `Il ne reste plus que la retenue à écrire : ${c.retenueEntrante}.`
             : `${c.chiffreA} × ${l.chiffre}`
-              + `${c.retenueEntrante ? ` + ${c.retenueEntrante} de retenue` : ''} : quel chiffre écris-tu ?`);
+              + `${c.retenueEntrante ? ` + ${c.retenueEntrante} de retenue` : ''} : quel chiffre écris-tu ?`));
     }
 
     taper(n) {
@@ -531,10 +551,11 @@ class PoserMultiplication extends PoserLongue {
             this.direLigne();
             return;
         }
-        // LA RETENUE D'ABORD. On ne laisse pas continuer sans l'avoir écrite :
-        // l'oublier est l'erreur du chapitre, et la rattraper à la fin serait
-        // la signaler trop tard pour qu'elle serve.
-        if (c.retenueEntrante && this.retenues[this.ligne][p] !== c.retenueEntrante) {
+        // LA RETENUE D'ABORD — seulement si le professeur l'exige. L'oublier
+        // est l'erreur du chapitre, mais beaucoup d'élèves la tiennent de tête
+        // et n'écrivent que le chiffre : c'est leur calcul qu'on corrige, pas
+        // leur brouillon.
+        if (this.retenuesExigees && c.retenueEntrante && this.retenues[this.ligne][p] !== c.retenueEntrante) {
             this.note(`Écris d'abord la retenue dans le petit rond au-dessus de cette colonne — `
                 + 'clique dessus jusqu\'au bon chiffre.', 'ko');
             return;
@@ -561,14 +582,18 @@ class PoserMultiplication extends PoserLongue {
             expected: String(c.chiffre), given: String(c.chiffre), points: 2
         });
 
-        // La retenue doit être ÉCRITE avant de continuer : c'est elle qu'on
-        // oublie, jamais le chiffre.
+        // La retenue s'ANNONCE ; elle ne barre la route que si le professeur
+        // a demandé qu'elle soit écrite.
         if (c.retenueSortante && this.retenues[this.ligne][c.position + 1] !== c.retenueSortante) {
-            this.note(`Bien. ${c.chiffreA} × ${l.chiffre}`
-                + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total} : `
-                + `écris la retenue ${c.retenueSortante} dans le petit rond, à gauche.`);
-            this.dessiner();
-            return;
+            const dit = `${c.chiffreA} × ${l.chiffre}`
+                + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total} : `;
+            if (this.retenuesExigees) {
+                this.note(`Bien. ${dit}écris la retenue ${c.retenueSortante} dans le petit rond, à gauche.`);
+                this.dessiner();
+                return;
+            }
+            this.prefixe = `Bien. ${dit}tu retiens ${c.retenueSortante} — dans le petit rond, `
+                + 'ou dans ta tête. ';
         }
         if (this.positionCourante() === null) return this.finirLigne();
         this.dessiner();
@@ -614,8 +639,9 @@ class PoserMultiplication extends PoserLongue {
                 expected: String(c.chiffre), given: String(c.chiffre), points: 2
             }));
         }
-        // Toutes les retenues de la ligne doivent être posées.
-        const oubli = l.cases.find(c => c.retenueSortante
+        // Les retenues écrites ne sont contrôlées QUE si le professeur les
+        // exige : la ligne juste suffit, c'est elle qu'on demande.
+        const oubli = this.retenuesExigees && l.cases.find(c => c.retenueSortante
             && this.retenues[this.ligne][c.position + 1] !== c.retenueSortante);
         if (oubli) {
             this.note('Le compte est bon, mais une retenue n\'est pas écrite. En contrôle, '
@@ -648,7 +674,7 @@ class PoserMultiplication extends PoserLongue {
         const i = this.rangSomme;
         const c = this.tableauSomme.colonnes[i];
         if (!c) return;
-        if (c.retenueEntrante && this.retSomme[i] !== c.retenueEntrante) {
+        if (this.retenuesExigees && c.retenueEntrante && this.retSomme[i] !== c.retenueEntrante) {
             this.note('Écris d\'abord la retenue dans le petit rond au-dessus de cette colonne.', 'ko');
             return;
         }
@@ -668,10 +694,12 @@ class PoserMultiplication extends PoserLongue {
         if (this.rangSomme >= this.tableauSomme.colonnes.length) return this.versVirgule();
         const suite = this.tableauSomme.colonnes[this.rangSomme];
         this.dessiner();
-        this.note(suite.retenueEntrante
-            ? `Bien : ${c.total}. Écris la retenue ${suite.retenueEntrante} dans le rond, `
-              + 'puis donne le chiffre suivant.'
-            : '');
+        this.note(!suite.retenueEntrante ? ''
+            : (this.retenuesExigees
+                ? `Bien : ${c.total}. Écris la retenue ${suite.retenueEntrante} dans le rond, `
+                    + 'puis donne le chiffre suivant.'
+                : `Bien : ${c.total}. Tu retiens ${suite.retenueEntrante} — dans le rond, `
+                    + 'ou dans ta tête.'));
     }
 
     versVirgule() {
@@ -934,7 +962,14 @@ class PoserDivision extends PoserLongue {
                     : (enCours ? (this.saisie || '') : '');
                 this.poserNombre(texte, ligneProduit, col, i, et.produit, '−', enCours, enCours);
             }
-            if (f.reste !== undefined || (i === this.etape && this.attente === 'reste')) {
+            // LE TRAIT SE TIRE DÈS QUE LE PRODUIT EST POSÉ, pas au moment de
+            // répondre le reste. Rémy : « tu oublies la barre sous le 5 − 4 ».
+            // On voyait un 4 écrit sous un 5, sans rien entre les deux : la
+            // soustraction à faire n'était pas signalée, elle était seulement
+            // demandée par le texte. Sur le cahier, la barre se trace AVANT de
+            // soustraire — c'est elle qui dit « ce qui suit est une
+            // différence ».
+            if (f.produit !== undefined) {
                 const t = document.createElement('div');
                 t.className = 'pl-trait';
                 // LE TRAIT FAIT LA LARGEUR DE CE QU'ON RETRANCHE, pas celle de
@@ -945,6 +980,8 @@ class PoserDivision extends PoserLongue {
                 t.style.gridRow = String(ligneProduit + 1);
                 t.style.alignSelf = 'end';
                 g.appendChild(t);
+            }
+            if (f.reste !== undefined || (i === this.etape && this.attente === 'reste')) {
                 const enCoursR = i === this.etape && this.attente === 'reste';
                 const texte = f.reste !== undefined ? String(f.reste)
                     : (enCoursR ? (this.saisie || '') : '');

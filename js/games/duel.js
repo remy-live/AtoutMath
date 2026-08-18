@@ -127,7 +127,13 @@ class Duel extends BaseGame {
                    deux lignes, le pavé ET les tables restaient affichés en
                    même temps, chacun sur la moitié de l'autre. */
                 .du-pave[hidden], .du-tables[hidden] { display: none; }
-                .du-pave--inerte { opacity: .3; pointer-events: none; }
+                /* EN ATTENTE, PAS ÉTEINT. À trois dixièmes d'opacité sur un
+                   fond presque noir, les touches du joueur qui ne joue pas
+                   disparaissaient : on ne voyait plus qu'il avait un clavier,
+                   et sur un téléphone on ne le voyait pas du tout. Elles
+                   restent lisibles — c'est le curseur qui dit qu'elles ne
+                   répondent pas, pas leur effacement. */
+                .du-pave--inerte { opacity: .62; pointer-events: none; }
                 /* UNE SEULE RANGÉE de chiffres, collée au bord du joueur.
                    En deux rangées de six, le pavé mangeait la moitié de son
                    camp : c'est le COULOIR où circule la balle qui doit avoir

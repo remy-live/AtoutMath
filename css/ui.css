@@ -10,6 +10,10 @@ body.teacher-mode .student-only { display: none !important; }
 #debug-toolbar {
     position: fixed; top: 6px; left: 6px; z-index: 100000;
     display: flex; align-items: center; gap: 3px;
+    /* Elle ne peut pas être plus large que l'écran : à 436 px sur un
+       téléphone de 390, elle débordait des deux côtés et il devenait
+       impossible de la pousser hors du chemin. */
+    max-width: calc(100vw - 12px); flex-wrap: wrap;
     padding: 3px; border-radius: 10px;
     background: rgba(15, 23, 42, .94); color: #f8fafc;
     border: 1px solid #334155; box-shadow: var(--shadow-lg);

@@ -12,7 +12,10 @@
 import { placer, restaurer, rendreDeplacable } from './flottant.js';
 
 const CLE = 'mathbox-debug-pos';
+const CLE_REPLI = 'mathbox-debug-replie';
 const MARGE = 6;
+// En dessous de cette largeur, la palette dépliée fait plus large que l'écran.
+const ETROIT = 560;
 
 // --- LES FENÊTRES DÉTACHABLES SONT UN OUTIL D'AUTEUR --------------------------
 //
@@ -59,7 +62,14 @@ export function initDebugBar() {
     // En bas à gauche par défaut, et non en haut : le haut de l'écran porte
     // l'en-tête du jeu — titre, progression, chronomètre — c'est-à-dire ce
     // qu'on regarde en testant. Le bas à gauche est le coin le plus vide.
-    restaurer(bar, CLE, (el) => placer(el, MARGE, window.innerHeight));
+    //
+    // SAUF SUR UN TÉLÉPHONE, où le bas de l'écran n'est pas vide du tout :
+    // c'est là que les jeux posent leurs pavés de chiffres, et dans le Duel
+    // des Tables c'est la moitié d'un joueur. La palette se pose alors à
+    // mi-hauteur, contre le bord gauche — la seule bande qu'aucun jeu
+    // n'utilise pour ses commandes.
+    restaurer(bar, CLE, (el) => placer(el, MARGE,
+        window.innerWidth < ETROIT ? window.innerHeight / 2 : window.innerHeight));
     rendreDeplacable(bar, grip, CLE);
 
     const fen = document.getElementById('db-fenetres');
@@ -78,8 +88,8 @@ export function initDebugBar() {
     }
 
     if (fold) {
-        fold.onclick = () => {
-            const replie = bar.classList.toggle('dbg--folded');
+        const majRepli = (replie) => {
+            bar.classList.toggle('dbg--folded', replie);
             fold.textContent = replie ? '›' : '‹';
             fold.title = replie ? 'Déplier la palette' : 'Replier la palette';
             fold.setAttribute('aria-label', fold.title);
@@ -88,5 +98,24 @@ export function initDebugBar() {
             // bord droit sortirait de l'écran.
             placer(bar, bar.offsetLeft, bar.offsetTop);
         };
+        fold.onclick = () => {
+            const replie = !bar.classList.contains('dbg--folded');
+            try { localStorage.setItem(CLE_REPLI, replie ? '1' : '0'); } catch (e) { /* privé */ }
+            majRepli(replie);
+        };
+        // SUR UN TÉLÉPHONE, LA PALETTE COMMENCE REPLIÉE.
+        //
+        // Rémy, capture à l'appui : « sur iPhone on ne voit pas les boutons »
+        // du Duel des Tables. Ils étaient bien là — sous la palette d'auteur.
+        // Dépliée, elle fait plus de quatre cents pixels de large : posée en
+        // bas à gauche, comme au premier lancement, elle couvre toute la
+        // rangée de touches du joueur du bas, précisément dans le seul jeu où
+        // le bas de l'écran appartient à un joueur.
+        //
+        // Repliée, il n'en reste que la poignée : un appui la rouvre, et le
+        // choix se retient d'une fois sur l'autre.
+        let replie;
+        try { replie = localStorage.getItem(CLE_REPLI); } catch (e) { replie = null; }
+        majRepli(replie === null ? window.innerWidth < ETROIT : replie === '1');
     }
 }

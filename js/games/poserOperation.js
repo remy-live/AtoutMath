@@ -45,6 +45,14 @@ class PoserOperation extends BaseGame {
         this.avecVirgule = this.params.decimales === true;
         this.nbTermes = this.operation === '+' ? Math.max(2, Math.min(3, parseInt(this.params.termes) || 2)) : 2;
         this.chiffres = Math.max(2, Math.min(4, parseInt(this.params.chiffres) || 3));
+        // LES RETENUES SONT UNE AIDE, PAS UN PÉAGE. Rémy : « pas nécessaire
+        // pour l'élève de mettre les retenues ». Beaucoup les tiennent de tête
+        // et n'écrivent que le résultat — leur refuser la colonne suivante
+        // tant que le petit rond n'est pas rempli, c'est corriger une méthode
+        // au lieu de corriger un calcul. Les ronds restent là, cliquables pour
+        // qui en a besoin ; le professeur peut les exiger, mais il doit le
+        // demander.
+        this.retenuesExigees = this.params.retenues === 'exigees';
         this.reussies = 0;
     }
 
@@ -441,7 +449,8 @@ class PoserOperation extends BaseGame {
         if (juste.ok) {
             this.etape = 2;
             this.rangCourant = premierRang(this.tableau);
-            this.note('✅ Bien aligné. Maintenant on calcule, en partant de la droite.', 'ok');
+            this.note('✅ Bien aligné. Maintenant on calcule, en partant de la droite. '
+                + `Colonne des ${this.nomRang(this.rangCourant)} : que met-on dessous ?`, 'ok');
             this.onCorrectAnswer(null, COMPETENCE, {
                 questionText: `Aligner ${this.operandes.map(x => String(x).replace('.', ',')).join(` ${this.operation} `)}`,
                 expected: 'aligné sur la virgule', given: 'juste', points: 8
@@ -471,7 +480,18 @@ class PoserOperation extends BaseGame {
             pave.appendChild(t);
         }
         this.zoneEl.appendChild(pave);
-        if (!this.noteEl.textContent.startsWith('✅')) {
+        // LA QUESTION DE COLONNE NE S'IMPOSE PLUS À TOUT LE MONDE.
+        //
+        // Deux défauts tenaient dans cette ligne. Elle écrasait tout message
+        // qui ne commençait pas par ✅ : celui qui annonce la retenue était
+        // réécrit dans la milliseconde qui suivait, et l'élève ne l'a jamais
+        // lu. Et une fois la dernière colonne remplie, `rangCourant` vaut
+        // null : on demandait alors « Colonne des rang null : que met-on
+        // dessous ? » par-dessus une opération terminée.
+        //
+        // Le dessin ne pose donc la question que s'il reste une colonne ET que
+        // personne n'a rien à dire de plus précis.
+        if (this.rangCourant !== null && !this.noteEl.textContent.trim()) {
             this.note(`Colonne des ${this.nomRang(this.rangCourant)} : que met-on dessous ?`);
         }
     }
@@ -495,18 +515,23 @@ class PoserOperation extends BaseGame {
             return;
         }
         this.resultats[r] = n;
-        // LA RETENUE DOIT ÊTRE POSÉE AVANT DE PASSER À LA SUITE quand il y en
-        // a une : c'est elle qu'on oublie, pas le chiffre.
+        // ON SIGNALE LA RETENUE, ON NE LA RÉCLAME PAS. Le petit rond reste là
+        // pour qui a besoin de l'écrire ; celui qui la garde en tête continue.
         const suivant = rangSuivant(this.tableau, r);
         const aPoser = suivant !== null ? attenduEn(this.tableau, suivant, 'retenue') : 0;
-        if (aPoser) {
-            this.note(`Bien. Il y a une retenue : clique le petit rond de la colonne des `
-                + `${this.nomRang(suivant)} jusqu'à y lire ${aPoser}.`);
-        }
         this.rangCourant = suivant;
         if (suivant === null) return this.finir();
+        const retenue = !aPoser ? ''
+            : (this.retenuesExigees
+                ? `Bien. Il y a une retenue : clique le petit rond de la colonne des `
+                    + `${this.nomRang(suivant)} jusqu'à y lire ${aPoser}. `
+                : `Bien, et il y a une retenue de ${aPoser} — écris-la dans le petit rond, `
+                    + 'ou garde-la en tête. ');
+        // Le message est posé APRÈS le dessin : c'est le dessin qui écrit la
+        // consigne de colonne par défaut, et il ne doit pas recouvrir celle-ci.
+        this.note('');
         this.dessiner();
-        if (!aPoser) this.note(`Colonne des ${this.nomRang(suivant)} : que met-on dessous ?`);
+        this.note(retenue + `Colonne des ${this.nomRang(suivant)} : que met-on dessous ?`);
     }
 
     /** Les petits ronds tournent : 0, 1, 2 — puis vide. */
@@ -520,8 +545,9 @@ class PoserOperation extends BaseGame {
     }
 
     finir() {
-        // Toutes les retenues doivent être écrites, pas seulement pensées.
-        const manquantes = this.tableau.colonnes.filter(c => {
+        // Les retenues écrites ne sont contrôlées QUE si le professeur les
+        // exige. Le résultat juste suffit : c'est lui qu'on demande.
+        const manquantes = !this.retenuesExigees ? [] : this.tableau.colonnes.filter(c => {
             const a = attenduEn(this.tableau, c.rang, 'retenue');
             return a && this.retenues[c.rang] !== a;
         });
@@ -553,7 +579,11 @@ class PoserOperation extends BaseGame {
             return this.note('Les unités sous les unités : c\'est la virgule qui aligne, '
                 + 'pas le bord droit. 324,5 et 12,4 ont leur 4 et leur 2 dans la même colonne.');
         }
-        if (this.rangCourant === null) return this.note('Écris les retenues manquantes.');
+        if (this.rangCourant === null) {
+            return this.note(this.retenuesExigees
+                ? 'Écris les retenues manquantes dans les petits ronds.'
+                : 'L\'opération est finie : la suivante arrive.');
+        }
         const c = this.tableau.colonnes.find(x => x.rang === this.rangCourant);
         if (this.operation === '+') {
             return this.note(`On additionne ${c.chiffres.filter(x => x !== null).join(' + ')}`
@@ -614,7 +644,8 @@ class PoserOperation extends BaseGame {
                 this.dessiner();
                 await gate.wait(700);
             }
-            cur.say('Et les retenues restent ÉCRITES : en contrôle, elles se voient.', this.grilleEl);
+            cur.say('Moi, j\'écris les retenues dans les petits ronds : c\'est ainsi qu\'on ne les '
+                + 'oublie pas. Si tu les gardes en tête, ton résultat compte quand même.', this.grilleEl);
             await gate.wait(2800);
         } catch (e) { /* démonstration coupée */ }
         fin();
