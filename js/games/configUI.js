@@ -434,12 +434,16 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         </div>
 
         <div class="cfg-group" id="cfg-groupe-deroulement">
-            <div class="cfg-group-title">Déroulement de l'étape</div>
+            <div class="cfg-group-title" id="cfg-titre-deroulement">Déroulement de l'étape</div>
+            <p class="cfg-help" id="cfg-note-bonus" style="display:none">
+                Une récompense doit quand même s'arrêter : donne-lui un nombre de
+                questions, une durée, ou les deux — le premier atteint met fin au jeu.
+            </p>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
                 <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="1" max="50" value="${step.nbItems || 10}">
             </div>
-            <div class="cfg-field">
+            <div class="cfg-field" id="cfg-champ-seuil">
                 <label class="cfg-label" for="cfg-threshold">Bonnes réponses exigées
                     ${infoBtn(null, 'cfg-threshold-tip')}</label>
                 <input type="number" id="cfg-threshold" class="cfg-input cfg-input--num" min="1" max="50"
@@ -458,7 +462,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                     <option value="question" ${step.timerScope === 'question' ? 'selected' : ''}>à chaque question</option>
                 </select>
             </div>
-            <div class="cfg-field">
+            <div class="cfg-field" id="cfg-champ-poids">
                 <label class="cfg-label" for="cfg-weight">Poids dans la note
                     ${infoBtn('Une étape de poids 2 compte double dans le barème.', null)}</label>
                 <input type="number" id="cfg-weight" class="cfg-input cfg-input--num" min="1" max="10" value="${step.weight || 1}">
@@ -485,11 +489,28 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     };
 
     // UN JEU DE RÉCOMPENSE N'A NI SEUIL NI POIDS : il ne se valide pas et ne
-    // se note pas. Laisser les champs visibles laisserait croire le contraire.
+    // se note pas. Laisser ces deux champs visibles laisserait croire le
+    // contraire.
+    //
+    // MAIS IL A UNE DURÉE. On cachait tout le bloc « Déroulement », donc le
+    // nombre de questions ET le chronomètre avec — un Tetris de récompense
+    // partait alors sur la valeur par défaut, sans que le professeur puisse
+    // dire « cinq minutes » ni « dix questions ». Rémy : « pour les jeux bonus
+    // il faut pouvoir choisir un nombre de questions et/ou une durée ». Ce
+    // sont justement les deux seuls réglages qui comptent pour une récompense.
     const toggleBonus = () => {
         const bonusEl = document.getElementById('cfg-bonus');
-        const groupe = document.getElementById('cfg-groupe-deroulement');
-        if (groupe) groupe.style.display = (bonusEl && bonusEl.checked) ? 'none' : '';
+        const bonus = !!(bonusEl && bonusEl.checked);
+        const cacher = (id, off) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = off ? 'none' : '';
+        };
+        cacher('cfg-champ-seuil', bonus);
+        cacher('cfg-champ-poids', bonus);
+        const note = document.getElementById('cfg-note-bonus');
+        if (note) note.style.display = bonus ? '' : 'none';
+        const titre = document.getElementById('cfg-titre-deroulement');
+        if (titre) titre.textContent = bonus ? 'Quand la récompense s\'arrête' : 'Déroulement de l\'étape';
     };
 
     const commit = () => {

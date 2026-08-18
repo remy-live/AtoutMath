@@ -460,6 +460,15 @@ export class Runner {
         // toujours le nombre de questions qui l'arrête.
         const chronoPiloteLEtape = this.currentTimeLimit && this.timerScope !== 'question';
         if (!chronoPiloteLEtape && this.itemsResolved.size >= this.step.nbItems) {
+            // ON FERME LA SESSION TOUT DE SUITE, la conclusion s'affiche après.
+            //
+            // Le délai laissait à l'élève le temps de lire la correction de la
+            // dernière question — mais l'activité, elle, enchaînait dès qu'il
+            // l'avait fermée : une question de trop apparaissait, et le bilan
+            // pouvait la compter. Le drapeau est posé ICI, de façon synchrone,
+            // donc avant tout `dismissed.then` : la dernière question reste à
+            // l'écran, figée, jusqu'à la conclusion.
+            if (this.session) this.session.termine = true;
             regTimeout(() => this.endStep(), 1500);
         } else if (resolved && this.timerScope === 'question') {
             // Nouvelle question : le compte à rebours repart.

@@ -47,6 +47,10 @@ export function mount(container, session) {
             const result = session.submit(hit.dataset.c, { element: hit });
             if (result.ignored) return;
 
+            // La grille se fige : plus de survol collé au doigt sur le nœud
+            // qu'on vient de toucher, plus de second appui pendant la
+            // correction. Voir `.rep-svg--repondu`.
+            svg.classList.add('rep-svg--repondu');
             if (result.correct) markPoint(svg, hit, 'ok');
             else markPoint(svg, hit, 'ko', formatCoord(hit.dataset.c));
 

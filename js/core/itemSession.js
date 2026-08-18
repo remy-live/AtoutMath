@@ -66,6 +66,9 @@ export class ItemSession {
         // au moment précis où il sert. Mis à jour ici, il vaut pour toutes les
         // activités sans qu'aucune ait à y penser.
         this.escalier = etatDepart();
+        // Posé par le meneur quand le quota de questions est atteint : voir
+        // `next()`. Tant qu'il est faux, la session sert normalement.
+        this.termine = false;
         this._listeners = { item: [], result: [], finish: [] };
     }
 
@@ -95,6 +98,22 @@ export class ItemSession {
 
     /** Génère (ou régénère) la question suivante. */
     next() {
+        // LA SÉRIE EST FINIE : ON NE POSE PLUS RIEN.
+        //
+        // Rémy : « au bout de 10 questions, s'il y en avait 10, il ne faut pas
+        // en relancer une ». C'est exactement ce qui arrivait. Le meneur
+        // programmait la conclusion 1,5 s après la dernière réponse, et
+        // l'activité, elle, enchaînait dès que l'élève fermait la correction :
+        // une onzième question s'affichait dans l'intervalle, et si elle était
+        // répondue assez vite, le bilan comptait onze questions sur dix.
+        //
+        // Le garde-fou est ici plutôt que dans les quatorze activités qui
+        // appellent `next()` : la question en cours reste affichée, verrouillée
+        // (`locked` n'est pas relâché), donc rien ne peut plus être ni tiré ni
+        // enregistré. Le temps que la conclusion arrive, l'écran montre la
+        // dernière question et sa correction — ce qu'on voulait voir.
+        if (this.termine) return this.item;
+
         const seed = this.forceSeed || randomSeed();
         this.forceSeed = null; // le rejeu ne vaut que pour la première question
         this.history.push(seed);

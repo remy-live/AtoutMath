@@ -536,7 +536,21 @@
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
 .rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }
-.rep-hit:hover, .rep-hit:focus-visible { fill: rgba(99, 102, 241, .22); }
+/* LE SURVOL N'EXISTE QUE POUR UNE VRAIE SOURIS.
+   Au doigt, `:hover` se COLLE : le nœud touché gardait son halo bleu après la
+   réponse, à côté du point qu'on venait de poser. Deux disques presque au même
+   endroit, l'un pâle et large, l'autre net et petit — l'élève voit un cercle
+   apparaître de travers, puis la vraie marque se poser. Sur tablette, le halo
+   restait même d'une question à la suivante, sur un nœud qui ne voulait plus
+   rien dire. */
+@media (hover: hover) and (pointer: fine) {
+    .rep-hit:hover { fill: rgba(99, 102, 241, .22); }
+}
+.rep-hit:focus-visible { fill: rgba(99, 102, 241, .22); }
+/* La question répondue ne se re-survole plus et ne se re-clique plus : le halo
+   disparaît avec la réponse, et un second appui ne peut rien déclencher
+   pendant que la correction est à l'écran. */
+.rep-svg--repondu .rep-hit { pointer-events: none; fill: transparent; }
 
 .rep-mark line { stroke-width: 3.4; stroke-linecap: round; }
 .rep-mark--ok line { stroke: var(--success); }
