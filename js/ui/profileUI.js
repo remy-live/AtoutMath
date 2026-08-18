@@ -14,6 +14,7 @@ import { computeSkillStats, getWeakSkills, getStrongSkills, getTotalCorrectCount
 import { getSkill, skillLabel } from '../data/skills.js';
 import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
+import { visuelDe } from '../core/visuelQuestion.js';
 import {
     startErrorReview, startSkillSession, startRecommendedSession, buildRecommendedPreview
 } from '../core/remediation.js';
@@ -386,6 +387,23 @@ function errorCard(err) {
     </div>`;
 }
 
+/**
+ * LA FIGURE DE LA QUESTION, REMISE SOUS LES YEUX.
+ *
+ * « Comment note-t-on cette figure ? — ta réponse : [AB), attendu : [BA] », et
+ * pas de figure : la carte désignait un dessin absent, donc elle ne se relisait
+ * pas. Le journal ne garde pas d'images — un carnet de deux cents erreurs
+ * pèserait des mégaoctets de SVG recopiés — mais il garde la GRAINE, et une
+ * graine suffit à refabriquer la question à l'identique.
+ *
+ * Le dessin n'est montré que si l'énoncé refait est bien celui qu'on avait
+ * enregistré : voir core/visuelQuestion.js.
+ */
+function figureDeLErreur(err) {
+    const v = visuelDe(err.questionData || {}, err.exoId);
+    return v ? `<div class="error-figure">${v.html}</div>` : '';
+}
+
 function errorBody(err) {
     const q = err.questionData || {};
     const repeat = err.count > 1 ? ` <span class="error-repeat">×${err.count}</span>` : '';
@@ -401,7 +419,7 @@ function errorBody(err) {
             <b class="error-given">${escapeHtml(q.input)}</b>, attendu :
             <b class="error-expected">${escapeHtml(q.expected)}</b>
         </div>
-        ${why}${skill}`;
+        ${figureDeLErreur(err)}${why}${skill}`;
 }
 
 function correctedBadge() {

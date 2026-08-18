@@ -5214,3 +5214,35 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     cursor: pointer;
 }
 .pp-retouche-annuler:hover { color: var(--text-main); border-color: var(--border-fort, var(--text-muted)); }
+
+/* --- La figure d'une erreur, dans le carnet ---------------------------------
+   Une question qui dit « cette figure » a besoin de sa figure. Le dessin est
+   un SVG : il s'adapte donc tout seul à l'appareil, à condition de lui donner
+   une largeur maximale et de le laisser garder ses proportions. */
+
+.error-figure {
+    margin: 8px 0 4px;
+    display: flex;
+    justify-content: flex-start;
+}
+.error-figure .figure-wrap {
+    max-width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.error-figure svg {
+    display: block;
+    /* Sur un téléphone, la carte fait 300 px de large : un SVG de 340 la
+       ferait défiler horizontalement. Il se réduit, et il ne grandit jamais
+       au-delà de sa taille naturelle — un axe étiré n'est plus à l'échelle. */
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 148px;
+}
+@media (max-width: 700px) {
+    .error-figure svg { max-height: 112px; }
+    .error-figure .figure-wrap { padding: 4px 6px; }
+}
