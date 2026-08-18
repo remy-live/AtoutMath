@@ -273,7 +273,16 @@ export function ouvrirFicheParcours(chemin) {
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
     const numEl = m.querySelector('#pp-numerotation');
 
-    let blocs = null;           // les questions déjà tirées, par étape
+    // LES QUESTIONS DÉJÀ TIRÉES, ÉTAPE PAR ÉTAPE.
+    //
+    // Et l'oubli l'est aussi. Vider toute la table quand on touche UN réglage
+    // d'UN exercice retirait au sort les questions des neuf autres : on venait
+    // de choisir ses tables de multiplication, et l'exercice de géométrie
+    // d'à côté changeait de figure. Seul « D'autres questions », en haut,
+    // rebat tout — c'est ce qu'il annonce.
+    const blocs = new Map();
+    const oublier = (id) => blocs.delete(id);
+    const toutOublier = () => blocs.clear();
     let ordre = papier.map(e => e.stepId);
     const quantites = {};
     // LE BARÈME, exercice par exercice. Un point par question est le défaut
@@ -402,7 +411,7 @@ export function ouvrirFicheParcours(chemin) {
 
     const changerQuantite = (id, v) => {
         quantites[id] = bornerNb(v);
-        blocs = null;                        // le nombre change : on retire à neuf
+        oublier(id);                         // le nombre change : on retire à neuf, ICI seulement
         if (!baremeTouche) repartirPoints();
         rendreListe();
         majRoue(id);
@@ -526,7 +535,7 @@ export function ouvrirFicheParcours(chemin) {
         listeEl.querySelectorAll('[data-etape]').forEach(inp => {
             inp.oninput = () => {
                 quantites[inp.dataset.etape] = bornerNb(inp.value);
-                blocs = null;
+                oublier(inp.dataset.etape);
                 if (!baremeTouche) repartirPoints();
                 majChiffres();
                 majRoue(inp.dataset.etape);
@@ -793,7 +802,7 @@ export function ouvrirFicheParcours(chemin) {
             rendreListe();
             rendre();
         };
-        panneau.querySelector('[data-r-neuf]').onclick = () => { blocs = null; rendre(); };
+        panneau.querySelector('[data-r-neuf]').onclick = () => { oublier(id); rendre(); };
 
         // LE CONTENU. Un réglage changé retire les questions à neuf : elles ont
         // été tirées avec l'ancien, les garder afficherait des tables qu'on
@@ -806,7 +815,7 @@ export function ouvrirFicheParcours(chemin) {
             wireTips(contenu);
             const relire = () => {
                 Object.assign(e.params, readParams(contenu, schema));
-                blocs = null;
+                oublier(id);
                 rendre();
             };
             contenu.addEventListener('change', relire);
@@ -831,15 +840,15 @@ export function ouvrirFicheParcours(chemin) {
         // Les questions ne sont retirées que si nécessaire (« D'autres
         // questions », changement de quantité) : changer un réglage de mise en
         // page garde les mêmes questions.
-        if (!blocs) {
-            const tirages = new Map();
-            ordre.forEach(id => {
-                const e = parId.get(id);
-                const nb = quantites[id];
-                tirages.set(id, nb ? (e.grille ? grillesDe(e, nb) : questionsDe(e, nb)) : []);
-            });
-            blocs = tirages;
-        }
+        // Chaque étape ne se retire que si elle a été oubliée, ou s'il lui
+        // faut plus de questions qu'elle n'en a.
+        ordre.forEach(id => {
+            const e = parId.get(id);
+            const nb = quantites[id] || 0;
+            const deja = blocs.get(id);
+            if (deja && deja.length >= nb) return;
+            blocs.set(id, nb ? (e.grille ? grillesDe(e, nb) : questionsDe(e, nb)) : []);
+        });
         const exos = ordre
             .filter(id => (quantites[id] || 0) > 0)
             .map(id => {
@@ -975,7 +984,9 @@ export function ouvrirFicheParcours(chemin) {
     // Le professeur peut la décocher ensuite : on ne la recoche pas de force.
     interro.onchange = () => {
         if (interro.checked) noteCase.checked = true;
-        blocs = null; rendreListe(); rendre();
+        // Le mode interrogation ne touche qu'aux consignes et au barème : les
+        // questions n'ont aucune raison de changer sous les yeux.
+        rendreListe(); rendre();
     };
     choixEl.onchange = rendre;
     modeSol.onchange = rendre;
@@ -988,7 +999,7 @@ export function ouvrirFicheParcours(chemin) {
         if (!baremeTouche) { repartirPoints(); rendreListe(); }
         rendre();
     };
-    m.querySelector('#pp-regen').onclick = () => { blocs = null; rendre(); };
+    m.querySelector('#pp-regen').onclick = () => { toutOublier(); rendre(); };
     // Le panneau vit sur le corps du document : il resterait à l'écran après
     // la fermeture de la fiche, orphelin et sans rien à régler.
     m.querySelector('#pp-fermer').onclick = () => { fermerRoue(); m.style.display = 'none'; };

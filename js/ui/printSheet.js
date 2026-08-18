@@ -5517,7 +5517,183 @@ function dessinerEgyptePdf(doc, item, slot, solution) {
     doc.setTextColor(...ENCRE.trait);
 }
 
+// --- L'AXE GRADUÉ, SUR LE PAPIER --------------------------------------------
+//
+// « Sur l'axe ci-dessus, écris l'abscisse du point » — et il n'y avait pas
+// d'axe. L'exercice n'avait pas de rendu imprimé : sur la feuille, il sortait
+// en questions de texte, et la question renvoyait à un dessin absent. Elle
+// était donc, mot pour mot, impossible.
+//
+// Le dessin est le même que celui de l'écran (core/figures.js, `axeSvg`), mais
+// refait ici en géométrie de page : la feuille travaille en millimètres et le
+// PDF ne sait pas rendre un SVG.
+
+/** Les décimales de la réponse, par échelle. */
+const RANG_GRADUATION = { unites: 0, dixiemes: 1, centiemes: 2 };
+
+function ecrireDecimal(v, rang) {
+    return v.toFixed(rang).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
+}
+
+function geoGraduation(item, slot) {
+    const m = item.meta || {};
+    const rang = RANG_GRADUATION[m.zoom] ?? 1;
+    // TOUT SE CALE SUR LA BOÎTE DU BLOC, jamais sur `slot.taille` : celle-ci
+    // est le côté d'un emplacement CARRÉ, et un axe est large et bas. Mesurée
+    // au carré, l'écriture sortait trois fois trop grosse et le trait de
+    // réponse allait se poser sur l'axe suivant.
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const marge = b.w * 0.06;
+    const x0 = b.x + marge;
+    const larg = b.w - 2 * marge;
+    const pas = larg / 10;
+    const cran = Math.min(b.h * 0.15, pas * 0.65);
+    return {
+        m, rang, x0, larg, pas, cran, boite: b,
+        // L'axe en haut du bloc, les nombres dessous, la réponse tout en bas.
+        yAxe: b.y + b.h * 0.30,
+        yNombres: b.y + b.h * 0.30 + cran + Math.max(2.2, b.h * 0.16),
+        yEcrit: b.y + b.h * 0.90,
+        // La taille du texte est en POINTS : c'est l'unité du PDF, et l'aperçu
+        // la convertit en millimètres (1 pt ≈ 0,3528 mm).
+        pt: Math.max(6, Math.min(11, b.h * 0.42)),
+        px: (i) => x0 + i * pas
+    };
+}
+
+function graduationPreviewHtml(item, slot, k, solution) {
+    const g = geoGraduation(item, slot);
+    const m = g.m;
+    let html = '';
+
+    // L'axe, et la flèche : sans elle, c'est un trait, pas un axe.
+    const bout = g.pas * 0.5;
+    html += `<div style="position:absolute; left:${g.x0 * k}px; top:${g.yAxe * k}px;
+        width:${(g.larg + bout) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <path d="M ${((g.x0 + g.larg + bout) * k).toFixed(2)} ${(g.yAxe * k).toFixed(2)}
+                 l ${(-g.cran * 0.55 * k).toFixed(2)} ${(-g.cran * 0.3 * k).toFixed(2)}
+                 l 0 ${(g.cran * 0.6 * k).toFixed(2)} Z" fill="#1a202c"/></svg>`;
+
+    // Onze traits : les dix intervalles, et les deux bouts plus longs.
+    for (let i = 0; i <= 10; i++) {
+        const grand = i === 0 || i === 10;
+        const h = grand ? g.cran : g.cran * 0.5;
+        html += `<div style="position:absolute; left:${g.px(i) * k}px;
+            top:${(g.yAxe - h) * k}px; width:${Math.max(1, 0.45 * k)}px;
+            height:${2 * h * k}px; background:#1a202c"></div>`;
+    }
+
+    // Seuls les deux bouts sont chiffrés : tout le reste EST la question.
+    const police = g.pt * 0.3528 * k;
+    [[0, m.debut], [10, m.fin]].forEach(([i, v]) => {
+        html += `<div style="position:absolute; left:${(g.px(i) - g.pas) * k}px;
+            top:${(g.yNombres - g.pt * 0.3528) * k}px; width:${2 * g.pas * k}px;
+            text-align:center; font-size:${police}px; font-weight:700;
+            color:#1a202c">${ecrireDecimal(v, g.rang)}</div>`;
+    });
+
+    // La croix marque le point : elle désigne le trait sans le recouvrir.
+    const xp = g.px(m.crans), r = g.cran * 0.5;
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <g stroke="#c0392b" stroke-width="${(0.55 * k).toFixed(2)}" stroke-linecap="round">
+            <line x1="${((xp - r) * k).toFixed(2)}" y1="${((g.yAxe - r) * k).toFixed(2)}"
+                  x2="${((xp + r) * k).toFixed(2)}" y2="${((g.yAxe + r) * k).toFixed(2)}"/>
+            <line x1="${((xp - r) * k).toFixed(2)}" y1="${((g.yAxe + r) * k).toFixed(2)}"
+                  x2="${((xp + r) * k).toFixed(2)}" y2="${((g.yAxe - r) * k).toFixed(2)}"/>
+        </g></svg>`;
+
+    // Où écrire la réponse : à gauche du bloc, sous l'axe.
+    const xMot = g.boite.x + g.boite.w * 0.06;
+    const xTrait = xMot + g.pt * 0.3528 * 5.4;
+    const lTrait = g.boite.w * 0.30;
+    html += `<div style="position:absolute; left:${xMot * k}px;
+        top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
+        font-weight:700; color:#1a202c; white-space:nowrap">Abscisse :</div>`;
+    if (solution) {
+        html += `<div style="position:absolute; left:${xTrait * k}px;
+            top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
+            font-weight:800; color:#2f855a">${ecrireDecimal(m.valeur, g.rang)}</div>`;
+    } else {
+        html += `<div style="position:absolute; left:${xTrait * k}px; top:${g.yEcrit * k}px;
+            width:${lTrait * k}px; height:0; border-top:${Math.max(1, 0.4 * k)}px dotted #a8b0bf"></div>`;
+    }
+    return html;
+}
+
+function dessinerGraduationPdf(doc, item, slot, solution) {
+    const g = geoGraduation(item, slot);
+    const m = g.m;
+    const bout = g.pas * 0.5;
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.line(g.x0, g.yAxe, g.x0 + g.larg + bout, g.yAxe);
+    doc.setFillColor(...ENCRE.trait);
+    doc.triangle(g.x0 + g.larg + bout, g.yAxe,
+        g.x0 + g.larg + bout - g.cran * 0.55, g.yAxe - g.cran * 0.3,
+        g.x0 + g.larg + bout - g.cran * 0.55, g.yAxe + g.cran * 0.3, 'F');
+
+    doc.setLineWidth(0.45);
+    for (let i = 0; i <= 10; i++) {
+        const h = (i === 0 || i === 10) ? g.cran : g.cran * 0.5;
+        doc.line(g.px(i), g.yAxe - h, g.px(i), g.yAxe + h);
+    }
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(g.pt);
+    doc.text(ecrireDecimal(m.debut, g.rang), g.px(0), g.yNombres, { align: 'center' });
+    doc.text(ecrireDecimal(m.fin, g.rang), g.px(10), g.yNombres, { align: 'center' });
+
+    // La croix du point, à l'encre du trait : une photocopie ne garde pas la
+    // couleur, et une croix rouge devenue grise doit rester la plus marquée.
+    const xp = g.px(m.crans), r = g.cran * 0.55;
+    doc.setLineWidth(0.7);
+    doc.line(xp - r, g.yAxe - r, xp + r, g.yAxe + r);
+    doc.line(xp - r, g.yAxe + r, xp + r, g.yAxe - r);
+
+    const xMot = g.boite.x + g.boite.w * 0.06;
+    const xTrait = xMot + g.pt * 0.3528 * 5.4;
+    doc.setFontSize(g.pt);
+    doc.text('Abscisse :', xMot, g.yEcrit);
+    if (solution) {
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(ecrireDecimal(m.valeur, g.rang), xTrait, g.yEcrit);
+    } else {
+        doc.setDrawColor(...ENCRE.pointille);
+        doc.setLineWidth(0.35);
+        doc.setLineDashPattern([0.8, 0.8], 0);
+        doc.line(xTrait, g.yEcrit, xTrait + g.boite.w * 0.30, g.yEcrit);
+        doc.setLineDashPattern([], 0);
+    }
+}
+
 export const RENDUS = {
+    graduation: {
+        titre: 'La loupe sur la droite graduée',
+        consigne: (items) => {
+            const zooms = new Set(items.map(it => it.meta && it.meta.zoom));
+            const commun = 'Chaque axe est coupé en DIX intervalles égaux. '
+                + 'Compte les INTERVALLES depuis le trait de gauche — jamais les traits — '
+                + 'et écris l\'abscisse du point marqué d\'une croix.';
+            return zooms.size > 1
+                ? `${commun} Attention : l'échelle change d'un axe à l'autre.`
+                : commun;
+        },
+        previewGrille: graduationPreviewHtml,
+        pdfGrille: dessinerGraduationPdf,
+        nomBloc: 'Axe', nomBlocs: 'axes',
+        // Large et bas : un axe tient sur trois centimètres de haut, et lui en
+        // donner huit laisserait la page à moitié blanche.
+        proportions: { w: 1, h: 0.22 },
+        // ET IL PREND TOUTE LA LARGEUR. Le plafond commun (78 mm) le centrait
+        // sur la moitié de la page : plus l'axe est long, plus les intervalles
+        // se distinguent — c'est exactement ce qu'on demande de compter.
+        grilleMax: 170,
+        disposition: { cols: 1, rows: 6, maxCols: 2, maxRows: 8 },
+        parLigneDefaut: 1
+    },
+
     egypte: {
         titre: 'Les nombres des pharaons',
         consigne: (items) => (items[0] && items[0].meta.sens === 'ecrire')

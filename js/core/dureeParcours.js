@@ -18,14 +18,23 @@
 // d'un réflexe, une notion demande de lire, de poser, de vérifier, et un jeu
 // autonome ne se compte pas en questions — on y joue une manche.
 
-/** Secondes par question, du plus rapide au plus lent, selon la nature. */
+// Secondes par question, du plus rapide au plus lent, selon la nature.
+//
+// DIVISÉES PAR DEUX SUR LE TERRAIN. Rémy, devant un parcours de 900 questions
+// annoncé à « 6 h 05 à 13 h 10 » : « je pense que tu exagères sur le temps,
+// vraiment, c'est au moins 2 fois trop ». Il voit ses élèves travailler, et
+// une estimation qui double la durée réelle ne sert à rien — elle fait
+// renoncer à une séance qui tenait.
+//
+// Ces chiffres restent des ordres de grandeur, et c'est bien pour cela que la
+// mesure les remplace dès qu'elle existe : elle, elle ne se discute pas.
 export const FOURCHETTES = {
-    reflexe: [8, 18],
-    notion: [30, 70]
+    reflexe: [4, 10],
+    notion: [15, 35]
 };
 
 /** Un jeu ne se compte pas en questions : on y joue une manche. */
-export const MANCHE_DE_JEU = [240, 480];
+export const MANCHE_DE_JEU = [180, 420];
 
 /** En dessous, la médiane mesurée ne vaut rien : c'est un échantillon. */
 export const MINIMUM_MESURES = 6;

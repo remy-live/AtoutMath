@@ -149,6 +149,11 @@ export const numerationExercises = [
         consignePapier: "Écris l'abscisse du point.",
         colonnesPapier: 1,
         title: 'La Loupe sur la Droite',
+        // SUR LE PAPIER, L'AXE SE DESSINE. Sans rendu imprimé, la feuille
+        // sortait la question toute seule — « Sur l'axe ci-dessus, écris
+        // l'abscisse du point » — au-dessus de rien. Elle était donc, mot pour
+        // mot, impossible à faire.
+        printable: 'graduation',
         generatorId: 'num.graduations', activityId: 'numpad',
         params: { zoom: 'progressif' },
         motsClefs: ['graduation', 'abscisse', 'décimaux', 'intercaler', 'axe', 'centièmes', 'loupe'],
