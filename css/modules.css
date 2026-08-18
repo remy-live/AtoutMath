@@ -1815,6 +1815,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 #student-config-content { display: flex; flex-direction: column; gap: 2px; }
 .cfg-field--wide { grid-template-columns: minmax(0, 1fr); }
+/* Le menu aux choix longs prend sa ligne — voir `fieldHtml`. */
+.cfg-field--long { grid-template-columns: minmax(0, 1fr); }
+.cfg-field--long .cfg-input { width: 100%; }
+.cfg-field--long .cfg-label { justify-content: flex-start; }
 .cfg-label {
     display: flex; align-items: center; gap: 6px; min-width: 0;
     font-weight: 600; color: var(--text-main); font-size: .95rem; line-height: 1.3;
@@ -1903,15 +1907,37 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
        déroulante ici, une case de trois caractères là — et la colonne de
        droite partait dans tous les sens. Une largeur commune suffit à ce que
        l'œil descende tout droit. */
-    #student-config-modal .cfg-field:not(.cfg-field--wide) {
+    /* UN RÉGLAGE = UNE LIGNE DE LISTE, ET LA LISTE TIENT DANS L'ÉCRAN.
+       Chaque ligne pesait 61 px : six réglages remplissaient déjà la feuille,
+       huit en poussaient deux dehors. Un exercice qui rassemble ses variantes
+       en porte huit ou dix — c'est bien tout l'intérêt de les rassembler. On
+       resserre donc la ligne (padding, hauteur des contrôles, taille du
+       libellé) jusqu'à ~48 px, sans descendre sous les 44 px de cible tactile
+       qu'il faut au doigt. */
+    #student-config-modal .cfg-field:not(.cfg-field--wide):not(.cfg-field--long) {
         grid-template-columns: minmax(0, 1fr) 50%;
         align-items: center;
-        padding: 9px 0; margin-bottom: 0;
+        padding: 4px 0; margin-bottom: 0;
         border-bottom: 1px solid var(--border);
     }
-    #student-config-modal .cfg-field--wide {
-        padding: 9px 0; margin-bottom: 0; border-bottom: 1px solid var(--border);
+    #student-config-modal .cfg-field--wide,
+    #student-config-modal .cfg-field--long {
+        padding: 5px 0; margin-bottom: 0; border-bottom: 1px solid var(--border);
     }
+    /* Le libellé au-dessus d'un menu long : plus petit et discret, c'est une
+       étiquette, pas un titre — la phrase à lire est le choix en dessous.
+       `row-gap: 0` en prime : l'écart de 6 px prévu pour deux colonnes n'a plus
+       de sens quand les deux cases sont l'une SOUS l'autre, et il rendait la
+       ligne empilée plus haute que la ligne à deux colonnes qu'elle remplace. */
+    #student-config-modal .cfg-field--long { row-gap: 0; }
+    #student-config-modal .cfg-field--long .cfg-label {
+        justify-content: flex-start; font-size: .82rem; color: var(--text-muted);
+        margin-bottom: 2px;
+    }
+    #student-config-modal .cfg-label { font-size: .88rem; }
+    #student-config-modal .cfg-input { padding: 6px 10px; font-size: .95rem; }
+    #student-config-modal .cfg-step { width: 36px; }
+    #student-config-modal .cfg-on { padding: 7px 14px; }
     /* Pas de filet sous le dernier réglage — `:last-of-type` ne suffisait pas,
        le sélecteur portant sur le type d'élément et non sur la classe. */
     #student-config-modal .cfg-field:not(:has(~ .cfg-field)) { border-bottom: none; }
@@ -1920,6 +1946,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     #student-config-modal .cfg-field:not(.cfg-field--wide) input[type="text"].cfg-input {
         width: 100%; max-width: none; text-align: center;
     }
+    #student-config-modal .cfg-field--long select.cfg-input { text-align: left; }
     /* Les puces occupent toute la largeur : centrées, elles font un bloc
        posé plutôt qu'un alignement qui commence nulle part. */
     #student-config-modal .cfg-chips { justify-content: center; }
@@ -1934,7 +1961,11 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     /* Le sous-titre n'apprend rien à qui a déjà le panneau sous les yeux. */
     #student-config-modal .modal-text--center { display: none; }
     #student-config-modal .cfg-desc { margin-bottom: 8px; }
-    #student-config-modal .cfg-field { margin-bottom: 6px; }
+    /* Zéro, et non 6 px : cette règle passait APRÈS celles de la liste et
+       leur reprenait leur `margin-bottom: 0` — six pixels rendus à chaque
+       ligne, soit un réglage entier perdu sur un panneau de huit. Les lignes
+       sont déjà séparées par un filet ; elles n'ont pas besoin d'écart. */
+    #student-config-modal .cfg-field { margin-bottom: 0; }
     #student-config-modal .modal-btn-flex { padding: 13px 12px; font-size: .95rem; }
 }
 
@@ -1967,6 +1998,19 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     overflow-x: hidden; overscroll-behavior-x: none;
     /* La barre de défilement ne doit pas rogner la bordure des champs. */
     padding-right: 2px;
+}
+
+/* UNE LISTE QUI CONTINUE DOIT LE DIRE.
+   Le dernier réglage visible s'arrêtait net au ras du pied du panneau —
+   exactement l'allure d'une liste finie. On réglait ce qu'on voyait, on
+   lançait la partie, et les réglages du bas gardaient leur valeur par défaut
+   sans qu'on ait jamais su qu'ils existaient. Le fondu n'apparaît QUE tant
+   qu'il reste quelque chose dessous (`cfg-encore`, posée par `marquerFondu`) :
+   estomper la dernière ligne d'une liste terminée ferait croire à un défaut
+   d'affichage. */
+#student-config-content.cfg-encore {
+    --cfg-fondu: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+    mask-image: var(--cfg-fondu); -webkit-mask-image: var(--cfg-fondu);
 }
 #student-config-modal .modal-actions-center {
     flex-shrink: 0; margin-top: 0; padding-top: 10px; gap: 10px;

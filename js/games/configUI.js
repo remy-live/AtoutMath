@@ -49,6 +49,18 @@ function resumeListe(cochees, total, mot) {
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
     const wide = param.type === 'multiselect';   // les puces prennent toute la largeur
+
+    // UN MENU DONT LES CHOIX SONT DES PHRASES PASSE SOUS SON LIBELLÉ.
+    //
+    // « 6 — Cinq, et rien de donné · avec des "soit… soit…" », c'est cinquante
+    // caractères : dans une demi-largeur de téléphone, on lit « 6 — Cinq, et
+    // r… » et on ne sait plus ce qui est réglé. Aucune largeur ne sauve ces
+    // libellés-là ; seule la LIGNE ENTIÈRE les sauve. Le réglage descend donc
+    // d'un cran — libellé au-dessus, menu pleine largeur en dessous — et
+    // uniquement lui : les menus courts (« Normal », « 24 × 16 ») restent sur
+    // une ligne, sinon le panneau doublerait de hauteur pour rien.
+    const longOptions = param.type === 'select' && (param.options || [])
+        .some(o => String(libelleOption(o)).length > 18);
     let control = '';
 
     if (param.type === 'multiselect' && param.deroulant) {
@@ -147,10 +159,32 @@ export function fieldHtml(param, value, options = {}) {
     // L'explication peut venir du schéma lui-même (`aide`) : un réglage dont le
     // libellé ne suffit pas se documente là où il est défini, pas au point
     // d'appel — sinon l'aide n'existe que dans un seul des trois panneaux.
-    return `<div class="cfg-field${wide ? ' cfg-field--wide' : ''}">
+    return `<div class="cfg-field${wide ? ' cfg-field--wide' : ''}${longOptions ? ' cfg-field--long' : ''}">
         <label class="cfg-label" for="${id}">${param.label}${infoBtn(options.aide || param.aide, options.aideId)}</label>
         ${control}
     </div>`;
+}
+
+/**
+ * Le fondu de bas de liste : posé tant qu'il reste des réglages sous le pli,
+ * retiré dès qu'on touche le fond.
+ *
+ * On l'ACTUALISE au défilement et au redimensionnement, pas seulement à
+ * l'ouverture : déplier une liste de familles ou faire monter le clavier
+ * change la hauteur du contenu, et un fondu qui reste alors qu'on est en bas
+ * ressemble à un texte effacé.
+ */
+export function marquerFondu(el) {
+    if (!el) return;
+    const maj = () => el.classList.toggle('cfg-encore',
+        el.scrollHeight - el.scrollTop - el.clientHeight > 6);
+    maj();
+    if (el._fondu) return maj;
+    el._fondu = true;
+    el.addEventListener('scroll', maj, { passive: true });
+    el.addEventListener('toggle', () => requestAnimationFrame(maj), true);
+    window.addEventListener('resize', maj);
+    return maj;
 }
 
 // Sorti du littéral de gabarit : les apostrophes d'un texte français y sont
@@ -525,6 +559,8 @@ export function showStudentConfigModal(exo, onStart) {
 
     wireTips(content);
     modal.style.display = 'flex';
+    // Après l'affichage : une boîte encore masquée mesure zéro.
+    requestAnimationFrame(() => marquerFondu(content));
 
     const btnPrint = document.getElementById('btn-print-sheet');
     if (btnPrint) {
