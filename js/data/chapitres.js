@@ -110,7 +110,10 @@ export const CHAPITRES = [
         skills: ['num.proportion.tableau', 'num.probleme.proportion']
     },
     { id: '6-quadrilateres', niveau: SIXIEME, nom: 'Quadrilatères', skills: [] },
-    { id: '6-symetrie-axiale', niveau: SIXIEME, nom: 'Symétrie axiale', skills: [] },
+    {
+        id: '6-symetrie-axiale', niveau: SIXIEME, nom: 'Symétrie axiale',
+        skills: ['geo.transfo.axiale']
+    },
     {
         id: '6-temps', niveau: SIXIEME, nom: 'Temps',
         skills: ['mes.heure.lire', 'mes.heure.placer', 'mes.vitesse', 'num.probleme.duree']
@@ -154,7 +157,10 @@ export const CHAPITRES = [
         id: '5-solides', niveau: CINQUIEME, nom: 'Solides',
         skills: ['geo.espace.denombrer', 'geo.espace.orientation']
     },
-    { id: '5-transformations', niveau: CINQUIEME, nom: 'Transformations', skills: [] },
+    {
+        id: '5-transformations', niveau: CINQUIEME, nom: 'Transformations',
+        skills: ['geo.transfo.axiale', 'geo.transfo.centrale', 'geo.transfo.reconnaitre']
+    },
     {
         id: '5-triangles', niveau: CINQUIEME, nom: 'Triangles',
         skills: ['geo.figure.programme']
@@ -191,7 +197,11 @@ export const CHAPITRES = [
         id: '4-statistiques', niveau: QUATRIEME, nom: 'Statistiques',
         skills: ['don.tableur.reperage', 'don.tableur.formules']
     },
-    { id: '4-transformations', niveau: QUATRIEME, nom: 'Transformations', skills: [] },
+    {
+        id: '4-transformations', niveau: QUATRIEME, nom: 'Transformations',
+        skills: ['geo.transfo.centrale', 'geo.transfo.translation', 'geo.transfo.rotation',
+            'geo.transfo.reconnaitre']
+    },
     {
         id: '4-triangles-rectangles', niveau: QUATRIEME, nom: 'Triangles rectangles',
         skills: ['geo.pythagore']

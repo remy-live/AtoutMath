@@ -132,6 +132,61 @@ export const geometrieExercises = [
             + "Avec « Coordonnées » sur les relatives, il ne faut plus oublier les signes."
     },
 
+    // --- Les transformations, aux carreaux (fiche 4ᵉ) ---
+    //
+    // Rémy : « je ne suis pas très chaud pour la géométrie [aux instruments],
+    // il faut les manipuler en vrai, pas à l'ordi. Je suis pour le
+    // quadrillage. » Le partage est juste, et c'est déjà celui de sa fiche :
+    // la moitié de ses exercices se font aux carreaux, l'autre au compas.
+    //
+    // DEUX ENTRÉES, PARCE QUE CE SONT DEUX CHAPITRES. « Symétrie axiale »
+    // ouvre la sixième et ne connaît qu'un miroir ; « Transformations » arrive
+    // en cinquième puis en quatrième et en compte quatre. Un exercice unique
+    // réglé au cas par cas les aurait fondus l'un dans l'autre, et le rangement
+    // par chapitre n'aurait plus rien eu à ranger.
+    {
+        id: 'geo-symetrie-quadrillage', title: 'Le Symétrique aux Carreaux',
+        consignePapier: 'Colorie l\'image de la figure grise par la symétrie d\'axe (d).',
+        generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',
+        printable: 'quadrillage',
+        skills: ['geo.transfo.axiale'],
+        // Pas d'obliques en sixième : devant une diagonale à 45°, on ne compte
+        // plus ni lignes ni colonnes, et la méthode qu'on vient d'apprendre ne
+        // sert plus. C'est un autre exercice, et il se règle d'une case.
+        params: { genres: ['axiale'], obliques: false, taille: 'moyen' },
+        motsClefs: ['symétrie', 'axe', 'miroir', 'quadrillage', 'carreaux', 'image'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Clique sur les cases pour colorier l'image ; reclique pour effacer. "
+            + "La méthode est toujours la même : UNE case à la fois. Pour chacune, compte les "
+            + "carreaux qui la séparent de l'axe rouge, puis reporte le même nombre de l'autre côté. "
+            + "Quand ta figure est complète, appuie sur « Valider » — rien n'est jugé avant. "
+            + "Le réglage « axes obliques » ajoute les diagonales à 45° : gardez-le décoché tant "
+            + "que le miroir droit n'est pas acquis, car on n'y compte plus ni lignes ni colonnes."
+    },
+    {
+        id: 'geo-transfo-quadrillage', title: 'Tracer l\'Image d\'une Figure',
+        consignePapier: 'Colorie l\'image de la figure grise par la transformation indiquée.',
+        generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',
+        printable: 'quadrillage',
+        skills: ['geo.transfo.axiale', 'geo.transfo.centrale', 'geo.transfo.translation', 'geo.transfo.rotation'],
+        params: { genres: ['axiale', 'translation', 'centrale', 'rotation'], obliques: true, taille: 'moyen' },
+        motsClefs: ['symétrie', 'centrale', 'translation', 'rotation', 'quart de tour',
+            'transformation', 'quadrillage', 'pavage'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Les quatre transformations du collège, sur le même quadrillage. Ce qui est "
+            + "en rouge est la DONNÉE : l'axe (d), le centre O, ou la flèche du vecteur. "
+            + "Le réglage « Transformations » choisit lesquelles tomberont — n'en laissez qu'une "
+            + "pour travailler un chapitre, toutes les quatre pour une révision, car c'est alors "
+            + "de reconnaître laquelle qu'il s'agit. La symétrie centrale et le quart de tour "
+            + "se confondent souvent : le demi-tour est une symétrie centrale, jamais une rotation."
+    },
+
     // --- Angle Master : le rapporteur interactif ---
     {
         // Mesurer et construire sont les deux sens du même geste, et le

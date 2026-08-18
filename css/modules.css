@@ -568,6 +568,71 @@
 .rep-mark-label--ko { fill: var(--danger); }
 .rep-mark-label--demo { fill: var(--warning); }
 
+/* --- Le quadrillage des transformations ---------------------------------
+   Le dessin du cahier : des carreaux fins, une figure bleue, et l'axe — ou le
+   centre, ou le vecteur — en ROUGE, parce que c'est la couleur de la donnée au
+   tableau et sur toutes les fiches. La case posée par l'élève est verte : elle
+   est SA réponse, elle ne doit pas se confondre avec l'énoncé.
+
+   Le quadrillage est plus large que les autres figures : le réduire à 360 px
+   ramenait le carreau à vingt pixels de côté, et l'on ne vise plus une case de
+   vingt pixels au doigt. */
+.figure-wrap:has(.qd-svg) { width: min(440px, 96%); }
+.qd-svg { width: 100%; height: auto; color: var(--text-main); }
+
+.qd-grille { stroke: var(--border); stroke-width: 1; fill: none; }
+.qd-case { stroke: none; }
+.qd-depart { fill: rgba(99, 102, 241, .55); }
+.qd-posee { fill: rgba(22, 163, 74, .58); }
+.qd-etiquette { fill: #fff; font-size: 15px; font-weight: 800; }
+
+/* La donnée de l'énoncé : axe, centre, vecteur. Le trait est épais — c'est
+   l'élément qu'on regarde le plus longtemps. */
+.qd-marques { pointer-events: none; }
+.qd-axe { stroke: #dc2626; stroke-width: 2.6; }
+.qd-centre line { stroke: #dc2626; stroke-width: 3.2; stroke-linecap: round; }
+.qd-vecteur, .qd-arc { stroke: #dc2626; stroke-width: 2.6; fill: none; color: #dc2626; }
+.qd-marque-nom { fill: #dc2626; font-size: 15px; font-weight: 800; font-style: italic; }
+
+.qd-hit { fill: transparent; cursor: pointer; outline: none; transition: fill .1s; }
+/* Même règle qu'au repère : au doigt, `:hover` se colle sur la dernière case
+   touchée et laisse un carreau pâle qui ne veut plus rien dire. */
+@media (hover: hover) and (pointer: fine) {
+    .qd-hit:hover { fill: rgba(22, 163, 74, .2); }
+}
+.qd-hit:focus-visible { fill: rgba(22, 163, 74, .28); }
+
+/* LA CORRECTION SE LIT SANS LES COULEURS. Une case oubliée est hachurée, une
+   case en trop est barrée : sur un écran mal réglé, en noir et blanc, ou pour
+   un élève qui distingue mal le rouge du vert, la forme reste lisible. */
+.qd-oubliee { fill: rgba(22, 163, 74, .18); stroke: var(--success); stroke-width: 2.4; stroke-dasharray: 5 4; }
+.qd-en-trop { fill: rgba(220, 38, 38, .3); stroke: var(--danger); stroke-width: 2.4; }
+
+.qd-plateau--secoue { animation: qd-secousse .3s; }
+@keyframes qd-secousse {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-7px); }
+    75% { transform: translateX(7px); }
+}
+
+.qd-barre {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 10px; margin: 2px auto 10px;
+}
+.qd-compte {
+    flex: 1 1 100%; text-align: center;
+    font-size: .88rem; font-weight: 600; color: var(--text-muted);
+}
+.qd-compte--prete { color: var(--success); }
+/* « Tout effacer » est une SORTIE DE SECOURS, pas une action du même rang que
+   « Valider » : il se dessine en creux pour qu'on ne le prenne pas pour elle. */
+.qd-effacer {
+    background: none; border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 16px; font-size: .9rem; font-weight: 600;
+    color: var(--text-muted); cursor: pointer; transition: color .15s, border-color .15s;
+}
+.qd-effacer:hover { color: var(--text-main); border-color: var(--text-muted); }
+
 .coord-badge {
     display: inline-block; padding: 2px 14px; margin-left: 6px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);

@@ -484,6 +484,53 @@ const BASE = {
         descriptor: 'Construire à la règle, à l\'équerre et au compas : milieu, médiatrice, perpendiculaire, parallèle, cercle.',
         lesson: 'Chaque instrument sert à garder une chose fixe. Le COMPAS garde une distance : deux points tracés du même écartement sont à la même distance du centre — c\'est ce qui fait le cercle, et c\'est ce qui fait la médiatrice (deux points à égale distance de A et de B suffisent à la tenir). L\'ÉQUERRE garde l\'angle droit : un côté le long de la droite, on glisse jusqu\'au point, on trace le long de l\'autre. La RÈGLE ne mesure pas seulement, elle joint. Et la médiatrice de [AB], c\'est les deux à la fois : elle passe par le milieu de [AB] ET elle lui est perpendiculaire — les deux conditions, pas une seule.'
     },
+    // --- Les transformations, aux carreaux ---------------------------------
+    //
+    // Quatre compétences distinctes, et non une seule « transformations » :
+    // savoir tracer un symétrique par rapport à un axe ne donne pas le
+    // demi-tour, et le quart de tour résiste encore quand les trois autres
+    // sont acquises. Les séparer est ce qui permet au carnet de dire LAQUELLE
+    // manque, et au plan de révision de ne retravailler que celle-là.
+    'geo.transfo.axiale': {
+        label: 'Tracer un symétrique par rapport à un axe',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Tracer l\'image d\'une figure par une symétrie axiale, sur quadrillage.',
+        lesson: 'Le miroir. On travaille CASE PAR CASE : pour chacune, on compte les carreaux qui la séparent de l\'axe, et on reporte le même nombre de l\'autre côté. Attention, le miroir INVERSE l\'ordre : la case la plus proche de l\'axe reste la plus proche, donc la figure se retourne. Un axe vertical échange la gauche et la droite sans rien changer aux lignes ; un axe horizontal échange le haut et le bas sans rien changer aux colonnes ; un axe à 45° échange la ligne et la colonne, donc ce qui était couché se retrouve debout.'
+    },
+    'geo.transfo.centrale': {
+        label: 'Tracer un symétrique par rapport à un point',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['geo.transfo.axiale'],
+        descriptor: 'Tracer l\'image d\'une figure par une symétrie centrale, sur quadrillage.',
+        lesson: 'Le demi-tour. Chaque case part vers le centre O et continue de l\'autre côté, à la même distance : si une case est 3 carreaux à droite et 2 au-dessus de O, son image est 3 carreaux à gauche et 2 au-dessous. La figure se retrouve à l\'envers DANS LES DEUX SENS À LA FOIS — c\'est ce qui la distingue du miroir, qui n\'en retourne qu\'un. Autre nom du même geste : la rotation d\'un demi-tour.'
+    },
+    'geo.transfo.translation': {
+        label: 'Tracer l\'image par une translation',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['geo.transfo.axiale'],
+        descriptor: 'Tracer l\'image d\'une figure par une translation, sur quadrillage.',
+        lesson: 'Le glissement. TOUTES les cases font exactement le même déplacement — tant de carreaux horizontalement, tant verticalement — et la figure ne tourne pas et ne se retourne pas : elle garde son allure. Le plus sûr est de déplacer UNE case, puis de redessiner la figure autour d\'elle. C\'est la seule des quatre transformations qui ne change rien au sens de la figure.'
+    },
+    'geo.transfo.rotation': {
+        label: 'Tracer l\'image par un quart de tour',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['geo.transfo.centrale'],
+        descriptor: 'Tracer l\'image d\'une figure par une rotation d\'un quart de tour, sur quadrillage.',
+        lesson: 'Le quart de tour fait BASCULER la figure : ce qui était couché se met debout. La règle qui ne trompe pas : repère une case par ses deux écarts au centre O — tant de carreaux en largeur, tant en hauteur — et après un quart de tour ces deux nombres S\'ÉCHANGENT, l\'un d\'eux changeant de signe selon le sens. Et n\'appelle jamais « rotation » un demi-tour : un demi-tour est une symétrie centrale, et les deux mots désignent le même geste.'
+    },
+    'geo.transfo.reconnaitre': {
+        label: 'Reconnaître la transformation',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.CINQUIEME, N.QUATRIEME, N.TROISIEME],
+        prereqs: ['geo.transfo.axiale'],
+        descriptor: 'Dire par quelle transformation une figure est l\'image d\'une autre, dans un pavage.',
+        lesson: 'Trois questions, dans cet ordre, et la réponse tombe. UN : la figure a-t-elle gardé son sens, ou a-t-elle été RETOURNÉE ? Si elle est retournée, c\'est une symétrie axiale — c\'est la seule des quatre qui retourne. DEUX : sinon, est-elle restée DROITE, dans la même position ? Alors c\'est une translation. TROIS : sinon elle a tourné — d\'un demi-tour, et c\'est une symétrie centrale ; d\'un quart de tour, et c\'est une rotation. Pour vérifier qu\'une figure a été retournée, suis un détail asymétrique : s\'il passe de la gauche à la droite, il y a eu miroir.'
+    },
     'voc.mathematique': {
         label: 'Vocabulaire mathématique',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

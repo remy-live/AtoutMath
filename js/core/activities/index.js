@@ -36,6 +36,7 @@ import { vitesseGenerator } from '../generators/vitesse.js';
 import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { notationGenerator } from '../generators/notation.js';
 import { graduationsGenerator } from '../generators/graduations.js';
+import { transfoQuadrillageGenerator } from '../generators/transfoQuadrillage.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
 import { relierGenerator } from '../generators/relier.js';
@@ -78,7 +79,7 @@ import {
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
-    graduationsGenerator,
+    graduationsGenerator, transfoQuadrillageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
@@ -273,6 +274,17 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./sudoku.js')
+});
+
+// Colorier l'image d'une figure sur un quadrillage : genre de réponse 'grid'
+// aussi — l'élève pose sa figure entière, puis la soumet, comme il rendrait
+// une feuille. Corriger au fil des clics en ferait un jeu de chaud-froid.
+registerActivity({
+    id: 'quadrillage',
+    label: 'Tracer sur le quadrillage',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./quadrillage.js')
 });
 
 // Rapporteur interactif : genre de réponse 'angle' — l'élève mesure ou

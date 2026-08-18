@@ -141,6 +141,28 @@ function depuisCle(k) {
 }
 
 /**
+ * L'ÉCRITURE CANONIQUE D'UNE FIGURE — celle qui se compare caractère à
+ * caractère.
+ *
+ * Le contrat des items juge une réponse en comparant deux chaînes ; une figure
+ * est un ENSEMBLE de cases, où ni l'ordre ni les doublons ne veulent dire quoi
+ * que ce soit. On les range donc dans le sens de la lecture — ligne par ligne,
+ * de gauche à droite — et l'on écrit toujours la même chaîne pour le même
+ * dessin, qu'il ait été cliqué dans un ordre ou dans un autre.
+ *
+ * Ni virgule ni espace isolé : la normalisation des réponses transforme les
+ * virgules en points et rapproche les nombres écrits par tranches de trois.
+ */
+export function cleFigure(figure) {
+    const vues = new Set();
+    return (figure || [])
+        .filter(p => { const k = cle(p); if (vues.has(k)) return false; vues.add(k); return true; })
+        .sort((a, b) => (a.y - b.y) || (a.x - b.x))
+        .map(cle)
+        .join('/');
+}
+
+/**
  * Deux figures sont-elles la MÊME ? L'ordre des cases ne compte pas : on ne
  * demande pas à l'élève de les poser dans un ordre, on lui demande un dessin.
  */

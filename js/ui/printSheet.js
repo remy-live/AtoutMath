@@ -5660,7 +5660,11 @@ function dessinerGraduationPdf(doc, item, slot, solution) {
         doc.setTextColor(...ENCRE.gris);
         doc.text(ecrireDecimal(m.valeur, g.rang), xTrait, g.yEcrit);
     } else {
-        doc.setDrawColor(...ENCRE.pointille);
+        // `ENCRE.gris`, et non un `ENCRE.pointille` qui n'a jamais existé :
+        // l'étalement d'une clef absente lève une TypeError, et c'est la
+        // FEUILLE DE QUESTIONS qui passe par ici — celle qu'on imprime
+        // toujours. Le corrigé, lui, prend l'autre branche et s'en tirait.
+        doc.setDrawColor(...ENCRE.gris);
         doc.setLineWidth(0.35);
         doc.setLineDashPattern([0.8, 0.8], 0);
         doc.line(xTrait, g.yEcrit, xTrait + g.boite.w * 0.30, g.yEcrit);
@@ -5668,7 +5672,253 @@ function dessinerGraduationPdf(doc, item, slot, solution) {
     }
 }
 
+// --- Le quadrillage des transformations --------------------------------------
+//
+// Le même dessin que l'écran, aux mêmes coordonnées : le noyau donne des cases
+// et un axe en COORDONNÉES DE CASE, et le demi-carreau qui mène au centre de la
+// case est appliqué ici comme il l'est dans `core/quadrillageSvg.js`. Deux
+// conversions différentes auraient déplacé l'axe d'un demi-carreau entre
+// l'écran et la feuille, et rendu l'un des deux corrigés faux.
+//
+// LA FIGURE DE DÉPART EST HACHURÉE, PAS NOIRCIE : l'élève doit pouvoir écrire
+// par-dessus au crayon, et une case pleine à la photocopieuse devient un carré
+// noir où plus rien ne se lit.
+
+/** La géométrie du bloc : où commence la grille, et quel est le pas. */
+function geoQuadrillage(item, slot) {
+    const m = item.meta || {};
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const L = Math.max(1, m.largeur || 10), H = Math.max(1, m.hauteur || 10);
+    // Le carreau est CARRÉ, sinon ce n'est plus un quadrillage : on prend le
+    // plus petit des deux pas possibles et l'on centre ce qui reste.
+    // Une bande est réservée EN BAS pour la légende : sans elle, deux
+    // quadrillages voisins de la même feuille ne se distinguent pas — un axe
+    // vertical et un centre posé sur la même colonne se ressemblent beaucoup.
+    const pt = Math.max(5.5, Math.min(9, b.h * 0.055));
+    const legendeH = pt * 0.3528 * 1.7;
+    const pas = Math.min((b.w * 0.92) / L, ((b.h - legendeH) * 0.94) / H);
+    return {
+        m, L, H, pas, boite: b, pt, legendeH,
+        x0: b.x + (b.w - pas * L) / 2,
+        y0: b.y + (b.h - legendeH - pas * H) / 2,
+        yLegende: b.y + b.h - pt * 0.3528 * 0.35
+    };
+}
+
+/**
+ * La légende d'un bloc : QUELLE transformation, en trois mots.
+ *
+ * Le dessin dit déjà où passe l'axe ou où se trouve le centre, mais il ne dit
+ * pas tout : une croix marque aussi bien le centre d'une symétrie que celui
+ * d'un quart de tour, et le SENS du quart de tour ne se dessine pas lisiblement
+ * dans trois millimètres. On l'écrit.
+ */
+function qLegende(m) {
+    const t = m.transfo || {};
+    if (t.genre === 'axiale') return 'Symétrie d\'axe (d)';
+    if (t.genre === 'centrale') return 'Symétrie de centre O';
+    if (t.genre === 'translation') return 'Translation du vecteur tracé';
+    if (t.genre === 'rotation') {
+        return `Quart de tour vers la ${t.quarts === 1 ? 'gauche' : 'droite'} autour de O`;
+    }
+    return '';
+}
+
+/** Le centre d'une case, en millimètres — le demi-carreau est ici. */
+const qCentre = (g, v, axe) => (axe === 'x' ? g.x0 : g.y0) + (v + 0.5) * g.pas;
+
+/**
+ * Les deux bouts du trait qui porte l'axe, déjà rabotés au quadrillage.
+ * Rendus à part parce que c'est la seule partie du dessin qui demande à
+ * réfléchir, et qu'elle doit être identique dans l'aperçu et dans le PDF.
+ */
+function qBoutsDeLAxe(g, axe) {
+    if (!axe) return null;
+    const X = (v) => g.x0 + v * g.pas, Y = (v) => g.y0 + v * g.pas;
+    if (axe.type === 'v') { const x = X(axe.a + 0.5); return [x, Y(0), x, Y(g.H)]; }
+    if (axe.type === 'h') { const y = Y(axe.a + 0.5); return [X(0), y, X(g.L), y]; }
+    // Les obliques : y = x + a, ou y = −x + a + 1, en coordonnées de dessin.
+    // On coupe la droite aux quatre bords, et l'on garde ce qui tombe dedans.
+    const pente = axe.type === 'd' ? 1 : -1;
+    const b = axe.type === 'd' ? axe.a : axe.a + 1;
+    const pts = [];
+    [[0, b], [g.L, pente * g.L + b]].forEach(([x, y]) => pts.push([x, y]));
+    [[0, 'y'], [g.H, 'y']].forEach(([y]) => pts.push([(y - b) / pente, y]));
+    const dedans = pts.filter(([x, y]) => x >= -0.001 && x <= g.L + 0.001 && y >= -0.001 && y <= g.H + 0.001);
+    if (dedans.length < 2) return null;
+    const [p1, p2] = [dedans[0], dedans[dedans.length - 1]];
+    return [X(p1[0]), Y(p1[1]), X(p2[0]), Y(p2[1])];
+}
+
+function quadrillagePreviewHtml(item, slot, k, solution) {
+    const g = geoQuadrillage(item, slot);
+    const m = g.m;
+    const t = m.transfo || {};
+    let html = '';
+
+    const carre = (c, fond, bord) => `<div style="position:absolute;
+        left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
+        width:${g.pas * k}px; height:${g.pas * k}px;
+        background:${fond}; ${bord ? `outline:${Math.max(1, 0.4 * k)}px solid ${bord}; outline-offset:-1px;` : ''}"></div>`;
+
+    (m.depart || []).forEach(c => { html += carre(c, 'rgba(120,128,150,.30)'); });
+    if (solution) (m.image || []).forEach(c => { html += carre(c, 'rgba(120,128,150,.16)', '#6e7684'); });
+
+    const traits = [];
+    for (let i = 0; i <= g.L; i++) {
+        traits.push(`<line x1="${((g.x0 + i * g.pas) * k).toFixed(2)}" y1="${(g.y0 * k).toFixed(2)}"
+            x2="${((g.x0 + i * g.pas) * k).toFixed(2)}" y2="${((g.y0 + g.H * g.pas) * k).toFixed(2)}"/>`);
+    }
+    for (let j = 0; j <= g.H; j++) {
+        traits.push(`<line x1="${(g.x0 * k).toFixed(2)}" y1="${((g.y0 + j * g.pas) * k).toFixed(2)}"
+            x2="${((g.x0 + g.L * g.pas) * k).toFixed(2)}" y2="${((g.y0 + j * g.pas) * k).toFixed(2)}"/>`);
+    }
+
+    // L'APERÇU DOIT MONTRER EXACTEMENT CE QUE LE PDF IMPRIMERA — nom de l'axe,
+    // lettre du centre, pointe de la flèche compris. Sans la pointe, un vecteur
+    // n'est qu'un segment et le sens du glissement se perd ; le professeur
+    // validerait à l'écran une feuille que ses élèves ne pourraient pas faire.
+    const marques = [];
+    const nom = (x, y, texte) => `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}"
+        font-size="${(g.pt * 0.3528 * k).toFixed(2)}" font-weight="700"
+        font-style="italic" fill="#1a202c">${texte}</text>`;
+
+    const bouts = t.genre === 'axiale' ? qBoutsDeLAxe(g, t.axe) : null;
+    if (bouts) {
+        marques.push(`<line x1="${(bouts[0] * k).toFixed(2)}" y1="${(bouts[1] * k).toFixed(2)}"
+            x2="${(bouts[2] * k).toFixed(2)}" y2="${(bouts[3] * k).toFixed(2)}"
+            stroke="#1a202c" stroke-width="${Math.max(1, 0.55 * k).toFixed(2)}"/>`);
+        marques.push(nom((bouts[0] + 0.6) * k, (bouts[1] + 2.6) * k, '(d)'));
+    }
+    if ((t.genre === 'centrale' || t.genre === 'rotation') && t.centre) {
+        const cx = qCentre(g, t.centre.x, 'x') * k, cy = qCentre(g, t.centre.y, 'y') * k;
+        const r = g.pas * 0.3 * k;
+        marques.push(`<g stroke="#1a202c" stroke-width="${Math.max(1, 0.6 * k).toFixed(2)}" stroke-linecap="round">
+            <line x1="${(cx - r).toFixed(2)}" y1="${(cy - r).toFixed(2)}" x2="${(cx + r).toFixed(2)}" y2="${(cy + r).toFixed(2)}"/>
+            <line x1="${(cx - r).toFixed(2)}" y1="${(cy + r).toFixed(2)}" x2="${(cx + r).toFixed(2)}" y2="${(cy - r).toFixed(2)}"/>
+        </g>`);
+        marques.push(nom(cx + r + 0.6 * k, cy - r, 'O'));
+    }
+    if (t.genre === 'translation' && t.vecteur && m.ancre) {
+        const ax = qCentre(g, m.ancre.x, 'x') * k, ay = qCentre(g, m.ancre.y, 'y') * k;
+        const bx = ax + t.vecteur.x * g.pas * k, by = ay + t.vecteur.y * g.pas * k;
+        marques.push(`<line x1="${ax.toFixed(2)}" y1="${ay.toFixed(2)}"
+            x2="${bx.toFixed(2)}" y2="${by.toFixed(2)}"
+            stroke="#1a202c" stroke-width="${Math.max(1, 0.55 * k).toFixed(2)}"/>`);
+        // La pointe, calculée comme celle du PDF : un triangle porté par le
+        // vecteur unitaire, pour que les deux dessins coïncident au trait près.
+        const l = Math.hypot(bx - ax, by - ay) || 1;
+        const ux = (bx - ax) / l, uy = (by - ay) / l, q = g.pas * 0.35 * k;
+        marques.push(`<polygon fill="#1a202c" points="${bx.toFixed(2)},${by.toFixed(2)}
+            ${(bx - ux * q - uy * q * 0.45).toFixed(2)},${(by - uy * q + ux * q * 0.45).toFixed(2)}
+            ${(bx - ux * q + uy * q * 0.45).toFixed(2)},${(by - uy * q - ux * q * 0.45).toFixed(2)}"/>`);
+        marques.push(nom((ax + bx) / 2, (ay + by) / 2 - 0.35 * g.pas * k, 'v'));
+    }
+
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <g stroke="#b0b6c5" stroke-width="${Math.max(0.5, 0.2 * k).toFixed(2)}">${traits.join('')}</g>
+        ${marques.join('')}
+    </svg>`;
+
+    html += `<div style="position:absolute; left:${g.boite.x * k}px;
+        top:${(g.yLegende - g.pt * 0.3528) * k}px; width:${g.boite.w * k}px;
+        text-align:center; font-size:${(g.pt * 0.3528 * k).toFixed(2)}px;
+        font-weight:600; color:#2d3748">${qLegende(m)}</div>`;
+    return html;
+}
+
+function dessinerQuadrillagePdf(doc, item, slot, solution) {
+    const g = geoQuadrillage(item, slot);
+    const m = g.m;
+    const t = m.transfo || {};
+
+    // Les cases d'abord, le quadrillage par-dessus : les traits doivent rester
+    // visibles À TRAVERS la figure, sinon on ne peut plus compter les carreaux
+    // qui la séparent de l'axe — et c'est tout l'exercice.
+    doc.setFillColor(...ENCRE.donnee);
+    (m.depart || []).forEach(c => {
+        doc.rect(g.x0 + c.x * g.pas, g.y0 + c.y * g.pas, g.pas, g.pas, 'F');
+    });
+    if (solution) {
+        doc.setFillColor(...ENCRE.grille);
+        (m.image || []).forEach(c => {
+            doc.rect(g.x0 + c.x * g.pas, g.y0 + c.y * g.pas, g.pas, g.pas, 'F');
+        });
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.2);
+    for (let i = 0; i <= g.L; i++) {
+        doc.line(g.x0 + i * g.pas, g.y0, g.x0 + i * g.pas, g.y0 + g.H * g.pas);
+    }
+    for (let j = 0; j <= g.H; j++) {
+        doc.line(g.x0, g.y0 + j * g.pas, g.x0 + g.L * g.pas, g.y0 + j * g.pas);
+    }
+
+    // L'axe, le centre, le vecteur : à l'encre du trait. Une photocopie ne
+    // garde pas la couleur, et c'est la donnée la plus importante du dessin.
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.setFontSize(g.pt);
+    doc.setTextColor(...ENCRE.trait);
+    const bouts = t.genre === 'axiale' ? qBoutsDeLAxe(g, t.axe) : null;
+    if (bouts) {
+        doc.line(bouts[0], bouts[1], bouts[2], bouts[3]);
+        doc.text('(d)', bouts[0] + 0.6, bouts[1] + 2.6);
+    }
+
+    if ((t.genre === 'centrale' || t.genre === 'rotation') && t.centre) {
+        const cx = qCentre(g, t.centre.x, 'x'), cy = qCentre(g, t.centre.y, 'y');
+        const r = g.pas * 0.3;
+        doc.setLineWidth(0.6);
+        doc.line(cx - r, cy - r, cx + r, cy + r);
+        doc.line(cx - r, cy + r, cx + r, cy - r);
+        doc.setFontSize(g.pt);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text('O', cx + r + 0.6, cy - r);
+    }
+
+    if (t.genre === 'translation' && t.vecteur && m.ancre) {
+        const ax = qCentre(g, m.ancre.x, 'x'), ay = qCentre(g, m.ancre.y, 'y');
+        const bx = ax + t.vecteur.x * g.pas, by = ay + t.vecteur.y * g.pas;
+        doc.line(ax, ay, bx, by);
+        // La pointe : sans elle, un vecteur n'est qu'un segment, et le sens du
+        // glissement se perd.
+        const l = Math.hypot(bx - ax, by - ay) || 1;
+        const ux = (bx - ax) / l, uy = (by - ay) / l, p = g.pas * 0.35;
+        doc.setFillColor(...ENCRE.trait);
+        doc.triangle(bx, by,
+            bx - ux * p - uy * p * 0.45, by - uy * p + ux * p * 0.45,
+            bx - ux * p + uy * p * 0.45, by - uy * p - ux * p * 0.45, 'F');
+        doc.text('v', (ax + bx) / 2, (ay + by) / 2 - g.pas * 0.35, { align: 'center' });
+    }
+
+    doc.setFontSize(g.pt);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(qLegende(m), g.boite.x + g.boite.w / 2, g.yLegende, { align: 'center' });
+}
+
 export const RENDUS = {
+    quadrillage: {
+        titre: 'Tracer l\'image sur le quadrillage',
+        consigne: (items) => {
+            const genres = new Set(items.map(it => it.meta && it.meta.genre));
+            const un = genres.size === 1 ? [...genres][0] : null;
+            const commun = 'Colorie l\'image de la figure grise. Travaille CASE PAR CASE : '
+                + 'pour chacune, compte les carreaux, puis reporte-les.';
+            if (un === 'axiale') return `${commun} Le trait noir est l'axe de symétrie.`;
+            if (un === 'centrale') return `${commun} La croix marque le centre O de la symétrie.`;
+            if (un === 'translation') return `${commun} La flèche donne le déplacement.`;
+            if (un === 'rotation') return `${commun} La croix marque le centre O du quart de tour.`;
+            return `${commun} La transformation demandée est écrite sous chaque quadrillage.`;
+        },
+        previewGrille: quadrillagePreviewHtml,
+        pdfGrille: dessinerQuadrillagePdf,
+        nomBloc: 'Quadrillage', nomBlocs: 'quadrillages',
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+
     graduation: {
         titre: 'La loupe sur la droite graduée',
         consigne: (items) => {

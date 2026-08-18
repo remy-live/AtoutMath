@@ -12,6 +12,11 @@ export const TAGS = {
         DECIMAUX: "Nombres Décimaux",
         RELATIFS: "Nombres Relatifs",
         REPERAGE: "Repérage",
+        // La symétrie axiale ouvre la sixième, la centrale la cinquième, la
+        // translation et la rotation la quatrième : quatre chapitres qui se
+        // suivent d'une année sur l'autre et se répondent. Rangés sous
+        // « Repérage », ils disparaissaient au milieu des coordonnées.
+        TRANSFORMATIONS: "Transformations",
         ANGLES: "Angles",
         PRIORITES: "Priorités Opératoires",
         LOGIQUE: "Logique",
