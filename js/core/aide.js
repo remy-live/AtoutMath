@@ -145,3 +145,96 @@ export function reduireChoix(choix, n) {
 
     return choix.filter(c => gardes.has(c));
 }
+
+// --- L'ESCALIER QUI SUIT L'ÉLÈVE --------------------------------------------
+//
+// Rémy : « peut-être est-ce à toi de décider en fonction des réussites de
+// l'élève ». Oui — et c'est mieux que le calendrier fixe, pour une raison
+// précise : le calendrier décrit l'élève MOYEN. Trois questions faciles, puis
+// quatre propositions, puis le clavier, c'est juste pour la plupart, trop
+// rapide pour celui qui bloque, et trois questions de trop pour celui qui
+// savait déjà. Les deux extrémités de la classe sont justement celles qu'on
+// voulait aider.
+//
+// COMBIEN DE PREUVES POUR MONTER — et pourquoi pas le même nombre partout.
+// À deux propositions, répondre au hasard tombe juste une fois sur deux : deux
+// réussites d'affilée s'obtiennent par chance une fois sur quatre. On demande
+// donc TROIS preuves pour quitter la marche du bas (une chance sur huit), et
+// deux ensuite (une sur seize à quatre propositions). Plus la marche est
+// facile, plus il faut de preuves — c'est l'inverse de l'intuition, et c'est
+// la seule façon de ne pas promouvoir un élève qui clique.
+//
+// CE QUI COMPTE COMME PREUVE : juste, du premier coup, sans indice. Une bonne
+// réponse au deuxième essai n'est pas une faute — mais ce n'est pas une preuve
+// non plus : elle remet le compteur à zéro sans faire redescendre.
+//
+// ET ON REDESCEND. Deux questions ratées d'affilée rendent la marche
+// précédente. Ce n'est pas une punition, c'est le filet : reconnaître 42 parmi
+// quatre nombres et produire 42 sont deux choses différentes, et un élève qui
+// vient de passer au clavier peut très bien avoir besoin des propositions.
+// L'inverse — ne jamais redescendre — laisse un élève échouer jusqu'au bout
+// d'un exercice dont il avait réussi la première moitié.
+
+export const ECHELONS = [
+    { propositions: 2, clavier: false },
+    { propositions: 4, clavier: false },
+    { propositions: null, clavier: true }
+];
+
+export const PREUVES = [3, 2, 2];
+export const RATES_POUR_DESCENDRE = 2;
+
+/** L'élève entre par le bas : deux propositions, la bonne et l'erreur classique. */
+export function etatDepart() {
+    return { echelon: 0, preuves: 0, rates: 0 };
+}
+
+/**
+ * L'état après une réponse.
+ *
+ * @param {{echelon:number,preuves:number,rates:number}} etat
+ * @param {{reussi:boolean, duPremierCoup?:boolean, avecIndice?:boolean}} reponse
+ */
+export function apresReponse(etat, reponse = {}) {
+    const e = etat && Number.isInteger(etat.echelon) ? etat : etatDepart();
+    const echelon = Math.max(0, Math.min(ECHELONS.length - 1, e.echelon));
+    const { reussi, duPremierCoup = true, avecIndice = false } = reponse;
+
+    if (reussi === false) {
+        const rates = (e.rates || 0) + 1;
+        if (rates >= RATES_POUR_DESCENDRE && echelon > 0) {
+            return { echelon: echelon - 1, preuves: 0, rates: 0, vient: 'descendu' };
+        }
+        return { echelon, preuves: 0, rates };
+    }
+
+    // Réussi, mais pas seul : ni preuve, ni raté.
+    if (!duPremierCoup || avecIndice) return { echelon, preuves: 0, rates: 0 };
+
+    const preuves = (e.preuves || 0) + 1;
+    if (preuves >= PREUVES[echelon] && echelon < ECHELONS.length - 1) {
+        return { echelon: echelon + 1, preuves: 0, rates: 0, vient: 'monte' };
+    }
+    return { echelon, preuves, rates: 0 };
+}
+
+/** Ce que l'échelon courant demande d'afficher. */
+export function echelonDe(etat) {
+    const i = etat && Number.isInteger(etat.echelon) ? etat.echelon : 0;
+    return ECHELONS[Math.max(0, Math.min(ECHELONS.length - 1, i))];
+}
+
+/**
+ * L'aide à la question suivante, réglages ET parcours de l'élève en main.
+ *
+ * Les modes fixes (« toujours 4 propositions », « directement au clavier ») et
+ * les réglages fins l'emportent : un professeur qui a posé une valeur veut
+ * cette valeur, pas une valeur qui bouge. L'adaptation ne joue que là où le
+ * réglage dit « progressive », c'est-à-dire là où l'on a demandé un escalier.
+ */
+export function aideSelonEtat(params = {}, etat, rang = 1, total = 10) {
+    if (modeDe(params) !== 'progressive' || affine(params) || !etat) {
+        return aideAuRang(params, rang, total);
+    }
+    return { ...echelonDe(etat) };
+}

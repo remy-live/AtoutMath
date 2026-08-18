@@ -13,6 +13,7 @@ import { evaluate, hintAt, toChoices } from './items.js';
 import { state } from './state.js';
 import { getWeakTables } from './stats.js';
 import { defaultPolicy } from './policy.js';
+import { etatDepart, apresReponse } from './aide.js';
 
 export class ItemSession {
     /**
@@ -57,6 +58,14 @@ export class ItemSession {
         // Graines des questions déjà posées, dans l'ordre : permet de revenir
         // en arrière et de rejouer une question à l'identique.
         this.history = [];
+        // L'ESCALIER DE L'AIDE VIT SUR LA SESSION, pas sur l'activité.
+        //
+        // Il doit survivre au passage du QCM au pavé numérique — c'est même
+        // tout l'intérêt : un élève qui bute deux fois en tapant doit pouvoir
+        // récupérer ses propositions. Posé dans l'activité, l'état serait perdu
+        // au moment précis où il sert. Mis à jour ici, il vaut pour toutes les
+        // activités sans qu'aucune ait à y penser.
+        this.escalier = etatDepart();
         this._listeners = { item: [], result: [], finish: [] };
     }
 
@@ -265,6 +274,18 @@ export class ItemSession {
             }
         }
         result.dismissed = dismissed;
+
+        // L'escalier ne bouge qu'une fois la question CLOSE : une première
+        // réponse fausse suivie d'une bonne au deuxième essai est un seul
+        // verdict, pas deux — sinon un élève à deux essais descendrait puis
+        // remonterait dans la même question.
+        if (result.done && !this.isDemo) {
+            this.escalier = apresReponse(this.escalier, {
+                reussi: verdict.correct,
+                duPremierCoup: isFirstTry,
+                avecIndice: this.hintIndex > 0
+            });
+        }
 
         this.locked = result.done;
         this._fire('result', result);

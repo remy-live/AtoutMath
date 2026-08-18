@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { aideAuRang, reduireChoix, modeDe, affine, MODES, DEBUT_FACILE } from '../js/core/aide.js';
+import {
+    aideAuRang, reduireChoix, modeDe, affine, MODES, DEBUT_FACILE,
+    ECHELONS, etatDepart, apresReponse, echelonDe, aideSelonEtat
+} from '../js/core/aide.js';
 import { finalizeChoices } from '../js/core/items.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -157,4 +160,115 @@ test('tous les modes déclarés sont utilisables', () => {
         assert.ok(r.propositions === null || r.propositions >= 2, `${nom} : propositions invalides`);
         assert.equal(typeof r.clavier, 'boolean', `${nom} : clavier n'est pas un booléen`);
     }
+});
+
+// --- L'escalier qui suit l'élève ---------------------------------------------
+
+test('trois preuves pour quitter la marche du bas, deux ensuite', () => {
+    const juste = { reussi: true };
+    let e = etatDepart();
+    assert.equal(echelonDe(e).propositions, 2);
+
+    // Deux réussites ne suffisent pas : au hasard, deux bonnes réponses sur
+    // deux propositions arrivent une fois sur quatre.
+    e = apresReponse(e, juste); e = apresReponse(e, juste);
+    assert.equal(echelonDe(e).propositions, 2, 'monté au bout de deux');
+    e = apresReponse(e, juste);
+    assert.equal(echelonDe(e).propositions, 4, 'pas monté au bout de trois');
+    assert.equal(e.vient, 'monte');
+
+    // Deux suffisent maintenant.
+    e = apresReponse(e, juste); e = apresReponse(e, juste);
+    assert.equal(echelonDe(e).clavier, true, 'le clavier n\'arrive pas');
+
+    // Et on ne monte pas plus haut que le clavier.
+    for (let i = 0; i < 5; i++) e = apresReponse(e, juste);
+    assert.equal(echelonDe(e).clavier, true);
+    assert.equal(e.echelon, ECHELONS.length - 1);
+});
+
+test('une réussite au deuxième essai, ou avec un indice, ne prouve rien — et ne punit rien', () => {
+    let e = etatDepart();
+    e = apresReponse(e, { reussi: true });
+    e = apresReponse(e, { reussi: true });
+    // Troisième bonne réponse, mais au deuxième essai : le compteur repart,
+    // et l'élève NE descend PAS pour autant.
+    e = apresReponse(e, { reussi: true, duPremierCoup: false });
+    assert.equal(e.echelon, 0);
+    assert.equal(e.preuves, 0);
+    assert.equal(e.rates, 0);
+    // Idem avec un indice.
+    let f = apresReponse(apresReponse(etatDepart(), { reussi: true }),
+        { reussi: true, avecIndice: true });
+    assert.equal(f.preuves, 0);
+    assert.equal(f.rates, 0);
+});
+
+test('deux ratés d\'affilée rendent la marche précédente', () => {
+    // Un élève monté au clavier bute : reconnaître 42 et produire 42 sont deux
+    // choses différentes, et il doit pouvoir récupérer le filet.
+    let e = { echelon: 2, preuves: 0, rates: 0 };
+    e = apresReponse(e, { reussi: false });
+    assert.equal(e.echelon, 2, 'descendu dès le premier raté');
+    e = apresReponse(e, { reussi: false });
+    assert.equal(e.echelon, 1, 'pas descendu au deuxième raté');
+    assert.equal(e.vient, 'descendu');
+
+    // Un raté isolé entre deux réussites ne fait pas descendre.
+    let f = { echelon: 2, preuves: 0, rates: 0 };
+    f = apresReponse(f, { reussi: false });
+    f = apresReponse(f, { reussi: true });
+    f = apresReponse(f, { reussi: false });
+    assert.equal(f.echelon, 2, 'un raté isolé fait descendre');
+});
+
+test('on ne descend jamais sous les deux propositions', () => {
+    let e = etatDepart();
+    for (let i = 0; i < 8; i++) e = apresReponse(e, { reussi: false });
+    assert.equal(e.echelon, 0);
+    assert.equal(echelonDe(e).propositions, 2);
+});
+
+test('un état absent ou abîmé repart du bas sans planter', () => {
+    assert.equal(echelonDe(undefined).propositions, 2);
+    assert.equal(echelonDe({}).propositions, 2);
+    assert.equal(echelonDe({ echelon: 99 }).clavier, true);
+    assert.equal(echelonDe({ echelon: -3 }).propositions, 2);
+    assert.equal(apresReponse(null, { reussi: true }).echelon, 0);
+});
+
+// --- L'adaptation ne joue que là où on l'a demandée ---------------------------
+
+test('un réglage posé par le professeur l\'emporte sur le parcours de l\'élève', () => {
+    const monte = { echelon: 2, preuves: 0, rates: 0 };
+    // « Toujours 4 propositions » : quoi qu'ait fait l'élève.
+    assert.deepEqual(aideSelonEtat({ aide: 'propositions' }, monte, 5, 10),
+        { propositions: 4, clavier: false });
+    // Un réglage fin posé sous « Affiner… » gèle aussi l'escalier : le
+    // professeur qui a écrit « 6 propositions » veut six propositions.
+    assert.equal(aideSelonEtat({ aide: 'progressive', propositions: 6 }, monte, 5, 10).propositions, 6);
+    // Sans état (première question, ou mode non adaptatif), on retombe sur le
+    // calendrier — donc jamais d'écran vide.
+    assert.deepEqual(aideSelonEtat({ aide: 'progressive' }, null, 1, 10),
+        aideAuRang({ aide: 'progressive' }, 1, 10));
+});
+
+test('en progressif, c\'est bien le parcours qui décide', () => {
+    const params = { aide: 'progressive' };
+    // Question 1, mais l'élève a déjà tout prouvé : il tape.
+    assert.equal(aideSelonEtat(params, { echelon: 2, preuves: 0, rates: 0 }, 1, 20).clavier, true);
+    // Question 19 sur 20, mais l'élève bloque : il garde ses deux propositions,
+    // là où le calendrier l'aurait mis au clavier depuis longtemps.
+    assert.equal(aideSelonEtat(params, etatDepart(), 19, 20).propositions, 2);
+    assert.equal(aideAuRang(params, 19, 20).clavier, true);
+});
+
+test('en évaluation, l\'aide suit le calendrier et non l\'élève', () => {
+    // Noter une classe où l'un a répondu parmi deux propositions et l'autre au
+    // clavier ne compare plus rien. Le mécanisme est le même — passer `null`
+    // en guise d'état — et c'est `choice.js` qui le décide sur la politique.
+    const params = { aide: 'progressive' };
+    const monte = { echelon: 2, preuves: 0, rates: 0 };
+    assert.deepEqual(aideSelonEtat(params, null, 2, 20), aideAuRang(params, 2, 20));
+    assert.notDeepEqual(aideSelonEtat(params, monte, 2, 20), aideAuRang(params, 2, 20));
 });

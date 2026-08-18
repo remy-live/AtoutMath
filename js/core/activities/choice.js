@@ -13,7 +13,7 @@
 import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { aideAuRang, reduireChoix } from '../aide.js';
+import { aideSelonEtat, reduireChoix } from '../aide.js';
 
 /**
  * Ce que le robot dit avant de choisir, et après avoir choisi.
@@ -102,6 +102,21 @@ export function mount(container, session, opts = {}) {
     // ici on ne fait qu'appliquer.
     let releve = null;                     // l'activité qui a pris la main
     let aide = { propositions: null, clavier: false };
+    // Le mot qui accompagne un changement de forme. Vide la plupart du temps.
+    let avisRetour = '';
+
+    /**
+     * EN ÉVALUATION, L'AIDE NE SUIT PERSONNE.
+     *
+     * L'escalier adaptatif est un outil d'entraînement : il donne à chacun le
+     * soutien dont il a besoin, et c'est très bien tant qu'on apprend. Noter
+     * une classe où l'un a répondu parmi deux propositions et l'autre au
+     * clavier ne compare plus rien — la note mesurerait l'aide reçue autant
+     * que le savoir. En évaluation, on revient donc au calendrier : le même
+     * pour tous, annoncé d'avance.
+     */
+    const etatAdaptatif = () => (session.policy && session.policy.mode === 'evaluation')
+        ? null : session.escalier;
     const totalPrevu = () => Math.max(2, session.nbItems
         || Number(session.params && session.params.nbQuestions) || 10);
 
@@ -111,7 +126,7 @@ export function mount(container, session, opts = {}) {
         // `history` contient déjà la graine de la question en cours : c'est son
         // rang, à partir de 1.
         const rang = session.history.length;
-        aide = aideAuRang(session.params || {}, rang, totalPrevu());
+        aide = aideSelonEtat(session.params || {}, etatAdaptatif(), rang, totalPrevu());
         // Et seulement si la réponse SE PRODUIT : « quelle opération est
         // prioritaire » se répond « 5 × 7 », qui ne se tape pas sur un pavé.
         // Un nombre se tape ; une notation comme [AB) se COMPOSE, symbole par
@@ -129,13 +144,40 @@ export function mount(container, session, opts = {}) {
         render(item);
     }
 
-    /** L'exercice change de forme : une autre activité prend la main, pour de bon. */
+    /** L'exercice change de forme : une autre activité prend la main. */
     async function passerALaMain(item, module, avis) {
         const mod = await import(module);
         if (destroyed) return;
         if (cursor) { cursor.destroy(); cursor = null; }
         if (gate) { gate.destroy(); gate = null; }
-        releve = mod.mount(container, session, { item, avis });
+        releve = mod.mount(container, session, { item, avis, rendreLaMain });
+    }
+
+    /**
+     * ET ON PEUT REDESCENDRE — c'est le filet, pas une sanction.
+     *
+     * Le passage au pavé était sans retour, et c'était défendable tant que
+     * l'escalier suivait un calendrier : on ne redescendait pas parce qu'on ne
+     * savait pas quand il l'aurait fallu. Maintenant que l'escalier suit
+     * l'élève, ne pas redescendre le laisserait échouer jusqu'au bout d'un
+     * exercice dont il avait réussi la première moitié — reconnaître 42 parmi
+     * quatre nombres et PRODUIRE 42 sont deux choses différentes, et c'est
+     * précisément là que ça casse.
+     *
+     * L'activité qui a la main appelle ceci avant chaque question ; si l'on
+     * rend `true`, elle s'arrête là et le QCM reprend.
+     */
+    function rendreLaMain(item) {
+        if (destroyed) return false;
+        const suite = aideSelonEtat(session.params || {}, etatAdaptatif(),
+            session.history.length, totalPrevu());
+        if (suite.clavier) return false;
+        aide = suite;
+        if (releve && releve.destroy) releve.destroy();
+        releve = null;
+        avisRetour = 'On reprend avec des propositions : ça va revenir.';
+        render(item);
+        return true;
     }
 
     function render(item) {
@@ -166,7 +208,9 @@ export function mount(container, session, opts = {}) {
         // `context` permet à une variante d'ajouter un support visuel entre
         // l'énoncé et les propositions (table de Pythagore, schéma…).
         const context = opts.context ? opts.context(item) : '';
-        container.innerHTML = `${item.prompt.html}${context}${wrapped}${hintBar(session)}`;
+        const mot = avisRetour ? `<div class="choice-avis">${avisRetour}</div>` : '';
+        avisRetour = '';
+        container.innerHTML = `${mot}${item.prompt.html}${context}${wrapped}${hintBar(session)}`;
 
         const cells = [...container.querySelectorAll(`[data-idx]`)];
 

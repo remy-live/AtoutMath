@@ -32,7 +32,11 @@ export function mount(container, session, opts = {}) {
 
     function renderNext() {
         if (destroyed) return;
-        render(session.next());
+        const item = session.next();
+        // L'escalier a pu redescendre : le QCM reprend la main, et cette
+        // activité s'efface. Voir `rendreLaMain` dans choice.js.
+        if (opts.rendreLaMain && opts.rendreLaMain(item)) return;
+        render(item);
     }
 
     function render(item) {

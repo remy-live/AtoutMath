@@ -4268,3 +4268,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     .nt-cote { font-size: .72rem; }
     .nt-note { min-height: 2.2em; font-size: .86rem; }
 }
+
+/* Le mot qui accompagne un retour aux propositions. Discret et bienveillant :
+   redescendre est un filet, pas une sanction, et le ton doit le dire. */
+.choice-avis {
+    text-align: center; font-size: .9rem; font-weight: 700;
+    color: var(--primary); margin-bottom: 10px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border-radius: 10px; padding: 7px 12px;
+}
