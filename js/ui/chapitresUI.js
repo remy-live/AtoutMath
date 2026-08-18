@@ -19,7 +19,7 @@ import { TAGS } from '../data/tags.js';
 import { skillLabel } from '../data/skills.js';
 import {
     chapitresDuNiveau, competencesDuChapitre, getClassement, saveClassement,
-    etatCase, basculer, confirmerLeChapitre, chapitresDe, resume
+    classementLocal, etatCase, basculer, confirmerLeChapitre, chapitresDe, resume
 } from '../core/chapitres.js';
 import { showToast } from './modal.js';
 
@@ -56,6 +56,8 @@ export function ouvrirChapitres() {
                     <input type="checkbox" id="chap-a-relire"> À relire seulement
                 </label>
                 <span class="chap-compteur" id="chap-compteur"></span>
+                <button class="btn-toggle glass-btn" id="chap-exporter"
+                    title="Enregistrer le classement dans un fichier, pour le reprendre sur un autre poste">Exporter</button>
                 <button class="btn-toggle glass-btn" id="chap-tout">Tout confirmer</button>
             </div>
 
@@ -84,6 +86,7 @@ export function ouvrirChapitres() {
     overlay.querySelector('#chap-domaine').onchange = (e) => { vue.domaine = e.target.value; dessiner(overlay); };
     overlay.querySelector('#chap-a-relire').onchange = (e) => { vue.aRelire = e.target.checked; dessiner(overlay); };
     overlay.querySelector('#chap-tout').onclick = () => toutConfirmer(overlay);
+    overlay.querySelector('#chap-exporter').onclick = exporter;
 
     dessiner(overlay);
 }
@@ -268,6 +271,31 @@ function listeComp(ids) {
             <span class="chap-comp-lab">${escapeHtml(skillLabel(id))}</span>
             <span class="chap-comp-id">${escapeHtml(id)}</span>
         </div>`).join('')}</div>`;
+}
+
+/**
+ * Le classement dans un fichier.
+ *
+ * Il vit dans le stockage de CE poste : sur un autre navigateur, il n'existe
+ * pas. Le fichier est la façon de l'emporter — et c'est aussi lui qui, renvoyé
+ * à l'auteur, devient le classement livré avec l'application, donc celui de
+ * tout le monde sans rien à importer.
+ */
+function exporter() {
+    const contenu = JSON.stringify({
+        format: 'atoutmath/chapitres/v1',
+        exporteLe: new Date().toISOString(),
+        classement: classementLocal()
+    }, null, 2);
+    const url = URL.createObjectURL(new Blob([contenu], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'classement_chapitres.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Classement enregistré dans « classement_chapitres.json ».', 'success');
 }
 
 function toutConfirmer(overlay) {

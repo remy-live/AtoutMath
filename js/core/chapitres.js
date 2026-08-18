@@ -20,6 +20,7 @@
 // nouvelles propositions sans effacer une seule de ses corrections.
 
 import { CHAPITRES } from '../data/chapitres.js';
+import { CLASSEMENT_LIVRE } from '../data/classementParDefaut.js';
 import { matchSkills } from '../data/skills.js';
 import { exercices, skillsOf } from '../data/catalog.js';
 
@@ -46,8 +47,7 @@ export function getChapitre(id) {
 
 // --- Ce que le professeur a décidé ------------------------------------------
 
-/** Le classement enregistré sur ce poste : `{ exoId: { chapId: bool } }`. */
-export function getClassement() {
+function lireLocal() {
     try {
         const brut = localStorage.getItem(CLE);
         const lu = brut ? JSON.parse(brut) : null;
@@ -55,6 +55,30 @@ export function getClassement() {
     } catch (e) {
         return {};
     }
+}
+
+/**
+ * Le classement en vigueur : `{ exoId: { chapId: bool } }`.
+ *
+ * DEUX COUCHES, ET LA LOCALE PAR-DESSUS. Celle du dépôt vaut pour tout le
+ * monde, sur n'importe quel navigateur, sans rien à importer ; celle du poste
+ * ne garde que ce que le professeur a changé depuis. La fusion se fait case
+ * par case, et non exercice par exercice : cocher une seule case ne doit pas
+ * effacer les six autres que le dépôt donnait à ce même exercice.
+ */
+export function getClassement() {
+    const fusion = {};
+    for (const source of [CLASSEMENT_LIVRE, lireLocal()]) {
+        Object.entries(source || {}).forEach(([exoId, cases]) => {
+            fusion[exoId] = { ...(fusion[exoId] || {}), ...cases };
+        });
+    }
+    return fusion;
+}
+
+/** Ce que ce poste a décidé, sans la couche du dépôt — c'est ce qui s'exporte. */
+export function classementLocal() {
+    return lireLocal();
 }
 
 export function saveClassement(classement) {

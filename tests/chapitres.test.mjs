@@ -189,3 +189,19 @@ test('la 6ᵉ range la grande majorité de ce qu\'elle doit ranger', () => {
     assert.ok(part > 0.6,
         `seulement ${ranges.length}/${deSixieme.length} exercices de 6ᵉ trouvent un chapitre`);
 });
+
+// --- Les deux couches --------------------------------------------------------
+
+test('le classement livré avec l\'application vaut pour tout le monde', async () => {
+    // Le stockage du navigateur ne suit pas le professeur d'un poste à
+    // l'autre. Ce que le depot livre, si.
+    const { CLASSEMENT_LIVRE } = await import('../js/data/classementParDefaut.js');
+    assert.equal(typeof CLASSEMENT_LIVRE, 'object');
+    for (const [exoId, cases] of Object.entries(CLASSEMENT_LIVRE)) {
+        assert.ok(exercices.some(e => e.id === exoId), `exercice inconnu : ${exoId}`);
+        for (const [chapId, valeur] of Object.entries(cases)) {
+            assert.ok(getChapitre(chapId), `chapitre inconnu : ${chapId}`);
+            assert.equal(typeof valeur, 'boolean', `${exoId} › ${chapId}`);
+        }
+    }
+});

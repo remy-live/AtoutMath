@@ -13,6 +13,7 @@ import { computeRuns, computeAttempts, computeErrors } from './projections.js';
 import { computeMastery, weakSkills, strongSkills } from './mastery.js';
 import { gradeRun } from './grading.js';
 import { skillLabel } from '../data/skills.js';
+import { getClassement, saveClassement } from './chapitres.js';
 import { uuid } from './ids.js';
 
 const FORMAT = 'atoutmath/v2';
@@ -46,7 +47,13 @@ export function exportData() {
         ? {
             format: FORMAT, kind: 'teacher_content', exportedAt: Date.now(),
             teacherPaths: state.teacherPaths,
-            teacherFolders: state.teacherFolders
+            teacherFolders: state.teacherFolders,
+            // LE CLASSEMENT PAR CHAPITRE VOYAGE AVEC LES PARCOURS.
+            //
+            // Il vit dans le stockage du poste, comme les parcours : sur un
+            // autre navigateur, le professeur ne retrouverait rien. C'est une
+            // soirée de relecture — elle ne peut pas dépendre d'un cache.
+            chapitres: getClassement()
         }
         : {
             format: FORMAT, kind: 'student_progress', exportedAt: Date.now(),
@@ -112,10 +119,27 @@ async function applyImport(data, modal) {
         });
         state.saveTeacherPaths();
         state.saveTeacherFolders();
+
+        // Le classement par chapitre se FUSIONNE, il ne remplace pas : le
+        // professeur qui reprend son fichier sur un autre poste a peut-être
+        // déjà relu deux chapitres ici. Le fichier importé, plus récent dans
+        // l'intention, l'emporte case par case.
+        let classees = 0;
+        if (data.chapitres && typeof data.chapitres === 'object') {
+            const fusion = { ...getClassement() };
+            Object.entries(data.chapitres).forEach(([exoId, cases]) => {
+                fusion[exoId] = { ...(fusion[exoId] || {}), ...cases };
+                classees += Object.keys(cases || {}).length;
+            });
+            saveClassement(fusion);
+        }
+
         const { renderPathBrowser } = await import('../ui/builder.js');
         renderPathBrowser();
         if (modal) modal.style.display = 'none';
-        showToast(`${added} parcours importé(s).`, 'success');
+        showToast(classees
+            ? `${added} parcours importé(s), et ${classees} case${classees > 1 ? 's' : ''} de classement.`
+            : `${added} parcours importé(s).`, 'success');
         return;
     }
 
