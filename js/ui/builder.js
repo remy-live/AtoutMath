@@ -17,6 +17,7 @@ import { state } from '../core/state.js';
 import { Shortcodes } from '../core/shortcodes.js';
 import { makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
+import { creerHistorique } from '../core/historique.js';
 import { renderGameConfigUI, renderPolicyEditor } from '../games/configUI.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
 
@@ -43,6 +44,8 @@ export function initBuilder() {
     initGameAccessPanel();
     initClassesPanel();
     initChapitresPanel();
+    initHistorique();
+    initOutilsMenu();
     renderTeacherPath();
 }
 
@@ -381,9 +384,156 @@ export function addStep(exerciseId) {
 
 // --- Rendu de la liste d'étapes ---------------------------------------------
 
+// --- Annuler / refaire ------------------------------------------------------
+//
+// UN SEUL POINT D'ACCROCHE : toutes les modifications du parcours — ajout,
+// suppression, duplication, réordonnancement, réglages d'une étape, barème,
+// « Nouveau parcours », chargement d'un parcours enregistré — passent par
+// `renderTeacherPath()`. On y prend l'état, et rien ne peut donc échapper à
+// l'historique par oubli.
+//
+// L'état retenu comprend l'IDENTIFIANT du parcours en plus de son contenu :
+// annuler un « Nouveau parcours » sans lui rendrait ses étapes mais pas son
+// identité, et l'enregistrement suivant aurait fabriqué un doublon.
+
+let histoire = null;
+let enTrainDeRejouer = false;
+
+const etatDuParcours = () => ({
+    chemin: state.currentPath,
+    cheminId: state.currentPathId || null
+});
+
+function retenirLEtat() {
+    if (enTrainDeRejouer) return;
+    if (!histoire) histoire = creerHistorique(etatDuParcours());
+    else histoire.enregistrer(etatDuParcours());
+    majBoutonsHistorique();
+}
+
+function appliquerEtat(etat) {
+    if (!etat) return;
+    enTrainDeRejouer = true;
+    state.currentPath = etat.chemin;
+    state.currentPathId = etat.cheminId;
+    selectedStepId = null;
+    const input = document.getElementById('path-name-input');
+    if (input) input.value = state.currentPath.name || '';
+    renderTeacherPath();
+    enTrainDeRejouer = false;
+    majBoutonsHistorique();
+}
+
+export function annulerParcours() {
+    if (!histoire || !histoire.peutAnnuler()) return;
+    appliquerEtat(histoire.annuler());
+}
+
+export function refaireParcours() {
+    if (!histoire || !histoire.peutRefaire()) return;
+    appliquerEtat(histoire.refaire());
+}
+
+function majBoutonsHistorique() {
+    const annuler = document.getElementById('btn-path-undo');
+    const refaire = document.getElementById('btn-path-redo');
+    if (annuler) annuler.disabled = !(histoire && histoire.peutAnnuler());
+    if (refaire) refaire.disabled = !(histoire && histoire.peutRefaire());
+}
+
+// --- Mes outils : un bouton, quatre noms -------------------------------------
+//
+// Le menu se CONSTRUIT À PARTIR DES BOUTONS CACHÉS : leur infobulle donne le
+// libellé, leur icône est clonée, et cliquer une ligne clique le bouton. Aucune
+// liste à tenir à jour en double, et un outil ajouté demain apparaît ici tout
+// seul dès qu'il porte la classe.
+const OUTILS = ['btn-classes', 'btn-chapitres', 'btn-game-access', 'btn-open-import-export-teacher'];
+
+function initOutilsMenu() {
+    const btn = document.getElementById('btn-outils-prof');
+    const menu = document.getElementById('outils-menu');
+    if (!btn || !menu) return;
+
+    menu.innerHTML = '';
+    OUTILS.forEach(id => {
+        const source = document.getElementById(id);
+        if (!source) return;
+        const ligne = document.createElement('button');
+        ligne.type = 'button';
+        ligne.className = 'outils-item';
+        ligne.setAttribute('role', 'menuitem');
+        // « Mes classes : suivre les progressions » → « Mes classes », et le
+        // reste en explication sous le nom.
+        const [nom, ...suite] = (source.title || source.ariaLabel || '').split(' : ');
+        const icone = source.querySelector('svg');
+        if (icone) ligne.appendChild(icone.cloneNode(true));
+        const texte = document.createElement('span');
+        texte.className = 'outils-texte';
+        texte.innerHTML = '<span class="outils-nom"></span><span class="outils-aide"></span>';
+        texte.querySelector('.outils-nom').textContent = nom;
+        texte.querySelector('.outils-aide').textContent = suite.join(' : ');
+        ligne.appendChild(texte);
+        ligne.onclick = () => { fermerOutils(); source.click(); };
+        menu.appendChild(ligne);
+    });
+
+    const fermerOutils = () => {
+        menu.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+    };
+    // POSÉ EN FIXE, ET NON DANS LE FLUX. Un menu absolu se fait couper par le
+    // premier ancêtre qui masque son débordement — ici la colonne du milieu,
+    // et sur téléphone il ne restait qu'une bande. En fixe, il ne dépend que
+    // de la fenêtre, et on le recale pour qu'il n'en sorte pas.
+    const placer = () => {
+        const r = btn.getBoundingClientRect();
+        menu.style.top = `${Math.round(r.bottom + 8)}px`;
+        const large = menu.offsetWidth;
+        const gauche = Math.min(r.right - large, window.innerWidth - large - 8);
+        menu.style.left = `${Math.round(Math.max(8, gauche))}px`;
+    };
+
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        const ouvert = !menu.hidden;
+        menu.hidden = ouvert;
+        btn.setAttribute('aria-expanded', String(!ouvert));
+        if (!ouvert) placer();
+    };
+    window.addEventListener('resize', () => { if (!menu.hidden) placer(); });
+    // Un clic ailleurs ou la touche d'échappement referment : un menu qui reste
+    // ouvert derrière l'écran suivant finit par recouvrir ce qu'on regarde.
+    document.addEventListener('click', (e) => {
+        if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) fermerOutils();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fermerOutils(); });
+}
+
+function initHistorique() {
+    const annuler = document.getElementById('btn-path-undo');
+    const refaire = document.getElementById('btn-path-redo');
+    if (annuler) annuler.onclick = annulerParcours;
+    if (refaire) refaire.onclick = refaireParcours;
+
+    // Ctrl+Z, Ctrl+Y, Ctrl+Maj+Z — et jamais pendant qu'on tape le nom du
+    // parcours : là, Ctrl+Z doit défaire une lettre, pas une demi-heure.
+    document.addEventListener('keydown', (e) => {
+        if (!state.isTeacherMode) return;
+        if (!(e.ctrlKey || e.metaKey)) return;
+        const ou = document.activeElement;
+        if (ou && /^(INPUT|TEXTAREA|SELECT)$/.test(ou.tagName)) return;
+        const k = e.key.toLowerCase();
+        if (k === 'z' && !e.shiftKey) { e.preventDefault(); annulerParcours(); }
+        else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); refaireParcours(); }
+    });
+
+    majBoutonsHistorique();
+}
+
 export function renderTeacherPath() {
     const pathBox = document.getElementById('path-container');
     if (!pathBox) return;
+    retenirLEtat();
 
     pathBox.querySelectorAll('.path-step').forEach(el => el.remove());
 

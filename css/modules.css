@@ -1585,11 +1585,41 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 }
 .toolbar-icon-btn:active { transform: translateY(0); }
 .toolbar-icon-btn svg { display: block; }
+/* `hidden` doit gagner : `display: inline-flex` ci-dessus l'annulait, et les
+   quatre boutons passés dans le menu « Mes outils » restaient affichés. */
+.toolbar-icon-btn[hidden] { display: none; }
 /* Les actions principales gardent leur couleur d'origine, l'icône en blanc. */
 .toolbar-icon-btn--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 .toolbar-icon-btn--primary:hover { border-color: var(--primary); filter: brightness(1.08); }
 .toolbar-icon-btn--success { background: var(--success); border-color: var(--success); color: #fff; }
 .toolbar-icon-btn--success:hover { border-color: var(--success); filter: brightness(1.08); }
+
+/* UNE DOUZAINE DE CARRÉS BLANCS IDENTIQUES NE SE LISENT PAS. Un trait sépare
+   ce qui construit CE parcours de ce qui appartient au professeur — ses
+   classes, ses chapitres, ses données —, et ces derniers passent en gris plus
+   doux : l'œil tombe d'abord sur la séance qu'on est en train de monter. */
+.toolbar-sep {
+    flex: none;
+    align-self: center;
+    width: 1px;
+    height: 22px;
+    margin: 0 3px;
+    background: var(--border);
+}
+.toolbar-icon-btn--outil { color: var(--text-muted); box-shadow: none; }
+.toolbar-icon-btn--outil:hover { color: var(--text-main); }
+
+/* Rien à annuler : le bouton le dit au lieu de faire semblant. */
+.toolbar-icon-btn:disabled {
+    opacity: .38;
+    cursor: default;
+    box-shadow: none;
+}
+.toolbar-icon-btn:disabled:hover {
+    border-color: var(--border);
+    transform: none;
+    box-shadow: none;
+}
 
 /* Sélecteur de présentation du parcours (classique / mondes / chemin). */
 .path-section-head {
@@ -4961,3 +4991,58 @@ body.teacher-mode .drill-item,
 body.teacher-mode #view-accordion summary { cursor: grab; }
 body.teacher-mode .drill-item:active,
 body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
+
+/* --- Mes outils : le menu du professeur -------------------------------------
+   Quatre écrans qui ne touchent pas au parcours en cours. Dans la barre ils
+   étaient quatre icônes à deviner ; ici ils ont un NOM, et la barre retrouve
+   une seule ligne. */
+
+.outils-enveloppe { position: relative; display: inline-flex; }
+
+.outils-menu {
+    /* En FIXE : posé en absolu, le menu se faisait couper par la colonne du
+       milieu — et sur téléphone il n'en restait qu'une bande. Sa position est
+       calculée à l'ouverture, dans builder.js. */
+    position: fixed;
+    z-index: 3000;
+    min-width: 268px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+}
+.outils-menu[hidden] { display: none; }
+
+.outils-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 9px;
+    background: none;
+    font-family: inherit;
+    color: var(--text-main);
+    text-align: left;
+    cursor: pointer;
+}
+.outils-item:hover { background: var(--bg-hover); }
+.outils-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.outils-item svg { flex: none; margin-top: 2px; color: var(--text-muted); }
+.outils-item:hover svg { color: var(--primary); }
+
+.outils-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.outils-nom { font-size: .88rem; font-weight: 600; }
+.outils-aide { font-size: .74rem; color: var(--text-muted); line-height: 1.3; }
+.outils-aide:empty { display: none; }
+
+/* Sur téléphone la barre est étroite : le menu se cale au bord droit plutôt
+   que de sortir de l'écran. */
+@media (max-width: 700px) {
+    .outils-menu { min-width: min(268px, 82vw); max-width: calc(100vw - 16px); }
+}
