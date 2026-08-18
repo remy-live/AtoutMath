@@ -206,7 +206,11 @@ export const pavageGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        const voulus = (p.genres || []).filter(g => NOMS[g]);
+        // Même prudence qu'au quadrillage : un réglage peut arriver sous forme
+        // de chaîne, et un générateur ne doit pas disparaître pour une virgule.
+        const brut = Array.isArray(p.genres) ? p.genres
+            : (typeof p.genres === 'string' ? p.genres.split(',') : []);
+        const voulus = brut.map(g => String(g).trim()).filter(g => NOMS[g]);
         const t = TAILLES[p.taille] || TAILLES.moyen;
 
         let pieces = null, paire = null;

@@ -38,6 +38,27 @@ import { figure } from '../figures.js';
 /** Les genres proposables, du plus abordable au plus coriace. */
 export const GENRES = ['axiale', 'translation', 'centrale', 'rotation'];
 
+/**
+ * LE RÉGLAGE, QUELLE QUE SOIT LA FORME SOUS LAQUELLE IL ARRIVE.
+ *
+ * Un réglage à choix multiples vaut normalement un tableau. Il n'en vaut pas
+ * toujours un : un `type` mal orthographié dans le manifeste faisait rendre au
+ * panneau un simple champ de texte, qui renvoyait « axiale,translation » — et
+ * `.filter` sur une chaîne lève une TypeError. L'exercice ne s'affichait plus
+ * du tout, ni à l'écran ni sur la feuille, sans le moindre message.
+ *
+ * Le type est corrigé ; cette fonction reste, parce qu'un générateur ne doit
+ * pas disparaître pour une virgule. Un réglage vide ou incompréhensible
+ * retombe sur les quatre transformations : mieux vaut une question de trop
+ * qu'un écran blanc.
+ */
+export function listeDeGenres(brut) {
+    const liste = Array.isArray(brut) ? brut
+        : (typeof brut === 'string' ? brut.split(',') : []);
+    const gardes = liste.map(g => String(g).trim()).filter(g => GENRES.includes(g));
+    return gardes.length ? gardes : [...GENRES];
+}
+
 const DIFFICULTE = { axiale: 2, translation: 2, centrale: 3, rotation: 4 };
 
 const TAILLES = {
@@ -265,7 +286,7 @@ export const transfoQuadrillageGenerator = {
     answerKinds: ['grid'],
     params: [
         {
-            id: 'genres', type: 'multi', label: 'Transformations', default: [...GENRES],
+            id: 'genres', type: 'multiselect', label: 'Transformations', default: [...GENRES],
             options: GENRES.map(g => ({ value: g, label: NOMS[g] }))
         },
         {
@@ -288,8 +309,7 @@ export const transfoQuadrillageGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        const demandes = (p.genres || []).filter(g => GENRES.includes(g));
-        const genres = demandes.length ? demandes : [...GENRES];
+        const genres = listeDeGenres(p.genres);
         const t = TAILLES[p.taille] || TAILLES.moyen;
         const obliques = p.obliques !== false;
 

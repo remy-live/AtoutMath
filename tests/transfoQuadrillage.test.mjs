@@ -11,9 +11,10 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
-    GENRES, consigneDe, figureAuHasard, imageAttendue, tirerQuestion,
-    transfoQuadrillageGenerator as G
+    GENRES, consigneDe, figureAuHasard, imageAttendue, listeDeGenres,
+    tirerQuestion, transfoQuadrillageGenerator as G
 } from '../js/core/generators/transfoQuadrillage.js';
+import { pavageGenerator } from '../js/core/generators/pavage.js';
 import { cleFigure, imageFigure, memeFigure } from '../js/core/transformations.js';
 import { droiteDeLAxe, quadrillageSvg, versDessin } from '../js/core/quadrillageSvg.js';
 
@@ -293,4 +294,43 @@ test('même dans un quadrillage trop petit, le générateur rend une question jo
     const it = G.generate({ taille: 'petit' }, { rng: makeRng('secours'), index: 0 });
     assert.ok(it.meta.depart.length >= 4);
     assert.equal(it.answer, cleFigure(imageAttendue(it.meta)));
+});
+
+// --- Le réglage, quelle que soit sa forme -------------------------------------
+
+test('UN RÉGLAGE ARRIVÉ EN CHAÎNE NE FAIT PAS DISPARAÎTRE L\'EXERCICE', () => {
+    // Le manifeste déclarait `type: 'multi'`, qui n'existe pas : le panneau
+    // rendait un champ de TEXTE, qui renvoyait « axiale,translation », et
+    // `.filter` sur une chaîne lève une TypeError. L'exercice ne s'affichait
+    // plus du tout — ni à l'écran, ni sur la feuille — et rien ne le disait.
+    assert.deepEqual(listeDeGenres('axiale,translation'), ['axiale', 'translation']);
+    assert.deepEqual(listeDeGenres(' rotation , centrale '), ['rotation', 'centrale']);
+    assert.deepEqual(listeDeGenres(['centrale']), ['centrale']);
+    // Vide, absurde ou absent : on retombe sur les quatre. Mieux vaut une
+    // question hors réglage qu'un écran blanc.
+    assert.deepEqual(listeDeGenres(''), GENRES);
+    assert.deepEqual(listeDeGenres('nimportequoi'), GENRES);
+    assert.deepEqual(listeDeGenres(undefined), GENRES);
+    assert.deepEqual(listeDeGenres(null), GENRES);
+    assert.deepEqual(listeDeGenres(42), GENRES);
+});
+
+test('le générateur produit une figure sous chacune de ces formes', () => {
+    for (const genres of ['axiale,translation', '', undefined, ['rotation'], 'zzz', null]) {
+        const it = G.generate({ genres }, { rng: makeRng('forme'), index: 0 });
+        assert.match(it.prompt.html, /<svg/, `pas de figure pour ${JSON.stringify(genres)}`);
+        assert.ok(it.answer.length > 0);
+    }
+});
+
+test('LE TYPE DE CHAQUE RÉGLAGE EXISTE VRAIMENT', () => {
+    // La cause première du bug : un type inconnu ne lève rien, il change
+    // seulement le champ rendu. On vérifie donc les types eux-mêmes.
+    const CONNUS = ['select', 'multiselect', 'checkbox', 'number', 'text'];
+    [G, pavageGenerator].forEach(gen => {
+        (gen.params || []).forEach(p => {
+            assert.ok(CONNUS.includes(p.type),
+                `${gen.id} / ${p.id} : type « ${p.type} » inconnu du panneau de réglages`);
+        });
+    });
 });
