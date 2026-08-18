@@ -41,7 +41,23 @@ export function initBuilder() {
     initPolicyPanel();
     initPresentationMode();
     initGameAccessPanel();
+    initClassesPanel();
     renderTeacherPath();
+}
+
+// --- Mes classes ------------------------------------------------------------
+//
+// Chargé à la demande : l'écran des classes lit tout le journal de chaque
+// élève pour recalculer les bilans, et un professeur qui monte un parcours
+// n'en a pas besoin.
+
+function initClassesPanel() {
+    const btn = document.getElementById('btn-classes');
+    if (!btn) return;
+    btn.onclick = async () => {
+        const { ouvrirClasses } = await import('./classesUI.js');
+        ouvrirClasses();
+    };
 }
 
 // --- Accès aux jeux (libre / réservé / à débloquer) -------------------------

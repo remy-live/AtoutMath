@@ -4277,3 +4277,158 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px;
 }
+
+/* ═══ MES CLASSES ════════════════════════════════════════════════════════════
+   La grille est l'écran : une ligne par élève, une colonne par compétence, et
+   des pastilles qu'on lit des YEUX, pas en déchiffrant des nombres. On y
+   cherche deux choses — une ligne rouge (un élève qui décroche), une colonne
+   rouge (une notion à reprendre avec tout le monde). */
+.cl-barre-onglets {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 14px;
+}
+.cl-onglet {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font-family: inherit; font-size: .9rem; font-weight: 700;
+}
+.cl-onglet:hover { background: var(--bg-hover); }
+.cl-onglet--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--bg-app)); color: var(--primary); }
+.cl-onglet-n {
+    font-size: .74rem; font-weight: 800; padding: 1px 7px; border-radius: 999px;
+    background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+.cl-onglet--plus { border-style: dashed; color: var(--text-muted); font-weight: 600; }
+
+.cl-tete { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; }
+/* LA PHRASE DE LA CLASSE EN PREMIER, et en grand : c'est ce qui dit quoi faire
+   lundi. Le tableau vient l'étayer, il ne la remplace pas. */
+.cl-resume {
+    flex: 1 1 320px; margin: 0; font-size: 1.02rem; line-height: 1.5;
+    font-weight: 600; color: var(--text-main);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    border-left: 4px solid var(--primary); border-radius: 0 10px 10px 0; padding: 10px 14px;
+}
+.cl-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cl-btn {
+    padding: 9px 16px; border-radius: 10px; cursor: pointer; font-family: inherit;
+    font-size: .88rem; font-weight: 700; border: 2px solid var(--primary);
+    background: var(--primary); color: #fff;
+}
+.cl-btn--fin { background: transparent; color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+.cl-btn--mini { padding: 5px 11px; font-size: .78rem; }
+.cl-btn:hover { filter: brightness(1.06); }
+
+.cl-grille-boite { overflow-x: auto; margin-bottom: 6px; }
+.cl-grille { border-collapse: separate; border-spacing: 3px; font-size: .84rem; }
+.cl-coin { text-align: left; font-size: .78rem; color: var(--text-muted); font-weight: 700; }
+/* Les intitulés de compétence sont longs et les colonnes étroites : on les
+   couche à la verticale plutôt que de les tronquer à trois lettres, qui ne
+   veulent rien dire. */
+/* 168 px et non 128 : « Additionner des nombres relatifs » se lisait
+   « Additionner des nom… », c'est-à-dire ne se lisait pas. Un intitulé de
+   colonne tronqué oblige à survoler chaque colonne pour savoir ce qu'on
+   regarde — le tableau ne se lit alors plus d'un coup d'œil, ce qui était
+   toute sa raison d'être. */
+.cl-col { vertical-align: bottom; height: 168px; padding: 0; }
+/* L'intitulé s'ENROULE sur deux lignes verticales au lieu d'être coupé.
+   « Additionner des nombres relatifs » fait trente-deux caractères : sur une
+   seule ligne il aurait fallu 200 px de haut, et tronqué il devenait
+   « Additionner des nom… », c'est-à-dire illisible. `white-space: normal` en
+   écriture verticale répartit le texte sur plusieurs colonnes — deux lignes
+   couchées — et le nom tient en entier. */
+.cl-col-nom {
+    display: block; writing-mode: vertical-rl; transform: rotate(180deg);
+    max-height: 160px; white-space: normal; overflow: hidden;
+    font-size: .74rem; font-weight: 600; color: var(--text-muted); line-height: 1.25;
+}
+.cl-eleve { text-align: left; white-space: nowrap; padding-right: 10px; font-weight: 600; }
+.cl-nom {
+    background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+    color: var(--text-main); text-decoration: underline; text-decoration-style: dotted;
+    text-underline-offset: 3px;
+}
+.cl-nom:hover { color: var(--primary); }
+.cl-eleve-chiffre { margin-left: 8px; font-size: .76rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.cl-ligne--muette .cl-nom, .cl-ligne--muette .cl-eleve-chiffre { opacity: .5; }
+
+/* LA PASTILLE. Sa lettre est là pour qui ne distingue pas les couleurs — un
+   tableau qui ne parle qu'en rouge et vert exclut un élève sur douze, et
+   souvent un professeur aussi. */
+.cl-case {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px;
+    font-size: .72rem; font-weight: 800; color: #fff; letter-spacing: .02em;
+}
+.cl-case--e { background: var(--primary); }
+.cl-case--a { background: var(--success, #16a34a); }
+.cl-case--ec { background: var(--warning, #f59e0b); }
+.cl-case--na { background: var(--danger, #dc2626); }
+.cl-case--flou { background: transparent; color: var(--text-muted); border: 2px dashed var(--border); }
+.cl-case--vide { background: transparent; color: var(--border); font-size: 1.1rem; }
+
+.cl-legende { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--text-muted); margin: 10px 0 18px; }
+.cl-lg { display: inline-flex; align-items: center; gap: 6px; }
+.cl-lg .cl-case { width: 22px; height: 22px; font-size: .64rem; }
+
+/* LES PHRASES, une par élève. Sous la grille et non dans une infobulle : c'est
+   ce qu'on lit AVANT de décider, pas une précision à aller chercher. */
+.cl-phrases { display: flex; flex-direction: column; gap: 2px; }
+.cl-phrase {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: .9rem;
+}
+.cl-phrase--muette { opacity: .55; }
+.cl-phrase-nom {
+    flex: 0 0 auto; min-width: 7em; background: none; border: none; padding: 0;
+    cursor: pointer; font: inherit; font-weight: 800; color: var(--text-main); text-align: left;
+}
+.cl-phrase-nom:hover { color: var(--primary); }
+.cl-phrase-texte { flex: 1 1 260px; line-height: 1.45; color: var(--text-main); }
+.cl-detail-btn {
+    flex: 0 0 auto; background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 3px 10px; cursor: pointer; font: inherit; font-size: .76rem; color: var(--text-muted);
+}
+.cl-detail-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+/* LE DÉTAIL, quand on l'ouvre. */
+.cl-detail-boite {
+    margin-top: 18px; padding: 16px; border-radius: 14px;
+    border: 2px solid var(--primary); background: var(--bg-app);
+}
+.cl-d-tete { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.cl-d-tete h3 { margin: 0; flex: 1 1 auto; font-size: 1.1rem; }
+.cl-fermer-detail {
+    background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;
+    color: var(--text-muted); padding: 0 4px;
+}
+.cl-d-phrase { margin: 0 0 12px; font-size: .95rem; line-height: 1.5; font-weight: 600; }
+.cl-d-kpis { display: flex; gap: 16px; flex-wrap: wrap; font-size: .84rem; color: var(--text-muted); margin-bottom: 14px; }
+.cl-d-kpis b { color: var(--text-main); font-size: 1.05rem; }
+.cl-d-titre { margin: 14px 0 8px; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.cl-detail { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.cl-detail td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--border); }
+.cl-d-niveau { width: 2.4em; font-weight: 800; text-align: center; }
+.cl-d-nb { width: 4.5em; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.cl-d-barre { width: 34%; }
+.cl-barre { display: block; height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.cl-barre span { display: block; height: 100%; background: var(--primary); }
+
+.cl-erreurs { list-style: none; padding: 0; margin: 0; font-size: .86rem; }
+.cl-erreurs li { display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.cl-err-q { flex: 1 1 200px; font-weight: 600; }
+.cl-err-r { color: var(--text-muted); }
+.cl-err-n { color: var(--danger, #dc2626); font-weight: 700; }
+.cl-vide { color: var(--text-muted); font-size: .9rem; line-height: 1.5; }
+
+@media (max-width: 700px) {
+    /* Sur téléphone, la grille garde son défilement horizontal — la couper en
+       cartes ferait perdre la comparaison entre élèves, qui est TOUT l'intérêt
+       du tableau. Les phrases, elles, passent en blocs. */
+    .cl-phrase { flex-direction: column; align-items: stretch; gap: 4px; }
+    .cl-phrase-nom { min-width: 0; }
+    .cl-detail-btn { align-self: flex-start; }
+    .cl-col { height: 148px; }
+    .cl-case { width: 26px; height: 26px; }
+}
