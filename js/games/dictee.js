@@ -46,8 +46,8 @@ class Dictee extends BaseGame {
             <style>
                 .di-wrap {
                     display: flex; flex-direction: column; align-items: center;
-                    justify-content: center; gap: 14px; height: 100%; width: 100%;
-                    color: var(--text-main); user-select: none; -webkit-user-select: none;
+                    justify-content: safe center; gap: 14px; height: 100%; width: 100%;
+                    color: var(--text-main); user-select: none; -webkit-user-select: none; min-height: 0; overflow-y: auto;
                 }
                 .di-consigne { font-weight: 700; font-size: clamp(14px, 3.4cqw, 20px); text-align: center; }
                 .di-haut-parleur {

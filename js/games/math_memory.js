@@ -15,7 +15,7 @@ class MathMemory extends BaseGame {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    justify-content: center;
+                    justify-content: safe center;
                     background: var(--bg-app);
                     /* Marge du bas renforcée : le plateau remplit la hauteur,
                        et sans elle la dernière rangée passait sous la barre

@@ -7,7 +7,7 @@ import {
     THEOREME, TRIPLETS, NIVEAUX, niveauDe, niveauProgressif, niveauPour,
     tirerTriangle, cotesDe, direTriangle,
     egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase,
-    redactionComplete
+    redactionComplete, ligneEnTexte
 } from '../js/core/pythagore.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -57,13 +57,52 @@ test('le calcul de l\'hypoténuse additionne, celui d\'une cathète soustrait', 
 
     const versHypo = etapesCalcul(t);
     assert.equal(versHypo.resultat, 10);
-    assert.equal(versHypo.lignes[1].attendu, 100);
-    assert.match(versHypo.lignes[2].texte, /√100/);
+    assert.equal(versHypo.carre, 100);
+    const texteHypo = versHypo.lignes.map(ligneEnTexte);
+    assert.match(texteHypo.at(-1), /√100/, 'la dernière ligne revient à la longueur');
+    assert.ok(texteHypo.some(l => /= 6² \+ 8²|= 8² \+ 6²/.test(l)),
+        'une ligne remplace les lettres par les mesures');
+    assert.ok(texteHypo.some(l => /= 36 \+ 64|= 64 \+ 36/.test(l)),
+        'une ligne calcule le carré de chaque longueur');
 
     const versCote = etapesCalcul(t, cathetes[0].nom);
     assert.equal(versCote.resultat, cathetes[0].longueur);
-    assert.equal(versCote.lignes[1].attendu, hypo.longueur ** 2 - cathetes[1].longueur ** 2);
-    assert.match(versCote.lignes[1].texte, /−/, 'chercher une cathète, c\'est soustraire');
+    assert.equal(versCote.carre, hypo.longueur ** 2 - cathetes[1].longueur ** 2);
+    assert.ok(versCote.lignes.map(ligneEnTexte).some(l => l.includes('−')),
+        'chercher une cathète, c\'est soustraire');
+});
+
+test('le résultat n\'est jamais donné dans une ligne d\'avant', () => {
+    // Rémy : « tu donnes la réponse sous la racine carrée ». Le radicande vaut
+    // exactement ce que la ligne précédente demande de trouver : il ne doit
+    // donc PAS apparaître comme texte tout fait — il est marqué à part, et
+    // l'écran ne l'affiche qu'une fois la ligne du dessus validée.
+    for (let g = 0; g < 8; g++) {
+        const t = tirerTriangle(makeRng(`don${g}`));
+        const { cathetes } = cotesDe(t);
+        for (const chercher of [null, cathetes[0].nom]) {
+            const calc = etapesCalcul(t, chercher);
+            const radical = calc.lignes.at(-1).morceaux.find(m => m.racine !== undefined);
+            assert.ok(radical, 'la dernière ligne porte un radicande à part');
+            assert.equal(radical.racine, calc.carre);
+            // Aucune ligne ne l'écrit en clair dans son texte.
+            for (const l of calc.lignes) {
+                for (const m of l.morceaux) {
+                    if (m.texte === undefined) continue;
+                    assert.ok(!m.texte.includes(String(calc.carre)),
+                        `le carré ${calc.carre} est écrit tout fait dans « ${m.texte} »`);
+                }
+            }
+            // Et chaque case a de quoi expliquer sa faute.
+            for (const l of calc.lignes) {
+                for (const m of l.morceaux) {
+                    if (m.champ === undefined) continue;
+                    assert.equal(typeof m.aide, 'string');
+                    assert.ok(m.aide.length > 10, 'une case ratée doit dire pourquoi');
+                }
+            }
+        }
+    }
 });
 
 test('la phrase se mélange et se corrige au premier mot faux', () => {
@@ -83,9 +122,10 @@ test('la rédaction complète a ses trois lignes, et aucun trou', () => {
         for (const chercher of [null, cathetes[0].nom]) {
             const lignes = redactionComplete(t, chercher);
             assert.equal(lignes.length, 3);
-            assert.match(lignes[0], /^Je sais que/);
-            assert.match(lignes[1], /^Or Si un triangle est rectangle/);
-            assert.match(lignes[2], /^Donc/);
+            // Rémy : « la rédaction doit être toujours la même ».
+            assert.match(lignes[0], /^Je sais que : /);
+            assert.match(lignes[1], /^Or : d'après le théorème de Pythagore, si un triangle est rectangle/);
+            assert.match(lignes[2], /^Donc : /);
             assert.ok(!lignes.join(' ').includes('undefined'));
             assert.match(lignes[2], / cm\.$/, 'la réponse finale porte son unité');
         }

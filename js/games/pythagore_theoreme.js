@@ -16,7 +16,8 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     THEOREME, NIVEAUX, niveauDe, niveauPour, tirerTriangle, cotesDe, direTriangle,
-    egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase
+    egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase,
+    AMORCES, ceQueJeSais, ligneEnTexte
 } from '../core/pythagore.js';
 import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
@@ -89,14 +90,37 @@ class Pythagore extends BaseGame {
                 }
                 .py-trou--choisi { border-color: var(--primary); border-style: solid; }
                 .py-trou--plein { border-style: solid; }
+                /* LA RÉDACTION, TOUJOURS LA MÊME : trois amorces, dans cet
+                   ordre, et le calcul dans le « Donc ». */
+                .py-redac { font-size: clamp(12px, 2.9cqw, 15px); line-height: 1.45; }
+                .py-redac p { margin: 0 0 4px; }
+                .py-redac b { color: var(--primary); }
+
                 .py-calc { display: flex; flex-direction: column; gap: 8px;
-                    font-size: clamp(15px, 3.4cqw, 20px); font-weight: 700; }
-                .py-calc-ligne { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+                    font-size: clamp(15px, 3.4cqw, 20px); font-weight: 700;
+                    padding-left: 10px; transition: opacity .2s; }
+                .py-calc-ligne { display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+                    transition: opacity .25s; }
                 .py-saisie {
-                    width: 96px; padding: 6px 8px; border: 2px solid var(--border); border-radius: 9px;
+                    width: 3.6em; padding: 5px 4px; margin: 0 3px;
+                    border: 2px solid var(--border); border-radius: 9px;
                     font: inherit; font-weight: 800; text-align: center;
                     background: var(--bg-panel); color: var(--text-main);
                 }
+                .py-saisie:disabled { background: transparent; border-style: dashed; opacity: .6; }
+
+                /* LE TRAIT DE LA RACINE COUVRE TOUT LE NOMBRE. Rémy : « le
+                   bâton de la racine carrée ne va pas jusqu'au bout du
+                   nombre ». Le radical était un simple caractère « √ » écrit
+                   devant : sa petite barre ne recouvre que sa propre largeur,
+                   et « √289 » se lisait « √2 89 ». Le radicande porte donc son
+                   propre trait, qui fait exactement sa longueur. */
+                .py-racine { display: inline-flex; align-items: stretch; }
+                .py-radicande {
+                    border-top: 2px solid currentColor; padding: 0 .15em 0 .06em;
+                    margin-left: -.04em; margin-top: .12em;
+                }
+                .py-radicande--su { color: inherit; }
                 .py-saisie--ok { border-color: var(--success, #16a34a); }
                 .py-saisie--ko { border-color: var(--danger, #dc2626); animation: py-secoue .4s ease 2; }
 
@@ -449,69 +473,98 @@ class Pythagore extends BaseGame {
     }
 
     // Niveaux 4, 5, 6 : le calcul, ligne à ligne.
+    //
+    // LA RÉDACTION EST TOUJOURS LA MÊME — « Je sais que », « Or », « Donc » —
+    // et le calcul descend marche par marche à l'intérieur du « Donc ». Une
+    // ligne ne s'ouvre que lorsque celle du dessus est juste : sinon la réponse
+    // d'une ligne se lit dans la suivante, et il n'y a plus rien à chercher.
     monterCalcul() {
         this.calc = etapesCalcul(this.t, this.chercher);
-        const { hypo, cathetes } = this.infos;
-        const donnees = this.calc.cherche === hypo.nom
-            ? `${cathetes[0].nom} = ${cathetes[0].longueur} cm et ${cathetes[1].nom} = ${cathetes[1].longueur} cm`
-            : `${hypo.nom} = ${hypo.longueur} cm et `
-                + `${cathetes.find(x => x.nom !== this.calc.cherche).nom} = ${cathetes.find(x => x.nom !== this.calc.cherche).longueur} cm`;
-        // Au niveau 6 s'ajoutent les deux premières lignes de la rédaction :
-        // elles sont données à REMETTRE, pas à taper — taper une propriété
-        // entière au clavier n'apprend que la patience.
-        const redaction = this.niveau.id === 6 ? `
-            <p style="font-size:.86rem"><b>Je sais que</b> ${minuscule(direTriangle(this.t))}, avec ${donnees}.<br>
-            <b>Or</b> ${THEOREME.enonce}<br><b>Donc :</b></p>` : `
-            <p style="text-align:center">${direTriangle(this.t)}, avec ${donnees}.<br>
-            Calcule <b>${this.calc.cherche}</b>.</p>`;
+        this.ligneCourante = 1;          // la ligne 0 est donnée (l'égalité)
 
-        this.zoneEl.innerHTML = redaction + `
-            <div class="py-calc">
-                <div class="py-calc-ligne">${echapper(this.calc.lignes[0].texte)}</div>
-                <div class="py-calc-ligne">${echapper(this.calc.lignes[1].texte.replace(/ = $/, ''))} =
-                    <input class="py-saisie" data-ligne="1" type="number" inputmode="numeric" aria-label="le carré"></div>
-                <div class="py-calc-ligne" data-l2 style="opacity:.35">${echapper(this.calc.lignes[2].texte.replace(/ = $/, ''))} =
-                    <input class="py-saisie" data-ligne="2" type="number" inputmode="numeric" disabled aria-label="la longueur"> cm</div>
-            </div>`;
+        const corps = this.calc.lignes.map((l, i) => this.htmlLigne(l, i)).join('');
+        this.zoneEl.innerHTML = `
+            <div class="py-redac">
+                <p><b>${AMORCES.sais}</b> ${echapper(ceQueJeSais(this.t, this.chercher))}</p>
+                <p><b>${AMORCES.or}</b> d'après le théorème de Pythagore,
+                   ${echapper(minuscule(THEOREME.enonce))}</p>
+                <p><b>${AMORCES.donc}</b></p>
+            </div>
+            <div class="py-calc">${corps}</div>`;
         this.barreEl.innerHTML = `<button type="button" class="py-btn py-btn--valider" data-verif>Vérifier</button>`;
         this.barreEl.querySelector('[data-verif]').onclick = () => this.validerCalcul();
-        this.zoneEl.querySelector('[data-ligne="1"]').focus();
+        this.majLignes();
+    }
+
+    /** Une ligne de la rédaction : ses morceaux de texte et ses cases. */
+    htmlLigne(ligne, i) {
+        const morceaux = ligne.morceaux.map((m, k) => {
+            if (m.texte !== undefined) return echapper(m.texte);
+            // LE RADICANDE N'EST PAS DONNÉ. Il s'écrit tout seul dès que la
+            // ligne du dessus est juste — c'est SA réponse. Affiché d'avance,
+            // il soufflait le résultat de la ligne précédente.
+            if (m.racine !== undefined) {
+                return `<span class="py-racine">√<span class="py-radicande" data-radicande>?</span></span>`;
+            }
+            return `<input class="py-saisie" data-ligne="${i}" data-case="${k}" type="number"
+                inputmode="numeric" aria-label="à compléter">`;
+        }).join('');
+        return `<div class="py-calc-ligne" data-l="${i}">${morceaux}</div>`;
+    }
+
+    /** Qui est ouvert, qui est éteint, et ce qu'on lit sous la racine. */
+    majLignes() {
+        this.zoneEl.querySelectorAll('[data-l]').forEach(el => {
+            const i = Number(el.dataset.l);
+            const ouverte = i === this.ligneCourante;
+            el.style.opacity = i <= this.ligneCourante ? '1' : '.3';
+            el.querySelectorAll('.py-saisie').forEach(inp => { inp.disabled = !ouverte; });
+        });
+        const rad = this.zoneEl.querySelector('[data-radicande]');
+        // Le carré est connu dès que la ligne qui le donne est validée : c'est
+        // l'avant-dernière, celle qui porte le seul champ de sa ligne.
+        if (rad) {
+            const su = this.ligneCourante >= this.calc.lignes.length - 1;
+            rad.textContent = su ? String(this.calc.carre) : '?';
+            rad.classList.toggle('py-radicande--su', su);
+        }
+        const ouverte = this.zoneEl.querySelector(`[data-l="${this.ligneCourante}"] .py-saisie`);
+        if (ouverte && !this.isDemo) ouverte.focus();
     }
 
     validerCalcul() {
-        const l1 = this.zoneEl.querySelector('[data-ligne="1"]');
-        const l2 = this.zoneEl.querySelector('[data-ligne="2"]');
-        const etape2 = !l2.disabled;
-        const champ = etape2 ? l2 : l1;
-        const attendu = etape2 ? this.calc.lignes[2].attendu : this.calc.lignes[1].attendu;
-        const donne = Number(champ.value);
-        if (champ.value === '') { this.note('Écris ta réponse d\'abord.'); return; }
-        if (donne === attendu) {
-            champ.classList.remove('py-saisie--ko');
-            champ.classList.add('py-saisie--ok');
-            champ.disabled = true;
-            if (!etape2) {
-                const suite = this.zoneEl.querySelector('[data-l2]');
-                suite.style.opacity = '1';
-                l2.disabled = false;
-                l2.focus();
-                this.note(`Bien : ${this.calc.cherche}² = ${attendu}. Reste à revenir à la longueur — la racine.`, 'ok');
-                return;
-            }
-            this.note(`✅ ${this.calc.cherche} = ${attendu} cm. Le carré, puis la racine : c'est toute la méthode.`, 'ok');
-            this.gagner(`Pythagore : calculer ${this.calc.cherche}`, `${attendu} cm`, this.niveau.id === 6 ? 20 : 15);
-            setTimeout(() => { if (this.isRunning) this.poser(); }, 1900);
+        const ligne = this.calc.lignes[this.ligneCourante];
+        const cases = [...this.zoneEl.querySelectorAll(`[data-l="${this.ligneCourante}"] .py-saisie`)];
+        if (cases.some(c => c.value === '')) { this.note('Remplis toute la ligne d\'abord.'); return; }
+
+        // On corrige la PREMIÈRE case fausse : dire trois erreurs d'un coup
+        // n'en fait comprendre aucune.
+        const faux = cases.findIndex((c, k) => {
+            const m = ligne.morceaux.filter(x => x.champ !== undefined)[k];
+            return Number(c.value) !== m.champ;
+        });
+        if (faux !== -1) {
+            const m = ligne.morceaux.filter(x => x.champ !== undefined)[faux];
+            cases[faux].classList.add('py-saisie--ko');
+            setTimeout(() => cases[faux].classList.remove('py-saisie--ko'), 900);
+            this.note('❌ ' + m.aide, 'ko');
+            this.perdre(`Pythagore : ${ligneEnTexte(ligne)}`, cases[faux].value, String(m.champ), m.aide);
             return;
         }
-        champ.classList.add('py-saisie--ko');
-        setTimeout(() => champ.classList.remove('py-saisie--ko'), 900);
-        const conseil = etape2
-            ? `Cherche le nombre qui, multiplié par lui-même, donne ${this.calc.lignes[1].attendu}.`
-            : (this.calc.cherche === this.infos.hypo.nom
-                ? 'Pour l\'hypoténuse, on ADDITIONNE les deux carrés.'
-                : 'Pour un côté de l\'angle droit, on SOUSTRAIT : le carré de l\'hypoténuse MOINS le carré connu.');
-        this.note('❌ ' + conseil, 'ko');
-        this.perdre(`Pythagore : calculer ${this.calc.cherche}`, String(donne), String(attendu), conseil);
+
+        cases.forEach(c => c.classList.add('py-saisie--ok'));
+        const derniere = this.ligneCourante === this.calc.lignes.length - 1;
+        if (!derniere) {
+            this.ligneCourante++;
+            this.majLignes();
+            this.note(`Bien : ${ligneEnTexte(ligne)}. On continue.`, 'ok');
+            return;
+        }
+        this.note(`✅ ${this.calc.cherche} = ${this.calc.resultat} cm. Le carré, puis la racine : `
+            + 'c\'est toute la méthode.', 'ok');
+        this.gagner(`Pythagore : calculer ${this.calc.cherche}`, `${this.calc.resultat} cm`,
+            this.niveau.id === 6 ? 20 : 15);
+        setTimeout(() => { if (this.isRunning) this.poser(); }, 1900);
     }
 
     // --- Apprentissage --------------------------------------------------------
@@ -571,9 +624,9 @@ class Pythagore extends BaseGame {
 
         if (this.niveau.id >= 4 && this.calc) {
             if (!await gate.waitTurn() || !this.isRunning) return fin();
-            cur.say(`Avec les nombres : ${this.calc.lignes[1].texte}${this.calc.lignes[1].attendu}. `
-                + `Puis on REVIENT À LA LONGUEUR : ${this.calc.lignes[2].texte}${this.calc.resultat} cm. `
-                + `La racine carrée est la dernière marche, ne l'oublie jamais.`, this.zoneEl);
+            cur.say('On descend ligne à ligne : '
+                + this.calc.lignes.slice(1).map(ligneEnTexte).join(', puis ')
+                + '. La racine carrée est la dernière marche, ne l\'oublie jamais.', this.zoneEl);
             if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         }
 
@@ -590,8 +643,8 @@ class Pythagore extends BaseGame {
     }
 }
 
-/* « Le triangle ABC » devient « le triangle ABC » : seul l'article plie. */
-const minuscule = (t) => String(t).replace(/^Le/, 'le');
+/** La première lettre en minuscule : la propriété s'enchaîne après « Or : ». */
+const minuscule = (t) => String(t).charAt(0).toLowerCase() + String(t).slice(1);
 
 const echapper = (t) => String(t ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 

@@ -7,7 +7,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, redactionComplete, NIVEAUX
+    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, redactionComplete,
+    ligneEnTexte, NIVEAUX
 } from '../pythagore.js';
 
 export const pythagoreGenerator = {
@@ -84,8 +85,8 @@ export const pythagoreGenerator = {
                     ? 'Pour l\'hypoténuse, on ADDITIONNE les deux carrés, puis on prend la racine.'
                     : 'Pour un côté de l\'angle droit, on SOUSTRAIT le carré connu du carré de l\'hypoténuse.'
             ],
-            explanation: calc.lignes.map(l => l.texte.replace(/ = $/, '')).join(' ; ')
-                + ` = ${calc.resultat}, donc ${calc.cherche} = ${calc.resultat} cm.`,
+            explanation: calc.lignes.map(ligneEnTexte).join(' ; ')
+                + `, donc ${calc.cherche} = ${calc.resultat} cm.`,
             // SUR LE PAPIER, ON CORRIGE COMME ON RÉDIGE. Un corrigé qui répond
             // « 15 » ne dit pas ce qu'on attendait de l'élève : ce qu'on note,
             // c'est la rédaction — Je sais que, Or, Donc — et c'est elle que la

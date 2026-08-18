@@ -2362,11 +2362,19 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    Le plateau prend l'essentiel de la hauteur disponible (unités de conteneur,
    comme le Mathdoku) ; les commandes tiennent sur une ligne en dessous. */
 
+/* `safe center` ET NON `center`. Centré tout court, un contenu plus haut que sa
+   boîte déborde des DEUX côtés — et ce qui sort par le haut est inatteignable,
+   même en faisant défiler. Rémy, sur son iPhone : « il n'y a pas de
+   rapporteur ». Il y en avait un, mais l'énoncé et la barre « D'abord, à l'œil »
+   — celle qui explique justement pourquoi l'outil est encore caché — étaient
+   passés au-dessus du bord. `safe` bascule en alignement haut dès que ça ne
+   tient plus, et la zone de jeu, elle, défile. */
 .angles-layout {
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center;
+    justify-content: safe center;
     gap: clamp(6px, 1.4cqh, 14px);
-    width: 100%; max-width: 760px; height: 100%; margin: 0 auto; padding: 8px;
+    width: 100%; max-width: 760px; height: 100%; min-height: 0;
+    overflow-y: auto; margin: 0 auto; padding: 8px;
 }
 /* Comme pour la pendule : c'est la FIGURE qui cède, jamais les commandes.
    Sans cette règle, la boîte d'indice ouverte sous « Montre-moi » poussait

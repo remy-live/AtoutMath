@@ -75,7 +75,9 @@ class Ville extends BaseGame {
             <style>
                 .vi-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
-                    width: 100%; height: 100%; color: var(--text-main);
+                    width: 100%; height: 100%; min-height: 0; color: var(--text-main);
+                    /* Sur un écran court, on fait défiler — on ne rogne pas. */
+                    overflow-y: auto;
                     user-select: none; -webkit-user-select: none;
                 }
                 /* La FEUILLE DE ROUTE : toutes les consignes d'un coup, celle en
@@ -107,7 +109,12 @@ class Ville extends BaseGame {
                 .vi-fleche { font-size: 1.05em; line-height: 1; }
 
                 .vi-plan {
-                    flex: 1 1 auto; min-height: 0; width: 100%;
+                    /* LE PLAN NE DESCEND PAS SOUS 240 px. C'est la seule boîte
+                       élastique de l'écran : sans plancher, elle absorbait tout
+                       ce qui manquait et le plan disparaissait purement et
+                       simplement, en laissant la feuille de route et les trois
+                       boutons intacts. */
+                    flex: 1 1 auto; min-height: 240px; width: 100%;
                     display: flex; align-items: center; justify-content: center;
                 }
                 /* Le plan REMPLIT la place disponible. Dimensionné en unités

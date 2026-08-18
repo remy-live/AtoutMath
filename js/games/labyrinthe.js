@@ -17,7 +17,7 @@ class Labyrinthe extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
-                .laby-arena { position: absolute; inset: 0; background: var(--laby-fond, var(--bg-app)); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; transition: background .6s; }
+                .laby-arena { position: absolute; inset: 0; background: var(--laby-fond, var(--bg-app)); display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; transition: background .6s; }
                 .laby-float-gain { position: absolute; color: #10b981; font-weight: 900; font-size: 1.3rem; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.4); transform: translateX(-50%); }
                 .laby-header { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
                 .laby-stats { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }

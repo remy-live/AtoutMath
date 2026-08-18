@@ -60,10 +60,10 @@ class Chantier extends BaseGame {
             <style>
                 .ch-wrap {
                     display: flex; flex-direction: column; align-items: center;
-                    justify-content: center;
+                    justify-content: safe center;
                     gap: 10px; height: 100%; max-width: 100%;
                     user-select: none; -webkit-user-select: none;
-                    color: var(--text-main);
+                    color: var(--text-main); min-height: 0; overflow-y: auto;
                 }
                 .ch-barre {
                     display: flex; align-items: center; justify-content: center;

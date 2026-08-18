@@ -67,7 +67,8 @@ class Automate extends BaseGame {
                 .au-wrap {
                     position: relative;
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
-                    width: 100%; height: 100%; color: var(--text-main);
+                    width: 100%; height: 100%; min-height: 0; color: var(--text-main);
+                    overflow-y: auto;
                     user-select: none; -webkit-user-select: none;
                 }
                 .au-haut {
@@ -103,7 +104,8 @@ class Automate extends BaseGame {
                     border-radius: 12px;
                     display: flex; flex-direction: column; gap: 4px;
                 }
-                .au-plan { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; }
+                .au-plan { flex: 1 1 auto; min-width: 0; min-height: 240px;
+                    display: flex; align-items: center; justify-content: center; }
                 .au-svg { width: 100%; height: 100%; display: block; }
                 /* TÉLÉPHONE : LES BLOCS EN COLONNE, LES COMMANDES À LEUR DROITE.
                    Rémy : « il faut que les blocs soient les uns en dessous des
@@ -123,7 +125,13 @@ class Automate extends BaseGame {
                     .au-wrap {
                         display: grid;
                         grid-template-columns: minmax(0, 1fr) auto;
-                        grid-template-rows: auto minmax(90px, 1fr) auto auto;
+                        /* LE QUADRILLAGE D'ABORD. Bornée à quatre-vingt-dix
+                           pixels, la ligne du plan y tombait dès
+                           que l'écran manquait de hauteur : Rémy voyait un
+                           damier de timbre-poste sous trois boutons énormes.
+                           C'est LE ROBOT qu'on regarde — c'est lui qui garde
+                           sa place, et l'écran défile si besoin. */
+                        grid-template-rows: auto minmax(240px, 1fr) auto auto;
                         /* L'enveloppe est une boîte flexible centrée à
                            l'origine ; en grille, un alignement centré
                            empêcherait les cases de s'étirer — le quadrillage
@@ -139,7 +147,7 @@ class Automate extends BaseGame {
                     }
                     .au-corps { display: contents; }
                     .au-haut { grid-area: haut; }
-                    .au-plan { grid-area: plan; min-height: 0; overflow: hidden; }
+                    .au-plan { grid-area: plan; min-height: 240px; overflow: hidden; }
                     .au-prog {
                         grid-area: prog; align-self: stretch; justify-self: stretch;
                         flex-direction: column; flex-wrap: nowrap; align-items: flex-start;

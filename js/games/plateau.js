@@ -163,8 +163,9 @@ class Plateau extends BaseGame {
             <style>
                 .pl-wrap {
                     display: flex; flex-direction: column; align-items: center;
-                    justify-content: center; gap: 7px;
-                    width: 100%; height: 100%; color: var(--text-main);
+                    justify-content: safe center; gap: 7px;
+                    width: 100%; height: 100%; min-height: 0; color: var(--text-main);
+                    overflow-y: auto;
                     user-select: none; -webkit-user-select: none;
                 }
                 .pl-haut {
@@ -797,7 +798,15 @@ class Plateau extends BaseGame {
             freres++;
         }
         const dispo = cadre.height - pris - gouttiere * freres;
-        const cote = Math.max(140, Math.floor(Math.min(cadre.width, dispo)));
+        // LE DAMIER NE DESCEND PAS SOUS TROIS CENTS PIXELS — ou sous la largeur
+        // de l'écran, si elle est plus étroite. Rémy, capture d'un mat en un :
+        // « trop petit sur iPhone ». Le côté se calait sur la hauteur libre, et
+        // sur un écran court il tombait à cent soixante-dix pixels : huit cases
+        // de vingt pixels, où l'on ne distingue plus une dame d'un fou. Quand la
+        // hauteur ne suffit pas, c'est l'écran qui défile — pas le damier qui
+        // rétrécit jusqu'à devenir illisible.
+        const confort = Math.min(cadre.width, 300);
+        const cote = Math.max(confort, Math.floor(Math.min(cadre.width, dispo)));
         this.damierEl.style.setProperty('--pl-cote', `${cote}px`);
     }
 

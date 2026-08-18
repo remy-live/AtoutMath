@@ -55,7 +55,8 @@ class Dedale extends BaseGame {
                 .dd-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 6px;
                     width: 100%; height: 100%; padding: 6px; box-sizing: border-box;
-                    color: var(--text-main); container-type: inline-size; overflow: hidden;
+                    color: var(--text-main); container-type: inline-size;
+                    min-height: 0; overflow-y: auto;
                 }
                 .dd-tete {
                     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
@@ -90,7 +91,11 @@ class Dedale extends BaseGame {
                     flex: 1 1 auto; width: 100%; min-height: 0;
                 }
                 .dd-vue {
-                    position: relative; flex: 1 1 auto; width: 100%; min-height: 0;
+                    /* LE DÉDALE NE DESCEND PAS SOUS 240 px. Seule boîte
+                       élastique de l'écran, elle encaissait à elle seule tout
+                       ce qui manquait en hauteur : la croix et le bouton
+                       gardaient leur taille, et le labyrinthe disparaissait. */
+                    position: relative; flex: 1 1 auto; width: 100%; min-height: 240px;
                     display: flex; align-items: center; justify-content: center;
                     touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
                     overflow: hidden;
@@ -173,11 +178,17 @@ class Dedale extends BaseGame {
                 .dd-note--ko { color: var(--danger, #dc2626); font-weight: 600; }
 
                 @container (min-width: 760px) { .dd-croix { opacity: .6; } }
-                /* Téléphone couché : plus assez de hauteur pour empiler. La
-                   croix revient à côté, et le dédale prend ce qui reste. */
-                @media (max-height: 560px) {
+                /* Téléphone COUCHÉ : plus assez de hauteur pour empiler. La
+                   croix revient à côté, et le dédale prend ce qui reste.
+                   COUCHÉ, ET PAS SEULEMENT COURT. La règle ne regardait que la
+                   hauteur : un téléphone tenu DEBOUT dont on a agrandi le texte
+                   descend lui aussi sous 560 px, et se retrouvait avec la mise
+                   en page du paysage — le dédale coincé dans une colonne de
+                   cent vingt pixels à côté de la croix. L'orientation dit ce
+                   que la hauteur seule ne peut pas dire. */
+                @media (max-height: 560px) and (min-aspect-ratio: 1/1) {
                     .dd-corps { flex-direction: row; gap: 8px; }
-                    .dd-vue { width: auto; height: 100%; }
+                    .dd-vue { width: auto; height: 100%; min-height: 0; }
                     .dd-croix { grid-template-columns: repeat(3, 38px); grid-template-rows: repeat(3, 32px); }
                     .dd-pied { flex-direction: column; gap: 6px; }
                     .dd-note { min-height: 1.2em; font-size: .76rem; }

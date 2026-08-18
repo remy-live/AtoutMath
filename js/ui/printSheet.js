@@ -38,7 +38,8 @@ import {
     facesVisibles as facesVisiblesNoyau
 } from '../core/solides.js';
 import {
-    cotesDe as cotesDePythagore, etapesCalcul as etapesCalculPythagore
+    cotesDe as cotesDePythagore, etapesCalcul as etapesCalculPythagore,
+    ligneEnTexte as ligneEnTextePythagore
 } from '../core/pythagore.js';
 import { boite as boiteTangram } from '../core/tangram.js';
 
@@ -2238,9 +2239,8 @@ function redactionPapier(item) {
             `avec ${donnees.join(' et ')}.`],
         ['dans un triangle rectangle, le carré de l\'hypoténuse',
             'est égal à la somme des carrés des deux autres côtés.'],
-        [...calc.lignes.map((l, i) => (i === calc.lignes.length - 1
-            ? `${l.texte}${calc.resultat}` : l.texte.replace(/ = $/, ''))),
-        `${calc.cherche} = ${calc.resultat} cm.`]
+        [...calc.lignes.map(ligneEnTextePythagore),
+            `${calc.cherche} = ${calc.resultat} cm.`]
     ];
 }
 

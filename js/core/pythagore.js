@@ -163,21 +163,71 @@ export function verifierEgalite(t, gauche, d1, d2) {
 }
 
 /**
- * Les étapes du calcul, celles qu'on écrit au cahier — pour l'hypoténuse
- * (`chercher` absent) ou pour une cathète (`chercher` = son nom).
- * Chaque étape porte sa VALEUR attendue : c'est elle que l'élève saisit.
+ * LE CALCUL, LIGNE À LIGNE — celles qu'on écrit au cahier.
+ *
+ * Rémy, capture à l'appui : « tu donnes la réponse sous la racine carrée », et
+ * « j'aimerais que l'élève remplace les longueurs en lettres par les mesures et
+ * calcule le carré de chaque longueur ».
+ *
+ * Les deux remarques n'en font qu'une. On sautait de l'égalité littérale au
+ * résultat en une seule saisie — « FG² = 8² + 15² = ▭ » — et la ligne d'après,
+ * déjà écrite en dessous, affichait « FG = √289 » : la réponse à la question
+ * du dessus était donnée deux centimètres plus bas. L'élève n'avait plus qu'à
+ * la recopier.
+ *
+ * La descente se fait donc marche par marche, et chaque marche ne s'ouvre
+ * qu'une fois la précédente juste :
+ *
+ *     FG² = EF² + EG²          (l'égalité, donnée : elle vient du niveau 3)
+ *     FG² = ▭² + ▭²            on REMPLACE les lettres par les mesures
+ *     FG² = ▭ + ▭              on calcule le carré de CHAQUE longueur
+ *     FG² = ▭                  on additionne
+ *     FG  = √289 = ▭ cm        on revient du carré à la longueur
+ *
+ * Le radicande, lui, n'apparaît qu'une fois trouvé : c'est la réponse de la
+ * ligne du dessus, pas un cadeau.
+ *
+ * Chaque ligne est une suite de MORCEAUX — du texte, ou un champ à remplir :
+ *   { texte }              un bout de rédaction
+ *   { champ, aide }        une case, sa valeur attendue et ce qu'on dit si elle
+ *                          est ratée
+ *   { racine }             le radicande, sous le trait, révélé quand il est su
  */
 export function etapesCalcul(t, chercher) {
     const { hypo, cathetes } = cotesDe(t);
     const [c1, c2] = cathetes;
+    const T = (texte) => ({ texte });
+    const C = (champ, aide) => ({ champ, aide });
+
     if (!chercher || chercher === hypo.nom) {
         const carre = c1.longueur ** 2 + c2.longueur ** 2;
         return {
-            cherche: hypo.nom, resultat: hypo.longueur,
+            cherche: hypo.nom, resultat: hypo.longueur, carre,
+            egalite: `${hypo.nom}² = ${c1.nom}² + ${c2.nom}²`,
             lignes: [
-                { texte: `${hypo.nom}² = ${c1.nom}² + ${c2.nom}²`, question: null },
-                { texte: `${hypo.nom}² = ${c1.longueur}² + ${c2.longueur}² = `, question: `${c1.longueur ** 2} + ${c2.longueur ** 2}`, attendu: carre },
-                { texte: `${hypo.nom} = √${carre} = `, attendu: hypo.longueur }
+                { morceaux: [T(`${hypo.nom}² = ${c1.nom}² + ${c2.nom}²`)] },
+                { morceaux: [
+                    T(`${hypo.nom}² = `),
+                    C(c1.longueur, `${c1.nom} mesure ${c1.longueur} cm : c'est cette mesure qui remplace les lettres.`),
+                    T('² + '),
+                    C(c2.longueur, `${c2.nom} mesure ${c2.longueur} cm.`),
+                    T('²')
+                ] },
+                { morceaux: [
+                    T(`${hypo.nom}² = `),
+                    C(c1.longueur ** 2, `${c1.longueur}² c'est ${c1.longueur} × ${c1.longueur}, pas ${c1.longueur} × 2.`),
+                    T(' + '),
+                    C(c2.longueur ** 2, `${c2.longueur}² c'est ${c2.longueur} × ${c2.longueur}.`)
+                ] },
+                { morceaux: [
+                    T(`${hypo.nom}² = `),
+                    C(carre, `${c1.longueur ** 2} + ${c2.longueur ** 2}, c'est la somme des deux carrés.`)
+                ] },
+                { morceaux: [
+                    T(`${hypo.nom} = `), { racine: carre }, T(' = '),
+                    C(hypo.longueur, `Cherche le nombre qui, multiplié par lui-même, donne ${carre}.`),
+                    T(' cm')
+                ] }
             ]
         };
     }
@@ -185,11 +235,35 @@ export function etapesCalcul(t, chercher) {
     const perdu = cathetes.find(x => x.nom === chercher);
     const carre = hypo.longueur ** 2 - garde.longueur ** 2;
     return {
-        cherche: perdu.nom, resultat: perdu.longueur,
+        cherche: perdu.nom, resultat: perdu.longueur, carre,
+        egalite: `${hypo.nom}² = ${perdu.nom}² + ${garde.nom}²`,
         lignes: [
-            { texte: `${hypo.nom}² = ${perdu.nom}² + ${garde.nom}²`, question: null },
-            { texte: `${perdu.nom}² = ${hypo.nom}² − ${garde.nom}² = ${hypo.longueur}² − ${garde.longueur}² = `, attendu: carre },
-            { texte: `${perdu.nom} = √${carre} = `, attendu: perdu.longueur }
+            { morceaux: [T(`${hypo.nom}² = ${perdu.nom}² + ${garde.nom}²`)] },
+            // On RETOURNE l'égalité avant de chiffrer : c'est l'étape qu'on
+            // saute, et c'est celle où l'on additionne au lieu de soustraire.
+            { morceaux: [T(`${perdu.nom}² = ${hypo.nom}² − ${garde.nom}²`)] },
+            { morceaux: [
+                T(`${perdu.nom}² = `),
+                C(hypo.longueur, `${hypo.nom} est l'hypoténuse : elle mesure ${hypo.longueur} cm.`),
+                T('² − '),
+                C(garde.longueur, `${garde.nom} mesure ${garde.longueur} cm.`),
+                T('²')
+            ] },
+            { morceaux: [
+                T(`${perdu.nom}² = `),
+                C(hypo.longueur ** 2, `${hypo.longueur}² c'est ${hypo.longueur} × ${hypo.longueur}.`),
+                T(' − '),
+                C(garde.longueur ** 2, `${garde.longueur}² c'est ${garde.longueur} × ${garde.longueur}.`)
+            ] },
+            { morceaux: [
+                T(`${perdu.nom}² = `),
+                C(carre, `${hypo.longueur ** 2} − ${garde.longueur ** 2} : ici on SOUSTRAIT, le côté cherché est plus court que l'hypoténuse.`)
+            ] },
+            { morceaux: [
+                T(`${perdu.nom} = `), { racine: carre }, T(' = '),
+                C(perdu.longueur, `Cherche le nombre qui, multiplié par lui-même, donne ${carre}.`),
+                T(' cm')
+            ] }
         ]
     };
 }
@@ -215,19 +289,48 @@ export function verifierPhrase(proposition) {
 }
 
 /**
+ * LA RÉDACTION EST TOUJOURS LA MÊME. Rémy : « la rédaction doit être toujours
+ * la même : Je sais que : ABC est un triangle rectangle en A / Or : D'après le
+ * théorème de Pythagore ». Trois amorces, dans cet ordre, à l'écran comme sur
+ * la feuille de correction — c'est le squelette qu'on veut voir revenir chez
+ * l'élève, et il ne l'apprendra pas s'il change de forme d'un exercice à
+ * l'autre.
+ */
+export const AMORCES = { sais: 'Je sais que :', or: 'Or :', donc: 'Donc :' };
+
+/** Les données de l'énoncé : les deux longueurs connues. */
+export function donneesDe(t, chercher) {
+    const { hypo, cathetes } = cotesDe(t);
+    const connus = chercher && chercher !== hypo.nom
+        ? [hypo, cathetes.find(x => x.nom !== chercher)]
+        : cathetes;
+    return connus.map(c => `${c.nom} = ${c.longueur} cm`).join(' et ');
+}
+
+/** « EFG est un triangle rectangle en E, avec EF = 8 cm et EG = 15 cm. » */
+export function ceQueJeSais(t, chercher) {
+    return `${t.nom} est un triangle rectangle en ${t.sommets[t.angleDroit]}, `
+        + `avec ${donneesDe(t, chercher)}.`;
+}
+
+/** Le texte d'une ligne de calcul, champs remplis — pour la correction. */
+export function ligneEnTexte(ligne) {
+    return ligne.morceaux.map(m => {
+        if (m.texte !== undefined) return m.texte;
+        if (m.racine !== undefined) return `√${m.racine}`;
+        return String(m.champ);
+    }).join('');
+}
+
+/**
  * La rédaction complète, celle du cahier. C'est aussi la correction imprimée :
  * la feuille de solutions la pose telle quelle.
  */
 export function redactionComplete(t, chercher) {
     const calc = etapesCalcul(t, chercher);
-    const { hypo, cathetes } = cotesDe(t);
-    const donnees = chercher && chercher !== hypo.nom
-        ? `${hypo.nom} = ${hypo.longueur} cm et ${cathetes.find(x => x.nom !== chercher).nom} = ${cathetes.find(x => x.nom !== chercher).longueur} cm`
-        : `${cathetes[0].nom} = ${cathetes[0].longueur} cm et ${cathetes[1].nom} = ${cathetes[1].longueur} cm`;
     return [
-        `Je sais que ${direTriangle(t).replace(/^Le/, 'le')}, avec ${donnees}.`,
-        `Or ${THEOREME.enonce}`,
-        `Donc ${calc.lignes.map(l => l.texte.replace(/ = $/, '')).join(' ; ')} = ${calc.resultat}. `
-        + `${calc.cherche} = ${calc.resultat} cm.`
+        `${AMORCES.sais} ${ceQueJeSais(t, chercher)}`,
+        `${AMORCES.or} d'après le théorème de Pythagore, ${THEOREME.enonce.charAt(0).toLowerCase()}${THEOREME.enonce.slice(1)}`,
+        `${AMORCES.donc} ${calc.lignes.map(ligneEnTexte).join(' ; ')}.`
     ];
 }

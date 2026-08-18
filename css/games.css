@@ -53,6 +53,33 @@
 .btn-stop-demo:hover { background: var(--primary-hover); }
 
 .canvas-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); position: relative; padding: 20px; overflow: hidden; }
+
+/* ============================================================================
+   QUAND LA HAUTEUR MANQUE, CE N'EST PAS LE DESSIN QUI DOIT PAYER.
+   ============================================================================
+   Rémy, une capture par jeu : « sur iPhone pas de labyrinthe », « il n'y a
+   plus le schéma », « il n'y a pas de rapporteur », « il n'y a rien pour les
+   réponses », « la grille du robot est trop petite et les boutons trop gros ».
+   Un seul défaut, quinze symptômes.
+
+   Chaque jeu est bâti pareil : un bandeau, une ZONE DE DESSIN en
+   `flex: 1 1 auto; min-height: 0`, des commandes en `flex: 0 0 auto`. Tant que
+   l'écran est haut, la zone de dessin prend tout ce qui reste — c'est ce qu'on
+   veut. Mais dès qu'il manque de la place, elle est LE SEUL ENFANT QUI PEUT
+   RÉTRÉCIR : elle absorbe tout le déficit, à elle seule, pendant que les
+   boutons gardent leur taille au pixel près. Mesuré sur L'Automate : la grille
+   du robot passe de 447 px à 90 px entre un écran de 852 px et un de 440, et
+   les trois boutons ne bougent pas d'un cheveu. À `min-height: 0`, rien
+   n'empêche d'aller jusqu'à zéro — et le jeu perd son plateau sans le dire.
+
+   Un écran court n'est pas rare : il suffit d'agrandir le texte dans les
+   réglages de l'iPhone pour que la fenêtre passe sous 560 px de haut.
+
+   La règle, désormais, dans tous les jeux :
+     — la zone de dessin a un PLANCHER (`min-height`), jamais 0 ;
+     — l'enveloppe DÉFILE (`overflow-y: auto`) au lieu de rogner ce qui
+       dépasse : mieux vaut faire glisser l'écran que perdre la moitié du jeu.
+   ========================================================================= */
 /* L'ÉNONCÉ SE MET À LA TAILLE DE L'ÉCRAN. Figé à 2,2 rem, « Chiffre des
    unités de mille de 5 076,854 ? » tombait sur trois lignes au milieu d'un
    téléphone, et le nombre — la seule chose à regarder — se retrouvait coupé

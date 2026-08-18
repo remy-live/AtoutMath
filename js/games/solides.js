@@ -81,8 +81,15 @@ class Solides extends BaseGame {
 
                 /* LE SOLIDE. Le SVG occupe toute la place qui reste : c'est le
                    dessin qu'on regarde, pas les boutons. */
+                /* ET IL EN LAISSE POUR LA RÉPONSE. Rémy : « il n'y a rien pour
+                   les réponses ». Il y avait tout — le compteur, les deux
+                   boutons, le pavé de chiffres — mais sous la ligne de
+                   flottaison : le solide, seule boîte élastique, prenait tout ce
+                   qui restait et repoussait la saisie hors de l'écran. Il garde
+                   donc un plancher ET un plafond : jamais moins de 200 px,
+                   jamais plus de la moitié de la zone. */
                 .sd-scene {
-                    flex: 1 1 auto; width: 100%; min-height: 150px;
+                    flex: 1 1 auto; width: 100%; min-height: 200px; max-height: 52cqh;
                     display: flex; align-items: center; justify-content: center;
                 }
                 .sd-svg { width: 100%; height: 100%; max-width: 460px; touch-action: manipulation; }

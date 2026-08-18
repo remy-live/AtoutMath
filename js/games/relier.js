@@ -52,7 +52,7 @@ class Relier extends BaseGame {
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
                     width: 100%; height: 100%; padding: 8px 10px 12px; box-sizing: border-box;
                     color: var(--text-main); overflow-y: auto; container-type: size;
-                    user-select: none; -webkit-user-select: none;
+                    min-height: 0; user-select: none; -webkit-user-select: none;
                 }
                 .rl-tete { text-align: center; flex: 0 0 auto; }
                 .rl-titre { font-weight: 800; font-size: clamp(14px, 3.4cqw, 19px); }
@@ -60,7 +60,17 @@ class Relier extends BaseGame {
                     color: var(--text-muted); font-size: clamp(11px, 2.6cqw, 13px);
                     line-height: 1.35; max-width: 620px;
                 }
-                .rl-scene { flex: 1 1 auto; width: 100%; display: flex; align-items: center; justify-content: center; }
+                /* LA GRILLE EST CARRÉE : c'est la largeur qui la dimensionne, et
+                   il faut lui donner AUTANT DE HAUTEUR. Sans plancher, la scène
+                   ne recevait que ce que la consigne et la barre voulaient bien
+                   lui laisser — cent cinquante pixels — et la grille, ajustée
+                   pour tenir dedans, se réduisait à un timbre au milieu de deux
+                   grandes marges blanches. Rémy : « la grille pourrait être bien
+                   plus grande ». */
+                .rl-scene {
+                    flex: 1 1 auto; width: 100%; min-height: min(92cqw, 420px);
+                    display: flex; align-items: center; justify-content: center;
+                }
                 .rl-svg { width: 100%; height: 100%; max-width: 520px; touch-action: none; }
 
                 .rl-case { fill: var(--bg-panel); stroke: var(--border); stroke-width: .6; }
