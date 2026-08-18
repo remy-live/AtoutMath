@@ -111,3 +111,33 @@ test('un générateur qui écrit des fractions le déclare', async () => {
     }
     assert.deepEqual(fautifs, []);
 });
+
+// --- Ce qui est de l'écran ne va pas sur la feuille --------------------------
+
+test('aucun réglage d\'écran n\'atteint le panneau d\'impression', async () => {
+    // Un réglage se range dans l'une de deux familles. DU CONTENU — l'opération,
+    // la taille des nombres, le niveau : il doit aller sur la fiche, sinon on
+    // règle et rien ne change. DE L'ÉCRAN — le nombre de propositions, le
+    // passage au clavier, la tolérance du rapporteur : sur une photocopie il
+    // n'existe pas, et l'afficher donne un bouton sans effet.
+    //
+    // Le tri se lisait en creux — « seuls les réglages du générateur passent » —
+    // ce qui marchait par accident. `papier: false` le dit, et ce test le tient.
+    await import('../js/core/activities/index.js');
+    const { allGenerators, allActivities } = await import('../js/core/registry.js');
+    const ecran = [...allGenerators(), ...allActivities()]
+        .flatMap(x => (x.params || []).map(p => ({ id: p.id, papier: p.papier, ou: x.id })))
+        .filter(p => p.papier === false);
+
+    // Ceux qu'on connaît doivent y être : un renommage ne doit pas les perdre
+    // en silence.
+    const attendus = ['aide', 'propositions', 'saisie', 'tolerance', 'reponse'];
+    for (const id of attendus) {
+        assert.ok(ecran.some(p => p.id === id),
+            `« ${id} » n'est plus marqué comme réglage d'écran`);
+    }
+
+    // Et aucun d'eux ne doit ressortir du tri appliqué par la fiche.
+    const surPapier = (p) => p && p.papier !== false;
+    for (const p of ecran) assert.equal(surPapier(p), false, `${p.ou} · ${p.id}`);
+});

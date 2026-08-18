@@ -248,7 +248,7 @@ export const scratchGenerator = {
             default: 1
         },
         {
-            id: 'saisie', type: 'select', label: 'Poser les blocs',
+            id: 'saisie', type: 'select', label: 'Poser les blocs', papier: false,
             options: [
                 { value: 'auto', label: 'Selon l’appareil (recommandé)' },
                 { value: 'toucher', label: 'Taper pour ajouter' },

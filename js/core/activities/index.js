@@ -113,7 +113,7 @@ const choiceModule = () => import('./choice.js');
 // Celui qui sait où il va ouvre « Affiner… » et pose lui-même les deux valeurs
 // que le préréglage posait pour lui. Voir `core/aide.js` pour les règles.
 const PARAM_AIDE = [{
-    id: 'aide', type: 'select', label: 'L\'aide', default: 'progressive',
+    id: 'aide', type: 'select', label: 'L\'aide', default: 'progressive', papier: false,
     aide: 'En progressif, l\'exercice monte tout seul : d\'abord deux propositions '
         + '— la bonne réponse contre l\'erreur classique —, puis quatre, puis on tape '
         + 'la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
@@ -125,7 +125,7 @@ const PARAM_AIDE = [{
         { value: 'clavier', label: 'Directement au clavier' }
     ]
 }, {
-    id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto',
+    id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto', papier: false,
     affiner: true,
     aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '
         + '« Automatique » laisse le réglage « L\'aide » décider.',
@@ -136,7 +136,7 @@ const PARAM_AIDE = [{
         { value: 'toutes', label: 'Toutes celles de l\'exercice' }
     ]
 }, {
-    id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto',
+    id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto', papier: false,
     affiner: true,
     aide: 'À partir de quand l\'élève tape sa réponse au lieu de la choisir.',
     options: [

@@ -202,7 +202,7 @@ export const relatifsGenerator = {
             default: 'progressif'
         },
         {
-            id: 'reponse', type: 'select', label: 'Réponse',
+            id: 'reponse', type: 'select', label: 'Réponse', papier: false,
             options: [
                 { value: 'saisie', label: 'À saisir (clavier de nombres)' },
                 { value: 'choix', label: 'À choisir parmi quatre' }

@@ -6517,6 +6517,18 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // l'intersection — et l'on n'affiche rien du tout pour un atelier, où les
     // diagrammes sont composés à la main.
     const contenuEl = modal.querySelector('#fp-contenu');
+    // UN RÉGLAGE EST DU CONTENU, OU DE L'ÉCRAN — et seul le premier a sa place
+    // ici. La tolérance du rapporteur, le passage au clavier, le nombre de
+    // propositions : sur une feuille photocopiée, rien de tout cela n'existe.
+    // Affichés quand même, ce sont des boutons qui ne changent rien à ce qu'on
+    // imprime — exactement la panne qu'on vient de corriger dans l'autre sens,
+    // où `printParams` écrasait des réglages bien réels.
+    //
+    // Le tri se lisait jusqu'ici en creux (« ce que le générateur déclare »),
+    // ce qui marchait par accident : les réglages d'activité n'y sont pas.
+    // `papier: false` le dit en clair, et vaut aussi pour un réglage de
+    // générateur qui ne concerne que l'écran.
+    const surPapier = (p) => p && p.papier !== false;
     const schemaContenu = (() => {
         if (atelier || !generator) return [];
         // UN GÉNÉRATEUR DE FICHE A SES PROPRES RÉGLAGES. Quand la feuille tire
@@ -6526,11 +6538,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         // conversion, ou le tableau lui-même. On montre alors ce que le
         // générateur de fiche sait faire varier.
         if (exo && exo.printGeneratorId && exo.printGeneratorId !== exo.generatorId) {
-            return generator.params || [];
+            return (generator.params || []).filter(surPapier);
         }
         const connus = new Set((generator.params || []).map(p => p.id));
-        const gardes = (paramSchemaOf(exo) || []).filter(p => p && connus.has(p.id));
-        return gardes.length ? gardes : (generator.params || []);
+        const gardes = (paramSchemaOf(exo) || []).filter(p => p && connus.has(p.id) && surPapier(p));
+        return gardes.length ? gardes : (generator.params || []).filter(surPapier);
     })();
     contenuEl.hidden = !schemaContenu.length;
     contenuEl.innerHTML = '';

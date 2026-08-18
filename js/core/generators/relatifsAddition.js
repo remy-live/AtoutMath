@@ -276,7 +276,7 @@ export const relatifsAdditionGenerator = {
             default: 'progressif'
         },
         {
-            id: 'reponse', type: 'select', label: 'Réponse',
+            id: 'reponse', type: 'select', label: 'Réponse', papier: false,
             options: [
                 { value: 'saisie', label: 'À saisir (pavé de nombres)' },
                 { value: 'choix', label: 'À choisir parmi quatre' }

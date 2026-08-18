@@ -37,7 +37,10 @@ export const anglesGenerator = {
             ],
             default: 'tous'
         },
-        { id: 'tolerance', type: 'number', label: 'Tolérance (°)', default: 3, min: 0, max: 10 }
+        // `papier: false` : l'écart toléré entre l'angle lu et l'angle vrai
+        // n'a de sens que si quelqu'un compare — c'est-à-dire à l'écran. Sur
+        // une feuille, c'est le professeur qui corrige, avec son propre œil.
+        { id: 'tolerance', type: 'number', label: 'Tolérance (°)', default: 3, min: 0, max: 10, papier: false }
     ],
 
     generate(params, ctx) {
