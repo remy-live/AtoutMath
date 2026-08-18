@@ -304,7 +304,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-dictee', status: STATUS.TEST, title: 'Dictée de Grands Nombres',
-        activityId: 'dictee',
+        activityId: 'dictee', skills: ['num.ecriture.lettres'],
         params: { palier: 'grands' },
         paramSchema: [
             {
@@ -332,7 +332,9 @@ export const numerationExercises = [
         // négatifs, à l'identique du « Ninja des Résultats Négatifs », avec
         // deux curseurs sans effet.
         id: 'num-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
-        activityId: 'ninja',
+        // Trois règles pour le même geste : les zéros inutiles d'un côté, le
+        // signe d'une somme de relatifs de l'autre. Les deux sont déclarées.
+        activityId: 'ninja', skills: ['num.decimal.zeros', 'num.relatifs.somme'],
         // Un objet raté est une erreur de règle, pas une erreur de calcul : on
         // l'affiche tout de suite, mais on ne surcharge pas le carnet avec les
         // ratés de vitesse.

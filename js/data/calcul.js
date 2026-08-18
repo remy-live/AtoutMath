@@ -443,9 +443,20 @@ export const calculExercises = [
     },
 
     // --- Jeux autonomes : logique de plateau propre, contenu interne ---
+    //
+    // UN JEU AUSSI DIT CE QU'IL TRAVAILLE. Sans générateur pour la porter, la
+    // compétence se déclare ici, à la main. Elle ne change rien au bilan — une
+    // tentative est rattachée à la compétence de SA question, pas à celle de
+    // l'exercice — mais elle décide de trois choses : la leçon que le mode
+    // Apprentissage propose avant de jouer, la présence du jeu dans « des
+    // exercices pour cette compétence », et sa place dans la remédiation.
+    //
+    // Les jeux qui ne travaillent aucune notion du programme — Othello, les
+    // Dames, les Échecs — le disent par `horsProgression: true`. C'est le seul
+    // autre choix possible : un exercice muet est refusé par les tests.
     {
         id: 'calc-arcade-shooter', status: STATUS.TEST, title: 'Météorites Mathématiques',
-        activityId: 'shooter',
+        activityId: 'shooter', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium', leurres: 3 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -478,7 +489,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
-        activityId: 'memory',
+        activityId: 'memory', skills: ['num.mult.table.*'],
         // SUR LE PAPIER, ON FABRIQUE LE JEU. Page 1 : les cartes, une paire par
         // bloc — le calcul et son résultat. Page 2 : les dos, aux mêmes
         // emplacements. On découpe, on colle dos à dos (ou l'on imprime en
@@ -496,7 +507,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-labyrinthe', status: STATUS.TEST, title: 'Labyrinthe Mathématique',
-        activityId: 'labyrinthe',
+        activityId: 'labyrinthe', skills: ['num.mult.table.*'],
         params: { timeLimit: 60, timeReduction: 5, operations: ['*'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         paramSchema: [
             { id: 'timeLimit', type: 'number', label: 'Temps initial (s)', default: 60 },
@@ -534,7 +545,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-nova', status: STATUS.TEST, title: 'Nova',
-        activityId: 'nova',
+        activityId: 'nova', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], lives: 3, entrePortes: 18 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables des portes', options: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -547,7 +558,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-escadrille', status: STATUS.TEST, title: 'Escadrille des Tables',
-        activityId: 'escadrille',
+        activityId: 'escadrille', skills: ['num.mult.table.*'],
         params: { table: 7, lives: 3, rythme: 'lent' },
         paramSchema: [
             {
@@ -589,7 +600,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
-        activityId: 'course',
+        activityId: 'course', skills: ['num.mult.table.*'],
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)
         // étaient définis dans le schéma mais inatteignables — ni l'élève ni le
         // professeur ne pouvaient les changer, le jeu démarrait toujours sur
@@ -628,7 +639,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-tetris', status: STATUS.TEST, title: 'Math Tetris',
-        activityId: 'tetris',
+        activityId: 'tetris', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], speed: 1000 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -640,7 +651,9 @@ export const calculExercises = [
     },
     {
         id: 'calc-vault', status: STATUS.TEST, title: 'Le Coffre-Fort',
-        activityId: 'vault',
+        // « Propose toujours le milieu de la zone possible » : c'est la
+        // dichotomie, et le jeu ne fait que ça.
+        activityId: 'vault', skills: ['num.logique.dichotomie'],
         params: { maxNumber: 100, attempts: 10 },
         paramSchema: [
             { id: 'maxNumber', type: 'select', label: 'Code entre 1 et…', options: [50, 100, 200, 500, 1000], default: 100 },
@@ -651,7 +664,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-duel', status: STATUS.TEST, title: 'Duel des Tables (à deux)',
-        activityId: 'duel',
+        activityId: 'duel', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], cible: 7, operations: 'mul' },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables jouables', options: [2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -672,7 +685,9 @@ export const calculExercises = [
     },
     {
         id: 'calc-arpenteurs', status: STATUS.TEST, title: 'Les Arpenteurs',
-        activityId: 'arpenteurs',
+        // Clôturer une parcelle rectangulaire, c'est lire un produit comme une
+        // aire : les deux compétences travaillent ensemble, sur le même geste.
+        activityId: 'arpenteurs', skills: ['num.mult.table.*', 'mes.aire.rectangle'],
         deuxJoueurs: true,
         // À deux sur un seul compte : attribuer les coups de l'un aux
         // statistiques de l'autre ne voudrait rien dire. Rien n'est enregistré,
@@ -729,7 +744,7 @@ export const calculExercises = [
     },
     {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
-        activityId: 'motscaches',
+        activityId: 'motscaches', skills: ['voc.mathematique'],
         // SUR LE PAPIER, PERSONNE NE VALIDE : il faut entourer, donc être sûr.
         // Et la fiche sait faire ce que l'écran ne fait pas — ne donner que les
         // DÉFINITIONS, et laisser retrouver le mot du cours avant de le
@@ -787,7 +802,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-chantier', status: STATUS.TEST, title: 'Le Chantier des Blocs',
-        activityId: 'chantier',
+        activityId: 'chantier', skills: ['num.mult.table.*'],
         params: { depart: 'ch1' },
         paramSchema: [
             {
@@ -810,8 +825,13 @@ export const calculExercises = [
         // Trois jeux de plateau, un seul moteur d'affichage (games/plateau.js)
         // et une seule IA (core/ia.js). Les règles, testées sans navigateur,
         // vivent chacune dans leur module — les échecs validés au perft.
+        //
+        // HORS PROGRESSION, ET ASSUMÉ. Othello, les Dames et les Échecs
+        // n'entraînent aucune notion du programme : ce sont des jeux de la
+        // réserve, ceux qu'on donne en récompense ou en fin d'heure. Le
+        // déclarer est obligatoire — un exercice qui ne dit rien est refusé.
         id: 'logi-othello', status: STATUS.TEST, title: 'Othello',
-        activityId: 'othello',
+        activityId: 'othello', horsProgression: true,
         params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
             {
@@ -850,7 +870,7 @@ export const calculExercises = [
     },
     {
         id: 'logi-dames', status: STATUS.TEST, title: 'Jeu de Dames',
-        activityId: 'dames',
+        activityId: 'dames', horsProgression: true,
         params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
             {
@@ -889,7 +909,9 @@ export const calculExercises = [
     },
     {
         id: 'logi-echecs', status: STATUS.TEST, title: 'Échecs',
-        activityId: 'echecs',
+        // La partie elle-même n'est pas au programme. Le REPÉRAGE l'est, et
+        // c'est l'exercice « mat en un » qui le travaille, pas celui-ci.
+        activityId: 'echecs', horsProgression: true,
         // L'ÉCHIQUIER EST UN REPÈRE. « e4 » n'est pas du jargon : c'est une
         // lettre de colonne et un chiffre de ligne, la même chose qu'un couple
         // de coordonnées — et qu'un B3 de tableur.
@@ -1199,7 +1221,7 @@ export const calculExercises = [
     },
     {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
-        activityId: 'demineur',
+        activityId: 'demineur', skills: ['num.logique.demineur'],
         sansRevision: true,
         params: { niveau: 'debutant', vies: 3 },
         paramSchema: [
@@ -1227,7 +1249,9 @@ export const calculExercises = [
     },
     {
         id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
-        activityId: 'crush',
+        // Le réglage par défaut est l'addition ; la table est là dès qu'on
+        // bascule le mode, et les deux compétences se valent pour la leçon.
+        activityId: 'crush', skills: ['num.add.entiers', 'num.mult.table.*'],
         params: { mode: 'addition', difficulty: 'progressive' },
         paramSchema: [
             { id: 'mode', type: 'select', label: 'Opération', options: ['addition', 'multiplication'], default: 'addition' },

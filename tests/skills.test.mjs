@@ -106,12 +106,49 @@ test('aucun générateur ne déclare une compétence absente du référentiel', 
     assert.deepEqual(orphelins, []);
 });
 
-test('chaque exercice généré est rattaché à au moins une compétence', async () => {
-    // Les jeux autonomes en sont dispensés : ce sont des récompenses, ils
-    // n'ont pas à figurer au bilan. Un exercice construit sur un générateur,
-    // lui, n'a aucune raison de manquer.
+test('AUCUN exercice n\'est muet : compétence déclarée, ou hors progression assumé', async () => {
+    // LA DETTE NE SE RECREUSE PAS.
+    //
+    // La règle précédente dispensait les jeux autonomes — « ce sont des
+    // récompenses, ils n'ont pas à figurer au bilan ». La dispense était
+    // muette : vingt et un exercices ne disaient rien de ce qu'ils
+    // travaillaient, et six compétences du référentiel étaient devenues
+    // injoignables sans que rien ne le signale.
+    //
+    // Deux réponses sont désormais acceptées, et il n'y en a pas de
+    // troisième : soit l'exercice déclare au moins une compétence (par son
+    // générateur ou en propre), soit il déclare `horsProgression: true` —
+    // Othello, les Dames, les Échecs. Le silence, lui, est refusé : un
+    // nouvel exercice ne peut plus entrer dans le catalogue sans dire ce
+    // qu'il fait travailler.
     await import('../js/core/activities/index.js');
     const { exercices, skillsOf } = await import('../js/data/catalog.js');
-    const sans = exercices.filter(e => e.generatorId && !skillsOf(e).length).map(e => e.id);
-    assert.deepEqual(sans, []);
+    const muets = exercices
+        .filter(e => !skillsOf(e).length && !e.horsProgression)
+        .map(e => e.id);
+    assert.deepEqual(muets, []);
+});
+
+test('« hors progression » et une compétence, il faut choisir', async () => {
+    // Les deux à la fois n'a aucun sens : soit l'exercice travaille une
+    // notion du programme, soit il est de la réserve. Le contraire laisserait
+    // un jeu de plateau remonter dans la remédiation.
+    const { exercices, skillsOf } = await import('../js/data/catalog.js');
+    const deuxFois = exercices
+        .filter(e => e.horsProgression && skillsOf(e).length)
+        .map(e => e.id);
+    assert.deepEqual(deuxFois, []);
+});
+
+test('une compétence déclarée par un exercice existe vraiment', async () => {
+    // Le même piège que pour les générateurs, un étage plus bas : une
+    // compétence mal orthographiée dans le catalogue ne casse rien de
+    // visible, elle rend seulement l'exercice invisible au bilan et à la
+    // remédiation. `skillsOf` résout par `matchSkills`, donc une liste vide
+    // est la signature exacte de la faute de frappe.
+    const { exercices, skillsOf } = await import('../js/data/catalog.js');
+    const perdus = exercices
+        .filter(e => Array.isArray(e.skills) && e.skills.length && !skillsOf(e).length)
+        .map(e => `${e.id} → ${e.skills.join(', ')}`);
+    assert.deepEqual(perdus, []);
 });

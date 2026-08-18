@@ -181,7 +181,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
-        activityId: 'galactic',
+        activityId: 'galactic', skills: ['geo.angles.mesure'],
         params: { startLevel: 1, lives: 3 },
         paramSchema: [
             { id: 'startLevel', type: 'number', label: 'Niveau de départ', min: 1, max: 6, default: 1 },
@@ -196,7 +196,7 @@ export const geometrieExercises = [
         // qui pivoterait avec le véhicule — comme un GPS — supprimerait
         // l'exercice au lieu de l'aider.
         id: 'geo-ville', status: STATUS.TEST, title: 'Le Plan de Ville',
-        activityId: 'ville',
+        activityId: 'ville', skills: ['geo.espace.deplacement', 'geo.espace.orientation'],
         params: { taille: 'moyen', capNord: false },
         paramSchema: [
             {
