@@ -271,16 +271,26 @@ export function apercuItems(page, k, o) {
                      title="Réglages de cet exercice"
                      aria-label="Réglages de « ${echapper(it.titre)} »">${ROUE}</button>`
                 : '';
+            // LE TITRE SE RETOUCHE D'UN CLIC (dans l'aperçu seulement). Le
+            // titre du catalogue est celui de l'exercice ; sur une feuille, le
+            // professeur écrit ce qu'il veut — « Exercice 1 — Les tables »
+            // n'est pas forcément le nom qu'a l'exercice dans l'application.
+            const modifiable = o.retouchable && it.id && !it.suite;
             html += `<div class="fx-bandeau" style="left:${it.x * k}px; top:${it.y * k}px;
                 width:${it.w * k}px; height:${it.h * k}px; font-size:${o.taille * k * 1.02}px">
-                <span>${echapper(titreExo(it))}</span>
+                <span${modifiable ? ` class="fx-retouche" data-titre-exo="${echapper(it.id)}"`
+                    + ' title="Cliquer pour changer le titre de cet exercice"' : ''}>${echapper(titreExo(it))}</span>
                 ${it.points ? `<span class="fx-points">… / ${it.points}</span>` : ''}
                 ${roue}</div>`;
             continue;
         }
         if (it.type === 'consigne') {
+            const cons = (o.retouchable && it.id)
+                ? `class="fx-consigne fx-retouche" data-consigne-exo="${echapper(it.id)}"`
+                    + ' title="Cliquer pour changer la consigne"'
+                : 'class="fx-consigne"';
             it.lignes.forEach((ligne, i) => {
-                html += `<div class="fx-consigne" style="left:${(it.x + 1) * k}px;
+                html += `<div ${cons} style="left:${(it.x + 1) * k}px;
                     top:${(it.y + i * o.tailleConsigne * 1.45) * k}px; width:${it.w * k}px;
                     font-size:${o.tailleConsigne * k}px">${echapper(ligne)}</div>`;
             });
@@ -327,8 +337,19 @@ export function apercuItems(page, k, o) {
         //
         // Comme l'engrenage des exercices, ces boutons n'existent que dans
         // l'aperçu : le PDF passe par `pdfItems`, qui ne les connaît pas.
+        // LA ZONE DE LA QUESTION EST AUSSI CE QU'ON CLIQUE POUR LA RÉCRIRE.
+        //
+        // Elle couvre exactement le texte, et elle est au-dessus de lui : deux
+        // cibles superposées se voleraient les clics — l'une des deux gagne
+        // toujours, et ce serait celle qu'on ne veut pas. Une seule zone,
+        // donc : ses deux boutons d'abord, et le reste ouvre l'éditeur.
         if (o.reglable && it.exoId != null && it.iQ != null) {
-            html += `<div class="fx-qgestes" style="left:${it.x * k}px; top:${it.y * k}px;
+            const recrire = o.retouchable
+                ? ` fx-retouche" data-txt-exo="${echapper(it.exoId)}" data-txt-rang="${it.iQ}"`
+                    + ' title="Cliquer pour récrire cette question'
+                : '';
+            html += `<div class="fx-qgestes${recrire}"
+                style="left:${it.x * k}px; top:${it.y * k}px;
                 width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
                 <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
                     title="Retirer une autre question au sort à cette place"
@@ -338,8 +359,15 @@ export function apercuItems(page, k, o) {
                     aria-label="Supprimer la question ${it.n ?? it.iQ + 1}">✕</button>
             </div>`;
         }
+        // ET L'ÉNONCÉ LUI-MÊME SE RETOUCHE. Rémy : « il faudrait aller sur le
+        // texte et avoir la possibilité de changer la question ». C'était
+        // refusé jusqu'ici parce qu'une question réécrite laisserait le
+        // corrigé répondre à l'ancienne — une fiche dont les solutions mentent
+        // est pire que pas de fiche. L'éditeur demande donc les DEUX : l'énoncé
+        // et sa réponse, dans le même geste.
         it.lignes.forEach((ligne, i) => {
-            html += `<div class="fq-ligne" style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
+            html += `<div class="fq-ligne"
+                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
                 width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
         });
         if (it.choix) {

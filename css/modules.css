@@ -5172,3 +5172,45 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     flex-wrap: wrap;
 }
 .path-bandeau .path-summary { flex: 1 1 240px; min-width: 0; }
+
+/* --- Retoucher la feuille d'un clic ----------------------------------------
+   Le titre, la consigne et l'énoncé d'une question se changent depuis
+   l'aperçu. Un liseré au survol dit ce qui répond au clic — sans lui, la
+   feuille a l'air d'être une image. */
+
+.fx-retouche { cursor: text; border-radius: 3px; }
+@media (hover: hover) and (pointer: fine) {
+    .fx-retouche:hover {
+        outline: 1px dashed var(--primary);
+        outline-offset: 2px;
+        background: color-mix(in srgb, var(--primary) 7%, transparent);
+    }
+}
+
+.pp-retouche { width: min(360px, 92vw); }
+.pp-retouche-texte {
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+    font-size: .9rem;
+    line-height: 1.4;
+}
+.pp-retouche-note {
+    font-size: .72rem;
+    line-height: 1.35;
+    color: var(--text-muted);
+}
+.pp-retouche-actions { display: flex; gap: 8px; align-items: center; }
+.pp-retouche-actions .pp-roue-autres { flex: 1 1 auto; }
+.pp-retouche-annuler {
+    flex: none;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    font-family: inherit;
+    font-size: .82rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.pp-retouche-annuler:hover { color: var(--text-main); border-color: var(--border-fort, var(--text-muted)); }

@@ -171,6 +171,8 @@ function assurerModale() {
             <div class="fp-controles">
                 <label class="fq-case"><input type="checkbox" id="pp-interro"> Mode interrogation</label>
                 <label class="fq-case"><input type="checkbox" id="pp-choix"> Proposer les réponses</label>
+                <label class="fq-case" title="Un exercice qui ne tient pas dans le bas de la page commence alors en haut de la suivante, quitte à laisser du blanc.">
+                    <input type="checkbox" id="pp-insecable"> Ne pas couper un exercice entre deux pages</label>
                 <label class="pp-note-sur" id="pp-note-sur-champ">Note sur
                     <input type="number" id="pp-note-sur" class="cfg-input cfg-input--num"
                         min="5" max="100" step="1" value="20"></label>
@@ -255,6 +257,7 @@ export function ouvrirFicheParcours(chemin) {
     const apercu = m.querySelector('#pp-apercu');
     const interro = m.querySelector('#pp-interro');
     const choixEl = m.querySelector('#pp-choix');
+    const insecEl = m.querySelector('#pp-insecable');
     const totalEl = m.querySelector('#pp-total');
     const noteEl = m.querySelector('#pp-note');
     const listeEl = m.querySelector('#pp-etapes');
@@ -323,6 +326,28 @@ export function ouvrirFicheParcours(chemin) {
             ? e.exercise.consignePapier
             : (e.exercise.instruction || '');
     });
+    // LE TITRE IMPRIMÉ EST CELUI DE LA FEUILLE, pas celui du catalogue.
+    // « Segment, Droite ou Demi-droite ? » est le nom de l'exercice dans
+    // l'application ; en tête d'un contrôle, le professeur écrit ce qu'il veut.
+    const titres = {};
+    papier.forEach(e => { titres[e.stepId] = e.title; });
+
+    // COUPER OU NON UN EXERCICE ENTRE DEUX PAGES. `undefined` suit le réglage
+    // général ; `true` ou `false` est une décision prise sur CET exercice, et
+    // elle l'emporte — c'est la règle partout ailleurs dans la fiche.
+    const insecables = {};
+    const estInsecable = (id) => insecables[id] ?? insecEl.checked;
+
+    // LES QUESTIONS RÉÉCRITES À LA MAIN, par étape et par rang.
+    //
+    // On refusait jusqu'ici de toucher à un énoncé : la réponse vient du
+    // générateur, et récrire « 7 × 8 = » en « 9 × 8 = » aurait laissé le
+    // corrigé répondre 56. La règle tient toujours — c'est pourquoi l'éditeur
+    // demande les DEUX ensemble, l'énoncé ET sa réponse. Une feuille dont les
+    // solutions mentent est pire qu'une feuille sans solutions.
+    const retouches = new Map();          // `${stepId}#${rang}` → {texte, reponse}
+    const cleRetouche = (id, rang) => `${id}#${rang}`;
+
     const parId = new Map(papier.map(e => [e.stepId, e]));
 
     const totalPoints = () => ordre
@@ -730,9 +755,120 @@ export function ouvrirFicheParcours(chemin) {
         document.removeEventListener('keydown', surEchap, true);
     };
     function surClicDehors(ev) {
-        if (panneau && !panneau.contains(ev.target) && !ev.target.closest('[data-reglage]')) fermerRoue();
+        if (!panneau) return;
+        // Ni le panneau lui-même, ni ce qui l'ouvre : sans cette seconde
+        // garde, cliquer une autre zone retouchable fermait le panneau puis le
+        // rouvrait, et le champ perdait le focus au passage.
+        if (panneau.contains(ev.target)) return;
+        if (ev.target.closest('[data-reglage], .fx-retouche')) return;
+        fermerRoue();
     }
     function surEchap(ev) { if (ev.key === 'Escape') fermerRoue(); }
+
+    // --- RÉCRIRE DIRECTEMENT SUR L'APERÇU -----------------------------------
+    //
+    // Rémy : « il faudrait aller sur le texte et avoir la possibilité de
+    // changer la question ou de la taper en gardant les contraintes de style.
+    // […] Il faut que l'aperçu soit modifiable facilement. »
+    //
+    // On ne rend pas le texte directement éditable dans la page : la feuille
+    // est MESURÉE — chaque ligne est placée au millimètre après avoir été
+    // découpée à la largeur du bloc — et taper dedans se battrait contre le
+    // moteur de mise en page à chaque touche. Le clic ouvre donc un petit
+    // éditeur à côté, et le texte retourne par le même chemin que les autres :
+    // c'est ce qui garde le style de la feuille sans avoir à le redire.
+    //
+    // POUR UNE QUESTION, L'ÉNONCÉ ET LA RÉPONSE SE CHANGENT ENSEMBLE. Récrire
+    // « 7 × 8 = » en « 9 × 8 = » laisserait sinon le corrigé répondre 56 : une
+    // feuille dont les solutions mentent est pire qu'une feuille sans
+    // solutions.
+
+    function ouvrirRetouche(cible, quoi) {
+        fermerRoue();
+        const id = quoi.id;
+        const e = parId.get(id);
+        if (!e) return;
+
+        const rang = quoi.rang;
+        const question = quoi.genre === 'question'
+            ? (blocs.get(id) || [])[rang] : null;
+        const retouche = quoi.genre === 'question' ? retouches.get(cleRetouche(id, rang)) : null;
+
+        const valeurTexte = quoi.genre === 'titre' ? (titres[id] ?? e.title)
+            : quoi.genre === 'consigne' ? (consignes[id] || '')
+                : (retouche ? retouche.texte : (question ? question.texte : ''));
+        const valeurRep = quoi.genre === 'question'
+            ? (retouche ? retouche.reponse : (question ? question.reponse : '')) : null;
+
+        const legende = quoi.genre === 'titre' ? 'Titre de l\'exercice'
+            : quoi.genre === 'consigne' ? 'Consigne' : 'Énoncé de la question';
+
+        panneau = document.createElement('div');
+        panneau.className = 'pp-roue-panneau pp-retouche';
+        panneau.dataset.pour = `retouche:${id}:${quoi.genre}:${rang ?? ''}`;
+        panneau.innerHTML = `
+            <div class="pp-roue-titre">${echapper(legende)}</div>
+            <textarea class="cfg-input pp-retouche-texte" data-t-texte rows="${quoi.genre === 'consigne' ? 4 : 2}"
+                >${echapper(valeurTexte)}</textarea>
+            ${quoi.genre === 'question' ? `
+                <div class="pp-roue-sous-titre">Réponse (page des solutions)</div>
+                <input type="text" class="cfg-input" data-t-rep value="${echapper(valeurRep || '')}">
+                <div class="pp-retouche-note">Change l'énoncé ET sa réponse : le corrigé suit ce
+                    que tu écris ici, il ne recalcule rien.</div>` : ''}
+            <div class="pp-retouche-actions">
+                ${retouche ? '<button type="button" class="pp-retouche-annuler" data-t-defaire>Rétablir</button>' : ''}
+                <button type="button" class="pp-roue-autres" data-t-ok>Enregistrer</button>
+            </div>`;
+        document.body.appendChild(panneau);
+        placerPanneau(cible);
+
+        const champ = panneau.querySelector('[data-t-texte]');
+        const rep = panneau.querySelector('[data-t-rep]');
+        const enregistrer = () => {
+            const texte = champ.value.trim();
+            if (quoi.genre === 'titre') {
+                titres[id] = texte || e.title;
+                rendreListe();
+            } else if (quoi.genre === 'consigne') {
+                consignes[id] = champ.value;
+                rendreListe();
+            } else {
+                retouches.set(cleRetouche(id, rang), { texte, reponse: rep ? rep.value.trim() : '' });
+            }
+            fermerRoue();
+            rendre();
+        };
+        panneau.querySelector('[data-t-ok]').onclick = enregistrer;
+        const defaire = panneau.querySelector('[data-t-defaire]');
+        if (defaire) defaire.onclick = () => {
+            retouches.delete(cleRetouche(id, rang));
+            fermerRoue();
+            rendre();
+        };
+        // Entrée enregistre — sauf dans la consigne, qui peut vouloir un
+        // retour à la ligne ; Maj+Entrée y sert à cela partout.
+        champ.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); enregistrer(); }
+        });
+        if (rep) rep.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') { ev.preventDefault(); enregistrer(); }
+        });
+        champ.focus();
+        champ.select();
+        document.addEventListener('pointerdown', surClicDehors, true);
+        document.addEventListener('keydown', surEchap, true);
+    }
+
+    /** Collé à ce qu'on retouche, et rabattu s'il devait sortir de l'écran. */
+    function placerPanneau(cible) {
+        const r = cible.getBoundingClientRect();
+        const large = panneau.offsetWidth, haut = panneau.offsetHeight;
+        const x = Math.max(8, Math.min(r.left, window.innerWidth - large - 8));
+        const y = r.bottom + 6 + haut > window.innerHeight
+            ? Math.max(8, r.top - haut - 6) : r.bottom + 6;
+        panneau.style.left = `${x}px`;
+        panneau.style.top = `${y}px`;
+    }
 
     function ouvrirRoue(bouton, id) {
         const dejaLa = panneau && panneau.dataset.pour === id;
@@ -758,6 +894,8 @@ export function ouvrirFicheParcours(chemin) {
                 </select>`)}</label>
             <label class="pp-roue-case">
                 <input type="checkbox" data-r-num ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
+            <label class="pp-roue-case" title="Cet exercice commence alors en haut d'une page plutôt que d'être coupé en deux.">
+                <input type="checkbox" data-r-insec ${estInsecable(id) ? 'checked' : ''}> D'un seul tenant</label>
             <label class="pp-roue-champ" data-r-bareme ${interro.checked ? '' : 'hidden'}>Barème
                 ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num" data-r-pts
                     min="0" max="40" value="${points[id]}">`)}</label>
@@ -793,6 +931,10 @@ export function ouvrirFicheParcours(chemin) {
         panneau.querySelector('[data-r-num]').onchange = (ev) => {
             numeroter[id] = ev.target.checked;
             rendreListe();
+            rendre();
+        };
+        panneau.querySelector('[data-r-insec]').onchange = (ev) => {
+            insecables[id] = ev.target.checked;
             rendre();
         };
         const pts = panneau.querySelector('[data-r-pts]');
@@ -853,7 +995,15 @@ export function ouvrirFicheParcours(chemin) {
             .filter(id => (quantites[id] || 0) > 0)
             .map(id => {
                 const e = parId.get(id);
-                const tire = (blocs.get(id) || []).slice(0, quantites[id]);
+                // Les retouches du professeur passent PAR-DESSUS le tirage :
+                // elles ne remplacent pas la question dans la table, elles
+                // s'appliquent au moment de composer. Retirer une autre
+                // question au sort les emporte donc avec l'ancienne, ce qui
+                // est le bon comportement.
+                const tire = (blocs.get(id) || []).slice(0, quantites[id]).map((q, rang) => {
+                    const r = retouches.get(cleRetouche(id, rang));
+                    return r ? { ...q, texte: r.texte, reponse: r.reponse, retouchee: true } : q;
+                });
                 // Une grille n'a pas de consigne écrite par le professeur :
                 // c'est la règle du jeu, et elle se déduit de la grille tirée.
                 const consigneGrille = e.grille && tire.length && RENDUS[e.grille].consigne
@@ -865,10 +1015,11 @@ export function ouvrirFicheParcours(chemin) {
                     // bandeau de l'aperçu portera, et sur lequel l'engrenage
                     // ouvrira les bons réglages.
                     id,
-                    titre: e.title,
+                    titre: titres[id] ?? e.title,
                     consigne: o.interrogation ? '' : (e.grille ? consigneGrille : consignes[id]),
                     points: o.interrogation ? (points[id] || null) : null,
                     numeroter: numeroter[id] !== false,
+                    insecable: estInsecable(id),
                     questions: e.grille ? [] : tire,
                     grilles: e.grille ? tire : [],
                     colonnes: e.grille ? null : col,
@@ -945,7 +1096,7 @@ export function ouvrirFicheParcours(chemin) {
                 ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg,
         v.sol ? { champs: [] } : o.entete)}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts)
-        : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol })}
+        : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol, retouchable: !v.sol })}
             </div>`).join('');
 
         apercu.querySelectorAll('[data-reglage]').forEach(b => {
@@ -989,6 +1140,7 @@ export function ouvrirFicheParcours(chemin) {
         rendreListe(); rendre();
     };
     choixEl.onchange = rendre;
+    insecEl.onchange = () => { rendreListe(); rendre(); };
     modeSol.onchange = rendre;
     colSol.onchange = rendre;
     ouSol.onchange = rendre;
@@ -1000,6 +1152,59 @@ export function ouvrirFicheParcours(chemin) {
         rendre();
     };
     m.querySelector('#pp-regen').onclick = () => { toutOublier(); rendre(); };
+
+    // TOUT CE QUI SE FAIT SUR L'APERÇU PASSE PAR ICI. L'écouteur est posé sur
+    // le cadre, jamais sur les éléments : ceux-ci sont redessinés à chaque
+    // rendu, et les rebrancher un par un finissait toujours par en oublier —
+    // les deux boutons d'une question étaient d'ailleurs dessinés depuis le
+    // début sans que rien ne les écoute.
+    apercu.addEventListener('click', (ev) => {
+        const neuf = ev.target.closest('[data-q-neuf]');
+        const sup = ev.target.closest('[data-q-sup]');
+        if (neuf || sup) {
+            const btn = neuf || sup;
+            const id = btn.dataset.qNeuf || btn.dataset.qSup;
+            const rang = Number(btn.dataset.qRang);
+            const liste = blocs.get(id);
+            if (!liste || !Number.isInteger(rang) || rang < 0 || rang >= liste.length) return;
+            if (neuf) {
+                // Une seule question change de place : on en tire une, et l'on
+                // écarte celles qui sont déjà sur la feuille pour ne pas
+                // remplacer une question par sa jumelle.
+                const e = parId.get(id);
+                for (let essai = 0; essai < 12; essai++) {
+                    const [candidate] = questionsDe(e, 1);
+                    if (!candidate) break;
+                    if (essai < 8 && liste.some((q, i) => i !== rang && q.texte === candidate.texte)) continue;
+                    liste[rang] = candidate;
+                    break;
+                }
+            } else {
+                liste.splice(rang, 1);
+                quantites[id] = Math.max(0, (quantites[id] || 1) - 1);
+                if (!baremeTouche) repartirPoints();
+                rendreListe();
+            }
+            // Les retouches se rapportaient aux ANCIENNES places : les garder
+            // collerait l'énoncé récrit sur une autre question.
+            [...retouches.keys()].forEach(c => { if (c.startsWith(`${id}#`)) retouches.delete(c); });
+            rendre();
+            return;
+        }
+
+        const titre = ev.target.closest('[data-titre-exo]');
+        if (titre) { ouvrirRetouche(titre, { genre: 'titre', id: titre.dataset.titreExo }); return; }
+
+        const consigne = ev.target.closest('[data-consigne-exo]');
+        if (consigne) { ouvrirRetouche(consigne, { genre: 'consigne', id: consigne.dataset.consigneExo }); return; }
+
+        const txt = ev.target.closest('[data-txt-exo]');
+        if (txt) {
+            ouvrirRetouche(txt, {
+                genre: 'question', id: txt.dataset.txtExo, rang: Number(txt.dataset.txtRang)
+            });
+        }
+    });
     // Le panneau vit sur le corps du document : il resterait à l'écran après
     // la fermeture de la fiche, orphelin et sans rien à régler.
     m.querySelector('#pp-fermer').onclick = () => { fermerRoue(); m.style.display = 'none'; };

@@ -533,7 +533,10 @@ export function composerBlocs(exos, opts, mesurer) {
             });
             y += o.bandeauH;
             if (consigneLignes.length) {
-                page.items.push({ type: 'consigne', lignes: consigneLignes, x: zone.x, y, w: zone.w - 2 });
+                // L'IDENTIFIANT SUIT LA CONSIGNE : c'est lui qui permet à
+                // l'aperçu de la rendre modifiable d'un clic, comme le titre
+                // et les questions.
+                page.items.push({ type: 'consigne', id: exo.id ?? null, lignes: consigneLignes, x: zone.x, y, w: zone.w - 2 });
                 y += consigneLignes.length * (o.tailleConsigne * 1.45);
             }
             y += o.apresBandeau;
@@ -703,6 +706,25 @@ export function composerBlocs(exos, opts, mesurer) {
         if (iExo > 0 && page.items.length && y > haut()) y += o.entreExercices - o.entreQuestions;
         if (page.items.length && y + enteteH + premiereRangeeH > basPage) nouvellePage();
 
+        // UN EXERCICE D'UN SEUL TENANT, si le professeur le demande.
+        //
+        // Par défaut la feuille coupe où elle peut et pose un bandeau
+        // « (suite) » en haut de la page suivante : c'est ce qui remplit le
+        // papier, et une photocopie coûte. Mais un exercice de rédaction coupé
+        // en deux se corrige mal, et l'on veut parfois qu'il commence en haut
+        // d'une page quitte à laisser du blanc.
+        //
+        // On ne le fait QUE si le bloc tient sur une page vide : autrement il
+        // faudrait le repousser indéfiniment, et la feuille n'aurait jamais de
+        // fin.
+        if (exo.insecable && page.items.length) {
+            let hBloc = enteteH;
+            for (let d = 0; d < cellules.length; d += cols) {
+                hBloc += Math.max(...cellules.slice(d, d + cols).map(c => c.h)) + o.entreQuestions;
+            }
+            if (y + hBloc > basPage && hBloc <= basPage - haut()) nouvellePage();
+        }
+
         const poserBandeau = (suite) => {
             page.items.push({
                 type: 'exo', n: iExo + 1, suite, id: exo.id ?? null,
@@ -711,7 +733,10 @@ export function composerBlocs(exos, opts, mesurer) {
             });
             y += o.bandeauH;
             if (!suite && consigneLignes.length) {
-                page.items.push({ type: 'consigne', lignes: consigneLignes, x: zone.x, y, w: zone.w - 2 });
+                // L'IDENTIFIANT SUIT LA CONSIGNE : c'est lui qui permet à
+                // l'aperçu de la rendre modifiable d'un clic, comme le titre
+                // et les questions.
+                page.items.push({ type: 'consigne', id: exo.id ?? null, lignes: consigneLignes, x: zone.x, y, w: zone.w - 2 });
                 y += consigneLignes.length * (o.tailleConsigne * 1.45);
             }
             y += o.apresBandeau;
