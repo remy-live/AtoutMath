@@ -83,7 +83,9 @@ export function detailler(pb) {
 export const problemesFicheGenerator = {
     id: 'num.problemes-fiche',
     label: 'Problèmes en une ou deux étapes',
-    skills: ['num.problemes'],
+    // Au singulier, et par famille : `num.probleme.composition`,
+    // `.transformation`, `.comparaison`… Le pluriel n'a jamais existé.
+    skills: ['num.probleme.*'],
     answerKinds: ['numeric'],
     ecrit: true,
     // La famille « fraction d'une quantité » écrit « les 2/5 sont abîmés » :

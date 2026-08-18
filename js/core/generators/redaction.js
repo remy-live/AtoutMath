@@ -14,7 +14,9 @@ import { PROPRIETES, proprieteDe, tirerFigure, donnees, conclusion } from '../re
 export const redactionGenerator = {
     id: 'geo.redaction',
     label: 'Rédiger : parallèles et perpendiculaires',
-    skills: ['geo.redaction.para-perp'],
+    // La compétence s'appelle `geo.para-perp` au référentiel, sans le segment
+    // « redaction » : déclarée sous un nom inexistant, elle ne rattachait rien.
+    skills: ['geo.para-perp'],
     answerKinds: ['text'],
     // Pas de `ecrit: true` : cet exercice ne se pose pas en question à trou
     // dans une colonne. Il occupe un BLOC — figure plus trois lignes — et
@@ -37,7 +39,7 @@ export const redactionGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'geo.redaction',
-            skillId: 'geo.redaction.para-perp',
+            skillId: 'geo.para-perp',
             answerKind: 'text',
             prompt: {
                 text: c.relation === '//'

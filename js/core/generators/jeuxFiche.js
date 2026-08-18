@@ -26,7 +26,9 @@ export const compteFicheGenerator = {
     id: 'calc.compte-fiche',
     label: 'Le compte est bon (fiche)',
     answerKinds: ['numeric'],
-    skills: ['calc.mixte'],
+    // `calc.mixte` n'existe pas. Ces fiches mélangent les quatre opérations :
+    // on les déclare toutes les quatre, ce qui est aussi ce qu'elles font.
+    skills: ['num.add.entiers', 'num.sub.entiers', 'num.mult.sens', 'num.div.quotient'],
     params: [
         {
             id: 'operations', type: 'select', label: 'Étapes de la solution', default: 3,
@@ -58,7 +60,10 @@ export const compteFicheGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'calc.compte-fiche',
-            skillId: 'calc.mixte',
+            // Un item mélange les quatre opérations : aucune compétence unique
+            // ne le décrit. On note la plus élémentaire — elle est prérequis des
+            // trois autres — et c'est le générateur qui les déclare toutes.
+            skillId: 'num.add.entiers',
             answerKind: 'numeric',
             prompt: {
                 text: `Atteins ${p.but} avec ${p.plaques.join(', ')}`,
@@ -87,7 +92,9 @@ export const pointAPointFicheGenerator = {
     id: 'calc.point-a-point-fiche',
     label: 'Le point à point (fiche)',
     answerKinds: ['numeric'],
-    skills: ['calc.mixte'],
+    // `calc.mixte` n'existe pas. Ces fiches mélangent les quatre opérations :
+    // on les déclare toutes les quatre, ce qui est aussi ce qu'elles font.
+    skills: ['num.add.entiers', 'num.sub.entiers', 'num.mult.sens', 'num.div.quotient'],
     params: [
         {
             id: 'dessin', type: 'select', label: 'Image cachée', default: '',
@@ -114,7 +121,10 @@ export const pointAPointFicheGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'calc.point-a-point-fiche',
-            skillId: 'calc.mixte',
+            // Un item mélange les quatre opérations : aucune compétence unique
+            // ne le décrit. On note la plus élémentaire — elle est prérequis des
+            // trois autres — et c'est le générateur qui les déclare toutes.
+            skillId: 'num.add.entiers',
             answerKind: 'numeric',
             prompt: {
                 text: 'Relie les points dans l\'ordre des résultats',

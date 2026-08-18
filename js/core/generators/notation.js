@@ -189,7 +189,10 @@ const FABRIQUES = { ecrire: questionEcrire, dessin: questionDessin, dire: questi
 export const notationGenerator = {
     id: 'geo.notation',
     label: 'Segment, droite ou demi-droite',
-    skills: ['geo.notation'],
+    // `geo.notation` n'existe pas : les trois sens de la notation s'appellent
+    // `geo.notation.ecrire`, `.lire` et `.dire`, et c'est bien ce que les
+    // items émettent. Le joker les prend tous les trois.
+    skills: ['geo.notation.*'],
     answerKinds: ['choice'],
     ecrit: true,
     params: [

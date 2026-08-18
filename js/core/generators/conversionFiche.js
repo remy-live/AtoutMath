@@ -27,7 +27,9 @@ export const conversionFicheGenerator = {
     id: 'mes.conversion-fiche',
     label: 'Tableau de conversion (fiche)',
     answerKinds: ['numeric'],
-    skills: ['mes.conversion'],
+    // La compétence s'appelle `num.conversion` — c'est bien le tableau de
+    // numération qu'on remplit, pas une compétence de mesure à part.
+    skills: ['num.conversion'],
     params: [
         {
             id: 'famille', type: 'select', label: 'Grandeur', default: 'longueur',

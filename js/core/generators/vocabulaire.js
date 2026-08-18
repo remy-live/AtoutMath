@@ -288,7 +288,13 @@ const FABRIQUES = {
 export const vocabulaireGenerator = {
     id: 'num.vocabulaire',
     label: 'Le vocabulaire du calcul',
-    skills: ['num.vocabulaire'],
+    // Les cinq compétences du vocabulaire, par joker : chaque famille de
+    // questions émet déjà la sienne (`num.vocabulaire.resultat`, `.nombres`,
+    // `.traduire`, `.multiples`, `.division`). Le générateur, lui, en
+    // annonçait une sixième — `num.vocabulaire` tout court — qui n'existe pas
+    // au référentiel : `matchSkills` rendait donc une liste vide, et
+    // l'exercice restait invisible pour la remédiation et le bilan.
+    skills: ['num.vocabulaire.*'],
     answerKinds: ['choice'],
     ecrit: true,
     params: [

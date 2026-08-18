@@ -77,7 +77,9 @@ const loin = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > 1;
 export const echecsFicheGenerator = {
     id: 'logi.echecs-fiche',
     label: 'L\'échiquier comme repère',
-    skills: ['geo.repere.lire'],
+    // Lire « e4 » sur un échiquier, c'est lire un couple de coordonnées :
+    // la compétence existe, elle s'appelle `geo.repere.coord`.
+    skills: ['geo.repere.coord'],
     answerKinds: ['grid'],
     params: [
         {

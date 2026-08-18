@@ -23,7 +23,9 @@ const ETIQUETTES = 'ABCDEFGHJKLMNP';
 export const repereFicheGenerator = {
     id: 'geo.repere-fiche',
     label: 'Repère : plusieurs points',
-    skills: ['geo.repere.lire'],
+    // `geo.repere.lire` n'existe pas : le référentiel nomme `geo.repere.coord`
+    // et `geo.repere.relatifs`, et la fiche sert les deux selon son réglage.
+    skills: ['geo.repere.*'],
     answerKinds: ['grid'],
     params: [
         {

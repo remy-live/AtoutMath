@@ -24,7 +24,9 @@ const nomDe = (id) => (INGREDIENTS.find(i => i.id === id) || {}).nom || id;
 export const pizzaFicheGenerator = {
     id: 'frac.pizza-fiche',
     label: 'Fractions d\'une pizza à colorier',
-    skills: ['num.frac.parts'],
+    // Colorier les parts d'une pizza, c'est le SENS de la fraction — et,
+    // dès qu'on compare deux garnitures, le dénominateur commun.
+    skills: ['num.frac.sens', 'num.frac.denominateur-commun'],
     answerKinds: ['grid'],
     params: [
         {

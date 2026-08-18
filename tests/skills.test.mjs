@@ -87,3 +87,31 @@ test('la famille des problèmes est complète et bien rangée', () => {
             `${id} : la leçon doit dire la MÉTHODE, pas seulement nommer la notion`);
     });
 });
+
+// --- Ce qu'un générateur promet doit exister ---------------------------------
+
+test('aucun générateur ne déclare une compétence absente du référentiel', async () => {
+    // Une compétence mal nommée ne casse RIEN de visible : `matchSkills` rend
+    // une liste vide, l'exercice se joue normalement, et il disparaît
+    // seulement du bilan, de la remédiation et de « exercices pour cette
+    // compétence ». C'est exactement le genre de panne qu'aucun écran ne
+    // signale — trois générateurs avaient ainsi glissé (`num.vocabulaire`,
+    // `geo.notation`, `geo.redaction.para-perp` : aucun de ces trois noms
+    // n'a jamais existé).
+    await import('../js/core/activities/index.js');
+    const { allGenerators } = await import('../js/core/registry.js');
+    const orphelins = allGenerators()
+        .filter(g => (g.skills || []).length && !g.resolvedSkills.length)
+        .map(g => `${g.id} → ${g.skills.join(', ')}`);
+    assert.deepEqual(orphelins, []);
+});
+
+test('chaque exercice généré est rattaché à au moins une compétence', async () => {
+    // Les jeux autonomes en sont dispensés : ce sont des récompenses, ils
+    // n'ont pas à figurer au bilan. Un exercice construit sur un générateur,
+    // lui, n'a aucune raison de manquer.
+    await import('../js/core/activities/index.js');
+    const { exercices, skillsOf } = await import('../js/data/catalog.js');
+    const sans = exercices.filter(e => e.generatorId && !skillsOf(e).length).map(e => e.id);
+    assert.deepEqual(sans, []);
+});

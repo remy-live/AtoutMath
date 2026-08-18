@@ -88,7 +88,9 @@ export const poserFicheGenerator = {
     id: 'calc.poser-fiche',
     label: 'Poser une opération (fiche)',
     answerKinds: ['numeric'],
-    skills: ['calc.pose'],
+    // `calc.pose` n'existe pas au référentiel. Poser une opération, c'est la
+    // compétence de l'opération posée : les quatre, selon le réglage.
+    skills: ['num.add.entiers', 'num.sub.entiers', 'num.mult.sens', 'num.div.quotient'],
     params: [
         {
             id: 'operation', type: 'select', label: 'Opération', default: '+',
