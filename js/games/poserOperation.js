@@ -45,14 +45,6 @@ class PoserOperation extends BaseGame {
         this.avecVirgule = this.params.decimales === true;
         this.nbTermes = this.operation === '+' ? Math.max(2, Math.min(3, parseInt(this.params.termes) || 2)) : 2;
         this.chiffres = Math.max(2, Math.min(4, parseInt(this.params.chiffres) || 3));
-        // LES RETENUES SONT UNE AIDE, PAS UN PÉAGE. Rémy : « pas nécessaire
-        // pour l'élève de mettre les retenues ». Beaucoup les tiennent de tête
-        // et n'écrivent que le résultat — leur refuser la colonne suivante
-        // tant que le petit rond n'est pas rempli, c'est corriger une méthode
-        // au lieu de corriger un calcul. Les ronds restent là, cliquables pour
-        // qui en a besoin ; le professeur peut les exiger, mais il doit le
-        // demander.
-        this.retenuesExigees = this.params.retenues === 'exigees';
         this.reussies = 0;
     }
 
@@ -522,11 +514,8 @@ class PoserOperation extends BaseGame {
         this.rangCourant = suivant;
         if (suivant === null) return this.finir();
         const retenue = !aPoser ? ''
-            : (this.retenuesExigees
-                ? `Bien. Il y a une retenue : clique le petit rond de la colonne des `
-                    + `${this.nomRang(suivant)} jusqu'à y lire ${aPoser}. `
-                : `Bien, et il y a une retenue de ${aPoser} — écris-la dans le petit rond, `
-                    + 'ou garde-la en tête. ');
+            : `Bien, et il y a une retenue de ${aPoser} — écris-la dans le petit rond, `
+                + 'ou garde-la en tête. ';
         // Le message est posé APRÈS le dessin : c'est le dessin qui écrit la
         // consigne de colonne par défaut, et il ne doit pas recouvrir celle-ci.
         this.note('');
@@ -545,19 +534,10 @@ class PoserOperation extends BaseGame {
     }
 
     finir() {
-        // Les retenues écrites ne sont contrôlées QUE si le professeur les
-        // exige. Le résultat juste suffit : c'est lui qu'on demande.
-        const manquantes = !this.retenuesExigees ? [] : this.tableau.colonnes.filter(c => {
-            const a = attenduEn(this.tableau, c.rang, 'retenue');
-            return a && this.retenues[c.rang] !== a;
-        });
-        if (manquantes.length) {
-            this.rangCourant = null;
-            this.note(`Le résultat est bon, mais ${manquantes.length} retenue(s) ne sont pas `
-                + 'écrites. En contrôle, elles se voient — écris-les.', 'ko');
-            this.dessiner();
-            return;
-        }
+        // LES RETENUES NE SONT PAS CONTRÔLÉES. Rémy : « vraiment retenue
+        // optionnelle ». Le résultat juste suffit — c'est lui qu'on demande, et
+        // celui qui tient sa retenue de tête a fait le même travail que celui
+        // qui l'écrit. Les petits ronds restent là pour qui en a besoin.
         this.reussies++;
         this.note(`✅ ${this.enonce()} = ${String(this.tableau.resultat).replace('.', ',')}`, 'ok');
         this.onCorrectAnswer(null, COMPETENCE, {
@@ -579,11 +559,7 @@ class PoserOperation extends BaseGame {
             return this.note('Les unités sous les unités : c\'est la virgule qui aligne, '
                 + 'pas le bord droit. 324,5 et 12,4 ont leur 4 et leur 2 dans la même colonne.');
         }
-        if (this.rangCourant === null) {
-            return this.note(this.retenuesExigees
-                ? 'Écris les retenues manquantes dans les petits ronds.'
-                : 'L\'opération est finie : la suivante arrive.');
-        }
+        if (this.rangCourant === null) return this.note('L\'opération est finie : la suivante arrive.');
         const c = this.tableau.colonnes.find(x => x.rang === this.rangCourant);
         if (this.operation === '+') {
             return this.note(`On additionne ${c.chiffres.filter(x => x !== null).join(' + ')}`

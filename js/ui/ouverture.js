@@ -46,6 +46,34 @@ export function prendreOuverture() {
 /** Sans l'effacer : pour décider AVANT de dessiner. */
 export function ouvertureEnAttente() { return aFeter; }
 
+// --- LES JEUX BONUS ---------------------------------------------------------
+//
+// Un jeu de récompense ne s'ouvre pas parce qu'on est arrivé à sa pastille : il
+// s'ouvre parce que le TRAVAIL qui le précède est fait, et fait assez bien.
+// Il peut donc s'ouvrir loin devant, et plusieurs d'un coup. On ne peut pas le
+// deviner en regardant l'étape qu'on vient de finir — il faut comparer avec ce
+// qui était ouvert la dernière fois que l'élève a regardé la carte.
+//
+// « La dernière fois qu'il a REGARDÉ » : on ne retient l'état qu'aux rendus
+// visibles. La vue se redessine dix fois derrière l'écran de jeu ; si on
+// mémorisait à chacun, l'ouverture serait déjà « connue » quand l'élève arrive.
+
+let ouvertsConnus = null;   // null = on n'a encore rien vu : on n'a rien à fêter
+
+/**
+ * Les jeux qui viennent de s'ouvrir, et l'on retient le nouvel état.
+ * @param {Set<string>} ouvertsMaintenant
+ * @returns {string[]} les stepId à fêter
+ */
+export function recompensesNouvelles(ouvertsMaintenant) {
+    const connus = ouvertsConnus;
+    ouvertsConnus = new Set(ouvertsMaintenant);
+    // Premier coup d'œil de la séance : tout ce qui est ouvert l'était déjà
+    // avant, on ne fête pas un état de départ.
+    if (!connus) return [];
+    return [...ouvertsMaintenant].filter(id => !connus.has(id));
+}
+
 /** L'élève a demandé qu'on bouge moins. On l'écoute. */
 export function animationsCoupees() {
     return typeof matchMedia === 'function'
@@ -89,6 +117,63 @@ export function etoiles(cible, { nombre = 18, duree = 1100 } = {}) {
 }
 
 /**
+ * UN JEU BONUS S'OUVRE — et ça, ça se fête pour de bon.
+ *
+ * Rémy : « fais le plus sympa pour les jeux bonus ». Un jeu gagné n'est pas
+ * une étape de plus sur la carte : c'est la récompense du travail qui la
+ * précède, et le seul moment de la séance où l'élève reçoit quelque chose.
+ * Il a donc droit à sa propre séquence, plus longue et plus voyante que
+ * l'ouverture d'une étape ordinaire :
+ *
+ *   le paquet TREMBLE (il y a quelque chose dedans),
+ *   il S'OUVRE en grand avec une couronne de lumière,
+ *   quarante étoiles jaillissent en deux gerbes,
+ *   et un ruban dit ce qui vient d'être gagné.
+ */
+export function ouvrirLeCadeau(noeud) {
+    if (!noeud || !noeud.isConnected) return;
+    const cible = noeud.querySelector('.world-node-btn') || noeud;
+    if (animationsCoupees()) { noeud.classList.add('world-node--cadeau-ouvert'); return; }
+
+    noeud.classList.add('world-node--tremble');
+    setTimeout(() => {
+        if (!noeud.isConnected) return;
+        noeud.classList.remove('world-node--tremble');
+        noeud.classList.add('world-node--cadeau-ouvert');
+        // Deux gerbes décalées : la seconde repart quand la première retombe,
+        // et l'on voit une VRAIE explosion plutôt qu'un anneau régulier.
+        etoiles(cible, { nombre: 24, duree: 1400 });
+        setTimeout(() => etoiles(cible, { nombre: 16, duree: 1100 }), 180);
+        ruban(cible, '🎁 Un jeu s\'ouvre !');
+    }, 620);
+}
+
+/** Le ruban qui monte au-dessus d'un jeu gagné, et s'efface. */
+function ruban(cible, texte) {
+    if (!cible || !cible.isConnected) return;
+    const r = cible.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'ruban-gagne';
+    el.textContent = texte;
+    el.style.top = `${r.top}px`;
+    document.body.appendChild(el);
+    // ON LE RAMÈNE DANS L'ÉCRAN. Centré sur la pastille, il en dépassait dès
+    // que le jeu se trouvait au bord de la carte — et c'est fréquent : les
+    // pastilles vont par rangées de trois, celle de droite touche le bord.
+    // On le mesure une fois posé, puis on le recale.
+    // `offsetWidth` et non le rectangle : celui-ci est mesuré À TRAVERS
+    // l'animation en cours, qui démarre à 60 % de la taille — on aurait recalé
+    // le ruban sur une largeur qu'il n'a jamais. Et l'on prend 55 % de la
+    // demi-largeur pour couvrir le rebond à 106 % au moment où il apparaît.
+    const demi = el.offsetWidth * 0.55;
+    const marge = 8;
+    const centre = Math.max(demi + marge,
+        Math.min(window.innerWidth - demi - marge, r.left + r.width / 2));
+    el.style.left = `${centre}px`;
+    setTimeout(() => el.remove(), 2400);
+}
+
+/**
  * LE PASSAGE S'OUVRE.
  *
  * @param {Element} hote     la carte rendue
@@ -97,26 +182,41 @@ export function etoiles(cible, { nombre = 18, duree = 1100 } = {}) {
  */
 export function ouvrirLaRoute(hote, indexFait, retracer) {
     if (!hote || !hote.isConnected) return;
+    const cadeaux = () => [...hote.querySelectorAll('.world-node--gagne')];
+    // PAS DE ROUTE À TRACER, MAIS DES CADEAUX QUAND MÊME. Un jeu bonus s'ouvre
+    // parce que le travail qui le précède est fait et bien fait : cela peut
+    // arriver sans qu'aucune étape voisine ne vienne d'être bouclée — au retour
+    // d'un bilan, par exemple. On va donc droit aux paquets.
+    if (indexFait === undefined || indexFait === null) {
+        cadeaux().forEach((n, k) => setTimeout(() => ouvrirLeCadeau(n), 250 + k * 700));
+        return;
+    }
     // ON ATTEND QUE LA CARTE SOIT VRAIMENT À L'ÉCRAN. Elle est construite dès
     // que la progression change, c'est-à-dire souvent pendant que l'onglet
     // « Parcours » est encore caché : le sentier n'a alors ni largeur ni
     // longueur, et la fête se jouait dans le vide. On laisse une seconde au
     // navigateur pour poser la mise en page, puis on abandonne — mieux vaut
     // pas d'animation qu'une carte figée dans son état d'avant.
-    const pret = hote.getBoundingClientRect().width > 0
-        && (hote.querySelector('.path-trail-neuf') || {}).getAttribute
-        && hote.querySelector('.path-trail-neuf').getAttribute('d');
+    const trait = hote.querySelector('.path-trail-neuf');
+    const pret = hote.getBoundingClientRect().width > 0 && trait && trait.getAttribute('d');
     if (!pret) {
         const essais = (ouvrirLaRoute.__essais = (ouvrirLaRoute.__essais || 0) + 1);
         if (essais < 60) { requestAnimationFrame(() => ouvrirLaRoute(hote, indexFait, retracer)); return; }
         ouvrirLaRoute.__essais = 0;
         if (retracer) retracer();
+        // La route n'a pas pu se tracer, mais les cadeaux, eux, doivent
+        // s'ouvrir : c'est la partie que l'élève attend.
+        cadeaux().forEach((n, k) => setTimeout(() => ouvrirLeCadeau(n), 250 + k * 700));
         return;
     }
     ouvrirLaRoute.__essais = 0;
     const noeuds = [...hote.querySelectorAll('.world-node')];
     const arrivee = noeuds[indexFait + 1] || noeuds[indexFait];
-    if (animationsCoupees()) { if (retracer) retracer(); return; }
+    if (animationsCoupees()) {
+        if (retracer) retracer();
+        cadeaux().forEach(n => ouvrirLeCadeau(n));
+        return;
+    }
 
     // La pastille qu'on vient de terminer se marque d'abord : c'est d'elle que
     // part la route.
@@ -134,6 +234,9 @@ export function ouvrirLaRoute(hote, indexFait, retracer) {
             arrivee.classList.add('world-node--ouvre');
             etoiles(arrivee.querySelector('.world-node-btn') || arrivee, { nombre: 22, duree: 1300 });
         }
+        // ET LES JEUX QUI S'OUVRENT, un peu après : la route d'abord, le
+        // cadeau ensuite. Tout ensemble, on ne verrait plus rien.
+        cadeaux().forEach((n, k) => setTimeout(() => ouvrirLeCadeau(n), 520 + k * 700));
     };
 
     if (!neuf || !neuf.getAttribute('d')) {

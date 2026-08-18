@@ -262,12 +262,6 @@ class PoserMultiplication extends PoserLongue {
         // faut apprendre. On écrit donc la ligne entière, on la vérifie au
         // bout, et l'on montre exactement quelles colonnes sont fausses.
         this.verifAuFil = this.params.verification === 'immediate';
-        // LES RETENUES SONT UNE AIDE, PAS UN PÉAGE. Rémy : « pas nécessaire
-        // pour l'élève de mettre les retenues ». Le petit rond reste offert à
-        // qui en a besoin ; refuser la colonne suivante à celui qui la tient
-        // de tête, c'est corriger une méthode au lieu d'un calcul. Le
-        // professeur peut les exiger, mais il doit le demander.
-        this.retenuesExigees = this.params.retenues === 'exigees';
         this.fautes = new Set();
     }
 
@@ -551,15 +545,9 @@ class PoserMultiplication extends PoserLongue {
             this.direLigne();
             return;
         }
-        // LA RETENUE D'ABORD — seulement si le professeur l'exige. L'oublier
-        // est l'erreur du chapitre, mais beaucoup d'élèves la tiennent de tête
-        // et n'écrivent que le chiffre : c'est leur calcul qu'on corrige, pas
-        // leur brouillon.
-        if (this.retenuesExigees && c.retenueEntrante && this.retenues[this.ligne][p] !== c.retenueEntrante) {
-            this.note(`Écris d'abord la retenue dans le petit rond au-dessus de cette colonne — `
-                + 'clique dessus jusqu\'au bon chiffre.', 'ko');
-            return;
-        }
+        // LA RETENUE NE BARRE JAMAIS LA ROUTE. Rémy : « vraiment retenue
+        // optionnelle ». Beaucoup d'élèves la tiennent de tête et n'écrivent
+        // que le chiffre — c'est leur calcul qu'on corrige, pas leur brouillon.
         if (n !== c.chiffre) {
             this.faux();
             // ON DIT LA RÈGLE QUI A ÉTÉ RATÉE, pas le chiffre attendu.
@@ -582,18 +570,11 @@ class PoserMultiplication extends PoserLongue {
             expected: String(c.chiffre), given: String(c.chiffre), points: 2
         });
 
-        // La retenue s'ANNONCE ; elle ne barre la route que si le professeur
-        // a demandé qu'elle soit écrite.
+        // La retenue s'ANNONCE, elle ne se réclame pas.
         if (c.retenueSortante && this.retenues[this.ligne][c.position + 1] !== c.retenueSortante) {
-            const dit = `${c.chiffreA} × ${l.chiffre}`
-                + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total} : `;
-            if (this.retenuesExigees) {
-                this.note(`Bien. ${dit}écris la retenue ${c.retenueSortante} dans le petit rond, à gauche.`);
-                this.dessiner();
-                return;
-            }
-            this.prefixe = `Bien. ${dit}tu retiens ${c.retenueSortante} — dans le petit rond, `
-                + 'ou dans ta tête. ';
+            this.prefixe = `Bien. ${c.chiffreA} × ${l.chiffre}`
+                + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total} : `
+                + `tu retiens ${c.retenueSortante} — dans le petit rond, ou dans ta tête. `;
         }
         if (this.positionCourante() === null) return this.finirLigne();
         this.dessiner();
@@ -639,16 +620,8 @@ class PoserMultiplication extends PoserLongue {
                 expected: String(c.chiffre), given: String(c.chiffre), points: 2
             }));
         }
-        // Les retenues écrites ne sont contrôlées QUE si le professeur les
-        // exige : la ligne juste suffit, c'est elle qu'on demande.
-        const oubli = this.retenuesExigees && l.cases.find(c => c.retenueSortante
-            && this.retenues[this.ligne][c.position + 1] !== c.retenueSortante);
-        if (oubli) {
-            this.note('Le compte est bon, mais une retenue n\'est pas écrite. En contrôle, '
-                + 'elles se voient — pose-la.', 'ko');
-            this.dessiner();
-            return;
-        }
+        // LES RETENUES ÉCRITES NE SONT PAS CONTRÔLÉES : la ligne juste suffit,
+        // c'est elle qu'on demande.
         if (this.ligne + 1 < this.m.lignes.length) {
             this.ligne++;
             const suivante = this.m.lignes[this.ligne];
@@ -674,10 +647,6 @@ class PoserMultiplication extends PoserLongue {
         const i = this.rangSomme;
         const c = this.tableauSomme.colonnes[i];
         if (!c) return;
-        if (this.retenuesExigees && c.retenueEntrante && this.retSomme[i] !== c.retenueEntrante) {
-            this.note('Écris d\'abord la retenue dans le petit rond au-dessus de cette colonne.', 'ko');
-            return;
-        }
         if (n !== c.resultat) {
             this.faux();
             this.note('Non. Additionne les chiffres de cette colonne, retenue comprise.', 'ko');
@@ -695,11 +664,7 @@ class PoserMultiplication extends PoserLongue {
         const suite = this.tableauSomme.colonnes[this.rangSomme];
         this.dessiner();
         this.note(!suite.retenueEntrante ? ''
-            : (this.retenuesExigees
-                ? `Bien : ${c.total}. Écris la retenue ${suite.retenueEntrante} dans le rond, `
-                    + 'puis donne le chiffre suivant.'
-                : `Bien : ${c.total}. Tu retiens ${suite.retenueEntrante} — dans le rond, `
-                    + 'ou dans ta tête.'));
+            : `Bien : ${c.total}. Tu retiens ${suite.retenueEntrante} — dans le rond, ou dans ta tête.`);
     }
 
     versVirgule() {

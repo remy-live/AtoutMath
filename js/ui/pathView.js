@@ -22,7 +22,7 @@ import { buildRecommendedPreview, startRecommendedSession, startSkillSession } f
 import { formatDuration } from './reportUI.js';
 import { showModal } from './modal.js';
 import { etatRecompenses, direRecompense, estRecompense } from '../core/recompenses.js';
-import { prendreOuverture, ouvrirLaRoute } from './ouverture.js';
+import { prendreOuverture, ouvrirLaRoute, recompensesNouvelles } from './ouverture.js';
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
@@ -144,9 +144,18 @@ function assignedSection() {
     // l'ouverture à ce moment-là, la route se tracerait pour personne. L'élève
     // fermerait son bilan et retomberait sur une carte déjà à jour — c'est
     // exactement ce qu'on voulait éviter. La fête attend donc l'onglet.
-    const aFeter = visiblePourLElève() ? prendreOuverture() : null;
+    const regarde = visiblePourLElève();
+    const aFeter = regarde ? prendreOuverture() : null;
     const iFeter = aFeter ? steps.findIndex(s => s.stepId === aFeter) : -1;
     const ouverture = (iFeter >= 0 && done.has(aFeter)) ? iFeter : undefined;
+    // LES JEUX BONUS GAGNÉS DEPUIS LE DERNIER COUP D'ŒIL. Ils ne s'ouvrent pas
+    // parce qu'on est arrivé à leur pastille, mais parce que le travail qui
+    // les précède est fait et bien fait : ils peuvent donc s'ouvrir loin
+    // devant, et plusieurs d'un coup. On les repère en comparant avec ce qui
+    // était ouvert la dernière fois que l'élève a REGARDÉ la carte.
+    const gagnes = regarde
+        ? new Set(recompensesNouvelles(new Set(etatJeux.jeux.filter(j => j.ouvert).map(j => j.stepId))))
+        : new Set();
 
     const opts = {
         doneIds: done,
@@ -154,6 +163,7 @@ function assignedSection() {
         recompenses: parJeu,
         seuilRecompense: etatJeux.seuil,
         ouverture,
+        gagnes,
         onNodeClick: (i, statut) => {
             if (statut === 'locked' || statut === 'cadeau-ferme') return;
             launchAssigned(path, i);
@@ -165,7 +175,7 @@ function assignedSection() {
             : buildWorldMap(steps, opts);
     box.appendChild(rendu);
 
-    if (ouverture !== undefined) {
+    if (ouverture !== undefined || gagnes.size) {
         // Après la mise en page : le sentier n'a de longueur qu'une fois posé.
         requestAnimationFrame(() => requestAnimationFrame(() => {
             ouvrirLaRoute(rendu, ouverture, rendu.__sentierDefinitif);
@@ -274,6 +284,9 @@ function pictoDe(step) {
 function creerNoeud(step, i, statut, opts) {
     const node = document.createElement('div');
     node.className = `world-node world-node--${statut}`;
+    // Un jeu bonus qui vient d'être gagné : il se dessine encore FERMÉ, et
+    // c'est ui/ouverture.js qui le fera trembler puis s'ouvrir.
+    if (opts.gagnes && opts.gagnes.has(step.stepId)) node.classList.add('world-node--gagne');
 
     const socle = document.createElement('div');
     socle.className = 'world-node-socle';

@@ -264,7 +264,7 @@ export const calculExercises = [
         printParams: { retenue: true },
         consignePapier: 'Effectue ces opérations posées.',
         skills: ['num.add.entiers'],
-        params: { operation: '+', decimales: false, chiffres: 3, termes: 2, retenues: 'libre' },
+        params: { operation: '+', decimales: false, chiffres: 3, termes: 2 },
         paramSchema: [
             {
                 id: 'operation', type: 'select', label: 'Opération',
@@ -296,15 +296,6 @@ export const calculExercises = [
                     { value: 3, label: 'Trois' }
                 ],
                 default: 2
-            },
-            {
-                id: 'retenues', type: 'select', label: 'Les retenues écrites', default: 'libre',
-                affiner: true, papier: false,
-                aide: 'Les petits ronds sont toujours là. La question est de savoir si l\'élève DOIT s\'en servir : beaucoup tiennent la retenue de tête et n\'écrivent que le résultat, et leur refuser la colonne suivante corrige une méthode au lieu d\'un calcul. À exiger seulement quand c\'est la trace écrite qu\'on travaille.',
-                options: [
-                    { value: 'libre', label: 'Au choix de l\'élève' },
-                    { value: 'exigees', label: 'Exigées — la colonne suivante attend' }
-                ]
             }
         ],
         motsClefs: ['addition posée', 'soustraction posée', 'retenue', 'colonnes', 'aligner'],
@@ -327,7 +318,7 @@ export const calculExercises = [
         printParams: { operation: '×', chiffres: 3, nombres: 2, retenue: true },
         consignePapier: 'Effectue ces multiplications posées.',
         skills: ['num.mult.sens'],
-        params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'fin', retenues: 'libre' },
+        params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'fin' },
         paramSchema: [
             {
                 id: 'chiffres', type: 'select', label: 'Taille du premier nombre',
@@ -359,15 +350,6 @@ export const calculExercises = [
                 options: [
                     { value: 'fin', label: 'À la fin de chaque ligne' },
                     { value: 'immediate', label: 'À chaque chiffre tapé' }
-                ]
-            },
-            {
-                id: 'retenues', type: 'select', label: 'Les retenues écrites', default: 'libre',
-                affiner: true, papier: false,
-                aide: 'Les petits ronds sont toujours là. La question est de savoir si l\'élève DOIT s\'en servir : beaucoup tiennent la retenue de tête et n\'écrivent que le chiffre, et leur refuser la colonne suivante corrige une méthode au lieu d\'un calcul. À exiger seulement quand c\'est la trace écrite qu\'on travaille.',
-                options: [
-                    { value: 'libre', label: 'Au choix de l\'élève' },
-                    { value: 'exigees', label: 'Exigées — la suite attend' }
                 ]
             }
         ],
