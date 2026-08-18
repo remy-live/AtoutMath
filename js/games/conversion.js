@@ -112,6 +112,23 @@ class Conversion extends BaseGame {
                 .cv-etiquette--prise { outline: 3px solid var(--primary); }
                 .cv-etiquette[hidden] { display: none; }
 
+                /* ÉCRAN COURT : ON RESSERRE CE QUI ENTOURE, PAS CE QU'ON
+                   MANIPULE. Rémy : « on n'a pas accès aux unités ». Les
+                   étiquettes à glisser sont en bas ; au-dessus, le bandeau,
+                   les deux boutons, la consigne et l'énoncé occupaient à eux
+                   seuls deux cent cinquante pixels, et les unités tombaient
+                   sous la ligne de flottaison — c'est-à-dire hors de portée
+                   pour qui ne pense pas à faire défiler. Tout ce préambule
+                   maigrit ; les étiquettes, elles, gardent leur taille : ce
+                   sont des cibles qu'on attrape au doigt. */
+                @media (max-height: 640px) {
+                    .cv-wrap { gap: 6px; padding: 6px; }
+                    .cv-tete { gap: 8px; font-size: .8rem; }
+                    .cv-btn { padding: 4px 9px; font-size: 12px; }
+                    .cv-etape { padding: 3px 11px; font-size: clamp(12px, 3cqw, 15px); }
+                    .cv-enonce { font-size: clamp(17px, 4.6cqw, 24px); }
+                }
+
                 .cv-nombre {
                     display: inline-flex; gap: 2px; padding: 7px 12px; border-radius: 10px;
                     cursor: grab; touch-action: none; font-weight: 900;

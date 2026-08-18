@@ -37,7 +37,11 @@ class Galactic extends BaseGame {
 
         this.container.innerHTML = `
             <style>
-                .gal-wrapper { position: relative; width: 100%; height: 100%; background: #02020c; overflow: hidden; font-family: 'Outfit', monospace; user-select: none; -webkit-user-select: none; }
+                /* LE CHAMP DE TIR A UN PLANCHER. Sous quatre cents pixels, le
+                   rapporteur — tout l'intérêt du jeu — n'a plus la place de se
+                   dessiner au-dessus du pavé, et il ne reste qu'un vaisseau
+                   perdu dans le noir. Mieux vaut faire défiler l'écran. */
+                .gal-wrapper { position: relative; width: 100%; height: 100%; min-height: 400px; background: #02020c; overflow: hidden; font-family: 'Outfit', monospace; user-select: none; -webkit-user-select: none; }
                 .gal-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
                 .gal-top { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 22px; box-sizing: border-box; pointer-events: none; z-index: 20; }
                 .gal-box { text-align: center; }
@@ -73,6 +77,22 @@ class Galactic extends BaseGame {
                     .gal-key { width: 34px; height: 34px; font-size: 1rem; box-shadow: 0 2px 0 #000; }
                     .gal-actions { gap: 4px; }
                     .gal-btn { height: 34px; width: 54px; font-size: .82rem; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+                }
+                /* TÉLÉPHONE ÉTROIT : LE PAVÉ SE MET À L'ÉCHELLE.
+                   À largeur fixe, l'afficheur, les dix touches et les deux
+                   boutons réclament 260 px : sous 330 px de large, « CLR » et
+                   « FEU » sortaient de l'écran par la droite, et l'afficheur
+                   se réduisait à un trait de quatorze pixels. Les trois blocs
+                   se partagent maintenant la place au prorata, et les touches
+                   sont dimensionnées en pourcentage. */
+                @media (max-width: 400px) {
+                    .gal-deck { gap: 4px; padding: 6px 3px calc(6px + env(safe-area-inset-bottom, 0px)); }
+                    .gal-lcd { flex: 0 0 auto; width: 15%; min-width: 38px; font-size: 1rem; }
+                    .gal-keys { flex: 1 1 auto; min-width: 0; }
+                    .gal-row { justify-content: center; }
+                    .gal-key { flex: 1 1 0; width: auto; min-width: 0; max-width: 40px; }
+                    .gal-actions { flex: 0 0 auto; }
+                    .gal-btn { width: 46px; font-size: .74rem; }
                 }
             </style>
             <div class="gal-wrapper">
@@ -114,6 +134,17 @@ class Galactic extends BaseGame {
         this.dimensionner();
         this.onResize = () => this.dimensionner();
         window.addEventListener('resize', this.onResize);
+        // ON SURVEILLE LE CONTENEUR, PAS LA FENÊTRE. Le canevas est un bitmap :
+        // sa taille en pixels est fixée une fois pour toutes par
+        // `dimensionner()`, et si le cadre change sans que la FENÊTRE change —
+        // ce qui arrive à chaque fois qu'une barre du navigateur se replie sur
+        // iPhone, ou qu'un panneau s'ouvre à côté — le rapporteur reste calé
+        // sur d'anciennes dimensions et se dessine hors du champ. Rémy :
+        // « complètement cassé sur iPhone ».
+        if (typeof ResizeObserver === 'function') {
+            this.observateur = new ResizeObserver(() => this.dimensionner());
+            this.observateur.observe(this.container);
+        }
 
         this.stars = Array.from({ length: 120 }, () => ({
             x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height,
@@ -584,6 +615,7 @@ class Galactic extends BaseGame {
 
     destroy() {
         if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
+        if (this.observateur) { this.observateur.disconnect(); this.observateur = null; }
         window.removeEventListener('resize', this.onResize);
         super.destroy();
     }

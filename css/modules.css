@@ -234,7 +234,15 @@
 /* La hauteur rendue d'une figure dépend de la forme du rectangle tiré : un
    carré occupe bien plus de place qu'un rectangle allongé. Sans plafond en
    `vh`, certaines questions débordaient et d'autres non — un défilement qui
-   apparaît une fois sur trois est pire qu'un défilement permanent. */
+   apparaît une fois sur trois est pire qu'un défilement permanent.
+
+   MAIS LE PLAFOND A UN PLANCHER. Les paliers de resserrement descendaient
+   jusqu'à 19 % de la hauteur du plateau : sur un téléphone dont le texte a été
+   agrandi, cela faisait quatre-vingts pixels, et comme un SVG garde ses
+   proportions, la LARGEUR suivait — un rectangle de 5 cm sur 3 se retrouvait
+   grand comme un timbre au milieu de la page. Rémy : « les figures pourraient
+   être un peu plus grandes ». Elles ne descendent plus sous 130 px, quitte à
+   faire défiler la zone de jeu, qui sait le faire. */
 .numpad-context .fig-svg { max-height: clamp(96px, 34cqh, 250px); }
 /* Largeur explicite obligatoire : le panneau est centré dans sa cellule de
    grille, donc dimensionné par son contenu. Les `width: 100%` de l'écran et
@@ -415,7 +423,7 @@
     .canvas-area:has(.numpad) .numpad-context .figure-wrap { margin-bottom: 2px; }
     /* 22vh et non 15 : ce palier attrape aussi les portables 1280×800, où
        rien n'oblige à écraser la figure — les cotes y devenaient illisibles. */
-    .numpad-context .fig-svg { max-height: 30cqh; }
+    .numpad-context .fig-svg { max-height: max(150px, 30cqh); }
 }
 
 /* Plateau très court : dernier cran de resserrement. Le seuil est à 560 px et
@@ -425,7 +433,7 @@
     .numpad-layout { padding: 6px 12px; }
     .canvas-area:has(.numpad) .hint-bar { margin-top: 4px; }
     .canvas-area:has(.numpad) .game-question { margin-bottom: 8px; }
-    .numpad-context .fig-svg { max-height: 26cqh; }
+    .numpad-context .fig-svg { max-height: max(140px, 26cqh); }
 }
 
 /* Disposition en une seule colonne (complément de la règle deux colonnes) :
@@ -437,12 +445,12 @@
    placés avant la règle de base ne l'emporteraient pas, et les cotes
    restaient à leur taille par défaut. */
 @container plateau (max-width: 719px), plateau (max-aspect-ratio: 6/5) {
-    .numpad-context .fig-svg { max-height: 21cqh; }
+    .numpad-context .fig-svg { max-height: max(140px, 21cqh); }
     .numpad-context .fig-label { font-size: 28px; }
     .numpad-context .fig-dim { stroke-width: 2.2; }
 }
 @container plateau (max-width: 719px) and (max-height: 560px) {
-    .numpad-context .fig-svg { max-height: 19cqh; }
+    .numpad-context .fig-svg { max-height: max(130px, 19cqh); }
     .numpad-context .fig-label { font-size: 36px; }
     .numpad-context .fig-dim { stroke-width: 3; }
 }
