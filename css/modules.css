@@ -1353,6 +1353,66 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     stroke: color-mix(in srgb, #f59e0b 75%, #fff); stroke-width: 9;
 }
 
+/* ═══ LA ROUTE QUI S'OUVRE ═══════════════════════════════════════════════════
+   Rémy : « une fois l'exercice réussi, comme dans Mario, une route en
+   pointillé qui s'ouvre, et le monde s'ouvre dans un effet de particule
+   d'étoile ». Le morceau qui vient d'être gagné se TRACE sous les yeux de
+   l'élève, au lieu d'apparaître déjà fait. */
+.path-trail-neuf {
+    fill: none; stroke-linecap: round; stroke-width: 11;
+    stroke: color-mix(in srgb, #f59e0b 75%, #fff);
+    filter: drop-shadow(0 0 7px rgba(245, 158, 11, .75));
+}
+
+/* Le cadenas posé par-dessus la pastille qui va s'ouvrir : un décor, qui saute
+   quand la route arrive. */
+.world-node-sceau {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 1.5rem; pointer-events: none; z-index: 3;
+    background: color-mix(in srgb, var(--bg-app) 62%, transparent);
+    border-radius: 50%;
+    transition: opacity .3s ease, transform .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+.world-node--scelle .world-node-btn { filter: grayscale(.85) brightness(.9); }
+.world-node--scelle .world-node-ici { opacity: 0; }
+/* Le sceau saute, la pastille reprend ses couleurs et rebondit une fois. */
+.world-node--ouvre .world-node-sceau { opacity: 0; transform: scale(1.9) rotate(22deg); }
+.world-node--ouvre .world-node-btn { filter: none; animation: node-eclot .62s cubic-bezier(.34, 1.56, .64, 1); }
+.world-node--ouvre .world-node-ici { opacity: 1; transition: opacity .4s .25s ease; }
+@keyframes node-eclot {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.28); }
+    100% { transform: scale(1); }
+}
+/* Celle qu'on vient de terminer pulse une fois : c'est de là que part la
+   route, le regard doit y être avant qu'elle ne se trace. */
+.world-node--fete .world-node-btn { animation: node-fete .7s ease; }
+@keyframes node-fete {
+    35% { transform: scale(1.16); filter: drop-shadow(0 0 12px rgba(245, 158, 11, .9)); }
+}
+
+/* LA GERBE D'ÉTOILES. Posée en `fixed` sur le point visé, elle ne dérange
+   aucune mise en page et disparaît toute seule. */
+.etoiles-ciel { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 12000; }
+.etoile {
+    position: absolute; left: 0; top: 0;
+    width: var(--taille, 10px); height: var(--taille, 10px); margin: calc(var(--taille, 10px) / -2);
+    background: linear-gradient(135deg, #fde68a, #f59e0b);
+    /* Une vraie étoile à cinq branches, découpée au `clip-path` : un rond
+       doré ferait des bulles, pas des étincelles. */
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    animation: etoile-jaillit var(--duree, 1100ms) var(--retard, 0ms) cubic-bezier(.16, .84, .44, 1) both;
+}
+@keyframes etoile-jaillit {
+    0% { transform: translate(0, 0) scale(.2) rotate(0deg); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1) rotate(220deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .etoile, .world-node--ouvre .world-node-btn, .world-node--fete .world-node-btn { animation: none; }
+}
+
 .world-node {
     display: flex; flex-direction: column; align-items: center; gap: 5px;
     width: 124px; position: relative; text-align: center;
@@ -4329,14 +4389,15 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .tn-svg { display: block; width: 100%; height: auto; }
 
 /* Un morceau éteint : le pointillé de ce qu'on POURRAIT tracer. Allumé : le
-   trait plein du cahier, et sa flèche s'il file. */
+   trait plein du cahier — et rien d'autre. Pas de flèche au bout : en
+   géométrie une flèche désigne un VECTEUR, et une droite qui ne s'arrête pas
+   se dessine avec un trait qui sort du cadre, c'est tout. */
 .tn-fond {
     stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 5 6;
     opacity: .5;
 }
 .tn-plein { stroke: var(--text-main); stroke-width: 5; stroke-linecap: round; opacity: 0; transition: opacity .16s; }
-.tn-fleche { fill: var(--text-main); opacity: 0; transition: opacity .16s; }
-.tn-morceau--pris .tn-plein, .tn-morceau--pris .tn-fleche { opacity: 1; }
+.tn-morceau--pris .tn-plein { opacity: 1; }
 .tn-morceau--pris .tn-fond { opacity: 0; }
 .tn-cible { fill: transparent; cursor: pointer; }
 @media (hover: hover) and (pointer: fine) {

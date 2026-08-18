@@ -7,12 +7,13 @@
 // L'écran est une droite coupée en trois par les deux points nommés. Chaque
 // morceau s'allume ou s'éteint d'un doigt :
 //
-//        ←———— avant ————[A]———— entre ————[B]———— après ————→
+//        ————— avant ————[A]———— entre ————[B]———— après —————
 //
 // Ce qui est allumé se dessine plein et noir, ce qui est éteint reste en
 // pointillé pâle — on voit donc TOUJOURS les trois morceaux possibles, et le
-// trait qu'on est en train de construire par-dessus. Une flèche marque un
-// bout qui file, rien ne marque un bout qui s'arrête.
+// trait qu'on est en train de construire par-dessus. Un bout qui file sort du
+// cadre, un bout qui s'arrête s'arrête sur la croix : c'est tout, et il n'y a
+// pas de flèche — en géométrie, une flèche désigne un vecteur.
 //
 // Les règles (ce que vaut un tracé, ce qu'il représente) vivent dans
 // core/trace.js, sans DOM. Ici, l'écran.
@@ -24,7 +25,7 @@ import { MORCEAUX, traceVide, traceDe, ecritureDe, verifierTrace, roleDuMorceau 
 
 // La géométrie du dessin, en unités du viewBox.
 const W = 320, H = 120, Y = 66;
-const XA = 108, XB = 212, BORD = 14;
+const XA = 108, XB = 212;
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
@@ -40,18 +41,24 @@ export function mount(container, session, opts = {}) {
         render(item);
     }
 
-    /** Le dessin : trois morceaux, deux croix, et les flèches des bouts ouverts. */
+    /**
+     * Le dessin : trois morceaux et deux croix.
+     *
+     * PAS DE FLÈCHES AU BOUT. Rémy : « attention, pour les droites et les
+     * demi-droites, pas de flèches au bout ». C'est la convention française,
+     * et elle a une raison : une flèche, en géométrie, désigne un VECTEUR. Une
+     * droite qui ne s'arrête pas se dessine avec un trait qui sort du cadre,
+     * rien de plus — c'est le fait qu'il continue au-delà du bord qui dit
+     * qu'elle est infinie.
+     */
     function svg(gauche, droite) {
-        const seg = (nom, x1, x2, fleche) => `
+        const seg = (nom, x1, x2) => `
             <g class="tn-morceau" data-morceau="${nom}">
                 <line class="tn-fond" x1="${x1}" y1="${Y}" x2="${x2}" y2="${Y}"/>
                 <line class="tn-plein" x1="${x1}" y1="${Y}" x2="${x2}" y2="${Y}"/>
-                ${fleche ? `<polygon class="tn-fleche" points="${fleche}"/>` : ''}
                 <rect class="tn-cible" x="${Math.min(x1, x2)}" y="${Y - 26}"
                       width="${Math.abs(x2 - x1)}" height="52"/>
             </g>`;
-        const pointeG = `${BORD - 10},${Y} ${BORD + 2},${Y - 7} ${BORD + 2},${Y + 7}`;
-        const pointeD = `${W - BORD + 10},${Y} ${W - BORD - 2},${Y - 7} ${W - BORD - 2},${Y + 7}`;
         const croix = (x, nom) => `
             <g class="tn-pt">
                 <line x1="${x - 6}" y1="${Y - 6}" x2="${x + 6}" y2="${Y + 6}"/>
@@ -61,9 +68,9 @@ export function mount(container, session, opts = {}) {
         return `
         <svg class="tn-svg" viewBox="0 0 ${W} ${H}" role="img"
              aria-label="Le trait à construire, en trois morceaux">
-            ${seg('avant', BORD, XA, pointeG)}
-            ${seg('entre', XA, XB, null)}
-            ${seg('apres', XB, W - BORD, pointeD)}
+            ${seg('avant', 0, XA)}
+            ${seg('entre', XA, XB)}
+            ${seg('apres', XB, W)}
             ${croix(XA, gauche)}
             ${croix(XB, droite)}
         </svg>`;

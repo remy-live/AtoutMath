@@ -287,6 +287,13 @@ export const state = {
         const path = this.studentPath;
         if (!path || (path.completed || []).includes(stepId)) return;
         journal.emit(EventTypes.STEP_COMPLETED, { pathId: path.pathId, stepId, ...extra });
+        // ON ANNONCE L'ÉTAPE QU'ON VIENT D'OUVRIR : la carte s'en servira pour
+        // montrer la route se tracer au lieu de l'afficher déjà tracée (voir
+        // ui/ouverture.js). Un ÉVÉNEMENT et non un appel : le noyau ne connaît
+        // pas l'interface, et n'a pas à savoir qu'il existe une carte.
+        // L'ordre compte — l'annonce précède `studentPath_updated`, qui
+        // provoque le redessin.
+        document.dispatchEvent(new CustomEvent('path_step_opened', { detail: stepId }));
         invalidate();
         document.dispatchEvent(new CustomEvent('studentPath_updated'));
     },

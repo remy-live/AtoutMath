@@ -22,6 +22,7 @@ import { buildRecommendedPreview, startRecommendedSession, startSkillSession } f
 import { formatDuration } from './reportUI.js';
 import { showModal } from './modal.js';
 import { etatRecompenses, direRecompense, estRecompense } from '../core/recompenses.js';
+import { prendreOuverture, ouvrirLaRoute } from './ouverture.js';
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
@@ -67,6 +68,20 @@ function styleSwitcher() {
         box.appendChild(btn);
     });
     return box;
+}
+
+/**
+ * La vue « Parcours » est-elle SOUS LES YEUX de l'élève ?
+ *
+ * Pas seulement construite : visible. Le meneur marque l'étape réussie
+ * pendant que le jeu occupe encore tout l'écran, et la vue se redessine
+ * derrière lui — c'est le moment où il ne faut surtout pas jouer la fête.
+ */
+function visiblePourLElève() {
+    const vue = document.getElementById('view-path');
+    if (!vue || vue.style.display === 'none' || !vue.getBoundingClientRect().width) return false;
+    const jeu = document.getElementById('game-layer');
+    return !jeu || getComputedStyle(jeu).display === 'none';
 }
 
 export function renderStudentPathView() {
@@ -118,11 +133,27 @@ function assignedSection() {
         </div>`;
     box.querySelector('.path-section-head').appendChild(styleSwitcher());
 
+    // LA ROUTE QUI S'OUVRE. On revient d'une étape réussie : plutôt que de
+    // redessiner la carte déjà à jour — le pointillé devenu trait sans que
+    // personne l'ait vu se faire —, on la dessine dans l'état d'AVANT et l'on
+    // rejoue le passage. Voir ui/ouverture.js.
+    //
+    // ON NE CONSOMME LA FÊTE QUE SI QUELQU'UN LA REGARDE. Le meneur marque
+    // l'étape réussie pendant que le jeu est encore à l'écran : la vue
+    // « Parcours » se redessine alors CACHÉE derrière lui, et si elle prenait
+    // l'ouverture à ce moment-là, la route se tracerait pour personne. L'élève
+    // fermerait son bilan et retomberait sur une carte déjà à jour — c'est
+    // exactement ce qu'on voulait éviter. La fête attend donc l'onglet.
+    const aFeter = visiblePourLElève() ? prendreOuverture() : null;
+    const iFeter = aFeter ? steps.findIndex(s => s.stepId === aFeter) : -1;
+    const ouverture = (iFeter >= 0 && done.has(aFeter)) ? iFeter : undefined;
+
     const opts = {
         doneIds: done,
         currentIndex: firstPending,
         recompenses: parJeu,
         seuilRecompense: etatJeux.seuil,
+        ouverture,
         onNodeClick: (i, statut) => {
             if (statut === 'locked' || statut === 'cadeau-ferme') return;
             launchAssigned(path, i);
@@ -133,6 +164,13 @@ function assignedSection() {
         : style === 'chemin' ? buildDuoPath(steps, opts)
             : buildWorldMap(steps, opts);
     box.appendChild(rendu);
+
+    if (ouverture !== undefined) {
+        // Après la mise en page : le sentier n'a de longueur qu'une fois posé.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            ouvrirLaRoute(rendu, ouverture, rendu.__sentierDefinitif);
+        }));
+    }
 
     if (!allDone && firstPending !== -1) {
         const btn = document.createElement('button');
@@ -264,6 +302,21 @@ function creerNoeud(step, i, statut, opts) {
     socle.append(btn, rang);
     node.appendChild(socle);
 
+    // LE SCEAU QUI VA SAUTER. Quand on revient d'une étape réussie, la pastille
+    // suivante est DÉJÀ ouverte dans les données — c'est justement le problème :
+    // l'élève ne l'a jamais vue s'ouvrir. On repose donc un cadenas par-dessus,
+    // le temps que la route se trace, et il éclate à l'arrivée. Rien du statut
+    // réel n'est touché : c'est un décor, et il tombe tout seul.
+    if (opts.ouverture !== undefined && i === opts.ouverture + 1
+        && statut !== 'locked' && statut !== 'cadeau-ferme') {
+        node.classList.add('world-node--scelle');
+        const sceau = document.createElement('span');
+        sceau.className = 'world-node-sceau';
+        sceau.setAttribute('aria-hidden', 'true');
+        sceau.textContent = '🔒';
+        socle.appendChild(sceau);
+    }
+
     // Le fanion « c'est ici » : sur une carte, l'élève doit trouver SANS
     // réfléchir l'endroit où reprendre.
     if (statut === 'current') {
@@ -300,7 +353,14 @@ function creerNoeud(step, i, statut, opts) {
  * les pastilles APRÈS leur mise en page : courbes douces d'un centre à
  * l'autre, plein et doré sur la partie déjà parcourue, pointillé devant.
  */
-function tracerSentier(hote) {
+/**
+ * @param {Element} hote
+ * @param {number} [ouverture] l'étape qui vient d'être réussie : le sentier se
+ *   dessine alors dans son état d'AVANT, et le morceau qui s'ouvre est isolé
+ *   sur son propre tracé pour qu'on puisse le faire écrire sous les yeux de
+ *   l'élève. Voir ui/ouverture.js.
+ */
+function tracerSentier(hote, ouverture) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'path-trail');
     svg.setAttribute('aria-hidden', 'true');
@@ -308,8 +368,14 @@ function tracerSentier(hote) {
     fait.setAttribute('class', 'path-trail-fait');
     const reste = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     reste.setAttribute('class', 'path-trail-reste');
-    svg.append(reste, fait);
+    // Le morceau qui s'ouvre : vide la plupart du temps, et par-dessus les
+    // deux autres quand il sert.
+    const neuf = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    neuf.setAttribute('class', 'path-trail-neuf');
+    svg.append(reste, fait, neuf);
     hote.insertBefore(svg, hote.firstChild);
+    // Une fois la fête finie, le sentier reprend son état définitif.
+    hote.__sentierDefinitif = () => { ouverture = undefined; redessiner(); };
 
     const redessiner = () => {
         const cadre = hote.getBoundingClientRect();
@@ -347,6 +413,16 @@ function tracerSentier(hote) {
             }
             return d;
         };
+        // ÉTAT D'AVANT, le temps de la fête : le sentier s'arrête à l'étape
+        // qu'on vient de finir, et le morceau qui la relie à la suivante est
+        // porté à part — c'est celui qu'on va faire écrire.
+        if (ouverture !== undefined && ouverture >= 0 && ouverture < pts.length - 1) {
+            fait.setAttribute('d', trace(0, ouverture));
+            neuf.setAttribute('d', trace(ouverture, ouverture + 1));
+            reste.setAttribute('d', trace(ouverture + 1, pts.length - 1));
+            return;
+        }
+        neuf.removeAttribute('d');
         fait.setAttribute('d', trace(0, coupe));
         reste.setAttribute('d', trace(coupe, pts.length - 1));
     };
@@ -403,7 +479,7 @@ export function buildWorldMap(steps, opts = {}) {
 
         map.appendChild(rangee);
     }
-    tracerSentier(map);
+    tracerSentier(map, opts.ouverture);
     return map;
 }
 

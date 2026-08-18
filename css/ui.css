@@ -12,8 +12,15 @@ body.teacher-mode .student-only { display: none !important; }
     display: flex; align-items: center; gap: 3px;
     /* Elle ne peut pas être plus large que l'écran : à 436 px sur un
        téléphone de 390, elle débordait des deux côtés et il devenait
-       impossible de la pousser hors du chemin. */
-    max-width: calc(100vw - 12px); flex-wrap: wrap;
+       impossible de la pousser hors du chemin.
+       MAIS ELLE NE PASSE PAS À LA LIGNE. Rémy : « sur téléphone la barre de
+       debug n'est pas folle, on perd une ligne et les icônes se répartissent
+       mal ». En `wrap`, le numéro de version et la flèche de repli tombaient
+       seuls sur une deuxième ligne pendant que les icônes, elles, sortaient
+       quand même par la droite : deux fois plus haut pour rien. La poignée,
+       la version et la flèche restent donc en place, et ce sont les ICÔNES
+       qui défilent horizontalement dans ce qui reste. */
+    max-width: calc(100vw - 12px); flex-wrap: nowrap;
     padding: 3px; border-radius: 10px;
     background: rgba(15, 23, 42, .94); color: #f8fafc;
     border: 1px solid #334155; box-shadow: var(--shadow-lg);
@@ -26,8 +33,18 @@ body.teacher-mode .student-only { display: none !important; }
    ui/flottant.js, donc la même pour tout ce qui flotte. */
 .flot--glisse { transition: none !important; cursor: grabbing; user-select: none; }
 
-.dbg-tools { display: flex; align-items: center; gap: 4px; }
+/* Les icônes défilent au doigt quand elles ne tiennent pas toutes : c'est la
+   seule partie de la palette qui peut céder, et la barre de défilement reste
+   invisible — on la fait glisser, on ne la vise pas. */
+.dbg-tools {
+    display: flex; align-items: center; gap: 4px;
+    flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -ms-overflow-style: none;
+    scroll-snap-type: x proximity; overscroll-behavior-x: contain;
+}
+.dbg-tools::-webkit-scrollbar { display: none; }
 #debug-toolbar.dbg--folded .dbg-tools { display: none; }
+.dbg-version, .dbg-fold, .dbg-grip { flex-shrink: 0; }
 
 .dbg-grip {
     flex-shrink: 0; width: 16px; height: 24px;
