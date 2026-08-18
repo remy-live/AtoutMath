@@ -95,23 +95,57 @@ import {
 
 const choiceModule = () => import('./choice.js');
 
-// LE MOMENT OÙ L'ON SORT DU QCM. Réglage d'ACTIVITÉ, pas de générateur : il ne
-// dit rien du contenu des questions, seulement de la façon d'y répondre. Il
-// vaut donc pour tout ce qui se joue en propositions.
+// L'AIDE À LA RÉPONSE : un réglage devant, deux vis derrière.
 //
-// Rémy : « à la fin de l'exercice, demander la réponse », et « on pourrait
-// proposer à l'élève de donner sa proposition au bout de la moitié ».
-// Reconnaître 42 parmi trois nombres n'est pas produire 42 — on peut éliminer,
-// deviner, revenir. Mais commencer au clavier ferme la porte à qui hésite.
-const PARAM_SAISIE = [{
-    id: 'saisie', type: 'select', label: 'Passer à la saisie', default: 'jamais',
-    aide: 'Les premières questions se répondent en choisissant ; les suivantes '
-        + 'en tapant le nombre au pavé. Une question dont la réponse n\'est pas '
-        + 'un nombre reste en propositions.',
+// Réglage d'ACTIVITÉ, pas de générateur : il ne dit rien du CONTENU des
+// questions, seulement de la façon d'y répondre. Rémy : « à la fin de
+// l'exercice, demander la réponse », et « on pourrait proposer à l'élève de
+// donner sa proposition au bout de la moitié ». Reconnaître 42 parmi trois
+// nombres n'est pas produire 42 — on peut éliminer, deviner, revenir. Mais
+// commencer au clavier ferme la porte à qui hésite.
+//
+// C'est la progressivité qui ne dépend d'aucune notion — combien de
+// propositions, et quand on passe au clavier — donc elle vit sur l'ACTIVITÉ et
+// profite d'un coup à tous les exercices à propositions, au lieu d'être
+// réécrite dans chacun des soixante-six générateurs.
+//
+// Le professeur pressé n'a qu'une ligne à lire, et son défaut est déjà le bon.
+// Celui qui sait où il va ouvre « Affiner… » et pose lui-même les deux valeurs
+// que le préréglage posait pour lui. Voir `core/aide.js` pour les règles.
+const PARAM_AIDE = [{
+    id: 'aide', type: 'select', label: 'L\'aide', default: 'progressive',
+    aide: 'En progressif, l\'exercice monte tout seul : d\'abord deux propositions '
+        + '— la bonne réponse contre l\'erreur classique —, puis quatre, puis on tape '
+        + 'la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
+        + 'reste en propositions.',
     options: [
+        { value: 'progressive', label: 'Progressive (recommandé)' },
+        { value: 'propositions', label: 'Toujours 4 propositions' },
+        { value: 'deux', label: 'Toujours 2 propositions' },
+        { value: 'clavier', label: 'Directement au clavier' }
+    ]
+}, {
+    id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto',
+    affiner: true,
+    aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '
+        + '« Automatique » laisse le réglage « L\'aide » décider.',
+    options: [
+        { value: 'auto', label: 'Automatique' },
+        { value: 2, label: '2' }, { value: 3, label: '3' },
+        { value: 4, label: '4' }, { value: 6, label: '6' },
+        { value: 'toutes', label: 'Toutes celles de l\'exercice' }
+    ]
+}, {
+    id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto',
+    affiner: true,
+    aide: 'À partir de quand l\'élève tape sa réponse au lieu de la choisir.',
+    options: [
+        { value: 'auto', label: 'Automatique' },
         { value: 'jamais', label: 'Jamais — des propositions du début à la fin' },
+        { value: 'tiers', label: 'Après le premier tiers' },
         { value: 'moitie', label: 'À la moitié de l\'exercice' },
-        { value: 'quart', label: 'Sur le dernier quart' }
+        { value: 'quart', label: 'Sur le dernier quart' },
+        { value: 'toujours', label: 'Dès la première question' }
     ]
 }];
 
@@ -120,7 +154,7 @@ registerActivity({
     label: 'Bulles',
     accepts: ['choice', 'numeric'],
     supports: { timed: true, autonomous: false, demo: true },
-    params: PARAM_SAISIE,
+    params: PARAM_AIDE,
     load: choiceModule,
     mountOptions: { variant: 'bubbles' }
 });
@@ -130,7 +164,7 @@ registerActivity({
     label: 'Digicode',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
-    params: PARAM_SAISIE,
+    params: PARAM_AIDE,
     load: choiceModule,
     mountOptions: { variant: 'digicode' }
 });
@@ -140,6 +174,7 @@ registerActivity({
     label: 'Boutons',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: PARAM_AIDE,
     load: choiceModule,
     mountOptions: { variant: 'buttons' }
 });
@@ -149,6 +184,7 @@ registerActivity({
     label: 'Comparaison (< = >)',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: PARAM_AIDE,
     load: choiceModule,
     // Le signe se glisse dans l'emplacement vide de l'inégalité ; le clic
     // reste possible pour qui préfère (et pour le clavier).
@@ -192,6 +228,7 @@ registerActivity({
     label: 'Lecture de coordonnées',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: PARAM_AIDE,
     load: choiceModule,
     mountOptions: { variant: 'coords' }
 });

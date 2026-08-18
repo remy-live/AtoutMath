@@ -13,6 +13,7 @@
 import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { aideAuRang, reduireChoix } from '../aide.js';
 
 /**
  * Ce que le robot dit avant de choisir, et après avoir choisi.
@@ -93,14 +94,16 @@ export function mount(container, session, opts = {}) {
     // Le passage est SANS RETOUR : une fois au pavé, on y reste. Alterner
     // ferait croire à une sanction (« tu as bien répondu, donc c'est plus
     // dur »), là où c'est simplement la seconde moitié de l'exercice.
-    const SEUILS = { moitie: 0.5, quart: 0.75 };
+    //
+    // LE NOMBRE DE PROPOSITIONS EST LA MARCHE D'AVANT, et il vient du même
+    // endroit. Deux propositions, c'est la bonne réponse contre l'erreur du
+    // chapitre : la question la plus nette qu'on puisse poser, et celle par
+    // laquelle il faut commencer. `core/aide.js` décide des deux ensemble —
+    // ici on ne fait qu'appliquer.
     let releve = null;                     // l'activité qui a pris la main
+    let aide = { propositions: null, clavier: false };
     const totalPrevu = () => Math.max(2, session.nbItems
         || Number(session.params && session.params.nbQuestions) || 10);
-    const seuilSaisie = () => {
-        const s = SEUILS[(session.params || {}).saisie];
-        return s ? Math.ceil(totalPrevu() * s) : Infinity;
-    };
 
     function renderNext() {
         if (destroyed) return;
@@ -108,11 +111,12 @@ export function mount(container, session, opts = {}) {
         // `history` contient déjà la graine de la question en cours : c'est son
         // rang, à partir de 1.
         const rang = session.history.length;
+        aide = aideAuRang(session.params || {}, rang, totalPrevu());
         // Et seulement si la réponse est un NOMBRE : « quelle opération est
         // prioritaire » se répond « 5 × 7 », qui ne se tape pas sur un pavé.
         const chiffrable = item.answer !== null && item.answer !== ''
             && Number.isFinite(Number(item.answer));
-        if (!releve && rang > seuilSaisie() && chiffrable) return passerAuPave(item);
+        if (!releve && aide.clavier && chiffrable) return passerAuPave(item);
         render(item);
     }
 
@@ -128,7 +132,7 @@ export function mount(container, session, opts = {}) {
     }
 
     function render(item) {
-        const choices = item.choices || [];
+        const choices = reduireChoix(item.choices || [], aide.propositions);
         // BULLES OU CARTES ? Une bulle ronde est parfaite pour « 42 » et
         // ridicule pour « 17 billes rouges » : le texte se recroqueville ou
         // déborde. Dès qu'une seule proposition est longue, tout le groupe

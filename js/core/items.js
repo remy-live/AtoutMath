@@ -91,7 +91,16 @@ export function finalizeChoices(rng, choices, { count = 4, filler = null } = {})
         const key = String(c.value);
         if (seen.has(key)) continue;
         seen.add(key);
-        distractors.push({ label: c.value, ...c, correct: false });
+        // LE RANG SURVIT AU MÉLANGE.
+        //
+        // Les distracteurs sont écrits du plus instructif au plus anodin : le
+        // premier porte presque toujours le « pourquoi » qui nomme l'erreur du
+        // chapitre. Le mélange qui suit efface cet ordre — il le faut, sinon la
+        // bonne réponse serait toujours à la même place — et sans trace, réduire
+        // plus tard la liste à deux propositions reviendrait à en garder deux au
+        // hasard, donc à jeter une fois sur deux celui qui expliquait. On note
+        // donc le rang d'origine ; `reduireChoix` s'en sert.
+        distractors.push({ label: c.value, ...c, correct: false, rang: distractors.length });
     }
 
     let guard = 0;
@@ -101,7 +110,9 @@ export function finalizeChoices(rng, choices, { count = 4, filler = null } = {})
         const key = String(v);
         if (seen.has(key)) continue;
         seen.add(key);
-        distractors.push({ value: v, label: v, correct: false });
+        // Les bouche-trous passent APRÈS ceux que l'auteur a écrits : ils ne
+        // portent pas d'explication, ce sont eux qu'on retire en premier.
+        distractors.push({ value: v, label: v, correct: false, rang: distractors.length });
     }
 
     return rng.shuffle([{ label: correct.value, ...correct }, ...distractors.slice(0, count - 1)]);

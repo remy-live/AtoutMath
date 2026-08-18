@@ -544,8 +544,41 @@ export function showStudentConfigModal(exo, onStart) {
             ${surPapier === 'ecrit' ? '📝 Fiche d\'exercices à imprimer…' : '📄 Travailler sur papier…'}
         </button>` : '';
 
+    // SIMPLE DEVANT, AFFINABLE DERRIÈRE.
+    //
+    // Un panneau qui montre tout à tout le monde impose à chaque professeur le
+    // niveau de détail du plus exigeant. On met donc devant ce qui se décide
+    // en cinq secondes avant de distribuer les tablettes, et on replie le
+    // reste sous « Affiner… ».
+    //
+    // MAIS UN REPLI NE CACHE JAMAIS CE QUI A ÉTÉ MODIFIÉ. Un réglage qui
+    // s'écarte de son défaut et qu'on ne voit plus, c'est un exercice qui se
+    // comporte bizarrement sans qu'on sache pourquoi — la même famille de
+    // panne que les réglages sans effet corrigés cette semaine. Le repli
+    // s'ouvre donc DÉJÀ OUVERT dès qu'il contient une valeur modifiée, et le
+    // compte est écrit sur sa poignée.
+    const valeurDe = (p) => current[p.id] !== undefined ? current[p.id] : p.default;
+    const devant = schema.filter(p => !p.affiner);
+    const derriere = schema.filter(p => p.affiner);
+    const modifies = derriere.filter(p => current[p.id] !== undefined
+        && String(current[p.id]) !== String(p.default));
+    const replies = derriere.length ? `
+        <details class="cfg-affiner" ${modifies.length ? 'open' : ''}>
+            <summary class="cfg-affiner-tete">
+                <span>Affiner${modifies.length
+        ? ` · ${modifies.length} réglage${modifies.length > 1 ? 's' : ''} modifié${modifies.length > 1 ? 's' : ''}`
+        : '…'}</span>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="cfg-affiner-corps">
+                ${derriere.map(p => fieldHtml(p, valeurDe(p))).join('')}
+            </div>
+        </details>` : '';
+
     content.innerHTML = `
-        ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
+        ${devant.map(p => fieldHtml(p, valeurDe(p))).join('')}
         <div class="cfg-field">
             <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
             <div class="cfg-stepper" data-stepper>
@@ -555,6 +588,7 @@ export function showStudentConfigModal(exo, onStart) {
                 <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
             </div>
         </div>
+        ${replies}
         ${impression}`;
 
     wireTips(content);

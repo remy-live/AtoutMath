@@ -3472,6 +3472,26 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .cfg-liste[open] .cfg-liste-tete svg { transform: rotate(180deg); }
 .cfg-liste[open] .cfg-liste-tete { border-bottom: 1px solid var(--border); }
 
+/* LE REPLI « AFFINER ». Discret quand il est fermé — c'est une porte, pas un
+   réglage — et franchement séparé du reste par un filet, pour qu'on voie du
+   premier coup d'œil où s'arrête le panneau ordinaire. Quand il contient une
+   valeur modifiée, il s'ouvre tout seul et le dit sur sa poignée : un réglage
+   actif que l'on ne voit pas est pire que pas de réglage du tout. */
+.cfg-affiner {
+    margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px;
+}
+.cfg-affiner-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 2px; cursor: pointer; user-select: none; list-style: none;
+    font-size: .84rem; font-weight: 700; color: var(--text-muted);
+}
+.cfg-affiner-tete::-webkit-details-marker { display: none; }
+.cfg-affiner-tete:hover { color: var(--text-main); }
+.cfg-affiner-tete svg { flex-shrink: 0; transition: transform .18s; }
+.cfg-affiner[open] .cfg-affiner-tete { color: var(--text-main); }
+.cfg-affiner[open] .cfg-affiner-tete svg { transform: rotate(180deg); }
+.cfg-affiner-corps { padding-top: 2px; }
+
 .cfg-liste-actions { display: flex; gap: 6px; padding: 8px 10px 4px; }
 .cfg-liste-btn {
     flex: 1; padding: 5px 8px; border-radius: 8px; cursor: pointer;
