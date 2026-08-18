@@ -111,7 +111,56 @@ function questionEcrire(rng, t, a, b) {
     };
 }
 
-/** L'écriture est là : quel dessin lui correspond ? */
+/**
+ * L'ÉCRITURE EST LÀ : CONSTRUIS LE DESSIN.
+ *
+ * Rémy, devant les quatre vignettes : « un peu bête comme question ; il
+ * faudrait plutôt cliquer sur des bouts de droite pour faire apparaître le
+ * schéma ». Reconnaître le bon dessin parmi quatre, c'est comparer des images
+ * — on y arrive en repérant « celui qui dépasse des deux côtés » sans jamais
+ * dire pourquoi. Construire le trait, c'est décider pour chaque bout s'il
+ * s'arrête ou s'il continue : exactement ce que code la notation.
+ *
+ * Les deux lettres sont DESSINÉES DANS UN ORDRE TIRÉ AU SORT. Sur une
+ * demi-droite, c'est tout le piège : [BA) se trace avec A à gauche comme
+ * n'importe quel autre objet, et c'est le premier point NOMMÉ qui est
+ * l'origine, pas celui de gauche.
+ */
+function questionTracer(rng, t, a, b) {
+    const ecriture = t.ecrire(a, b);
+    const aAGauche = rng.int(0, 1) === 0;
+    const gauche = aAGauche ? a : b;
+    const droite = aAGauche ? b : a;
+    return {
+        skill: 'geo.notation.lire',
+        texte: `Trace ${ecriture}.`,
+        html: `<div class="game-question">Trace <b>${ecriture}</b><br>`
+            + `<span style="font-size:.72em;font-weight:600;opacity:.75">`
+            + `Touche les morceaux du trait pour les tracer ou les effacer.</span></div>`,
+        papier: `Dessine ${ecriture}.`,
+        bon: ecriture,
+        trace: { gauche, droite },
+        // LES QUATRE ÉCRITURES RESTENT DANS L'ITEM, mais l'écran ne les
+        // propose pas : on trace. Elles servent au carnet d'erreurs, qui doit
+        // pouvoir dire ce qu'on a répondu, et à la feuille imprimée. Un item
+        // « choice » sans réponse correcte parmi ses choix n'existe pas — et
+        // c'est une bonne règle, on ne la contourne pas pour un cas.
+        choix: [
+            { value: ecriture, label: ecriture, correct: true },
+            ...ecrituresVoisines(t, a, b).map(e => ({ value: e.valeur, label: e.valeur, why: e.why }))
+        ],
+        explication: `${ecriture} se lit « ${t.dire(a, b)} » : ${t.quoi}`,
+        indices: [
+            'Le crochet est un mur : le trait s\'arrête. La parenthèse le laisse continuer.',
+            t.id === 'demi-droite'
+                ? `Dans [${a}${b}), le premier point, ${a}, est l'ORIGINE : c'est là que le trait s'arrête, `
+                    + `et il file de l'autre côté, au-delà de ${b}.`
+                : 'Regarde les deux bouts l\'un après l\'autre.'
+        ]
+    };
+}
+
+/** L'écriture est là : quel dessin lui correspond ? (réservé au papier) */
 function questionDessin(rng, t, a, b) {
     const ecriture = t.ecrire(a, b);
     // Les propositions sont des DESSINS. C'est le seul sens qui oblige
@@ -184,7 +233,11 @@ function questionDire(rng, t, a, b) {
 }
 
 const SENS = ['ecrire', 'dessin', 'dire'];
-const FABRIQUES = { ecrire: questionEcrire, dessin: questionDessin, dire: questionDire };
+// `dessin` DÉSIGNE MAINTENANT LA CONSTRUCTION. Le réglage garde son nom : un
+// parcours déjà enregistré chez un professeur continue de fonctionner, et ce
+// qu'il désigne — « l'écriture est là, à toi le dessin » — n'a pas changé.
+// Seule la façon de répondre change : on trace au lieu de choisir.
+const FABRIQUES = { ecrire: questionEcrire, dessin: questionTracer, dire: questionDire };
 
 export const notationGenerator = {
     id: 'geo.notation',
@@ -215,12 +268,18 @@ export const notationGenerator = {
                 + 'jouer sur la reconnaissance d\'un mot.',
             options: [
                 { value: 'ecrire', label: 'Le dessin est là : comment l\'écrire ?' },
-                { value: 'dessin', label: 'L\'écriture est là : quel dessin ?' },
+                { value: 'dessin', label: 'L\'écriture est là : construis le dessin' },
                 { value: 'dire', label: 'L\'écriture est là : comment la lire ?' }
             ],
             default: SENS
         }
     ],
+
+    // TROIS OBJETS, TROIS SENS, DEUX PLACEMENTS DES LETTRES : la notation ne
+    // s'installe pas en dix questions. Rémy : « c'est typiquement le genre
+    // d'exercice où il faudrait au moins 15 questions ». Dix-huit, et chaque
+    // couple (objet, sens) est rencontré deux fois.
+    conseil: () => 18,
 
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -251,7 +310,7 @@ export const notationGenerator = {
             hints: q.indices,
             explanation: q.explication,
             difficulty: t.id === 'demi-droite' ? 3 : 2,
-            // `composable` DÉSIGNE LA DERNIÈRE MARCHE.
+            // `composable` DÉSIGNE COMMENT LA RÉPONSE SE PRODUIT.
             //
             // L'escalier de l'aide (core/aide.js) finit au clavier quand la
             // réponse est un nombre. Ici elle n'en est pas un : c'est une
@@ -261,11 +320,19 @@ export const notationGenerator = {
             // serait un piège pour le premier générateur qui répondrait
             // « [3;7] » en parlant d'intervalles.
             //
-            // Seul le sens « écrire » est composable : « quel dessin ? » se
-            // répond en montrant une figure, « comment ça se lit ? » en mots.
+            //   'notation'  les deux symboles se posent  (sens « écrire »)
+            //   'trace'     le trait se construit        (sens « dessin »)
+            //
+            // Le tracé, lui, ne se compose pas EN DERNIÈRE MARCHE : il EST
+            // l'exercice, dès la première question. Il n'y a pas de forme plus
+            // simple à lui donner — le QCM de dessins qu'il remplace ne
+            // demandait pas de comprendre, seulement de comparer quatre
+            // images.
             meta: {
                 objet: t.id, sens: quoi, a, b, theme: `${t.id}-${quoi}`,
-                composable: quoi === 'ecrire' ? 'notation' : undefined
+                ...(q.trace || {}),
+                composable: quoi === 'ecrire' ? 'notation' : (quoi === 'dessin' ? 'trace' : undefined),
+                saisieSeule: quoi === 'dessin'
             }
         });
     }

@@ -61,15 +61,18 @@ test('la bonne écriture correspond à l\'objet dessiné', () => {
     }
 });
 
-test('la bonne image montre bien l\'objet demandé', () => {
+test('le sens « dessin » demande de TRACER, plus de reconnaître', () => {
+    // Rémy : « un peu bête comme question ; il faudrait plutôt cliquer sur des
+    // bouts de droite pour faire apparaître le schéma ». Reconnaître le bon
+    // dessin parmi quatre se fait en comparant des images, sans jamais lire
+    // les crochets. On construit le trait à la place.
     for (let i = 0; i < 60; i++) {
         const it = tirer(i, { sens: ['dessin'] });
         const bon = it.choices.find(c => c.correct);
-        assert.equal(bon.value, `${it.meta.objet}-${it.meta.a}${it.meta.b}`);
-        // Le libellé est un dessin : il doit dire en mots ce qu'il montre,
-        // sans quoi « Montre-moi » afficherait du SVG à l'élève.
-        assert.ok(bon.texte && !/[<>]/.test(bon.texte), `texte de secours manquant : ${bon.texte}`);
-        assert.match(bon.label, /<svg/, 'la proposition doit être un dessin');
+        assert.equal(bon.value, String(it.answer));
+        assert.match(it.prompt.text, /^Trace /);
+        assert.equal(it.meta.composable, 'trace');
+        assert.ok(!/<svg/.test(bon.label), 'on ne choisit plus une vignette');
     }
 });
 
@@ -80,8 +83,7 @@ test('la demi-droite propose son inverse comme piège', () => {
     for (let i = 0; i < 90; i++) {
         const it = tirer(i, { objets: ['demi-droite'] });
         const { a, b } = it.meta;
-        const inverse = it.meta.sens === 'dessin' ? `demi-droite-${b}${a}`
-            : it.meta.sens === 'ecrire' ? `[${b}${a})` : `la demi-droite [${b}${a})`;
+        const inverse = it.meta.sens === 'dire' ? `la demi-droite [${b}${a})` : `[${b}${a})`;
         if (it.choices.some(c => String(c.value) === inverse)) vus++;
     }
     assert.ok(vus > 60, `l'inverse n'est proposé que ${vus} fois sur 90`);
@@ -122,17 +124,20 @@ test('chaque mauvaise réponse dit ce qu\'elle piège', () => {
     }
 });
 
-test('seul le sens « écrire » se compose symbole par symbole', () => {
-    // La dernière marche de l'escalier remplace les propositions par un
-    // composeur. Ça n'a de sens que pour « comment note-t-on cette figure ? » :
-    // « quel dessin ? » se répond en montrant, « comment ça se lit ? » en mots.
+test('« écrire » se compose, « tracer » se dessine, « lire » se choisit', () => {
+    // La dernière marche de l'escalier remplace les propositions par une
+    // saisie. « Comment note-t-on cette figure ? » se compose symbole par
+    // symbole ; « trace [AB) » se dessine ; « comment ça se lit ? » reste un
+    // choix de mots, il n'y a rien à produire.
     const vus = {};
     for (let i = 0; i < 12; i++) {
         const it = notationGenerator.generate({}, { rng: makeRng(300 + i), index: i, themesExclus: [] });
         vus[it.meta.sens] = it.meta.composable;
     }
     assert.equal(vus.ecrire, 'notation');
-    assert.equal(vus.dessin, undefined);
+    // Le tracé produit lui aussi sa réponse — mais dès la première question :
+    // il n'y a pas de forme « à choisir » plus simple à lui donner.
+    assert.equal(vus.dessin, 'trace');
     assert.equal(vus.dire, undefined);
 });
 

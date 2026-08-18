@@ -101,6 +101,7 @@ export function mount(container, session, opts = {}) {
     // laquelle il faut commencer. `core/aide.js` décide des deux ensemble —
     // ici on ne fait qu'appliquer.
     let releve = null;                     // l'activité qui a pris la main
+    let moduleEnCours = null;              // et quel module c'est
     let aide = { propositions: null, clavier: false };
     // Le mot qui accompagne un changement de forme. Vide la plupart du temps.
     let avisRetour = '';
@@ -120,6 +121,43 @@ export function mount(container, session, opts = {}) {
     const totalPrevu = () => Math.max(2, session.nbItems
         || Number(session.params && session.params.nbQuestions) || 10);
 
+    /**
+     * QUELLE ACTIVITÉ DOIT POSER CETTE QUESTION ?
+     *
+     * `null` : le QCM, ici même. Sinon le module qui prend la main.
+     *
+     * Deux raisons de céder la place. La première est l'ESCALIER : arrivé en
+     * haut, on ne choisit plus, on produit — un nombre se tape sur un pavé,
+     * une notation comme [AB) se compose symbole par symbole. C'est le
+     * générateur qui le dit (`meta.composable`), pas l'activité qui le devine :
+     * « quelle opération est prioritaire » se répond « 5 × 7 », qui ne se tape
+     * pas sur un pavé.
+     *
+     * La seconde est qu'une question peut n'avoir AUCUNE forme « à choisir ».
+     * « Trace [AB) » ne se pose pas en quatre vignettes : c'est ce QCM-là que
+     * Rémy trouvait bête, parce qu'on le résout en comparant des images sans
+     * jamais lire les crochets. L'item le déclare (`saisieSeule`), et le tracé
+     * prend la main dès la première question — il n'y a pas de marche plus
+     * basse où redescendre.
+     */
+    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js' };
+    function moduleVoulu(item, aideIci) {
+        const m = (item && item.meta) || {};
+        const compose = MODULES[m.composable];
+        if (m.saisieSeule) return compose || null;
+        if (!aideIci.clavier) return null;
+        if (compose) return compose;
+        const chiffrable = item.answer !== null && item.answer !== ''
+            && Number.isFinite(Number(item.answer));
+        return chiffrable ? './numeric.js' : null;
+    }
+
+    const AVIS = {
+        './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',
+        './notationSaisie.js': 'À toi d\'écrire : tu poses toi-même les deux symboles.',
+        './traceNotation.js': ''
+    };
+
     function renderNext() {
         if (destroyed) return;
         const item = session.next();
@@ -127,20 +165,8 @@ export function mount(container, session, opts = {}) {
         // rang, à partir de 1.
         const rang = session.history.length;
         aide = aideSelonEtat(session.params || {}, etatAdaptatif(), rang, totalPrevu());
-        // Et seulement si la réponse SE PRODUIT : « quelle opération est
-        // prioritaire » se répond « 5 × 7 », qui ne se tape pas sur un pavé.
-        // Un nombre se tape ; une notation comme [AB) se COMPOSE, symbole par
-        // symbole — c'est le générateur qui le dit (`meta.composable`), pas
-        // l'activité qui le devine.
-        const chiffrable = item.answer !== null && item.answer !== ''
-            && Number.isFinite(Number(item.answer));
-        const composable = item.meta && item.meta.composable;
-        if (!releve && aide.clavier && (chiffrable || composable)) {
-            return composable ? passerALaMain(item, './notationSaisie.js',
-                'À toi d\'écrire : tu poses toi-même les deux symboles.')
-                : passerALaMain(item, './numeric.js',
-                    'À toi d\'écrire : plus de propositions, tu tapes le résultat.');
-        }
+        const voulu = moduleVoulu(item, aide);
+        if (!releve && voulu) return passerALaMain(item, voulu, AVIS[voulu] || '');
         render(item);
     }
 
@@ -150,6 +176,7 @@ export function mount(container, session, opts = {}) {
         if (destroyed) return;
         if (cursor) { cursor.destroy(); cursor = null; }
         if (gate) { gate.destroy(); gate = null; }
+        moduleEnCours = module;
         releve = mod.mount(container, session, { item, avis, rendreLaMain });
     }
 
@@ -171,10 +198,20 @@ export function mount(container, session, opts = {}) {
         if (destroyed) return false;
         const suite = aideSelonEtat(session.params || {}, etatAdaptatif(),
             session.history.length, totalPrevu());
-        if (suite.clavier) return false;
+        const voulu = moduleVoulu(item, suite);
+        // La question suivante veut la MÊME activité : rien à faire, elle
+        // continue. C'est le cas ordinaire d'un exercice qui a atteint le haut
+        // de l'escalier.
+        if (voulu === moduleEnCours) return false;
         aide = suite;
         if (releve && releve.destroy) releve.destroy();
         releve = null;
+        moduleEnCours = null;
+        // Elle en veut une AUTRE — un exercice qui mêle les sens change de
+        // forme d'une question à l'autre : « trace [AB) » se dessine, « (AB)
+        // se lit… » se choisit. On rend la main, et `renderNext` du QCM
+        // n'ayant pas eu lieu, c'est ici qu'on aiguille.
+        if (voulu) { passerALaMain(item, voulu, AVIS[voulu] || ''); return true; }
         avisRetour = 'On reprend avec des propositions : ça va revenir.';
         render(item);
         return true;
