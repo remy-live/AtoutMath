@@ -292,13 +292,30 @@ test('une progression déclare de quoi la parcourir en entier', async () => {
         assert.equal(questionsConseillees(getGenerator(id), params), n, id);
     }
 
-    // Hors progression, on retombe sur le nombre ordinaire : un exercice de
-    // calcul mental n'a aucune raison d'être plus long.
-    assert.equal(questionsConseillees(getGenerator('calc.addition'), {}), QUESTIONS_PAR_DEFAUT);
+    // Hors progression, c'est la NATURE qui décide.
     assert.equal(questionsConseillees(getGenerator('num.relatifs'), { niveau: 'thermometre' }),
-        QUESTIONS_PAR_DEFAUT);
+        QUESTIONS_PAR_DEFAUT, 'un niveau fixe ne demande pas une progression');
+    assert.equal(questionsConseillees(getGenerator('num.lettres'), {}), QUESTIONS_PAR_DEFAUT,
+        'écrire un nombre en chiffres est une notion, pas un réflexe');
     // Un générateur sans conseil, ou absent, ne fait pas tomber le panneau.
     assert.equal(questionsConseillees(null, {}), QUESTIONS_PAR_DEFAUT);
+});
+
+test('un réflexe se travaille en vingt questions, pas en dix', async () => {
+    await import('../js/core/activities/index.js');
+    const { getGenerator } = await import('../js/core/registry.js');
+    const { questionsConseillees, DUREES } = await import('../js/core/duree.js');
+    // La répétition EST l'exercice : « 8 + 7 » n'a rien de neuf à enseigner à la
+    // douzième question, et c'est justement le but — que la réponse vienne sans
+    // calculer. Montrer l'hypoténuse vingt fois, en revanche, n'apprend rien de
+    // plus que la montrer deux fois : la progression, elle, se compte en marches.
+    for (const id of ['calc.addition', 'calc.soustraction', 'calc.mult.fact',
+        'calc.mult.missing', 'calc.division', 'calc.mixte', 'num.complement']) {
+        assert.equal(questionsConseillees(getGenerator(id), {}), DUREES.reflexe, id);
+    }
+    // Et une progression ne devient pas un réflexe : Pythagore reste à deux
+    // questions par marche.
+    assert.equal(questionsConseillees(getGenerator('geo.pythagore'), { niveau: 'progressif' }), 12);
 });
 
 test('le conseil couvre toujours l\'escalier de l\'aide', async () => {

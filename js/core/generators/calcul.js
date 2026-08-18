@@ -18,6 +18,9 @@ import { souligner } from '../fiche.js';
 
 export const additionGenerator = {
     id: 'calc.addition',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Addition de deux entiers',
     skills: ['num.add.entiers'],
     answerKinds: ['choice', 'numeric'],
@@ -72,6 +75,9 @@ function retenueOk(a, b, mode) {
 
 export const soustractionGenerator = {
     id: 'calc.soustraction',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Soustraction de deux entiers',
     skills: ['num.sub.entiers'],
     answerKinds: ['choice', 'numeric'],
@@ -114,6 +120,9 @@ export const soustractionGenerator = {
 
 export const multFactGenerator = {
     id: 'calc.mult.fact',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Table de multiplication',
     skills: ['num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
@@ -168,6 +177,9 @@ function pickWeighted(rng, allowed, weak) {
 
 export const multMissingGenerator = {
     id: 'calc.mult.missing',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Facteur manquant',
     skills: ['num.mult.facteur-manquant'],
     answerKinds: ['choice', 'numeric'],
@@ -227,6 +239,9 @@ export const multMissingGenerator = {
 
 export const divisionGenerator = {
     id: 'calc.division',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Division (quotient exact)',
     skills: ['num.div.quotient'],
     answerKinds: ['choice', 'numeric'],
@@ -525,6 +540,9 @@ const MIXTE_SOURCES = {
 
 export const mixteGenerator = {
     id: 'calc.mixte',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Calcul mental varié',
     skills: ['num.add.entiers', 'num.sub.entiers', 'num.div.quotient', 'num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],

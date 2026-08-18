@@ -567,10 +567,15 @@ export function showStudentConfigModal(exo, onStart) {
     const generateurEcran = exo.generatorId ? getGenerator(exo.generatorId) : null;
     const conseil = questionsConseillees(generateurEcran, current);
     const nbConseille = current.nbQuestions || conseil;
-    const aideDuree = conseil > 10
-        ? `Cet exercice avance par marches : il en faut ${conseil} pour les parcourir toutes. `
-            + 'En mettre moins n\'est pas un problème — on verra les premières.'
-        : 'Autant de questions que l\'exercice en pose.';
+    // Le « pourquoi ce nombre » dépend de la NATURE de l'exercice : on ne
+    // justifie pas vingt additions comme on justifie vingt-quatre marches.
+    const aideDuree = generateurEcran && generateurEcran.duree === 'reflexe'
+        ? 'Ici on cherche un réflexe, et un réflexe se construit par la répétition : '
+            + 'la réponse doit finir par venir sans calculer. Dix questions n\'y suffisent pas.'
+        : (conseil > 10
+            ? `Cet exercice avance par marches : il en faut ${conseil} pour les parcourir toutes. `
+                + 'En mettre moins n\'est pas un problème — on verra les premières.'
+            : 'Autant de questions que l\'exercice en pose.');
 
     const valeurDe = (p) => current[p.id] !== undefined ? current[p.id] : p.default;
     const devant = schema.filter(p => !p.affiner);

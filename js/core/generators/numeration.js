@@ -514,6 +514,9 @@ export const egypteGenerator = {
 
 export const complementGenerator = {
     id: 'num.complement',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Compléments à 10, 100, 1000',
     skills: ['num.complement'],
     answerKinds: ['numeric', 'choice'],

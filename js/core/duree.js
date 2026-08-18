@@ -23,8 +23,32 @@
 // Un générateur qui pose une progression déclare donc ce qu'il lui faut
 // (`conseil(params)`), et c'est ce nombre que le panneau propose.
 
-/** Ce que vaut un exercice ordinaire, sans progression déclarée. */
+// DEUX NATURES D'EXERCICE, DEUX LONGUEURS — et dix était faux pour les deux.
+//
+// Rémy : « je pencherais pour 20 questions pour les calculs ; pour le théorème
+// de Pythagore, montrer 20 fois l'hypoténuse n'a pas d'intérêt ». C'est la
+// bonne coupure, et elle ne se déduit pas du nombre de marches :
+//
+//   · UN RÉFLEXE se construit par la RÉPÉTITION. « 8 + 7 » n'a rien à
+//     enseigner de neuf à la douzième question — c'est justement le but : que
+//     la réponse vienne sans calculer. Dix additions ne construisent aucun
+//     automatisme ; vingt commencent à en construire un. Le commentaire des
+//     « Amis de Dix » le dit déjà : « le complément à 10 ne se travaille pas
+//     comme un calcul parmi d'autres, c'est un RÉFLEXE ».
+//
+//   · UNE PROGRESSION se construit par les MARCHES. Montrer l'hypoténuse vingt
+//     fois n'apprend rien de plus que la montrer deux fois : ce qui compte est
+//     de passer à la marche suivante. Sa longueur se calcule (`conseil`), elle
+//     ne se choisit pas.
+//
+// Un générateur déclare donc sa nature (`duree: 'reflexe'`) ou sa progression
+// (`conseil(params)`). Sans rien, c'est une notion ordinaire : dix questions.
+
+/** Ce que vaut un exercice ordinaire, sans nature ni progression déclarée. */
 export const QUESTIONS_PAR_DEFAUT = 10;
+
+/** Les longueurs par nature d'exercice. */
+export const DUREES = { reflexe: 20, notion: 10 };
 
 /**
  * Le minimum pour que l'escalier de l'AIDE ait le temps de monter : trois
@@ -51,7 +75,7 @@ export const MAX_QUESTIONS = 50;
  * @param {Object} [opts]      `{ aide: true }` pour garantir aussi l'escalier de l'aide
  */
 export function questionsConseillees(generateur, params = {}, opts = {}) {
-    let n = QUESTIONS_PAR_DEFAUT;
+    let n = (generateur && DUREES[generateur.duree]) || QUESTIONS_PAR_DEFAUT;
     if (generateur && typeof generateur.conseil === 'function') {
         const dit = Number(generateur.conseil(params || {}));
         if (Number.isFinite(dit) && dit > 0) n = Math.max(n, Math.round(dit));
