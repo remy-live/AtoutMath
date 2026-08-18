@@ -112,23 +112,30 @@ export function mount(container, session, opts = {}) {
         // rang, à partir de 1.
         const rang = session.history.length;
         aide = aideAuRang(session.params || {}, rang, totalPrevu());
-        // Et seulement si la réponse est un NOMBRE : « quelle opération est
+        // Et seulement si la réponse SE PRODUIT : « quelle opération est
         // prioritaire » se répond « 5 × 7 », qui ne se tape pas sur un pavé.
+        // Un nombre se tape ; une notation comme [AB) se COMPOSE, symbole par
+        // symbole — c'est le générateur qui le dit (`meta.composable`), pas
+        // l'activité qui le devine.
         const chiffrable = item.answer !== null && item.answer !== ''
             && Number.isFinite(Number(item.answer));
-        if (!releve && aide.clavier && chiffrable) return passerAuPave(item);
+        const composable = item.meta && item.meta.composable;
+        if (!releve && aide.clavier && (chiffrable || composable)) {
+            return composable ? passerALaMain(item, './notationSaisie.js',
+                'À toi d\'écrire : tu poses toi-même les deux symboles.')
+                : passerALaMain(item, './numeric.js',
+                    'À toi d\'écrire : plus de propositions, tu tapes le résultat.');
+        }
         render(item);
     }
 
-    async function passerAuPave(item) {
-        const mod = await import('./numeric.js');
+    /** L'exercice change de forme : une autre activité prend la main, pour de bon. */
+    async function passerALaMain(item, module, avis) {
+        const mod = await import(module);
         if (destroyed) return;
         if (cursor) { cursor.destroy(); cursor = null; }
         if (gate) { gate.destroy(); gate = null; }
-        releve = mod.mount(container, session, {
-            item,
-            avis: 'À toi d\'écrire : plus de propositions, tu tapes le résultat.'
-        });
+        releve = mod.mount(container, session, { item, avis });
     }
 
     function render(item) {

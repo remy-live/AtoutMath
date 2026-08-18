@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { notationGenerator } from '../js/core/generators/notation.js';
+import { decouper, verifier } from '../js/core/notationSaisie.js';
 import { traceSvg } from '../js/core/figures.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -118,5 +119,33 @@ test('chaque mauvaise réponse dit ce qu\'elle piège', () => {
             assert.ok(c.why && c.why.length > 10,
                 `question ${i} : une proposition n'explique pas l'erreur`);
         });
+    }
+});
+
+test('seul le sens « écrire » se compose symbole par symbole', () => {
+    // La dernière marche de l'escalier remplace les propositions par un
+    // composeur. Ça n'a de sens que pour « comment note-t-on cette figure ? » :
+    // « quel dessin ? » se répond en montrant, « comment ça se lit ? » en mots.
+    const vus = {};
+    for (let i = 0; i < 12; i++) {
+        const it = notationGenerator.generate({}, { rng: makeRng(300 + i), index: i, themesExclus: [] });
+        vus[it.meta.sens] = it.meta.composable;
+    }
+    assert.equal(vus.ecrire, 'notation');
+    assert.equal(vus.dessin, undefined);
+    assert.equal(vus.dire, undefined);
+});
+
+test('une notation composable porte de quoi la composer', () => {
+    for (let i = 0; i < 20; i++) {
+        const it = notationGenerator.generate({ sens: ['ecrire'] },
+            { rng: makeRng(400 + i), index: i, themesExclus: [] });
+        const d = decouper(String(it.answer));
+        assert.ok(d, `réponse « ${it.answer} » non décomposable`);
+        // Les lettres de l'item doivent être celles de la réponse, sinon le
+        // composeur afficherait deux points et en attendrait deux autres.
+        assert.equal(d.a, it.meta.a, 'le premier point ne correspond pas');
+        assert.equal(d.b, it.meta.b, 'le second point ne correspond pas');
+        assert.ok(verifier(it.answer, it.answer));
     }
 });

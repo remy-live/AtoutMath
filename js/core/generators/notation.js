@@ -251,7 +251,22 @@ export const notationGenerator = {
             hints: q.indices,
             explanation: q.explication,
             difficulty: t.id === 'demi-droite' ? 3 : 2,
-            meta: { objet: t.id, sens: quoi, a, b, theme: `${t.id}-${quoi}` }
+            // `composable` DÉSIGNE LA DERNIÈRE MARCHE.
+            //
+            // L'escalier de l'aide (core/aide.js) finit au clavier quand la
+            // réponse est un nombre. Ici elle n'en est pas un : c'est une
+            // écriture à deux symboles, et elle se COMPOSE. On le dit dans
+            // l'item plutôt que de laisser l'activité renifler la forme de la
+            // chaîne — une notation reconnue à coups d'expression régulière
+            // serait un piège pour le premier générateur qui répondrait
+            // « [3;7] » en parlant d'intervalles.
+            //
+            // Seul le sens « écrire » est composable : « quel dessin ? » se
+            // répond en montrant une figure, « comment ça se lit ? » en mots.
+            meta: {
+                objet: t.id, sens: quoi, a, b, theme: `${t.id}-${quoi}`,
+                composable: quoi === 'ecrire' ? 'notation' : undefined
+            }
         });
     }
 };

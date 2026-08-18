@@ -4165,3 +4165,106 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-weight: 800; color: #1a202c; white-space: nowrap;
 }
 .fx-mm-dos-signe { color: #b0b6c5; }
+
+/* ═══ COMPOSER LA NOTATION ═══════════════════════════════════════════════════
+   La dernière marche de « segment, droite ou demi-droite » : on ne choisit
+   plus parmi quatre écritures, on POSE les deux symboles autour des points.
+   Les deux extrémités sont jugées séparément — c'est tout l'intérêt — donc
+   chacune porte sa propre couleur après validation. */
+.nt-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
+    justify-content: safe center; overflow-y: auto; color: var(--text-main);
+    container-type: inline-size;
+}
+.nt-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
+.nt-avis {
+    font-size: .9rem; font-weight: 700; color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
+}
+.nt-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 0 auto; }
+
+/* L'ÉCRITURE EN COURS, en gros : c'est la réponse, elle doit se lire de loin. */
+.nt-ecriture {
+    display: flex; align-items: center; gap: 2px;
+    font-size: clamp(30px, 11cqw, 52px); font-weight: 900;
+    font-variant-numeric: tabular-nums; letter-spacing: .01em;
+    padding: 8px 16px; border-radius: 16px;
+    border: 3px solid var(--border); background: var(--bg-panel);
+    transition: border-color .18s ease, background .18s ease;
+}
+.nt-ecriture--ok { border-color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--bg-panel)); }
+.nt-ecriture--ko { border-color: var(--danger, #dc2626); }
+.nt-point { padding: 0 .04em; }
+
+/* La fente vide se voit COMME UN TROU : pointillé et point d'interrogation.
+   Une case pleine et grise se lirait comme un symbole déjà posé. */
+.nt-fente {
+    min-width: 1.1em; padding: 0 .06em; border: 2px dashed var(--border);
+    border-radius: 10px; background: transparent; cursor: pointer;
+    font: inherit; color: var(--text-muted); line-height: 1.1;
+    -webkit-tap-highlight-color: transparent;
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.nt-fente--pleine { border-style: solid; border-color: transparent; color: var(--text-main); }
+.nt-fente--juste { color: var(--success, #16a34a); border-color: var(--success, #16a34a); border-style: solid; }
+.nt-fente--faux { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); border-style: solid; }
+.nt-fente:hover { background: var(--bg-hover); }
+
+/* DEUX CLAVIERS, UN PAR EXTRÉMITÉ, et chacun dit de quel côté il agit : le
+   mélange des quatre symboles obligeait à décider AUSSI où le poser, ce qui
+   n'est pas la question de l'exercice. */
+/* DEUX COLONNES, TOUJOURS. En `flex`, chaque clavier prenait sa largeur
+   naturelle — 210 px avec son intitulé — et les deux ne tenaient pas côte à
+   côte sur un téléphone : ils s'empilaient, le bloc passait de 95 à 188 px de
+   haut, et « Valider » sortait de l'écran. Une grille à deux colonnes égales
+   les tient côte à côte quelle que soit la longueur des intitulés. */
+.nt-claviers {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    width: 100%; max-width: 460px;
+}
+.nt-clavier {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+    padding: 8px 6px; border-radius: 14px; background: var(--bg-app);
+    border: 1px solid var(--border); min-width: 0;
+}
+.nt-cote {
+    width: 100%; text-align: center; font-size: .78rem; color: var(--text-muted);
+    font-weight: 700; overflow-wrap: anywhere;
+}
+.nt-touche {
+    min-width: 56px; min-height: 56px; border-radius: 14px; cursor: pointer;
+    border: 2.5px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font-family: inherit; font-size: 1.9rem; font-weight: 900;
+    line-height: 1; display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .1s ease, background .12s ease, border-color .12s ease;
+}
+.nt-touche:hover { background: var(--bg-hover); border-color: var(--primary); }
+.nt-touche:active { transform: scale(.92); background: var(--primary); color: #fff; }
+
+.nt-valider {
+    padding: 11px 30px; border-radius: 12px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font-family: inherit;
+    font-size: 1rem; font-weight: 800;
+}
+.nt-valider:disabled { opacity: .45; cursor: default; }
+
+/* Le diagnostic — « le début est juste, mais il faut une parenthèse du côté
+   de B ». C'est la phrase qui vaut l'exercice : elle a sa place réservée,
+   sinon son apparition pousse les claviers vers le bas au moment précis où
+   l'élève va y retourner. */
+.nt-note {
+    min-height: 2.6em; max-width: 30em; text-align: center;
+    font-size: .92rem; line-height: 1.4; color: var(--text-main);
+}
+
+@media (max-width: 520px) {
+    .nt-layout { gap: 10px; }
+    .nt-claviers { gap: 8px; }
+    .nt-touche { min-width: 46px; min-height: 46px; font-size: 1.6rem; }
+    .nt-ecriture { padding: 6px 12px; }
+    .nt-cote { font-size: .72rem; }
+    .nt-note { min-height: 2.2em; font-size: .86rem; }
+}
