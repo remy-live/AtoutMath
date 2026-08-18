@@ -580,26 +580,6 @@ export const calculExercises = [
         instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
     },
     {
-        id: 'calc-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
-        activityId: 'ninja',
-        params: { cibleMax: 20, lives: 3, rythme: 'lent' },
-        paramSchema: [
-            { id: 'cibleMax', type: 'number', label: 'Cible jusqu\'à', min: 8, max: 60, default: 20 },
-            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
-            {
-                id: 'rythme', type: 'select', label: 'Rythme', default: 'lent',
-                options: [
-                    { value: 'lent', label: 'Lent (temps de calculer)' },
-                    { value: 'normal', label: 'Normal' },
-                    { value: 'rapide', label: 'Rapide' }
-                ]
-            }
-        ],
-        skills: ['num.calc.decomposition'],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Un nombre cible s'affiche : tranche d'un geste tous les fruits dont le calcul fait EXACTEMENT ce nombre — et laisse retomber les autres. Calcule avant de trancher !"
-    },
-    {
         id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
         generatorId: 'logique.sudoku', activityId: 'sudoku',
         // Le sudoku se fait très bien sur papier — c'est même là qu'il est né.

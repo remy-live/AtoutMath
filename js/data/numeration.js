@@ -20,55 +20,37 @@ const QUATRIEME = TAGS.NIVEAU.QUATRIEME;
 
 export const numerationExercises = [
     // --- Écriture des nombres (fiche § 1, 2, 3, 19) ---
+    // Un seul exercice, et non trois. « Les Grands Nombres » et « Dixièmes et
+    // Centièmes » n'étaient pas d'autres exercices : c'était CELUI-CI avec
+    // `max` poussé au million et `decimaux` sur « toujours » — deux réglages
+    // que le générateur offrait déjà et que personne ne pouvait atteindre,
+    // faute d'être exposés. Les anciens titres passent en mots-clefs pour que
+    // la recherche continue de mener ici.
     {
-        id: 'num-lettres-mille',
+        id: 'num-lettres',
         consignePapier: "Écris en chiffres.",
         colonnesPapier: 2,
         title: 'Des Lettres aux Chiffres',
         generatorId: 'num.lettres', activityId: 'numpad',
         params: { max: 1000, decimaux: 'non' },
+        motsClefs: ['grands nombres', 'millions', 'milliers', 'dixièmes', 'centièmes', 'décimaux'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
-        instruction: "Lis le nombre écrit en toutes lettres et saisis-le en chiffres."
-    },
-    {
-        id: 'num-lettres-grands',
-        consignePapier: "Écris en chiffres.",
-        colonnesPapier: 1,
-        title: 'Les Grands Nombres',
-        generatorId: 'num.lettres', activityId: 'numpad',
-        params: { max: 1000000, decimaux: 'non' },
-        tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
-        instruction: "Attention aux tranches : millions, milliers, puis unités."
-    },
-    {
-        id: 'num-lettres-decimaux',
-        consignePapier: "Écris en chiffres.",
-        colonnesPapier: 2,
-        title: 'Dixièmes et Centièmes',
-        generatorId: 'num.lettres', activityId: 'numpad',
-        params: { max: 100000, decimaux: 'toujours' },
-        tags: { chemin: [D, DEC], niveaux: [SIXIEME] },
-        instruction: "« Trois dixièmes », « deux cent douze centièmes »… écris-les en chiffres."
+        instruction: "Lis le nombre écrit en toutes lettres et saisis-le en chiffres. "
+            + "Le réglage « Jusqu'à » monte jusqu'au million ; « Rangs décimaux » ajoute les dixièmes et les centièmes."
     },
 
     // --- Rang des chiffres (fiche § 17, 27) ---
     {
-        id: 'num-rang-entier',
+        id: 'num-rang',
         consignePapier: "",
         title: 'Chasse au Chiffre',
         generatorId: 'num.chiffre-rang', activityId: 'bubbles',
         params: { partie: 'entière', decimales: 2 },
+        motsClefs: ['rang', 'dizaines', 'dixièmes', 'centièmes', 'partie décimale'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
-        instruction: "Trouve le chiffre qui occupe le rang demandé, à gauche de la virgule."
-    },
-    {
-        id: 'num-rang-decimal',
-        consignePapier: "",
-        title: 'Rang dans un nombre',
-        generatorId: 'num.chiffre-rang', activityId: 'bubbles',
-        params: { partie: 'les deux', decimales: 3 },
-        tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
-        instruction: "Le piège classique : dizaines et dixièmes ne sont pas le même rang."
+        instruction: "Trouve le chiffre qui occupe le rang demandé. "
+            + "Passe « Rangs interrogés » sur « les deux » pour affronter le piège du chapitre : "
+            + "dizaines et dixièmes ne sont pas le même rang."
     },
 
     // --- Décimaux (fiche § 5, 6) ---
@@ -107,15 +89,10 @@ export const numerationExercises = [
         id: 'num-conversion', title: 'Dizaines, Centaines, Milliers',
         generatorId: 'num.conversion', activityId: 'numpad',
         params: { decimaux: 'non' },
+        motsClefs: ['conversions décimales', 'dixièmes', 'centièmes'],
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
-        instruction: "Combien font 785 centaines ? Convertis en unités."
-    },
-    {
-        id: 'num-conversion-dec', title: 'Conversions Décimales',
-        generatorId: 'num.conversion', activityId: 'numpad',
-        params: { decimaux: 'oui' },
-        tags: { chemin: [D, DEC], niveaux: [SIXIEME] },
-        instruction: "Les dixièmes et les centièmes se convertissent aussi."
+        instruction: "Combien font 785 centaines ? Convertis en unités. "
+            + "Le réglage « Nombres décimaux » ajoute les dixièmes et les centièmes."
     },
 
     // --- Numération égyptienne (fiche § 8, 9) ---
@@ -156,18 +133,10 @@ export const numerationExercises = [
         title: 'À Peu Près',
         generatorId: 'num.ordre-grandeur', activityId: 'bubbles',
         params: { decimaux: 'non' },
+        motsClefs: ['virgule', 'arrondi', 'entier le plus proche'],
         tags: { chemin: [D, MENTAL], niveaux: [SIXIEME] },
-        instruction: "Donne le nombre rond le plus proche : c'est l'ordre de grandeur."
-    },
-    {
-        id: 'num-ordre-grandeur-dec',
-        consignePapier: "Donne l'entier le plus proche.",
-        colonnesPapier: 3,
-        title: 'À Peu Près, avec Virgule',
-        generatorId: 'num.ordre-grandeur', activityId: 'bubbles',
-        params: { decimaux: 'oui' },
-        tags: { chemin: [D, MENTAL], niveaux: [SIXIEME] },
-        instruction: "7,98 est presque 8. Trouve l'entier le plus proche."
+        instruction: "Donne le nombre rond le plus proche : c'est l'ordre de grandeur. "
+            + "Avec « Nombres décimaux », on cherche l'entier le plus proche : 7,98 est presque 8."
     },
 
     // --- La loupe sur la droite graduée (fiche 4ᵉ § C) ---
@@ -182,20 +151,9 @@ export const numerationExercises = [
         title: 'La Loupe sur la Droite',
         generatorId: 'num.graduations', activityId: 'numpad',
         params: { zoom: 'progressif' },
-        motsClefs: ['graduation', 'abscisse', 'décimaux', 'intercaler', 'axe'],
-        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
-        instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01."
-    },
-    {
-        id: 'num-graduations-centiemes',
-        consignePapier: "Écris l'abscisse du point.",
-        colonnesPapier: 1,
-        title: 'La Loupe : les Centièmes',
-        generatorId: 'num.graduations', activityId: 'numpad',
-        params: { zoom: 'centiemes' },
-        motsClefs: ['graduation', 'centièmes', 'décimaux', 'intercaler'],
-        tags: { chemin: [D, DEC], niveaux: [SIXIEME, CINQUIEME, QUATRIEME] },
-        instruction: "On zoome entre deux dixièmes voisins : entre 3,5 et 3,6, l'axe est encore coupé en dix, et chaque intervalle vaut 0,01."
+        motsClefs: ['graduation', 'abscisse', 'décimaux', 'intercaler', 'axe', 'centièmes', 'loupe'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME, QUATRIEME] },
+        instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01. Le réglage « Le pas de la graduation » permet de rester aux centièmes du début à la fin."
     },
 
     // --- Le vocabulaire du calcul (fiche 4ᵉ § 4, 5, 6, N) ---
@@ -209,20 +167,10 @@ export const numerationExercises = [
         title: 'Le Mot Juste',
         generatorId: 'num.vocabulaire', activityId: 'bubbles',
         params: { volets: ['resultat', 'nombres', 'phrase-vers-calcul', 'calcul-vers-phrase', 'multiples', 'posee'] },
-        motsClefs: ['somme', 'différence', 'produit', 'quotient', 'termes', 'facteurs', 'dividende', 'vocabulaire'],
+        motsClefs: ['somme', 'différence', 'produit', 'quotient', 'termes', 'facteurs',
+            'dividende', 'vocabulaire', 'double', 'triple', 'moitié', 'traduire', 'phrase'],
         tags: { chemin: [D, MENTAL], niveaux: [SIXIEME, CINQUIEME, QUATRIEME] },
-        instruction: "Somme, différence, produit, quotient : ces mots nomment le RÉSULTAT d'une opération, pas l'opération elle-même. Les nombres, eux, s'appellent les termes dans une addition et les facteurs dans une multiplication. Attention au petit mot de liaison : la somme de 3 ET 2, mais le produit de 3 PAR 2."
-    },
-    {
-        id: 'num-vocabulaire-traduire',
-        consignePapier: "Écris le calcul qui correspond à la phrase.",
-        colonnesPapier: 2,
-        title: 'De la Phrase au Calcul',
-        generatorId: 'num.vocabulaire', activityId: 'bubbles',
-        params: { volets: ['phrase-vers-calcul', 'calcul-vers-phrase', 'multiples'] },
-        motsClefs: ['somme', 'produit', 'double', 'triple', 'moitié', 'traduire'],
-        tags: { chemin: [D, MENTAL], niveaux: [SIXIEME, CINQUIEME, QUATRIEME] },
-        instruction: "Dans les deux sens : la phrase donne le calcul, et le calcul se dit en toutes lettres. « Le double » veut dire × 2, « le tiers » veut dire ÷ 3 — ces mots ne s'ajoutent jamais."
+        instruction: "Somme, différence, produit, quotient : ces mots nomment le RÉSULTAT d'une opération, pas l'opération elle-même. Les nombres, eux, s'appellent les termes dans une addition et les facteurs dans une multiplication. Attention au petit mot de liaison : la somme de 3 ET 2, mais le produit de 3 PAR 2. Le réglage « Ce qu'on demande » permet de ne garder que la traduction phrase ↔ calcul."
     },
 
     // --- Questions flash (fiche § E, F, 29) ---
@@ -337,16 +285,22 @@ export const numerationExercises = [
     },
 
     // --- Nombres relatifs ---------------------------------------------------
-    // Trois portes d'entrée sur la même notion. La progressive est celle qu'on
-    // conseille : elle traverse l'ascenseur, le thermomètre, les pastilles,
-    // puis l'écriture. Les deux autres servent à REVENIR sur un modèle précis
-    // quand un élève bloque — c'est là que le professeur choisit.
+    // Quatre portes d'entrée sur la même notion, et donc UN exercice : le
+    // réglage « Niveau » choisit le modèle. En progressif on traverse
+    // l'ascenseur, le thermomètre, les pastilles puis l'écriture ; en fixant un
+    // niveau on REVIENT sur le modèle où l'élève bloque. C'était déjà exactement
+    // ce que faisaient les quatre entrées séparées, à ceci près qu'aucune ne
+    // laissait passer d'un modèle à l'autre sans ressortir de l'exercice.
     {
-        id: 'num-relatifs-progressif', title: 'Nombres Relatifs : la montée',
+        id: 'num-relatifs', title: 'Nombres Relatifs',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
         generatorId: 'num.relatifs', activityId: 'relatifs',
         params: { niveau: 'progressif', reponse: 'saisie' },
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
-        instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances."
+        motsClefs: ['thermomètre', 'ascenseur', 'pastilles', 'températures',
+            'sommes de relatifs', 'négatifs', 'la montée'],
+        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances. Le réglage « Niveau » choisit le modèle — l'ascenseur, le thermomètre, les pastilles qui s'annulent, ou l'écriture (+3) + (−5) — ou les enchaîne tous."
     },
     {
         id: 'num-dictee', status: STATUS.TEST, title: 'Dictée de Grands Nombres',
@@ -367,14 +321,33 @@ export const numerationExercises = [
         instruction: "Le nombre n'est pas écrit : il est DIT. Appuie sur le haut-parleur, écoute, puis écris-le en chiffres. On peut réécouter autant de fois qu'on veut, et ralentir la voix. La correction affiche le nombre en lettres à côté des chiffres : c'est là qu'on voit ce qu'on avait mal entendu. Si l'appareil n'a pas de voix, le nombre s'affiche en lettres."
     },
     {
-        id: 'num-ninja-zeros', status: STATUS.TEST, title: 'Ninja des Zéros Inutiles',
+        // LE MÊME JEU, TROIS RÈGLES — donc un exercice, et non quatre.
+        //
+        // Le geste est identique dans tous les cas : des objets traversent
+        // l'écran, on décide de chacun. Seule la RÈGLE change, et elle tenait
+        // déjà dans le paramètre `mode` que le jeu lisait. Les quatre entrées
+        // séparées cachaient d'ailleurs un défaut : « Ninja des Nombres »
+        // réglait `cibleMax` et `lives`, deux noms que rien dans le code ne
+        // lisait, et ne disait pas son mode — il servait donc les résultats
+        // négatifs, à l'identique du « Ninja des Résultats Négatifs », avec
+        // deux curseurs sans effet.
+        id: 'num-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
         activityId: 'ninja',
         // Un objet raté est une erreur de règle, pas une erreur de calcul : on
         // l'affiche tout de suite, mais on ne surcharge pas le carnet avec les
         // ratés de vitesse.
         sansRevision: true,
-        params: { vitesse: 'normale', mode: 'zeros', vies: 3 },
+        params: { vitesse: 'normale', mode: 'negatifs', vies: 3, parVague: 5 },
         paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on coupe', default: 'negatifs',
+                aide: 'Trois règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les deux autres, le signe d\'une somme de relatifs — l\'un en tranchant, l\'autre en tirant.',
+                options: [
+                    { value: 'negatifs', label: 'Les résultats négatifs' },
+                    { value: 'positifs', label: 'Les résultats positifs (au tir)' },
+                    { value: 'zeros', label: 'Les zéros inutiles' }
+                ]
+            },
             {
                 id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
                 aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
@@ -389,10 +362,16 @@ export const numerationExercises = [
                 id: 'vies', type: 'select', label: 'Vies',
                 options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
                 default: 3
+            },
+            {
+                id: 'parVague', type: 'select', label: 'Objets par vague',
+                options: [{ value: 3, label: '3' }, { value: 5, label: '5' }, { value: 7, label: '7' }],
+                default: 5
             }
         ],
-        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
-        instruction: "Le nombre traverse l'écran d'un seul tenant. Tranche UNIQUEMENT ses zéros inutiles : ceux de devant, et ceux tout à la fin après la virgule. Le 0 de 1,05 tient un rang — y toucher coûte une vie. Laisser filer un zéro inutile en coûte une aussi : ne rien faire n'est pas une stratégie."
+        motsClefs: ['zéros inutiles', 'décimaux', 'relatifs', 'négatifs', 'positifs', 'tir', 'trancher'],
+        tags: { chemin: [D, REL], niveaux: [CM2, SIXIEME, CINQUIEME, QUATRIEME] },
+        instruction: "Des objets traversent l'écran, chacun porte un nombre ou un calcul, et la règle est écrite en haut du début à la fin. Coupe ceux qu'elle désigne, laisse filer les autres : se tromper coûte une vie, laisser passer aussi — ne rien faire n'est pas une stratégie. Le réglage « Ce qu'on coupe » change la règle : les résultats négatifs, les résultats positifs (on tire au lieu de trancher), ou les zéros inutiles d'une écriture décimale."
     },
     {
         id: 'num-relatifs-addition',
@@ -401,106 +380,9 @@ export const numerationExercises = [
         title: 'Additionner des Relatifs, pas à pas',
         generatorId: 'num.relatifs.addition', activityId: 'add-relatifs',
         params: { etape: 'progressif', reponse: 'saisie' },
+        motsClefs: ['signes différents', 'pastilles', 'simplifier', 'écriture'],
         tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
-        instruction: "Douze marches, deux questions chacune. D'abord des pastilles toutes de la même couleur — il n'y a qu'à compter, et on apprend l'écriture. Puis des pastilles des DEUX couleurs : une rouge et une bleue valent zéro ensemble, on les élimine par paires, et la soustraction apparaît toute seule. Ensuite on simplifie les écritures, et on finit avec une virgule."
-    },
-    {
-        id: 'num-relatifs-addition-b',
-        consignePapier: "Simplifie et calcule.",
-        colonnesPapier: 3,
-        title: 'Relatifs : quand les signes diffèrent',
-        generatorId: 'num.relatifs.addition', activityId: 'add-relatifs',
-        params: { etape: 'B', reponse: 'saisie' },
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
-        instruction: "Le passage difficile du chapitre, et lui seul : (+7) + (−3). Les paires rouge-bleu s'éliminent une par une sous tes yeux, et c'est de là que vient la soustraction."
-    },
-    {
-        id: 'num-ninja-negatifs', status: STATUS.TEST, title: 'Ninja des Résultats Négatifs',
-        activityId: 'ninja',
-        sansRevision: true,
-        params: { vitesse: 'normale', mode: 'negatifs', vies: 3, parVague: 5 },
-        paramSchema: [
-            {
-                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
-                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
-                options: [
-                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
-                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
-                    { value: 'normale', label: 'Normale' },
-                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
-                ]
-            },
-            {
-                id: 'vies', type: 'select', label: 'Vies',
-                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
-                default: 3
-            },
-            {
-                id: 'parVague', type: 'select', label: 'Bulles par vague',
-                options: [{ value: 3, label: '3 bulles' }, { value: 5, label: '5 bulles' }, { value: 7, label: '7 bulles' }],
-                default: 5
-            }
-        ],
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
-        instruction: "Des bulles portent un calcul simplifié : 3 − 7, −2 + 9… Coupe celles dont le RÉSULTAT est négatif, laisse filer les autres. Se tromper de bulle coûte une vie ; en laisser passer une qu'il fallait couper aussi."
-    },
-    {
-        id: 'num-ninja-positifs', status: STATUS.TEST, title: 'Tir sur les Résultats Positifs',
-        activityId: 'ninja',
-        sansRevision: true,
-        params: { vitesse: 'normale', mode: 'positifs', vies: 3, parVague: 5 },
-        paramSchema: [
-            {
-                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
-                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
-                options: [
-                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
-                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
-                    { value: 'normale', label: 'Normale' },
-                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
-                ]
-            },
-            {
-                id: 'vies', type: 'select', label: 'Vies',
-                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
-                default: 3
-            },
-            {
-                id: 'parVague', type: 'select', label: 'Cibles par vague',
-                options: [{ value: 3, label: '3 cibles' }, { value: 5, label: '5 cibles' }, { value: 7, label: '7 cibles' }],
-                default: 5
-            }
-        ],
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
-        instruction: "Le jeu inverse du précédent : des cibles portent un calcul, tu tires sur celles dont le résultat est POSITIF et tu épargnes les autres. La consigne reste écrite en haut de l'écran du début à la fin."
-    },
-    {
-        id: 'num-relatifs-thermometre',
-        consignePapier: "",
-        title: 'Le Thermomètre',
-        generatorId: 'num.relatifs', activityId: 'relatifs',
-        params: { niveau: 'thermometre', reponse: 'saisie' },
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
-        instruction: "La température monte ou baisse : compte les graduations, le zéro n'arrête rien."
-    },
-    {
-        id: 'num-relatifs-pastilles',
-        consignePapier: "",
-        title: 'Les Pastilles qui s\'annulent',
-        generatorId: 'num.relatifs', activityId: 'relatifs',
-        params: { niveau: 'pastilles', reponse: 'saisie' },
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME] },
-        instruction: "Une pastille rouge (+1) et une bleue (−1) forment une paire qui vaut 0. Barre les paires : ce qui reste est la réponse."
-    },
-    {
-        id: 'num-relatifs-ecriture',
-        consignePapier: "Calcule.",
-        colonnesPapier: 3,
-        title: 'Sommes de Relatifs',
-        generatorId: 'num.relatifs', activityId: 'relatifs',
-        params: { niveau: 'ecriture', reponse: 'saisie' },
-        tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
-        instruction: "Même signe : on ajoute et on garde le signe. Signes différents : on soustrait, et on garde le signe du plus éloigné de zéro."
+        instruction: "Douze marches, deux questions chacune. D'abord des pastilles toutes de la même couleur — il n'y a qu'à compter, et on apprend l'écriture. Puis des pastilles des DEUX couleurs : une rouge et une bleue valent zéro ensemble, on les élimine par paires, et la soustraction apparaît toute seule. Ensuite on simplifie les écritures, et on finit avec une virgule. Le réglage « Étape » permet de se poser sur le passage difficile — (+7) + (−3) — et d'y rester."
     },
     {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
