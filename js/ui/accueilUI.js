@@ -39,6 +39,8 @@ function assurerModale() {
             <div class="ac-robot">${robotSvg(46)}</div>
             <h3 class="modal-title" id="ac-titre"></h3>
             <p class="ac-texte" id="ac-texte"></p>
+            <ul class="ac-liste" id="ac-liste"></ul>
+            <p class="ac-texte" id="ac-suite"></p>
             <p class="ac-conseil" id="ac-conseil"></p>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="ac-plus-tard">Plus tard</button>
@@ -75,6 +77,17 @@ export function initAccueil() {
     const m = assurerModale();
     m.querySelector('#ac-titre').textContent = message.titre;
     m.querySelector('#ac-texte').textContent = message.texte;
+
+    // Les titres qui ont résisté, un par ligne. `textContent` sur chaque
+    // élément : un titre d'exercice n'a pas à traverser l'analyseur HTML.
+    const listeEl = m.querySelector('#ac-liste');
+    listeEl.innerHTML = '';
+    (message.liste || []).forEach(nom => {
+        const li = document.createElement('li');
+        li.textContent = nom;
+        listeEl.appendChild(li);
+    });
+    m.querySelector('#ac-suite').textContent = message.suite || '';
     const conseilEl = m.querySelector('#ac-conseil');
     conseilEl.innerHTML = message.conseil ? `${ampouleSvg(19, 'ac-ampoule')}<span>${message.conseil}</span>` : '';
 

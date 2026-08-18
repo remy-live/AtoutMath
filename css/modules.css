@@ -3432,7 +3432,28 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    sont remises à zéro — c'est le `gap` du panneau qui les espace, sinon les
    deux se cumulent et l'écart devient deux fois trop grand. */
 .ac-robot { line-height: 1; margin: 0; }
-.ac-texte { font-size: 1rem; line-height: 1.5; color: var(--text-main); margin: 0; text-wrap: pretty; }
+/* LE TEXTE EST ALIGNÉ À GAUCHE, pas centré comme le titre. Centré, chaque
+   ligne commence et finit à un endroit différent : l'œil ne retrouve pas le
+   début de la suivante, et une énumération se coupe n'importe où. Le titre et
+   le robot restent centrés — eux tiennent sur une ligne ou deux. */
+.ac-texte {
+    font-size: 1rem; line-height: 1.5; color: var(--text-main);
+    margin: 0; text-align: left; text-wrap: pretty;
+}
+.ac-texte:empty { display: none; }
+.ac-liste {
+    margin: 0; padding: 0; list-style: none; text-align: left;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.ac-liste:empty { display: none; }
+.ac-liste li {
+    font-size: .95rem; line-height: 1.35; font-weight: 600;
+    color: var(--text-main);
+    background: color-mix(in srgb, var(--primary) 9%, transparent);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 8px 8px 0;
+    padding: 7px 11px;
+}
 .ac-conseil {
     font-size: .88rem; line-height: 1.45; color: var(--text-muted);
     background: var(--bg-hover); border-radius: 12px;

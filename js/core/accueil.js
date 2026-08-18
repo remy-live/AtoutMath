@@ -114,12 +114,19 @@ export function messageDArrivee(faits) {
     if (ouvertes.length >= 2) {
         const noms = resumeErreurs(ouvertes);
         const combien = Math.min(maxQuestions, ouvertes.length);
+        // LES TITRES SORTENT DE LA PHRASE.
+        //
+        // Énumérés au fil du texte, entre guillemets et séparés par des
+        // virgules, ils se coupaient n'importe où — « Segment, Droite / ou
+        // Demi-droite ? » sur deux lignes, la virgule du titre confondue avec
+        // celle de l'énumération. Une liste dit d'un coup d'œil combien il y
+        // en a, et chaque titre reste entier.
         return {
             type: 'revision',
             titre: 'On reprend deux ou trois choses ?',
-            texte: `La dernière fois, ${noms.length > 1 ? 'ces questions t\'ont' : 'cette question t\'a'} résisté : `
-                + `${noms.map(n => `« ${n} »`).join(', ')}. `
-                + `Je te propose ${combien} question${combien > 1 ? 's' : ''} pour les revoir — pas plus.`,
+            texte: `La dernière fois, ${noms.length > 1 ? 'ces questions t\'ont' : 'cette question t\'a'} résisté :`,
+            liste: noms,
+            suite: `Je te propose ${combien} question${combien > 1 ? 's' : ''} pour les revoir — pas plus.`,
             conseil: conseilDuJour(maintenant),
             erreurs: noms,
             revision: { questions: combien }

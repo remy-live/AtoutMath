@@ -61,8 +61,13 @@ test('deux erreurs ouvertes ou plus déclenchent une proposition de révision, n
         erreurs: [erreur(), erreur({ questionText: 'le rapporteur mal placé' })]
     });
     assert.equal(m.type, 'revision');
-    assert.match(m.texte, /« 7 × 8 »/);
-    assert.match(m.texte, /« le rapporteur mal placé »/);
+    // Les titres sont une LISTE, et non une énumération noyée dans la phrase :
+    // « Segment, Droite ou Demi-droite ? » se coupait au milieu, et sa virgule
+    // se confondait avec celle de l'énumération.
+    assert.deepEqual(m.liste, ['7 × 8', 'le rapporteur mal placé']);
+    assert.ok(!m.texte.includes('7 × 8'), 'le titre ne doit plus être dans la phrase');
+    assert.match(m.texte, /résisté\s*:$/, 'la phrase annonce la liste');
+    assert.match(m.suite, /2 questions/);
     assert.equal(m.revision.questions, 2);
 });
 
