@@ -4954,3 +4954,10 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 @media (prefers-reduced-motion: reduce) {
     .rang-btn { transition: none; }
 }
+
+/* Un dossier se glisse dans le parcours — encore faut-il que ça se voie. La
+   main ouverte ne s'affiche qu'en mode professeur : l'élève ne glisse rien. */
+body.teacher-mode .drill-item,
+body.teacher-mode #view-accordion summary { cursor: grab; }
+body.teacher-mode .drill-item:active,
+body.teacher-mode #view-accordion summary:active { cursor: grabbing; }

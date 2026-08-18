@@ -485,6 +485,11 @@ export function renderDrilldown() {
     getNodeSubKeys(filtered, path).forEach(key => {
         const b = document.createElement('button'); b.className = 'drill-item'; b.innerHTML = `<span>${key}</span><span>›</span>`;
         b.onclick = () => { state.navStack.push(key); renderDrilldown(); syncGridToSidebar(); };
+        // LE DOSSIER SE GLISSE ICI AUSSI. C'est même la vue par défaut — celle
+        // où l'on tombe en ouvrant l'application. N'avoir rendu déplaçables
+        // que les dossiers de l'arbre revenait à livrer le geste dans l'écran
+        // où personne ne le cherche.
+        rendreDossierDeposable(b, [...path, key]);
         content.appendChild(b);
     });
 
