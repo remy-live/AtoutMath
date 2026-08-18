@@ -42,6 +42,7 @@ export function initBuilder() {
     initPresentationMode();
     initGameAccessPanel();
     initClassesPanel();
+    initChapitresPanel();
     renderTeacherPath();
 }
 
@@ -57,6 +58,20 @@ function initClassesPanel() {
     btn.onclick = async () => {
         const { ouvrirClasses } = await import('./classesUI.js');
         ouvrirClasses();
+    };
+}
+
+// --- Mes chapitres ----------------------------------------------------------
+//
+// Chargé à la demande, comme les classes : l'écran croise les cent exercices
+// avec toute la progression, et on n'y va qu'en début d'année.
+
+function initChapitresPanel() {
+    const btn = document.getElementById('btn-chapitres');
+    if (!btn) return;
+    btn.onclick = async () => {
+        const { ouvrirChapitres } = await import('./chapitresUI.js');
+        ouvrirChapitres();
     };
 }
 

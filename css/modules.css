@@ -4644,3 +4644,251 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     .cl-col { height: 148px; }
     .cl-case { width: 26px; height: 26px; }
 }
+
+/* --- Mes chapitres : le tableau de classement -------------------------------
+   Une ligne par exercice, une colonne par chapitre. La colonne des noms et la
+   ligne d'en-tête restent collées pendant le défilement : sans elles, on perd
+   à la fois quel exercice et quel chapitre on est en train de cocher. */
+
+.chap-panneau {
+    width: min(1180px, 96vw);
+    max-height: 92vh;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.chap-barre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.chap-barre .cfg-input { width: auto; min-width: 150px; }
+.chap-filtre-relire { margin: 0; }
+.chap-barre #chap-tout { margin-left: auto; }
+.chap-barre #chap-tout:disabled { opacity: .45; cursor: default; }
+
+.chap-compteur {
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-variant-numeric: tabular-nums;
+}
+.chap-compteur--fini {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    border-color: color-mix(in srgb, var(--success) 38%, transparent);
+}
+
+.chap-corps {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+@media (min-width: 1000px) {
+    .chap-corps { grid-template-columns: minmax(0, 1fr) 260px; align-items: start; }
+}
+
+.chap-cadre {
+    overflow: auto;
+    max-height: 62vh;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-panel);
+}
+
+.chap-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+
+.chap-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg-panel);
+    border-bottom: 2px solid var(--border);
+    padding: 6px 3px;
+    vertical-align: bottom;
+}
+.chap-col-nom {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    text-align: left;
+    padding-left: 12px;
+    min-width: 200px;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.chap-col { width: 54px; }
+
+.chap-tete {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    width: 100%;
+    padding: 4px 2px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-family: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+.chap-tete:hover { background: var(--bg-hover); border-color: var(--border); }
+.chap-num { font-size: .92rem; font-weight: 800; color: var(--primary); }
+.chap-court { font-size: .6rem; line-height: 1.15; color: var(--text-muted); text-align: center; }
+.chap-tete--vide .chap-num { color: var(--text-muted); }
+
+.chap-table tbody td { border-bottom: 1px solid var(--border); padding: 0; }
+.chap-nom { position: sticky; left: 0; z-index: 2; background: var(--bg-panel); }
+.chap-table tbody tr:hover td, .chap-table tbody tr:hover .chap-nom { background: var(--bg-hover); }
+.chap-ligne--choisie td, .chap-ligne--choisie .chap-nom {
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+}
+
+.chap-nom-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    padding: 8px 10px 8px 12px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.chap-titre { font-size: .86rem; font-weight: 600; }
+.chap-chemin { font-size: .66rem; color: var(--text-muted); }
+.chap-etiquette {
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0 7px;
+}
+
+.chap-case {
+    width: 100%;
+    height: 42px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+.chap-marque {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-size: .78rem;
+    font-weight: 800;
+    line-height: 1;
+    border: 1.5px solid transparent;
+    transition: transform .12s ease;
+}
+.chap-marque--non { border: 1.5px dashed var(--border); color: transparent; }
+.chap-marque--propose {
+    border: 1.5px dashed var(--warning);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    color: var(--warning);
+}
+.chap-marque--oui { background: var(--primary); color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+    .chap-case:hover .chap-marque { transform: scale(1.15); }
+    .chap-case:hover .chap-marque--non { border-color: var(--primary); }
+}
+
+.chap-vide { padding: 22px 14px; color: var(--text-muted); font-size: .9rem; }
+
+.chap-fiche {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-app);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 62vh;
+    overflow-y: auto;
+}
+.chap-fiche-titre { margin: 0; font-size: .98rem; font-weight: 700; }
+.chap-fiche-texte { margin: 0; font-size: .82rem; color: var(--text-muted); line-height: 1.45; }
+.chap-bloc-titre {
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.chap-n { color: var(--primary); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.chap-liste { margin: 0; padding-left: 18px; font-size: .84rem; }
+.chap-comps { display: flex; flex-direction: column; gap: 6px; }
+.chap-comp {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    background: var(--bg-panel);
+    border-left: 3px solid var(--primary);
+}
+.chap-comp-lab { font-size: .8rem; font-weight: 600; }
+.chap-comp-id { font-size: .64rem; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.chap-legende {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-size: .78rem;
+    color: var(--text-muted);
+}
+.chap-leg { display: flex; align-items: center; gap: 7px; }
+
+@media (max-width: 700px) {
+    /* Le tableau garde son défilement horizontal : le découper en cartes
+       ferait perdre la comparaison d'une colonne à l'autre, qui est tout
+       l'intérêt du classement.
+
+       ET IL GARDE SA HAUTEUR. Empilés, les filtres, la fiche et la légende
+       mangeaient tout : il ne restait qu'une ligne et demie de tableau, soit
+       exactement ce qu'on est venu voir. Le cadre reçoit donc une hauteur
+       ferme, et c'est le panneau entier qui défile. */
+    .chap-panneau { padding: 14px; overflow-y: auto; }
+    /* Empilé, le corps prend la hauteur de son contenu : contraint à la place
+       restante, la fiche débordait de la grille et la légende se dessinait
+       par-dessus les dernières lignes du tableau. */
+    .chap-corps { flex: 0 0 auto; }
+    .chap-cadre { height: 46vh; max-height: none; }
+    .chap-fiche { max-height: none; }
+    .chap-col-nom { min-width: 150px; }
+    .chap-barre .cfg-input { flex: 1 1 130px; min-width: 0; }
+    .chap-barre #chap-tout { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chap-marque { transition: none; }
+}
