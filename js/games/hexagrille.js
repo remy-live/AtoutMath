@@ -42,10 +42,20 @@ const ORIG_X = 100;
 const ORIG_Y = 80;
 // CHAQUE FAMILLE A SON RECUL. Deux files qui partent de la MÊME case — la
 // descente et la montée s'y croisent — poseraient sinon leurs étiquettes à
-// quarante pixels l'une de l'autre, et la ligne « déjà 13 » de la première
-// viendrait toucher la somme de la seconde. En éloignant les montées, on écarte
-// les deux couronnes d'étiquettes sans toucher au losange.
-const RECUL = { 'bas': R + 50, 'bas-droite': R + 52, 'haut-droite': R + 84 };
+// quarante pixels l'une de l'autre. En éloignant les montées, on écarte les
+// deux couronnes d'étiquettes sans toucher au losange. Calculé sur les huit
+// files : le plus petit écart entre deux étiquettes est de 21 px.
+const RECUL = { 'bas': R + 46, 'bas-droite': R + 48, 'haut-droite': R + 88 };
+
+// DU CENTRE D'UN HEXAGONE À SON BORD, dans les trois directions employées.
+// Les files descendent (90°) ou suivent une diagonale (±30°) : ce sont les
+// milieux des côtés d'un hexagone à sommet plat, tous à la même distance.
+const BORDURE = HAUT / 2;
+// « Que les flèches arrivent jusque la bordure, avec un petit décalage » : la
+// pointe s'arrête juste avant le trait de la case, elle ne le touche pas.
+const ECART = 7;
+// L'étiquette et la flèche se tiennent : le trait part sous le chiffre.
+const SOUS_LE_CHIFFRE = 15;
 
 /** Le centre du dessin pour la case (c, r). */
 const centre = (c, r) => ({
@@ -63,15 +73,17 @@ function repereFleche(f) {
     const b = centre(CASES[f.cases[f.cases.length - 1]].c, CASES[f.cases[f.cases.length - 1]].r);
     const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
     const ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
-    const recul = RECUL[f.sens] || R + 52;
+    const recul = RECUL[f.sens] || R + 48;
     return {
         ux, uy,
-        // Le trait : un segment court juste avant la première case, posé sur
-        // la même couronne que son étiquette — sinon les deux flèches qui
-        // partent d'une même case se croisent la pointe.
-        x1: a.x - ux * (recul - 26), y1: a.y - uy * (recul - 26),
-        x2: a.x - ux * (recul - 42), y2: a.y - uy * (recul - 42),
-        // L'étiquette, encore un peu plus loin sur la même ligne.
+        // LE TRAIT VA DU CHIFFRE À LA CASE. Il n'était qu'un moignon de 16 px
+        // suspendu à mi-chemin : on ne voyait ni d'où il partait ni où il
+        // allait, et Rémy lisait « des soucis entre la position de la flèche
+        // et du chiffre ». Il part maintenant sous l'étiquette et sa pointe
+        // s'arrête à 7 px du bord de la première case.
+        x1: a.x - ux * (recul - SOUS_LE_CHIFFRE), y1: a.y - uy * (recul - SOUS_LE_CHIFFRE),
+        x2: a.x - ux * (BORDURE + ECART), y2: a.y - uy * (BORDURE + ECART),
+        // L'étiquette, au bout du trait, sur la même ligne.
         ex: a.x - ux * recul, ey: a.y - uy * recul
     };
 }
@@ -90,6 +102,8 @@ class Hexagrille extends BaseGame {
             ? this.params.niveau : 'facile';
         this.reussies = 0;
         this.aides = 0;
+        // La file qu'on a demandé de voir : aucune au départ.
+        this.fileVue = null;
     }
 
     render() {
@@ -138,8 +152,21 @@ class Hexagrille extends BaseGame {
                     text-anchor: middle; dominant-baseline: central;
                 }
                 .hx-somme--juste { fill: var(--success, #16a34a); }
-                .hx-encours { font-size: 13px; fill: var(--text-muted); text-anchor: middle; }
                 .hx-cible { fill: transparent; cursor: pointer; }
+
+                /* LA FILE DÉSIGNÉE PAR UN NOMBRE. On appuie sur la somme, sa
+                   file s'allume : deux ou trois cases sur neuf, c'est bien
+                   plus lisible que de suivre un trait des yeux. */
+                .hx-file { cursor: pointer; }
+                .hx-file-zone { fill: transparent; stroke: transparent; stroke-width: 30; }
+                .hx-fleche--vue { stroke: var(--primary); stroke-width: 3.4; }
+                .hx-pointe--vue { fill: var(--primary); }
+                .hx-pointe--juste { fill: var(--success, #16a34a); }
+                .hx-somme--vue { fill: var(--primary); }
+                .hx-cell--eclairee {
+                    fill: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
+                    stroke: var(--primary); stroke-width: 3;
+                }
 
                 /* LA RÉSERVE. Ce qui reste à placer, en toutes lettres : le
                    dernier chiffre disponible débloque souvent la grille. */
@@ -211,10 +238,12 @@ class Hexagrille extends BaseGame {
         this.puzzle = genererHexagrille(this.rng, { niveau: this.niveau });
         this.saisie = this.puzzle.donnees.slice();
         this.choisi = null;
+        this.fileVue = null;
         this.finie = false;
         this.dessiner();
-        this.note('Chaque flèche donne la somme de sa file. Cherche une file où il ne manque '
-            + 'qu\'UNE case : c\'est une soustraction, et elle en débloque d\'autres.');
+        this.note('Chaque flèche donne la somme de sa file — appuie sur un nombre pour voir '
+            + 'quelles cases il compte. Cherche une file où il ne manque qu\'UNE case : '
+            + 'c\'est une soustraction, et elle en débloque d\'autres.');
         return true;
     }
 
@@ -234,12 +263,14 @@ class Hexagrille extends BaseGame {
         const justes = new Set(filesJustes(this.saisie, P.fleches));
 
         // Les hexagones, puis les flèches, puis les cibles du doigt par-dessus.
+        const filVue = P.fleches.find(f => f.id === this.fileVue);
+        const eclairees = new Set(filVue ? filVue.cases : []);
         const cells = CASES.map(({ c, r, i }) => {
             const { x, y } = centre(c, r);
             const donnee = P.donnees[i] !== 0;
             const v = this.saisie[i];
             return `<g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
-                <polygon class="hx-cell${donnee ? ' hx-cell--donnee' : v ? '' : ' hx-cell--vide'}"
+                <polygon class="hx-cell${donnee ? ' hx-cell--donnee' : v ? '' : ' hx-cell--vide'}${eclairees.has(i) ? ' hx-cell--eclairee' : ''}"
                          data-cell="${i}" points="${CONTOUR}"></polygon>
                 ${v ? `<text class="hx-nb ${donnee ? 'hx-nb--donnee' : 'hx-nb--pose'}">${v}</text>` : ''}
             </g>`;
@@ -258,7 +289,9 @@ class Hexagrille extends BaseGame {
         });
         P.fleches.forEach(f => {
             const p = repereFleche(f);
-            points.push([p.ex - 22, p.ey - 14], [p.ex + 22, p.ey + 26]);
+            // L'étiquette tient sur UNE ligne depuis que « déjà 8 » a disparu :
+            // 26 px de haut suffisent, contre 40 auparavant.
+            points.push([p.ex - 22, p.ey - 14], [p.ex + 22, p.ey + 14]);
         });
         const minX = Math.min(...points.map(p => p[0])) - 6;
         const minY = Math.min(...points.map(p => p[1])) - 6;
@@ -279,6 +312,10 @@ class Hexagrille extends BaseGame {
                             markerWidth="5" markerHeight="5" orient="auto-start-reverse">
                         <path d="M 0 0 L 10 5 L 0 10 z" class="hx-pointe hx-pointe--juste"/>
                     </marker>
+                    <marker id="hx-pointe-vu" viewBox="0 0 10 10" refX="8" refY="5"
+                            markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" class="hx-pointe hx-pointe--vue"/>
+                    </marker>
                 </defs>
                 ${cells}${fleches}
             </svg>`;
@@ -287,30 +324,49 @@ class Hexagrille extends BaseGame {
             el.style.cursor = P.donnees[Number(el.dataset.cell)] ? 'default' : 'pointer';
             el.addEventListener('click', () => this.toucherCase(Number(el.dataset.cell)));
         });
+        this.plateauEl.querySelectorAll('[data-file]').forEach(el => {
+            el.addEventListener('click', () => {
+                // Un second appui éteint : on ne reste pas coincé sur une file.
+                this.fileVue = this.fileVue === el.dataset.file ? null : el.dataset.file;
+                this.dessiner();
+            });
+        });
 
         this.dessinerReserve();
         this.compteEl.textContent = `${this.reussies} grille${this.reussies > 1 ? 's' : ''} réussie${this.reussies > 1 ? 's' : ''}`;
     }
 
-    /** Une flèche : le trait qui entre dans la file, et sa somme en amont. */
+    /**
+     * Une flèche : le trait qui entre dans la file, et sa somme au départ.
+     *
+     * IL N'Y A PLUS DE « DÉJÀ 8 ». Le total courant de chaque file s'écrivait
+     * sous sa somme : il n'y avait plus qu'à soustraire deux nombres qu'on
+     * avait sous les yeux, sans jamais additionner les cases. Rémy : « enlève
+     * le déjà 7 ou déjà 8, c'est trop simple. » Additionner sa file est
+     * précisément le travail que l'hexagrille demande.
+     *
+     * ELLE S'ÉCLAIRE AU DOIGT, en revanche. Sur huit flèches qui partent
+     * toutes du même côté, savoir LAQUELLE désigne quoi demandait de suivre le
+     * trait des yeux à travers le losange. Un appui sur le nombre allume sa
+     * file entière — et c'est un geste de lecture, pas un indice : il ne dit
+     * rien qui ne soit déjà dessiné.
+     */
     fleche(f, juste) {
         const p = repereFleche(f);
-        const pose = f.cases.reduce((t, i) => t + (this.saisie[i] || 0), 0);
-        const complete = f.cases.every(i => this.saisie[i]);
-        // « déjà 8 » : le total courant de la file, tant qu'elle n'est pas
-        // finie. C'est ce qui permet de faire la soustraction sans réadditionner
-        // à chaque fois ce qu'on vient de poser.
-        const encours = !complete && pose > 0
-            ? `<text class="hx-encours" x="${p.ex.toFixed(1)}" y="${(p.ey + 17).toFixed(1)}">déjà ${pose}</text>` : '';
-
-        return `<g>
-            <line class="hx-fleche${juste ? ' hx-fleche--juste' : ''}"
+        const vue = this.fileVue === f.id;
+        const etat = vue ? '--vue' : juste ? '--juste' : '';
+        const pointe = vue ? '-vu' : juste ? '-ok' : '';
+        return `<g class="hx-file" data-file="${f.id}">
+            <line class="hx-file-zone"
+                  x1="${p.x1.toFixed(1)}" y1="${p.y1.toFixed(1)}"
+                  x2="${p.x2.toFixed(1)}" y2="${p.y2.toFixed(1)}"></line>
+            <circle class="hx-file-zone" cx="${p.ex.toFixed(1)}" cy="${p.ey.toFixed(1)}" r="17"></circle>
+            <line class="hx-fleche${etat ? ' hx-fleche' + etat : ''}"
                   x1="${p.x1.toFixed(1)}" y1="${p.y1.toFixed(1)}"
                   x2="${p.x2.toFixed(1)}" y2="${p.y2.toFixed(1)}"
-                  marker-end="url(#hx-pointe${juste ? '-ok' : ''})"></line>
-            <text class="hx-somme${juste ? ' hx-somme--juste' : ''}"
+                  marker-end="url(#hx-pointe${pointe})"></line>
+            <text class="hx-somme${etat ? ' hx-somme' + etat : ''}"
                   x="${p.ex.toFixed(1)}" y="${p.ey.toFixed(1)}">${f.somme}</text>
-            ${encours}
         </g>`;
     }
 

@@ -1227,6 +1227,12 @@ export const calculExercises = [
         // des décompositions.
         id: 'logi-hexagrille', status: STATUS.TEST, title: 'L\'Hexagrille',
         cree: '2026-08-17',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Les flèches vont maintenant du nombre jusqu\'au bord de la première case, '
+                + 'le total courant « déjà 8 » a disparu — il rendait la soustraction gratuite — '
+                + 'et un appui sur un nombre éclaire la file qu\'il désigne.'
+        }],
         activityId: 'hexagrille',
         sansRevision: true,
         skills: ['num.logique.hexagrille'],
