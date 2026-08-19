@@ -418,6 +418,7 @@ const legacy = [
     ['pipopipette', 'La Pipopipette (à deux)', 'jeuxDeux', 'enginePipopipette'],
     ['puissance4', 'Puissance 4 (à deux)', 'jeuxDeux', 'enginePuissance4'],
     ['sim', 'Le Sim (à deux)', 'jeuxDeux', 'engineSim'],
+    ['diviseurs', 'Le Chasseur de Diviseurs', 'diviseurs', 'engineDiviseurs'],
     ['arpenteurs', 'Les Arpenteurs (à deux)', 'arpenteurs', 'engineArpenteurs'],
     ['ninja', 'Trancher et tirer', 'ninja', 'engineNinja'],
     ['dictee', 'Dictée de nombres', 'dictee', 'engineDictee'],

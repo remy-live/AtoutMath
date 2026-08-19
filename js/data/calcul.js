@@ -966,6 +966,49 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LE CHASSEUR DE DIVISEURS. Rémy : « je pense à un jeu un peu futuriste
+        // pour travailler la décomposition et la divisibilité, où il y a des
+        // nombres qui arrivent et on peut tirer des diviseurs dessus. Exemple
+        // 30 : on peut tirer 6, du coup ça se transforme en 5, et on ne peut
+        // capturer que les nombres premiers. »
+        //
+        // C'est la décomposition en facteurs premiers jouée à l'envers : on ne
+        // l'écrit pas, on la FAIT — et le bilan de fin de partie la réécrit
+        // comme au tableau, à côté du chemin réellement pris.
+        id: 'calc-diviseurs', status: STATUS.TEST, title: 'Le Chasseur de Diviseurs',
+        cree: '2026-08-19',
+        activityId: 'diviseurs', skills: ['num.arith.decomposition'],
+        params: { niveau: 'facile', boucliers: 3 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Les facteurs en jeu',
+                aide: 'Ce qui change n\'est pas la vitesse, c\'est la MATIÈRE. Au premier niveau, les cibles se cassent avec les critères de divisibilité qu\'on vient d\'apprendre — 2, 3 et 5. Au dernier, il faut chercher un facteur 7, 11 ou 13, ce qu\'aucun critère ne donne : on essaie, on divise, on recommence.',
+                options: Object.entries({
+                    facile: 'Les tables — facteurs 2, 3 et 5',
+                    moyen: 'Jusqu\'à 7 — les critères ne suffisent plus',
+                    difficile: 'Jusqu\'à 13 — il faut chercher'
+                }).map(([value, label]) => ({ value, label })),
+                default: 'facile'
+            },
+            {
+                id: 'boucliers', type: 'select', label: 'Boucliers',
+                aide: 'Un tir qui ne divise pas coûte un bouclier — sans quoi la stratégie gagnante serait de tirer 2, puis 3, puis 4, jusqu\'à ce que ça passe, et le jeu n\'enseignerait plus la divisibilité mais la patience.',
+                options: [
+                    { value: 3, label: '3 — la partie va vite' },
+                    { value: 5, label: '5' },
+                    { value: 8, label: '8 — on a le droit de chercher' }
+                ],
+                default: 3
+            }
+        ],
+        motsClefs: ['diviseurs', 'décomposition', 'facteurs premiers', 'divisibilité', 'premiers', 'arcade'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Des nombres descendent. On ne les détruit pas : on les CASSE. Compose un diviseur au pavé, appuie sur FEU, et le nombre se divise — tire 6 sur 30, il devient 5. Un nombre PREMIER s'allume en jaune : lui seul se capture, en tirant son propre nombre dessus. Un tir qui ne divise pas coûte un bouclier, et le message dit toujours ce qui reste : « 7 ne divise pas 30, il reste 2 ». À la fin, l'écran réécrit tout ce que tu as cassé — c'est la décomposition en facteurs premiers."
+    },
+    {
         // LA PIPOPIPETTE. Rémy : « j'aimerai bien le jeu pipopipette ». Le jeu
         // d'Édouard Lucas (1889) — et un vrai problème de PARITÉ : passé la
         // moitié de la partie, le plateau se découpe en chaînes de carrés, et

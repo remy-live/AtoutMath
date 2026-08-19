@@ -250,6 +250,14 @@ const BASE = {
         descriptor: 'Passer d\'un énoncé en toutes lettres au calcul, et l\'inverse.',
         lesson: 'La somme de 3 ET 2 s\'écrit 3 + 2 ; le produit de 3 PAR 2 s\'écrit 3 × 2. Somme et différence vont avec « et », produit et quotient avec « par ».'
     },
+    'num.arith.decomposition': {
+        label: 'Diviseurs et décomposition en facteurs premiers',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.vocabulaire.division'],
+        descriptor: 'Trouver un diviseur d\'un nombre, et le casser jusqu\'à ses facteurs premiers.',
+        lesson: 'Un nombre PREMIER n\'a que deux diviseurs : 1 et lui-même. Tous les autres se cassent : 60 = 4 × 15 = 4 × 3 × 5 = 2 × 2 × 3 × 5. On s\'arrête quand il ne reste que des premiers — et l\'on trouve toujours les mêmes, quel que soit l\'ordre où l\'on s\'y prend.'
+    },
     'num.vocabulaire.multiples': {
         label: 'Double, triple, moitié, tiers',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
