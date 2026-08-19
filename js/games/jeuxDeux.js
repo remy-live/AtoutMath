@@ -80,6 +80,9 @@ class JeuADeux extends BaseGame {
         this.machine = 'N';
         // Le point d'où part le trait qu'on est en train de tirer (le Sim seul).
         this.simDepart = null;
+        // La case que le dernier jeton vient d'atteindre (le puissance 4 seul) :
+        // c'est elle qui porte l'animation de chute.
+        this.chute = null;
         this.partie = this.def.creer(this.params);
     }
 
@@ -138,6 +141,22 @@ class JeuADeux extends BaseGame {
                 .jd-colonne:hover rect { fill: color-mix(in srgb, var(--primary) 12%, transparent); }
                 .jd-trou { fill: var(--bg-app); }
                 .jd-jeton { stroke: rgba(0,0,0,.25); stroke-width: 1.5; }
+                /* LE JETON TOMBE. Rémy : « on pourrait voir l'animation ». Il
+                   apparaissait dans sa case, et rien ne montrait qu'on avait
+                   choisi une COLONNE — c'est pourtant toute la règle du jeu :
+                   on ne choisit pas la case, on choisit la colonne, et la
+                   gravité fait le reste. La distance parcourue dépend de la
+                   rangée atteinte : un jeton qui tombe au fond tombe de plus
+                   haut, et cela se voit. */
+                .jd-tombe { animation: jd-chute .34s cubic-bezier(.4, 0, .7, 1); }
+                @keyframes jd-chute {
+                    from { transform: translateY(calc(var(--jd-chute, 0) * -1px)); }
+                    70% { transform: translateY(0); }
+                    /* Le rebond : deux pour cent de la course, et le jeton se pose. */
+                    85% { transform: translateY(calc(var(--jd-chute, 0) * -.045px)); }
+                    to { transform: translateY(0); }
+                }
+                @media (prefers-reduced-motion: reduce) { .jd-tombe { animation: none; } }
                 .jd-gagnant { stroke: #fff; stroke-width: 4; }
 
                 /* --- Sim --- */
@@ -198,6 +217,7 @@ class JeuADeux extends BaseGame {
         this.partie = this.def.creer(this.params);
         this.fini = false;
         this.simDepart = null;
+        this.chute = null;
         this.dessiner();
         this.note(this.def.consigne);
     }
@@ -209,6 +229,7 @@ class JeuADeux extends BaseGame {
         if (this.isDemo || this.fini) return;
         const m = this.def.module;
         if (this.contreMachine && this.partie.trait === this.machine) return;
+        this.noterChute(coup);
         this.partie = m.jouer(this.partie, coup);
         this.dessiner();
         if (this.regarderLaFin()) return;
@@ -232,6 +253,7 @@ class JeuADeux extends BaseGame {
                 fantaisie: cfg.fantaisie, rng: this.rng
             });
             if (!r) { this.regarderLaFin(); return; }
+            this.noterChute(r.coup);
             this.partie = m.jouer(this.partie, r.coup);
             this.dessiner();
             if (this.regarderLaFin()) return;
@@ -239,6 +261,18 @@ class JeuADeux extends BaseGame {
             // À la pipopipette, elle peut enchaîner : qui ferme rejoue.
             if (this.partie.trait === this.machine) this.faireJouerLaMachine();
         }, 620);
+    }
+
+    /**
+     * Où le jeton va-t-il se poser ? Il faut le savoir AVANT de jouer : après,
+     * la case est occupée et l'on ne sait plus laquelle vient d'être remplie.
+     * Le puissance 4 seul en a besoin — les deux autres jeux posent où l'on
+     * touche.
+     */
+    noterChute(coup) {
+        if (this.quel !== 'puissance4') return;
+        const y = p4.chute(this.partie, coup);
+        this.chute = y < 0 ? null : { x: coup, y, quand: Date.now() };
     }
 
     aQui() {
@@ -467,7 +501,12 @@ function dessinerP4(p) {
         const cx = MARGE + x * PAS + PAS / 2, cy = MARGE + y * PAS + PAS / 2;
         if (c === null) return `<circle class="jd-trou" cx="${cx}" cy="${cy}" r="${PAS * 0.4}"></circle>`;
         const gagne = gagnantes.has(`${x},${y}`);
-        return `<circle class="jd-jeton${gagne ? ' jd-gagnant' : ''}" cx="${cx}" cy="${cy}"
+        // La hauteur de chute : du haut de la grille jusqu'à sa case, plus une
+        // rangée pour qu'il entre par le dessus et non par le bord.
+        const neuf = this.chute && this.chute.x === x && this.chute.y === y;
+        const hauteur = MARGE + y * PAS + PAS;
+        return `<circle class="jd-jeton${gagne ? ' jd-gagnant' : ''}${neuf ? ' jd-tombe' : ''}"
+            ${neuf ? `style="--jd-chute: ${hauteur}"` : ''} cx="${cx}" cy="${cy}"
             r="${PAS * 0.4}" fill="${TEINTES[c]}"></circle>`;
     }).join('')).join('');
 

@@ -47,6 +47,8 @@ class Diviseurs extends BaseGame {
         // ne connaît ni les pixels ni le temps.
         this.vols = new Map();     // id -> { t0, duree }
         this.eclats = [];
+        // L'obus en vol, s'il y en a un : on ne tire pas pendant qu'il vole.
+        this.tir = null;
     }
 
     render() {
@@ -139,6 +141,34 @@ class Diviseurs extends BaseGame {
                     font-variant-numeric: tabular-nums;
                 }
                 .dv-obus--vide { opacity: .45; }
+                /* L'OBUS EN VOL. Rémy : « il faudrait pouvoir faire feu et ça
+                   fonce sur celui qu'on a sélectionné, ça explose et il reste
+                   le résultat de la division ». Le diviseur quittait le canon
+                   et le nombre changeait dans la même image : rien ne reliait
+                   le geste au résultat. Il traverse maintenant l'écran, et
+                   comme la cible tombe pendant ce temps, il la SUIT — un obus
+                   qui vise l'endroit où elle était n'aurait pas l'air de viser. */
+                .dv-vol {
+                    position: absolute; z-index: 4; transform: translate(-50%, -50%);
+                    padding: 2px 10px; border-radius: 999px; font-weight: 900;
+                    font-size: clamp(13px, 3cqh, 20px); pointer-events: none;
+                    background: #38bdf8; color: #04240f;
+                    box-shadow: 0 0 16px #38bdf8, 0 0 34px rgba(56,189,248,.6);
+                }
+                /* L'explosion : une onde qui s'ouvre là où l'obus a touché. */
+                .dv-boum {
+                    position: absolute; z-index: 5; transform: translate(-50%, -50%);
+                    width: 8px; height: 8px; border-radius: 50%; pointer-events: none;
+                    background: radial-gradient(circle, #fff 0%, #fde68a 35%, #f97316 65%, transparent 72%);
+                    animation: dv-boum .42s ease-out forwards;
+                }
+                @keyframes dv-boum {
+                    from { width: 8px; height: 8px; opacity: 1; }
+                    to { width: 150px; height: 150px; opacity: 0; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .dv-boum { animation-duration: .12s; }
+                }
                 .dv-sur { color: #94a3b8; font-size: .72em; font-weight: 700; }
                 .dv-pave {
                     display: grid; grid-template-columns: repeat(6, 1fr);
@@ -296,6 +326,41 @@ class Diviseurs extends BaseGame {
             el.style.left = `${v.x}%`;
             el.style.top = `${(6 + k * 84).toFixed(2)}%`;
         });
+        this.volerObus(t);
+    }
+
+    /**
+     * L'OBUS SUIT SA CIBLE. Elle tombe pendant les trois cents millisecondes
+     * du vol : viser l'endroit où elle était au moment du tir ferait passer
+     * l'obus à côté, ce qui est exactement ce qu'on ne veut pas montrer.
+     */
+    volerObus(t) {
+        const tir = this.tir;
+        if (!tir) return;
+        const r0 = this.espaceEl.getBoundingClientRect();
+        const cibleEl = this.espaceEl.querySelector(`[data-cible="${tir.cibleId}"]`);
+        const rc = cibleEl ? cibleEl.getBoundingClientRect() : null;
+        const arrX = rc ? rc.left - r0.left + rc.width / 2 : r0.width / 2;
+        const arrY = rc ? rc.top - r0.top + rc.height / 2 : r0.height * 0.4;
+        const k = Math.min(1, (t - tir.t0) / tir.duree);
+        const x = tir.x0 + (arrX - tir.x0) * k;
+        const y = tir.y0 + (arrY - tir.y0) * k;
+        tir.el.style.left = `${x.toFixed(1)}px`;
+        tir.el.style.top = `${y.toFixed(1)}px`;
+        if (k < 1) return;
+        tir.el.remove();
+        this.tir = null;
+        this.impact(tir.d, tir.cibleId, x, y);
+    }
+
+    /** L'onde de choc, à l'endroit exact où l'obus a touché. */
+    boum(x, y) {
+        const el = document.createElement('div');
+        el.className = 'dv-boum';
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        this.espaceEl.appendChild(el);
+        setTimeout(() => el.remove(), 500);
     }
 
     // --- Tirer ------------------------------------------------------------------
@@ -309,17 +374,50 @@ class Diviseurs extends BaseGame {
         this.majCanon();
     }
 
+    /**
+     * FEU — et l'obus PART, il n'arrive pas.
+     *
+     * Le diviseur était appliqué à l'instant du clic : le nombre changeait
+     * dans la même image que l'appui, et rien ne montrait que le tir avait
+     * atteint CE nombre-là plutôt qu'un autre. L'obus traverse maintenant
+     * l'écran ; c'est à l'impact que la division se fait.
+     *
+     * On ne tire pas deux fois pendant un vol : le second obus arriverait sur
+     * une cible dont la valeur a déjà changé, et le message parlerait d'un
+     * nombre que l'élève ne voit plus.
+     */
     feu() {
         const p = this.partie;
+        if (this.tir) return;
         if (!this.saisie) { this.note('Compose d\'abord un diviseur, puis FEU.'); return; }
         const cible = p.cibles.find(c => c.id === this.vise) || p.cibles[0];
         if (!cible) { this.note('Aucune cible en vue.'); return; }
         const d = Number(this.saisie);
+        this.saisie = '';
+        this.majCanon();
+
+        const el = document.createElement('div');
+        el.className = 'dv-vol';
+        el.textContent = String(d);
+        this.espaceEl.appendChild(el);
+        const r0 = this.espaceEl.getBoundingClientRect();
+        this.tir = {
+            d, cibleId: cible.id, el, t0: performance.now(), duree: 320,
+            x0: r0.width / 2, y0: r0.height - 4
+        };
+        this.note(`L'obus part : ${d}…`);
+        this.placer(performance.now());
+    }
+
+    /** L'obus a touché : c'est maintenant que la division se fait. */
+    impact(d, cibleId, x, y) {
+        const p = this.partie;
+        const cible = p.cibles.find(c => c.id === cibleId);
+        if (!cible) { this.note('La cible est passée avant l\'obus.'); return; }
         const avant = cible.valeur;
         const v = this.vols.get(cible.id) || { x: 50 };
         const r = tirerSur(p, cible.id, d);
-        this.saisie = '';
-        this.majCanon();
+        this.boum(x, y);
 
         if (!r.ok) {
             this.eclat(v.x, 60, `${d} ✗`, 'ko');
@@ -441,6 +539,7 @@ class Diviseurs extends BaseGame {
 
     rejouer() {
         this.partie = creerPartie({ niveau: this.niveau, boucliers: Number(this.params.boucliers) || 3 });
+        if (this.tir) { this.tir.el.remove(); this.tir = null; }
         this.vols.clear();
         this.saisie = '';
         this.vise = null;
@@ -507,6 +606,7 @@ class Diviseurs extends BaseGame {
     }
 
     destroy() {
+        if (this.tir) { this.tir.el.remove(); this.tir = null; }
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         if (this.rafId) cancelAnimationFrame(this.rafId);
         if (this.surTouche) document.removeEventListener('keydown', this.surTouche);

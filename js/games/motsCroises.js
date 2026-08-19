@@ -26,6 +26,9 @@ import {
 const COMPETENCE = 'voc.mathematique';
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+// « 1ʳᵉ », pas « 1ᵉ » : c'est la seule qui ne suit pas la règle.
+const ordinal = (n) => (n === 1 ? '1ʳᵉ' : `${n}ᵉ`);
+
 class MotsCroises extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'mots-croises');
@@ -40,6 +43,9 @@ class MotsCroises extends BaseGame {
         this.saisie = {};
         this.resolues = 0;
         this.verifs = 0;
+        // Un indice par mot, et l'on se souvient de LEQUEL : le refus doit
+        // pouvoir redire quelle lettre a déjà été donnée.
+        this.aides = new Map();
     }
 
     render() {
@@ -235,6 +241,7 @@ class MotsCroises extends BaseGame {
         });
         this.saisie = {};
         this.soufflees = new Set();
+        this.aides = new Map();
         this.fini = false;
         // Le mot visé : celui où l'on écrit. Au départ, le premier horizontal.
         this.vise = this.grille.mots.find(m => m.dir === 'h') || this.grille.mots[0] || null;
@@ -383,21 +390,47 @@ class MotsCroises extends BaseGame {
     // --- Aider et vérifier ----------------------------------------------------
 
     /** Une lettre du mot visé, la première encore vide : jamais tout le mot. */
+    /**
+     * UNE SEULE LETTRE SOUFFLÉE PAR MOT.
+     *
+     * Rémy : « on peut tricher en cliquant tout le temps sur une lettre. Il
+     * faudrait au max une lettre par mot, et prévenir si on a déjà utilisé ce
+     * bonus. » En appuyant assez de fois, la grille se remplissait toute
+     * seule — et un indice qu'on peut réclamer indéfiniment n'est plus un
+     * indice, c'est le bouton « donne-moi la réponse ».
+     *
+     * Une par mot, donc : elle donne le pied, elle ne fait pas le travail. Et
+     * le refus DIT laquelle a déjà été donnée — « rien ne se passe » se lit
+     * comme une panne, pas comme une règle.
+     */
     aider() {
         if (this.isDemo || this.fini || !this.vise) return;
         const cases = this.casesDe(this.vise);
+        const cleMot = `${this.vise.num}${this.vise.dir}`;
+        const dejaVu = this.aides.get(cleMot);
+        if (dejaVu !== undefined) {
+            this.note(`Tu as déjà eu ton indice sur ce mot : la ${ordinal(dejaVu + 1)} lettre `
+                + `est un ${this.vise.mot[dejaVu]}. Une seule par mot — à toi de trouver le reste.`);
+            return;
+        }
         const k = cases.findIndex((c, i) => (this.saisie[`${c.x},${c.y}`] || '') !== this.vise.mot[i]);
         if (k === -1) { this.note('Ce mot est déjà juste.'); return; }
         const c = cases[k];
         const cle = `${c.x},${c.y}`;
         this.saisie[cle] = this.vise.mot[k];
         this.soufflees.add(cle);
+        this.aides.set(cleMot, k);
         this.pos = Math.min(cases.length - 1, k + 1);
         this.fautes = null;
         this.dessiner();
-        // « 1ʳᵉ », pas « 1ᵉ » : c'est la seule qui ne suit pas la règle.
-        this.note(`La ${k === 0 ? '1ʳᵉ' : `${k + 1}ᵉ`} lettre est un ${this.vise.mot[k]}.`);
+        this.note(`La ${ordinal(k + 1)} lettre est un ${this.vise.mot[k]}. `
+            + `Il te reste ${this.aidesRestantes()} indice(s) — un par mot.`);
         this.regarderSiFini();
+    }
+
+    /** Combien de mots n'ont pas encore réclamé leur lettre. */
+    aidesRestantes() {
+        return (this.grille ? this.grille.mots.length : 0) - this.aides.size;
     }
 
     /**
