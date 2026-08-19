@@ -966,6 +966,121 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LA PIPOPIPETTE. Rémy : « j'aimerai bien le jeu pipopipette ». Le jeu
+        // d'Édouard Lucas (1889) — et un vrai problème de PARITÉ : passé la
+        // moitié de la partie, le plateau se découpe en chaînes de carrés, et
+        // celui qui doit en ouvrir une la donne tout entière. Le « double
+        // croix » — laisser deux carrés au lieu d'en prendre quatre, pour
+        // garder la main — est souvent la première fois qu'un enfant renonce à
+        // un gain immédiat par calcul.
+        id: 'logi-pipopipette', status: STATUS.TEST, title: 'La Pipopipette',
+        cree: '2026-08-19',
+        activityId: 'pipopipette', horsProgression: true, sansRevision: true,
+        deuxJoueurs: true,
+        params: { mode: 'ia', niveau: 'moyen', taille: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                options: [
+                    { value: 'ia', label: 'Une partie contre l\'ordinateur' },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de l\'ordinateur',
+                aide: 'Deux réglages en un : jusqu\'où l\'ordinateur calcule, et sa part de coups joués au hasard — c\'est elle qui le rend battable.',
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'taille', type: 'select', label: 'Taille du plateau',
+                aide: 'Un petit plateau se finit en cinq minutes et laisse déjà voir les chaînes ; le grand est une vraie partie.',
+                options: [
+                    { value: 'petit', label: '3 × 3 carrés — partie rapide' },
+                    { value: 'moyen', label: '5 × 4 carrés' },
+                    { value: 'grand', label: '7 × 6 carrés — partie longue' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['pipopipette', 'petits carrés', 'lucas', 'parité', 'deux joueurs'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Trace un trait entre deux points voisins. Celui qui pose le QUATRIÈME côté d'un carré le marque à son nom — et il REJOUE. Tout le jeu est là : poser le troisième côté d'un carré l'offre à l'adversaire, et comme il rejoue, il prend toute la file derrière. En fin de partie, il ne reste que des chaînes, et celui qui doit en ouvrir une la donne entièrement : on compte donc les chaînes avant de poser."
+    },
+    {
+        // LE PUISSANCE 4. « Et aussi le puissance 4. » Le jeton TOMBE : on ne
+        // choisit pas la case, on choisit la colonne — et poser sous une case
+        // gagnante la donne à l'adversaire.
+        id: 'logi-puissance4', status: STATUS.TEST, title: 'Puissance 4',
+        cree: '2026-08-19',
+        activityId: 'puissance4', horsProgression: true, sansRevision: true,
+        deuxJoueurs: true,
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                options: [
+                    { value: 'ia', label: 'Une partie contre l\'ordinateur' },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de l\'ordinateur',
+                aide: 'Deux réglages en un : jusqu\'où l\'ordinateur calcule, et sa part de coups joués au hasard — c\'est elle qui le rend battable.',
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['puissance 4', 'aligner', 'quatre', 'deux joueurs', 'connect'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Touche une colonne : ton jeton tombe au fond. Le premier qui en aligne QUATRE gagne — en ligne, en colonne ou en diagonale. Ce qui rend le jeu difficile est la gravité : on ne choisit pas la case, et poser un jeton sous une case gagnante la donne à l'adversaire. Le centre vaut plus que les bords, parce que c'est par là que passent le plus d'alignements possibles."
+    },
+    {
+        // LE SIM. « Et le sim. » Un jeu qu'on ne gagne pas, qu'on ÉVITE de
+        // perdre — et surtout une illustration jouable du théorème de Ramsey :
+        // R(3,3) = 6, donc sur les quinze arêtes d'un hexagone complet
+        // coloriées de deux couleurs, un triangle monochrome est INÉVITABLE.
+        // Le match nul n'existe pas, et c'est démontrable.
+        id: 'logi-sim', status: STATUS.TEST, title: 'Le Sim',
+        cree: '2026-08-19',
+        activityId: 'sim', horsProgression: true, sansRevision: true,
+        deuxJoueurs: true,
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                options: [
+                    { value: 'ia', label: 'Une partie contre l\'ordinateur' },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de l\'ordinateur',
+                aide: 'Deux réglages en un : jusqu\'où l\'ordinateur calcule, et sa part de coups joués au hasard — c\'est elle qui le rend battable.',
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['sim', 'triangle', 'ramsey', 'graphe', 'deux joueurs', 'hexagone'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
+        instruction: "Six points, et les quinze segments qui les relient tous. Chacun son tour, on colorie un segment de SA couleur — et celui qui forme le premier un triangle de sa propre couleur A PERDU. On ne cherche donc pas à construire, on cherche à ne pas construire, ce qui est déroutant. Et l'on ne peut pas y couper indéfiniment : sur quinze segments de deux couleurs, un triangle d'une seule couleur est inévitable. C'est un théorème (Ramsey, R(3,3) = 6), et il se vérifie à la main."
+    },
+    {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
         cree: '2026-08-10',
         activityId: 'motscaches', skills: ['voc.mathematique'],
