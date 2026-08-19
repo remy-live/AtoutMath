@@ -17,8 +17,9 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import {
     THEOREME, NIVEAUX, niveauDe, niveauPour, tirerTriangle, cotesDe, direTriangle,
     egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase,
-    AMORCES, ceQueJeSais, ligneEnTexte
+    AMORCES, ceQueJeSais, ligneEnTexte, memeEcriture
 } from '../core/pythagore.js';
+import { poserPaveTactile, sansClavierSysteme } from '../ui/paveTactile.js';
 import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
 const SKILL = 'geo.pythagore';
@@ -121,6 +122,14 @@ class Pythagore extends BaseGame {
                     margin-left: -.04em; margin-top: .12em;
                 }
                 .py-radicande--su { color: inherit; }
+                /* UNE LIGNE ENTIÈRE SE TAPE ICI : « 8² + 15² ». Le champ est
+                   large, aligné sur le texte de la rédaction, et il porte le
+                   contour du pavé quand c'est lui qu'on remplit. */
+                .py-saisie--expr {
+                    width: clamp(120px, 34cqw, 210px); text-align: left; letter-spacing: .02em;
+                    font-variant-numeric: tabular-nums;
+                }
+                .py-saisie--vise { outline: 2px solid var(--primary); outline-offset: 1px; }
                 .py-saisie--ok { border-color: var(--success, #16a34a); }
                 .py-saisie--ko { border-color: var(--danger, #dc2626); animation: py-secoue .4s ease 2; }
 
@@ -249,6 +258,10 @@ class Pythagore extends BaseGame {
 
     monterNiveau() {
         this.barreEl.innerHTML = '';
+        // Le pavé n'appartient qu'à la rédaction : sur « montre l'hypoténuse »
+        // ou « remets la phrase en ordre », il n'y a rien à taper.
+        if (this.pave) { this.pave.detruire(); this.pave = null; }
+        this.champVise = null;
         switch (this.niveau.cle) {
             case 'hypotenuse': return this.monterHypotenuse();
             case 'phrase': return this.monterPhrase();
@@ -493,7 +506,43 @@ class Pythagore extends BaseGame {
             <div class="py-calc">${corps}</div>`;
         this.barreEl.innerHTML = `<button type="button" class="py-btn py-btn--valider" data-verif>Vérifier</button>`;
         this.barreEl.querySelector('[data-verif]').onclick = () => this.validerCalcul();
+        this.poserPave();
         this.majLignes();
+    }
+
+    /**
+     * LE PAVÉ AVEC LE PETIT DEUX.
+     *
+     * Rémy : « il faut un pavé numérique avec la touche ², pour que l'élève ait
+     * le réflexe de le mettre. » Il porte donc, en plus des chiffres, les trois
+     * signes de la rédaction : ² , + et −. Il n'est pas réservé au tactile —
+     * c'est justement au clavier d'ordinateur que le « ² » est introuvable pour
+     * un élève, et le réflexe qu'on veut installer est celui de l'ÉCRIRE.
+     */
+    poserPave() {
+        if (this.pave) { this.pave.detruire(); this.pave = null; }
+        if (this.isDemo) return;
+        this.pave = poserPaveTactile(this.barreEl.parentElement, {
+            champ: () => this.caseOuverte(),
+            maxLong: 22,
+            avant: this.barreEl,
+            touches: [
+                // « x² » et non « ² » tout seul : sur une touche, le petit
+                // deux isolé se lit comme un 2 ordinaire écrit en petit.
+                { k: '²', cls: 'pav-touche--signe pav-touche--carre', html: 'x²', aria: 'au carré' },
+                { k: '+', cls: 'pav-touche--signe' },
+                { k: '−', cls: 'pav-touche--signe', aria: 'moins' }
+            ],
+            valider: () => this.validerCalcul()
+        });
+    }
+
+    /** Le champ que le pavé remplit : celui qu'on a touché, sinon le premier. */
+    caseOuverte() {
+        const cases = [...this.zoneEl.querySelectorAll(`[data-l="${this.ligneCourante}"] .py-saisie`)];
+        if (!cases.length) return null;
+        if (this.champVise && cases.includes(this.champVise)) return this.champVise;
+        return cases[0];
     }
 
     /** Une ligne de la rédaction : ses morceaux de texte et ses cases. */
@@ -505,6 +554,15 @@ class Pythagore extends BaseGame {
             // il soufflait le résultat de la ligne précédente.
             if (m.racine !== undefined) {
                 return `<span class="py-racine">√<span class="py-radicande" data-radicande>?</span></span>`;
+            }
+            // UNE LIGNE ENTIÈRE S'ÉCRIT DANS UNE SEULE CASE quand c'est
+            // l'ÉCRITURE qu'on travaille : « 8² + 15² » se tape en entier,
+            // petit deux compris. Un champ `number` n'accepterait ni le « ² »
+            // ni le « + » — il lui faut du texte.
+            if (m.expression) {
+                return `<input class="py-saisie py-saisie--expr" data-ligne="${i}" data-case="${k}"
+                    type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                    placeholder="…" aria-label="écris la ligne, carrés compris">`;
             }
             return `<input class="py-saisie" data-ligne="${i}" data-case="${k}" type="number"
                 inputmode="numeric" aria-label="à compléter">`;
@@ -528,8 +586,20 @@ class Pythagore extends BaseGame {
             rad.textContent = su ? String(this.calc.carre) : '?';
             rad.classList.toggle('py-radicande--su', su);
         }
-        const ouverte = this.zoneEl.querySelector(`[data-l="${this.ligneCourante}"] .py-saisie`);
-        if (ouverte && !this.isDemo) ouverte.focus();
+        const cases = [...this.zoneEl.querySelectorAll(`[data-l="${this.ligneCourante}"] .py-saisie`)];
+        // Le pavé de la page remplace le clavier du système : sur une tablette,
+        // celui-ci recouvrait la moitié de la rédaction — et il n'a de toute
+        // façon pas de touche « ² ».
+        cases.forEach(c => {
+            sansClavierSysteme(c);
+            c.onpointerdown = () => {
+                this.champVise = c;
+                cases.forEach(e => e.classList.toggle('py-saisie--vise', e === c));
+            };
+        });
+        this.champVise = cases[0] || null;
+        if (cases[0]) cases[0].classList.add('py-saisie--vise');
+        if (cases[0] && !this.isDemo) cases[0].focus();
     }
 
     validerCalcul() {
@@ -541,7 +611,9 @@ class Pythagore extends BaseGame {
         // n'en fait comprendre aucune.
         const faux = cases.findIndex((c, k) => {
             const m = ligne.morceaux.filter(x => x.champ !== undefined)[k];
-            return Number(c.value) !== m.champ;
+            // Une ÉCRITURE se compare à l'écriture (« 8²+15² » vaut
+            // « 8² + 15² »), un nombre se compare au nombre.
+            return m.expression ? !memeEcriture(c.value, m.attendus) : Number(c.value) !== m.champ;
         });
         if (faux !== -1) {
             const m = ligne.morceaux.filter(x => x.champ !== undefined)[faux];
@@ -626,7 +698,8 @@ class Pythagore extends BaseGame {
             if (!await gate.waitTurn() || !this.isRunning) return fin();
             cur.say('On descend ligne à ligne : '
                 + this.calc.lignes.slice(1).map(ligneEnTexte).join(', puis ')
-                + '. La racine carrée est la dernière marche, ne l\'oublie jamais.', this.zoneEl);
+                + '. Les petits deux s\'écrivent — c\'est la touche ² du pavé — et la racine carrée '
+                + 'est la dernière marche, ne l\'oublie jamais.', this.zoneEl);
             if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         }
 
@@ -639,6 +712,7 @@ class Pythagore extends BaseGame {
 
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        if (this.pave) { this.pave.detruire(); this.pave = null; }
         super.destroy();
     }
 }

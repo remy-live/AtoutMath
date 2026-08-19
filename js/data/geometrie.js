@@ -58,6 +58,12 @@ export const geometrieExercises = [
         // choses nouvelles à la fois — le modèle des exercices de rédaction.
         id: 'geo-pythagore', status: STATUS.TEST, title: 'Le Théorème de Pythagore',
         cree: '2026-08-12',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Les deux lignes du milieu ne sont plus des cases d\'un chiffre entre des « ² » '
+                + 'imprimés d\'avance : l\'élève écrit la ligne entière, carrés compris, sur un pavé '
+                + 'qui porte la touche x².'
+        }],
         activityId: 'pythagore-theoreme',
         // Le générateur sert au PAPIER : les énoncés de calcul, avec la
         // correction en trois lignes.

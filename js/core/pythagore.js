@@ -193,6 +193,43 @@ export function verifierEgalite(t, gauche, d1, d2) {
  *                          est ratée
  *   { racine }             le radicande, sous le trait, révélé quand il est su
  */
+/**
+ * DEUX ÉCRITURES DE LA MÊME CHOSE SE VALENT.
+ *
+ * L'élève tape « 8²+15² », « 8² + 15² » ou « 8^2 + 15^2 » : c'est le même
+ * calcul, et refuser l'un des trois n'enseignerait que la mise en page. On
+ * ramène donc tout à une forme unique — sans espaces, le petit deux partout,
+ * un seul signe moins — avant de comparer. Ce qui reste refusé est ce qui
+ * compte : un carré oublié, un chiffre faux, une addition à la place d'une
+ * soustraction.
+ */
+export function normaliserEcriture(v) {
+    return String(v ?? '')
+        .replace(/\s+/g, '')
+        .replace(/\^2|\*\*2/g, '²')
+        .replace(/[-\u2010-\u2015\u2212]/g, '−')
+        .replace(/,/g, '.');
+}
+
+/** L'écriture donnée est-elle l'une des écritures acceptées ? */
+export function memeEcriture(donne, attendus) {
+    const n = normaliserEcriture(donne);
+    return (Array.isArray(attendus) ? attendus : [attendus])
+        .some(a => normaliserEcriture(a) === n);
+}
+
+/**
+ * LE PETIT DEUX, C'EST L'ÉLÈVE QUI L'ÉCRIT.
+ *
+ * Rémy : « il faut un pavé numérique avec la touche ², pour que l'élève ait le
+ * réflexe de le mettre ; là c'est trop guidé. » Les deux lignes du milieu
+ * étaient découpées en cases d'un chiffre, avec les « ² », les « + » et les
+ * « − » déjà imprimés entre elles : on remplissait des trous dans une écriture
+ * qu'on n'avait jamais eu à produire. Elles n'ont plus qu'UNE case, et c'est
+ * la LIGNE ENTIÈRE qui s'y écrit — carrés compris.
+ */
+const EXPR = (attendus, aide) => ({ champ: attendus[0], attendus, aide, expression: true });
+
 export function etapesCalcul(t, chercher) {
     const { hypo, cathetes } = cotesDe(t);
     const [c1, c2] = cathetes;
@@ -208,16 +245,16 @@ export function etapesCalcul(t, chercher) {
                 { morceaux: [T(`${hypo.nom}² = ${c1.nom}² + ${c2.nom}²`)] },
                 { morceaux: [
                     T(`${hypo.nom}² = `),
-                    C(c1.longueur, `${c1.nom} mesure ${c1.longueur} cm : c'est cette mesure qui remplace les lettres.`),
-                    T('² + '),
-                    C(c2.longueur, `${c2.nom} mesure ${c2.longueur} cm.`),
-                    T('²')
+                    EXPR([`${c1.longueur}² + ${c2.longueur}²`, `${c2.longueur}² + ${c1.longueur}²`],
+                        `Remplace les lettres par les mesures, et garde les carrés : `
+                        + `${c1.nom} mesure ${c1.longueur} cm, ${c2.nom} mesure ${c2.longueur} cm. `
+                        + `Cela s'écrit ${c1.longueur}² + ${c2.longueur}².`)
                 ] },
                 { morceaux: [
                     T(`${hypo.nom}² = `),
-                    C(c1.longueur ** 2, `${c1.longueur}² c'est ${c1.longueur} × ${c1.longueur}, pas ${c1.longueur} × 2.`),
-                    T(' + '),
-                    C(c2.longueur ** 2, `${c2.longueur}² c'est ${c2.longueur} × ${c2.longueur}.`)
+                    EXPR([`${c1.longueur ** 2} + ${c2.longueur ** 2}`, `${c2.longueur ** 2} + ${c1.longueur ** 2}`],
+                        `Calcule chaque carré : ${c1.longueur}² c'est ${c1.longueur} × ${c1.longueur}, `
+                        + `pas ${c1.longueur} × 2. Il n'y a plus de petit deux sur cette ligne.`)
                 ] },
                 { morceaux: [
                     T(`${hypo.nom}² = `),
@@ -244,16 +281,18 @@ export function etapesCalcul(t, chercher) {
             { morceaux: [T(`${perdu.nom}² = ${hypo.nom}² − ${garde.nom}²`)] },
             { morceaux: [
                 T(`${perdu.nom}² = `),
-                C(hypo.longueur, `${hypo.nom} est l'hypoténuse : elle mesure ${hypo.longueur} cm.`),
-                T('² − '),
-                C(garde.longueur, `${garde.nom} mesure ${garde.longueur} cm.`),
-                T('²')
+                EXPR([`${hypo.longueur}² − ${garde.longueur}²`],
+                    `Remplace les lettres par les mesures, et garde les carrés : `
+                    + `${hypo.nom} est l'hypoténuse et mesure ${hypo.longueur} cm, ${garde.nom} mesure `
+                    + `${garde.longueur} cm. Cela s'écrit ${hypo.longueur}² − ${garde.longueur}². `
+                    + `L'ordre compte : on SOUSTRAIT.`)
             ] },
             { morceaux: [
                 T(`${perdu.nom}² = `),
-                C(hypo.longueur ** 2, `${hypo.longueur}² c'est ${hypo.longueur} × ${hypo.longueur}.`),
-                T(' − '),
-                C(garde.longueur ** 2, `${garde.longueur}² c'est ${garde.longueur} × ${garde.longueur}.`)
+                EXPR([`${hypo.longueur ** 2} − ${garde.longueur ** 2}`],
+                    `Calcule chaque carré : ${hypo.longueur}² c'est ${hypo.longueur} × ${hypo.longueur}, `
+                    + `et ${garde.longueur}² c'est ${garde.longueur} × ${garde.longueur}. `
+                    + `Il n'y a plus de petit deux sur cette ligne.`)
             ] },
             { morceaux: [
                 T(`${perdu.nom}² = `),

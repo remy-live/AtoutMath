@@ -7,7 +7,7 @@ import {
     THEOREME, TRIPLETS, NIVEAUX, niveauDe, niveauProgressif, niveauPour,
     tirerTriangle, cotesDe, direTriangle,
     egaliteDe, verifierEgalite, etapesCalcul, groupesMelanges, verifierPhrase,
-    redactionComplete, ligneEnTexte
+    redactionComplete, ligneEnTexte, memeEcriture
 } from '../js/core/pythagore.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -185,4 +185,69 @@ test('un niveau fixé reste fixé, et un réglage absent ne plante pas', () => {
     }
     assert.equal(niveauPour({}, 1, 10).id, 1);
     assert.equal(niveauPour(null, 1, 10).id, 1);
+});
+
+// --- L'ÉCRITURE, PAS SEULEMENT LE RÉSULTAT -----------------------------------
+//
+// Rémy : « il faut un pavé numérique avec la touche ², pour que l'élève ait le
+// réflexe de le mettre. Car là c'est trop guidé. » Les « ² », les « + » et les
+// « − » étaient imprimés d'avance entre des cases d'un chiffre : on ne les
+// écrivait jamais. Les deux lignes du milieu s'écrivent maintenant en entier.
+
+test('LES LIGNES DU MILIEU SE TAPENT EN ENTIER, CARRÉS COMPRIS', () => {
+    const t = tirerTriangle(makeRng('ecr'), { triplet: [8, 15, 17] });
+    const calc = etapesCalcul(t);
+    const exprs = calc.lignes.flatMap(l => l.morceaux.filter(m => m.expression));
+    assert.equal(exprs.length, 2, 'deux lignes s\'écrivent : les mesures, puis leurs carrés');
+    assert.ok(exprs[0].attendus.some(a => /8²/.test(a) && /15²/.test(a)),
+        'la première porte les deux carrés');
+    assert.ok(exprs[1].attendus.some(a => /64/.test(a) && /225/.test(a)),
+        'la seconde porte les deux carrés calculés');
+    // Et plus aucun « ² » offert en texte sur ces lignes-là.
+    calc.lignes.forEach(l => {
+        if (!l.morceaux.some(m => m.expression)) return;
+        l.morceaux.filter(m => m.texte !== undefined).forEach(m => {
+            assert.ok(!/^²/.test(m.texte.trim()),
+                `le petit deux est encore imprimé d'avance dans « ${m.texte} »`);
+        });
+    });
+});
+
+test('trois façons d\'écrire le même carré se valent, un carré oublié ne vaut rien', () => {
+    const attendus = ['8² + 15²', '15² + 8²'];
+    assert.ok(memeEcriture('8² + 15²', attendus));
+    assert.ok(memeEcriture('8²+15²', attendus), 'les espaces ne comptent pas');
+    assert.ok(memeEcriture('8^2 + 15^2', attendus), 'le clavier d\'ordinateur écrit ^2');
+    assert.ok(memeEcriture(' 15²+8² ', attendus), 'l\'addition est commutative');
+    assert.ok(!memeEcriture('8 + 15', attendus), 'sans les carrés, ce n\'est pas Pythagore');
+    assert.ok(!memeEcriture('8² + 15', attendus), 'un seul carré ne suffit pas');
+    assert.ok(!memeEcriture('8² − 15²', attendus), 'ici on additionne');
+});
+
+test('la soustraction ne se commute pas', () => {
+    const t = tirerTriangle(makeRng('sous'), { triplet: [8, 15, 17] });
+    const { cathetes } = cotesDe(t);
+    const calc = etapesCalcul(t, cathetes[0].nom);
+    const premiere = calc.lignes.flatMap(l => l.morceaux.filter(m => m.expression))[0];
+    assert.equal(premiere.attendus.length, 1, 'a − b n\'est pas b − a : une seule écriture');
+    assert.ok(/−/.test(premiere.attendus[0]));
+});
+
+test('un tiret ordinaire vaut le vrai signe moins', () => {
+    // L'élève tape « - » au clavier, le sujet écrit « − » : le même calcul.
+    assert.ok(memeEcriture('17² - 8²', ['17² − 8²']));
+});
+
+test('chaque écriture attendue explique ce qu\'on attend', () => {
+    for (let g = 0; g < 6; g++) {
+        const t = tirerTriangle(makeRng(`aide${g}`));
+        const { cathetes } = cotesDe(t);
+        for (const chercher of [null, cathetes[0].nom]) {
+            etapesCalcul(t, chercher).lignes.forEach(l => l.morceaux.forEach(m => {
+                if (!m.expression) return;
+                assert.ok(m.aide && m.aide.length > 30, 'une écriture ratée doit dire pourquoi');
+                assert.ok(Array.isArray(m.attendus) && m.attendus.length >= 1);
+            }));
+        }
+    }
 });

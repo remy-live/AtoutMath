@@ -46,6 +46,12 @@ const ICONE_EFF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none"
  * @param {() => void} [opts.valider] - ce que fait le bouton vert
  * @param {boolean} [opts.signe]   - ajoute la touche « − » (relatifs)
  * @param {boolean} [opts.virgule] - ajoute la touche « , » (décimaux)
+ * @param {Array<{k:string,cls?:string,html?:string,aria?:string}>} [opts.touches]
+ *        - touches PROPRES À UN JEU, insérées telles quelles dans la saisie.
+ *        Pythagore en a besoin pour le petit deux : « il faut un pavé avec la
+ *        touche ², pour que l'élève ait le réflexe de le mettre ». Une touche
+ *        d'appoint qui écrit son propre caractère n'a rien de spécifique à un
+ *        exercice — autant que tous les jeux puissent en demander.
  * @param {number} [opts.maxLong]  - nombre maximal de caractères saisis
  * @param {Element} [opts.avant]   - insérer AVANT ce nœud plutôt qu'à la fin :
  *        le pavé doit suivre la saisie, pas la barre d'indices.
@@ -71,8 +77,10 @@ export function poserPaveTactile(hote, opts = {}) {
     // élève cherche du regard. Ce sont les touches d'appoint que l'on répartit :
     // au départ « − » et « , » en haut, « ⌫ » et « OK » en bas, puis on fait
     // glisser d'une rangée à l'autre tant que l'écart dépasse une touche.
-    const hautExtras = [];
-    if (opts.signe) hautExtras.push({ k: '−', cls: 'pav-touche--signe' });
+    const perso = (opts.touches || []).map(t => ({ ...t, perso: true }));
+    const persoK = new Set(perso.map(t => t.k));
+    const hautExtras = [...perso];
+    if (opts.signe && !persoK.has('−')) hautExtras.push({ k: '−', cls: 'pav-touche--signe' });
     if (opts.virgule) hautExtras.push({ k: ',', cls: 'pav-touche--signe' });
     const basExtras = [{ k: '⌫', cls: 'pav-touche--eff', html: ICONE_EFF }];
     if (opts.valider) basExtras.push({ k: '✓', cls: 'pav-touche--ok', html: 'OK' });
@@ -98,6 +106,10 @@ export function poserPaveTactile(hote, opts = {}) {
         const val = String(el.value ?? '');
         if (k === '⌫') el.value = val.slice(0, -1);
         else if (k === '✓') { if (opts.valider) opts.valider(); return; }
+        // Une touche demandée par le jeu écrit SON caractère, à la suite : le
+        // « − » des relatifs bascule le signe du nombre, celui d'une expression
+        // est une soustraction, et les deux ne peuvent pas être la même touche.
+        else if (persoK.has(k)) { if (val.length < maxLong) el.value = val + k; }
         else if (k === '−') el.value = val.startsWith('-') ? val.slice(1) : '-' + val;
         else if (k === ',') { if (!val.includes(',') && val.replace('-', '')) el.value = val + ','; }
         else if (val.replace(/[-,]/g, '').length < maxLong) el.value = val + k;
@@ -107,12 +119,12 @@ export function poserPaveTactile(hote, opts = {}) {
         el.dispatchEvent(new Event('input', { bubbles: true }));
     };
 
-    touches.forEach(({ ligne, k, cls, html }) => {
+    touches.forEach(({ ligne, k, cls, html, aria }) => {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = `pav-touche${cls ? ' ' + cls : ''}`;
         b.innerHTML = html || k;
-        b.setAttribute('aria-label', k === '⌫' ? 'Effacer' : k === '✓' ? 'Valider' : k);
+        b.setAttribute('aria-label', aria || (k === '⌫' ? 'Effacer' : k === '✓' ? 'Valider' : k));
         // `pointerdown` et non `click` : le champ perdrait le focus au premier
         // toucher, et les jeux valident sur `blur` — l'élève aurait vu sa
         // réponse partir avant d'avoir fini de la taper.

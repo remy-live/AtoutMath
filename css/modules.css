@@ -4520,6 +4520,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .pav-touche:active { transform: translateY(1px); background: var(--bg-app); }
 .pav-touche--eff { color: var(--accent); }
 .pav-touche--signe { color: var(--primary); }
+/* « x² » tient en deux caractères là où les autres touches n'en ont qu'un :
+   sans cela, la touche du carré déborde de sa case sur un téléphone. */
+.pav-touche--carre { letter-spacing: -.02em; font-size: .92em; }
 .pav-touche--ok { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* --- Fiche « Le tangram » ------------------------------------------------
