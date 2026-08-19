@@ -107,10 +107,10 @@ export function initDebugBar() {
         //
         // Rémy, capture à l'appui : « sur iPhone on ne voit pas les boutons »
         // du Duel des Tables. Ils étaient bien là — sous la palette d'auteur.
-        // Dépliée, elle fait plus de quatre cents pixels de large : posée en
-        // bas à gauche, comme au premier lancement, elle couvre toute la
-        // rangée de touches du joueur du bas, précisément dans le seul jeu où
-        // le bas de l'écran appartient à un joueur.
+        // Dépliée, elle occupe un bon carré de deux rangées d'icônes : posée
+        // en bas à gauche, comme au premier lancement, elle couvre la rangée
+        // de touches du joueur du bas, précisément dans le seul jeu où le bas
+        // de l'écran appartient à un joueur.
         //
         // Repliée, il n'en reste que la poignée : un appui la rouvre, et le
         // choix se retient d'une fois sur l'autre.

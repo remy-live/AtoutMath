@@ -1,0 +1,272 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+    COLONNES, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
+    nbVus, filtrer, bilan, consigneStatuts, lireStatuts, lireRevue,
+    fusionnerRevues, versMarkdown, jourISO
+} from '../js/core/revue.js';
+import { STATUS } from '../js/data/status.js';
+import { exercices } from '../js/data/catalog.js';
+
+const exo = (id, extra = {}) => ({
+    id, title: `Exercice ${id}`,
+    tags: { chemin: ['Numérique', 'Calcul'], niveaux: ['6ème'] },
+    ...extra
+});
+
+// --- Les colonnes -----------------------------------------------------------
+
+test('cinq colonnes : trois appareils, le robot et la fiche', () => {
+    assert.equal(COLONNES.length, 5);
+    assert.deepEqual(COLONNES.map(c => c.id),
+        ['telephone', 'tablette', 'ordinateur', 'robot', 'fiche']);
+    // Les modes sont ceux que le moteur de jeu attend pour son cadre.
+    assert.equal(COLONNES.find(c => c.id === 'telephone').mode, 'mobile');
+    assert.equal(COLONNES.find(c => c.id === 'tablette').mode, 'tablet');
+    assert.equal(COLONNES.find(c => c.id === 'ordinateur').mode, 'none');
+});
+
+// --- Décider ----------------------------------------------------------------
+
+test('une revue neuve ne décide rien : c\'est le catalogue qui parle', () => {
+    const r = nouvelleRevue({ version: 'v328' });
+    assert.equal(r.fiches.length, 0);
+    assert.equal(statutRevu(exo('a', { status: STATUS.TEST }), null), STATUS.TEST);
+    assert.equal(statutRevu(exo('b'), null), STATUS.VALIDE);
+});
+
+test('décocher « en test » vaut validé, et la décision l\'emporte sur le code', () => {
+    const e = exo('a', { status: STATUS.TEST });
+    let r = nouvelleRevue();
+    r = decider(r, 'a', { enTest: false });
+    assert.equal(statutRevu(e, ficheDe(r, 'a')), STATUS.VALIDE);
+    assert.equal(aChange(e, ficheDe(r, 'a')), true);
+});
+
+test('recocher ramène en test, et ne change plus rien si le code le dit déjà', () => {
+    const e = exo('a', { status: STATUS.TEST });
+    let r = decider(nouvelleRevue(), 'a', { enTest: false });
+    r = decider(r, 'a', { enTest: true });
+    assert.equal(statutRevu(e, ficheDe(r, 'a')), STATUS.TEST);
+    assert.equal(aChange(e, ficheDe(r, 'a')), false);
+});
+
+test('la date se pose toute seule quand on décide', () => {
+    const quand = Date.UTC(2026, 7, 19, 10) + new Date().getTimezoneOffset() * 60000;
+    const r = decider(nouvelleRevue(), 'a', { enTest: false }, quand);
+    assert.equal(ficheDe(r, 'a').date, jourISO(quand));
+});
+
+test('la date donnée à la main l\'emporte sur la date du jour', () => {
+    const r = decider(nouvelleRevue(), 'a', { enTest: false, date: '2026-01-02' });
+    assert.equal(ficheDe(r, 'a').date, '2026-01-02');
+});
+
+test('cocher une case d\'aperçu ne redate pas la ligne', () => {
+    let r = decider(nouvelleRevue(), 'a', { enTest: false, date: '2026-01-02' });
+    r = marquerVu(r, 'a', 'tablette');
+    assert.equal(ficheDe(r, 'a').date, '2026-01-02');
+    assert.equal(ficheDe(r, 'a').vu.tablette, true);
+});
+
+test('une remarque survit à un changement de statut, et inversement', () => {
+    let r = decider(nouvelleRevue(), 'a', { remarque: 'le pavé cache le score' });
+    r = decider(r, 'a', { enTest: true });
+    assert.equal(ficheDe(r, 'a').remarque, 'le pavé cache le score');
+    assert.equal(ficheDe(r, 'a').enTest, true);
+});
+
+test('une colonne se décoche', () => {
+    let r = marquerVu(nouvelleRevue(), 'a', 'robot');
+    assert.equal(nbVus(ficheDe(r, 'a')), 1);
+    r = marquerVu(r, 'a', 'robot', false);
+    // Plus rien à dire sur cette ligne : elle sort du carnet.
+    assert.equal(ficheDe(r, 'a'), null);
+});
+
+test('une colonne inconnue ne rentre pas dans le carnet', () => {
+    const r = marquerVu(nouvelleRevue(), 'a', 'montre');
+    assert.equal(r.fiches.length, 0);
+});
+
+// --- Filtrer ----------------------------------------------------------------
+
+const jeuDeux = [
+    exo('num-un', { status: STATUS.TEST, activityId: 'numpad' }),
+    exo('geo-deux', { tags: { chemin: ['Géométrie', 'Angles'], niveaux: ['5ème'] } }),
+    exo('num-trois', { status: STATUS.TEST })
+];
+
+test('le filtre texte cherche dans le titre, l\'identifiant et le moteur', () => {
+    const r = nouvelleRevue();
+    assert.equal(filtrer(jeuDeux, r, { texte: 'geo' }).length, 1);
+    assert.equal(filtrer(jeuDeux, r, { texte: 'numpad' }).length, 1);
+    assert.equal(filtrer(jeuDeux, r, { texte: 'num' }).length, 2);
+});
+
+test('les filtres domaine, niveau et statut se cumulent', () => {
+    const r = nouvelleRevue();
+    assert.equal(filtrer(jeuDeux, r, { domaine: 'Géométrie' }).length, 1);
+    assert.equal(filtrer(jeuDeux, r, { niveau: '6ème' }).length, 2);
+    assert.equal(filtrer(jeuDeux, r, { statut: STATUS.TEST }).length, 2);
+    assert.equal(filtrer(jeuDeux, r, { statut: STATUS.TEST, niveau: '5ème' }).length, 0);
+});
+
+test('le filtre statut suit la décision, pas le code', () => {
+    const r = decider(nouvelleRevue(), 'num-un', { enTest: false });
+    assert.deepEqual(filtrer(jeuDeux, r, { statut: STATUS.TEST }).map(e => e.id), ['num-trois']);
+    assert.deepEqual(filtrer(jeuDeux, r, { avancee: 'changes' }).map(e => e.id), ['num-un']);
+});
+
+test('« à décider » et « décidés » se partagent exactement le catalogue', () => {
+    const r = decider(nouvelleRevue(), 'num-un', { enTest: false });
+    assert.equal(filtrer(jeuDeux, r, { avancee: 'decides' }).length, 1);
+    assert.equal(filtrer(jeuDeux, r, { avancee: 'adecider' }).length, 2);
+});
+
+test('« jamais vus » et « vus » se partagent aussi le catalogue', () => {
+    const r = marquerVu(nouvelleRevue(), 'geo-deux', 'telephone');
+    assert.deepEqual(filtrer(jeuDeux, r, { avancee: 'vus' }).map(e => e.id), ['geo-deux']);
+    assert.equal(filtrer(jeuDeux, r, { avancee: 'jamaisvus' }).length, 2);
+});
+
+test('le filtre « les jeux » ne garde que ce qui a un moteur', () => {
+    assert.deepEqual(filtrer(jeuDeux, nouvelleRevue(), { jeux: true }).map(e => e.id), ['num-un']);
+});
+
+test('le filtre remarques ne retient pas une remarque faite d\'espaces', () => {
+    const r = decider(nouvelleRevue(), 'num-un', { remarque: '   ' });
+    assert.equal(filtrer(jeuDeux, r, { avancee: 'remarques' }).length, 0);
+});
+
+// --- Bilan ------------------------------------------------------------------
+
+test('le bilan compte ce qui reste à faire', () => {
+    let r = decider(nouvelleRevue(), 'num-un', { enTest: false, remarque: 'bon' });
+    r = marquerVu(r, 'num-trois', 'tablette');
+    const b = bilan(r, jeuDeux);
+    assert.equal(b.total, 3);
+    assert.equal(b.decides, 1);
+    assert.equal(b.changes, 1);
+    assert.equal(b.remarques, 1);
+    assert.equal(b.vus, 1);
+    assert.equal(b.enTest, 1);          // num-trois : num-un vient d'être validé
+    assert.equal(b.valides, 2);
+});
+
+// --- La consigne ------------------------------------------------------------
+
+test('la consigne ne liste que ce qui change', () => {
+    let r = decider(nouvelleRevue({ version: 'v328' }), 'num-un', { enTest: false });
+    r = decider(r, 'geo-deux', { enTest: true });
+    r = decider(r, 'num-trois', { enTest: true });   // déjà en test dans le code
+    const c = consigneStatuts(r, jeuDeux);
+    assert.match(c, /^STATUT v328 \|/);
+    assert.match(c, /valide = num-un/);
+    assert.match(c, /test = geo-deux/);
+    assert.ok(!c.includes('num-trois'), 'un statut inchangé n\'a rien à faire dans la consigne');
+});
+
+test('rien à reporter, pas de consigne', () => {
+    assert.equal(consigneStatuts(nouvelleRevue(), jeuDeux), '');
+});
+
+test('la consigne se relit', () => {
+    let r = decider(nouvelleRevue({ version: 'v328' }), 'num-un', { enTest: false });
+    r = decider(r, 'geo-deux', { enTest: true });
+    const lu = lireStatuts(consigneStatuts(r, jeuDeux));
+    assert.equal(lu.version, 'v328');
+    assert.deepEqual(lu.change.sort((a, b) => a.exercice.localeCompare(b.exercice)), [
+        { exercice: 'geo-deux', statut: STATUS.TEST },
+        { exercice: 'num-un', statut: STATUS.VALIDE }
+    ]);
+});
+
+test('la consigne se relit au milieu d\'une phrase', () => {
+    const lu = lireStatuts('voilà ce que ça donne : STATUT v9 | valide = a, b — merci');
+    assert.equal(lu.change.length, 2);
+});
+
+test('un statut inventé est ignoré, pas cru', () => {
+    assert.equal(lireStatuts('STATUT | parfait = a'), null);
+});
+
+test('un texte sans consigne ne rend rien', () => {
+    assert.equal(lireStatuts('bonjour'), null);
+    assert.equal(lireStatuts(''), null);
+});
+
+// --- Relire et fusionner ----------------------------------------------------
+
+test('un carnet se relit depuis son JSON', () => {
+    const r = decider(nouvelleRevue({ version: 'v328' }), 'a', { enTest: false, remarque: 'ok' });
+    const lu = lireRevue(JSON.stringify(r));
+    assert.deepEqual(lu.fiches, r.fiches);
+});
+
+test('un carnet se relit depuis le rapport entier', () => {
+    const r = decider(nouvelleRevue(), 'a', { enTest: true });
+    const lu = lireRevue('# Revue\n\n```json\n' + JSON.stringify(r) + '\n```\n\nfin');
+    assert.equal(lu.fiches.length, 1);
+});
+
+test('ce qui n\'est pas un carnet ne passe pas', () => {
+    assert.equal(lireRevue('bonjour'), null);
+    assert.equal(lireRevue('{"format":1}'), null);
+});
+
+test('deux carnets s\'additionnent : la décision la plus récente gagne', () => {
+    const a = decider(nouvelleRevue(), 'x', { enTest: true }, 1000);
+    const b = decider(nouvelleRevue(), 'x', { enTest: false }, 2000);
+    assert.equal(ficheDe(fusionnerRevues(a, b), 'x').enTest, false);
+    assert.equal(ficheDe(fusionnerRevues(b, a), 'x').enTest, false);
+});
+
+test('les cases vues de deux appareils s\'additionnent', () => {
+    const a = marquerVu(nouvelleRevue(), 'x', 'telephone', true, 1000);
+    const b = marquerVu(nouvelleRevue(), 'x', 'tablette', true, 2000);
+    const f = ficheDe(fusionnerRevues(a, b), 'x');
+    assert.deepEqual(Object.keys(f.vu).sort(), ['tablette', 'telephone']);
+});
+
+test('une remarque ne disparaît pas parce que l\'autre carnet n\'en a pas', () => {
+    const a = decider(nouvelleRevue(), 'x', { remarque: 'déborde en bas' }, 1000);
+    const b = marquerVu(nouvelleRevue(), 'x', 'robot', true, 2000);
+    assert.equal(ficheDe(fusionnerRevues(a, b), 'x').remarque, 'déborde en bas');
+});
+
+// --- Le rapport -------------------------------------------------------------
+
+test('le rapport commence par ce qui fera changer quelque chose', () => {
+    let r = decider(nouvelleRevue({ version: 'v328' }), 'num-un', { enTest: false });
+    r = decider(r, 'geo-deux', { remarque: 'le trait rouge saute' });
+    const md = versMarkdown(r, jeuDeux);
+    assert.ok(md.indexOf('À reporter') < md.indexOf('Les remarques'));
+    assert.ok(md.includes('STATUT v328'));
+    assert.ok(md.includes('le trait rouge saute'));
+    // Une ligne de tableau par exercice, plus l'en-tête et le séparateur.
+    assert.equal(md.split('\n').filter(x => x.startsWith('| ')).length, jeuDeux.length + 1);
+});
+
+test('un rapport sans décision le dit au lieu de mentir', () => {
+    assert.ok(versMarkdown(nouvelleRevue(), jeuDeux).includes('Aucun statut ne change'));
+});
+
+// --- Sur le vrai catalogue --------------------------------------------------
+
+test('le catalogue entier passe dans la revue sans exploser', () => {
+    const r = nouvelleRevue({ version: 'v0' });
+    assert.equal(filtrer(exercices, r, {}).length, exercices.length);
+    const b = bilan(r, exercices);
+    assert.equal(b.decides, 0);
+    assert.equal(b.enTest + b.valides, exercices.length);
+    assert.ok(b.enTest > 0, 'il y a bien des exercices en test à trier');
+});
+
+test('chaque domaine du catalogue se filtre', () => {
+    const domaines = [...new Set(exercices.map(e => e.tags.chemin[0]))];
+    domaines.forEach(d => {
+        assert.ok(filtrer(exercices, nouvelleRevue(), { domaine: d }).length > 0, d);
+    });
+});

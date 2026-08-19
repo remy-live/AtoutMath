@@ -77,12 +77,24 @@ function launchFreePlay(exo, params) {
     const path = makePath(exo.title, [step], defaultPolicy());
 
     import('../core/runner.js').then(({ Runner }) => {
-        const runner = new Runner({
-            path,
-            deviceMode: state.isTeacherMode ? (state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode) : 'none'
-        });
+        const runner = new Runner({ path, deviceMode: cadreDe(exo) });
         runner.start();
     });
+}
+
+/**
+ * DANS QUEL CADRE ON LANCE.
+ *
+ * D'ordinaire c'est le simulateur du professeur qui décide, et un élève n'a
+ * pas de cadre du tout — il EST l'appareil. Mais la revue du catalogue veut
+ * lancer le MÊME exercice trois fois de suite, en téléphone, en tablette puis
+ * en plein écran, sans toucher au réglage global du professeur : elle le pose
+ * donc sur le descripteur qu'elle passe, et c'est celui-là qui gagne.
+ */
+export function cadreDe(exo) {
+    if (exo && exo.apercuAppareil) return exo.apercuAppareil;
+    if (!state.isTeacherMode) return 'none';
+    return state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode;
 }
 
 // --- Démonstration ----------------------------------------------------------
@@ -93,6 +105,12 @@ export function openDemo(exo) {
     state.activeExo = exo;
     const gl = document.getElementById('game-layer');
     document.getElementById('game-title').textContent = exo.title;
+    // L'aperçu se regarde aussi dans un cadre de téléphone : c'est là que le
+    // robot désigne à côté de la case, parce que la mise en page a bougé.
+    gl.classList.remove('device-simulator', 'tablet-simulator');
+    const cadre = cadreDe(exo);
+    if (cadre === 'tablet') gl.classList.add('tablet-simulator');
+    else if (cadre === 'mobile') gl.classList.add('device-simulator');
     gl.style.display = 'flex';
 
     const banner = document.getElementById('demo-overlay-banner');

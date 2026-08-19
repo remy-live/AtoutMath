@@ -643,6 +643,9 @@ function initDebugToolbar() {
 
     // La barre de passe : la version d'une ligne du banc, posée par-dessus le
     // jeu. On l'allume et on l'éteint du même bouton.
+    const btnRevue = document.getElementById('db-revue');
+    if (btnRevue) btnRevue.onclick = () => import('./ui/revue.js').then(m => m.ouvrirRevue());
+
     const btnBarre = document.getElementById('db-banc-barre');
     if (btnBarre) btnBarre.onclick = () => import('./ui/bancEssai.js').then(m => m.basculerBarreBanc());
 

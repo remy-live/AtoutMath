@@ -13,13 +13,14 @@ body.teacher-mode .student-only { display: none !important; }
     /* Elle ne peut pas être plus large que l'écran : à 436 px sur un
        téléphone de 390, elle débordait des deux côtés et il devenait
        impossible de la pousser hors du chemin.
-       MAIS ELLE NE PASSE PAS À LA LIGNE. Rémy : « sur téléphone la barre de
-       debug n'est pas folle, on perd une ligne et les icônes se répartissent
-       mal ». En `wrap`, le numéro de version et la flèche de repli tombaient
-       seuls sur une deuxième ligne pendant que les icônes, elles, sortaient
-       quand même par la droite : deux fois plus haut pour rien. La poignée,
-       la version et la flèche restent donc en place, et ce sont les ICÔNES
-       qui défilent horizontalement dans ce qui reste. */
+       ELLE-MÊME NE PASSE PAS À LA LIGNE. Rémy, la première fois : « sur
+       téléphone la barre de debug n'est pas folle, on perd une ligne et les
+       icônes se répartissent mal ». En `flex-wrap` sur la barre entière, le
+       numéro de version et la flèche de repli tombaient seuls sur une
+       deuxième ligne pendant que les icônes, elles, sortaient quand même par
+       la droite : deux fois plus haut pour rien. La poignée, la version et la
+       flèche restent donc en place sur toute la hauteur, et ce sont les
+       ICÔNES SEULES qui s'étagent — voir `.dbg-tools`. */
     max-width: calc(100vw - 12px); flex-wrap: nowrap;
     padding: 3px; border-radius: 10px;
     background: rgba(15, 23, 42, .94); color: #f8fafc;
@@ -33,11 +34,21 @@ body.teacher-mode .student-only { display: none !important; }
    ui/flottant.js, donc la même pour tout ce qui flotte. */
 .flot--glisse { transition: none !important; cursor: grabbing; user-select: none; }
 
-/* Les icônes défilent au doigt quand elles ne tiennent pas toutes : c'est la
-   seule partie de la palette qui peut céder, et la barre de défilement reste
-   invisible — on la fait glisser, on ne la vise pas. */
+/* LES ICÔNES TIENNENT SUR DEUX RANGÉES.
+   Rémy : « peux-tu mettre la barre de debug sur deux lignes ». Sur une seule,
+   quatorze icônes font plus de quatre cents pixels : sur un téléphone il
+   fallait les faire DÉFILER, c'est-à-dire deviner qu'elles continuent hors de
+   l'écran, et le bouton qu'on cherche était toujours celui du bout.
+   Une grille de deux rangées, sept colonnes : tout est visible d'un coup, et
+   la palette reste deux fois moins large. Ce sont les ICÔNES qui passent à
+   deux lignes — la poignée, le numéro de version et la flèche de repli
+   restent posés à côté, sur toute la hauteur : c'est leur retour à la ligne à
+   eux qui avait fait abandonner `flex-wrap` la première fois.
+   Le défilement horizontal reste, en dernier recours : à vingt icônes sur un
+   petit téléphone, deux rangées ne suffiront plus non plus. */
 .dbg-tools {
-    display: flex; align-items: center; gap: 4px;
+    display: grid; grid-auto-flow: row; grid-template-columns: repeat(7, auto);
+    align-items: center; justify-content: start; gap: 4px;
     flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; -ms-overflow-style: none;
     scroll-snap-type: x proximity; overscroll-behavior-x: contain;
