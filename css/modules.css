@@ -5412,15 +5412,24 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .nv-corps { overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
 
 .nv-vague { display: flex; flex-direction: column; gap: 8px; }
-.nv-vague-entete { display: flex; align-items: flex-start; gap: 8px; }
-/* La version dit d'où vient la vague : c'est ce qui permet de savoir si le
-   téléphone qu'on a en main l'a déjà reçue. */
-.nv-version {
-    flex: none; padding: 2px 8px; border-radius: 999px;
-    background: var(--tag-dom-bg); color: var(--tag-dom-txt);
-    font-size: .74rem; font-weight: 800; font-variant-numeric: tabular-nums;
+/* LA DATE EN TÊTE DE VAGUE. Rémy ne reçoit pas des versions, il reçoit des
+   journées : « 18 août » lui dit s'il a déjà vu ce lot, un numéro de version
+   ne lui dit rien. */
+.nv-jour {
+    margin: 0; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+    font-size: .82rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted);
 }
-.nv-quoi { margin: 0; font-size: .86rem; line-height: 1.4; color: var(--text-muted); }
+/* Neuf ou revu : deux choses différentes. Un exercice REVU, on l'a déjà vu —
+   ce qu'on veut savoir est ce qui a changé, et c'est la phrase en dessous. */
+.nv-pastille {
+    display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px;
+    background: var(--tag-dom-bg); color: var(--tag-dom-txt);
+    font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    vertical-align: 2px;
+}
+.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: var(--success); }
+.nv-quoi { margin: 2px 0 0; font-size: .84rem; line-height: 1.4; color: var(--text-muted); }
 
 .nv-carte {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;

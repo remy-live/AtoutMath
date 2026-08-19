@@ -13,6 +13,7 @@ export const geometrieExercises = [
     // place de « [AB] », dans des copies où la construction est juste.
     {
         id: 'geo-notation',
+        cree: '2026-08-17',
         title: 'Segment, Droite ou Demi-droite ?',
         consignePapier: "Réponds.",
         colonnesPapier: 2,
@@ -38,6 +39,7 @@ export const geometrieExercises = [
         // dans son titre, donc il n'y avait plus rien à discriminer. Le
         // réglage « Propriété travaillée » les offre côte à côte.
         id: 'geo-redaction', status: STATUS.TEST, title: 'Rédiger une Justification',
+        cree: '2026-08-11',
         activityId: 'redaction',
         // Le générateur ne sert PAS à l'écran (l'activité est autonome) : il
         // sert au papier. Rédiger une justification, c'est écrire à la main —
@@ -55,6 +57,7 @@ export const geometrieExercises = [
         // un côté (on soustrait), rédiger en entier. On ne demande jamais deux
         // choses nouvelles à la fois — le modèle des exercices de rédaction.
         id: 'geo-pythagore', status: STATUS.TEST, title: 'Le Théorème de Pythagore',
+        cree: '2026-08-12',
         activityId: 'pythagore-theoreme',
         // Le générateur sert au PAPIER : les énoncés de calcul, avec la
         // correction en trois lignes.
@@ -93,6 +96,7 @@ export const geometrieExercises = [
         // libre — compas, équerre, règle, peu importe — et c'est la FIGURE
         // obtenue qui est jugée, pas la méthode employée.
         id: 'geo-atelier-instruments', status: STATUS.TEST,
+        cree: '2026-08-12',
         title: 'Atelier de Géométrie : Règle, Équerre et Compas',
         activityId: 'geometrie',
         params: { consigne: 'aleatoire' },
@@ -107,6 +111,7 @@ export const geometrieExercises = [
     // imprimée restait dans les positifs quoi qu'on ait choisi à l'écran.
     {
         id: 'geo-repere-placer', title: 'Placer un Point',
+        cree: '2026-07-28',
         generatorId: 'geo.repere',
         // Sur le papier, UN repère porte SIX points : retracer des axes à
         // chaque question n'apprend rien, et gâche la moitié de la page.
@@ -120,6 +125,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-repere-lire', title: 'Lire des Coordonnées',
+        cree: '2026-07-28',
         generatorId: 'geo.repere',
         // Sur le papier, UN repère porte SIX points : retracer des axes à
         // chaque question n'apprend rien, et gâche la moitié de la page.
@@ -146,6 +152,7 @@ export const geometrieExercises = [
     // par chapitre n'aurait plus rien eu à ranger.
     {
         id: 'geo-symetrie-quadrillage', title: 'Le Symétrique aux Carreaux',
+        cree: '2026-08-18',
         consignePapier: 'Colorie l\'image de la figure grise par la symétrie d\'axe (d).',
         generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',
         printable: 'quadrillage',
@@ -168,6 +175,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-transfo-quadrillage', title: 'Tracer l\'Image d\'une Figure',
+        cree: '2026-08-18',
         consignePapier: 'Colorie l\'image de la figure grise par la transformation indiquée.',
         generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',
         printable: 'quadrillage',
@@ -198,6 +206,18 @@ export const geometrieExercises = [
         // de points correspondants. C'est la définition, et c'est elle qu'on
         // travaille.
         id: 'geo-pavage', title: 'Symétrique par Rapport à Quoi ?',
+        cree: '2026-08-18',
+        // UNE RÉVISION SE NOTE QUAND L'EXERCICE CHANGE DE NATURE, jamais pour
+        // une faute d'orthographe : sinon la liste devient un journal de
+        // commits, et l'on ne voit plus ce qui compte.
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'La question change : au lieu de nommer la famille de la transformation, '
+                    + 'on cherche PAR RAPPORT À QUOI. Trois façons de répondre — choisir le nom, '
+                    + 'cliquer la droite sur le dessin, écrire son équation.'
+            }
+        ],
         consignePapier: 'Écris par rapport à quelle droite ou à quel point les deux pièces sont symétriques.',
         generatorId: 'geo.transfo.pavage', activityId: 'symetrie-element',
         printable: 'pavage',
@@ -227,6 +247,7 @@ export const geometrieExercises = [
         // qui propose même de les ALTERNER, ce qu'aucune des deux entrées
         // séparées ne permettait d'atteindre.
         id: 'geo-angles', status: STATUS.TEST, title: 'Angle Master',
+        cree: '2026-08-04',
         generatorId: 'geo.angles', activityId: 'angles',
         // C'est l'exercice qu'un écran ne remplace pas : le rapporteur de
         // plastique se pose de travers, et c'est en le redressant qu'on
@@ -239,6 +260,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-chat-geometre', status: STATUS.TEST, title: 'Le Chat Géomètre',
+        cree: '2026-08-05',
         generatorId: 'geo.scratch', activityId: 'scratch',
         // SUR LE PAPIER, ON RENVERSE L'EXERCICE : le programme est donné, la
         // figure est à tracer. Tant qu'on peut lancer, on ne prévoit pas ; ici
@@ -257,6 +279,7 @@ export const geometrieExercises = [
         // l'envie ; c'est en essayant « répéter 36 fois » pour voir ce que ça
         // donne qu'on découvre le cercle.
         id: 'geo-chat-libre', status: STATUS.TEST, title: 'Le Chat Géomètre — atelier libre',
+        cree: '2026-08-06',
         generatorId: 'geo.scratch', activityId: 'scratch',
         // Un ATELIER, pas un exercice : rien à régler avant d'entrer (le
         // panneau demandait un nombre de questions et un niveau de départ pour
@@ -269,6 +292,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
+        cree: '2026-08-04',
         activityId: 'galactic', skills: ['geo.angles.mesure'],
         params: { startLevel: 1, lives: 3 },
         paramSchema: [
@@ -284,6 +308,7 @@ export const geometrieExercises = [
         // qui pivoterait avec le véhicule — comme un GPS — supprimerait
         // l'exercice au lieu de l'aider.
         id: 'geo-ville', status: STATUS.TEST, title: 'Le Plan de Ville',
+        cree: '2026-08-11',
         activityId: 'ville', skills: ['geo.espace.deplacement', 'geo.espace.orientation'],
         params: { taille: 'moyen', capNord: false },
         paramSchema: [
@@ -314,6 +339,7 @@ export const geometrieExercises = [
         // passer ne l'est pas. La grille est tirée d'un chemin qui couvre
         // déjà toute la surface : elle est donc résoluble par construction.
         id: 'geo-relier-points', status: STATUS.TEST, title: 'Relie les points',
+        cree: '2026-08-14',
         activityId: 'relier',
         // La même grille sert à l'écran et sur le papier : le générateur la
         // fabrique, l'activité la joue, le rendu l'imprime.
@@ -354,6 +380,7 @@ export const geometrieExercises = [
         // et la correction montre CE QU'ON A OUBLIÉ plutôt que d'annoncer un
         // nombre.
         id: 'geo-solides-denombrer', status: STATUS.TEST,
+        cree: '2026-08-13',
         title: 'Compter sur un solide',
         activityId: 'solides',
         // Sur le papier, on compte au crayon et l'on écrit trois nombres dans
@@ -411,6 +438,7 @@ export const geometrieExercises = [
         // où l'on se trouve, la boucle y REMONTE, et la gauche est celle du
         // robot.
         id: 'geo-automate', status: STATUS.TEST, title: 'L\'Automate',
+        cree: '2026-08-11',
         activityId: 'automate',
         params: { niveau: 'moyen', mode: 'progressif' },
         paramSchema: [
@@ -451,6 +479,7 @@ export const geometrieExercises = [
         // dans un plan sans le voir d'en haut, c'est la compétence ; la forme,
         // elle, est là pour qu'on ait envie de la traverser.
         id: 'geo-dedale-forme', status: STATUS.TEST, title: 'Les Dédales',
+        cree: '2026-08-14',
         activityId: 'dedale',
         // SUR LE PAPIER : le dédale imprimé, à parcourir au crayon. C'est
         // l'exercice d'origine — l'écran n'y ajoutait que le fil qui se
@@ -511,6 +540,7 @@ export const geometrieExercises = [
         // et une seule. Un problème à deux solutions donnerait tort à l'élève
         // qui trouve l'autre.
         id: 'geo-mat-echecs', status: STATUS.TEST, title: 'Échecs : mat en un, mat en deux',
+        cree: '2026-08-14',
         // C'EST LE JEU D'ÉCHECS LUI-MÊME, en mode exercice. Un second écran
         // aurait redemandé à l'élève d'apprendre un damier, des pièces et des
         // gestes qu'il connaît déjà — et il aurait fallu les tenir à jour deux

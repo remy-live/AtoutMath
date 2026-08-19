@@ -21,6 +21,7 @@ import { SOURCES as SOURCES_DOMINOS } from '../core/generators/dominos.js';
 export const calculExercises = [
     {
         id: 'calc-add',
+        cree: '2026-07-26',
         consignePapier: "Calcule.",
         colonnesPapier: 4,
         title: 'Additions Mystères',
@@ -31,6 +32,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-sub',
+        cree: '2026-07-28',
         consignePapier: "Calcule.",
         colonnesPapier: 4,
         title: 'Soustractions Éclair',
@@ -43,6 +45,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-mult-flash',
+        cree: '2026-07-26',
         consignePapier: "Calcule.",
         colonnesPapier: 4,
         title: 'Flash Mult',
@@ -54,6 +57,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-pythagore',
+        cree: '2026-07-26',
         consignePapier: "Calcule.",
         colonnesPapier: 3,
         title: 'Table de Pythagore',
@@ -65,6 +69,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-mult-missing',
+        cree: '2026-07-26',
         consignePapier: "Complète.",
         colonnesPapier: 4,
         title: 'Facteur Manquant',
@@ -76,6 +81,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-division',
+        cree: '2026-07-28',
         consignePapier: "Calcule.",
         colonnesPapier: 4,
         title: 'Divisions Express',
@@ -86,6 +92,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-prio',
+        cree: '2026-07-26',
         consignePapier: "Quelle opération faut-il effectuer en premier ?",
         colonnesPapier: 2,
         title: 'Prio-Bot Express',
@@ -125,6 +132,7 @@ export const calculExercises = [
         // élève peut tenir la seconde et rater la première, ou l'inverse — et
         // c'est ce qu'on veut voir séparément.
         id: 'calc-prio-parentheses',
+        cree: '2026-08-15',
         consignePapier: "Quelle opération faut-il effectuer en premier ?",
         colonnesPapier: 2,
         title: 'Prio-Bot Parenthèses',
@@ -150,6 +158,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-prio-resultat',
+        cree: '2026-07-28',
         consignePapier: "Calcule en respectant les priorités, et détaille.",
         colonnesPapier: 2,
         title: 'Prio-Bot Calcul',
@@ -165,6 +174,7 @@ export const calculExercises = [
         // coûte vraiment des points : calculer 4 × 5 juste, puis oublier le
         // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
         id: 'calc-prio-cascade', status: STATUS.TEST, title: 'Priorités : ligne par ligne',
+        cree: '2026-08-14',
         activityId: 'priorites',
         // Sur le papier, c'est le MÊME exercice en plus exigeant : à l'écran
         // la machine recopie le reste de la ligne, sur la feuille personne ne
@@ -201,6 +211,7 @@ export const calculExercises = [
         // 25, 50, 75 et 100 sont celles dont les multiples doivent devenir des
         // réflexes.
         id: 'calc-compte-est-bon', status: STATUS.TEST, title: 'Le Compte est Bon',
+        cree: '2026-08-14',
         activityId: 'compte-est-bon',
         // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
         // on rature, on recommence — ce que l'écran ne remplace pas.
@@ -249,6 +260,7 @@ export const calculExercises = [
         // −, ce n'est pas la méthode, c'est l'endroit où se note la retenue.
         // Les deux règles sont dites dans la consigne, l'une après l'autre.
         id: 'calc-poser', status: STATUS.TEST, title: 'Poser une opération',
+        cree: '2026-08-14',
         activityId: 'poser-operation',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
         // imprime les nombres déjà en colonnes et laisse toute la place
@@ -309,6 +321,7 @@ export const calculExercises = [
         // s'ajoute APRÈS le produit, jamais au chiffre avant de multiplier.
         // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
         id: 'calc-poser-multiplication', status: STATUS.TEST, title: 'Poser une multiplication',
+        cree: '2026-08-14',
         activityId: 'poser-multiplication',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
         // imprime les nombres déjà en colonnes et laisse toute la place
@@ -363,6 +376,7 @@ export const calculExercises = [
         // d'où la virgule du quotient, qu'on récite d'ordinaire sans la
         // comprendre.
         id: 'calc-poser-division', status: STATUS.TEST, title: 'Poser une division',
+        cree: '2026-08-14',
         activityId: 'poser-division',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
         // imprime les nombres déjà en colonnes et laisse toute la place
@@ -412,6 +426,7 @@ export const calculExercises = [
     // --- Arcade : mêmes notions, autre présentation ---
     {
         id: 'calc-arcade-sprint',
+        cree: '2026-07-26',
         consignePapier: "Calcule.",
         colonnesPapier: 4,
         title: 'Sprint Chrono',
@@ -422,6 +437,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-arcade-moles',
+        cree: '2026-07-26',
         consignePapier: "Calcule.",
         colonnesPapier: 3,
         title: 'Chasse aux Taupes',
@@ -432,6 +448,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-moles-tables',
+        cree: '2026-07-28',
         consignePapier: "Calcule.",
         colonnesPapier: 3,
         title: 'Taupes des Tables',
@@ -456,6 +473,7 @@ export const calculExercises = [
     // autre choix possible : un exercice muet est refusé par les tests.
     {
         id: 'calc-arcade-shooter', status: STATUS.TEST, title: 'Météorites Mathématiques',
+        cree: '2026-07-26',
         activityId: 'shooter', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium', leurres: 3 },
         paramSchema: [
@@ -489,6 +507,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
+        cree: '2026-07-26',
         activityId: 'memory', skills: ['num.mult.table.*'],
         // SUR LE PAPIER, ON FABRIQUE LE JEU. Page 1 : les cartes, une paire par
         // bloc — le calcul et son résultat. Page 2 : les dos, aux mêmes
@@ -507,6 +526,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-labyrinthe', status: STATUS.TEST, title: 'Labyrinthe Mathématique',
+        cree: '2026-07-26',
         activityId: 'labyrinthe', skills: ['num.mult.table.*'],
         params: { timeLimit: 60, timeReduction: 5, operations: ['*'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         paramSchema: [
@@ -520,6 +540,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathdoku',
+        cree: '2026-07-30',
         generatorId: 'logique.mathodu', activityId: 'kenken',
         // Une erreur de placement dans une grille ne se révise pas : « case B3 »
         // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
@@ -536,6 +557,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-binairo', status: STATUS.TEST, title: 'Binairo',
+        cree: '2026-07-30',
         generatorId: 'logique.binairo', activityId: 'binairo',
         sansRevision: true,
         printable: 'binairo',
@@ -545,6 +567,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-nova', status: STATUS.TEST, title: 'Nova',
+        cree: '2026-08-06',
         activityId: 'nova', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], lives: 3, entrePortes: 18 },
         paramSchema: [
@@ -558,6 +581,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-escadrille', status: STATUS.TEST, title: 'Escadrille des Tables',
+        cree: '2026-08-05',
         activityId: 'escadrille', skills: ['num.mult.table.*'],
         params: { table: 7, lives: 3, rythme: 'lent' },
         paramSchema: [
@@ -581,6 +605,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
+        cree: '2026-08-04',
         generatorId: 'logique.sudoku', activityId: 'sudoku',
         // Le sudoku se fait très bien sur papier — c'est même là qu'il est né.
         printable: 'sudoku',
@@ -591,6 +616,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
+        cree: '2026-07-30',
         generatorId: 'logique.garam', activityId: 'garam',
         sansRevision: true,
         printable: 'garam',
@@ -600,6 +626,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
+        cree: '2026-07-26',
         activityId: 'course', skills: ['num.mult.table.*'],
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)
         // étaient définis dans le schéma mais inatteignables — ni l'élève ni le
@@ -639,6 +666,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-tetris', status: STATUS.TEST, title: 'Math Tetris',
+        cree: '2026-07-26',
         activityId: 'tetris', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], speed: 1000 },
         paramSchema: [
@@ -651,6 +679,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-vault', status: STATUS.TEST, title: 'Le Coffre-Fort',
+        cree: '2026-08-04',
         // « Propose toujours le milieu de la zone possible » : c'est la
         // dichotomie, et le jeu ne fait que ça.
         activityId: 'vault', skills: ['num.logique.dichotomie'],
@@ -664,6 +693,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-duel', status: STATUS.TEST, title: 'Duel des Tables (à deux)',
+        cree: '2026-08-07',
         activityId: 'duel', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], cible: 7, operations: 'mul' },
         paramSchema: [
@@ -685,6 +715,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-arpenteurs', status: STATUS.TEST, title: 'Les Arpenteurs',
+        cree: '2026-08-10',
         // Clôturer une parcelle rectangulaire, c'est lire un produit comme une
         // aire : les deux compétences travaillent ensemble, sur le même geste.
         activityId: 'arpenteurs', skills: ['num.mult.table.*', 'mes.aire.rectangle'],
@@ -744,6 +775,7 @@ export const calculExercises = [
     },
     {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
+        cree: '2026-08-10',
         activityId: 'motscaches', skills: ['voc.mathematique'],
         // SUR LE PAPIER, PERSONNE NE VALIDE : il faut entourer, donc être sûr.
         // Et la fiche sait faire ce que l'écran ne fait pas — ne donner que les
@@ -802,6 +834,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-chantier', status: STATUS.TEST, title: 'Le Chantier des Blocs',
+        cree: '2026-08-10',
         activityId: 'chantier', skills: ['num.mult.table.*'],
         params: { depart: 'ch1' },
         paramSchema: [
@@ -831,6 +864,7 @@ export const calculExercises = [
         // réserve, ceux qu'on donne en récompense ou en fin d'heure. Le
         // déclarer est obligatoire — un exercice qui ne dit rien est refusé.
         id: 'logi-othello', status: STATUS.TEST, title: 'Othello',
+        cree: '2026-08-11',
         activityId: 'othello', horsProgression: true,
         params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
@@ -870,6 +904,7 @@ export const calculExercises = [
     },
     {
         id: 'logi-dames', status: STATUS.TEST, title: 'Jeu de Dames',
+        cree: '2026-08-11',
         activityId: 'dames', horsProgression: true,
         params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
         paramSchema: [
@@ -909,6 +944,7 @@ export const calculExercises = [
     },
     {
         id: 'logi-echecs', status: STATUS.TEST, title: 'Échecs',
+        cree: '2026-08-11',
         // La partie elle-même n'est pas au programme. Le REPÉRAGE l'est, et
         // c'est l'exercice « mat en un » qui le travaille, pas celui-ci.
         activityId: 'echecs', horsProgression: true,
@@ -960,6 +996,7 @@ export const calculExercises = [
         // règles qu'il connaît déjà. Un exercice par niveau aurait éparpillé
         // dans le catalogue ce qui est une seule progression.
         id: 'logi-logigramme', status: STATUS.TEST, title: 'Le Logigramme',
+        cree: '2026-08-12',
         activityId: 'logigramme',
         // Le générateur ne sert PAS à l'écran (l'activité mène son propre jeu) :
         // il sert au PAPIER. Un logigramme se fait d'abord au crayon, en rayant
@@ -1013,6 +1050,7 @@ export const calculExercises = [
         // L'identifiant reste « calc-skweek » : le renommer effacerait les
         // statistiques et les parcours déjà enregistrés sous ce nom.
         id: 'calc-skweek', status: STATUS.TEST, title: 'Le Peintre',
+        cree: '2026-08-12',
         activityId: 'skweek',
         sansRevision: true,
         skills: ['num.calc.tri'],
@@ -1057,6 +1095,7 @@ export const calculExercises = [
         // — le chiffre et le point — et jamais besoin de deviner : la grille
         // est fabriquée pour se déduire par propagation pure.
         id: 'logi-slitherlink', status: STATUS.TEST, title: 'Le Slitherlink',
+        cree: '2026-08-13',
         activityId: 'slitherlink',
         generatorId: 'logique.slitherlink', printable: 'slitherlink',
         sansRevision: true,
@@ -1090,6 +1129,7 @@ export const calculExercises = [
         // la COMPARAISON un outil de déduction. Généré à solution unique,
         // résoluble par propagation pure — jamais d'essai-erreur.
         id: 'logi-futoshiki', status: STATUS.TEST, title: 'Le Futoshiki',
+        cree: '2026-08-12',
         activityId: 'futoshiki',
         generatorId: 'logique.futoshiki', printable: 'futoshiki',
         sansRevision: true,
@@ -1125,6 +1165,7 @@ export const calculExercises = [
         // de la somme magique, et chaque case écrite en débloque d'autres. Le
         // générateur garantit la résolubilité par déduction pure.
         id: 'logi-carre-magique', status: STATUS.TEST, title: 'Le Carré Magique',
+        cree: '2026-08-12',
         activityId: 'carre-magique',
         generatorId: 'logique.carre-magique', printable: 'carre-magique',
         sansRevision: true,
@@ -1140,6 +1181,7 @@ export const calculExercises = [
         // par là qu'on entre. On ne récite pas une somme magique, on croise
         // des décompositions.
         id: 'logi-hexagrille', status: STATUS.TEST, title: 'L\'Hexagrille',
+        cree: '2026-08-17',
         activityId: 'hexagrille',
         sansRevision: true,
         skills: ['num.logique.hexagrille'],
@@ -1167,6 +1209,7 @@ export const calculExercises = [
         // s'anticipe. Le robot montre la seule chose qui compte : on ne glisse
         // pas au hasard, on cherche AVANT quelles tuiles vont se retrouver.
         id: 'calc-2048', status: STATUS.TEST, title: '2048',
+        cree: '2026-08-12',
         activityId: 'deuxmille',
         sansRevision: true,
         skills: ['num.calc.doublements'],
@@ -1192,6 +1235,7 @@ export const calculExercises = [
         // jeux de dominos — et le jour où l'on ajoute un générateur qui écrit
         // ses questions, il suffit de l'inscrire dans la liste des sources.
         id: 'logi-dominos', status: STATUS.TEST, title: 'Les Dominos',
+        cree: '2026-08-12',
         activityId: 'dominos',
         // Le générateur sert au PAPIER : la planche de pièces à découper, qui
         // est l'usage historique de ce jeu en classe.
@@ -1221,6 +1265,7 @@ export const calculExercises = [
     },
     {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
+        cree: '2026-08-07',
         activityId: 'demineur', skills: ['num.logique.demineur'],
         sansRevision: true,
         params: { niveau: 'debutant', vies: 3 },
@@ -1249,6 +1294,7 @@ export const calculExercises = [
     },
     {
         id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
+        cree: '2026-07-26',
         // Le réglage par défaut est l'addition ; la table est là dès qu'on
         // bascule le mode, et les deux compétences se valent pour la leçon.
         activityId: 'crush', skills: ['num.add.entiers', 'num.mult.table.*'],
@@ -1274,6 +1320,7 @@ export const calculExercises = [
         // histoires — courtes, mélangées, et c'est justement le mélange qui
         // empêche de reconnaître l'opération sans lire.
         id: 'num-problemes', status: STATUS.TEST, title: 'Histoires en Pagaille',
+        cree: '2026-08-11',
         activityId: 'problemes',
         // C'est l'exercice qui appelle le plus la feuille : un problème se
         // relit, se souligne, se schématise dans la marge. Sur le papier on
@@ -1330,6 +1377,7 @@ export const calculExercises = [
         // lien » existe pour que chercher le coefficient devienne le premier
         // geste, pas le dernier recours.
         id: 'num-proportion-tableau', status: STATUS.TEST, title: 'Tableau de Proportionnalité',
+        cree: '2026-08-11',
         activityId: 'proportion',
         // Le seul de ces exercices qui se photocopie tel quel : deux lignes,
         // des cases vides, et le lien à retrouver.
@@ -1358,6 +1406,7 @@ export const calculExercises = [
         // l'on balaie les opérations — et l'élève calcule vingt fois de tête
         // sans qu'on le lui demande, parce qu'il veut voir l'image.
         id: 'calc-point-a-point', status: STATUS.TEST, title: 'Le Point à Point',
+        cree: '2026-08-14',
         activityId: 'point-a-point',
         // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
         // on rature, on recommence — ce que l'écran ne remplace pas.

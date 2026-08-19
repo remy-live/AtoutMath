@@ -28,6 +28,7 @@ export const numerationExercises = [
     // la recherche continue de mener ici.
     {
         id: 'num-lettres',
+        cree: '2026-07-29',
         consignePapier: "Écris en chiffres.",
         colonnesPapier: 2,
         title: 'Des Lettres aux Chiffres',
@@ -42,6 +43,7 @@ export const numerationExercises = [
     // --- Rang des chiffres (fiche § 17, 27) ---
     {
         id: 'num-rang',
+        cree: '2026-07-29',
         consignePapier: "",
         title: 'Chasse au Chiffre',
         generatorId: 'num.chiffre-rang', activityId: 'bubbles',
@@ -56,6 +58,7 @@ export const numerationExercises = [
     // --- Décimaux (fiche § 5, 6) ---
     {
         id: 'num-parties',
+        cree: '2026-07-29',
         consignePapier: "",
         title: 'Entière ou Décimale ?',
         generatorId: 'num.parties', activityId: 'bubbles',
@@ -65,6 +68,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-zeros',
+        cree: '2026-07-29',
         consignePapier: "Enlève les zéros inutiles.",
         colonnesPapier: 3,
         title: 'La Chasse aux Zéros',
@@ -77,6 +81,7 @@ export const numerationExercises = [
     // --- Décomposition et conversions (fiche § 10, 11, 18, 20, 21) ---
     {
         id: 'num-decomposition',
+        cree: '2026-07-29',
         consignePapier: "Complète.",
         title: 'Décomposer, Recomposer',
         generatorId: 'num.decomposition', activityId: 'numpad',
@@ -87,6 +92,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-conversion', title: 'Dizaines, Centaines, Milliers',
+        cree: '2026-07-29',
         generatorId: 'num.conversion', activityId: 'numpad',
         params: { decimaux: 'non' },
         motsClefs: ['conversions décimales', 'dixièmes', 'centièmes'],
@@ -98,6 +104,7 @@ export const numerationExercises = [
     // --- Numération égyptienne (fiche § 8, 9) ---
     {
         id: 'num-egypte', title: 'Les Nombres des Pharaons',
+        cree: '2026-07-29',
         generatorId: 'num.egypte', activityId: 'numpad',
         // SUR LE PAPIER : les glyphes tracés au PDF, à partir du dessin de
         // Rémy. Deux sens — lire les symboles, ou les écrire ; c'est en les
@@ -112,6 +119,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-egypte-qcm', title: 'Hiéroglyphes Express',
+        cree: '2026-07-29',
         generatorId: 'num.egypte', activityId: 'bubbles',
         // SUR LE PAPIER : les glyphes tracés au PDF, à partir du dessin de
         // Rémy. Deux sens — lire les symboles, ou les écrire ; c'est en les
@@ -128,6 +136,7 @@ export const numerationExercises = [
     // --- Ordre de grandeur (fiche § 23, 24) ---
     {
         id: 'num-ordre-grandeur',
+        cree: '2026-07-29',
         consignePapier: "Donne l'ordre de grandeur.",
         colonnesPapier: 3,
         title: 'À Peu Près',
@@ -146,6 +155,7 @@ export const numerationExercises = [
     // ne la donne jamais.
     {
         id: 'num-graduations',
+        cree: '2026-08-17',
         consignePapier: "Écris l'abscisse du point.",
         colonnesPapier: 1,
         title: 'La Loupe sur la Droite',
@@ -167,6 +177,7 @@ export const numerationExercises = [
     // faire — c'est un exercice de lecture déguisé en exercice de calcul.
     {
         id: 'num-vocabulaire',
+        cree: '2026-08-17',
         consignePapier: "Complète.",
         colonnesPapier: 1,
         title: 'Le Mot Juste',
@@ -181,6 +192,7 @@ export const numerationExercises = [
     // --- Questions flash (fiche § E, F, 29) ---
     {
         id: 'num-complement-10',
+        cree: '2026-07-29',
         consignePapier: "Complète.",
         colonnesPapier: 4,
         title: 'Amis de 10',
@@ -195,6 +207,7 @@ export const numerationExercises = [
         // table de cartes, on tape 3 puis 7, elles s'envolent. La table vidée,
         // une plus grande arrive.
         id: 'num-amis-de-dix', status: STATUS.TEST, title: 'Les Amis de Dix',
+        cree: '2026-08-12',
         activityId: 'dix',
         // Sur le papier, on TRACE le trait au lieu de taper deux cartes : c'est
         // la forme qu'on retrouve en évaluation.
@@ -234,6 +247,7 @@ export const numerationExercises = [
         // le boulet, et le nôtre part à sa rencontre. Somme juste : explosion.
         // Fausse : l'ennemi continue sa route. Le calcul précède le geste.
         id: 'num-canon-complements', status: STATUS.TEST, title: 'Le Canon des Compléments',
+        cree: '2026-08-12',
         activityId: 'canon',
         sansRevision: true,
         skills: ['num.complement'],
@@ -273,6 +287,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-complement-100',
+        cree: '2026-07-29',
         consignePapier: "Complète.",
         colonnesPapier: 3,
         title: 'Amis de 100 et 1000',
@@ -283,6 +298,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-parite', title: 'Pair ou Impair',
+        cree: '2026-07-29',
         generatorId: 'num.parite', activityId: 'buttons',
         params: { max: 99 },
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
@@ -298,6 +314,7 @@ export const numerationExercises = [
     // laissait passer d'un modèle à l'autre sans ressortir de l'exercice.
     {
         id: 'num-relatifs', title: 'Nombres Relatifs',
+        cree: '2026-08-07',
         consignePapier: "Calcule.",
         colonnesPapier: 3,
         generatorId: 'num.relatifs', activityId: 'relatifs',
@@ -309,6 +326,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-dictee', status: STATUS.TEST, title: 'Dictée de Grands Nombres',
+        cree: '2026-08-10',
         activityId: 'dictee', skills: ['num.ecriture.lettres'],
         params: { palier: 'grands' },
         paramSchema: [
@@ -337,6 +355,7 @@ export const numerationExercises = [
         // négatifs, à l'identique du « Ninja des Résultats Négatifs », avec
         // deux curseurs sans effet.
         id: 'num-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
+        cree: '2026-08-10',
         // Trois règles pour le même geste : les zéros inutiles d'un côté, le
         // signe d'une somme de relatifs de l'autre. Les deux sont déclarées.
         activityId: 'ninja', skills: ['num.decimal.zeros', 'num.relatifs.somme'],
@@ -382,6 +401,7 @@ export const numerationExercises = [
     },
     {
         id: 'num-relatifs-addition',
+        cree: '2026-08-10',
         consignePapier: "Simplifie et calcule.",
         colonnesPapier: 3,
         title: 'Additionner des Relatifs, pas à pas',
@@ -403,6 +423,7 @@ export const numerationExercises = [
         // la première que l'élève entend en classe, et l'exercice ne doit pas
         // dire le contraire du professeur.
         id: 'num-virgule', status: STATUS.TEST, title: 'La Virgule qui se décale',
+        cree: '2026-08-11',
         activityId: 'virgule',
         // Sur le papier, le glissement dans le tableau de numération n'a pas
         // d'équivalent — c'est justement ce que l'écran apporte. Reste

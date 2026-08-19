@@ -18,7 +18,7 @@
 // que pour les exercices qui savent s'imprimer — un bouton qui ne fait rien
 // est pire que pas de bouton.
 
-import { NOUVEAUTES, VAGUES_MONTREES } from '../data/nouveautes.js';
+import { direLaDate, vaguesDuCatalogue } from '../data/nouveautes.js';
 import { getExerciseById } from '../data/catalog.js';
 import { makePath, makeStep } from '../core/path.js';
 
@@ -39,21 +39,12 @@ function surEchap(e) {
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-/**
- * Les vagues réellement affichables : celles dont au moins un exercice existe
- * encore. Un exercice renommé ou retiré disparaît de la liste au lieu d'offrir
- * un bouton qui ne mène nulle part.
- */
-export function vaguesAffichables(vagues = NOUVEAUTES, resoudre = getExerciseById) {
-    return vagues
-        .map(v => ({ ...v, fiches: v.exos.map(resoudre).filter(Boolean) }))
-        .filter(v => v.fiches.length)
-        .slice(0, VAGUES_MONTREES);
-}
-
 export function openNouveautesModal() {
     fermerNouveautes();
-    const vagues = vaguesAffichables();
+    // Rien à tenir à jour : les vagues se DÉDUISENT des dates portées par les
+    // exercices eux-mêmes. Un exercice ajouté apparaît ici sans qu'on y pense,
+    // un exercice retiré en disparaît de même.
+    const vagues = vaguesDuCatalogue();
 
     const fond = document.createElement('div');
     fond.className = 'nv-fond';
@@ -85,21 +76,22 @@ const vide = () => '<p class="nv-note">Aucune nouveauté à essayer pour le mome
 function bloc(v) {
     return `
         <section class="nv-vague">
-            <div class="nv-vague-entete">
-                <span class="nv-version">${esc(v.version)}</span>
-                <p class="nv-quoi">${esc(v.quoi)}</p>
-            </div>
-            ${v.fiches.map(carte).join('')}
+            <h4 class="nv-jour">${esc(direLaDate(v.date))}</h4>
+            ${v.entrees.map(carte).join('')}
         </section>`;
 }
 
-function carte(exo) {
+function carte({ exo, quoi, revise }) {
     const niveaux = ((exo.tags && exo.tags.niveaux) || []).join(' · ');
     return `
         <div class="nv-carte">
             <div class="nv-carte-texte">
-                <span class="nv-nom">${esc(exo.title)}</span>
+                <span class="nv-nom">
+                    ${revise ? '<span class="nv-pastille">revu</span>' : '<span class="nv-pastille nv-pastille--neuf">nouveau</span>'}
+                    ${esc(exo.title)}
+                </span>
                 ${niveaux ? `<span class="nv-niveaux">${esc(niveaux)}</span>` : ''}
+                ${quoi ? `<span class="nv-quoi">${esc(quoi)}</span>` : ''}
             </div>
             <div class="nv-carte-actions">
                 <button type="button" class="nv-btn nv-btn--primaire"

@@ -13,6 +13,7 @@ export const fractionsExercises = [
         // deux entrées de catalogue pour ce seul mot ; on part du plus facile,
         // et le professeur ouvre quand la classe est prête.
         id: 'frac-compare',
+        cree: '2026-07-28',
         consignePapier: "Compare : écris <, = ou >.",
         colonnesPapier: 5,
         title: 'Duel de Fractions',
@@ -26,6 +27,7 @@ export const fractionsExercises = [
     },
     {
         id: 'frac-add',
+        cree: '2026-07-28',
         consignePapier: "Additionne les fractions.",
         colonnesPapier: 4,
         title: 'Addition de Fractions',
@@ -36,6 +38,7 @@ export const fractionsExercises = [
     },
     {
         id: 'frac-samurai', status: STATUS.TEST, title: 'Le Samouraï des Fractions',
+        cree: '2026-08-04',
         activityId: 'samurai',
         params: { startLevel: 1, goal: 4 },
         paramSchema: [
@@ -62,6 +65,7 @@ export const fractionsExercises = [
         // une feuille : il compte des parts, et le nombre trouvé EST le
         // numérateur.
         id: 'frac-pizza', status: STATUS.TEST, title: 'La Pizzeria des Fractions',
+        cree: '2026-08-11',
         activityId: 'pizza',
         // Sur le papier, la fraction se CONVERTIT avant de se colorier : « la
         // moitié d'une pizza en 6 parts, c'est 3 parts ». Ce passage est
@@ -87,6 +91,7 @@ export const fractionsExercises = [
     },
     {
         id: 'dec-compare',
+        cree: '2026-07-28',
         consignePapier: "Compare : écris <, = ou >.",
         colonnesPapier: 4,
         title: 'Décimaux en Duel',

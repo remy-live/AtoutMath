@@ -8,6 +8,7 @@ import { STATUS } from './status.js';
 export const donneesExercises = [
     {
         id: 'don-tableur', status: STATUS.TEST, title: "L'École du Tableur",
+        cree: '2026-08-04',
         activityId: 'tableur',
         // SUR LE PAPIER, RIEN NE CALCULE À LA PLACE DE L'ÉLÈVE. Devant le
         // tableur, taper « =12+15 » donne 27 et le logiciel dit oui : la faute

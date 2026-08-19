@@ -9,6 +9,7 @@ import { STATUS } from './status.js';
 export const mesuresExercises = [
     {
         id: 'mes-perimetre', title: 'Le Tour du Rectangle',
+        cree: '2026-07-28',
         generatorId: 'mes.perimetre', activityId: 'numpad',
         // Sur le papier, le rectangle est DESSINÉ : c'est en le regardant qu'on
         // comprend que le périmètre fait le tour.
@@ -21,6 +22,7 @@ export const mesuresExercises = [
     },
     {
         id: 'mes-perimetre-qcm', title: 'Périmètre : à toi de choisir',
+        cree: '2026-07-28',
         generatorId: 'mes.perimetre', activityId: 'bubbles',
         // SUR LE PAPIER, MÊME FEUILLE QUE SON JUMEAU : le rectangle dessiné,
         // coté et colorié. Choisir entre trois nombres est un geste d'écran ;
@@ -35,6 +37,7 @@ export const mesuresExercises = [
     },
     {
         id: 'mes-aire', title: 'Carreaux et Surfaces',
+        cree: '2026-07-28',
         generatorId: 'mes.aire', activityId: 'numpad',
         // La fiche demande les DEUX sur la même figure : c'est la confusion du
         // périmètre et de l'aire qui coûte le plus cher, et on ne la lève qu'en
@@ -52,6 +55,7 @@ export const mesuresExercises = [
         // virgule. Les m\u00e9langer, c'est ne jamais savoir laquelle a co\u00fbt\u00e9 la
         // r\u00e9ponse.
         id: 'mes-conversion', status: STATUS.TEST, title: 'Le Tableau de Conversion',
+        cree: '2026-08-14',
         activityId: 'conversion',
         // SUR LE PAPIER : le tableau des cahiers, une ligne par conversion.
         // Les en-têtes se donnent ou se laissent vides — donnés, on travaille
@@ -97,6 +101,7 @@ export const mesuresExercises = [
         // qui tourne, et les nombres qui tombent juste par construction : on
         // tire la vitesse et la durée, la distance en découle.
         id: 'mes-vitesse',
+        cree: '2026-08-12',
         consignePapier: "Écris la formule, remplace, calcule, et n'oublie pas l'unité.",
         colonnesPapier: 1,
         // TROIS LIGNES POUR RÉDIGER. Une vitesse ne se répond pas au bout d'une
@@ -114,6 +119,7 @@ export const mesuresExercises = [
         // coupe le terrain, toute région fermée sans balle est conquise. Le
         // score EST un pourcentage d'aire, et c'est ce qu'il enseigne.
         id: 'mes-jezzball', status: STATUS.TEST, title: 'JezzBall',
+        cree: '2026-08-12',
         activityId: 'jezzball',
         sansRevision: true,
         skills: ['mes.aire.proportion'],
@@ -138,6 +144,7 @@ export const mesuresExercises = [
         // pièce porte sa fraction de la figure, et la figure terminée pose une
         // question d'aire : sans elle, il ne resterait qu'un casse-tête.
         id: 'geo-tangram', status: STATUS.TEST, title: 'Le Tangram',
+        cree: '2026-08-13',
         activityId: 'tangram',
         // SUR LE PAPIER : le carré à découper une fois, puis les silhouettes à
         // remplir avec les pièces découpées. C'est ainsi que le tangram vit en
@@ -160,6 +167,7 @@ export const mesuresExercises = [
     // réglages remontent d'eux-mêmes.
     {
         id: 'mes-heure', title: 'Quelle heure est-il ?',
+        cree: '2026-08-06',
         generatorId: 'mes.horloge', activityId: 'horloge',
         printable: 'horloge',
         params: { niveau: 'progressif', question: 'lire', reperes: 'auto' },
