@@ -848,6 +848,70 @@ export const calculExercises = [
         instruction: "À DEUX sur la même tablette, ou CONTRE L'ORDINATEUR. Un nombre de la table de Pythagore tombe — 36 — et celui dont c'est le tour clôture une parcelle de 36 cases : 6 × 6, 4 × 9, 3 × 12, comme il veut, où il veut. Glisse le doigt d'un coin à l'autre : l'aire s'affiche pendant le tracé. Le premier qui ne peut plus poser a perdu. Rien n'est enregistré dans le profil : c'est un duel."
     },
     {
+        // LES ANAGRAMMES DU VOCABULAIRE. Rémy : « j'aimerais bien aussi un
+        // anagramme de mot mathématique, par exemple RACER est l'anagramme de
+        // CARRE. » Les mots cachés font chercher des LETTRES dans une grille ;
+        // ici on a déjà toutes les lettres, et c'est le MOT DU COURS qu'on
+        // cherche — celui que la définition décrit. Deux exercices voisins,
+        // deux travaux différents, un seul lexique.
+        id: 'voc-anagrammes', status: STATUS.TEST, title: 'Anagrammes du Vocabulaire',
+        cree: '2026-08-19',
+        activityId: 'anagrammes', skills: ['voc.mathematique'],
+        // Un mot cherché puis trouvé n'a rien à réviser : ce qui compte est de
+        // l'avoir rencontré. Les essais restent au compteur de la séance.
+        sansRevision: true,
+        params: { theme: 'tout', niveauMax: 3, longueurMin: 4, definition: 'toujours' },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                options: [
+                    { value: 'tout', label: 'Tout le vocabulaire' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' }
+                ],
+                default: 'tout'
+            },
+            {
+                id: 'definition', type: 'select', label: 'La définition',
+                aide: 'Affichée d\'emblée, elle fait de l\'exercice un travail de vocabulaire : on lit, on reconnaît le mot du cours, on le compose. Différée, il faut d\'abord chercher DANS LES LETTRES — c\'est le vrai jeu d\'anagramme, et c\'est nettement plus difficile.',
+                options: [
+                    { value: 'toujours', label: 'Donnée tout de suite' },
+                    { value: 'apres', label: 'Après un premier essai' },
+                    { value: 'jamais', label: 'Jamais — les lettres seules' }
+                ],
+                default: 'toujours'
+            },
+            {
+                id: 'longueurMin', type: 'select', label: 'Longueur des mots',
+                aide: 'Les mots courts se retrouvent en essayant ; à partir de sept lettres, on ne peut plus procéder au hasard — il faut avoir le mot en tête.',
+                options: [
+                    { value: 4, label: 'À partir de 4 lettres' },
+                    { value: 6, label: 'À partir de 6 lettres' },
+                    { value: 8, label: 'À partir de 8 lettres — les mots longs' }
+                ],
+                default: 4
+            },
+            {
+                id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau',
+                options: [
+                    { value: 1, label: 'Le vocabulaire de base' },
+                    { value: 2, label: 'Jusqu\'au cycle 3' },
+                    { value: 3, label: 'Tout, collège compris' }
+                ],
+                default: 3
+            }
+        ],
+        motsClefs: ['anagramme', 'vocabulaire', 'lettres', 'mots', 'lexique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Les lettres d'un mot de mathématiques, dans le désordre — RACER, c'est CARRE. Elles y sont TOUTES, et chacune une seule fois : le tas se vide exactement quand le mot est écrit. Lis la définition, puis pose les lettres une à une ; touche une lettre déjà posée pour la reprendre. L'indice découvre le début du mot, jamais une lettre au milieu — on ne saurait pas où la rattacher."
+    },
+    {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
         cree: '2026-08-10',
         activityId: 'motscaches', skills: ['voc.mathematique'],
@@ -867,8 +931,9 @@ export const calculExercises = [
                 options: [
                     { value: 'tout', label: 'Tout le vocabulaire' },
                     { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
                     { value: 'nombres', label: 'Les nombres' },
-                    { value: 'calcul', label: 'Le calcul' },
+                    { value: 'calcul', label: 'Les opérations' },
                     { value: 'mesures', label: 'Grandeurs et mesures' }
                 ],
                 default: 'tout'

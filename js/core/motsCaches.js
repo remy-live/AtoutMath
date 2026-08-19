@@ -38,23 +38,23 @@ export const LEXIQUE = [
     { mot: 'CERCLE', theme: 'geometrie', niveau: 1, def: 'Tous ses points sont à la même distance du centre.' },
     { mot: 'RAYON', theme: 'geometrie', niveau: 1, def: 'Du centre du cercle jusqu\'au bord.' },
     { mot: 'DIAMETRE', theme: 'geometrie', niveau: 1, def: 'Traverse le cercle en passant par le centre : deux rayons.' },
-    { mot: 'ANGLE', theme: 'geometrie', niveau: 1, def: 'L\'écartement entre deux demi-droites de même origine.' },
+    { mot: 'ANGLE', theme: 'geometrie', niveau: 1, aussi: ['angles'], def: 'L\'écartement entre deux demi-droites de même origine.' },
     { mot: 'DROITE', theme: 'geometrie', niveau: 1, def: 'Illimitée des deux côtés, elle n\'a ni début ni fin.' },
     { mot: 'SEGMENT', theme: 'geometrie', niveau: 1, def: 'Une portion de droite, limitée par deux points.' },
-    { mot: 'SOMMET', theme: 'geometrie', niveau: 1, def: 'Le point où deux côtés se rejoignent.' },
+    { mot: 'SOMMET', theme: 'geometrie', niveau: 1, aussi: ['angles'], def: 'Le point où deux côtés se rejoignent.' },
     { mot: 'TRIANGLE', theme: 'geometrie', niveau: 1, def: 'Trois côtés, trois sommets, trois angles.' },
     { mot: 'LOSANGE', theme: 'geometrie', niveau: 2, def: 'Quatre côtés de même longueur, sans angle droit obligatoire.' },
     { mot: 'RECTANGLE', theme: 'geometrie', niveau: 1, def: 'Quatre angles droits, les côtés opposés égaux.' },
     { mot: 'PARALLELE', theme: 'geometrie', niveau: 2, def: 'Deux droites qui ne se croisent jamais, même très loin.' },
-    { mot: 'PERPENDICULAIRE', theme: 'geometrie', niveau: 2, def: 'Deux droites qui se croisent en formant un angle droit.' },
+    { mot: 'PERPENDICULAIRE', theme: 'geometrie', niveau: 2, aussi: ['angles'], def: 'Deux droites qui se croisent en formant un angle droit.' },
     { mot: 'MEDIATRICE', theme: 'geometrie', niveau: 3, def: 'Coupe un segment en son milieu, perpendiculairement.' },
-    { mot: 'BISSECTRICE', theme: 'geometrie', niveau: 3, def: 'Partage un angle en deux angles égaux.' },
+    { mot: 'BISSECTRICE', theme: 'geometrie', niveau: 3, aussi: ['angles'], def: 'Partage un angle en deux angles égaux.' },
     { mot: 'HYPOTENUSE', theme: 'geometrie', niveau: 3, def: 'Le plus long côté d\'un triangle rectangle, face à l\'angle droit.' },
     { mot: 'SYMETRIE', theme: 'geometrie', niveau: 2, def: 'Comme le reflet dans un miroir, de part et d\'autre d\'un axe.' },
     { mot: 'CUBE', theme: 'geometrie', niveau: 1, def: 'Six faces carrées identiques.' },
     { mot: 'PYRAMIDE', theme: 'geometrie', niveau: 2, def: 'Une base, et des faces triangulaires qui montent vers un sommet.' },
     { mot: 'ARETE', theme: 'geometrie', niveau: 2, def: 'Le segment où deux faces d\'un solide se rencontrent.' },
-    { mot: 'FACE', theme: 'geometrie', niveau: 1, def: 'Une des surfaces planes qui ferment un solide.' },
+    { mot: 'FACE', theme: 'geometrie', niveau: 1, def: 'Une des parties planes qui ferment un solide.' },
     { mot: 'CENTRE', theme: 'geometrie', niveau: 1, def: 'Le point du milieu, à égale distance de tout le bord.' },
 
     // --- Nombres ---
@@ -89,6 +89,42 @@ export const LEXIQUE = [
     { mot: 'PARENTHESE', theme: 'calcul', niveau: 2, def: 'Ce qui est dedans se calcule avant tout le reste.' },
     { mot: 'EGALITE', theme: 'calcul', niveau: 1, def: 'Deux écritures qui valent la même chose.' },
 
+    // --- Les angles ---
+    // Rémy : « par exemple un mot croisé sur le vocabulaire d'angle ». C'est
+    // un vocabulaire à part : on l'apprend en une leçon, il se récite, et il
+    // se confond très vite — aigu/obtus, complémentaires/supplémentaires,
+    // alternes-internes/correspondants.
+    { mot: 'AIGU', theme: 'angles', niveau: 1, def: 'Plus petit qu\'un angle droit.' },
+    { mot: 'OBTUS', theme: 'angles', niveau: 1, def: 'Plus grand qu\'un angle droit, mais pas plat.' },
+    { mot: 'PLAT', theme: 'angles', niveau: 1, def: 'Cent quatre-vingts degrés : ses deux côtés forment une droite.' },
+    { mot: 'NUL', theme: 'angles', niveau: 1, def: 'Zéro degré : ses deux côtés sont confondus.' },
+    { mot: 'SAILLANT', theme: 'angles', niveau: 2, def: 'Mesure moins de cent quatre-vingts degrés.' },
+    { mot: 'RENTRANT', theme: 'angles', niveau: 2, def: 'Mesure plus de cent quatre-vingts degrés : il rentre vers l\'intérieur.' },
+    { mot: 'ADJACENTS', theme: 'angles', niveau: 2, def: 'Côte à côte : même sommet, un côté commun, et pas de recouvrement.' },
+    { mot: 'OPPOSES', theme: 'angles', niveau: 2, def: 'De part et d\'autre du point où deux droites se croisent ; ils sont égaux.' },
+    { mot: 'COMPLEMENTAIRES', theme: 'angles', niveau: 3, def: 'Ensemble, ils font un angle droit.' },
+    { mot: 'SUPPLEMENTAIRES', theme: 'angles', niveau: 3, def: 'Ensemble, ils font un angle plat.' },
+    { mot: 'ALTERNES', theme: 'angles', niveau: 3, def: 'De part et d\'autre de la sécante, et de deux droites différentes.' },
+    { mot: 'CORRESPONDANTS', theme: 'angles', niveau: 3, def: 'Du même côté de la sécante, à la même place sur chaque droite.' },
+    { mot: 'SECANTE', theme: 'angles', niveau: 3, def: 'La droite qui coupe les deux autres.' },
+    { mot: 'CODAGE', theme: 'angles', niveau: 2, def: 'Le petit arc, ou le petit carré, qui marque un angle sur la figure.' },
+
+    // --- Les opérations ---
+    // « Ou mot croisé sur le vocabulaire des opérations. » Le nom du calcul,
+    // le nom de son résultat, et le nom de ce qu'on y met : trois choses
+    // différentes qu'on mélange constamment.
+    { mot: 'ADDITION', theme: 'calcul', niveau: 1, def: 'L\'opération qui met ensemble : son signe est le plus.' },
+    { mot: 'SOUSTRACTION', theme: 'calcul', niveau: 1, def: 'L\'opération qui retire : son signe est le moins.' },
+    { mot: 'MULTIPLICATION', theme: 'calcul', niveau: 1, def: 'L\'opération qui répète : son signe est la croix.' },
+    { mot: 'DIVISION', theme: 'calcul', niveau: 1, def: 'L\'opération qui partage en parts égales.' },
+    { mot: 'DIVIDENDE', theme: 'calcul', niveau: 2, def: 'Le nombre que l\'on partage dans une division.' },
+    { mot: 'RETENUE', theme: 'calcul', niveau: 1, def: 'Le petit chiffre qu\'on reporte sur la colonne d\'à côté.' },
+    { mot: 'DECOMPOSER', theme: 'calcul', niveau: 2, def: 'Réécrire un nombre comme un produit ou une somme plus simple.' },
+    { mot: 'PUISSANCE', theme: 'calcul', niveau: 3, def: 'Écriture courte d\'un produit de facteurs tous égaux.' },
+    { mot: 'EXPOSANT', theme: 'calcul', niveau: 3, def: 'Le petit nombre en haut à droite : il dit combien de fois on multiplie.' },
+    { mot: 'RACINE', theme: 'calcul', niveau: 3, def: 'L\'opération qui revient du carré à la longueur.' },
+    { mot: 'POURCENTAGE', theme: 'calcul', niveau: 3, def: 'Une proportion écrite sur cent.' },
+
     // --- Grandeurs et mesures ---
     { mot: 'PERIMETRE', theme: 'mesures', niveau: 1, def: 'La longueur du tour d\'une figure.' },
     { mot: 'AIRE', theme: 'mesures', niveau: 1, def: 'La mesure de la surface : le nombre de carreaux dedans.' },
@@ -97,9 +133,9 @@ export const LEXIQUE = [
     { mot: 'MASSE', theme: 'mesures', niveau: 1, def: 'Se mesure en grammes et en kilogrammes.' },
     { mot: 'DUREE', theme: 'mesures', niveau: 1, def: 'Le temps écoulé entre deux instants.' },
     { mot: 'MINUTE', theme: 'mesures', niveau: 1, def: 'Soixante secondes.' },
-    { mot: 'DEGRE', theme: 'mesures', niveau: 2, def: 'L\'unité qui mesure les angles.' },
+    { mot: 'DEGRE', theme: 'mesures', niveau: 2, aussi: ['angles'], def: 'L\'unité qui mesure les angles.' },
     { mot: 'LITRE', theme: 'mesures', niveau: 1, def: 'L\'unité des contenances.' },
-    { mot: 'RAPPORTEUR', theme: 'mesures', niveau: 2, def: 'L\'instrument demi-rond qui mesure les angles.' },
+    { mot: 'RAPPORTEUR', theme: 'mesures', niveau: 2, aussi: ['angles'], def: 'L\'instrument demi-rond qui mesure les angles.' },
     { mot: 'ECHELLE', theme: 'mesures', niveau: 3, def: 'Le rapport entre le dessin et la réalité.' },
     { mot: 'VITESSE', theme: 'mesures', niveau: 3, def: 'La distance parcourue en un temps donné.' }
 ];
@@ -107,14 +143,25 @@ export const LEXIQUE = [
 export const THEMES = {
     tout: 'Tout le vocabulaire',
     geometrie: 'Géométrie',
+    angles: 'Le vocabulaire des angles',
     nombres: 'Les nombres',
-    calcul: 'Le calcul',
+    calcul: 'Les opérations',
     mesures: 'Grandeurs et mesures'
 };
 
-/** Les mots disponibles pour un thème et un niveau donnés. */
+/**
+ * Les mots disponibles pour un thème et un niveau donnés.
+ *
+ * UN MOT PEUT APPARTENIR À DEUX RUBRIQUES sans être écrit deux fois. Le
+ * rapporteur est un instrument de mesure ET du vocabulaire des angles ; la
+ * bissectrice est de la géométrie ET des angles. Les inscrire deux fois les
+ * ferait sortir en double dès qu'on demande « tout le vocabulaire » — une
+ * grille de mots cachés avec deux fois BISSECTRICE, ou un mot croisé qui se
+ * croise avec lui-même. `aussi` porte donc les rubriques secondaires.
+ */
 export function motsDisponibles({ theme = 'tout', niveauMax = 3 } = {}) {
-    return LEXIQUE.filter(m => (theme === 'tout' || m.theme === theme) && m.niveau <= niveauMax);
+    return LEXIQUE.filter(m => m.niveau <= niveauMax
+        && (theme === 'tout' || m.theme === theme || (m.aussi || []).includes(theme)));
 }
 
 /**

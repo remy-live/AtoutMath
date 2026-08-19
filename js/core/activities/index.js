@@ -413,6 +413,7 @@ const legacy = [
     ['demineur', 'Le Démineur', 'demineur', 'engineDemineur'],
     ['chantier', 'Le Chantier des Blocs', 'chantier', 'engineChantier'],
     ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches'],
+    ['anagrammes', 'Anagrammes du vocabulaire', 'anagrammes', 'engineAnagrammes'],
     ['arpenteurs', 'Les Arpenteurs (à deux)', 'arpenteurs', 'engineArpenteurs'],
     ['ninja', 'Trancher et tirer', 'ninja', 'engineNinja'],
     ['dictee', 'Dictée de nombres', 'dictee', 'engineDictee'],
