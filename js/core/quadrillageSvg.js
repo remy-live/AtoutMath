@@ -327,10 +327,16 @@ function arcDeRotation(t, { px, py, u, p }) {
     const cx = versDessin(t.centre.x), cy = versDessin(t.centre.y);
     const r = 0.85;
     const rp = (r * u).toFixed(2);
-    // Le sens direct (quarts = 1) tourne vers la GAUCHE à l'écran, puisque
-    // l'ordonnée descend : l'arc part de la droite et monte.
-    const sens = t.quarts === 1 ? 0 : 1;
-    const [dx1, dy1, dx2, dy2] = t.quarts === 1 ? [r, 0, 0, -r] : [r, 0, 0, r];
+    // L'ARC TOURNAIT À L'ENVERS DU CALCUL, et il n'était pas seul : la consigne
+    // aussi. `quarts = 1` envoie la case située à l'EST du centre vers le BAS —
+    // l'ordonnée d'un quadrillage descend —, donc dans le sens des aiguilles
+    // d'une montre. La flèche, elle, partait de l'est et MONTAIT. Un élève qui
+    // la suivait traçait l'image opposée, et la correction lui donnait tort.
+    //
+    // L'arc part donc de l'est et descend pour `quarts = 1`, monte pour 3.
+    const horaire = t.quarts === 1;
+    const sens = horaire ? 1 : 0;
+    const [dx1, dy1, dx2, dy2] = horaire ? [r, 0, 0, r] : [r, 0, 0, -r];
     return `<path class="qd-arc" marker-end="url(#${p}-fleche)"
         d="M ${px(cx + dx1)} ${py(cy + dy1)} A ${rp} ${rp} 0 0 ${sens} ${px(cx + dx2)} ${py(cy + dy2)}"/>`;
 }

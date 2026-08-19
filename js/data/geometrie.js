@@ -151,7 +151,16 @@ export const geometrieExercises = [
     // réglé au cas par cas les aurait fondus l'un dans l'autre, et le rangement
     // par chapitre n'aurait plus rien eu à ranger.
     {
-        id: 'geo-symetrie-quadrillage', title: 'Le Symétrique aux Carreaux',
+        id: 'geo-symetrie-quadrillage',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'Le sens de rotation était annoncé À L\'ENVERS du calcul — consigne et '
+                    + 'flèche —, il est corrigé et se dit maintenant « sens direct » ou '
+                    + '« indirect ». L\'axe et le centre tombent sur les traits du quadrillage, '
+                    + 'et la figure ne pousse plus « Valider » hors de l\'écran en paysage.'
+            }
+        ], title: 'Le Symétrique aux Carreaux',
         cree: '2026-08-18',
         consignePapier: 'Colorie l\'image de la figure grise par la symétrie d\'axe (d).',
         generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',
@@ -174,7 +183,16 @@ export const geometrieExercises = [
             + "que le miroir droit n'est pas acquis, car on n'y compte plus ni lignes ni colonnes."
     },
     {
-        id: 'geo-transfo-quadrillage', title: 'Tracer l\'Image d\'une Figure',
+        id: 'geo-transfo-quadrillage',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'Le sens de rotation était annoncé À L\'ENVERS du calcul — consigne et '
+                    + 'flèche —, il est corrigé et se dit maintenant « sens direct » ou '
+                    + '« indirect ». L\'axe et le centre tombent sur les traits du quadrillage, '
+                    + 'et la figure ne pousse plus « Valider » hors de l\'écran en paysage.'
+            }
+        ], title: 'Tracer l\'Image d\'une Figure',
         cree: '2026-08-18',
         consignePapier: 'Colorie l\'image de la figure grise par la transformation indiquée.',
         generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',

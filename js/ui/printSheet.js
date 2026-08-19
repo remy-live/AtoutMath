@@ -32,6 +32,7 @@ import {
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { caseCentrale } from '../core/quadrillageSvg.js';
 import { ecrireElement } from '../core/elementSymetrie.js';
+import { SENS as SENS_ROTATION } from '../core/transformations.js';
 import { pieceSvg, dessinerPiecePdf, direPiece, MENTION_PIECES } from './piecesEchecs.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../core/pizza.js';
 import { ecrire as ecrireProp } from '../core/proportion.js';
@@ -5721,7 +5722,7 @@ function qLegende(m) {
     if (t.genre === 'centrale') return 'Symétrie de centre O';
     if (t.genre === 'translation') return 'Translation du vecteur tracé';
     if (t.genre === 'rotation') {
-        return `Quart de tour vers la ${t.quarts === 1 ? 'gauche' : 'droite'} autour de O`;
+        return `Quart de tour, sens ${SENS_ROTATION[t.quarts] ? SENS_ROTATION[t.quarts].nom : 'indirect'}, autour de O`;
     }
     return '';
 }

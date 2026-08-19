@@ -577,7 +577,13 @@
    Le quadrillage est plus large que les autres figures : le réduire à 360 px
    ramenait le carreau à vingt pixels de côté, et l'on ne vise plus une case de
    vingt pixels au doigt. */
-.figure-wrap:has(.qd-svg) { width: min(440px, 96%); }
+/* LE QUADRILLAGE EST CARRÉ, L'ÉCRAN NE L'EST PAS. Réglé sur la seule largeur,
+   il gardait ses 440 px sur une tablette en PAYSAGE — où la place manque en
+   hauteur, pas en largeur — et poussait « Valider » puis « Un indice » hors de
+   l'écran. Rémy : « sur tablette, le bouton valider est un peu caché en bas ».
+   Le troisième terme le borne aussi par la hauteur disponible ; sur un
+   téléphone en portrait, c'est la largeur qui commande, et rien ne change. */
+.figure-wrap:has(.qd-svg) { width: min(440px, 96%, 46vh); }
 .qd-svg { width: 100%; height: auto; color: var(--text-main); }
 
 .qd-grille { stroke: var(--border); stroke-width: 1; fill: none; }

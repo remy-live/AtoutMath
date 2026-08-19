@@ -62,6 +62,34 @@ export const GESTES = {
 
 export const TYPES_AXE = ['v', 'h', 'd', 'a'];
 
+/**
+ * LE SENS D'UN QUART DE TOUR, DIT COMME EN CLASSE.
+ *
+ * Rémy : « pour la rotation, parle de sens direct ou indirect ». C'est le
+ * vocabulaire du collège, et il vaut mieux que « à gauche / à droite » — qui,
+ * en plus d'être vague, était INVERSÉ ici.
+ *
+ * Le quadrillage se lit de haut en bas : une ordonnée qui augmente descend.
+ * Un quart de tour de `quarts = 1` envoie donc la case située à l'est du centre
+ * vers le BAS — c'est-à-dire dans le sens des aiguilles d'une montre, le sens
+ * INDIRECT. Le code annonçait « vers la gauche », qui est l'autre. La consigne
+ * disait donc le contraire de ce que la correction attendait : un élève qui
+ * suivait les mots avait faux, et il avait raison.
+ *
+ * On garde la formule des aiguilles à côté du mot savant : « sens direct » ne
+ * dit rien à qui l'entend pour la troisième fois de sa vie.
+ */
+export const SENS = {
+    1: { nom: 'indirect', aiguilles: 'dans le sens des aiguilles d\'une montre' },
+    3: { nom: 'direct', aiguilles: 'dans le sens inverse des aiguilles d\'une montre' }
+};
+
+/** « le sens indirect (dans le sens des aiguilles d'une montre) ». */
+export function direLeSens(quarts, { avecAiguilles = true } = {}) {
+    const s = SENS[((Math.round(quarts) % 4) + 4) % 4] || SENS[1];
+    return avecAiguilles ? `le sens ${s.nom} (${s.aiguilles})` : `le sens ${s.nom}`;
+}
+
 /** « 3 », « 3,5 » — jamais « 3.5 » : on écrit en français. */
 export function ecrireDemi(x) {
     return String(x).replace('.', ',');
@@ -346,7 +374,7 @@ export function decrire(t) {
     }
     if (t.genre === 'translation') return `la translation de ${direVecteur(t.vecteur)}`;
     if (t.genre === 'rotation') {
-        return `le quart de tour ${t.quarts === 1 ? 'vers la gauche' : 'vers la droite'}`
+        return `le quart de tour dans ${direLeSens(t.quarts)}`
             + ` autour de (${ecrireDemi(t.centre.x)} ; ${ecrireDemi(t.centre.y)})`;
     }
     return '';

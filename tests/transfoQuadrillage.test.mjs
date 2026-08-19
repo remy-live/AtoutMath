@@ -15,7 +15,9 @@ import {
     tirerQuestion, transfoQuadrillageGenerator as G
 } from '../js/core/generators/transfoQuadrillage.js';
 import { pavageGenerator } from '../js/core/generators/pavage.js';
-import { cleFigure, imageFigure, memeFigure } from '../js/core/transformations.js';
+import {
+    cleFigure, direLeSens, imageFigure, memeFigure, parRotation
+} from '../js/core/transformations.js';
 import { droiteDeLAxe, quadrillageSvg, versDessin } from '../js/core/quadrillageSvg.js';
 
 const TIRAGES = 120;
@@ -177,8 +179,15 @@ test('la consigne nomme la transformation demandée', () => {
     assert.match(consigneDe({ genre: 'centrale', centre: { x: 1, y: 1 } }), /centre O/);
     assert.match(consigneDe({ genre: 'translation', vecteur: { x: 4, y: -3 } }),
         /4 carreaux vers la droite et 3 vers le haut/);
+    // LE SENS EST CELUI DU CALCUL, PAS L'INVERSE. `quarts = 1` envoie la case
+    // à l'est du centre vers le BAS — l'ordonnée d'un quadrillage descend —,
+    // donc dans le sens des aiguilles : le sens INDIRECT. La consigne
+    // annonçait « vers la gauche », l'exact contraire, et la flèche dessinée
+    // tournait avec elle : l'élève qui suivait les mots avait faux.
     assert.match(consigneDe({ genre: 'rotation', centre: { x: 0, y: 0 }, quarts: 3 }),
-        /quart de tour vers la droite/);
+        /sens direct/);
+    assert.match(consigneDe({ genre: 'rotation', centre: { x: 0, y: 0 }, quarts: 1 }),
+        /sens indirect/);
 });
 
 test('chaque question porte une consigne, des indices et une correction', () => {
@@ -333,4 +342,59 @@ test('LE TYPE DE CHAQUE RÉGLAGE EXISTE VRAIMENT', () => {
                 `${gen.id} / ${p.id} : type « ${p.type} » inconnu du panneau de réglages`);
         });
     });
+});
+
+// --- Le sens de rotation, et les traits du quadrillage ------------------------
+
+test('LE SENS ANNONCÉ EST CELUI QUE LE CALCUL PRODUIT', () => {
+    // Le test qui aurait attrapé l'inversion. Une case posée à l'EST du centre
+    // descend pour `quarts = 1` : c'est le sens des aiguilles, l'indirect.
+    const centre = { x: 0, y: 0 };
+    const est = { x: 1, y: 0 };
+    assert.ok(parRotation(est, centre, 1).y > 0, 'quarts=1 doit descendre à l\'est');
+    assert.ok(parRotation(est, centre, 3).y < 0, 'quarts=3 doit monter à l\'est');
+    assert.match(direLeSens(1), /indirect/);
+    assert.match(direLeSens(3), /direct/);
+    assert.ok(!/indirect/.test(direLeSens(3)), '« direct » ne doit pas contenir « indirect » par accident');
+    // Et la formule des aiguilles suit le même sens.
+    assert.match(direLeSens(1), /dans le sens des aiguilles/);
+    assert.match(direLeSens(3), /inverse des aiguilles/);
+});
+
+test('LA FLÈCHE DESSINÉE TOURNE DU CÔTÉ DU CALCUL', () => {
+    // Elle aussi partait à l'envers, en accord avec la consigne fausse.
+    const arcDe = (quarts) => {
+        const svg = quadrillageSvg({
+            largeur: 6, hauteur: 6, cote: 30,
+            transfo: { genre: 'rotation', centre: { x: 2, y: 2 }, quarts }
+        });
+        const m = svg.match(/d="M ([\d.]+) ([\d.]+) A [\d.]+ [\d.]+ 0 0 \d ([\d.]+) ([\d.]+)"/);
+        assert.ok(m, `arc introuvable pour quarts=${quarts}`);
+        return { y1: Number(m[2]), y2: Number(m[4]) };
+    };
+    assert.ok(arcDe(1).y2 > arcDe(1).y1, 'quarts=1 : la flèche doit descendre');
+    assert.ok(arcDe(3).y2 < arcDe(3).y1, 'quarts=3 : la flèche doit monter');
+});
+
+test('L\'AXE ET LE CENTRE TOMBENT SUR LES TRAITS DU QUADRILLAGE', () => {
+    // Rémy : « peux-tu faire que l'axe ou le point ait leur origine sur des
+    // intersections du quadrillage ». Un trait est un DEMI-ENTIER en
+    // coordonnées de case : la case `a` a son centre en `a`, donc le trait à
+    // sa droite est en `a + 0,5`.
+    const surTrait = (v) => Number.isInteger(v * 2) && !Number.isInteger(v);
+    for (let i = 0; i < 150; i++) {
+        const t = G.generate({}, { rng: makeRng('tr' + i), index: i }).meta.transfo;
+        if (t.genre === 'axiale') {
+            if (t.axe.type === 'v' || t.axe.type === 'h') {
+                assert.ok(surTrait(t.axe.a), `axe ${t.axe.type} = ${t.axe.a} coupe une case en deux`);
+            } else {
+                // Une oblique passe par les nœuds quand son paramètre est entier.
+                assert.ok(Number.isInteger(t.axe.a), `oblique ${t.axe.a} ne passe pas par les nœuds`);
+            }
+        }
+        if (t.centre) {
+            assert.ok(surTrait(t.centre.x) && surTrait(t.centre.y),
+                `centre (${t.centre.x} ; ${t.centre.y}) n'est pas sur un nœud`);
+        }
+    }
 });

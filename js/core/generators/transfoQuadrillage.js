@@ -30,7 +30,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    NOMS, appliquer, cleFigure, direVecteur, imageFigure, memeFigure, nommerAxe
+    NOMS, appliquer, cleFigure, direLeSens, direVecteur, imageFigure, memeFigure,
+    nommerAxe
 } from '../transformations.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
 import { figure } from '../figures.js';
@@ -123,11 +124,19 @@ const disjointes = (a, b) => {
  */
 function transfoAuHasard(rng, genre, f, L, H, obliques) {
     const b = bornes(f);
-    // Un axe se pose SUR une colonne, ou ENTRE deux colonnes : ce demi-carreau
-    // d'écart est exactement ce qui distingue les deux cas, et les deux se
-    // rencontrent en classe. Le premier laisse une colonne vide au milieu, le
-    // second colle l'image contre la figure.
-    const demi = () => (rng.bool() ? 0 : 0.5);
+    // TOUT SE POSE SUR LES TRAITS DU QUADRILLAGE, jamais au milieu d'une case.
+    //
+    // Rémy : « peux-tu faire que l'axe ou le point ait leur origine sur des
+    // intersections du quadrillage ». Un axe qui coupait une colonne en deux
+    // et un centre posé au milieu d'un carreau sont justes mathématiquement,
+    // mais on ne les trace pas ainsi sur un cahier : on suit les traits. Et
+    // surtout ils se COMPTENT mal — « à deux carreaux et demi de l'axe » n'est
+    // pas ce qu'on veut faire dire à un élève de sixième.
+    //
+    // En coordonnées de case, un trait du quadrillage est un demi-entier : la
+    // case `a` a son centre en `a`, donc le trait à sa droite est en `a + 0,5`.
+    // C'est pourquoi tout ce qui suit est décalé d'un demi.
+    const ecart = () => rng.int(0, 2);
 
     if (genre === 'axiale') {
         // L'AXE OBLIQUE EST UN AUTRE EXERCICE, et il se règle à part.
@@ -139,10 +148,10 @@ function transfoAuHasard(rng, genre, f, L, H, obliques) {
         // après, et le professeur choisit quand.
         const type = rng.pick(obliques ? ['v', 'v', 'h', 'h', 'd', 'a'] : ['v', 'h']);
         if (type === 'v') {
-            return { genre, axe: { type, a: rng.bool() ? b.x1 + 1 - demi() : b.x0 - 1 + demi() } };
+            return { genre, axe: { type, a: rng.bool() ? b.x1 + 0.5 + ecart() : b.x0 - 0.5 - ecart() } };
         }
         if (type === 'h') {
-            return { genre, axe: { type, a: rng.bool() ? b.y1 + 1 - demi() : b.y0 - 1 + demi() } };
+            return { genre, axe: { type, a: rng.bool() ? b.y1 + 0.5 + ecart() : b.y0 - 0.5 - ecart() } };
         }
         // Les obliques passent près d'un coin de la figure, décalées d'un
         // carreau ou deux pour que l'image ne la recouvre pas.
@@ -161,19 +170,22 @@ function transfoAuHasard(rng, genre, f, L, H, obliques) {
         return { genre, vecteur: { x: dx, y: dy } };
     }
 
+    // Le centre se pose sur un NŒUD du quadrillage — le croisement de deux
+    // traits —, donc en demi-entiers dans le repère des cases.
+    const noeudX = () => rng.pick([b.x1 + 0.5, b.x0 - 0.5, b.x1 - 0.5, b.x0 + 0.5]) + rng.pick([0, 1, -1]);
+    const noeudY = () => rng.pick([b.y1 + 0.5, b.y0 - 0.5, b.y1 - 0.5, b.y0 + 0.5]) + rng.pick([0, 1, -1]);
+
     if (genre === 'centrale') {
-        // Le centre tombe souvent au MILIEU d'une case ou sur un coin : les
-        // deux sont au programme, et les demi-carreaux sont exacts.
-        const x = rng.pick([b.x1 + 1, b.x0 - 1, b.x1 + 0.5, b.x0 - 0.5]);
-        const y = rng.pick([b.y1 + 1, b.y0 - 1, b.y1 + 0.5, b.y0 - 0.5, (b.y0 + b.y1) / 2]);
-        return { genre, centre: { x, y } };
+        return { genre, centre: { x: noeudX(), y: noeudY() } };
     }
 
     // La rotation : un quart de tour, jamais un demi — un demi-tour EST une
     // symétrie centrale, et la question aurait deux bonnes réponses.
-    const x = rng.pick([b.x0 - 1, b.x1 + 1, b.x0, b.x1]);
-    const y = rng.pick([b.y0 - 1, b.y1 + 1, b.y0, b.y1]);
-    return { genre: 'rotation', centre: { x, y }, quarts: rng.bool() ? 1 : 3 };
+    return {
+        genre: 'rotation',
+        centre: { x: noeudX(), y: noeudY() },
+        quarts: rng.bool() ? 1 : 3
+    };
 }
 
 /**
@@ -214,8 +226,8 @@ export function consigneDe(t) {
         return `Colorie l'image de la figure bleue par la translation qui la fait glisser de `
             + `${direVecteur(t.vecteur)}.`;
     }
-    return `Colorie l'image de la figure bleue par le quart de tour `
-        + `${t.quarts === 1 ? 'vers la gauche' : 'vers la droite'} autour de O.`;
+    return 'Colorie l\'image de la figure bleue par le quart de tour dans '
+        + `${direLeSens(t.quarts)}, autour de O.`;
 }
 
 /** L'aide qui apprend la MÉTHODE, pas la réponse. */
@@ -253,7 +265,7 @@ function indices(t) {
     return [
         'Un quart de tour fait basculer la figure : ce qui était couché se met debout.',
         `Prends la case la plus proche de O : à combien de carreaux est-elle, en largeur puis en hauteur ? Après un quart de tour, ces deux nombres S'ÉCHANGENT.`,
-        `On tourne ${t.quarts === 1 ? 'vers la gauche' : 'vers la droite'} : suis la flèche autour de O.`
+        `On tourne dans ${direLeSens(t.quarts)} : suis la flèche autour de O.`
     ];
 }
 
@@ -272,7 +284,7 @@ function explication(t, image) {
     const quoi = t.genre === 'axiale' ? `par rapport à ${nommerAxe(t.axe)}`
         : t.genre === 'centrale' ? 'par rapport au centre O'
             : t.genre === 'translation' ? `en glissant de ${direVecteur(t.vecteur)}`
-                : `d'un quart de tour ${t.quarts === 1 ? 'vers la gauche' : 'vers la droite'} autour de O`;
+                : `d'un quart de tour dans ${direLeSens(t.quarts)} autour de O`;
     return `L'image se trace ${quoi}. Elle occupe les cases ${ou} `
         + '(colonne ; ligne, en comptant à partir de 1).';
 }
