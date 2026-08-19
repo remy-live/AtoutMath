@@ -912,6 +912,60 @@ export const calculExercises = [
         instruction: "Les lettres d'un mot de mathématiques, dans le désordre — RACER, c'est CARRE. Elles y sont TOUTES, et chacune une seule fois : le tas se vide exactement quand le mot est écrit. Lis la définition, puis pose les lettres une à une ; touche une lettre déjà posée pour la reprendre. L'indice découvre le début du mot, jamais une lettre au milieu — on ne saurait pas où la rattacher."
     },
     {
+        // LES MOTS CROISÉS. Rémy : « des mots croisés — par exemple sur le
+        // vocabulaire d'angle. Il faut que la grille soit optimisée. Ou sur le
+        // vocabulaire des opérations. » Une grille où les mots ne se touchent
+        // presque pas est une liste de définitions déguisée : on répond dans
+        // le désordre et rien n'aide rien. Le générateur fabrique donc une
+        // dizaine de grilles et garde la plus SERRÉE — c'est le chaînage qui
+        // fait l'exercice.
+        id: 'voc-mots-croises', status: STATUS.TEST, title: 'Mots Croisés Mathématiques',
+        cree: '2026-08-19',
+        activityId: 'mots-croises', skills: ['voc.mathematique'],
+        sansRevision: true,
+        params: { theme: 'angles', niveauMax: 3, nbMots: 10 },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                aide: 'Une grille sur UN chapitre vaut mieux qu\'une grille sur tout : les mots se ressemblent, se croisent mieux, et la révision porte sur une leçon précise.',
+                options: [
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' },
+                    { value: 'tout', label: 'Tout le vocabulaire' }
+                ],
+                default: 'angles'
+            },
+            {
+                id: 'nbMots', type: 'select', label: 'Nombre de mots',
+                aide: 'Plus il y a de mots, plus la grille est grande — et plus elle se croise. Six mots tiennent sur un téléphone ; quatorze demandent une tablette.',
+                options: [
+                    { value: 6, label: '6 mots — grille courte' },
+                    { value: 10, label: '10 mots' },
+                    { value: 14, label: '14 mots — grille de journal' }
+                ],
+                default: 10
+            },
+            {
+                id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau',
+                options: [
+                    { value: 1, label: 'Le vocabulaire de base' },
+                    { value: 2, label: 'Jusqu\'au cycle 3' },
+                    { value: 3, label: 'Tout, collège compris' }
+                ],
+                default: 3
+            }
+        ],
+        motsClefs: ['mots croisés', 'vocabulaire', 'définitions', 'grille', 'lexique', 'angles'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
+    },
+    {
         id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
         cree: '2026-08-10',
         activityId: 'motscaches', skills: ['voc.mathematique'],
