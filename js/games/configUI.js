@@ -381,20 +381,40 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { glisse = null; });
 
+/**
+ * LA VALEUR D'UN CHOIX EST CELLE DE L'OPTION, PAS UNE DEVINETTE SUR LA LISTE.
+ *
+ * Le DOM ne rend que des chaînes : « 2 » et « ia » en sortent pareils. On
+ * décidait donc du type en regardant la PREMIÈRE option — si elle était un
+ * nombre, tout le menu passait par `Number()`. Sur « Qui joue ? », dont les
+ * choix sont `2`, `'ia'` et `1`, cela transformait « Contre l'ordinateur » en
+ * `NaN` : le jeu ne se reconnaissait plus, retombait sur deux joueurs, et
+ * l'ordinateur ne jouait jamais. C'est le bug que Rémy a vu.
+ *
+ * La valeur choisie est forcément l'une des options : on la retrouve par
+ * comparaison de chaînes et on rend l'ORIGINALE, avec son type. Plus aucune
+ * liste mixte ne peut se faire abîmer.
+ */
+function valeurChoisie(param, brut) {
+    const trouvee = (param.options || []).find(o => String(valeurOption(o)) === String(brut));
+    if (trouvee !== undefined) return valeurOption(trouvee);
+    // Une valeur hors liste (un champ nombre, ou un réglage ancien) : on garde
+    // l'ancienne règle, qui est juste dans ce cas-là.
+    return param.type === 'number' ? Number(brut) : brut;
+}
+
 export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
         if (param.type === 'multiselect') {
             const boxes = [...root.querySelectorAll(`[data-param="${param.id}"][data-kind="multiselect"]`)];
-            const isNum = typeof valeurOption(param.options[0]) === 'number';
-            out[param.id] = boxes.filter(b => b.checked).map(b => (isNum ? Number(b.value) : b.value));
+            out[param.id] = boxes.filter(b => b.checked).map(b => valeurChoisie(param, b.value));
         } else {
             const el = root.querySelector(`[data-param="${param.id}"]`);
             if (!el) return;
             if (el.dataset.kind === 'bool') { out[param.id] = el.dataset.valeur === 'true'; return; }
-            const isNum = param.type === 'number'
-                || (param.type === 'select' && typeof valeurOption(param.options[0]) === 'number');
-            out[param.id] = isNum ? Number(el.value) : el.value;
+            if (param.type === 'number') { out[param.id] = Number(el.value); return; }
+            out[param.id] = valeurChoisie(param, el.value);
         }
     });
     return out;
