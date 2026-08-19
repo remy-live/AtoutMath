@@ -627,6 +627,14 @@ function initDebugToolbar() {
     const btnConsole = document.getElementById('db-console');
     if (btnConsole) btnConsole.onclick = () => openConsoleModal();
 
+    // Les nouveautés : la liste de ce qui vient d'arriver, avec de quoi
+    // l'essayer et de quoi en voir la fiche.
+    const btnNeuf = document.getElementById('db-nouveautes');
+    if (btnNeuf) btnNeuf.onclick = async () => {
+        const { openNouveautesModal } = await import('./ui/nouveautesUI.js');
+        openNouveautesModal();
+    };
+
     // Le banc d'essai : chargé à la demande. C'est un outil d'auteur, il n'a
     // aucune raison de peser sur le démarrage d'un élève.
     const btnBanc = document.getElementById('db-banc');

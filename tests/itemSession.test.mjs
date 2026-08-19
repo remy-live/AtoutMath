@@ -81,3 +81,43 @@ test('sans le drapeau, rien ne change au comportement d\'avant', () => {
     assert.notEqual(q1, q2);
     assert.equal(s.locked, false, 'la question suivante doit être jouable');
 });
+
+// --- Le mode ESSAI : jouer sans laisser de trace ------------------------------
+
+test('EN MODE ESSAI, AUCUNE TENTATIVE N\'EST ÉCRITE AU JOURNAL', async () => {
+    // Le professeur essaie un exercice depuis la palette d'auteur, parfois sur
+    // la tablette d'un élève. Sans ce mode, il lui laisserait des fautes au
+    // carnet d'erreurs et du bruit dans son modèle de maîtrise — et rien ne le
+    // dirait.
+    const { journal } = await import('../js/core/journal.js');
+    const avant = journal.all().length;
+
+    const s = new ItemSession({ generator: genTest(), params: {}, sansTrace: true });
+    const q = s.next();
+    s.hint();
+    s.submit('reponse fausse exprès');
+    s.next();
+    s.submit(q.answer);
+
+    assert.equal(journal.all().length, avant, 'le mode essai a écrit au journal');
+});
+
+test('sans ce mode, la tentative part bien au journal', () => {
+    // La contre-épreuve : sans elle, le test précédent passerait aussi si
+    // l'enregistrement était cassé pour tout le monde.
+    const s = new ItemSession({ generator: genTest(), params: {} });
+    assert.equal(s.sansTrace, false);
+    const demo = new ItemSession({ generator: genTest(), params: {}, sansTrace: true });
+    assert.equal(demo.sansTrace, true);
+});
+
+test('un essai se joue à la main : ce n\'est pas une démonstration', () => {
+    // `isDemo` rendrait la main au robot et gèlerait la saisie. Un essai, non :
+    // on répond soi-même, on voit la correction, on gagne des points à l'écran.
+    const s = new ItemSession({ generator: genTest(), params: {}, sansTrace: true });
+    assert.equal(s.isDemo, false);
+    const q = s.next();
+    const r = s.submit(q.answer);
+    assert.equal(r.correct, true);
+    assert.ok(r.points > 0, 'un essai doit se jouer comme le vrai exercice');
+});

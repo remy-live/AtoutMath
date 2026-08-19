@@ -44,6 +44,15 @@ export class Runner {
         this.deviceMode = cfg.deviceMode || 'none';
         this.isStudentPath = !!cfg.isStudentPath;
         this.allowStepNavigation = !!cfg.allowStepNavigation;
+        // MODE ESSAI : le professeur regarde un exercice, il ne travaille pas.
+        //
+        // Un essai lancé depuis la palette d'auteur ne doit RIEN laisser dans
+        // le journal. Sans cela, essayer trois exercices sur la tablette d'un
+        // élève lui poserait trois runs, une poignée d'erreurs au carnet et
+        // autant de bruit dans son modèle de maîtrise — et rien ne le dirait.
+        // Le mode coupe les quatre écritures du parcours (départ, étape,
+        // arrivée) et, par la session, les tentatives et les indices.
+        this.essai = !!cfg.essai;
         this.index = cfg.startIndex || 0;
         // En mode apprentissage, chaque étape s'ouvre sur un écran leçon +
         // robot. `skipIntro` le saute UNE fois : posé quand on revient d'une
@@ -92,7 +101,7 @@ export class Runner {
         const premiere = this.steps[Math.min(this.index, this.steps.length - 1)];
         if (titreEl && premiere) titreEl.textContent = premiere.title;
 
-        journal.emit(EventTypes.RUN_STARTED, {
+        if (!this.essai) journal.emit(EventTypes.RUN_STARTED, {
             runId: this.runId,
             pathId: this.path.id,
             pathName: this.path.name,
@@ -334,6 +343,7 @@ export class Runner {
             generator,
             params: step.params,
             policy: this.policy,
+            sansTrace: this.essai,
             exercise: step.exercise,
             runId: this.runId,
             stepId: step.stepId,
@@ -551,7 +561,7 @@ export class Runner {
         const required = Math.min(step.threshold, step.nbItems);
         const passed = solved >= required;
 
-        journal.emit(EventTypes.STEP_COMPLETED, {
+        if (!this.essai) journal.emit(EventTypes.STEP_COMPLETED, {
             runId: this.runId,
             pathId: this.path.id,
             stepId: step.stepId,
@@ -741,7 +751,7 @@ export class Runner {
         this.hideStepNavigation();
         state.activeSequenceRunner = null;
 
-        journal.emit(EventTypes.RUN_FINISHED, {
+        if (!this.essai) journal.emit(EventTypes.RUN_FINISHED, {
             runId: this.runId,
             pathId: this.path.id,
             aborted,

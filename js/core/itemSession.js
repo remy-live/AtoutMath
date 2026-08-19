@@ -25,6 +25,7 @@ export class ItemSession {
      * @param {string} [cfg.runId]
      * @param {string} [cfg.stepId]
      * @param {boolean} [cfg.isDemo]
+     * @param {boolean} [cfg.sansTrace] - essai du professeur : rien au journal
      * @param {boolean} [cfg.frozen]  - aperçu immobile : la question est dessinée, rien ne se joue
      * @param {number} [cfg.nbItems]   - nombre de questions prévu pour l'étape
      * @param {string} [cfg.forceSeed] - rejoue exactement une question passée
@@ -38,6 +39,12 @@ export class ItemSession {
         this.runId = cfg.runId || null;
         this.stepId = cfg.stepId || null;
         this.isDemo = !!cfg.isDemo;
+        // SANS TRACE : la session se joue normalement — on répond, on gagne des
+        // points à l'écran, la correction s'affiche —, mais RIEN n'est écrit au
+        // journal. C'est le mode d'essai du professeur, et ce n'est pas
+        // `isDemo`, qui rend en plus la main au robot et gèle la saisie : un
+        // essai se joue à la main, c'est tout son intérêt.
+        this.sansTrace = !!cfg.sansTrace;
         // Une vignette de catalogue montre une question, pas une animation :
         // 45 démonstrations lancées en même temps rameraient sur une tablette.
         this.frozen = !!cfg.frozen;
@@ -198,7 +205,7 @@ export class ItemSession {
         const h = hintAt(this.item, this.hintIndex);
         if (h === null) return null;
         this.hintIndex++;
-        state.noteHintUsed();
+        if (!this.sansTrace) state.noteHintUsed();
         // L'indice reste affiché jusqu'à ce que l'élève le ferme : c'est un
         // texte à lire, pas une notification.
         this.lastFeedback = announce({ kind: 'hint', msg: h });
@@ -240,7 +247,7 @@ export class ItemSession {
         const intervalle = maintenant - (this.dernierEssaiAt || this.startedAt);
         this.dernierEssaiAt = maintenant;
 
-        if (!this.isDemo) {
+        if (!this.isDemo && !this.sansTrace) {
             state.recordAttempt({
                 correct: verdict.correct,
                 given,

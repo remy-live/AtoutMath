@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=311">
-    <link rel="stylesheet" href="css/layout.css?v=311">
-    <link rel="stylesheet" href="css/ui.css?v=311">
-    <link rel="stylesheet" href="css/games.css?v=311">
-    <link rel="stylesheet" href="css/components.css?v=311">
-    <link rel="stylesheet" href="css/modules.css?v=311">
+    <link rel="stylesheet" href="css/base.css?v=312">
+    <link rel="stylesheet" href="css/layout.css?v=312">
+    <link rel="stylesheet" href="css/ui.css?v=312">
+    <link rel="stylesheet" href="css/games.css?v=312">
+    <link rel="stylesheet" href="css/components.css?v=312">
+    <link rel="stylesheet" href="css/modules.css?v=312">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -50,6 +50,19 @@
              réduit à un carré tofu sur certaines machines. Des traits en SVG
              tiennent la même palette partout, à n'importe quelle taille. -->
         <div class="dbg-tools" id="db-tools">
+            <!-- LES NOUVEAUTÉS, EN PREMIER. Entre deux séances, on ne se
+                 souvient pas de ce qui vient d'arriver, et retrouver trois
+                 exercices neufs dans un catalogue de cent prend plus de temps
+                 que de les essayer. L'essai est court et ne laisse rien au
+                 journal.
+                 Elle ouvre la palette parce que sur téléphone les icônes
+                 DÉFILENT : posée en dernière, il fallait faire glisser la barre
+                 pour atteindre le bouton qu'on vient justement de demander.
+                 L'icône : une étincelle. -->
+            <button class="debug-btn" id="db-nouveautes" title="Essayer les derniers exercices"
+                    aria-label="Essayer les derniers exercices">
+                <svg viewBox="0 0 24 24"><path d="M12 2.5 13.9 8l5.6 2-5.6 2-1.9 5.5L10.1 12 4.5 10l5.6-2z"/><path d="M18.5 15.5 19.3 18l2.2.8-2.2.8-.8 2.4-.8-2.4-2.2-.8 2.2-.8z"/></svg>
+            </button>
             <button class="debug-btn" id="db-toggle-mobile">
                 <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg>
             </button>
