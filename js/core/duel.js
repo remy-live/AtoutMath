@@ -42,6 +42,30 @@ export const VOL_DEPART = 4200;
 export const VOL_MINIMUM = 1100;
 /** Ce que la balle gagne en vitesse à chaque frappe réussie. */
 export const ACCELERATION = 0.9;
+
+/**
+ * TROIS RYTHMES, PARCE QUE DEVINER LE BON N'A PAS MARCHÉ.
+ *
+ * « C'est hyper rapide au départ ! ralentis. » — deuxième fois. La première a
+ * déjà porté le vol de départ de 2 800 à 4 200 ms, et cela ne suffit toujours
+ * pas : le temps qu'il faut pour lire une opération, la calculer et taper deux
+ * chiffres dépend de l'élève, pas d'une constante bien choisie. Le rythme
+ * devient donc un RÉGLAGE, et « Tranquille » est celui par défaut — un duel
+ * qu'on perd avant d'avoir pensé n'est pas un duel, c'est un tirage au sort.
+ *
+ * Ce qui varie n'est pas seulement le départ : c'est aussi le PLANCHER (à
+ * quelle vitesse on cesse d'accélérer) et la PENTE. Un départ lent suivi d'une
+ * accélération brutale redonne exactement le même sentiment.
+ */
+export const RYTHMES = {
+    tranquille: { depart: 6200, minimum: 2100, acceleration: 0.95 },
+    normal: { depart: VOL_DEPART, minimum: VOL_MINIMUM, acceleration: ACCELERATION },
+    rapide: { depart: 3000, minimum: 900, acceleration: 0.86 }
+};
+export const RYTHME_DEFAUT = 'tranquille';
+
+/** Les bornes d'un calcul composé à la main. */
+export const BORNES_COMPOSE = { min: 2, max: 12 };
 /**
  * Le tout premier point se joue plus lentement encore.
  *
@@ -60,21 +84,33 @@ export function tablesValides(tables) {
 export function creerPartie(options = {}) {
     const tables = tablesValides(options.tables);
     const operations = (options.operations || ['mul']).filter(o => o === 'mul' || o === 'div');
-    return {
+    const envoi = options.envoi === 'compose' ? 'compose' : 'auto';
+    const p = {
         tables,
         operations: operations.length ? operations : ['mul'],
         cible: Math.max(2, Math.min(21, parseInt(options.cible) || CIBLE_DEFAUT)),
+        // Qui fabrique la brique : la machine (mode « auto »), ou le joueur
+        // lui-même à son clavier (mode « composé »).
+        envoi,
+        rythme: RYTHMES[options.rythme] ? options.rythme : RYTHME_DEFAUT,
         score: [0, 0],
         serveur: options.serveur === 1 ? 1 : 0,
         defenseur: null,
+        // Celui qui ENVOIE la brique. En mode auto, c'est simplement l'autre :
+        // on le tient quand même, parce que c'est LUI que l'écran doit
+        // désigner — « il faudrait un repère de l'élève qui envoie le calcul ».
+        attaquant: options.serveur === 1 ? 1 : 0,
         table: null,
-        phase: 'service',      // 'service' | 'echange' | 'point' | 'fini'
+        // 'service' | 'composer' | 'echange' | 'point' | 'fini'
+        phase: 'service',
         echange: 0,
         balle: null,
         dernier: null,         // dernier énoncé, pour ne pas le répéter
         gagnant: null,
         dernierPoint: null     // { pour, contre, raison, attendu, donne }
     };
+    if (envoi === 'compose') p.phase = 'composer';
+    return p;
 }
 
 /**
@@ -102,17 +138,47 @@ export function servir(p, table, rng = Math.random) {
     p.table = p.tables.includes(Number(table)) ? Number(table) : p.tables[0];
     p.echange = 0;
     p.dernier = null;
+    p.attaquant = p.serveur;
     p.defenseur = 1 - p.serveur;
     p.balle = frappe(p, rng);
     p.phase = 'echange';
     return p;
 }
 
+/**
+ * LE JOUEUR FABRIQUE SA BRIQUE.
+ *
+ * Rémy : « on ne pourrait pas envisager un mode où l'élève choisit son calcul,
+ * genre 7×8, avec un clavier ? On voit la brique qui se prépare et il la lance
+ * un peu façon Pong ; l'autre en face doit mettre le résultat, sa brique se
+ * prépare, et même chose. »
+ *
+ * Ce n'est pas le même exercice que le mode automatique. Choisir « 7 × 8 »
+ * plutôt que « 2 × 3 », c'est déjà savoir lesquels sont durs — et c'est du
+ * chambrage, donc c'est du jeu. En revanche, laisser composer n'importe quoi
+ * ramènerait toujours au même produit maximal : la brique doit rester dans les
+ * tables travaillées, et l'un des deux facteurs au moins en fait partie.
+ */
+export function composerFrappe(p, a, b) {
+    if (p.phase !== 'composer') return { ok: false, raison: 'phase' };
+    const x = Number(a), y = Number(b);
+    const bon = (v) => Number.isInteger(v) && v >= BORNES_COMPOSE.min && v <= BORNES_COMPOSE.max;
+    if (!bon(x) || !bon(y)) return { ok: false, raison: 'bornes' };
+    if (!p.tables.includes(x) && !p.tables.includes(y)) return { ok: false, raison: 'table' };
+    p.balle = { texte: `${x} × ${y}`, reponse: x * y, op: 'mul', compose: true };
+    p.dernier = p.balle.texte;
+    p.table = p.tables.includes(x) ? x : y;
+    p.defenseur = 1 - p.attaquant;
+    p.phase = 'echange';
+    return { ok: true };
+}
+
 /** Millisecondes de vol de la balle en cours : elle accélère à chaque frappe. */
 export function dureeVol(p) {
+    const r = RYTHMES[p && p.rythme] || RYTHMES[RYTHME_DEFAUT];
     const chauffe = (p.score[0] + p.score[1]) === 0 ? ECHAUFFEMENT : 1;
-    return Math.max(VOL_MINIMUM,
-        Math.round(VOL_DEPART * chauffe * Math.pow(ACCELERATION, p.echange)));
+    return Math.max(r.minimum,
+        Math.round(r.depart * chauffe * Math.pow(r.acceleration, p.echange)));
 }
 
 function marquer(p, pour, raison, donne) {
@@ -140,9 +206,18 @@ export function repondre(p, valeur, rng = Math.random) {
     if (p.phase !== 'echange' || !p.balle) return { bon: false, point: null };
     if (Number(valeur) === p.balle.reponse) {
         p.echange++;
+        // CELUI QUI RENVOIE DEVIENT L'ATTAQUANT. En mode automatique la
+        // machine tire la frappe suivante tout de suite ; en mode composé, il
+        // compose la sienne — et le duel repasse par l'écran de fabrication.
+        p.attaquant = p.defenseur;
         p.defenseur = 1 - p.defenseur;
+        if (p.envoi === 'compose') {
+            p.balle = null;
+            p.phase = 'composer';
+            return { bon: true, point: null, aComposer: true };
+        }
         p.balle = frappe(p, rng);
-        return { bon: true, point: null };
+        return { bon: true, point: null, aComposer: false };
     }
     return { bon: false, point: marquer(p, 1 - p.defenseur, 'faux', Number(valeur)) };
 }
@@ -155,7 +230,12 @@ export function manquer(p) {
 
 /** Après un point : on repart au service, sans toucher au score. */
 export function pointSuivant(p) {
-    if (p.phase === 'point') { p.phase = 'service'; p.echange = 0; }
+    if (p.phase !== 'point') return p;
+    p.echange = 0;
+    p.attaquant = p.serveur;
+    // En mode composé, il n'y a pas de table à choisir : le serveur fabrique
+    // directement sa brique.
+    p.phase = p.envoi === 'compose' ? 'composer' : 'service';
     return p;
 }
 

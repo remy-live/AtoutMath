@@ -22,8 +22,8 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, dureeDemo } from '../core/demoPointer.js';
 import {
-    creerPartie, servir, repondre, manquer, pointSuivant,
-    dureeVol, longueurReponse, tablesValides
+    creerPartie, servir, repondre, manquer, pointSuivant, composerFrappe,
+    dureeVol, longueurReponse, tablesValides, BORNES_COMPOSE
 } from '../core/duel.js';
 
 const NOMS = ['Joueur 1', 'Joueur 2'];
@@ -34,11 +34,16 @@ class Duel extends BaseGame {
         this.partie = creerPartie({
             tables: tablesValides(this.params.tables),
             operations: this.params.operations === 'muldiv' ? ['mul', 'div'] : ['mul'],
-            cible: parseInt(this.params.cible) || 7
+            cible: parseInt(this.params.cible) || 7,
+            envoi: this.params.envoi === 'compose' ? 'compose' : 'auto',
+            rythme: this.params.rythme
         });
         this.saisie = ['', ''];
         this.prets = [false, false];
         this.vol = null;          // { debut, duree, de, vers }
+        // La brique en cours de fabrication (mode composé) : deux facteurs, et
+        // celui des deux qu'on est en train de taper.
+        this.brique = { a: '', b: '', sur: 'a' };
     }
 
     render() {
@@ -126,7 +131,7 @@ class Duel extends BaseGame {
                    hidden, qui ne vaut qu'une règle du navigateur : sans ces
                    deux lignes, le pavé ET les tables restaient affichés en
                    même temps, chacun sur la moitié de l'autre. */
-                .du-pave[hidden], .du-tables[hidden] { display: none; }
+                .du-pave[hidden], .du-tables[hidden], .du-brique[hidden] { display: none; }
                 /* EN ATTENTE, PAS ÉTEINT. À trois dixièmes d'opacité sur un
                    fond presque noir, les touches du joueur qui ne joue pas
                    disparaissaient : on ne voyait plus qu'il avait un clavier,
@@ -140,6 +145,7 @@ class Duel extends BaseGame {
                    la place, pas le clavier. Onze touches sur une ligne restent
                    largement tapables au pouce, et le joueur garde les yeux sur
                    le jeu au lieu de chercher une touche dans une grille. */
+                .du-pave--compose { grid-template-columns: repeat(13, 1fr) !important; }
                 .du-pave {
                     display: grid; grid-template-columns: repeat(11, 1fr);
                     grid-auto-rows: minmax(0, 1fr);
@@ -207,8 +213,69 @@ class Duel extends BaseGame {
                     white-space: nowrap; opacity: 0;
                 }
                 .du-balle--vivante { opacity: 1; }
-                .du-balle--0 { box-shadow: 0 0 26px rgba(167,139,250,.85); }
-                .du-balle--1 { box-shadow: 0 0 26px rgba(56,189,248,.85); }
+                /* LA BRIQUE PORTE LA COULEUR DE CELUI QUI L'A ENVOYÉE.
+                   Rémy : « il faudrait aussi avoir un repère de l'élève qui
+                   envoie le calcul. » Elle prenait la couleur de sa
+                   DESTINATION : impossible de savoir d'où venait « 7 × 8 »,
+                   donc impossible de savoir à qui en vouloir. Le halo dit
+                   maintenant l'expéditeur, et une petite flèche redit le sens
+                   du vol pour ceux qui ne lisent pas les couleurs. */
+                .du-balle--de-0 { background: #ede9fe; color: #2e1065;
+                    box-shadow: 0 0 26px rgba(167,139,250,.9), 0 0 0 3px rgba(167,139,250,.55); }
+                .du-balle--de-1 { background: #e0f2fe; color: #082f49;
+                    box-shadow: 0 0 26px rgba(56,189,248,.9), 0 0 0 3px rgba(56,189,248,.55); }
+                .du-balle-sens { opacity: .55; font-size: .7em; margin-left: .35em; }
+
+                /* L'IMPACT : « quand un joueur a donné une bonne réponse, il
+                   faudrait qu'on voie que ça fonctionne — une explosion. »
+                   Une brique renvoyée disparaissait et une autre repartait :
+                   rien ne disait qu'on venait de la TOUCHER. L'anneau part de
+                   la ligne du défenseur au moment exact du renvoi. */
+                .du-impact {
+                    position: absolute; width: 26px; height: 26px; border-radius: 50%;
+                    transform: translate(-50%, -50%); pointer-events: none; opacity: 0;
+                    border: 3px solid #fff; z-index: 4;
+                }
+                .du-impact--part { animation: du-impact .42s cubic-bezier(.2,.7,.4,1) forwards; }
+                @keyframes du-impact {
+                    0% { opacity: 1; transform: translate(-50%, -50%) scale(.35); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(5.2); }
+                }
+                .du-impact--0 { border-color: #a78bfa; box-shadow: 0 0 22px rgba(167,139,250,.9); }
+                .du-impact--1 { border-color: #38bdf8; box-shadow: 0 0 22px rgba(56,189,248,.9); }
+                /* Le camp qui vient de renvoyer flashe une fois : le retour est
+                   là où l'on regarde, c'est-à-dire chez soi. */
+                .du-cote--frappe { animation: du-frappe .38s ease-out; }
+                @keyframes du-frappe {
+                    0% { box-shadow: inset 0 0 0 0 var(--du-teinte); }
+                    35% { box-shadow: inset 0 0 44px -4px var(--du-teinte); }
+                    100% { box-shadow: inset 0 0 0 0 var(--du-teinte); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .du-impact--part, .du-cote--frappe { animation-duration: .01ms; }
+                }
+
+                /* LE CAMP QUI ENVOIE. Un liseré plein du côté de l'expéditeur,
+                   pendant tout le vol : on sait qui a servi cette brique-là. */
+                .du-cote--envoie { box-shadow: inset 0 0 0 3px var(--du-teinte); }
+
+                /* LA BRIQUE EN FABRICATION (mode composé). Elle se remplit
+                   sous les doigts de celui qui la compose — c'est le « on voit
+                   la brique qui se prépare » de la demande. */
+                .du-brique {
+                    display: flex; align-items: center; gap: 6px;
+                    background: #0f172a; border: 2px dashed var(--du-teinte);
+                    border-radius: 12px; padding: 3px 14px; color: #f8fafc;
+                    font-weight: 900; font-size: clamp(1.1rem, 5cqh, 2.1rem);
+                    font-variant-numeric: tabular-nums; min-height: 1.4em;
+                }
+                .du-brique--prete { border-style: solid; background: var(--du-teinte); color: #0b1120; }
+                .du-brique-case { min-width: 1.6em; text-align: center; }
+                .du-brique-case--vise { text-decoration: underline; text-underline-offset: .18em; }
+                .du-brique-case--vide { opacity: .4; }
+                .du-touche--fois { background: #334155; color: #fde68a; }
+                .du-touche--lancer { background: #15803d; color: #dcfce7; }
+                .du-touche--lancer:disabled { opacity: .45; }
 
                 /* Écran de fin et écran de départ : posés SUR le terrain, pas
                    à la place — le score reste lisible pendant l'annonce. */
@@ -366,6 +433,7 @@ class Duel extends BaseGame {
                 <div class="du-terrain" data-terrain>
                     <div class="du-filet"></div>
                     <div class="du-balle" data-balle></div>
+                    <div class="du-impact" data-impact></div>
                     <div class="du-voile" data-voile hidden>
                         ${[0, 1].map(i => `
                         <div class="du-annonce ${i === 0 ? 'du-annonce--haut' : ''}">
@@ -382,6 +450,7 @@ class Duel extends BaseGame {
         this.plateau = this.container.querySelector('[data-plateau]');
         this.terrain = this.container.querySelector('[data-terrain]');
         this.balleEl = this.container.querySelector('[data-balle]');
+        this.impactEl = this.container.querySelector('[data-impact]');
         this.voile = this.container.querySelector('[data-voile]');
         this.cotes = [0, 1].map(i => this.container.querySelector(`[data-cote="${i}"]`));
 
@@ -401,10 +470,27 @@ class Duel extends BaseGame {
                     <span class="du-etat" data-etat="${i}"></span>
                 </div>
                 <div class="du-saisie du-saisie--vide" data-saisie="${i}">—</div>
+                <div class="du-brique" data-brique="${i}" hidden>
+                    <span class="du-brique-case" data-brique-a>·</span>
+                    <span>×</span>
+                    <span class="du-brique-case" data-brique-b>·</span>
+                </div>
                 <div class="du-pave" data-pave="${i}">
                     ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n =>
             `<button type="button" class="du-touche" data-touche="${n}">${n}</button>`).join('')}
                     <button type="button" class="du-touche du-touche--eff" data-touche="eff">⌫</button>
+                </div>
+                <!-- LE PAVÉ DU FABRICANT : les mêmes chiffres, plus la touche
+                     « × » qui passe au second facteur et « ▶ » qui lance la
+                     brique. Un pavé distinct plutôt qu'un pavé qui change de
+                     touches : au milieu d'un duel, un clavier qui se
+                     réorganise fait perdre le point. -->
+                <div class="du-pave du-pave--compose" data-compose="${i}" hidden>
+                    ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n =>
+            `<button type="button" class="du-touche" data-cmp="${n}">${n}</button>`).join('')}
+                    <button type="button" class="du-touche du-touche--eff" data-cmp="eff">⌫</button>
+                    <button type="button" class="du-touche du-touche--fois" data-cmp="fois">×</button>
+                    <button type="button" class="du-touche du-touche--lancer" data-cmp="lancer">▶</button>
                 </div>
                 <div class="du-tables" data-tables="${i}" hidden>
                     ${tables.map(t => `<button type="button" class="du-table" data-table="${t}">×${t}</button>`).join('')}
@@ -436,6 +522,7 @@ class Duel extends BaseGame {
                 e.preventDefault();
                 this.enfoncer(btn);
                 if (btn.dataset.table) this.choisirTable(i, Number(btn.dataset.table));
+                else if (btn.dataset.cmp) this.composer(i, btn.dataset.cmp);
                 else if (btn.dataset.touche) this.taper(i, btn.dataset.touche);
                 else if (btn.dataset.rejouer !== undefined) this.rejouer();
             });
@@ -476,6 +563,63 @@ class Duel extends BaseGame {
         this.majEcran();
     }
 
+    /**
+     * FABRIQUER SA BRIQUE, puis la lancer.
+     *
+     * Les chiffres remplissent le facteur visé, « × » passe au second, « ▶ »
+     * envoie. Le refus est EXPLIQUÉ dans l'état du camp plutôt que silencieux :
+     * un bouton qui ne fait rien passe pour cassé, et « 3 × 4 » quand on
+     * travaille la table de 7 est une erreur de règle, pas une maladresse.
+     */
+    composer(cote, touche) {
+        const p = this.partie;
+        if (p.phase === 'point') pointSuivant(p);
+        if (p.phase !== 'composer' || cote !== p.attaquant) return;
+        clearTimeout(this.minuteurAnnonce);
+        this.voile.hidden = true;
+        const b = this.brique;
+
+        if (touche === 'eff') {
+            if (b[b.sur]) b[b.sur] = b[b.sur].slice(0, -1);
+            else if (b.sur === 'b') { b.sur = 'a'; b.a = b.a.slice(0, -1); }
+        } else if (touche === 'fois') {
+            if (b.a) b.sur = 'b';
+        } else if (touche === 'lancer') {
+            const r = composerFrappe(p, b.a, b.b);
+            if (!r.ok) {
+                this.refus(cote, r.raison);
+                return;
+            }
+            this.brique = { a: '', b: '', sur: 'a' };
+            this.saisie = ['', ''];
+            this.lancerVol();
+            this.majEcran();
+            return;
+        } else {
+            // Deux chiffres au plus par facteur : les bornes vont jusqu'à 12.
+            if (b[b.sur].length >= 2) return;
+            const essai = b[b.sur] + touche;
+            if (Number(essai) > BORNES_COMPOSE.max) return;
+            b[b.sur] = essai;
+            // « 7 » puis un second chiffre impossible : on passe tout seul au
+            // facteur suivant, pour que le geste courant tienne en trois appuis.
+            if (b.sur === 'a' && Number(b.a) * 10 > BORNES_COMPOSE.max) b.sur = 'b';
+        }
+        this.majEcran();
+    }
+
+    /** Pourquoi la brique n'est pas partie. */
+    refus(cote, raison) {
+        const etat = this.container.querySelector(`[data-etat="${cote}"]`);
+        if (!etat) return;
+        const tables = this.partie.tables.join(', ');
+        etat.textContent = raison === 'table'
+            ? `Il faut une des tables travaillées : ${tables}`
+            : `Deux nombres entre ${BORNES_COMPOSE.min} et ${BORNES_COMPOSE.max}`;
+        this.cotes[cote].classList.add('du-cote--frappe');
+        setTimeout(() => this.cotes[cote].classList.remove('du-cote--frappe'), 420);
+    }
+
     taper(cote, touche) {
         const p = this.partie;
         if (p.phase !== 'echange' || cote !== p.defenseur) return;
@@ -499,12 +643,50 @@ class Duel extends BaseGame {
         this.saisie[cote] = '';
         const r = repondre(p, valeur, Math.random);
         if (r.bon) {
+            // « QUAND UN JOUEUR A DONNÉ UNE BONNE RÉPONSE, IL FAUDRAIT QU'ON
+            // VOIE QUE ÇA FONCTIONNE. » La brique disparaissait et une autre
+            // repartait : rien ne disait qu'on venait de la toucher. L'anneau
+            // part de la ligne de celui qui vient de renvoyer, et son camp
+            // flashe une fois.
+            this.impact(cote);
             this.saisie = ['', ''];
-            this.lancerVol();
+            if (r.aComposer) { this.brique = { a: '', b: '', sur: 'a' }; this.vol = null; }
+            else this.lancerVol();
             this.majEcran();
             return;
         }
         this.finDePoint(r.point);
+    }
+
+    /** L'explosion du renvoi, sur la ligne du joueur qui vient de frapper. */
+    impact(cote) {
+        this.cotes[cote].classList.remove('du-cote--frappe');
+        // Relire une propriété force le navigateur à reprendre l'animation :
+        // sans cela, deux renvois de suite n'en jouent qu'une.
+        void this.cotes[cote].offsetWidth;
+        this.cotes[cote].classList.add('du-cote--frappe');
+        setTimeout(() => this.cotes[cote].classList.remove('du-cote--frappe'), 400);
+
+        const el = this.impactEl;
+        if (!el || !this.terrain) return;
+        const horizontal = this.terrainHorizontal();
+        if (horizontal) {
+            el.style.left = cote === 0 ? '2%' : '98%';
+            el.style.top = '50%';
+        } else {
+            el.style.left = '50%';
+            el.style.top = cote === 0 ? '2%' : '98%';
+        }
+        el.classList.remove('du-impact--part', 'du-impact--0', 'du-impact--1');
+        void el.offsetWidth;
+        el.classList.add('du-impact--part', `du-impact--${cote}`);
+    }
+
+    /** Les deux camps sont-ils côte à côte (paysage) ou l'un sur l'autre ? */
+    terrainHorizontal() {
+        const a = this.cotes[0].getBoundingClientRect();
+        const b = this.cotes[1].getBoundingClientRect();
+        return Math.abs(b.left - a.left) > Math.abs(b.top - a.top);
     }
 
     // --- La balle -----------------------------------------------------------
@@ -531,19 +713,22 @@ class Duel extends BaseGame {
             return;
         }
         const k = Math.min(1, (performance.now() - this.vol.debut) / this.vol.duree);
-        this.balleEl.textContent = p.balle.texte;
+        // La flèche redit le sens du vol : la couleur dit QUI a envoyé, elle ne
+        // peut pas dire les deux.
+        const fleche = this.terrainHorizontal()
+            ? (this.vol.vers === 0 ? '◀' : '▶')
+            : (this.vol.vers === 0 ? '▲' : '▼');
+        this.balleEl.innerHTML = `${p.balle.texte}<span class="du-balle-sens">${fleche}</span>`;
         this.balleEl.classList.add('du-balle--vivante');
-        this.balleEl.classList.toggle('du-balle--0', this.vol.vers === 0);
-        this.balleEl.classList.toggle('du-balle--1', this.vol.vers === 1);
+        this.balleEl.classList.toggle('du-balle--de-0', p.attaquant === 0);
+        this.balleEl.classList.toggle('du-balle--de-1', p.attaquant === 1);
 
         // L'AXE DE VOL SE LIT SUR LE PLATEAU, il ne se devine pas. En portrait
         // les camps sont l'un au-dessus de l'autre et la balle monte ou
         // descend ; en paysage ils sont côte à côte et elle traverse. Coder
         // l'axe en dur aurait fait voler la balle en travers du couloir dès
         // qu'on tourne la tablette.
-        const a = this.cotes[0].getBoundingClientRect();
-        const b = this.cotes[1].getBoundingClientRect();
-        const horizontal = Math.abs(b.left - a.left) > Math.abs(b.top - a.top);
+        const horizontal = this.terrainHorizontal();
         if (horizontal) {
             const w = this.terrain.clientWidth;
             // Le camp 0 est à gauche : une balle qui va vers lui revient.
@@ -577,8 +762,10 @@ class Duel extends BaseGame {
         const detail = pt.raison === 'faux'
             ? `${pt.donne} au lieu de ${pt.attendu}`
             : `personne n'a renvoyé ${pt.attendu}`;
+        this.brique = { a: '', b: '', sur: 'a' };
         this.annoncer(`Point pour ${NOMS[pt.pour]}`,
-            `${detail} · ${pt.echanges} échange${pt.echanges > 1 ? 's' : ''} · à ${NOMS[p.serveur]} de servir`);
+            `${detail} · ${pt.echanges} échange${pt.echanges > 1 ? 's' : ''} · à ${NOMS[p.serveur]} `
+            + `${p.envoi === 'compose' ? 'de composer' : 'de servir'}`);
         // L'annonce s'efface toute seule : personne ne doit avoir à la chasser
         // d'un appui pour reprendre le duel.
         clearTimeout(this.minuteurAnnonce);
@@ -629,9 +816,12 @@ class Duel extends BaseGame {
         this.partie = creerPartie({
             tables: this.partie.tables,
             operations: this.partie.operations,
-            cible: this.partie.cible
+            cible: this.partie.cible,
+            envoi: this.partie.envoi,
+            rythme: this.partie.rythme
         });
         this.saisie = ['', ''];
+        this.brique = { a: '', b: '', sur: 'a' };
         this.vol = null;
         this.prets = [false, false];
         this.cotes.forEach(c => c.classList.remove('du-cote--pret'));
@@ -640,6 +830,23 @@ class Duel extends BaseGame {
     }
 
     // --- Affichage ----------------------------------------------------------
+
+    /** La brique en fabrication : deux cases, celle qu'on remplit soulignée. */
+    majBrique(i) {
+        const el = this.container.querySelector(`[data-brique="${i}"]`);
+        if (!el) return;
+        const b = this.brique;
+        const cases = [['a', el.querySelector('[data-brique-a]')], ['b', el.querySelector('[data-brique-b]')]];
+        cases.forEach(([cle, noeud]) => {
+            noeud.textContent = b[cle] || '·';
+            noeud.classList.toggle('du-brique-case--vise', b.sur === cle);
+            noeud.classList.toggle('du-brique-case--vide', !b[cle]);
+        });
+        const prete = b.a !== '' && b.b !== '';
+        el.classList.toggle('du-brique--prete', prete);
+        const lancer = this.container.querySelector(`[data-compose="${i}"] [data-cmp="lancer"]`);
+        if (lancer) lancer.disabled = !prete;
+    }
 
     majSaisie(i) {
         const el = this.container.querySelector(`[data-saisie="${i}"]`);
@@ -662,22 +869,35 @@ class Duel extends BaseGame {
             this.container.querySelector(`[data-pts="${i}"]`).textContent = String(p.score[i]);
             const pave = this.container.querySelector(`[data-pave="${i}"]`);
             const tables = this.container.querySelector(`[data-tables="${i}"]`);
+            const compose = this.container.querySelector(`[data-compose="${i}"]`);
+            const brique = this.container.querySelector(`[data-brique="${i}"]`);
             const etat = this.container.querySelector(`[data-etat="${i}"]`);
             const sert = p.phase === 'service' && p.serveur === i;
             const defend = p.phase === 'echange' && p.defenseur === i;
+            const fabrique = p.phase === 'composer' && p.attaquant === i;
+            // LE CAMP QUI A ENVOYÉ RESTE DÉSIGNÉ pendant tout le vol.
+            this.cotes[i].classList.toggle('du-cote--envoie',
+                p.phase === 'echange' && p.attaquant === i);
+
+            compose.hidden = !fabrique;
+            brique.hidden = !fabrique;
+            if (fabrique) this.majBrique(i);
             // Le pavé reste EN PLACE quand ce n'est pas son tour, simplement
             // éteint. Le faire disparaître laissait une moitié d'écran vide et
             // obligeait à retrouver les touches à chaque renvoi — dans un
             // échange qui accélère, on garde les doigts posés, comme sur une
             // raquette. Seul le service échange le pavé contre les tables.
-            pave.hidden = sert;
+            pave.hidden = sert || fabrique;
             pave.classList.toggle('du-pave--inerte', !defend);
             tables.hidden = !sert;
             etat.textContent = p.phase === 'fini' ? ''
                 : sert ? 'À toi de servir : choisis ta table'
-                    : defend ? `Tape le résultat !`
-                        : p.phase === 'echange' ? 'À l\'adversaire…' : '';
-            this.cotes[i].classList.toggle('du-cote--actif', sert || defend);
+                    : fabrique ? 'Compose ton calcul, puis ▶ pour l\'envoyer'
+                        : defend ? 'Tape le résultat !'
+                            : p.phase === 'echange'
+                                ? (p.attaquant === i ? 'Tu as envoyé — à lui de jouer' : 'À l\'adversaire…')
+                                : (p.phase === 'composer' ? 'L\'adversaire prépare sa brique…' : '');
+            this.cotes[i].classList.toggle('du-cote--actif', sert || defend || fabrique);
             this.majSaisie(i);
         });
         if (p.phase !== 'echange' && this.balleEl) {

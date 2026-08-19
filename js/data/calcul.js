@@ -739,13 +739,42 @@ export const calculExercises = [
     {
         id: 'calc-duel', status: STATUS.TEST, title: 'Duel des Tables (à deux)',
         cree: '2026-08-07',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Un renvoi réussi se VOIT — anneau d\'impact et camp qui flashe ; la brique porte '
+                + 'la couleur de celui qui l\'a envoyée ; le rythme se règle (tranquille par défaut) ; '
+                + 'et un mode où chacun compose son calcul au clavier avant de le lancer.'
+        }],
         activityId: 'duel', skills: ['num.mult.table.*'],
-        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], cible: 7, operations: 'mul' },
+        params: {
+            tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], cible: 7, operations: 'mul',
+            envoi: 'auto', rythme: 'tranquille'
+        },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables jouables', options: [2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'cible', type: 'select', label: 'Partie en', options: [5, 7, 11], default: 7 },
             {
+                id: 'envoi', type: 'select', label: 'Qui fabrique le calcul ?',
+                aide: 'En automatique, la machine tire un produit de la table annoncée : le duel va vite, et c\'est du calcul pur. En composé, celui qui frappe TAPE son calcul — « tiens, je te mets du 7 × 8 » — on voit la brique se préparer, puis il la lance. Choisir ce qu\'on envoie, c\'est déjà savoir lesquels sont durs, et c\'est là qu\'est le chambrage. L\'un des deux facteurs doit rester dans les tables travaillées.',
+                options: [
+                    { value: 'auto', label: 'La machine tire le calcul' },
+                    { value: 'compose', label: 'Le joueur compose sa brique' }
+                ],
+                default: 'auto'
+            },
+            {
+                id: 'rythme', type: 'select', label: 'Rythme de la balle',
+                aide: 'Ce qui change n\'est pas seulement la vitesse de départ : c\'est aussi le plancher — jusqu\'où la balle accélère — et la pente. Un départ lent suivi d\'une accélération brutale redonne exactement le sentiment d\'aller trop vite. Tranquille laisse le temps de lire, calculer et taper ; Rapide s\'adresse à qui connaît déjà ses tables.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — on a le temps de penser' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'rapide', label: 'Rapide — pour qui sait ses tables' }
+                ],
+                default: 'tranquille'
+            },
+            {
                 id: 'operations', type: 'select', label: 'Opérations',
+                aide: 'Sans effet en mode composé : on n\'y compose que des multiplications.',
                 options: [
                     { value: 'mul', label: 'Multiplications seules' },
                     { value: 'muldiv', label: 'Multiplications et divisions' }

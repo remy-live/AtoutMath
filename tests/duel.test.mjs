@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     creerPartie, servir, repondre, manquer, pointSuivant, dureeVol, frappe,
-    longueurReponse, tablesValides, VOL_DEPART, VOL_MINIMUM, ACCELERATION, ECHAUFFEMENT
+    longueurReponse, tablesValides, composerFrappe,
+    VOL_DEPART, VOL_MINIMUM, ACCELERATION, ECHAUFFEMENT, RYTHMES, RYTHME_DEFAUT
 } from '../js/core/duel.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -125,31 +126,139 @@ test('la partie se termine au score cible, et rien ne bouge après', () => {
 
 test('la balle accélère à chaque frappe, sans jamais devenir indevinable', () => {
     const { p, rng } = partie();
-    servir(p, 7, rng);
+    const r = RYTHMES[p.rythme];
     // Score vierge : c'est le point d'échauffement, la balle part plus lentement.
-    assert.equal(dureeVol(p), Math.round(VOL_DEPART * ECHAUFFEMENT));
+    servir(p, 7, rng);
+    assert.equal(dureeVol(p), Math.round(r.depart * ECHAUFFEMENT));
     const vols = [dureeVol(p)];
-    for (let i = 0; i < 40; i++) { repondre(p, p.balle.reponse, rng); vols.push(dureeVol(p)); }
+    for (let i = 0; i < 60; i++) { repondre(p, p.balle.reponse, rng); vols.push(dureeVol(p)); }
     for (let i = 1; i < vols.length; i++) {
         assert.ok(vols[i] <= vols[i - 1], 'la balle ne doit jamais ralentir dans un échange');
     }
-    assert.equal(vols[1], Math.round(VOL_DEPART * ECHAUFFEMENT * ACCELERATION));
-    assert.equal(vols[vols.length - 1], VOL_MINIMUM, 'le plancher doit être atteint et tenu');
+    assert.equal(vols[1], Math.round(r.depart * ECHAUFFEMENT * r.acceleration));
+    assert.equal(vols[vols.length - 1], r.minimum, 'le plancher doit être atteint et tenu');
 });
 
 test('l\'échauffement ne dure que le premier point', () => {
     const { p, rng } = partie();
+    const r = RYTHMES[p.rythme];
     servir(p, 7, rng);
     const auDepart = dureeVol(p);
     // Un point marqué, et le duel prend son rythme.
     manquer(p);
     pointSuivant(p);
     servir(p, 7, rng);
-    assert.equal(dureeVol(p), VOL_DEPART);
-    assert.ok(auDepart > VOL_DEPART, 'la toute première balle doit être la plus lente');
+    assert.equal(dureeVol(p), r.depart);
+    assert.ok(auDepart > r.depart, 'la toute première balle doit être la plus lente');
     // Et la première balle reste largement au-dessus du plancher : le début
     // d'un point se calcule, il ne se devine pas.
-    assert.ok(VOL_DEPART >= 3 * VOL_MINIMUM);
+    assert.ok(r.depart >= 2.5 * r.minimum);
+});
+
+// --- LE RYTHME EST UN RÉGLAGE -----------------------------------------------
+//
+// « C'est hyper rapide au départ ! ralentis » — deux fois. Une constante bien
+// choisie ne peut pas convenir à tous les élèves : le rythme se règle, et le
+// réglage par défaut est le plus lent.
+
+test('TROIS RYTHMES ORDONNÉS, ET LE PLUS LENT PAR DÉFAUT', () => {
+    const noms = ['tranquille', 'normal', 'rapide'];
+    noms.forEach(n => assert.ok(RYTHMES[n], `rythme « ${n} » absent`));
+    for (let i = 1; i < noms.length; i++) {
+        const a = RYTHMES[noms[i - 1]], b = RYTHMES[noms[i]];
+        assert.ok(b.depart < a.depart, `« ${noms[i]} » doit partir plus vite que « ${noms[i - 1]} »`);
+        assert.ok(b.minimum < a.minimum, `« ${noms[i]} » doit descendre plus bas`);
+        assert.ok(b.acceleration < a.acceleration, `« ${noms[i]} » doit accélérer plus fort`);
+    }
+    assert.equal(RYTHME_DEFAUT, 'tranquille');
+    assert.equal(creerPartie({}).rythme, 'tranquille');
+});
+
+test('un rythme inconnu retombe sur le rythme par défaut', () => {
+    const p = creerPartie({ rythme: 'supersonique' });
+    assert.equal(p.rythme, RYTHME_DEFAUT);
+    assert.equal(dureeVol(p), Math.round(RYTHMES[RYTHME_DEFAUT].depart * ECHAUFFEMENT));
+});
+
+test('le même échange va plus vite en « rapide » qu\'en « tranquille »', () => {
+    const lent = creerPartie({ tables: [7], rythme: 'tranquille', serveur: 0 });
+    const vif = creerPartie({ tables: [7], rythme: 'rapide', serveur: 0 });
+    [lent, vif].forEach(p => servir(p, 7, alea('r')));
+    assert.ok(dureeVol(vif) < dureeVol(lent));
+});
+
+// --- LE MODE COMPOSÉ ---------------------------------------------------------
+//
+// « Un mode où l'élève choisit son calcul genre 7×8 avec un clavier : on voit
+// la brique qui se prépare et il la lance façon Pong ; l'autre en face doit
+// mettre le résultat, sa brique se prépare, et même chose. »
+
+test('EN MODE COMPOSÉ, C\'EST LE JOUEUR QUI FABRIQUE LA BRIQUE', () => {
+    const p = creerPartie({ tables: [7, 8], envoi: 'compose', serveur: 0 });
+    assert.equal(p.phase, 'composer', 'on commence par fabriquer, pas par choisir une table');
+    assert.equal(p.attaquant, 0);
+    const r = composerFrappe(p, 7, 8);
+    assert.ok(r.ok);
+    assert.equal(p.balle.texte, '7 × 8');
+    assert.equal(p.balle.reponse, 56);
+    assert.equal(p.phase, 'echange');
+    assert.equal(p.defenseur, 1, 'la brique part vers l\'autre camp');
+});
+
+test('celui qui renvoie devient celui qui compose', () => {
+    const p = creerPartie({ tables: [7, 8], envoi: 'compose', serveur: 0 });
+    composerFrappe(p, 7, 8);
+    const r = repondre(p, 56);
+    assert.ok(r.bon);
+    assert.equal(r.aComposer, true);
+    assert.equal(p.phase, 'composer');
+    assert.equal(p.attaquant, 1, 'celui qui vient de répondre attaque à son tour');
+    assert.equal(p.balle, null, 'plus rien ne vole tant que la brique n\'est pas faite');
+});
+
+test('une brique se refuse hors des bornes ou hors des tables travaillées', () => {
+    const p = creerPartie({ tables: [7], envoi: 'compose', serveur: 0 });
+    assert.equal(composerFrappe(p, 1, 7).ok, false, '1 × n n\'est pas un calcul');
+    assert.equal(composerFrappe(p, 13, 7).ok, false, 'au-delà des bornes');
+    assert.equal(composerFrappe(p, 'x', 7).ok, false, 'ce qui n\'est pas un nombre');
+    assert.equal(composerFrappe(p, 3, 4).ok, false, 'ni 3 ni 4 n\'est la table travaillée');
+    assert.equal(p.phase, 'composer', 'un refus ne fait rien partir');
+    assert.ok(composerFrappe(p, 4, 7).ok, 'il suffit qu\'UN des deux facteurs soit la table');
+});
+
+test('une faute en mode composé donne le point, et le perdant reprend la main', () => {
+    const p = creerPartie({ tables: [7], envoi: 'compose', serveur: 0, cible: 5 });
+    composerFrappe(p, 7, 8);
+    const r = repondre(p, 54);
+    assert.equal(r.bon, false);
+    assert.equal(r.point.pour, 0);
+    assert.equal(p.phase, 'point');
+    pointSuivant(p);
+    assert.equal(p.phase, 'composer', 'pas d\'écran de table en mode composé');
+    assert.equal(p.attaquant, 1, 'le perdant du point sert, donc il compose');
+});
+
+test('en mode automatique, rien ne change : on choisit une table', () => {
+    const p = creerPartie({ tables: [7], serveur: 0 });
+    assert.equal(p.envoi, 'auto');
+    assert.equal(p.phase, 'service');
+    assert.equal(composerFrappe(p, 7, 8).ok, false, 'composer n\'a pas cours ici');
+});
+
+test('L\'ATTAQUANT EST TOUJOURS DÉSIGNABLE — c\'est lui que l\'écran montre', () => {
+    // « Il faudrait aussi avoir un repère de l'élève qui envoie le calcul. »
+    // L'écran ne peut le montrer que si l'état le dit : en mode automatique
+    // aussi, et à chaque renvoi.
+    const { p, rng } = partie();
+    servir(p, 7, rng);
+    assert.equal(p.attaquant, 0);
+    assert.equal(p.defenseur, 1);
+    for (let i = 0; i < 6; i++) {
+        const avant = p.defenseur;
+        repondre(p, p.balle.reponse, rng);
+        assert.equal(p.attaquant, avant, 'celui qui vient de renvoyer est celui qui envoie');
+        assert.equal(p.defenseur, 1 - avant);
+    }
 });
 
 test('le pavé sait combien de chiffres attendre', () => {
