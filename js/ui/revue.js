@@ -25,6 +25,7 @@
 // que le RETEST du banc d'essai, et il a fait ses preuves.
 
 import { exercices } from '../data/catalog.js';
+import { TAGS } from '../data/tags.js';
 import { STATUS, STATUS_LABELS } from '../data/status.js';
 import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu,
@@ -81,6 +82,14 @@ const ICONES = {
 };
 
 const icone = (id) => `<svg viewBox="0 0 24 24" class="rv-ico">${ICONES[id] || ''}</svg>`;
+
+/** Domaines, sous-domaines, niveaux, et les mots-clefs déjà employés. */
+const VOCABULAIRE = [
+    ...Object.values(TAGS.DOMAINE),
+    ...Object.values(TAGS.SOUS_DOMAINE),
+    ...Object.values(TAGS.NIVEAU),
+    ...[...new Set(exercices.flatMap(e => e.motsClefs || []))].sort()
+];
 
 // LE COCHET DE VALIDATION. Rémy : « pour le décidé mets juste un check à
 // valider à droite du calendrier et ça enregistre la date du jour ». Ouvrir le
@@ -191,6 +200,8 @@ function assurerPanneau() {
             .rv-jour { color: var(--text-muted); }
             .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
             .rv-remarque { width: 200px; }
+            .rv-classer { width: 170px; }
+            .rv-jeu { font-size: .72rem; color: var(--text-muted); font-family: ui-monospace, monospace; }
             .rv-table td.rv-libre { white-space: normal; }
             .rv-vide { padding: 24px; text-align: center; color: var(--text-muted); }
             .rv-etiq { font-size: .66rem; font-weight: 800; border-radius: 999px; padding: 2px 7px; }
@@ -226,6 +237,7 @@ function assurerPanneau() {
                 .rv--filtres .rv-filtres { display: flex; }
                 .rv-recherche { order: -1; }
                 .rv-remarque { width: 130px; }
+                .rv-classer { width: 130px; }
                 .rv-date { width: 108px; }
                 .rv-compteur { max-height: 2.6em; overflow: hidden; }
             }
@@ -247,7 +259,13 @@ function assurerPanneau() {
             <span class="rv-compteur" data-compteur></span>
         </div>
         <div class="rv-filtres" data-filtres></div>
-        <div class="rv-cadre" data-cadre></div>`;
+        <div class="rv-cadre" data-cadre></div>
+        <!-- LE VOCABULAIRE EXISTANT, PROPOSÉ À LA SAISIE. Retaper « Grandeurs
+             et Mesures » à la main, c'est inventer une quinzième orthographe du
+             même domaine ; la liste ne force rien mais elle rappelle ce qui
+             existe déjà. -->
+        <datalist id="rv-vocabulaire">${VOCABULAIRE.map(v =>
+        `<option value="${echapper(v)}"></option>`).join('')}</datalist>`;
     document.body.appendChild(el);
 
     const plier = el.querySelector('[data-plier]');
@@ -273,7 +291,8 @@ const AVANCEES = [
     ['changes', 'Changements'],
     ['jamaisvus', 'Jamais regardés'],
     ['vus', 'Déjà regardés'],
-    ['remarques', 'Avec remarque']
+    ['remarques', 'Avec remarque'],
+    ['classer', 'À reclasser']
 ];
 
 function peindreFiltres(el) {
@@ -323,7 +342,8 @@ function majCompteur(el) {
     const montres = filtrer(exercices, revue, criteres).length;
     const c = el.querySelector('[data-compteur]');
     c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés · `
-        + `${b.decides} décidés, ${b.changes} à reporter, ${b.remarques} remarques`;
+        + `${b.decides} décidés, ${b.changes} à reporter, ${b.remarques} remarques, `
+        + `${b.classer} à reclasser`;
     // La phrase entière ne tient pas sur un téléphone, et elle ne sert qu'une
     // fois : elle passe en infobulle plutôt qu'en trois lignes permanentes.
     c.title = 'Les décisions restent sur cet appareil : le catalogue est du code, '
@@ -360,11 +380,13 @@ function peindreTable(el) {
         <table class="rv-table">
             <thead><tr>
                 ${tete('titre', 'Exercice', 'rv-nom', 'Trier par titre')}
+                ${tete('jeu', 'Jeu', '', 'Le moteur qui fait tourner l\'exercice — trier ici groupe tout ce qui partage le même écran')}
                 ${tete('ecrit', 'Écrit', '', 'Écrit le, ou repris le — c\'est ce qui dit lesquels sont les derniers')}
                 ${tete('statut', 'En test', '', 'Coché = encore en test. Décoché = validé pour les élèves.')}
                 ${tete('statut', 'Statut', '', 'Trier : ce qui est en test d\'abord')}
                 ${tete('decide', 'Décidé', '', 'Le jour où la décision a été prise')}
                 ${COLONNES.map(c => tete(`vu:${c.id}`, `${icone(c.id)}<br>${echapper(c.label)}`, '', c.aide)).join('')}
+                ${tete('classer', 'À classer', '', 'Domaine, sous-domaine, niveau ou mot-clef à ajouter')}
                 ${tete('remarque', 'Remarque', '', 'Trier : les lignes annotées d\'abord')}
             </tr></thead>
             <tbody>${liste.map(ligneHtml).join('')}</tbody>
@@ -390,6 +412,7 @@ function ligneHtml(exo) {
             <b>${echapper(exo.title)}</b>
             <span class="rv-sous">${echapper(chemin)}${niveaux ? ` — ${echapper(niveaux)}` : ''}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span>
         </span></td>
+        <td class="rv-jeu">${echapper(exo.activityId || exo.generatorId || '—')}</td>
         <td class="rv-quand" title="${echapper(exo.cree || '')}">${echapper(dernierJour(exo))}</td>
         <td><input type="checkbox" class="rv-statut" data-test="${exo.id}"
                    title="Encore en test ?"${s === STATUS.TEST ? ' checked' : ''}></td>
@@ -401,6 +424,10 @@ function ligneHtml(exo) {
                     title="Dater d'aujourd'hui">${COCHE}</button>
         </span></td>
         ${cases}
+        <td class="rv-libre"><input type="text" class="rv-champ rv-classer" data-tags="${exo.id}"
+                   list="rv-vocabulaire" placeholder="+ domaine, niveau, mot-clef"
+                   title="Aujourd'hui : ${echapper(chemin)}${niveaux ? ` — ${echapper(niveaux)}` : ''}"
+                   value="${echapper((f && f.tags) || '')}"></td>
         <td class="rv-libre"><input type="text" class="rv-champ rv-remarque" data-remarque="${exo.id}"
                    placeholder="…" value="${echapper((f && f.remarque) || '')}"></td>
     </tr>`;
@@ -470,8 +497,11 @@ function brancherTable(cadre, el) {
     };
     cadre.oninput = (ev) => {
         const t = ev.target;
-        if (t.dataset.remarque === undefined) return;
-        revue = decider(revue, t.dataset.remarque, { remarque: t.value });
+        const champ = t.dataset.remarque !== undefined ? 'remarque'
+            : t.dataset.tags !== undefined ? 'tags' : null;
+        if (!champ) return;
+        const id = champ === 'remarque' ? t.dataset.remarque : t.dataset.tags;
+        revue = decider(revue, id, { [champ]: t.value });
         clearTimeout(brancherTable._t);
         brancherTable._t = setTimeout(() => { garder(); majCompteur(el); }, 400);
     };

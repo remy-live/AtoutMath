@@ -73,6 +73,11 @@ function normaliserFiche(f) {
         enTest: typeof f.enTest === 'boolean' ? f.enTest : null,
         date: String(f.date || ''),
         remarque: String(f.remarque || '').slice(0, 2000),
+        // CE QU'IL FAUDRAIT AJOUTER AU CLASSEMENT : un domaine, un
+        // sous-domaine, un niveau, un mot-clef. Du texte libre, parce qu'on
+        // ne sait pas d'avance ce qui manque — et c'est moi qui le reporterai
+        // dans les descripteurs, pas une machine.
+        tags: String(f.tags || '').slice(0, 500),
         vu: Object.fromEntries(Object.entries(f.vu || {})
             .filter(([k, v]) => estColonne(k) && v).map(([k]) => [k, true])),
         maj: Number(f.maj) || 0
@@ -93,10 +98,11 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     const suite = { ...base };
     if ('enTest' in changements) suite.enTest = changements.enTest === null ? null : !!changements.enTest;
     if ('remarque' in changements) suite.remarque = String(changements.remarque || '').slice(0, 2000);
+    if ('tags' in changements) suite.tags = String(changements.tags || '').slice(0, 500);
     if ('vu' in changements) suite.vu = { ...base.vu, ...changements.vu };
     Object.keys(suite.vu).forEach(k => { if (!suite.vu[k]) delete suite.vu[k]; });
 
-    const decide = 'enTest' in changements || 'remarque' in changements;
+    const decide = 'enTest' in changements || 'remarque' in changements || 'tags' in changements;
     if ('date' in changements) suite.date = String(changements.date || '');
     else if (decide) suite.date = jourISO(quand || Date.now());
     suite.maj = quand || Date.now();
@@ -105,7 +111,7 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     // remarque, pas une seule case vue — ne mérite pas d'occuper une ligne du
     // carnet. LA DATE COMPTE : le cochet du calendrier ne pose qu'elle, et sans
     // cette clause la ligne était jetée à la seconde même où on la datait.
-    const vide = suite.enTest === null && !suite.date && !suite.remarque
+    const vide = suite.enTest === null && !suite.date && !suite.remarque && !suite.tags
         && !Object.keys(suite.vu).length;
     const autres = (revue.fiches || []).filter(f => f.exercice !== exercice);
     return { ...revue, fiches: vide ? autres : [...autres, normaliserFiche(suite)] };
@@ -177,6 +183,8 @@ const CLES = {
     statut: (e, f) => ({ [STATUS.TEST]: '0', [STATUS.VALIDE]: '1', [STATUS.BROUILLON]: '2' })[statutRevu(e, f)],
     decide: (e, f) => (f && f.date) || '',
     remarque: (e, f) => ((f && f.remarque.trim()) ? `0${f.remarque}` : '1'),
+    jeu: (e) => e.activityId || e.generatorId || 'zzz',
+    classer: (e, f) => ((f && f.tags.trim()) ? `0${f.tags}` : '1'),
     vus: (e, f) => String(9 - nbVus(f))
 };
 COLONNES.forEach(c => { CLES[`vu:${c.id}`] = (e, f) => ((f && f.vu[c.id]) ? '0' : '1'); });
@@ -191,7 +199,8 @@ export function direTri(tri) {
     const cle = String(tri || '').replace(/^-/, '');
     const col = COLONNES.find(c => `vu:${c.id}` === cle);
     const nom = col ? col.label : { titre: 'Titre', cree: 'Créé', ecrit: 'Écrit', statut: 'Statut',
-        decide: 'Décidé', remarque: 'Remarque', vus: 'Regardés' }[cle] || cle;
+        decide: 'Décidé', remarque: 'Remarque', vus: 'Regardés', jeu: 'Jeu',
+        classer: 'À classer' }[cle] || cle;
     return `${nom} ${String(tri).startsWith('-') ? '▼' : '▲'}`;
 }
 
@@ -225,7 +234,7 @@ export function trier(liste, tri, revue = null) {
  * @param {string} [criteres.domaine]  - premier niveau du chemin, '' = tous
  * @param {string} [criteres.niveau]   - '6ème', '' = tous
  * @param {string} [criteres.statut]   - 'test' | 'valide' | 'brouillon', '' = tous
- * @param {string} [criteres.avancee]  - 'decides' | 'adecider' | 'vus' | 'jamaisvus' | 'changes' | 'remarques'
+ * @param {string} [criteres.avancee]  - 'decides' | 'adecider' | 'vus' | 'jamaisvus' | 'changes' | 'remarques' | 'classer'
  * @param {boolean} [criteres.jeux]    - seulement les activités (celles qui ont un moteur)
  * @param {string} [criteres.tri]      - voir TRIS
  */
@@ -246,13 +255,15 @@ export function filtrer(exercices, revue, criteres = {}) {
         if (avancee === 'jamaisvus' && nbVus(f) > 0) return false;
         if (avancee === 'changes' && !aChange(e, f)) return false;
         if (avancee === 'remarques' && !(f && f.remarque.trim())) return false;
+        if (avancee === 'classer' && !(f && f.tags.trim())) return false;
         return true;
     }), tri, revue);
 }
 
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
 export function bilan(revue, exercices) {
-    const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, changes: 0, remarques: 0, vus: 0 };
+    const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, changes: 0,
+        remarques: 0, vus: 0, classer: 0 };
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         if (f && f.enTest !== null) b.decides++;
@@ -260,6 +271,7 @@ export function bilan(revue, exercices) {
         else if (statutRevu(e, f) === STATUS.VALIDE) b.valides++;
         if (aChange(e, f)) b.changes++;
         if (f && f.remarque.trim()) b.remarques++;
+        if (f && f.tags.trim()) b.classer++;
         if (nbVus(f) > 0) b.vus++;
     });
     return b;
@@ -347,6 +359,7 @@ export function fusionnerRevues(...revues) {
         par.set(f.exercice, {
             ...recent,
             remarque: recent.remarque || vieux.remarque,
+            tags: recent.tags || vieux.tags,
             vu: { ...avant.vu, ...f.vu }
         });
     }));
@@ -371,7 +384,8 @@ export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } 
     l.push(`- **Version** : ${revue.version || '?'}`);
     l.push(`- **Exercices** : ${b.total} — ${b.enTest} en test, ${b.valides} validés`);
     l.push(`- **Décidés à la main** : ${b.decides} · **changements à reporter** : ${b.changes}`);
-    l.push(`- **Vus au moins une fois** : ${b.vus} · **remarques** : ${b.remarques}`, '');
+    l.push(`- **Vus au moins une fois** : ${b.vus} · **remarques** : ${b.remarques} `
+        + `· **classements à corriger** : ${b.classer}`, '');
 
     l.push('## À reporter dans les descripteurs', '');
     l.push(consigne ? `\`\`\`\n${consigne}\n\`\`\`` : '_Aucun statut ne change._', '');
@@ -388,17 +402,30 @@ export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } 
         });
     }
 
+    const aClasser = exercices.map(e => ({ e, f: ficheDe(revue, e.id) })).filter(x => x.f && x.f.tags.trim());
+    if (aClasser.length) {
+        // Le classement demandé est la deuxième chose que je viendrai chercher,
+        // et il se perdrait dans un tableau de cent neuf lignes.
+        l.push('## Le classement à corriger', '');
+        aClasser.forEach(({ e, f }) => {
+            const ou = ((e.tags && e.tags.chemin) || []).join(' > ');
+            l.push(`- \`${e.id}\` (${e.title}) — aujourd'hui _${ou}_ → **${f.tags.trim()}**`);
+        });
+        l.push('');
+    }
+
     l.push('## Le tableau', '');
-    l.push(`| Exercice | Créé | Statut | Décidé | ${COLONNES.map(c => c.label).join(' | ')} | Remarque |`);
-    l.push(`|---|---|---|---|${COLONNES.map(() => '---').join('|')}|---|`);
+    l.push(`| Exercice | Jeu | Écrit | Statut | Décidé | ${COLONNES.map(c => c.label).join(' | ')} | À classer | Remarque |`);
+    l.push(`|---|---|---|---|---|${COLONNES.map(() => '---').join('|')}|---|---|`);
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         const s = statutRevu(e, f);
         const cases = COLONNES.map(c => (f && f.vu[c.id]) ? '✓' : '');
-        l.push(`| ${e.title} \`${e.id}\` | ${dernierJour(e)} `
+        l.push(`| ${e.title} \`${e.id}\` | ${e.activityId || e.generatorId || ''} | ${dernierJour(e)} `
             + `| ${s === STATUS.TEST ? 'en test' : s === STATUS.BROUILLON ? 'brouillon' : 'validé'}`
-            + `${aChange(e, f) ? ' ⟵' : ''} | ${(f && f.date) || ''} | ${cases.join(' | ')} | `
-            + `${((f && f.remarque) || '').replace(/\n/g, ' ').slice(0, 120)} |`);
+            + `${aChange(e, f) ? ' ⟵' : ''} | ${(f && f.date) || ''} | ${cases.join(' | ')} `
+            + `| ${((f && f.tags) || '').replace(/\n/g, ' ')} `
+            + `| ${((f && f.remarque) || '').replace(/\n/g, ' ').slice(0, 120)} |`);
     });
     return l.join('\n');
 }

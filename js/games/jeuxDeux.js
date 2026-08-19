@@ -59,8 +59,8 @@ const JEUX = {
     sim: {
         titre: 'Le Sim',
         module: sim,
-        consigne: 'Colorie un segment de TA couleur. Celui qui forme le premier un triangle '
-            + 'de sa propre couleur A PERDU.',
+        consigne: 'Tire un trait d\'un point à un autre : il prend TA couleur. Celui qui forme '
+            + 'le premier un triangle de sa propre couleur A PERDU.',
         creer: () => sim.creerPartie(),
         score: (p) => `${p.couleurs.filter(c => c !== null).length} / 15 segments`,
         dessiner: dessinerSim,
@@ -78,6 +78,8 @@ class JeuADeux extends BaseGame {
         this.niveau = NIVEAUX[this.params.niveau] ? this.params.niveau : 'moyen';
         // La machine tient les rouges : l'élève ouvre, comme sur un plateau.
         this.machine = 'N';
+        // Le point d'où part le trait qu'on est en train de tirer (le Sim seul).
+        this.simDepart = null;
         this.partie = this.def.creer(this.params);
     }
 
@@ -140,12 +142,23 @@ class JeuADeux extends BaseGame {
 
                 /* --- Sim --- */
                 .jd-arete { stroke-width: 5; stroke-linecap: round; }
-                .jd-arete--libre { stroke: var(--border); }
                 .jd-arete--fatale { animation: jd-pouls 1s ease-in-out infinite; }
                 @keyframes jd-pouls { 50% { opacity: .35; } }
-                .jd-sommet { fill: var(--text-main); }
+                .jd-sommet { fill: var(--text-main); transition: r .12s, fill .12s; }
+                .jd-sommet--choisi { fill: var(--primary); r: 17; }
+                /* La prise du doigt : invisible, généreuse, dessinée en dernier.
+                   Six disques bien séparés remplacent quinze traits qui se
+                   croisaient au centre — c'est tout le gain du tracé. */
+                .jd-prise { fill: transparent; cursor: pointer; }
+                .jd-elastique {
+                    stroke: var(--primary); stroke-width: 4; stroke-linecap: round;
+                    stroke-dasharray: 7 6; pointer-events: none; opacity: .85;
+                }
+                /* Pendant le tracé, le navigateur ne doit pas prendre le
+                   glissé pour un défilement de la page. */
+                .jd-svg--trace { touch-action: none; }
                 .jd-etiquette { font-weight: 800; text-anchor: middle; dominant-baseline: central;
-                    fill: var(--bg-panel); font-size: 13px; }
+                    fill: var(--bg-panel); font-size: 13px; pointer-events: none; }
             </style>
             <div class="jd-wrap" data-wrap>
                 <div class="jd-tete">
@@ -184,6 +197,7 @@ class JeuADeux extends BaseGame {
     nouvelle() {
         this.partie = this.def.creer(this.params);
         this.fini = false;
+        this.simDepart = null;
         this.dessiner();
         this.note(this.def.consigne);
     }
@@ -474,42 +488,141 @@ function dessinerP4(p) {
 }
 
 /** LE SIM : six points, quinze segments, et le triangle fatal qui pulse. */
+/**
+ * LE SIM SE TRACE, IL NE SE CLIQUE PAS.
+ *
+ * Rémy : « pour le sim je préférerais le mode où on relie les traits en
+ * cliquant et relâchant, pas qu'on voie les traits avant ». Les deux vont
+ * ensemble, et le second explique le premier.
+ *
+ * Les quinze segments étaient DESSINÉS EN GRIS dès le départ, et l'on cliquait
+ * celui qu'on voulait. Mais sur un hexagone complet, neuf segments se croisent
+ * au centre : les cibles du doigt se recouvrent, et le segment coloré n'est
+ * pas celui qu'on visait. Sur un téléphone, cela donne un jeu qui « ne
+ * répond pas » — alors qu'il répondait très bien, à côté.
+ *
+ * Six points, rien d'autre. On appuie sur un point, on tire, on relâche sur un
+ * autre : le trait se colorie. Les cibles ne sont plus quinze traits qui se
+ * croisent mais six disques bien séparés, et c'est le geste du papier.
+ *
+ * DEUX GESTES, UNE SEULE RÈGLE. Appuyer-tirer-relâcher, ou toucher un point
+ * puis l'autre : relâcher sur le point de départ le garde SÉLECTIONNÉ, et
+ * l'appui suivant sur un autre point ferme le trait. On n'a rien à apprendre,
+ * les deux marchent.
+ */
 function dessinerSim(p) {
-    const R = 120, MARGE = 34;
+    const R = 120, MARGE = 40;
     const T = (R + MARGE) * 2;
+    const PRISE = 44;                 // le rayon d'accroche, en unités du dessin
     const pts = sim.positions(R, R + MARGE, R + MARGE);
     const fatal = new Set(p.perdant ? p.perdant.triangle.aretes : []);
 
-    // Comme à la pipopipette : les traits d'abord, TOUTES les cibles ensuite.
-    // Sur l'hexagone complet, neuf segments passent près du centre — une cible
-    // dessinée trop tôt s'y fait recouvrir et le segment devient intouchable.
-    const traits = [], cibles = [];
-    sim.ARETES.forEach(([a, b], i) => {
+    // SEULS LES SEGMENTS DÉJÀ COLORIÉS SE DESSINENT — comme sur le papier.
+    const traits = sim.ARETES.map(([a, b], i) => {
         const c = p.couleurs[i];
+        if (c === null) return '';
         const A = pts[a], B = pts[b];
-        const classes = ['jd-arete'];
-        if (c === null) classes.push('jd-arete--libre');
-        if (fatal.has(i)) classes.push('jd-arete--fatale');
-        traits.push(`<line class="${classes.join(' ')}" x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}"
-            x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}"
-            ${c ? `stroke="${TEINTES[c]}"` : ''} stroke-width="${fatal.has(i) ? 8 : 5}"></line>`);
-        if (c === null) {
-            cibles.push(`<line class="jd-cible" data-arete="${i}" x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}"
-                x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}"></line>`);
-        }
-    });
-    const aretes = traits.join('');
+        return `<line class="jd-arete${fatal.has(i) ? ' jd-arete--fatale' : ''}"
+            x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}" x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}"
+            stroke="${TEINTES[c]}" stroke-width="${fatal.has(i) ? 8 : 5}"></line>`;
+    }).join('');
 
-    const sommets = pts.map((q, i) =>
-        `<circle class="jd-sommet" cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="13"></circle>
-         <text class="jd-etiquette" x="${q.x.toFixed(1)}" y="${q.y.toFixed(1)}">${i + 1}</text>`).join('');
+    const depart = this.simDepart;
+    const sommets = pts.map((q, i) => `
+        <circle class="jd-sommet${depart === i ? ' jd-sommet--choisi' : ''}"
+                cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="13"></circle>
+        <text class="jd-etiquette" x="${q.x.toFixed(1)}" y="${q.y.toFixed(1)}">${i + 1}</text>`).join('');
+    // Les prises du doigt, dessinées EN DERNIER et invisibles : elles doivent
+    // recevoir l'appui même s'il tombe un peu à côté du disque visible.
+    const prises = pts.map((q, i) =>
+        `<circle class="jd-prise" data-sommet="${i}" cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}"
+                 r="${PRISE * 0.62}"></circle>`).join('');
 
-    this.plateauEl.innerHTML = `<svg class="jd-svg" viewBox="0 0 ${T} ${T}"
+    this.plateauEl.innerHTML = `<svg class="jd-svg jd-svg--trace" viewBox="0 0 ${T} ${T}"
         style="width: min(94cqw, 78cqh, 420px); height: auto"
-        role="img" aria-label="Les six points du Sim">${aretes}${sommets}${cibles.join('')}</svg>`;
-    this.plateauEl.querySelectorAll('[data-arete]').forEach(el => {
-        el.onclick = () => this.jouer(Number(el.dataset.arete));
+        role="img" aria-label="Les six points du Sim">
+        ${traits}<line class="jd-elastique" data-elastique style="display:none"></line>${sommets}${prises}</svg>`;
+
+    const svg = this.plateauEl.querySelector('svg');
+    const elastique = svg.querySelector('[data-elastique]');
+    if (this.fini || this.isDemo) return;
+
+    // Du pixel de l'écran au repère du dessin. Le viewBox est carré et l'image
+    // garde ses proportions : un seul facteur suffit.
+    const versDessin = (ev) => {
+        const r = svg.getBoundingClientRect();
+        return { x: (ev.clientX - r.left) * T / r.width, y: (ev.clientY - r.top) * T / r.height };
+    };
+    const pointSous = (ev) => {
+        const q = versDessin(ev);
+        let meilleur = -1, court = PRISE;
+        pts.forEach((s, i) => {
+            const d = Math.hypot(s.x - q.x, s.y - q.y);
+            if (d < court) { court = d; meilleur = i; }
+        });
+        return meilleur;
+    };
+    const montrerElastique = (ev) => {
+        if (this.simDepart === null) return;
+        const A = pts[this.simDepart], q = versDessin(ev);
+        elastique.setAttribute('x1', A.x.toFixed(1));
+        elastique.setAttribute('y1', A.y.toFixed(1));
+        elastique.setAttribute('x2', q.x.toFixed(1));
+        elastique.setAttribute('y2', q.y.toFixed(1));
+        elastique.style.display = '';
+    };
+    const choisir = (i) => {
+        this.simDepart = i;
+        svg.querySelectorAll('.jd-sommet').forEach((el, k) => el.classList.toggle('jd-sommet--choisi', k === i));
+    };
+    const lacher = () => {
+        this.simDepart = null;
+        elastique.style.display = 'none';
+        svg.querySelectorAll('.jd-sommet--choisi').forEach(el => el.classList.remove('jd-sommet--choisi'));
+    };
+
+    // TERMINER UN TRAIT. Le refus dit POURQUOI : sur un plateau où presque tout
+    // se ressemble, « il ne se passe rien » se lit comme une panne.
+    const relier = (a, b) => {
+        const i = sim.indiceArete(a, b);
+        if (i < 0) { lacher(); return; }
+        if (p.couleurs[i] !== null) {
+            this.note('Ce segment est déjà colorié. Choisis-en un autre.');
+            lacher();
+            return;
+        }
+        lacher();
+        this.jouer(i);
+    };
+
+    svg.querySelectorAll('[data-sommet]').forEach(el => {
+        el.addEventListener('pointerdown', (ev) => {
+            ev.preventDefault();
+            if (this.fini) return;
+            if (this.contreMachine && p.trait === this.machine) return;
+            const i = Number(el.dataset.sommet);
+            // Un point déjà choisi et l'on appuie sur un AUTRE : c'est le
+            // second geste, celui de ceux qui touchent deux fois.
+            if (this.simDepart !== null && this.simDepart !== i) { relier(this.simDepart, i); return; }
+            choisir(i);
+            svg.setPointerCapture(ev.pointerId);
+        });
     });
+    svg.addEventListener('pointermove', montrerElastique);
+    svg.addEventListener('pointerup', (ev) => {
+        if (this.simDepart === null) return;
+        elastique.style.display = 'none';
+        const i = pointSous(ev);
+        if (i < 0) { lacher(); return; }
+        // Relâché sur son point de départ : on le GARDE choisi. C'est ce qui
+        // fait marcher le toucher-toucher sans rien avoir à expliquer.
+        if (i === this.simDepart) {
+            this.note('Point ' + (i + 1) + ' choisi. Relâche — ou touche — un autre point pour tracer le segment.');
+            return;
+        }
+        relier(this.simDepart, i);
+    });
+    svg.addEventListener('pointercancel', lacher);
 }
 
 // --- Les trois moteurs ----------------------------------------------------------

@@ -259,6 +259,64 @@ test('un tri venu d\'une colonne sait dire son nom et son sens', () => {
     assert.equal(direTri('statut'), 'Statut ▲');
 });
 
+// --- Le classement à corriger -----------------------------------------------
+
+test('une proposition de classement se garde et se relit', () => {
+    const r = decider(nouvelleRevue(), 'a', { tags: 'Géométrique > Angles, 5ème' });
+    assert.equal(ficheDe(r, 'a').tags, 'Géométrique > Angles, 5ème');
+    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Géométrique > Angles, 5ème');
+});
+
+test('elle date la ligne, comme toute décision', () => {
+    const r = decider(nouvelleRevue(), 'a', { tags: 'Fractions' });
+    assert.ok(ficheDe(r, 'a').date);
+});
+
+test('elle ne chasse pas la remarque, et réciproquement', () => {
+    let r = decider(nouvelleRevue(), 'a', { remarque: 'déborde' });
+    r = decider(r, 'a', { tags: 'Tableur' });
+    assert.equal(ficheDe(r, 'a').remarque, 'déborde');
+    assert.equal(ficheDe(r, 'a').tags, 'Tableur');
+});
+
+test('le filtre « à reclasser » ne retient que les lignes qui en ont une', () => {
+    const r = decider(nouvelleRevue(), 'num-un', { tags: 'Logique' });
+    assert.deepEqual(filtrer(jeuDeux, r, { avancee: 'classer' }).map(e => e.id), ['num-un']);
+});
+
+test('le bilan compte les classements à corriger', () => {
+    const r = decider(nouvelleRevue(), 'num-un', { tags: 'Logique' });
+    assert.equal(bilan(r, jeuDeux).classer, 1);
+});
+
+test('le rapport les sort dans leur propre section, avec le classement actuel', () => {
+    const r = decider(nouvelleRevue(), 'geo-deux', { tags: 'Transformations' });
+    const md = versMarkdown(r, jeuDeux);
+    assert.ok(md.includes('Le classement à corriger'));
+    assert.ok(md.includes('Transformations'));
+    assert.ok(md.includes('Géométrie > Angles'), 'il faut voir d\'où l\'on part');
+});
+
+test('sans proposition, pas de section', () => {
+    assert.ok(!versMarkdown(nouvelleRevue(), jeuDeux).includes('Le classement à corriger'));
+});
+
+test('une proposition survit à la fusion de deux appareils', () => {
+    const a = decider(nouvelleRevue(), 'x', { tags: 'Angles' }, 1000);
+    const b = marquerVu(nouvelleRevue(), 'x', 'robot', true, 2000);
+    assert.equal(ficheDe(fusionnerRevues(a, b), 'x').tags, 'Angles');
+});
+
+test('trier par jeu groupe ce qui partage le même moteur', () => {
+    const trois = [exo('a', { generatorId: 'zz' }), exo('b', { activityId: 'numpad' }), exo('c', { activityId: 'bubbles' })];
+    assert.deepEqual(trier(trois, 'jeu').map(e => e.id), ['c', 'b', 'a']);
+});
+
+test('trier par classement remonte ce qui est à reclasser', () => {
+    const r = decider(nouvelleRevue(), 'geo-deux', { tags: 'Logique' });
+    assert.equal(trier(jeuDeux, 'classer', r)[0].id, 'geo-deux');
+});
+
 // --- Bilan ------------------------------------------------------------------
 
 test('le bilan compte ce qui reste à faire', () => {
