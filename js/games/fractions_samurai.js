@@ -38,31 +38,48 @@ class FracSamurai extends BaseGame {
 
         this.container.innerHTML = `
             <style>
-                .sam-wrap { height: 100%; display: flex; flex-direction: column; background: linear-gradient(160deg, #1a1a2e, #2d1b36); font-family: 'Outfit', sans-serif; overflow: auto; }
-                .sam-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; color: #fff; flex-wrap: wrap; gap: 6px; }
+                /* PLEIN CADRE, comme les autres jeux à thème (le labyrinthe, Nova).
+                   Rémy : « on a l'impression que c'est mal intégré, comme si
+                   c'était une iframe. » Il y avait de quoi : un panneau sombre
+                   de 441 px flottait au milieu d'une page claire, avec sa
+                   propre barre de titre répétant celle de l'application. Le dojo
+                   occupe désormais toute la zone de jeu, et le titre disparaît
+                   — il est déjà écrit en haut de l'écran. */
+                .sam-wrap { position: absolute; inset: 0; display: flex; flex-direction: column;
+                    background: linear-gradient(160deg, #1a1a2e, #2d1b36); font-family: 'Outfit', sans-serif;
+                    overflow: hidden; container-type: size; }
+                .sam-top { display: flex; justify-content: center; align-items: center; padding: clamp(6px, 1.6cqh, 12px) 16px; color: #fff; flex-wrap: wrap; gap: 6px 22px; }
                 .sam-rang { font-weight: 900; font-size: 1.1rem; color: #fcc419; }
                 .sam-score { font-weight: 700; }
                 .sam-prog { height: 6px; background: rgba(255,255,255,.12); margin: 0 16px; border-radius: 3px; overflow: hidden; }
                 .sam-prog-fill { height: 100%; width: 0; background: #fcc419; transition: width .4s; }
                 .sam-timer { height: 8px; background: rgba(255,255,255,.12); margin: 8px 16px 0; border-radius: 4px; overflow: hidden; display: none; }
                 .sam-timer-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff6b6b, #fcc419); }
-                .sam-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; margin: 14px 16px; padding: 18px 12px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: transform .08s, border-color .3s; min-height: 220px; }
-                .sam-eq { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+                /* La carte ne s'étire plus sur toute la hauteur du dojo : elle se
+                   pose au milieu, à la taille de ce qu'elle contient. Étirée, elle
+                   laissait 250 px de vide au-dessus de la fraction et autant en
+                   dessous — d'où le sentiment d'une page vide dans un cadre. */
+                .sam-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+                    border-radius: 20px; margin: auto; padding: clamp(14px, 3cqh, 28px) clamp(16px, 4cqw, 34px);
+                    width: min(560px, 92cqw); box-sizing: border-box;
+                    display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    gap: clamp(10px, 2.2cqh, 18px); transition: transform .08s, border-color .3s; }
+                .sam-eq { display: flex; align-items: center; gap: clamp(8px, 2.4cqw, 14px); flex-wrap: wrap; justify-content: center; }
                 .sam-frac { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-                .sam-num, .sam-den { font-size: 2rem; font-weight: 900; color: #fff; display: flex; align-items: center; gap: 6px; }
+                .sam-num, .sam-den { font-size: clamp(1.5rem, min(6.5cqh, 9cqw), 3.2rem); font-weight: 900; color: #fff; display: flex; align-items: center; gap: 6px; }
                 .sam-bar { width: 100%; min-width: 56px; height: 4px; background: #fff; border-radius: 2px; }
-                .sam-egal { font-size: 2rem; color: #fcc419; font-weight: 900; }
-                .sam-mini { width: 54px; height: 46px; font-size: 1.3rem; text-align: center; border-radius: 8px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 700; }
+                .sam-egal { font-size: clamp(1.5rem, min(6.5cqh, 9cqw), 3.2rem); color: #fcc419; font-weight: 900; }
+                .sam-mini { width: clamp(40px, 6cqw, 54px); height: clamp(32px, 8cqh, 46px); font-size: clamp(.95rem, 3.6cqh, 1.3rem); text-align: center; border-radius: 8px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 700; }
                 .sam-mini:focus { outline: none; border-color: #fcc419; }
                 .sam-fois { color: #aaa; font-size: 1.3rem; }
-                .sam-msg { min-height: 1.6em; font-size: 1.02rem; font-weight: 700; text-align: center; padding: 0 10px; }
+                .sam-msg { min-height: 1.6em; font-size: clamp(.82rem, 3cqh, 1.02rem); font-weight: 700; text-align: center; padding: 0 10px; }
                 .sam-msg.ok { color: #51cf66; } .sam-msg.ko { color: #ff6b6b; } .sam-msg.info { color: #74c0fc; }
                 .sam-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-                .sam-btn { border: none; border-radius: 10px; padding: 12px 22px; font-size: 1.05rem; font-weight: 900; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.4); font-family: inherit; }
+                .sam-btn { border: none; border-radius: 10px; padding: clamp(6px, 2.4cqh, 12px) clamp(14px, 3cqw, 22px); font-size: clamp(.86rem, 3cqh, 1.05rem); font-weight: 900; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.4); font-family: inherit; }
                 .sam-btn:active { transform: translateY(3px); box-shadow: none; }
                 .sam-ok { background: #fcc419; color: #1a1a2e; }
                 .sam-shield { background: #364fc7; color: #fff; }
-                .sam-input1 { width: 90px; height: 50px; font-size: 1.5rem; text-align: center; border-radius: 10px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 900; }
+                .sam-input1 { width: clamp(64px, 9cqw, 90px); height: clamp(34px, 9cqh, 50px); font-size: clamp(1rem, 4cqh, 1.5rem); text-align: center; border-radius: 10px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 900; }
                 .sam-input1:focus { outline: none; border-color: #fcc419; }
                 /* Quel champ le pavé tactile remplit-il ? */
                 .sam-vise { outline: 2px solid #fcc419; outline-offset: 1px; }
@@ -74,7 +91,6 @@ class FracSamurai extends BaseGame {
             </style>
             <div class="sam-wrap">
                 <div class="sam-top">
-                    <span>⚔️ Samouraï des Fractions</span>
                     <span class="sam-rang" data-rang></span>
                     <span class="sam-score">Score : <b data-score>0</b></span>
                 </div>

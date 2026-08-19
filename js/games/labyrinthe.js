@@ -17,9 +17,15 @@ class Labyrinthe extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
-                .laby-arena { position: absolute; inset: 0; background: var(--laby-fond, var(--bg-app)); display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; transition: background .6s; }
+                /* LA PLACE AU-DESSUS DU PLATEAU se resserre avec l'écran : le bandeau de
+                   statut, la bulle du calcul et la phrase du bas gardaient leurs
+                   tailles de bureau, et sur un écran couché il ne restait plus assez
+                   de hauteur — le plateau de 450 px descendait jusqu'à 647 dans une
+                   arène de 320, et la moitié du labyrinthe passait sous le bord. */
+                .laby-arena { --laby-haut: clamp(74px, 17cqh, 118px); --laby-bas: clamp(40px, 7cqh, 60px);
+                    position: absolute; inset: 0; background: var(--laby-fond, var(--bg-app)); display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow: hidden; touch-action: none; font-family: 'Inter', sans-serif; transition: background .6s; }
                 .laby-float-gain { position: absolute; color: #10b981; font-weight: 900; font-size: 1.3rem; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.4); transform: translateX(-50%); }
-                .laby-header { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
+                .laby-header { position: absolute; top: clamp(4px, 1.4cqh, 10px); left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10; gap: 10px; }
                 .laby-stats { background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border); box-shadow: var(--shadow-sm); flex-shrink: 0; }
                 
                 .laby-vies { color: #ef4444; letter-spacing: 2px; font-size: 1rem; }
@@ -30,11 +36,16 @@ class Labyrinthe extends BaseGame {
                 .laby-timer-bar.danger { background: #ef4444; }
                 .laby-timer-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; color: var(--text-main); z-index: 1; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
                 
-                .laby-calc { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); font-size: 1.5rem; font-weight: bold; background: var(--laby-accent, var(--primary)); color: white; padding: 10px 30px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; text-align: center; white-space: nowrap; transition: 0.2s; }
+                .laby-calc { position: absolute; top: clamp(38px, 8.5cqh, 70px); left: 50%; transform: translateX(-50%); font-size: clamp(.95rem, 3cqh, 1.5rem); font-weight: bold; background: var(--laby-accent, var(--primary)); color: white; padding: clamp(4px, 1.2cqh, 10px) clamp(14px, 4cqw, 30px); border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; text-align: center; white-space: nowrap; transition: 0.2s; }
                 .laby-calc.success { background: #10b981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transform: translateX(-50%) scale(1.1); }
                 .laby-calc.error { background: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3); animation: shake 0.4s; }
                 
-                .laby-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--laby-mur, var(--border)); border: 6px solid var(--laby-mur, var(--border)); border-radius: 12px; padding: 4px; box-shadow: var(--shadow-md); margin-top: 80px; width: 90vw; max-width: 450px; aspect-ratio: 1/1; position: relative; transition: background .6s, border-color .6s; }
+                .laby-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; background: var(--laby-mur, var(--border)); border: 6px solid var(--laby-mur, var(--border)); border-radius: 12px; padding: 4px; box-shadow: var(--shadow-md); margin-top: var(--laby-haut);
+                    /* Le plus petit des trois : la largeur disponible, le
+                       confort maximal, et LA HAUTEUR qui reste une fois le
+                       bandeau et la phrase servis. */
+                    width: min(92cqw, 450px, calc(100cqh - var(--laby-haut) - var(--laby-bas)));
+                    aspect-ratio: 1/1; position: relative; transition: background .6s, border-color .6s; }
                 .laby-cell { background: var(--laby-case, var(--bg-panel)); border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; user-select: none; transition: 0.2s; }
                 .laby-cell.lit { background: rgba(79, 70, 229, 0.08); box-shadow: inset 0 0 0 2px var(--laby-accent, rgba(79, 70, 229, 0.3)); }
                 .laby-cell.visited { background: rgba(16, 185, 129, 0.15); }
@@ -51,7 +62,7 @@ class Labyrinthe extends BaseGame {
                 .laby-hero { position: absolute; background: var(--laby-accent, var(--primary)); border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.35); z-index: 3; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); pointer-events: none; display: flex; align-items: center; justify-content: center; left: 0; top: 0; }
                 .laby-hero::after { content: ''; width: 40%; height: 40%; background: rgba(255,255,255,0.8); border-radius: 50%; }
                 
-                .laby-msg { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: var(--text-muted); text-align: center; }
+                .laby-msg { position: absolute; bottom: clamp(6px, 2.4cqh, 30px); left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: var(--text-muted); text-align: center; }
                 
                 @keyframes shake {
                     0%, 100% { transform: translateX(-50%); }

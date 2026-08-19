@@ -31,6 +31,10 @@ class CarreMagique extends BaseGame {
                 ${CSS_GLISSER}
                 .cm-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 12px;
+                    /* CENTRÉ, pas collé en haut. Sur une tablette, le carré
+                       occupait le tiers supérieur et laissait 250 px de vide
+                       en dessous : « il est tout seul perdu ». */
+                    justify-content: center;
                     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
                     /* « size » : le carré doit se borner à la HAUTEUR autant
                        qu'à la largeur — voir la disposition en deux colonnes
@@ -48,10 +52,17 @@ class CarreMagique extends BaseGame {
                     display: grid; gap: 4px; padding: 6px; border-radius: 14px;
                     background: color-mix(in srgb, var(--text-main) 12%, transparent);
                 }
+                /* LA CASE GRANDIT AVEC LA PLACE — en hauteur autant qu'en
+                   largeur. Bornée à la seule largeur, elle plafonnait à 78 px :
+                   sur une tablette de 1140 px de large et 710 de haut, le carré
+                   tenait dans un timbre au milieu de l'écran alors qu'il restait
+                   250 px de vide dessous. C'est la plus PETITE des deux places
+                   qui commande, sinon le carré déborderait en hauteur sur un
+                   écran large et court. */
                 .cm-case {
-                    width: clamp(48px, 16cqw, 78px); aspect-ratio: 1;
+                    width: clamp(48px, min(16cqw, 15cqh), 118px); aspect-ratio: 1;
                     display: flex; align-items: center; justify-content: center;
-                    font-weight: 900; font-size: clamp(17px, 5cqw, 27px);
+                    font-weight: 900; font-size: clamp(17px, min(5cqw, 4.6cqh), 40px);
                     border-radius: 9px; box-sizing: border-box; background: var(--bg-panel);
                     color: var(--text-main); border: 0; font-family: inherit;
                     -webkit-tap-highlight-color: transparent;
@@ -79,7 +90,7 @@ class CarreMagique extends BaseGame {
                    vert quand elle tombe juste, rouge quand elle dépasse. */
                 .cm-total {
                     display: flex; align-items: center; justify-content: center;
-                    font-weight: 800; font-size: clamp(12px, 3.4cqw, 17px);
+                    font-weight: 800; font-size: clamp(12px, min(3.4cqw, 3.2cqh), 26px);
                     color: var(--text-muted); border-radius: 9px;
                     background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
                 }
