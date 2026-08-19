@@ -70,14 +70,36 @@ export const calculExercises = [
     {
         id: 'calc-mult-missing',
         cree: '2026-07-26',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'Des bulles comme tous les autres exercices à propositions : il était le '
+                    + 'seul à porter de petites cases carrées, héritées d\'un digicode qui '
+                    + 'n\'avait plus de clavier à montrer.'
+            }
+        ],
         consignePapier: "Complète.",
         colonnesPapier: 4,
         title: 'Facteur Manquant',
-        generatorId: 'calc.mult.missing', activityId: 'digicode',
+        // DES BULLES, COMME SES DIX-HUIT VOISINS. Rémy : « la présentation
+        // avec les bulles ou rectangle de choix n'est pas la même ». Il était
+        // le SEUL exercice à propositions à sortir du lot, avec la variante
+        // « digicode » — de petites cases blanches carrées là où Flash Mult,
+        // Divisions Express et Sprint Chrono posent tous de grandes bulles.
+        //
+        // La métaphore du digicode se tenait quand la grille montrait tout un
+        // clavier de chiffres, comme un code de porte. Elle ne se tient plus
+        // depuis que l'aide progressive n'affiche que deux propositions puis
+        // quatre : deux petits carrés ne sont pas un digicode, ce sont deux
+        // boutons ratés.
+        generatorId: 'calc.mult.missing', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         motsClefs: ['tables', 'multiplication'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Trouve le nombre manquant dans l'égalité et sélectionne-le sur le digicode."
+        instruction: "Trouve le nombre manquant dans l'égalité, puis choisis-le parmi les propositions. "
+            + "Pour y arriver, on ne multiplie pas au hasard : on DIVISE. Le facteur cherché, "
+            + "c'est le résultat divisé par le facteur connu — et c'est ce raccourci qu'on veut "
+            + "voir s'installer, parce qu'il est la table lue à l'envers."
     },
     {
         id: 'calc-division',

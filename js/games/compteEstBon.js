@@ -199,10 +199,13 @@ class CompteEstBon extends BaseGame {
     dessiner() {
         const e = this.etat;
         this.butEl.textContent = e.but;
-        const ecart = meilleurEcart(e);
-        this.ecartEl.textContent = ecart === 0
-            ? 'Le compte est bon !'
-            : `Le plus proche sur la table : à ${ecart} du but`;
+        // ON NE DIT PLUS À QUELLE DISTANCE ON EST. Rémy : « retire la phrase
+        // le plus proche sur la table ». Elle jouait à la place de l'élève :
+        // « à 3 du but » lui apprenait, sans qu'il l'ait cherché, qu'il tenait
+        // presque son compte — et surtout elle mesurait ses plaques à chaque
+        // coup, ce qui revenait à essayer toutes les combinaisons pour lui.
+        // Reste la seule chose qui se constate : le compte EST bon.
+        this.ecartEl.textContent = meilleurEcart(e) === 0 ? 'Le compte est bon !' : '';
 
         this.plaquesEl.innerHTML = '';
         e.nombres.forEach(n => {
