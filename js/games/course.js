@@ -233,8 +233,17 @@ class Course extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .course-wrapper { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; background: var(--bg-app); font-family: 'Outfit', Courier, monospace; color: var(--text-main); overflow: hidden; touch-action: none; }
-                .course-wrapper #course-cvs { background: transparent; border-left: 2px solid var(--border); border-right: 2px solid var(--border); max-width: 750px; width: 100%; height: 100%; display: block; }
-                .course-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 750px; height: 100%; pointer-events: none; display: none; flex-direction: column; z-index:5; }
+                /* LA ROUTE PREND LA LARGEUR QU'ON LUI DONNE. Rémy : « la course
+                   mathématique sur tablette ne prend pas toute la surface ».
+                   Elle était plafonnée à 750 px — sur un iPad couché de 1180,
+                   deux bandes grises de deux cents pixels de chaque côté. Le
+                   plafond monte, borné par la hauteur pour qu'une route ne
+                   devienne pas plus large que longue. Les voies étant tracées
+                   en proportion, la route plus large donne des voies plus
+                   larges : des cibles plus faciles à viser au doigt. */
+                .course-wrapper { --course-large: min(980px, 96cqw, 118cqh); }
+                .course-wrapper #course-cvs { background: transparent; border-left: 2px solid var(--border); border-right: 2px solid var(--border); max-width: var(--course-large); width: 100%; height: 100%; display: block; }
+                .course-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: var(--course-large); height: 100%; pointer-events: none; display: none; flex-direction: column; z-index:5; }
                 .course-hud.active { display: flex; }
                 .course-hud-top { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.9); border-bottom: 2px solid var(--border); }
                 .course-hud-info { display: flex; gap: 15px; font-weight: bold; font-size: 1.2rem; align-items: center; color: var(--text-main); }

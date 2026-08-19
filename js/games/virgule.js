@@ -104,7 +104,7 @@ class Virgule extends BaseGame {
                 /* LE TABLEAU DE NUMÉRATION. */
                 .vg-cadre {
                     width: 100%; overflow-x: auto; flex: 0 0 auto; padding: 3px;
-                    display: flex; justify-content: center;
+                    display: flex; justify-content: center; align-items: flex-start;
                 }
                 /* « inline-grid » et non « grid » : la boîte doit épouser EXACTEMENT
                    ses colonnes. En grille bloc, elle occupait toute la largeur
@@ -337,10 +337,21 @@ class Virgule extends BaseGame {
     }
 
     /** La largeur d'une colonne, en pixels, pour placer les chiffres dessus. */
+    /**
+     * LA COLONNE PREND LA PLACE QU'ON LUI DONNE. Cinquante-huit pixels au
+     * plus : la taille d'un téléphone, tenue telle quelle sur un iPad, où le
+     * tableau n'occupait plus qu'un tiers de la largeur. Le plafond monte, et
+     * une borne en HAUTEUR l'empêche de pousser les boutons hors de l'écran
+     * sur un plateau bas — le tableau fait deux rangées, mais il y a le
+     * calcul, la consigne, les trois boutons et la note autour.
+     */
     majTaille() {
         if (!this.tabEl) return;
         const dispo = this.tabEl.parentElement.clientWidth - 8;
-        const w = Math.max(30, Math.min(58, Math.floor(dispo / COLONNES.length)));
+        const haut = (this.container.closest('.canvas-area') || this.container).clientHeight || 600;
+        const w = Math.max(30, Math.min(96,
+            Math.floor(dispo / COLONNES.length),
+            Math.floor(haut * 0.16)));
         const h = Math.round(w * 1.15);
         this.colW = w;
         this.tabEl.style.setProperty('--vg-w', `${w}px`);
