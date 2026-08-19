@@ -138,13 +138,15 @@
    « 43,95 » en 1,7 rem sortait du cercle des deux côtés. Le plafond en rem
    reste — c'est la taille au-delà de laquelle on n'a plus rien à gagner sur un
    grand écran —, mais il ne peut plus dépasser ce que la bulle peut porter. */
-.bubble.choice--l { font-size: min(1.7rem, calc(var(--bulle) * .285)); }
+/* Les plafonds suivent la bulle : ils avaient été calés sur une bulle de
+   110 px, et bridaient le texte d'une bulle qui en fait deux fois plus. */
+.bubble.choice--l { font-size: min(2.6rem, calc(var(--bulle) * .285)); }
 .bubble.choice--xl {
-    font-size: min(1.35rem, calc(var(--bulle) * .22));
+    font-size: min(2rem, calc(var(--bulle) * .22));
     width: auto; min-width: 110px; padding: 0 18px; border-radius: 56px;
 }
 .bubble.choice--xxl {
-    font-size: min(1.15rem, calc(var(--bulle) * .17));
+    font-size: min(1.7rem, calc(var(--bulle) * .17));
     width: auto; min-width: 110px; padding: 0 16px; border-radius: 56px;
 }
 
@@ -2962,15 +2964,31 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    occupait 390 px de large dans une fenêtre de 2000, et les quinze rangées du
    grand Garam donnaient des cases de 18 px. En rendant sa colonne au pavé de
    chiffres, le treillis récupère presque toute la hauteur. */
+/* LE PAVÉ DE CHIFFRES NE SE RÉPARTIT PLUS AU HASARD.
+   Rémy : « le pavé numérique en mode paysage a 8 lignes en haut et 3 lignes en
+   dessous, c'est bizarre ». Onze jetons dans une boîte `flex-wrap` se coupent
+   là où la largeur tombe — 8 et 3, 6 et 5, 5 et 5 et 1 selon l'écran. Une
+   grille de six colonnes donne toujours la même chose : 0 à 5, puis 6 à 9 et
+   la gomme. */
+.kenken-layout:has(.ga-board) > .kk-palette {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+    justify-items: center; width: 100%; max-width: 400px;
+}
+.kenken-layout:has(.ga-board) > .kk-palette .kk-chip { width: 100%; max-width: 56px; }
+
 @container plateau (min-aspect-ratio: 3/2) and (min-width: 700px) {
     .kenken-layout:has(.ga-board) {
         display: grid; max-width: none; width: 100%;
-        grid-template-columns: auto minmax(210px, 330px);
-        /* La rangée vide en bas ramasse le mou : sans elle, les trois blocs
-           de droite s'étalaient sur toute la hauteur du treillis, chacun
-           seul au milieu de son tiers. */
+        grid-template-columns: auto minmax(210px, 340px);
+        /* LA CONSIGNE PASSE DANS LA COLONNE DE DROITE. Posée en travers du
+           haut, elle prenait cinq lignes et cent trente pixels — sur les sept
+           cent cinquante d'un iPad couché, le treillis n'avait plus la place
+           et se retrouvait COUPÉ EN BAS. À droite, au-dessus du pavé, elle ne
+           coûte rien : c'est la colonne qui avait du mou.
+           La rangée vide en bas ramasse ce mou : sans elle, les blocs de
+           droite s'étalaient chacun seul au milieu de son tiers. */
         grid-template-areas:
-            "consigne consigne"
+            "treillis consigne"
             "treillis pave"
             "treillis actions"
             "treillis aide"
@@ -2979,10 +2997,18 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
         align-content: center; align-items: center; justify-items: center;
         column-gap: clamp(16px, 3cqw, 48px); row-gap: clamp(8px, 1.6cqh, 18px);
     }
-    .kenken-layout:has(.ga-board) > .kenken-context { grid-area: consigne; margin: 0 0 6px; }
+    .kenken-layout:has(.ga-board) > .kenken-context {
+        grid-area: consigne; margin: 0 0 6px; max-width: 100%;
+    }
+    /* Dans sa colonne, la consigne ne peut plus être écrite en grand : elle
+       n'a plus toute la largeur, et c'est le treillis qu'on regarde. */
+    .kenken-layout:has(.ga-board) > .kenken-context .game-question {
+        font-size: clamp(.86rem, 2.4cqh, 1.05rem); margin-bottom: 0; max-width: 100%;
+    }
     .kenken-layout:has(.ga-board) > .ga-board {
         grid-area: treillis;
-        --ga-largeur: min(620px, 52cqw, calc(88cqh * var(--ga-ratio, 1)));
+        /* La hauteur presque entière, maintenant que rien ne la précède. */
+        --ga-largeur: min(680px, 54cqw, calc(94cqh * var(--ga-ratio, 1)));
     }
     .kenken-layout:has(.ga-board) > .kk-palette { grid-area: pave; }
     .kenken-layout:has(.ga-board) > .kk-actions { grid-area: actions; }

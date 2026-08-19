@@ -369,7 +369,13 @@ export function redactionComplete(t, chercher) {
     const calc = etapesCalcul(t, chercher);
     return [
         `${AMORCES.sais} ${ceQueJeSais(t, chercher)}`,
-        `${AMORCES.or} d'après le théorème de Pythagore, ${THEOREME.enonce.charAt(0).toLowerCase()}${THEOREME.enonce.slice(1)}`,
+        // LE « OR » NOMME LA PROPRIÉTÉ, IL NE LA RÉCITE PAS. Rémy : « pour le
+        // Or dans la rédaction complète, enlève "si un triangle est
+        // rectangle…". Écris juste : Or : d'après le théorème de Pythagore. »
+        // Le « Je sais que » vient de dire que le triangle est rectangle : la
+        // condition du théorème est déjà posée, et la répéter dans le « Or »
+        // donne une ligne de trois lignes que personne n'écrit au tableau.
+        `${AMORCES.or} d'après le théorème de Pythagore`,
         `${AMORCES.donc} ${calc.lignes.map(ligneEnTexte).join(' ; ')}.`
     ];
 }

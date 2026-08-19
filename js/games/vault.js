@@ -33,8 +33,20 @@ class Vault extends BaseGame {
                    maintenant sur la HAUTEUR disponible (cqh, la zone de jeu),
                    si bien qu'il n'y a plus rien à faire défiler. */
                 .vault-wrapper {
-                    width: 100%; max-width: min(400px, 94cqw); margin: 0 auto;
-                    background: #2c3e50; padding: clamp(5px, 2.4cqh, 18px); border-radius: 20px;
+                    /* ET IL PREND LA PLACE QU'ON LUI DONNE. Rémy, sur tablette :
+                       « le coffre-fort est hyper écrasé ». Le plafond était à
+                       400 px de large — la taille d'un téléphone — et tous les
+                       morceaux avaient le leur : des touches de 56 px au plus,
+                       un écran de 84 px au plus. Sur un iPad, un boîtier de
+                       400×540 flottait au milieu de 820×1110.
+                       Le boîtier se borne maintenant par la HAUTEUR autant que
+                       par la largeur, et tout ce qu'il contient est exprimé en
+                       em d'une taille de police qui suit le boîtier : un seul
+                       nombre à régler, et l'ensemble grandit d'un bloc sans
+                       jamais se déformer. */
+                    width: min(660px, 94cqw, 62cqh); max-width: 100%; margin: 0 auto;
+                    font-size: clamp(11px, min(3.1cqw, 1.85cqh), 20px);
+                    background: #2c3e50; padding: .9em; border-radius: 20px;
                     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
                     font-family: 'Courier New', monospace;
                     border: 4px solid #34495e; box-sizing: border-box;
@@ -43,32 +55,32 @@ class Vault extends BaseGame {
                        resserre, il ne déborde pas. */
                     max-height: 100%;
                 }
-                .vault-header { display: flex; justify-content: space-between; color: #95a5a6; margin-bottom: clamp(4px, 1.6cqh, 12px); font-weight: bold; font-size: clamp(.7rem, 2.4cqh, .9rem); }
+                .vault-header { display: flex; justify-content: space-between; color: #95a5a6; margin-bottom: .6em; font-weight: bold; font-size: .82em; }
                 .vault-screen {
                     background: #000; border: 4px solid #555; border-radius: 10px; padding: 10px;
-                    margin-bottom: clamp(4px, 1.4cqh, 10px); text-align: center; color: #2ecc71; text-shadow: 0 0 10px #2ecc71;
-                    transition: all 0.3s; min-height: clamp(46px, 12cqh, 84px);
+                    margin-bottom: .55em; text-align: center; color: #2ecc71; text-shadow: 0 0 10px #2ecc71;
+                    transition: all 0.3s; min-height: 4.2em;
                     display: flex; flex-direction: column; justify-content: center;
                 }
                 .vault-screen.success { background: #2ecc71; color: #fff; text-shadow: none; border-color: #fff; }
                 .vault-screen.error { background: #c0392b; color: #fff; text-shadow: none; border-color: #e74c3c; }
-                .vault-main { font-size: clamp(1.4rem, 6cqh, 2.6rem); font-weight: bold; letter-spacing: 5px;
+                .vault-main { font-size: 2.1em; font-weight: bold; letter-spacing: .12em;
                     /* 1 tout rond rognait le bas des chiffres : la ligne
                        mesurait 42 px pour un contenu de 47. */
                     line-height: 1.15; }
-                .vault-sub { font-size: clamp(.72rem, 2.4cqh, .95rem); margin-top: clamp(2px, 1cqh, 8px); min-height: 18px; }
+                .vault-sub { font-size: .85em; margin-top: .3em; min-height: 1.2em; }
                 .vault-log {
-                    background: rgba(0,0,0,0.25); height: clamp(28px, 11cqh, 96px); overflow-y: auto; margin-bottom: clamp(4px, 1.4cqh, 10px);
+                    background: rgba(0,0,0,0.25); height: 5em; overflow-y: auto; margin-bottom: .55em;
                     border-radius: 6px; padding: 5px; border: 1px solid #444;
                 }
-                .vault-log-item { display: flex; justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); color: #fff; font-size: .95rem; }
+                .vault-log-item { display: flex; justify-content: space-between; padding: .2em .5em; border-bottom: 1px solid rgba(255,255,255,0.08); color: #fff; font-size: .9em; }
                 .vault-log-item.haut small { color: #5dade2; }
                 .vault-log-item.bas small { color: #e67e22; }
-                .vault-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(3px, 1.3cqh, 10px); }
+                .vault-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45em; }
                 .vault-pad button {
-                    padding: 2px; font-size: clamp(.95rem, 3.4cqh, 1.4rem); background: #ecf0f1; border: none;
+                    padding: 2px; font-size: 1.25em; background: #ecf0f1; border: none;
                     border-bottom: 4px solid #bdc3c7; border-radius: 8px; cursor: pointer;
-                    color: #2c3e50; font-weight: bold; transition: all 0.1s; height: clamp(30px, 8cqh, 56px);
+                    color: #2c3e50; font-weight: bold; transition: all 0.1s; height: 2.5em;
                 }
                 .vault-pad button:active { border-bottom-width: 0; transform: translateY(4px); }
                 .vault-pad .v-ok { background: #2ecc71; border-color: #27ae60; color: white; }

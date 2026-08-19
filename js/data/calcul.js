@@ -195,7 +195,7 @@ export const calculExercises = [
         // ÉCRIRE la suite du calcul — et c'est là qu'apparaît la faute qui
         // coûte vraiment des points : calculer 4 × 5 juste, puis oublier le
         // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
-        id: 'calc-prio-cascade', status: STATUS.TEST, title: 'Priorités : ligne par ligne',
+        id: 'calc-prio-cascade', title: 'Priorités : ligne par ligne',
         cree: '2026-08-14',
         activityId: 'priorites',
         // Sur le papier, c'est le MÊME exercice en plus exigeant : à l'écran
@@ -232,7 +232,7 @@ export const calculExercises = [
         // c'est le réglage de difficulté. Les grandes plaques sont garanties :
         // 25, 50, 75 et 100 sont celles dont les multiples doivent devenir des
         // réflexes.
-        id: 'calc-compte-est-bon', status: STATUS.TEST, title: 'Le Compte est Bon',
+        id: 'calc-compte-est-bon', title: 'Le Compte est Bon',
         cree: '2026-08-14',
         activityId: 'compte-est-bon',
         // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
@@ -517,7 +517,7 @@ export const calculExercises = [
     // Dames, les Échecs — le disent par `horsProgression: true`. C'est le seul
     // autre choix possible : un exercice muet est refusé par les tests.
     {
-        id: 'calc-arcade-shooter', status: STATUS.TEST, title: 'Météorites Mathématiques',
+        id: 'calc-arcade-shooter', title: 'Météorites Mathématiques',
         cree: '2026-07-26',
         activityId: 'shooter', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium', leurres: 3 },
@@ -551,7 +551,7 @@ export const calculExercises = [
         instruction: "Ton vaisseau suit ta souris (ou ton doigt). Tire sur toutes les météorites qui portent un MAUVAIS résultat, et attrape la BONNE réponse avec ton vaisseau !"
     },
     {
-        id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
+        id: 'calc-math-memory', title: 'Memory des Tables',
         cree: '2026-07-26',
         activityId: 'memory', skills: ['num.mult.table.*'],
         // SUR LE PAPIER, ON FABRIQUE LE JEU. Page 1 : les cartes, une paire par
@@ -570,7 +570,7 @@ export const calculExercises = [
         instruction: "Associe chaque opération à son résultat pour nettoyer le plateau !"
     },
     {
-        id: 'calc-labyrinthe', status: STATUS.TEST, title: 'Labyrinthe Mathématique',
+        id: 'calc-labyrinthe', title: 'Labyrinthe Mathématique',
         cree: '2026-07-26',
         activityId: 'labyrinthe', skills: ['num.mult.table.*'],
         params: { timeLimit: 60, timeReduction: 5, operations: ['*'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -584,7 +584,7 @@ export const calculExercises = [
         instruction: "Déplace-toi vers la case contenant la bonne réponse pour atteindre la sortie."
     },
     {
-        id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathdoku',
+        id: 'calc-mathodu', title: 'Mathdoku',
         cree: '2026-07-30',
         generatorId: 'logique.mathodu', activityId: 'kenken',
         // Une erreur de placement dans une grille ne se révise pas : « case B3 »
@@ -601,7 +601,7 @@ export const calculExercises = [
         instruction: "Remplis la grille : chaque chiffre une fois par ligne et par colonne, et chaque zone doit donner le résultat écrit dans son coin."
     },
     {
-        id: 'calc-binairo', status: STATUS.TEST, title: 'Binairo',
+        id: 'calc-binairo', title: 'Binairo',
         cree: '2026-07-30',
         generatorId: 'logique.binairo', activityId: 'binairo',
         sansRevision: true,
@@ -625,7 +625,7 @@ export const calculExercises = [
         instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul — doigt posé pour charger le rayon lourd, double tape pour la bombe NOVA. Deux épreuves de calcul alternent : les MURS (franchis la porte du bon résultat) et les CONVOIS (place-toi sous le transporteur du bon résultat pour l'abattre). Chaque bonne porte ouvre le secteur suivant, plus dur : chasseurs, plongeurs kamikazes, blindés, tireurs d'élite — et tout ce qui te touche fait mal."
     },
     {
-        id: 'calc-escadrille', status: STATUS.TEST, title: 'Escadrille des Tables',
+        id: 'calc-escadrille', title: 'Escadrille des Tables',
         cree: '2026-08-05',
         activityId: 'escadrille', skills: ['num.mult.table.*'],
         params: { table: 7, lives: 3, rythme: 'lent' },
@@ -649,7 +649,7 @@ export const calculExercises = [
         instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
     },
     {
-        id: 'calc-sudoku', status: STATUS.TEST, title: 'Sudoku',
+        id: 'calc-sudoku', title: 'Sudoku',
         cree: '2026-08-04',
         generatorId: 'logique.sudoku', activityId: 'sudoku',
         // Le sudoku se fait très bien sur papier — c'est même là qu'il est né.
@@ -660,7 +660,7 @@ export const calculExercises = [
         instruction: "Chaque chiffre ne doit apparaître qu'une seule fois par ligne, par colonne et par bloc. Commence par les cases où un seul chiffre est encore possible : chacune en débloque d'autres."
     },
     {
-        id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
+        id: 'calc-garam', title: 'Garam',
         cree: '2026-07-30',
         generatorId: 'logique.garam', activityId: 'garam',
         sansRevision: true,
@@ -670,7 +670,7 @@ export const calculExercises = [
         instruction: "Le Garam des fiches officielles : quatre blocs d'égalités reliés par des ponts. Complète les cases avec des chiffres pour que TOUTES les égalités soient vraies, horizontales comme verticales. Une égalité verticale dépasse toujours dix : son résultat s'écrit sur deux cases empilées, dizaines au-dessus, unités en dessous — et la case du bas sert aussi à l'égalité horizontale."
     },
     {
-        id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
+        id: 'calc-course', title: 'Course Mathématique',
         cree: '2026-07-26',
         activityId: 'course', skills: ['num.mult.table.*'],
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)
@@ -710,7 +710,7 @@ export const calculExercises = [
         instruction: "Dirige le véhicule vers la bonne réponse pour continuer la course !"
     },
     {
-        id: 'calc-tetris', status: STATUS.TEST, title: 'Math Tetris',
+        id: 'calc-tetris', title: 'Math Tetris',
         cree: '2026-07-26',
         activityId: 'tetris', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], speed: 1000 },
@@ -723,7 +723,7 @@ export const calculExercises = [
         instruction: "Combine les blocs pour que leur produit donne la cible demandée !"
     },
     {
-        id: 'calc-vault', status: STATUS.TEST, title: 'Le Coffre-Fort',
+        id: 'calc-vault', title: 'Le Coffre-Fort',
         cree: '2026-08-04',
         // « Propose toujours le milieu de la zone possible » : c'est la
         // dichotomie, et le jeu ne fait que ça.
@@ -854,7 +854,7 @@ export const calculExercises = [
         // ici on a déjà toutes les lettres, et c'est le MOT DU COURS qu'on
         // cherche — celui que la définition décrit. Deux exercices voisins,
         // deux travaux différents, un seul lexique.
-        id: 'voc-anagrammes', status: STATUS.TEST, title: 'Anagrammes du Vocabulaire',
+        id: 'voc-anagrammes', title: 'Anagrammes du Vocabulaire',
         cree: '2026-08-19',
         activityId: 'anagrammes', skills: ['voc.mathematique'],
         // Un mot cherché puis trouvé n'a rien à réviser : ce qui compte est de
@@ -1016,7 +1016,7 @@ export const calculExercises = [
         // croix » — laisser deux carrés au lieu d'en prendre quatre, pour
         // garder la main — est souvent la première fois qu'un enfant renonce à
         // un gain immédiat par calcul.
-        id: 'logi-pipopipette', status: STATUS.TEST, title: 'La Pipopipette',
+        id: 'logi-pipopipette', title: 'La Pipopipette',
         cree: '2026-08-19',
         activityId: 'pipopipette', horsProgression: true, sansRevision: true,
         deuxJoueurs: true,
@@ -1094,7 +1094,7 @@ export const calculExercises = [
         // R(3,3) = 6, donc sur les quinze arêtes d'un hexagone complet
         // coloriées de deux couleurs, un triangle monochrome est INÉVITABLE.
         // Le match nul n'existe pas, et c'est démontrable.
-        id: 'logi-sim', status: STATUS.TEST, title: 'Le Sim',
+        id: 'logi-sim', title: 'Le Sim',
         cree: '2026-08-19',
         activityId: 'sim', horsProgression: true, sansRevision: true,
         deuxJoueurs: true,
@@ -1214,7 +1214,7 @@ export const calculExercises = [
         // n'entraînent aucune notion du programme : ce sont des jeux de la
         // réserve, ceux qu'on donne en récompense ou en fin d'heure. Le
         // déclarer est obligatoire — un exercice qui ne dit rien est refusé.
-        id: 'logi-othello', status: STATUS.TEST, title: 'Othello',
+        id: 'logi-othello', title: 'Othello',
         cree: '2026-08-11',
         activityId: 'othello', horsProgression: true,
         params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
@@ -1254,7 +1254,7 @@ export const calculExercises = [
         instruction: "Un pion posé ENCADRE : tous les pions adverses pris entre lui et un autre de tes pions se retournent. On ne joue que là où l'on retourne au moins un pion — les cases allumées te les montrent. À la fin, celui qui a le plus de pions gagne. Les coins ne se reprennent jamais : vise-les, et méfie-toi des cases qui les touchent."
     },
     {
-        id: 'logi-dames', status: STATUS.TEST, title: 'Jeu de Dames',
+        id: 'logi-dames', title: 'Jeu de Dames',
         cree: '2026-08-11',
         activityId: 'dames', horsProgression: true,
         params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
@@ -1294,7 +1294,7 @@ export const calculExercises = [
         instruction: "Les vraies règles françaises, sur le damier 10 × 10 : la prise est OBLIGATOIRE, et quand plusieurs rafles sont possibles, on joue celle qui prend le PLUS de pièces — compte avant de bouger. Le pion avance tout droit mais prend aussi en arrière ; arrivé au bout, il devient dame, et la dame vole sur toute la diagonale. Touche une pièce : ses coups s'allument."
     },
     {
-        id: 'logi-echecs', status: STATUS.TEST, title: 'Échecs',
+        id: 'logi-echecs', title: 'Échecs',
         cree: '2026-08-11',
         // La partie elle-même n'est pas au programme. Le REPÉRAGE l'est, et
         // c'est l'exercice « mat en un » qui le travaille, pas celui-ci.
@@ -1346,7 +1346,7 @@ export const calculExercises = [
         // déduction qui grandit, et l'élève retrouve à chaque fois les deux
         // règles qu'il connaît déjà. Un exercice par niveau aurait éparpillé
         // dans le catalogue ce qui est une seule progression.
-        id: 'logi-logigramme', status: STATUS.TEST, title: 'Le Logigramme',
+        id: 'logi-logigramme', title: 'Le Logigramme',
         cree: '2026-08-12',
         activityId: 'logigramme',
         // Le générateur ne sert PAS à l'écran (l'activité mène son propre jeu) :
@@ -1445,7 +1445,7 @@ export const calculExercises = [
         // dictée par des chiffres qui comptent les côtés. Deux règles suffisent
         // — le chiffre et le point — et jamais besoin de deviner : la grille
         // est fabriquée pour se déduire par propagation pure.
-        id: 'logi-slitherlink', status: STATUS.TEST, title: 'Le Slitherlink',
+        id: 'logi-slitherlink', title: 'Le Slitherlink',
         cree: '2026-08-13',
         activityId: 'slitherlink',
         generatorId: 'logique.slitherlink', printable: 'slitherlink',
@@ -1479,7 +1479,7 @@ export const calculExercises = [
         // LE FUTOSHIKI. Un carré latin sous inégalités : le puzzle qui fait de
         // la COMPARAISON un outil de déduction. Généré à solution unique,
         // résoluble par propagation pure — jamais d'essai-erreur.
-        id: 'logi-futoshiki', status: STATUS.TEST, title: 'Le Futoshiki',
+        id: 'logi-futoshiki', title: 'Le Futoshiki',
         cree: '2026-08-12',
         activityId: 'futoshiki',
         generatorId: 'logique.futoshiki', printable: 'futoshiki',
@@ -1531,7 +1531,7 @@ export const calculExercises = [
         // somme. Une somme de 3 sur deux cases ne laisse aucun choix, et c'est
         // par là qu'on entre. On ne récite pas une somme magique, on croise
         // des décompositions.
-        id: 'logi-hexagrille', status: STATUS.TEST, title: 'L\'Hexagrille',
+        id: 'logi-hexagrille', title: 'L\'Hexagrille',
         cree: '2026-08-17',
         revisions: [{
             date: '2026-08-19',
@@ -1565,7 +1565,7 @@ export const calculExercises = [
         // déguisé : chaque fusion est un doublement énoncé, et chaque coup
         // s'anticipe. Le robot montre la seule chose qui compte : on ne glisse
         // pas au hasard, on cherche AVANT quelles tuiles vont se retrouver.
-        id: 'calc-2048', status: STATUS.TEST, title: '2048',
+        id: 'calc-2048', title: '2048',
         cree: '2026-08-12',
         activityId: 'deuxmille',
         sansRevision: true,
@@ -1591,7 +1591,7 @@ export const calculExercises = [
         // notion du catalogue et en fait une chaîne. Un seul exercice, dix-sept
         // jeux de dominos — et le jour où l'on ajoute un générateur qui écrit
         // ses questions, il suffit de l'inscrire dans la liste des sources.
-        id: 'logi-dominos', status: STATUS.TEST, title: 'Les Dominos',
+        id: 'logi-dominos', title: 'Les Dominos',
         cree: '2026-08-12',
         activityId: 'dominos',
         // Le générateur sert au PAPIER : la planche de pièces à découper, qui
@@ -1650,7 +1650,7 @@ export const calculExercises = [
         instruction: "Les règles du démineur d'origine. Chaque chiffre compte les mines des 8 cases voisines : appui long (ou clic droit) pour poser un drapeau, 💡 pour faire expliquer la prochaine déduction certaine."
     },
     {
-        id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
+        id: 'calc-math-crush', title: 'Math Crush',
         cree: '2026-07-26',
         // Le réglage par défaut est l'addition ; la table est là dès qu'on
         // bascule le mode, et les deux compétences se valent pour la leçon.
@@ -1762,7 +1762,7 @@ export const calculExercises = [
         // qui vaut 13 » retourne le geste habituel — on part du résultat et
         // l'on balaie les opérations — et l'élève calcule vingt fois de tête
         // sans qu'on le lui demande, parce qu'il veut voir l'image.
-        id: 'calc-point-a-point', status: STATUS.TEST, title: 'Le Point à Point',
+        id: 'calc-point-a-point', title: 'Le Point à Point',
         cree: '2026-08-14',
         activityId: 'point-a-point',
         // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,

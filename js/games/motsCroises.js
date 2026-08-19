@@ -52,9 +52,19 @@ class MotsCroises extends BaseGame {
                     color: var(--text-main); container-type: size;
                     user-select: none; -webkit-user-select: none; overflow: hidden;
                 }
+                /* LE CORPS EST UN CONTENEUR À PART ENTIÈRE, et c'est LUI que
+                   la grille mesure. Rémy : « sur tablette, les touches des
+                   lettres se superposent mal ». La grille se bornait à un
+                   pourcentage de la hauteur du PLATEAU — c'est-à-dire sans
+                   retirer la consigne, le pavé de vingt-sept touches, les
+                   quatre boutons et la note. Sur un iPad couché, elle dépassait
+                   de son emplacement et venait se poser PAR-DESSUS le clavier.
+                   Sa hauteur ne vient plus de son contenu mais de ce qui
+                   reste — sans quoi la mesurer serait circulaire. */
                 .mc-corps {
-                    flex: 1 1 auto; min-height: 0; width: 100%;
+                    flex: 1 1 0; min-height: 0; width: 100%;
                     display: flex; gap: 14px; align-items: center; justify-content: center;
+                    container-type: size; container-name: mccorps;
                 }
                 /* La liste, elle, reste calée en haut : centrée, elle
                    flotterait au milieu d'une colonne à moitié vide. */
@@ -63,28 +73,45 @@ class MotsCroises extends BaseGame {
                    une grille de 21 colonnes sur un écran de 390 px donne des
                    cases de 17 px, et c'est encore jouable ; la borner à la
                    seule largeur la ferait déborder en hauteur. */
+                /* UNE GRILLE DE MOTS CROISÉS EST NOIRE SUR BLANC, quel que
+                   soit le thème choisi. Rémy : « pour les mots croisés,
+                   utilise un fond blanc ». C'est un objet de PAPIER : les
+                   cases blanches et les cases noires sont sa grammaire, et un
+                   thème « forêt » qui les teinte en vert les rend illisibles —
+                   on ne distingue plus une case à remplir d'une case pleine.
+                   La grille porte donc ses couleurs en dur, comme la fiche
+                   Garam porte les siennes ; tout le reste de l'écran suit le
+                   thème. */
+                /* La place offerte à la grille : tout le plateau, moins la
+                   colonne des définitions quand elle est là. Le plafond de la
+                   case monte de 42 à 66 px — Rémy, « essaie de profiter de
+                   l'espace de l'écran ». */
+                .mc-wrap { --mc-place: 96cqw; }
                 .mc-grille {
-                    display: grid; gap: 1px; background: var(--text-main);
-                    padding: 2px; border-radius: 4px; flex: 0 0 auto;
+                    --mc-cote: clamp(15px, min(calc(var(--mc-place) / var(--mc-cols, 10)),
+                                     calc(97cqh / var(--mc-rows, 10))), 66px);
+                    display: grid; gap: 1px; background: #111827;
+                    padding: 3px; border-radius: 4px; flex: 0 0 auto;
+                    box-shadow: 0 2px 12px rgba(15, 23, 42, .18);
                 }
                 .mc-case {
                     position: relative; width: var(--mc-cote); height: var(--mc-cote);
-                    background: var(--bg-panel); border: 0; padding: 0;
-                    font: inherit; font-weight: 800; color: var(--text-main);
+                    background: #ffffff; border: 0; padding: 0;
+                    font: inherit; font-weight: 800; color: #111827;
                     font-size: calc(var(--mc-cote) * .62); line-height: 1;
                     display: flex; align-items: center; justify-content: center;
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                 }
-                .mc-case--noire { background: var(--text-main); cursor: default; }
-                .mc-case--motvu { background: color-mix(in srgb, var(--primary) 14%, var(--bg-panel)); }
+                .mc-case--noire { background: #111827; cursor: default; }
+                .mc-case--motvu { background: #e6ecff; }
                 .mc-case--vise {
-                    background: color-mix(in srgb, var(--warning, #f59e0b) 34%, var(--bg-panel));
+                    background: #ffe9b8;
                     box-shadow: inset 0 0 0 2px var(--warning, #f59e0b);
                 }
                 .mc-case--faute { color: var(--danger, #dc2626); }
                 .mc-num {
                     position: absolute; top: 1px; left: 2px; font-size: calc(var(--mc-cote) * .3);
-                    font-weight: 700; color: var(--text-muted); pointer-events: none;
+                    font-weight: 700; color: #6b7280; pointer-events: none;
                 }
 
                 /* LA DÉFINITION DU MOT EN COURS, toujours visible. */
@@ -96,16 +123,27 @@ class MotsCroises extends BaseGame {
 
                 /* LA LISTE COMPLÈTE, dépliable — et posée À CÔTÉ dès que la
                    largeur le permet : c'est la mise en page du journal. */
+                /* LA LISTE DES DÉFINITIONS N'APPARAÎT QUE SI ELLE TIENT.
+                   Elle s'affichait dès 700 px de plateau : sur une tablette de
+                   820, une grille de vingt et une colonnes ne laissait que
+                   quatre-vingt-dix pixels à sa droite, et les définitions
+                   sortaient de l'écran, coupées en plein mot. Elle demande
+                   maintenant 240 px pour elle seule — et la grille se borne à
+                   ce qui reste. */
                 .mc-listes {
-                    display: none; flex: 1 1 260px; max-width: 340px; min-width: 0;
+                    display: none; flex: 0 0 240px; min-width: 0;
                     max-height: 100%; overflow-y: auto; font-size: .82rem; line-height: 1.35;
+                    overflow-wrap: anywhere;
                 }
                 .mc-listes h5 { margin: 4px 0 2px; font-size: .8rem; color: var(--primary); }
                 .mc-def { cursor: pointer; padding: 1px 3px; border-radius: 4px; }
                 .mc-def:hover { background: var(--bg-hover); }
                 .mc-def--faite { color: var(--text-muted); text-decoration: line-through; }
                 .mc-def--vue { background: color-mix(in srgb, var(--warning, #f59e0b) 22%, transparent); }
-                @container (min-width: 700px) { .mc-listes { display: block; } }
+                @container (min-width: 980px) {
+                    .mc-listes { display: block; }
+                    .mc-wrap { --mc-place: calc(100cqw - 300px); }
+                }
 
                 /* LE PAVÉ DE LETTRES : 26 touches, six rangées sur téléphone,
                    deux sur un écran large. C'est un clavier de jeu, pas un
@@ -221,8 +259,12 @@ class MotsCroises extends BaseGame {
         const g = this.grille;
         // La case se borne à la largeur ET à la hauteur disponibles : une
         // grille de 21 colonnes tient encore, en petit.
-        this.wrapEl.style.setProperty('--mc-cote',
-            `clamp(15px, min(${(94 / g.largeur).toFixed(2)}cqw, ${(64 / g.hauteur).toFixed(2)}cqh), 42px)`);
+        // LA CASE PREND CE QU'IL RESTE — et « ce qu'il reste » dépend de la
+        // présence de la liste des définitions, que seule une requête de
+        // conteneur connaît. On ne pose donc ici que les DIMENSIONS de la
+        // grille ; la place disponible, elle, est décidée en CSS (--mc-place).
+        this.wrapEl.style.setProperty('--mc-cols', g.largeur);
+        this.wrapEl.style.setProperty('--mc-rows', g.hauteur);
         this.grilleEl.style.gridTemplateColumns = `repeat(${g.largeur}, var(--mc-cote))`;
 
         const dansVise = new Set(this.vise ? this.casesDe(this.vise).map(c => `${c.x},${c.y}`) : []);

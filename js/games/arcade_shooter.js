@@ -35,12 +35,16 @@ class ArcadeShooter extends BaseGame {
                     touch-action: none; cursor: crosshair;
                     user-select: none; -webkit-user-select: none;
                 }
+                /* LA MÉTÉORITE AUSSI SE MESURE SUR L'ARÈNE. Elle valait
+                   soixante pixels partout — sur une tablette, des cailloux de
+                   la taille d'une pièce dans un ciel de mille pixels. */
                 .meteor {
-                    position: absolute; width: ${METEOR_SIZE}px; height: ${METEOR_SIZE}px;
+                    position: absolute; width: var(--meteore, ${METEOR_SIZE}px);
+                    height: var(--meteore, ${METEOR_SIZE}px);
                     background: radial-gradient(circle at 30% 30%, #94a3b8, #475569);
                     border-radius: 50%;
                     display: flex; align-items: center; justify-content: center;
-                    font-weight: bold; font-size: 1.2rem;
+                    font-weight: bold; font-size: calc(var(--meteore, ${METEOR_SIZE}px) * .34);
                     box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5), 0 0 10px rgba(0,0,0,0.5);
                     pointer-events: none;
                 }
@@ -179,6 +183,9 @@ class ArcadeShooter extends BaseGame {
         this.unbindControls();
     }
 
+    /** La taille d'une météorite : celle calculée pour cette arène-ci. */
+    mSize() { return this.meteorSize || METEOR_SIZE; }
+
     centrer() {
         const larg = this.arena.offsetWidth || 600, haut = this.arena.offsetHeight || 400;
         this.shipX = larg / 2;
@@ -186,10 +193,19 @@ class ArcadeShooter extends BaseGame {
         // Un cinquième du plus petit côté pour le vaisseau, un tiers pour la
         // zone de tir : les mêmes proportions qu'on avait sur un grand écran.
         const petit = Math.min(larg, haut);
-        this.shipSize = Math.max(34, Math.min(SHIP_SIZE, petit * 0.16));
-        this.zoneTir = Math.max(46, Math.min(ZONE_TIR, petit * 0.21));
+        // ET LES PLAFONDS SUIVENT L'ARÈNE. Rémy, tablette en main : « sur
+        // tablette les météorites mathématiques n'utilisent pas tout l'écran ».
+        // L'arène, elle, la remplissait déjà : c'est ce qui VOLE dedans qui
+        // restait à la taille d'un téléphone — un vaisseau de 64 px et des
+        // cailloux de 60 dans un ciel de 780 sur 1100. Les proportions valent
+        // maintenant jusqu'en haut, avec un plafond qui n'est plus celui du
+        // petit écran.
+        this.shipSize = Math.max(34, Math.min(petit * 0.16, 128));
+        this.zoneTir = Math.max(46, Math.min(petit * 0.21, 190));
+        this.meteorSize = Math.max(40, Math.min(petit * 0.115, 104));
         this.arena.style.setProperty('--ship', `${Math.round(this.shipSize)}px`);
         this.arena.style.setProperty('--zone', `${Math.round(this.zoneTir)}px`);
+        this.arena.style.setProperty('--meteore', `${Math.round(this.meteorSize)}px`);
         this.spaceship.style.left = this.shipX + 'px';
         this.spaceship.style.top = this.shipY + 'px';
         this.shipZone.style.left = this.shipX + 'px';
@@ -316,8 +332,8 @@ class ArcadeShooter extends BaseGame {
         this.meteors.forEach(m => {
             if (m.destroyed) return;
             m.dist -= m.vitesse;
-            m.x = this.shipX + Math.cos(m.cap) * m.dist - METEOR_SIZE / 2;
-            m.y = this.shipY + Math.sin(m.cap) * m.dist - METEOR_SIZE / 2;
+            m.x = this.shipX + Math.cos(m.cap) * m.dist - this.mSize() / 2;
+            m.y = this.shipY + Math.sin(m.cap) * m.dist - this.mSize() / 2;
             m.el.style.left = m.x + 'px';
             m.el.style.top = m.y + 'px';
         });
@@ -334,8 +350,8 @@ class ArcadeShooter extends BaseGame {
             if (l.destroyed) continue;
             for (const m of this.meteors) {
                 if (m.destroyed) continue;
-                const mx = m.x + METEOR_SIZE / 2, my = m.y + METEOR_SIZE / 2;
-                if (Math.hypot(mx - l.x, my - l.y) < METEOR_SIZE / 2 + 6) {
+                const mx = m.x + this.mSize() / 2, my = m.y + this.mSize() / 2;
+                if (Math.hypot(mx - l.x, my - l.y) < this.mSize() / 2 + 6) {
                     l.destroyed = true;
                     l.el.remove();
                     this.hitMeteor(m);
@@ -350,7 +366,7 @@ class ArcadeShooter extends BaseGame {
         if (this.roundOver) return;
         for (const m of this.meteors) {
             if (m.destroyed) continue;
-            if (m.dist > (METEOR_SIZE + (this.shipSize || SHIP_SIZE)) / 2 - 8) continue;
+            if (m.dist > (this.mSize() + (this.shipSize || SHIP_SIZE)) / 2 - 8) continue;
 
             m.destroyed = true;
             if (m.isCorrect) {
@@ -378,7 +394,7 @@ class ArcadeShooter extends BaseGame {
             }
         } else {
             this.wrongDestroyed++;
-            this.addFloat(m.x + METEOR_SIZE / 2, m.y, '+5', '#f59e0b');
+            this.addFloat(m.x + this.mSize() / 2, m.y, '+5', '#f59e0b');
             this.setScore(this.score + 5);
         }
     }
@@ -476,7 +492,7 @@ class ArcadeShooter extends BaseGame {
 
         const answers = multDistractors(this.currentT, this.currentAns, this.leurres);
         const w = this.arena.offsetWidth, h = this.arena.offsetHeight;
-        const rayonDepart = Math.hypot(w, h) / 2 + METEOR_SIZE;
+        const rayonDepart = Math.hypot(w, h) / 2 + this.mSize();
 
         // Caps répartis autour du cercle, puis mélangés d'un décalage commun :
         // les météorites arrivent de partout, jamais en paquet.
@@ -509,8 +525,8 @@ class ArcadeShooter extends BaseGame {
      */
     meteoriteVisible(m) {
         const w = this.arena.offsetWidth, h = this.arena.offsetHeight;
-        const cx = m.x + METEOR_SIZE / 2, cy = m.y + METEOR_SIZE / 2;
-        const marge = METEOR_SIZE * 0.6;
+        const cx = m.x + this.mSize() / 2, cy = m.y + this.mSize() / 2;
+        const marge = this.mSize() * 0.6;
         return cx > marge && cx < w - marge && cy > marge && cy < h - marge;
     }
 
@@ -577,8 +593,8 @@ class ArcadeShooter extends BaseGame {
 
             // Le vaisseau tourne doucement vers la mauvaise réponse visée.
             const cible = Math.atan2(
-                (mauvaise.y + METEOR_SIZE / 2) - this.shipY,
-                (mauvaise.x + METEOR_SIZE / 2) - this.shipX);
+                (mauvaise.y + this.mSize() / 2) - this.shipY,
+                (mauvaise.x + this.mSize() / 2) - this.shipX);
             let delta = cible - this.angle;
             while (delta > Math.PI) delta -= 2 * Math.PI;
             while (delta < -Math.PI) delta += 2 * Math.PI;

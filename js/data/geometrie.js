@@ -321,7 +321,7 @@ export const geometrieExercises = [
         instruction: "L'atelier libre : toute la palette, aucune figure imposée, rien à valider. Programme le chat et regarde ce qu'il dessine."
     },
     {
-        id: 'geo-galactic', status: STATUS.TEST, title: 'Galactic : Tir aux Angles',
+        id: 'geo-galactic', title: 'Galactic : Tir aux Angles',
         cree: '2026-08-04',
         activityId: 'galactic', skills: ['geo.angles.mesure'],
         params: { startLevel: 1, lives: 3 },
@@ -337,7 +337,7 @@ export const geometrieExercises = [
         // quand la voiture descend, sa gauche est à DROITE de l'écran. Un plan
         // qui pivoterait avec le véhicule — comme un GPS — supprimerait
         // l'exercice au lieu de l'aider.
-        id: 'geo-ville', status: STATUS.TEST, title: 'Le Plan de Ville',
+        id: 'geo-ville', title: 'Le Plan de Ville',
         cree: '2026-08-11',
         activityId: 'ville', skills: ['geo.espace.deplacement', 'geo.espace.orientation'],
         params: { taille: 'moyen', capNord: false },
@@ -368,7 +368,7 @@ export const geometrieExercises = [
         // facile, les relier de façon que tous les autres puissent encore
         // passer ne l'est pas. La grille est tirée d'un chemin qui couvre
         // déjà toute la surface : elle est donc résoluble par construction.
-        id: 'geo-relier-points', status: STATUS.TEST, title: 'Relie les points',
+        id: 'geo-relier-points', title: 'Relie les points',
         cree: '2026-08-14',
         activityId: 'relier',
         // La même grille sert à l'écran et sur le papier : le générateur la
@@ -409,8 +409,7 @@ export const geometrieExercises = [
         // donne le geste qui manque sur le papier — toucher ce qu'on compte —
         // et la correction montre CE QU'ON A OUBLIÉ plutôt que d'annoncer un
         // nombre.
-        id: 'geo-solides-denombrer', status: STATUS.TEST,
-        cree: '2026-08-13',
+        id: 'geo-solides-denombrer', cree: '2026-08-13',
         revisions: [{
             date: '2026-08-19',
             quoi: 'Les aides s\'effacent en deux temps : le numéro sur la marque après trois '
@@ -524,7 +523,7 @@ export const geometrieExercises = [
         // deux cases — creusé dans un cœur, une étoile, un rond. Se déplacer
         // dans un plan sans le voir d'en haut, c'est la compétence ; la forme,
         // elle, est là pour qu'on ait envie de la traverser.
-        id: 'geo-dedale-forme', status: STATUS.TEST, title: 'Les Dédales',
+        id: 'geo-dedale-forme', title: 'Les Dédales',
         cree: '2026-08-14',
         activityId: 'dedale',
         // SUR LE PAPIER : le dédale imprimé, à parcourir au crayon. C'est
@@ -585,7 +584,7 @@ export const geometrieExercises = [
         // Chaque position est passée au solveur par les tests : une solution,
         // et une seule. Un problème à deux solutions donnerait tort à l'élève
         // qui trouve l'autre.
-        id: 'geo-mat-echecs', status: STATUS.TEST, title: 'Échecs : mat en un, mat en deux',
+        id: 'geo-mat-echecs', title: 'Échecs : mat en un, mat en deux',
         cree: '2026-08-14',
         // C'EST LE JEU D'ÉCHECS LUI-MÊME, en mode exercice. Un second écran
         // aurait redemandé à l'élève d'apprendre un damier, des pièces et des

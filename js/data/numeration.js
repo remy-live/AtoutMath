@@ -246,7 +246,7 @@ export const numerationExercises = [
         // ennemi porte 23, la cible est 100, on charge 77 au pavé, on touche
         // le boulet, et le nôtre part à sa rencontre. Somme juste : explosion.
         // Fausse : l'ennemi continue sa route. Le calcul précède le geste.
-        id: 'num-canon-complements', status: STATUS.TEST, title: 'Le Canon des Compléments',
+        id: 'num-canon-complements', title: 'Le Canon des Compléments',
         cree: '2026-08-12',
         activityId: 'canon',
         sansRevision: true,
@@ -422,7 +422,7 @@ export const numerationExercises = [
         // les deux lectures sont vraies et donnent le même nombre, mais c'est
         // la première que l'élève entend en classe, et l'exercice ne doit pas
         // dire le contraire du professeur.
-        id: 'num-virgule', status: STATUS.TEST, title: 'La Virgule qui se décale',
+        id: 'num-virgule', title: 'La Virgule qui se décale',
         cree: '2026-08-11',
         activityId: 'virgule',
         // Sur le papier, le glissement dans le tableau de numération n'a pas

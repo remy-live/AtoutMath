@@ -54,7 +54,7 @@ export const mesuresExercises = [
         // erreur : l'ordre des unit\u00e9s, le rang du nombre, la place de la
         // virgule. Les m\u00e9langer, c'est ne jamais savoir laquelle a co\u00fbt\u00e9 la
         // r\u00e9ponse.
-        id: 'mes-conversion', status: STATUS.TEST, title: 'Le Tableau de Conversion',
+        id: 'mes-conversion', title: 'Le Tableau de Conversion',
         cree: '2026-08-14',
         activityId: 'conversion',
         // SUR LE PAPIER : le tableau des cahiers, une ligne par conversion.
@@ -118,7 +118,7 @@ export const mesuresExercises = [
         // JEZZBALL. Le casse-brique territorial : des balles rebondissent, on
         // coupe le terrain, toute région fermée sans balle est conquise. Le
         // score EST un pourcentage d'aire, et c'est ce qu'il enseigne.
-        id: 'mes-jezzball', status: STATUS.TEST, title: 'JezzBall',
+        id: 'mes-jezzball', title: 'JezzBall',
         cree: '2026-08-12',
         activityId: 'jezzball',
         sansRevision: true,

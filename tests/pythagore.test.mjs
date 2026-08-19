@@ -124,7 +124,10 @@ test('la rédaction complète a ses trois lignes, et aucun trou', () => {
             assert.equal(lignes.length, 3);
             // Rémy : « la rédaction doit être toujours la même ».
             assert.match(lignes[0], /^Je sais que : /);
-            assert.match(lignes[1], /^Or : d'après le théorème de Pythagore, si un triangle est rectangle/);
+            // Rémy : « enlève "si un triangle est rectangle…", écris juste
+            // : Or : d'après le théorème de Pythagore ». Le « Je sais que »
+            // a déjà posé que le triangle est rectangle.
+            assert.equal(lignes[1], 'Or : d\'après le théorème de Pythagore');
             assert.match(lignes[2], /^Donc : /);
             assert.ok(!lignes.join(' ').includes('undefined'));
             assert.match(lignes[2], / cm\.$/, 'la réponse finale porte son unité');

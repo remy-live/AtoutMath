@@ -86,8 +86,13 @@
    d'un côté à l'autre. La coupure est confiée à `balance` (des lignes de
    longueur voisine, pas une longue et une orpheline) et le nombre lui-même ne
    se coupe jamais. */
+/* LA QUESTION GRANDIT AVEC LE PLATEAU. En `vw` plafonné à 2,2 rem, elle
+   faisait 35 px aussi bien sur un téléphone que sur un écran de 27 pouces :
+   c'est la seule chose que l'élève doit lire, et c'était la plus petite. Les
+   unités de conteneur la rapportent au plateau, et la borne en hauteur évite
+   qu'un énoncé de trois lignes ne mange l'écran sur un plateau bas. */
 .game-question {
-    font-size: clamp(1.3rem, 5.4vw, 2.2rem); font-weight: 800;
+    font-size: clamp(1.3rem, min(6.8cqw, 9cqh, 5.4vw + 14px), 3.6rem); font-weight: 800;
     margin-bottom: clamp(16px, 4vh, 40px); text-align: center;
     color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05);
     text-wrap: balance; line-height: 1.25; max-width: 26ch; margin-inline: auto;
@@ -110,11 +115,23 @@
    n'existe pas. La bulle se dimensionne donc sur la place disponible DIVISÉE
    PAR LE NOMBRE de propositions, que choice.js passe en `--n`. Sur un grand
    écran le calcul dépasse 110 px et la bulle garde sa taille d'origine. */
+/* ET ELLES PRENNENT LA PLACE QU'ON LEUR DONNE.
+   Rémy, tablette en main : « je trouve que tu ne profites pas de l'espace de
+   l'écran, c'est souvent trop petit ». Le plafond était à 110 px — la taille
+   d'une bulle sur un téléphone — et il ne bougeait plus au-delà : sur un iPad
+   de 820 px de large, deux bulles de 110 px flottaient au milieu de mille
+   pixels de vide. Le plafond monte à 220, et une deuxième borne en HAUTEUR
+   (34cqh) empêche deux bulles sur un écran très large de devenir des ballons.
+   Le cadre de simulation du téléphone, lui, garde ses 110 px : c'est un
+   téléphone qu'on y regarde. */
 .bubble-container {
-    --n: 4; --ecart: clamp(8px, 2.4cqw, 25px);
-    --bulle: min(110px, calc((100cqw - 30px - (var(--n) - 1) * var(--ecart)) / var(--n)));
+    --n: 4; --ecart: clamp(8px, 2.4cqw, 28px);
+    --bulle: min(220px, 34cqh, calc((100cqw - 30px - (var(--n) - 1) * var(--ecart)) / var(--n)));
     display: flex; gap: var(--ecart); flex-wrap: wrap; justify-content: center;
-    width: 100%; max-width: 600px;
+    width: 100%; max-width: min(96cqw, 900px);
+}
+.device-simulator .bubble-container, .tablet-simulator .bubble-container {
+    --bulle: min(110px, calc((100cqw - 30px - (var(--n) - 1) * var(--ecart)) / var(--n)));
 }
 .bubble { width: var(--bulle); height: var(--bulle); flex: 0 0 auto;
     font-size: min(2.2rem, calc(var(--bulle) * .4)); border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }

@@ -64,7 +64,7 @@ export const fractionsExercises = [
         // découpage commun. L'élève ne calcule pas une fraction équivalente sur
         // une feuille : il compte des parts, et le nombre trouvé EST le
         // numérateur.
-        id: 'frac-pizza', status: STATUS.TEST, title: 'La Pizzeria des Fractions',
+        id: 'frac-pizza', title: 'La Pizzeria des Fractions',
         cree: '2026-08-11',
         activityId: 'pizza',
         // Sur le papier, la fraction se CONVERTIT avant de se colorier : « la
