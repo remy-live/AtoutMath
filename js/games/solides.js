@@ -29,6 +29,12 @@ import {
 } from '../core/solides.js';
 
 const COMPETENCE = 'geo.espace.denombrer';
+
+// LES DEUX MARCHES DE L'ESCALIER, en nombre de RÉUSSITES.
+// Trois questions suffisent à installer « une par une, sans repasser » ; trois
+// de plus à s'en passer du numéro. Au-delà, on compte comme sur une feuille.
+const NUMEROS_JUSQU_A = 3;
+const MARQUES_JUSQU_A = 6;
 const COTE = 100;                 // le repère du dessin ; l'écran s'y adapte
 
 class Solides extends BaseGame {
@@ -47,6 +53,14 @@ class Solides extends BaseGame {
         // installée — marquer une par une, ne pas repasser — la marque suffit,
         // et le comptage redevient un comptage.
         this.numeros = this.params.numeros || 'progressif';
+        // LA MARQUE AUSSI EST UNE BÉQUILLE. Rémy : « après, il faut aussi
+        // compter mais sans l'aide des bulles ». Marquer une par une installe
+        // la méthode — n'oublier personne, ne compter personne deux fois —
+        // mais tant qu'on marque, on ne compte pas vraiment : on met un jeton,
+        // et la machine additionne. Sur le papier, il n'y aura ni jeton ni
+        // compteur. L'escalier a donc trois marches : la marque numérotée,
+        // puis la marque nue, puis rien du tout.
+        this.marquage = this.params.marques || 'progressif';
         // Les faces comptées se colorent : sur un solide, une pastille au
         // centre d'une face se confond avec un sommet, alors qu'une face
         // teintée se voit d'un coup d'œil — et l'on voit ce qui reste.
@@ -57,7 +71,14 @@ class Solides extends BaseGame {
     get avecNumeros() {
         if (this.numeros === 'toujours') return true;
         if (this.numeros === 'jamais') return false;
-        return this.reussis < 3;
+        return this.reussis < NUMEROS_JUSQU_A;
+    }
+
+    /** Peut-on encore marquer, ou compte-t-on des yeux ? */
+    get avecMarques() {
+        if (this.marquage === 'toujours') return true;
+        if (this.marquage === 'jamais') return false;
+        return this.reussis < MARQUES_JUSQU_A;
     }
 
     render() {
@@ -203,9 +224,17 @@ class Solides extends BaseGame {
         this.fini = false;
         const label = ASPECTS.find(a => a.id === this.q.aspect).label;
         this.questionEl.textContent = this.q.question;
-        this.consigneEl.innerHTML = `Touche les ${label} une par une pour les marquer — `
-            + '<b>les traits en pointillés sont derrière</b>, ils comptent aussi. '
-            + 'Puis écris ton total.';
+        this.consigneEl.innerHTML = this.avecMarques
+            ? `Touche les ${label} une par une pour les marquer — `
+                + '<b>les traits en pointillés sont derrière</b>, ils comptent aussi. '
+                + 'Puis écris ton total.'
+            : `Cette fois, compte <b>des yeux</b> : plus de marques, comme sur une feuille. `
+                + `<b>Les traits en pointillés sont derrière</b>, ils comptent aussi.`;
+        // Un bouton qui n'efface rien et un compteur qui reste à zéro ne
+        // disent que le manque : ils s'en vont avec les marques.
+        const outils = this.avecMarques ? '' : 'none';
+        this.compteurEl.style.display = outils;
+        this.container.querySelector('[data-effacer]').style.display = outils;
         this.dessinerSolide();
         this.majCompteur();
         this.majEcran();
@@ -313,6 +342,12 @@ class Solides extends BaseGame {
      */
     basculer(k) {
         if (this.isDemo || this.fini) return;
+        if (!this.avecMarques) {
+            // Le doigt sur le solide n'est pas une faute : on rappelle
+            // seulement la règle du moment, sans compter d'erreur.
+            this.note('Plus de marques à ce stade — compte des yeux, puis écris ton total.');
+            return;
+        }
         if (this.marques.has(k)) this.marques.delete(k); else this.marques.add(k);
         this.peindreMarques();
         this.majCompteur();
@@ -387,10 +422,13 @@ class Solides extends BaseGame {
         const combien = this.marques.size;
         const label = ASPECTS.find(a => a.id === this.q.aspect).label;
         const piste = donne < attendu
-            ? (combien === donne
-                ? `Tu en as marqué ${combien} : il en reste. Celles qui clignotent, tu ne les as `
-                    + 'pas prises — regarde les pointillés, ils sont derrière.'
-                : 'Il en manque : celles qui clignotent n\'ont pas été marquées.')
+            ? (!this.avecMarques
+                ? 'Il en manque : celles qui clignotent, tu ne les as pas comptées — regarde '
+                    + 'les pointillés, ils sont derrière.'
+                : combien === donne
+                    ? `Tu en as marqué ${combien} : il en reste. Celles qui clignotent, tu ne les as `
+                        + 'pas prises — regarde les pointillés, ils sont derrière.'
+                    : 'Il en manque : celles qui clignotent n\'ont pas été marquées.')
             : `Il y en a moins que ça : tu as peut-être compté deux fois les mêmes ${label}.`;
         this.note(`❌ Ce n'est pas ${donne}. ${piste}`, 'ko');
         this.saisie = '';
@@ -409,7 +447,17 @@ class Solides extends BaseGame {
     montrerOublis() {
         const total = compter(this.q.solide, this.q.aspect);
         const manquants = [];
-        for (let i = 0; i < total; i++) if (!this.marques.has(i)) manquants.push(i);
+        if (this.avecMarques) {
+            for (let i = 0; i < total; i++) if (!this.marques.has(i)) manquants.push(i);
+        } else {
+            // SANS MARQUES, TOUT SERAIT « OUBLIÉ » : faire clignoter le solide
+            // entier n'apprendrait rien. Ce qu'on oublie vraiment quand on
+            // compte des yeux, c'est ce qui est DERRIÈRE — et c'est cela qu'on
+            // montre.
+            const derriere = this.q.aspect === 'aretes' ? this.cacheesA
+                : this.q.aspect === 'sommets' ? this.cachesS : this.vues.map(v => !v);
+            for (let i = 0; i < total; i++) if (derriere[i]) manquants.push(i);
+        }
         manquants.forEach(i => {
             const el = this.q.aspect === 'aretes'
                 ? this.svg.querySelector(`[data-arete="${i}"]`)
@@ -432,8 +480,9 @@ class Solides extends BaseGame {
         const label = ASPECTS.find(a => a.id === this.q.aspect).label;
         // ON DIT LA MÉTHODE, PAS LE NOMBRE.
         this.note(`Ce solide a des ${label} que tu ne vois pas : il y en a ${caches} `
-            + `derrière — en pointillés, ou de l'autre côté. Marque d'abord tout ce que tu `
-            + `vois, puis va chercher celles-là. ${s.famille === 'prisme'
+            + `derrière — en pointillés, ou de l'autre côté. ${this.avecMarques
+                ? 'Marque d\'abord tout ce que tu vois, puis va chercher celles-là.'
+                : 'Compte d\'abord tout ce que tu vois, puis ajoute celles-là.'} ${s.famille === 'prisme'
                 ? 'Souviens-toi qu\'un prisme a DEUX bases identiques.'
                 : (s.famille === 'pyramide'
                     ? 'Souviens-toi que tout monte vers UN seul sommet.'

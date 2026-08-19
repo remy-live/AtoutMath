@@ -411,13 +411,19 @@ export const geometrieExercises = [
         // nombre.
         id: 'geo-solides-denombrer', status: STATUS.TEST,
         cree: '2026-08-13',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Les aides s\'effacent en deux temps : le numéro sur la marque après trois '
+                + 'réussites, puis la marque elle-même après six — on compte alors des yeux, '
+                + 'comme sur une feuille.'
+        }],
         title: 'Compter sur un solide',
         activityId: 'solides',
         // Sur le papier, on compte au crayon et l'on écrit trois nombres dans
         // un tableau : c'est l'exercice que l'écran ne sait pas donner, où le
         // compte s'efface avec la marque.
         generatorId: 'geo.solides', printable: 'solides',
-        params: { niveau: 'tous', aspect: 'tous', numeros: 'progressif', facesColorees: true },
+        params: { niveau: 'tous', aspect: 'tous', numeros: 'progressif', marques: 'progressif', facesColorees: true },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Les solides proposés',
@@ -447,6 +453,16 @@ export const geometrieExercises = [
                     { value: 'progressif', label: 'Il disparaît après 3 réussites' },
                     { value: 'toujours', label: 'Toujours affiché' },
                     { value: 'jamais', label: 'Jamais affiché' }
+                ],
+                default: 'progressif'
+            },
+            {
+                id: 'marques', type: 'select', label: 'Marquer ce qu\'on compte',
+                aide: 'Marquer une par une installe la méthode — n\'oublier personne, ne compter personne deux fois. Mais tant qu\'on marque, la machine additionne à notre place ; sur le papier, il n\'y aura ni marque ni compteur. Par défaut, les marques disparaissent après six réussites, et l\'on compte des yeux.',
+                options: [
+                    { value: 'progressif', label: 'Elles disparaissent après 6 réussites' },
+                    { value: 'toujours', label: 'Toujours possibles' },
+                    { value: 'jamais', label: 'Jamais — on compte des yeux' }
                 ],
                 default: 'progressif'
             },
