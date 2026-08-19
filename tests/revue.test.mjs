@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
     nbVus, filtrer, bilan, consigneStatuts, lireStatuts, lireRevue,
-    fusionnerRevues, versMarkdown, jourISO, trier, dernierJour
+    fusionnerRevues, versMarkdown, jourISO, trier, dernierJour, direTri, estTriable
 } from '../js/core/revue.js';
 import { STATUS } from '../js/data/status.js';
 import { exercices } from '../js/data/catalog.js';
@@ -85,6 +85,20 @@ test('une colonne se décoche', () => {
     assert.equal(ficheDe(r, 'a'), null);
 });
 
+test('une date posée seule tient — c\'est ce que fait le cochet du calendrier', () => {
+    const r = decider(nouvelleRevue(), 'a', { date: '2026-08-19' });
+    assert.equal(ficheDe(r, 'a').date, '2026-08-19');
+    assert.equal(ficheDe(r, 'a').enTest, null, 'dater n\'est pas décider');
+    // Et elle survit à l'aller-retour par le stockage.
+    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').date, '2026-08-19');
+});
+
+test('effacer la date d\'une ligne qui ne dit rien d\'autre la retire', () => {
+    let r = decider(nouvelleRevue(), 'a', { date: '2026-08-19' });
+    r = decider(r, 'a', { date: '' });
+    assert.equal(ficheDe(r, 'a'), null);
+});
+
 test('une colonne inconnue ne rentre pas dans le carnet', () => {
     const r = marquerVu(nouvelleRevue(), 'a', 'montre');
     assert.equal(r.fiches.length, 0);
@@ -154,11 +168,15 @@ test('la dernière date d\'un exercice tient compte de ses révisions', () => {
 });
 
 test('« les derniers créés » remonte ce qui vient d\'être écrit', () => {
-    assert.deepEqual(trier(dates, 'recent').map(e => e.id), ['neuf', 'repris', 'vieux']);
+    assert.deepEqual(trier(dates, '-cree').map(e => e.id), ['neuf', 'repris', 'vieux']);
 });
 
 test('« les derniers touchés » remonte aussi ce qui vient d\'être repris', () => {
-    assert.deepEqual(trier(dates, 'touche').map(e => e.id), ['repris', 'neuf', 'vieux']);
+    assert.deepEqual(trier(dates, '-ecrit').map(e => e.id), ['repris', 'neuf', 'vieux']);
+});
+
+test('le signe moins renverse l\'ordre', () => {
+    assert.deepEqual(trier(dates, 'cree').map(e => e.id), ['vieux', 'repris', 'neuf']);
 });
 
 test('le tri par titre suit l\'alphabet, l\'ordre du catalogue ne bouge pas', () => {
@@ -168,24 +186,77 @@ test('le tri par titre suit l\'alphabet, l\'ordre du catalogue ne bouge pas', ()
 
 test('le tri ne modifie pas la liste qu\'on lui donne', () => {
     const avant = dates.map(e => e.id);
-    trier(dates, 'recent');
+    trier(dates, '-cree');
     assert.deepEqual(dates.map(e => e.id), avant);
 });
 
 test('filtrer trie ce qu\'il a gardé', () => {
-    assert.deepEqual(filtrer(dates, nouvelleRevue(), { tri: 'recent' }).map(e => e.id),
+    assert.deepEqual(filtrer(dates, nouvelleRevue(), { tri: '-cree' }).map(e => e.id),
         ['neuf', 'repris', 'vieux']);
 });
 
-test('quatre ordres proposés, celui du catalogue en premier', () => {
+test('quatre ordres proposés au menu, celui du catalogue en premier', () => {
     assert.equal(TRIS[0].id, 'catalogue');
     assert.equal(TRIS.length, 4);
 });
 
 test('les six derniers exercices du vrai catalogue sont bien les plus récents', () => {
-    const derniers = filtrer(exercices, nouvelleRevue(), { tri: 'recent' }).slice(0, 6);
+    const derniers = filtrer(exercices, nouvelleRevue(), { tri: '-cree' }).slice(0, 6);
     const plusVieux = derniers[5].cree;
     assert.ok(exercices.every(e => (e.cree || '') <= plusVieux || derniers.includes(e)));
+});
+
+// --- Trier en cliquant une colonne ------------------------------------------
+
+test('trier par statut remonte ce qui est encore en test', () => {
+    const r = decider(nouvelleRevue(), 'num-un', { enTest: false });
+    // num-trois reste en test ; num-un vient d'être validé, geo-deux l'était déjà.
+    assert.equal(trier(jeuDeux, 'statut', r)[0].id, 'num-trois');
+});
+
+test('trier par une colonne d\'aperçu remonte ce qui est coché', () => {
+    const r = marquerVu(nouvelleRevue(), 'num-trois', 'robot');
+    assert.equal(trier(jeuDeux, 'vu:robot', r)[0].id, 'num-trois');
+    assert.equal(trier(jeuDeux, '-vu:robot', r).at(-1).id, 'num-trois');
+});
+
+test('trier par remarque remonte les lignes annotées', () => {
+    const r = decider(nouvelleRevue(), 'geo-deux', { remarque: 'à revoir' });
+    assert.equal(trier(jeuDeux, 'remarque', r)[0].id, 'geo-deux');
+});
+
+test('trier par date de décision', () => {
+    let r = decider(nouvelleRevue(), 'num-un', { enTest: false, date: '2026-01-01' });
+    r = decider(r, 'geo-deux', { enTest: false, date: '2026-09-09' });
+    assert.equal(trier(jeuDeux, '-decide', r)[0].id, 'geo-deux');
+});
+
+test('une colonne sans décision se trie quand même, sans carnet', () => {
+    assert.doesNotThrow(() => trier(jeuDeux, 'vu:fiche'));
+    assert.equal(trier(jeuDeux, 'vu:fiche').length, jeuDeux.length);
+});
+
+test('à égalité, c\'est le titre qui départage — l\'ordre ne bouge plus', () => {
+    const memes = [exo('c', { title: 'Cc' }), exo('a', { title: 'Aa' }), exo('b', { title: 'Bb' })];
+    assert.deepEqual(trier(memes, 'statut').map(e => e.id), ['a', 'b', 'c']);
+    assert.deepEqual(trier(memes, '-statut').map(e => e.id), ['a', 'b', 'c']);
+});
+
+test('un tri inventé laisse la liste telle quelle', () => {
+    assert.deepEqual(trier(jeuDeux, 'couleur').map(e => e.id), jeuDeux.map(e => e.id));
+});
+
+test('les colonnes triables sont connues, les autres non', () => {
+    assert.ok(estTriable('titre') && estTriable('-ecrit') && estTriable('vu:robot'));
+    assert.ok(estTriable('catalogue'));
+    assert.ok(!estTriable('couleur'));
+});
+
+test('un tri venu d\'une colonne sait dire son nom et son sens', () => {
+    assert.equal(direTri('-ecrit'), 'Les derniers touchés');   // celui-là est au menu
+    assert.equal(direTri('vu:robot'), 'Robot ▲');
+    assert.equal(direTri('-vu:telephone'), 'Téléphone ▼');
+    assert.equal(direTri('statut'), 'Statut ▲');
 });
 
 // --- Bilan ------------------------------------------------------------------

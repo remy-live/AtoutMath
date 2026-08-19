@@ -28,7 +28,7 @@ import { exercices } from '../data/catalog.js';
 import { STATUS, STATUS_LABELS } from '../data/status.js';
 import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu,
-    aChange, dernierJour, filtrer, bilan, consigneStatuts, lireRevue,
+    aChange, dernierJour, direTri, filtrer, bilan, consigneStatuts, lireRevue,
     fusionnerRevues, versMarkdown, jourISO
 } from '../core/revue.js';
 
@@ -38,7 +38,7 @@ let revue = null;
 // « comment sait-on que ce sont les derniers jeux » : la réponse doit être en
 // haut du tableau à l'ouverture, pas derrière un menu.
 const CRITERES_VIDES = () => ({
-    texte: '', domaine: '', niveau: '', statut: '', avancee: '', jeux: false, tri: 'touche'
+    texte: '', domaine: '', niveau: '', statut: '', avancee: '', jeux: false, tri: '-ecrit'
 });
 let criteres = CRITERES_VIDES();
 let retour = null;         // ce qu'on est parti regarder, et où le cocher au retour
@@ -81,6 +81,13 @@ const ICONES = {
 };
 
 const icone = (id) => `<svg viewBox="0 0 24 24" class="rv-ico">${ICONES[id] || ''}</svg>`;
+
+// LE COCHET DE VALIDATION. Rémy : « pour le décidé mets juste un check à
+// valider à droite du calendrier et ça enregistre la date du jour ». Ouvrir le
+// sélecteur de dates d'un téléphone, faire défiler trois molettes et valider,
+// cent neuf fois, pour écrire chaque fois la date d'aujourd'hui — le champ
+// reste pour les corrections, mais le geste courant tient en un appui.
+const COCHE = '<svg viewBox="0 0 24 24" class="rv-ico"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
 
 // --- L'écran ----------------------------------------------------------------
 
@@ -137,6 +144,10 @@ function assurerPanneau() {
                 font-size: .68rem; text-transform: uppercase; letter-spacing: .03em;
                 color: var(--text-muted); padding: 6px 6px;
             }
+            .rv-tri { cursor: pointer; user-select: none; }
+            .rv-tri:hover { color: var(--primary); }
+            .rv-tri--actif { color: var(--primary); }
+            .rv-fleche { display: inline-block; min-width: .7em; font-size: .8em; }
             .rv-table th.rv-nom, .rv-table td.rv-nom {
                 position: sticky; left: 0; z-index: 2; text-align: left;
                 border-right: 1px solid var(--border);
@@ -177,6 +188,8 @@ function assurerPanneau() {
             .rv-statut { width: 21px; height: 21px; accent-color: #f59e0b; cursor: pointer; }
             .rv-date { width: 118px; font-size: .74rem; }
             .rv-quand { font-size: .72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+            .rv-jour { color: var(--text-muted); }
+            .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
             .rv-remarque { width: 200px; }
             .rv-table td.rv-libre { white-space: normal; }
             .rv-vide { padding: 24px; text-align: center; color: var(--text-muted); }
@@ -184,6 +197,14 @@ function assurerPanneau() {
             .rv-etiq--test { background: #fef3c7; color: #92400e; }
             .rv-etiq--valide { background: #dcfce7; color: #166534; }
             .rv-etiq--brouillon { background: #e2e8f0; color: #475569; }
+            /* Figé pendant un aperçu : le tableau reste VISIBLE autour du cadre
+               du téléphone — c'est tout l'intérêt — mais il ne reçoit plus les
+               clics, et il s'assombrit pour dire lequel des deux commande. */
+            .rv--fige .rv-cadre, .rv--fige .rv-filtres, .rv--fige .rv-tete { pointer-events: none; }
+            .rv--fige::after {
+                content: ''; position: fixed; inset: 0; z-index: 9000;
+                background: rgba(15, 23, 42, .55);
+            }
             .rv-coller {
                 position: absolute; inset: 6% 5%; z-index: 10; overflow: auto;
                 background: var(--bg-panel); border: 1px solid var(--border);
@@ -275,8 +296,13 @@ function peindreFiltres(el) {
         Object.values(STATUS).map(s => [s, STATUS_LABELS[s]]), criteres.statut, 'Tous les statuts')}</select>
         <select class="rv-champ" data-f="avancee">${AVANCEES.map(([v, t]) =>
         `<option value="${v}"${v === criteres.avancee ? ' selected' : ''}>${t}</option>`).join('')}</select>
-        <select class="rv-champ" data-f="tri" title="Dans quel ordre ranger les lignes">${TRIS.map(t =>
-        `<option value="${t.id}"${t.id === criteres.tri ? ' selected' : ''}>${echapper(t.label)}</option>`).join('')}</select>
+        <select class="rv-champ" data-f="tri" title="Dans quel ordre ranger les lignes">${
+        // Un tri choisi en cliquant une colonne n'est dans aucune des quatre
+        // entrées du menu : on l'y ajoute, sinon le menu affiche « ordre du
+        // catalogue » pendant que le tableau est trié par autre chose.
+        (TRIS.some(t => t.id === criteres.tri) ? TRIS : [...TRIS, { id: criteres.tri, label: direTri(criteres.tri) }])
+            .map(t => `<option value="${echapper(t.id)}"${t.id === criteres.tri ? ' selected' : ''}>${echapper(t.label)}</option>`).join('')
+}</select>
         <label class="rv-champ" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" class="rv-coche" data-f="jeux"${criteres.jeux ? ' checked' : ''}> Les jeux
         </label>
@@ -307,6 +333,22 @@ function majCompteur(el) {
 
 // --- La table ---------------------------------------------------------------
 
+/**
+ * UNE EN-TÊTE QUI TRIE. Premier clic : ordre croissant ; deuxième : décroissant.
+ * La flèche ne s'affiche que sur la colonne active — trois flèches grises sur
+ * onze colonnes ne disent plus laquelle commande.
+ *
+ * Le même clic sur la colonne déjà descendante rend l'ordre du catalogue : il
+ * faut pouvoir revenir, et personne n'ira le rechercher dans le menu.
+ */
+function tete(cle, contenu, classe, aide) {
+    const actif = criteres.tri === cle || criteres.tri === `-${cle}`;
+    const sens = criteres.tri === `-${cle}` ? '▼' : '▲';
+    return `<th class="rv-tri ${classe} ${actif ? 'rv-tri--actif' : ''}" data-tri="${echapper(cle)}"
+                title="${echapper(aide)}" aria-sort="${actif ? (sens === '▲' ? 'ascending' : 'descending') : 'none'}"
+            >${contenu}<span class="rv-fleche">${actif ? sens : ''}</span></th>`;
+}
+
 function peindreTable(el) {
     const liste = filtrer(exercices, revue, criteres);
     const cadre = el.querySelector('[data-cadre]');
@@ -317,13 +359,13 @@ function peindreTable(el) {
     cadre.innerHTML = `
         <table class="rv-table">
             <thead><tr>
-                <th class="rv-nom">Exercice</th>
-                <th title="Écrit le, ou repris le — c'est ce qui dit lesquels sont les derniers">Écrit</th>
-                <th title="Coché = encore en test. Décoché = validé pour les élèves.">En test</th>
-                <th>Statut</th>
-                <th title="Le jour où la décision a été prise">Décidé</th>
-                ${COLONNES.map(c => `<th title="${echapper(c.aide)}">${icone(c.id)}<br>${echapper(c.label)}</th>`).join('')}
-                <th>Remarque</th>
+                ${tete('titre', 'Exercice', 'rv-nom', 'Trier par titre')}
+                ${tete('ecrit', 'Écrit', '', 'Écrit le, ou repris le — c\'est ce qui dit lesquels sont les derniers')}
+                ${tete('statut', 'En test', '', 'Coché = encore en test. Décoché = validé pour les élèves.')}
+                ${tete('statut', 'Statut', '', 'Trier : ce qui est en test d\'abord')}
+                ${tete('decide', 'Décidé', '', 'Le jour où la décision a été prise')}
+                ${COLONNES.map(c => tete(`vu:${c.id}`, `${icone(c.id)}<br>${echapper(c.label)}`, '', c.aide)).join('')}
+                ${tete('remarque', 'Remarque', '', 'Trier : les lignes annotées d\'abord')}
             </tr></thead>
             <tbody>${liste.map(ligneHtml).join('')}</tbody>
         </table>`;
@@ -352,8 +394,12 @@ function ligneHtml(exo) {
         <td><input type="checkbox" class="rv-statut" data-test="${exo.id}"
                    title="Encore en test ?"${s === STATUS.TEST ? ' checked' : ''}></td>
         <td><span class="rv-etiq rv-etiq--${s}">${echapper(STATUS_LABELS[s])}</span></td>
-        <td><input type="date" class="rv-champ rv-date" data-date="${exo.id}"
-                   value="${echapper((f && f.date) || '')}"></td>
+        <td><span class="rv-cell">
+            <input type="date" class="rv-champ rv-date" data-date="${exo.id}"
+                   value="${echapper((f && f.date) || '')}">
+            <button type="button" class="rv-voir rv-jour" data-jour="${exo.id}"
+                    title="Dater d'aujourd'hui">${COCHE}</button>
+        </span></td>
         ${cases}
         <td class="rv-libre"><input type="text" class="rv-champ rv-remarque" data-remarque="${exo.id}"
                    placeholder="…" value="${echapper((f && f.remarque) || '')}"></td>
@@ -372,6 +418,25 @@ function ligneHtml(exo) {
  */
 function brancherTable(cadre, el) {
     cadre.onclick = (ev) => {
+        const entete = ev.target.closest('[data-tri]');
+        if (entete) {
+            const cle = entete.dataset.tri;
+            criteres.tri = criteres.tri === cle ? `-${cle}` : criteres.tri === `-${cle}` ? 'catalogue' : cle;
+            peindre();
+            return;
+        }
+        const jour = ev.target.closest('[data-jour]');
+        if (jour) {
+            const aujourdhui = jourISO();
+            const champ = cadre.querySelector(`input[data-date="${CSS.escape(jour.dataset.jour)}"]`);
+            // Le même appui efface une date déjà posée aujourd'hui : c'est la
+            // seule façon de revenir en arrière sans ouvrir le sélecteur.
+            const pose = champ && champ.value === aujourdhui ? '' : aujourdhui;
+            revue = decider(revue, jour.dataset.jour, { date: pose });
+            garder();
+            if (champ) champ.value = pose;
+            return;
+        }
         const voir = ev.target.closest('[data-voir]');
         if (voir) { regarder(voir.dataset.voir, voir.dataset.col); return; }
         // « Pour chaque ligne on peut cliquer et avoir directement l'aperçu » :
@@ -427,10 +492,19 @@ function colonneDeCetEcran() {
 }
 
 /**
- * On lance l'exercice comme un élève le lancerait, dans le cadre demandé, et
- * l'on guette la fermeture de la couche de jeu pour rouvrir le tableau ET
- * cocher la case. Sans ce retour, il faudrait rouvrir la revue, retrouver la
- * ligne parmi cent neuf, et cocher : personne ne le fait deux fois.
+ * L'APERÇU S'OUVRE PAR-DESSUS LE TABLEAU, PAS À SA PLACE.
+ *
+ * Rémy : « pourquoi l'aperçu revient toujours sur l'écran principal et ne
+ * laisse pas la modale du tableau de test ». Le tableau se refermait avant de
+ * lancer — un aller-retour par l'écran d'accueil à chaque exercice, cent neuf
+ * fois. Il n'y avait aucune raison : la couche de jeu est à z-index 10000, le
+ * tableau à 3000. Elle le couvre toute seule, et dans un cadre de téléphone ou
+ * de tablette — qui ne fait que 400 ou 768 px de large — le tableau reste
+ * visible AUTOUR, ce qui est exactement ce qu'on veut voir pendant une passe.
+ *
+ * Le tableau est FIGÉ tant que l'aperçu est ouvert : sans cela, un clic à côté
+ * du cadre du téléphone tomberait sur une ligne du tableau et lancerait un
+ * autre exercice par-dessus le premier.
  *
  * `internalStudentConfig` saute le panneau de réglages — cinq cases par
  * exercice, c'est cinq cents fenêtres à valider sur une passe complète.
@@ -442,7 +516,8 @@ function regarder(id, colonne, depuisLeNom) {
     if (col.fiche) return apercuFiche(exo, colonne);
 
     retour = { id, colonne };
-    fermer(true);
+    const el = document.getElementById('revue-catalogue');
+    if (el) el.classList.add('rv--fige');
     // Depuis le nom, on est DÉJÀ sur l'appareil : pas de cadre par-dessus le
     // cadre. Depuis une case d'aperçu, c'est le cadre de cette colonne-là.
     const cadre = depuisLeNom ? 'none' : col.mode;
@@ -466,15 +541,30 @@ function guetterRetour() {
         if (!arme) return;
         obs.disconnect();
         setTimeout(() => {
+            const el = document.getElementById('revue-catalogue');
+            if (el) el.classList.remove('rv--fige');
             if (retour) {
                 revue = marquerVu(revue, retour.id, retour.colonne, true);
                 garder();
+                cocherSurPlace(retour.id, retour.colonne);
                 retour = null;
             }
-            ouvrirRevue();
         }, 250);
     });
     obs.observe(couche, { attributes: true, attributeFilter: ['style'] });
+}
+
+/**
+ * Cocher la case au retour SANS redessiner le tableau. Un redessin remettrait
+ * la liste tout en haut : après le quarantième exercice, il faudrait redescendre
+ * quarante lignes à chaque retour.
+ */
+function cocherSurPlace(id, colonne) {
+    const el = document.getElementById('revue-catalogue');
+    if (!el) return;
+    const boite = el.querySelector(`input[data-vu="${CSS.escape(id)}"][data-col="${colonne}"]`);
+    if (boite) boite.checked = true;
+    majCompteur(el);
 }
 
 /** L'aperçu papier. Tous les exercices n'en ont pas : on le dit une fois. */
@@ -491,8 +581,7 @@ function apercuFiche(exo, colonne) {
             // passe pas par la couche de jeu, donc rien d'autre ne le verrait.
             revue = marquerVu(revue, exo.id, colonne, true);
             garder();
-            const el = document.getElementById('revue-catalogue');
-            if (el) { peindreTable(el); majCompteur(el); }
+            cocherSurPlace(exo.id, colonne);
         });
 }
 

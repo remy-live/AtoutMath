@@ -101,9 +101,12 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     else if (decide) suite.date = jourISO(quand || Date.now());
     suite.maj = quand || Date.now();
 
-    // Une fiche redevenue vide de tout — pas de décision, pas de remarque, pas
-    // une seule case vue — ne mérite pas d'occuper une ligne du carnet.
-    const vide = suite.enTest === null && !suite.remarque && !Object.keys(suite.vu).length;
+    // Une fiche redevenue vide de tout — pas de décision, pas de date, pas de
+    // remarque, pas une seule case vue — ne mérite pas d'occuper une ligne du
+    // carnet. LA DATE COMPTE : le cochet du calendrier ne pose qu'elle, et sans
+    // cette clause la ligne était jetée à la seconde même où on la datait.
+    const vide = suite.enTest === null && !suite.date && !suite.remarque
+        && !Object.keys(suite.vu).length;
     const autres = (revue.fiches || []).filter(f => f.exercice !== exercice);
     return { ...revue, fiches: vide ? autres : [...autres, normaliserFiche(suite)] };
 }
@@ -140,11 +143,17 @@ export const nbVus = (fiche) => fiche ? Object.keys(fiche.vu || {}).length : 0;
  * arrivés » remonte donc ce qui vient d'être écrit, et « les derniers touchés »
  * tient compte des révisions : un exercice de mars repris hier est aussi neuf
  * qu'un exercice d'hier.
+ *
+ * UN TRI EST UNE CHAÎNE, un signe moins devant pour descendre : `titre`,
+ * `-ecrit`, `vu:robot`. C'est ce qui permet à un clic sur l'en-tête d'une
+ * colonne et au menu déroulant d'écrire dans la MÊME case — deux états de tri
+ * qui se contredisent à l'écran, c'est un tableau dont on ne croit plus
+ * l'ordre.
  */
 export const TRIS = [
     { id: 'catalogue', label: 'Ordre du catalogue' },
-    { id: 'recent', label: 'Les derniers créés' },
-    { id: 'touche', label: 'Les derniers touchés' },
+    { id: '-cree', label: 'Les derniers créés' },
+    { id: '-ecrit', label: 'Les derniers touchés' },
     { id: 'titre', label: 'Par titre' }
 ];
 
@@ -154,14 +163,56 @@ export function dernierJour(exo) {
     return dates.filter(Boolean).sort().pop() || '';
 }
 
-export function trier(liste, tri) {
-    const l = [...liste];
-    if (tri === 'recent') return l.sort((a, b) => (b.cree || '').localeCompare(a.cree || '')
-        || a.title.localeCompare(b.title));
-    if (tri === 'touche') return l.sort((a, b) => dernierJour(b).localeCompare(dernierJour(a))
-        || a.title.localeCompare(b.title));
-    if (tri === 'titre') return l.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
-    return l;
+/**
+ * CE QU'ON PEUT COMPARER, colonne par colonne. Chaque clef rend une CHAÎNE :
+ * les dates ISO se comparent déjà dans le bon ordre, et pour tout le reste on
+ * fabrique un rang — « en test » avant « validé », « coché » avant « pas
+ * coché » — parce que c'est ce qu'on cherche quand on trie sur ces
+ * colonnes-là : ce qui reste à faire, en haut.
+ */
+const CLES = {
+    titre: (e) => e.title.toLocaleLowerCase('fr'),
+    cree: (e) => e.cree || '',
+    ecrit: (e) => dernierJour(e),
+    statut: (e, f) => ({ [STATUS.TEST]: '0', [STATUS.VALIDE]: '1', [STATUS.BROUILLON]: '2' })[statutRevu(e, f)],
+    decide: (e, f) => (f && f.date) || '',
+    remarque: (e, f) => ((f && f.remarque.trim()) ? `0${f.remarque}` : '1'),
+    vus: (e, f) => String(9 - nbVus(f))
+};
+COLONNES.forEach(c => { CLES[`vu:${c.id}`] = (e, f) => ((f && f.vu[c.id]) ? '0' : '1'); });
+
+/** Les colonnes sur lesquelles un clic d'en-tête a un sens. */
+export const estTriable = (cle) => cle === 'catalogue' || Object.hasOwn(CLES, String(cle).replace(/^-/, ''));
+
+/** Le libellé à montrer quand le tri vient d'une colonne et non du menu. */
+export function direTri(tri) {
+    const connu = TRIS.find(t => t.id === tri);
+    if (connu) return connu.label;
+    const cle = String(tri || '').replace(/^-/, '');
+    const col = COLONNES.find(c => `vu:${c.id}` === cle);
+    const nom = col ? col.label : { titre: 'Titre', cree: 'Créé', ecrit: 'Écrit', statut: 'Statut',
+        decide: 'Décidé', remarque: 'Remarque', vus: 'Regardés' }[cle] || cle;
+    return `${nom} ${String(tri).startsWith('-') ? '▼' : '▲'}`;
+}
+
+/**
+ * Trie une liste d'exercices. `revue` n'est nécessaire que pour les colonnes
+ * qui dépendent des décisions — statut, date, cases cochées, remarque.
+ */
+export function trier(liste, tri, revue = null) {
+    const descendant = String(tri || '').startsWith('-');
+    const cle = String(tri || '').replace(/^-/, '');
+    const lire = CLES[cle];
+    if (!lire) return [...liste];
+    const fiche = (e) => (revue ? ficheDe(revue, e.id) : null);
+    return [...liste].sort((a, b) => {
+        const va = lire(a, fiche(a));
+        const vb = lire(b, fiche(b));
+        if (va !== vb) return (descendant ? -1 : 1) * String(va).localeCompare(String(vb), 'fr');
+        // À égalité, le titre : sans cela l'ordre change d'un affichage à
+        // l'autre et l'on croit que le tableau bouge tout seul.
+        return a.title.localeCompare(b.title, 'fr');
+    });
 }
 
 /**
@@ -196,7 +247,7 @@ export function filtrer(exercices, revue, criteres = {}) {
         if (avancee === 'changes' && !aChange(e, f)) return false;
         if (avancee === 'remarques' && !(f && f.remarque.trim())) return false;
         return true;
-    }), tri);
+    }), tri, revue);
 }
 
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
