@@ -250,15 +250,39 @@
     gap: 6px 10px; flex-shrink: 0; padding: 0 6px;
 }
 #demo-strip:empty { display: none; }
-#demo-strip #demo-overlay-banner { margin: 6px 0 0; }
-#demo-strip #demo-controls-host { margin-top: 6px; }
+#demo-strip #demo-overlay-banner { margin: 0; }
 /* Écran court : tout maigrit d'un cran. Le plateau prime. */
 @media (max-height: 620px) {
     #demo-strip { gap: 4px 8px; }
-    #demo-strip #demo-overlay-banner { margin-top: 3px; padding: 3px 6px 3px 10px; font-size: .74rem; }
-    #demo-strip #demo-controls-host { margin-top: 3px; }
-    #demo-strip .demo-ctrl-btn { padding: 3px 8px; font-size: .74rem; }
+    #demo-strip #demo-overlay-banner { padding: 3px 6px 3px 10px; font-size: .74rem; }
 }
+
+/* --- LES COMMANDES DU ROBOT REMPLACENT LE TITRE -----------------------------
+   Rémy : « quand le robot intervient, cela décale tout vers le bas. Je pense
+   que la toolbar des commandes devrait se superposer en haut là où il y a le
+   titre, le robot, le bouton de plein écran, sans prendre de place en plus. »
+
+   Le titre et la progression n'apprennent rien pendant une démonstration : on
+   vient de lancer l'exercice, et le robot ne marque pas de points. Ils cèdent
+   donc leur place, la hauteur de l'en-tête ne bouge pas, et le plateau ne
+   saute plus sous les doigts au premier mot du robot.
+
+   Les COMMANDES DE DROITE, elles, ne cèdent jamais : la croix de fermeture et
+   « plein écran » restent là où l'élève les a vues. */
+.jeu--demo #game-title,
+.jeu--demo #game-progress-container { display: none !important; }
+#game-header #demo-controls-host {
+    display: flex; align-items: center; min-width: 0; flex: 1 1 auto;
+}
+#game-header #demo-controls-host .demo-controls {
+    margin: 0; flex-wrap: nowrap; justify-content: flex-start; min-width: 0;
+    /* En tout dernier recours — un écran de 320 px, quatre commandes et deux
+       navigations du professeur — la barre défile plutôt que de repousser la
+       croix de fermeture hors de l'écran. */
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+#game-header #demo-controls-host .demo-controls::-webkit-scrollbar { display: none; }
+#game-header #demo-controls-host .demo-ctrl-btn { flex-shrink: 0; }
 
 /* --- Réponses en CARTES ------------------------------------
    Une bulle ronde est parfaite pour « 42 » et ridicule pour « 17 billes

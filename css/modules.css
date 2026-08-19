@@ -1005,6 +1005,48 @@
     #game-timer { width: 30px; height: 30px; }
 }
 
+/* ============================================================================
+   LA BANDE DU ROBOT DANS UN EN-TÊTE EN GRILLE
+   ============================================================================
+   En cadre étroit et sur téléphone, l'en-tête n'est plus en `flex` mais en
+   GRILLE À ZONES NOMMÉES. Une bande glissée dedans sans y avoir de zone se
+   voyait attribuer une piste de 216 px : ses quatre boutons s'y empilaient sur
+   296 px de haut, et l'en-tête passait de 55 à 313 px — exactement le décalage
+   qu'on cherchait à supprimer. Il ne suffit donc pas de masquer le titre : il
+   faut REDESSINER la grille.
+
+   Une seule rangée, deux colonnes : la bande, puis les commandes. Le titre, la
+   progression et le chronomètre n'y ont plus de zone du tout — un élément sans
+   zone dans une grille à `grid-template-areas` retomberait dans une piste
+   implicite, alors ils sont retirés du flux. */
+.jeu--demo #game-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas: "robot actions" !important;
+}
+.jeu--demo #game-header #game-timer { display: none !important; }
+.jeu--demo #game-header #demo-controls-host { grid-area: robot; }
+.jeu--demo #game-header .game-header-actions { grid-area: actions; }
+
+/* Avec les deux navigations du professeur, les commandes de droite ont déjà
+   leur propre rangée : celles du robot prennent celle du titre, et la hauteur
+   ne bouge pas non plus. */
+.jeu--demo#game-layer.avec-nav-prof #game-header,
+.device-simulator.jeu--demo #game-header,
+.tablet-simulator.jeu--demo #game-header {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "robot" "actions" !important;
+}
+
+/* LE MOT S'EFFACE, LE SIGNE RESTE.
+   Quatre commandes légendées font 290 px : sur un téléphone il en reste 228
+   une fois la croix de fermeture servie, et elles se repliaient sur quatre
+   rangées — le décalage qu'on venait de supprimer, revenu par la fenêtre. */
+.demo-ctrl-signe { font-size: 1.05em; line-height: 1; }
+@media (max-width: 820px) {
+    .jeu--demo #game-header .demo-ctrl-mot { display: none; }
+    .jeu--demo #game-header .demo-ctrl-btn { padding: 6px 9px; }
+}
+
 /* Les commandes doivent tenir sur une seule ligne : on retire l'habillage en
    pastille des navigations et on resserre les boutons. */
 .device-simulator .timer-scope,

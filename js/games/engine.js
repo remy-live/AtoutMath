@@ -6,7 +6,7 @@
 // chaque partie, sans raison).
 
 import { clearEngines } from '../core/timers.js';
-import { destroyAllDemoCursors, setDemoMuet } from '../core/demoPointer.js';
+import { destroyAllDemoCursors, setDemoMuet, marquerDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { getActivity, getGenerator } from '../core/registry.js';
 import { ItemSession } from '../core/itemSession.js';
@@ -108,6 +108,9 @@ export function openDemo(exo) {
     }
     const progress = document.getElementById('game-progress-container');
     if (progress) progress.style.display = 'none';
+    // La bande prend la place du titre : sans cet appel elle resterait
+    // invisible, et la bannière avec elle.
+    marquerDemo();
 
     launchPreview(exo, document.getElementById('game-board'));
 }

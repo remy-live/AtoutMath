@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=316">
-    <link rel="stylesheet" href="css/layout.css?v=316">
-    <link rel="stylesheet" href="css/ui.css?v=316">
-    <link rel="stylesheet" href="css/games.css?v=316">
-    <link rel="stylesheet" href="css/components.css?v=316">
-    <link rel="stylesheet" href="css/modules.css?v=316">
+    <link rel="stylesheet" href="css/base.css?v=317">
+    <link rel="stylesheet" href="css/layout.css?v=317">
+    <link rel="stylesheet" href="css/ui.css?v=317">
+    <link rel="stylesheet" href="css/games.css?v=317">
+    <link rel="stylesheet" href="css/components.css?v=317">
+    <link rel="stylesheet" href="css/modules.css?v=317">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -669,6 +669,16 @@
                     <span id="game-timer-value" class="timer-value">60</span>
                     <span id="game-timer-scope" class="timer-scope"></span>
                 </div>
+                <!-- LES COMMANDES DU ROBOT VIVENT DANS L'EN-TÊTE.
+                     Rémy : « quand le robot intervient, cela décale tout vers
+                     le bas ; la toolbar des commandes devrait se superposer en
+                     haut là où il y a le titre, sans prendre de place en plus. »
+                     Elles prennent donc la place du titre et de la progression,
+                     qui n'apprennent rien pendant qu'il explique : la hauteur de
+                     l'en-tête ne bouge pas, et le plateau ne saute plus sous les
+                     doigts au premier mot du robot. -->
+                <div id="demo-controls-host"></div>
+
                 <div class="game-header-actions">
                     <!-- Navigation du professeur : uniquement lors d'un test de
                          parcours (masquée pour l'élève). Deux niveaux — passer
@@ -747,36 +757,29 @@
                 </div>
             </div>
 
-            <!-- LA BANDE DU ROBOT : bannière et commandes sur la MÊME ligne
-                 quand la largeur le permet. Empilées, elles coûtaient deux
-                 rangées à l'écran — près d'un tiers de la hauteur sur un jeu
-                 d'arcade, où c'est justement le plateau qu'on veut voir. -->
+            <!-- Bannière de Démonstration Autonome (façon Toast) : elle
+                 n'apparaît qu'en APERÇU, où la consigne et le bouton « À moi
+                 de jouer ! » sont précisément ce qu'on est venu voir. Les
+                 commandes du robot, elles, sont montées dans l'en-tête. -->
             <div id="demo-strip">
-            <!-- Bannière de Démonstration Autonome (façon Toast) -->
-            <div id="demo-overlay-banner">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect width="18" height="18" x="3" y="3" rx="2" />
-                    <path d="M10 10v.01" />
-                    <path d="M14 10v.01" />
-                    <path d="M8 14h8" />
-                    <path d="M9 18v3" />
-                    <path d="M15 18v3" />
-                    <path d="M2 14h1" />
-                    <path d="M21 14h1" />
-                    <path d="M12 3v-2" />
-                </svg>
-                <span id="demo-banner-text">Mode Démonstration</span>
-                <span id="demo-banner-plus" aria-hidden="true">▾</span>
-                <button class="btn-stop-demo" id="btn-start-real-game">À moi de jouer !</button>
+                <div id="demo-overlay-banner">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                        <path d="M10 10v.01" />
+                        <path d="M14 10v.01" />
+                        <path d="M8 14h8" />
+                        <path d="M9 18v3" />
+                        <path d="M15 18v3" />
+                        <path d="M2 14h1" />
+                        <path d="M21 14h1" />
+                        <path d="M12 3v-2" />
+                    </svg>
+                    <span id="demo-banner-text">Mode Démonstration</span>
+                    <span id="demo-banner-plus" aria-hidden="true">▾</span>
+                    <button class="btn-stop-demo" id="btn-start-real-game">À moi de jouer !</button>
+                </div>
             </div>
-
-            <!-- Commandes du robot (pause, pas-à-pas, vitesse) : logées ICI,
-                 sous la bannière. En fin de plateau, elles sortaient de l'écran
-                 en paysage et passaient sous la palette de débogage en
-                 portrait — impossible de mettre l'explication en pause. -->
-            <div id="demo-controls-host"></div>
-        </div>
 
             <div class="canvas-area" id="game-board"></div>
 

@@ -13,7 +13,7 @@ initConsoleCapture();
 import { state } from './core/state.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
-import { destroyAllDemoCursors } from './core/demoPointer.js';
+import { destroyAllDemoCursors, marquerDemo } from './core/demoPointer.js';
 import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
 import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE, estRevisable, getExerciseById } from './data/catalog.js';
@@ -234,6 +234,7 @@ function initGameControls() {
         demoReturn = null;
         const banner = document.getElementById('demo-overlay-banner');
         if (banner) banner.style.display = 'none';
+        marquerDemo();
         if (back) {
             import('./core/runner.js').then(({ Runner }) => new Runner(back).start());
         } else {

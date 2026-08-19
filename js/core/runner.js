@@ -22,7 +22,7 @@ import { hydratePath } from './path.js';
 import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
 import { uuid } from './ids.js';
-import { destroyAllDemoCursors } from './demoPointer.js';
+import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 
 export class Runner {
     /**
@@ -224,6 +224,8 @@ export class Runner {
         gl.style.display = 'flex';
         const banner = document.getElementById('demo-overlay-banner');
         if (banner) banner.style.display = 'none';
+        // Une vraie partie n'est pas un aperçu : l'en-tête retrouve son titre.
+        marquerDemo();
     }
 
     get canvas() {

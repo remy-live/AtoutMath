@@ -40,9 +40,9 @@ export const DEMO_SPEED = {
 // retrouve à peu près l'ancienne allure, pour qui connaît déjà le jeu et veut
 // seulement revoir un passage.
 const VITESSES = [
-    { facteur: 1, libelle: '▶ Normal' },
-    { facteur: 1.5, libelle: '🐢 Lent' },
-    { facteur: 0.7, libelle: '⚡ Rapide' }
+    { facteur: 1, signe: '▶', mot: 'Normal' },
+    { facteur: 1.5, signe: '🐢', mot: 'Lent' },
+    { facteur: 0.7, signe: '⚡', mot: 'Rapide' }
 ];
 
 let facteurVitesse = (() => {
@@ -141,6 +141,7 @@ export function destroyAllDemoCursors() {
     // n'appelait son `destroy()`. On se retrouvait à jouer pour de bon avec
     // « ⏮ Arrière · ⏸ Pause · ⏭ Un pas » posés en travers de l'en-tête.
     document.querySelectorAll('.demo-cursor, .demo-bubble, .demo-controls').forEach(el => el.remove());
+    marquerDemo();
     // Une barre retirée alors qu'elle tenait le jeu en pause le laisserait
     // gelé pour toujours : on relâche le gel avec elle.
     document.dispatchEvent(new CustomEvent('demo_pause', { detail: false }));
@@ -170,6 +171,31 @@ function hoteDeBarre(host) {
     // cas de la couche de jeu : on interroge donc le style calculé.
     const enPleinEcran = couche && getComputedStyle(couche).display !== 'none';
     return (partage && enPleinEcran) ? partage : host;
+}
+
+/**
+ * LA BARRE DU ROBOT PREND LA PLACE DU TITRE, elle ne s'ajoute pas.
+ *
+ * Rémy : « quand le robot intervient, cela décale tout vers le bas ». La bande
+ * s'insérait entre l'en-tête et le plateau : le jeu descendait d'une centaine
+ * de pixels au premier mot du robot et remontait à la fin — sur une tablette,
+ * la case qu'on visait se dérobait sous le doigt. Or l'en-tête porte, pendant
+ * une démonstration, deux choses dont personne n'a besoin : le TITRE (on sait
+ * à quoi on joue, on vient de le lancer) et la PROGRESSION (le robot ne
+ * compte pas de points). La bande s'installe à leur place, et la hauteur ne
+ * bouge pas d'un pixel.
+ */
+export function marquerDemo() {
+    const couche = document.getElementById('game-layer');
+    if (!couche) return;
+    // Une seule source de vérité, relue à chaque changement : la bande est là
+    // s'il y a quelque chose DEDANS — la bannière d'aperçu, ou la barre de
+    // commandes. Un drapeau tenu à la main se serait désynchronisé au premier
+    // chemin oublié, et l'en-tête serait resté amputé de son titre.
+    const banniere = document.getElementById('demo-overlay-banner');
+    const visible = banniere && getComputedStyle(banniere).display !== 'none';
+    const commandes = document.querySelector('#demo-controls-host > .demo-controls');
+    couche.classList.toggle('jeu--demo', !!(visible || commandes));
 }
 
 // --- Un pas en arrière -------------------------------------------------------
@@ -230,7 +256,7 @@ function revoirPrecedent() {
 // plateau vers le bas au lieu de le recouvrir, et la case dont on parle est
 // cerclée pour garder le lien.
 function ancrerLesBulles() {
-    const hote = document.getElementById('demo-controls-host');
+    const hote = document.getElementById('demo-strip');
     const couche = document.getElementById('game-layer');
     if (!hote || !couche || getComputedStyle(couche).display === 'none') return false;
     return window.innerWidth <= 760 || window.innerHeight <= 620;
@@ -276,12 +302,25 @@ export function createDemoGate(host) {
 
     const bar = document.createElement('div');
     bar.className = 'demo-controls';
-    bar.innerHTML = `
-        <button type="button" class="demo-ctrl-btn" data-demo-back aria-label="Revoir l'explication précédente">⏮ Arrière</button>
-        <button type="button" class="demo-ctrl-btn" data-demo-pause aria-label="Mettre la démonstration en pause">⏸ Pause</button>
-        <button type="button" class="demo-ctrl-btn" data-demo-step aria-label="Avancer d'un pas">⏭ Un pas</button>
-        <button type="button" class="demo-ctrl-btn" data-demo-speed aria-label="Vitesse de la démonstration"></button>`;
+    // SIGNE ET MOT SÉPARÉS. Les quatre commandes réunies font 290 px de large :
+    // dans l'en-tête d'un téléphone il en reste 228 une fois la croix de
+    // fermeture servie, et elles se repliaient sur quatre rangées de 27 px —
+    // le décalage qu'on venait justement de supprimer, revenu par la fenêtre.
+    // Le mot se retire tout seul quand la place manque ; le signe, lui, reste :
+    // ⏮ ⏸ ⏭ se lisent sans légende sur n'importe quel lecteur.
+    const commande = (attr, signe, mot, aide) => `
+        <button type="button" class="demo-ctrl-btn" ${attr} title="${aide}" aria-label="${aide}"
+            ><span class="demo-ctrl-signe" aria-hidden="true">${signe}</span
+            ><span class="demo-ctrl-mot">${mot}</span></button>`;
+    bar.innerHTML =
+        commande('data-demo-back', '⏮', 'Arrière', 'Revoir l\'explication précédente') +
+        commande('data-demo-pause', '⏸', 'Pause', 'Mettre la démonstration en pause') +
+        commande('data-demo-step', '⏭', 'Un pas', 'Avancer d\'un pas') +
+        commande('data-demo-speed', '▶', 'Normal', 'Vitesse de la démonstration');
     const hote = hoteDeBarre(host);
+    // La bande occupe l'en-tête tant que le robot est là : c'est ce qui lui
+    // évite de pousser le plateau vers le bas.
+    if (hote.id === 'demo-controls-host') marquerDemo();
     // Une seule barre à la fois dans l'emplacement partagé : les activités qui
     // recréent leur commande à chaque question y empileraient sinon autant de
     // barres que de questions jouées.
@@ -291,9 +330,16 @@ export function createDemoGate(host) {
     // Vitesse : un bouton qui fait le tour Lent → Normal → Rapide, et
     // retient le choix pour les prochaines démonstrations.
     const btnVitesse = bar.querySelector('[data-demo-speed]');
+    // Écrire dans les deux fentes plutôt que dans le bouton : `textContent`
+    // aurait effacé le signe et le mot du même coup, et la barre serait
+    // redevenue illisible dès qu'on touche à la vitesse.
+    const habiller = (btn, signe, mot) => {
+        btn.querySelector('.demo-ctrl-signe').textContent = signe;
+        btn.querySelector('.demo-ctrl-mot').textContent = mot;
+    };
     const majVitesse = () => {
         const v = VITESSES.find(o => o.facteur === facteurVitesse) || VITESSES[1];
-        btnVitesse.textContent = v.libelle;
+        habiller(btnVitesse, v.signe, v.mot);
         btnVitesse.classList.toggle('demo-ctrl-btn--active', v.facteur !== 1);
     };
     btnVitesse.onclick = () => {
@@ -307,7 +353,7 @@ export function createDemoGate(host) {
     const liberer = () => { attentes.forEach(r => r()); attentes = []; };
     const poserPause = (etat) => {
         paused = etat;
-        btnPause.innerHTML = paused ? '▶ Reprendre' : '⏸ Pause';
+        habiller(btnPause, paused ? '▶' : '⏸', paused ? 'Reprendre' : 'Pause');
         btnPause.classList.toggle('demo-ctrl-btn--active', paused);
         // La pause doit arrêter LE JEU, pas seulement le robot.
         //
@@ -407,6 +453,11 @@ export function createDemoGate(host) {
             minuteurs.clear();
             liberer();
             bar.remove();
+            // Le titre revient — mais seulement si plus aucune barre n'occupe
+            // l'en-tête : une activité qui refait sa barre à chaque question
+            // détruit l'ancienne APRÈS avoir créé la nouvelle, et le titre
+            // clignoterait à chaque fois.
+            marquerDemo();
         }
     };
 }
@@ -523,7 +574,12 @@ export function createDemoCursor() {
             // place tout de suite, seul l'APPUI attend la fin de la lecture.
             if (cible && cible.getBoundingClientRect) suivreDuRegard(cible);
             if (ancrerLesBulles()) {
-                const hote = document.getElementById('demo-controls-host');
+                // Rangée SOUS l'en-tête, pas dedans. Les commandes du robot
+                // sont montées dans l'en-tête pour ne rien décaler ; une bulle
+                // de six lignes posée à côté d'elles y aurait fait passer
+                // l'en-tête de 49 à 189 px, soit exactement le décalage qu'on
+                // venait de supprimer.
+                const hote = document.getElementById('demo-strip');
                 if (bulle.parentElement !== hote) hote.appendChild(bulle);
                 bulle.classList.add('demo-bubble--rangee');
                 bulle.classList.remove('demo-bubble--dessous');
@@ -546,7 +602,7 @@ export function createDemoCursor() {
                 // sur 10 px, et la bulle se posait pile sur « Pause » et « Un
                 // pas » — les deux boutons dont on a besoin quand on trouve
                 // qu'une explication va trop vite.
-                const margeHaut = Math.max(marge, ...['#demo-controls-host', '.demo-controls']
+                const margeHaut = Math.max(marge, ...['#game-header', '#demo-strip', '.demo-controls']
                     .map(sel => {
                         const el = document.querySelector(sel);
                         const r = el && el.getBoundingClientRect();
