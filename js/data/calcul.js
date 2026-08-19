@@ -283,6 +283,13 @@ export const calculExercises = [
         // Les deux règles sont dites dans la consigne, l'une après l'autre.
         id: 'calc-poser', status: STATUS.TEST, title: 'Poser une opération',
         cree: '2026-08-14',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'À l\'addition, l\'ordre des lignes est libre : 47 + 128 et 128 + 47 sont la '
+                    + 'même opération posée. La soustraction, elle, garde son ordre.'
+            }
+        ],
         activityId: 'poser-operation',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
         // imprime les nombres déjà en colonnes et laisse toute la place
@@ -344,6 +351,14 @@ export const calculExercises = [
         // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
         id: 'calc-poser-multiplication', status: STATUS.TEST, title: 'Poser une multiplication',
         cree: '2026-08-14',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'Une touche ⌫ pour reprendre le dernier chiffre — il n\'y en avait aucune — '
+                    + 'et le libre qui s\'ouvre à qui vient de poser une multiplication entière '
+                    + 'sans une faute.'
+            }
+        ],
         activityId: 'poser-multiplication',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
         // imprime les nombres déjà en colonnes et laisse toute la place
@@ -353,7 +368,7 @@ export const calculExercises = [
         printParams: { operation: '×', chiffres: 3, nombres: 2, retenue: true },
         consignePapier: 'Effectue ces multiplications posées.',
         skills: ['num.mult.sens'],
-        params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'fin' },
+        params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'merite' },
         paramSchema: [
             {
                 id: 'chiffres', type: 'select', label: 'Taille du premier nombre',
@@ -380,11 +395,19 @@ export const calculExercises = [
                 default: false
             },
             {
-                id: 'verification', type: 'select', label: 'Quand corriger', default: 'fin',
-                aide: 'Refuser un chiffre faux à l\'instant où il est tapé évite de construire sur une erreur — c\'est ce qu\'il faut la toute première fois. Mais sur le cahier on écrit la ligne ENTIÈRE, puis on la relit : c\'est ce regard-là qu\'il faut apprendre, et c\'est le réglage par défaut. Les colonnes fausses sont alors montrées une par une, avec leur calcul.',
+                id: 'verification', type: 'select', label: 'Quand corriger', default: 'merite',
+                aide: 'Refuser un chiffre faux à l\'instant où il est tapé évite de construire sur '
+                    + 'une erreur, et c\'est le seul régime qui dise OÙ ça coince — mais on ne pose '
+                    + 'plus une multiplication : sur le cahier, on écrit la ligne ENTIÈRE puis on la '
+                    + 'relit, et c\'est ce regard-là qu\'il faut apprendre. Le réglage par défaut '
+                    + 'enchaîne les deux : on est guidé, et le libre s\'ouvre à qui vient de poser '
+                    + 'une multiplication entière sans une faute. Une faute le referme — non pour '
+                    + 'punir, mais parce que c\'est justement là qu\'on a besoin d\'être repris '
+                    + 'colonne par colonne.',
                 options: [
-                    { value: 'fin', label: 'À la fin de chaque ligne' },
-                    { value: 'immediate', label: 'À chaque chiffre tapé' }
+                    { value: 'merite', label: 'Guidé, puis libre quand c\'est réussi' },
+                    { value: 'fin', label: 'Toujours libre : à la fin de chaque ligne' },
+                    { value: 'immediate', label: 'Toujours guidé : à chaque chiffre tapé' }
                 ]
             }
         ],

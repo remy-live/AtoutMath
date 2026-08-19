@@ -91,7 +91,7 @@ class Tangram extends BaseGame {
                 .tg-piece { stroke: rgba(0,0,0,.45); stroke-width: .14; stroke-linejoin: round;
                     cursor: grab; }
                 .tg-piece--prise { cursor: grabbing; filter: brightness(1.12) drop-shadow(0 .3px .6px rgba(0,0,0,.5)); }
-                .tg-piece--posee { cursor: default; }
+                .tg-piece--posee { cursor: grab; }
                 .tg-piece--choisie { stroke: var(--primary, #4f46e5); stroke-width: .32; }
                 .tg-piece--montre { animation: tg-clignote .9s ease 3; }
                 @keyframes tg-clignote { 50% { filter: brightness(1.6); } }
@@ -237,6 +237,24 @@ class Tangram extends BaseGame {
         return true;
     }
 
+    /**
+     * Reprendre une pièce déjà calée : elle redevient libre, et son
+     * emplacement aussi.
+     *
+     * On ne compte pas cela comme une faute. Déplacer une pièce n'est pas une
+     * erreur, c'est la façon même dont on résout un tangram — et une pénalité
+     * apprendrait seulement à ne plus rien essayer.
+     */
+    reprendre(p) {
+        if (!p.posee) return;
+        if (p.slot) p.slot.pris = false;
+        p.slot = null;
+        p.posee = false;
+        this.majPiece(p);
+        this.majCompte();
+        this.note('Pièce reprise : replace-la où tu veux.');
+    }
+
     // --- Le dessin ------------------------------------------------------------
 
     /** Les sommets d'une pièce, dans le monde du plateau. */
@@ -315,7 +333,14 @@ class Tangram extends BaseGame {
             const g = e.target.closest('[data-piece]');
             if (!g) { this.choisir(null); return; }
             const p = this.pieces.find(x => x.id === g.dataset.piece);
-            if (!p || p.posee) return;
+            if (!p) return;
+            // UNE PIÈCE POSÉE SE REPREND. Rémy : « sur le tangram, on ne peut
+            // retirer des pièces posées ». Une pièce calée était définitive :
+            // un élève qui plaçait le grand triangle au mauvais endroit — il
+            // rentre dans deux emplacements de même forme — n'avait plus qu'à
+            // recommencer la figure entière. Or un tangram se fait EN
+            // TÂTONNANT : essayer, voir que ça ne va pas, déplacer.
+            if (p.posee) this.reprendre(p);
             e.preventDefault();
             try { this.svgEl.setPointerCapture(e.pointerId); } catch { /* sans capture */ }
             const [mx, my] = this.versMonde(e);
@@ -372,6 +397,9 @@ class Tangram extends BaseGame {
             p.dx += cible.s.cx + ox - cx;
             p.dy += cible.s.cy + oy - cy;
             p.posee = true;
+            // On retient QUEL emplacement la pièce occupe : c'est ce qui permet
+            // de le libérer si on la reprend.
+            p.slot = cible.s;
             cible.s.pris = true;
             this.choisie = null;
             this.majPiece(p);
@@ -395,15 +423,22 @@ class Tangram extends BaseGame {
 
     tournerChoisie() {
         const p = this.pieces.find(x => x.id === this.choisie);
-        if (!p || p.posee || this.isDemo) {
+        if (!p || this.isDemo) {
             if (!p) this.note('Touche d\'abord une pièce, puis tourne-la.');
             return;
         }
         this.tourner(p);
     }
 
-    /** On tourne AUTOUR DU CENTRE : la pièce ne s'échappe pas sous le doigt. */
+    /**
+     * On tourne AUTOUR DU CENTRE : la pièce ne s'échappe pas sous le doigt.
+     *
+     * Et une pièce POSÉE qu'on tourne sort d'abord de son emplacement : tournée
+     * sur place, elle resterait comptée comme calée alors qu'elle n'y entre
+     * plus — le compteur aurait annoncé une figure finie qui ne l'est pas.
+     */
     tourner(p) {
+        if (p.posee) this.reprendre(p);
         const [ax, ay] = centre(this.sommetsDe(p));
         p.quarts = (p.quarts + 1) % 4;
         const [bx, by] = centre(this.sommetsDe(p));
@@ -413,12 +448,13 @@ class Tangram extends BaseGame {
 
     retournerChoisie() {
         const p = this.pieces.find(x => x.id === this.choisie);
-        if (!p || p.posee || this.isDemo) return;
+        if (!p || this.isDemo) return;
         if (!retournable(p.id)) {
             this.note('Cette pièce est la même dans un miroir : la retourner ne changerait rien. '
                 + 'Seul le parallélogramme a besoin d\'être retourné.');
             return;
         }
+        if (p.posee) this.reprendre(p);
         const [ax, ay] = centre(this.sommetsDe(p));
         p.flip = p.flip ? 0 : 1;
         const [bx, by] = centre(this.sommetsDe(p));
@@ -443,6 +479,7 @@ class Tangram extends BaseGame {
         p.dx += emplacement.cx + ox - cx;
         p.dy += emplacement.cy + oy - cy;
         p.posee = true;
+        p.slot = emplacement;
         emplacement.pris = true;
         this.majPiece(p);
         this.majCompte();

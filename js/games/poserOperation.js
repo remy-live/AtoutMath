@@ -336,6 +336,35 @@ class PoserOperation extends BaseGame {
         return el;
     }
 
+    /**
+     * L'ORDRE DES LIGNES EST LIBRE À L'ADDITION, ET SEULEMENT LÀ.
+     *
+     * Rémy : « pour l'addition on se fiche de poser un nombre en haut ou en
+     * bas, c'est la même chose ». C'est vrai, et le refuser enseignait une
+     * fausse règle : 47 + 128 et 128 + 47 sont la même opération posée, les
+     * deux sont justes. Une soustraction, elle, n'a qu'un ordre — on ne
+     * retire pas le grand du petit —, et c'est une vraie règle qu'il faut
+     * tenir.
+     *
+     * On ÉCHANGE donc les deux opérandes plutôt que de refuser le dépôt. Comme
+     * l'addition est commutative, le tableau des colonnes est identique après
+     * l'échange : rien de ce qui suit n'a besoin de le savoir.
+     *
+     * @returns {boolean} vrai si l'échange a eu lieu
+     */
+    echangerLignes(depuis, vers) {
+        if (this.operation !== '+') return false;
+        // Une ligne déjà remplie n'est pas libre : on ne va pas déloger un
+        // nombre que l'élève vient de poser.
+        if (this.pose[vers].length) return false;
+
+        const permute = (t) => { const x = t[depuis]; t[depuis] = t[vers]; t[vers] = x; };
+        permute(this.operandes);
+        permute(this.pose);
+        permute(this.attendu);
+        return true;
+    }
+
     // --- Étape 1 : l'alignement ------------------------------------------------
 
     dessinerJetons() {
@@ -416,11 +445,14 @@ class PoserOperation extends BaseGame {
     }
 
     deposerNombre(cible, operande) {
-        if (Number(cible.dataset.operande) !== operande) {
-            this.note('Ce nombre appartient à l\'autre ligne : chaque nombre a la sienne.', 'ko');
+        const ligne = Number(cible.dataset.operande);
+        if (ligne !== operande && !this.echangerLignes(operande, ligne)) {
+            this.note('Dans une soustraction, l\'ordre compte : le nombre dont on retire va '
+                + 'AU-DESSUS, celui qu\'on retire en dessous.', 'ko');
             this.dessiner();
             return;
         }
+        operande = ligne;
         const rang = Number(cible.dataset.rang);
         const valeur = this.operandes[operande];
         const v = verifierPose(valeur, this.chiffrePris || 0, rang);

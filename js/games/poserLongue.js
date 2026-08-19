@@ -198,7 +198,7 @@ class PoserLongue extends BaseGame {
      * tout seul — demander « ✓ » après chaque chiffre du quotient ferait deux
      * gestes là où il n'y a qu'une décision.
      */
-    dessinerPave({ avecValider = true, surValider, surChiffre } = {}) {
+    dessinerPave({ avecValider = true, avecEffacer = false, surValider, surChiffre, surEffacer } = {}) {
         this.zoneEl.innerHTML = '';
         const ligne = document.createElement('div');
         ligne.style.cssText = 'display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;';
@@ -214,16 +214,33 @@ class PoserLongue extends BaseGame {
             t.addEventListener('click', () => surChiffre(n));
             pave.appendChild(t);
         }
-        if (avecValider) {
+        // LE ⌫ EXISTE MÊME SANS ✓. Rémy : « comment annule-t-on une opération
+        // sur laquelle on s'est trompé ? En effet on ne peut revenir sur les
+        // cases dont on a rempli le chiffre ». Il n'y avait tout simplement PAS
+        // de touche d'effacement dans la multiplication : chaque chiffre s'y
+        // valide au moment où on le tape, et le pavé était construit sans ⌫ ni
+        // ✓. Un élève qui tapait à côté n'avait aucun moyen de revenir.
+        //
+        // Quand un chiffre attend d'être validé, le ⌫ efface ce qu'on tape ;
+        // sinon il REPREND le dernier chiffre écrit. Une seule touche, et le
+        // geste qu'on attend d'elle dans les deux cas.
+        if (avecValider || avecEffacer) {
             const eff = document.createElement('button');
             eff.type = 'button';
             eff.className = 'pl-touche';
             eff.textContent = '⌫';
+            eff.title = 'Effacer le dernier chiffre';
             eff.addEventListener('click', () => {
-                this.saisie = (this.saisie || '').slice(0, -1);
-                this.dessiner();
+                if (this.saisie) {
+                    this.saisie = this.saisie.slice(0, -1);
+                    this.dessiner();
+                    return;
+                }
+                if (surEffacer) surEffacer(); else this.dessiner();
             });
             pave.appendChild(eff);
+        }
+        if (avecValider) {
             const ok = document.createElement('button');
             ok.type = 'button';
             ok.className = 'pl-touche pl-touche--ok';
@@ -261,7 +278,21 @@ class PoserMultiplication extends PoserLongue {
         // écrit toute la ligne, PUIS on regarde. Et c'est ce regard-là qu'il
         // faut apprendre. On écrit donc la ligne entière, on la vérifie au
         // bout, et l'on montre exactement quelles colonnes sont fausses.
-        this.verifAuFil = this.params.verification === 'immediate';
+        // TROIS RÉGIMES, ET UN QUI MONTE TOUT SEUL.
+        //
+        // `immediate` refuse le chiffre faux à l'instant : on ne construit
+        // jamais sur une erreur, mais on ne pose plus une multiplication — sur
+        // le cahier, on écrit la ligne entière PUIS on regarde.
+        // `fin` écrit tout et relit au bout, en montrant quelles colonnes
+        // clochent : c'est le geste réel, et c'est plus exigeant.
+        // `merite` commence guidé et OUVRE le libre à qui vient de réussir une
+        // multiplication entière sans faute — puis le referme à la première
+        // faute. Rémy : « au départ c'est guidé comme ce que tu fais », et le
+        // libre s'obtient.
+        this.regime = ['immediate', 'fin', 'merite'].includes(this.params.verification)
+            ? this.params.verification : 'merite';
+        this.verifAuFil = this.regime !== 'fin';
+        this.sansFaute = true;
         this.fautes = new Set();
     }
 
@@ -505,7 +536,11 @@ class PoserMultiplication extends PoserLongue {
                 + `le produit en a donc ${this.m.decimales}. Clique entre deux chiffres pour poser la virgule.`);
             return;
         }
-        this.dessinerPave({ avecValider: false, surChiffre: (n) => this.taper(n) });
+        this.dessinerPave({
+            avecValider: false, avecEffacer: true,
+            surChiffre: (n) => this.taper(n),
+            surEffacer: () => this.effacerDernier()
+        });
         if (this.phase === 'lignes' && !this.noteEl.textContent) this.direLigne();
     }
 
@@ -528,6 +563,53 @@ class PoserMultiplication extends PoserLongue {
     taper(n) {
         if (this.phase === 'lignes') return this.taperLigne(n);
         if (this.phase === 'somme') return this.taperSomme(n);
+    }
+
+    /**
+     * REPRENDRE LE DERNIER CHIFFRE ÉCRIT.
+     *
+     * On efface, et rien d'autre : aucune faute n'est enregistrée, aucun point
+     * n'est repris. Se raviser n'est pas se tromper — et une annulation qui
+     * coûterait quelque chose n'apprendrait qu'à ne plus oser.
+     *
+     * La position courante se DÉDUIT de ce qui est écrit (`positionCourante`,
+     * `rangSomme` la cherchent toutes deux) : il suffit donc de retirer la
+     * dernière valeur pour que le curseur y revienne tout seul.
+     */
+    effacerDernier() {
+        if (this.phase === 'somme') {
+            const i = this.rangSomme - 1;
+            if (i < 0) return this.remonterAuxLignes();
+            delete this.somme[i];
+            this.dessiner();
+            this.note('Chiffre effacé : réécris-le.');
+            return;
+        }
+        if (this.phase !== 'lignes') return;
+        const l = this.m.lignes[this.ligne];
+        const ecrites = l.cases.filter(c => this.ecrits[this.ligne][c.position] !== undefined);
+        if (!ecrites.length) return;
+        const derniere = ecrites[ecrites.length - 1];
+        delete this.ecrits[this.ligne][derniere.position];
+        this.fautes.delete(derniere.position);
+        this.dessiner();
+        this.direLigne();
+    }
+
+    /**
+     * Le ⌫ sur la première colonne de la somme renvoie à la dernière ligne :
+     * l'erreur qu'on veut reprendre est presque toujours là, et rester bloqué
+     * au bord de l'addition ne mène nulle part.
+     */
+    remonterAuxLignes() {
+        if (this.ligne === undefined || !this.m.lignes.length) return;
+        this.phase = 'lignes';
+        this.ligne = this.m.lignes.length - 1;
+        const l = this.m.lignes[this.ligne];
+        const derniere = l.cases[l.cases.length - 1];
+        if (derniere) delete this.ecrits[this.ligne][derniere.position];
+        this.dessiner();
+        this.note('On revient à la dernière ligne : réécris son dernier chiffre.');
     }
 
     taperLigne(n) {
@@ -590,6 +672,9 @@ class PoserMultiplication extends PoserLongue {
         if (!this.verifAuFil) {
             const fautes = l.cases.filter(c => this.ecrits[this.ligne][c.position] !== c.chiffre);
             if (fautes.length) {
+                // Une ligne relue fausse compte comme une faute : le libre se
+                // referme, et la multiplication suivante repart guidée.
+                this.sansFaute = false;
                 this.fautes = new Set(fautes.map(c => c.position));
                 const dit = (c) => `${c.chiffreA} × ${l.chiffre}`
                     + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total}`;
@@ -713,8 +798,11 @@ class PoserMultiplication extends PoserLongue {
 
     gagne() {
         this.reussies++;
+        const ouvre = this.ajusterRegime();
         this.dessiner();
-        this.note(`✅ ${this.enonce()} = ${String(this.m.resultat).replace('.', ',')}`, 'ok');
+        this.note(`✅ ${this.enonce()} = ${String(this.m.resultat).replace('.', ',')}`
+            + (ouvre ? ' — sans une faute ! La prochaine, tu la poses en entier : '
+                + 'écris toute la ligne, on la relira ensemble.' : ''), 'ok');
         this.onCorrectAnswer(null, COMP_MULT, {
             questionText: this.enonce(),
             expected: String(this.m.resultat), given: String(this.m.resultat),
@@ -727,7 +815,27 @@ class PoserMultiplication extends PoserLongue {
         return `${String(this.m.operandes[0]).replace('.', ',')} × ${String(this.m.operandes[1]).replace('.', ',')}`;
     }
 
+    /**
+     * LE LIBRE SE MÉRITE, ET SE REPERD.
+     *
+     * Une multiplication entière posée sans une faute ouvre la suivante en
+     * libre ; une faute la referme. Ce n'est pas une punition : le guidage
+     * colonne par colonne est le seul régime qui dise OÙ ça coince — « tu as
+     * oublié le zéro de la deuxième ligne » plutôt que « c'est faux » —, et
+     * c'est exactement ce dont on a besoin quand on vient de se tromper.
+     *
+     * @returns {boolean} vrai si le libre vient de s'ouvrir
+     */
+    ajusterRegime() {
+        if (this.regime !== 'merite') return false;
+        const avant = this.verifAuFil;
+        this.verifAuFil = !this.sansFaute;
+        this.sansFaute = true;
+        return avant && !this.verifAuFil;
+    }
+
     faux() {
+        this.sansFaute = false;
         const el = this.grilleEl.querySelector('.pl-case--active');
         if (el) { el.classList.add('pl-case--faux'); setTimeout(() => this.dessiner(), 380); }
     }
