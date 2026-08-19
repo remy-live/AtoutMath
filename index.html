@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=331">
-    <link rel="stylesheet" href="css/layout.css?v=331">
-    <link rel="stylesheet" href="css/ui.css?v=331">
-    <link rel="stylesheet" href="css/games.css?v=331">
-    <link rel="stylesheet" href="css/components.css?v=331">
-    <link rel="stylesheet" href="css/modules.css?v=331">
+    <link rel="stylesheet" href="css/base.css?v=332">
+    <link rel="stylesheet" href="css/layout.css?v=332">
+    <link rel="stylesheet" href="css/ui.css?v=332">
+    <link rel="stylesheet" href="css/games.css?v=332">
+    <link rel="stylesheet" href="css/components.css?v=332">
+    <link rel="stylesheet" href="css/modules.css?v=332">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -834,11 +834,15 @@
             </div>
         </div>
 
-        <!-- MODALE CONSIGNE -->
+        <!-- MODALE D'AIDE : ce qu'il faut faire, un exemple, la leçon.
+             Trois onglets plutôt qu'un paragraphe unique — la consigne, un
+             exemple déroulé pas à pas, et les rappels de cours. Le contenu est
+             posé par ui/aideExercice.js. -->
         <div id="instruction-modal" class="modal-overlay">
-            <div class="glass-panel modal-panel-sm">
-                <h3 class="modal-title">ℹ️ Consigne</h3>
-                <p id="instruction-text"></p>
+            <div class="glass-panel aide-panneau">
+                <h3 class="modal-title" id="aide-titre">Aide</h3>
+                <div class="aide-onglets" id="aide-onglets" role="tablist"></div>
+                <div class="aide-corps" id="aide-corps"></div>
                 <button id="btn-instruction-close" class="btn-toggle active glass-btn primary modal-btn-primary-lg">Compris !</button>
             </div>
         </div>

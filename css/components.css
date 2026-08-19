@@ -399,3 +399,85 @@ body.mobile-view #toast-container {
 @media (prefers-reduced-motion: reduce) {
     .carnet-vu { animation: none; }
 }
+
+/* --- LE PANNEAU D'AIDE (le « ? ») -------------------------------------------
+   Trois onglets à la place d'un paragraphe unique. Rémy : « la mise en forme
+   est maladroite, ça ne revient pas à la ligne ». Les rappels de cours étaient
+   des `<span>` dans un `<p>` : rien ne pouvait revenir à la ligne, et la
+   consigne, l'exemple et la leçon avaient tous le même poids typographique. */
+.aide-panneau {
+    width: min(560px, 94vw); max-height: min(80vh, 700px);
+    padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;
+    text-align: left;
+}
+.aide-panneau .modal-title { font-size: 1.15rem; }
+
+.aide-onglets {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px;
+}
+.aide-onglet {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-muted);
+    border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 700;
+    font-size: .84rem; cursor: pointer; min-height: 38px;
+}
+.aide-onglet--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Le corps défile, jamais le panneau : les onglets et « Compris ! » doivent
+   rester en place pendant qu'on lit une leçon de quinze lignes. */
+.aide-corps { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+
+/* L'ESSENTIEL EN GRAND, LE DÉTAIL EN DESSOUS. La première phrase dit ce qu'il
+   faut faire ; les suivantes parlent des réglages et des variantes. Les
+   afficher du même poids, c'est demander de lire cinq lignes pour trouver la
+   première. */
+.aide-essentiel {
+    margin: 0 0 12px; font-size: 1.06rem; font-weight: 600; line-height: 1.5;
+    color: var(--text-main);
+}
+.aide-details, .aide-lecons { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.aide-details li, .aide-lecons li { line-height: 1.5; color: var(--text-muted); font-size: .93rem; }
+.aide-lecons li { color: var(--text-main); }
+.aide-details-p { margin: 0 0 14px; line-height: 1.5; color: var(--text-muted); font-size: .93rem; }
+.aide-vide { margin: 0; color: var(--text-muted); font-style: italic; }
+
+/* --- L'exemple, dévoilé une étape à la fois --- */
+.aide-exemple-intro { margin: 0 0 10px; font-size: .82rem; color: var(--text-muted); }
+.aide-question {
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; font-size: 1.3rem; font-weight: 800; text-align: center;
+    margin-bottom: 12px; overflow-wrap: anywhere;
+}
+.aide-etapes { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 10px; }
+.aide-etapes li { line-height: 1.5; }
+/* Chaque étape arrive : sans cela, une ligne de plus apparaît d'un coup au
+   milieu du texte et l'on ne voit pas laquelle est neuve. */
+.aide-etapes li:last-child { animation: aide-arrive .28s ease-out; }
+@keyframes aide-arrive { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .aide-etapes li:last-child { animation: none; } }
+
+.aide-reponse {
+    background: color-mix(in srgb, var(--success, #16a34a) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--success, #16a34a) 40%, transparent);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+}
+.aide-reponse strong { font-size: 1.25rem; }
+.aide-reponse p { margin: 6px 0 0; font-size: .9rem; color: var(--text-muted); line-height: 1.45; }
+.aide-reponse-etiq {
+    display: block; font-size: .68rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--success, #16a34a); margin-bottom: 2px;
+}
+
+.aide-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.aide-btn {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+    border-radius: 10px; padding: 9px 15px; font: inherit; font-weight: 700;
+    font-size: .88rem; cursor: pointer; min-height: 42px;
+}
+.aide-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+@media (max-width: 560px) {
+    .aide-panneau { padding: 16px; }
+    .aide-onglet { padding: 7px 11px; font-size: .78rem; }
+    .aide-question { font-size: 1.1rem; }
+}
