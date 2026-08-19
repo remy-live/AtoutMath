@@ -13,7 +13,7 @@
 //   - cinq cases d'aperçu — téléphone, tablette, ordinateur, robot, fiche —
 //     qui LANCENT l'exercice dans ce cadre-là, et se cochent au retour.
 //
-// LE TABLEAU DÉFILE HORIZONTALEMENT, colonne du nom figée. Dix colonnes ne
+// LE TABLEAU DÉFILE HORIZONTALEMENT, colonne du nom figée. Onze colonnes ne
 // tiennent pas sur un iPhone, et rétrécir le nom de l'exercice jusqu'à ce que
 // tout entre revient à trier des lignes qu'on ne sait plus nommer.
 //
@@ -27,14 +27,20 @@
 import { exercices } from '../data/catalog.js';
 import { STATUS, STATUS_LABELS } from '../data/status.js';
 import {
-    COLONNES, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
-    filtrer, bilan, consigneStatuts, lireRevue, fusionnerRevues,
-    versMarkdown, jourISO
+    COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu,
+    aChange, dernierJour, filtrer, bilan, consigneStatuts, lireRevue,
+    fusionnerRevues, versMarkdown, jourISO
 } from '../core/revue.js';
 
 const CLE = 'mathbox-revue';
 let revue = null;
-let criteres = { texte: '', domaine: '', niveau: '', statut: '', avancee: '', jeux: false };
+// L'ORDRE PAR DÉFAUT EST « LES DERNIERS TOUCHÉS ». La question de départ était
+// « comment sait-on que ce sont les derniers jeux » : la réponse doit être en
+// haut du tableau à l'ouverture, pas derrière un menu.
+const CRITERES_VIDES = () => ({
+    texte: '', domaine: '', niveau: '', statut: '', avancee: '', jeux: false, tri: 'touche'
+});
+let criteres = CRITERES_VIDES();
 let retour = null;         // ce qu'on est parti regarder, et où le cocher au retour
 
 // --- Le carnet, gardé sur l'appareil ----------------------------------------
@@ -64,7 +70,7 @@ const echapper = (s) => String(s ?? '')
 // --- Les icônes des colonnes ------------------------------------------------
 //
 // Des traits, pas des émojis : « 🖥 » se dessine différemment sur chaque
-// système, et l'en-tête d'un tableau doit rester lisible à dix colonnes.
+// système, et l'en-tête d'un tableau doit rester lisible à onze colonnes.
 
 const ICONES = {
     telephone: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/>',
@@ -170,6 +176,7 @@ function assurerPanneau() {
             .rv-coche { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
             .rv-statut { width: 21px; height: 21px; accent-color: #f59e0b; cursor: pointer; }
             .rv-date { width: 118px; font-size: .74rem; }
+            .rv-quand { font-size: .72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
             .rv-remarque { width: 200px; }
             .rv-table td.rv-libre { white-space: normal; }
             .rv-vide { padding: 24px; text-align: center; color: var(--text-muted); }
@@ -268,6 +275,8 @@ function peindreFiltres(el) {
         Object.values(STATUS).map(s => [s, STATUS_LABELS[s]]), criteres.statut, 'Tous les statuts')}</select>
         <select class="rv-champ" data-f="avancee">${AVANCEES.map(([v, t]) =>
         `<option value="${v}"${v === criteres.avancee ? ' selected' : ''}>${t}</option>`).join('')}</select>
+        <select class="rv-champ" data-f="tri" title="Dans quel ordre ranger les lignes">${TRIS.map(t =>
+        `<option value="${t.id}"${t.id === criteres.tri ? ' selected' : ''}>${echapper(t.label)}</option>`).join('')}</select>
         <label class="rv-champ" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" class="rv-coche" data-f="jeux"${criteres.jeux ? ' checked' : ''}> Les jeux
         </label>
@@ -280,10 +289,7 @@ function peindreFiltres(el) {
         ch.oninput = ch.tagName === 'SELECT' || ch.type === 'checkbox' ? null : appliquer;
         ch.onchange = appliquer;
     });
-    el.querySelector('[data-raz]').onclick = () => {
-        criteres = { texte: '', domaine: '', niveau: '', statut: '', avancee: '', jeux: false };
-        peindre();
-    };
+    el.querySelector('[data-raz]').onclick = () => { criteres = CRITERES_VIDES(); peindre(); };
 }
 
 function majCompteur(el) {
@@ -312,9 +318,10 @@ function peindreTable(el) {
         <table class="rv-table">
             <thead><tr>
                 <th class="rv-nom">Exercice</th>
+                <th title="Écrit le, ou repris le — c'est ce qui dit lesquels sont les derniers">Écrit</th>
                 <th title="Coché = encore en test. Décoché = validé pour les élèves.">En test</th>
                 <th>Statut</th>
-                <th>Date</th>
+                <th title="Le jour où la décision a été prise">Décidé</th>
                 ${COLONNES.map(c => `<th title="${echapper(c.aide)}">${icone(c.id)}<br>${echapper(c.label)}</th>`).join('')}
                 <th>Remarque</th>
             </tr></thead>
@@ -341,6 +348,7 @@ function ligneHtml(exo) {
             <b>${echapper(exo.title)}</b>
             <span class="rv-sous">${echapper(chemin)}${niveaux ? ` — ${echapper(niveaux)}` : ''}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span>
         </span></td>
+        <td class="rv-quand" title="${echapper(exo.cree || '')}">${echapper(dernierJour(exo))}</td>
         <td><input type="checkbox" class="rv-statut" data-test="${exo.id}"
                    title="Encore en test ?"${s === STATUS.TEST ? ' checked' : ''}></td>
         <td><span class="rv-etiq rv-etiq--${s}">${echapper(STATUS_LABELS[s])}</span></td>
@@ -353,7 +361,7 @@ function ligneHtml(exo) {
 }
 
 /**
- * UN SEUL ÉCOUTEUR POUR TOUT LE TABLEAU. Dix colonnes sur cent neuf lignes
+ * UN SEUL ÉCOUTEUR POUR TOUT LE TABLEAU. Onze colonnes sur cent neuf lignes
  * font plus de mille commandes : les brancher une par une coûte le double du
  * temps de dessin, et il faut tout rebrancher au moindre filtre.
  *

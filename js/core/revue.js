@@ -132,6 +132,39 @@ export const aChange = (exo, fiche) =>
 export const nbVus = (fiche) => fiche ? Object.keys(fiche.vu || {}).length : 0;
 
 /**
+ * L'ORDRE DES LIGNES.
+ *
+ * « Comment sait-on que ce sont les derniers jeux » : la question de départ.
+ * Chaque descripteur porte sa date de création, et c'est la seule chose qui
+ * réponde — l'ordre du catalogue, lui, suit les domaines. « Les derniers
+ * arrivés » remonte donc ce qui vient d'être écrit, et « les derniers touchés »
+ * tient compte des révisions : un exercice de mars repris hier est aussi neuf
+ * qu'un exercice d'hier.
+ */
+export const TRIS = [
+    { id: 'catalogue', label: 'Ordre du catalogue' },
+    { id: 'recent', label: 'Les derniers créés' },
+    { id: 'touche', label: 'Les derniers touchés' },
+    { id: 'titre', label: 'Par titre' }
+];
+
+/** La dernière fois que l'exercice a bougé : création ou révision. */
+export function dernierJour(exo) {
+    const dates = [exo.cree || '', ...((exo.revisions || []).map(r => r.date || ''))];
+    return dates.filter(Boolean).sort().pop() || '';
+}
+
+export function trier(liste, tri) {
+    const l = [...liste];
+    if (tri === 'recent') return l.sort((a, b) => (b.cree || '').localeCompare(a.cree || '')
+        || a.title.localeCompare(b.title));
+    if (tri === 'touche') return l.sort((a, b) => dernierJour(b).localeCompare(dernierJour(a))
+        || a.title.localeCompare(b.title));
+    if (tri === 'titre') return l.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+    return l;
+}
+
+/**
  * LE TRI DU TABLEAU.
  *
  * @param {Array} exercices
@@ -143,11 +176,12 @@ export const nbVus = (fiche) => fiche ? Object.keys(fiche.vu || {}).length : 0;
  * @param {string} [criteres.statut]   - 'test' | 'valide' | 'brouillon', '' = tous
  * @param {string} [criteres.avancee]  - 'decides' | 'adecider' | 'vus' | 'jamaisvus' | 'changes' | 'remarques'
  * @param {boolean} [criteres.jeux]    - seulement les activités (celles qui ont un moteur)
+ * @param {string} [criteres.tri]      - voir TRIS
  */
 export function filtrer(exercices, revue, criteres = {}) {
-    const { texte = '', domaine = '', niveau = '', statut = '', avancee = '', jeux = false } = criteres;
+    const { texte = '', domaine = '', niveau = '', statut = '', avancee = '', jeux = false, tri = '' } = criteres;
     const mot = texte.trim().toLowerCase();
-    return exercices.filter(e => {
+    return trier(exercices.filter(e => {
         const f = ficheDe(revue, e.id);
         if (mot && !`${e.title} ${e.id} ${e.activityId || ''} ${e.generatorId || ''}`
             .toLowerCase().includes(mot)) return false;
@@ -162,7 +196,7 @@ export function filtrer(exercices, revue, criteres = {}) {
         if (avancee === 'changes' && !aChange(e, f)) return false;
         if (avancee === 'remarques' && !(f && f.remarque.trim())) return false;
         return true;
-    });
+    }), tri);
 }
 
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
@@ -304,13 +338,14 @@ export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } 
     }
 
     l.push('## Le tableau', '');
-    l.push(`| Exercice | Statut | Date | ${COLONNES.map(c => c.label).join(' | ')} | Remarque |`);
-    l.push(`|---|---|---|${COLONNES.map(() => '---').join('|')}|---|`);
+    l.push(`| Exercice | Créé | Statut | Décidé | ${COLONNES.map(c => c.label).join(' | ')} | Remarque |`);
+    l.push(`|---|---|---|---|${COLONNES.map(() => '---').join('|')}|---|`);
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         const s = statutRevu(e, f);
         const cases = COLONNES.map(c => (f && f.vu[c.id]) ? '✓' : '');
-        l.push(`| ${e.title} \`${e.id}\` | ${s === STATUS.TEST ? 'en test' : s === STATUS.BROUILLON ? 'brouillon' : 'validé'}`
+        l.push(`| ${e.title} \`${e.id}\` | ${dernierJour(e)} `
+            + `| ${s === STATUS.TEST ? 'en test' : s === STATUS.BROUILLON ? 'brouillon' : 'validé'}`
             + `${aChange(e, f) ? ' ⟵' : ''} | ${(f && f.date) || ''} | ${cases.join(' | ')} | `
             + `${((f && f.remarque) || '').replace(/\n/g, ' ').slice(0, 120)} |`);
     });

@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    COLONNES, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
+    COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
     nbVus, filtrer, bilan, consigneStatuts, lireStatuts, lireRevue,
-    fusionnerRevues, versMarkdown, jourISO
+    fusionnerRevues, versMarkdown, jourISO, trier, dernierJour
 } from '../js/core/revue.js';
 import { STATUS } from '../js/data/status.js';
 import { exercices } from '../js/data/catalog.js';
@@ -138,6 +138,54 @@ test('le filtre « les jeux » ne garde que ce qui a un moteur', () => {
 test('le filtre remarques ne retient pas une remarque faite d\'espaces', () => {
     const r = decider(nouvelleRevue(), 'num-un', { remarque: '   ' });
     assert.equal(filtrer(jeuDeux, r, { avancee: 'remarques' }).length, 0);
+});
+
+// --- L'ordre des lignes -----------------------------------------------------
+
+const dates = [
+    exo('vieux', { cree: '2026-01-05', title: 'Vieux' }),
+    exo('neuf', { cree: '2026-08-19', title: 'Neuf' }),
+    exo('repris', { cree: '2026-03-01', title: 'Repris', revisions: [{ date: '2026-08-20', quoi: 'x' }] })
+];
+
+test('la dernière date d\'un exercice tient compte de ses révisions', () => {
+    assert.equal(dernierJour(dates[0]), '2026-01-05');
+    assert.equal(dernierJour(dates[2]), '2026-08-20');
+});
+
+test('« les derniers créés » remonte ce qui vient d\'être écrit', () => {
+    assert.deepEqual(trier(dates, 'recent').map(e => e.id), ['neuf', 'repris', 'vieux']);
+});
+
+test('« les derniers touchés » remonte aussi ce qui vient d\'être repris', () => {
+    assert.deepEqual(trier(dates, 'touche').map(e => e.id), ['repris', 'neuf', 'vieux']);
+});
+
+test('le tri par titre suit l\'alphabet, l\'ordre du catalogue ne bouge pas', () => {
+    assert.deepEqual(trier(dates, 'titre').map(e => e.id), ['neuf', 'repris', 'vieux']);
+    assert.deepEqual(trier(dates, 'catalogue').map(e => e.id), ['vieux', 'neuf', 'repris']);
+});
+
+test('le tri ne modifie pas la liste qu\'on lui donne', () => {
+    const avant = dates.map(e => e.id);
+    trier(dates, 'recent');
+    assert.deepEqual(dates.map(e => e.id), avant);
+});
+
+test('filtrer trie ce qu\'il a gardé', () => {
+    assert.deepEqual(filtrer(dates, nouvelleRevue(), { tri: 'recent' }).map(e => e.id),
+        ['neuf', 'repris', 'vieux']);
+});
+
+test('quatre ordres proposés, celui du catalogue en premier', () => {
+    assert.equal(TRIS[0].id, 'catalogue');
+    assert.equal(TRIS.length, 4);
+});
+
+test('les six derniers exercices du vrai catalogue sont bien les plus récents', () => {
+    const derniers = filtrer(exercices, nouvelleRevue(), { tri: 'recent' }).slice(0, 6);
+    const plusVieux = derniers[5].cree;
+    assert.ok(exercices.every(e => (e.cree || '') <= plusVieux || derniers.includes(e)));
 });
 
 // --- Bilan ------------------------------------------------------------------
