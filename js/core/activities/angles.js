@@ -14,6 +14,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../../ui/paveTactile.js';
 
 const LEG_LEN = 260;          // longueur maximale des côtés de l'angle (px canevas)
 const SNAP_DIST = 30;         // aimantation du centre du rapporteur au sommet
@@ -35,6 +36,8 @@ export function mount(container, session, opts = {}) {
     // État du plateau, reconstruit à chaque question.
     let item = null;
     let canvas = null, ctx = null, board = null;
+    // Le pavé de la mesure : posé au doigt, retiré à chaque question.
+    let paveMesure = null;
     let etat = null;
 
     function renderNext() {
@@ -85,6 +88,7 @@ export function mount(container, session, opts = {}) {
                 ${hintBar(session)}
             </div>`;
 
+        if (paveMesure) { paveMesure.detruire(); paveMesure = null; }
         board = container.querySelector('[data-board]');
         canvas = container.querySelector('.angles-canvas');
         ctx = canvas.getContext('2d');
@@ -224,11 +228,19 @@ export function mount(container, session, opts = {}) {
     // --- Entrées -------------------------------------------------------------
 
     function brancherPointeur() {
-        // PINCER POUR ZOOMER, deux doigts pour déplacer. Ces deux gestes-là
-        // sont les seuls que personne n'a besoin d'apprendre — et sur un
-        // rapporteur, où l'on cherche une graduation d'un demi-degré, pouvoir
-        // approcher change tout. À deux doigts, on ne touche jamais à l'outil :
-        // le glissement à UN doigt reste entièrement au rapporteur.
+        // PINCER POUR ZOOMER, et UN SEUL DOIGT POUR TIRER LA FEUILLE.
+        //
+        // Rémy : « pour déplacer le canvas, on pourrait supposer qu'un seul
+        // doigt suffit, car au final si on est sur le rapporteur c'est lui
+        // qu'on bouge. On garde le pinch par contre. » C'est juste : le doigt
+        // posé SUR le rapporteur le saisit, celui posé à côté ne saisissait
+        // rien du tout — il ne restait qu'à pincer à deux doigts pour recadrer,
+        // ce que personne ne pense à faire pour un simple déplacement. Le
+        // glissement hors de l'outil déplace donc la vue.
+        //
+        // SAUF SOUS LA LOUPE : « et on bloque lorsque c'est la loupe. » Elle
+        // suit le doigt ; si la vue suivait aussi, on inspecterait une
+        // graduation qui se dérobe. Le retour anticipé de `down` s'en charge.
         const brut = (e, i) => {
             const rect = canvas.getBoundingClientRect();
             const t = e.touches[i];
@@ -237,6 +249,16 @@ export function mount(container, session, opts = {}) {
                 y: (t.clientY - rect.top) * (canvas.height / rect.height)
             };
         };
+        /** Le point du doigt (ou de la souris) À L'ÉCRAN, vue non défaite. */
+        const ecranDe = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const src = e.touches && e.touches.length ? e.touches[0] : e;
+            return {
+                x: (src.clientX - rect.left) * (canvas.width / rect.width),
+                y: (src.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        };
+
         const pince = (e) => {
             const a = brut(e, 0), b = brut(e, 1);
             return {
@@ -289,7 +311,12 @@ export function mount(container, session, opts = {}) {
                 etat.drag = 'move';
                 etat.dragOffset.x = p.x - r.x;
                 etat.dragOffset.y = p.y - r.y;
+                return;
             }
+
+            // 4. Rien sous le doigt : c'est LA FEUILLE qu'on tire.
+            etat.drag = 'pan';
+            etat.panDepart = ecranDe(e);
         };
 
         const move = (e) => {
@@ -330,6 +357,13 @@ export function mount(container, session, opts = {}) {
                 r.x = nx; r.y = ny;
             } else if (etat.drag === 'rotate') {
                 r.rot = Math.atan2(p.y - r.y, p.x - r.x) - etat.rotStart;
+            } else if (etat.drag === 'pan') {
+                // On raisonne en pixels d'ÉCRAN : le déplacement de la vue ne
+                // peut pas se mesurer dans un repère que ce déplacement change.
+                const s = ecranDe(e);
+                etat.pan.x += s.x - etat.panDepart.x;
+                etat.pan.y += s.y - etat.panDepart.y;
+                etat.panDepart = s;
             }
         };
 
@@ -390,6 +424,25 @@ export function mount(container, session, opts = {}) {
         const input = container.querySelector('[data-angle-input]');
         if (input) input.onkeydown = (e) => { if (e.key === 'Enter') valider(); };
         container.querySelector('[data-valider]').onclick = valider;
+
+        // LE CLAVIER DU SYSTÈME MANGEAIT LE RAPPORTEUR.
+        //
+        // Rémy : « pareil pour taper la mesure d'angle avec la tablette, le
+        // clavier occupe [la moitié de l'écran] ». Il s'ouvre sur le champ, se
+        // pose par-dessus la figure, et il faut le refermer pour revérifier sa
+        // lecture — c'est-à-dire refaire le geste à chaque doute. Un pavé DANS
+        // la page reste sous les yeux, à côté de ce qu'on mesure. Au doigt
+        // seulement : sur un ordinateur, le clavier ne recouvre rien.
+        if (paveMesure) { paveMesure.detruire(); paveMesure = null; }
+        if (input && auDoigt() && !session.isDemo) {
+            sansClavierSysteme(input);
+            const barre = container.querySelector('.angles-controls');
+            paveMesure = poserPaveTactile(barre.parentElement, {
+                champ: () => input,
+                maxLong: 3,
+                valider
+            });
+        }
     }
 
     function majConstruit() {
@@ -817,6 +870,7 @@ export function mount(container, session, opts = {}) {
             if (rafId) cancelAnimationFrame(rafId);
             if (observer) observer.disconnect();
             if (cursor) { cursor.destroy(); cursor = null; }
+            if (paveMesure) { paveMesure.detruire(); paveMesure = null; }
             nettoyeurs.forEach(f => f());
             container.innerHTML = '';
             session.finish();

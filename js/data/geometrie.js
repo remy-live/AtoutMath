@@ -272,6 +272,12 @@ export const geometrieExercises = [
         // séparées ne permettait d'atteindre.
         id: 'geo-angles', status: STATUS.TEST, title: 'Angle Master',
         cree: '2026-08-04',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Un seul doigt posé à côté du rapporteur tire la feuille (le pinch reste), '
+                + 'la loupe bloque ce déplacement, et la mesure se tape sur un pavé en page — '
+                + 'le clavier de la tablette recouvrait la figure qu\'on est en train de mesurer.'
+        }],
         generatorId: 'geo.angles', activityId: 'angles',
         // C'est l'exercice qu'un écran ne remplace pas : le rapporteur de
         // plastique se pose de travers, et c'est en le redressant qu'on
