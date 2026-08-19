@@ -235,6 +235,340 @@ function grillePreviewHtml(item, slot, k, solution, champs) {
     return html + '</table>';
 }
 
+// --- LES PLATEAUX À JOUER SUR PAPIER : puissance 4 et sim ---------------------
+//
+// Rémy : « on pourrait avoir un pdf de grille vide », « un pdf de jeu vide ».
+// Ce ne sont pas des exercices à corriger, ce sont des SUPPORTS : on imprime,
+// on distribue, deux élèves jouent au crayon de couleur. La correction n'a
+// donc rien à montrer — c'est le même plateau vide, et c'est normal.
+
+/** La boîte d'un bloc, quelle que soit la façon dont le gabarit l'a posée. */
+const boiteDe = (slot) => slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+
+/** La grille du puissance 4 : un rectangle de cercles, colonnes numérotées. */
+function geoP4(item, slot) {
+    const b = boiteDe(slot);
+    const { cols, rows } = item.meta;
+    // Une bande en haut pour les numéros de colonne : sans eux, on ne peut
+    // pas dire « je joue la 4 » à voix haute.
+    const tete = Math.min(6, b.h * 0.09);
+    const pas = Math.min((b.w - 2) / cols, (b.h - tete - 2) / rows);
+    const w = pas * cols, h = pas * rows;
+    return { b, cols, rows, pas, tete, x: b.x + (b.w - w) / 2, y: b.y + tete + (b.h - tete - h) / 2, w, h };
+}
+
+function p4PreviewHtml(item, slot, k) {
+    const g = geoP4(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let html = `<div class="fx-plat" style="left:${T(g.x)}px; top:${T(g.y)}px;
+        width:${T(g.w)}px; height:${T(g.h)}px"></div>`;
+    for (let c = 0; c < g.cols; c++) {
+        html += `<div class="fx-plat-num" style="left:${T(g.x + c * g.pas)}px;
+            top:${T(g.y - g.tete)}px; width:${T(g.pas)}px; height:${T(g.tete)}px;
+            font-size:${T(g.tete * 0.72)}px">${c + 1}</div>`;
+        for (let r = 0; r < g.rows; r++) {
+            const d = g.pas * 0.76;
+            html += `<div class="fx-plat-trou" style="left:${T(g.x + c * g.pas + (g.pas - d) / 2)}px;
+                top:${T(g.y + r * g.pas + (g.pas - d) / 2)}px; width:${T(d)}px; height:${T(d)}px"></div>`;
+        }
+    }
+    return html;
+}
+
+function dessinerP4Pdf(doc, item, slot) {
+    const g = geoP4(item, slot);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(g.x, g.y, g.w, g.h, 1.4, 1.4, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.min(11, g.tete * 2.4));
+    doc.setTextColor(...ENCRE.gris);
+    for (let c = 0; c < g.cols; c++) {
+        doc.text(String(c + 1), g.x + c * g.pas + g.pas / 2, g.y - g.tete * 0.28,
+            { align: 'center', baseline: 'alphabetic' });
+    }
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) {
+        doc.circle(g.x + c * g.pas + g.pas / 2, g.y + r * g.pas + g.pas / 2, g.pas * 0.38, 'S');
+    }
+}
+
+/** Le sim : six points en hexagone, numérotés, et rien d'autre. */
+function geoSim(item, slot) {
+    const b = boiteDe(slot);
+    // Une bande en bas pour la légende des deux couleurs.
+    const pied = Math.min(7, b.h * 0.12);
+    const R = Math.max(6, Math.min(b.w, b.h - pied) / 2 - 5);
+    const cx = b.x + b.w / 2, cy = b.y + (b.h - pied) / 2;
+    const pts = Array.from({ length: 6 }, (_, i) => {
+        const a = (-90 + i * 60) * Math.PI / 180;
+        return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
+    });
+    return { b, R, cx, cy, pied, pts, rayonPoint: Math.max(1.4, R * 0.055) };
+}
+
+/** Un point poussé vers l'extérieur de l'hexagone, à distance fixe. */
+function dehors(g, p) {
+    const dx = p.x - g.cx, dy = p.y - g.cy;
+    const d = Math.hypot(dx, dy) || 1;
+    const ecart = g.rayonPoint * 2 + 2.4;
+    return [p.x + (dx / d) * ecart, p.y + (dy / d) * ecart];
+}
+
+function simPreviewHtml(item, slot, k) {
+    const g = geoSim(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let html = '';
+    g.pts.forEach((p, i) => {
+        const d = g.rayonPoint * 2;
+        html += `<div class="fx-plat-pt" style="left:${T(p.x - g.rayonPoint)}px;
+            top:${T(p.y - g.rayonPoint)}px; width:${T(d)}px; height:${T(d)}px"></div>`;
+        // L'étiquette est posée VERS L'EXTÉRIEUR, à distance FIXE du point :
+        // proportionnelle au rayon, elle se posait sur le point lui-même dans
+        // les petits plateaux — et le point est ce qu'on relie.
+        const [ex, ey] = dehors(g, p);
+        html += `<div class="fx-plat-num" style="left:${T(ex - 3)}px; top:${T(ey - 2.4)}px;
+            width:${T(6)}px; height:${T(4.8)}px; font-size:${T(3.8)}px">${i + 1}</div>`;
+    });
+    html += `<div class="fx-plat-leg" style="left:${T(g.b.x)}px; top:${T(g.b.y + g.b.h - g.pied)}px;
+        width:${T(g.b.w)}px; font-size:${T(3.1)}px">Un crayon de couleur chacun.</div>`;
+    return html;
+}
+
+function dessinerSimPdf(doc, item, slot) {
+    const g = geoSim(item, slot);
+    doc.setFillColor(...ENCRE.trait);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.min(11, g.R * 0.34));
+    g.pts.forEach((p, i) => {
+        doc.circle(p.x, p.y, g.rayonPoint, 'F');
+        const [ex, ey] = dehors(g, p);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(String(i + 1), ex, ey, { align: 'center', baseline: 'middle' });
+        doc.setFillColor(...ENCRE.trait);
+    });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf('Un crayon de couleur chacun.'),
+        g.b.x + g.b.w / 2, g.b.y + g.b.h - g.pied * 0.35, { align: 'center' });
+}
+
+// --- LES ANAGRAMMES SUR PAPIER ------------------------------------------------
+//
+// Une ligne par mot : les lettres mélangées à gauche, la définition, puis
+// autant de cases que de lettres. Les cases FONT l'exercice — sans elles on ne
+// sait pas quand on a fini, et « RACER » pourrait donner « CRAER ».
+
+function geoAnagrammes(item, slot) {
+    const b = boiteDe(slot);
+    const lignes = item.meta.lignes || [];
+    const n = Math.max(1, lignes.length);
+    const hLigne = Math.min(16, (b.h - 2) / n);
+    // La case doit rester lisible même sur le mot le plus long de la feuille.
+    const maxLettres = Math.max(4, ...lignes.map(l => l.mot.length));
+    const colMelange = b.w * 0.26;
+    const largeurCases = Math.min(b.w * 0.42, maxLettres * hLigne * 0.52);
+    const cote = largeurCases / maxLettres;
+    return { b, lignes, hLigne, colMelange, cote, maxLettres, avecDef: item.meta.avecDef !== false };
+}
+
+/**
+ * LES LETTRES MÉLANGÉES TIENNENT DANS LEUR COLONNE. Écrites à taille fixe, un
+ * mot de douze lettres débordait sur la définition d'à côté — deux textes
+ * superposés, illisibles tous les deux. La taille suit donc la longueur.
+ */
+function tailleMelange(g, ligne) {
+    const large = g.hLigne * 0.42;
+    // 0,62 em par lettre en gras espacé : mesuré sur la police de la fiche.
+    const tenu = g.colMelange / Math.max(4, ligne.melange.length * 0.66);
+    return Math.max(g.hLigne * 0.2, Math.min(large, tenu));
+}
+
+function anagrammesPreviewHtml(item, slot, k, solution) {
+    const g = geoAnagrammes(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let html = '';
+    g.lignes.forEach((l, i) => {
+        const y = g.b.y + i * g.hLigne;
+        html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y + g.hLigne * 0.18)}px;
+            width:${T(g.colMelange)}px; font-size:${T(tailleMelange(g, l))}px">${echapperSheet(l.melange)}</div>`;
+        if (g.avecDef) {
+            html += `<div class="fx-ana-def" style="left:${T(g.b.x + g.colMelange)}px;
+                top:${T(y + g.hLigne * 0.16)}px;
+                width:${T(g.b.w - g.colMelange - g.cote * l.mot.length - 3)}px;
+                font-size:${T(g.hLigne * 0.30)}px">${echapperSheet(l.def)}</div>`;
+        }
+        const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
+        for (let c = 0; c < l.mot.length; c++) {
+            html += `<div class="fx-ana-case" style="left:${T(x0 + c * g.cote)}px;
+                top:${T(y + g.hLigne * 0.12)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
+                font-size:${T(g.cote * 0.62)}px">${solution ? l.mot[c] : ''}</div>`;
+        }
+    });
+    return html;
+}
+
+function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
+    const g = geoAnagrammes(item, slot);
+    g.lignes.forEach((l, i) => {
+        const y = g.b.y + i * g.hLigne;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(tailleMelange(g, l) * 2.5);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(l.melange), g.b.x, y + g.hLigne * 0.55, { baseline: 'middle' });
+
+        if (g.avecDef) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(Math.min(8, g.hLigne * 0.34));
+            doc.setTextColor(...ENCRE.gris);
+            const largeur = g.b.w - g.colMelange - g.cote * l.mot.length - 3;
+            const morceaux = doc.splitTextToSize(pourPdf(l.def), Math.max(10, largeur));
+            doc.text(morceaux.slice(0, 2), g.b.x + g.colMelange, y + g.hLigne * 0.45,
+                { baseline: 'middle' });
+        }
+
+        const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.35);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.min(13, g.cote * 1.4));
+        doc.setTextColor(...ENCRE.texte);
+        for (let c = 0; c < l.mot.length; c++) {
+            const x = x0 + c * g.cote, yc = y + g.hLigne * 0.12;
+            doc.rect(x, yc, g.cote, g.cote, 'S');
+            if (solution) {
+                doc.text(l.mot[c], x + g.cote / 2, yc + g.cote / 2,
+                    { align: 'center', baseline: 'middle' });
+            } else if (champ) {
+                champ(x + g.cote * 0.1, yc + g.cote * 0.1, g.cote * 0.8, g.cote * 0.8);
+            }
+        }
+    });
+}
+
+// --- LES MOTS CROISÉS SUR PAPIER ----------------------------------------------
+//
+// La mise en page du journal : la grille, puis les définitions rangées en
+// « Horizontalement » et « Verticalement ». Une grille par page — à deux, un
+// 15 × 18 tombe sous trois millimètres par case.
+
+function geoMotsCroises(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    // Les définitions prennent le bas de la page : elles sont longues, et une
+    // colonne étroite à côté d'une grille large les couperait en plein mot.
+    const hDefs = Math.min(b.h * 0.42, (Math.ceil((m.horizontales.length + m.verticales.length) / 2) + 2) * 4.4);
+    const dispoH = b.h - hDefs - 3;
+    const cote = Math.max(3, Math.min((b.w - 2) / m.largeur, dispoH / m.hauteur));
+    const w = cote * m.largeur, h = cote * m.hauteur;
+    return {
+        b, m, cote, hDefs,
+        x: b.x + (b.w - w) / 2, y: b.y + (dispoH - h) / 2, w, h,
+        yDefs: b.y + dispoH + 3
+    };
+}
+
+function motsCroisesPreviewHtml(item, slot, k, solution) {
+    const g = geoMotsCroises(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const offertes = new Map((g.m.offertes || []).map(o => [`${o.x},${o.y}`, o.lettre]));
+    let html = '';
+    for (let y = 0; y < g.m.hauteur; y++) {
+        for (let x = 0; x < g.m.largeur; x++) {
+            const c = g.m.cases[y][x];
+            const X = g.x + x * g.cote, Y = g.y + y * g.cote;
+            if (c === null) {
+                html += `<div class="fx-mc-noire" style="left:${T(X)}px; top:${T(Y)}px;
+                    width:${T(g.cote)}px; height:${T(g.cote)}px"></div>`;
+                continue;
+            }
+            const donnee = offertes.get(`${x},${y}`);
+            const lettre = solution ? c : (donnee || '');
+            const num = (g.m.numeros && g.m.numeros[`${x},${y}`]) || '';
+            html += `<div class="fx-mc-case" style="left:${T(X)}px; top:${T(Y)}px;
+                width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.6)}px">
+                ${num ? `<span class="fx-mc-num" style="font-size:${T(g.cote * 0.3)}px">${num}</span>` : ''}
+                ${echapperSheet(lettre)}</div>`;
+        }
+    }
+    html += listeDefsHtml(g, k);
+    return html;
+}
+
+/** Les deux colonnes de définitions, sous la grille. */
+function listeDefsHtml(g, k) {
+    const T = (v) => (v * k).toFixed(2);
+    const colonne = (titre, liste, x, w) => {
+        let out = `<div class="fx-mc-titre" style="left:${T(x)}px; top:${T(g.yDefs)}px;
+            width:${T(w)}px; font-size:${T(3.4)}px">${titre}</div>`;
+        liste.forEach((d, i) => {
+            out += `<div class="fx-mc-def" style="left:${T(x)}px; top:${T(g.yDefs + 4.4 + i * 4.2)}px;
+                width:${T(w)}px; font-size:${T(2.9)}px"><b>${d.num}.</b> ${echapperSheet(d.def)} (${d.longueur})</div>`;
+        });
+        return out;
+    };
+    const demi = (g.b.w - 4) / 2;
+    return colonne('Horizontalement', g.m.horizontales, g.b.x, demi)
+        + colonne('Verticalement', g.m.verticales, g.b.x + demi + 4, demi);
+}
+
+function dessinerMotsCroisesPdf(doc, item, slot, solution, champ) {
+    const g = geoMotsCroises(item, slot);
+    const offertes = new Map((g.m.offertes || []).map(o => [`${o.x},${o.y}`, o.lettre]));
+
+    for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
+        const X = g.x + x * g.cote, Y = g.y + y * g.cote;
+        if (g.m.cases[y][x] === null) {
+            doc.setFillColor(...ENCRE.trait);
+            doc.rect(X, Y, g.cote, g.cote, 'F');
+            continue;
+        }
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.22);
+        doc.rect(X, Y, g.cote, g.cote, 'S');
+
+        const num = g.m.numeros && g.m.numeros[`${x},${y}`];
+        if (num) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(Math.max(3.6, g.cote * 0.9));
+            doc.setTextColor(...ENCRE.gris);
+            doc.text(String(num), X + g.cote * 0.12, Y + g.cote * 0.36);
+        }
+        const donnee = offertes.get(`${x},${y}`);
+        const lettre = solution ? g.m.cases[y][x] : (donnee || '');
+        if (lettre) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.min(12, g.cote * 1.7));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(lettre, X + g.cote / 2, Y + g.cote * 0.62, { align: 'center' });
+        } else if (champ) {
+            champ(X + g.cote * 0.1, Y + g.cote * 0.1, g.cote * 0.8, g.cote * 0.8);
+        }
+    }
+
+    const demi = (g.b.w - 4) / 2;
+    const colonne = (titre, liste, x) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(titre), x, g.yDefs + 3);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.4);
+        doc.setTextColor(...ENCRE.gris);
+        let y = g.yDefs + 7;
+        liste.forEach(d => {
+            const morceaux = doc.splitTextToSize(pourPdf(`${d.num}. ${d.def} (${d.longueur})`), demi - 1);
+            doc.text(morceaux, x, y);
+            y += morceaux.length * 2.6 + 1;
+        });
+    };
+    colonne('Horizontalement', g.m.horizontales, g.b.x);
+    colonne('Verticalement', g.m.verticales, g.b.x + demi + 4);
+}
+
 // --- Binairo ------------------------------------------------------------------
 
 function dessinerBinairoPdf(doc, item, slot, solution, champ) {
@@ -6075,6 +6409,67 @@ function dessinerPavagePdf(doc, item, slot, solution) {
 }
 
 export const RENDUS = {
+    // --- Les jeux à jouer sur papier ---
+    puissance4: {
+        titre: 'Grille de puissance 4',
+        consigne: (items) => (items[0] && items[0].meta.regle) || '',
+        previewGrille: p4PreviewHtml,
+        pdfGrille: dessinerP4Pdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        // Deux par page : une partie se joue à deux, et une feuille pour deux
+        // élèves porte deux parties — la seconde pour la revanche.
+        disposition: { cols: 1, rows: 2, maxCols: 2, maxRows: 3 },
+        parLigneDefaut: 1,
+        // Rien à corriger : la feuille de solutions serait le même plateau vide.
+        sansSolution: true
+    },
+
+    sim: {
+        titre: 'Plateau du Sim',
+        consigne: (items) => (items[0] && items[0].meta.regle) || '',
+        previewGrille: simPreviewHtml,
+        pdfGrille: dessinerSimPdf,
+        nomBloc: 'Plateau', nomBlocs: 'plateaux',
+        // Quatre par page : une partie de sim dure trois minutes.
+        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2,
+        sansSolution: true
+    },
+
+    anagrammes: {
+        titre: 'Anagrammes du vocabulaire',
+        consigne: (items) => {
+            const avecDef = items[0] && items[0].meta.avecDef !== false;
+            const commun = 'REMETS LES LETTRES DANS L\'ORDRE. Chaque suite de lettres cache un mot '
+                + 'de mathématiques : écris-le dans les cases, une lettre par case.';
+            return avecDef
+                ? `${commun} La définition est là pour te guider — relis-la une fois le mot trouvé.`
+                : `${commun} Aucune définition ici : ce sont les lettres seules qui doivent parler.`;
+        },
+        previewGrille: anagrammesPreviewHtml,
+        pdfGrille: dessinerAnagrammesPdf,
+        nomBloc: 'Liste', nomBlocs: 'listes',
+        titreAGauche: true,
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1
+    },
+
+    motscroises: {
+        titre: 'Mots croisés du vocabulaire',
+        consigne: () => 'REMPLIS LA GRILLE. Chaque définition donne un mot du cours ; le nombre '
+            + 'entre parenthèses est son nombre de lettres. Commence par ceux dont tu es sûr : '
+            + 'chaque mot trouvé donne une lettre à ceux qui le croisent, et c\'est là toute '
+            + 'l\'aide dont tu disposes.',
+        previewGrille: motsCroisesPreviewHtml,
+        pdfGrille: dessinerMotsCroisesPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        titreAGauche: true,
+        // UNE GRILLE PAR PAGE : à deux, un 15 × 18 tombe sous trois millimètres
+        // par case, et les définitions ne tiennent plus.
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
+        parLigneDefaut: 1
+    },
+
     pavage: {
         titre: 'Symétrique par rapport à quoi ?',
         // SUR LE PAPIER, ON RÉPOND PAR LE NOM. Écrire « x = 4 » demanderait un
@@ -7232,7 +7627,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         const { cols, rows } = lireDisposition();
         chargerJsPDF()
             .then(jsPDF => {
-                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreFiche, !!atelier);
+                // Un plateau de jeu vide n'a pas
+                // de correction — la page de solutions serait le même plateau,
+                // toujours vide, et une feuille de plus à photocopier.
+                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreFiche,
+                    !!atelier || !!rendu.sansSolution);
                 doc.save(`${(atelier && atelier.nom) || exo.printable}-${cols}x${rows}.pdf`);
             })
             .catch(() => {

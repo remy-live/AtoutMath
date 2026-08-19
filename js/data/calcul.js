@@ -854,7 +854,11 @@ export const calculExercises = [
         // ici on a déjà toutes les lettres, et c'est le MOT DU COURS qu'on
         // cherche — celui que la définition décrit. Deux exercices voisins,
         // deux travaux différents, un seul lexique.
-        id: 'voc-anagrammes', title: 'Anagrammes du Vocabulaire',
+        id: 'voc-anagrammes',
+        // Sur le papier, on écrit le mot dans les cases : personne ne valide,
+        // donc on s'engage. Rémy : « tu pourrais faire un pdf ».
+        printable: 'anagrammes', printGeneratorId: 'voc.anagrammes-fiche',
+        printParams: { theme: 'tout', nbMots: 8, definition: true }, title: 'Anagrammes du Vocabulaire',
         cree: '2026-08-19',
         activityId: 'anagrammes', skills: ['voc.mathematique'],
         // Un mot cherché puis trouvé n'a rien à réviser : ce qui compte est de
@@ -919,7 +923,11 @@ export const calculExercises = [
         // le désordre et rien n'aide rien. Le générateur fabrique donc une
         // dizaine de grilles et garde la plus SERRÉE — c'est le chaînage qui
         // fait l'exercice.
-        id: 'voc-mots-croises', status: STATUS.TEST, title: 'Mots Croisés Mathématiques',
+        id: 'voc-mots-croises',
+        // Une grille de mots croisés EST un objet de papier ; l'écran n'en est
+        // qu'une transcription. Rémy : « on pourrait avoir un pdf ».
+        printable: 'motscroises', printGeneratorId: 'voc.mots-croises-fiche',
+        printParams: { theme: 'angles', nbMots: 10, niveauMax: 3, lettresDonnees: 0 }, status: STATUS.TEST, title: 'Mots Croisés Mathématiques',
         cree: '2026-08-19',
         activityId: 'mots-croises', skills: ['voc.mathematique'],
         sansRevision: true,
@@ -1059,7 +1067,10 @@ export const calculExercises = [
         // LE PUISSANCE 4. « Et aussi le puissance 4. » Le jeton TOMBE : on ne
         // choisit pas la case, on choisit la colonne — et poser sous une case
         // gagnante la donne à l'adversaire.
-        id: 'logi-puissance4', status: STATUS.TEST, title: 'Puissance 4',
+        id: 'logi-puissance4',
+        // Un plateau vide à imprimer : deux élèves, deux crayons de couleur.
+        printable: 'puissance4', printGeneratorId: 'jeux.plateaux-fiche',
+        printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, status: STATUS.TEST, title: 'Puissance 4',
         cree: '2026-08-19',
         activityId: 'puissance4', horsProgression: true, sansRevision: true,
         deuxJoueurs: true,
@@ -1094,7 +1105,9 @@ export const calculExercises = [
         // R(3,3) = 6, donc sur les quinze arêtes d'un hexagone complet
         // coloriées de deux couleurs, un triangle monochrome est INÉVITABLE.
         // Le match nul n'existe pas, et c'est démontrable.
-        id: 'logi-sim', title: 'Le Sim',
+        id: 'logi-sim',
+        printable: 'sim', printGeneratorId: 'jeux.plateaux-fiche',
+        printParams: { jeu: 'sim' }, title: 'Le Sim',
         cree: '2026-08-19',
         activityId: 'sim', horsProgression: true, sansRevision: true,
         deuxJoueurs: true,

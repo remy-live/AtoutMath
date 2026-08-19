@@ -4162,6 +4162,58 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .fx-red-rail--champ { border-bottom-color: #6366f1; }
 
+/* --- LES APERÇUS DES NOUVELLES FICHES --------------------------------------
+   Plateaux à jouer (puissance 4, sim), anagrammes et mots croisés. L'aperçu à
+   l'écran doit ressembler AU PAPIER : c'est lui qu'on regarde avant
+   d'imprimer, et une prévisualisation qui ment fait imprimer deux fois. */
+.fx-plat {
+    position: absolute; border: .6px solid #1a202c; border-radius: 2px;
+    pointer-events: none;
+}
+.fx-plat-trou {
+    position: absolute; border: .4px solid #b0b6c5; border-radius: 50%;
+    pointer-events: none;
+}
+.fx-plat-num {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    color: #6b7280; font-weight: 800; pointer-events: none;
+}
+.fx-plat-pt { position: absolute; background: #1a202c; border-radius: 50%; pointer-events: none; }
+.fx-plat-leg {
+    position: absolute; text-align: center; color: #6b7280; pointer-events: none;
+}
+
+/* Les anagrammes : les lettres mélangées, la définition, les cases à remplir. */
+.fx-ana-mel {
+    position: absolute; font-weight: 800; color: #2d3748;
+    letter-spacing: .08em; pointer-events: none;
+}
+.fx-ana-def {
+    position: absolute; color: #6b7280; line-height: 1.15;
+    overflow: hidden; pointer-events: none;
+}
+.fx-ana-case {
+    position: absolute; border: .4px solid #1a202c; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #2d3748; pointer-events: none;
+}
+
+/* Les mots croisés : cases blanches, cases noires, numéros en petit. */
+.fx-mc-case {
+    position: absolute; border: .3px solid #1a202c; box-sizing: border-box;
+    background: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #1a202c; pointer-events: none;
+}
+.fx-mc-noire { position: absolute; background: #1a202c; pointer-events: none; }
+.fx-mc-num {
+    position: absolute; top: 0; left: .5px; color: #6b7280;
+    font-weight: 700; line-height: 1;
+}
+.fx-mc-titre { position: absolute; font-weight: 800; color: #2d3748; pointer-events: none; }
+.fx-mc-def {
+    position: absolute; color: #6b7280; line-height: 1.2; pointer-events: none;
+}
+
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------
    Un jeu n'est pas une étape de plus : il se voit AUTREMENT. Pastille dorée
    quand il est ouvert, grisée mais explicite quand il ne l'est pas — un verrou

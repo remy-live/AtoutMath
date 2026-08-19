@@ -51,6 +51,9 @@ import { proportionFicheGenerator } from '../generators/proportionFiche.js';
 import { pairesFicheGenerator } from '../generators/pairesFiche.js';
 import { rectangleFicheGenerator } from '../generators/rectangleFiche.js';
 import { motsCachesFicheGenerator } from '../generators/motsCachesFiche.js';
+import { plateauxPapierGenerator } from '../generators/plateauxFiche.js';
+import { anagrammesFicheGenerator } from '../generators/anagrammesFiche.js';
+import { motsCroisesFicheGenerator } from '../generators/motsCroisesFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
 import { echecsFicheGenerator } from '../generators/echecsFiche.js';
@@ -85,7 +88,8 @@ import {
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
-    motsCachesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
+    motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
+    motsCroisesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
     poserFicheGenerator, conversionFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
