@@ -13,6 +13,7 @@ import { ItemSession } from '../core/itemSession.js';
 import { makePath, makeStep } from '../core/path.js';
 import { defaultPolicy } from '../core/policy.js';
 import { paramSchemaOf } from '../data/catalog.js';
+import { questionsConseillees } from '../core/duree.js';
 import { accessOf, lockLabel } from '../core/gameAccess.js';
 
 /**
@@ -66,7 +67,15 @@ export function openGameLayer(exo, startAsDemo) {
  */
 function launchFreePlay(exo, params) {
     const { nbQuestions, successThreshold, timeLimit, ...overrides } = params || {};
-    const nbItems = nbQuestions || 10;
+    // COMBIEN D'UNITÉS FONT UNE SÉANCE.
+    //
+    // Le jeu libre posait dix, quoi qu'il arrive : dix paires (deux tables),
+    // dix grilles de sudoku (une heure et demie), dix parties d'échecs. Et il
+    // ignorait au passage les progressions, que le panneau du professeur
+    // savait pourtant calculer. Une seule fonction répond maintenant partout —
+    // voir `questionsConseillees` dans core/duree.js.
+    const nbItems = nbQuestions || questionsConseillees(
+        getGenerator(exo.generatorId), exo.params || {}, { activite: exo.activityId });
 
     const step = makeStep(exo.id, overrides, {
         nbItems,

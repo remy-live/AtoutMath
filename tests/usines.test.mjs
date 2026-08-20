@@ -26,14 +26,15 @@ const index = readFileSync(new URL('../js/core/activities/index.js', import.meta
 
 /**
  * Les lignes [id, libellé, fichier, export] de la table « legacy ».
- * Un cinquième champ facultatif nomme l'unité de travail (« paire »,
- * « grille », « partie »…) : on le laisse passer sans le lire.
+ * Deux champs facultatifs suivent — l'unité de travail (« paire », « grille »,
+ * « partie »…) puis le nombre d'unités d'une séance : on les laisse passer
+ * sans les lire.
  */
 function usinesEnregistrees() {
     const bloc = /const legacy = \[([\s\S]*?)\n\];/.exec(index);
     assert.ok(bloc, 'la table « legacy » a changé de forme : ce test ne la lit plus');
     const out = [];
-    const ligne = /\[\s*'((?:[^'\\]|\\.)*)',\s*'((?:[^'\\]|\\.)*)',\s*'((?:[^'\\]|\\.)*)',\s*'((?:[^'\\]|\\.)*)'(?:\s*,\s*'(?:[^'\\]|\\.)*')?\s*\]/g;
+    const ligne = /\[\s*'((?:[^'\\]|\\.)*)',\s*'((?:[^'\\]|\\.)*)',\s*'((?:[^'\\]|\\.)*)',\s*'((?:[^'\\]|\\.)*)'(?:\s*,\s*'(?:[^'\\]|\\.)*')?(?:\s*,\s*\d+)?\s*\]/g;
     let m;
     while ((m = ligne.exec(bloc[1]))) out.push({ id: m[1], fichier: m[3], usine: m[4] });
     return out;

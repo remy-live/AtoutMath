@@ -11,19 +11,42 @@ import { defaultPolicy } from '../js/core/policy.js';
 // --- Le code court ----------------------------------------------------------
 
 import { codeCourt, normaliserCourt } from '../js/core/shortcodes.js';
-import { exercices } from '../js/data/catalog.js';
+import { exercices, getExerciseById } from '../js/data/catalog.js';
+import { questionsConseillees } from '../js/core/duree.js';
+import { getGenerator } from '../js/core/registry.js';
+
+/** Ce que vaut « cet exercice, tel quel » — plus jamais dix pour tout le monde. */
+function telQuel(id) {
+    const exo = getExerciseById(id);
+    return questionsConseillees(getGenerator(exo.generatorId), exo.params || {},
+        { activite: exo.activityId });
+}
 
 test('un exercice pris tel quel tient en QUATRE caractères', () => {
     // « Fais l'exercice sur les relatifs ce soir » n'a pas besoin d'un
     // parcours. Le format complet coûtait 81 caractères de base64 : à recopier
     // sur un téléphone, c'est une faute de frappe garantie.
-    const step = makeStep('num-relatifs-addition', {}, { nbItems: 10, threshold: 7 });
+    //
+    // « TEL QUEL » N'EST PLUS « DIX ». L'exercice avance par marches et en
+    // demande vingt-quatre ; le code court doit dire la même chose à
+    // l'écriture et à la relecture, sinon l'élève reçoit un exercice tronqué.
+    const n = telQuel('num-relatifs-addition');
+    assert.ok(n > 10, 'cet exercice a une progression : son défaut dépasse dix');
+    const step = makeStep('num-relatifs-addition', {}, { nbItems: n, threshold: 7 });
     const code = Shortcodes.encodePath(makePath('Relatifs', [step], defaultPolicy()));
     assert.equal(code.length, 4, `code trop long : ${code}`);
     const relu = Shortcodes.decodePath(code);
     assert.equal(relu.steps.length, 1);
     assert.equal(relu.steps[0].exerciseId, 'num-relatifs-addition');
-    assert.equal(relu.steps[0].nbItems, 10);
+    assert.equal(relu.steps[0].nbItems, n);
+});
+
+test('UN JEU DE GRILLE NE SE COMPTE PAS COMME UNE QUESTION', () => {
+    // C'est la remarque de Rémy — « 10 paires c'est très court » — vue depuis
+    // l'autre bout : dix grilles de sudoku, c'est une heure et demie.
+    assert.equal(telQuel('calc-sudoku'), 3);
+    assert.ok(telQuel('num-amis-de-dix') >= 20, 'les paires se comptent par dizaines');
+    assert.equal(telQuel('logi-echecs'), 1);
 });
 
 test('AUCUN exercice du catalogue ne partage son code avec un autre', () => {

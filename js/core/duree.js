@@ -44,6 +44,24 @@
 // Un générateur déclare donc sa nature (`duree: 'reflexe'`) ou sa progression
 // (`conseil(params)`). Sans rien, c'est une notion ordinaire : dix questions.
 
+import { parDefautDe, uniteDe } from './registry.js';
+
+// UNE TROISIÈME SOURCE, ET C'EST CELLE QU'ON AVAIT OUBLIÉE : L'ACTIVITÉ.
+//
+// Rémy, dès que le bandeau s'est mis à nommer l'unité comptée : « mais du coup
+// 10 paires c'est très court ». Il a raison, et le problème n'est pas la
+// nouvelle étiquette — c'est qu'elle rend enfin VISIBLE un défaut qui traînait
+// depuis toujours. Dix valait pour tout le monde tant que personne ne
+// regardait ce qu'il comptait : dix paires font deux tables des Amis de Dix,
+// dix grilles de sudoku font une heure et demie, dix parties d'échecs font une
+// soirée.
+//
+// La nature de l'exercice (réflexe / notion) et sa progression viennent du
+// GÉNÉRATEUR ; le compte naturel d'unités vient de l'ACTIVITÉ (`parDefaut`
+// dans le registre). Quand l'activité ne compte pas des questions, c'est elle
+// qui a le dernier mot sur le point de départ — une grille n'est pas une
+// question rapide qu'on répéterait vingt fois.
+
 /** Ce que vaut un exercice ordinaire, sans nature ni progression déclarée. */
 export const QUESTIONS_PAR_DEFAUT = 10;
 
@@ -72,16 +90,26 @@ export const MAX_QUESTIONS = 50;
  *
  * @param {Object} generateur  définition du registre (peut déclarer `conseil`)
  * @param {Object} params      réglages courants de l'exercice
- * @param {Object} [opts]      `{ aide: true }` pour garantir aussi l'escalier de l'aide
+ * @param {Object} [opts]      `{ aide: true }` pour garantir aussi l'escalier de
+ *   l'aide, `{ activite: 'sudoku' }` pour partir du compte naturel de l'activité
  */
 export function questionsConseillees(generateur, params = {}, opts = {}) {
-    let n = (generateur && DUREES[generateur.duree]) || QUESTIONS_PAR_DEFAUT;
+    // Le compte naturel de l'activité l'emporte sur le défaut générique : une
+    // grille, une partie, une course ne se comptent pas comme des questions.
+    const naturel = opts.activite ? parDefautDe(opts.activite) : QUESTIONS_PAR_DEFAUT;
+    let n = naturel !== QUESTIONS_PAR_DEFAUT
+        ? naturel
+        : ((generateur && DUREES[generateur.duree]) || QUESTIONS_PAR_DEFAUT);
     if (generateur && typeof generateur.conseil === 'function') {
         const dit = Number(generateur.conseil(params || {}));
         if (Number.isFinite(dit) && dit > 0) n = Math.max(n, Math.round(dit));
     }
-    if (opts.aide !== false) n = Math.max(n, MINIMUM_ESCALIER);
-    return Math.max(MIN_QUESTIONS, Math.min(MAX_QUESTIONS, n));
+    // L'ESCALIER DE L'AIDE NE CONCERNE QUE LES EXERCICES À QUESTIONS. Il
+    // demande sept réponses pour avoir le temps de monter — ce qui n'a aucun
+    // sens sur une partie d'échecs, et forcerait sept parties.
+    const desQuestions = !opts.activite || uniteDe(opts.activite) === 'question';
+    if (opts.aide !== false && desQuestions) n = Math.max(n, MINIMUM_ESCALIER);
+    return Math.max(1, Math.min(MAX_QUESTIONS, Math.max(desQuestions ? MIN_QUESTIONS : 1, n)));
 }
 
 /**

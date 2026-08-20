@@ -24,7 +24,7 @@ import {
 } from '../core/dureeParcours.js';
 import { getGenerator, getActivity } from '../core/registry.js';
 import { chapitresDe } from '../core/chapitres.js';
-import { renderGameConfigUI, renderPolicyEditor } from '../games/configUI.js';
+import { renderGameConfigUI, renderPolicyEditor, conseilEtape } from '../games/configUI.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
 
 let selectedStepId = null;
@@ -358,7 +358,10 @@ export async function ajouterLeDossier(path) {
 
     const verser = () => {
         lot.forEach(exo => {
-            const step = makeStep(exo.id, {}, { nbItems: 10, threshold: 7 });
+            // Le compte naturel de l'exercice, pas dix pour tout le monde :
+            // une grille de sudoku n'est pas une question de calcul mental.
+            const n = conseilEtape({ exerciseId: exo.id });
+            const step = makeStep(exo.id, {}, { nbItems: n, threshold: Math.ceil(n * 0.7) });
             state.currentPath.steps.push(step);
         });
         renderTeacherPath();
@@ -378,7 +381,8 @@ export async function ajouterLeDossier(path) {
 export function addStep(exerciseId) {
     const exo = getExerciseById(exerciseId);
     if (!exo) return;
-    const step = makeStep(exerciseId, {}, { nbItems: 10, threshold: 7 });
+    const n = conseilEtape({ exerciseId });
+    const step = makeStep(exerciseId, {}, { nbItems: n, threshold: Math.ceil(n * 0.7) });
     state.currentPath.steps.push(step);
     renderTeacherPath();
     // Pas sur téléphone : le panneau de propriétés s'y ouvre en PLEIN ÉCRAN,

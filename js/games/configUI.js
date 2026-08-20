@@ -423,6 +423,21 @@ export function readParams(root, schema) {
 // --- Panneau « propriétés d'une étape » (éditeur professeur) ----------------
 
 /**
+ * Le nombre d'unités que PROPOSE une étape qui n'en fixe pas.
+ *
+ * Rémy : « mais du coup 10 paires c'est très court ». Dix était le nombre de
+ * questions, et il valait pour tout le monde ; l'activité dit maintenant son
+ * compte naturel, et le générateur, sa progression.
+ */
+export function conseilEtape(step) {
+    const exo = getExerciseById(step && step.exerciseId) || (step && step.exercise) || {};
+    return questionsConseillees(
+        exo.generatorId ? getGenerator(exo.generatorId) : null,
+        { ...(exo.params || {}), ...((step && step.overrides) || {}) },
+        { activite: exo.activityId });
+}
+
+/**
  * @param {Object} step - étape v2 { exerciseId, overrides, nbItems, threshold, weight, timeLimit }
  * @param {(step:Object)=>void} onSave
  */
@@ -461,13 +476,13 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             </p>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
-                <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="1" max="50" value="${step.nbItems || 10}">
+                <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="1" max="50" value="${step.nbItems || conseilEtape(step)}">
             </div>
             <div class="cfg-field" id="cfg-champ-seuil">
                 <label class="cfg-label" for="cfg-threshold">Bonnes réponses exigées
                     ${infoBtn(null, 'cfg-threshold-tip')}</label>
                 <input type="number" id="cfg-threshold" class="cfg-input cfg-input--num" min="1" max="50"
-                       value="${step.threshold !== null && step.threshold !== undefined ? step.threshold : (step.nbItems || 10)}">
+                       value="${step.threshold !== null && step.threshold !== undefined ? step.threshold : (step.nbItems || conseilEtape(step))}">
             </div>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-timelimit">Chronomètre (s)
@@ -606,7 +621,7 @@ export function showStudentConfigModal(exo, onStart) {
     // que cinq. Le générateur dit maintenant ce qu'il lui faut ; on le propose,
     // et l'infobulle explique pourquoi le nombre n'est pas celui qu'on croit.
     const generateurEcran = exo.generatorId ? getGenerator(exo.generatorId) : null;
-    const conseil = questionsConseillees(generateurEcran, current);
+    const conseil = questionsConseillees(generateurEcran, current, { activite: exo.activityId });
     const nbConseille = current.nbQuestions || conseil;
     // Le « pourquoi ce nombre » dépend de la NATURE de l'exercice : on ne
     // justifie pas vingt additions comme on justifie vingt-quatre marches.

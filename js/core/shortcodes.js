@@ -15,6 +15,8 @@
 import { normalizePath, makePath } from './path.js';
 import { getExerciseById, exercices } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy } from './policy.js';
+import { questionsConseillees } from './duree.js';
+import { getGenerator } from './registry.js';
 
 const PREFIX = 'M2-';
 
@@ -60,6 +62,22 @@ export const normaliserCourt = (code) => String(code || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '')
     .replace(/O/g, '0').replace(/I/g, '1').replace(/S/g, '5');
 
+/**
+ * Le nombre d'unités d'un exercice laissé « tel quel ».
+ *
+ * Ce n'est plus dix pour tout le monde : une grille de sudoku, une partie
+ * d'échecs et une addition ne se comptent pas pareil. Le code court dit « cet
+ * exercice, tel quel » — encore faut-il que « tel quel » veuille dire la même
+ * chose à l'écriture et à la relecture.
+ */
+function telQuel(exerciseId) {
+    const exo = getExerciseById(exerciseId);
+    if (!exo) return 10;
+    return questionsConseillees(
+        exo.generatorId ? getGenerator(exo.generatorId) : null,
+        exo.params || {}, { activite: exo.activityId });
+}
+
 /** Ce parcours se résume-t-il à « cet exercice, tel quel » ? */
 function estSimple(path) {
     const p = normalizePath(path);
@@ -67,7 +85,7 @@ function estSimple(path) {
     const s = p.steps[0];
     if (s.overrides && Object.keys(s.overrides).length) return false;
     if (s.threshold !== null && s.threshold !== undefined && s.threshold !== 7) return false;
-    if ((s.nbItems || 10) !== 10 || (s.weight || 1) !== 1 || s.timeLimit) return false;
+    if ((s.nbItems || 10) !== telQuel(s.exerciseId) || (s.weight || 1) !== 1 || s.timeLimit) return false;
     const pol = resolvePolicy(p.policy);
     const def = defaultPolicy();
     return pol.mode === def.mode && pol.hints === def.hints
@@ -210,7 +228,8 @@ export const Shortcodes = {
                 const path = makePath(court.title || 'Exercice', [], defaultPolicy());
                 path.steps = [{
                     stepId: 'sc_0', exerciseId: court.id, overrides: {},
-                    nbItems: 10, threshold: 7, weight: 1, timeLimit: null, forceSeed: null
+                    nbItems: telQuel(court.id), threshold: 7, weight: 1,
+                    timeLimit: null, forceSeed: null
                 }];
                 return path;
             }

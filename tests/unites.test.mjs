@@ -20,6 +20,7 @@ import './helpers.mjs';
 import '../js/core/activities/index.js';
 import { uniteDe, getActivity } from '../js/core/registry.js';
 import { exercices } from '../js/data/catalog.js';
+import { questionsConseillees } from '../js/core/duree.js';
 
 test('toute activité a une unité, et elle s\'accorde', () => {
     const vus = new Set(exercices.map(e => e.activityId));
@@ -67,4 +68,36 @@ test('l\'unité par défaut reste « question »', () => {
 test('un mot déjà terminé par s ou x ne double pas sa marque', () => {
     // Aucun aujourd'hui, mais la règle doit tenir le jour où il y en aura un.
     assert.equal(uniteDe('bubbles', 0), 'question');
+});
+
+// --- Combien d'unités font une séance ---------------------------------------
+
+test('DIX N\'EST PLUS LE COMPTE DE TOUT LE MONDE', () => {
+    // « Mais du coup 10 paires, c'est très court. » Dix était le nombre de
+    // QUESTIONS, et il valait pour tout le monde tant que personne ne
+    // regardait ce qu'il comptait.
+    const q = (id) => questionsConseillees(null, {}, { activite: id });
+    assert.ok(q('dix') >= 20, 'les paires se comptent par dizaines');
+    assert.ok(q('memory') >= 12);
+    assert.equal(q('sudoku'), 3);
+    assert.equal(q('echecs'), 1, 'une partie d\'échecs EST la séance');
+    assert.equal(q('course-vecteurs'), 3);
+    assert.equal(q('bubbles'), 10, 'une question reste une question');
+});
+
+test('L\'ESCALIER DE L\'AIDE NE S\'IMPOSE PAS AUX PARTIES', () => {
+    // Il demande sept réponses pour avoir le temps de monter : sept parties
+    // d'échecs ne sont pas une séance, ce sont des vacances.
+    assert.equal(questionsConseillees(null, {}, { activite: 'echecs' }), 1);
+    assert.equal(questionsConseillees(null, {}, { activite: 'sudoku' }), 3);
+    // Là où l'on compte des questions, le plancher tient toujours.
+    assert.ok(questionsConseillees(null, {}, { activite: 'bubbles' }) >= 7);
+});
+
+test('une progression du générateur peut encore RELEVER le compte', () => {
+    // Le compte de l'activité est un point de départ, pas un plafond : un
+    // générateur qui annonce douze marches en demande vingt-quatre.
+    const gen = { conseil: () => 24 };
+    assert.equal(questionsConseillees(gen, {}, { activite: 'bubbles' }), 24);
+    assert.equal(questionsConseillees(gen, {}, { activite: 'sudoku' }), 24);
 });

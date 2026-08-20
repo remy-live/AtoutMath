@@ -77,6 +77,20 @@ export function registerActivity(def) {
         // manquait, c'est de le DIRE : chaque activité nomme son unité, et le
         // bandeau affiche « 3 / 10 paires ».
         unite: 'question',
+        // COMBIEN D'UNITÉS FONT UNE SÉANCE.
+        //
+        // Rémy, dès que le bandeau s'est mis à nommer l'unité : « mais du coup
+        // 10 paires c'est très court ». Évidemment — dix était le nombre de
+        // QUESTIONS, et il valait pour tout le monde tant que personne ne
+        // regardait ce qu'il comptait. Dix paires, c'est deux tables des Amis
+        // de Dix ; dix grilles de sudoku, c'est une heure et demie ; dix
+        // parties d'échecs, c'est une soirée.
+        //
+        // Chaque activité dit donc son compte naturel, et c'est ce nombre-là
+        // que proposent le jeu libre, le panneau de réglages et le
+        // constructeur de parcours. Le professeur le change quand il veut :
+        // c'est un DÉFAUT, pas une règle.
+        parDefaut: 10,
         ...def
     });
     return def.id;
@@ -92,6 +106,12 @@ export function uniteDe(id, n = 1) {
     const mot = (a && a.unite) || 'question';
     if (n <= 1) return mot;
     return /[sx]$/.test(mot) ? mot : `${mot}s`;
+}
+
+/** Le nombre d'unités d'une séance pour cette activité (10 par défaut). */
+export function parDefautDe(id) {
+    const a = activities.get(id);
+    return (a && a.parDefaut) || 10;
 }
 
 export function getGenerator(id) {
