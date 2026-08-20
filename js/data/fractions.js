@@ -139,16 +139,33 @@ export const fractionsExercises = [
         consignePapier: 'Lis l\'énoncé, pose le calcul et réponds.',
         colonnesPapier: 2,
         generatorId: 'frac.probleme', activityId: 'fraction-somme',
-        params: { niveau: 'progressif', operation: 'les-deux', simplifier: 'non', maxDen: 10 },
-        motsClefs: ['problème', 'énoncé', 'fractions', 'additionner', 'soustraire', 'part'],
+        params: {
+            niveau: 'progressif', operation: 'les-deux', simplifier: 'non',
+            complements: 3, maxDen: 10
+        },
+        revisions: [{
+            date: '2026-08-20',
+            quoi: 'Les trois premières questions sont des COMPLÉMENTS À UN — « il a parcouru '
+                + '4/9 du trajet, combien lui reste-t-il ? » —, posés en deux lignes : 1 = 9/9, '
+                + 'puis 9/9 − 4/9 = 5/9. Un seul dénominateur, aucun PPCM : c\'est le cas le '
+                + 'plus facile, et pourtant celui qui fait buter. Dix contextes de plus, tous '
+                + 'concrets (chocolat, billes, puzzle, livre, bouteille, argent de poche), et '
+                + 'les fractions s\'écrivent en colonnes jusque dans la phrase.'
+        }],
+        motsClefs: ['problème', 'énoncé', 'fractions', 'additionner', 'soustraire', 'part',
+            'complément à un', 'combien reste-t-il'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: 'Une phrase, deux fractions, une question. Le travail est le même que dans '
-            + '« Poser une Addition de Fractions » : trouver le dénominateur commun, convertir '
-            + 'les deux fractions, puis calculer. Ce qui change, c\'est qu\'il faut d\'abord '
-            + 'décider si l\'on ajoute ou si l\'on retire — et l\'histoire le dit.'
+        instruction: 'Une phrase, une question, et un calcul à poser. On commence par le plus '
+            + 'facile : « il a parcouru 4/9 du trajet, combien lui reste-t-il ? » — un seul '
+            + 'dénominateur, mais il faut voir que le TOUT s\'écrit en neuvièmes : 1 = 9/9, '
+            + 'puis 9/9 − 4/9 = 5/9. Viennent ensuite les problèmes à deux fractions, où il '
+            + 'faut trouver le dénominateur commun ; le travail est alors le même que dans '
+            + '« Poser une Addition de Fractions », et c\'est l\'histoire qui dit si l\'on '
+            + 'ajoute ou si l\'on retire. Le réglage « Questions combien reste-t-il ? » allonge '
+            + 'ou supprime la première phase.'
     },
     {
         id: 'frac-samurai', status: STATUS.TEST, title: 'Le Samouraï des Fractions',

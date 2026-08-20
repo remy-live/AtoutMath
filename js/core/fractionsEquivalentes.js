@@ -311,6 +311,65 @@ export function etapesCalcul(s) {
 
 export const etapesSomme = etapesCalcul;
 
+// --- LE COMPLÉMENT À UN ------------------------------------------------------
+
+/**
+ * « IL A FAIT 4/9 DU TRAJET, COMBIEN LUI RESTE-T-IL ? »
+ *
+ * Rémy demande ce cas à part, et il a raison de le distinguer : c'est le plus
+ * facile — un seul dénominateur, aucun PPCM à chercher — et pourtant celui qui
+ * fait buter, parce qu'il faut d'abord voir que L'ENTIER S'ÉCRIT EN NEUVIÈMES.
+ * Sa correction tient en une ligne, et c'est la sienne :
+ *
+ *     1 − 4/9 = 9/9 − 4/9 = 5/9
+ *
+ * Le tout, c'est TOUTES les parts. Une fois cela posé, il ne reste qu'une
+ * soustraction de même dénominateur — donc la première marche.
+ */
+export function tirerComplement(rng, opts = {}) {
+    const { maxDen = 10 } = opts;
+    for (let essai = 0; essai < 80; essai++) {
+        const d = rng.int(3, Math.max(3, maxDen));
+        const n = rng.int(1, d - 1);
+        // « 2/4 du livre » : l'élève simplifierait d'abord, et il aurait raison.
+        if (!estIrreductible(n, d)) continue;
+        return construireComplement(n, d);
+    }
+    return construireComplement(1, 3);
+}
+
+function construireComplement(n, d) {
+    const brut = { n: d - n, d };
+    const reduit = simplifier(brut.n, brut.d);
+    const c = {
+        type: 'complement', niveau: 'complement', signe: '−',
+        // L'ENTIER EST UNE FRACTION COMME UNE AUTRE : 1 = 1/1. Le noter ainsi
+        // permet de partager toute la mécanique du calcul posé — c'est même
+        // exactement ce que dit la leçon, 1 = d/d.
+        a: { n: 1, d: 1 }, b: { n, d },
+        commun: d, ka: d, kb: 1,
+        aReduit: { n: d, d }, bReduit: { n, d },
+        brut, reduit
+    };
+    c.aSimplifiable = reduit.d !== brut.d;
+    c.etapes = etapesComplement(c);
+    return c;
+}
+
+export function etapesComplement(c) {
+    const l = [
+        `Le tout, c'est TOUTES les parts : 1 = ${c.commun}/${c.commun}.`,
+        `${c.aReduit.n}/${c.commun} − ${c.b.n}/${c.commun} = ${c.brut.n}/${c.commun}.`
+    ];
+    if (c.reduit.d !== c.brut.d) {
+        l.push(`On peut simplifier : ${c.brut.n}/${c.brut.d} = ${c.reduit.n}/${c.reduit.d}.`);
+    }
+    return l;
+}
+
+/** Une fraction telle qu'on l'écrit : l'entier n'a pas de dénominateur. */
+export const ecrireFraction = (f) => (f.d === 1 ? String(f.n) : `${f.n}/${f.d}`);
+
 // --- LA TABLE DE PYTHAGORE, POUR TROUVER LE PPCM ------------------------------
 
 /**

@@ -6085,3 +6085,8 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-fleche--bas .fb-fleche-mot { bottom: -.15em; }
 .fb-fleche-mot--su { color: var(--success); }
 .fb-fleche--haut .fb-fleche-mot--su, .fb-fleche--bas .fb-fleche-mot--su { animation: fb-devoile .4s ease both; }
+
+/* L'entier dans un calcul de fractions : « 1 », pas « 1/1 ». Il n'a pas de
+   dénominateur — c'est justement ce qu'on va lui en donner un. */
+.fa-entier { font-size: clamp(1rem, max(3.2cqw, 3.4cqh), 1.8rem); font-weight: 800; }
+.fa-depart .fa-entier { font-size: clamp(1.2rem, max(4cqw, 4cqh), 2.2rem); }

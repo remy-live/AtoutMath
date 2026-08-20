@@ -18,7 +18,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerCalcul
+    tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerCalcul, tirerComplement,
+    ecrireFraction
 } from '../fractionsEquivalentes.js';
 
 /** Une fraction en colonne, telle qu'on l'écrit au tableau. */
@@ -158,7 +159,8 @@ function itemDeCalcul(c, rng, {
     const reponse = c.simplifie
         ? `${c.reduit.n}/${c.reduit.d}`
         : `${c.brut.n}/${c.brut.d}`;
-    const texte = `${c.a.n}/${c.a.d} ${op} ${c.b.n}/${c.b.d} = ?`;
+    // L'ENTIER N'A PAS DE DÉNOMINATEUR : « 1 − 4/9 », jamais « 1/1 − 4/9 ».
+    const texte = `${ecrireFraction(c.a)} ${op} ${ecrireFraction(c.b)} = ?`;
     return makeItem({
         seed: rng.seed, generatorId, skillId,
         answerKind: 'text',
@@ -169,7 +171,8 @@ function itemDeCalcul(c, rng, {
             text: enonceTexte ? `${enonceTexte} (${texte})` : texte,
             html: `<div class="frac-egalite">
                     ${enonce ? `<p class="frac-enonce">${enonce}</p>` : ''}
-                    ${fracHtml(c.a.n, c.a.d)}
+                    ${c.a.d === 1 ? `<span class="frac-entier">${c.a.n}</span>`
+        : fracHtml(c.a.n, c.a.d)}
                     <span class="frac-signe">${op}</span>
                     ${fracHtml(c.b.n, c.b.d)}
                     <span class="frac-signe">=</span>
@@ -177,16 +180,18 @@ function itemDeCalcul(c, rng, {
                    </div>`
         },
         answer: reponse,
-        hints: [
-            (NIVEAU[marche] || {}).aide || '',
-            `Cherche un nombre à la fois dans la table de ${c.a.d} et dans celle de ${c.b.d}.`,
-            ...c.etapes
-        ].filter(Boolean),
+        hints: (c.type === 'complement'
+            ? ['Le tout, c\'est TOUTES les parts : écris l\'entier en '
+                + `${c.commun}èmes avant de retirer.`]
+            : [(NIVEAU[marche] || {}).aide || '',
+                `Cherche un nombre à la fois dans la table de ${c.a.d} et dans celle de ${c.b.d}.`]
+        ).concat(c.etapes).filter(Boolean),
         explanation: c.etapes.join(' '),
-        explicationPapier: `${c.a.n}/${c.a.d} ${op} ${c.b.n}/${c.b.d} = `
+        explicationPapier: `${ecrireFraction(c.a)} ${op} ${ecrireFraction(c.b)} = `
             + `${c.aReduit.n}/${c.commun} ${op} ${c.bReduit.n}/${c.commun} = ${c.brut.n}/${c.commun}`
             + (c.simplifie ? ` = ${reponse}.` : '.'),
-        difficulty: 2 + NIVEAUX_SOMME.findIndex(n => n.id === marche),
+        difficulty: c.type === 'complement'
+            ? 2 : 2 + NIVEAUX_SOMME.findIndex(n => n.id === marche),
         meta: { calcul: c, marche, enonce, enonceTexte, question }
     });
 }
@@ -269,41 +274,97 @@ export const fracSommeProgressiveGenerator = {
 // et surtout un CONTEXTE où la fraction se voit (une tarte, un bidon, un
 // trajet), jamais un habillage décoratif posé sur un calcul.
 
+// « ÉCRIS LES FRACTIONS EN FRACTION COLONNE », y compris au milieu d'une
+// phrase. Une fraction en colonne est un `inline-flex` : elle se pose dans le
+// texte comme un mot, sans casser la ligne de base.
+//
+// Deux formes, et c'est nécessaire : l'HTML pour l'écran, et le texte nu pour
+// la feuille imprimée et le carnet d'erreurs — où « 5/9 » se recompose en
+// colonnes tout seul (`fractions: true`), alors qu'une balise `<span>` s'y
+// imprimerait telle quelle.
+const colonneHtml = (f) => '<span class="fraction frac-dans-texte">'
+    + `<span class="fraction-num">${f.n}</span>`
+    + `<span class="fraction-den">${f.d}</span></span>`;
+const nuHtml = (f) => `${f.n}/${f.d}`;
+
 const HISTOIRES = [
     {
-        quoi: 'tarte', unite: 'de la tarte',
+        quoi: 'tarte',
         somme: (a, b) => `Léa mange ${a} de la tarte, puis ${b}. Quelle part de la tarte a-t-elle mangée&nbsp;?`,
         difference: (a, b) => `Il restait ${a} de la tarte. On en mange ${b}. Quelle part reste-t-il&nbsp;?`
     },
     {
-        quoi: 'bidon', unite: 'de litre',
+        quoi: 'arrosoir',
         somme: (a, b) => `Un arrosoir contient ${a} de litre. On y verse ${b} de litre. Combien contient-il&nbsp;?`,
         difference: (a, b) => `Un bidon contient ${a} de litre. On en verse ${b} de litre. Combien reste-t-il&nbsp;?`
     },
     {
-        quoi: 'trajet', unite: 'du trajet',
-        somme: (a, b) => `Sur son trajet, Malo parcourt ${a} à pied, puis ${b} à vélo. Quelle part du trajet a-t-il faite&nbsp;?`,
         // Un trajet, c'est le TOUT : « Malo doit parcourir 8/9 du trajet » ne
         // veut rien dire. Une différence honnête, ici, compare deux marcheurs.
+        quoi: 'trajet',
+        somme: (a, b) => `Sur son trajet, Malo parcourt ${a} à pied, puis ${b} à vélo. Quelle part du trajet a-t-il faite&nbsp;?`,
         difference: (a, b) => `Malo a fait ${a} du trajet, Zoé en a fait ${b}. Quelle part du trajet Malo a-t-il faite en plus&nbsp;?`
     },
     {
-        quoi: 'ruban', unite: 'de mètre',
+        quoi: 'ruban',
         somme: (a, b) => `On colle bout à bout un ruban de ${a} de mètre et un autre de ${b} de mètre. Quelle longueur obtient-on&nbsp;?`,
         difference: (a, b) => `Un ruban mesure ${a} de mètre. On en coupe ${b} de mètre. Quelle longueur reste-t-il&nbsp;?`
     },
     {
-        quoi: 'jardin', unite: 'du jardin',
-        somme: (a, b) => `Papi sème des radis sur ${a} du jardin et des carottes sur ${b}. Quelle part du jardin est semée&nbsp;?`,
         // « 5/9 du jardin SONT semés » mais « 1/9 du jardin EST semé » : on
         // tourne la phrase pour que l'accord ne dépende pas du numérateur tiré.
+        quoi: 'jardin',
+        somme: (a, b) => `Papi sème des radis sur ${a} du jardin et des carottes sur ${b}. Quelle part du jardin est semée&nbsp;?`,
         difference: (a, b) => `On a semé ${a} du jardin. Une taupe en abîme ${b}. Quelle part reste semée&nbsp;?`
     },
     {
-        quoi: 'journée', unite: 'de l\'heure',
-        somme: (a, b) => `Zoé travaille ${a} d\'heure, puis encore ${b} d\'heure. Combien de temps a-t-elle travaillé&nbsp;?`,
-        difference: (a, b) => `La récréation dure ${a} d\'heure. Il s\'en est déjà écoulé ${b}. Combien reste-t-il&nbsp;?`
+        quoi: 'récréation',
+        somme: (a, b) => `Zoé travaille ${a} d'heure, puis encore ${b} d'heure. Combien de temps a-t-elle travaillé&nbsp;?`,
+        difference: (a, b) => `La récréation dure ${a} d'heure. Il s'en est déjà écoulé ${b}. Combien reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'chocolat',
+        somme: (a, b) => `Nino mange ${a} de la plaquette de chocolat, et son frère ${b}. Quelle part ont-ils mangée à eux deux&nbsp;?`,
+        difference: (a, b) => `Il reste ${a} de la plaquette de chocolat. Nino en mange ${b}. Quelle part reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'billes',
+        somme: (a, b) => `Sur ses billes, Sacha en donne ${a} à Lou et ${b} à Anna. Quelle part de ses billes a-t-il donnée&nbsp;?`,
+        difference: (a, b) => `Sacha a gagné ${a} des billes du sac, Lou en a gagné ${b}. Quelle part Sacha a-t-il gagnée en plus&nbsp;?`
+    },
+    {
+        quoi: 'peinture',
+        somme: (a, b) => `Le peintre couvre ${a} du mur le matin et ${b} l'après-midi. Quelle part du mur a-t-il peinte&nbsp;?`,
+        difference: (a, b) => `Le peintre a couvert ${a} du mur. La pluie en abîme ${b}. Quelle part reste peinte&nbsp;?`
+    },
+    {
+        quoi: 'argent de poche',
+        somme: (a, b) => `Lou dépense ${a} de son argent de poche en bandes dessinées et ${b} en bonbons. Quelle part a-t-elle dépensée&nbsp;?`,
+        difference: (a, b) => `Lou avait mis de côté ${a} de son argent de poche. Elle en dépense ${b}. Quelle part lui reste-t-il&nbsp;?`
     }
+];
+
+// LE COMPLÉMENT À UN, EN HISTOIRES.
+//
+// Rémy : « il a fait 4/9 du trajet, combien lui reste-t-il ? en expliquant
+// qu'on fait 1 − 4/9 = 9/9 − 4/9 = 5/9 ». C'est le cas le plus facile — un
+// seul dénominateur — et pourtant celui qui fait buter : il faut d'abord voir
+// que le TOUT s'écrit en neuvièmes. Les contextes sont donc les plus concrets
+// possibles : un livre qu'on lit, un puzzle qu'on monte, une bouteille qu'on
+// vide. Le « reste », là, se voit.
+const COMPLEMENTS = [
+    { quoi: 'trajet', dit: (a) => `Malo a parcouru ${a} du trajet. Quelle part lui reste-t-il à faire&nbsp;?` },
+    { quoi: 'livre', dit: (a) => `Zoé a lu ${a} de son livre. Quelle part lui reste-t-il à lire&nbsp;?` },
+    { quoi: 'puzzle', dit: (a) => `Nino a monté ${a} de son puzzle. Quelle part lui reste-t-il à monter&nbsp;?` },
+    // « Remplie aux 3/4 » se dit, « remplie aux 1/4 » non : l'article s'accorde
+    // avec le numérateur, qu'on tire au hasard. On tourne la phrase.
+    { quoi: 'bouteille', dit: (a) => `On a rempli ${a} de la bouteille. Quelle part reste-t-il à remplir&nbsp;?` },
+    { quoi: 'pizza', dit: (a) => `On a mangé ${a} de la pizza. Quelle part reste-t-il dans le carton&nbsp;?` },
+    { quoi: 'mur', dit: (a) => `Le peintre a couvert ${a} du mur. Quelle part lui reste-t-il à peindre&nbsp;?` },
+    { quoi: 'devoirs', dit: (a) => `Lou a fait ${a} de ses devoirs. Quelle part lui reste-t-il à faire&nbsp;?` },
+    { quoi: 'course', dit: (a) => `Sacha a couru ${a} de la course. Quelle part lui reste-t-il à courir&nbsp;?` },
+    { quoi: 'jardin', dit: (a) => `Papi a semé ${a} du jardin. Quelle part reste-t-il à semer&nbsp;?` },
+    { quoi: 'gâteau', dit: (a) => `Il ne reste que ${a} du gâteau. Quelle part a été mangée&nbsp;?` }
 ];
 
 export const fracProblemeGenerator = {
@@ -325,34 +386,51 @@ export const fracProblemeGenerator = {
         },
         { ...PARAM_OPERATION, default: 'les-deux' },
         PARAM_SIMPLIFIER,
+        {
+            id: 'complements', type: 'number', label: 'Questions « combien reste-t-il ? »',
+            default: 3, min: 0, max: 10,
+            aide: 'Les premières questions sont des compléments à UN : « il a parcouru 4/9 du '
+                + 'trajet, combien lui reste-t-il ? ». C\'est le cas le plus facile — un seul '
+                + 'dénominateur, aucun PPCM — et pourtant celui qui fait buter, parce qu\'il '
+                + 'faut d\'abord voir que le tout s\'écrit en neuvièmes : 1 = 9/9. Ensuite '
+                + 'viennent les problèmes à deux fractions.'
+        },
         { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10 }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marcheDe(params, ctx.index);
+        const maxDen = Math.min(10, Number(params.maxDen) || 10);
+        const index = ctx.index || 0;
+
+        // ON COMMENCE PAR LE RESTE. Un seul dénominateur, une seule idée : le
+        // tout, c'est toutes les parts. Puis les deux fractions arrivent, et
+        // avec elles le dénominateur commun.
+        if (index < Number(params.complements ?? 3)) {
+            const c = tirerComplement(rng, { maxDen });
+            c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
+            const h = rng.pick(COMPLEMENTS);
+            return itemDeCalcul(c, rng, {
+                generatorId: 'frac.probleme',
+                skillId: 'num.frac.denominateur-commun',
+                marche: 'complement',
+                enonce: h.dit(colonneHtml(c.b)),
+                enonceTexte: h.dit(nuHtml(c.b)).replace(/&nbsp;/g, ' '),
+                question: h.quoi
+            });
+        }
+
+        const marche = marcheDe(params, index - Number(params.complements ?? 3));
         const c = tirerCalcul(rng, {
             niveau: marche,
-            maxDen: Math.min(10, Number(params.maxDen) || 10),
+            maxDen,
             operation: params.operation || 'les-deux'
         });
         c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
 
-        // « ÉCRIS LES FRACTIONS EN FRACTION COLONNE », y compris au milieu
-        // d'une phrase. Une fraction en colonne est un `inline-flex` : elle se
-        // pose dans le texte comme un mot, sans casser la ligne de base.
-        //
-        // Deux formes, et c'est nécessaire : l'HTML pour l'écran, et le texte
-        // nu pour la feuille imprimée et le carnet d'erreurs — où « 5/9 » se
-        // recompose en colonnes tout seul (`fractions: true`), alors qu'une
-        // balise `<span>` s'y imprimerait telle quelle.
         const h = rng.pick(HISTOIRES);
-        const colonne = (f) => `<span class="fraction frac-dans-texte">`
-            + `<span class="fraction-num">${f.n}</span>`
-            + `<span class="fraction-den">${f.d}</span></span>`;
-        const nu = (f) => `${f.n}/${f.d}`;
         const dit = c.signe === '−' ? h.difference : h.somme;
-        const enonce = dit(colonne(c.a), colonne(c.b));
-        const enonceTexte = dit(nu(c.a), nu(c.b)).replace(/&nbsp;/g, ' ');
+        const enonce = dit(colonneHtml(c.a), colonneHtml(c.b));
+        const enonceTexte = dit(nuHtml(c.a), nuHtml(c.b)).replace(/&nbsp;/g, ' ');
 
         return itemDeCalcul(c, rng, {
             generatorId: 'frac.probleme',

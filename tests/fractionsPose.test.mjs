@@ -192,13 +192,53 @@ test('LES FRACTIONS D\'UN ÉNONCÉ S\'ÉCRIVENT EN COLONNES', () => {
         const item = tirer(fracProblemeGenerator, {}, `col${index}`, index % 10);
         const c = item.meta.calcul;
         assert.ok(item.meta.enonce.includes('fraction-num'), 'énoncé sans fraction en colonne');
-        assert.ok(item.meta.enonce.includes(`<span class="fraction-num">${c.a.n}</span>`));
         assert.ok(item.meta.enonce.includes(`<span class="fraction-den">${c.b.d}</span>`));
+        // Le complément à un ne cite qu'UNE fraction : l'entier ne s'écrit pas
+        // « 1/1 » dans une phrase.
+        if (c.type !== 'complement') {
+            assert.ok(item.meta.enonce.includes(`<span class="fraction-num">${c.a.n}</span>`));
+        }
         // Aucune balise ne fuit dans le texte nu.
         assert.ok(!/[<>]/.test(item.prompt.text), item.prompt.text);
         assert.ok(!/&nbsp;/.test(item.prompt.text), item.prompt.text);
         assert.ok(item.prompt.text.includes(item.meta.enonceTexte));
     }
+});
+
+test('ON COMMENCE PAR « COMBIEN LUI RESTE-T-IL ? »', () => {
+    // Rémy : « il a fait 4/9 du trajet, combien lui reste-t-il ? en expliquant
+    // qu'on fait 1 − 4/9 = 9/9 − 4/9 = 5/9 ». C'est le cas le plus facile — un
+    // seul dénominateur, aucun PPCM — et pourtant celui qui fait buter, parce
+    // qu'il faut d'abord voir que le tout s'écrit en neuvièmes.
+    const familles = [];
+    for (let index = 0; index < 8; index++) {
+        familles.push(tirer(fracProblemeGenerator, {}, index, index).meta.calcul.type || 'deux');
+    }
+    assert.deepEqual(familles.slice(0, 3), ['complement', 'complement', 'complement']);
+    assert.ok(familles.slice(3).every(f => f === 'deux'), familles.join(','));
+
+    for (let index = 0; index < 40; index++) {
+        const item = tirer(fracProblemeGenerator, {}, `cp${index}`, index % 3);
+        const c = item.meta.calcul;
+        assert.equal(c.type, 'complement');
+        // 1 = d/d, puis une soustraction de même dénominateur.
+        assert.deepEqual(c.a, { n: 1, d: 1 });
+        assert.equal(c.commun, c.b.d);
+        assert.deepEqual(c.aReduit, { n: c.b.d, d: c.b.d });
+        assert.equal(c.brut.n, c.b.d - c.b.n);
+        assert.ok(c.brut.n > 0, 'un reste est toujours positif');
+        assert.equal(pgcd(c.b.n, c.b.d), 1, `${c.b.n}/${c.b.d} se simplifie`);
+        // L'énoncé écrit « 1 », pas « 1/1 », et la correction dit la règle.
+        assert.ok(item.prompt.text.startsWith(item.meta.enonceTexte));
+        assert.ok(/1 − /.test(item.prompt.text), item.prompt.text);
+        assert.ok(/TOUTES les parts/.test(item.explanation), item.explanation);
+        assert.ok(item.explanation.includes(`1 = ${c.commun}/${c.commun}`), item.explanation);
+    }
+    // Le professeur peut supprimer la phase, ou l'allonger.
+    assert.notEqual(tirer(fracProblemeGenerator, { complements: 0 }, 'z', 0).meta.calcul.type,
+        'complement');
+    assert.equal(tirer(fracProblemeGenerator, { complements: 6 }, 'y', 5).meta.calcul.type,
+        'complement');
 });
 
 test('AUCUN ÉNONCÉ NE DIT DE SOTTISE', () => {
@@ -208,8 +248,8 @@ test('AUCUN ÉNONCÉ NE DIT DE SOTTISE', () => {
     // numérateur (« 1/9 est semé », « 5/9 sont semés ») : les tournures qui
     // l'exigeraient sont bannies, on ne peut pas accorder sur un tirage.
     const vus = new Set();
-    for (let index = 0; index < 200; index++) {
-        const nu = tirer(fracProblemeGenerator, {}, `sot${index}`, index % 10).meta.enonceTexte;
+    for (let index = 0; index < 300; index++) {
+        const nu = tirer(fracProblemeGenerator, {}, `sot${index}`, index % 12).meta.enonceTexte;
         vus.add(nu.replace(/\d+\/\d+/g, '…'));
     }
     vus.forEach(modele => {
@@ -219,7 +259,7 @@ test('AUCUN ÉNONCÉ NE DIT DE SOTTISE', () => {
         assert.ok(!/^…/.test(modele), modele);
         assert.ok(!/… (du|de la|d'|de) [^.]* (sont|est) /.test(modele), modele);
     });
-    assert.ok(vus.size >= 8, `seulement ${vus.size} tournures différentes`);
+    assert.ok(vus.size >= 20, `seulement ${vus.size} tournures différentes`);
 });
 
 test('UN PROBLÈME EST UNE PHRASE, DEUX FRACTIONS ET UNE QUESTION', () => {
@@ -231,12 +271,16 @@ test('UN PROBLÈME EST UNE PHRASE, DEUX FRACTIONS ET UNE QUESTION', () => {
         const nu = item.meta.enonceTexte;
         assert.ok(nu.length < 160, `énoncé trop long : ${nu}`);
         assert.ok(nu.trim().endsWith('?'), `l'énoncé ne pose pas de question : ${nu}`);
-        // Les deux fractions de l'énoncé sont bien celles du calcul.
-        assert.ok(nu.includes(`${c.a.n}/${c.a.d}`), nu);
+        // Les fractions de l'énoncé sont bien celles du calcul.
         assert.ok(nu.includes(`${c.b.n}/${c.b.d}`), nu);
-        // Une soustraction ne se raconte pas comme une addition.
-        assert.ok(/reste|retire|coupe|abîme|écoulé|en plus|verse/i.test(nu) === (c.signe === '−')
-            || c.signe === '+', nu);
+        if (c.type === 'complement') {
+            assert.ok(!/(^|\D)1\/1(\D|$)/.test(nu), `l'entier s'écrit « 1 », pas « 1/1 » : ${nu}`);
+        } else {
+            assert.ok(nu.includes(`${c.a.n}/${c.a.d}`), nu);
+            // Une soustraction ne se raconte pas comme une addition.
+            assert.ok(/reste|retire|coupe|abîme|écoulé|en plus|verse/i.test(nu) === (c.signe === '−')
+                || c.signe === '+', nu);
+        }
     }
 });
 

@@ -54,6 +54,8 @@ const caseHtml = (nom, libelle) =>
 // deux lignes plus bas pour répondre à la première question. Elles affichent
 // donc « ? » jusqu'à ce que la ligne du dessus soit validée.
 const COMMUN_CACHE = '<span class="fa-commun-vu" data-commun>?</span>';
+/** Même chose pour l'entier réécrit en parts : 1 = 9/9. */
+const ENTIER_CACHE = '<span class="fa-commun-vu" data-entier>?</span>';
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
@@ -86,6 +88,7 @@ export function mount(container, session, opts = {}) {
      * numérateur ne se trompe pas de calcul, il se trompe de règle.
      */
     function partition(c) {
+        if (c.type === 'complement') return partitionComplement(c);
         const op = c.signe === '−' ? '−' : '+';
         const l = [];
 
@@ -157,6 +160,53 @@ export function mount(container, session, opts = {}) {
         return l;
     }
 
+    /**
+     * LE COMPLÉMENT À UN, en deux lignes — et ce sont celles de Rémy :
+     *
+     *     1 − 4/9 = 9/9 − 4/9 = 5/9
+     *
+     * Aucun dénominateur commun à chercher : il n'y en a qu'un. Toute la
+     * difficulté tient dans la première ligne — voir que LE TOUT, c'est TOUTES
+     * les parts —, alors on lui donne sa ligne à elle.
+     */
+    function partitionComplement(c) {
+        const l = [{
+            nom: 'entier',
+            titre: 'Le tout, c\'est toutes les parts',
+            attendu: { en: c.commun, ed: c.commun },
+            html: `<div class="fa-ligne-calc">
+                <span class="fa-entier">1</span>
+                <span class="fa-op">=</span>
+                ${colonne(caseHtml('en', 'numérateur de l\'entier'),
+        caseHtml('ed', 'dénominateur de l\'entier'))}
+            </div>`
+        }, {
+            nom: 'calcul',
+            titre: 'On retire',
+            attendu: { res: c.brut.n },
+            html: `<div class="fa-ligne-calc">
+                ${colonne(ENTIER_CACHE, ENTIER_CACHE)}
+                <span class="fa-op">−</span>
+                ${colonne(c.b.n, c.b.d)}
+                <span class="fa-op">=</span>
+                ${colonne(caseHtml('res', 'résultat'), c.b.d)}
+            </div>`
+        }];
+        if (c.simplifie) {
+            l.push({
+                nom: 'simplifiee',
+                titre: 'On simplifie',
+                attendu: { sn: c.reduit.n, sd: c.reduit.d },
+                html: `<div class="fa-ligne-calc">
+                    <span class="fa-op">=</span>
+                    ${colonne(caseHtml('sn', 'numérateur simplifié'),
+        caseHtml('sd', 'dénominateur simplifié'))}
+                </div>`
+            });
+        }
+        return l;
+    }
+
     // --- Rendu ---------------------------------------------------------------
 
     function render() {
@@ -173,7 +223,8 @@ export function mount(container, session, opts = {}) {
                 <div class="fa-scene">
                     ${m.enonce ? `<p class="fa-enonce">${m.enonce}</p>` : ''}
                     <div class="fa-depart">
-                        ${colonne(calcul.a.n, calcul.a.d)}
+                        ${calcul.a.d === 1 ? `<span class="fa-entier">${calcul.a.n}</span>`
+        : colonne(calcul.a.n, calcul.a.d)}
                         <span class="fa-op">${op}</span>
                         ${colonne(calcul.b.n, calcul.b.d)}
                         <span class="fa-op">=</span>
@@ -308,7 +359,7 @@ export function mount(container, session, opts = {}) {
             if (toutJuste) {
                 ligne.el.classList.add('fa-ligne--faite');
                 ligne.noms.forEach(n => cases[n].el.classList.add('fa-case--juste'));
-                if (ligne.nom === 'commun') revelerCommun();
+                if (ligne.nom === 'commun' || ligne.nom === 'entier') revelerCommun();
                 if (note) note.textContent = '';
                 ouvrirSuivante();
             } else if (note) {
@@ -349,9 +400,9 @@ export function mount(container, session, opts = {}) {
         });
     }
 
-    /** Le dénominateur commun trouvé s'écrit alors dans tout le calcul. */
+    /** Le dénominateur commun (ou l'entier réécrit) s'inscrit dans la suite. */
     function revelerCommun() {
-        container.querySelectorAll('[data-commun]').forEach(el => {
+        container.querySelectorAll('[data-commun], [data-entier]').forEach(el => {
             el.textContent = String(calcul.commun);
             el.classList.add('fa-commun-vu--su');
         });
@@ -379,6 +430,14 @@ export function mount(container, session, opts = {}) {
     /** Ce qui ne va pas, dit dans les termes de la ligne — jamais « faux ». */
     function diagnostic(ligne, justes) {
         const c = calcul;
+        if (ligne.nom === 'entier') {
+            if (valeurs.en !== valeurs.ed) {
+                return 'En haut ET en bas le même nombre : une fraction dont le numérateur '
+                    + 'égale le dénominateur vaut exactement UN.';
+            }
+            return `Les parts sont des ${c.commun}èmes : le tout en compte ${c.commun}, `
+                + `donc 1 = ${c.commun}/${c.commun}.`;
+        }
         if (ligne.nom === 'commun') {
             const v = Number(valeurs.commun);
             if (Number.isFinite(v) && v > 0 && v % c.a.d === 0 && v % c.b.d === 0) {
@@ -408,6 +467,9 @@ export function mount(container, session, opts = {}) {
                 + 'même facteur que le dénominateur.';
         }
         if (ligne.nom === 'calcul') {
+            if (c.type === 'complement') {
+                return `${c.aReduit.n} − ${c.b.n} = ${c.brut.n}. Le dénominateur ne bouge pas.`;
+            }
             if (!justes.ra || !justes.rb) return 'Recopie les deux numérateurs de la ligne du dessus.';
             return `Le dénominateur ne bouge plus : ${c.aReduit.n} ${c.signe} ${c.bReduit.n} = `
                 + `${c.brut.n}, sur ${c.commun}.`;
@@ -486,18 +548,25 @@ export function mount(container, session, opts = {}) {
         if (!await cursor.pause(600) || destroyed) return;
 
         const scene = container.querySelector('.fa-scene');
-        cursor.say('On ne peut additionner que des parts de MÊME taille. Je commence donc par '
-            + 'chercher un dénominateur commun.', scene || container);
+        cursor.say(calcul.type === 'complement'
+            ? 'Pour retirer une part du tout, il faut d\'abord écrire le tout AVEC LES MÊMES '
+                + 'PARTS.'
+            : 'On ne peut additionner que des parts de MÊME taille. Je commence donc par '
+                + 'chercher un dénominateur commun.', scene || container);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
 
         const dits = {
+            entier: `Le tout, c'est TOUTES les parts : ici des ${calcul.commun}èmes, `
+                + `donc 1 = ${calcul.commun}/${calcul.commun}.`,
             commun: `${calcul.commun} est à la fois dans la table de ${calcul.a.d} et dans celle `
                 + `de ${calcul.b.d} — et c'est le plus petit.`,
             facteurs: `${calcul.a.d} × ${calcul.ka} = ${calcul.commun}, et `
                 + `${calcul.b.d} × ${calcul.kb} = ${calcul.commun}. En haut, le MÊME facteur.`,
             converties: `Les numérateurs suivent : ${calcul.aReduit.n} et ${calcul.bReduit.n}.`,
-            calcul: `Maintenant les parts ont la même taille : ${calcul.aReduit.n} `
-                + `${calcul.signe} ${calcul.bReduit.n} = ${calcul.brut.n}, sur ${calcul.commun}.`,
+            calcul: calcul.type === 'complement'
+                ? `${calcul.aReduit.n} − ${calcul.b.n} = ${calcul.brut.n}, sur ${calcul.commun}.`
+                : `Maintenant les parts ont la même taille : ${calcul.aReduit.n} `
+                    + `${calcul.signe} ${calcul.bReduit.n} = ${calcul.brut.n}, sur ${calcul.commun}.`,
             simplifiee: `${calcul.brut.n}/${calcul.brut.d} se simplifie en `
                 + `${calcul.reduit.n}/${calcul.reduit.d}.`
         };
@@ -518,7 +587,7 @@ export function mount(container, session, opts = {}) {
                 c.el.classList.add('fa-case--juste');
             }
             ligne.el.classList.add('fa-ligne--faite');
-            if (ligne.nom === 'commun') revelerCommun();
+            if (ligne.nom === 'commun' || ligne.nom === 'entier') revelerCommun();
             if (ligne !== lignes[lignes.length - 1]) ouvrirSuivante();
             if (!await cursor.pause(260) || destroyed) return;
         }
