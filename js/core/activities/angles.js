@@ -437,10 +437,21 @@ export function mount(container, session, opts = {}) {
         if (input && auDoigt() && !session.isDemo) {
             sansClavierSysteme(input);
             const barre = container.querySelector('.angles-controls');
+            // LE PAVÉ SUIT LA SAISIE, PAS LA BARRE D'INDICES.
+            //
+            // Rémy, sur téléphone : « le clavier est tronqué en bas ». Posé en
+            // dernier, le pavé arrivait APRÈS « Un indice » et « Montre-moi » :
+            // sur un écran de 553 points, les quarante-cinq pixels de la barre
+            // d'aide suffisaient à pousser la seconde rangée de chiffres hors
+            // du cadre — et c'est la rangée qui porte le 0 et le OK. Le pavé
+            // se glisse maintenant juste sous les commandes ; s'il manque
+            // encore de la place, c'est la barre d'aide qui descend, et on la
+            // rattrape en faisant défiler sans avoir perdu le clavier.
             paveMesure = poserPaveTactile(barre.parentElement, {
                 champ: () => input,
                 maxLong: 3,
-                valider
+                valider,
+                avant: container.querySelector('.hint-bar')
             });
         }
     }

@@ -29,6 +29,11 @@ const NIVEAUX = {
 
 const pgcd = (a, b) => b === 0 ? a : pgcd(b, a % b);
 
+// Le garde-fou du bouton « Fraction suivante » : neuf secondes, c'est trois
+// fois le temps de lire une égalité, et assez peu pour qu'une séance laissée
+// en plan finisse quand même.
+const PAUSE_LECTURE = 9000;
+
 class FracSamurai extends BaseGame {
     render() {
         this.level = Math.min(5, Math.max(1, parseInt(this.params.startLevel) || 1));
@@ -68,6 +73,14 @@ class FracSamurai extends BaseGame {
                 .sam-frac { display: flex; flex-direction: column; align-items: center; gap: 4px; }
                 .sam-num, .sam-den { font-size: clamp(1.5rem, min(6.5cqh, 9cqw), 3.2rem); font-weight: 900; color: #fff; display: flex; align-items: center; gap: 6px; }
                 .sam-bar { width: 100%; min-width: 56px; height: 4px; background: #fff; border-radius: 2px; }
+                /* L'ÉGALITÉ FINALE : le départ pâlit, la simplifiée s'allume.
+                   Les deux restent EN COLONNE — c'est l'écriture du cours. */
+                .sam-frac--pale { opacity: .5; }
+                .sam-frac--gagne .sam-num, .sam-frac--gagne .sam-den { color: #51cf66; }
+                .sam-frac--gagne .sam-bar { background: #51cf66; }
+                .sam-frac--gagne { animation: sam-gagne .45s ease-out; }
+                @keyframes sam-gagne { from { transform: scale(.7); opacity: 0; } }
+                @media (prefers-reduced-motion: reduce) { .sam-frac--gagne { animation: none; } }
                 .sam-egal { font-size: clamp(1.5rem, min(6.5cqh, 9cqw), 3.2rem); color: #fcc419; font-weight: 900; }
                 .sam-mini { width: clamp(40px, 6cqw, 54px); height: clamp(32px, 8cqh, 46px); font-size: clamp(.95rem, 3.6cqh, 1.3rem); text-align: center; border-radius: 8px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 700; }
                 .sam-mini:focus { outline: none; border-color: #fcc419; }
@@ -372,7 +385,8 @@ class FracSamurai extends BaseGame {
         this.num /= this.facteurCommun;
         this.den /= this.facteurCommun;
         if (pgcd(this.num, this.den) === 1) {
-            this.message(`Terminé ! ${this.fractionDepart} = ${this.num}/${this.den}, irréductible.`, 'ok');
+            this.montrerResultat();
+            this.message('Irréductible : plus aucun diviseur commun.', 'ok');
             this.reussite(10, `${this.fractionDepart} → ${this.num}/${this.den}`);
         } else {
             this.message('Bien ! Mais ce n\'est pas fini : simplifie encore.', 'info');
@@ -382,6 +396,26 @@ class FracSamurai extends BaseGame {
                 if (NIVEAUX[this.level].chrono && !this.isDemo) this.lancerChrono();
             }, 1400);
         }
+    }
+
+    /**
+     * L'ÉGALITÉ FINALE, ÉCRITE COMME AU TABLEAU.
+     *
+     * Rémy : « quand tu mets l'égalité après avoir trouvé la réponse, écris
+     * les fractions en colonne ». Elle n'existait que dans la phrase du bas —
+     * « 36/48 = 3/4 » —, avec des barres obliques, c'est-à-dire dans la seule
+     * écriture qu'on demande à l'élève de ne PAS employer. Le panneau du jeu
+     * sait déjà dessiner une fraction en colonne : c'est lui qui la porte
+     * maintenant, la fraction de départ pâlie à gauche, la simplifiée en vert.
+     */
+    montrerResultat() {
+        const [n0, d0] = String(this.fractionDepart).split('/');
+        const frac = (n, d, cls) => `<div class="sam-frac ${cls}">`
+            + `<div class="sam-num">${n}</div><div class="sam-bar"></div>`
+            + `<div class="sam-den">${d}</div></div>`;
+        this.ui.eq.innerHTML = frac(n0, d0, 'sam-frac--pale')
+            + '<div class="sam-egal">=</div>'
+            + frac(this.num, this.den, 'sam-frac--gagne');
     }
 
     reussite(pts, resume) {
@@ -401,11 +435,28 @@ class FracSamurai extends BaseGame {
             this.message(`⚔️ Tu deviens ${NIVEAUX[this.level].nom} !`, 'ok');
         }
         this.majTete();
-        regTimeout(() => {
-            if (!this.isRunning) return;
+
+        // ON NE PASSE PAS À LA SUITE SANS LE DIRE.
+        //
+        // Rémy : « attends un peu avant de passer à la question suivante,
+        // quitte à appuyer sur un bouton ». Une seconde et demie, c'est le
+        // temps de voir l'égalité disparaître, pas celui de la lire — et
+        // l'égalité simplifiée est justement ce qu'on vient de fabriquer.
+        // L'élève passe quand il a fini de regarder ; un minuteur long reste
+        // en garde-fou pour qu'une séance abandonnée ne se bloque pas.
+        const passer = () => {
+            if (this.passe || !this.isRunning) return;
+            this.passe = true;
             this.ui.card.style.borderColor = '';
             this.nouvelleFraction();
-        }, monte ? 2000 : 1400);
+        };
+        this.passe = false;
+        if (this.isDemo) { regTimeout(passer, monte ? 2000 : 1400); return; }
+        this.ui.controls.innerHTML =
+            '<button type="button" class="sam-btn sam-ok" data-suivante data-neuf>'
+            + 'Fraction suivante ▶</button>';
+        this.ui.controls.querySelector('[data-suivante]').onclick = passer;
+        regTimeout(passer, PAUSE_LECTURE);
     }
 
     lancerChrono() {

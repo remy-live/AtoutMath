@@ -597,6 +597,11 @@
 .qd-case { stroke: none; }
 .qd-depart { fill: rgba(99, 102, 241, .55); }
 .qd-posee { fill: rgba(22, 163, 74, .58); }
+/* LA CASE DONNÉE PAR L'INDICE. Elle compte comme une case tracée — sinon
+   l'aide ne servirait à rien — mais elle porte un liseré pointillé : en
+   regardant la figure finie, on doit pouvoir distinguer ce qu'on a trouvé de
+   ce qu'on a reçu. */
+.qd-indice { stroke: #f59e0b; stroke-width: 2.6; stroke-dasharray: 4 3; }
 .qd-etiquette { fill: #fff; font-size: 15px; font-weight: 800; }
 
 /* LES PIÈCES D'UN PAVAGE : six teintes, et une LETTRE sur chacune.
@@ -3594,7 +3599,27 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     .angles-estimation { padding: 5px 8px; gap: 6px; }
     .angles-estimation-label { font-size: .8rem; }
     .angles-estimation .btn-hint { padding: 5px 9px; font-size: .84rem; }
-    .angles-board { min-height: 200px; height: clamp(200px, 58cqh, 480px); }
+    /* LA FIGURE CÈDE, LE CLAVIER RESTE. Une hauteur FIXE de plateau ne
+       laissait qu'une issue quand tout ne tenait pas : faire déborder le bas —
+       c'est-à-dire la seconde rangée de chiffres. Le plateau devient
+       élastique, avec un plancher : il rend les quarante pixels qui manquent
+       au lieu de les prendre au clavier. */
+    .angles-board { flex: 1 1 auto; min-height: 150px; height: auto;
+                    max-height: clamp(200px, 58cqh, 480px); }
+    /* L'indice et « Montre-moi » CÔTE À CÔTE, jamais l'un sous l'autre :
+       empilés, ils coûtent une rangée de plus à un écran qui n'en a pas. */
+    .hint-btns { flex-wrap: nowrap; }
+    .hint-btns .btn-hint, .hint-btns .btn-showme { white-space: nowrap; min-width: 0; }
+    .angles-layout .hint-bar { margin-top: 3px; }
+}
+/* PLUS ÉTROIT ENCORE (iPhone SE) : les commandes passent sur trois rangées, et
+   les quarante pixels qu'elles prennent en plus sont exactement ceux de la
+   barre d'aide. On resserre partout un peu plutôt que de sacrifier une ligne. */
+@media (max-width: 380px) {
+    .angles-board { min-height: 120px; }
+    .angles-controls { gap: 4px; }
+    .angles-layout { gap: 3px; padding: 4px; }
+    .angles-layout .kk-btn-valider { padding: 5px 14px; }
     .angles-controls { gap: 6px; }
     .angles-controls .btn-hint { padding: 6px 8px; font-size: .8rem; }
     .angles-input-label { font-size: .82rem; gap: 4px; }

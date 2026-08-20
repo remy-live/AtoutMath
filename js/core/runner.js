@@ -13,7 +13,7 @@
 import { state } from './state.js';
 import { journal, EventTypes } from './journal.js';
 import { clearEngines, regTimeout } from './timers.js';
-import { getActivity, getGenerator } from './registry.js';
+import { getActivity, getGenerator, uniteDe } from './registry.js';
 import { ItemSession } from './itemSession.js';
 import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
 import { skillsOf } from '../data/catalog.js';
@@ -719,7 +719,11 @@ export class Runner {
         const solved = this.itemsSolved.size;
 
         bar.style.width = `${Math.min(100, (done / total) * 100)}%`;
-        text.textContent = `${done} / ${total}`;
+        // ON DIT CE QU'ON COMPTE. « 3 / 10 » au-dessus d'un plateau de six
+        // paires laissait croire à dix plateaux ; c'est bien dix paires. Voir
+        // `unite` dans le registre.
+        const quoi = this.step.exercise ? uniteDe(this.step.exercise.activityId, total) : 'questions';
+        text.textContent = `${done} / ${total} ${quoi}`;
         // En évaluation, on n'affiche pas le score en direct : cela induit une
         // pression inutile et modifie le comportement de l'élève.
         bar.style.background = isEvaluation(this.policy)

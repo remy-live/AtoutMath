@@ -120,12 +120,21 @@ class Duel extends BaseGame {
                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                     min-width: 0;
                 }
+                /* CE QU'ON TAPE DOIT SE VOIR COMME UN ÉCRAN.
+                   Rémy : « sur mon iPhone, on ne voit toujours pas ». Le
+                   nombre était posé nu sur le fond du camp : vide, il ne
+                   restait qu'un point gris de deux pixels, et rien ne disait
+                   OÙ la réponse allait s'écrire. Un cadre aux couleurs du camp
+                   règle la question avant même qu'on ait tapé. */
                 .du-saisie {
                     font-weight: 900; color: #f8fafc; letter-spacing: .06em;
                     font-size: clamp(1.2rem, 5.2cqh, 2.3rem); line-height: 1.05;
                     font-variant-numeric: tabular-nums; min-height: 1em; flex-shrink: 0;
+                    min-width: 2.6em; text-align: center; padding: 1px .35em;
+                    border: 2px solid color-mix(in srgb, var(--du-teinte) 55%, transparent);
+                    border-radius: 10px; background: rgba(2, 6, 23, .75);
                 }
-                .du-saisie--vide { color: #475569; }
+                .du-saisie--vide { color: #64748b; }
 
                 /* Un display:grid posé sur une classe l'emporte sur l'attribut
                    hidden, qui ne vaut qu'une règle du navigateur : sans ces
@@ -324,7 +333,7 @@ class Duel extends BaseGame {
                    conteneur style les descendants du conteneur nommé, jamais
                    le conteneur lui-même — les règles visant .du-plateau ne
                    s'appliquaient donc pas, et le plateau restait en rangées. */
-                @container plateau (min-aspect-ratio: 13/10) {
+                @container plateau (min-aspect-ratio: 13/10) and (min-height: 520px) {
                     /* En paysage, le camp est une BANDE de largeur fixe le
                        long du bord, et le couloir prend tout le milieu — même
                        principe qu'en portrait, un quart de tour plus loin. La
@@ -366,36 +375,40 @@ class Duel extends BaseGame {
                 }
                 /* Écran court MAIS étroit (téléphone en paysage serré) : on
                    garde la coupe haut/bas et on resserre. */
-                @container plateau (max-height: 640px) and (max-aspect-ratio: 13/10) {
+                @container plateau (max-height: 640px) {
                     .du-cote { padding: 4px 8px; gap: 3px; }
-                    .du-pave, .du-tables { max-width: 820px; height: clamp(32px, 9cqh, 56px); }
+                    /* ÉCRAN COURT : LE BANDEAU ET L'ÉCRAN DE SAISIE SE METTENT
+                       SUR LA MÊME LIGNE. Empilés, ils coûtaient soixante-dix
+                       pixels par camp — cent quarante pris au couloir sur un
+                       écran qui n'en a que trois cent quatre-vingt-dix. Côte à
+                       côte, ils en coûtent trente-cinq. */
+                    .du-cote { flex-flow: row wrap; align-items: center;
+                               justify-content: center; column-gap: 10px; }
+                    .du-tete { width: auto; flex: 0 1 auto; }
+                    .du-saisie { flex: 0 0 auto; }
+                    .du-pave, .du-tables, .du-brique { flex-basis: 100%; }
+                    .du-pave, .du-tables { max-width: 820px; height: clamp(46px, 12cqh, 62px); }
                     .du-saisie { font-size: clamp(1.1rem, 6cqh, 1.9rem); }
                     .du-tete { font-size: clamp(.62rem, 2.4cqh, .85rem); }
                 }
 
-                /* TÉLÉPHONE : ONZE TOUCHES SUR UNE LIGNE FONT 25 PX DE LARGE.
-                   La rangée unique tenait sur une tablette ; sur un téléphone
-                   de 390 px chaque touche tombe à vingt-cinq pixels — moins
-                   que la moitié d'un pouce — et à dix-neuf pixels quand le
-                   camp est une bande latérale. L'élève tape à côté, ou n'ose
-                   plus taper. Deux rangées de six lui rendent cinquante
-                   pixels dans les deux sens ; le couloir paie soixante pixels,
-                   il en a largement de quoi. Les tables du service suivent, en
-                   deux rangées de cinq.
+                /* TÉLÉPHONE : LA RANGÉE UNIQUE, ET DES TOUCHES HAUTES.
                    CE BLOC VIENT EN DERNIER : les paliers de resserrement plus
                    haut fixent eux aussi la hauteur du pavé, et une requête de
                    conteneur n'ajoute aucune spécificité — seul l'ordre tranche. */
                 @container plateau (max-width: 560px) {
-                    .du-pave {
-                        grid-template-columns: repeat(6, 1fr);
-                        grid-template-rows: repeat(2, minmax(0, 1fr));
-                    }
-                    .du-tables {
-                        grid-auto-flow: row; grid-template-columns: repeat(5, 1fr);
-                        grid-template-rows: repeat(2, minmax(0, 1fr));
-                        grid-auto-columns: auto;
-                    }
-                    .du-pave, .du-tables { height: clamp(74px, 16cqh, 124px); }
+                    /* UNE SEULE RANGÉE DE CHIFFRES, MÊME SUR UN TÉLÉPHONE.
+                       Rémy, deux fois : « pour le duel à deux, le mieux serait
+                       une seule rangée de chiffres en bas, là ça prend tellement
+                       de place », puis « une seule rangée de chiffres et tout le
+                       reste le plateau de jeu ». J'avais replié le pavé en deux
+                       rangées de six pour élargir les touches — et j'avais donc
+                       repris d'une main la place qu'il demandait de rendre.
+                       Onze touches sur 390 px font 33 px de large ; on les fait
+                       HAUTES, ce qui donne une cible de 33 × 58 — un pouce
+                       s'appuie large et court, pas l'inverse — et le couloir
+                       récupère soixante pixels. */
+                    .du-pave, .du-tables { height: clamp(48px, 11cqh, 74px); }
                     /* TOUT CE QUE L'ÉCRAN A. Rémy, deux bancs de suite : « on ne
                        voit toujours pas bien pour le duel ». Sur un iPhone, le
                        plateau perdait quarante pixels de large et autant de haut
@@ -415,17 +428,11 @@ class Duel extends BaseGame {
                 /* Même règle en bande latérale, où la touche tombait à dix-neuf
                    pixels. La profondeur de la bande se mesure alors sur la
                    LARGEUR du plateau : c'est elle qui la porte une fois pivotée. */
-                @container plateau (min-aspect-ratio: 13/10) {
-                    .du-pave {
-                        grid-template-columns: repeat(6, 1fr);
-                        grid-template-rows: repeat(2, minmax(0, 1fr));
-                    }
-                    .du-tables {
-                        grid-auto-flow: row; grid-template-columns: repeat(5, 1fr);
-                        grid-template-rows: repeat(2, minmax(0, 1fr));
-                        grid-auto-columns: auto;
-                    }
-                    .du-pave, .du-tables { height: clamp(74px, 15cqw, 124px); }
+                /* En bande latérale, la rangée unique est LONGUE (elle court sur
+                   toute la hauteur de l'écran une fois pivotée) : elle n'a pas
+                   besoin de se replier, et la bande reste peu profonde. */
+                @container plateau (min-aspect-ratio: 13/10) and (min-height: 520px) {
+                    .du-pave, .du-tables { height: clamp(52px, 10cqw, 92px); }
                 }
             </style>
             <div class="du-plateau" data-plateau>

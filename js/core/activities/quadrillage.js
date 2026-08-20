@@ -70,6 +70,7 @@ export function mount(container, session) {
         }
 
         wireHint(container, session);
+        brancherIndiceCase();
         svg.querySelectorAll('.qd-hit').forEach(hit => {
             hit.addEventListener('click', () => basculer(hit));
             hit.addEventListener('keydown', (e) => {
@@ -83,6 +84,60 @@ export function mount(container, session) {
             majCompte();
         };
         container.querySelector('[data-valider]').onclick = valider;
+    }
+
+    // --- L'INDICE QUI TRACE UNE CASE ------------------------------------------
+    //
+    // Rémy : « pour un indice, tu pourrais tracer juste UNE case ». Les phrases
+    // d'aide rappellent la règle — compte les carreaux jusqu'à l'axe, reporte
+    // de l'autre côté — mais l'élève qui bloque ne bloque pas sur la règle : il
+    // bloque sur le PREMIER report, celui qui n'a aucun repère avant lui. Une
+    // case posée pour lui, et tout le reste se compte à partir d'elle.
+    //
+    // La case donnée entre dans le compte et dans la validation — elle est
+    // vraiment tracée, pas montrée — mais elle garde sa marque : on doit
+    // pouvoir distinguer, en regardant la figure finie, ce qu'on a trouvé de
+    // ce qu'on a reçu.
+
+    /**
+     * Le bouton d'indice donne d'abord les PHRASES, puis les CASES. Une case
+     * offerte d'entrée priverait de l'effort ; une phrase de plus quand on a
+     * déjà tout lu ne sert à rien.
+     */
+    function brancherIndiceCase() {
+        const btn = container.querySelector('[data-hint]');
+        if (!btn) return;
+        const phrase = btn.onclick;
+        const majTexte = () => {
+            if (session.hintsAvailable) return;
+            btn.disabled = false;
+            btn.innerHTML = '<span aria-hidden="true">🎯</span> Trace une case';
+        };
+        btn.onclick = (e) => {
+            if (session.hintsAvailable) { phrase(e); majTexte(); return; }
+            montrerUneCase();
+            majTexte();
+        };
+        majTexte();
+    }
+
+    /** Pose la prochaine case attendue, dans l'ordre de lecture. */
+    function montrerUneCase() {
+        if (session.locked || destroyed) return;
+        const reste = [...imageAttendue(item.meta)]
+            .sort((a, b) => (a.y - b.y) || (a.x - b.x))
+            .find(p => !posees.some(q => q.x === p.x && q.y === p.y));
+        if (!reste) { statut('Toutes les cases de l\'image sont déjà posées.'); return; }
+        const hit = svg.querySelector(`.qd-hit[data-c="${reste.x},${reste.y}"]`);
+        if (!hit) return;
+        // Une case donnée ne se compte pas comme une aide de plus tant qu'elle
+        // ne coûte rien : c'est `session.hint()` qui trace l'usage, et il l'a
+        // déjà fait pour les phrases. On note donc la case comme aide ici.
+        if (!session.sansTrace) session.hintIndex++;
+        posees.push(reste);
+        svg.insertBefore(rectangle(hit, 'qd-posee qd-indice', `${reste.x},${reste.y}`),
+            sousLesMarques());
+        majCompte();
     }
 
     // --- Colorier -------------------------------------------------------------

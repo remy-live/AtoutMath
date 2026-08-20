@@ -63,9 +63,35 @@ export function registerActivity(def) {
         accepts: [],
         params: [],
         supports: { timed: false, autonomous: false, demo: true },
+        // CE QUE COMPTE LE COMPTEUR.
+        //
+        // Rémy, à propos des Amis de Dix : « est-ce qu'on considère qu'on a
+        // répondu à une question quand on a relié deux cartes, ou toutes les
+        // cartes présentées ? Une vraie question pour la plupart des
+        // exercices. » Elle l'est : « 3 / 10 » au-dessus d'un plateau de six
+        // paires, d'une grille de sudoku ou d'une partie de dames ne dit pas
+        // la même chose à chaque fois, et rien à l'écran ne tranchait.
+        //
+        // Le compteur ne change pas — c'est bien une paire, une grille, une
+        // partie qu'il compte, et c'est la bonne unité de travail. Ce qui
+        // manquait, c'est de le DIRE : chaque activité nomme son unité, et le
+        // bandeau affiche « 3 / 10 paires ».
+        unite: 'question',
         ...def
     });
     return def.id;
+}
+
+/**
+ * L'unité de travail d'une activité, accordée en nombre.
+ * @param {string} id - identifiant d'activité
+ * @param {number} n  - le nombre à accorder
+ */
+export function uniteDe(id, n = 1) {
+    const a = activities.get(id);
+    const mot = (a && a.unite) || 'question';
+    if (n <= 1) return mot;
+    return /[sx]$/.test(mot) ? mot : `${mot}s`;
 }
 
 export function getGenerator(id) {

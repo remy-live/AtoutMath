@@ -98,6 +98,14 @@ export const fractionsExercises = [
     {
         id: 'frac-samurai', status: STATUS.TEST, title: 'Le Samouraï des Fractions',
         cree: '2026-08-04',
+        revisions: [{
+            date: '2026-08-20',
+            quoi: 'L\'égalité finale s\'écrit EN COLONNES — la fraction de départ pâlie, la '
+                + 'simplifiée en vert — au lieu d\'une phrase à barres obliques, la seule écriture '
+                + 'qu\'on demande à l\'élève de ne pas employer. Et l\'exercice ne saute plus à la '
+                + 'fraction suivante au bout d\'une seconde et demie : un bouton « Fraction '
+                + 'suivante » laisse le temps de regarder ce qu\'on vient de fabriquer.'
+        }],
         activityId: 'samurai',
         params: { startLevel: 1, goal: 4 },
         paramSchema: [

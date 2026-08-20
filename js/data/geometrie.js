@@ -198,6 +198,15 @@ export const geometrieExercises = [
                     + 'flèche —, il est corrigé et se dit maintenant « sens direct » ou '
                     + '« indirect ». L\'axe et le centre tombent sur les traits du quadrillage, '
                     + 'et la figure ne pousse plus « Valider » hors de l\'écran en paysage.'
+            },
+            {
+                date: '2026-08-20',
+                quoi: 'Quand les phrases d\'aide sont épuisées, le bouton d\'indice devient '
+                    + '« Trace une case » et POSE une case de l\'image, dans l\'ordre de lecture. '
+                    + 'L\'élève qui bloque ne bloque pas sur la règle mais sur le premier report, '
+                    + 'celui qui n\'a aucun repère avant lui ; une case donnée, et tout le reste se '
+                    + 'compte à partir d\'elle. Elle compte dans la figure, mais garde un liseré '
+                    + 'orange : on doit distinguer ce qu\'on a trouvé de ce qu\'on a reçu.'
             }
         ], title: 'Tracer l\'Image d\'une Figure',
         cree: '2026-08-18',
@@ -352,6 +361,12 @@ export const geometrieExercises = [
             quoi: 'Un seul doigt posé à côté du rapporteur tire la feuille (le pinch reste), '
                 + 'la loupe bloque ce déplacement, et la mesure se tape sur un pavé en page — '
                 + 'le clavier de la tablette recouvrait la figure qu\'on est en train de mesurer.'
+        }, {
+            date: '2026-08-20',
+            quoi: 'Le pavé de chiffres passe AVANT la barre d\'aide : posé après, ses quarante-cinq '
+                + 'pixels suffisaient à pousser hors de l\'écran la rangée qui porte le 0 et le OK. '
+                + 'La figure devient élastique au lieu d\'avoir une hauteur fixe, et tout tient '
+                + 'jusque sur un écran de 320 × 568 — indice et « Montre-moi » côte à côte compris.'
         }],
         generatorId: 'geo.angles', activityId: 'angles',
         // C'est l'exercice qu'un écran ne remplace pas : le rapporteur de

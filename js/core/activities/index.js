@@ -253,6 +253,7 @@ registerActivity({
 // complet, validé d'un bloc, au lieu de répondre coup par coup.
 registerActivity({
     id: 'kenken',
+    unite: 'grille',
     label: 'Mathdoku',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
@@ -261,6 +262,7 @@ registerActivity({
 
 registerActivity({
     id: 'binairo',
+    unite: 'grille',
     label: 'Binairo',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
@@ -269,6 +271,7 @@ registerActivity({
 
 registerActivity({
     id: 'garam',
+    unite: 'grille',
     label: 'Garam',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
@@ -277,6 +280,7 @@ registerActivity({
 
 registerActivity({
     id: 'sudoku',
+    unite: 'grille',
     label: 'Sudoku',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
@@ -312,6 +316,7 @@ registerActivity({
 // une feuille. Corriger au fil des clics en ferait un jeu de chaud-froid.
 registerActivity({
     id: 'quadrillage',
+    unite: 'figure',
     label: 'Tracer sur le quadrillage',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
@@ -391,6 +396,7 @@ registerActivity({
 
 registerActivity({
     id: 'fraction-somme',
+    unite: 'addition',
     label: 'Additionner des fractions (bandes)',
     accepts: ['text'],
     requiresMeta: ['somme'],
@@ -432,7 +438,7 @@ registerActivity({
 
 const legacy = [
     ['shooter', 'Météorites', 'arcade_shooter', 'engineArcadeShooter'],
-    ['memory', 'Memory', 'math_memory', 'engineMathMemory'],
+    ['memory', 'Memory', 'math_memory', 'engineMathMemory', 'paire'],
     ['labyrinthe', 'Labyrinthe', 'labyrinthe', 'engineLabyrinthe'],
     ['course', 'Course', 'course', 'engineCourse'],
     ['tetris', 'Math Tetris', 'tetris', 'engineTetris'],
@@ -440,62 +446,66 @@ const legacy = [
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
     ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
     ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
-    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur'],
+    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur', 'formule'],
     ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja'],
     ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille'],
     ['nova', 'Nova', 'nova', 'engineNova'],
-    ['demineur', 'Le Démineur', 'demineur', 'engineDemineur'],
-    ['chantier', 'Le Chantier des Blocs', 'chantier', 'engineChantier'],
-    ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches'],
-    ['anagrammes', 'Anagrammes du vocabulaire', 'anagrammes', 'engineAnagrammes'],
-    ['mots-croises', 'Mots croisés du vocabulaire', 'motsCroises', 'engineMotsCroises'],
-    ['pipopipette', 'La Pipopipette (à deux)', 'jeuxDeux', 'enginePipopipette'],
-    ['puissance4', 'Puissance 4 (à deux)', 'jeuxDeux', 'enginePuissance4'],
-    ['sim', 'Le Sim (à deux)', 'jeuxDeux', 'engineSim'],
+    ['demineur', 'Le Démineur', 'demineur', 'engineDemineur', 'grille'],
+    ['chantier', 'Le Chantier des Blocs', 'chantier', 'engineChantier', 'chantier'],
+    ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches', 'mot'],
+    ['anagrammes', 'Anagrammes du vocabulaire', 'anagrammes', 'engineAnagrammes', 'mot'],
+    ['mots-croises', 'Mots croisés du vocabulaire', 'motsCroises', 'engineMotsCroises', 'mot'],
+    ['pipopipette', 'La Pipopipette (à deux)', 'jeuxDeux', 'enginePipopipette', 'partie'],
+    ['puissance4', 'Puissance 4 (à deux)', 'jeuxDeux', 'enginePuissance4', 'partie'],
+    ['sim', 'Le Sim (à deux)', 'jeuxDeux', 'engineSim', 'partie'],
     ['diviseurs', 'Le Chasseur de Diviseurs', 'diviseurs', 'engineDiviseurs'],
-    ['arpenteurs', 'Les Arpenteurs (à deux)', 'arpenteurs', 'engineArpenteurs'],
+    ['arpenteurs', 'Les Arpenteurs (à deux)', 'arpenteurs', 'engineArpenteurs', 'parcelle'],
     ['ninja', 'Trancher et tirer', 'ninja', 'engineNinja'],
     ['dictee', 'Dictée de nombres', 'dictee', 'engineDictee'],
-    ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction'],
-    ['logigramme', 'Logigramme', 'logigramme', 'engineLogigramme'],
-    ['dominos', 'Dominos mathématiques', 'dominos', 'engineDominos'],
-    ['dix', 'Les Amis de Dix (paires)', 'dix', 'engineDix'],
+    ['redaction', 'Rédiger un raisonnement', 'redaction', 'engineRedaction', 'rédaction'],
+    ['logigramme', 'Logigramme', 'logigramme', 'engineLogigramme', 'grille'],
+    ['dominos', 'Dominos mathématiques', 'dominos', 'engineDominos', 'domino'],
+    ['dix', 'Les Amis de Dix (paires)', 'dix', 'engineDix', 'paire'],
     ['pythagore-theoreme', 'Le Théorème de Pythagore', 'pythagore_theoreme', 'enginePythagoreTheoreme'],
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
-    ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique'],
-    ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki'],
-    ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille'],
+    ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique', 'grille'],
+    ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki', 'grille'],
+    ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille', 'grille'],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
     ['skweek', 'Le Peintre (repeindre le sol)', 'skweek', 'engineSkweek'],
     ['priorites', 'Priorités : la réécriture', 'priorites', 'enginePriorites'],
-    ['compte-est-bon', 'Le Compte est Bon', 'compteEstBon', 'engineCompteEstBon'],
+    ['compte-est-bon', 'Le Compte est Bon', 'compteEstBon', 'engineCompteEstBon', 'tirage'],
     ['conversion', 'Le tableau de conversion', 'conversion', 'engineConversion'],
-    ['poser-operation', 'Poser une opération', 'poserOperation', 'enginePoserOperation'],
-    ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink'],
-    ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram'],
+    ['poser-operation', 'Poser une opération', 'poserOperation', 'enginePoserOperation', 'opération'],
+    ['slitherlink', 'Slitherlink (la boucle unique)', 'slitherlink', 'engineSlitherlink', 'grille'],
+    ['tangram', 'Le Tangram (aires et pièces)', 'tangram', 'engineTangram', 'figure'],
     ['solides', 'Compter sur un solide', 'solides', 'engineSolides'],
-    ['relier', 'Relier les points', 'relier', 'engineRelier'],
-    ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
-    ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
-    ['course-vecteurs', 'Course de Vecteurs', 'courseVecteurs', 'engineCourseVecteurs'],
-    ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
-    ['othello', 'Othello', 'plateau', 'engineOthello'],
-    ['dames', 'Jeu de Dames', 'plateau', 'engineDames'],
-    ['echecs', 'Échecs', 'plateau', 'engineEchecs'],
-    ['automate', 'L\'Automate (exécuter un programme)', 'automate', 'engineAutomate'],
-    ['problemes', 'Histoires en Pagaille', 'problemes', 'engineProblemes'],
-    ['proportion', 'Tableau de Proportionnalité', 'proportion', 'engineProportion'],
+    ['relier', 'Relier les points', 'relier', 'engineRelier', 'figure'],
+    ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel', 'échange'],
+    ['ville', 'Le Plan de Ville', 'ville', 'engineVille', 'trajet'],
+    ['course-vecteurs', 'Course de Vecteurs', 'courseVecteurs', 'engineCourseVecteurs', 'course'],
+    ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza', 'commande'],
+    ['othello', 'Othello', 'plateau', 'engineOthello', 'partie'],
+    ['dames', 'Jeu de Dames', 'plateau', 'engineDames', 'partie'],
+    ['echecs', 'Échecs', 'plateau', 'engineEchecs', 'partie'],
+    ['automate', 'L\'Automate (exécuter un programme)', 'automate', 'engineAutomate', 'programme'],
+    ['problemes', 'Histoires en Pagaille', 'problemes', 'engineProblemes', 'problème'],
+    ['proportion', 'Tableau de Proportionnalité', 'proportion', 'engineProportion', 'tableau'],
     ['virgule', 'La Virgule qui ne bouge pas', 'virgule', 'engineVirgule'],
-    ['dedale', 'Les Dédales', 'dedale', 'engineDedale'],
-    ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint'],
-    ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication'],
-    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision']
+    ['dedale', 'Les Dédales', 'dedale', 'engineDedale', 'dédale'],
+    ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint', 'dessin'],
+    ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication', 'opération'],
+    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision', 'opération']
 ];
 
-legacy.forEach(([id, label, file, fn]) => {
+legacy.forEach(([id, label, file, fn, unite]) => {
     registerActivity({
         id, label,
+        // L'UNITÉ DE TRAVAIL, quand ce n'est pas « une question ». Voir
+        // `unite` dans le registre : c'est la réponse à « est-ce qu'on a
+        // répondu à une question quand on a relié deux cartes ? ».
+        ...(unite ? { unite } : {}),
         accepts: [],
         supports: { timed: true, autonomous: true, demo: true },
         legacyModule: `../../games/${file}.js`,

@@ -744,6 +744,14 @@ export const calculExercises = [
             quoi: 'Un renvoi réussi se VOIT — anneau d\'impact et camp qui flashe ; la brique porte '
                 + 'la couleur de celui qui l\'a envoyée ; le rythme se règle (tranquille par défaut) ; '
                 + 'et un mode où chacun compose son calcul au clavier avant de le lancer.'
+        }, {
+            date: '2026-08-20',
+            quoi: 'UNE SEULE RANGÉE DE CHIFFRES, partout — c\'est la demande, et je l\'avais reprise '
+                + 'd\'une main en repliant le pavé en deux rangées « pour élargir les touches ». Le '
+                + 'couloir récupère soixante pixels par camp. Ce qu\'on tape s\'affiche dans un écran '
+                + 'encadré aux couleurs du camp, visible avant même d\'avoir tapé. Et sur un téléphone '
+                + 'couché, les camps ne pivotent plus d\'un quart de tour : la bande n\'y faisait que '
+                + 'cent soixante-dix pixels de profondeur et tout y était tronqué.'
         }],
         activityId: 'duel', skills: ['num.mult.table.*'],
         params: {
