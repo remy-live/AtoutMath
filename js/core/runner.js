@@ -307,7 +307,15 @@ export class Runner {
             state.attemptContext = {
                 runId: this.runId, stepId: step.stepId,
                 exerciseId: step.exercise.id, exerciseTitle: step.exercise.title,
-                activityId: activity.id, startedAt: Date.now()
+                activityId: activity.id, startedAt: Date.now(),
+                // UN JEU AUTONOME A LE DROIT DE SAVOIR QU'ON L'ÉVALUE.
+                // Rémy, sur la multiplication posée : « quand on est en mode
+                // interrogation, si c'est faux on ne compte pas le point et on
+                // passe à la suivante ». En entraînement on corrige sur place
+                // et l'on continue la même opération ; en évaluation, une
+                // opération ratée est ratée. Le jeu ne peut pas en décider
+                // seul : c'est le régime de la séance qui tranche.
+                evaluation: isEvaluation(this.policy)
             };
             const fn = mod[activity.legacyExport] || Object.values(mod).find(v => typeof v === 'function');
             this.canvas.innerHTML = '';
@@ -455,6 +463,14 @@ export class Runner {
      */
     onAttempt(payload) {
         if (!this.step) return;
+
+        // UNE ÉTAPE N'EST PAS UNE QUESTION. Un chiffre posé dans une
+        // multiplication est une tentative — elle compte aux statistiques et au
+        // carnet d'erreurs — mais pas une question de la série : sinon le
+        // compteur annonçait « 6 opérations sur 6 » alors qu'on en avait posé
+        // une seule et demie. Le jeu marque ces tentatives-là, et c'est
+        // l'opération finie qui fait avancer le compte.
+        if (payload.partiel) return;
 
         const key = payload.itemSeed || `auto_${this.autonomousCounter}`;
         const maxTries = this.policy.maxAttemptsPerItem;

@@ -155,6 +155,43 @@ class PoserLongue extends BaseGame {
         this.reussies = 0;
     }
 
+    /**
+     * UN CHIFFRE FAUX — ET CE QU'IL COÛTE, SELON LE RÉGIME.
+     *
+     * Rémy, au banc iPhone : « il faut finir la multiplication pour avoir une
+     * bonne réponse, compte cinq multiplications complètes ; et quand on est en
+     * mode interrogation, si c'est faux on ne compte pas le point et on passe à
+     * la suivante ».
+     *
+     * En ENTRAÎNEMENT, un chiffre faux se corrige sur place : on reste sur
+     * l'opération, on recommence la case, et rien n'avance. La tentative part
+     * quand même au carnet d'erreurs — c'est un fait de table raté, il vaut
+     * d'être noté — mais marquée `partiel`, donc elle ne compte pas pour une
+     * question.
+     *
+     * En ÉVALUATION, il n'y a pas de deuxième chance : l'opération est ratée,
+     * elle compte pour une question manquée, et l'on passe à la suivante.
+     */
+    echec(details) {
+        this.onWrongAnswer(null, { ...details, partiel: true });
+        if (!this.enEvaluation || this.rateeEnEval) return;
+        this.rateeEnEval = true;
+        this.onWrongAnswer(null, {
+            concept: details.concept,
+            questionText: this.enonce(),
+            input: 'opération non terminée',
+            expected: this.resultatAttendu(),
+            itemSeed: this.cleItem,
+            // Assez grand pour que le moteur tienne la question pour tranchée,
+            // quel que soit le nombre d'essais autorisés par la politique.
+            attemptIndex: 9,
+            silencieux: true
+        });
+        this.note(`En évaluation, on ne reprend pas : ${this.enonce()} = `
+            + `${this.resultatAttendu()}. On passe à la suivante.`, 'ko');
+        setTimeout(() => { if (this.isRunning) this.poser(); }, 2600);
+    }
+
     render() {
         this.container.innerHTML = `<style>${STYLE}</style>${SQUELETTE}`;
         this.etapeEl = this.container.querySelector('[data-etape]');
@@ -321,6 +358,18 @@ class PoserMultiplication extends PoserLongue {
             this.m = m;
             break;
         }
+        // L'OPÉRATION ENTIÈRE EST L'UNITÉ COMPTÉE.
+        //
+        // Rémy : « sur la multiplication, il faut FINIR la multiplication pour
+        // avoir une bonne réponse ; compte cinq multiplications complètes ».
+        // Chaque chiffre faux produisait une tentative sans clef d'item, et le
+        // moteur en faisait une question de plus : le compteur filait pendant
+        // qu'on posait encore la même opération. Toutes les tentatives d'une
+        // même multiplication portent maintenant LA MÊME clef ; le compteur
+        // n'avance donc qu'une fois par opération posée.
+        this.numero = (this.numero || 0) + 1;
+        this.cleItem = `mult-${this.numero}`;
+        this.rateeEnEval = false;
         // On écrit les lignes de la plus basse (unités) vers la plus haute.
         this.ligne = 0;
         this.position = 0;
@@ -637,7 +686,7 @@ class PoserMultiplication extends PoserLongue {
                 ? `Non. La retenue s'ajoute APRÈS le produit : ${c.chiffreA} × ${l.chiffre} `
                   + `puis + ${c.retenueEntrante}. On n'ajoute pas la retenue au chiffre avant de multiplier.`
                 : `Non : ${c.chiffreA} × ${l.chiffre}, et l'on écrit le chiffre des unités du résultat.`, 'ko');
-            this.onWrongAnswer(null, {
+            this.echec({
                 concept: COMP_MULT,
                 questionText: `${c.chiffreA} × ${l.chiffre}${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''}`,
                 input: String(n), expected: String(c.chiffre),
@@ -649,7 +698,7 @@ class PoserMultiplication extends PoserLongue {
         this.ecrits[this.ligne][p] = n;
         this.onCorrectAnswer(null, COMP_MULT, {
             questionText: `${c.chiffreA} × ${l.chiffre}${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''}`,
-            expected: String(c.chiffre), given: String(c.chiffre), points: 2
+            expected: String(c.chiffre), given: String(c.chiffre), points: 2, partiel: true
         });
 
         // La retenue s'ANNONCE, elle ne se réclame pas.
@@ -680,7 +729,7 @@ class PoserMultiplication extends PoserLongue {
                     + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total}`;
                 this.note(`${fautes.length} colonne${fautes.length > 1 ? 's' : ''} à revoir : `
                     + fautes.map(dit).join(' ; ') + '. Les cases en rouge s\'effacent, réécris-les.', 'ko');
-                this.onWrongAnswer(null, {
+                this.echec({
                     concept: COMP_MULT,
                     questionText: `Ligne ${this.m.entiers[0]} × ${l.chiffre}`,
                     input: 'ligne écrite', expected: 'ligne juste',
@@ -702,7 +751,7 @@ class PoserMultiplication extends PoserLongue {
             // Toute la ligne est juste : on crédite chaque colonne d'un coup.
             l.cases.forEach(c => this.onCorrectAnswer(null, COMP_MULT, {
                 questionText: `${c.chiffreA} × ${l.chiffre}${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''}`,
-                expected: String(c.chiffre), given: String(c.chiffre), points: 2
+                expected: String(c.chiffre), given: String(c.chiffre), points: 2, partiel: true
             }));
         }
         // LES RETENUES ÉCRITES NE SONT PAS CONTRÔLÉES : la ligne juste suffit,
@@ -735,7 +784,7 @@ class PoserMultiplication extends PoserLongue {
         if (n !== c.resultat) {
             this.faux();
             this.note('Non. Additionne les chiffres de cette colonne, retenue comprise.', 'ko');
-            this.onWrongAnswer(null, {
+            this.echec({
                 concept: COMP_MULT,
                 questionText: `Colonne ${i} de l'addition des lignes`,
                 input: String(n), expected: String(c.resultat),
@@ -784,7 +833,7 @@ class PoserMultiplication extends PoserLongue {
                 + `${decimalesDe(this.m.operandes[0])} décimale(s) et `
                 + `${String(this.m.operandes[1]).replace('.', ',')} en a `
                 + `${decimalesDe(this.m.operandes[1])} : le produit en a ${this.m.decimales}.`, 'ko');
-            this.onWrongAnswer(null, {
+            this.echec({
                 concept: COMP_MULT,
                 questionText: `Où se place la virgule dans ${this.enonce()} ?`,
                 input: `après le rang ${position}`, expected: `${this.m.decimales} décimales`,
@@ -806,7 +855,7 @@ class PoserMultiplication extends PoserLongue {
         this.onCorrectAnswer(null, COMP_MULT, {
             questionText: this.enonce(),
             expected: String(this.m.resultat), given: String(this.m.resultat),
-            points: 10 + this.m.lignes.length * 5
+            points: 10 + this.m.lignes.length * 5, itemSeed: this.cleItem
         });
         setTimeout(() => { if (this.isRunning) this.poser(); }, 2200);
     }
@@ -814,6 +863,8 @@ class PoserMultiplication extends PoserLongue {
     enonce() {
         return `${String(this.m.operandes[0]).replace('.', ',')} × ${String(this.m.operandes[1]).replace('.', ',')}`;
     }
+
+    resultatAttendu() { return String(this.m.resultat).replace('.', ','); }
 
     /**
      * LE LIBRE SE MÉRITE, ET SE REPERD.
@@ -942,6 +993,11 @@ class PoserDivision extends PoserLongue {
         // posait la question, faisait taper 0, puis dessinait « − 0 » et son
         // reste sous le premier chiffre, et le zéro du quotient tombait à
         // gauche de la potence. Trois lignes fausses avant d'avoir commencé.
+        // Même règle que pour la multiplication : une division entière est UNE
+        // question, quel que soit le nombre de chiffres qu'elle demande.
+        this.numero = (this.numero || 0) + 1;
+        this.cleItem = `div-${this.numero}`;
+        this.rateeEnEval = false;
         this.debut = premierEcrit(this.d);
         this.etape = this.debut;
         this.attente = 'quotient';       // quotient → produit → reste
@@ -1138,7 +1194,7 @@ class PoserDivision extends PoserLongue {
                       + `et c'est plus grand que ${e.courant}.`
                     : `Pas assez : il reste plus que ${this.d.operandes[1]} après avoir retiré `
                       + `${this.d.operandes[1]} × ${n}. On peut en mettre davantage.`, 'ko');
-                this.onWrongAnswer(null, {
+                this.echec({
                     concept: COMP_DIV,
                     questionText: `Combien de fois ${this.d.operandes[1]} dans ${e.courant} ?`,
                     input: texte, expected: String(e.chiffre),
@@ -1150,7 +1206,7 @@ class PoserDivision extends PoserLongue {
             f.chiffre = n;
             this.onCorrectAnswer(null, COMP_DIV, {
                 questionText: `Combien de fois ${this.d.operandes[1]} dans ${e.courant} ?`,
-                expected: String(n), given: String(n), points: 3
+                expected: String(n), given: String(n), points: 3, partiel: true
             });
             this.attente = 'produit';
             this.saisie = '';
@@ -1164,7 +1220,7 @@ class PoserDivision extends PoserLongue {
             if (n !== e.produit) {
                 this.faux();
                 this.note(`Non : on retire ${this.d.operandes[1]} × ${f.chiffre}.`, 'ko');
-                this.onWrongAnswer(null, {
+                this.echec({
                     concept: COMP_DIV,
                     questionText: `${this.d.operandes[1]} × ${f.chiffre}`,
                     input: texte, expected: String(e.produit),
@@ -1189,7 +1245,7 @@ class PoserDivision extends PoserLongue {
                 ? `Ce reste est plus grand que ${this.d.operandes[1]} : c'est le signe que le `
                   + 'chiffre du quotient était trop petit. Recompte la soustraction.'
                 : `Non : ${e.courant} − ${e.produit}.`, 'ko');
-            this.onWrongAnswer(null, {
+            this.echec({
                 concept: COMP_DIV,
                 questionText: `${e.courant} − ${e.produit}`,
                 input: texte, expected: String(e.reste),
@@ -1203,7 +1259,7 @@ class PoserDivision extends PoserLongue {
         f.reste = n;
         this.onCorrectAnswer(null, COMP_DIV, {
             questionText: `${e.courant} − ${e.produit}`,
-            expected: String(n), given: String(n), points: 2
+            expected: String(n), given: String(n), points: 2, partiel: true
         });
         this.etape++;
         this.attente = 'quotient';
@@ -1226,9 +1282,18 @@ class PoserDivision extends PoserLongue {
             + '.', 'ok');
         this.onCorrectAnswer(null, COMP_DIV, {
             questionText: `${this.d.operandes[0]} ÷ ${this.d.operandes[1]}`,
-            expected: q, given: q, points: 10 + this.d.etapes.length * 3
+            expected: q, given: q, points: 10 + this.d.etapes.length * 3, itemSeed: this.cleItem
         });
         setTimeout(() => { if (this.isRunning) this.poser(); }, 2400);
+    }
+
+    enonce() {
+        return `${this.d.operandes[0]} ÷ ${this.d.operandes[1]}`;
+    }
+
+    resultatAttendu() {
+        return String(this.d.quotient).replace('.', ',')
+            + (this.d.exacte ? '' : `, reste ${String(this.d.reste).replace('.', ',')}`);
     }
 
     faux() {

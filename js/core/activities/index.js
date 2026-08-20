@@ -506,8 +506,8 @@ const legacy = [
     ['virgule', 'La Virgule qui ne bouge pas', 'virgule', 'engineVirgule'],
     ['dedale', 'Les Dédales', 'dedale', 'engineDedale', 'dédale', 5],
     ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint', 'dessin', 3],
-    ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication', 'opération', 6],
-    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision', 'opération', 6]
+    ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication', 'opération', 5],
+    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision', 'opération', 5]
 ];
 
 legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {

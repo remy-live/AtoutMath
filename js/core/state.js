@@ -197,7 +197,10 @@ export const state = {
             hintsUsed: a.hintsUsed || ctx.hintsUsed || 0,
             misconception: a.misconception || null,
             explanation: a.explanation || '',
-            points: a.points || 0
+            points: a.points || 0,
+            // Une ÉTAPE d'une opération posée : elle compte aux statistiques
+            // et au carnet, jamais au compteur de questions du parcours.
+            partiel: !!a.partiel
         };
         journal.emit(EventTypes.ATTEMPT, payload);
         // Le chronomètre du contexte REPART à zéro.

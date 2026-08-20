@@ -26,6 +26,15 @@ export class BaseGame {
         document.addEventListener('demo_pause', this._surGelDemo);
     }
 
+    /**
+     * La séance est-elle une ÉVALUATION ? Le régime est posé par le moteur
+     * dans `state.attemptContext` (voir `runner.js`). Hors parcours — un jeu
+     * lancé depuis le catalogue — il n'y a pas d'évaluation du tout.
+     */
+    get enEvaluation() {
+        return !!(state.attemptContext && state.attemptContext.evaluation);
+    }
+
     start() {
         this.isRunning = true;
         this.container.innerHTML = '';
@@ -121,7 +130,14 @@ export class BaseGame {
             questionText: details.questionText,
             given: details.given,
             expected: details.expected,
-            attemptIndex: 0
+            attemptIndex: details.attemptIndex || 0,
+            // UNE ÉTAPE N'EST PAS UNE QUESTION. Un chiffre juste dans une
+            // multiplication posée nourrit les statistiques et le carnet
+            // d'erreurs — c'est bien un fait de table réussi — mais il ne fait
+            // pas avancer le compteur de questions : c'est l'OPÉRATION qui
+            // compte, une fois finie. Voir `partiel` dans `runner.onAttempt`.
+            partiel: !!details.partiel,
+            itemSeed: details.itemSeed || null
         });
         // Pas de carte « Bonne réponse ! » ici.
         //
@@ -165,7 +181,9 @@ export class BaseGame {
             given: snapshot.input,
             expected: snapshot.expected,
             explanation: snapshot.customMessage || '',
-            attemptIndex: 0
+            attemptIndex: snapshot.attemptIndex || 0,
+            partiel: !!snapshot.partiel,
+            itemSeed: snapshot.itemSeed || null
         });
         if (!snapshot.silencieux && (snapshot.customMessage || questionText)) {
             document.dispatchEvent(new CustomEvent('game_feedback', {
