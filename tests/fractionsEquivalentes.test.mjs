@@ -20,6 +20,7 @@ import {
     tirerEgalite, etapesEgalite, verifierEgalite,
     NIVEAUX_SOMME, estNiveauSomme, tirerDenominateurs, tirerSomme, etapesSomme,
     tirerCalcul, etapesCalcul, multiplesCommuns,
+    etapesPosees, bougeDansPose,
     bande, recoupage
 } from '../js/core/fractionsEquivalentes.js';
 import { makeRng } from '../js/core/ids.js';
@@ -373,4 +374,42 @@ test('les étapes disent l\'opération qu\'on fait vraiment', () => {
     const texte = etapesCalcul(diff).join(' ');
     assert.ok(texte.includes('retire'), texte);
     assert.ok(texte.includes('−'), texte);
+});
+
+// --- Ce qui ne change pas ne s'écrit pas -------------------------------------
+//
+// Rémy, au banc d'essai iPhone : « quand le dénominateur est identique, ne fais
+// pas l'étape de multiplier le dénominateur. Et quand ils sont multiples, on ne
+// multiplie qu'une fraction. »
+
+test('dénominateurs déjà égaux : pas de ligne de conversion du tout', () => {
+    const c = tirerCalcul(makeRng('meme1'), { niveau: 'meme', operation: 'somme' });
+    assert.equal(c.a.d, c.b.d);
+    assert.deepEqual(etapesPosees(c), ['commun', 'calcul']);
+    assert.deepEqual(bougeDansPose(c), { a: false, b: false });
+});
+
+test('l\'un multiple de l\'autre : une seule fraction bouge', () => {
+    for (let i = 0; i < 30; i++) {
+        const c = tirerCalcul(makeRng(`mult${i}`), { niveau: 'multiple', operation: 'les-deux' });
+        const b = bougeDansPose(c);
+        assert.notEqual(b.a, b.b, `${c.a.d} et ${c.b.d} : une seule des deux doit changer`);
+        assert.deepEqual(etapesPosees(c), ['commun', 'facteurs', 'converties', 'calcul']);
+    }
+});
+
+test('deux dénominateurs étrangers : les deux bougent', () => {
+    for (let i = 0; i < 30; i++) {
+        const c = tirerCalcul(makeRng(`prem${i}`), { niveau: 'premiers', operation: 'somme' });
+        assert.deepEqual(bougeDansPose(c), { a: true, b: true });
+    }
+});
+
+test('la simplification ajoute sa ligne, et le complément a la sienne', () => {
+    const c = tirerCalcul(makeRng('simp'), { niveau: 'ppcm', operation: 'somme' });
+    assert.ok(!etapesPosees(c).includes('simplifiee'), 'pas demandée, pas de ligne');
+    assert.ok(etapesPosees({ ...c, simplifie: true }).includes('simplifiee'));
+    assert.deepEqual(etapesPosees({ type: 'complement', ka: 9, kb: 1 }), ['entier', 'calcul']);
+    assert.deepEqual(etapesPosees({ type: 'complement', ka: 9, kb: 1, simplifie: true }),
+        ['entier', 'calcul', 'simplifiee']);
 });

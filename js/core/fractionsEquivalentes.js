@@ -311,6 +311,29 @@ export function etapesCalcul(s) {
 
 export const etapesSomme = etapesCalcul;
 
+/**
+ * LES LIGNES DU CALCUL POSÉ — et on n'écrit pas ce qui ne change pas.
+ *
+ * Rémy, au banc d'essai : « quand le dénominateur est identique, ne fais pas
+ * l'étape de multiplier le dénominateur ; et quand ils sont multiples, on ne
+ * multiplie qu'une fraction ». Deux dénominateurs déjà égaux, c'est zéro
+ * conversion : la ligne « par quoi multiplier » et celle des fractions
+ * converties n'ont plus rien à porter, et « 3 × 1 » écrit sous une fraction
+ * qu'on ne touche pas enseigne le contraire de la méthode.
+ *
+ * L'écran (activities/fractionsPose.js) lit cette liste ; elle est ici pour
+ * qu'on puisse la vérifier sans navigateur.
+ */
+export function etapesPosees(c) {
+    const fin = c.simplifie ? ['calcul', 'simplifiee'] : ['calcul'];
+    if (c.type === 'complement') return ['entier', ...fin];
+    const converti = c.ka !== 1 || c.kb !== 1;
+    return ['commun', ...(converti ? ['facteurs', 'converties'] : []), ...fin];
+}
+
+/** Laquelle des deux fractions doit changer de dénominateur ? */
+export const bougeDansPose = (c) => ({ a: c.ka !== 1, b: c.kb !== 1 });
+
 // --- LE COMPLÉMENT À UN ------------------------------------------------------
 
 /**

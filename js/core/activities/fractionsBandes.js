@@ -124,6 +124,7 @@ export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
     let gate = null;
+    let observeur = null;
     // Les cases de la question en cours : nom → { attendu, el }.
     let cases = {};
     let choisie = null;
@@ -200,6 +201,18 @@ export function mount(container, session, opts = {}) {
                     ${hintBar(session)}
                 </div>
             </div></div>`;
+
+        // CE QUI SE DESSINE APRÈS COUP. Les flèches se tracent sur les
+        // positions réelles des chiffres : elles ne peuvent l'être qu'une fois
+        // la ligne posée, et il faut recommencer si l'écran tourne.
+        if (observeur) { observeur.disconnect(); observeur = null; }
+        if (scene.apres) {
+            requestAnimationFrame(() => { if (!destroyed) scene.apres(); });
+            if (typeof ResizeObserver === 'function') {
+                observeur = new ResizeObserver(() => { if (!destroyed) scene.apres(); });
+                observeur.observe(container);
+            }
+        }
 
         container.querySelectorAll('[data-case]').forEach(el => {
             const nom = el.dataset.case;
@@ -377,36 +390,87 @@ export function mount(container, session, opts = {}) {
         };
     }
 
+    /**
+     * LES DEUX FLÈCHES, TRACÉES SUR MESURE.
+     *
+     * Rémy, sur l'iPhone : « les flèches ne relient pas du tout les numérateurs
+     * et dénominateurs, elles sont trop longues ». Elles étaient dessinées dans
+     * un SVG de la largeur de la ligne entière, arc d'un bord à l'autre —
+     * pendant que les deux numérateurs, eux, se tiennent au milieu de part et
+     * d'autre du signe égal. La flèche survolait tout et ne montrait rien.
+     *
+     * On ne peut pas deviner ces positions en CSS : elles dépendent du nombre
+     * de chiffres écrits. On MESURE donc les quatre étages une fois la ligne
+     * posée, et on trace de l'un à l'autre — l'arc part du numérateur de gauche
+     * et pointe sur celui de droite, exactement comme au tableau.
+     */
+    function tracerFleches() {
+        const hote = container.querySelector('[data-fleches]');
+        const svg = hote && hote.querySelector('.fb-arcs');
+        const fracs = hote ? hote.querySelectorAll('.fb-frac') : [];
+        if (!svg || fracs.length < 2) return;
+        const boite = hote.getBoundingClientRect();
+        if (!boite.width || !boite.height) return;
+
+        // La montée de l'arc est celle que la mise en page a réservée : la
+        // marge du bloc. Sur un téléphone elle vaut vingt-six pixels, sur un
+        // grand écran quarante — l'arc suit, et ne sort jamais du cadre.
+        const marge = parseFloat(getComputedStyle(hote).paddingTop) || 30;
+        const mont = Math.max(11, Math.min(30, marge - 9));
+        svg.setAttribute('viewBox', `0 0 ${boite.width} ${boite.height}`);
+
+        const etage = (frac, quel) => {
+            const r = frac.querySelector(`.fraction-${quel}`).getBoundingClientRect();
+            return { cx: r.left - boite.left + r.width / 2,
+                haut: r.top - boite.top, bas: r.bottom - boite.top };
+        };
+        const ligne = (quel, vers) => {
+            const a = etage(fracs[0], quel);
+            const b = etage(fracs[1], quel);
+            const y = vers < 0 ? Math.min(a.haut, b.haut) - 3 : Math.max(a.bas, b.bas) + 3;
+            // Le sommet de la Bézier est aux trois quarts de la montée : c'est
+            // là qu'on pose le « × ? », pile sur le trait qu'il interrompt.
+            return { a, b, y, sommet: y + vers * mont, apex: y + vers * mont * 0.75 };
+        };
+        const arc = (quel, vers) => {
+            const { a, b, y, sommet } = ligne(quel, vers);
+            const pointe = `M ${b.cx} ${y} l -4.5 ${vers < 0 ? -8 : 8} l 9 0 z`;
+            return `<path d="M ${a.cx} ${y} C ${a.cx} ${sommet}, ${b.cx} ${sommet}, ${b.cx} ${y}"/>`
+                + `<path class="fb-pointe" d="${pointe}"/>`;
+        };
+        svg.innerHTML = arc('num', -1) + arc('den', 1);
+
+        [['haut', 'num', -1], ['bas', 'den', 1]].forEach(([nom, quel, vers]) => {
+            const mot = hote.querySelector(`[data-facteur="${nom}"]`);
+            if (!mot) return;
+            const { a, b, apex } = ligne(quel, vers);
+            mot.style.left = `${(a.cx + b.cx) / 2}px`;
+            mot.style.top = `${apex}px`;
+        });
+    }
+
     /** PHASE 2 — plus de bandes : les deux flèches de multiplication. */
     function sceneFleches(e) {
         const divise = e.sens === 'simplifier';
         const signe = divise ? '÷' : '×';
-        const fleche = (ou) => `
-            <div class="fb-fleche fb-fleche--${ou}">
-                <svg viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M6 ${ou === 'haut' ? 19 : 3} Q50 ${ou === 'haut' ? -4 : 26}
-                             92 ${ou === 'haut' ? 19 : 3}" />
-                    <path class="fb-pointe" d="M92 ${ou === 'haut' ? 19 : 3}
-                        l-6 ${ou === 'haut' ? -3 : 3} l1 ${ou === 'haut' ? 7 : -7} z" />
-                </svg>
-                <span class="fb-fleche-mot" data-facteur="${ou}">${signe}&nbsp;?</span>
-            </div>`;
 
         const html = `
-            <div class="fb-avecfleches">
-                ${fleche('haut')}
+            <div class="fb-avecfleches" data-fleches>
+                <svg class="fb-arcs" aria-hidden="true"></svg>
                 <div class="fb-egalite fb-egalite--nue">
                     ${colonne(e.gauche.n, e.gauche.d)}
                     <span class="fb-signe">=</span>
                     ${trouHtml(e)}
                 </div>
-                ${fleche('bas')}
+                <span class="fb-fleche-mot" data-facteur="haut">${signe}&nbsp;?</span>
+                <span class="fb-fleche-mot" data-facteur="bas">${signe}&nbsp;?</span>
             </div>
             <p class="fb-legende">En haut et en bas, c'est le MÊME nombre : c'est ce qui fait que
                 la fraction ne change pas de valeur.</p>`;
 
         return {
             html,
+            apres: tracerFleches,
             attendu: { x: e.reponse },
             reponse: (v) => v.x,
             reussi() {
@@ -414,6 +478,8 @@ export function mount(container, session, opts = {}) {
                     el.textContent = `${signe} ${e.facteur}`;
                     el.classList.add('fb-fleche-mot--su');
                 });
+                // Le mot a changé de largeur : il se recentre sur son arc.
+                tracerFleches();
                 const legende = container.querySelector('.fb-legende');
                 if (legende) {
                     legende.textContent = `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d} : `
@@ -483,6 +549,7 @@ export function mount(container, session, opts = {}) {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
+            if (observeur) { observeur.disconnect(); observeur = null; }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();

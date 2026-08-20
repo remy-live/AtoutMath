@@ -6065,26 +6065,31 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 
 /* Les deux flèches de multiplication, en haut et en bas. C'est la notation du
    cahier : le facteur se lit du côté où les deux nombres sont écrits, et la
-   flèche d'en face dit qu'on lui applique le MÊME. */
+   flèche d'en face dit qu'on lui applique le MÊME.
+
+   ELLES SE TRACENT EN JAVASCRIPT, sur les positions mesurées des quatre
+   étages — voir `tracerFleches` : une flèche qui relie deux chiffres ne peut
+   pas être écrite en CSS, elle dépend du nombre de chiffres écrits. La marge
+   du bloc EST la hauteur des arcs : le tracé la lit pour ne jamais monter plus
+   haut que la place qu'on lui a réservée. */
 .fb-avecfleches {
-    display: flex; flex-direction: column; align-items: center;
-    gap: clamp(2px, .8cqh, 6px); width: 100%;
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    width: 100%; padding: clamp(26px, 7cqh, 44px) 0;
 }
 .fb-egalite--nue { justify-content: center; }
-.fb-fleche { position: relative; width: min(100%, 340px); height: clamp(24px, 6cqh, 42px); }
-.fb-fleche svg { width: 100%; height: 100%; overflow: visible; }
-.fb-fleche path { fill: none; stroke: var(--primary); stroke-width: 2;
-                  vector-effect: non-scaling-stroke; }
-.fb-fleche .fb-pointe { fill: var(--primary); stroke: none; }
+.fb-arcs {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible; pointer-events: none;
+}
+.fb-arcs path { fill: none; stroke: var(--primary); stroke-width: 2;
+                vector-effect: non-scaling-stroke; }
+.fb-arcs .fb-pointe { fill: var(--primary); stroke: none; }
 .fb-fleche-mot {
-    position: absolute; left: 50%; transform: translateX(-50%);
-    background: var(--bg-app); padding: 0 .4em; font-weight: 900; color: var(--primary);
+    position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%);
+    background: var(--bg-app); padding: 0 .35em; font-weight: 900; color: var(--primary);
     font-size: clamp(.85rem, max(3cqw, 3cqh), 1.35rem); white-space: nowrap;
 }
-.fb-fleche--haut .fb-fleche-mot { top: -.15em; }
-.fb-fleche--bas .fb-fleche-mot { bottom: -.15em; }
-.fb-fleche-mot--su { color: var(--success); }
-.fb-fleche--haut .fb-fleche-mot--su, .fb-fleche--bas .fb-fleche-mot--su { animation: fb-devoile .4s ease both; }
+.fb-fleche-mot--su { color: var(--success); animation: fb-devoile .4s ease both; }
 
 /* L'entier dans un calcul de fractions : « 1 », pas « 1/1 ». Il n'a pas de
    dénominateur — c'est justement ce qu'on va lui en donner un. */

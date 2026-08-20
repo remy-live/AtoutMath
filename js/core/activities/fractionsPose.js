@@ -33,7 +33,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { multiplesCommuns } from '../fractionsEquivalentes.js';
+import { multiplesCommuns, bougeDansPose, etapesPosees } from '../fractionsEquivalentes.js';
 import { showModal } from '../../ui/modal.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -92,6 +92,19 @@ export function mount(container, session, opts = {}) {
         const op = c.signe === '−' ? '−' : '+';
         const l = [];
 
+        // CE QUI NE BOUGE PAS NE SE DEMANDE PAS.
+        //
+        // Rémy, sur l'iPhone : « quand le dénominateur est identique, ne fais
+        // pas l'étape de multiplier le dénominateur ; et quand ils sont
+        // multiples, on ne multiplie qu'une fraction ». Il a raison, et c'est
+        // plus qu'une économie de gestes : écrire « 3 × 1 » sous une fraction
+        // qu'on ne touche pas enseigne le contraire de ce qu'on veut. La
+        // méthode, c'est de repérer CELLE qui doit changer.
+        // La LISTE des lignes est décidée dans le noyau, où elle se teste sans
+        // navigateur ; ici on ne fait que les dessiner.
+        const etapes = etapesPosees(c);
+        const { a: bougeA, b: bougeB } = bougeDansPose(c);
+
         l.push({
             nom: 'commun',
             titre: 'Le dénominateur commun',
@@ -104,33 +117,44 @@ export function mount(container, session, opts = {}) {
             </div>`
         });
 
-        // Une seule fraction bouge quand un dénominateur est multiple de
-        // l'autre : on demande quand même le « × 1 », parce que c'est en
-        // l'écrivant qu'on comprend qu'il ne change rien.
-        l.push({
-            nom: 'facteurs',
-            titre: 'Par quoi multiplier',
-            attendu: { fan: c.ka, fad: c.ka, fbn: c.kb, fbd: c.kb },
-            html: `<div class="fa-ligne-calc">
-                ${colonne(`${c.a.n} × ${caseHtml('fan', 'facteur du numérateur de la première')}`,
-        `${c.a.d} × ${caseHtml('fad', 'facteur du dénominateur de la première')}`)}
-                <span class="fa-op">${op}</span>
-                ${colonne(`${c.b.n} × ${caseHtml('fbn', 'facteur du numérateur de la seconde')}`,
-        `${c.b.d} × ${caseHtml('fbd', 'facteur du dénominateur de la seconde')}`)}
-            </div>`
-        });
+        if (etapes.includes('facteurs')) {
+            const facteurs = {};
+            if (bougeA) { facteurs.fan = c.ka; facteurs.fad = c.ka; }
+            if (bougeB) { facteurs.fbn = c.kb; facteurs.fbd = c.kb; }
+            const colFacteur = (f, bouge, cn, cd, quelle) => (bouge
+                ? colonne(`${f.n} × ${caseHtml(cn, `facteur du numérateur de la ${quelle}`)}`,
+                    `${f.d} × ${caseHtml(cd, `facteur du dénominateur de la ${quelle}`)}`)
+                : colonne(f.n, f.d));
+            l.push({
+                nom: 'facteurs',
+                titre: bougeA && bougeB ? 'Par quoi multiplier'
+                    : 'Une seule fraction change : par quoi la multiplier',
+                attendu: facteurs,
+                html: `<div class="fa-ligne-calc">
+                    ${colFacteur(c.a, bougeA, 'fan', 'fad', 'première')}
+                    <span class="fa-op">${op}</span>
+                    ${colFacteur(c.b, bougeB, 'fbn', 'fbd', 'seconde')}
+                </div>`
+            });
 
-        l.push({
-            nom: 'converties',
-            titre: 'Les deux fractions au même dénominateur',
-            attendu: { na: c.aReduit.n, nb: c.bReduit.n },
-            html: `<div class="fa-ligne-calc">
-                ${colonne(caseHtml('na', 'numérateur de la première convertie'), COMMUN_CACHE)}
-                <span class="fa-op">${op}</span>
-                ${colonne(caseHtml('nb', 'numérateur de la seconde convertie'), COMMUN_CACHE)}
-                <span class="fa-op">=</span>
-            </div>`
-        });
+            const converties = {};
+            if (bougeA) converties.na = c.aReduit.n;
+            if (bougeB) converties.nb = c.bReduit.n;
+            const colConvertie = (f, bouge, cn, quelle) => (bouge
+                ? colonne(caseHtml(cn, `numérateur de la ${quelle} convertie`), COMMUN_CACHE)
+                : colonne(f.n, COMMUN_CACHE));
+            l.push({
+                nom: 'converties',
+                titre: 'Les deux fractions au même dénominateur',
+                attendu: converties,
+                html: `<div class="fa-ligne-calc">
+                    ${colConvertie(c.a, bougeA, 'na', 'première')}
+                    <span class="fa-op">${op}</span>
+                    ${colConvertie(c.b, bougeB, 'nb', 'seconde')}
+                    <span class="fa-op">=</span>
+                </div>`
+            });
+        }
 
         l.push({
             nom: 'calcul',
@@ -145,7 +169,7 @@ export function mount(container, session, opts = {}) {
             </div>`
         });
 
-        if (c.simplifie) {
+        if (etapes.includes('simplifiee')) {
             l.push({
                 nom: 'simplifiee',
                 titre: 'On simplifie',
@@ -452,17 +476,21 @@ export function mount(container, session, opts = {}) {
                 + `celle de ${c.b.d} — la table de Pythagore le montre d'un coup d'œil.`;
         }
         if (ligne.nom === 'facteurs') {
-            const memeHaut = valeurs.fan === valeurs.fad && valeurs.fbn === valeurs.fbd;
-            if (!memeHaut) {
+            // La fraction qui ne change pas n'a pas de cases : on ne diagnostique
+            // que celles qui sont VRAIMENT à l'écran.
+            const paires = [];
+            if ('fan' in valeurs) paires.push(['fan', 'fad', c.a, c.ka]);
+            if ('fbn' in valeurs) paires.push(['fbn', 'fbd', c.b, c.kb]);
+            if (paires.some(([n, d]) => valeurs[n] !== valeurs[d])) {
                 return 'En haut et en bas, c\'est le MÊME facteur : c\'est justement ce qui fait '
                     + 'que la fraction ne change pas de valeur.';
             }
-            const quel = justes.fan ? c.b : c.a;
-            const k = justes.fan ? c.kb : c.ka;
-            return `${quel.d} × ${k} = ${c.commun} : c'est ce facteur-là qu'il faut écrire.`;
+            const [, , frac, k] = paires.find(([n]) => !justes[n]) || paires[0];
+            return `${frac.d} × ${k} = ${c.commun} : c'est ce facteur-là qu'il faut écrire.`;
         }
         if (ligne.nom === 'converties') {
-            const quel = justes.na ? [c.b, c.kb, c.bReduit] : [c.a, c.ka, c.aReduit];
+            const quel = ('na' in valeurs && !justes.na)
+                ? [c.a, c.ka, c.aReduit] : [c.b, c.kb, c.bReduit];
             return `${quel[0].n} × ${quel[1]} = ${quel[2].n}. Le numérateur se multiplie par le `
                 + 'même facteur que le dénominateur.';
         }
@@ -551,17 +579,26 @@ export function mount(container, session, opts = {}) {
         cursor.say(calcul.type === 'complement'
             ? 'Pour retirer une part du tout, il faut d\'abord écrire le tout AVEC LES MÊMES '
                 + 'PARTS.'
-            : 'On ne peut additionner que des parts de MÊME taille. Je commence donc par '
-                + 'chercher un dénominateur commun.', scene || container);
+            : calcul.a.d === calcul.b.d
+                ? 'Les parts ont déjà la même taille : il n\'y a rien à convertir, on calcule.'
+                : 'On ne peut additionner que des parts de MÊME taille. Je commence donc par '
+                    + 'chercher un dénominateur commun.', scene || container);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
 
         const dits = {
             entier: `Le tout, c'est TOUTES les parts : ici des ${calcul.commun}èmes, `
                 + `donc 1 = ${calcul.commun}/${calcul.commun}.`,
-            commun: `${calcul.commun} est à la fois dans la table de ${calcul.a.d} et dans celle `
-                + `de ${calcul.b.d} — et c'est le plus petit.`,
-            facteurs: `${calcul.a.d} × ${calcul.ka} = ${calcul.commun}, et `
-                + `${calcul.b.d} × ${calcul.kb} = ${calcul.commun}. En haut, le MÊME facteur.`,
+            commun: calcul.a.d === calcul.b.d
+                ? `Les deux fractions sont déjà des ${calcul.commun}èmes : le dénominateur `
+                    + 'commun est tout trouvé.'
+                : `${calcul.commun} est à la fois dans la table de ${calcul.a.d} et dans celle `
+                    + `de ${calcul.b.d} — et c'est le plus petit.`,
+            facteurs: calcul.ka !== 1 && calcul.kb !== 1
+                ? `${calcul.a.d} × ${calcul.ka} = ${calcul.commun}, et `
+                    + `${calcul.b.d} × ${calcul.kb} = ${calcul.commun}. En haut, le MÊME facteur.`
+                : `${calcul.ka === 1 ? calcul.b.d : calcul.a.d} × `
+                    + `${calcul.ka === 1 ? calcul.kb : calcul.ka} = ${calcul.commun} : `
+                    + 'une seule fraction change, l\'autre est déjà au bon dénominateur.',
             converties: `Les numérateurs suivent : ${calcul.aReduit.n} et ${calcul.bReduit.n}.`,
             calcul: calcul.type === 'complement'
                 ? `${calcul.aReduit.n} − ${calcul.b.n} = ${calcul.brut.n}, sur ${calcul.commun}.`
