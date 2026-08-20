@@ -373,3 +373,33 @@ test('la phase des flèches retrouve les grands nombres', () => {
     }
     assert.ok(Math.max(...vus) > 3, 'le facteur reste plafonné à celui du comptage');
 });
+
+// --- Le dessin de l'indice ---------------------------------------------------
+//
+// Rémy, au banc iPhone : « l'indice est incompréhensible. Pourquoi ne pas avoir
+// un petit schéma ? C'est quelque chose que nous n'avons pas mis dans les
+// indices alors que c'est souvent plus parlant. »
+
+test('le premier indice d\'un problème porte un schéma', () => {
+    for (let i = 0; i < 20; i++) {
+        const item = tirer(fracProblemeGenerator, { complements: 'oui' }, i, i);
+        const s = (item.schemas || [])[0] || '';
+        assert.ok(s.includes('<svg'), `pas de dessin pour ${item.prompt.text}`);
+        // Autant de parts dessinées que le dénominateur commun l'exige.
+        const c = item.meta.calcul;
+        const parts = (s.match(/<rect/g) || []).length;
+        const attendu = c.type === 'complement' ? c.commun : c.a.d + c.b.d;
+        assert.equal(parts, attendu, `${item.prompt.text} : ${parts} parts au lieu de ${attendu}`);
+        // Et une légende qui dit ce qu'on regarde.
+        assert.ok(s.includes('fs-legende'));
+    }
+});
+
+test('le schéma ne sort que là où il aide', () => {
+    // Le calcul posé n'en a pas : la scène EST déjà le schéma.
+    const pose = tirer(fracSommeProgressiveGenerator, {}, 3);
+    assert.ok((pose.schemas || []).length <= 1);
+    // L'égalité à compléter non plus : elle a ses bandes.
+    const eg = tirer(fracEgaliteGenerator, {}, 3);
+    assert.deepEqual(eg.schemas || [], []);
+});

@@ -9,7 +9,7 @@
 // dans tous les jeux.
 
 import { makeRng, randomSeed } from './ids.js';
-import { evaluate, hintAt, toChoices } from './items.js';
+import { evaluate, hintAt, schemaAt, toChoices } from './items.js';
 import { state } from './state.js';
 import { getWeakTables } from './stats.js';
 import { defaultPolicy } from './policy.js';
@@ -204,11 +204,14 @@ export class ItemSession {
         if (!this.policy.hints || !this.item) return null;
         const h = hintAt(this.item, this.hintIndex);
         if (h === null) return null;
+        // Le dessin de CET indice-ci, avant que l'index n'avance. L'écran le
+        // pose sous le texte s'il y en a un (voir `wireHint`).
+        this.schemaIndice = schemaAt(this.item, this.hintIndex);
         this.hintIndex++;
         if (!this.sansTrace) state.noteHintUsed();
         // L'indice reste affiché jusqu'à ce que l'élève le ferme : c'est un
         // texte à lire, pas une notification.
-        this.lastFeedback = announce({ kind: 'hint', msg: h });
+        this.lastFeedback = announce({ kind: 'hint', msg: h, schema: this.schemaIndice });
         return h;
     }
 

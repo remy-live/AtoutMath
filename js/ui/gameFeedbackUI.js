@@ -79,10 +79,15 @@ function showDismissable(d, done, isHint) {
     const detail = d.misconception && d.misconception !== d.msg
         ? `<div class="fb-detail">${messageHtml(d.misconception)}</div>` : '';
 
+    // LE DESSIN DE L'INDICE, s'il en a un — voir `schemas` dans les items.
+    // Il vient du générateur, jamais de l'élève : on le pose tel quel.
+    const schema = d.schema ? `<div class="hint-schema">${d.schema}</div>` : '';
+
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
         <div class="fb-label">${label}</div>
         <div class="fb-message">${messageHtml(d.msg)}</div>
+        ${schema}
         ${detail}
         <button type="button" class="fb-close">${isHint ? 'Merci !' : 'J\'ai compris'}</button>`,
         isHint ? 'fb-card--hint' : 'fb-card--ko', true);
@@ -104,7 +109,8 @@ function showDismissable(d, done, isHint) {
 function showTransient(d, done, isHint) {
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
-        <div class="fb-message">${messageHtml(d.msg)}</div>`,
+        <div class="fb-message">${messageHtml(d.msg)}</div>
+        ${d.schema ? `<div class="hint-schema">${d.schema}</div>` : ''}`,
         isHint ? 'fb-card--hint' : 'fb-card--ko');
     setTimeout(() => { close(card); done(); }, 2200);
 }

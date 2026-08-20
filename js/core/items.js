@@ -51,6 +51,16 @@ export function makeItem(spec) {
         answer: spec.answer,
         choices: spec.choices || null,
         hints: spec.hints || [],
+        // UN INDICE PEUT AVOIR UN DESSIN.
+        //
+        // Rémy : « l'indice est incompréhensible ; pourquoi ne pas avoir un
+        // petit schéma ? C'est quelque chose que nous n'avons pas mis dans les
+        // indices, alors que c'est souvent plus parlant. » Il a raison, et cela
+        // manquait partout, pas seulement là où il l'a vu. `schemas[i]` est le
+        // dessin — du HTML fabriqué par le générateur, donc de confiance — qui
+        // accompagne `hints[i]`. Les entrées vides sont la règle : un indice
+        // qui n'a rien à montrer n'en a pas besoin.
+        schemas: spec.schemas || [],
         explanation: spec.explanation || '',
         // Vide = l'explication de l'écran convient au papier. C'est le cas
         // général : on ne double que les corrections qui décrivent une image.
@@ -175,6 +185,11 @@ export function evaluate(item, given) {
 /** Aide de niveau `index`, ou null s'il n'y en a plus. */
 export function hintAt(item, index) {
     return item.hints && index < item.hints.length ? item.hints[index] : null;
+}
+
+/** Le dessin qui accompagne l'aide de niveau `index`, s'il y en a un. */
+export function schemaAt(item, index) {
+    return (item && item.schemas && item.schemas[index]) || null;
 }
 
 /**

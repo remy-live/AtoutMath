@@ -151,6 +151,53 @@ function marcheDe(params, index) {
         Math.floor((index || 0) / PAR_MARCHE))].id;
 }
 
+// --- LE DESSIN DE L'INDICE ---------------------------------------------------
+//
+// Rémy, au banc iPhone, sur les histoires de fractions : « l'indice est
+// incompréhensible. Pourquoi ne pas avoir un petit schéma ? C'est quelque chose
+// que nous n'avons pas mis dans les indices alors que c'est souvent plus
+// parlant. »
+//
+// « Écris l'entier en 6èmes avant de retirer » suppose qu'on a compris ce
+// qu'est l'entier — c'est-à-dire exactement ce qui bloque. Une bande coupée en
+// six, dont cinq sont coloriées et la sixième hachurée, ne le suppose pas :
+// elle le montre. Et la bande n'est pas un ornement, c'est la définition même
+// d'une fraction : autant de parts prises sur autant de parts égales.
+
+/** Une bande coupée en `d` parts, dont `n` sont coloriées. */
+function bandeIndice(n, d, { reste = false } = {}) {
+    const W = 240, H = 26, pas = W / d;
+    const parts = Array.from({ length: d }, (_, i) => {
+        const pleine = i < n;
+        const teinte = pleine ? 'var(--primary)' : (reste ? 'var(--warning, #f59e0b)' : 'none');
+        const opacite = pleine ? '.55' : (reste ? '.42' : '0');
+        return `<rect x="${(i * pas).toFixed(2)}" y="1" width="${pas.toFixed(2)}" height="${H}"`
+            + ` fill="${teinte}" fill-opacity="${opacite}"`
+            + ' stroke="currentColor" stroke-width="1.2"/>';
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H + 2}" role="img"`
+        + ` aria-label="Une bande coupée en ${d} parts, dont ${n} sont coloriées">${parts}</svg>`;
+}
+
+/** Le schéma du premier indice, s'il y en a un pour ce calcul-là. */
+function schemaIndice(c) {
+    if (c.type === 'complement') {
+        return `${bandeIndice(c.b.n, c.commun, { reste: true })}
+            <p class="fs-legende">Le tout, c'est les ${c.commun} parts : ${c.commun}/${c.commun}.
+            ${c.b.n} sont prises (en bleu). Ce qui reste, c'est l'orange —
+            et ça se compte en ${c.commun}èmes.</p>`;
+    }
+    if (c.a.d === c.b.d) {
+        return `${bandeIndice(c.a.n, c.a.d)}${bandeIndice(c.b.n, c.b.d)}
+            <p class="fs-legende">Les parts ont déjà la même taille : il suffit de compter
+            combien on en a en tout.</p>`;
+    }
+    return `${bandeIndice(c.a.n, c.a.d)}${bandeIndice(c.b.n, c.b.d)}
+        <p class="fs-legende">Les deux bandes font la même longueur, mais leurs parts n'ont pas
+        la même taille : on ne peut pas les compter ensemble. Il faut recouper les deux
+        en ${c.commun}èmes.</p>`;
+}
+
 /** Le corps d'un item de calcul posé — partagé avec les problèmes. */
 function itemDeCalcul(c, rng, {
     generatorId, skillId, marche, enonce = '', enonceTexte = '', question = ''
@@ -186,6 +233,12 @@ function itemDeCalcul(c, rng, {
             : [(NIVEAU[marche] || {}).aide || '',
                 `Cherche un nombre à la fois dans la table de ${c.a.d} et dans celle de ${c.b.d}.`]
         ).concat(c.etapes).filter(Boolean),
+        // LE PREMIER INDICE SE DESSINE. Rémy : « l'indice est incompréhensible ;
+        // pourquoi ne pas avoir un petit schéma ? c'est souvent plus parlant ».
+        // Une phrase qui dit « écris l'entier en 6èmes » suppose qu'on a déjà
+        // compris ce qu'est l'entier ; une bande coupée en six, dont cinq sont
+        // coloriées, le MONTRE.
+        schemas: [schemaIndice(c)],
         explanation: c.etapes.join(' '),
         explicationPapier: `${ecrireFraction(c.a)} ${op} ${ecrireFraction(c.b)} = `
             + `${c.aReduit.n}/${c.commun} ${op} ${c.bReduit.n}/${c.commun} = ${c.brut.n}/${c.commun}`

@@ -575,6 +575,15 @@ export function wireHint(container, session) {
             btn.parentElement.parentElement.appendChild(box);
         }
         box.textContent = h;
+        // LE DESSIN DE L'INDICE, s'il en a un. Rémy : « pourquoi ne pas avoir
+        // un petit schéma ? c'est souvent plus parlant ». Le HTML vient du
+        // générateur, pas de l'élève : il est de confiance.
+        if (session.schemaIndice) {
+            const dessin = document.createElement('div');
+            dessin.className = 'hint-schema';
+            dessin.innerHTML = session.schemaIndice;
+            box.appendChild(dessin);
+        }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };
 }
