@@ -478,6 +478,7 @@ const legacy = [
     ['relier', 'Relier les points', 'relier', 'engineRelier'],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel'],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille'],
+    ['course-vecteurs', 'Course de Vecteurs', 'courseVecteurs', 'engineCourseVecteurs'],
     ['pizza', 'La Pizzeria des Fractions', 'pizza', 'enginePizza'],
     ['othello', 'Othello', 'plateau', 'engineOthello'],
     ['dames', 'Jeu de Dames', 'plateau', 'engineDames'],

@@ -221,6 +221,80 @@ export const geometrieExercises = [
     },
 
     {
+        // LA COURSE DE VECTEURS, demandée par Rémy : « j'aimerais bien le jeu
+        // course de vecteur Vector Racer / Racetrack ».
+        //
+        // Le jeu de course sur papier quadrillé, avec sa règle en une phrase :
+        // la voiture GARDE sa vitesse d'un tour sur l'autre, et l'on ne choisit
+        // que comment la changer — d'une case au plus sur chaque axe. Un
+        // déplacement d'un tour est donc exactement une translation de vecteur
+        // (vx ; vy), et le tour suivant ajoute l'accélération à ce vecteur.
+        // Toute la leçon sur les vecteurs est dans le jeu, et personne n'a
+        // besoin qu'on la lui récite après y avoir joué deux fois.
+        //
+        // À DEUX SUR LA MÊME TABLETTE, ou contre le robot — qui, lui, cherche
+        // vraiment le plus court chemin (parcours en largeur sur position ET
+        // vitesse), et qu'on peut rendre « mou » pour laisser une chance.
+        id: 'geo-course-vecteurs', status: STATUS.TEST, title: 'La Course de Vecteurs',
+        cree: '2026-08-20',
+        activityId: 'course-vecteurs',
+        // UNE QUESTION, C'EST UNE COURSE. Le meneur compte les tentatives pour
+        // arrêter l'étape : à dix, la série se terminait au dixième virage,
+        // avant la ligne d'arrivée. Trois courses font une séance honnête.
+        params: { piste: 'echauffement', adversaire: 'seul', robot: 'moyen', nbQuestions: 3 },
+        paramSchema: [
+            {
+                id: 'piste', type: 'select', label: 'La piste', default: 'echauffement',
+                aide: 'L\'Échauffement est une ligne droite et un virage : de quoi comprendre '
+                    + 'que la vitesse se conserve. La Chicane enchaîne deux virages en sens '
+                    + 'contraire. Le Grand Tour ajoute un couloir étroit, où arriver vite ne '
+                    + 'sert à rien si l\'on n\'arrive pas placé.',
+                options: [
+                    { value: 'echauffement', label: 'L\'Échauffement — un seul virage' },
+                    { value: 'chicane', label: 'La Chicane — deux virages opposés' },
+                    { value: 'circuit', label: 'Le Grand Tour — trois virages' },
+                    { value: 'toutes', label: 'Au hasard' }
+                ]
+            },
+            {
+                id: 'adversaire', type: 'select', label: 'Contre qui', default: 'seul',
+                aide: 'Seul, on court après le record théorique de la piste — le nombre de tours '
+                    + 'du meilleur parcours possible, calculé et affiché. À deux, on joue sur la '
+                    + 'même tablette, chacun son tour.',
+                options: [
+                    { value: 'seul', label: 'Seul, contre le record' },
+                    { value: 'robot', label: 'Contre le robot' },
+                    { value: 'deux', label: 'À deux sur la même tablette' }
+                ]
+            },
+            {
+                id: 'robot', type: 'select', label: 'Le robot', default: 'moyen',
+                aide: 'Un robot parfait gagne toujours, et un jeu qu\'on ne peut pas gagner ne '
+                    + 'se joue pas deux fois. « Facile » et « moyen » lui font perdre des tours '
+                    + 'exprès, sans jamais le faire sortir de la piste.',
+                options: [
+                    { value: 'facile', label: 'Facile — il flâne' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Sans pitié — le parcours parfait' }
+                ]
+            }
+        ],
+        skills: ['geo.transfo.translation', 'geo.repere.coord'],
+        motsClefs: ['vecteur', 'translation', 'coordonnées', 'course', 'quadrillage',
+            'vitesse', 'accélération', 'relatifs'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: 'La voiture garde sa vitesse d\'un tour sur l\'autre : tu ne choisis que '
+            + 'comment la changer, d\'une case au plus vers la gauche ou la droite, et d\'une '
+            + 'case au plus vers le haut ou le bas. Les neuf points montrent où tu arriverais '
+            + 'pour chacun des neuf choix — ceux qui sont barrés en rouge t\'enverraient dans le '
+            + 'décor. Au clavier, le pavé numérique EST le carré des neuf points. Le piège est '
+            + 'toujours le même : il faut freiner AVANT le virage, jamais dedans.'
+    },
+
+    {
         // L'EXERCICE INVERSE DU PRÉCÉDENT, et c'est tout son intérêt. Tracer,
         // c'est appliquer une règle qu'on vous donne ; reconnaître, c'est la
         // retrouver. Encore faut-il demander la bonne chose : une première
