@@ -116,8 +116,9 @@ export const fractionsExercises = [
         },
         instruction: 'On ne peut additionner que des parts de MÊME taille. Le calcul s\'écrit '
             + 'ligne par ligne, comme au cahier : d\'abord le dénominateur commun — le bouton '
-            + '« Voir la table de Pythagore » allume la ligne de chaque dénominateur, et le '
-            + 'premier nombre qui appartient aux deux est celui qu\'on cherche —, puis par quoi '
+            + '« Voir la table de Pythagore » ouvre la table et allume la LIGNE de chaque '
+            + 'dénominateur ; les nombres coloriés en vert sont dans les deux tables, et le plus '
+            + 'petit est celui qu\'on cherche —, puis par quoi '
             + 'multiplier chaque fraction (le MÊME facteur en haut et en bas), puis les deux '
             + 'fractions converties, puis le calcul. Le réglage « L\'opération » ajoute les '
             + 'soustractions : le résultat reste toujours positif.'

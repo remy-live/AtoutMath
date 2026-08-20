@@ -34,6 +34,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { multiplesCommuns } from '../fractionsEquivalentes.js';
+import { showModal } from '../../ui/modal.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -61,6 +62,7 @@ export function mount(container, session, opts = {}) {
 
     let item = null;
     let calcul = null;
+    let tableOuverte = null;
     let lignes = [];          // [{ nom, cases: [noms], el }]
     let ligneActive = 0;
     let cases = {};           // nom → { el, attendu }
@@ -132,9 +134,9 @@ export function mount(container, session, opts = {}) {
             titre: 'On calcule',
             attendu: { ra: c.aReduit.n, rb: c.bReduit.n, res: c.brut.n },
             html: `<div class="fa-ligne-calc">
-                ${colonne(`<span class="fa-accolade">{</span>${caseHtml('ra', 'premier numérateur')}`
-        + `<span class="fa-op fa-op--mini">${op}</span>${caseHtml('rb', 'second numérateur')}`
-        + '<span class="fa-accolade">}</span>', COMMUN_CACHE)}
+                ${colonne(`${caseHtml('ra', 'premier numérateur')}`
+        + `<span class="fa-op fa-op--mini">${op}</span>${caseHtml('rb', 'second numérateur')}`,
+        COMMUN_CACHE)}
                 <span class="fa-op">=</span>
                 ${colonne(caseHtml('res', 'résultat'), COMMUN_CACHE)}
             </div>`
@@ -183,7 +185,6 @@ export function mount(container, session, opts = {}) {
                                 ${p.html}
                             </div>`).join('')}
                     </div>
-                    <div class="fa-table" data-table-boite hidden></div>
                 </div>
                 <div class="fa-panneau">
                     <div class="fa-pave" role="group" aria-label="Chiffres">
@@ -427,13 +428,22 @@ export function mount(container, session, opts = {}) {
     // Le plus petit de ces rendez-vous est le dénominateur commun — l'élève le
     // lit, il ne le reçoit pas.
 
+    /**
+     * LA TABLE S'OUVRE EN MODALE. Posée sous le calcul, elle poussait les
+     * lignes hors de l'écran au moment même où l'on venait la consulter — et
+     * l'on perdait de vue la question qu'elle sert à répondre. En modale, on la
+     * regarde, on la ferme, et le calcul n'a pas bougé.
+     */
     function basculerTable() {
-        const boite = container.querySelector('[data-table-boite]');
-        if (!boite) return;
-        if (!boite.hidden) { boite.hidden = true; boite.innerHTML = ''; return; }
-        boite.innerHTML = tableHtml(calcul.a.d, calcul.b.d);
-        boite.hidden = false;
-        boite.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        if (tableOuverte) { tableOuverte.close(); tableOuverte = null; return; }
+        tableOuverte = showModal('La table de Pythagore',
+            tableHtml(calcul.a.d, calcul.b.d),
+            { width: '640px', onClose: () => { tableOuverte = null; } });
+        // AU-DESSUS DU PLEIN ÉCRAN DU JEU. La modale générique se pose à 9999 ;
+        // l'écran de jeu, lui, est à 10000 — la table s'ouvrait donc DERRIÈRE
+        // l'exercice, et le bouton ne semblait rien faire.
+        const voile = tableOuverte.element.parentElement;
+        if (voile) voile.style.zIndex = '100001';
     }
 
     function tableHtml(a, b) {
@@ -448,20 +458,22 @@ export function mount(container, session, opts = {}) {
                 + `<th class="${surA ? 'fa-lig-a' : ''}${surB ? ' fa-lig-b' : ''}">${l}</th>`;
             for (let c = 1; c <= info.taille; c++) {
                 const v = l * c;
-                const dansA = surA || c === a;
-                const dansB = surB || c === b;
-                const rdv = (dansA || dansB) && communs.has(v);
+                // LES LIGNES SEULEMENT, pas les colonnes : la ligne du 4 EST la
+                // table de 4, elle contient déjà tous ses multiples. Allumer
+                // aussi la colonne doublait le dessin sans rien ajouter, et
+                // faisait clignoter des cases qui n'étaient pas des rendez-vous.
+                const rdv = (surA || surB) && communs.has(v);
                 const classes = [
-                    dansA ? 'fa-c-a' : '', dansB ? 'fa-c-b' : '',
+                    surA ? 'fa-c-a' : '', surB ? 'fa-c-b' : '',
                     rdv ? 'fa-c-rdv' : '', rdv && v === info.ppcm ? 'fa-c-ppcm' : ''
                 ].filter(Boolean).join(' ');
                 corps += `<td class="${classes}">${v}</td>`;
             }
             corps += '</tr>';
         }
-        return `<p class="fa-table-mot">La ligne (et la colonne) du <b>${a}</b> et celles du
-                <b>${b}</b> sont allumées. Les nombres <b>cerclés</b> sont dans les deux tables :
-                le plus petit est le dénominateur commun.</p>
+        return `<p class="fa-table-mot">La ligne du <b>${a}</b> et la ligne du <b>${b}</b> sont
+                allumées : ce sont leurs tables. Les nombres <b>coloriés en vert</b> sont dans les
+                deux — le plus petit, <b>${info.ppcm}</b>, est le dénominateur commun.</p>
             <div class="fa-table-boite"><table class="fa-pytha">${corps}</table></div>`;
     }
 
@@ -526,6 +538,7 @@ export function mount(container, session, opts = {}) {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
+            if (tableOuverte) { tableOuverte.close(); tableOuverte = null; }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();
