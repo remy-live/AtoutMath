@@ -5857,14 +5857,29 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-panneau { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 
 /* L'ÉNONCÉ D'UN PROBLÈME. « Des énoncés très simples » : une phrase, deux
-   fractions en gras, une question. Il ne doit jamais devenir l'exercice. */
+   fractions, une question. Il ne doit jamais devenir l'exercice.
+   L'interligne est large parce que les fractions y sont EN COLONNES : elles
+   occupent deux étages, et à interligne serré elles se cognent d'une ligne à
+   l'autre. */
 .fa-enonce {
-    margin: 0; text-align: center; max-width: 34em; line-height: 1.4;
+    margin: 0; text-align: center; max-width: 34em; line-height: 2.2;
     font-size: clamp(.82rem, max(2.6cqw, 2.6cqh), 1.05rem); color: var(--text-main);
     background: var(--bg-hover); border: 1px solid var(--border);
-    border-radius: 12px; padding: 7px 12px;
+    border-radius: 12px; padding: 9px 14px;
 }
-.fa-enonce b { color: var(--primary); font-variant-numeric: tabular-nums; }
+
+/* UNE FRACTION EN COLONNES AU MILIEU D'UNE PHRASE.
+   Rémy : « écris les fractions en fraction colonne » — y compris dans un
+   énoncé. La barre oblique est une commodité de clavier ; ce qu'on veut que
+   l'élève reconnaisse, c'est numérateur sur dénominateur. Un `inline-flex` se
+   pose dans le texte comme un mot, sans casser la ligne de base. */
+.frac-dans-texte {
+    font-size: 1.05em; font-weight: 800; color: var(--primary);
+    margin: 0 .15em; vertical-align: middle; line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+.frac-dans-texte .fraction-num { padding: 0 .3em; }
+.frac-dans-texte .fraction-den { padding: 0 .3em; border-top: 2px solid currentColor; }
 
 /* LES LIGNES DU CAHIER, l'une sous l'autre. Sans cette règle, elles se
    posaient toutes au même endroit : un div nu dans un parent en ligne n'a ni

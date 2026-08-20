@@ -151,7 +151,9 @@ function marcheDe(params, index) {
 }
 
 /** Le corps d'un item de calcul posé — partagé avec les problèmes. */
-function itemDeCalcul(c, rng, { generatorId, skillId, marche, enonce = '', question = '' }) {
+function itemDeCalcul(c, rng, {
+    generatorId, skillId, marche, enonce = '', enonceTexte = '', question = ''
+}) {
     const op = c.signe === '−' ? '−' : '+';
     const reponse = c.simplifie
         ? `${c.reduit.n}/${c.reduit.d}`
@@ -161,7 +163,10 @@ function itemDeCalcul(c, rng, { generatorId, skillId, marche, enonce = '', quest
         seed: rng.seed, generatorId, skillId,
         answerKind: 'text',
         prompt: {
-            text: enonce ? `${enonce} (${texte})` : texte,
+            // Le texte nu : c'est lui qui part sur la feuille et dans le
+            // carnet d'erreurs. Y laisser l'HTML de l'énoncé imprimait les
+            // balises.
+            text: enonceTexte ? `${enonceTexte} (${texte})` : texte,
             html: `<div class="frac-egalite">
                     ${enonce ? `<p class="frac-enonce">${enonce}</p>` : ''}
                     ${fracHtml(c.a.n, c.a.d)}
@@ -182,7 +187,7 @@ function itemDeCalcul(c, rng, { generatorId, skillId, marche, enonce = '', quest
             + `${c.aReduit.n}/${c.commun} ${op} ${c.bReduit.n}/${c.commun} = ${c.brut.n}/${c.commun}`
             + (c.simplifie ? ` = ${reponse}.` : '.'),
         difficulty: 2 + NIVEAUX_SOMME.findIndex(n => n.id === marche),
-        meta: { calcul: c, marche, enonce, question }
+        meta: { calcul: c, marche, enonce, enonceTexte, question }
     });
 }
 
@@ -278,7 +283,9 @@ const HISTOIRES = [
     {
         quoi: 'trajet', unite: 'du trajet',
         somme: (a, b) => `Sur son trajet, Malo parcourt ${a} à pied, puis ${b} à vélo. Quelle part du trajet a-t-il faite&nbsp;?`,
-        difference: (a, b) => `Malo doit parcourir ${a} du trajet. Il en a déjà fait ${b}. Quelle part lui reste-t-il&nbsp;?`
+        // Un trajet, c'est le TOUT : « Malo doit parcourir 8/9 du trajet » ne
+        // veut rien dire. Une différence honnête, ici, compare deux marcheurs.
+        difference: (a, b) => `Malo a fait ${a} du trajet, Zoé en a fait ${b}. Quelle part du trajet Malo a-t-il faite en plus&nbsp;?`
     },
     {
         quoi: 'ruban', unite: 'de mètre',
@@ -288,12 +295,14 @@ const HISTOIRES = [
     {
         quoi: 'jardin', unite: 'du jardin',
         somme: (a, b) => `Papi sème des radis sur ${a} du jardin et des carottes sur ${b}. Quelle part du jardin est semée&nbsp;?`,
-        difference: (a, b) => `${a} du jardin sont semés. Une taupe abîme ${b} du jardin. Quelle part reste semée&nbsp;?`
+        // « 5/9 du jardin SONT semés » mais « 1/9 du jardin EST semé » : on
+        // tourne la phrase pour que l'accord ne dépende pas du numérateur tiré.
+        difference: (a, b) => `On a semé ${a} du jardin. Une taupe en abîme ${b}. Quelle part reste semée&nbsp;?`
     },
     {
         quoi: 'journée', unite: 'de l\'heure',
         somme: (a, b) => `Zoé travaille ${a} d\'heure, puis encore ${b} d\'heure. Combien de temps a-t-elle travaillé&nbsp;?`,
-        difference: (a, b) => `La récréation dure ${a} d\'heure. ${b} d\'heure sont déjà passés. Combien reste-t-il&nbsp;?`
+        difference: (a, b) => `La récréation dure ${a} d\'heure. Il s\'en est déjà écoulé ${b}. Combien reste-t-il&nbsp;?`
     }
 ];
 
@@ -328,16 +337,27 @@ export const fracProblemeGenerator = {
         });
         c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
 
+        // « ÉCRIS LES FRACTIONS EN FRACTION COLONNE », y compris au milieu
+        // d'une phrase. Une fraction en colonne est un `inline-flex` : elle se
+        // pose dans le texte comme un mot, sans casser la ligne de base.
+        //
+        // Deux formes, et c'est nécessaire : l'HTML pour l'écran, et le texte
+        // nu pour la feuille imprimée et le carnet d'erreurs — où « 5/9 » se
+        // recompose en colonnes tout seul (`fractions: true`), alors qu'une
+        // balise `<span>` s'y imprimerait telle quelle.
         const h = rng.pick(HISTOIRES);
-        const dire = (f) => `<b>${f.n}/${f.d}</b>`;
-        const enonce = c.signe === '−'
-            ? h.difference(dire(c.a), dire(c.b))
-            : h.somme(dire(c.a), dire(c.b));
+        const colonne = (f) => `<span class="fraction frac-dans-texte">`
+            + `<span class="fraction-num">${f.n}</span>`
+            + `<span class="fraction-den">${f.d}</span></span>`;
+        const nu = (f) => `${f.n}/${f.d}`;
+        const dit = c.signe === '−' ? h.difference : h.somme;
+        const enonce = dit(colonne(c.a), colonne(c.b));
+        const enonceTexte = dit(nu(c.a), nu(c.b)).replace(/&nbsp;/g, ' ');
 
         return itemDeCalcul(c, rng, {
             generatorId: 'frac.probleme',
             skillId: 'num.frac.denominateur-commun',
-            marche, enonce, question: h.quoi
+            marche, enonce, enonceTexte, question: h.quoi
         });
     }
 };

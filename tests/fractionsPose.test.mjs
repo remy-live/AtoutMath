@@ -183,20 +183,59 @@ test('LES DÉNOMINATEURS RESTENT DANS LA TABLE DE PYTHAGORE', () => {
     });
 });
 
+test('LES FRACTIONS D\'UN ÉNONCÉ S\'ÉCRIVENT EN COLONNES', () => {
+    // Rémy : « écris les fractions en fraction colonne » — y compris au milieu
+    // d'une phrase. Et le texte NU, lui, garde la barre oblique : c'est lui qui
+    // part sur la feuille imprimée et dans le carnet d'erreurs, où une balise
+    // `<span>` s'imprimerait telle quelle.
+    for (let index = 0; index < 20; index++) {
+        const item = tirer(fracProblemeGenerator, {}, `col${index}`, index % 10);
+        const c = item.meta.calcul;
+        assert.ok(item.meta.enonce.includes('fraction-num'), 'énoncé sans fraction en colonne');
+        assert.ok(item.meta.enonce.includes(`<span class="fraction-num">${c.a.n}</span>`));
+        assert.ok(item.meta.enonce.includes(`<span class="fraction-den">${c.b.d}</span>`));
+        // Aucune balise ne fuit dans le texte nu.
+        assert.ok(!/[<>]/.test(item.prompt.text), item.prompt.text);
+        assert.ok(!/&nbsp;/.test(item.prompt.text), item.prompt.text);
+        assert.ok(item.prompt.text.includes(item.meta.enonceTexte));
+    }
+});
+
+test('AUCUN ÉNONCÉ NE DIT DE SOTTISE', () => {
+    // « Malo doit parcourir 8/9 du trajet. Il en a déjà fait 5/9. » — Rémy :
+    // « c'est idiot comme énoncé ». Un trajet, c'est le TOUT : on n'en « doit »
+    // pas les huit neuvièmes. Et l'accord d'une fraction sujet dépend de son
+    // numérateur (« 1/9 est semé », « 5/9 sont semés ») : les tournures qui
+    // l'exigeraient sont bannies, on ne peut pas accorder sur un tirage.
+    const vus = new Set();
+    for (let index = 0; index < 200; index++) {
+        const nu = tirer(fracProblemeGenerator, {}, `sot${index}`, index % 10).meta.enonceTexte;
+        vus.add(nu.replace(/\d+\/\d+/g, '…'));
+    }
+    vus.forEach(modele => {
+        assert.ok(!/doit parcourir/.test(modele), modele);
+        // Une fraction ne commence jamais la phrase : c'est là que l'accord
+        // devient impossible à écrire d'avance.
+        assert.ok(!/^…/.test(modele), modele);
+        assert.ok(!/… (du|de la|d'|de) [^.]* (sont|est) /.test(modele), modele);
+    });
+    assert.ok(vus.size >= 8, `seulement ${vus.size} tournures différentes`);
+});
+
 test('UN PROBLÈME EST UNE PHRASE, DEUX FRACTIONS ET UNE QUESTION', () => {
     // « Des énoncés très simples » : la lecture ne doit pas devenir l'exercice.
     for (let index = 0; index < 40; index++) {
         const item = tirer(fracProblemeGenerator, {}, `pb${index}`, index % 10);
         const c = item.meta.calcul;
         assert.ok(item.meta.enonce, 'pas d\'énoncé');
-        const nu = item.meta.enonce.replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '');
+        const nu = item.meta.enonceTexte;
         assert.ok(nu.length < 160, `énoncé trop long : ${nu}`);
         assert.ok(nu.trim().endsWith('?'), `l'énoncé ne pose pas de question : ${nu}`);
         // Les deux fractions de l'énoncé sont bien celles du calcul.
-        assert.ok(item.meta.enonce.includes(`${c.a.n}/${c.a.d}`), nu);
-        assert.ok(item.meta.enonce.includes(`${c.b.n}/${c.b.d}`), nu);
+        assert.ok(nu.includes(`${c.a.n}/${c.a.d}`), nu);
+        assert.ok(nu.includes(`${c.b.n}/${c.b.d}`), nu);
         // Une soustraction ne se raconte pas comme une addition.
-        assert.ok(/reste|retire|coupe|abîme|arrière|passés|verse/i.test(nu) === (c.signe === '−')
+        assert.ok(/reste|retire|coupe|abîme|écoulé|en plus|verse/i.test(nu) === (c.signe === '−')
             || c.signe === '+', nu);
     }
 });
