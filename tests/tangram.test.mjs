@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     PIECES, FIGURES, AIRE_TOTALE, QUESTIONS, pieceDe, figureDe, retournable,
-    aire, boite, tourner, retourner, sommetsPlaces, piecesPlacees, verifierFigure
+    aire, boite, tourner, retourner, sommetsPlaces, piecesPlacees, verifierFigure, verifierPavage
 } from '../js/core/tangram.js';
 
 const LONG = (p) => p.map((_, i) => {
@@ -108,4 +108,51 @@ test('sommetsPlaces suit bien rotation, retournement et décalage', () => {
     assert.deepEqual(s, [[3, 5], [5, 7], [3, 9]]);
     assert.equal(aire(sommetsPlaces('grand1', 2, 0, 10, 10)), 16);
     assert.equal(figureDe('inconnue').id, FIGURES[0].id, 'figure inconnue : on repart de la première');
+});
+
+// --- Plusieurs solutions pour une même silhouette ----------------------------
+//
+// Rémy : « fais attention, pour une même figure il peut y avoir plusieurs
+// solutions ; du coup l'aimantation ne fonctionne pas si c'est une autre
+// solution ». Le jeu ne compare donc plus à la disposition du catalogue : il
+// vérifie que le pavage EN COURS couvre la silhouette. Ce qu'on teste ici,
+// c'est cette bascule — la règle du tangram, pas notre corrigé.
+
+test('la solution du catalogue passe le contrôle de pavage', () => {
+    FIGURES.forEach(f => {
+        const polys = piecesPlacees(f).map(p => p.sommets);
+        const bilan = verifierPavage(f.silhouette, polys, 0.1);
+        assert.equal(bilan.trous, 0, `${f.id} : des trous`);
+        assert.equal(bilan.doubles, 0, `${f.id} : des chevauchements`);
+        assert.equal(bilan.dehors, 0, `${f.id} : ça déborde`);
+    });
+});
+
+test('ÉCHANGER DEUX PIÈCES DE MÊME FORME RESTE UNE SOLUTION', () => {
+    // Les deux grands triangles sont interchangeables, et les deux petits
+    // aussi : c'est la plus simple des « autres solutions », et elle était
+    // pourtant refusée dès lors qu'on n'occupait pas le bon emplacement.
+    FIGURES.forEach(f => {
+        const posees = piecesPlacees(f);
+        const echange = (a, b) => {
+            const i = posees.findIndex(p => p.id === a);
+            const j = posees.findIndex(p => p.id === b);
+            if (i < 0 || j < 0) return;
+            const t = posees[i].sommets; posees[i].sommets = posees[j].sommets; posees[j].sommets = t;
+        };
+        echange('grand1', 'grand2');
+        echange('petit1', 'petit2');
+        const bilan = verifierPavage(f.silhouette, posees.map(p => p.sommets), 0.1);
+        assert.equal(bilan.trous + bilan.doubles + bilan.dehors, 0,
+            `${f.id} : l'échange de deux pièces identiques devrait rester juste`);
+    });
+});
+
+test('une pièce décalée d\'un carreau est refusée', () => {
+    const f = FIGURES[0];
+    const polys = piecesPlacees(f).map(p => p.sommets);
+    polys[0] = polys[0].map(([x, y]) => [x + 1, y]);
+    const bilan = verifierPavage(f.silhouette, polys, 0.1);
+    assert.ok(bilan.trous > 0 || bilan.doubles > 0 || bilan.dehors > 0,
+        'un décalage d\'un carreau doit se voir');
 });

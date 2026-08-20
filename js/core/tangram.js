@@ -176,19 +176,43 @@ export function piecesPlacees(figure) {
  * arête — et on compte les trous, les chevauchements et les débordements.
  */
 export function verifierFigure(figure, pas = 0.1) {
-    const posees = piecesPlacees(figure).map(p => p.sommets);
-    const b = boite(figure.silhouette);
+    return verifierPavage(figure.silhouette, piecesPlacees(figure).map(p => p.sommets), pas);
+}
+
+/**
+ * LE MÊME CONTRÔLE, MAIS SUR LE PAVAGE QU'ON LUI DONNE.
+ *
+ * Rémy : « fais attention, pour une même figure il peut y avoir plusieurs
+ * solutions ; du coup l'aimantation ne fonctionne pas si c'est une autre
+ * solution ». C'est vrai de presque toutes les silhouettes de tangram, et
+ * c'était une faute de conception : le jeu comparait le travail de l'élève à
+ * UNE disposition de référence, celle qu'on avait écrite dans le catalogue.
+ * Une autre solution, aussi juste, n'était pas reconnue.
+ *
+ * La règle du tangram ne parle pas de disposition de référence : les sept
+ * pièces couvrent la silhouette, sans trou, sans chevauchement et sans
+ * déborder. C'est cela qu'on mesure ici, et c'est vrai de TOUTES les
+ * solutions — y compris celles auxquelles personne n'avait pensé.
+ *
+ * @param {Array} silhouette  le contour à remplir
+ * @param {Array} polys       les pièces posées, en coordonnées du monde
+ * @param {number} pas        la finesse de l'échantillonnage
+ */
+export function verifierPavage(silhouette, polys, pas = 0.1) {
+    const b = boite(silhouette);
     let trous = 0, doubles = 0, dehors = 0;
-    for (let x = b.x0; x < b.x1; x += pas) for (let y = b.y0; y < b.y1; y += pas) {
+    // Décalé d'un tiers de rien : on ne veut jamais tomber pile sur une arête,
+    // où « dedans » n'a pas de réponse franche.
+    for (let x = b.x0 - 1; x < b.x1 + 1; x += pas) for (let y = b.y0 - 1; y < b.y1 + 1; y += pas) {
         const px = x + 0.0371, py = y + 0.0613;
-        const dansSilhouette = dedans(figure.silhouette, px, py);
+        const dansSilhouette = dedans(silhouette, px, py);
         let n = 0;
-        for (const p of posees) if (dedans(p, px, py)) n++;
+        for (const p of polys) if (dedans(p, px, py)) n++;
         if (dansSilhouette && n === 0) trous++;
         if (n > 1) doubles++;
         if (!dansSilhouette && n > 0) dehors++;
     }
-    return { trous, doubles, dehors, aire: aire(figure.silhouette) };
+    return { trous, doubles, dehors, aire: aire(silhouette) };
 }
 
 // --- Ce que le tangram fait apprendre ----------------------------------------

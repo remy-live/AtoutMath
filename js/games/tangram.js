@@ -16,8 +16,8 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    PIECES, FIGURES, figureDe, pieceDe, retournable, boite, centre,
-    sommetsPlaces, piecesPlacees, questionDe
+    PIECES, FIGURES, figureDe, pieceDe, retournable, boite, centre, dedans,
+    sommetsPlaces, piecesPlacees, questionDe, verifierPavage
 } from '../core/tangram.js';
 
 const COMPETENCE = 'geo.aires.tangram';
@@ -384,23 +384,23 @@ class Tangram extends BaseGame {
      * joue en essayant, pas en devinant.
      */
     deposer(p) {
-        const som = this.sommetsDe(p);
-        const sig = signature(som);
-        const [cx, cy] = centre(som);
         const [ox, oy] = this.decalageFigure;
-        const cible = this.slots
-            .filter(s => !s.pris && s.sig === sig)
-            .map(s => ({ s, d: Math.hypot(s.cx + ox - cx, s.cy + oy - cy) }))
-            .sort((a, b) => a.d - b.d)[0];
+        // L'AIMANT TIENT AU QUADRILLAGE, PAS À UNE SOLUTION.
+        //
+        // Toutes les pièces du tangram ont leurs sommets sur des nœuds
+        // entiers, et les figures du catalogue les posent sur des nœuds
+        // entiers : caler la translation sur le nœud le plus proche suffit
+        // donc à faire jointer les pièces PROPREMENT, quelle que soit la
+        // disposition. C'est ce qui rend les autres solutions jouables.
+        const nx = ox + Math.round(p.dx - ox);
+        const ny = oy + Math.round(p.dy - oy);
+        const ecart = Math.hypot(nx - p.dx, ny - p.dy);
+        const dansLaFigure = this.surLaFigure(p, nx, ny);
 
-        if (cible && cible.d <= TOLERANCE) {
-            p.dx += cible.s.cx + ox - cx;
-            p.dy += cible.s.cy + oy - cy;
+        if (ecart <= TOLERANCE && dansLaFigure) {
+            p.dx = nx;
+            p.dy = ny;
             p.posee = true;
-            // On retient QUEL emplacement la pièce occupe : c'est ce qui permet
-            // de le libérer si on la reprend.
-            p.slot = cible.s;
-            cible.s.pris = true;
             this.choisie = null;
             this.majPiece(p);
             const poly = this.svgEl.querySelector(`[data-piece="${p.id}"] polygon`);
@@ -408,17 +408,49 @@ class Tangram extends BaseGame {
             void poly?.getBoundingClientRect();
             poly?.classList.add('tg-piece--cale');
             this.majCompte();
-            if (this.pieces.every(x => x.posee)) return this.gagne();
+            if (this.pavageComplet()) return this.gagne();
             this.note('');
             return;
         }
         // Rien à cette place : on garde la pièce dans le cadre.
+        p.posee = false;
         p.dx = Math.max(-2, Math.min(this.mondeL + 2, p.dx));
         p.dy = Math.max(-2, Math.min(this.mondeH + 2, p.dy));
         this.majPiece(p);
-        if (cible && cible.d <= TOLERANCE * 2.6) {
-            this.note('Tu y es presque : approche encore, ou tourne la pièce.');
+        this.majCompte();
+        if (ecart <= TOLERANCE && !dansLaFigure) {
+            this.note('Cette pièce dépasse de la figure : elle doit tenir entièrement dedans.');
         }
+    }
+
+    /** La pièce, posée en (nx, ny), tient-elle dans la silhouette ? */
+    surLaFigure(p, nx, ny) {
+        const [ox, oy] = this.decalageFigure;
+        const som = sommetsPlaces(p.id, p.quarts, p.flip, nx - ox, ny - oy);
+        // On teste le centre et un point tiré vers le centre depuis chaque
+        // sommet : un sommet posé PILE sur le bord ne répond ni oui ni non.
+        const [cx, cy] = centre(som);
+        if (!dedans(this.figure.silhouette, cx, cy)) return false;
+        return som.every(([x, y]) =>
+            dedans(this.figure.silhouette, x + (cx - x) * 0.06, y + (cy - y) * 0.06));
+    }
+
+    /**
+     * LA FIGURE EST-ELLE MONTÉE ? On ne compare plus à la solution du
+     * catalogue — voir `verifierPavage` : les sept pièces couvrent la
+     * silhouette, sans trou, sans chevauchement, sans déborder. Toute solution
+     * juste est acceptée, y compris celles auxquelles nous n'avions pas pensé.
+     */
+    pavageComplet() {
+        if (!this.pieces.every(x => x.posee)) return false;
+        const [ox, oy] = this.decalageFigure;
+        const polys = this.pieces.map(p =>
+            sommetsPlaces(p.id, p.quarts, p.flip, p.dx - ox, p.dy - oy));
+        // Un pas de 0,2 sur une silhouette de 16 × 8 : quelques milliers de
+        // points, et la moindre pièce mal placée fait plus d'un carreau
+        // d'écart — largement au-dessus du bruit d'échantillonnage.
+        const bilan = verifierPavage(this.figure.silhouette, polys, 0.2);
+        return bilan.trous === 0 && bilan.doubles === 0 && bilan.dehors === 0;
     }
 
     tournerChoisie() {
@@ -488,7 +520,7 @@ class Tangram extends BaseGame {
         setTimeout(() => poly?.classList.remove('tg-piece--montre'), 2800);
         this.note(`Je place ${pieceDe(p.id).nom.toLowerCase()} : regarde son orientation, `
             + 'c\'est presque toujours elle qui bloque.');
-        if (this.pieces.every(x => x.posee)) this.gagne();
+        if (this.pavageComplet()) this.gagne();
     }
 
     /** Les huit poses d'une pièce, avec la forme obtenue. */
