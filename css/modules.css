@@ -740,6 +740,17 @@
     color: var(--text-muted); cursor: pointer; transition: color .15s, border-color .15s;
 }
 .qd-effacer:hover { color: var(--text-main); border-color: var(--text-muted); }
+/* LE BOUTON QU'ON DÉSIGNE. Après deux essais serieux et manques — ou apres un
+   essai visiblement tape au hasard —, l'aide qui debloque s'allume au lieu
+   d'attendre qu'on la trouve. */
+.qd-film--appel {
+    border-color: var(--primary); color: var(--primary);
+    animation: qd-appel 1.1s ease-in-out 3;
+}
+@keyframes qd-appel {
+    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 22%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .qd-film--appel { animation: none; } }
 
 .coord-badge {
     display: inline-block; padding: 2px 14px; margin-left: 6px;

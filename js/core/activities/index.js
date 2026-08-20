@@ -457,7 +457,12 @@ const legacy = [
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
     ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
     ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
-    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur', 'formule', 8],
+    // NEUF LEÇONS DE TROIS RÉUSSITES : L'ÉCOLE ENTIÈRE. Rémy : « pour le
+    // tableur il faut faire le parcours en entier ». L'étape s'arrêtait au
+    // bout de huit réussites, c'est-à-dire au milieu de la troisième leçon sur
+    // neuf : l'élève n'atteignait jamais les formules, qui sont pourtant le
+    // sujet. Vingt-sept, c'est exactement ce que la neuvième leçon demande.
+    ['tableur', 'L\'École du Tableur', 'spreadsheet', 'engineTableur', 'réussite', 27],
     ['ninja', 'Ninja des Nombres', 'ninja', 'engineNinja'],
     ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille'],
     ['nova', 'Nova', 'nova', 'engineNova'],

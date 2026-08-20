@@ -53,6 +53,11 @@ export function mount(container, session) {
     // Les deux passages du film, par question. Voir `jouerLeMouvement`.
     let filmsRestants = 0;
     let filmEnCours = false;
+    // De quoi distinguer celui qui cherche de celui qui tape au hasard : le
+    // rang de l'essai, l'instant du précédent, et le nombre de refus d'affilée.
+    let essais = 0;
+    let dernierEssai = 0;
+    let refus = 0;
     // Rafraîchit le libellé du bouton d'indice — il annonce combien de cases
     // restent à trouver, et c'est ce qui dit qu'on n'est jamais coincé.
     let majIndice = () => {};
@@ -62,6 +67,9 @@ export function mount(container, session) {
         item = session.next();
         posees = [];
         filmsRestants = FILMS_PAR_QUESTION;
+        essais = 0;
+        dernierEssai = 0;
+        refus = 0;
         render();
     }
 
@@ -369,14 +377,73 @@ export function mount(container, session) {
         }
 
         const bilan = comparer(imageAttendue(item.meta), posees);
+
+        // DEUX ÉLÈVES QUI ÉCHOUENT NE SE RESSEMBLENT PAS.
+        //
+        // Rémy : « si l'élève fait n'importe quoi en cliquant sans arrêt sur
+        // valider, ou si l'élève essaye mais n'y arrive pas — ce qui sont deux
+        // comportements différents — que peut-on faire ? »
+        //
+        // Ils se distinguent, et sur des signes qu'on a déjà sous la main : le
+        // TEMPS entre deux essais, et la PART de cases justes. Poser cinq cases
+        // au hasard et retoucher Valider dans la seconde, ce n'est pas se
+        // tromper — c'est ne pas jouer. Une tentative pareille n'a rien à faire
+        // au carnet d'erreurs : elle salirait les statistiques de l'élève et
+        // ferait croire à une difficulté sur la symétrie axiale.
+        //
+        // On la refuse donc, sans la compter — et jamais plus de deux fois de
+        // suite : un élève qui insiste finit par avoir raison de nous, et un
+        // exercice dont on ne peut pas sortir est pire que tout.
+        const vite = Date.now() - dernierEssai < 4000;
+        const auHasard = essais >= 1 && vite && bilan.justes * 2 < attendu && !aideDemandee();
+        essais++;
+        dernierEssai = Date.now();
+        if (auHasard && refus < 2) {
+            refus++;
+            secouer();
+            statut('Prends le temps de compter les carreaux : je ne compte pas cet essai-là. '
+                + 'Le bouton « Montre le mouvement » est là pour ça.');
+            const btn = container.querySelector('[data-film]');
+            if (btn && !btn.disabled) { btn.classList.add('qd-film--appel'); }
+            return;
+        }
+        refus = 0;
+
         const result = session.submit(cleFigure(posees), { misconception: diagnostic(bilan) });
         if (result.ignored) return;
 
         result.dismissed.then(() => {
             if (destroyed) return;
             if (result.correct) { renderNext(); return; }
-            if (result.revealed) { montrerLaCorrection(bilan); regTimeout(renderNext, 3400); }
+            if (result.revealed) { montrerLaCorrection(bilan); regTimeout(renderNext, 3400); return; }
+            // CELUI QUI ESSAYE VRAIMENT, ON VA LE CHERCHER. Deux tentatives
+            // sérieuses et toujours pas la figure : on ne se contente pas de
+            // redire « faux », on désigne l'aide qui débloque — le film du
+            // mouvement d'abord, la case donnée ensuite.
+            if (essais >= 2) proposerUnCoupDeMain(bilan);
         });
+    }
+
+    /** L'élève a-t-il déjà demandé quelque chose ? */
+    const aideDemandee = () => session.hintIndex > 0 || filmsRestants < FILMS_PAR_QUESTION;
+
+    /**
+     * Le coup de main qu'on propose de lui-même après deux essais sérieux.
+     * On ne le lui impose pas : on allume le bouton et on dit ce qu'il fait.
+     */
+    function proposerUnCoupDeMain(bilan) {
+        const film = container.querySelector('[data-film]');
+        if (film && !film.disabled && filmsRestants > 0) {
+            film.classList.add('qd-film--appel');
+            statut(`${bilan.justes} case${bilan.justes > 1 ? 's' : ''} juste${bilan.justes > 1 ? 's' : ''} : `
+                + 'tu n\'es pas loin. Touche « Montre le mouvement » pour voir où la figure arrive.');
+            return;
+        }
+        const indice = container.querySelector('[data-hint]');
+        if (indice && !indice.disabled) {
+            indice.classList.add('qd-film--appel');
+            statut('Touche « Trace une case » : je t\'en pose une, et tu comptes à partir d\'elle.');
+        }
     }
 
     /** Ce qui ne va pas, dit en cases — jamais « faux ». */

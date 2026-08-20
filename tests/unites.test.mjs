@@ -50,7 +50,12 @@ test('LES UNITÉS QUI NE SONT PAS DES QUESTIONS SONT NOMMÉES', () => {
         'course-vecteurs': 'course', ville: 'trajet', pizza: 'commande',
         tangram: 'figure', quadrillage: 'figure', relier: 'figure',
         'compte-est-bon': 'tirage', dominos: 'domino', problemes: 'problème',
-        'poser-operation': 'opération', tableur: 'formule', duel: 'échange'
+        'poser-operation': 'opération', duel: 'échange',
+        // L'École du Tableur compte des RÉUSSITES, pas des formules : ses
+        // quatre premières leçons portent sur le repérage des cases, où il n'y
+        // a pas la moindre formule à écrire. Vingt-sept réussites, c'est
+        // l'école entière — « il faut faire le parcours en entier ».
+        tableur: 'réussite'
     };
     Object.entries(attendu).forEach(([id, u]) => {
         const a = getActivity(id);
