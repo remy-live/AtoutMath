@@ -52,10 +52,18 @@ export function mount(container, session) {
         nettoyeurs.length = 0;
         const m = item.meta;
 
+        // PAS DEUX FOIS LE MÊME TITRE. Rémy, au banc iPhone : « l'horloge est
+        // un peu petite sur l'iPhone, enlève le gros titre en haut ». En mode
+        // « lire », l'énoncé est « Quelle heure est-il ? » — mot pour mot le
+        // titre déjà écrit dans l'en-tête du jeu. Il coûtait quatre-vingt-dix
+        // pixels de haut, c'est-à-dire un quart du cadran, pour ne rien
+        // apprendre. Ce qu'il portait vraiment — « c'est l'après-midi » —
+        // rejoint la pastille du niveau, qui est déjà là.
+        const rappel = m.mode === 'lire' && m.apresmidi ? ' · c\'est l\'après-midi' : '';
         container.innerHTML = `
             <div class="hg-layout">
-                ${item.prompt.html}
-                <div class="hg-niveau">Niveau ${m.rang} / ${m.total} · ${m.titre}</div>
+                ${m.mode === 'lire' ? '' : item.prompt.html}
+                <div class="hg-niveau">Niveau ${m.rang} / ${m.total} · ${m.titre}${rappel}</div>
                 <div class="hg-cadran" data-cadran>
                     <canvas class="hg-canvas"></canvas>
                 </div>

@@ -723,7 +723,15 @@ export class Runner {
         // paires laissait croire à dix plateaux ; c'est bien dix paires. Voir
         // `unite` dans le registre.
         const quoi = this.step.exercise ? uniteDe(this.step.exercise.activityId, total) : 'questions';
-        text.textContent = `${done} / ${total} ${quoi}`;
+        // ET SUR UN TÉLÉPHONE, ON NE DIT QUE LE COMPTE. Rémy, au banc iPhone :
+        // « la barre de progression est illisible », « écris juste 2/15, ce
+        // sera suffisant ». La pastille ne fait que cinquante-huit pixels de
+        // large : « 0 / 24 paires » y débordait des deux côtés et se retrouvait
+        // rogné en « 5/24 aire ». Le mot part dans sa propre boîte, que la
+        // feuille de style efface quand la place manque.
+        text.innerHTML = `<span class="pg-compte">${done} / ${total}</span>`
+            + `<span class="pg-unite">&nbsp;${quoi}</span>`;
+        text.title = `${done} / ${total} ${quoi}`;
         // En évaluation, on n'affiche pas le score en direct : cela induit une
         // pression inutile et modifie le comportement de l'élève.
         bar.style.background = isEvaluation(this.policy)

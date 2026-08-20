@@ -56,8 +56,7 @@ class FracSamurai extends BaseGame {
                 .sam-top { display: flex; justify-content: center; align-items: center; padding: clamp(6px, 1.6cqh, 12px) 16px; color: #fff; flex-wrap: wrap; gap: 6px 22px; }
                 .sam-rang { font-weight: 900; font-size: 1.1rem; color: #fcc419; }
                 .sam-score { font-weight: 700; }
-                .sam-prog { height: 6px; background: rgba(255,255,255,.12); margin: 0 16px; border-radius: 3px; overflow: hidden; }
-                .sam-prog-fill { height: 100%; width: 0; background: #fcc419; transition: width .4s; }
+                .sam-avance { font-weight: 800; color: #fcc419; font-variant-numeric: tabular-nums; }
                 .sam-timer { height: 8px; background: rgba(255,255,255,.12); margin: 8px 16px 0; border-radius: 4px; overflow: hidden; display: none; }
                 .sam-timer-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff6b6b, #fcc419); }
                 /* La carte ne s'étire plus sur toute la hauteur du dojo : elle se
@@ -105,9 +104,9 @@ class FracSamurai extends BaseGame {
             <div class="sam-wrap">
                 <div class="sam-top">
                     <span class="sam-rang" data-rang></span>
+                    <span class="sam-avance" data-prog></span>
                     <span class="sam-score">Score : <b data-score>0</b></span>
                 </div>
-                <div class="sam-prog"><div class="sam-prog-fill" data-prog></div></div>
                 <div class="sam-timer" data-timer><div class="sam-timer-bar" data-timer-bar></div></div>
                 <div class="sam-card" data-card>
                     <div class="sam-eq" data-eq></div>
@@ -146,7 +145,10 @@ class FracSamurai extends BaseGame {
     majTete() {
         this.ui.rang.textContent = `Niv ${this.level} — ${NIVEAUX[this.level].nom}`;
         this.ui.score.textContent = this.score;
-        this.ui.prog.style.width = (this.victoires / this.goal * 100) + '%';
+        // « Sur iPhone la progression est nulle : écris juste 2/15, ce sera
+        // suffisant. » Un filet de six pixels sur un écran de trois cent
+        // soixante-quinze ne dit rien ; deux nombres se lisent d'un coup.
+        this.ui.prog.textContent = `${this.victoires} / ${this.goal}`;
         this.ui.timer.style.display = NIVEAUX[this.level].chrono ? 'block' : 'none';
     }
 

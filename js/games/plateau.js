@@ -54,7 +54,15 @@ const ADAPTATEURS = {
     othello: {
         id: 'othello', module: othello, taille: 8, premier: 'N',
         noms: { N: 'Noirs', B: 'Blancs' },
-        couleurs: { claire: '#2f9e63', foncee: '#2a8f58', bord: '#1c5e3a' },
+        // UN SEUL VERT, ET DES FILETS. Rémy : « c'est peut-être une illusion,
+        // mais j'ai l'impression que les cases ne font pas très carrés ». Elles
+        // le sont — 43,25 sur 43,25, mesurés. C'était bien une illusion, et
+        // elle avait une cause : le damier à deux verts presque identiques.
+        // L'œil ne voyait plus la case, il voyait des bandes. Un vrai plateau
+        // d'Othello est d'un seul vert quadrillé de traits fins ; c'est plus
+        // juste, et la case redevient une case.
+        couleurs: { claire: '#2f9e63', foncee: '#2f9e63', bord: '#1c5e3a' },
+        quadrille: true,
         jouable: () => true,
         // À l'Othello, un coup est une CASE : pas de pièce à choisir d'abord.
         destinationSeule: true,
@@ -159,6 +167,7 @@ class Plateau extends BaseGame {
     render() {
         const n = this.ad.taille;
         const co = this.ad.couleurs;
+        const quadrille = this.ad.quadrille ? `gap: 1px; background: ${co.bord};` : '';
         this.container.innerHTML = `
             <style>
                 .pl-wrap {
@@ -217,6 +226,11 @@ class Plateau extends BaseGame {
                     border: 6px solid ${co.bord}; border-radius: 10px;
                     box-shadow: var(--shadow-md); touch-action: manipulation;
                     box-sizing: border-box;
+                    /* Les filets du quadrillage sont la GOUTTIÈRE de la grille,
+                       laissant voir le bord : les cases restent rigoureusement
+                       de même taille, ce qu'un liseré posé sur chacune ne
+                       garantirait pas. */
+                    ${quadrille}
                 }
                 .pl-case {
                     position: relative; border: 0; padding: 0; margin: 0;

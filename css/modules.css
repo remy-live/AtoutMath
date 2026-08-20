@@ -921,6 +921,8 @@
 }
 .device-simulator #game-progress-text,
 .tablet-simulator #game-progress-text { font-size: .68rem; }
+.device-simulator .pg-unite,
+.tablet-simulator .pg-unite { display: none; }
 .device-simulator #game-timer,
 .tablet-simulator #game-timer { grid-area: chrono; width: 38px; height: 38px; margin: 0; }
 .device-simulator .game-header-actions,
@@ -975,6 +977,9 @@
     }
     #game-progress-bar { border-radius: 9px; }
     #game-header #game-progress-text { font-size: .68rem; letter-spacing: -.02em; }
+    /* « 0 / 24 paires » dans soixante-douze pixels : le mot débordait des deux
+       côtés et l'on ne lisait plus le compte. Le compte suffit. */
+    .pg-unite { display: none; }
     #game-timer { grid-area: chrono; width: 34px; height: 34px; font-size: .8rem; margin: 0; flex-shrink: 0; }
     .game-header-actions { grid-area: actions; gap: 5px; flex-shrink: 0; justify-content: flex-end; margin: 0; }
     .game-icon-btn { width: 34px; height: 34px; font-size: 1rem; padding: 4px; }

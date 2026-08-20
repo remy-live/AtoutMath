@@ -46,17 +46,24 @@ class Relier extends BaseGame {
     }
 
     render() {
+        // LE PRÉFIXE EST `rp-`, ET C'EST UNE CICATRICE. Il était `rl-`, qui
+        // appartient déjà aux NOMBRES RELATIFS dans `css/modules.css` : le
+        // `.rl-scene` de la droite graduée y porte un fond, un liseré et un
+        // arrondi de quatorze pixels, et cette grille les héritait sans que
+        // personne l'ait demandé. Rémy : « je ne vois pas l'intérêt de faire un
+        // cadre aux bords arrondis autour de la grille ». Il n'y en avait
+        // aucun ; c'était le décor du voisin.
         this.container.innerHTML = `
             <style>
-                .rl-wrap {
+                .rp-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
                     width: 100%; height: 100%; padding: 8px 10px 12px; box-sizing: border-box;
                     color: var(--text-main); overflow-y: auto; container-type: size;
                     min-height: 0; user-select: none; -webkit-user-select: none;
                 }
-                .rl-tete { text-align: center; flex: 0 0 auto; }
-                .rl-titre { font-weight: 800; font-size: clamp(14px, 3.4cqw, 19px); }
-                .rl-consigne {
+                .rp-tete { text-align: center; flex: 0 0 auto; }
+                .rp-titre { font-weight: 800; font-size: clamp(14px, 3.4cqw, 19px); }
+                .rp-consigne {
                     color: var(--text-muted); font-size: clamp(11px, 2.6cqw, 13px);
                     line-height: 1.35; max-width: 620px;
                 }
@@ -67,54 +74,54 @@ class Relier extends BaseGame {
                    pour tenir dedans, se réduisait à un timbre au milieu de deux
                    grandes marges blanches. Rémy : « la grille pourrait être bien
                    plus grande ». */
-                .rl-scene {
+                .rp-scene {
                     flex: 1 1 auto; width: 100%; min-height: min(92cqw, 420px);
                     display: flex; align-items: center; justify-content: center;
                 }
-                .rl-svg { width: 100%; height: 100%; max-width: 520px; touch-action: none; }
+                .rp-svg { width: 100%; height: 100%; max-width: 520px; touch-action: none; }
 
-                .rl-case { fill: var(--bg-panel); stroke: var(--border); stroke-width: .6; }
-                .rl-case--vide { fill: color-mix(in srgb, var(--danger) 10%, var(--bg-panel)); }
+                .rp-case { fill: var(--bg-panel); stroke: var(--border); stroke-width: .6; }
+                .rp-case--vide { fill: color-mix(in srgb, var(--danger) 10%, var(--bg-panel)); }
                 /* Le trait est GROS : c'est un tuyau qu'on suit des yeux, pas un
                    trait de crayon. Les bouts ronds font les virages sans angle. */
-                .rl-trait { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-                .rl-borne { pointer-events: none; }
-                .rl-borne--active circle { stroke-width: .9; }
-                .rl-cible { fill: transparent; cursor: pointer; }
+                .rp-trait { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+                .rp-borne { pointer-events: none; }
+                .rp-borne--active circle { stroke-width: .9; }
+                .rp-cible { fill: transparent; cursor: pointer; }
 
-                .rl-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
-                .rl-btn {
+                .rp-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
+                .rp-btn {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 12px; font-size: .85rem; min-height: 38px;
                 }
-                .rl-btn--ok { border-color: var(--primary); background: var(--primary); color: #fff; }
-                .rl-compte {
+                .rp-btn--ok { border-color: var(--primary); background: var(--primary); color: #fff; }
+                .rp-compte {
                     font-weight: 800; font-size: .9rem; background: var(--bg-hover);
                     border-radius: 999px; padding: 5px 14px;
                 }
-                .rl-note {
+                .rp-note {
                     min-height: 2.3em; text-align: center; font-size: .85rem; line-height: 1.35;
                     color: var(--text-muted); max-width: 620px; flex: 0 0 auto;
                 }
-                .rl-note--ok { color: var(--success); font-weight: 700; }
-                .rl-note--ko { color: var(--danger); font-weight: 600; }
+                .rp-note--ok { color: var(--success); font-weight: 700; }
+                .rp-note--ko { color: var(--danger); font-weight: 600; }
             </style>
-            <div class="rl-wrap">
-                <div class="rl-tete">
-                    <div class="rl-titre">Relie les points</div>
-                    <div class="rl-consigne" data-consigne></div>
+            <div class="rp-wrap">
+                <div class="rp-tete">
+                    <div class="rp-titre">Relie les points</div>
+                    <div class="rp-consigne" data-consigne></div>
                 </div>
-                <div class="rl-scene"><svg class="rl-svg" data-svg preserveAspectRatio="xMidYMid meet"></svg></div>
-                <div class="rl-barre">
-                    <span class="rl-compte" data-compte></span>
-                    <button type="button" class="rl-btn rl-btn--ok" data-verifier>✓ Vérifier</button>
-                    <button type="button" class="rl-btn" data-marques></button>
-                    <button type="button" class="rl-btn" data-aide>💡 Aide-moi</button>
-                    <button type="button" class="rl-btn" data-effacer>↺ Tout effacer</button>
-                    <button type="button" class="rl-btn" data-neuf>Autre grille</button>
+                <div class="rp-scene"><svg class="rp-svg" data-svg preserveAspectRatio="xMidYMid meet"></svg></div>
+                <div class="rp-barre">
+                    <span class="rp-compte" data-compte></span>
+                    <button type="button" class="rp-btn rp-btn--ok" data-verifier>✓ Vérifier</button>
+                    <button type="button" class="rp-btn" data-marques></button>
+                    <button type="button" class="rp-btn" data-aide>💡 Aide-moi</button>
+                    <button type="button" class="rp-btn" data-effacer>↺ Tout effacer</button>
+                    <button type="button" class="rp-btn" data-neuf>Autre grille</button>
                 </div>
-                <div class="rl-note" data-note></div>
+                <div class="rp-note" data-note></div>
             </div>`;
 
         this.svg = this.container.querySelector('[data-svg]');
@@ -181,7 +188,7 @@ class Relier extends BaseGame {
                 // Une case restée vide alors que tout est relié se signale : sans
                 // cela, l'élève relit sa grille dix fois sans voir le trou.
                 const vide = this.fini && trous.has(clef(x, y));
-                html += `<rect class="rl-case ${vide ? 'rl-case--vide' : ''}"
+                html += `<rect class="rp-case ${vide ? 'rp-case--vide' : ''}"
                     x="${x * c}" y="${y * c}" width="${c}" height="${c}"></rect>`;
             }
         }
@@ -191,7 +198,7 @@ class Relier extends BaseGame {
             const t = this.etat.traces[p.id];
             if (t.length < 2) return;
             const d = t.map(([x, y], i) => `${i ? 'L' : 'M'}${x * c + c / 2} ${y * c + c / 2}`).join(' ');
-            html += `<path class="rl-trait" d="${d}" stroke="${encre(p)}"
+            html += `<path class="rp-trait" d="${d}" stroke="${encre(p)}"
                 stroke-width="${c * 0.42}" opacity="${avecCouleur ? .95 : .55}"></path>`;
         });
 
@@ -202,7 +209,7 @@ class Relier extends BaseGame {
             [p.a, p.b].forEach(([x, y]) => {
                 const cx = x * c + c / 2, cy = y * c + c / 2;
                 const forme = avecSymbole ? p.id : 0;
-                html += `<g class="rl-borne ${p.id === this.enCours ? 'rl-borne--active' : ''}">
+                html += `<g class="rp-borne ${p.id === this.enCours ? 'rp-borne--active' : ''}">
                     <circle cx="${cx}" cy="${cy}" r="${c * 0.36}"
                         fill="var(--bg-panel)" stroke="${encre(p)}" stroke-width="${c * 0.06}"/>
                     ${marqueSvg(forme, cx, cy, c * 0.23, { fond: encre(p) })}
@@ -213,7 +220,7 @@ class Relier extends BaseGame {
         // Les cibles du doigt, par-dessus tout : une case entière par case.
         for (let y = 0; y < g.h; y++) {
             for (let x = 0; x < g.l; x++) {
-                html += `<rect class="rl-cible" data-x="${x}" data-y="${y}"
+                html += `<rect class="rp-cible" data-x="${x}" data-y="${y}"
                     x="${x * c}" y="${y * c}" width="${c}" height="${c}"></rect>`;
             }
         }
@@ -365,7 +372,7 @@ class Relier extends BaseGame {
     note(html, ton) {
         if (!this.noteEl) return;
         this.noteEl.innerHTML = html || '';
-        this.noteEl.className = 'rl-note' + (ton ? ` rl-note--${ton}` : '');
+        this.noteEl.className = 'rp-note' + (ton ? ` rp-note--${ton}` : '');
     }
 
     // --- La démonstration ---------------------------------------------------
