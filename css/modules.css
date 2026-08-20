@@ -5829,3 +5829,191 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     .fb-pave { grid-template-columns: repeat(3, auto); }
     .fb-touche--ok { grid-column: span 3; }
 }
+
+/* ═══ POSER UNE ADDITION DE FRACTIONS ═════════════════════════════════════════
+   Rémy, après avoir essayé les bandes : « on va proposer l'addition de
+   fraction sans support visuel, car on peut tomber sur des choses
+   incohérentes ». L'écran est donc un CAHIER : quatre lignes qui s'écrivent
+   dans l'ordre, et rien d'autre. (Préfixe `fa-` : `fp-` appartient déjà à
+   l'aperçu des fiches imprimées, où `.fp-ligne` est une réglure en position
+   absolue — toutes les lignes du calcul se posaient au même endroit.) Une ligne juste se verrouille en vert et la
+   suivante s'ouvre — on voit le raisonnement se construire, et on sait
+   exactement où il s'arrête. */
+.fa-ecran {
+    width: 100%; height: 100%; min-height: 0; display: flex;
+    container-type: size; container-name: fpose;
+}
+.fa-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(6px, 1.6cqh, 16px);
+    width: 100%; height: 100%; min-height: 0; padding: 10px; box-sizing: border-box;
+    color: var(--text-main); overflow-y: auto;
+}
+.fa-scene {
+    flex: 1 1 auto; min-height: 0; width: 100%; max-width: 720px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: safe center; gap: clamp(4px, 1.2cqh, 12px); overflow-y: auto;
+}
+.fa-panneau { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+/* L'ÉNONCÉ D'UN PROBLÈME. « Des énoncés très simples » : une phrase, deux
+   fractions en gras, une question. Il ne doit jamais devenir l'exercice. */
+.fa-enonce {
+    margin: 0; text-align: center; max-width: 34em; line-height: 1.4;
+    font-size: clamp(.82rem, max(2.6cqw, 2.6cqh), 1.05rem); color: var(--text-main);
+    background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 12px; padding: 7px 12px;
+}
+.fa-enonce b { color: var(--primary); font-variant-numeric: tabular-nums; }
+
+/* LES LIGNES DU CAHIER, l'une sous l'autre. Sans cette règle, elles se
+   posaient toutes au même endroit : un div nu dans un parent en ligne n'a ni
+   largeur ni direction, et le calcul se superposait au pavé. */
+.fa-lignes {
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: clamp(2px, .8cqh, 8px); width: 100%; min-width: 0;
+}
+.fa-depart, .fa-ligne-calc, .fa-ligne-commun {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(4px, 1.4cqw, 12px); flex-wrap: wrap;
+}
+.fa-depart { font-size: clamp(1.2rem, max(4cqw, 4cqh), 2.2rem); font-weight: 800; }
+.fa-op { font-weight: 900; color: var(--primary); }
+.fa-op--mini { font-size: .8em; }
+.fa-accolade { color: var(--text-muted); font-weight: 700; padding: 0 .1em; }
+
+/* LA FRACTION EN COLONNES, y compris quand elle contient des cases : le trait
+   court sur toute la largeur des deux étages, sinon il pend sous rien. */
+.fa-frac {
+    display: inline-flex; flex-direction: column; align-items: stretch;
+    vertical-align: middle; line-height: 1.15; font-weight: 800;
+    font-size: clamp(1rem, max(3.2cqw, 3.4cqh), 1.8rem);
+}
+.fa-num, .fa-den {
+    padding: .05em .3em; text-align: center; white-space: nowrap;
+    display: flex; align-items: center; justify-content: center; gap: .12em;
+}
+.fa-den { border-top: 3px solid currentColor; }
+/* Le dénominateur commun tant qu'il n'est pas trouvé : un point d'interrogation
+   pâle. Écrit d'avance dans les lignes du dessous, il donnait la réponse à la
+   première question. */
+.fa-commun-vu { color: var(--text-muted); opacity: .7; }
+.fa-commun-vu--su { color: inherit; opacity: 1; }
+
+/* Les lignes du calcul. Celle qui n'est pas encore ouverte reste VISIBLE mais
+   éteinte : on doit voir où l'on va, sinon on ne sait pas combien il reste. */
+.fa-ligne {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 100%; padding: clamp(3px, .9cqh, 8px) 6px; border-radius: 12px;
+    border: 2px solid transparent; transition: opacity .25s ease, border-color .2s ease;
+}
+.fa-ligne--attente { opacity: .32; pointer-events: none; }
+.fa-ligne--active { border-color: var(--primary);
+                    background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.fa-ligne--active.fa-ligne--faite { border-color: color-mix(in srgb, var(--success) 45%, transparent); }
+.fa-ligne--faite { border-color: color-mix(in srgb, var(--success) 45%, transparent);
+                   background: color-mix(in srgb, var(--success) 7%, transparent); }
+.fa-ligne--non { animation: fa-non .34s; }
+@keyframes fa-non {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-7px); } 75% { transform: translateX(7px); }
+}
+@media (prefers-reduced-motion: reduce) { .fa-ligne--non { animation: none; } }
+.fa-etiquette {
+    font-size: clamp(.6rem, max(1.9cqw, 1.9cqh), .78rem); font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em;
+}
+.fa-ligne-commun { font-size: clamp(.8rem, max(2.6cqw, 2.6cqh), 1.05rem); font-weight: 700; }
+
+.fa-case {
+    min-width: 1.7em; min-height: 1.3em; padding: 0 .12em;
+    border: 2px dashed var(--border); border-radius: 8px; background: transparent;
+    font: inherit; font-weight: 900; color: var(--primary); cursor: pointer;
+    line-height: 1.15; -webkit-tap-highlight-color: transparent;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.fa-case:hover { background: var(--bg-hover); }
+.fa-case--active { border-color: var(--primary); border-style: solid;
+                   background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.fa-case--pleine { border-style: solid; }
+.fa-case--juste { color: var(--success); border-color: var(--success); border-style: solid; }
+.fa-case--faux { color: var(--danger); border-color: var(--danger); border-style: solid; }
+.fa-val { display: inline-block; min-width: 1ch; }
+.fa-case--active .fa-val::after { content: '_'; opacity: .5; }
+.fa-case--pleine .fa-val::after { content: none; }
+
+.fa-aide-ppcm {
+    border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+    border-radius: 999px; padding: 3px 11px; font: inherit; font-size: .82em;
+    font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.fa-aide-ppcm:hover { background: var(--bg-hover); border-color: var(--primary); }
+
+/* --- LA TABLE DE PYTHAGORE, l'aide au PPCM ---
+   « On peut lui montrer la table de Pythagore, ou on fait clignoter les lignes
+   et colonnes des dénominateurs. » La ligne des 4 et celle des 3 se
+   rencontrent en 12, 24, 36 : le premier rendez-vous est le dénominateur
+   commun. Un dessin qui, lui, ne se dégrade jamais. */
+.fa-table { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fa-table[hidden] { display: none; }
+.fa-table-mot {
+    margin: 0; text-align: center; max-width: 40em; line-height: 1.35;
+    font-size: clamp(.68rem, max(2.2cqw, 2.2cqh), .88rem); color: var(--text-muted);
+}
+.fa-table-boite { max-width: 100%; overflow-x: auto; }
+.fa-pytha {
+    border-collapse: collapse; font-variant-numeric: tabular-nums;
+    font-size: clamp(.52rem, max(1.7cqw, 1.7cqh), .8rem);
+}
+.fa-pytha th, .fa-pytha td {
+    border: 1px solid var(--border); padding: .18em .35em; text-align: center;
+    min-width: 1.9em; color: var(--text-muted);
+}
+.fa-pytha th { font-weight: 900; color: var(--text-main); background: var(--bg-hover); }
+/* La ligne et la colonne d'un dénominateur s'allument — chacune sa teinte,
+   pour qu'on voie laquelle appartient à qui. */
+.fa-c-a { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--text-main); }
+.fa-c-b { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--text-main); }
+.fa-c-a.fa-c-b { background: color-mix(in srgb, var(--primary) 20%,
+                 color-mix(in srgb, var(--warning) 30%, transparent)); }
+/* Un nombre présent dans LES DEUX tables : un rendez-vous. */
+.fa-c-rdv { outline: 2px solid var(--success); outline-offset: -2px; font-weight: 900;
+            color: var(--success); }
+/* Et le premier de tous : c'est lui, le dénominateur commun. */
+.fa-c-ppcm { background: var(--success); color: #fff; outline-color: #065f46;
+             animation: fa-clignote 1.1s ease-in-out 3; }
+@keyframes fa-clignote { 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .fa-c-ppcm { animation: none; } }
+
+/* --- Le pavé --- */
+.fa-pave {
+    display: grid; grid-template-columns: repeat(6, auto); gap: clamp(3px, .9cqh, 7px);
+    justify-content: center;
+}
+.fa-touche {
+    min-width: clamp(36px, 8cqw, 54px); min-height: clamp(32px, 5.5cqh, 48px);
+    border: 2px solid var(--border); border-radius: 10px; background: var(--bg-panel);
+    color: var(--text-main); font-size: clamp(.9rem, 3cqw, 1.25rem); font-weight: 800;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.fa-touche:hover { background: var(--bg-hover); }
+.fa-touche:active { transform: scale(.94); }
+.fa-touche--ok {
+    grid-column: span 2; background: var(--primary); border-color: var(--primary); color: #fff;
+    font-size: clamp(.74rem, 2.3cqw, .95rem);
+}
+.fa-touche--ok:disabled { opacity: .45; cursor: default; }
+.fa-note {
+    min-height: 2.2em; max-width: 40em; text-align: center; line-height: 1.3;
+    font-size: clamp(.7rem, max(2.2cqw, 2.2cqh), .9rem); color: var(--danger); font-weight: 600;
+}
+
+/* En paysage large, le cahier et le pavé se mettent côte à côte : le calcul
+   descend sur cinq lignes, et c'est la hauteur qui manque en premier. */
+@container fpose (min-aspect-ratio: 7/5) and (min-width: 700px) {
+    .fa-layout { flex-direction: row; align-items: stretch; gap: 18px; }
+    .fa-scene { flex: 1 1 auto; }
+    .fa-panneau { justify-content: center; flex: 0 0 auto; }
+    .fa-pave { grid-template-columns: repeat(3, auto); }
+    .fa-touche--ok { grid-column: span 3; }
+}

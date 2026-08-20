@@ -19,6 +19,7 @@ import {
     pgcd, ppcm, simplifier, estIrreductible,
     tirerEgalite, etapesEgalite, verifierEgalite,
     NIVEAUX_SOMME, estNiveauSomme, tirerDenominateurs, tirerSomme, etapesSomme,
+    tirerCalcul, etapesCalcul, multiplesCommuns,
     bande, recoupage
 } from '../js/core/fractionsEquivalentes.js';
 import { makeRng } from '../js/core/ids.js';
@@ -299,4 +300,77 @@ test('LE RECOUPAGE COLLE AUX SOMMES TIRÉES : les deux bandes se superposent', (
             });
         }
     });
+});
+
+// --- La table de Pythagore, l'aide au PPCM -----------------------------------
+
+test('LA TABLE DE PYTHAGORE MONTRE LE RENDEZ-VOUS DES DEUX DÉNOMINATEURS', () => {
+    // L'aide que Rémy a demandée : « on peut lui montrer la table de Pythagore,
+    // ou on fait clignoter les lignes et colonnes des dénominateurs ». La
+    // ligne des 4 et celle des 3 se rencontrent en 12, 24, 36 — et le premier
+    // de ces rendez-vous EST le dénominateur commun.
+    const t = multiplesCommuns(4, 3);
+    assert.deepEqual(t.multiplesA.slice(0, 4), [4, 8, 12, 16]);
+    assert.deepEqual(t.multiplesB.slice(0, 4), [3, 6, 9, 12]);
+    assert.deepEqual(t.communs, [12, 24]);
+    assert.equal(t.ppcm, 12);
+    // Le premier commun est TOUJOURS le PPCM : c'est ce que l'élève lit.
+    for (let a = 2; a <= 10; a++) {
+        for (let b = 2; b <= 10; b++) {
+            const info = multiplesCommuns(a, b);
+            assert.equal(info.ppcm, ppcm(a, b), `${a} et ${b}`);
+            assert.ok(info.communs.length, `${a} et ${b} ne se rencontrent jamais`);
+            assert.equal(info.communs[0], ppcm(a, b));
+        }
+    }
+});
+
+test('ENTRE 2 ET 10, LE PPCM SE LIT TOUJOURS DANS LA TABLE', () => {
+    // C'est la raison de la borne : un dénominateur qui n'y figure pas rendrait
+    // l'aide muette au moment précis où elle sert. 9 × 10 = 90 y est encore.
+    for (let a = 2; a <= 10; a++) {
+        for (let b = 2; b <= 10; b++) {
+            assert.ok(ppcm(a, b) <= 100, `${a} et ${b} : PPCM hors table`);
+        }
+    }
+});
+
+// --- Additions ET soustractions ----------------------------------------------
+
+test('UNE SOUSTRACTION NE DESCEND JAMAIS SOUS ZÉRO', () => {
+    // « Tu peux mélanger addition et soustraction de fraction (sans nombres
+    // relatifs). » Le négatif est un autre chapitre.
+    NIVEAUX_SOMME.forEach(({ id }) => {
+        for (let i = 0; i < 60; i++) {
+            const c = tirerCalcul(makeRng(`diff${id}${i}`), { niveau: id, operation: 'difference' });
+            assert.equal(c.signe, '−');
+            assert.equal(c.brut.n, c.aReduit.n - c.bReduit.n);
+            assert.ok(c.brut.n > 0, `${c.a.n}/${c.a.d} − ${c.b.n}/${c.b.d} passe sous zéro`);
+            // La valeur exacte, sans passer par les entiers.
+            const attendu = c.a.n / c.a.d - c.b.n / c.b.d;
+            assert.ok(Math.abs(c.reduit.n / c.reduit.d - attendu) < 1e-9);
+        }
+    });
+});
+
+test('les deux fractions de départ sont irréductibles, quelle que soit l\'opération', () => {
+    ['somme', 'difference', 'les-deux'].forEach(op => {
+        NIVEAUX_SOMME.forEach(({ id }) => {
+            for (let i = 0; i < 30; i++) {
+                const c = tirerCalcul(makeRng(`irr${op}${id}${i}`), { niveau: id, operation: op });
+                assert.ok(estIrreductible(c.a.n, c.a.d), `${c.a.n}/${c.a.d}`);
+                assert.ok(estIrreductible(c.b.n, c.b.d), `${c.b.n}/${c.b.d}`);
+                assert.ok(c.a.d <= 10 && c.b.d <= 10);
+            }
+        });
+    });
+});
+
+test('les étapes disent l\'opération qu\'on fait vraiment', () => {
+    const somme = tirerCalcul(makeRng('e+'), { niveau: 'ppcm', operation: 'somme' });
+    assert.ok(etapesCalcul(somme).join(' ').includes('additionne'));
+    const diff = tirerCalcul(makeRng('e-'), { niveau: 'ppcm', operation: 'difference' });
+    const texte = etapesCalcul(diff).join(' ');
+    assert.ok(texte.includes('retire'), texte);
+    assert.ok(texte.includes('−'), texte);
 });

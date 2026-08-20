@@ -18,7 +18,7 @@
 
 import { makeItem } from '../items.js';
 import {
-    tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerSomme, etapesSomme
+    tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerCalcul
 } from '../fractionsEquivalentes.js';
 
 /** Une fraction en colonne, telle qu'on l'écrit au tableau. */
@@ -104,7 +104,7 @@ export const fracEgaliteGenerator = {
     }
 };
 
-// --- Additionner, marche par marche ------------------------------------------
+// --- Poser une addition (ou une soustraction) ---------------------------------
 
 // COMBIEN DE QUESTIONS AVANT DE MONTER D'UNE MARCHE.
 //
@@ -116,9 +116,77 @@ const PAR_MARCHE = 2;
 
 const NIVEAU = Object.fromEntries(NIVEAUX_SOMME.map(n => [n.id, n]));
 
+/** La marche : celle qu'on a fixée, ou celle où en est la série. */
+function marcheDe(params, index) {
+    const choisi = params.niveau || 'progressif';
+    if (choisi !== 'progressif') return choisi;
+    return NIVEAUX_SOMME[Math.min(NIVEAUX_SOMME.length - 1,
+        Math.floor((index || 0) / PAR_MARCHE))].id;
+}
+
+/** Le corps d'un item de calcul posé — partagé avec les problèmes. */
+function itemDeCalcul(c, rng, { generatorId, skillId, marche, enonce = '', question = '' }) {
+    const op = c.signe === '−' ? '−' : '+';
+    const reponse = c.simplifie
+        ? `${c.reduit.n}/${c.reduit.d}`
+        : `${c.brut.n}/${c.brut.d}`;
+    const texte = `${c.a.n}/${c.a.d} ${op} ${c.b.n}/${c.b.d} = ?`;
+    return makeItem({
+        seed: rng.seed, generatorId, skillId,
+        answerKind: 'text',
+        prompt: {
+            text: enonce ? `${enonce} (${texte})` : texte,
+            html: `<div class="frac-egalite">
+                    ${enonce ? `<p class="frac-enonce">${enonce}</p>` : ''}
+                    ${fracHtml(c.a.n, c.a.d)}
+                    <span class="frac-signe">${op}</span>
+                    ${fracHtml(c.b.n, c.b.d)}
+                    <span class="frac-signe">=</span>
+                    <span class="frac-trou" aria-label="résultat à écrire">?</span>
+                   </div>`
+        },
+        answer: reponse,
+        hints: [
+            (NIVEAU[marche] || {}).aide || '',
+            `Cherche un nombre à la fois dans la table de ${c.a.d} et dans celle de ${c.b.d}.`,
+            ...c.etapes
+        ].filter(Boolean),
+        explanation: c.etapes.join(' '),
+        explicationPapier: `${c.a.n}/${c.a.d} ${op} ${c.b.n}/${c.b.d} = `
+            + `${c.aReduit.n}/${c.commun} ${op} ${c.bReduit.n}/${c.commun} = ${c.brut.n}/${c.commun}`
+            + (c.simplifie ? ` = ${reponse}.` : '.'),
+        difficulty: 2 + NIVEAUX_SOMME.findIndex(n => n.id === marche),
+        meta: { calcul: c, marche, enonce, question }
+    });
+}
+
+const PARAM_OPERATION = {
+    id: 'operation', type: 'select', label: 'L\'opération', default: 'somme',
+    aide: 'La soustraction ne demande rien de plus au dénominateur — c\'est exactement le même '
+        + 'travail — mais elle empêche de répondre au flair : on ne peut plus additionner deux '
+        + 'petits nombres au hasard et tomber juste. Le résultat reste toujours positif : pas de '
+        + 'nombres relatifs ici.',
+    options: [
+        { value: 'somme', label: 'Additions seulement' },
+        { value: 'difference', label: 'Soustractions seulement' },
+        { value: 'les-deux', label: 'Les deux mélangées' }
+    ]
+};
+
+const PARAM_SIMPLIFIER = {
+    id: 'simplifier', type: 'select', label: 'Simplifier le résultat', default: 'non',
+    aide: 'Au départ, on s\'arrête au résultat brut : mettre au même dénominateur est déjà tout '
+        + 'l\'exercice, et simplifier par-dessus fait rater les deux. La ligne s\'ajoute quand '
+        + 'la mise au même dénominateur est acquise.',
+    options: [
+        { value: 'non', label: 'Non — on s\'arrête au résultat' },
+        { value: 'oui', label: 'Oui — une ligne de plus' }
+    ]
+};
+
 export const fracSommeProgressiveGenerator = {
     id: 'frac.somme-progressive',
-    label: 'Additionner des fractions (progressif)',
+    label: 'Additionner des fractions (calcul posé)',
     skills: ['num.frac.denominateur-commun'],
     answerKinds: ['text'],
     ecrit: true,
@@ -135,48 +203,115 @@ export const fracSommeProgressiveGenerator = {
                 ...NIVEAUX_SOMME.map(n => ({ value: n.id, label: n.nom }))
             ]
         },
+        PARAM_OPERATION,
+        PARAM_SIMPLIFIER,
         {
-            id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 4, max: 20,
-            aide: 'Plus les dénominateurs sont grands, plus le découpage commun compte de parts '
-                + '— et plus la bande dessinée devient fine.'
+            id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10,
+            aide: 'On ne dépasse pas dix : l\'aide est la table de Pythagore, et elle s\'arrête '
+                + 'à dix. Un dénominateur qui n\'y figure pas rendrait l\'aide muette au moment '
+                + 'où elle sert.'
         }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choisi = params.niveau || 'progressif';
-        // La marche : soit celle qu'on a fixée, soit celle où en est la série.
-        const marche = choisi === 'progressif'
-            ? NIVEAUX_SOMME[Math.min(NIVEAUX_SOMME.length - 1,
-                Math.floor((ctx.index || 0) / PAR_MARCHE))].id
-            : choisi;
-
-        const s = tirerSomme(rng, { niveau: marche, maxDen: Number(params.maxDen) || 12 });
-        const reponse = `${s.reduit.n}/${s.reduit.d}`;
-
-        return makeItem({
-            seed: rng.seed, generatorId: 'frac.somme-progressive',
+        const marche = marcheDe(params, ctx.index);
+        const c = tirerCalcul(rng, {
+            niveau: marche,
+            maxDen: Math.min(10, Number(params.maxDen) || 10),
+            operation: params.operation || 'somme'
+        });
+        c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
+        return itemDeCalcul(c, rng, {
+            generatorId: 'frac.somme-progressive',
             skillId: 'num.frac.denominateur-commun',
-            answerKind: 'text',
-            prompt: {
-                text: `${s.a.n}/${s.a.d} + ${s.b.n}/${s.b.d} = ?`,
-                html: `<div class="frac-egalite">
-                        ${fracHtml(s.a.n, s.a.d)}
-                        <span class="frac-signe">+</span>
-                        ${fracHtml(s.b.n, s.b.d)}
-                        <span class="frac-signe">=</span>
-                        <span class="frac-trou" aria-label="résultat à écrire">?</span>
-                       </div>`
-            },
-            answer: reponse,
-            hints: [(NIVEAU[marche] || {}).aide || '', ...etapesSomme(s)].filter(Boolean),
-            explanation: etapesSomme(s).join(' '),
-            // Sur le papier, il n'y a pas de bandes à recouper : la correction
-            // ne parle donc que de nombres.
-            explicationPapier: `${s.a.n}/${s.a.d} + ${s.b.n}/${s.b.d} = `
-                + `${s.aReduit.n}/${s.commun} + ${s.bReduit.n}/${s.commun} = ${s.brut.n}/${s.commun}`
-                + (s.aSimplifiable ? ` = ${reponse}.` : '.'),
-            difficulty: 2 + NIVEAUX_SOMME.findIndex(n => n.id === marche),
-            meta: { somme: s, marche }
+            marche
+        });
+    }
+};
+
+// --- Les mêmes calculs, mais en histoires -------------------------------------
+//
+// Rémy : « on propose un exercice où il y a des énoncés très simples où on
+// additionne ou soustrait des fractions ». TRÈS SIMPLES est la consigne, et
+// c'est la difficile : un énoncé de problème ajoute une lecture, et la lecture
+// ne doit pas devenir l'exercice. Une phrase, deux fractions, une question —
+// et surtout un CONTEXTE où la fraction se voit (une tarte, un bidon, un
+// trajet), jamais un habillage décoratif posé sur un calcul.
+
+const HISTOIRES = [
+    {
+        quoi: 'tarte', unite: 'de la tarte',
+        somme: (a, b) => `Léa mange ${a} de la tarte, puis ${b}. Quelle part de la tarte a-t-elle mangée&nbsp;?`,
+        difference: (a, b) => `Il restait ${a} de la tarte. On en mange ${b}. Quelle part reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'bidon', unite: 'de litre',
+        somme: (a, b) => `Un arrosoir contient ${a} de litre. On y verse ${b} de litre. Combien contient-il&nbsp;?`,
+        difference: (a, b) => `Un bidon contient ${a} de litre. On en verse ${b} de litre. Combien reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'trajet', unite: 'du trajet',
+        somme: (a, b) => `Sur son trajet, Malo parcourt ${a} à pied, puis ${b} à vélo. Quelle part du trajet a-t-il faite&nbsp;?`,
+        difference: (a, b) => `Malo doit parcourir ${a} du trajet. Il en a déjà fait ${b}. Quelle part lui reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'ruban', unite: 'de mètre',
+        somme: (a, b) => `On colle bout à bout un ruban de ${a} de mètre et un autre de ${b} de mètre. Quelle longueur obtient-on&nbsp;?`,
+        difference: (a, b) => `Un ruban mesure ${a} de mètre. On en coupe ${b} de mètre. Quelle longueur reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'jardin', unite: 'du jardin',
+        somme: (a, b) => `Papi sème des radis sur ${a} du jardin et des carottes sur ${b}. Quelle part du jardin est semée&nbsp;?`,
+        difference: (a, b) => `${a} du jardin sont semés. Une taupe abîme ${b} du jardin. Quelle part reste semée&nbsp;?`
+    },
+    {
+        quoi: 'journée', unite: 'de l\'heure',
+        somme: (a, b) => `Zoé travaille ${a} d\'heure, puis encore ${b} d\'heure. Combien de temps a-t-elle travaillé&nbsp;?`,
+        difference: (a, b) => `La récréation dure ${a} d\'heure. ${b} d\'heure sont déjà passés. Combien reste-t-il&nbsp;?`
+    }
+];
+
+export const fracProblemeGenerator = {
+    id: 'frac.probleme',
+    label: 'Problèmes de fractions (addition et soustraction)',
+    skills: ['num.frac.denominateur-commun', 'num.probleme.fraction'],
+    answerKinds: ['text'],
+    ecrit: true,
+    fractions: true,
+    params: [
+        {
+            id: 'niveau', type: 'select', label: 'La progression', default: 'progressif',
+            aide: 'Les mêmes quatre marches que le calcul posé — la difficulté est dans les '
+                + 'dénominateurs, pas dans l\'histoire.',
+            options: [
+                { value: 'progressif', label: 'Progressif — les quatre marches à la suite' },
+                ...NIVEAUX_SOMME.map(n => ({ value: n.id, label: n.nom }))
+            ]
+        },
+        { ...PARAM_OPERATION, default: 'les-deux' },
+        PARAM_SIMPLIFIER,
+        { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10 }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const marche = marcheDe(params, ctx.index);
+        const c = tirerCalcul(rng, {
+            niveau: marche,
+            maxDen: Math.min(10, Number(params.maxDen) || 10),
+            operation: params.operation || 'les-deux'
+        });
+        c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
+
+        const h = rng.pick(HISTOIRES);
+        const dire = (f) => `<b>${f.n}/${f.d}</b>`;
+        const enonce = c.signe === '−'
+            ? h.difference(dire(c.a), dire(c.b))
+            : h.somme(dire(c.a), dire(c.b));
+
+        return itemDeCalcul(c, rng, {
+            generatorId: 'frac.probleme',
+            skillId: 'num.frac.denominateur-commun',
+            marche, enonce, question: h.quoi
         });
     }
 };

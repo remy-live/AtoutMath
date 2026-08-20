@@ -12,7 +12,9 @@ import {
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator
 } from '../generators/calcul.js';
 import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../generators/fractions.js';
-import { fracEgaliteGenerator, fracSommeProgressiveGenerator } from '../generators/fractionsEquivalentes.js';
+import {
+    fracEgaliteGenerator, fracSommeProgressiveGenerator, fracProblemeGenerator
+} from '../generators/fractionsEquivalentes.js';
 import { repereGenerator, perimetreGenerator, aireGenerator } from '../generators/geometrie.js';
 import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
@@ -75,7 +77,7 @@ import {
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator,
     fracCompareGenerator, fracAddGenerator, decCompareGenerator,
-    fracEgaliteGenerator, fracSommeProgressiveGenerator,
+    fracEgaliteGenerator, fracSommeProgressiveGenerator, fracProblemeGenerator,
     repereGenerator, perimetreGenerator, aireGenerator,
     // Chapitre « Nombres entiers et décimaux » (6ᵉ)
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
@@ -399,15 +401,19 @@ registerActivity({
     mountOptions: { variante: 'egalite' }
 });
 
+// LE CALCUL POSÉ, sans support visuel : « je ne suis pas convaincu par les
+// bandes pour les fractions, on va proposer l'addition de fraction sans
+// support visuel, car on peut tomber sur des choses incohérentes ». Quatre
+// lignes qui s'écrivent dans l'ordre, exactement comme au cahier, et la table
+// de Pythagore en aide pour le dénominateur commun.
 registerActivity({
     id: 'fraction-somme',
-    unite: 'addition',
-    label: 'Additionner des fractions (bandes)',
+    unite: 'calcul',
+    label: 'Poser une addition de fractions',
     accepts: ['text'],
-    requiresMeta: ['somme'],
+    requiresMeta: ['calcul'],
     supports: { timed: true, autonomous: false, demo: true },
-    load: () => import('./fractionsBandes.js'),
-    mountOptions: { variante: 'somme' }
+    load: () => import('./fractionsPose.js')
 });
 
 // L'ATELIER DE GÉOMÉTRIE : règle, équerre, compas et rapporteur, empruntés au

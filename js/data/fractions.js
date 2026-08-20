@@ -68,32 +68,71 @@ export const fractionsExercises = [
             + 'chercher le facteur au lieu de le lire.'
     },
     {
-        // « Un exercice d'addition de fractions progressif. Avec d'abord des
-        // dénominateurs multiples puis après trouver le PPCM. » Quatre marches,
-        // et chacune n'ajoute qu'UNE difficulté — le noyau vérifie la propriété
-        // de chaque marche au tirage, au lieu d'espérer qu'elle tombe.
+        // « UN EXERCICE D'ADDITION DE FRACTIONS PROGRESSIF », puis, après essai
+        // des bandes : « je ne suis pas convaincu par les bandes pour les
+        // fractions, on va proposer l'addition de fraction sans support visuel,
+        // car on peut tomber sur des choses incohérentes ». Il a raison : passé
+        // une vingtaine de parts, le dessin devient une hachure — une image qui
+        // cesse de montrer au moment où le calcul devient difficile n'aide
+        // personne.
         //
-        // « Comment rendre cela visuel ? » : l'élève tape un dénominateur
-        // commun et les deux bandes se recoupent sous ses yeux. 12 pour des
-        // tiers et des quarts : tout s'aligne. 5 : les traits s'affichent en
-        // rouge, sans rencontrer un seul trait existant. La bande lui répond
-        // avant l'écran.
-        id: 'frac-somme-bandes', status: STATUS.TEST, title: 'Additionner les Bandes',
+        // L'addition se POSE donc, ligne par ligne, sur le modèle qu'il a écrit
+        // lui-même : le dénominateur commun, par quoi multiplier chaque
+        // fraction, les deux fractions converties, puis le calcul. Chaque ligne
+        // se valide avant que la suivante s'ouvre.
+        //
+        // L'AIDE EST LA TABLE DE PYTHAGORE — son idée : la ligne des 4 et celle
+        // des 3 se rencontrent en 12, et le premier rendez-vous est le
+        // dénominateur commun. C'est aussi pour elle que les dénominateurs
+        // restent entre 2 et 10.
+        id: 'frac-somme-posee', status: STATUS.TEST, title: 'Poser une Addition de Fractions',
         cree: '2026-08-20',
-        consignePapier: 'Additionne les deux fractions et simplifie le résultat.',
+        consignePapier: 'Mets au même dénominateur, puis calcule.',
         colonnesPapier: 3,
         generatorId: 'frac.somme-progressive', activityId: 'fraction-somme',
-        params: { niveau: 'progressif', maxDen: 12 },
-        motsClefs: ['PPCM', 'dénominateur commun', 'additionner', 'même dénominateur'],
+        // « Pas besoin de simplifier dans un premier temps » : le résultat brut
+        // suffit, et mettre au même dénominateur est déjà tout l'exercice.
+        params: { niveau: 'progressif', operation: 'somme', simplifier: 'non', maxDen: 10 },
+        motsClefs: ['PPCM', 'dénominateur commun', 'additionner', 'soustraire',
+            'même dénominateur', 'table de Pythagore'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: 'Additionne les deux fractions. Elles ne se rassemblent que si leurs parts '
-            + 'ont la même taille : tape un dénominateur commun et regarde les bandes se '
-            + 'recouper — si les traits tombent à côté, ils s\'affichent en rouge. L\'exercice '
-            + 'monte tout seul : même dénominateur, puis un multiple de l\'autre, puis premiers '
-            + 'entre eux, et enfin le vrai PPCM.'
+        instruction: 'On ne peut additionner que des parts de MÊME taille. Le calcul s\'écrit '
+            + 'ligne par ligne, comme au cahier : d\'abord le dénominateur commun — le bouton '
+            + '« Voir la table de Pythagore » allume la ligne de chaque dénominateur, et le '
+            + 'premier nombre qui appartient aux deux est celui qu\'on cherche —, puis par quoi '
+            + 'multiplier chaque fraction (le MÊME facteur en haut et en bas), puis les deux '
+            + 'fractions converties, puis le calcul. Le réglage « L\'opération » ajoute les '
+            + 'soustractions : le résultat reste toujours positif.'
+    },
+    {
+        // « On propose un exercice où il y a des énoncés très simples où on
+        // additionne ou soustrait des fractions. » TRÈS SIMPLES est la
+        // consigne, et c'est la difficile : un énoncé ajoute une lecture, et la
+        // lecture ne doit pas devenir l'exercice. Une phrase, deux fractions,
+        // une question — et un contexte où la fraction se VOIT (une tarte, un
+        // bidon, un trajet), jamais un habillage posé sur un calcul.
+        //
+        // Le calcul se pose ensuite exactement comme dans l'exercice d'à côté :
+        // c'est la même compétence, on ne la réapprend pas parce qu'elle arrive
+        // dans une histoire.
+        id: 'frac-probleme', status: STATUS.TEST, title: 'Histoires de Fractions',
+        cree: '2026-08-20',
+        consignePapier: 'Lis l\'énoncé, pose le calcul et réponds.',
+        colonnesPapier: 2,
+        generatorId: 'frac.probleme', activityId: 'fraction-somme',
+        params: { niveau: 'progressif', operation: 'les-deux', simplifier: 'non', maxDen: 10 },
+        motsClefs: ['problème', 'énoncé', 'fractions', 'additionner', 'soustraire', 'part'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Une phrase, deux fractions, une question. Le travail est le même que dans '
+            + '« Poser une Addition de Fractions » : trouver le dénominateur commun, convertir '
+            + 'les deux fractions, puis calculer. Ce qui change, c\'est qu\'il faut d\'abord '
+            + 'décider si l\'on ajoute ou si l\'on retire — et l\'histoire le dit.'
     },
     {
         id: 'frac-samurai', status: STATUS.TEST, title: 'Le Samouraï des Fractions',

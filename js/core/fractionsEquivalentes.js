@@ -14,16 +14,24 @@
 // c'est l'appliquer deux fois. Les deux exercices partagent donc ce module —
 // et l'élève qui a compris le premier a la clef du second.
 //
-// COMMENT LE RENDRE VISUEL : DEUX BANDES DE MÊME LONGUEUR.
+// LES BANDES ONT ÉTÉ ESSAYÉES, PUIS RETIRÉES DE L'ADDITION.
 //
-// Une fraction est une longueur, pas un couple de nombres. Deux bandes de la
-// même longueur, coupées l'une en tiers et l'autre en sixièmes, montrent d'un
-// coup ce qu'aucune règle n'explique : on ne peut pas rassembler un tiers et
-// un sixième tant que les morceaux n'ont pas la même taille. RECOUPER la
-// bande des tiers en six montre que le trait de coupe change, pas la longueur
-// — 1/3 et 2/6 occupent exactement la même place. C'est là que la règle
-// devient évidente, et c'est ce que ce module décrit : la position de chaque
-// trait de coupe, avant et après.
+// Deux bandes de même longueur, l'une coupée en tiers et l'autre en sixièmes,
+// montrent bien pourquoi on ne peut pas rassembler des parts de tailles
+// différentes. Mais Rémy, après essai : « je ne suis pas convaincu par les
+// bandes pour les fractions, on va proposer l'addition de fraction sans
+// support visuel, car on peut tomber sur des choses incohérentes ». Il a
+// raison : passé une vingtaine de parts le dessin devient une hachure, et une
+// image qui cesse de montrer au moment où le calcul devient difficile n'aide
+// personne. L'addition se POSE donc, ligne par ligne, comme au cahier.
+//
+// CE QUI REMPLACE L'IMAGE : LA TABLE DE PYTHAGORE. « On peut lui montrer la
+// table de Pythagore, ou on fait clignoter les lignes et colonnes des
+// dénominateurs. » La ligne des 4 et la ligne des 3 se rencontrent en 12, 24,
+// 36 — et le premier de ces rendez-vous EST le dénominateur commun. C'est un
+// dessin qui ne se dégrade jamais, et c'est celui d'une table que l'élève
+// connaît déjà. Voir `multiplesCommuns`. Les bandes restent pour l'égalité à
+// compléter, où deux longueurs suffisent à tout dire.
 //
 // LA PROGRESSION EN QUATRE MARCHES, et chacune n'ajoute qu'UNE difficulté :
 //   1. même dénominateur — rien à changer, on additionne les numérateurs ;
@@ -137,23 +145,24 @@ export function verifierEgalite(e, proposition) {
 export const NIVEAUX_SOMME = [
     {
         id: 'meme', nom: 'Même dénominateur',
-        aide: 'Les deux parts ont déjà la même taille : on additionne les numérateurs, et le '
+        aide: 'Les deux parts ont déjà la même taille : on calcule sur les numérateurs, et le '
             + 'dénominateur ne bouge pas.'
     },
     {
         id: 'multiple', nom: 'Un dénominateur multiple de l\'autre',
-        aide: 'Six est un multiple de trois : on recoupe SEULEMENT la bande des tiers. Une '
-            + 'seule fraction change.'
+        aide: 'Six est déjà dans la table de trois : le dénominateur commun est le plus grand '
+            + 'des deux. Une seule fraction change.'
     },
     {
         id: 'premiers', nom: 'Dénominateurs premiers entre eux',
-        aide: 'Trois et quatre n\'ont aucun diviseur commun : le dénominateur commun est leur '
-            + 'produit, douze. Les deux fractions changent.'
+        aide: 'Trois et quatre n\'ont aucun diviseur commun : leur premier rendez-vous dans les '
+            + 'tables est leur produit, douze. Les deux fractions changent.'
     },
     {
         id: 'ppcm', nom: 'Il faut chercher le PPCM',
-        aide: 'Quatre et six : le produit ferait vingt-quatre, mais douze suffit. C\'est le plus '
-            + 'petit commun multiple — et c\'est lui qui évite les gros nombres.'
+        aide: 'Quatre et six : le produit ferait vingt-quatre, mais la table de 4 et celle de 6 '
+            + 'se rencontrent déjà à douze. C\'est le plus petit commun multiple, et c\'est lui '
+            + 'qui évite les gros nombres.'
     }
 ];
 
@@ -166,7 +175,7 @@ export const estNiveauSomme = (id) => NIVEAUX_SOMME.some(n => n.id === id);
  * rendrait 3 et 4 (premiers entre eux) n'apprendrait rien de plus que la
  * marche précédente. On vérifie donc la propriété au lieu de l'espérer.
  */
-export function tirerDenominateurs(rng, niveau, maxDen = 12) {
+export function tirerDenominateurs(rng, niveau, maxDen = 10) {
     const max = Math.max(4, maxDen);
     for (let essai = 0; essai < 200; essai++) {
         const a = rng.int(2, max), b = rng.int(2, max);
@@ -192,67 +201,139 @@ export function tirerDenominateurs(rng, niveau, maxDen = 12) {
 }
 
 /**
- * Une addition, avec tout ce qu'il faut pour la montrer.
+ * LES DEUX OPÉRATIONS, ET PAS DE NOMBRES NÉGATIFS.
  *
- * On garde les deux fractions PLUS PETITES QUE 1 : une somme qui dépasse
- * l'unité demande une bande de plus, et ce n'est pas la difficulté qu'on
- * travaille ici.
+ * Rémy : « tu peux mélanger addition et soustraction de fractions (sans
+ * nombres relatifs) ». La soustraction ne demande rien de plus au dénominateur
+ * — c'est exactement le même travail — mais elle empêche de répondre au flair :
+ * on ne peut plus additionner deux petits nombres au hasard et tomber juste.
+ * On garde donc le résultat STRICTEMENT POSITIF et, pour une somme,
+ * strictement inférieur à l'unité : ni relatifs, ni fractions impropres, ce
+ * sont deux difficultés d'un autre chapitre.
  */
-export function tirerSomme(rng, opts = {}) {
-    const { niveau = 'multiple', maxDen = 12 } = opts;
+export const OPERATIONS = ['somme', 'difference', 'les-deux'];
+
+/**
+ * Un calcul à poser, avec tout ce qu'il faut pour l'écrire ligne par ligne.
+ *
+ * @param {Object} rng
+ * @param {Object} [opts]
+ * @param {string} [opts.niveau]     - marche de la progression
+ * @param {number} [opts.maxDen]     - plus grand dénominateur (10 : la table
+ *   de Pythagore sert d'aide, et elle s'arrête à dix)
+ * @param {string} [opts.operation]  - 'somme' | 'difference' | 'les-deux'
+ */
+export function tirerCalcul(rng, opts = {}) {
+    const { niveau = 'multiple', maxDen = 10, operation = 'somme' } = opts;
     const niv = estNiveauSomme(niveau) ? niveau : 'multiple';
     const [d1, d2] = tirerDenominateurs(rng, niv, maxDen);
     const commun = ppcm(d1, d2);
+    const signe = operation === 'les-deux' ? (rng.bool() ? '+' : '−')
+        : (operation === 'difference' ? '−' : '+');
 
-    for (let essai = 0; essai < 80; essai++) {
+    for (let essai = 0; essai < 200; essai++) {
         const n1 = rng.int(1, d1 - 1);
         const n2 = rng.int(1, d2 - 1);
-        const brut = { n: n1 * (commun / d1) + n2 * (commun / d2), d: commun };
-        // Somme strictement inférieure à 1 : une bande suffit à la montrer.
-        if (brut.n >= brut.d) continue;
-        return construireSomme({ n: n1, d: d1 }, { n: n2, d: d2 }, commun, niv);
+        // LES DEUX FRACTIONS DE DÉPART SONT IRRÉDUCTIBLES. « 2/4 de la tarte »
+        // dans un énoncé, c'est une faute de goût qui devient une faute tout
+        // court : l'élève simplifie d'abord, trouve un autre dénominateur
+        // commun que celui qu'on attend, et il a raison. On ne simplifie pas
+        // le RÉSULTAT (c'est la consigne), mais l'énoncé, lui, est propre.
+        if (!estIrreductible(n1, d1) || !estIrreductible(n2, d2)) continue;
+        const na = n1 * (commun / d1), nb = n2 * (commun / d2);
+        const total = signe === '+' ? na + nb : na - nb;
+        // Ni au-dessus de l'unité, ni en dessous de zéro.
+        if (signe === '+' && total >= commun) continue;
+        if (signe === '−' && total <= 0) continue;
+        return construireCalcul({ n: n1, d: d1 }, { n: n2, d: d2 }, commun, niv, signe);
     }
-    // Repli : la plus petite somme possible avec ces dénominateurs. Elle tient
-    // toujours sous l'unité — 1/2 + 1/2 est le seul cas contraire, et les deux
-    // moitiés sont exclues au tirage des dénominateurs.
-    return construireSomme({ n: 1, d: d1 }, { n: 1, d: d2 }, commun, niv);
+    // Repli sûr, irréductible des deux côtés : 1/d l'est toujours, et pour une
+    // différence on prend la plus grande fraction irréductible du premier
+    // dénominateur — c'est la seule façon de garder un résultat positif.
+    const grandIrreductible = (d) => {
+        for (let n = d - 1; n >= 1; n--) if (estIrreductible(n, d)) return n;
+        return 1;
+    };
+    return signe === '−'
+        ? construireCalcul({ n: grandIrreductible(d1), d: d1 }, { n: 1, d: d2 }, commun, niv, '−')
+        : construireCalcul({ n: 1, d: d1 }, { n: 1, d: d2 }, commun, niv, '+');
 }
 
-function construireSomme(a, b, commun, niveau) {
+/** Addition seule — la forme d'avant, gardée parce qu'elle se lit bien. */
+export const tirerSomme = (rng, opts = {}) => tirerCalcul(rng, { ...opts, operation: 'somme' });
+
+function construireCalcul(a, b, commun, niveau, signe = '+') {
     const ka = commun / a.d, kb = commun / b.d;
     const aReduit = { n: a.n * ka, d: commun };
     const bReduit = { n: b.n * kb, d: commun };
-    const brut = { n: aReduit.n + bReduit.n, d: commun };
+    const brut = { n: signe === '+' ? aReduit.n + bReduit.n : aReduit.n - bReduit.n, d: commun };
     const reduit = simplifier(brut.n, brut.d);
-    return {
-        niveau, a, b, commun, ka, kb, aReduit, bReduit, brut, reduit,
-        aSimplifiable: reduit.d !== brut.d,
-        // Le raisonnement écrit, ligne par ligne — c'est aussi la correction.
-        etapes: etapesSomme({ a, b, commun, ka, kb, aReduit, bReduit, brut, reduit })
-    };
+    const c = { niveau, signe, a, b, commun, ka, kb, aReduit, bReduit, brut, reduit };
+    c.aSimplifiable = reduit.d !== brut.d;
+    // Le raisonnement écrit, ligne par ligne — c'est aussi la correction.
+    c.etapes = etapesCalcul(c);
+    return c;
 }
 
-export function etapesSomme(s) {
+export function etapesCalcul(s) {
+    const op = s.signe === '−' ? '−' : '+';
+    const verbe = op === '−' ? 'retire' : 'additionne';
     const l = [];
     if (s.commun === s.a.d && s.commun === s.b.d) {
-        l.push(`Les deux parts ont déjà la même taille : ${s.a.n} + ${s.b.n} = ${s.brut.n}.`);
+        l.push(`Les deux parts ont déjà la même taille : ${s.a.n} ${op} ${s.b.n} = ${s.brut.n}.`);
         // L'ERREUR DE LA PREMIÈRE MARCHE, et elle vaut d'être nommée tout de
-        // suite : additionner aussi les dénominateurs. Le dénominateur dit la
+        // suite : opérer aussi sur les dénominateurs. Le dénominateur dit la
         // TAILLE des parts, pas leur nombre — il n'y a rien à y ajouter.
         l.push(`Le dénominateur ne bouge pas : il reste ${s.commun}. Il dit la taille des `
             + 'parts, pas combien on en a.');
     } else {
-        l.push(`Les parts n'ont pas la même taille : il faut les recouper en ${s.commun}èmes.`);
+        l.push(`Les parts n'ont pas la même taille : il faut les recouper en ${s.commun}èmes. `
+            + `${s.commun} est le plus petit nombre à la fois dans la table de ${s.a.d} et dans `
+            + `celle de ${s.b.d}.`);
         if (s.ka > 1) l.push(`${s.a.n}/${s.a.d} = ${s.aReduit.n}/${s.commun} (× ${s.ka} en haut et en bas).`);
         else l.push(`${s.a.n}/${s.a.d} est déjà en ${s.commun}èmes.`);
         if (s.kb > 1) l.push(`${s.b.n}/${s.b.d} = ${s.bReduit.n}/${s.commun} (× ${s.kb} en haut et en bas).`);
         else l.push(`${s.b.n}/${s.b.d} est déjà en ${s.commun}èmes.`);
-        l.push(`${s.aReduit.n} + ${s.bReduit.n} = ${s.brut.n}, sur ${s.commun}.`);
+        l.push(`On ${verbe} alors les numérateurs : ${s.aReduit.n} ${op} ${s.bReduit.n} = `
+            + `${s.brut.n}, sur ${s.commun}.`);
     }
     if (s.reduit.d !== s.brut.d) {
-        l.push(`On simplifie : ${s.brut.n}/${s.brut.d} = ${s.reduit.n}/${s.reduit.d}.`);
+        l.push(`On peut simplifier : ${s.brut.n}/${s.brut.d} = ${s.reduit.n}/${s.reduit.d}.`);
     }
     return l;
+}
+
+export const etapesSomme = etapesCalcul;
+
+// --- LA TABLE DE PYTHAGORE, POUR TROUVER LE PPCM ------------------------------
+
+/**
+ * L'AIDE QUE RÉMY A DEMANDÉE, et c'est la bonne.
+ *
+ * « On peut lui montrer la table de Pythagore, ou on fait clignoter les lignes
+ * et colonnes des dénominateurs. » Chercher le PPCM de 4 et 3 « dans sa tête »
+ * n'apprend rien à qui ne l'a pas déjà ; le VOIR est immédiat : la ligne des
+ * quatre et la ligne des trois se rencontrent en 12, 24, 36 — et le premier
+ * de ces rendez-vous est le dénominateur commun.
+ *
+ * C'est aussi ce qui fixe la borne des dénominateurs : la table s'arrête à
+ * dix, donc les dénominateurs aussi (le plus grand PPCM possible, 9 × 10 = 90,
+ * y figure encore).
+ *
+ * @returns {{taille, a, b, multiplesA, multiplesB, communs, ppcm}}
+ */
+export function multiplesCommuns(a, b, taille = 10) {
+    const multiples = (n) => Array.from({ length: taille }, (_, i) => n * (i + 1));
+    const multiplesA = multiples(a);
+    const multiplesB = multiples(b);
+    const dansB = new Set(multiplesB);
+    const communs = multiplesA.filter(v => dansB.has(v));
+    return {
+        taille, a, b, multiplesA, multiplesB, communs,
+        // Le PPCM se lit dans la table quand il y est ; sinon on le calcule,
+        // pour que l'aide ne mente jamais sur la réponse.
+        ppcm: communs.length ? communs[0] : ppcm(a, b)
+    };
 }
 
 // --- LES BANDES, POUR MONTRER ------------------------------------------------

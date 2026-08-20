@@ -12,17 +12,16 @@
 // des tiers en six, les anciens traits restent exactement où ils étaient : le
 // trait de coupe change, la longueur non. C'est toute la règle, en une image.
 //
-// D'où le geste central de l'écran : L'ÉLÈVE TAPE UN DÉNOMINATEUR COMMUN ET
-// LES BANDES SE RECOUPENT SOUS SES YEUX. S'il propose 5 pour des tiers et des
-// quarts, les nouveaux traits ne tombent sur aucun ancien, et ils s'affichent
-// en rouge : la bande lui dit non avant que l'écran n'ait rien à corriger.
-// S'il propose 12, tout s'aligne. C'est la réponse à la question de Rémy.
+// L'ADDITION, ELLE, A QUITTÉ CET ÉCRAN. Rémy, après essai : « je ne suis pas
+// convaincu par les bandes pour les fractions, on va proposer l'addition de
+// fraction sans support visuel, car on peut tomber sur des choses
+// incohérentes ». Il a raison — passé une vingtaine de parts, le dessin devient
+// une hachure, et une image qui cesse de montrer au moment où le calcul devient
+// difficile n'aide personne. Elle se pose maintenant ligne par ligne dans
+// `fractionsPose.js`, avec la table de Pythagore en aide.
 //
-// Deux exercices se partagent cet écran (`opts.variante`) :
-//   'egalite' — compléter 3/2 = 33/… : une seule case, et les deux bandes
-//               montrent que la longueur ne bouge pas ;
-//   'somme'   — additionner par marches : toutes les cases du calcul sont
-//               posées d'un coup, et une seule validation les juge une par une.
+// Il reste ici l'ÉGALITÉ À COMPLÉTER, où deux longueurs suffisent à tout dire :
+// même longueur, coupée autrement. Rien à recouper, rien à hachurer.
 //
 // « TOUJOURS DES FRACTIONS EN COLONNES » : numérateur sur dénominateur,
 // séparés d'un trait, partout — y compris dans les cases à remplir.
@@ -136,35 +135,7 @@ function etiquetteAlt(o, unites) {
         + (unites > 1 ? `, sur ${unites} unités` : '');
 }
 
-/**
- * Les traits qu'un dénominateur proposé ajoute — ou qui tombent à côté.
- *
- * Un nombre PLUS PETIT que le découpage actuel est traité comme les autres :
- * il ne peut évidemment pas convenir, mais l'élève qui tape 5 pour des
- * sixièmes doit VOIR pourquoi, pas lire un message. Les traits rouges se
- * posent au milieu de nulle part, et c'est la réponse.
- */
-function traitsProposes(dActuel, propose) {
-    if (!propose || propose < 2 || propose > 60 || propose === dActuel) {
-        return { nouveaux: [], faux: [] };
-    }
-    if (propose % dActuel === 0) return { nouveaux: recoupage(dActuel, propose).nouveaux, faux: [] };
-    // Ne tombe pas juste : on montre TOUS les traits proposés, et l'œil voit
-    // qu'aucun ne rencontre les anciens.
-    const faux = [];
-    for (let i = 1; i < propose; i++) {
-        const x = i / propose;
-        if (Math.abs(x * dActuel - Math.round(x * dActuel)) > 1e-9) faux.push(x);
-    }
-    return { nouveaux: [], faux };
-}
-
 // --- Petites briques d'écriture ---------------------------------------------
-
-/** Ce que le robot dit d'une fraction qu'il convertit — ou qu'il n'a pas à convertir. */
-const dire = (f, k, reduit, commun) => (k === 1
-    ? `${f.n}/${f.d} est déjà en ${commun}èmes : je recopie ${f.n}.`
-    : `${f.d} × ${k} = ${commun}, donc ${f.n} × ${k} = ${reduit.n}.`);
 
 const colonne = (n, d, cls = '') =>
     `<span class="fraction fb-frac ${cls}"><span class="fraction-num">${n}</span>`
@@ -176,7 +147,6 @@ const caseHtml = (nom, libelle) =>
         aria-label="${libelle}"><span class="fb-case-val"></span></button>`;
 
 export function mount(container, session, opts = {}) {
-    const variante = opts.variante === 'somme' ? 'somme' : 'egalite';
     let destroyed = false;
     let cursor = null;
     let gate = null;
@@ -199,7 +169,6 @@ export function mount(container, session, opts = {}) {
         c.el.querySelector('.fb-case-val').textContent = texte;
         c.el.classList.toggle('fb-case--pleine', texte !== '');
         c.el.classList.remove('fb-case--juste', 'fb-case--faux');
-        surSaisie(nom, texte);
         majValider();
     }
 
@@ -228,8 +197,7 @@ export function mount(container, session, opts = {}) {
         if (btn) btn.disabled = Object.keys(cases).some(n => !valeurs[n]);
     }
 
-    // Redessin en direct : posé par `render` selon la variante.
-    let surSaisie = () => {};
+
 
     // --- Le rendu -----------------------------------------------------------
 
@@ -237,14 +205,13 @@ export function mount(container, session, opts = {}) {
         cases = {};
         valeurs = {};
         choisie = null;
-        surSaisie = () => {};
 
-        const scene = variante === 'somme' ? sceneSomme(item) : sceneEgalite(item);
+        const scene = sceneEgalite(item);
 
         // Le cadre extérieur ne sert qu'à MESURER (voir `.fb-ecran` en CSS) :
         // une requête de conteneur ne s'applique pas au conteneur lui-même.
         container.innerHTML = `
-            <div class="fb-ecran"><div class="fb-layout fb-layout--${variante}">
+            <div class="fb-ecran"><div class="fb-layout fb-layout--egalite">
                 <div class="fb-scene">${scene.html}</div>
                 <div class="fb-panneau">
                     <div class="fb-pave" role="group" aria-label="Chiffres">
@@ -268,10 +235,6 @@ export function mount(container, session, opts = {}) {
         });
         selectionner(Object.keys(cases)[0]);
         majValider();
-        surSaisie = scene.surSaisie || (() => {});
-        // Les dénominateurs encore inconnus s'affichent en « ? » dès l'arrivée :
-        // une fraction sans dénominateur ne se lit pas.
-        surSaisie('c', '');
 
         if (session.isDemo) {
             if (!session.frozen) runDemo(item, scene);
@@ -445,149 +408,6 @@ export function mount(container, session, opts = {}) {
         };
     }
 
-    // --- Variante « addition progressive » ----------------------------------
-
-    function sceneSomme(item) {
-        const s = (item.meta || {}).somme;
-        if (!s) return { html: item.prompt.html, attendu: {}, reponse: () => '', diagnostic: () => '' };
-
-        const bandeA = bandeSvg({ parts: s.a.d, pleines: s.a.n });
-        const bandeB = bandeSvg({ parts: s.b.d, pleines: s.b.n, teinte: 'fb-plein--b' });
-
-        const attendu = { c: s.commun, na: s.aReduit.n, nb: s.bReduit.n, ns: s.brut.n };
-        if (s.aSimplifiable) { attendu.rn = s.reduit.n; attendu.rd = s.reduit.d; }
-
-        // LA PREMIÈRE MARCHE N'A RIEN À RECOUPER, et il ne faut surtout pas
-        // lui dire le contraire : les deux bandes sont déjà coupées pareil,
-        // c'est même toute la leçon de ce niveau-là. Une phrase d'accueil qui
-        // annonce un problème inexistant apprend à ne pas la lire.
-        const memeTaille = s.a.d === s.b.d;
-        const depart = memeTaille
-            ? 'Les parts ont déjà la même taille : elles se rassemblent telles quelles. '
-                + 'Le découpage commun, c\'est celui qu\'elles ont déjà.'
-            : 'Les parts n\'ont pas la même taille : on ne peut pas les rassembler. '
-                + 'En combien faut-il recouper les deux bandes&nbsp;?';
-
-        const html = `
-            <div class="fb-bandes">
-                <div class="fb-bloc">
-                    <div class="fb-bande-boite" data-boite="a">${bandeA}</div>
-                    ${colonne(s.a.n, s.a.d)}
-                </div>
-                <div class="fb-signe">+</div>
-                <div class="fb-bloc">
-                    <div class="fb-bande-boite" data-boite="b">${bandeB}</div>
-                    ${colonne(s.b.n, s.b.d)}
-                </div>
-            </div>
-            <p class="fb-legende" data-legende>${depart}</p>
-            <div class="fb-calcul">
-                <div class="fb-commun">
-                    <span>Même découpage : en</span>
-                    ${caseHtml('c', 'dénominateur commun')}
-                    <span>parts</span>
-                </div>
-                <div class="fb-ligne">
-                    ${colonne(caseHtml('na', 'nouveau numérateur de la première'),
-                        '<span data-den="na"></span>', 'fb-frac--trou')}
-                    <span class="fb-signe fb-signe--petit">+</span>
-                    ${colonne(caseHtml('nb', 'nouveau numérateur de la seconde'),
-                        '<span data-den="nb"></span>', 'fb-frac--trou')}
-                    <span class="fb-signe fb-signe--petit">=</span>
-                    ${colonne(caseHtml('ns', 'numérateur de la somme'),
-                        '<span data-den="ns"></span>', 'fb-frac--trou')}
-                    ${s.aSimplifiable ? `<span class="fb-signe fb-signe--petit">=</span>
-                        ${colonne(caseHtml('rn', 'numérateur simplifié'),
-                            caseHtml('rd', 'dénominateur simplifié'), 'fb-frac--trou')}` : ''}
-                </div>
-            </div>`;
-
-        return {
-            html,
-            attendu,
-            // LE DÉNOMINATEUR COMMUN TAPÉ RECOUPE LES BANDES SOUS LES YEUX.
-            // C'est la réponse à « comment rendre cela visuel » : l'élève ne
-            // vérifie pas sa proposition, il la VOIT tomber juste ou à côté.
-            surSaisie(nom, texte) {
-                if (nom !== 'c') return;
-                const c = Number(texte);
-                container.querySelectorAll('[data-den]').forEach(el => {
-                    el.textContent = texte || '?';
-                });
-                const legende = container.querySelector('[data-legende]');
-                let alignees = 0;
-                [['a', s.a], ['b', s.b]].forEach(([quel, f]) => {
-                    const boite = container.querySelector(`[data-boite="${quel}"]`);
-                    if (!boite) return;
-                    const { nouveaux, faux } = traitsProposes(f.d, c);
-                    if (c && c % f.d === 0) alignees++;
-                    boite.innerHTML = bandeSvg({
-                        parts: f.d, pleines: f.n, nouveaux, faux,
-                        teinte: quel === 'b' ? 'fb-plein--b' : ''
-                    });
-                });
-                if (!legende) return;
-                if (!c || c <= 1) {
-                    legende.innerHTML = depart;
-                } else if (memeTaille && c === s.commun) {
-                    legende.textContent = 'Rien à recouper : les deux bandes ont déjà '
-                        + `${c} parts. On additionne directement les parts coloriées.`;
-                } else if (alignees === 2) {
-                    legende.textContent = `Les traits tombent juste sur les deux bandes : `
-                        + `${c} convient. Reste à compter les parts coloriées.`;
-                } else if (alignees === 1) {
-                    legende.textContent = 'Une bande se recoupe bien, l\'autre non : les traits '
-                        + 'rouges ne rencontrent aucun trait existant.';
-                } else {
-                    legende.textContent = 'Aucun trait ne tombe juste : ce nombre n\'est un '
-                        + 'multiple d\'aucun des deux dénominateurs.';
-                }
-            },
-            reponse: (v) => (s.aSimplifiable ? `${v.rn}/${v.rd}` : `${v.ns}/${v.c}`),
-            diagnostic(v, justes) {
-                const c = Number(v.c);
-                if (!justes.c) {
-                    if (Number.isFinite(c) && c % s.a.d === 0 && c % s.b.d === 0) {
-                        return `${c} marche, mais ce n'est pas le PLUS PETIT : `
-                            + `${s.commun} suffit, et les nombres restent petits.`;
-                    }
-                    return `${s.commun} est le plus petit nombre qui soit à la fois dans la table `
-                        + `de ${s.a.d} et dans celle de ${s.b.d}.`;
-                }
-                if (!justes.na || !justes.nb) {
-                    const [f, k] = justes.na ? [s.b, s.kb] : [s.a, s.ka];
-                    if (k === 1) {
-                        return `${f.n}/${f.d} est DÉJÀ en ${s.commun}èmes : son numérateur ne `
-                            + 'change pas.';
-                    }
-                    return 'Le numérateur se multiplie par le MÊME facteur que le dénominateur : '
-                        + `${f.d} × ${k} = ${s.commun}, donc ${f.n} × ${k}.`;
-                }
-                if (!justes.ns) return 'On additionne les numérateurs, et seulement eux : '
-                    + `${s.aReduit.n} + ${s.bReduit.n}. Le dénominateur ne bouge plus.`;
-                return `${s.brut.n} et ${s.brut.d} ont un diviseur commun : la fraction se simplifie.`;
-            },
-            demo: [
-                {
-                    nom: 'c',
-                    dit: memeTaille
-                        ? `Elles sont déjà coupées pareil : le découpage commun, c'est ${s.commun}.`
-                        : `Il faut le même découpage pour les deux : ${s.commun} parts.`
-                },
-                // « × 1 », ce n'est pas une explication, c'est une formule
-                // récitée : quand une fraction est déjà au bon dénominateur,
-                // le robot le dit comme on le dirait à voix haute.
-                { nom: 'na', dit: dire(s.a, s.ka, s.aReduit, s.commun) },
-                { nom: 'nb', dit: dire(s.b, s.kb, s.bReduit, s.commun) },
-                { nom: 'ns', dit: `Maintenant les parts ont la même taille : ${s.aReduit.n} + ${s.bReduit.n} = ${s.brut.n}.` },
-                ...(s.aSimplifiable ? [
-                    { nom: 'rn', dit: `${s.brut.n}/${s.brut.d} se simplifie : ${s.reduit.n}/${s.reduit.d}.` },
-                    { nom: 'rd', dit: '' }
-                ] : [])
-            ]
-        };
-    }
-
     // --- Le robot -----------------------------------------------------------
 
     /**
@@ -601,10 +421,8 @@ export function mount(container, session, opts = {}) {
         if (!await cursor.pause(600) || destroyed) return;
 
         const sceneEl = container.querySelector('.fb-scene');
-        cursor.say(variante === 'somme'
-            ? 'Deux bandes de même longueur, coupées différemment : je commence par les recouper pareil.'
-            : 'Les deux bandes font la même longueur. Je cherche en combien la seconde est coupée.',
-            sceneEl || container);
+        cursor.say('Les deux bandes font la même longueur. Je cherche en combien la seconde '
+            + 'est coupée.', sceneEl || container);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
 
         for (const pas of (scene.demo || [])) {
