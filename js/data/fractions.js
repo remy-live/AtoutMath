@@ -37,6 +37,65 @@ export const fractionsExercises = [
         instruction: "Additionne les deux fractions et choisis le bon résultat."
     },
     {
+        // « 3/2 = 33/… » — l'exemple est de Rémy, et il est bien choisi : la
+        // fraction est IMPROPRE, donc la bande dépasse l'unité, et le facteur
+        // (11) n'est pas dans les petites tables. On ne s'en tire pas de tête.
+        //
+        // L'écran montre DEUX BANDES DE MÊME LONGUEUR, l'une coupée, l'autre
+        // voilée : « même longueur, mais coupée en combien ? ». La découpe se
+        // dévoile quand la réponse tombe — c'est la récompense, et c'est aussi
+        // la démonstration.
+        id: 'frac-egalite', status: STATUS.TEST, title: 'L\'Égalité à Compléter',
+        cree: '2026-08-20',
+        consignePapier: 'Complète l\'égalité entre les deux fractions.',
+        colonnesPapier: 4,
+        generatorId: 'frac.egalite', activityId: 'fraction-egalite',
+        // De petits dénominateurs de départ et un facteur dans les tables : la
+        // bande reste LISIBLE. À 9 × 12, on tombe sur 14/9 = 126/81, où les
+        // traits se serrent au point de ne plus rien montrer — et où l'exercice
+        // n'est plus la règle des fractions mais une multiplication à deux
+        // chiffres. Le professeur peut ouvrir, le défaut reste montrable.
+        params: { sens: 'agrandir', trou: 'les-deux', maxFacteur: 10, maxBase: 6 },
+        motsClefs: ['fractions égales', 'fraction équivalente', 'produit en croix', 'simplifier'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: 'Trouve le nombre qui manque pour que les deux fractions soient égales. '
+            + 'Regarde le côté où les deux nombres sont écrits : il te donne le facteur, et '
+            + 'l\'autre étage suit. Le réglage « Dans quel sens » fait passer de la '
+            + 'multiplication à la division — c\'est la même règle, mais il faut alors '
+            + 'chercher le facteur au lieu de le lire.'
+    },
+    {
+        // « Un exercice d'addition de fractions progressif. Avec d'abord des
+        // dénominateurs multiples puis après trouver le PPCM. » Quatre marches,
+        // et chacune n'ajoute qu'UNE difficulté — le noyau vérifie la propriété
+        // de chaque marche au tirage, au lieu d'espérer qu'elle tombe.
+        //
+        // « Comment rendre cela visuel ? » : l'élève tape un dénominateur
+        // commun et les deux bandes se recoupent sous ses yeux. 12 pour des
+        // tiers et des quarts : tout s'aligne. 5 : les traits s'affichent en
+        // rouge, sans rencontrer un seul trait existant. La bande lui répond
+        // avant l'écran.
+        id: 'frac-somme-bandes', status: STATUS.TEST, title: 'Additionner les Bandes',
+        cree: '2026-08-20',
+        consignePapier: 'Additionne les deux fractions et simplifie le résultat.',
+        colonnesPapier: 3,
+        generatorId: 'frac.somme-progressive', activityId: 'fraction-somme',
+        params: { niveau: 'progressif', maxDen: 12 },
+        motsClefs: ['PPCM', 'dénominateur commun', 'additionner', 'même dénominateur'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Additionne les deux fractions. Elles ne se rassemblent que si leurs parts '
+            + 'ont la même taille : tape un dénominateur commun et regarde les bandes se '
+            + 'recouper — si les traits tombent à côté, ils s\'affichent en rouge. L\'exercice '
+            + 'monte tout seul : même dénominateur, puis un multiple de l\'autre, puis premiers '
+            + 'entre eux, et enfin le vrai PPCM.'
+    },
+    {
         id: 'frac-samurai', status: STATUS.TEST, title: 'Le Samouraï des Fractions',
         cree: '2026-08-04',
         activityId: 'samurai',

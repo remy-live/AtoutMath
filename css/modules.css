@@ -5618,3 +5618,189 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     .nv-carte-texte { flex: none; }
     .nv-carte-actions { justify-content: flex-end; }
 }
+
+/* ═══ LES BANDES DE FRACTIONS ═════════════════════════════════════════════════
+   Rémy : « comment rendre cela visuel ? ». Par des bandes de MÊME LONGUEUR
+   qu'on recoupe. Toute la mise en page découle de là : la bande doit être
+   large — c'est sa longueur qui parle —, les deux bandes d'une comparaison
+   doivent faire exactement la même, et le calcul en colonnes doit tenir sous
+   elles sans les écraser.
+
+   L'ESPACE DE L'ÉCRAN EST PRIS EN ENTIER : la scène s'étire (flex: 1), le pavé
+   ne prend que ce qu'il lui faut. C'est le reproche récurrent de Rémy sur
+   tablette — « tu ne profites pas de l'espace de l'écran ». */
+.fb-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(8px, 2cqh, 20px);
+    width: 100%; height: 100%; min-height: 0; padding: 10px; box-sizing: border-box;
+    color: var(--text-main); overflow-y: auto;
+}
+/* LE CADRE PORTE LA MESURE, PAS LA MISE EN PAGE.
+   Une requête de conteneur ne s'applique JAMAIS au conteneur lui-même : posée
+   sur `.fb-layout`, elle recoupait bien le pavé (un descendant) mais laissait
+   la colonne en colonne. Il faut donc une boîte de plus, qui ne fait que
+   mesurer — et `size` plutôt que `inline-size`, parce que la hauteur compte
+   ici autant que la largeur : c'est leur RAPPORT qui décide du paysage. Le
+   cadre du simulateur de tablette n'est pas la fenêtre : une media query se
+   tromperait de mesure. */
+.fb-ecran {
+    width: 100%; height: 100%; min-height: 0; display: flex;
+    container-type: size; container-name: fbande;
+}
+.fb-scene {
+    flex: 1 1 auto; min-height: 0; width: 100%; max-width: 1100px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: safe center; gap: clamp(6px, 1.6cqh, 18px);
+}
+.fb-panneau { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+/* --- La bande elle-même --- */
+.fb-bande-boite {
+    position: relative; width: 100%;
+    /* La hauteur est fixe, la largeur suit le conteneur : deux bandes côte à
+       côte font donc rigoureusement la même longueur, ce qui EST le message.
+       Et elle prend ce que la hauteur d'écran veut bien donner — c'est le
+       reproche récurrent de Rémy, « tu ne profites pas de l'espace ». */
+    /* La bande se règle sur la plus GÉNÉREUSE des deux mesures : en portrait
+       c'est la hauteur qui reste, en paysage c'est la largeur. Ne lire que
+       l'une des deux, c'est laisser l'autre moitié de l'écran vide. */
+    height: clamp(40px, max(14cqh, 8cqw), 120px);
+}
+/* L'ÉGALITÉ N'A QU'UNE LIGNE DE CALCUL : ses bandes peuvent prendre toute la
+   hauteur que l'addition, elle, doit partager avec quatre fractions. */
+.fb-layout--egalite .fb-bande-boite {
+    height: clamp(50px, max(22cqh, 11cqw), 160px);
+}
+.fb-bande { width: 100%; height: 100%; display: block; overflow: visible; }
+.fb-cadre { fill: none; stroke: var(--text-main); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.fb-plein { fill: color-mix(in srgb, var(--primary) 55%, transparent); }
+.fb-plein--b { fill: color-mix(in srgb, var(--warning, #f59e0b) 60%, transparent); }
+.fb-plein--voile { fill: color-mix(in srgb, var(--primary) 55%, transparent); }
+.fb-coupe { stroke: var(--text-main); stroke-width: 1.5; opacity: .55; vector-effect: non-scaling-stroke; }
+.fb-coupe--unite { stroke-width: 2.5; opacity: 1; }
+/* Passé une vingtaine de parts, une coupe pleine épaisseur devient un peigne :
+   on l'affine, et la bande redevient une bande. */
+.fb-coupe--fine { stroke-width: 1; opacity: .32; }
+.fb-coupe--unite.fb-coupe--fine { stroke-width: 2.5; opacity: 1; }
+.fb-neuve.fb-coupe--fine { stroke-width: 1.2; stroke-dasharray: 2 2; }
+
+/* Les traits AJOUTÉS par un recoupage arrivent en fondu, l'un après l'autre :
+   c'est ce mouvement — les nouveaux traits qui viennent SE GLISSER entre les
+   anciens sans rien déplacer — qui montre que la longueur ne bouge pas. */
+.fb-neuve {
+    stroke: var(--success, #10b981); stroke-width: 2; stroke-dasharray: 4 3;
+    vector-effect: non-scaling-stroke;
+    animation: fb-neuve .32s ease both; animation-delay: var(--fb-retard, 0ms);
+}
+@keyframes fb-neuve { from { opacity: 0; } to { opacity: 1; } }
+/* Et ceux qui tombent à côté : rouges, dépassant du cadre, visiblement
+   étrangers au découpage existant. */
+.fb-faux {
+    stroke: var(--danger, #ef4444); stroke-width: 2; stroke-dasharray: 3 3;
+    vector-effect: non-scaling-stroke;
+}
+/* Et ceux qui viennent de DISPARAÎTRE, quand on simplifie : gris pâle, comme
+   une trace de gomme. Les effacer franchement ferait croire que la bande a
+   changé de longueur en même temps que de découpage. */
+.fb-fantome {
+    stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .5;
+    vector-effect: non-scaling-stroke;
+}
+@media (prefers-reduced-motion: reduce) { .fb-neuve { animation: none; } }
+
+/* Le voile de l'égalité : la bande de droite fait la même longueur, mais on ne
+   dit pas encore en combien elle est coupée — sinon il n'y aurait plus qu'à
+   compter les traits. */
+.fb-voile {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: clamp(.62rem, 2.2cqw, .82rem); font-weight: 700;
+    color: var(--text-muted); background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+    border-radius: 6px; pointer-events: none; line-height: 1.25;
+}
+.fb-bande-boite--devoilee .fb-bande { animation: fb-devoile .45s ease both; }
+@keyframes fb-devoile { from { opacity: .35; } to { opacity: 1; } }
+
+/* --- L'égalité et les blocs --- */
+.fb-egalite, .fb-bandes {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(8px, 2.5cqw, 26px); width: 100%;
+}
+.fb-bloc {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+    align-items: center; gap: clamp(4px, 1.2cqh, 12px);
+}
+.fb-signe { font-size: clamp(1.4rem, 5cqw, 2.6rem); font-weight: 900; color: var(--primary); flex: 0 0 auto; }
+.fb-signe--petit { font-size: clamp(1rem, 3cqw, 1.7rem); }
+.fb-legende {
+    margin: 0; text-align: center; max-width: 46em; line-height: 1.35;
+    font-size: clamp(.72rem, 2.4cqw, .95rem); color: var(--text-muted);
+}
+
+/* --- Les fractions, toujours en colonnes --- */
+/* LE TRAIT DE FRACTION COURT SUR TOUTE LA LARGEUR DES DEUX ÉTAGES.
+   Avec `align-items: center`, il ne faisait que la largeur du dénominateur :
+   une case vide de trois caractères au-dessus d'un « ? » donnait un trait
+   ridicule, flottant sous rien. Étirés, les deux étages se cadrent l'un sur
+   l'autre — c'est ainsi qu'on écrit une fraction au tableau. */
+.fb-frac { font-size: clamp(1.25rem, max(4.4cqw, 4.5cqh), 2.5rem); align-items: stretch; }
+.fb-layout--egalite .fb-frac { font-size: clamp(1.5rem, max(6cqw, 6cqh), 3.4rem); }
+.fb-frac .fraction-num, .fb-frac .fraction-den { text-align: center; }
+.fb-frac .fraction-den { border-top-width: 3px; padding-top: .06em; }
+.fb-frac--trou { color: var(--primary); }
+
+.fb-calcul { display: flex; flex-direction: column; align-items: center; gap: clamp(6px, 1.8cqh, 16px); }
+.fb-ligne, .fb-commun { display: flex; align-items: center; justify-content: center; gap: clamp(4px, 1.4cqw, 14px); flex-wrap: wrap; }
+.fb-commun { font-size: clamp(.8rem, 2.6cqw, 1.05rem); font-weight: 700; color: var(--text-main); }
+
+/* --- Les cases à remplir --- */
+/* Un trou se voit COMME UN TROU : pointillé et vide. Une case pleine et grise
+   se lirait comme un nombre déjà posé. */
+.fb-case {
+    min-width: 1.6em; min-height: 1.35em; padding: 0 .12em;
+    border: 2px dashed var(--border); border-radius: 8px; background: transparent;
+    font: inherit; font-weight: 900; color: var(--primary); cursor: pointer;
+    line-height: 1.15; -webkit-tap-highlight-color: transparent;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.fb-case:hover { background: var(--bg-hover); }
+.fb-case--active { border-color: var(--primary); border-style: solid; background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.fb-case--pleine { border-style: solid; }
+.fb-case--juste { color: var(--success, #10b981); border-color: var(--success, #10b981); border-style: solid; }
+.fb-case--faux { color: var(--danger, #ef4444); border-color: var(--danger, #ef4444); border-style: solid; }
+.fb-case-val { display: inline-block; min-width: 1ch; }
+.fb-case--active .fb-case-val::after { content: '_'; opacity: .5; }
+.fb-case--pleine .fb-case-val::after { content: none; }
+
+/* --- Le pavé --- */
+.fb-pave {
+    display: grid; grid-template-columns: repeat(6, auto); gap: clamp(4px, 1cqh, 8px);
+    justify-content: center;
+}
+.fb-touche {
+    min-width: clamp(38px, 8cqw, 56px); min-height: clamp(34px, 6cqh, 50px);
+    border: 2px solid var(--border); border-radius: 10px; background: var(--bg-panel);
+    color: var(--text-main); font-size: clamp(.95rem, 3cqw, 1.3rem); font-weight: 800;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.fb-touche:hover { background: var(--bg-hover); }
+.fb-touche:active { transform: scale(.94); }
+.fb-touche--ok {
+    grid-column: span 2; background: var(--primary); border-color: var(--primary); color: #fff;
+    font-size: clamp(.78rem, 2.4cqw, 1rem);
+}
+.fb-touche--ok:disabled { opacity: .45; cursor: default; }
+.fb-note {
+    min-height: 2.2em; max-width: 42em; text-align: center; line-height: 1.3;
+    font-size: clamp(.72rem, 2.4cqw, .92rem); color: var(--danger, #ef4444); font-weight: 600;
+}
+
+/* EN PAYSAGE SUR TABLETTE, la scène et le pavé se mettent CÔTE À CÔTE : en
+   colonne, la bande n'avait plus que le tiers de la hauteur alors que la
+   largeur, elle, restait libre. */
+@container fbande (min-aspect-ratio: 7/5) and (min-width: 700px) {
+    .fb-layout { flex-direction: row; align-items: stretch; gap: 18px; }
+    .fb-scene { flex: 1 1 auto; }
+    .fb-panneau { justify-content: center; flex: 0 0 auto; }
+    .fb-pave { grid-template-columns: repeat(3, auto); }
+    .fb-touche--ok { grid-column: span 3; }
+}

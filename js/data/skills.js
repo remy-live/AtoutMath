@@ -142,6 +142,17 @@ const BASE = {
         descriptor: 'Additionner deux fractions ayant le même dénominateur.',
         lesson: '2/7 + 3/7 = 5/7 : on additionne les numérateurs, le dénominateur ne change pas.'
     },
+    'num.frac.equivalentes': {
+        label: 'Compléter une égalité de fractions',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.frac.sens'],
+        descriptor: 'Trouver le nombre manquant dans une égalité du type 3/2 = …/33.',
+        lesson: 'Multiplier le numérateur ET le dénominateur par un même nombre ne change pas la fraction : '
+            + 'la longueur reste la même, on l\'a seulement coupée plus fin. Pour compléter 3/2 = …/22, on '
+            + 'regarde le côté où les DEUX nombres sont écrits : de 2 à 22 on multiplie par 11, donc le '
+            + 'numérateur suit — 3 × 11 = 33. Dans l\'autre sens, on divise : c\'est simplifier.'
+    },
     'num.frac.denominateur-commun': {
         label: 'Mettre des fractions au même dénominateur',
         chemin: [D.NUMERIQUE, SD.FRACTIONS],

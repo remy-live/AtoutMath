@@ -12,6 +12,7 @@ import {
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator
 } from '../generators/calcul.js';
 import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../generators/fractions.js';
+import { fracEgaliteGenerator, fracSommeProgressiveGenerator } from '../generators/fractionsEquivalentes.js';
 import { repereGenerator, perimetreGenerator, aireGenerator } from '../generators/geometrie.js';
 import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
@@ -74,6 +75,7 @@ import {
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator,
     fracCompareGenerator, fracAddGenerator, decCompareGenerator,
+    fracEgaliteGenerator, fracSommeProgressiveGenerator,
     repereGenerator, perimetreGenerator, aireGenerator,
     // Chapitre « Nombres entiers et décimaux » (6ᵉ)
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
@@ -367,6 +369,34 @@ registerActivity({
     accepts: ['numeric', 'choice'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./addRelatifs.js')
+});
+
+// LES BANDES DE FRACTIONS. Rémy, à propos de l'addition progressive :
+// « comment rendre cela visuel ? » — par deux bandes de même longueur qu'on
+// recoupe. Le dénominateur commun tapé par l'élève recoupe les bandes sous ses
+// yeux : les traits tombent juste, ou ils tombent en rouge à côté.
+//
+// Deux exercices, un seul écran : compléter une égalité, et additionner par
+// marches. La règle est la même — multiplier haut et bas par le même nombre —,
+// donc le dessin aussi.
+registerActivity({
+    id: 'fraction-egalite',
+    label: 'Compléter une égalité (bandes)',
+    accepts: ['numeric'],
+    requiresMeta: ['egalite'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./fractionsBandes.js'),
+    mountOptions: { variante: 'egalite' }
+});
+
+registerActivity({
+    id: 'fraction-somme',
+    label: 'Additionner des fractions (bandes)',
+    accepts: ['text'],
+    requiresMeta: ['somme'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./fractionsBandes.js'),
+    mountOptions: { variante: 'somme' }
 });
 
 // L'ATELIER DE GÉOMÉTRIE : règle, équerre, compas et rapporteur, empruntés au
