@@ -30,6 +30,25 @@ import {
 // mis à l'échelle par le `viewBox` : une seule unité à régler.
 const PAS = 10;
 
+/**
+ * UNE COULEUR PAR ACCÉLÉRATION, LA MÊME DES DEUX CÔTÉS.
+ *
+ * Rémy : « ne mets pas de flèche pour le pad, mais des pastilles de couleurs
+ * sur les touches du pad ET les pastilles de déplacement ». Une flèche sur la
+ * touche et un point sur la piste sont deux dessins différents pour la même
+ * chose : il faut traduire de l'un à l'autre, et c'est du travail perdu.
+ * Deux pastilles de la même couleur, elles, ne se traduisent pas — on voit
+ * tout de suite où l'on va atterrir.
+ *
+ * Neuf teintes franches, et pas de rouge pur : le rouge dit « impossible »,
+ * il ne doit désigner que cela.
+ */
+const TEINTES_ACC = {
+    '-1,-1': '#8b5cf6', '0,-1': '#3b82f6', '1,-1': '#06b6d4',
+    '-1,0': '#f59e0b', '0,0': '#64748b', '1,0': '#84cc16',
+    '-1,1': '#ec4899', '0,1': '#f97316', '1,1': '#14b8a6'
+};
+
 const PILOTES = [
     { id: 'a', nom: 'Bleue', teinte: '#4f46e5', clair: '#a5b4fc' },
     { id: 'b', nom: 'Rouge', teinte: '#dc2626', clair: '#fca5a5' }
@@ -230,6 +249,27 @@ class CourseVecteurs extends BaseGame {
                 }
                 .cv-touche-acc:hover { background: var(--bg-hover); }
                 .cv-touche-acc:active { transform: scale(.93); }
+                /* LA PASTILLE DE LA TOUCHE — la jumelle de celle qu'on voit
+                   sur la piste. Même couleur, même rôle : celle qu'on touche
+                   dit où l'on atterrit. */
+                .cv-past {
+                    display: block; width: 62%; aspect-ratio: 1; margin: auto;
+                    border-radius: 50%; background: var(--past);
+                    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .18);
+                }
+                .cv-touche-acc--ko .cv-past {
+                    background: none; box-shadow: inset 0 0 0 2px currentColor;
+                }
+                /* La croix de l'impossible, reprise du plateau : deux traits en
+                   diagonale, dessinés par-dessus la pastille creuse. */
+                .cv-touche-acc--ko { position: relative; }
+                .cv-touche-acc--ko::after {
+                    content: ''; position: absolute; inset: 28%;
+                    background:
+                        linear-gradient(45deg, transparent 44%, currentColor 44%, currentColor 56%, transparent 56%),
+                        linear-gradient(-45deg, transparent 44%, currentColor 44%, currentColor 56%, transparent 56%);
+                }
+                .cv-touche-acc--arrivee .cv-past { background: #10b981; }
                 .cv-touche-acc--ko { color: var(--danger, #ef4444); border-color: var(--danger, #ef4444); opacity: .55; }
                 .cv-touche-acc--arrivee { border-color: #10b981; color: #10b981; }
                 .cv-touche-acc--vise { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
@@ -361,18 +401,14 @@ class CourseVecteurs extends BaseGame {
         const boite = this.container.querySelector('[data-commande]');
         if (!boite) return;
         if (this.fini || this.moi.robot) { boite.innerHTML = ''; return; }
-        const FLECHES = {
-            '-1,-1': '↖', '0,-1': '↑', '1,-1': '↗',
-            '-1,0': '←', '0,0': '•', '1,0': '→',
-            '-1,1': '↙', '0,1': '↓', '1,1': '↘'
-        };
         const coups = coupsPossibles(this.piste, this.moi.etat);
         boite.innerHTML = coups.map(c => {
             const cle = `${c.ax},${c.ay}`;
             const classe = (c.arrive ? ' cv-touche-acc--arrivee' : c.valide ? '' : ' cv-touche-acc--ko')
                 + (this.vise && this.vise.ax === c.ax && this.vise.ay === c.ay ? ' cv-touche-acc--vise' : '');
             return `<button type="button" class="cv-touche-acc${classe}" data-acc="${cle}"
-                aria-label="vitesse ${c.vx} ; ${c.vy}">${FLECHES[cle]}</button>`;
+                aria-label="vitesse ${c.vx} ; ${c.vy}"
+                ><span class="cv-past" style="--past:${TEINTES_ACC[cle]}"></span></button>`;
         }).join('');
         boite.querySelectorAll('[data-acc]').forEach(b => {
             const [ax, ay] = b.dataset.acc.split(',').map(Number);
@@ -412,8 +448,10 @@ class CourseVecteurs extends BaseGame {
             const croix = c.valide || c.arrive ? ''
                 : `<line x1="${cx - 1.6}" y1="${cy - 1.6}" x2="${cx + 1.6}" y2="${cy + 1.6}" />
                    <line x1="${cx + 1.6}" y1="${cy - 1.6}" x2="${cx - 1.6}" y2="${cy + 1.6}" />`;
+            // La pastille prend la couleur de SON ACCÉLÉRATION, pas celle de la
+            // voiture : c'est ce qui l'apparie à la touche du pavé.
             return `<g class="cv-choix ${classe}${vise}" data-coup="${c.ax},${c.ay}"
-                        style="color:${v.teinte}" role="button"
+                        style="color:${TEINTES_ACC[`${c.ax},${c.ay}`] || v.teinte}" role="button"
                         aria-label="vitesse ${c.vx} ; ${c.vy}">
                     <circle cx="${cx}" cy="${cy}" r="${PAS * 0.24}" />
                     ${croix}

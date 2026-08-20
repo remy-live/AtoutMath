@@ -32,6 +32,9 @@ import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../../ui/paveTact
 
 const deuxChiffres = (n) => String(n).padStart(2, '0');
 
+/** Matin, après-midi ou soir — dit à partir de l'heure sur vingt-quatre. */
+const momentDuJour = (h) => (h < 12 ? 'le matin' : h < 18 ? 'l\'après-midi' : 'le soir');
+
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null, gate = null;
@@ -59,17 +62,20 @@ export function mount(container, session) {
         // pixels de haut, c'est-à-dire un quart du cadran, pour ne rien
         // apprendre. Ce qu'il portait vraiment — « c'est l'après-midi » —
         // rejoint la pastille du niveau, qui est déjà là.
-        const rappel = m.mode === 'lire' && m.apresmidi ? ' · c\'est l\'après-midi' : '';
+        // LE MOMENT DE LA JOURNÉE EST DIT, TOUJOURS. Rémy : « il faut préciser
+        // si c'est matin, après-midi ou soir ; donc sur les premières il faut
+        // quand même que tu dises que c'est le matin ». Une pendule à aiguilles
+        // ne le dit pas — c'est même sa limite —, et l'élève à qui l'on demande
+        // « quelle heure est-il ? » doit savoir s'il écrit 3 h ou 15 h. Le
+        // dire seulement l'après-midi laissait croire que le matin allait de
+        // soi ; il n'allait de soi que pour nous.
+        const rappel = m.mode === 'lire' ? ` · ${momentDuJour(m.h)}` : '';
         container.innerHTML = `
             <div class="hg-layout">
                 ${m.mode === 'lire' ? '' : item.prompt.html}
                 <div class="hg-niveau">Niveau ${m.rang} / ${m.total} · ${m.titre}${rappel}</div>
                 <div class="hg-cadran" data-cadran>
                     <canvas class="hg-canvas"></canvas>
-                </div>
-                <div class="hg-legende">
-                    <span class="hg-leg hg-leg--h"><i></i> petite aiguille : les <b>heures</b></span>
-                    <span class="hg-leg hg-leg--m"><i></i> grande aiguille : les <b>minutes</b></span>
                 </div>
                 ${m.mode === 'lire' ? `
                 <div class="hg-saisie">

@@ -3347,7 +3347,9 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    dimensionne sur le plus petit côté de cette boîte). */
 .hg-cadran {
     width: 100%; flex: 1 1 auto; min-height: 108px;
-    max-height: clamp(180px, 52cqh, 420px);
+    /* La legende des aiguilles a ete retiree (demande de Remy) : le cadran
+       recupere sa hauteur. */
+    max-height: clamp(200px, 60cqh, 460px);
     display: flex; align-items: center; justify-content: center;
     touch-action: none; user-select: none; -webkit-user-select: none;
 }

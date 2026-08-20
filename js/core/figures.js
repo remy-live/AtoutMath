@@ -127,8 +127,16 @@ export function rectangleSvg(L, l, unit = 'cm') {
     const w = Math.round(L * scale);
     const h = Math.min(aireH, Math.max(minH, Math.round(l * scale)));
 
+    // ET LE RECTANGLE SE CENTRE DANS LE CADRE. Rémy : « figure pas toujours
+    // centrée ». Le cadre est fixe, mais le rectangle y était posé collé au
+    // bord gauche : un 9 sur 2 le remplissait et paraissait centré, un 3 sur 2
+    // laissait deux cents pixels de vide à droite et rien à gauche. On centre
+    // ce qui reste de la place, et toute la cotation suit — les lignes
+    // d'attache, les flèches et les deux nombres sont posés par rapport à x0.
+    const x0 = Math.round(padX + (aireW - w) / 2);
+
     const dimY = padY + h + 16;   // ligne de cote horizontale
-    const dimX = padX - 18;       // ligne de cote verticale
+    const dimX = x0 - 18;         // ligne de cote verticale
     const midY = padY + h / 2;
 
     // La cote verticale est écrite le long de sa ligne, dans le sens de
@@ -144,17 +152,17 @@ export function rectangleSvg(L, l, unit = 'cm') {
             </marker>
         </defs>
 
-        <rect class="fig-shape" x="${padX}" y="${padY}" width="${w}" height="${h}" rx="3"/>
+        <rect class="fig-shape" x="${x0}" y="${padY}" width="${w}" height="${h}" rx="3"/>
 
         <!-- Lignes d'attache puis ligne de cote à double flèche. -->
-        <line class="fig-ext" x1="${padX}" y1="${padY + h}" x2="${padX}" y2="${dimY + 6}"/>
-        <line class="fig-ext" x1="${padX + w}" y1="${padY + h}" x2="${padX + w}" y2="${dimY + 6}"/>
-        <line class="fig-dim" x1="${padX}" y1="${dimY}" x2="${padX + w}" y2="${dimY}"
+        <line class="fig-ext" x1="${x0}" y1="${padY + h}" x2="${x0}" y2="${dimY + 6}"/>
+        <line class="fig-ext" x1="${x0 + w}" y1="${padY + h}" x2="${x0 + w}" y2="${dimY + 6}"/>
+        <line class="fig-dim" x1="${x0}" y1="${dimY}" x2="${x0 + w}" y2="${dimY}"
               marker-start="url(#fig-arrow)" marker-end="url(#fig-arrow)"/>
-        <text class="fig-label" x="${padX + w / 2}" y="${dimY + 27}" text-anchor="middle">${L} ${unit}</text>
+        <text class="fig-label" x="${x0 + w / 2}" y="${dimY + 27}" text-anchor="middle">${L} ${unit}</text>
 
-        <line class="fig-ext" x1="${padX}" y1="${padY}" x2="${dimX - 6}" y2="${padY}"/>
-        <line class="fig-ext" x1="${padX}" y1="${padY + h}" x2="${dimX - 6}" y2="${padY + h}"/>
+        <line class="fig-ext" x1="${x0}" y1="${padY}" x2="${dimX - 6}" y2="${padY}"/>
+        <line class="fig-ext" x1="${x0}" y1="${padY + h}" x2="${dimX - 6}" y2="${padY + h}"/>
         <line class="fig-dim" x1="${dimX}" y1="${padY}" x2="${dimX}" y2="${padY + h}"
               marker-start="url(#fig-arrow)" marker-end="url(#fig-arrow)"/>
         <text class="fig-label" x="${dimX - 9}" y="${midY}" text-anchor="middle"
