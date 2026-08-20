@@ -26,12 +26,26 @@ export const redactionGenerator = {
             id: 'propriete', label: 'Propriété travaillée', type: 'select',
             default: 'para-perp',
             options: Object.values(PROPRIETES).map(p => ({ value: p.id, label: p.titre }))
+        },
+        {
+            // Rémy : « on pourrait proposer deux formes de présentation pour le
+            // pdf, soit le schéma et dessous la rédaction, soit le schéma et à
+            // droite la partie rédaction ».
+            id: 'miseEnPage', label: 'Présentation de la fiche', type: 'select',
+            default: 'empile',
+            aide: 'Empilée, les lignes d\'écriture font toute la largeur. Côte à côte, la figure '
+                + 'reste sous les yeux pendant qu\'on rédige — mais les lignes sont deux fois plus courtes.',
+            options: [
+                { value: 'empile', label: 'La figure en haut, la rédaction dessous' },
+                { value: 'cote', label: 'La figure à gauche, la rédaction à droite' }
+            ]
         }
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const prop = proprieteDe(params && params.propriete);
+        const miseEnPage = (params && params.miseEnPage) === 'cote' ? 'cote' : 'empile';
         const figure = tirerFigure(rng, prop.id);
         const [d1, d2] = donnees(figure);
         const c = conclusion(figure);
@@ -56,6 +70,7 @@ export const redactionGenerator = {
             meta: {
                 figure,
                 propriete: prop.id,
+                miseEnPage,
                 noms: figure.noms,
                 // Les trois lignes, déjà rédigées : la feuille de solutions
                 // n'a plus qu'à les poser.

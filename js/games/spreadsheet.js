@@ -432,7 +432,15 @@ class Tableur extends BaseGame {
             const [a, b, c] = ['A' + ligne, 'B' + ligne, 'C' + ligne];
             this.poser(a, v1); this.poser(b, v2);
             this.taches = [{ id: c, attendu: String(v1 + v2), formule: true }];
-            consigne.innerHTML = `Calcule la somme de ${a} et ${b} en <span class="cible">${c}</span>${premier ? ` — ex : <span class="code">=${a}+${b}</span>` : ''}`;
+            // LA CONSIGNE DIT TOUJOURS LE GESTE, pas seulement la case. Rémy :
+            // « parfois tu notes en B6 mais tu ne précises pas ce qu'il faut
+            // faire (du genre, écris la formule…) ». L'exemple ne s'affichait
+            // qu'à la première question du niveau ; ensuite il ne restait que
+            // « Calcule la somme en C4 », et rien ne disait qu'on attend une
+            // FORMULE plutôt que le résultat tapé à la main — ce qui est
+            // pourtant tout ce que ce niveau enseigne.
+            consigne.innerHTML = `Écris dans <span class="cible">${c}</span> la <b>formule</b> `
+                + `qui additionne ${a} et ${b}${premier ? ` — ex : <span class="code">=${a}+${b}</span>` : ''}`;
             this.focaliser(c);
         } else if (this.level === 6) {
             this.poser('A1', 'PRIX'); this.poser('B1', 'QTÉ'); this.poser('C1', 'TOT');
@@ -441,7 +449,9 @@ class Tableur extends BaseGame {
             const [a, b, c] = ['A' + l, 'B' + l, 'C' + l];
             this.poser(a, p); this.poser(b, q);
             this.taches = [{ id: c, attendu: String(p * q), formule: true }];
-            consigne.innerHTML = `Calcule le total en <span class="cible">${c}</span> avec l'étoile *${premier ? ` — ex : <span class="code">=${a}*${b}</span>` : ''}`;
+            consigne.innerHTML = `Écris dans <span class="cible">${c}</span> la <b>formule</b> `
+                + `qui multiplie ${a} par ${b}, avec l'étoile *`
+                + `${premier ? ` — ex : <span class="code">=${a}*${b}</span>` : ''}`;
             this.focaliser(c);
         } else if (this.level === 7 || this.level === 8) {
             const col = this.cols[colIdx];
@@ -457,7 +467,9 @@ class Tableur extends BaseGame {
             const attendu = this.level === 8 ? total / 4 : total;
             const fonction = this.level === 8 ? 'MOYENNE' : 'SOMME';
             this.taches = [{ id: cible, attendu: String(attendu), formule: true }];
-            consigne.innerHTML = `${this.level === 8 ? 'Calcule la moyenne' : 'Additionne tout'} en <span class="cible">${cible}</span>${premier ? ` — utilise <span class="code">=${fonction}(${plage})</span>` : ''}`;
+            consigne.innerHTML = `Écris dans <span class="cible">${cible}</span> la <b>formule</b> `
+                + `qui ${this.level === 8 ? 'fait la moyenne' : 'additionne tout'} de ${plage}`
+                + `${premier ? ` — utilise <span class="code">=${fonction}(${plage})</span>` : ''}`;
             this.focaliser(cible);
         } else if (this.level === 9) {
             this.poser('A1', 'Produit'); this.poser('B1', 'Px'); this.poser('C1', 'Qt'); this.poser('D1', 'TOT');
@@ -473,7 +485,9 @@ class Tableur extends BaseGame {
                 ...lignes.map(l => ({ id: l.cell, attendu: String(l.total), formule: true })),
                 { id: 'D6', attendu: String(grandTotal), formule: true }
             ];
-            consigne.innerHTML = `<b>La facture !</b> 1. Les totaux en D2, D3, D4 (=Px*Qt)&nbsp;· 2. Le total à payer en D6 (=SOMME)`;
+            consigne.innerHTML = '<b>La facture !</b> 1. Écris dans D2, D3 et D4 la <b>formule</b> '
+                + 'qui multiplie le prix par la quantité <span class="code">=B2*C2</span>&nbsp;· '
+                + '2. Puis dans D6 la formule qui les additionne <span class="code">=SOMME(D2:D4)</span>';
             this.focaliser('D2');
         }
     }

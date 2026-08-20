@@ -46,6 +46,7 @@ export const geometrieExercises = [
         // c'est l'exercice qui gagne le plus à sortir de l'écran.
         generatorId: 'geo.redaction', printable: 'redaction',
         params: { propriete: 'para-perp' },
+        printParams: { propriete: 'para-perp', miseEnPage: 'empile' },
         motsClefs: ['parallèles', 'perpendiculaires', 'réciproque', 'je sais que', 'or', 'donc'],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Une justification de géométrie a toujours trois lignes : JE SAIS QUE, OR, DONC. On les écrit une par une. D'abord tu remets la propriété du cours dans l'ordre, puis tu lis la figure — les droites en POINTILLÉS sont parallèles — puis la propriété s'écrit pendant que la figure montre de quoi elle parle, et enfin tu conclus. Le réglage « Propriété travaillée » choisit le sens : partir de deux parallèles pour conclure un angle droit, ou partir de deux angles droits pour conclure un parallélisme."

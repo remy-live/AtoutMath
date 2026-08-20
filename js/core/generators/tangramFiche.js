@@ -29,12 +29,31 @@ export const tangramFicheGenerator = {
                 { value: 'decouper', label: 'Le carré à découper, puis les silhouettes' },
                 { value: 'silhouettes', label: 'Seulement des silhouettes' }
             ]
+        },
+        {
+            // Rémy : « il faut demander si on veut à l'échelle ou non, car
+            // parfois la figure ombrée ne permet pas d'accueillir toutes les
+            // pièces ». C'était un vrai défaut de géométrie, pas une préférence :
+            // chaque silhouette était agrandie pour remplir SON bloc, donc deux
+            // figures de la même feuille n'étaient pas au même millimètre. Les
+            // pièces découpées dans le carré ne pouvaient alors couvrir qu'une
+            // silhouette sur deux.
+            id: 'echelle', type: 'select', label: 'Taille des figures', default: 'commune',
+            aide: 'À la même échelle, les pièces découpées dans le carré remplissent VRAIMENT '
+                + 'chaque silhouette — c\'est indispensable dès qu\'on découpe. Ajustée, chaque '
+                + 'figure remplit son cadre : plus grand à regarder, mais impossible à recouvrir.',
+            options: [
+                { value: 'commune', label: 'Toutes à la même échelle (pour découper)' },
+                { value: 'ajustee', label: 'Chacune au plus grand dans son cadre' }
+            ]
         }
     ],
 
     generate(params, ctx) {
         const i = Number(ctx && ctx.index) || 0;
         const avecCarre = (params && params.depart) !== 'silhouettes';
+        const echelle = (params && params.echelle) === 'ajustee' ? 'ajustee' : 'commune';
+        const commun = echelle === 'commune' ? encombrementMax() : null;
         // La grille 0 porte le carré à découper — sauf si le professeur n'en
         // veut pas.
         if (avecCarre && i === 0) {
@@ -54,6 +73,7 @@ export const tangramFicheGenerator = {
                         couleur: (PIECES.find(x => x.id === p.id) || {}).couleur || '#94a3b8'
                     })),
                     boite: boite(FIGURES[0].silhouette),
+                    echelle, commun,
                     theme: 'decouper'
                 }
             });
@@ -71,6 +91,7 @@ export const tangramFicheGenerator = {
             meta: {
                 quoi: 'silhouette', nom: f.nom, indice: f.indice,
                 silhouette: f.silhouette,
+                echelle, commun,
                 // Le corrigé montre le découpage : c'est la seule correction
                 // possible d'un pavage, et elle ne se devine pas.
                 pieces: piecesPlacees(f).map(p => ({
@@ -83,3 +104,21 @@ export const tangramFicheGenerator = {
         });
     }
 };
+
+/**
+ * LE PLUS GRAND ENCOMBREMENT DE TOUT LE JEU DE FIGURES.
+ *
+ * En échelle commune, c'est lui qui fixe le millimètre : si la figure la plus
+ * étalée tient dans son cadre, toutes les autres y tiennent — et elles sont
+ * alors au même millimètre les unes que les autres, donc recouvrables par les
+ * mêmes pièces.
+ */
+function encombrementMax() {
+    let w = 0, h = 0;
+    FIGURES.forEach(f => {
+        const b = boite(f.silhouette);
+        w = Math.max(w, b.x1 - b.x0);
+        h = Math.max(h, b.y1 - b.y0);
+    });
+    return { w, h };
+}

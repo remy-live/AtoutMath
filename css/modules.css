@@ -2651,11 +2651,27 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    traversant la grille ne désignerait rien. C'est la case cerclée qui montre. */
 .demo-bubble--cote::after { display: none; }
 
+/* SA HAUTEUR NE BOUGE PAS D'UNE PHRASE À L'AUTRE.
+   Rémy : « de manière générale, le texte du robot décale toujours le reste ».
+   Rangée dans le bandeau, la bulle est un élément de FLUX : une phrase de
+   quatre lignes suivie d'une phrase de trois faisait remonter le plateau de
+   vingt et un pixels — mesuré sur l'hexagrille — au milieu même de
+   l'explication, c'est-à-dire au moment où l'on regarde ce qu'elle désigne.
+   Elle réserve donc quatre lignes une fois pour toutes : les textes plus
+   courts se centrent dedans, les rares plus longs y défilent. Le plateau ne
+   bouge plus. */
 .demo-bubble--rangee {
     position: static; max-width: none; width: 100%;
     margin: 6px auto 0; z-index: auto;
     text-align: center; box-shadow: none;
     transition: opacity .18s ease;
+    height: calc(4 * 1.4em + 18px); box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    overflow-y: auto; overscroll-behavior: contain;
+}
+/* Écran très court : trois lignes suffisent, le plateau prime. */
+@media (max-height: 620px) {
+    .demo-bubble--rangee { height: calc(3 * 1.4em + 16px); }
 }
 .demo-bubble--rangee::after { display: none; }
 

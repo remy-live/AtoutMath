@@ -1697,17 +1697,30 @@ function dessinerCarreMagiquePdf(doc, item, slot, solution, champ) {
     doc.setTextColor(...ENCRE.texte);
     doc.text(pourPdf(`Somme magique : ${somme}`), slot.x + (cote * n) / 2, sommeY + sommeH * 0.78,
         { align: 'center' });
+    // LES FONDS D'ABORD, LES TRAITS ENSUITE — et les fonds DÉBORDENT d'un
+    // quart de millimètre.
+    //
+    // Rémy : « parfois en pdf, les carrés d'un carré ne sont pas collés, il y a
+    // un petit vide ». Chaque case était peinte puis bordée dans la foulée
+    // (`FD`) : deux cases données côte à côte laissaient voir, entre leurs deux
+    // fonds, la bande blanche que le trait ne recouvre pas tout à fait — le
+    // rendu d'un PDF arrondit chaque contour à sa façon, et un fond qui
+    // s'arrête pile sur le contour laisse passer le papier.
+    // En peignant tous les fonds d'abord, avec un léger recouvrement, puis tous
+    // les traits par-dessus, il n'y a plus d'interstice possible.
+    const debord = 0.25;
+    doc.setFillColor(...ENCRE.donnee);
+    for (let i = 0; i < cases.length; i++) {
+        if (trous.includes(i)) continue;
+        const x = slot.x + (i % n) * cote, y = slot.y + Math.floor(i / n) * cote;
+        doc.rect(x - debord, y - debord, cote + debord * 2, cote + debord * 2, 'F');
+    }
     for (let i = 0; i < cases.length; i++) {
         const x = slot.x + (i % n) * cote, y = slot.y + Math.floor(i / n) * cote;
         const trou = trous.includes(i);
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.35);
-        if (!trou) {
-            doc.setFillColor(...ENCRE.donnee);
-            doc.rect(x, y, cote, cote, 'FD');
-        } else {
-            doc.rect(x, y, cote, cote, 'S');
-        }
+        doc.rect(x, y, cote, cote, 'S');
         if (!trou || solution) {
             doc.setFont('helvetica', trou ? 'normal' : 'bold');
             doc.setFontSize(Math.min(14, cote * 1.7));
@@ -1752,9 +1765,27 @@ function geometrieRedaction(item, boite) {
     // propriété du cours EN ENTIER (« Si deux droites sont parallèles, toute
     // perpendiculaire à l'une… ») : sur une seule ligne de trois centimètres,
     // aucun élève ne peut l'écrire.
-    const figH = Math.min(boite.h * 0.40, boite.w * 0.34);
-    const cx = boite.x + boite.w / 2;
-    const cy = boite.y + figH / 2;
+    // DEUX MISES EN PAGE. Rémy : « on pourrait proposer deux formes de
+    // présentation pour le pdf, soit le schéma et dessous la rédaction, soit le
+    // schéma et à droite la partie rédaction ».
+    //
+    // EMPILÉ : la figure en haut sur toute la largeur, les lignes dessous —
+    // c'est la présentation d'un cahier, et les lignes y sont longues.
+    // CÔTE À CÔTE : la figure à gauche, la rédaction à droite — la figure reste
+    // sous les yeux pendant qu'on écrit, ce qui est justement ce qu'on demande
+    // à l'élève de faire. En revanche les lignes sont deux fois plus courtes :
+    // c'est le prix, et c'est au professeur de choisir.
+    const cote = item.meta.miseEnPage === 'cote';
+    const zoneFig = cote
+        ? { x: boite.x, y: boite.y, w: boite.w * 0.44, h: boite.h }
+        : { x: boite.x, y: boite.y, w: boite.w, h: Math.min(boite.h * 0.40, boite.w * 0.34) };
+    const zoneTexte = cote
+        ? { x: boite.x + boite.w * 0.47, y: boite.y, w: boite.w * 0.53, h: boite.h }
+        : { x: boite.x, y: boite.y + zoneFig.h + 5, w: boite.w, h: boite.h - zoneFig.h - 6 };
+
+    const figH = zoneFig.h;
+    const cx = zoneFig.x + zoneFig.w / 2;
+    const cy = zoneFig.y + figH / 2;
     const a = f.inclinaison * Math.PI / 180;
     const dx = Math.cos(a), dy = Math.sin(a);
     const nx = -dy, ny = dx;
@@ -1764,11 +1795,11 @@ function geometrieRedaction(item, boite) {
     // l'encombrement réel — demi-longueur projetée sur chaque axe, plus la
     // place d'une étiquette — et on met le tout à l'échelle.
     const MARGE_NOM = 7;
-    let L = boite.w * 0.34, e = figH * 0.26;
+    let L = zoneFig.w * 0.34, e = figH * 0.26;
     const demiW = L * Math.abs(dx) + e * Math.abs(nx) + MARGE_NOM;
     const demiH = L * Math.abs(dy) + e * Math.abs(ny) + MARGE_NOM;
     const facteur = Math.min(
-        (boite.w / 2 - 1) / demiW,
+        (zoneFig.w / 2 - 1) / demiW,
         (figH / 2 - 1) / demiH,
         1
     );
@@ -1805,8 +1836,8 @@ function geometrieRedaction(item, boite) {
     // Chaque nom est RAMENÉ dans la boîte : à moitié coupé, il ne nomme rien,
     // et posé sur le bloc voisin il nomme la mauvaise figure.
     const dedans = (x, y) => ({
-        x: Math.min(boite.x + boite.w - 4.5, Math.max(boite.x + 4.5, x)),
-        y: Math.min(boite.y + figH - 0.5, Math.max(boite.y + 3.2, y))
+        x: Math.min(zoneFig.x + zoneFig.w - 4.5, Math.max(zoneFig.x + 4.5, x)),
+        y: Math.min(zoneFig.y + figH - 0.5, Math.max(zoneFig.y + 3.2, y))
     });
     const bout = (d, sens) => {
         const bx = loin > 0 ? d.x2 - 3 * dx : d.x1 + 3 * dx;
@@ -1830,15 +1861,15 @@ function geometrieRedaction(item, boite) {
         // régulier par construction. « Or » en reçoit trois : c'est elle qui
         // porte la propriété du cours, écrite en entier.
         lignesEcriture: RED_ECRITURE,
-        pas: (boite.h - figH - 6) / RED_TOTAL,
-        ligneY: (i) => boite.y + figH + 5 + RED_DEBUT[i] * ((boite.h - figH - 6) / RED_TOTAL),
+        zoneFig, zoneTexte, cote,
+        pas: zoneTexte.h / RED_TOTAL,
+        ligneY: (i) => zoneTexte.y + RED_DEBUT[i] * (zoneTexte.h / RED_TOTAL),
         railsY: (i) => {
-            const pas = (boite.h - figH - 6) / RED_TOTAL;
-            const y0 = boite.y + figH + 5;
+            const pas = zoneTexte.h / RED_TOTAL;
             return Array.from({ length: RED_ECRITURE[i] - 1 },
-                (_, j) => y0 + (RED_DEBUT[i] + j + 1) * pas);
+                (_, j) => zoneTexte.y + (RED_DEBUT[i] + j + 1) * pas);
         },
-        ligneH: (boite.h - figH - 6) / RED_TOTAL
+        ligneH: zoneTexte.h / RED_TOTAL
     };
 }
 
@@ -1857,13 +1888,13 @@ function redactionPreviewHtml(item, slot, k, solution, champs) {
         // l'impression que la propriété ne tient pas.
         const rails = solution ? '' : g.railsY(i).map(yr =>
             `<div class="fx-red-rail${champs ? ' fx-red-rail--champ' : ''}"
-                style="left:${(b.x + 4) * k}px;
-                top:${(yr + 0.8) * k}px; width:${(b.w - 4) * k}px"></div>`).join('');
+                style="left:${(g.zoneTexte.x + 4) * k}px;
+                top:${(yr + 0.8) * k}px; width:${(g.zoneTexte.w - 4) * k}px"></div>`).join('');
         // `y` est la LIGNE DE BASE du texte dans le PDF ; en HTML, `top` est le
         // haut de la boîte. Sans ce décalage, l'aperçu descendait chaque
         // étiquette d'une hauteur de police et les écarts semblaient irréguliers.
-        return `<div class="fx-red-ligne" style="left:${b.x * k}px; top:${(y - 2.5) * k}px;
-            width:${b.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
+        return `<div class="fx-red-ligne" style="left:${g.zoneTexte.x * k}px; top:${(y - 2.5) * k}px;
+            width:${g.zoneTexte.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
             <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
     }).join('');
     return `<div class="fx-red" style="left:0; top:0">
@@ -1915,28 +1946,31 @@ function dessinerRedactionPdf(doc, item, slot, solution, champ) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(30, 41, 59);
+        // Tout s'écrit dans la ZONE DE TEXTE : elle occupe toute la largeur en
+        // présentation empilée, la moitié droite en présentation côte à côte.
+        const zx = g.zoneTexte.x, zw = g.zoneTexte.w;
         const chapeau = `${et} : `;
-        doc.text(chapeau, b.x, y);
-        const x0 = b.x + doc.getTextWidth(chapeau);
+        doc.text(chapeau, zx, y);
+        const x0 = zx + doc.getTextWidth(chapeau);
         doc.setFont('helvetica', 'normal');
         if (solution) {
             doc.setFontSize(8.2);
             doc.setTextColor(60, 70, 88);
-            const mots = doc.splitTextToSize(pourPdf(lignes[i].texte), b.x + b.w - x0);
+            const mots = doc.splitTextToSize(pourPdf(lignes[i].texte), zx + zw - x0);
             mots.slice(0, 2).forEach((ligne, j) => doc.text(ligne, x0, y + j * 3.6));
         } else {
             doc.setDrawColor(168, 176, 191);
             doc.setLineWidth(0.25);
             doc.setLineDashPattern([0.7, 1.1], 0);
-            doc.line(x0, y + 0.8, b.x + b.w, y + 0.8);
-            g.railsY(i).forEach(yr => doc.line(b.x + 4, yr + 0.8, b.x + b.w, yr + 0.8));
+            doc.line(x0, y + 0.8, zx + zw, y + 0.8);
+            g.railsY(i).forEach(yr => doc.line(zx + 4, yr + 0.8, zx + zw, yr + 0.8));
             // Rédiger au clavier : un champ par ligne d'écriture, posé sur son
             // trait. Sans eux, la fiche remplissable s'arrête avant la seule
             // chose qu'on demande vraiment d'écrire ici.
             if (champ) {
                 const h = g.ligneH * 0.8;
-                champ(x0, y + 0.8 - h, b.x + b.w - x0, h);
-                g.railsY(i).forEach(yr => champ(b.x + 4, yr + 0.8 - h, b.x + b.w - 4 - 4, h));
+                champ(x0, y + 0.8 - h, zx + zw - x0, h);
+                g.railsY(i).forEach(yr => champ(zx + 4, yr + 0.8 - h, zw - 8, h));
             }
             doc.setLineDashPattern([], 0);
         }
@@ -2331,10 +2365,18 @@ function dessinerMemoryPdf(doc, item, slot, solution) {
 // qui donneraient la solution.
 
 /** Le polygone mis à l'échelle de son emplacement, centré. */
-function cadrerTangram(poly, b, marge) {
+/**
+ * @param {Object} [commun] - l'encombrement de la figure la plus étalée du jeu.
+ *   Fourni, c'est LUI qui fixe le millimètre : toutes les figures de la feuille
+ *   sortent alors à la même échelle, et les pièces découpées dans le carré
+ *   recouvrent vraiment les silhouettes. Absent, chaque figure remplit son
+ *   cadre — plus grand à regarder, impossible à recouvrir.
+ */
+function cadrerTangram(poly, b, marge, commun) {
     const bb = boiteTangram(poly);
     const w = bb.x1 - bb.x0, h = bb.y1 - bb.y0;
-    const e = Math.min((b.w - 2 * marge) / w, (b.h - 2 * marge) / h);
+    const ref = commun && commun.w && commun.h ? commun : { w, h };
+    const e = Math.min((b.w - 2 * marge) / ref.w, (b.h - 2 * marge) / ref.h);
     return {
         e,
         px: (x) => b.x + (b.w - w * e) / 2 + (x - bb.x0) * e,
@@ -2352,7 +2394,7 @@ function tangramPreviewHtml(item, slot, k, solution) {
     const ref = decouper ? m.pieces.flatMap(p => p.sommets) : m.silhouette;
     // UNE SILHOUETTE PORTE SON NOM DESSOUS : on lui réserve la bande, sinon le
     // carré remplit tout le bloc et son nom s'écrit par-dessus lui.
-    const g = cadrerTangram(ref, decouper ? b : { ...b, h: b.h - 5 }, 2);
+    const g = cadrerTangram(ref, decouper ? b : { ...b, h: b.h - 5 }, 2, m.commun);
     const T = (v) => (v * k).toFixed(2);
     const chemin = (pts) => pts.map(([x, y]) => `${T(g.px(x))},${T(g.py(y))}`).join(' ');
     let d = '';
@@ -2386,7 +2428,7 @@ function dessinerTangramPdf(doc, item, slot, solution) {
     const couleur = polycopieEnCouleur();
     const decouper = m.quoi === 'decouper';
     const ref = decouper ? m.pieces.flatMap(p => p.sommets) : m.silhouette;
-    const g = cadrerTangram(ref, decouper ? b : { ...b, h: b.h - 5 }, 2);
+    const g = cadrerTangram(ref, decouper ? b : { ...b, h: b.h - 5 }, 2, m.commun);
     const mm = (pts) => pts.map(([x, y]) => [g.px(x), g.py(y)]);
 
     if (!decouper) {
@@ -2951,24 +2993,34 @@ function horlogePreviewHtml(item, slot, k, solution) {
     const tracer = m.mode === 'lire' || solution;
     const a = horlogeAngles(m);
     const T = (v) => (v * k).toFixed(2);
+    // L'APERÇU MONTRE CE QUI SORTIRA. Les mêmes couleurs que le PDF, sous la
+    // même condition : un aperçu qui ment fait imprimer deux fois.
+    const enCouleur = polycopieEnCouleur();
+    const hex = ([r, v, b]) => `rgb(${r},${v},${b})`;
+    const C = HORLOGE_COULEUR;
+    const cCadran = enCouleur ? hex(C.cadran) : '#1a202c';
+    const cChiffres = enCouleur ? hex(C.chiffres) : '#1a202c';
+    const cHeures = enCouleur ? hex(C.heures) : '#1a202c';
+    const cMinutes = enCouleur ? hex(C.minutes) : '#1a202c';
     let d = '';
 
     // Le boîtier, les soixante graduations, et la couronne des minutes.
-    d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r)}" fill="#fff" stroke="#1a202c" stroke-width="${T(g.r * 0.045)}"/>`;
+    d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r)}"
+          fill="${enCouleur ? hex(C.fond) : '#fff'}" stroke="${cCadran}" stroke-width="${T(g.r * 0.045)}"/>`;
     for (let i = 0; i < 60; i++) {
         const ang = i / 60 * Math.PI * 2 - Math.PI / 2;
         const gros = i % 5 === 0;
         const r2 = g.r * 0.94, r1 = r2 - g.r * (gros ? 0.085 : 0.045);
         d += `<line x1="${T(g.cx + Math.cos(ang) * r1)}" y1="${T(g.cy + Math.sin(ang) * r1)}"
               x2="${T(g.cx + Math.cos(ang) * r2)}" y2="${T(g.cy + Math.sin(ang) * r2)}"
-              stroke="${gros ? '#1a202c' : '#94a3b8'}" stroke-width="${T(g.r * (gros ? 0.035 : 0.014))}"/>`;
+              stroke="${gros ? cCadran : '#94a3b8'}" stroke-width="${T(g.r * (gros ? 0.035 : 0.014))}"/>`;
     }
     for (let n = 1; n <= 12; n++) {
         const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
         const rr = g.r * (m.reperes ? 0.55 : 0.74);
         d += `<text x="${T(g.cx + Math.cos(ang) * rr)}" y="${T(g.cy + Math.sin(ang) * rr)}"
               text-anchor="middle" dominant-baseline="central"
-              font-size="${T(g.r * 0.24)}" font-weight="700" fill="#1a202c">${n}</text>`;
+              font-size="${T(g.r * 0.24)}" font-weight="700" fill="${cChiffres}">${n}</text>`;
     }
     if (m.reperes) {
         for (let n = 0; n < 12; n++) {
@@ -2976,7 +3028,8 @@ function horlogePreviewHtml(item, slot, k, solution) {
             const rr = g.r * 0.78;
             d += `<text x="${T(g.cx + Math.cos(ang) * rr)}" y="${T(g.cy + Math.sin(ang) * rr)}"
                   text-anchor="middle" dominant-baseline="central"
-                  font-size="${T(g.r * 0.155)}" font-weight="700" fill="#8a93a5">${n * 5}</text>`;
+                  font-size="${T(g.r * 0.155)}" font-weight="700"
+                  fill="${enCouleur ? cMinutes : '#8a93a5'}">${n * 5}</text>`;
         }
     }
     if (tracer) {
@@ -2988,9 +3041,9 @@ function horlogePreviewHtml(item, slot, k, solution) {
         // Elle reste plus ÉPAISSE que la grande — c'est ce qui les distingue —,
         // mais d'un tiers seulement, et les deux bouts sont arrondis.
         d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}" x2="${T(gh.x)}" y2="${T(gh.y)}"
-              stroke="#1a202c" stroke-width="${T(g.r * 0.055)}" stroke-linecap="round"/>`;
+              stroke="${cHeures}" stroke-width="${T(g.r * 0.055)}" stroke-linecap="round"/>`;
         d += `<line x1="${T(g.cx)}" y1="${T(g.cy)}" x2="${T(gm.x)}" y2="${T(gm.y)}"
-              stroke="#1a202c" stroke-width="${T(g.r * 0.036)}" stroke-linecap="round"/>`;
+              stroke="${cMinutes}" stroke-width="${T(g.r * 0.036)}" stroke-linecap="round"/>`;
     }
     d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.r * 0.05)}" fill="#1a202c"/>`;
 
@@ -3003,14 +3056,31 @@ function horlogePreviewHtml(item, slot, k, solution) {
              font-size:${g.ligneH * 0.44 * k}px">${echapperSheet(ligne)}</div>`;
 }
 
+// LES COULEURS DE LA PENDULE, quand la feuille s'imprime en couleur.
+//
+// Rémy : « si on demande le pdf en couleur, il faut un peu de couleur sur les
+// pendules ». Et ce n'est pas de la décoration : la GRANDE aiguille et la
+// PETITE sont exactement ce qu'un élève confond, et deux couleurs les
+// séparent mieux que deux épaisseurs. Le cadran reste sobre — c'est un
+// instrument de lecture, pas une affiche.
+const HORLOGE_COULEUR = {
+    fond: [252, 252, 255],
+    cadran: [37, 99, 235],      // le cercle et les gros traits
+    heures: [220, 38, 38],      // la petite aiguille, la plus lue de travers
+    minutes: [22, 101, 52],     // la grande
+    chiffres: [30, 41, 59]
+};
+
 function dessinerHorlogePdf(doc, item, slot, solution) {
     const g = geoHorloge(item, slot);
     const m = item.meta;
     const tracer = m.mode === 'lire' || solution;
     const a = horlogeAngles(m);
+    const couleur = polycopieEnCouleur();
+    const C = HORLOGE_COULEUR;
 
-    doc.setDrawColor(...ENCRE.trait);
-    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...(couleur ? C.cadran : ENCRE.trait));
+    doc.setFillColor(...(couleur ? C.fond : [255, 255, 255]));
     doc.setLineWidth(Math.max(0.35, g.r * 0.045));
     doc.circle(g.cx, g.cy, g.r, 'FD');
 
@@ -3018,13 +3088,13 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
         const ang = i / 60 * Math.PI * 2 - Math.PI / 2;
         const gros = i % 5 === 0;
         const r2 = g.r * 0.94, r1 = r2 - g.r * (gros ? 0.085 : 0.045);
-        doc.setDrawColor(...(gros ? ENCRE.trait : ENCRE.gris));
+        doc.setDrawColor(...(gros ? (couleur ? C.cadran : ENCRE.trait) : ENCRE.gris));
         doc.setLineWidth(Math.max(0.12, g.r * (gros ? 0.035 : 0.014)));
         doc.line(g.cx + Math.cos(ang) * r1, g.cy + Math.sin(ang) * r1,
             g.cx + Math.cos(ang) * r2, g.cy + Math.sin(ang) * r2);
     }
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...ENCRE.texte);
+    doc.setTextColor(...(couleur ? C.chiffres : ENCRE.texte));
     doc.setFontSize(Math.max(5, g.r * 0.24 * 2.6));
     for (let n = 1; n <= 12; n++) {
         const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
@@ -3034,7 +3104,9 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
     }
     if (m.reperes) {
         doc.setFontSize(Math.max(4, g.r * 0.155 * 2.6));
-        doc.setTextColor(...ENCRE.gris);
+        // Les repères de minutes en VERT : ce sont ceux de la grande aiguille,
+        // et l'élève doit faire le lien entre les deux d'un coup d'œil.
+        doc.setTextColor(...(couleur ? C.minutes : ENCRE.gris));
         for (let n = 0; n < 12; n++) {
             const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
             const rr = g.r * 0.78;
@@ -3045,18 +3117,19 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
     if (tracer) {
         const gm = aiguilleHorloge(g, a.minutes, g.r * 0.84);
         const gh = aiguilleHorloge(g, a.heures, g.r * 0.50);
-        doc.setDrawColor(...ENCRE.trait);
         // LE BOUT ARRONDI, dans le PDF aussi. L'aperçu arrondissait, la feuille
         // coupait net : deux dessins pour la même pendule, et c'est la feuille
         // qu'on donne aux élèves.
         if (doc.setLineCap) doc.setLineCap('round');
+        doc.setDrawColor(...(couleur ? C.heures : ENCRE.trait));
         doc.setLineWidth(Math.max(0.45, g.r * 0.055));
         doc.line(g.cx, g.cy, gh.x, gh.y);
+        doc.setDrawColor(...(couleur ? C.minutes : ENCRE.trait));
         doc.setLineWidth(Math.max(0.28, g.r * 0.036));
         doc.line(g.cx, g.cy, gm.x, gm.y);
         if (doc.setLineCap) doc.setLineCap('butt');
     }
-    doc.setFillColor(...ENCRE.trait);
+    doc.setFillColor(...(couleur ? C.cadran : ENCRE.trait));
     doc.circle(g.cx, g.cy, Math.max(0.5, g.r * 0.05), 'F');
 
     const ligne = m.mode === 'lire'
@@ -6505,7 +6578,12 @@ export const RENDUS = {
         previewGrille: quadrillagePreviewHtml,
         pdfGrille: dessinerQuadrillagePdf,
         nomBloc: 'Quadrillage', nomBlocs: 'quadrillages',
-        disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        // JUSQU'À CINQ PAR RANGÉE. Rémy : « on pourrait avoir plus que trois
+        // colonnes avec des grilles plus petites ». Un quadrillage de symétrie
+        // reste lisible petit — ce sont des carreaux qu'on compte, pas des
+        // graduations qu'on lit — et une feuille de vingt figures se donne
+        // comme entraînement là où quatre font un contrôle.
+        disposition: { cols: 2, rows: 2, maxCols: 5, maxRows: 5 },
         parLigneDefaut: 2
     },
 

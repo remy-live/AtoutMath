@@ -151,6 +151,9 @@ export const mesuresExercises = [
         // classe, et l'écran ne remplace pas le geste de tourner une pièce
         // entre ses doigts pour voir si elle rentre.
         printable: 'tangram', printGeneratorId: 'geo.tangram-fiche',
+        // À la MÊME ÉCHELLE par défaut : c'est la seule façon que les pièces
+        // découpées dans le carré recouvrent vraiment les silhouettes.
+        printParams: { depart: 'decouper', echelle: 'commune' },
         sansRevision: true,
         skills: ['geo.aires.tangram'],
         params: {},
