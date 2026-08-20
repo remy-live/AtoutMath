@@ -81,6 +81,29 @@ class CourseVecteurs extends BaseGame {
         this.fini = false;
         this.indice = '';
         this.vise = null;
+        this.montrerConsigne();
+    }
+
+    /**
+     * La consigne de la piste, en grand, avant de courir. Une fois lue, elle
+     * s'efface et rend sa place au circuit — c'est la demande de Rémy, et
+     * c'est aussi ce qui règle le « c'est petit sur iPhone ».
+     */
+    montrerConsigne() {
+        const boite = this.container.querySelector('[data-avant]');
+        if (!boite) return;              // avant le premier rendu
+        // Le robot joue tout seul : un écran à valider bloquerait la
+        // démonstration, et personne n'est là pour appuyer.
+        if (this.isDemo) { boite.hidden = true; return; }
+        this.container.querySelector('[data-avant-nom]').textContent = this.piste.nom || 'La piste';
+        this.container.querySelector('[data-avant-mot]').textContent = this.piste.aide || '';
+        boite.hidden = false;
+    }
+
+    masquerConsigne() {
+        const boite = this.container.querySelector('[data-avant]');
+        if (boite) boite.hidden = true;
+        this.container.focus({ preventScroll: true });
     }
 
     pilotes() {
@@ -102,8 +125,36 @@ class CourseVecteurs extends BaseGame {
                 .cv-wrap {
                     display: flex; flex-direction: column; gap: 8px;
                     width: 100%; height: 100%; min-height: 0; color: var(--text-main);
-                    user-select: none; -webkit-user-select: none;
+                    user-select: none; -webkit-user-select: none; position: relative;
                     container-type: size; container-name: cvcadre;
+                }
+                /* LA CONSIGNE D'ABORD, LE CIRCUIT ENSUITE.
+                   Rémy, au banc iPhone : « c'est petit sur iPhone ; pour la
+                   consigne, mets-la avant, puis on passe au circuit ». Les
+                   quatre lignes de conseil restaient sous le pavé pendant
+                   toute la course : cent dix pixels de hauteur, pris au
+                   circuit, pour un texte qu'on lit une fois. Elles passent
+                   devant, en grand, le temps de les lire — et la piste hérite
+                   de la place quand elles s'effacent. */
+                .cv-avant {
+                    position: absolute; inset: 0; z-index: 5;
+                    display: flex; flex-direction: column; align-items: center;
+                    justify-content: center; gap: clamp(10px, 3cqh, 22px);
+                    padding: clamp(14px, 5cqw, 40px); text-align: center;
+                    background: var(--bg-app);
+                }
+                .cv-avant[hidden] { display: none; }
+                .cv-avant-nom {
+                    font-weight: 900; font-size: clamp(1.1rem, 5cqw, 1.9rem); color: var(--primary);
+                }
+                .cv-avant-mot {
+                    font-size: clamp(.9rem, 3.4cqw, 1.15rem); line-height: 1.45;
+                    max-width: 34em; color: var(--text-main);
+                }
+                .cv-avant-btn {
+                    border: 0; border-radius: 999px; cursor: pointer; font: inherit;
+                    font-weight: 800; font-size: clamp(.95rem, 3.6cqw, 1.2rem);
+                    padding: 10px 26px; background: var(--primary); color: #fff;
                 }
                 .cv-barre {
                     display: flex; align-items: center; justify-content: center;
@@ -210,6 +261,11 @@ class CourseVecteurs extends BaseGame {
                     <button type="button" class="cv-btn" data-neuf>↺ Recommencer</button>
                     <button type="button" class="cv-btn" data-aide>💡 Quel coup ?</button>
                 </div>
+                <div class="cv-avant" data-avant hidden>
+                    <div class="cv-avant-nom" data-avant-nom></div>
+                    <p class="cv-avant-mot" data-avant-mot></p>
+                    <button type="button" class="cv-avant-btn" data-partir>C'est parti ▶</button>
+                </div>
             </div>`;
 
         this.svg = this.container.querySelector('[data-svg]');
@@ -222,6 +278,8 @@ class CourseVecteurs extends BaseGame {
             this.dessiner();
         };
         this.container.querySelector('[data-aide]').onclick = () => this.souffler();
+        this.container.querySelector('[data-partir]').onclick = () => this.masquerConsigne();
+        this.montrerConsigne();
 
         this.container.tabIndex = -1;
         this.container.focus({ preventScroll: true });
@@ -381,7 +439,10 @@ class CourseVecteurs extends BaseGame {
             </span>`).join('')
             + (this.record ? `<span class="cv-jauge" style="color:var(--text-muted)">
                     record théorique : ${this.record} tours</span>` : '');
-        if (mot) mot.textContent = this.indice || this.piste.aide;
+        // La consigne de la piste a été lue AVANT la course (voir
+        // `montrerConsigne`) : cette ligne-ci ne porte plus que ce qui arrive
+        // en cours de route, et reste vide le reste du temps.
+        if (mot) mot.textContent = this.indice;
     }
 
     // --- Jouer ---------------------------------------------------------------

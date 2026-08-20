@@ -602,6 +602,16 @@
    regardant la figure finie, on doit pouvoir distinguer ce qu'on a trouvé de
    ce qu'on a reçu. */
 .qd-indice { stroke: #f59e0b; stroke-width: 2.6; stroke-dasharray: 4 3; }
+/* LE FILM DU MOUVEMENT : une copie de la figure de départ qui va se poser sur
+   son image, puis s'efface. Elle est translucide et cerclée — on ne doit pas
+   la confondre une seconde avec une case tracée. */
+.qd-film-fantome rect {
+    fill: rgba(99, 102, 241, .38); stroke: var(--primary);
+    stroke-width: 2; stroke-dasharray: 5 3;
+}
+.qd-film-fantome { transition: opacity .3s ease; }
+.qd-film-fantome--part { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .qd-film-fantome { transition: none; } }
 .qd-etiquette { fill: #fff; font-size: 15px; font-weight: 800; }
 
 /* LES PIÈCES D'UN PAVAGE : six teintes, et une LETTRE sur chacune.

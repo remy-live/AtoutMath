@@ -24,6 +24,24 @@ import { cleFigure, comparer } from '../transformations.js';
 import { imageAttendue } from '../generators/transfoQuadrillage.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
+/**
+ * COMBIEN DE FOIS ON A LE DROIT DE VOIR LE MOUVEMENT.
+ *
+ * Rémy : « je trouve cela dur ; rajoute un bouton pour montrer l'animation de
+ * la rotation par exemple, mais il est limité en usage ». Deux passages, et
+ * c'est tout : le film montre OÙ la figure arrive, il ne la trace pas. Il
+ * reste à la recompter case par case, ce qui est l'exercice.
+ *
+ * « Que se passe-t-il si on bloque complètement ? » — on n'est jamais coincé :
+ * le bouton d'indice donne les phrases, puis UNE CASE à chaque appui, et il
+ * annonce combien il en reste. Un élève qui appuie jusqu'au bout obtient la
+ * figure entière ; elle sera marquée comme reçue, et il aura vu comment on la
+ * construit. Un exercice dont on ne peut pas sortir n'apprend rien.
+ */
+const FILMS_PAR_QUESTION = 2;
+const DUREE_FILM = 1500;      // le voyage
+const POSE_FILM = 900;        // le temps de regarder où c'est tombé
+
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
@@ -32,11 +50,18 @@ export function mount(container, session) {
     let item = null;
     let posees = [];        // les cases coloriées par l'élève
     let svg = null;
+    // Les deux passages du film, par question. Voir `jouerLeMouvement`.
+    let filmsRestants = 0;
+    let filmEnCours = false;
+    // Rafraîchit le libellé du bouton d'indice — il annonce combien de cases
+    // restent à trouver, et c'est ce qui dit qu'on n'est jamais coincé.
+    let majIndice = () => {};
 
     function renderNext() {
         if (destroyed) return;
         item = session.next();
         posees = [];
+        filmsRestants = FILMS_PAR_QUESTION;
         render();
     }
 
@@ -56,6 +81,7 @@ export function mount(container, session) {
             <div class="figure-wrap figure-wrap--interactive qd-plateau">${grille}</div>
             <div class="qd-barre">
                 <span class="qd-compte" role="status"></span>
+                <button type="button" class="qd-effacer qd-film" data-film></button>
                 <button type="button" class="qd-effacer" data-effacer>Tout effacer</button>
                 <button type="button" class="kk-btn-valider" data-valider>Valider</button>
             </div>
@@ -84,6 +110,116 @@ export function mount(container, session) {
             majCompte();
         };
         container.querySelector('[data-valider]').onclick = valider;
+        container.querySelector('[data-film]').onclick = jouerLeMouvement;
+        majFilm();
+    }
+
+    // --- LE FILM DU MOUVEMENT ---------------------------------------------------
+    //
+    // On fait glisser, tourner ou basculer une COPIE de la figure de départ
+    // jusqu'à sa place d'arrivée. C'est le geste que la transformation décrit,
+    // et il n'y a pas d'autre façon de le montrer qu'en le faisant.
+    //
+    // La copie s'efface ensuite : le film dit OÙ, il ne trace pas. Le report
+    // case par case reste à faire, et c'est lui l'exercice.
+
+    /** L'échelle du dessin, relue sur le quadrillage lui-même. */
+    function reperes() {
+        const h = svg && svg.querySelector('.qd-hit');
+        if (!h) return null;
+        const [gx, gy] = h.dataset.c.split(',').map(Number);
+        const u = parseFloat(h.getAttribute('width'));
+        const ox = parseFloat(h.getAttribute('x')) - gx * u;
+        const oy = parseFloat(h.getAttribute('y')) - gy * u;
+        return { u, px: (v) => ox + v * u, py: (v) => oy + v * u };
+    }
+
+    /**
+     * L'état du mouvement à l'instant `t` (de 0 à 1), écrit comme un
+     * `transform` SVG.
+     *
+     * LA SYMÉTRIE SE JOUE COMME UN PLIAGE : l'échelle passe de 1 à −1 en
+     * traversant 0, donc la figure s'aplatit sur l'axe puis se rouvre de
+     * l'autre côté. C'est exactement le geste du papier plié, et c'est ce
+     * qu'on veut faire voir. Un demi-tour ou un quart de tour, eux, se jouent
+     * comme des rotations : interpoler leur matrice raccourcirait le rayon et
+     * la figure passerait par le centre au lieu de tourner autour.
+     */
+    function mouvementA(t, r) {
+        const tr = item.meta.transfo;
+        if (!tr) return '';
+        if (tr.genre === 'translation') {
+            return `translate(${tr.vecteur.x * r.u * t} ${tr.vecteur.y * r.u * t})`;
+        }
+        if (tr.genre === 'centrale' || tr.genre === 'rotation') {
+            const quarts = ((Math.round(tr.genre === 'centrale' ? 2 : tr.quarts) % 4) + 4) % 4;
+            // ON TOURNE DU CÔTÉ QU'ANNONCE LA CONSIGNE, ET DU PLUS COURT
+            // CHEMIN. Trois quarts de tour dans le sens des aiguilles arrivent
+            // au même endroit qu'un quart dans l'autre sens — mais la consigne
+            // dit « le sens direct », et une figure qui part à l'envers pendant
+            // une seconde et demie enseigne le contraire de ce qu'on lit.
+            const angle = quarts === 3 ? -90 : 90 * quarts;
+            const c = tr.centre;
+            return `rotate(${angle * t} ${r.px(c.x)} ${r.py(c.y)})`;
+        }
+        // Symétrie axiale : on plie autour de l'axe, quel que soit son sens.
+        const a = tr.axe;
+        const s = 1 - 2 * t;
+        const cx = a.type === 'v' ? r.px(a.a) : r.px(0);
+        const cy = a.type === 'v' ? r.py(0) : r.py(a.a);
+        const angle = a.type === 'v' ? 90 : a.type === 'h' ? 0 : a.type === 'd' ? 45 : -45;
+        return `translate(${cx} ${cy}) rotate(${angle}) scale(1 ${s}) `
+            + `rotate(${-angle}) translate(${-cx} ${-cy})`;
+    }
+
+    function majFilm() {
+        const btn = container.querySelector('[data-film]');
+        if (!btn) return;
+        if (!item.meta.transfo) { btn.hidden = true; return; }
+        btn.hidden = false;
+        btn.disabled = filmsRestants <= 0 || filmEnCours;
+        btn.textContent = filmsRestants > 0
+            ? `▶ Montre le mouvement (${filmsRestants})`
+            : '▶ Mouvement déjà montré deux fois';
+    }
+
+    function jouerLeMouvement() {
+        if (filmEnCours || destroyed || session.locked) return;
+        const r = reperes();
+        if (!r || filmsRestants <= 0) return;
+        filmsRestants--;
+        // Voir le mouvement est une aide : elle compte comme telle au barème,
+        // exactement comme une case donnée.
+        if (!session.sansTrace) session.hintIndex++;
+        filmEnCours = true;
+        majFilm();
+
+        const ns = 'http://www.w3.org/2000/svg';
+        const g = document.createElementNS(ns, 'g');
+        g.setAttribute('class', 'qd-film-fantome');
+        (item.meta.depart || []).forEach(p => {
+            const rect = document.createElementNS(ns, 'rect');
+            rect.setAttribute('x', r.px(p.x));
+            rect.setAttribute('y', r.py(p.y));
+            rect.setAttribute('width', r.u);
+            rect.setAttribute('height', r.u);
+            g.appendChild(rect);
+        });
+        svg.insertBefore(g, sousLesMarques());
+
+        const debut = performance.now();
+        const doux = (x) => (x < 0.5 ? 2 * x * x : 1 - ((-2 * x + 2) ** 2) / 2);
+        const pas = (maintenant) => {
+            if (destroyed) { g.remove(); return; }
+            const t = Math.min(1, (maintenant - debut) / DUREE_FILM);
+            g.setAttribute('transform', mouvementA(doux(t), r));
+            if (t < 1) { requestAnimationFrame(pas); return; }
+            regTimeout(() => {
+                g.classList.add('qd-film-fantome--part');
+                regTimeout(() => { g.remove(); filmEnCours = false; majFilm(); }, 320);
+            }, POSE_FILM);
+        };
+        requestAnimationFrame(pas);
     }
 
     // --- L'INDICE QUI TRACE UNE CASE ------------------------------------------
@@ -106,18 +242,29 @@ export function mount(container, session) {
      */
     function brancherIndiceCase() {
         const btn = container.querySelector('[data-hint]');
-        if (!btn) return;
+        if (!btn) { majIndice = () => {}; return; }
         const phrase = btn.onclick;
         const majTexte = () => {
             if (session.hintsAvailable) return;
             btn.disabled = false;
-            btn.innerHTML = '<span aria-hidden="true">🎯</span> Trace une case';
+            // ON DIT COMBIEN IL EN RESTE. « Que se passe-t-il si on bloque
+            // complètement ? » : on appuie encore, et encore — chaque appui
+            // trace une case de plus. Le compte affiché est ce qui le fait
+            // savoir ; sans lui, l'élève croit l'aide épuisée après la
+            // première case.
+            const reste = [...imageAttendue(item.meta)]
+                .filter(p => !posees.some(q => q.x === p.x && q.y === p.y)).length;
+            btn.innerHTML = reste
+                ? `<span aria-hidden="true">🎯</span> Trace une case (${reste} à trouver)`
+                : '<span aria-hidden="true">🎯</span> Toutes les cases sont posées';
+            btn.disabled = !reste;
         };
         btn.onclick = (e) => {
             if (session.hintsAvailable) { phrase(e); majTexte(); return; }
             montrerUneCase();
             majTexte();
         };
+        majIndice = majTexte;
         majTexte();
     }
 
@@ -193,6 +340,7 @@ export function mount(container, session) {
             ? `${cible} cases à colorier`
             : `${n} case${n > 1 ? 's' : ''} coloriée${n > 1 ? 's' : ''} sur ${cible}`;
         el.classList.toggle('qd-compte--prete', n === cible);
+        majIndice();
     }
 
     function secouer() {
