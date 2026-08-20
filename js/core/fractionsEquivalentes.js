@@ -73,18 +73,24 @@ export const TROUS = ['numerateur', 'denominateur'];
  * @param {number} [opts.maxBase]   - plus grand dénominateur de départ
  * @param {number} [opts.maxFacteur]- plus grand facteur de multiplication
  * @param {string} [opts.trou]      - 'numerateur' | 'denominateur' | 'les-deux'
+ * @param {boolean} [opts.propre]   - fraction inférieure à 1 : une seule bande
+ *   suffit à la dessiner, donc une seule à compter
  * @returns {{gauche, droite, trou, reponse, facteur, sens, visible}}
  *   `visible` est le nombre DONNÉ du côté à compléter — c'est lui qui permet
  *   de retrouver le facteur.
  */
 export function tirerEgalite(rng, opts = {}) {
     const {
-        sens = 'les-deux', maxBase = 9, maxFacteur = 12, trou = 'les-deux', eviter = []
+        sens = 'les-deux', maxBase = 9, maxFacteur = 12, trou = 'les-deux', eviter = [],
+        propre = false
     } = opts;
 
-    for (let essai = 0; essai < 60; essai++) {
-        const d = rng.int(2, Math.max(2, maxBase));
-        const n = rng.int(1, Math.max(1, d * 2));
+    for (let essai = 0; essai < 80; essai++) {
+        const d = rng.int(propre ? 3 : 2, Math.max(propre ? 3 : 2, maxBase));
+        // PROPRE : la fraction tient dans une unité, donc dans UNE bande. C'est
+        // la condition pour qu'on puisse compter ses parts d'un coup d'œil —
+        // deux bandes bout à bout, on ne compte plus, on additionne.
+        const n = propre ? rng.int(1, d - 1) : rng.int(1, Math.max(1, d * 2));
         // La fraction de base est IRRÉDUCTIBLE : sans cela, « simplifier »
         // aurait deux réponses justes et l'élève aurait raison de se plaindre.
         if (!estIrreductible(n, d)) continue;

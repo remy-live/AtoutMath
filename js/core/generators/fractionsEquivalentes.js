@@ -68,15 +68,38 @@ export const fracEgaliteGenerator = {
             aide: 'Jusqu\'où va la multiplication. À 12, on reste dans les tables ; au-delà, '
                 + 'l\'exercice devient aussi un calcul.'
         },
-        { id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum', default: 9, min: 2, max: 20 }
+        { id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum', default: 9, min: 2, max: 20 },
+        {
+            id: 'bandes', type: 'number', label: 'Questions avec les bandes', default: 3, min: 0, max: 10,
+            aide: 'Rémy : « les bandes l\'une en dessous de l\'autre, la seconde découpée : '
+                + 'l\'élève aura juste à compter dans un premier temps, deux ou trois questions, '
+                + 'et après tu les enlèves pour qu\'il multiplie. » Pendant ces questions-là les '
+                + 'nombres restent petits — on ne compte pas jusqu\'à quatre-vingts. Ensuite les '
+                + 'bandes disparaissent et il ne reste que les deux flèches de multiplication.'
+        }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
+        // LES PREMIÈRES QUESTIONS SE COMPTENT, LES SUIVANTES SE CALCULENT.
+        //
+        // Deux bandes de même longueur, la seconde découpée : la réponse se LIT
+        // en comptant les parts. C'est la marche zéro — celle où l'on constate
+        // que les deux écritures désignent la même longueur. Puis les bandes
+        // s'en vont, et il faut multiplier.
+        //
+        // Pendant la phase du comptage, la fraction reste PROPRE et les nombres
+        // petits : au-delà d'une vingtaine de parts, compter n'est plus une
+        // méthode, c'est une corvée.
+        const avecBandes = (ctx.index || 0) < Number(params.bandes ?? 3);
         const e = tirerEgalite(rng, {
             sens: params.sens || 'les-deux',
             trou: params.trou || 'les-deux',
-            maxBase: Number(params.maxBase) || 9,
-            maxFacteur: Number(params.maxFacteur) || 12
+            propre: avecBandes,
+            // Dix-huit parts au plus dans la bande du bas : au-delà, sur un
+            // téléphone, chaque part fait dix pixels et l'on ne compte plus,
+            // on devine.
+            maxBase: avecBandes ? 6 : (Number(params.maxBase) || 9),
+            maxFacteur: avecBandes ? 3 : (Number(params.maxFacteur) || 12)
         });
 
         const texte = `${e.gauche.n}/${e.gauche.d} = `
@@ -94,12 +117,15 @@ export const fracEgaliteGenerator = {
                        </div>`
             },
             answer: e.reponse,
-            hints: etapesEgalite(e),
             explanation: `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d} : on `
                 + `${e.sens === 'agrandir' ? 'multiplie' : 'divise'} le numérateur ET le `
                 + `dénominateur par ${e.facteur}. La fraction ne change pas de valeur.`,
-            difficulty: e.sens === 'simplifier' ? 4 : 3,
-            meta: { egalite: e, decimal: false }
+            hints: avecBandes
+                ? ['Les deux bandes font la MÊME longueur : ce que tu cherches se compte.',
+                    ...etapesEgalite(e)]
+                : etapesEgalite(e),
+            difficulty: (avecBandes ? 1 : 3) + (e.sens === 'simplifier' ? 1 : 0),
+            meta: { egalite: e, avecBandes, decimal: false }
         });
     }
 };

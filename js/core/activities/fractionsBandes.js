@@ -29,7 +29,6 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { recoupage } from '../fractionsEquivalentes.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -60,8 +59,6 @@ export const tropDeTraits = (parts, unites = 1) => parts * unites > TRAITS_LISIB
  * @param {number} o.parts    - découpage actuel (0 = pas encore coupée)
  * @param {number} o.pleines  - nombre de parts coloriées
  * @param {number} [o.unites] - nombre d'unités (une fraction impropre en occupe plusieurs)
- * @param {number[]} [o.nouveaux] - traits AJOUTÉS par un recoupage, en fraction d'unité
- * @param {number[]} [o.faux]     - traits proposés qui ne tombent pas juste
  * @param {string} [o.teinte]     - classe de couleur du remplissage
  */
 function bandeSvg(o) {
@@ -79,48 +76,25 @@ function bandeSvg(o) {
     // Les traits de coupe actuels. Une frontière d'unité est plus épaisse :
     // c'est elle qui dit « ici, une bande entière est passée ».
     //
-    // `sansCoupes` garde la LONGUEUR et le coloriage mais tait le découpage :
-    // c'est la bande mystère de l'égalité. Sans cela, il suffirait de compter
-    // les traits pour répondre — et l'exercice deviendrait un exercice de
-    // comptage. Les frontières d'unité, elles, restent : une bande qui dépasse
-    // l'unité se voit de toute façon.
-    const total = parts + (o.nouveaux || []).length;
+    // LA SECONDE BANDE EST DÉCOUPÉE, et c'est tout l'exercice : « l'élève aura
+    // juste à compter dans un premier temps ». Une version antérieure la
+    // voilait — elle demandait alors de calculer avant d'avoir constaté quoi
+    // que ce soit. Restent les seuils de lisibilité : passé soixante traits, on
+    // ne dessine plus que les frontières d'unité, parce qu'un peigne ne se
+    // compte pas non plus. Le générateur garde d'ailleurs les nombres petits
+    // pendant la phase du comptage.
+    const total = parts;
     const serre = tropDeTraits(total, unites);
     const fines = total * unites > TRAITS_FINS ? ' fb-coupe--fine' : '';
     if (parts > 0) {
         for (let i = 1; i < parts * unites; i++) {
             const entiere = i % parts === 0;
-            if ((o.sansCoupes || serre) && !entiere) continue;
+            if (serre && !entiere) continue;
             const x = (i * pas).toFixed(3);
             dedans += `<line class="fb-coupe${entiere ? ' fb-coupe--unite' : ''}${fines}"
                 x1="${x}" y1="0" x2="${x}" y2="${HAUT}" />`;
         }
     }
-    // Les traits qui DISPARAISSENT quand on simplifie : en gris pâle, pour
-    // qu'on voie qu'ils ont existé et que la longueur, elle, n'a pas bougé.
-    (o.fantomes || []).forEach(f => {
-        for (let u = 0; u < unites; u++) {
-            const x = ((u + f) * UNITE).toFixed(3);
-            dedans += `<line class="fb-fantome" x1="${x}" y1="0" x2="${x}" y2="${HAUT}" />`;
-        }
-    });
-    // Les traits que le recoupage AJOUTE : ils arrivent en fondu, entre les
-    // anciens, et c'est ce mouvement qui montre que la longueur ne bouge pas.
-    (serre ? [] : (o.nouveaux || [])).forEach((f, k) => {
-        for (let u = 0; u < unites; u++) {
-            const x = ((u + f) * UNITE).toFixed(3);
-            dedans += `<line class="fb-neuve${fines}" style="--fb-retard:${(k * 45)}ms"
-                x1="${x}" y1="0" x2="${x}" y2="${HAUT}" />`;
-        }
-    });
-    // Les traits d'une proposition qui ne tombe pas juste : en rouge, et ils
-    // ne s'alignent visiblement sur rien.
-    (o.faux || []).forEach(f => {
-        for (let u = 0; u < unites; u++) {
-            const x = ((u + f) * UNITE).toFixed(3);
-            dedans += `<line class="fb-faux" x1="${x}" y1="-3" x2="${x}" y2="${HAUT + 3}" />`;
-        }
-    });
 
     return `<svg class="fb-bande" viewBox="-2 -5 ${L + 4} ${HAUT + 10}"
         preserveAspectRatio="none" role="img" aria-label="${etiquetteAlt(o, unites)}">
@@ -308,103 +282,152 @@ export function mount(container, session, opts = {}) {
         });
     }
 
-    // --- Variante « compléter l'égalité » -----------------------------------
+    // --- L'ÉGALITÉ : ON COMPTE D'ABORD, ON MULTIPLIE ENSUITE ------------------
+    //
+    // Rémy : « tu peux mettre les bandes l'une en dessous de l'autre et
+    // découper la seconde bande, l'élève aura juste à compter dans un premier
+    // temps (2-3 questions), et après tu les enlèves pour qu'il multiplie. Tu
+    // peux faire une flèche de multiplication en haut et en bas. »
+    //
+    // C'est la bonne marche zéro, et elle manquait. La version d'avant voilait
+    // la seconde bande — « même longueur, mais coupée en combien ? » — ce qui
+    // demandait DÉJÀ de calculer. Découpée et posée juste en dessous, elle se
+    // compte : les deux longueurs coloriées s'arrêtent au même endroit, et
+    // l'élève constate de ses yeux que 1/3 et 4/12 sont la même chose avant
+    // qu'on lui demande de le démontrer.
+    //
+    // Puis les bandes s'en vont, et il ne reste que les DEUX FLÈCHES — en haut
+    // et en bas, portant le même « × ? ». C'est la notation du cahier, et elle
+    // dit tout : le facteur se trouve du côté où les deux nombres sont écrits,
+    // et il s'applique à l'autre étage.
 
     function sceneEgalite(item) {
         const e = (item.meta || {}).egalite;
         if (!e) return { html: item.prompt.html, attendu: {}, reponse: () => '', diagnostic: () => '' };
+        return (item.meta.avecBandes ? sceneComptage : sceneFleches)(e);
+    }
 
-        // Les deux bandes ont la MÊME longueur et le MÊME coloriage : c'est ce
-        // qu'affirme l'égalité, et c'est ce qu'on montre AVANT la réponse. Ce
-        // qu'on cache, c'est la découpe de droite — sinon il n'y aurait plus
-        // qu'à compter les traits.
+    const trouHtml = (e) => (e.trou === 'numerateur'
+        ? colonne(caseHtml('x', 'numérateur manquant'), e.droite.d, 'fraction--trou')
+        : colonne(e.droite.n, caseHtml('x', 'dénominateur manquant'), 'fraction--trou'));
+
+    /** Le diagnostic est le même dans les deux phases : c'est la même règle. */
+    function diagnosticEgalite(e, compte) {
+        return (v) => {
+            const propose = Number(v.x);
+            if (!Number.isFinite(propose)) return '';
+            const vu = e.trou === 'numerateur' ? 'dénominateur' : 'numérateur';
+            const depart = e.trou === 'numerateur' ? e.gauche.d : e.gauche.n;
+            if (propose === depart) {
+                return `Tu as recopié le nombre de gauche. Le ${vu}, lui, a changé : `
+                    + 'regarde de combien.';
+            }
+            if (compte) {
+                return e.trou === 'numerateur'
+                    ? 'Compte les petites parts COLORIÉES de la bande du bas.'
+                    : 'Compte toutes les petites parts de la bande du bas, coloriées ou non.';
+            }
+            if (e.sens === 'agrandir' && propose < depart) {
+                return 'La fraction de droite est écrite avec de PLUS GRANDS nombres : '
+                    + 'on multiplie, on ne divise pas.';
+            }
+            return `Repars du ${vu} : il est écrit des deux côtés, c'est lui qui donne le facteur.`;
+        };
+    }
+
+    /** PHASE 1 — deux bandes empilées, la seconde découpée : on compte. */
+    function sceneComptage(e) {
         const unites = Math.max(1, Math.ceil(e.gauche.n / e.gauche.d));
-        const gauche = bandeSvg({ parts: e.gauche.d, pleines: e.gauche.n, unites });
-        const droiteCachee = bandeSvg({
-            parts: e.droite.d, pleines: e.droite.n, unites, sansCoupes: true,
-            teinte: 'fb-plein--voile'
-        });
-
-        // CE QU'ON MONTRE UNE FOIS LA RÉPONSE TROUVÉE, et c'est là que la règle
-        // se démontre : en agrandissant, la bande de droite est celle de gauche
-        // avec des traits EN PLUS ; en simplifiant, c'est la même avec des
-        // traits EN MOINS. Dans les deux cas la longueur coloriée est identique
-        // — on n'a fait que recouper.
-        const agrandit = e.sens === 'agrandir';
-        const fin = agrandit ? e.droite.d : e.gauche.d;
-        const gros = agrandit ? e.gauche.d : e.droite.d;
-        const ajoutes = recoupage(gros, fin).nouveaux;
-        const droiteDevoilee = bandeSvg({
-            parts: agrandit ? e.gauche.d : e.droite.d,
-            pleines: agrandit ? e.gauche.n : e.droite.n,
-            unites,
-            nouveaux: agrandit ? ajoutes : [],
-            fantomes: agrandit ? [] : ajoutes
-        });
-
-        const trou = e.trou === 'numerateur'
-            ? colonne(caseHtml('x', 'numérateur manquant'), e.droite.d, 'fb-frac--trou')
-            : colonne(e.droite.n, caseHtml('x', 'dénominateur manquant'), 'fb-frac--trou');
+        const rang = (frac, parts, pleines, teinte) => `
+            <div class="fb-rang-frac">${frac}</div>
+            <div class="fb-rang-bande">${bandeSvg({ parts, pleines, unites, teinte })}</div>`;
 
         const html = `
-            <div class="fb-egalite">
-                <div class="fb-bloc">
-                    <div class="fb-bande-boite">${gauche}</div>
-                    ${colonne(e.gauche.n, e.gauche.d)}
-                </div>
-                <div class="fb-signe">=</div>
-                <div class="fb-bloc">
-                    <div class="fb-bande-boite fb-bande-boite--mystere" data-mystere>
-                        ${droiteCachee}
-                        <div class="fb-voile" data-voile>
-                            <span>même longueur…<br>mais coupée en combien&nbsp;?</span>
-                        </div>
-                    </div>
-                    ${trou}
-                </div>
+            <div class="fb-pile">
+                ${rang(colonne(e.gauche.n, e.gauche.d), e.gauche.d, e.gauche.n, '')}
+                <div class="fb-pile-egal">=</div>
+                <div class="fb-pile-vide"></div>
+                ${rang(trouHtml(e), e.droite.d, e.droite.n, 'fb-plein--b')}
             </div>
-            <p class="fb-legende">La même longueur, coupée autrement : c'est la même fraction.</p>`;
+            <p class="fb-legende">Les deux bandes font la MÊME longueur, et le coloriage s'arrête
+                au même endroit. La seconde est juste coupée plus fin : compte ses parts.</p>`;
 
         return {
             html,
             attendu: { x: e.reponse },
             reponse: (v) => v.x,
             reussi() {
-                const boite = container.querySelector('[data-mystere]');
-                if (!boite) return;
-                boite.innerHTML = droiteDevoilee;
-                boite.classList.add('fb-bande-boite--devoilee');
                 const legende = container.querySelector('.fb-legende');
                 if (legende) {
-                    legende.textContent = tropDeTraits(fin, unites)
-                        ? `${fin} parts, c'est trop fin pour se dessiner trait par trait — mais `
-                            + `c'est bien la même longueur, coupée ${Math.round(fin / gros)} fois `
-                            + 'plus finement.'
-                        : agrandit
-                        ? `Des traits en PLUS — ${e.gauche.d} devient ${e.droite.d} — et la `
-                            + 'longueur coloriée n\'a pas bougé d\'un millimètre.'
-                        : `Des traits en MOINS — ${e.gauche.d} devient ${e.droite.d} — et la `
-                            + 'longueur coloriée n\'a pas bougé d\'un millimètre.';
+                    legende.textContent = `${e.gauche.n}/${e.gauche.d} et ${e.droite.n}/${e.droite.d} `
+                        + 'occupent exactement la même longueur : ce sont deux écritures de la '
+                        + 'même fraction.';
+                }
+                container.querySelectorAll('.fb-rang-bande').forEach(
+                    el => el.classList.add('fb-rang-bande--ok'));
+            },
+            diagnostic: diagnosticEgalite(e, true),
+            demo: [{
+                nom: 'x',
+                dit: e.trou === 'numerateur'
+                    ? `Les deux longueurs coloriées s'arrêtent au même endroit. Je compte les `
+                        + `petites parts coloriées d'en bas : il y en a ${e.reponse}.`
+                    : `Je compte toutes les parts de la bande du bas : il y en a ${e.reponse}.`
+            }]
+        };
+    }
+
+    /** PHASE 2 — plus de bandes : les deux flèches de multiplication. */
+    function sceneFleches(e) {
+        const divise = e.sens === 'simplifier';
+        const signe = divise ? '÷' : '×';
+        const fleche = (ou) => `
+            <div class="fb-fleche fb-fleche--${ou}">
+                <svg viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M6 ${ou === 'haut' ? 19 : 3} Q50 ${ou === 'haut' ? -4 : 26}
+                             92 ${ou === 'haut' ? 19 : 3}" />
+                    <path class="fb-pointe" d="M92 ${ou === 'haut' ? 19 : 3}
+                        l-6 ${ou === 'haut' ? -3 : 3} l1 ${ou === 'haut' ? 7 : -7} z" />
+                </svg>
+                <span class="fb-fleche-mot" data-facteur="${ou}">${signe}&nbsp;?</span>
+            </div>`;
+
+        const html = `
+            <div class="fb-avecfleches">
+                ${fleche('haut')}
+                <div class="fb-egalite fb-egalite--nue">
+                    ${colonne(e.gauche.n, e.gauche.d)}
+                    <span class="fb-signe">=</span>
+                    ${trouHtml(e)}
+                </div>
+                ${fleche('bas')}
+            </div>
+            <p class="fb-legende">En haut et en bas, c'est le MÊME nombre : c'est ce qui fait que
+                la fraction ne change pas de valeur.</p>`;
+
+        return {
+            html,
+            attendu: { x: e.reponse },
+            reponse: (v) => v.x,
+            reussi() {
+                container.querySelectorAll('[data-facteur]').forEach(el => {
+                    el.textContent = `${signe} ${e.facteur}`;
+                    el.classList.add('fb-fleche-mot--su');
+                });
+                const legende = container.querySelector('.fb-legende');
+                if (legende) {
+                    legende.textContent = `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d} : `
+                        + `on ${divise ? 'divise' : 'multiplie'} les deux étages par ${e.facteur}, `
+                        + 'et la fraction garde la même valeur.';
                 }
             },
-            diagnostic(v) {
-                const propose = Number(v.x);
-                if (!Number.isFinite(propose)) return '';
-                const vu = e.trou === 'numerateur' ? 'dénominateur' : 'numérateur';
-                const depart = e.trou === 'numerateur' ? e.gauche.d : e.gauche.n;
-                if (propose === depart) {
-                    return `Tu as recopié le nombre de gauche. Le ${vu}, lui, a changé : `
-                        + `regarde de combien.`;
-                }
-                if (e.sens === 'agrandir' && propose < depart) {
-                    return 'La fraction de droite est écrite avec de PLUS GRANDS nombres : '
-                        + 'on multiplie, on ne divise pas.';
-                }
-                return `Repars du ${vu} : il est écrit des deux côtés, c'est lui qui donne le facteur.`;
-            },
-            demo: [{ nom: 'x', dit: `Le ${e.trou === 'numerateur' ? 'dénominateur' : 'numérateur'} `
-                + `passe de ${e.trou === 'numerateur' ? e.gauche.d : e.gauche.n} à ${e.visible} : `
-                + `c'est × ${e.facteur}. Je fais pareil en dessous.` }]
+            diagnostic: diagnosticEgalite(e, false),
+            demo: [{
+                nom: 'x',
+                dit: `Le ${e.trou === 'numerateur' ? 'dénominateur' : 'numérateur'} passe de `
+                    + `${e.trou === 'numerateur' ? e.gauche.d : e.gauche.n} à ${e.visible} : `
+                    + `c'est ${signe} ${e.facteur}. La flèche du dessus dit la même chose.`
+            }]
         };
     }
 

@@ -41,10 +41,15 @@ export const fractionsExercises = [
         // fraction est IMPROPRE, donc la bande dépasse l'unité, et le facteur
         // (11) n'est pas dans les petites tables. On ne s'en tire pas de tête.
         //
-        // L'écran montre DEUX BANDES DE MÊME LONGUEUR, l'une coupée, l'autre
-        // voilée : « même longueur, mais coupée en combien ? ». La découpe se
-        // dévoile quand la réponse tombe — c'est la récompense, et c'est aussi
-        // la démonstration.
+        // ON COMPTE D'ABORD, ON MULTIPLIE ENSUITE. Rémy : « tu peux mettre les
+        // bandes l'une en dessous de l'autre et découper la seconde bande,
+        // l'élève aura juste à compter dans un premier temps (2-3 questions),
+        // et après tu les enlèves pour qu'il multiplie ». Les deux longueurs
+        // coloriées s'arrêtent alors à la même abscisse : l'élève CONSTATE que
+        // 1/3 et 4/12 sont la même chose avant qu'on lui demande de le
+        // démontrer. Puis les bandes s'en vont, et il ne reste que les deux
+        // flèches de multiplication, en haut et en bas, portant le même
+        // facteur — la notation du cahier.
         id: 'frac-egalite', status: STATUS.TEST, title: 'L\'Égalité à Compléter',
         cree: '2026-08-20',
         consignePapier: 'Complète l\'égalité entre les deux fractions.',
@@ -55,17 +60,27 @@ export const fractionsExercises = [
         // traits se serrent au point de ne plus rien montrer — et où l'exercice
         // n'est plus la règle des fractions mais une multiplication à deux
         // chiffres. Le professeur peut ouvrir, le défaut reste montrable.
-        params: { sens: 'agrandir', trou: 'les-deux', maxFacteur: 10, maxBase: 6 },
+        params: { sens: 'agrandir', trou: 'les-deux', maxFacteur: 10, maxBase: 6, bandes: 3 },
         motsClefs: ['fractions égales', 'fraction équivalente', 'produit en croix', 'simplifier'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: 'Trouve le nombre qui manque pour que les deux fractions soient égales. '
-            + 'Regarde le côté où les deux nombres sont écrits : il te donne le facteur, et '
-            + 'l\'autre étage suit. Le réglage « Dans quel sens » fait passer de la '
-            + 'multiplication à la division — c\'est la même règle, mais il faut alors '
-            + 'chercher le facteur au lieu de le lire.'
+        revisions: [{
+            date: '2026-08-20',
+            quoi: 'Les bandes sont l\'une AU-DESSUS de l\'autre et la seconde est découpée : '
+                + 'les deux longueurs coloriées s\'arrêtent à la même abscisse, et les premières '
+                + 'questions se répondent en COMPTANT. Après trois questions (réglable) les '
+                + 'bandes s\'en vont et il ne reste que les deux flèches de multiplication, en '
+                + 'haut et en bas, qui portent le même facteur.'
+        }],
+        instruction: 'Les trois premières questions se répondent en COMPTANT : les deux bandes '
+            + 'font la même longueur, le coloriage s\'arrête au même endroit, et la seconde est '
+            + 'juste coupée plus fin. Ensuite les bandes disparaissent et il reste les deux '
+            + 'flèches : le facteur se lit du côté où les deux nombres sont écrits, et la flèche '
+            + 'd\'en face dit qu\'on applique le MÊME de l\'autre côté. Le réglage « Questions '
+            + 'avec les bandes » allonge ou supprime la phase du comptage ; « Dans quel sens » '
+            + 'fait passer de la multiplication à la division.'
     },
     {
         // « UN EXERCICE D'ADDITION DE FRACTIONS PROGRESSIF », puis, après essai

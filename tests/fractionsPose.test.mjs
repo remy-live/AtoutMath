@@ -251,3 +251,42 @@ test('LES RÉGLAGES PAR DÉFAUT GARDENT LA BANDE DESSINABLE', () => {
         assert.ok(fin * unites <= 120, `${fin} parts × ${unites} unités, illisible`);
     }
 });
+
+// --- L'égalité : on compte d'abord, on multiplie ensuite ---------------------
+
+test('LES PREMIÈRES QUESTIONS SE COMPTENT, LES SUIVANTES SE CALCULENT', () => {
+    // Rémy : « l'élève aura juste à compter dans un premier temps (2-3
+    // questions), et après tu les enlèves pour qu'il multiplie ».
+    const modes = [];
+    for (let index = 0; index < 8; index++) {
+        modes.push(tirer(fracEgaliteGenerator, {}, index, index).meta.avecBandes);
+    }
+    assert.deepEqual(modes, [true, true, true, false, false, false, false, false]);
+    // Le professeur peut allonger la phase du comptage, ou la supprimer.
+    assert.equal(tirer(fracEgaliteGenerator, { bandes: 0 }, 'a', 0).meta.avecBandes, false);
+    assert.equal(tirer(fracEgaliteGenerator, { bandes: 6 }, 'b', 5).meta.avecBandes, true);
+});
+
+test('UNE BANDE QU\'ON COMPTE RESTE COMPTABLE', () => {
+    // Une fraction propre (donc une seule bande) et dix-huit parts au plus :
+    // au-delà, sur un téléphone, chaque part fait dix pixels et l'on ne compte
+    // plus, on devine.
+    for (let index = 0; index < 60; index++) {
+        const e = tirer(fracEgaliteGenerator, {}, `c${index}`, index % 3).meta.egalite;
+        assert.ok(e.gauche.n < e.gauche.d, `${e.gauche.n}/${e.gauche.d} dépasse l'unité`);
+        assert.ok(e.droite.n < e.droite.d);
+        assert.ok(e.droite.d <= 18, `${e.droite.d} parts à compter, c'est trop`);
+        assert.ok(e.gauche.d >= 3);
+    }
+});
+
+test('la phase des flèches retrouve les grands nombres', () => {
+    // C'est là que l'exercice devient un calcul : les réglages du professeur
+    // reprennent la main.
+    const vus = new Set();
+    for (let index = 0; index < 60; index++) {
+        const e = tirer(fracEgaliteGenerator, {}, `f${index}`, 5).meta.egalite;
+        vus.add(e.facteur);
+    }
+    assert.ok(Math.max(...vus) > 3, 'le facteur reste plafonné à celui du comptage');
+});

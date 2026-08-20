@@ -6017,3 +6017,50 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     .fa-pave { grid-template-columns: repeat(3, auto); }
     .fa-touche--ok { grid-column: span 3; }
 }
+
+/* --- L'ÉGALITÉ : deux bandes EMPILÉES, puis deux flèches ---------------------
+   Rémy : « tu peux mettre les bandes l'une en dessous de l'autre et découper la
+   seconde bande, l'élève aura juste à compter dans un premier temps, et après
+   tu les enlèves pour qu'il multiplie ». Les deux longueurs coloriées
+   s'arrêtent alors À LA MÊME ABSCISSE, et c'est ce alignement qui démontre
+   l'égalité — côte à côte, il fallait faire l'aller-retour du regard. */
+.fb-pile {
+    display: grid; grid-template-columns: auto minmax(0, 1fr);
+    align-items: center; column-gap: clamp(8px, 2.5cqw, 22px);
+    row-gap: clamp(3px, 1cqh, 10px); width: 100%;
+}
+.fb-rang-frac { display: flex; justify-content: flex-end; }
+/* Les deux bandes tombent dans la même colonne de la grille : elles font donc
+   rigoureusement la même largeur, quelles que soient les fractions écrites à
+   gauche. C'est l'affirmation même de l'exercice, elle ne peut pas être
+   approximative. */
+.fb-rang-bande { width: 100%; height: clamp(34px, max(11cqh, 6cqw), 88px); position: relative; }
+.fb-rang-bande--ok { animation: fb-devoile .45s ease both; }
+.fb-pile-egal {
+    display: flex; justify-content: flex-end; align-items: center;
+    font-size: clamp(1.1rem, 4cqw, 2rem); font-weight: 900; color: var(--primary);
+}
+.fb-pile-vide { min-height: 0; }
+
+/* Les deux flèches de multiplication, en haut et en bas. C'est la notation du
+   cahier : le facteur se lit du côté où les deux nombres sont écrits, et la
+   flèche d'en face dit qu'on lui applique le MÊME. */
+.fb-avecfleches {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(2px, .8cqh, 6px); width: 100%;
+}
+.fb-egalite--nue { justify-content: center; }
+.fb-fleche { position: relative; width: min(100%, 340px); height: clamp(24px, 6cqh, 42px); }
+.fb-fleche svg { width: 100%; height: 100%; overflow: visible; }
+.fb-fleche path { fill: none; stroke: var(--primary); stroke-width: 2;
+                  vector-effect: non-scaling-stroke; }
+.fb-fleche .fb-pointe { fill: var(--primary); stroke: none; }
+.fb-fleche-mot {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    background: var(--bg-app); padding: 0 .4em; font-weight: 900; color: var(--primary);
+    font-size: clamp(.85rem, max(3cqw, 3cqh), 1.35rem); white-space: nowrap;
+}
+.fb-fleche--haut .fb-fleche-mot { top: -.15em; }
+.fb-fleche--bas .fb-fleche-mot { bottom: -.15em; }
+.fb-fleche-mot--su { color: var(--success); }
+.fb-fleche--haut .fb-fleche-mot--su, .fb-fleche--bas .fb-fleche-mot--su { animation: fb-devoile .4s ease both; }
