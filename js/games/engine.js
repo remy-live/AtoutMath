@@ -135,6 +135,9 @@ export function openDemo(exo) {
     }
     const progress = document.getElementById('game-progress-container');
     if (progress) progress.style.display = 'none';
+    // L'aperçu montre l'exercice TEL QUE l'élève le recevra, calculatrice
+    // comprise : c'est là qu'on vérifie qu'elle est offerte au bon endroit.
+    import('../ui/calculatrice.js').then(m => m.reglerCalculatrice(exo));
     // La bande prend la place du titre : sans cet appel elle resterait
     // invisible, et la bannière avec elle.
     marquerDemo();

@@ -23,6 +23,7 @@ import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
 import { uuid } from './ids.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
+import { reglerCalculatrice } from '../ui/calculatrice.js';
 
 export class Runner {
     /**
@@ -275,6 +276,10 @@ export class Runner {
         }
 
         state.activeExo = step.exercise;
+        // La calculatrice n'est offerte que là où l'exercice le dit, et une
+        // fenêtre ouverte à l'étape d'avant se referme si la suivante ne
+        // l'autorise pas.
+        reglerCalculatrice(step.exercise);
         this.updateProgress();
         this.updateStepNavigation();
 
@@ -777,6 +782,7 @@ export class Runner {
 
     finish(aborted = false) {
         this.teardownStep();
+        reglerCalculatrice(null);
         this.step = null;
         this.hideStepNavigation();
         state.activeSequenceRunner = null;
@@ -817,6 +823,7 @@ export class Runner {
 
     exit() {
         clearEngines();
+        reglerCalculatrice(null);
         const gl = document.getElementById('game-layer');
         gl.classList.remove('device-simulator', 'tablet-simulator');
         gl.style.display = 'none';

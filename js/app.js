@@ -252,10 +252,21 @@ function initGameControls() {
             // jeu : sans ce balayage, il restait affiché après la fermeture.
             destroyAllDemoCursors();
             journal.flush();
+            // La calculatrice flotte sur <body>, pas dans la couche de jeu :
+            // sans ce balayage elle resterait posée sur la page d'accueil.
+            import('./ui/calculatrice.js').then(m => m.reglerCalculatrice(null));
             const gl = document.getElementById('game-layer');
             gl.classList.remove('device-simulator', 'tablet-simulator');
             gl.style.display = 'none';
         };
+    }
+
+    // LA CALCULATRICE. Le bouton n'est visible que sur les exercices qui
+    // l'autorisent — c'est `reglerCalculatrice` qui le décide à chaque étape.
+    const calc = document.getElementById('btn-game-calc');
+    if (calc) {
+        calc.onclick = () => import('./ui/calculatrice.js')
+            .then(m => m.basculerCalculatrice());
     }
 
     const demo = document.getElementById('btn-toggle-demo');

@@ -5,7 +5,8 @@ import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
     nbVus, filtrer, bilan, consigneStatuts, lireStatuts, lireRevue,
     fusionnerRevues, versMarkdown, jourISO, trier, dernierJour, direTri, estTriable,
-    jeuRevu, aChangeJeu, consigneJeux, lireJeux, lireTags, ecrireTags, basculerTag, aLeTag
+    jeuRevu, aChangeJeu, consigneJeux, lireJeux, lireTags, ecrireTags, basculerTag, aLeTag,
+    calcCatalogue, calcRevu, aChangeCalc, consigneCalc, lireCalc
 } from '../js/core/revue.js';
 import { STATUS } from '../js/data/status.js';
 import { exercices } from '../js/data/catalog.js';
@@ -424,6 +425,95 @@ test('le rapport porte la consigne des jeux à côté de celle des statuts', () 
     assert.ok(md.includes('JEU'));
     assert.ok(md.includes('Comptés comme jeux'));
     assert.ok(!versMarkdown(nouvelleRevue(), jeuDeux).includes('JEU'));
+});
+
+// --- LA CALCULATRICE, exercice par exercice ---------------------------------
+//
+// Rémy : « tu rajouteras cette option pour les exercices dans le tableau de
+// debug. Pour l'instant juste celle-là. » La colonne se coche comme celle des
+// jeux, et se recolle dans le code de la même façon.
+
+const calcDeux = [
+    exo('mes-vitesse', { calculatrice: true, activityId: 'numpad' }),
+    exo('num-tables', { activityId: 'numpad' })
+];
+
+test('le catalogue répond par défaut, et non par le vide', () => {
+    assert.equal(calcCatalogue(calcDeux[0]), true);
+    assert.equal(calcCatalogue(calcDeux[1]), false);
+    assert.equal(calcCatalogue(null), false);
+    const r = nouvelleRevue();
+    assert.equal(calcRevu(calcDeux[0], ficheDe(r, 'mes-vitesse')), true);
+    assert.equal(calcRevu(calcDeux[1], ficheDe(r, 'num-tables')), false);
+});
+
+test('la case cochée l\'emporte sur le catalogue, et se voit comme un changement', () => {
+    const r = decider(nouvelleRevue(), 'num-tables', { calc: true });
+    const f = ficheDe(r, 'num-tables');
+    assert.equal(calcRevu(calcDeux[1], f), true);
+    assert.equal(aChangeCalc(calcDeux[1], f), true);
+    // Décochée là où le code disait déjà non : rien ne change à reporter.
+    const r2 = decider(nouvelleRevue(), 'num-tables', { calc: false });
+    assert.equal(aChangeCalc(calcDeux[1], ficheDe(r2, 'num-tables')), false);
+});
+
+test('cocher la calculatrice date la ligne, comme toute décision', () => {
+    const r = decider(nouvelleRevue(), 'num-tables', { calc: true }, Date.parse('2026-08-20T10:00:00Z'));
+    assert.equal(ficheDe(r, 'num-tables').date, '2026-08-20');
+});
+
+test('la consigne de la calculatrice ne liste que ce qui change', () => {
+    let r = decider(nouvelleRevue(), 'num-tables', { calc: true });
+    r = decider(r, 'mes-vitesse', { calc: false });
+    r.version = 'v360';
+    const c = consigneCalc(r, calcDeux);
+    assert.ok(c.startsWith('CALC v360 |'), c);
+    assert.ok(c.includes('oui = num-tables'));
+    assert.ok(c.includes('non = mes-vitesse'));
+    assert.equal(consigneCalc(nouvelleRevue(), calcDeux), '');
+});
+
+test('et elle se relit', () => {
+    const lu = lireCalc('CALC v360 | oui = mes-vitesse, mes-volume | non = num-tables');
+    assert.equal(lu.version, 'v360');
+    assert.deepEqual(lu.change, [
+        { exercice: 'mes-vitesse', calc: true },
+        { exercice: 'mes-volume', calc: true },
+        { exercice: 'num-tables', calc: false }
+    ]);
+    assert.equal(lireCalc('rien du tout'), null);
+    // Les deux consignes ne se confondent pas : « JEU » n'est pas « CALC ».
+    assert.equal(lireCalc('JEU v360 | jeu = x'), null);
+    assert.equal(lireJeux('CALC v360 | oui = x'), null);
+});
+
+test('le bilan et le rapport comptent les calculatrices', () => {
+    const b = bilan(decider(nouvelleRevue(), 'num-tables', { calc: true }), calcDeux);
+    assert.equal(b.calc, 2);
+    assert.equal(b.calcChanges, 1);
+    const md = versMarkdown(decider(nouvelleRevue(), 'num-tables', { calc: true }), calcDeux);
+    assert.ok(md.includes('CALC'));
+    assert.ok(md.includes('Avec calculatrice'));
+    assert.ok(!versMarkdown(nouvelleRevue(), calcDeux).includes('CALC'));
+});
+
+test('une décision de calculatrice survit à la fusion de deux appareils', () => {
+    const a = decider(nouvelleRevue(), 'x', { calc: true }, 1000);
+    const b = decider(nouvelleRevue(), 'x', { remarque: 'vu ailleurs' }, 2000);
+    const f = ficheDe(fusionnerRevues(a, b), 'x');
+    assert.equal(f.calc, true);
+    assert.equal(f.remarque, 'vu ailleurs');
+});
+
+test('trier par calculatrice remonte les exercices qui l\'ont', () => {
+    assert.ok(estTriable('calc'));
+    assert.equal(trier(calcDeux, 'calc', nouvelleRevue())[0].id, 'mes-vitesse');
+    assert.ok(direTri('calc').includes('Calculatrice'));
+});
+
+test('une fiche qui ne porte QUE la calculatrice n\'est pas jetée', () => {
+    const r = decider(nouvelleRevue(), 'num-tables', { calc: true });
+    assert.equal(r.fiches.length, 1);
 });
 
 test('une décision de jeu survit à la fusion de deux appareils', () => {

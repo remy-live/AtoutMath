@@ -102,6 +102,14 @@ export const mesuresExercises = [
         // tire la vitesse et la durée, la distance en découle.
         id: 'mes-vitesse',
         cree: '2026-08-12',
+        revisions: [
+            {
+                date: '2026-08-20',
+                quoi: 'La calculatrice, en petite fenêtre qu\'on pose à côté de l\'énoncé. '
+                    + 'Ce qui s\'apprend ici est la formule d = v × t et le choix de '
+                    + 'l\'opération : diviser 132 par 2,2 à la main ne le vérifie pas.'
+            }
+        ],
         consignePapier: "Écris la formule, remplace, calcule, et n'oublie pas l'unité.",
         colonnesPapier: 1,
         // TROIS LIGNES POUR RÉDIGER. Une vitesse ne se répond pas au bout d'une
@@ -109,6 +117,13 @@ export const mesuresExercises = [
         // conclut avec l'unité — et c'est la conclusion qui se note.
         lignesReponsePapier: 3,
         title: 'Temps, Distance, Vitesse',
+        // LA CALCULATRICE EST OFFERTE ICI, et c'est le premier exercice à
+        // l'avoir. Ce qui s'apprend est la formule d = v × t et le choix de
+        // l'opération ; poser 132 ÷ 2,2 à la main ne vérifie rien de plus et
+        // mange le temps qu'on voulait passer à raisonner. Ailleurs — sur les
+        // tables, sur le calcul mental — elle répondrait à la place de l'élève,
+        // d'où le réglage exercice par exercice.
+        calculatrice: true,
         generatorId: 'mes.vitesse', activityId: 'numpad',
         params: { chercher: 'melange', difficulte: 1 },
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },

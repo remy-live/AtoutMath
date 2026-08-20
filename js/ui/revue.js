@@ -30,8 +30,8 @@ import { STATUS, STATUS_LABELS } from '../data/status.js';
 import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu,
     aChange, dernierJour, direTri, filtrer, bilan, consigneStatuts, consigneJeux,
-    lireRevue, fusionnerRevues, versMarkdown, jourISO,
-    jeuRevu, aChangeJeu, lireTags, ecrireTags, basculerTag, aLeTag
+    consigneCalc, lireRevue, fusionnerRevues, versMarkdown, jourISO,
+    jeuRevu, aChangeJeu, calcRevu, aChangeCalc, lireTags, ecrireTags, basculerTag, aLeTag
 } from '../core/revue.js';
 
 const CLE = 'mathbox-revue';
@@ -79,7 +79,12 @@ const ICONES = {
     tablette: '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M10.5 18.5h3"/>',
     ordinateur: '<rect x="2.5" y="4" width="19" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
     robot: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 17h5"/>',
-    fiche: '<path d="M7 8V3h10v5"/><rect x="3.5" y="8" width="17" height="8" rx="2"/><path d="M7 14h10v7H7z"/>'
+    fiche: '<path d="M7 8V3h10v5"/><rect x="3.5" y="8" width="17" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+    // La calculatrice : un boîtier, son écran, ses touches. L'en-tête de
+    // colonne est trop étroit pour le mot entier, et « Calc » ne se lit pas
+    // mieux qu'un dessin.
+    calc: '<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M8.5 6.5h7"/>'
+        + '<path d="M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/>'
 };
 
 const icone = (id) => `<svg viewBox="0 0 24 24" class="rv-ico">${ICONES[id] || ''}</svg>`;
@@ -220,6 +225,11 @@ function assurerPanneau() {
             .rv-ico { width: 15px; height: 15px; fill: none; stroke: currentColor;
                 stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
             .rv-coche { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+            /* La colonne de la calculatrice se teinte quand la case dit autre
+               chose que le catalogue : c'est la ligne qu'il faudra recopier
+               dans les descripteurs, et elle doit se voir sans lire la
+               consigne. */
+            .rv-cal--change { background: color-mix(in srgb, var(--primary) 14%, transparent); }
             .rv-statut { width: 21px; height: 21px; accent-color: #f59e0b; cursor: pointer; }
             .rv-date { width: 118px; font-size: .74rem; }
             .rv-quand { font-size: .72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
@@ -434,7 +444,8 @@ function majCompteur(el) {
     const montres = filtrer(exercices, revue, criteres).length;
     const c = el.querySelector('[data-compteur]');
     c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés · `
-        + `${b.jeux} jeux · ${b.decides} décidés, ${b.changes + b.jeuxChanges} à reporter, `
+        + `${b.jeux} jeux · ${b.calc} avec calculatrice · `
+        + `${b.decides} décidés, ${b.changes + b.jeuxChanges + b.calcChanges} à reporter, `
         + `${b.remarques} remarques, ${b.classer} à reclasser`;
     // La phrase entière ne tient pas sur un téléphone, et elle ne sert qu'une
     // fois : elle passe en infobulle plutôt qu'en trois lignes permanentes.
@@ -474,6 +485,7 @@ function peindreTable(el) {
             <thead><tr>
                 ${tete('titre', 'Exercice', 'rv-nom', 'Trier par titre')}
                 ${tete('jeu', 'Jeu', '', 'Coché = c\'est un jeu. Trier ici met les jeux devant, groupés par moteur.')}
+                ${tete('calc', icone('calc'), '', 'Coché = la calculatrice est offerte à l\'élève dans cet exercice.')}
                 ${tete('ecrit', 'Écrit', '', 'Écrit le, ou repris le — c\'est ce qui dit lesquels sont les derniers')}
                 ${tete('statut', 'En test', '', 'Coché = encore en test. Décoché = validé pour les élèves.')}
                 ${tete('statut', 'Statut', '', 'Trier : ce qui est en test d\'abord')}
@@ -511,6 +523,9 @@ function ligneHtml(exo) {
             <span class="rv-moteur" title="${echapper(exo.activityId || exo.generatorId || '')}"
             >${echapper(exo.activityId || exo.generatorId || '—')}</span>
         </span></td>
+        <td class="${aChangeCalc(exo, f) ? 'rv-cal--change' : ''}">
+            <input type="checkbox" class="rv-coche" data-calc="${exo.id}"
+                   title="La calculatrice est-elle offerte dans cet exercice ?"${calcRevu(exo, f) ? ' checked' : ''}></td>
         <td class="rv-quand" title="${echapper(exo.cree || '')}">${echapper(dernierJour(exo))}</td>
         <td><input type="checkbox" class="rv-statut" data-test="${exo.id}"
                    title="Encore en test ?"${s === STATUS.TEST ? ' checked' : ''}></td>
@@ -766,6 +781,16 @@ function brancherTable(cadre, el) {
             majCompteur(el);
             return;
         }
+        if (t.dataset.calc !== undefined && t.type === 'checkbox') {
+            revue = decider(revue, t.dataset.calc, { calc: t.checked });
+            garder();
+            // La ligne ne se repeint pas : la case qu'on vient de cocher
+            // perdrait le foyer, et l'on coche souvent trois lignes de suite.
+            t.closest('td').classList.toggle('rv-cal--change',
+                aChangeCalc(exercices.find(e => e.id === t.dataset.calc), ficheDe(revue, t.dataset.calc)));
+            majCompteur(el);
+            return;
+        }
         if (t.dataset.vu !== undefined) {
             revue = marquerVu(revue, t.dataset.vu, t.dataset.col, t.checked);
             garder();
@@ -930,10 +955,11 @@ async function copier(texte, dit) {
  * là où le bilan entier fait trois pages.
  */
 function copierConsigne() {
-    const c = [consigneStatuts(revue, exercices), consigneJeux(revue, exercices)].filter(Boolean).join('\n');
+    const c = [consigneStatuts(revue, exercices), consigneJeux(revue, exercices),
+        consigneCalc(revue, exercices)].filter(Boolean).join('\n');
     if (!c) {
         import('./modal.js').then(m => m.showToast(
-            'Rien ne change pour l\'instant : coche ou décoche « en test » ou « jeu » sur une ligne.', 'warning'));
+            'Rien ne change pour l\'instant : coche ou décoche « en test », « jeu » ou « calc » sur une ligne.', 'warning'));
         return;
     }
     copier(c, 'Consigne copiée : colle-la dans la conversation, je la reporte dans le code.');

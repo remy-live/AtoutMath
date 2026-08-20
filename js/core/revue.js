@@ -109,6 +109,12 @@ function normaliserFiche(f) {
         // pas toujours la bonne : un exercice peut tourner sur un moteur
         // générique sans être un jeu, et l'inverse existe aussi.
         jeu: typeof f.jeu === 'boolean' ? f.jeu : null,
+        // ET IDEM POUR LA CALCULATRICE. Rémy : « tu rajouteras cette option
+        // pour les exercices dans le tableau de debug ». C'est une décision
+        // pédagogique qui se prend exercice par exercice, en les regardant les
+        // uns après les autres — donc exactement ici, dans le tableau, et pas
+        // en relisant cent descripteurs.
+        calc: typeof f.calc === 'boolean' ? f.calc : null,
         date: String(f.date || ''),
         remarque: String(f.remarque || '').slice(0, 2000),
         // CE QU'IL FAUDRAIT AJOUTER AU CLASSEMENT : un domaine, un
@@ -136,12 +142,13 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     const suite = { ...base };
     if ('enTest' in changements) suite.enTest = changements.enTest === null ? null : !!changements.enTest;
     if ('jeu' in changements) suite.jeu = changements.jeu === null ? null : !!changements.jeu;
+    if ('calc' in changements) suite.calc = changements.calc === null ? null : !!changements.calc;
     if ('remarque' in changements) suite.remarque = String(changements.remarque || '').slice(0, 2000);
     if ('tags' in changements) suite.tags = ecrireTags(changements.tags).slice(0, 500);
     if ('vu' in changements) suite.vu = { ...base.vu, ...changements.vu };
     Object.keys(suite.vu).forEach(k => { if (!suite.vu[k]) delete suite.vu[k]; });
 
-    const decide = 'enTest' in changements || 'jeu' in changements
+    const decide = 'enTest' in changements || 'jeu' in changements || 'calc' in changements
         || 'remarque' in changements || 'tags' in changements;
     if ('date' in changements) suite.date = String(changements.date || '');
     else if (decide) suite.date = jourISO(quand || Date.now());
@@ -151,7 +158,8 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     // remarque, pas une seule case vue — ne mérite pas d'occuper une ligne du
     // carnet. LA DATE COMPTE : le cochet du calendrier ne pose qu'elle, et sans
     // cette clause la ligne était jetée à la seconde même où on la datait.
-    const vide = suite.enTest === null && suite.jeu === null && !suite.date && !suite.remarque
+    const vide = suite.enTest === null && suite.jeu === null && suite.calc === null
+        && !suite.date && !suite.remarque
         && !suite.tags && !Object.keys(suite.vu).length;
     const autres = (revue.fiches || []).filter(f => f.exercice !== exercice);
     return { ...revue, fiches: vide ? autres : [...autres, normaliserFiche(suite)] };
@@ -194,6 +202,21 @@ export const jeuRevu = (exo, fiche) =>
     (fiche && typeof fiche.jeu === 'boolean') ? fiche.jeu : estJeuCatalogue(exo);
 export const aChangeJeu = (exo, fiche) =>
     !!fiche && fiche.jeu !== null && fiche.jeu !== estJeuCatalogue(exo);
+
+/**
+ * LA CALCULATRICE EST-ELLE OFFERTE ? Même règle encore : ce que Rémy a coché
+ * s'il l'a coché, ce que dit le catalogue sinon.
+ *
+ * Et le catalogue dit NON par défaut, ce qui est le bon défaut : un exercice
+ * de calcul mental avec calculatrice ne mesure plus rien. Elle s'ouvre là où
+ * le calcul n'est pas ce qu'on évalue — une vitesse, un volume, un
+ * pourcentage —, et cela se décide un exercice à la fois.
+ */
+export const calcCatalogue = (exo) => !!(exo && exo.calculatrice);
+export const calcRevu = (exo, fiche) =>
+    (fiche && typeof fiche.calc === 'boolean') ? fiche.calc : calcCatalogue(exo);
+export const aChangeCalc = (exo, fiche) =>
+    !!fiche && fiche.calc !== null && fiche.calc !== calcCatalogue(exo);
 
 /** Combien de colonnes d'aperçu ont été cochées sur cette ligne. */
 export const nbVus = (fiche) => fiche ? Object.keys(fiche.vu || {}).length : 0;
@@ -244,6 +267,9 @@ const CLES = {
     // Les jeux d'abord, et à l'intérieur groupés par moteur : c'est la seule
     // façon de voir d'un coup tout ce qui partage le même écran.
     jeu: (e, f) => `${jeuRevu(e, f) ? '0' : '1'}${e.activityId || e.generatorId || 'zzz'}`,
+    // Trier sur la calculatrice met devant les rares exercices qui l'ont : la
+    // question qu'on se pose en triant est « où l'ai-je déjà mise ? ».
+    calc: (e, f) => `${calcRevu(e, f) ? '0' : '1'}${e.title.toLocaleLowerCase('fr')}`,
     classer: (e, f) => ((f && f.tags.trim()) ? `0${f.tags}` : '1'),
     vus: (e, f) => String(9 - nbVus(f))
 };
@@ -260,7 +286,7 @@ export function direTri(tri) {
     const col = COLONNES.find(c => `vu:${c.id}` === cle);
     const nom = col ? col.label : { titre: 'Titre', cree: 'Créé', ecrit: 'Écrit', statut: 'Statut',
         decide: 'Décidé', remarque: 'Remarque', vus: 'Regardés', jeu: 'Jeu',
-        classer: 'À classer' }[cle] || cle;
+        calc: 'Calculatrice', classer: 'À classer' }[cle] || cle;
     return `${nom} ${String(tri).startsWith('-') ? '▼' : '▲'}`;
 }
 
@@ -323,12 +349,14 @@ export function filtrer(exercices, revue, criteres = {}) {
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
 export function bilan(revue, exercices) {
     const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, changes: 0,
-        remarques: 0, vus: 0, classer: 0, jeux: 0, jeuxChanges: 0 };
+        remarques: 0, vus: 0, classer: 0, jeux: 0, jeuxChanges: 0, calc: 0, calcChanges: 0 };
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         if (f && f.enTest !== null) b.decides++;
         if (jeuRevu(e, f)) b.jeux++;
         if (aChangeJeu(e, f)) b.jeuxChanges++;
+        if (calcRevu(e, f)) b.calc++;
+        if (aChangeCalc(e, f)) b.calcChanges++;
         if (statutRevu(e, f) === STATUS.TEST) b.enTest++;
         else if (statutRevu(e, f) === STATUS.VALIDE) b.valides++;
         if (aChange(e, f)) b.changes++;
@@ -396,23 +424,54 @@ export function lireStatuts(texte) {
 export const MARQUE_JEU = 'JEU';
 
 export function consigneJeux(revue, exercices) {
-    const par = { jeu: [], pas: [] };
-    exercices.forEach(e => {
-        const f = ficheDe(revue, e.id);
-        if (aChangeJeu(e, f)) par[f.jeu ? 'jeu' : 'pas'].push(e.id);
-    });
-    const bouts = Object.entries(par).filter(([, ids]) => ids.length)
-        .map(([k, ids]) => `${k} = ${ids.join(', ')}`);
-    if (!bouts.length) return '';
-    return `${MARQUE_JEU} ${revue.version || ''} | ${bouts.join(' | ')}`.replace(/\s+\|/g, ' |');
+    return consigneOuiNon(revue, exercices, MARQUE_JEU, aChangeJeu, 'jeu', 'jeu', 'pas');
 }
 
 /** Relit une consigne de jeux. */
 export function lireJeux(texte) {
+    return lireOuiNon(texte, MARQUE_JEU, 'jeu', 'jeu', 'pas');
+}
+
+/**
+ * LA MÊME CONSIGNE ENCORE, POUR LA CALCULATRICE.
+ *
+ *   CALC v360 | oui = mes-vitesse, mes-volume | non = num-tables
+ *
+ * Trois colonnes qui se cochent, trois lignes à recoller : le mécanisme est le
+ * même à chaque fois — une case, un défaut du catalogue, et la liste des
+ * exercices où les deux diffèrent. Il est donc écrit UNE fois, et les mots
+ * changent : « jeu / pas » pour l'une, « oui / non » pour l'autre.
+ */
+export const MARQUE_CALC = 'CALC';
+
+export function consigneCalc(revue, exercices) {
+    return consigneOuiNon(revue, exercices, MARQUE_CALC, aChangeCalc, 'calc', 'oui', 'non');
+}
+
+/** Relit une consigne de calculatrice. */
+export function lireCalc(texte) {
+    return lireOuiNon(texte, MARQUE_CALC, 'calc', 'oui', 'non');
+}
+
+/** Le squelette commun : la liste des exercices où la case dit le contraire. */
+function consigneOuiNon(revue, exercices, marque, aChangeF, champ, motVrai, motFaux) {
+    const par = { [motVrai]: [], [motFaux]: [] };
+    exercices.forEach(e => {
+        const f = ficheDe(revue, e.id);
+        if (aChangeF(e, f)) par[f[champ] ? motVrai : motFaux].push(e.id);
+    });
+    const bouts = Object.entries(par).filter(([, ids]) => ids.length)
+        .map(([k, ids]) => `${k} = ${ids.join(', ')}`);
+    if (!bouts.length) return '';
+    return `${marque} ${revue.version || ''} | ${bouts.join(' | ')}`.replace(/\s+\|/g, ' |');
+}
+
+/** Et sa relecture. */
+function lireOuiNon(texte, marque, champ, motVrai, motFaux) {
     const t = String(texte || '');
-    const i = t.toUpperCase().indexOf(MARQUE_JEU);
+    const i = t.toUpperCase().indexOf(marque);
     if (i < 0) return null;
-    const morceaux = t.slice(i + MARQUE_JEU.length).split('|').map(x => x.trim()).filter(Boolean);
+    const morceaux = t.slice(i + marque.length).split('|').map(x => x.trim()).filter(Boolean);
     if (!morceaux.length) return null;
     const version = morceaux[0].includes('=') ? '' : morceaux.shift().trim();
     const change = [];
@@ -420,9 +479,9 @@ export function lireJeux(texte) {
         const k = m.indexOf('=');
         if (k < 0) return;
         const quoi = m.slice(0, k).trim().toLowerCase();
-        if (quoi !== 'jeu' && quoi !== 'pas') return;
+        if (quoi !== motVrai && quoi !== motFaux) return;
         m.slice(k + 1).split(',').map(x => x.trim()).filter(Boolean)
-            .forEach(id => change.push({ exercice: id, jeu: quoi === 'jeu' }));
+            .forEach(id => change.push({ exercice: id, [champ]: quoi === motVrai }));
     });
     return change.length ? { version, change } : null;
 }
@@ -464,6 +523,7 @@ export function fusionnerRevues(...revues) {
             ...recent,
             enTest: recent.enTest === null ? vieux.enTest : recent.enTest,
             jeu: recent.jeu === null ? vieux.jeu : recent.jeu,
+            calc: recent.calc === null ? vieux.calc : recent.calc,
             remarque: recent.remarque || vieux.remarque,
             tags: recent.tags || vieux.tags,
             vu: { ...avant.vu, ...f.vu }
@@ -486,18 +546,20 @@ export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } 
     const b = bilan(revue, exercices);
     const consigne = consigneStatuts(revue, exercices);
     const jeux = consigneJeux(revue, exercices);
+    const calc = consigneCalc(revue, exercices);
     const l = [];
     l.push(`# ${titre}`, '');
     l.push(`- **Version** : ${revue.version || '?'}`);
     l.push(`- **Exercices** : ${b.total} — ${b.enTest} en test, ${b.valides} validés`);
     l.push(`- **Décidés à la main** : ${b.decides} · **changements à reporter** : ${b.changes}`);
     l.push(`- **Comptés comme jeux** : ${b.jeux}${b.jeuxChanges ? ` (${b.jeuxChanges} à reporter)` : ''}`);
+    l.push(`- **Avec calculatrice** : ${b.calc}${b.calcChanges ? ` (${b.calcChanges} à reporter)` : ''}`);
     l.push(`- **Vus au moins une fois** : ${b.vus} · **remarques** : ${b.remarques} `
         + `· **classements à corriger** : ${b.classer}`, '');
 
     l.push('## À reporter dans les descripteurs', '');
-    if (!consigne && !jeux) l.push('_Aucun statut ne change._', '');
-    else l.push(`\`\`\`\n${[consigne, jeux].filter(Boolean).join('\n')}\n\`\`\``, '');
+    if (!consigne && !jeux && !calc) l.push('_Aucun statut ne change._', '');
+    else l.push(`\`\`\`\n${[consigne, jeux, calc].filter(Boolean).join('\n')}\n\`\`\``, '');
 
     const dits = exercices.map(e => ({ e, f: ficheDe(revue, e.id) }))
         .filter(x => x.f && x.f.remarque.trim());
@@ -524,15 +586,16 @@ export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } 
     }
 
     l.push('## Le tableau', '');
-    l.push(`| Exercice | Jeu | Écrit | Statut | Décidé | ${COLONNES.map(c => c.label).join(' | ')} | À classer | Remarque |`);
-    l.push(`|---|---|---|---|---|${COLONNES.map(() => '---').join('|')}|---|---|`);
+    l.push(`| Exercice | Jeu | Calc | Écrit | Statut | Décidé | ${COLONNES.map(c => c.label).join(' | ')} | À classer | Remarque |`);
+    l.push(`|---|---|---|---|---|---|${COLONNES.map(() => '---').join('|')}|---|---|`);
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         const s = statutRevu(e, f);
         const cases = COLONNES.map(c => (f && f.vu[c.id]) ? '✓' : '');
         const moteur = e.activityId || e.generatorId || '';
         l.push(`| ${e.title} \`${e.id}\` | ${jeuRevu(e, f) ? '✓ ' : ''}${moteur}`
-            + `${aChangeJeu(e, f) ? ' ⟵' : ''} | ${dernierJour(e)} `
+            + `${aChangeJeu(e, f) ? ' ⟵' : ''} `
+            + `| ${calcRevu(e, f) ? '✓' : ''}${aChangeCalc(e, f) ? ' ⟵' : ''} | ${dernierJour(e)} `
             + `| ${s === STATUS.TEST ? 'en test' : s === STATUS.BROUILLON ? 'brouillon' : 'validé'}`
             + `${aChange(e, f) ? ' ⟵' : ''} | ${(f && f.date) || ''} | ${cases.join(' | ')} `
             + `| ${((f && f.tags) || '').replace(/\n/g, ' ')} `

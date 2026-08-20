@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=359">
-    <link rel="stylesheet" href="css/layout.css?v=359">
-    <link rel="stylesheet" href="css/ui.css?v=359">
-    <link rel="stylesheet" href="css/games.css?v=359">
-    <link rel="stylesheet" href="css/components.css?v=359">
-    <link rel="stylesheet" href="css/modules.css?v=359">
+    <link rel="stylesheet" href="css/base.css?v=360">
+    <link rel="stylesheet" href="css/layout.css?v=360">
+    <link rel="stylesheet" href="css/ui.css?v=360">
+    <link rel="stylesheet" href="css/games.css?v=360">
+    <link rel="stylesheet" href="css/components.css?v=360">
+    <link rel="stylesheet" href="css/modules.css?v=360">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -734,6 +734,27 @@
                             <path d="M2 14h1" />
                             <path d="M21 14h1" />
                             <path d="M12 3v-2" />
+                        </svg>
+                    </button>
+                    <!-- LA CALCULATRICE, exercice par exercice. Elle ne paraît
+                         que là où elle a sa place : sur « Temps, distance,
+                         vitesse », diviser 132 par 2,2 n'est pas ce que
+                         l'exercice enseigne — la formule l'est. Sur une table
+                         de multiplication, elle rendrait l'exercice inutile.
+                         C'est donc un réglage de l'exercice (`calculatrice:
+                         true`), cochable dans la revue du catalogue, et le
+                         bouton reste caché partout ailleurs. -->
+                    <button id="btn-game-calc" class="game-icon-btn game-icon-btn--neutre" hidden
+                        data-calculatrice aria-pressed="false"
+                        title="Calculatrice" aria-label="Ouvrir la calculatrice">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect width="16" height="20" x="4" y="2" rx="2" />
+                            <line x1="8" x2="16" y1="6" y2="6" />
+                            <line x1="8" x2="8" y1="14" y2="14" /><line x1="12" x2="12" y1="14" y2="14" />
+                            <line x1="16" x2="16" y1="14" y2="14" />
+                            <line x1="8" x2="8" y1="18" y2="18" /><line x1="12" x2="12" y1="18" y2="18" />
+                            <line x1="16" x2="16" y1="18" y2="18" />
                         </svg>
                     </button>
                     <button id="btn-show-instruction" class="game-icon-btn game-icon-btn--info" title="Aide" aria-label="Afficher l'aide">
