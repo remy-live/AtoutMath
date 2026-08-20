@@ -764,6 +764,12 @@
     background: var(--tag-dom-bg); border-style: solid;
 }
 .compare-slot--filled { border-style: solid; opacity: 1; }
+/* Une fraction en colonne n'a pas la forme d'un « < » : la case, taillée pour
+   un signe, lui laisse la place qu'il lui faut. */
+.compare-slot--riche {
+    width: auto; height: auto; min-width: 1.78em; min-height: 1.78em;
+    padding: .1em .34em; line-height: 1;
+}
 .compare-slot--ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
 .compare-slot--ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
 

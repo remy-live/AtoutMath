@@ -134,9 +134,23 @@ export function sameAnswer(a, b) {
     };
     const na = norm(a), nb = norm(b);
     if (na === nb) return true;
-    const fa = parseFloat(na), fb = parseFloat(nb);
-    return !isNaN(fa) && !isNaN(fb) && Math.abs(fa - fb) < 1e-9;
+    // ON NE COMPARE COMME DES NOMBRES QUE CE QUI EST UN NOMBRE, EN ENTIER.
+    //
+    // `parseFloat` lit le début et abandonne le reste : `parseFloat('16/24')`
+    // rend 16. Deux fractions de même numérateur étaient donc déclarées
+    // égales — 16/24 valait 16/12, et l'addition de fractions félicitait
+    // l'élève qui avait additionné les dénominateurs. C'est le distracteur
+    // numéro un de l'exercice, et il était compté juste.
+    //
+    // Trouvé en vérifiant tout autre chose : Rémy signalait que la réponse
+    // posée à côté du signe égal n'était pas écrite en fraction. Elle l'est
+    // maintenant — et c'est en la regardant qu'on a vu qu'elle était fausse.
+    if (!estNombreEntier(na) || !estNombreEntier(nb)) return false;
+    return Math.abs(parseFloat(na) - parseFloat(nb)) < 1e-9;
 }
+
+/** La chaîne est-elle un nombre, et RIEN QUE lui ? */
+const estNombreEntier = (s) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/.test(s);
 
 /**
  * Évalue une réponse et renvoie de quoi construire une tentative + un retour

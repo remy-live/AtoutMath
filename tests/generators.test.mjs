@@ -119,6 +119,22 @@ test('la comparaison de réponses tolère les formats usuels', () => {
     assert.ok(sameAnswer(' 3,5 ', '3.5'));
     assert.ok(sameAnswer('>', '>'));
     assert.ok(!sameAnswer('12', '13'));
+    assert.ok(sameAnswer('62 307', '62307'), 'les groupes de trois chiffres se lisent');
+});
+
+test('DEUX FRACTIONS DE MÊME NUMÉRATEUR NE SONT PAS ÉGALES', () => {
+    // Le bug le plus cher trouvé au banc d'essai. `parseFloat('16/24')` rend
+    // 16 : il lit le début et abandonne le reste. La comparaison de secours
+    // déclarait donc 16/24 égal à 16/12 — et l'addition de fractions
+    // félicitait l'élève qui avait additionné les dénominateurs, c'est-à-dire
+    // exactement le distracteur que l'exercice cherche à débusquer.
+    assert.ok(!sameAnswer('16/24', '16/12'));
+    assert.ok(!sameAnswer('5/12', '5/6'));
+    assert.ok(!sameAnswer('3/4', '3/8'));
+    assert.ok(sameAnswer('7/11', '7/11'), 'la même fraction reste la même');
+    // Et rien d'autre ne passe non plus par un préfixe numérique.
+    assert.ok(!sameAnswer('12 cm', '12 m'));
+    assert.ok(!sameAnswer('3 h 20', '3 h 45'));
 });
 
 test('comparer des fractions : la méthode annoncée correspond à la situation', () => {

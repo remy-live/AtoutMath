@@ -256,7 +256,14 @@ export function mount(container, session, opts = {}) {
         const slot = container.querySelector('.compare-slot');
         const fillSlot = (el, correct) => {
             if (!slot) return;
-            slot.textContent = el.textContent;
+            // ON RECOPIE LA PROPOSITION TELLE QU'ELLE EST ÉCRITE, pas le texte
+            // qu'elle contient. Rémy, au banc iPhone, sur l'addition de
+            // fractions : « quand ça écrit la réponse à côté du =, ça ne
+            // l'écrit pas en fraction ». La bulle porte bien 7 sur 11 en
+            // colonne ; `textContent` en tirait « 711 ». La case s'élargit
+            // alors, une fraction n'ayant pas la forme d'un signe « < ».
+            slot.innerHTML = el.innerHTML;
+            slot.classList.toggle('compare-slot--riche', !!slot.querySelector('.fraction'));
             slot.classList.add('compare-slot--filled');
             slot.classList.toggle('compare-slot--ok', correct);
             slot.classList.toggle('compare-slot--ko', !correct);

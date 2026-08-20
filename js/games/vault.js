@@ -80,7 +80,15 @@ class Vault extends BaseGame {
                 .vault-pad button {
                     padding: 2px; font-size: 1.25em; background: #ecf0f1; border: none;
                     border-bottom: 4px solid #bdc3c7; border-radius: 8px; cursor: pointer;
-                    color: #2c3e50; font-weight: bold; transition: all 0.1s; height: 2.5em;
+                    color: #2c3e50; font-weight: bold; transition: all 0.1s;
+                    /* LA TOUCHE SE MESURE SUR SA PROPRE LARGEUR. Rémy, au banc
+                       iPhone : « le pavé numérique fait très écrasé
+                       verticalement ». La hauteur valait 2,5 em d'une taille de
+                       police plancher à onze pixels — trente-quatre pixels de
+                       haut pour quatre-vingts de large. Une proportion de trois
+                       sur deux rend une touche qu'on vise au pouce, et elle
+                       suit le boîtier au lieu de suivre le texte. */
+                    height: auto; aspect-ratio: 3 / 2; min-height: 2.5em;
                 }
                 .vault-pad button:active { border-bottom-width: 0; transform: translateY(4px); }
                 .vault-pad .v-ok { background: #2ecc71; border-color: #27ae60; color: white; }

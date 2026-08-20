@@ -148,7 +148,16 @@ class JeuADeux extends BaseGame {
                    gravité fait le reste. La distance parcourue dépend de la
                    rangée atteinte : un jeton qui tombe au fond tombe de plus
                    haut, et cela se voit. */
-                .jd-tombe { animation: jd-chute .34s cubic-bezier(.4, 0, .7, 1); }
+                /* LE MODE DE REMPLISSAGE N'EST PAS UN DÉTAIL. Rémy : « quand l'animation
+                   commence, la case cible se remplit puis le jeton tombe.
+                   Trop vite d'ailleurs. » Sans mode de remplissage, le disque
+                   est peint À SA PLACE FINALE le temps d'une image, avant que
+                   la première frame de l'animation ne le renvoie en haut : on
+                   voyait la case s'allumer, puis le jeton y tomber une seconde
+                   fois. le mode « both » applique l'état de départ dès la pose. Et la
+                   durée passe d'un tiers de seconde à un peu plus d'une demie :
+                   une chute qu'on n'a pas le temps de suivre n'apprend rien. */
+                .jd-tombe { animation: jd-chute .55s cubic-bezier(.4, 0, .7, 1) both; }
                 @keyframes jd-chute {
                     from { transform: translateY(calc(var(--jd-chute, 0) * -1px)); }
                     70% { transform: translateY(0); }
