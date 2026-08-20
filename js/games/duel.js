@@ -117,11 +117,15 @@ class Duel extends BaseGame {
                 /* Le nom, le score et la consigne sur UNE ligne : trois lignes
                    empilées coûtaient soixante pixels par camp, pris sur le
                    terrain. */
+                /* LE BANDEAU CÈDE AVANT LE CLAVIER. Si le camp manque de
+                   place, ce sont le nom et le score qui se serrent, jamais la
+                   rangée de touches : un bandeau tronqué se devine, un pavé
+                   hors de l'écran rend le jeu injouable. */
                 .du-tete {
                     display: flex; align-items: baseline; gap: 7px; width: 100%;
                     justify-content: center; color: #e2e8f0; font-weight: 800;
-                    font-size: clamp(.66rem, 1.9cqh, .9rem); flex-shrink: 0;
-                    min-height: 1.3em; overflow: hidden;
+                    font-size: clamp(.66rem, 1.9cqh, .9rem);
+                    flex: 0 1 auto; min-height: 0; overflow: hidden;
                 }
                 .du-nom { opacity: .75; flex-shrink: 0; }
                 .du-pts {
@@ -478,7 +482,79 @@ class Duel extends BaseGame {
 
         this.brancher();
         this.majEcran();
+        this.brancherMesure();
         this.annoncer('LE DUEL', `Premier à ${p.cible} points. Chacun tape sur SA moitié — appuyez tous les deux pour commencer.`);
+    }
+
+    /**
+     * LE PLATEAU SE MESURE LUI-MÊME, PARCE QUE `100dvh` MENT.
+     *
+     * Rémy, trois fois : « on ne voit toujours pas les boutons sur iPhone »,
+     * « toujours caché sur iPhone » — puis une capture d'écran, et tout
+     * s'explique d'un coup : les tables du joueur du haut ET le pavé du joueur
+     * du bas sont dehors EN MÊME TEMPS. Le carnet du banc d'essai donne la
+     * clef : Chrome iOS, fenêtre annoncée 634 px pour un écran de 812.
+     *
+     * La couche de jeu est en `position: fixed` avec `height: 100dvh`. Sur
+     * iPhone, cette hauteur-là est celle de la GRANDE fenêtre — celle qu'on
+     * obtient une fois les barres du navigateur rétractées. Tant qu'elles sont
+     * affichées, la couche déborde donc par le haut ET par le bas, et ce qui
+     * est collé aux deux bords passe dessous. Deux rangées de touches, aux deux
+     * exacts mauvais endroits.
+     *
+     * `visualViewport` est le seul objet qui dise ce que l'élève voit
+     * VRAIMENT, barres comprises. On lui demande, et on pose la hauteur du
+     * plateau en pixels. Le terrain est la ligne élastique de la grille : c'est
+     * lui qui rend la place, les deux camps gardent la leur.
+     */
+    ajusterHauteur() {
+        const zone = this.plateau && this.plateau.parentElement;
+        if (!zone || !this.plateau.isConnected) return;
+        const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+        const visible = vv ? vv.height : window.innerHeight;
+        // ON MESURE LA ZONE DE JEU, PAS LE PLATEAU. Le plateau est centré dans
+        // elle : lui poser une hauteur le recentre, donc le mesurer lui-même ne
+        // converge jamais — la première mesure fausse la seconde. Le haut de la
+        // zone, lui, ne bouge pas.
+        const st = getComputedStyle(zone);
+        const haut = zone.getBoundingClientRect().top - (vv ? vv.offsetTop : 0)
+            + (parseFloat(st.paddingTop) || 0);
+        const bas = parseFloat(st.paddingBottom) || 0;
+        // Un plancher : mieux vaut un plateau qui dépasse un peu qu'un plateau
+        // écrasé à rien si la mesure part en vrille pendant une rotation.
+        const dispo = Math.max(260, Math.round(visible - haut - bas - 2));
+        this.plateau.style.height = `${dispo}px`;
+        // Et il se colle en HAUT de la zone : centré dans une zone plus haute
+        // que l'écran, il redescendrait sous la barre du navigateur.
+        this.plateau.style.marginBottom = 'auto';
+    }
+
+    brancherMesure() {
+        this.mesurer = () => this.ajusterHauteur();
+        this.ajusterHauteur();
+        // Deux fois : la première mesure tombe parfois avant que la couche de
+        // jeu ait fini de se poser, et l'en-tête peut encore changer de hauteur
+        // — un titre qui passe sur deux lignes coûte trente pixels.
+        requestAnimationFrame(this.mesurer);
+        window.addEventListener('resize', this.mesurer);
+        window.addEventListener('orientationchange', this.mesurer);
+        const vv = window.visualViewport;
+        if (vv) {
+            vv.addEventListener('resize', this.mesurer);
+            vv.addEventListener('scroll', this.mesurer);
+        }
+    }
+
+    debrancherMesure() {
+        if (!this.mesurer) return;
+        window.removeEventListener('resize', this.mesurer);
+        window.removeEventListener('orientationchange', this.mesurer);
+        const vv = window.visualViewport;
+        if (vv) {
+            vv.removeEventListener('resize', this.mesurer);
+            vv.removeEventListener('scroll', this.mesurer);
+        }
+        this.mesurer = null;
     }
 
     cote(i) {
@@ -1007,6 +1083,7 @@ class Duel extends BaseGame {
 
     destroy() {
         clearTimeout(this.minuteurAnnonce);
+        this.debrancherMesure();
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
     }
