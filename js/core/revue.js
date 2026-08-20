@@ -66,18 +66,56 @@ export function nouvelleRevue({ version = '', date = 0 } = {}) {
 export const ficheDe = (revue, exercice) =>
     (revue.fiches || []).find(f => f.exercice === exercice) || null;
 
+/**
+ * LE CLASSEMENT PROPOSÉ EST UNE LISTE, PAS UNE PHRASE.
+ *
+ * « pour le à classer, quand tu as toute la liste, on pourrait avoir une liste
+ * à checkbox car il y a plusieurs domaines possibles ». Un exercice de
+ * fractions posées est numérique ET de la résolution de problèmes ET de la
+ * sixième : trois cases cochées, pas une phrase à interpréter. On garde
+ * pourtant UNE CHAÎNE dans la fiche — c'est ce qui traverse le presse-papiers,
+ * le rapport en Markdown et la conversation sans rien casser.
+ *
+ * Le séparateur est le point médian, parce qu'il n'apparaît dans aucun nom de
+ * domaine ; la virgule et le point-virgule sont acceptés à la relecture, pour
+ * les fiches écrites à la main du temps où c'était du texte libre.
+ */
+export const SEPARATEUR = ' · ';
+
+export const lireTags = (s) => (Array.isArray(s) ? s : String(s || '').split(/[·,;\n]+/))
+    .map(x => String(x).trim()).filter(Boolean);
+
+export const ecrireTags = (liste) => [...new Set(lireTags(liste))].join(SEPARATEUR);
+
+/** Cocher ou décocher un mot dans une proposition de classement. */
+export function basculerTag(tags, mot, actif) {
+    const propre = String(mot || '').trim();
+    if (!propre) return ecrireTags(tags);
+    const liste = lireTags(tags).filter(x => x.toLocaleLowerCase('fr') !== propre.toLocaleLowerCase('fr'));
+    return ecrireTags(actif ? [...liste, propre] : liste);
+}
+
+/** Ce mot-là est-il déjà proposé ? La comparaison ignore la casse. */
+export const aLeTag = (tags, mot) => lireTags(tags)
+    .some(x => x.toLocaleLowerCase('fr') === String(mot || '').trim().toLocaleLowerCase('fr'));
+
 function normaliserFiche(f) {
     return {
         exercice: String(f.exercice),
         // `null` = pas encore décidé : c'est le statut du catalogue qui parle.
         enTest: typeof f.enTest === 'boolean' ? f.enTest : null,
+        // IDEM POUR « C'EST UN JEU » : sans décision, c'est le catalogue qui
+        // répond — a-t-il un moteur d'activité ? Mais la réponse du code n'est
+        // pas toujours la bonne : un exercice peut tourner sur un moteur
+        // générique sans être un jeu, et l'inverse existe aussi.
+        jeu: typeof f.jeu === 'boolean' ? f.jeu : null,
         date: String(f.date || ''),
         remarque: String(f.remarque || '').slice(0, 2000),
         // CE QU'IL FAUDRAIT AJOUTER AU CLASSEMENT : un domaine, un
-        // sous-domaine, un niveau, un mot-clef. Du texte libre, parce qu'on
-        // ne sait pas d'avance ce qui manque — et c'est moi qui le reporterai
-        // dans les descripteurs, pas une machine.
-        tags: String(f.tags || '').slice(0, 500),
+        // sous-domaine, un niveau, un mot-clef. Une liste de mots séparés par
+        // « · », cochés dans la liste des domaines connus ou tapés à la main —
+        // et c'est moi qui la reporterai dans les descripteurs, pas une machine.
+        tags: ecrireTags(lireTags(f.tags)).slice(0, 500),
         vu: Object.fromEntries(Object.entries(f.vu || {})
             .filter(([k, v]) => estColonne(k) && v).map(([k]) => [k, true])),
         maj: Number(f.maj) || 0
@@ -97,12 +135,14 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     const base = avant || normaliserFiche({ exercice });
     const suite = { ...base };
     if ('enTest' in changements) suite.enTest = changements.enTest === null ? null : !!changements.enTest;
+    if ('jeu' in changements) suite.jeu = changements.jeu === null ? null : !!changements.jeu;
     if ('remarque' in changements) suite.remarque = String(changements.remarque || '').slice(0, 2000);
-    if ('tags' in changements) suite.tags = String(changements.tags || '').slice(0, 500);
+    if ('tags' in changements) suite.tags = ecrireTags(changements.tags).slice(0, 500);
     if ('vu' in changements) suite.vu = { ...base.vu, ...changements.vu };
     Object.keys(suite.vu).forEach(k => { if (!suite.vu[k]) delete suite.vu[k]; });
 
-    const decide = 'enTest' in changements || 'remarque' in changements || 'tags' in changements;
+    const decide = 'enTest' in changements || 'jeu' in changements
+        || 'remarque' in changements || 'tags' in changements;
     if ('date' in changements) suite.date = String(changements.date || '');
     else if (decide) suite.date = jourISO(quand || Date.now());
     suite.maj = quand || Date.now();
@@ -111,8 +151,8 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     // remarque, pas une seule case vue — ne mérite pas d'occuper une ligne du
     // carnet. LA DATE COMPTE : le cochet du calendrier ne pose qu'elle, et sans
     // cette clause la ligne était jetée à la seconde même où on la datait.
-    const vide = suite.enTest === null && !suite.date && !suite.remarque && !suite.tags
-        && !Object.keys(suite.vu).length;
+    const vide = suite.enTest === null && suite.jeu === null && !suite.date && !suite.remarque
+        && !suite.tags && !Object.keys(suite.vu).length;
     const autres = (revue.fiches || []).filter(f => f.exercice !== exercice);
     return { ...revue, fiches: vide ? autres : [...autres, normaliserFiche(suite)] };
 }
@@ -136,6 +176,24 @@ export function statutRevu(exo, fiche) {
 /** La décision diffère-t-elle de ce qui est écrit dans le code ? */
 export const aChange = (exo, fiche) =>
     !!fiche && fiche.enTest !== null && statutRevu(exo, fiche) !== ((exo && exo.status) || STATUS.VALIDE);
+
+/**
+ * EST-CE UN JEU ? Même règle que le statut : la décision de Rémy s'il l'a
+ * prise, la réponse du catalogue sinon.
+ *
+ * ET LE CATALOGUE RÉPOND DÉJÀ. Un exercice qui porte un générateur reçoit ses
+ * questions du dehors — c'est un exercice, quel que soit l'écran qui le montre.
+ * Un exercice qui n'a QU'UN moteur d'activité porte son contenu lui-même :
+ * plateau, physique, progression interne. C'est la définition qu'emploie déjà
+ * le constructeur de parcours (`js/ui/builder.js`), et elle partage le
+ * catalogue en cinquante et un jeux et soixante-deux exercices. Se contenter de
+ * « il a un activityId » aurait coché cent treize lignes sur cent treize.
+ */
+export const estJeuCatalogue = (exo) => !!(exo && exo.activityId && !exo.generatorId);
+export const jeuRevu = (exo, fiche) =>
+    (fiche && typeof fiche.jeu === 'boolean') ? fiche.jeu : estJeuCatalogue(exo);
+export const aChangeJeu = (exo, fiche) =>
+    !!fiche && fiche.jeu !== null && fiche.jeu !== estJeuCatalogue(exo);
 
 /** Combien de colonnes d'aperçu ont été cochées sur cette ligne. */
 export const nbVus = (fiche) => fiche ? Object.keys(fiche.vu || {}).length : 0;
@@ -183,7 +241,9 @@ const CLES = {
     statut: (e, f) => ({ [STATUS.TEST]: '0', [STATUS.VALIDE]: '1', [STATUS.BROUILLON]: '2' })[statutRevu(e, f)],
     decide: (e, f) => (f && f.date) || '',
     remarque: (e, f) => ((f && f.remarque.trim()) ? `0${f.remarque}` : '1'),
-    jeu: (e) => e.activityId || e.generatorId || 'zzz',
+    // Les jeux d'abord, et à l'intérieur groupés par moteur : c'est la seule
+    // façon de voir d'un coup tout ce qui partage le même écran.
+    jeu: (e, f) => `${jeuRevu(e, f) ? '0' : '1'}${e.activityId || e.generatorId || 'zzz'}`,
     classer: (e, f) => ((f && f.tags.trim()) ? `0${f.tags}` : '1'),
     vus: (e, f) => String(9 - nbVus(f))
 };
@@ -248,7 +308,7 @@ export function filtrer(exercices, revue, criteres = {}) {
         if (domaine && ((e.tags && e.tags.chemin && e.tags.chemin[0]) || '') !== domaine) return false;
         if (niveau && !((e.tags && e.tags.niveaux) || []).includes(niveau)) return false;
         if (statut && statutRevu(e, f) !== statut) return false;
-        if (jeux && !e.activityId) return false;
+        if (jeux && !jeuRevu(e, f)) return false;
         if (avancee === 'decides' && !(f && f.enTest !== null)) return false;
         if (avancee === 'adecider' && f && f.enTest !== null) return false;
         if (avancee === 'vus' && nbVus(f) === 0) return false;
@@ -263,10 +323,12 @@ export function filtrer(exercices, revue, criteres = {}) {
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
 export function bilan(revue, exercices) {
     const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, changes: 0,
-        remarques: 0, vus: 0, classer: 0 };
+        remarques: 0, vus: 0, classer: 0, jeux: 0, jeuxChanges: 0 };
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         if (f && f.enTest !== null) b.decides++;
+        if (jeuRevu(e, f)) b.jeux++;
+        if (aChangeJeu(e, f)) b.jeuxChanges++;
         if (statutRevu(e, f) === STATUS.TEST) b.enTest++;
         else if (statutRevu(e, f) === STATUS.VALIDE) b.valides++;
         if (aChange(e, f)) b.changes++;
@@ -323,6 +385,48 @@ export function lireStatuts(texte) {
     return change.length ? { version, change } : null;
 }
 
+/**
+ * LA MÊME CONSIGNE, POUR LA COLONNE « JEU ».
+ *
+ *   JEU v346 | jeu = calc-duel, logi-sim | pas = num-lettres
+ *
+ * Sans elle, cocher la case ne servirait à rien : la décision resterait dans le
+ * navigateur de Rémy et le catalogue continuerait de dire le contraire.
+ */
+export const MARQUE_JEU = 'JEU';
+
+export function consigneJeux(revue, exercices) {
+    const par = { jeu: [], pas: [] };
+    exercices.forEach(e => {
+        const f = ficheDe(revue, e.id);
+        if (aChangeJeu(e, f)) par[f.jeu ? 'jeu' : 'pas'].push(e.id);
+    });
+    const bouts = Object.entries(par).filter(([, ids]) => ids.length)
+        .map(([k, ids]) => `${k} = ${ids.join(', ')}`);
+    if (!bouts.length) return '';
+    return `${MARQUE_JEU} ${revue.version || ''} | ${bouts.join(' | ')}`.replace(/\s+\|/g, ' |');
+}
+
+/** Relit une consigne de jeux. */
+export function lireJeux(texte) {
+    const t = String(texte || '');
+    const i = t.toUpperCase().indexOf(MARQUE_JEU);
+    if (i < 0) return null;
+    const morceaux = t.slice(i + MARQUE_JEU.length).split('|').map(x => x.trim()).filter(Boolean);
+    if (!morceaux.length) return null;
+    const version = morceaux[0].includes('=') ? '' : morceaux.shift().trim();
+    const change = [];
+    morceaux.forEach(m => {
+        const k = m.indexOf('=');
+        if (k < 0) return;
+        const quoi = m.slice(0, k).trim().toLowerCase();
+        if (quoi !== 'jeu' && quoi !== 'pas') return;
+        m.slice(k + 1).split(',').map(x => x.trim()).filter(Boolean)
+            .forEach(id => change.push({ exercice: id, jeu: quoi === 'jeu' }));
+    });
+    return change.length ? { version, change } : null;
+}
+
 /** Relit un carnet transmis — le rapport entier convient, bloc JSON compris. */
 export function lireRevue(texte) {
     let brut;
@@ -358,6 +462,8 @@ export function fusionnerRevues(...revues) {
         const vieux = recent === f ? avant : f;
         par.set(f.exercice, {
             ...recent,
+            enTest: recent.enTest === null ? vieux.enTest : recent.enTest,
+            jeu: recent.jeu === null ? vieux.jeu : recent.jeu,
             remarque: recent.remarque || vieux.remarque,
             tags: recent.tags || vieux.tags,
             vu: { ...avant.vu, ...f.vu }
@@ -379,16 +485,19 @@ export function fusionnerRevues(...revues) {
 export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } = {}) {
     const b = bilan(revue, exercices);
     const consigne = consigneStatuts(revue, exercices);
+    const jeux = consigneJeux(revue, exercices);
     const l = [];
     l.push(`# ${titre}`, '');
     l.push(`- **Version** : ${revue.version || '?'}`);
     l.push(`- **Exercices** : ${b.total} — ${b.enTest} en test, ${b.valides} validés`);
     l.push(`- **Décidés à la main** : ${b.decides} · **changements à reporter** : ${b.changes}`);
+    l.push(`- **Comptés comme jeux** : ${b.jeux}${b.jeuxChanges ? ` (${b.jeuxChanges} à reporter)` : ''}`);
     l.push(`- **Vus au moins une fois** : ${b.vus} · **remarques** : ${b.remarques} `
         + `· **classements à corriger** : ${b.classer}`, '');
 
     l.push('## À reporter dans les descripteurs', '');
-    l.push(consigne ? `\`\`\`\n${consigne}\n\`\`\`` : '_Aucun statut ne change._', '');
+    if (!consigne && !jeux) l.push('_Aucun statut ne change._', '');
+    else l.push(`\`\`\`\n${[consigne, jeux].filter(Boolean).join('\n')}\n\`\`\``, '');
 
     const dits = exercices.map(e => ({ e, f: ficheDe(revue, e.id) }))
         .filter(x => x.f && x.f.remarque.trim());
@@ -421,7 +530,9 @@ export function versMarkdown(revue, exercices, { titre = 'Revue du catalogue' } 
         const f = ficheDe(revue, e.id);
         const s = statutRevu(e, f);
         const cases = COLONNES.map(c => (f && f.vu[c.id]) ? '✓' : '');
-        l.push(`| ${e.title} \`${e.id}\` | ${e.activityId || e.generatorId || ''} | ${dernierJour(e)} `
+        const moteur = e.activityId || e.generatorId || '';
+        l.push(`| ${e.title} \`${e.id}\` | ${jeuRevu(e, f) ? '✓ ' : ''}${moteur}`
+            + `${aChangeJeu(e, f) ? ' ⟵' : ''} | ${dernierJour(e)} `
             + `| ${s === STATUS.TEST ? 'en test' : s === STATUS.BROUILLON ? 'brouillon' : 'validé'}`
             + `${aChange(e, f) ? ' ⟵' : ''} | ${(f && f.date) || ''} | ${cases.join(' | ')} `
             + `| ${((f && f.tags) || '').replace(/\n/g, ' ')} `

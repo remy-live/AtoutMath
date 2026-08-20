@@ -29,8 +29,9 @@ import { TAGS } from '../data/tags.js';
 import { STATUS, STATUS_LABELS } from '../data/status.js';
 import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu,
-    aChange, dernierJour, direTri, filtrer, bilan, consigneStatuts, lireRevue,
-    fusionnerRevues, versMarkdown, jourISO
+    aChange, dernierJour, direTri, filtrer, bilan, consigneStatuts, consigneJeux,
+    lireRevue, fusionnerRevues, versMarkdown, jourISO,
+    jeuRevu, aChangeJeu, lireTags, ecrireTags, basculerTag, aLeTag
 } from '../core/revue.js';
 
 const CLE = 'mathbox-revue';
@@ -84,12 +85,37 @@ const ICONES = {
 const icone = (id) => `<svg viewBox="0 0 24 24" class="rv-ico">${ICONES[id] || ''}</svg>`;
 
 /** Domaines, sous-domaines, niveaux, et les mots-clefs déjà employés. */
+const MOTS_CLEFS = [...new Set(exercices.flatMap(e => e.motsClefs || []))].sort((a, b) => a.localeCompare(b, 'fr'));
 const VOCABULAIRE = [
     ...Object.values(TAGS.DOMAINE),
     ...Object.values(TAGS.SOUS_DOMAINE),
     ...Object.values(TAGS.NIVEAU),
-    ...[...new Set(exercices.flatMap(e => e.motsClefs || []))].sort()
+    ...MOTS_CLEFS
 ];
+
+/**
+ * CE QU'ON COCHE POUR RECLASSER.
+ *
+ * Rémy : « pour le à classer, quand tu as toute la liste, on pourrait avoir une
+ * liste à checkbox car il y a plusieurs domaines possibles. Il y en a beaucoup
+ * d'ailleurs, je sais pas si on pourrait avoir une meilleure présentation. »
+ *
+ * Il y en a beaucoup, oui : quatre domaines, quinze sous-domaines, cinq
+ * niveaux — et cent quarante-neuf mots-clefs. Vingt-quatre cases tiennent dans
+ * un panneau si on les range en TROIS GROUPES d'étiquettes qui s'enroulent ;
+ * cent soixante-treize n'y tiennent pas, quelle que soit la présentation. Les
+ * mots-clefs restent donc un champ de saisie avec la liste de suggestions —
+ * on ne les coche pas, on les cherche.
+ *
+ * Et le panneau ne s'ouvre que sur la ligne qu'on touche : cent neuf listes de
+ * cases dessinées d'avance, c'est un tableau qui met deux secondes à paraître.
+ */
+const GROUPES = [
+    { titre: 'Domaine', mots: Object.values(TAGS.DOMAINE) },
+    { titre: 'Sous-domaine', mots: Object.values(TAGS.SOUS_DOMAINE) },
+    { titre: 'Niveau', mots: Object.values(TAGS.NIVEAU) }
+];
+const CONNUS = new Set(GROUPES.flatMap(g => g.mots).map(m => m.toLocaleLowerCase('fr')));
 
 // LE COCHET DE VALIDATION. Rémy : « pour le décidé mets juste un check à
 // valider à droite du calendrier et ça enregistre la date du jour ». Ouvrir le
@@ -200,8 +226,70 @@ function assurerPanneau() {
             .rv-jour { color: var(--text-muted); }
             .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
             .rv-remarque { width: 200px; }
-            .rv-classer { width: 170px; }
-            .rv-jeu { font-size: .72rem; color: var(--text-muted); font-family: ui-monospace, monospace; }
+            .rv-moteur { font-size: .7rem; color: var(--text-muted); font-family: ui-monospace, monospace;
+                max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+            /* LE CLASSEMENT : un bouton qui montre ce qui est coché, et un
+               panneau qui s'ouvre dessus. Le bouton porte la sélection en
+               entier — sans quoi il faudrait ouvrir cent neuf panneaux pour
+               relire ce qu'on a proposé. */
+            .rv-classer {
+                display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
+                min-width: 128px; max-width: 190px; min-height: 30px; text-align: left;
+                border: 1px dashed var(--border); background: var(--bg-app); color: var(--text-muted);
+                border-radius: 9px; padding: 3px 7px; font: inherit; font-size: .74rem;
+                font-weight: 600; cursor: pointer; white-space: normal;
+            }
+            .rv-classer:hover { border-color: var(--primary); color: var(--primary); }
+            .rv-classer--plein { border-style: solid; border-color: var(--primary); color: var(--text-main); }
+            .rv-pastille {
+                background: var(--primary); color: #fff; border-radius: 999px;
+                padding: 1px 7px; font-size: .68rem; font-weight: 700;
+            }
+
+            /* Le panneau des cases. Sur un grand écran il flotte sous le
+               bouton ; sur un téléphone il monte du bas et prend la largeur —
+               un flotteur de 300 px sur un écran de 375 finit toujours à
+               moitié dehors. */
+            .rv-pop {
+                position: fixed; z-index: 9500; width: 320px; max-width: calc(100vw - 16px);
+                max-height: min(70vh, 460px); display: flex; flex-direction: column;
+                background: var(--bg-panel); border: 1px solid var(--border);
+                border-radius: 14px; box-shadow: var(--shadow-lg); overflow: hidden;
+            }
+            .rv-pop-tete {
+                padding: 9px 12px; border-bottom: 1px solid var(--border);
+                display: flex; align-items: flex-start; gap: 8px; flex: 0 0 auto;
+            }
+            .rv-pop-tete b { font-size: .82rem; display: block; }
+            .rv-pop-actuel { font-size: .68rem; color: var(--text-muted); display: block; margin-top: 2px; }
+            .rv-pop-corps { overflow: auto; padding: 8px 12px 12px; flex: 1 1 auto; }
+            .rv-pop-groupe { margin-top: 8px; }
+            .rv-pop-groupe:first-child { margin-top: 0; }
+            .rv-pop-titre {
+                font-size: .64rem; text-transform: uppercase; letter-spacing: .04em;
+                color: var(--text-muted); font-weight: 800; margin-bottom: 5px;
+            }
+            .rv-etiquettes { display: flex; flex-wrap: wrap; gap: 5px; }
+            .rv-chip {
+                display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+                border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px 4px 7px;
+                font-size: .74rem; font-weight: 600; background: var(--bg-app); user-select: none;
+            }
+            .rv-chip input { width: 14px; height: 14px; margin: 0; accent-color: var(--primary); }
+            .rv-chip--on { border-color: var(--primary); background: var(--primary); color: #fff; }
+            .rv-chip--on input { accent-color: #fff; }
+            /* Ce que l'exercice porte DÉJÀ dans le code : à ne pas reproposer. */
+            .rv-chip--deja { border-style: dashed; }
+            .rv-chip--deja::after { content: '·déjà'; font-size: .62rem; opacity: .65; }
+            .rv-pop-libre { display: flex; gap: 5px; margin-top: 4px; }
+            .rv-pop-libre .rv-champ { flex: 1 1 auto; min-width: 0; font-size: .76rem; }
+            .rv-pop-pied {
+                border-top: 1px solid var(--border); padding: 7px 12px;
+                display: flex; gap: 6px; align-items: center; flex: 0 0 auto;
+            }
+            .rv-pop-choix { font-size: .72rem; color: var(--text-main); flex: 1 1 auto;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .rv-table td.rv-libre { white-space: normal; }
             .rv-vide { padding: 24px; text-align: center; color: var(--text-muted); }
             .rv-etiq { font-size: .66rem; font-weight: 800; border-radius: 999px; padding: 2px 7px; }
@@ -237,7 +325,11 @@ function assurerPanneau() {
                 .rv--filtres .rv-filtres { display: flex; }
                 .rv-recherche { order: -1; }
                 .rv-remarque { width: 130px; }
-                .rv-classer { width: 130px; }
+                .rv-classer { min-width: 104px; max-width: 130px; }
+                .rv-pop {
+                    inset: auto 0 0 0; width: auto; max-width: none;
+                    border-radius: 16px 16px 0 0; max-height: 74vh;
+                }
                 .rv-date { width: 108px; }
                 .rv-compteur { max-height: 2.6em; overflow: hidden; }
             }
@@ -342,8 +434,8 @@ function majCompteur(el) {
     const montres = filtrer(exercices, revue, criteres).length;
     const c = el.querySelector('[data-compteur]');
     c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés · `
-        + `${b.decides} décidés, ${b.changes} à reporter, ${b.remarques} remarques, `
-        + `${b.classer} à reclasser`;
+        + `${b.jeux} jeux · ${b.decides} décidés, ${b.changes + b.jeuxChanges} à reporter, `
+        + `${b.remarques} remarques, ${b.classer} à reclasser`;
     // La phrase entière ne tient pas sur un téléphone, et elle ne sert qu'une
     // fois : elle passe en infobulle plutôt qu'en trois lignes permanentes.
     c.title = 'Les décisions restent sur cet appareil : le catalogue est du code, '
@@ -370,6 +462,7 @@ function tete(cle, contenu, classe, aide) {
 }
 
 function peindreTable(el) {
+    fermerClassement();   // ses boutons vont être remplacés sous ses pieds
     const liste = filtrer(exercices, revue, criteres);
     const cadre = el.querySelector('[data-cadre]');
     if (!liste.length) {
@@ -380,7 +473,7 @@ function peindreTable(el) {
         <table class="rv-table">
             <thead><tr>
                 ${tete('titre', 'Exercice', 'rv-nom', 'Trier par titre')}
-                ${tete('jeu', 'Jeu', '', 'Le moteur qui fait tourner l\'exercice — trier ici groupe tout ce qui partage le même écran')}
+                ${tete('jeu', 'Jeu', '', 'Coché = c\'est un jeu. Trier ici met les jeux devant, groupés par moteur.')}
                 ${tete('ecrit', 'Écrit', '', 'Écrit le, ou repris le — c\'est ce qui dit lesquels sont les derniers')}
                 ${tete('statut', 'En test', '', 'Coché = encore en test. Décoché = validé pour les élèves.')}
                 ${tete('statut', 'Statut', '', 'Trier : ce qui est en test d\'abord')}
@@ -412,7 +505,12 @@ function ligneHtml(exo) {
             <b>${echapper(exo.title)}</b>
             <span class="rv-sous">${echapper(chemin)}${niveaux ? ` — ${echapper(niveaux)}` : ''}${exo.activityId ? ` · ${echapper(exo.activityId)}` : ''}</span>
         </span></td>
-        <td class="rv-jeu">${echapper(exo.activityId || exo.generatorId || '—')}</td>
+        <td><span class="rv-cell">
+            <input type="checkbox" class="rv-coche" data-jeu="${exo.id}"
+                   title="C'est un jeu ?"${jeuRevu(exo, f) ? ' checked' : ''}>
+            <span class="rv-moteur" title="${echapper(exo.activityId || exo.generatorId || '')}"
+            >${echapper(exo.activityId || exo.generatorId || '—')}</span>
+        </span></td>
         <td class="rv-quand" title="${echapper(exo.cree || '')}">${echapper(dernierJour(exo))}</td>
         <td><input type="checkbox" class="rv-statut" data-test="${exo.id}"
                    title="Encore en test ?"${s === STATUS.TEST ? ' checked' : ''}></td>
@@ -424,13 +522,189 @@ function ligneHtml(exo) {
                     title="Dater d'aujourd'hui">${COCHE}</button>
         </span></td>
         ${cases}
-        <td class="rv-libre"><input type="text" class="rv-champ rv-classer" data-tags="${exo.id}"
-                   list="rv-vocabulaire" placeholder="+ domaine, niveau, mot-clef"
-                   title="Aujourd'hui : ${echapper(chemin)}${niveaux ? ` — ${echapper(niveaux)}` : ''}"
-                   value="${echapper((f && f.tags) || '')}"></td>
+        <td class="rv-libre">${boutonClasser(exo, f)}</td>
         <td class="rv-libre"><input type="text" class="rv-champ rv-remarque" data-remarque="${exo.id}"
                    placeholder="…" value="${echapper((f && f.remarque) || '')}"></td>
     </tr>`;
+}
+
+// --- Le classement : un bouton, et un panneau de cases ----------------------
+
+/** Ce que l'exercice porte déjà dans le code — ce qu'on ne va pas reproposer. */
+function dejaLa(exo) {
+    return new Set([
+        ...((exo.tags && exo.tags.chemin) || []),
+        ...((exo.tags && exo.tags.niveaux) || [])
+    ].map(x => String(x).toLocaleLowerCase('fr')));
+}
+
+function boutonClasser(exo, f) {
+    const mots = lireTags(f && f.tags);
+    const chemin = ((exo.tags && exo.tags.chemin) || []).join(' > ');
+    const niveaux = ((exo.tags && exo.tags.niveaux) || []).join(' · ');
+    const dedans = mots.length
+        ? mots.map(m => `<span class="rv-pastille">${echapper(m)}</span>`).join('')
+        : '+ classer';
+    return `<button type="button" class="rv-classer${mots.length ? ' rv-classer--plein' : ''}"
+                data-classer="${echapper(exo.id)}"
+                title="Aujourd'hui : ${echapper(chemin)}${niveaux ? ` — ${echapper(niveaux)}` : ''}"
+            >${dedans}</button>`;
+}
+
+let pop = null;   // { el, id, bouton }
+
+function fermerClassement() {
+    if (!pop) return;
+    pop.el.remove();
+    document.removeEventListener('pointerdown', dehors, true);
+    document.removeEventListener('keydown', echap, true);
+    pop = null;
+}
+
+const dehors = (ev) => {
+    if (!pop) return;
+    if (pop.el.contains(ev.target) || ev.target.closest('[data-classer]')) return;
+    fermerClassement();
+};
+const echap = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); fermerClassement(); } };
+
+/** Les mots cochés qui ne sont dans aucun des trois groupes : les mots-clefs. */
+const libresDe = (tags) => lireTags(tags).filter(m => !CONNUS.has(m.toLocaleLowerCase('fr')));
+
+function ouvrirClassement(bouton, id) {
+    const exo = exercices.find(e => e.id === id);
+    const rouvre = pop && pop.id === id;
+    fermerClassement();
+    if (!exo || rouvre) return;   // le même bouton referme : c'est ce qu'on attend d'un panneau
+
+    const el = document.createElement('div');
+    el.className = 'rv-pop';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', `Classer ${exo.title}`);
+    const deja = dejaLa(exo);
+    const f = ficheDe(revue, id);
+    const chemin = ((exo.tags && exo.tags.chemin) || []).join(' > ');
+    const niveaux = ((exo.tags && exo.tags.niveaux) || []).join(' · ');
+    el.innerHTML = `
+        <div class="rv-pop-tete">
+            <span style="flex:1 1 auto; min-width:0">
+                <b>${echapper(exo.title)}</b>
+                <span class="rv-pop-actuel">Aujourd'hui : ${echapper(chemin) || '—'}${
+    niveaux ? ` — ${echapper(niveaux)}` : ''}</span>
+            </span>
+            <button type="button" class="rv-btn rv-btn--fort" data-ok-pop>OK</button>
+        </div>
+        <div class="rv-pop-corps">
+            ${GROUPES.map(g => `
+                <div class="rv-pop-groupe">
+                    <div class="rv-pop-titre">${echapper(g.titre)}</div>
+                    <div class="rv-etiquettes">${g.mots.map(m => `
+                        <label class="rv-chip${aLeTag(f && f.tags, m) ? ' rv-chip--on' : ''}${
+    deja.has(m.toLocaleLowerCase('fr')) ? ' rv-chip--deja' : ''}">
+                            <input type="checkbox" data-mot="${echapper(m)}"${
+    aLeTag(f && f.tags, m) ? ' checked' : ''}>
+                            <span>${echapper(m)}</span>
+                        </label>`).join('')}</div>
+                </div>`).join('')}
+            <div class="rv-pop-groupe">
+                <div class="rv-pop-titre">Mot-clef (il y en a ${MOTS_CLEFS.length} — cherche)</div>
+                <div class="rv-etiquettes" data-libres></div>
+                <div class="rv-pop-libre">
+                    <input type="text" class="rv-champ" data-libre list="rv-vocabulaire"
+                           placeholder="fractions, tables, énigme…">
+                    <button type="button" class="rv-btn" data-ajouter>Ajouter</button>
+                </div>
+            </div>
+        </div>
+        <div class="rv-pop-pied">
+            <span class="rv-pop-choix" data-choix></span>
+            <button type="button" class="rv-btn" data-vider-pop>Effacer</button>
+        </div>`;
+    assurerPanneau().appendChild(el);
+    pop = { el, id, bouton };
+    majClassement();
+    // APRÈS `majClassement`, PAS AVANT : elle réécrit la cellule, donc le
+    // bouton reçu est détaché du document et son rectangle vaut zéro — le
+    // panneau se collait dans le coin en haut à gauche.
+    placerClassement(pop.bouton);
+    document.addEventListener('pointerdown', dehors, true);
+    document.addEventListener('keydown', echap, true);
+
+    const libre = el.querySelector('[data-libre]');
+    const ajouter = () => {
+        const mot = libre.value.trim();
+        if (!mot) return;
+        ecrire(basculerTag((ficheDe(revue, id) || {}).tags, mot, true));
+        libre.value = '';
+        libre.focus();
+    };
+    const ecrire = (tags) => {
+        revue = decider(revue, id, { tags });
+        garder();
+        majClassement();
+    };
+    el.onchange = (ev) => {
+        const boite = ev.target.closest('[data-mot]');
+        if (!boite) return;
+        ecrire(basculerTag((ficheDe(revue, id) || {}).tags, boite.dataset.mot, boite.checked));
+    };
+    el.onclick = (ev) => {
+        if (ev.target.closest('[data-ok-pop]')) { fermerClassement(); return; }
+        if (ev.target.closest('[data-ajouter]')) { ajouter(); return; }
+        if (ev.target.closest('[data-vider-pop]')) { ecrire(''); return; }
+        const retirer = ev.target.closest('[data-retirer]');
+        if (retirer) ecrire(basculerTag((ficheDe(revue, id) || {}).tags, retirer.dataset.retirer, false));
+    };
+    libre.onkeydown = (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); ajouter(); } };
+}
+
+/**
+ * REDESSINER LA SÉLECTION SANS REDESSINER LE PANNEAU. Refaire l'innerHTML à
+ * chaque case cochée perdrait le champ de saisie et sa liste de suggestions au
+ * milieu d'un mot — et le tableau derrière, lui, n'a que sa cellule à changer.
+ */
+function majClassement() {
+    if (!pop) return;
+    const f = ficheDe(revue, pop.id);
+    const tags = (f && f.tags) || '';
+    pop.el.querySelectorAll('[data-mot]').forEach(b => {
+        const mis = aLeTag(tags, b.dataset.mot);
+        b.checked = mis;
+        b.closest('.rv-chip').classList.toggle('rv-chip--on', mis);
+    });
+    pop.el.querySelector('[data-libres]').innerHTML = libresDe(tags).map(m =>
+        `<button type="button" class="rv-chip rv-chip--on" data-retirer="${echapper(m)}"
+                 title="Retirer">${echapper(m)} ✕</button>`).join('');
+    const choix = lireTags(tags);
+    pop.el.querySelector('[data-choix]').textContent = choix.length
+        ? `${choix.length} coché${choix.length > 1 ? 's' : ''} : ${ecrireTags(choix)}`
+        : 'Rien de coché : le classement du code reste tel quel.';
+
+    const exo = exercices.find(e => e.id === pop.id);
+    const cellule = document.querySelector(`[data-classer="${CSS.escape(pop.id)}"]`);
+    if (exo && cellule) {
+        cellule.outerHTML = boutonClasser(exo, f);
+        pop.bouton = document.querySelector(`[data-classer="${CSS.escape(pop.id)}"]`);
+    }
+    const el = document.getElementById('revue-catalogue');
+    if (el) majCompteur(el);
+}
+
+/**
+ * Sous le bouton, ou au-dessus si c'est là qu'il y a la place — et jamais plus
+ * haut que ce qui reste, sinon le panneau recouvre la ligne qu'on est en train
+ * de classer. Sur téléphone, la CSS en fait une feuille qui monte du bas.
+ */
+function placerClassement(bouton) {
+    if (!pop || window.innerWidth <= 780) return;
+    const r = bouton.getBoundingClientRect();
+    const dessous = window.innerHeight - r.bottom - 14;
+    const dessus = r.top - 14;
+    pop.el.style.maxHeight = `${Math.min(460, Math.max(240, Math.max(dessous, dessus)))}px`;
+    const { offsetWidth: w, offsetHeight: h } = pop.el;
+    pop.el.style.left = `${Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - w - 8))}px`;
+    pop.el.style.top = `${dessous >= h || dessous >= dessus
+        ? r.bottom + 6 : Math.max(8, r.top - h - 6)}px`;
 }
 
 /**
@@ -445,6 +719,8 @@ function ligneHtml(exo) {
  */
 function brancherTable(cadre, el) {
     cadre.onclick = (ev) => {
+        const classer = ev.target.closest('[data-classer]');
+        if (classer) { ouvrirClassement(classer, classer.dataset.classer); return; }
         const entete = ev.target.closest('[data-tri]');
         if (entete) {
             const cle = entete.dataset.tri;
@@ -484,6 +760,12 @@ function brancherTable(cadre, el) {
             majCompteur(el);
             return;
         }
+        if (t.dataset.jeu !== undefined && t.type === 'checkbox') {
+            revue = decider(revue, t.dataset.jeu, { jeu: t.checked });
+            garder();
+            majCompteur(el);
+            return;
+        }
         if (t.dataset.vu !== undefined) {
             revue = marquerVu(revue, t.dataset.vu, t.dataset.col, t.checked);
             garder();
@@ -497,14 +779,14 @@ function brancherTable(cadre, el) {
     };
     cadre.oninput = (ev) => {
         const t = ev.target;
-        const champ = t.dataset.remarque !== undefined ? 'remarque'
-            : t.dataset.tags !== undefined ? 'tags' : null;
-        if (!champ) return;
-        const id = champ === 'remarque' ? t.dataset.remarque : t.dataset.tags;
-        revue = decider(revue, id, { [champ]: t.value });
+        if (t.dataset.remarque === undefined) return;
+        revue = decider(revue, t.dataset.remarque, { remarque: t.value });
         clearTimeout(brancherTable._t);
         brancherTable._t = setTimeout(() => { garder(); majCompteur(el); }, 400);
     };
+    // Un panneau de classement flotte à une position fixe : le tableau qui
+    // défile dessous l'emmènerait au-dessus d'une autre ligne.
+    cadre.onscroll = () => fermerClassement();
 }
 
 // --- Regarder un exercice ---------------------------------------------------
@@ -543,6 +825,7 @@ function regarder(id, colonne, depuisLeNom) {
     const exo = exercices.find(e => e.id === id);
     const col = COLONNES.find(c => c.id === colonne);
     if (!exo || !col) return;
+    fermerClassement();
     if (col.fiche) return apercuFiche(exo, colonne);
 
     retour = { id, colonne };
@@ -647,10 +930,10 @@ async function copier(texte, dit) {
  * là où le bilan entier fait trois pages.
  */
 function copierConsigne() {
-    const c = consigneStatuts(revue, exercices);
+    const c = [consigneStatuts(revue, exercices), consigneJeux(revue, exercices)].filter(Boolean).join('\n');
     if (!c) {
         import('./modal.js').then(m => m.showToast(
-            'Aucun statut ne change pour l\'instant : coche ou décoche « en test » sur une ligne.', 'warning'));
+            'Rien ne change pour l\'instant : coche ou décoche « en test » ou « jeu » sur une ligne.', 'warning'));
         return;
     }
     copier(c, 'Consigne copiée : colle-la dans la conversation, je la reporte dans le code.');
@@ -728,6 +1011,7 @@ export function ouvrirRevue() {
 }
 
 export function fermer(silencieux) {
+    fermerClassement();
     const el = document.getElementById('revue-catalogue');
     if (el) el.classList.remove('rv--ouvert');
     if (!silencieux) retour = null;

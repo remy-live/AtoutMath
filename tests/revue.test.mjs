@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {
     COLONNES, TRIS, nouvelleRevue, ficheDe, decider, marquerVu, statutRevu, aChange,
     nbVus, filtrer, bilan, consigneStatuts, lireStatuts, lireRevue,
-    fusionnerRevues, versMarkdown, jourISO, trier, dernierJour, direTri, estTriable
+    fusionnerRevues, versMarkdown, jourISO, trier, dernierJour, direTri, estTriable,
+    jeuRevu, aChangeJeu, consigneJeux, lireJeux, lireTags, ecrireTags, basculerTag, aLeTag
 } from '../js/core/revue.js';
 import { STATUS } from '../js/data/status.js';
 import { exercices } from '../js/data/catalog.js';
@@ -262,9 +263,10 @@ test('un tri venu d\'une colonne sait dire son nom et son sens', () => {
 // --- Le classement à corriger -----------------------------------------------
 
 test('une proposition de classement se garde et se relit', () => {
+    // La virgule d'une fiche écrite à la main devient le séparateur de liste.
     const r = decider(nouvelleRevue(), 'a', { tags: 'Géométrique > Angles, 5ème' });
-    assert.equal(ficheDe(r, 'a').tags, 'Géométrique > Angles, 5ème');
-    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Géométrique > Angles, 5ème');
+    assert.equal(ficheDe(r, 'a').tags, 'Géométrique > Angles · 5ème');
+    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Géométrique > Angles · 5ème');
 });
 
 test('elle date la ligne, comme toute décision', () => {
@@ -310,6 +312,126 @@ test('une proposition survit à la fusion de deux appareils', () => {
 test('trier par jeu groupe ce qui partage le même moteur', () => {
     const trois = [exo('a', { generatorId: 'zz' }), exo('b', { activityId: 'numpad' }), exo('c', { activityId: 'bubbles' })];
     assert.deepEqual(trier(trois, 'jeu').map(e => e.id), ['c', 'b', 'a']);
+});
+
+// --- La liste de cases du classement ----------------------------------------
+
+test('un classement se lit comme une liste, quel que soit le séparateur', () => {
+    assert.deepEqual(lireTags('Numérique · Fractions'), ['Numérique', 'Fractions']);
+    assert.deepEqual(lireTags('Numérique, Fractions ; 6ème'), ['Numérique', 'Fractions', '6ème']);
+    assert.deepEqual(lireTags(''), []);
+    assert.deepEqual(lireTags(['  Angles ', '', 'CM2']), ['Angles', 'CM2']);
+});
+
+test('il s\'écrit avec le point médian, et sans doublon', () => {
+    assert.equal(ecrireTags(['Numérique', 'Fractions', 'Numérique']), 'Numérique · Fractions');
+    assert.equal(ecrireTags([]), '');
+});
+
+test('cocher et décocher un mot', () => {
+    let t = basculerTag('', 'Fractions', true);
+    assert.equal(t, 'Fractions');
+    t = basculerTag(t, '6ème', true);
+    assert.equal(t, 'Fractions · 6ème');
+    assert.ok(aLeTag(t, '6ème'));
+    // La casse ne fait pas un second mot : recocher remplace, il n'y en a qu'un.
+    assert.equal(basculerTag(t, 'FRACTIONS', true), '6ème · FRACTIONS');
+    assert.equal(basculerTag(t, 'Fractions', false), '6ème');
+    assert.equal(basculerTag(t, '   ', true), t);
+});
+
+test('la fiche range le classement en liste, même écrit à la main', () => {
+    const r = decider(nouvelleRevue(), 'a', { tags: 'Numérique, Fractions' });
+    assert.equal(ficheDe(r, 'a').tags, 'Numérique · Fractions');
+    // Et une liste passe directement.
+    const r2 = decider(nouvelleRevue(), 'a', { tags: ['Angles', 'Angles', '5ème'] });
+    assert.equal(ficheDe(r2, 'a').tags, 'Angles · 5ème');
+});
+
+// --- La colonne « jeu » ------------------------------------------------------
+
+test('sans décision, c\'est le catalogue qui dit si c\'est un jeu', () => {
+    assert.equal(jeuRevu(exo('a', { activityId: 'numpad' }), null), true);
+    assert.equal(jeuRevu(exo('b', { generatorId: 'zz' }), null), false);
+});
+
+test('la case cochée l\'emporte sur le catalogue', () => {
+    const e = exo('b', { generatorId: 'zz' });
+    const r = decider(nouvelleRevue(), 'b', { jeu: true });
+    assert.equal(jeuRevu(e, ficheDe(r, 'b')), true);
+    assert.ok(aChangeJeu(e, ficheDe(r, 'b')));
+    // Cocher ce que le code dit déjà n'est pas un changement à reporter.
+    const memeAvis = decider(nouvelleRevue(), 'a', { jeu: true });
+    assert.ok(!aChangeJeu(exo('a', { activityId: 'numpad' }), ficheDe(memeAvis, 'a')));
+});
+
+test('elle date la ligne et n\'efface ni remarque ni classement', () => {
+    let r = decider(nouvelleRevue(), 'a', { remarque: 'à revoir', tags: 'Fractions' });
+    r = decider(r, 'a', { jeu: false });
+    assert.equal(ficheDe(r, 'a').remarque, 'à revoir');
+    assert.equal(ficheDe(r, 'a').tags, 'Fractions');
+    assert.ok(ficheDe(r, 'a').date);
+});
+
+test('une fiche qui ne porte plus que « jeu » reste au carnet', () => {
+    const r = decider(nouvelleRevue(), 'a', { jeu: true });
+    assert.equal(r.fiches.length, 1);
+    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').jeu, true);
+});
+
+test('le filtre « les jeux » suit la décision, pas seulement le code', () => {
+    const r = decider(nouvelleRevue(), 'geo-deux', { jeu: true });
+    assert.deepEqual(filtrer(jeuDeux, r, { jeux: true }).map(e => e.id).sort(),
+        ['geo-deux', 'num-un']);
+    const sans = decider(nouvelleRevue(), 'num-un', { jeu: false });
+    assert.deepEqual(filtrer(jeuDeux, sans, { jeux: true }).map(e => e.id), []);
+});
+
+test('le bilan compte les jeux et ce qu\'il faudra reporter', () => {
+    const r = decider(nouvelleRevue(), 'geo-deux', { jeu: true });
+    const b = bilan(r, jeuDeux);
+    assert.equal(b.jeux, 2);
+    assert.equal(b.jeuxChanges, 1);
+});
+
+test('la consigne des jeux ne liste que ce qui change', () => {
+    let r = decider(nouvelleRevue(), 'geo-deux', { jeu: true });
+    r = decider(r, 'num-un', { jeu: false });
+    r = decider(r, 'num-trois', { jeu: false });   // le code dit déjà non
+    r.version = 'v347';
+    const c = consigneJeux(r, jeuDeux);
+    assert.ok(c.startsWith('JEU v347 |'), c);
+    assert.ok(c.includes('jeu = geo-deux'));
+    assert.ok(c.includes('pas = num-un'));
+    assert.ok(!c.includes('num-trois'), 'ce qui ne change pas n\'a rien à faire dans la consigne');
+    assert.equal(consigneJeux(nouvelleRevue(), jeuDeux), '');
+});
+
+test('et elle se relit', () => {
+    const lu = lireJeux('Bonjour\nJEU v347 | jeu = geo-deux | pas = num-un, num-deux');
+    assert.equal(lu.version, 'v347');
+    assert.deepEqual(lu.change, [
+        { exercice: 'geo-deux', jeu: true },
+        { exercice: 'num-un', jeu: false },
+        { exercice: 'num-deux', jeu: false }
+    ]);
+    assert.equal(lireJeux('rien du tout'), null);
+});
+
+test('le rapport porte la consigne des jeux à côté de celle des statuts', () => {
+    const r = decider(nouvelleRevue(), 'geo-deux', { jeu: true });
+    const md = versMarkdown(r, jeuDeux);
+    assert.ok(md.includes('JEU'));
+    assert.ok(md.includes('Comptés comme jeux'));
+    assert.ok(!versMarkdown(nouvelleRevue(), jeuDeux).includes('JEU'));
+});
+
+test('une décision de jeu survit à la fusion de deux appareils', () => {
+    const a = decider(nouvelleRevue(), 'x', { jeu: true }, 1000);
+    const b = decider(nouvelleRevue(), 'x', { remarque: 'vu ailleurs' }, 2000);
+    const f = ficheDe(fusionnerRevues(a, b), 'x');
+    assert.equal(f.jeu, true);
+    assert.equal(f.remarque, 'vu ailleurs');
 });
 
 test('trier par classement remonte ce qui est à reclasser', () => {
