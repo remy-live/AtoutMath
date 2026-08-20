@@ -80,6 +80,21 @@ class Duel extends BaseGame {
                     justify-content: flex-start; gap: 4px; padding: 6px 10px;
                     min-height: 0; position: relative;
                 }
+                /* QUATRE PIXELS SOUS LA DERNIÈRE TOUCHE, C'EST ZÉRO.
+                   Rémy, troisième passage : « on ne voit toujours pas les
+                   boutons sur iPhone ». Le pavé du joueur du bas s'arrêtait à
+                   630 sur une fenêtre de 634 : mesuré, ça tient ; tenu à la
+                   main, la barre d'outils du navigateur passe dessus. Chrome
+                   sur iOS ne rend d'ailleurs la hauteur dvh honnêtement qu'une fois
+                   la barre stabilisée.
+                   Chaque camp réserve donc une vraie marge du côté de SON
+                   joueur. Le camp du haut étant retourné d'un demi-tour, le
+                   même retrait bas s'y dessine en haut : une seule règle
+                   dégage les deux bords, et c'est le couloir — qui a de la
+                   place — qui paie. */
+                .du-cote {
+                    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+                }
                 /* La teinte du camp passe par une VARIABLE, pas par
                    currentColor : dans une règle qui déclare aussi sa propre
                    couleur de texte, currentColor prend CELLE-LÀ, pas celle
@@ -376,7 +391,7 @@ class Duel extends BaseGame {
                 /* Écran court MAIS étroit (téléphone en paysage serré) : on
                    garde la coupe haut/bas et on resserre. */
                 @container plateau (max-height: 640px) {
-                    .du-cote { padding: 4px 8px; gap: 3px; }
+                    .du-cote { padding: 4px 8px calc(12px + env(safe-area-inset-bottom, 0px)); gap: 3px; }
                     /* ÉCRAN COURT : LE BANDEAU ET L'ÉCRAN DE SAISIE SE METTENT
                        SUR LA MÊME LIGNE. Empilés, ils coûtaient soixante-dix
                        pixels par camp — cent quarante pris au couloir sur un

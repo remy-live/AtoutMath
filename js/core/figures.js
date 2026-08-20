@@ -105,18 +105,27 @@ export function repereSvg({ max = 5, relatifs = false, point = null, interactive
  * borné : un rectangle 12 × 1 doit rester lisible sans devenir un trait.
  */
 export function rectangleSvg(L, l, unit = 'cm') {
-    // Le dessin est volontairement plus large que haut : un SVG est mis à
-    // l'échelle par sa plus petite dimension disponible, et une figure haute
-    // se retrouve fortement réduite — les cotes deviennent alors illisibles.
-    // On borne donc la hauteur assez bas et on écrit les cotes en gros dans
-    // le repère du viewBox, pour qu'elles restent lisibles après réduction.
-    const maxW = 300, maxH = 118, minH = 52;
-    const scale = Math.min(maxW / L, maxH / Math.max(l, 1));
+    // LE CADRE EST TOUJOURS LE MÊME, ET C'EST TOUT L'INTÉRÊT.
+    //
+    // Rémy, au banc iPhone : « la première figure a de grosses écritures pour
+    // les longueurs, les autres ça va ». Le viewBox épousait le rectangle : un
+    // 3 × 1 rendait une boîte de 412 × 164, un 8 × 5 une boîte de 301 × 182.
+    // Comme la cote est écrite en unités de ce repère, un même « 21 » sortait
+    // à des tailles différentes d'une figure à l'autre — et sur la plus plate,
+    // à la taille du titre.
+    //
+    // Le cadre est donc FIXE et le rectangle se pose dedans. Une taille de
+    // cote donnée y rend la même chose pour toutes les figures, ce qui est le
+    // moins qu'on demande à une cotation.
+    const W = 420, H = 190;
+    const padX = 62, padDroite = 30, padY = 16, padBottom = 48;
+    const aireW = W - padX - padDroite;
+    const aireH = H - padY - padBottom;
+    const minH = 44;
+
+    const scale = Math.min(aireW / L, aireH / Math.max(l, 1));
     const w = Math.round(L * scale);
-    const h = Math.max(minH, Math.round(l * scale));
-    const padX = 56, padY = 16, padBottom = 48;
-    const W = w + padX * 2;
-    const H = h + padY + padBottom;
+    const h = Math.min(aireH, Math.max(minH, Math.round(l * scale)));
 
     const dimY = padY + h + 16;   // ligne de cote horizontale
     const dimX = padX - 18;       // ligne de cote verticale

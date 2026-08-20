@@ -39,24 +39,44 @@ test('quatre propositions, toutes différentes', () => {
     }
 });
 
+// LE CALCUL S'ÉCRIT AVEC DES ESPACES INSÉCABLES : « 8 − 3 » ne doit jamais se
+// couper en fin de ligne (voir `ecrire`). Les tests lisent donc l'énoncé à
+// espaces normalisées — c'est le signe qui les intéresse, pas sa colle.
+const lisible = (t) => String(t).replace(/ /g, ' ');
+
+test('un calcul ne se coupe jamais en fin de ligne', () => {
+    // Rémy : « c'est noté le résultat de 8 puis à la ligne −3, ça n'aide pas à
+    // comprendre ». Sur un écran de 375 px, l'énoncé s'enroule ; le calcul,
+    // lui, est un mot.
+    for (const volet of ['resultat', 'nombres', 'calcul-vers-phrase']) {
+        for (let g = 0; g < 30; g++) {
+            const t = tirer(volet, `${volet}-nb${g}`).prompt.text;
+            assert.ok(!/\d [+−×÷]/.test(t) && !/[+−×÷] \d/.test(t),
+                `${volet} : un calcul à espaces sécables — « ${t} »`);
+        }
+    }
+});
+
 test('le mot du résultat suit le signe montré', () => {
     const attendu = { '+': 'la somme', '−': 'la différence', '×': 'le produit', '÷': 'le quotient' };
     for (let g = 0; g < 60; g++) {
         const it = tirer('resultat', `r${g}`);
-        const signe = Object.keys(attendu).find(s => it.prompt.text.includes(` ${s} `));
-        assert.ok(signe, `signe introuvable dans « ${it.prompt.text} »`);
-        assert.equal(it.answer, attendu[signe], `pour « ${it.prompt.text} »`);
+        const dit = lisible(it.prompt.text);
+        const signe = Object.keys(attendu).find(s => dit.includes(` ${s} `));
+        assert.ok(signe, `signe introuvable dans « ${dit} »`);
+        assert.equal(it.answer, attendu[signe], `pour « ${dit} »`);
     }
 });
 
 test('termes pour + et −, facteurs pour ×', () => {
     for (let g = 0; g < 60; g++) {
         const it = tirer('nombres', `n${g}`);
-        const mult = it.prompt.text.includes(' × ');
-        assert.equal(it.answer, mult ? 'les facteurs' : 'les termes', `pour « ${it.prompt.text} »`);
+        const dit = lisible(it.prompt.text);
+        const mult = dit.includes(' × ');
+        assert.equal(it.answer, mult ? 'les facteurs' : 'les termes', `pour « ${dit} »`);
         // La division n'entre pas dans cette famille : ses deux nombres ont
         // chacun leur nom, et « les termes » y serait faux.
-        assert.ok(!it.prompt.text.includes(' ÷ '), 'la division ne doit pas être proposée ici');
+        assert.ok(!dit.includes(' ÷ '), 'la division ne doit pas être proposée ici');
     }
 });
 

@@ -73,8 +73,17 @@ const POSEE = [
 
 const VOLETS = ['resultat', 'nombres', 'phrase-vers-calcul', 'calcul-vers-phrase', 'multiples', 'posee'];
 
-/** L'écriture d'un calcul, du côté des maths et non du côté du clavier. */
-const ecrire = (a, op, b) => `${a} ${op.signe} ${b}`;
+/**
+ * L'écriture d'un calcul, du côté des maths et non du côté du clavier.
+ *
+ * LES ESPACES SONT INSÉCABLES, et ce n'est pas de la typographie de luxe.
+ * Rémy, au banc iPhone : « c'est noté le résultat de 8 puis à la ligne −3, ça
+ * n'aide pas à comprendre ». L'énoncé s'enroule sur trois cent
+ * soixante-quinze pixels, et il se coupait au milieu du calcul : on lisait
+ * « Le résultat de 8 », puis « − 3 s'appelle… », et la question ne voulait
+ * plus rien dire. Un calcul ne se coupe pas — c'est un mot.
+ */
+const ecrire = (a, op, b) => `${a}\u00A0${op.signe}\u00A0${b}`;
 
 // --- Les six familles de questions ------------------------------------------
 
