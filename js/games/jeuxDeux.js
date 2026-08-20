@@ -148,16 +148,20 @@ class JeuADeux extends BaseGame {
                    gravité fait le reste. La distance parcourue dépend de la
                    rangée atteinte : un jeton qui tombe au fond tombe de plus
                    haut, et cela se voit. */
-                /* LE MODE DE REMPLISSAGE N'EST PAS UN DÉTAIL. Rémy : « quand l'animation
-                   commence, la case cible se remplit puis le jeton tombe.
-                   Trop vite d'ailleurs. » Sans mode de remplissage, le disque
-                   est peint À SA PLACE FINALE le temps d'une image, avant que
-                   la première frame de l'animation ne le renvoie en haut : on
-                   voyait la case s'allumer, puis le jeton y tomber une seconde
-                   fois. le mode « both » applique l'état de départ dès la pose. Et la
-                   durée passe d'un tiers de seconde à un peu plus d'une demie :
-                   une chute qu'on n'a pas le temps de suivre n'apprend rien. */
-                .jd-tombe { animation: jd-chute .55s cubic-bezier(.4, 0, .7, 1) both; }
+                /* LE MODE DE REMPLISSAGE N'EST PAS UN DÉTAIL. Sans lui, le
+                   disque est peint À SA PLACE FINALE le temps d'une image,
+                   avant que la première frame de l'animation ne le renvoie en
+                   haut. Le mode « both » applique l'état de départ dès la pose.
+                   La vraie cause de « la case cible se remplit », elle, était
+                   ailleurs — c'est le TROU qui disparaissait ; voir
+                   la fonction dessinerP4 plus bas.
+                   NEUF DIXIÈMES DE SECONDE. Un tiers, puis une demie, et Rémy
+                   la trouvait encore trop rapide : une chute qu'on n'a pas le
+                   temps de suivre du regard ne montre rien. À cette durée-là,
+                   on voit le jeton partir du haut de la colonne choisie et
+                   descendre jusqu'au fond — ce qui est exactement la règle
+                   qu'on veut faire comprendre. */
+                .jd-tombe { animation: jd-chute .9s cubic-bezier(.34, 0, .7, 1) both; }
                 @keyframes jd-chute {
                     from { transform: translateY(calc(var(--jd-chute, 0) * -1px)); }
                     70% { transform: translateY(0); }
@@ -514,9 +518,20 @@ function dessinerP4(p) {
         // rangée pour qu'il entre par le dessus et non par le bord.
         const neuf = this.chute && this.chute.x === x && this.chute.y === y;
         const hauteur = MARGE + y * PAS + PAS;
-        return `<circle class="jd-jeton${gagne ? ' jd-gagnant' : ''}${neuf ? ' jd-tombe' : ''}"
+        const jeton = `<circle class="jd-jeton${gagne ? ' jd-gagnant' : ''}${neuf ? ' jd-tombe' : ''}"
             ${neuf ? `style="--jd-chute: ${hauteur}"` : ''} cx="${cx}" cy="${cy}"
             r="${PAS * 0.4}" fill="${TEINTES[c]}"></circle>`;
+        // LE TROU RESTE OUVERT TANT QUE LE JETON N'EST PAS ARRIVÉ.
+        //
+        // Rémy, deux fois : « la case cible se remplit puis le jeton tombe ».
+        // C'était vrai, et voilà pourquoi : dès que la case n'est plus vide, on
+        // cessait de dessiner son TROU — le rond de fond qui creuse la
+        // planche. Pendant toute la chute, la case d'arrivée montrait donc le
+        // bleu plein de la planche, c'est-à-dire un trou bouché. Le jeton
+        // arrivait ensuite par-dessus. On garde le trou sous le jeton qui
+        // tombe : la case reste creuse jusqu'à ce qu'il s'y pose.
+        if (!neuf) return jeton;
+        return `<circle class="jd-trou" cx="${cx}" cy="${cy}" r="${PAS * 0.4}"></circle>${jeton}`;
     }).join('')).join('');
 
     const jouables = new Set(p4.coups(p));
