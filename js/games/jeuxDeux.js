@@ -140,6 +140,10 @@ class JeuADeux extends BaseGame {
                 .jd-colonne { cursor: pointer; }
                 .jd-colonne:hover rect { fill: color-mix(in srgb, var(--primary) 12%, transparent); }
                 .jd-trou { fill: var(--bg-app); }
+                /* Le fond que laissent voir les trous vides. */
+                .jd-fond { fill: var(--bg-app); }
+                /* Le filet noir de chaque case, jeton ou pas. */
+                .jd-cercle { fill: none; stroke: rgba(0,0,0,.55); stroke-width: 1.6; pointer-events: none; }
                 .jd-jeton { stroke: rgba(0,0,0,.25); stroke-width: 1.5; }
                 /* LE JETON TOMBE. Rémy : « on pourrait voir l'animation ». Il
                    apparaissait dans sa case, et rien ne montrait qu'on avait
@@ -526,28 +530,44 @@ function dessinerP4(p) {
     const H = MARGE * 2 + p.rows * PAS;
     const gagnantes = new Set((p.alignement ? p.alignement.cases : []).map(c => `${c.x},${c.y}`));
 
-    const trous = p.grille.map((ligne, y) => ligne.map((c, x) => {
+    // LE JETON TOMBE DERRIÈRE LA PLANCHE — comme dans la vraie boîte.
+    //
+    // Rémy, trois fois de suite : « il faut que le pion descende derrière la
+    // grille ». Les rustines précédentes ne pouvaient pas y suffire : tant que
+    // le jeton est dessiné APRÈS le fond, il passe forcément DEVANT lui, et
+    // l'on voit un disque glisser sur la planche au lieu de descendre dedans.
+    //
+    // On inverse donc l'ordre, une fois pour toutes : les jetons d'abord,
+    // TOUS, puis la planche par-dessus — un rectangle bleu réellement PERCÉ,
+    // par un masque, aux quarante-deux emplacements. Le jeton n'est visible
+    // que par les trous, exactement comme un carton troué posé sur des pions.
+    // Plus rien à synchroniser : c'est la géométrie qui fait le travail.
+    const jetons = p.grille.map((ligne, y) => ligne.map((c, x) => {
+        if (c === null) return '';
         const cx = MARGE + x * PAS + PAS / 2, cy = MARGE + y * PAS + PAS / 2;
-        if (c === null) return `<circle class="jd-trou" cx="${cx}" cy="${cy}" r="${PAS * 0.4}"></circle>`;
         const gagne = gagnantes.has(`${x},${y}`);
         // La hauteur de chute : du haut de la grille jusqu'à sa case, plus une
         // rangée pour qu'il entre par le dessus et non par le bord.
         const neuf = this.chute && this.chute.x === x && this.chute.y === y;
         const hauteur = MARGE + y * PAS + PAS;
-        const jeton = `<circle class="jd-jeton${gagne ? ' jd-gagnant' : ''}${neuf ? ' jd-tombe' : ''}"
+        return `<circle class="jd-jeton${gagne ? ' jd-gagnant' : ''}${neuf ? ' jd-tombe' : ''}"
             ${neuf ? `style="--jd-chute: ${hauteur}"` : ''} cx="${cx}" cy="${cy}"
             r="${PAS * 0.4}" fill="${TEINTES[c]}"></circle>`;
-        // LE TROU RESTE OUVERT TANT QUE LE JETON N'EST PAS ARRIVÉ.
-        //
-        // Rémy, deux fois : « la case cible se remplit puis le jeton tombe ».
-        // C'était vrai, et voilà pourquoi : dès que la case n'est plus vide, on
-        // cessait de dessiner son TROU — le rond de fond qui creuse la
-        // planche. Pendant toute la chute, la case d'arrivée montrait donc le
-        // bleu plein de la planche, c'est-à-dire un trou bouché. Le jeton
-        // arrivait ensuite par-dessus. On garde le trou sous le jeton qui
-        // tombe : la case reste creuse jusqu'à ce qu'il s'y pose.
-        if (!neuf) return jeton;
-        return `<circle class="jd-trou" cx="${cx}" cy="${cy}" r="${PAS * 0.4}"></circle>${jeton}`;
+    }).join('')).join('');
+
+    // Le masque de la planche : blanc = la planche, noir = les trous.
+    const percages = p.grille.map((ligne, y) => ligne.map((c, x) => {
+        const cx = MARGE + x * PAS + PAS / 2, cy = MARGE + y * PAS + PAS / 2;
+        return `<circle cx="${cx}" cy="${cy}" r="${PAS * 0.4}" fill="#000"></circle>`;
+    }).join('')).join('');
+
+    // ET CHAQUE TROU PORTE SON CERCLE. Rémy : « peux-tu entourer les cercles
+    // d'un léger trait noir ». Sans lui, un jeton jaune sur planche bleue n'a
+    // pas de contour et les quarante-deux cases se lisent comme une tache ;
+    // le filet redonne à chacune sa forme, jeton ou pas.
+    const cercles = p.grille.map((ligne, y) => ligne.map((c, x) => {
+        const cx = MARGE + x * PAS + PAS / 2, cy = MARGE + y * PAS + PAS / 2;
+        return `<circle class="jd-cercle" cx="${cx}" cy="${cy}" r="${PAS * 0.4}"></circle>`;
     }).join('')).join('');
 
     const jouables = new Set(p4.coups(p));
@@ -559,8 +579,19 @@ function dessinerP4(p) {
     this.plateauEl.innerHTML = `<svg class="jd-svg" viewBox="0 0 ${W} ${H}"
         style="width: min(96cqw, ${(W / H * 72).toFixed(0)}cqh, ${W * 1.6}px); height: auto"
         role="img" aria-label="Grille de puissance 4">
-        <rect x="0" y="0" width="${W}" height="${H}" rx="10" fill="#1d4ed8"></rect>
-        ${trous}${colonnes}</svg>`;
+        <defs>
+            <mask id="jd-percee">
+                <rect x="0" y="0" width="${W}" height="${H}" fill="#fff"></rect>
+                ${percages}
+            </mask>
+        </defs>
+        <!-- Le fond des trous : ce qu'on voit quand aucun jeton n'est là. -->
+        <rect x="0" y="0" width="${W}" height="${H}" rx="10" class="jd-fond"></rect>
+        ${jetons}
+        <!-- La planche PERCÉE, par-dessus les jetons. -->
+        <rect x="0" y="0" width="${W}" height="${H}" rx="10" fill="#1d4ed8"
+              mask="url(#jd-percee)"></rect>
+        ${cercles}${colonnes}</svg>`;
     this.plateauEl.querySelectorAll('[data-col]').forEach(el => {
         el.onclick = () => this.jouer(Number(el.dataset.col));
     });
