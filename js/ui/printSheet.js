@@ -56,6 +56,13 @@ import {
     traitsDeMarque as traitsDeMarqueCodage,
     pointsAngleDroit as pointsAngleDroitCodage
 } from '../core/codageSvg.js';
+// LES BLOCS SCRATCH VIENNENT DU MÊME MOULE QUE CEUX DE L'ÉCRAN. Rémy : « les
+// blocs rendus en PDF ne sont pas les mêmes que les vrais » — ils le sont
+// maintenant, parce que la forme n'est plus écrite deux fois.
+import {
+    U as UBLOC, silhouette, gelule, versSvg as blocVersSvg, versPdf as blocVersPdf,
+    largeurTexte as largeurTexteBloc, largeurChamp
+} from '../core/blocScratch.js';
 
 /** « un losange » -> « Un losange » : le mot se pose sous la figure. */
 const nomTypeCodage = (type) => {
@@ -4485,73 +4492,106 @@ function geoChat(item, slot) {
  */
 const BLOC_SCRATCH = {
     mouvement: { fond: [76, 151, 255], bord: [60, 120, 210], encre: [255, 255, 255] },
-    controle: { fond: [255, 171, 25], bord: [207, 139, 23], encre: [40, 30, 0] }
+    controle: { fond: [255, 171, 25], bord: [207, 139, 23], encre: [40, 30, 0] },
+    // Le chapeau « quand ⚑ est cliqué » : c'est la famille Événements, un
+    // jaune plus chaud que le Contrôle. Sans lui en tête, la pile de la feuille
+    // n'est pas un programme Scratch — c'est une liste de briques.
+    evenement: { fond: [255, 191, 0], bord: [207, 155, 0], encre: [40, 30, 0] }
 };
 
 /**
- * LA SILHOUETTE D'UN BLOC SCRATCH : LE CRAN.
+ * LA PILE DE BLOCS, EN UNITÉS D'ATELIER.
  *
- * C'est lui qu'on reconnaît — la bosse du bas qui s'emboîte dans le creux du
- * bloc suivant. Un rectangle arrondi coloré n'est pas un bloc : il ne dit pas
- * que les briques s'accrochent, et c'est précisément ce que l'élève voit à
- * l'écran. Rémy : « de vrais blocs Scratch pour le PDF ».
+ * Toute la forme vient de core/blocScratch.js — le même module que l'écran.
+ * Ici on ne décide que de deux choses : COMBIEN de millimètres vaut une unité
+ * d'atelier (`u`), et OÙ tombe chaque bloc de la pile. Le reste — tenon,
+ * mortaise, coins, gélules — est commun aux trois rendus.
+ *
+ * Les blocs s'emboîtent, donc ils SE TOUCHENT : un bloc simple fait exactement
+ * `U.ligne` de haut et le suivant commence là où il finit. C'est ce qui
+ * manquait à l'ancienne pile, où un écart séparait deux briques censées être
+ * accrochées l'une à l'autre.
  */
-const cranScratch = (h) => ({ d: h * 0.17, debut: h * 0.42, large: h * 0.85 });
+function geoBlocsChat(g) {
+    // Le chapeau en tête, puis une ligne par bloc — sauf les barres de
+    // fermeture, qui sont dessinées AVEC leur C et ne prennent pas de rang.
+    const lignes = g.m.lignes;
+    const hautTotale = UBLOC.chapeau + lignes.reduce(
+        (n, l) => n + (l.fin ? UBLOC.basBoucle : UBLOC.ligne), 0);
+    // UN « RÉPÉTER » EST AU MOINS AUSSI LARGE QUE CE QU'IL ENVELOPPE. Sans
+    // cela, les briques bleues dépassaient du C par la droite : on voyait des
+    // blocs posés SUR une brique jaune, pas dedans. On élargit donc de la fin
+    // vers le début, pour qu'un C imbriqué soit déjà à sa taille définitive
+    // quand celui qui le contient se mesure.
+    const w = lignes.map(largeurBlocChat);
+    for (let i = lignes.length - 1; i >= 0; i--) {
+        if (lignes[i].fin || lignes[i].genre !== 'controle') continue;
+        const j = lignes.findIndex((z, n) => n > i && z.fin && z.creux === lignes[i].creux);
+        const fin = j < 0 ? lignes.length : j;
+        for (let n = i + 1; n < fin; n++) {
+            w[i] = Math.max(w[i], (lignes[n].creux - lignes[i].creux) * UBLOC.retrait + w[n]);
+        }
+    }
+    // La pile tient dans la hauteur du quadrillage ET dans sa colonne : c'est
+    // la plus contraignante des deux qui décide.
+    const largeurUnites = Math.max(
+        ...lignes.map((l, i) => l.creux * UBLOC.retrait + w[i]), 132);
+    const u = Math.min(g.cote / hautTotale, g.progW / largeurUnites);
+    // Les rangs, en unités : chaque bloc sait où il commence et ce qu'il ferme.
+    const y = [];
+    let curseur = UBLOC.chapeau;
+    lignes.forEach((l) => { y.push(curseur); curseur += l.fin ? UBLOC.basBoucle : UBLOC.ligne; });
+    return { lignes, u, y, w, hautTotale, largeurUnites, x: g.b.x, y0: g.y0 };
+}
 
-/** Le contour d'un bloc simple, du coin haut-gauche, dans le sens horaire. */
-function contourBloc(x, y, w, h) {
-    const c = cranScratch(h);
-    const s = x + c.debut, f = s + c.large;
-    return [
-        [x, y], [s, y], [s + c.d, y + c.d], [f - c.d, y + c.d], [f, y], [x + w, y],
-        [x + w, y + h], [f, y + h], [f - c.d, y + h + c.d], [s + c.d, y + h + c.d],
-        [s, y + h], [x, y + h]
-    ];
+/** La largeur d'un bloc, en unités d'atelier : son texte et sa gélule. */
+function largeurBlocChat(l) {
+    if (l.fin) return 0;
+    const morceaux = l.valeur === undefined
+        ? largeurTexteBloc(l.texte)
+        : largeurTexteBloc(l.avant) + largeurChamp(l.valeur) + largeurTexteBloc(l.apres) + 14;
+    return Math.max(l.genre === 'controle' ? 132 : 108, UBLOC.margeG * 2 + morceaux);
 }
 
 /**
- * Le contour d'un bloc en C — l'anse du haut, le dos, et le bras du bas — en
- * UN SEUL tracé. Dessiné en trois morceaux séparés, le « répéter » laissait des
- * coutures blanches entre son dos et ses bras : on voyait trois rectangles, pas
- * une brique qui enveloppe.
+ * Où tombe chaque morceau d'un bloc : le texte d'avant, la gélule, le texte
+ * d'après. En unités d'atelier, à partir du bord gauche du bloc.
  */
-function contourC(x, y, w, h, creux, bras, dos) {
-    const c = cranScratch(h);
-    const s = x + c.debut, f = s + c.large;
-    const si = x + dos + c.debut, fi = si + c.large;      // le cran intérieur
-    const yb = y + h + creux;                             // le haut du bras
-    const yf = yb + bras;                                 // le bas du bras
-    const wBras = Math.max(dos + c.large + c.debut * 2, w * 0.58);
-    return [
-        [x, y], [s, y], [s + c.d, y + c.d], [f - c.d, y + c.d], [f, y], [x + w, y],
-        [x + w, y + h], [fi, y + h], [fi - c.d, y + h + c.d], [si + c.d, y + h + c.d],
-        [si, y + h], [x + dos, y + h],
-        [x + dos, yb], [x + wBras, yb], [x + wBras, yf],
-        [f, yf], [f - c.d, yf + c.d], [s + c.d, yf + c.d], [s, yf], [x, yf]
-    ];
-}
-
-/** Un polygone fermé dans le PDF, à partir de points absolus en millimètres. */
-function tracerPolygone(doc, pts, style) {
-    const suite = pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]);
-    doc.lines(suite, pts[0][0], pts[0][1], [1, 1], style, true);
-}
-
-/** La géométrie de la pile de blocs : un bloc par ligne, indenté sous son C. */
-function geoBlocsChat(g) {
-    const lignes = g.m.lignes;
-    // La pile occupe la hauteur du quadrillage : c'est ce qui la rend lisible
-    // sans déborder, quel que soit le nombre de blocs.
-    const pas = Math.min(g.cote / Math.max(lignes.length + 1, 5), 7.5);
-    const h = pas * 0.82;                 // le bloc, l'écart entre deux déduit
-    const retrait = Math.min(pas * 0.55, 3);
-    return {
-        lignes, pas, h, retrait,
-        taille: Math.max(1.5, Math.min(h * 0.5, 3.1)),   // la police, en mm
-        x: g.b.x,
-        y: g.y0,
-        largeur: g.progW
+function morceauxBlocChat(l) {
+    const out = [];
+    let x = UBLOC.margeG;
+    const poser = (t) => {
+        if (!t) return;
+        // LE DRAPEAU VERT N'EST PAS UNE LETTRE. Le caractère ⚑ n'existe pas
+        // dans les polices d'un PDF : le bloc s'y écrivait « quand le drapeau
+        // est cliqué » pendant que l'aperçu montrait l'icône — deux feuilles
+        // différentes pour le même bloc. On le sort donc du texte, et chaque
+        // rendu le DESSINE : un fanion, comme dans le logiciel.
+        for (const bout of String(t).split('⚑')) {
+            if (bout) {
+                out.push({ texte: bout, x });
+                x += largeurTexteBloc(bout) + 7;
+            }
+            out.push({ drapeau: true, x, w: 12 });
+            x += 12 + 7;
+        }
+        out.pop();                        // un séparateur de trop, en fin de liste
+        x -= 19;
     };
+    if (l.valeur === undefined) { poser(l.texte); return { morceaux: out, fin: x }; }
+    poser(l.avant.replace(/ $/, ''));
+    const w = largeurChamp(l.valeur);
+    out.push({ champ: String(l.valeur), x, w, h: UBLOC.champH });
+    x += w + 7;
+    poser(l.apres.replace(/^ /, ''));
+    return { morceaux: out, fin: x };
+}
+
+/** La hauteur qu'enveloppe un « répéter », en unités : de sa bouche à sa barre. */
+function boucheDe(bl, i) {
+    const j = bl.lignes.findIndex((z, n) => n > i && z.fin && z.creux === bl.lignes[i].creux);
+    const fin = j < 0 ? bl.hautTotale : bl.y[j];
+    return Math.max(UBLOC.boucheVide, fin - bl.y[i] - UBLOC.ligne);
 }
 
 /** Un point du chat (en pas) vers le papier (en millimètres). */
@@ -4607,31 +4647,61 @@ function chatPreviewHtml(item, slot, k, solution) {
     d += `<polygon points="${t.map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
         fill="#e11d48" opacity="0.85"/>`;
 
-    // LE PROGRAMME, EN BLOCS. Un bloc par ligne, empilés avec leur cran, et le
-    // « répéter » les enveloppe dans un C — comme dans le logiciel.
+    // LE PROGRAMME, EN BLOCS — les mêmes qu'à l'écran, tracés par le même
+    // module. Le chapeau en tête, les briques emboîtées dessous, et le
+    // « répéter » qui les enveloppe dans son C.
     const bl = geoBlocsChat(g);
+    const mm = (v) => v * bl.u;                       // unités d'atelier → mm
     let textes = '';
-    bl.lignes.forEach((l, i) => {
+    const poserContenu = (l, bx, by) => {
         const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
-        const x = bl.x + l.creux * bl.retrait;
-        const y = bl.y + i * bl.pas;
-        const fond = `rgb(${c.fond.join(',')})`;
-        const bord = `rgb(${c.bord.join(',')})`;
-        // La barre du bas d'un C est dessinée AVEC son C : rien à faire ici.
-        if (l.fin) return;
-        const w = bl.largeur - l.creux * bl.retrait;
-        const pts = (l.genre === 'controle')
-            ? (() => {
-                const j = bl.lignes.findIndex((z, n) => n > i && z.fin && z.creux === l.creux);
-                const yFin = bl.y + (j < 0 ? bl.lignes.length : j) * bl.pas;
-                return contourC(x, y, w, bl.h, yFin - y - bl.h, bl.h * 0.62, bl.retrait);
-            })()
-            : contourBloc(x, y, w, bl.h);
-        d += `<polygon points="${pts.map(p => `${T(p[0])},${T(p[1])}`).join(' ')}"
-            fill="${fond}" stroke="${bord}" stroke-width="${T(0.18)}" stroke-linejoin="round"/>`;
-        textes += `<div class="fx-ch-bloc" style="left:${x * k}px; top:${y * k}px;
-            width:${w * k}px; height:${bl.h * k}px; color:rgb(${c.encre.join(',')});
-            font-size:${bl.taille * k}px">${echapperSheet(l.texte)}</div>`;
+        const { morceaux } = morceauxBlocChat(l);
+        const milieu = l.genre === 'evenement'
+            ? UBLOC.dome + (UBLOC.chapeau - UBLOC.dome) / 2
+            : UBLOC.ligne / 2;
+        morceaux.forEach((mo) => {
+            if (mo.drapeau) {
+                textes += `<div class="fx-ch-bloc fx-ch-drapeau" style="left:${(bx + mm(mo.x)) * k}px;
+                    top:${(by + mm(milieu - UBLOC.ligne / 2)) * k}px; height:${mm(UBLOC.ligne) * k}px;
+                    font-size:${mm(UBLOC.texte) * k}px">&#9873;</div>`;
+                return;
+            }
+            if (mo.champ !== undefined) {
+                d += `<path d="${blocVersSvg(gelule(mo.w, mo.h),
+                    { x: (bx + mm(mo.x)) * k, y: (by + mm(milieu - mo.h / 2)) * k, u: mm(k) })}"
+                    fill="#fff"/>`;
+                textes += `<div class="fx-ch-champ" style="left:${(bx + mm(mo.x)) * k}px;
+                    top:${(by + mm(milieu - mo.h / 2)) * k}px; width:${mm(mo.w) * k}px;
+                    height:${mm(mo.h) * k}px;
+                    font-size:${mm(UBLOC.texte) * k}px">${echapperSheet(mo.champ)}</div>`;
+                return;
+            }
+            textes += `<div class="fx-ch-bloc" style="left:${(bx + mm(mo.x)) * k}px;
+                top:${(by + mm(milieu - UBLOC.ligne / 2)) * k}px; height:${mm(UBLOC.ligne) * k}px;
+                color:rgb(${c.encre.join(',')});
+                font-size:${mm(UBLOC.texte) * k}px">${echapperSheet(mo.texte)}</div>`;
+        });
+    };
+    const chapeau = { genre: 'evenement', texte: 'quand ⚑ est cliqué', creux: 0 };
+    const pile = [{ l: chapeau, y: 0, forme: silhouette({ genre: 'chapeau', largeur: largeurBlocChat(chapeau) }) }];
+    bl.lignes.forEach((l, i) => {
+        if (l.fin) return;                 // la barre du bas est tracée avec son C
+        pile.push({
+            l, y: bl.y[i],
+            forme: silhouette({
+                genre: l.genre === 'controle' ? 'boucle' : 'simple',
+                largeur: bl.w[i],
+                bouche: l.genre === 'controle' ? boucheDe(bl, i) : undefined
+            })
+        });
+    });
+    pile.forEach(({ l, y: yu, forme }) => {
+        const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
+        const bx = bl.x + mm(l.creux * UBLOC.retrait), by = bl.y0 + mm(yu);
+        d += `<path d="${blocVersSvg(forme, { x: bx * k, y: by * k, u: mm(k) })}"
+            fill="rgb(${c.fond.join(',')})" stroke="rgb(${c.bord.join(',')})"
+            stroke-width="${T(0.15)}" stroke-linejoin="round"/>`;
+        poserContenu(l, bx, by);
     });
 
     let html = `<svg class="fx-ch-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>${textes}`;
@@ -4676,31 +4746,69 @@ function dessinerChatPdf(doc, item, slot, solution, champ) {
     doc.setFillColor(225, 29, 72);
     doc.triangle(t[0].x, t[0].y, t[1].x, t[1].y, t[2].x, t[2].y, 'F');
 
-    // LE PROGRAMME, EN BLOCS — les mêmes qu'à l'écran, et les mêmes que dans
-    // le logiciel : c'est tout l'intérêt.
+    // LE PROGRAMME, EN BLOCS — les mêmes qu'à l'écran, tracés par le même
+    // module (core/blocScratch.js) : c'est tout l'intérêt.
     const bl = geoBlocsChat(g);
+    const mm = (v) => v * bl.u;
+    const chapeau = { genre: 'evenement', texte: 'quand ⚑ est cliqué', creux: 0 };
+    const pile = [{ l: chapeau, y: 0, forme: silhouette({ genre: 'chapeau', largeur: largeurBlocChat(chapeau) }) }];
     bl.lignes.forEach((l, i) => {
+        if (l.fin) return;               // la barre du bas est tracée avec son C
+        pile.push({
+            l, y: bl.y[i],
+            forme: silhouette({
+                genre: l.genre === 'controle' ? 'boucle' : 'simple',
+                largeur: bl.w[i],
+                bouche: l.genre === 'controle' ? boucheDe(bl, i) : undefined
+            })
+        });
+    });
+    pile.forEach(({ l, y: yu, forme }) => {
         const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
-        const x = bl.x + l.creux * bl.retrait;
-        const y = bl.y + i * bl.pas;
+        const bx = bl.x + mm(l.creux * UBLOC.retrait), by = bl.y0 + mm(yu);
+        const t = blocVersPdf(forme, { x: bx, y: by, u: bl.u });
         doc.setFillColor(...c.fond);
         doc.setDrawColor(...c.bord);
-        doc.setLineWidth(0.18);
-        if (l.fin) return;               // la barre du bas est tracée avec son C
-        const w = bl.largeur - l.creux * bl.retrait;
-        if (l.genre === 'controle') {
-            const j = bl.lignes.findIndex((z, n) => n > i && z.fin && z.creux === l.creux);
-            const yFin = bl.y + (j < 0 ? bl.lignes.length : j) * bl.pas;
-            tracerPolygone(doc, contourC(x, y, w, bl.h, yFin - y - bl.h, bl.h * 0.62, bl.retrait), 'FD');
-        } else {
-            tracerPolygone(doc, contourBloc(x, y, w, bl.h), 'FD');
-        }
+        doc.setLineWidth(0.15);
+        doc.lines(t.suite, t.x, t.y, [1, 1], 'FD', true);
+
+        const { morceaux } = morceauxBlocChat(l);
+        const milieu = l.genre === 'evenement'
+            ? UBLOC.dome + (UBLOC.chapeau - UBLOC.dome) / 2
+            : UBLOC.ligne / 2;
         doc.setFont('helvetica', 'bold');
-        // 1 pt ≈ 0,3528 mm : la police du bloc est donnée en millimètres, comme
-        // sa hauteur, pour que l'aperçu et la feuille soient identiques.
-        doc.setFontSize(bl.taille / 0.3528);
-        doc.setTextColor(...c.encre);
-        doc.text(pourPdf(l.texte), x + 1.4, y + bl.h * 0.68);
+        // 1 pt ≈ 0,3528 mm : le corps est donné en millimètres, comme le reste
+        // du bloc, pour que l'aperçu et la feuille soient identiques.
+        doc.setFontSize(mm(UBLOC.texte) / 0.3528);
+        morceaux.forEach((mo) => {
+            if (mo.drapeau) {
+                // Le fanion : une hampe et un triangle vert, comme le bouton
+                // « lancer » du logiciel.
+                const fx = bx + mm(mo.x), fy = by + mm(milieu), t = mm(UBLOC.texte);
+                doc.setDrawColor(60, 120, 60);
+                doc.setLineWidth(t * 0.09);
+                doc.line(fx, fy - t * 0.5, fx, fy + t * 0.45);
+                doc.setFillColor(60, 160, 90);
+                doc.triangle(fx, fy - t * 0.5, fx + t * 0.62, fy - t * 0.24,
+                    fx, fy + t * 0.02, 'F');
+                return;
+            }
+            if (mo.champ !== undefined) {
+                // LA GÉLULE BLANCHE DU NOMBRE : c'est elle qui dit « ce nombre
+                // se change », et c'est la première chose qu'on reconnaît d'un
+                // bloc Scratch. Le PDF l'ignorait.
+                const gx = bx + mm(mo.x), gy = by + mm(milieu - mo.h / 2);
+                const gp = blocVersPdf(gelule(mo.w, mo.h), { x: gx, y: gy, u: bl.u });
+                doc.setFillColor(255, 255, 255);
+                doc.lines(gp.suite, gp.x, gp.y, [1, 1], 'F', true);
+                doc.setTextColor(30, 41, 59);
+                doc.text(pourPdf(mo.champ), gx + mm(mo.w) / 2, gy + mm(mo.h) * 0.7,
+                    { align: 'center' });
+                return;
+            }
+            doc.setTextColor(...c.encre);
+            doc.text(pourPdf(mo.texte), bx + mm(mo.x), by + mm(milieu + UBLOC.texte * 0.36));
+        });
     });
 
     const yl = g.ligneY + g.ligneH * 0.66;

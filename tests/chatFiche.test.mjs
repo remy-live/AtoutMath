@@ -13,10 +13,15 @@ test('le programme écrit dit exactement ce que le script fait', () => {
     // Le « genre » désigne la famille du bloc — Mouvement ou Contrôle : c'est
     // lui qui donne sa couleur à la fiche. Et le C d'un « répéter » se referme
     // par une barre, sans quoi on ne voit pas où la répétition s'arrête.
+    // Le nombre est isolé de son texte : la fiche le pose dans une gélule
+    // blanche, comme Scratch, et `texte` reste la phrase entière.
     assert.deepEqual(ecrireProgramme(script), [
-        { creux: 0, texte: 'répéter 4 fois', genre: 'controle' },
-        { creux: 1, texte: 'avancer de 50 pas', genre: 'mouvement' },
-        { creux: 1, texte: 'tourner à droite de 90°', genre: 'mouvement' },
+        { creux: 0, genre: 'controle', avant: 'répéter ', valeur: 4, apres: ' fois',
+            texte: 'répéter 4 fois' },
+        { creux: 1, genre: 'mouvement', avant: 'avancer de ', valeur: 50, apres: ' pas',
+            texte: 'avancer de 50 pas' },
+        { creux: 1, genre: 'mouvement', avant: 'tourner à droite de ', valeur: 90, apres: '°',
+            texte: 'tourner à droite de 90°' },
         { creux: 0, texte: '', genre: 'controle', fin: true }
     ]);
     // Le trou remplace LE NOMBRE, pas la ligne : on doit voir qu'il s'agit

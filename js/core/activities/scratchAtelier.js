@@ -18,28 +18,24 @@
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 
-// Le tenon et la mortaise, repris tels quels : c'est cette silhouette-là qu'on
-// reconnaît au premier coup d'œil.
-const TENON = 'c 2,0 3,1 4,2 l 4,4 c 1,1 2,2 4,2 h 12 c 2,0 3,-1 4,-2 l 4,-4 c 1,-1 2,-2 4,-2';
-const MORTAISE = 'c -2,0 -3,1 -4,2 l -4,4 c -1,1 -2,2 -4,2 h -12 c -2,0 -3,-1 -4,-2 l -4,-4 c -1,-1 -2,-2 -4,-2';
+// LA SILHOUETTE VIENT DU NOYAU, elle n'est plus écrite ici. La fiche imprimée
+// dessine les mêmes blocs à partir du même module (core/blocScratch.js) : c'est
+// la seule façon d'être sûr que ce que l'élève a sous les yeux et ce qu'il a
+// sur sa feuille sont la même chose.
+import {
+    U, silhouette, gelule as chemineGelule, versSvg, largeurTexte, largeurChamp
+} from '../blocScratch.js';
 
-const R = 4;              // rayon des coins
-const MARGE_G = 12;       // retrait du contenu à gauche
-const HAUT_LIGNE = 40;    // hauteur d'une pièce simple
-const HAUT_CHAPEAU = 48;
-const DOME = 22;         // hauteur de la bosse du chapeau
-const BOUCHE_VIDE = 28;   // hauteur d'une bouche de boucle vide
-const BAS_BOUCLE = 24;    // barre inférieure d'une boucle
-const RETRAIT = 14;       // décalage horizontal du contenu d'une boucle
+const MARGE_G = U.margeG;
+const HAUT_LIGNE = U.ligne;
+const HAUT_CHAPEAU = U.chapeau;
+const DOME = U.dome;
+const BOUCHE_VIDE = U.boucheVide;
+const RETRAIT = U.retrait;
 const AIMANT = 58;        // distance d'attraction, en pixels d'atelier
 const SEUIL = 5;          // déplacement, en pixels d'écran, qui fait un GESTE
 
 const COULEURS = { motion: '#4C97FF', pen: '#0FBD8C', control: '#FFAB19', events: '#FFBF00' };
-
-/** Largeur approchée d'un texte de bloc, sans mesurer dans le DOM. */
-function largeurTexte(txt) {
-    return String(txt).length * 7.1 + 2;
-}
 
 export class Bloc {
     /**
@@ -98,13 +94,13 @@ export class Bloc {
         (this.modele.champs || []).forEach((champ, i) => {
             if (i > 0) poserTexte(this.modele.entre || '');
             const val = String(this.valeurs[champ]);
-            const w = Math.max(30, largeurTexte(val) + 18), h = 26;
+            const w = largeurChamp(val), h = U.champH;
             const g = document.createElementNS(SVGNS, 'g');
             g.setAttribute('transform', `translate(${cx}, ${milieu - h / 2})`);
             g.classList.add('sc-piece-champ');
             g.dataset.champ = champ;
             const fond = document.createElementNS(SVGNS, 'path');
-            fond.setAttribute('d', gelule(w, h));
+            fond.setAttribute('d', versSvg(chemineGelule(w, h)));
             fond.classList.add('sc-piece-champ-fond');
             const t = document.createElementNS(SVGNS, 'text');
             t.classList.add('sc-piece-champ-texte');
@@ -130,41 +126,13 @@ export class Bloc {
     }
 
     tracerForme() {
-        const w = this.largeur, h = this.hautLigne;
-        let d;
-        if (this.modele.chapeau) {
-            // Le dôme du chapeau.
-            //
-            // Un quart de rond posé sur le coin gauche donnait une pièce
-            // bancale, penchée, qui ne ressemblait à rien de Scratch. Le vrai
-            // chapeau porte un dôme SYMÉTRIQUE qui court d'un bord à l'autre :
-            // c'est cette bosse-là qu'on reconnaît.
-            // La courbe de Scratch, à la lettre : une cubique dont les points
-            // de contrôle sont à 26 % et 74 % de la largeur, remontés de la
-            // hauteur du dôme. Elle donne des épaules franches et un sommet
-            // presque plat — une parabole simple faisait une colline.
-            d = `M 0,${DOME} C ${w * 0.26},0 ${w * 0.74},0 ${w},${DOME} V ${h - R}`
-                + ` A ${R},${R} 0 0,1 ${w - R},${h} H 48 ${MORTAISE} H ${R}`
-                + ` A ${R},${R} 0 0,1 0,${h - R} Z`;
-            this.hauteur = h;
-        } else if (this.modele.bouche) {
-            const yb = h + this.hautBouche;
-            d = `M 0,${R} A ${R},${R} 0 0,1 ${R},0 H 12 ${TENON} H ${w - R}`
-                + ` A ${R},${R} 0 0,1 ${w},${R} V ${h - R} A ${R},${R} 0 0,1 ${w - R},${h}`
-                + ` H ${RETRAIT + 48} ${MORTAISE} H ${RETRAIT + R}`
-                + ` A ${R},${R} 0 0,0 ${RETRAIT},${h + R}`
-                + ` V ${yb - R} A ${R},${R} 0 0,0 ${RETRAIT + R},${yb}`
-                + ` H ${RETRAIT + 12} ${TENON} H ${w - R} A ${R},${R} 0 0,1 ${w},${yb + R}`;
-            this.hauteur = yb + BAS_BOUCLE;
-            d += ` V ${this.hauteur - R} A ${R},${R} 0 0,1 ${w - R},${this.hauteur}`
-                + ` H 48 ${MORTAISE} H ${R} A ${R},${R} 0 0,1 0,${this.hauteur - R} Z`;
-        } else {
-            d = `M 0,${R} A ${R},${R} 0 0,1 ${R},0 H 12 ${TENON} H ${w - R}`
-                + ` A ${R},${R} 0 0,1 ${w},${R} V ${h - R} A ${R},${R} 0 0,1 ${w - R},${h}`
-                + ` H 48 ${MORTAISE} H ${R} A ${R},${R} 0 0,1 0,${h - R} Z`;
-            this.hauteur = h;
-        }
-        this.chemin.setAttribute('d', d);
+        const genre = this.modele.chapeau ? 'chapeau' : (this.modele.bouche ? 'boucle' : 'simple');
+        const forme = silhouette({
+            genre, largeur: this.largeur,
+            bouche: this.modele.bouche ? this.hautBouche : undefined
+        });
+        this.hauteur = forme.hauteur;
+        this.chemin.setAttribute('d', versSvg(forme));
     }
 
     placer(x, y) {
@@ -230,12 +198,6 @@ export class Bloc {
 }
 
 /** Gélule blanche d'un champ numérique. */
-function gelule(w, h) {
-    const r = h / 2;
-    return `M ${r},0 H ${w - r} A ${r},${r} 0 0 1 ${w},${r} A ${r},${r} 0 0 1 ${w - r},${h}`
-        + ` H ${r} A ${r},${r} 0 0 1 0,${r} A ${r},${r} 0 0 1 ${r},0 Z`;
-}
-
 // --- L'atelier ---------------------------------------------------------------
 
 export class Atelier {

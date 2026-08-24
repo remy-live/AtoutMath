@@ -79,17 +79,29 @@ const FIGURES = [
  */
 export function ecrireProgramme(script, angleCache) {
     const out = [];
+    // UN BLOC SE DIT EN TROIS MORCEAUX : ce qui précède le nombre, LE NOMBRE,
+    // et ce qui le suit. C'est ainsi que Scratch l'affiche — « avancer de
+    // (50) pas », le nombre dans une gélule blanche —, et la fiche le dessine
+    // maintenant pareil. `texte` reste la phrase entière : elle sert au dire à
+    // voix haute, aux tests, et à tout rendu qui n'a pas de gélule à offrir.
+    const bloc = (creux, genre, avant, valeur, apres, reste = {}) => ({
+        creux, genre, avant, valeur, apres,
+        texte: `${avant}${valeur}${apres}`, ...reste
+    });
     const aller = (blocs, creux) => {
         for (const b of blocs) {
             if (b.type === 'repeter') {
-                out.push({ creux, texte: `répéter ${b.valeur} fois`, genre: 'controle' });
+                out.push(bloc(creux, 'controle', 'répéter ', b.valeur, ' fois'));
                 aller(b.corps || [], creux + 1);
                 // La barre du bas qui referme le C. Sans elle, on ne voit pas
                 // où la répétition s'arrête — et c'est justement la question.
                 out.push({ creux, texte: '', genre: 'controle', fin: true });
                 continue;
             }
-            if (b.type === 'avancer') { out.push({ creux, texte: `avancer de ${b.valeur} pas`, genre: 'mouvement' }); continue; }
+            if (b.type === 'avancer') {
+                out.push(bloc(creux, 'mouvement', 'avancer de ', b.valeur, ' pas'));
+                continue;
+            }
             // Pas de flèche ↻ : elle n'existe pas dans la police du PDF, et
             // « à droite » le dit déjà. L'aperçu et la feuille imprimée
             // doivent porter le même texte, sans quoi l'un des deux ment.
@@ -97,7 +109,7 @@ export function ecrireProgramme(script, angleCache) {
             // LE TROU EST À LA PLACE DU NOMBRE, pas de la ligne entière : on
             // doit voir qu'il s'agit d'un angle, et lequel.
             const val = (angleCache && b.valeur === angleCache) ? '……' : b.valeur;
-            out.push({ creux, texte: `tourner ${sens} de ${val}°`, genre: 'mouvement' });
+            out.push(bloc(creux, 'mouvement', `tourner ${sens} de `, val, '°'));
         }
     };
     aller(script, 0);

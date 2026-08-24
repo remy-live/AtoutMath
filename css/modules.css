@@ -4791,11 +4791,19 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* LA BRIQUE ELLE-MÊME EST DESSINÉE EN SVG, avec son CRAN — la bosse du bas qui
    s'emboîte dans le creux du bloc suivant. Ce div-ci ne porte plus que le
    texte, posé par-dessus la silhouette. */
+/* Le texte d'un bloc : posé au millimètre par printSheet.js, comme dans le
+   PDF. Pas de boîte, pas de remplissage — c'est la silhouette qui donne la
+   forme, le texte n'a qu'à s'aligner sur elle. */
 .fx-ch-bloc {
     position: absolute; display: flex; align-items: center;
-    box-sizing: border-box; padding: 0 .45em;
-    font-weight: 700; white-space: nowrap; overflow: hidden;
-    pointer-events: none;
+    font-weight: 700; white-space: nowrap; pointer-events: none;
+}
+/* Le drapeau vert du chapeau : dessiné en PDF, écrit ici. */
+.fx-ch-drapeau { color: #3ca05a; }
+/* Le nombre dans sa gélule blanche : centré, sombre, comme à l'écran. */
+.fx-ch-champ {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #1e293b; white-space: nowrap; pointer-events: none;
 }
 .fx-ch-ligne {
     position: absolute; display: flex; align-items: center; gap: .4em;
