@@ -872,7 +872,7 @@ export const calculExercises = [
         // Un mot cherché puis trouvé n'a rien à réviser : ce qui compte est de
         // l'avoir rencontré. Les essais restent au compteur de la séance.
         sansRevision: true,
-        params: { theme: 'tout', niveauMax: 3, longueurMin: 4, definition: 'toujours' },
+        params: { theme: 'tout', niveauMax: 3, longueurMin: 4, definition: 'toujours', nbQuestions: 8 },
         paramSchema: [
             {
                 id: 'theme', type: 'select', label: 'Vocabulaire',
@@ -914,6 +914,23 @@ export const calculExercises = [
                     { value: 3, label: 'Tout, collège compris' }
                 ],
                 default: 3
+            },
+            {
+                // COMBIEN DE MOTS. Rémy : « on devrait pouvoir choisir le
+                // nombre de mots ». Le compte n'était réglable que dans le
+                // constructeur de parcours, côté professeur : en jeu libre,
+                // l'élève subissait le défaut. `nbQuestions` est lu par
+                // `launchFreePlay` (games/engine.js), qui s'en sert comme
+                // nombre d'étapes de la séance.
+                id: 'nbQuestions', type: 'select', label: 'Combien de mots',
+                aide: 'Une séance courte tient en cinq mots ; au-delà de quinze, l\'attention retombe avant la fin.',
+                options: [
+                    { value: 5, label: '5 mots — une séance courte' },
+                    { value: 8, label: '8 mots' },
+                    { value: 12, label: '12 mots' },
+                    { value: 20, label: '20 mots — la série longue' }
+                ],
+                default: 8
             }
         ],
         motsClefs: ['anagramme', 'vocabulaire', 'lettres', 'mots', 'lexique'],

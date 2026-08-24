@@ -350,9 +350,34 @@ class Problemes extends BaseGame {
 }
 
 /** Les nombres de l'énoncé, mis en évidence — repérer les données se travaille. */
+/**
+ * LES FRACTIONS S'ÉCRIVENT EN FRACTIONS, jusque dans un énoncé.
+ *
+ * Rémy : « pour les histoires en pagaille, quand ce sont des fractions,
+ * écris-les en fractions ». « Les 3/4 sont abîmées » se lisait avec une barre
+ * oblique — une commodité de clavier, pas une écriture mathématique. Pire : le
+ * surlignage des données mettait en gras le 3 ET le 4 séparément, ce qui
+ * donnait deux nombres là où il n'y en a qu'un.
+ *
+ * On sort donc les fractions du texte AVANT de souligner, on souligne le
+ * reste, puis on les remet composées en colonne. L'ordre compte : traiter les
+ * nombres d'abord aurait coupé la fraction en deux.
+ */
 function souligner(texte) {
-    return esc(texte).replace(/(\d+(?:[.,]\d+)?)\s*(€|h|min)?/g,
+    const gardees = [];
+    // LE JALON NE PORTE AUCUN CHIFFRE. Numéroté, il se faisait souligner comme
+    // un nombre — le surlignage s'insérait entre le jalon et son indice, et la
+    // fraction ne se retrouvait plus. Un caractère nul par fraction suffit :
+    // on les remet dans l'ordre où on les a prises.
+    const jalonne = esc(texte).replace(/(\d+)\s*\/\s*(\d+)/g, (m, n, d) => {
+        gardees.push(`<span class="fraction pb-frac"><span class="fraction-num">${n}</span>`
+            + `<span class="fraction-den">${d}</span></span>`);
+        return '\u0000';
+    });
+    const souligne = jalonne.replace(/(\d+(?:[.,]\d+)?)\s*(€|h|min)?/g,
         (m) => `<span class="pb-nb">${m.trim()}</span>${/\s$/.test(m) ? ' ' : ''}`);
+    let i = 0;
+    return souligne.replace(/\u0000/g, () => gardees[i++]);
 }
 
 export function engineProblemes(container, isDemo, params) {

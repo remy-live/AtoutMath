@@ -6223,3 +6223,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    dénominateur — c'est justement ce qu'on va lui en donner un. */
 .fa-entier { font-size: clamp(1rem, max(3.2cqw, 3.4cqh), 1.8rem); font-weight: 800; }
 .fa-depart .fa-entier { font-size: clamp(1.2rem, max(4cqw, 4cqh), 2.2rem); }
+
+/* La fraction DANS un énoncé : plus petite que celle d'un exercice de
+   fractions, pour ne pas faire sauter l'interligne du paragraphe, et CENTRÉE
+   sur la ligne — posée sur la ligne de base, elle plongeait sous le texte et
+   son dénominateur sortait de la carte. */
+.pb-frac {
+    font-size: .78em; margin: 0 .18em;
+    vertical-align: middle; line-height: 1;
+}
+.pb-frac .fraction-num, .pb-frac .fraction-den { padding: 0 .22em; }
+.pb-frac .fraction-den { border-top-width: 2px; }
