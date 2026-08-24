@@ -105,12 +105,40 @@ export const partiesGenerator = {
     skills: ['num.decimal.parties'],
     answerKinds: ['choice'],
     ecrit: true,
-    params: [],
+    // DEUX RÉGLAGES, PARCE QU'ILS FONT DEUX EXERCICES DIFFÉRENTS. Une série
+    // qui ne demande QUE la partie décimale se corrige d'un coup d'œil et
+    // s'installe dans la tête ; mélangée, elle oblige à relire la question à
+    // chaque ligne — ce n'est pas le même moment de la séance. Et le nombre de
+    // décimales fait toute la difficulté : 12,4 et 12,405 ne se lisent pas
+    // pareil. Sans ces réglages, l'exercice était le seul du catalogue à ne
+    // rien proposer sur la fiche.
+    params: [
+        {
+            id: 'quoi', type: 'select', label: 'Ce qu\'on demande', default: 'melange',
+            options: [
+                { value: 'entiere', label: 'La partie entière' },
+                { value: 'decimale', label: 'La partie décimale' },
+                { value: 'melange', label: 'Les deux, mélangées' }
+            ]
+        },
+        {
+            id: 'decimales', type: 'select', label: 'Chiffres après la virgule', default: '2-3',
+            options: [
+                { value: '1', label: 'Un seul — 12,4' },
+                { value: '2', label: 'Deux — 12,45' },
+                { value: '3', label: 'Trois — 12,456' },
+                { value: '2-3', label: 'Deux ou trois' }
+            ]
+        }
+    ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const decDigits = rng.int(2, 3);
+        const p = params || {};
+        const combien = String(p.decimales || '2-3');
+        const decDigits = combien === '2-3' ? rng.int(2, 3) : Math.min(3, Math.max(1, +combien || 2));
         const { value, intPart, decPart } = randomDecimal(rng, { intDigits: rng.int(2, 3), decDigits });
-        const cherchePartieEntiere = rng.bool();
+        const quoi = ['entiere', 'decimale'].includes(p.quoi) ? p.quoi : 'melange';
+        const cherchePartieEntiere = quoi === 'melange' ? rng.bool() : quoi === 'entiere';
 
         const decStr = `0,${String(decPart).padStart(decDigits, '0')}`;
         const answer = cherchePartieEntiere ? String(intPart) : decStr;
@@ -154,15 +182,47 @@ export const zerosGenerator = {
     skills: ['num.decimal.zeros'],
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
-    params: [],
+    // LES DEUX ZÉROS NE S'APPRENNENT PAS EN MÊME TEMPS. Celui de gauche
+    // (032,4) se comprend tout de suite ; celui de droite (32,40) demande
+    // d'avoir admis que la partie décimale se lit de gauche à droite, et c'est
+    // là que se logent les erreurs. Les séparer, c'est pouvoir travailler l'un
+    // sans l'autre — et un exercice qui n'offre aucun réglage ne le permet pas.
+    params: [
+        {
+            id: 'ou', type: 'select', label: 'Où sont les zéros inutiles', default: 'deux',
+            options: [
+                { value: 'gauche', label: 'Devant le nombre — 032,4' },
+                { value: 'droite', label: 'À la fin des décimales — 32,40' },
+                { value: 'deux', label: 'Des deux côtés' }
+            ]
+        },
+        {
+            id: 'nombres', type: 'select', label: 'Nombres', default: 'melange',
+            options: [
+                { value: 'decimaux', label: 'Décimaux seulement' },
+                { value: 'entiers', label: 'Entiers seulement' },
+                { value: 'melange', label: 'Mélangés' }
+            ]
+        }
+    ],
     generate(params, ctx) {
         const rng = ctx.rng;
+        const p = params || {};
+        let ou = ['gauche', 'droite', 'deux'].includes(p.ou) ? p.ou : 'deux';
+        const nombres = ['decimaux', 'entiers'].includes(p.nombres) ? p.nombres : 'melange';
+        // UN ENTIER N'A PAS DE ZÉRO INUTILE À DROITE : 320 vaut 320, et en
+        // retirer le zéro changerait le nombre. Les deux réglages se
+        // contredisent donc parfois, et c'est « à la fin des décimales » qui
+        // l'emporte — c'est celui qu'on a choisi exprès.
+        const decimal = ou === 'droite' ? true
+            : (nombres === 'entiers' ? false : (nombres === 'decimaux' ? true : rng.bool()));
+        if (!decimal && ou === 'deux') ou = 'gauche';
         // On fabrique un nombre propre, puis on l'habille de zéros inutiles.
-        const base = rng.bool()
+        const base = decimal
             ? `${rng.int(1, 99)},${rng.int(1, 99)}`
             : String(rng.int(2, 400));
-        const zerosGauche = '0'.repeat(rng.int(1, 3));
-        const zerosDroite = base.includes(',') ? '0'.repeat(rng.int(1, 2)) : '';
+        const zerosGauche = ou === 'droite' ? '' : '0'.repeat(rng.int(1, 3));
+        const zerosDroite = (decimal && ou !== 'gauche') ? '0'.repeat(rng.int(1, 2)) : '';
         const affiche = `${zerosGauche}${base}${zerosDroite}`;
         const answer = stripUselessZeros(affiche);
 

@@ -140,7 +140,16 @@ export function cadreDe(fig) {
     const larg = Math.max(1e-6, Math.max(...xs) - Math.min(...xs));
     const haut = Math.max(1e-6, Math.max(...ys) - Math.min(...ys));
     const utileH = H - PAD * 2;
-    const W2 = Math.round(Math.max(200, Math.min(460, utileH * (larg / haut) + PAD * 2)));
+    // LE CADRE ÉPOUSE LA FIGURE, jusqu'à un rapport de un à trois. Rémy :
+    // « pour l'exercice codage, la figure n'est pas si grande ». Un plafond à
+    // 460 revenait à imposer un cadre d'un peu plus d'un et demi de large : un
+    // parallélogramme très aplati n'y tenait qu'en rapetissant, et il flottait
+    // au milieu d'un cadre à moitié vide — la moitié perdue étant précisément
+    // celle qu'on lui aurait donnée. Le nouveau plafond correspond à une
+    // figure trois fois plus large que haute, au-delà de laquelle même un
+    // écran de bureau ne saurait plus rien en faire.
+    const W2 = Math.round(Math.max(200, Math.min(utileH * 3 + PAD * 2,
+        utileH * (larg / haut) + PAD * 2)));
     return { x: 0, y: 0, w: W2, h: H, pad: PAD };
 }
 
