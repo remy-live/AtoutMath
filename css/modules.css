@@ -420,7 +420,14 @@
 /* Pendant qu'une correction est affichée, on réserve sa hauteur : le contenu
    centré remonte au lieu d'être recouvert. On ne comprend pas une correction
    si la question a disparu derrière. */
-.canvas-area--fb { padding-bottom: calc(var(--fb-reserve, 0px) + 34px); }
+/* LA RÉSERVE NE PEUT PAS AVALER LE PLATEAU.
+   Elle remonte le contenu pour que la correction ne le recouvre pas — mais
+   couchée, une carte de 239 px dans un plateau de 305 ne laissait plus que
+   41 px : Angle Master s'y réduisait à un rapporteur de quatorze pixels, et
+   tout le reste passait sous le bord. Mieux vaut une carte qui chevauche un
+   peu le bas de l'exercice qu'un exercice écrasé à rien — la carte se ferme,
+   l'écrasement, lui, ne se répare pas. */
+.canvas-area--fb { padding-bottom: min(calc(var(--fb-reserve, 0px) + 34px), 40vh); }
 
 /* Un énoncé suivi d'une figure ou d'un pavé n'a pas besoin des 40 px de
    respiration prévus pour une question seule. */
@@ -2916,7 +2923,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 @container plateau (max-height: 460px) and (min-width: 620px) {
     .angles-layout {
         display: grid; max-width: none; overflow: hidden;
-        grid-template-columns: minmax(0, 1.15fr) minmax(220px, .85fr);
+        /* LA COLONNE DE DROITE PREND CE QUE LE RAPPORTEUR NE PEUT PAS UTILISER.
+           Le plateau est carré : couché, c'est la HAUTEUR qui le borne, et
+           chaque pixel de largeur au-delà de sa hauteur est perdu. Mesuré :
+           346 px de large pour 259 de haut, soit quatre-vingts pixels rendus à
+           la colonne des commandes — où ils font passer les outils d'une ligne
+           de moins. */
+        grid-template-columns: minmax(0, 1fr) minmax(250px, 340px);
         /* DEUX lignes, et la seconde est BORNÉE. La colonne de droite ne
            contient que deux boîtes : ce qui précède le rapporteur dans le flux
            (énoncé, estimation) et ce qui le suit (commandes, pavé, aide).
@@ -2924,10 +2937,30 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
            dimensionne sur son contenu, la grille grandit avec elle, et le
            rapporteur — qui couvre les deux lignes — s'étirait hors de l'écran.
            C'est ce qui rendait le paysage PIRE qu'avant. */
-        grid-template-rows: min-content minmax(0, 1fr);
+        /* LA PREMIÈRE LIGNE EST PLAFONNÉE, PAS SEULEMENT SA BOÎTE.
+           En `min-content`, la ligne prend la hauteur NATURELLE de l'énoncé et
+           de la barre d'estimation — cent soixante pixels sur trois cents —
+           quoi qu'on impose à la boîte : une hauteur maximale sur l'enfant ne
+           réduit pas ce que la ligne réclame. `fit-content()` fait les deux à
+           la fois : la ligne prend son contenu, sans jamais dépasser le tiers
+           de la hauteur. Le reste va au pavé et à la barre d'aide, qui sont ce
+           qu'on doit pouvoir atteindre. */
+        grid-template-rows: fit-content(32cqh) minmax(0, 1fr);
         /* PAS d'`align-content: start` : il fait prendre aux lignes leur
            taille naturelle, et le `1fr` de la seconde ne borne plus rien. */
-        gap: 8px 12px;
+        gap: 4px 10px;
+        /* Les sept derniers pixels : couchée, la boîte tient AU pixel, et son
+           rembourrage du bas suffisait à faire passer la barre d'aide sous le
+           bord. */
+        padding: 6px 8px 0;
+        /* ET LES BOÎTES PRENNENT LA HAUTEUR DE LEUR LIGNE. En portrait, la
+           mise en page est une colonne centrée — `align-items: center` — et ce
+           réglage survivait au passage en grille : les boîtes de droite
+           gardaient alors leur hauteur NATURELLE, débordaient de leur ligne
+           sans la remplir, et leur `overflow-y: auto` ne servait à rien (on ne
+           défile que dans une boîte dont la hauteur est contrainte). C'est ce
+           qui laissait la barre d'aide deux pixels sous le bord. */
+        align-items: stretch;
     }
     /* Le rapporteur tient toute la colonne de gauche. Pas de `height: 100%` :
        dans une grille en min-content, une hauteur en pourcentage se réfère à
@@ -2955,7 +2988,47 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     /* Le pavé de chiffres tient sur deux rangées serrées : c'est lui qu'on
        doit atteindre sans défiler. */
     .angles-layout .pav-tactile { gap: 4px; }
-    .angles-layout .pav-touche { min-height: 34px; font-size: .95rem; }
+    .angles-layout .pav-touche { min-height: 30px; font-size: .9rem; }
+
+    /* LE HAUT EST BORNÉ, ET C'EST CE QUI MANQUAIT.
+       Mesuré sur un iPhone couché (plateau de 305 px) : l'énoncé et la barre
+       « D'abord, à l'œil » prenaient 210 px de la colonne de droite — la
+       première ligne de la grille est en `min-content`, donc elle prend ce
+       qu'elle veut —, il n'en restait 31 pour le pavé et l'aide, et les
+       chiffres 6 à 0, « OK » et les deux boutons d'aide passaient sous le bord.
+       Rémy : « l'angle master sur iPhone a été tronqué ». C'était vrai, et ce
+       n'était pas le rapporteur qui débordait : c'était ce qu'il y a à côté.
+       Le haut ne peut donc plus dépasser deux cinquièmes de la hauteur, et il
+       défile s'il en demande plus. */
+    .angles-cote:not(.angles-cote--bas) { max-height: min(32cqh, 130px); overflow-y: auto; }
+
+    /* ET TOUT CE QUI EST À DROITE SE RESSERRE. En paysage, la colonne fait
+       250 px de large : chaque ligne de texte y compte double. */
+    .angles-layout .game-question {
+        font-size: .82rem; line-height: 1.25; margin: 0; text-align: left;
+    }
+    .angles-estimation { padding: 4px 6px; }
+    .angles-estimation-label { font-size: .74rem; }
+    .angles-estimation .btn-hint { padding: 4px 8px; font-size: .76rem; min-height: 28px; }
+    .angles-layout .hint-bar { margin: 0; }
+    .angles-layout .hint-btns { flex-wrap: wrap; gap: 4px; justify-content: center; }
+    .angles-layout .btn-hint {
+        padding: 5px 9px; font-size: .78rem; min-height: 30px; white-space: nowrap;
+    }
+    .angles-layout .angles-input { max-width: 72px; }
+    .angles-layout .angles-input-label { font-size: .78rem; }
+    /* Les cinq boutons d'outillage (loupe, zoom, recentrer, valider) tenaient
+       en 136 px de haut alors qu'il en restait 143 pour eux ET la barre
+       d'aide : la barre passait juste sous le bord. Ils se resserrent donc
+       encore, et tout tient. Mesuré, pas estimé. */
+    .angles-cote--bas { gap: 4px; }
+    .angles-controls { gap: 4px; }
+    .angles-controls button { padding: 4px 7px; font-size: .74rem; min-height: 26px; }
+    .angles-layout .pav-touche { min-height: 24px; font-size: .82rem; }
+    /* Le pavé tactile n'apparaît qu'au DOIGT — il n'existe pas à la souris, et
+       c'est pourquoi il manquait aux premières mesures. Couché, c'est lui le
+       plus gros morceau de la colonne : il se resserre comme le reste. */
+    .angles-layout .pav-tactile { gap: 3px; }
 }
 
 /* L'échauffement du regard, AU-DESSUS de la figure et non par-dessus.
