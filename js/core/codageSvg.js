@@ -128,6 +128,22 @@ export function jetonAngleSvg() {
     </svg>`;
 }
 
+/**
+ * Le cadre de dessin, taillé au rapport de la figure. La hauteur reste 300 —
+ * c'est elle qui fixe l'échelle des marques et des lettres —, seule la largeur
+ * suit, entre deux bornes : une figure très plate ou très haute doit rester
+ * dessinable, mais ses marques ne doivent pas changer de taille.
+ */
+export function cadreDe(fig) {
+    const noms = ['A', 'B', 'C', 'D'];
+    const xs = noms.map(n => fig.points[n].x), ys = noms.map(n => fig.points[n].y);
+    const larg = Math.max(1e-6, Math.max(...xs) - Math.min(...xs));
+    const haut = Math.max(1e-6, Math.max(...ys) - Math.min(...ys));
+    const utileH = H - PAD * 2;
+    const W2 = Math.round(Math.max(200, Math.min(460, utileH * (larg / haut) + PAD * 2)));
+    return { x: 0, y: 0, w: W2, h: H, pad: PAD };
+}
+
 // --- La figure entière --------------------------------------------------------
 
 /** Les deux voisins d'un point, pour dessiner son angle droit. */
@@ -147,7 +163,15 @@ export function codageSvg(fig, {
     segments = ORDRE_SEGMENTS, points = POINTS_ANGLE, pose = {},
     interactif = false, etats = {}, nomsSommets = true
 } = {}) {
-    const P = pointsProjetes(fig);
+    // LE CADRE ÉPOUSE LA FIGURE. Rémy : « pour l'exercice codage, l'énoncé est
+    // parfois énorme et la figure pas si grande ». Un cadre fixe de 320 sur 300
+    // impose son rapport au dessin : un losange haut et étroit s'y retrouvait
+    // calé sur la LARGEUR — la moitié de la hauteur disponible restait vide,
+    // sur un téléphone où c'est la hauteur qu'on a. Le cadre prend donc le
+    // rapport de la figure, borné pour que les noms des sommets et les marques
+    // gardent la même taille d'une figure à l'autre.
+    const cadre = cadreDe(fig);
+    const P = pointsProjetes(fig, cadre);
     const marques = pose.marques || {};
     const angles = pose.angles || {};
     const avecDiagonales = segments.some(id => id.includes('O'));
@@ -192,9 +216,20 @@ export function codageSvg(fig, {
                 text-anchor="middle">${n}</text>`);
         });
         if (avecDiagonales) {
+            // LE « O » SE RANGE À L'OPPOSÉ DU PETIT CARRÉ. Rémy : « on ne voit
+            // pas bien l'angle droit à cause de la lettre qui est dessus ».
+            // Posé en bas à gauche du centre quoi qu'il arrive, il tombait
+            // pile dans le quadrant où se dessine l'angle droit des diagonales
+            // — celui d'un losange ou d'un carré. On le pose donc dans la
+            // direction opposée à la bissectrice de cet angle : la seule qui
+            // soit libre à coup sûr.
+            const [b1, b2] = BRAS.O;
+            const u = norme({ x: P[b1].x - P.O.x, y: P[b1].y - P.O.y });
+            const v = norme({ x: P[b2].x - P.O.x, y: P[b2].y - P.O.y });
+            const loin = norme({ x: -(u.x + v.x), y: -(u.y + v.y) });
             parts.push(`<circle class="cg-sommet" cx="${arr(P.O.x)}" cy="${arr(P.O.y)}" r="3"/>`);
-            parts.push(`<text class="cg-nom cg-nom--centre" x="${arr(P.O.x - 13)}" y="${arr(P.O.y + 15)}"
-                text-anchor="middle">O</text>`);
+            parts.push(`<text class="cg-nom cg-nom--centre" x="${arr(P.O.x + loin.x * 15)}"
+                y="${arr(P.O.y + loin.y * 15 + 4)}" text-anchor="middle">O</text>`);
         }
     }
 
@@ -220,6 +255,6 @@ export function codageSvg(fig, {
         });
     }
 
-    return `<svg class="cg-svg" viewBox="0 0 ${W} ${H}" role="img"
+    return `<svg class="cg-svg" viewBox="0 0 ${cadre.w} ${cadre.h}" role="img"
         aria-label="Figure à coder : ${fig.type}">${parts.join('\n')}</svg>`;
 }

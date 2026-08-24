@@ -6321,7 +6321,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     align-items: center; column-gap: clamp(8px, 2.5cqw, 22px);
     row-gap: clamp(3px, 1cqh, 10px); width: 100%;
 }
-.fb-rang-frac { display: flex; justify-content: flex-end; }
+/* LES DEUX FRACTIONS SONT L'UNE SOUS L'AUTRE, ET LE « = » AVEC ELLES.
+   Rémy : « les fractions (pas les barres) ne sont pas alignées horizontalement
+   ni avec le = ». Alignées à DROITE de leur colonne, leurs centres tombaient
+   ailleurs dès que les deux écritures n'avaient pas la même largeur — et la
+   case à remplir est toujours plus large qu'un chiffre. On les centre : les
+   barres se superposent, le signe d'égalité tombe dans le même axe, et
+   l'égalité SE VOIT. */
+.fb-rang-frac { display: flex; justify-content: center; }
 /* Les deux bandes tombent dans la même colonne de la grille : elles font donc
    rigoureusement la même largeur, quelles que soient les fractions écrites à
    gauche. C'est l'affirmation même de l'exercice, elle ne peut pas être
@@ -6329,7 +6336,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-rang-bande { width: 100%; height: clamp(34px, max(11cqh, 6cqw), 88px); position: relative; }
 .fb-rang-bande--ok { animation: fb-devoile .45s ease both; }
 .fb-pile-egal {
-    display: flex; justify-content: flex-end; align-items: center;
+    display: flex; justify-content: center; align-items: center;
     font-size: clamp(1.1rem, 4cqw, 2rem); font-weight: 900; color: var(--primary);
 }
 .fb-pile-vide { min-height: 0; }
@@ -6411,6 +6418,13 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     padding: 8px;
 }
 .cg-layout > :not(.cg-figure) { flex-shrink: 0; }
+/* L'ÉNONCÉ NE MANGE PAS LA FIGURE. Rémy : « pour l'exercice codage, l'énoncé
+   est parfois énorme et la figure pas si grande ». « Code un losange ABCD »
+   n'a pas besoin de la taille d'un titre — c'est la figure qu'on regarde, et
+   chaque ligne d'énoncé lui prend trente pixels. */
+.cg-contexte .game-question {
+    font-size: clamp(.95rem, 2.6cqh, 1.15rem); line-height: 1.25; margin: 0;
+}
 /* LA BOÎTE PREND LA PLACE, LE DESSIN SE CENTRE DEDANS.
    Première version : la boîte portait l'`aspect-ratio` du dessin et sa largeur
    se déduisait de sa hauteur. Mesuré : elle refusait de grandir — 235 px de
@@ -6426,7 +6440,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
        resserre, et une figure de cent pixels ne se lit plus — or c'est là
        qu'on veut la relire. */
     min-height: min(220px, 96cqw);
-    width: 100%; max-width: 560px; max-height: 460px;
+    width: 100%; max-width: 560px; max-height: 520px;
     display: flex; justify-content: center;
 }
 .cg-svg { width: 100%; height: 100%; overflow: visible; }

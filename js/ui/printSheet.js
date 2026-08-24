@@ -3555,33 +3555,89 @@ function dessinerPairesPdf(doc, item, slot, solution) {
 // mauvaise graduation (130 au lieu de 50). Le demi-cercle gradué, posé sur le
 // sommet et aligné sur le côté d'origine, montre la lecture elle-même.
 
-function geoAngle(item, slot) {
-    const ligneH = slot.taille * 0.16;
-    const cote = slot.taille - ligneH;
-    // LE SOMMET EST EN BAS AU MILIEU, et le côté d'origine PRESQUE horizontal.
-    //
-    // Posé à gauche et incliné n'importe comment, le demi-cercle du rapporteur
-    // sortait du bloc et venait écrire ses graduations sur le voisin. Le
-    // rapporteur occupe les deux côtés du sommet : il lui faut donc la moitié
-    // de la largeur de chaque côté, et le sommet ne peut être qu'au centre.
-    // L'inclinaison résiduelle (±25°) suffit à empêcher la lecture directe sans
-    // faire déborder l'arc sous la ligne de réponse.
-    const r = Math.min(cote * 0.78, slot.taille * 0.42);
+/**
+ * LA BOÎTE QU'OCCUPE VRAIMENT L'ANGLE, en unités de rayon, relativement au
+ * sommet. Deux segments et un point : leur enveloppe se calcule exactement.
+ * Avec le rapporteur de la correction — un demi-disque posé sur le premier
+ * côté —, on échantillonne le demi-plan, ce qui revient au même à un pour cent.
+ */
+function boiteAngle(a0, a1, avecRapporteur) {
+    const xs = [0, Math.cos(a0), Math.cos(a1)];
+    const ys = [0, Math.sin(a0), Math.sin(a1)];
+    if (avecRapporteur) {
+        // 1,12 et non 0,9 : au-delà du demi-disque, la correction pose encore
+        // l'étiquette rouge de la graduation lue, et c'est elle qui sortait du
+        // bloc pour aller écrire sur le titre du voisin.
+        for (let d = 0; d <= 180; d += 6) {
+            const a = a0 - d * Math.PI / 180;
+            xs.push(Math.cos(a) * 1.12);
+            ys.push(Math.sin(a) * 1.12);
+        }
+    }
     return {
-        cote, ligneH, r,
-        sx: slot.x + slot.taille / 2,
-        sy: slot.y + cote * 0.82,
-        x0: slot.x, ligneY: slot.y + cote
+        xmin: Math.min(...xs), xmax: Math.max(...xs),
+        ymin: Math.min(...ys), ymax: Math.max(...ys)
+    };
+}
+
+function geoAngle(item, slot, solution = false) {
+    // LA BOÎTE ENTIÈRE, ET L'ANGLE POSÉ DEDANS.
+    //
+    // Rémy, sur une fiche en 3 x 3 : « tu vois la place que l'on perd, les
+    // angles semblent se réfugier en bas à droite ». Deux causes, une seule
+    // conséquence. D'abord le bloc : on dessinait dans le CARRÉ inscrit —
+    // 49 mm dans un emplacement large de 89 —, donc quarante millimètres
+    // perdus par angle, cent vingt par ligne. Ensuite le sommet : posé au
+    // MILIEU du bloc alors que le côté d'origine part vers la droite et que
+    // l'angle s'ouvre vers le haut, tout le dessin tenait dans le quart
+    // supérieur droit et la moitié gauche restait blanche.
+    //
+    // On calcule donc la boîte que l'angle occupe VRAIMENT — elle dépend de
+    // son ouverture et de son inclinaison —, puis on choisit le rayon qui la
+    // fait tenir juste, et l'on centre. Un angle aigu monte peu et s'étale ;
+    // un angle de 170° prend toute la largeur : chacun reçoit ce qu'il lui
+    // faut, et rien ne dépasse. Le rayon passe de 21 à près de 40 mm — l'angle
+    // se mesure au rapporteur de plastique, et vingt millimètres de côté, ce
+    // sont trois millimètres d'écart pour un degré.
+    const b = boiteDe(slot);
+    const ligneH = Math.min(9, b.h * 0.22);
+    const dispoH = b.h - ligneH;
+    const m = item.meta;
+
+    // Les angles des deux côtés — les mêmes qu'à l'écran : le côté d'origine
+    // reste PRESQUE horizontal, parce que c'est ainsi qu'on pose un rapporteur.
+    const penche = (((m.baseDeg % 50) + 50) % 50) - 25;
+    const a0 = -penche * Math.PI / 180;
+    const a1 = -(penche + m.target) * Math.PI / 180;
+
+    const boite = boiteAngle(a0, a1, !!solution);
+    const largeurUtile = Math.max(0.2, boite.xmax - boite.xmin);
+    const hauteurUtile = Math.max(0.2, boite.ymax - boite.ymin);
+    const marge = 1.5;
+    const r = Math.max(6, Math.min(
+        (b.w - marge * 2) / largeurUtile,
+        (dispoH - marge * 2) / hauteurUtile
+    ));
+
+    // Le sommet, posé pour que la boîte de l'angle soit centrée dans le bloc.
+    const sx = b.x + (b.w - r * largeurUtile) / 2 - r * boite.xmin;
+    const sy = b.y + (dispoH - r * hauteurUtile) / 2 - r * boite.ymin;
+
+    return {
+        cote: dispoH, ligneH, r, a0, a1,
+        sx, sy, x0: b.x, largeur: b.w, ligneY: b.y + dispoH
     };
 }
 
 /** Les deux côtés de l'angle, en coordonnées absolues. */
 function cotesAngle(g, m) {
     // L'inclinaison du côté d'origine, ramenée dans ±25° sans perdre la
-    // variété : deux angles voisins ne se dessinent pas pareil.
+    // variété : deux angles voisins ne se dessinent pas pareil. `geoAngle` l'a
+    // déjà calculée pour placer la figure — on la relit plutôt que de risquer
+    // deux formules qui divergent.
     const penche = (((m.baseDeg % 50) + 50) % 50) - 25;
-    const a0 = -penche * Math.PI / 180;
-    const a1 = -(penche + m.target) * Math.PI / 180;
+    const a0 = g.a0 !== undefined ? g.a0 : -penche * Math.PI / 180;
+    const a1 = g.a1 !== undefined ? g.a1 : -(penche + m.target) * Math.PI / 180;
     return {
         a0, a1,
         b: { x: g.sx + Math.cos(a0) * g.r, y: g.sy + Math.sin(a0) * g.r },
@@ -3590,7 +3646,7 @@ function cotesAngle(g, m) {
 }
 
 function anglePreviewHtml(item, slot, k, solution) {
-    const g = geoAngle(item, slot);
+    const g = geoAngle(item, slot, solution);
     const m = item.meta;
     const c = cotesAngle(g, m);
     const T = (v) => (v * k).toFixed(2);
@@ -3670,12 +3726,12 @@ function anglePreviewHtml(item, slot, k, solution) {
         : (solution ? `${m.target}°` : 'L\'angle mesure  .......  °');
     return `<svg class="fx-ag-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`
         + `<div class="fx-ag-ligne" style="left:${g.x0 * k}px; top:${g.ligneY * k}px;
-             width:${slot.taille * k}px; height:${g.ligneH * k}px;
+             width:${g.largeur * k}px; height:${g.ligneH * k}px;
              font-size:${g.ligneH * 0.42 * k}px">${echapperSheet(ligne)}</div>`;
 }
 
 function dessinerAnglePdf(doc, item, slot, solution) {
-    const g = geoAngle(item, slot);
+    const g = geoAngle(item, slot, solution);
     const m = item.meta;
     const c = cotesAngle(g, m);
     const construire = m.mode === 'construire';
@@ -3763,7 +3819,7 @@ function dessinerAnglePdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(Math.max(7, g.ligneH * 1.5));
     doc.setTextColor(...ENCRE.texte);
-    doc.text(pourPdf(ligne), slot.x + slot.taille / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
+    doc.text(pourPdf(ligne), g.x0 + g.largeur / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
 }
 
 
