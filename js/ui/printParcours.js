@@ -90,6 +90,32 @@ function schemaPapier(etape) {
     return gardes.length ? gardes : params;
 }
 
+/**
+ * LES RÉGLAGES DU CONTENU, LÀ OÙ ON LES CHERCHE.
+ *
+ * Rémy : « la loupe sur la droite à l'impression en aperçu n'a pas de
+ * paramètre ». Elle en avait un — « Le pas de la graduation », que sa propre
+ * consigne mentionne — mais il n'existait QUE dans la roue de l'aperçu de page,
+ * posée à côté de la feuille. Personne ne va l'y chercher : les réglages d'une
+ * étape se règlent dans la LIGNE de l'étape, avec la consigne et le nombre de
+ * grilles. Ils sont donc aux deux endroits, avec le même rendu (fieldHtml) et
+ * la même relecture (readParams) — deux entrées, un seul traitement, sinon les
+ * deux finissent par diverger.
+ *
+ * Écrit ici, hors de tout gabarit : imbriqué dans le littéral de la liste, il
+ * aurait fallu des accents graves à l'intérieur d'accents graves — et le
+ * littéral se serait fermé au premier.
+ */
+function blocContenu(e, id) {
+    const sch = schemaPapier(e);
+    if (!sch.length) return '';
+    const champs = sch.map(p => fieldHtml(p,
+        e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('');
+    return '<div class="pp-etape-contenu" data-contenu="' + id + '">'
+        + '<span class="pp-etape-sous-titre">Contenu des questions</span>'
+        + champs + '</div>';
+}
+
 /** Les grilles d'une étape à grilles, tirées comme les questions. */
 function grillesDe(etape, nb) {
     const out = [];
@@ -367,7 +393,14 @@ export function ouvrirFicheParcours(chemin) {
 
     const options = () => {
       const entete = {
-        titre: titreEl.value.trim() || (chemin.name || 'Parcours'),
+        // L'EN-TÊTE N'EST PAS OBLIGATOIRE. Rémy : « l'en-tête pour l'impression
+        // ne devrait pas être obligatoire ». Le champ vidé revenait au nom du
+        // parcours : le professeur effaçait, et le titre repoussait tout seul —
+        // ce qui donne aussi l'impression que la touche d'effacement ne fait
+        // rien. Un champ vide veut dire ce qu'il dit : pas de titre sur la
+        // feuille. Il est pré-rempli à l'ouverture, donc personne ne perd le
+        // titre par accident ; l'effacer est un geste, pas un oubli.
+        titre: titreEl.value.trim(),
         champs: CHAMPS.filter((c, i) => casesChamps[i].checked),
         // LE CARTOUCHE DE CORRECTION. La note se coche d'elle-même sur une
         // interrogation — c'est ce qu'on veut neuf fois sur dix — mais le
@@ -543,6 +576,7 @@ export function ouvrirFicheParcours(chemin) {
                             ${COLONNES_POSSIBLES.map(v => `<option value="${v}"
                                 ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
                         </select>`)}</label>
+                    ${blocContenu(e, id)}
                     <label class="pp-etape-champ pp-etape-case">
                         <input type="checkbox" data-numeroter="${id}"
                             ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
@@ -576,6 +610,28 @@ export function ouvrirFicheParcours(chemin) {
                 else ouvertes.delete(d.dataset.etapeLigne);
             });
         });
+        // LES RÉGLAGES DU CONTENU, dans la ligne d'étape. Même chemin que la
+        // roue de l'aperçu : `readParams` relit le bloc entier, on oublie le
+        // tirage de cette étape et l'on redessine. Deux entrées, un seul
+        // traitement — sinon les deux finissent par diverger.
+        listeEl.querySelectorAll('[data-contenu]').forEach(bloc => {
+            const id = bloc.dataset.contenu;
+            const e = parId.get(id);
+            if (!e) return;
+            wireTips(bloc);
+            const relire = () => {
+                Object.assign(e.params, readParams(bloc, schemaPapier(e)));
+                oublier(id);
+                rendre();
+            };
+            bloc.addEventListener('change', relire);
+            // Les bascules « Oui / Non » n'émettent pas `change` : leur
+            // écouteur global bascule la classe, on repasse derrière lui.
+            bloc.addEventListener('click', (ev) => {
+                if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
+            });
+        });
+
         listeEl.querySelectorAll('[data-consigne]').forEach(inp => {
             // Sans reconstruire la liste : on tape dedans, la feuille suit.
             inp.oninput = () => { consignes[inp.dataset.consigne] = inp.value; rendre(); };

@@ -515,11 +515,14 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
             <i style="font-size:${2.9 * k}px">${c.label}</i>
             <b style="font-size:${4.6 * k}px">${echapper(c.valeur)}</b>
         </div>`).join('') : '';
+    // UN TITRE VIDE NE LAISSE PAS DE BANDEAU VIDE : la ligne disparaît, et
+    // les champs d'identité remontent d'autant.
+    const avecTitre = !!String(titre || '').trim() || !!sousTitre;
     return `
-        <div class="fp-entete" style="left:${P.marge * k}px; right:${P.marge * k}px;
+        ${avecTitre ? `<div class="fp-entete" style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${(P.marge + 1) * k}px; font-size:${4.8 * k}px">
-            <b>${echapper(titre)}${sousTitre ? ' — ' + echapper(sousTitre) : ''}</b>
-        </div>
+            <b>${echapper(titre || '')}${sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : ''}</b>
+        </div>` : ''}
         ${champs.length ? `<div class="fp-identite" style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${(P.marge + 7.4) * k}px; font-size:${3.3 * k}px; gap:${5 * k}px">${lignes}</div>` : ''}
         <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px;
@@ -538,9 +541,13 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
     // LE TITRE A SA LIGNE, ET IL EST CENTRÉ : c'est le titre du devoir, pas une
     // étiquette de classeur. Il ne porte que ce que le professeur a écrit.
     const droite = P.w - P.marge;
-    pdf.splitTextToSize(pourPdf(`${titre}${sousTitre ? ' — ' + sousTitre : ''}`),
-        droite - P.marge).slice(0, 1)
-        .forEach(l => pdf.text(l, P.w / 2, P.marge + 5.6, { align: 'center' }));
+    // Un titre vide ne laisse pas de ligne vide sur la feuille : on n'écrit
+    // rien du tout. L'en-tête est facultatif, y compris au PDF.
+    const ligneTitre = `${titre || ''}${sousTitre ? ((titre || '') ? ' — ' : '') + sousTitre : ''}`.trim();
+    if (ligneTitre) {
+        pdf.splitTextToSize(pourPdf(ligneTitre), droite - P.marge).slice(0, 1)
+            .forEach(l => pdf.text(l, P.w / 2, P.marge + 5.6, { align: 'center' }));
+    }
 
     // L'IDENTITÉ SUR SA PROPRE LIGNE, chaque champ avec sa longueur : un
     // « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé.

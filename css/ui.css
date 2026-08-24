@@ -985,3 +985,18 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    élève ; la couleur est donc là pour prévenir, pas pour décorer. */
 .dbg-saut--juste { color: #34d399; border-color: #34d399; }
 .dbg-saut--faux { color: #f87171; border-color: #f87171; }
+
+/* LES RÉGLAGES DU CONTENU dans la ligne d'étape de la fiche de parcours.
+   Ils étaient enfermés dans la roue de l'aperçu, à côté de la feuille : on ne
+   les y cherchait pas, et un exercice pouvait sembler n'avoir aucun réglage
+   alors que sa propre consigne en annonçait un. Ils sont détachés du reste par
+   un filet — ce sont les réglages de l'EXERCICE, pas ceux de la mise en page. */
+.pp-etape-contenu {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    flex: 1 1 100%; margin-top: 4px; padding-top: 8px;
+    border-top: 1px dashed var(--border);
+}
+.pp-etape-sous-titre {
+    flex: 0 0 100%; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted);
+}
