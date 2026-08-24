@@ -69,6 +69,11 @@ export const state = {
 
     // --- Contenu professeur (persisté tel quel) ---
     teacherPaths: [],
+    // LES EXERCICES QUE L'ÉLÈVE SE DONNE À LUI-MÊME. Rangés avec le contenu et
+    // non avec la progression : c'est un choix, pas un résultat. Ils vivent
+    // dans le profil de l'élève et ne partent dans aucun code de parcours —
+    // Rémy : « le prof ne les connaît pas, c'est propre à l'élève ».
+    mesExercices: [],
     teacherFolders: [],
     selectedNiveaux: [],
     // Filtre « à deux » : volontairement NON persisté. C'est un filtre de
@@ -139,6 +144,7 @@ export const state = {
         this.teacherFolders = (await profileStore.get('teacherFolders', [])) || [];
         this.selectedNiveaux = (await profileStore.get('selectedNiveaux', [])) || [];
         this.catalogFilter = (await profileStore.get('catalogFilter', 'tout')) || 'tout';
+        this.mesExercices = (await profileStore.get('mesExercices', [])) || [];
 
         journal.compact();
         invalidate();
@@ -148,7 +154,7 @@ export const state = {
     _announce() {
         ['score_updated', 'badges_updated', 'errors_updated', 'attempts_updated',
             'teacherPaths_updated', 'teacherFolders_updated', 'time_updated',
-            'studentPath_updated'].forEach(evt => document.dispatchEvent(new CustomEvent(evt)));
+            'studentPath_updated', 'mesExercices_updated'].forEach(evt => document.dispatchEvent(new CustomEvent(evt)));
     },
 
     getStore() {
@@ -269,6 +275,39 @@ export const state = {
     async setCatalogFilter(filter) {
         this.catalogFilter = filter;
         if (profileStore) await profileStore.set('catalogFilter', filter);
+    },
+
+    // --- Les exercices personnels de l'élève --------------------------------
+    //
+    // Trois écritures, toutes passant par le noyau `core/mesExercices.js` :
+    // la règle (pas de doublon, on garde le meilleur score) s'y trouve et s'y
+    // teste, ici on ne fait que ranger.
+
+    async ajouterExercicePerso(entree) {
+        if (!entree) return this.mesExercices;
+        const { ajouter } = await import('./mesExercices.js');
+        this.mesExercices = ajouter(this.mesExercices, { ...entree, cree: Date.now() });
+        await this._rangerMesExercices();
+        return this.mesExercices;
+    },
+
+    async retirerExercicePerso(id) {
+        const { retirer } = await import('./mesExercices.js');
+        this.mesExercices = retirer(this.mesExercices, id);
+        await this._rangerMesExercices();
+        return this.mesExercices;
+    },
+
+    async noterExercicePerso(id, taux) {
+        const { noterResultat } = await import('./mesExercices.js');
+        this.mesExercices = noterResultat(this.mesExercices, id, taux);
+        await this._rangerMesExercices();
+        return this.mesExercices;
+    },
+
+    async _rangerMesExercices() {
+        if (profileStore) await profileStore.set('mesExercices', this.mesExercices);
+        document.dispatchEvent(new CustomEvent('mesExercices_updated'));
     },
 
     // --- Parcours assigné ---------------------------------------------------

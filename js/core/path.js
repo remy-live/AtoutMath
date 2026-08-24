@@ -30,6 +30,11 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         // Rejeu exact d'une question passée : la graine suffit à la régénérer,
         // on n'a donc jamais besoin de stocker son contenu.
         forceSeed: opts.forceSeed || null,
+        // LE TEMPS BORNE, PAS LE NOMBRE. Posé par les exercices que l'élève se
+        // donne « pour cinq minutes » : le nombre de questions n'est alors
+        // qu'un garde-fou interne, et l'en-tête ne doit pas l'annoncer comme
+        // un total à atteindre. Voir `updateProgress` dans le meneur.
+        sansTotal: !!opts.sansTotal,
         // UNE ÉTAPE-JEU n'est pas du travail : elle ne compte ni dans les
         // exercices à faire, ni dans la note, et elle ne s'ouvre qu'une fois
         // le travail qui la précède réussi. Voir core/recompenses.js.

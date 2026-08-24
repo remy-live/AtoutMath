@@ -6424,3 +6424,90 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 /* L'indice ENTOURE le paquet de segments dont il parle. */
 .cg-cible--indice { stroke: var(--accent); stroke-opacity: .32; }
+
+/* --- TES EXERCICES À TOI ----------------------------------------------------
+   La rubrique où l'élève se donne du travail. Volontairement plus sobre que
+   « Ta séance du jour » : ce n'est pas l'application qui propose, c'est lui
+   qui choisit — la page ne doit pas avoir l'air de le pousser. */
+
+.mes-exos-liste { display: flex; flex-direction: column; gap: 10px; }
+/* `.card` empile ses enfants en colonne : ici on veut UNE LIGNE — le nom à
+   gauche, le bouton et la croix à droite. Sans ce redressement, « Faire » et
+   « ✕ » descendaient l'un sous l'autre et la carte prenait trois fois la
+   hauteur nécessaire. */
+.mes-exo-carte {
+    display: flex; flex-direction: row; align-items: center; gap: 12px;
+    padding: 12px 14px; text-align: left; cursor: default;
+}
+.mes-exo-carte:hover { transform: none; box-shadow: var(--shadow-sm); border-color: var(--border); }
+.mes-exo-carte::before { display: none; }
+.mes-exo-corps { flex: 1 1 auto; min-width: 0; }
+.mes-exo-titre {
+    font-weight: 700; color: var(--text-main); font-size: 1rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mes-exo-sous { font-size: .84rem; color: var(--text-muted); margin-top: 2px; }
+.mes-exo-oter {
+    flex: 0 0 auto; width: 32px; height: 32px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1;
+}
+.mes-exo-oter:hover { color: var(--danger); border-color: var(--danger); }
+.mes-exos-ajouter { margin-top: 14px; }
+
+/* La fenêtre d'ajout : on cherche, on choisit, on borne. Trois gestes, dans
+   cet ordre, et le bouton reste éteint tant que le premier manque. */
+.mes-ajout { display: flex; flex-direction: column; gap: 12px; }
+.mes-ajout-label { font-weight: 700; color: var(--text-main); font-size: .95rem; }
+.mes-ajout-champ {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font: inherit;
+}
+.mes-ajout-champ:focus { outline: none; border-color: var(--primary); }
+.mes-ajout-liste {
+    list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 4px;
+}
+.mes-ajout-vide { color: var(--text-muted); font-size: .88rem; padding: 6px 2px; }
+.mes-ajout-choix {
+    width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px;
+    padding: 9px 11px; border-radius: 10px; border: 1px solid transparent;
+    background: var(--bg-app); color: var(--text-main); cursor: pointer; font: inherit;
+}
+.mes-ajout-choix:hover { border-color: var(--border); }
+.mes-ajout-choix.is-actif { border-color: var(--primary); background: var(--bg-hover); }
+.mes-ajout-choix-titre { font-weight: 700; }
+.mes-ajout-choix-sous { font-size: .78rem; color: var(--text-muted); }
+
+.mes-ajout-limite { border-top: 1px solid var(--border); padding-top: 12px; }
+.mes-ajout-onglets { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.mes-ajout-onglet {
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
+    font: inherit; font-size: .85rem; font-weight: 600;
+}
+.mes-ajout-onglet.is-actif { border-color: var(--primary); color: var(--primary); }
+.mes-ajout-valeurs { display: flex; gap: 6px; flex-wrap: wrap; }
+.mes-ajout-valeur {
+    min-width: 46px; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); cursor: pointer; font: inherit; font-weight: 700;
+}
+.mes-ajout-valeur.is-actif { border-color: var(--primary); background: var(--primary); color: #fff; }
+.mes-ajout-valider:disabled { opacity: .5; cursor: not-allowed; }
+
+/* La partie offerte. Elle arrive APRÈS le bilan et se refuse sans façon. */
+.recompense-texte { color: var(--text-main); line-height: 1.45; margin-bottom: 14px; }
+.recompense-jeux { display: flex; flex-direction: column; gap: 8px; }
+.recompense-jeu {
+    padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--bg-app); color: var(--text-main); cursor: pointer;
+    font: inherit; font-weight: 700; text-align: left;
+}
+.recompense-jeu:hover { border-color: var(--primary); color: var(--primary); }
+.recompense-non { margin-top: 14px; }
+
+/* Étape bornée par le TEMPS : la barre n'a rien à remplir — on n'a pas de
+   total —, elle laisse la place au seul compte des questions faites. */
+#game-progress-container.pg--sans-total { background: transparent; box-shadow: none; }

@@ -11,6 +11,7 @@
 //   3. le dernier bilan noté, pour que l'élève sache où il en est.
 
 import { state } from '../core/state.js';
+import { sectionMesExercices } from './mesExercicesUI.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { hydratePath, normalizePath } from '../core/path.js';
@@ -93,6 +94,10 @@ export function renderStudentPathView() {
     const teacher = teacherPathsSection();
     if (teacher) container.appendChild(teacher);
     container.appendChild(recommendedSection());
+    // LES EXERCICES QUE L'ÉLÈVE SE DONNE viennent APRÈS ce qu'on lui demande :
+    // le devoir d'abord, la séance conseillée ensuite, et enfin ce qu'il
+    // choisit. L'ordre de la page est l'ordre des priorités.
+    container.appendChild(sectionMesExercices());
     const last = lastResultSection();
     if (last) container.appendChild(last);
 }

@@ -837,6 +837,23 @@ export class Runner {
         const done = this.itemsResolved.size;
         const solved = this.itemsSolved.size;
 
+        // QUAND C'EST LE TEMPS QUI BORNE, IL N'Y A PAS DE TOTAL. Un exercice
+        // que l'élève s'est donné « pour cinq minutes » n'a pas de nombre de
+        // questions prévu : le plafond interne — quarante — n'est qu'un garde-
+        // fou, et l'afficher (« 0 / 40 ») annoncerait un devoir démesuré. On ne
+        // dit alors que ce qui est vrai : le nombre de questions faites. Le
+        // chronomètre de l'en-tête, lui, dit le reste.
+        if (this.step.sansTotal) {
+            const quoiT = this.step.exercise ? uniteDe(this.step.exercise.activityId, done || 2) : 'questions';
+            box.classList.add('pg--sans-total');
+            bar.style.width = '0%';
+            text.innerHTML = `<span class="pg-compte">${done}</span>`
+                + `<span class="pg-unite">&nbsp;${quoiT}</span>`;
+            text.title = `${done} ${quoiT}`;
+            return;
+        }
+        box.classList.remove('pg--sans-total');
+
         bar.style.width = `${Math.min(100, (done / total) * 100)}%`;
         // ON DIT CE QU'ON COMPTE. « 3 / 10 » au-dessus d'un plateau de six
         // paires laissait croire à dix plateaux ; c'est bien dix paires. Voir
