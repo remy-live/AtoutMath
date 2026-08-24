@@ -393,24 +393,38 @@ function ancreLibre(q, t) {
     const cases = [...q.depart, ...q.image];
     const l = Math.max(Math.abs(v.x), Math.abs(v.y)) || 1;
 
-    let meilleure = { x: 0, y: 0 }, mieux = -1;
-    for (let y = 0; y < t.h; y++) {
-        for (let x = 0; x < t.l; x++) {
-            const bx = x + v.x, by = y + v.y;
-            if (bx < 0 || bx >= t.l || by < 0 || by >= t.h) continue;
-            // La distance du trajet aux figures : on échantillonne le segment
-            // case par case, et l'on retient son point le plus exposé.
-            let pire = Infinity;
-            for (let i = 0; i <= l; i++) {
-                const px = x + (v.x * i) / l, py = y + (v.y * i) / l;
-                cases.forEach(c => {
-                    pire = Math.min(pire, Math.abs(c.x - px) + Math.abs(c.y - py));
-                });
+    // L'ANCRE EST UN NŒUD DU QUADRILLAGE, pas une case : la flèche se pose sur
+    // les traits (voir `marquesDeLaTransfo` dans core/quadrillageSvg.js et
+    // `qNoeud` dans ui/printSheet.js). Les nœuds vont donc de 0 à t.l INCLUS,
+    // et la distance se mesure au CENTRE des cases, décalé d'un demi-carreau.
+    // LE BORD EXTÉRIEUR NE COMPTE PAS COMME UN TRAIT : la flèche s'y confond
+    // avec le cadre du quadrillage, et son étiquette « v » sort de la figure.
+    // On cherche donc d'abord parmi les traits INTÉRIEURS ; les bords ne
+    // servent que de repli, pour un vecteur si long qu'il ne tient nulle part
+    // ailleurs.
+    const chercher = (marge) => {
+        let meilleure = null, mieux = -Infinity;
+        for (let y = marge; y <= t.h - marge; y++) {
+            for (let x = marge; x <= t.l - marge; x++) {
+                const bx = x + v.x, by = y + v.y;
+                if (bx < marge || bx > t.l - marge || by < marge || by > t.h - marge) continue;
+                // La distance du trajet aux figures : on échantillonne le
+                // segment case par case, et l'on retient son point le plus
+                // exposé. Les cases se mesurent à leur CENTRE — un demi-carreau
+                // plus loin que leur coin, qui est l'unité des nœuds.
+                let pire = Infinity;
+                for (let i = 0; i <= l; i++) {
+                    const px = x + (v.x * i) / l, py = y + (v.y * i) / l;
+                    cases.forEach(c => {
+                        pire = Math.min(pire, Math.abs(c.x + 0.5 - px) + Math.abs(c.y + 0.5 - py));
+                    });
+                }
+                if (pire > mieux) { mieux = pire; meilleure = { x, y }; }
             }
-            if (pire > mieux) { mieux = pire; meilleure = { x, y }; }
         }
-    }
-    return meilleure;
+        return meilleure;
+    };
+    return chercher(1) || chercher(0) || { x: 0, y: 0 };
 }
 
 /**

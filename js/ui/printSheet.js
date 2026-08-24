@@ -2824,6 +2824,40 @@ function grilleDesPoints(n) {
     return { cols: Math.max(1, cols), rows: Math.ceil(n / Math.max(1, cols)) };
 }
 
+/**
+ * UNE COULEUR FONCÉE PAR POINT, quand la fiche s'imprime en couleur.
+ *
+ * Rémy : « pour lire les coordonnées, les lettres sont un peu grosses ; si on
+ * met en couleur, mets une couleur foncée par point différents ». Six croix
+ * noires au milieu d'un quadrillage se ressemblent, et l'élève qui remplit la
+ * quatrième ligne du tableau doit recompter les points pour savoir duquel il
+ * parle. La couleur relie la croix, sa lettre et sa case du tableau.
+ *
+ * FONCÉES, et non pas vives : ces teintes doivent rester lisibles sur un
+ * carreau clair, et surtout survivre au photocopieur noir et blanc, qui les
+ * rend en gris nettement distincts au lieu d'un même gris pâle.
+ */
+const TEINTES_POINT = [
+    [30, 64, 175],      // bleu nuit
+    [21, 128, 61],      // vert forêt
+    [159, 18, 57],      // bordeaux
+    [124, 45, 18],      // brun
+    [76, 29, 149],      // violet profond
+    [15, 118, 110]      // sarcelle foncé
+];
+const teintePoint = (i, couleur) => (couleur ? TEINTES_POINT[i % TEINTES_POINT.length] : ENCRE.trait);
+
+/**
+ * LA LETTRE D'UN POINT, EN FRACTION DE CARREAU.
+ *
+ * « Les lettres sont un peu grosses » : à un demi-carreau, un « B » posé sur
+ * (2 ; 3) mordait sur le carreau voisin et l'on ne savait plus quel croisement
+ * il nommait. Et l'aperçu écrivait plus gros que le PDF — 0,5 carreau contre
+ * 0,42 —, si bien que la feuille ne ressemblait pas à son image. Une seule
+ * valeur, en millimètres, pour les deux rendus.
+ */
+const TAILLE_ETIQ_POINT = 0.38;
+
 /** Le repère dans son emplacement : axes, graduations, et la place d'écrire. */
 function geoRepere(item, slot) {
     const m = item.meta;
@@ -2857,6 +2891,7 @@ function reperePreviewHtml(item, slot, k, solution) {
     const g = geoRepere(item, slot);
     const m = g.m;
     const montrer = m.mode === 'lire' || solution;      // les croix sont-elles tracées ?
+    const couleur = polycopieEnCouleur();
     let html = '';
 
     // Le quadrillage, puis les deux axes par-dessus.
@@ -2904,16 +2939,19 @@ function reperePreviewHtml(item, slot, k, solution) {
     // LES POINTS SE MARQUENT D'UNE CROIX : elle désigne exactement son centre,
     // là où un rond laisse hésiter entre son bord et son milieu.
     if (montrer) {
-        m.points.forEach(pt => {
+        m.points.forEach((pt, i) => {
             // UNE CROIX DÉSIGNE UN POINT, elle ne le recouvre pas. À un quart
             // de carreau ses branches mordaient sur les cases voisines ; à un
             // sixième, elle marque le croisement sans le cacher — c'est ce
             // qu'on trace au tableau, et c'est ce que Rémy demande.
             const r = g.pas * 0.11;
+            const c = rvbCss(teintePoint(i, couleur));
             html += `<div class="fx-rp-croix" style="left:${(g.px(pt.x) - r) * k}px;
-                top:${(g.py(pt.y) - r) * k}px; width:${2 * r * k}px; height:${2 * r * k}px"></div>`;
+                top:${(g.py(pt.y) - r) * k}px; width:${2 * r * k}px; height:${2 * r * k}px;
+                color:${c}"></div>`;
             html += `<div class="fx-rp-etiq" style="left:${(g.px(pt.x) + r * 0.9) * k}px;
-                top:${(g.py(pt.y) - r * 2.6) * k}px; font-size:${g.pas * 0.5 * k}px">${pt.label}</div>`;
+                top:${(g.py(pt.y) - r * 2.4) * k}px; color:${c};
+                font-size:${TAILLE_ETIQ_POINT * g.pas * k}px">${pt.label}</div>`;
         });
     }
 
@@ -2926,9 +2964,13 @@ function reperePreviewHtml(item, slot, k, solution) {
     // égales — ils ne peuvent donc ni déborder sur le point voisin, ni rester
     // trop courts pour y écrire un nombre.
     const cellules = m.points.map((p, i) => {
+        // La lettre du tableau porte la couleur de sa croix : c'est ce qui
+        // fait le lien, et c'est la seule chose qu'on colore dans la case —
+        // les coordonnées, elles, s'écrivent au crayon.
+        const etiq = `<b style="color:${rvbCss(teintePoint(i, couleur))}">${p.label}</b>`;
         const dedans = m.mode === 'placer'
-            ? `<b>${p.label} (${p.x} ; ${p.y})</b>`
-            : `<span class="fx-rp-rep"><b>${p.label} (</b><span class="fx-rp-trou"
+            ? `<b>${etiq} (${p.x} ; ${p.y})</b>`
+            : `<span class="fx-rp-rep"><b>${etiq} (</b><span class="fx-rp-trou"
                 >${solution ? p.x : ''}</span><b>;</b><span class="fx-rp-trou"
                 >${solution ? p.y : ''}</span><b>)</b></span>`;
         const cls = 'fx-rp-cell'
@@ -2947,6 +2989,7 @@ function dessinerRepPdf(doc, item, slot, solution) {
     const g = geoRepere(item, slot);
     const m = g.m;
     const montrer = m.mode === 'lire' || solution;
+    const couleur = polycopieEnCouleur();
 
     doc.setLineWidth(0.15);
     doc.setDrawColor(...ENCRE.grille);
@@ -2976,14 +3019,15 @@ function dessinerRepPdf(doc, item, slot, solution) {
     doc.text('0', g.px(0) - g.pas * 0.16, g.py(0) + g.pas * 0.52, { align: 'right' });
 
     if (montrer) {
-        doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.45);
-        doc.setTextColor(...ENCRE.trait);
-        m.points.forEach(pt => {
+        doc.setFontSize(Math.max(4.6, TAILLE_ETIQ_POINT * g.pas / 0.3528));
+        m.points.forEach((pt, i) => {
             const r = g.pas * 0.11, x = g.px(pt.x), y = g.py(pt.y);
+            const c = teintePoint(i, couleur);
+            doc.setDrawColor(...c);
+            doc.setTextColor(...c);
             doc.line(x - r, y - r, x + r, y + r);
             doc.line(x - r, y + r, x + r, y - r);
-            doc.setFontSize(Math.max(5, g.pas * 1.2));
             doc.text(pt.label, x + r * 1.1, y - r * 0.9);
         });
     }
@@ -3012,15 +3056,24 @@ function dessinerRepPdf(doc, item, slot, solution) {
         const col = i % g.cols, rang = Math.floor(i / g.cols);
         const cx = g.tabX + (col + 0.5) * larg;
         const y = g.listeY + (rang + 0.68) * g.hRang;
-        if (m.mode === 'placer' || solution) {
-            doc.text(pourPdf(`${p.label} (${p.x} ; ${p.y})`), cx, y, { align: 'center' });
-            return;
-        }
-        const fixe = doc.getTextWidth(pourPdf(`${p.label} (  ;  )`));
-        const unPoint = Math.max(0.4, doc.getTextWidth('.'));
-        const combien = Math.max(3, Math.floor((larg - 2 - fixe) / (2 * unPoint)));
-        const trou = '.'.repeat(combien);
-        doc.text(pourPdf(`${p.label} ( ${trou} ; ${trou} )`), cx, y, { align: 'center' });
+        // LA LETTRE PORTE LA COULEUR DE SA CROIX, le reste de la case non :
+        // c'est ce qui relie la ligne du tableau au point du repère. On écrit
+        // donc la case en deux morceaux, centrés ensemble.
+        const suite = m.mode === 'placer' || solution
+            ? ` (${p.x} ; ${p.y})`
+            : (() => {
+                const fixe = doc.getTextWidth(pourPdf(`${p.label} (  ;  )`));
+                const unPoint = Math.max(0.4, doc.getTextWidth('.'));
+                const combien = Math.max(3, Math.floor((larg - 2 - fixe) / (2 * unPoint)));
+                const trou = '.'.repeat(combien);
+                return ` ( ${trou} ; ${trou} )`;
+            })();
+        const wL = doc.getTextWidth(pourPdf(p.label)), wS = doc.getTextWidth(pourPdf(suite));
+        const x0 = cx - (wL + wS) / 2;
+        doc.setTextColor(...teintePoint(i, couleur));
+        doc.text(pourPdf(p.label), x0, y);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(suite), x0 + wL, y);
     });
 }
 
@@ -6307,6 +6360,19 @@ function qLegende(m) {
 
 /** Le centre d'une case, en millimètres — le demi-carreau est ici. */
 const qCentre = (g, v, axe) => (axe === 'x' ? g.x0 : g.y0) + (v + 0.5) * g.pas;
+/**
+ * LE VECTEUR SE POSE SUR LES NŒUDS DU QUADRILLAGE, PAS AU MILIEU DES CASES.
+ *
+ * Rémy : « pour les flèches des translations, il faut qu'elle soit sur les
+ * traits de la grille ». Partie du centre d'un carreau, la flèche flottait
+ * dans le blanc : pour lire « trois carreaux vers le bas », l'élève devait
+ * estimer où elle commençait. D'un nœud à l'autre, elle longe les traits et
+ * se compte du regard — c'est ainsi qu'on trace un vecteur au tableau.
+ *
+ * La croix d'un CENTRE de symétrie, elle, reste au milieu de sa case : c'est
+ * là qu'elle est, et l'y déplacer changerait la réponse.
+ */
+const qNoeud = (g, v, axe) => (axe === 'x' ? g.x0 : g.y0) + v * g.pas;
 
 /**
  * Les deux bouts du trait qui porte l'axe, déjà rabotés au quadrillage.
@@ -6381,7 +6447,7 @@ function quadrillagePreviewHtml(item, slot, k, solution) {
         marques.push(nom(cx + r + 0.6 * k, cy - r, 'O'));
     }
     if (t.genre === 'translation' && t.vecteur && m.ancre) {
-        const ax = qCentre(g, m.ancre.x, 'x') * k, ay = qCentre(g, m.ancre.y, 'y') * k;
+        const ax = qNoeud(g, m.ancre.x, 'x') * k, ay = qNoeud(g, m.ancre.y, 'y') * k;
         const bx = ax + t.vecteur.x * g.pas * k, by = ay + t.vecteur.y * g.pas * k;
         marques.push(`<line x1="${ax.toFixed(2)}" y1="${ay.toFixed(2)}"
             x2="${bx.toFixed(2)}" y2="${by.toFixed(2)}"
@@ -6460,7 +6526,7 @@ function dessinerQuadrillagePdf(doc, item, slot, solution) {
     }
 
     if (t.genre === 'translation' && t.vecteur && m.ancre) {
-        const ax = qCentre(g, m.ancre.x, 'x'), ay = qCentre(g, m.ancre.y, 'y');
+        const ax = qNoeud(g, m.ancre.x, 'x'), ay = qNoeud(g, m.ancre.y, 'y');
         const bx = ax + t.vecteur.x * g.pas, by = ay + t.vecteur.y * g.pas;
         doc.line(ax, ay, bx, by);
         // La pointe : sans elle, un vecteur n'est qu'un segment, et le sens du

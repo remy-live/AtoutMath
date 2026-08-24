@@ -4653,13 +4653,15 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-rp-axe { position: absolute; border-top: 1.4px solid #1a202c; border-left: 1.4px solid #1a202c; }
 .fx-rp-grad { position: absolute; text-align: center; color: #6e7684; font-weight: 700; }
 .fx-rp-grad--y { text-align: right; }
+/* `currentColor` : en polycopié couleur, chaque point porte sa teinte — la
+   croix et sa lettre en héritent d'un seul réglage posé en ligne. */
 .fx-rp-croix {
-    position: absolute;
+    position: absolute; color: #1a202c;
     background:
-        linear-gradient(to bottom right, transparent calc(50% - .7px), #1a202c calc(50% - .7px),
-            #1a202c calc(50% + .7px), transparent calc(50% + .7px)),
-        linear-gradient(to bottom left, transparent calc(50% - .7px), #1a202c calc(50% - .7px),
-            #1a202c calc(50% + .7px), transparent calc(50% + .7px));
+        linear-gradient(to bottom right, transparent calc(50% - .7px), currentColor calc(50% - .7px),
+            currentColor calc(50% + .7px), transparent calc(50% + .7px)),
+        linear-gradient(to bottom left, transparent calc(50% - .7px), currentColor calc(50% - .7px),
+            currentColor calc(50% + .7px), transparent calc(50% + .7px));
 }
 .fx-rp-etiq { position: absolute; font-weight: 800; color: #1a202c; }
 /* --- Fiche « Le théorème de Pythagore » ----------------------------------

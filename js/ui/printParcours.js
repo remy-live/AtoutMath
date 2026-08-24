@@ -34,7 +34,8 @@ import { RENDUS } from './printSheet.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
-    cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions
+    cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions,
+    polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 
 /**
@@ -217,6 +218,11 @@ function assurerModale() {
                         <option value="portrait">A4 portrait</option>
                         <option value="paysage">A4 paysage</option>
                     </select></label>
+                <label>Impression
+                    <select id="pp-couleur" class="cfg-input">
+                        <option value="0">Noir et blanc</option>
+                        <option value="1">En couleur</option>
+                    </select></label>
                 <label class="fq-case"><input type="checkbox" id="pp-champs">
                     Champs remplissables (PDF)</label>
                 <label>Numéros
@@ -297,6 +303,7 @@ export function ouvrirFicheParcours(chemin) {
     const colSol = m.querySelector('#pp-sol-colonnes');
     const ouSol = m.querySelector('#pp-sol-ou');
     const orientEl = m.querySelector('#pp-orientation');
+    const couleurEl = m.querySelector('#pp-couleur');
     const champsEl = m.querySelector('#pp-champs');
     const noteSurEl = m.querySelector('#pp-note-sur');
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
@@ -1210,6 +1217,10 @@ export function ouvrirFicheParcours(chemin) {
     colSol.onchange = rendre;
     ouSol.onchange = rendre;
     orientEl.onchange = rendre;
+    // Le même interrupteur que sur les autres fiches, et la même mémoire :
+    // c'est une propriété de l'imprimante, pas de la feuille.
+    couleurEl.value = polycopieEnCouleur() ? '1' : '0';
+    couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     noteSurEl.oninput = () => {

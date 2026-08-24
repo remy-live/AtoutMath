@@ -307,7 +307,13 @@ function marquesDeLaTransfo(t, { L, H, px, py, u, p, ancre }) {
     }
 
     if (t.genre === 'translation' && t.vecteur && ancre) {
-        const ax = versDessin(ancre.x), ay = versDessin(ancre.y);
+        // LE VECTEUR PART D'UN NŒUD DU QUADRILLAGE, pas du centre d'un carreau
+        // (`versDessin` ajoute justement ce demi-carreau). Rémy : « il faut
+        // qu'elle soit sur les traits de la grille ». Une flèche posée dans le
+        // blanc oblige à deviner où elle commence pour compter les carreaux ;
+        // d'un nœud à l'autre, elle se lit sans hésiter. La feuille imprimée
+        // fait de même — voir `qNoeud` dans ui/printSheet.js.
+        const ax = ancre.x, ay = ancre.y;
         out.push(`<line class="qd-vecteur" marker-end="url(#${p}-fleche)"
             x1="${px(ax)}" y1="${py(ay)}" x2="${px(ax + t.vecteur.x)}" y2="${py(ay + t.vecteur.y)}"/>`);
         out.push(`<text class="qd-marque-nom" x="${px(ax + t.vecteur.x / 2)}"

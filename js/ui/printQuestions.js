@@ -28,7 +28,7 @@ import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../c
 import { espacerMilliers } from '../core/nombres.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
-    apercuSolutions, pdfSolutions
+    apercuSolutions, pdfSolutions, polycopieEnCouleur, reglerPolycopieCouleur
 } from './ficheRendu.js';
 
 // Ancrée ou détachée : le choix se retient, et il est le même pour les deux
@@ -139,6 +139,11 @@ function assurerModale() {
                         <option value="portrait">A4 portrait</option>
                         <option value="paysage">A4 paysage</option>
                     </select></label>
+                <label>Impression
+                    <select id="fq-couleur" class="cfg-input">
+                        <option value="0">Noir et blanc</option>
+                        <option value="1">En couleur</option>
+                    </select></label>
                 <label>Colonnes
                     <select id="fq-colonnes" class="cfg-input">
                         <option value="auto">auto</option>
@@ -219,6 +224,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     const colSol = modal.querySelector('#fq-sol-colonnes');
     const ouSol = modal.querySelector('#fq-sol-ou');
     const orientEl = modal.querySelector('#fq-orientation');
+    const couleurEl = modal.querySelector('#fq-couleur');
     const colsEl = modal.querySelector('#fq-colonnes');
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');
@@ -356,6 +362,11 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     modeSol.onchange = rendre;
     colSol.onchange = rendre;
     orientEl.onchange = rendre;
+    // LE CHOIX EST GLOBAL, la fiche ne fait que l'afficher et le changer :
+    // un professeur qui imprime en noir et blanc le fait pour toutes ses
+    // feuilles, pas pour celle-ci seulement.
+    couleurEl.value = polycopieEnCouleur() ? '1' : '0';
+    couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
     colsEl.onchange = rendre;
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
