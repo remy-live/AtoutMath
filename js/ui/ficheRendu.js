@@ -8,7 +8,7 @@
 // Ce module est partagé par la fiche d'un exercice (printQuestions) et la
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
-import { A4, morceauxReponse } from '../core/fiche.js';
+import { A4, morceauxReponse, typographieFr } from '../core/fiche.js';
 import { RE_FRACTION } from '../core/fiche.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
@@ -226,7 +226,7 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
 }
 
 export function pourPdf(texte) {
-    let t = String(texte ?? '');
+    let t = typographieFr(texte);
     for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
     // Filet de sécurité : tout ce qui reste au-dessus de la table y passe.
     // Un point d'interrogation vaut mieux qu'une ligne entière illisible.

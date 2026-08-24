@@ -168,11 +168,38 @@ export const DEFAUTS = {
 };
 
 /**
+ * LA PONCTUATION HAUTE NE PART PAS SEULE À LA LIGNE.
+ *
+ * Rémy : « pour le Prio-Bot Express, le point d'interrogation va à la ligne
+ * car ça se joue à peu de choses ». C'est la règle française, et c'est aussi
+ * ce qui la répare : devant ? ! ; : % et », l'espace est INSÉCABLE. Une espace
+ * ordinaire autorise la coupure, et une question qui tient à deux millimètres
+ * près finit avec son point d'interrogation tout seul sur la ligne suivante.
+ *
+ * UNE SEULE espace est recollée, et seulement après un caractère visible : les
+ * blancs longs de la fiche sont des TROUS à remplir — « 52 085 =    + 2 000 » —
+ * et les souder au signe qui suit effacerait la place laissée pour écrire.
+ */
+export function typographieFr(texte) {
+    return String(texte ?? '')
+        // Un regard EN ARRIÈRE plutôt qu'une capture : « oui » ; » enchaîne
+        // deux ponctuations, et un motif qui consomme le « » » n'a plus de
+        // caractère visible à offrir au « ; » qui suit.
+        .replace(/(?<=\S) (?=[?!;:%»])/g, '\u00a0')
+        .replace(/(?<=«) (?=\S)/g, '\u00a0');
+}
+
+/**
  * Coupe un texte en lignes qui tiennent dans `largeur`.
  *
  * Coupure aux espaces ; un mot plus long que la colonne (un grand nombre, une
  * expression sans espace) est coupé au caractère plutôt que de déborder — sur
  * une fiche, un débordement n'est pas rattrapable après impression.
+ *
+ * C'est LE passage obligé de tout texte de fiche — énoncés, consignes,
+ * corrigés, aperçu comme PDF. La typographie française s'y applique donc une
+ * fois pour toutes, avant de décider où couper : la réparer plus tard, au
+ * moment de dessiner, arriverait après la coupure.
  */
 export function couperEnLignes(texte, largeur, taille, mesurer) {
     // Les marques de réponse d'un corrigé (\u0001 … \u0002) ne s'impriment
@@ -181,7 +208,7 @@ export function couperEnLignes(texte, largeur, taille, mesurer) {
     // invisibles.
     const mes = (t, taille2) => mesurer(sansMarques(t), taille2);
     const lignes = [];
-    for (const paragraphe of String(texte ?? '').split('\n')) {
+    for (const paragraphe of typographieFr(texte).split('\n')) {
         // LE TROU EST UN MOT COMME UN AUTRE. Découper sur « un ou plusieurs
         // espaces » écrasait la place laissée pour écrire : « 52 085 =    +
         // 2 000 » redevenait « 52 085 = + 2 000 », un énoncé sans trou et sans

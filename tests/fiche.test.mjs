@@ -1,14 +1,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { A4, DEFAUTS, couperEnLignes, composerFiche, composerSolutions, RE_FRACTION, porteUneFraction } from '../js/core/fiche.js';
+import { A4, DEFAUTS, couperEnLignes, composerFiche, composerSolutions, RE_FRACTION, porteUneFraction, typographieFr } from '../js/core/fiche.js';
 
 // Un mesureur de service : chaque caractère vaut la moitié de la taille. Les
 // tests portent sur la mise en page, pas sur les métriques d'une police.
 const mesurer = (t, taille) => t.length * taille * 0.5;
 
 test('un texte court tient sur une ligne', () => {
-    assert.deepEqual(couperEnLignes('7 × 8 = ?', 100, 4, mesurer), ['7 × 8 = ?']);
+    // Le point d'interrogation revient collé : c'est la typographie française,
+    // appliquée au découpage lui-même (voir plus bas).
+    assert.deepEqual(couperEnLignes('7 × 8 = ?', 100, 4, mesurer), ['7 × 8 =\u00a0?']);
+});
+
+test('la ponctuation haute ne part jamais seule à la ligne', () => {
+    // « ça se joue à peu de choses » : la question tenait à un cheveu près, et
+    // c'est le « ? » qui basculait tout seul sur la ligne suivante.
+    const lignes = couperEnLignes('Combien font 8 × 7 ?', 20, 4, mesurer);
+    assert.ok(lignes.length > 1, 'il faut bien plusieurs lignes');
+    assert.ok(!lignes.some(l => l.trim() === '?'), 'le « ? » est resté seul');
+    assert.ok(lignes.at(-1).endsWith('7\u00a0?'));
+    // Un TROU, lui, n'est pas une espace de ponctuation : la place laissée pour
+    // écrire reste intacte, même quand c'est un « ? » qui la suit.
+    assert.equal(typographieFr('8 ×    ?'), '8 ×    ?');
+    assert.equal(typographieFr('Il dit « oui » ; puis 50 % !'),
+        'Il dit «\u00a0oui\u00a0»\u00a0; puis 50\u00a0%\u00a0!');
 });
 
 test('un texte long est coupé aux espaces, sans jamais dépasser', () => {
@@ -16,7 +32,7 @@ test('un texte long est coupé aux espaces, sans jamais dépasser', () => {
     const lignes = couperEnLignes(texte, 40, 4, mesurer);
     assert.ok(lignes.length > 1, 'il faut bien plusieurs lignes');
     lignes.forEach(l => assert.ok(mesurer(l, 4) <= 40, `« ${l} » déborde`));
-    assert.equal(lignes.join(' '), texte, 'aucun mot perdu en route');
+    assert.equal(lignes.join(' '), typographieFr(texte), 'aucun mot perdu en route');
 });
 
 test('un mot plus long que la colonne est coupé plutôt que de déborder', () => {
@@ -306,7 +322,7 @@ test('les trois modes de solutions disent trois choses différentes', () => {
     assert.deepEqual(ligne('normal'), ['1. 7 × 8 = 56']);
     // DÉTAILLÉ : l'explication en plus, sur sa propre ligne — c'est la feuille
     // qu'on distribue après le contrôle.
-    assert.deepEqual(ligne('detaille'), ['1. 7 × 8 = 56', 'La table de 7 : 7 × 8 = 56.']);
+    assert.deepEqual(ligne('detaille'), ['1. 7 × 8 = 56', 'La table de 7\u00a0: 7 × 8 = 56.']);
 });
 
 test('la feuille compacte tient sur cinq colonnes, la détaillée sur une', () => {

@@ -4516,7 +4516,16 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     background: #fff; display: flex; align-items: center; justify-content: center;
     font-weight: 800; color: #1a202c; pointer-events: none;
 }
-.fx-mc-noire { position: absolute; background: #1a202c; pointer-events: none; }
+/* Case muette : hachurée, pas noircie — un aplat par case coûte une fortune
+   en encre sur trente photocopies (voir `hachuresDe` dans printSheet.js). */
+.fx-mc-noire {
+    position: absolute; pointer-events: none;
+    border: .18px solid #6e7684;
+    /* `--pas` est posé en ligne : c'est le côté de la case divisé par trois,
+       pour que la trame garde la même densité quelle que soit la grille. */
+    background-image: repeating-linear-gradient(45deg,
+        #6e7684 0 .6px, transparent .6px var(--pas, 4px));
+}
 .fx-mc-num {
     position: absolute; top: 0; left: .5px; color: #6b7280;
     font-weight: 700; line-height: 1;
@@ -4941,7 +4950,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    « voici un cadre ». La page des solutions porte les dos, tous identiques. */
 .fx-mm-carte {
     position: absolute; box-sizing: border-box;
-    border: 1px dashed #1a202c; border-radius: 6px;
+    /* PAS DE COIN ARRONDI : les cartes se touchent par leur bordure, et un
+       arrondi ouvrirait une lunule blanche à chaque croisement. */
+    border: 1px dashed #1a202c;
 }
 .fx-mm-dos-cadre {
     position: absolute; box-sizing: border-box;

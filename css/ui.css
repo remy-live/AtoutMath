@@ -413,7 +413,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     letter-spacing: .05em; color: var(--text-muted);
 }
 .fp-contenu .cfg-field { margin: 0; }
-.fp-contenu .cfg-input { max-width: 260px; }
+/* LE RÉGLAGE SE LIT EN ENTIER, sinon on croit qu'il ne marche pas. « Progressif
+   : 1, puis 0,1, puis 0,01 » s'affichait coupé à « puis 0,0' » : on ne savait
+   plus ce qu'on choisissait, ni ce qui avait changé. La liste prend donc la
+   largeur de son libellé, dans la limite de la fenêtre. */
+.fp-contenu .cfg-input { max-width: min(360px, 100%); width: auto; }
+.fp-contenu select.cfg-input { min-width: 180px; }
 /* Le compteur : − champ + . On garde le champ — un professeur qui veut
    quatre lignes tape 4 plutôt que de cliquer trois fois. */
 .fp-pas { display: inline-flex; align-items: center; gap: 4px; }

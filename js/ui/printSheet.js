@@ -83,8 +83,17 @@ const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240,
  * Renvoie des millimètres ; l'aperçu multiplie par son échelle, le PDF les
  * utilise tels quels.
  */
-function calculerFiche(cols, rows) {
-    const gapX = 6, gapY = 4, titreH = 4.4;
+function calculerFiche(cols, rows, colles = false) {
+    // BLOCS COLLÉS : les cartes à découper se touchent par leur bordure.
+    //
+    // Rémy : « pour le memory des tables, COLLE les cartes par leur bordure,
+    // les espaces entre sont un enfer pour les découper vite ». Une gouttière
+    // oblige à deux coups de ciseaux là où un seul suffit, et à viser au
+    // milieu du blanc ; bord à bord, un massicot traverse la page d'un trait
+    // et sort toute une colonne de cartes. Le titre du bloc disparaît avec la
+    // gouttière : il n'a plus où se poser, et une carte à jouer ne porte pas
+    // d'étiquette « Paire 3 ».
+    const gapX = colles ? 0 : 6, gapY = colles ? 0 : 4, titreH = colles ? 0 : 4.4;
     const y0 = PAGE.marge + PAGE.enteteH;
     const W = PAGE.w - PAGE.marge * 2;
     const H = PAGE.h - y0 - PAGE.marge - PAGE.piedH;
@@ -396,11 +405,21 @@ function geoAnagrammes(item, slot) {
  * LES LETTRES MÉLANGÉES TIENNENT DANS LEUR COLONNE. Écrites à taille fixe, un
  * mot de douze lettres débordait sur la définition d'à côté — deux textes
  * superposés, illisibles tous les deux. La taille suit donc la longueur.
+ *
+ * Rémy : « pour l'anagramme, c'est qu'en PDF le mot mélangé et la définition
+ * se superposent ». Deux erreurs de mesure se cumulaient. La largeur d'une
+ * lettre d'abord : 0,66 em vaut pour du texte courant, mais un mélange est
+ * tout en CAPITALES GRASSES — un M fait 0,83 em, un O 0,78 —, et il faut y
+ * ajouter l'interlettrage de 0,08 em qui aère la suite. La marge ensuite : il
+ * n'y en avait aucune, si bien qu'un mot « qui tient tout juste » venait
+ * toucher la définition. AVANCE couvre les deux, MARGE_DEF sépare.
  */
+const AVANCE_MELANGE = 0.80;
+const MARGE_DEF = 3;
 function tailleMelange(g, ligne) {
     const large = g.hLigne * 0.42;
-    // 0,62 em par lettre en gras espacé : mesuré sur la police de la fiche.
-    const tenu = g.colMelange / Math.max(4, ligne.melange.length * 0.66);
+    const tenu = (g.colMelange - MARGE_DEF)
+        / Math.max(4, ligne.melange.length * AVANCE_MELANGE);
     return Math.max(g.hLigne * 0.2, Math.min(large, tenu));
 }
 
@@ -413,9 +432,9 @@ function anagrammesPreviewHtml(item, slot, k, solution) {
         html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y + g.hLigne * 0.18)}px;
             width:${T(g.colMelange)}px; font-size:${T(tailleMelange(g, l))}px">${echapperSheet(l.melange)}</div>`;
         if (g.avecDef) {
-            html += `<div class="fx-ana-def" style="left:${T(g.b.x + g.colMelange)}px;
+            html += `<div class="fx-ana-def" style="left:${T(g.b.x + g.colMelange + MARGE_DEF)}px;
                 top:${T(y + g.hLigne * 0.16)}px;
-                width:${T(g.b.w - g.colMelange - g.cote * l.mot.length - 3)}px;
+                width:${T(g.b.w - g.colMelange - MARGE_DEF - g.cote * l.mot.length - 3)}px;
                 font-size:${T(g.hLigne * 0.30)}px">${echapperSheet(l.def)}</div>`;
         }
         const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
@@ -433,17 +452,23 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
     g.lignes.forEach((l, i) => {
         const y = g.b.y + i * g.hLigne;
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(tailleMelange(g, l) * 2.5);
+        // LA MÊME TAILLE QU'À L'APERÇU. Elle valait « × 2,5 », une échelle
+        // sans rapport avec le millimètre : le PDF écrivait plus petit que
+        // l'aperçu, et c'est l'aperçu qui décidait des largeurs. 1 pt vaut
+        // 0,3528 mm — c'est la conversion qu'emploie déjà le reste du module.
+        const taille = tailleMelange(g, l);
+        doc.setFontSize(taille / 0.3528);
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(l.melange), g.b.x, y + g.hLigne * 0.55, { baseline: 'middle' });
+        doc.text(pourPdf(l.melange), g.b.x, y + g.hLigne * 0.55,
+            { baseline: 'middle', charSpace: taille * 0.08 });
 
         if (g.avecDef) {
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(Math.min(8, g.hLigne * 0.34));
             doc.setTextColor(...ENCRE.gris);
-            const largeur = g.b.w - g.colMelange - g.cote * l.mot.length - 3;
+            const largeur = g.b.w - g.colMelange - MARGE_DEF - g.cote * l.mot.length - 3;
             const morceaux = doc.splitTextToSize(pourPdf(l.def), Math.max(10, largeur));
-            doc.text(morceaux.slice(0, 2), g.b.x + g.colMelange, y + g.hLigne * 0.45,
+            doc.text(morceaux.slice(0, 2), g.b.x + g.colMelange + MARGE_DEF, y + g.hLigne * 0.45,
                 { baseline: 'middle' });
         }
 
@@ -472,6 +497,29 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
 // « Horizontalement » et « Verticalement ». Une grille par page — à deux, un
 // 15 × 18 tombe sous trois millimètres par case.
 
+/**
+ * UNE CASE HACHURÉE PLUTÔT QUE NOIRE.
+ *
+ * Rémy : « pour les mots croisés, ne mets pas un fond noir, c'est un gâchis
+ * d'encre ». Une grille de 15 × 18 compte une cinquantaine de cases muettes ;
+ * en aplat, ce sont cinquante centimètres carrés de toner par feuille, fois
+ * trente élèves. Les hachures à quarante-cinq degrés disent la même chose —
+ * « on n'écrit pas ici » — pour un vingtième de l'encre, et elles restent
+ * lisibles sur une photocopie de photocopie, là où un aplat bave.
+ *
+ * Les segments sont calculés, pas détourés : jsPDF n'a pas de fenêtre de
+ * découpe simple, alors on intersecte chaque diagonale avec le rectangle.
+ */
+function hachuresDe(x, y, w, h, pas) {
+    const segments = [];
+    // La droite d'équation Y = X + k, pour k du coin haut-droit au coin bas-gauche.
+    for (let k = y - (x + w); k <= y + h - x; k += pas) {
+        const a = Math.max(x, y - k), b = Math.min(x + w, y + h - k);
+        if (b - a > 0.05) segments.push({ x1: a, y1: a + k, x2: b, y2: b + k });
+    }
+    return segments;
+}
+
 function geoMotsCroises(item, slot) {
     const b = boiteDe(slot);
     const m = item.meta;
@@ -498,8 +546,11 @@ function motsCroisesPreviewHtml(item, slot, k, solution) {
             const c = g.m.cases[y][x];
             const X = g.x + x * g.cote, Y = g.y + y * g.cote;
             if (c === null) {
+                // Le pas des hachures suit la case : deux fois plus fin sur une
+                // grande grille, et la trame garderait la même densité.
                 html += `<div class="fx-mc-noire" style="left:${T(X)}px; top:${T(Y)}px;
-                    width:${T(g.cote)}px; height:${T(g.cote)}px"></div>`;
+                    width:${T(g.cote)}px; height:${T(g.cote)}px;
+                    --pas:${T(g.cote / 3)}px"></div>`;
                 continue;
             }
             const donnee = offertes.get(`${x},${y}`);
@@ -539,8 +590,11 @@ function dessinerMotsCroisesPdf(doc, item, slot, solution, champ) {
     for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
         const X = g.x + x * g.cote, Y = g.y + y * g.cote;
         if (g.m.cases[y][x] === null) {
-            doc.setFillColor(...ENCRE.trait);
-            doc.rect(X, Y, g.cote, g.cote, 'F');
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(0.18);
+            doc.rect(X, Y, g.cote, g.cote, 'S');
+            hachuresDe(X, Y, g.cote, g.cote, g.cote / 3)
+                .forEach(t => doc.line(t.x1, t.y1, t.x2, t.y2));
             continue;
         }
         doc.setDrawColor(...ENCRE.trait);
@@ -2284,13 +2338,13 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
 /** Les deux cartes d'une paire dans leur emplacement, et leurs traits de coupe. */
 function geoMemory(slot, item) {
     const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
-    // Un écart entre les deux cartes : on passe les ciseaux entre elles, et un
-    // trait unique partagé ferait deux cartes collées d'un demi-millimètre.
-    const ecart = 3;
-    const w = (b.w - ecart) / 2;
-    // UNE CARTE À JOUER EST PLUS HAUTE QUE LARGE, mais jamais plus haute que son
-    // bloc : au-delà, deux rangées se chevaucheraient.
-    const h = Math.min(b.h, w * 1.35);
+    // AUCUN ÉCART, NI ENTRE LES DEUX CARTES NI ENTRE LES BLOCS. Les cartes
+    // remplissent leur emplacement et se touchent : les traits de coupe se
+    // confondent deux à deux, et la page devient un quadrillage qu'on découpe
+    // en lignes droites d'un bout à l'autre. C'est la demande de Rémy, et
+    // c'est aussi la façon dont sont imprimées les planches du commerce.
+    const w = b.w / 2;
+    const h = b.h;
     // LE CORPS SUIT LE PLUS LONG DES DEUX LIBELLÉS. « 10 × 10 » et « 16 » ne
     // font pas la même longueur, et un corps calculé sur la carte laissait le
     // calcul toucher les deux bords pendant que le résultat flottait au milieu.
@@ -2298,8 +2352,8 @@ function geoMemory(slot, item) {
     const large = (t) => [...String(t || '')]
         .reduce((n, c) => n + (c === ' ' ? 0.3 : 0.62), 0);
     const pire = Math.max(1.6, large(m.calcul), large(m.resultat));
-    const corps = Math.min(h * 0.3, (w - 4) / pire);
-    return { b, w, h, ecart, corps, y: b.y + (b.h - h) / 2 };
+    const corps = Math.min(h * 0.3, (w - 6) / pire);
+    return { b, w, h, ecart: 0, corps, y: b.y };
 }
 
 function memoryPreviewHtml(item, slot, k, solution) {
@@ -2313,6 +2367,9 @@ function memoryPreviewHtml(item, slot, k, solution) {
     [0, 1].forEach((i) => {
         const x = g.b.x + i * (g.w + g.ecart);
         const dos = !!solution;
+        // Les bordures voisines se superposent au pixel près : on n'en dessine
+        // donc qu'UNE, et le trait reste fin partout au lieu de doubler
+        // d'épaisseur sur les coutures.
         html += `<div class="fx-mm-carte${dos ? ' fx-mm-carte--dos' : ''}"
             style="left:${x * k}px; top:${g.y * k}px; width:${g.w * k}px; height:${g.h * k}px;
             ${dos && couleur ? 'background:#eef2ff;' : ''}"></div>`;
@@ -2348,16 +2405,20 @@ function dessinerMemoryPdf(doc, item, slot, solution) {
         doc.setLineWidth(0.3);
         if (solution && couleur) {
             doc.setFillColor(238, 242, 255);
-            doc.roundedRect(x, g.y, g.w, g.h, 1.6, 1.6, 'F');
+            doc.rect(x, g.y, g.w, g.h, 'F');
         }
+        // À ANGLES DROITS, ET NON PLUS ARRONDIS : deux cartes voisines
+        // partagent leur bord, et un coin arrondi laisserait quatre petites
+        // lunules blanches à chaque croisement — autant d'endroits où les
+        // ciseaux hésitent.
         if (doc.setLineDashPattern) doc.setLineDashPattern([1.2, 1], 0);
-        doc.roundedRect(x, g.y, g.w, g.h, 1.6, 1.6, 'S');
+        doc.rect(x, g.y, g.w, g.h, 'S');
         if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
 
         if (solution) {
             doc.setDrawColor(...ENCRE.grille);
             doc.setLineWidth(0.4);
-            doc.roundedRect(x + g.w * 0.12, g.y + g.h * 0.12, g.w * 0.76, g.h * 0.76, 1.2, 1.2, 'S');
+            doc.rect(x + g.w * 0.12, g.y + g.h * 0.12, g.w * 0.76, g.h * 0.76, 'S');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(corps * 1.4 / 0.3528);
             doc.setTextColor(...ENCRE.grille);
@@ -5052,10 +5113,14 @@ function geoPriorites(item, slot) {
     // entière et le calcul flottait sans rien à quoi s'aligner.
     const gouttiere = slot.numero != null ? 7 : 0;
     // LES LIGNES NE S'ÉTIRENT PAS POUR REMPLIR LE BLOC — mais elles ne se
-    // perdent pas non plus dedans. Neuf millimètres, c'est l'interligne d'un
-    // cahier de collège : au-delà on n'écrit plus une cascade, on écrit dans
-    // le vide, et l'œil ne relie plus une ligne à la suivante.
-    const ligneH = Math.min(b.h / (rangs + 0.3), 9);
+    // perdent pas non plus dedans. Sept millimètres, c'est l'interligne d'un
+    // cahier : au-delà on n'écrit plus une cascade, on écrit dans le vide, et
+    // l'œil ne relie plus une ligne à la suivante. Rémy : « il y a trop
+    // d'espace entre les lignes » — c'était neuf, et sur une feuille à six
+    // calculs le bloc était assez haut pour que le plafond soit atteint : les
+    // trois lignes se retrouvaient à un centimètre l'une de l'autre. Le blanc
+    // qui reste au bas du bloc ne se perd pas, il SÉPARE deux calculs.
+    const ligneH = Math.min(b.h / (rangs + 0.3), 7);
     return {
         m, rangs, ligneH, gouttiere,
         numero: slot.numero,
@@ -5600,7 +5665,10 @@ function geoCompte(item, slot) {
     const y0 = b.y + 1;
     const yPlaques = y0 + butH + 1.5;
     const yLignes = yPlaques + plaqueH + 3;
-    const ligneH = Math.max(5.5, Math.min((b.y + b.h - yLignes - 1) / m.lignes, 8));
+    // Le même plafond que la cascade des priorités, et pour la même raison :
+    // les lignes de recherche s'écartaient jusqu'à huit millimètres sur une
+    // feuille à quatre tirages, et l'on cherchait dans le vide.
+    const ligneH = Math.max(5.5, Math.min((b.y + b.h - yLignes - 1) / m.lignes, 7));
     return { m, b, nP, plaqueW, plaqueH, butH, y0, yPlaques, yLignes, ligneH,
         taille: Math.max(7, Math.min(plaqueW * 0.9, 12)) };
 }
@@ -5909,6 +5977,11 @@ function tracesDuGlyphe(valeur) {
  * le plus instructif : c'est en CHOISISSANT les symboles qu'on découvre que
  * leur position ne compte pas.
  */
+/** « 32100 » -> « 32 100 » : un nombre se lit par tranches de trois. */
+function nombreEspace(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+
 function geoEgypte(item, slot) {
     const m = item.meta;
     const b = slot.boite;
@@ -5921,11 +5994,21 @@ function geoEgypte(item, slot) {
     const hautCases = plan.lignes + (plan.lignes - 1) * INTERLIGNE;
     // La ligne de réponse, en bas, prend sa part de la hauteur.
     const hDispo = b.h - 8;
-    const cell = Math.min(b.w / (plan.largeur + 0.3), hDispo / (hautCases + 0.3), 16);
+    // « ÉCRIS 32 100 EN HIÉROGLYPHES » : LE NOMBRE EST L'ÉNONCÉ, PAS LA
+    // RÉPONSE. Il était écrit SOUS la ligne de réponse, au milieu, et la place
+    // à remplir se trouvait au-dessus, muette : on croyait lire une correction.
+    // Rémy : « des hiéroglyphes au nombre. Tu écris les hiéroglyphes : ……… ».
+    // Le nombre passe donc devant, suivi d'un « = », et la place de dessiner
+    // vient après lui, sur la même ligne — comme au cahier.
+    const ecrire = m.sens === 'ecrire';
+    const texte = ecrire ? `${nombreEspace(m.total)}  =` : '';
+    // Trois millimètres par caractère : de quoi ne jamais couper le nombre.
+    const largeurTexte = ecrire ? Math.min(b.w * 0.45, texte.length * 3 + 3) : 0;
+    const cell = Math.min((b.w - largeurTexte) / (plan.largeur + 0.3), hDispo / (hautCases + 0.3), 16);
     return {
-        m, b, plan, cell, interligne: INTERLIGNE,
+        m, b, plan, cell, interligne: INTERLIGNE, ecrire, texte, largeurTexte,
         rangs: plan.lignes, colonnes: plan.largeur,
-        x0: b.x + 1,
+        x0: b.x + 1 + largeurTexte,
         y0: b.y + 1,
         yReponse: b.y + 2 + hautCases * cell,
         // Les glyphes sont dessinés dans une case de 24 × 32.
@@ -5944,14 +6027,21 @@ function egyptePreviewHtml(item, slot, k, solution) {
             color:#1a202c">${egyptianSvg(m.symboles.map(s => ({ value: s.value, n: s.n })))
         .replace('<svg ', `<svg style="width:100%;height:100%" preserveAspectRatio="xMinYMin meet" `)}</div>`;
     }
-    const bas = m.sens === 'lire'
-        ? (solution ? String(m.total) : '')
-        : String(m.total);
-    html += `<div style="position:absolute; left:${g.b.x * k}px; top:${g.yReponse * k}px;
-        width:${g.b.w * k}px; height:${6 * k}px; display:flex; align-items:center;
-        ${m.sens === 'lire' ? 'justify-content:flex-start' : 'justify-content:center'};
+    // L'énoncé du sens « écrire » : le nombre, puis le signe d'égalité, à
+    // hauteur des glyphes qu'il faudra tracer à côté.
+    if (g.ecrire) {
+        html += `<div style="position:absolute; left:${g.b.x * k}px; top:${g.b.y * k}px;
+            width:${g.largeurTexte * k}px; height:${(g.yReponse - g.b.y) * k}px;
+            display:flex; align-items:center; justify-content:flex-end;
+            font-weight:800; color:#1a202c; font-size:${4.6 * k}px;
+            white-space:nowrap">${echapperSheet(g.texte)}</div>`;
+    }
+    const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
+    html += `<div style="position:absolute; left:${(g.b.x + g.largeurTexte) * k}px;
+        top:${g.yReponse * k}px; width:${(g.b.w - g.largeurTexte) * k}px; height:${6 * k}px;
+        display:flex; align-items:center; justify-content:flex-start;
         border-top:1px dotted #9aa3b2; font-weight:800;
-        color:${solution && m.sens === 'lire' ? '#6e7684' : '#1a202c'};
+        color:${solution ? '#6e7684' : '#1a202c'};
         font-size:${4.2 * k}px">${echapperSheet(bas)}</div>`;
     return html;
 }
@@ -5989,14 +6079,22 @@ function dessinerEgyptePdf(doc, item, slot, solution) {
     }
     doc.setDrawColor(...ENCRE.grille);
     doc.setLineWidth(0.3);
-    doc.line(g.b.x, g.yReponse, g.b.x + g.b.w, g.yReponse);
-    const bas = m.sens === 'lire' ? (solution ? String(m.total) : '') : String(m.total);
+    doc.line(g.b.x + g.largeurTexte, g.yReponse, g.b.x + g.b.w, g.yReponse);
+
+    if (g.ecrire) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(pourPdf(g.texte), g.b.x + g.largeurTexte - 1,
+            g.b.y + (g.yReponse - g.b.y) / 2 + 1.6, { align: 'right' });
+    }
+
+    const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
     if (!bas) return;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.setTextColor(...(solution && m.sens === 'lire' ? ENCRE.gris : ENCRE.trait));
-    doc.text(bas, m.sens === 'lire' ? g.b.x + 2 : g.b.x + g.b.w / 2, g.yReponse + 5,
-        { align: m.sens === 'lire' ? 'left' : 'center' });
+    doc.setTextColor(...(solution ? ENCRE.gris : ENCRE.trait));
+    doc.text(pourPdf(bas), g.b.x + g.largeurTexte + 2, g.yReponse + 5, { align: 'left' });
     doc.setTextColor(...ENCRE.trait);
 }
 
@@ -7429,6 +7527,9 @@ export const RENDUS = {
         pdfGrille: dessinerMemoryPdf,
         nomBloc: 'Paire', nomBlocs: 'paires',
         nomSolutions: 'les dos à coller',
+        // Bord à bord : la feuille est une planche de cartes, pas une grille
+        // de blocs séparés. Voir `calculerFiche`.
+        blocsColles: true,
         // Une paire = deux cartes. Douze paires font vingt-quatre cartes, ce qui
         // est déjà un long memory pour une classe de sixième.
         proportions: { w: 1, h: 0.62 },
@@ -7800,7 +7901,7 @@ function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
 
 function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSolutions = false) {
     const doc = new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' });
-    const { slots, traits } = calculerFiche(cols, rows);
+    const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles);
 
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
     const avecPieces = rendu === RENDUS.mat || rendu === RENDUS.echiquier;
@@ -7823,7 +7924,8 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
             // « Grille » pour un sudoku, « Planche » pour des dominos : le
             // rendu nomme ses blocs, la modale ne le devine pas.
             const nom = `${rendu.nomBloc || 'Grille'} ${i + 1}`;
-            if (rendu.titreAGauche) doc.text(nom, slot.boite.x, slot.titre.y);
+            if (rendu.blocsColles) { /* pas d'étiquette sur une carte à découper */ }
+            else if (rendu.titreAGauche) doc.text(nom, slot.boite.x, slot.titre.y);
             else doc.text(nom, slot.titre.x, slot.titre.y, { align: 'center' });
             // Le RANG du bloc sur la feuille : certains rendus en tirent leur
             // couleur, pour que deux figures voisines ne soient pas jumelles.
@@ -7954,7 +8056,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         apercu.style.width = `${PAGE.w * k}px`;
         apercu.style.height = `${PAGE.h * k}px`;
 
-        const { slots, traits } = calculerFiche(cols, rows);
+        const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles);
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
@@ -7979,7 +8081,8 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
             const slot = slots[i];
             // Centré au-dessus d'une grille carrée ; à gauche pour un bloc
             // large, où le milieu tombe en plein dans le texte de l'énigme.
-            html += rendu.titreAGauche
+            html += rendu.blocsColles ? ''
+                : rendu.titreAGauche
                 ? `<div class="fp-titre fp-titre--gauche" style="left:${slot.boite.x * k}px;
                     width:${slot.boite.w * k}px; top:${(slot.titre.y - 3.6) * k}px;
                     font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`
