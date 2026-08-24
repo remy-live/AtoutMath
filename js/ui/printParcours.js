@@ -443,12 +443,21 @@ export function ouvrirFicheParcours(chemin) {
     // Quels tiroirs sont ouverts : la liste est redessinée à chaque réglage,
     // et un tiroir qui se referme sous le doigt est insupportable.
     //
-    // Sur grand écran ils s'ouvrent tous d'emblée : le tiroir existe pour
-    // épargner la hauteur d'un téléphone, et sur un ordinateur il ne ferait
-    // qu'ajouter un clic devant chaque réglage.
-    const ouvertes = new Set(
-        (typeof window !== 'undefined' && window.innerWidth > 700) ? papier.map(e => e.stepId) : []
-    );
+    // TOUT EST REPLIÉ AU DÉPART, GRAND ÉCRAN COMPRIS.
+    //
+    // Rémy : « pour la fiche du parcours, il faut que toutes les barres
+    // draggables d'exercices soient repliées, et surtout moins hautes ».
+    //
+    // Elles s'ouvraient toutes d'emblée au-dessus de 700 px, au motif que le
+    // clic serait de trop sur un ordinateur. Mesuré : cinq exercices faisaient
+    // 315 px chacun, soit quinze cents pixels de réglages AVANT d'apercevoir la
+    // feuille — et c'est la feuille qu'on vient regarder. Le raisonnement était
+    // juste pour deux étapes, faux dès la troisième.
+    //
+    // Replié, on voit d'un coup la liste entière et l'aperçu ; on ouvre le seul
+    // exercice qu'on veut régler, et il se souvient de son état tant que la
+    // fiche reste ouverte.
+    const ouvertes = new Set();
     const CHEVRON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"'
         + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
