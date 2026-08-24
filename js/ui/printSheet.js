@@ -6711,6 +6711,127 @@ function dessinerCheminPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+// --- LE LABYRINTHE DES NOMBRES, SUR LE PAPIER ---------------------------------
+//
+// Sa forme d'origine : Rémy est parti d'un livre. Une grille de nombres, un
+// depart entoure, une etoile, et rien d'autre — le chemin se trace au crayon.
+
+function geoLabyNombres(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const cote = Math.min(b.w / m.l, b.h / m.h);
+    const x0 = b.x + (b.w - cote * m.l) / 2;
+    const y0 = b.y + (b.h - cote * m.h) / 2;
+    const centre = (x, y) => ({ x: x0 + (x + 0.5) * cote, y: y0 + (y + 0.5) * cote });
+    return { b, m, cote, x0, y0, centre };
+}
+
+/** Une etoile a cinq branches, en coordonnees absolues. */
+function pointsEtoile(cx, cy, r) {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const rr = i % 2 ? r * 0.45 : r;
+        pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
+    }
+    return pts;
+}
+
+function labyNombresPreviewHtml(item, slot, k, solution) {
+    const g = geoLabyNombres(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let dedans = '';
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            dedans += `<rect x="${T(g.x0 + x * g.cote)}" y="${T(g.y0 + y * g.cote)}"
+                width="${T(g.cote)}" height="${T(g.cote)}" fill="none"
+                stroke="#b0b6c5" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+        }
+    }
+    if (solution) {
+        const d = g.m.solution.map(([x, y], i) => {
+            const p = g.centre(x, y);
+            return `${i ? 'L' : 'M'}${T(p.x)} ${T(p.y)}`;
+        }).join(' ');
+        dedans += `<path d="${d}" fill="none" stroke="#8a90a0" stroke-linecap="round"
+            stroke-linejoin="round" stroke-width="${(g.cote * 0.16 * k).toFixed(2)}" opacity="0.75"/>`;
+    }
+    // Le depart : un carre autour de la case.
+    const dep = g.centre(...g.m.depart);
+    dedans += `<rect x="${T(dep.x - g.cote * 0.42)}" y="${T(dep.y - g.cote * 0.42)}"
+        width="${T(g.cote * 0.84)}" height="${T(g.cote * 0.84)}" rx="${T(g.cote * 0.12)}"
+        fill="none" stroke="#1a202c" stroke-width="${(0.5 * k).toFixed(2)}"/>`;
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            const n = g.m.grille[y][x];
+            const p = g.centre(x, y);
+            if (!n) {
+                const pts = pointsEtoile(p.x, p.y, g.cote * 0.3).map(([a, b2]) => `${T(a)},${T(b2)}`).join(' ');
+                dedans += `<polygon points="${pts}" fill="#1a202c"/>`;
+                continue;
+            }
+            dedans += `<text x="${T(p.x)}" y="${T(p.y)}" fill="#1a202c" font-weight="700"
+                font-size="${(g.cote * 0.42 * k).toFixed(2)}" text-anchor="middle"
+                dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${n}</text>`;
+        }
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${dedans}</svg>`;
+}
+
+function dessinerLabyNombresPdf(doc, item, slot, solution) {
+    const g = geoLabyNombres(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            doc.rect(g.x0 + x * g.cote, g.y0 + y * g.cote, g.cote, g.cote);
+        }
+    }
+
+    if (solution) {
+        doc.setDrawColor(...ENCRE.gris);
+        doc.setLineWidth(Math.max(0.5, g.cote * 0.14));
+        doc.setLineCap('round');
+        doc.setLineJoin('round');
+        for (let i = 1; i < g.m.solution.length; i++) {
+            const a = g.centre(...g.m.solution[i - 1]);
+            const b = g.centre(...g.m.solution[i]);
+            doc.line(a.x, a.y, b.x, b.y);
+        }
+        doc.setLineCap('butt');
+        doc.setLineJoin('miter');
+    }
+
+    const dep = g.centre(...g.m.depart);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.rect(dep.x - g.cote * 0.42, dep.y - g.cote * 0.42, g.cote * 0.84, g.cote * 0.84);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6, Math.min(14, g.cote * 1.2)));
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFillColor(...ENCRE.trait);
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            const n = g.m.grille[y][x];
+            const p = g.centre(x, y);
+            if (!n) {
+                const pts = pointsEtoile(p.x, p.y, g.cote * 0.3);
+                doc.lines(
+                    pts.slice(1).map((q, i) => [q[0] - pts[i][0], q[1] - pts[i][1]])
+                        .concat([[pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]]]),
+                    pts[0][0], pts[0][1], [1, 1], 'F'
+                );
+                continue;
+            }
+            doc.text(String(n), p.x, p.y, { align: 'center', baseline: 'middle' });
+        }
+    }
+    doc.setFont('helvetica', 'normal');
+}
+
 export const RENDUS = {
     // --- Les jeux à jouer sur papier ---
     puissance4: {
@@ -6750,6 +6871,19 @@ export const RENDUS = {
             + 'n\'a que deux voisines.',
         previewGrille: cheminPreviewHtml,
         pdfGrille: dessinerCheminPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
+    },
+
+    'laby-nombres': {
+        titre: 'Le labyrinthe des nombres',
+        consigne: () => 'LE NOMBRE DE TA CASE DIT DE COMBIEN DE CASES TU SAUTES. Tu choisis la '
+            + 'direction — haut, bas, gauche ou droite — mais pas la distance, et jamais la '
+            + 'diagonale. Pars de la case encadrée et rejoins l\'étoile. Attention en comptant : '
+            + 'la première case comptée est celle juste à côté de toi, pas celle où tu es.',
+        previewGrille: labyNombresPreviewHtml,
+        pdfGrille: dessinerLabyNombresPdf,
         nomBloc: 'Grille', nomBlocs: 'grilles',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3

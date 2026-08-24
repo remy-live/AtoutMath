@@ -476,6 +476,44 @@ export const geometrieExercises = [
         instruction: "Code la figure : pose la MÊME marque sur les segments qui ont la même longueur, et le petit carré sur les angles droits. Glisse un symbole depuis la palette, ou touche directement un segment — la marque défile alors : un trait, deux traits, trois traits, la croix, rien. Les diagonales comptent pour deux segments chacune, coupés au point O. Commence par faire le tour des côtés, puis compare les deux diagonales entre elles, et finis par les angles. Attention : une marque n'est pas une décoration, elle AFFIRME une égalité — deux segments de longueurs différentes ne peuvent pas porter la même."
     },
     {
+        // LE LABYRINTHE DES NOMBRES. La seconde image envoyée par Rémy : la
+        // couverture d'un recueil de « number mazes ».
+        //
+        // Le nombre d'une case n'est pas une étiquette, c'est un ORDRE : sur
+        // un 3, on saute de trois cases. Les murs n'existent pas — ce qui
+        // bloque, c'est l'arithmétique. Une case portant 4 au milieu d'une
+        // grille de cinq est une impasse, non parce qu'on l'a fermée, mais
+        // parce que quatre cases dans n'importe quelle direction tombent hors
+        // du plateau. C'est ce qui le distingue des deux autres labyrinthes du
+        // logiciel, où l'on bute sur des cloisons.
+        id: 'geo-laby-nombres', title: 'Le labyrinthe des nombres',
+        cree: '2026-08-24',
+        activityId: 'laby-nombres',
+        generatorId: 'logique.laby-nombres', printable: 'laby-nombres',
+        params: { taille: 'moyen', montrerSauts: true },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'La grille',
+                aide: 'Plus la grille est grande, plus les sauts sont longs et plus il faut anticiper : un saut mène vite dans un coin d\'où plus rien ne part.',
+                options: [
+                    { value: 'petit', label: '5 × 5 — pour découvrir' },
+                    { value: 'moyen', label: '6 × 6 — la taille habituelle' },
+                    { value: 'grand', label: '7 × 7 — il faut anticiper' },
+                    { value: 'geant', label: '8 × 8 — pour ceux qui aiment ça' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'montrerSauts', type: 'checkbox', label: 'Montrer les sauts possibles',
+                aide: 'Les quatre cases atteignables depuis la case courante s\'éclairent en vert. Au début, cela APPREND à compter juste ; ensuite c\'est une béquille, et le labyrinthe redevient celui du livre une fois décoché. Le bouton de la barre le bascule aussi en cours de partie.',
+                default: true
+            }
+        ],
+        skills: ['geo.espace.reperage'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Le nombre écrit dans ta case dit DE COMBIEN DE CASES tu sautes : sur un 3, tu sautes de trois cases. Tu choisis la direction — haut, bas, gauche ou droite — mais pas la distance, et jamais la diagonale. Touche la case où tu veux atterrir ; si ce n'est pas un saut valable, le logiciel te dit pourquoi. Le but est l'étoile. L'erreur la plus fréquente est de compter la case où l'on est : la première case comptée est celle juste à côté. Et méfie-toi des impasses — une case dont tous les sauts sortent de la grille ne mène nulle part."
+    },
+    {
         // LE CHEMIN NUMÉROTÉ. Le jeu de la capture d'écran envoyée par Rémy
         // (« Zip Master : Number Path Puzzle »). La règle tient en une phrase
         // et le raisonnement est réel : ce n'est pas un jeu de vitesse, c'est
