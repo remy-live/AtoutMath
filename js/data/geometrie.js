@@ -476,6 +476,41 @@ export const geometrieExercises = [
         instruction: "Code la figure : pose la MÊME marque sur les segments qui ont la même longueur, et le petit carré sur les angles droits. Glisse un symbole depuis la palette, ou touche directement un segment — la marque défile alors : un trait, deux traits, trois traits, la croix, rien. Les diagonales comptent pour deux segments chacune, coupés au point O. Commence par faire le tour des côtés, puis compare les deux diagonales entre elles, et finis par les angles. Attention : une marque n'est pas une décoration, elle AFFIRME une égalité — deux segments de longueurs différentes ne peuvent pas porter la même."
     },
     {
+        // LE CHEMIN NUMÉROTÉ. Le jeu de la capture d'écran envoyée par Rémy
+        // (« Zip Master : Number Path Puzzle »). La règle tient en une phrase
+        // et le raisonnement est réel : ce n'est pas un jeu de vitesse, c'est
+        // un jeu de PLACE — il faut prévoir, revenir, et comprendre qu'une
+        // case de coin n'a que deux voisines, donc que le chemin y est presque
+        // toujours forcé.
+        //
+        // Même famille que « relier les points », et le même geste : on pose
+        // le doigt et l'on glisse. Un élève qui sait jouer à l'un sait jouer à
+        // l'autre sans qu'on lui explique.
+        id: 'geo-chemin-numerote', title: 'Le chemin numéroté',
+        cree: '2026-08-24',
+        activityId: 'chemin-numerote',
+        // La même grille à l'écran et sur la feuille : Rémy est parti d'un
+        // LIVRE de labyrinthes de nombres, le papier est la forme d'origine.
+        generatorId: 'logique.chemin', printable: 'chemin',
+        params: { taille: 'moyen' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'La grille',
+                aide: 'En 4 × 4, le chemin se voit presque d\'un coup d\'œil ; en 7 × 7, il faut vraiment commencer par les coins et compter les voisines. Plus la grille est grande, plus il y a de nombres pour guider — mais aussi plus de cases à ne pas oublier.',
+                options: [
+                    { value: 'petit', label: '4 × 4 — pour découvrir' },
+                    { value: 'moyen', label: '5 × 5 — la taille habituelle' },
+                    { value: 'grand', label: '6 × 6 — il faut prévoir' },
+                    { value: 'geant', label: '7 × 7 — pour ceux qui aiment ça' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        skills: ['geo.espace.reperage'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trace UN SEUL chemin qui part du 1, passe par 2, 3, 4… dans l'ordre, et remplit TOUTES les cases. Pose le doigt sur le 1 et glisse : le chemin suit les cases, sans diagonale. Pour effacer, reviens en arrière ; pour couper, touche une case du milieu de ton chemin. La règle qu'on oublie est la seconde : il ne doit rester aucune case en dehors du chemin. Commence par regarder les COINS — un coin n'a que deux voisines, donc si le chemin ne le prend pas en passant, il ne pourra plus jamais y aller."
+    },
+    {
         // RELIER LES POINTS. Le jeu de liens, avec sa règle complète : les
         // chemins ne se croisent pas ET aucune case ne reste vide. C'est la
         // seconde moitié qui fait le raisonnement — relier deux points est
