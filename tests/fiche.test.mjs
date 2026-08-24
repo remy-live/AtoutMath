@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { A4, DEFAUTS, couperEnLignes, composerFiche, composerSolutions } from '../js/core/fiche.js';
+import { A4, DEFAUTS, couperEnLignes, composerFiche, composerSolutions, RE_FRACTION, porteUneFraction } from '../js/core/fiche.js';
 
 // Un mesureur de service : chaque caractère vaut la moitié de la taille. Les
 // tests portent sur la mise en page, pas sur les métriques d'une police.
@@ -834,7 +834,6 @@ test('blocs : un énoncé à trou ne se coupe pas en deux lignes', () => {
 // --- LE NUMÉRO, LA FRACTION ET LE POINT D'INTERROGATION ------------------------
 
 test('seul un texte qui porte VRAIMENT une fraction réclame de la hauteur', async () => {
-    const { porteUneFraction } = await import('../js/core/fiche.js');
     // Le générateur déclare `fractions: true` dès qu'il PEUT en produire ; la
     // fiche réservait alors la hauteur d'une fraction empilée à chaque
     // question, et le numéro se retrouvait un demi-interligne au-dessus de sa
@@ -871,4 +870,46 @@ test('chaque question sait de quel exercice et de quel rang elle vient', async (
     assert.equal(posees.length, 3);
     assert.deepEqual(posees.map(i => [i.exoId, i.iQ]),
         [['alpha', 0], ['alpha', 1], ['beta', 0]]);
+});
+
+// --- LE TROU EST UN ÉTAGE DE FRACTION ---------------------------------------
+//
+// Rémy, sur l'égalité à compléter : « après le = tu écris …/9, mais pas en
+// colonne : il faut l'écrire en colonne ». Le motif ne connaissait que
+// « chiffre / chiffre » ; dans un exercice à trou, un des deux étages est
+// justement absent, et la fraction s'imprimait en ligne — dans le seul
+// exercice où elle DOIT être en colonne.
+
+test('une fraction à trou est reconnue comme une fraction', () => {
+    assert.equal(porteUneFraction('1/5 = ?/15'), true);
+    assert.equal(porteUneFraction('3/4 = 9/…'), true);
+    assert.equal(porteUneFraction('2/7 = .../21'), true);
+    // Et ce qui n'est pas une fraction ne le devient pas.
+    assert.equal(porteUneFraction('Combien de billes ?'), false);
+    assert.equal(porteUneFraction('Le 12 mars'), false);
+    assert.equal(porteUneFraction(''), false);
+    assert.equal(porteUneFraction(null), false);
+});
+
+test('les deux étages se retrouvent, trou compris', () => {
+    const lu = (t) => {
+        const out = [];
+        t.replace(RE_FRACTION(), (m, a, b) => { out.push(`${a}|${b}`); return m; });
+        return out;
+    };
+    assert.deepEqual(lu('1/5 = ?/15'), ['1|5', '?|15']);
+    assert.deepEqual(lu('3/4 = 9/…'), ['3|4', '9|…']);
+    assert.deepEqual(lu('… / 9'), ['…|9']);
+    assert.deepEqual(lu('12/100 + 5/100'), ['12|100', '5|100']);
+});
+
+test('la mesure d\'une fraction à trou reste celle de son étage le plus large', () => {
+    const compter = (t) => t.length;
+    const mes = mesureurFractions(compter);
+    // Un étage empilé n'occupe que la largeur du plus large des deux.
+    assert.equal(mes('?/15', 4), compter(' 15 '));
+    assert.equal(mes('…/100', 4), compter(' 100 '));
+    // Le gain se voit dès que l'étage le plus court fait deux signes :
+    // « 15/100 » s'imprime sur la largeur de « 100 », pas des six caractères.
+    assert.ok(mes('15/100', 4) < compter('15/100'));
 });

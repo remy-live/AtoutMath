@@ -9,6 +9,7 @@
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
 import { A4, morceauxReponse } from '../core/fiche.js';
+import { RE_FRACTION } from '../core/fiche.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
 import { RENDUS } from './printSheet.js';
@@ -134,7 +135,12 @@ const HORS_TABLE = {
  */
 export function morceauxLigne(ligne, avecFractions) {
     const out = [];
-    const re = avecFractions ? /(\d+)\s*\/\s*(\d+)|(\u2248)/g : /(\u2248)/g;
+    // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
+    // colonnes doivent découper AU MÊME ENDROIT, sinon la fiche se compose sur
+    // une largeur et s'imprime sur une autre.
+    const re = avecFractions
+        ? new RegExp(`${RE_FRACTION().source}|(\\u2248)`, 'g')
+        : /(\u2248)/g;
     let dernier = 0, m;
     while ((m = re.exec(ligne))) {
         if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });

@@ -379,10 +379,18 @@ class CompteEstBon extends BaseGame {
         if (!c) return this.note('Il n\'y a plus rien à tenter : annule une étape.');
         // ON NE DONNE PAS LE RÉSULTAT, seulement le couple à essayer : le
         // calcul reste l'exercice.
+        // ON DIT CE QUE LE COUP FABRIQUE. « Essaie 3 + 1 » tout seul ne se
+        // comprend pas : l'élève ne sait pas s'il vient de gagner une plaque
+        // utile. Le résultat et le nombre d'étapes restantes le lui disent.
+        const reste = c.etapes > 1
+            ? ` Il te restera ${c.etapes - 1} opération${c.etapes > 2 ? 's' : ''}.`
+            : ' Et ce sera fini.';
+        const coup = `${c.a} ${SIGNE[c.op]} ${c.b}`
+            + (c.resultat != null ? `, qui fait ${c.resultat}` : '');
         this.note(c.exact
-            ? `Essaie ${c.a} ${SIGNE[c.op]} ${c.b} — de là, le compte est atteignable.`
+            ? `Essaie ${coup} : de là, le compte est atteignable.${reste}`
             : `Le compte exact n'est plus possible ; au mieux tu peux t'approcher à ${c.ecart}. `
-                + `Essaie ${c.a} ${SIGNE[c.op]} ${c.b}.`);
+                + `Essaie ${coup}.${reste}`);
     }
 
     note(html, ton) {

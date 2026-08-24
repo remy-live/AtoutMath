@@ -348,5 +348,24 @@ export function conseil(etat) {
     const dispo = etat.nombres.map(n => n.valeur);
     const trouve = resoudre(dispo, etat.but);
     if (!trouve || !trouve.chemin.length) return null;
-    return { ...trouve.chemin[0], exact: trouve.ecart === 0, ecart: trouve.ecart };
+    const premiere = trouve.chemin[0];
+    // CE QUE LE COUP PRODUIT, ET CE QU'IL RESTE À FAIRE.
+    //
+    // Rémy : « le coup de main du compte est bon ne donne rien ». Il donnait
+    // pourtant un coup juste — mais un coup NU : « Essaie 3 + 1 », sans dire ce
+    // que cela fabrique ni pourquoi. Un élève ne peut rien en tirer : il ne sait
+    // pas s'il vient de gagner une plaque utile ou de perdre son temps, et le
+    // conseil ressemble à une opération tirée au hasard.
+    //
+    // On rend donc les deux choses qui manquaient : le RÉSULTAT du coup — la
+    // plaque qu'on obtient, celle avec laquelle on continuera — et le NOMBRE
+    // D'ÉTAPES restantes, qui dit à l'élève où il en est du chemin.
+    // `resultat` est déjà porté par chaque étape du chemin : le solveur le
+    // note en construisant. On ne le recalcule pas.
+    return {
+        ...premiere,
+        etapes: trouve.chemin.length,
+        exact: trouve.ecart === 0,
+        ecart: trouve.ecart
+    };
 }

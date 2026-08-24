@@ -105,6 +105,23 @@ export function texteImprime(texte, reponse) {
 }
 
 /**
+ * CE QUI S'ÉCRIT EN COLONNE — le motif, écrit une seule fois.
+ *
+ * Rémy, sur l'égalité à compléter : « après le = tu écris …/9, mais pas en
+ * colonne : il faut l'écrire en colonne ».
+ *
+ * Le motif ne connaissait que « chiffre / chiffre ». Or dans un exercice à
+ * TROU, un des deux étages est justement absent : « ?/9 » n'a pas de chiffre
+ * au numérateur, donc rien ne se déclenchait, et la fraction s'imprimait en
+ * ligne — dans le seul exercice où elle DOIT être en colonne, puisqu'on
+ * demande à l'élève d'écrire l'étage manquant.
+ *
+ * Un étage est donc soit un nombre, soit un trou : « ? », « … », ou « ... ».
+ */
+const ETAGE = '(?:\\d+|\\?|\\u2026|\\.\\.\\.)';
+export const RE_FRACTION = () => new RegExp(`(${ETAGE})\\s*\\/\\s*(${ETAGE})`, 'g');
+
+/**
  * MESURER UNE FRACTION TELLE QU'ELLE S'IMPRIME.
  *
  * « 5/11 » écrit en colonne n'occupe que la largeur de « 11 » : le trait, le
@@ -114,7 +131,7 @@ export function texteImprime(texte, reponse) {
  */
 export function mesureurFractions(mesurer) {
     return (texte, taille) => mesurer(
-        String(texte).replace(/(\d+)\s*\/\s*(\d+)/g,
+        String(texte).replace(RE_FRACTION(),
             (m, a, b) => ' ' + (a.length >= b.length ? a : b) + ' '),
         taille);
 }
@@ -130,7 +147,7 @@ export function mesureurFractions(mesurer) {
  * a vu sur la feuille de problèmes.
  */
 export function porteUneFraction(...textes) {
-    return textes.some(t => /\d\s*\/\s*\d/.test(String(t ?? '')));
+    return textes.some(t => RE_FRACTION().test(String(t ?? '')));
 }
 
 /** L'emplacement du trou dans une ligne déjà composée, ou null. */
