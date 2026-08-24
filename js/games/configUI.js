@@ -765,10 +765,42 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
                 </select>
                 <p class="cfg-help">La note est recalculée à partir des réponses enregistrées : modifier le barème met à jour les bilans passés.</p>
             </div>
+            <!-- À QUI LA NOTE EST-ELLE MONTRÉE ? Rémy : « à la fin on a une
+                 option pour donner la note ou non ». Trois cas, et le second
+                 n'est pas un demi-mesure : noter sans afficher permet de rendre
+                 les copies en classe d'abord, ou de mesurer sans décourager —
+                 le bilan de classe, lui, garde la note. -->
+            <div class="cfg-field cfg-field--wide">
+                <label class="cfg-label" for="cfg-note-vue">À la fin, la note est</label>
+                <select id="cfg-note-vue" class="cfg-input">
+                    <option value="affichee" ${(g.note || 'affichee') === 'affichee' ? 'selected' : ''}>Affichée à l'élève</option>
+                    <option value="enregistree" ${g.note === 'enregistree' ? 'selected' : ''}>Enregistrée, mais pas montrée à l'élève</option>
+                    <option value="aucune" ${g.note === 'aucune' ? 'selected' : ''}>Pas de note — bilan par compétence seulement</option>
+                </select>
+            </div>
             <label class="cfg-check">
                 <input type="checkbox" id="cfg-show-calc" ${g.showCalculation !== false ? 'checked' : ''}>
                 Montrer à l'élève le détail du calcul de sa note
             </label>
+        </div>
+
+        <!-- CE QUE L'INTERROGATION FAIT APRÈS CHAQUE RÉPONSE. Le choix décide
+             de ce qu'elle mesure : se taire mesure ce que l'élève savait en
+             entrant ; expliquer enseigne à chaque question, et la note devient
+             celle d'un devoir formatif. Les deux sont légitimes — mais ce ne
+             sont pas les mêmes devoirs, et cela se règle. -->
+        <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
+            <div class="cfg-group-title">Après chaque réponse</div>
+            <div class="cfg-field cfg-field--wide">
+                <label class="cfg-label" for="cfg-correction">L'ordinateur</label>
+                <select id="cfg-correction" class="cfg-input">
+                    <option value="aucune" ${p.correction === 'aucune' ? 'selected' : ''}>Passe à la question suivante, sans rien dire</option>
+                    <option value="reponse" ${(p.correction || 'reponse') === 'reponse' ? 'selected' : ''}>Montre la bonne réponse</option>
+                    <option value="robot" ${p.correction === 'robot' ? 'selected' : ''}>Montre la réponse ET le robot explique</option>
+                </select>
+                <p class="cfg-help">Se taire mesure ce que l'élève savait en entrant. Expliquer lui apprend
+                    quelque chose à chaque question — c'est un devoir formatif, et la note change de sens.</p>
+            </div>
         </div>
 
         <div class="cfg-group">
@@ -800,12 +832,16 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             maxAttemptsPerItem: intVal('cfg-attempts', base.maxAttemptsPerItem),
             hints: document.getElementById('cfg-hints').checked,
             adaptive: document.getElementById('cfg-adaptive').checked,
+            // Ce que l'ordinateur fait après chaque réponse. `resolvePolicy`
+            // en déduira `showCorrection` : c'est le mot qui commande.
+            correction: (document.getElementById('cfg-correction') || {}).value || base.correction,
             grading: graded ? {
                 scale: intVal('cfg-scale', 20),
                 rule: document.getElementById('cfg-rule').value,
                 penalties: { hint: 0.25, retry: 0.5 },
                 arrondi: 0.5,
-                showCalculation: document.getElementById('cfg-show-calc').checked
+                showCalculation: document.getElementById('cfg-show-calc').checked,
+                note: (document.getElementById('cfg-note-vue') || {}).value || 'affichee'
             } : null,
             // Le seuil des récompenses est une règle de la séance : il vit
             // avec les autres, et survit donc au changement de mode.

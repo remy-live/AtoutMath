@@ -294,11 +294,22 @@ export class ItemSession {
             if (verdict.correct) {
                 dismissed = announce({ kind: 'success', points, element: opts.element });
             } else if (this.policy.showCorrection) {
+                // EN INTERROGATION, TROIS RÉGIMES (voir CORRECTIONS dans
+                // policy.js). « reponse » donne la bonne réponse et se tait :
+                // l'élève ne repart pas avec son erreur, mais on ne lui fait
+                // pas cours pendant qu'on le mesure. « robot » ajoute
+                // l'explication — c'est le devoir formatif que Rémy décrit :
+                // « si c'est en mode interrogation il faut une explication de
+                // la part du robot ».
+                const sec = this.policy.correction === 'reponse'
+                    ? `La bonne réponse était : ${this.item.answer}`
+                    : (verdict.misconception || this.item.explanation);
                 dismissed = announce({
                     kind: 'error',
                     isError: true,
-                    msg: verdict.misconception || this.item.explanation,
-                    misconception: verdict.misconception ? this.item.explanation : null
+                    msg: sec,
+                    misconception: (this.policy.correction !== 'reponse' && verdict.misconception)
+                        ? this.item.explanation : null
                 });
             }
         }
@@ -330,7 +341,13 @@ export class ItemSession {
             exerciseTitle: this.exercise ? this.exercise.title : '',
             // La leçon de la dernière question : c'est elle qu'on redonnera si
             // l'exercice a été loupé, et c'est le générateur qui la connaît.
-            lecon: (this.item && this.item.meta && this.item.meta.texteLecon) || ''
+            lecon: (this.item && this.item.meta && this.item.meta.texteLecon) || '',
+            // ON NE PROPOSE PAS DE REFAIRE UNE INTERROGATION. Le bilan de fin
+            // d'exercice offrait « Recommencer avec le robot » quel que soit le
+            // régime : après un devoir noté, c'est un contresens — et l'élève
+            // qui voit le bouton en déduit, à raison, que sa note ne comptait
+            // pas. Le régime voyage donc avec le bilan.
+            evaluation: this.policy.mode === 'evaluation'
         };
         this._fire('finish', bilan);
         // Le noyau annonce, il n'affiche pas. L'interface décide s'il y a

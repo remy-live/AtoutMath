@@ -135,8 +135,19 @@ export function gradeRun(run, policyOverride = null) {
     }).sort((a, b) => a.taux - b.taux);
 
     // --- Note ---
+    //
+    // TROIS RÉGIMES, et ils ne se ressemblent pas (voir NOTES dans policy.js) :
+    // la note s'affiche, ou bien elle est calculée pour le professeur SANS être
+    // montrée à l'élève, ou bien on ne note pas du tout. Rémy : « à la fin on a
+    // une option pour donner la note ou non ».
+    //
+    // Le calcul se fait dans les deux premiers cas — un bilan de classe sans
+    // note serait inutilisable —, et c'est `noteCachee` qui dit à l'interface
+    // de la taire. Ne pas la calculer du tout serait perdre l'information sans
+    // rien gagner.
+    const regimeNote = (grading && grading.note) || 'affichee';
     let note = null, sur = null;
-    if (grading && grading.scale) {
+    if (grading && grading.scale && regimeNote !== 'aucune') {
         sur = grading.scale;
         const brut = ratioPondere * sur;
         const pas = grading.arrondi || 0.5;
@@ -154,12 +165,17 @@ export function gradeRun(run, policyOverride = null) {
         calcul: buildCalcul({ grading, rule, parEtape, totalWeight, ratioPondere, note, sur }),
         // Le professeur décide si l'élève voit le détail (activé par défaut :
         // une note dont on ignore l'origine n'apprend rien).
-        afficherCalcul: !!grading && grading.showCalculation !== false,
+        // Et le détail du calcul suit la note : montrer d'où sort un nombre
+        // qu'on ne montre pas n'aurait pas de sens.
+        afficherCalcul: !!grading && grading.showCalculation !== false && regimeNote === 'affichee',
         runId: run ? run.runId : null,
         pathId: run ? run.pathId : null,
         pathName: run ? run.pathName : '',
         mode: policy.mode,
         note, sur,
+        // L'élève ne verra pas cette note : elle n'est là que pour le
+        // professeur et le bilan de classe.
+        noteCachee: regimeNote === 'enregistree',
         regle: (grading && grading.rule) || null,
         ratio: totalQuestions ? totalReussies / totalQuestions : 0,
         ratioPondere,
@@ -259,4 +275,42 @@ export function appreciation(bilan) {
 /** Niveau global de compétence (NA / EC / A / E) pour un bilan. */
 export function niveauGlobal(bilan) {
     return levelFor(bilan.ratioPondere) || LEVELS.NA;
+}
+
+/**
+ * LE BARÈME, ÉTAPE PAR ÉTAPE — annoncé AVANT de composer.
+ *
+ * Rémy : « dans la carte parcours, on voit le barème de chaque exercice ».
+ * C'est le pendant nécessaire de la note : on ne peut pas noter sans dire sur
+ * quoi. Un élève qui sait qu'une étape pèse six points sur vingt sait où passer
+ * son temps — et c'est une compétence de devoir, pas une faveur.
+ *
+ * Le poids d'une étape est celui que le professeur lui a donné (`weight`,
+ * 1 par défaut) ; les points en découlent par simple proportion. Les jeux de
+ * récompense sont hors barème, comme ils sont hors note.
+ *
+ * @param {Array} steps   - étapes hydratées du parcours
+ * @param {Object} policy - politique du parcours
+ * @returns {Map<string, number>|null} stepId → points, ou null si non noté
+ */
+export function baremeParEtape(steps, policy) {
+    const p = resolvePolicy(policy);
+    const g = p.grading;
+    if (!g || !g.scale || (g.note || 'affichee') === 'aucune') return null;
+    const comptees = (steps || []).filter(s => !s.bonus);
+    const total = comptees.reduce((s, e) => s + (e.weight || 1), 0);
+    if (!total) return null;
+    const bareme = new Map();
+    comptees.forEach(e => {
+        const pts = (g.scale * (e.weight || 1)) / total;
+        // Au dixième de point : « 6,7 / 20 » se lit, « 6,666666 » non.
+        bareme.set(e.stepId, Math.round(pts * 10) / 10);
+    });
+    return bareme;
+}
+
+/** « 6,5 pts » — l'écriture française, et le pluriel qui va avec. */
+export function direBareme(points) {
+    const n = String(Math.round(points * 10) / 10).replace('.', ',');
+    return `${n} pt${points >= 2 ? 's' : ''}`;
 }

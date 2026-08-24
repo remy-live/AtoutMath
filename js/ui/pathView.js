@@ -17,7 +17,7 @@ import { hydratePath, normalizePath } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { journal } from '../core/journal.js';
 import { computeRuns } from '../core/projections.js';
-import { gradeRun } from '../core/grading.js';
+import { gradeRun, baremeParEtape, direBareme } from '../core/grading.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import { showModal } from './modal.js';
@@ -160,6 +160,10 @@ function assignedSection() {
     const opts = {
         doneIds: done,
         currentIndex: firstPending,
+        // LE BARÈME EST ANNONCÉ AVANT DE COMPOSER : on ne note pas sans dire
+        // sur quoi. `null` hors évaluation notée — une étape d'entraînement
+        // n'a pas de points, et en afficher serait mentir.
+        bareme: baremeParEtape(steps, path.policy),
         recompenses: parJeu,
         seuilRecompense: etatJeux.seuil,
         ouverture,
@@ -351,7 +355,11 @@ function creerNoeud(step, i, statut, opts) {
         meta.classList.add('world-node-meta--cadeau');
         meta.textContent = direRecompense(jeu, opts.seuilRecompense ?? 0.75);
     } else {
-        meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+        // Le barème tient sous la pastille : « 5 q. • 4 pts ». C'est court, et
+        // c'est ce qu'un élève regarde avant de choisir où passer son temps.
+        const pts = opts.bareme && opts.bareme.get(step.stepId);
+        meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
+            + (pts ? ` • ${direBareme(pts)}` : '');
     }
 
     node.append(label, meta);
@@ -536,7 +544,9 @@ export function buildClassicTimeline(steps, opts = {}) {
 
         const meta = document.createElement('div');
         meta.className = 'timeline-step-meta';
-        meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`;
+        const pts = opts.bareme && opts.bareme.get(step.stepId);
+        meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
+            + (pts ? ` • sur ${direBareme(pts)}` : '');
         card.appendChild(meta);
 
         if (statut === 'done') {

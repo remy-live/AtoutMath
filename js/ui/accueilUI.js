@@ -166,7 +166,11 @@ export function initBilanExercice() {
         // On ne repropose l'exercice QUE s'il a été loupé. Après une réussite,
         // « recommencer » serait un contresens : c'est d'un cran de plus que
         // l'élève a besoin, pas du même exercice.
-        refaire.style.display = bilan.relancer && exo ? '' : 'none';
+        //
+        // ET JAMAIS APRÈS UNE INTERROGATION. Rémy : « en mode interrogation, il
+        // ne faut pas proposer à la fin de refaire l'exercice ». Une évaluation
+        // qu'on recommence jusqu'à ce qu'elle tombe juste ne mesure plus rien.
+        refaire.style.display = (bilan.relancer && exo && !d.evaluation) ? '' : 'none';
         refaire.onclick = () => {
             m.style.display = 'none';
             import('../games/engine.js').then(g => g.openGameLayer(exo, true));

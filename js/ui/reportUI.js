@@ -37,14 +37,20 @@ export function showRunReport(bilan, { onClose } = {}) {
 export function reportHtml(bilan, { compact = false } = {}) {
     const pct = Math.round(bilan.ratioPondere * 100);
 
-    const noteBlock = bilan.note !== null
+    // LA NOTE EXISTE, MAIS L'ÉLÈVE NE LA VOIT PAS FORCÉMENT. Rémy voulait
+    // pouvoir noter sans montrer : le devoir se rend en classe, la note se dit
+    // de vive voix, et l'écran n'annonce rien. On montre alors le taux de
+    // réussite, qui reste une information honnête et non un verdict chiffré.
+    const noteBlock = (bilan.note !== null && !bilan.noteCachee)
         ? `<div class="report-note">
                <div class="report-note-value">${formatNote(bilan.note)}<span class="report-note-scale">/${bilan.sur}</span></div>
                <div class="report-note-label">${labelForRule(bilan.regle)}</div>
            </div>`
         : `<div class="report-note report-note--nograde">
                <div class="report-note-value">${pct}<span class="report-note-scale">%</span></div>
-               <div class="report-note-label">de réussite</div>
+               <div class="report-note-label">${bilan.noteCachee
+                   ? 'de réussite — la note est enregistrée pour ton professeur'
+                   : 'de réussite'}</div>
            </div>`;
 
     const stats = `

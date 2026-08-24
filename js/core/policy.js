@@ -20,6 +20,37 @@ export const MODES = {
     EVALUATION: 'evaluation'
 };
 
+// --- CE QUE L'INTERROGATION FAIT APRÈS CHAQUE RÉPONSE -------------------------
+//
+// Rémy : « il faut un mode où l'ordinateur montre la bonne réponse ou bien
+// juste passe à la question suivante », et « je pense que si c'est en mode
+// interrogation il faut une explication de la part du robot ».
+//
+// Ce sont trois régimes distincts, et le choix n'est pas cosmétique : il décide
+// de ce que l'interrogation MESURE.
+//
+//   'aucune'  — on enchaîne sans rien dire. C'est le devoir surveillé : l'élève
+//               ne peut pas se corriger en cours de route, la note mesure ce
+//               qu'il savait en entrant.
+//   'reponse' — la bonne réponse s'affiche, sans commentaire. On apprend un peu
+//               en composant, et surtout on ne repart pas avec une erreur en
+//               tête pendant une heure.
+//   'robot'   — la bonne réponse ET l'explication. C'est le devoir formatif :
+//               on note, mais on enseigne à chaque question.
+export const CORRECTIONS = { AUCUNE: 'aucune', REPONSE: 'reponse', ROBOT: 'robot' };
+
+// --- ET CE QU'ELLE FAIT DE LA NOTE À LA FIN -----------------------------------
+//
+// Rémy : « à la fin on a une option pour donner la note ou non ».
+//
+//   'affichee'    — l'élève voit sa note. Le cas ordinaire.
+//   'enregistree' — la note est calculée et gardée pour le professeur, mais
+//                   l'élève ne la voit pas. Utile quand on veut mesurer sans
+//                   décourager, ou rendre les copies en classe d'abord.
+//   'aucune'      — on ne note pas du tout : l'interrogation ne sert qu'au
+//                   bilan par compétence.
+export const NOTES = { AFFICHEE: 'affichee', ENREGISTREE: 'enregistree', AUCUNE: 'aucune' };
+
 export function defaultPolicy() {
     return {
         mode: MODES.ENTRAINEMENT,
@@ -68,18 +99,50 @@ export function evaluationPolicy(overrides = {}) {
         hints: false,
         showMe: false,
         maxAttemptsPerItem: 1,
-        showCorrection: false,
+        // CE QUI SE PASSE APRÈS CHAQUE RÉPONSE : voir CORRECTIONS ci-dessus.
+        // Par défaut on montre la bonne réponse — c'est le régime le plus
+        // fréquent en classe, et celui qui laisse le moins d'élèves repartir
+        // avec une erreur installée.
+        correction: CORRECTIONS.REPONSE,
+        // `showCorrection` reste la forme booléenne que lit `itemSession` :
+        // elle se déduit du réglage ci-dessus (voir `resolvePolicy`).
+        showCorrection: true,
         adaptive: false,
+        // ON NE REFAIT PAS UNE INTERROGATION. Rémy : « en mode interrogation,
+        // il ne faut pas proposer à la fin de refaire l'exercice ». Une
+        // évaluation qu'on recommence jusqu'à ce qu'elle tombe juste ne mesure
+        // plus rien — et l'élève qui voit le bouton comprend, à juste titre,
+        // que sa note ne comptait pas.
         allowRetryStep: false,
         grading: {
             scale: 20,              // note sur 20 ; null => compétences seules
             rule: 'firstTry',       // 'firstTry' | 'ratio' | 'ponderee'
             penalties: { hint: 0.25, retry: 0.5 },
             arrondi: 0.5,           // arrondi au demi-point
-            showCalculation: true   // montre à l'élève d'où sort sa note
+            showCalculation: true,  // montre à l'élève d'où sort sa note
+            // À qui la note est-elle montrée : voir NOTES ci-dessus.
+            note: NOTES.AFFICHEE
         },
         ...overrides
     };
+}
+
+/** L'interrogation explique-t-elle après chaque réponse ? */
+export const corrigeAvecRobot = (policy) =>
+    !!policy && policy.correction === CORRECTIONS.ROBOT;
+
+/** La note doit-elle être MONTRÉE à l'élève à la fin ? */
+export function noteVisible(policy) {
+    const p = resolvePolicy(policy);
+    if (!p.grading || !p.grading.scale) return false;
+    return (p.grading.note || NOTES.AFFICHEE) === NOTES.AFFICHEE;
+}
+
+/** La note doit-elle être CALCULÉE (pour le professeur, même si cachée) ? */
+export function noteCalculee(policy) {
+    const p = resolvePolicy(policy);
+    if (!p.grading || !p.grading.scale) return false;
+    return (p.grading.note || NOTES.AFFICHEE) !== NOTES.AUCUNE;
 }
 
 /** Complète une politique partielle (stockée dans un parcours) avec les défauts. */
@@ -90,6 +153,14 @@ export function resolvePolicy(policy) {
             : defaultPolicy();
     const merged = { ...base, ...policy };
     if (policy.grading) merged.grading = { ...(base.grading || {}), ...policy.grading };
+    // `correction` COMMANDE `showCorrection`, et non l'inverse : le réglage
+    // qu'on écrit dans un parcours est le mot ('aucune' / 'reponse' / 'robot'),
+    // le booléen n'est que la forme qu'attend `itemSession`. Les deux ne
+    // peuvent donc pas se contredire — un parcours enregistré avant ce réglage
+    // n'a pas de `correction` et garde son booléen tel quel.
+    if (merged.correction) {
+        merged.showCorrection = merged.correction !== CORRECTIONS.AUCUNE;
+    }
     return merged;
 }
 
