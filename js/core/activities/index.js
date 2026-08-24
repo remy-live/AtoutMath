@@ -45,6 +45,7 @@ import { pavageGenerator } from '../generators/pavage.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
 import { relierGenerator } from '../generators/relier.js';
+import { codageGenerator } from '../generators/codage.js';
 import { solidesGenerator } from '../generators/solides.js';
 import { repereFicheGenerator } from '../generators/repereFiche.js';
 import { slitherlinkGenerator } from '../generators/slitherlink.js';
@@ -91,6 +92,7 @@ import {
     graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
+    codageGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
@@ -341,6 +343,21 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./quadrillage.js')
+});
+
+// Coder une figure : réponse 'grid' elle aussi — l'élève pose toutes ses
+// marques, puis valide. On ne corrige pas marque par marque : un codage est un
+// tout, et deux marques justes posées pour une mauvaise raison ne font pas une
+// figure codée.
+registerActivity({
+    id: 'codage',
+    unite: 'figure',
+    parDefaut: 6,
+    label: 'Coder la figure',
+    accepts: ['grid'],
+    requiresMeta: ['type', 'segments'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./codage.js')
 });
 
 // Rapporteur interactif : genre de réponse 'angle' — l'élève mesure ou

@@ -495,6 +495,14 @@ const BASE = {
         descriptor: 'Identifier l\'hypoténuse, écrire l\'égalité de Pythagore et calculer une longueur dans un triangle rectangle.',
         lesson: 'Tout commence par l\'ANGLE DROIT : le côté d\'en face est l\'hypoténuse, toujours le plus long. Le théorème dit une seule chose : son carré vaut la somme des carrés des deux autres côtés. Pour CALCULER, deux cas et pas trois : on cherche l\'hypoténuse, on ADDITIONNE les deux carrés ; on cherche un côté de l\'angle droit, on SOUSTRAIT du carré de l\'hypoténuse. Et la dernière ligne est celle qu\'on oublie : le calcul donne un CARRÉ, il faut la racine carrée pour revenir à la longueur. Un résultat de 100 n\'est pas une longueur de 100 cm — c\'est 10 cm.'
     },
+    'geo.figures.coder': {
+        label: 'Coder un quadrilatère',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Écrire sur la figure, avec les marques d\'égalité et l\'angle droit, les propriétés d\'un carré, d\'un rectangle, d\'un losange ou d\'un parallélogramme.',
+        lesson: 'Coder, c\'est ÉCRIRE ce que la figure a de vrai, avec deux signes seulement. Les MARQUES D\'ÉGALITÉ — un trait, deux traits, trois traits — se posent sur les segments de même longueur : mêmes marques, mêmes longueurs, et des marques différentes annoncent des longueurs différentes. Le PETIT CARRÉ se pose là où l\'angle est droit, et nulle part ailleurs. Les quatre quadrilatères se distinguent alors d\'un coup d\'œil. Le CARRÉ a tout : quatre côtés égaux, quatre angles droits, des diagonales égales, perpendiculaires, qui se coupent en leur milieu. Le RECTANGLE garde les angles droits et les diagonales égales, mais ses côtés vont deux par deux. Le LOSANGE garde les quatre côtés égaux et les diagonales perpendiculaires, mais ses angles ne sont plus droits et ses diagonales n\'ont plus la même longueur. Le PARALLÉLOGRAMME ne garde que le minimum : côtés opposés égaux, diagonales qui se coupent en leur milieu. Dans les quatre, cette dernière propriété est là — c\'est la famille commune.'
+    },
     'geo.construire.instruments': {
         label: 'Construire aux instruments',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

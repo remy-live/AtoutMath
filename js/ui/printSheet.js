@@ -45,6 +45,23 @@ import {
     ligneEnTexte as ligneEnTextePythagore
 } from '../core/pythagore.js';
 import { boite as boiteTangram } from '../core/tangram.js';
+import {
+    construireFigure as construireFigureCodage,
+    classesDeLongueur as classesDeLongueurCodage,
+    anglesDroitsDe as anglesDroitsDeCodage,
+    NOM_TYPE as NOM_TYPE_CODAGE
+} from '../core/codage.js';
+import {
+    pointsProjetes as pointsProjetesCodage,
+    traitsDeMarque as traitsDeMarqueCodage,
+    pointsAngleDroit as pointsAngleDroitCodage
+} from '../core/codageSvg.js';
+
+/** « un losange » -> « Un losange » : le mot se pose sous la figure. */
+const nomTypeCodage = (type) => {
+    const n = NOM_TYPE_CODAGE[type] || '';
+    return n.charAt(0).toUpperCase() + n.slice(1);
+};
 
 // --- Mise en page (millimètres, A4 paysage) ---------------------------------
 
@@ -6481,6 +6498,130 @@ function dessinerPavagePdf(doc, item, slot, solution) {
     doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w), g.boite.x, g.yQuestion);
 }
 
+// --- CODER UNE FIGURE, SUR LE PAPIER ------------------------------------------
+//
+// L'exercice de codage est né pour l'ecran, mais c'est sur une feuille qu'il
+// se fait depuis toujours : on trace les marques au crayon, on les efface, on
+// recommence. Le meme noyau sert les deux — la figure est projetee dans la
+// boite du bloc au lieu de la zone du SVG, et les marques se dessinent avec
+// les memes fonctions de geometrie. Une figure imprimee est donc exactement
+// celle de l'ecran.
+
+const CODAGE_PIED = 5;   // la bande du bas, ou se nomme la figure
+
+function geoCodage(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const fig = construireFigureCodage(m.type, m.dims, m.rotation);
+    const cadre = { x: b.x, y: b.y, w: b.w, h: Math.max(10, b.h - CODAGE_PIED) };
+    const pad = Math.min(cadre.w, cadre.h) * 0.15;
+    const P = pointsProjetesCodage(fig, { ...cadre, pad });
+    const L = Math.max(1.2, Math.min(cadre.w, cadre.h) * 0.035);
+    return { b, fig, P, L, cadre, ids: m.segments, pts: m.points,
+        avecDiagonales: m.avecDiagonales !== false };
+}
+
+/** Ce qu'il y a a tracer : des traits, des points, des mots. */
+function tracesCodage(g, solution) {
+    const { P, fig, L, ids, pts } = g;
+    const traits = [];
+    const gras = [];
+    ['AB', 'BC', 'CD', 'DA'].forEach(id => gras.push([P[id[0]], P[id[1]]]));
+    if (g.avecDiagonales) {
+        traits.push([P.A, P.C]);
+        traits.push([P.B, P.D]);
+    }
+
+    const marques = [];
+    if (solution) {
+        classesDeLongueurCodage(fig, ids).forEach((classe, i) => {
+            classe.forEach(id => {
+                traitsDeMarqueCodage(P[id[0]], P[id[1]], i + 1, L).forEach(t => marques.push(t));
+            });
+        });
+        anglesDroitsDeCodage(fig, pts).forEach(nom => {
+            const [b1, b2] = BRAS_CODAGE[nom];
+            marques.push(pointsAngleDroitCodage(P[nom], P[b1], P[b2], L * 1.7));
+        });
+    }
+
+    const noms = ['A', 'B', 'C', 'D'].map(n => {
+        const dx = P[n].x - P.O.x, dy = P[n].y - P.O.y;
+        const d = Math.hypot(dx, dy) || 1;
+        return { t: n, x: P[n].x + (dx / d) * L * 2.4, y: P[n].y + (dy / d) * L * 2.4 };
+    });
+    if (g.avecDiagonales) noms.push({ t: 'O', x: P.O.x - L * 1.9, y: P.O.y + L * 2.2 });
+
+    return { traits, gras, marques, noms };
+}
+
+const BRAS_CODAGE = { A: ['B', 'D'], B: ['C', 'A'], C: ['D', 'B'], D: ['A', 'C'], O: ['A', 'B'] };
+
+function codagePreviewHtml(item, slot, k, solution) {
+    const g = geoCodage(item, slot);
+    const t = tracesCodage(g, solution);
+    const T = (v) => (v * k).toFixed(2);
+    const ligne = ([a, b], w, couleur) => `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b.x)}" `
+        + `y2="${T(b.y)}" stroke="${couleur}" stroke-width="${(w * k).toFixed(2)}" stroke-linecap="round"/>`;
+    let dedans = t.traits.map(seg => ligne(seg, 0.28, '#8a90a0')).join('');
+    dedans += t.gras.map(seg => ligne(seg, 0.5, '#1a202c')).join('');
+    dedans += t.marques.map(m => (m.length === 3
+        ? `<path d="M ${T(m[0].x)} ${T(m[0].y)} L ${T(m[1].x)} ${T(m[1].y)} L ${T(m[2].x)} ${T(m[2].y)}"
+             fill="none" stroke="#1a202c" stroke-width="${(0.42 * k).toFixed(2)}"/>`
+        : ligne(m, 0.55, '#1a202c'))).join('');
+    dedans += ['A', 'B', 'C', 'D'].map(n => `<circle cx="${T(g.P[n].x)}" cy="${T(g.P[n].y)}"
+        r="${(0.5 * k).toFixed(2)}" fill="#1a202c"/>`).join('');
+    if (g.avecDiagonales) {
+        dedans += `<circle cx="${T(g.P.O.x)}" cy="${T(g.P.O.y)}" r="${(0.5 * k).toFixed(2)}" fill="#1a202c"/>`;
+    }
+    dedans += t.noms.map(n => `<text x="${T(n.x)}" y="${T(n.y)}" fill="#1a202c"
+        font-size="${(3.1 * k).toFixed(2)}" font-weight="700" text-anchor="middle"
+        dominant-baseline="middle" font-family="Helvetica, Arial, sans-serif">${n.t}</text>`).join('');
+    dedans += `<text x="${T(g.b.x + g.b.w / 2)}" y="${T(g.b.y + g.b.h - 1.2)}" fill="#6e7684"
+        font-size="${(3 * k).toFixed(2)}" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif">${nomTypeCodage(item.meta.type)}</text>`;
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${dedans}</svg>`;
+}
+
+function dessinerCodagePdf(doc, item, slot, solution) {
+    const g = geoCodage(item, slot);
+    const t = tracesCodage(g, solution);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.28);
+    t.traits.forEach(([a, b]) => doc.line(a.x, a.y, b.x, b.y));
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    t.gras.forEach(([a, b]) => doc.line(a.x, a.y, b.x, b.y));
+
+    doc.setLineWidth(0.45);
+    t.marques.forEach(m => {
+        if (m.length === 3) {
+            doc.line(m[0].x, m[0].y, m[1].x, m[1].y);
+            doc.line(m[1].x, m[1].y, m[2].x, m[2].y);
+        } else {
+            doc.line(m[0].x, m[0].y, m[1].x, m[1].y);
+        }
+    });
+
+    doc.setFillColor(...ENCRE.trait);
+    ['A', 'B', 'C', 'D'].concat(g.avecDiagonales ? ['O'] : [])
+        .forEach(n => doc.circle(g.P[n].x, g.P[n].y, 0.5, 'F'));
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...ENCRE.texte);
+    t.noms.forEach(n => doc.text(n.t, n.x, n.y, { align: 'center', baseline: 'middle' }));
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf(nomTypeCodage(item.meta.type)),
+        g.b.x + g.b.w / 2, g.b.y + g.b.h - 1.2, { align: 'center' });
+}
+
 export const RENDUS = {
     // --- Les jeux à jouer sur papier ---
     puissance4: {
@@ -6495,6 +6636,20 @@ export const RENDUS = {
         parLigneDefaut: 1,
         // Rien à corriger : la feuille de solutions serait le même plateau vide.
         sansSolution: true
+    },
+
+    codage: {
+        titre: 'Coder les figures',
+        consigne: () => 'CODE CHAQUE FIGURE. Pose la MÊME marque — un trait, deux traits, trois '
+            + 'traits, une croix — sur les segments qui ont la même longueur, et le petit carré '
+            + 'de l\'angle droit là où l\'angle est droit. Les diagonales comptent pour deux '
+            + 'segments chacune, coupés au point O. Une marque affirme une égalité : deux '
+            + 'segments de longueurs différentes ne peuvent pas porter la même.',
+        previewGrille: codagePreviewHtml,
+        pdfGrille: dessinerCodagePdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
     },
 
     sim: {

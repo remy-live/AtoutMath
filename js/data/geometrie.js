@@ -452,6 +452,30 @@ export const geometrieExercises = [
         instruction: "Conduis la voiture jusqu'au lieu demandé en suivant la feuille de route : « prends la deuxième à gauche », « puis la première à droite ». Les trois boutons — et les flèches du clavier — sont ceux du CONDUCTEUR : quand la voiture descend, sa gauche est à droite de l'écran. Avant chaque virage, demande-toi dans quel sens elle roule. Et « la deuxième à gauche » compte les rues qui partent à gauche, pas les carrefours."
     },
     {
+        // CODER LA FIGURE. L'exercice que Rémy a décrit : un quadrilatère, ses
+        // diagonales, et des marques à poser dessus.
+        //
+        // Ce n'est pas un exercice de reconnaissance — la figure est NOMMÉE
+        // dans la consigne. C'est un exercice de PROPRIÉTÉS : savoir qu'un
+        // losange est nommé losange ne sert à rien tant qu'on ne sait pas ce
+        // que cela oblige. Le codage force à le dire, segment par segment, et
+        // il ne pardonne pas l'à-peu-près : une marque de plus affirme une
+        // égalité fausse, une marque de moins en oublie une vraie.
+        id: 'geo-coder-figure', title: 'Code la figure',
+        cree: '2026-08-24',
+        activityId: 'codage',
+        // La même figure à l'écran et sur la feuille : le codage se fait au
+        // crayon depuis toujours, et c'est l'exercice qu'on photocopie.
+        generatorId: 'geo.codage', printable: 'codage',
+        params: { familles: 'toutes', diagonales: true, penchee: 'parfois' },
+        skills: ['geo.figures.coder'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Code la figure : pose la MÊME marque sur les segments qui ont la même longueur, et le petit carré sur les angles droits. Glisse un symbole depuis la palette, ou touche directement un segment — la marque défile alors : un trait, deux traits, trois traits, la croix, rien. Les diagonales comptent pour deux segments chacune, coupés au point O. Commence par faire le tour des côtés, puis compare les deux diagonales entre elles, et finis par les angles. Attention : une marque n'est pas une décoration, elle AFFIRME une égalité — deux segments de longueurs différentes ne peuvent pas porter la même."
+    },
+    {
         // RELIER LES POINTS. Le jeu de liens, avec sa règle complète : les
         // chemins ne se croisent pas ET aucune case ne reste vide. C'est la
         // seconde moitié qui fait le raisonnement — relier deux points est

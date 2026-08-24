@@ -6325,3 +6325,102 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 /* Le curseur du champ est fin et discret : dans une case de grille, un gros
    trait clignotant se confond avec un « 1 ». */
 .kk-champ { caret-color: var(--primary); }
+
+/* --- CODER LA FIGURE -------------------------------------------------------
+   Un quadrilatère, ses diagonales, et des marques à poser dessus. Le dessin
+   occupe la place qu'il y a, comme le repère : les zones de dépôt se touchent
+   au doigt, et un doigt ne se réduit pas avec l'écran. */
+
+.cg-layout {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: safe center; gap: clamp(6px, 1.4cqh, 14px);
+    width: 100%; max-width: 620px; height: 100%; min-height: 0; margin: 0 auto;
+    padding: 8px;
+}
+.cg-layout > :not(.cg-figure) { flex-shrink: 0; }
+/* LA BOÎTE PREND LA PLACE, LE DESSIN SE CENTRE DEDANS.
+   Première version : la boîte portait l'`aspect-ratio` du dessin et sa largeur
+   se déduisait de sa hauteur. Mesuré : elle refusait de grandir — 235 px de
+   côté sur une tablette qui offrait 590 px de haut. Un rapport imposé sur
+   l'axe qui grandit rend la taille de base circulaire, et la boîte reste où
+   elle est.
+   Ici la boîte prend simplement toute la place, et c'est le SVG qui garde ses
+   proportions : il se centre dans ce qu'on lui donne. Le dessin fait donc
+   toujours le maximum possible, et les zones de dépôt suivent son échelle. */
+.cg-figure {
+    flex: 1 1 auto;
+    /* Le plancher, comme pour le repère : pendant la correction le plateau se
+       resserre, et une figure de cent pixels ne se lit plus — or c'est là
+       qu'on veut la relire. */
+    min-height: min(220px, 96cqw);
+    width: 100%; max-width: 560px; max-height: 460px;
+    display: flex; justify-content: center;
+}
+.cg-svg { width: 100%; height: 100%; overflow: visible; }
+.cg-cote { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+/* SIX JETONS SUR UNE SEULE LIGNE, même sur un téléphone : quatre marques,
+   l'angle droit, la gomme. À la taille commune ils passaient à la ligne, et la
+   gomme se retrouvait seule sous les autres — on la prenait pour autre chose. */
+.cg-palette { gap: clamp(4px, 1cqh, 8px); flex-wrap: nowrap; }
+.cg-chip { padding: 0; width: clamp(38px, 15cqw, 52px); height: clamp(38px, 15cqw, 52px); }
+.cg-jeton-svg { width: 72%; height: 72%; }
+/* Le bout de segment du jeton reste PÂLE : c'est la marque qu'on prend, pas le
+   trait. Au même poids, le premier jeton se lisait « + » au lieu de « un trait
+   sur un segment ». */
+.cg-jeton-trait { stroke: var(--text-muted); stroke-width: 1.4; fill: none; opacity: .45; }
+.cg-chip--angle .cg-jeton-svg { width: 66%; }
+
+/* La figure elle-même. Le contour domine : c'est lui, la figure ; les
+   diagonales sont des traits de construction, plus fins et plus discrets. */
+.cg-contour { fill: var(--tag-dom-bg); stroke: var(--primary); stroke-width: 2.6; }
+.cg-diagonale { stroke: var(--text-muted); stroke-width: 1.6; }
+.cg-sommet { fill: var(--text-main); }
+.cg-nom { fill: var(--text-main); font-size: 16px; font-weight: 800; }
+.cg-nom--centre { font-size: 14px; }
+
+/* Les marques posées par l'élève. Elles doivent se voir de loin — c'est la
+   réponse — sans épaissir la figure : couleur d'accent, trait rond. */
+.cg-marque { stroke: var(--primary); stroke-width: 3; stroke-linecap: round; }
+.cg-angle { fill: none; stroke: var(--primary); stroke-width: 2.4; stroke-linejoin: miter; }
+.cg-marque--jeton, .cg-angle--jeton { stroke: var(--text-main); }
+.cg-chip:hover .cg-marque--jeton, .cg-chip:hover .cg-angle--jeton { stroke: var(--primary); }
+
+.cg-juste { stroke: var(--success); }
+.cg-faux { stroke: var(--danger); }
+
+/* Les zones de dépôt : invisibles, larges, et au-dessus de tout. */
+.cg-cible {
+    fill: transparent; stroke: transparent; stroke-width: 24;
+    stroke-linecap: round; pointer-events: all; cursor: pointer;
+    transition: stroke .15s ease;
+}
+.cg-cible--pt { stroke-width: 0; }
+.cg-cible--visee, .cg-cible:hover { stroke: var(--primary); stroke-opacity: .16; }
+.cg-cible--pt.cg-cible--visee, .cg-cible--pt:hover { fill: var(--primary); fill-opacity: .14; }
+.cg-cible:focus-visible { stroke: var(--primary); stroke-opacity: .34; outline: none; }
+
+@keyframes cgSecousse {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+.cg-figure--secouee { animation: cgSecousse .3s ease; }
+
+/* COUCHÉ, LA PALETTE PASSE À CÔTÉ DE LA FIGURE — même raison que pour le
+   repère : en paysage c'est la hauteur qui manque, jamais la largeur. */
+@container plateau (max-height: 460px) and (min-width: 620px) {
+    .cg-layout {
+        display: grid; max-width: none;
+        grid-template-columns: minmax(0, auto) minmax(200px, 300px);
+        grid-template-rows: min-content minmax(0, 1fr);
+        align-items: center; justify-items: center; gap: 6px 14px;
+    }
+    .cg-layout > .cg-contexte { grid-column: 1; grid-row: 1; }
+    .cg-layout > .cg-figure {
+        grid-column: 1; grid-row: 2; margin: 0;
+        align-self: stretch; height: 100%; max-height: none;
+    }
+    .cg-layout > .cg-cote { grid-column: 2; grid-row: 1 / 3; }
+}
+/* L'indice ENTOURE le paquet de segments dont il parle. */
+.cg-cible--indice { stroke: var(--accent); stroke-opacity: .32; }

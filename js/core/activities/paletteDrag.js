@@ -18,8 +18,12 @@ const SEUIL = 8; // px en deçà desquels le geste reste un appui
  *        le pointeur, ou null (c'est ici qu'on refuse les cases verrouillées)
  * @param {(cible:HTMLElement, chip:HTMLElement)=>void} h.deposer
  * @param {()=>boolean} [h.bloque] - vrai quand la saisie est gelée (correction affichée)
+ * @param {string} [h.classeVisee] - la classe qui marque la cible survolée ; une
+ *        grille et une figure ne se surlignent pas de la même façon.
  */
-export function brancherGlisserPalette(conteneur, { cibleSous, deposer, bloque }) {
+export function brancherGlisserPalette(conteneur, {
+    cibleSous, deposer, bloque, classeVisee = 'kk-cell--visee'
+}) {
     conteneur.querySelectorAll('.kk-chip').forEach(chip => {
         chip.addEventListener('pointerdown', (event) => {
             if (event.button !== undefined && event.button !== 0) return;
@@ -29,8 +33,8 @@ export function brancherGlisserPalette(conteneur, { cibleSous, deposer, bloque }
             chip.setPointerCapture(event.pointerId);
 
             const marquerVisee = (cible) => {
-                conteneur.querySelectorAll('.kk-cell--visee').forEach(x => x.classList.remove('kk-cell--visee'));
-                if (cible) cible.classList.add('kk-cell--visee');
+                conteneur.querySelectorAll(`.${classeVisee}`).forEach(x => x.classList.remove(classeVisee));
+                if (cible) cible.classList.add(classeVisee);
             };
 
             const onMove = (e) => {
