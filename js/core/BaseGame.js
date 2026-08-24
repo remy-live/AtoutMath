@@ -199,6 +199,71 @@ export class BaseGame {
         }
     }
 
+    /**
+     * LA PARTIE EST FINIE — et le parcours doit l'apprendre.
+     *
+     * Rémy : « j'ai fait un jeu que j'ai bien réussi mais mon niveau sur le
+     * parcours n'a pas été validé […] et pourquoi le menu n'est pas apparu. »
+     *
+     * Voici pourquoi. Le moteur de parcours ne sait qu'une chose : compter les
+     * réponses. Un jeu de tables lui en envoie dix, il clôt l'étape. Mais un
+     * jeu d'ÉCHECS n'envoie pas de réponses : il envoie une PARTIE, et celle-ci
+     * ne se termine qu'une fois — au mat. Les six jeux comptés en parties
+     * (échecs, dames, othello, puissance 4, Sim, pipopipette) annonçaient donc
+     * « 🏆 Gagné ! » dans leur coin sans que personne d'autre ne l'apprenne :
+     * l'étape restait ouverte pour toujours, le monde suivant restait éteint,
+     * et l'élève qui avait gagné se retrouvait devant un plateau mort.
+     *
+     * Un jeu à fin franche appelle donc ceci, une fois, quand c'est joué. La
+     * tentative est enregistrée — donc le carnet, les statistiques et la note
+     * la voient — puis le parcours est prévenu qu'il peut clore l'étape.
+     *
+     * @param {Object} r
+     * @param {boolean} r.gagne      - l'élève l'a-t-il emporté ?
+     * @param {string}  [r.quoi]     - ce qui était demandé (« Gagner une partie d'othello »)
+     * @param {string}  [r.obtenu]   - ce qui s'est passé (« victoire 34-30 »)
+     * @param {string}  [r.concept]  - la compétence travaillée
+     * @param {number}  [r.points]
+     * @param {string}  [r.conseil]  - ce qu'on dira à l'élève qui a perdu
+     */
+    terminerPartie(r = {}) {
+        if (this.isDemo) return;
+        // UNE SEULE FOIS. Une partie d'othello se termine par un coup qui peut
+        // être joué depuis deux endroits (le clic, la riposte de l'ordinateur) :
+        // sans ce garde-fou, l'étape se validerait deux fois et le compteur de
+        // questions afficherait « 2 / 1 ».
+        if (this._partieClose) return;
+        this._partieClose = true;
+
+        const quoi = r.quoi || 'Gagner la partie';
+        if (r.gagne) {
+            this.onCorrectAnswer(null, r.concept || null, {
+                questionText: quoi,
+                expected: 'gagné', given: r.obtenu || 'gagné',
+                points: r.points || 25
+            });
+        } else {
+            this.onWrongAnswer(null, {
+                concept: r.concept || null,
+                questionText: quoi,
+                input: r.obtenu || 'perdu', expected: 'gagné',
+                customMessage: r.conseil || '',
+                // Le jeu vient d'annoncer le résultat sur son propre plateau ;
+                // une carte de correction par-dessus dirait la même chose en
+                // moins bien.
+                silencieux: true
+            });
+        }
+
+        // Le parcours peut clore l'étape. Le délai laisse lire l'annonce du
+        // jeu — « 🏆 Gagné ! » suivi d'un écran de bilan dans la même seconde
+        // ne se lit pas, il clignote.
+        const runner = state.activeSequenceRunner;
+        if (runner && typeof runner.partieTerminee === 'function') {
+            runner.partieTerminee({ gagne: !!r.gagne });
+        }
+    }
+
     // --- Utilitaires de tirage (jeux non encore portés sur les générateurs) ---
 
     getRandomTable() {

@@ -923,6 +923,32 @@
     padding: 6px 16px; border-radius: 999px; font-weight: 700;
 }
 
+/* LE FIL DE LA SÉANCE, sur l'écran de fin d'étape.
+   Rémy : « il faut je pense voir qu'on évolue dans la séance ». Une file de
+   pastilles répond en un coup d'œil à « combien en reste-t-il », et la légende
+   à « qu'est-ce qui vient ensuite » — les deux seules questions qu'on se pose
+   à ce moment-là. Il ne paraît qu'à partir de deux étapes : sur une séance
+   d'un seul exercice, il n'y a pas de chemin à montrer. */
+.run-fil {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    margin: 2px 0 4px; max-width: 460px;
+}
+.run-fil-pastilles { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: center; }
+.run-fil-pas {
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--border); flex: 0 0 auto;
+    transition: transform .2s ease;
+}
+.run-fil-pas--faite { background: var(--success); }
+/* Celle qui vient : plus grande et cerclée — c'est là que l'œil doit tomber. */
+.run-fil-pas--suivante {
+    background: var(--primary); transform: scale(1.35);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 26%, transparent);
+}
+.run-fil-legende { font-size: .92rem; color: var(--text-muted); line-height: 1.45; }
+.run-fil-legende b { color: var(--text-main); }
+@media (prefers-reduced-motion: reduce) { .run-fil-pas { transition: none; } }
+
 /* Navigation d'étapes du test professeur.
    L'en-tête gagne trois éléments : sans réglage, le titre se réduisait à une
    lettre. On fait céder la barre de progression avant lui, et dans le cadre

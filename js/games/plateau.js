@@ -735,14 +735,36 @@ class Plateau extends BaseGame {
     annoncerFin() {
         const t = this.finie;
         const detail = this.ad.verdict(t) || '';
-        if (t.gagnant === null) {
+        // À DEUX, LA PARTIE EST TOUJOURS GAGNÉE PAR QUELQU'UN. L'étape porte
+        // sur le fait d'aller au bout d'une partie, pas sur l'identité du
+        // vainqueur : deux élèves qui jouent l'un contre l'autre ont tous les
+        // deux travaillé. Contre l'ordinateur, en revanche, gagner veut dire
+        // quelque chose, et une partie nulle aussi.
+        const nul = t.gagnant === null;
+        const gagne = this.mode === 'ia' ? (t.gagnant === this.humain) : true;
+
+        if (nul) {
             this.note(`🤝 Partie nulle. ${detail}`, 'ok');
         } else if (this.mode === 'ia') {
-            const gagne = t.gagnant === this.humain;
             this.note(gagne ? `🏆 Gagné ! ${detail}` : `L'ordinateur l'emporte. ${detail}`, gagne ? 'ok' : 'ko');
         } else {
             this.note(`🏆 Les ${this.ad.noms[t.gagnant]} l'emportent. ${detail}`, 'ok');
         }
+
+        // LE PARCOURS APPREND QUE C'EST FINI. Sans cet appel, l'étape restait
+        // ouverte devant un plateau où plus aucun coup n'est jouable : le
+        // moteur attendait une deuxième partie qui ne pouvait pas commencer.
+        this.terminerPartie({
+            gagne: nul ? false : gagne,
+            quoi: `Mener une partie (${this.ad.id}) jusqu'au bout`,
+            obtenu: nul ? 'partie nulle' : (gagne ? `victoire — ${detail}` : `défaite — ${detail}`),
+            // Ces jeux sont `horsProgression` : ils n'alimentent aucune
+            // compétence du modèle de maîtrise, et prétendre le contraire
+            // fausserait le bilan par notion.
+            concept: null,
+            points: gagne ? 30 : 10,
+            conseil: nul ? '' : 'Regarde les coups de l\'ordinateur : il prend les cases d\'où il menace deux choses à la fois.'
+        });
     }
 
     note(html, ton) {

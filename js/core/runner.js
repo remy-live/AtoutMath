@@ -23,7 +23,7 @@ import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
 import { uuid } from './ids.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
-import { reglerCalculatrice } from '../ui/calculatrice.js';
+import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
 
 export class Runner {
     /**
@@ -503,10 +503,31 @@ export class Runner {
             // l'écran, figée, jusqu'à la conclusion.
             if (this.session) this.session.termine = true;
             regTimeout(() => this.endStep(), 1500);
-        } else if (resolved && this.timerScope === 'question') {
-            // Nouvelle question : le compte à rebours repart.
-            this.runTimerCycle(this.currentTimeLimit);
+        } else if (resolved) {
+            // UNE QUESTION DE PLUS COMMENCE. Si la calculatrice est ouverte,
+            // elle bat une fois pour se rappeler à l'œil et oublie le calcul
+            // de la question précédente — l'afficher sous une question neuve
+            // est un piège, pas un service.
+            signalerNouvelleQuestion();
+            // Le compte à rebours par question repart avec elle.
+            if (this.timerScope === 'question') this.runTimerCycle(this.currentTimeLimit);
         }
+    }
+
+    /**
+     * UNE PARTIE VIENT DE SE TERMINER — l'étape aussi.
+     *
+     * Appelé par `BaseGame.terminerPartie`. Le compteur de questions ne
+     * décide plus : un jeu de plateau ne produit pas dix réponses, il produit
+     * une partie, et quand elle est jouée il n'y a plus rien à faire à
+     * l'écran. Attendre un compte qui n'arrivera jamais, c'était laisser
+     * l'élève devant un plateau mort avec son étape non validée.
+     *
+     * Le délai laisse lire l'annonce du jeu avant que le bilan la recouvre.
+     */
+    partieTerminee({ gagne } = {}) {
+        if (!this.step) return;
+        regTimeout(() => { if (this.step) this.endStep(); }, 1800);
     }
 
     /**
@@ -615,6 +636,41 @@ export class Runner {
         }
     }
 
+    /**
+     * OÙ EN EST-ON DE LA SÉANCE — la question que l'élève se pose vraiment.
+     *
+     * Rémy : « il faut je pense voir qu'on évolue dans la séance ». L'écran de
+     * fin d'étape disait « 3 bonnes réponses sur 3 » et rien d'autre : le seul
+     * indice du reste du chemin était un « (1/2) » dans le titre, en petit,
+     * en haut à gauche. On validait sans savoir ce qu'on validait.
+     *
+     * Le fil montre donc les étapes comme une file de pastilles — faites,
+     * celle qu'on vient de finir, celles qui restent — avec le nom de la
+     * prochaine. C'est court à lire et cela répond aux deux questions :
+     * combien en reste-t-il, et qu'est-ce qui vient ?
+     */
+    filDesEtapes() {
+        // Les jeux de récompense ne sont pas des étapes de travail : les
+        // compter donnerait un chemin plus long qu'il n'est.
+        const travail = this.steps.filter(s => !s.bonus);
+        if (travail.length < 2) return '';
+        const faitJusqua = this.steps.slice(0, this.index).filter(s => !s.bonus).length;
+        const pastilles = travail.map((s, i) => {
+            const etat = i < faitJusqua ? 'faite' : (i === faitJusqua ? 'suivante' : 'avenir');
+            return `<span class="run-fil-pas run-fil-pas--${etat}"
+                title="${escapeHtml(s.title)}" aria-hidden="true"></span>`;
+        }).join('');
+        const suivante = travail[faitJusqua];
+        const reste = travail.length - faitJusqua;
+        const legende = suivante
+            ? `Prochaine étape : <b>${escapeHtml(suivante.title)}</b> — ${reste} sur ${travail.length} à faire`
+            : `Séance terminée : ${travail.length} étape${travail.length > 1 ? 's' : ''} sur ${travail.length}`;
+        return `<div class="run-fil" role="group" aria-label="Progression de la séance">
+                <div class="run-fil-pastilles">${pastilles}</div>
+                <div class="run-fil-legende">${legende}</div>
+            </div>`;
+    }
+
     showStepResult(passed, solved, required) {
         const last = this.index >= this.steps.length;
         const icon = passed ? '🎉' : '💪';
@@ -630,6 +686,7 @@ export class Runner {
                 <div class="run-screen-icon" aria-hidden="true">${icon}</div>
                 <h2 class="run-screen-title ${passed ? 'run-screen-title--ok' : 'run-screen-title--ko'}">${title}</h2>
                 <p class="run-screen-text">${detail}</p>
+                ${passed ? this.filDesEtapes() : ''}
                 <button id="btn-run-next" class="btn-toggle active run-screen-btn">${btnLabel}</button>
             </div>`;
 
@@ -817,7 +874,25 @@ export class Runner {
         }));
     }
 
+    /**
+     * L'élève ferme l'exercice — mais CE QUI EST FAIT EST FAIT.
+     *
+     * Fermer effaçait tout : un élève qui avait atteint le seuil et quittait
+     * (parce que le jeu tournait en boucle, parce que la cloche a sonné)
+     * retrouvait son étape vierge. Le travail était pourtant dans le journal,
+     * et le seuil pourtant franchi — il n'y avait que la validation qui
+     * manquait, faute d'être passé par `endStep`.
+     *
+     * On valide donc avant de partir, à la seule condition qui compte : le
+     * seuil est atteint. Rien n'est offert, seulement rien n'est perdu.
+     */
     abort() {
+        if (this.step && this.isStudentPath) {
+            const requis = Math.min(this.step.threshold, this.step.nbItems);
+            if (this.itemsSolved.size >= requis) {
+                state.markStudentPathStepCompleted(this.step.stepId, { runId: this.runId });
+            }
+        }
         this.finish(true);
     }
 

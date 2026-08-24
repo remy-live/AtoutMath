@@ -330,3 +330,24 @@ export function reglerCalculatrice(exo) {
     if (!permise) fermerCalculatrice();
     else majBoutons();
 }
+
+/**
+ * NOUVELLE QUESTION : LA CALCULATRICE SE RAPPELLE À L'ŒIL.
+ *
+ * Rémy : « il ne faut pas que la calculatrice soit toujours là. Par contre si
+ * elle est là, elle peut clignoter un peu à chaque début de question pour bien
+ * la voir. »
+ *
+ * Une fenêtre posée dans un coin depuis dix minutes cesse d'être vue — c'est
+ * du décor. Un battement d'une demi-seconde au moment où la question change
+ * suffit à la refaire exister, sans rien interrompre. Et l'on efface ce qui
+ * était tapé : le calcul de la question PRÉCÉDENTE affiché sous une nouvelle
+ * question est un piège, pas un service.
+ */
+export function signalerNouvelleQuestion() {
+    if (!fenetre) return;
+    if (etat && etat.saisie) { etat = nouvelEtat(); afficher(); }
+    fenetre.classList.remove('cx--appel');
+    void fenetre.offsetWidth;   // sinon l'animation ne rejoue pas
+    fenetre.classList.add('cx--appel');
+}

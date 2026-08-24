@@ -300,6 +300,22 @@ class JeuADeux extends BaseGame {
         this.fini = true;
         this.dessiner();
         this.note(this.direLaFin(fin), fin.gagnant === 'B' || !this.contreMachine ? 'ok' : 'ko');
+
+        // LE PARCOURS APPREND QUE LA PARTIE EST JOUÉE. Ces trois jeux comptent
+        // pour « 1 partie » : sans ce signal, l'étape restait ouverte devant
+        // une grille pleine, et le niveau n'était jamais validé.
+        //
+        // À deux, personne ne perd son étape : les deux élèves ont joué la
+        // partie, c'est elle qui était demandée. Contre l'ordinateur, gagner
+        // veut dire quelque chose.
+        this.terminerPartie({
+            gagne: this.contreMachine ? (fin.gagnant !== null && fin.gagnant !== this.machine) : true,
+            quoi: `Mener une partie (${this.quel}) jusqu'au bout`,
+            obtenu: fin.gagnant === null ? 'égalité' : `${NOMS[fin.gagnant]} gagne — ${fin.raison}`,
+            concept: null,
+            points: 25,
+            conseil: ''
+        });
         return true;
     }
 
