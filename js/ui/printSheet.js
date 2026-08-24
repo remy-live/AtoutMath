@@ -6191,9 +6191,16 @@ function egyptePreviewHtml(item, slot, k, solution) {
     // L'énoncé du sens « écrire » : le nombre, puis le signe d'égalité, à
     // hauteur des glyphes qu'il faudra tracer à côté.
     if (g.ecrire) {
-        html += `<div style="position:absolute; left:${g.b.x * k}px; top:${g.b.y * k}px;
-            width:${g.largeurTexte * k}px; height:${(g.yReponse - g.b.y) * k}px;
-            display:flex; align-items:center; justify-content:flex-end;
+        // LE NOMBRE S'ASSOIT SUR LA LIGNE, comme au cahier : « 1 400 = » puis
+        // les pointillés, d'un seul tenant. Centré dans toute la hauteur du
+        // bloc, il flottait un centimètre au-dessus de la ligne qu'il annonce,
+        // et l'on ne lisait plus une phrase mais deux étages. Le rembourrage
+        // du bas vaut la descente de la police : c'est ce qui pose la ligne
+        // de base du texte exactement sur le trait.
+        html += `<div style="position:absolute; left:${g.b.x * k}px;
+            top:${(g.yReponse - 8) * k}px; width:${g.largeurTexte * k}px; height:${8 * k}px;
+            display:flex; align-items:flex-end; justify-content:flex-end;
+            padding-bottom:${0.97 * k}px; box-sizing:border-box;
             font-weight:800; color:#1a202c; font-size:${4.6 * k}px;
             white-space:nowrap">${echapperSheet(g.texte)}</div>`;
     }
@@ -6246,8 +6253,8 @@ function dessinerEgyptePdf(doc, item, slot, solution) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.setTextColor(...ENCRE.trait);
-        doc.text(pourPdf(g.texte), g.b.x + g.largeurTexte - 1,
-            g.b.y + (g.yReponse - g.b.y) / 2 + 1.6, { align: 'right' });
+        // La même ligne de base qu'à l'aperçu : le trait.
+        doc.text(pourPdf(g.texte), g.b.x + g.largeurTexte - 1, g.yReponse, { align: 'right' });
     }
 
     const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
