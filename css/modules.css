@@ -487,6 +487,71 @@
 .figure-wrap:has(.egy-svg) { width: min(600px, 97%); }
 .fig-svg, .rep-svg { width: 100%; height: auto; max-height: 46cqh; overflow: visible; }
 
+/* LE REPÈRE OÙ L'ON CLIQUE PREND TOUTE LA PLACE DISPONIBLE.
+   Rémy : « pour placer les points le repère pourrait être plus grand sur
+   iPhone. » Il mesurait 308 x 248 sur un écran de 375, en laissant 107 px de
+   vide sous lui — et comme le dessin est carré, la hauteur bridée rognait
+   AUSSI la largeur : le quadrillage utile ne faisait que 248 px de côté, et
+   chaque noeud à toucher 28 px, sous le seuil du doigt. En paysage c'était
+   pire : 122 px de côté, des cibles de 14 px.
+   La boîte devient donc un carré élastique — elle prend la hauteur qui reste
+   après l'énoncé et la barre d'indice, et sa largeur suit. Un plafond de
+   520 px évite qu'elle devienne un mur sur grand écran. */
+.figure-wrap--interactive:has(.rep-svg) {
+    flex: 1 1 auto;
+    /* UN PLANCHER, À CAUSE DE LA CORRECTION. Quand la carte « ce n'est pas
+       ça » s'affiche, le plateau réserve sa hauteur et tout ce qu'il contient
+       se resserre : le repère tombait à 131 px de côté — 6 px en paysage,
+       autant dire rien. Or c'est exactement le moment où l'on veut REGARDER
+       le repère : la croix qu'on a posée et celle qu'il fallait poser. */
+    min-height: min(230px, 100cqw);
+    aspect-ratio: 1; width: auto;
+    max-width: min(100%, 520px);
+    /* La boîte ne monte pas plus haut qu'elle n'est large : le dessin est
+       carré, et une boîte plus haute que large ne ferait que centrer le même
+       carré dans du vide. `100cqw` est déjà la largeur INTÉRIEURE du plateau,
+       marges déduites. */
+    max-height: min(520px, 100cqw);
+    margin: 4px auto 10px;
+}
+.figure-wrap--interactive:has(.rep-svg) .rep-svg { width: 100%; height: 100%; max-height: none; }
+
+/* COUCHÉ, LE REPÈRE PASSE À CÔTÉ DE L'ÉNONCÉ.
+   En paysage sur téléphone il ne reste que 265 px de haut une fois l'énoncé et
+   la barre d'indice empilés : le carré tombait à 156 px de côté, avec des
+   cibles de 18 px. La largeur, elle, ne manque pas. L'énoncé et l'indice
+   prennent donc la colonne de gauche, et le repère toute la hauteur à droite.
+   Même schéma qu'Angle Master : deux lignes dont la seconde est BORNÉE en
+   `minmax(0, 1fr)`, sinon la ligne se dimensionne sur son contenu et la figure
+   — qui couvre les deux — s'étire hors de l'écran.
+   Les cartes de correction sont en position absolue : elles ne prennent pas de
+   case dans la grille. */
+.rep-layout {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: safe center; gap: 4px;
+    width: 100%; height: 100%; min-height: 0;
+}
+.rep-layout > :not(.figure-wrap) { flex-shrink: 0; }
+
+@container plateau (max-height: 460px) and (min-width: 620px) {
+    .rep-layout {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) auto;
+        grid-template-rows: min-content minmax(0, 1fr);
+        align-items: center; justify-items: center;
+        gap: 6px 16px;
+    }
+    .rep-layout > .game-question { grid-column: 1; grid-row: 1; align-self: end; margin-bottom: 0; }
+    .rep-layout > .hint-bar { grid-column: 1; grid-row: 2; align-self: start; margin-top: 6px; }
+    /* `align-self: stretch` donne à la figure toute la hauteur des deux lignes,
+       et l'`aspect-ratio` en déduit sa largeur : sans cela elle se contentait
+       de sa taille naturelle et laissait un tiers de la colonne vide. */
+    .rep-layout > .figure-wrap--interactive {
+        grid-column: 2; grid-row: 1 / 3; margin: 0;
+        align-self: stretch; height: 100%; max-height: none;
+    }
+}
+
 .fig-shape { fill: var(--tag-dom-bg); stroke: var(--primary); stroke-width: 2.5; }
 .fig-dim { stroke: var(--text-muted); stroke-width: 1.8; }
 /* Ligne d'attache : plus fine que la cote, elle ne doit pas la concurrencer. */

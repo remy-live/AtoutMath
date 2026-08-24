@@ -25,12 +25,18 @@ export function mount(container, session) {
 
     function render(item) {
         const { max, relatifs } = item.meta;
+        // Une boîte de mise en page autour des trois morceaux : le plateau est
+        // le CONTENEUR des requêtes de taille, et un élément ne peut pas
+        // interroger son propre conteneur. Sans elle, la règle qui met le
+        // repère à côté de l'énoncé en paysage ne s'appliquerait jamais.
         container.innerHTML = `
-            ${item.prompt.html}
-            <div class="figure-wrap figure-wrap--interactive">
-                ${repereSvg({ max, relatifs, interactive: true })}
-            </div>
-            ${hintBar(session)}`;
+            <div class="rep-layout">
+                ${item.prompt.html}
+                <div class="figure-wrap figure-wrap--interactive">
+                    ${repereSvg({ max, relatifs, interactive: true })}
+                </div>
+                ${hintBar(session)}
+            </div>`;
 
         const svg = container.querySelector('svg');
         const target = svg.querySelector(`.rep-hit[data-c="${item.answer}"]`);
