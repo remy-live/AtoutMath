@@ -14,6 +14,7 @@ import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { unitesDe } from '../generators/sudoku.js';
+import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = 0;   // au sudoku, 0 n'est jamais une valeur
@@ -48,10 +49,19 @@ export function mount(container, session, opts = {}) {
             const r = Math.floor(i / n), c = i % n;
             const bords = `${(c + 1) % bc === 0 && c < n - 1 ? ' su-br' : ''}${(r + 1) % br === 0 && r < n - 1 ? ' su-bb' : ''}`;
             const donnee = verrous[i];
+            // LA CASE EST UN CHAMP quand la saisie clavier est offerte. Elle
+            // garde alors son `tabindex` à -1 : c'est le champ qui reçoit le
+            // foyer, pas la case autour — sinon Tab s'arrêterait deux fois par
+            // case, une fois sur la boîte et une fois sur ce qu'on écrit.
+            const champ = saisieActive(session.params);
             return `<div class="kk-cell su-cell${bords} ${donnee ? 'kk-given' : ''}" role="button"
-                 tabindex="${donnee ? -1 : 0}" data-i="${i}"
+                 tabindex="${(donnee || champ) ? -1 : 0}" data-i="${i}"
                  aria-label="Ligne ${r + 1}, colonne ${c + 1}">
-                <span class="kk-val">${donnee ? v : ''}</span>
+                ${contenuCase({
+        valeur: donnee ? v : '', donnee, champ,
+        aria: `Ligne ${r + 1}, colonne ${c + 1}`,
+        motif: `[1-${n}]`
+    })}
             </div>`;
         });
 
@@ -97,19 +107,43 @@ export function mount(container, session, opts = {}) {
     function poser(i, valeur) {
         if (verrous[i] || session.locked) return;
         valeurs[i] = valeur;
-        celluleEl(i).querySelector('.kk-val').textContent = valeur === VIDE ? '' : valeur;
+        // Le champ et le simple texte s'écrivent différemment : l'un porte une
+        // valeur, l'autre du contenu.
+        const boite = celluleEl(i).querySelector('.kk-val');
+        const texte = valeur === VIDE ? '' : String(valeur);
+        if (boite.tagName === 'INPUT') { if (boite.value !== texte) boite.value = texte; }
+        else boite.textContent = texte;
         container.querySelectorAll('.kk-cage--faux, .kk-cage--indice')
             .forEach(e => e.classList.remove('kk-cage--faux', 'kk-cage--indice'));
         statut('');
     }
 
     function brancherCases() {
+        // LES CHAMPS D'ABORD : l'ordre de tabulation est celui du DOM, donc
+        // ligne après ligne et de gauche à droite dans chaque ligne — l'ordre
+        // de lecture de la grille, celui que Rémy demande.
+        brancherChamps(container, {
+            bloque: () => session.locked,
+            cleDe: (champ) => champ.closest('.su-cell').dataset.i,
+            poser: (cle, brut) => {
+                const i = Number(cle);
+                const v = brut === '' ? VIDE : Number(brut);
+                if (v !== VIDE && (v < 1 || v > N())) return;
+                poser(i, v);
+            }
+        });
         container.querySelectorAll('.su-cell').forEach(el => {
             const i = Number(el.dataset.i);
             if (verrous[i]) return;
             const cycle = () => poser(i, valeurs[i] >= N() ? VIDE : valeurs[i] + 1);
-            el.onclick = cycle;
-            el.onkeydown = (e) => {
+            // Avec un champ, cliquer sert à ÉCRIRE dedans : faire tourner la
+            // valeur par-dessus rendrait la case incontrôlable.
+            el.onclick = el.querySelector('.kk-champ') ? null : cycle;
+            // QUAND LA CASE PORTE UN CHAMP, ELLE NE TRAITE PLUS LA FRAPPE.
+            // Les deux écoutaient : la case posait la valeur sur `keydown`, le
+            // champ la reposait sur `input` — et ce double passage empêchait
+            // l'avance automatique de tenir. Un seul chemin, celui du champ.
+            el.onkeydown = el.querySelector('.kk-champ') ? null : (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycle(); }
                 else if (/^[0-9]$/.test(e.key)) {
                     const v = Number(e.key);

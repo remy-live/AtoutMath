@@ -13,6 +13,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
@@ -39,14 +40,23 @@ export function mount(container, session, opts = {}) {
         verrous = givens.map(ligne => ligne.map(v => v !== null));
 
         const cellsHtml = [];
+        const avecChamp = saisieActive(session.params);
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
                 const donnee = verrous[r][c];
+                // L'ORDRE DES CHAMPS EST CELUI DE LA LECTURE — la boucle
+                // parcourt les lignes puis les colonnes, donc le DOM aussi,
+                // donc la touche Tab aussi. C'est ce que Rémy demande : « pour
+                // le binairo, l'ordre des champs est important, de haut en bas,
+                // de gauche à droite ».
                 cellsHtml.push(`
                     <div class="kk-cell bn-cell ${donnee ? 'kk-given' : ''}" role="button"
-                         tabindex="${donnee ? -1 : 0}" data-r="${r}" data-c="${c}"
+                         tabindex="${(donnee || avecChamp) ? -1 : 0}" data-r="${r}" data-c="${c}"
                          aria-label="Case ligne ${r + 1}, colonne ${c + 1}">
-                        <span class="kk-val">${donnee ? grille[r][c] : ''}</span>
+                        ${contenuCase({
+        valeur: donnee ? grille[r][c] : '', donnee, champ: avecChamp,
+        aria: `Ligne ${r + 1}, colonne ${c + 1}`, motif: '[01]'
+    })}
                     </div>`);
             }
         }
@@ -92,13 +102,27 @@ export function mount(container, session, opts = {}) {
     function poser(r, c, valeur) {
         if (verrous[r][c] || session.locked) return;
         grille[r][c] = valeur;
-        celluleEl(r, c).querySelector('.kk-val').textContent = valeur === VIDE ? '' : valeur;
+        const boite = celluleEl(r, c).querySelector('.kk-val');
+        const texte = valeur === VIDE ? '' : String(valeur);
+        if (boite.tagName === 'INPUT') { if (boite.value !== texte) boite.value = texte; }
+        else boite.textContent = texte;
         container.querySelectorAll('.kk-cell--conflit, .kk-cage--faux, .kk-cage--indice')
             .forEach(e => e.classList.remove('kk-cell--conflit', 'kk-cage--faux', 'kk-cage--indice'));
         statut('');
     }
 
     function brancherCases() {
+        brancherChamps(container, {
+            bloque: () => session.locked,
+            cleDe: (champ) => {
+                const cell = champ.closest('.kk-cell');
+                return `${cell.dataset.r},${cell.dataset.c}`;
+            },
+            poser: (cle, brut) => {
+                const [r, c] = cle.split(',').map(Number);
+                poser(r, c, brut === '' ? VIDE : Number(brut));
+            }
+        });
         container.querySelectorAll('.kk-cell').forEach(el => {
             const r = Number(el.dataset.r), c = Number(el.dataset.c);
             if (verrous[r][c]) return;
@@ -106,8 +130,12 @@ export function mount(container, session, opts = {}) {
                 const v = grille[r][c];
                 poser(r, c, v === VIDE ? 0 : (v === 0 ? 1 : VIDE));
             };
-            el.onclick = cycle;
-            el.onkeydown = (e) => {
+            // Avec un champ, cliquer sert à écrire dedans, et c'est le champ
+            // seul qui traite la frappe : deux écouteurs sur la même touche
+            // reposaient la valeur deux fois.
+            const aChamp = !!el.querySelector('.kk-champ');
+            el.onclick = aChamp ? null : cycle;
+            el.onkeydown = aChamp ? null : (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycle(); }
                 else if (e.key === '0' || e.key === '1') poser(r, c, Number(e.key));
                 else if (e.key === 'Backspace' || e.key === 'Delete') poser(r, c, VIDE);

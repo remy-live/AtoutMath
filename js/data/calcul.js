@@ -1,4 +1,5 @@
 import { TAGS } from './tags.js';
+import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
 import { STATUS } from './status.js';
 import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 // Les dominos empruntent leurs questions aux autres notions : la liste des
@@ -616,6 +617,9 @@ export const calculExercises = [
         activityId: 'nova', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], lives: 3, entrePortes: 18 },
         paramSchema: [
+            // Le réglage de la saisie clavier est déclaré sur l'ACTIVITÉ ;
+            // un paramSchema explicite le masquerait, on le reprend donc ici.
+            REGLAGE_SAISIE,
             { id: 'tables', type: 'multiselect', label: 'Tables des portes', options: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
             { id: 'entrePortes', type: 'number', label: 'Secondes entre deux murs', min: 8, max: 40, default: 18 }
@@ -679,6 +683,9 @@ export const calculExercises = [
         // trois voies de tables de multiplication.
         params: { mode: 'survival', lanes: 3, speed: 3, operations: ['mul'] },
         paramSchema: [
+            // Le réglage de la saisie clavier est déclaré sur l'ACTIVITÉ ;
+            // un paramSchema explicite le masquerait, on le reprend donc ici.
+            REGLAGE_SAISIE,
             {
                 id: 'mode', type: 'select', label: 'Mode de jeu', default: 'survival',
                 options: [

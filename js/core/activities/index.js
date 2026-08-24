@@ -6,6 +6,7 @@
 // manifestes, elle ne se code pas.
 
 import { registerGenerator, registerActivity } from '../registry.js';
+import { REGLAGE_SAISIE } from '../../ui/champsGrille.js';
 
 import {
     additionGenerator, soustractionGenerator, multFactGenerator,
@@ -260,6 +261,10 @@ registerActivity({
     label: 'Mathdoku',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
+    // LA SAISIE AU CLAVIER SE DÉCLARE SUR L'ACTIVITÉ, pas sur chaque
+    // exercice : elle vaut pour tous ceux qui tournent sur cette grille,
+    // aujourd'hui comme demain, et le réglage n'est écrit qu'une fois.
+    params: [REGLAGE_SAISIE],
     load: () => import('./kenken.js')
 });
 
@@ -270,6 +275,10 @@ registerActivity({
     label: 'Binairo',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
+    // LA SAISIE AU CLAVIER SE DÉCLARE SUR L'ACTIVITÉ, pas sur chaque
+    // exercice : elle vaut pour tous ceux qui tournent sur cette grille,
+    // aujourd'hui comme demain, et le réglage n'est écrit qu'une fois.
+    params: [REGLAGE_SAISIE],
     load: () => import('./binairo.js')
 });
 
@@ -290,6 +299,10 @@ registerActivity({
     label: 'Sudoku',
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
+    // LA SAISIE AU CLAVIER SE DÉCLARE SUR L'ACTIVITÉ, pas sur chaque
+    // exercice : elle vaut pour tous ceux qui tournent sur cette grille,
+    // aujourd'hui comme demain, et le réglage n'est écrit qu'une fois.
+    params: [REGLAGE_SAISIE],
     load: () => import('./sudoku.js')
 });
 

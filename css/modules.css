@@ -6239,3 +6239,24 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 .pb-frac .fraction-num, .pb-frac .fraction-den { padding: 0 .22em; }
 .pb-frac .fraction-den { border-top-width: 2px; }
+
+/* LE CHAMP DANS UNE CASE DE GRILLE (sudoku, binairo, mathdoku).
+   Il doit se comporter comme la case, pas comme un formulaire posé dedans :
+   même taille, même police, même couleur, aucun cadre propre. Ce qui le
+   distingue est le CURSEUR quand on y est, et le halo du foyer — c'est
+   exactement ce qui manquait : rien ne disait qu'on pouvait écrire. */
+.kk-champ {
+    width: 100%; height: 100%; padding: 0; margin: 0;
+    border: none; background: transparent; border-radius: inherit;
+    font: inherit; color: inherit; text-align: center;
+    -webkit-appearance: none; appearance: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.kk-champ:focus {
+    outline: none;
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    box-shadow: inset 0 0 0 2px var(--primary);
+}
+/* Le curseur du champ est fin et discret : dans une case de grille, un gros
+   trait clignotant se confond avec un « 1 ». */
+.kk-champ { caret-color: var(--primary); }

@@ -16,6 +16,7 @@ import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS } from '../generators/kenken.js';
+import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
 
 // Le vérificateur est LIMITÉ : vérifier doit rester un choix qui se paie, pas
 // un oracle qu'on presse après chaque case.
@@ -56,6 +57,7 @@ export function mount(container, session, opts = {}) {
         const cageDe = Array.from({ length: n }, () => Array(n).fill(-1));
         cages.forEach((cage, i) => cage.cells.forEach(p => { cageDe[p.r][p.c] = i; }));
 
+        const avecChamp = saisieActive(session.params);
         const cellsHtml = [];
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
@@ -73,10 +75,14 @@ export function mount(container, session, opts = {}) {
                 const donnee = verrous[r][c];
                 cellsHtml.push(`
                     <div class="kk-cell ${bords} ${donnee ? 'kk-given' : ''}" role="button"
-                         tabindex="${donnee ? -1 : 0}" data-r="${r}" data-c="${c}" data-cage="${ci}"
+                         tabindex="${(donnee || avecChamp) ? -1 : 0}" data-r="${r}" data-c="${c}" data-cage="${ci}"
                          aria-label="Case ligne ${r + 1}, colonne ${c + 1}">
                         ${premiere ? `<span class="kk-label">${cage.label}</span>` : ''}
-                        <span class="kk-val">${donnee ? cage.target : ''}</span>
+                        ${contenuCase({
+        valeur: donnee ? cage.target : '', donnee, champ: avecChamp,
+        aria: `Ligne ${r + 1}, colonne ${c + 1}`,
+        motif: `[${item.meta.lo}-${item.meta.hi}]`
+    })}
                     </div>`);
             }
         }
@@ -125,7 +131,10 @@ export function mount(container, session, opts = {}) {
         if (verrous[r][c] || session.locked) return;
         grille[r][c] = valeur;
         const el = celluleEl(r, c);
-        el.querySelector('.kk-val').textContent = valeur || '';
+        const boite = el.querySelector('.kk-val');
+        const texte = valeur ? String(valeur) : '';
+        if (boite.tagName === 'INPUT') { if (boite.value !== texte) boite.value = texte; }
+        else boite.textContent = texte;
         // Toute édition invalide les marques du vérificateur et des indices :
         // elles décrivaient un état qui n'existe plus.
         container.querySelectorAll('.kk-cell--conflit, .kk-cage--faux, .kk-cage--indice')
@@ -134,6 +143,19 @@ export function mount(container, session, opts = {}) {
     }
 
     function brancherCases() {
+        brancherChamps(container, {
+            bloque: () => session.locked,
+            cleDe: (champ) => {
+                const cell = champ.closest('.kk-cell');
+                return `${cell.dataset.r},${cell.dataset.c}`;
+            },
+            poser: (cle, brut) => {
+                const [r, c] = cle.split(',').map(Number);
+                if (brut === '') { poser(r, c, 0); return; }
+                const v = Number(brut);
+                if (v >= item.meta.lo && v <= item.meta.hi) poser(r, c, v);
+            }
+        });
         container.querySelectorAll('.kk-cell').forEach(el => {
             const r = Number(el.dataset.r), c = Number(el.dataset.c);
             if (verrous[r][c]) return;
@@ -142,8 +164,9 @@ export function mount(container, session, opts = {}) {
                 const v = grille[r][c];
                 poser(r, c, v === 0 ? lo : (v >= hi ? 0 : v + 1));
             };
-            el.onclick = cycle;
-            el.onkeydown = (e) => {
+            const aChamp = !!el.querySelector('.kk-champ');
+            el.onclick = aChamp ? null : cycle;
+            el.onkeydown = aChamp ? null : (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycle(); }
                 else if (/^[0-9]$/.test(e.key)) {
                     const v = Number(e.key);
