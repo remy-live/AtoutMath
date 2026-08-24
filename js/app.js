@@ -645,15 +645,20 @@ function initDebugToolbar() {
     // Passer la question en cours, ou revenir sur la précédente, quel que soit
     // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
     // voulait examiner et il fallait relancer l'exercice depuis le début.
-    const naviguer = (methode, rate) => async () => {
+    const naviguer = (methode, rate, argument) => async () => {
         const { showToast } = await import('./ui/modal.js');
         const runner = state.activeSequenceRunner;
-        if (!runner || typeof runner[methode] !== 'function' || !runner[methode]()) {
+        const arg = typeof argument === 'function' ? await argument() : undefined;
+        if (!runner || typeof runner[methode] !== 'function' || !runner[methode](arg)) {
             showToast(runner ? rate : 'Aucun exercice en cours.', 'warning');
         }
     };
     const btnSkip = document.getElementById('db-skip');
-    if (btnSkip) btnSkip.onclick = naviguer('sauterQuestion', 'Impossible d\'avancer ici.');
+    // LE SAUT OBÉIT À L'INTERRUPTEUR de la palette : neutre, compté juste, ou
+    // compté faux. Le régime est relu à chaque clic — on le change en cours
+    // d'exercice, c'est même tout l'intérêt.
+    if (btnSkip) btnSkip.onclick = naviguer('sauterQuestion', 'Impossible d\'avancer ici.',
+        () => import('./ui/debugBar.js').then(m => m.verdictDuSaut()));
     const btnBack = document.getElementById('db-back');
     if (btnBack) btnBack.onclick = naviguer('revenirQuestion', 'Cet exercice ne sait pas revenir en arrière.');
 

@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=363">
-    <link rel="stylesheet" href="css/layout.css?v=363">
-    <link rel="stylesheet" href="css/ui.css?v=363">
-    <link rel="stylesheet" href="css/games.css?v=363">
-    <link rel="stylesheet" href="css/components.css?v=363">
-    <link rel="stylesheet" href="css/modules.css?v=363">
+    <link rel="stylesheet" href="css/base.css?v=364">
+    <link rel="stylesheet" href="css/layout.css?v=364">
+    <link rel="stylesheet" href="css/ui.css?v=364">
+    <link rel="stylesheet" href="css/games.css?v=364">
+    <link rel="stylesheet" href="css/components.css?v=364">
+    <link rel="stylesheet" href="css/modules.css?v=364">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -136,6 +136,16 @@
                     aria-label="Passer à la question suivante">
                 <svg viewBox="0 0 24 24"><path d="M5.5 5.5v13L15 12z"/><path d="M18 5.5v13"/></svg>
             </button>
+            <!-- CE QU'ON FAIT CROIRE AU LOGICIEL EN SAUTANT. Rémy : « le
+                 logiciel avance en pensant que j'ai répondu ou pas répondu. Il
+                 faudrait une option pour avancer en faisant croire que la
+                 réponse est bonne (il faut les deux options) ».
+                 Trois états, en cycle : neutre (rien n'est enregistré, le
+                 profil reste propre), juste, faux. Les deux derniers
+                 enregistrent une VRAIE tentative — c'est le but : c'est ce qui
+                 permet d'atteindre l'écran de bilan, l'étape validée, le monde
+                 qui s'éclaire, ou au contraire le carnet d'erreurs. -->
+            <button class="debug-btn" id="db-saut-mode" aria-pressed="false"></button>
         </div>
         <!-- Numéro de version RÉELLEMENT chargée (lu sur l'URL du CSS) :
              pour savoir d'un coup d'œil si le téléphone a la dernière. -->

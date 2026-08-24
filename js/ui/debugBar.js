@@ -87,6 +87,8 @@ export function initDebugBar() {
         majFen();
     }
 
+    initSautMode();
+
     if (fold) {
         const majRepli = (replie) => {
             bar.classList.toggle('dbg--folded', replie);
@@ -118,4 +120,62 @@ export function initDebugBar() {
         try { replie = localStorage.getItem(CLE_REPLI); } catch (e) { replie = null; }
         majRepli(replie === null ? window.innerWidth < ETROIT : replie === '1');
     }
+}
+
+// --- CE QU'ON FAIT CROIRE AU LOGICIEL EN SAUTANT UNE QUESTION ----------------
+//
+// Rémy : « on peut avancer de question en question mais le logiciel avance en
+// pensant que j'ai répondu ou pas répondu. Il faudrait une option pour avancer
+// en faisant croire au logiciel que la réponse est bonne (il faut les deux
+// options), peut-être un checkbox ou qqch à valider dans la barre de debug. »
+//
+// Un interrupteur à trois positions plutôt qu'une case à cocher : « juste » et
+// « faux » ne sont pas le contraire l'un de l'autre, ils sont deux choix à côté
+// du saut neutre. Une case n'aurait su dire que deux d'entre eux.
+
+const CLE_SAUT = 'mathbox-saut-mode';
+const SAUTS = [
+    { id: 'neutre', verdict: null, libelle: 'Saut neutre : rien n\'est enregistré',
+      picto: '<path d="M5.5 5.5v13L15 12z"/><path d="M18 5.5v13"/>' },
+    { id: 'juste', verdict: true, libelle: 'Saut COMPTÉ JUSTE : la question passe pour réussie',
+      picto: '<path d="m4 12.5 5 5L20 6.5"/>' },
+    { id: 'faux', verdict: false, libelle: 'Saut COMPTÉ FAUX : la question passe pour ratée',
+      picto: '<path d="M6 6l12 12M18 6 6 18"/>' }
+];
+
+/** Le régime choisi : `null`, `true` ou `false`. Lu par la palette d'auteur. */
+export function verdictDuSaut() {
+    let id;
+    try { id = localStorage.getItem(CLE_SAUT); } catch (e) { id = null; }
+    const s = SAUTS.find(x => x.id === id);
+    return s ? s.verdict : null;
+}
+
+function initSautMode() {
+    const btn = document.getElementById('db-saut-mode');
+    if (!btn) return;
+    const indice = () => {
+        let id;
+        try { id = localStorage.getItem(CLE_SAUT); } catch (e) { id = null; }
+        const i = SAUTS.findIndex(x => x.id === id);
+        return i < 0 ? 0 : i;
+    };
+    const peindre = () => {
+        const s = SAUTS[indice()];
+        btn.innerHTML = `<svg viewBox="0 0 24 24">${s.picto}</svg>`;
+        btn.title = `${s.libelle} — cliquer pour changer`;
+        btn.setAttribute('aria-label', s.libelle);
+        btn.setAttribute('aria-pressed', String(s.verdict !== null));
+        // Vert quand on compte juste, rouge quand on compte faux : le régime
+        // doit se voir sans lire l'infobulle, sinon on saute vingt questions
+        // sans se rendre compte qu'on remplit le carnet d'erreurs.
+        btn.classList.toggle('dbg-saut--juste', s.verdict === true);
+        btn.classList.toggle('dbg-saut--faux', s.verdict === false);
+    };
+    btn.onclick = () => {
+        const suivant = SAUTS[(indice() + 1) % SAUTS.length];
+        try { localStorage.setItem(CLE_SAUT, suivant.id); } catch (e) { /* privé */ }
+        peindre();
+    };
+    peindre();
 }

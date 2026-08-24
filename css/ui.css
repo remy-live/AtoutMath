@@ -39,7 +39,7 @@ body.teacher-mode .student-only { display: none !important; }
    quatorze icônes font plus de quatre cents pixels : sur un téléphone il
    fallait les faire DÉFILER, c'est-à-dire deviner qu'elles continuent hors de
    l'écran, et le bouton qu'on cherche était toujours celui du bout.
-   Une grille de deux rangées, sept colonnes : tout est visible d'un coup, et
+   Une grille de deux rangées, HUIT colonnes : tout est visible d'un coup, et
    la palette reste deux fois moins large. Ce sont les ICÔNES qui passent à
    deux lignes — la poignée, le numéro de version et la flèche de repli
    restent posés à côté, sur toute la hauteur : c'est leur retour à la ligne à
@@ -47,7 +47,7 @@ body.teacher-mode .student-only { display: none !important; }
    Le défilement horizontal reste, en dernier recours : à vingt icônes sur un
    petit téléphone, deux rangées ne suffiront plus non plus. */
 .dbg-tools {
-    display: grid; grid-auto-flow: row; grid-template-columns: repeat(7, auto);
+    display: grid; grid-auto-flow: row; grid-template-columns: repeat(8, auto);
     align-items: center; justify-content: start; gap: 4px;
     flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; -ms-overflow-style: none;
@@ -979,3 +979,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     }
 }
 @media (prefers-reduced-motion: reduce) { .cx--appel { animation: none; } }
+
+/* LE RÉGIME DU SAUT SE VOIT SANS LIRE L'INFOBULLE. Sauter vingt questions en
+   « compté faux » sans s'en apercevoir remplirait le carnet d'erreurs d'un
+   élève ; la couleur est donc là pour prévenir, pas pour décorer. */
+.dbg-saut--juste { color: #34d399; border-color: #34d399; }
+.dbg-saut--faux { color: #f87171; border-color: #f87171; }

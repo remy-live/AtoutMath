@@ -545,8 +545,49 @@ export class Runner {
      * laissant le même écran — un saut qui ne saute rien.
      * @returns {boolean} faux si aucun exercice n'est en cours
      */
-    sauterQuestion() {
+    /**
+     * @param {boolean|null} [verdict] - ce qu'on fait CROIRE au logiciel :
+     *        `null` (défaut) la question est seulement vue ; `true` elle est
+     *        comptée réussie ; `false` elle est comptée ratée.
+     *
+     * TROIS FAÇONS DE SAUTER, ET ELLES NE SERVENT PAS À LA MÊME CHOSE.
+     *
+     * Rémy : « on peut avancer de question en question mais le logiciel avance
+     * en pensant que j'ai répondu ou pas répondu. Il faudrait une option pour
+     * avancer en faisant croire au logiciel que la réponse est bonne (il faut
+     * les deux options). »
+     *
+     * Le saut NEUTRE sert à mettre au point une question : rien n'est
+     * enregistré, le profil de l'élève reste propre. Mais il ne permet pas
+     * d'atteindre ce qui vient APRÈS une réussite — l'écran de bilan avec une
+     * bonne note, l'étape validée, le jeu de récompense qui s'ouvre, le monde
+     * suivant qui s'éclaire. Pour voir cela, il faut que le logiciel y croie ;
+     * et pour voir le carnet d'erreurs et les explications, il faut qu'il
+     * croie le contraire. D'où les deux autres, qui enregistrent VRAIMENT une
+     * tentative — c'est le but, et c'est aussi pourquoi ils restent dans la
+     * palette d'auteur.
+     */
+    sauterQuestion(verdict = null) {
         if (!this.step) return false;
+        if (verdict !== null) {
+            // On passe par le chemin ordinaire d'une réponse : la tentative
+            // part au journal, la note, le carnet et l'escalier la voient.
+            // Rien à simuler de plus — c'est bien une réponse, elle vient
+            // seulement d'ailleurs.
+            const item = this.session && this.session.item;
+            state.recordAttempt({
+                correct: !!verdict,
+                attemptIndex: 0,
+                itemSeed: (item && item.seed) || null,
+                questionText: (item && item.question) || '(question sautée)',
+                expected: item ? item.answer : undefined,
+                given: verdict ? (item ? item.answer : 'juste') : '(saut d\'auteur)',
+                points: verdict ? (this.policy.pointsPerItem || 10) : 0
+            });
+            if (this.session && !verdict) this.session.locked = true;
+            if (this.handle && this.handle.showNext) this.handle.showNext();
+            return true;
+        }
         const item = this.session && this.session.item;
         const cle = (item && item.seed) || `saut_${this.itemsResolved.size}_${this.autonomousCounter++}`;
         this.itemsResolved.add(cle);
