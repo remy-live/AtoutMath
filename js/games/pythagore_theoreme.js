@@ -51,7 +51,16 @@ class Pythagore extends BaseGame {
                     font-size: clamp(13px, 3cqw, 17px); line-height: 1.3; }
                 .py-corps { display: flex; gap: 14px; align-items: flex-start;
                     justify-content: center; width: 100%; flex-wrap: wrap; }
-                .py-figure svg { display: block; width: clamp(220px, 44cqw, 360px); height: auto; }
+                /* LA FIGURE PREND LA PLACE QU'IL Y A. Bridée à 220 px, elle
+                   laissait la moitié basse d'un écran de téléphone vide alors
+                   que c'est l'objet même de l'exercice : « on pourrait profiter
+                   de l'espace ». Elle suit maintenant la largeur du cadre, et
+                   sa hauteur est bornée pour que l'énoncé et le pavé de saisie
+                   restent visibles sous elle. */
+                .py-figure svg {
+                    display: block; width: min(100%, 420px); height: auto;
+                    max-height: 46vh; margin: 0 auto;
+                }
                 .py-cote { stroke: var(--text-main); stroke-width: 2.6; fill: none; cursor: pointer; }
                 .py-cote--zone { stroke: transparent; stroke-width: 22; cursor: pointer; }
                 .py-cote--hypo { stroke: #2563eb; }
@@ -252,6 +261,39 @@ class Pythagore extends BaseGame {
         });
         svg += '</svg>';
         this.figureEl.innerHTML = svg;
+        this.recadrer();
+    }
+
+    /**
+     * LE CADRE SE RÈGLE SUR CE QUI EST DESSINÉ.
+     *
+     * Rémy, au banc iPhone : « pour le théorème de Pythagore sur l'iPhone j'ai
+     * une lettre tronquée. On pourrait profiter de l'espace. »
+     *
+     * Les deux défauts n'en font qu'un. Le cadre était FIXE — 300 × 240 — et le
+     * triangle placé dedans à la louche, avec une marge devinée pour les
+     * étiquettes. Ça ne peut pas marcher : la place que prend « A » dépend de
+     * l'orientation du triangle, et celle de « 12 cm » n'est pas celle de
+     * « ? ». Tantôt la lettre sortait du cadre et se faisait couper, tantôt il
+     * restait cent pixels de vide sur les côtés — mesuré ici même : le dessin
+     * n'occupait que 185 des 300 unités de large.
+     *
+     * On laisse donc le navigateur mesurer ce qu'il vient de dessiner
+     * (`getBBox`, qui compte les lettres et leur contour), et on pose le cadre
+     * autour, avec une marge franche. Plus rien ne dépasse, quel que soit le
+     * triangle — et le dessin remplit la place qu'on lui donne.
+     */
+    recadrer() {
+        const svg = this.figureEl.querySelector('svg');
+        if (!svg || !svg.getBBox) return;
+        let b;
+        // `getBBox` lève si le SVG n'est pas encore dans la page rendue.
+        try { b = svg.getBBox(); } catch (e) { return; }
+        if (!b || !b.width || !b.height) return;
+        const marge = 6;
+        svg.setAttribute('viewBox',
+            `${(b.x - marge).toFixed(1)} ${(b.y - marge).toFixed(1)} `
+            + `${(b.width + marge * 2).toFixed(1)} ${(b.height + marge * 2).toFixed(1)}`);
     }
 
     // --- Les niveaux ----------------------------------------------------------

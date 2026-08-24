@@ -75,7 +75,16 @@ class Relier extends BaseGame {
                    grandes marges blanches. Rémy : « la grille pourrait être bien
                    plus grande ». */
                 .rp-scene {
-                    flex: 1 1 auto; width: 100%; min-height: min(92cqw, 420px);
+                    /* ET LE PLANCHER CÈDE QUAND IL N'Y A PAS LA PLACE.
+                       Rémy, au banc : « relier les points aussi [est tronqué] ». En PAYSAGE sur un téléphone, la
+                       zone de jeu ne fait plus que 265 px de haut : un plancher
+                       fixe poussait le pavé de réponse sous le bord de l'écran,
+                       et il fallait faire défiler pour répondre — c'est ce qui
+                       se voit comme « tronqué ». Le plancher est donc borné par
+                       la hauteur RÉELLEMENT disponible — l'unité cqh interroge la
+                       zone de jeu, et non la fenêtre : intact en portrait, il s'efface
+                       là où il ne tient pas. */
+                    flex: 1 1 auto; width: 100%; min-height: min(92cqw, 420px, 58cqh);
                     display: flex; align-items: center; justify-content: center;
                 }
                 .rp-svg { width: 100%; height: 100%; max-width: 520px; touch-action: none; }

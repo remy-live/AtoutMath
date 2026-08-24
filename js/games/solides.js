@@ -110,7 +110,16 @@ class Solides extends BaseGame {
                    donc un plancher ET un plafond : jamais moins de 200 px,
                    jamais plus de la moitié de la zone. */
                 .sd-scene {
-                    flex: 1 1 auto; width: 100%; min-height: 200px; max-height: 52cqh;
+                    /* ET LE PLANCHER CÈDE QUAND IL N'Y A PAS LA PLACE.
+                       Rémy, au banc : « compter sur solide aussi ». En PAYSAGE sur un téléphone, la
+                       zone de jeu ne fait plus que 265 px de haut : un plancher
+                       fixe poussait le pavé de réponse sous le bord de l'écran,
+                       et il fallait faire défiler pour répondre — c'est ce qui
+                       se voit comme « tronqué ». Le plancher est donc borné par
+                       la hauteur RÉELLEMENT disponible — l'unité cqh interroge la
+                       zone de jeu, et non la fenêtre : intact en portrait, il s'efface
+                       là où il ne tient pas. */
+                    flex: 1 1 auto; width: 100%; min-height: min(200px, 46cqh); max-height: 52cqh;
                     display: flex; align-items: center; justify-content: center;
                 }
                 .sd-svg { width: 100%; height: 100%; max-width: 460px; touch-action: manipulation; }

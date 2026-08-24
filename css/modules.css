@@ -2834,6 +2834,65 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .angles-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 .angles-canvas:active { cursor: grabbing; }
 
+/* La boîte « côté » est INVISIBLE en portrait : ses enfants se comportent
+   comme s'ils étaient restés enfants directs de la mise en page. Rien ne
+   change de ce qui existait. */
+.angles-cote { display: contents; }
+
+/* EN PAYSAGE, ANGLE MASTER PASSE À DEUX COLONNES.
+   Rémy, au banc : « l'angle master sur iPhone a été tronqué ». Mesuré : un
+   téléphone couché ne laisse que 265 px de haut à la zone de jeu, et l'écran
+   empilé en demande 438 — l'estimation, le rapporteur, la ligne de commandes,
+   le pavé de chiffres et la barre d'aide. Aucun réglage de hauteur ne fait
+   entrer 438 dans 265 : il faut changer de plan.
+   Couché, la largeur ne manque pas. Le rapporteur prend donc la colonne de
+   gauche — c'est lui qu'on manipule, il doit rester grand — et tout ce qui se
+   lit ou se tape passe à droite, dans une colonne qui défile si besoin. */
+@container plateau (max-height: 460px) and (min-width: 620px) {
+    .angles-layout {
+        display: grid; max-width: none; overflow: hidden;
+        grid-template-columns: minmax(0, 1.15fr) minmax(220px, .85fr);
+        /* DEUX lignes, et la seconde est BORNÉE. La colonne de droite ne
+           contient que deux boîtes : ce qui précède le rapporteur dans le flux
+           (énoncé, estimation) et ce qui le suit (commandes, pavé, aide).
+           La seconde ligne est en `minmax(0, 1fr)` : sans ce 0, une ligne se
+           dimensionne sur son contenu, la grille grandit avec elle, et le
+           rapporteur — qui couvre les deux lignes — s'étirait hors de l'écran.
+           C'est ce qui rendait le paysage PIRE qu'avant. */
+        grid-template-rows: min-content minmax(0, 1fr);
+        /* PAS d'`align-content: start` : il fait prendre aux lignes leur
+           taille naturelle, et le `1fr` de la seconde ne borne plus rien. */
+        gap: 8px 12px;
+    }
+    /* Le rapporteur tient toute la colonne de gauche. Pas de `height: 100%` :
+       dans une grille en min-content, une hauteur en pourcentage se réfère à
+       une ligne qui se dimensionne elle-même sur son contenu. */
+    .angles-board {
+        grid-column: 1; grid-row: 1 / 3;
+        height: auto; min-height: 0; align-self: stretch;
+    }
+    /* Couché, la boîte « côté » redevient une vraie boîte : c'est ELLE qui
+       défile, et le rapporteur garde sa hauteur. Les deux moitiés de la
+       colonne (au-dessus et au-dessous du rapporteur dans le flux) se
+       rejoignent en lignes 1 et 2 de la colonne de droite. */
+    .angles-cote {
+        display: flex; flex-direction: column; gap: 6px;
+        grid-column: 2; min-height: 0; width: 100%;
+    }
+    .angles-cote--bas { overflow-y: auto; }
+    .angles-layout > :not(.angles-board) { grid-column: 2; width: 100%; margin: 0; }
+    /* Les commandes RESTENT EN LIGNE, et passent à la ligne suivante quand la
+       colonne est trop étroite. Empilées, les cinq boutons faisaient 230 px de
+       haut à elles seules — plus que le rapporteur : on avait remplacé un
+       débordement par un autre. Mesuré avant d'écrire cette règle. */
+    .angles-controls { flex-flow: row wrap; align-items: center; justify-content: center; gap: 5px; }
+    .angles-estimation { flex-flow: row wrap; justify-content: center; gap: 4px; }
+    /* Le pavé de chiffres tient sur deux rangées serrées : c'est lui qu'on
+       doit atteindre sans défiler. */
+    .angles-layout .pav-tactile { gap: 4px; }
+    .angles-layout .pav-touche { min-height: 34px; font-size: .95rem; }
+}
+
 /* L'échauffement du regard, AU-DESSUS de la figure et non par-dessus.
    Posé en absolu sur le plateau, il passait à la ligne sur un téléphone : le
    coin arrondi à 999 px devenait une grosse bulle ovale qui recouvrait le

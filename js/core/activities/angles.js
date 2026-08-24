@@ -57,6 +57,16 @@ export function mount(container, session, opts = {}) {
 
         container.innerHTML = `
             <div class="angles-layout">
+                <!-- TOUT CE QUI N'EST PAS LE RAPPORTEUR vit dans cette boîte.
+                     En portrait elle est TRANSPARENTE — display: contents — :
+                     la mise en page est exactement celle d'avant, à l'élément
+                     près. Couché, elle devient la colonne de droite — et c'est
+                     elle qui défile, pas le rapporteur, qui doit rester entier
+                     et grand puisque c'est lui qu'on manipule. Sans ce
+                     conteneur, la colonne de droite et le rapporteur
+                     partageaient le même défilement : le rapporteur s'étirait
+                     sur toute la hauteur du contenu et sortait de l'écran. -->
+                <div class="angles-cote">
                 ${item.prompt.html}
                 ${m.mode === 'mesurer' && !enEval && !session.isDemo ? `
                 <div class="angles-estimation" data-estimation>
@@ -66,9 +76,11 @@ export function mount(container, session, opts = {}) {
                         <button type="button" class="btn-hint" data-est="obtus">Obtus (&gt; 90°)</button>
                     </div>
                 </div>` : ''}
+                </div>
                 <div class="angles-board" data-board>
                     <canvas class="angles-canvas"></canvas>
                 </div>
+                <div class="angles-cote angles-cote--bas">
                 <div class="angles-controls">
                     ${m.mode === 'mesurer' ? `
                         <label class="angles-input-label">Valeur lue :
@@ -86,6 +98,7 @@ export function mount(container, session, opts = {}) {
                     <button type="button" class="kk-btn-valider" data-valider>Valider</button>
                 </div>
                 ${hintBar(session)}
+                </div>
             </div>`;
 
         if (paveMesure) { paveMesure.detruire(); paveMesure = null; }

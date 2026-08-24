@@ -114,7 +114,16 @@ class Ville extends BaseGame {
                        ce qui manquait et le plan disparaissait purement et
                        simplement, en laissant la feuille de route et les trois
                        boutons intacts. */
-                    flex: 1 1 auto; min-height: 240px; width: 100%;
+                    /* ET LE PLANCHER CÈDE QUAND IL N'Y A PAS LA PLACE.
+                       Rémy, au banc : « idem pour plan de la ville ». En PAYSAGE sur un téléphone, la
+                       zone de jeu ne fait plus que 265 px de haut : un plancher
+                       fixe poussait le pavé de réponse sous le bord de l'écran,
+                       et il fallait faire défiler pour répondre — c'est ce qui
+                       se voit comme « tronqué ». Le plancher est donc borné par
+                       la hauteur RÉELLEMENT disponible — l'unité cqh interroge la
+                       zone de jeu, et non la fenêtre : intact en portrait, il s'efface
+                       là où il ne tient pas. */
+                    flex: 1 1 auto; min-height: min(240px, 42cqh); width: 100%;
                     display: flex; align-items: center; justify-content: center;
                 }
                 /* Le plan REMPLIT la place disponible. Dimensionné en unités
