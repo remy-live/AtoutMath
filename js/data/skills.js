@@ -391,6 +391,27 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    // --- Défis et énigmes ---------------------------------------------------
+    // Deux compétences qui ne parlent pas d'un chapitre mais d'une MANIÈRE de
+    // chercher. C'est pour cela qu'elles vivent dans leur propre domaine :
+    // rangées sous « calcul mental » ou « logique », elles auraient laissé
+    // croire qu'on y révise une notion, alors qu'on y apprend à raisonner.
+    'defi.recursion': {
+        label: 'Ramener un probl\u00e8me \u00e0 lui-m\u00eame, en plus petit',
+        chemin: [D.DEFIS, SD.CASSE_TETE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'R\u00e9soudre un probl\u00e8me en le ramenant au m\u00eame probl\u00e8me avec un objet de moins, et compter les \u00e9tapes qui en r\u00e9sultent.',
+        lesson: "IL Y A DES PROBL\u00c8MES QU'ON NE R\u00c9SOUT PAS EN AVAN\u00c7ANT, MAIS EN RECULANT. Pour amener quatre boules \u00e0 droite, inutile de chercher le premier coup : demande-toi plut\u00f4t ce qu'il faut AVANT de pouvoir d\u00e9placer la plus grosse. Il faut que le conduit de droite soit libre, donc que les trois autres boules soient ailleurs \u2014 et te voil\u00e0 avec le m\u00eame probl\u00e8me, une boule de moins. C'est cela, r\u00e9currer : ramener un probl\u00e8me \u00e0 lui-m\u00eame en plus petit, jusqu'\u00e0 un cas si simple qu'il n'y a plus rien \u00e0 faire \u2014 ici, UNE boule, qu'on pose directement. Le compte suit la m\u00eame logique : d\u00e9placer n boules co\u00fbte deux fois ce que co\u00fbtent n \u2212 1 boules, plus un coup pour la grosse. D'o\u00f9 1, 3, 7, 15, 31, 63 \u2014 le double plus un \u00e0 chaque fois, c'est-\u00e0-dire 2\u207f \u2212 1. Avec les soixante-quatre disques de la l\u00e9gende, cela fait plus de cinq cents milliards d'ann\u00e9es."
+    },
+    'defi.grenouilles': {
+        label: 'Anticiper un coup qui bloque tout',
+        chemin: [D.DEFIS, SD.CASSE_TETE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Trouver l\'ordre des coups dans un casse-t\u00eate sans retour en arri\u00e8re, o\u00f9 une seule maladresse rend la suite impossible.',
+        lesson: "UN CASSE-T\u00caTE SANS RETOUR EN ARRI\u00c8RE NE SE PERD PAS : IL SE BLOQUE. Les grenouilles vertes ne vont qu'\u00e0 droite, les rouges qu'\u00e0 gauche, et un saut ne franchit qu'UNE b\u00eate. Deux grenouilles de la m\u00eame couleur c\u00f4te \u00e0 c\u00f4te devant une autre, et plus personne ne passera jamais \u2014 alors qu'il reste des coups possibles, et qu'on peut s'acharner un quart d'heure sur une partie termin\u00e9e depuis le troisi\u00e8me coup. C'est l\u00e0 toute la le\u00e7on : dans ce genre de probl\u00e8me, il faut regarder ce que le coup REND IMPOSSIBLE, pas seulement ce qu'il fait gagner. La r\u00e8gle qui sauve tient en un mot : ALTERNER. Une verte, une rouge, une verte \u2014 jamais deux fois la m\u00eame couleur de suite. Et le nombre de coups se d\u00e9montre au lieu de se compter : chaque verte doit d\u00e9passer chaque rouge, ce qui fait n \u00d7 n sauts, et chaque grenouille glisse une fois, ce qui fait 2n glissades. Total : n\u00b2 + 2n. Pour quatre contre quatre, 24 coups, jamais moins."
+    },
     'num.logique.tasuko': {
         label: 'Le tasuko : d\u00e9couper une grille en additions',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

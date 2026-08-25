@@ -69,6 +69,8 @@ import { pyramideFicheGenerator } from '../generators/pyramideFiche.js';
 import { mastermindFicheGenerator } from '../generators/mastermindFiche.js';
 import { pyramideNombresFicheGenerator } from '../generators/pyramideNombresFiche.js';
 import { tasukoFicheGenerator } from '../generators/tasukoFiche.js';
+import { tourBrahmaFicheGenerator } from '../generators/tourBrahmaFiche.js';
+import { grenouillesFicheGenerator } from '../generators/grenouillesFiche.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
@@ -111,6 +113,7 @@ import {
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
     motsCroisesFicheGenerator, motCodeFicheGenerator, pyramideFicheGenerator,
     mastermindFicheGenerator, pyramideNombresFicheGenerator, tasukoFicheGenerator,
+    tourBrahmaFicheGenerator, grenouillesFicheGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
@@ -531,6 +534,11 @@ const legacy = [
     // Le tasuko se compte en GRILLES : une partie, c'est un découpage entier,
     // et rien ne se valide avant la dernière addition.
     ['tasuko', 'Tasuko — les additions cachées', 'tasuko', 'engineTasuko', 'grille', 3],
+    // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
+    // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
+    // la qualité — pas le nombre d'essais.
+    ['tour-brahma', 'La Tour de Brahma', 'tourBrahma', 'engineTourBrahma', 'tour', 2],
+    ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 2],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

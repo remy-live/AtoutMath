@@ -3033,6 +3033,386 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LES JEUX À DÉCOUPER : LA TOUR DE BRAHMA ET LES GRENOUILLES ----------------
+//
+// Rémy : « j'aimerai ces deux jeux là en catégorie défi ou énigme ». Ce sont
+// deux pages de son « Coin des jeux mathématiques », et ce sont des JEUX À
+// DÉCOUPER : la feuille porte le plateau d'un côté, les pièces de l'autre, et
+// un trait de découpe entre les deux.
+//
+// LE PLATEAU ET LES PIÈCES SUR LA MÊME FEUILLE, séparés par un pointillé : un
+// élève reçoit une page et repart avec un jeu. C'est tout l'intérêt du format,
+// et c'est pour cela qu'on n'imprime qu'UN plateau par page — deux jeux à
+// découper sur une feuille donnent deux jeux trop petits pour être manipulés.
+//
+// LES VIGNETTES « DÉPART / ARRIVÉE / AUTORISÉ / INTERDIT » NE SONT PAS UN
+// ORNEMENT. Rémy les met, et il a raison : une règle négative — « jamais une
+// boule sur plus petite » — se comprend en la VOYANT enfreinte, pas en la
+// lisant. Elles tiennent en bas de page et valent trois lignes de consigne.
+
+/**
+ * LA PART DU PLUS GRAND DIAMÈTRE que prend la boule de taille `b`.
+ *
+ * C'est LA donnée du jeu : une boule ne se pose que sur plus grosse qu'elle, et
+ * la seule façon de le voir est que les tailles diffèrent VRAIMENT. Un écart de
+ * quinze pour cent entre la 3 et la 4 ne se distingue pas sur une photocopie —
+ * on part donc de quarante pour cent pour la plus petite.
+ */
+const partBoule = (b, n) => 0.4 + 0.6 * (b / n);
+
+/** La hauteur d'une pile complète, en diamètres : la somme des parts. */
+function sommeParts(n) {
+    let s = 0;
+    for (let b = 1; b <= n; b++) s += partBoule(b, n);
+    return s;
+}
+
+/** Un mini-plateau de la tour, pour les vignettes du bas. */
+function miniTour(x, y, w, h, piles, n) {
+    const larg = w / 3;
+    const boule = Math.min(h / (n + 0.6), larg * 0.9);
+    return {
+        cadres: [0, 1, 2].map(p => ({ x: x + p * larg + larg * 0.08, y,
+            w: larg * 0.84, h })),
+        boules: piles.flatMap((pile, p) => pile.map((b, k) => ({
+            b,
+            // La largeur dit la taille : c'est la règle du jeu, en dessin.
+            w: larg * 0.8 * partBoule(b, n),
+            hh: boule * 0.86,
+            cx: x + p * larg + larg / 2,
+            cy: y + h - (k + 0.5) * boule
+        })))
+    };
+}
+
+function geoBrahma(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    // Trois bandes : le plateau et les pièces, puis les vignettes.
+    const hVignettes = Math.min(b.h * 0.26, 42);
+    const hHaut = b.h - hVignettes - 6;
+    const largePlateau = b.w * 0.66;
+    const n = m.n;
+    const hConduit = Math.min(hHaut - 8, (n + 1) * 14);
+    const largConduit = Math.min((largePlateau - 16) / 3, hConduit * 0.55);
+    const socleW = largConduit * 3 + 12, socleH = hConduit + 12;
+    return {
+        m, b, n, hVignettes, hHaut,
+        socle: { x: b.x + (largePlateau - socleW) / 2, y: b.y + (hHaut - socleH) / 2,
+            w: socleW, h: socleH },
+        largConduit, hConduit,
+        // La ligne de découpe, et la colonne des pièces à droite.
+        xCoupe: b.x + largePlateau + 2,
+        pieces: { x: b.x + largePlateau + 6, w: b.w - largePlateau - 8, y: b.y, h: hHaut },
+        yVignettes: b.y + hHaut + 6,
+        taille: Math.max(2.2, Math.min(hVignettes * 0.12, 3.4))
+    };
+}
+
+/** Les quatre vignettes du bas : le départ, l'arrivée, un coup permis, un coup interdit. */
+function vignettesBrahma(g) {
+    const n = g.n;
+    const tout = Array.from({ length: n }, (_, i) => n - i);
+    // AUTORISÉ ET INTERDIT SE JOUENT SUR LES DEUX EXTRÊMES, la plus petite et
+    // la plus grosse. Avec la 3 et la 4, l'écart de largeur est de quinze pour
+    // cent et la vignette ne montre plus rien — alors que c'est précisément une
+    // différence de taille qu'elle doit rendre évidente.
+    return [
+        { titre: 'Départ', piles: [tout, [], []] },
+        { titre: 'Arrivée', piles: [[], [], tout] },
+        { titre: 'Autorisé', piles: [[n, 1], [], []] },
+        { titre: 'INTERDIT', piles: [[1, n], [], []], faute: true }
+    ];
+}
+
+function brahmaPreviewHtml(item, slot, k) {
+    const g = geoBrahma(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let html = `<div class="fx-tb-socle" style="left:${T(g.socle.x)}px; top:${T(g.socle.y)}px;
+        width:${T(g.socle.w)}px; height:${T(g.socle.h)}px"></div>`;
+    for (let p = 0; p < 3; p++) {
+        html += `<div class="fx-tb-conduit" style="left:${T(g.socle.x + 6 + p * g.largConduit)}px;
+            top:${T(g.socle.y + 6)}px; width:${T(g.largConduit - 4)}px;
+            height:${T(g.hConduit)}px"></div>`;
+    }
+    // Le trait de découpe, puis les pièces.
+    html += `<div class="fx-tb-coupe" style="left:${T(g.xCoupe)}px; top:${T(g.b.y)}px;
+        height:${T(g.hHaut)}px"></div>`;
+    html += `<div class="fx-tb-etiq" style="left:${T(g.pieces.x)}px; top:${T(g.b.y)}px;
+        width:${T(g.pieces.w)}px; font-size:${T(g.taille)}px">Boules à découper</div>`;
+    // LES BOULES SONT EMPILÉES PAR TAILLE DÉCROISSANTE, chacune à SON diamètre :
+    // c'est ce qui rend la règle du jeu visible avant même d'avoir découpé.
+    const dispo = g.pieces.h - g.taille * 1.6;
+    const D = Math.min(g.pieces.w * 0.94, dispo / sommeParts(g.n));
+    let y = g.b.y + g.taille * 1.6;
+    for (let taille = g.n; taille >= 1; taille--) {
+        const d = D * partBoule(taille, g.n);
+        html += `<div class="fx-tb-boule" style="left:${T(g.pieces.x + (g.pieces.w - d) / 2)}px;
+            top:${T(y)}px; width:${T(d)}px; height:${T(d)}px;
+            font-size:${T(d * 0.46)}px">${taille}</div>`;
+        y += d;
+    }
+    // Les quatre vignettes.
+    const largeV = g.b.w / 4;
+    vignettesBrahma(g).forEach((v, i) => {
+        const x = g.b.x + i * largeV;
+        html += `<div class="fx-tb-vtitre${v.faute ? ' fx-tb-vtitre--ko' : ''}"
+            style="left:${T(x + 2)}px; top:${T(g.yVignettes)}px; width:${T(largeV - 4)}px;
+            font-size:${T(g.taille)}px">${v.titre}</div>`;
+        const mini = miniTour(x + 3, g.yVignettes + g.taille * 1.5, largeV - 6,
+            g.hVignettes - g.taille * 1.6, v.piles, g.n);
+        mini.cadres.forEach(c => {
+            html += `<div class="fx-tb-mini" style="left:${T(c.x)}px; top:${T(c.y)}px;
+                width:${T(c.w)}px; height:${T(c.h)}px"></div>`;
+        });
+        mini.boules.forEach(o => {
+            html += `<div class="fx-tb-miniboule${v.faute ? ' fx-tb-miniboule--ko' : ''}"
+                style="left:${T(o.cx - o.w / 2)}px; top:${T(o.cy - o.hh / 2)}px;
+                width:${T(o.w)}px; height:${T(o.hh)}px"></div>`;
+        });
+    });
+    return html;
+}
+
+function dessinerBrahmaPdf(doc, item, slot) {
+    const g = geoBrahma(item, slot);
+    const aplat = polycopieEnCouleur();
+
+    doc.setLineWidth(0.4);
+    doc.setDrawColor(...ENCRE.trait);
+    if (aplat) { doc.setFillColor(...ENCRE.donnee); doc.roundedRect(g.socle.x, g.socle.y, g.socle.w, g.socle.h, 2, 2, 'FD'); }
+    else doc.roundedRect(g.socle.x, g.socle.y, g.socle.w, g.socle.h, 2, 2);
+    for (let p = 0; p < 3; p++) {
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(g.socle.x + 6 + p * g.largConduit, g.socle.y + 6,
+            g.largConduit - 4, g.hConduit, 1.5, 1.5, 'FD');
+    }
+
+    // LE TRAIT DE DÉCOUPE : un pointillé, et c'est un ordre — c'est là qu'on
+    // passe les ciseaux.
+    doc.setDrawColor(...ENCRE.gris);
+    doc.setLineWidth(0.3);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([1.4, 1.2], 0);
+    doc.line(g.xCoupe, g.b.y, g.xCoupe, g.b.y + g.hHaut);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille / 0.3528);
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf('Boules à découper'), g.pieces.x + g.pieces.w / 2, g.b.y + g.taille,
+        { align: 'center' });
+
+    const dispo = g.pieces.h - g.taille * 1.6;
+    const D = Math.min(g.pieces.w * 0.94, dispo / sommeParts(g.n));
+    let yb = g.b.y + g.taille * 1.6;
+    for (let taille = g.n; taille >= 1; taille--) {
+        const d = D * partBoule(taille, g.n);
+        const cx = g.pieces.x + g.pieces.w / 2;
+        const cy = yb + d / 2;
+        yb += d;
+        doc.setLineWidth(0.4);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setFillColor(...(aplat ? ENCRE.donnee : [255, 255, 255]));
+        doc.circle(cx, cy, d / 2, 'FD');
+        doc.setFontSize(Math.max(6, d * 1.2));
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(String(taille), cx, cy + d * 0.16, { align: 'center' });
+    }
+
+    const largeV = g.b.w / 4;
+    vignettesBrahma(g).forEach((v, i) => {
+        const x = g.b.x + i * largeV;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.taille / 0.3528);
+        doc.setTextColor(...(v.faute ? [197, 48, 48] : ENCRE.texte));
+        doc.text(pourPdf(v.titre), x + largeV / 2, g.yVignettes + g.taille, { align: 'center' });
+        const mini = miniTour(x + 3, g.yVignettes + g.taille * 1.5, largeV - 6,
+            g.hVignettes - g.taille * 1.6, v.piles, g.n);
+        doc.setLineWidth(0.25);
+        doc.setDrawColor(...ENCRE.grille);
+        mini.cadres.forEach(c => doc.roundedRect(c.x, c.y, c.w, c.h, 0.8, 0.8));
+        mini.boules.forEach(o => {
+            doc.setDrawColor(...(v.faute ? [197, 48, 48] : ENCRE.trait));
+            doc.setFillColor(...(aplat ? ENCRE.donnee : [255, 255, 255]));
+            doc.setLineWidth(0.3);
+            doc.roundedRect(o.cx - o.w / 2, o.cy - o.hh / 2, o.w, o.hh, o.hh / 2, o.hh / 2, 'FD');
+        });
+    });
+}
+
+// --- LES GRENOUILLES À DÉCOUPER ------------------------------------------------
+
+/** La grenouille, en formes simples : deux cuisses, un corps, deux yeux. */
+function dessinerGrenouillePdf(doc, cx, cy, d, fonce, clair, aplat) {
+    const u = d / 100;
+    const E = (x, y, rx, ry, teinte) => {
+        doc.setFillColor(...(aplat ? teinte : [255, 255, 255]));
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.25);
+        doc.ellipse(cx + (x - 50) * u, cy + (y - 45) * u, rx * u, ry * u, 'FD');
+    };
+    // L'ORDRE COMPTE : les cuisses, PUIS les yeux, PUIS le corps par-dessus.
+    // Dessinés après, les yeux laissaient voir le trait du corps au travers et
+    // la bête ressemblait à une grenouille à lunettes. Posés dessous, il ne
+    // dépasse que la bosse — ce qui est exactement un œil de grenouille.
+    E(22, 62, 16, 11, fonce);
+    E(78, 62, 16, 11, fonce);
+    E(28, 24, 14, 14, clair);
+    E(72, 24, 14, 14, clair);
+    E(50, 52, 34, 26, clair);
+    doc.setFillColor(26, 32, 44);
+    doc.circle(cx + (28 - 50) * u, cy + (24 - 45) * u, 5.5 * u, 'F');
+    doc.circle(cx + (72 - 50) * u, cy + (24 - 45) * u, 5.5 * u, 'F');
+}
+
+function geoGrenouilles(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const cases = m.n * 2 + 1;
+    const pad = Math.min((b.w - 4) / cases, b.h * 0.3, 24);
+    const rubanW = pad * cases;
+    const hRuban = pad * 1.5;
+    const hVignettes = Math.min(b.h * 0.22, 34);
+    return {
+        m, b, n: m.n, cases, pad,
+        ruban: { x: b.x + (b.w - rubanW) / 2, y: b.y + 4, w: rubanW, h: pad },
+        yVignettes: b.y + hRuban + 4,
+        hVignettes,
+        // Le trait de découpe, puis les bêtes à découper sous lui.
+        yCoupe: b.y + hRuban + hVignettes + 8,
+        pieces: { x: b.x, y: b.y + hRuban + hVignettes + 12,
+            w: b.w, h: b.h - hRuban - hVignettes - 12 },
+        taille: Math.max(2.2, Math.min(pad * 0.22, 3.4))
+    };
+}
+
+/** Les deux vignettes : la position de départ et celle d'arrivée. */
+const vignettesGrenouilles = (n) => [
+    { titre: 'Départ', ruban: [...new Array(n).fill('V'), null, ...new Array(n).fill('R')] },
+    { titre: 'Arrivée', ruban: [...new Array(n).fill('R'), null, ...new Array(n).fill('V')] }
+];
+
+function grenouillesPreviewHtml(item, slot, k) {
+    const g = geoGrenouilles(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let html = '';
+    for (let i = 0; i < g.cases; i++) {
+        html += `<div class="fx-gr-pad" style="left:${T(g.ruban.x + i * g.pad)}px;
+            top:${T(g.ruban.y)}px; width:${T(g.pad)}px; height:${T(g.pad)}px"></div>`;
+    }
+    const largeV = g.b.w / 2;
+    vignettesGrenouilles(g.n).forEach((v, j) => {
+        const petit = Math.min((largeV - 10) / g.cases, g.hVignettes - g.taille * 1.7);
+        const x0 = g.b.x + j * largeV + (largeV - petit * g.cases) / 2;
+        html += `<div class="fx-gr-titre" style="left:${T(g.b.x + j * largeV)}px;
+            top:${T(g.yVignettes)}px; width:${T(largeV)}px;
+            font-size:${T(g.taille)}px">${v.titre}</div>`;
+        v.ruban.forEach((c, i) => {
+            html += `<div class="fx-gr-mini${c ? ` fx-gr-mini--${c}` : ''}"
+                style="left:${T(x0 + i * petit)}px; top:${T(g.yVignettes + g.taille * 1.7)}px;
+                width:${T(petit)}px; height:${T(petit)}px"></div>`;
+        });
+    });
+    html += `<div class="fx-gr-coupe" style="left:${T(g.b.x)}px; top:${T(g.yCoupe)}px;
+        width:${T(g.b.w)}px"></div>`;
+    // Les bêtes à découper : les vertes puis les rouges, sur deux rangées.
+    const parRangee = Math.ceil(g.n * 2 / 2);
+    const dispo = Math.min(g.pieces.w / parRangee, g.pieces.h / 2) * 0.92;
+    for (let i = 0; i < g.n * 2; i++) {
+        const vert = i < g.n;
+        const col = i % parRangee, rang = Math.floor(i / parRangee);
+        const x = g.pieces.x + (g.pieces.w - dispo * parRangee) / 2 + col * dispo;
+        const y = g.pieces.y + rang * dispo;
+        html += `<div class="fx-gr-decoupe fx-gr-mini--${vert ? 'V' : 'R'}"
+            style="left:${T(x + dispo * 0.05)}px; top:${T(y + dispo * 0.05)}px;
+            width:${T(dispo * 0.9)}px; height:${T(dispo * 0.9)}px">${
+            grenouilleSvgFiche(vert)}</div>`;
+    }
+    return html;
+}
+
+/** La même bête qu'à l'écran, en SVG, pour l'aperçu de la fiche. */
+function grenouilleSvgFiche(vert) {
+    const fonce = vert ? '#2f6b23' : '#8f1f14';
+    const clair = vert ? '#6cbf4a' : '#e6503c';
+    return `<svg viewBox="0 0 100 84" preserveAspectRatio="xMidYMid meet">
+        <ellipse cx="22" cy="62" rx="16" ry="11" fill="${fonce}"/>
+        <ellipse cx="78" cy="62" rx="16" ry="11" fill="${fonce}"/>
+        <circle cx="28" cy="24" r="14" fill="${clair}"/>
+        <circle cx="72" cy="24" r="14" fill="${clair}"/>
+        <ellipse cx="50" cy="52" rx="34" ry="26" fill="${clair}"/>
+        <circle cx="28" cy="24" r="5.5" fill="#1a202c"/>
+        <circle cx="72" cy="24" r="5.5" fill="#1a202c"/></svg>`;
+}
+
+function dessinerGrenouillesPdf(doc, item, slot) {
+    const g = geoGrenouilles(item, slot);
+    const aplat = polycopieEnCouleur();
+    const VERT = [[47, 107, 35], [108, 191, 74]];
+    const ROUGE = [[143, 31, 20], [230, 80, 60]];
+
+    doc.setLineWidth(0.4);
+    doc.setDrawColor(...ENCRE.trait);
+    for (let i = 0; i < g.cases; i++) {
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(g.ruban.x + i * g.pad, g.ruban.y, g.pad, g.pad, 1.6, 1.6, 'FD');
+    }
+
+    const largeV = g.b.w / 2;
+    vignettesGrenouilles(g.n).forEach((v, j) => {
+        const petit = Math.min((largeV - 10) / g.cases, g.hVignettes - g.taille * 1.7);
+        const x0 = g.b.x + j * largeV + (largeV - petit * g.cases) / 2;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.taille / 0.3528);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(v.titre), g.b.x + j * largeV + largeV / 2, g.yVignettes + g.taille,
+            { align: 'center' });
+        doc.setLineWidth(0.25);
+        v.ruban.forEach((c, i) => {
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setFillColor(...(aplat && c
+                ? (c === 'V' ? [220, 240, 214] : [251, 220, 220]) : [255, 255, 255]));
+            doc.roundedRect(x0 + i * petit, g.yVignettes + g.taille * 1.7, petit, petit,
+                0.7, 0.7, 'FD');
+            if (!c) return;
+            // Sur une vignette, la bête est trop petite pour être dessinée :
+            // son INITIALE dit la couleur, et survit au noir et blanc.
+            doc.setFontSize(Math.max(4, petit * 1.5));
+            doc.setTextColor(...(c === 'V' ? VERT[0] : ROUGE[0]));
+            doc.text(c, x0 + (i + 0.5) * petit, g.yVignettes + g.taille * 1.7 + petit * 0.72,
+                { align: 'center' });
+        });
+    });
+
+    doc.setDrawColor(...ENCRE.gris);
+    doc.setLineWidth(0.3);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([1.4, 1.2], 0);
+    doc.line(g.b.x, g.yCoupe, g.b.x + g.b.w, g.yCoupe);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+    const parRangee = Math.ceil(g.n * 2 / 2);
+    const dispo = Math.min(g.pieces.w / parRangee, g.pieces.h / 2) * 0.92;
+    for (let i = 0; i < g.n * 2; i++) {
+        const vert = i < g.n;
+        const col = i % parRangee, rang = Math.floor(i / parRangee);
+        const x = g.pieces.x + (g.pieces.w - dispo * parRangee) / 2 + col * dispo;
+        const y = g.pieces.y + rang * dispo;
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        doc.setFillColor(...(aplat ? (vert ? [220, 240, 214] : [251, 220, 220]) : [255, 255, 255]));
+        doc.roundedRect(x + dispo * 0.05, y + dispo * 0.05, dispo * 0.9, dispo * 0.9,
+            1.4, 1.4, 'FD');
+        dessinerGrenouillePdf(doc, x + dispo / 2, y + dispo / 2, dispo * 0.72,
+            ...(vert ? VERT : ROUGE), aplat);
+        // La flèche du sens autorisé : la règle, écrite sur la bête.
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5, dispo * 0.9));
+        doc.setTextColor(...(vert ? VERT[0] : ROUGE[0]));
+        doc.text(vert ? '>' : '<', x + dispo * (vert ? 0.82 : 0.18), y + dispo * 0.92,
+            { align: 'center' });
+    }
+}
+
 // --- LE TASUKO SUR PAPIER ------------------------------------------------------
 //
 // Rémy : « Fais un tasuko. » Une grille de chiffres, et un crayon pour entourer
@@ -8507,6 +8887,46 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.1 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
+    },
+
+    tourBrahma: {
+        titre: 'Le jeu à découper : la Tour de Brahma',
+        consigne: (items) => {
+            const n = (items && items[0] && items[0].meta && items[0].meta.n) || 4;
+            return `DÉCOUPE LES ${n} BOULES et pose-les sur le conduit de gauche, la plus `
+                + 'grosse en bas. Le but est de les passer TOUTES à droite. On déplace une '
+                + 'boule à la fois, on a le droit d\'utiliser les trois conduits, et la seule '
+                + 'règle est qu\'une boule doit toujours être posée sur une boule PLUS GROSSE. '
+                + `Sauras-tu le faire en ${2 ** n - 1} coups ? C'est le minimum, et il n'y a `
+                + 'pas moyen de faire mieux.';
+        },
+        previewGrille: brahmaPreviewHtml,
+        pdfGrille: dessinerBrahmaPdf,
+        nomBloc: 'Jeu', nomBlocs: 'jeux',
+        // UN SEUL PAR PAGE : c'est un jeu qu'on découpe et qu'on manipule.
+        // Deux par feuille donneraient deux jeux trop petits pour les doigts.
+        proportions: { w: 1, h: 0.78 },
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1
+    },
+
+    grenouilles: {
+        titre: 'Le jeu à découper : les Grenouilles',
+        // COURTE, PARCE QU'ELLE EST COUPÉE : le bandeau tient deux lignes, et
+        // la version longue s'arrêtait sur « et attention, une ».
+        consigne: (items) => {
+            const n = (items && items[0] && items[0].meta && items[0].meta.n) || 4;
+            return `DÉCOUPE LES ${n * 2} GRENOUILLES et place-les comme sur la vignette `
+                + '« Départ ». Le but est d\'arriver à « Arrivée ». Les vertes ne vont qu\'à '
+                + 'DROITE, les rouges qu\'à GAUCHE ; une grenouille avance d\'un nénuphar '
+                + `libre, ou saute par-dessus UNE SEULE grenouille. Minimum : ${n * n + 2 * n} coups.`;
+        },
+        previewGrille: grenouillesPreviewHtml,
+        pdfGrille: dessinerGrenouillesPdf,
+        nomBloc: 'Jeu', nomBlocs: 'jeux',
+        proportions: { w: 1, h: 0.72 },
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1
     },
 
     tasuko: {

@@ -275,7 +275,10 @@ const PICTOS = {
     [TAGS.DOMAINE.NUMERIQUE]: '🔢',
     [TAGS.DOMAINE.GEOMETRIQUE]: '📐',
     [TAGS.DOMAINE.GRANDEURS]: '📏',
-    [TAGS.DOMAINE.DONNEES]: '📊'
+    [TAGS.DOMAINE.DONNEES]: '📊',
+    [TAGS.SOUS_DOMAINE.CASSE_TETE]: '🧠',
+    [TAGS.SOUS_DOMAINE.STRATEGIE]: '🧠',
+    [TAGS.DOMAINE.DEFIS]: '🧠'
 };
 
 function pictoDe(step) {
