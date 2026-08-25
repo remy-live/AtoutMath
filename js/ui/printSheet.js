@@ -543,6 +543,191 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- SEGMENT, DROITE OU DEMI-DROITE : LE SCHÉMA SUR LE PAPIER -----------------
+//
+// Rémy : « pour l'exercice 60, tu as oublié tous les schémas ». Il avait
+// raison : la feuille écrite ne sait poser que du texte, et cet exercice-là
+// pose une FIGURE — « comment note-t-on ceci ? » n'a aucun sens sans le trait
+// qu'on montre. Sur le papier, l'élève lisait « Note la figure ci-dessus »
+// au-dessus de rien.
+//
+// Il devient donc un bloc à part entière, comme les pendules et les repères,
+// et chacun des trois sens y trouve ce qu'il lui faut :
+//
+//   ÉCRIRE — le trait est dessiné, on écrit son nom dessous.
+//   DESSIN — les deux croix sont posées, l'écriture est donnée, on TRACE.
+//            Sans trait : c'est justement lui qu'on demande.
+//   DIRE   — l'écriture est donnée en grand, on la lit en toutes lettres.
+
+/** Les proportions du dessin de `core/figures.js`, en fractions de largeur. */
+const NOT_XA = 70 / 210, NOT_XB = 140 / 210, NOT_BORD = 8 / 210;
+
+function geoNotation(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const marge = 2;
+    const enonceH = Math.min(6, b.h * 0.22);
+    // « DIRE » N'A PAS DE FIGURE : c'est une lecture, pas un dessin. La bande
+    // du milieu lui rend sa place, et les deux lignes d'écriture la prennent.
+    const avecFigure = m.sens !== 'dire';
+    const figH = avecFigure ? Math.min(b.h * 0.42, 20) : 0;
+    const x0 = b.x + marge, largeur = b.w - marge * 2;
+    const yFig = b.y + enonceH;
+    return {
+        m, b, marge, enonceH, figH, avecFigure, x0, largeur,
+        yFig, yTrait: yFig + figH * 0.62,
+        xa: x0 + largeur * NOT_XA, xb: x0 + largeur * NOT_XB,
+        xDebut: x0 + largeur * NOT_BORD, xFin: x0 + largeur * (1 - NOT_BORD),
+        // La croix, et la lettre au-dessus d'elle.
+        r: Math.max(1.2, Math.min(figH * 0.14, 2.2)),
+        taille: Math.max(2.4, Math.min(enonceH * 0.62, 4)),
+        // Les lignes où l'on écrit : une pour une notation, deux pour une
+        // lecture en toutes lettres — « la demi-droite d'origine A passant
+        // par B » ne tient pas sur une seule.
+        lignes: m.sens === 'dessin' ? 0 : (m.sens === 'dire' ? 2 : 1),
+        yReponse: b.y + b.h - marge
+    };
+}
+
+/**
+ * Les deux bouts du trait, ou `null` quand c'est à l'élève de le tracer.
+ *
+ * DANS LE SENS « DESSIN », le corrigé le montre — et il faut alors tenir
+ * compte de l'ORDRE DES CROIX. Le générateur pose les deux lettres au hasard,
+ * de sorte que [AB) se trace parfois avec A à droite : l'origine est le
+ * premier point NOMMÉ, pas celui de gauche, et c'est tout le piège du
+ * chapitre. Une correction qui l'ignorerait enseignerait l'erreur.
+ */
+function traitNotation(g, solution) {
+    const m = g.m, t = m.objet;
+    if (m.sens === 'dessin' && !solution) return null;
+    if (t === 'droite') return { x1: g.xDebut, x2: g.xFin };
+    if (t === 'segment') return { x1: g.xa, x2: g.xb };
+    // La demi-droite part de son origine et file au-delà de l'autre point.
+    const origineAGauche = m.sens !== 'dessin' || (m.gauche || m.a) === m.a;
+    return origineAGauche ? { x1: g.xa, x2: g.xFin } : { x1: g.xb, x2: g.xDebut };
+}
+
+/** L'énoncé du bloc, dans les trois sens. */
+function enonceNotation(m) {
+    const e = ECRITURES_NOTATION[m.objet](m.a, m.b);
+    if (m.sens === 'ecrire') return 'Comment note-t-on cette figure ?';
+    if (m.sens === 'dire') return `Comment se lit ${e} ?`;
+    return `Trace ${ECRITURES_NOTATION[m.objet](m.a, m.b)}.`;
+}
+
+const ECRITURES_NOTATION = {
+    segment: (a, b) => `[${a}${b}]`,
+    droite: (a, b) => `(${a}${b})`,
+    'demi-droite': (a, b) => `[${a}${b})`
+};
+
+function notationPreviewHtml(item, slot, k, solution) {
+    const g = geoNotation(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    let html = `<div class="fx-not-enonce" style="left:${T(g.x0)}px; top:${T(g.b.y)}px;
+        width:${T(g.largeur)}px; height:${T(g.enonceH)}px;
+        font-size:${T(g.taille)}px">${echapperSheet(enonceNotation(m))}</div>`;
+
+    if (g.avecFigure) {
+        // Pour le sens « dessin », les deux croix sont posées dans l'ordre
+        // TIRÉ AU SORT par le générateur : c'est tout le piège de la
+        // demi-droite, dont l'origine est le premier point NOMMÉ et non celui
+        // de gauche.
+        const gauche = m.sens === 'dessin' ? (m.gauche || m.a) : m.a;
+        const droite = m.sens === 'dessin' ? (m.droite || m.b) : m.b;
+        const trait = traitNotation(g);
+        let d = '';
+        if (trait) {
+            d += `<line x1="${T(trait.x1)}" y1="${T(g.yTrait)}" x2="${T(trait.x2)}" y2="${T(g.yTrait)}"
+                stroke="${m.sens === 'dessin' ? '#2f855a' : '#1a202c'}" stroke-width="${T(0.5)}"/>`;
+        }
+        [[g.xa, gauche], [g.xb, droite]].forEach(([x, nom]) => {
+            d += `<g stroke="#1a202c" stroke-width="${T(0.5)}" stroke-linecap="round">
+                <line x1="${T(x - g.r)}" y1="${T(g.yTrait - g.r)}" x2="${T(x + g.r)}" y2="${T(g.yTrait + g.r)}"/>
+                <line x1="${T(x - g.r)}" y1="${T(g.yTrait + g.r)}" x2="${T(x + g.r)}" y2="${T(g.yTrait - g.r)}"/>
+            </g>`;
+            html += `<div class="fx-not-nom" style="left:${T(x - 6)}px;
+                top:${T(g.yTrait - g.r - g.taille * 1.5)}px; width:${T(12)}px;
+                font-size:${T(g.taille)}px">${echapperSheet(nom)}</div>`;
+        });
+        html += `<svg class="fx-not-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    }
+
+    for (let i = 0; i < g.lignes; i++) {
+        const y = g.yReponse - (g.lignes - 1 - i) * (g.taille * 2);
+        const texte = solution
+            ? (i === 0 ? reponseNotation(m) : '')
+            : '';
+        html += `<div class="fx-not-ligne" style="left:${T(g.x0)}px; top:${T(y - g.taille * 1.3)}px;
+            width:${T(g.largeur)}px; height:${T(g.taille * 1.3)}px;
+            font-size:${T(g.taille)}px">${echapperSheet(texte)}</div>`;
+    }
+    return html;
+}
+
+/** Ce qu'on attend dans la ligne de réponse. */
+function reponseNotation(m) {
+    const e = ECRITURES_NOTATION[m.objet](m.a, m.b);
+    if (m.sens === 'ecrire') return e;
+    if (m.sens === 'dire') return NOMS_NOTATION[m.objet](m.a, m.b);
+    return '';
+}
+
+const NOMS_NOTATION = {
+    segment: (a, b) => `le segment d'extrémités ${a} et ${b}`,
+    droite: (a, b) => `la droite passant par ${a} et ${b}`,
+    'demi-droite': (a, b) => `la demi-droite d'origine ${a} passant par ${b}`
+};
+
+function dessinerNotationPdf(doc, item, slot, solution) {
+    const g = geoNotation(item, slot);
+    const m = g.m;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.taille / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(enonceNotation(m)), g.x0, g.b.y + g.enonceH * 0.72);
+
+    if (g.avecFigure) {
+        const gauche = m.sens === 'dessin' ? (m.gauche || m.a) : m.a;
+        const droite = m.sens === 'dessin' ? (m.droite || m.b) : m.b;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.5);
+        const trait = traitNotation(g, solution);
+        if (trait) {
+            // Le tracé du corrigé se distingue de la figure donnée : c'est la
+            // réponse, pas l'énoncé.
+            if (m.sens === 'dessin') doc.setDrawColor(47, 133, 90);
+            doc.line(trait.x1, g.yTrait, trait.x2, g.yTrait);
+            doc.setDrawColor(...ENCRE.trait);
+        }
+        doc.setFont('helvetica', 'bold');
+        [[g.xa, gauche], [g.xb, droite]].forEach(([x, nom]) => {
+            doc.line(x - g.r, g.yTrait - g.r, x + g.r, g.yTrait + g.r);
+            doc.line(x - g.r, g.yTrait + g.r, x + g.r, g.yTrait - g.r);
+            doc.text(pourPdf(nom), x, g.yTrait - g.r - g.taille * 0.6, { align: 'center' });
+        });
+        doc.setFont('helvetica', 'normal');
+    }
+
+    for (let i = 0; i < g.lignes; i++) {
+        const y = g.yReponse - (g.lignes - 1 - i) * (g.taille * 2);
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([0.6, 0.9], 0);
+        doc.line(g.x0, y, g.x0 + g.largeur, y);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        if (!solution || i > 0) continue;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.taille / 0.3528);
+        doc.setTextColor(47, 133, 90);
+        doc.text(pourPdf(reponseNotation(m)), g.x0 + 1, y - 1);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...ENCRE.texte);
+    }
+}
+
 // --- LES MOTS CROISÉS SUR PAPIER ----------------------------------------------
 //
 // La mise en page du journal : la grille, puis les définitions rangées en
@@ -7270,6 +7455,22 @@ export const RENDUS = {
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2,
         sansSolution: true
+    },
+
+    notation: {
+        titre: 'Segment, droite ou demi-droite',
+        consigne: () => 'LE CROCHET EST UN MUR, LA PARENTHÈSE LAISSE FILER. [AB] s\'arrête aux '
+            + 'deux croix, (AB) dépasse des deux côtés, et [AB) part de A — le premier point '
+            + 'nommé — pour filer au-delà de B.',
+        previewGrille: notationPreviewHtml,
+        pdfGrille: dessinerNotationPdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        titreAGauche: true,
+        // Large et bas : un trait horizontal, son énoncé au-dessus et sa ligne
+        // d'écriture en dessous. Un carré lui laisserait la moitié en blanc.
+        proportions: { w: 1, h: 0.46 },
+        disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 5 },
+        parLigneDefaut: 2
     },
 
     anagrammes: {

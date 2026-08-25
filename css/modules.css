@@ -4658,6 +4658,26 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
             currentColor calc(50% + .7px), transparent calc(50% + .7px));
 }
 .fx-rp-etiq { position: absolute; font-weight: 800; color: #1a202c; }
+/* --- Fiche « Segment, droite ou demi-droite » -----------------------------
+   L'énoncé en haut, la figure au milieu, la ligne d'écriture en bas. Les trois
+   sens partagent le même bloc : c'est la figure qui change, pas la mise en
+   page (voir `geoNotation` dans printSheet.js). */
+.fx-not-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-not-enonce {
+    position: absolute; display: flex; align-items: center;
+    color: #2d3748; font-weight: 600; white-space: nowrap;
+    overflow: hidden; pointer-events: none;
+}
+.fx-not-nom {
+    position: absolute; text-align: center; font-weight: 800; color: #1a202c;
+    pointer-events: none;
+}
+.fx-not-ligne {
+    position: absolute; display: flex; align-items: flex-end;
+    border-bottom: 1px dotted #9aa3b2; font-weight: 800; color: #2f855a;
+    pointer-events: none;
+}
+
 /* --- Fiche « Le théorème de Pythagore » ----------------------------------
    L'énoncé à gauche — en toutes lettres ou en figure codée —, et à droite les
    trois amorces de la rédaction du cahier avec les lignes où l'on écrit. */

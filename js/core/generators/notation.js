@@ -291,11 +291,20 @@ export const notationGenerator = {
         const listeObjets = objets.length ? objets : TYPES.map(t => t.id);
         const listeSens = sens.length ? sens : SENS;
 
-        // Les deux réglages TOURNENT, à des rythmes premiers entre eux : sur
-        // neuf questions, les trois objets rencontrent les trois sens.
+        // LES DEUX RÉGLAGES TOURNENT, MAIS PAS AU MÊME RYTHME : les objets à
+        // chaque question, les sens tous les trois. Sur neuf questions, les
+        // trois objets rencontrent alors les trois sens — les neuf couples,
+        // une fois chacun.
+        //
+        // Ils avançaient tous les deux d'un cran à la fois, et comme les deux
+        // listes ont la même longueur, ils restaient VERROUILLÉS : « comment
+        // note-t-on cette figure ? » ne montrait jamais qu'un segment, et
+        // l'on ne voyait jamais une droite à nommer. C'est visible d'un coup
+        // d'œil sur une feuille imprimée — huit figures, deux questions
+        // identiques.
         const i = Number(ctx.index) || 0;
         const t = typeDe(listeObjets[i % listeObjets.length]);
-        const quoi = listeSens[i % listeSens.length];
+        const quoi = listeSens[Math.floor(i / listeObjets.length) % listeSens.length];
         const [a, b] = deuxLettres(rng);
         const q = FABRIQUES[quoi](rng, t, a, b);
 

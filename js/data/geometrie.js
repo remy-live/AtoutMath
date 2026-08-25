@@ -15,9 +15,12 @@ export const geometrieExercises = [
         id: 'geo-notation',
         cree: '2026-08-17',
         title: 'Segment, Droite ou Demi-droite ?',
-        consignePapier: "Réponds.",
-        colonnesPapier: 2,
         generatorId: 'geo.notation', activityId: 'bubbles',
+        // SUR LE PAPIER, C'EST UNE FIGURE. « Comment note-t-on ceci ? » n'a
+        // aucun sens sans le trait qu'on montre : la feuille écrite ne sait
+        // poser que du texte, et l'élève lisait « Note la figure ci-dessus »
+        // au-dessus de rien. Le bloc dessine le schéma des trois sens.
+        printable: 'notation',
         params: {
             objets: ['segment', 'droite', 'demi-droite'],
             sens: ['ecrire', 'dessin', 'dire']
