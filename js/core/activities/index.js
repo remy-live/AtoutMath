@@ -550,6 +550,10 @@ const legacy = [
     // Deux parties suffisent à valider — celle-ci se compte en centaines de
     // coups, en redemander cinq serait une punition.
     ['parking', 'Le Parking', 'parking', 'engineParking', 'échange', 2],
+    // L'embouteillage se compte en PARKINGS : une partie, c'est une voiture
+    // rouge sortie. Trois suffisent — le niveau monte tout seul entre chaque,
+    // donc trois parties, ce sont déjà trois marches.
+    ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

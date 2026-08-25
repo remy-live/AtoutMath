@@ -148,5 +148,48 @@ export const defisExercises = [
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         instruction: "Les voitures de gauche doivent toutes se retrouver à droite, et celles de droite à gauche. Touche une voiture : si elle n'a qu'une sortie, elle y va toute seule ; sinon, touche ensuite la case libre où l'envoyer. Une voiture avance ou recule d'UNE case à la fois, et ne saute JAMAIS par-dessus une autre. Tout doit donc passer par la voie du milieu, qui ne fait qu'une case de large — et deux voitures qui s'y croisent en sens contraires sont coincées pour de bon. Regarde bien la case qui dépasse sous la voie : c'est la seule où l'on peut se ranger pour laisser passer, et sans elle le jeu serait impossible. Ne demande pas « qui avance ? » mais « qui doit se ranger ? ». Le compteur affiche en permanence combien de coups il reste au plus court : s'il monte après ton coup, tu viens de faire un détour."
+    },
+    {
+        // L'EMBOUTEILLAGE — « façon rush hour », et progressif.
+        //
+        // Rémy : « J'aimerai un jeu façon rush hour et un jeu façon sokoban. Il
+        // faut que ce soit progressif. »
+        //
+        // CE N'EST PAS LE COUSIN DU PARKING, ET C'EST POUR CELA QUE LES DEUX
+        // COEXISTENT. Au Parking, toutes les voitures vont partout et ce qui
+        // manque est la place. Ici chacune est prisonnière d'un axe : ce qui
+        // manque n'est pas l'espace, c'est le DEGRÉ DE LIBERTÉ. Une case libre
+        // au-dessus d'une voiture couchée ne lui sert à rien.
+        //
+        // LA PROGRESSION EST MESURÉE, PAS ESTIMÉE. Chaque parking est exploré
+        // en entier avant d'être posé, et le départ est choisi à une distance
+        // voulue de la sortie. Le niveau monte tout seul à chaque victoire.
+        id: 'defi-embouteillage', status: STATUS.TEST, title: 'L\'Embouteillage',
+        cree: '2026-08-25',
+        activityId: 'embouteillage', skills: ['defi.embouteillage'],
+        sansRevision: true,
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de départ',
+                aide: 'Le niveau se mesure en COUPS MINIMUM, pas en nombre de voitures : un parking très encombré peut se résoudre en quatre coups. Il monte tout seul à chaque parking résolu, alors commencer au niveau 1 n\'est pas une perte de temps.',
+                options: [
+                    { value: 1, label: 'Niveau 1 — pour comprendre (4 à 6 coups)' },
+                    { value: 2, label: 'Niveau 2 (7 à 9 coups)' },
+                    { value: 3, label: 'Niveau 3 (10 à 12 coups)' },
+                    { value: 4, label: 'Niveau 4 (13 à 15 coups)' },
+                    { value: 5, label: 'Niveau 5 (16 à 19 coups)' },
+                    { value: 6, label: 'Niveau 6 — expert (20 coups et plus)' }
+                ],
+                default: 1
+            }
+        ],
+        motsClefs: ['embouteillage', 'rush hour', 'parking', 'voitures', 'blocage',
+            'casse-tête', 'défi', 'glisser', 'sortie', 'planification'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.CASSE_TETE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Fais sortir la voiture ROUGE par la droite. Chaque véhicule ne glisse que dans SON axe : ceux qui sont couchés vont à gauche et à droite, ceux qui sont debout montent et descendent — jamais l'inverse, et jamais par-dessus un autre. Touche une voiture : si elle n'a qu'une sortie, elle y va toute seule ; sinon, touche la case où l'amener. NE POUSSE PAS LA ROUGE, elle est bloquée : demande-toi QUI la bloque, puis qui bloque celle-là, et remonte la chaîne jusqu'à une voiture qui peut bouger tout de suite. C'est par elle qu'il faut commencer. Le compteur affiche un minimum CALCULÉ — l'ordinateur a exploré toutes les positions du plateau, personne ne peut faire mieux. S'il monte après ton coup, ce n'est pas une faute : c'est un détour, et « Annuler » existe. Le niveau monte d'un cran à chaque parking résolu."
     }
 ];
