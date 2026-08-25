@@ -102,6 +102,19 @@ const BASE = {
         descriptor: 'Compléter une grille de sudoku par élimination : chaque chiffre une seule fois par ligne, colonne et bloc.',
         lesson: 'Cherche une case dont la ligne, la colonne et le bloc contiennent déjà tous les autres chiffres : il n\'en reste qu\'un possible. Chaque case remplie en débloque d\'autres.'
     },
+    'num.logique.hashi': {
+        label: 'Hashi — les ponts',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Relier des îles par des ponts en respectant le chiffre de chacune, sans '
+            + 'croisement, et de façon que tout tienne d\'un seul tenant.',
+        lesson: 'Commence par les îles qui ne laissent aucun choix : une île « 4 » qui n\'a que '
+            + 'deux voisines prend deux ponts vers chacune ; une île « 1 » ne peut pas doubler. '
+            + 'Et n\'oublie pas la dernière règle : à la fin, on doit pouvoir aller de '
+            + 'n\'importe quelle île à n\'importe quelle autre — c\'est elle qui tranche quand '
+            + 'les chiffres ne suffisent plus.'
+    },
     'num.logique.garam': {
         label: 'Égalités croisées (Garam)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
