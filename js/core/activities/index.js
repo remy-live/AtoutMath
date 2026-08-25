@@ -556,6 +556,9 @@ const legacy = [
     ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
     // Le pousseur se compte en ENTREPÔTS rangés, et le niveau monte entre chaque.
     ['pousseur', 'Le Pousseur', 'pousseur', 'enginePousseur', 'entrepôt', 3],
+    // Les petites ailes se comptent en NOMBRES avalés : c'est de l'arcade, on
+    // en croise beaucoup et vite.
+    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'nombre', 12],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

@@ -2167,5 +2167,34 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Les points ne sont pas numérotés : chacun porte un calcul, et son résultat donne son rang. Cherche le calcul qui vaut 1, clique dessus ; puis celui qui vaut 2, et ainsi de suite. Le truc, c'est de ne pas calculer les vingt étiquettes une par une : demande-toi d'abord ce que le nombre cherché peut être — 12, c'est 3 × 4, le double de 6, 10 + 2 — puis balaie le dessin. À la fin, les calculs s'effacent et l'image reste."
+    },
+    {
+        // LES PETITES AILES. Rémy : « J'adorerai le jeu Tiny Wings sur
+        // iPhone. »
+        //
+        // UNE SEULE TOUCHE, ET LES MATHS DANS LE DÉCOR. Poser une question au
+        // clavier arrêterait le vol : c'est un jeu à une touche, il doit le
+        // rester. Alors une consigne est annoncée — « avale les multiples de
+        // 7 » — et les nombres flottent au-dessus des collines. Décider en une
+        // fraction de seconde si 63 convient EST le jeu, et c'est exactement
+        // l'automatisme qu'on veut installer.
+        //
+        // LE RELIEF EST UNE SOMME DE SINUS, donc on connaît sa pente ET sa
+        // courbure exactement. C'est la courbure qui décide du décollage :
+        // suivre le sol demande une accélération vers le bas de v² fois la
+        // courbure, et si la gravité ne fournit pas autant, l'oiseau part tout
+        // droit. Aucun saut à programmer.
+        id: 'jeu-petites-ailes', status: STATUS.TEST, title: 'Les Petites Ailes',
+        cree: '2026-08-25',
+        activityId: 'petites-ailes', skills: ['num.aile.reconnaitre'],
+        sansRevision: true,
+        params: {},
+        motsClefs: ['petites ailes', 'tiny wings', 'oiseau', 'collines', 'vol', 'arcade',
+            'multiples', 'diviseurs', 'carrés', 'pairs', 'reconnaître', 'vitesse'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Une seule touche : appuie n'importe où pour PLONGER, relâche pour planer. Appuie dans la descente — tu prends de la vitesse — et relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs : rester collé au sol te fait payer chaque montée. En haut de l'écran, une consigne : « avale les multiples de 7 », « les diviseurs de 36 », « les carrés parfaits »… Les nombres flottent au-dessus des collines, et tu n'avales que ceux qui la vérifient. Un mauvais nombre coûte un cœur — et le jeu te dit POURQUOI il ne convenait pas, parce que perdre sans comprendre n'apprend rien. Il n'y a rien à calculer : ces nombres-là se reconnaissent, et c'est justement ce qu'on vient travailler."
     }
 ];
