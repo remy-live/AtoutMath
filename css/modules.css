@@ -4500,9 +4500,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; font-weight: 800; color: #2d3748;
     letter-spacing: .08em; pointer-events: none;
 }
+/* La définition est CENTRÉE dans sa ligne et bornée par elle : son corps est
+   calculé pour qu'elle y tienne (voir `tailleDefinition`), et la boîte le
+   garantit — sur une feuille, deux textes superposés sont illisibles tous les
+   deux. */
 .fx-ana-def {
     position: absolute; color: #6b7280; line-height: 1.15;
-    overflow: hidden; pointer-events: none;
+    display: flex; align-items: center; overflow: hidden; pointer-events: none;
 }
 .fx-ana-case {
     position: absolute; border: .4px solid #1a202c; box-sizing: border-box;
@@ -4515,16 +4519,6 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; border: .3px solid #1a202c; box-sizing: border-box;
     background: #fff; display: flex; align-items: center; justify-content: center;
     font-weight: 800; color: #1a202c; pointer-events: none;
-}
-/* Case muette : hachurée, pas noircie — un aplat par case coûte une fortune
-   en encre sur trente photocopies (voir `hachuresDe` dans printSheet.js). */
-.fx-mc-noire {
-    position: absolute; pointer-events: none;
-    border: .18px solid #6e7684;
-    /* `--pas` est posé en ligne : c'est le côté de la case divisé par trois,
-       pour que la trame garde la même densité quelle que soit la grille. */
-    background-image: repeating-linear-gradient(45deg,
-        #6e7684 0 .6px, transparent .6px var(--pas, 4px));
 }
 .fx-mc-num {
     position: absolute; top: 0; left: .5px; color: #6b7280;

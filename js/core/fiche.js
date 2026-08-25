@@ -504,7 +504,10 @@ export function composerBlocs(exos, opts, mesurer) {
         // Numéroter ou non, exercice par exercice. Six grilles de sudoku n'ont
         // que faire d'être appelées « 7. » à « 12. » : ce qu'on écrit dessus
         // n'est pas une réponse à une question, c'est la grille elle-même.
-        const numerote = exo.numeroter !== false;
+        // UNE CARTE À DÉCOUPER NE PORTE PAS DE NUMÉRO. Sur une planche collée,
+        // le « 3. » tombe sur la bordure de la carte suivante, et il n'a rien à
+        // y faire : ce qu'on découpe, on le mélange.
+        const numerote = exo.numeroter !== false && !exo.blocsColles;
         // LA GOUTTIÈRE DU NUMÉRO SUIT LA LARGEUR DE LA CELLULE. Sept
         // millimètres et demi devant « 12. » sont justes dans une colonne
         // large ; dans une cellule de vingt-deux millimètres — six colonnes de
@@ -539,7 +542,13 @@ export function composerBlocs(exos, opts, mesurer) {
             // « auto » remplit la largeur sans descendre sous `grilleMin`, en
             // dessous de quoi les cases deviennent trop petites pour écrire.
             const voulu = exo.grillesParLigne ?? o.grillesParLigne;
-            const gap = o.gouttiereGrilles ?? o.gouttiere;
+            // BLOCS COLLÉS : ni gouttière entre deux blocs, ni blanc entre deux
+            // rangées. Une planche de cartes à découper se traverse d'un seul
+            // coup de massicot ; le moindre écart oblige à viser au milieu du
+            // blanc, deux fois par carte. Le rendu le déclare (`blocsColles`).
+            const colles = !!exo.blocsColles;
+            const gap = colles ? 0 : (o.gouttiereGrilles ?? o.gouttiere);
+            const entreRangees = colles ? 0 : o.entreQuestions;
             const tiendraient = Math.max(1, Math.floor((zone.w + gap) / (o.grilleMin + gap)));
             const parLigne = Math.max(1, Math.min(
                 grilles.length,
@@ -587,7 +596,7 @@ export function composerBlocs(exos, opts, mesurer) {
 
             for (let debut = 0; debut < grilles.length; debut += parLigne) {
                 const rangee = grilles.slice(debut, debut + parLigne);
-                if (y + hauteurBloc2 + o.entreQuestions > basPage) {
+                if (y + hauteurBloc2 + entreRangees > basPage) {
                     nouvellePage();
                     page.items.push({
                         type: 'exo', n: iExo + 1, suite: true, id: exo.id ?? null,
@@ -613,8 +622,11 @@ export function composerBlocs(exos, opts, mesurer) {
                         boite: { x: gx, y, w: cote, h: hauteurBloc2 }
                     });
                 });
-                y += hauteurBloc2 + o.entreQuestions;
+                y += hauteurBloc2 + entreRangees;
             }
+            // Le blanc qui suit une planche collée n'appartient plus à la
+            // planche : c'est la mise en page générale qui l'ajoute.
+            if (colles) y += o.entreQuestions;
             return;
         }
 

@@ -407,7 +407,19 @@ function geoAnagrammes(item, slot) {
     const colMelange = b.w * 0.26;
     const largeurCases = Math.min(b.w * 0.42, maxLettres * hLigne * 0.52);
     const cote = largeurCases / maxLettres;
-    return { b, lignes, hLigne, colMelange, cote, maxLettres, avecDef: item.meta.avecDef !== false };
+    // UN SEUL CORPS POUR TOUTES LES DÉFINITIONS DE L'EXERCICE : celui de la
+    // plus longue. Calculé ligne par ligne, « Six faces carrées identiques »
+    // s'écrivait deux fois plus gros que la définition d'à côté, et la colonne
+    // avait l'air bricolée. C'est la même raison qui aligne les « = » de la
+    // fiche des pharaons : sur une feuille, l'irrégularité se voit avant le
+    // contenu.
+    const tailleDef = lignes.reduce((mini, l) => Math.min(mini, tailleDefinition(
+        hLigne,
+        Math.max(10, b.w * 0.74 - MARGE_DEF - cote * l.mot.length - 3),
+        String(l.def || '').length
+    )), hLigne * 0.30);
+    return { b, lignes, hLigne, colMelange, cote, maxLettres, tailleDef,
+        avecDef: item.meta.avecDef !== false };
 }
 
 /**
@@ -425,6 +437,30 @@ function geoAnagrammes(item, slot) {
  */
 const AVANCE_MELANGE = 0.80;
 const MARGE_DEF = 3;
+/**
+ * LA DÉFINITION TIENT DANS SA LIGNE, ET NE MORD PAS SUR LA SUIVANTE.
+ *
+ * Rémy : « en anagramme, il y a toujours un souci de présentation ». Sur une
+ * feuille de parcours, où le bloc est plus étroit, « Deux droites qui ne se
+ * croisent jamais, même très loin » demandait trois lignes dans une place qui
+ * n'en offrait que deux : la définition débordait sur le mot d'en dessous, et
+ * deux textes se superposaient.
+ *
+ * Le corps se DÉDUIT de la place. Un texte de n signes écrit au corps t occupe
+ * à peu près n × t / 2 en longueur ; il lui faut donc n × t / (2 × largeur)
+ * lignes, chacune haute de 1,15 t. Poser que ce produit tient dans la hauteur
+ * offerte donne directement t — une racine carrée, et plus aucune surprise.
+ */
+function tailleDefinition(hLigne, largeur, n) {
+    const t = Math.sqrt(hLigne * 0.86 * Math.max(10, largeur) / (0.575 * Math.max(8, n)));
+    return Math.max(1.9, Math.min(hLigne * 0.30, t));
+}
+
+/** La largeur qui reste à la définition, une fois le mélange et les cases posés. */
+function largeurDefinition(g, ligne) {
+    return Math.max(10, g.b.w - g.colMelange - MARGE_DEF - g.cote * ligne.mot.length - 3);
+}
+
 function tailleMelange(g, ligne) {
     const large = g.hLigne * 0.42;
     const tenu = (g.colMelange - MARGE_DEF)
@@ -441,10 +477,10 @@ function anagrammesPreviewHtml(item, slot, k, solution) {
         html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y + g.hLigne * 0.18)}px;
             width:${T(g.colMelange)}px; font-size:${T(tailleMelange(g, l))}px">${echapperSheet(l.melange)}</div>`;
         if (g.avecDef) {
+            const largeurDef = largeurDefinition(g, l);
             html += `<div class="fx-ana-def" style="left:${T(g.b.x + g.colMelange + MARGE_DEF)}px;
-                top:${T(y + g.hLigne * 0.16)}px;
-                width:${T(g.b.w - g.colMelange - MARGE_DEF - g.cote * l.mot.length - 3)}px;
-                font-size:${T(g.hLigne * 0.30)}px">${echapperSheet(l.def)}</div>`;
+                top:${T(y)}px; width:${T(largeurDef)}px; height:${T(g.hLigne)}px;
+                font-size:${T(g.tailleDef)}px">${echapperSheet(l.def)}</div>`;
         }
         const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
         for (let c = 0; c < l.mot.length; c++) {
@@ -473,12 +509,19 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
 
         if (g.avecDef) {
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(Math.min(8, g.hLigne * 0.34));
+            const largeur = largeurDefinition(g, l);
+            const taille = g.tailleDef;
+            doc.setFontSize(taille / 0.3528);
             doc.setTextColor(...ENCRE.gris);
-            const largeur = g.b.w - g.colMelange - MARGE_DEF - g.cote * l.mot.length - 3;
-            const morceaux = doc.splitTextToSize(pourPdf(l.def), Math.max(10, largeur));
-            doc.text(morceaux.slice(0, 2), g.b.x + g.colMelange + MARGE_DEF, y + g.hLigne * 0.45,
-                { baseline: 'middle' });
+            const morceaux = doc.splitTextToSize(pourPdf(l.def), largeur);
+            // Le paragraphe est CENTRÉ dans sa ligne, du haut vers le bas : au
+            // milieu, deux lignes débordaient d'un demi-interligne de chaque
+            // côté et venaient toucher les voisines.
+            const interligne = taille * 1.15;
+            const haut = y + (g.hLigne - morceaux.length * interligne) / 2 + taille * 0.85;
+            morceaux.forEach((part, j) => {
+                doc.text(part, g.b.x + g.colMelange + MARGE_DEF, haut + j * interligne);
+            });
         }
 
         const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
@@ -506,29 +549,6 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
 // « Horizontalement » et « Verticalement ». Une grille par page — à deux, un
 // 15 × 18 tombe sous trois millimètres par case.
 
-/**
- * UNE CASE HACHURÉE PLUTÔT QUE NOIRE.
- *
- * Rémy : « pour les mots croisés, ne mets pas un fond noir, c'est un gâchis
- * d'encre ». Une grille de 15 × 18 compte une cinquantaine de cases muettes ;
- * en aplat, ce sont cinquante centimètres carrés de toner par feuille, fois
- * trente élèves. Les hachures à quarante-cinq degrés disent la même chose —
- * « on n'écrit pas ici » — pour un vingtième de l'encre, et elles restent
- * lisibles sur une photocopie de photocopie, là où un aplat bave.
- *
- * Les segments sont calculés, pas détourés : jsPDF n'a pas de fenêtre de
- * découpe simple, alors on intersecte chaque diagonale avec le rectangle.
- */
-function hachuresDe(x, y, w, h, pas) {
-    const segments = [];
-    // La droite d'équation Y = X + k, pour k du coin haut-droit au coin bas-gauche.
-    for (let k = y - (x + w); k <= y + h - x; k += pas) {
-        const a = Math.max(x, y - k), b = Math.min(x + w, y + h - k);
-        if (b - a > 0.05) segments.push({ x1: a, y1: a + k, x2: b, y2: b + k });
-    }
-    return segments;
-}
-
 function geoMotsCroises(item, slot) {
     const b = boiteDe(slot);
     const m = item.meta;
@@ -554,14 +574,16 @@ function motsCroisesPreviewHtml(item, slot, k, solution) {
         for (let x = 0; x < g.m.largeur; x++) {
             const c = g.m.cases[y][x];
             const X = g.x + x * g.cote, Y = g.y + y * g.cote;
-            if (c === null) {
-                // Le pas des hachures suit la case : deux fois plus fin sur une
-                // grande grille, et la trame garderait la même densité.
-                html += `<div class="fx-mc-noire" style="left:${T(X)}px; top:${T(Y)}px;
-                    width:${T(g.cote)}px; height:${T(g.cote)}px;
-                    --pas:${T(g.cote / 3)}px"></div>`;
-                continue;
-            }
+            // ON NE DESSINE RIEN DU TOUT SUR UNE CASE MUETTE.
+            //
+            // Rémy : « les cases qui ne servent pas, ne les mets juste pas, on
+            // ne doit voir que la grille des mots ». Elles étaient noircies —
+            // un gâchis d'encre —, puis hachurées — moins d'encre, mais autant
+            // de bruit. Or elles ne portent AUCUNE information : ce qui compte,
+            // c'est la silhouette des mots, et elle se dessine toute seule dès
+            // qu'on laisse le blanc autour. C'est la grille des mots croisés
+            // « à l'américaine », celle des grilles de vacances.
+            if (c === null) continue;
             const donnee = offertes.get(`${x},${y}`);
             const lettre = solution ? c : (donnee || '');
             const num = (g.m.numeros && g.m.numeros[`${x},${y}`]) || '';
@@ -598,14 +620,8 @@ function dessinerMotsCroisesPdf(doc, item, slot, solution, champ) {
 
     for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
         const X = g.x + x * g.cote, Y = g.y + y * g.cote;
-        if (g.m.cases[y][x] === null) {
-            doc.setDrawColor(...ENCRE.gris);
-            doc.setLineWidth(0.18);
-            doc.rect(X, Y, g.cote, g.cote, 'S');
-            hachuresDe(X, Y, g.cote, g.cote, g.cote / 3)
-                .forEach(t => doc.line(t.x1, t.y1, t.x2, t.y2));
-            continue;
-        }
+        // Rien sur une case muette : seule la silhouette des mots se voit.
+        if (g.m.cases[y][x] === null) continue;
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.22);
         doc.rect(X, Y, g.cote, g.cote, 'S');
@@ -6145,6 +6161,10 @@ function nombreEspace(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 }
 
+// La part du bloc réservée au nombre et à son « = ». Assez large pour un
+// million sans jamais manger la place où l'on dessine les glyphes.
+const LARGEUR_NOMBRE = 0.30;
+
 function geoEgypte(item, slot) {
     const m = item.meta;
     const b = slot.boite;
@@ -6165,11 +6185,24 @@ function geoEgypte(item, slot) {
     // vient après lui, sur la même ligne — comme au cahier.
     const ecrire = m.sens === 'ecrire';
     const texte = ecrire ? `${nombreEspace(m.total)}  =` : '';
-    // Trois millimètres par caractère : de quoi ne jamais couper le nombre.
-    const largeurTexte = ecrire ? Math.min(b.w * 0.45, texte.length * 3 + 3) : 0;
+    // UNE COLONNE DE MÊME LARGEUR POUR TOUS LES NOMBRES DE LA FEUILLE.
+    //
+    // Rémy : « la présentation des hiéroglyphes est curieuse ». Elle l'était :
+    // la colonne se calculait sur la longueur de CE nombre-là, si bien que
+    // « 404 » et « 30 103 » ne commençaient pas au même endroit, que les « = »
+    // ne s'alignaient pas, et que les pointillés n'avaient pas deux fois la
+    // même longueur. Une part fixe du bloc, et tout se met en colonne.
+    const largeurTexte = ecrire ? b.w * LARGEUR_NOMBRE : 0;
+    // Le corps est calculé sur le PLUS LONG nombre possible — « 1 000 000  = »,
+    // douze signes — et non sur celui qu'on a sous la main : sinon un nombre
+    // court s'écrirait plus gros que son voisin, et l'on retomberait dans le
+    // dépareillé qu'on vient de corriger.
+    const corpsTexte = ecrire
+        ? Math.min(4.6, (largeurTexte - 2) / (12 * 0.58))
+        : 0;
     const cell = Math.min((b.w - largeurTexte) / (plan.largeur + 0.3), hDispo / (hautCases + 0.3), 16);
     return {
-        m, b, plan, cell, interligne: INTERLIGNE, ecrire, texte, largeurTexte,
+        m, b, plan, cell, interligne: INTERLIGNE, ecrire, texte, largeurTexte, corpsTexte,
         rangs: plan.lignes, colonnes: plan.largeur,
         x0: b.x + 1 + largeurTexte,
         y0: b.y + 1,
@@ -6202,8 +6235,8 @@ function egyptePreviewHtml(item, slot, k, solution) {
         html += `<div style="position:absolute; left:${g.b.x * k}px;
             top:${(g.yReponse - 8) * k}px; width:${g.largeurTexte * k}px; height:${8 * k}px;
             display:flex; align-items:flex-end; justify-content:flex-end;
-            padding-bottom:${0.97 * k}px; box-sizing:border-box;
-            font-weight:800; color:#1a202c; font-size:${4.6 * k}px;
+            padding-bottom:${g.corpsTexte * 0.21 * k}px; box-sizing:border-box;
+            font-weight:800; color:#1a202c; font-size:${g.corpsTexte * k}px;
             white-space:nowrap">${echapperSheet(g.texte)}</div>`;
     }
     const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
@@ -6253,7 +6286,8 @@ function dessinerEgyptePdf(doc, item, slot, solution) {
 
     if (g.ecrire) {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
+        // La MÊME taille qu'à l'aperçu : elle est donnée en millimètres.
+        doc.setFontSize(g.corpsTexte / 0.3528);
         doc.setTextColor(...ENCRE.trait);
         // La même ligne de base qu'à l'aperçu : le trait.
         doc.text(pourPdf(g.texte), g.b.x + g.largeurTexte - 1, g.yReponse, { align: 'right' });
@@ -8376,9 +8410,16 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         if (exo && exo.printGeneratorId && exo.printGeneratorId !== exo.generatorId) {
             return (generator.params || []).filter(surPapier);
         }
-        const connus = new Set((generator.params || []).map(p => p.id));
-        const gardes = (paramSchemaOf(exo) || []).filter(p => p && connus.has(p.id) && surPapier(p));
-        return gardes.length ? gardes : (generator.params || []).filter(surPapier);
+        // MÊME QUAND C'EST LE GÉNÉRATEUR DE L'ÉCRAN qui fait la feuille, on
+        // part de SES réglages : l'intersection laissait tomber ceux que le
+        // catalogue ne redit pas. Le catalogue garde le dernier mot sur les
+        // réglages qu'il décrit — libellé et aide y sont écrits pour le
+        // professeur — mais il n'en efface plus aucun.
+        const duCatalogue = new Map((paramSchemaOf(exo) || [])
+            .filter(p => p && p.id).map(p => [p.id, p]));
+        return (generator.params || [])
+            .map(p => duCatalogue.get(p.id) || p)
+            .filter(surPapier);
     })();
     contenuEl.hidden = !schemaContenu.length;
     contenuEl.innerHTML = '';

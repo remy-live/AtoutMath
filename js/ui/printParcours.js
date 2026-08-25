@@ -88,9 +88,25 @@ export function analyserParcours(chemin) {
 function schemaPapier(etape) {
     const params = (etape.generator && etape.generator.params) || [];
     if (!params.length) return [];
-    const connus = new Set(params.map(p => p.id));
-    const gardes = (paramSchemaOf(etape.exercise) || []).filter(p => p && connus.has(p.id));
-    return gardes.length ? gardes : params;
+    // ON PART DES RÉGLAGES DU GÉNÉRATEUR DE FICHE, PAS DE CEUX DU CATALOGUE.
+    //
+    // Rémy : « les exercices 8, 9, 10 n'ont pas d'option ». Ils en avaient
+    // une, et ce n'était pas la bonne. On croisait les deux listes et l'on ne
+    // gardait que l'intersection — si bien qu'un réglage connu du seul
+    // générateur de fiche disparaissait. Or c'est précisément celui-là qui
+    // décide de la feuille : `sens` (lire les hiéroglyphes ou les écrire),
+    // `mode` (placer un point ou lire ses coordonnées), `operation` (poser une
+    // addition ou une division). Dix-huit exercices étaient ainsi amputés du
+    // réglage qui change tout, et deux d'entre eux n'en montraient plus qu'un.
+    //
+    // Le catalogue garde son mot à dire : quand il décrit le même réglage, on
+    // prend SA version — libellé et aide y sont écrits pour le professeur.
+    // `papier: false` retire un réglage qui ne concerne que l'écran — la
+    // tolérance du rapporteur, le nombre de propositions : sur une photocopie
+    // ce sont des boutons qui ne changent rien.
+    const duCatalogue = new Map((paramSchemaOf(etape.exercise) || [])
+        .filter(p => p && p.id).map(p => [p.id, p]));
+    return params.map(p => duCatalogue.get(p.id) || p).filter(p => p && p.papier !== false);
 }
 
 /**
@@ -1113,7 +1129,13 @@ export function ouvrirFicheParcours(chemin) {
                     // figure suivie de trois lignes à rédiger est large et
                     // basse. Le rendu déclare sa proportion, la mise en page
                     // la respecte.
-                    grilleRatio: e.grille ? (RENDUS[e.grille].proportions?.h ?? 1) : 1
+                    grilleRatio: e.grille ? (RENDUS[e.grille].proportions?.h ?? 1) : 1,
+                    // BLOCS COLLÉS : les cartes du memory se touchent par leur
+                    // bordure, dans un parcours comme sur leur fiche seule.
+                    // Rémy : « les paires de paires ne sont pas collées, il
+                    // faut que cela fasse un bloc ». Une planche de cartes se
+                    // découpe d'un trait de massicot, pas paire par paire.
+                    blocsColles: !!(e.grille && RENDUS[e.grille].blocsColles)
                 };
             })
             .filter(x => x.questions.length || x.grilles.length);
