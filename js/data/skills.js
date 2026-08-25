@@ -630,6 +630,24 @@ const BASE = {
         descriptor: 'Construire un angle de mesure donnée à l\'aide du rapporteur.',
         lesson: 'Centre sur le sommet, zéro sur le côté déjà tracé : repère la graduation voulue en partant de ce zéro, puis trace le second côté qui passe par elle.'
     },
+    'geo.angles.relations': {
+        label: 'Reconnaître et utiliser les angles remarquables',
+        chemin: [D.GEOMETRIQUE, SD.ANGLES],
+        niveaux: [N.CINQUIEME],
+        prereqs: ['geo.angles.mesure'],
+        descriptor: 'Nommer un couple d\'angles — opposés par le sommet, correspondants, '
+            + 'alternes-internes, complémentaires, supplémentaires — et s\'en servir pour '
+            + 'trouver une mesure sans rapporteur.',
+        lesson: 'Deux droites qui se croisent font quatre angles : ceux qui se font face sont '
+            + 'OPPOSÉS PAR LE SOMMET, et ils sont ÉGAUX ; deux voisins forment un angle plat, '
+            + 'ils sont donc SUPPLÉMENTAIRES et leur somme vaut 180°. Deux angles qui forment '
+            + 'ensemble un angle droit sont COMPLÉMENTAIRES : leur somme vaut 90°. Autour d\'un '
+            + 'point, le tour complet vaut 360°. Enfin, quand une sécante coupe DEUX DROITES '
+            + 'PARALLÈLES, les angles CORRESPONDANTS (même coin des deux croisements) sont '
+            + 'égaux, et les ALTERNES-INTERNES (coins opposés, entre les deux parallèles) '
+            + 'aussi. Toute la difficulté est de reconnaître la relation : le calcul, ensuite, '
+            + 'n\'est qu\'une soustraction — et souvent même pas.'
+    },
     'geo.figure.programme': {
         label: 'Construire une figure par un programme',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],

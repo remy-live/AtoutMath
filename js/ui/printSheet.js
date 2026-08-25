@@ -54,6 +54,13 @@ import {
     NOM_TYPE as NOM_TYPE_CODAGE
 } from '../core/codage.js';
 import {
+    contourSecteur as contourSecteurAngle, equerreDe as equerreAngle,
+    mesureArc as mesureArcAngle, ancreArc as ancreArcAngle,
+    rayonSecteur as rayonSecteurAngle, boiteFigure as boiteFigureAngle,
+    HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE
+} from '../core/anglesRemarquables.js';
+import { sommets as sommetsAngles } from '../core/anglesRemarquablesSvg.js';
+import {
     pointsProjetes as pointsProjetesCodage,
     traitsDeMarque as traitsDeMarqueCodage,
     pointsAngleDroit as pointsAngleDroitCodage
@@ -541,6 +548,184 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
             }
         }
     });
+}
+
+// --- LES ANGLES REMARQUABLES SUR LE PAPIER ------------------------------------
+//
+// La même figure qu'à l'écran, tirée des mêmes données (core/anglesRemarquables
+// .js). Ici on la pose dans un bloc en millimètres, et l'on écrit dessous la
+// ligne où l'élève donne sa réponse.
+//
+// LES DEUX COULEURS SURVIVENT À LA PHOTOCOPIEUSE. L'angle donné est ambré,
+// celui qu'on cherche est vert : en noir et blanc, l'un tombe en gris moyen et
+// l'autre en gris clair, et les deux portent un contour — c'est la règle de la
+// maison, la couleur ajoute du confort mais ne porte jamais l'information
+// seule. Un « ? » posé dans le secteur cherché le dit d'ailleurs en toutes
+// lettres.
+
+const ENCRE_ANGLE = {
+    donne: { fond: [253, 224, 160], trait: [199, 120, 0] },
+    cherche: { fond: [200, 236, 218], trait: [31, 122, 77] },
+    relais: { fond: [222, 226, 245], trait: [91, 107, 191] }
+};
+
+function geoAnglesManquants(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const marge = 2;
+    // La ligne de réponse en bas, et le dessin dans tout le reste.
+    const ligneH = Math.min(9, b.h * 0.2);
+    const dispoH = b.h - ligneH;
+    // LA FIGURE REMPLIT SON BLOC. Enfermée dans le carré inscrit, elle n'en
+    // occupait qu'un tiers : un bloc de fiche est large et bas, une paire de
+    // droites penchées aussi, et forcer un carré perdait les deux tiers de la
+    // largeur. On mesure la boîte réelle du dessin — étiquettes comprises — et
+    // l'on ajuste dessus, comme pour les rapporteurs.
+    const bf = boiteFigureAngle(m.figure);
+    const k = Math.min((b.w - marge * 2) / bf.largeur, (dispoH - marge) / bf.hauteur);
+    const cx = b.x + b.w / 2 - ((bf.xmin + bf.xmax) / 2) * k;
+    const cy = b.y + dispoH / 2 + ((bf.ymin + bf.ymax) / 2) * k;
+    return {
+        m, b, k, cx, cy, ligneH, dispoH,
+        // Du repère mathématique (y monte) au papier (y descend).
+        P: (x, y) => ({ x: cx + x * k, y: cy - y * k }),
+        yReponse: b.y + dispoH + ligneH * 0.62,
+        // La taille de la ligne « ? = » suit le bloc ; celle des étiquettes
+        // suit LE DESSIN, pour que `ancreArc` leur ait réservé la bonne place.
+        //
+        // MAIS JAMAIS PLUS QUE SA PART DU BLOC. Un angle plein tient dans un
+        // petit disque et se dessine donc très agrandi : à l'échelle du dessin,
+        // son « 183° » sortait deux fois plus gros que le « 51° » de la figure
+        // d'à côté, et la planche entière paraissait bancale. On plafonne — un
+        // plafond ne fait que RÉDUIRE l'étiquette, donc la place que `ancreArc`
+        // lui a réservée reste suffisante.
+        taille: Math.max(2.6, Math.min(Math.min(b.w, dispoH) * 0.085, 4.4)),
+        tailleEtiq: Math.min(HAUTEUR_ETIQ_ANGLE * k, Math.max(2.2, Math.min(b.w, dispoH) * 0.075))
+    };
+}
+
+/** L'étiquette d'un arc : sa mesure, un « ? », ou le numéro d'un pas. */
+function texteArcAngle(arc, solution) {
+    if (arc.role === 'donne') return `${mesureArcAngle(arc)}°`;
+    if (solution) return `${mesureArcAngle(arc)}°`;
+    // LE RELAIS PORTE SON NUMÉRO, l'angle cherché garde son « ? ». Le numéro
+    // dit par où passer ; c'est le point d'interrogation qui dit quoi rendre.
+    return arc.role === 'relais' && arc.pas ? String(arc.pas) : '?';
+}
+
+function anglesManquantsPreviewHtml(item, slot, k, solution) {
+    const g = geoAnglesManquants(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    const Q = (x, y) => { const p = g.P(x, y); return `${T(p.x)},${T(p.y)}`; };
+    let d = '';
+    m.figure.arcs.forEach((arc, i) => {
+        const rangArc = m.figure.arcs.slice(0, i)
+            .filter(a => Math.abs(a.x - arc.x) < 1e-9 && Math.abs(a.y - arc.y) < 1e-9).length;
+        const pts = contourSecteurAngle(arc, rayonSecteurAngle(arc, rangArc)).map(p => Q(p.x, p.y));
+        const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
+        d += `<polygon points="${pts.join(' ')}" fill="rgb(${c.fond.join(',')})"
+            stroke="rgb(${c.trait.join(',')})" stroke-width="${T(0.35)}"
+            ${arc.role === 'relais' ? `stroke-dasharray="${T(1.2)} ${T(1)}"` : ''}/>`;
+    });
+    m.figure.traits.forEach(t => {
+        const a = g.P(t.x1, t.y1), z = g.P(t.x2, t.y2);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+            stroke="#1a202c" stroke-width="${T(0.5)}" stroke-linecap="round"
+            ${t.pointille ? `stroke-dasharray="${T(2)} ${T(1.4)}"` : ''}/>`;
+    });
+    if (m.figure.droit) {
+        const pts = equerreAngle(m.figure.droit).map(p => Q(p.x, p.y));
+        d += `<polyline points="${pts.join(' ')}" fill="none" stroke="#1a202c" stroke-width="${T(0.4)}"/>`;
+    }
+    sommetsAngles(m.figure).forEach(s => {
+        const p = g.P(s.x, s.y);
+        d += `<circle cx="${T(p.x)}" cy="${T(p.y)}" r="${T(0.6)}" fill="#1a202c"/>`;
+    });
+    let html = `<svg class="fx-ar-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    m.figure.arcs.forEach(arc => {
+        const ancre = ancreArcAngle(arc);
+        const p = g.P(ancre.x, ancre.y);
+        const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
+        html += `<div class="fx-ar-mesure" style="left:${T(p.x - 8)}px; top:${T(p.y - g.tailleEtiq * 0.7)}px;
+            width:${T(16)}px; font-size:${T(g.tailleEtiq)}px;
+            color:rgb(${c.trait.join(',')})">${echapperSheet(texteArcAngle(arc, solution))}</div>`;
+    });
+    const rep = solution ? `${m.reponse}°` : '';
+    html += `<div class="fx-ar-ligne" style="left:${T(g.b.x + 2)}px;
+        top:${T(g.b.y + g.dispoH)}px; width:${T(g.b.w - 4)}px; height:${T(g.ligneH * 0.8)}px;
+        font-size:${T(g.taille)}px"><b>?&nbsp;=</b>&nbsp;<i>${echapperSheet(rep)}</i></div>`;
+    return html;
+}
+
+function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
+    const g = geoAnglesManquants(item, slot);
+    const m = g.m;
+    m.figure.arcs.forEach((arc, i) => {
+        const rangArc = m.figure.arcs.slice(0, i)
+            .filter(a => Math.abs(a.x - arc.x) < 1e-9 && Math.abs(a.y - arc.y) < 1e-9).length;
+        const pts = contourSecteurAngle(arc, rayonSecteurAngle(arc, rangArc)).map(p => g.P(p.x, p.y));
+        const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
+        doc.setFillColor(...c.fond);
+        doc.setDrawColor(...c.trait);
+        doc.setLineWidth(0.35);
+        const suite = pts.slice(1).map((p, j) => [p.x - pts[j].x, p.y - pts[j].y]);
+        doc.lines(suite, pts[0].x, pts[0].y, [1, 1], 'FD', true);
+    });
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.setLineCap('round');
+    m.figure.traits.forEach(t => {
+        const a = g.P(t.x1, t.y1), z = g.P(t.x2, t.y2);
+        if (t.pointille && doc.setLineDashPattern) doc.setLineDashPattern([2, 1.4], 0);
+        doc.line(a.x, a.y, z.x, z.y);
+        if (t.pointille && doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+    });
+    doc.setLineCap('butt');
+    if (m.figure.droit) {
+        const pts = equerreAngle(m.figure.droit).map(p => g.P(p.x, p.y));
+        doc.setLineWidth(0.4);
+        doc.line(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+        doc.line(pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+    }
+    doc.setFillColor(...ENCRE.trait);
+    sommetsAngles(m.figure).forEach(s => {
+        const p = g.P(s.x, s.y);
+        doc.circle(p.x, p.y, 0.6, 'F');
+    });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.tailleEtiq / 0.3528);
+    m.figure.arcs.forEach(arc => {
+        const ancre = ancreArcAngle(arc);
+        const p = g.P(ancre.x, ancre.y);
+        const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
+        const mot = pourPdf(texteArcAngle(arc, solution));
+        // LE BLANC SOUS L'ÉTIQUETTE. Un côté d'angle passe forcément près de
+        // sa bissectrice quand l'angle est serré ; un rectangle blanc posé
+        // avant le texte coupe le trait juste là, comme une gomme, et le
+        // nombre reste lisible sans qu'on ait à écarter la figure.
+        const lg = doc.getTextWidth(mot) + 0.8, ht = g.tailleEtiq * 0.9;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(p.x - lg / 2, p.y - ht * 0.62, lg, ht, 'F');
+        doc.setTextColor(...c.trait);
+        doc.text(mot, p.x, p.y + g.tailleEtiq * 0.35, { align: 'center' });
+    });
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf('? ='), g.b.x + 2, g.yReponse);
+    const x = g.b.x + 2 + doc.getTextWidth(pourPdf('? =')) + 2;
+    if (solution) {
+        doc.setTextColor(47, 133, 90);
+        doc.text(pourPdf(`${m.reponse}°`), x, g.yReponse);
+        doc.setTextColor(...ENCRE.texte);
+        return;
+    }
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([0.6, 0.9], 0);
+    doc.line(x, g.yReponse, g.b.x + g.b.w - 2, g.yReponse);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
 }
 
 // --- SEGMENT, DROITE OU DEMI-DROITE : LE SCHÉMA SUR LE PAPIER -----------------
@@ -7455,6 +7640,22 @@ export const RENDUS = {
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2,
         sansSolution: true
+    },
+
+    anglesManquants: {
+        titre: 'Les angles remarquables — la valeur manquante',
+        consigne: () => 'TROUVE LA MESURE DE L\'ANGLE VERT. Cherche d\'abord COMMENT les deux '
+            + 'angles sont placés l\'un par rapport à l\'autre : opposés par le sommet, '
+            + 'correspondants, alternes-internes, complémentaires ou supplémentaires. Les '
+            + 'droites en pointillés sont parallèles, et les figures ne sont pas en vraie grandeur.',
+        previewGrille: anglesManquantsPreviewHtml,
+        pdfGrille: dessinerAnglesManquantsPdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // Presque carré : une figure d'angles rayonne autour d'un point, et sa
+        // ligne de réponse tient en une bande basse.
+        proportions: { w: 1, h: 1.06 },
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        parLigneDefaut: 3
     },
 
     notation: {

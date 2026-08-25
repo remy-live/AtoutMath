@@ -7,6 +7,31 @@ import { STATUS } from './status.js';
 // point, lire des coordonnées — et une déclinaison en nombres relatifs.
 
 export const geometrieExercises = [
+    // --- Les angles remarquables (fiche 5ᵉ « Les angles ») ---
+    //
+    // Rémy, sa fiche en main : « j'aimerais bien des exercices comme le 8 et du
+    // 15 au 21 ». C'est LE chapitre où la géométrie cesse d'être du dessin :
+    // on ne mesure plus, on DÉDUIT. Une figure, un angle donné, et la relation
+    // qui donne l'autre.
+    {
+        id: 'geo-angles-manquants',
+        cree: '2026-08-25',
+        title: 'La Valeur Manquante',
+        generatorId: 'geo.angles-manquants', activityId: 'numpad',
+        printable: 'anglesManquants',
+        consignePapier: 'Trouve la mesure de l\'angle vert. Les droites en pointillés sont parallèles.',
+        params: { niveau: 'melange' },
+        skills: ['geo.angles.relations'],
+        motsClefs: ['angles', 'opposés par le sommet', 'correspondants', 'alternes-internes',
+            'complémentaires', 'supplémentaires', 'parallèles', 'sécante'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Un angle est donné, un autre est à trouver. Cherche d\'abord COMMENT '
+            + 'les deux sont placés : c\'est la relation qui donne la réponse.'
+    },
+
     // --- La notation des objets de base (fiche 4ᵉ § G) ---
     // [AB], (AB), [AB) : une notation ne se devine pas, et c'est pour cela
     // qu'on la perd. Des points partent chaque année sur « (AB) » écrit à la

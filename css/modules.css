@@ -227,7 +227,16 @@
     align-items: center; justify-items: center; justify-content: center;
     width: fit-content; max-width: 100%; margin: 0 auto;
 }
-.numpad-context { display: flex; flex-direction: column; align-items: center; max-width: 430px; }
+.numpad-context {
+    display: flex; flex-direction: column; align-items: center; max-width: 430px;
+    /* LE PLAFOND D'UNE FIGURE EST UNE SEULE VALEUR, déclarée ici et resserrée
+       par les paliers plus bas. Elle était recopiée dans chaque palier sous
+       forme de `max-height` ; une figure d'un autre genre — celles des angles,
+       qui se lisent au lieu de s'illustrer — ne pouvait alors demander « la
+       même chose, en plus grand » sans redescendre tous les paliers avec elle. */
+    --fig-plafond: clamp(96px, 34cqh, 250px);
+    --fig-etirement: 1.55;
+}
 .numpad-context .game-question {
     margin-bottom: 10px;
     font-size: clamp(1.25rem, 3.4cqh, 1.95rem);
@@ -254,7 +263,7 @@
    grand comme un timbre au milieu de la page. Rémy : « les figures pourraient
    être un peu plus grandes ». Elles ne descendent plus sous 130 px, quitte à
    faire défiler la zone de jeu, qui sait le faire. */
-.numpad-context .fig-svg { max-height: clamp(96px, 34cqh, 250px); }
+.numpad-context .fig-svg { max-height: var(--fig-plafond); }
 /* Largeur explicite obligatoire : le panneau est centré dans sa cellule de
    grille, donc dimensionné par son contenu. Les `width: 100%` de l'écran et
    du clavier s'y résolvaient alors circulairement, et le pavé se réduisait à
@@ -440,13 +449,17 @@
 /* Sur un écran court, la marge de la zone de jeu est le premier poste à
    réduire : mieux vaut la rogner que rapetisser les touches, qui doivent
    rester atteignables au doigt. */
-@container plateau (max-height: 660px), plateau (max-width: 719px) {
+/* UNE SEULE CONDITION, PAS UNE LISTE. `@container plateau (A), plateau (B)`
+   ne veut rien dire : la règle est jetée en silence, et ce palier-ci comme le
+   suivant n'ont jamais rien resserré depuis qu'ils existent. C'est `or`, entre
+   parenthèses, qu'il faut écrire. */
+@container plateau ((max-height: 660px) or (max-width: 719px)) {
     .numpad-layout { padding: 10px 14px; }
     .canvas-area:has(.numpad) .numpad-layout { row-gap: 6px; }
     .canvas-area:has(.numpad) .numpad-context .figure-wrap { margin-bottom: 2px; }
     /* 22vh et non 15 : ce palier attrape aussi les portables 1280×800, où
        rien n'oblige à écraser la figure — les cotes y devenaient illisibles. */
-    .numpad-context .fig-svg { max-height: max(150px, 30cqh); }
+    .numpad-context { --fig-plafond: max(150px, 30cqh); }
 }
 
 /* Plateau très court : dernier cran de resserrement. Le seuil est à 560 px et
@@ -456,7 +469,7 @@
     .numpad-layout { padding: 6px 12px; }
     .canvas-area:has(.numpad) .hint-bar { margin-top: 4px; }
     .canvas-area:has(.numpad) .game-question { margin-bottom: 8px; }
-    .numpad-context .fig-svg { max-height: max(140px, 26cqh); }
+    .numpad-context { --fig-plafond: max(140px, 26cqh); }
 }
 
 /* Disposition en une seule colonne (complément de la règle deux colonnes) :
@@ -467,13 +480,13 @@
 /* Sélecteurs scopés sur `.numpad-context` : à spécificité égale, ces blocs
    placés avant la règle de base ne l'emporteraient pas, et les cotes
    restaient à leur taille par défaut. */
-@container plateau (max-width: 719px), plateau (max-aspect-ratio: 6/5) {
-    .numpad-context .fig-svg { max-height: max(140px, 21cqh); }
+@container plateau ((max-width: 719px) or (max-aspect-ratio: 6/5)) {
+    .numpad-context { --fig-plafond: max(140px, 21cqh); --fig-etirement: 1; }
     .numpad-context .fig-label { font-size: 24px; }
     .numpad-context .fig-dim { stroke-width: 2.2; }
 }
 @container plateau (max-width: 719px) and (max-height: 560px) {
-    .numpad-context .fig-svg { max-height: max(130px, 19cqh); }
+    .numpad-context { --fig-plafond: max(130px, 19cqh); --fig-etirement: 1; }
     .numpad-context .fig-label { font-size: 28px; }
     .numpad-context .fig-dim { stroke-width: 3; }
 }
@@ -4658,6 +4671,24 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
             currentColor calc(50% + .7px), transparent calc(50% + .7px));
 }
 .fx-rp-etiq { position: absolute; font-weight: 800; color: #1a202c; }
+/* --- Fiche « Les angles remarquables » -------------------------------------
+   La figure occupe le bloc, les deux mesures sont posées sur leur secteur, et
+   la ligne « ? = …… » attend la réponse en bas. */
+.fx-ar-svg { position: absolute; overflow: visible; pointer-events: none; }
+.fx-ar-mesure {
+    position: absolute; text-align: center; font-weight: 800;
+    white-space: nowrap; pointer-events: none;
+}
+.fx-ar-ligne {
+    position: absolute; display: flex; align-items: center;
+    color: #1a202c; pointer-events: none;
+}
+.fx-ar-ligne i {
+    flex: 1; font-style: normal; font-weight: 800; color: #2f855a;
+    border-bottom: 1px dotted #9aa3b2; align-self: stretch;
+    display: flex; align-items: flex-end;
+}
+
 /* --- Fiche « Segment, droite ou demi-droite » -----------------------------
    L'énoncé en haut, la figure au milieu, la ligne d'écriture en bas. Les trois
    sens partagent le même bloc : c'est la figure qui change, pas la mise en
@@ -6440,6 +6471,49 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 /* Le curseur du champ est fin et discret : dans une case de grille, un gros
    trait clignotant se confond avec un « 1 ». */
 .kk-champ { caret-color: var(--primary); }
+
+/* --- LES ANGLES REMARQUABLES -----------------------------------------------
+   Une figure d'angles se lit par ses COULEURS : l'angle donné dans un ton,
+   celui qu'on cherche dans un autre. C'est ce que fait Rémy sur ses fiches, et
+   c'est ce qui remplace un long « l'angle formé par la demi-droite [Ox) et… ».
+   Les deux teintes tiennent aussi en noir et blanc : l'une est franche, l'autre
+   claire, et le vert de la réponse porte en plus un contour. */
+/* UNE FIGURE D'ANGLES SE LIT, elle ne s'illustre pas : il faut distinguer deux
+   secteurs voisins et suivre un côté d'un croisement à l'autre. Le plafond
+   commun des figures posées au-dessus du pavé numérique la rend indéchiffrable
+   — elle prend donc le même, ÉTIRÉ. Là où la place existe (deux colonnes) elle
+   gagne la moitié en plus ; sur un téléphone, où le pavé et « Valider » ne se
+   négocient pas, l'étirement retombe à un et c'est le cadre ajusté du dessin
+   (voir anglesRemarquablesSvg.js) qui lui rend sa largeur. */
+.ar-svg { width: 100%; overflow: visible; }
+/* La colonne de gauche est taillée pour un énoncé et une figure de cotes, où
+   quatre cent trente pixels suffisent. Une figure d'angles se lit : quand il y
+   a la place — et sur un ordinateur, la moitié de l'écran reste vide —, elle
+   la prend. */
+.numpad-context:has(.ar-svg) { max-width: 560px; }
+.numpad-context .ar-svg { max-height: calc(var(--fig-plafond) * var(--fig-etirement)); }
+.ar-trait { stroke: var(--text-main); stroke-width: 2.4; stroke-linecap: round; fill: none; }
+/* Les parallèles en pointillés : le trait DIT qu'elles sont parallèles, il n'y
+   a pas besoin de l'écrire à côté. */
+.ar-trait--par { stroke-dasharray: 9 6; }
+.ar-sommet { fill: var(--text-main); }
+.ar-droit { fill: none; stroke: var(--text-main); stroke-width: 2; }
+.ar-sect { stroke-width: 2; }
+.ar-sect--donne { fill: rgba(249, 168, 37, .55); stroke: #c77800; }
+.ar-sect--cherche { fill: rgba(45, 168, 110, .45); stroke: #1f7a4d; }
+/* Le relais d'une chaîne : ni donné, ni cherché — le pas par lequel on passe. */
+.ar-sect--relais { fill: rgba(120, 130, 200, .28); stroke: #5b6bbf; stroke-dasharray: 5 4; }
+/* L'ÉTIQUETTE PASSE DEVANT, MAIS SANS EFFACER. Un « 40° » posé entre deux
+   côtés serrés touche forcément l'un des deux ; un liseré de la couleur du
+   fond, tracé SOUS le remplissage (`paint-order`), le détache du trait sans
+   couper la droite. C'est le halo des cartes. La taille, elle, vient du dessin
+   (voir anglesRemarquablesSvg.js) : elle n'est pas déclarée ici. */
+.ar-mesure {
+    font-weight: 800; fill: var(--text-main);
+    paint-order: stroke; stroke: var(--bg-panel); stroke-linejoin: round;
+}
+.ar-mesure--cherche { fill: #1f7a4d; }
+.ar-mesure--relais { fill: #5b6bbf; }
 
 /* --- CODER LA FIGURE -------------------------------------------------------
    Un quadrilatère, ses diagonales, et des marques à poser dessus. Le dessin
