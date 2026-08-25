@@ -71,6 +71,62 @@ const DESSINS = {
         '####AAA.##############',
         '######################'
     ],
+    ligne: [
+        '####################',
+        '#DDDD...........AAA#',
+        '#DDDD...........AAA#',
+        '#DDDD...........AAA#',
+        '#DDDD...........AAA#',
+        '####################'
+    ],
+    escalier: [
+        '######################',
+        '#DDDD....#############',
+        '#DDDD....#############',
+        '#DDDD....#############',
+        '#........#############',
+        '#####........#########',
+        '#####........#########',
+        '#####........#########',
+        '#########........#####',
+        '#########........#####',
+        '#########........#####',
+        '#############....AAAA#',
+        '#############....AAAA#',
+        '######################'
+    ],
+    zigzag: [
+        '##########################',
+        '#DDD.....................#',
+        '#DDD.....................#',
+        '#DDD.....................#',
+        '#####.......########.....#',
+        '#####.......########.....#',
+        '#...................######',
+        '#...................######',
+        '#....########............#',
+        '#....########............#',
+        '#....########............#',
+        '#AAA######################',
+        '#AAA.....................#',
+        '##########################'
+    ],
+    boucle: [
+        '##########################',
+        '#DDDD....................#',
+        '#DDDD....................#',
+        '#####################....#',
+        '#####################....#',
+        '#####################....#',
+        '#####################....#',
+        '#........................#',
+        '#........................#',
+        '#....#####################',
+        '#....#####################',
+        '#AAAA#####################',
+        '#AAAA#####################',
+        '##########################'
+    ],
     circuit: [
         '########################',
         '#DDD..................##',
@@ -92,6 +148,16 @@ const DESSINS = {
 
 export const PISTES = [
     {
+        // LA PREMIÈRE PISTE NE DEMANDE RIEN D'AUTRE QUE D'ACCÉLÉRER. Rémy :
+        // « commencer avec des niveaux hyper faciles ». Sans virage, il ne
+        // reste qu'une chose à comprendre — la vitesse s'ajoute d'un tour sur
+        // l'autre —, et on la comprend en quatre coups.
+        id: 'ligne', nom: 'La Ligne Droite', dessin: DESSINS.ligne,
+        aide: 'Pas un seul virage : appuie sur la même touche à chaque tour et regarde la '
+            + 'flèche s\'allonger. C\'est toute la règle du jeu — la vitesse s\'ajoute, elle '
+            + 'ne se redemande pas.'
+    },
+    {
         id: 'echauffement', nom: 'L\'Échauffement', dessin: DESSINS.echauffement,
         // L'AIDE NE DIT PAS « À DROITE » : sur un téléphone tenu droit, la
         // piste est transposée et le virage n'est plus du même côté.
@@ -107,6 +173,24 @@ export const PISTES = [
         id: 'circuit', nom: 'Le Grand Tour', dessin: DESSINS.circuit,
         aide: 'Trois virages et un couloir étroit. Ici, arriver vite ne sert à rien : '
             + 'il faut arriver PLACÉ.'
+    },
+    {
+        id: 'escalier', nom: 'L\'Escalier', dessin: DESSINS.escalier,
+        aide: 'Quatre marches, quatre virages à angle droit. À chaque marche il faut poser '
+            + 'la voiture au bon endroit AVANT de tourner : c\'est la même leçon quatre fois, '
+            + 'et c\'est comme cela qu\'elle rentre.'
+    },
+    {
+        id: 'zigzag', nom: 'Le Zigzag', dessin: DESSINS.zigzag,
+        aide: 'Deux longues lignes droites séparées par des chicanes. On y gagne du temps '
+            + 'en relançant tôt — mais une relance mal placée envoie droit dans le mur '
+            + 'd\'en face.'
+    },
+    {
+        id: 'boucle', nom: 'La Boucle', dessin: DESSINS.boucle,
+        aide: 'Un tour complet : on part vers la droite et l\'on revient par en dessous. '
+            + 'La piste est large, la vitesse peut monter — mais il y a quatre virages, et '
+            + 'le dernier arrive plus vite qu\'on ne croit.'
     }
 ];
 

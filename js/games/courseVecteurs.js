@@ -30,6 +30,10 @@ import {
 // mis à l'échelle par le `viewBox` : une seule unité à régler.
 const PAS = 10;
 
+// UN VECTEUR S'ÉCRIT AVEC SES SIGNES. « 3 » ne dit pas dans quel sens on va ;
+// « +3 » et « −1 » le disent, et c'est exactement ce qu'on veut faire lire.
+const signe = (n) => (n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : '0');
+
 /**
  * UNE COULEUR PAR ACCÉLÉRATION, LA MÊME DES DEUX CÔTÉS.
  *
@@ -204,12 +208,28 @@ class CourseVecteurs extends BaseGame {
                 .cv-bord { fill: none; stroke: var(--text-main); stroke-width: 1.1; }
                 /* LA TRACE EST LE PASSÉ, LA FLÈCHE EST L'AVENIR : deux traits de la
                    même couleur qui voudraient dire deux choses différentes se
-                   confondent. La trace est donc en pointillé, la flèche pleine et
-                   pointue. */
-                .cv-trace { fill: none; stroke-width: .9; stroke-linejoin: round;
-                    stroke-dasharray: 2.5 2; opacity: .65; }
+                   confondent. C'était la trace qui était en pointillé — mais un
+                   vecteur DÉJÀ PARCOURU est un fait, et un fait se dessine
+                   plein. C'est donc l'inverse : le passé en trait plein avec sa
+                   pointe et ses composantes, l'avenir — « où j'irais sans rien
+                   faire » — en pointillé, parce qu'il n'a pas encore eu lieu. */
+                /* CHAQUE TOUR EST UN VECTEUR, et il se voit : trait plein,
+                   pointe, point d'arrêt, composantes écrites à côté. Les tours
+                   passés s'estompent un peu — assez pour que le dernier se
+                   distingue, pas assez pour qu'on ne puisse plus les relire. */
+                .cv-vecteur { stroke-width: 1.15; stroke-linecap: round; }
+                .cv-vecteur--vieux { opacity: .55; }
+                .cv-arret { stroke: #fff; stroke-width: .4; }
+                .cv-arret--vieux { opacity: .55; }
+                .cv-compo {
+                    font-size: 3.1px; font-weight: 800; text-anchor: middle;
+                    dominant-baseline: central; paint-order: stroke;
+                    stroke: var(--bg-panel); stroke-width: 1.1px; stroke-linejoin: round;
+                }
+                .cv-compo--vieux { opacity: .6; }
                 .cv-voiture { stroke: #fff; stroke-width: .9; }
-                .cv-fleche { stroke-width: 1.6; stroke-linecap: round; }
+                .cv-fleche { stroke-width: 1.7; stroke-linecap: round;
+                    stroke-dasharray: 2.2 1.7; opacity: .9; }
                 /* Les neuf choix. Le point plein appelle le doigt ; le point
                    barré dit « pas par là » sans qu'on ait à essayer. */
                 .cv-choix { cursor: pointer; }
@@ -416,13 +436,53 @@ class CourseVecteurs extends BaseGame {
         });
     }
 
+    /**
+     * LA TRACE EST UNE SUITE DE VECTEURS, ET ELLE DOIT SE LIRE COMME TELLE.
+     *
+     * Rémy : « pour la course de vecteurs, dessine en très clair les vecteurs
+     * déjà tracés ». C'était une polyligne en pointillé pâle — un joli trait
+     * courbe, dans lequel on ne voyait plus rien de ce que le jeu enseigne :
+     * ni où chaque tour s'était arrêté, ni de combien la voiture avait avancé,
+     * ni même que le chemin est fait de segments DROITS.
+     *
+     * Chaque tour est donc redessiné pour ce qu'il est : une flèche pleine,
+     * avec sa pointe, un point à son arrivée, et ses deux composantes écrites
+     * à côté. C'est le cahier de l'élève, celui où l'on écrit (+3 ; −1) sous
+     * chaque trait — sauf qu'ici il s'écrit tout seul.
+     */
     traceSvg(v) {
-        const pts = v.etat.trace.map(c => `${c.x * PAS + PAS / 2},${c.y * PAS + PAS / 2}`).join(' ');
+        const t = v.etat.trace;
+        const C = (c) => ({ x: c.x * PAS + PAS / 2, y: c.y * PAS + PAS / 2 });
+        let d = '';
+        for (let i = 1; i < t.length; i++) {
+            const a = C(t[i - 1]), b = C(t[i]);
+            const dx = t[i].x - t[i - 1].x, dy = t[i].y - t[i - 1].y;
+            // Le dernier vecteur est le plus foncé : c'est celui qu'on vient de
+            // jouer, et celui sur lequel porte la question suivante.
+            const vieux = i < t.length - 1 ? ' cv-vecteur--vieux' : '';
+            if (dx || dy) {
+                d += `<line class="cv-vecteur${vieux}" style="stroke:${v.teinte}"
+                    x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"
+                    marker-end="url(#cv-pointe-${v.id})" />`;
+                // LES COMPOSANTES SE POSENT À CÔTÉ DU TRAIT, jamais dessus :
+                // décalées perpendiculairement, elles ne masquent ni la flèche
+                // ni le quadrillage qu'on compte pour les vérifier.
+                const n = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+                const ox = -(b.y - a.y) / n * PAS * 0.42, oy = (b.x - a.x) / n * PAS * 0.42;
+                d += `<text class="cv-compo${vieux}" style="fill:${v.teinte}"
+                    x="${(a.x + b.x) / 2 + ox}" y="${(a.y + b.y) / 2 + oy}"
+                    >(${signe(dx)} ; ${signe(dy)})</text>`;
+            }
+            // Le point d'arrêt de chaque tour : sans lui, deux vecteurs alignés
+            // se lisent comme un seul.
+            d += `<circle class="cv-arret${vieux}" style="fill:${v.teinte}"
+                cx="${b.x}" cy="${b.y}" r="${PAS * 0.11}" />`;
+        }
         const sortie = v.etat.sortiPar
             ? `<line class="cv-sortie" x1="${v.etat.x * PAS + PAS / 2}" y1="${v.etat.y * PAS + PAS / 2}"
                  x2="${v.etat.sortiPar.x * PAS + PAS / 2}" y2="${v.etat.sortiPar.y * PAS + PAS / 2}" />`
             : '';
-        return `<polyline class="cv-trace" style="stroke:${v.teinte}" points="${pts}" />${sortie}`;
+        return `${d}${sortie}`;
     }
 
     voitureSvg(v) {
