@@ -23,6 +23,8 @@ import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur,
     ficheEnPortrait, reglerFichePortrait
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
+// Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
+import { retenirRepli } from './repli.js';
 // Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
 import { fenetresDetachables } from './debugBar.js';
 import { paramSchemaOf } from '../data/catalog.js';
@@ -8011,20 +8013,27 @@ function assurerModale() {
                         <button type="button" class="fp-pas-btn" data-pas="1" data-cible="fp-rows" aria-label="Une ligne de plus">+</button>
                     </span></label>
                 <span class="fp-total" id="fp-total"></span>
-                <label>Format
-                    <select id="fp-orientation" class="cfg-input">
-                        <option value="paysage">A4 paysage</option>
-                        <option value="portrait">A4 portrait</option>
-                    </select></label>
-                <label>Impression
-                    <select id="fp-couleur" class="cfg-input">
-                        <option value="0">Noir et blanc</option>
-                        <option value="1">En couleur</option>
-                    </select></label>
                 <button type="button" class="btn-hint" id="fp-regen">🎲 Autres grilles</button>
                 <button type="button" class="btn-hint" id="fp-atelier" style="display:none">♟ Composer mes échiquiers…</button>
                 <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
+            <!-- Le format du papier et la couleur de l'imprimante ne changent
+                 pas d'une fiche à l'autre : on les règle une fois. -->
+            <details class="fp-repli" id="fp-plus">
+                <summary>Papier et impression</summary>
+                <div class="fp-controles">
+                    <label>Format
+                        <select id="fp-orientation" class="cfg-input">
+                            <option value="paysage">A4 paysage</option>
+                            <option value="portrait">A4 portrait</option>
+                        </select></label>
+                    <label>Impression
+                        <select id="fp-couleur" class="cfg-input">
+                            <option value="0">Noir et blanc</option>
+                            <option value="1">En couleur</option>
+                        </select></label>
+                </div>
+            </details>
             <!-- LES RÉGLAGES DE L'EXERCICE, sur la fiche elle-même. Rémy :
                  « peut-on demander des sudokus autres que 6 × 6 pour les
                  PDF ? ». On le pouvait — mais seulement en ressortant de la
@@ -8323,6 +8332,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // le choix par défaut des suivantes. Un professeur qui imprime en noir et
     // blanc le fait pour toute l'année, pas pour une feuille.
     const couleurEl = modal.querySelector('#fp-couleur');
+    retenirRepli(modal.querySelector('#fp-plus'), 'grilles');
     couleurEl.value = polycopieEnCouleur() ? '1' : '0';
     couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
     // L'ORIENTATION DE LA FEUILLE. Comme la couleur : elle vaut pour celle-ci,

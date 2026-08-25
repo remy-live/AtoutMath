@@ -23,6 +23,8 @@ import { generateurDeFiche } from '../core/registry.js';
 import { equiperFenetre } from './flottant.js';
 // Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
 import { fenetresDetachables } from './debugBar.js';
+// Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
+import { retenirRepli } from './repli.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../core/fiche.js';
 import { espacerMilliers } from '../core/nombres.js';
@@ -125,15 +127,25 @@ function assurerModale() {
                         <button type="button" class="fp-pas-btn" data-pas="2" aria-label="Deux questions de plus">+</button>
                     </span></label>
                 <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
-                <span class="fp-total" id="fq-total"></span>
-                <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
-            </div>
-            <!-- Les réglages de mise en page au contact de l'aperçu : ce
-                 sont ceux dont on juge l'effet en REGARDANT la feuille. -->
-            <div class="fp-controles pp-mep">
                 <label class="pp-consigne">Consigne
                     <input type="text" id="fq-consigne" class="cfg-input"
                         placeholder="Écrite en tête de la feuille — facultatif"></label>
+                <label>Corrigé
+                    <select id="fq-sol-ou" class="cfg-input">
+                        <option value="ensemble">Un seul PDF, solutions à la fin</option>
+                        <option value="separe">Deux PDF séparés</option>
+                        <option value="sans">Sans solutions</option>
+                    </select></label>
+                <span class="fp-total" id="fq-total"></span>
+                <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
+            </div>
+            <!-- LE NOMBRE DE QUESTIONS, LA CONSIGNE, LE CORRIGÉ : ce qu'on
+                 décide pour CETTE fiche. Le format du papier, les colonnes, la
+                 numérotation sont des habitudes qu'on prend une fois — elles
+                 attendent dans le repli, qui se souvient d'être ouvert. -->
+            <details class="fp-repli" id="fq-plus">
+                <summary>Mise en page et corrigé</summary>
+            <div class="fp-controles pp-mep">
                 <label>Format
                     <select id="fq-orientation" class="cfg-input">
                         <option value="portrait">A4 portrait</option>
@@ -178,13 +190,8 @@ function assurerModale() {
                         <option value="3">3</option><option value="4">4</option>
                         <option value="5">5</option>
                     </select></label>
-                <label>Fichier
-                    <select id="fq-sol-ou" class="cfg-input">
-                        <option value="ensemble">Un seul PDF, solutions à la fin</option>
-                        <option value="separe">Deux PDF séparés</option>
-                        <option value="sans">Sans solutions</option>
-                    </select></label>
             </div>
+            </details>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu fq-apercu" id="fq-apercu"></div>
             </div>
@@ -225,6 +232,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     const ouSol = modal.querySelector('#fq-sol-ou');
     const orientEl = modal.querySelector('#fq-orientation');
     const couleurEl = modal.querySelector('#fq-couleur');
+    retenirRepli(modal.querySelector('#fq-plus'), 'questions');
     const colsEl = modal.querySelector('#fq-colonnes');
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');

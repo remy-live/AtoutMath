@@ -400,6 +400,41 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-controles { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .fp-controles label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .92rem; }
 .fp-controles .cfg-input--num { width: 58px; }
+/* --- LE REPLI DES RÉGLAGES QU'ON NE RÈGLE QU'UNE FOIS ---------------------
+   Rémy : « c'est indigeste, il y a tellement d'options ». Le format du papier,
+   les cases de l'en-tête, la façon de numéroter sont des habitudes de maison :
+   on les prend en septembre. Ils attendent ici, sous un titre discret qui ne
+   ressemble pas à un bouton d'action — on ne veut pas le CONFONDRE avec
+   « Télécharger le PDF », seulement pouvoir l'ouvrir. */
+.fp-repli { margin: 2px 0 0; }
+.fp-repli > summary {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    padding: 5px 12px 5px 8px; border-radius: 999px;
+    font-weight: 700; font-size: .84rem; color: var(--text-muted);
+    list-style: none; user-select: none;
+}
+.fp-repli > summary::-webkit-details-marker { display: none; }
+/* Le chevron, tracé plutôt qu'écrit : la flèche par défaut d'un `details`
+   change de dessin d'un navigateur à l'autre. */
+.fp-repli > summary::before {
+    content: ''; width: 7px; height: 7px; flex: 0 0 auto; margin-left: 4px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg) translate(-1px, -1px);
+    transition: transform .15s ease;
+}
+.fp-repli[open] > summary::before { transform: rotate(45deg) translate(-2px, -2px); }
+.fp-repli > summary:hover { background: var(--bg-hover); color: var(--text-main); }
+.fp-repli > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.fp-repli > .fp-controles {
+    padding: 8px 0 4px 10px; margin-left: 6px;
+    border-left: 2px solid var(--border-soft, rgba(0,0,0,.08));
+}
+/* Le nom d'un groupe de cases à cocher, dans le repli : « En-tête : Nom,
+   Prénom… ». Sans lui, quatre cases flottent sans dire de quoi elles parlent. */
+.fp-repli-titre {
+    font-weight: 800; font-size: .74rem; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted); margin-right: 2px;
+}
 /* LES RÉGLAGES DE L'EXERCICE — la taille du sudoku, les tables du domino. Ils
    vivent sur leur propre rangée, sous la mise en page : ce ne sont pas les
    mêmes décisions, et les mêler ferait une barre de dix commandes. */
@@ -469,7 +504,10 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* Les réglages de l'en-tête : le titre prend la place qui reste, les quatre
    cases restent SUR UNE LIGNE — empilées, elles doublaient la hauteur de la
    barre pour quatre mots. */
-.pp-titre-champ { flex: 1 1 240px; display: flex; align-items: center; gap: 8px; }
+/* Le titre de la feuille : il occupe la place qui reste sur sa ligne, sans
+   jamais la monopoliser — au-delà, son étiquette se coupait en deux. */
+.pp-titre-champ { flex: 1 1 240px; max-width: 420px; display: flex; align-items: center; gap: 8px; }
+.pp-titre-champ > * { flex-shrink: 0; }
 .pp-titre-champ .cfg-input { flex: 1 1 auto; min-width: 0; }
 .pp-champs { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .fp-champ { display: inline-flex; align-items: baseline; gap: .35em; white-space: nowrap; }

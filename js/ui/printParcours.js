@@ -31,6 +31,8 @@ import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
+// Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
+import { retenirRepli } from './repli.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
@@ -195,79 +197,85 @@ function assurerModale() {
     m.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
             <h3 class="modal-title">📄 Fiche du parcours</h3>
+            <!-- CE QUI CHANGE D'UNE FICHE À L'AUTRE, ET RIEN D'AUTRE.
+                 Est-ce une interrogation, comment elle s'appelle, y a-t-il un
+                 corrigé : voilà ce qu'on décide en ouvrant ce panneau. Le
+                 format du papier, les cases de l'en-tête, la façon de
+                 numéroter sont des habitudes de maison — on les règle une fois
+                 en septembre. Ils attendent donc dans le repli, et le repli se
+                 souvient. -->
             <div class="fp-controles">
                 <label class="fq-case"><input type="checkbox" id="pp-interro"> Mode interrogation</label>
                 <label class="fq-case"><input type="checkbox" id="pp-choix"> Proposer les réponses</label>
-                <label class="fq-case" title="Un exercice qui ne tient pas dans le bas de la page commence alors en haut de la suivante, quitte à laisser du blanc.">
-                    <input type="checkbox" id="pp-insecable"> Ne pas couper un exercice entre deux pages</label>
                 <label class="pp-note-sur" id="pp-note-sur-champ">Note sur
                     <input type="number" id="pp-note-sur" class="cfg-input cfg-input--num"
                         min="5" max="100" step="1" value="20"></label>
-                <span class="fp-total" id="pp-total"></span>
-                <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
-            </div>
-            <div class="pp-etapes" id="pp-etapes"></div>
-            <!-- LA MISE EN PAGE SE RÈGLE AU CONTACT DE L'APERÇU. Format,
-                 numérotation, solutions : ce sont les réglages dont on juge
-                 l'effet en REGARDANT la feuille. Placés tout en haut du
-                 panneau, la liste des exercices les séparait de la seule chose
-                 qui permet de les choisir. -->
-            <div class="fp-controles pp-mep">
-                <label>Format
-                    <select id="pp-orientation" class="cfg-input">
-                        <option value="portrait">A4 portrait</option>
-                        <option value="paysage">A4 paysage</option>
-                    </select></label>
-                <label>Impression
-                    <select id="pp-couleur" class="cfg-input">
-                        <option value="0">Noir et blanc</option>
-                        <option value="1">En couleur</option>
-                    </select></label>
-                <label class="fq-case"><input type="checkbox" id="pp-champs">
-                    Champs remplissables (PDF)</label>
-                <label>Numéros
-                    <select id="pp-numerotation" class="cfg-input">
-                        <option value="continue">Qui se suivent (1, 2, 3… sur toute la feuille)</option>
-                        <option value="exercice">Qui repartent à 1 à chaque exercice</option>
-                    </select></label>
-            </div>
-            <div class="fp-controles">
-                <label class="pp-titre-champ">En-tête
+                <label class="pp-titre-champ">Titre
                     <input type="text" id="pp-titre" class="cfg-input" maxlength="80"
                         aria-label="Titre imprimé en haut de la feuille"></label>
-                <span class="pp-champs" role="group" aria-label="Champs de l'en-tête">
-                    <label class="fq-case"><input type="checkbox" id="pp-c-nom" checked> Nom</label>
-                    <label class="fq-case"><input type="checkbox" id="pp-c-prenom"> Prénom</label>
-                    <label class="fq-case"><input type="checkbox" id="pp-c-classe"> Classe</label>
-                    <label class="fq-case"><input type="checkbox" id="pp-c-date" checked> Date</label>
-                </span>
-                <span class="pp-champs" role="group" aria-label="Cartouche de correction">
-                    <label class="fq-case"><input type="checkbox" id="pp-c-note"> Case note</label>
-                    <label class="fq-case"><input type="checkbox" id="pp-c-com"> Case commentaire</label>
-                </span>
-            </div>
-            <div class="fp-controles pp-sol-reglages">
-                <label>Solutions
-                    <select id="pp-sol-mode" class="cfg-input">
-                        <option value="compact">Compact — juste les réponses</option>
-                        <option value="normal">Normal — énoncé et réponse</option>
-                        <option value="detaille">Détaillé — avec les explications</option>
-                    </select></label>
-                <label>Colonnes
-                    <select id="pp-sol-colonnes" class="cfg-input"
-                        aria-label="Colonnes de la feuille de solutions">
-                        <option value="auto">auto</option>
-                        <option value="1">1</option><option value="2">2</option>
-                        <option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option>
-                    </select></label>
-                <label>Fichier
+                <label>Corrigé
                     <select id="pp-sol-ou" class="cfg-input">
                         <option value="ensemble">Un seul PDF, solutions à la fin</option>
                         <option value="separe">Deux PDF séparés</option>
                         <option value="sans">Sans solutions</option>
                     </select></label>
+                <span class="fp-total" id="pp-total"></span>
+                <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
             </div>
+            <div class="pp-etapes" id="pp-etapes"></div>
+            <details class="fp-repli" id="pp-plus">
+                <summary>Mise en page, en-tête et corrigé</summary>
+                <div class="fp-controles pp-mep">
+                    <label>Format
+                        <select id="pp-orientation" class="cfg-input">
+                            <option value="portrait">A4 portrait</option>
+                            <option value="paysage">A4 paysage</option>
+                        </select></label>
+                    <label>Impression
+                        <select id="pp-couleur" class="cfg-input">
+                            <option value="0">Noir et blanc</option>
+                            <option value="1">En couleur</option>
+                        </select></label>
+                    <label class="fq-case"><input type="checkbox" id="pp-champs">
+                        Champs remplissables (PDF)</label>
+                    <label>Numéros
+                        <select id="pp-numerotation" class="cfg-input">
+                            <option value="continue">Qui se suivent (1, 2, 3… sur toute la feuille)</option>
+                            <option value="exercice">Qui repartent à 1 à chaque exercice</option>
+                        </select></label>
+                    <label class="fq-case" title="Un exercice qui ne tient pas dans le bas de la page commence alors en haut de la suivante, quitte à laisser du blanc.">
+                        <input type="checkbox" id="pp-insecable"> Ne pas couper un exercice entre deux pages</label>
+                </div>
+                <div class="fp-controles">
+                    <span class="pp-champs" role="group" aria-label="Champs de l'en-tête">
+                        <span class="fp-repli-titre">En-tête</span>
+                        <label class="fq-case"><input type="checkbox" id="pp-c-nom" checked> Nom</label>
+                        <label class="fq-case"><input type="checkbox" id="pp-c-prenom"> Prénom</label>
+                        <label class="fq-case"><input type="checkbox" id="pp-c-classe"> Classe</label>
+                        <label class="fq-case"><input type="checkbox" id="pp-c-date" checked> Date</label>
+                    </span>
+                    <span class="pp-champs" role="group" aria-label="Cartouche de correction">
+                        <label class="fq-case"><input type="checkbox" id="pp-c-note"> Case note</label>
+                        <label class="fq-case"><input type="checkbox" id="pp-c-com"> Case commentaire</label>
+                    </span>
+                </div>
+                <div class="fp-controles pp-sol-reglages">
+                    <label>Solutions
+                        <select id="pp-sol-mode" class="cfg-input">
+                            <option value="compact">Compact — juste les réponses</option>
+                            <option value="normal">Normal — énoncé et réponse</option>
+                            <option value="detaille">Détaillé — avec les explications</option>
+                        </select></label>
+                    <label>Colonnes
+                        <select id="pp-sol-colonnes" class="cfg-input"
+                            aria-label="Colonnes de la feuille de solutions">
+                            <option value="auto">auto</option>
+                            <option value="1">1</option><option value="2">2</option>
+                            <option value="3">3</option><option value="4">4</option>
+                            <option value="5">5</option>
+                        </select></label>
+                </div>
+            </details>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu fq-apercu" id="pp-apercu"></div>
             </div>
@@ -304,6 +312,7 @@ export function ouvrirFicheParcours(chemin) {
     const ouSol = m.querySelector('#pp-sol-ou');
     const orientEl = m.querySelector('#pp-orientation');
     const couleurEl = m.querySelector('#pp-couleur');
+    retenirRepli(m.querySelector('#pp-plus'), 'parcours');
     const champsEl = m.querySelector('#pp-champs');
     const noteSurEl = m.querySelector('#pp-note-sur');
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
