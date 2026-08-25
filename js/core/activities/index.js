@@ -64,6 +64,7 @@ import { plateauxPapierGenerator } from '../generators/plateauxFiche.js';
 import { anagrammesFicheGenerator } from '../generators/anagrammesFiche.js';
 import { motsCroisesFicheGenerator } from '../generators/motsCroisesFiche.js';
 import { motCodeFicheGenerator } from '../generators/motCodeFiche.js';
+import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
 import { echecsFicheGenerator } from '../generators/echecsFiche.js';
@@ -102,7 +103,8 @@ import {
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
-    motsCroisesFicheGenerator, motCodeFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
+    motsCroisesFicheGenerator, motCodeFicheGenerator, hashiFicheGenerator,
+    tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
     poserFicheGenerator, conversionFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
@@ -510,6 +512,9 @@ const legacy = [
     // Le mot codé se compte en GRILLES : une partie, c'est un alphabet entier
     // retrouvé, et rien ne se valide avant.
     ['mot-code', 'Mot codé du vocabulaire', 'motCode', 'engineMotCode', 'grille', 3],
+    // Le hashi se compte en GRILLES : une partie, c'est une carte entière
+    // reliée, et rien ne se valide avant.
+    ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
     ['pipopipette', 'La Pipopipette (à deux)', 'jeuxDeux', 'enginePipopipette', 'partie', 1],
     ['puissance4', 'Puissance 4 (à deux)', 'jeuxDeux', 'enginePuissance4', 'partie', 1],
     ['sim', 'Le Sim (à deux)', 'jeuxDeux', 'engineSim', 'partie', 1],

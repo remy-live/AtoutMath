@@ -1564,6 +1564,51 @@ export const calculExercises = [
         instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Les blobs verts sont retirés par défaut — le réglage les rend, et alors le bouton TIR les élimine, tandis que le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
     },
     {
+        // LE HASHI — Hashiwokakero, « construire des ponts ». Rémy : « je
+        // voulais le hashi ». Des îles numérotées, des ponts droits, et trois
+        // règles qui se tiennent : le compte de chaque île, jamais de
+        // croisement, et TOUT d'un seul tenant. C'est cette dernière qui en
+        // fait un exercice de raisonnement et pas un exercice d'addition.
+        //
+        // La grille est fabriquée puis VÉRIFIÉE : solution unique, et — sauf en
+        // difficile — trouvable par propagation pure, sans jamais essayer.
+        id: 'logi-hashi', title: 'Le Hashi', status: STATUS.TEST,
+        cree: '2026-08-25',
+        activityId: 'hashi',
+        generatorId: 'logique.hashi-fiche', printable: 'hashi',
+        printGeneratorId: 'logique.hashi-fiche',
+        printParams: { taille: 'moyen', difficulte: 'moyen' },
+        sansRevision: true,
+        skills: ['num.logique.hashi'],
+        params: { taille: 'moyen', difficulte: 'moyen' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                aide: 'C\'est le nombre d\'îles qui fait la durée, pas le nombre de cases : une petite grille se fait en cinq minutes, une grande occupe un quart d\'heure.',
+                options: [
+                    { value: 'petit', label: '7 × 7 — 9 îles' },
+                    { value: 'moyen', label: '9 × 9 — 14 îles' },
+                    { value: 'grand', label: '12 × 12 — 18 îles' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Difficulté',
+                aide: 'La difficulté est une DENSITÉ de ponts. Plus il y en a, plus il y a de contraintes, et plus la grille se déduit vite : une île qui demande six ponts sur trois arêtes ne laisse aucun choix. En difficile, la grille est clairsemée et il faut se servir de la règle « tout d\'un seul tenant » — celle que personne n\'utilise avant d\'y être forcé.',
+                options: [
+                    { value: 'facile', label: 'Facile — beaucoup de ponts' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'difficile', label: 'Difficile — il faut raisonner sur l\'ensemble' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['hashi', 'hashiwokakero', 'ponts', 'iles', 'îles', 'bridges',
+            'logique', 'énigme', 'connexité', 'graphe'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Relie les îles par des ponts droits, horizontaux ou verticaux. Le chiffre d'une île dit COMBIEN de ponts y arrivent. Deux ponts au plus entre deux îles, et jamais de croisement. Touche deux îles voisines pour poser un pont, encore une fois pour le doubler, encore une fois pour l'enlever — ou touche directement un pont existant. Une île finie verdit, une île qui déborde rougit. Et n'oublie pas la dernière règle, celle qui tranche quand les chiffres ne suffisent plus : à la fin, on doit pouvoir aller de n'importe quelle île à n'importe quelle autre."
+    },
+    {
         // LE SLITHERLINK. Une seule boucle fermée sur un quadrillage de points,
         // dictée par des chiffres qui comptent les côtés. Deux règles suffisent
         // — le chiffre et le point — et jamais besoin de deviner : la grille

@@ -2332,6 +2332,106 @@ function dessinerSlitherlinkPdf(doc, item, slot, solution) {
     }
 }
 
+// --- LE HASHI SUR PAPIER --------------------------------------------------------
+//
+// Rémy : « je voulais le hashi ». C'est un puzzle de journal : des îles, des
+// chiffres, et de la place pour tirer des traits à la règle.
+//
+// LES ÎLES SONT DES CERCLES ÉPAIS, les ponts des traits fins. C'est ce qui
+// permet de tracer par-dessus au crayon sans que la figure imprimée et celle de
+// l'élève se confondent — et c'est aussi ce qui survit à la photocopie. Deux
+// ponts se dessinent comme deux traits parallèles, écartés d'un tiers de case :
+// serrés, ils font une barre épaisse qu'on ne sait plus compter.
+
+function geoHashi(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    // ON CADRE SUR LES ÎLES, PAS SUR LA GRILLE. Le tirage laisse presque
+    // toujours une bande vide en haut, en bas ou sur un côté : dessiner les
+    // douze colonnes nominales, c'est payer ce vide en taille de cercle. On
+    // mesure la boîte réellement occupée et l'on ajuste dessus — même leçon
+    // que pour les figures d'angles.
+    const xs = m.iles.map(i => i.x), ys = m.iles.map(i => i.y);
+    const x1 = Math.min(...xs), y1 = Math.min(...ys);
+    const cols = Math.max(...xs) - x1 + 1, lignes = Math.max(...ys) - y1 + 1;
+    const pas = Math.min((b.w - 2) / cols, (b.h - 2) / lignes);
+    const w = pas * cols, h = pas * lignes;
+    const x0 = b.x + (b.w - w) / 2, y0 = b.y + (b.h - h) / 2;
+    return {
+        b, m, pas,
+        // Le centre de la case (x, y) : c'est là que se pose une île.
+        cx: (x) => x0 + (x - x1 + 0.5) * pas,
+        cy: (y) => y0 + (y - y1 + 0.5) * pas,
+        rayon: Math.max(1.6, pas * 0.34),
+        ecart: pas * 0.16
+    };
+}
+
+/** Les deux traits d'un pont, ou le seul : décalés de part et d'autre de l'axe. */
+function traitsPont(g, e, n) {
+    const A = g.m.iles[e.a], B = g.m.iles[e.b];
+    const ax = g.cx(A.x), ay = g.cy(A.y), bx = g.cx(B.x), by = g.cy(B.y);
+    const d = g.ecart;
+    if (n === 2) {
+        return e.dir === 'h'
+            ? [[ax, ay - d, bx, by - d], [ax, ay + d, bx, by + d]]
+            : [[ax - d, ay, bx - d, by], [ax + d, ay, bx + d, by]];
+    }
+    return [[ax, ay, bx, by]];
+}
+
+function hashiPreviewHtml(item, slot, k, solution) {
+    const g = geoHashi(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let d = '';
+    if (solution) {
+        g.m.aretes.forEach((e, i) => {
+            const n = g.m.solution[i];
+            if (!n) return;
+            traitsPont(g, e, n).forEach(([x1, y1, x2, y2]) => {
+                d += `<line x1="${T(x1)}" y1="${T(y1)}" x2="${T(x2)}" y2="${T(y2)}"
+                    stroke="#2f855a" stroke-width="${T(0.45)}" stroke-linecap="round"/>`;
+            });
+        });
+    }
+    let html = `<svg class="fx-hs-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    g.m.iles.forEach(il => {
+        const r = g.rayon;
+        html += `<div class="fx-hs-ile" style="left:${T(g.cx(il.x) - r)}px; top:${T(g.cy(il.y) - r)}px;
+            width:${T(2 * r)}px; height:${T(2 * r)}px; font-size:${T(r * 1.15)}px">${il.n}</div>`;
+    });
+    return html;
+}
+
+function dessinerHashiPdf(doc, item, slot, solution) {
+    const g = geoHashi(item, slot);
+    if (solution) {
+        doc.setDrawColor(47, 133, 90);
+        doc.setLineWidth(0.45);
+        doc.setLineCap('round');
+        g.m.aretes.forEach((e, i) => {
+            const n = g.m.solution[i];
+            if (!n) return;
+            traitsPont(g, e, n).forEach(([x1, y1, x2, y2]) => doc.line(x1, y1, x2, y2));
+        });
+        doc.setLineCap('butt');
+    }
+    // LES ÎLES PAR-DESSUS, ET PLEINES DE BLANC : un pont qui s'arrête au bord
+    // du cercle demanderait de connaître le rayon en chaque point ; un disque
+    // blanc posé après coup fait le même travail et ne se trompe jamais.
+    doc.setLineWidth(0.5);
+    g.m.iles.forEach(il => {
+        const x = g.cx(il.x), y = g.cy(il.y);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.circle(x, y, g.rayon, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5, g.rayon * 2.6));
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(String(il.n), x, y + g.rayon * 0.42, { align: 'center' });
+    });
+}
+
 // --- Le carré magique ------------------------------------------------------------
 
 /**
@@ -7915,6 +8015,23 @@ export const RENDUS = {
         titreAGauche: true,
         disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
         parLigneDefaut: 1
+    },
+
+    hashi: {
+        titre: 'Hashi — construis les ponts',
+        consigne: () => 'RELIE LES ÎLES PAR DES PONTS. Un pont est un trait droit, horizontal '
+            + 'ou vertical ; deux ponts au plus entre deux îles ; un pont n\'en croise jamais '
+            + 'un autre et ne traverse jamais une île. Le chiffre d\'une île dit COMBIEN de '
+            + 'ponts y arrivent. Et pour finir, tout doit tenir d\'un seul tenant : on doit '
+            + 'pouvoir aller de n\'importe quelle île à n\'importe quelle autre.',
+        previewGrille: hashiPreviewHtml,
+        pdfGrille: dessinerHashiPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        // Une grille de hashi est carrée et se trace à la règle : deux par page
+        // laissent encore la place du poignet, quatre ne l'ont plus.
+        proportions: { w: 1, h: 1 },
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
+        parLigneDefaut: 2
     },
 
     motcode: {
