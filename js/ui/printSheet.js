@@ -3033,6 +3033,89 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LE TASUKO SUR PAPIER ------------------------------------------------------
+//
+// Rémy : « Fais un tasuko. » Une grille de chiffres, et un crayon pour entourer
+// les additions. C'est la forme d'origine du jeu : l'écran n'y ajoute que la
+// vérification.
+//
+// LE CORRIGÉ DESSINE LES CAPSULES, il ne liste pas les additions. Sur une
+// recherche de mots, ce qu'on veut voir en corrigeant, c'est OÙ ils étaient —
+// une liste ne se compare à rien. La capsule se calcule en unités de case,
+// exactement comme à l'écran (voir games/tasuko.js), donc les deux dessins ne
+// peuvent pas diverger.
+
+function geoTasuko(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    // LA CASE SE DIMENSIONNE POUR UN CRAYON QUI ENTOURE, et c'est ce qui la
+    // distingue d'une case où l'on écrit : le trait fait le tour de trois
+    // cases, il lui faut de la place au bord. À dix millimètres, deux capsules
+    // voisines se touchaient presque ; à douze, elles se séparent.
+    const cote = Math.min(b.w / m.l, b.h / m.h, 12);
+    const w = cote * m.l, h = cote * m.h;
+    return {
+        m, b, cote,
+        x0: b.x + (b.w - w) / 2,
+        y0: b.y + (b.h - h) / 2,
+        taille: Math.max(2, cote * 0.5)
+    };
+}
+
+/** Le rectangle arrondi qui entoure une addition, en millimètres. */
+function capsuleTasuko(g, cases) {
+    const xs = cases.map(([x]) => x), ys = cases.map(([, y]) => y);
+    const marge = g.cote * 0.11;
+    const x = g.x0 + Math.min(...xs) * g.cote + marge;
+    const y = g.y0 + Math.min(...ys) * g.cote + marge;
+    return {
+        x, y,
+        w: (Math.max(...xs) - Math.min(...xs) + 1) * g.cote - marge * 2,
+        h: (Math.max(...ys) - Math.min(...ys) + 1) * g.cote - marge * 2,
+        r: g.cote * 0.39
+    };
+}
+
+function tasukoPreviewHtml(item, slot, k, solution) {
+    const g = geoTasuko(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let html = g.m.grille.map((ligne, y) => ligne.map((v, x) =>
+        `<div class="fx-tk-case" style="left:${T(g.x0 + x * g.cote)}px;
+            top:${T(g.y0 + y * g.cote)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
+            font-size:${T(g.taille)}px">${v}</div>`).join('')).join('');
+    if (solution) {
+        html += g.m.solution.map(a => {
+            const c = capsuleTasuko(g, a.cases);
+            return `<div class="fx-tk-capsule" style="left:${T(c.x)}px; top:${T(c.y)}px;
+                width:${T(c.w)}px; height:${T(c.h)}px; border-radius:${T(c.r)}px"></div>`;
+        }).join('');
+    }
+    return html;
+}
+
+function dessinerTasukoPdf(doc, item, slot, solution) {
+    const g = geoTasuko(item, slot);
+    doc.setLineWidth(0.25);
+    doc.setDrawColor(...ENCRE.grille);
+    g.m.grille.forEach((ligne, y) => ligne.forEach((v, x) => {
+        doc.rect(g.x0 + x * g.cote, g.y0 + y * g.cote, g.cote, g.cote);
+    }));
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6, g.cote * 1.45));
+    doc.setTextColor(...ENCRE.trait);
+    g.m.grille.forEach((ligne, y) => ligne.forEach((v, x) => {
+        doc.text(String(v), g.x0 + (x + 0.5) * g.cote, g.y0 + (y + 0.7) * g.cote,
+            { align: 'center' });
+    }));
+    if (!solution) return;
+    doc.setDrawColor(47, 133, 90);
+    doc.setLineWidth(0.5);
+    g.m.solution.forEach(a => {
+        const c = capsuleTasuko(g, a.cases);
+        doc.roundedRect(c.x, c.y, c.w, c.h, c.r, c.r);
+    });
+}
+
 // --- LA PYRAMIDE DE NOMBRES ----------------------------------------------------
 //
 // La jumelle arithmétique de la pyramide de mots, et sa forme naturelle : un
@@ -8424,6 +8507,23 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.1 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
+    },
+
+    tasuko: {
+        titre: 'Tasuko — les additions cachées',
+        // COURTE, PARCE QU'ELLE EST COUPÉE. Le bandeau tient deux lignes : la
+        // version longue s'arrêtait sur « commence par un chiffre qu'une », en
+        // plein milieu du seul conseil qui serve.
+        consigne: () => 'ENTOURE TOUTES LES ADDITIONS CACHÉES. Une addition tient sur trois '
+            + 'cases voisines, en ligne ou en colonne, et se lit dans les deux sens : le '
+            + 'résultat est à un BOUT. La règle qui fait tout le jeu : TOUS les chiffres '
+            + 'doivent servir, et chacun une seule fois.',
+        previewGrille: tasukoPreviewHtml,
+        pdfGrille: dessinerTasukoPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        proportions: { w: 1, h: 0.72 },
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2
     },
 
     pyramideNombres: {

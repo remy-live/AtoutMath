@@ -1013,6 +1013,46 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LE TASUKO. Rémy : « Fais un tasuko » — un jeu de puzzle qui « mélange
+        // des mécaniques de Sudoku, de recherche de mots et de calcul de
+        // sommes : trouver et relier toutes les additions de deux nombres
+        // cachées dans la grille, en utilisant TOUS les chiffres ».
+        //
+        // C'EST CETTE DERNIÈRE CLAUSE QUI EN FAIT UN CASSE-TÊTE. Sans elle, on
+        // entoure les additions qu'on voit et c'est fini ; avec elle, une
+        // addition juste peut être un piège, parce qu'elle vole un chiffre dont
+        // une autre avait besoin. On ne cherche donc pas des additions, on
+        // cherche LE découpage — et c'est un pavage, bien plus proche du sudoku
+        // que du calcul mental.
+        id: 'log-tasuko', status: STATUS.TEST, title: 'Tasuko',
+        cree: '2026-08-25',
+        activityId: 'tasuko', skills: ['num.logique.tasuko'],
+        sansRevision: true,
+        printable: 'tasuko', printGeneratorId: 'log.tasuko-fiche',
+        printParams: { taille: 'moyenne' },
+        params: { taille: 'moyenne' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                aide: 'La difficulté ne vient pas du calcul — les additions tiennent sur un chiffre — mais du nombre de PIÈGES : des additions parfaitement justes qui volent un chiffre à une autre. Plus la grille est grande, plus il y en a.',
+                options: [
+                    { value: 'petite', label: '4 × 3 — pour découvrir' },
+                    { value: 'moyenne', label: '6 × 4 — huit additions' },
+                    { value: 'grande', label: '6 × 6 — douze additions' },
+                    { value: 'geante', label: '9 × 6 — dix-huit additions' }
+                ],
+                default: 'moyenne'
+            }
+        ],
+        motsClefs: ['tasuko', 'additions', 'grille', 'somme', 'recherche', 'découpage',
+            'logique', 'calcul mental', 'pavage'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Entoure toutes les additions cachées dans la grille : touche un BOUT, puis l'autre — deux cases plus loin. Une addition tient sur trois cases voisines, en ligne ou en colonne, et se lit dans les deux sens : le résultat est à un bout et vaut la somme des deux autres. 3 · 4 · 7 en est une, 7 · 4 · 3 aussi, mais 4 · 7 · 3 non. La règle qui fait tout le jeu : TOUS les chiffres doivent servir, et chacun une seule fois — une addition juste peut donc être au mauvais endroit, et le jeu te le dira en rouge plutôt que de la refuser. La méthode qui ne trompe jamais : ne commence pas par l'addition la plus voyante, commence par un chiffre COINCÉ, celui qu'une seule addition peut prendre. Regarde les coins et les bords en premier. « Un indice » te montre justement un chiffre coincé."
+    },
+    {
         // LA PYRAMIDE DE NOMBRES — la jumelle arithmétique de la pyramide de
         // mots, et le second des « deux jeux dans ces styles ».
         //

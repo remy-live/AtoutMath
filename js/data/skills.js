@@ -391,6 +391,14 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    'num.logique.tasuko': {
+        label: 'Le tasuko : d\u00e9couper une grille en additions',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Retrouver dans une grille de chiffres les additions align\u00e9es qui la recouvrent enti\u00e8rement, chaque chiffre servant une seule fois.',
+        lesson: "UN TASUKO N'EST PAS UNE CHASSE AUX ADDITIONS, C'EST UN D\u00c9COUPAGE. Trois cases voisines et align\u00e9es forment une addition quand l'une des deux EXTR\u00caMES vaut la somme des deux autres \u2014 3 \u00b7 4 \u00b7 7 en est une, 7 \u00b7 4 \u00b7 3 aussi puisqu'on peut lire dans les deux sens, mais 4 \u00b7 7 \u00b7 3 non : le r\u00e9sultat s'\u00e9crit au bout, jamais au milieu. La seconde r\u00e8gle est celle qui fait tout : TOUS les chiffres doivent servir, et chacun une seule fois. Une addition parfaitement juste peut donc \u00eatre un pi\u00e8ge, parce qu'elle vole un chiffre dont une autre avait besoin. D'o\u00f9 la m\u00e9thode, et elle ne trompe jamais : ne commence pas par l'addition la plus voyante, commence par un CHIFFRE COINC\u00c9 \u2014 celui qu'une seule addition peut prendre. Regarde d'abord les coins et les bords, o\u00f9 il y a moins de traits possibles. Chaque addition pos\u00e9e en coince d'autres, et la grille se d\u00e9coupe de proche en proche sans qu'on ait jamais \u00e0 essayer pour voir."
+    },
     'num.logique.mastermind': {
         label: 'D\u00e9duire un code cach\u00e9',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
