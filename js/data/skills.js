@@ -685,6 +685,14 @@ const BASE = {
         descriptor: 'Compter les sommets, les arêtes et les faces d\'un solide dessiné en perspective cavalière.',
         lesson: "Sur une perspective cavalière, une partie du solide est DERRIÈRE : elle se dessine en pointillés. Celui qui compte seulement ce qu'il voit trouve toujours trop peu. Compte donc en marquant, une par une, sans oublier les pointillés. Et surtout, raisonne par familles plutôt que d'apprendre des nombres : un PRISME a deux bases identiques, donc 2 × n sommets, 3 × n arêtes (les n côtés du bas, les n du haut, les n montants) et n + 2 faces. Une PYRAMIDE a une base et un sommet, donc n + 1 sommets, 2 × n arêtes (les n côtés de la base, les n qui montent) et n + 1 faces. Enfin, une vérification vaut pour tous ces solides : sommets − arêtes + faces = 2. Si tu ne tombes pas sur 2, l'un des trois comptes est faux."
     },
+    'geo.espace.cubes': {
+        label: 'Compter les cubes d\'un empilement',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'D\u00e9nombrer les cubes d\'un empilement dessin\u00e9 en perspective, y compris ceux qu\'on ne voit pas.',
+        lesson: "UN DESSIN D'EMPILEMENT MENT TOUJOURS UN PEU : il montre les cubes de devant et cache ceux de derri\u00e8re et de dessous. Celui qui compte les faces trouve trop, celui qui compte les cubes visibles trouve trop peu. La m\u00e9thode qui ne trompe pas : compter COLONNE par colonne. Chaque case du sol porte une pile ; on lit la hauteur de chaque pile et on additionne. Deux raccourcis valent la peine. D'abord, si l'empilement est un PAV\u00c9 PLEIN, le compte est une multiplication : longueur \u00d7 profondeur \u00d7 hauteur \u2014 c'est exactement la formule du volume, rencontr\u00e9e ici pour de vrai. Ensuite, s'il ressemble \u00e0 un pav\u00e9 auquel il manque des cubes, on compte le pav\u00e9 entier et on retire ce qui manque : une soustraction est souvent plus s\u00fbre qu'une longue addition. Enfin, ne confonds jamais deux questions diff\u00e9rentes : le nombre de cubes qui TOUCHENT LE SOL est le nombre de cases occup\u00e9es de la base \u2014 une pile de quatre cubes n'en pose qu'un par terre."
+    },
     'geo.espace.reperage': {
         label: 'Se repérer et tracer un chemin sur une grille',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],

@@ -640,6 +640,33 @@ export const geometrieExercises = [
         instruction: "Relie les deux points qui portent la m\u00eame marque par un chemin qui suit les cases, sans diagonale. Pose le doigt sur un point et glisse ; pour effacer, reviens en arri\u00e8re ou touche le milieu d'un chemin. Deux r\u00e8gles, et c'est la seconde qui fait chercher : les chemins ne se croisent JAMAIS, et \u00e0 la fin il ne doit rester AUCUNE case vide. Commence par les coins : un coin n'a que deux voisines, le chemin qui y passe est donc presque toujours oblig\u00e9."
     },
     {
+        // COMBIEN DE CUBES ? Rémy : « j'aimerais un exercice de comptage de
+        // cube ». C'est l'exercice où l'on apprend qu'un dessin CACHE : on voit
+        // dix cubes, il y en a seize, parce que six sont derrière et dessous.
+        //
+        // Et c'est la première rencontre honnête avec le volume. L'élève qui a
+        // compté une fois un pavé plein colonne par colonne, puis vu que
+        // 4 × 3 × 3 donnait le même nombre, n'apprendra pas L × p × h comme une
+        // formule tombée du ciel : il l'aura vérifiée.
+        id: 'geo-cubes-compter', cree: '2026-08-25',
+        title: 'Combien de Cubes ?',
+        generatorId: 'geo.cubes', activityId: 'numpad',
+        printable: 'cubes',
+        consignePapier: 'Compte les cubes de chaque empilement. Attention : certains cubes '
+            + 'sont cachés derrière ou dessous — ils comptent aussi.',
+        params: { taille: 'moyen', formes: ['pave', 'couche', 'escalier', 'creux'], question: 'total' },
+        skills: ['geo.espace.cubes'],
+        motsClefs: ['cubes', 'empilement', 'compter', 'dénombrer', 'volume', 'pavé',
+            'perspective', 'cachés', 'solide'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: 'Ne compte pas les cubes un par un : compte les COLONNES. Chaque case du '
+            + 'sol porte une pile ; additionne les hauteurs et rien ne t\'échappe. Si c\'est un '
+            + 'pavé plein, c\'est encore plus court : longueur × profondeur × hauteur.'
+    },
+    {
         // DÉNOMBRER SUR UN SOLIDE. L'exercice a l'air simple et ne l'est pas :
         // sur une perspective cavalière, une partie du solide est derrière, et
         // l'élève qui compte ce qu'il voit trouve toujours trop peu. Le jeu

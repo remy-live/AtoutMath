@@ -43,6 +43,7 @@ import {
     dessiner as dessinerNoyau, aretesCachees as aretesCacheesNoyau,
     facesVisibles as facesVisiblesNoyau
 } from '../core/solides.js';
+import { cubesAPeindre, facesCube, boiteDessin } from '../core/cubes.js';
 import {
     cotesDe as cotesDePythagore, etapesCalcul as etapesCalculPythagore,
     ligneEnTexte as ligneEnTextePythagore
@@ -657,7 +658,7 @@ function figureAnglePreviewHtml(g, k, etiquette) {
         const p = g.P(s.x, s.y);
         d += `<circle cx="${T(p.x)}" cy="${T(p.y)}" r="${T(0.6)}" fill="#1a202c"/>`;
     });
-    let html = `<svg class="fx-ar-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
+    let html = `<svg class="fx-fig-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
     m.figure.arcs.forEach(arc => {
         const mot = etiquette(arc);
         if (!mot) return;
@@ -678,7 +679,7 @@ function figureAnglePreviewHtml(g, k, etiquette) {
 /** La ligne de réponse sous la figure : une amorce, et ce qu'on y écrit. */
 function ligneAnglePreviewHtml(g, k, amorce, rep) {
     const T = (v) => (v * k).toFixed(2);
-    return `<div class="fx-ar-ligne" style="left:${T(g.b.x + 2)}px;
+    return `<div class="fx-ligne-rep" style="left:${T(g.b.x + 2)}px;
         top:${T(g.b.y + g.dispoH)}px; width:${T(g.b.w - 4)}px; height:${T(g.ligneH * 0.8)}px;
         font-size:${T(g.taille)}px"><b>${echapperSheet(amorce)}</b>&nbsp;<i>${echapperSheet(rep)}</i></div>`;
 }
@@ -750,8 +751,13 @@ function dessinerFigureAnglePdf(doc, g, etiquette) {
 
 }
 
-/** La ligne de réponse sous la figure : une amorce, puis la réponse ou un pointillé. */
-function ligneAnglePdf(doc, g, amorce, rep) {
+/**
+ * LA LIGNE DE RÉPONSE SOUS UNE FIGURE : une amorce, puis la réponse ou un
+ * pointillé à remplir. Commune à tous les blocs « une figure, et de quoi écrire
+ * dessous » — les angles, les cubes — et c'est pour cela qu'elle ne porte plus le
+ * nom d'un seul d'entre eux.
+ */
+function ligneReponsePdf(doc, g, amorce, rep) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(g.taille / 0.3528);
     doc.setTextColor(...ENCRE.texte);
@@ -773,7 +779,7 @@ function ligneAnglePdf(doc, g, amorce, rep) {
 function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
     const g = geoAnglesManquants(item, slot);
     dessinerFigureAnglePdf(doc, g, (arc) => texteArcAngle(arc, solution));
-    ligneAnglePdf(doc, g, '? =', solution ? `${g.m.reponse}°` : '');
+    ligneReponsePdf(doc, g, '? =', solution ? `${g.m.reponse}°` : '');
 }
 
 // --- LE NOM DES ANGLES : L'EXERCICE 8 DE LA FICHE -----------------------------
@@ -794,7 +800,7 @@ function anglesNommerPreviewHtml(item, slot, k, solution) {
 function dessinerAnglesNommerPdf(doc, item, slot, solution) {
     const g = geoAnglesManquants(item, slot, 0.24);
     dessinerFigureAnglePdf(doc, g, (arc) => (arc.pas ? String(arc.pas) : ''));
-    ligneAnglePdf(doc, g, 'Nom :', solution ? g.m.nom : '');
+    ligneReponsePdf(doc, g, 'Nom :', solution ? g.m.nom : '');
 }
 
 // --- SEGMENT, DROITE OU DEMI-DROITE : LE SCHÉMA SUR LE PAPIER -----------------
@@ -3025,6 +3031,93 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
             doc.text(String(valeur), x + largeur / 2, g.tabY + g.tabH * 0.92, { align: 'center' });
         }
     });
+}
+
+// --- COMBIEN DE CUBES ? -------------------------------------------------------
+//
+// Rémy : « j'aimerais un exercice de comptage de cube ».
+//
+// LE DESSIN VIENT DES MÊMES DONNÉES QUE L'ÉCRAN. `meta.hauteurs` dit combien de
+// cubes sont empilés sur chaque case du sol ; core/cubes.js les projette et les
+// range du plus loin au plus près, et il n'y a plus qu'à peindre — les cubes de
+// devant recouvrent ceux de derrière tout seuls. Aucune occultation à calculer,
+// et surtout aucune chance que la feuille montre autre chose que l'écran.
+//
+// TROIS CLARTÉS, ET ELLES SURVIVENT AU NOIR ET BLANC. Contrairement aux secteurs
+// d'angles, on ne bascule PAS en ligne claire quand le polycopié est en noir et
+// blanc : sans les trois valeurs, un empilement de cubes devient un pavage de
+// losanges et l'exercice disparaît avec la perspective. Les trois teintes sont
+// déjà des gris bleutés bien séparés ; le filtre d'encre (voir ficheRendu.js) les
+// ramène à trois gris qui se distinguent encore à la photocopie.
+
+/** Les trois faces vues, et l'arête. Ce sont les teintes de --cu-* (modules.css). */
+const ENCRE_CUBE = {
+    dessus: [238, 241, 250],
+    droite: [182, 193, 218],
+    gauche: [123, 137, 171],
+    arete: [47, 58, 82]
+};
+
+function geoCubes(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const marge = 2;
+    // La ligne de réponse en bas, l'empilement dans tout le reste — même partage
+    // que les figures d'angles, et pour la même raison : le bloc est plus haut
+    // que large et le dessin doit prendre ce qui reste, pas un carré inscrit.
+    const ligneH = Math.min(9, b.h * 0.2);
+    const dispoH = b.h - ligneH;
+    const bd = boiteDessin(m.hauteurs);
+    const k = Math.min((b.w - marge * 2) / bd.largeur, (dispoH - marge) / bd.hauteur);
+    const x0 = b.x + (b.w - bd.largeur * k) / 2 - bd.xmin * k;
+    const y0 = b.y + (dispoH - bd.hauteur * k) / 2 - bd.ymin * k;
+    return {
+        m, b, k, ligneH, dispoH,
+        // La projection descend déjà vers le bas (voir projeter) : rien à retourner.
+        P: (p) => ({ x: x0 + p.x * k, y: y0 + p.y * k }),
+        yReponse: b.y + dispoH + ligneH * 0.62,
+        taille: Math.max(2.6, Math.min(Math.min(b.w, dispoH) * 0.085, 4.4)),
+        // L'arête se mesure en CUBES, pas en millimètres : trop fine sur un grand
+        // empilement elle disparaît, trop épaisse sur un petit elle mange la face.
+        trait: Math.min(0.5, Math.max(0.14, k * 0.035))
+    };
+}
+
+/** Toutes les faces à peindre, dans l'ordre, chacune avec son nom de teinte. */
+function facesCubesPapier(g) {
+    return cubesAPeindre(g.m.hauteurs).flatMap(({ x, y, z }) => {
+        const f = facesCube(x, y, z);
+        // Dans le cube aussi l'ordre compte : gauche, droite, puis le dessus.
+        return [['gauche', f.gauche], ['droite', f.droite], ['dessus', f.dessus]];
+    }).map(([nom, pts]) => [nom, pts.map(p => g.P(p))]);
+}
+
+function cubesPreviewHtml(item, slot, k, solution) {
+    const g = geoCubes(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const d = facesCubesPapier(g).map(([nom, pts]) => `<polygon
+        points="${pts.map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
+        fill="rgb(${ENCRE_CUBE[nom].join(',')})" stroke="rgb(${ENCRE_CUBE.arete.join(',')})"
+        stroke-width="${T(g.trait)}" stroke-linejoin="round"/>`).join('');
+    return `<svg class="fx-fig-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`
+        + `<div class="fx-ligne-rep" style="left:${T(g.b.x + 2)}px;
+            top:${T(g.b.y + g.dispoH)}px; width:${T(g.b.w - 4)}px;
+            height:${T(g.ligneH * 0.8)}px; font-size:${T(g.taille)}px"><b>=</b>&nbsp;<i>${
+            solution ? `${g.m.reponse} cubes` : ''}</i></div>`;
+}
+
+function dessinerCubesPdf(doc, item, slot, solution) {
+    const g = geoCubes(item, slot);
+    doc.setLineWidth(g.trait);
+    doc.setLineJoin('round');
+    doc.setDrawColor(...ENCRE_CUBE.arete);
+    facesCubesPapier(g).forEach(([nom, pts]) => {
+        doc.setFillColor(...ENCRE_CUBE[nom]);
+        const suite = pts.slice(1).map((p, j) => [p.x - pts[j].x, p.y - pts[j].y]);
+        doc.lines(suite, pts[0].x, pts[0].y, [1, 1], 'FD', true);
+    });
+    doc.setLineJoin('miter');
+    ligneReponsePdf(doc, g, '=', solution ? `${g.m.reponse} cubes` : '');
 }
 
 // --- LE MEMORY DES TABLES, À DÉCOUPER -----------------------------------------
@@ -7965,6 +8058,50 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.1 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
+    },
+
+    cubes: {
+        titre: 'Combien de cubes ?',
+        consigne: (items) => {
+            const q = items && items[0] && items[0].meta ? items[0].meta.question : 'total';
+            // LA QUESTION EST LA MÊME POUR TOUTE LA FICHE — c'est un réglage, pas
+            // un tirage —, donc elle se dit UNE FOIS en consigne. Répétée sous
+            // chacun des douze dessins, elle mangeait la place du dessin.
+            if (q === 'sol') {
+                return 'COMBIEN DE CUBES TOUCHENT LE SOL dans chaque empilement ? Attention : '
+                    + 'une pile de quatre cubes ne pose qu\'UN cube par terre. Ce qu\'on compte '
+                    + 'ici, c\'est le nombre de cases occupées de la base — pas le volume.';
+            }
+            if (q === 'ajouter') {
+                return 'COMBIEN DE CUBES FAUT-IL AJOUTER à chaque empilement pour obtenir un '
+                    + 'PAVÉ PLEIN, celui qui le contient tout juste ? Compte d\'abord les cubes '
+                    + 'du pavé plein — longueur × profondeur × hauteur —, puis retire ceux qui '
+                    + 'sont déjà là.';
+            }
+            return 'COMPTE LES CUBES DE CHAQUE EMPILEMENT. Certains sont cachés derrière ou '
+                + 'dessous : ils comptent aussi, et aucun ne flotte — sous chaque cube il y en '
+                + 'a d\'autres jusqu\'au sol. Ne compte pas cube par cube mais COLONNE par '
+                + 'colonne : chaque case du sol porte une pile, et il suffit d\'additionner '
+                + 'les hauteurs.';
+        },
+        previewGrille: cubesPreviewHtml,
+        pdfGrille: dessinerCubesPdf,
+        nomBloc: 'Empilement', nomBlocs: 'empilements',
+        // LE BLOC EST PLUS HAUT QUE LARGE, et c'est contre l'intuition : vu en
+        // perspective, un empilement paraît s'étaler en largeur. Mesuré, il ne
+        // le fait pas — la hauteur des piles s'ajoute au décalage des deux
+        // directions, et le dessin sort autour de 0,9 de large pour 1 de haut.
+        // Avec un bloc carré, un tiers de la largeur restait blanc de chaque
+        // côté et le dessin rapetissait d'autant. Neuf empilements tiennent
+        // encore sur une page.
+        proportions: { w: 1, h: 1.08 },
+        // DOUZE PAR PAGE, PAS NEUF. Un empilement est plus haut que large ; à
+        // trois colonnes il ne grandissait pas pour autant — il restait limité
+        // par la hauteur de la case — et l'on payait un tiers de la largeur en
+        // blanc. Quatre colonnes donnent le MÊME dessin et trois exercices de
+        // plus. Pour une version « affiche », il reste 3 × 2.
+        disposition: { cols: 4, rows: 3, maxCols: 5, maxRows: 4 },
+        parLigneDefaut: 4
     },
 
     anglesManquants: {

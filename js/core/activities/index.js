@@ -51,6 +51,7 @@ import { codageGenerator } from '../generators/codage.js';
 import { cheminNumeroteGenerator } from '../generators/cheminNumerote.js';
 import { labyNombresGenerator } from '../generators/labyrintheNombres.js';
 import { solidesGenerator } from '../generators/solides.js';
+import { cubesGenerator } from '../generators/cubes.js';
 import { repereFicheGenerator } from '../generators/repereFiche.js';
 import { slitherlinkGenerator } from '../generators/slitherlink.js';
 import { virguleFicheGenerator } from '../generators/virguleFiche.js';
@@ -98,7 +99,8 @@ import {
     anglesManquantsGenerator, anglesNommerGenerator,
     graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
-    slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,
+    slitherlinkGenerator, relierGenerator, solidesGenerator, cubesGenerator,
+    repereFicheGenerator,
     codageGenerator, cheminNumeroteGenerator, labyNombresGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,

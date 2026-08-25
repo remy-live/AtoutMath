@@ -4733,7 +4733,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* --- Fiche « Les angles remarquables » -------------------------------------
    La figure occupe le bloc, les deux mesures sont posées sur leur secteur, et
    la ligne « ? = …… » attend la réponse en bas. */
-.fx-ar-svg { position: absolute; overflow: visible; pointer-events: none; }
+/* LE CALQUE DE DESSIN ET LA LIGNE DE RÉPONSE SONT COMMUNS à tous les blocs
+   « une figure, et de quoi écrire dessous » : les angles, les cubes, et ce qui
+   viendra. Ils s'appelaient .fx-ar-* — le préfixe d'un seul exercice — et le
+   deuxième arrivant devait choisir entre copier la règle et emprunter un nom
+   qui ne le décrivait pas. */
+.fx-fig-svg { position: absolute; overflow: visible; pointer-events: none; }
 .fx-ar-mesure {
     position: absolute; text-align: center; font-weight: 800;
     white-space: nowrap; pointer-events: none;
@@ -4741,11 +4746,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* La gomme sous le nombre : elle s'arrête aux signes, pas au bloc de seize
    millimètres qui les centre. */
 .fx-ar-mesure span { padding: 0 .1em; border-radius: 2px; }
-.fx-ar-ligne {
+.fx-ligne-rep {
     position: absolute; display: flex; align-items: center;
     color: #1a202c; pointer-events: none;
 }
-.fx-ar-ligne i {
+.fx-ligne-rep i {
     flex: 1; font-style: normal; font-weight: 800; color: #2f855a;
     border-bottom: 1px dotted #9aa3b2; align-self: stretch;
     display: flex; align-items: flex-end;
@@ -6594,6 +6599,36 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .ar-mesure--dedans.ar-mesure--donne { stroke: var(--ar-donne); }
 .ar-mesure--dedans.ar-mesure--cherche { stroke: var(--ar-cherche); }
 .ar-mesure--dedans.ar-mesure--relais { stroke: var(--ar-relais); }
+
+/* --- COMBIEN DE CUBES ? ----------------------------------------------------
+   Rémy : « j'aimerais un exercice de comptage de cube ».
+
+   TROIS CLARTÉS, PAS TROIS COULEURS. Le dessus est clair, la face de droite
+   moyenne, celle de gauche foncée. C'est ce qui fait qu'on lit un VOLUME et
+   non un pavage de losanges — et trois valeurs bien séparées survivent à la
+   photocopie, là où trois teintes deviendraient un même gris. L'exercice tout
+   entier consiste à voir ce qui est devant quoi : si la perspective ne se lit
+   pas, il n'y a plus d'exercice.
+
+   LES TEINTES SONT FIXES, PAS LIÉES AU THÈME. En sombre, un dessus « clair »
+   pris sur --bg-panel deviendrait plus foncé que la face de gauche et le
+   volume se retournerait. Ce sont aussi celles du PDF (voir ENCRE_CUBE dans
+   printSheet.js) : ce qu'on voit à l'écran est ce qui sort de l'imprimante. */
+:root {
+    --cu-dessus: #eef1fa; --cu-droite: #b6c1da; --cu-gauche: #7b89ab;
+    --cu-arete: #2f3a52;
+}
+.cu-svg { width: 100%; overflow: visible; max-height: clamp(140px, 30cqh, 340px); }
+.numpad-context .cu-svg { max-height: calc(var(--fig-plafond) * var(--fig-etirement)); }
+/* Le trait d'arête est en unités de CUBE : le viewBox compte les cubes, pas
+   les pixels. Un quarantième de cube reste fin sur un empilement de deux et
+   visible sur un empilement de quatre. */
+.cu-svg polygon {
+    stroke: var(--cu-arete); stroke-width: 0.045; stroke-linejoin: round;
+}
+.cu-dessus { fill: var(--cu-dessus); }
+.cu-droite { fill: var(--cu-droite); }
+.cu-gauche { fill: var(--cu-gauche); }
 
 /* --- CODER LA FIGURE -------------------------------------------------------
    Un quadrilatère, ses diagonales, et des marques à poser dessus. Le dessin
