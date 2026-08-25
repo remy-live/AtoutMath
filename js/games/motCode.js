@@ -61,16 +61,25 @@ class MotCode extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     container-type: size;
                 }
+                /* PAS DE FOND SOUS LA GRILLE, et pas d'espace entre les
+                   cases : une case muette doit DISPARAÎTRE, pas devenir un
+                   carré gris. Rémy, sur les mots croisés imprimés : « les
+                   cases qui ne servent pas, ne les mets juste pas, on ne doit
+                   voir que la grille des mots ». C'est le même dessin ici — la
+                   silhouette des mots se lit toute seule dès qu'on laisse le
+                   blanc autour. Le trait de chaque case est donc porté par la
+                   case elle-même, en ombre intérieure : elle ne prend pas de
+                   place et ne décale rien. */
                 .mk-grille {
                     --mk-cote: clamp(13px, min(calc(96cqw / var(--mk-cols, 10)),
                                      calc(96cqh / var(--mk-rows, 10))), 54px);
-                    display: grid; gap: 1px; background: #cbd5e1;
-                    padding: 2px; border-radius: 4px; flex: 0 0 auto;
-                    box-shadow: 0 2px 12px rgba(15, 23, 42, .18);
+                    display: grid; gap: 0; background: transparent;
+                    flex: 0 0 auto;
                 }
                 .mk-case {
                     position: relative; width: var(--mk-cote); height: var(--mk-cote);
                     background: #fff; border: 0; padding: 0; font: inherit;
+                    box-shadow: inset 0 0 0 1px #94a3b8;
                     font-weight: 800; color: #111827;
                     font-size: calc(var(--mk-cote) * .5); line-height: 1;
                     display: flex; align-items: flex-end; justify-content: center;
@@ -80,14 +89,13 @@ class MotCode extends BaseGame {
                 /* Une case muette ne se dessine pas : on ne doit voir que la
                    silhouette des mots. Rémy, sur les mots croisés : « les cases
                    qui ne servent pas, ne les mets juste pas ». */
-                .mk-case--muette { background: transparent; cursor: default; }
+                .mk-case--muette { background: transparent; box-shadow: none; cursor: default; }
                 .mk-num {
                     position: absolute; top: 1px; left: 0; right: 0; text-align: center;
                     font-size: calc(var(--mk-cote) * .32);
                     font-weight: 700; color: #94a3b8; pointer-events: none;
                 }
                 .mk-case--vise { background: #ffe9b8; box-shadow: inset 0 0 0 2px #f59e0b; }
-                .mk-case--jumelle { background: #fff6e0; }
                 .mk-case--donnee { background: #eef2ff; color: #3730a3; }
                 .mk-case--faute { color: #dc2626; }
 

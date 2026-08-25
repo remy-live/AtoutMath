@@ -1058,7 +1058,7 @@ function geoMotCode(item, slot) {
     // écrit une lettre à la main ne descend pas sous cinq millimètres. Ce qui
     // reste va à la grille, qui sait se réduire.
     const coteCle = Math.max(5, Math.min(9, (b.w - 2) / Math.max(9, Math.ceil(n / 2))));
-    const parLigne = Math.max(1, Math.floor((b.w - 2) / coteCle));
+    const parLigne = Math.min(n, Math.max(1, Math.floor((b.w - 2) / coteCle)));
     const lignesCle = Math.ceil(n / parLigne);
     // Chaque rangée de clé porte sa case ET son numéro écrit dessous.
     const hCle = lignesCle * coteCle * 1.5 + 5;
@@ -1068,7 +1068,10 @@ function geoMotCode(item, slot) {
     return {
         b, m, cote, coteCle, parLigne, lignesCle,
         x: b.x + (b.w - w) / 2, y: b.y + (dispoH - h) / 2, w, h,
-        xCle: b.x + 1, yCle: b.y + dispoH + 2
+        // La clé est CENTRÉE sous la grille, qui l'est aussi : alignée à
+        // gauche, elle donnait une page qui penche.
+        xCle: b.x + (b.w - Math.min(n, parLigne) * coteCle) / 2,
+        yCle: b.y + dispoH + 2
     };
 }
 
@@ -1091,20 +1094,20 @@ function motCodePreviewHtml(item, slot, k, solution) {
             if (c === null) continue;
             const X = g.x + x * g.cote, Y = g.y + y * g.cote;
             const lettre = solution || donnees.has(c) ? c : '';
-            html += `<div class="fx-mc-case" style="left:${T(X)}px; top:${T(Y)}px;
-                width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.55)}px">
-                <span class="fx-mc-num" style="font-size:${T(g.cote * 0.34)}px">${g.m.numeros[y][x]}</span>
+            html += `<div class="fx-mk-case" style="left:${T(X)}px; top:${T(Y)}px;
+                width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.5)}px">
+                <span class="fx-mk-num" style="font-size:${T(g.cote * 0.32)}px">${g.m.numeros[y][x]}</span>
                 ${echapperSheet(lettre)}</div>`;
         }
     }
     html += `<div class="fx-mc-titre" style="left:${T(g.b.x)}px; top:${T(g.yCle)}px;
-        width:${T(g.b.w)}px; font-size:${T(3.2)}px">La clé — une lettre par numéro</div>`;
+        width:${T(g.b.w)}px; text-align:center; font-size:${T(3.2)}px">La clé — une lettre par numéro</div>`;
     g.m.lettres.forEach((_, i) => {
         const num = i + 1;
         const lettre = g.m.parNumero[num];
         const donne = donnees.has(lettre);
         const p = poseCle(g, i);
-        html += `<div class="fx-mc-case${donne ? ' fx-mc-case--donnee' : ''}"
+        html += `<div class="fx-mc-case${donne ? ' fx-mk-donnee' : ''}"
             style="left:${T(p.x)}px; top:${T(p.y)}px; width:${T(g.coteCle)}px;
             height:${T(g.coteCle)}px; font-size:${T(g.coteCle * 0.6)}px">${
     echapperSheet(solution || donne ? lettre : '')}</div>`;
@@ -1132,23 +1135,25 @@ function dessinerMotCodePdf(doc, item, slot, solution, champ) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(Math.max(3.6, g.cote * 0.95));
         doc.setTextColor(...ENCRE.gris);
-        doc.text(String(g.m.numeros[y][x]), X + g.cote * 0.1, Y + g.cote * 0.34);
+        doc.text(String(g.m.numeros[y][x]), X + g.cote / 2, Y + g.cote * 0.34,
+            { align: 'center' });
 
         const lettre = solution || donnees.has(c) ? c : '';
         if (lettre) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(Math.min(12, g.cote * 1.5));
             doc.setTextColor(...(solution && !donnees.has(c) ? [47, 133, 90] : ENCRE.texte));
-            doc.text(lettre, X + g.cote * 0.58, Y + g.cote * 0.85, { align: 'center' });
+            doc.text(lettre, X + g.cote / 2, Y + g.cote * 0.88, { align: 'center' });
         } else if (champ) {
-            champ(X + g.cote * 0.22, Y + g.cote * 0.32, g.cote * 0.7, g.cote * 0.62);
+            champ(X + g.cote * 0.15, Y + g.cote * 0.38, g.cote * 0.7, g.cote * 0.56);
         }
     }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...ENCRE.texte);
-    doc.text(pourPdf('La clé — une lettre par numéro'), g.b.x, g.yCle + 3);
+    doc.text(pourPdf('La clé — une lettre par numéro'), g.b.x + g.b.w / 2, g.yCle + 3,
+        { align: 'center' });
 
     g.m.lettres.forEach((_, i) => {
         const num = i + 1;

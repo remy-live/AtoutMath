@@ -4537,11 +4537,22 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; top: 0; left: .5px; color: #6b7280;
     font-weight: 700; line-height: 1;
 }
-/* LE MOT CODÉ : la case offerte porte un cadre gras — c'est le seul signe qui
-   distingue « on te la donne » de « à toi de la trouver », et il faut qu'il
-   survive à une photocopie en noir et blanc. Le numéro de la clé s'écrit SOUS
-   sa case, comme sur les grilles de journal. */
-.fx-mc-case--donnee { border-width: .9px; }
+/* LE MOT CODÉ : dans la grille, le numéro se pose EN HAUT AU MILIEU et la
+   lettre en dessous — le numéro reste lisible sous le stylo, et la lettre a
+   toute la largeur de la case. La case offerte porte un cadre gras : c'est le
+   seul signe qui distingue « on te la donne » de « à toi de la trouver », et
+   il faut qu'il survive à une photocopie en noir et blanc. Le numéro de la clé
+   s'écrit SOUS sa case, comme sur les grilles de journal. */
+.fx-mk-case {
+    position: absolute; border: .3px solid #1a202c; box-sizing: border-box;
+    background: #fff; display: flex; align-items: flex-end; justify-content: center;
+    font-weight: 800; color: #1a202c; pointer-events: none; line-height: 1.05;
+}
+.fx-mk-num {
+    position: absolute; top: 0; left: 0; right: 0; text-align: center;
+    color: #6b7280; font-weight: 700; line-height: 1.05;
+}
+.fx-mk-donnee { border-width: .9px; }
 .fx-mc-cle-num {
     position: absolute; text-align: center; color: #6b7280;
     font-weight: 700; line-height: 1; pointer-events: none;

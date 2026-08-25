@@ -507,9 +507,9 @@ const legacy = [
     ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches', 'mot', 12],
     ['anagrammes', 'Anagrammes du vocabulaire', 'anagrammes', 'engineAnagrammes', 'mot'],
     ['mots-croises', 'Mots croisés du vocabulaire', 'motsCroises', 'engineMotsCroises', 'mot', 12],
-    // Le mot codé : ce qu'on compte n'est pas un mot mais une LETTRE de
-    // l'alphabet retrouvée — l'unité du jeu, et ce qui se répète.
-    ['mot-code', 'Mot codé du vocabulaire', 'motCode', 'engineMotCode', 'lettre', 10],
+    // Le mot codé se compte en GRILLES : une partie, c'est un alphabet entier
+    // retrouvé, et rien ne se valide avant.
+    ['mot-code', 'Mot codé du vocabulaire', 'motCode', 'engineMotCode', 'grille', 3],
     ['pipopipette', 'La Pipopipette (à deux)', 'jeuxDeux', 'enginePipopipette', 'partie', 1],
     ['puissance4', 'Puissance 4 (à deux)', 'jeuxDeux', 'enginePuissance4', 'partie', 1],
     ['sim', 'Le Sim (à deux)', 'jeuxDeux', 'engineSim', 'partie', 1],
