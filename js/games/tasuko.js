@@ -1,37 +1,39 @@
 // LE TASUKO — à l'écran.
 //
-// Rémy : « Fais un tasuko. » Une grille de chiffres, des additions cachées
-// dedans, et une seconde règle qui change tout : TOUS les chiffres doivent
-// servir, et chacun une seule fois.
+// Rémy : « Fais un tasuko », puis une capture du vrai jeu qui m'a corrigé. Les
+// pièces sont des DOMINOS de deux cases, et leurs sommes doivent faire 1, 2,
+// 3, … n, chacune une seule fois. Voir js/core/tasuko.js pour la démonstration.
 //
-// ON ENTOURE, COMME DANS UNE RECHERCHE DE MOTS. Le geste est donc celui-là et
-// pas un autre : on touche une extrémité, puis l'autre, et la capsule se pose
-// sur les trois cases. Deux touches, pas trois — c'est le geste du crayon qui
-// fait le tour d'un mot, et il marche aussi bien à la souris qu'au doigt.
+// LA LISTE DES SOMMES EST LA MOITIÉ DU JEU, alors elle est à l'écran en
+// permanence. Sans elle, le joueur relie des chiffres au hasard et ne sait
+// jamais où il en est ; avec elle, la question devient la bonne : « il me reste
+// le 5 et le 7 — où peuvent-ils bien tenir ? » C'est le raisonnement qui compte
+// ici, et c'est celui auquel on ne pense pas tout seul.
 //
-// UNE ADDITION POSÉE PEUT ÊTRE UNE FAUTE, ET C'EST TOUT LE JEU. « 3 + 4 = 7 »
-// est juste et peut néanmoins être au mauvais endroit, parce qu'elle prend un
-// chiffre dont une autre avait besoin. Le jeu ne refuse donc pas les additions
-// justes : il refuse celles qui se CHEVAUCHENT, et il le dit — c'est là que se
-// fait le raisonnement.
+// ON RELIE, COMME ON TRACE UN DOMINO. Le geste est donc celui-là : on touche
+// une case, puis sa voisine, et la capsule se pose sur les deux. Toucher une
+// case déjà entourée retire sa paire — c'est le geste d'effacer un trait, et
+// il ne demande aucun bouton de plus.
 //
-// L'AIDE NE DONNE PAS UNE ADDITION, ELLE MONTRE UNE CASE. « Ce 6-là : plus
-// aucune autre addition ne peut le prendre. » C'est la seule règle dont le
-// joueur ait besoin pour finir n'importe quelle grille, et la lui montrer une
-// fois vaut mieux que de lui offrir dix réponses.
+// UNE PAIRE JUSTE PEUT ÊTRE UNE FAUTE, ET C'EST TOUT LE JEU. « 3 + 4 = 7 » est
+// une addition correcte, et pourtant elle peut être au mauvais endroit : soit
+// elle vole un chiffre à une autre, soit le 7 est déjà employé ailleurs. Le jeu
+// ne refuse donc pas les paires justes — il les POSE et les signale, parce que
+// c'est là, et pas ailleurs, que se fait le raisonnement.
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    creerTasuko, additionsPossibles, casesCouvertes, chevauchements,
-    estResoluTasuko, diagnostic, prochaineAddition, qualiteTasuko, TAILLES_TASUKO
+    creerTasuko, casesCouvertes, sommesEmployees, chevauchements, sommesEnDouble,
+    estResoluTasuko, diagnostic, prochaineAddition, qualiteTasuko, paireDe, TAILLES_TASUKO
 } from '../core/tasuko.js';
 
 const COMPETENCE = 'num.logique.tasuko';
 
 /** Les teintes des capsules : on tourne, pour que deux voisines se distinguent. */
-const TEINTES = ['#6d5cf6', '#2f855a', '#b7791f', '#c53030', '#0987a0', '#805ad5'];
+const TEINTES = ['#6d5cf6', '#2f855a', '#b7791f', '#c53030', '#0987a0', '#805ad5',
+    '#d53f8c', '#2b6cb0'];
 
 class Tasuko extends BaseGame {
     constructor(container, isDemo, params) {
@@ -47,7 +49,7 @@ class Tasuko extends BaseGame {
             <style>
                 .tk-wrap {
                     display: flex; flex-direction: column; align-items: center;
-                    gap: clamp(4px, 1.2cqh, 10px);
+                    gap: clamp(3px, 1.1cqh, 9px);
                     width: 100%; height: 100%; padding: 6px; box-sizing: border-box;
                     color: var(--text-main); container-type: size;
                     user-select: none; -webkit-user-select: none; overflow: hidden;
@@ -61,10 +63,13 @@ class Tasuko extends BaseGame {
                    soit le thème. Ses cases sont sa grammaire. */
                 .tk-plateau { position: relative; flex: 0 0 auto; }
                 .tk-grille {
-                    --tk-cote: clamp(20px, min(calc(88cqw / var(--tk-l, 6)),
-                                     calc(86cqh / var(--tk-h, 4))), 56px);
+                    /* Le plafond est haut EXPRÈS : une grille de seize cases
+                       sur un écran d'ordinateur restait grande comme un timbre
+                       quand il était à 62 pixels. */
+                    --tk-cote: clamp(20px, min(calc(88cqw / var(--tk-l, 4)),
+                                     calc(84cqh / var(--tk-h, 4))), 96px);
                     display: grid; gap: 0;
-                    grid-template-columns: repeat(var(--tk-l, 6), var(--tk-cote));
+                    grid-template-columns: repeat(var(--tk-l, 4), var(--tk-cote));
                     background: #fff;
                 }
                 .tk-case {
@@ -77,9 +82,6 @@ class Tasuko extends BaseGame {
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                     position: relative; z-index: 2;
                 }
-                /* Une case déjà prise par une addition : le chiffre s'assombrit
-                   et la capsule passe dessous. */
-                .tk-case--pris { color: #1a202c; }
                 .tk-case--depart { background: rgba(109, 92, 246, .18); }
                 .tk-case--montre { background: rgba(183, 121, 31, .28); }
                 .tk-case--faute { background: rgba(197, 48, 48, .22); }
@@ -90,7 +92,27 @@ class Tasuko extends BaseGame {
                     position: absolute; inset: 0; pointer-events: none; z-index: 1;
                     overflow: visible;
                 }
-                .tk-capsule { fill: none; stroke-width: .1; }
+                .tk-capsule { stroke-width: .07; }
+
+                /* LES SOMMES À TROUVER : la moitié du jeu, donc toujours visible.
+                   Celles qui sont faites s'éteignent au lieu de disparaître —
+                   ce qui reste se lit mieux à côté de ce qui est fait. */
+                .tk-sommes {
+                    display: flex; gap: 3px; flex-wrap: wrap; justify-content: center;
+                    max-width: 100%;
+                }
+                .tk-somme {
+                    min-width: 1.7em; padding: 1px 4px; border-radius: 999px;
+                    font-weight: 800; text-align: center;
+                    font-size: clamp(10px, 2.3cqh, 15px);
+                    border: 1.5px solid #6d5cf6; color: #4c3fd0;
+                    background: var(--bg-panel, #fff);
+                }
+                .tk-somme--faite {
+                    border-color: #cbd5e1; color: #a0aec0;
+                    text-decoration: line-through; background: transparent;
+                }
+                .tk-somme--double { border-color: #c53030; color: #c53030; }
 
                 .tk-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .tk-btn {
@@ -98,9 +120,6 @@ class Tasuko extends BaseGame {
                     border: 1px solid var(--border-soft, #cbd5e1);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
-                }
-                .tk-compte {
-                    font-weight: 700; font-size: clamp(11px, 2.4cqh, 15px); opacity: .8;
                 }
                 .tk-note { min-height: 1.5em; text-align: center; font-weight: 600;
                     font-size: clamp(11px, 2.4cqh, 15px); }
@@ -114,7 +133,7 @@ class Tasuko extends BaseGame {
                         <div class="tk-grille" id="tk-grille"></div>
                     </div>
                 </div>
-                <div class="tk-compte" id="tk-compte"></div>
+                <div class="tk-sommes" id="tk-sommes"></div>
                 <div class="tk-note" id="tk-note"></div>
                 <div class="tk-barre">
                     <button type="button" class="tk-btn" id="tk-aide">💡 Un indice</button>
@@ -124,7 +143,7 @@ class Tasuko extends BaseGame {
             </div>`;
         this.grilleEl = this.container.querySelector('#tk-grille');
         this.calqueEl = this.container.querySelector('#tk-calque');
-        this.compteEl = this.container.querySelector('#tk-compte');
+        this.sommesEl = this.container.querySelector('#tk-sommes');
         this.noteEl = this.container.querySelector('#tk-note');
         this.container.querySelector('#tk-aide').onclick = () => this.aider();
         this.container.querySelector('#tk-verif').onclick = () => this.verifier();
@@ -141,7 +160,8 @@ class Tasuko extends BaseGame {
         this.fautes = null;
         this.fini = false;
         this.dessiner();
-        this.note('Touche les DEUX BOUTS d\'une addition pour l\'entourer.');
+        this.note(`Relie DEUX CASES VOISINES pour faire une somme. Il en faut une de chaque : `
+            + `1, 2, 3… jusqu'à ${this.g.n}.`);
     }
 
     dessiner() {
@@ -152,14 +172,13 @@ class Tasuko extends BaseGame {
         const fautes = new Set(this.fautes || []);
         const casesFautives = new Set();
         fautes.forEach(id => {
-            const a = g.additions.find(x => x.id === id);
-            if (a) a.cellules.forEach(c => casesFautives.add(c));
+            const p = paireDe(g, id);
+            if (p) p.cellules.forEach(c => casesFautives.add(c));
         });
 
         this.grilleEl.innerHTML = g.grille.map((ligne, y) => ligne.map((v, x) => {
             const c = y * g.l + x;
             const classes = ['tk-case'];
-            if (pris[c]) classes.push('tk-case--pris');
             if (this.depart === c) classes.push('tk-case--depart');
             if (this.montre === c) classes.push('tk-case--montre');
             if (casesFautives.has(c)) classes.push('tk-case--faute');
@@ -174,31 +193,39 @@ class Tasuko extends BaseGame {
         // au PDF (voir printSheet.js).
         this.calqueEl.setAttribute('viewBox', `0 0 ${g.l} ${g.h}`);
         this.calqueEl.innerHTML = this.choisies.map((id, i) => {
-            const a = g.additions.find(x => x.id === id);
-            if (!a) return '';
-            return this.capsuleSvg(a, TEINTES[i % TEINTES.length], fautes.has(id));
+            const p = paireDe(g, id);
+            if (!p) return '';
+            return this.capsuleSvg(p, TEINTES[p.somme % TEINTES.length], fautes.has(id), i);
         }).join('');
 
-        const q = qualiteTasuko(g);
-        this.compteEl.textContent = `${this.choisies.length} / ${q.additions} additions`;
+        // Les sommes : faites, en double, ou encore à trouver.
+        const employees = sommesEmployees(g, this.choisies);
+        this.sommesEl.innerHTML = Array.from({ length: g.n }, (_, i) => i + 1).map(s => {
+            const ids = employees.get(s) || [];
+            const cls = ids.length > 1 ? 'tk-somme tk-somme--double'
+                : ids.length ? 'tk-somme tk-somme--faite' : 'tk-somme';
+            return `<span class="${cls}">${s}</span>`;
+        }).join('');
+        void pris;
     }
 
-    /** La capsule d'une addition : un rectangle arrondi sur ses trois cases. */
-    capsuleSvg(a, teinte, faute) {
-        const xs = a.cases.map(([x]) => x), ys = a.cases.map(([, y]) => y);
+    /** La capsule d'une paire : un rectangle arrondi sur ses deux cases. */
+    capsuleSvg(p, teinte, faute, rang) {
+        const xs = p.cases.map(([x]) => x), ys = p.cases.map(([, y]) => y);
         const x0 = Math.min(...xs), y0 = Math.min(...ys);
         const x1 = Math.max(...xs) + 1, y1 = Math.max(...ys) + 1;
-        const m = 0.11;
+        const m = 0.09;
         return `<rect class="tk-capsule" x="${x0 + m}" y="${y0 + m}"
             width="${x1 - x0 - m * 2}" height="${y1 - y0 - m * 2}"
-            rx="${0.5 - m}" stroke="${faute ? '#c53030' : teinte}"
-            stroke-dasharray="${faute ? '.22 .16' : ''}"/>`;
+            rx="${0.5 - m}" fill="${faute ? 'rgba(197,48,48,.16)' : teinte}"
+            fill-opacity="${faute ? 1 : 0.2}"
+            stroke="${faute ? '#c53030' : teinte}"
+            stroke-dasharray="${faute ? '.18 .13' : ''}" data-rang="${rang}"/>`;
     }
 
     /**
-     * DEUX TOUCHES : un bout, puis l'autre. Toucher une case déjà entourée
-     * retire son addition — c'est le geste d'effacer un trait de crayon, et il
-     * ne demande aucun bouton de plus.
+     * DEUX TOUCHES : une case, puis sa voisine. Toucher une case déjà entourée
+     * retire sa paire.
      */
     toucher(c) {
         if (this.isDemo || this.fini) return;
@@ -206,20 +233,21 @@ class Tasuko extends BaseGame {
         this.fautes = null;
         const g = this.g;
         const dejaLa = this.choisies.find(id => {
-            const a = g.additions.find(x => x.id === id);
-            return a && a.cellules.includes(c);
+            const p = paireDe(g, id);
+            return p && p.cellules.includes(c);
         });
         if (dejaLa !== undefined) {
+            const p = paireDe(g, dejaLa);
             this.choisies = this.choisies.filter(id => id !== dejaLa);
             this.depart = null;
             this.dessiner();
-            this.note('Addition retirée.');
+            this.note(`Paire retirée : la somme ${p.somme} est de nouveau à faire.`);
             return;
         }
         if (this.depart === null) {
             this.depart = c;
             this.dessiner();
-            this.note('Et maintenant l\'autre bout — deux cases plus loin.');
+            this.note('Et maintenant sa voisine — au-dessus, au-dessous, à gauche ou à droite.');
             return;
         }
         if (this.depart === c) {
@@ -233,39 +261,48 @@ class Tasuko extends BaseGame {
 
     essayer(deb, fin) {
         const g = this.g;
-        const a = g.additions.find(x =>
-            (x.cellules[0] === deb && x.cellules[2] === fin)
-            || (x.cellules[0] === fin && x.cellules[2] === deb));
         this.depart = null;
-        if (!a) {
-            // On distingue « pas alignées » de « alignées mais pas une
-            // addition » : ce ne sont pas la même erreur, et la seconde est un
-            // vrai calcul qui vient d'être fait de travers.
-            const [xa, ya] = [deb % g.l, Math.floor(deb / g.l)];
-            const [xb, yb] = [fin % g.l, Math.floor(fin / g.l)];
-            const alignees = (ya === yb && Math.abs(xa - xb) === 2)
-                || (xa === xb && Math.abs(ya - yb) === 2);
+        const [xa, ya] = [deb % g.l, Math.floor(deb / g.l)];
+        const [xb, yb] = [fin % g.l, Math.floor(fin / g.l)];
+        const voisines = Math.abs(xa - xb) + Math.abs(ya - yb) === 1;
+        if (!voisines) {
             this.dessiner();
-            this.note(alignees
-                ? 'Ces trois cases-là ne font pas une addition : le résultat doit être à un '
-                    + 'BOUT, et valoir la somme des deux autres.'
-                : 'Une addition tient sur trois cases voisines, en ligne ou en colonne : '
-                    + 'touche les deux bouts.', 'ko');
+            this.note('Une paire tient sur deux cases VOISINES, côte à côte ou l\'une sur '
+                + 'l\'autre — jamais en diagonale.', 'ko');
             return;
         }
-        // UNE ADDITION JUSTE MAIS QUI EMPIÈTE EST POSÉE QUAND MÊME, et signalée.
+        const somme = g.grille[ya][xa] + g.grille[yb][xb];
+        const p = g.paires.find(x =>
+            (x.cellules[0] === deb && x.cellules[1] === fin)
+            || (x.cellules[0] === fin && x.cellules[1] === deb));
+        if (!p) {
+            // Voisines, mais la somme ne fait partie d'aucune de celles qu'on
+            // cherche : c'est un calcul juste qui ne sert à rien, et le dire
+            // ainsi vaut mieux que de refuser sans expliquer.
+            this.dessiner();
+            this.note(`${g.grille[ya][xa]} + ${g.grille[yb][xb]} = ${somme}, mais on ne cherche `
+                + `que les sommes de 1 à ${g.n}.`, 'ko');
+            return;
+        }
+        // UNE PAIRE JUSTE MAIS QUI EMPIÈTE EST POSÉE QUAND MÊME, et signalée.
         // La refuser cacherait le raisonnement ; la montrer, c'est enseigner la
         // règle qui fait tout le jeu.
         const pris = casesCouvertes(g, this.choisies);
-        const empiete = a.cellules.some(c => pris[c]);
-        this.choisies.push(a.id);
-        this.fautes = empiete ? chevauchements(g, this.choisies) : null;
+        const empiete = p.cellules.some(c => pris[c]);
+        const dejaFaite = sommesEmployees(g, this.choisies).has(p.somme);
+        this.choisies.push(p.id);
+        this.fautes = empiete ? chevauchements(g, this.choisies)
+            : dejaFaite ? sommesEnDouble(g, this.choisies) : null;
         this.dessiner();
         if (empiete) {
-            this.note(`${a.a} + ${a.b} = ${a.somme} est juste, mais elle prend un chiffre `
-                + 'déjà employé. Les deux en rouge ne peuvent pas coexister.', 'ko');
+            this.note(`${p.a} + ${p.b} = ${p.somme} est juste, mais elle prend un chiffre déjà `
+                + 'employé. Les deux en rouge ne peuvent pas coexister.', 'ko');
+        } else if (dejaFaite) {
+            this.note(`${p.a} + ${p.b} = ${p.somme}, mais la somme ${p.somme} est DÉJÀ faite `
+                + 'ailleurs. Chaque somme ne se fait qu\'une fois : l\'une des deux est mal '
+                + 'placée.', 'ko');
         } else {
-            this.note(`${a.a} + ${a.b} = ${a.somme} ✓`, 'ok');
+            this.note(`${p.a} + ${p.b} = ${p.somme} ✓`, 'ok');
         }
         if (estResoluTasuko(g, this.choisies)) this.gagner();
     }
@@ -273,12 +310,16 @@ class Tasuko extends BaseGame {
     aider() {
         if (this.isDemo || this.fini) return;
         const doubles = chevauchements(this.g, this.choisies);
-        if (doubles.length) {
-            this.fautes = doubles;
+        const memes = doubles.length ? [] : sommesEnDouble(this.g, this.choisies);
+        if (doubles.length || memes.length) {
+            this.fautes = doubles.length ? doubles : memes;
             this.montre = null;
             this.dessiner();
-            this.note('Deux de tes additions se partagent un chiffre. Tant qu\'elles sont là, '
-                + 'plus rien ne se déduit : retires-en une.', 'ko');
+            this.note(doubles.length
+                ? 'Deux de tes paires se partagent un chiffre. Tant qu\'elles sont là, plus '
+                    + 'rien ne se déduit : retires-en une.'
+                : 'Deux de tes paires font la même somme. Tant qu\'elles sont là, plus rien '
+                    + 'ne se déduit : retires-en une.', 'ko');
             return;
         }
         const p = prochaineAddition(this.g, this.choisies);
@@ -287,22 +328,29 @@ class Tasuko extends BaseGame {
             return;
         }
         this.aides++;
-        // DEUX TEMPS : d'abord la case qui force, ensuite l'addition. Le
-        // premier temps est le raisonnement ; le second n'est plus qu'un
-        // service rendu à celui qui bloque vraiment.
-        if (p.parLaCase !== null && this.montre !== p.parLaCase) {
-            this.montre = p.parLaCase;
+        // DEUX TEMPS : d'abord le raisonnement, ensuite la paire. Le premier
+        // temps est ce qu'on veut enseigner ; le second n'est plus qu'un service
+        // rendu à celui qui bloque vraiment.
+        const montrable = p.parLaSomme !== null || p.parLaCase !== null;
+        const repere = p.parLaCase !== null ? p.parLaCase : p.paire.cellules[0];
+        if (montrable && this.montre !== repere) {
+            this.montre = repere;
             this.fautes = null;
             this.dessiner();
-            const v = this.g.grille[Math.floor(p.parLaCase / this.g.l)][p.parLaCase % this.g.l];
-            this.note(`Regarde ce <b>${v}</b> : plus aucune autre addition ne peut le prendre. `
-                + 'Il n\'y a donc qu\'un seul trait possible autour de lui.');
+            if (p.parLaSomme !== null) {
+                this.note(`Cherche par la SOMME, pas par les chiffres : le <b>${p.parLaSomme}</b> `
+                    + 'ne peut se faire qu\'à un seul endroit de la grille. Il est là.');
+            } else {
+                const v = this.g.grille[Math.floor(repere / this.g.l)][repere % this.g.l];
+                this.note(`Regarde ce <b>${v}</b> : plus aucune paire possible ne peut le `
+                    + 'prendre, sauf une. Il n\'y a donc pas à choisir.');
+            }
             return;
         }
-        this.choisies.push(p.addition.id);
+        this.choisies.push(p.paire.id);
         this.montre = null;
         this.dessiner();
-        this.note(`${p.addition.a} + ${p.addition.b} = ${p.addition.somme}.`);
+        this.note(`${p.paire.a} + ${p.paire.b} = ${p.paire.somme}.`);
         if (estResoluTasuko(this.g, this.choisies)) this.gagner();
     }
 
@@ -314,7 +362,14 @@ class Tasuko extends BaseGame {
         if (d.quoi === 'chevauchement') {
             this.fautes = chevauchements(this.g, this.choisies);
             this.dessiner();
-            this.note(`${d.n} additions se partagent un chiffre — en rouge.`, 'ko');
+            this.note(`${d.n} paires se partagent un chiffre — en rouge.`, 'ko');
+            return;
+        }
+        if (d.quoi === 'sommeDouble') {
+            this.fautes = sommesEnDouble(this.g, this.choisies);
+            this.dessiner();
+            this.note(`${d.n} paires font la même somme — en rouge. Chaque somme ne sert `
+                + 'qu\'une fois.', 'ko');
             return;
         }
         this.fautes = null;
@@ -331,9 +386,10 @@ class Tasuko extends BaseGame {
         this.fautes = null;
         this.dessiner();
         const q = qualiteTasuko(this.g);
-        this.note(`🏆 Grille finie — ${q.additions} additions, et pas un chiffre perdu.`, 'ok');
+        this.note(`🏆 Grille finie — les sommes de 1 à ${this.g.n}, et pas un chiffre perdu.`,
+            'ok');
         this.onCorrectAnswer(null, COMPETENCE, {
-            questionText: `Tasuko ${this.g.l} × ${this.g.h} — ${q.additions} additions`,
+            questionText: `Tasuko ${this.g.l} × ${this.g.h} — les sommes de 1 à ${this.g.n}`,
             expected: q.lignes.join(' ; '), given: q.lignes.join(' ; '),
             points: Math.max(10, 15 + q.additions * 2 - this.aides * 3 - this.verifs * 2)
         });
@@ -345,10 +401,9 @@ class Tasuko extends BaseGame {
     }
 
     /**
-     * Le robot montre LE GESTE, qui n'est pas de trouver une addition — on en
-     * voit dix — mais de repérer un chiffre que PLUS RIEN D'AUTRE ne peut
-     * prendre. C'est par là qu'on commence, et c'est ce qui distingue ce jeu
-     * d'une simple recherche de mots.
+     * Le robot montre LE BON RAISONNEMENT, qui n'est pas de chercher une paire
+     * qui tombe juste — il y en a partout — mais de partir d'une SOMME et de se
+     * demander où elle peut bien tenir.
      */
     async runDemoSequence() {
         const cur = createDemoCursor();
@@ -360,26 +415,35 @@ class Tasuko extends BaseGame {
         if (!this.g) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        const total = additionsPossibles(this.g.grille).length;
-        cur.say(`Il y a ${total} additions lisibles dans cette grille, et seulement `
-            + `${this.g.solution.length} sont bonnes. Entourer ce qu'on voit ne suffit donc pas.`,
-        this.grilleEl);
+        cur.say(`Il y a ${this.g.paires.length} façons de relier deux cases voisines dans cette `
+            + `grille, et il n'en faut que ${this.g.n} : une par somme, de 1 à ${this.g.n}. `
+            + 'Relier ce qui tombe juste ne suffit donc pas.', this.grilleEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        for (let n = 0; n < 2; n++) {
+        cur.say('Le bon réflexe n\'est pas de regarder les chiffres, c\'est de regarder cette '
+            + 'liste-là et de prendre une somme qui reste.', this.sommesEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        for (let n = 0; n < 3; n++) {
             const p = prochaineAddition(this.g, this.choisies);
-            if (!p || p.parLaCase === null) break;
-            this.montre = p.parLaCase;
+            if (!p) break;
+            const repere = p.parLaCase !== null ? p.parLaCase : p.paire.cellules[0];
+            this.montre = repere;
             this.dessiner();
-            const v = this.g.grille[Math.floor(p.parLaCase / this.g.l)][p.parLaCase % this.g.l];
-            cur.say(`Je ne cherche pas une addition, je cherche un chiffre COINCÉ : ce ${v}-là, `
-                + 'plus aucune autre addition ne peut le prendre.', this.grilleEl);
+            if (p.parLaSomme !== null) {
+                cur.say(`Le ${p.parLaSomme} : je cherche partout où deux voisines le font, et `
+                    + 'il n\'y a qu\'un seul endroit. Aucune hésitation.', this.grilleEl);
+            } else {
+                const v = this.g.grille[Math.floor(repere / this.g.l)][repere % this.g.l];
+                cur.say(`Ou par la case : ce ${v}-là n'a plus qu'une seule voisine libre dont `
+                    + 'la somme serve encore.', this.grilleEl);
+            }
             if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
-            this.choisies.push(p.addition.id);
+            this.choisies.push(p.paire.id);
             this.montre = null;
             this.dessiner();
-            cur.say(`Donc c'est celle-ci, sans hésiter : ${p.addition.a} + ${p.addition.b} `
-                + `= ${p.addition.somme}. Et elle en coince d'autres à son tour.`, this.grilleEl);
+            cur.say(`${p.paire.a} + ${p.paire.b} = ${p.paire.somme}. Et cette paire-là en coince `
+                + 'd\'autres à son tour.', this.sommesEl);
             if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
         }
         cur.say('De proche en proche, toute la grille se découpe. On ne devine jamais.',

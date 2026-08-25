@@ -3637,30 +3637,43 @@ function dessinerParkingPdf(doc, item, slot) {
 
 // --- LE TASUKO SUR PAPIER ------------------------------------------------------
 //
-// Rémy : « Fais un tasuko. » Une grille de chiffres, et un crayon pour entourer
-// les additions. C'est la forme d'origine du jeu : l'écran n'y ajoute que la
-// vérification.
+// Rémy : « Fais un tasuko. » Une grille de chiffres, un crayon pour relier les
+// paires de voisines, et la bande des sommes à barrer au fur et à mesure.
+// C'est la forme d'origine du jeu : l'écran n'y ajoute que la vérification.
 //
-// LE CORRIGÉ DESSINE LES CAPSULES, il ne liste pas les additions. Sur une
-// recherche de mots, ce qu'on veut voir en corrigeant, c'est OÙ ils étaient —
-// une liste ne se compare à rien. La capsule se calcule en unités de case,
-// exactement comme à l'écran (voir games/tasuko.js), donc les deux dessins ne
-// peuvent pas diverger.
+// LA BANDE DES SOMMES N'EST PAS UNE DÉCORATION. À l'écran, la liste s'éteint
+// toute seule ; sur le papier, c'est l'élève qui barre, et il lui faut donc de
+// quoi barrer. Sans elle, il perd le fil au bout de six paires.
+//
+// LE CORRIGÉ DESSINE LES CAPSULES, il ne liste pas les additions : ce qu'on
+// veut voir en corrigeant, c'est OÙ elles étaient — une liste ne se compare à
+// rien. La capsule se calcule en unités de case, exactement comme à l'écran
+// (voir games/tasuko.js), donc les deux dessins ne peuvent pas diverger.
 
 function geoTasuko(item, slot) {
     const m = item.meta;
     const b = boiteDe(slot);
+    // La bande des sommes mange le bas du bloc : on la réserve d'abord, et la
+    // grille se dimensionne dans ce qui reste.
+    const hBande = Math.min(b.h * 0.16, 9);
+    const hGrille = b.h - hBande;
     // LA CASE SE DIMENSIONNE POUR UN CRAYON QUI ENTOURE, et c'est ce qui la
-    // distingue d'une case où l'on écrit : le trait fait le tour de trois
-    // cases, il lui faut de la place au bord. À dix millimètres, deux capsules
-    // voisines se touchaient presque ; à douze, elles se séparent.
-    const cote = Math.min(b.w / m.l, b.h / m.h, 12);
+    // distingue d'une case où l'on écrit : le trait fait le tour de deux cases,
+    // il lui faut de la place au bord.
+    const cote = Math.min(b.w / m.l, hGrille / m.h, 12);
     const w = cote * m.l, h = cote * m.h;
+    const n = m.n || Math.round((m.l * m.h) / 2);
+    // Les pastilles de la bande : assez larges pour un nombre à deux chiffres,
+    // et jamais plus hautes que la bande qui les porte.
+    const pas = Math.min((b.w - 2) / n, hBande * 0.9, 7);
     return {
-        m, b, cote,
+        m, b, cote, n, hBande, pas,
         x0: b.x + (b.w - w) / 2,
-        y0: b.y + (b.h - h) / 2,
-        taille: Math.max(2, cote * 0.5)
+        y0: b.y + (hGrille - h) / 2,
+        xBande: b.x + (b.w - pas * n) / 2,
+        yBande: b.y + hGrille + (hBande - pas * 0.8) / 2,
+        taille: Math.max(2, cote * 0.5),
+        tailleBande: Math.max(1.7, pas * 0.5)
     };
 }
 
@@ -3685,6 +3698,11 @@ function tasukoPreviewHtml(item, slot, k, solution) {
         `<div class="fx-tk-case" style="left:${T(g.x0 + x * g.cote)}px;
             top:${T(g.y0 + y * g.cote)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
             font-size:${T(g.taille)}px">${v}</div>`).join('')).join('');
+    // La bande des sommes à barrer.
+    html += Array.from({ length: g.n }, (_, i) => i + 1).map(nb =>
+        `<div class="fx-tk-somme" style="left:${T(g.xBande + (nb - 1) * g.pas)}px;
+            top:${T(g.yBande)}px; width:${T(g.pas * 0.86)}px; height:${T(g.pas * 0.8)}px;
+            font-size:${T(g.tailleBande)}px">${nb}</div>`).join('');
     if (solution) {
         html += g.m.solution.map(a => {
             const c = capsuleTasuko(g, a.cases);
@@ -3709,6 +3727,18 @@ function dessinerTasukoPdf(doc, item, slot, solution) {
         doc.text(String(v), g.x0 + (x + 0.5) * g.cote, g.y0 + (y + 0.7) * g.cote,
             { align: 'center' });
     }));
+    // LA BANDE DES SOMMES : les cases à barrer au fur et à mesure.
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setFontSize(Math.max(5, g.pas * 1.35));
+    for (let nb = 1; nb <= g.n; nb++) {
+        const x = g.xBande + (nb - 1) * g.pas;
+        doc.setFillColor(...ENCRE.donnee);
+        doc.roundedRect(x, g.yBande, g.pas * 0.86, g.pas * 0.8, g.pas * 0.2, g.pas * 0.2, 'FD');
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(String(nb), x + g.pas * 0.43, g.yBande + g.pas * 0.58, { align: 'center' });
+    }
+
     if (!solution) return;
     doc.setDrawColor(47, 133, 90);
     doc.setLineWidth(0.5);
@@ -3716,6 +3746,14 @@ function dessinerTasukoPdf(doc, item, slot, solution) {
         const c = capsuleTasuko(g, a.cases);
         doc.roundedRect(c.x, c.y, c.w, c.h, c.r, c.r);
     });
+    // Sur le corrigé, les sommes sont toutes faites : on les barre.
+    doc.setDrawColor(47, 133, 90);
+    doc.setLineWidth(0.4);
+    for (let nb = 1; nb <= g.n; nb++) {
+        const x = g.xBande + (nb - 1) * g.pas;
+        doc.line(x + g.pas * 0.08, g.yBande + g.pas * 0.72,
+            x + g.pas * 0.78, g.yBande + g.pas * 0.08);
+    }
 }
 
 // --- LA PYRAMIDE DE NOMBRES ----------------------------------------------------
@@ -9173,14 +9211,17 @@ export const RENDUS = {
     },
 
     tasuko: {
-        titre: 'Tasuko — les additions cachées',
+        titre: 'Tasuko — les sommes cachées',
         // COURTE, PARCE QU'ELLE EST COUPÉE. Le bandeau tient deux lignes : la
         // version longue s'arrêtait sur « commence par un chiffre qu'une », en
         // plein milieu du seul conseil qui serve.
-        consigne: () => 'ENTOURE TOUTES LES ADDITIONS CACHÉES. Une addition tient sur trois '
-            + 'cases voisines, en ligne ou en colonne, et se lit dans les deux sens : le '
-            + 'résultat est à un BOUT. La règle qui fait tout le jeu : TOUS les chiffres '
-            + 'doivent servir, et chacun une seule fois.',
+        consigne: (items) => {
+            const m = items && items[0] && items[0].meta;
+            const n = (m && m.n) || 8;
+            return `RELIE LES CASES VOISINES DEUX PAR DEUX, en ligne ou en colonne. Les sommes `
+                + `obtenues doivent faire 1, 2, 3… jusqu'à ${n} — chacune une seule fois — et `
+                + 'TOUS les chiffres doivent servir. Barre les sommes au fur et à mesure.';
+        },
         previewGrille: tasukoPreviewHtml,
         pdfGrille: dessinerTasukoPdf,
         nomBloc: 'Grille', nomBlocs: 'grilles',

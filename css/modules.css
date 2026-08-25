@@ -4649,6 +4649,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; border: 1.4px solid #2f855a; box-sizing: border-box;
     pointer-events: none;
 }
+/* La bande des sommes à barrer : l'élève y raye 1, puis 2, puis 3… C'est ce
+   qui remplace, sur le papier, la liste qui s'éteint toute seule à l'écran. */
+.fx-tk-somme {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: .5px solid #b0b6c5; border-radius: 2px; background: #eef0fa;
+    font-weight: 700; color: #2d3748; box-sizing: border-box;
+}
 
 /* --- Fiche « La Pyramide des nombres » -------------------------------------
    Un triangle de cases larges. L'aperçu et le PDF lisent la même géométrie

@@ -533,8 +533,8 @@ const legacy = [
     ['pyramide-nombres', 'La Pyramide des nombres', 'pyramideNombres',
         'enginePyramideNombres', 'pyramide', 4],
     // Le tasuko se compte en GRILLES : une partie, c'est un découpage entier,
-    // et rien ne se valide avant la dernière addition.
-    ['tasuko', 'Tasuko — les additions cachées', 'tasuko', 'engineTasuko', 'grille', 3],
+    // et rien ne se valide avant la dernière somme.
+    ['tasuko', 'Tasuko — les sommes cachées', 'tasuko', 'engineTasuko', 'grille', 3],
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.

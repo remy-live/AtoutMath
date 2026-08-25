@@ -1013,17 +1013,24 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
-        // LE TASUKO. Rémy : « Fais un tasuko » — un jeu de puzzle qui « mélange
-        // des mécaniques de Sudoku, de recherche de mots et de calcul de
-        // sommes : trouver et relier toutes les additions de deux nombres
-        // cachées dans la grille, en utilisant TOUS les chiffres ».
+        // LE TASUKO. Rémy : « Fais un tasuko » — un jeu qui « mélange des
+        // mécaniques de Sudoku, de recherche de mots et de calcul de sommes ».
         //
-        // C'EST CETTE DERNIÈRE CLAUSE QUI EN FAIT UN CASSE-TÊTE. Sans elle, on
-        // entoure les additions qu'on voit et c'est fini ; avec elle, une
-        // addition juste peut être un piège, parce qu'elle vole un chiffre dont
-        // une autre avait besoin. On ne cherche donc pas des additions, on
-        // cherche LE découpage — et c'est un pavage, bien plus proche du sudoku
-        // que du calcul mental.
+        // J'AVAIS COMPRIS DE TRAVERS, ET SA CAPTURE DU VRAI JEU L'A PROUVÉ. Je
+        // lisais « les additions de deux nombres » comme des additions écrites
+        // sur trois cases — deux termes et leur résultat. Non : les pièces sont
+        // des DOMINOS de deux cases, et ce qui les rend justes n'est pas écrit
+        // dans la grille — ce sont leurs SOMMES qui doivent faire 1, 2, 3, …
+        // jusqu'à n, chacune une seule fois. La démonstration tient en une
+        // ligne : sur sa capture, le total des seize chiffres valait 36,
+        // c'est-à-dire exactement 1+2+⋯+8. Voir js/core/tasuko.js.
+        //
+        // ET C'EST LE SUDOKU QUI APPARAÎT LÀ. Le joueur ne cherche plus « une
+        // addition qui marche » — il en verrait trente — il cherche OÙ CASER
+        // UNE SOMME DONNÉE. Deux lectures se répondent, exactement comme le
+        // chiffre-dans-la-case et la case-pour-le-chiffre d'un sudoku : « ce
+        // 4-là n'a plus qu'un voisin possible » et « le 7 ne peut se faire qu'à
+        // cet endroit ».
         id: 'log-tasuko', status: STATUS.TEST, title: 'Tasuko',
         cree: '2026-08-25',
         activityId: 'tasuko', skills: ['num.logique.tasuko'],
@@ -1034,23 +1041,23 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'taille', type: 'select', label: 'Taille de la grille',
-                aide: 'La difficulté ne vient pas du calcul — les additions tiennent sur un chiffre — mais du nombre de PIÈGES : des additions parfaitement justes qui volent un chiffre à une autre. Plus la grille est grande, plus il y en a.',
+                aide: 'La difficulté ne vient pas du calcul — aucun chiffre ne dépasse la moitié de la plus grande somme — mais du nombre de PIÈGES : des paires parfaitement justes qui volent un chiffre à une autre, ou qui refont une somme déjà employée. Plus la grille est grande, plus il y en a.',
                 options: [
-                    { value: 'petite', label: '4 × 3 — pour découvrir' },
-                    { value: 'moyenne', label: '6 × 4 — huit additions' },
-                    { value: 'grande', label: '6 × 6 — douze additions' },
-                    { value: 'geante', label: '9 × 6 — dix-huit additions' }
+                    { value: 'petite', label: '4 × 3 — six sommes, pour découvrir' },
+                    { value: 'moyenne', label: '4 × 4 — huit sommes, la grille du vrai jeu' },
+                    { value: 'grande', label: '6 × 4 — douze sommes' },
+                    { value: 'geante', label: '6 × 6 — dix-huit sommes' }
                 ],
                 default: 'moyenne'
             }
         ],
-        motsClefs: ['tasuko', 'additions', 'grille', 'somme', 'recherche', 'découpage',
-            'logique', 'calcul mental', 'pavage'],
+        motsClefs: ['tasuko', 'sommes', 'paires', 'dominos', 'additions', 'grille',
+            'découpage', 'logique', 'calcul mental', 'pavage', 'sudoku'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Entoure toutes les additions cachées dans la grille : touche un BOUT, puis l'autre — deux cases plus loin. Une addition tient sur trois cases voisines, en ligne ou en colonne, et se lit dans les deux sens : le résultat est à un bout et vaut la somme des deux autres. 3 · 4 · 7 en est une, 7 · 4 · 3 aussi, mais 4 · 7 · 3 non. La règle qui fait tout le jeu : TOUS les chiffres doivent servir, et chacun une seule fois — une addition juste peut donc être au mauvais endroit, et le jeu te le dira en rouge plutôt que de la refuser. La méthode qui ne trompe jamais : ne commence pas par l'addition la plus voyante, commence par un chiffre COINCÉ, celui qu'une seule addition peut prendre. Regarde les coins et les bords en premier. « Un indice » te montre justement un chiffre coincé."
+        instruction: "Relie les cases VOISINES deux par deux — côte à côte ou l'une sur l'autre, jamais en diagonale. Les sommes obtenues doivent faire 1, 2, 3… jusqu'au bout : sur une grille de seize cases, ce sont huit paires et les sommes de 1 à 8, chacune une seule fois. Et TOUS les chiffres doivent servir. Touche une case, puis sa voisine ; touche une paire déjà tracée pour l'effacer. NE CHERCHE PAS UNE ADDITION QUI TOMBE JUSTE — il y en a partout — pars de la liste des sommes qui restent et demande-toi où celle-ci peut bien tenir. C'est le raisonnement du sudoku, dans les deux sens : « le 7, il ne peut se faire qu'ici » et « ce 4-là n'a plus qu'un seul voisin possible ». Une paire juste peut être au mauvais endroit — elle vole un chiffre, ou refait une somme déjà employée — et le jeu te le dira en rouge plutôt que de la refuser. « Un indice » te montre laquelle des deux lectures conclut."
     },
     {
         // LA PYRAMIDE DE NOMBRES — la jumelle arithmétique de la pyramide de
