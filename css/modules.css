@@ -4558,6 +4558,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* LE HASHI : l'île est un cercle épais, le pont un trait fin. C'est ce qui
    permet de tracer par-dessus au crayon sans confondre la figure imprimée avec
    celle de l'élève, et c'est aussi ce qui survit à la photocopie. */
+/* --- Fiche « La Pyramide des nombres » -------------------------------------
+   Un triangle de cases larges. L'aperçu et le PDF lisent la même géométrie
+   (geoPyramideN) : ce qu'on voit est ce qui sort de l'imprimante. */
+.fx-pn-case {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px #2a3040; background: #fff;
+    font-weight: 800; color: #2a3040; box-sizing: border-box;
+}
+.fx-pn-case--donne { background: #eef0fa; }
+.fx-pn-case--sol { color: #2f855a; }
+
 /* --- Fiche « Mastermind » --------------------------------------------------
    Des jetons ronds portant leur initiale, deux colonnes de nombres nommées, et
    des cases vides pour le code. L'aperçu et le PDF lisent la même géométrie

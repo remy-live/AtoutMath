@@ -3033,6 +3033,83 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LA PYRAMIDE DE NOMBRES ----------------------------------------------------
+//
+// La jumelle arithmétique de la pyramide de mots, et sa forme naturelle : un
+// triangle de cases, des trous, un crayon.
+//
+// LA BASE EST EN BAS, ET C'EST LOIN D'ÊTRE ÉVIDENT À CODER. Les données sont
+// rangées du sol vers le sommet — `lignes[0]` est la base — alors que le papier
+// se dessine du haut vers le bas. On retourne donc l'indice une fois pour
+// toutes ici, plutôt qu'à chaque endroit qui dessine.
+//
+// LES CASES SONT LARGES, PAS CARRÉES : un sommet à trois chiffres doit y tenir
+// sans que le nombre se serre, et c'est justement le sommet qu'on regarde.
+
+function geoPyramideN(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const n = m.n;
+    const gap = 0.6;
+    // La rangée la plus large compte `n` cases ; il y a `n` rangées.
+    const cote = Math.min((b.w - gap * (n - 1)) / (n * 1.55), (b.h - gap * (n - 1)) / n, 9);
+    const largeur = cote * 1.55;
+    const w = largeur * n + gap * (n - 1);
+    const h = cote * n + gap * (n - 1);
+    const x0 = b.x + (b.w - w) / 2;
+    const y0 = b.y + (b.h - h) / 2;
+    return {
+        m, b, n, cote, largeur, gap,
+        // (k, i) : k = l'étage en partant du SOL, i = la case dans l'étage.
+        // Le sol se dessine tout en bas, donc au rang n - 1 de la page.
+        //
+        // LE DÉCALAGE HORIZONTAL SUIT L'ÉTAGE, PAS SA HAUTEUR SUR LA PAGE. La
+        // base est la rangée la plus LARGE : c'est elle qui ne se décale pas,
+        // et chaque étage au-dessus rentre d'une demi-case. On avait pris
+        // `n - 1 - k`, c'est-à-dire l'inverse : la pyramide penchait, et les
+        // plus larges débordaient du bloc par la droite.
+        x: (k, i) => x0 + k * (largeur + gap) / 2 + i * (largeur + gap),
+        y: (k) => y0 + (n - 1 - k) * (cote + gap),
+        taille: Math.max(2, cote * 0.52)
+    };
+}
+
+function pyramideNPreviewHtml(item, slot, k, solution) {
+    const g = geoPyramideN(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    return g.m.lignes.map((l, r) => l.map((v, i) => {
+        const donne = g.m.donnes[r][i];
+        const texte = donne ? v : (solution ? v : '');
+        return `<div class="fx-pn-case${donne ? ' fx-pn-case--donne' : ''}${
+            !donne && texte !== '' ? ' fx-pn-case--sol' : ''}"
+            style="left:${T(g.x(r, i))}px; top:${T(g.y(r))}px;
+            width:${T(g.largeur)}px; height:${T(g.cote)}px;
+            font-size:${T(g.taille)}px">${texte}</div>`;
+    }).join('')).join('');
+}
+
+function dessinerPyramideNPdf(doc, item, slot, solution) {
+    const g = geoPyramideN(item, slot);
+    doc.setLineWidth(0.35);
+    g.m.lignes.forEach((l, r) => l.forEach((v, i) => {
+        const x = g.x(r, i), y = g.y(r);
+        const donne = g.m.donnes[r][i];
+        // Une case DONNÉE est de l'énoncé : fond teinté, on n'écrit pas dedans.
+        // Les autres restent blanches, prêtes pour le crayon.
+        if (donne) {
+            doc.setFillColor(...ENCRE.donnee);
+            doc.rect(x, y, g.largeur, g.cote, 'F');
+        }
+        doc.setDrawColor(...ENCRE.trait);
+        doc.rect(x, y, g.largeur, g.cote);
+        if (!donne && !solution) return;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5, g.cote * 1.55));
+        doc.setTextColor(...(donne ? ENCRE.trait : [47, 133, 90]));
+        doc.text(String(v), x + g.largeur / 2, y + g.cote * 0.7, { align: 'center' });
+    }));
+}
+
 // --- LE MASTERMIND SUR PAPIER --------------------------------------------------
 //
 // Rémy : « Et un master mind ».
@@ -8345,6 +8422,30 @@ export const RENDUS = {
         // Un peu plus haut que « la valeur manquante » : le nom écrit sous la
         // figure tient sur une ligne plus large qu'un « ? = 74° ».
         proportions: { w: 1, h: 1.1 },
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        parLigneDefaut: 3
+    },
+
+    pyramideNombres: {
+        titre: 'La Pyramide des nombres',
+        consigne: (items) => {
+            const m = items && items[0] && items[0].meta;
+            const commun = 'CHAQUE CASE EST LA SOMME DES DEUX DU DESSOUS. Complète la pyramide.';
+            if (m && m.difficulte === 'addition') {
+                return `${commun} Tout se remplit en montant : additionne les deux cases `
+                    + 'du dessous, et recommence à l\'étage suivant.';
+            }
+            return `${commun} Attention, la règle se lit DANS LES DEUX SENS : vers le haut on `
+                + 'additionne, vers le bas on SOUSTRAIT — si le dessus vaut 12 et l\'une des '
+                + 'deux du dessous 7, l\'autre vaut 12 − 7. Cherche toujours un petit triangle '
+                + 'où deux cases sur trois sont déjà remplies.';
+        },
+        previewGrille: pyramideNPreviewHtml,
+        pdfGrille: dessinerPyramideNPdf,
+        nomBloc: 'Pyramide', nomBlocs: 'pyramides',
+        // Presque carrée : autant d'étages que de cases à la base, et les cases
+        // sont une fois et demie plus larges que hautes.
+        proportions: { w: 1, h: 0.72 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
     },

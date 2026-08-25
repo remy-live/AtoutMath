@@ -1013,6 +1013,53 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LA PYRAMIDE DE NOMBRES — la jumelle arithmétique de la pyramide de
+        // mots, et le second des « deux jeux dans ces styles ».
+        //
+        // UNE SEULE RÈGLE, LUE DANS LES DEUX SENS, et c'est tout l'exercice :
+        // vers le haut on additionne, vers le bas on SOUSTRAIT. L'élève qui n'a
+        // jamais fait que des additions bute à la première case creuse du bas ;
+        // celui qui a compris que soustraire, c'est chercher ce qui manque, la
+        // remplit sans hésiter. C'est la leçon des « nombres à trous », posée
+        // sur un objet qu'on a envie de finir.
+        id: 'calc-pyramide-nombres', status: STATUS.TEST, title: 'La Pyramide des Nombres',
+        cree: '2026-08-25',
+        activityId: 'pyramide-nombres', skills: ['num.pyramide-additive'],
+        sansRevision: true,
+        printable: 'pyramideNombres', printGeneratorId: 'calc.pyramide-nombres-fiche',
+        printParams: { taille: 'moyenne', difficulte: 'melange' },
+        params: { taille: 'moyenne', difficulte: 'melange' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Hauteur de la pyramide',
+                aide: 'Plus la pyramide est haute, plus le sommet est grand — et plus une erreur du bas se paie cher en haut. Les nombres de la base sont donc plus petits quand on monte : le travail doit rester du raisonnement, pas des retenues.',
+                options: [
+                    { value: 'petite', label: '4 étages — pour découvrir' },
+                    { value: 'moyenne', label: '5 étages' },
+                    { value: 'grande', label: '6 étages — le sommet passe 100' }
+                ],
+                default: 'moyenne'
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Où sont les trous',
+                aide: 'C\'est CE réglage qui change la nature de l\'exercice, bien plus que la hauteur. La base donnée, on ne fait qu\'additionner. Des trous en bas, et il faut soustraire pour redescendre — ce qui est exactement la leçon « soustraire, c\'est chercher ce qui manque ».',
+                options: [
+                    { value: 'addition', label: 'La base est donnée — on ne fait qu\'additionner' },
+                    { value: 'melange', label: 'Des trous partout — il faut aussi soustraire' },
+                    { value: 'soustraction', label: 'Surtout le haut — beaucoup de soustractions' }
+                ],
+                default: 'melange'
+            }
+        ],
+        motsClefs: ['pyramide', 'addition', 'soustraction', 'somme', 'calcul mental',
+            'nombres à trous', 'triangle', 'additive'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Chaque case est la SOMME DES DEUX DU DESSOUS. Touche une case, tape le nombre. La règle se lit dans les deux sens, et c'est là tout l'exercice : vers le HAUT on additionne — 7 et 5 donnent 12 —, vers le BAS on SOUSTRAIT — si le dessus vaut 12 et l'une des deux du dessous 7, l'autre vaut 12 − 7. Ne remplis pas la pyramide dans l'ordre : cherche un petit TRIANGLE où deux cases sur trois sont déjà là, et complète la troisième. Il y en a toujours un, et chaque case remplie en ouvre d'autres. Une vérification qui vaut la peine : plus on monte, plus les nombres grossissent — une case plus petite que l'une des deux du dessous est forcément fausse. « Un indice » ne remplit rien : il te montre le triangle et écrit le calcul."
+    },
+    {
         // LE MASTERMIND. Rémy : « Et un master mind ».
         //
         // UN JEU QUI NE SE JOUE PAS SEUL, et c'est justement ce que l'écran

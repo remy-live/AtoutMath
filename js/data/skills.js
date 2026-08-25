@@ -334,6 +334,14 @@ const BASE = {
         descriptor: 'Lire l\'abscisse d\'un point sur un axe gradué de 1 en 1, de 0,1 en 0,1 puis de 0,01 en 0,01.',
         lesson: 'Entre deux grands traits, l\'axe est coupé en DIX. Entre 3 et 4, un intervalle vaut 0,1 ; entre 3,5 et 3,6, il vaut 0,01. On compte les INTERVALLES depuis le grand trait de gauche, jamais les traits — et l\'on peut toujours recommencer un cran plus bas : entre deux décimaux, il y en a encore une infinité.'
     },
+    'num.pyramide-additive': {
+        label: 'La pyramide additive (somme des deux du dessous)',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers', 'num.sub.entiers'],
+        descriptor: 'Compl\u00e9ter une pyramide o\u00f9 chaque case est la somme des deux du dessous, en additionnant vers le haut et en soustrayant vers le bas.',
+        lesson: "UNE SEULE R\u00c8GLE, ET ELLE SE LIT DANS LES DEUX SENS. Chaque case est la somme des deux qui la portent. Vers le HAUT, on additionne : 7 et 5 donnent 12. Vers le BAS, on SOUSTRAIT : si la case du dessus vaut 12 et que l'une des deux du dessous vaut 7, l'autre vaut 12 \u2212 7 = 5. C'est l\u00e0 tout l'exercice, et c'est aussi ce qui bloque : celui qui n'a jamais fait que des additions s'arr\u00eate \u00e0 la premi\u00e8re case creuse du bas. Soustraire, ce n'est pas « enlever » ici, c'est CHERCHER CE QUI MANQUE \u2014 12 \u2212 7, c'est « 7 pour aller \u00e0 12 ». La m\u00e9thode qui ne bloque jamais : cherche un petit triangle o\u00f9 DEUX cases sur trois sont d\u00e9j\u00e0 remplies, et compl\u00e8te la troisi\u00e8me. Il y en a toujours un, et chaque case remplie en ouvre d'autres. Enfin, une v\u00e9rification qui vaut la peine : plus on monte, plus les nombres grossissent \u2014 une case plus petite que l'une des deux du dessous est forc\u00e9ment fausse."
+    },
     'num.complement': {
         label: 'Compléments à 10, 100, 1000',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
