@@ -31,13 +31,22 @@ export const OPS = {
 // Tailles de cages par difficulté : c'est LE levier. À chiffres égaux, une
 // grille de petites cages se résout par petits pas, une grille de grandes
 // cages demande de croiser les contraintes.
+// LA TAILLE DES ZONES FAIT TOUTE LA DIFFICULTÉ. Une zone d'une seule case
+// DONNE son chiffre : il n'y a rien à calculer, on l'écrit. Une zone de deux
+// cases se devine en deux essais. À quatre, il faut chercher.
+//
+// LE TUTORIEL EST DONC UNE GRILLE DE ZONES D'UNE ET DEUX CASES, moitié
+// moitié. Rémy : « commencer avec des niveaux hyper faciles ». La moitié de la
+// grille est ainsi écrite d'avance, et l'autre moitié se déduit d'un seul
+// calcul — le temps de comprendre ce qu'est une zone.
 const TAILLES = {
+    tutoriel: [[1, 0.50], [2, 0.50]],
     facile: [[1, 0.15], [2, 0.65], [3, 0.20]],
     moyen: [[1, 0.05], [2, 0.50], [3, 0.37], [4, 0.08]],
     difficile: [[1, 0.02], [2, 0.38], [3, 0.42], [4, 0.18]]
 };
 
-const DIFFICULTE_ITEM = { facile: 1, moyen: 3, difficile: 4 };
+const DIFFICULTE_ITEM = { tutoriel: 1, facile: 1, moyen: 3, difficile: 4 };
 
 // --- Construction -----------------------------------------------------------
 
@@ -364,7 +373,12 @@ export const kenkenGenerator = {
         },
         {
             id: 'difficulte', type: 'select', label: 'Difficulté', default: 'facile',
+            aide: 'Une zone d\'UNE case donne son chiffre : il n\'y a rien à calculer, on '
+                + 'l\'écrit. Le TUTORIEL n\'a que des zones d\'une et deux cases — la moitié '
+                + 'de la grille est écrite d\'avance —, et le jeu dit à chaque fois par quelle '
+                + 'zone continuer et pourquoi.',
             options: [
+                { value: 'tutoriel', label: 'Tutoriel — que des zones d\'une ou deux cases' },
                 { value: 'facile', label: 'Facile (petites zones)' },
                 { value: 'moyen', label: 'Moyen' },
                 { value: 'difficile', label: 'Difficile (grandes zones)' }
@@ -432,7 +446,10 @@ export const kenkenGenerator = {
                     target: cage.target,
                     label: cage.op ? `${cage.target}${OPS[cage.op].symbole}` : String(cage.target)
                 })),
-                solution: sol
+                solution: sol,
+                // `difficulte` voyage avec la grille : c'est elle qui allume le
+                // mode guidé de l'activité.
+                difficulte
             }
         });
     }

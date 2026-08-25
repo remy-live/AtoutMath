@@ -19,12 +19,20 @@ export const TAILLES_SUDOKU = {
 };
 
 // Part de cases DONNÉES visée, par difficulté et par taille.
+//
+// LE TUTORIEL N'EST PAS « UN PEU PLUS FACILE », C'EST PRESQUE FINI. Rémy :
+// « il faut commencer avec des niveaux hyper faciles, quitte à mettre dans les
+// options un mode tutoriel ». Une grille de 4 × 4 à quatre-vingts pour cent
+// donnée, ce sont trois cases à remplir : le temps de comprendre le geste, la
+// règle et le raisonnement, sans jamais rester bloqué. On n'apprend pas à
+// résoudre un sudoku sur une grille qu'on ne finit pas.
 const CIBLES = {
+    tutoriel: { 4: 0.80, 6: 0.78, 9: 0.76 },
     facile: { 4: 0.65, 6: 0.55, 9: 0.48 },
     moyen: { 4: 0.50, 6: 0.44, 9: 0.39 },
     difficile: { 4: 0.40, 6: 0.36, 9: 0.31 }
 };
-const DIFFICULTE_ITEM = { facile: 2, moyen: 3, difficile: 4 };
+const DIFFICULTE_ITEM = { tutoriel: 1, facile: 2, moyen: 3, difficile: 4 };
 
 /** Lignes, colonnes et blocs : chaque unité est la liste de ses cases. */
 export function unitesDe(n, br, bc) {
@@ -132,7 +140,11 @@ export const sudokuGenerator = {
         },
         {
             id: 'difficulte', type: 'select', label: 'Difficulté', default: 'facile',
+            aide: 'Le TUTORIEL ne laisse que trois ou quatre cases à remplir, et le jeu dit à '
+                + 'chaque fois laquelle et pourquoi : c\'est le mode pour la toute première '
+                + 'fois, ou pour un élève qui n\'a jamais fini une grille.',
             options: [
+                { value: 'tutoriel', label: 'Tutoriel — presque tout est donné, et le jeu guide' },
                 { value: 'facile', label: 'Facile (candidat unique)' },
                 { value: 'moyen', label: 'Moyen' },
                 { value: 'difficile', label: 'Difficile (le minimum de cases)' }
@@ -180,7 +192,9 @@ export const sudokuGenerator = {
             ],
             explanation: `Chaque ligne, chaque colonne et chaque bloc doit contenir les chiffres de 1 à ${n}, une seule fois chacun.`,
             difficulty: DIFFICULTE_ITEM[difficulte] + (n === 9 ? 1 : 0),
-            meta: { n, br, bc, givens, solution, nbDonnees: restantes }
+            // `difficulte` voyage avec la grille : c'est elle qui allume le
+            // mode guidé de l'activité.
+            meta: { n, br, bc, givens, solution, nbDonnees: restantes, difficulte }
         });
     }
 };

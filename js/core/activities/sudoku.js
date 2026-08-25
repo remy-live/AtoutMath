@@ -97,6 +97,7 @@ export function mount(container, session, opts = {}) {
         brancherVerificateur();
         brancherValidation();
         brancherIndices();
+        guider();
     }
 
     // --- Saisie -------------------------------------------------------------
@@ -116,6 +117,10 @@ export function mount(container, session, opts = {}) {
         container.querySelectorAll('.kk-cage--faux, .kk-cage--indice')
             .forEach(e => e.classList.remove('kk-cage--faux', 'kk-cage--indice'));
         statut('');
+        // EN TUTORIEL, LE COUP SUIVANT S'ALLUME TOUT SEUL : c'est ce qui fait
+        // voir qu'une case remplie en débloque une autre, la seule chose qu'il
+        // y ait à comprendre du sudoku.
+        if (enTutoriel()) guider();
     }
 
     function brancherCases() {
@@ -180,11 +185,45 @@ export function mount(container, session, opts = {}) {
     }
 
     /** Le prochain coup FORCÉ : candidat unique, sinon single caché. */
+    /**
+     * COMMENT ON PARLE D'UNE UNITÉ. Les lignes d'abord, puis les colonnes,
+     * puis les blocs — et « ligne » est féminin quand « bloc » ne l'est pas :
+     * une phrase qui dit « ce ligne » se lit deux fois, et la deuxième fois
+     * l'élève ne pense plus au sudoku.
+     */
+    const MOTS_UNITE = {
+        ligne: { det: 'cette', nom: 'ligne', pron: 'elle', autres: 'la colonne et le bloc' },
+        colonne: { det: 'cette', nom: 'colonne', pron: 'elle', autres: 'la ligne et le bloc' },
+        bloc: { det: 'ce', nom: 'bloc', pron: 'il', autres: 'la ligne et la colonne' }
+    };
+    const nomUnite = (u) => (u < N() ? 'ligne' : (u < 2 * N() ? 'colonne' : 'bloc'));
+    const motsUnite = (u) => MOTS_UNITE[nomUnite(u)];
+
+    /**
+     * L'UNITÉ LA PLUS CONVAINCANTE d'une case.
+     *
+     * Une case « obligée » l'est par TROIS unités à la fois — sa ligne, sa
+     * colonne et son bloc — et c'est ce qui rend l'explication du robot
+     * brumeuse : « sa ligne, sa colonne et son bloc utilisent déjà tous les
+     * autres chiffres » demande de regarder partout à la fois. On montre donc
+     * celle qui, à elle seule, en dit le plus : la plus remplie. C'est aussi
+     * celle qu'un élève regarderait en premier.
+     */
+    function meilleureUnite(i) {
+        let best = -1, remplies = -1;
+        unites.forEach((u, k) => {
+            if (!u.includes(i)) return;
+            const n = u.filter(j => valeurs[j] !== VIDE).length;
+            if (n > remplies) { remplies = n; best = k; }
+        });
+        return best;
+    }
+
     function prochainCoup() {
         for (let i = 0; i < valeurs.length; i++) {
             if (valeurs[i] !== VIDE) continue;
             const cs = candidatsDe(i);
-            if (cs.length === 1) return { i, v: cs[0], mode: 'unique' };
+            if (cs.length === 1) return { i, v: cs[0], mode: 'unique', u: meilleureUnite(i) };
         }
         const n = N();
         for (let u = 0; u < unites.length; u++) {
@@ -192,11 +231,63 @@ export function mount(container, session, opts = {}) {
                 if (unites[u].some(i => valeurs[i] === v)) continue;
                 const places = unites[u].filter(i => valeurs[i] === VIDE && candidatsDe(i).includes(v));
                 if (places.length === 1) {
-                    return { i: places[0], v, mode: 'cache', unite: u < n ? 'ligne' : (u < 2 * n ? 'colonne' : 'bloc') };
+                    return { i: places[0], v, mode: 'cache', u, unite: nomUnite(u) };
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * LA PHRASE DU COUP, avec les chiffres qu'on voit — pas « tous les autres ».
+     *
+     * Rémy : « il faut vraiment que le robot soit clair ». Une explication qui
+     * dit « il ne reste que le 3 » sans dire OÙ regarder ni ce qu'il y a déjà
+     * ne s'attrape pas : l'élève ne sait pas quoi vérifier. Celle-ci nomme
+     * l'unité, énumère ce qu'elle contient, et conclut.
+     */
+    function direCoup(coup) {
+        const dedans = unites[coup.u]
+            .map(j => valeurs[j]).filter(v => v !== VIDE).sort((a, b) => a - b);
+        const m = motsUnite(coup.u);
+        if (coup.mode === 'unique') {
+            return `Regarde ${m.det} ${m.nom} : ${m.pron} contient déjà ${dedans.join(', ')}. `
+                + `Avec ${m.autres} de la case allumée, il ne reste que le <b>${coup.v}</b>.`;
+        }
+        return `Dans ${m.det} ${m.nom}, le <b>${coup.v}</b> manque encore — et de toutes ses `
+            + 'cases vides, une seule peut le recevoir : celle qui est allumée.';
+    }
+
+    /** Allume l'unité qui explique le coup, et la case visée. */
+    function montrerPiste(coup) {
+        effacerPiste();
+        if (!coup) return;
+        unites[coup.u].forEach(j => celluleEl(j)?.classList.add('su-unite'));
+        celluleEl(coup.i)?.classList.add('kk-cage--indice');
+    }
+
+    function effacerPiste() {
+        container.querySelectorAll('.su-unite')
+            .forEach(e => e.classList.remove('su-unite'));
+    }
+
+    /**
+     * LE MODE TUTORIEL — le jeu ne se contente pas d'être facile, il GUIDE.
+     *
+     * Une grille presque finie reste une page blanche pour qui n'a jamais vu
+     * de sudoku : on ne sait pas par où entrer. Ici le prochain coup est
+     * toujours désigné, avec sa raison, et l'élève n'a qu'à le poser — puis à
+     * regarder ce qu'il débloque. C'est la méthode qu'on lui apprend, jouée
+     * par lui et non regardée.
+     */
+    const enTutoriel = () => item.meta.difficulte === 'tutoriel' && !session.isDemo;
+
+    function guider() {
+        if (!enTutoriel() || session.locked) return;
+        const coup = prochainCoup();
+        if (!coup) { effacerPiste(); return; }
+        montrerPiste(coup);
+        statut(direCoup(coup), 'aide');
     }
 
     // --- Vérificateur (limité) : les CONFLITS visibles ------------------------
@@ -316,7 +407,9 @@ export function mount(container, session, opts = {}) {
     function statut(texte, ton = '') {
         const el = container.querySelector('.kk-status');
         if (!el) return;
-        el.textContent = texte;
+        // Le chiffre dont on parle est en gras : c'est le seul mot de la phrase
+        // qu'on doit pouvoir lire sans lire la phrase.
+        el.innerHTML = texte;
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
@@ -341,14 +434,26 @@ export function mount(container, session, opts = {}) {
             if (!await gate.waitTurn() || destroyed) return fin();
             const el = celluleEl(coup.i);
             if (!el) return fin();
+            // LE ROBOT MONTRE CE QU'IL REGARDE AVANT DE DIRE CE QU'IL EN
+            // CONCLUT. Rémy : « il faut vraiment que le robot soit clair ».
+            // Une phrase sur trois unités à la fois ne s'attrape pas ; une
+            // unité allumée, ses chiffres énumérés, et la conclusion, si.
+            montrerPiste(coup);
+            const dedans = unites[coup.u].map(j => valeurs[j])
+                .filter(v => v !== VIDE).sort((a, b) => a - b);
+            const m = motsUnite(coup.u);
             cursor.say(coup.mode === 'unique'
-                ? `Sa ligne, sa colonne et son bloc utilisent déjà tous les autres chiffres : il ne reste que le ${coup.v}.`
-                : `Dans cette ${coup.unite}, le ${coup.v} n'a plus qu'UNE place possible : celle-ci.`, el);
-            if (!await cursor.pause(2100) || destroyed) return fin();
+                ? `${m.det[0].toUpperCase()}${m.det.slice(1)} ${m.nom} contient déjà `
+                    + `${dedans.join(', ')}. Avec ${m.autres} de la case allumée, il ne reste `
+                    + `que le ${coup.v}.`
+                : `Dans ${m.det} ${m.nom}, le ${coup.v} manque encore — et une seule case vide `
+                    + 'peut le recevoir : celle qui est allumée.', el);
+            if (!await cursor.pause(2600) || destroyed) return fin();
             if (!await cursor.tap(el, 320) || destroyed) return fin();
             valeurs[coup.i] = coup.v;
             el.querySelector('.kk-val').textContent = coup.v;
             el.classList.add('demo-target');
+            effacerPiste();
         }
         // Filet (jamais en théorie : les grilles sont résolubles par singles).
         for (let i = 0; i < valeurs.length; i++) {

@@ -118,6 +118,9 @@ export function mount(container, session, opts = {}) {
 
         brancherCases();
         brancherPalette();
+        // Le guidage se pose après les branchements : il écrit dans le statut,
+        // que `poser` remet à zéro.
+        regTimeout(() => guider(), 0);
         brancherVerificateur();
         brancherValidation();
         brancherIndices();
@@ -126,6 +129,43 @@ export function mount(container, session, opts = {}) {
     // --- Saisie -------------------------------------------------------------
 
     const celluleEl = (r, c) => container.querySelector(`.kk-cell[data-r="${r}"][data-c="${c}"]`);
+
+    /** Allume la zone qui explique le coup — une cage, une ligne ou une colonne. */
+    function montrerZone(zone) {
+        effacerZone();
+        if (!zone) return;
+        const n = item.meta.n;
+        const cases = zone.type === 'cage' ? zone.cells
+            : zone.type === 'ligne'
+                ? Array.from({ length: n }, (_, c) => ({ r: zone.r, c }))
+                : Array.from({ length: n }, (_, r) => ({ r, c: zone.c }));
+        cases.forEach(({ r, c }) => celluleEl(r, c)?.classList.add('kk-zone'));
+    }
+
+    function effacerZone() {
+        container.querySelectorAll('.kk-zone').forEach(e => e.classList.remove('kk-zone'));
+    }
+
+    /**
+     * LE MODE TUTORIEL — le jeu ne se contente pas d'être facile, il GUIDE.
+     *
+     * Rémy : « il faut vraiment que le robot soit clair et commencer avec des
+     * niveaux hyper faciles, quitte à mettre dans les options un mode
+     * tutoriel ». Une grille facile reste une page blanche pour qui n'a jamais
+     * vu de mathdoku : on ne sait pas par où entrer. Ici la zone à traiter est
+     * toujours allumée, avec sa raison, et l'élève n'a qu'à poser le chiffre —
+     * puis à regarder ce que cela débloque.
+     */
+    const enTutoriel = () => item.meta.difficulte === 'tutoriel' && !session.isDemo;
+
+    function guider() {
+        if (!enTutoriel() || session.locked) return;
+        const coup = prochainCoupKenken(grille, item.meta);
+        if (!coup) { effacerZone(); return; }
+        montrerZone(coup.zone);
+        celluleEl(coup.r, coup.c)?.classList.add('kk-cage--indice');
+        statut(coup.motif, 'aide');
+    }
 
     function poser(r, c, valeur) {
         if (verrous[r][c] || session.locked) return;
@@ -140,6 +180,9 @@ export function mount(container, session, opts = {}) {
         container.querySelectorAll('.kk-cell--conflit, .kk-cage--faux, .kk-cage--indice')
             .forEach(e => e.classList.remove('kk-cell--conflit', 'kk-cage--faux', 'kk-cage--indice'));
         statut('');
+        // EN TUTORIEL, LA ZONE SUIVANTE S'ALLUME TOUTE SEULE : c'est ce qui
+        // fait voir qu'une case remplie en débloque une autre.
+        if (enTutoriel()) guider();
     }
 
     function brancherCases() {
@@ -373,8 +416,14 @@ export function mount(container, session, opts = {}) {
             if (!await gate.waitTurn() || destroyed) return fin();
             const el = celluleEl(coup.r, coup.c);
             if (!el) return fin();
+            // LE ROBOT MONTRE CE QU'IL REGARDE AVANT DE CONCLURE : la zone
+            // s'allume pendant qu'il l'explique, sinon la phrase parle d'un
+            // endroit que l'élève doit d'abord retrouver.
+            montrerZone(coup.zone);
             cursor.say(coup.motif, el);
+            if (!await cursor.pause(900) || destroyed) return fin();
             if (!await cursor.tap(el, 340) || destroyed) return fin();
+            effacerZone();
             grille[coup.r][coup.c] = solution[coup.r][coup.c];
             el.querySelector('.kk-val').textContent = solution[coup.r][coup.c];
             el.classList.add('demo-target');
@@ -410,6 +459,11 @@ export function mount(container, session, opts = {}) {
 function prochainCoupKenken(grille, meta) {
     const { n, lo, hi, cages, solution } = meta;
 
+    // Les zones d'UNE case ne sont pas listées ici : l'activité les pose et les
+    // verrouille à l'ouverture (voir plus haut), parce qu'il n'y a rien à y
+    // calculer. C'est ce qui rend le tutoriel — moitié de zones d'une case —
+    // à moitié rempli d'avance.
+
     // 1. Une cage où il ne reste qu'une case vide : l'opération la donne.
     for (const cage of cages) {
         if (cage.op === null) continue;
@@ -420,10 +474,10 @@ function prochainCoupKenken(grille, meta) {
         const remplies = cage.cells.filter(p => grille[p.r][p.c] !== 0)
             .map(p => grille[p.r][p.c]);
         return {
-            r, c, v,
+            r, c, v, zone: { type: 'cage', cells: cage.cells },
             motif: remplies.length
-                ? `Cage « ${cage.label} » : avec ${remplies.join(' et ')} déjà posé${remplies.length > 1 ? 's' : ''}, seul ${v} donne ${cage.target}.`
-                : `Cage « ${cage.label} » : une seule case, elle vaut ${cage.target}.`
+                ? `Zone « ${cage.label} » : avec ${remplies.join(' et ')} déjà posé${remplies.length > 1 ? 's' : ''}, seul ${v} donne ${cage.target}.`
+                : `Zone « ${cage.label} » : une seule case, elle vaut ${cage.target}.`
         };
     }
 
@@ -433,7 +487,11 @@ function prochainCoupKenken(grille, meta) {
         for (let c = 0; c < n; c++) if (grille[r][c] === 0) vides.push(c);
         if (vides.length === 1) {
             const c = vides[0], v = solution[r][c];
-            return { r, c, v, motif: `Dans cette ligne, il ne manque plus que le ${v} (chaque chiffre de ${lo} à ${hi} apparaît une fois).` };
+            return {
+                r, c, v, zone: { type: 'ligne', r },
+                motif: `Dans cette ligne, il ne manque plus que le ${v} — chaque chiffre de `
+                    + `${lo} à ${hi} y apparaît une fois et une seule.`
+            };
         }
     }
     for (let c = 0; c < n; c++) {
@@ -441,7 +499,10 @@ function prochainCoupKenken(grille, meta) {
         for (let r = 0; r < n; r++) if (grille[r][c] === 0) vides.push(r);
         if (vides.length === 1) {
             const r = vides[0], v = solution[r][c];
-            return { r, c, v, motif: `Dans cette colonne, il ne manque plus que le ${v}.` };
+            return {
+                r, c, v, zone: { type: 'colonne', c },
+                motif: `Dans cette colonne, il ne manque plus que le ${v}.`
+            };
         }
     }
 
@@ -453,9 +514,10 @@ function prochainCoupKenken(grille, meta) {
     const { r, c } = cage.cells.find(p => grille[p.r][p.c] === 0);
     const v = solution[r][c];
     return {
-        r, c, v,
+        r, c, v, zone: { type: 'cage', cells: cage.cells },
         motif: cage.op === null
             ? `Cette case est donnée : ${cage.target}.`
-            : `Cage « ${cage.label} » : j'essaie ${v} ici, c'est la seule valeur compatible avec la ligne, la colonne et l'opération.`
+            : `Zone « ${cage.label} » : ${v} est la seule valeur qui aille à la fois avec la `
+                + 'ligne, la colonne et l\'opération de la zone.'
     };
 }
