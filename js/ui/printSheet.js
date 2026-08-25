@@ -4442,6 +4442,129 @@ const AMORCES = [
 const enoncePythagore = (item) =>
     (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
 
+// --- THALÈS SUR PAPIER ----------------------------------------------------------
+//
+// Rémy : « Un exercice sur le théorème de Thalès. » Un chapitre de géométrie se
+// travaille sur une feuille : la figure d'un côté, la question et la place
+// d'écrire de l'autre.
+//
+// LA FIGURE EST INDISPENSABLE, ET C'EST CE QUI OBLIGE À UN RENDU. Sans elle,
+// « quelle est la configuration de cette figure ? » n'est pas une question :
+// c'est une devinette. Les coordonnées viennent du même calcul qu'à l'écran
+// (core/thales.js), donc les deux dessins ne peuvent pas diverger.
+//
+// LA FIGURE N'EST PAS À L'ÉCHELLE, comme dans tous les manuels : à l'échelle,
+// elle se mesurerait à la règle et l'élève cesserait d'appliquer le théorème.
+// Seul le RAPPORT est respecté — c'est lui qu'on doit voir.
+
+function geoThalesFiche(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const corps = Math.max(2.2, Math.min(b.h * 0.1, 3.2));
+    // La figure à gauche, l'énoncé et les lignes à droite.
+    const figW = Math.min(b.w * 0.34, b.h * 0.95);
+    const P = m.points;
+    const xs = Object.values(P).map(p => p.x), ys = Object.values(P).map(p => p.y);
+    const x0 = Math.min(...xs) - 10, x1 = Math.max(...xs) + 10;
+    const y0 = Math.min(...ys) - 10, y1 = Math.max(...ys) + 10;
+    // Une seule échelle pour les deux axes : une figure étirée ne serait plus
+    // la figure, et le papillon n'aurait plus ses deux triangles semblables.
+    const e = Math.min(figW / (x1 - x0), (b.h - corps) / (y1 - y0));
+    const versX = (x) => b.x + (x - x0) * e + (figW - (x1 - x0) * e) / 2;
+    const versY = (y) => b.y + corps * 0.4 + (y - y0) * e;
+    return {
+        m, b, corps, figW, versX, versY, e,
+        texteX: b.x + figW + 3, texteW: b.w - figW - 4
+    };
+}
+
+/** Les cinq points nommés, et les segments à tracer. */
+const SEGMENTS_THALES = [['A', 'B'], ['A', 'C'], ['A', 'M'], ['A', 'N']];
+const DECALES_THALES = {
+    A: [1.2, -1], B: [-3.4, 3], C: [1.6, 3], M: [-3.4, 1.6], N: [1.6, 1.6]
+};
+
+function thalesPreviewHtml(item, slot, k) {
+    const g = geoThalesFiche(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const P = g.m.points;
+    let html = '';
+    const trait = (a, b, cls) => {
+        html += `<div class="fx-th-trait ${cls}" style="left:${T(g.versX(P[a].x))}px;
+            top:${T(g.versY(P[a].y))}px;
+            width:${T(Math.hypot(g.versX(P[b].x) - g.versX(P[a].x),
+        g.versY(P[b].y) - g.versY(P[a].y)))}px;
+            transform:rotate(${Math.atan2(g.versY(P[b].y) - g.versY(P[a].y),
+        g.versX(P[b].x) - g.versX(P[a].x))}rad)"></div>`;
+    };
+    SEGMENTS_THALES.forEach(([a, b]) => trait(a, b, 'fx-th-droite'));
+    trait('B', 'C', 'fx-th-base');
+    trait('M', 'N', 'fx-th-para');
+    Object.entries(DECALES_THALES).forEach(([nom, [dx, dy]]) => {
+        html += `<div class="fx-th-pt" style="left:${T(g.versX(P[nom].x) - 0.6)}px;
+            top:${T(g.versY(P[nom].y) - 0.6)}px; width:${T(1.2)}px; height:${T(1.2)}px"></div>`;
+        html += `<div class="fx-th-nom" style="left:${T(g.versX(P[nom].x) + dx)}px;
+            top:${T(g.versY(P[nom].y) + dy - g.corps * 0.7)}px;
+            font-size:${T(g.corps * 0.95)}px">${nom}</div>`;
+    });
+    html += `<div class="fx-th-enonce" style="left:${T(g.texteX)}px; top:${T(g.b.y)}px;
+        width:${T(g.texteW)}px; font-size:${T(g.corps)}px">${echapperSheet(item.prompt.papier)}</div>`;
+    // Les lignes pour rédiger : c'est là que Thalès se note.
+    for (let i = 0; i < 3; i++) {
+        const y = g.b.y + g.b.h * 0.42 + i * (g.b.h * 0.18);
+        html += `<div class="fx-th-ligne" style="left:${T(g.texteX)}px; top:${T(y)}px;
+            width:${T(g.texteW)}px"></div>`;
+    }
+    return html;
+}
+
+function dessinerThalesPdf(doc, item, slot, solution) {
+    const g = geoThalesFiche(item, slot);
+    const P = g.m.points;
+    const X = (n) => g.versX(P[n].x), Y = (n) => g.versY(P[n].y);
+
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...ENCRE.gris);
+    SEGMENTS_THALES.forEach(([a, b]) => doc.line(X(a), Y(a), X(b), Y(b)));
+    // Les deux parallèles ressortent : ce sont elles, le théorème.
+    doc.setLineWidth(0.6);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.line(X('B'), Y('B'), X('C'), Y('C'));
+    doc.line(X('M'), Y('M'), X('N'), Y('N'));
+
+    doc.setFillColor(...ENCRE.trait);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.corps * 0.95 / 0.3528);
+    Object.entries(DECALES_THALES).forEach(([nom, [dx, dy]]) => {
+        doc.circle(X(nom), Y(nom), 0.6, 'F');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(nom, X(nom) + dx, Y(nom) + dy);
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.corps / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    const lignes = doc.splitTextToSize(pourPdf(item.prompt.papier), g.texteW);
+    lignes.slice(0, 4).forEach((l, i) => doc.text(l, g.texteX, g.b.y + g.corps * (1 + i * 1.15)));
+
+    // Les lignes de rédaction, ou la correction.
+    if (!solution) {
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.2);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([1, 1], 0);
+        for (let i = 0; i < 3; i++) {
+            const y = g.b.y + g.b.h * 0.42 + i * (g.b.h * 0.18);
+            doc.line(g.texteX, y, g.texteX + g.texteW, y);
+        }
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        return;
+    }
+    doc.setTextColor(47, 133, 90);
+    doc.setFontSize(g.corps * 0.92 / 0.3528);
+    doc.splitTextToSize(pourPdf(item.explanation), g.texteW).slice(0, 5)
+        .forEach((l, i) => doc.text(l, g.texteX, g.b.y + g.b.h * 0.42 + i * g.corps * 1.2));
+}
+
 function geoPythagoreFiche(item, slot) {
     const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
     const schema = item.meta.presentation === 'schema';
@@ -9910,6 +10033,21 @@ export const RENDUS = {
         proportions: { w: 1, h: 1 },
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    thales: {
+        titre: 'Le théorème de Thalès',
+        consigne: () => 'La figure n\'est PAS en vraie grandeur : ne mesure pas, applique '
+            + 'le théorème. Chaque petit segment se compare au segment ENTIER qui le '
+            + 'contient — AM avec AB, jamais avec MB.',
+        previewGrille: thalesPreviewHtml,
+        pdfGrille: dessinerThalesPdf,
+        nomBloc: 'Exercice', nomBlocs: 'exercices',
+        // Large et bas, comme Pythagore : la figure à gauche, la rédaction à droite.
+        proportions: { w: 1, h: 0.4 },
+        titreAGauche: true,
+        disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
+        parLigneDefaut: 2
     },
 
     pythagore: {

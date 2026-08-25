@@ -877,5 +877,37 @@ export const geometrieExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Les Blancs jouent et matent. Clique une pièce blanche : ses cases d'arrivée s'allument, un point pour une case vide, un anneau pour une prise. Un mat, c'est un échec dont le roi ne peut pas sortir — ni FUIR, ni PARER en s'interposant, ni PRENDRE la pièce qui attaque. Quand ton coup n'est pas le bon, on ne te donne pas la réponse : on te dit ce qui manque, par exemple « le roi s'échappe en g7 ». Attention au PAT : les Noirs sans coup mais SANS être en échec, c'est une partie nulle, pas une victoire."
+    },
+    {
+        // LE THÉORÈME DE THALÈS. Rémy : « Un exercice sur le théorème de
+        // Thalès. »
+        //
+        // MÊME PRINCIPE QUE PYTHAGORE, ET POUR LA MÊME RAISON : on ne commence
+        // pas par le calcul. La faute ordinaire de quatrième n'est pas une
+        // erreur de calcul, c'est un APPARIEMENT — on écrit AM/MB au lieu de
+        // AM/AB, le petit morceau sur le RESTE au lieu du TOUT. Le produit en
+        // croix qui suit tombe alors parfaitement juste sur une égalité
+        // fausse, et rien ne prévient l'élève. D'où l'ordre : reconnaître la
+        // configuration, choisir l'égalité, calculer, puis la réciproque.
+        //
+        // LA FIGURE N'EST PAS À L'ÉCHELLE, et c'est ce que font tous les
+        // manuels : une figure à l'échelle se mesure à la règle, et l'élève
+        // cesse d'appliquer le théorème. Seul le rapport est respecté.
+        id: 'geo-thales', status: STATUS.TEST, title: 'Le Théorème de Thalès',
+        cree: '2026-08-25',
+        generatorId: 'geo.thales', activityId: 'buttons',
+        // LA FICHE PORTE LA FIGURE : sans elle, « quelle est la configuration
+        // de cette figure ? » n'est pas une question, c'est une devinette.
+        printable: 'thales', sansRevision: true,
+        skills: ['geo.thales'],
+        params: { etape: 'progressif', config: 'melange' },
+        motsClefs: ['thalès', 'thales', 'triangles emboîtés', 'papillon', 'rapports',
+            'proportionnalité', 'parallèles', 'réciproque', 'longueur manquante',
+            'agrandissement', 'réduction'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Quatre marches, dans l'ordre, et l'on monte tout seul toutes les trois questions. UNE : reconnaître la figure. Deux droites qui se croisent en A, coupées par deux parallèles — si A est en dehors des deux parallèles, les triangles sont EMBOÎTÉS ; s'il est entre les deux, c'est un PAPILLON. Un seul signe les sépare, et le théorème s'écrit pareil dans les deux cas. DEUX : écrire l'égalité, et c'est la marche qui compte. AM/AB = AN/AC = MN/BC. Chaque petit segment se compare au segment ENTIER qui le contient — AM avec AB, jamais avec MB. C'est LÀ qu'on se trompe, et le calcul qui suit ne le rattrapera pas : il tombera parfaitement juste sur une égalité fausse. TROIS : calculer, par produit en croix. QUATRE : la réciproque, qui est une autre question — on ne part plus de « les droites sont parallèles », on le DÉMONTRE en comparant AM/AB et AN/AC. Compare des fractions, pas des valeurs arrondies : 1/3 n'est pas 0,33, et un arrondi déclarerait parallèle ce qui ne l'est pas."
     }
 ];

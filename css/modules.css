@@ -4637,6 +4637,22 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .fx-gr-decoupe svg { width: 82%; height: 82%; }
 
+/* --- Fiche « Le théorème de Thalès » ---------------------------------------
+   La figure à gauche, l'énoncé et trois lignes de rédaction à droite. L'aperçu
+   et le PDF lisent la même géométrie (geoThalesFiche) : le trait est un simple
+   rectangle tourné, ce qui évite un SVG par bloc. */
+.fx-th-trait {
+    position: absolute; height: .35px; transform-origin: 0 50%;
+    background: #8a92a6; pointer-events: none;
+}
+.fx-th-base, .fx-th-para { height: .7px; background: #2a3040; }
+.fx-th-pt { position: absolute; border-radius: 50%; background: #1a202c; }
+.fx-th-nom {
+    position: absolute; font-weight: 800; color: #1a202c; white-space: nowrap;
+}
+.fx-th-enonce { position: absolute; color: #2d3748; line-height: 1.25; }
+.fx-th-ligne { position: absolute; border-top: .4px dashed #b0b6c5; }
+
 /* --- Fiche « Tasuko » ------------------------------------------------------
    Une grille de chiffres, et des capsules arrondies sur le corrigé. L'aperçu et
    le PDF lisent la même géométrie (geoTasuko, capsuleTasuko). */

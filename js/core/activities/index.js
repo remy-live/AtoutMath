@@ -75,6 +75,7 @@ import { parkingFicheGenerator } from '../generators/parkingFiche.js';
 import {
     puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator
 } from '../generators/puissances.js';
+import { thalesGenerator } from '../generators/thales.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
@@ -119,6 +120,7 @@ import {
     mastermindFicheGenerator, pyramideNombresFicheGenerator, tasukoFicheGenerator,
     tourBrahmaFicheGenerator, grenouillesFicheGenerator, parkingFicheGenerator,
     puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator,
+    thalesGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,

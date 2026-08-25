@@ -574,6 +574,14 @@ const BASE = {
         descriptor: 'Calculer une distance, une vitesse ou une dur\u00e9e \u00e0 partir de d = v \u00d7 t.',
         lesson: 'UNE seule formule suffit : d = v \u00d7 t \u2014 la distance, c\'est la vitesse multipli\u00e9e par le temps. Les deux autres s\'en d\u00e9duisent en divisant : v = d \u00f7 t et t = d \u00f7 v. Devant un \u00e9nonc\u00e9, \u00e9cris la formule, entoure ce que tu connais, et la question te dit quoi calculer. LE PI\u00c8GE du chapitre : le temps se met en HEURES D\u00c9CIMALES \u2014 1 h 30 n\'est pas 1,3 h mais 1,5 h, et 15 minutes font 0,25 h. Enfin, v\u00e9rifie l\'ordre de grandeur : un cycliste ne roule pas \u00e0 200 km/h.'
     },
+    'geo.thales': {
+        label: 'Le th\u00e9or\u00e8me de Thal\u00e8s',
+        chemin: [D.GEOMETRIQUE, SD.PERIMETRE_AIRE],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Reconna\u00eetre une configuration de Thal\u00e8s, \u00e9crire l\'\u00e9galit\u00e9 des rapports, calculer une longueur, et d\u00e9montrer un parall\u00e9lisme par la r\u00e9ciproque.',
+        lesson: "LE TH\u00c9OR\u00c8ME TIENT EN UNE PHRASE : deux droites s\u00e9cantes en A, coup\u00e9es par deux parall\u00e8les, donnent TROIS rapports \u00e9gaux \u2014 AM/AB = AN/AC = MN/BC. Il y a deux figures et un seul th\u00e9or\u00e8me : les TRIANGLES EMBO\u00ceT\u00c9S, o\u00f9 le petit triangle est dans le grand, et le PAPILLON, o\u00f9 le point A est entre les deux parall\u00e8les et o\u00f9 les triangles se font face. Un seul signe les s\u00e9pare, l'\u00e9galit\u00e9 s'\u00e9crit pareil. LA FAUTE ORDINAIRE N'EST PAS UN CALCUL, C'EST UN APPARIEMENT : on \u00e9crit AM/MB au lieu de AM/AB, c'est-\u00e0-dire le petit morceau sur le RESTE au lieu du TOUT. Le produit en croix qui suit tombe alors parfaitement juste sur une \u00e9galit\u00e9 fausse, et rien ne pr\u00e9vient. Chaque petit segment se compare au segment ENTIER qui le contient, et les trois rapports vont tous dans le m\u00eame sens. LA R\u00c9CIPROQUE EST UNE AUTRE QUESTION. Le th\u00e9or\u00e8me part de \u00ab les droites sont parall\u00e8les \u00bb pour donner des longueurs ; la r\u00e9ciproque part des longueurs pour D\u00c9MONTRER le parall\u00e9lisme. On compare alors AM/AB et AN/AC \u2014 et l'on compare des FRACTIONS, par produit en croix : 1/3 n'est pas 0,33, et une valeur arrondie d\u00e9clarerait parall\u00e8le ce qui ne l'est pas."
+    },
     'geo.pythagore': {
         label: 'Théorème de Pythagore',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],
