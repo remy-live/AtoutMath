@@ -32,6 +32,28 @@ export const geometrieExercises = [
             + 'les deux sont placés : c\'est la relation qui donne la réponse.'
     },
 
+    // L'AUTRE MOITIÉ DU CHAPITRE, et la première dans l'ordre : l'exercice 8,
+    // « Classe les angles ». On ne calcule rien, on NOMME — et un élève qui ne
+    // sait pas nommer ne peut pas calculer.
+    {
+        id: 'geo-angles-nommer',
+        cree: '2026-08-25',
+        title: 'Le Nom des Angles',
+        generatorId: 'geo.angles-nommer', activityId: 'buttons',
+        printable: 'anglesNommer',
+        consignePapier: 'Comment s\'appellent les angles 1 et 2 ? Donne le nom le plus '
+            + 'précis. Les droites en pointillés sont parallèles.',
+        skills: ['geo.angles.relations'],
+        motsClefs: ['angles', 'adjacents', 'opposés par le sommet', 'correspondants',
+            'alternes-internes', 'complémentaires', 'supplémentaires', 'nommer', 'vocabulaire'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Rien à mesurer : tout est dans la POSITION des deux angles l\'un '
+            + 'par rapport à l\'autre. Commence toujours par le sommet.'
+    },
+
     // --- La notation des objets de base (fiche 4ᵉ § G) ---
     // [AB], (AB), [AB) : une notation ne se devine pas, et c'est pour cela
     // qu'on la perd. Des points partent chaque année sur « (AB) » écrit à la

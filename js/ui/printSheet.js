@@ -57,7 +57,7 @@ import {
     contourSecteur as contourSecteurAngle, equerreDe as equerreAngle,
     mesureArc as mesureArcAngle, ancreArc as ancreArcAngle,
     rayonSecteur as rayonSecteurAngle, boiteFigure as boiteFigureAngle,
-    HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE
+    HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE, etiquetteDedans as etiqDedansAngle
 } from '../core/anglesRemarquables.js';
 import { sommets as sommetsAngles } from '../core/anglesRemarquablesSvg.js';
 import {
@@ -569,12 +569,12 @@ const ENCRE_ANGLE = {
     relais: { fond: [222, 226, 245], trait: [91, 107, 191] }
 };
 
-function geoAnglesManquants(item, slot) {
+function geoAnglesManquants(item, slot, partLigne = 0.2) {
     const m = item.meta;
     const b = boiteDe(slot);
     const marge = 2;
     // La ligne de réponse en bas, et le dessin dans tout le reste.
-    const ligneH = Math.min(9, b.h * 0.2);
+    const ligneH = Math.min(9, b.h * partLigne);
     const dispoH = b.h - ligneH;
     // LA FIGURE REMPLIT SON BLOC. Enfermée dans le carré inscrit, elle n'en
     // occupait qu'un tiers : un bloc de fiche est large et bas, une paire de
@@ -613,8 +613,12 @@ function texteArcAngle(arc, solution) {
     return arc.role === 'relais' && arc.pas ? String(arc.pas) : '?';
 }
 
-function anglesManquantsPreviewHtml(item, slot, k, solution) {
-    const g = geoAnglesManquants(item, slot);
+/**
+ * LE DESSIN SEUL — sans la ligne de réponse, qui n'est pas la même selon qu'on
+ * demande une MESURE ou un NOM. `etiquette` dit ce qu'on écrit dans chaque
+ * secteur : sa mesure, un « ? », ou son numéro.
+ */
+function figureAnglePreviewHtml(g, k, etiquette) {
     const m = g.m;
     const T = (v) => (v * k).toFixed(2);
     const Q = (x, y) => { const p = g.P(x, y); return `${T(p.x)},${T(p.y)}`; };
@@ -644,22 +648,37 @@ function anglesManquantsPreviewHtml(item, slot, k, solution) {
     });
     let html = `<svg class="fx-ar-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`;
     m.figure.arcs.forEach(arc => {
+        const mot = etiquette(arc);
+        if (!mot) return;
         const ancre = ancreArcAngle(arc);
         const p = g.P(ancre.x, ancre.y);
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
+        // La même gomme qu'au PDF : le fond du secteur quand l'étiquette est
+        // dedans, le blanc du papier quand elle est derrière l'arc.
+        const gomme = etiqDedansAngle(arc) ? `rgb(${c.fond.join(',')})` : '#fff';
         html += `<div class="fx-ar-mesure" style="left:${T(p.x - 8)}px; top:${T(p.y - g.tailleEtiq * 0.7)}px;
             width:${T(16)}px; font-size:${T(g.tailleEtiq)}px;
-            color:rgb(${c.trait.join(',')})">${echapperSheet(texteArcAngle(arc, solution))}</div>`;
+            color:rgb(${c.trait.join(',')})"><span
+            style="background:${gomme}">${echapperSheet(mot)}</span></div>`;
     });
-    const rep = solution ? `${m.reponse}°` : '';
-    html += `<div class="fx-ar-ligne" style="left:${T(g.b.x + 2)}px;
-        top:${T(g.b.y + g.dispoH)}px; width:${T(g.b.w - 4)}px; height:${T(g.ligneH * 0.8)}px;
-        font-size:${T(g.taille)}px"><b>?&nbsp;=</b>&nbsp;<i>${echapperSheet(rep)}</i></div>`;
     return html;
 }
 
-function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
+/** La ligne de réponse sous la figure : une amorce, et ce qu'on y écrit. */
+function ligneAnglePreviewHtml(g, k, amorce, rep) {
+    const T = (v) => (v * k).toFixed(2);
+    return `<div class="fx-ar-ligne" style="left:${T(g.b.x + 2)}px;
+        top:${T(g.b.y + g.dispoH)}px; width:${T(g.b.w - 4)}px; height:${T(g.ligneH * 0.8)}px;
+        font-size:${T(g.taille)}px"><b>${echapperSheet(amorce)}</b>&nbsp;<i>${echapperSheet(rep)}</i></div>`;
+}
+
+function anglesManquantsPreviewHtml(item, slot, k, solution) {
     const g = geoAnglesManquants(item, slot);
+    return figureAnglePreviewHtml(g, k, (arc) => texteArcAngle(arc, solution))
+        + ligneAnglePreviewHtml(g, k, '? =', solution ? `${g.m.reponse}°` : '');
+}
+
+function dessinerFigureAnglePdf(doc, g, etiquette) {
     const m = g.m;
     m.figure.arcs.forEach((arc, i) => {
         const rangArc = m.figure.arcs.slice(0, i)
@@ -700,24 +719,34 @@ function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
         const ancre = ancreArcAngle(arc);
         const p = g.P(ancre.x, ancre.y);
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
-        const mot = pourPdf(texteArcAngle(arc, solution));
+        const brut = etiquette(arc);
+        if (!brut) return;
+        const mot = pourPdf(brut);
         // LE BLANC SOUS L'ÉTIQUETTE. Un côté d'angle passe forcément près de
         // sa bissectrice quand l'angle est serré ; un rectangle blanc posé
         // avant le texte coupe le trait juste là, comme une gomme, et le
         // nombre reste lisible sans qu'on ait à écarter la figure.
         const lg = doc.getTextWidth(mot) + 0.8, ht = g.tailleEtiq * 0.9;
-        doc.setFillColor(255, 255, 255);
+        // Dedans, la gomme prend la couleur du secteur : blanche, elle y
+        // perçait un trou.
+        doc.setFillColor(...(etiqDedansAngle(arc) ? c.fond : [255, 255, 255]));
         doc.rect(p.x - lg / 2, p.y - ht * 0.62, lg, ht, 'F');
         doc.setTextColor(...c.trait);
         doc.text(mot, p.x, p.y + g.tailleEtiq * 0.35, { align: 'center' });
     });
 
+}
+
+/** La ligne de réponse sous la figure : une amorce, puis la réponse ou un pointillé. */
+function ligneAnglePdf(doc, g, amorce, rep) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille / 0.3528);
     doc.setTextColor(...ENCRE.texte);
-    doc.text(pourPdf('? ='), g.b.x + 2, g.yReponse);
-    const x = g.b.x + 2 + doc.getTextWidth(pourPdf('? =')) + 2;
-    if (solution) {
+    doc.text(pourPdf(amorce), g.b.x + 2, g.yReponse);
+    const x = g.b.x + 2 + doc.getTextWidth(pourPdf(amorce)) + 2;
+    if (rep) {
         doc.setTextColor(47, 133, 90);
-        doc.text(pourPdf(`${m.reponse}°`), x, g.yReponse);
+        doc.text(pourPdf(rep), x, g.yReponse);
         doc.setTextColor(...ENCRE.texte);
         return;
     }
@@ -726,6 +755,33 @@ function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
     if (doc.setLineDashPattern) doc.setLineDashPattern([0.6, 0.9], 0);
     doc.line(x, g.yReponse, g.b.x + g.b.w - 2, g.yReponse);
     if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+}
+
+function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
+    const g = geoAnglesManquants(item, slot);
+    dessinerFigureAnglePdf(doc, g, (arc) => texteArcAngle(arc, solution));
+    ligneAnglePdf(doc, g, '? =', solution ? `${g.m.reponse}°` : '');
+}
+
+// --- LE NOM DES ANGLES : L'EXERCICE 8 DE LA FICHE -----------------------------
+//
+// Rémy : « Classe les angles. Le tableau est en dessous. » Douze figures, deux
+// secteurs colorés dans chacune, et six cases où les ranger. Ici la figure
+// porte ses deux angles NUMÉROTÉS — ① et ② —, et non ses mesures : il n'y a
+// rien à calculer, tout est dans la POSITION. Les numéros valent mieux que les
+// couleurs pour désigner les deux angles : ils se photocopient.
+
+function anglesNommerPreviewHtml(item, slot, k, solution) {
+    // Un nom prend plus de place qu'un nombre : la ligne du bas est plus haute.
+    const g = geoAnglesManquants(item, slot, 0.24);
+    return figureAnglePreviewHtml(g, k, (arc) => (arc.pas ? String(arc.pas) : ''))
+        + ligneAnglePreviewHtml(g, k, 'Nom :', solution ? g.m.nom : '');
+}
+
+function dessinerAnglesNommerPdf(doc, item, slot, solution) {
+    const g = geoAnglesManquants(item, slot, 0.24);
+    dessinerFigureAnglePdf(doc, g, (arc) => (arc.pas ? String(arc.pas) : ''));
+    ligneAnglePdf(doc, g, 'Nom :', solution ? g.m.nom : '');
 }
 
 // --- SEGMENT, DROITE OU DEMI-DROITE : LE SCHÉMA SUR LE PAPIER -----------------
@@ -7640,6 +7696,23 @@ export const RENDUS = {
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2,
         sansSolution: true
+    },
+
+    anglesNommer: {
+        titre: 'Les angles remarquables — le nom de la relation',
+        consigne: () => 'CLASSE LES ANGLES : dans chaque figure, comment s\'appellent les '
+            + 'angles 1 et 2 ? Adjacents, opposés par le sommet, correspondants, '
+            + 'alternes-internes, complémentaires ou supplémentaires. Donne le nom LE PLUS '
+            + 'PRÉCIS. Les droites en pointillés sont parallèles, et les figures ne sont pas '
+            + 'en vraie grandeur.',
+        previewGrille: anglesNommerPreviewHtml,
+        pdfGrille: dessinerAnglesNommerPdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // Un peu plus haut que « la valeur manquante » : le nom écrit sous la
+        // figure tient sur une ligne plus large qu'un « ? = 74° ».
+        proportions: { w: 1, h: 1.1 },
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        parLigneDefaut: 3
     },
 
     anglesManquants: {

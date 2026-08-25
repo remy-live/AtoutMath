@@ -40,6 +40,7 @@ import { vitesseGenerator } from '../generators/vitesse.js';
 import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { notationGenerator } from '../generators/notation.js';
 import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
+import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
 import { transfoQuadrillageGenerator } from '../generators/transfoQuadrillage.js';
 import { pavageGenerator } from '../generators/pavage.js';
@@ -92,7 +93,7 @@ import {
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
-    anglesManquantsGenerator,
+    anglesManquantsGenerator, anglesNommerGenerator,
     graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, repereFicheGenerator,

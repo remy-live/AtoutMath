@@ -10,7 +10,7 @@
 
 import {
     contourSecteur, equerreDe, mesureArc, ancreArc, rayonSecteur, boiteFigure,
-    HAUTEUR_ETIQUETTE
+    HAUTEUR_ETIQUETTE, etiquetteDedans
 } from './anglesRemarquables.js';
 
 // LE CADRE ÉPOUSE LA FIGURE, il ne l'enferme pas dans un carré. Deux droites
@@ -82,7 +82,8 @@ export function figureAnglesSvg(figure, { mesures = 'donne', prefixe = 'ar' } = 
         // était énorme sur une figure resserrée et minuscule sur une figure
         // étalée — et dans le premier cas elle mordait sur un côté.
         const taille = arr(HAUTEUR_ETIQUETTE * k);
-        d += `<text class="ar-mesure ar-mesure--${arc.role}" x="${arr(q.x)}" y="${arr(q.y + taille * 0.35)}"
+        const ou = etiquetteDedans(arc) ? ' ar-mesure--dedans' : '';
+        d += `<text class="ar-mesure ar-mesure--${arc.role}${ou}" x="${arr(q.x)}" y="${arr(q.y + taille * 0.35)}"
             font-size="${taille}" stroke-width="${arr(taille * 0.26)}"
             text-anchor="middle">${texte}</text>`;
     });

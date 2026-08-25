@@ -4679,6 +4679,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; text-align: center; font-weight: 800;
     white-space: nowrap; pointer-events: none;
 }
+/* La gomme sous le nombre : elle s'arrête aux signes, pas au bloc de seize
+   millimètres qui les centre. */
+.fx-ar-mesure span { padding: 0 .1em; border-radius: 2px; }
 .fx-ar-ligne {
     position: absolute; display: flex; align-items: center;
     color: #1a202c; pointer-events: none;
@@ -6485,7 +6488,10 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    gagne la moitié en plus ; sur un téléphone, où le pavé et « Valider » ne se
    négocient pas, l'étirement retombe à un et c'est le cadre ajusté du dessin
    (voir anglesRemarquablesSvg.js) qui lui rend sa largeur. */
-.ar-svg { width: 100%; overflow: visible; }
+/* PARTOUT AILLEURS QUE SUR LE PAVÉ, la figure a quand même un plafond : posée
+   au-dessus d'une liste de six noms sur un téléphone, sans plafond, elle
+   poussait les propositions hors de l'écran. */
+.ar-svg { width: 100%; overflow: visible; max-height: clamp(130px, 28cqh, 320px); }
 /* La colonne de gauche est taillée pour un énoncé et une figure de cotes, où
    quatre cent trente pixels suffisent. Une figure d'angles se lit : quand il y
    a la place — et sur un ordinateur, la moitié de l'écran reste vide —, elle
@@ -6498,22 +6504,37 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .ar-trait--par { stroke-dasharray: 9 6; }
 .ar-sommet { fill: var(--text-main); }
 .ar-droit { fill: none; stroke: var(--text-main); stroke-width: 2; }
+/* LES TROIS TEINTES SONT OPAQUES, ET CE SONT CELLES DU PDF (voir ENCRE_ANGLE
+   dans printSheet.js). Translucides, elles changeaient de nuance selon le fond
+   — donc selon le thème —, et le liseré des étiquettes n'avait aucune couleur
+   à laquelle se raccrocher. Elles restent claires : le nombre écrit dessus est
+   sombre dans les deux thèmes. */
+:root {
+    --ar-donne: rgb(253, 224, 160); --ar-donne-trait: #a35f00;
+    --ar-cherche: rgb(200, 236, 218); --ar-cherche-trait: #1f7a4d;
+    --ar-relais: rgb(222, 226, 245); --ar-relais-trait: #4a5aad;
+}
 .ar-sect { stroke-width: 2; }
-.ar-sect--donne { fill: rgba(249, 168, 37, .55); stroke: #c77800; }
-.ar-sect--cherche { fill: rgba(45, 168, 110, .45); stroke: #1f7a4d; }
+.ar-sect--donne { fill: var(--ar-donne); stroke: var(--ar-donne-trait); }
+.ar-sect--cherche { fill: var(--ar-cherche); stroke: var(--ar-cherche-trait); }
 /* Le relais d'une chaîne : ni donné, ni cherché — le pas par lequel on passe. */
-.ar-sect--relais { fill: rgba(120, 130, 200, .28); stroke: #5b6bbf; stroke-dasharray: 5 4; }
+.ar-sect--relais { fill: var(--ar-relais); stroke: var(--ar-relais-trait); stroke-dasharray: 5 4; }
 /* L'ÉTIQUETTE PASSE DEVANT, MAIS SANS EFFACER. Un « 40° » posé entre deux
    côtés serrés touche forcément l'un des deux ; un liseré de la couleur du
    fond, tracé SOUS le remplissage (`paint-order`), le détache du trait sans
    couper la droite. C'est le halo des cartes. La taille, elle, vient du dessin
    (voir anglesRemarquablesSvg.js) : elle n'est pas déclarée ici. */
 .ar-mesure {
-    font-weight: 800; fill: var(--text-main);
+    font-weight: 800; fill: var(--ar-donne-trait);
     paint-order: stroke; stroke: var(--bg-panel); stroke-linejoin: round;
 }
-.ar-mesure--cherche { fill: #1f7a4d; }
-.ar-mesure--relais { fill: #5b6bbf; }
+.ar-mesure--cherche { fill: var(--ar-cherche-trait); }
+.ar-mesure--relais { fill: var(--ar-relais-trait); }
+/* Une étiquette POSÉE DANS son secteur prend le liseré de ce secteur : blanc,
+   il y perçait un trou. */
+.ar-mesure--dedans.ar-mesure--donne { stroke: var(--ar-donne); }
+.ar-mesure--dedans.ar-mesure--cherche { stroke: var(--ar-cherche); }
+.ar-mesure--dedans.ar-mesure--relais { stroke: var(--ar-relais); }
 
 /* --- CODER LA FIGURE -------------------------------------------------------
    Un quadrilatère, ses diagonales, et des marques à poser dessus. Le dessin

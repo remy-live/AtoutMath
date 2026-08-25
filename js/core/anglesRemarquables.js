@@ -194,6 +194,17 @@ export function mesureArc(arc) {
 export const HAUTEUR_ETIQUETTE = 0.2;
 
 /**
+ * L'ÉTIQUETTE EST-ELLE DANS LE SECTEUR OU DERRIÈRE L'ARC ?
+ *
+ * Les deux rendus ont besoin de le savoir pour choisir la couleur du liseré
+ * qui la détache : dehors, celle du fond de la page ; dedans, celle du secteur
+ * — sinon le liseré blanc perce un trou au milieu de la couleur.
+ */
+export function etiquetteDedans(arc) {
+    return mesureArc(arc) >= 90;
+}
+
+/**
  * OÙ POSER L'ÉTIQUETTE D'UN ARC : sur sa bissectrice, à bonne distance.
  *
  * Un angle de dix degrés n'a pas la place d'écrire « 10° » entre ses côtés :
@@ -206,7 +217,7 @@ export function ancreArc(arc, rayon) {
     // UN GRAND SECTEUR PORTE SON ÉTIQUETTE DEDANS. Posée au-delà de l'arc,
     // elle flottait dans le vide pour un angle de deux cents degrés — et l'on
     // ne savait plus lequel des deux secteurs elle désignait.
-    if (m >= 90) {
+    if (etiquetteDedans(arc)) {
         const p = pt(rs * 0.62, arc.de + m / 2);
         return { x: arc.x + p.x, y: arc.y + p.y };
     }
@@ -289,17 +300,19 @@ export function rayonSecteur() {
  * Debout, la figure se réduit alors à un fil au milieu du vide.
  *
  * On essaie donc six inclinaisons à partir de celle qu'on a tirée, et l'on
- * garde la première assez couchée. Le hasard reste entier — c'est le point de
- * départ qui est tiré —, seule la posture est choisie.
+ * garde LA PLUS PROCHE d'une fois et demie plus large que haute. Pas la plus
+ * couchée : à prendre le maximum, une figure sortait parfois en bande de trois
+ * pour un, aussi illisible que debout. Le hasard reste entier — c'est le point
+ * de départ qui est tiré —, seule la posture est choisie.
  */
-export function pencheEtale(fabrique, penche0, rapport = 1.35) {
+export function pencheEtale(fabrique, penche0, rapport = 1.5) {
+    const cible = Math.log(rapport);
     let meilleur = null;
     for (let i = 0; i < 6; i++) {
         const f = fabrique(penche0 + i * 30);
         const b = boiteFigure(f);
-        const r = b.largeur / b.hauteur;
-        if (r >= rapport) return f;
-        if (!meilleur || r > meilleur.r) meilleur = { f, r };
+        const ecart = Math.abs(Math.log(b.largeur / b.hauteur) - cible);
+        if (!meilleur || ecart < meilleur.ecart) meilleur = { f, ecart };
     }
     return meilleur.f;
 }
