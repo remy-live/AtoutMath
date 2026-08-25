@@ -1006,6 +1006,77 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LE MOT CODÉ. Rémy : « fais-moi aussi le jeu (par thématique ou
+        // mélange) du jeu que je t'ai montré avec les lettres et les chiffres ».
+        // C'est celui qu'il fabrique à la main pour ses fiches : chaque lettre
+        // remplacée par un numéro, le même partout, et un alphabet à
+        // reconstituer.
+        //
+        // CE N'EST PAS UN MOTS CROISÉS SANS DÉFINITIONS. On n'y cherche pas un
+        // mot mais un ALPHABET, et une lettre trouvée se pose d'un coup dans
+        // toute la grille : c'est ce ricochet qui fait le jeu, et c'est pour
+        // cela que l'état est un dictionnaire numéro → lettre, pas des cases.
+        id: 'voc-mot-code', status: STATUS.TEST, title: 'Le Mot Codé',
+        cree: '2026-08-25',
+        activityId: 'mot-code', skills: ['voc.mathematique'],
+        sansRevision: true,
+        printable: 'motcode', printGeneratorId: 'voc.mot-code-fiche',
+        printParams: { theme: 'angles', nbMots: 10, niveauMax: 3, offertes: 3 },
+        params: { theme: 'angles', niveauMax: 3, nbMots: 10, offertes: 3 },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                aide: 'Sur UN chapitre, l\'élève décode par le sens autant que par la déduction : il reconnaît « BISSECTRICE » à trois lettres près parce qu\'il sait de quoi la fiche parle. Mélangé, il ne reste que la déduction — c\'est un autre exercice, et il est plus dur.',
+                options: [
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' },
+                    { value: 'tout', label: 'Mélange de tout le vocabulaire' }
+                ],
+                default: 'angles'
+            },
+            {
+                id: 'nbMots', type: 'select', label: 'Nombre de mots',
+                aide: 'Plus il y a de mots, plus l\'alphabet employé est large — et plus chaque lettre trouvée rapporte.',
+                options: [
+                    { value: 7, label: '7 mots — grille courte' },
+                    { value: 10, label: '10 mots' },
+                    { value: 14, label: '14 mots — grille de journal' }
+                ],
+                default: 10
+            },
+            {
+                id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau',
+                options: [
+                    { value: 1, label: 'Le vocabulaire de base' },
+                    { value: 2, label: 'Jusqu\'au cycle 3' },
+                    { value: 3, label: 'Tout, collège compris' }
+                ],
+                default: 3
+            },
+            {
+                id: 'offertes', type: 'select', label: 'Lettres offertes',
+                aide: 'Ce sont les lettres les PLUS FRÉQUENTES de la grille qui sont données : une lettre offerte qui ne paraît qu\'une fois ne débloque rien. À zéro, la grille devient un vrai casse-tête.',
+                options: [
+                    { value: 0, label: 'Aucune — casse-tête' },
+                    { value: 2, label: '2 lettres' },
+                    { value: 3, label: '3 lettres' },
+                    { value: 5, label: '5 lettres — pour découvrir' }
+                ],
+                default: 3
+            }
+        ],
+        motsClefs: ['mot codé', 'codeword', 'code', 'lettres', 'chiffres', 'vocabulaire',
+            'grille', 'lexique', 'déduction'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Chaque lettre de la grille est remplacée par un numéro, le MÊME partout : le 14 est toujours la même lettre. Quelques lettres sont données pour commencer. Touche un numéro — dans la grille ou dans la clé du bas —, puis la lettre que tu crois qu'il cache : elle se pose d'un coup dans toutes les cases qui portent ce numéro. Deux numéros différents ne peuvent jamais cacher la même lettre : les lettres déjà employées s'estompent sur le clavier. Tous les mots viennent du vocabulaire du chapitre choisi, et « Vérifier » ne montre que les numéros FAUX."
+    },
+    {
         // LE CHASSEUR DE DIVISEURS. Rémy : « je pense à un jeu un peu futuriste
         // pour travailler la décomposition et la divisibilité, où il y a des
         // nombres qui arrivent et on peut tirer des diviseurs dessus. Exemple

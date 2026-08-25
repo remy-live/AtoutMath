@@ -4537,6 +4537,15 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; top: 0; left: .5px; color: #6b7280;
     font-weight: 700; line-height: 1;
 }
+/* LE MOT CODÉ : la case offerte porte un cadre gras — c'est le seul signe qui
+   distingue « on te la donne » de « à toi de la trouver », et il faut qu'il
+   survive à une photocopie en noir et blanc. Le numéro de la clé s'écrit SOUS
+   sa case, comme sur les grilles de journal. */
+.fx-mc-case--donnee { border-width: .9px; }
+.fx-mc-cle-num {
+    position: absolute; text-align: center; color: #6b7280;
+    font-weight: 700; line-height: 1; pointer-events: none;
+}
 .fx-mc-titre { position: absolute; font-weight: 800; color: #2d3748; pointer-events: none; }
 .fx-mc-def {
     position: absolute; color: #6b7280; line-height: 1.2; pointer-events: none;

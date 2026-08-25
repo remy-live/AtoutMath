@@ -63,6 +63,7 @@ import { motsCachesFicheGenerator } from '../generators/motsCachesFiche.js';
 import { plateauxPapierGenerator } from '../generators/plateauxFiche.js';
 import { anagrammesFicheGenerator } from '../generators/anagrammesFiche.js';
 import { motsCroisesFicheGenerator } from '../generators/motsCroisesFiche.js';
+import { motCodeFicheGenerator } from '../generators/motCodeFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
 import { echecsFicheGenerator } from '../generators/echecsFiche.js';
@@ -101,7 +102,7 @@ import {
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
-    motsCroisesFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
+    motsCroisesFicheGenerator, motCodeFicheGenerator, tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
     poserFicheGenerator, conversionFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
@@ -506,6 +507,9 @@ const legacy = [
     ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches', 'mot', 12],
     ['anagrammes', 'Anagrammes du vocabulaire', 'anagrammes', 'engineAnagrammes', 'mot'],
     ['mots-croises', 'Mots croisés du vocabulaire', 'motsCroises', 'engineMotsCroises', 'mot', 12],
+    // Le mot codé : ce qu'on compte n'est pas un mot mais une LETTRE de
+    // l'alphabet retrouvée — l'unité du jeu, et ce qui se répète.
+    ['mot-code', 'Mot codé du vocabulaire', 'motCode', 'engineMotCode', 'lettre', 10],
     ['pipopipette', 'La Pipopipette (à deux)', 'jeuxDeux', 'enginePipopipette', 'partie', 1],
     ['puissance4', 'Puissance 4 (à deux)', 'jeuxDeux', 'enginePuissance4', 'partie', 1],
     ['sim', 'Le Sim (à deux)', 'jeuxDeux', 'engineSim', 'partie', 1],

@@ -47,6 +47,7 @@ import {
     ligneEnTexte as ligneEnTextePythagore
 } from '../core/pythagore.js';
 import { boite as boiteTangram } from '../core/tangram.js';
+import { THEMES as THEMES_MOTCODE } from '../core/motCode.js';
 import {
     construireFigure as construireFigureCodage,
     classesDeLongueur as classesDeLongueurCodage,
@@ -1038,6 +1039,140 @@ function listeDefsHtml(g, k) {
     const demi = (g.b.w - 4) / 2;
     return colonne('Horizontalement', g.m.horizontales, g.b.x, demi)
         + colonne('Verticalement', g.m.verticales, g.b.x + demi + 4, demi);
+}
+
+// --- LE MOT CODÉ SUR PAPIER ---------------------------------------------------
+//
+// La grille en haut, la CLÉ en bas : autant de petites cases numérotées qu'il y
+// a de lettres dans la grille, et l'élève écrit dedans la lettre qu'il a
+// trouvée. Sans cette clé, il retient de tête que le 14 est un E et se trompe
+// trois lignes plus bas ; avec elle, il écrit une fois et relit vingt fois. Le
+// professeur, lui, corrige la clé et la grille suit.
+
+/** Combien de cases de clé tiennent sur une ligne, et où tout se pose. */
+function geoMotCode(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const n = m.lettres.length;
+    // LA CLÉ D'ABORD : c'est elle qui a une taille imposée — une case où l'on
+    // écrit une lettre à la main ne descend pas sous cinq millimètres. Ce qui
+    // reste va à la grille, qui sait se réduire.
+    const coteCle = Math.max(5, Math.min(9, (b.w - 2) / Math.max(9, Math.ceil(n / 2))));
+    const parLigne = Math.max(1, Math.floor((b.w - 2) / coteCle));
+    const lignesCle = Math.ceil(n / parLigne);
+    // Chaque rangée de clé porte sa case ET son numéro écrit dessous.
+    const hCle = lignesCle * coteCle * 1.5 + 5;
+    const dispoH = b.h - hCle - 2;
+    const cote = Math.max(3, Math.min((b.w - 2) / m.largeur, dispoH / m.hauteur));
+    const w = cote * m.largeur, h = cote * m.hauteur;
+    return {
+        b, m, cote, coteCle, parLigne, lignesCle,
+        x: b.x + (b.w - w) / 2, y: b.y + (dispoH - h) / 2, w, h,
+        xCle: b.x + 1, yCle: b.y + dispoH + 2
+    };
+}
+
+/** La place d'une case de clé, la i-ème (0 en tête). */
+function poseCle(g, i) {
+    const l = Math.floor(i / g.parLigne), c = i % g.parLigne;
+    return { x: g.xCle + c * g.coteCle, y: g.yCle + 5 + l * g.coteCle * 1.5 };
+}
+
+function motCodePreviewHtml(item, slot, k, solution) {
+    const g = geoMotCode(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const donnees = new Set(g.m.donnees);
+    let html = '';
+    for (let y = 0; y < g.m.hauteur; y++) {
+        for (let x = 0; x < g.m.largeur; x++) {
+            const c = g.m.cases[y][x];
+            // Rien du tout sur une case muette : c'est la silhouette des mots
+            // qu'on doit voir, comme sur les mots croisés.
+            if (c === null) continue;
+            const X = g.x + x * g.cote, Y = g.y + y * g.cote;
+            const lettre = solution || donnees.has(c) ? c : '';
+            html += `<div class="fx-mc-case" style="left:${T(X)}px; top:${T(Y)}px;
+                width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.55)}px">
+                <span class="fx-mc-num" style="font-size:${T(g.cote * 0.34)}px">${g.m.numeros[y][x]}</span>
+                ${echapperSheet(lettre)}</div>`;
+        }
+    }
+    html += `<div class="fx-mc-titre" style="left:${T(g.b.x)}px; top:${T(g.yCle)}px;
+        width:${T(g.b.w)}px; font-size:${T(3.2)}px">La clé — une lettre par numéro</div>`;
+    g.m.lettres.forEach((_, i) => {
+        const num = i + 1;
+        const lettre = g.m.parNumero[num];
+        const donne = donnees.has(lettre);
+        const p = poseCle(g, i);
+        html += `<div class="fx-mc-case${donne ? ' fx-mc-case--donnee' : ''}"
+            style="left:${T(p.x)}px; top:${T(p.y)}px; width:${T(g.coteCle)}px;
+            height:${T(g.coteCle)}px; font-size:${T(g.coteCle * 0.6)}px">${
+    echapperSheet(solution || donne ? lettre : '')}</div>`;
+        html += `<div class="fx-mc-cle-num" style="left:${T(p.x)}px;
+            top:${T(p.y + g.coteCle + 0.3)}px; width:${T(g.coteCle)}px;
+            font-size:${T(g.coteCle * 0.42)}px">${num}</div>`;
+    });
+    return html;
+}
+
+function dessinerMotCodePdf(doc, item, slot, solution, champ) {
+    const g = geoMotCode(item, slot);
+    const donnees = new Set(g.m.donnees);
+
+    for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
+        const c = g.m.cases[y][x];
+        if (c === null) continue;
+        const X = g.x + x * g.cote, Y = g.y + y * g.cote;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.22);
+        doc.rect(X, Y, g.cote, g.cote, 'S');
+        // LE NUMÉRO EST DANS UN COIN, PAS AU MILIEU : le milieu appartient à la
+        // lettre qu'on va écrire par-dessus, et un chiffre gris sous un stylo
+        // se lit encore.
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(Math.max(3.6, g.cote * 0.95));
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(String(g.m.numeros[y][x]), X + g.cote * 0.1, Y + g.cote * 0.34);
+
+        const lettre = solution || donnees.has(c) ? c : '';
+        if (lettre) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.min(12, g.cote * 1.5));
+            doc.setTextColor(...(solution && !donnees.has(c) ? [47, 133, 90] : ENCRE.texte));
+            doc.text(lettre, X + g.cote * 0.58, Y + g.cote * 0.85, { align: 'center' });
+        } else if (champ) {
+            champ(X + g.cote * 0.22, Y + g.cote * 0.32, g.cote * 0.7, g.cote * 0.62);
+        }
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf('La clé — une lettre par numéro'), g.b.x, g.yCle + 3);
+
+    g.m.lettres.forEach((_, i) => {
+        const num = i + 1;
+        const lettre = g.m.parNumero[num];
+        const donne = donnees.has(lettre);
+        const p = poseCle(g, i);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(donne ? 0.5 : 0.25);
+        doc.rect(p.x, p.y, g.coteCle, g.coteCle, 'S');
+        if (solution || donne) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.min(12, g.coteCle * 1.6));
+            doc.setTextColor(...(solution && !donne ? [47, 133, 90] : ENCRE.texte));
+            doc.text(lettre, p.x + g.coteCle / 2, p.y + g.coteCle * 0.72, { align: 'center' });
+        } else if (champ) {
+            champ(p.x + g.coteCle * 0.12, p.y + g.coteCle * 0.12,
+                g.coteCle * 0.76, g.coteCle * 0.76);
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(Math.max(4.4, g.coteCle * 1.1));
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(String(num), p.x + g.coteCle / 2, p.y + g.coteCle + 2.6, { align: 'center' });
+    });
+    doc.setTextColor(...ENCRE.texte);
 }
 
 function dessinerMotsCroisesPdf(doc, item, slot, solution, champ) {
@@ -7762,6 +7897,25 @@ export const RENDUS = {
         nomBloc: 'Liste', nomBlocs: 'listes',
         titreAGauche: true,
         disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1
+    },
+
+    motcode: {
+        titre: 'Mot codé du vocabulaire',
+        consigne: (items) => 'CHAQUE LETTRE EST REMPLACÉE PAR UN NUMÉRO, le même partout dans '
+            + 'la grille. Retrouve quel numéro cache quelle lettre : les lettres déjà écrites '
+            + 'te donnent le départ, et deux numéros différents ne cachent jamais la même '
+            + 'lettre. Reporte chaque trouvaille dans la clé, sous la grille — et souviens-toi '
+            + 'que tous les mots sont du vocabulaire du cours'
+            + (items && items[0] && items[0].meta && THEMES_MOTCODE[items[0].meta.theme]
+                ? ` (${THEMES_MOTCODE[items[0].meta.theme].toLowerCase()})` : '') + '.',
+        previewGrille: motCodePreviewHtml,
+        pdfGrille: dessinerMotCodePdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        titreAGauche: true,
+        // Une grille par page : la clé prend déjà deux rangées, et à deux
+        // grilles les cases tombent sous trois millimètres.
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1
     },
 
