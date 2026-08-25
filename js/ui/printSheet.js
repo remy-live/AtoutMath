@@ -3033,6 +3033,119 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LA PYRAMIDE DES MOTS ------------------------------------------------------
+//
+// Rémy, avec la page de son « Coin des jeux mathématiques » : « Deux jeux dans
+// ces styles. » Celui-ci en est un, et c'est un objet de PAPIER — une colonne
+// de définitions, un escalier de cases, un crayon. Le bloc imprimé n'est donc
+// pas une capture de l'écran : c'est l'original, et l'écran en est la copie.
+//
+// L'ESCALIER PART D'UN BORD COMMUN. Toutes les lignes commencent à la même
+// verticale et s'allongent vers la droite : c'est ce qui fait qu'on VOIT la
+// lettre gagnée à chaque marche, la case qui dépasse. Centré, l'escalier
+// deviendrait un sapin et la règle du jeu disparaîtrait du dessin.
+//
+// LA DÉFINITION TIENT SUR UNE LIGNE, quitte à rétrécir. Deux lignes de texte
+// dans une case haute d'une case décaleraient tout l'escalier, et un escalier
+// dont les marches ne sont plus alignées ne se lit plus.
+
+function geoPyramide(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const n = m.hauteur;
+    // UNE CASE SE DIMENSIONNE POUR UN CRAYON, pas pour remplir le bloc : au-delà
+    // d'un centimètre, on écrit une lettre au milieu d'un grand vide.
+    const cote = Math.min(b.h / (n + 0.3), 11);
+    const casesW = cote * n;
+    const plusLong = Math.max(1, ...m.barreaux.map(bb => bb.def.length));
+    // La largeur d'un texte, en millimètres : à cette taille de police,
+    // un caractère d'Helvetica en fait environ la moitié.
+    const largeurDe = (taille) => plusLong * taille * 0.48;
+    // LE TEXTE LE PLUS LONG FIXE LA TAILLE DE TOUS. Des définitions de corps
+    // différents dans une même colonne se liraient comme des exercices
+    // différents.
+    const voulue = cote * 0.42;
+    // LA COLONNE DES DÉFINITIONS PREND CE QU'IL LUI FAUT, PAS TOUTE LA PAGE.
+    // Étirée sur la largeur d'une feuille A4, elle mettait cent trente
+    // millimètres sous « Pour dormir. » et laissait des cases de huit
+    // millimètres perdues au bord droit : le bloc ne ressemblait plus à une
+    // pyramide mais à un tableau à deux colonnes.
+    const defW = Math.min(largeurDe(voulue) + 2, b.w - casesW - 1);
+    const taille = Math.max(1.6, Math.min(voulue, (defW - 2) / (plusLong * 0.48)));
+    // Le tout est CENTRÉ dans le bloc : ce qui reste de place se partage des
+    // deux côtés au lieu de s'accumuler à gauche.
+    const x = b.x + Math.max(0, (b.w - defW - 1 - casesW) / 2);
+    const y0 = b.y + (b.h - cote * n) / 2;
+    return {
+        m, b, n, cote, defW, taille,
+        x, x0: x + defW + 1, y0,
+        ligneY: (i) => y0 + i * cote
+    };
+}
+
+/** Ce qu'on écrit dans la ligne `i` : le mot donné, la solution, ou rien. */
+const motPyramide = (g, i, solution) =>
+    (g.m.donnes[i] || solution) ? g.m.barreaux[i].mot : '';
+
+function pyramidePreviewHtml(item, slot, k, solution) {
+    const g = geoPyramide(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    return g.m.barreaux.map((bar, i) => {
+        const y = g.ligneY(i);
+        const mot = motPyramide(g, i, solution);
+        const donne = g.m.donnes[i];
+        let html = `<div class="fx-py-def" style="left:${T(g.x)}px; top:${T(y)}px;
+            width:${T(g.defW)}px; height:${T(g.cote)}px; font-size:${T(g.taille)}px"
+            ><span>${echapperSheet(bar.def)}</span></div>`;
+        for (let c = 0; c <= i; c++) {
+            const lettre = mot[c] || '';
+            html += `<div class="fx-py-case${donne ? ' fx-py-case--donne' : ''}${
+                lettre && !donne ? ' fx-py-case--sol' : ''}"
+                style="left:${T(g.x0 + c * g.cote)}px; top:${T(y)}px;
+                width:${T(g.cote)}px; height:${T(g.cote)}px;
+                font-size:${T(g.cote * 0.58)}px">${lettre}</div>`;
+        }
+        return html;
+    }).join('');
+}
+
+function dessinerPyramidePdf(doc, item, slot, solution) {
+    const g = geoPyramide(item, slot);
+    doc.setLineWidth(0.3);
+    g.m.barreaux.forEach((bar, i) => {
+        const y = g.ligneY(i);
+        const mot = motPyramide(g, i, solution);
+        const donne = g.m.donnes[i];
+
+        // La colonne des définitions : un cadre, et le texte calé à gauche
+        // comme dans la revue — l'œil descend la colonne sans chercher.
+        doc.setDrawColor(...ENCRE.trait);
+        doc.rect(g.x, y, g.defW, g.cote);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(g.taille / 0.3528);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(bar.def), g.x + 1, y + g.cote * 0.65);
+
+        for (let c = 0; c <= i; c++) {
+            const x = g.x0 + c * g.cote;
+            // Une ligne DONNÉE est de l'énoncé : fond teinté, on n'écrit pas
+            // dedans. Les autres restent blanches, prêtes pour le crayon.
+            if (donne) {
+                doc.setFillColor(...ENCRE.donnee);
+                doc.rect(x, y, g.cote, g.cote, 'F');
+            }
+            doc.setDrawColor(...ENCRE.trait);
+            doc.rect(x, y, g.cote, g.cote);
+            const lettre = mot[c];
+            if (!lettre) continue;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(5, g.cote * 1.7));
+            doc.setTextColor(...(donne ? ENCRE.trait : [47, 133, 90]));
+            doc.text(lettre, x + g.cote / 2, y + g.cote * 0.73, { align: 'center' });
+        }
+    });
+}
+
 // --- COMBIEN DE CUBES ? -------------------------------------------------------
 //
 // Rémy : « j'aimerais un exercice de comptage de cube ».
@@ -8058,6 +8171,26 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.1 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
+    },
+
+    pyramide: {
+        titre: 'La Pyramide des mots',
+        consigne: () => 'À CHAQUE LIGNE, TU RAJOUTES UNE LETTRE pour faire un nouveau mot. '
+            + 'Les lettres PEUVENT ÊTRE MÉLANGÉES : le mot du dessous reprend toutes celles '
+            + 'du dessus, plus une, mais pas forcément dans le même ordre. La définition de '
+            + 'gauche dit lequel. Commence toujours par le haut.',
+        previewGrille: pyramidePreviewHtml,
+        pdfGrille: dessinerPyramidePdf,
+        nomBloc: 'Pyramide', nomBlocs: 'pyramides',
+        // Large et basse : une colonne de définitions, un escalier de six
+        // marches. Un bloc carré rendrait les cases minuscules pour rien.
+        proportions: { w: 1, h: 0.62 },
+        // DEUX PAR PAGE PAR DÉFAUT, comme la revue : une commencée et une vide,
+        // c'est-à-dire un exemple travaillé suivi de l'exercice. C'est ce que
+        // fait Rémy avec « l'Extrait » et « En direct », et cela explique la
+        // règle mieux qu'une consigne.
+        disposition: { cols: 1, rows: 2, maxCols: 2, maxRows: 4 },
+        parLigneDefaut: 1
     },
 
     cubes: {

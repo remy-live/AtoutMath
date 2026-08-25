@@ -65,6 +65,7 @@ import { plateauxPapierGenerator } from '../generators/plateauxFiche.js';
 import { anagrammesFicheGenerator } from '../generators/anagrammesFiche.js';
 import { motsCroisesFicheGenerator } from '../generators/motsCroisesFiche.js';
 import { motCodeFicheGenerator } from '../generators/motCodeFiche.js';
+import { pyramideFicheGenerator } from '../generators/pyramideFiche.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
@@ -105,7 +106,8 @@ import {
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
-    motsCroisesFicheGenerator, motCodeFicheGenerator, hashiFicheGenerator,
+    motsCroisesFicheGenerator, motCodeFicheGenerator, pyramideFicheGenerator,
+    hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
     poserFicheGenerator, conversionFicheGenerator,
@@ -514,6 +516,9 @@ const legacy = [
     // Le mot codé se compte en GRILLES : une partie, c'est un alphabet entier
     // retrouvé, et rien ne se valide avant.
     ['mot-code', 'Mot codé du vocabulaire', 'motCode', 'engineMotCode', 'grille', 3],
+    // La pyramide se compte en PYRAMIDES : une partie, c'est un escalier
+    // entier retrouvé, et rien ne se valide avant la dernière marche.
+    ['pyramide', 'La Pyramide des mots', 'pyramide', 'enginePyramide', 'pyramide', 3],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

@@ -571,6 +571,14 @@ const BASE = {
         descriptor: 'Dire par quelle transformation une figure est l\'image d\'une autre, dans un pavage.',
         lesson: 'Trois questions, dans cet ordre, et la réponse tombe. UN : la figure a-t-elle gardé son sens, ou a-t-elle été RETOURNÉE ? Si elle est retournée, c\'est une symétrie axiale — c\'est la seule des quatre qui retourne. DEUX : sinon, est-elle restée DROITE, dans la même position ? Alors c\'est une translation. TROIS : sinon elle a tourné — d\'un demi-tour, et c\'est une symétrie centrale ; d\'un quart de tour, et c\'est une rotation. Pour vérifier qu\'une figure a été retournée, suis un détail asymétrique : s\'il passe de la gauche à la droite, il y a eu miroir.'
     },
+    'voc.anagramme': {
+        label: 'Retrouver un mot dont les lettres sont mélangées',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Reconna\u00eetre un mot sous un autre ordre de ses lettres, et suivre une cha\u00eene o\u00f9 chaque mot gagne une lettre.',
+        lesson: "UN MOT N'EST PAS UNE IMAGE, C'EST UN ENSEMBLE DE LETTRES DANS UN ORDRE. Tant qu'on lit CODE de gauche \u00e0 droite, on ne voit pas qu'il contient d\u00e9j\u00e0 tout CORDE sauf le R. La m\u00e9thode qui d\u00e9bloque tout : \u00e9cris les lettres du mot connu EN D\u00c9SORDRE, par exemple par ordre alphab\u00e9tique \u2014 C D E O \u2014, ajoute la nouvelle, et relis l'ensemble comme un stock dans lequel piocher. On cherche alors un ARRANGEMENT, plus un mot. Et compte toujours les lettres avant d'\u00e9crire : si la ligne a cinq cases, un mot de quatre lettres est faux m\u00eame s'il colle \u00e0 la d\u00e9finition. C'est aussi de l\u00e0 que vient une question de math\u00e9matiques : combien de mots diff\u00e9rents peut-on \u00e9crire avec ces lettres ? Pour trois lettres toutes diff\u00e9rentes, il y en a 3 \u00d7 2 \u00d7 1 = 6."
+    },
     'voc.mathematique': {
         label: 'Vocabulaire mathématique',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

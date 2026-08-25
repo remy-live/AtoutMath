@@ -282,6 +282,10 @@ const HORS_TABLE = {
     '\u2081': '1', '\u2082': '2', '\u2083': '3', '\u2084': '4', '\u2085': '5',
     '\u2086': '6', '\u2087': '7', '\u2088': '8', '\u2089': '9', '\u2080': '0',
     '\u1D49': 'e',      // le « e » de « 2ᵉ »
+    // Le « r » de « 1ʳᵉ » : sans lui, « La 1ʳᵉ lettre de l'alphabet »
+    // s'imprimait « La 1?e lettre », un point d'interrogation au milieu
+    // d'une définition qui en pose déjà une.
+    '\u02B3': 'r',
     '\u2610': '[ ]', '\u2611': '[x]',
     '\u2153': '1/3', '\u2154': '2/3', '\u00BC': '1/4', '\u00BE': '3/4',
     '\u2218': 'o', '\u2032': "'", '\u2033': '"',

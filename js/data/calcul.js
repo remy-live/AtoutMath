@@ -1013,6 +1013,55 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LA PYRAMIDE. Rémy, avec la page de son « Coin des jeux
+        // mathématiques » : « Deux jeux dans ces styles. » Celui-ci en est un —
+        // « à chaque ligne, tu rajoutes une lettre pour faire un nouveau mot »,
+        // et surtout « les lettres PEUVENT ÊTRE MÉLANGÉES ».
+        //
+        // C'EST CETTE DERNIÈRE PHRASE QUI EN FAIT DES MATHÉMATIQUES. Sans elle,
+        // on colle une lettre au bout du mot précédent et trois essais
+        // suffisent. Avec elle, il faut reconnaître un ENSEMBLE de lettres sous
+        // un ordre nouveau — CODE, CORDE, DECORS —, c'est-à-dire penser
+        // arrangement : le dénombrement qu'on retrouvera en troisième.
+        id: 'voc-pyramide', status: STATUS.TEST, title: 'La Pyramide des Mots',
+        cree: '2026-08-25',
+        activityId: 'pyramide', skills: ['voc.anagramme'],
+        sansRevision: true,
+        printable: 'pyramide', printGeneratorId: 'voc.pyramide-fiche',
+        printParams: { hauteur: 6, difficulte: 'moyen' },
+        params: { hauteur: 6, difficulte: 'moyen' },
+        paramSchema: [
+            {
+                id: 'hauteur', type: 'select', label: 'Hauteur de la pyramide',
+                aide: 'Ce n\'est pas la hauteur qui fait la difficulté, c\'est le nombre de lignes À TROUVER : une pyramide de sept lignes dont quatre sont écrites est plus facile qu\'une de quatre lignes toute vide.',
+                options: [
+                    { value: 4, label: '4 lignes — pour découvrir' },
+                    { value: 5, label: '5 lignes' },
+                    { value: 6, label: '6 lignes — comme dans la revue' },
+                    { value: 7, label: '7 lignes — la grande' }
+                ],
+                default: 6
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Lignes déjà écrites',
+                aide: 'Les lignes données sont toujours les PREMIÈRES, jamais des lignes au hasard : une pyramide se remplit du haut vers le bas, chaque mot se cherchant à partir du précédent. Un trou au milieu couperait la chaîne en deux.',
+                options: [
+                    { value: 'facile', label: 'Facile — la moitié est écrite' },
+                    { value: 'moyen', label: 'Moyen — les deux premières lignes' },
+                    { value: 'difficile', label: 'Difficile — le sommet seul' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['pyramide', 'mots', 'anagramme', 'lettres', 'vocabulaire', 'escalier',
+            'définitions', 'arrangement', 'jeu de lettres'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "À chaque ligne, une lettre de plus : le mot du dessous reprend TOUTES les lettres du dessus, plus une — mais pas forcément dans le même ordre. La définition de gauche dit lequel. Touche une ligne pour y écrire, puis tape les lettres. Le vrai geste du jeu est celui-ci : n'essaie pas de coller une lettre au bout du mot précédent. Écris ses lettres EN DÉSORDRE — le jeu te les montre déjà mélangées sous la pyramide —, ajoute la nouvelle, et cherche l'arrangement qui colle à la définition. « Un indice » ne donne pas le mot : il donne la lettre qui arrive, et c'est presque toujours assez."
+    },
+    {
         // LE MOT CODÉ. Rémy : « fais-moi aussi le jeu (par thématique ou
         // mélange) du jeu que je t'ai montré avec les lettres et les chiffres ».
         // C'est celui qu'il fabrique à la main pour ses fiches : chaque lettre
