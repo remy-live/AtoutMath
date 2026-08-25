@@ -24,8 +24,15 @@ import { STATUS } from './status.js';
 
 export const defisExercises = [
     {
-        // LA TOUR DE BRAHMA — la tour de Hanoï, sous le nom que lui a donné
-        // Édouard Lucas en 1883.
+        // LA TOUR DE HANOÏ.
+        //
+        // Rémy : « Tu me fais les tours de Hanoï aussi en défi. » Elle y était
+        // déjà — sous le nom de « Tour de Brahma », celui qu'Édouard Lucas lui
+        // a donné en 1883 en l'accompagnant de sa légende des soixante-quatre
+        // disques. C'est le même jeu, exactement, et j'avais choisi le nom
+        // savant : personne ne la cherche sous celui-là. On l'appelle donc
+        // comme tout le monde l'appelle, et Brahma reste en sous-titre, parce
+        // que la légende vaut d'être racontée.
         //
         // C'EST LA PREMIÈRE RÉCURSION QU'UN ÉLÈVE RENCONTRE, et il la rencontre
         // avec les mains. Pour déplacer quatre boules, il faut d'abord déplacer
@@ -33,7 +40,8 @@ export const defisExercises = [
         // boule de moins. Et le compte suit — 1, 3, 7, 15, 31 —, le double plus
         // un à chaque fois. On ne lui demande pas de le démontrer ; on lui
         // demande de le CONSTATER, ce qui est déjà beaucoup.
-        id: 'defi-tour-brahma', status: STATUS.TEST, title: 'La Tour de Brahma',
+        id: 'defi-tour-brahma', status: STATUS.TEST,
+        title: 'La Tour de Hanoï (Tour de Brahma)',
         cree: '2026-08-25',
         activityId: 'tour-brahma', skills: ['defi.recursion'],
         sansRevision: true,

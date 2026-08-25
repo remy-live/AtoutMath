@@ -367,6 +367,27 @@ const BASE = {
         descriptor: 'Multiplier ou diviser un décimal par une puissance de 10, en raisonnant sur le changement de rang.',
         lesson: "« On ajoute un zéro » ne marche que pour les entiers : 2,5 × 10 ne fait pas 2,50, qui est le MÊME nombre. Ce qui se passe vraiment : chaque chiffre change de rang. Multiplier par 10, c'est faire glisser tous les chiffres d'une colonne vers la gauche dans le tableau de numération — chacun vaut alors dix fois plus. Par 100, deux colonnes ; par 1000, trois. Diviser fait glisser dans l'autre sens. Et la virgule, elle, ne bouge JAMAIS : elle marque la frontière entre les unités et les dixièmes, et cette frontière est fixe. Vérifie toujours l'ordre de grandeur : multiplier donne un nombre plus grand, diviser un nombre plus petit."
     },
+    // LES PUISSANCES DE 10 : deux compétences, et la première n'est pas du
+    // calcul. Rémy : « hyper progressif : déjà reconnaître, puis transformer. »
+    // Les séparer, c'est pouvoir constater qu'un élève sait parfaitement
+    // reconnaître une écriture scientifique et se trompe encore en la
+    // fabriquant — ou l'inverse, qui est plus grave.
+    'num.puissances.dix': {
+        label: 'Lire et écrire les puissances de 10',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.dec.puissances10'],
+        descriptor: 'Passer d\'une puissance de 10 \u00e0 sa valeur d\u00e9cimale et r\u00e9ciproquement, et reconna\u00eetre si une \u00e9criture a \u00d7 10\u207f est scientifique.',
+        lesson: "L'EXPOSANT COMPTE DES RANGS, PAS DES Z\u00c9ROS \u2014 la nuance para\u00eet mince et elle explique presque toutes les fautes. 10\u2074, c'est 10 multipli\u00e9 QUATRE FOIS par lui-m\u00eame, ce qui donne 10 000 : un 1 suivi de quatre z\u00e9ros. Et 10\u207b\u00b3, c'est l'inverse, 0,001 : le 1 descend au troisi\u00e8me rang apr\u00e8s la virgule. ATTENTION AU PI\u00c8GE DU SIGNE : un exposant n\u00e9gatif ne donne JAMAIS un nombre n\u00e9gatif. 10\u207b\u00b3 n'est pas \u22120,001, c'est un nombre positif, simplement tout petit. L'exposant dit de quel c\u00f4t\u00e9 de 1 l'on se trouve, pas de quel c\u00f4t\u00e9 de z\u00e9ro. ENSUITE, ET SEULEMENT ENSUITE, L'\u00c9CRITURE SCIENTIFIQUE. Elle s'\u00e9crit a \u00d7 10\u207f, et sa r\u00e8gle tient en une ligne : 1 \u2a7d a < 10. Autrement dit UN SEUL chiffre avant la virgule, et ce chiffre n'est pas z\u00e9ro. Apprends d'abord \u00e0 la RECONNA\u00ceTRE : 34 \u00d7 10\u00b3 n'en est pas une \u2014 34 est trop grand \u2014 et 0,34 \u00d7 10\u2075 non plus \u2014 0,34 est trop petit. Tant qu'on ne sait pas dire lequel des deux d\u00e9fauts on a sous les yeux, on d\u00e9place sa virgule au hasard."
+    },
+    'num.puissances.scientifique': {
+        label: '\u00c9crire un nombre en \u00e9criture scientifique',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.puissances.dix'],
+        descriptor: 'Transformer un d\u00e9cimal en \u00e9criture scientifique et r\u00e9ciproquement, puis comparer deux nombres \u00e9crits ainsi.',
+        lesson: "POUR TRANSFORMER, DEUX GESTES, TOUJOURS LES M\u00caMES. D'abord on place la virgule juste apr\u00e8s le PREMIER chiffre qui n'est pas z\u00e9ro : 34 000 donne 3,4 et 0,005 2 donne 5,2. Ensuite on compte de combien de rangs elle a boug\u00e9 \u2014 et l\u00e0 il n'y a rien \u00e0 retenir, il y a une chose \u00e0 V\u00c9RIFIER : le nombre de d\u00e9part est-il plus grand ou plus petit que 1 ? Plus grand, l'exposant est positif ; plus petit, il est n\u00e9gatif. 34 000 = 3,4 \u00d7 10\u2074, et 0,005 2 = 5,2 \u00d7 10\u207b\u00b3. Cette v\u00e9rification prend deux secondes et rattrape la seule faute vraiment co\u00fbteuse. POUR COMPARER, ON REGARDE L'EXPOSANT D'ABORD. 2,1 \u00d7 10\u2075 est plus grand que 9,8 \u00d7 10\u2074, et le 9,8 n'y change rien : le nombre devant reste toujours entre 1 et 10, il ne peut donc jamais rattraper un rang entier. Ce n'est QUE si les exposants sont \u00e9gaux qu'on compare les nombres de devant \u2014 et c'est le cas qu'on oublie, parce qu'on a trop bien retenu la r\u00e8gle pr\u00e9c\u00e9dente."
+    },
     'num.dec.compare': {
         label: 'Comparer des nombres décimaux',
         chemin: [D.NUMERIQUE, SD.DECIMAUX],

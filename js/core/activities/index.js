@@ -72,6 +72,9 @@ import { tasukoFicheGenerator } from '../generators/tasukoFiche.js';
 import { tourBrahmaFicheGenerator } from '../generators/tourBrahmaFiche.js';
 import { grenouillesFicheGenerator } from '../generators/grenouillesFiche.js';
 import { parkingFicheGenerator } from '../generators/parkingFiche.js';
+import {
+    puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator
+} from '../generators/puissances.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
@@ -115,6 +118,7 @@ import {
     motsCroisesFicheGenerator, motCodeFicheGenerator, pyramideFicheGenerator,
     mastermindFicheGenerator, pyramideNombresFicheGenerator, tasukoFicheGenerator,
     tourBrahmaFicheGenerator, grenouillesFicheGenerator, parkingFicheGenerator,
+    puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
@@ -538,7 +542,7 @@ const legacy = [
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.
-    ['tour-brahma', 'La Tour de Brahma', 'tourBrahma', 'engineTourBrahma', 'tour', 2],
+    ['tour-brahma', 'La Tour de Hanoï', 'tourBrahma', 'engineTourBrahma', 'tour', 2],
     ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 2],
     // Le parking se compte en PARTIES : les deux parkings ont échangé ou non.
     // Deux parties suffisent à valider — celle-ci se compte en centaines de

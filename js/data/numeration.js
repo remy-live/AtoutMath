@@ -451,5 +451,55 @@ export const numerationExercises = [
         skills: ['num.dec.puissances10'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Trois temps. D'abord tu DÉCALES LA VIRGULE dans le tableau de numération avec les flèches : × 10 la pousse d'un rang vers la DROITE, ÷ 10 d'un rang vers la gauche. Les chiffres, eux, ne bougent pas — et c'est ce qui rend la règle visible : le chiffre qui valait des dixièmes se retrouve à gauche de la virgule, il vaut maintenant des unités. Ensuite on te demandera de choisir le résultat parmi quatre, puis de l'écrire toi-même. Attention au piège : « multiplier par 10, on ajoute un zéro » est faux dès qu'il y a une virgule — 2,5 et 2,50 sont le même nombre."
+    },
+    {
+        // LES PUISSANCES DE 10 — PREMIER TEMPS : RECONNAÎTRE.
+        //
+        // Rémy : « Des exercices sur les puissances de 10 dont l'écriture
+        // scientifique, hyper progressif : déjà reconnaître puis transformer. »
+        // Ce sont ses deux mots qui font les deux exercices, et c'est le bon
+        // découpage : la faute de quatrième n'est pas de mal calculer, c'est
+        // d'écrire 34 × 10³ et de croire que c'est une écriture scientifique.
+        // L'élève transforme avant de savoir ce qu'il doit obtenir.
+        //
+        // QUATRE MARCHES ICI, et la dernière est la plus précieuse : « dis
+        // POURQUOI ce n'en est pas une ». Tant qu'un élève ne sait pas nommer
+        // le défaut — trop grand, ou trop petit —, il déplace sa virgule au
+        // hasard et tombe juste une fois sur deux.
+        id: 'num-puissances-reconnaitre', status: STATUS.TEST,
+        title: 'Puissances de 10 — reconnaître',
+        cree: '2026-08-25',
+        generatorId: 'num.puissances-reconnaitre', activityId: 'buttons',
+        skills: ['num.puissances.dix'],
+        params: { etape: 'progressif' },
+        motsClefs: ['puissances', 'puissance de 10', 'exposant', 'écriture scientifique',
+            'notation scientifique', 'reconnaître', 'grands nombres', 'petits nombres'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Quatre marches, dans l'ordre, et l'on monte tout seul toutes les trois questions. D'abord LIRE une puissance de 10 : 10⁴ vaut 10 000, un 1 suivi de quatre zéros, et 10⁻³ vaut 0,001 — le 1 descend au troisième rang après la virgule. Attention au piège du signe : un exposant négatif ne donne JAMAIS un nombre négatif, il donne un nombre tout petit mais positif. Ensuite l'inverse : 1 000, c'est 10 puissance combien ? Puis on aborde l'écriture scientifique, mais SANS RIEN TRANSFORMER : on apprend d'abord à la reconnaître. Elle s'écrit a × 10ⁿ avec un seul chiffre avant la virgule, et ce chiffre n'est pas zéro — 34 × 10³ n'en est pas une, 0,34 × 10⁵ non plus. Enfin la marche qui compte vraiment : dire POURQUOI. Le nombre devant est-il trop grand, ou trop petit ? Les deux ne se corrigent pas dans le même sens, et tant qu'on ne les distingue pas, on déplace sa virgule au hasard."
+    },
+    {
+        // LES PUISSANCES DE 10 — SECOND TEMPS : TRANSFORMER.
+        //
+        // Trois marches : fabriquer l'écriture scientifique, revenir au
+        // décimal, comparer deux écritures. La dernière porte un piège qu'on
+        // fabrique EXPRÈS une fois sur deux — deux exposants égaux — parce
+        // qu'un élève qui a bien retenu « le plus grand exposant gagne » cesse
+        // aussitôt de regarder le nombre de devant.
+        id: 'num-puissances-transformer', status: STATUS.TEST,
+        title: 'Puissances de 10 — écriture scientifique',
+        cree: '2026-08-25',
+        generatorId: 'num.puissances-transformer', activityId: 'buttons',
+        skills: ['num.puissances.scientifique'],
+        params: { etape: 'progressif' },
+        motsClefs: ['écriture scientifique', 'notation scientifique', 'puissances de 10',
+            'exposant', 'transformer', 'comparer', 'ordre de grandeur', 'mantisse'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Maintenant on transforme, et il n'y a que deux gestes à faire, toujours les mêmes. Un : place la virgule juste après le PREMIER chiffre qui n'est pas zéro — 34 000 donne 3,4, et 0,0052 donne 5,2. Deux : compte de combien de rangs elle a bougé. Et surtout, VÉRIFIE le signe au lieu de le retenir : le nombre de départ est-il plus grand ou plus petit que 1 ? Plus grand, l'exposant est positif ; plus petit, il est négatif. 34 000 = 3,4 × 10⁴, et 0,0052 = 5,2 × 10⁻³. Ensuite on fait le chemin inverse, puis on compare. Pour comparer, regarde l'EXPOSANT d'abord : 2,1 × 10⁵ bat 9,8 × 10⁴, et le 9,8 n'y peut rien — le nombre de devant reste toujours entre 1 et 10, il ne rattrapera jamais un rang entier. Mais si les deux exposants sont égaux, alors c'est le nombre de devant qui décide, et c'est précisément le cas qu'on oublie."
     }
 ];

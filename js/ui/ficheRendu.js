@@ -404,8 +404,41 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
     }).join('');
 }
 
+/** Les exposants en l'air, et leur chiffre ordinaire. */
+const EXPOSANTS_HAUT = {
+    '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3', '\u2074': '4',
+    '\u2075': '5', '\u2076': '6', '\u2077': '7', '\u2078': '8', '\u2079': '9',
+    '\u207B': '-'
+};
+// Seuls ¹ ² ³ existent dans la police du PDF. Les autres — ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁰ et le
+// moins en exposant — n'y sont pas, et sortaient en points d'interrogation :
+// « 10⁴ » devenait « 10? » sur la feuille, ce qui rend un exercice sur les
+// puissances de 10 rigoureusement inutilisable.
+const IMPRIMABLE_EN_HAUT = new Set(['\u00B9', '\u00B2', '\u00B3']);
+
+/**
+ * LES EXPOSANTS, ÉCRITS AVEC UN CHAPEAU QUAND LA POLICE NE SAIT PAS LES LEVER.
+ *
+ * On traite le bloc d'exposants ENTIER, pas chaque caractère : « 10⁻³ » doit
+ * donner « 10^-3 » et non « 10^-^3 ».
+ *
+ * CE QUI SUIT UN CHIFFRE EST UNE PUISSANCE, ce qui suit une lettre est une
+ * unité. Sur une même feuille, « 10³ » et « 10⁴ » doivent s'écrire pareil, donc
+ * on convertit les deux — alors que « cm² » et « n² » n'ont rien à voir avec ce
+ * problème et restent intacts.
+ */
+const exposantsLisibles = (t) => t.replace(
+    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)/g,
+    (_, avant, bloc) => {
+        const puissance = /\d/.test(avant);
+        const tout = [...bloc].every(c => IMPRIMABLE_EN_HAUT.has(c));
+        return avant + (puissance || !tout
+            ? `^${[...bloc].map(c => EXPOSANTS_HAUT[c]).join('')}`
+            : bloc);
+    });
+
 export function pourPdf(texte) {
-    let t = typographieFr(texte);
+    let t = exposantsLisibles(typographieFr(texte));
     for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
     // Filet de sécurité : tout ce qui reste au-dessus de la table y passe.
     // Un point d'interrogation vaut mieux qu'une ligne entière illisible.
