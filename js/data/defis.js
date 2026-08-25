@@ -191,5 +191,49 @@ export const defisExercises = [
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         instruction: "Fais sortir la voiture ROUGE par la droite. Chaque véhicule ne glisse que dans SON axe : ceux qui sont couchés vont à gauche et à droite, ceux qui sont debout montent et descendent — jamais l'inverse, et jamais par-dessus un autre. Touche une voiture : si elle n'a qu'une sortie, elle y va toute seule ; sinon, touche la case où l'amener. NE POUSSE PAS LA ROUGE, elle est bloquée : demande-toi QUI la bloque, puis qui bloque celle-là, et remonte la chaîne jusqu'à une voiture qui peut bouger tout de suite. C'est par elle qu'il faut commencer. Le compteur affiche un minimum CALCULÉ — l'ordinateur a exploré toutes les positions du plateau, personne ne peut faire mieux. S'il monte après ton coup, ce n'est pas une faute : c'est un détour, et « Annuler » existe. Le niveau monte d'un cran à chaque parking résolu."
+    },
+    {
+        // LE POUSSEUR — un sokoban, et il se fabrique à l'envers.
+        //
+        // Rémy : « J'aimerai […] un jeu façon sokoban. Il faut que ce soit
+        // progressif. »
+        //
+        // ON NE POSE PAS DES CAISSES AU HASARD : neuf grilles sur dix seraient
+        // insolubles, et rien ne le dirait avant d'avoir tout essayé. On part
+        // de la position GAGNANTE et l'on remonte le temps en TIRANT les
+        // caisses. Toute position atteinte ainsi est résoluble par
+        // construction, et sa profondeur est le nombre minimum de poussées.
+        //
+        // ET C'EST CE QUI PERMET DE DIRE « C'EST PERDU ». Une caisse dans un
+        // coin n'en sortira plus, mais le jeu continue de proposer des coups :
+        // sur un carton, on s'acharne. Ici, la table sait exactement quelles
+        // positions restent résolubles, et le jeu le dit tout de suite.
+        id: 'defi-pousseur', status: STATUS.TEST, title: 'Le Pousseur',
+        cree: '2026-08-25',
+        activityId: 'pousseur', skills: ['defi.pousseur'],
+        sansRevision: true,
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de départ',
+                aide: 'Le niveau se mesure en POUSSÉES minimum, et il monte tout seul à chaque entrepôt rangé. Les deux premiers niveaux tiennent en deux caisses : c\'est assez pour rencontrer le piège du coin, qui est toute la leçon.',
+                options: [
+                    { value: 1, label: 'Niveau 1 — pour comprendre (2 caisses)' },
+                    { value: 2, label: 'Niveau 2 (2 caisses)' },
+                    { value: 3, label: 'Niveau 3 (3 caisses)' },
+                    { value: 4, label: 'Niveau 4 (3 caisses)' },
+                    { value: 5, label: 'Niveau 5 (4 caisses)' },
+                    { value: 6, label: 'Niveau 6 — expert (4 caisses)' }
+                ],
+                default: 1
+            }
+        ],
+        motsClefs: ['pousseur', 'sokoban', 'caisses', 'entrepôt', 'pousser', 'coin',
+            'irréversible', 'casse-tête', 'défi', 'blocage'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.CASSE_TETE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Range toutes les caisses sur les ronds verts. Touche une case libre pour y emmener le pousseur, ou touche une caisse pour la pousser ; les quatre flèches et celles du clavier marchent aussi. LA RÈGLE QUI FAIT TOUT : on POUSSE, on ne tire JAMAIS. Une caisse plaquée contre un mur ne pourra plus s'en éloigner — elle ne glissera que le long de ce mur — et dans un coin, elle ne bougera plus du tout. Si elle n'est pas sur un but à ce moment-là, c'est perdu. Alors avant chaque poussée, ne te demande pas « est-ce que ça avance ? » mais « est-ce que je pourrai revenir ? ». Le jeu te prévient dès que la position devient perdue, et « Annuler » te ramène en arrière — mais l'exercice est de le voir AVANT. Deux réflexes qui sauvent : ne colle pas une caisse contre un mur sans y être obligé, et commence par celles qui sont près d'un coin. On compte les POUSSÉES, pas les pas : marcher ne coûte rien."
     }
 ];

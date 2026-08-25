@@ -433,6 +433,14 @@ const BASE = {
         descriptor: 'Trouver l\'ordre des coups dans un casse-t\u00eate sans retour en arri\u00e8re, o\u00f9 une seule maladresse rend la suite impossible.',
         lesson: "UN CASSE-T\u00caTE SANS RETOUR EN ARRI\u00c8RE NE SE PERD PAS : IL SE BLOQUE. Les grenouilles vertes ne vont qu'\u00e0 droite, les rouges qu'\u00e0 gauche, et un saut ne franchit qu'UNE b\u00eate. Deux grenouilles de la m\u00eame couleur c\u00f4te \u00e0 c\u00f4te devant une autre, et plus personne ne passera jamais \u2014 alors qu'il reste des coups possibles, et qu'on peut s'acharner un quart d'heure sur une partie termin\u00e9e depuis le troisi\u00e8me coup. C'est l\u00e0 toute la le\u00e7on : dans ce genre de probl\u00e8me, il faut regarder ce que le coup REND IMPOSSIBLE, pas seulement ce qu'il fait gagner. La r\u00e8gle qui sauve tient en un mot : ALTERNER. Une verte, une rouge, une verte \u2014 jamais deux fois la m\u00eame couleur de suite. Et le nombre de coups se d\u00e9montre au lieu de se compter : chaque verte doit d\u00e9passer chaque rouge, ce qui fait n \u00d7 n sauts, et chaque grenouille glisse une fois, ce qui fait 2n glissades. Total : n\u00b2 + 2n. Pour quatre contre quatre, 24 coups, jamais moins."
     },
+    'defi.pousseur': {
+        label: 'Voir un coup irr\u00e9versible avant de le jouer',
+        chemin: [D.DEFIS, SD.CASSE_TETE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Ranger des caisses qu\'on ne peut que POUSSER, en rep\u00e9rant \u00e0 l\'avance les coups qui rendent la suite impossible.',
+        lesson: "ON POUSSE, ON NE TIRE JAMAIS \u2014 et toute la difficult\u00e9 tient dans cette absence. Une caisse plaqu\u00e9e contre un mur ne pourra plus JAMAIS s'en \u00e9loigner : elle ne se d\u00e9placera que le long de ce mur. Dans un COIN, elle ne bougera plus du tout. Et si elle n'est pas sur un but \u00e0 ce moment-l\u00e0, la partie est perdue \u2014 sauf que le jeu continue de proposer des coups, et qu'on peut s'acharner un quart d'heure sur une partie termin\u00e9e depuis le troisi\u00e8me coup. LA BONNE QUESTION N'EST DONC PAS \u00ab EST-CE QUE \u00c7A AVANCE ? \u00bb MAIS \u00ab EST-CE QUE JE POURRAI REVENIR ? \u00bb. Avant chaque pouss\u00e9e, regarde ce qu'elle rend IMPOSSIBLE : c'est la m\u00eame le\u00e7on que les grenouilles, mais il faut ici la voir plusieurs coups \u00e0 l'avance. Deux r\u00e9flexes qui sauvent : ne colle jamais une caisse contre un mur sans y \u00eatre oblig\u00e9, et commence par les caisses les plus proches d'un coin \u2014 ce sont elles qui ont le moins de libert\u00e9, donc le moins de choix. ENFIN, ON COMPTE LES POUSS\u00c9ES, PAS LES PAS. Marcher ne co\u00fbte rien : ce qui compte, c'est ce qu'on fait des caisses."
+    },
     'defi.embouteillage': {
         label: 'D\u00e9m\u00ealer une cha\u00eene de blocages',
         chemin: [D.DEFIS, SD.CASSE_TETE],

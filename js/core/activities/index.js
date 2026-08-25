@@ -554,6 +554,8 @@ const legacy = [
     // rouge sortie. Trois suffisent — le niveau monte tout seul entre chaque,
     // donc trois parties, ce sont déjà trois marches.
     ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
+    // Le pousseur se compte en ENTREPÔTS rangés, et le niveau monte entre chaque.
+    ['pousseur', 'Le Pousseur', 'pousseur', 'enginePousseur', 'entrepôt', 3],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
