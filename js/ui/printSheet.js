@@ -623,6 +623,14 @@ function texteArcAngle(arc, solution) {
 function figureAnglePreviewHtml(g, k, etiquette) {
     const m = g.m;
     const T = (v) => (v * k).toFixed(2);
+    // EN NOIR ET BLANC, UN SECTEUR N'EST PLUS UN APLAT MAIS UN CONTOUR.
+    //
+    // C'est la règle de la maison — la couleur ajoute du confort, jamais
+    // l'information — et c'est aussi ce qui distingue « noir et blanc » de
+    // « niveau de gris » : le premier rend une figure de manuel, en ligne
+    // claire ; le second garde les aplats et les ramène à des gris. Ici rien
+    // n'est perdu : chaque secteur porte déjà sa mesure ou son « ? ».
+    const aplat = polycopieEnCouleur();
     const Q = (x, y) => { const p = g.P(x, y); return `${T(p.x)},${T(p.y)}`; };
     let d = '';
     m.figure.arcs.forEach((arc, i) => {
@@ -630,8 +638,9 @@ function figureAnglePreviewHtml(g, k, etiquette) {
             .filter(a => Math.abs(a.x - arc.x) < 1e-9 && Math.abs(a.y - arc.y) < 1e-9).length;
         const pts = contourSecteurAngle(arc, rayonSecteurAngle(arc, rangArc)).map(p => Q(p.x, p.y));
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
-        d += `<polygon points="${pts.join(' ')}" fill="rgb(${c.fond.join(',')})"
-            stroke="rgb(${c.trait.join(',')})" stroke-width="${T(0.35)}"
+        d += `<polygon points="${pts.join(' ')}"
+            fill="${aplat ? `rgb(${c.fond.join(',')})` : 'none'}"
+            stroke="rgb(${c.trait.join(',')})" stroke-width="${T(aplat ? 0.35 : 0.5)}"
             ${arc.role === 'relais' ? `stroke-dasharray="${T(1.2)} ${T(1)}"` : ''}/>`;
     });
     m.figure.traits.forEach(t => {
@@ -657,7 +666,7 @@ function figureAnglePreviewHtml(g, k, etiquette) {
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
         // La même gomme qu'au PDF : le fond du secteur quand l'étiquette est
         // dedans, le blanc du papier quand elle est derrière l'arc.
-        const gomme = etiqDedansAngle(arc) ? `rgb(${c.fond.join(',')})` : '#fff';
+        const gomme = aplat && etiqDedansAngle(arc) ? `rgb(${c.fond.join(',')})` : '#fff';
         html += `<div class="fx-ar-mesure" style="left:${T(p.x - 8)}px; top:${T(p.y - g.tailleEtiq * 0.7)}px;
             width:${T(16)}px; font-size:${T(g.tailleEtiq)}px;
             color:rgb(${c.trait.join(',')})"><span
@@ -682,6 +691,8 @@ function anglesManquantsPreviewHtml(item, slot, k, solution) {
 
 function dessinerFigureAnglePdf(doc, g, etiquette) {
     const m = g.m;
+    // En noir et blanc : un contour, pas un aplat (voir figureAnglePreviewHtml).
+    const aplat = polycopieEnCouleur();
     m.figure.arcs.forEach((arc, i) => {
         const rangArc = m.figure.arcs.slice(0, i)
             .filter(a => Math.abs(a.x - arc.x) < 1e-9 && Math.abs(a.y - arc.y) < 1e-9).length;
@@ -689,9 +700,9 @@ function dessinerFigureAnglePdf(doc, g, etiquette) {
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
         doc.setFillColor(...c.fond);
         doc.setDrawColor(...c.trait);
-        doc.setLineWidth(0.35);
+        doc.setLineWidth(aplat ? 0.35 : 0.5);
         const suite = pts.slice(1).map((p, j) => [p.x - pts[j].x, p.y - pts[j].y]);
-        doc.lines(suite, pts[0].x, pts[0].y, [1, 1], 'FD', true);
+        doc.lines(suite, pts[0].x, pts[0].y, [1, 1], aplat ? 'FD' : 'S', true);
     });
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.5);
@@ -730,8 +741,8 @@ function dessinerFigureAnglePdf(doc, g, etiquette) {
         // nombre reste lisible sans qu'on ait à écarter la figure.
         const lg = doc.getTextWidth(mot) + 0.8, ht = g.tailleEtiq * 0.9;
         // Dedans, la gomme prend la couleur du secteur : blanche, elle y
-        // perçait un trou.
-        doc.setFillColor(...(etiqDedansAngle(arc) ? c.fond : [255, 255, 255]));
+        // perçait un trou. Sans aplat, c'est le blanc du papier partout.
+        doc.setFillColor(...(aplat && etiqDedansAngle(arc) ? c.fond : [255, 255, 255]));
         doc.rect(p.x - lg / 2, p.y - ht * 0.62, lg, ht, 'F');
         doc.setTextColor(...c.trait);
         doc.text(mot, p.x, p.y + g.tailleEtiq * 0.35, { align: 'center' });

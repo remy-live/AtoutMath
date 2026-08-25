@@ -116,22 +116,25 @@ function grisDe(rvb) {
     return borne(Math.max(25, y - chroma * 0.6));
 }
 
-/** Une vraie couleur, ou un gris déguisé ? Un gris traverse tous les modes. */
-const estColore = (rvb) => Math.max(...rvb.slice(0, 3)) - Math.min(...rvb.slice(0, 3)) >= 12;
-
 /**
  * Filtre une couleur [r, v, b] selon le mode courant.
  *
- * `aplat` distingue un REMPLISSAGE d'un trait, et c'est ce qui sépare
- * « niveau de gris » de « noir et blanc » : le premier garde les aplats et les
- * ramène à des gris, le second les efface et ne laisse que le trait. Sans
- * cela, les deux modes rendaient la même feuille — et deux modes identiques
- * ne sont qu'un mode et une promesse non tenue.
+ * CE QUI SÉPARE « NIVEAU DE GRIS » DE « NOIR ET BLANC » N'EST PAS ICI.
+ * On avait essayé : en noir et blanc, effacer les aplats colorés et ne garder
+ * que le trait. La règle est juste, mais elle est INDÉCIDABLE à partir de la
+ * couleur seule — l'encre presque noire de la feuille (26, 32, 44) et le bleu
+ * pâle d'un angle-relais (222, 226, 245) ont la même saturation, et l'une doit
+ * rester quand l'autre doit partir. Les points d'une grille de slitherlink ont
+ * disparu de la feuille avant qu'on s'en aperçoive.
+ *
+ * La distinction se décide donc là où l'on SAIT ce qu'on dessine : dans chaque
+ * rendu, qui demande `polycopieEnCouleur()` et remplace alors son aplat par un
+ * contour, une trame ou un symbole. C'est ce que font déjà la plupart d'entre
+ * eux — c'est la règle de la maison depuis le début.
  */
-export function encre(rvb, mode = modePolycopie(), aplat = false) {
+export function encre(rvb, mode = modePolycopie()) {
     if (!Array.isArray(rvb) || rvb.length < 3) return rvb;
     if (mode === 'couleur') return rvb;
-    if (mode === 'nb' && aplat && estColore(rvb)) return [255, 255, 255];
     if (mode === 'intense') {
         // La saturation, rien d'autre : chaque teinte s'écarte de son propre
         // gris, donc elle reste la sienne. Un gris ne s'écarte de rien.
@@ -153,10 +156,6 @@ export function encre(rvb, mode = modePolycopie(), aplat = false) {
  * pas retrancher la saturation.
  */
 const RE_COULEUR = /(#(?:[0-9a-f]{3}|[0-9a-f]{6})\b)|rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*([^)]*)\)/gi;
-// Ce qui précède une couleur dit si c'est un APLAT ou un trait : `fill="…"`,
-// `background: …`. C'est la seule chose que le mode noir et blanc a besoin de
-// savoir (voir `estAplat`).
-const RE_AVANT_APLAT = /(?:fill|background(?:-color)?|stop-color)\s*[:=]\s*["']?\s*$/i;
 
 export function teindreHtml(html, mode = modePolycopie()) {
     if (mode === 'couleur' || typeof html !== 'string') return html;
@@ -165,8 +164,7 @@ export function teindreHtml(html, mode = modePolycopie()) {
             ? (hex.length === 4 ? [...hex.slice(1)].map(c => parseInt(c + c, 16))
                 : [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)))
             : [+r, +v, +b];
-        const aplat = RE_AVANT_APLAT.test(chaine.slice(Math.max(0, index - 28), index));
-        const t = encre(rvb, mode, aplat);
+        const t = encre(rvb, mode);
         if (hex) return '#' + t.map(x => x.toString(16).padStart(2, '0')).join('');
         const reste = (suite || '').replace(/^\s*,\s*/, '').trim();
         return reste ? `rgba(${t.join(', ')}, ${reste})` : `rgb(${t.join(', ')})`;
@@ -187,14 +185,13 @@ export function teindreDoc(doc) {
     ['setFillColor', 'setDrawColor', 'setTextColor'].forEach(nom => {
         const brut = doc[nom];
         if (typeof brut !== 'function') return;
-        const aplat = nom === 'setFillColor';
         doc[nom] = function (...args) {
             if (args.length >= 3 && args.every(v => typeof v === 'number')) {
-                return brut.apply(this, encre(args.slice(0, 3), undefined, aplat).concat(args.slice(3)));
+                return brut.apply(this, encre(args.slice(0, 3)).concat(args.slice(3)));
             }
             if (args.length === 1 && typeof args[0] === 'string' && /^#[0-9a-f]{6}$/i.test(args[0])) {
                 const h = args[0].slice(1);
-                const t = encre([0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)), undefined, aplat);
+                const t = encre([0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)));
                 return brut.call(this, '#' + t.map(v => v.toString(16).padStart(2, '0')).join(''));
             }
             return brut.apply(this, args);

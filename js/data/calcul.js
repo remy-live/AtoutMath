@@ -660,8 +660,15 @@ export const calculExercises = [
         printable: 'sudoku',
         sansRevision: true,
         params: { nbQuestions: 2, taille: 6, difficulte: 'facile' },
+        // LES TAILLES SE CHERCHENT. Rémy : « y a-t-il des sudoku 4×4 ? » — il y
+        // en a depuis le début, c'est le premier choix du réglage « Taille de
+        // la grille », mais rien dans la fiche ne portait le mot. Un réglage
+        // qu'on ne trouve qu'en ouvrant l'exercice au hasard n'existe qu'à
+        // moitié.
+        motsClefs: ['sudoku', '4x4', '6x6', '9x9', 'carré latin', 'grille', 'logique',
+            'déduction', 'chiffres'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Chaque chiffre ne doit apparaître qu'une seule fois par ligne, par colonne et par bloc. Commence par les cases où un seul chiffre est encore possible : chacune en débloque d'autres."
+        instruction: "Chaque chiffre ne doit apparaître qu'une seule fois par ligne, par colonne et par bloc. Trois tailles au choix : 4 × 4 (blocs de 2 × 2) pour découvrir, 6 × 6, puis le 9 × 9 classique. Commence par les cases où un seul chiffre est encore possible : chacune en débloque d'autres."
     },
     {
         id: 'calc-garam', title: 'Garam',
@@ -1588,6 +1595,8 @@ export const calculExercises = [
                 default: 'moyen'
             }
         ],
+        motsClefs: ['slitherlink', 'boucle', 'loop the loop', 'points', 'segments',
+            'logique', 'énigme', 'tracé', 'fil unique'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Trace UNE seule boucle ferm\u00e9e qui ne se croise ni ne se touche. Chaque chiffre dit combien des quatre c\u00f4t\u00e9s de sa case font partie de la boucle ; une case sans chiffre ne dit rien. Touche un segment pour le tracer, encore une fois pour le barrer d'une croix, encore une fois pour l'effacer \u2014 et glisse le doigt pour encha\u00eener. Un point porte toujours deux segments ou aucun."
     },
