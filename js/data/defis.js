@@ -98,5 +98,47 @@ export const defisExercises = [
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
         instruction: "Échange les grenouilles vertes et les rouges. Touche une grenouille : elle bouge toute seule, car elle n'a jamais qu'un seul coup possible — elle glisse sur le nénuphar voisin s'il est libre, ou elle saute par-dessus UNE grenouille. Les vertes ne vont qu'à droite, les rouges qu'à gauche, et on ne revient JAMAIS en arrière. C'est là tout le piège : le jeu ne se perd pas, il se bloque. Fais avancer deux grenouilles de la même couleur l'une derrière l'autre, et plus personne ne passera — un saut ne franchit qu'une bête. La règle qui sauve : ALTERNE les couleurs, une verte, une rouge, une verte. Le jeu te prévient dès que la position devient perdue, et « Annuler » te ramène en arrière."
+    },
+    {
+        // LE PARKING — « le jeu de fin de semaine » de la revue.
+        //
+        // C'EST LE CONTRAIRE DES GRENOUILLES, ET C'EST POUR CELA QU'IL Y A LES
+        // DEUX. Chez les grenouilles, on ne revient jamais en arrière : le
+        // piège est l'irréversible. Ici tout se défait — une voiture recule si
+        // elle veut — et pourtant c'est bien plus long, parce que ce qui manque
+        // n'est pas le droit de reculer mais la PLACE. Huit voitures, quatre
+        // cases libres, et une voie où l'on ne se double pas.
+        //
+        // LA CASE SOUS LA VOIE EST TOUT LE PROBLÈME. On peut pousser des
+        // voitures une demi-heure sans la remarquer, et ne jamais finir. Un
+        // élève qui comprend pourquoi elle est là a compris le jeu ; le reste
+        // n'est que de la patience.
+        id: 'defi-parking', status: STATUS.TEST, title: 'Le Parking',
+        cree: '2026-08-25',
+        activityId: 'parking', skills: ['defi.parking'],
+        sansRevision: true,
+        printable: 'parking', printGeneratorId: 'defi.parking-fiche',
+        printParams: { taille: 'moyen' },
+        params: { taille: 'moyen' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Voitures de chaque côté',
+                aide: 'Le nombre de coups grimpe très vite — 36, 62, 104, 146 — parce que chaque croisement coûte un aller-retour par la place de dégagement. Commencer à 2 contre 2 pour comprendre le mécanisme, puis passer au plateau de la revue.',
+                options: [
+                    { value: 'minuscule', label: '2 contre 2 — pour découvrir (36 coups)' },
+                    { value: 'petit', label: '3 contre 3 (62 coups)' },
+                    { value: 'moyen', label: '4 contre 4 — le jeu de la revue (104 coups)' },
+                    { value: 'grand', label: '5 contre 5 — le grand parking (146 coups)' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['parking', 'voitures', 'garage', 'déplacement', 'défi', 'casse-tête',
+            'croisement', 'place de dégagement', 'fin de semaine'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.CASSE_TETE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Les voitures de gauche doivent toutes se retrouver à droite, et celles de droite à gauche. Touche une voiture : si elle n'a qu'une sortie, elle y va toute seule ; sinon, touche ensuite la case libre où l'envoyer. Une voiture avance ou recule d'UNE case à la fois, et ne saute JAMAIS par-dessus une autre. Tout doit donc passer par la voie du milieu, qui ne fait qu'une case de large — et deux voitures qui s'y croisent en sens contraires sont coincées pour de bon. Regarde bien la case qui dépasse sous la voie : c'est la seule où l'on peut se ranger pour laisser passer, et sans elle le jeu serait impossible. Ne demande pas « qui avance ? » mais « qui doit se ranger ? ». Le compteur affiche en permanence combien de coups il reste au plus court : s'il monte après ton coup, tu viens de faire un détour."
     }
 ];

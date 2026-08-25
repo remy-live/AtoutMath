@@ -412,6 +412,14 @@ const BASE = {
         descriptor: 'Trouver l\'ordre des coups dans un casse-t\u00eate sans retour en arri\u00e8re, o\u00f9 une seule maladresse rend la suite impossible.',
         lesson: "UN CASSE-T\u00caTE SANS RETOUR EN ARRI\u00c8RE NE SE PERD PAS : IL SE BLOQUE. Les grenouilles vertes ne vont qu'\u00e0 droite, les rouges qu'\u00e0 gauche, et un saut ne franchit qu'UNE b\u00eate. Deux grenouilles de la m\u00eame couleur c\u00f4te \u00e0 c\u00f4te devant une autre, et plus personne ne passera jamais \u2014 alors qu'il reste des coups possibles, et qu'on peut s'acharner un quart d'heure sur une partie termin\u00e9e depuis le troisi\u00e8me coup. C'est l\u00e0 toute la le\u00e7on : dans ce genre de probl\u00e8me, il faut regarder ce que le coup REND IMPOSSIBLE, pas seulement ce qu'il fait gagner. La r\u00e8gle qui sauve tient en un mot : ALTERNER. Une verte, une rouge, une verte \u2014 jamais deux fois la m\u00eame couleur de suite. Et le nombre de coups se d\u00e9montre au lieu de se compter : chaque verte doit d\u00e9passer chaque rouge, ce qui fait n \u00d7 n sauts, et chaque grenouille glisse une fois, ce qui fait 2n glissades. Total : n\u00b2 + 2n. Pour quatre contre quatre, 24 coups, jamais moins."
     },
+    'defi.parking': {
+        label: 'Trouver l\'ordre des coups quand la place manque',
+        chemin: [D.DEFIS, SD.CASSE_TETE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Organiser une suite de d\u00e9placements dans un espace o\u00f9 l\'on ne se croise qu\'en un seul endroit, et rep\u00e9rer la case qui rend tout possible.',
+        lesson: "CE N'EST PAS UN SENS INTERDIT QUI BLOQUE ICI, C'EST LE MANQUE DE PLACE. Une voiture va o\u00f9 elle veut, en avant comme en arri\u00e8re \u2014 mais elle ne saute par-dessus personne, et la voie du milieu ne fait qu'une case de large. Deux voitures qui s'y rencontrent en sens contraires n'ont aucun moyen de se d\u00e9passer. Tout le jeu tient donc dans UNE case : celle qui d\u00e9passe sous la voie. C'est le seul endroit o\u00f9 une voiture peut se garer pour en laisser passer une autre, et sans elle le probl\u00e8me n'a tout simplement pas de solution. La m\u00e9thode qui marche : ne pense pas \u00ab je fais avancer celle-ci \u00bb, pense \u00ab qui doit se ranger pour que celle-l\u00e0 passe \u00bb. Et n'engage jamais deux voitures dans la voie sans avoir gard\u00e9 la place libre. Le compte, lui, est impitoyable : d\u00e9j\u00e0 36 coups \u00e0 deux contre deux, 104 \u00e0 quatre contre quatre \u2014 parce que chaque croisement co\u00fbte tout un aller-retour par la place de d\u00e9gagement."
+    },
     'num.logique.tasuko': {
         label: 'Le tasuko : d\u00e9couper une grille en additions',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

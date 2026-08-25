@@ -4555,9 +4555,34 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; top: 0; left: .5px; color: #6b7280;
     font-weight: 700; line-height: 1;
 }
-/* LE HASHI : l'île est un cercle épais, le pont un trait fin. C'est ce qui
-   permet de tracer par-dessus au crayon sans confondre la figure imprimée avec
-   celle de l'élève, et c'est aussi ce qui survit à la photocopie. */
+/* --- Fiche « le Parking » --------------------------------------------------
+   Le bitume, les places, la place de dégagement en pointillés, et les voitures
+   à découper. L'aperçu et le PDF lisent la même géométrie (geoParking). */
+.fx-pk-bitume {
+    position: absolute; background: #9aa3ad; border-radius: 3px;
+}
+.fx-pk-case {
+    position: absolute; background: #fff; border: 1px solid #2a3040;
+    border-radius: 2px; box-sizing: border-box;
+}
+.fx-pk-case--place { border-style: dashed; }
+.fx-pk-coupe { position: absolute; border-left: 1px dashed #8a92a6; pointer-events: none; }
+.fx-pk-titre {
+    position: absolute; text-align: center; font-weight: 700; color: #4a5568;
+    white-space: nowrap;
+}
+.fx-pk-piece {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    border: 1px solid #b0b6c5; border-radius: 3px; box-sizing: border-box;
+}
+.fx-pk-piece svg { width: 82%; height: 82%; }
+.fx-pk-mini {
+    position: absolute; border: 1px solid #b0b6c5; border-radius: 1.5px;
+    background: #fff; box-sizing: border-box;
+}
+.fx-pk-mini--B { background: #d6e2fa; }
+.fx-pk-mini--R { background: #fbdcdc; }
+
 /* --- Fiches « jeux à découper » : Tour de Brahma et Grenouilles ------------
    Le plateau d'un côté, les pièces de l'autre, un pointillé entre les deux :
    l'élève reçoit une page et repart avec un jeu. L'aperçu et le PDF lisent la
@@ -4681,6 +4706,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* La solution s'écrit en vert, comme partout ailleurs sur les corrigés. */
 .fx-py-case--sol { color: #2f855a; }
 
+/* LE HASHI : l'île est un cercle épais, le pont un trait fin. C'est ce qui
+   permet de tracer par-dessus au crayon sans confondre la figure imprimée avec
+   celle de l'élève, et c'est aussi ce qui survit à la photocopie. */
 .fx-hs-svg { position: absolute; overflow: visible; pointer-events: none; }
 .fx-hs-ile {
     position: absolute; border: .5px solid #1a202c; border-radius: 50%;

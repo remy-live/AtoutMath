@@ -71,6 +71,7 @@ import { pyramideNombresFicheGenerator } from '../generators/pyramideNombresFich
 import { tasukoFicheGenerator } from '../generators/tasukoFiche.js';
 import { tourBrahmaFicheGenerator } from '../generators/tourBrahmaFiche.js';
 import { grenouillesFicheGenerator } from '../generators/grenouillesFiche.js';
+import { parkingFicheGenerator } from '../generators/parkingFiche.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
@@ -113,7 +114,7 @@ import {
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
     motsCroisesFicheGenerator, motCodeFicheGenerator, pyramideFicheGenerator,
     mastermindFicheGenerator, pyramideNombresFicheGenerator, tasukoFicheGenerator,
-    tourBrahmaFicheGenerator, grenouillesFicheGenerator,
+    tourBrahmaFicheGenerator, grenouillesFicheGenerator, parkingFicheGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
@@ -539,6 +540,10 @@ const legacy = [
     // la qualité — pas le nombre d'essais.
     ['tour-brahma', 'La Tour de Brahma', 'tourBrahma', 'engineTourBrahma', 'tour', 2],
     ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 2],
+    // Le parking se compte en PARTIES : les deux parkings ont échangé ou non.
+    // Deux parties suffisent à valider — celle-ci se compte en centaines de
+    // coups, en redemander cinq serait une punition.
+    ['parking', 'Le Parking', 'parking', 'engineParking', 'échange', 2],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

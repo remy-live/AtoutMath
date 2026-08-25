@@ -3193,7 +3193,7 @@ function dessinerBrahmaPdf(doc, item, slot) {
     doc.setDrawColor(...ENCRE.gris);
     doc.setLineWidth(0.3);
     if (doc.setLineDashPattern) doc.setLineDashPattern([1.4, 1.2], 0);
-    doc.line(g.xCoupe, g.b.y, g.xCoupe, g.b.y + g.hHaut);
+    doc.line(g.xCoupe, g.b.y, g.xCoupe, g.b.y + g.b.h);
     if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
 
     doc.setFont('helvetica', 'bold');
@@ -3411,6 +3411,228 @@ function dessinerGrenouillesPdf(doc, item, slot) {
         doc.text(vert ? '>' : '<', x + dispo * (vert ? 0.82 : 0.18), y + dispo * 0.92,
             { align: 'center' });
     }
+}
+
+// --- LE PARKING À DÉCOUPER ------------------------------------------------------
+//
+// Rémy : « Le jeu de fin de semaine ». Le plateau d'un côté, les huit voitures
+// de l'autre, un pointillé entre les deux — et les vignettes « Au Départ » et
+// « Arrivée » qui disent le but sans une phrase.
+//
+// LE BITUME EST DESSINÉ, PAS SEULEMENT LES PLACES. C'est ce qui fait qu'on
+// comprend le plateau d'un coup d'œil : on roule sur le gris, on se gare sur le
+// blanc. Et la case en pointillés — la place de dégagement — se distingue des
+// autres, parce que c'est elle, le sujet du jeu.
+
+/**
+ * LA GÉOMÉTRIE DU BLOC, EN MILLIMÈTRES : trois colonnes.
+ *
+ * Le plateau à gauche, les deux vignettes au milieu, les voitures à découper à
+ * droite du pointillé. Le plateau est TOUJOURS limité par la hauteur — cinq
+ * cases de large contre quatre de haut dans un bloc plus large que haut —,
+ * alors la place gagnée en largeur est rendue aux vignettes plutôt que laissée
+ * blanche. Et les mettre l'une SOUS l'autre, au milieu, dit ce qu'aucune
+ * légende ne dirait aussi bien : on part de celle du haut, on arrive à celle du
+ * bas.
+ */
+function geoParking(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const largePlateau = b.w * 0.42;
+    const largeVign = b.w * 0.22;
+    const cote = Math.min((largePlateau - 6) / 5, (b.h - 6) / m.hauteur, 22);
+    const w = cote * 5, h = cote * m.hauteur;
+    const taille = Math.max(2.2, Math.min(b.h * 0.05, 3.4));
+    const xVign = b.x + largePlateau;
+    // Chaque vignette occupe la moitié de la hauteur : titre, puis mini-plateau.
+    const hVign = b.h / 2;
+    const petit = Math.min((largeVign - 4) / 5, (hVign - taille * 2.4) / m.hauteur);
+    const pieces = { x: xVign + largeVign + 6, w: b.w - largePlateau - largeVign - 6,
+        y: b.y, h: b.h };
+    // LA VOITURE DÉCOUPÉE DOIT ENTRER DANS SA PLACE. C'est une évidence sur la
+    // table et un oubli facile sur la feuille : sans ce plafond, un bloc large
+    // dessinait des voitures plus grandes que les cases du plateau, et le jeu
+    // découpé était injouable.
+    const d = Math.min(pieces.w / 2, (pieces.h - taille * 1.8) / Math.ceil(m.n), cote) * 0.94;
+    return {
+        m, b, cote, taille, petit, hVign, d,
+        plateau: { x: b.x + (largePlateau - w) / 2, y: b.y + (b.h - h) / 2, w, h },
+        vign: { x: xVign, w: largeVign, x0: xVign + (largeVign - petit * 5) / 2 },
+        xCoupe: xVign + largeVign + 2,
+        pieces
+    };
+}
+
+/** Les deux vignettes : la position de départ et celle d'arrivée. */
+const vignettesParking = (m) => [
+    { titre: 'Au Départ', couleurs: m.cases.map(c => (c.zone === 'gauche' ? 'B' : c.zone === 'droite' ? 'R' : null)) },
+    { titre: 'Arrivée', couleurs: m.cases.map(c => (c.zone === 'gauche' ? 'R' : c.zone === 'droite' ? 'B' : null)) }
+];
+
+/** La voiture de la fiche : la même qu'à l'écran. */
+function voitureSvgFiche(bleue) {
+    const fonce = bleue ? '#1c3a8a' : '#8f1f14';
+    const clair = bleue ? '#2f5fd0' : '#e04a3a';
+    return `<svg viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet">
+        <rect x="2" y="12" width="8" height="18" rx="3" fill="#2d3748"/>
+        <rect x="50" y="12" width="8" height="18" rx="3" fill="#2d3748"/>
+        <rect x="2" y="66" width="8" height="18" rx="3" fill="#2d3748"/>
+        <rect x="50" y="66" width="8" height="18" rx="3" fill="#2d3748"/>
+        <rect x="6" y="4" width="48" height="92" rx="16" fill="${clair}"
+            stroke="${fonce}" stroke-width="3"/>
+        <rect x="14" y="30" width="32" height="30" rx="7" fill="#4a5568"/></svg>`;
+}
+
+function parkingPreviewHtml(item, slot, k) {
+    const g = geoParking(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const P = g.plateau;
+    // LE BITUME SUIT LA FORME DU PLATEAU, case par case — un rectangle plein
+    // laisserait croire qu'on peut rouler dans les coins vides, et c'est
+    // justement parce que le plateau N'EST PAS un rectangle que le jeu est
+    // difficile. Même dessin qu'à l'écran (voir games/parking.js).
+    const bord = g.cote * 0.14;
+    let html = '';
+    g.m.cases.forEach(c => {
+        html += `<div class="fx-pk-bitume" style="left:${T(P.x + c.x * g.cote - bord)}px;
+            top:${T(P.y + c.y * g.cote - bord)}px; width:${T(g.cote + bord * 2)}px;
+            height:${T(g.cote + bord * 2)}px"></div>`;
+    });
+    g.m.cases.forEach(c => {
+        html += `<div class="fx-pk-case${c.zone === 'place' ? ' fx-pk-case--place' : ''}"
+            style="left:${T(P.x + c.x * g.cote)}px; top:${T(P.y + c.y * g.cote)}px;
+            width:${T(g.cote)}px; height:${T(g.cote)}px"></div>`;
+    });
+    html += `<div class="fx-pk-coupe" style="left:${T(g.xCoupe)}px; top:${T(g.b.y)}px;
+        height:${T(g.b.h)}px"></div>`;
+    html += `<div class="fx-pk-titre" style="left:${T(g.pieces.x)}px; top:${T(g.b.y)}px;
+        width:${T(g.pieces.w)}px; font-size:${T(g.taille)}px">Voitures à découper</div>`;
+
+    // Les voitures à découper : deux colonnes, les bleues puis les rouges.
+    const nb = g.m.n * 2;
+    const d = g.d;
+    for (let i = 0; i < nb; i++) {
+        const bleue = i < g.m.n;
+        const x = g.pieces.x + (g.pieces.w - d * 2) / 2 + (i % 2) * d;
+        const y = g.b.y + g.taille * 1.8 + Math.floor(i / 2) * d;
+        html += `<div class="fx-pk-piece" style="left:${T(x + d * 0.04)}px; top:${T(y + d * 0.04)}px;
+            width:${T(d * 0.92)}px; height:${T(d * 0.92)}px">${voitureSvgFiche(bleue)}</div>`;
+    }
+
+    // Les deux vignettes, l'une sous l'autre : d'où l'on part, où l'on arrive.
+    vignettesParking(g.m).forEach((v, j) => {
+        const yTitre = g.b.y + j * g.hVign;
+        html += `<div class="fx-pk-titre" style="left:${T(g.vign.x)}px; top:${T(yTitre)}px;
+            width:${T(g.vign.w)}px; font-size:${T(g.taille)}px">${v.titre}</div>`;
+        g.m.cases.forEach((c, i) => {
+            const col = v.couleurs[i];
+            html += `<div class="fx-pk-mini${col ? ` fx-pk-mini--${col}` : ''}"
+                style="left:${T(g.vign.x0 + c.x * g.petit)}px;
+                top:${T(yTitre + g.taille * 1.7 + c.y * g.petit)}px;
+                width:${T(g.petit)}px; height:${T(g.petit)}px"></div>`;
+        });
+    });
+    return html;
+}
+
+/** La voiture en formes simples, pour le PDF. */
+function dessinerVoiturePdf(doc, x, y, w, h, fonce, clair, aplat) {
+    doc.setFillColor(...(aplat ? clair : [255, 255, 255]));
+    doc.setDrawColor(...fonce);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(x + w * 0.1, y + h * 0.04, w * 0.8, h * 0.92, w * 0.2, w * 0.2, 'FD');
+    // Les roues, puis le toit : quatre traits épais et un rectangle sombre
+    // suffisent à faire une voiture vue de dessus.
+    doc.setFillColor(45, 55, 72);
+    [[0.03, 0.12], [0.83, 0.12], [0.03, 0.66], [0.83, 0.66]].forEach(([dx, dy]) => {
+        doc.roundedRect(x + w * dx, y + h * dy, w * 0.14, h * 0.18, w * 0.05, w * 0.05, 'F');
+    });
+    doc.setFillColor(...(aplat ? [74, 85, 104] : [220, 224, 232]));
+    doc.setDrawColor(...fonce);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(x + w * 0.24, y + h * 0.3, w * 0.52, h * 0.3, w * 0.1, w * 0.1, 'FD');
+}
+
+function dessinerParkingPdf(doc, item, slot) {
+    const g = geoParking(item, slot);
+    const aplat = polycopieEnCouleur();
+    const BLEU = [[28, 58, 138], [47, 95, 208]];
+    const ROUGE = [[143, 31, 20], [224, 74, 58]];
+    const P = g.plateau;
+
+    // LE BITUME SUIT LA FORME DU PLATEAU, case par case. Un rectangle plein
+    // laisserait croire qu'on peut rouler dans les coins vides ; or le plateau
+    // n'est pas un rectangle, et c'est ce qui fait tout le jeu. En noir et
+    // blanc il disparaît, et c'est très bien — le cadre des places suffit
+    // alors à lire le plateau.
+    const bord = g.cote * 0.14;
+    if (aplat) {
+        doc.setFillColor(154, 163, 173);
+        g.m.cases.forEach(c => {
+            doc.roundedRect(P.x + c.x * g.cote - bord, P.y + c.y * g.cote - bord,
+                g.cote + bord * 2, g.cote + bord * 2, g.cote * 0.18, g.cote * 0.18, 'F');
+        });
+    }
+    g.m.cases.forEach(c => {
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.4);
+        if (c.zone === 'place' && doc.setLineDashPattern) doc.setLineDashPattern([1.2, 1], 0);
+        doc.roundedRect(P.x + c.x * g.cote, P.y + c.y * g.cote, g.cote, g.cote, 1.2, 1.2, 'FD');
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+    });
+
+    doc.setDrawColor(...ENCRE.gris);
+    doc.setLineWidth(0.3);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([1.4, 1.2], 0);
+    doc.line(g.xCoupe, g.b.y, g.xCoupe, g.b.y + g.b.h);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille / 0.3528);
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf('Voitures à découper'), g.pieces.x + g.pieces.w / 2, g.b.y + g.taille,
+        { align: 'center' });
+
+    const nb = g.m.n * 2;
+    const d = g.d;
+    for (let i = 0; i < nb; i++) {
+        const bleue = i < g.m.n;
+        const x = g.pieces.x + (g.pieces.w - d * 2) / 2 + (i % 2) * d;
+        const y = g.b.y + g.taille * 1.8 + Math.floor(i / 2) * d;
+        // Le cadre de découpe, puis la voiture dedans : c'est le cadre qu'on
+        // suit aux ciseaux, et il doit faire la taille d'une case du plateau.
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(x + d * 0.04, y + d * 0.04, d * 0.92, d * 0.92, 1.2, 1.2, 'FD');
+        const wv = d * 0.5;
+        dessinerVoiturePdf(doc, x + (d - wv) / 2, y + d * 0.13, wv, d * 0.74,
+            ...(bleue ? BLEU : ROUGE), aplat);
+    }
+
+    vignettesParking(g.m).forEach((v, j) => {
+        const yTitre = g.b.y + j * g.hVign;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.taille / 0.3528);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(v.titre), g.vign.x + g.vign.w / 2, yTitre + g.taille, { align: 'center' });
+        g.m.cases.forEach((c, i) => {
+            const col = v.couleurs[i];
+            const x = g.vign.x0 + c.x * g.petit, y = yTitre + g.taille * 1.7 + c.y * g.petit;
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.25);
+            doc.setFillColor(...(aplat && col
+                ? (col === 'B' ? [214, 226, 250] : [251, 220, 220]) : [255, 255, 255]));
+            doc.roundedRect(x, y, g.petit, g.petit, 0.6, 0.6, 'FD');
+            if (!col) return;
+            // Trop petite pour être dessinée : son INITIALE dit la couleur, et
+            // elle survit au noir et blanc.
+            doc.setFontSize(Math.max(4, g.petit * 1.5));
+            doc.setTextColor(...(col === 'B' ? BLEU[0] : ROUGE[0]));
+            doc.text(col, x + g.petit / 2, y + g.petit * 0.72, { align: 'center' });
+        });
+    });
 }
 
 // --- LE TASUKO SUR PAPIER ------------------------------------------------------
@@ -8887,6 +9109,27 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.1 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
+    },
+
+    parking: {
+        titre: 'Le jeu à découper : le Parking',
+        consigne: (items) => {
+            const m = items && items[0] && items[0].meta;
+            const n = (m && m.n) || 4;
+            const mini = (m && m.mini) || 104;
+            return `DÉCOUPE LES ${n * 2} VOITURES et place-les comme sur « Au Départ ». Le but `
+                + 'est que toutes celles de gauche se retrouvent à droite, et celles de droite '
+                + 'à gauche. Les véhicules se déplacent CASE PAR CASE, sur une place voisine '
+                + 'libre : une voiture ne saute jamais par-dessus une autre. Tout est là — une '
+                + 'seule voie, et une seule place en pointillés pour se ranger et laisser '
+                + `passer. Minimum : ${mini} coups.`;
+        },
+        previewGrille: parkingPreviewHtml,
+        pdfGrille: dessinerParkingPdf,
+        nomBloc: 'Jeu', nomBlocs: 'jeux',
+        proportions: { w: 1, h: 0.74 },
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1
     },
 
     tourBrahma: {
