@@ -30,7 +30,8 @@ import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../c
 import { espacerMilliers } from '../core/nombres.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
-    apercuSolutions, pdfSolutions, polycopieEnCouleur, reglerPolycopieCouleur
+    apercuSolutions, pdfSolutions, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
+    teindreDoc, poserTeinte, teindreHtml, optionsPolycopie
 } from './ficheRendu.js';
 
 // Ancrée ou détachée : le choix se retient, et il est le même pour les deux
@@ -152,10 +153,7 @@ function assurerModale() {
                         <option value="paysage">A4 paysage</option>
                     </select></label>
                 <label>Impression
-                    <select id="fq-couleur" class="cfg-input">
-                        <option value="0">Noir et blanc</option>
-                        <option value="1">En couleur</option>
-                    </select></label>
+                    <select id="fq-couleur" class="cfg-input"></select></label>
                 <label>Colonnes
                     <select id="fq-colonnes" class="cfg-input">
                         <option value="auto">auto</option>
@@ -334,13 +332,13 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         apercu.style.width = `${pg.w * k}px`;
         apercu.style.height = `${pg.h * k * vues.length + 12 * Math.max(0, vues.length - 1)}px`;
 
-        apercu.innerHTML = vues.map((v, i) => `
+        apercu.innerHTML = teindreHtml(vues.map((v, i) => `
             <div class="fq-page${v.liste ? ' fq-page--sol' : ''}"
                  style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
                 ${apercuEntete(k, exo.title, v.sousTitre, null, pg)}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts)
         : apercuItems(v.page, k, { ...v.opts, reglable: true })}
-            </div>`).join('');
+            </div>`).join(''));
 
         const enCol = mise.colonnes && mise.colonnes[0];
         totalEl.textContent = `${nb} questions · ${mise.pages.length} page${mise.pages.length > 1 ? 's' : ''}`
@@ -373,8 +371,14 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // LE CHOIX EST GLOBAL, la fiche ne fait que l'afficher et le changer :
     // un professeur qui imprime en noir et blanc le fait pour toutes ses
     // feuilles, pas pour celle-ci seulement.
-    couleurEl.value = polycopieEnCouleur() ? '1' : '0';
-    couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
+    couleurEl.innerHTML = optionsPolycopie();
+    couleurEl.value = modePolycopie();
+    couleurEl.onchange = () => {
+        reglerModePolycopie(couleurEl.value);
+        poserTeinte(apercu);
+        rendre();
+    };
+    poserTeinte(apercu);
     colsEl.onchange = rendre;
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
@@ -427,7 +431,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         chargerJsPDF()
             .then(jsPDF => {
                 const sens = o.orientation === 'paysage' ? 'landscape' : 'portrait';
-                const neuf = () => new jsPDF({ orientation: sens, unit: 'mm', format: 'a4' });
+                const neuf = () => teindreDoc(new jsPDF({ orientation: sens, unit: 'mm', format: 'a4' }));
                 const pdf = neuf();
                 const mise = composer(o);
                 mise.pages.forEach((page, i) => {

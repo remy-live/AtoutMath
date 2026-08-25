@@ -37,7 +37,7 @@ import { chargerJsPDF } from './printSheet.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
     cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions,
-    polycopieEnCouleur, reglerPolycopieCouleur
+    polycopieEnCouleur, modePolycopie, reglerModePolycopie, teindreDoc, poserTeinte, teindreHtml, optionsPolycopie
 } from './ficheRendu.js';
 
 /**
@@ -248,10 +248,7 @@ function assurerModale() {
                             <option value="paysage">A4 paysage</option>
                         </select></label>
                     <label>Impression
-                        <select id="pp-couleur" class="cfg-input">
-                            <option value="0">Noir et blanc</option>
-                            <option value="1">En couleur</option>
-                        </select></label>
+                        <select id="pp-couleur" class="cfg-input"></select></label>
                     <label class="fq-case"><input type="checkbox" id="pp-champs">
                         Champs remplissables (PDF)</label>
                     <label>Numéros
@@ -1193,14 +1190,14 @@ export function ouvrirFicheParcours(chemin) {
             })) : [])
         ];
         apercu.style.height = `${pg.h * k * vues.length + 12 * Math.max(0, vues.length - 1)}px`;
-        apercu.innerHTML = vues.map((v, i) => `
+        apercu.innerHTML = teindreHtml(vues.map((v, i) => `
             <div class="fq-page${v.sol ? ' fq-page--sol' : ''}"
                  style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
                 ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg,
         v.sol ? { champs: [] } : o.entete)}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts)
         : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol, retouchable: !v.sol })}
-            </div>`).join('');
+            </div>`).join(''));
 
         apercu.querySelectorAll('[data-reglage]').forEach(b => {
             b.onclick = (ev) => { ev.stopPropagation(); ouvrirRoue(b, b.dataset.reglage); };
@@ -1250,8 +1247,14 @@ export function ouvrirFicheParcours(chemin) {
     orientEl.onchange = rendre;
     // Le même interrupteur que sur les autres fiches, et la même mémoire :
     // c'est une propriété de l'imprimante, pas de la feuille.
-    couleurEl.value = polycopieEnCouleur() ? '1' : '0';
-    couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
+    couleurEl.innerHTML = optionsPolycopie();
+    couleurEl.value = modePolycopie();
+    couleurEl.onchange = () => {
+        reglerModePolycopie(couleurEl.value);
+        poserTeinte(apercu);
+        rendre();
+    };
+    poserTeinte(apercu);
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     noteSurEl.oninput = () => {
@@ -1368,7 +1371,7 @@ function telecharger(modal, chemin, lire) {
             // ajoutée la répète : une seule page couchée dans un document
             // debout est le genre de détail qui ne se voit qu'à l'impression.
             const sens = options.orientation === 'paysage' ? 'landscape' : 'portrait';
-            const neuf = () => new jsPDF({ orientation: sens, unit: 'mm', format: 'a4' });
+            const neuf = () => teindreDoc(new jsPDF({ orientation: sens, unit: 'mm', format: 'a4' }));
 
             const pdf = neuf();
             const mise = composerBlocs(exos, options, mesurer);

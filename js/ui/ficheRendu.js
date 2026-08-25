@@ -15,34 +15,212 @@ import { RE_FRACTION } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
 
 /**
- * LE POLYCOPIÉ EN COULEUR, OU NON.
+ * L'ENCRE DU POLYCOPIÉ — QUATRE MODES, UN SEUL FILTRE.
  *
- * Une salle des professeurs a une imprimante noir et blanc, et de l'encre
- * comptée. Une feuille dont la compréhension DÉPEND de la couleur devient
- * alors inutilisable — c'est pour cela que tout ce qui s'imprime ici porte
- * aussi une marque de forme (un symbole, une trame, une étiquette) : la
- * couleur ajoute du confort, elle ne porte jamais l'information à elle seule.
+ * Rémy : « je trouve que tu te sers peu de la couleur quand on demande le
+ * polycopié en couleur. Mets 4 modes : couleur intense (beaucoup de couleur
+ * mais tout en restant sobre et lisible), couleur, niveau de gris, noir et
+ * blanc. »
+ *
+ * Le piège serait d'écrire quatre palettes. Il y a dans ces fiches une
+ * cinquantaine de dessins, chacun avec ses teintes choisies pour lui ; les
+ * quadrupler serait quatre fois plus de choses à garder d'accord, et trois
+ * versions sur quatre finiraient fausses. On garde donc UNE palette — celle
+ * qui est déjà écrite dans chaque rendu — et l'on pose un FILTRE devant
+ * l'encre. Le mode ne change pas ce qu'on dessine, il change comment ça sort.
+ *
+ *   · COULEUR INTENSE — chaque teinte s'écarte de son propre gris. C'est la
+ *     saturation, rien d'autre : les couleurs restent les leurs, elles
+ *     s'affirment. Sobre par construction, puisqu'on ne change ni la teinte ni
+ *     la clarté d'ensemble.
+ *   · COULEUR — la palette telle qu'elle est écrite.
+ *   · NIVEAU DE GRIS — chaque teinte tombe sur sa luminance. Les aplats
+ *     restent, les couleurs partent : c'est une photocopie couleur.
+ *   · NOIR ET BLANC — les aplats eux-mêmes ne sont plus dessinés. C'est le
+ *     mode le plus ancien de cette maison, celui pour lequel chaque figure
+ *     porte AUSSI une marque de forme (symbole, trame, étiquette) : la couleur
+ *     ajoute du confort, elle ne porte jamais l'information à elle seule.
+ *
+ * PROPRIÉTÉ UTILE : le filtre ne touche que ce qui est réellement coloré. Un
+ * gris a la même luminance que lui-même et ne s'écarte de rien — le cadre de
+ * la feuille, les pointillés, le texte noir traversent les quatre modes sans
+ * bouger. Seul change ce qui avait une couleur.
  *
  * Le choix est GLOBAL — mémorisé d'une fiche à l'autre, on ne le refait pas
  * dix fois — et RÉGLABLE FICHE PAR FICHE, puisque c'est le même sélecteur qui
  * l'affiche et le change.
  */
-const CLE_COULEUR = 'mathbox-polycopie-couleur';
-let couleurEnMemoire = null;
+export const MODES_POLYCOPIE = [
+    { id: 'intense', label: 'Couleur intense' },
+    { id: 'couleur', label: 'Couleur' },
+    { id: 'gris', label: 'Niveaux de gris' },
+    { id: 'nb', label: 'Noir et blanc' }
+];
 
-export function polycopieEnCouleur() {
-    if (couleurEnMemoire !== null) return couleurEnMemoire;
-    let v = null;
-    try { v = window.localStorage.getItem(CLE_COULEUR); } catch (e) { v = null; }
-    // Par défaut : NOIR ET BLANC. C'est ce qui sort de la photocopieuse de
-    // l'établissement, et une feuille pensée pour elle marche partout.
-    couleurEnMemoire = v === '1';
-    return couleurEnMemoire;
+/** Les quatre choix, prêts à poser dans un `<select>`. */
+export function optionsPolycopie() {
+    return MODES_POLYCOPIE
+        .map(m => `<option value="${m.id}">${m.label}</option>`).join('');
 }
 
-export function reglerPolycopieCouleur(oui) {
-    couleurEnMemoire = !!oui;
-    try { window.localStorage.setItem(CLE_COULEUR, oui ? '1' : '0'); } catch (e) { /* privé */ }
+const CLE_MODE = 'mathbox-polycopie-mode';
+let modeEnMemoire = null;
+
+export function modePolycopie() {
+    if (modeEnMemoire !== null) return modeEnMemoire;
+    let v = null;
+    try { v = window.localStorage.getItem(CLE_MODE); } catch (e) { v = null; }
+    // Par défaut : NOIR ET BLANC. C'est ce qui sort de la photocopieuse de
+    // l'établissement, et une feuille pensée pour elle marche partout.
+    modeEnMemoire = MODES_POLYCOPIE.some(m => m.id === v) ? v : 'nb';
+    return modeEnMemoire;
+}
+
+export function reglerModePolycopie(id) {
+    modeEnMemoire = MODES_POLYCOPIE.some(m => m.id === id) ? id : 'nb';
+    try { window.localStorage.setItem(CLE_MODE, modeEnMemoire); } catch (e) { /* privé */ }
+}
+
+/**
+ * DESSINE-T-ON LES APLATS ? C'est la seule question que les rendus se posent,
+ * et elle ne se pose qu'en noir et blanc : les trois autres modes dessinent
+ * tout, le filtre s'occupe du reste.
+ */
+export function polycopieEnCouleur() {
+    return modePolycopie() !== 'nb';
+}
+
+// Les coefficients de la luminance sRGB — les mêmes que ceux des filtres CSS
+// `grayscale()` et `saturate()`, pour que l'aperçu à l'écran et le PDF
+// tombent sur la même nuance.
+const LUM = [0.2126, 0.7152, 0.0722];
+const borne = (v) => Math.max(0, Math.min(255, Math.round(v)));
+
+/**
+ * LE GRIS D'UNE COULEUR — pas sa luminance nue.
+ *
+ * La luminance seule ne marche pas, et cela se voit à la première fiche : le
+ * jaune d'un angle donné (253, 224, 160) et le vert de celui qu'on cherche
+ * (200, 236, 218) ont la MÊME clarté. Passés à la moulinette, ils tombent sur
+ * le même gris et la figure devient illisible — deux teintes choisies pour
+ * différer par la TEINTE ne peuvent pas se distinguer par la clarté.
+ *
+ * On retranche donc une part de la saturation : plus une couleur est franche,
+ * plus elle pèse d'encre. C'est ce que fait une photocopieuse honnête, et cela
+ * sépare deux pastels de même clarté sans toucher aux gris — un gris n'a pas
+ * de saturation, il traverse le filtre inchangé.
+ */
+function grisDe(rvb) {
+    const y = LUM[0] * rvb[0] + LUM[1] * rvb[1] + LUM[2] * rvb[2];
+    const chroma = Math.max(...rvb.slice(0, 3)) - Math.min(...rvb.slice(0, 3));
+    return borne(Math.max(25, y - chroma * 0.6));
+}
+
+/** Une vraie couleur, ou un gris déguisé ? Un gris traverse tous les modes. */
+const estColore = (rvb) => Math.max(...rvb.slice(0, 3)) - Math.min(...rvb.slice(0, 3)) >= 12;
+
+/**
+ * Filtre une couleur [r, v, b] selon le mode courant.
+ *
+ * `aplat` distingue un REMPLISSAGE d'un trait, et c'est ce qui sépare
+ * « niveau de gris » de « noir et blanc » : le premier garde les aplats et les
+ * ramène à des gris, le second les efface et ne laisse que le trait. Sans
+ * cela, les deux modes rendaient la même feuille — et deux modes identiques
+ * ne sont qu'un mode et une promesse non tenue.
+ */
+export function encre(rvb, mode = modePolycopie(), aplat = false) {
+    if (!Array.isArray(rvb) || rvb.length < 3) return rvb;
+    if (mode === 'couleur') return rvb;
+    if (mode === 'nb' && aplat && estColore(rvb)) return [255, 255, 255];
+    if (mode === 'intense') {
+        // La saturation, rien d'autre : chaque teinte s'écarte de son propre
+        // gris, donc elle reste la sienne. Un gris ne s'écarte de rien.
+        const y = LUM[0] * rvb[0] + LUM[1] * rvb[1] + LUM[2] * rvb[2];
+        return [0, 1, 2].map(i => borne(y + (rvb[i] - y) * 1.45));
+    }
+    const g = grisDe(rvb);
+    return [g, g, g];
+}
+
+/**
+ * LE MÊME FILTRE, PASSÉ SUR L'APERÇU HTML.
+ *
+ * L'aperçu est fabriqué en une chaîne par chaque rendu, puis posé d'un coup
+ * dans la page : cette chaîne EST la porte unique qu'on cherchait. On y
+ * remplace chaque couleur écrite, quelle que soit sa forme — `#abc`, `#aabbcc`
+ * ou `rgb(1, 2, 3)` —, et l'écran tombe alors exactement sur la nuance du PDF.
+ * Un filtre CSS n'aurait pas suffi : `grayscale()` est linéaire, il ne sait
+ * pas retrancher la saturation.
+ */
+const RE_COULEUR = /(#(?:[0-9a-f]{3}|[0-9a-f]{6})\b)|rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*([^)]*)\)/gi;
+// Ce qui précède une couleur dit si c'est un APLAT ou un trait : `fill="…"`,
+// `background: …`. C'est la seule chose que le mode noir et blanc a besoin de
+// savoir (voir `estAplat`).
+const RE_AVANT_APLAT = /(?:fill|background(?:-color)?|stop-color)\s*[:=]\s*["']?\s*$/i;
+
+export function teindreHtml(html, mode = modePolycopie()) {
+    if (mode === 'couleur' || typeof html !== 'string') return html;
+    return html.replace(RE_COULEUR, (tout, hex, r, v, b, suite, index, chaine) => {
+        const rvb = hex
+            ? (hex.length === 4 ? [...hex.slice(1)].map(c => parseInt(c + c, 16))
+                : [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)))
+            : [+r, +v, +b];
+        const aplat = RE_AVANT_APLAT.test(chaine.slice(Math.max(0, index - 28), index));
+        const t = encre(rvb, mode, aplat);
+        if (hex) return '#' + t.map(x => x.toString(16).padStart(2, '0')).join('');
+        const reste = (suite || '').replace(/^\s*,\s*/, '').trim();
+        return reste ? `rgba(${t.join(', ')}, ${reste})` : `rgb(${t.join(', ')})`;
+    });
+}
+
+/**
+ * LE MÊME FILTRE, POSÉ SUR LE DOCUMENT PDF LUI-MÊME.
+ *
+ * jsPDF n'a que trois portes par où une couleur entre : le remplissage, le
+ * trait et le texte. On les habille une fois, à la création du document, et
+ * les quelque deux cents endroits qui posent une couleur n'ont rien à savoir
+ * du mode choisi. C'est ce qui rend les quatre modes tenables.
+ */
+export function teindreDoc(doc) {
+    if (!doc || doc.__teinte) return doc;
+    doc.__teinte = true;
+    ['setFillColor', 'setDrawColor', 'setTextColor'].forEach(nom => {
+        const brut = doc[nom];
+        if (typeof brut !== 'function') return;
+        const aplat = nom === 'setFillColor';
+        doc[nom] = function (...args) {
+            if (args.length >= 3 && args.every(v => typeof v === 'number')) {
+                return brut.apply(this, encre(args.slice(0, 3), undefined, aplat).concat(args.slice(3)));
+            }
+            if (args.length === 1 && typeof args[0] === 'string' && /^#[0-9a-f]{6}$/i.test(args[0])) {
+                const h = args[0].slice(1);
+                const t = encre([0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)), undefined, aplat);
+                return brut.call(this, '#' + t.map(v => v.toString(16).padStart(2, '0')).join(''));
+            }
+            return brut.apply(this, args);
+        };
+    });
+    return doc;
+}
+
+/**
+ * LE MÊME FILTRE POUR L'APERÇU, en une classe.
+ *
+ * L'aperçu est du HTML : ses couleurs sont écrites dans deux cents styles en
+ * ligne, et il n'existe aucune porte unique où les intercepter. Mais le
+ * navigateur en a une — `filter`. `saturate()` et `grayscale()` font
+ * exactement le calcul ci-dessus, avec les mêmes coefficients : l'écran montre
+ * donc la nuance que l'imprimante sortira.
+ */
+export function classeTeinte(mode = modePolycopie()) {
+    return `fx-teinte fx-teinte--${mode}`;
+}
+
+/** Pose (ou remplace) la teinte courante sur un élément d'aperçu. */
+export function poserTeinte(el) {
+    if (!el || !el.classList) return;
+    [...el.classList].forEach(c => { if (c.startsWith('fx-teinte')) el.classList.remove(c); });
+    classeTeinte().split(' ').forEach(c => el.classList.add(c));
 }
 
 /**

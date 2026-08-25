@@ -4557,6 +4557,16 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     position: absolute; text-align: center; color: #6b7280;
     font-weight: 700; line-height: 1; pointer-events: none;
 }
+/* LE FILET DE SÉCURITÉ DES DEUX MODES GRIS.
+   L'aperçu est teint à la source : chaque couleur écrite dans la chaîne HTML
+   passe par `teindreHtml` (ficheRendu.js), qui applique EXACTEMENT le calcul du
+   PDF. Restent les couleurs qui ne sont pas dans la chaîne mais dans cette
+   feuille de style — celles des classes `.fx-…`. Un `grayscale` posé par-dessus
+   les rattrape, et il ne dérange rien : une couleur déjà grise le reste. On ne
+   fait PAS le symétrique pour la couleur intense, où un second passage
+   doublerait la saturation. */
+.fx-teinte--gris, .fx-teinte--nb { filter: grayscale(1); }
+
 .fx-mc-titre { position: absolute; font-weight: 800; color: #2d3748; pointer-events: none; }
 .fx-mc-def {
     position: absolute; color: #6b7280; line-height: 1.2; pointer-events: none;

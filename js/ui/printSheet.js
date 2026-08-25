@@ -19,7 +19,8 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
 import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
-import { pourPdf, polycopieEnCouleur, reglerPolycopieCouleur,
+import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
+    optionsPolycopie, teindreDoc, poserTeinte, teindreHtml,
     ficheEnPortrait, reglerFichePortrait
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
@@ -8696,10 +8697,7 @@ function assurerModale() {
                             <option value="portrait">A4 portrait</option>
                         </select></label>
                     <label>Impression
-                        <select id="fp-couleur" class="cfg-input">
-                            <option value="0">Noir et blanc</option>
-                            <option value="1">En couleur</option>
-                        </select></label>
+                        <select id="fp-couleur" class="cfg-input"></select></label>
                 </div>
             </details>
             <!-- LES RÉGLAGES DE L'EXERCICE, sur la fiche elle-même. Rémy :
@@ -8758,7 +8756,9 @@ function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
 }
 
 function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSolutions = false) {
-    const doc = new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' });
+    // L'ENCRE DU MODE CHOISI EST POSÉE SUR LE DOCUMENT, une fois : les deux
+    // cents endroits qui écrivent une couleur n'ont rien à en savoir.
+    const doc = teindreDoc(new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' }));
     const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles);
 
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
@@ -8959,7 +8959,9 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 style="left:${bo.x * k}px; top:${(bo.y - 4) * k}px;
                 width:${bo.w * k}px; height:${(bo.h + 4) * k}px"><span>🎲 Autre</span></button>`;
         });
-        apercu.innerHTML = html;
+        // L'ENCRE DU MODE, POSÉE SUR LA CHAÎNE ELLE-MÊME : c'est la porte
+        // unique par où passent toutes les couleurs de l'aperçu.
+        apercu.innerHTML = teindreHtml(html);
 
         apercu.querySelectorAll('[data-bloc]').forEach(b => {
             b.onclick = () => {
@@ -9001,8 +9003,17 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // blanc le fait pour toute l'année, pas pour une feuille.
     const couleurEl = modal.querySelector('#fp-couleur');
     retenirRepli(modal.querySelector('#fp-plus'), 'grilles');
-    couleurEl.value = polycopieEnCouleur() ? '1' : '0';
-    couleurEl.onchange = () => { reglerPolycopieCouleur(couleurEl.value === '1'); rendre(); };
+    // LES QUATRE MODES SONT ÉNUMÉRÉS UNE FOIS, dans ficheRendu.js : trois
+    // listes recopiées à la main dériveraient, et un mode absent d'une liste
+    // serait un réglage impossible à choisir sur cette fiche-là.
+    couleurEl.innerHTML = optionsPolycopie();
+    couleurEl.value = modePolycopie();
+    couleurEl.onchange = () => {
+        reglerModePolycopie(couleurEl.value);
+        poserTeinte(modal.querySelector('#fp-apercu'));
+        rendre();
+    };
+    poserTeinte(modal.querySelector('#fp-apercu'));
     // L'ORIENTATION DE LA FEUILLE. Comme la couleur : elle vaut pour celle-ci,
     // et devient le défaut des suivantes.
     const orientEl = modal.querySelector('#fp-orientation');
