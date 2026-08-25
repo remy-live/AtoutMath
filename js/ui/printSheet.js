@@ -3033,6 +3033,182 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
     });
 }
 
+// --- LE MASTERMIND SUR PAPIER --------------------------------------------------
+//
+// Rémy : « Et un master mind ».
+//
+// UNE FEUILLE NE RÉPOND PAS, donc on n'y joue pas : on y imprime LA PARTIE
+// DÉJÀ JOUÉE — des essais, et pour chacun le nombre de jetons bien placés et
+// mal placés — et l'on demande le code. Le jeu devient un exercice de logique
+// pure, et il y gagne : à l'écran on s'en tire en tâtonnant, ici il faut
+// raisonner, parce qu'il n'y a plus d'essai à dépenser.
+//
+// LA PALETTE EST IMPRIMÉE EN TÊTE, et ce n'est pas un ornement : sans elle
+// l'exercice est insoluble, puisqu'on ignore parmi quelles couleurs chercher.
+//
+// CHAQUE JETON PORTE SON INITIALE. La couleur ajoute du confort, jamais
+// l'information : photocopiée, la fiche reste jouable, et c'est cette lettre
+// que l'élève écrit dans les cases de la réponse.
+
+const rvbDe = (hex) => [
+    parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)
+];
+
+function geoMastermind(item, slot) {
+    const m = item.meta;
+    const b = boiteDe(slot);
+    const n = m.longueur;
+    // LES RANGÉES SE COMPTENT SUR CE QU'ON DESSINE VRAIMENT : la légende des
+    // couleurs, l'en-tête des deux colonnes, les essais, un blanc, le libellé
+    // « Le code : » et les cases de la réponse. Sous-évaluées, elles donnaient
+    // une rangée de trop et la ligne de réponse débordait sur le bloc suivant.
+    const rangs = m.lignes.length + 4.5;
+    const hLigne = Math.min(b.h / rangs, 9);
+    const jeton = hLigne * 0.8;
+    const pas = jeton * 1.18;
+    const colW = Math.max(13, hLigne * 1.9);
+    const largeur = 7 + n * pas + 2 + colW * 2;
+    const x = b.x + Math.max(0, (b.w - largeur) / 2);
+    return {
+        m, b, n, hLigne, jeton, pas, colW,
+        xNum: x, xJetons: x + 7,
+        xBien: x + 7 + n * pas + 2,
+        xMal: x + 7 + n * pas + 2 + colW,
+        yLegende: b.y + hLigne * 0.7,
+        yTete: b.y + hLigne * 1.7,
+        // La première rangée d'essais commence sous l'en-tête.
+        ligneY: (i) => b.y + hLigne * (2.2 + i),
+        // Le libellé de la réponse s'écrit AU-DESSUS des cases, pas à leur
+        // gauche : « Le code : » fait quinze millimètres et la colonne de
+        // gauche n'en offre que sept — le texte passait par-dessus la première
+        // case, et l'on ne voyait plus où écrire.
+        yLibelle: b.y + hLigne * (2.2 + m.lignes.length + 0.9),
+        yReponse: b.y + hLigne * (2.2 + m.lignes.length + 1.6),
+        taille: Math.max(1.7, hLigne * 0.34)
+    };
+}
+
+function mastermindPreviewHtml(item, slot, k, solution) {
+    const g = geoMastermind(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    const pastille = (couleur, x, y, d = g.jeton) => `<div class="fx-mm-jeton"
+        style="left:${T(x)}px; top:${T(y)}px; width:${T(d)}px; height:${T(d)}px;
+        background:${couleur.hex}; font-size:${T(d * 0.6)}px">${couleur.id}</div>`;
+
+    // La palette, en tête.
+    let html = `<div class="fx-mm-titre" style="left:${T(g.xNum)}px;
+        top:${T(g.yLegende - g.taille * 0.9)}px; font-size:${T(g.taille)}px">Couleurs :</div>`;
+    const xPal = g.xNum + 14;
+    m.couleurs.forEach((c, i) => {
+        html += pastille(c, xPal + i * g.pas, g.yLegende - g.jeton * 0.55, g.jeton * 0.9);
+    });
+
+    // L'en-tête des deux colonnes de nombres.
+    [['bien placés', g.xBien], ['mal placés', g.xMal]].forEach(([mot, x]) => {
+        html += `<div class="fx-mm-tete" style="left:${T(x)}px; top:${T(g.yTete - g.taille)}px;
+            width:${T(g.colW)}px; font-size:${T(g.taille)}px">${mot}</div>`;
+    });
+
+    m.lignes.forEach((l, i) => {
+        const y = g.ligneY(i);
+        html += `<div class="fx-mm-num" style="left:${T(g.xNum)}px; top:${T(y)}px;
+            width:${T(6)}px; height:${T(g.jeton)}px; font-size:${T(g.taille)}px">${i + 1}</div>`;
+        l.code.forEach((id, c) => {
+            html += pastille(m.couleurs.find(x => x.id === id), g.xJetons + c * g.pas, y);
+        });
+        [[l.places, g.xBien], [l.presents, g.xMal]].forEach(([v, x]) => {
+            html += `<div class="fx-mm-cell" style="left:${T(x)}px; top:${T(y)}px;
+                width:${T(g.colW)}px; height:${T(g.jeton)}px;
+                font-size:${T(g.jeton * 0.62)}px">${v}</div>`;
+        });
+    });
+
+    // La ligne de réponse : des cases carrées, une par jeton du code.
+    const y = g.yReponse;
+    html += `<div class="fx-mm-titre" style="left:${T(g.xNum)}px;
+        top:${T(g.yLibelle - g.taille)}px; font-size:${T(g.taille * 1.15)}px">Le code :</div>`;
+    for (let c = 0; c < g.n; c++) {
+        const lettre = solution ? m.secret[c] : '';
+        html += `<div class="fx-mm-case${lettre ? ' fx-mm-case--sol' : ''}"
+            style="left:${T(g.xJetons + c * g.pas)}px; top:${T(y)}px;
+            width:${T(g.jeton)}px; height:${T(g.jeton)}px;
+            font-size:${T(g.jeton * 0.62)}px">${lettre}</div>`;
+    }
+    return html;
+}
+
+function dessinerMastermindPdf(doc, item, slot, solution) {
+    const g = geoMastermind(item, slot);
+    const m = g.m;
+    const aplat = polycopieEnCouleur();
+
+    const pastille = (couleur, x, y, d = g.jeton) => {
+        const r = d / 2;
+        // EN NOIR ET BLANC, LE JETON RESTE UN ROND VIDE avec sa lettre : un
+        // aplat gris derrière une lettre blanche ne survit pas toujours à la
+        // photocopie, et la lettre est ce qui porte l'information.
+        doc.setFillColor(...rvbDe(couleur.hex));
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.3);
+        doc.circle(x + r, y + r, r, aplat ? 'FD' : 'D');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(4.5, d * 1.7));
+        doc.setTextColor(...(aplat ? [255, 255, 255] : ENCRE.trait));
+        doc.text(couleur.id, x + r, y + r + d * 0.22, { align: 'center' });
+    };
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.taille / 0.3528);
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf('Couleurs :'), g.xNum, g.yLegende);
+    m.couleurs.forEach((c, i) => {
+        pastille(c, g.xNum + 14 + i * g.pas, g.yLegende - g.jeton * 0.55, g.jeton * 0.9);
+    });
+
+    doc.setFontSize(g.taille / 0.3528);
+    doc.setTextColor(...ENCRE.gris);
+    [['bien placés', g.xBien], ['mal placés', g.xMal]].forEach(([mot, x]) => {
+        doc.text(pourPdf(mot), x + g.colW / 2, g.yTete, { align: 'center' });
+    });
+
+    m.lignes.forEach((l, i) => {
+        const y = g.ligneY(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(g.taille / 0.3528);
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(String(i + 1), g.xNum + 4, y + g.jeton * 0.7, { align: 'right' });
+        l.code.forEach((id, c) => {
+            pastille(m.couleurs.find(x => x.id === id), g.xJetons + c * g.pas, y);
+        });
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        [[l.places, g.xBien], [l.presents, g.xMal]].forEach(([v, x]) => {
+            doc.rect(x, y, g.colW, g.jeton);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(6, g.jeton * 1.9));
+            doc.setTextColor(...ENCRE.trait);
+            doc.text(String(v), x + g.colW / 2, y + g.jeton * 0.74, { align: 'center' });
+        });
+    });
+
+    const y = g.yReponse;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize((g.taille * 1.1) / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf('Le code :'), g.xNum, g.yLibelle);
+    doc.setLineWidth(0.4);
+    for (let c = 0; c < g.n; c++) {
+        const x = g.xJetons + c * g.pas;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.rect(x, y, g.jeton, g.jeton);
+        if (!solution) continue;
+        doc.setFontSize(Math.max(6, g.jeton * 1.9));
+        doc.setTextColor(47, 133, 90);
+        doc.text(m.secret[c], x + g.jeton / 2, y + g.jeton * 0.74, { align: 'center' });
+    }
+}
+
 // --- LA PYRAMIDE DES MOTS ------------------------------------------------------
 //
 // Rémy, avec la page de son « Coin des jeux mathématiques » : « Deux jeux dans
@@ -8171,6 +8347,30 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.1 },
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         parLigneDefaut: 3
+    },
+
+    mastermind: {
+        titre: 'Mastermind — retrouve le code',
+        consigne: (items) => {
+            const m = items && items[0] && items[0].meta;
+            const rep = !m || m.repetitions;
+            // COURTE, PARCE QU'ELLE EST COUPÉE. Le bandeau tient deux lignes :
+            // la version longue s'arrêtait au milieu du conseil, « raye d'un
+            // coup » sans dire quoi — pire que pas de conseil du tout.
+            return 'UN CODE SECRET EST CACHÉ. Chaque ligne est un essai déjà joué : on te dit '
+                + 'combien de jetons sont de la BONNE COULEUR À LA BONNE PLACE, et combien sont '
+                + 'de la bonne couleur MAIS AILLEURS. Écris les initiales du code dans les cases '
+                + 'du bas. '
+                + (rep ? 'Une couleur peut servir plusieurs fois.' : 'Chaque couleur ne sert qu\'une fois.');
+        },
+        previewGrille: mastermindPreviewHtml,
+        pdfGrille: dessinerMastermindPdf,
+        nomBloc: 'Code', nomBlocs: 'codes',
+        // Plus large que haut : quatre jetons et deux colonnes de nombres sur
+        // une ligne, et quatre ou cinq lignes en tout.
+        proportions: { w: 1, h: 0.66 },
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2
     },
 
     pyramide: {

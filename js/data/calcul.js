@@ -1013,6 +1013,49 @@ export const calculExercises = [
         instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
     },
     {
+        // LE MASTERMIND. Rémy : « Et un master mind ».
+        //
+        // UN JEU QUI NE SE JOUE PAS SEUL, et c'est justement ce que l'écran
+        // apporte : l'adversaire. Quelqu'un doit cacher un code et compter sans
+        // se tromper — et c'est le COMPTE qui est difficile, pas le code.
+        //
+        // SUR LE PAPIER, ON IMPRIME LA PARTIE DÉJÀ JOUÉE et l'on demande le
+        // code. Le jeu devient un exercice de logique pure — et il y gagne : à
+        // l'écran on s'en tire en tâtonnant, sur la feuille il faut raisonner,
+        // parce qu'il n'y a plus d'essai à dépenser.
+        id: 'log-mastermind', status: STATUS.TEST, title: 'Mastermind',
+        cree: '2026-08-25',
+        activityId: 'mastermind', skills: ['num.logique.mastermind'],
+        sansRevision: true,
+        printable: 'mastermind', printGeneratorId: 'log.mastermind-fiche',
+        printParams: { format: 'moyen', repetitions: true },
+        params: { format: 'moyen', repetitions: true },
+        paramSchema: [
+            {
+                id: 'format', type: 'select', label: 'Taille du code',
+                aide: 'C\'est la PALETTE qui fait la difficulté, pas le nombre de cases : quatre cases et quatre couleurs font 256 codes possibles, quatre cases et six couleurs en font 1296, cinq cases et huit couleurs 32 768.',
+                options: [
+                    { value: 'facile', label: '4 cases, 4 couleurs — pour découvrir' },
+                    { value: 'moyen', label: '4 cases, 6 couleurs — le jeu classique' },
+                    { value: 'difficile', label: '5 cases, 8 couleurs — le vrai casse-tête' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'repetitions', type: 'boolean', label: 'Une couleur peut se répéter',
+                aide: 'Sans répétition, le jeu est nettement plus facile — et il perd sa subtilité la plus intéressante : quand une couleur paraît deux fois dans la proposition mais une seule dans le code, elle ne compte qu\'une fois.',
+                default: true
+            }
+        ],
+        motsClefs: ['mastermind', 'code', 'couleurs', 'déduction', 'logique', 'éliminer',
+            'bien placés', 'mal placés', 'jetons'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Un code de couleurs est caché. Compose une proposition en touchant les pastilles du bas, puis « Proposer ». On te répond par deux nombres : combien de jetons sont de la bonne couleur À LA BONNE PLACE, et combien sont de la bonne couleur MAIS AILLEURS. On ne devine pas un code, on l'ÉLIMINE : le premier essai ne sert pas à trouver mais à savoir — deux couleurs seulement, et tu sauras déjà combien il y en a de chacune. Ensuite, le total « bien placés + mal placés » ne parle QUE des couleurs : s'il vaut 2, il y a exactement deux jetons de ces couleurs-là dans le code, où qu'ils soient. Une réponse à zéro est la plus précieuse : elle raye d'un coup toutes les couleurs de la ligne. « Un indice » ne donne jamais une couleur au hasard — il montre une case déjà DÉMONTRÉE par tes essais précédents."
+    },
+    {
         // LA PYRAMIDE. Rémy, avec la page de son « Coin des jeux
         // mathématiques » : « Deux jeux dans ces styles. » Celui-ci en est un —
         // « à chaque ligne, tu rajoutes une lettre pour faire un nouveau mot »,

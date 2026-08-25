@@ -66,6 +66,7 @@ import { anagrammesFicheGenerator } from '../generators/anagrammesFiche.js';
 import { motsCroisesFicheGenerator } from '../generators/motsCroisesFiche.js';
 import { motCodeFicheGenerator } from '../generators/motCodeFiche.js';
 import { pyramideFicheGenerator } from '../generators/pyramideFiche.js';
+import { mastermindFicheGenerator } from '../generators/mastermindFiche.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
 import { tableurFicheGenerator } from '../generators/tableurFiche.js';
 import { chatFicheGenerator } from '../generators/chatFiche.js';
@@ -107,6 +108,7 @@ import {
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
     motsCroisesFicheGenerator, motCodeFicheGenerator, pyramideFicheGenerator,
+    mastermindFicheGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
@@ -519,6 +521,9 @@ const legacy = [
     // La pyramide se compte en PYRAMIDES : une partie, c'est un escalier
     // entier retrouvé, et rien ne se valide avant la dernière marche.
     ['pyramide', 'La Pyramide des mots', 'pyramide', 'enginePyramide', 'pyramide', 3],
+    // Le mastermind se compte en CODES : une partie, c'est un code trouvé, et
+    // rien ne se valide avant.
+    ['mastermind', 'Mastermind', 'mastermind', 'engineMastermind', 'code', 3],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

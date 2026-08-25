@@ -383,6 +383,14 @@ const BASE = {
         descriptor: 'Repérer un point dans les quatre quadrants, avec des coordonnées relatives.',
         lesson: 'À gauche de l\'origine, l\'abscisse est négative ; en dessous, l\'ordonnée est négative. Le point (−3 ; 2) est à 3 vers la gauche et 2 vers le haut.'
     },
+    'num.logique.mastermind': {
+        label: 'D\u00e9duire un code cach\u00e9',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Retrouver une suite de couleurs cach\u00e9e \u00e0 partir du nombre de jetons bien plac\u00e9s et mal plac\u00e9s.',
+        lesson: "ON NE DEVINE PAS UN CODE, ON L'\u00c9LIMINE. Au d\u00e9part il y a beaucoup de codes possibles \u2014 1296 pour quatre cases et six couleurs \u2014 et chaque r\u00e9ponse en supprime une partie. Le bon r\u00e9flexe n'est donc pas « quel code est-ce ? » mais « lesquels sont encore possibles ? ». Trois id\u00e9es suffisent. D'abord, le PREMIER essai ne sert pas \u00e0 trouver, il sert \u00e0 savoir : deux couleurs seulement, et la r\u00e9ponse dit d\u00e9j\u00e0 combien il y en a de chacune. Ensuite, le total \u00ab bien plac\u00e9s + mal plac\u00e9s \u00bb ne parle QUE des couleurs, pas des places : s'il vaut 2, il y a exactement deux jetons de ces couleurs-l\u00e0 dans le code, o\u00f9 qu'ils soient. Enfin, une r\u00e9ponse \u00e0 z\u00e9ro est la plus pr\u00e9cieuse de toutes : elle raye d'un coup toutes les couleurs de cette ligne. Attention \u00e0 un pi\u00e8ge : quand une couleur para\u00eet deux fois dans ta proposition mais une seule fois dans le code, elle ne compte qu'une fois \u2014 chaque jeton cach\u00e9 ne sert qu'\u00e0 un jeton propos\u00e9."
+    },
     'num.logique.logigramme': {
         label: 'Déduire dans un logigramme',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
