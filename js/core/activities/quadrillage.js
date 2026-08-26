@@ -19,6 +19,9 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
+// LE GESTE QUI MANQUAIT. Rémy : « ne fonctionne pas » — le clic marchait, mais
+// pas le balayage, qui est le geste naturel pour colorier plusieurs cases.
+import { peindreAuGlisse } from './glisser.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
 import { cleFigure, comparer } from '../transformations.js';
 import { imageAttendue } from '../generators/transfoQuadrillage.js';
@@ -49,6 +52,9 @@ export function mount(container, session) {
 
     let item = null;
     let posees = [];        // les cases coloriées par l'élève
+    // De quoi débrancher le glissé : il écoute la fenêtre, il doit s'en aller
+    // avec l'activité, sinon un jeu fermé continue d'entendre les relâchements.
+    let arreterGlisse = () => { };
     let svg = null;
     // Les deux passages du film, par question. Voir `jouerLeMouvement`.
     let filmsRestants = 0;
@@ -106,10 +112,23 @@ export function mount(container, session) {
         wireHint(container, session);
         brancherIndiceCase();
         svg.querySelectorAll('.qd-hit').forEach(hit => {
-            hit.addEventListener('click', () => basculer(hit));
+            // Le clavier garde sa bascule : Entrée sur une case pleine
+            // l'efface, ce qui est ce qu'on attend d'une touche.
             hit.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); basculer(hit); }
             });
+        });
+        // ET LE GESTE. Un appui simple bascule sa case comme avant ; un appui
+        // suivi d'un balayage peint (ou efface) toutes celles qu'il traverse.
+        // C'est ce dernier qui manquait, et son absence faisait dire que le
+        // jeu « ne fonctionne pas » : partir d'une case pour relâcher sur une
+        // autre n'émet aucun `click`, donc ne coloriait RIEN — pas même la
+        // première.
+        arreterGlisse = peindreAuGlisse(svg, {
+            selecteur: '.qd-hit',
+            estPleine: (hit) => posees.some(q => `${q.x},${q.y}` === hit.dataset.c),
+            appliquer: (hit) => basculer(hit),
+            bloque: () => session.locked || destroyed
         });
         container.querySelector('[data-effacer]').onclick = () => {
             if (session.locked) return;
@@ -531,6 +550,7 @@ export function mount(container, session) {
         showPrevious() { if (session.rewind()) renderNext(); },
         destroy() {
             destroyed = true;
+            arreterGlisse(); arreterGlisse = () => { };
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
             container.innerHTML = '';
