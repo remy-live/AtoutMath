@@ -548,16 +548,58 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé —
    la largeur est une donnée pédagogique, pas une décoration. */
 .fp-identite { position: absolute; display: flex; align-items: baseline; overflow: hidden; }
-/* Les réglages de l'en-tête : le titre prend la place qui reste, les quatre
-   cases restent SUR UNE LIGNE — empilées, elles doublaient la hauteur de la
-   barre pour quatre mots. */
-/* Le titre de la feuille : il occupe la place qui reste sur sa ligne, sans
-   jamais la monopoliser — au-delà, son étiquette se coupait en deux. */
-.pp-titre-champ { flex: 1 1 240px; max-width: 420px; display: flex; align-items: center; gap: 8px; }
-.pp-titre-champ > * { flex-shrink: 0; }
-.pp-titre-champ .cfg-input { flex: 1 1 auto; min-width: 0; }
-.pp-champs { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* Sans aucun champ, le filet remonte de quatre millimètres et demi (c'est le
+   PDF qui le décide) : la ligne d'identité, elle, garde sa place et ses
+   fantômes se poseraient dessus. On la remonte d'autant. */
+.fp-identite--vide { transform: translateY(-45%); }
+/* Les fantômes peuvent dépasser la largeur des champs réels ; les rogner
+   rendrait le dernier inatteignable. Les vraies largeurs, elles, sont
+   calculées pour tenir (voir `champsDe`), donc rien de légitime ne déborde. */
+.fp-identite:has(.fp-fantome) { overflow: visible; }
 .fp-champ { display: inline-flex; align-items: baseline; gap: .35em; white-space: nowrap; }
+
+/* --- ON RÈGLE LA FEUILLE SUR LA FEUILLE ---------------------------------------
+   Rémy : « on pourrait améliorer cela en passant par l'apercu plutôt que des
+   options ». Le titre, les champs d'identité et les cases du cartouche se
+   touchent maintenant là où ils sont dessinés (voir ui/ficheDirecte.js).
+   Il faut donc que ça se VOIE qu'on peut les toucher — mais discrètement :
+   l'aperçu doit rester la feuille qu'on va imprimer, pas un formulaire. Rien
+   n'apparaît tant que le doigt ou la souris ne passe pas dessus. */
+/* La prise n'apparaît QUE là où quelqu'un écoute : une surbrillance au survol
+   sur une chose que rien ne branche est la pire des interfaces, celle qui
+   promet un geste et ne le rend pas. `brancherFicheDirecte` pose ces classes
+   selon ce que la fenêtre offre. */
+.fp-direct-titre [data-fiche="titre"],
+.fp-direct-champs [data-fiche="champ"],
+.fp-direct-cartouche [data-fiche="cartouche"] { cursor: pointer; }
+.fp-direct-titre [data-fiche="titre"]:hover,
+.fp-direct-champs [data-fiche="champ"]:hover,
+.fp-direct-cartouche [data-fiche="cartouche"]:hover {
+    outline: 1.5px dashed var(--primary, #6366f1);
+    outline-offset: 2px; border-radius: 3px;
+}
+/* Le titre absent ne laisse sa trace grise que là où l'on peut l'écrire. */
+.fp-entete--vide b { visibility: hidden; }
+.fp-direct-titre .fp-entete--vide b { visibility: visible; }
+/* Un titre absent laisse quand même sa place, en gris très clair : c'est la
+   seule façon de savoir qu'on peut en écrire un. Il ne s'imprime pas — le PDF
+   est dessiné par un autre chemin, qui ne connaît que le vrai titre. */
+.fp-entete--vide b { color: #c3c8d4; font-weight: 600; font-style: italic; }
+.fp-entete--edite { outline: 1.5px solid var(--primary, #6366f1); outline-offset: 2px; }
+.fp-entete--edite b { color: #1a202c; font-style: normal; outline: none; }
+
+/* LES FANTÔMES : ce qui n'est PAS sur la feuille, offert au bout de la ligne
+   d'identité. En pointillé et en gris, pour qu'on ne les prenne pas une
+   seconde pour du contenu — et ils ne s'impriment pas davantage que le
+   placeholder du titre. */
+.fp-fantome {
+    font: inherit; font-size: .92em; color: #a9b0c0;
+    background: transparent; border: 1px dashed #c3c8d4; border-radius: 4px;
+    padding: 0 .35em; margin-left: .5em; cursor: pointer; white-space: nowrap;
+    line-height: 1.35;
+}
+.fp-fantome:hover { color: var(--primary, #6366f1); border-color: var(--primary, #6366f1); }
+.fp-fantome--case { border-style: dotted; }
 .fp-champ i { font-style: normal; color: #4a5568; }
 .fp-champ u {
     display: inline-block; text-decoration: none;

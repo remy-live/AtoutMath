@@ -25,6 +25,7 @@ import { equiperFenetre } from './flottant.js';
 import { fenetresDetachables } from './debugBar.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
 import { retenirRepli } from './repli.js';
+import { brancherFicheDirecte } from './ficheDirecte.js';
 // LE BLOC « CONTENU », le même que sur la fiche de grilles. Il manquait ici, et
 // c'est trente-quatre exercices dont on ne pouvait rien choisir une fois la
 // feuille ouverte — ni les tables, ni la difficulté, ni le niveau.
@@ -277,6 +278,14 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     const colsEl = modal.querySelector('#fq-colonnes');
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');
+    // L'EN-TÊTE SE RÈGLE SUR LA FEUILLE, ICI AUSSI. Cette fenêtre-là n'offrait
+    // AUCUN moyen de changer « Nom : …… / Date : …… » : c'était écrit en dur.
+    // Le même geste que sur la fiche de parcours — cliquer le champ pour le
+    // retirer, cliquer son fantôme pour l'ajouter — le rend réglable sans
+    // ajouter une seule commande au panneau. Le titre, lui, est celui de
+    // l'exercice et n'est pas à réécrire ; le cartouche de correction
+    // n'appartient qu'aux interrogations, donc à la fiche de parcours.
+    const feuille = { champs: ['nom', 'date'] };
     const consigneEl = modal.querySelector('#fq-consigne');
     const lignesRepEl = modal.querySelector('#fq-lignes-rep');
     const mesurer = mesureur();
@@ -380,7 +389,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         apercu.innerHTML = teindreHtml(vues.map((v, i) => `
             <div class="fq-page${v.liste ? ' fq-page--sol' : ''}"
                  style="width:${pg.w * k}px; height:${pg.h * k}px; top:${i * (pg.h * k + 12)}px">
-                ${apercuEntete(k, exo.title, v.sousTitre, null, pg)}
+                ${apercuEntete(k, exo.title, v.sousTitre, null, pg, { champs: feuille.champs })}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts)
         : apercuItems(v.page, k, { ...v.opts, reglable: true })}
             </div>`).join(''));
@@ -398,7 +407,19 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         // servait quand ces réglages étaient ailleurs. Ils sont maintenant en
         // haut de cette fenêtre — la dire encore serait décrire ce qu'on voit.
         noteEl.textContent = OU[ouSol.value] || '';
+        // Les fantômes se reposent après chaque rendu : l'aperçu est réécrit
+        // en entier, donc ce qu'il ne dessine pas disparaît avec lui.
+        garnirDirect(feuille);
     };
+
+    // Seuls les champs d'identité se touchent ici : le titre est celui de
+    // l'exercice, et il n'y a pas de cartouche de correction sur une fiche
+    // d'entraînement.
+    const garnirDirect = brancherFicheDirecte(apercu, {
+        lire: () => feuille,
+        ecrire: (patch) => { Object.assign(feuille, patch); rendre(); },
+        parties: { titre: false, champs: true, cartouche: false }
+    });
 
     consigneEl.oninput = rendre;
     lignesRepEl.onchange = rendre;
@@ -495,7 +516,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
                 mise.pages.forEach((page, i) => {
                     if (i) pdf.addPage('a4', sens);
                     entetePdf(pdf, exo.title, mise.pages.length > 1 ? `page ${i + 1}/${mise.pages.length}` : '',
-                        '', null, mise.page);
+                        '', null, mise.page, { champs: feuille.champs });
                     pdfItems(pdf, page, mise.opts);
                 });
 
@@ -511,7 +532,8 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
                         // une page de plus ; dans un document neuf, la
                         // première existe déjà.
                         if (cible === pdf || i > 0) cible.addPage('a4', sens);
-                        entetePdf(cible, exo.title, 'Solutions', '', null, sol.page);
+                        entetePdf(cible, exo.title, 'Solutions', '', null, sol.page,
+                            { champs: feuille.champs });
                         pdfSolutions(cible, page, sol.opts);
                     });
                 }

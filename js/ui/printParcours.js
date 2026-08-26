@@ -33,6 +33,8 @@ import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFract
 import { RENDUS } from './printSheet.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
 import { retenirRepli } from './repli.js';
+import { brancherFicheDirecte } from './ficheDirecte.js';
+import { MODES, resolvePolicy } from '../core/policy.js';
 import { chargerJsPDF } from './printSheet.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
@@ -229,22 +231,25 @@ function assurerModale() {
     m.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
             <h3 class="modal-title">📄 Fiche du parcours</h3>
-            <!-- CE QUI CHANGE D'UNE FICHE À L'AUTRE, ET RIEN D'AUTRE.
-                 Est-ce une interrogation, comment elle s'appelle, y a-t-il un
-                 corrigé : voilà ce qu'on décide en ouvrant ce panneau. Le
-                 format du papier, les cases de l'en-tête, la façon de
-                 numéroter sont des habitudes de maison — on les règle une fois
-                 en septembre. Ils attendent donc dans le repli, et le repli se
-                 souvient. -->
+            <!-- CE QUI NE SE VOIT PAS SUR LA FEUILLE, ET RIEN D'AUTRE.
+                 Rémy : « on pourrait améliorer cela en passant par l'apercu
+                 plutôt que des options j'ai l'impression que pour la fiche de
+                 parcours on fait des doublons ». Le doublon n'était pas entre
+                 deux panneaux : il était entre le panneau et la FEUILLE. Le
+                 titre est écrit en haut de la page, « Nom : …… » est dessiné à
+                 sa place, la case « … / 20 » occupe son coin — et on les
+                 réglait par des champs et des cases rangés dans un repli.
+                 Ces sept-là se touchent maintenant sur l'aperçu (voir
+                 ui/ficheDirecte.js). Ne restent ici que les choses qu'on ne
+                 peut pas cliquer parce qu'elles ne sont pas dessinées : le
+                 format du papier, l'encre de l'imprimante, les champs
+                 remplissables du PDF, l'endroit où va le corrigé. -->
             <div class="fp-controles">
                 <label class="fq-case"><input type="checkbox" id="pp-interro"> Mode interrogation</label>
                 <label class="fq-case"><input type="checkbox" id="pp-choix"> Proposer les réponses</label>
                 <label class="pp-note-sur" id="pp-note-sur-champ">Note sur
                     <input type="number" id="pp-note-sur" class="cfg-input cfg-input--num"
                         min="5" max="100" step="1" value="20"></label>
-                <label class="pp-titre-champ">Titre
-                    <input type="text" id="pp-titre" class="cfg-input" maxlength="80"
-                        aria-label="Titre imprimé en haut de la feuille"></label>
                 <label>Corrigé
                     <select id="pp-sol-ou" class="cfg-input">
                         <option value="ensemble">Un seul PDF, solutions à la fin</option>
@@ -256,7 +261,7 @@ function assurerModale() {
             </div>
             <div class="pp-etapes" id="pp-etapes"></div>
             <details class="fp-repli" id="pp-plus">
-                <summary>Mise en page, en-tête et corrigé</summary>
+                <summary>Papier, numéros et corrigé</summary>
                 <div class="fp-controles pp-mep">
                     <label>Format
                         <select id="pp-orientation" class="cfg-input">
@@ -274,19 +279,6 @@ function assurerModale() {
                         </select></label>
                     <label class="fq-case" title="Un exercice qui ne tient pas dans le bas de la page commence alors en haut de la suivante, quitte à laisser du blanc.">
                         <input type="checkbox" id="pp-insecable"> Ne pas couper un exercice entre deux pages</label>
-                </div>
-                <div class="fp-controles">
-                    <span class="pp-champs" role="group" aria-label="Champs de l'en-tête">
-                        <span class="fp-repli-titre">En-tête</span>
-                        <label class="fq-case"><input type="checkbox" id="pp-c-nom" checked> Nom</label>
-                        <label class="fq-case"><input type="checkbox" id="pp-c-prenom"> Prénom</label>
-                        <label class="fq-case"><input type="checkbox" id="pp-c-classe"> Classe</label>
-                        <label class="fq-case"><input type="checkbox" id="pp-c-date" checked> Date</label>
-                    </span>
-                    <span class="pp-champs" role="group" aria-label="Cartouche de correction">
-                        <label class="fq-case"><input type="checkbox" id="pp-c-note"> Case note</label>
-                        <label class="fq-case"><input type="checkbox" id="pp-c-com"> Case commentaire</label>
-                    </span>
                 </div>
                 <div class="fp-controles pp-sol-reglages">
                     <label>Solutions
@@ -331,11 +323,18 @@ export function ouvrirFicheParcours(chemin) {
     const noteEl = m.querySelector('#pp-note');
     const listeEl = m.querySelector('#pp-etapes');
 
-    const titreEl = m.querySelector('#pp-titre');
-    const CHAMPS = ['nom', 'prenom', 'classe', 'date'];
-    const casesChamps = CHAMPS.map(c => m.querySelector(`#pp-c-${c}`));
-    const noteCase = m.querySelector('#pp-c-note');
-    const comCase = m.querySelector('#pp-c-com');
+    // CE QUI EST ÉCRIT SUR LA FEUILLE VIT ICI, ET SE TOUCHE SUR LA FEUILLE.
+    //
+    // Le titre par défaut est le nom du parcours — mais « Tout sur papier
+    // (72 exercices) » n'est pas ce qu'on écrit en haut d'un contrôle, et il
+    // s'efface d'un geste. L'en-tête est à la classe, pas au logiciel : une
+    // fiche d'entraînement n'a pas besoin de la classe, un contrôle si.
+    const feuille = {
+        titre: chemin.name || 'Parcours',
+        champs: ['nom', 'date'],
+        note: false,
+        commentaire: false
+    };
     const modeSol = m.querySelector('#pp-sol-mode');
     const colSol = m.querySelector('#pp-sol-colonnes');
     const ouSol = m.querySelector('#pp-sol-ou');
@@ -346,6 +345,22 @@ export function ouvrirFicheParcours(chemin) {
     const noteSurEl = m.querySelector('#pp-note-sur');
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
     const numEl = m.querySelector('#pp-numerotation');
+
+    // LE PARCOURS A DÉJÀ RÉPONDU À DEUX DE CES QUESTIONS. Rémy : « j'ai
+    // l'impression que pour la fiche de parcours on fait des doublons ». En
+    // voici deux, et ce sont les plus coûteux : le professeur a réglé son
+    // parcours en « Évaluation », noté sur 20 — et la fiche rouvrait le débat
+    // avec ses propres défauts, si bien qu'un contrôle s'imprimait en fiche
+    // d'entraînement à moins d'y repenser. Les réglages du parcours DICTENT
+    // donc ceux de la feuille à l'ouverture ; ils restent modifiables ici,
+    // parce qu'on imprime parfois un entraînement à partir d'une évaluation.
+    const politique = resolvePolicy(chemin.policy);
+    interro.checked = politique.mode === MODES.EVALUATION;
+    if (interro.checked) feuille.note = true;
+    if (politique.grading && politique.grading.scale) {
+        noteSurEl.value = String(politique.grading.scale);
+    }
+
 
     // LES QUESTIONS DÉJÀ TIRÉES, ÉTAPE PAR ÉTAPE.
     //
@@ -445,14 +460,14 @@ export function ouvrirFicheParcours(chemin) {
         // rien. Un champ vide veut dire ce qu'il dit : pas de titre sur la
         // feuille. Il est pré-rempli à l'ouverture, donc personne ne perd le
         // titre par accident ; l'effacer est un geste, pas un oubli.
-        titre: titreEl.value.trim(),
-        champs: CHAMPS.filter((c, i) => casesChamps[i].checked),
+        titre: feuille.titre.trim(),
+        champs: feuille.champs.slice(),
         // LE CARTOUCHE DE CORRECTION. La note se coche d'elle-même sur une
         // interrogation — c'est ce qu'on veut neuf fois sur dix — mais le
         // professeur reste libre de la retirer, ou de mettre une case
         // d'appréciation sur une simple fiche d'entraînement.
-        note: noteCase.checked,
-        commentaire: comCase.checked,
+        note: feuille.note,
+        commentaire: feuille.commentaire,
         noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20))
       };
       return {
@@ -1237,20 +1252,28 @@ export function ouvrirFicheParcours(chemin) {
               + (total === o.noteSur ? '' : ` ⚠️ Le barème totalise ${total} points pour une note sur ${o.noteSur}.`)
             : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
         derniers = { exos, toutes, note, total, page: pg, sections, aGrilles };
+        // LES FANTÔMES SE REPOSENT APRÈS CHAQUE RENDU : l'aperçu est réécrit
+        // en entier à chaque réglage, donc ce qui n'est pas dessiné par lui
+        // disparaît. C'est aussi ce qui garantit qu'ils disent toujours la
+        // vérité — ils listent ce qui MANQUE à l'instant.
+        garnirDirect(feuille);
     };
     let derniers = null;
 
-    // Le titre par défaut est le nom du parcours — mais « Tout sur papier
-    // (72 exercices) » n'est pas ce qu'on écrit en haut d'un contrôle.
-    titreEl.value = chemin.name || 'Parcours';
-    titreEl.oninput = rendre;
-    casesChamps.forEach(c => { c.onchange = rendre; });
-    noteCase.onchange = comCase.onchange = rendre;
+    // L'APERÇU EST LE PANNEAU, pour tout ce qui est dessiné dessus : le titre
+    // s'écrit à sa place, un champ d'identité se retire d'un clic, une case
+    // fantôme l'ajoute. Voir `ui/ficheDirecte.js`.
+    const garnirDirect = brancherFicheDirecte(apercu, {
+        lire: () => feuille,
+        ecrire: (patch) => { Object.assign(feuille, patch); rendre(); }
+    });
+
     // COCHER « interrogation » COCHE LA NOTE. C'est ce qu'on veut neuf fois sur
     // dix, et l'oublier fait rendre une copie sans endroit où poser le chiffre.
-    // Le professeur peut la décocher ensuite : on ne la recoche pas de force.
+    // Le professeur peut la retirer ensuite d'un clic sur la case : on ne la
+    // remet pas de force.
     interro.onchange = () => {
-        if (interro.checked) noteCase.checked = true;
+        if (interro.checked) feuille.note = true;
         // Le mode interrogation ne touche qu'aux consignes et au barème : les
         // questions n'ont aucune raison de changer sous les yeux.
         rendreListe(); rendre();

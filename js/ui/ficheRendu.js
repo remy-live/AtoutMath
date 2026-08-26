@@ -786,13 +786,25 @@ function colonnesCartouche(P, c) {
 export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     const P = page || A4;
     const champs = champsDe(entete.champs, P.w - 2 * P.marge);
-    const lignes = champs.map(c => `<span class="fp-champ"><i>${c.label} :</i>
+    // CHAQUE PARTIE DE L'EN-TÊTE SE NOMME, pour qu'on puisse la toucher.
+    //
+    // Rémy : « on pourrait améliorer cela en passant par l'apercu plutôt que
+    // des options ». Le titre, les champs d'identité, la case note et la case
+    // commentaire sont DESSINÉS là, sous les yeux du professeur : les régler
+    // par des cases à cocher rangées dans un repli, c'est décrire de loin ce
+    // qu'on a devant soi. Ces marques sont la prise ; `ui/ficheDirecte.js` s'en
+    // sert pour rendre l'aperçu manipulable, et rien d'autre ne les regarde —
+    // le PDF ne les voit même pas.
+    const lignes = champs.map(c => `<span class="fp-champ" data-fiche="champ"
+        data-champ="${c.id}" title="Cliquer pour retirer ce champ"><i>${c.label} :</i>
         <u style="width:${c.large * k}px"></u></span>`).join('');
     const yFilet = P.marge + (champs.length ? 14 : 9);
     // Le cadre est haut de treize millimètres : deux lignes d'écriture adulte.
     const hCadre = CARTOUCHE_H - 4;
     const cadre = note ? colonnesCartouche(P, note).map(c => `
-        <div class="fp-cart" style="left:${(P.marge + c.x) * k}px; top:${(yFilet + 2) * k}px;
+        <div class="fp-cart" data-fiche="cartouche" data-case="${c.label === 'Note' ? 'note' : 'commentaire'}"
+             title="Cliquer pour retirer cette case"
+             style="left:${(P.marge + c.x) * k}px; top:${(yFilet + 2) * k}px;
              width:${c.w * k}px; height:${hCadre * k}px">
             <i style="font-size:${2.9 * k}px">${c.label}</i>
             <b style="font-size:${4.6 * k}px">${echapper(c.valeur)}</b>
@@ -801,12 +813,18 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     // les champs d'identité remontent d'autant.
     const avecTitre = !!String(titre || '').trim() || !!sousTitre;
     return `
-        ${avecTitre ? `<div class="fp-entete" style="left:${P.marge * k}px; right:${P.marge * k}px;
+        <div class="fp-entete${avecTitre ? '' : ' fp-entete--vide'}" data-fiche="titre"
+            title="Cliquer pour écrire le titre de la feuille"
+            style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${(P.marge + 1) * k}px; font-size:${4.8 * k}px">
-            <b>${echapper(titre || '')}${sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : ''}</b>
-        </div>` : ''}
-        ${champs.length ? `<div class="fp-identite" style="left:${P.marge * k}px; right:${P.marge * k}px;
-            top:${(P.marge + 7.4) * k}px; font-size:${3.3 * k}px; gap:${5 * k}px">${lignes}</div>` : ''}
+            <b>${avecTitre
+        ? echapper(titre || '') + (sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : '')
+        : 'Titre de la feuille'}</b>
+        </div>
+        <div class="fp-identite${champs.length ? '' : ' fp-identite--vide'}"
+            data-fiche="identite" style="left:${P.marge * k}px;
+            right:${P.marge * k}px; top:${(P.marge + 7.4) * k}px; font-size:${3.3 * k}px;
+            gap:${5 * k}px">${lignes}</div>
         <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${yFilet * k}px;"></div>
         ${cadre}`;
