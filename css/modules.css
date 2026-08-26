@@ -1176,6 +1176,52 @@
 }
 
 /* ============================================================================
+   LE DOIGT N'EST PAS UN CURSEUR
+   ============================================================================
+   Mesuré sur les 134 exercices, à 390 px comme à 844 : rien ne déborde, rien
+   n'est hors d'atteinte, aucune page ne défile de côté. Le seul défaut est
+   partout le même — LA TAILLE DES CIBLES. Les ronds de la barre de jeu
+   tombaient à 32 px sur un téléphone, et une trentaine de boutons de jeux à
+   26 ou 28 px de haut. On vise cela au doigt, pas à la souris : la
+   recommandation d'Apple est 44 pt, celle de Google 48 dp, et la nôtre
+   s'adresse à des enfants de onze ans qui jouent dans le bus.
+   
+   Le CSS le savait — « une commande qu'on ne peut plus viser au doigt ne sert
+   à rien » — et rétrécissait quand même, pour tenir sur une rangée. Or la
+   place manquait en LARGEUR, pas en hauteur : sur un téléphone tenu debout,
+   il reste deux cents pixels de vide au-dessus du plateau. Les commandes
+   prennent donc leur propre rangée, et retrouvent leur taille.
+   
+   LE CRITÈRE EST LE POINTEUR, PAS LA LARGEUR. Un portable tactile de 1400 px
+   se vise au doigt ; une fenêtre de navigateur réduite à 390 px sur un
+   ordinateur se vise à la souris. `pointer: coarse` dit lequel des deux on
+   a devant soi, ce qu'aucune largeur ne dira jamais. */
+@media (pointer: coarse) {
+    .game-icon-btn { width: 44px; height: 44px; padding: 8px; }
+    .game-icon-btn svg { width: 22px; height: 22px; }
+    #game-timer { width: 40px; height: 40px; }
+    /* LE PLANCHER DES BOUTONS DE JEU. « Tourner à gauche », « Annuler »,
+       « Recommencer » : des boutons de texte, larges de cent pixels et hauts
+       de vingt-six. On ne touche qu'à leur HAUTEUR — leur largeur, elle, était
+       déjà bonne — et l'on épargne les cases de grille, qui sont des boutons
+       carrés dont la hauteur EST la mise en page. */
+    #game-layer button:not(.game-icon-btn):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
+        min-height: 40px;
+    }
+}
+/* Sur un téléphone tenu debout, les commandes ne tiennent plus à côté du
+   titre à cette taille : elles prennent la rangée du dessous — exactement ce
+   que fait déjà l'en-tête quand le professeur y ajoute ses deux navigations. */
+@media (pointer: coarse) and (max-width: 620px) and (orientation: portrait) {
+    #game-header {
+        grid-template-columns: 1fr auto auto;
+        grid-template-areas: "titre avance chrono" "actions actions actions";
+        row-gap: 6px;
+    }
+    .game-header-actions { justify-content: flex-end; }
+}
+
+/* ============================================================================
    LA BANDE DU ROBOT DANS UN EN-TÊTE EN GRILLE
    ============================================================================
    En cadre étroit et sur téléphone, l'en-tête n'est plus en `flex` mais en
