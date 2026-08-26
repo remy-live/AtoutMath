@@ -154,9 +154,24 @@
 .device-simulator .bubble.choice--xl { font-size: min(1.05rem, calc(var(--bulle) * .22)); min-width: 80px; padding: 0 14px; }
 .device-simulator .bubble.choice--xxl { font-size: min(.92rem, calc(var(--bulle) * .17)); min-width: 80px; padding: 0 12px; }
 
-.missing-cell.choice--l, .prio-btn.choice--l { font-size: .95em; }
-.missing-cell.choice--xl, .prio-btn.choice--xl { font-size: .85em; }
-.missing-cell.choice--xxl, .prio-btn.choice--xxl { font-size: .75em; }
+/* UNE ÉTIQUETTE LONGUE RÉTRÉCIT UN PEU — mais on compte sur ELLE, pas sur ce
+   qu'il y a autour. `font-size: .75em` se calcule sur le PARENT : les 1,4 rem
+   du bouton étaient purement et simplement jetés, et « 8,3 × 10⁻⁶ » tombait à
+   DOUZE pixels sous un énoncé de cinquante-huit. Rémy : « les réponses petites
+   et l'énoncé géant » — quatre fois plus petites, exactement.
+   
+   Et sur cette question-là, ce n'était pas qu'une affaire de goût : les deux
+   réponses proposées ne diffèrent que par un signe « − » en exposant. À douze
+   pixels, ce trait fait deux pixels de large. On ne demandait plus à l'élève
+   de choisir, on lui demandait de deviner.
+   
+   La taille de base vit donc dans une variable, et les paliers la multiplient. */
+.missing-cell.choice--l { font-size: calc(var(--taille-case) * .95); }
+.missing-cell.choice--xl { font-size: calc(var(--taille-case) * .85); }
+.missing-cell.choice--xxl { font-size: calc(var(--taille-case) * .78); }
+.prio-btn.choice--l { font-size: calc(var(--taille-choix) * .95); }
+.prio-btn.choice--xl { font-size: calc(var(--taille-choix) * .87); }
+.prio-btn.choice--xxl { font-size: calc(var(--taille-choix) * .8); }
 
 /* --- Aides graduées ---------------------------------------- */
 

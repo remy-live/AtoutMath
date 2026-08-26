@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v350';
+const CACHE = 'atoutmath-v351';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=411',
-    './css/layout.css?v=411',
-    './css/ui.css?v=411',
-    './css/games.css?v=411',
-    './css/components.css?v=411',
-    './css/modules.css?v=411',
+    './css/base.css?v=412',
+    './css/layout.css?v=412',
+    './css/ui.css?v=412',
+    './css/games.css?v=412',
+    './css/components.css?v=412',
+    './css/modules.css?v=412',
     './icons/icon-192.png',
     './icons/icon-512.png',
     // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans

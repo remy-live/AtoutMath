@@ -92,7 +92,10 @@
    unités de conteneur la rapportent au plateau, et la borne en hauteur évite
    qu'un énoncé de trois lignes ne mange l'écran sur un plateau bas. */
 .game-question {
-    font-size: clamp(1.3rem, min(6.8cqw, 9cqh, 5.4vw + 14px), 3.6rem); font-weight: 800;
+    /* PLAFOND ABAISSÉ. À 3,6 rem, deux lignes d'énoncé remplissaient la moitié
+       haute de l'écran et écrasaient tout le reste. La question doit dominer,
+       pas régner. */
+    font-size: clamp(1.3rem, min(6.8cqw, 9cqh, 5.4vw + 14px), 2.9rem); font-weight: 800;
     margin-bottom: clamp(16px, 4vh, 40px); text-align: center;
     color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05);
     text-wrap: balance; line-height: 1.25; max-width: 26ch; margin-inline: auto;
@@ -176,7 +179,7 @@
 
 /* Grille Facteur Manquant */
 .missing-grid { display: grid; grid-template-columns: repeat(4, 70px); gap: 12px; margin-top: 30px; }
-.missing-cell { background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-size: 1.6rem; font-weight: 800; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm); color: var(--text-main); }
+.missing-cell { --taille-case: 1.6rem; background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-size: var(--taille-case); font-weight: 800; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm); color: var(--text-main); }
 @media (hover: hover) and (pointer: fine) {
 .missing-cell:hover { transform: translateY(-3px); border-color: var(--primary); color: var(--primary); box-shadow: var(--shadow-md); }
 }
@@ -191,7 +194,20 @@
 .pytha-cell--target { background: var(--warning); color: white; font-size: 1.1rem; font-weight: 800; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4); }
 
 /* Boutons Priorité */
-.prio-btn { display: block; width: 100%; max-width: 320px; padding: 20px; margin: 12px auto; font-size: 1.4rem; background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-weight: 700; color: var(--text-main); text-align: center; transition: all 0.2s ease; box-shadow: var(--shadow-sm); cursor: pointer; }
+/* LA RÉPONSE SE LIT AUSSI BIEN QUE LA QUESTION. Elle grandit donc avec
+   l'écran, comme l'énoncé — figée à 1,4 rem, elle devenait minuscule sur un
+   grand écran où l'énoncé, lui, montait à cinquante-huit pixels. Et la boîte
+   s'élargit : trois cent vingt pixels au milieu de mille trois cents, c'était
+   un timbre-poste posé sur une affiche. */
+.prio-btn {
+    --taille-choix: clamp(1.2rem, 2.2vw + 10px, 2rem);
+    display: block; width: 100%; max-width: min(480px, 100%);
+    padding: clamp(14px, 1.4vw + 8px, 22px); margin: 12px auto;
+    font-size: var(--taille-choix);
+    background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px;
+    font-weight: 700; color: var(--text-main); text-align: center;
+    transition: all 0.2s ease; box-shadow: var(--shadow-sm); cursor: pointer;
+}
 @media (hover: hover) and (pointer: fine) {
 .prio-btn:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: var(--shadow-md); color: var(--primary); }
 }
@@ -235,7 +251,10 @@
     .tactile-grid { grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(5, 50px); gap: 4px; padding: 8px; }
     .missing-grid { grid-template-columns: repeat(3, 60px); gap: 10px; }
     .missing-cell { width: 60px; height: 60px; font-size: 1.4rem; }
-    .prio-btn { width: 100%; font-size: 1.2rem; padding: 15px; }
+    /* Sur un petit écran, la variable suffit : elle descend déjà à 1,2 rem.
+       Réécrire `font-size` ici casserait les paliers d'étiquette longue, qui
+       la multiplient. */
+    .prio-btn { width: 100%; }
     .glass-panel { width: 90% !important; padding: 20px; }
     .pytha-table { max-width: 340px; gap: 2px; }
     .pytha-cell { font-size: 0.65rem; border-radius: 4px; }
