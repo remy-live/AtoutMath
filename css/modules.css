@@ -173,6 +173,24 @@
 .prio-btn.choice--xl { font-size: calc(var(--taille-choix) * .87); }
 .prio-btn.choice--xxl { font-size: calc(var(--taille-choix) * .8); }
 
+/* L'ÉGALITÉ DE THALÈS, ÉCRITE COMME AU TABLEAU.
+   Rémy : « Le texte des boutons est petit. Ecris les fraction en colonne. »
+   Les deux vont ensemble. « AM/AB = AN/AC = MN/BC » fait vingt et un
+   caractères : la règle de longueur en déduisait un libellé encombrant et
+   descendait la police à quatre-vingts pour cent, sous un énoncé deux fois
+   plus gros. En colonnes, la même égalité occupe la moitié de la largeur —
+   elle peut donc reprendre la taille pleine des propositions, et c'est
+   l'écriture juste par-dessus le marché. */
+.th-eg {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: .45em; font-size: var(--taille-choix, 1.6rem); line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.th-eg .fraction { font-weight: 800; }
+.th-eg .fraction-num { padding: 0 .28em .06em; }
+.th-eg .fraction-den { padding: .06em .28em 0; border-top: .085em solid currentColor; }
+.th-eg-signe { font-weight: 800; opacity: .7; }
+
 /* --- Aides graduées ---------------------------------------- */
 
 .hint-bar { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: clamp(8px, 2cqh, 18px); }
@@ -4842,7 +4860,6 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     background: #8a92a6; pointer-events: none;
 }
 .fx-th-base, .fx-th-para { height: .7px; background: #2a3040; }
-.fx-th-pt { position: absolute; border-radius: 50%; background: #1a202c; }
 .fx-th-nom {
     position: absolute; font-weight: 800; color: #1a202c; white-space: nowrap;
 }

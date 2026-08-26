@@ -1,4 +1,4 @@
-// THALÈS — quatre marches, et la troisième seulement est un calcul.
+// THALÈS — trois marches, et la deuxième seulement est un calcul.
 //
 // Rémy : « Un exercice sur le théorème de Thalès. »
 //
@@ -6,8 +6,17 @@
 // n'est pas une erreur de calcul : c'est d'écrire AM/MB au lieu de AM/AB — le
 // petit morceau sur le RESTE au lieu du TOUT. Le calcul qui suit tombe alors
 // parfaitement juste sur une égalité fausse, et rien ne prévient l'élève. On
-// fait donc RECONNAÎTRE la configuration, puis CHOISIR l'égalité, avant de
-// laisser calculer quoi que ce soit.
+// fait donc CHOISIR l'égalité avant de laisser calculer quoi que ce soit.
+//
+// IL Y AVAIT UNE MARCHE DE PLUS, ET ELLE NE SERVAIT À RIEN. Rémy : « On se
+// fiche si c'est en papillon ou en triangle imbriqué. Ne mets pas cette
+// partie. » Il a raison, et le module de calcul le disait déjà sans qu'on
+// l'écoute : un seul signe sépare les deux configurations, et le théorème
+// s'écrit pareil dans les deux. Nommer la figure ne fait pas partie de ce
+// qu'on apprend ; la reconnaître, oui — et c'est ce que fait la marche
+// suivante, qui demande l'égalité SUR la figure qu'on a sous les yeux.
+// La figure, elle, continue de prendre les deux formes : c'est le réglage
+// « Configuration ».
 //
 // LA RÉCIPROQUE EST UNE MARCHE À PART, parce que c'est une autre question. Les
 // trois premières marches partent de « les droites sont parallèles » ; la
@@ -23,15 +32,15 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import {
     CONFIGURATIONS, creerThales, longueurTexte, egaliteThales, FAUSSES_EGALITES,
-    sontParalleles, rapportsCompares, calculThales, pointsReels
+    sontParalleles, rapportsCompares, calculThales, pointsReels,
+    placeNoms, ancrageNom, ECART_NOM
 } from '../thales.js';
 
-/** Les quatre marches, dans l'ordre où on les gravit. */
+/** Les trois marches, dans l'ordre où on les gravit. */
 export const ETAPES_THALES = {
-    configuration: { id: 'configuration', rang: 1, label: '1 · Reconnaître la configuration' },
-    egalite: { id: 'egalite', rang: 2, label: '2 · Écrire la bonne égalité' },
-    calculer: { id: 'calculer', rang: 3, label: '3 · Calculer une longueur' },
-    reciproque: { id: 'reciproque', rang: 4, label: '4 · La réciproque : est-ce parallèle ?' }
+    egalite: { id: 'egalite', rang: 1, label: '1 · Écrire la bonne égalité' },
+    calculer: { id: 'calculer', rang: 2, label: '2 · Calculer une longueur' },
+    reciproque: { id: 'reciproque', rang: 3, label: '3 · La réciproque : est-ce parallèle ?' }
 };
 
 export const ORDRE_THALES = Object.values(ETAPES_THALES)
@@ -49,101 +58,228 @@ const PAR_MARCHE = 3;
  */
 export function figureThalesSvg(f, cotes = []) {
     const P = f.points;
-    // Le papillon monte au-dessus de A : la boîte doit suivre, sinon la moitié
-    // de la figure sort du cadre.
-    const ys = Object.values(P).map(p => p.y);
-    const y0 = Math.min(...ys) - 16, y1 = Math.max(...ys) + 16;
+    const TAILLE_NOM = 7, TAILLE_COTE = 6;
+    const dirs = placeNoms(P);
+    const SEGMENTS = [['A', 'B'], ['A', 'C'], ['A', 'M'], ['A', 'N'], ['B', 'C'], ['M', 'N']];
 
-    // LA COTE SE POSE À CÔTÉ DU SEGMENT, PAS DESSUS. Les premières versions
-    // écrivaient l'étiquette au milieu du segment avec un décalage fixe : sur
-    // A–B, ce milieu tombe pile sur le point M quand le rapport vaut ½, et
-    // « AB = 12 » se posait sur la lettre M. On décale donc PERPENDICULAIREMENT
-    // au segment, du côté opposé au centre de la figure, et l'on choisit où le
-    // long du segment — pour qu'AB ne se pose pas là où AM est déjà.
-    const centre = { x: (P.A.x + P.B.x + P.C.x) / 3, y: (P.A.y + P.B.y + P.C.y) / 3 };
-    const cote = (a, b, nom, t = 0.5) => {
-        if (!cotes.includes(nom)) return '';
+    /** Distance d'un point à un segment — la vraie, pas celle à la droite. */
+    const distSegment = (c, p, q) => {
+        const dx = q.x - p.x, dy = q.y - p.y;
+        const l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / l2)) : 0;
+        return Math.hypot(c.x - (p.x + t * dx), c.y - (p.y + t * dy));
+    };
+
+    // UNE ÉTIQUETTE EST UNE BOÎTE, PAS UN POINT. « AB = 20 » fait vingt unités
+    // de large : c'est son BOUT qui touche le trait, jamais son centre, et
+    // c'est exactement l'erreur qui laissait les cotes barrées d'un trait
+    // malgré un décalage. On la mesure donc par sa boîte, ancrage compris —
+    // une étiquette ancrée à droite s'étend vers la GAUCHE de son point.
+    const ancre = (a) => a.h > 0 ? 'start' : a.h < 0 ? 'end' : 'middle';
+    const ligneBase = (a, taille) => (a.v > 0 ? 0.82 : a.v < 0 ? -0.10 : 0.34) * taille;
+    // LA BOÎTE EST CELLE DE L'ENCRE, pas celle du point d'ancrage. Un texte
+    // SVG se pose par le PIED de ses lettres : mesurer la boîte avant ce
+    // décalage revenait à mesurer un rectangle situé jusqu'à cinq unités plus
+    // haut que le texte réel — donc à déclarer dégagé ce qui ne l'était pas.
+    const boite = (x, y, texte, taille, anc) => {
+        const base = y + ligneBase(anc, taille);
+        const large = texte.length * taille * 0.56;
+        const gauche = anc.h > 0 ? x : anc.h < 0 ? x - large : x - large / 2;
+        return {
+            x0: gauche, x1: gauche + large,
+            y0: base - taille * 0.72, y1: base + taille * 0.2
+        };
+    };
+    const echantillons = (b) => {
+        const pts = [];
+        for (let i = 0; i <= 4; i++) {
+            for (let j = 0; j <= 2; j++) {
+                pts.push({ x: b.x0 + (b.x1 - b.x0) * i / 4, y: b.y0 + (b.y1 - b.y0) * j / 2 });
+            }
+        }
+        return pts;
+    };
+    /** Ce qui reste de libre autour d'une boîte : traits et étiquettes déjà posées. */
+    const degagement = (b, saufSegment, posees) => {
+        let libre = Infinity;
+        const pts = echantillons(b);
+        for (const [u, v] of SEGMENTS) {
+            if (saufSegment && ((u === saufSegment[0] && v === saufSegment[1])
+                || (u === saufSegment[1] && v === saufSegment[0]))) continue;
+            pts.forEach(c => { libre = Math.min(libre, distSegment(c, P[u], P[v])); });
+        }
+        posees.forEach(a => {
+            // Distance entre deux boîtes : nulle si elles se chevauchent.
+            const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1, 0);
+            const dy = Math.max(a.y0 - b.y1, b.y0 - a.y1, 0);
+            libre = Math.min(libre, Math.hypot(dx, dy));
+        });
+        return libre;
+    };
+    // LES LETTRES D'ABORD : elles sont fixées par la géométrie du point (voir
+    // `placeNoms`), les cotes s'arrangeront autour d'elles.
+    const posees = [];
+    const textes = [];
+    for (const nom of ['A', 'B', 'C', 'M', 'N']) {
+        const d = dirs[nom], a = ancrageNom(d);
+        const x = P[nom].x + d.x * ECART_NOM;
+        const y = P[nom].y + d.y * ECART_NOM;
+        const b = boite(x, y, nom, TAILLE_NOM, a);
+        posees.push(b);
+        textes.push({ b, html: `<text x="${x.toFixed(1)}" y="${(y + ligneBase(a, TAILLE_NOM)).toFixed(1)}"
+            text-anchor="${ancre(a)}" class="th-nom">${nom}</text>` });
+    }
+
+    // OÙ POSER UNE COTE : LÀ OÙ IL N'Y A RIEN.
+    //
+    // Rémy : « Les lettres se supperpose aux trait. » Les cotes avaient le
+    // même défaut, en pire, et pour deux raisons :
+    //
+    //  · ON LES ÉCARTAIT DU CENTRE DE ABC. Dans un papillon, M et N sont de
+    //    l'AUTRE côté de A : ce centre-là tombe sous le point A, et la cote de
+    //    (MN) — qui est au-dessus — se faisait repousser vers l'intérieur.
+    //  · ON LES POSAIT PAR LEUR BORD GAUCHE, sans ancrage : les écarter vers
+    //    la gauche déplaçait ce bord pendant que le texte, lui, repartait vers
+    //    la droite par-dessus le trait qu'on venait de fuir.
+    //
+    // Le remède n'est pas un troisième décalage écrit à la main mais un
+    // CRITÈRE : on propose trente emplacements — cinq positions le long du
+    // segment, deux côtés, trois distances —, on mesure le dégagement de
+    // chacun, et on garde le meilleur. À dégagement égal on préfère le plus
+    // proche du segment, sans quoi la cote partirait au large et l'on ne
+    // saurait plus ce qu'elle mesure.
+    const D_COTE = 6;
+    // UNE COTE SE MET DEHORS. C'est la convention de tous les plans et de tous
+    // les manuels, et elle a une raison : à l'intérieur, l'étiquette se
+    // retrouve entre DEUX traits et l'on ne sait plus lequel elle mesure —
+    // « AN = 19 » posé sous (MN) se lit comme la longueur de MN. Le critère de
+    // dégagement seul ne voyait pas la différence : les deux côtés du segment
+    // sont également libres, il en prenait un au hasard.
+    const centre = {
+        x: Object.values(P).reduce((t, p) => t + p.x, 0) / 5,
+        y: Object.values(P).reduce((t, p) => t + p.y, 0) / 5
+    };
+    for (const [a, b, nom] of SEGMENTS) {
+        if (!cotes.includes(nom) && !cotes.includes(a + b)) continue;
+        const cle = cotes.includes(nom) ? nom : a + b;
         const p = P[a], q = P[b];
         const dx = q.x - p.x, dy = q.y - p.y;
         const n = Math.hypot(dx, dy) || 1;
         // UN SEGMENT TROP COURT NE PORTE PAS SA COTE : l'étiquette se poserait
-        // sur la lettre du point. Depuis que la figure ÉTALE les rapports
-        // (voir pointsThales), le cas ne se présente plus sur les figures
-        // fabriquées ici — le garde-fou reste pour les autres appelants.
-        if (n < 14) return '';
-        const mx = p.x + dx * t, my = p.y + dy * t;
-        // La normale, orientée à l'opposé du centre.
-        let nx = -dy / n, ny = dx / n;
-        if ((mx - centre.x) * nx + (my - centre.y) * ny < 0) { nx = -nx; ny = -ny; }
-        const d = 8;
-        return `<text x="${(mx + nx * d).toFixed(1)}" y="${(my + ny * d + 2).toFixed(1)}"
-            class="th-cote">${nom} = ${longueurTexte(f[nom])}</text>`;
-    };
-    const point = (p, nom, dx, dy) =>
-        `<circle cx="${p.x}" cy="${p.y}" r="1.8" class="th-pt"/>`
-        + `<text x="${p.x + dx}" y="${p.y + dy}" class="th-nom">${nom}</text>`;
+        // sur la lettre du point.
+        if (n < 14) continue;
+        const texte = `${cle} = ${longueurTexte(f[cle])}`;
+        let mieux = null;
+        for (const t of [0.28, 0.42, 0.56, 0.7, 0.84]) {
+            for (const sens of [1, -1]) {
+                for (const ecart of [D_COTE, D_COTE + 4, D_COTE + 8, D_COTE + 13, D_COTE + 19]) {
+                    const ux = -dy / n * sens, uy = dx / n * sens;
+                    const x = p.x + dx * t + ux * ecart, y = p.y + dy * t + uy * ecart;
+                    const anc = ancrageNom({ x: ux, y: uy });
+                    const bt = boite(x, y, texte, TAILLE_COTE, anc);
+                    const libre = degagement(bt, [a, b], posees);
+                    // AU-DELÀ DE HUIT, ÊTRE PLUS DÉGAGÉ NE SERT PLUS À RIEN —
+                    // mais être plus loin, si : une cote posée au large est
+                    // techniquement libre et pratiquement muette, on ne sait
+                    // plus quel segment elle mesure. On plafonne donc le
+                    // bénéfice du dégagement, et l'éloignement se paie plein
+                    // tarif : la cote se colle au segment dès qu'elle le peut.
+                    // Combien l'écart a poussé l'étiquette VERS L'EXTÉRIEUR,
+                    // compté le long du rayon qui va du centre de la figure au
+                    // milieu du segment.
+                    const mx = p.x + dx * t, my = p.y + dy * t;
+                    const rx = mx - centre.x, ry = my - centre.y;
+                    const r = Math.hypot(rx, ry) || 1;
+                    const dehors = ((x - mx) * rx + (y - my) * ry) / r;
+                    // NE PAS TOUCHER LE TRAIT PASSE AVANT TOUT LE RESTE.
+                    // Sans ce plancher, la préférence pour l'extérieur pouvait
+                    // acheter une place collée à un trait : deux points de
+                    // bonus contre un demi-point de dégagement perdu, le
+                    // compte était vite fait — et c'était le défaut d'origine
+                    // qui revenait par la porte de derrière.
+                    const trop = libre < 3 ? (3 - libre) * 6 : 0;
+                    const score = Math.min(libre, 8) - trop - ecart * 0.35
+                        + Math.max(-1, Math.min(1, dehors / 4)) * 2;
+                    if (!mieux || score > mieux.score) mieux = { score, x, y, anc, bt };
+                }
+            }
+        }
+        posees.push(mieux.bt);
+        textes.push({
+            b: mieux.bt,
+            html: `<text x="${mieux.x.toFixed(1)}" y="${(mieux.y + ligneBase(mieux.anc, TAILLE_COTE)).toFixed(1)}"
+                text-anchor="${ancre(mieux.anc)}" class="th-cote">${texte}</text>`
+        });
+    }
 
-    return `<svg viewBox="-12 ${y0} 134 ${y1 - y0}" class="th-fig fig-svg" role="img"
+    // LA BOÎTE ÉPOUSE TOUT CE QU'ON A DESSINÉ, figure ET étiquettes. Un carré
+    // fixe laissait tantôt la moitié d'un papillon dehors, tantôt un tiers de
+    // blanc à droite d'un emboîté ; une boîte calculée sur les seuls points
+    // coupait les cotes, qui sortent de la figure.
+    const bx = [...Object.values(P).map(p => p.x), ...textes.map(t => t.b.x0),
+        ...textes.map(t => t.b.x1)];
+    const by = [...Object.values(P).map(p => p.y), ...textes.map(t => t.b.y0),
+        ...textes.map(t => t.b.y1)];
+    const m = 2;
+    const x0 = Math.min(...bx) - m, x1 = Math.max(...bx) + m;
+    const y0 = Math.min(...by) - m, y1 = Math.max(...by) + m;
+
+    const trait = (a, b, cls) =>
+        `<line x1="${P[a].x}" y1="${P[a].y}" x2="${P[b].x}" y2="${P[b].y}" class="${cls}"/>`;
+
+    return `<svg viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}"
+        class="th-fig fig-svg" role="img"
         aria-label="Figure de Thalès, ${CONFIGURATIONS[f.config].label}">
         <style>
             .th-droite { stroke: #4a5568; stroke-width: .8; fill: none; }
             .th-para { stroke: #2f855a; stroke-width: 1.5; fill: none; }
             .th-base { stroke: #2b6cb0; stroke-width: 1.5; fill: none; }
-            .th-pt { fill: #1a202c; }
-            .th-nom { font-size: 7px; font-weight: 800; fill: #1a202c; }
-            .th-cote { font-size: 5.4px; font-weight: 700; fill: #4a5568; }
+            .th-nom { font-size: ${TAILLE_NOM}px; font-weight: 800; fill: #1a202c; }
+            .th-cote { font-size: ${TAILLE_COTE}px; font-weight: 700; fill: #2c5282; }
         </style>
-        <line x1="${P.A.x}" y1="${P.A.y}" x2="${P.B.x}" y2="${P.B.y}" class="th-droite"/>
-        <line x1="${P.A.x}" y1="${P.A.y}" x2="${P.C.x}" y2="${P.C.y}" class="th-droite"/>
-        <line x1="${P.A.x}" y1="${P.A.y}" x2="${P.M.x}" y2="${P.M.y}" class="th-droite"/>
-        <line x1="${P.A.x}" y1="${P.A.y}" x2="${P.N.x}" y2="${P.N.y}" class="th-droite"/>
-        <line x1="${P.B.x}" y1="${P.B.y}" x2="${P.C.x}" y2="${P.C.y}" class="th-base"/>
-        <line x1="${P.M.x}" y1="${P.M.y}" x2="${P.N.x}" y2="${P.N.y}" class="th-para"/>
-        ${point(P.A, 'A', 2, -3)}
-        ${point(P.B, 'B', -7, 6)}
-        ${point(P.C, 'C', 3, 6)}
-        ${point(P.M, 'M', -7, 3)}
-        ${point(P.N, 'N', 3, 3)}
-        ${cote('A', 'M', 'AM', 0.6)}
-        ${cote('A', 'B', 'AB', 0.85)}
-        ${cote('A', 'N', 'AN', 0.6)}
-        ${cote('A', 'C', 'AC', 0.85)}
-        ${cote('M', 'N', 'MN', 0.5)}
-        ${cote('B', 'C', 'BC', 0.5)}
+        ${trait('A', 'B', 'th-droite')}
+        ${trait('A', 'C', 'th-droite')}
+        ${trait('A', 'M', 'th-droite')}
+        ${trait('A', 'N', 'th-droite')}
+        ${trait('B', 'C', 'th-base')}
+        ${trait('M', 'N', 'th-para')}
+        ${textes.map(t => t.html).join('\n        ')}
     </svg>`;
 }
 
-// --- Les quatre marches ---------------------------------------------------------
+// --- LES FRACTIONS S'ÉCRIVENT EN COLONNE ----------------------------------------
+//
+// Rémy : « Ecris les fraction en colonne. »
+//
+// « AM/AB », c'est une commodité de clavier, pas une écriture mathématique.
+// Or c'est justement l'ÉCRITURE qu'on travaille sur cette marche : l'élève
+// doit reconnaître que le petit segment est au NUMÉRATEUR et le grand au
+// DÉNOMINATEUR, et la barre oblique ne montre ni l'un ni l'autre — elle les
+// met côte à côte. Une barre horizontale les met l'un SUR l'autre, et la
+// faute qu'on traque (AM sur MB) devient visible sans lire.
+//
+// ON TRADUIT LE TEXTE PLUTÔT QUE DE DOUBLER LES DONNÉES. Les quatre fausses
+// égalités sont écrites une fois, en texte, avec leur diagnostic ; en écrire
+// une seconde version en HTML les aurait fait diverger au premier ajout.
+// Cette fonction lit « AM/AB = AN/AC = MN/BC » et le dessine — donc toute
+// égalité nouvelle est dessinée sans qu'on y pense.
 
-function etapeConfiguration(rng, config) {
-    const f = creerThales({ config, rng });
-    if (!f) return null;
-    const c = CONFIGURATIONS[config];
-    const autre = CONFIGURATIONS[config === 'emboites' ? 'papillon' : 'emboites'];
-    return {
-        f,
-        prompt: 'Quelle est la configuration de cette figure ?',
-        html: `<div class="game-question">Quelle est la <b>configuration</b> de cette figure ?</div>
-            <div class="figure-wrap">${figureThalesSvg(f)}</div>`,
-        papier: 'Quelle est la configuration de cette figure : triangles emboîtés, '
-            + 'ou papillon ?',
-        answer: c.label,
-        choices: [
-            { value: c.label, correct: true },
-            { value: autre.label, why: `Non : ${c.aide}` },
-            { value: 'Aucune des deux : Thalès ne s\'applique pas',
-                why: 'Si, il s\'applique : deux droites sécantes en A, coupées par deux '
-                    + 'parallèles, c\'est exactement le cas de Thalès.' }
-        ],
-        nbChoix: 3,
-        explanation: `${c.label} — ${c.aide} Dans les deux cas, le théorème s'écrit `
-            + `pareil : ${egaliteThales()}.`,
-        hints: ['Regarde où se trouve le point A par rapport aux deux droites parallèles.',
-            'S\'il est en dehors des deux, les triangles sont emboîtés ; s\'il est entre '
-                + 'les deux, c\'est un papillon.'],
-        difficulty: 1
-    };
+/** Une fraction à deux étages, comme au tableau. */
+const fracHtml = (n, d) => `<span class="fraction"><span class="fraction-num">${n}</span>`
+    + `<span class="fraction-den">${d}</span></span>`;
+
+/** « AM/AB = AN/AC = MN/BC » dessiné en trois fractions et deux signes égal. */
+export function egaliteEnColonnes(texte) {
+    const morceaux = String(texte).split('=').map(x => x.trim());
+    return `<span class="th-eg">` + morceaux.map(m => {
+        const [n, d] = m.split('/');
+        // Un morceau sans barre — une longueur seule — se pose tel quel : la
+        // fonction sert aussi aux rapports d'une réciproque.
+        return d === undefined ? `<span>${m}</span>` : fracHtml(n.trim(), d.trim());
+    }).join('<span class="th-eg-signe">=</span>') + `</span>`;
 }
+
+// --- Les trois marches -----------------------------------------------------------
 
 function etapeEgalite(rng, config) {
     const f = creerThales({ config, rng });
@@ -158,8 +294,17 @@ function etapeEgalite(rng, config) {
         papier: 'Les droites (MN) et (BC) sont parallèles. Écris l\'égalité des trois '
             + 'rapports donnée par le théorème de Thalès.',
         answer: egaliteThales(),
-        choices: [{ value: egaliteThales(), correct: true }]
-            .concat(fausses.map(x => ({ value: x.texte, why: x.pourquoi }))),
+        // `value` reste le TEXTE — c'est la clé de la réponse, elle est
+        // comparée à `answer` et enregistrée dans le carnet d'erreurs.
+        // `label` est ce qu'on montre, `texte` ce que le robot lit à voix
+        // haute : trois rôles, trois champs, aucun qui empiète sur l'autre.
+        choices: [{
+            value: egaliteThales(), label: egaliteEnColonnes(egaliteThales()),
+            texte: egaliteThales(), correct: true
+        }].concat(fausses.map(x => ({
+            value: x.texte, label: egaliteEnColonnes(x.texte), texte: x.texte,
+            why: x.pourquoi
+        }))),
         explanation: `${egaliteThales()}. Chaque petit segment se compare au segment ENTIER `
             + 'qui le contient — AM avec AB, pas avec MB — et les trois rapports vont tous '
             + 'dans le même sens.',
@@ -220,9 +365,16 @@ function etapeReciproque(rng, config) {
     return {
         f: g,
         prompt: `${donnees}. Les droites (MN) et (BC) sont-elles parallèles ?`,
-        html: `<div class="game-question">${donnees}.<br>`
-            + 'Les droites (MN) et (BC) sont-elles <b>parallèles</b> ?</div>'
-            + `<div class="figure-wrap">${figureThalesSvg(g)}</div>`,
+        // LES QUATRE LONGUEURS VONT SUR LA FIGURE, PAS DANS L'ÉNONCÉ. Rémy :
+        // « Le texte des boutons est petit. » Elles y étaient pour deux : un
+        // énoncé de quatre-vingts caractères prend deux lignes en très gros
+        // caractères, pousse la figure vers le bas et écrase tout ce qui
+        // suit — c'est ce qui rendait les propositions minuscules. Et c'est
+        // par ailleurs la présentation de tous les manuels : une figure de
+        // réciproque PORTE ses mesures, sinon on ne sait pas quoi comparer.
+        html: '<div class="game-question">Les droites (MN) et (BC) sont-elles '
+            + '<b>parallèles</b> ?</div>'
+            + `<div class="figure-wrap">${figureThalesSvg(g, ['AM', 'AB', 'AN', 'AC'])}</div>`,
         papier: `${donnees}. Les droites (MN) et (BC) sont-elles parallèles ? Justifie.`,
         answer: vrai ? 'Oui, elles sont parallèles' : 'Non, elles ne sont pas parallèles',
         choices: [
@@ -245,7 +397,8 @@ function etapeReciproque(rng, config) {
                 : 'Les deux rapports sont DIFFÉRENTS, donc (MN) et (BC) ne sont pas '
                     + 'parallèles. Attention : compare des fractions, pas des valeurs '
                     + 'arrondies — 1/3 n\'est pas 0,33.'),
-        hints: ['Calcule les deux rapports AM/AB et AN/AC.',
+        hints: ['Calcule les deux rapports AM/AB et AN/AC, avec les longueurs '
+            + 'écrites sur la figure.',
             'Compare-les en FRACTIONS (produit en croix), pas en valeurs approchées.'],
         cotes: [],
         difficulty: 4
@@ -253,7 +406,6 @@ function etapeReciproque(rng, config) {
 }
 
 const MARCHES = {
-    configuration: etapeConfiguration,
     egalite: etapeEgalite,
     calculer: etapeCalculer,
     reciproque: etapeReciproque
@@ -280,10 +432,10 @@ export const thalesGenerator = {
         {
             id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
             aide: '« Tout en ordre » monte d\'une marche toutes les trois questions : '
-                + 'reconnaître la configuration, écrire l\'égalité, calculer, puis la '
-                + 'réciproque. On ne commence pas par le calcul, et c\'est voulu : la faute '
-                + 'ordinaire est d\'écrire AM/MB au lieu de AM/AB, et le calcul qui suit '
-                + 'tombe alors parfaitement juste sur une égalité fausse.',
+                + 'écrire l\'égalité, calculer une longueur, puis la réciproque. On ne '
+                + 'commence pas par le calcul, et c\'est voulu : la faute ordinaire est '
+                + 'd\'écrire AM/MB au lieu de AM/AB, et le calcul qui suit tombe alors '
+                + 'parfaitement juste sur une égalité fausse.',
             options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur' }]
                 .concat(ORDRE_THALES.map(e => ({ value: e, label: ETAPES_THALES[e].label })))
         },

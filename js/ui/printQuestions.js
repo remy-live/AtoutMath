@@ -83,7 +83,13 @@ function tirerQuestions(generator, params, nb) {
             // cours. Le générateur le déclare (`fractions: true`) ; la fiche
             // du parcours le lisait déjà, celle-ci l'oubliait.
             fractions: !!generator.fractions && porteUneFraction(texte, item.answer),
-            choix: item.choices ? item.choices.map(c => String(c.label ?? c.value)) : null,
+            // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
+            // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
+            // est du HTML — deux span empilés —, et une égalité de Thalès
+            // aussi depuis qu'elle s'écrit en colonnes. `formaterReponse` le
+            // savait déjà pour la bonne réponse ; la liste du QCM, elle,
+            // imprimait « <span class="fraction">… » en toutes lettres.
+            choix: item.choices ? item.choices.map(texteDeProposition) : null,
             reponse: formaterReponse(item),
             // L'explication du générateur : elle ne sert qu'à la feuille de
             // solutions détaillée, celle qu'on distribue après le contrôle.
@@ -95,6 +101,19 @@ function tirerQuestions(generator, params, nb) {
     return out;
 }
 
+/**
+ * Une proposition telle qu'on l'ÉCRIT sur le papier.
+ *
+ * `texte` d'abord — c'est le champ que les générateurs remplissent quand leur
+ * libellé est un dessin —, puis le libellé s'il est en clair, et la valeur
+ * sinon : elle, elle est toujours du texte, puisqu'elle sert de clé de réponse.
+ */
+function texteDeProposition(c) {
+    if (c.texte) return String(c.texte);
+    const brut = String(c.label ?? c.value ?? '');
+    return /[<>]/.test(brut) ? String(c.value ?? '') : brut;
+}
+
 function formaterReponse(item) {
     if (item.answerKind === 'choice' && item.choices) {
         const bonne = item.choices.find(c => c.correct);
@@ -103,10 +122,7 @@ function formaterReponse(item) {
         // imprimait « 5/7 + 4/7 = <span class="fraction"><span class=… ». Sur
         // le papier, c'est la VALEUR qu'on écrit ; la mise en fraction, la
         // feuille sait la faire toute seule.
-        if (bonne) {
-            const brut = String(bonne.label ?? bonne.value ?? '');
-            return /[<>]/.test(brut) ? String(bonne.value ?? '') : brut;
-        }
+        if (bonne) return texteDeProposition(bonne);
     }
     // La virgule française : une fiche de mathématiques n'écrit pas « 0.2 ».
     // Et les milliers se groupent, dans le corrigé comme dans l'énoncé : celui-ci

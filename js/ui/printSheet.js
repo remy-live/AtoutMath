@@ -34,6 +34,7 @@ import {
 } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { caseCentrale } from '../core/quadrillageSvg.js';
+import { placeNoms, ancrageNom, ECART_NOM } from '../core/thales.js';
 import { ecrireElement } from '../core/elementSymetrie.js';
 import { SENS as SENS_ROTATION } from '../core/transformations.js';
 import { pieceSvg, dessinerPiecePdf, direPiece, MENTION_PIECES } from './piecesEchecs.js';
@@ -4568,9 +4569,36 @@ function geoThalesFiche(item, slot) {
 
 /** Les cinq points nommés, et les segments à tracer. */
 const SEGMENTS_THALES = [['A', 'B'], ['A', 'C'], ['A', 'M'], ['A', 'N']];
-const DECALES_THALES = {
-    A: [1.2, -1], B: [-3.4, 3], C: [1.6, 3], M: [-3.4, 1.6], N: [1.6, 1.6]
-};
+
+/**
+ * OÙ ÉCRIRE CHAQUE LETTRE, EN MILLIMÈTRES DE FEUILLE.
+ *
+ * Rémy : « Les lettres se supperpose aux trait. Ne met pas de rond pour le
+ * point. » Le défaut était le même à l'écran et sur le papier, et pour la même
+ * raison : cinq décalages écrits à la main (« A en haut à droite, B en bas à
+ * gauche ») justes pour UNE figure, alors que la figure change à chaque
+ * question. La règle est maintenant géométrique et PARTAGÉE — `placeNoms`
+ * cherche le plus grand secteur libre autour du point —, donc les deux dessins
+ * ne peuvent pas diverger, ce qui est toute la raison d'être de cette figure
+ * commune.
+ *
+ * @returns {Array<{nom, x, y, align}>} de quoi écrire les cinq lettres.
+ */
+function nomsThales(g, X, Y, taille) {
+    const dirs = placeNoms(g.m.points);
+    // L'écart est donné dans le carré de 100 de la figure ; ici on est en
+    // millimètres, et `g.e` est justement le facteur d'échelle entre les deux.
+    const ecart = Math.max(1.6, ECART_NOM * g.e);
+    return ['A', 'B', 'C', 'M', 'N'].map(nom => {
+        const d = dirs[nom], a = ancrageNom(d);
+        return {
+            nom,
+            x: X(nom) + d.x * ecart,
+            y: Y(nom) + d.y * ecart + (a.v > 0 ? 0.78 : a.v < 0 ? -0.06 : 0.32) * taille,
+            align: a.h > 0 ? 'left' : a.h < 0 ? 'right' : 'center'
+        };
+    });
+}
 
 function thalesPreviewHtml(item, slot, k) {
     const g = geoThalesFiche(item, slot);
@@ -4588,13 +4616,21 @@ function thalesPreviewHtml(item, slot, k) {
     SEGMENTS_THALES.forEach(([a, b]) => trait(a, b, 'fx-th-droite'));
     trait('B', 'C', 'fx-th-base');
     trait('M', 'N', 'fx-th-para');
-    Object.entries(DECALES_THALES).forEach(([nom, [dx, dy]]) => {
-        html += `<div class="fx-th-pt" style="left:${T(g.versX(P[nom].x) - 0.6)}px;
-            top:${T(g.versY(P[nom].y) - 0.6)}px; width:${T(1.2)}px; height:${T(1.2)}px"></div>`;
-        html += `<div class="fx-th-nom" style="left:${T(g.versX(P[nom].x) + dx)}px;
-            top:${T(g.versY(P[nom].y) + dy - g.corps * 0.7)}px;
-            font-size:${T(g.corps * 0.95)}px">${nom}</div>`;
-    });
+    // Plus de disque noir sur les points : « Ne met pas de rond pour le point. »
+    // Un point de géométrie se nomme, il ne se colorie pas — c'est le
+    // croisement des traits, et c'est déjà visible.
+    const taille = g.corps * 0.95;
+    nomsThales(g, (n) => g.versX(P[n].x), (n) => g.versY(P[n].y), taille)
+        .forEach(({ nom, x, y, align }) => {
+            // L'aperçu pose ses boîtes par le coin haut-gauche : on rend
+            // l'ancrage en décalant d'une demi-largeur ou d'une largeur
+            // entière, puisqu'une div n'a pas de `text-anchor`.
+            const large = taille * 0.62;
+            const gx = align === 'left' ? x : align === 'right' ? x - large : x - large / 2;
+            html += `<div class="fx-th-nom" style="left:${T(gx)}px;
+                top:${T(y - taille * 0.78)}px; width:${T(large)}px;
+                text-align:center; font-size:${T(taille)}px">${nom}</div>`;
+        });
     html += `<div class="fx-th-enonce" style="left:${T(g.texteX)}px; top:${T(g.b.y)}px;
         width:${T(g.texteW)}px; font-size:${T(g.corps)}px">${echapperSheet(item.prompt.papier)}</div>`;
     // Les lignes pour rédiger : c'est là que Thalès se note.
@@ -4620,14 +4656,13 @@ function dessinerThalesPdf(doc, item, slot, solution) {
     doc.line(X('B'), Y('B'), X('C'), Y('C'));
     doc.line(X('M'), Y('M'), X('N'), Y('N'));
 
-    doc.setFillColor(...ENCRE.trait);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(g.corps * 0.95 / 0.3528);
-    Object.entries(DECALES_THALES).forEach(([nom, [dx, dy]]) => {
-        doc.circle(X(nom), Y(nom), 0.6, 'F');
-        doc.setTextColor(...ENCRE.trait);
-        doc.text(nom, X(nom) + dx, Y(nom) + dy);
-    });
+    doc.setTextColor(...ENCRE.trait);
+    // Le rond a disparu ici comme à l'écran, et la lettre se place au même
+    // endroit qu'à l'écran : `nomsThales` rend l'alignement, jsPDF le comprend.
+    nomsThales(g, X, Y, g.corps * 0.95)
+        .forEach(({ nom, x, y, align }) => doc.text(nom, x, y, { align }));
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(g.corps / 0.3528);

@@ -8,7 +8,8 @@ import {
     sontParalleles, rapportsCompares, calculThales, pointsThales, pointsReels
 } from '../js/core/thales.js';
 import {
-    thalesGenerator, ORDRE_THALES, ETAPES_THALES, marcheThales, figureThalesSvg
+    thalesGenerator, ORDRE_THALES, ETAPES_THALES, marcheThales, figureThalesSvg,
+    egaliteEnColonnes
 } from '../js/core/generators/thales.js';
 import { getExerciseById, paramSchemaOf } from '../js/data/catalog.js';
 
@@ -132,19 +133,24 @@ test('les longueurs s\'écrivent à la française', () => {
     assert.equal(longueurTexte(7.0), '7');
 });
 
-// --- Les quatre marches ----------------------------------------------------------
+// --- Les trois marches -----------------------------------------------------------
 
 test('on ne commence pas par calculer, et l\'on finit par la réciproque', () => {
-    assert.deepEqual(ORDRE_THALES, ['configuration', 'egalite', 'calculer', 'reciproque']);
+    // Rémy : « On se fiche si c'est en papillon ou en triangle imbriqué. Ne
+    // mets pas cette partie. » La marche « reconnaître la configuration » a
+    // donc disparu — nommer la figure ne fait pas partie du chapitre.
+    assert.deepEqual(ORDRE_THALES, ['egalite', 'calculer', 'reciproque']);
     ORDRE_THALES.forEach((id, i) => assert.equal(ETAPES_THALES[id].rang, i + 1));
-    assert.equal(marcheThales('progressif', 0), 'configuration');
-    assert.equal(marcheThales('progressif', 3), 'egalite');
-    assert.equal(marcheThales('progressif', 6), 'calculer');
-    assert.equal(marcheThales('progressif', 9), 'reciproque');
+    assert.equal(ETAPES_THALES.configuration, undefined);
+    assert.equal(marcheThales('progressif', 0), 'egalite');
+    assert.equal(marcheThales('progressif', 3), 'calculer');
+    assert.equal(marcheThales('progressif', 6), 'reciproque');
     // Arrivé en haut, on recommence : sinon une fiche de vingt questions en
     // poserait onze fois la même.
-    assert.equal(marcheThales('progressif', 12), 'configuration');
+    assert.equal(marcheThales('progressif', 9), 'egalite');
     assert.equal(marcheThales('calculer', 0), 'calculer');
+    // Un réglage enregistré avant la suppression ne doit pas casser l'exercice.
+    assert.equal(marcheThales('configuration', 0), 'egalite');
 });
 
 test('chaque question est complète, et sa figure tient dans son cadre', () => {
@@ -253,4 +259,141 @@ test('Thalès est au catalogue, imprimable, avec ses deux réglages', () => {
     assert.ok(e.instruction.length > 500, 'consigne trop courte');
     assert.ok(/emboîtés/i.test(e.instruction) && /papillon/i.test(e.instruction));
     assert.ok(Object.keys(CONFIGURATIONS).length === 2);
+});
+
+// --- LES LETTRES NE TOUCHENT PLUS LES TRAITS ------------------------------------
+//
+// Rémy : « Les lettres se supperpose aux trait. Ne met pas de rond pour le
+// point. »
+//
+// C'est une propriété GÉOMÉTRIQUE, donc elle se mesure — et c'est la seule
+// façon honnête de dire que le défaut est corrigé. Un œil sur trois captures
+// d'écran ne prouve rien : la figure change à chaque question, et c'est
+// justement pour cela que les décalages écrits à la main finissaient par
+// tomber sur un trait.
+//
+// On relit le SVG produit, on reconstruit la BOÎTE de chaque étiquette à
+// partir de son ancrage, et on mesure sa distance à chacun des six segments.
+
+/** Les segments tracés, relus dans le SVG lui-même. */
+function segmentsDuSvg(svg) {
+    return [...svg.matchAll(/<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
+        .map(m => ({ p: { x: +m[1], y: +m[2] }, q: { x: +m[3], y: +m[4] } }));
+}
+
+/** Les étiquettes, avec leur boîte réelle — ancrage et ligne de base compris. */
+function etiquettesDuSvg(svg) {
+    const re = /<text x="([-\d.]+)"\s+y="([-\d.]+)"\s+(?:text-anchor="(\w+)"\s+)?class="th-(nom|cote)"(?:\s+text-anchor="(\w+)")?\s*>([^<]*)<\/text>/g;
+    return [...svg.matchAll(re)].map(m => {
+        const x = +m[1], y = +m[2];
+        const ancre = m[3] || m[5] || 'start';
+        const taille = m[4] === 'nom' ? 7 : 6;
+        const texte = m[6];
+        const large = texte.length * taille * 0.56;
+        const gauche = ancre === 'start' ? x : ancre === 'end' ? x - large : x - large / 2;
+        // Un texte SVG s'aligne sur le PIED des lettres : la boîte monte
+        // au-dessus de la ligne de base, et déborde très peu en dessous.
+        return {
+            texte, taille,
+            x0: gauche, x1: gauche + large,
+            y0: y - taille * 0.72, y1: y + taille * 0.2
+        };
+    });
+}
+
+/** Distance d'un point à un segment. */
+function distSegment(c, p, q) {
+    const dx = q.x - p.x, dy = q.y - p.y;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / l2)) : 0;
+    return Math.hypot(c.x - (p.x + t * dx), c.y - (p.y + t * dy));
+}
+
+/** Distance d'une boîte à un segment : la plus courte sur son contour et son aire. */
+function distBoiteSegment(b, s) {
+    let d = Infinity;
+    // Un échantillonnage de la boîte suffit et ne peut pas se tromper dans le
+    // sens dangereux : il ne déclare jamais « loin » ce qui est traversé.
+    for (let i = 0; i <= 8; i++) {
+        for (let j = 0; j <= 3; j++) {
+            const c = { x: b.x0 + (b.x1 - b.x0) * i / 8, y: b.y0 + (b.y1 - b.y0) * j / 3 };
+            d = Math.min(d, distSegment(c, s.p, s.q));
+        }
+    }
+    return d;
+}
+
+test('aucune lettre, aucune cote ne se pose sur un trait', () => {
+    let pire = Infinity, pireOu = '';
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 120; i++) {
+            const f = creerThales({ config, rng: makeRng(`lettre-${config}-${i}`) });
+            if (!f) continue;
+            // Le pire cas : TOUTES les cotes écrites en même temps.
+            const svg = figureThalesSvg(f, TAILLES);
+            const segments = segmentsDuSvg(svg);
+            assert.equal(segments.length, 6, 'six segments tracés');
+            const etiquettes = etiquettesDuSvg(svg);
+            assert.equal(etiquettes.length, 11, `${config}/${i} : 5 lettres + 6 cotes`);
+            for (const e of etiquettes) {
+                for (const s of segments) {
+                    const d = distBoiteSegment(e, s);
+                    if (d < pire) { pire = d; pireOu = `${config}/${i} « ${e.texte} »`; }
+                }
+            }
+        }
+    }
+    // Le trait le plus épais fait 1,5 unité, donc 0,75 de part et d'autre de
+    // son axe : au-delà de 1,5 aucune étiquette ne peut le toucher, quelle que
+    // soit l'approximation de largeur de police. On mesure aujourd'hui 2,6 au
+    // pire — la marge est réelle, pas ajustée au seuil.
+    assert.ok(pire > 1.5, `étiquette collée au trait : ${pireOu}, à ${pire.toFixed(2)}`);
+});
+
+test('le point n\'a plus de rond, et la figure tient dans sa boîte', () => {
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 40; i++) {
+            const f = creerThales({ config, rng: makeRng(`rond-${config}-${i}`) });
+            if (!f) continue;
+            const svg = figureThalesSvg(f, TAILLES);
+            assert.ok(!svg.includes('<circle'), 'un rond traîne encore sur un point');
+            const vb = svg.match(/viewBox="([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)"/);
+            assert.ok(vb, 'pas de viewBox');
+            const [x0, y0, w, h] = vb.slice(1).map(Number);
+            for (const e of etiquettesDuSvg(svg)) {
+                assert.ok(e.x0 >= x0 - 0.5 && e.x1 <= x0 + w + 0.5,
+                    `${config}/${i} : « ${e.texte} » sort du cadre en largeur`);
+                assert.ok(e.y0 >= y0 - 0.5 && e.y1 <= y0 + h + 0.5,
+                    `${config}/${i} : « ${e.texte} » sort du cadre en hauteur`);
+            }
+        }
+    }
+});
+
+// --- LES FRACTIONS EN COLONNE ---------------------------------------------------
+
+test('l\'égalité se dessine en fractions, sans jamais perdre son texte', () => {
+    // Rémy : « Ecris les fraction en colonne. » Le TEXTE reste la clé de la
+    // réponse — il est comparé à `answer` et enregistré dans le carnet —, le
+    // dessin n'est que ce qu'on montre.
+    const html = egaliteEnColonnes('AM/AB = AN/AC = MN/BC');
+    const lu = html.replace(/<[^>]*>/g, ' ');
+    assert.ok(!lu.includes('/'), `une barre oblique traîne encore : ${lu}`);
+    ['AM', 'AB', 'AN', 'AC', 'MN', 'BC'].forEach(n =>
+        assert.ok(html.includes(`>${n}<`), `${n} manque`));
+    assert.equal((html.match(/fraction-num/g) || []).length, 3);
+    assert.equal((html.match(/fraction-den/g) || []).length, 3);
+    assert.equal((html.match(/th-eg-signe/g) || []).length, 2);
+
+    for (let i = 0; i < 60; i++) {
+        const it = thalesGenerator.generate({ etape: 'egalite' },
+            { rng: makeRng(`eg${i}`), index: 0 });
+        it.choices.forEach(c => {
+            assert.match(String(c.value), /^[A-Z]{2}\/[A-Z]{2}( = [A-Z]{2}\/[A-Z]{2}){2}$/,
+                'la clé de réponse doit rester du texte');
+            assert.ok(String(c.label).includes('fraction-den'), 'la proposition doit être dessinée');
+            assert.equal(c.texte, c.value, 'le robot lit le texte, pas le dessin');
+        });
+        assert.equal(it.answer, it.choices.find(c => c.correct).value);
+    }
 });

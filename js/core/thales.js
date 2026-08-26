@@ -146,6 +146,89 @@ export function pointsThales(signe, kB, kC = kB) {
 export const pointsReels = (f) =>
     pointsThales(f.signe, f.AM / f.AB, f.AN / f.AC);
 
+// --- OÙ POSER LES LETTRES ---------------------------------------------------
+//
+// Rémy : « Les lettres se supperpose aux trait. Ne met pas de rond pour le
+// point. »
+//
+// LES DÉCALAGES ÉTAIENT ÉCRITS À LA MAIN — « A en haut à droite, B en bas à
+// gauche » —, et ils étaient justes pour UNE figure. Or la figure bouge : le
+// rapport change à chaque question, le papillon retourne tout, et la
+// réciproque déplace M et N indépendamment. Un décalage fixe finit donc
+// forcément posé sur un trait, et c'est ce que Rémy a vu.
+//
+// LE CRITÈRE JUSTE EST GÉOMÉTRIQUE, et il tient en une phrase : autour d'un
+// point partent des segments ; entre deux segments voisins il y a un secteur
+// vide ; on écrit la lettre au MILIEU DU PLUS GRAND de ces secteurs. Aucune
+// figure ne peut prendre la fonction en défaut, parce qu'elle ne suppose rien
+// de la figure — pas même qu'il y ait plus d'un segment.
+//
+// LE ROND DISPARAÎT AVEC. Un point d'une figure de géométrie se nomme, il ne
+// se colorie pas : au crayon on trace deux traits qui se croisent, et c'est
+// leur intersection, le point. Le disque noir était une béquille pour dire
+// « c'est ici » quand la lettre tombait ailleurs.
+
+/**
+ * Les directions occupées autour de chaque point nommé.
+ *
+ * ON COMPTE LES DROITES, PAS LES SEGMENTS TRACÉS. En triangles emboîtés, M est
+ * SUR le segment [AB] : la droite le traverse et continue vers B. Ne lister
+ * que A et N pour M laissait donc croire que tout le bas était libre — et la
+ * lettre M s'y posait, en plein sur (AB). En papillon, B est de l'autre côté
+ * mais dans la même direction que A vu de M : l'ajouter ne coûte rien.
+ */
+const VOISINS_THALES = {
+    A: ['B', 'C', 'M', 'N'], B: ['A', 'C'], C: ['A', 'B'],
+    M: ['A', 'B', 'N'], N: ['A', 'C', 'M']
+};
+
+/**
+ * La direction où écrire chaque lettre : un vecteur unitaire, dans le repère
+ * du dessin (y vers le BAS, comme en SVG et comme sur une page).
+ */
+export function placeNoms(points) {
+    const out = {};
+    for (const [nom, voisins] of Object.entries(VOISINS_THALES)) {
+        const p = points[nom];
+        const angles = voisins
+            .filter(v => points[v])
+            .map(v => Math.atan2(points[v].y - p.y, points[v].x - p.x))
+            .sort((a, b) => a - b);
+        if (!angles.length) { out[nom] = { x: 0, y: -1 }; continue; }
+        // Un seul segment : le secteur libre fait un tour complet, son milieu
+        // est à l'opposé du segment. La boucle ci-dessous le trouve aussi,
+        // puisque le seul « voisin suivant » du seul rayon est lui-même.
+        let plusGrand = -1, milieu = angles[0] + Math.PI;
+        for (let i = 0; i < angles.length; i++) {
+            const suivant = i + 1 < angles.length ? angles[i + 1] : angles[0] + 2 * Math.PI;
+            const secteur = suivant - angles[i];
+            if (secteur > plusGrand) { plusGrand = secteur; milieu = angles[i] + secteur / 2; }
+        }
+        out[nom] = { x: Math.cos(milieu), y: Math.sin(milieu) };
+    }
+    return out;
+}
+
+/** De combien la lettre s'écarte du point, dans le carré de 100 de la figure. */
+export const ECART_NOM = 6;
+
+/**
+ * Comment ancrer la lettre, sa direction en main : à gauche, à droite ou
+ * centrée ; au-dessus, en dessous ou à mi-hauteur.
+ *
+ * Écrit ici et non dans chaque moteur de rendu : l'écran a `text-anchor`, le
+ * PDF a `align`, et sans règle commune les deux dessins divergent au premier
+ * ajustement — c'est exactement ce que la figure partagée cherche à éviter.
+ *
+ * @returns {{h: -1|0|1, v: -1|0|1}}
+ */
+export function ancrageNom(d) {
+    return {
+        h: d.x > 0.35 ? 1 : d.x < -0.35 ? -1 : 0,
+        v: d.y > 0.35 ? 1 : d.y < -0.35 ? -1 : 0
+    };
+}
+
 /**
  * L'ÉGALITÉ DE THALÈS, ÉCRITE COMME AU TABLEAU.
  *
