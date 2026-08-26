@@ -9,9 +9,13 @@ import {
 import { motCodeFicheGenerator as G } from '../js/core/generators/motCodeFiche.js';
 
 const faire = (opts = {}, cle = 'mk') => creerMotCode({
-    theme: 'angles', niveauMax: 3, nbMots: 10, essais: 4,
+    theme: 'angles', niveauMax: 3, taille: 'moyenne', essais: 4,
     rng: makeRng(cle), rngPour: (i) => makeRng(`${cle}-${i}`), ...opts
 });
+
+/** Les cases qu'un mot posé occupe. */
+const casesDe = (d) => Array.from({ length: d.mot.length }, (_, i) =>
+    (d.dir === 'h' ? `${d.x + i},${d.y}` : `${d.x},${d.y + i}`));
 
 test('le code est une bijection : un numéro par lettre, une lettre par numéro', () => {
     // C'est LA règle du jeu — « deux numéros ne cachent jamais la même
@@ -42,26 +46,51 @@ test('la grille codée est exactement la grille des mots', () => {
     }
 });
 
-test('les lettres offertes sont les plus fréquentes, pas des lettres au hasard', () => {
-    // Une lettre offerte qui ne paraît qu'une fois ne débloque rien : l'élève
-    // reste devant un mur, et le cadeau n'en est pas un.
-    const m = faire({ offertes: 3 }, 'off');
-    const compte = new Map();
-    m.cases.forEach(l => l.forEach(c => { if (c) compte.set(c, (compte.get(c) || 0) + 1); }));
-    const seuil = Math.min(...m.donnees.map(l => compte.get(l)));
-    [...compte.entries()].forEach(([l, n]) => {
-        if (!m.donnees.includes(l)) assert.ok(n <= seuil, `${l} (${n}) est plus fréquent qu'une offerte`);
-    });
-    assert.equal(m.donnees.length, 3);
+test('la grille est un RECTANGLE, pas une croix de mots croisés', () => {
+    // Rémy : « moi ça tenait sur une grille rectangulaire ». Deux choses à
+    // vérifier : que le rectangle est bien plein — sinon c'est une croix
+    // entourée de noir — et qu'aucune de ses bordures n'est entièrement muette,
+    // ce qui voudrait dire qu'on a annoncé une largeur qu'on n'occupe pas.
+    for (let i = 0; i < 12; i++) {
+        const m = faire({}, 'rect' + i);
+        const blanches = m.cases.flat().filter(c => c !== null).length;
+        const part = blanches / (m.largeur * m.hauteur);
+        assert.ok(part >= 0.4, `rectangle rempli à ${(part * 100).toFixed(0)} % seulement`);
+        assert.ok(m.cases[0].some(c => c !== null), 'première ligne vide');
+        assert.ok(m.cases[m.hauteur - 1].some(c => c !== null), 'dernière ligne vide');
+        assert.ok(m.cases.some(l => l[0] !== null), 'première colonne vide');
+        assert.ok(m.cases.some(l => l[m.largeur - 1] !== null), 'dernière colonne vide');
+        m.cases.forEach(l => assert.equal(l.length, m.largeur, 'ligne dépareillée'));
+    }
 });
 
-test('on n\'offre jamais tout l\'alphabet', () => {
-    // Sinon la grille est déjà résolue à l'ouverture.
-    const m = faire({ offertes: 50 }, 'trop');
+test('on part d\'un MOT ENTIER, écrit en clair dans la grille', () => {
+    // Rémy : « je partais d'un mot et il fallait compléter ». Le mot donné doit
+    // être un mot de la grille, posé à sa place, et ses lettres doivent être
+    // exactement celles qu'on offre.
+    const m = faire({}, 'depart');
+    assert.equal(m.depart.length, 1);
+    const d = m.depart[0];
+    assert.ok(m.mots.some(w => w.mot === d.mot && w.x === d.x && w.y === d.y && w.dir === d.dir));
+    casesDe(d).forEach(cle => {
+        const [x, y] = cle.split(',').map(Number);
+        assert.ok(m.donnees.includes(m.cases[y][x]), `${cle} n'est pas donnée`);
+    });
+    assert.deepEqual(m.donnees, [...new Set(d.mot.split(''))].sort());
+    // Et c'est le mot qui porte le PLUS de lettres différentes : c'est lui qui
+    // allume le plus de cases ailleurs dans la grille.
+    const mieux = Math.max(...m.mots.filter(w => w.duTheme)
+        .map(w => new Set(w.mot.split('')).size));
+    assert.equal(new Set(d.mot.split('')).size, mieux);
+});
+
+test('le mot de départ ne résout jamais la grille, et zéro reste un réglage', () => {
+    const m = faire({ motsOfferts: 3 }, 'trop');
     assert.ok(m.donnees.length < m.lettres.length);
     assert.equal(estResoluCode(m, saisieInitiale(m)), false);
-    // Et zéro lettre offerte reste un réglage valable.
-    assert.deepEqual(faire({ offertes: 0 }, 'zero').donnees, []);
+    const rien = faire({ motsOfferts: 0 }, 'zero');
+    assert.deepEqual(rien.donnees, []);
+    assert.deepEqual(rien.depart, []);
 });
 
 test('la saisie de départ contient les lettres offertes, et rien de faux', () => {
@@ -102,7 +131,7 @@ test('chaque thème donne une grille jouable', () => {
     // Un thème dont le lexique est trop maigre rendrait une grille vide, et
     // l'exercice s'ouvrirait sur rien.
     Object.keys(THEMES).forEach(theme => {
-        const m = faire({ theme, nbMots: 7 }, 't-' + theme);
+        const m = faire({ theme, taille: 'petite' }, 't-' + theme);
         const q = qualiteCode(m);
         assert.ok(q.mots >= 4, `${theme} : ${q.mots} mots seulement`);
         assert.ok(q.croisements >= 2, `${theme} : ${q.croisements} croisements`);
@@ -111,12 +140,14 @@ test('chaque thème donne une grille jouable', () => {
 });
 
 test('le générateur de fiche rend de quoi imprimer ET corriger', () => {
-    const it = G.generate({ theme: 'angles', nbMots: 10, niveauMax: 3, offertes: 3 },
+    const it = G.generate({ theme: 'angles', taille: 'moyenne', niveauMax: 3, motsOfferts: 1 },
         { rng: makeRng('fiche'), index: 0 });
     const m = it.meta;
     assert.equal(m.numeros.length, m.hauteur);
     assert.equal(m.numeros[0].length, m.largeur);
-    assert.equal(m.donnees.length, 3);
+    // La fiche porte le mot de départ : c'est lui que l'impression souligne.
+    assert.equal(m.depart.length, 1);
+    assert.ok(it.explanation.includes(m.depart[0].mot));
     // Le corrigé dit le code ET les mots : c'est ce que le professeur relit.
     m.lettres.forEach(l => assert.ok(it.explanation.includes(`${m.code[l]} = ${l}`)));
     m.mots.forEach(w => assert.ok(it.explanation.includes(w.mot), `${w.mot} manque au corrigé`));

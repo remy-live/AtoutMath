@@ -1141,6 +1141,17 @@ function geoMotCode(item, slot) {
     };
 }
 
+/** Les cases du mot de départ : celles qu'on souligne, parce qu'on part de là. */
+function casesDepart(m) {
+    const cases = new Set();
+    (m.depart || []).forEach(d => {
+        for (let i = 0; i < d.mot.length; i++) {
+            cases.add(d.dir === 'h' ? `${d.x + i},${d.y}` : `${d.x},${d.y + i}`);
+        }
+    });
+    return cases;
+}
+
 /** La place d'une case de clé, la i-ème (0 en tête). */
 function poseCle(g, i) {
     const l = Math.floor(i / g.parLigne), c = i % g.parLigne;
@@ -1151,16 +1162,22 @@ function motCodePreviewHtml(item, slot, k, solution) {
     const g = geoMotCode(item, slot);
     const T = (v) => (v * k).toFixed(2);
     const donnees = new Set(g.m.donnees);
+    const depart = casesDepart(g.m);
     let html = '';
     for (let y = 0; y < g.m.hauteur; y++) {
         for (let x = 0; x < g.m.largeur; x++) {
             const c = g.m.cases[y][x];
-            // Rien du tout sur une case muette : c'est la silhouette des mots
-            // qu'on doit voir, comme sur les mots croisés.
-            if (c === null) continue;
             const X = g.x + x * g.cote, Y = g.y + y * g.cote;
+            // LA CASE MUETTE EST NOIRE : la grille est un rectangle, pas une
+            // silhouette de mots croisés.
+            if (c === null) {
+                html += `<div class="fx-mk-noire" style="left:${T(X)}px; top:${T(Y)}px;
+                    width:${T(g.cote)}px; height:${T(g.cote)}px"></div>`;
+                continue;
+            }
             const lettre = solution || donnees.has(c) ? c : '';
-            html += `<div class="fx-mk-case" style="left:${T(X)}px; top:${T(Y)}px;
+            const classes = 'fx-mk-case' + (depart.has(`${x},${y}`) ? ' fx-mk-depart' : '');
+            html += `<div class="${classes}" style="left:${T(X)}px; top:${T(Y)}px;
                 width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.5)}px">
                 <span class="fx-mk-num" style="font-size:${T(g.cote * 0.32)}px">${g.m.numeros[y][x]}</span>
                 ${echapperSheet(lettre)}</div>`;
@@ -1187,14 +1204,28 @@ function motCodePreviewHtml(item, slot, k, solution) {
 function dessinerMotCodePdf(doc, item, slot, solution, champ) {
     const g = geoMotCode(item, slot);
     const donnees = new Set(g.m.donnees);
+    const depart = casesDepart(g.m);
 
     for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
         const c = g.m.cases[y][x];
-        if (c === null) continue;
         const X = g.x + x * g.cote, Y = g.y + y * g.cote;
+        // LA CASE MUETTE EST NOIRE : c'est un rectangle de journal, pas une
+        // croix de mots croisés.
+        if (c === null) {
+            doc.setFillColor(31, 41, 55);
+            doc.rect(X, Y, g.cote, g.cote, 'F');
+            continue;
+        }
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.22);
         doc.rect(X, Y, g.cote, g.cote, 'S');
+        // Le mot de départ est souligné d'un trait gras : sur une photocopie
+        // en noir et blanc, c'est le seul signe qui survive.
+        if (depart.has(`${x},${y}`)) {
+            doc.setLineWidth(0.6);
+            doc.line(X, Y + g.cote, X + g.cote, Y + g.cote);
+            doc.setLineWidth(0.22);
+        }
         // LE NUMÉRO EST DANS UN COIN, PAS AU MILIEU : le milieu appartient à la
         // lettre qu'on va écrire par-dessus, et un chiffre gris sous un stylo
         // se lit encore.
@@ -9761,9 +9792,10 @@ export const RENDUS = {
     motcode: {
         titre: 'Mot codé du vocabulaire',
         consigne: (items) => 'CHAQUE LETTRE EST REMPLACÉE PAR UN NUMÉRO, le même partout dans '
-            + 'la grille. Retrouve quel numéro cache quelle lettre : les lettres déjà écrites '
-            + 'te donnent le départ, et deux numéros différents ne cachent jamais la même '
-            + 'lettre. Reporte chaque trouvaille dans la clé, sous la grille — et souviens-toi '
+            + 'la grille. UN MOT est déjà écrit, souligné : c\'est de là qu\'on part, et ses '
+            + 'lettres sont déjà posées partout où leur numéro reparaît. Retrouve les autres — '
+            + 'deux numéros différents ne cachent jamais la même lettre. Reporte chaque '
+            + 'trouvaille dans la clé, sous la grille — et souviens-toi '
             + 'que tous les mots sont du vocabulaire du cours'
             + (items && items[0] && items[0].meta && THEMES_MOTCODE[items[0].meta.theme]
                 ? ` (${THEMES_MOTCODE[items[0].meta.theme].toLowerCase()})` : '') + '.',

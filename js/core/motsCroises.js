@@ -36,18 +36,21 @@ const DIRS = { h: [1, 0], v: [0, 1] };
  * @returns {number} le nombre de croisements, ou -1 si la pose est interdite.
  */
 export function poseValide(g, mot, x, y, dir) {
-    const n = g.length;
+    // LA GRILLE N'EST PAS FORCÉMENT CARRÉE. Les mots croisés la veulent carrée,
+    // le mot codé la veut rectangulaire ; la règle de pose, elle, est la même.
+    // On lit donc les deux dimensions au lieu d'en supposer une.
+    const L1 = g[0] ? g[0].length : 0, H = g.length;
     const [dx, dy] = DIRS[dir];
     const L = mot.length;
     const fin = { x: x + dx * (L - 1), y: y + dy * (L - 1) };
-    if (x < 0 || y < 0 || fin.x >= n || fin.y >= n) return -1;
+    if (x < 0 || y < 0 || fin.x >= L1 || fin.y >= H) return -1;
 
     // Avant et après : la case doit être libre, sinon le mot s'allonge d'une
     // lettre qui appartient à un autre mot et l'on ne lit plus ni l'un ni
     // l'autre.
     const avant = { x: x - dx, y: y - dy };
     const apres = { x: fin.x + dx, y: fin.y + dy };
-    const occupee = (p) => p.x >= 0 && p.y >= 0 && p.x < n && p.y < n && g[p.y][p.x] !== null;
+    const occupee = (p) => p.x >= 0 && p.y >= 0 && p.x < L1 && p.y < H && g[p.y][p.x] !== null;
     if (occupee(avant) || occupee(apres)) return -1;
 
     let croisements = 0;
@@ -63,7 +66,7 @@ export function poseValide(g, mot, x, y, dir) {
         // elle rallonge un mot perpendiculaire déjà posé.
         const cotes = dir === 'h' ? [[cx, cy - 1], [cx, cy + 1]] : [[cx - 1, cy], [cx + 1, cy]];
         for (const [ox, oy] of cotes) {
-            if (ox >= 0 && oy >= 0 && ox < n && oy < n && g[oy][ox] !== null) return -1;
+            if (ox >= 0 && oy >= 0 && ox < L1 && oy < H && g[oy][ox] !== null) return -1;
         }
     }
     return croisements;

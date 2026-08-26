@@ -17,13 +17,19 @@
 // LA CONTRAINTE QUI FAIT AVANCER : deux numéros ne peuvent pas cacher la même
 // lettre. Le jeu la signale au lieu de la refuser — « le E est déjà sur le
 // 14 » —, parce que s'en apercevoir SOI-MÊME est justement le raisonnement.
+//
+// LA GRILLE EST UN RECTANGLE PLEIN, cases noires comprises, et l'on PART D'UN
+// MOT. Rémy, en voyant la première version : « moi ça tenait sur une grille
+// rectangulaire et je partais d'un mot et il fallait compléter. » Les deux vont
+// ensemble : un mot entier écrit en clair au milieu d'un pavé noir et blanc,
+// c'est la grille de journal, et c'est de là qu'on repart.
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble,
-    estResoluCode, qualiteCode, THEMES
+    estResoluCode, qualiteCode, THEMES, FORMATS_CODE
 } from '../core/motCode.js';
 
 const COMPETENCE = 'voc.mathematique';
@@ -35,8 +41,9 @@ class MotCode extends BaseGame {
         this.graine = this.params.seed || 'mcode';
         this.theme = THEMES[this.params.theme] ? this.params.theme : 'angles';
         this.niveauMax = Number(this.params.niveauMax) || 3;
-        this.nbMots = Number(this.params.nbMots) || 10;
-        this.offertes = this.params.offertes === undefined ? 3 : Number(this.params.offertes);
+        this.taille = FORMATS_CODE[this.params.taille] ? this.params.taille : 'moyenne';
+        this.motsOfferts = this.params.motsOfferts === undefined
+            ? 1 : Number(this.params.motsOfferts);
         this.saisie = {};
         this.verifs = 0;
         this.soufflees = new Set();
@@ -86,10 +93,18 @@ class MotCode extends BaseGame {
                     padding-bottom: calc(var(--mk-cote) * .04);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                 }
-                /* Une case muette ne se dessine pas : on ne doit voir que la
-                   silhouette des mots. Rémy, sur les mots croisés : « les cases
-                   qui ne servent pas, ne les mets juste pas ». */
-                .mk-case--muette { background: transparent; box-shadow: none; cursor: default; }
+                /* ICI, AU CONTRAIRE DES MOTS CROISÉS, LA CASE MUETTE EST NOIRE.
+                   Rémy : « moi ça tenait sur une grille rectangulaire ». Un mot
+                   croisé se lit par sa silhouette — on voit où commence chaque
+                   mot, et c'est ce qui remplace les numéros. Un mot codé n'a pas
+                   de définitions : sa silhouette n'apprend rien, et l'effacer
+                   donnerait un nuage de cases flottantes. Le rectangle plein, lui,
+                   se lit comme la grille de journal dont il vient : du noir autour
+                   du blanc, et le blanc est le jeu. */
+                .mk-case--muette {
+                    background: #1f2937; box-shadow: inset 0 0 0 1px #1f2937;
+                    cursor: default;
+                }
                 .mk-num {
                     position: absolute; top: 1px; left: 0; right: 0; text-align: center;
                     font-size: calc(var(--mk-cote) * .32);
@@ -97,6 +112,13 @@ class MotCode extends BaseGame {
                 }
                 .mk-case--vise { background: #ffe9b8; box-shadow: inset 0 0 0 2px #f59e0b; }
                 .mk-case--donnee { background: #eef2ff; color: #3730a3; }
+                /* LE MOT DE DÉPART, marqué comme tel. Ses lettres sont données
+                   comme les autres, mais c'est LUI qu'on lit en premier : le
+                   souligner, c'est dire « pars d'ici » sans une phrase. */
+                .mk-case--depart {
+                    background: #ecfdf5; color: #065f46;
+                    box-shadow: inset 0 0 0 1px #94a3b8, inset 0 -3px 0 #10b981;
+                }
                 .mk-case--faute { color: #dc2626; }
 
                 /* LA CLÉ : l'état du jeu, pas une légende. Elle défile si elle
@@ -199,10 +221,18 @@ class MotCode extends BaseGame {
     poser() {
         this.compteur = (this.compteur || 0) + 1;
         this.m = creerMotCode({
-            theme: this.theme, niveauMax: this.niveauMax, nbMots: this.nbMots,
-            offertes: this.offertes, essais: 10,
+            theme: this.theme, niveauMax: this.niveauMax, taille: this.taille,
+            motsOfferts: this.motsOfferts, essais: 14,
             rng: makeRng(`${this.graine}-${this.compteur}`),
             rngPour: (i) => makeRng(`${this.graine}-${this.compteur}-${i}`)
+        });
+        // LES CASES DU MOT DE DÉPART, pour les montrer comme telles : c'est le
+        // point d'appui, il doit se lire d'un coup d'œil au milieu du reste.
+        this.casesDepart = new Set();
+        this.m.depart.forEach(d => {
+            for (let i = 0; i < d.mot.length; i++) {
+                this.casesDepart.add(d.dir === 'h' ? `${d.x + i},${d.y}` : `${d.x},${d.y + i}`);
+            }
         });
         this.saisie = saisieInitiale(this.m);
         this.donnees = new Set(this.m.donnees);
@@ -214,7 +244,17 @@ class MotCode extends BaseGame {
             .find(n => !this.saisie[n]) || null;
         this.dessiner();
         const q = qualiteCode(this.m);
-        this.note(`${q.mots} mots, ${q.alphabet} lettres à retrouver. `
+        // ON ANNONCE LE MOT DE DÉPART PAR SON NOM. « Quelques lettres sont
+        // données » laisse l'élève les chercher ; « pars de BISSECTRICE » lui
+        // dit d'où partir, ce qui est la consigne réelle.
+        const depart = q.depart.length
+            ? `Pars de <b>${q.depart.join('</b> et <b>')}</b>, déjà écrit${q.depart.length > 1 ? 's' : ''} dans la grille. `
+            : 'Aucun mot n\'est donné : casse-tête complet. ';
+        // ON COMPTE CE QUI RESTE, pas l'alphabet entier : « 16 lettres à
+        // retrouver » quand huit sont déjà écrites est un chiffre décourageant
+        // et faux.
+        const reste = q.alphabet - this.m.donnees.length;
+        this.note(`${reste} lettres à retrouver sur ${q.alphabet}. ${depart}`
             + 'Touche un numéro, puis la lettre qu\'il cache.');
         return true;
     }
@@ -232,6 +272,7 @@ class MotCode extends BaseGame {
             const num = m.numeros[y][x];
             const classes = ['mk-case'];
             if (num === this.vise) classes.push('mk-case--vise');
+            else if (this.casesDepart.has(`${x},${y}`)) classes.push('mk-case--depart');
             else if (this.saisie[num] && this.donnees.has(m.parNumero[num])) classes.push('mk-case--donnee');
             if (this.fautes && this.fautes.has(num)) classes.push('mk-case--faute');
             return `<button type="button" class="${classes.join(' ')}" data-num="${num}">
@@ -400,8 +441,10 @@ class MotCode extends BaseGame {
 
         const q = qualiteCode(this.m);
         cur.say(`${q.alphabet} lettres se cachent derrière ${q.alphabet} numéros. `
-            + `${this.m.donnees.length} sont données : elles sont déjà dans la grille, partout `
-            + 'où leur numéro paraît.', this.grilleEl);
+            + (q.depart.length
+                ? `Un mot est déjà écrit : ${q.depart.join(' et ')}. Ses ${this.m.donnees.length} `
+                    + 'lettres sont posées partout où leur numéro paraît — c\'est de là qu\'on part.'
+                : 'Aucune n\'est donnée : on part de rien.'), this.grilleEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Le numéro le plus fréquent encore inconnu : c'est celui qui rapporte

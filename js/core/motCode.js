@@ -6,45 +6,75 @@
 //
 // LA RÈGLE TIENT EN UNE PHRASE : chaque lettre de la grille est remplacée par
 // un numéro, le MÊME numéro partout, et il faut retrouver quelle lettre se
-// cache derrière chaque numéro. Deux ou trois lettres sont données pour
-// commencer. Ce n'est pas un mots croisés sans définitions : c'est un autre
-// exercice, où l'on ne cherche pas un mot mais un ALPHABET, et où chaque
-// lettre trouvée se propage d'un bout à l'autre de la grille.
+// cache derrière chaque numéro.
 //
 // D'OÙ LA FORME DE L'ÉTAT : on ne remplit pas des cases, on remplit un
 // dictionnaire numéro → lettre. Écrire un E sur la case 14 met un E dans
 // TOUTES les cases 14, et c'est exactement ce qui fait la partie. Une saisie
 // case par case serait le même jeu privé de son ressort.
 //
-// LA GRILLE, ELLE, EST CELLE DES MOTS CROISÉS — `grilleOptimisee`, celle qui
-// se croise le plus. Ici la densité compte encore davantage : c'est par les
-// croisements que la lettre trouvée dans un mot va servir dans un autre.
+// DEUX CORRECTIONS DE RÉMY, APRÈS AVOIR VU LA PREMIÈRE VERSION : « C'est pas
+// vraiment comme ce que je t'ai envoyé, moi ça tenait sur une grille
+// rectangulaire et je partais d'un mot et il fallait compléter. »
+//
+//   · LA GRILLE EST UN RECTANGLE, pas une croix de mots croisés. On ne
+//     construit donc plus la grille la plus croisée dans un carré immense
+//     qu'on recadre ensuite ; on se donne un rectangle et l'on cherche à le
+//     REMPLIR. C'est `rectangleOptimise`, dans son module à part.
+//
+//   · ON PART D'UN MOT ENTIER, pas de trois lettres fréquentes éparpillées.
+//     La différence est pédagogique autant que visuelle : trois lettres
+//     dispersées, c'est un semis d'indices sans sens ; un mot entier, c'est
+//     une PHRASE de départ — l'élève lit « BISSECTRICE », comprend de quel
+//     chapitre on parle, et repart de ses onze lettres, qui sont déjà posées
+//     partout ailleurs dans la grille. On choisit d'ailleurs le mot qui porte
+//     le plus de lettres DISTINCTES : c'est lui qui éclaire le plus de cases.
 
-import { grilleOptimisee } from './motsCroises.js';
+import { rectangleOptimise } from './grilleRectangle.js';
 import { THEMES } from './motsCaches.js';
 
 export { THEMES };
 
 /**
+ * LES TROIS FORMATS DE RECTANGLE.
+ *
+ * On règle la grille par sa TAILLE et non par son nombre de mots : dans un
+ * rectangle à remplir, le nombre de mots n'est pas une consigne mais un
+ * résultat — c'est le rectangle qui décide combien il en faut pour être plein.
+ */
+export const FORMATS_CODE = {
+    petite: { largeur: 9, hauteur: 7 },
+    moyenne: { largeur: 11, hauteur: 9 },
+    grande: { largeur: 13, hauteur: 11 }
+};
+
+export function formatDe(nom) {
+    return FORMATS_CODE[nom] || FORMATS_CODE.moyenne;
+}
+
+/** Les lettres distinctes d'un mot. */
+function distinctes(mot) {
+    return new Set(mot.split('')).size;
+}
+
+/**
  * LE MOT CODÉ D'UN THÈME.
  *
- * `offertes` est le nombre de lettres données d'avance. On donne les PLUS
- * FRÉQUENTES de la grille, pas des lettres au hasard : une lettre offerte qui
- * n'apparaît qu'une fois ne débloque rien, et l'élève reste devant un mur. Les
- * plus fréquentes sèment la grille entière — c'est le coup de pouce du premier
- * quart d'heure, et c'est ainsi que les grilles de journal sont amorcées.
+ * `motsOfferts` est le nombre de mots donnés d'avance, écrits en clair dans la
+ * grille. Un seul suffit d'ordinaire : c'est le point d'appui.
  */
 export function creerMotCode(options = {}) {
     const {
-        theme = 'angles', niveauMax = 3, nbMots = 10,
-        rng, rngPour, offertes = 3, essais = 10
+        theme = 'angles', niveauMax = 3, taille = 'moyenne',
+        rng, rngPour, motsOfferts = 1, essais = 14
     } = options;
-    const grille = grilleOptimisee({
-        theme, niveauMax, nbMots, essais,
+    const { largeur, hauteur } = formatDe(taille);
+    const grille = rectangleOptimise({
+        theme, niveauMax, largeur, hauteur, essais,
         rngPour: rngPour || (() => rng)
     });
 
-    // Combien de fois chaque lettre paraît : c'est ce qui décide des cadeaux.
+    // Combien de fois chaque lettre paraît : c'est ce qui décide du code.
     const compte = new Map();
     grille.cases.forEach(ligne => ligne.forEach(c => {
         if (c !== null) compte.set(c, (compte.get(c) || 0) + 1);
@@ -61,23 +91,34 @@ export function creerMotCode(options = {}) {
     const parNumero = {};
     lettres.forEach((l, i) => { code[l] = numeros[i]; parNumero[numeros[i]] = l; });
 
-    const donnees = [...compte.entries()]
-        .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1))
-        .slice(0, Math.max(0, Math.min(offertes, lettres.length - 1)))
-        .map(([l]) => l)
-        .sort();
+    // LE MOT DE DÉPART : celui qui porte le plus de lettres distinctes, et de
+    // préférence un mot du thème — c'est le mot qu'on veut faire lire, et
+    // c'est aussi celui qui allume le plus de cases ailleurs.
+    const combien = Math.max(0, Math.min(motsOfferts, grille.mots.length - 1));
+    const depart = [...grille.mots]
+        .sort((a, b) => (Number(b.duTheme) - Number(a.duTheme))
+            || (distinctes(b.mot) - distinctes(a.mot))
+            || (a.mot < b.mot ? -1 : 1))
+        .slice(0, combien);
+
+    const donnees = [...new Set(depart.flatMap(m => m.mot.split('')))].sort();
 
     return {
         largeur: grille.largeur, hauteur: grille.hauteur,
         cases: grille.cases,
-        mots: grille.mots.map(m => ({ mot: m.mot, def: m.def, x: m.x, y: m.y, dir: m.dir })),
-        lettres, code, parNumero, donnees,
+        mots: grille.mots.map(m => ({
+            mot: m.mot, def: m.def, x: m.x, y: m.y, dir: m.dir, duTheme: m.duTheme
+        })),
+        lettres, code, parNumero,
+        // Le mot dont on part, et les lettres qu'il donne.
+        depart, donnees,
+        remplissage: grille.remplissage,
         // La grille des numéros, prête à afficher : `null` sur une case muette.
         numeros: grille.cases.map(ligne => ligne.map(c => (c === null ? null : code[c])))
     };
 }
 
-/** La saisie de départ : les lettres offertes, déjà posées sur leur numéro. */
+/** La saisie de départ : les lettres du mot offert, déjà posées sur leur numéro. */
 export function saisieInitiale(m) {
     const s = {};
     m.donnees.forEach(l => { s[m.code[l]] = l; });
@@ -128,5 +169,8 @@ export function qualiteCode(m) {
             || (m.cases[y + 1] && m.cases[y + 1][x] != null);
         if (h && v) croisements++;
     }));
-    return { mots: m.mots.length, lettres, croisements, alphabet: m.lettres.length };
+    return {
+        mots: m.mots.length, lettres, croisements, alphabet: m.lettres.length,
+        depart: m.depart.map(d => d.mot)
+    };
 }
