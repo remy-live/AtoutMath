@@ -458,6 +458,11 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    largeur de son libellé, dans la limite de la fenêtre. */
 .fp-contenu .cfg-input { max-width: min(360px, 100%); width: auto; }
 .fp-contenu select.cfg-input { min-width: 180px; }
+/* UNE GLISSIÈRE N'A PAS DE LARGEUR NATURELLE : son rail se déclare à 100 % de
+   son parent, et dans une rangée en `flex` ce parent se dimensionne sur son
+   contenu — c'est-à-dire sur rien. Le réglage se serait réduit à deux boutons
+   collés. On lui donne donc ici la largeur qu'il n'a pas tout seul. */
+.fp-contenu .cfg-field:has(.cfg-glissiere) { width: min(300px, 100%); }
 /* LES TUILES DE NOMBRES — les tables, les diviseurs — dans la barre
    « Contenu ». Leur grille est en `1fr` par colonne, ce qui suppose un
    conteneur large ; dans une rangée en flex, le champ n'a pas de largeur

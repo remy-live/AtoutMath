@@ -10,6 +10,8 @@ import { seuilDe } from '../core/recompenses.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
+import { echelleDe, rangDans } from '../core/echelle.js';
+import { paliersAide, rangsEnMots, palierEnMots } from '../core/apercuAide.js';
 
 // --- Champs -----------------------------------------------------------------
 
@@ -47,6 +49,96 @@ function resumeListe(cochees, total, mot) {
  * infobulles) sont branchées sur `document` une fois pour toutes : un panneau
  * qui pose ce HTML n'a rien d'autre à faire.
  */
+/**
+ * L'échelle d'un réglage — ou rien, s'il n'en forme pas une.
+ *
+ * Une liste à cocher n'a pas de curseur, et un réglage MASQUÉ AU PAPIER que la
+ * fiche affiche quand même n'existe pas : le filtre est fait en amont. Ce
+ * détour d'une ligne existe pour que `fieldHtml` reste lisible.
+ */
+function echelleGlissante(param) {
+    if (param.type === 'multiselect' || param.type === 'checkbox' || param.type === 'bool') return null;
+    return echelleDe(param);
+}
+
+/**
+ * UNE GLISSIÈRE : un rail, deux boutons, et le réglage écrit en toutes lettres.
+ *
+ * Rémy : « je pensais à qqch, un slider de paramètres (exemple sur 10
+ * questions), et 3 slides (si 3 modes) un pour 2 propositions, un pour 4, puis
+ * libre (si le jeu le permet) ».
+ *
+ * Ce que le rail apporte et que le menu n'apportait pas, c'est l'ÉCHELLE : on
+ * voit d'un coup d'œil combien de crans existent et où l'on est dessus. Ce que
+ * le menu apportait et qu'il ne faut pas perdre, c'est le NOM du cran — « 3 »
+ * ne dit rien, « Progressive : 2, puis 4, puis le clavier » dit tout. D'où la
+ * ligne de texte sous le rail, qui suit le curseur.
+ *
+ * LES DEUX BOUTONS − / + RESTENT. Un rail se vise au pixel près ; à la souris
+ * comme au doigt, avancer d'exactement un cran est plus sûr au bouton. Ils
+ * sont déjà branchés pour les champs nombre — le même écouteur les sert.
+ *
+ * @param {Object} param  - la déclaration de réglage
+ * @param {Object} ech    - son échelle (`core/echelle.js`)
+ * @param {*} value       - la valeur courante
+ * @param {string} id     - l'identifiant du contrôle, pour le `<label for>`
+ */
+function glissiereHtml(param, ech, value, id) {
+    const i = rangDans(ech, value);
+    const nombre = ech.nombre;
+    // Un libellé court tient au bout du rail ; une phrase passe dessous, sinon
+    // elle écrase le rail jusqu'à le rendre invisible sur un téléphone.
+    const mots = ech.libelles.some(l => String(l).length > 8);
+    const dit = escapeAttr(ech.libelles[i]);
+    const donnees = nombre ? '' :
+        ` data-valeurs="${escapeAttr(JSON.stringify(ech.valeurs.map(String)))}"`
+        + ` data-libelles="${escapeAttr(JSON.stringify(ech.libelles))}"`;
+
+    // Pour un NOMBRE, le rail porte directement la valeur : `readParams` la lit
+    // sans rien savoir de l'échelle. Pour une liste, il porte le RANG — les
+    // valeurs ne sont pas forcément des nombres, et « auto » n'a pas de place
+    // sur un axe.
+    return `<div class="cfg-glissiere${mots ? ' cfg-glissiere--mots' : ''}">
+        <div class="cfg-stepper cfg-stepper--rail" data-stepper>
+            <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
+            <input type="range" class="cfg-rail" id="${id}" data-param="${param.id}"
+                data-kind="${nombre ? 'number' : 'echelle'}"
+                min="${nombre ? ech.valeurs[0] : 0}" max="${nombre ? ech.valeurs[ech.valeurs.length - 1] : ech.valeurs.length - 1}"
+                step="1" value="${nombre ? ech.valeurs[i] : i}"
+                aria-valuetext="${dit}"${donnees}>
+            <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
+        </div>
+        <output class="cfg-glissiere-dit" data-dit>${ech.libelles[i]}</output>
+    </div>`;
+}
+
+/**
+ * Une glissière posée à la main, pour les réglages qui ne viennent pas d'un
+ * schéma — le nombre de questions et le seuil de réussite sont écrits dans le
+ * gabarit des panneaux, pas déclarés par un générateur. C'est justement
+ * l'exemple que donne Rémy (« sur 10 questions »), il aurait été absurde qu'il
+ * soit le seul à ne pas en profiter.
+ */
+export function glissiereNombre({ id, label, min, max, value, aide, aideId }) {
+    const ech = echelleDe({ type: 'number', min, max });
+    const v = Math.max(min, Math.min(max, Number(value) || min));
+    const tete = `<label class="cfg-label" for="${id}">${label}${infoBtn(aide, aideId)}</label>`;
+    // Trop de crans pour un rail : on rend le champ qu'on tape, c'est-à-dire
+    // exactement ce qui existait avant. Une glissière n'est un progrès que
+    // quand elle est visable (voir CRANS_MAX).
+    if (!ech) {
+        return `<div class="cfg-field">${tete}
+            <input type="number" id="${id}" class="cfg-input cfg-input--num" min="${min}" max="${max}" value="${v}">
+        </div>`;
+    }
+    // `data-param` retiré : ce réglage-ci n'appartient à aucun schéma, c'est le
+    // panneau qui le relit par son identifiant. Le laisser ferait entrer
+    // « cfg-nbitems » dans les paramètres du générateur.
+    return `<div class="cfg-field">${tete}
+        ${glissiereHtml({ id, label }, ech, v, id).replace(` data-param="${id}"`, '')}
+    </div>`;
+}
+
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
     const wide = param.type === 'multiselect';   // les puces prennent toute la largeur
@@ -60,9 +152,14 @@ export function fieldHtml(param, value, options = {}) {
     // d'un cran — libellé au-dessus, menu pleine largeur en dessous — et
     // uniquement lui : les menus courts (« Normal », « 24 × 16 ») restent sur
     // une ligne, sinon le panneau doublerait de hauteur pour rien.
-    const longOptions = param.type === 'select' && (param.options || [])
+    const longOptions = param.type === 'select' && !param.echelle && (param.options || [])
         .some(o => String(libelleOption(o)).length > 18);
     let control = '';
+
+    // Mémorisée : `fieldHtml` s'en sert pour choisir la branche, `glissiereHtml`
+    // pour dessiner le rail. La calculer deux fois n'était pas coûteux, mais
+    // deux appels, ce sont deux occasions de diverger.
+    const ech = echelleGlissante(param);
 
     if (param.type === 'multiselect' && param.deroulant) {
         // UNE LISTE QUI SE DÉPLIE, quand les options sont des PHRASES.
@@ -120,6 +217,10 @@ export function fieldHtml(param, value, options = {}) {
                 <input type="checkbox" data-param="${param.id}" data-kind="multiselect" value="${v}" ${checked}>
                 <span>${libelleOption(opt)}</span></label>`;
         }).join('') + `</div>`;
+    } else if (ech) {
+        // UN RÉGLAGE QUI FORME UNE ÉCHELLE se pose au rail, pas au menu ni au
+        // champ : voir `glissiereHtml` juste au-dessus.
+        control = glissiereHtml(param, ech, value, id);
     } else if (param.type === 'number') {
         // UN NOMBRE SE RÈGLE DE TROIS FAÇONS, et il faut les trois : un champ
         // nu obligeait à sélectionner le contenu puis à taper — sur téléphone,
@@ -205,6 +306,87 @@ function escapeAttr(s) {
     return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+// --- L'aperçu de l'aide -----------------------------------------------------
+//
+// Rémy : « il faut un apercu de ce que cela donne ».
+//
+// Le réglage « L'aide » s'appelait « Progressive (recommandé) », et ces deux
+// mots ne disent PAS que dix questions donneront trois vrai/faux, cinq
+// questions à quatre propositions, puis deux réponses tapées. Le professeur ne
+// pouvait le découvrir qu'en classe. L'aperçu déroule l'exercice pour lui et
+// dessine ce que l'élève aura sous les yeux, tranche par tranche.
+//
+// LARGEUR PROPORTIONNELLE AU NOMBRE DE QUESTIONS. Une vignette qui couvre huit
+// questions est quatre fois plus large que celle qui en couvre deux : le ruban
+// se lit alors comme la barre de progression de l'exercice, et l'on voit du
+// premier coup d'œil qu'un réglage passe l'essentiel du temps sur une seule
+// marche. Trois vignettes de même taille auraient laissé croire à trois tiers.
+//
+// LE CALCUL N'EST PAS ICI. `core/apercuAide.js` déroule l'exercice avec les
+// vraies règles ; ce fichier ne fait que le dessiner. Un aperçu qui recopie les
+// règles est un aperçu qui se met à mentir dès qu'elles changent.
+
+/** La vignette d'un palier : des propositions vides, ou un pavé numérique. */
+function vignetteAide(p) {
+    if (p.clavier) {
+        return '<span class="cfg-vg-e"></span><span class="cfg-vg-pave">'
+            + '<i></i>'.repeat(9) + '</span>';
+    }
+    // « Toutes » n'a pas de nombre : six tuiles disent « beaucoup » sans
+    // promettre un compte que le générateur seul connaît.
+    const n = p.propositions === null ? 6 : p.propositions;
+    const cols = n % 3 === 0 ? 3 : 2;
+    return '<span class="cfg-vg-e"></span>'
+        + `<span class="cfg-vg-choix" style="--cfg-vg-cols: ${cols}">`
+        + '<i></i>'.repeat(n) + '</span>';
+}
+
+/** Le ruban complet, réglages et longueur d'exercice en main. */
+export function apercuAideHtml(params, total) {
+    const paliers = paliersAide(params, total);
+    return `<div class="cfg-apercu-titre">Ce que l'élève verra</div>
+        <div class="cfg-apercu-ruban">${paliers.map(p => `
+            <div class="cfg-apercu-pas" style="--cfg-part: ${p.a - p.de + 1}">
+                <div class="cfg-vg">${vignetteAide(p)}</div>
+                <div class="cfg-apercu-dit"><b>${rangsEnMots(p, total)}</b><br>${palierEnMots(p)}</div>
+            </div>`).join('')}</div>`;
+}
+
+/**
+ * Les trois réglages d'aide, LUS DANS LE PANNEAU et non dans l'objet d'origine.
+ *
+ * C'est la seule lecture qui ne puisse pas se désynchroniser : l'aperçu montre
+ * ce que les contrôles disent à cet instant, y compris pendant un glissé, sans
+ * qu'aucun panneau ait à lui transmettre quoi que ce soit.
+ */
+function paramsAide(racine) {
+    const lire = (id) => {
+        const el = racine.querySelector(`[data-param="${id}"]`);
+        if (!el) return undefined;
+        if (el.dataset.kind === 'echelle') return lireListe(el.dataset.valeurs)[Number(el.value)];
+        return el.value;
+    };
+    return { aide: lire('aide'), propositions: lire('propositions'), saisie: lire('saisie') };
+}
+
+/** Redessine l'aperçu d'un panneau, s'il en a un. */
+export function rafraichirApercu(racine) {
+    const boite = racine && racine.querySelector('[data-apercu]');
+    if (!boite) return;
+    const nb = racine.querySelector('#cfg-nbitems');
+    const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
+    boite.innerHTML = apercuAideHtml(paramsAide(racine), total);
+}
+
+/**
+ * L'aperçu a-t-il quelque chose à montrer ? Seulement là où l'aide se règle :
+ * une grille de sudoku ou un jeu autonome n'a ni propositions ni clavier, et
+ * un ruban vide serait pire qu'une absence.
+ */
+export function aApercuAide(schema) {
+    return (schema || []).some(p => p.id === 'aide');
+}
+
 // --- Infobulles -------------------------------------------------------------
 //
 // L'infobulle vit dans <body> et non à côté de son bouton : les panneaux qui
@@ -288,11 +470,43 @@ function borner(input, v) {
     return Math.max(min, Math.min(max, v));
 }
 
+/** Le champ que commandent les boutons − / + : un nombre tapé, ou un rail. */
+const champDe = (st) => st.querySelector('input[type="number"], input[type="range"]');
+
+/** Une liste sérialisée dans un attribut ; jamais une exception si elle manque. */
+function lireListe(brut) {
+    if (!brut) return [];
+    try { return JSON.parse(brut); } catch { return []; }
+}
+
+/**
+ * Le libellé qui suit le curseur.
+ *
+ * `aria-valuetext` avec : sans lui, un lecteur d'écran annonce « 2 sur 4 » là
+ * où il faut entendre « Progressive : 2, puis 4, puis le clavier ». Un rang
+ * n'est pas une réponse à « qu'est-ce qui est réglé ? ».
+ */
+function majRail(rail) {
+    const texte = rail.dataset.kind === 'echelle'
+        ? (lireListe(rail.dataset.libelles)[Number(rail.value)] || '')
+        : rail.value;
+    const boite = rail.closest('.cfg-glissiere');
+    const dit = boite && boite.querySelector('[data-dit]');
+    if (dit) dit.textContent = texte;
+    rail.setAttribute('aria-valuetext', texte);
+}
+
 /** Change la valeur ET prévient le panneau : sans `change`, rien n'est retenu. */
 function pousser(input, delta) {
     const v = borner(input, (Number(input.value) || 0) + delta);
     if (v === Number(input.value)) return;
     input.value = String(v);
+    // `input` PUIS `change` : le premier rafraîchit ce qui suit le geste
+    // (le libellé du cran, l'aperçu), le second est celui que les panneaux
+    // écoutent pour enregistrer. Un bouton − / + doit produire exactement ce
+    // que produit le geste sur le rail, sinon les deux commandes du même
+    // réglage n'ont pas les mêmes effets de bord.
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
@@ -310,7 +524,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.cfg-step');
     if (!btn) return;
-    const input = btn.parentElement.querySelector('input[type="number"]');
+    const input = champDe(btn.parentElement);
     if (input) { e.preventDefault(); pousser(input, Number(btn.dataset.step)); }
 });
 
@@ -345,11 +559,26 @@ document.addEventListener('change', (e) => {
 document.addEventListener('wheel', (e) => {
     const st = e.target.closest('.cfg-stepper');
     if (!st) return;
-    const input = st.querySelector('input[type="number"]');
+    const input = champDe(st);
     if (!input) return;
     e.preventDefault();
     pousser(input, e.deltaY < 0 ? 1 : -1);
 }, { passive: false });
+
+// Le rail : son libellé le suit, et l'aperçu se refait pendant le geste. On
+// écoute `input` (continu) et non `change` (au relâchement) — un aperçu qui
+// n'apparaît qu'une fois le doigt levé ne sert plus à choisir, il sert à
+// constater.
+document.addEventListener('input', (e) => {
+    const rail = e.target.closest && e.target.closest('.cfg-rail');
+    if (rail) majRail(rail);
+    const hote = e.target.closest && e.target.closest('.cfg-apercu-hote');
+    if (hote) rafraichirApercu(hote);
+});
+document.addEventListener('change', (e) => {
+    const hote = e.target.closest && e.target.closest('.cfg-apercu-hote');
+    if (hote) rafraichirApercu(hote);
+});
 
 // Le glissé vertical sur le champ : le geste du curseur de volume. Utile au
 // doigt sur tablette, où viser deux petits boutons est moins naturel que
@@ -413,6 +642,16 @@ export function readParams(root, schema) {
             const el = root.querySelector(`[data-param="${param.id}"]`);
             if (!el) return;
             if (el.dataset.kind === 'bool') { out[param.id] = el.dataset.valeur === 'true'; return; }
+            // UNE GLISSIÈRE D'ÉCHELLE PORTE LE RANG, PAS LA VALEUR : les
+            // valeurs d'un menu ne sont pas des nombres (« auto », « toutes »)
+            // et n'ont donc pas de place sur un axe. On relit la liste écrite
+            // dans l'attribut plutôt que le schéma reçu, pour que la valeur
+            // rendue soit forcément celle que le rail montrait.
+            if (el.dataset.kind === 'echelle') {
+                const valeurs = lireListe(el.dataset.valeurs);
+                out[param.id] = valeurChoisie(param, valeurs[Number(el.value)] ?? valeurs[0]);
+                return;
+            }
             if (param.type === 'number') { out[param.id] = Number(el.value); return; }
             out[param.id] = valeurChoisie(param, el.value);
         }
@@ -474,16 +713,16 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                 Une récompense doit quand même s'arrêter : donne-lui un nombre de
                 questions, une durée, ou les deux — le premier atteint met fin au jeu.
             </p>
-            <div class="cfg-field">
-                <label class="cfg-label" for="cfg-nbitems">Nombre de questions</label>
-                <input type="number" id="cfg-nbitems" class="cfg-input cfg-input--num" min="1" max="50" value="${step.nbItems || conseilEtape(step)}">
-            </div>
-            <div class="cfg-field" id="cfg-champ-seuil">
-                <label class="cfg-label" for="cfg-threshold">Bonnes réponses exigées
-                    ${infoBtn(null, 'cfg-threshold-tip')}</label>
-                <input type="number" id="cfg-threshold" class="cfg-input cfg-input--num" min="1" max="50"
-                       value="${step.threshold !== null && step.threshold !== undefined ? step.threshold : (step.nbItems || conseilEtape(step))}">
-            </div>
+            ${glissiereNombre({
+        id: 'cfg-nbitems', label: 'Nombre de questions',
+        min: 1, max: 50, value: step.nbItems || conseilEtape(step)
+    })}
+            <div id="cfg-champ-seuil">${glissiereNombre({
+        id: 'cfg-threshold', label: 'Bonnes réponses exigées', aideId: 'cfg-threshold-tip',
+        min: 1, max: 50,
+        value: step.threshold !== null && step.threshold !== undefined
+            ? step.threshold : (step.nbItems || conseilEtape(step))
+    })}</div>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-timelimit">Chronomètre (s)
                     ${infoBtn('0 = aucun chronomètre. Sinon, la durée en secondes.', null)}</label>
@@ -502,7 +741,10 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                     ${infoBtn('Une étape de poids 2 compte double dans le barème.', null)}</label>
                 <input type="number" id="cfg-weight" class="cfg-input cfg-input--num" min="1" max="10" value="${step.weight || 1}">
             </div>
-        </div>`;
+        </div>
+        ${aApercuAide(schema) ? '<div class="cfg-apercu" data-apercu></div>' : ''}`;
+
+    content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
 
     // L'explication du seuil est chiffrée avec les valeurs courantes, et suit
     // la saisie : « 7 sur 10 » parle, « seuil » ne dit rien.
@@ -572,6 +814,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     describeThreshold();
     toggleScope();
     toggleBonus();
+    rafraichirApercu(content);
     wireTips(content);
     content.addEventListener('change', commit);
     content.addEventListener('keyup', e => {
@@ -638,6 +881,10 @@ export function showStudentConfigModal(exo, onStart) {
     const derriere = schema.filter(p => p.affiner);
     const modifies = derriere.filter(p => current[p.id] !== undefined
         && String(current[p.id]) !== String(p.default));
+    // L'APERÇU : « il faut un apercu de ce que cela donne ». Il ne se dessine
+    // qu'ici, à vide — c'est `rafraichirApercu` qui le remplit, juste après le
+    // rendu et à chaque geste, en lisant les contrôles eux-mêmes.
+    const apercu = aApercuAide(schema) ? '<div class="cfg-apercu" data-apercu></div>' : '';
     const replies = derriere.length ? `
         <details class="cfg-affiner" ${modifies.length ? 'open' : ''}>
             <summary class="cfg-affiner-tete">
@@ -655,18 +902,20 @@ export function showStudentConfigModal(exo, onStart) {
 
     content.innerHTML = `
         ${devant.map(p => fieldHtml(p, valeurDe(p))).join('')}
-        <div class="cfg-field">
-            <label class="cfg-label" for="cfg-nbitems">Nombre de questions${infoBtn(aideDuree)}</label>
-            <div class="cfg-stepper" data-stepper>
-                <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
-                <input type="number" inputmode="numeric" id="cfg-nbitems" class="cfg-input cfg-input--num"
-                    min="${MIN_QUESTIONS}" max="${MAX_QUESTIONS}" value="${nbConseille}">
-                <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
-            </div>
-        </div>
+        ${glissiereNombre({
+        id: 'cfg-nbitems', label: 'Nombre de questions', aide: aideDuree,
+        min: MIN_QUESTIONS, max: MAX_QUESTIONS, value: nbConseille
+    })}
         ${replies}
+        ${apercu}
         ${impression}`;
 
+    // L'APERÇU EN DERNIER, SOUS TOUT CE QUI LE PILOTE. Il dépend du réglage
+    // d'aide (devant), des deux vis (« Affiner… ») et du nombre de questions :
+    // le placer au-dessus de l'un d'eux aurait donné un panneau où l'on règle
+    // en bas ce qui se voit en haut, hors de l'écran sur un téléphone.
+    content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
+    rafraichirApercu(content);
     wireTips(content);
     modal.style.display = 'flex';
     // Après l'affichage : une boîte encore masquée mesure zéro.

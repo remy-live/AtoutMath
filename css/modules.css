@@ -2434,6 +2434,133 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     -webkit-tap-highlight-color: transparent;
 }
 .cfg-step:hover { background: var(--bg-hover); }
+
+/* --- LA GLISSIÈRE ------------------------------------------------------------
+   Rémy : « un slider de paramètres (exemple sur 10 questions), et 3 slides
+   (si 3 modes) un pour 2 propositions, un pour 4, puis libre ».
+
+   LE RAIL PREND TOUTE LA LARGEUR DISPONIBLE, et le réglage passe donc en
+   pleine ligne : un rail de 74 px — la largeur qu'avait le champ nombre —
+   n'aurait montré aucune échelle, ce qui est précisément ce qu'on venait
+   chercher. Le libellé du cran suit dessous quand c'est une phrase, à droite
+   quand c'est un nombre. */
+.cfg-field:has(.cfg-glissiere) { grid-template-columns: minmax(0, 1fr); }
+.cfg-field:has(.cfg-glissiere) .cfg-label { justify-content: flex-start; }
+.cfg-glissiere {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center; gap: 2px 12px; width: 100%;
+}
+.cfg-glissiere--mots { grid-template-columns: minmax(0, 1fr); }
+.cfg-stepper--rail { display: flex; width: 100%; align-items: center; }
+/* `pan-y` et non `pan-x` : sur le rail, le glissé HORIZONTAL nous appartient
+   (c'est le geste du réglage) et le vertical reste à la page. C'est l'inverse
+   du champ nombre, dont le glissé vertical poussait la valeur. */
+.cfg-stepper--rail { touch-action: pan-y; }
+.cfg-glissiere-dit {
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--text-main); font-size: .95rem; line-height: 1.3;
+    min-width: 2.2rem; text-align: right;
+}
+.cfg-glissiere--mots .cfg-glissiere-dit {
+    text-align: left; font-weight: 600; font-size: .86rem;
+    color: var(--text-muted); padding: 2px 2px 0;
+}
+
+/* Le rail lui-même. Dessiné à la main dans les deux moteurs : le rendu natif
+   est un fil gris de 2 px sur l'un et une barre bleue système sur l'autre —
+   ni l'un ni l'autre ne se voit à travers un vidéoprojecteur. */
+.cfg-rail {
+    flex: 1 1 auto; min-width: 0; width: 100%;
+    -webkit-appearance: none; appearance: none;
+    background: transparent; cursor: pointer; margin: 0;
+    padding: 10px 0;                 /* la cible tactile, sans épaissir le trait */
+    outline: none;
+}
+.cfg-rail::-webkit-slider-runnable-track {
+    height: 8px; border-radius: 99px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+}
+.cfg-rail::-moz-range-track {
+    height: 8px; border-radius: 99px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+}
+.cfg-rail::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); border: 3px solid var(--bg-panel);
+    box-shadow: var(--shadow-md);
+    margin-top: -9px;                /* (24 − 8) / 2 + la bordure du rail */
+    transition: transform .1s ease;
+}
+.cfg-rail::-moz-range-thumb {
+    width: 24px; height: 24px; border-radius: 50%; box-sizing: border-box;
+    background: var(--primary); border: 3px solid var(--bg-panel);
+    box-shadow: var(--shadow-md);
+}
+.cfg-rail:active::-webkit-slider-thumb { transform: scale(1.15); }
+.cfg-rail:focus-visible::-webkit-slider-thumb { border-color: var(--warning); }
+.cfg-rail:focus-visible::-moz-range-thumb { border-color: var(--warning); }
+
+/* --- L'APERÇU DE L'AIDE ------------------------------------------------------
+   « il faut un apercu de ce que cela donne ». Un ruban de vignettes dont la
+   LARGEUR est proportionnelle au nombre de questions couvertes : on lit d'un
+   coup d'œil qu'un réglage passe huit questions sur dix à la même marche. */
+.cfg-apercu {
+    margin: 14px 0 6px; padding: 12px; border-radius: 14px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+    /* CE QUI DÉCIDE DE LA MISE EN PAGE ICI, C'EST LA BOÎTE, PAS L'ÉCRAN.
+       Le ruban vit dans un panneau de 370 px alors même que l'écran en fait
+       1280 : une règle en `@media` l'aurait laissé en trois colonnes de 90 px,
+       où « 2 propositions » s'imprime un mot par ligne et déborde. */
+    container-type: inline-size;
+}
+.cfg-apercu:empty { display: none; }
+.cfg-apercu-titre {
+    font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+}
+.cfg-apercu-ruban { display: flex; align-items: stretch; gap: 8px; }
+.cfg-apercu-pas {
+    /* `--cfg-part` = le nombre de questions du palier. `flex-basis: 0` avec un
+       `flex-grow` proportionnel donne des largeurs qui SONT le rapport, et non
+       le rapport corrigé par le contenu. */
+    flex: var(--cfg-part, 1) 1 0; min-width: 0;
+    display: flex; flex-direction: column; gap: 7px;
+    padding: 9px 8px; border-radius: 11px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+}
+.cfg-apercu-dit {
+    font-size: .74rem; line-height: 1.35; color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+.cfg-apercu-dit b { color: var(--text-main); font-size: .78rem; }
+
+/* La vignette : une barre d'énoncé, puis les propositions ou le pavé. Elle ne
+   montre AUCUN nombre — c'est la forme de l'écran qu'on reconnaît, et un faux
+   « 7 × 8 » aurait laissé croire que l'aperçu tire les vraies questions. */
+.cfg-vg { display: flex; flex-direction: column; gap: 5px; }
+.cfg-vg-e {
+    height: 9px; border-radius: 3px; background: var(--primary); opacity: .28;
+}
+.cfg-vg-choix, .cfg-vg-pave { display: grid; gap: 4px; }
+.cfg-vg-choix { grid-template-columns: repeat(var(--cfg-vg-cols, 2), minmax(0, 1fr)); }
+.cfg-vg-pave { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cfg-vg-choix i { height: 13px; border-radius: 4px; background: var(--bg-hover); border: 1px solid var(--border); }
+.cfg-vg-pave i { height: 9px; border-radius: 3px; background: var(--bg-hover); border: 1px solid var(--border); }
+
+/* DANS UNE BOÎTE ÉTROITE, LE RUBAN S'EMPILE. Trois vignettes côte à côte dans
+   340 px font 105 px chacune : les légendes y tombent à un mot par ligne et
+   les vignettes deviennent des traits. En colonne, chaque palier a une ligne
+   entière, et le compte de questions écrit à côté dit la proportion que la
+   largeur ne dit plus. */
+@container (max-width: 430px) {
+    .cfg-apercu-ruban { flex-direction: column; }
+    .cfg-apercu-pas { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 12px; }
+    .cfg-vg { width: 52px; flex: 0 0 auto; }
+    .cfg-apercu-dit { flex: 1 1 auto; font-size: .8rem; }
+    .cfg-apercu-dit b { font-size: .84rem; }
+}
+
 .cfg-step:active { transform: scale(.9); background: var(--primary); color: #fff; border-color: var(--primary); }
 .cfg-field--wide .cfg-input { width: 100%; }
 .cfg-input:focus { border-color: var(--primary); }
@@ -2499,16 +2626,24 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
        resserre donc la ligne (padding, hauteur des contrôles, taille du
        libellé) jusqu'à ~48 px, sans descendre sous les 44 px de cible tactile
        qu'il faut au doigt. */
-    #student-config-modal .cfg-field:not(.cfg-field--wide):not(.cfg-field--long) {
+    /* La glissière est exclue de la ligne à deux colonnes : son rail n'a pas
+       de largeur propre, et une demi-largeur de téléphone lui laissait 81 px
+       — quatre crans de « L'aide » y devenaient impossibles à viser. Elle
+       prend la ligne entière, comme les puces. */
+    #student-config-modal .cfg-field:not(.cfg-field--wide):not(.cfg-field--long):not(:has(.cfg-glissiere)) {
         grid-template-columns: minmax(0, 1fr) 50%;
         align-items: center;
         padding: 4px 0; margin-bottom: 0;
         border-bottom: 1px solid var(--border);
     }
     #student-config-modal .cfg-field--wide,
-    #student-config-modal .cfg-field--long {
+    #student-config-modal .cfg-field--long,
+    #student-config-modal .cfg-field:has(.cfg-glissiere) {
         padding: 5px 0; margin-bottom: 0; border-bottom: 1px solid var(--border);
     }
+    /* Le libellé est déjà juste au-dessus du rail : l'écart de 6 px prévu pour
+       deux colonnes creusait un trou entre le nom du réglage et son réglage. */
+    #student-config-modal .cfg-field:has(.cfg-glissiere) { row-gap: 2px; }
     /* Le libellé au-dessus d'un menu long : plus petit et discret, c'est une
        étiquette, pas un titre — la phrase à lire est le choix en dessous.
        `row-gap: 0` en prime : l'écart de 6 px prévu pour deux colonnes n'a plus

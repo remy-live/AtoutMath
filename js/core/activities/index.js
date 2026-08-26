@@ -151,21 +151,29 @@ const choiceModule = () => import('./choice.js');
 // Le professeur pressé n'a qu'une ligne à lire, et son défaut est déjà le bon.
 // Celui qui sait où il va ouvre « Affiner… » et pose lui-même les deux valeurs
 // que le préréglage posait pour lui. Voir `core/aide.js` pour les règles.
+// LES TROIS SONT DES ÉCHELLES, et se règlent donc à la glissière (voir
+// `core/echelle.js`). C'est ici que le changement se voit le plus — Rémy :
+// « 3 slides (si 3 modes) un pour 2 propositions, un pour 4, puis libre (si
+// le jeu le permet) ». L'ORDRE DES OPTIONS EST DONC L'ÉCHELLE ELLE-MÊME :
+// on ne le range plus par popularité (le recommandé en tête) mais par exigence
+// croissante, du plus porté au plus nu. Le défaut ne bouge pas pour autant :
+// c'est une valeur, pas une place.
 const PARAM_AIDE = [{
     id: 'aide', type: 'select', label: 'L\'aide', default: 'progressive', papier: false,
+    echelle: true,
     aide: 'En progressif, l\'exercice monte tout seul : d\'abord deux propositions '
         + '— la bonne réponse contre l\'erreur classique —, puis quatre, puis on tape '
         + 'la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
         + 'reste en propositions.',
     options: [
-        { value: 'progressive', label: 'Progressive (recommandé)' },
-        { value: 'propositions', label: 'Toujours 4 propositions' },
         { value: 'deux', label: 'Toujours 2 propositions' },
+        { value: 'propositions', label: 'Toujours 4 propositions' },
+        { value: 'progressive', label: 'Progressive : 2, puis 4, puis le clavier (recommandé)' },
         { value: 'clavier', label: 'Directement au clavier' }
     ]
 }, {
     id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto', papier: false,
-    affiner: true,
+    affiner: true, echelle: true,
     aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '
         + '« Automatique » laisse le réglage « L\'aide » décider.',
     options: [
@@ -176,14 +184,17 @@ const PARAM_AIDE = [{
     ]
 }, {
     id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto', papier: false,
-    affiner: true,
+    affiner: true, echelle: true,
     aide: 'À partir de quand l\'élève tape sa réponse au lieu de la choisir.',
+    // Rangé du plus TARD au plus TÔT : c'est l'échelle, et l'ancien ordre
+    // (tiers, moitié, quart) ne l'était pas — « le dernier quart » arrive après
+    // « la moitié », qui arrive après « le premier tiers ».
     options: [
         { value: 'auto', label: 'Automatique' },
         { value: 'jamais', label: 'Jamais — des propositions du début à la fin' },
-        { value: 'tiers', label: 'Après le premier tiers' },
-        { value: 'moitie', label: 'À la moitié de l\'exercice' },
         { value: 'quart', label: 'Sur le dernier quart' },
+        { value: 'moitie', label: 'À la moitié de l\'exercice' },
+        { value: 'tiers', label: 'Après le premier tiers' },
         { value: 'toujours', label: 'Dès la première question' }
     ]
 }];
@@ -344,11 +355,11 @@ registerActivity({
     supports: { timed: true, autonomous: false, demo: true },
     params: [{
         id: 'reponse', type: 'select', label: 'Comment on répond', default: 'progressive',
-        papier: false,
+        papier: false, echelle: true,
         options: [
-            { value: 'progressive', label: 'Progressif : choisir, puis cliquer, puis écrire' },
             { value: 'choisir', label: 'Choisir parmi les noms tracés' },
             { value: 'cliquer', label: 'Cliquer l\'élément sur le dessin' },
+            { value: 'progressive', label: 'Progressif : choisir, puis cliquer, puis écrire' },
             { value: 'ecrire', label: 'Écrire son équation ou ses coordonnées' }
         ],
         aide: 'Choisir, c\'est reconnaître parmi quatre ; cliquer, c\'est désigner sans nom ; '
