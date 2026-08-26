@@ -366,7 +366,10 @@ export const calculExercises = [
         // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
         // banal d'une feuille de calcul — et il manquait.
         printable: 'pose', printGeneratorId: 'calc.poser-fiche',
-        printParams: { operation: '×', chiffres: 3, nombres: 2, retenue: true },
+        // On n'y laisse QUE ce que l'écran ne règle pas : répéter `chiffres`
+        // ici en faisait un réglage sans effet, et le professeur qui passait
+        // le premier nombre à quatre chiffres retrouvait trois sur sa feuille.
+        printParams: { operation: '×', retenue: true },
         consignePapier: 'Effectue ces multiplications posées.',
         skills: ['num.mult.sens'],
         params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'merite' },
@@ -429,7 +432,7 @@ export const calculExercises = [
         // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
         // banal d'une feuille de calcul — et il manquait.
         printable: 'pose', printGeneratorId: 'calc.poser-fiche',
-        printParams: { operation: '÷', chiffres: 3, nombres: 2, retenue: true },
+        printParams: { operation: '÷', retenue: true },
         consignePapier: 'Effectue ces divisions posées.',
         skills: ['num.div.quotient'],
         params: { chiffres: 3, diviseurMax: 9, decimalesQuotient: 0 },

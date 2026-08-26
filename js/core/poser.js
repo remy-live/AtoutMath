@@ -120,6 +120,31 @@ export function verifierPose(valeur, indexPris, rangCible) {
 }
 
 /**
+ * UN NOMBRE ÉCRIT À LA FRANÇAISE : 12,5 et non 12.5.
+ *
+ * `String(12.5)` donne un POINT, et un point sur une feuille de mathématiques
+ * française n'est pas une virgule mal dessinée : c'est une autre notation, que
+ * l'élève n'a jamais vue. La conversion se fait ici, une fois, à côté de la
+ * définition du rang — pas à chaque endroit qui écrit un nombre.
+ */
+export const enFrancais = (v) => String(v).replace('.', ',');
+
+/**
+ * LES CHIFFRES D'UN NOMBRE, AVEC LEUR RANG — et sans la virgule.
+ *
+ * Poser une opération, c'est ranger des chiffres par rang ; la virgule n'est
+ * pas un chiffre, elle marque une frontière. Découper la chaîne « 12.5 » en
+ * caractères donnait quatre cases dont une contenant un point, alignées sur le
+ * bord droit : exactement l'erreur qu'on passe l'année à corriger chez les
+ * élèves.
+ *
+ * @returns {Array<{rang:number, chiffre:number}>} du rang le plus fort au plus faible
+ */
+export function chiffresParRang(v) {
+    return rangsDe(v).map(rang => ({ rang, chiffre: chiffreAuRang(v, rang) }));
+}
+
+/**
  * L'étendue des colonnes de la feuille : du rang le plus fort du résultat au
  * rang le plus faible de tout ce qui est écrit.
  */

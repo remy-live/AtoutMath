@@ -81,6 +81,9 @@ import {
     mesuresSlot, choisirDisposition, capaciteMax, coteLisible, dispositionDuRendu
 } from '../core/dispositionFiche.js';
 import { monterPanneauContenu } from './panneauContenu.js';
+// Poser une opération, c'est ranger des chiffres PAR RANG ; la virgule marque
+// une frontière, elle n'est pas un chiffre. Le noyau le dit, la feuille le lit.
+import { decimales as decimalesPose, rangsDe as rangsPose, enFrancais } from '../core/poser.js';
 
 /** « un losange » -> « Un losange » : le mot se pose sous la figure. */
 const nomTypeCodage = (type) => {
@@ -7389,8 +7392,39 @@ function dessinerPrioritesPdf(doc, item, slot, solution) {
  * la faisait deux fois trop haute.
  */
 function etapesEcrites(t) {
-    return (t.etapes || []).filter(e => e.ecrit);
+    const ecrites = (t.etapes || []).filter(e => e.ecrit);
+    // ON S'ARRÊTE QUAND LA DIVISION EST FINIE. Poussée jusqu'au centième, une
+    // division qui tombe juste avant — 146 ÷ 2 = 73 — continue d'abaisser des
+    // zéros : le noyau a raison de les calculer, la feuille aurait tort de les
+    // dessiner. Deux rangées de « 0 » sous un travail terminé, et l'élève
+    // cherche ce qu'on attend de lui.
+    let fin = ecrites.length;
+    while (fin > 1 && ecrites[fin - 1].produit === 0 && ecrites[fin - 1].reste === 0) fin--;
+    return ecrites.slice(0, fin);
 }
+
+/**
+ * LA VIRGULE N'EST PAS UN CHIFFRE : elle ne prend pas de colonne.
+ *
+ * On posait les nombres en découpant leur chaîne — `String(12.5)` — ce qui
+ * donnait quatre cases dont une contenant un point, calées sur le bord droit.
+ * C'est exactement l'erreur qu'on passe l'année à corriger chez les élèves, et
+ * la feuille l'imprimait. Les chiffres se posent maintenant PAR RANG, et la
+ * virgule se dessine sur la frontière entre les unités et les dixièmes —
+ * là où elle tombe sur un cahier, entre deux carreaux.
+ */
+const digitsDe = (v) => String(Math.round(Math.abs(v) * Math.pow(10, decimalesPose(v)))).split('');
+
+/**
+ * COMBIEN DE COLONNES SOUS LES UNITÉS, dans une potence.
+ *
+ * Le dividende en apporte par ses décimales ; poursuivre la division en
+ * apporte d'autres, qu'aucun chiffre du dividende n'occupe. Les deux se
+ * comptent au même endroit, sinon la géométrie et le dessin ne parlent plus
+ * de la même feuille.
+ */
+const basPotence = (m, t) =>
+    Math.max(decimalesPose(m.operandes[0]), t.decimalesQuotient || 0);
 
 function geoPose(item, slot) {
     const m = item.meta;
@@ -7404,6 +7438,9 @@ function geoPose(item, slot) {
     // Combien de colonnes de chiffres, et combien de rangées d'écriture ?
     let nCol, rangs, lignesOperandes = m.operandes.length;
     if (op === '+' || op === '-') {
+        // `t.colonnes` est indexé PAR RANG, décimales comprises : le compte est
+        // donc déjà le bon, et la virgule n'y ajoute pas de colonne — elle se
+        // dessine sur la frontière, comme entre deux carreaux d'un cahier.
         nCol = t.colonnes.length;
         // Une rangée de retenues, les opérandes, le trait, le résultat.
         rangs = 1 + lignesOperandes + 1;
@@ -7417,7 +7454,20 @@ function geoPose(item, slot) {
         // faut pour écrire le produit sous le nombre courant, tirer le trait,
         // et poser le reste dessous — « il faut la soustraction étape par
         // étape », et sans la hauteur, elle ne tient pas.
-        nCol = String(m.operandes[0]).length + 1;
+        // LE DIVIDENDE SE COMPTE EN RANGS, pas en caractères : « 336,5 » a
+        // cinq caractères et quatre chiffres, et compter le point donnait une
+        // colonne de trop — puis tout le reste décalé d'un cran.
+        //
+        // ET LA POTENCE VA PLUS BAS QUE LE DIVIDENDE quand on poursuit la
+        // division : abaisser des zéros crée des rangs que le dividende n'a
+        // pas. Sans ces colonnes-là, les dernières soustractions se posaient
+        // à DROITE du dernier chiffre, c'est-à-dire hors du bloc.
+        //
+        // On compte DU RANG LE PLUS FORT DU DIVIDENDE AU PLUS FAIBLE ÉCRIT,
+        // plus une colonne de garde avant la barre. Additionner la longueur du
+        // dividende ET les décimales comptait deux fois celles qu'il porte
+        // déjà, et décalait toute la potence vers la gauche.
+        nCol = rangsPose(m.operandes[0])[0] + basPotence(m, t) + 2;
         // Deux lignes par étape ÉCRITE — le produit qu'on pose, le reste qu'on
         // trouve. Les étapes muettes (« 2 ÷ 64, ça ne va pas ») ne s'écrivent
         // pas au tableau : les compter donnait une potence deux fois trop
@@ -7429,8 +7479,18 @@ function geoPose(item, slot) {
     // La colonne : assez large pour un chiffre lisible, jamais plus large que
     // ce que le bloc peut offrir. Sur la division, il faut la place du
     // diviseur à droite de la potence.
-    const colonnesTotales = op === '÷' ? nCol + String(m.operandes[1]).length + 1 : nCol + 1.2;
-    const cw = Math.max(3.2, Math.min(large / colonnesTotales, b.h / (rangs + 0.6), 7));
+    // À droite de la potence, il faut la place du diviseur ET du quotient : un
+    // quotient décimal est plus large que le diviseur, et débordait du bloc.
+    const largeurDroite = op === '÷'
+        ? Math.max(String(m.operandes[1]).length, enFrancais(t.quotient).length) + 1
+        : 0;
+    const colonnesTotales = op === '÷' ? nCol + largeurDroite : nCol + 1.2;
+    // UNE RANGÉE EST PLUS HAUTE QU'UNE COLONNE N'EST LARGE — de 32 %, ligne
+    // suivante. Le plafond en hauteur l'oubliait : à neuf rangées, il rendait
+    // une potence 24 % trop haute, dont la barre verticale descendait dans le
+    // bloc du dessous. Cela ne se voyait pas tant que les divisions tenaient en
+    // peu d'étapes ; poursuivre au centième en ajoute deux, et le voilà.
+    const cw = Math.max(3.2, Math.min(large / colonnesTotales, b.h / (1.32 * (rangs + 0.6)), 7));
     const rh = cw * 1.32;
     const hauteur = rangs * rh;
     // Centré verticalement dans le bloc : une addition à trois rangées et une
@@ -7450,7 +7510,7 @@ function geoPose(item, slot) {
 }
 
 /** Les chiffres d'un nombre, du rang le plus faible au plus fort. */
-const chiffresDroiteGauche = (v) => String(v).split('').reverse();
+const chiffresDroiteGauche = (v) => digitsDe(v).reverse();
 
 /**
  * Ce qu'il y a à écrire dans une opération posée : une liste de
@@ -7469,13 +7529,38 @@ function planPose(g, solution) {
     const pose = (col, rang, texte, o = {}) =>
         cases.push({ x: g.colX(col), y: g.ligneY(rang) + rh * 0.5, texte: String(texte), ...o });
 
-    if (op === '+' || op === '-') {
-        // Les retenues : au-DESSUS pour l'addition, au-dessous du chiffre du
-        // bas pour la soustraction — ce n'est pas un détail de présentation,
-        // c'est la méthode française de compensation.
-        m.operandes.forEach((v, i) => {
-            chiffresDroiteGauche(v).forEach((d, c) => pose(c, 1 + i, d));
+    /**
+     * UN NOMBRE POSÉ, virgule comprise.
+     *
+     * `col0` est la colonne du CHIFFRE DES UNITÉS. Les chiffres se rangent à
+     * gauche, les décimales à droite, et la virgule se dessine sur la frontière
+     * entre les deux — elle ne prend pas de colonne, comme sur un cahier où
+     * elle tombe entre deux carreaux.
+     */
+    const poserNombre = (valeur, col0, rang, o = {}) => {
+        const d = decimalesPose(valeur);
+        chiffresDroiteGauche(valeur).forEach((c, i) => pose(i + col0 - d, rang, c, o));
+        if (!d) return;
+        cases.push({
+            // LA FRONTIÈRE : le bord droit de la colonne des unités, c'est-à-
+            // dire entre les unités et les dixièmes. Posée un peu bas, comme
+            // on l'écrit.
+            // Même ligne de base que les chiffres : une virgule descend
+            // d'elle-même sous cette ligne, c'est sa forme qui la place.
+            x: g.droite - col0 * cw, y: g.ligneY(rang) + rh * 0.5,
+            texte: ',', virgule: true, ...o
         });
+    };
+
+    if (op === '+' || op === '-') {
+        // LES CHIFFRES SE RANGENT PAR RANG, et c'est toute la leçon de
+        // l'addition décimale : on aligne sur la VIRGULE, pas sur le bord
+        // droit. Découper la chaîne « 12.5 » alignait sur le bord droit et
+        // posait un point dans une colonne — la faute qu'on corrige toute
+        // l'année, imprimée sur la feuille.
+        const bas = t.colonnes[0].rang;      // le rang le plus faible écrit
+        const col0 = -bas;                   // la colonne des unités
+        m.operandes.forEach((v, i) => poserNombre(v, col0, 1 + i));
         // Le signe, à gauche du dernier opérande.
         pose(g.nCol, m.operandes.length, op === '+' ? '+' : '−', { signe: true });
         const yTrait = g.ligneY(m.operandes.length + 1) - rh * 0.12;
@@ -7490,21 +7575,26 @@ function planPose(g, solution) {
         // crayon, petite. Un rond imprimé dit à l'élève « pose-la ICI », ce
         // que le professeur ne demande pas. La place, elle, reste : la rangée
         // du haut est comptée dans la hauteur du bloc.
-        if (solution) {
-            chiffresDroiteGauche(t.resultat).forEach((d, c) => pose(c, m.operandes.length + 1, d, { reponse: true }));
-        }
+        if (solution) poserNombre(t.resultat, col0, m.operandes.length + 1, { reponse: true });
         return { cases, traits, cercles };
     }
 
     if (op === '×') {
+        // LA MULTIPLICATION DÉCIMALE NE S'ALIGNE PAS SUR LA VIRGULE, et c'est
+        // sa difficulté propre : on écrit les facteurs calés à droite, on
+        // multiplie comme si de rien n'était, et l'on place la virgule à la
+        // fin en comptant les décimales des deux facteurs. Chaque facteur
+        // porte donc SA virgule à SA place, sans rapport avec celle de l'autre.
         const [a, b] = m.operandes;
-        chiffresDroiteGauche(a).forEach((d, c) => pose(c, 1, d));
-        chiffresDroiteGauche(b).forEach((d, c) => pose(c, 2, d));
+        poserNombre(a, decimalesPose(a), 1);
+        poserNombre(b, decimalesPose(b), 2);
         pose(g.nCol, 2, '×', { signe: true });
         traits.push({ x1: g.colX(g.nCol - 0.2), x2: g.droite, y: g.ligneY(3) - rh * 0.12, epais: true });
         t.lignes.forEach((l, i) => {
             if (!solution) return;
-            const valeur = l.chiffre * Number(String(t.entiers[0]));
+            // LES PRODUITS PARTIELS SONT DES ENTIERS, sans virgule : c'est la
+            // règle du chapitre, et en poser une ici la contredirait.
+            const valeur = l.chiffre * t.entiers[0];
             chiffresDroiteGauche(valeur).forEach((d, c) => pose(c + l.decalage, 3 + i, d, { reponse: true }));
         });
         if (t.sommeAPoser) {
@@ -7512,8 +7602,9 @@ function planPose(g, solution) {
             traits.push({ x1: g.colX(g.nCol - 0.2), x2: g.droite, y: yT, epais: true });
             pose(g.nCol, 3 + t.lignes.length - 1, '+', { signe: true });
             if (solution) {
-                chiffresDroiteGauche(t.produitEntier)
-                    .forEach((d, c) => pose(c, 3 + t.lignes.length, d, { reponse: true }));
+                // Le produit, LUI, porte la virgule — au rang que donnent les
+                // décimales des deux facteurs réunies.
+                poserNombre(t.resultat, t.decimales, 3 + t.lignes.length, { reponse: true });
             }
         }
         // PAS DE RONDS DE RETENUE SUR L'ADDITION FINALE : Rémy, « ne mets pas
@@ -7526,25 +7617,33 @@ function planPose(g, solution) {
     // LA POTENCE. Le dividende à gauche, la barre verticale, le diviseur à
     // droite, le trait sous le diviseur, et le quotient dessous.
     const [dividende, diviseur] = m.operandes;
-    chiffresDroiteGauche(dividende).forEach((d, c) => pose(c + 1, 0, d));
+    // Le rang le plus faible ÉCRIT — celui du dividende, ou plus bas encore si
+    // l'on poursuit la division. C'est lui qui cale toute la potence, y compris
+    // les soustractions successives.
+    const col0Div = basPotence(m, t) + 1;    // la colonne des unités du dividende
+    poserNombre(dividende, col0Div, 0);
     const xBarre = g.droite + cw * 0.1;
     traits.push({ x1: xBarre, x2: xBarre, y: g.ligneY(0) + rh * 0.1, y2: g.ligneY(g.rangs) - rh * 0.2, vertical: true });
-    String(diviseur).split('').forEach((d, i) => {
-        cases.push({ x: xBarre + (i + 0.6) * cw, y: g.ligneY(0) + rh * 0.5, texte: d });
-    });
-    const largeurDiv = String(diviseur).length;
+    /**
+     * À DROITE DE LA BARRE, ON ÉCRIT DE GAUCHE À DROITE — et une virgule n'y
+     * vaut pas une pleine colonne : « 14,71 » écrit en cinq cases laisse un
+     * trou au milieu du quotient.
+     */
+    const ecrireADroite = (texte, rang, o = {}) => {
+        let x = xBarre + cw * 0.6;
+        for (const c of texte) {
+            const large = c === ',' ? cw * 0.42 : cw;
+            cases.push({ x: x + large / 2, y: g.ligneY(rang) + rh * 0.5, texte: c, ...o });
+            x += large;
+        }
+        return x - xBarre;
+    };
+    const largeurDiv = ecrireADroite(String(diviseur), 0) / cw;
     traits.push({
         x1: xBarre, x2: xBarre + (largeurDiv + 0.4) * cw,
         y: g.ligneY(1) - rh * 0.12, epais: true
     });
-    if (solution) {
-        String(t.quotient).split('').forEach((d, i) => {
-            cases.push({
-                x: xBarre + (i + 0.6) * cw, y: g.ligneY(1) + rh * 0.5,
-                texte: d, reponse: true
-            });
-        });
-    }
+    if (solution) ecrireADroite(enFrancais(t.quotient), 1, { reponse: true });
     // LES SOUSTRACTIONS SUCCESSIVES, étape par étape — c'est ce que Rémy
     // demandait : « il faut la soustraction étape par étape ».
     //
@@ -7556,9 +7655,10 @@ function planPose(g, solution) {
     if (solution) {
         let rang = 1;
         for (const e of etapesEcrites(t)) {
-            // La colonne du rang e.rang : les chiffres du dividende sont posés
-            // décalés d'une colonne, le produit s'y aligne donc aussi.
-            const col0 = e.rang + 1;
+            // La colonne du rang e.rang. Le dividende est posé avec ses unités
+            // en `col0Div` : le produit s'aligne sur la même règle, sinon une
+            // division à virgule décale ses soustractions d'un cran.
+            const col0 = col0Div + e.rang;
             chiffresDroiteGauche(e.produit).forEach((d, c) => {
                 cases.push({ x: g.colX(c + col0), y: g.ligneY(rang) + rh * 0.5, texte: d, reponse: true });
             });
@@ -7646,7 +7746,14 @@ function dessinerPosePdf(doc, item, slot, solution) {
         doc.setFontSize(g.taille);
         doc.setTextColor(...(c.reponse ? ENCRE.gris : ENCRE.trait));
         doc.setFont('helvetica', c.signe ? 'normal' : 'bold');
-        doc.text(pourPdf(c.texte), c.x, c.y + g.taille * 0.35, { align: 'center' });
+        // LA LIGNE DE BASE, PAS UNE APPROXIMATION. `c.y` est le MILIEU de la
+        // rangée ; pour y centrer un chiffre il faut descendre d'une
+        // demi-hauteur de capitale — 0,717 em en Helvetica, et un point vaut
+        // 0,3528 mm. On descendait de `taille × 0,35`, presque trois fois
+        // trop : les chiffres tombaient dans la rangée du dessous, et le trait
+        // de la soustraction leur passait au travers comme une rature. Cela ne
+        // se voyait qu'à la lecture du PDF — l'aperçu, lui, centrait juste.
+        doc.text(pourPdf(c.texte), c.x, c.y + g.taille * 0.1265, { align: 'center' });
     }
     doc.setTextColor(...ENCRE.trait);
 }

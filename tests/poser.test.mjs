@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     decimales, chiffreAuRang, rangsDe, placementAttendu, etendue,
+    chiffresParRang, enFrancais,
     colonnesAddition, colonnesSoustraction, colonnesMultiplication, poser,
     lignesMultiplication, colonnesDivision, apercuPose, verifierPose,
     verifierPlacement, attenduEn, premierRang, rangSuivant
@@ -437,4 +438,24 @@ test('un index de prise aberrant est ramené dans les bornes, pas planté', () =
     // le dernier chiffre qu'une exception au milieu d'un geste.
     assert.deepEqual(apercuPose(12, -5, 1), apercuPose(12, 0, 1));
     assert.deepEqual(apercuPose(12, 99, 0), apercuPose(12, 1, 0));
+});
+
+// --- Ce qu'il faut pour POSER un nombre à virgule ---------------------------
+
+test('LES CHIFFRES SE RANGENT PAR RANG — la virgule n\'en est pas un', () => {
+    // Découper « 12.5 » en caractères donne quatre cases dont une contenant un
+    // point, calées sur le bord droit : c'est l'erreur qu'on passe l'année à
+    // corriger chez les élèves, et la feuille l'imprimait.
+    assert.deepEqual(chiffresParRang(12.5),
+        [{ rang: 1, chiffre: 1 }, { rang: 0, chiffre: 2 }, { rang: -1, chiffre: 5 }]);
+    // Un zéro À L'INTÉRIEUR compte, et garde sa place.
+    assert.deepEqual(chiffresParRang(305).map(c => c.chiffre), [3, 0, 5]);
+    // Un entier n'a rien sous le rang zéro.
+    assert.ok(chiffresParRang(47).every(c => c.rang >= 0));
+});
+
+test('un nombre s\'écrit à la française : 12,5 et non 12.5', () => {
+    assert.equal(enFrancais(12.5), '12,5');
+    assert.equal(enFrancais(0.05), '0,05');
+    assert.equal(enFrancais(47), '47');
 });
