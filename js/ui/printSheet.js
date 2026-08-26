@@ -4395,6 +4395,23 @@ function tangramPreviewHtml(item, slot, k, solution) {
     return html;
 }
 
+/**
+ * UN POLYGONE PLEIN DANS LE PDF, depuis une liste de points `[x, y]`.
+ *
+ * jsPDF ne sait tracer que des SUITES DE DÉPLACEMENTS : on lui donne un point
+ * de départ et les écarts d'un sommet au suivant. Le tangram appelait un
+ * `tracerPolygone` qui n'existait nulle part — son PDF échouait donc TOUJOURS,
+ * pour tout le monde, depuis le début. Et en silence : l'aperçu dessine en
+ * SVG, il ne montrait rien de ce défaut ; il fallait cliquer « Télécharger »
+ * pour le rencontrer, et l'échec se rangeait dans le message général « le
+ * générateur de PDF n'a pas pu être chargé », qui accusait la bibliothèque.
+ */
+function tracerPolygone(doc, points, style = 'FD') {
+    if (!points || points.length < 3) return;
+    const suite = points.slice(1).map(([x, y], j) => [x - points[j][0], y - points[j][1]]);
+    doc.lines(suite, points[0][0], points[0][1], [1, 1], style, true);
+}
+
 function dessinerTangramPdf(doc, item, slot, solution) {
     const m = item.meta;
     const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
@@ -10493,10 +10510,27 @@ function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
     if (consigne) {
         // Découpée à la largeur de la page : d'un seul tenant, une consigne un
         // peu longue sortait par la droite et se terminait dans le vide.
-        doc.setFontSize(8.6);
+        //
+        // ET ON NE LA COUPE PLUS EN SILENCE. Deux lignes tenaient dans
+        // l'en-tête, la troisième était jetée : la consigne du pavage perdait
+        // ses derniers mots — « ce que tu cherches est au MILIEU des deux » —
+        // c'est-à-dire précisément ce qu'il fallait faire. L'aperçu, lui,
+        // affichait la phrase entière ; le défaut ne se voyait qu'à
+        // l'impression. On rétrécit donc le texte jusqu'à ce qu'il tienne.
         doc.setTextColor(90, 98, 112);
-        const lignes = doc.splitTextToSize(pourPdf(consigne), PAGE.w - PAGE.marge * 2);
-        lignes.slice(0, 2).forEach((l, i) => doc.text(l, PAGE.marge, PAGE.marge + 11.6 + i * 3.4));
+        const large = PAGE.w - PAGE.marge * 2;
+        let lignes = [], taille = 8.6;
+        for (const t of [8.6, 8, 7.4, 6.9]) {
+            doc.setFontSize(t);
+            lignes = doc.splitTextToSize(pourPdf(consigne), large);
+            taille = t;
+            if (lignes.length <= 2) break;
+        }
+        doc.setFontSize(taille);
+        // Au-delà de deux lignes même rétréci, on le DIT — un « … » vaut mieux
+        // qu'une phrase qui s'arrête net au milieu d'une idée.
+        if (lignes.length > 2) lignes = [lignes[0], `${lignes[1].trimEnd()} …`];
+        lignes.forEach((l, i) => doc.text(l, PAGE.marge, PAGE.marge + 11.6 + i * 3.4));
     }
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.4);

@@ -596,16 +596,20 @@ export function apercuItems(page, k, o) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
             // sinon le professeur découvre la différence à l'impression.
+            // Autant de traits que la fiche en réserve : on écrit SUR des
+            // lignes, on n'écrit pas dans une marge. Et cela vaut AUSSI avec
+            // les champs : une fiche remplissable s'imprime aussi, et sans ses
+            // lignes elle devient une page de questions et de blancs.
+            const nRep = Math.max(1, Math.round(it.rep.lignes || 1));
+            const pasRep = it.rep.pas || 0;
             if (o.champs) {
                 html += `<div class="fx-champ" style="left:${it.rep.x * k}px; top:${it.rep.champY * k}px;
-                    width:${it.rep.w * k}px; height:${it.rep.h * k}px"></div>`;
-            } else {
-                // Autant de traits que la fiche en réserve : on écrit SUR des
-                // lignes, on n'écrit pas dans une marge.
-                for (let i = 0; i < (it.rep.lignes || 1); i++) {
-                    html += `<div class="fq-reponse" style="left:${it.rep.x * k}px;
-                        top:${(it.rep.y + i * (it.rep.pas || 0)) * k}px; width:${it.rep.w * k}px"></div>`;
-                }
+                    width:${it.rep.w * k}px; height:${(it.rep.h + (nRep - 1) * pasRep) * k}px"></div>`;
+            }
+            const yTrait = o.champs ? it.rep.champY + it.rep.h : it.rep.y;
+            for (let i = 0; i < nRep; i++) {
+                html += `<div class="fq-reponse" style="left:${it.rep.x * k}px;
+                    top:${(yTrait + i * pasRep) * k}px; width:${it.rep.w * k}px"></div>`;
             }
         }
     }
@@ -840,23 +844,38 @@ function pointilles(pdf, x, y, largeur) {
  * une fiche imprimable vaut mieux qu'une erreur au téléchargement.
  */
 function champSaisie(pdf, rep, index) {
+    // COMBIEN DE LIGNES ON A RÉSERVÉES. « 3 lignes — Je sais que… » demande de
+    // la place pour rédiger ; en cochant « champs remplissables », on n'en
+    // obtenait qu'UNE, et deux lignes de blanc dessous. La mise en page les
+    // comptait pourtant bien — c'est le dessin qui les oubliait, et seulement
+    // dans cette branche-là. Une fiche remplissable n'est pas une fiche
+    // amputée : c'est la même feuille, avec un curseur en plus.
+    const lignes = Math.max(1, Math.round(rep.lignes || 1));
+    const pas = rep.pas || 0;
+    const traits = () => {
+        for (let i = 0; i < lignes; i++) pointilles(pdf, rep.x, rep.champY + rep.h + i * pas, rep.w);
+    };
     const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
         || (pdf.AcroFormTextField);
     if (typeof Champ !== 'function' || typeof pdf.addField !== 'function') {
-        pointilles(pdf, rep.x, rep.y, rep.w);
+        for (let i = 0; i < lignes; i++) pointilles(pdf, rep.x, rep.y + i * pas, rep.w);
         return false;
     }
     const champ = new Champ();
-    champ.Rect = [rep.x, rep.champY, rep.w, rep.h];
+    // Le champ couvre TOUTE la zone réservée, pas seulement sa première ligne.
+    champ.Rect = [rep.x, rep.champY, rep.w, rep.h + (lignes - 1) * pas];
     // Le nom doit être UNIQUE dans le document : deux champs homonymes sont un
     // seul champ pour un lecteur PDF, et taper dans l'un remplit l'autre.
     champ.fieldName = rep.nom ? `${rep.nom}_${index}` : `reponse_${index}`;
     champ.fontSize = 10;
-    champ.multiline = false;
+    // Sur plusieurs lignes, le champ doit accepter les retours : sans cela, une
+    // rédaction en trois temps s'écrit sur une seule ligne qui défile.
+    champ.multiline = lignes > 1;
     pdf.addField(champ);
     // Le champ lui-même n'a pas de bordure visible à l'impression : on pose un
-    // trait sous lui, pour que la fiche imprimée reste utilisable au stylo.
-    pointilles(pdf, rep.x, rep.champY + rep.h, rep.w);
+    // trait sous chaque ligne, pour que la fiche imprimée reste utilisable au
+    // stylo — c'est le même document qu'on remplit à l'écran ou à la main.
+    traits();
     return true;
 }
 
