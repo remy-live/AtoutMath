@@ -230,3 +230,85 @@ test('LE CHAMP DE SAISIE PREND TOUTE LA LIGNE', () => {
     const src = fsLire('../js/ui/ficheDirecte.js');
     assert.match(src, /champ\.scrollLeft = 0/, 'le champ reste défilé sur la fin du titre');
 });
+
+// --- L'autre doublon : le corrigé réglé à deux endroits -------------------------
+
+test('LE CORRIGÉ SE RÈGLE EN UN SEUL ENDROIT', () => {
+    // Rémy : « pour la fiche du parcours, j'ai l'impression d'avoir du
+    // doublon ». Il y en avait un : « Corrigé — un seul PDF » trônait dans la
+    // rangée du haut pendant que « Solutions » et « Colonnes » vivaient dans le
+    // repli nommé, justement, « Papier, numéros ET CORRIGÉ ». On ouvrait le
+    // repli pour chercher ce qu'on venait de lire en haut.
+    const src = fsLire('../js/ui/printParcours.js');
+    const haut = src.indexOf('class="fp-controles"');
+    const repli = src.indexOf('class="fp-controles pp-sol-reglages"');
+    const corrige = src.indexOf('id="pp-sol-ou"');
+    assert.ok(haut > 0 && repli > 0 && corrige > 0);
+    assert.ok(corrige > repli,
+        'le réglage du corrigé est remonté dans la rangée du haut');
+    // Les trois réglages du corrigé sont sur la même ligne.
+    const bloc = src.slice(repli, src.indexOf('</div>', repli));
+    ['pp-sol-ou', 'pp-sol-mode', 'pp-sol-colonnes'].forEach(id =>
+        assert.ok(bloc.includes(`id="${id}"`), `${id} n'est pas avec les autres`));
+});
+
+test('sans corrigé, les réglages du corrigé disparaissent', () => {
+    // « Compact — juste les réponses » sur une feuille imprimée « Sans
+    // solutions » est une commande qui ne commande rien : la laisser, c'est
+    // laisser croire qu'il y aura un corrigé quelque part.
+    const src = fsLire('../js/ui/printParcours.js');
+    assert.match(src, /data-si-corrige/);
+    assert.match(src, /el\.hidden = ouSol\.value === 'sans'/);
+    // ET LE PIÈGE DE `[hidden]` EST DÉSARMÉ : la règle du navigateur a une
+    // spécificité de zéro et perd contre `.fp-controles label { display: flex }`.
+    const css = fsLire('../css/ui.css');
+    assert.match(css, /\.fp-controles label\[hidden\]\s*\{\s*display:\s*none/);
+});
+
+test('le repli dit ce qu\'il contient sans qu\'on l\'ouvre', () => {
+    const src = fsLire('../js/ui/printParcours.js');
+    assert.match(src, /id="pp-plus-etat"/);
+    assert.match(src, /const majRepli = \(\) =>/);
+    // Il se remet à jour sur les trois réglages qu'il résume, et à l'ouverture.
+    assert.match(src, /ouSol\.onchange = \(\) => \{ majRepli\(\);/);
+    assert.match(src, /orientEl\.onchange = \(\) => \{ majRepli\(\);/);
+    // Trois réglages le nourrissent, et il se pose aussi à l'ouverture.
+    assert.match(src, /couleurEl\.onchange[\s\S]{0,200}majRepli\(\);/);
+    assert.ok((src.match(/majRepli\(\)/g) || []).length >= 4);
+});
+
+// --- Qui est devant l'écran ------------------------------------------------------
+
+test('LE RÔLE SE LIT EN HAUT, ET SE RETOURNE D\'UN CLIC', () => {
+    // Rémy : « sur l'interface prof ou et élèves, j'ai l'impression que ce
+    // n'est pas clair ». Le basculement n'existait que dans la palette noire du
+    // banc d'essai, où seule l'infobulle disait le rôle — et l'on n'ouvre pas
+    // une palette de développeur pour savoir qui l'on est.
+    const html = fsLire('../index.html');
+    assert.match(html, /id="btn-role"/, 'la pastille de rôle manque à la barre haute');
+    // Elle est dans la barre du haut, à gauche, avec le nom de l'application —
+    // le premier endroit où va l'œil.
+    const nav = html.slice(html.indexOf('<div class="nav-left">'),
+        html.indexOf('nav-center'));
+    assert.ok(nav.includes('id="btn-role"'), 'la pastille n\'est pas dans nav-left');
+    // Et elle n'est PAS réservée à un mode : une pastille cachée en mode élève
+    // ne dirait plus rien à celui qui se demande où il est.
+    const balise = html.slice(html.indexOf('id="btn-role"') - 200,
+        html.indexOf('id="btn-role"') + 200);
+    assert.ok(!/student-only|teacher-only/.test(balise));
+
+    const src = fsLire('../js/app.js');
+    // LES DEUX BOUTONS PARTAGENT LE MÊME GESTE : deux commandes pour un état,
+    // c'est deux occasions de le désaccorder.
+    assert.match(src, /const basculerRole = \(\) =>/);
+    assert.match(src, /if \(btnRole\) btnRole\.onclick = basculerRole/);
+    assert.match(src, /if \(btnRoleDbg\) btnRoleDbg\.onclick = basculerRole/);
+    // Et le mot change avec le rôle.
+    assert.match(src, /nomRole\.textContent = prof \? 'Prof' : 'Élève'/);
+
+    const css = fsLire('../css/layout.css');
+    assert.match(css, /\.role-badge--prof/, 'la pastille ne change pas d\'aspect');
+    // Un point coloré double la couleur : tout le monde ne distingue pas deux
+    // teintes de la même barre.
+    assert.match(css, /\.role-badge-point/);
+});

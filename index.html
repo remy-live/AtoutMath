@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=427">
-    <link rel="stylesheet" href="css/layout.css?v=427">
-    <link rel="stylesheet" href="css/ui.css?v=427">
-    <link rel="stylesheet" href="css/games.css?v=427">
-    <link rel="stylesheet" href="css/components.css?v=427">
-    <link rel="stylesheet" href="css/modules.css?v=427">
+    <link rel="stylesheet" href="css/base.css?v=428">
+    <link rel="stylesheet" href="css/layout.css?v=428">
+    <link rel="stylesheet" href="css/ui.css?v=428">
+    <link rel="stylesheet" href="css/games.css?v=428">
+    <link rel="stylesheet" href="css/components.css?v=428">
+    <link rel="stylesheet" href="css/modules.css?v=428">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -161,6 +161,21 @@
             <div class="nav-left">
                 <button id="btn-toggle-sidebar" class="btn-icon" aria-label="Ouvrir/fermer le menu latéral">☰</button>
                 <div class="title">MathBox</div>
+                <!-- QUI EST DEVANT L'ÉCRAN. Rémy : « sur l'interface prof ou et
+                     élèves, j'ai l'impression que ce n'est pas clair ». Le
+                     basculement existait, mais dans la palette de test — une
+                     icône noire en bas de l'écran, dont seule l'infobulle
+                     disait le rôle. Or tout change avec lui : les onglets
+                     disparaissent, la vue devient le constructeur de parcours,
+                     les exercices en test apparaissent. Un changement aussi
+                     total doit s'annoncer, et se défaire d'un clic au même
+                     endroit. -->
+                <button id="btn-role" class="role-badge" type="button"
+                        aria-pressed="false"
+                        title="Basculer entre l'espace élève et l'espace professeur">
+                    <span class="role-badge-point" aria-hidden="true"></span>
+                    <span id="role-badge-nom">Élève</span>
+                </button>
             </div>
             <div class="nav-center student-only">
                 <button class="top-nav-tab active" id="top-btn-grid">

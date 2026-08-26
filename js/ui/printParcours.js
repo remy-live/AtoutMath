@@ -250,18 +250,19 @@ function assurerModale() {
                 <label class="pp-note-sur" id="pp-note-sur-champ">Note sur
                     <input type="number" id="pp-note-sur" class="cfg-input cfg-input--num"
                         min="5" max="100" step="1" value="20"></label>
-                <label>Corrigé
-                    <select id="pp-sol-ou" class="cfg-input">
-                        <option value="ensemble">Un seul PDF, solutions à la fin</option>
-                        <option value="separe">Deux PDF séparés</option>
-                        <option value="sans">Sans solutions</option>
-                    </select></label>
                 <span class="fp-total" id="pp-total"></span>
                 <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
             </div>
             <div class="pp-etapes" id="pp-etapes"></div>
             <details class="fp-repli" id="pp-plus">
-                <summary>Papier, numéros et corrigé</summary>
+                <!-- LE REPLI DIT CE QU'IL CONTIENT, REPLIÉ. C'est l'autre
+                     moitié du doublon : quand on ne sait pas ce qu'il y a
+                     dedans, on l'ouvre — et l'on retrouve des réglages qu'on
+                     croyait avoir vus ailleurs. Un résumé vivant (« A4
+                     portrait · couleur intense · corrigé à la fin ») répond à
+                     la question sans qu'on ait à ouvrir. -->
+                <summary>Papier, numéros et corrigé
+                    <span class="fp-repli-etat" id="pp-plus-etat"></span></summary>
                 <div class="fp-controles pp-mep">
                     <label>Format
                         <select id="pp-orientation" class="cfg-input">
@@ -280,14 +281,31 @@ function assurerModale() {
                     <label class="fq-case" title="Un exercice qui ne tient pas dans le bas de la page commence alors en haut de la suivante, quitte à laisser du blanc.">
                         <input type="checkbox" id="pp-insecable"> Ne pas couper un exercice entre deux pages</label>
                 </div>
+                <!-- LE CORRIGÉ SE RÈGLE EN UN SEUL ENDROIT.
+                     Rémy : « pour la fiche du parcours, j'ai l'impression
+                     d'avoir du doublon ». Il y en avait un : « Corrigé — un
+                     seul PDF » trônait dans la rangée du haut pendant que
+                     « Solutions » et « Colonnes » vivaient dans ce repli
+                     nommé, justement, « Papier, numéros ET CORRIGÉ ». Trois
+                     réglages du même objet, à deux endroits, dont l'un
+                     annonçait l'autre : on ouvrait le repli pour chercher ce
+                     qu'on venait de voir en haut. Ils sont maintenant sur la
+                     même ligne, et la rangée du haut ne garde que ce qui
+                     décide de la FEUILLE. -->
                 <div class="fp-controles pp-sol-reglages">
-                    <label>Solutions
+                    <label>Corrigé
+                        <select id="pp-sol-ou" class="cfg-input">
+                            <option value="ensemble">Un seul PDF, solutions à la fin</option>
+                            <option value="separe">Deux PDF séparés</option>
+                            <option value="sans">Sans solutions</option>
+                        </select></label>
+                    <label data-si-corrige>Solutions
                         <select id="pp-sol-mode" class="cfg-input">
                             <option value="compact">Compact — juste les réponses</option>
                             <option value="normal">Normal — énoncé et réponse</option>
                             <option value="detaille">Détaillé — avec les explications</option>
                         </select></label>
-                    <label>Colonnes
+                    <label data-si-corrige>Colonnes
                         <select id="pp-sol-colonnes" class="cfg-input"
                             aria-label="Colonnes de la feuille de solutions">
                             <option value="auto">auto</option>
@@ -1280,10 +1298,30 @@ export function ouvrirFicheParcours(chemin) {
     };
     choixEl.onchange = rendre;
     insecEl.onchange = () => { rendreListe(); rendre(); };
+    // LES RÉGLAGES DU CORRIGÉ DISPARAISSENT QUAND IL N'Y EN A PAS. « Compact —
+    // juste les réponses » sur une fiche imprimée « Sans solutions » est une
+    // commande qui ne commande rien : la laisser, c'est laisser croire qu'il y
+    // aura un corrigé quelque part.
+    const etatRepli = m.querySelector('#pp-plus-etat');
+    const majRepli = () => {
+        m.querySelectorAll('[data-si-corrige]').forEach(el => {
+            el.hidden = ouSol.value === 'sans';
+        });
+        if (!etatRepli) return;
+        const corrige = ouSol.value === 'sans' ? 'sans corrigé'
+            : (ouSol.value === 'separe' ? 'corrigé à part' : 'corrigé à la fin');
+        const encre = couleurEl.selectedOptions[0]
+            ? couleurEl.selectedOptions[0].textContent.toLowerCase() : '';
+        etatRepli.textContent = [
+            orientEl.value === 'paysage' ? 'A4 paysage' : 'A4 portrait',
+            encre, corrige
+        ].filter(Boolean).join(' · ');
+    };
+
     modeSol.onchange = rendre;
     colSol.onchange = rendre;
-    ouSol.onchange = rendre;
-    orientEl.onchange = rendre;
+    ouSol.onchange = () => { majRepli(); rendre(); };
+    orientEl.onchange = () => { majRepli(); rendre(); };
     // Le même interrupteur que sur les autres fiches, et la même mémoire :
     // c'est une propriété de l'imprimante, pas de la feuille.
     couleurEl.innerHTML = optionsPolycopie();
@@ -1291,9 +1329,11 @@ export function ouvrirFicheParcours(chemin) {
     couleurEl.onchange = () => {
         reglerModePolycopie(couleurEl.value);
         poserTeinte(apercu);
+        majRepli();
         rendre();
     };
     poserTeinte(apercu);
+    majRepli();
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     noteSurEl.oninput = () => {

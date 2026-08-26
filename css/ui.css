@@ -399,6 +399,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-panel { max-width: 96vw; }
 .fp-controles { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .fp-controles label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .92rem; }
+/* LE PIÈGE DE `[hidden]`. La règle du navigateur — `[hidden] { display: none }` —
+   a une spécificité de zéro : la ligne au-dessus la bat, et un `el.hidden = true`
+   ne cachait rien du tout. Il faut le redire ici, une fois, pour que « Solutions »
+   et « Colonnes » disparaissent vraiment quand la feuille s'imprime sans
+   corrigé. */
+.fp-controles label[hidden] { display: none; }
 .fp-controles .cfg-input--num { width: 58px; }
 /* --- LE REPLI DES RÉGLAGES QU'ON NE RÈGLE QU'UNE FOIS ---------------------
    Rémy : « c'est indigeste, il y a tellement d'options ». Le format du papier,
@@ -677,6 +683,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fx-roue:hover, .fx-roue:focus-visible { opacity: 1; background: rgba(0, 0, 0, .07); }
 .fx-roue:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* LE RÉSUMÉ DU REPLI : ce qu'il contient, dit sans qu'on l'ouvre. Discret —
+   c'est un état, pas un titre — et il passe à la ligne plutôt que de pousser le
+   chevron hors du cadre sur un téléphone. */
+.fp-repli-etat {
+    font-weight: 600; font-size: .82em; color: var(--text-muted);
+    margin-left: .6em;
+}
+.fp-repli-etat:not(:empty)::before { content: '— '; }
 
 .pp-roue-panneau {
     /* AU-DESSUS DE LA MODALE QUI L'A OUVERT : la fiche vit dans une

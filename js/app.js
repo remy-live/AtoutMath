@@ -574,21 +574,49 @@ function initDebugToolbar() {
         };
     }
 
-    const btnRole = document.getElementById('db-toggle-role');
-    if (btnRole) {
-        const syncRole = () => {
-            etiquette(btnRole, `Mode : ${state.isTeacherMode ? 'professeur' : 'élève'}`);
-            btnRole.classList.toggle('active', state.isTeacherMode);
-        };
+    // LE RÔLE SE DIT EN HAUT, PAS DANS LA PALETTE DE TEST.
+    //
+    // Rémy : « sur l'interface prof ou et élèves, j'ai l'impression que ce
+    // n'est pas clair ». Le basculement n'existait que dans la palette noire du
+    // banc d'essai, où seule l'infobulle disait le rôle — et l'on n'ouvre pas
+    // une palette de développeur pour savoir qui l'on est. Or ce commutateur
+    // change TOUT : les onglets disparaissent, la vue devient le constructeur
+    // de parcours, les exercices en test se montrent. Il lui faut donc une
+    // pastille en haut à gauche, à côté du nom de l'application, qui dise
+    // « Élève » ou « Prof » et se retourne d'un clic.
+    //
+    // LES DEUX BOUTONS PARTAGENT LE MÊME GESTE. La palette garde le sien — il
+    // sert pendant les passes de test, où l'on bascule vingt fois — mais tous
+    // deux appellent la même bascule et se resynchronisent ensemble : deux
+    // commandes pour un état, c'est deux occasions de le désaccorder.
+    const btnRoleDbg = document.getElementById('db-toggle-role');
+    const btnRole = document.getElementById('btn-role');
+    const nomRole = document.getElementById('role-badge-nom');
+    const syncRole = () => {
+        const prof = !!state.isTeacherMode;
+        if (btnRoleDbg) {
+            etiquette(btnRoleDbg, `Mode : ${prof ? 'professeur' : 'élève'}`);
+            btnRoleDbg.classList.toggle('active', prof);
+        }
+        if (btnRole) {
+            btnRole.classList.toggle('role-badge--prof', prof);
+            btnRole.setAttribute('aria-pressed', prof ? 'true' : 'false');
+            etiquette(btnRole, prof
+                ? 'Espace professeur — cliquer pour revenir à l\'espace élève'
+                : 'Espace élève — cliquer pour passer à l\'espace professeur');
+        }
+        if (nomRole) nomRole.textContent = prof ? 'Prof' : 'Élève';
+    };
+    const basculerRole = () => {
+        state.isTeacherMode = !state.isTeacherMode;
         syncRole();
-        btnRole.onclick = () => {
-            state.isTeacherMode = !state.isTeacherMode;
-            syncRole();
-            document.body.classList.toggle('teacher-mode', state.isTeacherMode);
-            setTopNavMode(state.isTeacherMode ? 'teacher' : 'grid');
-            refreshViews();
-        };
-    }
+        document.body.classList.toggle('teacher-mode', state.isTeacherMode);
+        setTopNavMode(state.isTeacherMode ? 'teacher' : 'grid');
+        refreshViews();
+    };
+    syncRole();
+    if (btnRoleDbg) btnRoleDbg.onclick = basculerRole;
+    if (btnRole) btnRole.onclick = basculerRole;
 
     initStatusFilter();
 

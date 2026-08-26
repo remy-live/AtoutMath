@@ -20,6 +20,42 @@
    élément qui accepte de rétrécir — les icônes, elles, sont des cibles
    tactiles et gardent leur taille. */
 .nav-left { min-width: 0; }
+
+/* --- QUI EST DEVANT L'ÉCRAN ------------------------------------------------
+   Rémy : « sur l'interface prof ou et élèves, j'ai l'impression que ce n'est
+   pas clair ». La pastille dit le rôle en un mot, à côté du nom de
+   l'application — c'est-à-dire au premier endroit où va l'œil.
+
+   ELLE CHANGE DE COULEUR, PAS SEULEMENT DE MOT. « Élève » se lit en gris
+   discret : c'est l'état normal, celui qu'on ne doit pas remarquer. « Prof »
+   s'allume : on est dans un mode qui montre les exercices en test et remplace
+   la vue par le constructeur de parcours, et l'on doit s'en souvenir avant de
+   tendre la tablette à un enfant. Le point coloré fait le même travail pour qui
+   ne distingue pas les deux teintes. */
+.role-badge {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 3px 10px 3px 8px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-app);
+    color: var(--text-muted); font: inherit; font-size: .78rem; font-weight: 800;
+    cursor: pointer; transition: .15s; white-space: nowrap;
+}
+.role-badge:hover { border-color: var(--text-muted); color: var(--text-main); }
+.role-badge-point {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor; opacity: .55;
+}
+.role-badge--prof {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color: var(--primary); color: var(--primary);
+}
+.role-badge--prof .role-badge-point { opacity: 1; }
+/* Sur un téléphone, le mot tombe et le point reste : il suffit à dire le rôle,
+   et la barre haute n'a pas un pixel à perdre. */
+@media (max-width: 430px) {
+    .role-badge { padding: 4px; gap: 0; }
+    .role-badge span:not(.role-badge-point) { display: none; }
+    .role-badge-point { width: 9px; height: 9px; }
+}
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-right { flex-shrink: 0; }
 /* Le bouton PLEIN ÉCRAN s'ajoute à une rangée déjà pleine. Plutôt que de le
