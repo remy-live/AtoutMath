@@ -390,15 +390,33 @@ class PetitesAiles extends BaseGame {
         c.translate(ox, oy);
         c.rotate(-angle);
         c.scale(e, e);
-        c.fillStyle = '#f6ad55';
-        c.beginPath(); c.moveTo(16, 0); c.lineTo(4, -5); c.lineTo(4, 5); c.closePath(); c.fill();
+        // L'ORDRE DE DESSIN EST TOUT L'OISEAU. Le bec était tracé EN PREMIER,
+        // de x = 4 à x = 16, puis le corps — un disque de rayon 15 — venait par
+        // dessus : il n'en dépassait qu'un pixel, et l'on ne voyait plus qu'une
+        // boule jaune avec un point. Le bec, l'aile et l'œil se posent donc
+        // APRÈS le corps, et la queue seule reste derrière.
+        c.fillStyle = '#d69e2e';
+        c.beginPath(); c.moveTo(-10, 0); c.lineTo(-23, -7); c.lineTo(-21, 2);
+        c.closePath(); c.fill();
         c.fillStyle = this.appuie ? '#e04a3a' : '#ecc94b';
         c.beginPath(); c.arc(0, 0, 15, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = '#8a5f11'; c.lineWidth = 2.5; c.stroke();
-        c.fillStyle = '#d69e2e';
-        c.beginPath(); c.ellipse(-4, 2, 10, 6, -0.4, 0, Math.PI * 2); c.fill();
+        // L'aile bat un peu quand on plonge : rien de plus, mais l'oiseau cesse
+        // d'être un disque qui glisse.
+        c.fillStyle = this.appuie ? '#b83a2c' : '#d69e2e';
+        c.beginPath();
+        c.ellipse(-3, this.appuie ? -1 : 3, 10, this.appuie ? 4.5 : 6.5, -0.35, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#8a5f11'; c.lineWidth = 2.5;
+        c.beginPath(); c.arc(0, 0, 15, 0, Math.PI * 2); c.stroke();
+        // Le bec, par-dessus le corps, et assez long pour dire où l'on va.
+        c.fillStyle = '#f6ad55';
+        c.beginPath(); c.moveTo(24, 1); c.lineTo(11, -5); c.lineTo(11, 6);
+        c.closePath(); c.fill();
+        c.strokeStyle = '#b9762a'; c.lineWidth = 1.4; c.stroke();
+        c.fillStyle = '#fff';
+        c.beginPath(); c.arc(6, -5, 4.6, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#1a202c';
-        c.beginPath(); c.arc(6, -4, 2.6, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.arc(7.4, -5, 2.4, 0, Math.PI * 2); c.fill();
         c.restore();
 
         // Les traits de vitesse derrière l'oiseau quand ça file.
