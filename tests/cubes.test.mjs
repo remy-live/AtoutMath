@@ -259,7 +259,14 @@ test('l\'indice et le corrigé disent la MÉTHODE, pas seulement le nombre', () 
     const it = G.generate({ taille: 'grand', formes: ['pave'], question: 'total' },
         { rng: makeRng('exp'), index: 0 });
     assert.ok(it.hints.length >= 2, 'un seul indice');
-    assert.ok(it.hints[0].toLowerCase().includes('colonne'), 'la méthode n\'est pas dite');
+    // La méthode, c'est l'ÉTAGE : on compte chaque couche et on les ajoute.
+    // Rémy : « couleurs par étage (via l'indice), bouton couche par couche ».
+    assert.ok(it.hints[0].toLowerCase().includes('étage'), 'la méthode n\'est pas dite');
+    // Et l'indice MONTRE, il ne dit pas seulement : le premier schéma colore
+    // les étages, le second déplie l'empilement du sol au sommet.
+    assert.equal(it.schemas.length, 2);
+    assert.match(it.schemas[0], /cu-e\d/, 'le premier indice ne colore pas les étages');
+    assert.match(it.schemas[1], /cu-couches/, 'le second indice ne déplie pas les couches');
     assert.ok(it.explanation.includes('×'), 'un pavé plein se corrige par une multiplication');
     assert.ok(it.explanation.includes(String(it.answer)));
 
@@ -267,4 +274,44 @@ test('l\'indice et le corrigé disent la MÉTHODE, pas seulement le nombre', () 
         { rng: makeRng('exp2'), index: 0 });
     // Le corrigé pose la soustraction : c'est elle qu'on veut voir écrite.
     assert.ok(creuse.explanation.includes('−'), 'la soustraction n\'est pas posée');
+});
+
+// --- LE DESSIN : LES ÉTAGES, LES COUCHES, ET L'AUTRE COIN -----------------------
+
+test('un dessin ordinaire ne colore pas les étages', () => {
+    // Les trois clartés disent le VOLUME ; les couleurs disent la MÉTHODE, et
+    // la méthode n'appartient qu'à l'indice.
+    const h = [[1, 2], [3, 1]];
+    assert.doesNotMatch(cubesSvg(h), /cu-e\d/);
+    assert.match(cubesSvg(h, { etages: true }), /cu-e\d/);
+});
+
+test('« jusqu\'à n » ne dessine que les n premiers étages', () => {
+    const h = [[1, 2], [3, 1]];
+    const compter = (svg) => (svg.match(/cu-dessus/g) || []).length;
+    // Un cube dessiné = trois faces ; on compte les dessus, donc les cubes.
+    const tout = compter(cubesSvg(h));
+    assert.equal(compter(cubesSvg(h, { jusqua: 1 })), 4, 'le sol porte quatre colonnes');
+    assert.ok(compter(cubesSvg(h, { jusqua: 2 })) > 4);
+    assert.equal(compter(cubesSvg(h, { jusqua: 99 })), tout);
+});
+
+test('le miroir ne retourne que le DESSIN, jamais les données', () => {
+    const h = [[1, 2], [3, 1]];
+    const droit = cubesSvg(h), retourne = cubesSvg(h, { miroir: true });
+    assert.match(retourne, /scale\(-1,1\)/);
+    assert.doesNotMatch(droit, /scale\(-1,1\)/);
+    // Mêmes cubes, mêmes faces : un empilement vu de l'autre côté se compte
+    // exactement pareil.
+    const faces = (s) => (s.match(/cu-dessus/g) || []).length;
+    assert.equal(faces(droit), faces(retourne));
+});
+
+test('une question sur trois se voit de l\'autre coin', () => {
+    const vues = [0, 1, 2, 3, 4, 5].map(i =>
+        G.generate({ formes: ['escalier'] }, { rng: makeRng(`m${i}`), index: i })
+            .prompt.html.includes('scale(-1,1)'));
+    // Le tirage vient de l'INDEX, pas du hasard : sur une fiche de neuf
+    // dessins, le hasard en donne parfois neuf pareils.
+    assert.deepEqual(vues, [false, false, true, false, false, true]);
 });

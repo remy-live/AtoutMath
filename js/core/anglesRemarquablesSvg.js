@@ -56,6 +56,30 @@ export function figureAnglesSvg(figure, { mesures = 'donne', prefixe = 'ar' } = 
         const a = P(t.x1, t.y1), b = P(t.x2, t.y2);
         d += `<line class="ar-trait${t.pointille ? ' ar-trait--par' : ''}"
             x1="${arr(a.x)}" y1="${arr(a.y)}" x2="${arr(b.x)}" y2="${arr(b.y)}"/>`;
+        // LE CHEVRON DIT « PARALLÈLE », ET C'EST LA SEULE FAÇON DE LE DIRE SUR
+        // UN DESSIN.
+        //
+        // Rémy : « Préciser que les droites en pointillés sont parallèles. »
+        // La feuille le disait dans sa consigne ; l'écran, non — et l'y écrire
+        // aurait coûté une seconde ligne d'énoncé, c'est-à-dire trente pixels
+        // pris sur la figure, qui est la seule chose qu'il y ait à regarder.
+        //
+        // Le codage est de toute façon la bonne réponse : c'est ainsi qu'on
+        // marque deux parallèles depuis toujours, dans tous les manuels, et
+        // l'élève doit apprendre à le lire. Une phrase le lui aurait épargné.
+        if (!t.pointille) return;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const n = Math.hypot(dx, dy) || 1;
+        const ux = dx / n, uy = dy / n;         // le long du trait
+        const vx = -uy, vy = ux;                // en travers
+        // À un sixième du bout : le milieu d'une de ces droites tombe sur le
+        // croisement, où il y a déjà l'angle, son secteur et sa mesure.
+        const mx = a.x + dx * 0.16, my = a.y + dy * 0.16;
+        const L = 10, E = 7.5;                  // longueur des branches, écart
+        const branche = (s) => `${arr(mx - ux * L + vx * E * s)},${arr(my - uy * L + vy * E * s)} `
+            + `${arr(mx)},${arr(my)} `
+            + `${arr(mx - ux * L - vx * E * s)},${arr(my - uy * L - vy * E * s)}`;
+        d += `<polyline class="ar-chevron" points="${branche(1)}"/>`;
     });
     if (figure.droit) {
         const pts = equerreDe(figure.droit)

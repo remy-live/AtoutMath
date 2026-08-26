@@ -124,3 +124,26 @@ test('la figure tient dans son cadre', () => {
         });
     }
 });
+
+// --- LE CODAGE DES PARALLÈLES ---------------------------------------------------
+
+test('les droites parallèles portent leur chevron, et elles seules', () => {
+    // Rémy : « Préciser que les droites en pointillés sont parallèles. » La
+    // feuille le disait dans sa consigne ; l'écran, non — et l'y écrire aurait
+    // coûté une seconde ligne d'énoncé, c'est-à-dire trente pixels pris sur la
+    // figure, qui est la seule chose qu'il y ait à regarder. Le codage est de
+    // toute façon la bonne réponse : c'est ainsi qu'on marque deux parallèles
+    // dans tous les manuels, et l'élève doit apprendre à le lire.
+    const vus = new Set();
+    for (let k = 0; k < 60; k++) {
+        const it = G.generate({}, { rng: makeRng(`chev${k}`), index: k });
+        const chevrons = (it.prompt.html.match(/ar-chevron/g) || []).length;
+        const pointilles = (it.prompt.html.match(/ar-trait--par/g) || []).length;
+        assert.equal(chevrons, pointilles,
+            `${it.meta.famille} : ${chevrons} chevrons pour ${pointilles} droites en pointillés`);
+        vus.add(pointilles > 0);
+    }
+    // On a bien rencontré les deux cas : des figures à parallèles, et des
+    // figures sans. Sinon le test ne prouverait que la moitié de la règle.
+    assert.deepEqual([...vus].sort(), [false, true]);
+});

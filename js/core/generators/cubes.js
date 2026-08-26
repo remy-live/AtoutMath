@@ -110,7 +110,16 @@ export const cubesGenerator = {
         }
 
         const bon = q.valeur(m);
-        const dessin = cubesSvg(h);
+        // VU DE L'AUTRE COIN, UNE FOIS SUR TROIS. Rémy : « parfois en
+        // perspective ». Le dessin était toujours pris du même angle, et l'on
+        // finit par lire l'IMAGE au lieu de lire le volume — les mêmes
+        // escaliers, toujours montant vers la droite. Le miroir donne la vue
+        // depuis l'autre côté : c'est le même empilement, il ne se compte pas
+        // autrement, mais il faut de nouveau le regarder. Le tirage vient de
+        // l'index, pas du hasard : sur une fiche de neuf dessins, le hasard en
+        // donne parfois neuf pareils.
+        const miroir = i % 3 === 2;
+        const dessin = cubesSvg(h, { miroir });
         return makeItem({
             seed: rng.seed,
             generatorId: 'geo.cubes',
@@ -125,6 +134,15 @@ export const cubesGenerator = {
             unite: 'cubes',
             choices: leurres(rng, q, m, bon),
             hints: indices(q, m, famille),
+            // L'INDICE MONTRE, IL NE DIT PAS SEULEMENT. Rémy : « couleurs par
+            // étage (via l'indice), bouton couche par couche ». Le premier
+            // indice colore les étages — c'est la MÉTHODE, pas la réponse ; le
+            // second déplie l'empilement couche par couche, du sol au sommet,
+            // ce qui est exactement le geste qu'on veut faire faire.
+            schemas: [
+                cubesSvg(h, { miroir, etages: true, classe: 'cu-svg--indice' }),
+                couchesSvg(h, miroir)
+            ],
             explanation: expliquer(q, m, famille),
             difficulty: { petit: 1, moyen: 2, grand: 3 }[p.taille] || 2,
             meta: {
@@ -165,10 +183,32 @@ function leurres(rng, q, m, bon) {
     ], { count: 4 });
 }
 
+/**
+ * L'EMPILEMENT DÉPLIÉ, ÉTAGE PAR ÉTAGE.
+ *
+ * Le premier dessin ne montre que le rez-de-chaussée, le deuxième y ajoute le
+ * premier étage, et ainsi de suite jusqu'à l'empilement entier. C'est le
+ * « couche par couche » demandé, et sous cette forme il vaut mieux qu'un
+ * bouton : les étages sont côte à côte, donc on les COMPARE — on voit ce que
+ * chacun ajoute, et le total est la somme de ce qu'on a sous les yeux.
+ */
+function couchesSvg(h, miroir) {
+    const haut = Math.max(...h.flat());
+    const vues = [];
+    for (let n = 1; n <= haut; n++) {
+        const cubes = h.flat().filter(v => v >= n).length;
+        vues.push(`<figure class="cu-couche">
+            ${cubesSvg(h, { miroir, etages: true, jusqua: n, classe: 'cu-svg--indice' })}
+            <figcaption>${n === 1 ? 'le sol' : `+ étage ${n - 1}`} · ${cubes} cube${cubes > 1 ? 's' : ''}</figcaption>
+        </figure>`);
+    }
+    return `<div class="cu-couches">${vues.join('')}</div>`;
+}
+
 function indices(q, m, famille) {
     const base = [
-        'Compte COLONNE par colonne, pas cube par cube : chaque case du sol porte une pile, '
-            + 'et il suffit d\'ajouter les hauteurs.'
+        'Compte ÉTAGE par étage : chaque couleur est un étage, et il suffit d\'ajouter '
+            + 'ce que chacun porte.'
     ];
     if (q.id === 'total') {
         base.push(famille === 'pave'

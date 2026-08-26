@@ -6963,6 +6963,10 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 /* Les parallèles en pointillés : le trait DIT qu'elles sont parallèles, il n'y
    a pas besoin de l'écrire à côté. */
 .ar-trait--par { stroke-dasharray: 9 6; }
+/* Le codage des parallèles : un chevron sur chacune des deux droites. C'est la
+   convention des manuels, et elle ne coûte pas une ligne d'énoncé. */
+.ar-chevron { fill: none; stroke: #334155; stroke-width: 3.2;
+    stroke-linecap: round; stroke-linejoin: round; }
 .ar-sommet { fill: var(--text-main); }
 .ar-droit { fill: none; stroke: var(--text-main); stroke-width: 2; }
 /* LES TROIS TEINTES SONT OPAQUES, ET CE SONT CELLES DU PDF (voir ENCRE_ANGLE
@@ -7026,6 +7030,31 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .cu-dessus { fill: var(--cu-dessus); }
 .cu-droite { fill: var(--cu-droite); }
 .cu-gauche { fill: var(--cu-gauche); }
+
+/* UNE TEINTE PAR ÉTAGE, POUR L'INDICE.
+   Rémy : « couleurs par étage (via l'indice) ». Compter des cubes, c'est
+   compter des ÉTAGES et les ajouter ; le dessin ordinaire ne montre pas cette
+   méthode, puisqu'il porte la même clarté du sol au sommet.
+   LES TROIS CLARTÉS SURVIVENT : c'est la TEINTE qui change d'un étage à
+   l'autre, pas la lumière — le dessus reste clair, la droite moyenne, la
+   gauche foncée. Sans quoi on perdrait le volume en gagnant les étages. */
+.cu-e1 { --cu-h: 224; } .cu-e2 { --cu-h: 152; }
+.cu-e3 { --cu-h: 34; }  .cu-e4 { --cu-h: 292; }
+.cu-dessus[class*="cu-e"] { fill: hsl(var(--cu-h) 62% 92%); }
+/* L'empilement déplié : les étages côte à côte, du sol au sommet. On les
+   COMPARE, donc on voit ce que chacun ajoute — et le total est la somme de ce
+   qu'on a sous les yeux. */
+.cu-couches {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    align-items: flex-end; margin-top: 6px;
+}
+.cu-couche { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 88px; }
+.cu-couche figcaption {
+    font-size: .72rem; font-weight: 700; color: var(--text-muted); text-align: center;
+}
+.cu-svg--indice { max-height: 96px; }
+.cu-droite[class*="cu-e"] { fill: hsl(var(--cu-h) 46% 72%); }
+.cu-gauche[class*="cu-e"] { fill: hsl(var(--cu-h) 34% 50%); }
 
 /* --- CODER LA FIGURE -------------------------------------------------------
    Un quadrilatère, ses diagonales, et des marques à poser dessus. Le dessin
