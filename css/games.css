@@ -110,6 +110,29 @@
     color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05);
     text-wrap: balance; line-height: 1.25; max-width: 26ch; margin-inline: auto;
 }
+/* LA MÊME TAILLE POUR « 7 × 8 » ET POUR UNE PHRASE EST FORCÉMENT FAUSSE POUR
+   L'UNE DES DEUX. Rémy : « globalement les énoncés ont une police énorme. »
+   Un calcul mental se lit d'un coup d'œil et doit dominer l'écran ; « Par
+   rapport à quoi la pièce A est-elle le symétrique de la pièce C ? » fait
+   soixante-dix caractères, et à la même taille cela prend le tiers supérieur
+   de l'écran — la FIGURE, qui est ce qu'il faut vraiment regarder, se
+   retrouvant reléguée dessous, plus petite que la question qui la commente.
+   La question doit dominer, pas régner : plus elle est longue, plus elle se
+   calme, et plus elle laisse de place à ce dont elle parle. Le palier est posé
+   par `ui/enonce.js`, qui compte les caractères du TEXTE. */
+.game-question--moyen {
+    font-size: clamp(1.2rem, min(5.4cqw, 7.4cqh, 4.2vw + 12px), 2.25rem);
+    max-width: 30ch;
+}
+.game-question--long {
+    font-size: clamp(1.05rem, min(4.2cqw, 5.6cqh, 3.1vw + 10px), 1.75rem);
+    max-width: 40ch; margin-bottom: clamp(12px, 2.6vh, 26px);
+}
+.game-question--tres-long {
+    font-size: clamp(.95rem, min(3.4cqw, 4.6cqh, 2.3vw + 9px), 1.4rem);
+    max-width: 56ch; margin-bottom: clamp(10px, 2.2vh, 22px);
+    font-weight: 700; line-height: 1.35;
+}
 .game-question .nb-highlight,
 .game-question b { white-space: nowrap; }
 /* Le morceau d'énoncé que la démonstration désigne (« 8 × 6 » dans

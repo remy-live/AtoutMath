@@ -15,6 +15,7 @@ import { defaultPolicy } from '../core/policy.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import { questionsConseillees } from '../core/duree.js';
 import { accessOf, lockLabel } from '../core/gameAccess.js';
+import { surveillerEnonces } from '../ui/enonce.js';
 
 /**
  * Ouvre un exercice en plein écran.
@@ -23,6 +24,10 @@ import { accessOf, lockLabel } from '../core/gameAccess.js';
  */
 export function openGameLayer(exo, startAsDemo) {
     if (!exo) return;
+    // L'ÉNONCÉ SE RÈGLE SUR SA LONGUEUR — voir `ui/enonce.js`. L'observateur
+    // est posé une fois pour toutes sur la zone de jeu : trente endroits
+    // écrivent une question, et les appeler un par un, c'est en oublier un.
+    surveillerEnonces(document.getElementById('game-board'));
 
     if (startAsDemo) return openDemo(exo);
 

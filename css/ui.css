@@ -527,7 +527,22 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: 1px solid var(--border); border-radius: 4px;
     box-shadow: 0 8px 26px rgba(0, 0, 0, .18);
     color: #1a202c;
+    /* L'APERÇU EST ÉCRIT DANS LA POLICE DU PDF, PAS DANS CELLE DE L'APPLI.
+       Rémy : « Souci sur l'écriture ou le rendu canvas et html est
+       différent. » Il a raison, et c'était vrai depuis le début sans qu'on le
+       voie : toute l'application est en Outfit — une linéale arrondie, large,
+       à chasse généreuse — tandis que jsPDF n'a que les polices de base d'un
+       PDF et écrit en Helvetica. Le même titre n'a donc ni la même largeur ni
+       la même allure des deux côtés, et un texte qui tenait à l'écran pouvait
+       se faire couper à l'impression.
+       L'aperçu ne sert qu'à une chose : montrer la feuille. Il prend donc la
+       police de la feuille — et il faut le dire à CHAQUE élément, pas au seul
+       cadre : la feuille de base pose `* { font-family: Outfit }`, qui
+       s'applique directement à tous les descendants et l'emporte donc sur ce
+       qu'ils auraient hérité de leur parent. */
+    font-family: Helvetica, Arial, 'Liberation Sans', sans-serif;
 }
+.fp-apercu * { font-family: Helvetica, Arial, 'Liberation Sans', sans-serif; }
 .fp-entete {
     position: absolute; display: flex; align-items: baseline;
     /* CENTRÉ : c'est le titre du devoir. Il a sa ligne à lui — il la partageait
@@ -586,7 +601,14 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    est dessiné par un autre chemin, qui ne connaît que le vrai titre. */
 .fp-entete--vide b { color: #c3c8d4; font-weight: 600; font-style: italic; }
 .fp-entete--edite { outline: 1.5px solid var(--primary, #6366f1); outline-offset: 2px; }
-.fp-entete--edite b { color: #1a202c; font-style: normal; outline: none; }
+.fp-entete--edite b { color: #1a202c; font-style: normal; }
+/* Le champ prend EXACTEMENT la place du titre : même police, même taille, même
+   centrage. On écrit dans la feuille, pas dans une boîte posée dessus. */
+.fp-titre-saisie {
+    width: 100%; border: 0; padding: 0; margin: 0; background: transparent;
+    font: inherit; color: inherit; text-align: center; outline: none;
+    letter-spacing: inherit;
+}
 
 /* LES FANTÔMES : ce qui n'est PAS sur la feuille, offert au bout de la ligne
    d'identité. En pointillé et en gris, pour qu'on ne les prenne pas une

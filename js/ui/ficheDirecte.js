@@ -135,44 +135,61 @@ export function brancherFicheDirecte(apercu, { lire, ecrire, parties }) {
 /**
  * ÉCRIRE LE TITRE À SA PLACE.
  *
- * `contentEditable` plutôt qu'un champ posé par-dessus : le titre garde alors
- * exactement sa police, sa taille et son centrage, si bien qu'on écrit dans la
- * feuille et pas dans une boîte qui la recouvre. Entrée valide, Échap annule —
- * ce sont les deux touches qu'on essaie sans y penser.
+ * UN VRAI CHAMP DE SAISIE, ET NON `contentEditable`.
+ *
+ * Rémy, sur tablette : « quand on clique sur le texte, il y a la barre de
+ * style avec les couleurs aucun intéret. Et la liste déroulante avec marqué
+ * corps, ne fonctionne pas. »
+ *
+ * C'est le système qui les pose, pas nous. Un élément `contentEditable` est,
+ * pour iPadOS, une zone de texte RICHE : il ouvre donc au-dessus du clavier sa
+ * barre de mise en forme — gras, couleurs, et le menu de styles de paragraphe
+ * dont l'entrée par défaut s'appelle « Corps ». Aucun de ces boutons n'a de
+ * sens ici, puisque le titre d'une feuille n'a qu'une police et qu'une taille ;
+ * et le menu de styles ne fait rien, parce qu'il n'y a aucun style à appliquer.
+ * `plaintext-only` ne change rien à cela : la barre vient du TYPE de champ, pas
+ * de ce qu'on y autorise.
+ *
+ * Un `<input type="text">` est une zone de texte SIMPLE : le système n'y
+ * propose que le clavier. On le pose donc à la place du titre, habillé de la
+ * même police, de la même taille et du même centrage — on écrit toujours dans
+ * la feuille, et plus dans une boîte posée dessus. Entrée valide, Échap
+ * annule : les deux touches qu'on essaie sans y penser.
  */
 function ecrireTitre(boite, lire, ecrire) {
     const b = boite.querySelector('b');
-    if (!b || b.isContentEditable) return;
+    if (!b || boite.querySelector('input')) return;
     const avant = lire().titre || '';
-    b.textContent = avant;
-    b.contentEditable = 'plaintext-only';
+
+    const champ = document.createElement('input');
+    champ.type = 'text';
+    champ.className = 'fp-titre-saisie';
+    champ.maxLength = 80;
+    champ.value = avant;
+    champ.setAttribute('aria-label', 'Titre de la feuille');
+    // Le système ne doit rien proposer par-dessus : ni correction, ni
+    // majuscule automatique, ni saisie prédictive. Un titre de contrôle
+    // s'écrit comme on veut.
+    champ.autocomplete = 'off';
+    champ.spellcheck = false;
+    b.replaceChildren(champ);
     boite.classList.add('fp-entete--edite');
-    b.focus();
-    // Tout sélectionner : on remplace un titre neuf fois sur dix, et le
-    // placeholder « Titre de la feuille » ne doit surtout pas rester collé
-    // devant ce qu'on tape.
-    const sel = window.getSelection();
-    if (sel) {
-        const r = document.createRange();
-        r.selectNodeContents(b);
-        sel.removeAllRanges();
-        sel.addRange(r);
-    }
+    champ.focus();
+    champ.select();
 
     let annule = false;
     const finir = () => {
-        b.contentEditable = 'false';
+        if (!champ.isConnected) return;
+        const titre = annule ? avant : champ.value.trim().slice(0, 80);
+        champ.onblur = null;
         boite.classList.remove('fp-entete--edite');
-        b.onblur = null; b.onkeydown = null;
-        const titre = annule ? avant : b.textContent.trim().slice(0, 80);
         // On redessine TOUJOURS, même sans changement : l'aperçu vient d'être
-        // touché (sélection, curseur), et le seul état sûr est celui qu'on
-        // redessine.
+        // touché, et le seul état sûr est celui qu'on redessine.
         ecrire({ titre });
     };
-    b.onblur = finir;
-    b.onkeydown = (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); b.blur(); }
-        else if (e.key === 'Escape') { e.preventDefault(); annule = true; b.blur(); }
+    champ.onblur = finir;
+    champ.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); champ.blur(); }
+        else if (e.key === 'Escape') { e.preventDefault(); annule = true; champ.blur(); }
     };
 }

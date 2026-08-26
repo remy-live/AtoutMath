@@ -7061,23 +7061,32 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    téléphone, un parallélogramme aplati flottait entre deux bandes blanches de
    deux cents pixels. On rend donc la hauteur au SVG (`height: auto`, elle se
    déduit du viewBox), et la colonne se regroupe autour de la figure. */
+/* LA FIGURE TIENT DANS LA PLACE QU'IL RESTE, ET C'EST TOUT.
+   Rémy, banc du Mac : « Les figures sont vraiment très grandes sur
+   l'ordinateur. » Le plafond était écrit en PIXELS — six cent quarante — et la
+   hauteur du dessin, elle, se déduisait de sa largeur : sur un écran de mille
+   quatre cent soixante-dix par sept cent soixante, le parallélogramme passait
+   derrière le titre en haut et sous la palette en bas, qui se retrouvait
+   posée dessus.
+   Le plafond se dit maintenant en part de PLATEAU, et c'est la hauteur qui
+   commande le dessin : il prend ce qu'on lui donne et sa largeur suit. Le
+   plancher reste, pour qu'une figure reste lisible quand le plateau se
+   resserre pendant la correction. */
 .cg-figure {
-    flex: 0 1 auto; align-items: center;
-    /* Le plancher, comme pour le repère : pendant la correction le plateau se
-       resserre, et une figure de cent pixels ne se lit plus — or c'est là
-       qu'on veut la relire. */
-    min-height: min(220px, 96cqw);
-    /* Le plafond ne bride plus la figure sur les grands écrans : une tablette
-       offre plus de six cents pixels de haut, et la figure s'arrêtait à cinq
-       cent vingt pour rien — c'est la souplesse du flex qui la fait rentrer
-       quand la place manque, pas ce maximum. */
-    width: 100%; max-width: 620px; max-height: 640px;
+    flex: 1 1 auto; align-items: center; min-height: min(200px, 90cqw);
+    max-height: 66cqh;
+    width: 100%; max-width: 620px;
     display: flex; justify-content: center;
 }
-/* Le plafond est REDIT sur le dessin : une hauteur automatique ne se laisse
-   pas raboter par le maximum du parent, et une figure haute sur un écran
-   étroit sortirait de sa boîte. */
-.cg-svg { width: 100%; height: auto; max-height: 640px; overflow: visible; }
+/* C'EST LA HAUTEUR QUI COMMANDE. Avec `height: auto`, le dessin déduisait sa
+   hauteur de sa largeur : il ne pouvait donc pas tenir compte de la place
+   verticale, et débordait. En prenant la hauteur de sa boîte et en laissant sa
+   largeur suivre, il tient toujours dans les deux sens — le `max-width` le
+   rattrape sur un écran étroit, où c'est la largeur qui manque. */
+.cg-svg {
+    width: auto; height: 100%; max-width: 100%; max-height: 100%;
+    overflow: visible;
+}
 .cg-cote { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
 /* SIX JETONS SUR UNE SEULE LIGNE, même sur un téléphone : quatre marques,
    l'angle droit, la gomme. À la taille commune ils passaient à la ligne, et la
