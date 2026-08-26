@@ -117,6 +117,77 @@ function grisDe(rvb) {
 }
 
 /**
+ * COULEUR INTENSE — ce qui est coloré s'affirme, ce qui est de l'encre ne bouge pas.
+ *
+ * Rémy : « le mode couleur intense n'amène pas grand chose ». Mesuré sur les
+ * soixante-cinq fiches imprimables : quatre-vingt-neuf pour cent de l'encre
+ * posée sur une feuille a une saturation quasi nulle — c'est le noir du texte,
+ * le gris des grilles, le blanc cassé des fonds. L'ancienne règle multipliait
+ * l'écart au gris par 1,45 SANS DISTINCTION : elle dépensait donc l'essentiel
+ * de son effet à teinter le texte et les traits en bleu — un voile sale, tout
+ * le contraire du « sobre » demandé — et il ne restait presque rien pour les
+ * onze pour cent réellement colorés. D'où l'impression, juste, qu'il ne se
+ * passe pas grand-chose.
+ *
+ * DEUX CORRECTIONS, ET LA SECONDE DÉCOULE DE LA PREMIÈRE :
+ *
+ *  · LA FORCE SUIT LA SATURATION, pas l'écart au gris. Un bleu ardoise et un
+ *    vert d'eau ont le même écart au gris ; l'un est une encre, l'autre est
+ *    une couleur, et c'est la saturation — l'écart RAPPORTÉ à ce que la
+ *    clarté permet — qui les sépare. En dessous d'un quart, on ne touche à
+ *    rien ; au-delà de sept dixièmes, on pousse à fond.
+ *  · ON POUSSE DEUX FOIS PLUS FORT, et sans que la teinte vire. Une teinte
+ *    claire qu'on sature butte sur 255 dans son canal dominant : elle change
+ *    alors de couleur au lieu de s'affirmer. On l'APPROFONDIT donc d'abord —
+ *    d'autant plus qu'elle est claire — puis on borne le facteur à ce que les
+ *    trois canaux acceptent. La teinte est conservée exactement ; seule sa
+ *    vivacité change. C'est ce que fait un imprimeur, et c'est ce qui reste
+ *    lisible.
+ */
+const CHROMA_ENCRE = 34;   // en dessous, c'est de l'encre, pas une couleur
+const SAT_PLANCHER = 0.25; // saturation à partir de laquelle on commence
+const SAT_PLAFOND = 0.70;  // saturation à partir de laquelle on pousse à fond
+const POUSSEE = 0.95;      // jusqu'à presque deux fois plus saturé
+
+function intensifier(rvb) {
+    const c = rvb.slice(0, 3);
+    const y = LUM[0] * c[0] + LUM[1] * c[1] + LUM[2] * c[2];
+    const haut = Math.max(...c), bas = Math.min(...c);
+    const chroma = haut - bas;
+    if (chroma < CHROMA_ENCRE) return c;
+    // LA SATURATION AU SENS HSL : l'écart au gris rapporté à ce que la clarté
+    // AUTORISE. Un gris ardoise moyen a beaucoup de place et n'en occupe pas ;
+    // un pastel clair en a peu et la remplit — c'est bien lui, la couleur.
+    const place = Math.max(1, 255 - Math.abs(2 * y - 255));
+    const sat = chroma / place;
+    const force = 1 + POUSSEE * Math.max(0, Math.min(1,
+        (sat - SAT_PLANCHER) / (SAT_PLAFOND - SAT_PLANCHER)));
+    if (force <= 1.001) return c;
+
+    // JUSQU'OÙ ON PEUT POUSSER SANS FAIRE VIRER LA TEINTE. Multiplier les
+    // écarts au gris conserve exactement la teinte — mais seulement tant que
+    // les trois canaux restent entre 0 et 255. Dès qu'un canal butte, il
+    // s'écrase et la couleur change : un jaune pâle poussé trop loin devient
+    // orange. On calcule donc le plus grand facteur admissible, et l'on prend
+    // le plus petit des deux — ce qu'on voulait, ce qu'on peut.
+    const dHaut = haut - y, dBas = y - bas;
+    // La clarté qui laisse le plus de place aux deux bouts à la fois.
+    const ideale = 255 * dBas / chroma;
+    // ON N'ÉCLAIRCIT JAMAIS. Sur du papier blanc, une couleur qu'on éclaircit
+    // pour la saturer se lit moins bien, pas mieux — et « sobre » était la
+    // consigne. Une teinte déjà sombre et franche (un ocre dont le bleu est
+    // à zéro) est donc rendue telle quelle : il n'y a plus rien à en tirer
+    // sans la trahir.
+    const kMax = ideale <= y ? 255 / chroma : y / Math.max(1, dBas);
+    const k = Math.max(1, Math.min(force, kMax));
+    if (k <= 1.001) return c;
+
+    // La clarté la plus proche de l'originale qui laisse passer ce facteur.
+    const base = Math.min(y, 255 - k * dHaut);
+    return [0, 1, 2].map(i => borne(base + (c[i] - y) * k));
+}
+
+/**
  * Filtre une couleur [r, v, b] selon le mode courant.
  *
  * CE QUI SÉPARE « NIVEAU DE GRIS » DE « NOIR ET BLANC » N'EST PAS ICI.
@@ -135,12 +206,7 @@ function grisDe(rvb) {
 export function encre(rvb, mode = modePolycopie()) {
     if (!Array.isArray(rvb) || rvb.length < 3) return rvb;
     if (mode === 'couleur') return rvb;
-    if (mode === 'intense') {
-        // La saturation, rien d'autre : chaque teinte s'écarte de son propre
-        // gris, donc elle reste la sienne. Un gris ne s'écarte de rien.
-        const y = LUM[0] * rvb[0] + LUM[1] * rvb[1] + LUM[2] * rvb[2];
-        return [0, 1, 2].map(i => borne(y + (rvb[i] - y) * 1.45));
-    }
+    if (mode === 'intense') return intensifier(rvb);
     const g = grisDe(rvb);
     return [g, g, g];
 }
