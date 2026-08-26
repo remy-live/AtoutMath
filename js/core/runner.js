@@ -477,6 +477,19 @@ export class Runner {
         // l'opération finie qui fait avancer le compte.
         if (payload.partiel) return;
 
+        // UNE ÉTAPE FINIE NE COMPTE PLUS RIEN.
+        //
+        // Rémy : « Quand j'ai réussi, j'ai eu en haut 4/3 entrepots… ça a
+        // tendance à dépasser parfois. » Les jeux autonomes enchaînent d'
+        // eux-mêmes : le Pousseur prépare l'entrepôt suivant deux secondes
+        // après la victoire, et la fin d'étape, elle, est différée d'une
+        // seconde et demie pour laisser lire la conclusion. Dans cet
+        // entre-deux — ou quand un chronomètre pilote l'étape et que rien
+        // n'arrête le compte —, une partie de plus se terminait et venait
+        // s'ajouter : quatre entrepôts sur trois. Le drapeau est déjà posé de
+        // façon synchrone à la victoire décisive ; il suffit de l'écouter.
+        if (this.session && this.session.termine) return;
+
         const key = payload.itemSeed || `auto_${this.autonomousCounter}`;
         const maxTries = this.policy.maxAttemptsPerItem;
         const resolved = payload.correct || (payload.attemptIndex + 1) >= maxTries;
@@ -865,9 +878,13 @@ export class Runner {
         // large : « 0 / 24 paires » y débordait des deux côtés et se retrouvait
         // rogné en « 5/24 aire ». Le mot part dans sa propre boîte, que la
         // feuille de style efface quand la place manque.
-        text.innerHTML = `<span class="pg-compte">${done} / ${total}</span>`
+        // ET L'AFFICHAGE NE DÉPASSE JAMAIS, quoi qu'il arrive en amont : on ne
+        // fait pas quatre choses sur trois demandées. Ceinture, après les
+        // bretelles ci-dessus.
+        const vus = Math.min(done, total);
+        text.innerHTML = `<span class="pg-compte">${vus} / ${total}</span>`
             + `<span class="pg-unite">&nbsp;${quoi}</span>`;
-        text.title = `${done} / ${total} ${quoi}`;
+        text.title = `${vus} / ${total} ${quoi}`;
         // En évaluation, on n'affiche pas le score en direct : cela induit une
         // pression inutile et modifie le comportement de l'élève.
         bar.style.background = isEvaluation(this.policy)

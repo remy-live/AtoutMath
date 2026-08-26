@@ -50,9 +50,15 @@ class TourBrahma extends BaseGame {
                     color: var(--text-main); container-type: size;
                     user-select: none; -webkit-user-select: none; overflow: hidden;
                 }
+                /* LE SOCLE EST POSÉ AU FOND DE SA ZONE, et ce n'est pas un
+                   détail d'esthétique : la boule qu'on soulève flotte
+                   au-dessus de son conduit, et il lui faut cette place. Centré,
+                   le socle laissait la moitié du vide en haut et l'autre en
+                   bas — donc pas assez d'un côté, et une boule tronquee de
+                   l'autre. */
                 .tb-corps {
                     flex: 1 1 0; min-height: 0; width: 100%;
-                    display: flex; align-items: center; justify-content: center;
+                    display: flex; align-items: flex-end; justify-content: center;
                     container-type: size; overflow: hidden;
                 }
                 /* LE SOCLE ET LES TROIS CONDUITS, comme sur le jeu à découper :
@@ -87,6 +93,25 @@ class TourBrahma extends BaseGame {
                 }
                 .tb-conduit--vise { box-shadow: inset 0 0 0 3px #6d5cf6; }
                 .tb-conduit--but { box-shadow: inset 0 0 0 3px #2f855a; }
+                /* LA BOULE SOULEVÉE FLOTTE AU-DESSUS DE SON CONDUIT.
+                   Rémy : « Quand on clique, la bordure de la zone se ragrandit
+                   et ca change un peu les proportions. » Elle était annoncée
+                   sur une ligne à part, sous le socle — et cette ligne, vide,
+                   ne mesurait rien : elle apparaissait au premier clic et
+                   poussait tout le plateau de neuf pixels vers le haut. Pire,
+                   la boule y était minuscule : sa taille se lit dans --tb-d,
+                   qui est declaré sur le socle, et cette ligne-là n'en
+                   descendait pas. Posée SUR son conduit, elle hérite de la
+                   variable, elle dit d'où elle vient, et rien ne bouge. */
+                .tb-prise {
+                    position: absolute; left: 50%; bottom: calc(100% + 5px);
+                    transform: translateX(-50%); pointer-events: none;
+                    animation: tb-flotte 1.6s ease-in-out infinite;
+                }
+                @keyframes tb-flotte {
+                    0%, 100% { transform: translate(-50%, 0); }
+                    50% { transform: translate(-50%, -14%); }
+                }
                 .tb-boule {
                     border-radius: 50%;
                     display: flex; align-items: center; justify-content: center;
@@ -94,10 +119,10 @@ class TourBrahma extends BaseGame {
                     box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .25);
                     flex: 0 0 auto;
                 }
-                /* La boule soulevée flotte au-dessus du socle : on voit ce qu'on
-                   tient, et où on peut le poser. */
+                /* La consigne du moment. Sa hauteur est RÉSERVÉE : une ligne
+                   qui apparaît est une ligne qui pousse tout le reste. */
                 .tb-main {
-                    height: calc(var(--tb-d) * .9);
+                    min-height: 1.5em;
                     display: flex; align-items: center; justify-content: center;
                     font-size: clamp(11px, 2.4cqh, 15px); font-weight: 700; gap: 8px;
                 }
@@ -154,22 +179,29 @@ class TourBrahma extends BaseGame {
     dessiner() {
         this.socleEl.style.setProperty('--tb-n', this.n);
         this.socleEl.style.setProperty('--tb-somme', this.sommeParts());
+        // LA BOULE TENUE SORT DE SA PILE ET FLOTTE AU-DESSUS D'ELLE. Elle
+        // restait dessinée dans le conduit, et l'on n'avait donc aucun signe
+        // qu'on la tenait, sinon un liseré violet autour de la colonne.
         this.socleEl.innerHTML = this.etat.map((pile, p) => {
             const classes = ['tb-conduit'];
+            const tenue = this.prise === p ? pile[pile.length - 1] : null;
             if (this.prise === p) classes.push('tb-conduit--vise');
             if (p === 2 && !this.fini) classes.push('tb-conduit--but');
-            const boules = pile.map(b => this.bouleHtml(b)).join('');
-            return `<div class="${classes.join(' ')}" data-p="${p}">${boules}</div>`;
+            const posees = tenue !== null ? pile.slice(0, -1) : pile;
+            const boules = posees.map(b => this.bouleHtml(b)).join('');
+            const flotte = tenue !== null
+                ? `<div class="tb-prise">${this.bouleHtml(tenue)}</div>` : '';
+            return `<div class="${classes.join(' ')}" data-p="${p}">${boules}${flotte}</div>`;
         }).join('');
         this.socleEl.querySelectorAll('[data-p]').forEach(el => {
             el.onclick = () => this.toucher(Number(el.dataset.p));
         });
 
-        // Ce qu'on tient à la main, s'il y a lieu.
+        // Ce qu'on tient, dit en toutes lettres. La boule, elle, est déjà
+        // dessinée là-haut : la redessiner ici la ferait paraître deux fois.
         const tenue = this.prise !== null ? this.etat[this.prise][this.etat[this.prise].length - 1] : null;
-        this.mainEl.innerHTML = tenue
-            ? `<span>Tu tiens&nbsp;:</span>${this.bouleHtml(tenue)}<span>— pose-la sur un conduit.</span>`
-            : '';
+        this.mainEl.textContent = tenue !== null
+            ? `Tu tiens la boule ${tenue} — pose-la sur un conduit.` : '';
 
         const restants = this.fini ? 0 : coupsRestants(this.etat, this.n).length;
         const ideal = this.coups + restants;

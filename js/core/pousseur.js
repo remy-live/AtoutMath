@@ -38,15 +38,68 @@ export const MUR = 0;
 export const SOL = 1;
 export const BUT = 2;
 
-/** Les six paliers, mesurés en POUSSÉES minimum. */
-export const NIVEAUX_POUSSEUR = [
-    { id: 1, label: 'Niveau 1 — pour comprendre', min: 3, max: 5, caisses: 2, taille: 5 },
-    { id: 2, label: 'Niveau 2', min: 6, max: 9, caisses: 2, taille: 6 },
-    { id: 3, label: 'Niveau 3', min: 10, max: 13, caisses: 3, taille: 6 },
-    { id: 4, label: 'Niveau 4', min: 14, max: 18, caisses: 3, taille: 7 },
-    { id: 5, label: 'Niveau 5 — il faut vraiment chercher', min: 19, max: 24, caisses: 4, taille: 7 },
-    { id: 6, label: 'Niveau 6 — expert', min: 25, max: 99, caisses: 4, taille: 8 }
+// CINQUANTE PALIERS, MESURÉS EN POUSSÉES MINIMUM.
+//
+// Rémy : « Il faut au moins 50 niveaux ». Il y en avait six, et l'on touchait
+// le plafond en une récréation : le jeu s'arrêtait de monter alors qu'il
+// restait tout à apprendre.
+//
+// DEUX CHOSES FONT LA DIFFICULTÉ, ET ELLES NE COÛTENT PAS PAREIL.
+//
+//  · LA TAILLE DE L'ENTREPÔT ET LE NOMBRE DE CAISSES décident du coût de
+//    FABRICATION : `creerPousseur` explore toutes les positions atteignables
+//    pour démontrer le minimum, et cet espace grandit comme le nombre de
+//    façons de poser les caisses. Cinq caisses sur un huit par huit, c'est
+//    déjà cent mille positions ; six, c'est presque un million, et le
+//    navigateur se fige pendant qu'on attend son entrepôt. Ces deux-là
+//    plafonnent donc.
+//  · LA PROFONDEUR — combien de poussées au minimum — ne coûte RIEN de plus :
+//    la table est déjà calculée, on y choisit simplement une position de
+//    départ plus loin du but. C'est elle qui porte la montée jusqu'au bout.
+//
+// Et quand un entrepôt ne peut pas être aussi profond que demandé, on garde le
+// plus profond trouvé : le palier ne ment jamais sur ce qu'il propose, il
+// donne ce qu'il a.
+
+/**
+ * Les huit tranches du parcours : caisses, sol creusé, côté de l'entrepôt.
+ *
+ * MESURÉ, PAS DEVINÉ. Chaque combinaison a été chronométrée et sa profondeur
+ * relevée : cinq caisses sur vingt-quatre cases de sol donnent une trentaine
+ * de poussées en quatre dixièmes de seconde, six caisses en donnent autant
+ * mais coûtent trois fois plus, et quarante cases de sol demandent une minute
+ * entière — c'est la borne au-delà de laquelle le navigateur se fige en
+ * attendant son entrepôt. Le parcours s'arrête donc là où la démonstration
+ * reste instantanée.
+ */
+const TRANCHES_POUSSEUR = [
+    { jusqua: 4, caisses: 2, sol: 12, taille: 5 },
+    { jusqua: 8, caisses: 2, sol: 14, taille: 6 },
+    { jusqua: 14, caisses: 3, sol: 16, taille: 6 },
+    { jusqua: 20, caisses: 3, sol: 18, taille: 7 },
+    { jusqua: 28, caisses: 4, sol: 20, taille: 7 },
+    { jusqua: 36, caisses: 4, sol: 22, taille: 8 },
+    { jusqua: 44, caisses: 5, sol: 22, taille: 8 },
+    { jusqua: 50, caisses: 5, sol: 24, taille: 8 }
 ];
+
+/** Le palier numéro n, calculé plutôt qu'écrit cinquante fois. */
+function palierPousseur(n) {
+    const t = TRANCHES_POUSSEUR.find(x => n <= x.jusqua) || TRANCHES_POUSSEUR[TRANCHES_POUSSEUR.length - 1];
+    // La profondeur visée monte doucement et plafonne à ce qu'un entrepôt de
+    // cette taille peut porter. Au-delà, `creerPousseur` garde le plus profond
+    // qu'il a trouvé : le palier donne ce qu'il a, il ne promet rien de faux.
+    const min = Math.min(30, 3 + Math.round((n - 1) * 0.58));
+    const nom = n === 1 ? 'Niveau 1 — pour comprendre'
+        : n === 9 ? 'Niveau 9 — trois caisses'
+            : n === 21 ? 'Niveau 21 — quatre caisses'
+                : n === 37 ? 'Niveau 37 — cinq caisses'
+                    : n === 45 ? 'Niveau 45 — il faut vraiment chercher'
+                        : n === 50 ? 'Niveau 50 — expert' : `Niveau ${n}`;
+    return { id: n, label: nom, min, max: min + 6, caisses: t.caisses, sol: t.sol, taille: t.taille };
+}
+
+export const NIVEAUX_POUSSEUR = Array.from({ length: 50 }, (_, i) => palierPousseur(i + 1));
 
 export const niveauPousseurDe = (n) =>
     NIVEAUX_POUSSEUR.find(x => x.id === n) || NIVEAUX_POUSSEUR[0];
@@ -313,12 +366,23 @@ function creuser(rng, taille, cases) {
  * @returns {{niveau: number, plan: object, buts: number[], caisses: number[],
  *            pousseur: number, mini: number, table: object}|null}
  */
-export function creerPousseur({ niveau = 1, rng, essais = 40 }) {
+export function creerPousseur({ niveau = 1, rng, essais = null }) {
     const n = niveauPousseurDe(niveau);
+    // COMBIEN D'ESSAIS : autant qu'on peut s'en payer. Chaque essai explore
+    // tout l'espace des positions ; sur les petits entrepôts c'est quelques
+    // millisecondes et l'on peut se permettre d'en jeter quarante, sur les
+    // gros c'est un demi-tiers de seconde et douze suffisent — sans quoi un
+    // palier qui n'atteint jamais sa profondeur ferait attendre six secondes.
+    const combien = essais || (n.caisses >= 5 ? 12 : n.caisses >= 4 ? 24 : 40);
     let meilleur = null;
-    for (let essai = 0; essai < essais; essai++) {
+    for (let essai = 0; essai < combien; essai++) {
         // Assez de sol pour les caisses, le pousseur, et de la place pour manœuvrer.
-        const plan = creuser(rng, n.taille, n.caisses * 4 + 6);
+        // COMBIEN DE SOL ON CREUSE : c'est LA mesure de la difficulté, et
+        // elle était liée au seul nombre de caisses. Or c'est le sol qui fait
+        // la profondeur — plus il y a de chemin, plus il faut de poussées pour
+        // ranger — et c'est lui qu'il faut pouvoir régler seul, sans ajouter
+        // une caisse à chaque palier.
+        const plan = creuser(rng, n.taille, n.sol || (n.caisses * 4 + 6));
         const sols = [];
         for (let i = 0; i < plan.cases.length; i++) if (plan.cases[i] === SOL) sols.push(i);
         if (sols.length < n.caisses * 3 + 2) continue;

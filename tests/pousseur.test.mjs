@@ -185,16 +185,44 @@ test('le chemin à pied contourne les caisses, ou n\'existe pas', () => {
     assert.deepEqual(cheminAPied(e.plan, e.caisses, e.pousseur, e.pousseur), []);
 });
 
-// --- Les six niveaux et le rangement ----------------------------------------------------
+// --- Les cinquante niveaux et le rangement ----------------------------------------------
 
-test('les six niveaux montent, en poussées et en caisses', () => {
-    let min = 0, caisses = 0;
+test('LE JEU NE S\'ARRÊTE PLUS DE MONTER : cinquante paliers', () => {
+    // Rémy : « Il faut au moins 50 niveaux ». Il y en avait six, et l'on
+    // touchait le plafond en une récréation.
+    assert.equal(NIVEAUX_POUSSEUR.length, 50);
+    NIVEAUX_POUSSEUR.forEach((n, i) => assert.equal(n.id, i + 1));
+});
+
+test('les cinquante niveaux montent, en poussées et en caisses', () => {
+    let min = 0, caisses = 0, sol = 0;
     NIVEAUX_POUSSEUR.forEach(n => {
-        assert.ok(n.min > min, `le niveau ${n.id} ne monte pas`);
+        // Non STRICTEMENT croissant : la profondeur visée plafonne à ce qu'un
+        // entrepôt de cette taille peut porter — au-delà, on ferait attendre
+        // le navigateur une minute pour une poussée de plus. C'est le nombre
+        // de caisses et la surface de sol qui prennent alors le relais.
+        assert.ok(n.min >= min, `le niveau ${n.id} redescend en poussées`);
         assert.ok(n.caisses >= caisses, `le niveau ${n.id} perd des caisses`);
-        min = n.min; caisses = n.caisses;
+        assert.ok(n.sol >= sol, `le niveau ${n.id} perd du sol`);
+        min = n.min; caisses = n.caisses; sol = n.sol;
     });
+    const premier = NIVEAUX_POUSSEUR[0], dernier = NIVEAUX_POUSSEUR[49];
+    assert.ok(dernier.min >= premier.min * 8, `de ${premier.min} à ${dernier.min} poussées`);
+    assert.ok(dernier.caisses > premier.caisses);
     assert.equal(niveauPousseurDe(99).id, 1, 'un niveau inconnu retombe sur le premier');
+});
+
+test('aucun palier ne demande un entrepôt qu\'on ne sait pas fabriquer vite', () => {
+    // La démonstration du minimum explore TOUTES les positions atteignables :
+    // le coût grandit comme le nombre de façons de poser les caisses sur le
+    // sol. Six caisses sur vingt-six cases, c'est déjà quatre secondes — le
+    // navigateur se fige en attendant son entrepôt. Ces deux bornes-là ont été
+    // mesurées, elles ne se devinent pas.
+    NIVEAUX_POUSSEUR.forEach(n => {
+        assert.ok(n.caisses <= 5, `niveau ${n.id} : ${n.caisses} caisses`);
+        assert.ok(n.sol <= 24, `niveau ${n.id} : ${n.sol} cases de sol`);
+        assert.ok(n.taille <= 8, `niveau ${n.id} : entrepôt de ${n.taille}`);
+    });
 });
 
 test('la qualité dit l\'écart au minimum', () => {
@@ -202,7 +230,7 @@ test('la qualité dit l\'écart au minimum', () => {
     assert.deepEqual(qualitePousseur(12, 15), { mini: 12, poussees: 15, detours: 3, parfait: false });
 });
 
-test('le Pousseur est rangé dans les défis, avec ses six niveaux', () => {
+test('le Pousseur est rangé dans les défis, avec ses cinquante niveaux', () => {
     const e = getExerciseById('defi-pousseur');
     assert.ok(e, 'defi-pousseur manque au catalogue');
     assert.equal(e.activityId, 'pousseur');

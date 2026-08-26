@@ -13,6 +13,16 @@
 .game-icon-btn--info { background: var(--bg-app); border: 1px solid var(--border); color: var(--primary); }
 .game-icon-btn--neutre { background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted); }
 .game-icon-btn--danger { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+/* UN BOUTON `hidden` DOIT DISPARAÎTRE, et `display: flex` ci-dessus le
+   ramenait. Rémy : « La calculatrice n'a pas à être dans les exercices autre
+   que Pythagore, et le problème de temps distance vitesse. » Elle n'y était
+   pas, en principe : `reglerCalculatrice` posait bien `hidden` sur son
+   bouton à chaque exercice. Mais la règle du navigateur — [hidden] { display:
+   none } — pèse moins qu'une classe, et celle-ci imposait `flex` : l'attribut
+   était mis, et le bouton restait à l'écran sur les soixante-cinq exercices.
+   Le genre de panne qu'on ne trouve qu'en mesurant, parce que le code, lui,
+   fait exactement ce qu'il annonce. */
+.game-icon-btn[hidden] { display: none; }
 
 #game-progress-container { position: relative; flex: 1; max-width: 250px; height: 24px; margin: 0 15px; background: var(--border); border-radius: 12px; overflow: hidden; display: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
 #game-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s ease; border-radius: 12px; }

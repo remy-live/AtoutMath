@@ -87,12 +87,47 @@ class Embouteillage extends BaseGame {
                    seul sur ce plateau, alors elle se voit. */
                 .eb-sortie {
                     position: absolute; display: flex; align-items: center;
-                    justify-content: center; font-weight: 800; color: #2f855a;
-                    font-size: calc(var(--eb-case) * .38); line-height: 1;
-                    width: calc(var(--eb-case) * .9); height: var(--eb-case);
+                    justify-content: center; font-weight: 800; color: #fff;
+                    font-size: calc(var(--eb-case) * .42); line-height: 1;
+                    width: calc(var(--eb-case) * .9); height: calc(var(--eb-case) * .78);
+                    background: #2f855a; border-radius: 0 6px 6px 0;
+                    box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
                 }
+                /* LA VOIE DE SORTIE, PEINTE AU SOL.
+                   Rémy : « On ne sais pas le véhicule que l'on peut sortir. »
+                   Le rouge est réservé depuis le début à la voiture à sortir,
+                   mais rien ne le DISAIT : sur un plateau de huit couleurs, le
+                   rouge n'est qu'une couleur de plus. On peint donc la rangée
+                   qui mène à la trouée, comme une voie de bus — la voiture qui
+                   est dessus est celle qu'on doit faire sortir, et le chemin
+                   qu'elle doit prendre se lit sans une phrase. */
+                .eb-voie {
+                    position: absolute; left: 0; width: calc(var(--eb-case) * 6);
+                    height: var(--eb-case);
+                    background: repeating-linear-gradient(90deg,
+                        rgba(47, 133, 90, .30) 0 calc(var(--eb-case) * .28),
+                        rgba(47, 133, 90, .12) calc(var(--eb-case) * .28) calc(var(--eb-case) * .56));
+                }
+                /* Et la voiture elle-même porte un liseré vert, discret mais
+                   permanent : sur la voie ou non, on sait laquelle c'est. */
+                .eb-auto--sortir::before {
+                    content: ''; position: absolute; inset: 1%;
+                    border-radius: calc(var(--eb-case) * .21);
+                    box-shadow: 0 0 0 2px rgba(255, 255, 255, .9),
+                                0 0 0 4px #2f855a;
+                }
+                /* UN REMBOURRAGE EN POURCENTAGE ÉCRASE LES LONGS VÉHICULES.
+                   Rémy : « Les voiture font très écraséS. » En CSS, un padding
+                   en pourcentage se calcule sur la LARGEUR — les quatre côtés.
+                   Sur un camion de trois cases, les 4 % valaient donc 0,12 case
+                   en haut ET en bas : la carrosserie perdait un quart de sa
+                   hauteur pour rien, et le dessin, étiré par
+                   preserveAspectRatio="xMidYMid meet", suivait. Le rembourrage se
+                   compte maintenant en CASES, la même valeur partout, et le
+                   dessin garde ses proportions quoi qu'il arrive. */
                 .eb-auto {
-                    position: absolute; box-sizing: border-box; padding: 4%;
+                    position: absolute; box-sizing: border-box;
+                    padding: calc(var(--eb-case) * .05);
                     border-radius: calc(var(--eb-case) * .22);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                     transition: left .13s ease, top .13s ease;
@@ -206,7 +241,7 @@ class Embouteillage extends BaseGame {
         const roue = (x, y, w, h) =>
             `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2.5" fill="#2d3748"/>`;
         if (v.horiz) {
-            return `<svg viewBox="0 0 ${L} ${U}" preserveAspectRatio="none" aria-hidden="true">
+            return `<svg viewBox="0 0 ${L} ${U}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
                 ${roue(L * 0.16, 1, L * 0.16, 6)}${roue(L * 0.66, 1, L * 0.16, 6)}
                 ${roue(L * 0.16, U - 7, L * 0.16, 6)}${roue(L * 0.66, U - 7, L * 0.16, 6)}
                 <rect x="3" y="5" width="${L - 6}" height="${U - 10}" rx="${U * 0.28}"
@@ -217,7 +252,7 @@ class Embouteillage extends BaseGame {
                     stroke="${teinte.fonce}" stroke-width="2.5" stroke-linecap="round"/>
             </svg>`;
         }
-        return `<svg viewBox="0 0 ${U} ${L}" preserveAspectRatio="none" aria-hidden="true">
+        return `<svg viewBox="0 0 ${U} ${L}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
             ${roue(1, L * 0.16, 6, L * 0.16)}${roue(1, L * 0.66, 6, L * 0.16)}
             ${roue(U - 7, L * 0.16, 6, L * 0.16)}${roue(U - 7, L * 0.66, 6, L * 0.16)}
             <rect x="5" y="3" width="${U - 10}" height="${L - 6}" rx="${U * 0.28}"
@@ -250,8 +285,9 @@ class Embouteillage extends BaseGame {
                     top:calc(var(--eb-case) * ${y})"></div>`);
             }
         }
+        cases.push(`<div class="eb-voie" style="top:calc(var(--eb-case) * ${RANGEE_SORTIE})"></div>`);
         cases.push(`<div class="eb-sortie" style="left:calc(var(--eb-case) * 6 - 2px);
-            top:calc(var(--eb-case) * ${RANGEE_SORTIE})">▶</div>`);
+            top:calc(var(--eb-case) * ${RANGEE_SORTIE} + var(--eb-case) * .11)">▶</div>`);
 
         const coups = this.fini ? [] : coupsPossibles(j.vehicules, this.etat);
         const cibles = this.vise === null ? []
@@ -260,6 +296,9 @@ class Embouteillage extends BaseGame {
         const autos = j.vehicules.map((v, k) => {
             const t = this.teinteDe(k);
             const cls = ['eb-auto'];
+            // Le zéro, c'est la voiture à sortir : c'est ainsi que le noyau
+            // fabrique le plateau, et la teinte rouge lui est réservée.
+            if (k === 0) cls.push('eb-auto--sortir');
             if (this.vise === k) cls.push('eb-auto--vise');
             if (this.montre === k) cls.push('eb-auto--montre');
             const w = v.horiz ? v.len : 1, h = v.horiz ? 1 : v.len;

@@ -116,6 +116,13 @@ export const geometrieExercises = [
                 + 'qui porte la touche x².'
         }],
         activityId: 'pythagore-theoreme',
+        // LA CALCULATRICE EST OFFERTE ICI. Rémy : « La calculatrice n'a pas à
+        // être dans les exercices autre que Pythagore, et le problème de temps
+        // distance vitesse. » Ce qui s'apprend est la rédaction — je sais que,
+        // or, donc — et le choix entre additionner et soustraire les carrés ;
+        // extraire à la main la racine de 1 156 ne vérifie rien de plus et
+        // mange le temps qu'on voulait passer à raisonner.
+        calculatrice: true,
         // Le générateur sert au PAPIER : les énoncés de calcul, avec la
         // correction en trois lignes.
         // Le générateur sert au PAPIER, et la feuille porte la RÉDACTION :

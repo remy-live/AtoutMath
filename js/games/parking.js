@@ -34,8 +34,13 @@ import {
 const COMPETENCE = 'defi.parking';
 
 /** Une voiture vue de dessus : une carrosserie, un toit, quatre roues. */
-export function voitureSvg(fonce, clair) {
-    return `<svg viewBox="0 0 60 100" aria-hidden="true">
+export function voitureSvg(fonce, clair, cap = 0) {
+    // Le cap tourne le DESSIN, pas la case : la voiture reste dans son
+    // emplacement, elle y est simplement orientée. Un carré de 100 sur 100
+    // fait tourner la carrosserie sans qu'elle déborde d'un quart de tour à
+    // l'autre — dans un rectangle, elle sortirait de sa case en tournant.
+    return `<svg viewBox="-20 0 100 100" aria-hidden="true"
+        style="transform: rotate(${cap}deg); transition: transform .18s ease">
         <rect x="2" y="12" width="8" height="18" rx="3" fill="#2d3748"/>
         <rect x="50" y="12" width="8" height="18" rx="3" fill="#2d3748"/>
         <rect x="2" y="66" width="8" height="18" rx="3" fill="#2d3748"/>
@@ -152,9 +157,40 @@ class Parking extends BaseGame {
         this.poser();
     }
 
+    /**
+     * LE CAP DE CHAQUE VOITURE — vers où elle est tournée.
+     *
+     * Rémy : « Les voitures ne pourrait pas se tourner dans la direction où
+     * elle vont. » Elles étaient toutes dessinées le nez en l'air, y compris
+     * dans la voie horizontale où elles roulent de gauche à droite : sur un
+     * plateau vu de dessus, c'est le seul détail qui dit qu'une voiture est
+     * une voiture et pas un jeton.
+     *
+     * La règle est celle de la route : ON GARDE LE CAP DE SON DERNIER
+     * DÉPLACEMENT. Une voiture qui vient de descendre reste tournée vers le
+     * bas jusqu'à ce qu'elle reparte ailleurs. Rien à deviner, rien à régler —
+     * et le virage se voit, puisque la rotation est animée.
+     *
+     * Le cap suit la voiture de case en case ; les cases vides n'en ont pas.
+     * Au départ, tout le monde regarde vers le haut : les deux parkings sont
+     * des colonnes, et c'est le sens dans lequel on s'y range.
+     */
+    capDepart() {
+        return this.p.cases.map((c, i) => (this.etat[i] ? 0 : null));
+    }
+
+    /** Le cap d'un déplacement, en degrés — 0 = le nez en haut. */
+    capVers(de, vers) {
+        const a = this.p.cases[de], b = this.p.cases[vers];
+        if (b.x > a.x) return 90;
+        if (b.x < a.x) return 270;
+        return b.y > a.y ? 180 : 0;
+    }
+
     poser() {
         this.p = plateauParking(this.n);
         this.etat = departParking(this.p);
+        this.cap = this.capDepart();
         this.histoire = [];
         this.vise = null;
         this.montre = null;
@@ -185,8 +221,9 @@ class Parking extends BaseGame {
             if (cibles.has(i)) classes.push('pk-case--cible');
             if (this.montre === i) classes.push('pk-case--montre');
             const v = this.etat[i];
-            const auto = v === 'B' ? voitureSvg('#1c3a8a', '#2f5fd0')
-                : v === 'R' ? voitureSvg('#8f1f14', '#e04a3a') : '';
+            const cap = (this.cap && this.cap[i]) || 0;
+            const auto = v === 'B' ? voitureSvg('#1c3a8a', '#2f5fd0', cap)
+                : v === 'R' ? voitureSvg('#8f1f14', '#e04a3a', cap) : '';
             return `<div class="${classes.join(' ')}" data-i="${i}"
                 style="left:calc(var(--pk-case) * ${c.x}); top:calc(var(--pk-case) * ${c.y});
                 width:var(--pk-case); height:var(--pk-case)">${auto}</div>`;
@@ -239,8 +276,11 @@ class Parking extends BaseGame {
 
     deplacer(de, vers) {
         const avant = restantsParking(this.p, this.etat);
-        this.histoire.push(this.etat.slice());
+        this.histoire.push({ etat: this.etat.slice(), cap: this.cap.slice() });
+        const cap = this.capVers(de, vers);
         this.etat = jouerParking(this.p, this.etat, de, vers);
+        this.cap[vers] = cap;
+        this.cap[de] = null;
         this.coups++;
         this.vise = null;
         this.dessiner();
@@ -256,7 +296,9 @@ class Parking extends BaseGame {
 
     annuler() {
         if (this.isDemo || this.fini || !this.histoire.length) return;
-        this.etat = this.histoire.pop();
+        const avant = this.histoire.pop();
+        this.etat = avant.etat;
+        this.cap = avant.cap;
         this.coups = Math.max(0, this.coups - 1);
         this.vise = null;
         this.montre = null;
@@ -331,7 +373,10 @@ class Parking extends BaseGame {
         for (let i = 0; i < 8; i++) {
             const c = prochainCoupParking(this.p, this.etat);
             if (!c) break;
+            const cap = this.capVers(c.de, c.vers);
             this.etat = jouerParking(this.p, this.etat, c.de, c.vers);
+            this.cap[c.vers] = cap;
+            this.cap[c.de] = null;
             this.coups++;
             this.dessiner();
             if (!await cur.pause(DEMO_SPEED.step || 600) || !this.isRunning) return fin();

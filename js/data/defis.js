@@ -1,5 +1,8 @@
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
+// Les cinquante paliers du Pousseur viennent du noyau : ils y sont calculés,
+// et les recopier ici serait la promesse d'une liste qui vieillit toute seule.
+import { NIVEAUX_POUSSEUR } from '../core/pousseur.js';
 
 // DOMAINE « DÉFIS ET ÉNIGMES ».
 //
@@ -217,14 +220,17 @@ export const defisExercises = [
             {
                 id: 'niveau', type: 'select', label: 'Niveau de départ',
                 aide: 'Le niveau se mesure en POUSSÉES minimum, et il monte tout seul à chaque entrepôt rangé. Les deux premiers niveaux tiennent en deux caisses : c\'est assez pour rencontrer le piège du coin, qui est toute la leçon.',
-                options: [
-                    { value: 1, label: 'Niveau 1 — pour comprendre (2 caisses)' },
-                    { value: 2, label: 'Niveau 2 (2 caisses)' },
-                    { value: 3, label: 'Niveau 3 (3 caisses)' },
-                    { value: 4, label: 'Niveau 4 (3 caisses)' },
-                    { value: 5, label: 'Niveau 5 (4 caisses)' },
-                    { value: 6, label: 'Niveau 6 — expert (4 caisses)' }
-                ],
+                // CINQUANTE PALIERS, DONC UNE GLISSIÈRE ET NON UN MENU. Rémy :
+                // « Il faut au moins 50 niveaux ». Une liste déroulante de
+                // cinquante lignes ne se choisit pas, elle se subit ; et c'est
+                // exactement une échelle — voir `core/echelle.js`. Les libellés
+                // viennent du noyau, pour qu'ils ne puissent pas mentir sur le
+                // nombre de caisses.
+                echelle: true,
+                options: NIVEAUX_POUSSEUR.map(n => ({
+                    value: n.id,
+                    label: `${n.label} (${n.caisses} caisses)`
+                })),
                 default: 1
             }
         ],
