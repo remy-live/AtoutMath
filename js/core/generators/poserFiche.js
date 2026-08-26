@@ -111,13 +111,18 @@ export const poserFicheGenerator = {
             ]
         },
         {
-            id: 'nombres', type: 'select', label: 'Combien de nombres (addition)', default: 2,
+            id: 'nombres', type: 'select', label: 'Combien de nombres', default: 2,
+            // Trois termes, cela n'existe qu'en addition : une soustraction à
+            // trois nombres n'est pas une opération posée, et une division non
+            // plus. Le libellé portait « (addition) » faute de mieux.
+            visibleSi: (r) => r.operation === '+',
             aide: 'À trois nombres, la retenue peut valoir 2 — et c\'est justement ce '
                 + 'qu\'on n\'apprend jamais si l\'on n\'additionne que deux nombres.',
             options: [{ value: 2, label: 'Deux' }, { value: 3, label: 'Trois' }]
         },
         {
-            id: 'diviseur', type: 'select', label: 'Diviseur (division)', default: 1,
+            id: 'diviseur', type: 'select', label: 'Diviseur', default: 1,
+            visibleSi: (r) => r.operation === '÷',
             aide: 'À un chiffre, on lit le quotient dans la table. À deux, il faut '
                 + 'l\'ESTIMER à chaque étape, puis se corriger : c\'est un autre '
                 + 'exercice, et il arrive bien plus tard.',
@@ -128,6 +133,10 @@ export const poserFicheGenerator = {
         },
         {
             id: 'retenue', type: 'checkbox', label: 'Garantir au moins une retenue', default: true,
+            // Une retenue s'obtient — et se garantit — en addition et en
+            // soustraction. En multiplication et en division, le générateur
+            // n'a pas de bouton à offrir là-dessus.
+            visibleSi: (r) => r.operation === '+' || r.operation === '-',
             aide: 'Une addition sans retenue ne s\'appelle pas « poser une addition » : '
                 + 'c\'est aligner des chiffres.'
         }

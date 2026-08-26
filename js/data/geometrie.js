@@ -555,6 +555,9 @@ export const geometrieExercises = [
             },
             {
                 id: 'montrerSauts', type: 'checkbox', label: 'Montrer les sauts possibles',
+                // Rien ne s'éclaire en vert sur une photocopie : c'est une aide
+                // de l'écran, et l'aide ci-dessous le dit déjà.
+                papier: false,
                 aide: 'Les quatre cases atteignables depuis la case courante s\'éclairent en vert. Au début, cela APPREND à compter juste ; ensuite c\'est une béquille, et le labyrinthe redevient celui du livre une fois décoché. Le bouton de la barre le bascule aussi en cours de partie.',
                 default: true
             }
@@ -626,6 +629,10 @@ export const geometrieExercises = [
             },
             {
                 id: 'marques', type: 'select', label: 'Comment les paires se distinguent',
+                // « Symboles seuls » EST le polycopié, comme l'explique l'aide :
+                // la feuille imprimée porte toujours les symboles, et le choix
+                // ne concerne donc que l'écran.
+                papier: false,
                 aide: 'La couleur seule exclut les élèves qui distinguent mal le rouge du vert — et disparaît sur une photocopie. Les symboles marchent partout. « Couleurs + symboles » convient à tout le monde ; « symboles seuls » donne à l\'écran ce que donnera le polycopié en noir et blanc.',
                 options: [
                     { value: 'les-deux', label: 'Couleurs et symboles' },
@@ -700,6 +707,10 @@ export const geometrieExercises = [
             },
             {
                 id: 'aspect', type: 'select', label: 'Ce qu\'on demande de compter',
+                // LA FEUILLE DEMANDE TOUJOURS LES TROIS, dans un tableau : c'est
+                // justement l'exercice que l'écran ne sait pas donner, celui où
+                // le compte s'efface avec la marque. Le choix reste à l'écran.
+                papier: false,
                 aide: 'On ne demande jamais les trois d\'un coup : l\'élève qui se trompe saurait seulement qu\'il s\'est trompé quelque part, et la correction ne pourrait plus rien montrer. Fixer une seule catégorie sert à travailler un point précis — les arêtes sont les plus difficiles, parce que ce sont elles qu\'on oublie derrière.',
                 options: [
                     { value: 'tous', label: 'Les trois, en alternance' },
@@ -711,6 +722,7 @@ export const geometrieExercises = [
             },
             {
                 id: 'numeros', type: 'select', label: 'Le numéro sur chaque marque',
+                papier: false,
                 aide: 'Le numéro qui s\'inscrit sur la marque fait la moitié du travail : l\'élève LIT son total au lieu de le compter. Il sert à installer la méthode — marquer une par une, ne pas repasser — puis il gêne. Par défaut, il disparaît après trois questions réussies.',
                 options: [
                     { value: 'progressif', label: 'Il disparaît après 3 réussites' },
@@ -721,6 +733,9 @@ export const geometrieExercises = [
             },
             {
                 id: 'marques', type: 'select', label: 'Marquer ce qu\'on compte',
+                // « sur le papier, il n'y aura ni marque ni compteur » — l'aide
+                // le disait déjà ; le réglage le dit maintenant au programme.
+                papier: false,
                 aide: 'Marquer une par une installe la méthode — n\'oublier personne, ne compter personne deux fois. Mais tant qu\'on marque, la machine additionne à notre place ; sur le papier, il n\'y aura ni marque ni compteur. Par défaut, les marques disparaissent après six réussites, et l\'on compte des yeux.',
                 options: [
                     { value: 'progressif', label: 'Elles disparaissent après 6 réussites' },
@@ -731,6 +746,7 @@ export const geometrieExercises = [
             },
             {
                 id: 'facesColorees', type: 'checkbox', label: 'Colorer les faces comptées',
+                papier: false,
                 aide: 'Une face comptée se remplit d\'un vert transparent au lieu de porter une simple pastille : on voit d\'un coup d\'œil celles qui restent, et les arêtes continuent de se lire dessous.',
                 default: true
             }

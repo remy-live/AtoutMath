@@ -435,12 +435,16 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font-weight: 800; font-size: .74rem; text-transform: uppercase;
     letter-spacing: .04em; color: var(--text-muted); margin-right: 2px;
 }
-/* LES RÉGLAGES DE L'EXERCICE — la taille du sudoku, les tables du domino. Ils
-   vivent sur leur propre rangée, sous la mise en page : ce ne sont pas les
-   mêmes décisions, et les mêler ferait une barre de dix commandes. */
+/* ① QUOI — LES RÉGLAGES DE L'EXERCICE : la taille du sudoku, les tables du
+   domino, l'histoire du logigramme. EN PREMIER, et non plus en dernier : une
+   fiche se décide en trois questions — quoi dessus, combien, sur quel papier —
+   et l'ordre à l'écran doit être celui-là. Le trait passe donc DESSOUS, entre
+   « quoi » et « combien », au lieu de séparer ces réglages de la mise en page
+   qui n'est plus au-dessus d'eux. */
 .fp-contenu {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    padding-top: 8px; margin-top: 2px; border-top: 1px solid var(--border-soft, rgba(0,0,0,.08));
+    padding-bottom: 10px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-soft, rgba(0,0,0,.08));
 }
 .fp-contenu[hidden] { display: none; }
 .fp-contenu-titre {
@@ -454,6 +458,29 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    largeur de son libellé, dans la limite de la fenêtre. */
 .fp-contenu .cfg-input { max-width: min(360px, 100%); width: auto; }
 .fp-contenu select.cfg-input { min-width: 180px; }
+/* LES TUILES DE NOMBRES — les tables, les diviseurs — dans la barre
+   « Contenu ». Leur grille est en `1fr` par colonne, ce qui suppose un
+   conteneur large ; dans une rangée en flex, le champ n'a pas de largeur
+   propre et les dix tuiles s'écrasaient à vingt-quatre pixels : le chiffre
+   passait sous la pastille de la coche, et la table de 7 devenait une bulle
+   bleue indéchiffrable. On leur donne ici une largeur FIXE par colonne — un
+   petit clavier, qu'on lit d'un coup d'œil. */
+.fp-contenu .cfg-chips--grille {
+    width: auto; gap: 5px;
+    grid-template-columns: repeat(var(--cfg-cols, 5), 32px);
+}
+.fp-contenu .cfg-chips--grille .cfg-chip {
+    max-height: 32px; font-size: .8rem; border-radius: 9px;
+}
+.fp-contenu .cfg-chips--grille .cfg-chip > span::before {
+    width: 13px; height: 13px; top: -4px; right: -4px;
+    font-size: .5rem; line-height: 11px; border-width: 1.5px;
+}
+/* Sur un téléphone, dix colonnes de trente-deux pixels sortent de l'écran :
+   on repasse à cinq, soit deux rangées égales. */
+@media (max-width: 640px) {
+    .fp-contenu .cfg-chips--grille { grid-template-columns: repeat(5, 32px); }
+}
 /* Le compteur : − champ + . On garde le champ — un professeur qui veut
    quatre lignes tape 4 plutôt que de cliquer trois fois. */
 .fp-pas { display: inline-flex; align-items: center; gap: 4px; }
@@ -472,6 +499,21 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-pas-btn:hover:not(:disabled) { background: var(--primary); color: #fff; }
 .fp-pas-btn:disabled { opacity: .32; cursor: default; }
 .fp-total { color: var(--text-muted); font-size: .9rem; margin-right: auto; }
+/* ② COMBIEN — un seul nombre, et la conséquence écrite à côté : « 12 sudokus ·
+   5,5 cm ». On réglait « colonnes » et « lignes », c'est-à-dire qu'on
+   demandait au professeur de résoudre lui-même une mise en page pour obtenir
+   la seule chose qui l'intéresse : des grilles assez grandes pour qu'on écrive
+   dedans. Il dit combien, la feuille trouve comment. */
+.fp-combien .fp-total { font-variant-numeric: tabular-nums; }
+/* Une planche composée à l'atelier porte ce qu'on y a posé : le nombre ne se
+   règle pas ici, et un champ qu'on ne peut pas changer vaut mieux caché qu'à
+   moitié éteint. */
+.fp-combien--fige > label { display: none; }
+/* Le QCM est un choix de CONTENU — proposer les réponses ou non change
+   l'exercice, pas la mise en page —, il se range donc avec les réglages de
+   l'exercice, juste sous eux. */
+.fp-controles--qcm { margin: -2px 0 4px; }
+.fp-controles--qcm:empty { display: none; }
 
 /* La feuille : format A4 paysage exact, ombre de papier posé. */
 .fp-apercu-cadre { display: flex; justify-content: center; }

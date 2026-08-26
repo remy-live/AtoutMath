@@ -559,8 +559,17 @@ export const mixteGenerator = {
             { value: '*', label: '×', aide: 'Multiplication' },
             { value: '/', label: '÷', aide: 'Division' }
         ], default: ['+', '-'] },
-        { id: 'tables', type: 'multiselect', label: 'Tables (si × ou ÷)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        { id: 'max', type: 'number', label: 'Plus grand terme (si + ou −)', default: 20, min: 5, max: 100 }
+        {
+            id: 'tables', type: 'multiselect', label: 'Tables',
+            options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+            // « (si × ou ÷) » : la condition tenait dans le libellé, à charge
+            // pour le lecteur de la vérifier lui-même. Elle se vérifie ici.
+            visibleSi: (r) => (r.operations || ['+', '-']).some(o => o === '*' || o === '/')
+        },
+        {
+            id: 'max', type: 'number', label: 'Plus grand terme', default: 20, min: 5, max: 100,
+            visibleSi: (r) => (r.operations || ['+', '-']).some(o => o === '+' || o === '-')
+        }
     ],
     generate(params, ctx) {
         const ops = (params.operations && params.operations.length) ? params.operations : ['+', '-'];

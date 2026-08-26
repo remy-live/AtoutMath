@@ -304,6 +304,9 @@ export const transfoQuadrillageGenerator = {
         {
             id: 'obliques', type: 'checkbox', label: 'Autoriser les axes obliques (à 45°)',
             default: true,
+            // Un axe, il n'y en a que dans la symétrie AXIALE. Sur une fiche de
+            // translations et de rotations, ce bouton ne changeait rien.
+            visibleSi: (r) => !r.genres || !r.genres.length || r.genres.includes('axiale'),
             aide: 'Devant un axe vertical, on compte des colonnes. Devant une diagonale, '
                 + 'on ne compte plus ni lignes ni colonnes, et la méthode apprise ne sert '
                 + 'plus : c\'est un autre exercice. En sixième, décochez.'

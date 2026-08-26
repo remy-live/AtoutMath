@@ -25,6 +25,11 @@ import { equiperFenetre } from './flottant.js';
 import { fenetresDetachables } from './debugBar.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
 import { retenirRepli } from './repli.js';
+// LE BLOC « CONTENU », le même que sur la fiche de grilles. Il manquait ici, et
+// c'est trente-quatre exercices dont on ne pouvait rien choisir une fois la
+// feuille ouverte — ni les tables, ni la difficulté, ni le niveau.
+import { monterPanneauContenu } from './panneauContenu.js';
+import { paramSchemaOf } from '../data/catalog.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../core/fiche.js';
 import { espacerMilliers } from '../core/nombres.js';
@@ -120,14 +125,37 @@ function assurerModale() {
     modal.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
             <h3 class="modal-title">📝 Fiche d'exercices</h3>
-            <div class="fp-controles">
-                <label>Questions
+            <!-- TROIS QUESTIONS, TOUJOURS DANS LE MÊME ORDRE, et les mêmes que
+                 sur la fiche de grilles : QUOI dessus, COMBIEN, SUR QUEL
+                 PAPIER. Cette fenêtre-ci sautait la première et portait treize
+                 commandes : celle qui laissait le moins choisir ce qu'il y a
+                 sur la feuille était celle qui avait le plus de boutons. -->
+
+            <!-- ① QUOI — les réglages de l'exercice, et le seul choix de
+                 contenu qui ne vienne pas de lui : proposer les réponses. -->
+            <div class="fp-contenu" id="fq-contenu" hidden></div>
+            <div class="fp-controles fp-controles--qcm">
+                <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
+            </div>
+
+            <!-- ② COMBIEN -->
+            <div class="fp-controles fp-combien">
+                <label>Combien
                     <span class="fp-pas">
                         <button type="button" class="fp-pas-btn" data-pas="-2" aria-label="Deux questions de moins">−</button>
                         <input type="number" id="fq-nb" class="cfg-input cfg-input--num" min="4" max="80" value="20">
                         <button type="button" class="fp-pas-btn" data-pas="2" aria-label="Deux questions de plus">+</button>
                     </span></label>
-                <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
+                <span class="fp-total" id="fq-total"></span>
+                <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
+            </div>
+
+            <!-- ③ SUR QUEL PAPIER — la consigne, le format, les colonnes, la
+                 numérotation, le corrigé : des habitudes qu'on prend une fois.
+                 Le repli se souvient d'être ouvert. -->
+            <details class="fp-repli" id="fq-plus">
+                <summary>Papier et corrigé</summary>
+            <div class="fp-controles">
                 <label class="pp-consigne">Consigne
                     <input type="text" id="fq-consigne" class="cfg-input"
                         placeholder="Écrite en tête de la feuille — facultatif"></label>
@@ -137,15 +165,7 @@ function assurerModale() {
                         <option value="separe">Deux PDF séparés</option>
                         <option value="sans">Sans solutions</option>
                     </select></label>
-                <span class="fp-total" id="fq-total"></span>
-                <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
             </div>
-            <!-- LE NOMBRE DE QUESTIONS, LA CONSIGNE, LE CORRIGÉ : ce qu'on
-                 décide pour CETTE fiche. Le format du papier, les colonnes, la
-                 numérotation sont des habitudes qu'on prend une fois — elles
-                 attendent dans le repli, qui se souvient d'être ouvert. -->
-            <details class="fp-repli" id="fq-plus">
-                <summary>Mise en page et corrigé</summary>
             <div class="fp-controles pp-mep">
                 <label>Format
                     <select id="fq-orientation" class="cfg-input">
@@ -219,6 +239,13 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     const generator = generateurDeFiche(exo);
     if (!generator) return;
 
+    // MODIFIABLE SUR PLACE : le bloc « Contenu » écrit dedans, et les questions
+    // se retirent avec les nouvelles valeurs. `params` arrivait figé — trois
+    // des quatre portes qui mènent ici passent d'ailleurs les valeurs par
+    // défaut du catalogue, si bien qu'il n'existait aucun moyen de demander la
+    // table de 7 depuis le banc d'essai.
+    const reglages = { ...(params || {}), ...(exo.printParams || {}) };
+
     const modal = assurerModale();
     const apercu = modal.querySelector('#fq-apercu');
     const nbEl = modal.querySelector('#fq-nb');
@@ -250,7 +277,9 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // Le QCM n'a de sens que si le générateur produit des choix : sur un
     // exercice à réponse libre, la case n'aurait rien à cocher.
     const aDesChoix = (generator.answerKinds || []).includes('choice');
-    choixEl.parentElement.style.display = aDesChoix ? '' : 'none';
+    // La RANGÉE entière disparaît, pas seulement l'étiquette : une bande vide
+    // entre les réglages et le compteur se voit, et n'explique rien.
+    choixEl.closest('.fp-controles').style.display = aDesChoix ? '' : 'none';
     if (!aDesChoix) choixEl.checked = false;
 
     let questions = [];
@@ -284,7 +313,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
 
     const completer = (nb) => {
         if (questions.length < nb) {
-            questions = questions.concat(tirerQuestions(generator, params, nb - questions.length));
+            questions = questions.concat(tirerQuestions(generator, reglages, nb - questions.length));
         }
         questions.length = nb;
     };
@@ -349,7 +378,10 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
             separe: 'Les solutions partiront dans un second PDF, à garder pour toi.',
             sans: 'Le PDF ne contiendra que les questions.'
         };
-        noteEl.textContent = `Les questions viennent des réglages de l'exercice. ${OU[ouSol.value] || ''}`;
+        // « Les questions viennent des réglages de l'exercice » : la phrase
+        // servait quand ces réglages étaient ailleurs. Ils sont maintenant en
+        // haut de cette fenêtre — la dire encore serait décrire ce qu'on voit.
+        noteEl.textContent = OU[ouSol.value] || '';
     };
 
     consigneEl.oninput = rendre;
@@ -385,6 +417,16 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     ouSol.onchange = rendre;
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
 
+    // --- ① QUOI : LES RÉGLAGES DE L'EXERCICE, sur la feuille elle-même -------
+    //
+    // Un réglage changé RETIRE les questions : elles ont été tirées avec
+    // l'ancien, et garder des multiplications par 3 sur une fiche réglée en
+    // table de 7 ferait mentir l'aperçu.
+    monterPanneauContenu(modal.querySelector('#fq-contenu'), {
+        exo, schemaCatalogue: paramSchemaOf(exo), generator, reglages,
+        onChange: () => { questions = []; rendre(); }
+    });
+
     // --- LES DEUX GESTES SUR UNE QUESTION ------------------------------------
     //
     // On ne retouche pas le TEXTE d'une question : sa réponse vient du
@@ -410,7 +452,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         const rang = Number(btn.dataset.qRang);
         if (!Number.isInteger(rang) || rang < 0 || rang >= questions.length) return;
         if (neuf) {
-            const [remplacante] = tirerQuestions(generator, params, 1);
+            const [remplacante] = tirerQuestions(generator, reglages, 1);
             if (remplacante) questions[rang] = remplacante;
         } else {
             questions.splice(rang, 1);

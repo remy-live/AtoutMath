@@ -75,6 +75,12 @@ import {
     U as UBLOC, silhouette, gelule, versSvg as blocVersSvg, versPdf as blocVersPdf,
     largeurTexte as largeurTexteBloc, largeurChamp
 } from '../core/blocScratch.js';
+// COMBIEN DE GRILLES, ET RIEN D'AUTRE : la disposition se calcule, elle ne se
+// règle plus. Le même module sert à placer les blocs et à choisir leur nombre.
+import {
+    mesuresSlot, choisirDisposition, capaciteMax, coteLisible, dispositionDuRendu
+} from '../core/dispositionFiche.js';
+import { monterPanneauContenu } from './panneauContenu.js';
 
 /** « un losange » -> « Un losange » : le mot se pose sous la figure. */
 const nomTypeCodage = (type) => {
@@ -112,13 +118,14 @@ function calculerFiche(cols, rows, colles = false) {
     // et sort toute une colonne de cartes. Le titre du bloc disparaît avec la
     // gouttière : il n'a plus où se poser, et une carte à jouer ne porte pas
     // d'étiquette « Paire 3 ».
-    const gapX = colles ? 0 : 6, gapY = colles ? 0 : 4, titreH = colles ? 0 : 4.4;
-    const y0 = PAGE.marge + PAGE.enteteH;
-    const W = PAGE.w - PAGE.marge * 2;
-    const H = PAGE.h - y0 - PAGE.marge - PAGE.piedH;
-    const slotW = (W - gapX * (cols - 1)) / cols;
-    const slotH = (H - gapY * (rows - 1)) / rows;
-    const board = Math.min(slotW, slotH - titreH);
+    //
+    // LES LONGUEURS SE CALCULENT DANS LE NOYAU, pas ici : c'est le même calcul
+    // qui sert à CHOISIR la disposition à partir d'un simple « combien ». Deux
+    // copies de cette arithmétique, et la taille annoncée au professeur cesse
+    // un jour de correspondre à la feuille.
+    const { gapX, gapY, titreH, zone, slotW, slotH, board } = mesuresSlot(PAGE, cols, rows, colles);
+    const y0 = zone.y;
+    const H = zone.h;
 
     const slots = [];
     for (let j = 0; j < rows; j++) {
@@ -10309,26 +10316,34 @@ function assurerModale() {
     modal.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
             <h3 class="modal-title">📄 Fiche à imprimer</h3>
-            <div class="fp-controles">
-                <label>Colonnes
+            <!-- TROIS QUESTIONS, TOUJOURS DANS LE MÊME ORDRE, et les mêmes
+                 sur les deux fiches : QUOI dessus, COMBIEN, SUR QUEL PAPIER.
+                 Rémy : « il faut aller au plus clair et au plus simple ». Les
+                 deux fenêtres mélangeaient les trois, et celle des questions
+                 sautait la première. -->
+
+            <!-- ① QUOI — les réglages de l'exercice, sur la fiche elle-même.
+                 Rémy : « peut-on demander des sudokus autres que 6 × 6 pour
+                 les PDF ? ». On le pouvait — mais seulement en ressortant de
+                 la fiche pour aller régler l'exercice, puis en y revenant. -->
+            <div class="fp-contenu" id="fp-contenu" hidden></div>
+
+            <!-- ② COMBIEN — un seul nombre, et la taille qui en découle. -->
+            <div class="fp-controles fp-combien">
+                <label>Combien
                     <span class="fp-pas">
-                        <button type="button" class="fp-pas-btn" data-pas="-1" data-cible="fp-cols" aria-label="Une colonne de moins">−</button>
-                        <input type="number" id="fp-cols" class="cfg-input cfg-input--num" min="1" max="5" value="3">
-                        <button type="button" class="fp-pas-btn" data-pas="1" data-cible="fp-cols" aria-label="Une colonne de plus">+</button>
-                    </span></label>
-                <label>Lignes
-                    <span class="fp-pas">
-                        <button type="button" class="fp-pas-btn" data-pas="-1" data-cible="fp-rows" aria-label="Une ligne de moins">−</button>
-                        <input type="number" id="fp-rows" class="cfg-input cfg-input--num" min="1" max="5" value="4">
-                        <button type="button" class="fp-pas-btn" data-pas="1" data-cible="fp-rows" aria-label="Une ligne de plus">+</button>
+                        <button type="button" class="fp-pas-btn" data-pas="-1" aria-label="Un de moins">−</button>
+                        <input type="number" id="fp-combien" class="cfg-input cfg-input--num" min="1" max="25" value="12">
+                        <button type="button" class="fp-pas-btn" data-pas="1" aria-label="Un de plus">+</button>
                     </span></label>
                 <span class="fp-total" id="fp-total"></span>
                 <button type="button" class="btn-hint" id="fp-regen">🎲 Autres grilles</button>
                 <button type="button" class="btn-hint" id="fp-atelier" style="display:none">♟ Composer mes échiquiers…</button>
                 <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
-            <!-- Le format du papier et la couleur de l'imprimante ne changent
-                 pas d'une fiche à l'autre : on les règle une fois. -->
+
+            <!-- ③ SUR QUEL PAPIER — le format et la couleur de l'imprimante ne
+                 changent pas d'une fiche à l'autre : on les règle une fois. -->
             <details class="fp-repli" id="fp-plus">
                 <summary>Papier et impression</summary>
                 <div class="fp-controles">
@@ -10341,13 +10356,6 @@ function assurerModale() {
                         <select id="fp-couleur" class="cfg-input"></select></label>
                 </div>
             </details>
-            <!-- LES RÉGLAGES DE L'EXERCICE, sur la fiche elle-même. Rémy :
-                 « peut-on demander des sudokus autres que 6 × 6 pour les
-                 PDF ? ». On le pouvait — mais seulement en ressortant de la
-                 fiche pour aller régler l'exercice, puis en y revenant. La
-                 feuille du parcours montrait déjà ces réglages ; la fiche d'un
-                 exercice seul les ignorait. -->
-            <div class="fp-contenu" id="fp-contenu" hidden></div>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu" id="fp-apercu"></div>
             </div>
@@ -10482,8 +10490,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fp-apercu');
-    const colsEl = modal.querySelector('#fp-cols');
-    const rowsEl = modal.querySelector('#fp-rows');
+    const combienEl = modal.querySelector('#fp-combien');
     const totalEl = modal.querySelector('#fp-total');
     const btnSol = modal.querySelector('#fp-voir-sol');
 
@@ -10497,11 +10504,18 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     let solutionsVisibles = false;
 
     // Le rendu sait mieux que la modale comment il tient sur une page : un
-    // sudoku va par douze, un logigramme par deux.
-    const dispo = rendu.disposition || { cols: 3, rows: 4, maxCols: 5, maxRows: 5 };
-    const lireDisposition = () => ({
-        cols: Math.max(1, Math.min(dispo.maxCols || 5, Number(colsEl.value) || dispo.cols)),
-        rows: Math.max(1, Math.min(dispo.maxRows || 5, Number(rowsEl.value) || dispo.rows))
+    // sudoku va par douze, un logigramme par deux. Il le disait déjà en
+    // colonnes et en lignes ; on n'en garde que le PRODUIT — le nombre qu'il
+    // conseille — et les bornes.
+    const dispo = dispositionDuRendu(rendu);
+    const combienDefaut = Math.max(1, (dispo.cols || 3) * (dispo.rows || 4));
+    const plafond = capaciteMax(dispo);
+    const lireCombien = () =>
+        Math.max(1, Math.min(plafond, Math.round(Number(combienEl.value)) || combienDefaut));
+    // LE PROFESSEUR DIT COMBIEN, LA FEUILLE TROUVE COMMENT. Trois colonnes et
+    // quatre lignes, c'était à lui de le résoudre ; ce n'est pas sa question.
+    const disposerPour = (n) => choisirDisposition(n, dispo, PAGE, {
+        proportions: rendu.proportions, colles: !!rendu.blocsColles
     });
 
     // Graine fraîche par grille : chaque fiche est différente. Les grilles ne
@@ -10524,30 +10538,35 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     };
 
     // LE CHAMP DOIT DIRE LA VÉRITÉ. Un tableau de proportionnalité ne tient
-    // qu'à deux par ligne ; taper « 3 » donnait bien deux colonnes, mais le
-    // champ affichait toujours 3 et le compte ne bougeait pas — on croyait
-    // l'interface cassée alors qu'elle bornait en silence. On réécrit donc la
+    // qu'à deux par ligne ; taper « 30 » donne le maximum possible, mais si le
+    // champ affiche toujours 30 et que le compte ne bouge pas, on croit
+    // l'interface cassée alors qu'elle borne en silence. On réécrit donc la
     // valeur retenue, et les boutons − / + s'éteignent aux bornes.
-    const recaler = (cols, rows) => {
-        if (colsEl.value !== '') colsEl.value = String(cols);
-        if (rowsEl.value !== '') rowsEl.value = String(rows);
+    const recaler = (n) => {
+        if (combienEl.value !== '') combienEl.value = String(n);
+        combienEl.max = String(plafond);
         modal.querySelectorAll('.fp-pas-btn').forEach(b => {
-            const v = b.dataset.cible === 'fp-cols' ? cols : rows;
-            const maxi = b.dataset.cible === 'fp-cols' ? (dispo.maxCols || 5) : (dispo.maxRows || 5);
-            b.disabled = Number(b.dataset.pas) > 0 ? v >= maxi : v <= 1;
+            b.disabled = Number(b.dataset.pas) > 0 ? n >= plafond : n <= 1;
         });
     };
 
     const rendre = () => {
-        const { cols, rows } = lireDisposition();
-        recaler(cols, rows);
-        completer(cols * rows);
+        // Une planche composée à la main porte ce qu'on y a posé, ni plus ni
+        // moins : c'est le nombre de diagrammes qui commande, pas le champ.
+        const n = atelier ? Math.max(1, items.length) : lireCombien();
+        if (!atelier) recaler(n);
+        const { cols, rows, cote } = disposerPour(n);
+        completer(n);
         // « tableaus », « bateaus »… Un pluriel fautif dans une interface de
         // professeur de français-et-maths ne passe pas : le rendu peut donner
         // le sien, sinon on ajoute un « s » (ou rien s'il y en a déjà un).
         const un = rendu.nomBloc || 'Grille';
         const plusieurs = rendu.nomBlocs || (/(au|eu|eau)$/.test(un) ? `${un}x` : `${un}s`);
-        totalEl.textContent = `${cols * rows} ${(cols * rows > 1 ? plusieurs : un).toLowerCase()}`;
+        // ET LA TAILLE, EN CENTIMÈTRES. C'est la conséquence du nombre, et la
+        // seule chose qu'on voulait vraiment savoir en réglant « colonnes » :
+        // est-ce que les élèves auront la place d'écrire dedans ?
+        totalEl.textContent = `${n} ${(n > 1 ? plusieurs : un).toLowerCase()}`
+            + ` · ${coteLisible(cote)}`;
 
         // L'échelle vient de la place disponible : la page garde son format.
         const large = apercu.parentElement.clientWidth || 720;
@@ -10621,24 +10640,21 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         });
     };
 
-    colsEl.value = String(dispo.cols);
-    rowsEl.value = String(dispo.rows);
-    colsEl.max = String(dispo.maxCols || 5);
-    rowsEl.max = String(dispo.maxRows || 5);
+    combienEl.value = String(combienDefaut);
+    combienEl.max = String(plafond);
     // « input » et pas seulement « change » : la feuille suit la frappe, sans
     // qu'il faille sortir du champ pour voir ce qu'on a demandé.
-    colsEl.oninput = rendre;
-    rowsEl.oninput = rendre;
-    colsEl.onchange = rendre;
-    rowsEl.onchange = rendre;
+    combienEl.oninput = rendre;
+    combienEl.onchange = rendre;
     modal.querySelectorAll('.fp-pas-btn').forEach(b => {
         b.onclick = () => {
-            const champ = b.dataset.cible === 'fp-cols' ? colsEl : rowsEl;
-            const defaut = b.dataset.cible === 'fp-cols' ? dispo.cols : dispo.rows;
-            champ.value = String((Number(champ.value) || defaut) + Number(b.dataset.pas));
+            combienEl.value = String(lireCombien() + Number(b.dataset.pas));
             rendre();
         };
     });
+    // Une planche d'atelier ne se compte pas depuis cette fenêtre : on y
+    // ajoute ou l'on y retire un damier dans l'atelier lui-même.
+    modal.querySelector('.fp-combien').classList.toggle('fp-combien--fige', !!atelier);
     // Le choix couleur / noir et blanc : il vaut pour CETTE fiche, et devient
     // le choix par défaut des suivantes. Un professeur qui imprime en noir et
     // blanc le fait pour toute l'année, pas pour une feuille.
@@ -10666,74 +10682,28 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         rendre();
     };
 
-    // --- LES RÉGLAGES DE L'EXERCICE, dans la fiche ---------------------------
+    // --- ① QUOI : LES RÉGLAGES DE L'EXERCICE, dans la fiche -----------------
     //
-    // Le générateur dit ce qu'il sait faire varier ; le catalogue dit lesquels
-    // de ces réglages le professeur a le droit de toucher. On garde
-    // l'intersection — et l'on n'affiche rien du tout pour un atelier, où les
-    // diagrammes sont composés à la main.
+    // Le générateur dit ce qu'il sait faire varier ; le catalogue dit sous
+    // quels mots et dans quel ordre. On prenait le premier seulement, et cinq
+    // réglages qui changent VRAIMENT la feuille n'y étaient pas réglables :
+    // l'histoire d'un logigramme, la difficulté d'un futoshiki, le niveau de
+    // Pythagore, le départ d'un mat en un coup, le nombre de termes d'une
+    // opération posée. La règle est maintenant dans `core/reglagesFiche.js`,
+    // avec les tests qui la tiennent.
+    //
+    // Rien du tout pour un atelier : les diagrammes y sont composés à la main.
     const contenuEl = modal.querySelector('#fp-contenu');
-    // UN RÉGLAGE EST DU CONTENU, OU DE L'ÉCRAN — et seul le premier a sa place
-    // ici. La tolérance du rapporteur, le passage au clavier, le nombre de
-    // propositions : sur une feuille photocopiée, rien de tout cela n'existe.
-    // Affichés quand même, ce sont des boutons qui ne changent rien à ce qu'on
-    // imprime — exactement la panne qu'on vient de corriger dans l'autre sens,
-    // où `printParams` écrasait des réglages bien réels.
-    //
-    // Le tri se lisait jusqu'ici en creux (« ce que le générateur déclare »),
-    // ce qui marchait par accident : les réglages d'activité n'y sont pas.
-    // `papier: false` le dit en clair, et vaut aussi pour un réglage de
-    // générateur qui ne concerne que l'écran.
-    const surPapier = (p) => p && p.papier !== false;
-    const schemaContenu = (() => {
-        if (atelier || !generator) return [];
-        // UN GÉNÉRATEUR DE FICHE A SES PROPRES RÉGLAGES. Quand la feuille tire
-        // ses questions ailleurs que l'écran (`printGeneratorId`), l'ordre du
-        // catalogue ne parle pas d'elle : l'intersection effaçait les boutons
-        // qui n'existent QUE sur le papier — le nombre de lignes du tableau de
-        // conversion, ou le tableau lui-même. On montre alors ce que le
-        // générateur de fiche sait faire varier.
-        if (exo && exo.printGeneratorId && exo.printGeneratorId !== exo.generatorId) {
-            return (generator.params || []).filter(surPapier);
-        }
-        // MÊME QUAND C'EST LE GÉNÉRATEUR DE L'ÉCRAN qui fait la feuille, on
-        // part de SES réglages : l'intersection laissait tomber ceux que le
-        // catalogue ne redit pas. Le catalogue garde le dernier mot sur les
-        // réglages qu'il décrit — libellé et aide y sont écrits pour le
-        // professeur — mais il n'en efface plus aucun.
-        const duCatalogue = new Map((paramSchemaOf(exo) || [])
-            .filter(p => p && p.id).map(p => [p.id, p]));
-        return (generator.params || [])
-            .map(p => duCatalogue.get(p.id) || p)
-            .filter(surPapier);
-    })();
-    contenuEl.hidden = !schemaContenu.length;
-    contenuEl.innerHTML = '';
-    // Les champs viennent du panneau de configuration, pas d'une copie. Chargé
-    // À LA DEMANDE : games/configUI.js pose des écouteurs sur `document` dès
-    // son import, et ce module-ci est lu par le rendu commun des fiches, qui
-    // doit rester chargeable hors navigateur.
-    if (schemaContenu.length) {
-        import('../games/configUI.js').then(({ fieldHtml, readParams, wireTips }) => {
-            contenuEl.innerHTML = `<span class="fp-contenu-titre">Contenu</span>`
-                + schemaContenu.map(p => fieldHtml(p,
-                    reglages[p.id] !== undefined ? reglages[p.id] : p.default)).join('');
-            wireTips(contenuEl);
+    if (atelier || !generator) {
+        contenuEl.hidden = true;
+        contenuEl.innerHTML = '';
+    } else {
+        monterPanneauContenu(contenuEl, {
+            exo, schemaCatalogue: paramSchemaOf(exo), generator, reglages,
             // Un réglage changé RETIRE les grilles : elles ont été tirées avec
             // l'ancien, et garder un sudoku 6 × 6 sur une fiche réglée en 9 × 9
-            // ferait mentir l'aperçu. On relit tout le panneau d'un seul coup —
-            // un seul chemin, donc jamais deux réglages qui divergent.
-            const relire = () => {
-                Object.assign(reglages, readParams(contenuEl, schemaContenu));
-                items = [];
-                rendre();
-            };
-            contenuEl.addEventListener('change', relire);
-            // Les bascules « Oui / Non » n'émettent pas `change` : leur écouteur
-            // global ne fait que basculer la classe. On repasse derrière lui.
-            contenuEl.addEventListener('click', (ev) => {
-                if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
-            });
+            // ferait mentir l'aperçu.
+            onChange: () => { items = []; rendre(); }
         });
     }
 
@@ -10771,7 +10741,8 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     const btnDl = modal.querySelector('#fp-telecharger');
     btnDl.onclick = () => {
         btnDl.disabled = true;
-        const { cols, rows } = lireDisposition();
+        const n = atelier ? Math.max(1, items.length) : lireCombien();
+        const { cols, rows } = disposerPour(n);
         chargerJsPDF()
             .then(jsPDF => {
                 // Un plateau de jeu vide n'a pas
@@ -10779,7 +10750,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // toujours vide, et une feuille de plus à photocopier.
                 const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreFiche,
                     !!atelier || !!rendu.sansSolution);
-                doc.save(`${(atelier && atelier.nom) || exo.printable}-${cols}x${rows}.pdf`);
+                doc.save(`${(atelier && atelier.nom) || exo.printable}-${items.length}.pdf`);
             })
             .catch(() => {
                 import('./modal.js').then(m => m.showAlert(
@@ -10793,13 +10764,9 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     solutionsVisibles = false;
     btnSol.textContent = 'Voir les solutions';
     // La disposition part du NOMBRE de diagrammes composés : deux échiquiers
-    // demandés ne s'impriment pas sur une grille de quatre cases vides.
-    if (atelier) {
-        const n = Math.max(1, items.length);
-        colsEl.value = String(Math.min(dispo.maxCols || 3, n > 1 ? 2 : 1));
-        rowsEl.value = String(Math.max(1, Math.min(dispo.maxRows || 3,
-            Math.ceil(n / Math.min(dispo.maxCols || 3, n > 1 ? 2 : 1)))));
-    }
+    // demandés ne s'impriment pas sur une grille de quatre cases vides. C'est
+    // désormais la règle générale, et l'atelier n'a plus de cas à part — il
+    // dit seulement que le nombre ne se règle pas ici.
     // De quoi se redessiner quand la fenêtre change de taille : détacher,
     // replier ou tirer le coin change la largeur disponible, et l'aperçu
     // calcule son échelle dessus.

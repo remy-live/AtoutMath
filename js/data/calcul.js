@@ -1681,6 +1681,9 @@ export const calculExercises = [
             },
             {
                 id: 'auto', type: 'bool', label: 'Barrer la ligne automatiquement',
+                // Personne ne barre une case à la place de l'élève sur du papier :
+                // c'est justement le travail qu'on lui demande de faire à la main.
+                papier: false,
                 default: false
             },
             {
