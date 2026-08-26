@@ -43,6 +43,32 @@ export const motsCroisesFicheGenerator = {
         {
             id: 'lettresDonnees', type: 'number', label: 'Lettres déjà placées', default: 0, min: 0, max: 6,
             aide: 'Quelques lettres écrites d\'avance donnent un point de départ — utile pour une classe qui découvre.'
+        },
+        // OÙ VONT LES DÉFINITIONS. Rémy : « on peut peut être mettre en option
+        // écrire définition à côté (la grille se décale à droite ou à gauche)
+        // ou en dessous et évidemment on essaye d'occuper le maximum
+        // d'espace ».
+        //
+        // Les deux valent, et pas pour la même grille : une grille HAUTE et
+        // étroite laisse une colonne libre sur le côté, une grille LARGE et
+        // basse laisse une bande en dessous. Mettre les définitions du mauvais
+        // côté, c'est rétrécir la grille pour rien.
+        //
+        // D'où le défaut « Automatique », qui n'est pas une esquive : les trois
+        // dispositions se calculent, et l'on garde celle qui donne la plus
+        // grande case. C'est exactement « on essaye d'occuper le maximum
+        // d'espace », fait par la machine plutôt qu'à l'œil.
+        {
+            id: 'defs', type: 'select', label: 'Les définitions', default: 'auto',
+            aide: 'En dessous, c\'est la mise en page du journal. À côté, la grille se '
+                + 'décale et gagne en hauteur : c\'est mieux quand la grille est haute et '
+                + 'étroite. « Automatique » essaie les trois et garde la plus grande grille.',
+            options: [
+                { value: 'auto', label: 'Automatique — la plus grande grille' },
+                { value: 'dessous', label: 'En dessous de la grille' },
+                { value: 'gauche', label: 'À gauche, la grille à droite' },
+                { value: 'droite', label: 'À droite, la grille à gauche' }
+            ]
         }
     ],
 
@@ -98,7 +124,11 @@ export const motsCroisesFicheGenerator = {
                 // case, et parcourir une liste de dix pour chacune des deux
                 // cent soixante-dix cases d'une grille est un gâchis inutile.
                 numeros: Object.fromEntries(g.numeros.map(n => [`${n.x},${n.y}`, n.num])),
-                theme
+                theme,
+                // La disposition voyage dans l'item : c'est la feuille qui la
+                // met en œuvre, mais c'est ici qu'elle est décidée, avec les
+                // autres réglages de l'exercice.
+                defs: ['dessous', 'gauche', 'droite'].includes(p.defs) ? p.defs : 'auto'
             }
         });
     }

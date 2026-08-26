@@ -4989,8 +4989,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    et celles qui passent à la ligne écrasaient la suivante. Dans une boîte, le
    navigateur les empile, ce qu'aucun calcul de notre part ne fera mieux. */
 .fx-mc-col { position: absolute; pointer-events: none; }
-.fx-mc-col .fx-mc-titre { position: static; display: block; margin-bottom: .35em; }
-.fx-mc-def { color: #6b7280; line-height: 1.2; pointer-events: none; margin-bottom: .18em; }
+/* LA RÉSERVE CALCULÉE ET LA HAUTEUR RÉELLE DOIVENT COÏNCIDER : la géométrie
+   (MC_DEF) donne un pas et une hauteur de titre en millimètres, et c'est le
+   PDF qui les applique au millimètre près. Un interligne ou une marge posés
+   ici en plus décaleraient l'aperçu par rapport à la feuille — or l'aperçu ne
+   sert qu'à une chose, montrer la feuille. */
+.fx-mc-col .fx-mc-titre { position: static; display: block; margin: 0; }
+.fx-mc-def { color: #6b7280; line-height: inherit; pointer-events: none; margin: 0; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------
    Un jeu n'est pas une étape de plus : il se voit AUTREMENT. Pastille dorée

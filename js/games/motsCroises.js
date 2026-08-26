@@ -81,13 +81,25 @@ class MotsCroises extends BaseGame {
                    seule largeur la ferait déborder en hauteur. */
                 /* UNE GRILLE DE MOTS CROISÉS EST NOIRE SUR BLANC, quel que
                    soit le thème choisi. Rémy : « pour les mots croisés,
-                   utilise un fond blanc ». C'est un objet de PAPIER : les
-                   cases blanches et les cases noires sont sa grammaire, et un
-                   thème « forêt » qui les teinte en vert les rend illisibles —
-                   on ne distingue plus une case à remplir d'une case pleine.
-                   La grille porte donc ses couleurs en dur, comme la fiche
-                   Garam porte les siennes ; tout le reste de l'écran suit le
-                   thème. */
+                   utilise un fond blanc ». C'est un objet de PAPIER, et un
+                   thème « forêt » qui teinte les cases en vert les rend
+                   illisibles. La grille porte donc ses couleurs en dur, comme
+                   la fiche Garam porte les siennes ; tout le reste de l'écran
+                   suit le thème. */
+                /* PAS DE FOND NOIR. Rémy : « Enlève le fond noir ». La feuille
+                   avait déjà reçu la consigne — « les cases qui ne servent pas,
+                   ne les mets juste pas, on ne doit voir que la grille des
+                   mots » — et l'écran, qui n'est qu'une transcription de cette
+                   feuille, était resté en arrière : un pavé sombre de 21 sur 15
+                   dont on ne lisait que les trous.
+                   Une case muette ne porte AUCUNE information : ce qui compte,
+                   c'est la silhouette des mots, et elle se dessine toute seule
+                   dès qu'on laisse le blanc autour. C'est la grille « à
+                   l'américaine », celle des grilles de vacances — et c'est
+                   maintenant exactement le même dessin des deux côtés.
+                   Le trait passe donc du FOND de la grille (qui transparaissait
+                   par des interstices d'un pixel, d'où le pavé) au CONTOUR de
+                   chaque case jouable, comme le doc.rect de la fiche. */
                 /* La place offerte à la grille : tout le plateau, moins la
                    colonne des définitions quand elle est là. Le plafond de la
                    case monte de 42 à 66 px — Rémy, « essaie de profiter de
@@ -96,23 +108,28 @@ class MotsCroises extends BaseGame {
                 .mc-grille {
                     --mc-cote: clamp(15px, min(calc(var(--mc-place) / var(--mc-cols, 10)),
                                      calc(97cqh / var(--mc-rows, 10))), 66px);
-                    display: grid; gap: 1px; background: #111827;
-                    padding: 3px; border-radius: 4px; flex: 0 0 auto;
-                    box-shadow: 0 2px 12px rgba(15, 23, 42, .18);
+                    display: grid; gap: 0; background: transparent;
+                    padding: 2px; flex: 0 0 auto;
                 }
                 .mc-case {
                     position: relative; width: var(--mc-cote); height: var(--mc-cote);
                     background: #ffffff; border: 0; padding: 0;
+                    box-shadow: inset 0 0 0 1px #111827;
                     font: inherit; font-weight: 800; color: #111827;
                     font-size: calc(var(--mc-cote) * .62); line-height: 1;
                     display: flex; align-items: center; justify-content: center;
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                 }
-                .mc-case--noire { background: #111827; cursor: default; }
+                /* Rien du tout : ni fond, ni trait, ni curseur. */
+                .mc-case--noire { background: transparent; box-shadow: none; cursor: default; }
                 .mc-case--motvu { background: #e6ecff; }
                 .mc-case--vise {
                     background: #ffe9b8;
-                    box-shadow: inset 0 0 0 2px var(--warning, #f59e0b);
+                    /* Le contour de la case EST le box-shadow : la surbrillance
+                       doit le recomposer, sinon la case visée perd son cadre et
+                       s'ouvre sur ses voisines. */
+                    box-shadow: inset 0 0 0 2px var(--warning, #f59e0b),
+                                inset 0 0 0 3px #111827;
                 }
                 .mc-case--faute { color: var(--danger, #dc2626); }
                 .mc-num {

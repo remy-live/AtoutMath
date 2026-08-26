@@ -35,6 +35,7 @@ import {
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { caseCentrale } from '../core/quadrillageSvg.js';
 import { placeNoms, ancrageNom, ECART_NOM } from '../core/thales.js';
+import { MC_DEF, disposerMotsCroises } from '../core/dispositionMotsCroises.js';
 import { ecrireElement } from '../core/elementSymetrie.js';
 import { SENS as SENS_ROTATION } from '../core/transformations.js';
 import { pieceSvg, dessinerPiecePdf, direPiece, MENTION_PIECES } from './piecesEchecs.js';
@@ -1008,27 +1009,7 @@ function dessinerNotationPdf(doc, item, slot, solution) {
 function geoMotsCroises(item, slot) {
     const b = boiteDe(slot);
     const m = item.meta;
-    // Les définitions prennent le bas de la page : elles sont longues, et une
-    // colonne étroite à côté d'une grille large les couperait en plein mot.
-    // COMBIEN DE LIGNES, PAS COMBIEN DE DÉFINITIONS. Compter une ligne par
-    // définition sous-estimait la place d'un bon tiers : les phrases longues
-    // en prennent deux, et la grille mordait dessus. On estime la coupe à la
-    // largeur d'une demi-colonne — un caractère d'Helvetica à 2,9 mm en fait
-    // environ 1,45 — puis on borne, parce qu'une estimation reste une
-    // estimation.
-    const demiL = (b.w - 4) / 2;
-    const lignesDe = (liste) => liste.reduce((n, d) =>
-        n + Math.max(1, Math.ceil(`${d.num}. ${d.def} (${d.longueur})`.length * 1.45 / demiL)), 0);
-    const lignes = Math.max(lignesDe(m.horizontales), lignesDe(m.verticales));
-    const hDefs = Math.min(b.h * 0.5, (lignes + 2) * 3.6);
-    const dispoH = b.h - hDefs - 3;
-    const cote = Math.max(3, Math.min((b.w - 2) / m.largeur, dispoH / m.hauteur));
-    const w = cote * m.largeur, h = cote * m.hauteur;
-    return {
-        b, m, cote, hDefs,
-        x: b.x + (b.w - w) / 2, y: b.y + (dispoH - h) / 2, w, h,
-        yDefs: b.y + dispoH + 3
-    };
+    return { b, m, ...disposerMotsCroises(b, m, m.defs) };
 }
 
 function motsCroisesPreviewHtml(item, slot, k, solution) {
@@ -1064,31 +1045,66 @@ function motsCroisesPreviewHtml(item, slot, k, solution) {
 }
 
 /**
- * Les deux colonnes de définitions, sous la grille.
+ * Les définitions, là où la disposition les a mises.
  *
  * ELLES COULENT, ELLES NE SE POSENT PLUS UNE PAR UNE. Rémy : « pour les mots
  * croisés, les définitions se superposent ». Chaque définition était placée à
- * `4,2 mm × son rang`, un pas fixe — et « Du même côté de la sécante, à la même
- * place sur chaque droite. (14) » tient sur deux lignes. La suivante lui
- * passait dessus, et l'on ne lisait plus ni l'une ni l'autre.
+ * un pas fixe fois son rang — et « Du même côté de la sécante, à la même place
+ * sur chaque droite. (14) » tient sur deux lignes. La suivante lui passait
+ * dessus, et l'on ne lisait plus ni l'une ni l'autre. On donne maintenant des
+ * boîtes au navigateur, qui empile dedans mieux qu'aucun calcul de notre part.
  *
- * Le PDF, lui, avançait déjà du nombre de lignes réellement écrites
- * (`splitTextToSize`) : c'était donc l'APERÇU qui mentait, une fois de plus.
- * On lui donne maintenant deux boîtes et le navigateur empile dedans — il sait
- * faire cela mieux qu'aucun calcul de notre part.
+ * EN DESSOUS : deux boîtes côte à côte, une par liste. À CÔTÉ : une seule
+ * boîte, les deux listes l'une sous l'autre — et c'est la RÉSERVE calculée
+ * pour la première qui dit où commence la seconde, pour que le PDF, qui n'a
+ * pas de navigateur, tombe au même endroit.
  */
 function listeDefsHtml(g, k) {
     const T = (v) => (v * k).toFixed(2);
-    const demi = (g.b.w - 4) / 2;
-    const colonne = (titre, liste, x) => `
-        <div class="fx-mc-col" style="left:${T(x)}px; top:${T(g.yDefs)}px;
-            width:${T(demi)}px; font-size:${T(2.9)}px; line-height:1.2">
-            <div class="fx-mc-titre" style="font-size:${T(3.4)}px">${titre}</div>
-            ${liste.map(d => `<div class="fx-mc-def"><b>${d.num}.</b> `
-        + `${echapperSheet(d.def)} (${d.longueur})</div>`).join('')}
+    const d = g.defs;
+    const bloc = (titre, liste, x, y) => `
+        <div class="fx-mc-col" style="left:${T(x)}px; top:${T(y)}px;
+            width:${T(d.largeur)}px; font-size:${T(MC_DEF.corps)}px;
+            line-height:${(MC_DEF.pas / MC_DEF.corps).toFixed(2)}">
+            <div class="fx-mc-titre" style="font-size:${T(MC_DEF.titre)}px;
+                height:${T(MC_DEF.apresTitre)}px; line-height:${T(MC_DEF.titre * 1.2)}px">${titre}</div>
+            ${liste.map(x2 => `<div class="fx-mc-def"><b>${x2.num}.</b> `
+        + `${echapperSheet(x2.def)} (${x2.longueur})</div>`).join('')}
         </div>`;
-    return colonne('Horizontalement', g.m.horizontales, g.b.x)
-        + colonne('Verticalement', g.m.verticales, g.b.x + demi + 4);
+    if (d.colonnes === 2) {
+        return bloc('Horizontalement', g.m.horizontales, d.x, d.y)
+            + bloc('Verticalement', g.m.verticales, d.x2, d.y);
+    }
+    return bloc('Horizontalement', g.m.horizontales, d.x, d.y)
+        + bloc('Verticalement', g.m.verticales, d.x, d.y + d.hHoriz + MC_DEF.entreListes);
+}
+
+/** Les mêmes définitions, écrites par jsPDF. */
+function dessinerDefsPdf(doc, g) {
+    const d = g.defs;
+    const bloc = (titre, liste, x, y) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(MC_DEF.titre / 0.3528);
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(titre), x, y + MC_DEF.titre);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(MC_DEF.corps / 0.3528);
+        doc.setTextColor(...ENCRE.gris);
+        let ligne = y + MC_DEF.apresTitre + MC_DEF.corps;
+        liste.forEach(def => {
+            const morceaux = doc.splitTextToSize(
+                pourPdf(`${def.num}. ${def.def} (${def.longueur})`), d.largeur - 1);
+            doc.text(morceaux, x, ligne);
+            ligne += morceaux.length * MC_DEF.pas;
+        });
+    };
+    if (d.colonnes === 2) {
+        bloc('Horizontalement', g.m.horizontales, d.x, d.y);
+        bloc('Verticalement', g.m.verticales, d.x2, d.y);
+    } else {
+        bloc('Horizontalement', g.m.horizontales, d.x, d.y);
+        bloc('Verticalement', g.m.verticales, d.x, d.y + d.hHoriz + MC_DEF.entreListes);
+    }
 }
 
 // --- LE MOT CODÉ SUR PAPIER ---------------------------------------------------
@@ -1261,24 +1277,7 @@ function dessinerMotsCroisesPdf(doc, item, slot, solution, champ) {
         }
     }
 
-    const demi = (g.b.w - 4) / 2;
-    const colonne = (titre, liste, x) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(titre), x, g.yDefs + 3);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.4);
-        doc.setTextColor(...ENCRE.gris);
-        let y = g.yDefs + 7;
-        liste.forEach(d => {
-            const morceaux = doc.splitTextToSize(pourPdf(`${d.num}. ${d.def} (${d.longueur})`), demi - 1);
-            doc.text(morceaux, x, y);
-            y += morceaux.length * 2.6 + 1;
-        });
-    };
-    colonne('Horizontalement', g.m.horizontales, g.b.x);
-    colonne('Verticalement', g.m.verticales, g.b.x + demi + 4);
+    dessinerDefsPdf(doc, g);
 }
 
 // --- Binairo ------------------------------------------------------------------
