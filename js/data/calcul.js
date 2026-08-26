@@ -2195,15 +2195,21 @@ export const calculExercises = [
         // droit. Aucun saut à programmer.
         id: 'jeu-petites-ailes', status: STATUS.TEST, title: 'Les Petites Ailes',
         cree: '2026-08-25',
-        activityId: 'petites-ailes', skills: ['num.aile.reconnaitre'],
+        // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy : « n'en fais pas un jeu
+        // mathématiques […] c'est plus un jeu de réflexe ». Lui accrocher une
+        // compétence pour la forme mentirait deux fois : à l'élève, qui
+        // croirait travailler quelque chose, et au professeur, dont le bilan se
+        // remplirait de lignes qui ne mesurent rien. C'est une récréation, elle
+        // se range en « Adresse et réflexes ».
+        activityId: 'petites-ailes', skills: [], horsProgression: true,
         sansRevision: true,
         params: {},
         motsClefs: ['petites ailes', 'tiny wings', 'oiseau', 'collines', 'vol', 'arcade',
-            'multiples', 'diviseurs', 'carrés', 'pairs', 'reconnaître', 'vitesse'],
+            'réflexe', 'adresse', 'mondes', 'vitesse', 'récréation'],
         tags: {
-            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.ADRESSE],
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Une seule touche : appuie n'importe où pour PLONGER, relâche pour planer. Appuie dans la descente — tu prends de la vitesse — et relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs : rester collé au sol te fait payer chaque montée. En haut de l'écran, une consigne : « avale les multiples de 7 », « les diviseurs de 36 », « les carrés parfaits »… Les nombres flottent au-dessus des collines, et tu n'avales que ceux qui la vérifient. Un mauvais nombre coûte un cœur — et le jeu te dit POURQUOI il ne convenait pas, parce que perdre sans comprendre n'apprend rien. Il n'y a rien à calculer : ces nombres-là se reconnaissent, et c'est justement ce qu'on vient travailler."
+        instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : tu prends de la vitesse, et la jauge du bas te le montre. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs — rester collé au sol te fait payer chaque montée. Et il faut aller vite, parce que LA NUIT COURT DERRIÈRE TOI : si elle te rattrape, la partie s'arrête. Les étoiles la repoussent un peu ; franchir une frontière de monde la repousse beaucoup. Il y a six mondes, chacun plus haut, plus serré et plus pressé que le précédent — le but est d'aller voir le suivant."
     }
 ];

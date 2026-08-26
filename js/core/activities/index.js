@@ -567,9 +567,11 @@ const legacy = [
     ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
     // Le pousseur se compte en ENTREPÔTS rangés, et le niveau monte entre chaque.
     ['pousseur', 'Le Pousseur', 'pousseur', 'enginePousseur', 'entrepôt', 3],
-    // Les petites ailes se comptent en NOMBRES avalés : c'est de l'arcade, on
-    // en croise beaucoup et vite.
-    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'nombre', 12],
+    // LES PETITES AILES SE COMPTENT EN MONDES, depuis qu'il n'y a plus de
+    // nombres à avaler. Rémy : « on peut passer de monde à monde ». Il y en a
+    // six, et le compteur du bandeau est justement le but du jeu — « 2 / 6
+    // mondes » dit d'un coup d'œil où l'on en est.
+    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'monde', 6],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],

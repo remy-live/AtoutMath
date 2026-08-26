@@ -34,7 +34,14 @@ export const TAGS = {
         // casse-tête se cherche seul et se gagne en un nombre de coups, une
         // énigme se raconte et se démontre.
         CASSE_TETE: "Casse-tête",
-        STRATEGIE: "Stratégie et raisonnement"
+        STRATEGIE: "Stratégie et raisonnement",
+        // ET UNE TROISIÈME FAMILLE, QUI N'EST PAS DES MATHS DU TOUT. Rémy, sur
+        // Les Petites Ailes : « n'en fais pas un jeu mathématiques […] c'est
+        // plus un jeu de réflexe ». Le ranger sous « Calcul mental » était le
+        // mensonge d'avant : il n'y a rien à calculer, il y a un geste à
+        // sentir. Une récréation assumée se range à sa place plutôt que de se
+        // déguiser en exercice.
+        ADRESSE: "Adresse et réflexes"
     },
     // Le troisième niveau de chemin a été retiré : « Tables de Multiplication »
     // coupait le calcul mental en deux dans l'arbre, et l'on ne trouvait plus

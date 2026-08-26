@@ -1,21 +1,29 @@
-// LES PETITES AILES — glisser sur les collines, et n'avaler que ce qu'il faut.
+// LES PETITES AILES — glisser sur les collines, et courir devant la nuit.
 //
-// Rémy : « J'adorerai le jeu Tiny Wings sur iPhone. »
+// Rémy : « J'adorerais le jeu Tiny Wings sur iPhone. » Puis, après le banc
+// d'essai : « Je ne comprends pas. N'en fais pas un jeu mathématiques et on
+// accélère en cliquant ou en appuyant sur la barre d'espace. C'est plus un jeu
+// de réflexe et on peut passer de monde à monde. »
+//
+// LES NOMBRES SONT PARTIS, ET C'EST UN GAIN. La première version faisait
+// flotter des nombres au-dessus des collines et demandait de n'avaler que les
+// multiples de 7 : deux jeux dans le même écran, l'un qui demande de sentir le
+// relief, l'autre de calculer. On ne fait bien ni l'un ni l'autre, et l'élève
+// ne comprend ni pourquoi il perd un cœur ni ce qu'on attend de lui. Tout ce
+// module a donc perdu ses règles, ses volées de nombres et ses explications :
+// il ne reste que le vol.
 //
 // CE QUI FAIT TINY WINGS, ce n'est ni le graphisme ni l'oiseau : c'est UNE
-// TOUCHE et une idée. On appuie pour plonger, on relâche pour planer ; plonger
-// dans une descente donne de la vitesse, et cette vitesse renvoie en l'air au
-// creux suivant. Tout le plaisir est là — sentir le moment où il faut appuyer.
-// On garde donc exactement cela, et rien d'autre.
+// TOUCHE et une idée. On appuie — clic, doigt ou barre d'espace — pour plonger,
+// on relâche pour planer. Plonger dans une descente donne de la vitesse, et
+// cette vitesse renvoie en l'air au creux suivant. Tout le plaisir est là :
+// sentir le moment où il faut appuyer.
 //
-// ET IL FALLAIT QUE CE SOIT DES MATHS SANS CASSER LE GESTE. Poser une question
-// au clavier arrêterait le vol : c'est un jeu à une seule touche, il doit le
-// rester. Alors la question est DANS le décor — des nombres flottent au-dessus
-// des collines, une règle est annoncée (« les multiples de 7 »), et l'on avale
-// ceux qui la vérifient. Décider en une fraction de seconde si 63 est un
-// multiple de 7 est exactement l'automatisme qu'on veut installer ; c'est la
-// même mécanique que les portes de calcul de Nova, mais sans jamais lever le
-// pouce.
+// ET LA NUIT COURT DERRIÈRE. C'est elle qui fait du vol un jeu de RÉFLEXE
+// plutôt qu'une promenade : un mur d'ombre avance à vitesse constante, et si
+// l'on flâne il rattrape. Aller vite n'est plus un score, c'est la condition
+// pour continuer — et c'est aussi ce qui donne son sens au passage de MONDE en
+// monde, puisque franchir une frontière repousse la nuit.
 //
 // LE RELIEF EST UNE SOMME DE SINUS, ET C'EST VOULU. Trois ondes de périodes
 // différentes suffisent à donner des collines qui ne se répètent jamais tout à
@@ -38,15 +46,84 @@
 export const SOL_MOYEN = 300;
 export const HAUTEUR_MONDE = 620;
 
-export const ZONES = [
-    { id: 1, nom: 'Les dunes', amplitude: 105, periode: 620, cadeaux: 0.9 },
-    { id: 2, nom: 'Les collines', amplitude: 140, periode: 540, cadeaux: 1 },
-    { id: 3, nom: 'Les crêtes', amplitude: 170, periode: 470, cadeaux: 1.1 },
-    { id: 4, nom: 'La montagne', amplitude: 200, periode: 410, cadeaux: 1.2 }
+/**
+ * LES MONDES — et ce n'est pas qu'un décor qui change.
+ *
+ * Rémy : « on peut passer de monde à monde ». Chacun a SON relief (plus haut,
+ * plus serré), SA palette, et SA nuit — qui va un peu plus vite que la
+ * précédente. Franchir une frontière est donc à la fois une récompense (la nuit
+ * recule) et une marche de plus : c'est ce qui fait qu'on veut y aller.
+ *
+ * LA PALETTE EST DANS LE MONDE, PAS DANS LE DESSIN. Un ciel rose et des roches
+ * violettes ne sont pas une décoration : c'est le seul signal qui dit « tu as
+ * changé de monde » alors qu'on file à cinq cents pixels par seconde.
+ *
+ * LES SIX VITESSES DE NUIT SONT MESURÉES, PAS DEVINÉES. Le test simule les
+ * trois joueurs — celui qui plonge à propos, celui qui ne fait rien, celui qui
+ * appuie sans arrêt — et vérifie que la nuit reste derrière le premier partout,
+ * et finit par rattraper le deuxième. Le premier monde, lui, pardonne : on y
+ * apprend le geste, on n'y perd pas.
+ */
+export const LONGUEUR_MONDE = 3200;
+
+export const MONDES = [
+    {
+        id: 1, nom: 'Les dunes', amplitude: 105, periode: 620, nuit: 150,
+        // Les collines du fond sont du SABLE, pas du bleu : ce sont les mêmes
+        // dunes vues de loin, et une couche bleue au milieu du désert se lisait
+        // comme une flaque.
+        ciel: ['#9fd8ff', '#e8f6ff'], fond: ['#e6c390', '#d3a96d'],
+        sol: '#c99a52', herbe: '#f0c987'
+    },
+    {
+        id: 2, nom: 'Les collines', amplitude: 140, periode: 540, nuit: 175,
+        ciel: ['#8ed0ff', '#dff3ff'], fond: ['#a9c8e8', '#87b0d8'],
+        sol: '#2f855a', herbe: '#68d391'
+    },
+    {
+        id: 3, nom: 'Les crêtes', amplitude: 170, periode: 470, nuit: 200,
+        ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
+        sol: '#7b4b2a', herbe: '#c0703c'
+    },
+    {
+        id: 4, nom: 'La montagne', amplitude: 200, periode: 410, nuit: 222,
+        ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
+        sol: '#4a5578', herbe: '#e6ecff'
+    },
+    {
+        id: 5, nom: 'Le grand large', amplitude: 220, periode: 400, nuit: 235,
+        ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
+        sol: '#1f6b6b', herbe: '#7fe6d8'
+    },
+    {
+        id: 6, nom: 'Le pays de nuit', amplitude: 240, periode: 380, nuit: 248,
+        ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
+        sol: '#1b2140', herbe: '#8f9bff'
+    }
 ];
 
-export const zoneDe = (distance) =>
-    ZONES[Math.min(ZONES.length - 1, Math.floor(distance / 3000))];
+/** Le monde où l'on se trouve. Le dernier ne finit jamais. */
+export const mondeDe = (distance) =>
+    MONDES[Math.max(0, Math.min(MONDES.length - 1, Math.floor(distance / LONGUEUR_MONDE)))];
+
+/**
+ * OÙ L'ON EN EST DANS SON MONDE : de quoi dessiner une barre de progression.
+ *
+ * `part` va de 0 à 1, `restant` est la distance jusqu'à la frontière suivante.
+ * Dans le dernier monde, il n'y a plus de frontière : `restant` vaut l'infini
+ * plutôt que zéro, sans quoi la barre resterait pleine et promettrait un monde
+ * de plus qui n'arrivera jamais.
+ */
+export function progressionMonde(distance) {
+    const monde = mondeDe(distance);
+    const dernier = monde.id === MONDES.length;
+    const debut = (monde.id - 1) * LONGUEUR_MONDE;
+    return {
+        monde, dernier,
+        part: dernier ? 1 : (distance - debut) / LONGUEUR_MONDE,
+        restant: dernier ? Infinity : debut + LONGUEUR_MONDE - distance
+    };
+}
 
 
 /**
@@ -61,8 +138,8 @@ export const zoneDe = (distance) =>
  * Trois ondes de périodes premières entre elles : le motif ne se répète qu'au
  * bout de plusieurs kilomètres, ce qu'aucune partie n'atteint.
  */
-export function relief(x, zone, graine = 0) {
-    const z = zone || ZONES[0];
+export function relief(x, monde, graine = 0) {
+    const z = monde || MONDES[0];
     const p = z.periode;
     const ondes = [
         { a: 1, p, d: graine },
@@ -83,110 +160,54 @@ export function relief(x, zone, graine = 0) {
 }
 
 /**
- * LES RÈGLES DU MOMENT — ce qu'il faut avaler, et ce qu'il faut éviter.
+ * LES ÉTOILES — ce qu'on ramasse en route.
  *
- * Chacune sait dire d'un nombre s'il convient, et surtout POURQUOI il ne
- * convient pas : un jeu d'arcade qui se contente de faire perdre n'apprend
- * rien. La phrase courte est celle qui s'affiche en vol ; l'explication ne sert
- * qu'au moment où l'on rate.
+ * Il fallait quelque chose à attraper : un vol où l'on ne fait que filer devant
+ * la nuit n'a pas de décisions à prendre. Une étoile posée à mi-hauteur d'une
+ * bosse en demande une, et c'est là qu'est le réflexe — plonger pour la prendre
+ * coûte de la hauteur, la laisser coûte du temps sur la nuit.
+ *
+ * ELLES SE POSENT PAR RAPPORT AU SOL, PAS DANS LE CIEL. Semées à cent pixels
+ * au-dessus du relief, elles n'étaient atteignables qu'en vol : on jouait six
+ * secondes sans jamais rien ramasser. Vingt à quatre-vingts pixels, c'est la
+ * portée de l'oiseau qui GLISSE — et le vol rapporte davantage sans être la
+ * seule façon de marquer.
  */
-export const REGLES = [
-    {
-        id: 'multiples', titre: (n) => `les multiples de ${n}`,
-        parametres: [3, 4, 6, 7, 8, 9],
-        convient: (v, n) => v % n === 0,
-        pourquoi: (v, n) => `${v} n'est pas un multiple de ${n} : ${n} × ${Math.floor(v / n)} `
-            + `= ${n * Math.floor(v / n)}, et il reste ${v % n}.`,
-        tirer: (rng, n) => (rng.bool(0.5)
-            ? n * rng.int(2, 12)
-            : n * rng.int(2, 12) + rng.pick([-2, -1, 1, 2].filter(d => d % n !== 0)))
-    },
-    {
-        id: 'pairs', titre: () => 'les nombres PAIRS',
-        parametres: [0],
-        convient: (v) => v % 2 === 0,
-        pourquoi: (v) => `${v} est impair : il se termine par ${v % 10}, et un nombre pair `
-            + 'se termine par 0, 2, 4, 6 ou 8.',
-        tirer: (rng) => rng.int(10, 99)
-    },
-    {
-        id: 'plusGrand', titre: (n) => `les nombres plus grands que ${n}`,
-        parametres: [40, 50, 60, 100],
-        convient: (v, n) => v > n,
-        pourquoi: (v, n) => `${v} n'est pas plus grand que ${n}.`,
-        tirer: (rng, n) => rng.int(Math.max(1, n - 30), n + 30)
-    },
-    {
-        id: 'carres', titre: () => 'les carrés parfaits',
-        parametres: [0],
-        convient: (v) => Number.isInteger(Math.sqrt(v)),
-        pourquoi: (v) => {
-            const r = Math.floor(Math.sqrt(v));
-            return `${v} n'est le carré de personne : ${r} × ${r} = ${r * r} et `
-                + `${r + 1} × ${r + 1} = ${(r + 1) * (r + 1)}.`;
-        },
-        tirer: (rng) => (rng.bool(0.5)
-            ? rng.int(2, 12) ** 2
-            : rng.int(2, 12) ** 2 + rng.pick([-3, -2, -1, 1, 2, 3]))
-    },
-    {
-        id: 'diviseurs', titre: (n) => `les diviseurs de ${n}`,
-        parametres: [24, 36, 48, 60],
-        convient: (v, n) => v > 0 && n % v === 0,
-        pourquoi: (v, n) => `${n} ne se divise pas par ${v} : il reste ${n % v}.`,
-        tirer: (rng, n) => {
-            const vrais = [];
-            for (let d = 2; d <= n; d++) if (n % d === 0) vrais.push(d);
-            return rng.bool(0.5) ? rng.pick(vrais) : rng.int(2, Math.min(n, 30));
-        }
-    }
-];
+export const ECART_ETOILES = 250;
+export const HAUT_ETOILE_MIN = 20;
+export const HAUT_ETOILE_MAX = 80;
 
-export const regleDe = (id) => REGLES.find(r => r.id === id) || REGLES[0];
-
-/** Une consigne tirée au sort : la règle, son paramètre, et sa phrase. */
-export function tirerConsigne(rng, exclure = null) {
-    const choix = REGLES.filter(r => r.id !== exclure);
-    const r = rng.pick(choix.length ? choix : REGLES);
-    const n = rng.pick(r.parametres);
-    return { id: r.id, n, titre: r.titre(n) };
+export function semerEtoile(x, monde, graine, rng) {
+    const sol = relief(x, monde, graine);
+    return {
+        x,
+        y: sol.hauteur + HAUT_ETOILE_MIN
+            + rng.int(0, HAUT_ETOILE_MAX - HAUT_ETOILE_MIN),
+        prise: false
+    };
 }
-
-/** Le nombre convient-il à la consigne ? */
-export const convient = (consigne, valeur) =>
-    regleDe(consigne.id).convient(valeur, consigne.n);
-
-/** Pourquoi il ne convenait pas — la phrase qu'on lit après avoir raté. */
-export const pourquoiPas = (consigne, valeur) =>
-    regleDe(consigne.id).pourquoi(valeur, consigne.n);
 
 /**
- * UNE VOLÉE DE NOMBRES, dont on garantit qu'elle en contient des bons.
+ * LA NUIT QUI COURT DERRIÈRE.
  *
- * Une volée sans aucun bon nombre est une punition : le joueur ne peut rien
- * marquer et croit qu'il joue mal. On en impose donc au moins un tiers.
+ * Un mur d'ombre à vitesse constante, propre à chaque monde. Elle ne se règle
+ * pas au hasard : elle doit rattraper celui qui ne fait rien et se laisser
+ * distancer par celui qui joue bien — c'est la mesure, dans les tests, qui a
+ * fixé les six vitesses.
+ *
+ * DEUX CHOSES LA REPOUSSENT, et ce sont les deux choses qu'on veut encourager :
+ * ramasser une étoile, et franchir une frontière de monde. Le second recul est
+ * bien plus grand : c'est la respiration qu'on s'est gagnée.
  */
-export function tirerVolee(rng, consigne, combien) {
-    const r = regleDe(consigne.id);
-    const nombres = [];
-    let garde = 0;
-    while (nombres.length < combien && garde++ < combien * 40) {
-        const v = r.tirer(rng, consigne.n);
-        if (v === null || v === undefined || v < 0) continue;
-        nombres.push(v);
-    }
-    // On force le quota de bons nombres en remplaçant ceux qui manquent.
-    const voulus = Math.max(1, Math.ceil(combien / 3));
-    let bons = nombres.filter(v => r.convient(v, consigne.n)).length;
-    for (let i = 0; i < nombres.length && bons < voulus; i++) {
-        if (r.convient(nombres[i], consigne.n)) continue;
-        for (let essai = 0; essai < 60; essai++) {
-            const v = r.tirer(rng, consigne.n);
-            if (r.convient(v, consigne.n)) { nombres[i] = v; bons++; break; }
-        }
-    }
-    return nombres;
+export const RECUL_ETOILE = 90;
+export const RECUL_MONDE = 1100;
+
+export function avancerNuit(nuit, dt, monde) {
+    return nuit + (monde || MONDES[0]).nuit * dt;
 }
+
+/** La nuit a-t-elle rattrapé l'oiseau ? */
+export const rattrape = (nuit, x) => nuit >= x;
 
 /**
  * LE PAS DE PHYSIQUE — une seule touche, et tout en découle.
@@ -238,9 +259,9 @@ export const VX_MAX = 620;
  */
 export const FROTTEMENT_AIR = 0.07;
 
-export function pas(etat, dt, appuie, zone, graine) {
+export function pas(etat, dt, appuie, monde, graine) {
     const x = etat.x + etat.vx * dt;
-    const sol = relief(x, zone, graine);
+    const sol = relief(x, monde, graine);
     const g = appuie ? GRAVITE_PLONGEE : GRAVITE;
     let { y, vy, vx, auSol } = etat;
 
@@ -284,16 +305,25 @@ export function pas(etat, dt, appuie, zone, graine) {
 }
 
 /** L'état de départ : posé au sol, à vitesse de croisière. */
-export const etatInitial = (zone, graine) => ({
-    x: 0, y: relief(0, zone, graine).hauteur, vx: 190, vy: 0, auSol: true
+export const etatInitial = (monde, graine) => ({
+    x: 0, y: relief(0, monde, graine).hauteur, vx: 190, vy: 0, auSol: true
 });
 
-/** De quoi juger une partie. */
-export function qualiteAiles(distance, bons, rates) {
-    const total = bons + rates;
+/**
+ * DE QUOI JUGER UNE PARTIE.
+ *
+ * Le monde atteint passe devant la distance : c'est lui qu'on raconte à son
+ * voisin. Les points suivent la même hiérarchie — un monde franchi vaut plus
+ * que dix étoiles ramassées.
+ */
+export const POINTS_MONDE = 40;
+export const POINTS_ETOILE = 3;
+
+export function qualiteAiles(distance, monde, etoiles) {
     return {
         distance: Math.round(distance),
-        bons, rates,
-        taux: total ? Math.round((bons / total) * 100) : 100
+        monde, etoiles,
+        points: Math.max(1, (monde - 1) * POINTS_MONDE + etoiles * POINTS_ETOILE
+            + Math.round(distance / 40))
     };
 }

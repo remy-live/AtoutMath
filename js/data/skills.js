@@ -457,14 +457,6 @@ const BASE = {
         descriptor: 'Organiser une suite de d\u00e9placements dans un espace o\u00f9 l\'on ne se croise qu\'en un seul endroit, et rep\u00e9rer la case qui rend tout possible.',
         lesson: "CE N'EST PAS UN SENS INTERDIT QUI BLOQUE ICI, C'EST LE MANQUE DE PLACE. Une voiture va o\u00f9 elle veut, en avant comme en arri\u00e8re \u2014 mais elle ne saute par-dessus personne, et la voie du milieu ne fait qu'une case de large. Deux voitures qui s'y rencontrent en sens contraires n'ont aucun moyen de se d\u00e9passer. Tout le jeu tient donc dans UNE case : celle qui d\u00e9passe sous la voie. C'est le seul endroit o\u00f9 une voiture peut se garer pour en laisser passer une autre, et sans elle le probl\u00e8me n'a tout simplement pas de solution. La m\u00e9thode qui marche : ne pense pas \u00ab je fais avancer celle-ci \u00bb, pense \u00ab qui doit se ranger pour que celle-l\u00e0 passe \u00bb. Et n'engage jamais deux voitures dans la voie sans avoir gard\u00e9 la place libre. Le compte, lui, est impitoyable : d\u00e9j\u00e0 36 coups \u00e0 deux contre deux, 104 \u00e0 quatre contre quatre \u2014 parce que chaque croisement co\u00fbte tout un aller-retour par la place de d\u00e9gagement."
     },
-    'num.aile.reconnaitre': {
-        label: 'Reconna\u00eetre un nombre \u00e0 vue',
-        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
-        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
-        prereqs: [],
-        descriptor: 'D\u00e9cider imm\u00e9diatement si un nombre v\u00e9rifie une propri\u00e9t\u00e9 \u2014 multiple, diviseur, carr\u00e9, parit\u00e9, comparaison \u2014 sans poser d\'op\u00e9ration.',
-        lesson: "IL Y A DES CHOSES QU'ON NE CALCULE PAS, ON LES RECONNA\u00ceT. Savoir que 63 est un multiple de 7 ne demande pas de poser une division : c'est 7 \u00d7 9, et cela se voit. Cette reconnaissance imm\u00e9diate est ce qui lib\u00e8re la t\u00eate pour le reste du probl\u00e8me \u2014 un \u00e9l\u00e8ve qui doit calculer 63 \u00f7 7 au milieu d'une simplification de fraction a d\u00e9j\u00e0 perdu le fil. LES QUATRE FAMILLES QUI SERVENT TOUS LES JOURS : les MULTIPLES (les tables, lues \u00e0 l'envers), les DIVISEURS (\u00ab par quoi puis-je couper 24 ? \u00bb, la question de toute simplification), les CARR\u00c9S \u2014 1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144 \u2014 qu'on retrouvera dans Pythagore et dans les racines, et la PARIT\u00c9, qui se lit sur le dernier chiffre et sur lui seul. Il n'y a pas de m\u00e9thode \u00e0 apprendre pour cela : il y a des rencontres \u00e0 multiplier, jusqu'\u00e0 ce que la r\u00e9ponse arrive avant la question."
-    },
     'num.logique.tasuko': {
         label: 'Le tasuko : d\u00e9couper une grille en sommes',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
