@@ -2018,11 +2018,15 @@ export const calculExercises = [
         activityId: 'crush', skills: ['num.add.entiers', 'num.mult.table.*'],
         params: { mode: 'addition', difficulty: 'progressive' },
         paramSchema: [
-            { id: 'mode', type: 'select', label: 'Opération', options: ['addition', 'multiplication'], default: 'addition' },
-            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['progressive', 'difficile'], default: 'progressive' }
+            {
+                id: 'mode', type: 'select', label: 'Opération', echelle: true,
+                aide: 'L\'opération choisie est écrite partout dans le jeu — dans le jeton à côté de la cible, dans le calcul en cours, et entre deux gemmes de la chaîne. Rémy : « pour la cible, on ne sait pas si on doit additionner ou multiplier ».',
+                options: ['addition', 'multiplication'], default: 'addition'
+            },
+            { id: 'difficulty', type: 'select', label: 'Difficulté', echelle: true, options: ['progressive', 'difficile'], default: 'progressive' }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
-        instruction: "Glisse ton doigt sur les blocs adjacents pour atteindre la cible."
+        instruction: "Glisse ton doigt d'une gemme à l'autre, en passant par des cases VOISINES, pour atteindre la cible. Le jeton coloré à côté de la cible dit l'opération : + pour additionner, × pour multiplier — et le signe se pose entre chaque paire de gemmes pendant que tu traces. Le calcul s'écrit en entier sous la cible : il devient rouge dès que tu dépasses. Une erreur coûte deux secondes, une réussite en rend autant que ta chaîne compte de gemmes."
     },
     {
         // LE BOUTON SCHÉMA EST L'EXERCICE. Un problème ne se rate presque

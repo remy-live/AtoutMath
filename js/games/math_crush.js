@@ -1,7 +1,38 @@
+// MATH CRUSH — le plateau, les gemmes et le bandeau.
+//
+// Rémy, banc d'essai : « C'est bizarre comment apparaît le plateau. Je trouve
+// les chiffres non centrés dans les cases. Pour la cible, on ne sait pas si on
+// doit additionner ou multiplier. J'aimerais bien un jeu plus visuel et plus
+// joli. » Quatre reproches, quatre réponses.
+//
+// LE PLATEAU APPARAISSAIT BIZARREMENT parce que les gemmes tombaient de mille
+// pixels au-dessus d'un canevas qui n'avait pas de bord : on les voyait
+// traverser tout l'écran, en désordre, avant de se ranger. Le plateau a
+// maintenant un CADRE — un panneau sombre aux coins arrondis — et l'on dessine
+// les gemmes DEDANS, à la découpe : elles surgissent du haut du panneau, en
+// cascade colonne par colonne, comme dans n'importe quel jeu d'alignement.
+//
+// LES CHIFFRES N'ÉTAIENT PAS CENTRÉS, et ce n'était pas une illusion :
+// `textBaseline = 'middle'` centre la BOÎTE D'EM de la police, pas l'encre du
+// chiffre — un « 4 » et un « 8 » n'y tombent pas au même endroit. On mesure
+// donc l'encre elle-même (`actualBoundingBoxAscent/Descent`) et l'on centre
+// dessus. À cela s'ajoutait le relief : le chiffre était posé au milieu de la
+// FACE alors que l'œil centre sur la gemme ENTIÈRE, ombre comprise.
+//
+// ON NE SAVAIT PAS S'IL FALLAIT ADDITIONNER OU MULTIPLIER. C'était vrai, et
+// c'était grave : « Cible : 7 » sur un plateau de nombres se lit aussi bien
+// dans un sens que dans l'autre. L'opération se dit maintenant TROIS fois — un
+// jeton coloré à côté de la cible, l'expression en cours écrite en toutes
+// lettres (« 3 + 4 = 7 »), et le signe posé ENTRE deux gemmes de la chaîne
+// pendant qu'on la trace.
+
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { regTimeout } from '../core/timers.js';
+import {
+    operationDe, valeurChaine, expressionChaine, depasse, disposerPlateau
+} from '../core/mathCrush.js';
 
 export class MathCrush extends BaseGame {
     constructor(container, isDemo, params, gameId) {
@@ -27,14 +58,19 @@ export class MathCrush extends BaseGame {
         this.lastTime = Date.now();
         this.score = 0;
         
+        // TROIS TONS PAR GEMME, et non un seul : le clair pour le haut, le
+        // plein pour le bas, le sombre pour le socle. C'est ce dégradé qui
+        // donne du volume — un aplat de couleur reste un carré, une gemme
+        // éclairée par le haut est un objet.
         this.blockColors = [
-            { bg: '#f43f5e', shadow: '#e11d48', text: '#fff' },
-            { bg: '#8b5cf6', shadow: '#7c3aed', text: '#fff' },
-            { bg: '#3b82f6', shadow: '#2563eb', text: '#fff' },
-            { bg: '#10b981', shadow: '#059669', text: '#fff' },
-            { bg: '#f59e0b', shadow: '#d97706', text: '#fff' },
-            { bg: '#0ea5e9', shadow: '#0284c7', text: '#fff' }
+            { bg: '#f43f5e', haut: '#fda4af', shadow: '#be123c', text: '#fff' },
+            { bg: '#8b5cf6', haut: '#c4b5fd', shadow: '#6d28d9', text: '#fff' },
+            { bg: '#3b82f6', haut: '#93c5fd', shadow: '#1d4ed8', text: '#fff' },
+            { bg: '#10b981', haut: '#6ee7b7', shadow: '#047857', text: '#fff' },
+            { bg: '#f59e0b', haut: '#fcd34d', shadow: '#b45309', text: '#fff' },
+            { bg: '#0ea5e9', haut: '#7dd3fc', shadow: '#0369a1', text: '#fff' }
         ];
+        this.op = operationDe(this.mode);
         
         this.initGrid();
         this.generateTarget();
@@ -100,7 +136,7 @@ export class MathCrush extends BaseGame {
         window.addEventListener('resize', onResize);
         
         this.bindEvents();
-        
+
         this.cleanupEventsResize = () => {
             window.removeEventListener('resize', onResize);
         };
@@ -154,8 +190,13 @@ export class MathCrush extends BaseGame {
                 col.push({
                     val: this.getRandomValue(),
                     color: this.getRandomColor(),
-                    x: 0, // will be computed in draw
-                    y: -1000, // start high above to fall down initially
+                    x: 0,
+                    // `null` veut dire « pas encore née » : la hauteur de
+                    // départ dépend de la taille des cases, qu'on ne connaît
+                    // qu'au premier dessin. `chute` est cette hauteur, en
+                    // cases — décalée par colonne pour que le plateau se
+                    // remplisse en CASCADE plutôt qu'en bloc.
+                    y: null, chute: 1.4 + r * 0.35 + c * 0.5,
                     targetY: 0,
                     vy: 0,
                     id: Math.random().toString(36).substr(2, 9)
@@ -307,22 +348,22 @@ export class MathCrush extends BaseGame {
         };
     }
 
+    /** Les valeurs de la chaîne en cours, dans l'ordre où on les a prises. */
+    valeursChaine() {
+        return this.currentPath
+            .map(p => this.grid[p.c] && this.grid[p.c][p.r])
+            .filter(Boolean)
+            .map(b => b.val);
+    }
+
     getCurrentSum() {
-        if (this.currentPath.length === 0) return 0;
-        let sum = this.mode === 'addition' ? 0 : 1;
-        this.currentPath.forEach(p => {
-            const block = this.grid[p.c][p.r];
-            if (block) {
-                if (this.mode === 'addition') sum += block.val;
-                else sum *= block.val;
-            }
-        });
-        return sum;
+        return valeurChaine(this.valeursChaine(), this.mode);
     }
 
     evaluatePath() {
         if (this.currentPath.length === 0) return;
-        const sum = this.getCurrentSum();
+        const valeurs = this.valeursChaine();
+        const sum = valeurChaine(valeurs, this.mode);
         
         if (sum === this.targetValue) {
             // Success !
@@ -355,7 +396,7 @@ export class MathCrush extends BaseGame {
                         val: this.getRandomValue(),
                         color: this.getRandomColor(),
                         x: 0,
-                        y: -(this.blockSize * (i + 1) + 200), // Spawn above
+                        y: null, chute: 1.1 + i * 0.9,
                         targetY: 0,
                         vy: 0,
                         id: Math.random().toString(36).substr(2, 9)
@@ -388,7 +429,11 @@ export class MathCrush extends BaseGame {
                     questionText: `Faire ${this.targetValue}`,
                     input: sum,
                     expected: this.targetValue,
-                    customMessage: `Ta chaîne ${this.mode === 'addition' ? 'fait' : 'donne'} ${sum} — il fallait ${this.targetValue}.`
+                    // ON RÉÉCRIT LE CALCUL EN ENTIER. « Ta chaîne fait 9 » ne
+                    // dit pas OÙ l'on s'est trompé ; « 4 + 5 = 9 — il fallait
+                    // 12 » se relit, et l'écart se voit.
+                    customMessage: `${expressionChaine(valeurs, this.mode)} — il fallait `
+                        + `${this.targetValue}.`
                 });
             }
         }
@@ -433,14 +478,30 @@ export class MathCrush extends BaseGame {
                 const targetY = this.offsetY + (this.rows - 1 - r) * this.blockSize;
                 block.targetY = targetY;
                 block.x = this.offsetX + c * this.blockSize;
-                
-                if (block.y < targetY) {
-                    block.vy += 2.5; // Gravity
+                // Née juste au-dessus du panneau : la découpe la cache jusqu'à
+                // ce qu'elle y entre, et l'on ne la voit pas traverser l'écran.
+                if (block.y === null) {
+                    block.y = this.offsetY - this.blockSize * block.chute - this.blockSize;
+                }
+
+                // LA PESANTEUR SE MESURE EN CASES, PAS EN PIXELS. À 2,5 pixels
+                // par image, une gemme de téléphone (30 px) tombait comme une
+                // pierre et une gemme de bureau (80 px) flottait : le jeu
+                // n'avait pas le même toucher d'un écran à l'autre.
+                const g = this.blockSize * 0.035;
+                if (block.y < targetY || block.vy < 0) {
+                    block.vy += g;
                     block.y += block.vy;
-                    if (block.y >= targetY) {
-                        block.y = targetY; 
-                        block.vy *= -0.3; // Bounce
-                        if (Math.abs(block.vy) < 2) block.vy = 0;
+                    if (block.y >= targetY && block.vy > 0) {
+                        block.y = targetY;
+                        // UN VRAI REBOND, et non un arrêt net : une gemme qui
+                        // touche le fond et remonte d'un cheveu a du poids.
+                        if (block.vy > g * 3) {
+                            block.vy = -block.vy * 0.26;
+                            block.y = targetY - 0.5;
+                        } else {
+                            block.vy = 0;
+                        }
                     }
                 } else if (block.y > targetY) {
                     block.y = targetY;
@@ -465,6 +526,206 @@ export class MathCrush extends BaseGame {
         this.scoreTexts = this.scoreTexts.filter(st => st.life > 0);
     }
 
+    /**
+     * UN TEXTE VRAIMENT CENTRÉ SUR SON POINT.
+     *
+     * `textBaseline = 'middle'` centre la boîte d'em de la police — celle qui
+     * contient les accents et les jambages —, pas l'encre du glyphe. Sur un
+     * chiffre, qui n'a ni l'un ni l'autre, cela le pose visiblement trop haut :
+     * c'est le « chiffres non centrés » de Rémy. On mesure donc le haut et le
+     * bas de l'ENCRE, et l'on centre là-dessus.
+     */
+    texteCentre(txt, cx, cy, police, couleur) {
+        const ctx = this.ctx;
+        ctx.font = police;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        const m = ctx.measureText(txt);
+        const haut = m.actualBoundingBoxAscent || 0;
+        const bas = m.actualBoundingBoxDescent || 0;
+        ctx.fillStyle = couleur;
+        ctx.fillText(txt, cx, cy + (haut - bas) / 2);
+    }
+
+    /**
+     * UNE GEMME : un socle sombre, une face en dégradé, un reflet en haut.
+     *
+     * Le relief tient en trois traits et c'est ce qui fait qu'on voit un objet
+     * posé et non un carré peint. Sélectionnée, la gemme S'ENFONCE — elle vient
+     * s'asseoir sur son socle — et le chiffre descend avec elle : c'est le
+     * geste d'un bouton qu'on presse, et il se comprend sans légende.
+     */
+    dessinerGemme(block, choisie, trop, indice) {
+        const ctx = this.ctx;
+        const marge = Math.max(2, Math.round(this.blockSize * 0.07));
+        const cote = this.blockSize - marge * 2;
+        const socle = Math.max(3, Math.round(this.blockSize * 0.09));
+        const bx = block.x + marge;
+        const by = block.y + marge + (choisie ? socle : 0);
+        const rayon = Math.max(4, Math.round(cote * 0.22));
+
+        // Le socle : la même forme, décalée vers le bas.
+        ctx.fillStyle = block.color.shadow;
+        ctx.beginPath();
+        ctx.roundRect(bx, block.y + marge + socle, cote, cote, rayon);
+        ctx.fill();
+
+        // La face, éclairée par le haut.
+        const g = ctx.createLinearGradient(0, by, 0, by + cote);
+        g.addColorStop(0, block.color.haut);
+        g.addColorStop(0.55, block.color.bg);
+        g.addColorStop(1, block.color.bg);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, cote, cote, rayon);
+        ctx.fill();
+
+        // Le reflet : une bande claire sur le tiers supérieur, à peine visible.
+        ctx.fillStyle = 'rgba(255,255,255,.22)';
+        ctx.beginPath();
+        ctx.roundRect(bx + cote * 0.12, by + cote * 0.1, cote * 0.76, cote * 0.26,
+            rayon * 0.7);
+        ctx.fill();
+
+        if (choisie || indice) {
+            ctx.strokeStyle = choisie ? (trop ? '#ef4444' : '#ffffff') : '#fbbf24';
+            ctx.lineWidth = Math.max(3, this.blockSize * 0.06);
+            ctx.beginPath();
+            ctx.roundRect(bx, by, cote, cote, rayon);
+            ctx.stroke();
+        }
+
+        this.texteCentre(String(block.val), bx + cote / 2, by + cote / 2,
+            `900 ${Math.round(cote * 0.52)}px Outfit, Arial, sans-serif`,
+            block.color.text);
+    }
+
+    /**
+     * LA CHAÎNE, ET SON SIGNE ENTRE CHAQUE GEMME.
+     *
+     * C'est la réponse la plus directe au « on ne sait pas si on doit
+     * additionner ou multiplier » : pendant qu'on trace, le signe est POSÉ sur
+     * le trait, entre les deux cases qu'il relie. On ne peut plus se tromper
+     * d'opération, on la voit se faire.
+     */
+    centresChaine() {
+        const socle = Math.max(3, Math.round(this.blockSize * 0.09));
+        return this.currentPath.map(p => {
+            const b = this.grid[p.c][p.r];
+            return { x: b.x + this.blockSize / 2, y: b.y + this.blockSize / 2 + socle };
+        });
+    }
+
+    /**
+     * LE LIEN SE DESSINE SOUS LES GEMMES, LES SIGNES PAR-DESSUS.
+     *
+     * Un trait posé sur les gemmes barrait les chiffres qu'on vient justement
+     * d'additionner. Sous elles, il ne se voit que dans les interstices — ce
+     * qui suffit largement à lire le chemin — et les chiffres restent lisibles.
+     * Les signes, eux, doivent rester au-dessus : ils sont l'information.
+     */
+    dessinerLien(trop) {
+        if (this.currentPath.length < 2) return;
+        const ctx = this.ctx;
+        const centres = this.centresChaine();
+        ctx.beginPath();
+        ctx.strokeStyle = trop ? 'rgba(239,68,68,.95)' : 'rgba(255,255,255,.95)';
+        ctx.lineWidth = Math.max(6, this.blockSize * 0.22);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        centres.forEach((c, i) => (i ? ctx.lineTo(c.x, c.y) : ctx.moveTo(c.x, c.y)));
+        ctx.stroke();
+    }
+
+    dessinerSignes(trop) {
+        if (this.currentPath.length < 2) return;
+        const ctx = this.ctx;
+        const centres = this.centresChaine();
+        const rayon = Math.max(10, this.blockSize * 0.21);
+        for (let i = 1; i < centres.length; i++) {
+            const mx = (centres[i - 1].x + centres[i].x) / 2;
+            const my = (centres[i - 1].y + centres[i].y) / 2;
+            ctx.fillStyle = trop ? '#ef4444' : '#ffffff';
+            ctx.beginPath();
+            ctx.arc(mx, my, rayon, 0, Math.PI * 2);
+            ctx.fill();
+            this.texteCentre(this.op.signe, mx, my,
+                `900 ${Math.round(rayon * 1.5)}px Outfit, Arial, sans-serif`,
+                trop ? '#ffffff' : '#0f172a');
+        }
+    }
+
+    /**
+     * LE BANDEAU : l'opération, la cible, le calcul en cours et le temps.
+     *
+     * L'OPÉRATION EST DANS UN JETON, à gauche de la cible, de la couleur du
+     * mode : elle se lit avant même le nombre. Et sous la cible on n'écrit plus
+     * un total nu mais le CALCUL — « 3 + 4 = 7 » —, qui dit du même coup ce
+     * qu'on est en train de faire et où l'on en est.
+     */
+    dessinerBandeau(w, P, panneau, valeurs, sum, trop) {
+        const ctx = this.ctx;
+        const teinte = this.mode === 'multiplication' ? '#7c3aed' : '#2563eb';
+        const hb = P.bandeau;
+
+        // LA JAUGE DE TEMPS COURT SUR TOUT LE HAUT. Un chiffre qui décroît se
+        // lit ; une barre qui se vide se SENT, et c'est ce qu'on veut d'un jeu
+        // à chronomètre. Elle rougit dans les dix dernières secondes.
+        const part = Math.max(0, Math.min(1, this.timeLeft / 60));
+        const hj = Math.max(5, Math.round(hb * 0.07));
+        const yj = Math.round(hj * 0.6);
+        ctx.fillStyle = 'rgba(148,163,184,.25)';
+        ctx.beginPath();
+        ctx.roundRect(panneau.x, yj, panneau.w, hj, hj / 2);
+        ctx.fill();
+        ctx.fillStyle = this.timeLeft <= 10 ? '#ef4444' : '#10b981';
+        ctx.beginPath();
+        ctx.roundRect(panneau.x, yj, Math.max(hj, panneau.w * part), hj, hj / 2);
+        ctx.fill();
+
+        const yPastille = yj + hj + Math.round(hb * 0.26);
+        const rP = Math.round(hb * 0.21);
+        const titre = `Fais ${this.targetValue}`;
+        const policeTitre = `900 ${Math.round(rP * 1.35)}px Outfit, Arial, sans-serif`;
+        ctx.font = policeTitre;
+        const largeurTitre = ctx.measureText(titre).width;
+        const ecart = rP * 0.55;
+        const total = rP * 2 + ecart + largeurTitre;
+        const xJeton = Math.round(w / 2 - total / 2 + rP);
+
+        ctx.fillStyle = teinte;
+        ctx.beginPath();
+        ctx.arc(xJeton, yPastille, rP, 0, Math.PI * 2);
+        ctx.fill();
+        this.texteCentre(this.op.signe, xJeton, yPastille,
+            `900 ${Math.round(rP * 1.5)}px Outfit, Arial, sans-serif`, '#ffffff');
+
+        const encre = getComputedStyle(document.documentElement)
+            .getPropertyValue('--text-main').trim() || '#0f172a';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = policeTitre;
+        const m = ctx.measureText(titre);
+        ctx.fillStyle = encre;
+        ctx.fillText(titre, xJeton + rP + ecart,
+            yPastille + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+
+        // LA LIGNE DU DESSOUS SE POSE SOUS LE JETON, à un écart fixe : au
+        // milieu de l'espace libre, elle s'éloignait de la cible dès qu'il y
+        // avait de la hauteur à perdre, et l'on ne lisait plus les deux
+        // ensemble. Elle ne descend jamais sur le plateau.
+        const ySous = Math.round(Math.min(yPastille + rP * 1.7, panneau.y - rP * 0.35));
+        const petite = `700 ${Math.round(rP * 0.72)}px Outfit, Arial, sans-serif`;
+        if (valeurs.length) {
+            this.texteCentre(expressionChaine(valeurs, this.mode), w / 2, ySous,
+                `800 ${Math.round(rP * 0.85)}px Outfit, Arial, sans-serif`,
+                trop ? '#ef4444' : teinte);
+        } else {
+            this.texteCentre(`${this.op.consigne} · ${this.score} pts`, w / 2, ySous,
+                petite, 'rgba(100,116,139,.95)');
+        }
+    }
+
     draw() {
         if(!this.ctx) return;
         // LE CANEVAS DOIT AVOIR LA FORME DE SA BOÎTE.
@@ -486,20 +747,13 @@ export class MathCrush extends BaseGame {
         const h = this.canvas.height;
         this.ctx.clearRect(0, 0, w, h);
 
-        // Compute layout
-        const maxBlockW = w / this.cols;
-        // Leave space at top for HUD (Target & Time) and margin at bottom
-        const hudH = 100;
-        const bottomMargin = 40;
-        const maxBlockH = (h - hudH - bottomMargin) / this.rows;
-        this.blockSize = Math.floor(Math.min(maxBlockW, maxBlockH));
-        if (this.blockSize < 20) this.blockSize = 20;
-        
-        this.offsetX = (w - (this.blockSize * this.cols)) / 2;
-        this.offsetY = hudH + (h - hudH - bottomMargin - (this.blockSize * this.rows)) / 2;
+        const P = disposerPlateau(w, h, this.cols, this.rows);
+        this.blockSize = P.cote;
+        this.offsetX = P.x;
+        this.offsetY = P.y;
 
         this.updatePhysics();
-        
+
         if (this.helpBtn) {
             if (this.score < 20 || this.hintPath || this.isDemo) {
                 this.helpBtn.style.opacity = '0.5';
@@ -510,91 +764,54 @@ export class MathCrush extends BaseGame {
             }
         }
 
-        // Get actual CSS color
-        const rootStyle = getComputedStyle(document.documentElement);
-        const textColorMain = rootStyle.getPropertyValue('--text-main').trim() || '#333';
-        const textColorMuted = rootStyle.getPropertyValue('--text-muted').trim() || '#666';
+        const valeurs = this.valeursChaine();
+        const sum = valeurChaine(valeurs, this.mode);
+        const trop = depasse(valeurs, this.targetValue, this.mode);
 
-        // Draw HUD
-        this.ctx.fillStyle = textColorMain;
-        this.ctx.font = 'bold 24px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(`Cible : ${this.targetValue}`, w/2, 40);
-        
-        const sum = this.getCurrentSum();
-        this.ctx.font = 'bold 20px Arial';
-        const isOver = (this.mode === 'addition' && sum > this.targetValue) || (this.mode === 'multiplication' && sum > this.targetValue);
-        this.ctx.fillStyle = isOver ? '#ef4444' : '#3b82f6';
-        if (this.currentPath.length > 0) {
-            const op = this.mode === 'addition' ? 'Somme' : 'Produit';
-            this.ctx.fillText(`${op} : ${sum}`, w/2, 75);
-        } else {
-            this.ctx.fillStyle = textColorMuted;
-            this.ctx.fillText(`Score: ${this.score}  |  Temps: ${Math.ceil(this.timeLeft)}s`, w/2, 75);
-        }
+        // LE PANNEAU, ET LA DÉCOUPE. Tout le plateau se dessine à l'intérieur :
+        // une gemme qui tombe n'existe qu'à partir du moment où elle entre dans
+        // le cadre, et c'est ce qui remplace la pluie de carrés d'avant.
+        const pad = Math.round(P.cote * 0.14);
+        const panneau = { x: P.x - pad, y: P.y - pad, w: P.w + pad * 2, h: P.h + pad * 2 };
+        const rayon = Math.round(P.cote * 0.28);
 
-        // Draw Blocks
+        // Le bandeau se dessine EN CONNAISSANT le panneau : il cale sa jauge sur
+        // sa largeur et sa ligne du bas juste au-dessus de son bord, au lieu de
+        // venir s'asseoir dessus.
+        this.dessinerBandeau(w, P, panneau, valeurs, sum, trop);
+
+        const fond = this.ctx.createLinearGradient(0, panneau.y, 0, panneau.y + panneau.h);
+        fond.addColorStop(0, '#1e293b');
+        fond.addColorStop(1, '#0f172a');
+        this.ctx.fillStyle = fond;
+        this.ctx.beginPath();
+        this.ctx.roundRect(panneau.x, panneau.y, panneau.w, panneau.h, rayon);
+        this.ctx.fill();
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.roundRect(panneau.x, panneau.y, panneau.w, panneau.h, rayon);
+        this.ctx.clip();
+
+        this.dessinerLien(trop);
         for (let c = 0; c < this.cols; c++) {
             for (let r = 0; r < this.rows; r++) {
                 const block = this.grid[c][r];
-                const isSelected = this.currentPath.some(p => p.c === c && p.r === r);
-                const isLast = this.currentPath.length > 0 && this.currentPath[this.currentPath.length-1].c === c && this.currentPath[this.currentPath.length-1].r === r;
-                
-                const margin = 4;
-                const bs = this.blockSize - margin * 2;
-                const bx = block.x + margin;
-                const by = block.y + margin;
-                const shadowDepth = 4;
-                
-                // Draw shadow
-                this.ctx.fillStyle = isSelected ? block.color.bg : block.color.shadow;
-                this.ctx.beginPath();
-                this.ctx.roundRect(bx, by + shadowDepth, bs, bs, 8);
-                this.ctx.fill();
-
-                // Draw main block
-                this.ctx.fillStyle = block.color.bg;
-                this.ctx.beginPath();
-                this.ctx.roundRect(bx, isSelected ? by + shadowDepth : by, bs, bs, 8);
-                this.ctx.fill();
-                
-                // Outline if selected or hint
-                if (isSelected) {
-                    this.ctx.strokeStyle = isOver ? '#ef4444' : '#fff';
-                    this.ctx.lineWidth = 4;
-                    this.ctx.stroke();
-                } else if (this.hintPath && this.hintPath.some(p => p.c === c && p.r === r)) {
-                    this.ctx.strokeStyle = '#f59e0b';
-                    this.ctx.lineWidth = 4;
-                    this.ctx.stroke();
-                }
-                
-                // Number
-                this.ctx.fillStyle = block.color.text;
-                this.ctx.font = `bold ${Math.floor(bs/2.2)}px Arial`;
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(block.val, bx + bs/2, (isSelected ? by + shadowDepth : by) + bs/2);
+                const choisie = this.currentPath.some(p => p.c === c && p.r === r);
+                this.dessinerGemme(block, choisie, trop,
+                    this.hintPath && this.hintPath.some(p => p.c === c && p.r === r));
             }
         }
+        this.dessinerSignes(trop);
+        this.ctx.restore();
 
-        // Draw connecting line
-        if (this.currentPath.length > 1) {
-            this.ctx.beginPath();
-            this.ctx.strokeStyle = isOver ? '#ef4444' : '#fff';
-            this.ctx.lineWidth = 8;
-            this.ctx.lineCap = 'round';
-            this.ctx.lineJoin = 'round';
-            
-            this.currentPath.forEach((p, idx) => {
-                const block = this.grid[p.c][p.r];
-                const cx = block.x + this.blockSize/2;
-                const cy = block.y + this.blockSize/2 + 4; // Shifted down for active state
-                if (idx === 0) this.ctx.moveTo(cx, cy);
-                else this.ctx.lineTo(cx, cy);
-            });
-            this.ctx.stroke();
-        }
+        // Le liseré du panneau se pose APRÈS la découpe : par-dessus les
+        // gemmes, il rattrape le coin arrondi qu'elles débordent.
+        this.ctx.strokeStyle = 'rgba(148,163,184,.35)';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.roundRect(panneau.x, panneau.y, panneau.w, panneau.h, rayon);
+        this.ctx.stroke();
 
         // Draw Particles
         this.particles.forEach(p => {
@@ -606,28 +823,37 @@ export class MathCrush extends BaseGame {
         });
         this.ctx.globalAlpha = 1;
 
-        // Draw Score Texts
+        // Les points gagnés, qui montent en s'effaçant. Le contour blanc les
+        // détache du plateau sombre comme des gemmes.
         this.scoreTexts.forEach(st => {
-            this.ctx.fillStyle = '#10b981';
             this.ctx.globalAlpha = st.life;
-            this.ctx.font = 'bold 24px Arial';
-            this.ctx.strokeStyle = '#fff';
-            this.ctx.lineWidth = 3;
+            this.ctx.font = '900 26px Outfit, Arial, sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'alphabetic';
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 4;
             this.ctx.strokeText(st.text, st.x, st.y);
+            this.ctx.fillStyle = '#10b981';
             this.ctx.fillText(st.text, st.x, st.y);
         });
         this.ctx.globalAlpha = 1;
 
-        // Draw Game Over overlay
+        // LA FIN DE PARTIE EST UNE CARTE, pas un voile noir avec du texte dessus.
         if (this.timeLeft <= 0 && !this.isDemo) {
-            this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            this.ctx.fillRect(0,0,w,h);
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 40px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText("Temps Écoulé !", w/2, h/2 - 20);
-            this.ctx.font = 'bold 24px Arial';
-            this.ctx.fillText(`Score Final : ${this.score}`, w/2, h/2 + 30);
+            this.ctx.fillStyle = 'rgba(15,23,42,.72)';
+            this.ctx.fillRect(0, 0, w, h);
+            const cw = Math.min(w * 0.8, 420), ch = Math.min(h * 0.4, 190);
+            const cx = (w - cw) / 2, cy = (h - ch) / 2;
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            this.ctx.roundRect(cx, cy, cw, ch, 22);
+            this.ctx.fill();
+            this.texteCentre('⏳', w / 2, cy + ch * 0.26,
+                '400 40px Outfit, Arial, sans-serif', '#0f172a');
+            this.texteCentre('Temps écoulé', w / 2, cy + ch * 0.58,
+                '900 30px Outfit, Arial, sans-serif', '#0f172a');
+            this.texteCentre(`${this.score} points`, w / 2, cy + ch * 0.83,
+                '700 20px Outfit, Arial, sans-serif', '#64748b');
         }
     }
 
