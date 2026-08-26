@@ -24,8 +24,10 @@
 // lui redemander vingt fois par séance.
 
 import { state } from '../core/state.js';
-import { exercices, estRevisable, getExerciseById } from '../data/catalog.js';
-import { filterByStatus, accessOf } from '../core/access.js';
+import {
+    exercices, estRevisable, getExerciseById, filterByStatus
+} from '../data/catalog.js';
+import { accessOf } from '../core/gameAccess.js';
 import { planDuJour } from '../core/aujourdhui.js';
 import { startErrorReview } from '../core/remediation.js';
 import { openGameLayer } from '../games/engine.js';
