@@ -89,3 +89,57 @@ export function peindreAuGlisse(racine, { selecteur, estPleine, appliquer, bloqu
         window.removeEventListener('pointercancel', fin);
     };
 }
+
+/**
+ * RELIER DEUX CASES D'UN SEUL GESTE — appuyer sur l'une, relâcher sur l'autre.
+ *
+ * Tasuko ne colorie pas : il pose des DOMINOS. Le geste naturel n'est donc pas
+ * de balayer mais de tirer un trait de la première case à sa voisine. Rémy :
+ * « on pourrait aussi cliquer sans relâcher et glisser plutôt que cliquer et
+ * cliquer (on peut garder les deux comportements) » — les deux, justement.
+ *
+ * Et les deux tiennent dans une seule règle, sans rien dupliquer : on annonce
+ * la case sous l'appui, puis celle sous le relâchement SI elle diffère. Un clic
+ * franc n'annonce donc qu'une case — c'est le premier temps du clic-clic — et
+ * un glissé en annonce deux, ce qui referme la paire immédiatement.
+ *
+ * @param {Element} racine
+ * @param {Object} opts
+ * @param {string} opts.selecteur   - le sélecteur d'une case
+ * @param {(el:Element)=>void} opts.toucher - ce que fait un contact sur une case
+ * @param {()=>boolean} [opts.bloque]
+ * @returns {Function} de quoi débrancher
+ */
+export function relierAuGlisse(racine, { selecteur, toucher, bloque }) {
+    if (!racine) return () => { };
+    let presse = null;
+    const caseSous = (ev) => {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        return el && el.closest ? el.closest(selecteur) : null;
+    };
+    const debut = (ev) => {
+        if (bloque && bloque()) return;
+        if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+        const el = caseSous(ev);
+        if (!el) return;
+        ev.preventDefault();
+        presse = el;
+        toucher(el);
+    };
+    const fin = (ev) => {
+        if (!presse) return;
+        const el = caseSous(ev);
+        const depart = presse;
+        presse = null;
+        // Relâcher AILLEURS ferme la paire ; relâcher au même endroit laisse la
+        // case simplement choisie, et c'est le clic-clic d'avant.
+        if (el && el !== depart && !(bloque && bloque())) toucher(el);
+    };
+    racine.addEventListener('pointerdown', debut);
+    window.addEventListener('pointerup', fin);
+    window.addEventListener('pointercancel', () => { presse = null; });
+    return () => {
+        racine.removeEventListener('pointerdown', debut);
+        window.removeEventListener('pointerup', fin);
+    };
+}

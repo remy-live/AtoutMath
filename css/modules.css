@@ -4832,9 +4832,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-teinte--gris, .fx-teinte--nb { filter: grayscale(1); }
 
 .fx-mc-titre { position: absolute; font-weight: 800; color: #2d3748; pointer-events: none; }
-.fx-mc-def {
-    position: absolute; color: #6b7280; line-height: 1.2; pointer-events: none;
-}
+/* LES DÉFINITIONS COULENT DANS LEUR COLONNE au lieu d'être posées une par une.
+   Rémy : « les définitions se superposent » — elles l'étaient à un pas fixe,
+   et celles qui passent à la ligne écrasaient la suivante. Dans une boîte, le
+   navigateur les empile, ce qu'aucun calcul de notre part ne fera mieux. */
+.fx-mc-col { position: absolute; pointer-events: none; }
+.fx-mc-col .fx-mc-titre { position: static; display: block; margin-bottom: .35em; }
+.fx-mc-def { color: #6b7280; line-height: 1.2; pointer-events: none; margin-bottom: .18em; }
 
 /* --- LES JEUX DE RÉCOMPENSE ------------------------------------------------
    Un jeu n'est pas une étape de plus : il se voit AUTREMENT. Pastille dorée

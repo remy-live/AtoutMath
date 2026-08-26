@@ -28,6 +28,9 @@ import {
     creerTasuko, casesCouvertes, sommesEmployees, chevauchements, sommesEnDouble,
     estResoluTasuko, diagnostic, prochaineAddition, qualiteTasuko, paireDe, TAILLES_TASUKO
 } from '../core/tasuko.js';
+// LE GESTE, EN PLUS DU CLIC. Rémy : « on pourrait aussi cliquer sans relâcher
+// et glisser plutôt que cliquer et cliquer (on peut garder les deux) ».
+import { relierAuGlisse } from '../core/activities/glisser.js';
 
 const COMPETENCE = 'num.logique.tasuko';
 
@@ -142,6 +145,14 @@ class Tasuko extends BaseGame {
                 </div>
             </div>`;
         this.grilleEl = this.container.querySelector('#tk-grille');
+        // APPUYER SUR UNE CASE, RELÂCHER SUR SA VOISINE pose la paire d'un
+        // seul geste. Branché sur la GRILLE, une fois : les cases sont
+        // redessinées à chaque coup, un écouteur par case s'en irait avec elles.
+        this.arreterGeste = relierAuGlisse(this.grilleEl, {
+            selecteur: '.tk-case',
+            toucher: (el) => this.toucher(Number(el.dataset.c)),
+            bloque: () => this.isDemo || this.fini
+        });
         this.calqueEl = this.container.querySelector('#tk-calque');
         this.sommesEl = this.container.querySelector('#tk-sommes');
         this.noteEl = this.container.querySelector('#tk-note');
@@ -185,7 +196,9 @@ class Tasuko extends BaseGame {
             return `<button type="button" class="${classes.join(' ')}" data-c="${c}">${v}</button>`;
         }).join('')).join('');
         this.grilleEl.querySelectorAll('[data-c]').forEach(el => {
-            el.onclick = () => this.toucher(Number(el.dataset.c));
+            // Le clavier et les lecteurs d'écran gardent leur clic ; le geste,
+            // lui, est branché une fois sur la grille (voir plus bas).
+            el.onclick = (ev) => { if (ev.detail === 0) this.toucher(Number(el.dataset.c)); };
         });
 
         // LE CALQUE EST EN UNITÉS DE CASE, pas en pixels : la capsule suit la
@@ -453,6 +466,7 @@ class Tasuko extends BaseGame {
     }
 
     destroy() {
+        if (this.arreterGeste) { this.arreterGeste(); this.arreterGeste = null; }
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
     }

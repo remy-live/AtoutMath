@@ -1009,7 +1009,17 @@ function geoMotsCroises(item, slot) {
     const m = item.meta;
     // Les définitions prennent le bas de la page : elles sont longues, et une
     // colonne étroite à côté d'une grille large les couperait en plein mot.
-    const hDefs = Math.min(b.h * 0.42, (Math.ceil((m.horizontales.length + m.verticales.length) / 2) + 2) * 4.4);
+    // COMBIEN DE LIGNES, PAS COMBIEN DE DÉFINITIONS. Compter une ligne par
+    // définition sous-estimait la place d'un bon tiers : les phrases longues
+    // en prennent deux, et la grille mordait dessus. On estime la coupe à la
+    // largeur d'une demi-colonne — un caractère d'Helvetica à 2,9 mm en fait
+    // environ 1,45 — puis on borne, parce qu'une estimation reste une
+    // estimation.
+    const demiL = (b.w - 4) / 2;
+    const lignesDe = (liste) => liste.reduce((n, d) =>
+        n + Math.max(1, Math.ceil(`${d.num}. ${d.def} (${d.longueur})`.length * 1.45 / demiL)), 0);
+    const lignes = Math.max(lignesDe(m.horizontales), lignesDe(m.verticales));
+    const hDefs = Math.min(b.h * 0.5, (lignes + 2) * 3.6);
     const dispoH = b.h - hDefs - 3;
     const cote = Math.max(3, Math.min((b.w - 2) / m.largeur, dispoH / m.hauteur));
     const w = cote * m.largeur, h = cote * m.hauteur;
@@ -1052,21 +1062,32 @@ function motsCroisesPreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-/** Les deux colonnes de définitions, sous la grille. */
+/**
+ * Les deux colonnes de définitions, sous la grille.
+ *
+ * ELLES COULENT, ELLES NE SE POSENT PLUS UNE PAR UNE. Rémy : « pour les mots
+ * croisés, les définitions se superposent ». Chaque définition était placée à
+ * `4,2 mm × son rang`, un pas fixe — et « Du même côté de la sécante, à la même
+ * place sur chaque droite. (14) » tient sur deux lignes. La suivante lui
+ * passait dessus, et l'on ne lisait plus ni l'une ni l'autre.
+ *
+ * Le PDF, lui, avançait déjà du nombre de lignes réellement écrites
+ * (`splitTextToSize`) : c'était donc l'APERÇU qui mentait, une fois de plus.
+ * On lui donne maintenant deux boîtes et le navigateur empile dedans — il sait
+ * faire cela mieux qu'aucun calcul de notre part.
+ */
 function listeDefsHtml(g, k) {
     const T = (v) => (v * k).toFixed(2);
-    const colonne = (titre, liste, x, w) => {
-        let out = `<div class="fx-mc-titre" style="left:${T(x)}px; top:${T(g.yDefs)}px;
-            width:${T(w)}px; font-size:${T(3.4)}px">${titre}</div>`;
-        liste.forEach((d, i) => {
-            out += `<div class="fx-mc-def" style="left:${T(x)}px; top:${T(g.yDefs + 4.4 + i * 4.2)}px;
-                width:${T(w)}px; font-size:${T(2.9)}px"><b>${d.num}.</b> ${echapperSheet(d.def)} (${d.longueur})</div>`;
-        });
-        return out;
-    };
     const demi = (g.b.w - 4) / 2;
-    return colonne('Horizontalement', g.m.horizontales, g.b.x, demi)
-        + colonne('Verticalement', g.m.verticales, g.b.x + demi + 4, demi);
+    const colonne = (titre, liste, x) => `
+        <div class="fx-mc-col" style="left:${T(x)}px; top:${T(g.yDefs)}px;
+            width:${T(demi)}px; font-size:${T(2.9)}px; line-height:1.2">
+            <div class="fx-mc-titre" style="font-size:${T(3.4)}px">${titre}</div>
+            ${liste.map(d => `<div class="fx-mc-def"><b>${d.num}.</b> `
+        + `${echapperSheet(d.def)} (${d.longueur})</div>`).join('')}
+        </div>`;
+    return colonne('Horizontalement', g.m.horizontales, g.b.x)
+        + colonne('Verticalement', g.m.verticales, g.b.x + demi + 4);
 }
 
 // --- LE MOT CODÉ SUR PAPIER ---------------------------------------------------
@@ -3080,18 +3101,29 @@ function sommeParts(n) {
 /** Un mini-plateau de la tour, pour les vignettes du bas. */
 function miniTour(x, y, w, h, piles, n) {
     const larg = w / 3;
-    const boule = Math.min(h / (n + 0.6), larg * 0.9);
+    // UNE BOULE EST RONDE, et elle l'est aussi dans les vignettes.
+    //
+    // Rémy, en voyant la fiche : « attention à bien utiliser des cercles ». La
+    // largeur portait la taille — c'est la règle du jeu en dessin, et c'était
+    // juste — mais la HAUTEUR restait la même pour toutes : on obtenait des
+    // galets de plus en plus écrasés, et la plus grosse ne ressemblait plus à
+    // une boule du tout. Le diamètre porte donc la taille dans les deux sens.
+    //
+    // Et la pile s'empile sur les DIAMÈTRES, pas sur un pas fixe : sans cela,
+    // une grosse boule chevaucherait sa voisine ou flotterait au-dessus.
+    const dMax = Math.min(larg * 0.86, h / sommeParts(n));
     return {
         cadres: [0, 1, 2].map(p => ({ x: x + p * larg + larg * 0.08, y,
             w: larg * 0.84, h })),
-        boules: piles.flatMap((pile, p) => pile.map((b, k) => ({
-            b,
-            // La largeur dit la taille : c'est la règle du jeu, en dessin.
-            w: larg * 0.8 * partBoule(b, n),
-            hh: boule * 0.86,
-            cx: x + p * larg + larg / 2,
-            cy: y + h - (k + 0.5) * boule
-        })))
+        boules: piles.flatMap((pile, p) => {
+            let empile = 0;
+            return pile.map((b) => {
+                const d = dMax * partBoule(b, n);
+                const cy = y + h - empile - d / 2;
+                empile += d;
+                return { b, w: d, hh: d, cx: x + p * larg + larg / 2, cy };
+            });
+        })
     };
 }
 
@@ -3103,11 +3135,38 @@ function geoBrahma(item, slot) {
     const hHaut = b.h - hVignettes - 6;
     const largePlateau = b.w * 0.66;
     const n = m.n;
-    const hConduit = Math.min(hHaut - 8, (n + 1) * 14);
-    const largConduit = Math.min((largePlateau - 16) / 3, hConduit * 0.55);
+    const taille = Math.max(2.2, Math.min(hVignettes * 0.12, 3.4));
+
+    // LE DIAMÈTRE DES BOULES SE CALCULE UNE FOIS, ET TOUT S'Y ACCROCHE.
+    //
+    // Rémy : « le plus c'est que le jeu profite au mieux de l'espace sur la
+    // feuille ». Le plateau était plafonné à quatorze millimètres de hauteur
+    // par boule — soixante-dix pour quatre — et laissait quarante millimètres
+    // de blanc au-dessus et au-dessous d'une page entière.
+    //
+    // Trois contraintes bornent la boule, et c'est la plus dure qui gagne :
+    // la LARGEUR de sa colonne, la HAUTEUR qu'il faut pour les empiler toutes,
+    // et surtout LA LARGEUR D'UN CONDUIT — une boule qu'on découpe et qui
+    // n'entre pas dans le plateau, on s'en aperçoit trop tard.
+    const piecesW = b.w - largePlateau - 8;
+    const dispoPieces = hHaut - taille * 1.6;
+    const parConduit = (largePlateau - 16) / 3;
+    const D = Math.min(
+        piecesW * 0.94,
+        dispoPieces / sommeParts(n),
+        parConduit / (1.15 * partBoule(n, n))
+    );
+    const grosse = D * partBoule(n, n);
+    // Le conduit accueille la plus grosse boule avec un peu de jeu, sans
+    // jamais dépasser le tiers du plateau — sinon le socle sort de la page.
+    const largConduit = Math.min(parConduit, Math.max(grosse * 1.15, parConduit * 0.55));
+    // Le socle déborde de six millimètres autour des conduits : il faut donc
+    // les rentrer d'autant, sinon il remonte au-dessus de sa boîte et mange le
+    // titre du bloc — « Jeu 1 » passait sous le gris.
+    const hConduit = hHaut - 16;
     const socleW = largConduit * 3 + 12, socleH = hConduit + 12;
     return {
-        m, b, n, hVignettes, hHaut,
+        m, b, n, hVignettes, hHaut, D,
         socle: { x: b.x + (largePlateau - socleW) / 2, y: b.y + (hHaut - socleH) / 2,
             w: socleW, h: socleH },
         largConduit, hConduit,
@@ -3115,7 +3174,7 @@ function geoBrahma(item, slot) {
         xCoupe: b.x + largePlateau + 2,
         pieces: { x: b.x + largePlateau + 6, w: b.w - largePlateau - 8, y: b.y, h: hHaut },
         yVignettes: b.y + hHaut + 6,
-        taille: Math.max(2.2, Math.min(hVignettes * 0.12, 3.4))
+        taille
     };
 }
 
@@ -3152,8 +3211,9 @@ function brahmaPreviewHtml(item, slot, k) {
         width:${T(g.pieces.w)}px; font-size:${T(g.taille)}px">Boules à découper</div>`;
     // LES BOULES SONT EMPILÉES PAR TAILLE DÉCROISSANTE, chacune à SON diamètre :
     // c'est ce qui rend la règle du jeu visible avant même d'avoir découpé.
-    const dispo = g.pieces.h - g.taille * 1.6;
-    const D = Math.min(g.pieces.w * 0.94, dispo / sommeParts(g.n));
+    // Le diamètre vient de la géométrie : le recalculer ici, c'était risquer
+    // qu'une boule découpée n'entre pas dans le conduit dessiné à côté.
+    const D = g.D;
     let y = g.b.y + g.taille * 1.6;
     for (let taille = g.n; taille >= 1; taille--) {
         const d = D * partBoule(taille, g.n);
@@ -3212,8 +3272,9 @@ function dessinerBrahmaPdf(doc, item, slot) {
     doc.text(pourPdf('Boules à découper'), g.pieces.x + g.pieces.w / 2, g.b.y + g.taille,
         { align: 'center' });
 
-    const dispo = g.pieces.h - g.taille * 1.6;
-    const D = Math.min(g.pieces.w * 0.94, dispo / sommeParts(g.n));
+    // Le même diamètre que l'aperçu, et que les conduits : il vient de la
+    // géométrie, il ne se recalcule pas ici.
+    const D = g.D;
     let yb = g.b.y + g.taille * 1.6;
     for (let taille = g.n; taille >= 1; taille--) {
         const d = D * partBoule(taille, g.n);
