@@ -2777,9 +2777,22 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary); }
 
 /* Placée dans <body> et en `fixed` : les panneaux qui défilent découpaient
-   l'infobulle quand elle était rendue à l'intérieur. */
+   l'infobulle quand elle était rendue à l'intérieur.
+
+   ET AU-DESSUS DE TOUT, PARCE QU'ELLE EXPLIQUE TOUT. Rémy : « quand on clique
+   sur le point d'interrogation du ?, on n'en voit pas (pb z-index) ». Elle
+   était à 100010, ce qui suffit dans la page ; mais les réglages d'une fiche
+   vivent dans une modale posée à 999999, dont le panneau de roue monte à
+   1000001 et la barre de test à 1000002. L'infobulle s'ouvrait donc DERRIÈRE
+   la chose qu'elle explique — et comme elle est transparente aux clics, rien
+   ne signalait qu'elle existait : le bouton paraissait mort.
+
+   Une infobulle est, par nature, la dernière chose empilée : elle ne recouvre
+   jamais rien durablement puisqu'un clic ailleurs la referme. Elle prend donc
+   le sommet de la pile, et l'on n'aura plus à la remonter chaque fois qu'un
+   panneau grimpe. */
 .cfg-tip {
-    position: fixed; top: 0; left: 0; z-index: 100010;
+    position: fixed; top: 0; left: 0; z-index: 1000010;
     max-width: min(300px, calc(100vw - 24px)); padding: 10px 13px;
     background: #0f172a; color: #f8fafc; border-radius: 10px;
     font-size: .82rem; font-weight: 500; line-height: 1.5; text-align: left;
@@ -4975,7 +4988,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    définitions, sa silhouette n'apprend rien, et l'effacer donnerait un nuage
    de cases flottantes au milieu d'une page A4. Le pavé noir et blanc, lui, se
    lit comme la grille de journal dont il vient. */
-.fx-mk-noire { position: absolute; background: #1f2937; pointer-events: none; }
+/* GRISE, ET NON NOIRE, SUR LE PAPIER. Le rectangle est à moitié muet — le
+   lexique d'un chapitre ne remplit pas davantage —, et la moitié d'une grille
+   en aplat noir, c'est une cartouche de toner par classe et une photocopie qui
+   ressort baveuse. Un gris clair dit exactement la même chose : « ces cases-là
+   ne sont pas le jeu ». À l'écran, où l'encre ne coûte rien, elles restent
+   sombres : c'est plus beau, et c'est un autre objet. */
+.fx-mk-noire { position: absolute; background: #dde2ea; pointer-events: none; }
 /* LE MOT DE DÉPART, souligné : c'est de lui qu'on part, et sur une photocopie
    en noir et blanc un trait épais sous la case survit là où une couleur non. */
 .fx-mk-depart { border-bottom-width: 1.4px; }

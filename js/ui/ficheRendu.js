@@ -740,6 +740,46 @@ function champsDe(liste, place) {
  */
 export const CARTOUCHE_H = 17;   // mm réservés à l'ensemble, air compris
 
+/**
+ * LE TITRE ET LA LIGNE D'IDENTITÉ, EN MILLIMÈTRES DEPUIS LA MARGE HAUTE.
+ *
+ * Rémy : « il faudrait qu'il y ait de l'espace entre le titre et le dessous ».
+ * Il avait raison, et de deux façons. Le titre fait 4,8 mm de haut : posé à
+ * 5,6 mm de la marge, ses jambages descendaient à 6,8 mm quand les « Nom : »
+ * commençaient à 8. Un millimètre : à l'écran, les deux lignes se touchent, et
+ * dès qu'on clique le titre le liseré de saisie vient s'asseoir sur le « Nom ».
+ *
+ * ON A DONC ÉCARTÉ PAR LES DEUX BOUTS plutôt que de tout pousser vers le bas :
+ * le titre monte de 0,8 mm, l'identité descend de 0,8 mm. L'écart passe de 5 à
+ * 6,6 mm — un tiers de plus — et le filet, lui, ne bouge que de 0,6 mm : la
+ * hauteur réservée à l'en-tête (`enteteH`) n'a pas à changer, et aucune fiche
+ * ne se repagine.
+ *
+ * CES DEUX NOMBRES SERVENT AU PDF ET À L'APERÇU. Le second recopie le premier
+ * — un aperçu qui n'est pas à la place de la feuille ne sert à rien —, et le
+ * test vérifie qu'ils ne divergent pas.
+ */
+export const TITRE_Y = 4.8;
+export const IDENTITE_Y = 11.4;
+
+/** Le filet qui ferme l'en-tête, avec et sans champs d'identité. */
+export const filetY = (avecChamps) => (avecChamps ? 14.1 : 9.6);
+
+/**
+ * DU PDF À L'APERÇU : LE PDF POSE UNE LIGNE DE BASE, LE HTML POSE UN HAUT.
+ *
+ * L'écart entre les deux est la MONTÉE de la police — l'interligne de tête plus
+ * l'ascendante —, et elle ne dépend que du corps. On la nomme ici pour que
+ * l'aperçu se déduise du PDF au lieu d'être réglé à part : deux séries de
+ * nombres qui doivent rester d'accord finissent toujours par ne plus l'être.
+ *
+ * Le filet, lui, se décale d'un demi-millimètre : le PDF trace une ligne SUR sa
+ * coordonnée, le HTML pose une bordure haute qui s'épaissit vers le bas.
+ */
+const MONTEE_TITRE = 4.6;      // pour un corps de 4,8 mm
+const MONTEE_IDENTITE = 2.8;   // pour un corps de 3,3 mm
+const FILET_HTML = 0.5;
+
 export function cartoucheDe(entete = {}, interrogation = false) {
     const note = entete.note ?? interrogation;
     const com = entete.commentaire ?? false;
@@ -798,7 +838,7 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     const lignes = champs.map(c => `<span class="fp-champ" data-fiche="champ"
         data-champ="${c.id}" title="Cliquer pour retirer ce champ"><i>${c.label} :</i>
         <u style="width:${c.large * k}px"></u></span>`).join('');
-    const yFilet = P.marge + (champs.length ? 14 : 9);
+    const yFilet = P.marge + filetY(champs.length > 0) + FILET_HTML;
     // Le cadre est haut de treize millimètres : deux lignes d'écriture adulte.
     const hCadre = CARTOUCHE_H - 4;
     const cadre = note ? colonnesCartouche(P, note).map(c => `
@@ -816,14 +856,15 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
         <div class="fp-entete${avecTitre ? '' : ' fp-entete--vide'}" data-fiche="titre"
             title="Cliquer pour écrire le titre de la feuille"
             style="left:${P.marge * k}px; right:${P.marge * k}px;
-            top:${(P.marge + 1) * k}px; font-size:${4.8 * k}px">
+            top:${(P.marge + TITRE_Y - MONTEE_TITRE) * k}px; font-size:${4.8 * k}px">
             <b>${avecTitre
         ? echapper(titre || '') + (sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : '')
         : 'Titre de la feuille'}</b>
         </div>
         <div class="fp-identite${champs.length ? '' : ' fp-identite--vide'}"
             data-fiche="identite" style="left:${P.marge * k}px;
-            right:${P.marge * k}px; top:${(P.marge + 7.4) * k}px; font-size:${3.3 * k}px;
+            right:${P.marge * k}px; top:${(P.marge + IDENTITE_Y - MONTEE_IDENTITE) * k}px;
+            font-size:${3.3 * k}px;
             gap:${5 * k}px">${lignes}</div>
         <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${yFilet * k}px;"></div>
@@ -846,7 +887,7 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
     const ligneTitre = `${titre || ''}${sousTitre ? ((titre || '') ? ' — ' : '') + sousTitre : ''}`.trim();
     if (ligneTitre) {
         pdf.splitTextToSize(pourPdf(ligneTitre), droite - P.marge).slice(0, 1)
-            .forEach(l => pdf.text(l, P.w / 2, P.marge + 5.6, { align: 'center' }));
+            .forEach(l => pdf.text(l, P.w / 2, P.marge + TITRE_Y, { align: 'center' }));
     }
 
     // L'IDENTITÉ SUR SA PROPRE LIGNE, chaque champ avec sa longueur : un
@@ -857,15 +898,15 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
     let x = P.marge;
     champs.forEach(({ label, large }) => {
         const etiquette = pourPdf(`${label} :`);
-        pdf.text(etiquette, x, P.marge + 10.6);
+        pdf.text(etiquette, x, P.marge + IDENTITE_Y);
         x += pdf.getTextWidth(etiquette) + 1.5;
-        pointilles(pdf, x, P.marge + 10.9, large);
+        pointilles(pdf, x, P.marge + IDENTITE_Y + 0.3, large);
         x += large + 5;
     });
     pdf.setTextColor(...ENCRE.texte);
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.4);
-    const yFilet = P.marge + (champs.length ? 13.5 : 9);
+    const yFilet = P.marge + filetY(champs.length > 0);
     pdf.line(P.marge, yFilet, droite, yFilet);
 
     // LE CARTOUCHE, sur toute la largeur : la note à gauche dans sa colonne

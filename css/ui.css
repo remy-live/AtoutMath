@@ -544,6 +544,8 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fp-apercu * { font-family: Helvetica, Arial, 'Liberation Sans', sans-serif; }
 .fp-entete {
+    /* `relative` n'aurait aucun sens ici : la boîte est déjà positionnée, donc
+       elle sert de repère à la croix qui efface le titre. */
     position: absolute; display: flex; align-items: baseline;
     /* CENTRÉ : c'est le titre du devoir. Il a sa ligne à lui — il la partageait
        avec le « Nom / Date », et un titre un peu long venait buter dedans. */
@@ -601,14 +603,39 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    est dessiné par un autre chemin, qui ne connaît que le vrai titre. */
 .fp-entete--vide b { color: #c3c8d4; font-weight: 600; font-style: italic; }
 .fp-entete--edite { outline: 1.5px solid var(--primary, #6366f1); outline-offset: 2px; }
-.fp-entete--edite b { color: #1a202c; font-style: normal; }
+/* PENDANT LA SAISIE, LE TITRE PREND TOUTE LA LIGNE.
+   Rémy : « quand je clique sur le titre, il est tronqué ». Le `<b>` est un
+   élément de flex en `flex: 0 1 auto` : sa largeur suivait celle de son
+   contenu, et le contenu était devenu un `<input>`, dont la largeur naturelle
+   vaut vingt caractères quoi qu'on y écrive. Un titre de quarante caractères se
+   retrouvait donc dans une fenêtre de vingt, et l'on n'en voyait que la queue.
+   En saisie, le `<b>` réclame la ligne entière — il n'y a de toute façon rien
+   d'autre dessus à ce moment-là. */
+.fp-entete--edite b {
+    color: #1a202c; font-style: normal;
+    flex: 1 1 auto; width: 100%; min-width: 0; overflow: visible;
+}
 /* Le champ prend EXACTEMENT la place du titre : même police, même taille, même
    centrage. On écrit dans la feuille, pas dans une boîte posée dessus. */
 .fp-titre-saisie {
-    width: 100%; border: 0; padding: 0; margin: 0; background: transparent;
+    width: 100%; min-width: 0; border: 0; padding: 0; margin: 0;
+    background: transparent;
     font: inherit; color: inherit; text-align: center; outline: none;
     letter-spacing: inherit;
 }
+/* LA CROIX QUI EFFACE LE TITRE. Rémy : « il faudrait pouvoir supprimer le
+   titre ». Posée en absolu au bout de la ligne : dans le flux, elle décalerait
+   le titre vers la gauche, et un titre centré qui ne l'est plus tout à fait se
+   remarque tout de suite. Le titre garde donc son axe, la croix vit à côté. */
+.fp-vider-titre {
+    position: absolute; right: .2em; top: 50%; transform: translateY(-50%);
+    margin: 0; font-size: .62em; line-height: 1; padding: .1em .45em;
+}
+/* Et le titre s'arrête AVANT elle. Un titre long remplit la ligne entière et
+   finirait sous la croix ; on lui retire de quoi la loger, des DEUX côtés, pour
+   qu'il reste exactement sur l'axe où le PDF l'écrit. */
+.fp-entete:has(.fp-vider-titre) b { max-width: calc(100% - 3.6em); }
+.fp-entete--edite .fp-vider-titre { display: none; }
 
 /* LES FANTÔMES : ce qui n'est PAS sur la feuille, offert au bout de la ligne
    d'identité. En pointillé et en gris, pour qu'on ne les prenne pas une
@@ -679,7 +706,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    l'écran, et le bouton du bas deviendrait inatteignable. */
 .pp-roue-contenu {
     display: flex; flex-direction: column; gap: 8px;
-    max-width: 270px; max-height: min(46vh, 340px); overflow-y: auto;
+    max-width: 300px; max-height: min(46vh, 340px); overflow-y: auto;
     padding-top: 8px; border-top: 1px solid var(--border);
 }
 .pp-roue-sous-titre {
@@ -690,8 +717,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    colonne de réglages ; ici ils sortaient du panneau par la droite, le « + »
    coupé en deux. On les resserre, et le libellé garde sa place. */
 .pp-roue-contenu .cfg-field { margin: 0; }
+/* CINQ REM NE SUFFISENT PLUS depuis que les libellés portent leur « ? » :
+   « Vocabulaire » plus la pastille font cent pixels, et la colonne en faisait
+   quatre-vingts — le mot se coupait EN DEUX, « Vocabul / aire ». Un libellé
+   peut passer à la ligne entre deux mots ; jamais au milieu d'un. */
 .pp-roue-contenu .cfg-field:not(.cfg-field--wide) {
-    grid-template-columns: minmax(5rem, 1fr) minmax(0, auto);
+    grid-template-columns: minmax(7rem, 1fr) minmax(0, auto);
+}
+.pp-roue-contenu .cfg-label {
+    overflow-wrap: normal; word-break: normal; hyphens: none;
 }
 .pp-roue-contenu .cfg-stepper .cfg-input--num { width: 56px; }
 .pp-roue-contenu .cfg-step { width: 32px; font-size: 1.1rem; }

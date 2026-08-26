@@ -1209,10 +1209,12 @@ function dessinerMotCodePdf(doc, item, slot, solution, champ) {
     for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
         const c = g.m.cases[y][x];
         const X = g.x + x * g.cote, Y = g.y + y * g.cote;
-        // LA CASE MUETTE EST NOIRE : c'est un rectangle de journal, pas une
-        // croix de mots croisés.
+        // LA CASE MUETTE SE REMPLIT : c'est un rectangle de journal, pas une
+        // croix de mots croisés. En GRIS CLAIR, et non en noir — le rectangle
+        // est à moitié muet, et un demi-aplat noir par grille, c'est une
+        // cartouche de toner par classe et une photocopie baveuse.
         if (c === null) {
-            doc.setFillColor(31, 41, 55);
+            doc.setFillColor(221, 226, 234);
             doc.rect(X, Y, g.cote, g.cote, 'F');
             continue;
         }

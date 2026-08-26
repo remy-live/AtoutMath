@@ -63,6 +63,24 @@ export function garnirFicheDirecte(apercu, etat = {}, parties = PARTIES_TOUTES) 
             >+ ${CHAMPS_ENTETE[c].label}</button>`).join(''));
     }
 
+    // LA CROIX QUI EFFACE LE TITRE. Rémy : « il faudrait pouvoir supprimer le
+    // titre ». On pouvait déjà : cliquer, tout sélectionner, effacer, Entrée.
+    // Quatre gestes pour une chose qui se dit en un — et rien à l'écran ne
+    // laissait deviner qu'elle était possible. Une feuille sans titre est un
+    // cas normal (une fiche d'entraînement n'en a pas besoin), donc elle mérite
+    // son bouton, au même titre que les fantômes « + Prénom ».
+    //
+    // Elle ne paraît que s'il Y A un titre : sur une feuille déjà sans titre,
+    // c'est le placeholder gris qui invite à en écrire un, et une croix à côté
+    // n'effacerait rien.
+    const titre = apercu.querySelector('[data-fiche="titre"]');
+    if (parties.titre && titre && !titre.querySelector('[data-vider-titre]')
+        && !titre.classList.contains('fp-entete--vide')) {
+        titre.insertAdjacentHTML('beforeend',
+            `<button type="button" class="fp-fantome fp-vider-titre" data-vider-titre
+                title="Supprimer le titre de la feuille">✕</button>`);
+    }
+
     // Les cases du cartouche. Elles vivent SOUS le filet ; faute de cartouche
     // dessiné, on n'a aucun repère où les poser — on les accroche donc à la
     // fin de la ligne d'identité elle aussi, où l'on regarde déjà.
@@ -125,6 +143,12 @@ export function brancherFicheDirecte(apercu, { lire, ecrire, parties }) {
             ev.preventDefault();
             return ecrire({ [cartouche.dataset.case]: false });
         }
+        // La croix passe AVANT la boîte du titre : elle est dedans, et un clic
+        // dessus ouvrirait sinon la saisie qu'on vient de vouloir vider.
+        if (quoi.titre && ev.target.closest('[data-vider-titre]')) {
+            ev.preventDefault();
+            return ecrire({ titre: '' });
+        }
         const titre = quoi.titre && ev.target.closest('[data-fiche="titre"]');
         if (titre) { ev.preventDefault(); ecrireTitre(titre, lire, ecrire); }
     });
@@ -160,6 +184,10 @@ function ecrireTitre(boite, lire, ecrire) {
     const b = boite.querySelector('b');
     if (!b || boite.querySelector('input')) return;
     const avant = lire().titre || '';
+    // La croix s'en va pendant qu'on écrit : on efface avec la touche, pas
+    // avec un bouton qui viendrait se coller au champ.
+    const croix = boite.querySelector('[data-vider-titre]');
+    if (croix) croix.remove();
 
     const champ = document.createElement('input');
     champ.type = 'text';
@@ -175,7 +203,14 @@ function ecrireTitre(boite, lire, ecrire) {
     b.replaceChildren(champ);
     boite.classList.add('fp-entete--edite');
     champ.focus();
+    // SÉLECTIONNER SANS FAIRE DÉFILER. Rémy : « quand je clique sur le titre,
+    // il est tronqué ». Le champ prend maintenant toute la largeur de la ligne
+    // (voir `.fp-entete--edite b`), mais un titre plus long qu'elle défilerait
+    // encore jusqu'à sa fin après `select()` — on ne verrait que la queue du
+    // texte. On remet donc la fenêtre au début : on lit ce qu'on a écrit, du
+    // premier mot.
     champ.select();
+    champ.scrollLeft = 0;
 
     let annule = false;
     const finir = () => {
