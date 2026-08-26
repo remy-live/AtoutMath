@@ -1,0 +1,209 @@
+// L'ÉCRAN D'ARRIVÉE : UNE SEULE CHOSE À FAIRE.
+//
+// Rémy : « l'écran d'accueil […] pour pas faire peur avec tout ce qu'on peut y
+// lire, que ce soit simple. Duolingo est rassurant. » Ce qui rassure chez eux,
+// c'est qu'il n'y a rien à décider en arrivant. Ces tests gardent cette
+// promesse-là : quoi qu'il arrive, l'accueil propose UNE action, et c'est la
+// bonne — le travail demandé avant les révisions, les révisions avant la
+// découverte.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import './helpers.mjs';
+import {
+    MAX_REVISION, MIN_REVISION, FENETRE_RECENTE, salutation, etatParcours,
+    erreursOuvertes, bilanRecent, phraseDuJour, actionDuJour, raccourcisDuJour,
+    planDuJour
+} from '../js/core/aujourdhui.js';
+import { CONSEILS } from '../js/core/accueil.js';
+
+const JOUR = 86400000;
+const midi = (h = 10) => new Date(2026, 2, 14, h, 0, 0).getTime();
+
+const parcours = (faites = [], opts = {}) => ({
+    name: 'Séance du mardi',
+    completed: faites,
+    steps: [
+        { stepId: 'a', titre: 'Des Lettres aux Chiffres' },
+        { stepId: 'b', titre: 'Périmètre : à toi de choisir' },
+        { stepId: 'j', titre: 'Les Petites Ailes', bonus: true },
+        ...(opts.extra || [])
+    ]
+});
+
+// --- La salutation ---------------------------------------------------------
+
+test('on ne dit pas « bonjour » à vingt heures', () => {
+    assert.equal(salutation(midi(9)), 'Bonjour !');
+    assert.equal(salutation(midi(17)), 'Bonjour !');
+    assert.equal(salutation(midi(18)), 'Bonsoir !');
+    assert.equal(salutation(midi(21)), 'Bonsoir !');
+});
+
+// --- Le parcours -----------------------------------------------------------
+
+test('UN JEU DE RÉCOMPENSE N\'EST PAS UNE ÉTAPE À FAIRE', () => {
+    // C'est ce qu'on GAGNE. Le compter dans le total annoncerait « 2 sur 3 » à
+    // un élève qui a fini tout son devoir, et lui ferait croire qu'il lui reste
+    // du travail.
+    const e = etatParcours(parcours([]));
+    assert.equal(e.total, 2, 'le jeu bonus est compté comme du travail');
+    assert.equal(e.faites, 0);
+    assert.equal(e.fini, false);
+    assert.equal(e.prochain.stepId, 'a');
+
+    const fini = etatParcours(parcours(['a', 'b']));
+    assert.equal(fini.faites, 2);
+    assert.equal(fini.fini, true, 'le devoir est fait, le jeu n\'est pas du devoir');
+    assert.equal(fini.prochain, null);
+});
+
+test('pas de parcours, pas d\'état — et un parcours vide non plus', () => {
+    assert.equal(etatParcours(null), null);
+    assert.equal(etatParcours({ steps: [] }), null);
+    // Un parcours qui ne contient QUE des jeux n'est pas un devoir.
+    assert.equal(etatParcours({ steps: [{ stepId: 'j', bonus: true }] }), null);
+});
+
+// --- L'action, et son ordre de priorité ------------------------------------
+
+test('LE TRAVAIL DEMANDÉ PASSE AVANT TOUT, y compris avant les erreurs', () => {
+    // C'est le professeur qui décide de la séance. Un élève à qui l'on propose
+    // de réviser alors qu'il a un devoir en attente fera la révision, et le
+    // devoir ne sera pas fait.
+    const beaucoup = Array.from({ length: 6 }, (_, i) => ({ id: i, corrected: false }));
+    const a = actionDuJour({ parcours: parcours(['a']), erreurs: beaucoup, suggestions: [{ id: 'x' }] });
+    assert.equal(a.genre, 'parcours');
+    assert.equal(a.faites, 1);
+    assert.equal(a.total, 2);
+    assert.match(a.titre, /Continue/);
+    assert.ok(a.sous.includes('Périmètre'), 'la prochaine étape n\'est pas nommée');
+});
+
+test('un parcours pas encore commencé dit « commence », pas « continue »', () => {
+    const a = actionDuJour({ parcours: parcours([]), erreurs: [], suggestions: [] });
+    assert.match(a.titre, /Commence/);
+    assert.equal(a.bouton, 'Commencer');
+});
+
+test('LES ERREURS VIENNENT ENSUITE, et jamais pour une seule', () => {
+    // « Revoir 1 question » à chaque connexion transforme un carnet en reproche.
+    const une = [{ id: 1, corrected: false }];
+    const deux = [{ id: 1, corrected: false }, { id: 2, corrected: false }];
+    assert.equal(actionDuJour({ erreurs: une, suggestions: [{ id: 'x', title: 'X' }] }).genre,
+        'decouverte');
+    const a = actionDuJour({ erreurs: deux, suggestions: [{ id: 'x' }] });
+    assert.equal(a.genre, 'revision');
+    assert.equal(a.questions, 2);
+    assert.equal(MIN_REVISION, 2);
+});
+
+test('une révision reste courte, quoi qu\'il y ait dans le carnet', () => {
+    // Au-delà, ce n'est plus une révision, c'est une punition.
+    const trente = Array.from({ length: 30 }, (_, i) => ({ id: i, corrected: false }));
+    const a = actionDuJour({ erreurs: trente, suggestions: [] });
+    assert.equal(a.questions, MAX_REVISION);
+    assert.equal(MAX_REVISION, 10);
+    assert.ok(a.sous.includes('30'), 'on dit quand même combien il en reste');
+});
+
+test('les erreurs déjà corrigées ne comptent pas', () => {
+    const liste = [{ id: 1, corrected: true }, { id: 2, corrected: true }, { id: 3, corrected: false }];
+    assert.equal(erreursOuvertes(liste).length, 1);
+    assert.equal(actionDuJour({ erreurs: liste, suggestions: [{ id: 'x' }] }).genre, 'decouverte');
+});
+
+test('sinon on propose UN exercice — pas soixante', () => {
+    const a = actionDuJour({ suggestions: [{ id: 'geo-perimetre', title: 'Périmètre' }] });
+    assert.equal(a.genre, 'decouverte');
+    assert.equal(a.exoId, 'geo-perimetre');
+    assert.equal(a.sous, 'Périmètre');
+});
+
+test('le parcours TERMINÉ se dit, au lieu de disparaître', () => {
+    // Sans quoi l'élève qui vient de finir son devoir voit exactement le même
+    // écran que celui qui n'en a jamais eu.
+    const a = actionDuJour({ parcours: parcours(['a', 'b']), suggestions: [{ id: 'x', title: 'X' }] });
+    assert.equal(a.genre, 'decouverte');
+    assert.match(a.titre, /termin/i);
+});
+
+test('sans rien à proposer, on ne fabrique pas un bouton vide', () => {
+    assert.equal(actionDuJour({ suggestions: [] }), null);
+});
+
+// --- La phrase -------------------------------------------------------------
+
+test('la phrase raconte la dernière séance, pas une moyenne', () => {
+    const T = midi();
+    const t = (n, ok) => Array.from({ length: n }, () => ({ ts: T - JOUR, correct: ok }));
+    const p = phraseDuJour({ maintenant: T, tentatives: [...t(18, true), ...t(4, false)] });
+    assert.ok(p.includes('18') && p.includes('22'), `phrase inattendue : ${p}`);
+    assert.ok(!p.includes('%'), 'un pourcentage est un bulletin, pas une nouvelle');
+});
+
+test('trop peu de réponses, ou trop vieilles : on passe au conseil du jour', () => {
+    const T = midi();
+    const rien = phraseDuJour({ maintenant: T, tentatives: [] });
+    assert.ok(CONSEILS.includes(rien));
+    // Quatre réponses ne font pas une séance.
+    const quatre = Array.from({ length: 4 }, () => ({ ts: T - 1000, correct: true }));
+    assert.ok(CONSEILS.includes(phraseDuJour({ maintenant: T, tentatives: quatre })));
+    // Et une séance d'il y a une semaine n'est plus « ces derniers jours ».
+    const vieilles = Array.from({ length: 20 }, () => ({ ts: T - FENETRE_RECENTE - 1, correct: true }));
+    assert.ok(CONSEILS.includes(phraseDuJour({ maintenant: T, tentatives: vieilles })));
+    assert.equal(bilanRecent(vieilles, T), null);
+});
+
+test('le premier jour, on explique le seul geste à connaître', () => {
+    const p = phraseDuJour({ maintenant: midi(), premiere: true, tentatives: [] });
+    assert.match(p, /robot/i);
+    assert.match(p, /indice/i);
+});
+
+// --- Les raccourcis --------------------------------------------------------
+
+test('UN RACCOURCI SANS CHIFFRE EST UNE PORTE FERMÉE', () => {
+    const r = raccourcisDuJour({
+        parcours: parcours(['a']),
+        erreurs: [{ id: 1, corrected: false }, { id: 2, corrected: false }],
+        nbExercices: 120
+    });
+    const par = Object.fromEntries(r.map(x => [x.id, x]));
+    assert.equal(par.parcours.sous, '1 sur 2');
+    assert.equal(par.erreurs.sous, '2 à revoir');
+    assert.ok(par.catalogue.sous.includes('120'));
+});
+
+test('un carnet vide ne mérite pas sa tuile', () => {
+    const r = raccourcisDuJour({ erreurs: [], nbExercices: 10 });
+    assert.deepEqual(r.map(x => x.id), ['catalogue'],
+        'on montre des portes qui ne mènent nulle part');
+});
+
+// --- L'écran entier --------------------------------------------------------
+
+test('l\'accueil propose toujours UNE action, et une seule', () => {
+    const T = midi();
+    const cas = [
+        { parcours: parcours([]), erreurs: [], suggestions: [{ id: 'x' }] },
+        { erreurs: [{ id: 1, corrected: false }, { id: 2, corrected: false }], suggestions: [{ id: 'x' }] },
+        { suggestions: [{ id: 'x', title: 'X' }] }
+    ];
+    cas.forEach((f, i) => {
+        const plan = planDuJour({ maintenant: T, ...f });
+        assert.ok(plan.action, `cas ${i} : pas d'action`);
+        assert.ok(plan.action.bouton && plan.action.bouton.length > 2, `cas ${i} : bouton muet`);
+        assert.ok(plan.action.titre, `cas ${i} : titre muet`);
+        assert.ok(plan.salut && plan.phrase, `cas ${i} : écran muet`);
+        // Une seule : le plan ne rend pas une liste d'actions.
+        assert.equal(Array.isArray(plan.action), false);
+    });
+});
+
+test('le premier jour, on souhaite la bienvenue', () => {
+    const plan = planDuJour({ maintenant: midi(20), premiere: true, suggestions: [{ id: 'x' }] });
+    assert.equal(plan.salut, 'Bienvenue !');
+    // Et l'heure ne l'emporte pas sur la première visite.
+    assert.notEqual(plan.salut, 'Bonsoir !');
+});
