@@ -119,9 +119,22 @@ export const DIFFICULTES = {
  * @param {{hauteur?: number, difficulte?: string, rng: object, lexique?: Array}} opts
  * @returns {{barreaux: Array, donnes: boolean[], hauteur: number}|null}
  */
-export function creerPyramide({ hauteur = 6, difficulte = 'moyen', rng, lexique, rang }) {
-    const toutes = toutesLesPyramides(hauteur, lexique);
-    if (!toutes.length) return null;
+export function creerPyramide({ hauteur = 6, difficulte = 'moyen', rng, lexique, rang, maths = true }) {
+    const brutes = toutesLesPyramides(hauteur, lexique);
+    if (!brutes.length) return null;
+    // ON ARRIVE SUR UN MOT DE MATHS.
+    //
+    // Rémy : « Le but était tout de même d'avoir à la fin des mots
+    // mathématiques. » Tout le chemin ne peut pas l'être — il faut un mot à
+    // chaque longueur, et chacun anagramme du précédent, ce qu'un lexique de
+    // mathématiques ne sait pas porter. Le SOMMET, si : le lexique marque ces
+    // mots-là, et l'on ne garde que les pyramides qui y mènent.
+    //
+    // LE REPLI EST NÉCESSAIRE, PAS DÉCORATIF. Un professeur peut demander une
+    // hauteur pour laquelle aucun sommet mathématique n'existe ; mieux vaut
+    // alors une pyramide de français qu'un jeu qui refuse de s'ouvrir.
+    const finit = brutes.filter(c => c[c.length - 1].maths);
+    const toutes = (maths && finit.length) ? finit : brutes;
     // DEUX PYRAMIDES D'UNE MÊME FICHE NE PARTENT PAS DE LA MÊME LETTRE.
     //
     // Tirées librement, elles se ressemblaient au premier coup d'œil : la

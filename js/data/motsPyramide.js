@@ -11,14 +11,26 @@
 // des pyramides, on écrit les BARREAUX, et toutes celles qu'ils permettent
 // existent d'un coup.
 //
-// POURQUOI DU VOCABULAIRE GÉNÉRAL, ET NON CELUI DES MATHS. On aurait aimé une
-// pyramide ANGLE → … : elle n'existe pas. La contrainte est terrible — il faut
-// un mot à chaque longueur, et chacun anagramme du précédent —, et le lexique
-// des mathématiques est bien trop petit pour la satisfaire. La pyramide de
-// Rémy est d'ailleurs elle-même en français courant (RAYON y arrive par
-// hasard, entre NOYA et CRAYON). C'est un jeu de lettres dans une revue de
-// maths, et c'est très bien ainsi : ce qu'il travaille, c'est l'anagramme —
-// donc le dénombrement des arrangements, qu'on retrouvera en troisième.
+// ON ARRIVE SUR UN MOT DE MATHS, ET C'EST LE CHEMIN QUI EST EN FRANÇAIS.
+//
+// Rémy : « Le but était tout de même d'avoir à la fin des mots
+// mathématiques. » On avait conclu l'inverse — la contrainte est terrible, il
+// faut un mot à chaque longueur et chacun anagramme du précédent, et le
+// lexique des mathématiques est bien trop petit pour la porter d'un bout à
+// l'autre. C'est vrai pour TOUTE la pyramide. Ce n'est pas vrai pour son
+// SOMMET, et c'est ce qu'il demandait.
+//
+// La méthode est alors simple : on part d'un mot de maths et l'on redescend en
+// lui retirant une lettre à chaque fois, jusqu'à retomber sur un mot qui est
+// déjà là. ANE → ANGE → ANGLE → ANGLES. ILE → LIEN → LIGNE → LIGNES. DO → DOT
+// → DOIT → DROIT → DROITE. UN → UNI → NUIT → UNITE → UNITES. Les barreaux du
+// milieu sont du français courant — il le faut bien —, mais on arrive sur
+// ANGLES, LIGNES, DROITE, UNITES, CARRES, ARETES, RAYONS, TERMES.
+//
+// Le drapeau `maths` marque ces mots-là ; `creerPyramide` cherche d'abord une
+// pyramide qui finit sur l'un d'eux. Ce que le jeu travaille reste l'anagramme
+// — donc le dénombrement des arrangements, qu'on retrouvera en troisième —,
+// mais il laisse un mot du cours en haut de l'affiche.
 //
 // LES MOTS SONT EN MAJUSCULES SANS ACCENT. C'est ce que l'élève écrit dans les
 // cases, et c'est ce qui permet de comparer des lettres sans se demander si É
@@ -50,6 +62,7 @@ export const LEXIQUE_PYRAMIDE = [
     { mot: 'LE', def: 'Article défini masculin.' },
     { mot: 'DU', def: 'Il vient … marché.' },
     { mot: 'NE', def: 'Il … dort pas.' },
+    { mot: 'AI', def: 'J’… faim.' },
 
     // --- Trois lettres --------------------------------------------------------
     { mot: 'SAC', def: 'On y met ses affaires pour partir.' },
@@ -79,6 +92,11 @@ export const LEXIQUE_PYRAMIDE = [
     { mot: 'RUE', def: 'On y marche, entre les maisons.' },
     { mot: 'SUD', def: 'Le contraire du nord.' },
 
+    // Les barreaux ajoutés pour atteindre un sommet mathématique.
+    { mot: 'AIR', def: 'Ce qu’on respire.' },
+    { mot: 'DOT', def: 'Ce qu’une mariée apportait autrefois.' },
+    { mot: 'UNI', def: 'D’une seule couleur, sans motif.' },
+
     // --- Quatre lettres -------------------------------------------------------
     { mot: 'CASE', def: 'Un carré du quadrillage.' },
     { mot: 'MONT', def: 'Une montagne.' },
@@ -96,17 +114,23 @@ export const LEXIQUE_PYRAMIDE = [
     { mot: 'MERE', def: 'Elle est la maman.' },
     { mot: 'LUNE', def: 'Elle tourne autour de la Terre.' },
     { mot: 'NOYA', def: 'Verbe se noyer, au passé simple.' },
-    { mot: 'AIRE', def: 'La mesure d’une surface.' },
+    { mot: 'AIRE', def: 'La mesure de la surface d’une figure.', maths: true },
     { mot: 'NOTE', def: 'Do, ré, mi… ou le résultat du contrôle.' },
     { mot: 'ROSE', def: 'Une fleur à épines, et une couleur.' },
     { mot: 'AILE', def: 'L’oiseau en a deux.' },
     { mot: 'MOTS', def: 'On en met bout à bout pour faire une phrase.' },
     { mot: 'CODES', def: 'Plusieurs suites secrètes de chiffres.' },
 
+    // Les barreaux ajoutés pour atteindre un sommet mathématique.
+    { mot: 'ANGE', def: 'Il a des ailes et une auréole.' },
+    { mot: 'LIEN', def: 'Ce qui relie deux choses.' },
+    { mot: 'DOIT', def: 'Il … partir : c’est obligatoire.' },
+    { mot: 'NUIT', def: 'Entre le soir et le matin.' },
+
     // --- Cinq lettres ---------------------------------------------------------
     { mot: 'CASER', def: 'Ranger, mettre à sa place.' },
     { mot: 'MONTE', def: 'Il grimpe l’escalier : il …' },
-    { mot: 'CORDE', def: 'Elle relie deux points d’un cercle.' },
+    { mot: 'CORDE', def: 'Elle relie deux points d’un cercle.', maths: true },
     { mot: 'PILES', def: 'Elles donnent du courant à la télécommande.' },
     { mot: 'LISTE', def: 'Une énumération, l’une sous l’autre.' },
     { mot: 'ASTRE', def: 'Une étoile, un corps du ciel.' },
@@ -116,9 +140,16 @@ export const LEXIQUE_PYRAMIDE = [
     { mot: 'SORTI', def: 'Il est … de la maison.' },
     { mot: 'SANTE', def: 'Le médecin s’en occupe.' },
     { mot: 'RITES', def: 'Des cérémonies qu’on répète.' },
-    { mot: 'TERME', def: 'Chaque nombre d’une somme.' },
-    { mot: 'RAYON', def: 'Moitié d’un diamètre.' },
-    { mot: 'CORDES', def: 'Le violon en a quatre.' },
+    { mot: 'TERME', def: 'Chaque nombre d’une somme.', maths: true },
+    { mot: 'RAYON', def: 'Moitié d’un diamètre.', maths: true },
+    { mot: 'CORDES', def: 'Le violon en a quatre.', maths: true },
+
+    // Cinq lettres, et déjà des mots du cours.
+    { mot: 'AIRES', def: 'On les compare pour savoir quelle figure est la plus grande.', maths: true },
+    { mot: 'ANGLE', def: 'Deux demi-droites qui partent du même point.', maths: true },
+    { mot: 'LIGNE', def: 'Un trait, ou une rangée du tableau.', maths: true },
+    { mot: 'DROIT', def: 'Sans le moindre virage.' },
+    { mot: 'UNITE', def: 'Le chiffre le plus à droite d’un nombre entier.', maths: true },
 
     // --- Six lettres ----------------------------------------------------------
     { mot: 'CARTES', def: 'Il y en a cinquante-deux dans le jeu.' },
@@ -134,6 +165,20 @@ export const LEXIQUE_PYRAMIDE = [
     { mot: 'METIER', def: 'Le travail qu’on fait pour vivre.' },
     { mot: 'CRAYON', def: 'Il te sert maintenant.' },
 
+    // LES SOMMETS MATHÉMATIQUES. Rémy : « Le but était tout de même d'avoir à
+    // la fin des mots mathématiques. » Chacun est atteint depuis un mot du
+    // lexique en lui ajoutant une lettre — c'est ainsi qu'on les a choisis.
+    { mot: 'ANGLES', def: 'On les mesure au rapporteur.', maths: true },
+    { mot: 'LIGNES', def: 'Les rangées d’un tableau, de gauche à droite.', maths: true },
+    { mot: 'DROITE', def: 'Elle passe par deux points et ne s’arrête jamais.', maths: true },
+    { mot: 'UNITES', def: 'Les dizaines, puis elles.', maths: true },
+    { mot: 'CARRES', def: 'Quatre côtés égaux et quatre angles droits.', maths: true },
+    { mot: 'ARETES', def: 'Les bords d’un cube, là où deux faces se rencontrent.', maths: true },
+    { mot: 'RAYONS', def: 'Du centre du cercle jusqu’au bord.', maths: true },
+    { mot: 'TERMES', def: 'Les nombres qu’on additionne.', maths: true },
+    { mot: 'TRACES', def: 'Ce que fait le crayon quand il suit la règle.', maths: true },
+    { mot: 'ECARTS', def: 'Les différences entre deux valeurs.', maths: true },
+
     // --- Sept lettres ---------------------------------------------------------
     // Le sommet de la plus haute pyramide. Il en faut peu : à ce niveau, chaque
     // mot est atteint par une dizaine de chemins différents.
@@ -141,5 +186,6 @@ export const LEXIQUE_PYRAMIDE = [
     { mot: 'PARENTS', def: 'Ton père et ta mère.' },
     { mot: 'CRAYONS', def: 'Ceux de la trousse.' },
     { mot: 'METIERS', def: 'Les professions.' },
-    { mot: 'MONTRES', def: 'Plusieurs pendules de poignet.' }
+    { mot: 'MONTRES', def: 'Plusieurs pendules de poignet.' },
+    { mot: 'DROITES', def: 'Deux parallèles n’en font jamais qu’une paire.', maths: true }
 ];

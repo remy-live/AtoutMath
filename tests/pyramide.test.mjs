@@ -210,3 +210,40 @@ test('la qualité dit ce qu\'il reste à faire', () => {
     assert.equal(q.aTrouver, 5, 'le sommet seul est donné');
     assert.equal(cleLettres(q.mots[5]).length, 6);
 });
+
+// --- ON ARRIVE SUR UN MOT DE MATHS ---------------------------------------------
+
+test('LE SOMMET EST UN MOT DE MATHS, à toutes les hauteurs jouables', () => {
+    // Rémy : « Le but était tout de même d'avoir à la fin des mots
+    // mathématiques. » Tout le chemin ne peut pas l'être — il faut un mot à
+    // chaque longueur, et chacun anagramme du précédent, ce qu'un lexique de
+    // mathématiques ne sait pas porter. Le sommet, si.
+    for (const hauteur of [4, 5, 6, 7]) {
+        for (let k = 0; k < 12; k++) {
+            const p = creerPyramide({ hauteur, rng: makeRng(`m${hauteur}-${k}`), rang: k });
+            assert.ok(p, `aucune pyramide de hauteur ${hauteur}`);
+            const sommet = p.barreaux[p.barreaux.length - 1];
+            assert.ok(sommet.maths,
+                `hauteur ${hauteur} : on arrive sur « ${sommet.mot} », qui n'est pas un mot de maths`);
+        }
+    }
+});
+
+test('les mots de maths du lexique sont vraiment du vocabulaire du cours', () => {
+    const maths = LEXIQUE_PYRAMIDE.filter(m => m.maths).map(m => m.mot);
+    assert.ok(maths.length >= 12, `${maths.length} mots marqués`);
+    // Ils sont TOUS des sommets possibles : un mot de maths de trois lettres
+    // ne servirait à rien, puisqu'on n'arrive jamais dessus.
+    maths.forEach(m => assert.ok(m.length >= 4, `« ${m} » est trop court pour un sommet`));
+    // Et l'on retrouve bien le vocabulaire annoncé.
+    ['ANGLE', 'LIGNE', 'DROITE', 'AIRE', 'CARRES', 'RAYONS'].forEach(m =>
+        assert.ok(maths.includes(m), `« ${m} » manque`));
+});
+
+test('sans mot de maths à cette hauteur, le jeu s\'ouvre quand même', () => {
+    // Le repli est nécessaire, pas décoratif : mieux vaut une pyramide de
+    // français qu'un jeu qui refuse de s'ouvrir.
+    const sansMaths = LEXIQUE_PYRAMIDE.map(({ mot, def }) => ({ mot, def }));
+    const p = creerPyramide({ hauteur: 6, rng: makeRng('repli'), lexique: sansMaths });
+    assert.ok(p && p.barreaux.length === 6);
+});
