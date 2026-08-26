@@ -2483,6 +2483,18 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     text-align: left; font-weight: 600; font-size: .86rem;
     color: var(--text-muted); padding: 2px 2px 0;
 }
+/* OÙ L'ON EST SUR L'ÉCHELLE, EN CHIFFRES.
+   Rémy, devant un panneau de glissières : « on ne comprend rien ». Un rail lisse
+   ne dit pas combien de positions il a : on le prend pour un curseur continu, on
+   le traîne, et l'on ne sait ni d'où l'on part ni combien il reste. « 3 / 4 »
+   le dit en deux caractères, sans dépendre d'aucune géométrie — les encoches
+   dessinées sur la piste, elles, se décalent au demi-pouce près selon le moteur.
+   Les libellés courts, eux, s'en passent : la valeur est déjà au bout du rail. */
+.cfg-glissiere-rang {
+    flex: 0 0 auto; margin-left: 8px;
+    font-variant-numeric: tabular-nums; font-weight: 700; font-size: .78rem;
+    color: var(--text-muted); white-space: nowrap;
+}
 
 /* Le rail lui-même. Dessiné à la main dans les deux moteurs : le rendu natif
    est un fil gris de 2 px sur l'un et une barre bleue système sur l'autre —
@@ -2910,6 +2922,23 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-group { border-top: 1px solid var(--border); padding-top: 18px; margin-top: 18px; }
 .cfg-group--muted { opacity: .55; }
 .cfg-group-title { font-weight: 700; color: var(--text-muted); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+/* --- CE QUI PARLE DE LA MÊME CHOSE SE TIENT ENSEMBLE ------------------------
+   Rémy, devant les propriétés d'une étape : « on ne comprend rien ». Trois
+   réglages de l'aide étaient empilés à plat, au même rang que « Dimension
+   maximale » : on lisait deux réponses à la même question, l'une sous l'autre,
+   sans savoir laquelle gouvernait. Le sous-groupe les rassemble derrière un
+   filet vertical — le même dessin que le repli de la fiche —, et son titre pose
+   la QUESTION plutôt que de nommer une catégorie : « Comment l'élève répond »
+   se comprend sans avoir jamais ouvert le logiciel, « Aide » non. */
+.cfg-sous-groupe {
+    margin: 16px 0 4px; padding: 10px 0 2px 12px;
+    border-left: 2px solid var(--border);
+}
+.cfg-sous-titre {
+    font-weight: 800; color: var(--text-main); font-size: .84rem;
+    margin-bottom: 10px;
+}
+.cfg-sous-groupe .cfg-apercu { margin: 10px 0 4px; }
 /* Ligne d'option entière cliquable, et qui se voit l'être : le texte seul,
    sans zone de survol, ne disait pas qu'on pouvait taper à côté de la case —
    sur téléphone on visait le carré de 13 px. */

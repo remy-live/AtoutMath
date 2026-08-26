@@ -98,6 +98,16 @@ function glissiereHtml(param, ech, value, id) {
     // sans rien savoir de l'échelle. Pour une liste, il porte le RANG — les
     // valeurs ne sont pas forcément des nombres, et « auto » n'a pas de place
     // sur un axe.
+    // OÙ L'ON EST SUR L'ÉCHELLE, EN CHIFFRES. Un rail lisse ne dit pas combien
+    // de positions il a : on le prend pour un curseur continu, on le traîne, et
+    // l'on ne sait ni d'où l'on part ni combien il reste. « 3 / 4 » le dit en
+    // deux caractères. Seulement là où le libellé est passé DESSOUS : quand il
+    // tient au bout du rail, la valeur y est déjà et un second chiffre ferait
+    // deux choses à lire pour une seule information.
+    const rang = mots && !nombre
+        ? `<span class="cfg-glissiere-rang" aria-hidden="true">${i + 1}/${ech.valeurs.length}</span>`
+        : '';
+
     return `<div class="cfg-glissiere${mots ? ' cfg-glissiere--mots' : ''}">
         <div class="cfg-stepper cfg-stepper--rail" data-stepper>
             <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
@@ -107,6 +117,7 @@ function glissiereHtml(param, ech, value, id) {
                 step="1" value="${nombre ? ech.valeurs[i] : i}"
                 aria-valuetext="${dit}"${donnees}>
             <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
+            ${rang}
         </div>
         <output class="cfg-glissiere-dit" data-dit>${ech.libelles[i]}</output>
     </div>`;
@@ -138,6 +149,104 @@ export function glissiereNombre({ id, label, min, max, value, aide, aideId }) {
         ${glissiereHtml({ id, label }, ech, v, id).replace(` data-param="${id}"`, '')}
     </div>`;
 }
+
+/**
+ * TOUS LES RÉGLAGES D'UN SCHÉMA, RANGÉS — et c'est le rangement qui compte.
+ *
+ * Rémy, devant les propriétés d'une étape : « on ne comprend rien ». Les trois
+ * réglages de l'aide étaient empilés à plat, au même rang que « Dimension
+ * maximale » et « Unité » : on lisait « L'aide — Progressive : 2, puis 4, puis
+ * le clavier », puis, juste dessous et sans lien apparent, « Passage au
+ * clavier — après le premier tiers ». DEUX RÉPONSES À LA MÊME QUESTION, l'une
+ * sous l'autre, et rien ne disait laquelle gouvernait. C'était le panneau qui
+ * était faux, pas les réglages.
+ *
+ * Trois règles, donc, et elles s'appliquent aux deux panneaux — celui de
+ * l'exercice et celui de l'étape, qui divergeaient jusqu'ici :
+ *
+ *   · CE QUI PARLE DE LA MÊME CHOSE SE TIENT ENSEMBLE, sous son propre titre.
+ *   · LES VIS RESTENT DERRIÈRE « AFFINER… ». Un réglage marqué `affiner` est
+ *     une correction du réglage principal : le montrer d'office, c'est laisser
+ *     croire à trois décisions là où il n'y en a qu'une.
+ *   · L'APERÇU SE MET SOUS CE QU'IL EXPLIQUE. Il vivait tout en bas du panneau,
+ *     après le rôle de l'étape et le chronomètre — trois écrans plus loin que
+ *     le réglage dont il montre l'effet.
+ *
+ * @param {Array} schema
+ * @param {(p:Object)=>*} valeurDe
+ * @param {{apercu?: boolean}} options
+ */
+export function champsSchema(schema, valeurDe, options = {}) {
+    const tous = schema || [];
+    const groupes = new Map();
+    tous.forEach(p => {
+        const g = p.groupe || '';
+        if (!groupes.has(g)) groupes.set(g, []);
+        groupes.get(g).push(p);
+    });
+
+    const rendre = (liste) => liste.map(p => fieldHtml(p, valeurDe(p))).join('');
+
+    /** Le repli « Affiner… », et son compte de réglages déjà touchés. */
+    const affiner = (liste) => {
+        const vis = liste.filter(p => p.affiner);
+        if (!vis.length) return '';
+        const modifies = vis.filter(p => {
+            const v = valeurDe(p);
+            return v !== undefined && String(v) !== String(p.default);
+        });
+        const dit = modifies.length
+            ? ` · ${modifies.length} réglage${modifies.length > 1 ? 's' : ''} `
+                + `modifié${modifies.length > 1 ? 's' : ''}`
+            : '…';
+        return `<details class="cfg-affiner" ${modifies.length ? 'open' : ''}>
+            <summary class="cfg-affiner-tete">
+                <span>Affiner${dit}</span>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="cfg-affiner-corps">${rendre(vis)}</div>
+        </details>`;
+    };
+
+    const morceau = (liste) => rendre(liste.filter(p => !p.affiner)) + affiner(liste);
+
+    const libre = groupes.get('') || [];
+    groupes.delete('');
+    const nommes = [...groupes.entries()].map(([nom, liste]) => {
+        // L'aperçu se glisse entre le réglage principal et ses vis : c'est là
+        // qu'il répond à la question qu'on vient de se poser.
+        const vue = (nom === 'aide' && options.apercu !== false)
+            ? '<div class="cfg-apercu" data-apercu></div>' : '';
+        const titres = options.titres || TITRES_GROUPE;
+        return `<div class="cfg-sous-groupe">
+            <div class="cfg-sous-titre">${titres[nom] || TITRES_GROUPE[nom] || nom}</div>
+            ${rendre(liste.filter(p => !p.affiner))}
+            ${vue}
+            ${affiner(liste)}
+        </div>`;
+    }).join('');
+
+    return morceau(libre) + nommes;
+}
+
+/**
+ * LE TITRE D'UN GROUPE DIT LA QUESTION, PAS LA CATÉGORIE. « Comment l'élève
+ * répond » se comprend sans avoir jamais ouvert le logiciel ; « Aide » non.
+ *
+ * Et il change de personne selon qui lit. Le même bloc est rendu dans le
+ * panneau du professeur — qui règle pour sa classe — et dans celui que l'élève
+ * ouvre avant de jouer : « Comment l'élève répond » sur l'écran de l'élève
+ * parlerait de quelqu'un d'autre que lui.
+ */
+const TITRES_GROUPE = {
+    aide: 'Comment l\'élève répond'
+};
+
+export const TITRES_ELEVE = {
+    aide: 'Comment tu réponds'
+};
 
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
@@ -493,6 +602,10 @@ function majRail(rail) {
     const boite = rail.closest('.cfg-glissiere');
     const dit = boite && boite.querySelector('[data-dit]');
     if (dit) dit.textContent = texte;
+    // Le rang suit le curseur : un « 3/4 » qui reste à 1/4 pendant qu'on glisse
+    // serait pire que pas de rang du tout.
+    const rang = boite && boite.querySelector('.cfg-glissiere-rang');
+    if (rang) rang.textContent = `${Number(rail.value) + 1}/${Number(rail.max) + 1}`;
     rail.setAttribute('aria-valuetext', texte);
 }
 
@@ -693,7 +806,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         ${exo.instruction ? `<p class="cfg-desc">${exo.instruction}</p>` : ''}
         ${schema.length ? `<div class="cfg-group">
             <div class="cfg-group-title">Contenu des questions</div>
-            ${schema.map(p => fieldHtml(p, current[p.id] !== undefined ? current[p.id] : p.default)).join('')}
+            ${champsSchema(schema, (p) => (current[p.id] !== undefined ? current[p.id] : p.default))}
         </div>`
             : '<p class="cfg-empty">Cette activité n\'a pas de paramètre de contenu.</p>'}
 
@@ -741,8 +854,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                     ${infoBtn('Une étape de poids 2 compte double dans le barème.', null)}</label>
                 <input type="number" id="cfg-weight" class="cfg-input cfg-input--num" min="1" max="10" value="${step.weight || 1}">
             </div>
-        </div>
-        ${aApercuAide(schema) ? '<div class="cfg-apercu" data-apercu></div>' : ''}`;
+        </div>`;
 
     content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
 
@@ -877,43 +989,23 @@ export function showStudentConfigModal(exo, onStart) {
             : 'Autant de questions que l\'exercice en pose.');
 
     const valeurDe = (p) => current[p.id] !== undefined ? current[p.id] : p.default;
-    const devant = schema.filter(p => !p.affiner);
-    const derriere = schema.filter(p => p.affiner);
-    const modifies = derriere.filter(p => current[p.id] !== undefined
-        && String(current[p.id]) !== String(p.default));
-    // L'APERÇU : « il faut un apercu de ce que cela donne ». Il ne se dessine
-    // qu'ici, à vide — c'est `rafraichirApercu` qui le remplit, juste après le
-    // rendu et à chaque geste, en lisant les contrôles eux-mêmes.
-    const apercu = aApercuAide(schema) ? '<div class="cfg-apercu" data-apercu></div>' : '';
-    const replies = derriere.length ? `
-        <details class="cfg-affiner" ${modifies.length ? 'open' : ''}>
-            <summary class="cfg-affiner-tete">
-                <span>Affiner${modifies.length
-        ? ` · ${modifies.length} réglage${modifies.length > 1 ? 's' : ''} modifié${modifies.length > 1 ? 's' : ''}`
-        : '…'}</span>
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
-                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="m6 9 6 6 6-6"/></svg>
-            </summary>
-            <div class="cfg-affiner-corps">
-                ${derriere.map(p => fieldHtml(p, valeurDe(p))).join('')}
-            </div>
-        </details>` : '';
+
+    // LE NOMBRE DE QUESTIONS AVANT L'AIDE, ET CE N'EST PAS UN DÉTAIL. L'aperçu
+    // découpe CE nombre de questions en tranches (« 3 à deux propositions, 5 à
+    // quatre, 2 au clavier ») : le réglage qu'il découpe doit se lire au-dessus
+    // de lui, sinon le ruban parle d'un total qu'on n'a pas encore vu.
+    const libre = schema.filter(p => !p.groupe);
+    const groupes = schema.filter(p => p.groupe);
 
     content.innerHTML = `
-        ${devant.map(p => fieldHtml(p, valeurDe(p))).join('')}
+        ${champsSchema(libre, valeurDe)}
         ${glissiereNombre({
         id: 'cfg-nbitems', label: 'Nombre de questions', aide: aideDuree,
         min: MIN_QUESTIONS, max: MAX_QUESTIONS, value: nbConseille
     })}
-        ${replies}
-        ${apercu}
+        ${champsSchema(groupes, valeurDe, { titres: TITRES_ELEVE })}
         ${impression}`;
 
-    // L'APERÇU EN DERNIER, SOUS TOUT CE QUI LE PILOTE. Il dépend du réglage
-    // d'aide (devant), des deux vis (« Affiner… ») et du nombre de questions :
-    // le placer au-dessus de l'un d'eux aurait donné un panneau où l'on règle
-    // en bas ce qui se voit en haut, hors de l'écran sur un téléphone.
     content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
     rafraichirApercu(content);
     wireTips(content);

@@ -158,9 +158,20 @@ const choiceModule = () => import('./choice.js');
 // on ne le range plus par popularité (le recommandé en tête) mais par exigence
 // croissante, du plus porté au plus nu. Le défaut ne bouge pas pour autant :
 // c'est une valeur, pas une place.
+//
+// LES TROIS PORTENT LA MARQUE `groupe: 'aide'`, ET C'EST ELLE QUI SAUVE LE
+// PANNEAU. Rémy, devant les propriétés d'une étape : « on ne comprend rien ».
+// Il avait raison, et pour une raison précise : les trois réglages étaient
+// empilés à plat, au même rang que « Dimension maximale » et « Unité », si bien
+// qu'on lisait « Progressive : 2, puis 4, puis le clavier », puis, juste
+// dessous et sans lien apparent, « Passage au clavier : après le premier
+// tiers ». Deux réponses à la même question, données côte à côte : on ne sait
+// plus laquelle gouverne. La marque les rassemble sous un seul titre, met les
+// deux vis derrière « Affiner… » et place l'aperçu au milieu — il montre ce que
+// les trois font ENSEMBLE, ce qu'aucune des trois phrases ne pouvait dire.
 const PARAM_AIDE = [{
     id: 'aide', type: 'select', label: 'L\'aide', default: 'progressive', papier: false,
-    echelle: true,
+    echelle: true, groupe: 'aide',
     aide: 'En progressif, l\'exercice monte tout seul : d\'abord deux propositions '
         + '— la bonne réponse contre l\'erreur classique —, puis quatre, puis on tape '
         + 'la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
@@ -173,7 +184,7 @@ const PARAM_AIDE = [{
     ]
 }, {
     id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto', papier: false,
-    affiner: true, echelle: true,
+    affiner: true, echelle: true, groupe: 'aide',
     aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '
         + '« Automatique » laisse le réglage « L\'aide » décider.',
     options: [
@@ -184,7 +195,7 @@ const PARAM_AIDE = [{
     ]
 }, {
     id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto', papier: false,
-    affiner: true, echelle: true,
+    affiner: true, echelle: true, groupe: 'aide',
     aide: 'À partir de quand l\'élève tape sa réponse au lieu de la choisir.',
     // Rangé du plus TARD au plus TÔT : c'est l'échelle, et l'ancien ordre
     // (tiers, moitié, quart) ne l'était pas — « le dernier quart » arrive après
