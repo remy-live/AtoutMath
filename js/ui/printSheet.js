@@ -8219,13 +8219,29 @@ function geoConversion(item, slot) {
     // SANS TABLEAU, l'énoncé prend toute la largeur : c'est l'exercice une fois
     // le tableau su, et il ne reste que les conversions à écrire.
     const avecTableau = m.tableau !== false;
+    // LE TABLEAU PASSE AVANT L'ÉNONCÉ — et c'était l'inverse.
+    //
+    // Rémy : « pour le tableau de conversion, le tableau est tellement
+    // compressé, horrible ». Il l'était, et cela se calculait : trois blocs de
+    // front font 62 mm chacun, l'énoncé en prenait 40 par plancher, et les SEPT
+    // colonnes se partageaient les 20 restants — DEUX MILLIMÈTRES NEUF par
+    // colonne. Les en-têtes se touchaient au point de former un seul mot,
+    // « kmhndanmdmcmmm », et l'on ne pouvait rien écrire dedans.
+    //
+    // La colonne de l'énoncé ne prend donc plus que ce qui RESTE après avoir
+    // servi le tableau. Une case de conversion doit accueillir un chiffre écrit
+    // à la main : six millimètres est le minimum vital, onze le confort — et
+    // c'est ce plancher, pas une proportion, qui décide du partage.
+    const MIN_CASE = 6, MAX_CASE = 11;
+    const enonceIdeal = Math.min(Math.max(b.w * 0.34, 40), 56);
     const enonceW = avecTableau
-        ? Math.min(Math.max(b.w * 0.34, 40), 56)
+        // Ce qu'il faudrait laisser au tableau pour que ses cases soient
+        // lisibles ; si l'énoncé le lui prend, on le lui reprend.
+        ? Math.max(26, Math.min(enonceIdeal, b.w - 2 - nCol * MIN_CASE))
         : b.w;
-    // DES CASES MOINS LARGES. À quinze millimètres, sept colonnes mangeaient
-    // toute la feuille pour y écrire un chiffre — et il ne tenait plus qu'un
-    // tableau par rangée. À onze, trois tableaux passent de front.
-    const cw = avecTableau ? Math.min((b.w - enonceW - 2) / nCol, 11) : 0;
+    const cw = avecTableau
+        ? Math.min((b.w - enonceW - 2) / nCol, MAX_CASE)
+        : 0;
     // Une rangée d'en-tête, puis une par conversion. Une case de tableau de
     // conversion doit accueillir un chiffre écrit à la main : sept
     // millimètres, c'est l'interligne d'un cahier.
@@ -10402,8 +10418,14 @@ export const RENDUS = {
             const n = Math.max(1, ...(items || []).map(i => (i && i.meta && i.meta.lignes) || 8), 8);
             return { w: 1, h: 0.09 * (n + 1) + 0.06 };
         },
-        disposition: { cols: 3, rows: 1, maxCols: 3, maxRows: 3 },
-        parLigneDefaut: 3,
+        // DEUX DE FRONT, PLUS TROIS. Le commentaire d'origine disait vrai — à
+        // quinze millimètres de case il n'en tenait qu'un par rangée et la
+        // moitié droite restait blanche — mais la correction est allée trop
+        // loin : à trois de front, il ne restait pas trois millimètres par
+        // colonne. Deux blocs de 93 mm laissent au tableau de quoi être un
+        // tableau, et la feuille porte encore seize conversions par rangée.
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2,
         separateurs: true,
         grilleMax: 300
     },
