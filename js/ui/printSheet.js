@@ -19,6 +19,9 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
+// `relire` : relit un calcul récrit à la main et refait sa cascade — voir
+// `retoucheGrille` du rendu « priorites ».
+import { relire as relirePriorites } from '../core/priorites.js';
 import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
@@ -7729,6 +7732,22 @@ function geoPriorites(item, slot) {
 function prioritesPreviewHtml(item, slot, k, solution) {
     const g = geoPriorites(item, slot);
     let html = '';
+    // LE CALCUL SE RÉCRIT — voir `retoucheGrille` plus bas.
+    //
+    // Rémy : « on ne peut pas changer les calculs du 33 ». Sur cette feuille on
+    // récrit déjà un titre, une consigne, un énoncé ; la cascade, elle, se
+    // dessine par un rendu à part et n'offrait aucune prise. C'est pourtant
+    // l'exercice qu'un professeur veut le plus retoucher : il a SES calculs,
+    // ceux de son cours.
+    //
+    // La zone couvre la première ligne — l'expression —, jamais les lignes
+    // vides en dessous : elles ne portent rien à récrire.
+    if (slot.retouchable && slot.exoId != null && slot.iQ != null) {
+        html += `<div class="fx-qgestes fx-retouche" data-txt-exo="${echapperSheet(slot.exoId)}"
+            data-txt-rang="${slot.iQ}" title="Cliquer pour récrire ce calcul"
+            style="left:${g.x0 * k}px; top:${g.y0 * k}px;
+            width:${g.largeur * k}px; height:${g.ligneH * k}px"></div>`;
+    }
     // Le numéro, dans la marge, à la hauteur du calcul.
     if (g.numero != null) {
         html += `<div style="position:absolute; left:${slot.boite.x * k}px; top:${g.y0 * k}px;
@@ -10430,6 +10449,41 @@ export const RENDUS = {
             + 'une opération par ligne, en recopiant tout le reste.',
         previewGrille: prioritesPreviewHtml,
         pdfGrille: dessinerPrioritesPdf,
+        // CE RENDU SAIT SE FAIRE RÉCRIRE — et surtout, se faire RECORRIGER.
+        //
+        // Rémy : « on ne peut pas changer les calculs du 33 (attention à la
+        // correction) ». Sa parenthèse est tout le problème : récrire
+        // « 8 × 4 − 6 » en « 8 × 4 − 7 » ne change pas qu'une ligne, cela rend
+        // fausses les trois lignes du corrigé en dessous. Laisser taper du
+        // texte ne suffisait donc pas ; il fallait un moteur capable de RELIRE
+        // ce qu'on tape et de refaire la cascade entière. C'est `relire` dans
+        // `core/priorites.js`, et il rend `null` sur ce qu'il ne sait pas lire
+        // — auquel cas la feuille le dit au lieu d'imprimer un corrigé qui ment.
+        retoucheGrille: {
+            legende: 'Le calcul',
+            aide: 'Écris-le comme au tableau : 8 × 4 − 6, (3 + 4) × 2, 3² + 2. '
+                + 'Le × du clavier, l\'étoile et la virgule sont compris. '
+                + 'La correction est refaite entière à partir de ce que tu écris.',
+            lire: (item) => (item.meta && item.meta.lignes && item.meta.lignes[0]) || '',
+            appliquer: (item, texte) => {
+                const r = relirePriorites(texte);
+                if (!r) return null;
+                const lignes = [r.texte, ...r.lignes.slice(1).map(l => `= ${l.texte}`)];
+                return {
+                    ...item,
+                    meta: {
+                        ...item.meta,
+                        lignes,
+                        etapes: r.etapes,
+                        // Les lignes vides sont les mêmes pour toute la feuille
+                        // (voir `geoPriorites`) : un calcul récrit plus long
+                        // que les autres emporte donc le plafond avec lui.
+                        etapesMax: Math.max(item.meta.etapesMax || 0, r.etapes)
+                    },
+                    answer: r.valeur
+                };
+            }
+        },
         nomBloc: 'Calcul', nomBlocs: 'calculs',
         titreAGauche: true,
         // LE NUMÉRO EST POSÉ PAR LE BLOC LUI-MÊME, sur la ligne du calcul :

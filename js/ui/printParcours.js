@@ -770,14 +770,22 @@ export function ouvrirFicheParcours(chemin) {
             ? (blocs.get(id) || [])[rang] : null;
         const retouche = quoi.genre === 'question' ? retouches.get(cleRetouche(id, rang)) : null;
 
+        // UNE GRILLE QUI SAIT SE FAIRE RÉCRIRE — et se recorriger toute seule.
+        // Elle n'a pas besoin qu'on lui dicte la réponse : elle la RECALCULE.
+        const surGrille = question && question.cle && RENDUS[question.cle]
+            ? RENDUS[question.cle].retoucheGrille : null;
+
         const valeurTexte = quoi.genre === 'titre' ? (titres[id] ?? e.title)
             : quoi.genre === 'consigne' ? (consignes[id] || '')
-                : (retouche ? retouche.texte : (question ? question.texte : ''));
-        const valeurRep = quoi.genre === 'question'
+                : (retouche ? retouche.texte
+                    : surGrille ? surGrille.lire(question.item)
+                        : (question ? question.texte : ''));
+        const valeurRep = (quoi.genre === 'question' && !surGrille)
             ? (retouche ? retouche.reponse : (question ? question.reponse : '')) : null;
 
         const legende = quoi.genre === 'titre' ? 'Titre de l\'exercice'
-            : quoi.genre === 'consigne' ? 'Consigne' : 'Énoncé de la question';
+            : quoi.genre === 'consigne' ? 'Consigne'
+                : surGrille ? surGrille.legende : 'Énoncé de la question';
 
         panneau = document.createElement('div');
         panneau.className = 'pp-roue-panneau pp-retouche';
@@ -786,7 +794,9 @@ export function ouvrirFicheParcours(chemin) {
             <div class="pp-roue-titre">${echapper(legende)}</div>
             <textarea class="cfg-input pp-retouche-texte" data-t-texte rows="${quoi.genre === 'consigne' ? 4 : 2}"
                 >${echapper(valeurTexte)}</textarea>
-            ${quoi.genre === 'question' ? `
+            ${surGrille ? `
+                <div class="pp-retouche-note" data-t-avis>${echapper(surGrille.aide)}</div>`
+        : quoi.genre === 'question' ? `
                 <div class="pp-roue-sous-titre">Réponse (page des solutions)</div>
                 <input type="text" class="cfg-input" data-t-rep value="${echapper(valeurRep || '')}">
                 <div class="pp-retouche-note">Change l'énoncé ET sa réponse : le corrigé suit ce
@@ -800,7 +810,25 @@ export function ouvrirFicheParcours(chemin) {
 
         const champ = panneau.querySelector('[data-t-texte]');
         const rep = panneau.querySelector('[data-t-rep]');
+        // ON DIT TOUT DE SUITE SI L'ON SAURA CORRIGER. Rémy : « attention à la
+        // correction ». Le professeur tape, et sous le champ la feuille lui
+        // répond — le résultat qu'elle imprimera, ou qu'elle n'a pas su lire.
+        // Découvrir après coup qu'un corrigé est faux, c'est le découvrir
+        // devant trente élèves.
+        const avis = panneau.querySelector('[data-t-avis]');
+        const verifier = () => {
+            if (!surGrille || !avis) return true;
+            const neuf = surGrille.appliquer(question.item, champ.value.trim());
+            avis.textContent = neuf
+                ? `✓ Corrigé refait : ${String(neuf.answer).replace('.', ',')}`
+                : '✗ Je ne sais pas lire ce calcul — je ne saurais donc pas le corriger.';
+            avis.classList.toggle('pp-retouche-note--ko', !neuf);
+            avis.classList.toggle('pp-retouche-note--ok', !!neuf);
+            return !!neuf;
+        };
+        if (surGrille) champ.addEventListener('input', verifier);
         const enregistrer = () => {
+            if (surGrille && !verifier()) return;      // on ne fige pas un corrigé faux
             const texte = champ.value.trim();
             if (quoi.genre === 'titre') {
                 titres[id] = texte || e.title;
@@ -974,7 +1002,20 @@ export function ouvrirFicheParcours(chemin) {
                 // est le bon comportement.
                 const tire = (blocs.get(id) || []).slice(0, quantites[id]).map((q, rang) => {
                     const r = retouches.get(cleRetouche(id, rang));
-                    return r ? { ...q, texte: r.texte, reponse: r.reponse, retouchee: true } : q;
+                    if (!r) return q;
+                    // UNE GRILLE SE RÉCRIT AUTREMENT QU'UNE QUESTION : on ne
+                    // remplace pas un texte, on refait l'objet — et sa
+                    // correction avec. Rémy : « on ne peut pas changer les
+                    // calculs du 33 (attention à la correction) ». C'est le
+                    // rendu qui sait le faire, parce que lui seul sait ce que
+                    // sa grille veut dire ; s'il n'y arrive pas, il rend `null`
+                    // et l'on garde la grille d'origine plutôt que d'imprimer
+                    // un corrigé qui ment.
+                    if (q.cle && RENDUS[q.cle] && RENDUS[q.cle].retoucheGrille) {
+                        const neuf = RENDUS[q.cle].retoucheGrille.appliquer(q.item, r.texte);
+                        return neuf ? { ...q, item: neuf, retouchee: true } : q;
+                    }
+                    return { ...q, texte: r.texte, reponse: r.reponse, retouchee: true };
                 });
                 // Une grille n'a pas de consigne écrite par le professeur :
                 // c'est la règle du jeu, et elle se déduit de la grille tirée.
@@ -1106,7 +1147,7 @@ export function ouvrirFicheParcours(chemin) {
             // TOUT SE RÈGLE SUR LA FEUILLE, et il faut le dire une fois : sans
             // cette ligne, l'engrenage et les flèches du bandeau restent des
             // boutons gris qu'on ne remarque qu'en passant dessus.
-            : 'Clique un titre ou une consigne pour la récrire, l\'engrenage ⚙ d\'un exercice '
+            : 'Clique un titre, une consigne ou un calcul pour le récrire, l\'engrenage ⚙ d\'un exercice '
                 + 'pour ses réglages, ses flèches ▲▼ pour le déplacer.';
         derniers = { exos, toutes, note, total, page: pg, sections, aGrilles };
         // LES FANTÔMES SE REPOSENT APRÈS CHAQUE RENDU : l'aperçu est réécrit

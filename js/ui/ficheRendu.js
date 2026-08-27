@@ -640,7 +640,13 @@ export function apercuItems(page, k, o) {
                 }
                 html += r.previewGrille(it.item,
                     { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
-                        numero: r.numeroInterne ? it.n : null },
+                        numero: r.numeroInterne ? it.n : null,
+                        // DE QUELLE GRILLE IL S'AGIT, pour les rendus qui
+                        // savent se faire récrire (`retoucheGrille`). Posé dans
+                        // l'emplacement plutôt qu'en argument de plus : les
+                        // rendus qui n'en font rien n'ont pas à le connaître.
+                        exoId: it.exoId ?? null, iQ: it.iQ ?? null,
+                        retouchable: !!(o.retouchable && r.retoucheGrille) },
                     k, !!o.solution, !!o.champs && !o.solution);
             }
             continue;

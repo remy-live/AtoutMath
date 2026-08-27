@@ -622,6 +622,13 @@ export function composerBlocs(exos, opts, mesurer) {
                     const gx = x0 + i * (cote + gap);
                     page.items.push({
                         type: 'grille', n: numerote ? numero : null, cle: g.cle, item: g.item,
+                        // L'IDENTITÉ SUIT LA GRILLE, comme elle suit déjà le
+                        // bandeau, la consigne et les questions. Sans elle,
+                        // l'aperçu ne pouvait pas dire QUELLE grille on vient
+                        // de cliquer — d'où Rémy : « on ne peut pas changer les
+                        // calculs du 33 ». Le rang est celui du tirage, pas
+                        // celui de la page : c'est lui qui indexe les retouches.
+                        exoId: exo.id ?? null, iQ: debut + i,
                         x: gx, y, taille: cote,
                         // La boîte complète, pour les treillis larges (Garam)
                         // et les blocs qui ne sont pas carrés du tout.

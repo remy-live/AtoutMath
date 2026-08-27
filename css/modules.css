@@ -6545,6 +6545,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     line-height: 1.35;
     color: var(--text-muted);
 }
+/* LE VERDICT DU CORRIGÉ, PENDANT QU'ON TAPE.
+   Rémy : « on ne peut pas changer les calculs du 33 (attention à la
+   correction) ». Un calcul récrit rend fausses toutes les lignes du corrigé en
+   dessous : la feuille relit donc ce qu'on tape et répond aussitôt — le
+   résultat qu'elle imprimera, ou son aveu qu'elle n'a pas su lire. Découvrir
+   après coup qu'un corrigé est faux, c'est le découvrir devant trente élèves. */
+.pp-retouche-note--ok { color: #1f7a4d; font-weight: 700; }
+.pp-retouche-note--ko { color: #b83a2c; font-weight: 700; }
 .pp-retouche-actions { display: flex; gap: 8px; align-items: center; }
 .pp-retouche-actions .pp-roue-autres { flex: 1 1 auto; }
 .pp-retouche-annuler {

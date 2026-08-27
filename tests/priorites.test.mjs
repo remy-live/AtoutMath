@@ -5,7 +5,7 @@ import { makeRng } from '../js/core/ids.js';
 import {
     nombre, operateur, ouvrante, fermante, puissance, ecrire, ecrirePuissance, calculer,
     groupeInterieur, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
-    terminee, etapes, valeurFinale, tirerExpression, etapesMax, naif
+    terminee, etapes, valeurFinale, tirerExpression, etapesMax, naif, lire, relire
 } from '../js/core/priorites.js';
 
 /** Écrit une expression rapidement : « 3 + 4 × 5 » depuis un gabarit. */
@@ -372,4 +372,64 @@ test('CHAQUE PUISSANCE EST UNE LIGNE DE PLUS sur la feuille', () => {
 
 test('le calcul naïf n\'a pas de sens avec des puissances', () => {
     assert.equal(naif([nombre(3), operateur('+'), puissance(4, 2)]), null);
+});
+
+// --- Relire un calcul récrit à la main -------------------------------------------
+
+test('ON SAIT RELIRE CE QU\'UN PROFESSEUR ÉCRIT VRAIMENT', () => {
+    // Rémy : « on ne peut pas changer les calculs du 33 (attention à la
+    // correction) ». Sa parenthèse est le sujet : récrire « 8 × 4 − 6 » en
+    // « 8 × 4 − 7 » ne change pas qu'une ligne, cela rend fausses les trois
+    // lignes de correction en dessous. Laisser taper du texte ne suffit donc
+    // pas — il faut le RELIRE, et refaire la cascade à partir de lui.
+    //
+    // Et « ce qu'il écrit vraiment » n'est pas ce que la machine imprime : il
+    // tape le moins du clavier, le x du clavier, l'étoile, la virgule.
+    const memes = ['8 × 4 − 6', '8 x 4 - 6', '8*4-6', '8×4−6', '  8 × 4 − 6  '];
+    for (const t of memes) {
+        const r = relire(t);
+        assert.ok(r, `illisible : « ${t} »`);
+        assert.equal(r.texte, '8 × 4 − 6');
+        assert.equal(r.valeur, 26);
+        assert.equal(r.etapes, 2);
+    }
+});
+
+test('les parenthèses, les puissances et les décimaux se relisent aussi', () => {
+    assert.equal(relire('(3 + 4) × 2').valeur, 14);
+    assert.equal(relire('(2+3)x(4+1)').valeur, 25);
+    // Les deux façons d'écrire un exposant : celle du tableau et celle du clavier.
+    assert.equal(relire('3² + 2³ × 2').valeur, 25);
+    assert.equal(relire('4^2 + 1').valeur, 17);
+    assert.equal(relire('4^2 + 1').texte, '4² + 1');
+    assert.equal(relire('3,5 + 1').valeur, 4.5);
+    // Le « = 18 » qu'on ajoute au bout n'appartient pas à l'expression.
+    assert.equal(relire('6 + 3 × 4 = 18').texte, '6 + 3 × 4');
+    assert.equal(relire('6 + 3 × 4 = 18').valeur, 18);
+});
+
+test('CE QU\'ON NE SAIT PAS RELIRE, ON NE PRÉTEND PAS LE CORRIGER', () => {
+    // C'est la moitié qui compte. Une fiche dont le corrigé ment est pire
+    // qu'une fiche sans corrigé : `null` permet à la feuille de le DIRE.
+    for (const t of ['bonjour', '2 +', '', '   ', '((3+4)', '3 $ 4', null, undefined, 42]) {
+        assert.equal(relire(t), null, `on a cru savoir lire « ${t} »`);
+    }
+    // Une expression bien formée mais que la règle du collège refuse — un
+    // négatif en cours de route — n'est pas corrigible non plus.
+    assert.equal(relire('3 − 8'), null, 'un négatif ne se corrige pas à ce niveau');
+});
+
+test('relire et écrire sont bien l\'aller et le retour l\'un de l\'autre', () => {
+    // La garantie qui rend le reste sûr : ce qu'on imprime, on sait le relire,
+    // et l'on retombe sur la même expression et la même valeur.
+    const rng = makeRng('aller-retour');
+    for (let i = 0; i < 40; i++) {
+        const e = tirerExpression({ niveau: 2 + (i % 3), rng, puissances: i % 2 === 0 });
+        if (!e) continue;
+        const imprime = ecrire(e.jetons);
+        const r = relire(imprime);
+        assert.ok(r, `on n'a pas su relire ce qu'on venait d'écrire : « ${imprime} »`);
+        assert.equal(r.texte, imprime);
+        assert.equal(r.valeur, valeurFinale(e.jetons));
+    }
 });

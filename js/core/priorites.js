@@ -72,6 +72,106 @@ export function ecrire(jetons) {
     return out;
 }
 
+/**
+ * LIRE UNE EXPRESSION ÉCRITE À LA MAIN — l'inverse d'`ecrire`.
+ *
+ * Rémy : « on ne peut pas changer les calculs du 33 (attention à la
+ * correction) ». Sur la fiche, on récrit déjà un titre, une consigne, un
+ * énoncé ; la cascade des priorités, elle, se dessinait toute seule et n'offrait
+ * aucune prise. Or c'est l'exercice qu'un professeur veut le plus retoucher :
+ * il a SES calculs, ceux de son cours.
+ *
+ * Et sa parenthèse dit tout le problème. Récrire « 8 × 4 − 6 » en « 8 × 4 − 7 »
+ * ne change pas qu'une ligne : les trois lignes de la correction en dessous
+ * deviennent fausses. Il ne suffit donc pas de laisser taper du texte, il faut
+ * le RELIRE — et refaire la cascade entière à partir de lui.
+ *
+ * On accepte ce qu'un professeur écrit vraiment : le moins de la machine comme
+ * celui du tableau (- et −), la virgule ou le point, les espaces où il veut, le
+ * × comme le * , le ÷ comme le / , et les puissances aussi bien en exposants
+ * Unicode (4²) qu'avec un accent circonflexe (4^2).
+ *
+ * @returns {Array|null} les jetons, ou `null` si la phrase n'est pas une
+ *          expression — auquel cas on ne prétend PAS savoir la corriger.
+ */
+const EXPOSANTS_LUS = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+
+export function lire(texte) {
+    if (typeof texte !== 'string') return null;
+    // On normalise d'abord tout ce qui s'écrit de plusieurs façons.
+    let t = texte
+        .replace(/[−–—]/g, '-')
+        // Le « x » du clavier vaut le « × » du tableau : personne ne va chercher
+        // le vrai signe dans une table de caractères, et il n'y a pas
+        // d'inconnue dans une cascade de priorités — aucune ambiguïté possible.
+        .replace(/[*·]/g, '×')
+        .replace(/(?<=[\d)\s])[xX](?=[\d(\s])/g, '×')
+        .replace(/[/:]/g, '÷')
+        .replace(/,/g, '.')
+        .replace(/[  \s]+/g, ' ')
+        .trim();
+    // Le « = 12 » qu'un professeur ajoute au bout n'est pas dans l'expression.
+    t = t.replace(/=\s*[\d.,]*\s*$/, '').trim();
+    if (!t) return null;
+
+    const jetons = [];
+    let i = 0;
+    const lireNombre = () => {
+        const m = /^\d+(\.\d+)?/.exec(t.slice(i));
+        if (!m) return null;
+        i += m[0].length;
+        return Number(m[0]);
+    };
+    while (i < t.length) {
+        const c = t[i];
+        if (c === ' ') { i++; continue; }
+        if (c === '(') { jetons.push(ouvrante()); i++; continue; }
+        if (c === ')') { jetons.push(fermante()); i++; continue; }
+        if ('+-×÷'.includes(c)) { jetons.push(operateur(c)); i++; continue; }
+        if (/\d/.test(c)) {
+            const base = lireNombre();
+            if (base === null) return null;
+            // L'exposant colle au nombre : « 4² » ou « 4^2 », jamais « 4 ² ».
+            let exp = null;
+            if (t[i] === '^') { i++; exp = lireNombre(); if (exp === null) return null; }
+            else {
+                let chiffres = '';
+                while (i < t.length && EXPOSANTS_LUS[t[i]] !== undefined) {
+                    chiffres += EXPOSANTS_LUS[t[i]]; i++;
+                }
+                if (chiffres) exp = Number(chiffres);
+            }
+            jetons.push(exp === null ? nombre(base) : puissance(base, exp));
+            continue;
+        }
+        return null;                  // un caractère qu'on ne sait pas lire
+    }
+    return jetons.length ? jetons : null;
+}
+
+/**
+ * RELIRE UN CALCUL ET REFAIRE SA CORRECTION — le geste complet.
+ *
+ * C'est ce que la fiche appelle quand le professeur vient de récrire une
+ * cascade. Tout ou rien : ou l'on sait relire l'expression ET la résoudre, et
+ * la correction repart de zéro, juste ; ou l'on ne sait pas, et l'on rend
+ * `null` pour que la fiche le DISE au lieu d'imprimer un corrigé qui ment.
+ *
+ * @returns {{lignes, etapes, valeur, texte}|null}
+ */
+export function relire(texte) {
+    const jetons = lire(texte);
+    if (!jetons) return null;
+    const lignes = etapes(jetons);
+    if (!lignes) return null;
+    return {
+        jetons, lignes,
+        etapes: lignes.length - 1,
+        valeur: lignes[lignes.length - 1].jetons[0].valeur,
+        texte: ecrire(jetons)
+    };
+}
+
 /** Applique une opération. Rend null si elle est interdite à ce niveau. */
 export function calculer(a, op, b) {
     if (op === '+') return a + b;
