@@ -42,6 +42,7 @@ class Priorites extends BaseGame {
         this.rng = makeRng(this.params.seed);
         this.niveau = Math.max(1, Math.min(4, parseInt(this.params.niveau) || 2));
         this.avecParentheses = this.params.parentheses !== false;
+        this.avecPuissances = !!this.params.puissances;
         this.reussies = 0;
     }
 
@@ -170,7 +171,8 @@ class Priorites extends BaseGame {
 
     poser() {
         const e = tirerExpression({
-            rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses
+            rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses,
+            puissances: this.avecPuissances
         });
         this.expression = e;
         // Chaque ligne écrite, avec l'endroit où elle est soulignée.
@@ -237,9 +239,14 @@ class Priorites extends BaseGame {
     jetonHtml(j, k, cliquable) {
         if (j.trou) return this.trouHtml();
         const el = document.createElement('span');
-        el.className = 'pr-jeton' + (j.type === 'op' ? ' pr-jeton--op' : '');
+        // UNE PUISSANCE SE CLIQUE COMME UN OPÉRATEUR. C'est elle, l'opération
+        // à faire : « 4² » n'a pas de signe entre deux nombres, il y a un
+        // nombre qui porte son exposant. L'élève la souligne donc comme il
+        // soulignerait un ×.
+        const agissant = j.type === 'op' || j.type === 'p';
+        el.className = 'pr-jeton' + (agissant ? ' pr-jeton--op' : '');
         el.textContent = ecrire([j]);
-        if (cliquable && j.type === 'op') {
+        if (cliquable && agissant) {
             el.addEventListener('click', () => this.choisir(k, el));
         }
         return el;
@@ -299,8 +306,7 @@ class Priorites extends BaseGame {
         // ira dans le trou, à la place exacte du calcul souligné.
         this.brouillon = reduirePourEcrire(ligne.jetons, index);
         this.brouillon.souligne = null;
-        this.note(`${p.raison} Écris sur la ligne du dessous combien fait `
-            + `${p.gauche} ${ecrire([{ type: 'op', op: p.op }])} ${p.droite}.`);
+        this.note(`${p.raison} Écris sur la ligne du dessous combien fait ${p.libelle}.`);
         this.dessiner();
     }
 
@@ -313,22 +319,21 @@ class Priorites extends BaseGame {
         const brut = trou.value.trim().replace(',', '.');
         if (!brut) return false;
         const p = operationPrioritaire(this.courant);
-        const signe = ecrire([{ type: 'op', op: p.op }]);
         // DANS LE TROU, ON ÉCRIT UN NOMBRE — pas un calcul. Sans ce contrôle,
         // « 2+9 » passait pour une réponse et le reproche devenait absurde :
         // « 8 − 6 ne fait pas 2+9 ».
         if (!/^\d+(\.\d+)?$/.test(brut)) {
-            this.note(`Dans le trou, on écrit le RÉSULTAT de ${p.gauche} ${signe} ${p.droite} `
+            this.note(`Dans le trou, on écrit le RÉSULTAT de ${p.libelle} `
                 + '— un seul nombre, pas un calcul.', 'ko');
             trou.value = '';
             trou.focus();
             return false;
         }
         if (Number(brut) !== p.valeur) {
-            this.note(`${p.gauche} ${signe} ${p.droite} ne fait pas ${brut.replace('.', ',')}. Recompte.`, 'ko');
+            this.note(`${p.libelle} ne fait pas ${brut.replace('.', ',')}. Recompte.`, 'ko');
             this.onWrongAnswer(null, {
                 concept: COMPETENCE,
-                questionText: `${p.gauche} ${p.op} ${p.droite}`,
+                questionText: p.libelle,
                 input: brut, expected: String(p.valeur),
                 customMessage: 'L\'opération choisie était la bonne : c\'est le calcul qu\'il faut refaire.'
             });
@@ -367,7 +372,7 @@ class Priorites extends BaseGame {
         if (this.choisi === null) {
             this.note(`${p.raison} Cherche-la dans « ${ecrire(this.courant)} ».`);
         } else {
-            this.note(`Il faut calculer ${p.gauche} ${ecrire([{ type: 'op', op: p.op }])} ${p.droite}, `
+            this.note(`Il faut calculer ${p.libelle}, `
                 + 'puis RECOPIER tout le reste sans y toucher.');
         }
     }
@@ -410,8 +415,7 @@ class Priorites extends BaseGame {
 
                 const trou = this.cascadeEl.querySelector('.pr-trou');
                 cur.say(`Je souligne, je passe à la ligne, je RECOPIE le reste sans y toucher. `
-                    + `Et dans le trou : ${p.gauche} ${ecrire([{ type: 'op', op: p.op }])} `
-                    + `${p.droite} = ${p.valeur}.`, trou || this.cascadeEl);
+                    + `Et dans le trou : ${p.libelle} = ${p.valeur}.`, trou || this.cascadeEl);
                 await gate.wait(2400);
                 if (trou) { trou.value = String(p.valeur); this.valider(trou); }
                 await gate.wait(1000);

@@ -32,8 +32,28 @@ export const operateur = (op) => ({ type: 'op', op });
 export const ouvrante = () => ({ type: '(' });
 export const fermante = () => ({ type: ')' });
 
+/**
+ * UNE PUISSANCE EST UN JETON, PAS UNE OPÉRATION ENTRE DEUX JETONS.
+ *
+ * Rémy : « des priorités avec les puissances. Tu as déjà un moteur hyper
+ * complet sur les priorités. » Il a raison, et l'ajout tient dans une idée :
+ * « 4² » ne s'écrit pas comme « 4 × 5 ». Il n'y a pas de signe entre deux
+ * nombres, il y a UN nombre qui porte son exposant — donc un jeton, qui se
+ * réduit tout seul en un autre jeton.
+ *
+ * C'est aussi ce qui la rend facile à souligner : l'élève clique la puissance
+ * elle-même, comme il cliquerait un × .
+ */
+export const puissance = (base, exp) => ({ type: 'p', base, exp });
+
 const FORTES = ['×', '÷'];
 const FAIBLES = ['+', '-'];
+
+const EXPOSANTS = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+const enHaut = (n) => String(n).split('').map(c => EXPOSANTS[c] || c).join('');
+
+/** « 4² » — la puissance telle qu'on l'écrit au tableau. */
+export const ecrirePuissance = (j) => `${j.base}${enHaut(j.exp)}`;
 
 /** L'expression telle qu'on l'écrit — avec le vrai signe moins. */
 export function ecrire(jetons) {
@@ -45,6 +65,7 @@ export function ecrire(jetons) {
         const colle = !avant || avant.type === '(' || j.type === ')';
         if (!colle) out += ' ';
         if (j.type === 'n') out += String(j.valeur).replace('.', ',');
+        else if (j.type === 'p') out += ecrirePuissance(j);
         else if (j.type === 'op') out += j.op === '-' ? '−' : j.op;
         else out += j.type;
     });
@@ -91,6 +112,25 @@ export function operationPrioritaire(jetons) {
     const de = groupe ? groupe.debut + 1 : 0;
     const a = groupe ? groupe.fin : jetons.length;
 
+    // LES PUISSANCES PASSENT AVANT LES MULTIPLICATIONS, et après les
+    // parenthèses. C'est l'ordre du cours, et la seule chose que l'ajout
+    // change : on cherche donc une puissance AVANT de regarder les opérateurs.
+    // À égalité, on va de gauche à droite comme partout ailleurs.
+    for (let i = de; i < a; i++) {
+        if (jetons[i].type !== 'p') continue;
+        const j = jetons[i];
+        return {
+            index: i, op: '^', unaire: true,
+            gauche: j.base, droite: j.exp,
+            valeur: j.base ** j.exp,
+            libelle: ecrirePuissance(j),
+            raison: groupe
+                ? 'Les parenthèses d\'abord — et dedans, la puissance avant tout le reste.'
+                : 'Les PUISSANCES d\'abord : elles passent avant les multiplications et les divisions.',
+            dans: groupe
+        };
+    }
+
     const ops = [];
     for (let i = de; i < a; i++) if (jetons[i].type === 'op') ops.push(i);
     if (!ops.length) return null;
@@ -113,12 +153,17 @@ export function operationPrioritaire(jetons) {
     }
 
     const gauche = jetons[index - 1], droite = jetons[index + 1];
+    const g = gauche && gauche.type === 'n' ? gauche.valeur : null;
+    const d = droite && droite.type === 'n' ? droite.valeur : null;
     return {
-        index, op,
-        gauche: gauche && gauche.type === 'n' ? gauche.valeur : null,
-        droite: droite && droite.type === 'n' ? droite.valeur : null,
-        valeur: (gauche && droite && gauche.type === 'n' && droite.type === 'n')
-            ? calculer(gauche.valeur, op, droite.valeur) : null,
+        index, op, unaire: false,
+        gauche: g, droite: d,
+        valeur: (g !== null && d !== null) ? calculer(g, op, d) : null,
+        // CE QU'ON DIT À L'ÉLÈVE, écrit une fois ici. « 4 × 5 » se lit avec son
+        // signe, « 4² » sans : c'est au noyau de le savoir, pas à chaque phrase
+        // de l'écran de le refabriquer.
+        libelle: g !== null && d !== null
+            ? `${g} ${op === '-' ? '−' : op} ${d}` : null,
         raison,
         dans: groupe
     };
@@ -133,11 +178,20 @@ export function critiquer(jetons, index) {
     if (!bonne) return 'Il n\'y a plus d\'opération à faire.';
     if (index === bonne.index) return null;
     const j = jetons[index];
+    if (j && j.type === 'p') {
+        return bonne.unaire
+            ? 'À priorité égale, on calcule de GAUCHE À DROITE — cette puissance-là vient plus loin.'
+            : 'Il reste des parenthèses : on les calcule avant tout le reste.';
+    }
     if (!j || j.type !== 'op') return 'Ce n\'est pas une opération.';
 
     const groupe = groupeInterieur(jetons);
     if (groupe && (index < groupe.debut || index > groupe.fin)) {
         return 'Il reste des parenthèses : on les calcule avant tout le reste.';
+    }
+    if (bonne.unaire) {
+        return `Il reste une PUISSANCE, ${bonne.libelle} : elle passe avant les `
+            + 'multiplications, les divisions, et tout le reste.';
     }
     if (FAIBLES.includes(j.op) && FORTES.includes(bonne.op)) {
         return `Il reste ${bonne.op === '×' ? 'une multiplication' : 'une division'} : `
@@ -155,9 +209,13 @@ export function critiquer(jetons, index) {
  * devrait deviner qu'elle ne compte pas.
  */
 export function reduire(jetons, index, valeur) {
-    const out = jetons.slice(0, index - 1)
+    // UNE PUISSANCE OCCUPE UNE SEULE CASE, pas trois : « 3 + 4² » devient
+    // « 3 + 16 », et non « 16 ». Remplacer trois jetons ferait disparaître le
+    // « + » et le 3 avec.
+    const unaire = jetons[index] && jetons[index].type === 'p';
+    const out = jetons.slice(0, unaire ? index : index - 1)
         .concat([nombre(valeur)])
-        .concat(jetons.slice(index + 2));
+        .concat(jetons.slice(index + (unaire ? 1 : 2)));
     return nettoyerParentheses(out);
 }
 
@@ -175,9 +233,10 @@ export function reduire(jetons, index, valeur) {
  */
 export function reduirePourEcrire(jetons, index) {
     const marque = { type: 'n', valeur: null, trou: true };
-    const out = jetons.slice(0, index - 1)
+    const unaire = jetons[index] && jetons[index].type === 'p';
+    const out = jetons.slice(0, unaire ? index : index - 1)
         .concat([marque])
-        .concat(jetons.slice(index + 2));
+        .concat(jetons.slice(index + (unaire ? 1 : 2)));
     const propre = nettoyerParentheses(out);
     return { jetons: propre, trou: propre.indexOf(marque) };
 }
@@ -232,6 +291,9 @@ export function valeurFinale(jetons) {
  * étapes tombent juste. Tirer des jetons au hasard donnerait surtout des
  * expressions refusées.
  */
+/** Au-delà, l'expression n'est plus une cascade de priorités mais un pensum. */
+const MAX_PUISSANCES = 2;
+
 const FORMES = {
     1: [
         ['n', 'op', 'n', 'op', 'n']
@@ -263,7 +325,9 @@ const FORMES = {
  * Donner exactement les lignes de CE calcul-là revient à écrire la réponse en
  * creux : trois lignes vides disent « il reste trois opérations ».
  */
-export function etapesMax({ niveau = 2, parentheses = true, imposer = false } = {}) {
+export function etapesMax({
+    niveau = 2, parentheses = true, imposer = false, puissances = false
+} = {}) {
     const n = Math.max(1, Math.min(4, niveau));
     let formes = FORMES[n] || FORMES[2];
     if (!parentheses) formes = formes.filter(f => !f.includes('('));
@@ -272,7 +336,10 @@ export function etapesMax({ niveau = 2, parentheses = true, imposer = false } = 
         if (avec.length) formes = avec;
     }
     if (!formes.length) formes = FORMES[2];
-    return Math.max(...formes.map(f => f.filter(t => t === 'op').length));
+    // CHAQUE PUISSANCE EST UNE LIGNE DE PLUS. La feuille réserve la place à
+    // partir de ce compte : l'oublier donnerait des cascades tronquées, où la
+    // dernière ligne n'a plus où s'écrire.
+    return Math.max(...formes.map(f => f.filter(t => t === 'op').length)) + (puissances ? MAX_PUISSANCES : 0);
 }
 
 /**
@@ -292,7 +359,17 @@ export function etapesMax({ niveau = 2, parentheses = true, imposer = false } = 
  * des réglages, et leurs valeurs par défaut ne changent rien à l'existant.
  */
 export function tirerExpression({
-    rng, niveau = 2, parentheses = true, max = 9, plafond = 400, imposer = false
+    rng, niveau = 2, parentheses = true, max = 9, imposer = false,
+    // DES PUISSANCES DANS LA CASCADE. Rémy : « des priorités avec les
+    // puissances. Tu as déjà un moteur hyper complet. » On ne change donc ni
+    // les formes ni le tirage : on remplace APRÈS COUP un ou deux nombres par
+    // une puissance, et le reste du moteur — l'ordre de priorité, la
+    // réécriture, la vérification des étapes — s'en occupe tout seul.
+    puissances = false,
+    // 4³ vaut déjà 64, et 4³ × 5 dépasse le plafond ordinaire : une cascade
+    // avec puissances a besoin de plus d'air, sinon le tirage échoue et l'on
+    // retombe sur l'expression de secours.
+    plafond = puissances ? 1200 : 400
 } = {}) {
     const n = Math.max(1, Math.min(4, niveau));
     const grand = Math.max(3, Math.round(max));
@@ -315,6 +392,21 @@ export function tirerExpression({
             if (t === 'op') return operateur(rng.pick(['+', '-', '×', '÷']));
             return t === '(' ? ouvrante() : fermante();
         });
+        if (puissances) {
+            // AU MOINS UNE, sinon l'exercice ne porte pas sur ce qu'il annonce
+            // — et jamais celle qui suit un ÷, où 3 ÷ 2² tomberait presque
+            // toujours faux et ferait perdre le tirage.
+            const places = jetons
+                .map((j, i) => (j.type === 'n'
+                    && !(jetons[i - 1] && jetons[i - 1].type === 'op' && jetons[i - 1].op === '÷')
+                    ? i : -1))
+                .filter(i => i >= 0);
+            if (!places.length) continue;
+            const combien = Math.min(places.length, rng.int(1, MAX_PUISSANCES));
+            rng.shuffle(places).slice(0, combien).forEach(i => {
+                jetons[i] = puissance(rng.int(2, 5), rng.int(2, 3));
+            });
+        }
         const lignes = etapes(jetons);
         if (!lignes) continue;                          // une étape interdite
         const finale = lignes[lignes.length - 1].jetons[0].valeur;
@@ -331,8 +423,12 @@ export function tirerExpression({
             avecParentheses: forme.includes('(')
         };
     }
-    // Filet : la plus simple des expressions à priorité.
-    const secours = [nombre(3), operateur('+'), nombre(4), operateur('×'), nombre(5)];
+    // Filet : la plus simple des expressions à priorité — avec sa puissance si
+    // c'est ce qu'on demandait, sinon l'exercice s'ouvrirait sur autre chose
+    // que son titre.
+    const secours = puissances
+        ? [nombre(3), operateur('+'), puissance(4, 2), operateur('×'), nombre(2)]
+        : [nombre(3), operateur('+'), nombre(4), operateur('×'), nombre(5)];
     const lignes = etapes(secours);
     return {
         jetons: secours, texte: ecrire(secours), lignes,
@@ -343,7 +439,9 @@ export function tirerExpression({
 
 /** Le résultat qu'obtient celui qui calcule bêtement de gauche à droite. */
 export function naif(jetons) {
-    if (jetons.some(j => j.type === '(' || j.type === ')')) return null;
+    // Ni parenthèses ni puissances : « calculer bêtement de gauche à droite »
+    // n'a de sens que sur une suite plate d'opérations.
+    if (jetons.some(j => j.type === '(' || j.type === ')' || j.type === 'p')) return null;
     let v = jetons[0].valeur;
     for (let i = 1; i < jetons.length - 1; i += 2) {
         v = calculer(v, jetons[i].op, jetons[i + 1].valeur);

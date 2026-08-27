@@ -203,18 +203,23 @@ export const calculExercises = [
         // la machine recopie le reste de la ligne, sur la feuille personne ne
         // le fait à la place de l'élève — et c'est là qu'on perd ses points.
         printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
-        printParams: { niveau: 2, parentheses: true },
+        // PAS DE `printParams` ICI. Il ÉCRASE les réglages du panneau
+        // (`{...params, ...printParams}` dans printSheet.js) : y répéter
+        // `puissances: false` rendait la case « Avec des puissances » sans
+        // effet sur la feuille — on la cochait, et le PDF sortait sans une
+        // seule puissance. Les trois réglages viennent du panneau, et `params`
+        // ci-dessous porte déjà les valeurs par défaut.
         consignePapier: 'Calcule en respectant les priorités, écris les calculs.',
         skills: ['num.prio'],
-        params: { niveau: 2, parentheses: true },
+        params: { niveau: 2, parentheses: true, puissances: false },
         paramSchema: [
             {
-                id: 'niveau', type: 'select', label: 'Difficulté',
+                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
                 options: [
-                    { value: 1, label: '1 — Deux opérations, sans parenthèses' },
-                    { value: 2, label: '2 — Jusqu\'à trois opérations' },
-                    { value: 3, label: '3 — Les parenthèses arrivent' },
-                    { value: 4, label: '4 — Deux groupes de parenthèses' }
+                    { value: 1, label: '1 — Deux opérations, sans parenthèses', court: '1' },
+                    { value: 2, label: '2 — Jusqu\'à trois opérations', court: '2' },
+                    { value: 3, label: '3 — Les parenthèses arrivent', court: '3' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses', court: '4' }
                 ],
                 default: 2
             },
@@ -222,10 +227,20 @@ export const calculExercises = [
                 id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
                 aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le tirage garantit qu\'un calcul de gauche à droite donne toujours faux.',
                 default: true
+            },
+            {
+                // LES PUISSANCES DANS LA CASCADE. Rémy : « des priorités avec les
+                // puissances. Tu as déjà un moteur hyper complet sur les priorités. »
+                // C'est un RÉGLAGE de l'exercice existant, pas un second exercice :
+                // la règle qu'on ajoute — la puissance avant le × — n'a de sens
+                // qu'au milieu de toutes les autres.
+                id: 'puissances', type: 'checkbox', label: 'Avec des puissances',
+                aide: 'Une ou deux puissances tombent dans l\'expression : 3 + 4² × 2. Elles se calculent APRÈS les parenthèses et AVANT les multiplications — c\'est le seul cran qui s\'ajoute à la règle, et il se souligne comme les autres.',
+                default: false
             }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
-        instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 »."
+        instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 ». Avec le réglage « Avec des puissances », un cran s'ajoute à la règle : les parenthèses d'abord, PUIS les puissances, puis les multiplications et les divisions, et enfin les additions et les soustractions. Une puissance se clique comme un signe — c'est elle, l'opération."
     },
     {
         // LE COMPTE EST BON. Le tirage est fabriqué à l'endroit : le compte est

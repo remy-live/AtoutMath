@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
-    nombre, operateur, ouvrante, fermante, ecrire, calculer,
+    nombre, operateur, ouvrante, fermante, puissance, ecrire, ecrirePuissance, calculer,
     groupeInterieur, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
-    terminee, etapes, valeurFinale, tirerExpression, naif
+    terminee, etapes, valeurFinale, tirerExpression, etapesMax, naif
 } from '../js/core/priorites.js';
 
 /** Écrit une expression rapidement : « 3 + 4 × 5 » depuis un gabarit. */
@@ -274,4 +274,102 @@ test('la même graine redonne la même expression', () => {
 test('le calcul naïf ne s\'applique pas aux expressions parenthésées', () => {
     assert.equal(naif(exp('(', 3, '+', 4, ')', '×', 2)), null);
     assert.equal(naif(exp(3, '+', 4, '×', 2)), 14, 'de gauche à droite : 7 × 2');
+});
+
+
+// --- LES PUISSANCES DANS LA CASCADE --------------------------------------------
+//
+// Rémy : « des priorités avec les puissances. Tu as déjà un moteur hyper
+// complet sur les priorités. » Il a raison, et l'ajout tient dans une idée :
+// « 4² » n'est pas une opération entre deux jetons, c'est UN jeton qui se
+// réduit tout seul.
+
+test('UNE PUISSANCE EST UN JETON, et elle s\'écrit comme au tableau', () => {
+    assert.equal(ecrirePuissance(puissance(4, 2)), '4²');
+    assert.equal(ecrirePuissance(puissance(10, 12)), '10¹²');
+    assert.equal(ecrire([nombre(3), operateur('+'), puissance(4, 2), operateur('×'), nombre(2)]),
+        '3 + 4² × 2');
+});
+
+test('LES PUISSANCES PASSENT AVANT LES MULTIPLICATIONS, après les parenthèses', () => {
+    // C'est l'ordre du cours, et le seul cran que l'ajout insère.
+    const j = [nombre(3), operateur('+'), puissance(4, 2), operateur('×'), nombre(2)];
+    const p = operationPrioritaire(j);
+    assert.equal(p.op, '^');
+    assert.equal(p.unaire, true);
+    assert.equal(p.index, 2, 'c\'est la puissance qu\'on souligne, pas le ×');
+    assert.equal(p.valeur, 16);
+    assert.equal(p.libelle, '4²');
+    assert.match(p.raison, /PUISSANCES/);
+
+    // Mais les parenthèses restent les premières.
+    const k = [ouvrante(), nombre(3), operateur('+'), nombre(2), fermante(),
+        operateur('×'), puissance(2, 3)];
+    const q = operationPrioritaire(k);
+    assert.equal(q.op, '+', 'la parenthèse passe avant la puissance');
+    assert.match(q.raison, /parenthèses/i);
+});
+
+test('DEUX PUISSANCES : à égalité, de gauche à droite', () => {
+    const j = [puissance(2, 3), operateur('+'), puissance(5, 2)];
+    assert.equal(operationPrioritaire(j).index, 0);
+    // Et la critique le dit quand on clique la seconde.
+    assert.match(critiquer(j, 2), /GAUCHE À DROITE/);
+});
+
+test('CLIQUER LE × QUAND IL RESTE UNE PUISSANCE EST REPRIS, et l\'on dit pourquoi', () => {
+    const j = [nombre(3), operateur('+'), puissance(4, 2), operateur('×'), nombre(2)];
+    assert.equal(critiquer(j, 2), null, 'la puissance est la bonne réponse');
+    assert.match(critiquer(j, 3), /PUISSANCE/);
+    assert.match(critiquer(j, 1), /PUISSANCE/);
+});
+
+test('UNE PUISSANCE OCCUPE UNE SEULE CASE, pas trois', () => {
+    // « 3 + 4² » devient « 3 + 16 », et non « 16 » : remplacer trois jetons
+    // ferait disparaître le « + » et le 3 avec.
+    const j = [nombre(3), operateur('+'), puissance(4, 2), operateur('×'), nombre(2)];
+    assert.equal(ecrire(reduire(j, 2, 16)), '3 + 16 × 2');
+    const brouillon = reduirePourEcrire(j, 2);
+    assert.equal(brouillon.trou, 2, 'le trou tombe à la place de la puissance');
+    assert.equal(brouillon.jetons.length, 5);
+});
+
+test('LA CASCADE ENTIÈRE, avec ses raisons, dans l\'ordre du cours', () => {
+    const j = [ouvrante(), nombre(3), operateur('+'), nombre(2), fermante(),
+        operateur('×'), puissance(2, 3)];
+    const l = etapes(j);
+    assert.deepEqual(l.map(x => x.texte), ['(3 + 2) × 2³', '5 × 2³', '5 × 8', '40']);
+    assert.match(l[1].raison, /parenthèses/i);
+    assert.match(l[2].raison, /PUISSANCES/);
+    assert.match(l[3].raison, /Multiplications/);
+    assert.equal(valeurFinale(j), 40);
+});
+
+test('UNE PUISSANCE TOMBE VRAIMENT, et le calcul est juste', () => {
+    for (let i = 0; i < 40; i++) {
+        const e = tirerExpression({ rng: makeRng('pu' + i), niveau: 3, puissances: true });
+        assert.ok(e.jetons.some(j => j.type === 'p'),
+            `« ${e.texte} » n'a aucune puissance alors qu'on en demandait`);
+        // La cascade se termine, et sur la valeur annoncée.
+        const l = etapes(e.jetons);
+        assert.ok(l, `« ${e.texte} » ne se calcule pas jusqu'au bout`);
+        assert.equal(l[l.length - 1].jetons[0].valeur, e.resultat);
+        assert.ok(e.resultat >= 0, `${e.texte} = ${e.resultat}`);
+    }
+});
+
+test('CHAQUE PUISSANCE EST UNE LIGNE DE PLUS sur la feuille', () => {
+    // La fiche réserve la place à partir de ce compte : l'oublier donnerait des
+    // cascades tronquées, où la dernière ligne n'a plus où s'écrire.
+    const sans = etapesMax({ niveau: 3, parentheses: true });
+    const avec = etapesMax({ niveau: 3, parentheses: true, puissances: true });
+    assert.ok(avec > sans, `${avec} devrait dépasser ${sans}`);
+    for (let i = 0; i < 30; i++) {
+        const e = tirerExpression({ rng: makeRng('max' + i), niveau: 3, puissances: true });
+        assert.ok(e.etapes <= avec, `« ${e.texte} » fait ${e.etapes} étapes pour ${avec} lignes`);
+    }
+});
+
+test('le calcul naïf n\'a pas de sens avec des puissances', () => {
+    assert.equal(naif([nombre(3), operateur('+'), puissance(4, 2)]), null);
 });

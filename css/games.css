@@ -163,6 +163,20 @@
    dessous — c'est le calcul qu'on regarde, la question ne change jamais. */
 .game-question .rel-q { margin: .3em 0 0; }
 
+/* LE SYMBOLE D'UN PRÉFIXE EST UNE ÉTIQUETTE, pas un mot.
+   « Le symbole n se lit comment ? » : le n se perd dans la phrase, et l'on ne
+   sait plus s'il s'agit du symbole ou d'un article. Encadré comme sur un
+   emballage, il redevient l'objet de la question — et la casse, qui vaut un
+   milliard entre « m » et « M », se voit enfin. */
+.game-question .pf-sym {
+    display: inline-block; margin-top: .1em;
+    padding: .08em .34em; border-radius: .16em;
+    border: .06em solid var(--border);
+    background: var(--bg-panel);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-weight: 700; letter-spacing: 0;
+}
+
 /* Objets du jeu */
 /* LES BULLES TIENNENT TOUTES SUR UNE LIGNE.
    À 110 px de large et 25 px d'écart, quatre bulles réclament 515 px : sur un

@@ -12,3 +12,9 @@ node_modules/
 # Contient les identifiants de base de données et le secret applicatif.
 api/config.php
 balayage.md
+
+# Les harnais Playwright jetables. Ils doivent vivre SOUS le dépôt — un
+# script placé ailleurs ne sait pas résoudre « playwright » —, mais ils ne
+# valent que le temps d'une vérification et n'ont rien à faire dans
+# l'historique.
+tools/tmp/

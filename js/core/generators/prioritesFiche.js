@@ -39,6 +39,12 @@ export const prioritesFicheGenerator = {
             id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: true,
             aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le '
                 + 'tirage garantit qu\'un calcul mené de gauche à droite donne toujours faux.'
+        },
+        {
+            id: 'puissances', type: 'checkbox', label: 'Avec des puissances', default: false,
+            aide: 'Une ou deux puissances tombent dans l\'expression : 3 + 4² × 2. Elles se '
+                + 'calculent APRÈS les parenthèses et AVANT les multiplications. La feuille '
+                + 'réserve alors une ligne de plus par calcul, puisqu\'il y a une étape de plus.'
         }
     ],
 
@@ -50,6 +56,7 @@ export const prioritesFicheGenerator = {
         params = params || {};
         const niveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
         const parentheses = params.parentheses !== false;
+        const puissances = !!params.puissances;
 
         // `themesExclus` arrive par le CONTEXTE, pas par les réglages : le lire
         // au mauvais endroit ne casse rien de visible, la fiche imprime
@@ -57,7 +64,7 @@ export const prioritesFicheGenerator = {
         const dejaVus = new Set(ctx.themesExclus || []);
         let e = null;
         for (let essai = 0; essai < 40; essai++) {
-            const tire = tirerExpression({ rng, niveau, parentheses });
+            const tire = tirerExpression({ rng, niveau, parentheses, puissances });
             if (!dejaVus.has(tire.texte)) { e = tire; break; }
             e = e || tire;
         }
@@ -89,7 +96,7 @@ export const prioritesFicheGenerator = {
                 // feuille aient la MÊME hauteur. Donner à chacun le compte
                 // exact de ses étapes écrit la réponse en creux : trois lignes
                 // vides disent « il reste trois opérations ».
-                etapesMax: etapesMax({ niveau, parentheses }),
+                etapesMax: etapesMax({ niveau, parentheses, puissances }),
                 resultat: e.resultat,
                 niveau,
                 // Ce que la fiche exclura pour le bloc suivant.

@@ -388,6 +388,22 @@ const BASE = {
         descriptor: 'Transformer un d\u00e9cimal en \u00e9criture scientifique et r\u00e9ciproquement, puis comparer deux nombres \u00e9crits ainsi.',
         lesson: "POUR TRANSFORMER, DEUX GESTES, TOUJOURS LES M\u00caMES. D'abord on place la virgule juste apr\u00e8s le PREMIER chiffre qui n'est pas z\u00e9ro : 34 000 donne 3,4 et 0,005 2 donne 5,2. Ensuite on compte de combien de rangs elle a boug\u00e9 \u2014 et l\u00e0 il n'y a rien \u00e0 retenir, il y a une chose \u00e0 V\u00c9RIFIER : le nombre de d\u00e9part est-il plus grand ou plus petit que 1 ? Plus grand, l'exposant est positif ; plus petit, il est n\u00e9gatif. 34 000 = 3,4 \u00d7 10\u2074, et 0,005 2 = 5,2 \u00d7 10\u207b\u00b3. Cette v\u00e9rification prend deux secondes et rattrape la seule faute vraiment co\u00fbteuse. POUR COMPARER, ON REGARDE L'EXPOSANT D'ABORD. 2,1 \u00d7 10\u2075 est plus grand que 9,8 \u00d7 10\u2074, et le 9,8 n'y change rien : le nombre devant reste toujours entre 1 et 10, il ne peut donc jamais rattraper un rang entier. Ce n'est QUE si les exposants sont \u00e9gaux qu'on compare les nombres de devant \u2014 et c'est le cas qu'on oublie, parce qu'on a trop bien retenu la r\u00e8gle pr\u00e9c\u00e9dente."
     },
+    'num.puissances.regles': {
+        label: 'Calculer avec des puissances',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.puissances.dix'],
+        descriptor: 'Calculer un produit, un quotient ou une puissance de puissance, et donner le résultat sous la forme 10ⁿ.',
+        lesson: "TROIS RÈGLES, ET UNE SEULE RAISON DERRIÈRE LES TROIS : une puissance COMPTE des facteurs. 10⁵ × 10³, c'est cinq dix suivis de trois dix, donc huit dix : ON AJOUTE LES EXPOSANTS. 10⁸ ÷ 10³, c'est huit dix dont trois s'en vont, donc cinq : ON SOUSTRAIT. Et (10⁴)³, c'est trois paquets de quatre dix, donc douze : ON MULTIPLIE. La faute la plus fréquente est d'échanger les deux premières — ou pire, de multiplier les exposants dans un produit, parce que le signe × est écrit devant les yeux. Le signe de l'opération n'est PAS celui qu'on fait sur les exposants : le produit fait une addition, le quotient une soustraction. LES EXPOSANTS NÉGATIFS N'AJOUTENT AUCUNE RÈGLE, ils ne font qu'appliquer celles-là avec des relatifs : 10⁻⁵ × 10³ = 10⁻⁵⁺³ = 10⁻², et 10⁻¹² ÷ 10⁻⁵ = 10⁻¹²⁻⁽⁻⁵⁾ = 10⁻⁷. ENFIN, RIEN DE TOUT CELA NE MARCHE SUR DES BASES DIFFÉRENTES : 2³ × 5³ ne s'écrit pas sous la forme d'une seule puissance de 2 ni de 5. Il faut la MÊME base pour ajouter des exposants — c'est ce qui rend la règle vraie, et c'est ce qu'on oublie."
+    },
+    'num.puissances.prefixes': {
+        label: 'Les préfixes : kilo, méga, giga, milli, micro, nano',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.puissances.dix'],
+        descriptor: 'Associer un préfixe, son symbole et sa puissance de 10, et convertir une mesure d\'une unité à l\'autre.',
+        lesson: "TROIS CHOSES DIFFÉRENTES, ET ON LES CONFOND. Le SYMBOLE est ce qu'on lit sur un emballage : M, G, µ, n. Le PRÉFIXE est ce qu'on prononce : méga, giga, micro, nano. La PUISSANCE est ce avec quoi on calcule : 10⁶, 10⁹, 10⁻⁶, 10⁻⁹. Savoir dire « méga, c'est un million » ne suffit pas : il faut aussi savoir écrire 3 Mo = 3 × 10⁶ octets, et c'est ce troisième pas qui manque presque toujours. LES SIX À CONNAÎTRE : kilo 10³, méga 10⁶, giga 10⁹, téra 10¹² pour les grands ; milli 10⁻³, micro 10⁻⁶, nano 10⁻⁹ pour les petits. Ils vont de TROIS EN TROIS, dans les deux sens, et ce pas de trois est la seule chose à retenir. Attention à deux pièges : « m » minuscule est MILLI (10⁻³) alors que « M » majuscule est MÉGA (10⁶) — un facteur d'un milliard entre les deux ; et centi (10⁻²) ne suit pas le pas de trois, c'est une exception héritée du centimètre. POUR CONVERTIR, ON PASSE PAR LA PUISSANCE : 5 µm en mètres, c'est 5 × 10⁻⁶ m ; et 3 Go en Mo, c'est 10⁹ ÷ 10⁶ = 10³ fois plus, donc 3 000 Mo."
+    },
     'num.dec.compare': {
         label: 'Comparer des nombres décimaux',
         chemin: [D.NUMERIQUE, SD.DECIMAUX],

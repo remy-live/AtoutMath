@@ -207,17 +207,64 @@ export function grouper(texte) {
     return d ? `${e},${d}` : e;
 }
 
-/** Le nom courant des grands et petits nombres — pour ancrer les ordres de grandeur. */
+/**
+ * LES PRÉFIXES, ET C'EST UN TABLEAU DE COURS AVANT D'ÊTRE UNE DONNÉE.
+ *
+ * Rémy en a fait une colonne entière de sa fiche de quatrième : « Nombre /
+ * Lecture-préfixe / 10ⁿ », de pico à trillion. Puis il l'a remise en jeu deux
+ * pages plus loin, sur les résistances (× 10⁻² à × 10⁹) et dans un devoir
+ * (« un cheveu fait 50 µm », « 8 To = 8 × 10¹² octets »).
+ *
+ * TROIS CHOSES DIFFÉRENTES, ET ON LES CONFOND :
+ *   · le SYMBOLE — M, µ, n, T — celui qu'on lit sur un emballage ;
+ *   · le PRÉFIXE — méga, micro, nano, téra — celui qu'on prononce ;
+ *   · la PUISSANCE — 10⁶, 10⁻⁶, 10⁻⁹, 10¹² — celle avec laquelle on calcule.
+ * Un élève sait souvent dire « méga, c'est un million » et reste bloqué sur
+ * « 3 Mo = … octets », parce qu'il n'a jamais fait le troisième pas.
+ *
+ * `µ` EST LE MICRO DES SCIENCES, pas la lettre grecque mu — le caractère
+ * U+00B5, celui des claviers et des étiquettes. Sur un exercice où le symbole
+ * EST la réponse, les deux ne se valent pas.
+ *
+ * `usuel` marque les six que le programme de quatrième demande vraiment : les
+ * autres existent pour lire un tableau, pas pour être récités.
+ */
 export const PREFIXES = [
-    { n: 12, nom: 'un billion', prefixe: 'téra' },
-    { n: 9, nom: 'un milliard', prefixe: 'giga' },
-    { n: 6, nom: 'un million', prefixe: 'méga' },
-    { n: 3, nom: 'mille', prefixe: 'kilo' },
-    { n: -2, nom: 'un centième', prefixe: 'centi' },
-    { n: -3, nom: 'un millième', prefixe: 'milli' },
-    { n: -6, nom: 'un millionième', prefixe: 'micro' },
-    { n: -9, nom: 'un milliardième', prefixe: 'nano' }
+    { n: 12, symbole: 'T', prefixe: 'téra', nom: 'un billion', usuel: true, exemple: 'un téraoctet (To) : 10¹² octets' },
+    { n: 9, symbole: 'G', prefixe: 'giga', nom: 'un milliard', usuel: true, exemple: 'un gigaoctet (Go) : 10⁹ octets' },
+    { n: 6, symbole: 'M', prefixe: 'méga', nom: 'un million', usuel: true, exemple: 'un mégawatt (MW) : 10⁶ watts' },
+    { n: 3, symbole: 'k', prefixe: 'kilo', nom: 'mille', usuel: true, exemple: 'un kilogramme (kg) : 10³ grammes' },
+    { n: 2, symbole: 'h', prefixe: 'hecto', nom: 'cent', exemple: 'un hectolitre (hL) : 10² litres' },
+    { n: 1, symbole: 'da', prefixe: 'déca', nom: 'dix', exemple: 'un décamètre (dam) : 10 mètres' },
+    { n: -1, symbole: 'd', prefixe: 'déci', nom: 'un dixième', exemple: 'un décilitre (dL) : 10⁻¹ litre' },
+    { n: -2, symbole: 'c', prefixe: 'centi', nom: 'un centième', usuel: true, exemple: 'un centimètre (cm) : 10⁻² mètre' },
+    { n: -3, symbole: 'm', prefixe: 'milli', nom: 'un millième', usuel: true, exemple: 'un millimètre (mm) : 10⁻³ mètre' },
+    { n: -6, symbole: 'µ', prefixe: 'micro', nom: 'un millionième', usuel: true, exemple: 'un micromètre (µm) : le diamètre d\'un cheveu fait 50 µm' },
+    { n: -9, symbole: 'n', prefixe: 'nano', nom: 'un milliardième', usuel: true, exemple: 'un nanomètre (nm) : 10⁻⁹ mètre' },
+    { n: -12, symbole: 'p', prefixe: 'pico', nom: 'un billionième', exemple: 'une picoseconde (ps) : 10⁻¹² seconde' }
 ];
 
+/** Le préfixe d'une puissance de 10, quand elle en a un. */
+export const prefixeDe = (n) => PREFIXES.find(p => p.n === n) || null;
+
+/** Le préfixe qui porte ce symbole — « µ » et « M » ne se confondent pas. */
+export const prefixeDuSymbole = (s) => PREFIXES.find(p => p.symbole === s) || null;
+
 /** Le nom d'une puissance de 10, quand elle en a un. */
-export const nomPuissance = (n) => (PREFIXES.find(p => p.n === n) || {}).nom || null;
+export const nomPuissance = (n) => (prefixeDe(n) || {}).nom || null;
+
+/**
+ * CONVERTIR UNE MESURE D'UN PRÉFIXE À UN AUTRE, en exposant et non en flottant.
+ *
+ * « 5 µm en mètres » vaut 5 × 10⁻⁶ m, et l'on rend les deux morceaux séparés :
+ * la valeur et l'exposant. Multiplier 5 par 1e-6 donnerait 0.000005000000001
+ * dans un énoncé, ce qu'aucun professeur n'écrit.
+ *
+ * @returns {{valeur:number, exposant:number}} `valeur × 10^exposant`, dans
+ *   l'unité d'arrivée.
+ */
+export function convertirPrefixe(valeur, de, vers) {
+    const a = de === null || de === undefined ? 0 : de;
+    const b = vers === null || vers === undefined ? 0 : vers;
+    return { valeur, exposant: a - b };
+}

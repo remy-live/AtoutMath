@@ -545,5 +545,69 @@ export const numerationExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Maintenant on transforme, et il n'y a que deux gestes à faire, toujours les mêmes. Un : place la virgule juste après le PREMIER chiffre qui n'est pas zéro — 34 000 donne 3,4, et 0,0052 donne 5,2. Deux : compte de combien de rangs elle a bougé. Et surtout, VÉRIFIE le signe au lieu de le retenir : le nombre de départ est-il plus grand ou plus petit que 1 ? Plus grand, l'exposant est positif ; plus petit, il est négatif. 34 000 = 3,4 × 10⁴, et 0,0052 = 5,2 × 10⁻³. Ensuite on fait le chemin inverse, puis on compare. Pour comparer, regarde l'EXPOSANT d'abord : 2,1 × 10⁵ bat 9,8 × 10⁴, et le 9,8 n'y peut rien — le nombre de devant reste toujours entre 1 et 10, il ne rattrapera jamais un rang entier. Mais si les deux exposants sont égaux, alors c'est le nombre de devant qui décide, et c'est précisément le cas qu'on oublie."
+    },
+    {
+        // LES PRÉFIXES. Rémy : « je ne veux pour l'instant que des exercices
+        // sur les puissances sur les préfixes ». Sa fiche en fait une colonne
+        // entière — pico à trillion —, puis les remet en jeu sur les codes
+        // couleur des résistances et dans le devoir : « un cheveu fait 50 µm,
+        // exprime-le en mètres », « 8 To = 8 × 10¹² ».
+        //
+        // TROIS CHOSES DIFFÉRENTES, ET ON LES CONFOND : le symbole qu'on lit
+        // (M), le préfixe qu'on prononce (méga), la puissance avec laquelle on
+        // calcule (10⁶). Un élève sait presque toujours dire « méga, c'est un
+        // million » et reste bloqué sur « 3 Mo = … octets », faute d'avoir fait
+        // le troisième pas.
+        id: 'num-puissances-prefixes', status: STATUS.TEST,
+        title: 'Kilo, Méga, Giga, Micro, Nano',
+        cree: '2026-08-27',
+        generatorId: 'num.puissances-prefixes', activityId: 'buttons',
+        skills: ['num.puissances.prefixes'],
+        params: { etape: 'progressif' },
+        // LE RAPPEL DOIT COUVRIR TOUT CE QUE LA FEUILLE DEMANDE. Il n'en
+        // nommait que six, et les questions tiraient aussi téra et centi :
+        // l'élève lisait la consigne, cherchait « c », et ne le trouvait pas.
+        // « centi » est mis à part parce qu'il EST à part — la seule marche
+        // qui ne soit pas de trois, héritée du centimètre.
+        consignePapier: "Complète. Les préfixes vont de trois en trois : kilo 10³, méga 10⁶, giga 10⁹, téra 10¹² ; milli 10⁻³, micro 10⁻⁶, nano 10⁻⁹. Seul « centi » fait exception : c'est 10⁻², comme dans centimètre.",
+        colonnesPapier: 2,
+        motsClefs: ['préfixe', 'kilo', 'méga', 'giga', 'téra', 'milli', 'micro', 'nano',
+            'pico', 'symbole', 'unité', 'conversion', 'octet', 'watt', 'micromètre'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Six marches, et l'on monte tout seul toutes les trois questions. On commence par LIRE un symbole — M, µ, n, T — parce que c'est ce qu'on trouve sur un emballage. Puis on passe du préfixe à la puissance (méga = 10⁶), et de la puissance au préfixe. Les préfixes vont de TROIS EN TROIS dans les deux sens, et c'est la seule chose à retenir : kilo 10³, méga 10⁶, giga 10⁹, téra 10¹² ; milli 10⁻³, micro 10⁻⁶, nano 10⁻⁹. Une seule exception, centi (10⁻²), héritée du centimètre. La quatrième marche est un piège qui vaut un milliard : « m » minuscule est MILLI, « M » majuscule est MÉGA. Les deux dernières font ce à quoi tout cela sert : convertir. 50 µm = 50 × 10⁻⁶ m, et 3 Go = 3 000 Mo."
+    },
+    {
+        // CALCULER AVEC DES PUISSANCES. Trois règles, et une seule raison
+        // derrière les trois : une puissance COMPTE des facteurs. Le produit
+        // ajoute les exposants, le quotient les soustrait, la puissance de
+        // puissance les multiplie.
+        //
+        // LA FAUTE UNIVERSELLE — 10⁵ × 10³ = 10¹⁵ — n'est pas de
+        // l'étourderie : le signe × est écrit sous les yeux de l'élève, et il
+        // l'applique à ce qu'il voit. C'est donc le distracteur de CHAQUE
+        // question de la marche du produit.
+        id: 'num-puissances-calcul', status: STATUS.TEST,
+        title: 'Calculer avec des Puissances',
+        cree: '2026-08-27',
+        generatorId: 'num.puissances-calcul', activityId: 'buttons',
+        skills: ['num.puissances.regles'],
+        params: { etape: 'progressif' },
+        // TROIS SORTES DE RÉPONSES, ET LA CONSIGNE DOIT LES ANNONCER TOUTES.
+        // « Sous la forme d'une seule puissance » était juste pour 10⁴ × 10⁸,
+        // faux pour 2⁵ — dont on attend 32 — et piégeur pour 3⁴ × 5³, dont la
+        // bonne réponse est qu'il n'y en a pas. Un élève qui lit une consigne
+        // et à qui l'on reproche de l'avoir suivie n'apprend rien.
+        consignePapier: "Écris le résultat le plus simple : sa valeur quand elle se calcule (2⁵ = 32), une seule puissance sinon (10⁴ × 10⁸ = 10¹²). Si c'est impossible, écris-le. Tu écriras le calcul !",
+        colonnesPapier: 3,
+        motsClefs: ['puissances', 'exposant', 'produit', 'quotient', 'multiplier', 'diviser',
+            'puissance de puissance', 'règles de calcul', 'même base', 'inverse', 'carré'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Neuf marches, en trois temps. D'ABORD CE QU'EST UNE PUISSANCE : 2⁵ n'est pas 2 × 5, c'est 2 × 2 × 2 × 2 × 2. Et (−3)² vaut +9 quand −3² vaut −9 : la parenthèse dit si le signe fait partie du nombre qu'on élève au carré. ENSUITE LES DEUX RÈGLES QU'ON ÉCHANGE TOUT LE TEMPS. Le produit AJOUTE les exposants — 10⁵ × 10³ = 10⁸, parce que cinq dix suivis de trois dix font huit dix. Le quotient les SOUSTRAIT — 10⁸ ÷ 10³ = 10⁵. Le signe de l'opération n'est PAS celui qu'on fait sur les exposants, et c'est la faute la plus fréquente du chapitre. ENFIN la puissance de puissance, qui les MULTIPLIE — (10⁴)³ = 10¹², trois paquets de quatre dix —, l'inverse qui change le signe de l'exposant, et la condition qu'on oublie : il faut la MÊME base. 2³ × 5³ ne s'écrit pas sous la forme d'une seule puissance."
     }
 ];
