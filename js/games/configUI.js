@@ -11,6 +11,7 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
+import { ajusterDuo, phraseDuo, seuilPourMode, MIN_ETAPE, MAX_ETAPE } from '../core/seuilEtape.js';
 import { paliersAide, rangsEnMots, palierEnMots } from '../core/apercuAide.js';
 
 // --- Champs -----------------------------------------------------------------
@@ -104,11 +105,22 @@ function glissiereHtml(param, ech, value, id) {
     // deux caractères. Seulement là où le libellé est passé DESSOUS : quand il
     // tient au bout du rail, la valeur y est déjà et un second chiffre ferait
     // deux choses à lire pour une seule information.
-    const rang = mots && !nombre
+    // LES CRANS NOMMÉS SOUS LE RAIL remplacent avantageusement ce compte quand
+    // l'auteur du réglage a donné des noms courts : « Qcm 2 · Qcm 4 · Libre »
+    // dit à la fois où l'on est, combien il y a de positions, ET ce qu'elles
+    // valent — ce qu'un « 3/4 » ne pourra jamais dire. C'est le rail que Rémy
+    // dessine : « O———O———O ». Sans noms courts, on garde le compte.
+    const crans = mots && !nombre && ech.courts
+        ? `<div class="cfg-crans" aria-hidden="true">`
+        + ech.courts.map((c, k) =>
+            `<span class="cfg-cran${k === i ? ' cfg-cran--ici' : ''}">${escapeAttr(c)}</span>`).join('')
+        + `</div>`
+        : '';
+    const rang = mots && !nombre && !ech.courts
         ? `<span class="cfg-glissiere-rang" aria-hidden="true">${i + 1}/${ech.valeurs.length}</span>`
         : '';
 
-    return `<div class="cfg-glissiere${mots ? ' cfg-glissiere--mots' : ''}">
+    return `<div class="cfg-glissiere${mots ? ' cfg-glissiere--mots' : ''}${crans ? ' cfg-glissiere--crans' : ''}">
         <div class="cfg-stepper cfg-stepper--rail" data-stepper>
             <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
             <input type="range" class="cfg-rail" id="${id}" data-param="${param.id}"
@@ -119,6 +131,7 @@ function glissiereHtml(param, ech, value, id) {
             <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
             ${rang}
         </div>
+        ${crans}
         <output class="cfg-glissiere-dit" data-dit>${ech.libelles[i]}</output>
     </div>`;
 }
@@ -149,6 +162,174 @@ export function glissiereNombre({ id, label, min, max, value, aide, aideId }) {
         ${glissiereHtml({ id, label }, ech, v, id).replace(` data-param="${id}"`, '')}
     </div>`;
 }
+
+/**
+ * LE DOUBLE CURSEUR : COMBIEN DE QUESTIONS, ET COMBIEN IL FAUT EN RÉUSSIR.
+ *
+ * Rémy : « il ne peut pas y avoir plus de bonnes réponses exigées que de
+ * questions […] on pourrait mettre un double slider ? » Oui — et pas seulement
+ * pour gagner une ligne : deux rails indépendants de 1 à 50 laissaient écrire
+ * « 30 exigées sur 10 questions », que le code rattrapait en douce à
+ * l'enregistrement. Le professeur lisait 30, l'étape en gardait 10.
+ *
+ * DEUX POIGNÉES SUR UN SEUL RAIL RENDENT L'ÉTAT INTERDIT IRREPRÉSENTABLE. Les
+ * deux valeurs se comptent dans la même unité — des questions —, donc elles
+ * vivent sur le même axe, et l'ordre des poignées EST la règle. Le segment
+ * coloré se lit d'un coup d'œil : voilà ce qu'il faut réussir, et voilà la
+ * marge d'erreur laissée à l'élève.
+ *
+ * DEUX CHAMPS `range` SUPERPOSÉS, et non un composant maison : les flèches du
+ * clavier, le pas, le tactile et les lecteurs d'écran marchent tout seuls. Le
+ * CSS coupe les événements sur les rails et ne les rend qu'aux poignées, sans
+ * quoi celle du dessus attraperait tous les clics.
+ *
+ * EN ÉVALUATION, LA SECONDE POIGNÉE DISPARAÎT (voir core/seuilEtape.js).
+ */
+const partDuo = (t) => `calc(${Math.max(0, Math.min(1, t)).toFixed(4)} * (100% - 24px))`;
+
+export function glissiereDouble({ idQuestions, idExigees, label, aide, aideId, min, max, questions, exigees, evaluation }) {
+    const duo = ajusterDuo({ questions, exigees, max });
+    // LA LARGEUR DU SEGMENT SE COMPTE SUR LA PISTE UTILE, pas sur la boîte : la
+    // poignée déborde d'un rayon à chaque bout, si bien qu'un simple
+    // pourcentage aurait posé le bout du vert à côté du centre de sa poignée —
+    // décalage d'une douzaine de pixels, soit deux ou trois questions.
+    const pc = (v) => partDuo((v - min) / Math.max(1, max - min));
+    const tete = `<label class="cfg-label" for="${idQuestions}">${label}${infoBtn(aide, aideId)}</label>`;
+    const commun = (id, v, quoi) => `<input type="range" id="${id}" class="cfg-duo-curseur cfg-duo-curseur--${quoi}"
+            data-duo="${quoi}" min="${min}" max="${max}" step="1" value="${v}"
+            aria-label="${quoi === 'questions' ? 'Nombre de questions' : 'Bonnes réponses exigées'}">`;
+    return `<div class="cfg-field cfg-duo${evaluation ? ' cfg-duo--sans-seuil' : ''}" data-duo-boite>
+        ${tete}
+        <div class="cfg-duo-rail">
+            <div class="cfg-duo-piste"></div>
+            <div class="cfg-duo-part" data-duo-part
+                 style="width:${evaluation ? '0px' : pc(duo.exigees)}"></div>
+            ${evaluation ? `<input type="hidden" id="${idExigees}" value="${duo.exigees}">`
+        : commun(idExigees, duo.exigees, 'exigees')}
+            ${commun(idQuestions, duo.questions, 'questions')}
+        </div>
+        <output class="cfg-duo-dit" data-duo-dit>${phraseDuo({ ...duo, evaluation })}</output>
+    </div>`;
+}
+
+/**
+ * Le rail se redessine sous le doigt, et les deux poignées se poussent l'une
+ * l'autre selon celle qu'on tire (voir `ajusterDuo`).
+ */
+function majDuo(boite, bouge) {
+    const q = boite.querySelector('[data-duo="questions"]');
+    const e = boite.querySelector('[data-duo="exigees"]');
+    if (!q) return;
+    const evaluation = boite.classList.contains('cfg-duo--sans-seuil');
+    const min = Number(q.min);
+    const max = Number(q.max);
+    const duo = ajusterDuo({
+        questions: Number(q.value),
+        exigees: e ? Number(e.value) : Number(q.value),
+        bouge: bouge || 'questions', max
+    });
+    q.value = String(duo.questions);
+    if (e) e.value = String(duo.exigees);
+    const part = boite.querySelector('[data-duo-part]');
+    if (part) {
+        part.style.width = evaluation ? '0px'
+            : partDuo((duo.exigees - min) / Math.max(1, max - min));
+    }
+    const dit = boite.querySelector('[data-duo-dit]');
+    if (dit) dit.textContent = phraseDuo({ ...duo, evaluation });
+}
+
+document.addEventListener('input', (e) => {
+    const rail = e.target.closest && e.target.closest('[data-duo]');
+    if (!rail) return;
+    majDuo(rail.closest('[data-duo-boite]'), rail.dataset.duo);
+    rail.dispatchEvent(new Event('change', { bubbles: true }));
+});
+
+// --- LE GESTE SUR LE DOUBLE RAIL ---------------------------------------------
+//
+// C'EST LE RAIL QUI REÇOIT LE DOIGT, PAS LES POIGNÉES. Laisser faire le
+// navigateur aurait été plus court, mais il y a un piège que deux `range`
+// superposés ne peuvent pas résoudre seuls : quand les deux poignées sont AU
+// MÊME ENDROIT — « 10 questions, il faut tout réussir », qui est un réglage
+// parfaitement ordinaire —, celle du dessus recouvre l'autre. On ne peut plus
+// attraper que « questions », et comme raccourcir le devoir emmène le seuil
+// avec lui, les deux restent collées à jamais. Le réglage devient un cul-de-sac.
+//
+// D'où ces trois écouteurs. Ils apportent aussi ce que le rail natif ne donne
+// pas : on TAPE un endroit du rail et la poignée y va, au lieu de devoir la
+// saisir — geste précieux sur un téléphone, où viser une pastille de 24 px au
+// milieu d'un rail de 50 crans n'est pas raisonnable.
+let duoActif = null;
+
+/** La valeur sous le doigt. La demi-poignée déborde de chaque bout du rail. */
+function valeurSousLeDoigt(rail, clientX) {
+    const q = rail.querySelector('[data-duo="questions"]');
+    const r = rail.getBoundingClientRect();
+    const min = Number(q.min);
+    const max = Number(q.max);
+    const marge = 12;
+    const util = Math.max(1, r.width - marge * 2);
+    const t = Math.min(1, Math.max(0, (clientX - r.left - marge) / util));
+    return Math.round(min + t * (max - min));
+}
+
+function poserDuo(v) {
+    if (!duoActif) return;
+    const { boite, cible } = duoActif;
+    cible.value = String(v);
+    majDuo(boite, cible.dataset.duo);
+    cible.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+document.addEventListener('pointerdown', (e) => {
+    const rail = e.target.closest && e.target.closest('.cfg-duo-rail');
+    if (!rail) return;
+    const q = rail.querySelector('[data-duo="questions"]');
+    if (!q) return;
+    const ex = rail.querySelector('[data-duo="exigees"]');
+    const v = valeurSousLeDoigt(rail, e.clientX);
+
+    // LAQUELLE DES DEUX ON TIRE : la plus proche du doigt.
+    //
+    // À ÉGALITÉ PARFAITE — les deux poignées au même endroit ET le doigt
+    // dessus —, on ne peut pas encore savoir : « 10 questions, il faut tout
+    // réussir » se corrige aussi bien en allongeant le devoir qu'en baissant
+    // l'exigence, et rien dans le clic ne dit lequel. On ATTEND donc le premier
+    // mouvement, dont le sens tranche : vers la droite, on allonge le devoir ;
+    // vers la gauche, on baisse l'exigence. C'est ce qui rouvre le cul-de-sac
+    // décrit plus haut, et c'est pour cela qu'on ne pose rien tout de suite.
+    let cible = q;
+    let attente = false;
+    if (ex) {
+        const dq = Math.abs(v - Number(q.value));
+        const de = Math.abs(v - Number(ex.value));
+        if (Number(q.value) === Number(ex.value) && dq === 0) { cible = null; attente = true; }
+        else if (de < dq) cible = ex;
+        else if (de === dq) cible = v < Number(q.value) ? ex : q;
+    }
+    duoActif = { rail, boite: rail.closest('[data-duo-boite]'), cible, depart: v, q, ex };
+    try { rail.setPointerCapture(e.pointerId); } catch (err) { /* souris relâchée ailleurs */ }
+    if (!attente) {
+        cible.focus({ preventScroll: true });
+        poserDuo(v);
+    }
+    e.preventDefault();
+});
+
+document.addEventListener('pointermove', (e) => {
+    if (!duoActif) return;
+    const v = valeurSousLeDoigt(duoActif.rail, e.clientX);
+    if (!duoActif.cible) {
+        if (v === duoActif.depart) return;          // on n'a pas encore bougé
+        duoActif.cible = v > duoActif.depart ? duoActif.q : duoActif.ex;
+        duoActif.cible.focus({ preventScroll: true });
+    }
+    poserDuo(v);
+});
+
+document.addEventListener('pointerup', () => { duoActif = null; });
+document.addEventListener('pointercancel', () => { duoActif = null; });
 
 /**
  * TOUS LES RÉGLAGES D'UN SCHÉMA, RANGÉS — et c'est le rangement qui compte.
@@ -606,6 +787,13 @@ function majRail(rail) {
     // serait pire que pas de rang du tout.
     const rang = boite && boite.querySelector('.cfg-glissiere-rang');
     if (rang) rang.textContent = `${Number(rail.value) + 1}/${Number(rail.max) + 1}`;
+    // Le cran courant se marque aussi : une graduation qui ne suit pas la
+    // poignée est une graduation qui ment.
+    if (boite) {
+        const ici = Number(rail.value);
+        boite.querySelectorAll('.cfg-cran').forEach((c, k) =>
+            c.classList.toggle('cfg-cran--ici', k === ici));
+    }
     rail.setAttribute('aria-valuetext', texte);
 }
 
@@ -793,9 +981,15 @@ export function conseilEtape(step) {
  * @param {Object} step - étape v2 { exerciseId, overrides, nbItems, threshold, weight, timeLimit }
  * @param {(step:Object)=>void} onSave
  */
-export function renderGameConfigUI(step, onSave, containerId = 'builder-config-content') {
+export function renderGameConfigUI(step, onSave, containerId = 'builder-config-content', opts = {}) {
     const content = document.getElementById(containerId);
     if (!content) return;
+
+    // LE MODE DU PARCOURS CHANGE CE PANNEAU. En évaluation, « bonnes réponses
+    // exigées » ne veut rien dire : une interrogation ne se valide pas étape
+    // par étape, elle se note. Le constructeur nous le passe ; à défaut, on
+    // suppose l'entraînement, qui est le cas ordinaire.
+    const evaluation = opts.mode === MODES.EVALUATION;
 
     const exo = getExerciseById(step.exerciseId) || step.exercise || {};
     const schema = paramSchemaOf(exo);
@@ -826,15 +1020,15 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                 Une récompense doit quand même s'arrêter : donne-lui un nombre de
                 questions, une durée, ou les deux — le premier atteint met fin au jeu.
             </p>
-            ${glissiereNombre({
-        id: 'cfg-nbitems', label: 'Nombre de questions',
-        min: 1, max: 50, value: step.nbItems || conseilEtape(step)
-    })}
-            <div id="cfg-champ-seuil">${glissiereNombre({
-        id: 'cfg-threshold', label: 'Bonnes réponses exigées', aideId: 'cfg-threshold-tip',
-        min: 1, max: 50,
-        value: step.threshold !== null && step.threshold !== undefined
-            ? step.threshold : (step.nbItems || conseilEtape(step))
+            <div id="cfg-champ-seuil">${glissiereDouble({
+        idQuestions: 'cfg-nbitems', idExigees: 'cfg-threshold',
+        label: evaluation ? 'Nombre de questions' : 'Questions et réussite exigée',
+        aideId: 'cfg-threshold-tip',
+        min: MIN_ETAPE, max: MAX_ETAPE,
+        questions: step.nbItems || conseilEtape(step),
+        exigees: step.threshold !== null && step.threshold !== undefined
+            ? step.threshold : (step.nbItems || conseilEtape(step)),
+        evaluation
     })}</div>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-timelimit">Chronomètre (s)
@@ -864,10 +1058,17 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         const tip = document.getElementById('cfg-threshold-tip');
         if (!tip) return;
         const nb = intVal('cfg-nbitems', 10);
+        if (evaluation) {
+            tip.dataset.tip = 'En évaluation, une étape ne se valide pas : elle se note. '
+                + 'La poignée du seuil n\'a donc pas lieu d\'être — l\'élève répond aux '
+                + `${nb} questions, et le bilan dit ce qu'il a réussi.`;
+            return;
+        }
         const seuil = Math.min(intVal('cfg-threshold', nb), nb);
-        tip.dataset.tip = `L'élève doit réussir ${seuil} question${seuil > 1 ? 's' : ''} sur ${nb} `
-            + `pour que l'étape soit validée. En dessous, il rejoue l'étape (en entraînement) `
-            + `ou passe à la suivante sans la valider (en évaluation).`;
+        tip.dataset.tip = `Tire la poignée BASSE pour dire combien de bonnes réponses tu exiges, `
+            + `la HAUTE pour le nombre de questions. L'élève doit réussir ${seuil} `
+            + `question${seuil > 1 ? 's' : ''} sur ${nb} pour valider l'étape ; en dessous, il la `
+            + `rejoue.`;
     };
 
     // Le choix « à chaque question / à toute l'étape » n'a de sens que s'il y
@@ -894,7 +1095,17 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             const el = document.getElementById(id);
             if (el) el.style.display = off ? 'none' : '';
         };
-        cacher('cfg-champ-seuil', bonus);
+        // LA RÉCOMPENSE GARDE SON NOMBRE DE QUESTIONS, ELLE PERD SON SEUIL.
+        // On cachait tout le champ, donc les deux poignées : un Tetris de
+        // récompense repartait sur la valeur par défaut, et Rémy avait
+        // justement demandé « pour les jeux bonus il faut pouvoir choisir un
+        // nombre de questions et/ou une durée ». Seule la poignée du seuil s'en
+        // va, comme en évaluation — un jeu ne se valide pas non plus.
+        const duo = content.querySelector('[data-duo-boite]');
+        if (duo) {
+            duo.classList.toggle('cfg-duo--sans-seuil', bonus || evaluation);
+            majDuo(duo, 'questions');
+        }
         cacher('cfg-champ-poids', bonus);
         const note = document.getElementById('cfg-note-bonus');
         if (note) note.style.display = bonus ? '' : 'none';
@@ -914,8 +1125,12 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         onSave({
             ...step,
             overrides,
-            nbItems,
-            threshold: Math.min(intVal('cfg-threshold', nbItems), nbItems),
+            // Ni l'évaluation ni la récompense n'exigent de bonnes réponses :
+            // `threshold` y vaut `null`, c'est-à-dire aucune exigence.
+            ...seuilPourMode({
+                questions: nbItems, exigees: intVal('cfg-threshold', nbItems),
+                evaluation: evaluation || bonus, max: MAX_ETAPE
+            }),
             timeLimit: intVal('cfg-timelimit', 0) || null,
             timerScope: scope ? scope.value : 'etape',
             weight: intVal('cfg-weight', 1),

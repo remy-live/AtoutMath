@@ -102,8 +102,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const code = new URLSearchParams(window.location.search).get('code');
     if (code) applyCode(code, { autoStart: true });
 
-    window.showGameConfigUI = (step, onSave, containerId = 'builder-config-content') => {
-        import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId));
+    window.showGameConfigUI = (step, onSave, containerId = 'builder-config-content', opts) => {
+        import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId, opts));
     };
 
     // L'ÉCRAN D'ARRIVÉE PASSE EN DERNIER : il lit le carnet d'erreurs et le

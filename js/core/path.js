@@ -24,7 +24,11 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         exerciseId,
         overrides: { ...overrides },
         nbItems: opts.nbItems || 10,
-        threshold: opts.threshold !== undefined ? opts.threshold : null, // null => tout réussir
+        // `null` = AUCUNE EXIGENCE, et non « tout réussir » : c'est ce que le
+        // meneur en fait depuis toujours (`seuilRequis` rend 0), et c'est ce dont
+        // l'évaluation et les jeux de récompense ont besoin — ils se notent ou se
+        // gagnent, ils ne se valident pas. Voir core/seuilEtape.js.
+        threshold: opts.threshold !== undefined ? opts.threshold : null,
         weight: opts.weight || 1,
         timeLimit: opts.timeLimit || null,
         // Rejeu exact d'une question passée : la graine suffit à la régénérer,

@@ -792,12 +792,17 @@ export function selectStep(stepId) {
     const close = document.getElementById('mob-close-props');
     if (close) close.onclick = () => panel.classList.remove('mob-open');
 
+    // LE MODE DU PARCOURS VOYAGE AVEC L'ÉTAPE. En évaluation, « bonnes réponses
+    // exigées » n'a pas de sens — une interrogation se note, elle ne se valide
+    // pas —, et le panneau retire la poignée du seuil.
     renderGameConfigUI(step, (updated) => {
         const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
         if (i !== -1) {
             state.currentPath.steps[i] = updated;
             renderTeacherPath();
         }
+    }, 'builder-config-content', {
+        mode: (state.currentPath && state.currentPath.policy && state.currentPath.policy.mode) || null
     });
 
     document.querySelectorAll('.path-step').forEach(el => {

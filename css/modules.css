@@ -1502,10 +1502,16 @@
    d'un cheveu — l'ecran « un peu plus grand qu'un telephone » de Remy restait
    donc a une erreur par ligne. Le `min(…, 100%)` protege le petit telephone, ou
    260 px de colonne dans 240 px de cadre auraient rendu un ascenseur
-   horizontal. */
+   horizontal.
+   `auto-fit` ET NON `auto-fill` : Remy, « si l'erreur est toute seule, c'est
+   dommage de la mettre en colonne et de ne pas prendre tout l'espace ».
+   `auto-fill` gardait les colonnes vides et laissait l'erreur unique dans son
+   quart de largeur ; `auto-fit` replie les pistes vides, si bien qu'une erreur
+   seule occupe toute la ligne, deux erreurs une moitie chacune, et ainsi de
+   suite. La grille ne montre jamais de vide a droite. */
 .error-group-body {
     display: grid; gap: 10px; align-items: start;
-    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 }
 /* L'EN-TETE DU CADRE : le titre, ce qu'il reste a faire, et le bouton. */
 .error-group-head {
@@ -2538,6 +2544,38 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--text-muted); white-space: nowrap;
 }
 
+/* LA GRADUATION NOMMEE DU RAIL — le croquis de Remy : « Qcm 2 · Qcm 4 · Libre,
+   O———O———O ». Elle ne remplace pas la phrase du dessous (qui dit en toutes
+   lettres le cran choisi) : elle dit ce qu'il y a AILLEURS sur l'axe, ce
+   qu'aucun libelle unique ne peut faire.
+   L'inset de 12 px est la moitie de la poignee : sans lui, le premier et le
+   dernier nom seraient decales d'un demi-pouce par rapport a leur position
+   reelle sur le rail. */
+/* ALIGNEE SUR LE RAIL, PAS SUR LA LIGNE. Le rail ne commence pas au bord : il
+   y a d'abord le bouton −, puis l'écart du `gap`, et la poignée elle-même
+   déborde d'un demi-diamètre à chaque bout. Sans ce retrait, le dernier nom se
+   posait sous le bouton + et la graduation désignait des positions fausses.
+   Le bouton n'a pas la même largeur partout (40 px, 36 dans la modale élève,
+   32 dans l'engrenage d'une fiche) : d'où la variable, redéfinie là-bas. */
+.cfg-glissiere { --cfg-bouton: 40px; }
+.cfg-crans {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin: -6px calc(var(--cfg-bouton) + 6px + 12px) 0; gap: 4px;
+}
+.cfg-cran {
+    font-size: .72rem; font-weight: 700; color: var(--text-muted);
+    line-height: 1.15; text-align: center; flex: 1 1 0; min-width: 0;
+    /* Coupe plutot que de deformer l'axe : un nom trop long pousserait tous
+       les autres et la graduation ne correspondrait plus au rail. */
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cfg-cran:first-child { text-align: left; }
+.cfg-cran:last-child { text-align: right; }
+.cfg-cran--ici { color: var(--primary); }
+/* La phrase complete se resserre sous la graduation : les deux se lisent
+   ensemble, pas comme deux blocs sans rapport. */
+.cfg-glissiere--crans .cfg-glissiere-dit { padding-top: 4px; }
+
 /* Le rail lui-même. Dessiné à la main dans les deux moteurs : le rendu natif
    est un fil gris de 2 px sur l'un et une barre bleue système sur l'autre —
    ni l'un ni l'autre ne se voit à travers un vidéoprojecteur. */
@@ -2572,6 +2610,82 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-rail:active::-webkit-slider-thumb { transform: scale(1.15); }
 .cfg-rail:focus-visible::-webkit-slider-thumb { border-color: var(--warning); }
 .cfg-rail:focus-visible::-moz-range-thumb { border-color: var(--warning); }
+
+/* --- LE DOUBLE CURSEUR DE L'ETAPE --------------------------------------------
+   Remy : « il ne peut pas y avoir plus de bonnes reponses exigees que de
+   questions […] on pourrait mettre un double slider ? »
+
+   DEUX CHAMPS `range` SUPERPOSES, et non un composant maison : les fleches du
+   clavier, le pas, le tactile et les lecteurs d'ecran marchent tout seuls. Le
+   prix a payer est ici : les rails ne recoivent PLUS les evenements (sinon
+   celui du dessus attraperait tous les clics, y compris ceux destines a la
+   poignee du dessous), et on les rend uniquement aux deux poignees. */
+.cfg-duo { grid-template-columns: minmax(0, 1fr); }
+.cfg-duo .cfg-label { justify-content: flex-start; }
+.cfg-duo-rail {
+    position: relative; width: 100%; height: 34px;
+    touch-action: pan-y;            /* le glisse horizontal nous appartient */
+    cursor: pointer;
+}
+/* La piste, et la part qu'il faut reussir. C'est ce segment colore qui rend le
+   reglage lisible d'un coup d'oeil : voila l'exigence, voila la marge. */
+.cfg-duo-piste, .cfg-duo-part {
+    position: absolute; top: 50%; height: 8px; margin-top: -4px;
+    border-radius: 99px; pointer-events: none;
+}
+.cfg-duo-piste {
+    left: 12px; right: 12px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+}
+.cfg-duo-part {
+    left: 12px; background: var(--success);
+    transition: width .08s linear;
+}
+/* Les deux rails occupent exactement la meme boite : leurs poignees partagent
+   donc le meme axe, au pixel pres, et l'ordre des deux se lit sans calcul. */
+.cfg-duo-curseur {
+    position: absolute; left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 100%; height: 34px; margin: 0; padding: 0;
+    -webkit-appearance: none; appearance: none;
+    background: transparent; outline: none;
+    /* AUCUN EVENEMENT SUR LES RAILS NI SUR LEURS POIGNEES : c'est la boite qui
+       recoit le doigt et decide laquelle des deux poignees bouge (voir
+       games/configUI.js). Sans cela, deux poignees superposees se recouvrent et
+       le reglage devient un cul-de-sac. Les champs restent la pour le clavier,
+       le focus et les lecteurs d'ecran. */
+    pointer-events: none;
+}
+.cfg-duo-curseur::-webkit-slider-runnable-track { height: 8px; background: transparent; }
+.cfg-duo-curseur::-moz-range-track { height: 8px; background: transparent; }
+.cfg-duo-curseur::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); border: 3px solid var(--bg-panel);
+    box-shadow: var(--shadow-md); margin-top: -8px;
+    transition: transform .1s ease;
+}
+.cfg-duo-curseur::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); border: 3px solid var(--bg-panel);
+    box-shadow: var(--shadow-md);
+}
+/* La poignee du seuil porte la couleur de son segment : les deux disent la
+   meme chose, elles doivent se reconnaitre. */
+.cfg-duo-curseur--exigees::-webkit-slider-thumb { background: var(--success); }
+.cfg-duo-curseur--exigees::-moz-range-thumb { background: var(--success); }
+.cfg-duo-curseur:active::-webkit-slider-thumb { transform: scale(1.15); }
+.cfg-duo-curseur:focus-visible::-webkit-slider-thumb { border-color: var(--warning); }
+.cfg-duo-curseur:focus-visible::-moz-range-thumb { border-color: var(--warning); }
+/* En evaluation — et pour un jeu de recompense — il n'y a pas de seuil : la
+   seconde poignee s'en va au lieu de proposer un reglage sans effet. */
+.cfg-duo--sans-seuil .cfg-duo-curseur--exigees { display: none; }
+.cfg-duo--sans-seuil .cfg-duo-part { display: none; }
+.cfg-duo-dit {
+    display: block; padding: 2px 2px 0;
+    font-size: .86rem; font-weight: 600; color: var(--text-muted); line-height: 1.35;
+}
 
 /* --- L'APERÇU DE L'AIDE ------------------------------------------------------
    « il faut un apercu de ce que cela donne ». Un ruban de vignettes dont la
@@ -2729,6 +2843,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     #student-config-modal .cfg-label { font-size: .88rem; }
     #student-config-modal .cfg-input { padding: 6px 10px; font-size: .95rem; }
     #student-config-modal .cfg-step { width: 36px; }
+    #student-config-modal .cfg-glissiere { --cfg-bouton: 36px; }
     #student-config-modal .cfg-on { padding: 7px 14px; }
     /* Pas de filet sous le dernier réglage — `:last-of-type` ne suffisait pas,
        le sélecteur portant sur le type d'élément et non sur la classe. */

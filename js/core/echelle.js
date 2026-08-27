@@ -36,14 +36,15 @@
  */
 export const CRANS_MAX = 50;
 
-/** Une option de schéma : valeur brute, ou `{ value, label }`. */
+/** Une option de schéma : valeur brute, ou `{ value, label, court }`. */
 const val = (o) => (o && typeof o === 'object') ? o.value : o;
 const lib = (o) => (o && typeof o === 'object') ? o.label : String(o);
+const crt = (o) => (o && typeof o === 'object' && o.court) ? String(o.court) : null;
 
 /**
  * L'échelle d'un réglage, ou `null` s'il n'en forme pas une.
  *
- * @returns {{nombre: boolean, valeurs: Array, libelles: string[]}|null}
+ * @returns {{nombre: boolean, valeurs: Array, libelles: string[], courts: ?string[]}|null}
  *   `valeurs` sont les valeurs D'ORIGINE, avec leur type : le DOM ne rend que
  *   des chaînes, et « 2 » (nombre de propositions) ne doit pas revenir en
  *   texte au générateur.
@@ -66,10 +67,25 @@ export function echelleDe(param) {
     }
 
     if (param.type === 'select' && param.echelle && (param.options || []).length >= 3) {
+        // LES NOMS DES CRANS, S'ILS SONT TOUS DÉCLARÉS.
+        //
+        // Rémy, pour le format de réponse : « un triple slider —
+        // Qcm 2 · Qcm 4 · Libre — O———O———O ». Le rail ne montrait que le cran
+        // COURANT, sous la forme d'une phrase entière ; on ne voyait donc ni
+        // les autres positions, ni le sens de la progression, et il fallait
+        // traîner la poignée pour découvrir ce qu'il y avait à côté.
+        //
+        // TOUS OU AUCUN, ET DÉCLARÉS. Trois libellés courts sur cinq laisseraient
+        // des trous sur l'axe ; et raccourcir automatiquement « Progressive : 2,
+        // puis 4, puis le clavier (recommandé) » donnerait « Progressive : 2… »,
+        // c'est-à-dire un mensonge tronqué. Le nom court est une deuxième
+        // affirmation de l'auteur, comme `echelle` elle-même.
+        const courts = param.options.map(crt);
         return {
             nombre: false,
             valeurs: param.options.map(val),
-            libelles: param.options.map(lib)
+            libelles: param.options.map(lib),
+            courts: courts.every(Boolean) ? courts : null
         };
     }
 

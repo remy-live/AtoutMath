@@ -16,6 +16,7 @@ import { clearEngines, regTimeout } from './timers.js';
 import { getActivity, getGenerator, uniteDe } from './registry.js';
 import { ItemSession } from './itemSession.js';
 import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
+import { seuilRequis } from './seuilEtape.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import { hydratePath } from './path.js';
@@ -656,7 +657,7 @@ export class Runner {
         this.step = null;
 
         const solved = this.itemsSolved.size;
-        const required = Math.min(step.threshold, step.nbItems);
+        const required = seuilRequis(step);
         const passed = solved >= required;
 
         if (!this.essai) journal.emit(EventTypes.STEP_COMPLETED, {
@@ -889,7 +890,7 @@ export class Runner {
         // pression inutile et modifie le comportement de l'élève.
         bar.style.background = isEvaluation(this.policy)
             ? 'linear-gradient(90deg, var(--text-muted), var(--primary))'
-            : (solved >= Math.min(this.step.threshold, total)
+            : (solved >= seuilRequis(this.step)
                 ? 'var(--success)'
                 : 'linear-gradient(90deg, var(--primary), var(--accent))');
     }
@@ -963,7 +964,7 @@ export class Runner {
      */
     abort() {
         if (this.step && this.isStudentPath) {
-            const requis = Math.min(this.step.threshold, this.step.nbItems);
+            const requis = seuilRequis(this.step);
             if (this.itemsSolved.size >= requis) {
                 state.markStudentPathStepCompleted(this.step.stepId, { runId: this.runId });
             }

@@ -798,6 +798,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .pp-roue-contenu .cfg-stepper .cfg-input--num { width: 56px; }
 .pp-roue-contenu .cfg-step { width: 32px; font-size: 1.1rem; }
+.pp-roue-contenu .cfg-glissiere { --cfg-bouton: 32px; }
 /* CINQ TUILES PAR RANGÉE, quelle que soit la largeur de l'écran. Le panneau de
    configuration s'élargit sur un grand écran et affiche alors ses dix tables
    sur une ligne ; celui-ci est collé à un bandeau et reste étroit. Les dix

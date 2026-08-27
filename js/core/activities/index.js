@@ -176,11 +176,17 @@ const PARAM_AIDE = [{
         + '— la bonne réponse contre l\'erreur classique —, puis quatre, puis on tape '
         + 'la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
         + 'reste en propositions.',
+    // LES NOMS COURTS SONT LA GRADUATION DU RAIL. Rémy en a dessiné le croquis :
+    // « Qcm 2 · Qcm 4 · Libre — O———O———O ». Le rail ne montrait que le cran
+    // courant, en toutes lettres : on ne voyait ni les autres positions ni le
+    // sens de la progression, et il fallait traîner la poignée pour découvrir
+    // ce qu'il y avait à côté. La phrase complète reste dessous, pour le cran
+    // où l'on se trouve.
     options: [
-        { value: 'deux', label: 'Toujours 2 propositions' },
-        { value: 'propositions', label: 'Toujours 4 propositions' },
-        { value: 'progressive', label: 'Progressive : 2, puis 4, puis le clavier (recommandé)' },
-        { value: 'clavier', label: 'Directement au clavier' }
+        { value: 'deux', label: 'Toujours 2 propositions', court: 'QCM 2' },
+        { value: 'propositions', label: 'Toujours 4 propositions', court: 'QCM 4' },
+        { value: 'progressive', label: 'Progressive : 2, puis 4, puis le clavier (recommandé)', court: 'Progressif' },
+        { value: 'clavier', label: 'Directement au clavier', court: 'Libre' }
     ]
 }, {
     id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto', papier: false,
@@ -188,10 +194,10 @@ const PARAM_AIDE = [{
     aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '
         + '« Automatique » laisse le réglage « L\'aide » décider.',
     options: [
-        { value: 'auto', label: 'Automatique' },
-        { value: 2, label: '2' }, { value: 3, label: '3' },
-        { value: 4, label: '4' }, { value: 6, label: '6' },
-        { value: 'toutes', label: 'Toutes celles de l\'exercice' }
+        { value: 'auto', label: 'Automatique', court: 'Auto' },
+        { value: 2, label: '2', court: '2' }, { value: 3, label: '3', court: '3' },
+        { value: 4, label: '4', court: '4' }, { value: 6, label: '6', court: '6' },
+        { value: 'toutes', label: 'Toutes celles de l\'exercice', court: 'Toutes' }
     ]
 }, {
     id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto', papier: false,
@@ -201,12 +207,12 @@ const PARAM_AIDE = [{
     // (tiers, moitié, quart) ne l'était pas — « le dernier quart » arrive après
     // « la moitié », qui arrive après « le premier tiers ».
     options: [
-        { value: 'auto', label: 'Automatique' },
-        { value: 'jamais', label: 'Jamais — des propositions du début à la fin' },
-        { value: 'quart', label: 'Sur le dernier quart' },
-        { value: 'moitie', label: 'À la moitié de l\'exercice' },
-        { value: 'tiers', label: 'Après le premier tiers' },
-        { value: 'toujours', label: 'Dès la première question' }
+        { value: 'auto', label: 'Automatique', court: 'Auto' },
+        { value: 'jamais', label: 'Jamais — des propositions du début à la fin', court: 'Jamais' },
+        { value: 'quart', label: 'Sur le dernier quart', court: '¾' },
+        { value: 'moitie', label: 'À la moitié de l\'exercice', court: '½' },
+        { value: 'tiers', label: 'Après le premier tiers', court: '⅓' },
+        { value: 'toujours', label: 'Dès la première question', court: 'Tout de suite' }
     ]
 }];
 
