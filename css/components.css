@@ -8,11 +8,14 @@
     margin-bottom: 15px;
 }
 
+/* Le trait sous le titre passe sous TOUT l'en-tete (titre + bouton), sinon il
+   s'arretait au milieu de la ligne. Voir .error-group-head dans modules.css. */
+.error-group-head { border-bottom: 1px solid var(--border); }
+
 .error-group-title {
     margin: 0 0 10px 0;
     color: var(--primary);
     font-size: 1.1rem;
-    border-bottom: 1px solid var(--border);
     padding-bottom: 5px;
 }
 
@@ -148,6 +151,9 @@
 .prof-onglet-btn--actif .prof-onglet-compte { background: rgba(255, 255, 255, .25); color: #fff; }
 .prof-onglet-compte[hidden] { display: none; }
 .prof-panneau[hidden] { display: none; }
+/* De quoi passer SOUS la barre d'onglets collante quand on saute au carnet
+   depuis le bouton du haut. */
+#error-log-container { scroll-margin-top: 96px; }
 
 .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
 .section-title { color: var(--text-main); margin: 0 0 20px 0; }

@@ -14,6 +14,7 @@ import { computeSkillStats, getWeakSkills, getStrongSkills, getTotalCorrectCount
 import { getSkill, skillLabel } from '../data/skills.js';
 import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
+import { grouperParExercice, questionsOuvertes, fusionnerDoublons } from '../core/carnet.js';
 import { visuelDe } from '../core/visuelQuestion.js';
 import {
     startErrorReview, startSkillSession, startRecommendedSession, buildRecommendedPreview
@@ -84,6 +85,29 @@ function initOnglets() {
     });
 }
 
+/**
+ * OUVRIR LE CARNET D'ERREURS POUR DE BON.
+ *
+ * Le bouton 📓 de la barre du haut amenait sur la page « profil » puis faisait
+ * défiler jusqu'au carnet — mais depuis que la page est en quatre onglets, le
+ * carnet est le plus souvent CACHÉ à l'arrivée : on atterrissait sur « À
+ * réviser » avec un `scrollIntoView` sans effet, et rien ne se passait. Il faut
+ * choisir l'onglet avant de chercher la section.
+ */
+export function ouvrirCarnet() {
+    montrerOnglet('erreurs');
+    const cible = document.getElementById('error-log-container');
+    if (!cible) return;
+    requestAnimationFrame(() => {
+        // `start` et non `center` : la barre d'onglets est `sticky` en haut du
+        // panneau, et centrer le carnet glissait son premier cadre DERRIÈRE
+        // elle. Le décalage est déclaré en CSS (`scroll-margin-top`).
+        cible.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        cible.classList.add('carnet-vu');
+        setTimeout(() => cible.classList.remove('carnet-vu'), 1600);
+    });
+}
+
 function montrerOnglet(nom) {
     document.querySelectorAll('.prof-onglets [data-onglet]').forEach(b => {
         const actif = b.dataset.onglet === nom;
@@ -111,7 +135,8 @@ function majComptesOnglets() {
     };
     poser('reviser', getDueSkills().length, 'notion à revoir');
     poser('progres', computeSkillStats().length, 'notion travaillée');
-    poser('erreurs', state.errorHistory.filter(e => estRevisable(e.exoId)).length, 'erreur');
+    poser('erreurs', questionsOuvertes(
+        state.errorHistory.filter(e => estRevisable(e.exoId))).length, 'erreur');
     // `state.badges` est un OBJET { badgeId: date }, pas un tableau : compter
     // sa `length` donnait toujours zéro, et l'onglet paraissait vide alors
     // qu'il portait déjà six médailles.
@@ -336,7 +361,10 @@ function renderErrors() {
     const desJeux = toutes.filter(estDunJeu);
     const errors = montrerJeux ? toutes : toutes.filter(e => !estDunJeu(e));
 
-    const open = errors.filter(e => !e.corrected);
+    // ON COMPTE DES QUESTIONS, PAS DES LIGNES DE JOURNAL : « Réviser mes 26
+    // erreurs » pour deux calculs ratés seize fois chacun n'annonce pas ce qui
+    // va se passer (voir core/carnet.js).
+    const open = questionsOuvertes(errors);
     if (btnStart) {
         btnStart.style.display = open.length ? 'inline-flex' : 'none';
         btnStart.textContent = `Réviser mes ${open.length} erreur${open.length > 1 ? 's' : ''}`;
@@ -345,9 +373,12 @@ function renderErrors() {
     const grouped = document.getElementById('profile-group-exo');
     const byExercise = grouped ? grouped.checked : true;
 
-    const noteJeux = (!montrerJeux && desJeux.length)
-        ? `<div class="error-note-jeux">🎮 ${desJeux.length} erreur${desJeux.length > 1 ? 's' : ''}
-             venant des jeux ${desJeux.length > 1 ? 'sont mises' : 'est mise'} de côté :
+    // Là aussi on compte des questions distinctes : une partie d'arcade rate
+    // vingt fois la même table.
+    const nbJeux = fusionnerDoublons(desJeux).length;
+    const noteJeux = (!montrerJeux && nbJeux)
+        ? `<div class="error-note-jeux">🎮 ${nbJeux} erreur${nbJeux > 1 ? 's' : ''}
+             venant des jeux ${nbJeux > 1 ? 'sont mises' : 'est mise'} de côté :
              elles comptent pour tes révisions, mais elles encombreraient ce carnet.
              Coche « Inclure les jeux » pour les voir.</div>`
         : '';
@@ -363,24 +394,64 @@ function renderErrors() {
     container.querySelectorAll('[data-remove]').forEach(btn => {
         btn.onclick = () => state.removeError(btn.dataset.remove);
     });
+
+    // RÉVISER UN EXERCICE, ET LUI SEUL. On rejoue une graine par question — pas
+    // seize fois le même calcul — et une réussite solde toute la famille de
+    // clés qui portait cette question (voir core/carnet.js).
+    const parTitre = new Map(grouperParExercice(errors).map(g => [g.titre, g]));
+    container.querySelectorAll('[data-reviser]').forEach(btn => {
+        btn.onclick = () => {
+            const g = parTitre.get(btn.dataset.reviser);
+            if (!g || !g.familles.length) return;
+            startErrorReview(g.familles.length, {
+                familles: g.familles, nom: `Réviser : ${g.titre}`
+            });
+        };
+    });
 }
 
+/**
+ * LE CADRE D'UN EXERCICE DEVIENT UNE UNITÉ DE TRAVAIL.
+ *
+ * Rémy : « comme tu les encadres, tu pourrais mettre un bouton Réviser ce
+ * chapitre […] et si l'élève a bon, cela enlève les erreurs. » Le cadre
+ * existait déjà mais ne servait qu'à décorer : il gagne son compte et son
+ * bouton, et il disparaît quand il n'y a plus rien dedans.
+ *
+ * LES QUESTIONS DÉJÀ CORRIGÉES SE REPLIENT. Les garder dépliées après une
+ * révision réussie, c'est laisser à l'écran exactement ce qu'on vient de
+ * réparer. Elles restent consultables — on est fier de les relire — mais sur
+ * une ligne.
+ */
 function groupedHtml(errors) {
-    const map = new Map();
-    errors.forEach(err => {
-        const k = err.exoTitle || 'Autre';
-        if (!map.has(k)) map.set(k, []);
-        map.get(k).push(err);
-    });
-    return [...map.entries()].map(([title, list]) => `
-        <div class="error-group-card">
-            <h4 class="error-group-title">${escapeHtml(title)} <span>(${list.length})</span></h4>
-            <div class="error-group-body">${list.map(errorCard).join('')}</div>
-        </div>`).join('');
+    return grouperParExercice(errors).map(g => {
+        const n = g.ouvertes.length;
+        const reviser = n
+            ? `<button type="button" class="btn-toggle btn-toggle--sm error-group-go"
+                    data-reviser="${escapeHtml(g.titre)}">Réviser</button>`
+            : '';
+        const compte = n
+            ? `<span>${n} à revoir</span>`
+            : `<span class="error-group-clean">tout est corrigé</span>`;
+        const corrigees = g.corrigees.length
+            ? `<details class="error-group-done">
+                   <summary>✓ ${g.corrigees.length} question${g.corrigees.length > 1 ? 's' : ''} corrigée${g.corrigees.length > 1 ? 's' : ''}</summary>
+                   <div class="error-group-body">${g.corrigees.map(errorCard).join('')}</div>
+               </details>`
+            : '';
+        return `<div class="error-group-card">
+            <div class="error-group-head">
+                <h4 class="error-group-title">${escapeHtml(g.titre)} ${compte}</h4>
+                ${reviser}
+            </div>
+            <div class="error-group-body">${g.ouvertes.map(errorCard).join('')}</div>
+            ${corrigees}
+        </div>`;
+    }).join('');
 }
 
 function flatHtml(errors) {
-    return errors.map(err => `
+    return fusionnerDoublons(errors).map(err => `
         <div class="error-flat-card ${err.corrected ? 'corrected' : ''}">
             <div class="error-flat-title">${escapeHtml(err.exoTitle || '')} ${err.corrected ? correctedBadge() : ''}</div>
             ${errorBody(err)}

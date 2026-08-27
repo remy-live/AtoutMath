@@ -1492,7 +1492,49 @@
     background: var(--tag-dom-bg); border-radius: 8px; padding: 7px 11px;
 }
 
-.error-group-body { display: flex; flex-direction: column; gap: 10px; }
+/* PLUSIEURS COLONNES DES QU'IL Y A LA PLACE.
+   Remy : « sur ecran un peu plus grand qu'un telephone, on gagnerait a ne pas
+   avoir une erreur par ligne (si on a la place et que ca n'ecrase pas, on peut
+   mettre en plusieurs colonnes) ». `auto-fill` fait exactement cet arbitrage :
+   il ajoute une colonne quand 260 px tiennent, et retombe a une seule sinon.
+   260 ET PAS 300 : sur une tablette de 900 px, la colonne de gauche et les
+   marges laissent 570 px au carnet, ou deux colonnes de 300 ne rentraient pas
+   d'un cheveu — l'ecran « un peu plus grand qu'un telephone » de Remy restait
+   donc a une erreur par ligne. Le `min(…, 100%)` protege le petit telephone, ou
+   260 px de colonne dans 240 px de cadre auraient rendu un ascenseur
+   horizontal. */
+.error-group-body {
+    display: grid; gap: 10px; align-items: start;
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+/* L'EN-TETE DU CADRE : le titre, ce qu'il reste a faire, et le bouton. */
+.error-group-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.error-group-head .error-group-title { margin: 0; border: 0; padding: 0; flex: 1 1 auto; }
+/* Le bouton doit se voir comme un bouton : `.btn-toggle` est transparent tant
+   qu'il n'est pas actif, ce qui donnait un simple mot gris en bout de ligne. */
+.error-group-go {
+    flex: 0 0 auto; background: var(--primary); color: #fff;
+    border-color: transparent; font-weight: 700; cursor: pointer;
+}
+.error-group-go:hover:not(.active) { background: var(--primary-hover); color: #fff; }
+.error-group-clean { color: var(--success) !important; font-weight: 600; }
+/* Les questions deja corrigees se replient : les laisser depliees apres une
+   revision reussie, c'est laisser a l'ecran ce qu'on vient justement de
+   reparer. Elles restent consultables, sur une ligne. */
+.error-group-done { margin-top: 12px; }
+.error-group-done > summary {
+    cursor: pointer; color: var(--success); font-size: .85rem; font-weight: 600;
+    padding: 4px 0; list-style-position: inside;
+}
+.error-group-done > summary:hover { text-decoration: underline; }
+.error-group-done .error-group-body { margin-top: 8px; }
+/* Dans une colonne, la carte d'erreur s'empile au lieu de s'etaler : l'enonce
+   et la corbeille cote a cote coupaient « 2 + 3 x 4 » en deux lignes des que la
+   colonne descendait sous 340 px. */
+.error-item-card { align-items: flex-start; gap: 8px; }
 .error-item-body { flex: 1; min-width: 0; }
 .error-given { color: var(--danger); }
 .error-expected { color: var(--success); }

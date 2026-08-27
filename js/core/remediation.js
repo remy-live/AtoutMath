@@ -18,6 +18,7 @@ import { makePath, makeStep } from './path.js';
 import { defaultPolicy } from './policy.js';
 import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { openErrors } from './projections.js';
+import { cleQuestion } from './carnet.js';
 import { journal } from './journal.js';
 import { skillLabel, prereqChain } from '../data/skills.js';
 import { getRecommendations } from './stats.js';
@@ -53,36 +54,77 @@ export function startRemediation(questions) {
     return run(path);
 }
 
-/** Séance à partir du carnet d'erreurs (bouton « Plan de révisions »). */
-export function startErrorReview(limit = 6) {
+/**
+ * SÉANCE À PARTIR DU CARNET D'ERREURS.
+ *
+ * ON RÉVISE DES QUESTIONS, PAS DES LIGNES DE JOURNAL. Le journal identifie une
+ * erreur par sa graine, ce qui est juste pour la rejouer et faux pour la
+ * compter : un générateur qui tire au hasard produit « 2 + 3 × 4 » sous seize
+ * graines différentes. « Réviser 10 questions » construisait alors dix étapes à
+ * partir des dix premières clés — c'est-à-dire dix fois le même calcul. On
+ * regroupe donc d'abord (voir core/carnet.js), on rejoue UNE graine par
+ * question, et l'on solde ensuite TOUTE la famille.
+ *
+ * @param {number} limite  combien de questions au maximum.
+ * @param {object} [opts]
+ * @param {Array<string[]>} [opts.familles]  restreint la séance à ces questions
+ *   (chaque entrée = les clés de journal d'une même question). Sert au bouton
+ *   « Réviser » d'un exercice du carnet.
+ * @param {string} [opts.nom]  le titre affiché du parcours de révision.
+ */
+export function startErrorReview(limite = 6, { familles = null, nom = 'Plan de révisions' } = {}) {
     // Les jeux de pure logique sont écartés : rejouer « une erreur de sudoku »
     // veut dire redonner une grille, ce qui n'a rien à voir avec ce qu'on
     // vient de rater.
-    const errors = openErrors(journal.all())
-        .filter(e => estRevisable(e.exerciseId))
-        .slice(0, limit);
-    const steps = errors.map(err => {
+    const ouvertes = openErrors(journal.all()).filter(e => estRevisable(e.exerciseId));
+    const parCle = new Map(ouvertes.map(e => [e.key, e]));
+
+    const listes = (familles || regrouperFamilles(ouvertes))
+        // Une famille peut avoir vieilli entre l'affichage et le clic : on ne
+        // garde que ce qui est encore ouvert.
+        .map(f => (f || []).filter(k => parCle.has(k)))
+        .filter(f => f.length)
+        .slice(0, limite);
+
+    const steps = listes.map(f => {
+        const err = parCle.get(f[0]);
         const exoId = err.exerciseId && getExerciseById(err.exerciseId)
             ? err.exerciseId
             : firstExerciseForSkill(err.skillId);
         if (!exoId) return null;
         return makeStep(exoId, {}, { nbItems: 2, threshold: 2, forceSeed: err.itemSeed || null });
-    }).filter(Boolean);
+    });
 
-    if (!steps.length) return Promise.resolve(false);
+    const retenues = listes.filter((_, i) => steps[i]);
+    const utiles = steps.filter(Boolean);
+    if (!utiles.length) return Promise.resolve(false);
 
-    const path = makePath('Plan de révisions', steps, REVISION_POLICY);
-    // Une erreur rejouée avec succès sort du carnet.
+    const path = makePath(nom, utiles, REVISION_POLICY);
+    // Une question rejouée avec succès sort du carnet — avec ses jumelles.
     return run(path, {
         onExit: () => {
-            errors.forEach(err => {
+            retenues.forEach(f => {
+                const err = parCle.get(f[0]);
                 const fixed = state.attemptHistory.some(a =>
                     a.itemSeed && a.itemSeed === err.itemSeed && a.correct && a.attemptIndex === 0);
-                if (fixed) state.markErrorCorrected(err.key);
+                if (fixed) f.forEach(cle => state.markErrorCorrected(cle));
             });
             import('../ui/navigation.js').then(m => m.setTopNavMode('profile'));
         }
     });
+}
+
+/** Les clés du journal, regroupées par question réellement distincte. */
+function regrouperFamilles(ouvertes) {
+    const par = new Map();
+    const seules = [];
+    ouvertes.forEach(e => {
+        const cle = cleQuestion(e);
+        if (!cle) { seules.push([e.key]); return; }
+        if (!par.has(cle)) par.set(cle, []);
+        par.get(cle).push(e.key);
+    });
+    return [...par.values(), ...seules];
 }
 
 /**

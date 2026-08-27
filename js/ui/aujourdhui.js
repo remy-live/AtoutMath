@@ -28,6 +28,7 @@ import {
     exercices, estRevisable, getExerciseById, filterByStatus
 } from '../data/catalog.js';
 import { accessOf } from '../core/gameAccess.js';
+import { fusionnerDoublons } from '../core/carnet.js';
 import { planDuJour } from '../core/aujourdhui.js';
 import { startErrorReview } from '../core/remediation.js';
 import { openGameLayer } from '../games/engine.js';
@@ -145,7 +146,11 @@ export function rendreAujourdhui() {
         maintenant: Date.now(),
         premiere: lire(CLE_PREMIERE) === null,
         parcours: parcoursAssigne(),
-        erreurs: (state.errorHistory || []).filter(e => estRevisable(e.exoId)),
+        // Doublons fusionnés : « 26 questions de ton carnet t'ont résisté »
+        // pour deux calculs ratés seize fois chacun est un chiffre faux, et
+        // « Réviser 10 questions » rejouait dix fois le même (core/carnet.js).
+        erreurs: fusionnerDoublons(
+            (state.errorHistory || []).filter(e => estRevisable(e.exoId))),
         tentatives: (state.attemptHistory || [])
             .map(a => ({ ts: a.timestamp || a.ts, correct: !!a.correct })),
         suggestions: suggestions(),

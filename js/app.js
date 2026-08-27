@@ -18,6 +18,7 @@ import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
 import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE, estRevisable, getExerciseById } from './data/catalog.js';
 import { isGame } from './core/gameAccess.js';
+import { questionsOuvertes } from './core/carnet.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
     setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement
@@ -26,7 +27,7 @@ import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
 import { initDebugBar } from './ui/debugBar.js';
 import { initImportExport } from './core/importExport.js';
-import { initProfileUI } from './ui/profileUI.js';
+import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
 import { initGamificationEngine } from './core/gamification.js';
@@ -368,11 +369,14 @@ function majPastilleCarnet() {
     if (!pastille) return;
     let n = 0;
     try {
-        n = (state.errorHistory || []).filter(e => {
+        // ON COMPTE DES QUESTIONS, PAS DES GRAINES. Le journal distingue « 2 + 3
+        // × 4 » tiré sous seize graines différentes ; la pastille annonçait donc
+        // « 26 » pour deux calculs à revoir (voir core/carnet.js).
+        n = questionsOuvertes((state.errorHistory || []).filter(e => {
             if (e.corrected || !estRevisable(e.exoId)) return false;
             const exo = e.exoId ? getExerciseById(e.exoId) : null;
             return !(exo && isGame(exo));
-        }).length;
+        })).length;
     } catch { n = 0; }
     pastille.textContent = n > 99 ? '99+' : String(n);
     pastille.hidden = n === 0;
@@ -405,14 +409,10 @@ function initNavButtons() {
             .forEach(evt => document.addEventListener(evt, majPastilleCarnet));
         carnet.onclick = () => {
             setTopNavMode('profile');
-            const cible = document.getElementById('error-log-container');
-            if (cible) {
-                requestAnimationFrame(() => {
-                    cible.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    cible.classList.add('carnet-vu');
-                    setTimeout(() => cible.classList.remove('carnet-vu'), 1600);
-                });
-            }
+            // L'onglet AVANT la section : le carnet vit dans le quatrième
+            // panneau de la page profil, et un `scrollIntoView` sur un élément
+            // `hidden` ne fait rien du tout (voir ui/profileUI.js).
+            ouvrirCarnet();
         };
     }
 
