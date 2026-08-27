@@ -228,6 +228,53 @@ test('LA FORME DU BLOC COMMANDE LA DISPOSITION, pas seulement le nombre', () => 
     assert.equal(carre.rows, 1);
 });
 
+test('« PLEIN » : LE BLOC PREND TOUT SON EMPLACEMENT', () => {
+    // Rémy, sur les jeux à découper : « ils doivent être en version unique de
+    // base et occuper le maximum d'espace pour être plus facile à découper. »
+    // Une proportion déclarée est un contrat sur la FORME du dessin, et elle
+    // coûte : dès qu'elle ne tombe pas sur celle de la page, la différence
+    // reste blanche. Un plateau de jeu n'a pas de forme à défendre.
+    const plein = mesuresSlot(PAGE, 1, 1, false, 'plein');
+    const bride = mesuresSlot(PAGE, 1, 1, false, { w: 1, h: 0.74 });
+    assert.equal(plein.cote, plein.slotW, 'un bloc « plein » vaut la largeur de son emplacement');
+    assert.ok(plein.cote > bride.cote * 1.15,
+        `plein ${plein.cote.toFixed(0)} mm contre ${bride.cote.toFixed(0)} bridé : le gain doit être franc`);
+    // Et cela ne change rien à un emplacement carré : la largeur est déjà la
+    // borne.
+    const carre = mesuresSlot(PAGE, 3, 3, false, 'plein');
+    assert.equal(carre.cote, carre.slotW);
+});
+
+test('UNE FEUILLE PAR DÉFAUT NE LAISSE PAS LA MOITIÉ DE LA PAGE BLANCHE', () => {
+    // Rémy : « je prends les pyramides de lettres, il y a tellement d'espace
+    // vide ». La cause était arithmétique : une pyramide est large et basse
+    // (1 × 0,62), la page en paysage l'est aussi — DEUX pyramides ne peuvent
+    // pas la remplir, quelle que soit la façon de les poser. Quatre, si.
+    //
+    // On mesure donc la part de la zone utile réellement couverte par les
+    // dessins, pour la disposition qu'un professeur obtient SANS RIEN RÉGLER.
+    const couverture = (rendu) => {
+        const dispo = dispositionDuRendu(rendu);
+        const n = dispo.cols * dispo.rows;
+        const d = choisirDisposition(n, dispo, PAGE, { proportions: rendu.proportions });
+        const m = mesuresSlot(PAGE, d.cols, d.rows, false, rendu.proportions);
+        const p = rendu.proportions === 'plein' ? { w: 1, h: 0 } : (rendu.proportions || { w: 1, h: 1 });
+        const hDessin = rendu.proportions === 'plein' ? m.utileH : m.cote * (p.h / p.w);
+        const z = zoneUtile(PAGE);
+        return (m.cote * hDessin * n) / (z.w * z.h);
+    };
+    // La pyramide des mots, telle qu'elle est déclarée aujourd'hui.
+    const pyramide = { proportions: { w: 1, h: 0.62 },
+        disposition: { cols: 2, rows: 2, maxCols: 2, maxRows: 4 } };
+    assert.ok(couverture(pyramide) > 0.65,
+        `pyramide : ${(couverture(pyramide) * 100).toFixed(0)} % de la page couverte`);
+    // Et l'ancienne, celle dont Rémy s'est plaint, ne passait pas.
+    const avant = { proportions: { w: 1, h: 0.62 },
+        disposition: { cols: 1, rows: 2, maxCols: 2, maxRows: 4 } };
+    assert.ok(couverture(avant) < 0.55,
+        'le cas dont Rémy s\'est plaint devrait être celui qui échoue');
+});
+
 test('UN RENDU QUI DIT « DEUX PAR LIGNE » EST ÉCOUTÉ', () => {
     // Le Garam déclarait `parLigneDefaut: 2`, avec la raison écrite à côté :
     // « à trois par ligne, les cases de trois millimètres deviennent

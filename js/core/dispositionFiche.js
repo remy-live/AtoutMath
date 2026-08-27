@@ -64,6 +64,22 @@ export function mesuresSlot(page, cols, rows, colles = false, proportions = null
     const slotW = (z.w - gapX * (cols - 1)) / cols;
     const slotH = (z.h - gapY * (rows - 1)) / rows;
     const utileH = slotH - titreH;
+    // « PLEIN » : LE BLOC PREND TOUT SON EMPLACEMENT, quelle qu'en soit la forme.
+    //
+    // Rémy, sur les jeux à découper : « en pdf, ils doivent être en version
+    // unique de base et occuper le maximum d'espace pour être plus facile à
+    // découper. » Une proportion déclarée est un CONTRAT sur la forme du
+    // dessin — un logigramme plus haut que large, une pyramide plus large que
+    // haute —, et elle a un coût : dès que la forme du bloc ne tombe pas sur
+    // celle de la page, la différence reste blanche. Un plateau de jeu, lui,
+    // n'a pas de forme à défendre : il se répartit dans ce qu'on lui donne.
+    // Sur une page A4 en paysage, un bloc déclaré 1 × 0,74 laissait quarante-
+    // cinq millimètres de blanc au bord droit — de quoi agrandir les pièces
+    // d'un cinquième.
+    if (proportions === 'plein') {
+        return { gapX, gapY, titreH, zone: z, slotW, slotH, utileH,
+            board: Math.min(slotW, utileH), cote: slotW };
+    }
     // Sans proportions déclarées, le bloc est carré : c'est le cas de toutes
     // les grilles, et le carré inscrit est exactement ce que dessinait la
     // mise en page avant qu'on nomme la règle.

@@ -3589,9 +3589,17 @@ function dessinerGrenouillesPdf(doc, item, slot) {
 function geoParking(item, slot) {
     const m = item.meta;
     const b = boiteDe(slot);
-    const largePlateau = b.w * 0.42;
-    const largeVign = b.w * 0.22;
-    const cote = Math.min((largePlateau - 6) / 5, (b.h - 6) / m.hauteur, 22);
+    // LE PARTAGE DE LA LARGEUR, ET IL DÉCIDE DE TOUT. Le plateau tenait 42 % de
+    // la boîte, les vignettes 22 %, et le reste — un bon tiers — allait aux
+    // voitures à découper, qui n'en avaient pas besoin : leur taille est de
+    // toute façon bornée par la case du plateau, sans quoi la voiture découpée
+    // n'y entrerait pas. On rendait donc de la place à celui qui ne pouvait pas
+    // s'en servir, et l'on bridait celui qui en manquait. La moitié au plateau,
+    // et tout grandit d'un cinquième — Rémy : « occuper le maximum d'espace
+    // pour être plus facile à découper ».
+    const largePlateau = b.w * 0.55;
+    const largeVign = b.w * 0.20;
+    const cote = Math.min((largePlateau - 6) / 5, (b.h - 6) / m.hauteur, 34);
     const w = cote * 5, h = cote * m.hauteur;
     const taille = Math.max(2.2, Math.min(b.h * 0.05, 3.4));
     const xVign = b.x + largePlateau;
@@ -9594,7 +9602,12 @@ export const RENDUS = {
         previewGrille: parkingPreviewHtml,
         pdfGrille: dessinerParkingPdf,
         nomBloc: 'Jeu', nomBlocs: 'jeux',
-        proportions: { w: 1, h: 0.74 },
+        // UN SEUL PAR PAGE, ET IL PREND TOUTE LA PAGE. Rémy : « les exercices
+        // énigmes doivent être en version unique de base et occuper le maximum
+        // d'espace pour être plus facile à découper. » Une proportion déclarée
+        // laissait quarante-cinq millimètres de blanc au bord droit ; « plein »
+        // rend au plateau la page entière (voir core/dispositionFiche.js).
+        proportions: 'plein',
         disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
         parLigneDefaut: 1
     },
@@ -9615,7 +9628,12 @@ export const RENDUS = {
         nomBloc: 'Jeu', nomBlocs: 'jeux',
         // UN SEUL PAR PAGE : c'est un jeu qu'on découpe et qu'on manipule.
         // Deux par feuille donneraient deux jeux trop petits pour les doigts.
-        proportions: { w: 1, h: 0.78 },
+        // UN SEUL PAR PAGE, ET IL PREND TOUTE LA PAGE. Rémy : « les exercices
+        // énigmes doivent être en version unique de base et occuper le maximum
+        // d'espace pour être plus facile à découper. » Une proportion déclarée
+        // laissait quarante-cinq millimètres de blanc au bord droit ; « plein »
+        // rend au plateau la page entière (voir core/dispositionFiche.js).
+        proportions: 'plein',
         disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
         parLigneDefaut: 1
     },
@@ -9634,7 +9652,12 @@ export const RENDUS = {
         previewGrille: grenouillesPreviewHtml,
         pdfGrille: dessinerGrenouillesPdf,
         nomBloc: 'Jeu', nomBlocs: 'jeux',
-        proportions: { w: 1, h: 0.72 },
+        // UN SEUL PAR PAGE, ET IL PREND TOUTE LA PAGE. Rémy : « les exercices
+        // énigmes doivent être en version unique de base et occuper le maximum
+        // d'espace pour être plus facile à découper. » Une proportion déclarée
+        // laissait quarante-cinq millimètres de blanc au bord droit ; « plein »
+        // rend au plateau la page entière (voir core/dispositionFiche.js).
+        proportions: 'plein',
         disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
         parLigneDefaut: 1
     },
@@ -9719,12 +9742,20 @@ export const RENDUS = {
         // Large et basse : une colonne de définitions, un escalier de six
         // marches. Un bloc carré rendrait les cases minuscules pour rien.
         proportions: { w: 1, h: 0.62 },
-        // DEUX PAR PAGE PAR DÉFAUT, comme la revue : une commencée et une vide,
-        // c'est-à-dire un exemple travaillé suivi de l'exercice. C'est ce que
-        // fait Rémy avec « l'Extrait » et « En direct », et cela explique la
-        // règle mieux qu'une consigne.
-        disposition: { cols: 1, rows: 2, maxCols: 2, maxRows: 4 },
-        parLigneDefaut: 1
+        // QUATRE PAR PAGE, EN DEUX COLONNES. Rémy : « je prends les pyramides de
+        // lettres, il y a tellement d'espace vide, par défaut on pourrait mettre
+        // deux colonnes. » Il avait raison, et la cause est arithmétique : une
+        // pyramide est large et basse (1 × 0,62), la page en paysage est large
+        // et basse aussi (1 × 0,64) — DEUX pyramides sur cette page ne peuvent
+        // pas la remplir, quelle que soit la façon de les poser. Côte à côte,
+        // il reste la moitié de la hauteur ; l'une sur l'autre, la moitié de la
+        // largeur. QUATRE, en deux colonnes et deux rangées, tombent juste.
+        //
+        // On garde l'idée de la revue — une pyramide commencée puis une vide,
+        // l'exemple travaillé suivi de l'exercice —, mais deux fois : c'est
+        // encore mieux, deux exemples valent mieux qu'un.
+        disposition: { cols: 2, rows: 2, maxCols: 2, maxRows: 4 },
+        parLigneDefaut: 2
     },
 
     cubes: {
