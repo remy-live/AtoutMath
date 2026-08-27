@@ -450,15 +450,45 @@ export function champsSchema(schema, valeurDe, options = {}) {
     const libre = groupes.get('') || [];
     groupes.delete('');
     const nommes = [...groupes.entries()].map(([nom, liste]) => {
-        // L'aperçu se glisse entre le réglage principal et ses vis : c'est là
-        // qu'il répond à la question qu'on vient de se poser.
-        const vue = (nom === 'aide' && options.apercu !== false)
-            ? '<div class="cfg-apercu" data-apercu></div>' : '';
         const titres = options.titres || TITRES_GROUPE;
+        // L'APERÇU EST LA COMMANDE, IL N'EST PLUS À CÔTÉ D'ELLE.
+        //
+        // Rémy, pour la troisième fois sur ce bloc : « je ne trouve toujours
+        // pas cela clair vraiment et en dessous ya plein de propositions, on ne
+        // comprend rien ».
+        //
+        // Il avait raison, et j'y étais pour quelque chose. Il y avait TROIS
+        // commandes pour UNE question : le rail « L'aide » (QCM 2 · QCM 4 ·
+        // Progressif · Libre), la rangée « Propositions » que je venais
+        // d'ajouter, et les deux vis derrière « Affiner… ». Or « QCM 2 » VEUT
+        // DIRE « 2 propositions » : le préréglage et la vis disaient la même
+        // chose deux fois, sans que rien n'annonce laquelle l'emporte.
+        //
+        // Une seule commande, donc, et c'est l'aperçu lui-même : quatre cartes
+        // qui montrent la VRAIE question telle que l'élève la verra, et qu'on
+        // clique pour choisir. On ne lit plus une étiquette pour deviner un
+        // résultat — on regarde le résultat et on le désigne. Le rail, la
+        // phrase sous le rail et la rangée de pastilles disparaissent tous les
+        // trois : c'étaient trois façons de décrire ce qu'une image montre.
+        if (nom === 'aide' && options.apercu !== false) {
+            return `<div class="cfg-sous-groupe">
+                <div class="cfg-sous-titre">${titres[nom] || TITRES_GROUPE[nom] || nom}</div>
+                <div class="cfg-apercu" data-apercu></div>
+                ${rendre(liste.filter(p => !p.affiner && p.id !== 'aide'))}
+                ${affiner(liste)}
+                <!-- LE RAIL RESTE, MAIS ON NE LE VOIT PLUS. C'est lui qui porte
+                     la valeur : la relecture du panneau la lit là, comme pour
+                     tous les autres réglages, et le clavier peut encore
+                     l'atteindre. Fabriquer un second état pour les cartes
+                     l'aurait fait diverger du premier au premier oubli.
+                     (Pas d'accent grave ici : ce commentaire vit DANS un
+                     littéral de gabarit, et le premier le fermerait.) -->
+                <div class="cfg-cache">${rendre(liste.filter(p => p.id === 'aide'))}</div>
+            </div>`;
+        }
         return `<div class="cfg-sous-groupe">
             <div class="cfg-sous-titre">${titres[nom] || TITRES_GROUPE[nom] || nom}</div>
             ${rendre(liste.filter(p => !p.affiner))}
-            ${vue}
             ${affiner(liste)}
         </div>`;
     }).join('');
@@ -738,51 +768,64 @@ function vignetteAide(p) {
 
 /** Le ruban complet, réglages et longueur d'exercice en main. */
 /**
- * LE NOMBRE DE PROPOSITIONS SE RÈGLE DANS L'APERÇU.
+ * LES QUATRE FAÇONS DE RÉPONDRE, MONTRÉES ET NON DÉCRITES.
  *
- * Rémy : « dans l'aperçu, on ajoute une ligne pour changer le nombre de
- * proposition, car là c'est imbuvable ». Il était derrière le repli
- * « Affiner… », sur un rail de six crans aux noms tronqués (« A… », « To… ») —
- * c'est-à-dire à deux gestes et une devinette du seul endroit où l'on voit ce
- * qu'il change. Une rangée de pastilles, sous l'aperçu, le met à sa place :
- * on clique « 4 », les vignettes montrent quatre propositions.
+ * Rémy, trois fois de suite sur ce bloc : « on comprend rien pour le slide »,
+ * « il faut le vrai aperçu », puis « je ne trouve toujours pas cela clair
+ * vraiment et en dessous ya plein de propositions ».
+ *
+ * Le défaut n'était pas dans le dessin du rail, il était dans le NOMBRE de
+ * commandes : trois pour une seule question. Le rail nommait des préréglages
+ * (« QCM 2 »), une rangée de pastilles fixait le nombre de propositions, et
+ * deux vis cachées derrière « Affiner… » refixaient la même chose. « QCM 2 »
+ * veut dire « 2 propositions » : on écrivait deux fois la même valeur à deux
+ * endroits, et rien ne disait laquelle gagnait.
+ *
+ * Une carte par façon de répondre, avec la VRAIE question dedans. On clique
+ * celle qu'on veut. Il n'y a plus rien à lire pour deviner un résultat :
+ * le résultat est là, et on le désigne.
  */
-const CHOIX_PROPOSITIONS = [
-    { v: 'auto', c: 'Auto' }, { v: 2, c: '2' }, { v: 3, c: '3' },
-    { v: 4, c: '4' }, { v: 6, c: '6' }, { v: 'toutes', c: 'Toutes' }
-];
-
-function lignePropositions(actuel) {
-    const est = (o) => String(o.v) === String(actuel ?? 'auto');
-    return `<div class="cfg-apercu-prop">
-        <span class="cfg-apercu-prop-lab">Propositions</span>
-        ${CHOIX_PROPOSITIONS.map(o =>
-        `<button type="button" class="cfg-prop-chip${est(o) ? ' est-choisi' : ''}"
-            data-prop="${escapeAttr(String(o.v))}">${o.c}</button>`).join('')}
-    </div>`;
+function carteAide(mode, params, total, exoId, choisi) {
+    const paliers = paliersAide({ ...params, aide: mode.v, propositions: 'auto', saisie: 'auto' }, total);
+    // La carte montre le PREMIER palier — c'est ce que l'élève voit en
+    // commençant, et pour trois des quatre modes c'est aussi tout le reste.
+    const p = paliers[0] || { de: 1, a: total, propositions: 4, clavier: false };
+    const vraie = vraieQuestion(exoId, p, params);
+    const dedans = vraie
+        ? `<span class="cfg-vg-q">${escapeAttr(vraie.texte)}</span>`
+        + (p.clavier
+            ? '<span class="cfg-vg-pave">' + '<i></i>'.repeat(9) + '</span>'
+            : `<span class="cfg-vg-vrais">${vraie.choix.slice(0, 6).map(c =>
+                `<b>${escapeAttr(c)}</b>`).join('')}</span>`)
+        : vignetteAide(p);
+    return `<button type="button" class="cfg-carte${choisi ? ' cfg-carte--ici' : ''}"
+        data-aide="${escapeAttr(mode.v)}" aria-pressed="${choisi}">
+        <span class="cfg-carte-vue${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</span>
+        <span class="cfg-carte-nom">${mode.nom}</span>
+        <span class="cfg-carte-dit">${mode.dit}</span>
+    </button>`;
 }
 
-export function apercuAideHtml(params, total, exoId = '', propositions = 'auto') {
-    const paliers = paliersAide(params, total);
-    return `<div class="cfg-apercu-titre">Ce que l'élève verra</div>
-        <div class="cfg-apercu-ruban">${paliers.map(p => {
-        const vraie = vraieQuestion(exoId, p, params);
-        // La vraie question quand on l'a, les rectangles sinon : ils disent au
-        // moins la forme, et valent mieux qu'une vignette vide.
-        const dedans = vraie
-            ? `<span class="cfg-vg-q">${escapeAttr(vraie.texte)}</span>`
-            + (p.clavier
-                ? '<span class="cfg-vg-pave">' + '<i></i>'.repeat(9) + '</span>'
-                : `<span class="cfg-vg-vrais">${vraie.choix.slice(0, 6).map(c =>
-                    `<b>${escapeAttr(c)}</b>`).join('')}</span>`)
-            : vignetteAide(p);
-        return `
-            <div class="cfg-apercu-pas" style="--cfg-part: ${p.a - p.de + 1}">
-                <div class="cfg-vg${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</div>
-                <div class="cfg-apercu-dit"><b>${rangsEnMots(p, total)}</b><br>${palierEnMots(p)}</div>
-            </div>`;
-    }).join('')}</div>
-        ${lignePropositions(propositions)}`;
+/**
+ * LES QUATRE MODES, ET CE QU'ILS PROMETTENT EN UNE LIGNE.
+ *
+ * Les valeurs sont celles du schéma (`core/activities/index.js`) : on ne les
+ * réinvente pas ici, on les nomme pour l'œil. Les phrases disent ce que
+ * l'ÉLÈVE vit, pas ce que le réglage vaut — « on tape la réponse » plutôt que
+ * « saisie : toujours ».
+ */
+const MODES_AIDE = [
+    { v: 'deux', nom: '2 propositions', dit: 'La bonne et l’erreur classique' },
+    { v: 'propositions', nom: '4 propositions', dit: 'Un choix, du début à la fin' },
+    { v: 'progressive', nom: 'Progressif', dit: '2, puis 4, puis au clavier' },
+    { v: 'clavier', nom: 'Au clavier', dit: 'L’élève écrit sa réponse' }
+];
+
+export function apercuAideHtml(params, total, exoId = '') {
+    const courant = params.aide || 'progressive';
+    return `<div class="cfg-apercu-titre">Comment l'élève répondra</div>
+        <div class="cfg-cartes">${MODES_AIDE.map(m =>
+        carteAide(m, params, total, exoId, m.v === courant)).join('')}</div>`;
 }
 
 /**
@@ -809,23 +852,14 @@ function paramsAide(racine) {
  * L'aperçu montre alors ce qu'il donnerait, et rien n'est engagé — voir
  * `apercuDuCran`.
  */
-export function rafraichirApercu(racine, cranEssai = null, pourEssai = '') {
+export function rafraichirApercu(racine) {
     const boite = racine && racine.querySelector('[data-apercu]');
     if (!boite) return;
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const hote = racine.closest && racine.closest('[data-exo]');
-    const params = paramsAide(racine);
-    if (cranEssai !== null && pourEssai) {
-        // La valeur du cran survolé, lue sur le rail lui-même : c'est lui qui
-        // porte la liste, et la recopier ici la ferait diverger.
-        const rail = racine.querySelector(`.cfg-rail[data-param="${pourEssai}"]`);
-        const valeurs = rail ? lireListe(rail.dataset.valeurs) : null;
-        if (valeurs && valeurs[cranEssai] !== undefined) params[pourEssai] = valeurs[cranEssai];
-    }
-    boite.innerHTML = apercuAideHtml(params, total,
-        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '',
-        params.propositions);
+    boite.innerHTML = apercuAideHtml(paramsAide(racine), total,
+        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '');
 }
 
 /**
@@ -1086,41 +1120,25 @@ function allerAuCran(cran) {
     rail.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-/** L'aperçu d'un cran qu'on SURVOLE, sans le choisir. */
-function apercuDuCran(cran, oui) {
-    const hote = cran.closest('.cfg-apercu-hote');
-    if (!hote) return;
-    if (oui) rafraichirApercu(hote, Number(cran.dataset.cran), cran.dataset.pour);
-    else rafraichirApercu(hote);
-}
-
 document.addEventListener('click', (e) => {
     const cran = e.target.closest && e.target.closest('.cfg-cran');
     if (cran) { e.preventDefault(); return allerAuCran(cran); }
-    // La rangée « Propositions » de l'aperçu : elle pilote le rail qui vit
-    // derrière le repli « Affiner… ». Un seul état, deux endroits pour le
-    // toucher — le second est là où l'on voit ce qu'il change.
-    const chip = e.target.closest && e.target.closest('.cfg-prop-chip');
-    if (!chip) return;
+    // CLIQUER UNE CARTE, C'EST CHOISIR. Le rail « L'aide » n'est plus affiché
+    // — la carte le remplace — mais il reste dans le panneau, caché, et c'est
+    // toujours LUI qui porte la valeur : `readParams` la lit là, comme pour
+    // tous les autres réglages. Un second état aurait divergé du premier.
+    const carte = e.target.closest && e.target.closest('.cfg-carte');
+    if (!carte) return;
     e.preventDefault();
-    const hote = chip.closest('.cfg-apercu-hote');
-    const rail = hote && hote.querySelector('.cfg-rail[data-param="propositions"]');
+    const hote = carte.closest('.cfg-apercu-hote');
+    const rail = hote && hote.querySelector('.cfg-rail[data-param="aide"]');
     if (!rail) return;
-    const valeurs = lireListe(rail.dataset.valeurs).map(String);
-    const k = valeurs.indexOf(chip.dataset.prop);
+    const k = lireListe(rail.dataset.valeurs).map(String).indexOf(carte.dataset.aide);
     if (k < 0) return;
     rail.value = String(k);
     majRail(rail);
     rail.dispatchEvent(new Event('input', { bubbles: true }));
     rail.dispatchEvent(new Event('change', { bubbles: true }));
-});
-document.addEventListener('pointerover', (e) => {
-    const cran = e.target.closest && e.target.closest('.cfg-cran');
-    if (cran) apercuDuCran(cran, true);
-});
-document.addEventListener('pointerout', (e) => {
-    const cran = e.target.closest && e.target.closest('.cfg-cran');
-    if (cran) apercuDuCran(cran, false);
 });
 
 document.addEventListener('input', (e) => {

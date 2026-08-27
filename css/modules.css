@@ -2599,28 +2599,38 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-cran:hover { color: var(--primary); background: var(--primary-soft, #eceafd); }
 .cfg-cran--ici { color: var(--primary); font-size: .76rem; }
 
-/* LA RANGÉE « PROPOSITIONS », DANS L'APERÇU. Rémy : « on ajoute une ligne pour
-   changer le nombre de proposition, car là c'est imbuvable ». Elle était
-   derrière un repli, sur un rail aux noms tronqués — à deux gestes et une
-   devinette du seul endroit où l'on voit ce qu'elle change. */
-.cfg-apercu-prop {
-    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-    margin-top: 8px; padding-top: 8px;
-    border-top: 1px solid var(--border, #e3e7ef);
+/* LES QUATRE CARTES : L'APERÇU EST LA COMMANDE.
+   Rémy, trois fois de suite : « on comprend rien pour le slide », « il faut le
+   vrai aperçu », « je ne trouve toujours pas cela clair, en dessous ya plein de
+   propositions ». Le défaut n'était pas le dessin du rail mais le NOMBRE de
+   commandes — trois pour une seule question, dont deux qui disaient la même
+   valeur. Une carte par façon de répondre, la vraie question dedans, on clique
+   celle qu'on veut : il n'y a plus rien à lire pour deviner un résultat. */
+.cfg-cache { display: none; }
+.cfg-cartes {
+    display: grid; gap: 8px; margin-top: 6px;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 }
-.cfg-apercu-prop-lab {
-    font-size: .72rem; font-weight: 800; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: .04em; margin-right: 2px;
+.cfg-carte {
+    display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+    padding: 8px; cursor: pointer; text-align: center;
+    border: 2px solid var(--border, #d7dce5); border-radius: 12px;
+    background: #fff; color: inherit; font: inherit;
 }
-.cfg-prop-chip {
-    border: 1px solid var(--border, #d7dce5); background: #fff;
-    color: var(--text-main); border-radius: 999px;
-    padding: 3px 11px; font-size: .78rem; font-weight: 700; cursor: pointer;
+.cfg-carte:hover { border-color: var(--primary); }
+.cfg-carte--ici {
+    border-color: var(--primary);
+    background: var(--primary-soft, #eceafd);
+    box-shadow: 0 0 0 1px var(--primary) inset;
 }
-.cfg-prop-chip:hover { border-color: var(--primary); color: var(--primary); }
-.cfg-prop-chip.est-choisi {
-    background: var(--primary); border-color: var(--primary); color: #fff;
+.cfg-carte-vue {
+    display: flex; flex-direction: column; gap: 5px; justify-content: center;
+    min-height: 54px; padding: 6px 4px; border-radius: 8px; background: #fff;
+    border: 1px solid var(--border, #e6eaf2);
 }
+.cfg-carte-nom { font-weight: 800; font-size: .85rem; color: var(--text-main); }
+.cfg-carte--ici .cfg-carte-nom { color: var(--primary); }
+.cfg-carte-dit { font-size: .72rem; color: var(--text-muted); line-height: 1.25; }
 
 /* Les traits sur le rail, à la même abscisse : la graduation se voit même
    quand les noms sont longs. C'est le rail que Rémy dessinait : « O———O———O ». */
