@@ -64,11 +64,11 @@ export const HAUTEUR_MONDE = 620;
  * et finit par rattraper le deuxième. Le premier monde, lui, pardonne : on y
  * apprend le geste, on n'y perd pas.
  */
-export const LONGUEUR_MONDE = 3200;
+export const LONGUEUR_MONDE = 6400;
 
 export const MONDES = [
     {
-        id: 1, nom: 'Les dunes', amplitude: 105, periode: 620, nuit: 150,
+        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 150,
         // Les collines du fond sont du SABLE, pas du bleu : ce sont les mêmes
         // dunes vues de loin, et une couche bleue au milieu du désert se lisait
         // comme une flaque.
@@ -76,27 +76,27 @@ export const MONDES = [
         sol: '#c99a52', herbe: '#f0c987'
     },
     {
-        id: 2, nom: 'Les collines', amplitude: 140, periode: 540, nuit: 175,
+        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 175,
         ciel: ['#8ed0ff', '#dff3ff'], fond: ['#a9c8e8', '#87b0d8'],
         sol: '#2f855a', herbe: '#68d391'
     },
     {
-        id: 3, nom: 'Les crêtes', amplitude: 170, periode: 470, nuit: 200,
+        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 200,
         ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
         sol: '#7b4b2a', herbe: '#c0703c'
     },
     {
-        id: 4, nom: 'La montagne', amplitude: 200, periode: 410, nuit: 222,
+        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 222,
         ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
         sol: '#4a5578', herbe: '#e6ecff'
     },
     {
-        id: 5, nom: 'Le grand large', amplitude: 220, periode: 400, nuit: 235,
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 235,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
     {
-        id: 6, nom: 'Le pays de nuit', amplitude: 240, periode: 380, nuit: 248,
+        id: 6, nom: 'Le pays de nuit', amplitude: 198, periode: 790, nuit: 248,
         ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
         sol: '#1b2140', herbe: '#8f9bff'
     }
@@ -127,6 +127,133 @@ export function progressionMonde(distance) {
 
 
 /**
+ * LE RACCORD ENTRE DEUX MONDES — et c'était un mur de cent pixels.
+ *
+ * Rémy : « on fait des grands sauts de monde à monde ». Ce n'était pas une
+ * impression : le relief se calculait à partir du monde COURANT, dont
+ * l'amplitude et la période changent d'un coup à la frontière. À la première
+ * d'entre elles — 3 200 pixels, à l'époque —, le sol tombait de 101 pixels et
+ * la pente passait de 0,16 à 2,46 : une falaise
+ * verticale. L'oiseau se retrouvait en l'air d'un pas de physique à l'autre, et
+ * repartait dans un saut qu'il n'avait pas demandé.
+ *
+ * LE TERRAIN EST DONC UNE FONCTION DE x, ET DE x SEUL. Le monde ne le décide
+ * plus ; il ne sert qu'à la palette et à la nuit. Amplitude et pulsation se
+ * raccordent en douceur sur les neuf cents derniers pixels de chaque monde, et
+ * la difficulté monte en pente au lieu de sauter — ce qui est aussi meilleur à
+ * jouer que la marche qu'on vient de supprimer.
+ *
+ * LA PHASE S'INTÈGRE, ELLE NE SE CALCULE PAS. Écrire sin(2πx/p) avec un `p` qui
+ * varie ferait glisser l'onde sous les pieds de l'oiseau : la même abscisse
+ * changerait de hauteur d'une image à l'autre. On accumule donc la phase —
+ * φ(x) = ∫ ω — de sorte que sa DÉRIVÉE vaut la pulsation voulue tout en restant
+ * continue. Sur un palier c'est ω·L ; sur la rampe, l'intégrale de
+ * l'interpolation se pose à la main.
+ *
+ * L'INTERPOLATION EST QUINTIQUE, PAS CUBIQUE. Le classique 3t² − 2t³ a une
+ * dérivée seconde NON NULLE aux deux bouts : la courbure du sol sautait donc à
+ * l'entrée et à la sortie de chaque rampe — et la courbure, ici, décide du
+ * décollage. 6t⁵ − 15t⁴ + 10t³ s'annule à l'ordre deux des deux côtés : tout se
+ * raccorde, y compris ce qui fait sauter l'oiseau.
+ */
+export const TRANSITION = 900;
+
+const pulsation = (m) => (2 * Math.PI) / m.periode;
+const adoucir = (t) => t * t * t * (t * (6 * t - 15) + 10);
+const adoucir1 = (t) => 30 * t * t * (t - 1) * (t - 1);
+const adoucir2 = (t) => 60 * t * (t - 1) * (2 * t - 1);
+/** ∫₀ᵗ adoucir — elle vaut 1/2 en t = 1, d'où la moyenne des deux pulsations. */
+const primitive = (t) => t * t * t * t * (t * (t - 3) + 2.5);
+const melange = (a, b, u) => a + (b - a) * u;
+
+/** Où l'on en est du raccord vers le monde suivant, en x. */
+function raccord(x) {
+    const i = Math.max(0, Math.min(MONDES.length - 1, Math.floor(x / LONGUEUR_MONDE)));
+    const m = MONDES[i];
+    const suivant = MONDES[Math.min(MONDES.length - 1, i + 1)];
+    const fin = (i + 1) * LONGUEUR_MONDE;
+    // Le dernier monde ne se raccorde à rien : il continue tel quel.
+    const t = i >= MONDES.length - 1 ? 0
+        : Math.max(0, Math.min(1, (x - (fin - TRANSITION)) / TRANSITION));
+    return { i, m, suivant, t };
+}
+
+/** La phase cumulée à l'entrée de chaque monde, calculée une fois pour toutes. */
+const PHASES_MONDE = (() => {
+    const out = [0];
+    for (let i = 0; i < MONDES.length; i++) {
+        const wa = pulsation(MONDES[i]);
+        const wb = pulsation(MONDES[Math.min(MONDES.length - 1, i + 1)]);
+        // Le palier à pulsation constante, puis la rampe : la moyenne des deux
+        // pulsations, puisque l'interpolation douce a pour intégrale 1/2.
+        out.push(out[i] + wa * (LONGUEUR_MONDE - TRANSITION) + TRANSITION * (wa + wb) / 2);
+    }
+    return out;
+})();
+
+/** La phase de l'onde de base en x — continue, de dérivée `pulsationEn(x)`. */
+export function phaseRelief(x) {
+    const { i, m, suivant, t } = raccord(x);
+    const wa = pulsation(m), wb = pulsation(suivant);
+    const depuisDebut = Math.max(0, x - i * LONGUEUR_MONDE);
+    // LE PALIER NE SE BORNE QUE S'IL Y A UNE RAMPE APRÈS LUI. Le dernier monde
+    // n'a pas de frontière : lui appliquer le plafond figeait la phase au bout
+    // de 2 300 pixels — le sol devenait plat et l'oiseau glissait à l'infini
+    // sur une ligne droite. Le test des dérivées l'a attrapé à x = 18 306.
+    const dernier = i >= MONDES.length - 1;
+    const plat = dernier ? depuisDebut : Math.min(depuisDebut, LONGUEUR_MONDE - TRANSITION);
+    let phi = PHASES_MONDE[i] + wa * plat;
+    if (t > 0) phi += TRANSITION * (wa * t + (wb - wa) * primitive(t));
+    return phi;
+}
+
+/**
+ * LES TROIS ONDES — et leurs harmoniques étaient des FALAISES.
+ *
+ * Rémy : « beaucoup moins bien que Tiny Wings, dans le glissé, dans les sauts ».
+ * On a fini par calculer ce qu'on faisait vraiment escalader à l'oiseau : la
+ * pente maximale valait 1,79 dans le premier monde et 6,69 dans le dernier,
+ * c'est-à-dire SOIXANTE ET UN puis QUATRE-VINGT-UN DEGRÉS. Ce ne sont pas des
+ * collines, ce sont des murs — et aucun réglage de physique, jamais, ne pourra
+ * donner l'impression de GLISSER sur un mur.
+ *
+ * D'OÙ VENAIT LA PENTE : DES HARMONIQUES. Une onde secondaire d'amplitude 0,42
+ * et de fréquence 2,13 n'ajoute que 0,42 à la HAUTEUR, mais 0,42 × 2,13 = 0,89 à
+ * la PENTE, et 0,42 × 2,13² = 1,9 à la COURBURE. Les deux harmoniques
+ * multipliaient donc la pente par 2,7 et fournissaient l'essentiel de la
+ * courbure — c'est-à-dire que l'oiseau décollait sur les petites bosses au lieu
+ * des grandes crêtes. Cela se mesurait : cent dix « sauts » de quatorze
+ * centièmes de seconde en quarante secondes. Il ne volait pas, il vibrait.
+ *
+ * LES HARMONIQUES DOIVENT TEXTURER, PAS SCULPTER. On les a rapprochées de la
+ * fondamentale et beaucoup réduites : la fondamentale redevient maîtresse de la
+ * courbure, donc ce sont les VRAIES crêtes qui lancent l'oiseau, et les petites
+ * bosses ne font plus que casser la régularité du sinus.
+ *
+ * Les fréquences ne sont pas entières, et c'est exprès : le motif ne se referme
+ * jamais tout à fait, donc le paysage ne se répète pas.
+ */
+export const ONDES = [
+    { a: 1, f: 1, d: 0 },
+    { a: 0.20, f: 1.47, d: 1.1 },
+    { a: 0.07, f: 2.19, d: 2.3 }
+];
+const SOMME_ONDES = ONDES.reduce((t, o) => t + o.a, 0);
+
+/**
+ * LA PENTE MAXIMALE D'UN MONDE : la tangente de l'angle le plus raide qu'on
+ * puisse y rencontrer.
+ *
+ * Elle se calcule, elle ne se devine pas — et le test s'en sert pour interdire
+ * le retour des falaises. Les trois ondes ne culminent jamais tout à fait
+ * ensemble, donc c'est une borne SUPÉRIEURE ; mais c'est bien la borne qui
+ * compte, puisque c'est elle qui avait laissé passer quatre-vingt-un degrés.
+ */
+export const penteMax = (monde) =>
+    (monde.amplitude / SOMME_ONDES) * (2 * Math.PI / monde.periode)
+    * ONDES.reduce((t, o) => t + o.a * o.f, 0);
+
+/**
  * LE RELIEF EN UN POINT, ET SA PENTE.
  *
  * `hauteur` est une altitude EN PIXELS au-dessus du fond, `pente` sa dérivée —
@@ -135,28 +262,44 @@ export function progressionMonde(distance) {
  * approchée fait vibrer la vitesse quand l'oiseau glisse, et le jeu devient
  * nerveux sans qu'on sache pourquoi.
  *
- * Trois ondes de périodes premières entre elles : le motif ne se répète qu'au
- * bout de plusieurs kilomètres, ce qu'aucune partie n'atteint.
+ * SUR LE RACCORD, L'AMPLITUDE AUSSI VARIE — et sa dérivée compte. On avait
+ * commencé par la négliger (« trente-cinq pixels sur neuf cents, c'est deux
+ * centièmes ») ; le test des dérivées a montré quatre centièmes d'écart au
+ * milieu de la rampe, c'est-à-dire une pente ANNONCÉE fausse là où l'oiseau
+ * change de monde. Comme c'est exactement la pente qui décide de la vitesse
+ * gagnée, on l'écrit en entier : h = k·H, donc h′ = k′H + kH′ et
+ * h″ = k″H + 2k′H′ + kH″. Trois lignes de plus, et plus rien à négliger.
  */
-export function relief(x, monde, graine = 0) {
-    const z = monde || MONDES[0];
-    const p = z.periode;
-    const ondes = [
-        { a: 1, p, d: graine },
-        { a: 0.42, p: p / 2.13, d: graine * 1.7 + 1.1 },
-        { a: 0.19, p: p / 4.31, d: graine * 2.9 + 2.3 }
-    ];
-    let h = 0, dh = 0, d2h = 0;
-    for (const o of ondes) {
-        const w = (2 * Math.PI) / o.p;
-        h += o.a * Math.sin(w * x + o.d);
-        dh += o.a * w * Math.cos(w * x + o.d);
-        d2h -= o.a * w * w * Math.sin(w * x + o.d);
+export function relief(x, graine = 0) {
+    const { m, suivant, t } = raccord(x);
+    const wa = pulsation(m), wb = pulsation(suivant);
+    // Les dérivées du mélange, EN x : la rampe fait TRANSITION pixels de long.
+    const u = adoucir(t);
+    const u1 = adoucir1(t) / TRANSITION;
+    const u2 = adoucir2(t) / (TRANSITION * TRANSITION);
+
+    // On ramène la somme des trois ondes à l'amplitude voulue, en pixels.
+    const dA = (suivant.amplitude - m.amplitude) / SOMME_ONDES;
+    const k = melange(m.amplitude, suivant.amplitude, u) / SOMME_ONDES;
+    const k1 = dA * u1, k2 = dA * u2;
+
+    const w = melange(wa, wb, u);
+    const w1 = (wb - wa) * u1;
+    const phi = phaseRelief(x);          // dφ/dx = ω, par construction
+
+    let H = 0, H1 = 0, H2 = 0;
+    for (const o of ONDES) {
+        const angle = o.f * phi + o.d * (1 + graine);
+        const s = Math.sin(angle), c = Math.cos(angle);
+        H += o.a * s;
+        H1 += o.a * o.f * w * c;
+        H2 += o.a * o.f * (w1 * c - o.f * w * w * s);
     }
-    // La somme des amplitudes vaut 1 + 0,42 + 0,19 : on ramène le tout à
-    // l'amplitude voulue, en pixels.
-    const k = z.amplitude / 1.61;
-    return { hauteur: SOL_MOYEN + k * h, pente: k * dh, courbure: k * d2h };
+    return {
+        hauteur: SOL_MOYEN + k * H,
+        pente: k1 * H + k * H1,
+        courbure: k2 * H + 2 * k1 * H1 + k * H2
+    };
 }
 
 /**
@@ -177,8 +320,8 @@ export const ECART_ETOILES = 250;
 export const HAUT_ETOILE_MIN = 20;
 export const HAUT_ETOILE_MAX = 80;
 
-export function semerEtoile(x, monde, graine, rng) {
-    const sol = relief(x, monde, graine);
+export function semerEtoile(x, graine, rng) {
+    const sol = relief(x, graine);
     return {
         x,
         y: sol.hauteur + HAUT_ETOILE_MIN
@@ -238,41 +381,135 @@ export const rattrape = (nuit, x) => nuit >= x;
  */
 export const quitteLeSol = (courbure, vx, gravite) => -courbure * vx * vx > gravite;
 
-export const GRAVITE = 1500;
-export const GRAVITE_PLONGEE = 3400;
-export const VX_MIN = 130;
-export const VX_MAX = 620;
 /**
- * LE FROTTEMENT DE L'AIR — faible, et c'est capital.
+ * LA PESANTEUR DE LA CHUTE — celle du vol, et elle décide de la DURÉE des sauts.
  *
- * TOUT LE JEU TIENT DANS UNE ASYMÉTRIE. Appuyer, c'est peser : on gagne
- * beaucoup dans une descente et l'on freine beaucoup dans une montée. Le bon
- * joueur appuie en descendant, relâche en montant, et surtout DÉCOLLE avant la
- * côte — il encaisse le gain et s'épargne le freinage. C'est là que la vitesse
- * se fabrique, nulle part ailleurs.
+ * Elle a été balayée, pas choisie : 900, 1 100, 1 300, 1 500, en remesurant à
+ * chaque fois la vitesse, la part de temps en l'air et la longueur des vols.
+ * À 900 les vols durent presque une seconde mais la vitesse s'effondre (l'oiseau
+ * passe son temps en l'air, où il ne gagne rien) ; à 1 500 il file mais ne fait
+ * plus que rebondir. 1 300 donne les deux : six dixièmes de seconde de vol, et
+ * cinq à six cents pixels par seconde.
  *
- * Deux réglages ont donc été refaits après mesure. Un frottement d'air fort
- * rendait le vol perdant, et « appuyer sans arrêt » — qui ne décolle jamais —
- * battait le jeu parfait. Un plafond de vitesse trop haut, lui, écrasait toutes
- * les différences : sur les reliefs escarpés, ne rien faire valait presque
- * autant que bien jouer. On mesure, on corrige, on remesure.
+ * Le plafond de vitesse a suivi le même chemin. Il valait 620 quand la vitesse
+ * ne montait jamais ; maintenant qu'elle monte vraiment, c'est lui qu'on va
+ * chercher en récompense d'une belle descente.
  */
+export const GRAVITE = 1300;
+export const GRAVITE_PLONGEE = 2950;
+export const VX_MIN = 130;
+export const VX_MAX = 900;
+
+/**
+ * LA PESANTEUR DU GLISSÉ — celle qui change la hauteur en vitesse, et elle
+ * n'est PAS celle de la chute.
+ *
+ * Rémy : « je trouve que le jeu petites ailes est beaucoup moins bien que Tiny
+ * Wings, dans le glissé, dans les sauts ».
+ *
+ * On a mesuré avant de toucher quoi que ce soit, et les trois chiffres disaient
+ * la même chose : le saut moyen durait QUATORZE CENTIÈMES DE SECONDE pour
+ * soixante pixels — l'oiseau ne volait pas, il vibrait —, la vitesse touchait
+ * son plancher dans TOUTES les parties, et « appuyer sans arrêt », qui ne
+ * décolle jamais, battait le jeu parfait. Autrement dit : aucun élan ne se
+ * conservait, et le plancher de vitesse faisait tout le travail.
+ *
+ * POURQUOI DEUX PESANTEURS. La chute d'un oiseau et la descente d'une pente ne
+ * sont pas le même geste : l'un tombe, l'autre POUSSE — Tiny Wings ne fait pas
+ * rouler une bille, il fait glisser un oiseau qui bat des ailes. Si l'on prend
+ * la même valeur pour les deux, il faut choisir : une pesanteur de chute
+ * correcte (1 500) rend les collines du sixième monde infranchissables — il
+ * faudrait douze cents pixels par seconde pour remonter une bosse de 480 px —,
+ * et une pesanteur qui les laisse franchir donne des sauts de lune. Deux
+ * constantes, deux rôles, et chacune se règle pour ce qu'elle fait.
+ *
+ * Le rapport entre les deux valeurs — appuyer pèse un peu plus du double — est
+ * le même en l'air et au sol : c'est LUI, l'asymétrie, qui fait tout le jeu.
+ * Appuyer dans la descente gagne beaucoup, relâcher dans la montée perd peu.
+ */
+export const PESANTEUR_GLISSE = 430;
+export const PESANTEUR_GLISSE_APPUI = 980;
+
+/**
+ * LE FROTTEMENT — faible des deux côtés, et c'est capital.
+ *
+ * Au sol, il valait 0,55 par seconde : à cinq cents pixels par seconde, cela
+ * reprenait deux cent soixante-quinze pixels par seconde carrée, c'est-à-dire
+ * la moitié de ce qu'une belle descente venait de donner. Il n'y avait pas de
+ * glissé parce que le glissé était mangé à mesure. Un vingtième par seconde
+ * suffit à empêcher la vitesse de partir à l'infini, et se paie en vols plus
+ * longs : on l'a balayé de 0,04 à 0,10 en remesurant, et au-delà les vols
+ * raccourcissent d'un dixième de seconde sans que rien ne s'améliore.
+ *
+ * En l'air il était déjà faible, et pour la même raison : un frottement d'air
+ * fort rendait le vol PERDANT, et le bon joueur — celui qui décolle avant la
+ * côte pour s'épargner le freinage de la montée — se retrouvait puni.
+ */
+export const FROTTEMENT_SOL = 0.05;
 export const FROTTEMENT_AIR = 0.07;
 
-export function pas(etat, dt, appuie, monde, graine) {
+/**
+ * CE QU'IL RESTE DE LA VITESSE À L'ATTERRISSAGE — et ce n'est plus un forfait.
+ *
+ * L'ancienne règle était en deux morceaux cousus à la main : retomber dans une
+ * descente ajoutait « au plus 260 », retomber dans une montée coûtait QUARANTE
+ * POUR CENT d'un coup. Le second est une punition d'arcade, pas une physique :
+ * il frappait aussi bien l'oiseau qui effleure une pente de rien que celui qui
+ * s'écrase dans un mur, et il coûtait quarante pour cent même en retombant à
+ * plat.
+ *
+ * La vraie règle tient en une projection. À l'atterrissage, ce qui rentre dans
+ * le sol est perdu, ce qui va LE LONG du sol est gardé :
+ *
+ *     vx ← (vx + vy·pente) / (1 + pente²)
+ *
+ * Elle dit tout, et toute seule : à plat, on ne perd rien ; sur une descente,
+ * la chute se convertit en avance — c'est la récompense du bon moment, et elle
+ * n'a plus besoin d'être plafonnée à la main ; sur une montée, on perd d'autant
+ * plus qu'on tombe vite et que la pente est raide. Se planter dans une côte
+ * casse ; poser l'aile sur une descente lance.
+ *
+ * On en garde tout de même un quart de l'ancienne vitesse : un atterrissage
+ * raté doit coûter cher, pas mettre à l'arrêt.
+ */
+export const REBOND_ATTERRISSAGE = 0.25;
+
+/**
+ * Le monde n'est plus un paramètre du PAS : le sol est une fonction de `x`
+ * seul, et c'est ce qui a supprimé la falaise des frontières. Ce qui reste du
+ * monde — la palette, la vitesse de la nuit — ne concerne pas la physique.
+ */
+export function pas(etat, dt, appuie, graine) {
     const x = etat.x + etat.vx * dt;
-    const sol = relief(x, monde, graine);
+    const avant = relief(etat.x, graine);
+    const sol = relief(x, graine);
     const g = appuie ? GRAVITE_PLONGEE : GRAVITE;
     let { y, vy, vx, auSol } = etat;
 
     if (auSol) {
-        // La gravité projetée sur la pente : descendre accélère, monter freine.
-        // La pente est sans unité, la gravité en pixels par seconde carrée : le
-        // produit est bien une accélération.
-        vx += -sol.pente * g * dt;
-        // Un frottement, sinon la vitesse part à l'infini au bout de trois
-        // descentes et le jeu devient injouable.
-        vx -= vx * 0.55 * dt;
+        // LE GLISSÉ SE CALCULE EN ÉNERGIE, PAS EN ACCÉLÉRATION PROJETÉE.
+        //
+        // L'ancienne ligne — `vx += -pente · g · dt` — a l'air juste et ne
+        // l'est pas : elle applique l'accélération à la vitesse HORIZONTALE,
+        // et surtout, comme on passe plus de temps à monter (on y est lent)
+        // qu'à descendre (on y est vite), l'aller-retour sur une colline
+        // rendait MOINS qu'il n'avait pris. Une bosse était un impôt. À
+        // vingt bosses par monde, il ne restait rien de l'élan — et l'oiseau
+        // vivait sur son plancher de vitesse.
+        //
+        // La conservation de l'énergie règle cela EXACTEMENT, et sans dépendre
+        // du pas de temps : ½v² + g·h ne bouge pas, donc ce que la montée
+        // prend, la descente le rend au pixel près. Ce qui reste alors comme
+        // seule source de vitesse, c'est l'ASYMÉTRIE de l'appui — et c'est
+        // précisément le geste qu'on veut apprendre à l'élève.
+        const p = appuie ? PESANTEUR_GLISSE_APPUI : PESANTEUR_GLISSE;
+        const q0 = Math.hypot(1, avant.pente);
+        const q1 = Math.hypot(1, sol.pente);
+        const v0 = vx * q0;                             // la vitesse LE LONG du sol
+        const v2 = v0 * v0 - 2 * p * (sol.hauteur - avant.hauteur);
+        let v = v2 > 0 ? Math.sqrt(v2) : 0;
+        v -= v * FROTTEMENT_SOL * dt;
+        vx = v / q1;
         y = sol.hauteur;
         vy = sol.pente * vx;
         // ON DÉCOLLE AU SOMMET D'UNE BOSSE, ET LA CONDITION EST CELLE DE LA
@@ -285,19 +522,39 @@ export function pas(etat, dt, appuie, monde, graine) {
         // collé au sol quatre-vingt-dix-huit pour cent du temps. C'est en
         // écrivant la vraie condition — celle qui demande la dérivée SECONDE —
         // que le jeu s'est mis à ressembler à Tiny Wings.
+        //
+        // C'est bien la pesanteur de CHUTE qu'on compare ici, pas celle du
+        // glissé : décoller, c'est quitter le sol, donc entrer dans l'autre
+        // régime. Et plus on va vite, plus on décolle TÔT — sur le flanc qui
+        // monte encore, là où la pente donne une vraie vitesse verticale. C'est
+        // ce qui fait la différence entre un saut et un sursaut.
         if (!appuie && quitteLeSol(sol.courbure, vx, g)) auSol = false;
     } else {
+        // LE DEMI-PAS DE LA CHUTE N'EST PAS UN DÉTAIL — c'est lui qui faisait
+        // vibrer l'oiseau. On écrivait `vy -= g·dt` puis `y += vy·dt`, ce qui
+        // retranche g·dt² à l'altitude quand la balistique exacte n'en retranche
+        // que la MOITIÉ. Or le sol, lui, s'éloigne d'un demi courbure·v²·dt² :
+        // la comparaison réelle devenait donc « courbure·v² > 2g » alors que
+        // `quitteLeSol` annonce « > g ». Entre les deux, l'oiseau décollait et
+        // se reposait dans la même image, cent trente fois en quarante secondes
+        // — des « sauts » de six centièmes de seconde et de trois pixels.
+        //
+        // Avec la vitesse MOYENNE du pas, le décollage annoncé et le décollage
+        // obtenu sont enfin le même.
+        y += (vy - g * dt / 2) * dt;
         vy -= g * dt;
-        y += vy * dt;
         vx -= vx * FROTTEMENT_AIR * dt;
         if (y <= sol.hauteur) {
             y = sol.hauteur;
             auSol = true;
-            // À L'ATTERRISSAGE DANS UNE DESCENTE, une partie de la chute se
-            // convertit en avance : c'est ce qui récompense le bon moment, et
-            // c'est tout le jeu. Retomber sur une montée, au contraire, casse.
-            if (sol.pente < 0) vx += Math.min(260, -vy * (-sol.pente) * 0.75);
-            else vx *= 0.6;
+            // CE QUI RENTRE DANS LE SOL EST PERDU, CE QUI VA LE LONG DU SOL EST
+            // GARDÉ : la projection sur la tangente, et rien d'autre. Voir
+            // `REBOND_ATTERRISSAGE` — elle récompense la descente, ne coûte
+            // rien à plat, et casse dans la côte, toute seule.
+            const p = sol.pente;
+            const glisse = (vx + vy * p) / (1 + p * p);
+            vx = Math.max(glisse, vx * REBOND_ATTERRISSAGE);
+            vy = p * vx;
         }
     }
     vx = Math.max(VX_MIN, Math.min(VX_MAX, vx));
@@ -305,8 +562,15 @@ export function pas(etat, dt, appuie, monde, graine) {
 }
 
 /** L'état de départ : posé au sol, à vitesse de croisière. */
-export const etatInitial = (monde, graine) => ({
-    x: 0, y: relief(0, monde, graine).hauteur, vx: 190, vy: 0, auSol: true
+/**
+ * L'état de départ : posé au sol, à vitesse de croisière.
+ *
+ * `x0` sert aux tests : le terrain étant maintenant une fonction de l'abscisse
+ * ABSOLUE, éprouver le troisième monde demande d'y partir vraiment, pas de
+ * passer son descripteur à une fonction qui ne le regarde plus.
+ */
+export const etatInitial = (graine, x0 = 0) => ({
+    x: x0, y: relief(x0, graine).hauteur, vx: 190, vy: 0, auSol: true
 });
 
 /**

@@ -189,7 +189,7 @@ class PetitesAiles extends BaseGame {
         this.graine = `${this.graine}+`;
         this.monde = MONDES[0];
         this.grainePaysage = this.rng.int(0, 999) / 100;
-        this.etat = etatInitial(this.monde, this.grainePaysage);
+        this.etat = etatInitial(this.grainePaysage);
         this.etoiles = [];
         this.prochaineEtoile = 400;
         this.ramassees = 0;
@@ -226,15 +226,14 @@ class PetitesAiles extends BaseGame {
         // pendant qu'il lit la consigne.
         const avant = this.monde;
         this.monde = mondeDe(this.etat.x);
-        this.etat = pas(this.etat, dt, this.appuie && !this.isDemo, this.monde,
-            this.grainePaysage);
+        this.etat = pas(this.etat, dt, this.appuie && !this.isDemo, this.grainePaysage);
         if (this.demarre && !this.isDemo) this.nuit = avancerNuit(this.nuit, dt, this.monde);
 
         if (this.monde.id !== avant.id) this.passerMonde();
 
         // On sème les étoiles devant l'oiseau, jamais derrière.
         while (this.prochaineEtoile < this.etat.x + 1400) {
-            this.etoiles.push(semerEtoile(this.prochaineEtoile, this.monde,
+            this.etoiles.push(semerEtoile(this.prochaineEtoile,
                 this.grainePaysage, this.rng));
             this.prochaineEtoile += ECART_ETOILES + this.rng.int(0, 190);
         }
@@ -314,7 +313,18 @@ class PetitesAiles extends BaseGame {
         // donnait sur un téléphone en portrait un oiseau énorme et une demi-
         // colline visible — impossible d'anticiper quoi que ce soit. Le
         // plancher, lui, garde l'oiseau assez gros pour qu'on le voie.
-        const e = Math.max(0.6, Math.min(1.3, larg / 900));
+        //
+        // LA DIVISION A SUIVI LES COLLINES. Elle valait 900 quand une colline
+        // en faisait 500 : on en voyait deux. Les collines font maintenant 800
+        // à 900 pixels — c'est ce qui a supprimé les falaises — et à 900 on
+        // n'en voyait plus qu'UNE, donc plus rien devant la crête. On cadre
+        // désormais sur 1 250, soit une colline et demie.
+        const e = Math.max(0.55, Math.min(1.15, larg / 1250));
+        // L'OISEAU, LUI, NE RÉTRÉCIT PAS AVEC LE PAYSAGE. Reculer la caméra
+        // pour voir venir est un gain ; le payer d'un oiseau de huit pixels sur
+        // un téléphone en serait un mauvais. Sa taille — et celle des étoiles,
+        // qu'il faut viser — a donc son propre plancher.
+        const eSujet = Math.max(0.85, e);
         const camX = this.etat.x - (larg / e) * 0.32;
         // L'altitude de l'écran suit l'oiseau mollement : sans cela l'image
         // saute à chaque bosse et l'on a le mal de mer.
@@ -343,7 +353,7 @@ class PetitesAiles extends BaseGame {
             c.moveTo(0, haut);
             for (let px = 0; px <= larg; px += 6) {
                 const xm = camX * k.part + px / e;
-                const s = relief(xm, M, this.grainePaysage);
+                const s = relief(xm, this.grainePaysage);
                 const y = SOL_MOYEN + (s.hauteur - SOL_MOYEN) * k.part - k.decalage;
                 c.lineTo(px, versEcran(y));
             }
@@ -357,7 +367,7 @@ class PetitesAiles extends BaseGame {
         c.beginPath();
         c.moveTo(0, haut);
         for (let px = 0; px <= larg; px += 4) {
-            const s = relief(camX + px / e, M, this.grainePaysage);
+            const s = relief(camX + px / e, this.grainePaysage);
             c.lineTo(px, versEcran(s.hauteur));
         }
         c.lineTo(larg, haut);
@@ -368,7 +378,7 @@ class PetitesAiles extends BaseGame {
         c.lineWidth = 5 * e;
         c.beginPath();
         for (let px = 0; px <= larg; px += 4) {
-            const s = relief(camX + px / e, M, this.grainePaysage);
+            const s = relief(camX + px / e, this.grainePaysage);
             const y = versEcran(s.hauteur);
             if (px === 0) c.moveTo(px, y); else c.lineTo(px, y);
         }
@@ -379,7 +389,7 @@ class PetitesAiles extends BaseGame {
             if (et.prise) continue;
             const px = versEcranX(et.x);
             if (px < -40 || px > larg + 40) continue;
-            this.dessinerEtoile(px, versEcran(et.y), 13 * e);
+            this.dessinerEtoile(px, versEcran(et.y), 13 * eSujet);
         }
 
         // L'oiseau : un disque, une aile, un bec. Il pique quand on appuie.
@@ -389,7 +399,7 @@ class PetitesAiles extends BaseGame {
         c.save();
         c.translate(ox, oy);
         c.rotate(-angle);
-        c.scale(e, e);
+        c.scale(eSujet, eSujet);
         // L'ORDRE DE DESSIN EST TOUT L'OISEAU. Le bec était tracé EN PREMIER,
         // de x = 4 à x = 16, puis le corps — un disque de rayon 15 — venait par
         // dessus : il n'en dépassait qu'un pixel, et l'on ne voyait plus qu'une
@@ -523,7 +533,7 @@ class PetitesAiles extends BaseGame {
 
         // Le robot joue parfaitement pendant quelques secondes.
         for (let i = 0; i < 260 && this.isRunning; i++) {
-            const sol = relief(this.etat.x, this.monde, this.grainePaysage);
+            const sol = relief(this.etat.x, this.grainePaysage);
             this.appuie = sol.pente < 0;
             if (!await cur.pause(16)) break;
         }

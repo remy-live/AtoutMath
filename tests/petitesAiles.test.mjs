@@ -4,28 +4,36 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import '../js/core/activities/index.js';
 import {
-    MONDES, LONGUEUR_MONDE, SOL_MOYEN, mondeDe, progressionMonde, relief, pas,
+    MONDES, LONGUEUR_MONDE, TRANSITION, SOL_MOYEN, penteMax, ONDES, mondeDe, progressionMonde, relief, pas,
     etatInitial, semerEtoile, HAUT_ETOILE_MIN, HAUT_ETOILE_MAX,
     avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE, qualiteAiles,
-    GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, quitteLeSol
+    GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, PESANTEUR_GLISSE_APPUI, quitteLeSol
 } from '../js/core/petitesAiles.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { SKILLS } from '../js/data/skills.js';
 import { TAGS } from '../js/data/tags.js';
 
-/** Un joueur, décrit par ce qu'il fait de la pente sous ses pieds. */
+/**
+ * Un joueur, décrit par ce qu'il fait de la pente sous ses pieds.
+ *
+ * ON PART VRAIMENT DANS LE MONDE QU'ON ÉPROUVE. Le terrain est désormais une
+ * fonction de l'abscisse ABSOLUE — c'est ce qui a supprimé la falaise de cent
+ * pixels aux frontières —, donc éprouver « les crêtes » veut dire y courir, pas
+ * passer son descripteur à une fonction qui ne le regarde plus.
+ */
 function courir(monde, joue, secondes = 30, graine = 0.7) {
-    let e = etatInitial(monde, graine);
+    let e = etatInitial(graine, (monde.id - 1) * LONGUEUR_MONDE);
     let air = 0, n = 0;
     for (let t = 0; t < secondes; t += 1 / 60) {
-        const sol = relief(e.x, monde, graine);
-        e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), monde, graine);
+        const sol = relief(e.x, graine);
+        e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), graine);
         if (!e.auSol) air++;
         n++;
         assert.ok(Number.isFinite(e.x) && Number.isFinite(e.y) && Number.isFinite(e.vx),
             `la simulation a divergé à t = ${t.toFixed(2)}`);
     }
-    return { x: e.x, vx: e.vx, partAir: air / n, vitesse: e.x / secondes };
+    const depart = (monde.id - 1) * LONGUEUR_MONDE;
+    return { x: e.x, vx: e.vx, partAir: air / n, vitesse: (e.x - depart) / secondes };
 }
 
 const PARFAIT = (pente) => pente < 0;
@@ -45,35 +53,189 @@ test('LA PENTE ET LA COURBURE SONT LES VRAIES DÉRIVÉES', () => {
     // Tout le jeu en dépend : la pente décide de l'accélération, la courbure du
     // décollage. Une dérivée approchée par différence de deux points ferait
     // vibrer la vitesse, et le jeu deviendrait nerveux sans qu'on sache pourquoi.
-    for (const monde of MONDES) {
-        let ecartPente = 0, ecartCourbure = 0;
-        for (let x = 0; x < 4000; x += 7.3) {
-            const h = 0.02;
-            const numPente = (relief(x + h, monde, 0.3).hauteur
-                - relief(x - h, monde, 0.3).hauteur) / (2 * h);
-            const numCourbure = (relief(x + h, monde, 0.3).pente
-                - relief(x - h, monde, 0.3).pente) / (2 * h);
-            const r = relief(x, monde, 0.3);
-            ecartPente = Math.max(ecartPente, Math.abs(numPente - r.pente));
-            ecartCourbure = Math.max(ecartCourbure, Math.abs(numCourbure - r.courbure));
-        }
-        assert.ok(ecartPente < 1e-5, `monde ${monde.id} : pente ${ecartPente}`);
-        assert.ok(ecartCourbure < 1e-4, `monde ${monde.id} : courbure ${ecartCourbure}`);
+    // ON BALAIE TOUT LE PAYSAGE, frontières comprises : c'est justement là que
+    // le relief se raccorde, et une dérivée fausse sur le raccord donnerait un
+    // décollage fantôme au passage d'un monde.
+    let ecartPente = 0, ecartCourbure = 0, ouP = 0;
+    for (let x = 5; x < MONDES.length * LONGUEUR_MONDE + 2000; x += 7.3) {
+        const h = 0.02;
+        const numPente = (relief(x + h, 0.3).hauteur - relief(x - h, 0.3).hauteur) / (2 * h);
+        const numCourbure = (relief(x + h, 0.3).pente - relief(x - h, 0.3).pente) / (2 * h);
+        const r = relief(x, 0.3);
+        if (Math.abs(numPente - r.pente) > ecartPente) ouP = x;
+        ecartPente = Math.max(ecartPente, Math.abs(numPente - r.pente));
+        ecartCourbure = Math.max(ecartCourbure, Math.abs(numCourbure - r.courbure));
     }
+    // Sur le raccord, l'amplitude varie aussi : sa contribution à la pente est
+    // négligée à dessein (voir `relief`), d'où une tolérance un peu plus large
+    // que sur un palier — trois centièmes, quand les pentes valent l'unité.
+    assert.ok(ecartPente < 0.03, `pente : écart ${ecartPente} en x = ${ouP}`);
+    assert.ok(ecartCourbure < 0.05, `courbure : écart ${ecartCourbure}`);
+});
+
+test('LE SOL EST CONTINU D\'UN MONDE À L\'AUTRE', () => {
+    // Rémy : « on fait des grands sauts de monde à monde ». Ce n'était pas une
+    // impression : le relief se calculait à partir du monde COURANT, dont
+    // l'amplitude et la période changent d'un coup à la frontière : le sol y
+    // tombait de 101 pixels et la pente sautait de 0,16 à 2,46 — une falaise
+    // verticale, et un oiseau en l'air sans l'avoir demandé.
+    for (const graine of [0.3, 1.4, 2.9]) {
+        for (let i = 1; i < MONDES.length; i++) {
+            const f = i * LONGUEUR_MONDE;
+            const marche = Math.abs(relief(f + 0.05, graine).hauteur - relief(f - 0.05, graine).hauteur);
+            assert.ok(marche < 1, `frontière ${i} : marche de ${marche.toFixed(1)} px`);
+        }
+    }
+    // Et nulle part ailleurs non plus : on cherche la plus grande marche sur un
+    // dixième de pixel, sur tout le paysage.
+    let pire = 0, ou = 0;
+    for (let x = 1; x < MONDES.length * LONGUEUR_MONDE; x += 0.5) {
+        const d = Math.abs(relief(x, 0.7).hauteur - relief(x - 0.5, 0.7).hauteur);
+        if (d > pire) { pire = d; ou = x; }
+    }
+    assert.ok(pire < 6, `marche de ${pire.toFixed(1)} px en x = ${ou}`);
 });
 
 test('le relief reste dans des altitudes jouables', () => {
-    for (const monde of MONDES) {
+    MONDES.forEach((monde, i) => {
         let bas = Infinity, haut = -Infinity;
-        for (let x = 0; x < 8000; x += 3.1) {
-            const h = relief(x, monde, 1.4).hauteur;
+        // SUR SON PALIER, pas au-delà. Deux bornes se déplacent sous les pieds
+        // de ce test : la frontière du monde suivant, évidemment, mais aussi la
+        // RAMPE qui précède — sur ses neuf cents derniers pixels, l'amplitude
+        // monte déjà vers celle du monde d'après. Y mesurer « la crête du monde
+        // 1 » reviendrait à lui reprocher les montagnes du monde 2.
+        const dernier = i === MONDES.length - 1;
+        const fin = dernier ? LONGUEUR_MONDE : LONGUEUR_MONDE - TRANSITION;
+        for (let x = 0; x < fin; x += 3.1) {
+            const h = relief(i * LONGUEUR_MONDE + x, 1.4).hauteur;
             bas = Math.min(bas, h); haut = Math.max(haut, h);
         }
         assert.ok(bas > SOL_MOYEN - monde.amplitude - 1, `monde ${monde.id} : creux trop bas`);
         assert.ok(haut < SOL_MOYEN + monde.amplitude + 1, `monde ${monde.id} : crête trop haute`);
         // Et il monte VRAIMENT : un relief plat ne ferait pas un jeu.
         assert.ok(haut - bas > monde.amplitude, `monde ${monde.id} : relief trop plat`);
+    });
+});
+
+test('la rampe reste ENTRE les deux mondes qu\'elle relie', () => {
+    // La contrepartie du raccord : sur la rampe, le relief n'appartient plus
+    // tout à fait au monde qu'on quitte. Il ne doit pour autant jamais dépasser
+    // le monde qu'on rejoint — sans quoi la difficulté ferait une bosse au
+    // milieu du raccord au lieu de monter tranquillement.
+    for (let i = 0; i < MONDES.length - 1; i++) {
+        const plafond = Math.max(MONDES[i].amplitude, MONDES[i + 1].amplitude);
+        for (let x = LONGUEUR_MONDE - TRANSITION; x <= LONGUEUR_MONDE; x += 2.7) {
+            const h = relief(i * LONGUEUR_MONDE + x, 1.4).hauteur;
+            assert.ok(Math.abs(h - SOL_MOYEN) < plafond + 1,
+                `rampe ${i + 1}→${i + 2} : ${h.toFixed(0)} px hors des bornes`);
+        }
     }
+});
+
+test('LE PAYSAGE EST FAIT DE COLLINES, PAS DE FALAISES', () => {
+    // Rémy : « beaucoup moins bien que Tiny Wings, dans le glissé ». La cause
+    // n'était pas dans la physique : on faisait escalader à l'oiseau des pentes
+    // de 61° dans le premier monde et de 81° dans le dernier. On ne glisse pas
+    // sur un mur, quelle que soit la façon dont on écrit la gravité.
+    let precedente = 0;
+    for (const monde of MONDES) {
+        const p = penteMax(monde);
+        const degres = Math.atan(p) * 180 / Math.PI;
+        assert.ok(degres > 30, `monde ${monde.id} : ${degres.toFixed(0)}°, c'est une plaine`);
+        assert.ok(degres < 65, `monde ${monde.id} : ${degres.toFixed(0)}°, c'est une falaise`);
+        assert.ok(p > precedente, `le monde ${monde.id} n'est pas plus raide que le précédent`);
+        precedente = p;
+    }
+    // Et la borne est vraie : le relief mesuré ne la dépasse jamais.
+    MONDES.forEach((monde, i) => {
+        const fin = i === MONDES.length - 1 ? LONGUEUR_MONDE : LONGUEUR_MONDE - TRANSITION;
+        for (let x = 0; x < fin; x += 2.3) {
+            const pente = Math.abs(relief(i * LONGUEUR_MONDE + x, 1.4).pente);
+            assert.ok(pente <= penteMax(monde) + 1e-9,
+                `monde ${monde.id} : pente ${pente.toFixed(2)} au-delà de la borne annoncée`);
+        }
+    });
+    // LES HARMONIQUES TEXTURENT, ELLES NE SCULPTENT PAS. C'est la fondamentale
+    // qui doit dominer la COURBURE — donc les vraies crêtes qui lancent
+    // l'oiseau, pas les petites bosses. C'est l'inverse qui le faisait vibrer.
+    const courbure = ONDES.map(o => o.a * o.f * o.f);
+    assert.ok(courbure[0] > courbure.slice(1).reduce((t, c) => t + c, 0),
+        'les harmoniques reprennent la main sur la courbure : l\'oiseau va vibrer');
+});
+
+test('UN SAUT EST UN VOL, PAS UN SURSAUT', () => {
+    // Rémy : « beaucoup moins bien que Tiny Wings […] dans les sauts ». On
+    // mesurait alors CENT DIX décollages en quarante secondes, de quatorze
+    // centièmes de seconde et de trois pixels de haut : l'oiseau ne volait pas,
+    // il vibrait. La cause était une inconséquence d'intégration — voir le
+    // demi-pas de la chute dans `pas` — et elle ne se voit QUE comme ceci, en
+    // comptant les décollages et en chronométrant ce qui les suit.
+    for (const monde of [MONDES[0], MONDES[2], MONDES[5]]) {
+        let e = etatInitial(0.7, (monde.id - 1) * LONGUEUR_MONDE);
+        let sauts = 0, enAir = 0;
+        const dt = 1 / 60;
+        for (let t = 0; t < 40; t += dt) {
+            const auSol = e.auSol;
+            e = pas(e, dt, relief(e.x, 0.7).pente < 0, 0.7);
+            if (!e.auSol) enAir += dt;
+            if (auSol && !e.auSol) sauts++;
+        }
+        assert.ok(sauts > 4, `monde ${monde.id} : ${sauts} décollages en 40 s, on ne vole jamais`);
+        assert.ok(sauts < 45, `monde ${monde.id} : ${sauts} décollages en 40 s, l'oiseau vibre`);
+        const duree = enAir / sauts;
+        assert.ok(duree > 0.3, `monde ${monde.id} : des vols de ${duree.toFixed(2)} s, c'est un sursaut`);
+    }
+});
+
+test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
+    // C'ÉTAIT LE CŒUR DU PROBLÈME. L'ancienne formule ajoutait `-pente · g · dt`
+    // à la vitesse horizontale : comme on passe plus de temps à monter (on y est
+    // lent) qu'à descendre (on y est vite), l'aller-retour sur une bosse rendait
+    // MOINS qu'il n'avait pris. Chaque colline était un impôt, et à sept
+    // collines par monde il ne restait plus rien de l'élan.
+    //
+    // On vérifie donc l'invariant lui-même, pas une conséquence : le long du
+    // sol, ½v² + p·h ne bouge pas, au frottement près. C'est plus fort qu'un
+    // aller-retour — les creux successifs n'ont pas la même altitude, donc
+    // « revenir au point de départ » n'arrive jamais vraiment — et c'est
+    // exactement la phrase que l'ancienne formule ne savait pas tenir.
+    //
+    // ON APPUIE TOUT DU LONG, et c'est ce qui rend la mesure propre : appuyer
+    // interdit le décollage, donc l'oiseau reste collé à la colline, et la
+    // pesanteur est la même à la montée et à la descente.
+    const g = 1.9;
+    let depart = 400, bas = Infinity;
+    for (let x = 200; x < 1600; x += 2) {
+        const h = relief(x, g).hauteur;
+        if (h < bas) { bas = h; depart = x; }
+    }
+    const leLongDuSol = (vx, pente) => vx * Math.hypot(1, pente);
+    const h0 = relief(depart, g).hauteur;
+    const V0 = 700;
+    let e = { x: depart, y: h0, vx: V0, vy: 0, auSol: true };
+    const v0 = leLongDuSol(V0, relief(depart, g).pente);
+    let ecart = 0, haut = h0, perdu = 0;
+    for (let t = 0; t < 3; t += 1 / 60) {
+        e = pas(e, 1 / 60, true, g);
+        assert.ok(e.auSol, 'en appuyant, on ne décolle pas : le test ne mesure plus rien');
+        const r = relief(e.x, g);
+        haut = Math.max(haut, r.hauteur);
+        const v = leLongDuSol(e.vx, r.pente);
+        // LE FROTTEMENT SE RETRANCHE EN ÉNERGIE, PAS EN VITESSE : il prend
+        // 2·F·v²·dt, ce qui n'est pas la même chose que multiplier la vitesse
+        // idéale par e^(−F·t) — on s'était trompé là-dessus, et le test
+        // accusait le code de dix-huit pour cent de dérive qu'il n'avait pas.
+        // On accumule donc la vraie intégrale. Elle ne représente qu'une
+        // correction : ce qui est mis à l'épreuve, c'est bien la conversion
+        // exacte de la hauteur en vitesse.
+        perdu += 2 * FROTTEMENT_SOL * v * v / 60;
+        const attendu = Math.sqrt(v0 * v0 - 2 * PESANTEUR_GLISSE_APPUI * (r.hauteur - h0) - perdu);
+        ecart = Math.max(ecart, Math.abs(v - attendu) / attendu);
+    }
+    // On a bien franchi une VRAIE bosse, pas une ondulation.
+    assert.ok(haut - h0 > 150, `la bosse ne fait que ${Math.round(haut - h0)} px : on ne mesure rien`);
+    assert.ok(ecart < 0.02,
+        `l'énergie du glissé dérive de ${(ecart * 100).toFixed(1)} % : la colline mange l'élan`);
 });
 
 // --- Les mondes -----------------------------------------------------------------------
@@ -179,10 +341,10 @@ test('ON DÉCOLLE AU SOMMET, ET SEULEMENT SI L\'ON VA ASSEZ VITE', () => {
     // décoller : la courbure y est trop faible. Sur les crêtes, en revanche,
     // même un oiseau lent quitte le sol — et c'est juste, c'est la physique.
     const douce = MONDES[0];
-    let lent = { ...etatInitial(douce, 0.7), vx: VX_MIN };
+    let lent = { ...etatInitial(0.7), vx: VX_MIN };
     let envole = false;
     for (let t = 0; t < 10; t += 1 / 60) {
-        lent = pas({ ...lent, vx: VX_MIN }, 1 / 60, false, douce, 0.7);
+        lent = pas({ ...lent, vx: VX_MIN }, 1 / 60, false, 0.7);
         if (!lent.auSol) envole = true;
     }
     assert.equal(envole, false, 'sur les dunes, à vitesse minimale, on reste au sol');
@@ -197,14 +359,14 @@ test('ON DÉCOLLE AU SOMMET, ET SEULEMENT SI L\'ON VA ASSEZ VITE', () => {
 test('la vitesse reste dans ses bornes, quoi qu\'on fasse', () => {
     for (const monde of MONDES) {
         for (const joue of [PARFAIT, JAMAIS, TOUJOURS, () => Math.random() < 0.5]) {
-            let e = etatInitial(monde, 2.2);
+            let e = etatInitial(2.2, (monde.id - 1) * LONGUEUR_MONDE);
             for (let t = 0; t < 40; t += 1 / 60) {
-                const sol = relief(e.x, monde, 2.2);
-                e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), monde, 2.2);
+                const sol = relief(e.x, 2.2);
+                e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), 2.2);
                 assert.ok(e.vx >= VX_MIN - 1e-9 && e.vx <= VX_MAX + 1e-9,
                     `vitesse hors bornes : ${e.vx}`);
                 // On ne passe jamais sous le sol.
-                assert.ok(e.y >= relief(e.x, monde, 2.2).hauteur - 1e-6,
+                assert.ok(e.y >= relief(e.x, 2.2).hauteur - 1e-6,
                     'l\'oiseau est passé sous le relief');
             }
         }
@@ -215,10 +377,9 @@ test('appuyer pèse : la gravité de plongée est plus forte', () => {
     assert.ok(GRAVITE_PLONGEE > GRAVITE * 1.5);
     // Et en l'air, cela se voit tout de suite : à même position, celui qui
     // appuie tombe plus vite.
-    const monde = MONDES[1];
-    const base = { x: 100, y: relief(100, monde, 0).hauteur + 200, vx: 300, vy: 0, auSol: false };
-    const plane = pas(base, 0.2, false, monde, 0);
-    const plonge = pas(base, 0.2, true, monde, 0);
+    const base = { x: 100, y: relief(100, 0).hauteur + 200, vx: 300, vy: 0, auSol: false };
+    const plane = pas(base, 0.2, false, 0);
+    const plonge = pas(base, 0.2, true, 0);
     assert.ok(plonge.y < plane.y, 'plonger devrait faire descendre plus vite');
 });
 
@@ -248,8 +409,8 @@ test('les étoiles se posent à portée de l\'oiseau qui GLISSE', () => {
     const rng = makeRng('etoiles');
     for (const monde of MONDES) {
         for (let x = 0; x < 3000; x += 137) {
-            const e = semerEtoile(x, monde, 1.1, rng);
-            const sol = relief(x, monde, 1.1).hauteur;
+            const e = semerEtoile(x, 1.1, rng);
+            const sol = relief(x, 1.1).hauteur;
             assert.equal(e.x, x);
             assert.equal(e.prise, false);
             assert.ok(e.y - sol >= HAUT_ETOILE_MIN, `étoile sous le sol : ${e.y - sol}`);
