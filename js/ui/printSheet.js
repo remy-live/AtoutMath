@@ -18,6 +18,7 @@
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
+import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml,
@@ -2638,7 +2639,13 @@ const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '
 // servie aux deux rendus — l'aperçu HTML et le PDF tombent donc au même
 // endroit, comme partout ailleurs dans la fiche.
 
-const RED_LIGNES = ['Je sais que', 'Or', 'Donc'];
+// LES MOTS ET LES COULEURS VIENNENT DU MOTEUR COMMUN. Rémy : « ça pourrait
+// être un moteur commun et au niveau de la présentation, mettre des couleurs et
+// garder une cohérence ». Les droites et Pythagore écrivaient chacun leurs
+// amorces — « Je sais que : » avec deux-points ici, « Je sais que » sans rien
+// là. Trois chapitres, trois présentations : le schéma ne s'imprime que s'il
+// est identique partout. La PLACE, elle, reste au chapitre (voir RED_ECRITURE).
+const RED_LIGNES = ETAPES_RAISONNEMENT.map(e => e.mot);
 // Combien de lignes d'écriture pour chacune, et où elles commencent.
 // Je sais que : 2 lignes · Or : 3 (elle porte la propriété du cours, écrite en
 // entier) · Donc : 1. Rémy, deux fois dans la même passe : « une seule ligne
@@ -2667,9 +2674,18 @@ function geometrieRedaction(item, boite) {
     // à l'élève de faire. En revanche les lignes sont deux fois plus courtes :
     // c'est le prix, et c'est au professeur de choisir.
     const cote = item.meta.miseEnPage === 'cote';
+    // LA FIGURE ÉTAIT ÉCRASÉE. Rémy, sur ses PDF : « je trouve que tu ne
+    // profites pas du tout de l'espace ». Le plafond de hauteur — 40 % du bloc,
+    // ou 34 % de sa largeur — donnait une figure de deux centimètres au milieu
+    // d'un bloc qui en fait huit, et la mise à l'échelle ci-dessous la réduisait
+    // ENCORE de moitié pour loger les étiquettes. Résultat : un dessin large
+    // comme un timbre, avec des « (d₁) » qu'on lit à la loupe.
+    //
+    // On monte le plafond à 52 % : les trois droites d'une justification tiennent
+    // sur peu de lignes, c'est la FIGURE qu'il faut voir pour lire les codages.
     const zoneFig = cote
         ? { x: boite.x, y: boite.y, w: boite.w * 0.44, h: boite.h }
-        : { x: boite.x, y: boite.y, w: boite.w, h: Math.min(boite.h * 0.40, boite.w * 0.34) };
+        : { x: boite.x, y: boite.y, w: boite.w, h: Math.min(boite.h * 0.52, boite.w * 0.46) };
     const zoneTexte = cote
         ? { x: boite.x + boite.w * 0.47, y: boite.y, w: boite.w * 0.53, h: boite.h }
         : { x: boite.x, y: boite.y + zoneFig.h + 5, w: boite.w, h: boite.h - zoneFig.h - 6 };
@@ -2685,8 +2701,12 @@ function geometrieRedaction(item, boite) {
     // « (d₁) » de la première figure se posait sur la deuxième. On calcule donc
     // l'encombrement réel — demi-longueur projetée sur chaque axe, plus la
     // place d'une étiquette — et on met le tout à l'échelle.
-    const MARGE_NOM = 7;
-    let L = zoneFig.w * 0.34, e = figH * 0.26;
+    // La marge d'étiquette était fixe à 7 mm — sur une petite boîte elle mangeait
+    // à elle seule le tiers de la place. Elle suit maintenant la taille du bloc,
+    // avec un plancher : une étiquette doit rester lisible, pas proportionnelle
+    // à l'infini.
+    const MARGE_NOM = Math.max(4.5, Math.min(7, zoneFig.w * 0.06));
+    let L = zoneFig.w * 0.42, e = figH * 0.30;
     const demiW = L * Math.abs(dx) + e * Math.abs(nx) + MARGE_NOM;
     const demiH = L * Math.abs(dy) + e * Math.abs(ny) + MARGE_NOM;
     const facteur = Math.min(
@@ -2784,9 +2804,14 @@ function redactionPreviewHtml(item, slot, k, solution, champs) {
         // `y` est la LIGNE DE BASE du texte dans le PDF ; en HTML, `top` est le
         // haut de la boîte. Sans ce décalage, l'aperçu descendait chaque
         // étiquette d'une hauteur de police et les écarts semblaient irréguliers.
+        // L'AMORCE EST COLORÉE, LE RESTE NON. C'est le schéma qu'on veut voir
+        // de loin — « Je sais que », « Or », « Donc » — pas la phrase que
+        // l'élève écrira dessus. Sur une photocopie noir et blanc, c'est le
+        // gras qui la détache ; la couleur n'est qu'un confort en plus.
+        const teinte = ETAPES_RAISONNEMENT[i].rgb.join(', ');
         return `<div class="fx-red-ligne" style="left:${g.zoneTexte.x * k}px; top:${(y - 2.5) * k}px;
             width:${g.zoneTexte.w * k}px; height:${haut * k}px; font-size:${3.2 * k}px">
-            <b>${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
+            <b style="color:rgb(${teinte})">${et} :</b> <span class="${solution ? 'fx-red-sol' : 'fx-red-vide'}">${rempli || ''}</span></div>${rails}`;
     }).join('');
     return `<div class="fx-red" style="left:0; top:0">
         <svg class="fx-red-svg" style="left:${b.x * k}px; top:${b.y * k}px;
@@ -2836,7 +2861,10 @@ function dessinerRedactionPdf(doc, item, slot, solution, champ) {
         const y = g.ligneY(i);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.setTextColor(30, 41, 59);
+        // La couleur du temps, la même qu'à l'aperçu et la même que dans
+        // Pythagore : c'est ce qui fait qu'on reconnaît le schéma d'un chapitre
+        // à l'autre au lieu de le redécouvrir.
+        doc.setTextColor(...ETAPES_RAISONNEMENT[i].rgb);
         // Tout s'écrit dans la ZONE DE TEXTE : elle occupe toute la largeur en
         // présentation empilée, la moitié droite en présentation côte à côte.
         const zx = g.zoneTexte.x, zw = g.zoneTexte.w;
@@ -4608,11 +4636,13 @@ const rvbHex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16),
 // trois amorces imprimées en gris, et des lignes pour écrire dessous. La feuille
 // de solutions remplit exactement les mêmes lignes.
 
-const AMORCES = [
-    { mot: 'Je sais que', lignes: 2 },
-    { mot: 'Or', lignes: 2 },
-    { mot: 'Donc', lignes: 4 }
-];
+// LES MÊMES AMORCES QUE PARTOUT. Elles s'écrivaient ici « Je sais que » sans
+// deux-points et en gris, et sur la fiche des droites « Je sais que : » en noir
+// — deux présentations pour un seul schéma, donc deux choses à reconnaître pour
+// l'élève au lieu d'une. Le moteur commun porte les mots, le deux-points et la
+// couleur ; ce chapitre garde SA place : ici c'est le « Donc » qui est long,
+// parce qu'il contient le calcul.
+const AMORCES = trameRaisonnement([2, 2, 4]);
 
 /** L'énoncé en toutes lettres, tel que le générateur l'écrit pour le papier. */
 const enoncePythagore = (item) =>
@@ -4877,7 +4907,7 @@ function pythagorePreviewHtml(item, slot, k, solution) {
     let y = b.y;
     AMORCES.forEach((a, iA) => {
         html += `<div class="fx-py-amorce" style="left:${T(g.droiteX)}px; top:${T(y)}px;
-            font-size:${T(g.corps)}px">${a.mot}</div>`;
+            font-size:${T(g.corps)}px; color:${a.couleur}">${a.amorce}</div>`;
         y += g.corps * 1.35;
         for (let i = 0; i < a.lignes; i++) {
             const texte = rempli ? (rempli[iA][i] || '') : '';
@@ -4980,9 +5010,9 @@ function dessinerPythagorePdf(doc, item, slot, solution) {
     let y = b.y;
     AMORCES.forEach((a, iA) => {
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...ENCRE.gris);
+        doc.setTextColor(...a.rgb);
         doc.setFontSize(g.corps / 0.3528);
-        doc.text(pourPdf(a.mot), g.droiteX, y + g.corps);
+        doc.text(pourPdf(a.amorce), g.droiteX, y + g.corps);
         y += g.corps * 1.35;
         for (let i = 0; i < a.lignes; i++) {
             doc.setDrawColor(...ENCRE.grille);
