@@ -7688,3 +7688,30 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .banc-q-tout { margin: 4px 0 0 1.2em; padding: 0; font-size: .88rem; line-height: 1.5; }
 .banc-q-tout li { margin-bottom: 3px; }
 .banc-q-tout b { color: #15803d; font-weight: 700; }
+
+
+/* LE TRI DES LISTES DU QUOTIDIEN — « celle-là oui, celle-là non ».
+   Rémy : « il y en a à supprimer, mets un clic oui ou non et je te l'envoie. »
+   Deux cents phrases se relisent en plusieurs fois : le verdict doit se voir
+   d'un coup d'oeil pour savoir où l'on en est, d'où la ligne entière teintée
+   plutôt qu'une simple coche. */
+.banc-q-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.banc-q-compte { font-size: .78rem; color: var(--text-muted); }
+.banc-q-tri { list-style: none; padding-left: 0; }
+.banc-q-item { display: flex; gap: 8px; align-items: flex-start; padding: 4px 6px; border-radius: 6px; }
+.banc-q-item + .banc-q-item { margin-top: 2px; }
+.banc-q-item--oui { background: rgba(31, 122, 77, .08); }
+.banc-q-item--non { background: rgba(184, 58, 44, .10); }
+.banc-q-item--non .banc-q-corps { text-decoration: line-through; opacity: .6; }
+.banc-q-verdict { display: flex; gap: 3px; flex: none; }
+.banc-q-verdict button {
+    width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border, #d7dce5); background: #fff;
+    font-weight: 800; line-height: 1; padding: 0;
+}
+.banc-q-oui { color: #1f7a4d; }
+.banc-q-non { color: #b83a2c; }
+.banc-q-oui.est-choisi { background: #1f7a4d; color: #fff; border-color: #1f7a4d; }
+.banc-q-non.est-choisi { background: #b83a2c; color: #fff; border-color: #b83a2c; }
+.banc-q-corps { flex: 1 1 auto; }
+.banc-q-export { width: 100%; min-height: 180px; font: 12px/1.4 ui-monospace, monospace; margin-top: 8px; }

@@ -33,6 +33,58 @@ let appareil = null;
 let nomAppareil = '';
 let filtre = 'restants';
 let genreQuotidien = 'conseil';    // le genre affiché dans l'onglet « Le quotidien »
+
+/**
+ * LES VERDICTS DU TRI — « celle-là oui, celle-là non ».
+ *
+ * Rémy : « je peux aussi faire un retour sur les proverbes blagues et autres,
+ * car il y en a à supprimer, mets un clic oui ou non et je te l'envoie. »
+ *
+ * Ils vivent dans le navigateur, et c'est voulu : ce sont des NOTES DE
+ * RELECTURE, pas la liste elle-même. La liste, lue par toute une classe, se
+ * versionne avec le code ; le tri, lui, est un travail en cours qui doit
+ * survivre à un rechargement de page — on ne relit pas deux cents phrases d'une
+ * traite — et se terminer par un copier-coller qu'on m'envoie.
+ *
+ * `{ conseil: { 3: false, 7: true, … } }` — l'index dans la liste, et le
+ * verdict. Une entrée sans verdict n'est pas « à garder » : elle n'est pas
+ * encore lue, et c'est une troisième valeur qui compte.
+ */
+const CLE_VERDICTS = 'atoutmath.quotidien.verdicts';
+let verdictsQuotidien = (() => {
+    try { return JSON.parse(localStorage.getItem(CLE_VERDICTS)) || {}; }
+    catch { return {}; }
+})();
+
+function noterVerdict(genre, index, valeur) {
+    if (!verdictsQuotidien[genre]) verdictsQuotidien[genre] = {};
+    // Recliquer le même bouton l'efface : c'est le geste qu'on fait quand on
+    // s'est trompé, et sans lui il faudrait tout remettre à zéro.
+    if (verdictsQuotidien[genre][index] === valeur) delete verdictsQuotidien[genre][index];
+    else verdictsQuotidien[genre][index] = valeur;
+    try { localStorage.setItem(CLE_VERDICTS, JSON.stringify(verdictsQuotidien)); } catch { /* privé */ }
+}
+
+/**
+ * LE TRI, PRÊT À M'ÊTRE ENVOYÉ.
+ *
+ * On rend les NUMÉROS ET LE DÉBUT DU TEXTE : un numéro seul serait illisible
+ * pour un humain et faux dès que la liste bouge d'une entrée ; le texte seul
+ * obligerait à le rechercher. Les deux ensemble se retrouvent toujours.
+ */
+export function verdictsEnTexte(genre) {
+    const v = verdictsQuotidien[genre] || {};
+    const jeter = [], garder = [];
+    LISTES[genre].forEach((e, i) => {
+        if (v[i] === undefined) return;
+        const t = normaliserQuotidien(genre, e).texte;
+        (v[i] ? garder : jeter).push(`${i + 1}. ${t.length > 90 ? t.slice(0, 88) + '…' : t}`);
+    });
+    const total = LISTES[genre].length;
+    return `${LIBELLES_GENRE[genre]} — ${jeter.length + garder.length} relues sur ${total}\n\n`
+        + `À SUPPRIMER (${jeter.length})\n${jeter.join('\n') || '(aucune)'}\n\n`
+        + `À GARDER (${garder.length})\n${garder.join('\n') || '(aucune)'}`;
+}
 let ouvertSur = null;          // l'exercice à noter au retour du jeu
 
 // --- Le carnet, gardé sur l'appareil ----------------------------------------
@@ -303,15 +355,32 @@ function quotidienHtml() {
                 <span>${echapper(p.entree ? p.entree.texte : '')}</span></div>`).join('')}</div>
 
         <div class="banc-domaine">Toute la liste — ${LISTES[g].length} entrées</div>
-        <div class="banc-critere-q">Elles se relisent ici ; elles s'écrivent dans
-            <code>js/data/${g === 'enigme' ? 'enigmes' : g + 's'}.js</code>. Une liste
-            modifiable depuis le navigateur ne vivrait que sur cet appareil — ce qui est
-            lu par toute une classe se versionne avec le code.</div>
-        <ol class="banc-q-tout">${LISTES[g].map((e, i) => {
+        <div class="banc-critere-q">ON TRIE ICI, ON SUPPRIME DANS LE CODE. Rémy :
+            « il y en a à supprimer, mets un clic oui ou non et je te l'envoie. »
+            Chaque entrée porte donc deux boutons ; le verdict reste sur cet
+            appareil, et le bouton du bas le rend en une liste à recopier. C'est
+            ce qui permet de trier deux cents phrases sans en écrire une seule —
+            et une liste modifiable depuis le navigateur ne vivrait que sur cet
+            appareil, alors que ce qui est lu par toute une classe se versionne
+            avec le code (<code>js/data/${g === 'enigme' ? 'enigmes' : g + 's'}.js</code>).</div>
+        <div class="banc-q-actions">
+            <button type="button" class="banc-chip" data-tri-copier>📋 Copier les verdicts</button>
+            <button type="button" class="banc-chip" data-tri-vider>Tout remettre à zéro</button>
+            <span class="banc-q-compte" data-tri-compte></span>
+        </div>
+        <ol class="banc-q-tout banc-q-tri">${LISTES[g].map((e, i) => {
         const v = normaliserQuotidien(g, e);
-        return `<li>${echapper(v.texte)}${v.signature
+        const verdict = verdictsQuotidien[g] ? verdictsQuotidien[g][i] : undefined;
+        return `<li class="banc-q-item${verdict === false ? ' banc-q-item--non' : ''}${verdict === true ? ' banc-q-item--oui' : ''}">
+            <span class="banc-q-verdict">
+                <button type="button" class="banc-q-oui${verdict === true ? ' est-choisi' : ''}"
+                    data-verdict="${i}" data-valeur="oui" title="Garder">✓</button>
+                <button type="button" class="banc-q-non${verdict === false ? ' est-choisi' : ''}"
+                    data-verdict="${i}" data-valeur="non" title="Supprimer">✕</button>
+            </span>
+            <span class="banc-q-corps">${echapper(v.texte)}${v.signature
             ? ` <i>— ${echapper(v.signature)}</i>` : ''}${v.secret
-            ? ` <b>→ ${echapper(v.secret)}</b>` : ''}</li>`;
+            ? ` <b>→ ${echapper(v.secret)}</b>` : ''}</span></li>`;
     }).join('')}</ol>`;
 }
 
@@ -358,6 +427,47 @@ function peindre() {
     corps.querySelectorAll('[data-genre]').forEach(b => {
         b.onclick = () => { genreQuotidien = b.dataset.genre; peindre(); };
     });
+    // LE TRI DES LISTES DU QUOTIDIEN — voir `verdictsQuotidien`.
+    corps.querySelectorAll('[data-verdict]').forEach(b => {
+        b.onclick = () => {
+            noterVerdict(genreQuotidien, Number(b.dataset.verdict), b.dataset.valeur === 'oui');
+            peindre();
+        };
+    });
+    const compte = corps.querySelector('[data-tri-compte]');
+    if (compte) {
+        const v = verdictsQuotidien[genreQuotidien] || {};
+        const lues = Object.keys(v).length;
+        const jetees = Object.values(v).filter(x => x === false).length;
+        compte.textContent = lues
+            ? `${lues} relues, dont ${jetees} à supprimer`
+            : 'Aucune relue pour l\'instant.';
+    }
+    const copier = corps.querySelector('[data-tri-copier]');
+    if (copier) copier.onclick = async () => {
+        const texte = verdictsEnTexte(genreQuotidien);
+        try {
+            await navigator.clipboard.writeText(texte);
+            copier.textContent = '✓ Copié — colle-le-moi';
+        } catch {
+            // Le presse-papiers est refusé hors HTTPS et sur certains
+            // navigateurs : on montre alors le texte, il reste sélectionnable.
+            copier.textContent = '📋 Copier les verdicts';
+            const zone = document.createElement('textarea');
+            zone.className = 'banc-q-export';
+            zone.readOnly = true;
+            zone.value = texte;
+            copier.parentElement.after(zone);
+            zone.select();
+        }
+        setTimeout(() => { copier.textContent = '📋 Copier les verdicts'; }, 2500);
+    };
+    const vider = corps.querySelector('[data-tri-vider]');
+    if (vider) vider.onclick = () => {
+        delete verdictsQuotidien[genreQuotidien];
+        try { localStorage.setItem(CLE_VERDICTS, JSON.stringify(verdictsQuotidien)); } catch { /* privé */ }
+        peindre();
+    };
     corps.querySelectorAll('[data-jouer]').forEach(b => {
         b.onclick = () => jouer(b.dataset.jouer);
     });
