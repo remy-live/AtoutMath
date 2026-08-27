@@ -555,6 +555,30 @@ export function apercuItems(page, k, o) {
                      title="Réglages de cet exercice"
                      aria-label="Réglages de « ${echapper(it.titre)} »">${ROUE}</button>`
                 : '';
+            // L'ORDRE SE CHANGE SUR LE BANDEAU, LUI AUSSI.
+            //
+            // Rémy : « la fiche du parcours est vraiment chargée ». La charge
+            // venait d'un doublon : une LISTE des exercices au-dessus de
+            // l'aperçu, qui montrait exactement les mêmes six lignes que
+            // l'aperçu montrait en dessous, avec les mêmes réglages — le code
+            // devait même les resynchroniser à la main. Tout ce que la liste
+            // savait faire existait déjà sur la feuille (le titre se retouche,
+            // la consigne se retouche, l'engrenage règle le reste) SAUF une
+            // chose : l'ordre. On la lui donne, et la liste n'a plus de raison
+            // d'être.
+            //
+            // DEUX FLÈCHES, ET PAS UN GLISSÉ. Sur la tablette de Rémy, tirer un
+            // bandeau de trois centimètres de haut à travers une feuille A4
+            // réduite est un geste qu'on rate ; deux boutons ne se ratent pas.
+            const rang = o.ordre ? o.ordre.indexOf(it.id) : -1;
+            const fleches = (o.reglable && rang >= 0 && !it.suite && o.ordre.length > 1)
+                ? `<button type="button" class="fx-rang" data-monter="${echapper(it.id)}"
+                     ${rang === 0 ? 'disabled' : ''} title="Monter d'un cran"
+                     aria-label="Monter « ${echapper(it.titre)} »">▲</button>
+                   <button type="button" class="fx-rang" data-descendre="${echapper(it.id)}"
+                     ${rang === o.ordre.length - 1 ? 'disabled' : ''} title="Descendre d'un cran"
+                     aria-label="Descendre « ${echapper(it.titre)} »">▼</button>`
+                : '';
             // LE TITRE SE RETOUCHE D'UN CLIC (dans l'aperçu seulement). Le
             // titre du catalogue est celui de l'exercice ; sur une feuille, le
             // professeur écrit ce qu'il veut — « Exercice 1 — Les tables »
@@ -565,7 +589,7 @@ export function apercuItems(page, k, o) {
                 <span${modifiable ? ` class="fx-retouche" data-titre-exo="${echapper(it.id)}"`
                     + ' title="Cliquer pour changer le titre de cet exercice"' : ''}>${echapper(titreExo(it))}</span>
                 ${it.points ? `<span class="fx-points">… / ${it.points}</span>` : ''}
-                ${roue}</div>`;
+                ${fleches}${roue}</div>`;
             continue;
         }
         if (it.type === 'consigne') {

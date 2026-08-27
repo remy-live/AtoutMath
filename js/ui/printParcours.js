@@ -252,8 +252,8 @@ function assurerModale() {
                         min="5" max="100" step="1" value="20"></label>
                 <span class="fp-total" id="pp-total"></span>
                 <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
+                <span class="pp-ecran" id="pp-ecran"></span>
             </div>
-            <div class="pp-etapes" id="pp-etapes"></div>
             <details class="fp-repli" id="pp-plus">
                 <!-- LE REPLI DIT CE QU'IL CONTIENT, REPLIÉ. C'est l'autre
                      moitié du doublon : quand on ne sait pas ce qu'il y a
@@ -338,8 +338,16 @@ export function ouvrirFicheParcours(chemin) {
     const choixEl = m.querySelector('#pp-choix');
     const insecEl = m.querySelector('#pp-insecable');
     const totalEl = m.querySelector('#pp-total');
+    // LES ACTIVITÉS QUI NE SE PHOTOCOPIENT PAS. Le message vivait au bas de la
+    // liste d'exercices ; la liste ayant disparu, il rejoint la ligne d'état,
+    // à côté du nombre de pages — c'est là qu'on lit ce que la feuille contient.
+    const ecranEl = m.querySelector('#pp-ecran');
+    if (ecranEl) {
+        ecranEl.textContent = ecran.length
+            ? `Sur écran seulement : ${[...new Set(ecran.map(e => e.title))].join(', ')}`
+            : '';
+    }
     const noteEl = m.querySelector('#pp-note');
-    const listeEl = m.querySelector('#pp-etapes');
 
     // CE QUI EST ÉCRIT SUR LA FEUILLE VIT ICI, ET SE TOUCHE SUR LA FEUILLE.
     //
@@ -535,7 +543,6 @@ export function ouvrirFicheParcours(chemin) {
     // Replié, on voit d'un coup la liste entière et l'aperçu ; on ouvre le seul
     // exercice qu'on veut régler, et il se souvient de son état tant que la
     // fiche reste ouverte.
-    const ouvertes = new Set();
     const CHEVRON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"'
         + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
@@ -558,13 +565,11 @@ export function ouvrirFicheParcours(chemin) {
         quantites[id] = bornerNb(v);
         oublier(id);                         // le nombre change : on retire à neuf, ICI seulement
         if (!baremeTouche) repartirPoints();
-        rendreListe();
         majRoue(id);
         rendre();
     };
     const changerColonnes = (id, v) => {
         colonnes[id] = v;
-        rendreListe();
         majRoue(id);
         rendre();
     };
@@ -578,7 +583,6 @@ export function ouvrirFicheParcours(chemin) {
     const changerPoints = (id, v) => {
         points[id] = bornerNb(v);
         baremeTouche = true;                 // à partir d'ici, le barème est le sien
-        rendreListe();
         majRoue(id);
         rendre();
     };
@@ -618,256 +622,45 @@ export function ouvrirFicheParcours(chemin) {
         if (bareme) bareme.hidden = !interro.checked;
     };
 
-    const rendreListe = () => {
-        listeEl.innerHTML = ordre.map((id, i) => {
-            const e = parId.get(id);
-            const nom = echapper(e.title);
-            // LA LIGNE ET SON TIROIR. Sur un téléphone, les quatre réglages
-            // d'une étape à plat prenaient trois rangées chacun : la liste des
-            // exercices devenait un mur avant même qu'on voie l'aperçu. Ce
-            // qu'on regarde — l'ordre et le nom — reste visible ; ce qu'on
-            // règle une fois se déplie d'un chevron. Un <details> le fait sans
-            // une ligne de JavaScript, et sur grand écran il s'ouvre tout seul.
-            const unite = e.grille ? 'grilles' : 'questions';
-            return `
-            <details class="pp-etape" data-etape-ligne="${id}" ${ouvertes.has(id) ? 'open' : ''}>
-                <summary class="pp-etape-tete">
-                    <button type="button" class="pp-grip" data-grip="${id}"
-                        title="Glisser pour changer l'ordre sur la feuille"
-                        aria-label="Déplacer « ${nom} »">⠿</button>
-                    <span class="pp-etape-num">${i + 1}.</span>
-                    <span class="pp-etape-nom">${nom}</span>
-                    <span class="pp-etape-resume">${quantites[id]} ${unite}</span>
-                    <span class="pp-fleches">
-                        <button type="button" class="pp-fleche" data-monter="${id}"
-                            ${i === 0 ? 'disabled' : ''} title="Monter d'un cran"
-                            aria-label="Monter « ${nom} »">▲</button>
-                        <button type="button" class="pp-fleche" data-descendre="${id}"
-                            ${i === ordre.length - 1 ? 'disabled' : ''} title="Descendre d'un cran"
-                            aria-label="Descendre « ${nom} »">▼</button>
-                    </span>
-                    <span class="pp-chevron" aria-hidden="true">${CHEVRON}</span>
-                </summary>
-                <div class="pp-etape-reglages">
-                    <label class="pp-etape-champ pp-etape-consigne">Consigne
-                        <input type="text" class="cfg-input" data-consigne="${id}"
-                            value="${echapper(consignes[id] || '')}" maxlength="140"
-                            placeholder="(aucune consigne imprimée)"
-                            aria-label="Consigne imprimée de « ${nom} »"></label>
-                    <label class="pp-etape-champ">${unite === 'grilles' ? 'Grilles' : 'Questions'}
-                        ${pas('nb', id, `<input type="number" class="cfg-input cfg-input--num"
-                            data-etape="${id}" min="0" max="40" value="${quantites[id]}">`)}</label>
-                    <label class="pp-etape-champ">${e.grille ? 'Par ligne' : 'Colonnes'}
-                        ${pas('col', id, `<select class="cfg-input cfg-input--num" data-colonnes="${id}"
-                            aria-label="Mise en page de « ${nom} »">
-                            ${COLONNES_POSSIBLES.map(v => `<option value="${v}"
-                                ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
-                        </select>`)}</label>
-                    ${blocContenu(e, id)}
-                    <label class="pp-etape-champ pp-etape-case">
-                        <input type="checkbox" data-numeroter="${id}"
-                            ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
-                    <label class="pp-etape-champ pp-etape-pts" ${interro.checked ? '' : 'hidden'}>Barème
-                        ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num"
-                            data-points="${id}" min="0" max="40" value="${points[id]}"
-                            aria-label="Points de « ${nom} »">`)}</label>
-                </div>
-            </details>`;
-        }).join('')
-            + (ecran.length ? `<div class="pp-ecran">Sur écran seulement : ${[...new Set(ecran.map(e => e.title))].map(echapper).join(', ')}
-                 — ${ecran.length > 1 ? 'ces activités demandent' : 'cette activité demande'} de manipuler, elles ne se photocopient pas.</div>` : '');
+    /**
+     * LA LISTE DES EXERCICES A DISPARU, ET C'EST TOUT LE GAIN.
+     *
+     * Rémy : « la fiche du parcours est vraiment chargée ». Elle l'était pour
+     * une raison qu'on pouvait compter : cent quatre-vingt-dix boutons, vingt
+     * et un menus, vingt-trois champs — et la MOITIÉ montrait deux fois la même
+     * chose. Au-dessus de l'aperçu vivait une liste des six exercices, avec
+     * pour chacun sa consigne, son nombre de questions, ses colonnes, sa case
+     * « numéroter » et son barème ; sous l'aperçu, chaque bandeau portait un
+     * engrenage qui réglait EXACTEMENT les mêmes choses. Le code lui-même en
+     * témoignait : une fonction `majRoue` existait pour resynchroniser les deux
+     * affichages, parce que « deux affichages du même nombre qui divergent
+     * valent moins que pas d'affichage du tout ».
+     *
+     * Tout ce que la liste savait faire, la feuille le sait :
+     *   · le titre et la consigne se retouchent d'un clic dessus ;
+     *   · l'engrenage du bandeau règle questions, colonnes, numérotation,
+     *     barème et contenu ;
+     *   · l'ordre se change avec les deux flèches du bandeau (ci-dessous).
+     *
+     * C'est le principe que Rémy avait lui-même posé pour l'en-tête — « en
+     * passant par l'aperçu plutôt que des options » — appliqué au dernier
+     * endroit qui y échappait.
+     */
 
-        brancherPas(listeEl);
-        listeEl.querySelectorAll('[data-etape]').forEach(inp => {
-            inp.oninput = () => {
-                quantites[inp.dataset.etape] = bornerNb(inp.value);
-                oublier(inp.dataset.etape);
-                if (!baremeTouche) repartirPoints();
-                majChiffres();
-                majRoue(inp.dataset.etape);
-                rendre();
-            };
-            // Le rabotage (0 à 40) ne s'écrit dans le champ qu'à la sortie :
-            // pendant la frappe, réécrire ce que l'on tape empêche de taper.
-            inp.onchange = () => { inp.value = quantites[inp.dataset.etape]; };
-        });
-        listeEl.querySelectorAll('.pp-etape').forEach(d => {
-            d.addEventListener('toggle', () => {
-                if (d.open) ouvertes.add(d.dataset.etapeLigne);
-                else ouvertes.delete(d.dataset.etapeLigne);
-            });
-        });
-        // LES RÉGLAGES DU CONTENU, dans la ligne d'étape. Même chemin que la
-        // roue de l'aperçu : `readParams` relit le bloc entier, on oublie le
-        // tirage de cette étape et l'on redessine. Deux entrées, un seul
-        // traitement — sinon les deux finissent par diverger.
-        listeEl.querySelectorAll('[data-contenu]').forEach(bloc => {
-            const id = bloc.dataset.contenu;
-            const e = parId.get(id);
-            if (!e) return;
-            wireTips(bloc);
-            const relire = () => {
-                Object.assign(e.params, readParams(bloc, schemaPapier(e)));
-                oublier(id);
-                rendre();
-            };
-            bloc.addEventListener('change', relire);
-            // Les bascules « Oui / Non » n'émettent pas `change` : leur
-            // écouteur global bascule la classe, on repasse derrière lui.
-            bloc.addEventListener('click', (ev) => {
-                if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
-            });
-        });
-
-        listeEl.querySelectorAll('[data-consigne]').forEach(inp => {
-            // Sans reconstruire la liste : on tape dedans, la feuille suit.
-            inp.oninput = () => { consignes[inp.dataset.consigne] = inp.value; rendre(); };
-        });
-        listeEl.querySelectorAll('[data-numeroter]').forEach(c => {
-            c.onchange = () => {
-                numeroter[c.dataset.numeroter] = c.checked;
-                rendre();
-            };
-        });
-        listeEl.querySelectorAll('[data-colonnes]').forEach(sel => {
-            sel.onchange = () => changerColonnes(sel.dataset.colonnes, sel.value);
-        });
-        listeEl.querySelectorAll('[data-points]').forEach(inp => {
-            inp.oninput = () => {
-                points[inp.dataset.points] = bornerNb(inp.value);
-                baremeTouche = true;     // à partir d'ici, le barème est le sien
-                majRoue(inp.dataset.points);
-                rendre();
-            };
-            inp.onchange = () => { inp.value = points[inp.dataset.points]; };
-        });
-        // RAFRAÎCHIR LES CHIFFRES SANS RECONSTRUIRE LA LISTE.
-        //
-        // Chaque frappe dans « Grilles » ou « Questions » réécrivait tout le
-        // HTML de la liste — donc remplaçait le champ en cours de saisie. Le
-        // curseur partait au premier chiffre tapé et la valeur revenait à
-        // celle du modèle : le champ paraissait impossible à modifier. On ne
-        // retouche donc que les textes qui ont bougé, et jamais le champ qu'on
-        // est en train de remplir.
-        const majChiffres = () => {
-            listeEl.querySelectorAll('[data-etape-ligne]').forEach(ligne => {
-                const id = ligne.dataset.etapeLigne;
-                const e = parId.get(id);
-                const resume = ligne.querySelector('.pp-etape-resume');
-                if (resume) resume.textContent = `${quantites[id]} ${e && e.grille ? 'grilles' : 'questions'}`;
-                const pts = ligne.querySelector('[data-points]');
-                if (pts && pts !== document.activeElement) pts.value = points[id];
-            });
-        };
-
-        // Les flèches font le même travail que le glisser, sans geste : c'est
-        // le chemin sûr sur un téléphone, où une liste qui défile et un
-        // élément qu'on traîne se disputent le même doigt.
-        const deplacer = (id, delta) => {
-            const i = ordre.indexOf(id);
-            const j = i + delta;
-            if (i < 0 || j < 0 || j >= ordre.length) return;
-            ordre.splice(j, 0, ordre.splice(i, 1)[0]);
-            rendreListe();
-            rendre();
-        };
-        listeEl.querySelectorAll('[data-monter]').forEach(b => {
-            b.onclick = () => deplacer(b.dataset.monter, -1);
-        });
-        listeEl.querySelectorAll('[data-descendre]').forEach(b => {
-            b.onclick = () => deplacer(b.dataset.descendre, +1);
-        });
-        brancherGlisser();
+    /**
+     * MONTER OU DESCENDRE UN EXERCICE, depuis son bandeau sur la feuille.
+     *
+     * Deux flèches et pas un glissé : sur une tablette, tirer un bandeau de
+     * trois centimètres à travers une A4 réduite est un geste qu'on rate.
+     */
+    const deplacer = (id, delta) => {
+        const i = ordre.indexOf(id);
+        const j = i + delta;
+        if (i < 0 || j < 0 || j >= ordre.length) return;
+        ordre.splice(j, 0, ordre.splice(i, 1)[0]);
+        rendre();
     };
 
-    // Le glisser-déposer.
-    //
-    // Deux chemins, et c'est délibéré. À la SOURIS, les pointer events
-    // suffisent. AU DOIGT, on passe par les évènements tactiles bruts :
-    // Safari mobile ne renonce à faire défiler la page que si `touchmove`
-    // est annulé, et tant qu'il croit à un défilement il émet un
-    // `pointercancel` qui tue le glisser au premier millimètre. `touch-action:
-    // none` ne suffit pas dans un panneau qui défile — c'est exactement le
-    // cas ici.
-    //
-    // Les écouteurs vivent sur le DOCUMENT, jamais sur la poignée : déplacer
-    // la ligne saisie (insertBefore) la retire un instant du document, ce qui
-    // annulerait une capture de pointeur.
-    const brancherGlisser = () => {
-        listeEl.querySelectorAll('[data-grip]').forEach(grip => {
-            const debut = (id) => {
-                const ligne = listeEl.querySelector(`[data-etape-ligne="${id}"]`);
-                if (!ligne) return null;
-                ligne.classList.add('pp-etape--saisie');
-                return {
-                    // On insère la ligne saisie avant la première ligne dont le
-                    // milieu est sous le doigt — et seulement si ça change
-                    // quelque chose, pour ne pas secouer le DOM à chaque pixel.
-                    bouger(clientY) {
-                        const autres = [...listeEl.querySelectorAll('[data-etape-ligne]')]
-                            .filter(l => l !== ligne);
-                        let cible = null;
-                        for (const l of autres) {
-                            const r = l.getBoundingClientRect();
-                            if (clientY < r.top + r.height / 2) { cible = l; break; }
-                        }
-                        if (cible && ligne.nextElementSibling !== cible) listeEl.insertBefore(ligne, cible);
-                        else if (!cible && autres.length && autres[autres.length - 1].nextElementSibling !== ligne) {
-                            autres[autres.length - 1].after(ligne);
-                        }
-                    },
-                    lacher() {
-                        ligne.classList.remove('pp-etape--saisie');
-                        const nouvelOrdre = [...listeEl.querySelectorAll('[data-etape-ligne]')]
-                            .map(l => l.dataset.etapeLigne);
-                        const change = nouvelOrdre.join() !== ordre.join();
-                        ordre = nouvelOrdre;
-                        rendreListe();
-                        if (change) rendre();
-                    }
-                };
-            };
-
-            grip.addEventListener('touchstart', (ev) => {
-                if (ev.touches.length !== 1) return;
-                ev.preventDefault();          // pas de défilement, pas de pointercancel
-                const ctrl = debut(grip.dataset.grip);
-                if (!ctrl) return;
-                const bouger = (e2) => {
-                    if (e2.cancelable) e2.preventDefault();
-                    ctrl.bouger(e2.touches[0].clientY);
-                };
-                const lacher = () => {
-                    document.removeEventListener('touchmove', bouger, { passive: false });
-                    document.removeEventListener('touchend', lacher);
-                    document.removeEventListener('touchcancel', lacher);
-                    ctrl.lacher();
-                };
-                document.addEventListener('touchmove', bouger, { passive: false });
-                document.addEventListener('touchend', lacher);
-                document.addEventListener('touchcancel', lacher);
-            }, { passive: false });
-
-            grip.onpointerdown = (ev) => {
-                // Le doigt est déjà servi par le chemin tactile ci-dessus :
-                // le laisser passer ici lancerait deux glissers concurrents.
-                if (ev.pointerType === 'touch') return;
-                ev.preventDefault();
-                const ctrl = debut(grip.dataset.grip);
-                if (!ctrl) return;
-                const bouger = (e2) => ctrl.bouger(e2.clientY);
-                const lacher = () => {
-                    document.removeEventListener('pointermove', bouger);
-                    document.removeEventListener('pointerup', lacher);
-                    document.removeEventListener('pointercancel', lacher);
-                    ctrl.lacher();
-                };
-                document.addEventListener('pointermove', bouger);
-                document.addEventListener('pointerup', lacher);
-                document.addEventListener('pointercancel', lacher);
-            };
-        });
-    };
 
     // --- L'ENGRENAGE DU BANDEAU ---------------------------------------------
     //
@@ -971,11 +764,9 @@ export function ouvrirFicheParcours(chemin) {
             const texte = champ.value.trim();
             if (quoi.genre === 'titre') {
                 titres[id] = texte || e.title;
-                rendreListe();
-            } else if (quoi.genre === 'consigne') {
+                    } else if (quoi.genre === 'consigne') {
                 consignes[id] = champ.value;
-                rendreListe();
-            } else {
+                    } else {
                 retouches.set(cleRetouche(id, rang), { texte, reponse: rep ? rep.value.trim() : '' });
             }
             fermerRoue();
@@ -1062,10 +853,10 @@ export function ouvrirFicheParcours(chemin) {
 
         brancherPas(panneau);
         const nb = panneau.querySelector('[data-r-nb]');
-        // ON NE PASSE PAS PAR « majChiffres » : il n'existe qu'à l'intérieur de
-        // « rendreListe », et l'appeler d'ici levait une exception AVANT le
-        // redessin — le nombre de questions ne bougeait donc jamais quand on le
-        // changeait depuis l'aperçu. Le chemin commun rafraîchit les deux.
+        // Le chemin commun : `changerQuantite` renumérote, répartit le barème
+        // et redessine. Ce fut longtemps le seul endroit d'où l'on pouvait
+        // régler un exercice sans passer par la liste ; c'est aujourd'hui le
+        // seul endroit tout court.
         nb.oninput = () => changerQuantite(id, nb.value);
         // Le rabotage ne s'écrit qu'à la sortie : pendant la frappe, réécrire
         // ce que l'on tape empêche de taper.
@@ -1073,7 +864,6 @@ export function ouvrirFicheParcours(chemin) {
         panneau.querySelector('[data-r-col]').onchange = (ev) => changerColonnes(id, ev.target.value);
         panneau.querySelector('[data-r-num]').onchange = (ev) => {
             numeroter[id] = ev.target.checked;
-            rendreListe();
             rendre();
         };
         panneau.querySelector('[data-r-insec]').onchange = (ev) => {
@@ -1084,7 +874,6 @@ export function ouvrirFicheParcours(chemin) {
         pts.oninput = () => {
             points[id] = Math.max(0, Math.min(40, Number(pts.value) || 0));
             baremeTouche = true;             // à partir d'ici, le barème est le sien
-            rendreListe();
             rendre();
         };
         panneau.querySelector('[data-r-neuf]').onclick = () => { oublier(id); rendre(); };
@@ -1245,7 +1034,10 @@ export function ouvrirFicheParcours(chemin) {
                 ${apercuEntete(k, nom, v.sousTitre, i === 0 ? note : null, pg,
         v.sol ? { champs: [] } : o.entete)}
                 ${v.liste ? apercuSolutions(v.page, k, v.opts)
-        : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol, retouchable: !v.sol })}
+        : apercuItems(v.page, k, { ...v.opts, reglable: !v.sol, retouchable: !v.sol,
+            // L'ordre courant : c'est lui qui grise la flèche du premier et
+            // celle du dernier.
+            ordre })}
             </div>`).join(''));
 
         apercu.querySelectorAll('[data-reglage]').forEach(b => {
@@ -1268,7 +1060,11 @@ export function ouvrirFicheParcours(chemin) {
             ? `Interrogation : pas de consigne imprimée, un barème par exercice (total ${total} pt${total > 1 ? 's' : ''}), `
               + `et la case « … / ${o.noteSur} » en haut de la première page.`
               + (total === o.noteSur ? '' : ` ⚠️ Le barème totalise ${total} points pour une note sur ${o.noteSur}.`)
-            : 'Un bloc par exercice, dans l\'ordre de la liste — glisse la poignée ⠿ pour les réordonner.';
+            // TOUT SE RÈGLE SUR LA FEUILLE, et il faut le dire une fois : sans
+            // cette ligne, l'engrenage et les flèches du bandeau restent des
+            // boutons gris qu'on ne remarque qu'en passant dessus.
+            : 'Clique un titre ou une consigne pour la récrire, l\'engrenage ⚙ d\'un exercice '
+                + 'pour ses réglages, ses flèches ▲▼ pour le déplacer.';
         derniers = { exos, toutes, note, total, page: pg, sections, aGrilles };
         // LES FANTÔMES SE REPOSENT APRÈS CHAQUE RENDU : l'aperçu est réécrit
         // en entier à chaque réglage, donc ce qui n'est pas dessiné par lui
@@ -1294,10 +1090,10 @@ export function ouvrirFicheParcours(chemin) {
         if (interro.checked) feuille.note = true;
         // Le mode interrogation ne touche qu'aux consignes et au barème : les
         // questions n'ont aucune raison de changer sous les yeux.
-        rendreListe(); rendre();
+        rendre();
     };
     choixEl.onchange = rendre;
-    insecEl.onchange = () => { rendreListe(); rendre(); };
+    insecEl.onchange = () => rendre();
     // LES RÉGLAGES DU CORRIGÉ DISPARAISSENT QUAND IL N'Y EN A PAS. « Compact —
     // juste les réponses » sur une fiche imprimée « Sans solutions » est une
     // commande qui ne commande rien : la laisser, c'est laisser croire qu'il y
@@ -1337,7 +1133,7 @@ export function ouvrirFicheParcours(chemin) {
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     noteSurEl.oninput = () => {
-        if (!baremeTouche) { repartirPoints(); rendreListe(); }
+        if (!baremeTouche) repartirPoints();
         rendre();
     };
     m.querySelector('#pp-regen').onclick = () => { toutOublier(); rendre(); };
@@ -1372,14 +1168,21 @@ export function ouvrirFicheParcours(chemin) {
                 liste.splice(rang, 1);
                 quantites[id] = Math.max(0, (quantites[id] || 1) - 1);
                 if (!baremeTouche) repartirPoints();
-                rendreListe();
-            }
+                    }
             // Les retouches se rapportaient aux ANCIENNES places : les garder
             // collerait l'énoncé récrit sur une autre question.
             [...retouches.keys()].forEach(c => { if (c.startsWith(`${id}#`)) retouches.delete(c); });
             rendre();
             return;
         }
+
+        // L'ORDRE, SUR LE BANDEAU. Il se réglait dans une liste au-dessus de
+        // l'aperçu, qui montrait les mêmes exercices que l'aperçu montrait en
+        // dessous — Rémy : « la fiche du parcours est vraiment chargée ».
+        const monter = ev.target.closest('[data-monter]');
+        if (monter) { deplacer(monter.dataset.monter, -1); return; }
+        const descendre = ev.target.closest('[data-descendre]');
+        if (descendre) { deplacer(descendre.dataset.descendre, +1); return; }
 
         const titre = ev.target.closest('[data-titre-exo]');
         if (titre) { ouvrirRetouche(titre, { genre: 'titre', id: titre.dataset.titreExo }); return; }
@@ -1409,7 +1212,6 @@ export function ouvrirFicheParcours(chemin) {
 
     m.style.display = 'flex';
     if (!papier.length) {
-        listeEl.innerHTML = '';
         apercu.innerHTML = '';
         totalEl.textContent = '';
         noteEl.textContent = total
@@ -1417,7 +1219,6 @@ export function ouvrirFicheParcours(chemin) {
             : 'Ce parcours est vide.';
         return;
     }
-    rendreListe();
     rendre();
 }
 

@@ -674,6 +674,29 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 
 /* L'ENGRENAGE DU BANDEAU, et son panneau. N'existent que dans l'aperçu : le
    PDF passe par un autre chemin de rendu, qui ne les connaît pas. */
+/* LES DEUX FLÈCHES DE RANG, sur le bandeau de l'exercice.
+   Rémy : « la fiche du parcours est vraiment chargée ». Elles remplacent la
+   liste d'exercices qui doublait l'aperçu — voir `ficheRendu.js`. Discrètes
+   comme l'engrenage : l'aperçu doit rester la feuille qu'on va imprimer, et
+   ces boutons ne s'impriment évidemment pas (le PDF passe par `pdfItems`, qui
+   ne les connaît pas). */
+.fx-rang {
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; padding: 0; border: 0; border-radius: 5px;
+    background: transparent; color: inherit; font: inherit; font-size: 9px;
+    line-height: 1; opacity: .35; cursor: pointer;
+    transition: opacity .12s, background .12s;
+}
+.fx-rang + .fx-roue { margin-left: 4px; }
+.fx-rang:hover:not(:disabled), .fx-rang:focus-visible {
+    opacity: 1; background: rgba(0, 0, 0, .07);
+}
+.fx-rang:disabled { opacity: .12; cursor: default; }
+.fx-rang:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+/* La première flèche pousse le groupe à droite ; sans elle c'est l'engrenage
+   qui s'en charge. */
+.fx-rang[data-monter] { margin-left: auto; }
+
 .fx-roue {
     margin-left: auto; flex: 0 0 auto; display: inline-flex;
     align-items: center; justify-content: center;
@@ -692,6 +715,16 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     margin-left: .6em;
 }
 .fp-repli-etat:not(:empty)::before { content: '— '; }
+
+/* Les activités qui ne se photocopient pas, dites dans la ligne d'état. */
+.pp-ecran {
+    font-weight: 600; font-size: .85rem; color: var(--text-muted);
+    flex: 1 1 100%;
+}
+.pp-ecran:not(:empty)::after {
+    content: ' — ces activités demandent de manipuler.';
+    opacity: .8;
+}
 
 .pp-roue-panneau {
     /* AU-DESSUS DE LA MODALE QUI L'A OUVERT : la fiche vit dans une
