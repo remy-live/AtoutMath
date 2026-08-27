@@ -196,7 +196,7 @@ function assurerModale() {
                         <option value="auto">auto</option>
                         <option value="1">1</option><option value="2">2</option>
                         <option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option>
+                        <option value="5">5</option><option value="6">6</option><option value="6">6</option>
                     </select></label>
                 <label>Place pour répondre
                     <select id="fq-lignes-rep" class="cfg-input">
@@ -213,6 +213,7 @@ function assurerModale() {
             <div class="fp-controles pp-sol-reglages">
                 <label>Solutions
                     <select id="fq-sol-mode" class="cfg-input">
+                        <option value="ultra">Ultra compact — réponses tassées, barème en couleur</option>
                         <option value="compact">Compact — juste les réponses</option>
                         <option value="normal">Normal — énoncé et réponse</option>
                         <option value="detaille">Détaillé — avec les explications</option>
@@ -223,7 +224,7 @@ function assurerModale() {
                         <option value="auto">auto</option>
                         <option value="1">1</option><option value="2">2</option>
                         <option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option>
+                        <option value="5">5</option><option value="6">6</option>
                     </select></label>
             </div>
             </details>

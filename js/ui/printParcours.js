@@ -304,6 +304,7 @@ function assurerModale() {
                         </select></label>
                     <label data-si-corrige>Solutions
                         <select id="pp-sol-mode" class="cfg-input">
+                            <option value="ultra">Ultra compact — réponses tassées, barème en couleur</option>
                             <option value="compact">Compact — juste les réponses</option>
                             <option value="normal">Normal — énoncé et réponse</option>
                             <option value="detaille">Détaillé — avec les explications</option>
@@ -314,7 +315,7 @@ function assurerModale() {
                             <option value="auto">auto</option>
                             <option value="1">1</option><option value="2">2</option>
                             <option value="3">3</option><option value="4">4</option>
-                            <option value="5">5</option>
+                            <option value="5">5</option><option value="6">6</option>
                         </select></label>
                 </div>
             </details>

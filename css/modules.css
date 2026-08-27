@@ -7614,3 +7614,15 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     .auj-carte { gap: 14px; padding: 18px; }
     .auj-go { width: 100%; text-align: center; }
 }
+
+/* LE BARÈME DU CORRIGÉ ULTRA COMPACT. Rémy : « si interrogation le nombre de
+   points, d'une autre couleur ». Un violet franc, distinct des trois couleurs
+   du raisonnement (bleu, rouge, vert) : « 2 pts » ne doit pas se lire comme une
+   amorce de rédaction. Et PAS de gras — le gras appartient à la réponse. */
+.fq-bareme { color: #7c3aed; font-weight: 600; }
+
+/* LES RUBANS OÙ L'ON NOTE SES COUPS. Plus petits que le plateau et plus
+   discrets : ce sont des lignes à remplir, pas un second plateau — l'élève ne
+   doit pas hésiter une seconde sur celui où il pose ses pions. */
+.fx-gr-pad--coup { border-color: #c3cad6; background: transparent; }
+.fx-gr-num { position: absolute; text-align: right; color: #6e7684; font-weight: 700; }

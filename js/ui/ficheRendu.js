@@ -1171,6 +1171,10 @@ export function apercuSolutions(page, k, o) {
                 // celle qu'on demande à l'élève.
                 const t = ligneHtml(m.texte, o.fractions, o);
                 if (m.souligne) return `<u class="fq-soul">${t}</u>`;
+                // LE BARÈME EST EN COULEUR, PAS EN GRAS. Le gras appartient à la
+                // réponse ; « 2 pts » en gras au bout d'une ligne se lit comme
+                // une partie de la réponse, et l'on corrige un 2 qui n'existe pas.
+                if (m.bareme) return `<span class="fq-bareme">${t}</span>`;
                 return m.reponse ? `<b class="fq-rep">${t}</b>` : t;
             }).join('');
             html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
@@ -1179,6 +1183,13 @@ export function apercuSolutions(page, k, o) {
     }
     return html;
 }
+
+/**
+ * LA COULEUR DU BARÈME. Un violet franc : il ne doit ressembler à aucune des
+ * trois couleurs du raisonnement (bleu, rouge, vert), sans quoi « 2 pts » se
+ * lirait comme une amorce de rédaction.
+ */
+const BAREME_RVB = [124, 58, 237];
 
 export function pdfSolutions(pdf, page, o) {
     pdf.setFontSize(o.taille * 2.83);
@@ -1192,6 +1203,11 @@ export function pdfSolutions(pdf, page, o) {
                 // en mode compact, où toute la ligne EST la réponse, la page
                 // entière se retrouvait soulignée.
                 pdf.setFont('helvetica', m.reponse ? 'bold' : 'normal');
+                // La même distinction que sur l'aperçu : le barème prend la
+                // couleur, la réponse garde le gras. `encre` la fait passer par
+                // le mode polycopie, donc elle grisera proprement si la feuille
+                // part en noir et blanc.
+                pdf.setTextColor(...(m.bareme ? encre(BAREME_RVB) : ENCRE.texte));
                 const depart = x;
                 x = dessinerLigne(pdf, m.texte, x, y, o, o.fractions);
                 // LE CALCUL PRIORITAIRE EST SOULIGNÉ. Le gras est déjà pris par

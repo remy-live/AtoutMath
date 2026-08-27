@@ -893,7 +893,19 @@ export function composerBlocs(exos, opts, mesurer) {
  * Les trois lisent les mêmes questions : c'est le texte de chaque ligne et le
  * nombre de colonnes qui changent, pas les données.
  */
-export const MODES_SOLUTION = ['compact', 'normal', 'detaille'];
+// ULTRA : la réponse NUE, tassée, avec le barème quand c'est une interrogation.
+//
+// Rémy : « Pourquoi pour les réponses, tu passes une ligne entre chaque
+// questions ? On pourrait faire un mode ultra compact où on a la réponse et si
+// interrogation le nombre de points (d'une autre couleur). En tant que prof ça
+// m'aide à corriger. »
+//
+// Le blanc qu'il voyait n'était pas un interligne : c'était l'ÉQUILIBRAGE. Le
+// compact étale ses lignes pour occuper toute la page — ce qui est bien quand
+// on projette le corrigé, et exactement ce qu'il ne faut pas quand on corrige
+// une pile de copies, une règle sous la ligne. L'ultra ne s'étale pas : il tasse
+// en haut, six colonnes, et l'on lit trente réponses d'un seul regard.
+export const MODES_SOLUTION = ['ultra', 'compact', 'normal', 'detaille'];
 
 /**
  * LE BARÈME D'UNE INTERROGATION, réparti tout seul sur la note.
@@ -932,10 +944,13 @@ export function repartirBareme(quantites, noteSur) {
 
 export function composerSolutions(questions, opts, mesurer) {
     const mode = MODES_SOLUTION.includes(opts && opts.mode) ? opts.mode : 'compact';
-    const colonnes = { compact: 5, normal: 3, detaille: 1 }[mode];
+    const colonnes = { ultra: 6, compact: 5, normal: 3, detaille: 1 }[mode];
     const o = {
         ...DEFAUTS, ...(opts || {}),
-        colonnes: Math.max(1, Math.min(5, (opts && opts.colonnesSolutions) || colonnes))
+        // SIX COLONNES AU PLAFOND, PAS CINQ. L'ultra en demande six : des
+        // réponses nues — « 289 », « 0,89 » — n'ont pas besoin de plus, et le
+        // plafond à cinq écrasait silencieusement son réglage par défaut.
+        colonnes: Math.max(1, Math.min(6, (opts && opts.colonnesSolutions) || colonnes))
     };
 
     /**
@@ -950,7 +965,7 @@ export function composerSolutions(questions, opts, mesurer) {
         // Les blancs, la ponctuation de fin, les marques de réponse et le
         // « ? » de l'énoncé d'écran : rien de tout cela ne change ce qui est
         // DIT, et tout cela suffisait à faire croire deux textes différents.
-        .replace(/[\u0001-\u0004]/g, '')
+        .replace(/[\u0001-\u0006]/g, '')
         .replace(/[\s\u00A0\u202F.?…]/g, '');
     // On compare l'explication à LA LIGNE DÉJÀ COMPOSÉE — énoncé + réponse en
     // place —, pas au texte brut : c'est elle qui sera imprimée juste au-dessus.
@@ -959,9 +974,15 @@ export function composerSolutions(questions, opts, mesurer) {
     // La ligne d'une réponse. La FLÈCHE a disparu : elle n'existe pas dans les
     // polices d'un PDF, et « 7 × 8 = 56 » est de toute façon ce qu'on écrit au
     // tableau en corrigeant.
-    const ligneDe = (q, n) => {
+    const ligneDe = (q, n, points = 0) => {
         const rep = q.reponse ?? '';
         const tete = n == null ? '' : `${n}. `;      // un exercice non numéroté n'invente pas de numéro
+        if (mode === 'ultra') {
+            // Le barème SUIT la réponse et porte sa propre marque : c'est la
+            // seule chose de la ligne qui ne soit pas la réponse, et on doit la
+            // distinguer d'un coup d'œil sans la confondre avec elle.
+            return `${tete}${DEBUT_REP}${rep}${FIN_REP}${BAREME(points)}`;
+        }
         if (mode === 'compact') return `${tete}${DEBUT_REP}${rep}${FIN_REP}`;
         // La réponse va DANS le trou de l'énoncé quand il y en a un : la
         // recopier au bout donnait « 92 202 =    + 2 000 + 200 + 2 = 90 000 »,
@@ -1002,7 +1023,18 @@ export function composerSolutions(questions, opts, mesurer) {
             items.push({ titre: true, texte: `Exercice ${i + 1} — ${sec.titre}${bareme}` });
             if (o.numerotation === 'exercice') n = 0;
             const numerote = sec.numeroter !== false;
-            qs.forEach(q => items.push({ texte: numerote ? ligneDe(q, ++n) : ligneDe(q, null) }));
+            // CE QUE VAUT UNE QUESTION. L'intertitre porte le total de
+            // l'exercice ; en corrigeant, ce qu'on additionne, c'est la ligne.
+            // Les points d'un exercice se partagent également entre ses
+            // questions — c'est ce que fait tout le monde —, arrondis au
+            // demi-point, la plus petite unité qu'on écrive vraiment sur une
+            // copie.
+            const parQuestion = sec.points
+                ? Math.round((sec.points / qs.length) * 2) / 2
+                : 0;
+            qs.forEach(q => items.push({
+                texte: numerote ? ligneDe(q, ++n, parQuestion) : ligneDe(q, null, parQuestion)
+            }));
         });
     } else {
         questions.forEach((q, i) => items.push({ texte: ligneDe(q, i + 1) }));
@@ -1010,7 +1042,9 @@ export function composerSolutions(questions, opts, mesurer) {
 
     // En détaillé les entrées respirent : deux explications collées l'une à
     // l'autre se lisent comme un seul paragraphe.
-    const entre = mode === 'detaille' ? 2.6 : 1.4;
+    // L'ULTRA NE RESPIRE PAS, C'EST TOUT SON PROPOS. 0,4 mm au lieu de 1,4 :
+    // les réponses se touchent presque, et la page en tient trois fois plus.
+    const entre = mode === 'detaille' ? 2.6 : (mode === 'ultra' ? 0.4 : 1.4);
     // LES FRACTIONS S'EMPILENT SUR LE CORRIGÉ AUSSI. La feuille de questions
     // les écrit numérateur sur dénominateur ; le corrigé les écrivait « 5/7 »,
     // à la barre oblique. Deux écritures de la même fraction dans le même
@@ -1024,12 +1058,22 @@ export function composerSolutions(questions, opts, mesurer) {
     // corrigé est calculé pour du texte : les fractions du numéro 6 venaient
     // s'écrire par-dessus celles du numéro 7. La feuille de questions le sait
     // déjà — elle ajoute sa marge —, le corrigé l'ignorait.
+    // CE QUI FAISAIT LE BLANC, C'EST L'INTERLIGNE. Cinq millimètres pour du
+    // texte de 3,9 — l'aération d'un corrigé qu'on projette. Rémy le corrige à
+    // la main, une règle sous la ligne : « on pourrait faire un mode ultra
+    // compact […] en tant que prof ça m'aide à corriger. » L'ultra descend à
+    // 3,6 — les réponses se suivent sans se toucher, et la page en tient le
+    // double.
+    const serrage = mode === 'ultra' ? 0.72 : 1;
     return composerFiche(items, {
         ...o, ligneReponse: 0, numeroL: 0,
-        interligne: o.interligne * (avecFractions ? 1.5 : 1),
+        interligne: o.interligne * serrage * (avecFractions ? 1.5 : 1),
         entreQuestions: entre + (avecFractions ? o.interligne * 0.9 : 0),
         fractions: avecFractions,
-        // Le compact n'a de sens que rempli : c'est la feuille d'UNE page.
+        // Le compact et l'ultra n'ont de sens que remplis : c'est la feuille
+        // d'UNE page. (`equilibrer` RACCOURCIT les colonnes pour qu'elles se
+        // remplissent également — le couper ferait descendre la première
+        // jusqu'en bas et laisserait les autres vides.)
         equilibrer: mode !== 'detaille'
     }, avecFractions ? mesureurFractions(mesurer) : mesurer);
 }
@@ -1125,21 +1169,26 @@ export function morceauxReponse(ligne) {
     let courant = '';
     let rep = avantSeule(DEBUT_REP, FIN_REP);
     let soul = avantSeule(DEBUT_SOUL, FIN_SOUL);
+    let pts = avantSeule(DEBUT_PTS, FIN_PTS);
     const poser = () => {
         if (!courant) return;
         const m = { texte: courant };
         if (rep) m.reponse = true;
         if (soul) m.souligne = true;
+        if (pts) m.bareme = true;
         out.push(m);
         courant = '';
     };
     for (const ch of t) {
-        if (ch === DEBUT_REP || ch === FIN_REP || ch === DEBUT_SOUL || ch === FIN_SOUL) {
+        if (ch === DEBUT_REP || ch === FIN_REP || ch === DEBUT_SOUL || ch === FIN_SOUL
+            || ch === DEBUT_PTS || ch === FIN_PTS) {
             poser();
             if (ch === DEBUT_REP) rep = true;
             else if (ch === FIN_REP) rep = false;
             else if (ch === DEBUT_SOUL) soul = true;
-            else soul = false;
+            else if (ch === FIN_SOUL) soul = false;
+            else if (ch === DEBUT_PTS) pts = true;
+            else pts = false;
             continue;
         }
         courant += ch;
@@ -1158,5 +1207,27 @@ export const DEBUT_SOUL = '\u0003';
 export const FIN_SOUL = '\u0004';
 export const souligner = (t) => DEBUT_SOUL + t + FIN_SOUL;
 
+/**
+ * LE BARÈME D'UNE QUESTION, dans une troisième couleur.
+ *
+ * Rémy : « si interrogation le nombre de points (d'une autre couleur) ».
+ * Troisième paire de marques, parce qu'il y a maintenant trois choses à
+ * distinguer sur une même ligne de corrigé : la RÉPONSE (en gras), le calcul
+ * PRIORITAIRE (souligné), et le BARÈME (en couleur). Les confondre reviendrait
+ * à mettre « 2 pts » en gras au bout d'une réponse — et à corriger « 2 » comme
+ * si c'était elle.
+ */
+export const DEBUT_PTS = '\u0005';
+export const FIN_PTS = '\u0006';
+export const BAREME = (points) => {
+    const n = Number(points);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    // Le nombre est collé à sa réponse par une espace insécable : « 56 2 pts »
+    // coupé en fin de colonne laisserait « 2 pts » orphelin en tête de la
+    // suivante, et l'on corrigerait la question d'à côté.
+    const texte = `${String(n).replace('.', ',')} pt${n > 1 ? 's' : ''}`;
+    return `\u00a0${DEBUT_PTS}${texte}${FIN_PTS}`;
+};
+
 /** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */
-export const sansMarques = (t) => String(t ?? '').replace(/[\u0001-\u0004]/g, '');
+export const sansMarques = (t) => String(t ?? '').replace(/[\u0001-\u0006]/g, '');

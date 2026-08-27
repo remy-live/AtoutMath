@@ -929,3 +929,68 @@ test('la mesure d\'une fraction à trou reste celle de son étage le plus large'
     // « 15/100 » s'imprime sur la largeur de « 100 », pas des six caractères.
     assert.ok(mes('15/100', 4) < compter('15/100'));
 });
+
+// --- Le corrigé ultra compact ------------------------------------------------
+
+import { MODES_SOLUTION, BAREME, DEBUT_PTS, FIN_PTS, sansMarques as sansM } from '../js/core/fiche.js';
+
+test('L\'ULTRA COMPACT NE S\'ÉTALE PAS — c\'est tout son propos', () => {
+    // Rémy : « pourquoi pour les réponses, tu passes une ligne entre chaque
+    // questions ? » Le blanc n'était pas un interligne, c'était l'ÉQUILIBRAGE :
+    // le compact étale ses lignes pour remplir la page — bien quand on projette
+    // le corrigé, exactement l'inverse de ce qu'on veut une règle sous la ligne.
+    const qs = Array.from({ length: 24 }, (_, i) => ({ texte: `7 × ${i} = ?`, reponse: 7 * i }));
+    const ultra = composerSolutions(qs, { mode: 'ultra' }, mesurer);
+    const compact = composerSolutions(qs, { mode: 'compact' }, mesurer);
+    // Ce qui faisait le blanc, c'est l'INTERLIGNE : cinq millimètres pour du
+    // texte de 3,9, l'aération d'un corrigé qu'on projette.
+    assert.ok(ultra.opts.interligne < compact.opts.interligne * 0.8,
+        `interligne ultra ${ultra.opts.interligne} vs compact ${compact.opts.interligne}`);
+    // Et la page en tient davantage : plus de colonnes, plus serrées.
+    const parPage = (r) => r.pages[0].blocs.reduce((t, b) => t + b.lignes.length, 0);
+    assert.ok(parPage(ultra) >= parPage(compact),
+        `l'ultra tient ${parPage(ultra)} lignes par page, le compact ${parPage(compact)}`);
+});
+
+test('L\'ULTRA DONNE SIX COLONNES DE RÉPONSES NUES', () => {
+    assert.ok(MODES_SOLUTION.includes('ultra'));
+    const qs = Array.from({ length: 30 }, (_, i) => ({ texte: `Question ${i}`, reponse: i }));
+    const r = composerSolutions(qs, { mode: 'ultra' }, mesurer);
+    assert.equal(r.opts.colonnes, 6);
+    // Réponse NUE : l'énoncé n'y est pas.
+    const lignes = r.pages[0].blocs.flatMap(b => b.lignes).map(sansM);
+    assert.ok(lignes.some(l => /^\d+\.\s*\d+$/.test(l.trim())), lignes.slice(0, 3).join(' | '));
+    assert.ok(!lignes.some(l => l.includes('Question')), 'l\'énoncé ne doit pas être là');
+});
+
+test('LE BARÈME EST MARQUÉ À PART, pour sortir dans une autre couleur', () => {
+    // Rémy : « si interrogation le nombre de points (d'une autre couleur) ».
+    // Le gras appartient à la RÉPONSE ; « 2 pts » en gras se lirait comme une
+    // partie d'elle, et l'on corrigerait un 2 qui n'existe pas.
+    assert.equal(sansM(BAREME(2)), ' 2 pts');
+    assert.equal(sansM(BAREME(1)), ' 1 pt');
+    assert.equal(sansM(BAREME(0.5)), ' 0,5 pt');
+    assert.equal(BAREME(0), '', 'sans barème, on n\'écrit rien');
+    assert.ok(BAREME(2).includes(DEBUT_PTS) && BAREME(2).includes(FIN_PTS));
+
+    const qs = Array.from({ length: 4 }, (_, i) => ({ texte: `q${i}`, reponse: i }));
+    const r = composerSolutions(qs, {
+        mode: 'ultra', sections: [{ titre: 'Calcul', questions: qs, points: 6 }]
+    }, mesurer);
+    const morceaux = r.pages[0].blocs.flatMap(b => b.lignes).flatMap(morceauxReponse);
+    const bareme = morceaux.filter(m => m.bareme);
+    assert.ok(bareme.length >= 4, `${bareme.length} barèmes marqués sur 4 questions`);
+    // 6 points pour 4 questions : 1,5 pt chacune.
+    assert.ok(bareme.every(m => m.texte.includes('1,5 pt')), bareme.map(m => m.texte).join(' | '));
+    // Et le barème n'est JAMAIS marqué comme la réponse.
+    assert.ok(bareme.every(m => !m.reponse), 'un barème passé pour une réponse');
+});
+
+test('sans interrogation, l\'ultra n\'invente aucun barème', () => {
+    const qs = Array.from({ length: 4 }, (_, i) => ({ texte: `q${i}`, reponse: i }));
+    const r = composerSolutions(qs, {
+        mode: 'ultra', sections: [{ titre: 'Entraînement', questions: qs }]
+    }, mesurer);
+    const morceaux = r.pages[0].blocs.flatMap(b => b.lignes).flatMap(morceauxReponse);
+    assert.equal(morceaux.filter(m => m.bareme).length, 0);
+});

@@ -3448,24 +3448,94 @@ function geoGrenouilles(item, slot) {
     const m = item.meta;
     const b = boiteDe(slot);
     const cases = m.n * 2 + 1;
-    const pad = Math.min((b.w - 4) / cases, b.h * 0.3, 24);
+    // LE NÉNUPHAR DONNE SA TAILLE À LA GRENOUILLE, ET C'ÉTAIT LE DÉFAUT.
+    //
+    // Rémy : « le plateau de jeu ne permet pas de poser ses pions ». Les deux
+    // tailles étaient calculées séparément : la case du plateau tombait à
+    // 20 mm (la largeur divisée par neuf), la bête à découper à 44 mm (la
+    // hauteur restante divisée par deux). On découpait donc un pion DEUX FOIS
+    // plus large que la case où il devait se poser. Un jeu à découper dont les
+    // pièces ne rentrent pas sur le plateau n'est pas un jeu.
+    //
+    // Le plafond de 24 mm tombe au passage : il n'a plus de raison d'être
+    // maintenant que la pièce suit la case, et le plateau prend la largeur.
+    const pad = Math.min((b.w - 4) / cases, b.h * 0.3);
     const rubanW = pad * cases;
     const hRuban = pad * 1.5;
     const hVignettes = Math.min(b.h * 0.22, 34);
+    const yCoupe = b.y + hRuban + hVignettes + 8;
     return {
         m, b, n: m.n, cases, pad,
         ruban: { x: b.x + (b.w - rubanW) / 2, y: b.y + 4, w: rubanW, h: pad },
         yVignettes: b.y + hRuban + 4,
         hVignettes,
         // Le trait de découpe, puis les bêtes à découper sous lui.
-        yCoupe: b.y + hRuban + hVignettes + 8,
-        pieces: { x: b.x, y: b.y + hRuban + hVignettes + 12,
-            w: b.w, h: b.h - hRuban - hVignettes - 12 },
+        yCoupe,
+        // LA ZONE BASSE VA JUSQU'AU BORD DE LA PAGE. Elle était calculée à
+        // partir de la hauteur totale moins les bandeaux, sans tenir compte de
+        // son propre point de départ : elle s'arrêtait douze millimètres trop
+        // haut, et les rubans de coups n'avaient la place que d'une ligne.
+        pieces: { x: b.x, y: yCoupe + 4, w: b.w, h: b.y + b.h - (yCoupe + 4) },
         taille: Math.max(2.2, Math.min(pad * 0.22, 3.4))
     };
 }
 
 /** Les deux vignettes : la position de départ et celle d'arrivée. */
+/**
+ * OÙ SE POSENT LES PIÈCES, ET CE QU'ON MET SOUS ELLES.
+ *
+ * Les jetons font la taille d'une case — ils se posent dessus, c'est la seule
+ * dimension qui ait un sens —, espacés d'un millimètre et demi pour les
+ * ciseaux. Ce qui reste de la page devient des rubans vides numérotés : un par
+ * coup, parce que COMPTER SES COUPS est le vrai exercice, et que sans ces
+ * lignes il ne restait que du blanc.
+ */
+function piecesGrenouilles(g) {
+    const ECART = 1.5;
+    const pas = g.pad + ECART;
+    const parRangee = Math.max(1, Math.min(g.n * 2, Math.floor(g.pieces.w / pas)));
+    const rangees = Math.ceil(g.n * 2 / parRangee);
+    const x0 = g.pieces.x + Math.max(0, (g.pieces.w - pas * parRangee) / 2);
+    const jetons = [];
+    for (let i = 0; i < g.n * 2; i++) {
+        jetons.push({
+            vert: i < g.n,
+            x: x0 + (i % parRangee) * pas,
+            y: g.pieces.y + Math.floor(i / parRangee) * pas
+        });
+    }
+    // Les rubans à remplir commencent sous la dernière rangée de pièces.
+    const yDebut = g.pieces.y + rangees * pas + 6;
+    const restant = g.pieces.y + g.pieces.h - yDebut;
+    const margeNum = Math.max(6, g.pad * 0.5);
+    // ON VISE LE NOMBRE DE COUPS DU DÉFI, et l'on adapte la hauteur des rangées
+    // pour qu'il tienne. L'inverse — une hauteur fixe, autant de rangées que le
+    // reste en accepte — n'en donnait qu'UNE SEULE : c'est le reste qui décidait,
+    // et il était petit. Ici c'est l'exercice qui décide, et la page suit.
+    // UNE CASE OÙ L'ON PEUT ÉCRIRE, ou pas de case du tout. Viser les
+    // vingt-quatre coups du défi donnait des rangées de trois millimètres et
+    // demi : personne n'y dessine une grenouille. On fixe donc un plancher de
+    // SIX millimètres — la plus petite case qu'un élève de sixième remplisse au
+    // crayon — et l'on en met autant que la page en accepte, quitte à n'en
+    // mettre que cinq. Cinq rangées lisibles valent mieux que vingt illisibles.
+    // LA LARGEUR D'ABORD, LE NOMBRE ENSUITE. Faire tenir les vingt-quatre coups
+    // du défi donnait des rangées de trois millimètres, illisibles ; les caler
+    // sur la hauteur restante les rendait étroites, un quart de page pendant que
+    // les pièces en occupaient la totalité. Une rangée de coups est un plateau
+    // en réduction : elle a la LARGEUR d'un plateau, un peu plus de la moitié de
+    // sa hauteur, et l'on en met autant que la page en accepte.
+    const cible = g.n * g.n + 2 * g.n;
+    const padCoup = Math.max(6, Math.min((g.b.w - margeNum) / g.cases, g.pad * 0.62));
+    const pasCoup = padCoup + 1.2;
+    const combien = Math.max(0, Math.min(cible, Math.floor(restant / pasCoup)));
+    const coups = [];
+    for (let i = 0; i < combien; i++) {
+        coups.push({ x: g.b.x + margeNum, y: yDebut + i * pasCoup });
+    }
+    g.padCoup = padCoup;
+    return { jetons, coups, margeNum, yDebut };
+}
+
 const vignettesGrenouilles = (n) => [
     { titre: 'Départ', ruban: [...new Array(n).fill('V'), null, ...new Array(n).fill('R')] },
     { titre: 'Arrivée', ruban: [...new Array(n).fill('R'), null, ...new Array(n).fill('V')] }
@@ -3494,19 +3564,29 @@ function grenouillesPreviewHtml(item, slot, k) {
     });
     html += `<div class="fx-gr-coupe" style="left:${T(g.b.x)}px; top:${T(g.yCoupe)}px;
         width:${T(g.b.w)}px"></div>`;
-    // Les bêtes à découper : les vertes puis les rouges, sur deux rangées.
-    const parRangee = Math.ceil(g.n * 2 / 2);
-    const dispo = Math.min(g.pieces.w / parRangee, g.pieces.h / 2) * 0.92;
-    for (let i = 0; i < g.n * 2; i++) {
-        const vert = i < g.n;
-        const col = i % parRangee, rang = Math.floor(i / parRangee);
-        const x = g.pieces.x + (g.pieces.w - dispo * parRangee) / 2 + col * dispo;
-        const y = g.pieces.y + rang * dispo;
-        html += `<div class="fx-gr-decoupe fx-gr-mini--${vert ? 'V' : 'R'}"
-            style="left:${T(x + dispo * 0.05)}px; top:${T(y + dispo * 0.05)}px;
-            width:${T(dispo * 0.9)}px; height:${T(dispo * 0.9)}px">${
-            grenouilleSvgFiche(vert)}</div>`;
-    }
+    // LES BÊTES À DÉCOUPER FONT LA TAILLE D'UN NÉNUPHAR. Elles se posent
+    // dessus : c'est la seule dimension qui ait un sens. On les espace en
+    // revanche d'un bon millimètre — il faut passer des ciseaux entre deux.
+    const pieces = piecesGrenouilles(g);
+    pieces.jetons.forEach(j => {
+        html += `<div class="fx-gr-decoupe fx-gr-mini--${j.vert ? 'V' : 'R'}"
+            style="left:${T(j.x)}px; top:${T(j.y)}px;
+            width:${T(g.pad)}px; height:${T(g.pad)}px">${
+            grenouilleSvgFiche(j.vert)}</div>`;
+    });
+    // ET LA PAGE SERT À QUELQUE CHOSE. Rémy : « n'occupe pas le maximum de
+    // l'espace ». Sous les pièces, autant de rubans vides que la feuille en
+    // porte, numérotés : c'est là qu'on NOTE ses coups. Vingt-quatre coups
+    // pour quatre contre quatre — les compter est le vrai exercice, et sans
+    // ces lignes il ne reste que du blanc.
+    pieces.coups.forEach((c, i) => {
+        html += `<div class="fx-gr-num" style="left:${T(g.b.x)}px; top:${T(c.y + g.padCoup * 0.15)}px;
+            width:${T(pieces.margeNum - 2)}px; font-size:${T(g.taille * 1.1)}px">${i + 1}</div>`;
+        for (let j = 0; j < g.cases; j++) {
+            html += `<div class="fx-gr-pad fx-gr-pad--coup" style="left:${T(c.x + j * g.padCoup)}px;
+                top:${T(c.y)}px; width:${T(g.padCoup)}px; height:${T(g.padCoup)}px"></div>`;
+        }
+    });
     return html;
 }
 
