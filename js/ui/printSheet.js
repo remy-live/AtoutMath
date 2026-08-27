@@ -1063,12 +1063,17 @@ function motsCroisesPreviewHtml(item, slot, k, solution) {
 function listeDefsHtml(g, k) {
     const T = (v) => (v * k).toFixed(2);
     const d = g.defs;
+    // LES DÉFINITIONS OCCUPENT LEUR COLONNE. La grille est bornée par sa
+    // largeur et ne peut pas grandir ; la colonne de texte, elle, restait
+    // remplie à six pour cent. La mise en page dit maintenant de combien
+    // grossir (voir `core/dispositionMotsCroises.js`).
+    const M = d.mesures || MC_DEF;
     const bloc = (titre, liste, x, y) => `
         <div class="fx-mc-col" style="left:${T(x)}px; top:${T(y)}px;
-            width:${T(d.largeur)}px; font-size:${T(MC_DEF.corps)}px;
-            line-height:${(MC_DEF.pas / MC_DEF.corps).toFixed(2)}">
-            <div class="fx-mc-titre" style="font-size:${T(MC_DEF.titre)}px;
-                height:${T(MC_DEF.apresTitre)}px; line-height:${T(MC_DEF.titre * 1.2)}px">${titre}</div>
+            width:${T(d.largeur)}px; font-size:${T(M.corps)}px;
+            line-height:${(M.pas / M.corps).toFixed(2)}">
+            <div class="fx-mc-titre" style="font-size:${T(M.titre)}px;
+                height:${T(M.apresTitre)}px; line-height:${T(M.titre * 1.2)}px">${titre}</div>
             ${liste.map(x2 => `<div class="fx-mc-def"><b>${x2.num}.</b> `
         + `${echapperSheet(x2.def)} (${x2.longueur})</div>`).join('')}
         </div>`;
@@ -1077,26 +1082,30 @@ function listeDefsHtml(g, k) {
             + bloc('Verticalement', g.m.verticales, d.x2, d.y);
     }
     return bloc('Horizontalement', g.m.horizontales, d.x, d.y)
-        + bloc('Verticalement', g.m.verticales, d.x, d.y + d.hHoriz + MC_DEF.entreListes);
+        + bloc('Verticalement', g.m.verticales, d.x,
+            d.y + d.hHoriz + M.entreListes);
 }
 
 /** Les mêmes définitions, écrites par jsPDF. */
 function dessinerDefsPdf(doc, g) {
     const d = g.defs;
+    // Le même grossissement qu'à l'aperçu : c'est le calcul de la mise en page
+    // qui le donne, et les deux rendus le lisent au même endroit.
+    const M = d.mesures || MC_DEF;
     const bloc = (titre, liste, x, y) => {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(MC_DEF.titre / 0.3528);
+        doc.setFontSize(M.titre / 0.3528);
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(titre), x, y + MC_DEF.titre);
+        doc.text(pourPdf(titre), x, y + M.titre);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(MC_DEF.corps / 0.3528);
+        doc.setFontSize(M.corps / 0.3528);
         doc.setTextColor(...ENCRE.gris);
-        let ligne = y + MC_DEF.apresTitre + MC_DEF.corps;
+        let ligne = y + M.apresTitre + M.corps;
         liste.forEach(def => {
             const morceaux = doc.splitTextToSize(
                 pourPdf(`${def.num}. ${def.def} (${def.longueur})`), d.largeur - 1);
             doc.text(morceaux, x, ligne);
-            ligne += morceaux.length * MC_DEF.pas;
+            ligne += morceaux.length * M.pas;
         });
     };
     if (d.colonnes === 2) {
@@ -1104,7 +1113,8 @@ function dessinerDefsPdf(doc, g) {
         bloc('Verticalement', g.m.verticales, d.x2, d.y);
     } else {
         bloc('Horizontalement', g.m.horizontales, d.x, d.y);
-        bloc('Verticalement', g.m.verticales, d.x, d.y + d.hHoriz + MC_DEF.entreListes);
+        bloc('Verticalement', g.m.verticales, d.x,
+            d.y + d.hHoriz + M.entreListes);
     }
 }
 
@@ -1154,18 +1164,60 @@ function flechesDe(m) {
 }
 
 /** Le tracé d'une flèche dans une case, en coordonnées 0..1. */
-const TRAITS_FLECHE = {
-    droite: [[[0.18, 0.5], [0.8, 0.5]], [[0.62, 0.34], [0.8, 0.5]], [[0.62, 0.66], [0.8, 0.5]]],
-    bas: [[[0.5, 0.18], [0.5, 0.8]], [[0.34, 0.62], [0.5, 0.8]], [[0.66, 0.62], [0.5, 0.8]]]
+// DE VRAIES FLÈCHES. Rémy : « dessine de plus jolies flèches ». C'étaient trois
+// segments — une hampe et deux barres obliques —, qui se lisaient comme un
+// oiseau à cinq millimètres et se cassaient à la photocopie : les deux barres
+// de la pointe s'y détachaient de la hampe.
+//
+// Une flèche se dessine d'un seul CHEMIN FERMÉ : la hampe est un rectangle, la
+// pointe un triangle, et le tout est REMPLI. Un aplat de deux millimètres reste
+// un aplat après trois générations de photocopie, là où trois traits fins
+// deviennent trois traits gris.
+//
+// Les coordonnées sont dans une case unité (0…1), comme avant.
+const HAMPE = 0.085;           // demi-épaisseur de la hampe
+const POINTE = 0.26;           // longueur de la pointe
+const AILE = 0.2;              // demi-envergure de la pointe
+
+/**
+ * Le chemin d'une flèche, d'un point de départ vers un point d'arrivée.
+ * Les deux seules directions utiles ici sont « vers la droite » et « vers le
+ * bas » ; on les fabrique par la même fonction pour qu'elles se ressemblent
+ * exactement — deux dessins écrits séparément finissent toujours par différer.
+ */
+function cheminFleche(x0, y0, x1, y1) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const L = Math.hypot(dx, dy) || 1;
+    const ux = dx / L, uy = dy / L;          // le sens de la flèche
+    const nx = -uy, ny = ux;                 // sa perpendiculaire
+    const bx = x1 - ux * POINTE, by = y1 - uy * POINTE;   // la base de la pointe
+    const p = (px, py) => `${px.toFixed(3)} ${py.toFixed(3)}`;
+    return 'M ' + [
+        p(x0 + nx * HAMPE, y0 + ny * HAMPE),
+        p(bx + nx * HAMPE, by + ny * HAMPE),
+        p(bx + nx * AILE, by + ny * AILE),
+        p(x1, y1),
+        p(bx - nx * AILE, by - ny * AILE),
+        p(bx - nx * HAMPE, by - ny * HAMPE),
+        p(x0 - nx * HAMPE, y0 - ny * HAMPE)
+    ].join(' L ') + ' Z';
+}
+
+const CHEMINS_FLECHE = {
+    droite: [cheminFleche(0.16, 0.5, 0.84, 0.5)],
+    bas: [cheminFleche(0.5, 0.16, 0.5, 0.84)]
 };
 // Sur une case d'angle, les deux flèches ne se superposent pas : centrées
 // toutes les deux, elles se croisent en une étoile qu'on ne lit plus. Chacune
 // dans sa moitié, comme les deux départs distincts qu'elles annoncent.
-const COIN_D = [[[0.34, 0.3], [0.78, 0.3]], [[0.63, 0.17], [0.78, 0.3]], [[0.63, 0.43], [0.78, 0.3]]];
-const COIN_B = [[[0.3, 0.34], [0.3, 0.78]], [[0.17, 0.63], [0.3, 0.78]], [[0.43, 0.63], [0.3, 0.78]]];
+const CHEMINS_COIN = [
+    cheminFleche(0.30, 0.28, 0.86, 0.28),
+    cheminFleche(0.28, 0.30, 0.28, 0.86)
+];
+
 function traitsFleche(type) {
-    if (type === 'coin') return COIN_D.concat(COIN_B);
-    return TRAITS_FLECHE[type] || [];
+    if (type === 'coin') return CHEMINS_COIN;
+    return CHEMINS_FLECHE[type] || [];
 }
 
 /** La place d'une case de clé, la i-ème (0 en tête). */
@@ -1190,8 +1242,7 @@ function motCodePreviewHtml(item, slot, k, solution) {
             if (c === null) {
                 const type = fleches.get(`${x},${y}`);
                 if (!type) continue;      // le centre de l'anneau reste blanc
-                const traits = traitsFleche(type).map(([a, b]) =>
-                    `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`).join('');
+                const traits = traitsFleche(type).map(d => `<path d="${d}"/>`).join('');
                 html += `<div class="fx-mk-noire" style="left:${T(X)}px; top:${T(Y)}px;
                     width:${T(g.cote)}px; height:${T(g.cote)}px">
                     <svg viewBox="0 0 1 1" preserveAspectRatio="none" class="fx-mk-fl">${traits}</svg>
@@ -1206,7 +1257,15 @@ function motCodePreviewHtml(item, slot, k, solution) {
                     >${echapperSheet(c)}</div>`;
                 continue;
             }
-            const lettre = solution || donnees.has(c) ? c : '';
+            // LA GRILLE RESTE VIDE. Rémy : « pour les mots codés, ne remplis
+            // surtout pas la grille, l'élève va se débrouiller (surtout sur le
+            // pdf) ». Les lettres du mot de départ étaient recopiées dans
+            // toutes les cases qui portaient leur numéro : un quart de la
+            // grille arrivait déjà faite, et le premier geste de l'exercice —
+            // reporter la clé numéro par numéro — était fait à la place de
+            // l'élève. La clé, sous la grille, donne le mot de départ ; c'est
+            // de là qu'on part, et c'est tout ce qu'il faut.
+            const lettre = solution ? c : '';
             html += `<div class="fx-mk-case" style="left:${T(X)}px; top:${T(Y)}px;
                 width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.5)}px">
                 <span class="fx-mk-num" style="font-size:${T(g.cote * 0.32)}px">${g.m.numeros[y][x]}</span>
@@ -1279,13 +1338,18 @@ function dessinerMotCodePdf(doc, item, slot, solution, champ) {
         // LE NUMÉRO EST DANS UN COIN, PAS AU MILIEU : le milieu appartient à la
         // lettre qu'on va écrire par-dessus, et un chiffre gris sous un stylo
         // se lit encore.
+        // EN HAUT À GAUCHE, comme sur une grille de journal. Rémy : « pour le
+        // chiffre, mets-le en haut à gauche dans la case. » Centré en haut, il
+        // se retrouvait pile au-dessus de la lettre à écrire : deux signes sur
+        // le même axe, et le chiffre disparaissait sous le crayon.
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(Math.max(3.6, g.cote * 0.95));
+        doc.setFontSize(Math.max(3.6, g.cote * 0.9));
         doc.setTextColor(...ENCRE.gris);
-        doc.text(String(g.m.numeros[y][x]), X + g.cote / 2, Y + g.cote * 0.34,
-            { align: 'center' });
+        doc.text(String(g.m.numeros[y][x]), X + g.cote * 0.11, Y + g.cote * 0.33,
+            { align: 'left' });
 
-        const lettre = solution || donnees.has(c) ? c : '';
+        // La grille reste VIDE sur la feuille : voir l'aperçu ci-dessus.
+        const lettre = solution ? c : '';
         if (lettre) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(Math.min(12, g.cote * 1.5));

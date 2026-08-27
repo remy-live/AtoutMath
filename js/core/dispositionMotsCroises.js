@@ -29,16 +29,24 @@ export const MC_DEF = {
     entreListes: 3     // entre la fin d'une liste et le titre de la suivante
 };
 
-/** Combien de lignes cette liste occupe dans une colonne de `largeur` mm. */
-export function lignesDefs(liste, largeur) {
+/**
+ * Combien de lignes cette liste occupe dans une colonne de `largeur` mm.
+ *
+ * `corps` est donné parce qu'il ne vaut plus toujours `MC_DEF.corps` : les
+ * définitions grossissent pour occuper leur colonne, et un texte plus gros se
+ * REPLIE davantage à largeur égale. Compter les lignes du petit corps puis
+ * multiplier la hauteur par le facteur donnait une hauteur trop faible — et
+ * « Verticalement » venait s'écrire par-dessus la fin d'« Horizontalement ».
+ */
+export function lignesDefs(liste, largeur, corps = MC_DEF.corps) {
     // Un caractère d'Helvetica fait à peu près la moitié du corps.
-    const car = MC_DEF.corps * 0.5;
+    const car = corps * 0.5;
     return liste.reduce((n, d) => n + Math.max(1,
         Math.ceil(`${d.num}. ${d.def} (${d.longueur})`.length * car / Math.max(4, largeur))), 0);
 }
 
 /** La hauteur d'un bloc de définitions : une liste, titre compris. */
-const hauteurListe = (lignes) => MC_DEF.apresTitre + lignes * MC_DEF.pas;
+const hauteurListe = (lignes, M = MC_DEF) => M.apresTitre + lignes * M.pas;
 
 /**
  * Ce que donne une disposition : la taille de case, et où tout se pose.
@@ -108,6 +116,51 @@ export function essaiDisposition(b, m, pose) {
  * @param {Object} m - la grille : largeur, hauteur, horizontales, verticales
  * @param {string} [voulu] - 'auto' | 'dessous' | 'gauche' | 'droite'
  */
+/**
+ * LE CORPS DES DÉFINITIONS S'ADAPTE À LA PLACE QUI RESTE.
+ *
+ * Rémy : « sur les mots croisés mathématiques, je trouve que tu ne profites pas
+ * du tout de l'espace. » La grille, elle, occupe déjà tout ce qu'elle peut :
+ * elle est bornée par sa LARGEUR — quinze cases dans un bloc de dix-neuf
+ * centimètres — et ne peut pas grandir en hauteur sans se déformer. Ce qui
+ * restait vide, c'était la colonne des définitions : dix lignes de 2,6 mm dans
+ * une colonne haute de vingt-cinq centimètres, soit six pour cent de remplis.
+ *
+ * On grossit donc le texte jusqu'à ce qu'il OCCUPE sa colonne. Deux bornes :
+ * jamais plus de 4,2 mm — au-delà on n'a plus une liste de définitions mais un
+ * poème —, et jamais plus du triple, pour qu'une grille à trois définitions ne
+ * les affiche pas en titres de journal.
+ *
+ * @returns {number} le facteur d'agrandissement, 1 s'il n'y a rien à gagner.
+ */
+export function grossissementDefs(mesurer, hauteurDispo, max = 4.2 / MC_DEF.corps) {
+    if (!(hauteurDispo > 0)) return 1;
+    // ON ESSAIE, ON NE CALCULE PAS. La hauteur ne varie pas proportionnellement
+    // au corps : un texte deux fois plus gros se replie sur plus de lignes, et
+    // sa hauteur peut tripler. On balaie donc du plus grand au plus petit et
+    // l'on garde le premier qui TIENT vraiment, replis compris.
+    //
+    // Un dixième de marge : une colonne remplie au millimètre près déborde à la
+    // première définition un peu plus longue que prévu.
+    const place = hauteurDispo * 0.9;
+    for (let f = Math.min(3, max); f > 1; f -= 0.05) {
+        // ARRONDI VERS LE BAS, jamais au plus proche : arrondir 1,6153 à 1,62
+        // repasse au-dessus du plafond de 4,2 mm qu'on vient de calculer, et
+        // un plafond franchi par l'arrondi n'est plus un plafond.
+        if (mesurer(f) <= place) return Math.floor(f * 100) / 100;
+    }
+    return 1;
+}
+
+/** Les mesures des définitions, une fois grossies d'un facteur. */
+export const defsGrossies = (facteur) => ({
+    corps: MC_DEF.corps * facteur,
+    pas: MC_DEF.pas * facteur,
+    titre: MC_DEF.titre * facteur,
+    apresTitre: MC_DEF.apresTitre * facteur,
+    entreListes: MC_DEF.entreListes * facteur
+});
+
 export function disposerMotsCroises(b, m, voulu = 'auto') {
     const demande = ['dessous', 'gauche', 'droite'].includes(voulu) ? voulu : 'auto';
     const candidats = (demande === 'auto' ? ['dessous', 'gauche', 'droite'] : [demande])
@@ -124,7 +177,33 @@ export function disposerMotsCroises(b, m, voulu = 'auto') {
                 x2: b.x + (b.w - 4) / 2 + 4, y: b.y + b.h * 0.55
             }
         };
+    // LA COLONNE DES DÉFINITIONS SE REMPLIT. Une fois la grille posée, on sait
+    // combien de place il reste au texte : on l'y étale.
+    const l = meilleur.defs.largeur;
+    const deuxColonnes = meilleur.defs.colonnes === 2;
+    // La hauteur réelle du texte pour un facteur donné, replis compris.
+    const mesurer = (f) => {
+        const M = defsGrossies(f);
+        return deuxColonnes
+            ? hauteurListe(Math.max(lignesDefs(m.horizontales, l, M.corps),
+                lignesDefs(m.verticales, l, M.corps)), M)
+            : hauteurListe(lignesDefs(m.horizontales, l, M.corps), M)
+                + M.entreListes + hauteurListe(lignesDefs(m.verticales, l, M.corps), M);
+    };
+    const hDispo = deuxColonnes ? b.y + b.h - meilleur.defs.y : b.h;
+    const facteur = grossissementDefs(mesurer, hDispo);
     // La case ne descend pas sous trois millimètres : en dessous, on n'écrit
     // plus une lettre à la main.
-    return { ...meilleur, cote: Math.max(3, meilleur.cote) };
+    return {
+        ...meilleur,
+        cote: Math.max(3, meilleur.cote),
+        defs: {
+            ...meilleur.defs, facteur, mesures: defsGrossies(facteur),
+            // La hauteur du premier bloc, RECALCULÉE au corps retenu : c'est
+            // elle qui dit où commence « Verticalement ».
+            hHoriz: hauteurListe(
+                lignesDefs(m.horizontales, l, defsGrossies(facteur).corps),
+                defsGrossies(facteur))
+        }
+    };
 }

@@ -179,3 +179,47 @@ test('on rend toujours quelque chose, même dans un bloc minuscule', () => {
         }
     }
 });
+
+// --- Les définitions occupent leur colonne -------------------------------------
+
+import { grossissementDefs, defsGrossies, MC_DEF as MESURES } from '../js/core/dispositionMotsCroises.js';
+
+test('LES DÉFINITIONS GROSSISSENT JUSQU\'À REMPLIR LEUR COLONNE', () => {
+    // Rémy : « sur les mots croisés mathématiques, je trouve que tu ne profites
+    // pas du tout de l'espace. » La GRILLE, elle, occupe déjà tout ce qu'elle
+    // peut — elle est bornée par sa largeur. Ce qui restait vide, c'était la
+    // colonne de texte : dix lignes de 2,6 mm dans vingt-cinq centimètres.
+    //
+    // On simule une mesure proportionnelle pour vérifier la mécanique : dix
+    // millimètres de texte dans cent millimètres de colonne doivent grossir.
+    const proportionnel = (f) => 10 * f;
+    const f = grossissementDefs(proportionnel, 100);
+    assert.ok(f > 1.4, `facteur ${f}`);
+    // ET IL Y A UN PLAFOND DE LISIBILITÉ. Au-delà de 4,2 mm de corps, on n'a
+    // plus une liste de définitions mais un poème : la colonne se vide de son
+    // sens à mesure qu'elle se remplit d'encre. Quelle que soit la place, on
+    // s'arrête là.
+    assert.ok(defsGrossies(f).corps <= 4.2 + 1e-9, `${defsGrossies(f).corps} mm`);
+    assert.ok(defsGrossies(grossissementDefs(proportionnel, 100000)).corps <= 4.2 + 1e-9);
+});
+
+test('ON ESSAIE, ON NE CALCULE PAS : un texte qui se replie ne grossit pas linéairement', () => {
+    // C'ÉTAIT LE DÉFAUT. La première version divisait la place par la hauteur
+    // au petit corps et prenait le quotient pour facteur — or un texte deux
+    // fois plus gros se replie sur plus de lignes, et sa hauteur peut tripler.
+    // « Verticalement » venait alors s'écrire par-dessus la fin
+    // d'« Horizontalement ».
+    //
+    // Ici, la hauteur triple quand le corps double : le facteur retenu doit
+    // rester tel que la hauteur RÉELLE tienne, pas la hauteur supposée.
+    const brutal = (f) => 10 * f * f * f;
+    const f = grossissementDefs(brutal, 100);
+    assert.ok(brutal(f) <= 90, `${brutal(f).toFixed(1)} mm dans 90 mm de place utile`);
+    assert.ok(f > 1, 'il reste tout de même de quoi grossir un peu');
+});
+
+test('sans place, on ne grossit pas — et l\'on ne rétrécit jamais', () => {
+    assert.equal(grossissementDefs((f) => 200 * f, 100), 1);
+    assert.equal(grossissementDefs((f) => 10 * f, 0), 1);
+    assert.equal(defsGrossies(1).corps, MESURES.corps);
+});

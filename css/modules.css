@@ -5163,9 +5163,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     background: #fff; display: flex; align-items: flex-end; justify-content: center;
     font-weight: 800; color: #1a202c; pointer-events: none; line-height: 1.05;
 }
+/* LE NUMÉRO EN HAUT À GAUCHE, comme sur une grille de journal. Rémy : « pour le
+   chiffre, mets-le en haut à gauche dans la case. » Centré en haut, il tombait
+   pile au-dessus de la lettre à écrire : deux signes sur le même axe, et le
+   chiffre finissait sous le crayon. */
 .fx-mk-num {
-    position: absolute; top: 0; left: 0; right: 0; text-align: center;
-    color: #6b7280; font-weight: 700; line-height: 1.05;
+    position: absolute; top: 0; left: 0; right: 0; text-align: left;
+    padding-left: .12em; color: #6b7280; font-weight: 700; line-height: 1.05;
 }
 .fx-mk-donnee { border-width: .9px; }
 /* LA CASE MUETTE EST NOIRE, parce que la grille est un RECTANGLE. Rémy : « moi
@@ -5184,9 +5188,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* LA FLECHE DE LA CASE MUETTE : elle dit ou commence le mot suivant et
    dans quel sens il se lit. C'est ce qui remplace les definitions d'un mot
    croise — sans elle, l'anneau n'est qu'un cadre de numeros muets. */
+/* La flèche est un APLAT, plus trois traits fins : un aplat de deux
+   millimètres survit à trois générations de photocopie, trois traits fins y
+   deviennent trois traits gris. */
 .fx-mk-fl { position: absolute; inset: 0; width: 100%; height: 100%;
-    stroke: #5a687e; stroke-width: .07; stroke-linecap: round; fill: none;
-    vector-effect: non-scaling-stroke; }
+    fill: #46536b; stroke: none; }
 /* LE MOT DE DÉPART, souligné : c'est de lui qu'on part, et sur une photocopie
    en noir et blanc un trait épais sous la case survit là où une couleur non. */
 .fx-mk-depart { border-bottom-width: 1.4px; }
