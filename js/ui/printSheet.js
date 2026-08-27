@@ -21,7 +21,7 @@ import { dessinerChemin } from '../core/cheminSvg.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
-    optionsPolycopie, teindreDoc, poserTeinte, teindreHtml,
+    optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
     ficheEnPortrait, reglerFichePortrait
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
@@ -8232,11 +8232,39 @@ function geoConversion(item, slot) {
     };
 }
 
+/**
+ * LA COULEUR D'UNE COLONNE DE RANG.
+ *
+ * Rémy : « comment est-ce que le mode couleur intense pourrait être pertinent,
+ * car pour l'instant il n'y a pas grand-chose ? » Voici de quoi lui donner du
+ * travail : dans un tableau de conversion, la colonne EST l'information. C'est
+ * elle qu'on cherche, elle qu'on compte, elle qu'on rate — et c'est ainsi que
+ * sont peintes toutes les affiches de classe.
+ *
+ * TROIS TEINTES, PAS SEPT. Une couleur par unité donnerait un arc-en-ciel où
+ * l'on ne repère plus rien. Ce qui compte, c'est le RANG dans le groupe de
+ * trois : l'unité principale (km, m, mm), puis ses deux subdivisions. On teinte
+ * donc par position modulo trois, et l'unité de base de chaque groupe est la
+ * plus soutenue — c'est elle qu'on cherche des yeux.
+ *
+ * En noir et blanc, le filtre les ramène à trois gris très clairs qui alternent :
+ * l'information survit, en plus discret. Rien à faire de plus.
+ */
+const TEINTES_RANG = ['#dbeafe', '#eef2f7', '#f7f9fc'];
+
 function conversionPreviewHtml(item, slot, k, solution) {
     const g = geoConversion(item, slot);
     const m = g.m;
     let html = '';
     if (g.avecTableau) {
+        // LES COLONNES TEINTÉES, SOUS LE QUADRILLAGE. Les aplats se posent en
+        // premier : le trait passe par-dessus, sinon la teinte mange la grille.
+        m.unites.forEach((u, c) => {
+            html += `<div style="position:absolute; left:${(g.x0 + c * g.cw) * k}px;
+                top:${g.y0 * k}px; width:${g.cw * k}px;
+                height:${((g.nLignes + 1) * g.rh) * k}px;
+                background:${TEINTES_RANG[c % 3]}"></div>`;
+        });
         // Le quadrillage.
         for (let c = 0; c <= g.nCol; c++) {
             const x = g.x0 + c * g.cw;
@@ -8293,6 +8321,14 @@ function dessinerConversionPdf(doc, item, slot, solution) {
     const g = geoConversion(item, slot);
     const m = g.m;
     if (g.avecTableau) {
+        // Les colonnes teintées d'abord, le trait par-dessus. `encre` les fait
+        // passer par le mode polycopie : en noir et blanc elles deviennent trois
+        // gris très clairs qui alternent, et l'information survit.
+        const hex = (t) => [1, 3, 5].map(i => parseInt(t.slice(i, i + 2), 16));
+        m.unites.forEach((u, c) => {
+            doc.setFillColor(...encre(hex(TEINTES_RANG[c % 3])));
+            doc.rect(g.x0 + c * g.cw, g.y0, g.cw, (g.nLignes + 1) * g.rh, 'F');
+        });
         doc.setDrawColor(...ENCRE.grille);
         doc.setLineWidth(0.25);
         for (let c = 0; c <= g.nCol; c++) {

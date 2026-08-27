@@ -74,8 +74,20 @@ const COULEURS = [
 
 // --- Les quatre modes existent, et « couleur » ne fait rien ------------------
 
-test('les quatre modes sont là, dans l\'ordre du plus coloré au plus sobre', () => {
-    assert.deepEqual(MODES_POLYCOPIE.map(m => m.id), ['intense', 'couleur', 'gris', 'nb']);
+test('LES QUATRE MODES SONT LÀ, ET CHACUN NOMME SON MÉTIER', () => {
+    // L'ORDRE S'EST RENVERSÉ, ET C'EST VOULU. Il allait du plus coloré au plus
+    // sobre ; il va maintenant du plus courant au plus rare — la photocopieuse
+    // du couloir d'abord, puisque c'est elle qui sort les feuilles et le mode
+    // par défaut, l'affiche en dernier.
+    assert.deepEqual(MODES_POLYCOPIE.map(m => m.id), ['nb', 'gris', 'couleur', 'intense']);
+    // Et chaque libellé dit à quoi le mode sert, pas seulement ce qu'il fait :
+    // « Couleur intense » ne disait rien de l'usage, et Rémy s'en est aperçu —
+    // « comment est-ce que le mode couleur intense pourrait être pertinent ? »
+    MODES_POLYCOPIE.forEach(m => assert.ok(m.label.length > 12, m.label));
+    assert.match(MODES_POLYCOPIE.find(m => m.id === 'intense').label, /affiche/i);
+    // Le défaut reste le noir et blanc : une feuille pensée pour lui marche
+    // partout, et c'est le premier de la liste.
+    assert.equal(MODES_POLYCOPIE[0].id, 'nb');
 });
 
 test('« couleur » rend la palette telle qu\'elle est écrite', () => {

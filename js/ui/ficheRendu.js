@@ -50,11 +50,30 @@ import { RENDUS } from './printSheet.js';
  * dix fois — et RÉGLABLE FICHE PAR FICHE, puisque c'est le même sélecteur qui
  * l'affiche et le change.
  */
+// QUATRE MODES, ET CHACUN A UN MÉTIER — ce qui n'était pas le cas.
+//
+// Rémy : « comment est-ce que le mode couleur intense pourrait être pertinent,
+// car pour l'instant il n'y a pas grand-chose ? » Le diagnostic était juste, et
+// la cause n'était pas dans le filtre : il n'y avait presque rien à intensifier.
+// Les fiches sont dessinées en encres sobres, parce qu'elles sont pensées pour
+// la photocopieuse de l'établissement ; saturer du gris bleuté ne donne que du
+// gris bleuté un peu plus franc.
+//
+// Le mode devient donc ce dont il manquait : celui de l'AFFICHE. Ce qu'on
+// projette au tableau ou qu'on punaise au mur ne passe par aucune
+// photocopieuse — la couleur y est un outil de lecture, pas une décoration, et
+// c'est le seul contexte où on peut lui confier une information (les colonnes
+// d'un tableau de conversion, les codages d'une figure).
+//
+// Les trois autres gardent leur métier : « Couleur » pour l'imprimante de la
+// maison, « Niveaux de gris » pour une photocopie soignée, « Noir et blanc »
+// pour celle du couloir — et c'est le défaut, parce qu'une feuille pensée pour
+// elle marche partout.
 export const MODES_POLYCOPIE = [
-    { id: 'intense', label: 'Couleur intense' },
-    { id: 'couleur', label: 'Couleur' },
+    { id: 'nb', label: 'Noir et blanc — la photocopieuse' },
     { id: 'gris', label: 'Niveaux de gris' },
-    { id: 'nb', label: 'Noir et blanc' }
+    { id: 'couleur', label: 'Couleur — l\'imprimante' },
+    { id: 'intense', label: 'Affiche — projeter ou punaiser' }
 ];
 
 /** Les quatre choix, prêts à poser dans un `<select>`. */
