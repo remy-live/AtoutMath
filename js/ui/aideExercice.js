@@ -25,6 +25,8 @@ import { state } from '../core/state.js';
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { decouperConsigne, etapesExemple, peutMontrerUnExemple, leconsDe, ongletsPour } from '../core/aideExercice.js';
+// La leçon mise en page — voir `ui/leconHtml.js`.
+import { leconHtml } from './leconHtml.js';
 
 let onglet = 'consigne';
 let exemple = null;          // l'exemple engendré, gardé tant qu'on ne change pas d'exercice
@@ -99,7 +101,9 @@ function vueConsigne(exo) {
 }
 
 function vueLecon(lecons) {
-    return `<ul class="aide-lecons">${lecons.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`;
+    // MISES EN PAGE, PAS EMPILÉES. Rémy : « quand tu vois l'explication, ça
+    // donne pas envie de lire ». Voir `ui/leconHtml.js`.
+    return `<div class="aide-lecons">${lecons.map(l => leconHtml(l)).join('')}</div>`;
 }
 
 /**

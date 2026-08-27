@@ -11,6 +11,8 @@
 //    synchronisable.
 
 import { state } from './state.js';
+// La leçon mise en page — voir `ui/leconHtml.js`.
+import { leconHtml } from '../ui/leconHtml.js';
 import { journal, EventTypes } from './journal.js';
 import { clearEngines, regTimeout } from './timers.js';
 import { getActivity, getGenerator, uniteDe } from './registry.js';
@@ -497,8 +499,11 @@ export class Runner {
 
         const consigne = exo.instruction
             ? `<p class="run-screen-text">${escapeHtml(exo.instruction)}</p>` : '';
+        // MISE EN PAGE, PAS UN PAVÉ. C'est l'écran que l'élève lit AVANT de
+        // commencer : s'il ne donne pas envie d'être lu, il ne sert à rien.
+        // Voir `ui/leconHtml.js`.
         const blocsLecon = lecons.map(l =>
-            `<div class="learn-lesson">📖 ${escapeHtml(l)}</div>`).join('');
+            `<div class="learn-lesson">${leconHtml(l)}</div>`).join('');
 
         this.canvas.innerHTML = `
             <div class="run-screen run-screen--learn">

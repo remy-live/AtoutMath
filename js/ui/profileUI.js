@@ -9,6 +9,8 @@
 //    questions ratées à l'identique grâce à leur graine.
 
 import { state } from '../core/state.js';
+// La leçon mise en page — voir `ui/leconHtml.js`.
+import { leconHtml } from './leconHtml.js';
 import { badgesCatalog, progressionFamilles } from '../core/gamification.js';
 import { computeSkillStats, getWeakSkills, getStrongSkills, getTotalCorrectCount, getDueSkills } from '../core/stats.js';
 import { getSkill, skillLabel } from '../data/skills.js';
@@ -213,7 +215,9 @@ function renderPlan() {
     // qui veut savoir.
     container.innerHTML = plan.map((r, i) => {
         const def = getSkill(r.skillId);
-        const lecon = def && def.lesson ? `<p class="plan-lecon">${escapeHtml(def.lesson)}</p>` : '';
+        // LA LEÇON EST MISE EN PAGE, pas jetée en un paragraphe — voir
+        // `ui/leconHtml.js`. Rémy : « ça donne pas envie de lire ».
+        const lecon = def && def.lesson ? `<div class="plan-lecon">${leconHtml(def.lesson)}</div>` : '';
         const exos = exercisesForSkill(r.skillId).slice(0, 3);
         const liens = exos.length
             ? `<div class="plan-exos">${exos.map(e =>
@@ -308,7 +312,7 @@ function group(title, skills, actionable) {
 function skillRow(skill, actionable) {
     const pct = Math.round(skill.mastery * 100);
     const def = getSkill(skill.skillId);
-    const lesson = def && def.lesson ? `<div class="skill-lesson">${escapeHtml(def.lesson)}</div>` : '';
+    const lesson = def && def.lesson ? `<div class="skill-lesson">${leconHtml(def.lesson)}</div>` : '';
     return `
     <div class="skill-row">
         <div class="skill-main">

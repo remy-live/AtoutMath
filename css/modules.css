@@ -7857,3 +7857,50 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .cfg-glissiere-saisie::-webkit-outer-spin-button,
 .cfg-glissiere-saisie::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .cfg-glissiere-saisie:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+
+/* LA LEÇON MISE EN PAGE — voir `core/lecon.js` et `ui/leconHtml.js`.
+   Rémy, capture d'un téléphone à l'appui : « quand tu vois l'explication, ça
+   donne pas envie de lire, il faut une belle mise en page, du retour à la
+   ligne, de la couleur ». Le texte était bon ; il partait dans un seul
+   paragraphe et ressortait en pavé de quinze lignes. */
+.lc { display: flex; flex-direction: column; gap: 9px; }
+.lc-p { margin: 0; line-height: 1.55; }
+
+/* Ce qu'il faut retenir. L'auteur l'écrit déjà en capitales : on ne fait que
+   le rendre visible sans crier — la couleur porte, le gras suffit. */
+.lc-fort { font-weight: 800; color: var(--primary); }
+
+/* UN CALCUL SE SAISIT SANS SE LIRE. « (−3) + (−4) = −7 » n'est pas une phrase :
+   c'est un objet qu'on montre, et l'oeil doit pouvoir l'attraper d'un coup au
+   milieu du texte. D'où la pastille, et les chiffres à chasse fixe : « 1 » et
+   « 8 » y ont la même largeur, donc les colonnes d'un calcul s'alignent. */
+.lc-calc {
+    display: inline-block;
+    padding: 1px 7px; border-radius: 6px;
+    background: rgba(255, 255, 255, .72);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700; white-space: nowrap;
+}
+
+/* UN CAS PORTE SON NOM COMME UN INTERTITRE. « MÊME SIGNE », « SIGNES
+   DIFFÉRENTS » : c'est exactement la question que l'élève se pose devant son
+   exercice — « je suis dans quel cas ? » —, et la réponse doit se trouver en
+   balayant la page, sans lire la phrase d'avant. */
+.lc-cas {
+    padding: 7px 10px; border-radius: 9px;
+    background: rgba(255, 255, 255, .55);
+    border-left: 3px solid var(--primary);
+    line-height: 1.5;
+}
+.lc-cas-nom {
+    display: block; font-weight: 900; font-size: .82em;
+    letter-spacing: .03em; color: var(--primary); margin-bottom: 2px;
+}
+/* Le corps d'un cas commence par une majuscule : le titre a pris les
+   deux-points qui l'introduisaient, et « on ajoute les distances » sans
+   majuscule se lit comme une phrase coupée. `::first-letter` ne s'applique
+   qu'à un conteneur de bloc, d'où le `display`. */
+.lc-cas-corps { display: block; }
+.lc-cas-corps::first-letter { text-transform: uppercase; }
