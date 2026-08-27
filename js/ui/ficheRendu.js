@@ -787,7 +787,26 @@ export const TITRE_Y = 4.8;
 export const IDENTITE_Y = 11.4;
 
 /** Le filet qui ferme l'en-tête, avec et sans champs d'identité. */
-export const filetY = (avecChamps) => (avecChamps ? 14.1 : 9.6);
+/**
+ * OÙ TOMBE LE FILET SOUS L'EN-TÊTE.
+ *
+ * Rémy : « dans la fiche du parcours, il faudrait aussi pouvoir supprimer
+ * carrément la place du titre de la feuille. » Vider le champ retirait déjà le
+ * TEXTE — mais pas sa PLACE : neuf millimètres et demi de blanc restaient
+ * réservés en haut de chaque feuille, plus les vingt et un millimètres
+ * d'en-tête que la mise en page réservait quoi qu'il arrive. Sur une fiche de
+ * jeu à découper, c'est une bande perdue en travers de la page.
+ *
+ * Le titre a maintenant sa hauteur PROPRE, qu'on retire quand il n'y a rien à
+ * écrire. Et quand il n'y a ni titre ni champs d'identité, il ne reste rien à
+ * souligner : le filet lui-même disparaît (voir `hauteurEntete1`).
+ */
+export const HAUTEUR_TITRE = 6.4;
+
+export const filetY = (avecChamps, avecTitre = true) => {
+    const base = avecChamps ? 14.1 : 9.6;
+    return avecTitre ? base : base - HAUTEUR_TITRE;
+};
 
 /**
  * DU PDF À L'APERÇU : LE PDF POSE UNE LIGNE DE BASE, LE HTML POSE UN HAUT.
@@ -811,9 +830,26 @@ export function cartoucheDe(entete = {}, interrogation = false) {
     return { note: !!note, commentaire: !!com, sur: entete.noteSur || 20 };
 }
 
-/** La hauteur d'en-tête à réserver sur la PREMIÈRE page, cartouche compris. */
-export function hauteurEntete1(page, cartouche) {
-    return (page || A4).enteteH + (cartouche ? CARTOUCHE_H : 0);
+/**
+ * La hauteur d'en-tête à réserver sur la PREMIÈRE page, cartouche compris.
+ *
+ * @param {Object}  [entete]  pour rendre à la page la place du titre absent —
+ *                            et, s'il n'y a pas non plus de champ d'identité,
+ *                            celle du filet.
+ */
+export function hauteurEntete1(page, cartouche, entete = null) {
+    const P = page || A4;
+    let h = P.enteteH;
+    if (entete) {
+        const avecTitre = !!String(entete.titre || '').trim();
+        const avecChamps = (entete.champs || []).length > 0;
+        if (!avecTitre) h -= HAUTEUR_TITRE;
+        // Ni titre ni identité : il ne reste plus rien à souligner. On garde de
+        // quoi ne pas coller le premier exercice au bord — deux millimètres,
+        // la marge de sécurité de toutes les imprimantes.
+        if (!avecTitre && !avecChamps) h = Math.min(h, 2);
+    }
+    return Math.max(0, h) + (cartouche ? CARTOUCHE_H : 0);
 }
 
 /** Les deux colonnes du cartouche, en mm : [{x, w, label, valeur}]. */
@@ -862,7 +898,11 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     const lignes = champs.map(c => `<span class="fp-champ" data-fiche="champ"
         data-champ="${c.id}" title="Cliquer pour retirer ce champ"><i>${c.label} :</i>
         <u style="width:${c.large * k}px"></u></span>`).join('');
-    const yFilet = P.marge + filetY(champs.length > 0) + FILET_HTML;
+    // UN TITRE ABSENT REND SA PLACE. Sans lui, le filet et les champs remontent
+    // de la hauteur d'une ligne de titre ; sans titre NI champs, il n'y a plus
+    // rien à souligner et le filet lui-même s'efface.
+    const titreLa = !!String(titre || '').trim() || !!sousTitre;
+    const yFilet = P.marge + filetY(champs.length > 0, titreLa) + FILET_HTML;
     // Le cadre est haut de treize millimètres : deux lignes d'écriture adulte.
     const hCadre = CARTOUCHE_H - 4;
     const cadre = note ? colonnesCartouche(P, note).map(c => `
@@ -875,7 +915,7 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
         </div>`).join('') : '';
     // UN TITRE VIDE NE LAISSE PAS DE BANDEAU VIDE : la ligne disparaît, et
     // les champs d'identité remontent d'autant.
-    const avecTitre = !!String(titre || '').trim() || !!sousTitre;
+    const avecTitre = titreLa;
     return `
         <div class="fp-entete${avecTitre ? '' : ' fp-entete--vide'}" data-fiche="titre"
             title="Cliquer pour écrire le titre de la feuille"
@@ -887,11 +927,12 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
         </div>
         <div class="fp-identite${champs.length ? '' : ' fp-identite--vide'}"
             data-fiche="identite" style="left:${P.marge * k}px;
-            right:${P.marge * k}px; top:${(P.marge + IDENTITE_Y - MONTEE_IDENTITE) * k}px;
+            right:${P.marge * k}px;
+            top:${(P.marge + IDENTITE_Y - MONTEE_IDENTITE - (avecTitre ? 0 : HAUTEUR_TITRE)) * k}px;
             font-size:${3.3 * k}px;
             gap:${5 * k}px">${lignes}</div>
-        <div class="fp-ligne" style="left:${P.marge * k}px; right:${P.marge * k}px;
-            top:${yFilet * k}px;"></div>
+        ${avecTitre || champs.length ? `<div class="fp-ligne"
+            style="left:${P.marge * k}px; right:${P.marge * k}px; top:${yFilet * k}px;"></div>` : ''}
         ${cadre}`;
 }
 
@@ -920,18 +961,24 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
     pdf.setFontSize(8.6);
     pdf.setTextColor(...ENCRE.gris);
     let x = P.marge;
+    // Les champs remontent de la hauteur du titre quand il n'y en a pas : c'est
+    // la même règle que le filet, et les deux doivent bouger ensemble sous
+    // peine de voir « Nom : » traverser le trait.
+    const yIdentite = P.marge + IDENTITE_Y - (ligneTitre ? 0 : HAUTEUR_TITRE);
     champs.forEach(({ label, large }) => {
         const etiquette = pourPdf(`${label} :`);
-        pdf.text(etiquette, x, P.marge + IDENTITE_Y);
+        pdf.text(etiquette, x, yIdentite);
         x += pdf.getTextWidth(etiquette) + 1.5;
-        pointilles(pdf, x, P.marge + IDENTITE_Y + 0.3, large);
+        pointilles(pdf, x, yIdentite + 0.3, large);
         x += large + 5;
     });
     pdf.setTextColor(...ENCRE.texte);
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.4);
-    const yFilet = P.marge + filetY(champs.length > 0);
-    pdf.line(P.marge, yFilet, droite, yFilet);
+    const yFilet = P.marge + filetY(champs.length > 0, !!ligneTitre);
+    // Ni titre ni identité : plus rien à souligner. Un filet seul en haut d'une
+    // feuille de jeu à découper est une barre qui ne veut rien dire.
+    if (ligneTitre || champs.length) pdf.line(P.marge, yFilet, droite, yFilet);
 
     // LE CARTOUCHE, sur toute la largeur : la note à gauche dans sa colonne
     // étroite, l'appréciation à droite dans tout ce qui reste. Un tableau, pas

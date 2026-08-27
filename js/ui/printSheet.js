@@ -8590,6 +8590,13 @@ function geoEgypte(item, slot) {
     // Rémy : « des hiéroglyphes au nombre. Tu écris les hiéroglyphes : ……… ».
     // Le nombre passe donc devant, suivi d'un « = », et la place de dessiner
     // vient après lui, sur la même ligne — comme au cahier.
+    // LES DEUX SENS S'ÉCRIVENT SUR UNE SEULE LIGNE. Rémy : « écris le nombre en
+    // hiéroglyphes puis : puis les pointillés sur la même ligne, idem dans
+    // l'autre sens. » Dans le sens « lire », les glyphes étaient posés en haut
+    // du bloc et la ligne de réponse dessous : deux étages, alors que l'élève
+    // écrit « ▯▯▯ = 132 » d'un trait sur son cahier. Les glyphes prennent
+    // maintenant la colonne de gauche, le « = » les suit, et les pointillés
+    // courent à leur droite — sur la MÊME ligne de base.
     const ecrire = m.sens === 'ecrire';
     const texte = ecrire ? `${nombreEspace(m.total)}  =` : '';
     // UNE COLONNE DE MÊME LARGEUR POUR TOUS LES NOMBRES DE LA FEUILLE.
@@ -8599,7 +8606,16 @@ function geoEgypte(item, slot) {
     // « 404 » et « 30 103 » ne commençaient pas au même endroit, que les « = »
     // ne s'alignaient pas, et que les pointillés n'avaient pas deux fois la
     // même longueur. Une part fixe du bloc, et tout se met en colonne.
-    const largeurTexte = ecrire ? b.w * LARGEUR_NOMBRE : 0;
+    // LA COLONNE DE GAUCHE. En « écrire », c'est le nombre suivi du « = ». En
+    // « lire », ce sont les GLYPHES suivis du « = » : même géométrie, même
+    // alignement d'un bloc à l'autre.
+    // SOIXANTE-DOUZE POUR CENT AUX GLYPHES. « Utilise bien la largeur pour
+    // écrire les hiéroglyphes assez grand » : c'est la LARGEUR qui les bride,
+    // pas la hauteur — sept symboles dans la moitié d'un bloc donnent des
+    // signes de six millimètres. Ce qui reste — un quart de bloc, soit deux
+    // bons centimètres — suffit largement à écrire « 10 033 ».
+    const PART_GLYPHES = 0.72;
+    const largeurTexte = b.w * (ecrire ? LARGEUR_NOMBRE : PART_GLYPHES);
     // Le corps est calculé sur le PLUS LONG nombre possible — « 1 000 000  = »,
     // douze signes — et non sur celui qu'on a sous la main : sinon un nombre
     // court s'écrirait plus gros que son voisin, et l'on retomberait dans le
@@ -8607,13 +8623,27 @@ function geoEgypte(item, slot) {
     const corpsTexte = ecrire
         ? Math.min(4.6, (largeurTexte - 2) / (12 * 0.58))
         : 0;
-    const cell = Math.min((b.w - largeurTexte) / (plan.largeur + 0.3), hDispo / (hautCases + 0.3), 16);
+    // « UTILISE BIEN LA LARGEUR POUR ÉCRIRE LES HIÉROGLYPHES ASSEZ GRAND. »
+    // En « lire », les glyphes disposent de leur colonne moins la place du
+    // signe égal ; le plafond passe de seize à vingt millimètres, parce qu'ils
+    // ne partagent plus la hauteur avec une ligne de réponse posée dessous.
+    const LARGEUR_EGAL = 7;
+    const largeurGlyphes = ecrire ? b.w - largeurTexte : largeurTexte - LARGEUR_EGAL;
+    const cell = Math.min(
+        largeurGlyphes / (plan.largeur + 0.3),
+        hDispo / (hautCases + 0.3),
+        ecrire ? 16 : 20
+    );
+    // La ligne de base : sous les glyphes en « lire », sous le nombre en
+    // « écrire ». Dans les deux cas, TOUT est dessus.
+    const hautGlyphes = hautCases * cell;
     return {
         m, b, plan, cell, interligne: INTERLIGNE, ecrire, texte, largeurTexte, corpsTexte,
+        largeurEgal: LARGEUR_EGAL,
         rangs: plan.lignes, colonnes: plan.largeur,
-        x0: b.x + 1 + largeurTexte,
+        x0: b.x + 1 + (ecrire ? largeurTexte : 0),
         y0: b.y + 1,
-        yReponse: b.y + 2 + hautCases * cell,
+        yReponse: b.y + 2 + hautGlyphes,
         // Les glyphes sont dessinés dans une case de 24 × 32.
         k: cell / 32
     };
@@ -8645,6 +8675,17 @@ function egyptePreviewHtml(item, slot, k, solution) {
             padding-bottom:${g.corpsTexte * 0.21 * k}px; box-sizing:border-box;
             font-weight:800; color:#1a202c; font-size:${g.corpsTexte * k}px;
             white-space:nowrap">${echapperSheet(g.texte)}</div>`;
+    }
+    // LE SIGNE ÉGAL APRÈS LES GLYPHES. Sans lui, la ligne de pointillés posée à
+    // droite d'un dessin ne dit pas ce qu'on attend ; avec, on lit « ▯▯▯ = … »
+    // exactement comme on l'écrirait au cahier.
+    if (!g.ecrire) {
+        html += `<div style="position:absolute;
+            left:${(g.b.x + g.largeurTexte - g.largeurEgal) * k}px;
+            top:${(g.yReponse - 7) * k}px; width:${g.largeurEgal * k}px; height:${7 * k}px;
+            display:flex; align-items:flex-end; justify-content:center;
+            padding-bottom:${1 * k}px; box-sizing:border-box;
+            font-weight:800; color:#1a202c; font-size:${4.4 * k}px">=</div>`;
     }
     const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
     html += `<div style="position:absolute; left:${(g.b.x + g.largeurTexte) * k}px;

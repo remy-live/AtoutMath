@@ -450,7 +450,13 @@ export function composerBlocs(exos, opts, mesurer) {
     // perdues pour un cadre qui n'est pas là.
     //
     // Le BAS, lui, ne bouge pas : il ne dépend pas de la hauteur de l'en-tête.
-    const enteteH1 = Math.max(page0.enteteH, o.enteteH1 || 0);
+    // L'EN-TÊTE DE LA PREMIÈRE PAGE PEUT MAINTENANT ÊTRE PLUS PETIT QUE LA
+    // NORME. `Math.max` en faisait un plancher : une feuille sans titre gardait
+    // ses vingt et un millimètres de bande, et « supprimer le titre » ne
+    // rendait aucune place. On respecte donc la valeur donnée quand elle l'est
+    // — c'est l'appelant qui sait ce que son en-tête contient — et l'on ne
+    // retombe sur la norme qu'à défaut.
+    const enteteH1 = o.enteteH1 != null ? Math.max(0, o.enteteH1) : page0.enteteH;
     const zone = {
         x: page0.marge,
         y: page0.marge + enteteH1,

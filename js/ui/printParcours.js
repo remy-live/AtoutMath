@@ -535,8 +535,11 @@ export function ouvrirFicheParcours(chemin) {
         // le cadre « Note / Commentaire » ne s'imprime qu'une fois, et lui
         // réserver sa bande sur les quatre pages, c'est perdre des questions
         // pour un cadre absent.
+        // L'en-tête reçoit AUSSI ce qu'il contient : sans titre, sa bande
+        // rétrécit ; sans titre ni identité, elle disparaît. Rémy : « il
+        // faudrait aussi pouvoir supprimer carrément la place du titre. »
         enteteH1: hauteurEntete1(pageDe(orientEl.value),
-            cartoucheDe(entete, interro.checked))
+            cartoucheDe(entete, interro.checked), entete)
       };
     };
 
