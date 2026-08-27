@@ -828,6 +828,38 @@ function hideTip() {
 }
 
 /** Survol et focus pour la souris et le clavier, clic pour le tactile. */
+/**
+ * LES INFOBULLES DE LA BARRE D'OUTILS — les vraies, pas celles du système.
+ *
+ * Rémy : « je pense qu'il faut rajouter des tooltip ». Les boutons portaient
+ * bien un `title`, mais un `title` n'est pas une infobulle : il attend une
+ * seconde avant de paraître, il s'affiche dans la police du système, et SUR
+ * UNE TABLETTE IL N'EXISTE PAS — or c'est là que Rémy travaille. Une barre de
+ * huit icônes sans légende lisible se devine, ou ne se devine pas.
+ *
+ * On recopie donc le `title` dans `data-tip` et l'on branche la même bulle que
+ * les panneaux de réglages : au survol, au focus, et au TOUCHER. Le `title`
+ * est retiré, sans quoi les deux se superposeraient.
+ */
+export function titrerEnInfobulles(root) {
+    if (!root) return;
+    root.querySelectorAll('[title]').forEach(btn => {
+        if (btn.dataset.tip) return;
+        btn.dataset.tip = btn.getAttribute('title');
+        btn.removeAttribute('title');
+        btn.addEventListener('mouseenter', () => showTip(btn));
+        btn.addEventListener('mouseleave', hideTip);
+        btn.addEventListener('focus', () => showTip(btn));
+        btn.addEventListener('blur', hideTip);
+        // Au doigt, la bulle paraît le temps de lire puis s'efface : le clic
+        // fait son travail par ailleurs, on ne le détourne pas.
+        btn.addEventListener('touchstart', () => {
+            showTip(btn);
+            setTimeout(hideTip, 1600);
+        }, { passive: true });
+    });
+}
+
 export function wireTips(root) {
     root.querySelectorAll('.cfg-info').forEach(btn => {
         btn.onmouseenter = () => showTip(btn);

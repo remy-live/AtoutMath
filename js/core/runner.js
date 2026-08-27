@@ -146,6 +146,19 @@ export class Runner {
         document.getElementById('btn-preview-next-q').onclick = () => this.goToQuestion(1);
         document.getElementById('btn-preview-prev-q').onclick = () => this.goToQuestion(-1);
 
+        // ÉPROUVER LES DEUX RETOURS — voir `repondrePour`.
+        const juste = document.getElementById('btn-preview-juste');
+        const faux = document.getElementById('btn-preview-faux');
+        if (juste) juste.onclick = () => this.repondrePour(true);
+        if (faux) faux.onclick = () => this.repondrePour(false);
+
+        // LES INFOBULLES DE LA BARRE. Rémy : « je pense qu'il faut rajouter des
+        // tooltip ». Les `title` du HTML n'en sont pas : ils attendent une
+        // seconde, et sur une tablette ils n'existent pas du tout.
+        import('../games/configUI.js')
+            .then(m => m.titrerEnInfobulles(document.getElementById('game-layer')))
+            .catch(() => { /* la barre reste utilisable sans bulles */ });
+
         this.updateStepNavigation();
     }
 
@@ -194,6 +207,54 @@ export class Runner {
         const nextQ = document.getElementById('btn-preview-next-q');
         if (prevQ) prevQ.disabled = vue < 2;
         if (nextQ) nextQ.disabled = vue >= total;
+
+        // Les deux boutons de réponse n'existent que là où il y a une question
+        // à laquelle répondre — et pas quand elle est déjà jouée.
+        const dispo = !!(this.session && this.session.current && !this.session.locked);
+        ['btn-preview-juste', 'btn-preview-faux'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.hidden = !dispo;
+        });
+    }
+
+    /**
+     * RÉPONDRE JUSTE, OU FAUX, POUR VOIR CE QUE L'ÉLÈVE LIRA.
+     *
+     * Rémy : « quand le prof teste, faut-il rajouter un bouton bonne ou
+     * mauvaise réponse comme pour le début ». Oui — et c'est le message
+     * d'ERREUR qui compte le plus. C'est lui qui doit expliquer sans donner la
+     * réponse, et c'est le seul qu'on ne voit jamais quand on relit ses propres
+     * exercices : pour l'obtenir il fallait se tromper exprès, et sur un QCM à
+     * deux propositions on tombe juste une fois sur deux.
+     *
+     * On passe par `session.submit`, le même chemin que l'élève : un bouton qui
+     * afficherait le message par un raccourci montrerait ce qu'on a écrit, pas
+     * ce que l'exercice fait.
+     *
+     * LA MAUVAISE RÉPONSE EST CELLE D'UN ÉLÈVE, pas n'importe laquelle. On
+     * prend le premier distracteur — celui que le générateur a fabriqué pour
+     * piéger —, parce que c'est LUI qui déclenche le diagnostic. Une réponse
+     * absurde tomberait dans le message générique et n'apprendrait rien.
+     */
+    repondrePour(juste) {
+        if (!this.session || !this.session.current || this.session.locked) return;
+        const item = this.session.item;
+        if (!item) return;
+        let valeur;
+        if (Array.isArray(item.choices) && item.choices.length) {
+            const c = juste
+                ? item.choices.find(x => x.correct)
+                : item.choices.find(x => !x.correct);
+            valeur = c ? (c.value ?? c.label) : null;
+        } else {
+            // Sans propositions, la bonne réponse est celle de l'item ; la
+            // fausse est prise à côté, ce qui suffit à déclencher la correction.
+            const bonne = item.answer;
+            valeur = juste ? bonne
+                : (typeof bonne === 'number' ? bonne + 1 : `${bonne}\u2009?`);
+        }
+        this.session.submit(valeur, {});
+        this.updateStepNavigation();
     }
 
     /**

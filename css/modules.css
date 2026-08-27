@@ -7769,3 +7769,14 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     color: var(--primary); white-space: nowrap;
     max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
+
+
+/* LES DEUX BOUTONS DE RÉPONSE DU PROFESSEUR — voir `repondrePour` dans le
+   meneur. Rémy : « quand le prof teste, faut-il rajouter un bouton bonne ou
+   mauvaise réponse ». Ils se distinguent par la couleur : ce sont les deux
+   seuls boutons de la barre qui AGISSENT sur la question, tous les autres ne
+   font que naviguer. */
+.game-icon-btn--ok { color: #1f7a4d; border-color: rgba(31, 122, 77, .35); }
+.game-icon-btn--ko { color: #b83a2c; border-color: rgba(184, 58, 44, .35); }
+.game-icon-btn--ok:hover:not(:disabled) { background: rgba(31, 122, 77, .10); }
+.game-icon-btn--ko:hover:not(:disabled) { background: rgba(184, 58, 44, .10); }
