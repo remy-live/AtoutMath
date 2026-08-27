@@ -11,6 +11,8 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
+// Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
+import { makeRng } from '../core/ids.js';
 import { ajusterDuo, phraseDuo, seuilPourMode, MIN_ETAPE, MAX_ETAPE } from '../core/seuilEtape.js';
 import { paliersAide, rangsEnMots, palierEnMots } from '../core/apercuAide.js';
 
@@ -110,10 +112,44 @@ function glissiereHtml(param, ech, value, id) {
     // dit à la fois où l'on est, combien il y a de positions, ET ce qu'elles
     // valent — ce qu'un « 3/4 » ne pourra jamais dire. C'est le rail que Rémy
     // dessine : « O———O———O ». Sans noms courts, on garde le compte.
+    // LES CRANS SE POSENT OÙ LA PASTILLE S'ARRÊTE, pas dans des cases égales.
+    //
+    // Rémy, capture à l'appui : « on comprend rien pour le slide ». Il avait
+    // raison, et la faute était géométrique. Les noms étaient rangés dans des
+    // cases de largeur égale : leurs centres tombent donc à (k + ½)/n de la
+    // barre — 12,5 %, 37,5 %, 62,5 %, 87,5 % pour quatre crans. Or la pastille,
+    // elle, s'arrête à k/(n−1) : 0 %, 33 %, 67 %, 100 %. Les deux ne coïncident
+    // JAMAIS, sauf par accident. Pastille tout à gauche et « QCM 2 » écrit bien
+    // plus à droite : on ne pouvait pas savoir sur quel cran on était.
+    //
+    // Chaque nom est donc posé à l'abscisse EXACTE de son cran, avec la même
+    // formule que le navigateur : un demi-pouce de marge à chaque bout, et le
+    // reste partagé. Et un trait sur le rail à la même abscisse, pour que la
+    // graduation se voie même quand les noms sont longs — c'est le rail que
+    // Rémy dessinait : « O———O———O ».
+    // LE DERNIER CRAN SE POSE PAR LA DROITE, et ce n'est pas une coquetterie :
+    // un élément positionné en absolu ne dispose que de la place qui reste à
+    // sa droite. Posé à « 100 % − 12 px », il n'en a plus que douze pixels, et
+    // le navigateur le replie mot par mot — « Libre » s'écrivait « Li / br / e ».
+    // Ancré par la droite, il a toute la largeur, et son bord tombe pile sur
+    // le cran.
+    const abscisse = (k, n) => {
+        if (n < 2) return 'left:50%';
+        if (k === n - 1) return 'right:12px;left:auto';
+        return `left:calc(12px + (100% - 24px) * ${(k / (n - 1)).toFixed(6)})`;
+    };
     const crans = mots && !nombre && ech.courts
         ? `<div class="cfg-crans" aria-hidden="true">`
         + ech.courts.map((c, k) =>
-            `<span class="cfg-cran${k === i ? ' cfg-cran--ici' : ''}">${escapeAttr(c)}</span>`).join('')
+            `<span class="cfg-cran${k === i ? ' cfg-cran--ici' : ''}"
+                style="${abscisse(k, ech.courts.length)}">${escapeAttr(c)}</span>`).join('')
+        + `</div>`
+        : '';
+    const tirets = mots && !nombre && ech.valeurs.length > 1
+        ? `<div class="cfg-tirets" aria-hidden="true">`
+        + ech.valeurs.map((_, k) =>
+            `<i class="cfg-tiret${k === i ? ' cfg-tiret--ici' : ''}"
+                style="${abscisse(k, ech.valeurs.length)}"></i>`).join('')
         + `</div>`
         : '';
     const rang = mots && !nombre && !ech.courts
@@ -123,11 +159,14 @@ function glissiereHtml(param, ech, value, id) {
     return `<div class="cfg-glissiere${mots ? ' cfg-glissiere--mots' : ''}${crans ? ' cfg-glissiere--crans' : ''}">
         <div class="cfg-stepper cfg-stepper--rail" data-stepper>
             <button type="button" class="cfg-step" data-step="-1" tabindex="-1" aria-label="Diminuer">−</button>
-            <input type="range" class="cfg-rail" id="${id}" data-param="${param.id}"
-                data-kind="${nombre ? 'number' : 'echelle'}"
-                min="${nombre ? ech.valeurs[0] : 0}" max="${nombre ? ech.valeurs[ech.valeurs.length - 1] : ech.valeurs.length - 1}"
-                step="1" value="${nombre ? ech.valeurs[i] : i}"
-                aria-valuetext="${dit}"${donnees}>
+            <span class="cfg-rail-boite">
+                <input type="range" class="cfg-rail" id="${id}" data-param="${param.id}"
+                    data-kind="${nombre ? 'number' : 'echelle'}"
+                    min="${nombre ? ech.valeurs[0] : 0}" max="${nombre ? ech.valeurs[ech.valeurs.length - 1] : ech.valeurs.length - 1}"
+                    step="1" value="${nombre ? ech.valeurs[i] : i}"
+                    aria-valuetext="${dit}"${donnees}>
+                ${tirets}
+            </span>
             <button type="button" class="cfg-step" data-step="1" tabindex="-1" aria-label="Augmenter">+</button>
             ${rang}
         </div>
@@ -616,6 +655,57 @@ function escapeAttr(s) {
 // vraies règles ; ce fichier ne fait que le dessiner. Un aperçu qui recopie les
 // règles est un aperçu qui se met à mentir dès qu'elles changent.
 
+/**
+ * UNE VRAIE QUESTION DANS LA VIGNETTE — et non trois barres grises.
+ *
+ * Rémy : « il faut le vrai aperçu ». Les rectangles disaient la FORME (combien
+ * de propositions, un pavé ou non) et rien du CONTENU : on ne pouvait pas voir
+ * qu'un réglage donnait « 6 + 3 × 4 » plutôt que « 2 + 3 », ni que les
+ * distracteurs se ressemblaient trop. Or c'est cela qu'on regarde avant de
+ * lancer une séance.
+ *
+ * On tire donc UNE question au vrai générateur, avec les réglages du palier.
+ * Le tirage est à graine FIXE : sans elle, l'aperçu changerait de question à
+ * chaque pixel de glissé et deviendrait illisible — on veut voir l'effet du
+ * réglage, pas celui du hasard.
+ *
+ * Un générateur qui n'existe pas, qui refuse ces réglages ou qui met trop
+ * longtemps ne casse rien : on retombe sur les rectangles, qui disent au moins
+ * la forme.
+ */
+function vraieQuestion(exoId, p, params) {
+    if (!exoId) return null;
+    try {
+        const exo = getExerciseById(exoId);
+        const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
+        if (!gen || !gen.generate) return null;
+        // Les réglages du palier PAR-DESSUS ceux de l'exercice : c'est le
+        // palier qui décide du nombre de propositions et du clavier.
+        const reglages = {
+            ...(exo.params || {}), ...params,
+            propositions: p.clavier ? 0 : (p.propositions === null ? undefined : p.propositions),
+            saisie: p.clavier ? 'toujours' : 'jamais'
+        };
+        const it = gen.generate(reglages, { index: p.de - 1, rng: makeRng(`apercu-${exoId}-${p.de}`) });
+        if (!it) return null;
+        const texte = (it.prompt && (it.prompt.text || it.prompt.papier)) || '';
+        // ON ROGNE COMME LA SESSION ROGNE. Le générateur rend toujours ses
+        // distracteurs ; c'est le déroulé de l'exercice qui n'en garde que le
+        // nombre voulu. Sans cela, l'aperçu montrait trois pastilles sous une
+        // légende qui promettait « 2 propositions » — et un aperçu qui se
+        // contredit lui-même est pire qu'un dessin gris.
+        const brut = Array.isArray(it.choices) ? it.choices : [];
+        const voulu = p.propositions === null ? brut.length : Math.max(2, p.propositions);
+        const garde = brut.length > voulu
+            // La bonne réponse d'abord, puis les distracteurs dans leur ordre :
+            // on ne peut pas en retirer une au hasard, il faut garder la juste.
+            ? [...brut.filter(c => c.correct), ...brut.filter(c => !c.correct)].slice(0, voulu)
+            : brut;
+        const choix = garde.map(c => String(c.label ?? c.value ?? '')).filter(Boolean);
+        return { texte: String(texte).replace(/<[^>]*>/g, '').trim(), choix };
+    } catch { return null; }
+}
+
 /** La vignette d'un palier : des propositions vides, ou un pavé numérique. */
 function vignetteAide(p) {
     if (p.clavier) {
@@ -632,14 +722,26 @@ function vignetteAide(p) {
 }
 
 /** Le ruban complet, réglages et longueur d'exercice en main. */
-export function apercuAideHtml(params, total) {
+export function apercuAideHtml(params, total, exoId = '') {
     const paliers = paliersAide(params, total);
     return `<div class="cfg-apercu-titre">Ce que l'élève verra</div>
-        <div class="cfg-apercu-ruban">${paliers.map(p => `
+        <div class="cfg-apercu-ruban">${paliers.map(p => {
+        const vraie = vraieQuestion(exoId, p, params);
+        // La vraie question quand on l'a, les rectangles sinon : ils disent au
+        // moins la forme, et valent mieux qu'une vignette vide.
+        const dedans = vraie
+            ? `<span class="cfg-vg-q">${escapeAttr(vraie.texte)}</span>`
+            + (p.clavier
+                ? '<span class="cfg-vg-pave">' + '<i></i>'.repeat(9) + '</span>'
+                : `<span class="cfg-vg-vrais">${vraie.choix.slice(0, 6).map(c =>
+                    `<b>${escapeAttr(c)}</b>`).join('')}</span>`)
+            : vignetteAide(p);
+        return `
             <div class="cfg-apercu-pas" style="--cfg-part: ${p.a - p.de + 1}">
-                <div class="cfg-vg">${vignetteAide(p)}</div>
+                <div class="cfg-vg${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</div>
                 <div class="cfg-apercu-dit"><b>${rangsEnMots(p, total)}</b><br>${palierEnMots(p)}</div>
-            </div>`).join('')}</div>`;
+            </div>`;
+    }).join('')}</div>`;
 }
 
 /**
@@ -665,7 +767,9 @@ export function rafraichirApercu(racine) {
     if (!boite) return;
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
-    boite.innerHTML = apercuAideHtml(paramsAide(racine), total);
+    const hote = racine.closest && racine.closest('[data-exo]');
+    boite.innerHTML = apercuAideHtml(paramsAide(racine), total,
+        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '');
 }
 
 /**
@@ -1051,6 +1155,11 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         </div>`;
 
     content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
+    // DE QUEL EXERCICE ON PARLE. Rémy : « il faut le vrai aperçu ». Le ruban
+    // dessinait des rectangles gris — il ne savait rien de l'exercice, donc il
+    // ne pouvait rien montrer d'autre. On le lui dit ici, et il va chercher une
+    // VRAIE question au générateur.
+    content.dataset.exo = exo && exo.id ? exo.id : '';
 
     // L'explication du seuil est chiffrée avec les valeurs courantes, et suit
     // la saisie : « 7 sur 10 » parle, « seuil » ne dit rien.
@@ -1235,6 +1344,11 @@ export function ouvrirReglagesAvantPartie(exo, onStart) {
         ${impression}`;
 
     content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
+    // DE QUEL EXERCICE ON PARLE. Rémy : « il faut le vrai aperçu ». Le ruban
+    // dessinait des rectangles gris — il ne savait rien de l'exercice, donc il
+    // ne pouvait rien montrer d'autre. On le lui dit ici, et il va chercher une
+    // VRAIE question au générateur.
+    content.dataset.exo = exo && exo.id ? exo.id : '';
     rafraichirApercu(content);
     wireTips(content);
     modal.style.display = 'flex';

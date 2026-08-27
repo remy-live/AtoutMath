@@ -2558,20 +2558,48 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    Le bouton n'a pas la même largeur partout (40 px, 36 dans la modale élève,
    32 dans l'engrenage d'une fiche) : d'où la variable, redéfinie là-bas. */
 .cfg-glissiere { --cfg-bouton: 40px; }
+/* LA GRADUATION SE POSE OÙ LA PASTILLE S'ARRÊTE.
+   Rémy : « on comprend rien pour le slide ». Les noms étaient rangés dans des
+   cases de largeur égale — centres à (k + ½)/n — quand la pastille s'arrête à
+   k/(n−1). Les deux ne coïncidaient jamais : pastille tout à gauche, « QCM 2 »
+   écrit bien plus à droite. Chaque nom est maintenant posé à l'abscisse EXACTE
+   de son cran (calculée dans configUI.js, comme le navigateur la calcule) et
+   centré dessus. */
+/* La boîte du rail : c'est ELLE qui donne aux traits leur repère, et non le
+   groupe entier — qui contient aussi les boutons − et +, larges de plusieurs
+   dizaines de pixels. Les traits seraient sinon décalés d'autant. */
+.cfg-rail-boite { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
 .cfg-crans {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin: -6px calc(var(--cfg-bouton) + 6px + 12px) 0; gap: 4px;
+    position: relative; height: 2.5em;
+    /* Le même retrait que le rail : les boutons − et +, plus l'écart du
+       groupe. Sans cela la graduation serait décalée du rail qu'elle gradue. */
+    margin: -2px calc(var(--cfg-bouton) + 6px) 0;
 }
 .cfg-cran {
-    font-size: .72rem; font-weight: 700; color: var(--text-muted);
-    line-height: 1.15; text-align: center; flex: 1 1 0; min-width: 0;
-    /* Coupe plutot que de deformer l'axe : un nom trop long pousserait tous
-       les autres et la graduation ne correspondrait plus au rail. */
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    position: absolute; top: 0; transform: translateX(-50%);
+    font-size: .7rem; font-weight: 700; color: var(--text-muted);
+    line-height: 1.15; text-align: center;
+    /* DEUX LIGNES PLUTÔT QU'UN NOM COUPÉ. « Prog… » et « To… » ne veulent rien
+       dire ; « Progressif » sur deux lignes, si. La largeur est bornée pour que
+       deux crans voisins ne se recouvrent pas. */
+    max-width: 10ch; white-space: normal; overflow-wrap: anywhere;
 }
-.cfg-cran:first-child { text-align: left; }
-.cfg-cran:last-child { text-align: right; }
-.cfg-cran--ici { color: var(--primary); }
+/* LE DERNIER CRAN EST ANCRÉ PAR LA DROITE — voir `abscisse` dans configUI.js :
+   posé par la gauche, il ne disposait plus que de douze pixels et « Libre »
+   s'écrivait « Li / br / e ». Il ne se translate donc pas. */
+.cfg-cran:last-child { transform: none; text-align: right; }
+.cfg-tiret:last-child { transform: none; }
+.cfg-cran--ici { color: var(--primary); font-size: .76rem; }
+
+/* Les traits sur le rail, à la même abscisse : la graduation se voit même
+   quand les noms sont longs. C'est le rail que Rémy dessinait : « O———O———O ». */
+.cfg-tirets { position: absolute; inset: 0; pointer-events: none; }
+.cfg-tiret {
+    position: absolute; top: 50%; width: 2px; height: 9px;
+    margin-top: -4px; border-radius: 1px;
+    background: var(--text-muted); opacity: .38;
+}
+.cfg-tiret--ici { opacity: 0; }
 /* La phrase complete se resserre sous la graduation : les deux se lisent
    ensemble, pas comme deux blocs sans rapport. */
 .cfg-glissiere--crans .cfg-glissiere-dit { padding-top: 4px; }
@@ -7715,3 +7743,29 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .banc-q-non.est-choisi { background: #b83a2c; color: #fff; border-color: #b83a2c; }
 .banc-q-corps { flex: 1 1 auto; }
 .banc-q-export { width: 100%; min-height: 180px; font: 12px/1.4 ui-monospace, monospace; margin-top: 8px; }
+
+
+/* LE VRAI APERÇU : une question tirée au générateur, avec ses vraies
+   propositions. Rémy : « il faut le vrai aperçu ». Les rectangles gris
+   disaient la FORME — combien de propositions, un pavé ou non — et rien du
+   CONTENU : on ne voyait pas qu'un réglage donnait « 6 + 3 × 4 » plutôt que
+   « 2 + 3 », ni que deux distracteurs se ressemblaient trop. */
+.cfg-vg--vrai {
+    display: flex; flex-direction: column; gap: 5px;
+    align-items: stretch; justify-content: center;
+}
+.cfg-vg-q {
+    font-weight: 800; font-size: .8rem; color: var(--text-main);
+    line-height: 1.2; text-align: center;
+    /* Deux lignes au plus : une vignette n'est pas une fenêtre de lecture, et
+       un énoncé long y deviendrait illisible de toute façon. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.cfg-vg-vrais { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; }
+.cfg-vg-vrais b {
+    font-size: .7rem; font-weight: 700; padding: 2px 6px;
+    border-radius: 5px; background: var(--primary-soft, #eceafd);
+    color: var(--primary); white-space: nowrap;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
