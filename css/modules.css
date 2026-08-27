@@ -7626,3 +7626,25 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    doit pas hésiter une seconde sur celui où il pose ses pions. */
 .fx-gr-pad--coup { border-color: #c3cad6; background: transparent; }
 .fx-gr-num { position: absolute; text-align: right; color: #6e7684; font-weight: 700; }
+
+/* L'ONGLET « LE QUOTIDIEN » du banc d'essai. L'entrée du jour est en grand —
+   c'est la seule que trente élèves liront ce matin ; le reste est une liste
+   qu'on parcourt à l'œil. */
+.banc-q-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.banc-q-jour {
+    background: var(--surface-2, #f6f8fc); border: 1px solid var(--border, #dce2ec);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 6px;
+}
+.banc-q-texte { font-size: 1.06rem; line-height: 1.45; }
+.banc-q-sign { margin-top: 6px; text-align: right; font-style: italic; opacity: .75; }
+.banc-q-sec { margin-top: 10px; font-size: .92rem; color: #15803d; }
+.banc-q-ind { display: block; color: #6e7684; font-style: italic; margin-top: 2px; }
+.banc-q-suite { display: flex; flex-direction: column; gap: 3px; }
+.banc-q-ligne { display: flex; gap: 10px; font-size: .9rem; line-height: 1.35; }
+.banc-q-quand {
+    flex: 0 0 5.6em; text-align: right; font-weight: 700;
+    color: var(--muted, #6e7684); font-variant-numeric: tabular-nums;
+}
+.banc-q-tout { margin: 4px 0 0 1.2em; padding: 0; font-size: .88rem; line-height: 1.5; }
+.banc-q-tout li { margin-bottom: 3px; }
+.banc-q-tout b { color: #15803d; font-weight: 700; }

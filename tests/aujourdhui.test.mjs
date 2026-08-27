@@ -8,6 +8,7 @@
 // découverte.
 
 import { test } from 'node:test';
+import { conseilDuJour } from '../js/core/accueil.js';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
@@ -142,16 +143,21 @@ test('la phrase raconte la dernière séance, pas une moyenne', () => {
     assert.ok(!p.includes('%'), 'un pourcentage est un bulletin, pas une nouvelle');
 });
 
-test('trop peu de réponses, ou trop vieilles : on passe au conseil du jour', () => {
+test('trop peu de réponses, ou trop vieilles : on passe à la ligne du jour', () => {
     const T = midi();
+    // LA LIGNE DU JOUR N'EST PLUS SEULEMENT UN CONSEIL : quatre genres tournent
+    // (voir core/accueil.js). Ce qui compte ici n'est pas LEQUEL sort, c'est
+    // qu'on bascule bien dessus faute d'avoir quelque chose à raconter sur
+    // l'élève lui-même.
+    const duJour = (t) => conseilDuJour(t);
     const rien = phraseDuJour({ maintenant: T, tentatives: [] });
-    assert.ok(CONSEILS.includes(rien));
+    assert.equal(rien, duJour(T));
     // Quatre réponses ne font pas une séance.
     const quatre = Array.from({ length: 4 }, () => ({ ts: T - 1000, correct: true }));
-    assert.ok(CONSEILS.includes(phraseDuJour({ maintenant: T, tentatives: quatre })));
+    assert.equal(phraseDuJour({ maintenant: T, tentatives: quatre }), duJour(T));
     // Et une séance d'il y a une semaine n'est plus « ces derniers jours ».
     const vieilles = Array.from({ length: 20 }, () => ({ ts: T - FENETRE_RECENTE - 1, correct: true }));
-    assert.ok(CONSEILS.includes(phraseDuJour({ maintenant: T, tentatives: vieilles })));
+    assert.equal(phraseDuJour({ maintenant: T, tentatives: vieilles }), duJour(T));
     assert.equal(bilanRecent(vieilles, T), null);
 });
 

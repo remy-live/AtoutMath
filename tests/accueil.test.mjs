@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { LISTES } from '../js/data/quotidien.js';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
@@ -18,13 +19,32 @@ test('« le même jour » compte les jours civils, pas les 24 heures', () => {
     assert.equal(memeJour(null, null), false);
 });
 
-test('le conseil du jour ne change pas dans la journée, et change le lendemain', () => {
+test('la ligne du jour ne change pas dans la journée, et change le lendemain', () => {
     assert.equal(conseilDuJour(T), conseilDuJour(T + 7 * 3600000));
     assert.notEqual(conseilDuJour(T), conseilDuJour(T + JOUR));
-    assert.ok(CONSEILS.includes(conseilDuJour(T)));
-    // Ils portent sur la MANIÈRE de travailler : un conseil de contenu tombé
-    // au hasard n'aurait aucune chance de tomber juste.
-    CONSEILS.forEach(c => assert.ok(c.length > 40, `conseil trop court : ${c}`));
+    // ELLE N'EST PLUS TOUJOURS UN CONSEIL. Il n'y en avait que sept, et au bout
+    // d'une semaine l'élève ne lisait plus la ligne. Quatre genres tournent
+    // maintenant — conseil, blague, citation, énigme —, une centaine d'entrées
+    // chacun. Ce qui est garanti, c'est que la ligne vient bien de l'une des
+    // quatre listes, et jamais de nulle part.
+    const dans = (ligne) =>
+        CONSEILS.includes(ligne)
+        || LISTES.blague.some(b => ligne === b.texte)
+        || LISTES.citation.some(c => ligne.includes(c.texte))
+        || LISTES.enigme.some(e => ligne.startsWith(e.texte));
+    for (let i = 0; i < 25; i++) {
+        const ligne = conseilDuJour(T + i * JOUR);
+        assert.ok(ligne && dans(ligne), `ligne hors bibliothèque : ${ligne}`);
+    }
+    // Et les quatre genres sortent bien sur vingt-cinq jours.
+    const lignes = Array.from({ length: 25 }, (_, i) => conseilDuJour(T + i * JOUR));
+    assert.ok(lignes.some(l => CONSEILS.includes(l)), 'aucun conseil');
+    assert.ok(lignes.some(l => l.startsWith('« ')), 'aucune citation');
+    assert.ok(lignes.some(l => l.includes('(Indice :')), 'aucune énigme');
+    // Une énigme ne lâche JAMAIS sa réponse sur l'écran d'accueil.
+    const enigme = lignes.find(l => l.includes('(Indice :'));
+    const source = LISTES.enigme.find(e => enigme.startsWith(e.texte));
+    assert.ok(!enigme.includes(source.reponse), `la réponse est donnée : ${enigme}`);
 });
 
 test('une erreur se dit avec des mots, jamais avec un identifiant', () => {

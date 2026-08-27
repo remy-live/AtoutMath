@@ -19,12 +19,20 @@ import {
     lireRetest, marquerARetester, aRetester
 } from '../core/bancEssai.js';
 import { placer, restaurer, rendreDeplacable, isolerClavier } from './flottant.js';
+// LA BIBLIOTHÈQUE DU QUOTIDIEN. Rémy : « tu les mets au banc de test pour
+// pouvoir les gérer. » C'est le bon endroit : le banc d'essai est déjà l'écran
+// où l'on regarde le contenu un par un en se demandant s'il tient la route.
+import {
+    GENRES, LIBELLES_GENRE, EMOJIS_GENRE, LISTES, comptes as comptesQuotidien,
+    normaliser as normaliserQuotidien, entreeDuJour, apercu as apercuQuotidien
+} from '../data/quotidien.js';
 
 const CLE = 'mathbox-banc-essai';
 let carnet = null;
 let appareil = null;
 let nomAppareil = '';
 let filtre = 'restants';
+let genreQuotidien = 'conseil';    // le genre affiché dans l'onglet « Le quotidien »
 let ouvertSur = null;          // l'exercice à noter au retour du jeu
 
 // --- Le carnet, gardé sur l'appareil ----------------------------------------
@@ -244,6 +252,69 @@ function listeFiltree() {
     return exercices;
 }
 
+/**
+ * L'ONGLET « LE QUOTIDIEN » — les quatre listes, et ce qui sortira.
+ *
+ * Rémy : « tu les mets au banc de test pour pouvoir les gérer. » Gérer, ici,
+ * c'est trois choses, et rien de plus :
+ *
+ *   VOIR CE QUI SORT AUJOURD'HUI. C'est la seule entrée que trente élèves vont
+ *   lire ce matin ; elle mérite d'être en haut, en grand.
+ *
+ *   VOIR CE QUI SORTIRA. Sept jours d'avance. C'est ce qui permet de VÉRIFIER
+ *   que rien ne se répète, au lieu de le croire sur parole — et de repérer la
+ *   blague qui tombera le jour du contrôle.
+ *
+ *   TOUT RELIRE. Cent entrées défilent vite, et c'est en les relisant qu'on
+ *   trouve celle qu'on ne veut pas voir affichée dans SA classe.
+ *
+ * L'écriture, elle, reste dans les fichiers de données : une liste modifiable
+ * depuis le navigateur vivrait sur UN appareil, ne partirait dans aucun PDF et
+ * disparaîtrait au premier vidage de cache. Ce qui doit être partagé par toute
+ * une classe se versionne avec le code.
+ */
+function quotidienHtml() {
+    const g = GENRES.includes(genreQuotidien) ? genreQuotidien : 'conseil';
+    const aujourdhui = normaliserQuotidien(g, LISTES[g][0]) && entreeDuJour(g);
+    const suite = apercuQuotidien(g, 8).slice(1);
+    const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    const nomJour = (dans) => {
+        const d = new Date(Date.now() + dans * 86400000);
+        return `${JOURS[d.getDay()]} ${d.getDate()}`;
+    };
+    const carte = (v) => v ? `
+        <div class="banc-q-texte">${echapper(v.texte)}</div>
+        ${v.signature ? `<div class="banc-q-sign">— ${echapper(v.signature)}</div>` : ''}
+        ${v.secret ? `<div class="banc-q-sec"><b>Réponse :</b> ${echapper(v.secret)}
+            ${v.indice ? `<span class="banc-q-ind">Indice : ${echapper(v.indice)}</span>` : ''}</div>` : ''}`
+        : '<div class="banc-vide">Cette liste est vide.</div>';
+
+    return `
+        <div class="banc-q-onglets">${comptesQuotidien().map(({ genre, libelle, n }) =>
+        `<button type="button" class="banc-chip ${g === genre ? 'banc-chip--actif' : ''}"
+             data-genre="${genre}">${EMOJIS_GENRE[genre]} ${libelle} (${n})</button>`).join('')}</div>
+
+        <div class="banc-domaine">Aujourd'hui</div>
+        <div class="banc-q-jour">${carte(aujourdhui)}</div>
+
+        <div class="banc-domaine">Les sept prochains jours</div>
+        <div class="banc-q-suite">${suite.map(p => `
+            <div class="banc-q-ligne"><span class="banc-q-quand">${nomJour(p.dans)}</span>
+                <span>${echapper(p.entree ? p.entree.texte : '')}</span></div>`).join('')}</div>
+
+        <div class="banc-domaine">Toute la liste — ${LISTES[g].length} entrées</div>
+        <div class="banc-critere-q">Elles se relisent ici ; elles s'écrivent dans
+            <code>js/data/${g === 'enigme' ? 'enigmes' : g + 's'}.js</code>. Une liste
+            modifiable depuis le navigateur ne vivrait que sur cet appareil — ce qui est
+            lu par toute une classe se versionne avec le code.</div>
+        <ol class="banc-q-tout">${LISTES[g].map((e, i) => {
+        const v = normaliserQuotidien(g, e);
+        return `<li>${echapper(v.texte)}${v.signature
+            ? ` <i>— ${echapper(v.signature)}</i>` : ''}${v.secret
+            ? ` <b>→ ${echapper(v.secret)}</b>` : ''}</li>`;
+    }).join('')}</ol>`;
+}
+
 function peindre() {
     const el = assurerPanneau();
     const av = avancement(carnet, exercices, nomAppareil);
@@ -258,7 +329,8 @@ function peindre() {
         ...(repris ? [['retest', `À retester (${repris})`]] : []),
         ['ennuis', 'Ce qui cloche'],
         ['jeux', 'Les jeux'],
-        ['tous', `Tous (${exercices.length})`]
+        ['tous', `Tous (${exercices.length})`],
+        ['quotidien', '📅 Le quotidien']
     ];
     const liste = listeFiltree();
     const parDomaine = new Map();
@@ -268,10 +340,13 @@ function peindre() {
         parDomaine.get(d).push(e);
     });
 
-    corps.innerHTML = `
-        <div class="banc-filtres">${chips.map(([id, txt]) =>
+    const barreFiltres = `<div class="banc-filtres">${chips.map(([id, txt]) =>
         `<button type="button" class="banc-chip ${filtre === id ? 'banc-chip--actif' : ''}"
-             data-filtre="${id}">${txt}</button>`).join('')}</div>
+             data-filtre="${id}">${txt}</button>`).join('')}</div>`;
+
+    corps.innerHTML = filtre === 'quotidien'
+        ? barreFiltres + quotidienHtml()
+        : `${barreFiltres}
         ${liste.length ? '' : '<div class="banc-vide">Rien dans cette liste.</div>'}
         ${[...parDomaine.entries()].map(([dom, exos]) => `
             <div class="banc-domaine">${echapper(dom)}</div>
@@ -279,6 +354,9 @@ function peindre() {
 
     corps.querySelectorAll('[data-filtre]').forEach(b => {
         b.onclick = () => { filtre = b.dataset.filtre; peindre(); };
+    });
+    corps.querySelectorAll('[data-genre]').forEach(b => {
+        b.onclick = () => { genreQuotidien = b.dataset.genre; peindre(); };
     });
     corps.querySelectorAll('[data-jouer]').forEach(b => {
         b.onclick = () => jouer(b.dataset.jouer);

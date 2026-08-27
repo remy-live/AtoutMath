@@ -17,6 +17,9 @@
 // lui passe des faits, il renvoie un message. C'est ce qui permet de tester
 // les seuils — et un seuil mal réglé, ici, se paie en découragement.
 
+import { numeroDeJour } from './quotidien.js';
+import { entreeDuJour, genreDuJour } from '../data/quotidien.js';
+
 /** Un même jour civil ? C'est ce qui borne « une fois par jour ». */
 export function memeJour(a, b) {
     if (!a || !b) return false;
@@ -27,25 +30,39 @@ export function memeJour(a, b) {
 }
 
 /**
- * Les conseils du jour. Ils tournent, et ils portent tous sur la MANIÈRE de
- * travailler, jamais sur une notion : un conseil de contenu tombé au hasard à
- * la connexion n'aurait aucune chance de correspondre à ce que l'élève fait.
+ * CE QU'ON DIT À L'ÉLÈVE CHAQUE JOUR.
+ *
+ * Il n'y avait ici que sept conseils, et ils tournaient : au bout d'une semaine
+ * l'élève les connaissait et ne lisait plus la ligne. Rémy : « on pourrait
+ * avoir une liste de blagues mathématiques très courtes, une liste de
+ * citations, une liste de conseils […] et une série de petites énigmes très
+ * courtes qu'on pourrait suggérer chaque jour. Une centaine de chaque. »
+ *
+ * Les quatre listes vivent dans `data/`, le tirage dans `core/quotidien.js` —
+ * même phrase toute la journée, et rien qui se répète tant que la liste n'est
+ * pas épuisée. Ce module ne fait plus que CHOISIR LE GENRE du jour et rendre
+ * une ligne prête à lire.
+ *
+ * `CONSEILS` reste exporté : le carnet et l'écran d'arrivée s'en servent, et
+ * c'est bien la même liste — simplement passée de sept entrées à cent.
  */
-export const CONSEILS = [
-    'Quand tu bloques, relis la question à voix haute. La moitié des erreurs viennent d\'un mot lu trop vite.',
-    'Le bouton d\'indice ne donne jamais la réponse : il donne la première chose à regarder. Sers-t\'en tôt plutôt que tard.',
-    'Se tromper puis comprendre pourquoi vaut mieux que réussir sans savoir comment.',
-    'Le robot fait l\'exercice devant toi en expliquant chaque geste. C\'est le meilleur départ sur un exercice inconnu.',
-    'Dix minutes par jour valent mieux qu\'une heure le dimanche : la mémoire retient ce qu\'elle revoit.',
-    'Avant de calculer, demande-toi si le résultat sera grand ou petit. Tu repéreras tes erreurs toi-même.',
-    'Une erreur notée dans ton carnet n\'est pas une mauvaise note : c\'est une question que tu vas apprendre à refaire.'
-];
+export { CONSEILS } from '../data/conseils.js';
 
-/** Le conseil du jour : le même toute la journée, différent le lendemain. */
+/**
+ * La ligne du jour, tous genres confondus.
+ *
+ * Une CITATION porte sa signature, une ÉNIGME porte son indice — jamais sa
+ * réponse : une énigme dont on lit la réponse en même temps que l'énoncé n'est
+ * pas une énigme. L'élève la cherche dans la journée, et la retrouve au banc
+ * d'essai du professeur s'il la lui demande.
+ */
 export function conseilDuJour(maintenant) {
-    const d = new Date(maintenant);
-    const jour = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
-    return CONSEILS[jour % CONSEILS.length];
+    const jour = numeroDeJour(maintenant);
+    const v = entreeDuJour(genreDuJour(jour), { maintenant });
+    if (!v) return '';
+    if (v.signature) return `« ${v.texte} » — ${v.signature}`;
+    if (v.indice) return `${v.texte} (Indice : ${v.indice})`;
+    return v.texte;
 }
 
 /**
