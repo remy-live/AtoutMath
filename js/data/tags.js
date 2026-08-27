@@ -16,6 +16,10 @@ export const TAGS = {
         FRACTIONS: "Fractions",
         DECIMAUX: "Nombres Décimaux",
         RELATIFS: "Nombres Relatifs",
+        // Le chapitre où le nombre laisse la place à la lettre. Rangé sous
+        // « Calcul mental », il aurait disparu au milieu des tables — c'est
+        // pourtant l'entrée en algèbre, et elle se travaille pour elle-même.
+        LITTERAL: "Calcul Littéral",
         REPERAGE: "Repérage",
         // La symétrie axiale ouvre la sixième, la centrale la cinquième, la
         // translation et la rotation la quatrième : quatre chapitres qui se

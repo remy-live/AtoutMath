@@ -31,6 +31,8 @@ import { scratchGenerator } from '../generators/scratch.js';
 import { horlogeGenerator } from '../generators/horloge.js';
 import { relatifsGenerator } from '../generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
+import { relatifsProduitGenerator } from '../generators/relatifsProduit.js';
+import { litteralReduireGenerator } from '../generators/litteral.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
@@ -105,7 +107,8 @@ import {
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
-    relatifsAdditionGenerator, redactionGenerator, logigrammeGenerator, dominosGenerator,
+    relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
+    redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
     graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,

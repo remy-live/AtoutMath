@@ -733,6 +733,22 @@ const BASE = {
         descriptor: 'Calculer la somme de deux ou trois nombres relatifs, avec ou sans support.',
         lesson: 'La distance à zéro d\'un nombre s\'appelle aussi sa VALEUR ABSOLUE, et se note entre deux barres : |−5| = 5, |+5| = 5. Deux cas, et deux seulement. MÊME SIGNE : on ajoute les distances à zéro (les valeurs absolues) et on garde le signe — (−3) + (−4) = −7. SIGNES DIFFÉRENTS : on retire la plus petite distance à zéro de la plus grande, et on garde le signe du plus éloigné de zéro — (−7) + (+4) = −3, parce que 7 − 4 = 3 et que le 7 était négatif. Les pastilles expliquent pourquoi : une bleue et une rouge forment une paire qui vaut 0, et il ne reste que le surplus.'
     },
+    'num.relatifs.produit': {
+        label: 'Multiplier des nombres relatifs',
+        chemin: [D.NUMERIQUE, SD.RELATIFS],
+        niveaux: [N.QUATRIEME],
+        prereqs: ['num.relatifs.somme'],
+        descriptor: 'Calculer le produit de deux ou plusieurs nombres relatifs, et en donner le signe.',
+        lesson: 'DEUX GESTES SÉPARÉS, et c\'est ce qui rend la chose simple. D\'ABORD LE SIGNE : on compte combien de facteurs sont négatifs. Un nombre PAIR de facteurs négatifs (0, 2, 4…) donne un produit POSITIF ; un nombre IMPAIR donne un produit négatif. ENSUITE LE NOMBRE : on multiplie les distances à zéro, sans plus s\'occuper des signes. (−3) × (−4) : deux facteurs négatifs, donc positif ; 3 × 4 = 12 ; le produit vaut +12. ATTENTION, CE N\'EST PAS LA RÈGLE DE L\'ADDITION : (−3) + (−4) = −7, mais (−3) × (−4) = +12. C\'est la faute la plus fréquente du chapitre, et elle vient de ce qu\'on applique une règle juste au mauvais endroit. Deux cas à part : un facteur nul rend tout le produit nul, et multiplier par −1 revient à prendre l\'opposé. Enfin (−4)² = +16 alors que −4² = −16 : la parenthèse dit lequel des deux nombres est élevé au carré.'
+    },
+    'num.litteral.reduire': {
+        label: 'Simplifier et réduire une expression littérale',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.mult.sens', 'num.add.entiers'],
+        descriptor: 'Supprimer le signe × d\'une expression littérale, regrouper les facteurs et réduire une somme de termes.',
+        lesson: 'TROIS GESTES DIFFÉRENTS, qu\'on confond tout le temps. 1. SIMPLIFIER L\'ÉCRITURE : devant une lettre, le signe × ne s\'écrit pas — 3 × x s\'écrit 3x, et le nombre se range DEVANT la lettre. Rien n\'est calculé, c\'est une convention. Le coefficient 1 ne s\'écrit pas non plus : 1 × x s\'écrit x. 2. REGROUPER DES FACTEURS : dans un produit, on peut changer l\'ordre, donc les nombres se MULTIPLIENT entre eux — 3 × x × 4 = 12x. 3. RÉDUIRE UNE SOMME : on regroupe ce qui porte la même lettre, et là on AJOUTE les coefficients — 2x + 3x = 5x. C\'est le contraire du geste précédent, et c\'est là qu\'on se trompe. DEUX PIÈGES À CONNAÎTRE : x + x = 2x (une somme) mais x × x = x² (un produit) ; et « 2x + 3 » ne se réduit PAS — un nombre de x et un nombre tout court ne vont pas dans le même sac.'
+    },
     'geo.angles.mesure': {
         label: 'Mesurer un angle au rapporteur',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],

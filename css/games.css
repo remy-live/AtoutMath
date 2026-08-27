@@ -143,6 +143,26 @@
    et déborde sur les lignes voisines. */
 .game-question .demo-cible { display: inline-block; }
 
+/* --- LA CONSIGNE ET L'EXPRESSION NE SONT PAS LA MÊME CHOSE -------------------
+   « Écris cette expression plus simplement » se lit UNE fois par exercice ;
+   « 4 × y » se lit à chaque question, et c'est lui qu'on doit voir de loin.
+   Collés sur une ligne, ils se lisaient « plus simplement4 × y ». La consigne
+   passe donc dessus, en petit, et l'expression garde toute la taille de
+   l'énoncé. Sert au calcul littéral et aux produits de relatifs. */
+.game-question .lit-consigne,
+.game-question .rel-q {
+    display: block; font-size: .48em; font-weight: 700;
+    color: var(--text-muted); letter-spacing: .01em; line-height: 1.3;
+    margin-bottom: .35em;
+}
+.game-question .lit-expr {
+    display: block; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+/* Pour les relatifs, l'ordre est inverse : le produit d'abord, la question
+   dessous — c'est le calcul qu'on regarde, la question ne change jamais. */
+.game-question .rel-q { margin: .3em 0 0; }
+
 /* Objets du jeu */
 /* LES BULLES TIENNENT TOUTES SUR UNE LIGNE.
    À 110 px de large et 25 px d'écart, quatre bulles réclament 515 px : sur un

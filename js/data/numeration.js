@@ -13,6 +13,7 @@ const NUM = TAGS.SOUS_DOMAINE.NUMERATION;
 const DEC = TAGS.SOUS_DOMAINE.DECIMAUX;
 const REL = TAGS.SOUS_DOMAINE.RELATIFS;
 const MENTAL = TAGS.SOUS_DOMAINE.CALCUL_MENTAL;
+const LITT = TAGS.SOUS_DOMAINE.LITTERAL;
 const SIXIEME = TAGS.NIVEAU.SIXIEME;
 const CM2 = TAGS.NIVEAU.CM2;
 const CINQUIEME = TAGS.NIVEAU.CINQUIEME;
@@ -410,6 +411,49 @@ export const numerationExercises = [
         motsClefs: ['signes différents', 'pastilles', 'simplifier', 'écriture'],
         tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
         instruction: "Douze marches, deux questions chacune. D'abord des pastilles toutes de la même couleur — il n'y a qu'à compter, et on apprend l'écriture. Puis des pastilles des DEUX couleurs : une rouge et une bleue valent zéro ensemble, on les élimine par paires, et la soustraction apparaît toute seule. Ensuite on simplifie les écritures, et on finit avec une virgule. Le réglage « Étape » permet de se poser sur le passage difficile — (+7) + (−3) — et d'y rester."
+    },
+    {
+        // MULTIPLIER DES RELATIFS. Rémy : « j'aimerais bien des exercices sur
+        // les produits de nombres relatifs ».
+        //
+        // LA PREMIÈRE MARCHE NE DEMANDE PAS DE CALCULER, elle demande le SIGNE.
+        // C'est là que se joue le contresens du chapitre : l'élève qui vient
+        // d'apprendre que (−3) + (−4) = −7 écrit tout naturellement
+        // (−3) × (−4) = −12. Séparer les deux gestes — trouver le signe, puis
+        // multiplier les distances à zéro — est ce qui permet de travailler
+        // celui qui coince sans le noyer dans l'autre.
+        id: 'num-relatifs-produit',
+        cree: '2026-08-27',
+        consignePapier: "Compte d'abord les facteurs négatifs : leur nombre décide du signe.",
+        colonnesPapier: 3,
+        title: 'Multiplier des Relatifs, pas à pas',
+        generatorId: 'num.relatifs.produit', activityId: 'bubbles',
+        params: { etape: 'progressif' },
+        motsClefs: ['règle des signes', 'produit', 'multiplication', 'négatif', 'positif',
+            'facteurs', 'carré', 'opposé'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Douze marches, deux questions chacune. LES CINQ PREMIÈRES NE DEMANDENT PAS DE CALCULER : seulement de dire si le produit sera positif ou négatif. C'est le vrai sujet du chapitre — (−3) + (−4) fait −7, mais (−3) × (−4) fait +12, et ce n'est pas la même règle. Ensuite on calcule, d'abord avec les parenthèses puis sans. Les trois dernières marches passent à plusieurs facteurs : on ne récite plus une règle, on COMPTE les facteurs négatifs, et leur parité décide. La dernière garde les cas à part : le zéro, le 1, le −1, et le carré d'un négatif — (−4)² vaut +16, mais −4² vaut −16."
+    },
+    {
+        // SIMPLIFIER ET RÉDUIRE. Rémy : « j'aimerais bien un exercice qui
+        // entraîne à simplifier et à réduire des expressions littérales
+        // (d'abord 2*x = 2x) — ATTENTION ON UTILISE LE SIGNE FOIS. »
+        //
+        // La majuscule est de lui, et elle commande l'exercice : l'énoncé écrit
+        // « 2 × x », jamais « 2x ». C'est précisément le signe qu'on apprend à
+        // faire disparaître, et l'exercice n'aurait plus d'objet si la question
+        // l'avait déjà supprimé.
+        id: 'num-litteral-reduire',
+        cree: '2026-08-27',
+        consignePapier: "Écris chaque expression le plus simplement possible.",
+        colonnesPapier: 3,
+        title: 'Simplifier et Réduire',
+        generatorId: 'num.litteral.reduire', activityId: 'bubbles',
+        params: { etape: 'progressif' },
+        motsClefs: ['calcul littéral', 'expression', 'réduire', 'simplifier', 'lettre',
+            'coefficient', 'terme', 'facteur', 'signe fois'],
+        tags: { chemin: [D, LITT], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Treize marches, deux questions chacune, et TROIS GESTES qu'on confond tout le temps. D'abord on ENLÈVE le signe × : 3 × x s'écrit 3x, et le nombre se range devant la lettre — rien n'est calculé, c'est une convention. Ensuite on REGROUPE des facteurs : 3 × x × 4 = 12x, et là les nombres se multiplient. Enfin on RÉDUIT une somme : 2x + 3x = 5x, et là on ajoute — c'est le contraire du geste précédent, et c'est là qu'on se trompe. Deux pièges à retenir : x + x = 2x mais x × x = x², et « 2x + 3 » ne se réduit pas du tout."
     },
     {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est

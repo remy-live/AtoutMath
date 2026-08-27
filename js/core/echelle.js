@@ -36,6 +36,9 @@
  */
 export const CRANS_MAX = 50;
 
+/** Au-delà, les noms des crans se marchent dessus : on retombe sur « 3 / 17 ». */
+export const CRANS_NOMMES_MAX = 8;
+
 /** Une option de schéma : valeur brute, ou `{ value, label, court }`. */
 const val = (o) => (o && typeof o === 'object') ? o.value : o;
 const lib = (o) => (o && typeof o === 'object') ? o.label : String(o);
@@ -80,12 +83,19 @@ export function echelleDe(param) {
         // puis 4, puis le clavier (recommandé) » donnerait « Progressive : 2… »,
         // c'est-à-dire un mensonge tronqué. Le nom court est une deuxième
         // affirmation de l'auteur, comme `echelle` elle-même.
+        //
+        // ET PAS AU-DELÀ DE HUIT CRANS. Le rail n'a qu'une largeur, et dix-sept
+        // noms courts s'y partagent trente pixels chacun : « 10 », « 11 »,
+        // « 12 » se rendent alors « 1. », « 1. », « 1. ». Une graduation qu'on
+        // ne peut plus lire est pire que pas de graduation — le compte « 3/17 »
+        // reprend la main.
         const courts = param.options.map(crt);
+        const nommables = courts.every(Boolean) && param.options.length <= CRANS_NOMMES_MAX;
         return {
             nombre: false,
             valeurs: param.options.map(val),
             libelles: param.options.map(lib),
-            courts: courts.every(Boolean) ? courts : null
+            courts: nommables ? courts : null
         };
     }
 
