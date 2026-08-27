@@ -327,8 +327,34 @@ function majBoutons() {
 export function reglerCalculatrice(exo) {
     const permise = !!(exo && exo.calculatrice);
     document.querySelectorAll('[data-calculatrice]').forEach(b => { b.hidden = !permise; });
-    if (!permise) fermerCalculatrice();
-    else majBoutons();
+    if (!permise) { fermerCalculatrice(); return; }
+    majBoutons();
+    // ON DIT QU'ELLE EST LÀ. Rémy : « quand la calculatrice est disponible, il
+    // faut qu'elle clignote un peu, qu'on voit que l'on peut s'en servir ». Le
+    // bouton apparaissait au milieu de six autres icônes, sans un mot — et un
+    // droit qu'on ne sait pas qu'on a n'est pas un droit.
+    battreBoutons();
+}
+
+/**
+ * LE BOUTON BAT TROIS FOIS — pas plus.
+ *
+ * Un clignotement permanent dans un en-tête cesse d'attirer l'œil au bout
+ * d'une minute et se met à agacer ; sur un exercice qui autorise la
+ * calculatrice, ce serait agacer du début à la fin. Trois battements suffisent
+ * à faire tourner la tête, et ensuite l'icône redevient une icône.
+ *
+ * On retire la classe et l'on force un reflow avant de la remettre, sans quoi
+ * l'animation ne rejoue pas à la question suivante : pour le navigateur, rien
+ * n'a changé.
+ */
+function battreBoutons() {
+    document.querySelectorAll('[data-calculatrice]').forEach(b => {
+        if (b.hidden) return;
+        b.classList.remove('calc-dispo');
+        void b.offsetWidth;
+        b.classList.add('calc-dispo');
+    });
 }
 
 /**
@@ -345,7 +371,12 @@ export function reglerCalculatrice(exo) {
  * question est un piège, pas un service.
  */
 export function signalerNouvelleQuestion() {
-    if (!fenetre) return;
+    // LA FENÊTRE FERMÉE, C'ÉTAIT LE CAS COURANT — ET IL NE SE PASSAIT RIEN.
+    // La fonction commençait par `if (!fenetre) return`, si bien que le rappel
+    // à l'œil n'existait que pour l'élève qui avait DÉJÀ ouvert la
+    // calculatrice, c'est-à-dire celui qui savait déjà. C'est le bouton qui
+    // bat maintenant quand elle est disponible mais fermée.
+    if (!fenetre) { battreBoutons(); return; }
     if (etat && etat.saisie) { etat = nouvelEtat(); afficher(); }
     fenetre.classList.remove('cx--appel');
     void fenetre.offsetWidth;   // sinon l'animation ne rejoue pas

@@ -268,6 +268,10 @@ export class Runner {
         this.itemsResolved = new Set();
         this.itemsSolved = new Set();
         this.autonomousCounter = 0;
+        // L'ÉTAPE EST-ELLE DÉJÀ JOUÉE ? Voir `onAttempt` : le drapeau se pose
+        // dès la question décisive, la conclusion s'affiche une seconde et
+        // demie plus tard, et entre les deux plus rien ne compte.
+        this.etapeClose = false;
 
         const titleEl = document.getElementById('game-title');
         if (titleEl) {
@@ -485,11 +489,18 @@ export class Runner {
         // eux-mêmes : le Pousseur prépare l'entrepôt suivant deux secondes
         // après la victoire, et la fin d'étape, elle, est différée d'une
         // seconde et demie pour laisser lire la conclusion. Dans cet
-        // entre-deux — ou quand un chronomètre pilote l'étape et que rien
-        // n'arrête le compte —, une partie de plus se terminait et venait
-        // s'ajouter : quatre entrepôts sur trois. Le drapeau est déjà posé de
-        // façon synchrone à la victoire décisive ; il suffit de l'écouter.
-        if (this.session && this.session.termine) return;
+        // entre-deux, une partie de plus se terminait et venait s'ajouter :
+        // quatre entrepôts sur trois.
+        //
+        // LE DRAPEAU EST SUR LE RUNNER, PAS SUR LA SESSION. La première
+        // version l'avait posé sur `this.session` — et une session, seuls les
+        // exercices à générateur en ont : les jeux autonomes, ceux-là mêmes
+        // qui posent le problème, n'en ont AUCUNE. La garde ne gardait donc
+        // rien pour eux. Le compteur du haut, lui, était bien plafonné à
+        // l'affichage, ce qui a caché la moitié du bug : on lisait « 3 / 3
+        // entrepôts » en haut et « 4 bonnes réponses sur 4 » dans le bilan.
+        // Rémy : « pas très logique ». Non.
+        if (this.etapeClose) return;
 
         const key = payload.itemSeed || `auto_${this.autonomousCounter}`;
         const maxTries = this.policy.maxAttemptsPerItem;
@@ -515,6 +526,7 @@ export class Runner {
             // pouvait la compter. Le drapeau est posé ICI, de façon synchrone,
             // donc avant tout `dismissed.then` : la dernière question reste à
             // l'écran, figée, jusqu'à la conclusion.
+            this.etapeClose = true;
             if (this.session) this.session.termine = true;
             regTimeout(() => this.endStep(), 1500);
         } else if (resolved) {
@@ -541,6 +553,10 @@ export class Runner {
      */
     partieTerminee({ gagne } = {}) {
         if (!this.step) return;
+        // Même raison qu'en `onAttempt` : entre la fin de la partie et le bilan
+        // il s'écoule presque deux secondes, et un jeu qui enchaîne tout seul a
+        // le temps d'y glisser une partie de plus.
+        this.etapeClose = true;
         regTimeout(() => { if (this.step) this.endStep(); }, 1800);
     }
 

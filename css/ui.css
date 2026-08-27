@@ -1238,6 +1238,27 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 @media (prefers-reduced-motion: reduce) { .cx--appel { animation: none; } }
 
+/* ET LE BOUTON, QUAND LA CALCULATRICE EST SEULEMENT DISPONIBLE.
+   Rémy : « quand la calculatrice est disponible, il faut qu'elle clignote un
+   peu, qu'on voit que l'on peut s'en servir ». Le battement ci-dessus ne
+   concernait que la FENÊTRE OUVERTE — donc jamais l'élève qui ne sait pas
+   encore qu'il y a droit. Or c'est précisément lui qu'il faut prévenir : le
+   bouton n'apparaît que sur les exercices qui l'autorisent, et il apparaissait
+   sans un mot, au milieu de six autres icônes.
+   TROIS BATTEMENTS, PUIS PLUS RIEN. Un clignotement permanent dans un en-tête
+   n'attire plus l'œil au bout d'une minute, il l'agace — et sur un exercice où
+   l'on a le droit de calculer, ce serait agacer pendant tout l'exercice. */
+.calc-dispo { animation: calc-dispo 1s ease-out 3; }
+@keyframes calc-dispo {
+    0%, 100% { box-shadow: none; transform: scale(1); }
+    35% {
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 40%, transparent);
+        transform: scale(1.12);
+    }
+    70% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .calc-dispo { animation: none; } }
+
 /* LE RÉGIME DU SAUT SE VOIT SANS LIRE L'INFOBULLE. Sauter vingt questions en
    « compté faux » sans s'en apercevoir remplirait le carnet d'erreurs d'un
    élève ; la couleur est donc là pour prévenir, pas pour décorer. */

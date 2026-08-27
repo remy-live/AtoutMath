@@ -134,6 +134,30 @@ class Embouteillage extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                 }
                 .eb-auto svg { width: 100%; height: 100%; display: block; }
+                /* ELLE SORT VRAIMENT DU PARKING.
+                   Rémy : « il faudrait pouvoir voir la voiture sortir du
+                   parking ». La partie se gagnait d'un coup sec — la voiture
+                   s'arrêtait contre le mur, une phrase s'affichait, et c'était
+                   tout. Or c'est le SEUL moment de récompense du jeu, et la
+                   trouée verte qu'on a passé le plateau entier à dégager ne
+                   servait jamais à rien : personne ne franchissait le mur.
+                   Elle franchit donc la trouée et s'en va par la droite. Le
+                   cadre du plateau la rogne au passage, ce qui est exactement
+                   ce qu'on veut voir : elle QUITTE l'écran. */
+                .eb-auto--dehors {
+                    left: calc(var(--eb-case) * 8.4) !important;
+                    transition: left .85s cubic-bezier(.45, .05, .55, 1),
+                                opacity .3s ease .55s;
+                    opacity: 0;
+                    z-index: 3;
+                }
+                /* Et la trouée s'ouvre en grand sur son passage : le vert
+                   s'allume une seconde, le temps que la voiture s'y engage. */
+                .eb-sortie--ouverte {
+                    background: #38a169;
+                    transform: scale(1.25);
+                    transition: transform .3s ease, background .3s ease;
+                }
                 .eb-auto--vise { filter: brightness(1.12); }
                 .eb-auto--vise::after {
                     content: ''; position: absolute; inset: 2%;
@@ -418,6 +442,7 @@ class Embouteillage extends BaseGame {
         this.vise = null;
         this.montre = null;
         this.dessiner();
+        this.sortirDuParking();
         const q = qualiteEmbouteillage(this.jeu.mini, this.coups);
         this.note(q.parfait
             ? `🏆 Parfait — ${q.joues} coups, le minimum démontré de ce parking.`
@@ -432,6 +457,42 @@ class Embouteillage extends BaseGame {
         // progressif » — la progression ne sert à rien si elle ne s'enclenche
         // pas toute seule.
         if (this.niveau < NIVEAUX_EMBOUTEILLAGE.length) this.niveau++;
+        // ET L'ON JOUE VRAIMENT LE NIVEAU SUIVANT.
+        //
+        // Rémy : « pour l'embouteillage, on ne passe pas au niveau suivant ».
+        // Le compteur montait bien — `this.niveau++` juste au-dessus — mais
+        // rien n'allait chercher le parking correspondant : on restait devant
+        // la grille gagnée, avec un numéro de niveau qui ne voulait plus rien
+        // dire. Le Pousseur, lui, enchaînait depuis le début ; c'est la même
+        // ligne, qui manquait ici.
+        //
+        // Le délai laisse voir la voiture s'en aller (0,85 s) et lire le
+        // résultat avant que le plateau ne change.
+        setTimeout(() => { if (this.isRunning) this.poser(true); }, 2600);
+    }
+
+    /**
+     * LA VOITURE ROUGE S'EN VA PAR LA TROUÉE.
+     *
+     * Rémy : « il faudrait pouvoir voir la voiture sortir du parking ». C'est
+     * la seule récompense du jeu, et c'est aussi ce qui donne enfin un rôle à
+     * la sortie verte : on passe la partie entière à dégager un passage que
+     * personne n'empruntait.
+     *
+     * On touche à la classe de l'élément déjà en place plutôt que de redessiner :
+     * une transition CSS ne part que si l'élément EXISTAIT avec l'ancienne
+     * valeur. Repeindre le plateau la ferait naître déjà sortie, donc immobile.
+     */
+    sortirDuParking() {
+        const auto = this.plateauEl.querySelector('.eb-auto--sortir');
+        const trouee = this.plateauEl.querySelector('.eb-sortie');
+        if (trouee) trouee.classList.add('eb-sortie--ouverte');
+        if (!auto) return;
+        // Une image d'attente : sans elle, le navigateur peut grouper l'ajout
+        // de classe avec le rendu qui précède et n'animer rien du tout.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            auto.classList.add('eb-auto--dehors');
+        }));
     }
 
     note(html, ton) {
