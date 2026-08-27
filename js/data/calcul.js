@@ -1217,13 +1217,14 @@ export const calculExercises = [
         activityId: 'mot-code', skills: ['voc.mathematique'],
         sansRevision: true,
         printable: 'motcode', printGeneratorId: 'voc.mot-code-fiche',
-        printParams: { theme: 'angles', taille: 'moyenne', niveauMax: 3, motsOfferts: 1 },
-        params: { theme: 'angles', niveauMax: 3, taille: 'moyenne', motsOfferts: 1 },
+        printParams: { theme: 'litteral', taille: 'moyenne', niveauMax: 3 },
+        params: { theme: 'litteral', niveauMax: 3, taille: 'moyenne' },
         paramSchema: [
             {
                 id: 'theme', type: 'select', label: 'Vocabulaire',
                 aide: 'Sur UN chapitre, l\'élève décode par le sens autant que par la déduction : il reconnaît « BISSECTRICE » à trois lettres près parce qu\'il sait de quoi la fiche parle. Mélangé, il ne reste que la déduction — c\'est un autre exercice, et il est plus dur.',
                 options: [
+                    { value: 'litteral', label: 'Le calcul littéral' },
                     { value: 'angles', label: 'Le vocabulaire des angles' },
                     { value: 'calcul', label: 'Les opérations' },
                     { value: 'geometrie', label: 'Géométrie' },
@@ -1231,15 +1232,15 @@ export const calculExercises = [
                     { value: 'mesures', label: 'Grandeurs et mesures' },
                     { value: 'tout', label: 'Mélange de tout le vocabulaire' }
                 ],
-                default: 'angles'
+                default: 'litteral'
             },
             {
                 id: 'taille', type: 'select', label: 'Taille de la grille', echelle: true,
-                aide: 'La grille est un RECTANGLE qu\'on cherche à remplir : ce n\'est donc pas le nombre de mots qu\'on règle, c\'est la place. Plus le rectangle est grand, plus il faut de mots pour le garnir — et plus l\'alphabet à retrouver est large.',
+                aide: 'La grille est un ANNEAU : un cadre de bandes, le centre laissé vide. Ce qu\'on règle, c\'est le nombre de bandes par côté — donc le nombre de mots, et la largeur de l\'alphabet à retrouver.',
                 options: [
-                    { value: 'petite', label: 'Petite — 9 × 7' },
-                    { value: 'moyenne', label: 'Moyenne — 11 × 9' },
-                    { value: 'grande', label: 'Grande — 13 × 11' }
+                    { value: 'petite', label: 'Petite — 8 mots', court: 'Petite' },
+                    { value: 'moyenne', label: 'Moyenne — 12 mots', court: 'Moyenne' },
+                    { value: 'grande', label: 'Grande — 16 mots', court: 'Grande' }
                 ],
                 default: 'moyenne'
             },
@@ -1252,16 +1253,6 @@ export const calculExercises = [
                 ],
                 default: 3
             },
-            {
-                id: 'motsOfferts', type: 'select', label: 'Mots donnés au départ', echelle: true,
-                aide: 'On part d\'un MOT ENTIER, pas de lettres éparpillées : l\'élève le lit, reconnaît le chapitre, et ses lettres sont déjà posées partout ailleurs dans la grille. C\'est le mot qui porte le plus de lettres différentes qui est choisi. À zéro, il ne reste que la déduction pure.',
-                options: [
-                    { value: 0, label: 'Aucun — casse-tête' },
-                    { value: 1, label: 'Un mot' },
-                    { value: 2, label: 'Deux mots — pour découvrir' }
-                ],
-                default: 1
-            }
         ],
         motsClefs: ['mot codé', 'codeword', 'code', 'lettres', 'chiffres', 'vocabulaire',
             'grille', 'lexique', 'déduction'],
@@ -1269,7 +1260,7 @@ export const calculExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: "Chaque lettre de la grille est remplacée par un numéro, le MÊME partout : le 14 est toujours la même lettre. UN MOT est déjà écrit dans la grille : c'est de là qu'on part, ses lettres sont posées partout où leur numéro reparaît. Touche un numéro — dans la grille ou dans la clé du bas —, puis la lettre que tu crois qu'il cache : elle se pose d'un coup dans toutes les cases qui portent ce numéro. Deux numéros différents ne peuvent jamais cacher la même lettre : les lettres déjà employées s'estompent sur le clavier. Tous les mots viennent du vocabulaire du chapitre choisi, et « Vérifier » ne montre que les numéros FAUX."
+        instruction: "Chaque lettre de la grille est remplacée par un numéro, le MÊME partout : le 14 est toujours la même lettre. Les mots se lisent en anneau autour du cadre — une flèche marque le début de chacun et le sens dans lequel il se lit. LA CLÉ, sous la grille, COMMENCE PAR UN MOT : ses lettres sont déjà posées partout où leur numéro reparaît, et c'est de là qu'on part. Une lettre qui ne paraît qu'une seule fois dans toute la grille est écrite en clair, sans numéro : elle ne se devinerait pas. Touche un numéro — dans la grille ou dans la clé —, puis la lettre que tu crois qu'il cache : elle se pose d'un coup dans toutes les cases qui portent ce numéro. Deux numéros différents ne peuvent jamais cacher la même lettre : les lettres déjà employées s'estompent sur le clavier. « Vérifier » ne montre que les numéros FAUX."
     },
     {
         // LE CHASSEUR DE DIVISEURS. Rémy : « je pense à un jeu un peu futuriste

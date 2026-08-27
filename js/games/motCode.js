@@ -32,6 +32,34 @@ import {
     estResoluCode, qualiteCode, THEMES, FORMATS_CODE
 } from '../core/motCode.js';
 
+/**
+ * LES FLÈCHES DES CASES MUETTES, dessinées et non écrites.
+ *
+ * Rémy les trace à la main sur ses fiches : elles disent où commence chaque mot
+ * et dans quel sens il se lit — c'est ce qui remplace les définitions d'un mot
+ * croisé. Un caractère Unicode aurait suffi en apparence, mais « ↳ » et « ⇓ »
+ * ne sont pas dans toutes les polices d'un iPad d'école : là où ils manquent,
+ * la case affiche un carré vide et la grille devient illisible. Un tracé SVG,
+ * lui, ne dépend de rien.
+ *
+ * `coin` en porte DEUX : la case d'angle lance à la fois la bande qui part vers
+ * la droite et celle qui descend.
+ */
+const FLECHE_D = 'M4 12h13m-4-4 4 4-4 4';
+const FLECHE_B = 'M12 4v13m-4-4 4 4 4-4';
+// SUR UNE CASE D'ANGLE, LES DEUX FLÈCHES NE SE SUPERPOSENT PAS. Centrées toutes
+// les deux, elles se croisent en une étoile qu'on ne lit plus ; on les range
+// donc chacune dans sa moitié, comme deux départs distincts — ce qu'elles sont.
+const FLECHE_D_HAUT = 'M8 7h10m-3-3 3 3-3 3';
+const FLECHE_B_GAUCHE = 'M7 8v10m-3-3 3 3 3-3';
+function flecheSvg(type) {
+    if (!type || type === 'fin') return '';
+    const traits = type === 'coin' ? [FLECHE_D_HAUT, FLECHE_B_GAUCHE]
+        : type === 'bas' ? [FLECHE_B] : [FLECHE_D];
+    return `<svg class="mk-fleche" viewBox="0 0 24 24" aria-hidden="true">`
+        + traits.map(d => `<path d="${d}"/>`).join('') + `</svg>`;
+}
+
 const COMPETENCE = 'voc.mathematique';
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -42,8 +70,6 @@ class MotCode extends BaseGame {
         this.theme = THEMES[this.params.theme] ? this.params.theme : 'angles';
         this.niveauMax = Number(this.params.niveauMax) || 3;
         this.taille = FORMATS_CODE[this.params.taille] ? this.params.taille : 'moyenne';
-        this.motsOfferts = this.params.motsOfferts === undefined
-            ? 1 : Number(this.params.motsOfferts);
         this.saisie = {};
         this.verifs = 0;
         this.soufflees = new Set();
@@ -105,6 +131,10 @@ class MotCode extends BaseGame {
                     background: #1f2937; box-shadow: inset 0 0 0 1px #1f2937;
                     cursor: default;
                 }
+                /* Le trou du cadre : ni case, ni trait, ni fond. */
+                .mk-case--creux {
+                    background: transparent; box-shadow: none; cursor: default;
+                }
                 .mk-num {
                     position: absolute; top: 1px; left: 0; right: 0; text-align: center;
                     font-size: calc(var(--mk-cote) * .32);
@@ -120,6 +150,23 @@ class MotCode extends BaseGame {
                     box-shadow: inset 0 0 0 1px #94a3b8, inset 0 -3px 0 #10b981;
                 }
                 .mk-case--faute { color: #dc2626; }
+                /* La flèche occupe sa case muette sans la remplir : c'est une
+                   indication, pas un dessin. */
+                .mk-fleche {
+                    position: absolute; inset: 12%;
+                    width: 76%; height: 76%;
+                    fill: none; stroke: #cbd5e1; stroke-width: 2.4;
+                    stroke-linecap: round; stroke-linejoin: round;
+                }
+                /* UNE LETTRE QUI NE PARAÎT QU'UNE FOIS EST DONNÉE. Elle n'a pas
+                   de numéro — un numéro unique dans toute la grille ne se déduit
+                   de rien, puisque les mots de l'anneau ne se croisent pas. On
+                   la marque donc comme un cadeau du départ, et non comme une
+                   case à trouver qu'on aurait remplie par magie. */
+                .mk-case--clair {
+                    background: #f8fafc; color: #475569;
+                    cursor: default; font-style: italic;
+                }
 
                 /* LA CLÉ : l'état du jeu, pas une légende. Elle défile si elle
                    ne tient pas — vingt lettres sur un téléphone font deux
@@ -222,18 +269,13 @@ class MotCode extends BaseGame {
         this.compteur = (this.compteur || 0) + 1;
         this.m = creerMotCode({
             theme: this.theme, niveauMax: this.niveauMax, taille: this.taille,
-            motsOfferts: this.motsOfferts, essais: 14,
+            essais: 12,
             rng: makeRng(`${this.graine}-${this.compteur}`),
             rngPour: (i) => makeRng(`${this.graine}-${this.compteur}-${i}`)
         });
-        // LES CASES DU MOT DE DÉPART, pour les montrer comme telles : c'est le
-        // point d'appui, il doit se lire d'un coup d'œil au milieu du reste.
-        this.casesDepart = new Set();
-        this.m.depart.forEach(d => {
-            for (let i = 0; i < d.mot.length; i++) {
-                this.casesDepart.add(d.dir === 'h' ? `${d.x + i},${d.y}` : `${d.x},${d.y + i}`);
-            }
-        });
+        // LES FLÈCHES, RANGÉES PAR CASE : c'est le dessin qui dit où commence
+        // chaque mot et dans quel sens il se lit.
+        this.fleches = new Map(this.m.fleches.map(f => [`${f.x},${f.y}`, f.type]));
         this.saisie = saisieInitiale(this.m);
         this.donnees = new Set(this.m.donnees);
         this.soufflees = new Set();
@@ -244,12 +286,12 @@ class MotCode extends BaseGame {
             .find(n => !this.saisie[n]) || null;
         this.dessiner();
         const q = qualiteCode(this.m);
-        // ON ANNONCE LE MOT DE DÉPART PAR SON NOM. « Quelques lettres sont
-        // données » laisse l'élève les chercher ; « pars de BISSECTRICE » lui
-        // dit d'où partir, ce qui est la consigne réelle.
-        const depart = q.depart.length
-            ? `Pars de <b>${q.depart.join('</b> et <b>')}</b>, déjà écrit${q.depart.length > 1 ? 's' : ''} dans la grille. `
-            : 'Aucun mot n\'est donné : casse-tête complet. ';
+        // ON ANNONCE LE MOT DE LA CLÉ PAR SON NOM. « Quelques lettres sont
+        // données » laisse l'élève les chercher ; « la clé commence par
+        // PRODUIT » lui dit d'où partir, ce qui est la consigne réelle.
+        const depart = q.cle
+            ? `La clé commence par <b>${q.cle}</b> : ses ${q.cle.length} lettres sont déjà posées. `
+            : 'Aucune lettre n\'est donnée : casse-tête complet. ';
         // ON COMPTE CE QUI RESTE, pas l'alphabet entier : « 16 lettres à
         // retrouver » quand huit sont déjà écrites est un chiffre décourageant
         // et faux.
@@ -268,11 +310,23 @@ class MotCode extends BaseGame {
         this.grilleEl.style.gridTemplateColumns = `repeat(${m.largeur}, var(--mk-cote))`;
 
         this.grilleEl.innerHTML = m.cases.map((ligne, y) => ligne.map((c, x) => {
-            if (c === null) return '<div class="mk-case mk-case--muette"></div>';
+            if (c === null) {
+                // LE CENTRE DE L'ANNEAU N'EST PAS UNE CASE : c'est le trou du
+                // cadre, la place de la consigne sur la fiche de Rémy. Le
+                // peindre en gris ferait un gros pavé mort au milieu de
+                // l'écran, et surtout ferait croire à des cases à remplir.
+                const type = this.fleches.get(`${x},${y}`);
+                if (!type) return '<div class="mk-case mk-case--creux"></div>';
+                // Une case muette de l'anneau porte sa flèche — sauf celle du
+                // coin bas-droite, qui ne lance rien : elle FERME les deux
+                // bandes qui viennent buter dessus.
+                return `<div class="mk-case mk-case--muette">${flecheSvg(type)}</div>`;
+            }
             const num = m.numeros[y][x];
+            // Pas de numéro sur une lettre solitaire : elle est écrite en clair.
+            if (num === null) return `<div class="mk-case mk-case--clair">${c}</div>`;
             const classes = ['mk-case'];
             if (num === this.vise) classes.push('mk-case--vise');
-            else if (this.casesDepart.has(`${x},${y}`)) classes.push('mk-case--depart');
             else if (this.saisie[num] && this.donnees.has(m.parNumero[num])) classes.push('mk-case--donnee');
             if (this.fautes && this.fautes.has(num)) classes.push('mk-case--faute');
             return `<button type="button" class="${classes.join(' ')}" data-num="${num}">
@@ -441,9 +495,9 @@ class MotCode extends BaseGame {
 
         const q = qualiteCode(this.m);
         cur.say(`${q.alphabet} lettres se cachent derrière ${q.alphabet} numéros. `
-            + (q.depart.length
-                ? `Un mot est déjà écrit : ${q.depart.join(' et ')}. Ses ${this.m.donnees.length} `
-                    + 'lettres sont posées partout où leur numéro paraît — c\'est de là qu\'on part.'
+            + (q.cle
+                ? `La clé commence par ${q.cle} : ses ${q.cle.length} lettres sont posées `
+                    + 'partout où leur numéro paraît — c\'est de là qu\'on part.'
                 : 'Aucune n\'est donnée : on part de rien.'), this.grilleEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 

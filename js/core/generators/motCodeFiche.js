@@ -5,11 +5,11 @@
 // la grille où l'on note la lettre trouvée pour chaque numéro, et deux ou trois
 // lettres offertes pour amorcer.
 //
-// LA GRILLE EST UN RECTANGLE ET L'ON PART D'UN MOT — c'est ainsi que Rémy les
-// fabrique : « moi ça tenait sur une grille rectangulaire et je partais d'un mot
-// et il fallait compléter ». Sur le papier surtout, le rectangle compte : une
-// croix de mots croisés perdue au milieu d'une page A4 a l'air d'un accident
-// d'impression, là où un pavé noir et blanc a l'air d'une grille.
+// LA GRILLE EST UN ANNEAU — c'est ainsi que Rémy les fabrique, et j'ai fini par
+// décoder sa photo case par case : un cadre de quatre bandes par côté, le centre
+// laissé vide, et des mots qui ne se croisent jamais. Voir `core/anneauMots.js`.
+// Sur le papier surtout, cette forme compte : le centre vide est la place de la
+// consigne, et l'anneau se découpe d'un coup de ciseaux.
 //
 // LA CLÉ EST LA MOITIÉ DE L'EXERCICE. Sans elle, l'élève retient de tête que
 // le 14 est un E et se trompe trois lignes plus bas ; avec elle, il écrit une
@@ -36,13 +36,13 @@ export const motCodeFicheGenerator = {
         {
             id: 'taille', type: 'select', label: 'Taille de la grille', default: 'moyenne',
             echelle: true,
-            aide: 'La grille est un RECTANGLE qu\'on cherche à remplir : ce n\'est pas le '
-                + 'nombre de mots qu\'on règle, c\'est la place. Plus le rectangle est grand, '
-                + 'plus l\'alphabet à retrouver est large.',
+            aide: 'La grille est un ANNEAU : un cadre de bandes, le centre laissé vide. '
+                + 'Ce qu\'on règle, c\'est le nombre de bandes par côté — donc le nombre de '
+                + 'mots, et la largeur de l\'alphabet à retrouver.',
             options: [
-                { value: 'petite', label: 'Petite — 9 × 7' },
-                { value: 'moyenne', label: 'Moyenne — 11 × 9' },
-                { value: 'grande', label: 'Grande — 13 × 11' }
+                { value: 'petite', label: 'Petite — 8 mots', court: 'Petite' },
+                { value: 'moyenne', label: 'Moyenne — 12 mots', court: 'Moyenne' },
+                { value: 'grande', label: 'Grande — 16 mots', court: 'Grande' }
             ]
         },
         {
@@ -51,19 +51,6 @@ export const motCodeFicheGenerator = {
                 { value: 1, label: 'Les mots les plus courants' },
                 { value: 2, label: 'Courants et intermédiaires' },
                 { value: 3, label: 'Tout le vocabulaire' }
-            ]
-        },
-        {
-            id: 'motsOfferts', type: 'select', label: 'Mots donnés au départ', default: 1,
-            echelle: true,
-            aide: 'On part d\'un MOT ENTIER, écrit en clair dans la grille : l\'élève le lit, '
-                + 'reconnaît le chapitre, et ses lettres sont déjà posées partout ailleurs. '
-                + 'C\'est le mot du thème qui porte le plus de lettres différentes qui est '
-                + 'choisi. À zéro, il ne reste que la déduction pure.',
-            options: [
-                { value: 0, label: 'Aucun — casse-tête' },
-                { value: 1, label: 'Un mot' },
-                { value: 2, label: 'Deux mots — pour découvrir' }
             ]
         }
     ],
@@ -74,11 +61,9 @@ export const motCodeFicheGenerator = {
         const theme = THEMES[p.theme] ? p.theme : 'angles';
         const taille = FORMATS_CODE[p.taille] ? p.taille : 'moyenne';
         const niveauMax = [1, 2, 3].includes(Number(p.niveauMax)) ? Number(p.niveauMax) : 3;
-        const motsOfferts = Math.max(0, Math.min(3,
-            p.motsOfferts === undefined ? 1 : Number(p.motsOfferts) || 0));
 
         const m = creerMotCode({
-            theme, niveauMax, taille, motsOfferts, rng, essais: 14,
+            theme, niveauMax, taille, rng, essais: 12,
             // Chaque essai a SA graine : deux essais partageant un générateur
             // construiraient la même grille.
             rngPour: (i) => makeRng(`${rng.seed}-mcode-${i}`)
@@ -98,13 +83,14 @@ export const motCodeFicheGenerator = {
             answer: m.lettres.map(l => `${m.code[l]}=${l}`).join(' '),
             explanation: m.lettres.map(l => `${m.code[l]} = ${l}`).join(' ; ')
                 + `. Les mots : ${m.mots.map(w => w.mot).join(', ')}.`
-                + (q.depart.length ? ` Départ donné : ${q.depart.join(', ')}.` : ''),
+                + (q.cle ? ` La clé commence par ${q.cle}.` : ''),
             difficulty: niveauMax,
             meta: {
                 largeur: m.largeur, hauteur: m.hauteur,
-                cases: m.cases, numeros: m.numeros,
+                cases: m.cases, numeros: m.numeros, fleches: m.fleches,
                 lettres: m.lettres, code: m.code, parNumero: m.parNumero,
-                donnees: m.donnees, mots: m.mots, depart: m.depart, theme
+                donnees: m.donnees, enClair: m.enClair, motCle: m.motCle,
+                mots: m.mots, theme
             }
         });
     }

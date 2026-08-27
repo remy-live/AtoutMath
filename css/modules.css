@@ -5181,6 +5181,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    ne sont pas le jeu ». À l'écran, où l'encre ne coûte rien, elles restent
    sombres : c'est plus beau, et c'est un autre objet. */
 .fx-mk-noire { position: absolute; background: #dde2ea; pointer-events: none; }
+/* LA FLECHE DE LA CASE MUETTE : elle dit ou commence le mot suivant et
+   dans quel sens il se lit. C'est ce qui remplace les definitions d'un mot
+   croise — sans elle, l'anneau n'est qu'un cadre de numeros muets. */
+.fx-mk-fl { position: absolute; inset: 0; width: 100%; height: 100%;
+    stroke: #5a687e; stroke-width: .07; stroke-linecap: round; fill: none;
+    vector-effect: non-scaling-stroke; }
 /* LE MOT DE DÉPART, souligné : c'est de lui qu'on part, et sur une photocopie
    en noir et blanc un trait épais sous la case survit là où une couleur non. */
 .fx-mk-depart { border-bottom-width: 1.4px; }

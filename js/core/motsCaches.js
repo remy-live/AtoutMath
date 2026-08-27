@@ -137,7 +137,73 @@ export const LEXIQUE = [
     { mot: 'LITRE', theme: 'mesures', niveau: 1, def: 'L\'unité des contenances.' },
     { mot: 'RAPPORTEUR', theme: 'mesures', niveau: 2, aussi: ['angles'], def: 'L\'instrument demi-rond qui mesure les angles.' },
     { mot: 'ECHELLE', theme: 'mesures', niveau: 3, def: 'Le rapport entre le dessin et la réalité.' },
-    { mot: 'VITESSE', theme: 'mesures', niveau: 3, def: 'La distance parcourue en un temps donné.' }
+    { mot: 'VITESSE', theme: 'mesures', niveau: 3, def: 'La distance parcourue en un temps donné.' },
+
+    // --- Le calcul littéral ---
+    // Rémy a fabriqué à la main un mot codé sur ce chapitre : INCONNUE,
+    // NUMÉRIQUE, LETTRES, SOMME, DÉVELOPPER, ÉCRITURE, NOMBRE, EXPRESSION,
+    // ADDITION, CALCUL, LITTÉRALE, DIVISER. Le lexique lui manquait ; il ne
+    // manque plus.
+    { mot: 'EXPRESSION', theme: 'litteral', niveau: 3, def: 'Une suite de nombres, de lettres et d\'opérations.' },
+    { mot: 'LITTERALE', theme: 'litteral', niveau: 3, def: 'Se dit d\'un calcul où des lettres remplacent des nombres.' },
+    { mot: 'NUMERIQUE', theme: 'litteral', niveau: 3, def: 'Se dit d\'un calcul qui ne contient que des nombres.' },
+    { mot: 'INCONNUE', theme: 'litteral', niveau: 3, def: 'La lettre dont on cherche la valeur.' },
+    { mot: 'VARIABLE', theme: 'litteral', niveau: 3, def: 'Une lettre qui peut prendre plusieurs valeurs.' },
+    { mot: 'DEVELOPPER', theme: 'litteral', niveau: 3, def: 'Transformer un produit en somme, en enlevant les parenthèses.' },
+    { mot: 'FACTORISER', theme: 'litteral', niveau: 3, def: 'Transformer une somme en produit, en mettant en facteur.' },
+    { mot: 'REDUIRE', theme: 'litteral', niveau: 3, def: 'Regrouper ce qui va ensemble pour raccourcir l\'écriture.' },
+    { mot: 'SIMPLIFIER', theme: 'litteral', niveau: 3, def: 'Écrire la même chose, en plus court.' },
+    { mot: 'SUBSTITUER', theme: 'litteral', niveau: 3, def: 'Remplacer la lettre par la valeur qu\'on lui donne.' },
+    { mot: 'COEFFICIENT', theme: 'litteral', niveau: 3, def: 'Le nombre écrit devant la lettre.' },
+    { mot: 'EQUATION', theme: 'litteral', niveau: 3, def: 'Une égalité où il faut retrouver la valeur de la lettre.' },
+    { mot: 'SOLUTION', theme: 'litteral', niveau: 3, def: 'La valeur qui rend l\'égalité vraie.' },
+    { mot: 'IDENTITE', theme: 'litteral', niveau: 3, def: 'Une égalité vraie quelle que soit la valeur de la lettre.' },
+    { mot: 'PROGRAMME', theme: 'litteral', niveau: 2, def: 'Une suite d\'instructions de calcul, à appliquer à un nombre.' },
+    { mot: 'CALCUL', theme: 'litteral', niveau: 1, aussi: ['calcul'], def: 'Ce qu\'on fait avec des nombres pour trouver un résultat.' },
+    { mot: 'LETTRES', theme: 'litteral', niveau: 2, def: 'Ce qui remplace les nombres qu\'on ne connaît pas.' },
+    { mot: 'NOMBRE', theme: 'litteral', niveau: 1, aussi: ['nombres'], def: 'Ce qui dit une quantité.' },
+    { mot: 'ECRITURE', theme: 'litteral', niveau: 2, def: 'La façon de noter un calcul ou un nombre.' },
+    { mot: 'DIVISER', theme: 'litteral', niveau: 1, aussi: ['calcul'], def: 'Partager en parts égales.' },
+    { mot: 'MULTIPLIER', theme: 'litteral', niveau: 1, aussi: ['calcul'], def: 'Répéter une addition du même nombre.' },
+    { mot: 'SOUSTRAIRE', theme: 'litteral', niveau: 1, aussi: ['calcul'], def: 'Retirer une quantité d\'une autre.' },
+    { mot: 'DISTRIBUER', theme: 'litteral', niveau: 3, def: 'Multiplier le facteur par CHAQUE terme de la parenthèse.' },
+    { mot: 'POSITIF', theme: 'nombres', niveau: 3, def: 'Plus grand que zéro : il est à sa droite sur la droite graduée.' },
+    { mot: 'SIGNE', theme: 'nombres', niveau: 3, def: 'Le plus ou le moins écrit devant un nombre relatif.' },
+    { mot: 'ABSCISSE', theme: 'nombres', niveau: 3, def: 'Le nombre qui repère un point sur une droite graduée.' },
+
+    // --- LES NOMBRES ÉCRITS EN TOUTES LETTRES : des bouchons, pas du lexique.
+    // Rémy s'en sert exactement pour cela dans sa grille — DEUX, TROIS, CINQ,
+    // SEPT, TRENTE bouchent les bandes courtes de l'anneau, celles de quatre ou
+    // cinq cases où aucun mot de vocabulaire ne rentre. Ils ne sont PAS du
+    // vocabulaire à faire découvrir : `bouchon` les tient hors des mots cachés
+    // et des mots croisés, où « trouve QUARANTE » ne serait pas une leçon.
+    { mot: 'DIX', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 10, en toutes lettres.' },
+    { mot: 'SIX', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 6, en toutes lettres.' },
+    { mot: 'DEUX', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 2, en toutes lettres.' },
+    { mot: 'CINQ', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 5, en toutes lettres.' },
+    { mot: 'SEPT', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 7, en toutes lettres.' },
+    { mot: 'HUIT', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 8, en toutes lettres.' },
+    { mot: 'NEUF', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 9, en toutes lettres.' },
+    { mot: 'ONZE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 11, en toutes lettres.' },
+    { mot: 'CENT', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 100, en toutes lettres.' },
+    { mot: 'ZERO', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 0, en toutes lettres.' },
+    { mot: 'TROIS', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 3, en toutes lettres.' },
+    { mot: 'QUATRE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 4, en toutes lettres.' },
+    { mot: 'DOUZE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 12, en toutes lettres.' },
+    { mot: 'SEIZE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 16, en toutes lettres.' },
+    { mot: 'VINGT', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 20, en toutes lettres.' },
+    { mot: 'MILLE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 1 000, en toutes lettres.' },
+    { mot: 'TREIZE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 13, en toutes lettres.' },
+    { mot: 'QUINZE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 15, en toutes lettres.' },
+    { mot: 'TRENTE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 30, en toutes lettres.' },
+    { mot: 'QUATORZE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 14, en toutes lettres.' },
+    { mot: 'DIXSEPT', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 17, en toutes lettres.' },
+    { mot: 'SOIXANTE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 60, en toutes lettres.' },
+    { mot: 'QUARANTE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 40, en toutes lettres.' },
+    { mot: 'MILLIARD', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 1 000 000 000, en toutes lettres.' },
+    { mot: 'CINQUANTE', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 50, en toutes lettres.' },
+    { mot: 'DIXHUIT', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 18, en toutes lettres.' },
+    { mot: 'MILLION', theme: 'nombres', niveau: 1, bouchon: true, def: 'Le nombre 1 000 000, en toutes lettres.' }
 ];
 
 export const THEMES = {
@@ -146,6 +212,7 @@ export const THEMES = {
     angles: 'Le vocabulaire des angles',
     nombres: 'Les nombres',
     calcul: 'Les opérations',
+    litteral: 'Le calcul littéral',
     mesures: 'Grandeurs et mesures'
 };
 
@@ -159,8 +226,13 @@ export const THEMES = {
  * grille de mots cachés avec deux fois BISSECTRICE, ou un mot croisé qui se
  * croise avec lui-même. `aussi` porte donc les rubriques secondaires.
  */
-export function motsDisponibles({ theme = 'tout', niveauMax = 3 } = {}) {
+export function motsDisponibles({ theme = 'tout', niveauMax = 3, bouchons = false } = {}) {
     return LEXIQUE.filter(m => m.niveau <= niveauMax
+        // LES BOUCHONS NE SORTENT QUE SI ON LES DEMANDE. Les nombres écrits en
+        // toutes lettres remplissent les bandes courtes d'un mot codé ; ils
+        // n'ont rien à faire dans une grille de mots cachés, où « trouve
+        // QUARANTE » n'apprend rien à personne.
+        && (bouchons || !m.bouchon)
         && (theme === 'tout' || m.theme === theme || (m.aussi || []).includes(theme)));
 }
 

@@ -1141,15 +1141,30 @@ function geoMotCode(item, slot) {
     };
 }
 
-/** Les cases du mot de départ : celles qu'on souligne, parce qu'on part de là. */
-function casesDepart(m) {
-    const cases = new Set();
-    (m.depart || []).forEach(d => {
-        for (let i = 0; i < d.mot.length; i++) {
-            cases.add(d.dir === 'h' ? `${d.x + i},${d.y}` : `${d.x},${d.y + i}`);
-        }
-    });
-    return cases;
+/**
+ * LES FLÈCHES DE L'ANNEAU, rangées par case.
+ *
+ * Elles disent où commence chaque mot et dans quel sens il se lit : c'est ce
+ * qui remplace les définitions d'un mot croisé, et sans elles la grille de
+ * Rémy n'est qu'un cadre de numéros muets.
+ */
+function flechesDe(m) {
+    return new Map((m.fleches || []).map(f => [`${f.x},${f.y}`, f.type]));
+}
+
+/** Le tracé d'une flèche dans une case, en coordonnées 0..1. */
+const TRAITS_FLECHE = {
+    droite: [[[0.18, 0.5], [0.8, 0.5]], [[0.62, 0.34], [0.8, 0.5]], [[0.62, 0.66], [0.8, 0.5]]],
+    bas: [[[0.5, 0.18], [0.5, 0.8]], [[0.34, 0.62], [0.5, 0.8]], [[0.66, 0.62], [0.5, 0.8]]]
+};
+// Sur une case d'angle, les deux flèches ne se superposent pas : centrées
+// toutes les deux, elles se croisent en une étoile qu'on ne lit plus. Chacune
+// dans sa moitié, comme les deux départs distincts qu'elles annoncent.
+const COIN_D = [[[0.34, 0.3], [0.78, 0.3]], [[0.63, 0.17], [0.78, 0.3]], [[0.63, 0.43], [0.78, 0.3]]];
+const COIN_B = [[[0.3, 0.34], [0.3, 0.78]], [[0.17, 0.63], [0.3, 0.78]], [[0.43, 0.63], [0.3, 0.78]]];
+function traitsFleche(type) {
+    if (type === 'coin') return COIN_D.concat(COIN_B);
+    return TRAITS_FLECHE[type] || [];
 }
 
 /** La place d'une case de clé, la i-ème (0 en tête). */
@@ -1162,22 +1177,36 @@ function motCodePreviewHtml(item, slot, k, solution) {
     const g = geoMotCode(item, slot);
     const T = (v) => (v * k).toFixed(2);
     const donnees = new Set(g.m.donnees);
-    const depart = casesDepart(g.m);
+    const enClair = new Set(g.m.enClair || []);
+    const fleches = flechesDe(g.m);
     let html = '';
     for (let y = 0; y < g.m.hauteur; y++) {
         for (let x = 0; x < g.m.largeur; x++) {
             const c = g.m.cases[y][x];
             const X = g.x + x * g.cote, Y = g.y + y * g.cote;
-            // LA CASE MUETTE EST NOIRE : la grille est un rectangle, pas une
-            // silhouette de mots croisés.
+            // LA CASE MUETTE PORTE SA FLÈCHE : dans un anneau, c'est elle qui
+            // dit où commence le mot suivant et dans quel sens il se lit.
             if (c === null) {
+                const type = fleches.get(`${x},${y}`);
+                if (!type) continue;      // le centre de l'anneau reste blanc
+                const traits = traitsFleche(type).map(([a, b]) =>
+                    `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`).join('');
                 html += `<div class="fx-mk-noire" style="left:${T(X)}px; top:${T(Y)}px;
-                    width:${T(g.cote)}px; height:${T(g.cote)}px"></div>`;
+                    width:${T(g.cote)}px; height:${T(g.cote)}px">
+                    <svg viewBox="0 0 1 1" preserveAspectRatio="none" class="fx-mk-fl">${traits}</svg>
+                    </div>`;
+                continue;
+            }
+            // UNE LETTRE SOLITAIRE EST ÉCRITE EN CLAIR, sans numéro : elle ne
+            // paraît qu'une fois dans tout l'anneau et ne se déduit de rien.
+            if (enClair.has(c)) {
+                html += `<div class="fx-mk-case fx-mk-depart" style="left:${T(X)}px; top:${T(Y)}px;
+                    width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.5)}px"
+                    >${echapperSheet(c)}</div>`;
                 continue;
             }
             const lettre = solution || donnees.has(c) ? c : '';
-            const classes = 'fx-mk-case' + (depart.has(`${x},${y}`) ? ' fx-mk-depart' : '');
-            html += `<div class="${classes}" style="left:${T(X)}px; top:${T(Y)}px;
+            html += `<div class="fx-mk-case" style="left:${T(X)}px; top:${T(Y)}px;
                 width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.5)}px">
                 <span class="fx-mk-num" style="font-size:${T(g.cote * 0.32)}px">${g.m.numeros[y][x]}</span>
                 ${echapperSheet(lettre)}</div>`;
@@ -1204,29 +1233,47 @@ function motCodePreviewHtml(item, slot, k, solution) {
 function dessinerMotCodePdf(doc, item, slot, solution, champ) {
     const g = geoMotCode(item, slot);
     const donnees = new Set(g.m.donnees);
-    const depart = casesDepart(g.m);
+    const enClair = new Set(g.m.enClair || []);
+    const fleches = flechesDe(g.m);
 
     for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
         const c = g.m.cases[y][x];
         const X = g.x + x * g.cote, Y = g.y + y * g.cote;
-        // LA CASE MUETTE SE REMPLIT : c'est un rectangle de journal, pas une
-        // croix de mots croisés. En GRIS CLAIR, et non en noir — le rectangle
-        // est à moitié muet, et un demi-aplat noir par grille, c'est une
-        // cartouche de toner par classe et une photocopie baveuse.
+        // LA CASE MUETTE PORTE SA FLÈCHE. En GRIS CLAIR, et non en noir : un
+        // anneau compte une case muette par mot, et un aplat noir par case,
+        // c'est une cartouche de toner par classe et une photocopie baveuse.
+        // Le CENTRE de l'anneau, lui, reste blanc — c'est la place de la
+        // consigne, pas une case.
         if (c === null) {
+            const type = fleches.get(`${x},${y}`);
+            if (!type) continue;
             doc.setFillColor(221, 226, 234);
             doc.rect(X, Y, g.cote, g.cote, 'F');
+            doc.setDrawColor(90, 104, 126);
+            doc.setLineWidth(Math.max(0.25, g.cote * 0.07));
+            traitsFleche(type).forEach(([a, b]) => {
+                doc.line(X + a[0] * g.cote, Y + a[1] * g.cote,
+                    X + b[0] * g.cote, Y + b[1] * g.cote);
+            });
+            doc.setLineWidth(0.22);
             continue;
         }
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.22);
         doc.rect(X, Y, g.cote, g.cote, 'S');
-        // Le mot de départ est souligné d'un trait gras : sur une photocopie
-        // en noir et blanc, c'est le seul signe qui survive.
-        if (depart.has(`${x},${y}`)) {
+        // UNE LETTRE SOLITAIRE EST ÉCRITE EN CLAIR, sans numéro : elle ne
+        // paraît qu'une fois dans tout l'anneau et ne se déduit de rien. Un
+        // trait gras sous la case le dit sur une photocopie en noir et blanc,
+        // où aucune couleur ne survit.
+        if (enClair.has(c)) {
             doc.setLineWidth(0.6);
             doc.line(X, Y + g.cote, X + g.cote, Y + g.cote);
             doc.setLineWidth(0.22);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.min(12, g.cote * 1.5));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(c, X + g.cote / 2, Y + g.cote * 0.72, { align: 'center' });
+            continue;
         }
         // LE NUMÉRO EST DANS UN COIN, PAS AU MILIEU : le milieu appartient à la
         // lettre qu'on va écrire par-dessus, et un chiffre gris sous un stylo
@@ -9794,11 +9841,13 @@ export const RENDUS = {
     motcode: {
         titre: 'Mot codé du vocabulaire',
         consigne: (items) => 'CHAQUE LETTRE EST REMPLACÉE PAR UN NUMÉRO, le même partout dans '
-            + 'la grille. UN MOT est déjà écrit, souligné : c\'est de là qu\'on part, et ses '
-            + 'lettres sont déjà posées partout où leur numéro reparaît. Retrouve les autres — '
-            + 'deux numéros différents ne cachent jamais la même lettre. Reporte chaque '
-            + 'trouvaille dans la clé, sous la grille — et souviens-toi '
-            + 'que tous les mots sont du vocabulaire du cours'
+            + 'la grille. Les mots se lisent en anneau autour du cadre : une flèche marque le '
+            + 'début de chacun et le sens dans lequel il se lit. LA CLÉ, sous la grille, '
+            + 'COMMENCE PAR UN MOT — ses lettres sont déjà posées partout où leur numéro '
+            + 'reparaît, et c\'est de là qu\'on part. Une lettre soulignée, écrite en clair et '
+            + 'sans numéro, ne paraît qu\'une seule fois : elle ne se devinerait pas. Retrouve '
+            + 'les autres — deux numéros différents ne cachent jamais la même lettre — et '
+            + 'reporte chaque trouvaille dans la clé. Tous les mots sont du vocabulaire du cours'
             + (items && items[0] && items[0].meta && THEMES_MOTCODE[items[0].meta.theme]
                 ? ` (${THEMES_MOTCODE[items[0].meta.theme].toLowerCase()})` : '') + '.',
         previewGrille: motCodePreviewHtml,
