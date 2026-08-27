@@ -815,7 +815,7 @@ const PHASES_AIDE = [
 ];
 
 /** La carte d'une phase : ses rangs, la vraie question, son compteur. */
-function cartePhase(phase, rep, depart, params, total, exoId) {
+function cartePhase(phase, rep, depart, params, total, exoId, adaptatif = false) {
     const combien = rep[phase.cle];
     const p = {
         de: depart, a: depart + combien - 1,
@@ -836,7 +836,7 @@ function cartePhase(phase, rep, depart, params, total, exoId) {
         : combien === 1 ? `Question ${p.de}`
             : (p.de === 1 && p.a === total ? `Les ${total} questions` : `Questions ${p.de} à ${p.a}`);
     return `<div class="cfg-phase${combien ? '' : ' cfg-phase--vide'}">
-        <div class="cfg-phase-rangs">${rangs}</div>
+        <div class="cfg-phase-rangs">${adaptatif ? `≈ ${rangs.toLowerCase()}` : rangs}</div>
         <div class="cfg-carte-vue${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</div>
         <div class="cfg-phase-nom">${phase.nom}</div>
         <div class="cfg-phase-dit">${phase.dit}</div>
@@ -850,18 +850,64 @@ function cartePhase(phase, rep, depart, params, total, exoId) {
     </div>`;
 }
 
+/**
+ * LES DEUX FAÇONS DE MENER LA PROGRESSION — et il faut CHOISIR, visiblement.
+ *
+ * Rémy : « mais du coup pour la progression, ok, propose le mode adaptatif
+ * quand même, qu'en penses-tu ? »
+ *
+ * Oui — et il manquait plus que l'option : il manquait de DIRE dans lequel des
+ * deux on se trouve. Les compteurs affichaient toujours des nombres, qu'ils
+ * viennent du professeur ou d'un préréglage, et rien ne distinguait « voici ce
+ * que j'ai décidé » de « voici ce que le logiciel ferait ». Pire : une fois un
+ * compteur touché, on ne pouvait plus revenir à l'adaptatif.
+ *
+ * ET LES DEUX MODES NE SONT PAS DEUX RÉGLAGES DU MÊME OBJET. L'adaptatif ne
+ * suit AUCUN calendrier : il monte l'élève d'un barreau après trois réussites
+ * du premier coup, puis deux, et le redescend après deux ratés (voir `ECHELONS`
+ * dans core/aide.js). Deux élèves de la même classe n'y font pas les mêmes
+ * questions — ce qui est tout l'intérêt, et ce qu'aucun nombre écrit d'avance
+ * ne peut rendre. Les rangs affichés en adaptatif sont donc un EXEMPLE, celui
+ * d'un élève qui suivrait la marche moyenne, et l'écran le dit.
+ */
+const MODES_PROGRESSION = [
+    {
+        v: 'auto', nom: 'L’exercice s’adapte',
+        dit: 'Il monte d’un cran après trois réussites, redescend après deux ratés. '
+            + 'Chaque élève avance à son rythme.'
+    },
+    {
+        v: 'defini', nom: 'Je définis',
+        dit: 'Les mêmes questions pour toute la classe, dans l’ordre que tu écris.'
+    }
+];
+
+function choixProgression(adaptatif) {
+    return `<div class="cfg-progression">${MODES_PROGRESSION.map(m => `
+        <button type="button" class="cfg-prog${(m.v === 'auto') === adaptatif ? ' cfg-prog--ici' : ''}"
+            data-prog="${m.v}" aria-pressed="${(m.v === 'auto') === adaptatif}">
+            <span class="cfg-prog-nom">${m.nom}</span>
+            <span class="cfg-prog-dit">${m.dit}</span>
+        </button>`).join('')}</div>`;
+}
+
 export function apercuAideHtml(params, total, exoId = '') {
     // La répartition écrite à la main si elle existe, sinon celle que le
     // préréglage produit — le professeur corrige au lieu de tout composer.
-    const rep = repartitionDe(params, total) || repartitionDuMode(params, total);
+    const ecrite = repartitionDe(params, total);
+    const rep = ecrite || repartitionDuMode(params, total);
+    const adaptatif = !ecrite;
     let depart = 1;
     const cartes = PHASES_AIDE.map(ph => {
-        const html = cartePhase(ph, rep, depart, params, total, exoId);
+        const html = cartePhase(ph, rep, depart, params, total, exoId, adaptatif);
         depart += rep[ph.cle];
         return html;
     }).join('');
-    return `<div class="cfg-apercu-titre">Ce que l'élève verra, sur ${total} question${total > 1 ? 's' : ''}</div>
-        <div class="cfg-phases">${cartes}</div>`;
+    return `${choixProgression(adaptatif)}
+        <div class="cfg-apercu-titre">${adaptatif
+        ? `Ce qu'un élève « moyen » verrait, sur ${total} question${total > 1 ? 's' : ''}`
+        : `Ce que l'élève verra, sur ${total} question${total > 1 ? 's' : ''}`}</div>
+        <div class="cfg-phases${adaptatif ? ' cfg-phases--auto' : ''}">${cartes}</div>`;
 }
 
 /**
@@ -1172,6 +1218,30 @@ function allerAuCran(cran) {
 document.addEventListener('click', (e) => {
     const cran = e.target.closest && e.target.closest('.cfg-cran');
     if (cran) { e.preventDefault(); return allerAuCran(cran); }
+    // CHOISIR LA FAÇON DE MENER LA PROGRESSION — voir `MODES_PROGRESSION`.
+    //
+    // Les deux modes tiennent dans UN SEUL champ : une répartition écrite, ou
+    // « auto ». Passer à « Je définis » y grave les nombres que l'adaptatif
+    // aurait donnés en moyenne — le professeur part de quelque chose de sensé
+    // au lieu d'une grille vide ; revenir à l'adaptatif les efface, et l'aveu
+    // est franc : on rend la main à l'échelle, on ne garde pas un souvenir des
+    // nombres qui laisserait croire qu'ils comptent encore.
+    const prog = e.target.closest && e.target.closest('.cfg-prog');
+    if (prog) {
+        e.preventDefault();
+        const hote = prog.closest('.cfg-apercu-hote');
+        const champ = hote && hote.querySelector('[data-param="repartition"]');
+        if (!champ) return;
+        const nb = hote.querySelector('#cfg-nbitems');
+        const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
+        if (prog.dataset.prog === 'auto') champ.value = 'auto';
+        else {
+            const rep = repartitionDe({ repartition: champ.value }, total)
+                || repartitionDuMode(paramsAide(hote), total);
+            champ.value = ecrireRepartition(rep.deux, rep.quatre);
+        }
+        return rafraichirApercu(hote);
+    }
     // ALLONGER OU RACCOURCIR UNE PHASE — voir `apercuAideHtml`.
     //
     // Le compteur écrit dans le champ caché `repartition`, et c'est tout : la

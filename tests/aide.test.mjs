@@ -13,7 +13,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { aideAuRang, repartitionDe, repartitionDuMode, ecrireRepartition } from '../js/core/aide.js';
+import {
+    aideAuRang, repartitionDe, repartitionDuMode, ecrireRepartition,
+    aideSelonEtat, etatDepart, apresReponse, affine
+} from '../js/core/aide.js';
 
 test('la répartition s\'écrit et se relit sans se déformer', () => {
     assert.equal(ecrireRepartition(3, 5), '3-5');
@@ -91,4 +94,41 @@ test('la répartition écrite passe AVANT le préréglage et ses vis', () => {
     assert.deepEqual(aideAuRang(p, 1, 4), { propositions: 2, clavier: false });
     assert.deepEqual(aideAuRang(p, 2, 4), { propositions: 4, clavier: false });
     assert.deepEqual(aideAuRang(p, 3, 4), { propositions: 4, clavier: true });
+});
+
+test('la répartition écrite passe AVANT l\'échelle adaptative', () => {
+    // LE BUG QUE CE TEST FERME. L'échelle adaptative ne s'efface que devant un
+    // réglage « affiné » ; la répartition écrite n'en faisait pas partie. Un
+    // professeur écrivait « les deux premières questions à deux propositions »,
+    // et l'élève dont l'échelle était déjà montée recevait le clavier dès la
+    // première question. La consigne du professeur passait après l'humeur du
+    // moteur — l'inverse exact de ce qu'on veut.
+    assert.equal(affine({ repartition: '2-3' }), true);
+    assert.equal(affine({ repartition: 'auto' }), false);
+    assert.equal(affine({ repartition: '' }), false);
+    assert.equal(affine({}), false);
+
+    // Un élève au sommet de l'échelle : trois réussites du premier coup, puis
+    // deux — il est au clavier.
+    let etat = etatDepart();
+    for (let k = 0; k < 5; k++) etat = apresReponse(etat, { reussi: true });
+    assert.deepEqual(aideSelonEtat({ aide: 'progressive' }, etat, 1, 10),
+        { propositions: null, clavier: true });
+
+    // Le MÊME élève, sur un exercice dont le professeur a écrit la
+    // répartition : il fait ce que le professeur a écrit.
+    const ecrit = { aide: 'progressive', repartition: '2-3' };
+    assert.deepEqual(aideSelonEtat(ecrit, etat, 1, 10), { propositions: 2, clavier: false });
+    assert.deepEqual(aideSelonEtat(ecrit, etat, 3, 10), { propositions: 4, clavier: false });
+    // La phase « au clavier » d'une répartition écrite garde ses quatre
+    // propositions sous le pavé — voir `aideAuRang` : l'élève tape, mais un
+    // exercice qui ne sait pas se répondre au clavier a de quoi retomber.
+    assert.deepEqual(aideSelonEtat(ecrit, etat, 6, 10), { propositions: 4, clavier: true });
+
+    // Et sans répartition écrite, l'échelle garde la main : c'est le mode
+    // adaptatif, celui que Rémy voulait qu'on propose quand même. Un débutant
+    // ouvre à deux propositions quel que soit le rang de la question.
+    const neuf = etatDepart();
+    assert.deepEqual(aideSelonEtat({ aide: 'progressive' }, neuf, 9, 10),
+        { propositions: 2, clavier: false });
 });

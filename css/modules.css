@@ -2612,10 +2612,41 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    4 ? on ne comprend pas à quoi correspond le moment de la saisie au clavier.
    Soit il faut expliquer au prof que l'exercice s'adapte, soit on définit
    vraiment. » Les rangs sont écrits, et ils se règlent. */
+/* LES DEUX FAÇONS DE MENER LA PROGRESSION — voir `MODES_PROGRESSION`.
+   Rémy : « mais du coup pour la progression, ok, propose le mode adaptatif
+   quand même, qu'en penses-tu ? » Les deux existaient déjà dans le moteur ;
+   ce qui manquait, c'était de VOIR dans lequel on se trouve, et de pouvoir
+   revenir à l'adaptatif une fois qu'on a touché un compteur. Deux boutons
+   larges, celui qui est actif encadré : on ne les confond pas avec les
+   compteurs, qui sont ronds et petits. */
+.cfg-progression {
+    display: grid; gap: 8px; margin-bottom: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.cfg-prog {
+    display: flex; flex-direction: column; gap: 3px; text-align: left;
+    padding: 9px 11px; cursor: pointer;
+    border: 2px solid var(--border, #d7dce5); border-radius: 12px;
+    background: #fff; color: inherit; font: inherit;
+}
+.cfg-prog:hover { border-color: var(--primary); }
+.cfg-prog--ici {
+    border-color: var(--primary);
+    background: var(--primary-soft, #eceafd);
+}
+.cfg-prog-nom { font-weight: 800; font-size: .86rem; color: var(--text-main); }
+.cfg-prog--ici .cfg-prog-nom { color: var(--primary); }
+.cfg-prog-dit { font-size: .71rem; line-height: 1.3; color: var(--text-muted); }
+
 .cfg-phases {
     display: grid; gap: 8px; margin-top: 6px;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
+/* EN ADAPTATIF, LES CARTES SONT UN EXEMPLE, PAS UNE CONSIGNE. Le trait
+   pointillé le dit sans une ligne de plus : ces rangs-là sont ceux d'un élève
+   qui suivrait la marche moyenne, et deux élèves n'ont pas la même. Les
+   compteurs restent cliquables — c'est même ainsi qu'on passe à « Je définis ». */
+.cfg-phases--auto .cfg-phase { border-style: dashed; }
 .cfg-phase {
     display: flex; flex-direction: column; gap: 4px; align-items: stretch;
     padding: 8px; text-align: center;

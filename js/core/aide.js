@@ -62,10 +62,21 @@ export function modeDe(params = {}) {
     return MODES[params.aide] ? params.aide : MODE_PAR_DEFAUT;
 }
 
-/** Vrai si un réglage fin s'écarte du préréglage : l'interface doit le dire. */
+/**
+ * Vrai si le professeur a posé une valeur qui s'écarte du préréglage :
+ * l'interface doit le dire, et surtout l'ADAPTATION doit s'effacer.
+ *
+ * LA RÉPARTITION ÉCRITE EN FAIT PARTIE, et l'oublier a coûté un bug : un
+ * professeur écrivait « les deux premières questions à deux propositions », et
+ * l'élève dont l'échelle était montée recevait le clavier dès la première.
+ * L'adaptation passait devant une consigne explicite — exactement ce qu'elle ne
+ * doit jamais faire. Quand on a décidé pour l'élève, on a décidé.
+ */
 export function affine(params = {}) {
     return (params.propositions !== undefined && params.propositions !== 'auto')
-        || (params.saisie !== undefined && params.saisie !== 'auto');
+        || (params.saisie !== undefined && params.saisie !== 'auto')
+        || (params.repartition !== undefined && params.repartition !== 'auto'
+            && params.repartition !== '');
 }
 
 /**
