@@ -381,6 +381,10 @@ export function ouvrirFicheParcours(chemin) {
     // fiche d'entraînement n'a pas besoin de la classe, un contrôle si.
     const feuille = {
         titre: chemin.name || 'Parcours',
+        // LA CONSIGNE DU DEVOIR ENTIER, vide au départ : elle s'ajoute d'un
+        // « + Consigne » sur la feuille. Rémy : « ajoute un plus en dessous
+        // pour pouvoir mettre des consignes ».
+        consigne: '',
         champs: ['nom', 'date'],
         note: false,
         commentaire: false
@@ -524,6 +528,10 @@ export function ouvrirFicheParcours(chemin) {
         // feuille. Il est pré-rempli à l'ouverture, donc personne ne perd le
         // titre par accident ; l'effacer est un geste, pas un oubli.
         titre: feuille.titre.trim(),
+        consigne: (feuille.consigne || '').trim(),
+        // La mesure sert à couper la consigne à la largeur utile : sans elle,
+        // une phrase longue déborderait dans la marge.
+        mesurer,
         champs: feuille.champs.slice(),
         // LE CARTOUCHE DE CORRECTION. La note se coche d'elle-même sur une
         // interrogation — c'est ce qu'on veut neuf fois sur dix — mais le

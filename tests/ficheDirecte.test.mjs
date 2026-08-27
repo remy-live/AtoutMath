@@ -15,7 +15,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import './helpers.mjs';
 import {
-    apercuEntete, CHAMPS_ENTETE, CHAMPS_DEFAUT, TITRE_Y, IDENTITE_Y, filetY
+    apercuEntete, CHAMPS_ENTETE, CHAMPS_DEFAUT, TITRE_Y, IDENTITE_Y, filetY,
+    hauteurEntete1, HAUTEUR_CONSIGNE_FEUILLE
 } from '../js/ui/ficheRendu.js';
 import { garnirFicheDirecte } from '../js/ui/ficheDirecte.js';
 
@@ -31,18 +32,48 @@ test('chaque champ d\'identité se nomme, pour qu\'on puisse le cliquer', () => 
     assert.doesNotMatch(html, /data-champ="prenom"/);
 });
 
-test('le titre porte sa prise, et sa place quand il est vide', () => {
+test('UN TITRE EFFACÉ NE LAISSE PLUS DE FANTÔME EN TRAVERS DU « Nom »', () => {
     const ecrit = apercuEntete(K, 'Interro n°7', '', null, PAGE);
     assert.match(ecrit, /data-fiche="titre"/);
     assert.match(ecrit, /Interro n°7/);
-    assert.doesNotMatch(ecrit, /fp-entete--vide/);
 
-    // UN TITRE VIDE GARDE SA LIGNE, en gris : c'est la seule façon de savoir
-    // qu'on peut en écrire un. Le CSS ne le montre que là où quelqu'un écoute,
-    // et le PDF ne le connaît pas — il a son propre chemin.
+    // Rémy : « quand on clique sur la croix, ça ne le supprime pas forcément ».
+    // Ce n'était pas une impression. La ligne d'identité remonte de la hauteur
+    // du titre quand il n'y en a pas — c'est voulu, la place rendue est le but
+    // — mais la boîte du titre, elle, restait à SON altitude : le gris pâle
+    // « Titre de la feuille » venait s'asseoir exactement sur « Nom : ……… ».
+    // On croyait avoir effacé, et l'on voyait toujours un titre.
+    //
+    // Sans titre, il n'y a donc plus de boîte du tout. Le chemin du retour est
+    // un « + Titre » posé au bout de la ligne d'identité, avec les autres « + ».
     const vide = apercuEntete(K, '', '', null, PAGE);
-    assert.match(vide, /fp-entete--vide/);
-    assert.match(vide, /Titre de la feuille/);
+    assert.doesNotMatch(vide, /data-fiche="titre"/, 'la boîte du titre survit à son titre');
+    assert.doesNotMatch(vide, /Titre de la feuille/, 'le fantôme du titre est encore là');
+    // La ligne d'identité, elle, reste : c'est là que se posent les « + ».
+    assert.match(vide, /data-fiche="identite"/);
+});
+
+test('LA CONSIGNE DE LA FEUILLE S\'ÉCRIT SOUS LE FILET', () => {
+    // Rémy : « ajoute un plus en dessous pour pouvoir mettre des consignes ».
+    // Chaque exercice a déjà la sienne ; il manquait celle du devoir entier —
+    // « Calculatrice interdite », « Tu as 45 minutes ».
+    const sans = apercuEntete(K, 'Interro', '', null, PAGE, { champs: ['nom'] });
+    assert.doesNotMatch(sans, /data-fiche="consigne-feuille"/);
+
+    const avec = apercuEntete(K, 'Interro', '', null, PAGE,
+        { champs: ['nom'], consigne: 'Calculatrice interdite.' });
+    assert.match(avec, /data-fiche="consigne-feuille"/);
+    assert.match(avec, /Calculatrice interdite\./);
+
+    // ET ELLE PREND SA PLACE : sinon elle s'imprimerait par-dessus le premier
+    // exercice. C'est `hauteurEntete1` qui la réserve, et c'est la seule chose
+    // qui empêche la collision.
+    const nu = hauteurEntete1(PAGE, null, { titre: 'Interro', champs: ['nom'] });
+    const cons = hauteurEntete1(PAGE, null,
+        { titre: 'Interro', champs: ['nom'], consigne: 'Calculatrice interdite.' });
+    assert.ok(cons > nu, `la consigne ne réserve rien : ${nu} puis ${cons}`);
+    assert.ok(cons - nu <= 2 * HAUTEUR_CONSIGNE_FEUILLE + 0.01,
+        'la consigne réserve plus que les deux lignes qu\'elle peut occuper');
 });
 
 test('la ligne d\'identité existe toujours : c\'est là que se posent les fantômes', () => {
@@ -175,18 +206,25 @@ test('ON PEUT SUPPRIMER LE TITRE D\'UN GESTE', () => {
     garnirFicheDirecte(faux, { champs: [] }, { titre: true });
     assert.equal((boite.enfants.match(/data-vider-titre/g) || []).length, 1);
 
-    // Sur une feuille SANS titre, pas de croix : c'est le placeholder gris qui
-    // invite à en écrire un, et il n'y a rien à effacer.
-    const vide = { classes: new Set(['fp-entete--vide']), enfants: '' };
+    // SUR UNE FEUILLE SANS TITRE, IL N'Y A PLUS DE BOÎTE — donc rien à
+    // effacer, et un « + Titre » à proposer à la place. C'est le chemin du
+    // retour que Rémy demandait : « mets un plus (dans la marge inutile) pour
+    // remettre le titre ». Il se pose au bout de la ligne d'identité, avec les
+    // autres « + » : c'est là qu'on cherche déjà ce qu'on peut ajouter.
+    const ligne = { enfants: '' };
     const fauxVide = {
-        querySelector: (sel) => (sel === '[data-fiche="titre"]' ? {
-            classList: { contains: (c) => vide.classes.has(c) },
-            querySelector: () => null,
-            insertAdjacentHTML: (_, html) => { vide.enfants += html; }
+        querySelector: (sel) => (sel === '[data-fiche="identite"]' ? {
+            closest: () => null,
+            querySelector: (s) => (ligne.enfants.includes(s.replace(/[[\]]/g, '')) ? {} : null),
+            insertAdjacentHTML: (_, html) => { ligne.enfants += html; }
         } : null)
     };
     garnirFicheDirecte(fauxVide, { champs: [] }, { titre: true });
-    assert.equal(vide.enfants, '');
+    assert.match(ligne.enfants, /data-remettre-titre/, 'aucun chemin pour remettre le titre');
+    assert.match(ligne.enfants, /\+ Titre/);
+    // Deux passages ne le posent pas deux fois.
+    garnirFicheDirecte(fauxVide, { champs: [] }, { titre: true });
+    assert.equal((ligne.enfants.match(/data-remettre-titre/g) || []).length, 1);
 
     // Et là où le titre n'est PAS réglable — la fiche d'un exercice, qui porte
     // le nom de l'exercice — la croix n'apparaît pas : une prise qui ne mène

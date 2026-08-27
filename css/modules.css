@@ -6551,6 +6551,32 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    dessous : la feuille relit donc ce qu'on tape et répond aussitôt — le
    résultat qu'elle imprimera, ou son aveu qu'elle n'a pas su lire. Découvrir
    après coup qu'un corrigé est faux, c'est le découvrir devant trente élèves. */
+/* LA CONSIGNE DE LA FEUILLE, sous le filet — celle qui vaut pour tout le
+   devoir. Rémy : « ajoute un plus en dessous pour pouvoir mettre des
+   consignes ». En italique gris, comme les consignes d'exercice : c'est le
+   même genre de phrase, et l'œil ne la confond pas avec un énoncé. */
+.fp-consigne-feuille {
+    position: absolute;
+    font-style: italic;
+    color: #5b6472;
+    cursor: text;
+    border-radius: 3px;
+}
+.fp-apercu--direct .fp-consigne-feuille:hover {
+    outline: 1px dashed var(--primary);
+    outline-offset: 2px;
+}
+.fp-consigne-saisie {
+    width: 100%;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 1px 4px;
+    font: inherit;
+    font-style: italic;
+    color: inherit;
+    background: #fff;
+    resize: none;
+}
 .pp-retouche-note--ok { color: #1f7a4d; font-weight: 700; }
 .pp-retouche-note--ko { color: #b83a2c; font-weight: 700; }
 .pp-retouche-actions { display: flex; gap: 8px; align-items: center; }

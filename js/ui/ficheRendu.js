@@ -8,7 +8,7 @@
 // Ce module est partagé par la fiche d'un exercice (printQuestions) et la
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
-import { A4, morceauxReponse, typographieFr } from '../core/fiche.js';
+import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
 import { RE_FRACTION } from '../core/fiche.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
@@ -862,6 +862,31 @@ export function cartoucheDe(entete = {}, interrogation = false) {
  *                            et, s'il n'y a pas non plus de champ d'identité,
  *                            celle du filet.
  */
+/**
+ * LA CONSIGNE DE LA FEUILLE — celle qui vaut pour tout le devoir.
+ *
+ * Rémy : « ajoute un plus en dessous pour pouvoir mettre des consignes ».
+ * Chaque exercice a déjà la sienne ; il manquait celle du haut — « Calculatrice
+ * interdite », « Rédige tes réponses », « Tu as 45 minutes ». Elle se dit une
+ * fois, en tête, et elle ne se range dans aucun exercice.
+ *
+ * Deux lignes au plus : au-delà, ce n'est plus une consigne, c'est un texte, et
+ * il mange la place des questions.
+ */
+export const HAUTEUR_CONSIGNE_FEUILLE = 4.6;
+export const MAX_LIGNES_CONSIGNE = 2;
+
+/** Les lignes de la consigne de feuille, coupées à la largeur utile. */
+export function lignesConsigneFeuille(texte, page, mesurer) {
+    const t = String(texte || '').trim();
+    if (!t) return [];
+    const P = page || A4;
+    const lignes = mesurer
+        ? couperEnLignes(t, P.w - 2 * P.marge, 3.4, mesurer)
+        : [t];
+    return lignes.slice(0, MAX_LIGNES_CONSIGNE);
+}
+
 export function hauteurEntete1(page, cartouche, entete = null) {
     const P = page || A4;
     let h = P.enteteH;
@@ -873,6 +898,12 @@ export function hauteurEntete1(page, cartouche, entete = null) {
         // quoi ne pas coller le premier exercice au bord — deux millimètres,
         // la marge de sécurité de toutes les imprimantes.
         if (!avecTitre && !avecChamps) h = Math.min(h, 2);
+        // La consigne de feuille vit SOUS le filet : elle s'ajoute, elle ne
+        // remplace rien. On la COUPE ici plutôt que de croire un nombre de
+        // lignes passé de l'extérieur — deux endroits qui comptent les mêmes
+        // lignes finissent toujours par ne plus compter pareil.
+        h += lignesConsigneFeuille(entete.consigne, P, entete.mesurer).length
+            * HAUTEUR_CONSIGNE_FEUILLE;
     }
     return Math.max(0, h) + (cartouche ? CARTOUCHE_H : 0);
 }
@@ -941,15 +972,28 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
     // UN TITRE VIDE NE LAISSE PAS DE BANDEAU VIDE : la ligne disparaît, et
     // les champs d'identité remontent d'autant.
     const avecTitre = titreLa;
+    const lignesCons = lignesConsigneFeuille(entete.consigne, P, entete.mesurer);
+    // UN TITRE EFFACÉ NE LAISSE PLUS DE FANTÔME EN TRAVERS DU « Nom ».
+    //
+    // Rémy : « quand on clique sur la croix, ça ne le supprime pas forcément ».
+    // Il avait raison, et ce n'était pas une impression : la ligne d'identité
+    // remonte de la hauteur du titre quand il n'y en a pas — c'est voulu, la
+    // place rendue est le but — mais la boîte du titre, elle, restait à SON
+    // altitude. Le gris pâle « Titre de la feuille » venait donc s'asseoir
+    // exactement sur « Nom : ……… ». On croyait avoir effacé, et l'on voyait
+    // toujours un titre.
+    //
+    // Sans titre, il n'y a plus de boîte du tout. Le chemin du retour est un
+    // « + Titre », posé par `ficheDirecte` au bout de la ligne d'identité, avec
+    // les autres « + » — c'est là qu'on cherche déjà ce qu'on peut ajouter.
     return `
-        <div class="fp-entete${avecTitre ? '' : ' fp-entete--vide'}" data-fiche="titre"
+        ${avecTitre ? `<div class="fp-entete" data-fiche="titre"
             title="Cliquer pour écrire le titre de la feuille"
             style="left:${P.marge * k}px; right:${P.marge * k}px;
             top:${(P.marge + TITRE_Y - MONTEE_TITRE) * k}px; font-size:${4.8 * k}px">
-            <b>${avecTitre
-        ? echapper(titre || '') + (sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : '')
-        : 'Titre de la feuille'}</b>
-        </div>
+            <b>${echapper(titre || '')
+            + (sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : '')}</b>
+        </div>` : ''}
         <div class="fp-identite${champs.length ? '' : ' fp-identite--vide'}"
             data-fiche="identite" style="left:${P.marge * k}px;
             right:${P.marge * k}px;
@@ -958,7 +1002,13 @@ export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
             gap:${5 * k}px">${lignes}</div>
         ${avecTitre || champs.length ? `<div class="fp-ligne"
             style="left:${P.marge * k}px; right:${P.marge * k}px; top:${yFilet * k}px;"></div>` : ''}
-        ${cadre}`;
+        ${cadre}
+        ${lignesCons.length ? `<div class="fp-consigne-feuille" data-fiche="consigne-feuille"
+            title="Cliquer pour récrire la consigne de la feuille"
+            style="left:${P.marge * k}px; right:${P.marge * k}px;
+            top:${(yFilet + 1.6 + (note ? CARTOUCHE_H - 3 : 0)) * k}px;
+            font-size:${3.4 * k}px; line-height:${HAUTEUR_CONSIGNE_FEUILLE * k}px"
+            >${lignesCons.map(l => echapper(l)).join('<br>')}</div>` : ''}`;
 }
 
 // --- PDF ---------------------------------------------------------------------
@@ -979,6 +1029,11 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
         pdf.splitTextToSize(pourPdf(ligneTitre), droite - P.marge).slice(0, 1)
             .forEach(l => pdf.text(l, P.w / 2, P.marge + TITRE_Y, { align: 'center' }));
     }
+
+    // LA CONSIGNE DE LA FEUILLE, sous le filet — celle qui vaut pour tout le
+    // devoir : « Calculatrice interdite », « Tu as 45 minutes ». Voir
+    // `lignesConsigneFeuille`. Elle est posée après le filet et le cartouche,
+    // par `entetePdfConsigne`, pour ne pas dépendre de l'ordre de dessin ici.
 
     // L'IDENTITÉ SUR SA PROPRE LIGNE, chaque champ avec sa longueur : un
     // « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé.
@@ -1033,6 +1088,20 @@ export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}
         pdf.setFontSize(8.6);
         pdf.setTextColor(...ENCRE.gris);
         pdf.text(pourPdf(bareme), P.marge, yBas + 4.4);
+        pdf.setTextColor(...ENCRE.texte);
+    }
+    // LA CONSIGNE DE LA FEUILLE, en dessous de tout le reste — voir
+    // `lignesConsigneFeuille`. En italique, comme les consignes d'exercice :
+    // c'est le même genre de phrase, et l'œil ne la confond pas avec un énoncé.
+    const lignesCons = lignesConsigneFeuille(entete.consigne, P, entete.mesurer);
+    if (lignesCons.length) {
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(9.6);
+        pdf.setTextColor(...ENCRE.gris);
+        lignesCons.forEach((l, i) => {
+            pdf.text(pourPdf(l), P.marge, yBas + 4.6 + i * HAUTEUR_CONSIGNE_FEUILLE);
+        });
+        pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(...ENCRE.texte);
     }
     pdf.setFont('helvetica', 'normal');

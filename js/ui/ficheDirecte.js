@@ -39,7 +39,7 @@ const CASES_CARTOUCHE = { note: 'Note', commentaire: 'Commentaire' };
  * survol sur des choses que personne n'écoute — la pire des interfaces, celle
  * qui promet un geste et ne le rend pas.
  */
-const PARTIES_TOUTES = { titre: true, champs: true, cartouche: true };
+const PARTIES_TOUTES = { titre: true, champs: true, cartouche: true, consigne: true };
 
 /**
  * Pose les fantômes de ce qui MANQUE, après chaque rendu de l'aperçu.
@@ -73,12 +73,44 @@ export function garnirFicheDirecte(apercu, etat = {}, parties = PARTIES_TOUTES) 
     // Elle ne paraît que s'il Y A un titre : sur une feuille déjà sans titre,
     // c'est le placeholder gris qui invite à en écrire un, et une croix à côté
     // n'effacerait rien.
-    const titre = apercu.querySelector('[data-fiche="titre"]');
-    if (parties.titre && titre && !titre.querySelector('[data-vider-titre]')
-        && !titre.classList.contains('fp-entete--vide')) {
+    // SUR LA PREMIÈRE PAGE, PAS SUR LA PREMIÈRE TROUVÉE. L'aperçu empile les
+    // pages, et celles des solutions portent leur propre bandeau
+    // « — Solutions » : chercher dans tout l'aperçu revenait à trouver CELUI-LÀ
+    // dès que la feuille n'avait plus de titre, et le « + Titre » n'apparaissait
+    // jamais.
+    const page1 = (ligne && ligne.closest('.fq-page')) || apercu;
+    const titre = page1.querySelector('[data-fiche="titre"]');
+    // La boîte n'existe QUE s'il y a un titre : sa seule présence suffit donc,
+    // il n'y a plus de « boîte vide » à distinguer.
+    if (parties.titre && titre && !titre.querySelector('[data-vider-titre]')) {
         titre.insertAdjacentHTML('beforeend',
             `<button type="button" class="fp-fantome fp-vider-titre" data-vider-titre
                 title="Supprimer le titre de la feuille">✕</button>`);
+    }
+    // ET LE CHEMIN DU RETOUR. Rémy : « quand on clique sur la croix, ça ne le
+    // supprime pas forcément, mets un plus (dans la marge inutile) pour remettre
+    // le titre ». Une fois le titre effacé il ne restait qu'un gris pâle au
+    // milieu de la ligne — cliquable, mais rien ne le disait, et un professeur
+    // qui a effacé par curiosité croit avoir cassé quelque chose. Le « + » se
+    // pose à GAUCHE, dans la marge que la ligne de titre laisse vide, et il dit
+    // ce qu'il fait.
+    if (parties.titre && !titre && ligne && !ligne.querySelector('[data-remettre-titre]')) {
+        ligne.insertAdjacentHTML('afterbegin',
+            `<button type="button" class="fp-fantome" data-remettre-titre
+                title="Remettre un titre sur la feuille">+ Titre</button>`);
+    }
+
+    // LA CONSIGNE DE LA FEUILLE. Rémy : « ajoute un plus en dessous pour
+    // pouvoir mettre des consignes ». Chaque exercice a déjà la sienne ; il
+    // manquait celle du devoir entier — « Calculatrice interdite », « Rédige
+    // tes réponses », « Tu as 45 minutes ». Elle ne se range dans aucun
+    // exercice, elle se dit une fois, en tête.
+    if (parties.consigne && ligne && !ligne.querySelector('[data-ajout-consigne]')
+        && !String(etat.consigne || '').trim()) {
+        ligne.insertAdjacentHTML('beforeend',
+            `<button type="button" class="fp-fantome" data-ajout-consigne
+                title="Ajouter une consigne valable pour toute la feuille"
+            >+ Consigne</button>`);
     }
 
     // Les cases du cartouche. Elles vivent SOUS le filet ; faute de cartouche
@@ -143,11 +175,44 @@ export function brancherFicheDirecte(apercu, { lire, ecrire, parties }) {
             ev.preventDefault();
             return ecrire({ [cartouche.dataset.case]: false });
         }
+        const ajoutConsigne = quoi.consigne && ev.target.closest('[data-ajout-consigne]');
+        if (ajoutConsigne) {
+            ev.preventDefault();
+            // Une consigne posée vide ne se verrait pas : on écrit une phrase
+            // de départ, que le professeur récrit aussitôt d'un clic.
+            ecrire({ consigne: 'Calculatrice interdite. Rédige tes réponses.' });
+            // Elle vient d'apparaître : on ouvre la saisie dessus, sans quoi il
+            // faudrait la retrouver et la cliquer.
+            return setTimeout(() => {
+                const c = apercu.querySelector('[data-fiche="consigne-feuille"]');
+                if (c) ecrireLigne(c, 'consigne', 'Consigne de la feuille', lire, ecrire);
+            }, 0);
+        }
+        const cons = quoi.consigne && ev.target.closest('[data-fiche="consigne-feuille"]');
+        if (cons) {
+            ev.preventDefault();
+            return ecrireLigne(cons, 'consigne', 'Consigne de la feuille', lire, ecrire);
+        }
         // La croix passe AVANT la boîte du titre : elle est dedans, et un clic
         // dessus ouvrirait sinon la saisie qu'on vient de vouloir vider.
         if (quoi.titre && ev.target.closest('[data-vider-titre]')) {
             ev.preventDefault();
             return ecrire({ titre: '' });
+        }
+        // Le « + Titre » aussi : il est dans la boîte, et il doit ouvrir la
+        // saisie plutôt que d'être avalé par le clic de la boîte.
+        // Le « + Titre » vit avec les autres « + », au bout de la ligne
+        // d'identité : sans titre il n'y a plus de boîte de titre où le poser.
+        const remettre = quoi.titre && ev.target.closest('[data-remettre-titre]');
+        if (remettre) {
+            ev.preventDefault();
+            // On repose un titre, puis on ouvre la saisie sur la boîte qui
+            // vient de renaître.
+            ecrire({ titre: 'Titre de la feuille' });
+            return setTimeout(() => {
+                const boite = apercu.querySelector('[data-fiche="titre"]');
+                if (boite) ecrireTitre(boite, lire, ecrire);
+            }, 0);
         }
         const titre = quoi.titre && ev.target.closest('[data-fiche="titre"]');
         if (titre) { ev.preventDefault(); ecrireTitre(titre, lire, ecrire); }
@@ -180,6 +245,50 @@ export function brancherFicheDirecte(apercu, { lire, ecrire, parties }) {
  * la feuille, et plus dans une boîte posée dessus. Entrée valide, Échap
  * annule : les deux touches qu'on essaie sans y penser.
  */
+/**
+ * ÉCRIRE UNE LIGNE DE L'EN-TÊTE À SA PLACE — la consigne de la feuille.
+ *
+ * Même principe que le titre, et pour les mêmes raisons : un vrai champ de
+ * saisie plutôt que `contentEditable`, habillé de la police de la ligne qu'il
+ * remplace, Entrée pour valider et Échap pour annuler. Ce qui change est
+ * qu'une consigne peut être longue et qu'on la relit : c'est un `textarea`
+ * plutôt qu'un `input`, et Entrée y valide quand même — c'est le geste qu'on
+ * fait sans y penser, et deux lignes suffisent (voir `MAX_LIGNES_CONSIGNE`).
+ *
+ * Vidée, elle disparaît : le « + Consigne » revient, et l'on n'a pas gardé
+ * une ligne blanche en haut de la feuille.
+ */
+function ecrireLigne(boite, cle, etiquette, lire, ecrire) {
+    if (boite.querySelector('textarea')) return;
+    const avant = lire()[cle] || '';
+    const champ = document.createElement('textarea');
+    champ.className = 'fp-consigne-saisie';
+    champ.maxLength = 160;
+    champ.rows = 2;
+    champ.value = avant;
+    champ.setAttribute('aria-label', etiquette);
+    champ.autocomplete = 'off';
+    champ.spellcheck = false;
+    boite.replaceChildren(champ);
+    boite.classList.add('fp-entete--edite');
+    champ.focus();
+    champ.select();
+
+    let annule = false;
+    const finir = () => {
+        if (!champ.isConnected) return;
+        const texte = annule ? avant : champ.value.trim().slice(0, 160);
+        champ.onblur = null;
+        boite.classList.remove('fp-entete--edite');
+        ecrire({ [cle]: texte });
+    };
+    champ.onblur = finir;
+    champ.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); champ.blur(); }
+        else if (e.key === 'Escape') { e.preventDefault(); annule = true; champ.blur(); }
+    };
+}
+
 function ecrireTitre(boite, lire, ecrire) {
     const b = boite.querySelector('b');
     if (!b || boite.querySelector('input')) return;
