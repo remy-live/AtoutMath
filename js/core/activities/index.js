@@ -195,6 +195,18 @@ const PARAM_AIDE = [{
         { value: 'clavier', label: 'Directement au clavier', court: 'Libre' }
     ]
 }, {
+    // LA RÉPARTITION ÉCRITE À LA MAIN — « 3-5 » : trois questions à deux
+    // propositions, cinq à quatre, le reste au clavier. Voir `repartitionDe`
+    // dans core/aide.js.
+    //
+    // Rémy, après trois essais sur ce panneau : « soit il faut expliquer au
+    // prof que l'exercice s'adapte, soit on définit vraiment ». Elle n'a pas de
+    // champ à elle : elle se règle aux compteurs de l'aperçu, sous les phases
+    // qu'elle décrit — c'est le seul endroit où l'on voit ce qu'elle fait.
+    // `'auto'` laisse le préréglage décider, et reste le défaut.
+    id: 'repartition', type: 'text', label: 'Répartition', default: 'auto',
+    papier: false, cache: true, groupe: 'aide'
+}, {
     id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto', papier: false,
     affiner: true, echelle: true, groupe: 'aide',
     aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '

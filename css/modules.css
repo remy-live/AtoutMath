@@ -2607,22 +2607,42 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    valeur. Une carte par façon de répondre, la vraie question dedans, on clique
    celle qu'on veut : il n'y a plus rien à lire pour deviner un résultat. */
 .cfg-cache { display: none; }
-.cfg-cartes {
+/* LES TROIS PHASES : leurs rangs, la vraie question, et leur longueur.
+   Rémy : « comment on sait le nombre de questions avec un qcm de 2, un qcm de
+   4 ? on ne comprend pas à quoi correspond le moment de la saisie au clavier.
+   Soit il faut expliquer au prof que l'exercice s'adapte, soit on définit
+   vraiment. » Les rangs sont écrits, et ils se règlent. */
+.cfg-phases {
     display: grid; gap: 8px; margin-top: 6px;
-    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
-.cfg-carte {
+.cfg-phase {
     display: flex; flex-direction: column; gap: 4px; align-items: stretch;
-    padding: 8px; cursor: pointer; text-align: center;
-    border: 2px solid var(--border, #d7dce5); border-radius: 12px;
-    background: #fff; color: inherit; font: inherit;
+    padding: 8px; text-align: center;
+    border: 2px solid var(--border, #d7dce5); border-radius: 12px; background: #fff;
 }
-.cfg-carte:hover { border-color: var(--primary); }
-.cfg-carte--ici {
-    border-color: var(--primary);
-    background: var(--primary-soft, #eceafd);
-    box-shadow: 0 0 0 1px var(--primary) inset;
+/* Une phase de zéro question reste VISIBLE — c'est elle qu'on va allonger. */
+.cfg-phase--vide { opacity: .5; border-style: dashed; }
+.cfg-phase-rangs {
+    font-size: .74rem; font-weight: 800; color: var(--primary);
+    text-transform: uppercase; letter-spacing: .02em;
 }
+.cfg-phase--vide .cfg-phase-rangs { color: var(--text-muted); }
+.cfg-phase-nom { font-weight: 800; font-size: .84rem; color: var(--text-main); }
+.cfg-phase-dit { font-size: .71rem; color: var(--text-muted); line-height: 1.25; }
+.cfg-phase-rien { color: var(--text-muted); font-size: 1.4rem; }
+.cfg-phase-pas {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 2px;
+}
+.cfg-phase-pas b { min-width: 1.4em; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.cfg-phase-btn {
+    width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border, #d7dce5); background: #fff;
+    font-weight: 800; font-size: 1rem; line-height: 1; padding: 0;
+    color: var(--text-main);
+}
+.cfg-phase-btn:hover { border-color: var(--primary); color: var(--primary); }
 .cfg-carte-vue {
     display: flex; flex-direction: column; gap: 5px; justify-content: center;
     min-height: 54px; padding: 6px 4px; border-radius: 8px; background: #fff;
@@ -7821,3 +7841,19 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .game-icon-btn--ko { color: #b83a2c; border-color: rgba(184, 58, 44, .35); }
 .game-icon-btn--ok:hover:not(:disabled) { background: rgba(31, 122, 77, .10); }
 .game-icon-btn--ko:hover:not(:disabled) { background: rgba(184, 58, 44, .10); }
+
+
+/* LE NOMBRE SE TAPE AU BOUT DU RAIL. Rémy : « pour le nombre de question il
+   est bout du slide, on peut le modifier ». Traîner une poignée jusqu'à 24
+   demande de la précision quand on sait déjà qu'on veut vingt-quatre ; le rail
+   reste là pour qui préfère pousser. */
+.cfg-glissiere-saisie {
+    width: 3.4em; text-align: center; padding: 3px 4px;
+    border: 1px solid var(--border, #d7dce5); border-radius: 7px;
+    background: #fff; color: var(--text-main);
+    font-weight: 700; font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+}
+.cfg-glissiere-saisie::-webkit-outer-spin-button,
+.cfg-glissiere-saisie::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cfg-glissiere-saisie:focus { outline: 2px solid var(--primary); outline-offset: 1px; }

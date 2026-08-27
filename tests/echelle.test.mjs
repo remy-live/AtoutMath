@@ -101,7 +101,12 @@ test('le rang tolère la valeur rendue par le DOM, qui est du texte', () => {
 // --- Les échelles réellement déclarées dans l'application --------------------
 
 test('les trois réglages d\'aide sont des échelles jouables', () => {
-    const params = getActivity('bubbles').params;
+    // UN RÉGLAGE CACHÉ N'A PAS D'ÉCHELLE, ET C'EST NORMAL. La répartition
+    // (« 3-5 » : trois questions à deux propositions, cinq à quatre) se règle
+    // aux compteurs de l'aperçu, sous les phases qu'elle décrit — elle n'a
+    // aucun champ à elle, donc aucun rail à graduer. Voir `cache` dans
+    // `fieldHtml`.
+    const params = getActivity('bubbles').params.filter(p => !p.cache);
     params.forEach(p => {
         const e = echelleDe(p);
         assert.ok(e, `« ${p.label} » devrait être une échelle`);

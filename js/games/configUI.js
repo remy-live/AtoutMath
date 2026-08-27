@@ -15,6 +15,8 @@ import { echelleDe, rangDans } from '../core/echelle.js';
 import { makeRng } from '../core/ids.js';
 import { ajusterDuo, phraseDuo, seuilPourMode, MIN_ETAPE, MAX_ETAPE } from '../core/seuilEtape.js';
 import { paliersAide, rangsEnMots, palierEnMots } from '../core/apercuAide.js';
+// La répartition explicite des phases — voir `apercuAideHtml`.
+import { repartitionDe, repartitionDuMode, ecrireRepartition } from '../core/aide.js';
 
 // --- Champs -----------------------------------------------------------------
 
@@ -186,7 +188,17 @@ function glissiereHtml(param, ech, value, id) {
             ${rang}
         </div>
         ${crans}
-        <output class="cfg-glissiere-dit" data-dit>${ech.libelles[i]}</output>
+        ${nombre
+        // LE NOMBRE SE TAPE, AU BOUT DU RAIL. Rémy : « pour le nombre de
+        // question il est bout du slide, on peut le modifier ». Traîner une
+        // poignée jusqu'à « 24 » demande de la précision quand on sait déjà
+        // qu'on veut vingt-quatre — et le rail reste là pour qui préfère
+        // pousser. Les deux commandes touchent le MÊME champ.
+        ? `<input type="number" class="cfg-glissiere-dit cfg-glissiere-saisie" data-dit
+                data-pour="${id}" min="${ech.valeurs[0]}"
+                max="${ech.valeurs[ech.valeurs.length - 1]}" value="${ech.valeurs[i]}"
+                aria-label="${escapeAttr(param.label || 'Valeur')}">`
+        : `<output class="cfg-glissiere-dit" data-dit>${ech.libelles[i]}</output>`}
     </div>`;
 }
 
@@ -515,6 +527,14 @@ export const TITRES_ELEVE = {
 
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
+    // UN RÉGLAGE QUI A SA PROPRE COMMANDE N'A PAS DE CHAMP. La répartition se
+    // règle dans l'aperçu, aux compteurs de chaque phase ; elle a quand même
+    // besoin d'exister dans le panneau, parce que c'est là que la relecture des
+    // réglages va la chercher. Un champ caché, donc, et rien à l'écran.
+    if (param.cache) {
+        return `<input type="hidden" data-param="${escapeAttr(param.id)}"
+            id="${id}" value="${escapeAttr(String(value ?? param.default ?? ''))}">`;
+    }
     const wide = param.type === 'multiselect';   // les puces prennent toute la largeur
 
     // UN MENU DONT LES CHOIX SONT DES PHRASES PASSE SOUS SON LIBELLÉ.
@@ -768,64 +788,80 @@ function vignetteAide(p) {
 
 /** Le ruban complet, réglages et longueur d'exercice en main. */
 /**
- * LES QUATRE FAÇONS DE RÉPONDRE, MONTRÉES ET NON DÉCRITES.
+ * LES PHASES DE L'EXERCICE, AVEC LEURS RANGS ET LEUR LONGUEUR RÉGLABLE.
  *
- * Rémy, trois fois de suite sur ce bloc : « on comprend rien pour le slide »,
- * « il faut le vrai aperçu », puis « je ne trouve toujours pas cela clair
- * vraiment et en dessous ya plein de propositions ».
+ * Rémy, quatre fois de suite sur ce bloc — « on comprend rien pour le slide »,
+ * « il faut le vrai aperçu », « en dessous ya plein de propositions », enfin :
+ * « comment on sait le nombre de questions avec un qcm de 2, un qcm de 4 ? on
+ * ne comprend pas à quoi correspond le moment de la saisie au clavier. Soit il
+ * faut expliquer au prof que l'exercice s'adapte, soit on définit vraiment —
+ * par exemple sur 10 questions on fait 2 questions de qcm de 2 puis 3 de qcm
+ * de 4. »
  *
- * Le défaut n'était pas dans le dessin du rail, il était dans le NOMBRE de
- * commandes : trois pour une seule question. Le rail nommait des préréglages
- * (« QCM 2 »), une rangée de pastilles fixait le nombre de propositions, et
- * deux vis cachées derrière « Affiner… » refixaient la même chose. « QCM 2 »
- * veut dire « 2 propositions » : on écrivait deux fois la même valeur à deux
- * endroits, et rien ne disait laquelle gagnait.
+ * C'est la bonne question, et elle en cachait une autre : les cartes que
+ * j'avais faites ne disaient PLUS combien de questions chaque façon de répondre
+ * couvrait. Le ruban d'avant le disait — « Questions 1 à 3 » — et je l'avais
+ * perdu en route.
  *
- * Une carte par façon de répondre, avec la VRAIE question dedans. On clique
- * celle qu'on veut. Il n'y a plus rien à lire pour deviner un résultat :
- * le résultat est là, et on le désigne.
+ * On rend donc les deux : les rangs SONT écrits, et ils se RÈGLENT. Trois
+ * phases, chacune avec son compteur ; la troisième est ce qui reste, donc la
+ * somme est juste par construction — on ne peut pas se tromper sur un total
+ * qu'on ne saisit pas. Voir `repartitionDe` dans core/aide.js.
  */
-function carteAide(mode, params, total, exoId, choisi) {
-    const paliers = paliersAide({ ...params, aide: mode.v, propositions: 'auto', saisie: 'auto' }, total);
-    // La carte montre le PREMIER palier — c'est ce que l'élève voit en
-    // commençant, et pour trois des quatre modes c'est aussi tout le reste.
-    const p = paliers[0] || { de: 1, a: total, propositions: 4, clavier: false };
-    const vraie = vraieQuestion(exoId, p, params);
+const PHASES_AIDE = [
+    { cle: 'deux', nom: '2 propositions', dit: 'La bonne et l’erreur classique' },
+    { cle: 'quatre', nom: '4 propositions', dit: 'Un vrai choix' },
+    { cle: 'clavier', nom: 'Au clavier', dit: 'L’élève écrit sa réponse' }
+];
+
+/** La carte d'une phase : ses rangs, la vraie question, son compteur. */
+function cartePhase(phase, rep, depart, params, total, exoId) {
+    const combien = rep[phase.cle];
+    const p = {
+        de: depart, a: depart + combien - 1,
+        propositions: phase.cle === 'deux' ? 2 : 4,
+        clavier: phase.cle === 'clavier'
+    };
+    const vraie = combien > 0 ? vraieQuestion(exoId, p, params) : null;
     const dedans = vraie
         ? `<span class="cfg-vg-q">${escapeAttr(vraie.texte)}</span>`
         + (p.clavier
             ? '<span class="cfg-vg-pave">' + '<i></i>'.repeat(9) + '</span>'
             : `<span class="cfg-vg-vrais">${vraie.choix.slice(0, 6).map(c =>
                 `<b>${escapeAttr(c)}</b>`).join('')}</span>`)
-        : vignetteAide(p);
-    return `<button type="button" class="cfg-carte${choisi ? ' cfg-carte--ici' : ''}"
-        data-aide="${escapeAttr(mode.v)}" aria-pressed="${choisi}">
-        <span class="cfg-carte-vue${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</span>
-        <span class="cfg-carte-nom">${mode.nom}</span>
-        <span class="cfg-carte-dit">${mode.dit}</span>
-    </button>`;
+        : (combien > 0 ? vignetteAide(p) : '<span class="cfg-phase-rien">—</span>');
+    // LES RANGS, EN TOUTES LETTRES. C'est l'information que Rémy cherchait :
+    // « à quoi correspond le moment de la saisie au clavier ».
+    const rangs = combien === 0 ? 'Aucune question'
+        : combien === 1 ? `Question ${p.de}`
+            : (p.de === 1 && p.a === total ? `Les ${total} questions` : `Questions ${p.de} à ${p.a}`);
+    return `<div class="cfg-phase${combien ? '' : ' cfg-phase--vide'}">
+        <div class="cfg-phase-rangs">${rangs}</div>
+        <div class="cfg-carte-vue${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</div>
+        <div class="cfg-phase-nom">${phase.nom}</div>
+        <div class="cfg-phase-dit">${phase.dit}</div>
+        <div class="cfg-phase-pas">
+            <button type="button" class="cfg-phase-btn" data-phase="${phase.cle}" data-pas="-1"
+                aria-label="Une question de moins">−</button>
+            <b>${combien}</b>
+            <button type="button" class="cfg-phase-btn" data-phase="${phase.cle}" data-pas="1"
+                aria-label="Une question de plus">+</button>
+        </div>
+    </div>`;
 }
 
-/**
- * LES QUATRE MODES, ET CE QU'ILS PROMETTENT EN UNE LIGNE.
- *
- * Les valeurs sont celles du schéma (`core/activities/index.js`) : on ne les
- * réinvente pas ici, on les nomme pour l'œil. Les phrases disent ce que
- * l'ÉLÈVE vit, pas ce que le réglage vaut — « on tape la réponse » plutôt que
- * « saisie : toujours ».
- */
-const MODES_AIDE = [
-    { v: 'deux', nom: '2 propositions', dit: 'La bonne et l’erreur classique' },
-    { v: 'propositions', nom: '4 propositions', dit: 'Un choix, du début à la fin' },
-    { v: 'progressive', nom: 'Progressif', dit: '2, puis 4, puis au clavier' },
-    { v: 'clavier', nom: 'Au clavier', dit: 'L’élève écrit sa réponse' }
-];
-
 export function apercuAideHtml(params, total, exoId = '') {
-    const courant = params.aide || 'progressive';
-    return `<div class="cfg-apercu-titre">Comment l'élève répondra</div>
-        <div class="cfg-cartes">${MODES_AIDE.map(m =>
-        carteAide(m, params, total, exoId, m.v === courant)).join('')}</div>`;
+    // La répartition écrite à la main si elle existe, sinon celle que le
+    // préréglage produit — le professeur corrige au lieu de tout composer.
+    const rep = repartitionDe(params, total) || repartitionDuMode(params, total);
+    let depart = 1;
+    const cartes = PHASES_AIDE.map(ph => {
+        const html = cartePhase(ph, rep, depart, params, total, exoId);
+        depart += rep[ph.cle];
+        return html;
+    }).join('');
+    return `<div class="cfg-apercu-titre">Ce que l'élève verra, sur ${total} question${total > 1 ? 's' : ''}</div>
+        <div class="cfg-phases">${cartes}</div>`;
 }
 
 /**
@@ -842,7 +878,15 @@ function paramsAide(racine) {
         if (el.dataset.kind === 'echelle') return lireListe(el.dataset.valeurs)[Number(el.value)];
         return el.value;
     };
-    return { aide: lire('aide'), propositions: lire('propositions'), saisie: lire('saisie') };
+    // LA RÉPARTITION SE LIT DANS SON CHAMP CACHÉ, comme le reste. Elle n'y
+    // était pas, et l'aperçu continuait donc de montrer les nombres du
+    // préréglage pendant qu'on cliquait les compteurs : la valeur changeait,
+    // l'image non.
+    const champRep = racine.querySelector('[data-param="repartition"]');
+    return {
+        aide: lire('aide'), propositions: lire('propositions'), saisie: lire('saisie'),
+        repartition: champRep ? champRep.value : 'auto'
+    };
 }
 
 /**
@@ -1008,7 +1052,12 @@ function majRail(rail) {
         : rail.value;
     const boite = rail.closest('.cfg-glissiere');
     const dit = boite && boite.querySelector('[data-dit]');
-    if (dit) dit.textContent = texte;
+    // Un champ de saisie porte sa valeur dans `value`, pas dans son texte — et
+    // l'on ne la réécrit pas si c'est LUI qu'on est en train de taper, sinon
+    // le curseur d'écriture saute au début à chaque frappe.
+    if (dit && dit.tagName === 'INPUT') {
+        if (document.activeElement !== dit) dit.value = texte;
+    } else if (dit) dit.textContent = texte;
     // Le rang suit le curseur : un « 3/4 » qui reste à 1/4 pendant qu'on glisse
     // serait pire que pas de rang du tout.
     const rang = boite && boite.querySelector('.cfg-glissiere-rang');
@@ -1123,25 +1172,51 @@ function allerAuCran(cran) {
 document.addEventListener('click', (e) => {
     const cran = e.target.closest && e.target.closest('.cfg-cran');
     if (cran) { e.preventDefault(); return allerAuCran(cran); }
-    // CLIQUER UNE CARTE, C'EST CHOISIR. Le rail « L'aide » n'est plus affiché
-    // — la carte le remplace — mais il reste dans le panneau, caché, et c'est
-    // toujours LUI qui porte la valeur : `readParams` la lit là, comme pour
-    // tous les autres réglages. Un second état aurait divergé du premier.
-    const carte = e.target.closest && e.target.closest('.cfg-carte');
-    if (!carte) return;
+    // ALLONGER OU RACCOURCIR UNE PHASE — voir `apercuAideHtml`.
+    //
+    // Le compteur écrit dans le champ caché `repartition`, et c'est tout : la
+    // relecture des réglages y trouvera la valeur comme pour n'importe quel
+    // autre réglage. Deux nombres seulement — la troisième phase est ce qui
+    // reste —, si bien que la somme ne peut pas être fausse.
+    const pas = e.target.closest && e.target.closest('.cfg-phase-btn');
+    if (!pas) return;
     e.preventDefault();
-    const hote = carte.closest('.cfg-apercu-hote');
-    const rail = hote && hote.querySelector('.cfg-rail[data-param="aide"]');
-    if (!rail) return;
-    const k = lireListe(rail.dataset.valeurs).map(String).indexOf(carte.dataset.aide);
-    if (k < 0) return;
-    rail.value = String(k);
-    majRail(rail);
-    rail.dispatchEvent(new Event('input', { bubbles: true }));
-    rail.dispatchEvent(new Event('change', { bubbles: true }));
+    const hote = pas.closest('.cfg-apercu-hote');
+    const champ = hote && hote.querySelector('[data-param="repartition"]');
+    if (!champ) return;
+    const nb = hote.querySelector('#cfg-nbitems');
+    const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
+    const rep = repartitionDe({ repartition: champ.value }, total)
+        || repartitionDuMode(paramsAide(hote), total);
+    const d = Number(pas.dataset.pas);
+    const quoi = pas.dataset.phase;
+    let { deux, quatre } = rep;
+    // ON POUSSE SUR LA PHASE VOISINE, on ne dépasse pas le total. Allonger
+    // « 2 propositions » raccourcit forcément quelque chose d'autre : ce sera
+    // « 4 propositions » d'abord, le clavier ensuite.
+    if (quoi === 'deux') deux = Math.max(0, Math.min(total, deux + d));
+    else if (quoi === 'quatre') quatre = Math.max(0, Math.min(total - deux, quatre + d));
+    // Le clavier : allonger le clavier raccourcit les quatre propositions,
+    // puis les deux — c'est l'ordre naturel de la progression, à rebours.
+    else if (d > 0) { if (quatre > 0) quatre--; else if (deux > 0) deux--; }
+    else if (total - deux - quatre > 0) quatre = Math.min(total - deux, quatre + 1);
+    if (deux + quatre > total) quatre = Math.max(0, total - deux);
+    champ.value = ecrireRepartition(deux, quatre);
+    rafraichirApercu(hote);
 });
 
 document.addEventListener('input', (e) => {
+    // Le nombre tapé au bout du rail : il pousse le rail, qui refait le reste.
+    const saisie = e.target.closest && e.target.closest('.cfg-glissiere-saisie');
+    if (saisie) {
+        const cible = document.getElementById(saisie.dataset.pour);
+        const v = Number(saisie.value);
+        if (cible && Number.isFinite(v)) {
+            cible.value = String(Math.max(Number(cible.min), Math.min(Number(cible.max), v)));
+            cible.dispatchEvent(new Event('input', { bubbles: true }));
+            cible.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
     const rail = e.target.closest && e.target.closest('.cfg-rail');
     if (rail) majRail(rail);
     const hote = e.target.closest && e.target.closest('.cfg-apercu-hote');

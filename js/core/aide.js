@@ -69,6 +69,66 @@ export function affine(params = {}) {
 }
 
 /**
+ * LA RÉPARTITION EXPLICITE — « sur 10 questions, 2 à deux propositions, 3 à
+ * quatre, le reste au clavier ».
+ *
+ * Rémy, après trois essais sur ce panneau : « soit il faut expliquer au prof
+ * que l'exercice s'adapte, soit on définit vraiment par exemple sur 10
+ * questions on fait 2 questions de qcm de 2 puis 3 de qcm de 4 ».
+ *
+ * Il a raison, et le préréglage était le problème : « Progressif » est un NOM.
+ * Il ne dit ni combien de questions sont faciles, ni quand le clavier arrive —
+ * et le professeur qui prépare sa séance a besoin de ces deux nombres, pas
+ * d'un adjectif. On lui donne donc les nombres, et il les écrit lui-même.
+ *
+ * DEUX NOMBRES SUFFISENT, ET LE TROISIÈME SE DÉDUIT. Combien de questions à
+ * deux propositions, combien à quatre — le reste se tape au clavier. C'est
+ * exactement la phrase de Rémy, et c'est aussi ce qui rend la somme toujours
+ * juste : on ne peut pas se tromper sur un total qu'on ne saisit pas.
+ *
+ * `'auto'` garde le comportement des préréglages, qui reste le défaut : un
+ * professeur qui ne veut rien régler n'a rien à régler.
+ *
+ * @returns {{deux: number, quatre: number, clavier: number}|null}
+ */
+export function repartitionDe(params = {}, total = 10) {
+    const brut = params.repartition;
+    if (brut === undefined || brut === null || brut === 'auto' || brut === '') return null;
+    const n = Math.max(1, Math.round(Number(total) || 10));
+    const [a, b] = String(brut).split('-').map(v => Math.max(0, Math.round(Number(v) || 0)));
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    // BORNÉE PAR LE TOTAL, ET DANS L'ORDRE. Le nombre de questions se règle
+    // ailleurs et peut descendre APRÈS qu'on a écrit la répartition : sans
+    // cette borne, « 3 et 5 » sur un exercice ramené à 4 questions promettrait
+    // huit questions qui n'existent pas.
+    const deux = Math.min(a, n);
+    const quatre = Math.min(b, n - deux);
+    return { deux, quatre, clavier: n - deux - quatre };
+}
+
+/** La répartition telle qu'on l'écrit dans les réglages : « 3-5 ». */
+export const ecrireRepartition = (deux, quatre) =>
+    `${Math.max(0, Math.round(deux))}-${Math.max(0, Math.round(quatre))}`;
+
+/**
+ * La répartition qu'un préréglage produit, pour AMORCER la saisie du
+ * professeur : il ouvre le panneau, voit trois nombres qui décrivent ce que
+ * l'exercice fait déjà, et les corrige. Partir de zéro l'obligerait à
+ * reconstruire une progression que le logiciel connaît.
+ */
+export function repartitionDuMode(params = {}, total = 10) {
+    const n = Math.max(1, Math.round(Number(total) || 10));
+    let deux = 0, quatre = 0, clavier = 0;
+    for (let r = 1; r <= n; r++) {
+        const a = aideAuRang({ ...params, repartition: 'auto' }, r, n);
+        if (a.clavier) clavier++;
+        else if (a.propositions === 2) deux++;
+        else quatre++;
+    }
+    return { deux, quatre, clavier };
+}
+
+/**
  * Ce qu'il faut faire à la question `rang` (1 pour la première) sur `total`.
  *
  * @returns {{ propositions: number|null, clavier: boolean }}
@@ -76,6 +136,20 @@ export function affine(params = {}) {
  *   `clavier` : la réponse se tape au lieu de se choisir.
  */
 export function aideAuRang(params = {}, rang = 1, total = 10) {
+    // LA RÉPARTITION ÉCRITE À LA MAIN PASSE AVANT TOUT LE RESTE — voir
+    // `repartitionDe`. C'est le professeur qui a décidé ; aucun préréglage
+    // n'a d'avis à donner par-dessus.
+    const rep = repartitionDe(params, total);
+    if (rep) {
+        const r0 = Math.max(1, Number(rang) || 1);
+        if (r0 <= rep.deux) return { propositions: 2, clavier: false };
+        if (r0 <= rep.deux + rep.quatre) return { propositions: 4, clavier: false };
+        return { propositions: 4, clavier: true };
+    }
+    return aideAuRangAuto(params, rang, total);
+}
+
+function aideAuRangAuto(params = {}, rang = 1, total = 10) {
     const m = MODES[modeDe(params)];
     const n = Math.max(2, Number(total) || 10);
     const r = Math.max(1, Number(rang) || 1);
