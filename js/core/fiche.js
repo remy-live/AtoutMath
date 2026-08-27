@@ -573,12 +573,35 @@ export function composerBlocs(exos, opts, mesurer) {
             // suivie de trois lignes à rédiger est large et basse. Le bloc
             // déclare sa proportion, et la hauteur s'en déduit.
             const ratio = Number(exo.grilleRatio) > 0 ? Number(exo.grilleRatio) : 1;
-            const hauteurBloc2 = cote * ratio;
             colonnesParExo.push(parLigne);
             const consigneLignes = exo.consigne
                 ? couperEnLignes(exo.consigne, zone.w - 2, o.tailleConsigne, mesurer)
                 : [];
             const enteteH = o.bandeauH + consigneLignes.length * (o.tailleConsigne * 1.45) + o.apresBandeau;
+            // UN BLOC « PLEIN » PREND CE QUI RESTE, ET CELA NE SE DÉDUIT PAS
+            // D'UNE PROPORTION.
+            //
+            // Rémy, sur les grenouilles, le parking et la Tour de Hanoï : « tu
+            // n'as pas profité de l'espace ». Ces rendus demandent la page
+            // entière — on y découpe des pièces, elles doivent être à la taille
+            // de la main. Le dire par un rapport hauteur/largeur ne marche pas :
+            // le rapport de la PAGE ne tient pas compte du bandeau ni de la
+            // consigne, si bien que le bloc dépassait de trois centimètres,
+            // provoquait un saut de page à chaque fois, et l'on obtenait dix
+            // pages vides pour quatre jeux.
+            //
+            // La seule hauteur juste est celle qu'on MESURE : le bas de la page
+            // moins le haut du bloc. Elle se calcule ici, après le bandeau,
+            // parce que c'est ici — et seulement ici — qu'on la connaît.
+            //
+            // L'ÉCART ENTRE RANGÉES SE RETRANCHE AUSSI. La boucle des rangées
+            // teste `y + hauteurBloc2 + entreRangees > basPage` : sans lui, un
+            // bloc qui remplit exactement la page déclenche un saut, la page
+            // suivante recommence, et l'on tourne en rond — dix pages vides
+            // pour quatre jeux, exactement ce qu'on a mesuré.
+            const hauteurBloc2 = exo.grillePleine
+                ? Math.max(60, basPage - haut() - enteteH - entreRangees)
+                : cote * ratio;
             if (iExo > 0 && page.items.length && y > haut()) y += o.entreExercices - o.entreQuestions;
             if (page.items.length && y + enteteH + hauteurBloc2 > basPage) nouvellePage();
 

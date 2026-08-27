@@ -35,6 +35,26 @@ import { RENDUS } from './printSheet.js';
 const proportionsRendu = (rendu, tire) => (typeof rendu.proportions === 'function'
     ? rendu.proportions((tire || []).map(g => g.item))
     : rendu.proportions);
+
+/**
+ * « PLEIN » : LE BLOC PREND LA PAGE — et la fiche de parcours l'ignorait.
+ *
+ * Rémy, sur les grenouilles, le parking et la Tour de Hanoï : « tu n'as pas
+ * profité de l'espace et un seul pour le pdf ».
+ *
+ * Les trois rendus DÉCLARENT pourtant `proportions: 'plein'`, et la fiche d'un
+ * exercice seul le respecte depuis longtemps. Mais dans un PARCOURS, la
+ * proportion se lit par `proportions?.h` — or « plein » est une CHAÎNE, et
+ * `'plein'.h` vaut `undefined`. Le bloc retombait donc sur le carré par défaut,
+ * plafonné à SOIXANTE-DIX-HUIT MILLIMÈTRES : quarante-trois pour cent d'une
+ * page de 182 mm. Les nénuphars faisaient huit millimètres, et l'on demandait
+ * à l'élève d'y poser une grenouille découpée.
+ *
+ * On traduit donc « plein » dans ce que la mise en page comprend : aucun
+ * plafond de largeur, et un rapport hauteur/largeur égal à celui de la zone
+ * utile — le bloc épouse la page au lieu de s'inscrire dans un carré.
+ */
+const EST_PLEIN = (rendu, tire) => proportionsRendu(rendu, tire) === 'plein';
 // La consigne de repli se coupe comme sur la fiche d'un exercice seul : même
 // règle, même fonction — deux copies auraient divergé au premier ajustement.
 import { premierePhrase } from './printQuestions.js';
@@ -1048,7 +1068,10 @@ export function ouvrirFicheParcours(chemin) {
                     // remplit la largeur, une rédaction veut deux par ligne.
                     grillesParLigne: e.grille ? (col ?? RENDUS[e.grille].parLigneDefaut ?? null) : null,
                     // Certains blocs demandent plus large que le plafond commun.
-                    grilleMax: e.grille ? (RENDUS[e.grille].grilleMax ?? null) : null,
+                    grilleMax: e.grille
+                        ? (EST_PLEIN(RENDUS[e.grille], tire) ? 400
+                            : (RENDUS[e.grille].grilleMax ?? null))
+                        : null,
                     // Tous les blocs imprimables ne sont pas carrés : une
                     // figure suivie de trois lignes à rédiger est large et
                     // basse. Le rendu déclare sa proportion, la mise en page
@@ -1056,7 +1079,13 @@ export function ouvrirFicheParcours(chemin) {
                     // La proportion peut être une FONCTION des grilles tirées
                     // (le tableau de conversion la calcule sur son nombre de
                     // lignes) : on la résout ici, pas plus loin.
-                    grilleRatio: e.grille ? (proportionsRendu(RENDUS[e.grille], tire)?.h ?? 1) : 1,
+                    grilleRatio: e.grille
+                        ? (proportionsRendu(RENDUS[e.grille], tire)?.h ?? 1) : 1,
+                    // « PLEIN » : LA PAGE ENTIÈRE. Ce n'est pas une proportion
+                    // — voir `hauteurBloc2` dans core/fiche.js : la hauteur
+                    // d'un bloc plein est ce qui RESTE sous son bandeau, et
+                    // cela ne se connaît qu'à la mise en page.
+                    grillePleine: !!(e.grille && EST_PLEIN(RENDUS[e.grille], tire)),
                     // BLOCS COLLÉS : les cartes du memory se touchent par leur
                     // bordure, dans un parcours comme sur leur fiche seule.
                     // Rémy : « les paires de paires ne sont pas collées, il
