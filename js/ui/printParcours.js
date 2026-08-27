@@ -31,6 +31,10 @@ import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
+/** La proportion d'un rendu : une valeur, ou une fonction des grilles. */
+const proportionsRendu = (rendu, tire) => (typeof rendu.proportions === 'function'
+    ? rendu.proportions((tire || []).map(g => g.item))
+    : rendu.proportions);
 // La consigne de repli se coupe comme sur la fiche d'un exercice seul : même
 // règle, même fonction — deux copies auraient divergé au premier ajustement.
 import { premierePhrase } from './printQuestions.js';
@@ -984,7 +988,10 @@ export function ouvrirFicheParcours(chemin) {
                     // figure suivie de trois lignes à rédiger est large et
                     // basse. Le rendu déclare sa proportion, la mise en page
                     // la respecte.
-                    grilleRatio: e.grille ? (RENDUS[e.grille].proportions?.h ?? 1) : 1,
+                    // La proportion peut être une FONCTION des grilles tirées
+                    // (le tableau de conversion la calcule sur son nombre de
+                    // lignes) : on la résout ici, pas plus loin.
+                    grilleRatio: e.grille ? (proportionsRendu(RENDUS[e.grille], tire)?.h ?? 1) : 1,
                     // BLOCS COLLÉS : les cartes du memory se touchent par leur
                     // bordure, dans un parcours comme sur leur fiche seule.
                     // Rémy : « les paires de paires ne sont pas collées, il

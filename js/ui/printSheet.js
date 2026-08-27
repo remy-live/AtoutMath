@@ -6875,6 +6875,32 @@ function geoChat(item, slot) {
  * jaune en gris clair —, et le texte est écrit en blanc sur le premier, en
  * noir sur le second, comme dans le logiciel.
  */
+/**
+ * LA VERSION NOIR ET BLANC DES BLOCS.
+ *
+ * Un bloc Scratch est un APLAT SATURÉ avec du texte blanc dessus. Passé à la
+ * moulinette du mode « photocopie » — qui retranche la saturation, voir
+ * `ui/ficheRendu.js` —, le bleu #4C97FF devient un gris très sombre : la brique
+ * sort en noir et le texte blanc dessus est illisible. C'est la pire des
+ * combinaisons sur une photocopieuse fatiguée, et c'est exactement ce qu'un
+ * professeur imprime.
+ *
+ * En noir et blanc, on RENVERSE donc : fond blanc, contour noir, texte noir.
+ * Ce sont alors les FORMES qui distinguent les familles — le chapeau arrondi de
+ * l'événement, le C du contrôle —, comme dans un manuel imprimé.
+ */
+const BLOC_SCRATCH_NB = {
+    mouvement: { fond: [255, 255, 255], bord: [40, 48, 62], encre: [26, 32, 44] },
+    controle: { fond: [244, 246, 250], bord: [40, 48, 62], encre: [26, 32, 44] },
+    evenement: { fond: [232, 236, 243], bord: [40, 48, 62], encre: [26, 32, 44] }
+};
+
+/** Les couleurs d'un genre de bloc, selon ce qui sortira de l'imprimante. */
+const couleurBloc = (genre) => {
+    const table = polycopieEnCouleur() ? BLOC_SCRATCH : BLOC_SCRATCH_NB;
+    return table[genre] || table.mouvement;
+};
+
 const BLOC_SCRATCH = {
     mouvement: { fond: [76, 151, 255], bord: [60, 120, 210], encre: [255, 255, 255] },
     controle: { fond: [255, 171, 25], bord: [207, 139, 23], encre: [40, 30, 0] },
@@ -6980,11 +7006,29 @@ function boucheDe(bl, i) {
 }
 
 /** Un point du chat (en pas) vers le papier (en millimètres). */
+/**
+ * L'ORIGINE TOMBE SUR UNE INTERSECTION DU QUADRILLAGE.
+ *
+ * Rémy : « pour les figures de scratch pour le pdf, la figure que tu dessines
+ * ne va pas tout à fait sur les lignes qui créent les carreaux. »
+ *
+ * Le tracé était centré sur `cote / 2`, le milieu géométrique du carré. Or les
+ * lignes du quadrillage sont en `i × pas` : le milieu n'en est une que si le
+ * nombre de carreaux est PAIR. Sur une grille impaire — onze carreaux, treize
+ * carreaux — toute la figure se retrouvait décalée d'un demi-carreau, donc
+ * AUCUN sommet ne tombait sur une intersection, et l'élève qui compte les
+ * carreaux pour vérifier son tracé ne retrouvait jamais ses comptes.
+ *
+ * On arrondit donc l'origine à l'intersection la plus proche. Un carreau valant
+ * dix pas (c'est la consigne de la feuille), tout déplacement multiple de dix
+ * retombe alors exactement sur une ligne.
+ */
 function pointChat(g, p) {
+    const centre = Math.round(g.m.cases / 2) * g.pas;
     return {
-        x: g.x0 + g.cote / 2 + (p.x / 10) * g.pas,
+        x: g.x0 + centre + (p.x / 10) * g.pas,
         // L'axe du chat monte, celui du papier descend : on retourne.
-        y: g.y0 + g.cote / 2 - (p.y / 10) * g.pas
+        y: g.y0 + centre - (p.y / 10) * g.pas
     };
 }
 
@@ -7039,7 +7083,7 @@ function chatPreviewHtml(item, slot, k, solution) {
     const mm = (v) => v * bl.u;                       // unités d'atelier → mm
     let textes = '';
     const poserContenu = (l, bx, by) => {
-        const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
+        const c = couleurBloc(l.genre);
         const { morceaux } = morceauxBlocChat(l);
         const milieu = l.genre === 'evenement'
             ? UBLOC.dome + (UBLOC.chapeau - UBLOC.dome) / 2
@@ -7081,7 +7125,7 @@ function chatPreviewHtml(item, slot, k, solution) {
         });
     });
     pile.forEach(({ l, y: yu, forme }) => {
-        const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
+        const c = couleurBloc(l.genre);
         const bx = bl.x + mm(l.creux * UBLOC.retrait), by = bl.y0 + mm(yu);
         d += `<path d="${blocVersSvg(forme, { x: bx * k, y: by * k, u: mm(k) })}"
             fill="rgb(${c.fond.join(',')})" stroke="rgb(${c.bord.join(',')})"
@@ -7149,7 +7193,7 @@ function dessinerChatPdf(doc, item, slot, solution, champ) {
         });
     });
     pile.forEach(({ l, y: yu, forme }) => {
-        const c = BLOC_SCRATCH[l.genre] || BLOC_SCRATCH.mouvement;
+        const c = couleurBloc(l.genre);
         const bx = bl.x + mm(l.creux * UBLOC.retrait), by = bl.y0 + mm(yu);
         const t = blocVersPdf(forme, { x: bx, y: by, u: bl.u });
         doc.setFillColor(...c.fond);
@@ -10270,14 +10314,16 @@ export const RENDUS = {
                 return 'Effectue chaque conversion. Si tu as besoin du tableau, trace-le '
                     + 'au brouillon : sur cette feuille, il ne reste que les réponses à écrire.';
             }
+            // COURTE. Rémy : « un énoncé trop long n'est jamais lu. » La version
+            // longue tenait quatre lignes de corps 2 en tête de feuille, et
+            // décrivait une méthode que le tableau montre déjà : l'élève écrit
+            // son nombre dans la bonne colonne parce que les colonnes sont
+            // nommées, pas parce qu'un paragraphe le lui a dit.
             const donnes = items.every(i => i.meta && i.meta.entetes);
-            return (donnes
-                ? 'Le tableau est prêt : ses unités sont écrites. '
-                : 'Écris d\'abord les unités en haut des colonnes — attention, hecto vient avant déca. ')
-                + 'Pour chaque conversion, écris le nombre de départ dans le tableau — le '
-                + 'chiffre des unités dans la colonne de SON unité — puis pose la virgule '
-                + 'après la colonne demandée, comble les cases vides avec des zéros, et '
-                + 'lis la réponse.';
+            return donnes
+                ? 'Pose chaque nombre dans le tableau, puis lis la réponse.'
+                : 'Écris les unités en haut des colonnes — hecto vient avant déca —, '
+                    + 'puis pose chaque nombre et lis la réponse.';
         },
         previewGrille: conversionPreviewHtml,
         pdfGrille: dessinerConversionPdf,
@@ -10287,7 +10333,20 @@ export const RENDUS = {
         // qu'un par rangée et la moitié droite de la feuille restait blanche ;
         // les cases resserrées, trois passent — et chacun porte huit
         // conversions, ce qui fait une vraie séance sur une seule feuille.
-        proportions: { w: 1, h: 0.72 },
+        // LA HAUTEUR SUIT LE NOMBRE DE LIGNES. Rémy : « la présentation de
+        // l'exercice de conversion est horrible. » Elle l'était en parcours :
+        // une proportion fixe de 0,72 tenait pour quatre conversions et
+        // écrasait les huit — les questions du tableau suivant s'écrivaient
+        // alors par-dessus les dernières du précédent.
+        //
+        // Un tableau, c'est un en-tête plus N lignes ; sa hauteur en dépend
+        // donc, et d'elles seules. Cinq millimètres par ligne, plus un
+        // millimètre et demi de respiration : c'est ce qu'il faut pour écrire
+        // un chiffre à la main dans une case.
+        proportions: (items) => {
+            const n = Math.max(1, ...(items || []).map(i => (i && i.meta && i.meta.lignes) || 8), 8);
+            return { w: 1, h: 0.09 * (n + 1) + 0.06 };
+        },
         disposition: { cols: 3, rows: 1, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 3,
         separateurs: true,
@@ -11079,8 +11138,20 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         Math.max(1, Math.min(plafond, Math.round(Number(combienEl.value)) || combienDefaut));
     // LE PROFESSEUR DIT COMBIEN, LA FEUILLE TROUVE COMMENT. Trois colonnes et
     // quatre lignes, c'était à lui de le résoudre ; ce n'est pas sa question.
+    // LA PROPORTION D'UN BLOC PEUT DÉPENDRE DE CE QU'IL CONTIENT. Un tableau de
+    // conversion à huit lignes n'a pas la même forme qu'un à quatre : une
+    // proportion fixe convenait à l'un et écrasait l'autre — c'est ainsi que
+    // les questions du tableau suivant venaient s'écrire par-dessus les
+    // dernières du précédent. Un rendu peut donc déclarer une fonction, à qui
+    // l'on passe les grilles tirées.
+    const proportionsDe = () => (typeof rendu.proportions === 'function'
+        // `items` peut être encore vide au tout premier appel : le rendu doit
+        // alors répondre pour une liste vide, ce que la conversion fait en
+        // retombant sur son nombre de lignes par défaut.
+        ? rendu.proportions(items)
+        : rendu.proportions);
     const disposerPour = (n) => choisirDisposition(n, dispo, PAGE, {
-        proportions: rendu.proportions, colles: !!rendu.blocsColles
+        proportions: proportionsDe(), colles: !!rendu.blocsColles
     });
 
     // Graine fraîche par grille : chaque fiche est différente. Les grilles ne
