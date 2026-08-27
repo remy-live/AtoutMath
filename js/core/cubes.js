@@ -81,14 +81,37 @@ export function cubesCaches(h) {
 
 // --- Le dessin, en données ----------------------------------------------------
 
-// L'AXONOMÉTRIE, une fois pour toutes. `x` part vers la droite en descendant,
-// `y` vers la gauche en descendant, `z` monte. C'est la vue des manuels : les
-// trois dimensions se lisent, et un cube reste un cube quel que soit l'endroit
-// où il est posé — pas de fuite, pas de raccourci.
-const COS = Math.sqrt(3) / 2;      // cos(30°)
+// LA PERSPECTIVE CAVALIÈRE, celle du collège.
+//
+// Rémy : « pour le comptage de cubes, je voulais aussi que tu mettes en place
+// de la perspective cavalière. »
+//
+// CE N'EST PAS UN DÉTAIL DE STYLE, C'EST LE DESSIN DU PROGRAMME. La vue
+// précédente était une AXONOMÉTRIE isométrique : les trois axes à trente degrés,
+// aucune face en vraie grandeur. Jolie, et étrangère au cahier — l'élève de
+// sixième apprend à représenter un pavé en perspective cavalière, et c'est
+// cette figure-là qu'on lui demandera de reproduire.
+//
+// SA RÈGLE TIENT EN TROIS PHRASES :
+//   1. La FACE AVANT se dessine en VRAIE GRANDEUR — un carré reste un carré.
+//      C'est la propriété qui la distingue de toutes les autres vues, et celle
+//      qui permet de mesurer sur le dessin.
+//   2. Les FUYANTES partent à un angle constant, ici 30°.
+//   3. Elles sont RÉDUITES d'un coefficient, ici 1/2. Sans réduction, le solide
+//      paraît deux fois trop profond ; c'est le choix des manuels.
+//
+// L'orientation reste celle d'avant — `y` croissant vient vers l'observateur,
+// donc vers la gauche et vers le bas — pour que l'ordre de peinture, les faces
+// visibles et les exercices déjà écrits gardent le même sens.
+export const FUITE = { angle: 30, coefficient: 0.5 };
+const FX = FUITE.coefficient * Math.cos(FUITE.angle * Math.PI / 180);
+const FY = FUITE.coefficient * Math.sin(FUITE.angle * Math.PI / 180);
+
 export const projeter = (x, y, z) => ({
-    x: (x - y) * COS,
-    y: (x + y) * 0.5 - z
+    // La face avant (y constant) garde ses proportions : un déplacement d'un
+    // cube en x vaut exactement une unité à l'écran, un déplacement en z aussi.
+    x: x - y * FX,
+    y: -z + y * FY
 });
 
 /** Les trois faces visibles d'un cube, chacune en quatre points projetés. */

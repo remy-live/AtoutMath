@@ -4,7 +4,7 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     totalCubes, cubesAuSol, boitePleine, cubesAAjouter, cubesCaches,
-    projeter, facesCube, cubesAPeindre, boiteDessin, pave, construire, mesures, FAMILLES
+    projeter, facesCube, cubesAPeindre, boiteDessin, pave, construire, mesures, FAMILLES, FUITE
 } from '../js/core/cubes.js';
 import { cubesSvg } from '../js/core/cubesSvg.js';
 import { cubesGenerator as G } from '../js/core/generators/cubes.js';
@@ -170,7 +170,57 @@ test('les trois faces dessinées sont bien celles qui regardent l\'observateur',
     f.dessus.forEach((p, i) => assert.ok(Math.abs((bas[i].y - p.y) - 1) < 1e-9,
         'le dessus n\'est pas à un cube du sol'));
     assert.ok(f.droite.every(p => p.x >= centre.x - 1e-9), 'la face « droite » n\'est pas à droite');
-    assert.ok(f.gauche.every(p => p.x <= centre.x + 1e-9), 'la face « gauche » n\'est pas à gauche');
+});
+
+test('PERSPECTIVE CAVALIÈRE : LA FACE AVANT EST UN VRAI CARRÉ', () => {
+    // Rémy : « pour le comptage de cubes, je voulais aussi que tu mettes en
+    // place de la perspective cavalière. »
+    //
+    // C'EST LA PROPRIÉTÉ QUI DÉFINIT CETTE VUE, et celle qu'aucune autre n'a :
+    // la face parallèle au tableau se dessine en VRAIE GRANDEUR. C'est elle qui
+    // permet de mesurer sur le dessin, et c'est ce qu'on demande à un élève de
+    // sixième de savoir reproduire. La vue précédente était une axonométrie
+    // isométrique — jolie, et étrangère au cahier : aucune face n'y était vraie.
+    //
+    // La face avant est celle du plan y = 1, l'ancienne « gauche » : `y`
+    // croissant vient vers l'observateur.
+    const f = facesCube(0, 0, 0);
+    const xs = f.gauche.map(p => p.x), ys = f.gauche.map(p => p.y);
+    const largeur = Math.max(...xs) - Math.min(...xs);
+    const hauteur = Math.max(...ys) - Math.min(...ys);
+    assert.ok(Math.abs(largeur - 1) < 1e-9, `largeur ${largeur}`);
+    assert.ok(Math.abs(hauteur - 1) < 1e-9, `hauteur ${hauteur}`);
+    // Et ses quatre côtés sont bien horizontaux ou verticaux : un carré penché
+    // serait un losange, pas une face en vraie grandeur.
+    const cotes = f.gauche.map((p, i) => {
+        const q = f.gauche[(i + 1) % 4];
+        return { dx: Math.abs(q.x - p.x), dy: Math.abs(q.y - p.y) };
+    });
+    cotes.forEach(c => assert.ok(c.dx < 1e-9 || c.dy < 1e-9,
+        `côté oblique : ${c.dx.toFixed(3)} × ${c.dy.toFixed(3)}`));
+});
+
+test('PERSPECTIVE CAVALIÈRE : LES FUYANTES SONT À 30°, RÉDUITES DE MOITIÉ', () => {
+    // Les deux autres règles du dessin : un angle constant, et un coefficient
+    // de réduction. Sans réduction, le solide paraît deux fois trop profond.
+    assert.equal(FUITE.angle, 30);
+    assert.equal(FUITE.coefficient, 0.5);
+    // Un pas de profondeur (y) doit mesurer exactement la moitié d'un pas de
+    // face, et partir à trente degrés.
+    const o = projeter(0, 0, 0), p = projeter(0, 1, 0);
+    const long = Math.hypot(p.x - o.x, p.y - o.y);
+    assert.ok(Math.abs(long - 0.5) < 1e-9, `fuyante de ${long}`);
+    // L'ANGLE SE MESURE AVEC L'HORIZONTALE, sans regarder de quel côté la
+    // fuyante part : ici elle descend vers la GAUCHE, parce que `y` croissant
+    // vient vers l'observateur — c'est l'orientation d'avant, gardée pour que
+    // l'ordre de peinture et les exercices écrits ne changent pas de sens.
+    const brut = Math.abs(Math.atan2(p.y - o.y, p.x - o.x) * 180 / Math.PI);
+    const angle = Math.min(brut, 180 - brut);
+    assert.ok(Math.abs(angle - FUITE.angle) < 1e-9, `fuyante à ${angle}°`);
+    // Un pas de face, lui, vaut UN — c'est la vraie grandeur.
+    const px = projeter(1, 0, 0), pz = projeter(0, 0, 1);
+    assert.ok(Math.abs(Math.hypot(px.x - o.x, px.y - o.y) - 1) < 1e-9);
+    assert.ok(Math.abs(Math.hypot(pz.x - o.x, pz.y - o.y) - 1) < 1e-9);
 });
 
 test('le cadre du dessin contient tous les cubes, sans marge perdue', () => {
