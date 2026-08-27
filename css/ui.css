@@ -159,6 +159,14 @@ body.plein-ecran .pe-sortir { display: block; }
    une seule ligne. */
 .score-display { font-weight: 700; color: var(--primary); font-size: 1.1rem; background: var(--bg-panel); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap; line-height: 1; }
 .score-display svg { color: var(--warning); flex-shrink: 0; }
+/* Le compteur d'etoiles est un bouton : il mene au profil, ou le meme
+   chiffre est explique (niveau, XP, badges). Il doit donc se voir cliquable
+   sans pour autant ressembler a un bouton de plus dans une barre qui en
+   compte deja beaucoup : meme pastille qu'avant, elle se souleve au survol. */
+.score-display { font-family: inherit; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+.score-display b { font-weight: 700; }
+.score-display:hover { transform: translateY(-1px); border-color: var(--warning); box-shadow: var(--shadow); }
+.score-display:active { transform: translateY(0); }
 
 /* Sidebar - sélecteur de niveau */
 .sidebar-top-controls { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }

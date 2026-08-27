@@ -132,7 +132,14 @@ function renderHeader() {
 
     setText('profile-score-value', score);
     setText('profile-correct-count', getTotalCorrectCount());
-    document.querySelectorAll('.score-display').forEach(el => { el.textContent = '⭐ ' + score; });
+    // ON ÉCRIT DANS LE <b>, PAS DANS LE BOUTON. Un `textContent` posé sur
+    // `.score-display` effaçait l'étoile dessinée en SVG et la remplaçait par un
+    // émoji : la barre du haut changeait d'aspect au premier calcul juste.
+    document.querySelectorAll('.score-display').forEach(el => {
+        const chiffre = el.querySelector('[data-score]');
+        if (chiffre) chiffre.textContent = score;
+        else el.textContent = '⭐ ' + score;
+    });
 
     const timeEl = document.getElementById('profile-time-value');
     if (timeEl) timeEl.textContent = formatDuration(state.timeSpentTotal);

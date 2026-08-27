@@ -157,24 +157,39 @@ export function actionDuJour({ parcours, erreurs, suggestions = [] }) {
     };
 }
 
+/** Ce qu'une carte d'action rend inutile juste en dessous d'elle. */
+const TUILE_DE_LA_CARTE = { parcours: 'parcours', revision: 'erreurs' };
+
 /**
  * LES TROIS RACCOURCIS, avec leur compte.
  *
  * Un raccourci sans chiffre est une porte fermée : « Mes erreurs » ne donne pas
  * envie, « Mes erreurs · 3 à revoir » si. Celui qui n'a rien derrière lui n'est
  * pas rendu — un carnet vide ne mérite pas une tuile.
+ *
+ * UNE TUILE NE RÉPÈTE JAMAIS LA CARTE POSÉE AU-DESSUS D'ELLE. Rémy : « est-ce
+ * que les étoiles, la notification une erreur à revoir et le profil font
+ * doublons ? » Les étoiles et le profil, non — l'un est le chiffre, l'autre la
+ * page qui l'explique. Mais nous avions bel et bien mis deux fois la même
+ * chose : quand la carte propose « On reprend deux ou trois choses ? · 3
+ * questions de ton carnet t'ont résisté », la tuile « Mes erreurs · 3 à
+ * revoir » collée dessous dit le même chiffre, pour le même endroit, en plus
+ * petit. Idem pour le parcours, dont l'anneau de la carte affiche déjà
+ * « 2/4 ». Le raccourci existe pour ce qu'on ne propose PAS ; ce qu'on propose
+ * a déjà son bouton.
  */
-export function raccourcisDuJour({ parcours, erreurs, nbExercices = 0 }) {
+export function raccourcisDuJour({ parcours, erreurs, nbExercices = 0, action = null }) {
     const out = [];
+    const dejaDit = action ? TUILE_DE_LA_CARTE[action.genre] : null;
     const p = etatParcours(parcours);
-    if (p) {
+    if (p && dejaDit !== 'parcours') {
         out.push({
             id: 'parcours', icone: '🗺️', titre: 'Mon parcours',
             sous: p.fini ? 'Terminé — bravo' : `${p.faites} sur ${p.total}`
         });
     }
     const ouvertes = erreursOuvertes(erreurs);
-    if (ouvertes.length) {
+    if (ouvertes.length && dejaDit !== 'erreurs') {
         out.push({
             id: 'erreurs', icone: '📓', titre: 'Mes erreurs',
             sous: `${ouvertes.length} à revoir`
@@ -198,10 +213,11 @@ export function planDuJour(faits) {
         maintenant = Date.now(), premiere = false, parcours = null,
         erreurs = [], tentatives = [], suggestions = [], nbExercices = 0
     } = faits || {};
+    const action = actionDuJour({ parcours, erreurs, suggestions });
     return {
         salut: premiere ? 'Bienvenue !' : salutation(maintenant),
         phrase: phraseDuJour({ maintenant, premiere, tentatives }),
-        action: actionDuJour({ parcours, erreurs, suggestions }),
-        raccourcis: raccourcisDuJour({ parcours, erreurs, nbExercices })
+        action,
+        raccourcis: raccourcisDuJour({ parcours, erreurs, nbExercices, action })
     };
 }

@@ -187,6 +187,35 @@ test('un carnet vide ne mérite pas sa tuile', () => {
     assert.deepEqual(avec.map(x => x.id), ['parcours', 'catalogue']);
 });
 
+test('UNE TUILE NE RÉPÈTE JAMAIS LA CARTE POSÉE AU-DESSUS D\'ELLE', () => {
+    // Rémy : « est-ce que les étoiles, la notification une erreur à revoir et le
+    // profil font doublons ? » Ceux-là non, mais celui-ci si : la carte de
+    // révision et la tuile « Mes erreurs » disaient le même chiffre, pour le
+    // même endroit, l'une collée sous l'autre.
+    const erreurs = [{ id: 1, corrected: false }, { id: 2, corrected: false }];
+    const plan = planDuJour({ maintenant: midi(), erreurs, nbExercices: 10, suggestions: [{ id: 'x' }] });
+    assert.equal(plan.action.genre, 'revision');
+    assert.equal(plan.raccourcis.some(r => r.id === 'erreurs'), false);
+
+    // Idem pour le parcours : l'anneau de la carte affiche déjà « 1/2 ».
+    const p2 = planDuJour({
+        maintenant: midi(), parcours: parcours(['a']), erreurs, nbExercices: 10
+    });
+    assert.equal(p2.action.genre, 'parcours');
+    assert.equal(p2.raccourcis.some(r => r.id === 'parcours'), false);
+    // Ce qu'on ne propose PAS, en revanche, garde son raccourci.
+    assert.deepEqual(p2.raccourcis.map(r => r.id), ['erreurs', 'catalogue']);
+
+    // Et un parcours TERMINÉ n'est plus l'action du jour : sa tuile revient,
+    // pour l'élève qui veut relire ce qu'il a fait.
+    const p3 = planDuJour({
+        maintenant: midi(), parcours: parcours(['a', 'b']), erreurs: [],
+        nbExercices: 10, suggestions: [{ id: 'x', title: 'X' }]
+    });
+    assert.equal(p3.action.genre, 'decouverte');
+    assert.deepEqual(p3.raccourcis.map(r => r.id), ['parcours', 'catalogue']);
+});
+
 // --- L'écran entier --------------------------------------------------------
 
 test('l\'accueil propose toujours UNE action, et une seule', () => {

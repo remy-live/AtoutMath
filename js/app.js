@@ -416,6 +416,13 @@ function initNavButtons() {
         };
     }
 
+    // LES ÉTOILES DE LA BARRE. Elles disent le score, la page « profil » dit
+    // d'où il vient (niveau, XP, badges, statistiques) : ce n'est pas un
+    // doublon, c'est un titre et son chapitre — encore faut-il que l'un mène à
+    // l'autre. Sans ce clic, le compteur était un cul-de-sac.
+    const etoiles = document.getElementById('btn-score');
+    if (etoiles) etoiles.onclick = () => setTopNavMode('profile');
+
     ['grid', 'path', 'profile'].forEach(k => {
         const top = document.getElementById('top-btn-' + k);
         if (top) top.onclick = () => setTopNavMode(k);

@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=432">
-    <link rel="stylesheet" href="css/layout.css?v=432">
-    <link rel="stylesheet" href="css/ui.css?v=432">
-    <link rel="stylesheet" href="css/games.css?v=432">
-    <link rel="stylesheet" href="css/components.css?v=432">
-    <link rel="stylesheet" href="css/modules.css?v=432">
+    <link rel="stylesheet" href="css/base.css?v=433">
+    <link rel="stylesheet" href="css/layout.css?v=433">
+    <link rel="stylesheet" href="css/ui.css?v=433">
+    <link rel="stylesheet" href="css/games.css?v=433">
+    <link rel="stylesheet" href="css/components.css?v=433">
+    <link rel="stylesheet" href="css/modules.css?v=433">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -282,11 +282,17 @@
                         <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
                     </svg>
                 </button>
-                <span class="score-display">
+                <!-- LES ETOILES MENENT AU PROFIL. C'etait un <span> : un
+                     compteur qu'on regarde grimper sans jamais pouvoir demander
+                     d'ou il vient. Le meme chiffre vit dans la page profil, avec
+                     le niveau, les XP et les badges qui l'expliquent ; le rendre
+                     cliquable ne double pas cette page, il y conduit. -->
+                <button type="button" id="btn-score" class="score-display"
+                    title="Mes etoiles - voir mon profil" aria-label="Mes etoiles - voir mon profil">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
-                    0</span>
+                    <b data-score>0</b></button>
             </div>
         </nav>
 
