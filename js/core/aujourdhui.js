@@ -180,10 +180,15 @@ export function raccourcisDuJour({ parcours, erreurs, nbExercices = 0 }) {
             sous: `${ouvertes.length} à revoir`
         });
     }
-    out.push({
-        id: 'catalogue', icone: '🧭', titre: 'Explorer',
-        sous: nbExercices ? `${nbExercices} exercices` : 'Tout le catalogue'
-    });
+    // LA TUILE « EXPLORER » NE SERT QUE SI ELLE A DE LA COMPAGNIE. Seule, elle
+    // double mot pour mot le bouton « Explorer tous les exercices » posé juste
+    // dessous : deux portes côte à côte vers la même pièce, c'est une de trop.
+    if (out.length) {
+        out.push({
+            id: 'catalogue', icone: '🧭', titre: 'Explorer',
+            sous: nbExercices ? `${nbExercices} exercices` : 'Tout le catalogue'
+        });
+    }
     return out;
 }
 

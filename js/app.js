@@ -34,7 +34,8 @@ import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
-import { initAccueil, initBilanExercice } from './ui/accueilUI.js';
+import { initBilanExercice } from './ui/accueilUI.js';
+import { rendreAujourdhui } from './ui/aujourdhui.js';
 
 // Confirmation universelle, utilisée par plusieurs vues.
 window.appConfirm = (title, message, onConfirm) => {
@@ -91,6 +92,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initNavButtons();
     initPleinEcran();
     initDebugToolbar();
+    initMenuBarreHaute();
     // Le bilan de fin d'exercice s'abonne AVANT qu'un exercice puisse être
     // lancé par un lien de parcours.
     initBilanExercice();
@@ -103,11 +105,47 @@ window.addEventListener('DOMContentLoaded', async () => {
         import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId));
     };
 
-    // Le message d'arrivée passe EN DERNIER : il lit le carnet d'erreurs, donc
-    // après `state.load()`, et il s'efface devant un exercice déjà ouvert par
-    // un lien de parcours — on ne coupe pas quelqu'un qui vient travailler.
-    initAccueil();
+    // L'ÉCRAN D'ARRIVÉE PASSE EN DERNIER : il lit le carnet d'erreurs et le
+    // parcours assigné, donc après `state.load()`.
+    //
+    // LA MODALE DE BIENVENUE A DISPARU AVEC LUI. Rémy : « quand l'élève arrive
+    // là, ça fait peur ». Une fenêtre à congédier AVANT de voir l'écran est la
+    // première marche de trop — et tout ce qu'elle disait (la révision
+    // proposée, le conseil du jour) se lit maintenant DANS la page, où on le
+    // prend si l'on veut.
+    rendreAujourdhui();
 });
+
+/**
+ * LE MENU DES OUTILS RARES, en haut à droite.
+ *
+ * Rémy : « il y a pas mal de boutons en haut ». Le thème, la classe et la
+ * sauvegarde s'ouvrent trois fois par an ; ils n'ont pas à occuper la barre que
+ * l'élève regarde tous les jours. Ils gardent leurs identifiants — tout ce qui
+ * les branche ailleurs continue de fonctionner —, ils ont seulement changé de
+ * place et gagné un nom.
+ *
+ * Le menu se ferme sur un clic dehors, sur Échap, et sur son propre contenu :
+ * un menu qui reste ouvert derrière la fenêtre qu'il vient d'ouvrir est un
+ * menu qu'on referme à la main.
+ */
+function initMenuBarreHaute() {
+    const btn = document.getElementById('btn-nav-plus');
+    const liste = document.getElementById('nav-menu-liste');
+    if (!btn || !liste) return;
+    const poser = (ouvert) => {
+        liste.hidden = !ouvert;
+        btn.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+    };
+    btn.onclick = (e) => { e.stopPropagation(); poser(liste.hidden); };
+    liste.addEventListener('click', () => poser(false));
+    document.addEventListener('click', (e) => {
+        if (!liste.hidden && !e.target.closest('.nav-menu')) poser(false);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !liste.hidden) poser(false);
+    });
+}
 
 // --- Détection de l'appareil ------------------------------------------------
 //
@@ -486,7 +524,22 @@ function initNavButtons() {
         sidebar.classList.toggle(mobile ? 'mob-active' : 'collapsed');
     };
     const burger = document.getElementById('btn-toggle-sidebar');
-    if (burger) burger.onclick = toggleSidebar;
+    // ☰ OUVRE LE CATALOGUE S'IL EST FERMÉ. Le panneau de gauche attend derrière
+    // « Explorer » sur l'écran d'arrivée de l'élève ; sans cela, le bouton du
+    // menu basculerait un panneau que le CSS garde caché — un bouton qui ne
+    // fait rien, ce qui est pire qu'un bouton absent.
+    if (burger) {
+        burger.onclick = () => {
+            if (!state.isTeacherMode) {
+                import('./ui/aujourdhui.js').then(m => {
+                    if (!m.catalogueOuvert()) return m.ouvrirCatalogue();
+                    toggleSidebar();
+                }).catch(toggleSidebar);
+                return;
+            }
+            toggleSidebar();
+        };
+    }
 
     initMobileDrillToggle();
     initTheme();
@@ -496,6 +549,11 @@ function initMobileDrillToggle() {
     const btn = document.getElementById('mob-btn-drill-acc');
     if (!btn) return;
     btn.onclick = () => {
+        // Le catalogue attend derrière « Explorer » sur l'écran d'arrivée : ce
+        // bouton-ci le demande explicitement, donc il l'ouvre.
+        if (!state.isTeacherMode) {
+            import('./ui/aujourdhui.js').then(m => m.ouvrirCatalogue()).catch(() => { });
+        }
         const sidebar = document.getElementById('sidebar');
         const wasActive = sidebar.classList.contains('mob-active');
         sidebar.classList.add('mob-active');

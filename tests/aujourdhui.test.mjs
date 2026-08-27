@@ -176,9 +176,15 @@ test('UN RACCOURCI SANS CHIFFRE EST UNE PORTE FERMÉE', () => {
 });
 
 test('un carnet vide ne mérite pas sa tuile', () => {
-    const r = raccourcisDuJour({ erreurs: [], nbExercices: 10 });
-    assert.deepEqual(r.map(x => x.id), ['catalogue'],
-        'on montre des portes qui ne mènent nulle part');
+    // Et « Explorer » toute seule non plus : elle doublerait mot pour mot le
+    // bouton « Explorer tous les exercices » posé juste dessous.
+    assert.deepEqual(raccourcisDuJour({ erreurs: [], nbExercices: 10 }), []);
+    // Dès qu'elle a de la compagnie, elle revient : la rangée dit alors les
+    // trois endroits où aller.
+    const avec = raccourcisDuJour({
+        parcours: parcours(['a']), erreurs: [], nbExercices: 10
+    });
+    assert.deepEqual(avec.map(x => x.id), ['parcours', 'catalogue']);
 });
 
 // --- L'écran entier --------------------------------------------------------

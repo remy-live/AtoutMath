@@ -31,7 +31,6 @@ import { accessOf } from '../core/gameAccess.js';
 import { planDuJour } from '../core/aujourdhui.js';
 import { startErrorReview } from '../core/remediation.js';
 import { openGameLayer } from '../games/engine.js';
-import { setTopNavMode } from './navigation.js';
 
 const CLE_PREMIERE = 'mathbox-derniere-visite';
 const CLE_CATALOGUE = 'mathbox-catalogue-ouvert';
@@ -107,10 +106,27 @@ export function catalogueOuvert() {
     return lire(CLE_CATALOGUE) === '1';
 }
 
-function poserCatalogue(ouvert) {
-    const hote = document.getElementById('main-wrapper');
-    if (hote) hote.classList.toggle('auj-catalogue-ouvert', !!ouvert);
+/**
+ * OUVRIR OU FERMER LE CATALOGUE — la grille, ses filtres, ET SA COLONNE.
+ *
+ * La marque est posée sur le `body` et non sur la grille : ce n'est pas
+ * seulement la grille qui attend derrière « Explorer », c'est aussi le panneau
+ * de gauche — bascule « Clic / Arbre », menu des niveaux, recherche, onglets
+ * « Domaines / Chapitres », arbre des domaines. Cinq commandes de catalogue à
+ * côté d'un écran qui n'en montre pas : c'était la moitié de ce qui « faisait
+ * peur », et elles n'ont rien à faire là tant qu'on n'a pas demandé le
+ * catalogue.
+ */
+export function poserCatalogue(ouvert) {
+    document.body.classList.toggle('auj-catalogue-ouvert', !!ouvert);
     ecrire(CLE_CATALOGUE, ouvert ? '1' : '0');
+}
+
+/** Le catalogue, ouvert d'où qu'on le demande (le bouton ☰, par exemple). */
+export function ouvrirCatalogue() {
+    if (catalogueOuvert()) return;
+    poserCatalogue(true);
+    majMotExplorer();
 }
 
 /**
@@ -202,10 +218,14 @@ function lancer(a) {
 }
 
 function allerA(quoi) {
+    // ON CLIQUE L'ONGLET, ON N'APPELLE PAS `setTopNavMode`. Ce module est
+    // importé PAR la navigation — pour se redessiner au retour d'un exercice —
+    // et l'importer en retour ferait un cercle. Le bouton, lui, fait déjà
+    // exactement ce qu'il faut, y compris marquer l'onglet actif.
     if (quoi === 'parcours') {
         const btn = document.getElementById('top-btn-path');
-        if (btn) return btn.click();
-        return setTopNavMode('path');
+        if (btn) btn.click();
+        return;
     }
     if (quoi === 'erreurs') {
         const btn = document.getElementById('btn-open-errors');

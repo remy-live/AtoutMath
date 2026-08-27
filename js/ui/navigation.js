@@ -976,6 +976,12 @@ export function setTopNavMode(m) {
     } else if (m === 'grid') {
         if(document.getElementById('main-wrapper')) document.getElementById('main-wrapper').style.display = 'flex';
         initGridFilters();
+        // L'ÉCRAN D'ARRIVÉE SE REDESSINE À CHAQUE RETOUR. Ses comptes — erreurs
+        // à revoir, étapes faites — ont pu changer pendant l'exercice, et un
+        // accueil qui annonce « 3 à revoir » alors qu'on vient d'en corriger
+        // deux ment. Chargé à la demande : la navigation ne doit pas dépendre
+        // d'un module qui, lui, se sert d'elle.
+        import('./aujourdhui.js').then(m => m.rendreAujourdhui()).catch(() => { });
     } else if (m === 'path') {
         if(document.getElementById('view-path')) document.getElementById('view-path').style.display = 'flex';
         import('./pathView.js').then(module => module.renderStudentPathView());

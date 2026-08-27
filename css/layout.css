@@ -58,6 +58,34 @@
 }
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-right { flex-shrink: 0; }
+
+/* --- LES OUTILS RARES, DERRIÈRE UN SEUL BOUTON -----------------------------
+   Rémy : « quand l'élève arrive là, ça fait peur ! […] il y a pas mal de
+   boutons en haut ». Six icônes muettes alignées, ce sont six questions
+   posées avant d'avoir vu le premier exercice — et aucune ne porte son nom.
+   Dans le menu, elles en retrouvent un ; dehors ne restent que le carnet
+   (ce qu'on vient revoir), le plein écran et le score (ce qu'on vient
+   gagner). */
+.nav-menu { position: relative; flex-shrink: 0; }
+.nav-menu-liste {
+    position: absolute; right: 0; top: calc(100% + 8px); z-index: 100005;
+    min-width: 210px; padding: 6px; border-radius: 14px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; gap: 2px;
+}
+/* Le piège de `[hidden]` : la règle du navigateur a une spécificité de zéro et
+   perdrait contre la ligne au-dessus. */
+.nav-menu-liste[hidden] { display: none; }
+.nav-menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 11px; border: 0; border-radius: 10px;
+    background: none; color: var(--text-main);
+    font: inherit; font-weight: 600; font-size: .92rem;
+    text-align: left; cursor: pointer; white-space: nowrap;
+}
+.nav-menu-item:hover, .nav-menu-item:focus-visible { background: var(--bg-hover); }
+.nav-menu-item svg { flex: 0 0 auto; opacity: .7; }
 /* Le bouton PLEIN ÉCRAN s'ajoute à une rangée déjà pleine. Plutôt que de le
    reléguer dans un menu — un bouton qu'il faut chercher n'est pas « toujours
    accessible » — on resserre : les icônes maigrissent d'un cran et la pastille

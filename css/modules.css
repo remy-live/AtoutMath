@@ -7328,3 +7328,126 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 /* Étape bornée par le TEMPS : la barre n'a rien à remplir — on n'a pas de
    total —, elle laisse la place au seul compte des questions faites. */
 #game-progress-container.pg--sans-total { background: transparent; box-shadow: none; }
+
+
+/* ==========================================================================
+   L'ÉCRAN D'ARRIVÉE DE L'ÉLÈVE
+   Rémy : « quand l'élève arrive là, ça fait peur ! […] il y a pas mal de
+   boutons en haut ». Et : « que ce soit simple. Duolingo est rassurant. »
+
+   CE QUI RASSURE N'EST PAS LE DESSIN, C'EST L'ABSENCE DE CHOIX. On ouvre, il y
+   a un bouton, on appuie. L'écran demandait neuf décisions avant la première
+   question : bascule Clic/Arbre, menu des niveaux, recherche, onglets
+   Domaines/Chapitres, deux rangées de filtres, soixante cartes identiques — et
+   par-dessus, une modale à congédier.
+
+   Tout existe encore, et se rejoint en un geste. Rien n'est ici la PREMIÈRE
+   chose qu'on voit. Les décisions vivent dans `core/aujourdhui.js`.
+   ========================================================================== */
+
+.auj {
+    max-width: 760px; margin: 0 auto; padding: 34px 22px 10px;
+    width: 100%;
+}
+.auj-salut { font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 900; margin: 0 0 4px; }
+.auj-phrase {
+    margin: 0 0 24px; color: var(--text-muted); font-weight: 600;
+    font-size: clamp(.95rem, 2vw, 1.05rem); line-height: 1.45;
+}
+
+/* LA SEULE ACTION PROPOSÉE. Elle prend la largeur, elle est colorée, et son
+   bouton est le plus gros objet de l'écran : on ne peut pas la manquer, et
+   c'est tout ce qu'on lui demande. */
+.auj-carte {
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    background: var(--primary); color: #fff;
+    border-radius: 22px; padding: 22px 24px; margin-bottom: 28px;
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 32%, transparent);
+}
+.auj-carte--revision { background: #f59e0b; box-shadow: 0 14px 30px rgba(245, 158, 11, .3); }
+.auj-carte--decouverte { background: #10b981; box-shadow: 0 14px 30px rgba(16, 185, 129, .3); }
+.auj-dit { min-width: 0; flex: 1 1 190px; }
+.auj-dit b { display: block; font-size: clamp(1.05rem, 2.6vw, 1.3rem); font-weight: 900; }
+.auj-dit span { opacity: .92; font-weight: 600; }
+.auj-go {
+    flex: 0 0 auto; background: #fff; color: var(--primary);
+    border: 0; border-radius: 999px; padding: 13px 28px;
+    font: inherit; font-weight: 900; font-size: 1.02rem; cursor: pointer;
+    transition: transform .12s;
+}
+.auj-carte--revision .auj-go { color: #b45309; }
+.auj-carte--decouverte .auj-go { color: #047857; }
+.auj-go:hover { transform: translateY(-1px); }
+
+/* L'ANNEAU DE PROGRESSION : un `conic-gradient`, rien de plus. Il n'a ni trait
+   ni forme à animer, et une seule propriété le décrit. */
+.auj-anneau {
+    width: 74px; height: 74px; flex: 0 0 auto; border-radius: 50%;
+    display: grid; place-items: center; position: relative;
+    background: conic-gradient(#fff 0 var(--auj-part, 0%), rgba(255,255,255,.28) 0);
+}
+.auj-anneau i {
+    position: absolute; inset: 9px; border-radius: 50%; background: inherit;
+    background: var(--primary);
+    display: grid; place-items: center;
+    font-style: normal; font-weight: 900; font-size: .95rem;
+}
+.auj-carte--revision .auj-anneau i { background: #f59e0b; }
+.auj-carte--decouverte .auj-anneau i { background: #10b981; }
+.auj-anneau i span { opacity: .75; font-size: .8em; }
+.auj-embleme {
+    width: 62px; height: 62px; flex: 0 0 auto; border-radius: 20px;
+    display: grid; place-items: center; font-size: 1.9rem;
+    background: rgba(255, 255, 255, .22);
+}
+
+/* LES TROIS PORTES, avec leur compte. « Mes erreurs » ne donne pas envie ;
+   « Mes erreurs · 3 à revoir » si. Celle qui n'a rien derrière elle n'est pas
+   rendue du tout — voir `raccourcisDuJour`. */
+.auj-tuiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px; margin-bottom: 22px;
+}
+.auj-tuile {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 13px 15px; cursor: pointer;
+    font: inherit; color: var(--text-main); transition: .15s;
+}
+.auj-tuile:hover { border-color: var(--primary); transform: translateY(-1px); }
+.auj-tuile-ico { font-size: 1.35rem; flex: 0 0 auto; }
+.auj-tuile-dit { min-width: 0; }
+.auj-tuile-dit b { display: block; font-weight: 800; font-size: .96rem; }
+.auj-tuile-dit em {
+    font-style: normal; color: var(--text-muted); font-weight: 600; font-size: .84rem;
+}
+
+/* LE CATALOGUE EST UNE DESTINATION, pas la porte d'entrée. */
+.auj-explorer {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; background: none; border: 0; padding: 10px;
+    color: var(--text-muted); font: inherit; font-weight: 800; cursor: pointer;
+}
+.auj-explorer:hover { color: var(--primary); }
+.auj-explorer svg { transition: transform .18s; }
+.auj-explorer--ouvert svg { transform: rotate(180deg); }
+
+/* Tant qu'on n'a pas dit « explorer », les filtres et la grille n'existent
+   pas. UNE FOIS OUVERT, ÇA LE RESTE : l'élève qui a cliqué a dit ce qu'il
+   voulait, et le lui refermer au retour de chaque exercice serait le lui
+   redemander vingt fois par séance (le choix est retenu en local). */
+body:not(.auj-catalogue-ouvert) #filter-bar,
+body:not(.auj-catalogue-ouvert) #main-content { display: none; }
+/* ET LA COLONNE DE GAUCHE AVEC. Bascule « Clic / Arbre », menu des niveaux,
+   recherche, onglets « Domaines / Chapitres », arbre des domaines : cinq
+   commandes de catalogue à côté d'un écran qui n'en montre pas. Elles reviennent
+   avec lui — et le bouton ☰ le rouvre, pour qui les cherche.
+   En mode professeur, rien de tout cela ne s'applique : le catalogue EST son
+   outil de travail. */
+body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
+
+@media (max-width: 700px) {
+    .auj { padding: 20px 14px 6px; }
+    .auj-carte { gap: 14px; padding: 18px; }
+    .auj-go { width: 100%; text-align: center; }
+}
