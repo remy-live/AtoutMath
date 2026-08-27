@@ -137,7 +137,7 @@ function questionTracer(rng, t, a, b) {
         html: `<div class="game-question">Trace <b>${ecriture}</b><br>`
             + `<span style="font-size:.72em;font-weight:600;opacity:.75">`
             + `Touche les morceaux du trait pour les tracer ou les effacer.</span></div>`,
-        papier: `Dessine ${ecriture}.`,
+        papier: `Trace ${ecriture}.`,
         bon: ecriture,
         trace: { gauche, droite },
         // LES QUATRE ÉCRITURES RESTENT DANS L'ITEM, mais l'écran ne les
@@ -186,9 +186,9 @@ function questionDessin(rng, t, a, b) {
     });
     return {
         skill: 'geo.notation.lire',
-        texte: `Quel dessin représente ${ecriture} ?`,
-        html: `<div class="game-question">Quel dessin représente <b>${ecriture}</b> ?</div>`,
-        papier: `Dessine ${ecriture}.`,
+        texte: `Quelle figure représente ${ecriture} ?`,
+        html: `<div class="game-question">Quelle figure représente <b>${ecriture}</b> ?</div>`,
+        papier: `Trace ${ecriture}.`,
         bon: `${t.id}-${a}${b}`,
         choix: candidats,
         explication: `${ecriture} se lit « ${t.dire(a, b)} » : ${t.quoi}`,

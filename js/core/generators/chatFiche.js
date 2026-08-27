@@ -179,9 +179,14 @@ export const chatFicheGenerator = {
                 text: quoi === 'angle'
                     ? 'Quel angle manque pour que la figure se ferme ?'
                     : 'Trace la figure que dessine ce programme.',
+                // SUR LE PAPIER, UN SEUL MOT. Rémy : « pour l'énoncé sur le
+                // pdf, mets juste Trace — on ne parle pas de Dessine en
+                // maths. » La consigne de la feuille dit déjà de quoi il
+                // s'agit ; la répéter sous chaque programme mange la place du
+                // quadrillage, qui est ce dont l'élève a besoin.
                 papier: quoi === 'angle'
-                    ? 'Quel angle manque pour que la figure se ferme ?'
-                    : 'Trace la figure que dessine ce programme.',
+                    ? 'Quel angle manque ?'
+                    : 'Trace.',
                 html: `<div class="game-question">${fig.nom}</div>`
             },
             answer: quoi === 'angle' ? `${angle}°` : fig.nom,

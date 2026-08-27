@@ -141,3 +141,37 @@ test('aucun réglage d\'écran n\'atteint le panneau d\'impression', async () =>
     const surPapier = (p) => p && p.papier !== false;
     for (const p of ecran) assert.equal(surPapier(p), false, `${p.ou} · ${p.id}`);
 });
+
+// --- Un énoncé trop long n'est jamais lu -------------------------------------
+
+test('AUCUNE CONSIGNE DE FEUILLE N\'EST UN PAVÉ', async () => {
+    // Rémy : « pour l'énoncé des puissances de 10, tu as écrit tout cela […]
+    // mets juste calcule. De manière générale, un énoncé trop long n'est jamais
+    // lu. » Une consigne se lit debout, la pile de photocopies dans les mains ;
+    // au-delà de deux lignes, l'élève saute par-dessus et fait ce qu'il croit.
+    //
+    // La limite est celle que la fiche d'un exercice seul s'impose déjà
+    // (`premierePhrase` : rien au-delà de 120 caractères). Ce test la fait
+    // valoir pour les consignes écrites À LA MAIN dans le catalogue, que cette
+    // coupure ne traverse pas.
+    const { exercices } = await import('../js/data/catalog.js');
+    const longues = exercices
+        .filter(e => (e.consignePapier || '').length > 200)
+        .map(e => `${e.id} (${e.consignePapier.length} caractères)`);
+    assert.deepEqual(longues, [], 'consignes trop longues : ' + longues.join(', '));
+});
+
+test('L\'INSTRUCTION DE L\'ÉCRAN NE PART JAMAIS ENTIÈRE SUR LE PAPIER', async () => {
+    // C'était le vrai défaut : la fiche de PARCOURS recopiait `instruction`
+    // faute de `consignePapier`, sans la couper — neuf cents caractères en tête
+    // d'exercice. Les deux fiches passent maintenant par la même fonction.
+    const { premierePhrase } = await import('../js/ui/printQuestions.js');
+    const { exercices } = await import('../js/data/catalog.js');
+    exercices.forEach(e => {
+        const repli = premierePhrase(e.instruction || '');
+        assert.ok(repli.length <= 120, `${e.id} : repli de ${repli.length} caractères`);
+    });
+    // Et le pavé des puissances rend bien la chaîne vide, pas son premier tiers.
+    const puissances = exercices.find(e => e.id === 'num-puissances-reconnaitre');
+    assert.equal(puissances.consignePapier, 'Calcule.', 'Rémy : « mets juste calcule »');
+});

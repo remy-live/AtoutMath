@@ -18,3 +18,7 @@ balayage.md
 # valent que le temps d'une vérification et n'ont rien à faire dans
 # l'historique.
 tools/tmp/
+
+# Les harnais Playwright jetables : sous le dépôt pour résoudre « playwright »,
+# mais ils ne valent que le temps d'une vérification.
+tools/tmp/

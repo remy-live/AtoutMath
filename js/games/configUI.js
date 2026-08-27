@@ -1151,7 +1151,20 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
 
 // --- Réglages avant partie (élève) ------------------------------------------
 
-export function showStudentConfigModal(exo, onStart) {
+/**
+ * LA FENÊTRE DE RÉGLAGES D'AVANT-PARTIE — pour l'élève comme pour le
+ * professeur. Elle s'appelait `showStudentConfigModal` et n'était offerte
+ * qu'aux élèves ; le professeur, lui, tombait sur le panneau du constructeur
+ * de parcours, qui n'est pas dans la page quand on vient du catalogue. Rien
+ * là-dedans n'est propre à l'élève : ce sont les réglages de l'exercice, le
+ * nombre de questions, et de quoi partir sur papier.
+ *
+ * L'identifiant DOM `student-config-modal` reste tel quel : il est cité une
+ * cinquantaine de fois dans les feuilles de style, dont tout le volet
+ * téléphone, et le renommer ferait courir un risque de mise en page pour un
+ * gain de vocabulaire.
+ */
+export function ouvrirReglagesAvantPartie(exo, onStart) {
     const modal = document.getElementById('student-config-modal');
     const content = document.getElementById('student-config-content');
     if (!modal || !content) return onStart({ ...(exo.params || {}) });

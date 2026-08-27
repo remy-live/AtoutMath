@@ -31,6 +31,9 @@ import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
+// La consigne de repli se coupe comme sur la fiche d'un exercice seul : même
+// règle, même fonction — deux copies auraient divergé au premier ajustement.
+import { premierePhrase } from './printQuestions.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
 import { retenirRepli } from './repli.js';
 import { brancherFicheDirecte } from './ficheDirecte.js';
@@ -432,11 +435,24 @@ export function ouvrirFicheParcours(chemin) {
     // « Écris en chiffres. » suffit. Chaque exercice propose donc la sienne
     // (`consignePapier`), et le professeur la RÉÉCRIT s'il préfère la sienne :
     // c'est sa feuille, pas la nôtre.
+    //
+    // ET LE REPLI SE COUPE À LA PREMIÈRE PHRASE. Rémy : « pour l'énoncé des
+    // puissances de 10, tu as écrit tout cela […] mets juste calcule. De
+    // manière générale, un énoncé trop long n'est jamais lu. » Il avait
+    // raison, et ce n'était pas l'exercice : c'était CE repli. La fiche d'un
+    // exercice seul passe depuis toujours par `premierePhrase` — première
+    // phrase, et rien du tout au-delà de 120 caractères, parce que la suite
+    // décrit l'ÉCRAN (les touches, les glissements, le bouton d'aide) et n'a
+    // rien à faire sur du papier. La fiche de parcours, elle, recopiait
+    // l'instruction entière : neuf cents caractères sur les puissances, autant
+    // sur les trois exercices suivants. Un pavé en tête d'exercice n'est pas
+    // une consigne, c'est un mur — l'élève saute par-dessus et fait ce qu'il
+    // croit.
     const consignes = {};
     papier.forEach(e => {
         consignes[e.stepId] = e.exercise.consignePapier !== undefined
             ? e.exercise.consignePapier
-            : (e.exercise.instruction || '');
+            : premierePhrase(e.exercise.instruction || '');
     });
     // LE TITRE IMPRIMÉ EST CELUI DE LA FEUILLE, pas celui du catalogue.
     // « Segment, Droite ou Demi-droite ? » est le nom de l'exercice dans

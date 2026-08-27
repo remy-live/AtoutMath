@@ -513,6 +513,11 @@ export const numerationExercises = [
         id: 'num-puissances-reconnaitre', status: STATUS.TEST,
         title: 'Puissances de 10 — reconnaître',
         cree: '2026-08-25',
+        // Rémy : « mets juste calcule ». L'`instruction` ci-dessous explique
+        // les quatre marches à l'écran, où l'on a le temps de lire ; sur le
+        // papier, elle faisait neuf cents caractères en tête d'exercice.
+        consignePapier: 'Calcule.',
+        colonnesPapier: 3,
         generatorId: 'num.puissances-reconnaitre', activityId: 'buttons',
         skills: ['num.puissances.dix'],
         params: { etape: 'progressif' },
@@ -535,6 +540,10 @@ export const numerationExercises = [
         id: 'num-puissances-transformer', status: STATUS.TEST,
         title: 'Puissances de 10 — écriture scientifique',
         cree: '2026-08-25',
+        // Trois marches — fabriquer, revenir au décimal, comparer — et un seul
+        // verbe qui les couvre toutes les trois.
+        consignePapier: 'Complète.',
+        colonnesPapier: 3,
         generatorId: 'num.puissances-transformer', activityId: 'buttons',
         skills: ['num.puissances.scientifique'],
         params: { etape: 'progressif' },

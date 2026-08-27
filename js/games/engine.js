@@ -52,14 +52,31 @@ export function openGameLayer(exo, startAsDemo) {
     const schema = paramSchemaOf(exo);
     const needsConfig = schema.length > 0 && !exo.internalStudentConfig;
 
-    if (needsConfig && !state.isTeacherMode) {
+    // LA MÊME FENÊTRE POUR LES DEUX RÔLES, ET C'ÉTAIT UN VRAI TROU.
+    //
+    // Rémy : « L'exercice Loupe sur la droite : les paramètres ne fonctionnent
+    // pas. » Ce n'était pas la loupe : c'était TOUT exercice réglable ouvert
+    // depuis le catalogue en mode professeur. La branche prof appelait
+    // `window.showGameConfigUI`, qui écrit dans `builder-config-content` — le
+    // panneau du CONSTRUCTEUR DE PARCOURS. Depuis le catalogue, ce conteneur
+    // n'est pas dans la page : `renderGameConfigUI` sortait sans rien faire,
+    // aucune fenêtre ne s'ouvrait, et l'exercice ne partait même pas.
+    //
+    // Le contrat ne collait pas non plus : `renderGameConfigUI` prend une
+    // ÉTAPE de parcours et rend une étape modifiée, alors qu'on lui passait un
+    // exercice en attendant des réglages en retour. Même avec le bon
+    // conteneur, la partie serait partie avec un objet étape en guise de
+    // paramètres.
+    //
+    // Le panneau du constructeur reste ce qu'il est — le constructeur
+    // l'appelle lui-même, avec son étape et son conteneur. Ici, avant une
+    // partie libre, c'est la fenêtre de réglages, pour l'élève comme pour le
+    // professeur : mêmes réglages, même nombre de questions, même bouton
+    // « imprimer ». Rien ne justifiait deux chemins.
+    if (needsConfig) {
         import('./configUI.js').then(m => {
-            m.showStudentConfigModal(exo, (params) => launchFreePlay(exo, params));
+            m.ouvrirReglagesAvantPartie(exo, (params) => launchFreePlay(exo, params));
         });
-        return;
-    }
-    if (needsConfig && state.isTeacherMode && window.showGameConfigUI) {
-        window.showGameConfigUI(exo, (params) => launchFreePlay(exo, params));
         return;
     }
     launchFreePlay(exo, { ...(exo.params || {}) });

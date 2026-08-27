@@ -122,14 +122,34 @@ async function debordements(p) {
     });
 }
 
+/**
+ * LE PANNEAU DE RÉGLAGES D'AVANT-PARTIE, TRAVERSÉ COMME LE FAIT UN PROFESSEUR.
+ *
+ * Un exercice réglable ne démarre plus tout seul : il demande d'abord ses
+ * réglages. L'audit ne les change pas — il veut les valeurs du catalogue — mais
+ * il doit appuyer sur « Jouer ! », sinon tout exercice réglable se signale
+ * comme un plateau vide.
+ */
+async function traverserLesReglages(p) {
+    const ouvert = await p.evaluate(() => {
+        const m = document.getElementById('student-config-modal');
+        return !!(m && getComputedStyle(m).display !== 'none');
+    });
+    if (!ouvert) return;
+    await p.click('#btn-student-config-start').catch(() => { });
+    await p.waitForTimeout(150);
+}
+
 async function tourDuCatalogue(p, seau) {
     const ids = await p.evaluate(async () => {
         const s = await import('/js/core/state.js');
-        // En professeur, tout est déverrouillé et aucun panneau de réglages ne
-        // s'interpose : on veut vérifier les exercices, pas le verrou.
+        // En professeur, tout est déverrouillé : on veut vérifier les
+        // exercices, pas le verrou. Le panneau de réglages, lui, S'INTERPOSE
+        // MAINTENANT POUR LES DEUX RÔLES — c'était le trou signalé par Rémy
+        // (« les paramètres ne fonctionnent pas ») —, et l'audit le traverse
+        // comme un professeur : il appuie sur « Jouer ! ».
         s.state.isTeacherMode = true;
         s.state.previewDeviceMode = 'desktop';
-        window.showGameConfigUI = null;
         const { exercices } = await import('/js/data/catalog.js');
         return exercices.map(e => e.id);
     });
@@ -143,6 +163,7 @@ async function tourDuCatalogue(p, seau) {
                 const { getExerciseById } = await import('/js/data/catalog.js');
                 openGameLayer(getExerciseById(id), false);
             }, liste[i]);
+            await traverserLesReglages(p);
             const mis = await attendrePlateau(p);
             if (mis === null) seau.push('VIDE: le plateau reste vide');
             else if (mis > LENT) seau.push(`LENT: ${mis} ms avant la première image`);
