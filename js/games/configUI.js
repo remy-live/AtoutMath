@@ -139,10 +139,25 @@ function glissiereHtml(param, ech, value, id) {
         return `left:calc(12px + (100% - 24px) * ${(k / (n - 1)).toFixed(6)})`;
     };
     const crans = mots && !nombre && ech.courts
-        ? `<div class="cfg-crans" aria-hidden="true">`
+        // LES CRANS SONT DES BOUTONS, PAS DES ÉTIQUETTES.
+        //
+        // Rémy : « il faut pouvoir bouger les curseurs et on voit à quelle
+        // question cela correspond, et quand on passe dessus ou que l'on clique
+        // si on est sur tablette, c'est qu'on voit le VRAI aperçu ».
+        //
+        // Deux choses en une. D'abord on CLIQUE un cran pour y aller : traîner
+        // une pastille de vingt-quatre pixels sur un rail est un geste de
+        // précision, alors qu'on sait exactement où l'on veut aller — c'est
+        // écrit dessous. Ensuite on le SURVOLE pour essayer sans choisir :
+        // l'aperçu montre alors ce que CE réglage donnerait, et revient au
+        // réglage courant quand on s'en va. C'est le « qu'est-ce que ça
+        // changerait ? » auquel aucun panneau ne répond jamais.
+        ? `<div class="cfg-crans">`
         + ech.courts.map((c, k) =>
-            `<span class="cfg-cran${k === i ? ' cfg-cran--ici' : ''}"
-                style="${abscisse(k, ech.courts.length)}">${escapeAttr(c)}</span>`).join('')
+            `<button type="button" class="cfg-cran${k === i ? ' cfg-cran--ici' : ''}"
+                data-cran="${k}" data-pour="${escapeAttr(param.id)}"
+                aria-label="${escapeAttr(ech.libelles[k] || c)}"
+                style="${abscisse(k, ech.courts.length)}">${escapeAttr(c)}</button>`).join('')
         + `</div>`
         : '';
     const tirets = mots && !nombre && ech.valeurs.length > 1
@@ -722,7 +737,32 @@ function vignetteAide(p) {
 }
 
 /** Le ruban complet, réglages et longueur d'exercice en main. */
-export function apercuAideHtml(params, total, exoId = '') {
+/**
+ * LE NOMBRE DE PROPOSITIONS SE RÈGLE DANS L'APERÇU.
+ *
+ * Rémy : « dans l'aperçu, on ajoute une ligne pour changer le nombre de
+ * proposition, car là c'est imbuvable ». Il était derrière le repli
+ * « Affiner… », sur un rail de six crans aux noms tronqués (« A… », « To… ») —
+ * c'est-à-dire à deux gestes et une devinette du seul endroit où l'on voit ce
+ * qu'il change. Une rangée de pastilles, sous l'aperçu, le met à sa place :
+ * on clique « 4 », les vignettes montrent quatre propositions.
+ */
+const CHOIX_PROPOSITIONS = [
+    { v: 'auto', c: 'Auto' }, { v: 2, c: '2' }, { v: 3, c: '3' },
+    { v: 4, c: '4' }, { v: 6, c: '6' }, { v: 'toutes', c: 'Toutes' }
+];
+
+function lignePropositions(actuel) {
+    const est = (o) => String(o.v) === String(actuel ?? 'auto');
+    return `<div class="cfg-apercu-prop">
+        <span class="cfg-apercu-prop-lab">Propositions</span>
+        ${CHOIX_PROPOSITIONS.map(o =>
+        `<button type="button" class="cfg-prop-chip${est(o) ? ' est-choisi' : ''}"
+            data-prop="${escapeAttr(String(o.v))}">${o.c}</button>`).join('')}
+    </div>`;
+}
+
+export function apercuAideHtml(params, total, exoId = '', propositions = 'auto') {
     const paliers = paliersAide(params, total);
     return `<div class="cfg-apercu-titre">Ce que l'élève verra</div>
         <div class="cfg-apercu-ruban">${paliers.map(p => {
@@ -741,7 +781,8 @@ export function apercuAideHtml(params, total, exoId = '') {
                 <div class="cfg-vg${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</div>
                 <div class="cfg-apercu-dit"><b>${rangsEnMots(p, total)}</b><br>${palierEnMots(p)}</div>
             </div>`;
-    }).join('')}</div>`;
+    }).join('')}</div>
+        ${lignePropositions(propositions)}`;
 }
 
 /**
@@ -761,15 +802,30 @@ function paramsAide(racine) {
     return { aide: lire('aide'), propositions: lire('propositions'), saisie: lire('saisie') };
 }
 
-/** Redessine l'aperçu d'un panneau, s'il en a un. */
-export function rafraichirApercu(racine) {
+/**
+ * Redessine l'aperçu d'un panneau, s'il en a un.
+ *
+ * `cranEssai` / `pourEssai` : le réglage qu'on SURVOLE sans l'avoir choisi.
+ * L'aperçu montre alors ce qu'il donnerait, et rien n'est engagé — voir
+ * `apercuDuCran`.
+ */
+export function rafraichirApercu(racine, cranEssai = null, pourEssai = '') {
     const boite = racine && racine.querySelector('[data-apercu]');
     if (!boite) return;
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const hote = racine.closest && racine.closest('[data-exo]');
-    boite.innerHTML = apercuAideHtml(paramsAide(racine), total,
-        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '');
+    const params = paramsAide(racine);
+    if (cranEssai !== null && pourEssai) {
+        // La valeur du cran survolé, lue sur le rail lui-même : c'est lui qui
+        // porte la liste, et la recopier ici la ferait diverger.
+        const rail = racine.querySelector(`.cfg-rail[data-param="${pourEssai}"]`);
+        const valeurs = rail ? lireListe(rail.dataset.valeurs) : null;
+        if (valeurs && valeurs[cranEssai] !== undefined) params[pourEssai] = valeurs[cranEssai];
+    }
+    boite.innerHTML = apercuAideHtml(params, total,
+        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '',
+        params.propositions);
 }
 
 /**
@@ -1006,6 +1062,67 @@ document.addEventListener('wheel', (e) => {
 // écoute `input` (continu) et non `change` (au relâchement) — un aperçu qui
 // n'apparaît qu'une fois le doigt levé ne sert plus à choisir, il sert à
 // constater.
+/**
+ * ALLER À UN CRAN D'UN CLIC — et l'ESSAYER d'un survol.
+ *
+ * Rémy : « il faut pouvoir bouger les curseurs et on voit à quelle question
+ * cela correspond, et quand on passe dessus ou que l'on clique si on est sur
+ * tablette, c'est qu'on voit le VRAI aperçu ».
+ *
+ * Le survol n'ENGAGE rien : il montre. On garde donc le réglage réel de côté
+ * et on le rend dès que le doigt ou la souris s'en va — sans quoi un simple
+ * passage au-dessus du panneau changerait l'exercice.
+ */
+function allerAuCran(cran) {
+    const glissiere = cran.closest('.cfg-glissiere');
+    const rail = glissiere && glissiere.querySelector('.cfg-rail');
+    if (!rail) return;
+    const k = Number(cran.dataset.cran);
+    rail.value = rail.dataset.kind === 'echelle'
+        ? String(k)
+        : String(lireListe(rail.dataset.valeurs)[k] ?? rail.value);
+    majRail(rail);
+    rail.dispatchEvent(new Event('input', { bubbles: true }));
+    rail.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/** L'aperçu d'un cran qu'on SURVOLE, sans le choisir. */
+function apercuDuCran(cran, oui) {
+    const hote = cran.closest('.cfg-apercu-hote');
+    if (!hote) return;
+    if (oui) rafraichirApercu(hote, Number(cran.dataset.cran), cran.dataset.pour);
+    else rafraichirApercu(hote);
+}
+
+document.addEventListener('click', (e) => {
+    const cran = e.target.closest && e.target.closest('.cfg-cran');
+    if (cran) { e.preventDefault(); return allerAuCran(cran); }
+    // La rangée « Propositions » de l'aperçu : elle pilote le rail qui vit
+    // derrière le repli « Affiner… ». Un seul état, deux endroits pour le
+    // toucher — le second est là où l'on voit ce qu'il change.
+    const chip = e.target.closest && e.target.closest('.cfg-prop-chip');
+    if (!chip) return;
+    e.preventDefault();
+    const hote = chip.closest('.cfg-apercu-hote');
+    const rail = hote && hote.querySelector('.cfg-rail[data-param="propositions"]');
+    if (!rail) return;
+    const valeurs = lireListe(rail.dataset.valeurs).map(String);
+    const k = valeurs.indexOf(chip.dataset.prop);
+    if (k < 0) return;
+    rail.value = String(k);
+    majRail(rail);
+    rail.dispatchEvent(new Event('input', { bubbles: true }));
+    rail.dispatchEvent(new Event('change', { bubbles: true }));
+});
+document.addEventListener('pointerover', (e) => {
+    const cran = e.target.closest && e.target.closest('.cfg-cran');
+    if (cran) apercuDuCran(cran, true);
+});
+document.addEventListener('pointerout', (e) => {
+    const cran = e.target.closest && e.target.closest('.cfg-cran');
+    if (cran) apercuDuCran(cran, false);
+});
+
 document.addEventListener('input', (e) => {
     const rail = e.target.closest && e.target.closest('.cfg-rail');
     if (rail) majRail(rail);

@@ -2579,6 +2579,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     position: absolute; top: 0; transform: translateX(-50%);
     font-size: .7rem; font-weight: 700; color: var(--text-muted);
     line-height: 1.15; text-align: center;
+    /* UN CRAN EST UN BOUTON : on y va d'un clic, et on l'essaie d'un survol.
+       Rémy : « il faut pouvoir bouger les curseurs […] et quand on passe
+       dessus ou que l'on clique si on est sur tablette, c'est qu'on voit le
+       VRAI aperçu ». Traîner une pastille de vingt-quatre pixels est un geste
+       de précision alors qu'on sait exactement où l'on veut aller. */
+    background: none; border: 0; padding: 1px 3px; cursor: pointer;
+    border-radius: 5px;
     /* DEUX LIGNES PLUTÔT QU'UN NOM COUPÉ. « Prog… » et « To… » ne veulent rien
        dire ; « Progressif » sur deux lignes, si. La largeur est bornée pour que
        deux crans voisins ne se recouvrent pas. */
@@ -2589,7 +2596,31 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    s'écrivait « Li / br / e ». Il ne se translate donc pas. */
 .cfg-cran:last-child { transform: none; text-align: right; }
 .cfg-tiret:last-child { transform: none; }
+.cfg-cran:hover { color: var(--primary); background: var(--primary-soft, #eceafd); }
 .cfg-cran--ici { color: var(--primary); font-size: .76rem; }
+
+/* LA RANGÉE « PROPOSITIONS », DANS L'APERÇU. Rémy : « on ajoute une ligne pour
+   changer le nombre de proposition, car là c'est imbuvable ». Elle était
+   derrière un repli, sur un rail aux noms tronqués — à deux gestes et une
+   devinette du seul endroit où l'on voit ce qu'elle change. */
+.cfg-apercu-prop {
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid var(--border, #e3e7ef);
+}
+.cfg-apercu-prop-lab {
+    font-size: .72rem; font-weight: 800; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .04em; margin-right: 2px;
+}
+.cfg-prop-chip {
+    border: 1px solid var(--border, #d7dce5); background: #fff;
+    color: var(--text-main); border-radius: 999px;
+    padding: 3px 11px; font-size: .78rem; font-weight: 700; cursor: pointer;
+}
+.cfg-prop-chip:hover { border-color: var(--primary); color: var(--primary); }
+.cfg-prop-chip.est-choisi {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+}
 
 /* Les traits sur le rail, à la même abscisse : la graduation se voit même
    quand les noms sont longs. C'est le rail que Rémy dessinait : « O———O———O ». */
