@@ -68,20 +68,85 @@ function distinctes(mot) {
 }
 
 /**
+ * COMBIEN DE LETTRES ON OFFRE — et « le plus possible » était une erreur.
+ *
+ * Rémy, capture à l'appui : « de base pour le mot codé, tu donnes presque
+ * toute la solution ». C'était mesurable, et mesuré : sur la grille moyenne,
+ * réglages par défaut, 52 % de la clé était donnée d'avance et SOIXANTE-QUATRE
+ * POUR CENT DES CASES étaient déjà remplies avant le premier coup.
+ *
+ * La faute au mot de la clé, qui prenait le mot le PLUS LONG qu'il pouvait
+ * trouver — ÉQUATION, huit lettres sur quatorze numéros. Et comme ce sont les
+ * lettres les plus fréquentes du français qui composent les mots les plus longs
+ * (E, A, I, O, U, N, T), les huit numéros offerts remplissaient les deux tiers
+ * de la grille. On croyait donner une amorce ; on donnait la réponse.
+ *
+ * LA BONNE MESURE EST UNE PROPORTION, PAS UNE LONGUEUR. Ce qui compte n'est pas
+ * qu'un mot fasse huit lettres, c'est la part de l'alphabet codé qu'il découvre
+ * — et cette part doit rester une AMORCE. Un tiers laisse de quoi démarrer sans
+ * rien résoudre ; c'est aussi, à peu de chose près, la proportion de la grille
+ * de Rémy (sept lettres pour dix-sept numéros, soit 41 %).
+ */
+export const PART_OFFERTE = { large: 0.45, normale: 0.3, mince: 0.18 };
+export const partOfferteDe = (nom) => PART_OFFERTE[nom] ?? PART_OFFERTE.normale;
+
+/**
+ * ON COMPTE EN CASES, PAS EN LETTRES — et c'est le test qui l'a imposé.
+ *
+ * Première tentative : borner le NOMBRE de lettres du mot de la clé. Elle a
+ * beaucoup amélioré les choses et laissé passer un cas, que la mesure a
+ * attrapé — LITRE, cinq lettres seulement sur seize numéros, remplissait
+ * cinquante-sept pour cent de la grille. Évidemment : L, I, T, R, E sont cinq
+ * des lettres les plus fréquentes du français, et une grille est faite de mots
+ * français.
+ *
+ * Ce qui gêne Rémy n'est pas le nombre de numéros donnés, c'est le nombre de
+ * CASES déjà écrites — c'est cela qu'on voit en ouvrant la fiche. On borne donc
+ * cela, directement, et le choix s'en trouve meilleur des deux côtés : à budget
+ * de cases égal, le mot fait de lettres RARES donne plus de numéros. On obtient
+ * une amorce plus généreuse ET une grille plus vide.
+ */
+export const budgetCases = (total, part) => Math.max(1, Math.round(total * part));
+
+/** Combien de lettres la clé a le droit d'offrir sur `n` numéros. */
+export const budgetOuverture = (n, part) => Math.max(3, Math.floor(n * part));
+
+/**
  * LE MOT QUI OUVRE LA CLÉ.
  *
  * Il lui faut trois qualités, dans cet ordre : toutes ses lettres distinctes
  * (sans quoi il ne peut pas occuper des numéros consécutifs), toutes présentes
  * dans la grille (un numéro sans case est un numéro qu'on ne peut pas trouver),
- * et de préférence long — c'est le nombre de lettres offertes.
+ * et LE PLUS LONG QUI TIENNE DANS LE BUDGET — pas le plus long tout court.
+ *
+ * `strict` dit ce qu'on fait quand aucun mot du budget ne se présente : rendre
+ * la main (pour aller chercher ailleurs) ou prendre le plus court qu'on ait.
+ * C'est ce va-et-vient qui a fait la différence — la première version tentait
+ * le thème puis le lexique entier, mais le repli du THÈME rendait déjà un mot,
+ * si bien que le lexique n'était jamais consulté et que le budget ne mordait
+ * sur rien. On cherche donc DANS LE BUDGET partout d'abord, et l'on n'élargit
+ * qu'ensuite.
  */
-function motDeLaCle(candidats, presentes, rng) {
+function motDeLaCle(candidats, presentes, rng, mesure, strict = false) {
+    const { compte, budget } = mesure;
+    const cases = (mot) => mot.split('').reduce((t, l) => t + (compte.get(l) || 0), 0);
     const bons = candidats.filter(m =>
         distinctes(m.mot) === m.mot.length
         && m.mot.split('').every(l => presentes.has(l)));
     if (!bons.length) return null;
-    const max = Math.max(...bons.map(m => m.mot.length));
-    const meilleurs = bons.filter(m => m.mot.length === max);
+    const tenables = bons.filter(m => cases(m.mot) <= budget);
+    if (!tenables.length) {
+        if (strict) return null;
+        // Le moins pire : celui qui découvre le moins de cases.
+        const mini = Math.min(...bons.map(m => cases(m.mot)));
+        const petits = bons.filter(m => cases(m.mot) === mini);
+        return (rng ? rng.pick(petits) : petits[0]).mot;
+    }
+    // Dans le budget, on prend celui qui donne le PLUS DE NUMÉROS : c'est un
+    // vrai mot du chapitre qu'on veut faire lire, et à cases égales, plus de
+    // numéros placés vaut mieux.
+    const vise = Math.max(...tenables.map(m => m.mot.length));
+    const meilleurs = tenables.filter(m => m.mot.length === vise);
     return (rng ? rng.pick(meilleurs) : meilleurs[0]).mot;
 }
 
@@ -95,6 +160,7 @@ function motDeLaCle(candidats, presentes, rng) {
 export function creerMotCode(options = {}) {
     const {
         theme = 'litteral', niveauMax = 3, taille = 'moyenne',
+        aide = 'normale',
         rng, rngPour, essais = 12
     } = options;
     const { largeur, hauteur, profondeur } = formatDe(taille);
@@ -141,8 +207,22 @@ export function creerMotCode(options = {}) {
 
     // LA CLÉ COMMENCE PAR UN MOT : ses lettres prennent 1, 2, 3… dans l'ordre.
     const presentes = new Set(lettres);
-    const mot = motDeLaCle(duTheme.length ? duTheme : autres, presentes, rng)
-        || motDeLaCle(autres, presentes, rng);
+    // Le budget se compte sur les cases CODÉES : celles écrites en clair sont
+    // données de toute façon, les compter dans le budget le rognerait deux fois.
+    const casesCodees = lettres.reduce((t, l) => t + compte.get(l), 0);
+    const mesure = { compte, budget: budgetCases(casesCodees, partOfferteDe(aide)) };
+    // Le thème d'abord — c'est son mot qu'on veut faire lire —, puis le lexique
+    // entier, et seulement si personne ne tient dans le budget on l'élargit.
+    //
+    // LE DERNIER REPLI REGARDE TOUT LE MONDE À LA FOIS. Il consultait le thème
+    // seul avant le lexique, et sur les grilles où beaucoup de lettres sont
+    // écrites en clair il ne reste parfois qu'UN mot du thème éligible : c'était
+    // alors lui, quel que soit son coût. D'où des ÉQUATION à soixante-neuf pour
+    // cent de cases remplies sur le réglage le plus AVARE — l'inverse de ce
+    // qu'on demandait. Quand on cherche le moins cher, on cherche partout.
+    const mot = motDeLaCle(duTheme, presentes, rng, mesure, true)
+        || motDeLaCle(autres, presentes, rng, mesure, true)
+        || motDeLaCle(duTheme.concat(autres), presentes, rng, mesure, false);
     const ouverture = mot ? mot.split('') : [];
     const suite = lettres.filter(l => !ouverture.includes(l));
     const ordre = ouverture.concat(rng ? rng.shuffle(suite) : suite);

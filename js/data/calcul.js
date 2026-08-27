@@ -1233,7 +1233,7 @@ export const calculExercises = [
         sansRevision: true,
         printable: 'motcode', printGeneratorId: 'voc.mot-code-fiche',
         printParams: { theme: 'litteral', taille: 'moyenne', niveauMax: 3 },
-        params: { theme: 'litteral', niveauMax: 3, taille: 'moyenne' },
+        params: { theme: 'litteral', niveauMax: 3, taille: 'moyenne', aide: 'normale' },
         paramSchema: [
             {
                 id: 'theme', type: 'select', label: 'Vocabulaire',
@@ -1258,6 +1258,16 @@ export const calculExercises = [
                     { value: 'grande', label: 'Grande — 16 mots', court: 'Grande' }
                 ],
                 default: 'moyenne'
+            },
+            {
+                id: 'aide', type: 'select', label: 'Lettres offertes', echelle: true,
+                aide: 'La clé s\'ouvre sur un mot du chapitre, dont les lettres sont données d\'avance — c\'est ainsi que fonctionne un mot codé. Encore faut-il que ce soit une AMORCE : en prenant le mot le plus long qu\'il trouvait, le générateur donnait 52 % de la clé et remplissait les deux tiers des cases avant le premier coup. Ce qu\'on règle ici est la PART de l\'alphabet codé qu\'on offre — les lettres les plus fréquentes remplissant beaucoup de cases, une part modeste suffit largement à démarrer.',
+                options: [
+                    { value: 'large', label: 'Généreuse — on démarre vite', court: 'Généreuse' },
+                    { value: 'normale', label: 'Une amorce', court: 'Amorce' },
+                    { value: 'mince', label: 'Le strict minimum', court: 'Minimum' }
+                ],
+                default: 'normale'
             },
             {
                 id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau', echelle: true,

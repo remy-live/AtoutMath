@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
-    creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble,
+    creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble, budgetOuverture, partOfferteDe, PART_OFFERTE,
     estResoluCode, qualiteCode, THEMES, FORMATS_CODE
 } from '../js/core/motCode.js';
 import { bandesAnneau, decoupes, LONGUEUR_MIN } from '../js/core/anneauMots.js';
@@ -251,4 +251,84 @@ test('le générateur de fiche rend de quoi imprimer ET corriger', () => {
     // Le corrigé dit le code ET les mots : c'est ce que le professeur relit.
     m.lettres.forEach(l => assert.ok(it.explanation.includes(`${m.code[l]} = ${l}`)));
     m.mots.forEach(w => assert.ok(it.explanation.includes(w.mot), `${w.mot} manque au corrigé`));
+});
+
+
+/** La part des cases DÉJÀ REMPLIES avant le premier coup — ce que l'élève voit. */
+function partRemplie(m) {
+    const offertes = new Set(m.donnees), clair = new Set(m.enClair);
+    let pleines = 0, total = 0;
+    m.cases.forEach(l => l.forEach(c => {
+        if (c === null) return;
+        total++;
+        if (offertes.has(c) || clair.has(c)) pleines++;
+    }));
+    return pleines / total;
+}
+
+test('ON NE DONNE PAS LA GRILLE AVEC LA CLÉ', () => {
+    // Rémy, capture à l'appui : « de base pour le mot codé, tu donnes presque
+    // toute la solution ». C'était vrai et c'était mesurable : le mot de la clé
+    // prenait le mot le PLUS LONG qu'il trouvait — ÉQUATION, huit lettres sur
+    // quatorze numéros —, et comme ce sont les lettres les plus fréquentes du
+    // français qui font les mots les plus longs, ces huit numéros remplissaient
+    // 64 % DES CASES avant le premier coup.
+    //
+    // Ce test mesure les deux choses qui comptent : la part de la CLÉ offerte,
+    // et la part des CASES déjà écrites — la seconde étant ce qu'on voit en
+    // ouvrant la fiche, et elle est toujours bien plus grande que la première.
+    // ON MESURE LA MOYENNE, ET L'ON BORNE LE PIRE PLUS LARGEMENT. La petite
+    // grille n'offre qu'une poignée de mots éligibles : il arrive qu'aucun ne
+    // tienne dans le budget et qu'on doive prendre le moins cher, qui reste
+    // cher. Exiger la même chose de tous les tirages reviendrait à interdire la
+    // petite grille ; ce qu'on veut garantir, c'est qu'elle ne soit plus la
+    // règle.
+    for (const taille of ['petite', 'moyenne', 'grande']) {
+        let totalCle = 0, totalCases = 0, n = 0;
+        for (let g = 0; g < 12; g++) {
+            const m = creerMotCode({ theme: 'litteral', taille, rng: makeRng(`part-${taille}-${g}`) });
+            totalCle += m.donnees.length / m.lettres.length;
+            totalCases += partRemplie(m);
+            n++;
+            assert.ok(partRemplie(m) <= 0.7,
+                `${taille} : ${(partRemplie(m) * 100).toFixed(0)} % des cases remplies (${m.motCle})`);
+            // Et l'amorce reste une amorce, pas rien du tout : sans elle, un
+            // mot codé n'a aucun point d'entrée.
+            assert.ok(m.donnees.length >= 3, `${taille} : ${m.motCle} n'ouvre rien`);
+        }
+        assert.ok(totalCle / n <= 0.4,
+            `${taille} : ${(totalCle / n * 100).toFixed(0)} % de la clé offerte en moyenne`);
+        assert.ok(totalCases / n <= 0.45,
+            `${taille} : ${(totalCases / n * 100).toFixed(0)} % des cases remplies en moyenne`);
+    }
+});
+
+test('le réglage des lettres offertes va vraiment du généreux au minimum', () => {
+    // Trois crans, et il faut qu'ils se distinguent : un réglage qui ne change
+    // rien est pire que pas de réglage, parce qu'on croit avoir agi.
+    const part = (aide) => {
+        let t = 0;
+        for (let g = 0; g < 6; g++) {
+            const m = creerMotCode({ theme: 'litteral', taille: 'grande', aide, rng: makeRng(`aide-${g}`) });
+            t += m.donnees.length / m.lettres.length;
+        }
+        return t / 6;
+    };
+    const large = part('large'), normale = part('normale'), mince = part('mince');
+    // Le budget se compte en CASES, pas en lettres — voir `budgetCases`. Un mot
+    // fait de lettres rares donne donc plus de numéros pour le même coût, ce
+    // qui est exactement ce qu'on veut : une meilleure amorce, une grille plus
+    // vide. La part de la CLÉ reste malgré tout ordonnée.
+    assert.ok(large > normale, `généreuse (${large.toFixed(2)}) ne donne pas plus qu'amorce (${normale.toFixed(2)})`);
+    assert.ok(normale > mince, `amorce (${normale.toFixed(2)}) ne donne pas plus que minimum (${mince.toFixed(2)})`);
+    // Un réglage inconnu retombe sur l'amorce plutôt que de casser.
+    assert.equal(partOfferteDe('n\'importe quoi'), PART_OFFERTE.normale);
+});
+
+test('le budget d\'ouverture garde toujours de quoi démarrer', () => {
+    // Trois lettres au minimum, même sur un alphabet minuscule : en dessous, la
+    // clé ne s'ouvre sur rien et il n'y a plus de premier pas.
+    assert.equal(budgetOuverture(4, 0.18), 3);
+    assert.equal(budgetOuverture(20, 0.3), 6);
+    assert.equal(budgetOuverture(20, 0.45), 9);
 });

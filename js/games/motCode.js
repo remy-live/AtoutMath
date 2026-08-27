@@ -28,7 +28,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble,
+    creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble, PART_OFFERTE,
     estResoluCode, qualiteCode, THEMES, FORMATS_CODE
 } from '../core/motCode.js';
 
@@ -70,6 +70,8 @@ class MotCode extends BaseGame {
         this.theme = THEMES[this.params.theme] ? this.params.theme : 'angles';
         this.niveauMax = Number(this.params.niveauMax) || 3;
         this.taille = FORMATS_CODE[this.params.taille] ? this.params.taille : 'moyenne';
+        // La part de l'alphabet codé qu'on offre d'avance — voir `PART_OFFERTE`.
+        this.aide = PART_OFFERTE[this.params.aide] !== undefined ? this.params.aide : 'normale';
         this.saisie = {};
         this.verifs = 0;
         this.soufflees = new Set();
@@ -269,6 +271,7 @@ class MotCode extends BaseGame {
         this.compteur = (this.compteur || 0) + 1;
         this.m = creerMotCode({
             theme: this.theme, niveauMax: this.niveauMax, taille: this.taille,
+            aide: this.aide,
             essais: 12,
             rng: makeRng(`${this.graine}-${this.compteur}`),
             rngPour: (i) => makeRng(`${this.graine}-${this.compteur}-${i}`)

@@ -17,7 +17,7 @@
 // coup d'œil pour le professeur : la clé juste, la grille l'est forcément.
 
 import { makeItem } from '../items.js';
-import { creerMotCode, qualiteCode, THEMES, FORMATS_CODE } from '../motCode.js';
+import { creerMotCode, qualiteCode, THEMES, FORMATS_CODE, PART_OFFERTE } from '../motCode.js';
 import { makeRng } from '../ids.js';
 
 export const motCodeFicheGenerator = {
@@ -62,8 +62,13 @@ export const motCodeFicheGenerator = {
         const taille = FORMATS_CODE[p.taille] ? p.taille : 'moyenne';
         const niveauMax = [1, 2, 3].includes(Number(p.niveauMax)) ? Number(p.niveauMax) : 3;
 
+        // COMBIEN DE LETTRES ON OFFRE — voir `PART_OFFERTE` dans le noyau. Sur
+        // papier, l'enjeu est le même qu'à l'écran : une grille aux deux tiers
+        // remplie n'est plus un exercice, c'est une correction.
+        const aide = PART_OFFERTE[p.aide] !== undefined ? p.aide : 'normale';
+
         const m = creerMotCode({
-            theme, niveauMax, taille, rng, essais: 12,
+            theme, niveauMax, taille, aide, rng, essais: 12,
             // Chaque essai a SA graine : deux essais partageant un générateur
             // construiraient la même grille.
             rngPour: (i) => makeRng(`${rng.seed}-mcode-${i}`)
