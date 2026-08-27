@@ -817,7 +817,12 @@ export const geometrieExercises = [
         // l'exercice d'origine — l'écran n'y ajoutait que le fil qui se
         // rembobine.
         printable: 'dedale', printGeneratorId: 'geo.dedale-fiche',
-        printParams: { forme: 'rond', taille: 15 },
+        // `taille: 15` datait d'un schéma où c'était un nombre de cases ; le
+        // réglage est devenu un choix ('petit', 'moyen', 'grand') et personne
+        // ne comprenait plus 15. `forme`, lui, se règle à l'écran : depuis que
+        // le panneau du professeur l'emporte, le répéter ici ne servirait qu'à
+        // le figer une fois sur deux.
+        printParams: {},
         consignePapier: 'Va du rond au carré sans traverser de mur.',
         sansRevision: true,
         skills: ['geo.espace.deplacement'],

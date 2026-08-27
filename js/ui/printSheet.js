@@ -11141,7 +11141,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         if (atelier) return;
         if (generator && generator.ecrit) {
             import('./printQuestions.js')
-                .then(m => m.ouvrirFicheQuestions(exo, { ...(params || {}), ...(exo.printParams || {}) },
+                .then(m => m.ouvrirFicheQuestions(exo, { ...(exo.printParams || {}), ...(params || {}) },
                     chargerJsPDF, opts));
         }
         return;
@@ -11154,7 +11154,8 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     const totalEl = modal.querySelector('#fp-total');
     const btnSol = modal.querySelector('#fp-voir-sol');
 
-    const reglages = { ...(params || {}), ...(exo.printParams || {}) };
+    // Le papier PROPOSE, le professeur DISPOSE — voir `printParcours.js`.
+    const reglages = { ...(exo.printParams || {}), ...(params || {}) };
     // Le titre imprimé. « L'échiquier, une grille à deux entrées » est le titre
     // de l'exercice de repérage ; une planche composée à la main n'est pas cet
     // exercice-là, et coiffer la feuille du professeur d'une consigne qu'il

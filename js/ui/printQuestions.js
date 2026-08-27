@@ -262,7 +262,23 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // des quatre portes qui mènent ici passent d'ailleurs les valeurs par
     // défaut du catalogue, si bien qu'il n'existait aucun moyen de demander la
     // table de 7 depuis le banc d'essai.
-    const reglages = { ...(params || {}), ...(exo.printParams || {}) };
+    // LES RÉGLAGES DU PAPIER SONT DES DÉFAUTS, PAS DES ORDRES.
+    //
+    // Rémy, sur quatre exercices d'affilée : « les paramètres ne
+    // fonctionnent pas ». C'était `{...params, ...printParams}` : ce que le
+    // professeur venait de choisir dans l'engrenage était systématiquement
+    // écrasé par la valeur du catalogue. DIX-SEPT exercices avaient ainsi
+    // des réglages morts sur papier — le tableau de conversion, les
+    // grenouilles, le parking, la Tour de Hanoï, le mot codé, les mots
+    // croisés… On avait bien écrit la consigne « ne répète pas dans
+    // `printParams` ce que l'écran règle déjà », mais une consigne qu'on
+    // doit tenir à la main finit toujours par lâcher.
+    //
+    // L'ordre inverse dit la seule chose vraie : le papier propose, le
+    // professeur dispose. `printParams` garde tout son sens pour ce que
+    // l'écran NE RÈGLE PAS — `operation: '×'`, `miseEnPage: 'empile'` —,
+    // qui n'apparaît dans aucun panneau et s'applique donc toujours.
+    const reglages = { ...(exo.printParams || {}), ...(params || {}) };
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fq-apercu');

@@ -898,7 +898,7 @@ export const calculExercises = [
         // Sur le papier, on écrit le mot dans les cases : personne ne valide,
         // donc on s'engage. Rémy : « tu pourrais faire un pdf ».
         printable: 'anagrammes', printGeneratorId: 'voc.anagrammes-fiche',
-        printParams: { theme: 'tout', nbMots: 8, definition: true }, title: 'Anagrammes du Vocabulaire',
+        printParams: { theme: 'tout', nbMots: 8 }, title: 'Anagrammes du Vocabulaire',
         cree: '2026-08-19',
         activityId: 'anagrammes', skills: ['voc.mathematique'],
         // Un mot cherché puis trouvé n'a rien à réviser : ce qui compte est de
