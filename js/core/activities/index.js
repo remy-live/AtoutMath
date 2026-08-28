@@ -33,6 +33,7 @@ import { relatifsGenerator } from '../generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 import { relatifsProduitGenerator } from '../generators/relatifsProduit.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
+import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
@@ -110,6 +111,7 @@ import {
     kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
+    litteralPuissancesGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
@@ -286,6 +288,20 @@ registerActivity({
     requiresMeta: ['t', 'm'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./pythagore.js')
+});
+
+// ÉCRIRE UNE EXPRESSION RÉDUITE, avec les touches x, x² et x³.
+//
+// Rémy : « mets des boutons carrés voire cube ». Sur une tablette, ces deux
+// caractères n'existent pas au clavier ; sur un ordinateur, ils demandent une
+// combinaison que personne ne connaît. Un exercice sur les puissances où l'on
+// ne peut pas TAPER une puissance n'en est pas un.
+registerActivity({
+    id: 'litteral-saisie',
+    label: 'Écrire l\'expression réduite',
+    accepts: ['text'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./litteralSaisie.js')
 });
 
 registerActivity({

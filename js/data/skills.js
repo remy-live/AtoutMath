@@ -765,6 +765,14 @@ const BASE = {
         descriptor: 'Supprimer le signe × d\'une expression littérale, regrouper les facteurs et réduire une somme de termes.',
         lesson: 'TROIS GESTES DIFFÉRENTS, qu\'on confond tout le temps. 1. SIMPLIFIER L\'ÉCRITURE : devant une lettre, le signe × ne s\'écrit pas — 3 × x s\'écrit 3x, et le nombre se range DEVANT la lettre. Rien n\'est calculé, c\'est une convention. Le coefficient 1 ne s\'écrit pas non plus : 1 × x s\'écrit x. 2. REGROUPER DES FACTEURS : dans un produit, on peut changer l\'ordre, donc les nombres se MULTIPLIENT entre eux — 3 × x × 4 = 12x. 3. RÉDUIRE UNE SOMME : on regroupe ce qui porte la même lettre, et là on AJOUTE les coefficients — 2x + 3x = 5x. C\'est le contraire du geste précédent, et c\'est là qu\'on se trompe. DEUX PIÈGES À CONNAÎTRE : x + x = 2x (une somme) mais x × x = x² (un produit) ; et « 2x + 3 » ne se réduit PAS — un nombre de x et un nombre tout court ne vont pas dans le même sac.'
     },
+    'num.litteral.puissances': {
+        label: 'Réduire une expression avec des puissances',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Écrire x × x sous la forme x², et réduire une somme dont les termes n\'ont pas tous le même degré.',
+        lesson: 'UN EXPOSANT COMPTE LES FACTEURS. x × x s\'écrit x², x × x × x s\'écrit x³ : l\'exposant dit COMBIEN DE FOIS la lettre est facteur, rien d\'autre. ON NE REGROUPE QUE CE QUI A LE MÊME DEGRÉ. 2x² + 5x² = 7x² : même partie littérale, donc on additionne les nombres de devant — et l\'exposant NE BOUGE PAS. En revanche 3x² + 2x ne se réduit pas du tout : si x vaut 5, alors x vaut 5 et x² en vaut 25, ce ne sont pas les mêmes objets. Ajouter des x² et des x reviendrait à ajouter des mètres à des mètres carrés. LA MÉTHODE : un sac par degré. On range x³ avec x³, x² avec x², x avec x, les nombres tout seuls avec les nombres tout seuls ; on additionne DANS chaque sac, jamais entre deux sacs ; on écrit du plus haut degré au plus bas. Ainsi 3x² + 2x − 12x donne 3x² − 10x. DEUX PIÈGES. Le premier : tout mettre dans le même sac, et écrire 3x² + 2x = 5x². Le second : ajouter les exposants, et écrire x² + x² = x⁴. Les exposants s\'ajoutent quand on MULTIPLIE (x² × x² = x⁴), jamais quand on additionne — x² + x² = 2x².'
+    },
     'geo.angles.mesure': {
         label: 'Mesurer un angle au rapporteur',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],

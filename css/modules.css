@@ -5950,6 +5950,108 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     .nt-note { min-height: 2.2em; font-size: .86rem; }
 }
 
+/* ═══ ÉCRIRE UNE EXPRESSION RÉDUITE ═══════════════════════════════════════════
+   Rémy : « mets des boutons carrés voire cube ».
+
+   LE CLAVIER SE LIT EN TROIS BLOCS, et l'ordre n'est pas indifférent : la
+   lettre et ses puissances d'abord — c'est ce qui distingue cet exercice —,
+   puis les signes, puis les chiffres. Un pavé numérique en tête aurait fait
+   croire à un calcul, alors qu'on écrit une expression.
+
+   LES TOUCHES SE DISTINGUENT PAR LEUR COULEUR, pas seulement par leur place :
+   sur un téléphone, où la grille se replie, la seule position ne suffit plus à
+   dire qu'un « + » n'est pas un « 4 ». */
+.ls-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
+    justify-content: safe center; overflow-y: auto; color: var(--text-main);
+    container-type: inline-size;
+}
+.ls-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
+.ls-avis {
+    font-size: .9rem; font-weight: 700; color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
+}
+.ls-panel {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    flex: 0 0 auto; width: 100%; max-width: 420px;
+}
+
+/* LE CHAMP EST LA RÉPONSE : il se lit de loin, et il a une hauteur FIXE. Sans
+   elle, le clavier remontait d'une ligne à la première frappe — juste au
+   moment où le doigt visait une touche. */
+.ls-champ {
+    display: flex; align-items: center; justify-content: center; gap: 1px;
+    width: 100%; min-height: 1.9em;
+    font-size: clamp(26px, 9cqw, 42px); font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    padding: 6px 14px; border-radius: 16px; box-sizing: border-box;
+    border: 3px solid var(--border); background: var(--bg-panel);
+    transition: border-color .18s ease, background .18s ease;
+}
+.ls-champ--ok { border-color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--bg-panel)); }
+.ls-champ--ko { border-color: var(--danger, #dc2626); }
+/* LE CURSEUR CLIGNOTE, et c'est lui qui dit « écris ici ». Un champ vide et
+   muet se lit comme un affichage, pas comme une place à remplir. */
+.ls-curseur {
+    display: inline-block; width: 3px; height: .95em; border-radius: 2px;
+    background: var(--primary); animation: ls-clign 1.05s step-end infinite;
+}
+@keyframes ls-clign { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ls-curseur { animation: none; } }
+
+.ls-clavier {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
+    width: 100%;
+}
+.ls-t {
+    min-height: 50px; border-radius: 12px; cursor: pointer;
+    border: 2.5px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font-family: inherit; font-size: 1.4rem; font-weight: 900;
+    line-height: 1; display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .1s ease, background .12s ease, border-color .12s ease;
+}
+.ls-t:hover { background: var(--bg-hover); border-color: var(--primary); }
+.ls-t:active { transform: scale(.92); background: var(--primary); color: #fff; }
+/* La lettre et ses puissances : ce sont elles le sujet de l'exercice. */
+.ls-t--lettre {
+    color: var(--primary); font-style: italic;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+.ls-t--signe { color: var(--text-muted); }
+
+.ls-actions { display: flex; gap: 10px; align-items: center; width: 100%; }
+.ls-eff {
+    min-height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font-family: inherit; font-size: 1.15rem;
+}
+.ls-eff:hover { border-color: var(--danger, #dc2626); color: var(--danger, #dc2626); }
+.ls-valider {
+    flex: 1; min-height: 44px; border-radius: 12px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font-family: inherit;
+    font-size: 1rem; font-weight: 800;
+}
+.ls-valider:disabled { opacity: .45; cursor: default; }
+
+/* Le diagnostic NOMME la faute : « on ne peut pas mettre x² et x dans le même
+   sac ». Sa place est réservée, sinon son apparition pousse le clavier vers le
+   bas au moment où l'élève y retourne. */
+.ls-note {
+    min-height: 3.2em; text-align: center;
+    font-size: .9rem; line-height: 1.4; color: var(--text-main);
+}
+
+@media (max-width: 520px) {
+    .ls-layout { gap: 10px; }
+    .ls-clavier { gap: 5px; }
+    .ls-t { min-height: 44px; font-size: 1.2rem; }
+    .ls-note { min-height: 3.6em; font-size: .85rem; }
+}
+
 /* ═══ CONSTRUIRE LE TRAIT ════════════════════════════════════════════════════
    Rémy : « il faudrait plutôt cliquer sur des bouts de droite pour faire
    apparaître le schéma ». La droite est coupée en trois par les deux points ;

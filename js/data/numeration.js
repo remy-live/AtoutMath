@@ -456,6 +456,35 @@ export const numerationExercises = [
         instruction: "Treize marches, deux questions chacune, et TROIS GESTES qu'on confond tout le temps. D'abord on ENLÈVE le signe × : 3 × x s'écrit 3x, et le nombre se range devant la lettre — rien n'est calculé, c'est une convention. Ensuite on REGROUPE des facteurs : 3 × x × 4 = 12x, et là les nombres se multiplient. Enfin on RÉDUIT une somme : 2x + 3x = 5x, et là on ajoute — c'est le contraire du geste précédent, et c'est là qu'on se trompe. Deux pièges à retenir : x + x = 2x mais x × x = x², et « 2x + 3 » ne se réduit pas du tout."
     },
     {
+        // LA SUITE DIRECTE DU PRÉCÉDENT, et Rémy l'a demandée en ces termes :
+        // « j'aimerais bien un exercice pour simplifier une expression
+        // littérale du genre 3x² + 2x − 12x etc., mets des boutons carrés voire
+        // cube. On essaie d'être progressif. »
+        //
+        // SON EXEMPLE EST TOUTE LA LEÇON : trois termes, et deux seulement se
+        // regroupent. C'est la faute la plus tenace du chapitre, et elle ne se
+        // travaille qu'en posant des questions dont la réponse est parfois
+        // « on ne peut pas aller plus loin ».
+        //
+        // ET LA RÉPONSE SE TAPE. « Mets des boutons carrés voire cube » est une
+        // demande d'ÉCRITURE : reconnaître « 3x² − 10x » parmi quatre lignes ne
+        // prouve pas qu'on sache l'écrire, et c'est écrire qu'on demandera au
+        // contrôle. D'où l'activité `litteral-saisie` et son clavier, où ² et ³
+        // sont des touches — sur une tablette, elles n'existent nulle part
+        // ailleurs.
+        id: 'num-litteral-puissances',
+        cree: '2026-08-28',
+        consignePapier: "Réduis chaque expression. Attention : on ne regroupe que ce qui a le même exposant.",
+        colonnesPapier: 2,
+        title: 'Carrés, Cubes et Réduction',
+        generatorId: 'num.litteral.puissances', activityId: 'litteral-saisie',
+        params: { etape: 'progressif', cubes: true },
+        motsClefs: ['calcul littéral', 'puissance', 'carré', 'cube', 'exposant', 'degré',
+            'réduire', 'terme', 'expression'],
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME] },
+        instruction: "Dix marches, deux questions chacune, et une seule règle : on ne regroupe QUE ce qui a le même exposant. On apprend d'abord à écrire une puissance (x × x, c'est x²), puis à regrouper ce qui se regroupe (2x² + 5x² = 7x², et l'exposant ne bouge pas), puis — c'est la marche décisive — à NE PAS regrouper ce qui ne se regroupe pas : 3x² + 2x est déjà réduit. Si x vaut 5, alors x vaut 5 et x² en vaut 25 ; les additionner reviendrait à ajouter des mètres à des mètres carrés. La réponse s'écrit, avec des touches x, x² et x³."
+    },
+    {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
         // une règle qui marche pour les entiers et casse dès la première
         // décimale. On ne la déloge pas en la contredisant : on la déloge en
