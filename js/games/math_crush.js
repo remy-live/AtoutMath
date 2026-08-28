@@ -26,6 +26,26 @@
 // lettres (« 3 + 4 = 7 »), et le signe posé ENTRE deux gemmes de la chaîne
 // pendant qu'on la trace.
 
+// ET CE N'EST PAS UN EXERCICE : C'EST UN JEU.
+//
+// Rémy, plus tard : « pour le Math Crush, c'est un jeu, ne mets pas la solution
+// des opérations 🙂 on peut plutôt faire un certain temps avec des vies et le
+// but c'est de faire un méga score. »
+//
+// LE BOUTON « INDICE » DONNAIT LA PREMIÈRE CASE DE LA SOLUTION. Il coûtait
+// vingt points, ce qui avait l'air d'un prix ; en vérité il retirait au jeu la
+// seule chose qu'on y fasse — CHERCHER. Un élève bloqué qui reçoit la case de
+// départ ne cherche plus une chaîne, il suit une piste. On l'a donc enlevé, et
+// rien ne le remplace : quand on ne trouve pas, on regarde ailleurs sur le
+// plateau, et c'est précisément le calcul mental qu'on veut voir travailler.
+//
+// À LA PLACE, TROIS VIES ET UN ENCHAÎNEMENT. Le chronomètre seul faisait une
+// partie sans enjeu : se tromper coûtait deux secondes, autant dire rien, et la
+// meilleure stratégie était de tracer au hasard jusqu'à tomber juste. Trois
+// cœurs rendent l'erreur chère sans la punir, et le multiplicateur
+// d'enchaînement — ×1, ×1,5, ×2… jusqu'à ×5 — récompense la partie jouée avec
+// attention plutôt que la partie jouée vite. Voir `core/tableauScores.js`.
+
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
@@ -33,6 +53,8 @@ import { regTimeout } from '../core/timers.js';
 import {
     operationDe, valeurChaine, expressionChaine, depasse, disposerPlateau
 } from '../core/mathCrush.js';
+import { pointsChaine, multiplicateur } from '../core/tableauScores.js';
+import { enregistrerScore } from '../core/scoresLocaux.js';
 
 export class MathCrush extends BaseGame {
     constructor(container, isDemo, params, gameId) {
@@ -43,8 +65,15 @@ export class MathCrush extends BaseGame {
         this.mode = params?.mode || 'addition';
         this.difficulty = params?.difficulty || 'progressive';
         this.successCount = 0;
-        this.hintPath = null;
         this.currentTargetPath = [];
+        // TROIS VIES, ET UN ENCHAÎNEMENT QUI SE CASSE. `combo` compte les
+        // réussites d'affilée ; il retombe à zéro à la première erreur, ce qui
+        // fait qu'une erreur coûte bien plus que le cœur qu'elle prend.
+        this.vies = 3;
+        this.combo = 0;
+        this.meilleurCombo = 0;
+        this.tableau = [];
+        this.finEnvoyee = false;
         this.grid = []; 
         
         this.currentPath = [];
@@ -93,39 +122,6 @@ export class MathCrush extends BaseGame {
         });
         this.container.appendChild(this.canvas);
         
-        this.helpBtn = document.createElement('button');
-        this.helpBtn.innerHTML = '💡 Indice (-20)';
-        this.helpBtn.style.position = 'absolute';
-        // EN BAS À DROITE, pas en haut : sur un téléphone, le bouton posé en
-        // haut à droite venait s'asseoir sur « Cible : 7 » — l'unique chose
-        // qu'il faut lire avant de jouer.
-        this.helpBtn.style.bottom = '10px';
-        this.helpBtn.style.right = '10px';
-        this.helpBtn.style.zIndex = '10';
-        this.helpBtn.style.padding = '8px 12px';
-        this.helpBtn.style.borderRadius = '20px';
-        this.helpBtn.style.background = '#f59e0b';
-        this.helpBtn.style.color = 'white';
-        this.helpBtn.style.border = 'none';
-        this.helpBtn.style.fontWeight = 'bold';
-        this.helpBtn.style.cursor = 'pointer';
-        this.helpBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-        
-        // `pointerup` plutôt que `click` : le gestionnaire global de fin de
-        // tracé (`touchend` sur window) neutralisait le clic synthétisé, et le
-        // bouton restait muet sur téléphone et tablette.
-        const useHint = (e) => {
-            e.stopPropagation();
-            if (this.score >= 20 && !this.hintPath && !this.isDemo) {
-                this.score -= 20;
-                // Eclaire seulement LA PREMIERE case de la solution
-                if (this.currentTargetPath && this.currentTargetPath.length > 0) {
-                    this.hintPath = [this.currentTargetPath[0]];
-                }
-            }
-        };
-        this.helpBtn.addEventListener('pointerup', useHint);
-        this.container.appendChild(this.helpBtn);
         
         const onResize = () => {
             if (this.canvas && this.container) {
@@ -207,7 +203,6 @@ export class MathCrush extends BaseGame {
     }
 
     generateTarget() {
-        this.hintPath = null;
         let minLen = 2;
         let maxLen = 5;
         if (this.difficulty === 'progressive') {
@@ -265,7 +260,7 @@ export class MathCrush extends BaseGame {
         this.canvas.style.touchAction = 'none';
         
         const handleStart = (e) => {
-            if (this.isDemo || this.timeLeft <= 0) return;
+            if (this.isDemo || this.finie()) return;
             e.preventDefault();
             this.isDragging = true;
             this.currentPath = [];
@@ -273,7 +268,7 @@ export class MathCrush extends BaseGame {
         };
 
         const handleMove = (e) => {
-            if (!this.isDragging || this.isDemo || this.timeLeft <= 0) return;
+            if (!this.isDragging || this.isDemo || this.finie()) return;
             e.preventDefault();
             const rect = this.canvas.getBoundingClientRect();
             let clientX, clientY;
@@ -368,8 +363,15 @@ export class MathCrush extends BaseGame {
         if (sum === this.targetValue) {
             // Success !
             this.successCount++;
-            const pts = this.currentPath.length * 10 * (this.mode === 'addition' ? 1 : 2);
+            // LE MÉGA SCORE — voir `pointsChaine` dans core/tableauScores.js.
+            // La longueur compte au CARRÉ, et l'enchaînement multiplie : c'est
+            // ce qui fait chercher le grand tracé plutôt que le premier venu.
+            const pts = pointsChaine({
+                longueur: this.currentPath.length, combo: this.combo, mode: this.mode
+            });
             this.score += pts;
+            this.combo++;
+            this.meilleurCombo = Math.max(this.meilleurCombo, this.combo);
             this.timeLeft = Math.min(60, this.timeLeft + this.currentPath.length); // Add time
             
             // Spawn particles and remove blocks
@@ -420,6 +422,14 @@ export class MathCrush extends BaseGame {
         } else {
             // Failed
             if (!this.isDemo) {
+                // UNE ERREUR COÛTE UN CŒUR, ET L'ENCHAÎNEMENT. Deux secondes de
+                // chronomètre ne coûtaient rien : la meilleure stratégie était
+                // de tracer au hasard jusqu'à tomber juste, ce qui n'est plus
+                // du calcul mental. Le cœur donne son poids à l'erreur ;
+                // l'enchaînement cassé lui donne son vrai prix, puisqu'il
+                // faut trois réussites pour le reconstruire.
+                this.vies = Math.max(0, this.vies - 1);
+                this.combo = 0;
                 this.timeLeft = Math.max(0, this.timeLeft - 2); // Pénalité de temps
                 // Le message par défaut donnait « Faux ! Cible 7 = 7 » : il
                 // répétait la cible deux fois et taisait le seul nombre qui
@@ -555,7 +565,7 @@ export class MathCrush extends BaseGame {
      * s'asseoir sur son socle — et le chiffre descend avec elle : c'est le
      * geste d'un bouton qu'on presse, et il se comprend sans légende.
      */
-    dessinerGemme(block, choisie, trop, indice) {
+    dessinerGemme(block, choisie, trop) {
         const ctx = this.ctx;
         const marge = Math.max(2, Math.round(this.blockSize * 0.07));
         const cote = this.blockSize - marge * 2;
@@ -587,8 +597,8 @@ export class MathCrush extends BaseGame {
             rayon * 0.7);
         ctx.fill();
 
-        if (choisie || indice) {
-            ctx.strokeStyle = choisie ? (trop ? '#ef4444' : '#ffffff') : '#fbbf24';
+        if (choisie) {
+            ctx.strokeStyle = trop ? '#ef4444' : '#ffffff';
             ctx.lineWidth = Math.max(3, this.blockSize * 0.06);
             ctx.beginPath();
             ctx.roundRect(bx, by, cote, cote, rayon);
@@ -683,6 +693,36 @@ export class MathCrush extends BaseGame {
         ctx.roundRect(panneau.x, yj, Math.max(hj, panneau.w * part), hj, hj / 2);
         ctx.fill();
 
+        // LES CŒURS À GAUCHE, LE MULTIPLICATEUR À DROITE, sur la ligne de la
+        // jauge. Deux informations qui ne se lisent pas, elles se REPÈRENT :
+        // on ne compte pas ses vies, on voit d'un coup d'œil s'il en reste. Ils
+        // partagent donc la ligne du chronomètre, la seule qu'on regarde en
+        // jouant, et ne prennent pas une ligne à eux.
+        const hCoeur = Math.round(hb * 0.20);
+        const yCoeur = yj + hj + Math.round(hCoeur * 0.75);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = `${hCoeur}px Outfit, Arial, sans-serif`;
+        for (let i = 0; i < 3; i++) {
+            ctx.globalAlpha = i < this.vies ? 1 : 0.22;
+            ctx.fillText(i < this.vies ? '❤️' : '🤍',
+                panneau.x + i * hCoeur * 1.15, yCoeur);
+        }
+        ctx.globalAlpha = 1;
+        // LE MULTIPLICATEUR NE S'AFFICHE QU'À PARTIR DE ×1,5. À ×1, il ne dit
+        // rien — c'est l'état ordinaire — et un « ×1 » permanent apprendrait
+        // au joueur à ne plus le regarder, justement au moment où il commence
+        // à vouloir dire quelque chose.
+        const mult = multiplicateur(this.combo);
+        if (mult > 1) {
+            ctx.textAlign = 'right';
+            const txt = `×${String(mult).replace('.', ',')}`;
+            ctx.font = `900 ${Math.round(hCoeur * 0.95)}px Outfit, Arial, sans-serif`;
+            ctx.fillStyle = mult >= 3 ? '#f59e0b' : '#10b981';
+            ctx.fillText(txt, panneau.x + panneau.w, yCoeur);
+        }
+        ctx.textAlign = 'left';
+
         const yPastille = yj + hj + Math.round(hb * 0.26);
         const rP = Math.round(hb * 0.21);
         const titre = `Fais ${this.targetValue}`;
@@ -754,16 +794,6 @@ export class MathCrush extends BaseGame {
 
         this.updatePhysics();
 
-        if (this.helpBtn) {
-            if (this.score < 20 || this.hintPath || this.isDemo) {
-                this.helpBtn.style.opacity = '0.5';
-                this.helpBtn.style.cursor = 'not-allowed';
-            } else {
-                this.helpBtn.style.opacity = '1';
-                this.helpBtn.style.cursor = 'pointer';
-            }
-        }
-
         const valeurs = this.valeursChaine();
         const sum = valeurChaine(valeurs, this.mode);
         const trop = depasse(valeurs, this.targetValue, this.mode);
@@ -798,8 +828,7 @@ export class MathCrush extends BaseGame {
             for (let r = 0; r < this.rows; r++) {
                 const block = this.grid[c][r];
                 const choisie = this.currentPath.some(p => p.c === c && p.r === r);
-                this.dessinerGemme(block, choisie, trop,
-                    this.hintPath && this.hintPath.some(p => p.c === c && p.r === r));
+                this.dessinerGemme(block, choisie, trop);
             }
         }
         this.dessinerSignes(trop);
@@ -839,29 +868,101 @@ export class MathCrush extends BaseGame {
         this.ctx.globalAlpha = 1;
 
         // LA FIN DE PARTIE EST UNE CARTE, pas un voile noir avec du texte dessus.
-        if (this.timeLeft <= 0 && !this.isDemo) {
-            this.ctx.fillStyle = 'rgba(15,23,42,.72)';
-            this.ctx.fillRect(0, 0, w, h);
-            const cw = Math.min(w * 0.8, 420), ch = Math.min(h * 0.4, 190);
-            const cx = (w - cw) / 2, cy = (h - ch) / 2;
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.beginPath();
-            this.ctx.roundRect(cx, cy, cw, ch, 22);
-            this.ctx.fill();
-            this.texteCentre('⏳', w / 2, cy + ch * 0.26,
-                '400 40px Outfit, Arial, sans-serif', '#0f172a');
-            this.texteCentre('Temps écoulé', w / 2, cy + ch * 0.58,
-                '900 30px Outfit, Arial, sans-serif', '#0f172a');
-            this.texteCentre(`${this.score} points`, w / 2, cy + ch * 0.83,
-                '700 20px Outfit, Arial, sans-serif', '#64748b');
-        }
+        if (this.finie() && !this.isDemo) this.dessinerFin(w, h);
+    }
+
+    /**
+     * LA CARTE DE FIN, AVEC LE TABLEAU DES MEILLEURS SCORES.
+     *
+     * Rémy : « le but c'est de faire un méga score. ET on pourrait faire un
+     * tableau de Top Score dans toute la base de données d'un établissement. »
+     *
+     * LE TABLEAU D'ÉTABLISSEMENT N'EXISTE PAS ENCORE — il suppose un serveur et
+     * des comptes, que l'application n'a pas — et l'écran ne fait donc pas
+     * semblant : il dit « sur cet appareil ». C'est une différence qui compte
+     * pour un élève, qui croirait sinon battre toute sa classe.
+     *
+     * SA LIGNE À LUI EST SURLIGNÉE. Un tableau de dix noms où l'on doit
+     * chercher le sien n'est pas un tableau des records, c'est une liste.
+     */
+    dessinerFin(w, h) {
+        const ctx = this.ctx;
+        const parTemps = this.timeLeft <= 0;
+        const lignes = (this.tableau || []).slice(0, 5);
+        ctx.fillStyle = 'rgba(15,23,42,.72)';
+        ctx.fillRect(0, 0, w, h);
+
+        const hLigne = Math.min(24, h * 0.045);
+        const cw = Math.min(w * 0.86, 420);
+        const ch = Math.min(h * 0.86, 210 + lignes.length * hLigne);
+        const cx = (w - cw) / 2, cy = (h - ch) / 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cw, ch, 22);
+        ctx.fill();
+
+        let y = cy + ch * 0.10;
+        this.texteCentre(parTemps ? '⏳' : '💔', w / 2, y,
+            '400 34px Outfit, Arial, sans-serif', '#0f172a');
+        y += ch * 0.13;
+        this.texteCentre(parTemps ? 'Temps écoulé' : 'Plus de vies', w / 2, y,
+            '900 26px Outfit, Arial, sans-serif', '#0f172a');
+        y += ch * 0.13;
+        this.texteCentre(`${this.score} points`, w / 2, y,
+            '900 30px Outfit, Arial, sans-serif', '#7c3aed');
+        y += ch * 0.09;
+        // LE MEILLEUR ENCHAÎNEMENT SE DIT, parce que c'est LUI qu'on rejouera
+        // pour battre son score — pas le nombre de chaînes trouvées.
+        const dit = this.record ? '🏆 Nouveau record personnel !'
+            : `Meilleur enchaînement : ×${String(multiplicateur(this.meilleurCombo)).replace('.', ',')}`;
+        this.texteCentre(dit, w / 2, y,
+            `700 ${Math.round(hLigne * 0.62)}px Outfit, Arial, sans-serif`,
+            this.record ? '#f59e0b' : '#64748b');
+
+        if (!lignes.length) return;
+        y += ch * 0.10;
+        this.texteCentre('Meilleurs scores sur cet appareil', w / 2, y,
+            `800 ${Math.round(hLigne * 0.55)}px Outfit, Arial, sans-serif`, '#94a3b8');
+        y += hLigne * 0.9;
+
+        const xg = cx + cw * 0.12, xd = cx + cw * 0.88;
+        const police = `700 ${Math.round(hLigne * 0.66)}px Outfit, Arial, sans-serif`;
+        lignes.forEach((e, i) => {
+            const moi = i + 1 === this.rang;
+            if (moi) {
+                ctx.fillStyle = 'rgba(124,58,237,.12)';
+                ctx.beginPath();
+                ctx.roundRect(xg - 8, y - hLigne * 0.5, xd - xg + 16, hLigne, 8);
+                ctx.fill();
+            }
+            ctx.font = police;
+            ctx.fillStyle = moi ? '#7c3aed' : '#334155';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${i + 1}. ${e.qui}`, xg, y);
+            ctx.textAlign = 'right';
+            ctx.fillText(String(e.score), xd, y);
+            y += hLigne;
+        });
+        ctx.textAlign = 'left';
+    }
+
+    /**
+     * LA PARTIE S'ARRÊTE À DEUX CONDITIONS, ET C'EST VOULU.
+     *
+     * Le chronomètre borne la séance — un jeu de récompense ne doit pas manger
+     * l'heure de cours. Les vies bornent l'à-peu-près : sans elles, tracer au
+     * hasard jusqu'à tomber juste restait payant.
+     */
+    finie() {
+        return this.timeLeft <= 0 || this.vies <= 0;
     }
 
     loop() {
         if (!this.running) return;
         
         // Timer logic
-        if (!this.isDemo && this.timeLeft > 0) {
+        if (!this.isDemo && !this.finie()) {
             const now = Date.now();
             const dt = (now - this.lastTime) / 1000;
             this.timeLeft -= dt;
@@ -874,8 +975,27 @@ export class MathCrush extends BaseGame {
         }
 
         this.draw();
-        
-        if (this.timeLeft > 0 || this.isDemo) {
+
+        // LE TABLEAU SE CHARGE UNE SEULE FOIS, à la fin. `finEnvoyee` garde ce
+        // rendez-vous : la boucle passe soixante fois par seconde, et sans lui
+        // on écrirait soixante scores identiques.
+        //
+        // ET C'EST L'ARRIVÉE DU TABLEAU QUI REDESSINE LA CARTE, une fois. La
+        // boucle s'arrête à la fin de la partie — rien n'y bouge plus, la faire
+        // tourner pour rien userait la batterie d'une tablette posée sur un
+        // coin de table pendant toute la récréation. Mais le stockage répond
+        // plus tard, et la carte serait restée sans tableau.
+        if (!this.isDemo && this.finie() && !this.finEnvoyee) {
+            this.finEnvoyee = true;
+            enregistrerScore('math-crush', this.score)
+                .then(r => {
+                    this.tableau = r.table; this.rang = r.rang; this.record = r.record;
+                    if (this.running) this.draw();
+                })
+                .catch(() => { /* on affiche la carte sans tableau */ });
+        }
+
+        if (!this.finie() || this.isDemo) {
             this.rafId = requestAnimationFrame(() => this.loop());
         }
     }
@@ -890,7 +1010,7 @@ export class MathCrush extends BaseGame {
         let targetPath = [];
 
         // Le robot trace le CHEMIN SOLUTION généré avec la cible
-        // (`currentTargetPath`) — celui que l'indice éclaire. L'ancien code
+        // (`currentTargetPath`), le même que celui de la cible. L'ancien code
         // cherchait une PAIRE de cases sommant à la cible : dès que la
         // difficulté passait aux chemins de 3-4 cases, aucune paire ne
         // convenait plus et le robot re-tirait des cibles en boucle sans
