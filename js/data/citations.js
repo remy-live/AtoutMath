@@ -1,4 +1,4 @@
-// CENT CITATIONS SUR LES MATHÉMATIQUES.
+// DEUX CENTS CITATIONS SUR LES MATHÉMATIQUES.
 //
 // Rémy : « une liste de citations ».
 //
@@ -19,6 +19,12 @@
 //
 // Dans le doute, `sur: false`. Une citation prudente ne coûte rien ; une
 // citation fausse coûte la confiance.
+//
+// DEUX CENTS, ET NON CENT. Rémy : « je peux aussi faire un retour sur les
+// proverbes, blagues et autres, car il y en a à supprimer, mets-en alors deux
+// cents et un clic oui ou non et je te l'envoie. » La prudence sur les
+// attributions n'en devient que plus nécessaire : plus la liste est longue,
+// plus la tentation est grande d'y glisser une jolie phrase mal sourcée.
 //
 // Les phrases d'auteurs anciens (Euclide, Pythagore, Archimède) sont presque
 // toutes des traditions rapportées des siècles après : elles sont donc marquées
@@ -152,5 +158,119 @@ export const CITATIONS = [
     { texte: 'Le plus long des voyages commence par un premier pas.', auteur: 'Lao Tseu', sur: false },
     { texte: 'Petit à petit, l\'oiseau fait son nid.', auteur: 'Proverbe', sur: false },
     { texte: 'La goutte d\'eau finit par creuser la pierre, non par sa force mais par sa constance.', auteur: 'Ovide', sur: false },
-    { texte: 'Tomber sept fois, se relever huit.', auteur: 'Proverbe japonais', sur: false }
+    { texte: 'Tomber sept fois, se relever huit.', auteur: 'Proverbe japonais', sur: false },
+
+    // --- Deuxième centaine : chercher, se tromper, recommencer ---------------------
+    { texte: 'Le seul moyen d\'apprendre les mathématiques, c\'est de faire des mathématiques.', auteur: 'Paul Halmos', sur: true },
+    { texte: 'Ce n\'est pas assez de savoir : il faut aussi appliquer.', auteur: 'Proverbe', sur: false },
+    { texte: 'Une erreur n\'est pas une faute tant qu\'on ne refuse pas de la corriger.', auteur: 'Proverbe', sur: false },
+    { texte: 'Ne t\'inquiète pas de tes difficultés en mathématiques : je peux t\'assurer que les miennes sont plus grandes encore.', auteur: 'Albert Einstein', sur: false },
+    { texte: 'Un problème bien posé est à moitié résolu.', auteur: 'Proverbe', sur: false },
+    { texte: 'Ce qui se conçoit bien s\'énonce clairement, et les mots pour le dire arrivent aisément.', auteur: 'Nicolas Boileau', sur: true },
+    { texte: 'Je n\'ai pas échoué : j\'ai simplement trouvé mille façons qui ne marchent pas.', auteur: 'Thomas Edison', sur: false },
+    { texte: 'Le nombre est le lien qui unit toutes les sciences.', auteur: 'Proverbe', sur: false },
+    { texte: 'On ne comprend vraiment une chose que lorsqu\'on peut l\'expliquer à sa grand-mère.', auteur: 'Albert Einstein', sur: false },
+    { texte: 'Le plus grand plaisir en mathématiques, c\'est de découvrir qu\'on avait tort.', auteur: 'Proverbe', sur: false },
+    { texte: 'La rigueur n\'est pas l\'ennemie de l\'imagination : elle en est la condition.', auteur: 'Proverbe', sur: false },
+    { texte: 'Cherche, et tu trouveras — mais cherche vraiment.', auteur: 'Proverbe', sur: false },
+
+    // --- Deuxième centaine : la beauté et la nature des mathématiques --------------
+    { texte: 'Les grandes découvertes commencent par « tiens, c\'est bizarre ».', auteur: 'Attribué à Isaac Asimov', sur: false },
+    { texte: 'La géométrie est la connaissance de ce qui est éternel.', auteur: 'Platon', sur: false },
+    { texte: 'Un mathématicien qui n\'a rien du poète ne sera jamais un mathématicien complet.', auteur: 'Karl Weierstrass', sur: false },
+    { texte: 'Un raisonnement juste sur des données fausses donne une réponse fausse.', auteur: 'Proverbe', sur: false },
+    { texte: 'On mesure la difficulté d\'un problème au plaisir qu\'on a de l\'avoir résolu.', auteur: 'Proverbe', sur: false },
+    { texte: 'Ce n\'est pas la réponse qui éclaire, mais la question.', auteur: 'Eugène Ionesco', sur: true },
+    { texte: 'Il faut apprendre à compter, mais aussi à savoir ce qu\'on compte.', auteur: 'Proverbe', sur: false },
+    { texte: 'La difficulté attire l\'homme de caractère, car c\'est en l\'étreignant qu\'il se réalise lui-même.', auteur: 'Charles de Gaulle', sur: true },
+    { texte: 'Une chose n\'est pas vraie parce qu\'elle est écrite ; elle est écrite parce qu\'elle est vraie.', auteur: 'Proverbe', sur: false },
+    { texte: 'Les figures sont les mots de la géométrie.', auteur: 'Proverbe', sur: false },
+    { texte: 'Ce que l\'on obtient sans effort ne se garde pas longtemps.', auteur: 'Proverbe', sur: false },
+    { texte: 'Le raisonnement se vérifie, l\'intuition se cultive.', auteur: 'Proverbe', sur: false },
+
+    // --- Deuxième centaine : comprendre plutôt que retenir -------------------------
+    { texte: 'Toute science commence par une classification.', auteur: 'Proverbe', sur: false },
+    { texte: 'L\'important n\'est pas de tout savoir, mais de savoir où chercher.', auteur: 'Proverbe', sur: false },
+    { texte: 'Un esprit bien fait vaut mieux qu\'un esprit bien plein.', auteur: 'Michel de Montaigne', sur: true },
+    { texte: 'L\'enseignement n\'est pas le remplissage d\'un seau, mais l\'allumage d\'un feu.', auteur: 'Attribué à William Butler Yeats', sur: false },
+    { texte: 'Dis-le-moi et j\'oublierai ; montre-le-moi et je m\'en souviendrai ; implique-moi et je comprendrai.', auteur: 'Proverbe chinois', sur: false },
+    { texte: 'Le savoir qu\'on n\'a pas cherché ne tient pas.', auteur: 'Proverbe', sur: false },
+    { texte: 'Celui qui pose une question est bête cinq minutes ; celui qui n\'en pose pas l\'est toute sa vie.', auteur: 'Proverbe chinois', sur: false },
+    { texte: 'Le hasard a ses lois, et ce sont des mathématiques.', auteur: 'Proverbe', sur: false },
+    { texte: 'Il vaut mieux savoir peu de choses solidement que beaucoup à moitié.', auteur: 'Proverbe', sur: false },
+    { texte: 'Rien ne s\'oublie plus vite qu\'une règle qu\'on n\'a pas comprise.', auteur: 'Proverbe', sur: false },
+
+    // --- Deuxième centaine : le calcul et la démonstration -------------------------
+    { texte: 'Ce qui peut être compté ne compte pas forcément, et ce qui compte ne peut pas toujours être compté.', auteur: 'Attribué à William Bruce Cameron', sur: false },
+    { texte: 'Un bon calcul commence par une bonne estimation.', auteur: 'Proverbe', sur: false },
+    { texte: 'Une démonstration convainc parce qu\'elle n\'a pas de trou, pas parce qu\'elle est longue.', auteur: 'Proverbe', sur: false },
+    { texte: 'La logique est l\'hygiène du mathématicien.', auteur: 'André Weil', sur: false },
+    { texte: 'Un contre-exemple vaut mille discussions.', auteur: 'Proverbe', sur: false },
+    { texte: 'Le calcul est au raisonnement ce que la marche est au voyage : nécessaire, mais ce n\'est pas le but.', auteur: 'Proverbe', sur: false },
+    { texte: 'Il faut mesurer ce qui est mesurable, et rendre mesurable ce qui ne l\'est pas.', auteur: 'Attribué à Galilée', sur: false },
+    { texte: 'Toute vérité passe par trois stades : d\'abord elle est ridiculisée, ensuite elle est violemment combattue, enfin elle est acceptée comme une évidence.', auteur: 'Attribué à Arthur Schopenhauer', sur: false },
+    { texte: 'Ce qui est simple est toujours faux ; ce qui ne l\'est pas est inutilisable.', auteur: 'Paul Valéry', sur: true },
+
+    // --- Deuxième centaine : le travail et le temps --------------------------------
+    { texte: 'Comprendre, c\'est pouvoir refaire seul.', auteur: 'Proverbe', sur: false },
+    { texte: 'Un long calcul juste vaut moins qu\'une courte idée.', auteur: 'Proverbe', sur: false },
+    { texte: 'La goutte d\'eau creuse la pierre, non par sa force mais par sa constance.', auteur: 'Proverbe latin', sur: false },
+    { texte: 'Rien ne sert de courir, il faut partir à point.', auteur: 'Jean de La Fontaine', sur: true },
+    { texte: 'Ce qui est fait n\'est plus à faire.', auteur: 'Proverbe', sur: false },
+    { texte: 'Un voyage de mille lieues commence toujours par un premier pas.', auteur: 'Lao Tseu', sur: false },
+    { texte: 'Le temps qu\'on passe à aiguiser la hache n\'est jamais perdu.', auteur: 'Proverbe', sur: false },
+    { texte: 'Qui veut voyager loin ménage sa monture.', auteur: 'Jean Racine', sur: true },
+    { texte: 'À force de forger, on devient forgeron.', auteur: 'Proverbe', sur: false },
+    { texte: 'Demain est souvent le jour le plus chargé de la semaine.', auteur: 'Proverbe espagnol', sur: false },
+
+    // --- Deuxième centaine : la curiosité et le doute ------------------------------
+    { texte: 'Je ne cherche pas à connaître les réponses, je cherche à comprendre les questions.', auteur: 'Attribué à Confucius', sur: false },
+    { texte: 'L\'important est de ne pas cesser de se poser des questions.', auteur: 'Albert Einstein', sur: false },
+    { texte: 'La science consiste à passer d\'un étonnement à un autre.', auteur: 'Aristote', sur: false },
+    { texte: 'Ce que nous savons est une goutte d\'eau ; ce que nous ignorons est un océan.', auteur: 'Isaac Newton', sur: false },
+    { texte: 'Si j\'ai vu plus loin, c\'est en montant sur les épaules de géants.', auteur: 'Isaac Newton', sur: true },
+    { texte: 'Il n\'y a pas de question bête, il n\'y a que des questions qu\'on n\'ose pas poser.', auteur: 'Proverbe', sur: false },
+    { texte: 'Le commencement de toutes les sciences, c\'est l\'étonnement.', auteur: 'Aristote', sur: false },
+    { texte: 'Douter de tout ou tout croire, ce sont deux solutions également commodes qui dispensent de réfléchir.', auteur: 'Henri Poincaré', sur: true },
+
+    // --- Deuxième centaine : mathématiques et monde --------------------------------
+    { texte: 'Les mathématiques sont l\'alphabet avec lequel Dieu a écrit l\'univers.', auteur: 'Attribué à Galilée', sur: false },
+    { texte: 'Il n\'y a pas de progrès sans erreur corrigée.', auteur: 'Proverbe', sur: false },
+    { texte: 'La nature ne fait rien en vain.', auteur: 'Aristote', sur: false },
+    { texte: 'Donnez-moi un point d\'appui et je soulèverai le monde.', auteur: 'Archimède', sur: false },
+    { texte: 'La géométrie apprend à voir, l\'algèbre à écrire.', auteur: 'Proverbe', sur: false },
+    { texte: 'Ce qui compte n\'est pas d\'aller vite, mais de ne pas s\'arrêter.', auteur: 'Proverbe', sur: false },
+    { texte: 'Une carte n\'est pas le territoire.', auteur: 'Alfred Korzybski', sur: true },
+    { texte: 'Tous les modèles sont faux, mais certains sont utiles.', auteur: 'George Box', sur: true },
+    { texte: 'Compter n\'est pas comprendre.', auteur: 'Proverbe', sur: false },
+
+    // --- Deuxième centaine : la classe et le partage -------------------------------
+    { texte: 'Seul on va plus vite, ensemble on va plus loin.', auteur: 'Proverbe africain', sur: false },
+    { texte: 'Ce que l\'on comprend bien s\'explique bien.', auteur: 'Proverbe', sur: false },
+    { texte: 'Une classe où l\'on ose se tromper est une classe où l\'on apprend.', auteur: 'Proverbe', sur: false },
+    { texte: 'Il faut tout un village pour élever un enfant.', auteur: 'Proverbe africain', sur: false },
+    { texte: 'Le maître ouvre la porte : c\'est à toi d\'entrer.', auteur: 'Proverbe chinois', sur: false },
+    { texte: 'On ne peut rien enseigner à autrui, on ne peut que l\'aider à le découvrir en lui-même.', auteur: 'Galilée', sur: false },
+    { texte: 'La meilleure façon d\'apprendre est d\'expliquer.', auteur: 'Proverbe', sur: false },
+    { texte: 'Qui aide un camarade apprend deux fois.', auteur: 'Proverbe', sur: false },
+    { texte: 'Un élève n\'est pas un vase qu\'on remplit, mais un feu qu\'on allume.', auteur: 'Proverbe', sur: false },
+    { texte: 'Le respect du travail des autres commence par le soin qu\'on met au sien.', auteur: 'Proverbe', sur: false },
+
+    // --- Deuxième centaine : dernières ---------------------------------------------
+    { texte: 'Le meilleur moment pour planter un arbre était il y a vingt ans ; le deuxième meilleur moment est maintenant.', auteur: 'Proverbe chinois', sur: false },
+    { texte: 'On ne se baigne jamais deux fois dans le même fleuve.', auteur: 'Héraclite', sur: false },
+    { texte: 'Connais-toi toi-même.', auteur: 'Inscription du temple de Delphes', sur: true },
+    { texte: 'Rien de grand ne s\'est accompli dans le monde sans passion.', auteur: 'Georg Wilhelm Friedrich Hegel', sur: true },
+    { texte: 'Il n\'y a que ceux qui ne font rien qui ne se trompent jamais.', auteur: 'Proverbe', sur: false },
+    { texte: 'La perfection est atteinte non quand il n\'y a plus rien à ajouter, mais quand il n\'y a plus rien à retirer.', auteur: 'Antoine de Saint-Exupéry', sur: true },
+    { texte: 'Ce que l\'on fait avec plaisir se fait bien.', auteur: 'Proverbe', sur: false },
+    { texte: 'Une définition précise épargne dix minutes de discussion.', auteur: 'Proverbe', sur: false },
+    { texte: 'Un jour sans avoir rien appris est un jour perdu.', auteur: 'Proverbe', sur: false },
+    { texte: 'La montagne se gravit pas à pas, jamais d\'un bond.', auteur: 'Proverbe', sur: false },
+    { texte: 'Le courage, c\'est de continuer quand on ne comprend pas encore.', auteur: 'Proverbe', sur: false },
+    { texte: 'On ne démontre pas ce qu\'on voit ; on voit ce qu\'on a démontré.', auteur: 'Proverbe', sur: false },
+    { texte: 'Il n\'est pas de vent favorable pour celui qui ne sait où il va.', auteur: 'Sénèque', sur: false },
+    { texte: 'La mesure de l\'intelligence est la capacité à changer.', auteur: 'Albert Einstein', sur: false },
+    { texte: 'On ne résout pas un problème avec les modes de pensée qui l\'ont engendré.', auteur: 'Albert Einstein', sur: false },
+    { texte: 'Ce n\'est pas parce que les choses sont difficiles que nous n\'osons pas ; c\'est parce que nous n\'osons pas qu\'elles sont difficiles.', auteur: 'Sénèque', sur: false }
 ];

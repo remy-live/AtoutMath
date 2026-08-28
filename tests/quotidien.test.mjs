@@ -15,6 +15,7 @@ import {
 import {
     LISTES, comptes, normaliser, entreeDuJour, toutDuJour, genreDuJour, apercu
 } from '../js/data/quotidien.js';
+import { FIGURES, figureSvg } from '../js/data/enigmesFigures.js';
 
 const JOUR = 86400000;
 
@@ -229,4 +230,90 @@ test('l\'aperçu du banc d\'essai rend des entrées déjà présentables', () =>
 test('un genre inconnu ne casse rien', () => {
     assert.equal(entreeDuJour('licorne'), null);
     assert.deepEqual(apercu('licorne', 3), []);
+});
+
+// --- Ce que Rémy a demandé pour la relecture ---------------------------------
+//
+// « Je peux aussi faire un retour sur les proverbes, blagues et autres, car il
+// y en a à supprimer, mets-en alors deux cents et un clic oui ou non et je te
+// l'envoie. » Deux cents, donc — et pas cent quatre-vingt-dix-neuf.
+//
+// « Pour les énigmes, il faut quand même expliquer la réponse. Tu peux faire
+// des énigmes à petites images vectorielles. »
+
+test('DEUX CENTS ENTRÉES PAR LISTE, comme demandé', () => {
+    // Deux cents laissent de quoi en jeter la moitié et garder une année
+    // entière de contenu. C'est tout l'intérêt du nombre : il est calculé pour
+    // survivre à la relecture.
+    comptes().forEach(({ genre, n }) => {
+        assert.ok(n >= 200, `${genre} : ${n} entrées, il en faut deux cents`);
+    });
+});
+
+test('CHAQUE ÉNIGME EXPLIQUE SA RÉPONSE', () => {
+    // C'est ce qui sépare une énigme d'une devinette : « 15 » ne s'apprend pas,
+    // « chaque personne serre cinq mains et chaque poignée est comptée deux
+    // fois » s'apprend, et resservira sur les diagonales d'un polygone. C'est
+    // aussi ce dont le professeur a besoin pour répondre au « pourquoi ? » qui
+    // suit toujours.
+    LISTES.enigme.forEach(e => {
+        assert.ok(e.explication, `sans explication : ${e.texte.slice(0, 50)}`);
+        // Une explication d'une ligne n'explique rien : elle répète la réponse.
+        assert.ok(e.explication.length >= 40,
+            `explication trop courte (${e.explication.length}) : ${e.texte.slice(0, 40)}`);
+        // Et elle reste lisible d'un coup d'œil : au-delà, c'est un corrigé.
+        assert.ok(e.explication.length <= 480,
+            `explication trop longue (${e.explication.length}) : ${e.texte.slice(0, 40)}`);
+    });
+});
+
+test('CHAQUE FIGURE D\'ÉNIGME EXISTE VRAIMENT', () => {
+    // Une figure dont le nom ne correspond à rien rendrait une chaîne vide :
+    // l'énigme s'afficherait sans son dessin, sans que personne le remarque
+    // avant qu'un élève tombe dessus.
+    const nommees = new Set(LISTES.enigme.filter(e => e.figure).map(e => e.figure));
+    assert.ok(nommees.size >= 8, `seulement ${nommees.size} figures utilisées`);
+    for (const nom of nommees) {
+        assert.ok(FIGURES[nom], `figure inconnue : ${nom}`);
+        const svg = figureSvg(nom);
+        assert.match(svg, /^\s*<svg/, `${nom} ne rend pas un SVG`);
+        assert.match(svg, /aria-label="/, `${nom} n'a pas de description`);
+        // PAS DE COULEUR EN DUR : la figure vit dans l'encart du jour, dans le
+        // banc d'essai, sur fond clair ou sombre. Elle hérite de son contexte.
+        assert.ok(!/#[0-9a-fA-F]{3,6}/.test(svg), `${nom} écrit une couleur en dur`);
+        assert.match(svg, /currentColor/, `${nom} n'hérite pas de la couleur`);
+    }
+    // Et aucune figure dessinée pour rien : une figure qu'aucune énigme
+    // n'utilise est du code mort qu'on finira par croire utile.
+    for (const nom of Object.keys(FIGURES)) {
+        assert.ok(nommees.has(nom), `figure jamais utilisée : ${nom}`);
+    }
+});
+
+test('l\'explication ne remplace pas l\'indice, et réciproquement', () => {
+    // Deux rôles distincts : l'indice dit PAR OÙ COMMENCER sans rien lâcher,
+    // l'explication dit POURQUOI une fois qu'on a cherché. Les confondre
+    // reviendrait à donner la réponse dans l'indice.
+    LISTES.enigme.forEach(e => {
+        assert.notEqual(e.indice, e.explication, `indice et explication identiques : ${e.texte.slice(0, 40)}`);
+        assert.ok(e.explication.length > e.indice.length,
+            `l'explication devrait en dire plus que l'indice : ${e.texte.slice(0, 40)}`);
+    });
+});
+
+test('LA VUE NORMALISÉE PORTE L\'EXPLICATION ET LA FIGURE', () => {
+    // C'est la couture entre les données et l'écran : si `normaliser` les
+    // laisse tomber, tout le reste est écrit pour rien — et rien ne le dirait,
+    // puisque l'affichage se contente d'un champ absent.
+    const avecFigure = LISTES.enigme.find(e => e.figure);
+    const v = normaliser('enigme', avecFigure);
+    assert.equal(v.figure, avecFigure.figure);
+    assert.equal(v.explication, avecFigure.explication);
+    // Une énigme sans figure ne doit pas en inventer une.
+    const sansFigure = LISTES.enigme.find(e => !e.figure);
+    assert.equal(normaliser('enigme', sansFigure).figure, null);
+    // Et les autres genres n'ont ni l'un ni l'autre : une blague expliquée
+    // n'est plus une blague.
+    assert.equal(normaliser('blague', LISTES.blague[0]).explication, undefined);
+    assert.equal(normaliser('conseil', LISTES.conseil[0]).explication, undefined);
 });

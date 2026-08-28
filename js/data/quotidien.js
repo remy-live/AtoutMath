@@ -43,7 +43,8 @@ export const EMOJIS_GENRE = {
  * La vue commune d'une entrée, quel que soit son genre.
  *
  * @returns {{genre, texte, signature: ?string, secret: ?string, indice: ?string,
- *            sur: ?boolean, niveau: ?number}|null}
+ *            explication: ?string, figure: ?string, sur: ?boolean,
+ *            niveau: ?number}|null}
  */
 export function normaliser(genre, entree) {
     if (entree == null) return null;
@@ -72,7 +73,19 @@ export function normaliser(genre, entree) {
     }
     return {
         genre, texte: entree.texte, signature: null,
-        secret: entree.reponse, indice: entree.indice, niveau: entree.niveau || null
+        secret: entree.reponse, indice: entree.indice, niveau: entree.niveau || null,
+        // POURQUOI CETTE RÉPONSE-LÀ. Rémy : « pour les énigmes, il faut quand
+        // même expliquer la réponse. » Il a raison, et c'est même tout ce qui
+        // sépare une énigme d'une devinette : « 15 » ne s'apprend pas, « chaque
+        // personne serre 5 mains et chaque poignée est comptée deux fois »
+        // s'apprend, et resservira sur les diagonales d'un polygone.
+        explication: entree.explication || null,
+        // UNE PETITE IMAGE VECTORIELLE, quand l'énoncé décrit une figure.
+        // Rémy : « tu peux faire des énigmes à petites images vectorielles ».
+        // Elle ne remplace jamais le texte — une énigme doit se lire à voix
+        // haute — elle lui évite d'avoir à décrire ce qu'un dessin dit d'un
+        // coup d'œil. Voir `data/enigmesFigures.js`.
+        figure: entree.figure || null
     };
 }
 

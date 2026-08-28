@@ -8055,3 +8055,26 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    qu'à un conteneur de bloc, d'où le `display`. */
 .lc-cas-corps { display: block; }
 .lc-cas-corps::first-letter { text-transform: uppercase; }
+
+
+/* ═══ L'ÉNIGME DU JOUR : SON DESSIN ET SON EXPLICATION ═══════════════════════
+   Rémy : « pour les énigmes, il faut quand même expliquer la réponse. Tu peux
+   faire des énigmes à petites images vectorielles ».
+
+   L'EXPLICATION SE DISTINGUE DE LA RÉPONSE. Elles ne servent pas à la même
+   chose : la réponse permet de vérifier, l'explication permet d'APPRENDRE, et
+   c'est elle que le professeur relira avant de poser l'énigme à sa classe. Un
+   filet à gauche et un fond légèrement teinté suffisent à les séparer sans
+   ajouter un titre de plus. */
+.banc-q-fig {
+    display: flex; justify-content: center; margin-bottom: 8px;
+    color: var(--primary);
+}
+.banc-q-fig svg { width: 84px; height: 84px; }
+.banc-q-exp {
+    margin-top: 8px; padding: 8px 10px 8px 12px;
+    border-left: 3px solid var(--primary);
+    border-radius: 0 10px 10px 0;
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
+    font-size: .88rem; line-height: 1.5; color: var(--text-main);
+}

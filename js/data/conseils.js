@@ -1,4 +1,4 @@
-// CENT CONSEILS DE MÉTHODE.
+// DEUX CENTS CONSEILS DE MÉTHODE.
 //
 // Rémy : « une liste de conseil […] une centaine de chaque ce serait bien ».
 //
@@ -12,6 +12,12 @@
 // l'ERREUR (comment on la repère), le TRAVAIL (comment on apprend). Les
 // séparer en trois écrans reviendrait à demander à l'élève de choisir sa
 // catégorie avant d'avoir lu — et personne ne clique sur « erreurs ».
+//
+// DEUX CENTS, ET NON CENT. Rémy : « mets-en alors deux cents et un clic oui ou
+// non et je te l'envoie. » Un conseil qui sonne creux vaut moins que pas de
+// conseil du tout, et c'est un professeur devant sa classe qui sait lesquels
+// sonnent creux — pas celui qui les écrit. Le banc d'essai porte donc un ✓ et
+// un ✕ sur chaque entrée.
 //
 // Ils ne portent JAMAIS sur une notion précise. Un conseil de contenu tombé au
 // hasard un matin n'a aucune chance de correspondre à ce que l'élève travaille
@@ -136,5 +142,124 @@ export const CONSEILS = [
     'La dernière question d\'un exercice utilise presque toujours les précédentes. Relis-les avant de sécher.',
     'Dormir avant un contrôle vaut mieux que réviser une heure de plus. La mémoire se range pendant la nuit.',
     'Respire un coup avant de commencer. Le stress fait sauter des lignes, pas des connaissances.',
-    'Compare ta copie corrigée avec ton cahier, pas avec la note. C\'est la seule façon d\'en tirer quelque chose.'
+    'Compare ta copie corrigée avec ton cahier, pas avec la note. C\'est la seule façon d\'en tirer quelque chose.',
+
+    // --- Deuxième centaine : relire et vérifier --------------------------------------
+    'Avant de rendre, relis ta première ligne. C\'est celle qu\'on écrit le plus vite, et celle où l\'on recopie de travers.',
+    'Vérifie ton résultat en l\'estimant : si tu attendais « environ 50 » et que tu trouves 500, il y a un zéro de trop.',
+    'Une réponse sans unité n\'est pas une réponse. Relis ton résultat à voix haute et demande-toi « 12 quoi ? ».',
+    'Quand tu as fini, remplace ta réponse dans l\'énoncé. Si la phrase devient vraie, tu as gagné.',
+    'Repasse sur les signes moins avant de rendre. C\'est ce qui se perd le plus souvent en recopiant.',
+    'Si deux méthodes donnent le même résultat, tu peux être tranquille. Si elles diffèrent, tu viens de trouver ton erreur.',
+    'Vérifie l\'ordre de grandeur avant les décimales. Une virgule mal placée se voit tout de suite si l\'on sait ce qu\'on attend.',
+    'Le résultat d\'une soustraction est plus petit que le nombre de départ — sauf avec les relatifs. Vérifie que tu es dans le bon cas.',
+    'Compte tes questions avant de rendre : une question sautée coûte plus cher qu\'une erreur de calcul.',
+    'Quand tu doutes entre deux réponses, écris les deux au brouillon et cherche laquelle contredit l\'énoncé.',
+    'Une aire ne peut pas être négative, un âge non plus. Si ton résultat est impossible, c\'est une information, pas une catastrophe.',
+    'Relis ta copie comme si elle était celle d\'un autre. On voit les erreurs des autres bien mieux que les siennes.',
+
+    // --- Deuxième centaine : s'organiser au brouillon --------------------------------
+    'Écris au brouillon la donnée que tu cherches, en haut, entourée. Tu sauras toujours où tu vas.',
+    'Un brouillon n\'est pas une copie sale : c\'est un espace où l\'on a le droit de se tromper. Utilise-le vraiment.',
+    'Fais un schéma même quand on ne le demande pas. Un dessin approximatif vaut mieux qu\'une phrase relue trois fois.',
+    'Note tes essais ratés au lieu de les effacer : ils t\'évitent de recommencer le même deux fois.',
+    'Sépare le brouillon en deux colonnes : ce que tu sais à gauche, ce que tu cherches à droite.',
+    'Quand un calcul devient long, arrête-toi : il existe presque toujours un chemin plus court que tu n\'as pas vu.',
+    'Écris une étape par ligne. Trois calculs sur la même ligne, c\'est trois occasions de se perdre.',
+    'Range ton brouillon dans le sens de la lecture : de haut en bas, de gauche à droite. On s\'y retrouve plus tard.',
+    'Encadre ton résultat. C\'est autant pour toi que pour celui qui corrige.',
+    'Si tu recopies un nombre, vérifie-le tout de suite. Une erreur de recopie se propage jusqu\'au bout.',
+
+    // --- Deuxième centaine : apprendre une leçon -------------------------------------
+    'Apprendre une leçon de maths, c\'est savoir refaire un exemple, pas réciter une définition.',
+    'Ferme le cahier et écris la règle de mémoire. Ce que tu ne retrouves pas, c\'est ce qu\'il te reste à apprendre.',
+    'Relis ta leçon la veille du contrôle, mais aussi le soir même du cours. Dix minutes le soir valent une heure la veille.',
+    'Pour chaque règle, invente un exemple à toi. On retient ce qu\'on a fabriqué.',
+    'Une propriété a toujours des conditions. Apprends les conditions en même temps que la conclusion.',
+    'Quand la leçon donne un contre-exemple, apprends-le : c\'est lui qui dit où la règle s\'arrête.',
+    'Explique la leçon à quelqu\'un qui ne l\'a pas suivie. Là où tu bafouilles, tu n\'as pas compris.',
+    'Fais-toi une fiche d\'une seule page par chapitre. Si elle déborde, c\'est que tout n\'est pas essentiel.',
+    'Apprends le vocabulaire du chapitre : la moitié des énoncés se débloquent quand on sait ce que les mots veulent dire.',
+    'Refais un exercice déjà corrigé sans regarder la correction. C\'est le meilleur test qui existe.',
+    'Quand une formule ne rentre pas, cherche d\'où elle vient. Une formule comprise se retrouve, une formule apprise s\'oublie.',
+    'Étale ton travail : trois fois vingt minutes valent mieux qu\'une heure d\'un coup, même si cela paraît moins.',
+
+    // --- Deuxième centaine : comprendre ses erreurs ----------------------------------
+    'Une erreur répétée n\'est pas de l\'étourderie : c\'est une règle que tu as mal apprise. Cherche laquelle.',
+    'Classe tes erreurs en deux tas : celles que tu vois en relisant, et celles que tu ne vois pas. Les secondes sont les vraies.',
+    'Quand on te rend une copie, refais d\'abord ce que tu as raté. Le reste, tu sais déjà le faire.',
+    'Note ce qui t\'a manqué au moment de l\'erreur : le mot, la règle, ou l\'attention. On ne corrige pas les trois pareil.',
+    'Se tromper devant la classe, c\'est rendre service à tous ceux qui allaient faire pareil.',
+    'Une erreur de signe et une erreur de méthode ne se soignent pas de la même façon. Sache dire laquelle tu as faite.',
+    'Si tu ne comprends pas la correction, dis-le. Une correction qu\'on recopie sans comprendre ne sert à rien.',
+    'Reviens sur une erreur trois jours plus tard. Si tu la refais, c\'est qu\'elle n\'était pas comprise mais recopiée.',
+    'Quand tout un exercice est faux, cherche la PREMIÈRE ligne fausse. La suite n\'est souvent que la conséquence.',
+
+    // --- Deuxième centaine : pendant le contrôle -------------------------------------
+    'Lis tout le sujet avant de commencer. Tu sauras où sont les points faciles.',
+    'Commence par ce que tu sais faire. La confiance des premières questions sert pour les suivantes.',
+    'Si tu bloques cinq minutes, passe à la suite et reviens. Le cerveau continue à travailler pendant ce temps.',
+    'Écris tes calculs même si tu es sûr : le raisonnement rapporte des points, le résultat seul en rapporte un.',
+    'Garde cinq minutes à la fin pour relire. C\'est le meilleur investissement du devoir.',
+    'Une question à laquelle tu réponds à moitié rapporte plus qu\'une question vide. Écris ce que tu sais.',
+    'Regarde le barème : une question à quatre points demande quatre choses. Vérifie que tu les as toutes écrites.',
+    'Si un résultat te paraît absurde, écris-le quand même en disant pourquoi il te semble faux. Cela se voit et cela compte.',
+    'Ne rends jamais avant la fin. Le temps qui reste appartient à ta relecture.',
+
+    // --- Deuxième centaine : la calculatrice et les outils ---------------------------
+    'La calculatrice donne un résultat, jamais une méthode. Sache ce que tu lui demandes avant de taper.',
+    'Estime le résultat de tête AVANT de taper. C\'est ainsi qu\'on repère une touche mal appuyée.',
+    'Sur une calculatrice, les parenthèses ne sont pas facultatives : elle applique les priorités, pas tes intentions.',
+    'Taille ton crayon avant un exercice de géométrie. Un trait épais fausse une construction de deux millimètres.',
+    'Vérifie le zéro de ta règle : sur beaucoup de règles, il n\'est pas au bord.',
+    'Pose le rapporteur avant de chercher le nombre : centre sur le sommet, zéro sur un côté. L\'ordre évite la moitié des erreurs.',
+    'Un compas qui glisse fausse tout le tracé. Serre-le avant de commencer, pas au milieu.',
+    'Écris à quoi sert chaque touche mémoire de ta calculatrice une fois pour toutes. Tu gagneras du temps toute l\'année.',
+
+    // --- Deuxième centaine : garder le moral -----------------------------------------
+    'Ne pas comprendre tout de suite est normal. Ce qui compte, c\'est de savoir ce qu\'on ne comprend pas.',
+    'Personne n\'est « nul en maths ». On est en retard sur une notion, et une notion se rattrape.',
+    'Compare-toi à toi-même il y a un mois, pas à ton voisin. C\'est la seule comparaison qui apprenne quelque chose.',
+    'Un exercice difficile n\'est pas une punition : c\'est l\'endroit exact où tu vas progresser.',
+    'Quand tu sèches, demande de l\'aide sur la PREMIÈRE chose que tu ne comprends pas, pas sur l\'exercice entier.',
+    'Fais une pause de cinq minutes toutes les demi-heures. Un cerveau fatigué invente des erreurs.',
+    'Tu as le droit de trouver un exercice long. Cela ne veut pas dire que tu n\'y arriveras pas.',
+    'Le jour où tu expliques quelque chose à quelqu\'un, c\'est que tu l\'as vraiment appris.',
+    'Recommencer n\'est pas revenir en arrière. C\'est repartir avec quelque chose en plus.',
+    'Chaque exercice réussi rend le suivant un peu plus facile. C\'est lent, et cela ne se voit qu\'au bout d\'un mois.',
+
+    // --- Deuxième centaine : travailler à la maison ----------------------------------
+    'Range ton bureau avant de commencer. Cinq minutes de rangement valent vingt minutes de concentration.',
+    'Pose ton téléphone dans une autre pièce. Le voir suffit à couper l\'attention, même éteint.',
+    'Commence par le plus difficile pendant que tu es frais. Les exercices d\'entraînement passent bien en fin de séance.',
+    'Fixe-toi une durée avant de commencer, et arrête-toi quand elle est écoulée. On travaille mieux quand la fin est connue.',
+    'Ne recopie jamais un corrigé sans l\'avoir cherché. Le corrigé n\'apprend rien à celui qui n\'a pas essayé.',
+    'Prépare tes questions pour le cours suivant à mesure qu\'elles viennent. Elles s\'oublient toutes en une nuit.',
+    'Fais tes exercices avec le cours FERMÉ, puis vérifie. C\'est le seul moyen de savoir ce que tu sais.',
+    'Si tu travailles à deux, chacun cherche d\'abord seul dix minutes. Sinon l\'un des deux regarde l\'autre travailler.',
+    'Relis les corrections en classe le soir même : elles sont encore fraîches, et cela prend dix minutes.',
+    'Un exercice terminé mais non compris n\'est pas terminé.',
+
+    // --- Deuxième centaine : les gestes qui reviennent partout ------------------
+    'Quand tu vois « donc », vérifie que ce qui précède le justifie vraiment. C\'est le mot le plus dangereux d\'une copie.',
+    'Convertis toutes les données dans la même unité AVANT de calculer, jamais pendant.',
+    'Une proportion se pose en tableau : deux lignes, deux colonnes, et la question dans une case vide.',
+    'Devant une fraction, demande-toi d\'abord si elle se simplifie. Les calculs qui suivent en dépendent.',
+    'Avant d\'appliquer Pythagore, vérifie que le triangle est bien rectangle. C\'est la condition, pas un détail.',
+    'Quand une figure te semble vide, code-la : marque les angles droits, les longueurs égales, les parallèles.',
+    'Un pourcentage se calcule toujours SUR quelque chose. Écris sur quoi avant de chercher combien.',
+    'Devant une équation, demande-toi ce que tu cherches à isoler, puis fais la même chose des deux côtés.',
+    'Si un calcul comporte des parenthèses, commence par elles — même quand cela semble plus long.',
+    'Range les termes par degré avant de réduire. La moitié des erreurs d\'expression littérale viennent d\'un terme oublié.',
+    'Quand tu additionnes des fractions, écris le dénominateur commun AVANT de toucher aux numérateurs.',
+    'Une moyenne se recalcule toujours à partir de la somme, jamais à partir d\'autres moyennes.',
+    'Devant un problème de vitesse, écris les trois grandeurs et entoure celle qu\'on cherche.',
+    'Note le nombre de solutions attendues. « Trouve les nombres » au pluriel n\'a pas la même réponse que « le nombre ».',
+    'Quand tu appliques une formule, écris-la d\'abord en lettres, puis remplace. Cela évite d\'inverser deux données.',
+    'Un résultat qui tombe rond n\'est pas forcément juste, et un résultat qui ne tombe pas rond n\'est pas forcément faux.',
+    'Devant un tableau de valeurs, cherche ce qui reste constant : c\'est presque toujours là qu\'est la clé.',
+    'Une longueur, une aire et un volume ne se comparent jamais entre elles. Vérifie tes unités avant de conclure.',
+    'Quand tu construis une figure, fais un croquis à main levée d\'abord. La construction propre vient après.',
+    'Devant une question ouverte, écris une phrase de réponse. Un nombre seul ne répond jamais à une question posée en mots.',
+    'Si tu dois choisir entre deux méthodes, prends celle que tu sais expliquer.'
 ];

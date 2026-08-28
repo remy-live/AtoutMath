@@ -26,6 +26,7 @@ import {
     GENRES, LIBELLES_GENRE, EMOJIS_GENRE, LISTES, comptes as comptesQuotidien,
     normaliser as normaliserQuotidien, entreeDuJour, apercu as apercuQuotidien
 } from '../data/quotidien.js';
+import { figureSvg } from '../data/enigmesFigures.js';
 
 const CLE = 'mathbox-banc-essai';
 let carnet = null;
@@ -334,11 +335,25 @@ function quotidienHtml() {
         const d = new Date(Date.now() + dans * 86400000);
         return `${JOURS[d.getDay()]} ${d.getDate()}`;
     };
+    // L'EXPLICATION EST DANS LA CARTE, PAS SEULEMENT LA RÉPONSE.
+    //
+    // Rémy : « pour les énigmes, il faut quand même expliquer la réponse. » Il
+    // a raison, et c'est même ce qui sépare une énigme d'une devinette : « 15 »
+    // ne s'apprend pas, « chaque personne serre cinq mains et chaque poignée
+    // est comptée deux fois » s'apprend, et resservira sur les diagonales d'un
+    // polygone. C'est aussi ce qui permet au professeur de la poser en classe :
+    // il faut pouvoir répondre à « pourquoi ? ».
+    //
+    // ET LA PETITE IMAGE, quand il y en a une : « tu peux faire des énigmes à
+    // petites images vectorielles ». Elle ne remplace jamais l'énoncé — voir
+    // `data/enigmesFigures.js` —, elle lui évite de décrire une figure.
     const carte = (v) => v ? `
+        ${v.figure ? `<div class="banc-q-fig">${figureSvg(v.figure)}</div>` : ''}
         <div class="banc-q-texte">${echapper(v.texte)}</div>
         ${v.signature ? `<div class="banc-q-sign">— ${echapper(v.signature)}</div>` : ''}
         ${v.secret ? `<div class="banc-q-sec"><b>Réponse :</b> ${echapper(v.secret)}
-            ${v.indice ? `<span class="banc-q-ind">Indice : ${echapper(v.indice)}</span>` : ''}</div>` : ''}`
+            ${v.indice ? `<span class="banc-q-ind">Indice : ${echapper(v.indice)}</span>` : ''}</div>` : ''}
+        ${v.explication ? `<div class="banc-q-exp">${echapper(v.explication)}</div>` : ''}`
         : '<div class="banc-vide">Cette liste est vide.</div>';
 
     return `
