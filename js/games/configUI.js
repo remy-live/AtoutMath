@@ -284,12 +284,32 @@ const partDuo = (t) => `calc(${Math.max(0, Math.min(1, t)).toFixed(4)} * (100% -
  * fraction de lui.
  */
 function boutQuestions(id, min, max, q) {
-    return `<label class="cfg-etape-bout">
-        <input type="number" id="${id}" class="cfg-etape-nb" data-duo="questions"
-               min="${min}" max="${max}" step="1" value="${q}"
-               aria-label="Nombre de questions">
+    // TROIS FAÇONS DE CHANGER CE NOMBRE, PARCE QU'IL Y A TROIS MACHINES.
+    //
+    // Rémy : « il faudrait pouvoir changer le nombre de question soit en tapant
+    // au clavier soit sur tablette en appuyant et bougeant le doigt, soit avec
+    // des +,- sur ordi. » Les trois existaient déjà dans ce panneau, sur les
+    // champs nombre ordinaires : `.cfg-stepper` porte la saisie, les deux
+    // boutons, le glissé vertical au doigt et la molette à la souris. Le
+    // nombre de questions était le seul à ne pas en profiter — il se tapait,
+    // et c'est tout.
+    //
+    // On le lui branche PLUTÔT QUE DE REFAIRE LE GESTE À CÔTÉ : deux mécaniques
+    // parallèles pour la même chose finissent toujours par diverger, et celle
+    // d'à côté n'aurait eu ni la molette, ni le sens de glissé du reste du
+    // panneau.
+    return `<div class="cfg-etape-bout">
+        <div class="cfg-stepper cfg-stepper--bout" data-stepper>
+            <button type="button" class="cfg-step" data-step="-1" tabindex="-1"
+                    aria-label="Une question de moins">−</button>
+            <input type="number" inputmode="numeric" id="${id}" class="cfg-etape-nb"
+                   data-duo="questions" min="${min}" max="${max}" step="1" value="${q}"
+                   aria-label="Nombre de questions">
+            <button type="button" class="cfg-step" data-step="1" tabindex="-1"
+                    aria-label="Une question de plus">+</button>
+        </div>
         <span class="cfg-etape-unite">question${q > 1 ? 's' : ''}</span>
-    </label>`;
+    </div>`;
 }
 
 /**
@@ -542,7 +562,18 @@ export function champsSchema(schema, valeurDe, options = {}) {
             return `<div class="cfg-sous-groupe">
                 <div class="cfg-sous-titre">${titres[nom] || TITRES_GROUPE[nom] || nom}</div>
                 <div class="cfg-apercu" data-apercu></div>
-                ${rendre(liste.filter(p => !p.affiner && p.id !== 'aide'))}
+                <!-- CE QUI NE VAUT QUE POUR L'ADAPTATIF SE RETIRE QUAND ON
+                     DEFINIT. Remy pose deux cas : ou l'exercice s'adapte, et
+                     la seule chose a regler est jusqu'ou il a le droit de
+                     monter ; ou l'on definit soi-meme, et c'est la frise qui
+                     dit tout, zone par zone. Laisser le bouton dans le second
+                     cas, c'est refaire exactement le defaut qu'on vient de
+                     corriger : une commande sans effet a cote d'une commande
+                     qui decide. C'est rafraichirApercu qui le montre ou
+                     le cache.
+                     (Pas d'accent grave ici : ce commentaire vit DANS un
+                     litteral de gabarit, et le premier le fermerait.) -->
+                <div data-si-auto>${rendre(liste.filter(p => !p.affiner && p.id !== 'aide'))}</div>
                 ${affiner(liste)}
                 <!-- LE RAIL RESTE, MAIS ON NE LE VOIT PLUS. C'est lui qui porte
                      la valeur : la relecture du panneau la lit là, comme pour
@@ -1023,6 +1054,27 @@ export function apercuAideHtml(params, total, exoId = '', rang = 1, reglable = t
 
     const part = (n) => `${(n / total * 100).toFixed(3)}%`;
 
+    // LE CLAVIER SE DESSINE, IL NE S'ÉCRIT PAS.
+    //
+    // Rémy : « Le clavier dans la frise ressemble à un -. » Il décrivait un
+    // vrai défaut de rendu : le caractère ⌨ (U+2328) n'est présent dans
+    // presque aucune police d'interface, et le navigateur le remplaçait par
+    // le glyphe le plus proche qu'il trouvait — un trait. Au milieu de zones
+    // qui portent des CHIFFRES, ce trait se lisait comme un moins.
+    //
+    // Un petit dessin en `currentColor` ne dépend d'aucune police, hérite du
+    // blanc de la zone, et reste lisible à quinze pixels de large.
+    const paveSvg = '<svg class="cfg-pave" viewBox="0 0 24 16" aria-hidden="true">'
+        + '<rect x="1" y="2.2" width="22" height="12.6" rx="2.4" fill="none"'
+        + ' stroke="currentColor" stroke-width="1.6"/><g fill="currentColor">'
+        + [[3.6, 4.7, 2.4], [7.2, 4.7, 2.4], [10.8, 4.7, 2.4], [14.4, 4.7, 2.4], [18, 4.7, 2.4],
+            [5.4, 7.9, 2.4], [9, 7.9, 2.4], [12.6, 7.9, 2.4], [16.2, 7.9, 2.4],
+            [6, 11.1, 12]]
+            .map(([x, y, w]) => `<rect x="${x}" y="${y}" width="${w}" height="1.8" rx=".5"/>`)
+            .join('')
+        + '</g></svg>';
+
+
     // LA FRISE. Rémy : « je mettrai plutôt une flèche sous la frise pour
     // naviguer dessus, et quand on clique sur une zone, on a au-dessus
     // l'aperçu. »
@@ -1042,7 +1094,7 @@ export function apercuAideHtml(params, total, exoId = '', rang = 1, reglable = t
         return `<button type="button" class="cfg-zone cfg-zone--${m.cle}${
             i === ici.i ? ' cfg-zone--ici' : ''}" data-zone="${i}"
             title="${escapeAttr(`${m.nom} — ${rangs}`)}"
-            style="flex-grow:${z.n}"><span>${m.clavier ? '⌨' : (m.propositions ?? '∗')}</span></button>`;
+            style="flex-grow:${z.n}"><span>${m.clavier ? paveSvg : (m.propositions ?? '∗')}</span></button>`;
     }).join('');
 
     // La légende PORTE LES RANGS — l'information que Rémy réclamait depuis le
@@ -1139,6 +1191,11 @@ function paramsAide(racine) {
     const lire = (id) => {
         const el = racine.querySelector(`[data-param="${id}"]`);
         if (!el) return undefined;
+        // UN OUI / NON N'A PAS DE `.value` : c'est un `div` qui porte son état
+        // dans `data-valeur`. On lisait `el.value` — donc `undefined` — et
+        // « Autoriser le clavier » n'atteignait jamais l'aperçu : la frise
+        // gardait sa zone violette alors que le réglage disait le contraire.
+        if (el.dataset.kind === 'bool') return el.dataset.valeur === 'true';
         if (el.dataset.kind === 'echelle') return lireListe(el.dataset.valeurs)[Number(el.value)];
         return el.value;
     };
@@ -1148,7 +1205,7 @@ function paramsAide(racine) {
     // l'image non.
     const champRep = racine.querySelector('[data-param="repartition"]');
     return {
-        aide: lire('aide'), propositions: lire('propositions'), saisie: lire('saisie'),
+        aide: lire('aide'), clavier: lire('clavier'),
         repartition: champRep ? champRep.value : 'auto'
     };
 }
@@ -1170,9 +1227,14 @@ export function rafraichirApercu(racine, rang) {
     // renverrait à la question 1 : on tirerait une frontière en regardant une
     // bulle qui parle d'ailleurs.
     const r = rang !== undefined ? rang : rangLu(boite.querySelector('[data-scene]'), total);
-    boite.innerHTML = apercuAideHtml(paramsAide(racine), total,
+    const params = paramsAide(racine);
+    boite.innerHTML = apercuAideHtml(params, total,
         (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '', r,
         racine.dataset.role !== 'eleve');
+    // « Autoriser le clavier » ne parle qu'à l'adaptatif : dès qu'il y a des
+    // zones écrites, c'est la frise qui décide, et le bouton s'efface.
+    const siAuto = racine.querySelector('[data-si-auto]');
+    if (siAuto) siAuto.hidden = !!lireZones(params, total);
 }
 
 /**
@@ -1364,6 +1426,19 @@ document.addEventListener('click', (e) => {
     groupe.dataset.valeur = b.dataset.bool;
     groupe.querySelectorAll('.cfg-on').forEach(x =>
         x.classList.toggle('cfg-on--actif', x.dataset.bool === b.dataset.bool));
+    // UN OUI / NON DOIT S'ANNONCER COMME UN CHAMP. C'est `change` que le
+    // panneau écoute pour enregistrer (`content.addEventListener('change',
+    // commit)`) et pour refaire l'aperçu. Le nôtre ne le lançait pas : il
+    // repeignait ses deux boutons, écrivait sa valeur dans `data-valeur`, et
+    // s'arrêtait là. Le réglage n'était donc retenu QUE si le professeur
+    // touchait ensuite à autre chose — sinon il refermait le panneau en
+    // croyant l'avoir changé, et rien n'avait bougé.
+    //
+    // Ce n'était jamais très visible tant que les réglages Oui / Non
+    // n'accompagnaient rien à l'écran. « Autoriser le clavier » le rend
+    // flagrant : décoché, il doit rogner la frise sous les yeux du
+    // professeur, et il ne se passait rien.
+    groupe.dispatchEvent(new Event('change', { bubbles: true }));
 });
 
 document.addEventListener('click', (e) => {
@@ -1730,6 +1805,12 @@ document.addEventListener('pointermove', (e) => {
     const v = borner(glisse.input, glisse.depart + d);
     if (v !== Number(glisse.input.value)) {
         glisse.input.value = String(v);
+        // `input` PUIS `change`, exactement comme `pousser`. Le glissé
+        // n'émettait que le second : sur le nombre de questions, la borne du
+        // rail du quota, l'unité (« question » / « questions ») et la durée
+        // annoncée ne se remettaient à jour qu'aux boutons — le même réglage
+        // n'avait pas les mêmes effets selon la façon de le changer.
+        glisse.input.dispatchEvent(new Event('input', { bubbles: true }));
         glisse.input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 });

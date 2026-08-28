@@ -351,7 +351,10 @@ function aideAuRangAuto(params = {}, rang = 1, total = 10) {
         : (r <= Math.min(DEBUT_FACILE, Math.max(1, n - 1)) ? m.debut : m.fin);
     if (propositions !== null && !(propositions >= 2)) propositions = null;
 
-    return { propositions, clavier };
+    // LE PLAFOND VAUT AUSSI HORS ADAPTATIF. Un professeur qui décoche « le
+    // clavier » ne dit pas « seulement quand l'échelle décide » : il dit que
+    // ses élèves ne taperont pas de réponse dans cet exercice-là.
+    return plafonnerClavier({ propositions, clavier }, params);
 }
 
 /**
@@ -475,5 +478,26 @@ export function aideSelonEtat(params = {}, etat, rang = 1, total = 10) {
     if (modeDe(params) !== 'progressive' || affine(params) || !etat) {
         return aideAuRang(params, rang, total);
     }
-    return { ...echelonDe(etat) };
+    return plafonnerClavier({ ...echelonDe(etat) }, params);
+}
+
+/**
+ * L'ÉCHELLE S'ARRÊTE AVANT LE CLAVIER SI ON LE LUI DEMANDE.
+ *
+ * Rémy : « l'exercice s'adapte (par défaut), mais là c'est un peu configurable
+ * en autorisant ou non le clavier ». C'est la seule vis que la frise ne peut
+ * pas remplacer, parce qu'elle ne parle que du mode adaptatif : la frise dit
+ * « voici les zones », l'échelle dit « je monte tant que ça réussit ». Borner
+ * sa montée est donc une question à part entière, et une question fréquente —
+ * une classe qui découvre une notion peut rester en propositions du début à la
+ * fin sans que cela soit un renoncement.
+ *
+ * On rend alors le dernier barreau AVANT le clavier, et non « le clavier sans
+ * le clavier » : l'élève voit quatre propositions, ce qui est un vrai palier,
+ * pas un palier estropié.
+ */
+export function plafonnerClavier(aide, params = {}) {
+    if (!aide.clavier || params.clavier !== false) return aide;
+    const dernier = [...ECHELONS].reverse().find(e => !e.clavier) || ECHELONS[0];
+    return { ...dernier };
 }

@@ -14,16 +14,47 @@
 import { getExerciseById } from '../data/catalog.js';
 import { resolvePolicy, defaultPolicy } from './policy.js';
 import { shortId } from './ids.js';
+import { questionsConseillees } from './duree.js';
+import { getGenerator } from './registry.js';
 import { SEUIL_DEFAUT } from './recompenses.js';
 
 export const PATH_VERSION = 2;
+
+/**
+ * Le nombre de questions que CET exercice conseille.
+ *
+ * La même règle vivait déjà dans `shortcodes.js`, sous le nom `telQuel` : deux
+ * copies d'un même défaut finissent toujours par diverger, et celle-ci décidait
+ * de ce qu'un élève verrait.
+ */
+export function questionsConseilleesDe(exerciseId) {
+    const exo = getExerciseById(exerciseId);
+    if (!exo) return 10;
+    return questionsConseillees(
+        exo.generatorId ? getGenerator(exo.generatorId) : null,
+        exo.params || {}, { activite: exo.activityId });
+}
 
 export function makeStep(exerciseId, overrides = {}, opts = {}) {
     return {
         stepId: opts.stepId || 's_' + shortId(6),
         exerciseId,
         overrides: { ...overrides },
-        nbItems: opts.nbItems || 10,
+        // LE COMPTE NATUREL DE L'EXERCICE, PAS DIX POUR TOUT LE MONDE.
+        //
+        // Rémy : « par défaut propose 20 questions lorsque ce sont des
+        // calculs ». C'était déjà le cas quand on passait par le bouton
+        // « ajouter », qui calculait le conseil et le passait ici — mais
+        // partout ailleurs (un parcours importé, un code élève, une étape
+        // fabriquée par du code) le dix en dur reprenait la main. Et comme dix
+        // est une valeur VRAIE, le repli `step.nbItems || conseil` du panneau
+        // ne se déclenchait jamais : il n'y avait aucun moyen de distinguer
+        // « dix, parce que le professeur l'a voulu » de « dix, faute de mieux ».
+        //
+        // Le conseil vit dans l'exercice : vingt pour un réflexe de calcul,
+        // douze pour une grille de mots croisés, quarante pour un duel. On le
+        // demande donc ici, une fois pour toutes.
+        nbItems: opts.nbItems || questionsConseilleesDe(exerciseId),
         // `null` = AUCUNE EXIGENCE, et non « tout réussir » : c'est ce que le
         // meneur en fait depuis toujours (`seuilRequis` rend 0), et c'est ce dont
         // l'évaluation et les jeux de récompense ont besoin — ils se notent ou se

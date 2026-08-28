@@ -2686,6 +2686,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    disparaître entièrement sous son propre trait. */
 .cfg-zone--ici { box-shadow: inset 0 0 0 3px rgba(255,255,255,.9); }
 .cfg-zone span { pointer-events: none; }
+/* Le dessin du pavé prend la place d'un chiffre, pas davantage : la zone
+   « au clavier » peut n'être large que d'une question. */
+.cfg-pave { display: block; width: 18px; height: 12px; }
 /* SIX COULEURS QUI DISENT UNE PROGRESSION, du plus aidé au plus autonome. La
    légende reprend exactement ces teintes, sinon il faudrait relire pour
    associer. */
@@ -2914,13 +2917,25 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-etape-ligne .cfg-etape-rail { flex: 1; min-width: 0; }
 .cfg-etape-bout {
     display: flex; flex-direction: column; align-items: center; gap: 1px;
-    flex: 0 0 auto; cursor: text;
+    flex: 0 0 auto;
+}
+/* LE STEPPER DU PANNEAU, EN PLUS PETIT. Rémy : « il faudrait pouvoir changer
+   le nombre de question soit en tapant au clavier soit sur tablette en
+   appuyant et bougeant le doigt, soit avec des +,- sur ordi. » Les trois
+   gestes viennent de `.cfg-stepper`, déjà branché sur tous les champs nombre
+   du panneau ; il n'y a ici que la taille à reprendre, parce que ce bout-là
+   est posé au ras du rail et non dans une colonne de réglages. */
+.cfg-stepper--bout { gap: 4px; }
+.cfg-stepper--bout .cfg-step {
+    width: 30px; font-size: 1.15rem; border-radius: 9px;
 }
 .cfg-etape-nb {
     width: 3.2em; text-align: center; font-weight: 900; font-size: 1.1rem;
     padding: 5px 2px; border-radius: 10px; font-family: inherit;
     border: 2px solid var(--primary); background: var(--bg-panel);
-    color: var(--text-main); -moz-appearance: textfield;
+    color: var(--text-main); -moz-appearance: textfield; appearance: textfield;
+    /* Le glissé vertical pousse la valeur — c'est `.cfg-stepper` qui l'écoute. */
+    cursor: ns-resize;
 }
 .cfg-etape-nb::-webkit-outer-spin-button,
 .cfg-etape-nb::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

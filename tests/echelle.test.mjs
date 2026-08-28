@@ -100,13 +100,15 @@ test('le rang tolère la valeur rendue par le DOM, qui est du texte', () => {
 
 // --- Les échelles réellement déclarées dans l'application --------------------
 
-test('les trois réglages d\'aide sont des échelles jouables', () => {
-    // UN RÉGLAGE CACHÉ N'A PAS D'ÉCHELLE, ET C'EST NORMAL. La répartition
-    // (« 3-5 » : trois questions à deux propositions, cinq à quatre) se règle
-    // aux compteurs de l'aperçu, sous les phases qu'elle décrit — elle n'a
-    // aucun champ à elle, donc aucun rail à graduer. Voir `cache` dans
-    // `fieldHtml`.
-    const params = getActivity('bubbles').params.filter(p => !p.cache);
+test('les réglages d\'aide à échelle sont des échelles jouables', () => {
+    // UN RÉGLAGE CACHÉ N'A PAS D'ÉCHELLE, ET C'EST NORMAL. La répartition se
+    // règle sur la frise, en cliquant ses zones — elle n'a aucun champ à elle,
+    // donc aucun rail à graduer. Voir `cache` dans `fieldHtml`.
+    //
+    // ET UN OUI/NON NON PLUS. « Autoriser le clavier » est une case à cocher :
+    // lui chercher une graduation n'aurait aucun sens. Le test ne vise donc que
+    // ce qui se DÉCLARE comme échelle, au lieu de supposer que tout l'est.
+    const params = getActivity('bubbles').params.filter(p => !p.cache && p.echelle);
     params.forEach(p => {
         const e = echelleDe(p);
         assert.ok(e, `« ${p.label} » devrait être une échelle`);
@@ -124,12 +126,23 @@ test('l\'échelle de l\'aide va bien du plus porté au plus nu', () => {
         ['deux', 'propositions', 'progressive', 'clavier']);
 });
 
-test('le passage au clavier est rangé du plus tard au plus tôt', () => {
-    // L'ancien ordre — tiers, moitié, quart — n'était pas une échelle : « le
-    // dernier quart » arrive APRÈS « la moitié ».
-    const saisie = getActivity('bubbles').params.find(p => p.id === 'saisie');
-    const ordre = saisie.options.map(o => o.value);
-    assert.deepEqual(ordre, ['auto', 'jamais', 'quart', 'moitie', 'tiers', 'toujours']);
+test('LE CLAVIER S\'AUTORISE, ET IL EST AUTORISÉ PAR DÉFAUT', () => {
+    // Ce qui remplace l'ancien « Passage au clavier » et ses six crans. Rémy :
+    // « les sliders nombre de propositions et passage au clavier n'ont pas
+    // d'intérêt » — restait la seule question que la frise ne peut pas poser,
+    // parce qu'elle ne parle que du mode adaptatif : jusqu'où l'échelle a-t-elle
+    // le droit de monter ?
+    const clavier = getActivity('bubbles').params.find(p => p.id === 'clavier');
+    assert.ok(clavier, 'le réglage « Autoriser le clavier » existe');
+    assert.equal(clavier.type, 'bool');
+    // AUTORISÉ PAR DÉFAUT : produire soi-même la réponse est le but de
+    // l'escalier, pas une option qu'on ajouterait.
+    assert.equal(clavier.default, true);
+    assert.equal(clavier.papier, false);
+    // Et les deux vis d'avant ont bien disparu — c'est la moitié du point.
+    const ids = getActivity('bubbles').params.map(p => p.id);
+    assert.ok(!ids.includes('propositions'), '« Nombre de propositions » doit avoir disparu');
+    assert.ok(!ids.includes('saisie'), '« Passage au clavier » doit avoir disparu');
 });
 
 // --- L'aperçu : ce que le réglage PRODUIT -----------------------------------

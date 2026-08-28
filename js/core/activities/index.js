@@ -209,31 +209,30 @@ const PARAM_AIDE = [{
     id: 'repartition', type: 'text', label: 'Répartition', default: 'auto',
     papier: false, cache: true, groupe: 'aide'
 }, {
-    id: 'propositions', type: 'select', label: 'Nombre de propositions', default: 'auto', papier: false,
-    affiner: true, echelle: true, groupe: 'aide',
-    aide: 'Fixe le nombre de propositions, quel que soit le rang de la question. '
-        + '« Automatique » laisse le réglage « L\'aide » décider.',
-    options: [
-        { value: 'auto', label: 'Automatique', court: 'Auto' },
-        { value: 2, label: '2', court: '2' }, { value: 3, label: '3', court: '3' },
-        { value: 4, label: '4', court: '4' }, { value: 6, label: '6', court: '6' },
-        { value: 'toutes', label: 'Toutes celles de l\'exercice', court: 'Toutes' }
-    ]
-}, {
-    id: 'saisie', type: 'select', label: 'Passage au clavier', default: 'auto', papier: false,
-    affiner: true, echelle: true, groupe: 'aide',
-    aide: 'À partir de quand l\'élève tape sa réponse au lieu de la choisir.',
-    // Rangé du plus TARD au plus TÔT : c'est l'échelle, et l'ancien ordre
-    // (tiers, moitié, quart) ne l'était pas — « le dernier quart » arrive après
-    // « la moitié », qui arrive après « le premier tiers ».
-    options: [
-        { value: 'auto', label: 'Automatique', court: 'Auto' },
-        { value: 'jamais', label: 'Jamais — des propositions du début à la fin', court: 'Jamais' },
-        { value: 'quart', label: 'Sur le dernier quart', court: '¾' },
-        { value: 'moitie', label: 'À la moitié de l\'exercice', court: '½' },
-        { value: 'tiers', label: 'Après le premier tiers', court: '⅓' },
-        { value: 'toujours', label: 'Dès la première question', court: 'Tout de suite' }
-    ]
+    // AUTORISER LE CLAVIER, OU NON — la SEULE vis qui reste, et la seule qui
+    // servait vraiment.
+    //
+    // Rémy : « on a deux cas de figure : l'exercice s'adapte (par défaut), mais
+    // là c'est un peu configurable en autorisant ou non le clavier ; ou on
+    // configure. Du coup les sliders nombre de propositions et passage au
+    // clavier n'ont pas d'intérêt. »
+    //
+    // IL A RAISON, ET C'ÉTAIT PIRE QU'UN DOUBLON. Ces deux réglages faisaient
+    // globalement ce que la frise fait zone par zone, en moins précis — mais
+    // surtout, y toucher ÉTEIGNAIT L'ADAPTATIF sans le dire : `affine()` les
+    // lit, et un professeur qui croyait préciser un détail supprimait en fait
+    // l'adaptation. Deux commandes pour une décision, dont l'une agissait dans
+    // le dos de l'autre.
+    //
+    // Reste la question que la frise ne peut PAS poser, parce qu'elle ne
+    // s'applique qu'au mode adaptatif : jusqu'où l'échelle a-t-elle le droit de
+    // monter ? Une classe qui découvre une notion peut vouloir rester en
+    // propositions du début à la fin.
+    id: 'clavier', type: 'bool', label: 'Autoriser le clavier', default: true,
+    papier: false, groupe: 'aide',
+    aide: 'Décoché, l\'exercice ne demande jamais de taper la réponse : il monte '
+        + 'jusqu\'aux propositions et s\'y arrête. Utile pour une classe qui '
+        + 'découvre la notion.'
 }];
 
 registerActivity({

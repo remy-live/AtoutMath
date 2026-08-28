@@ -131,7 +131,12 @@ test('aucun réglage d\'écran n\'atteint le panneau d\'impression', async () =>
 
     // Ceux qu'on connaît doivent y être : un renommage ne doit pas les perdre
     // en silence.
-    const attendus = ['aide', 'propositions', 'saisie', 'tolerance', 'reponse'];
+    // « propositions » et « saisie » ont disparu — Rémy : « les sliders nombre
+    // de propositions et passage au clavier n'ont pas d'intérêt ». Ils faisaient
+    // globalement ce que la frise fait zone par zone, et y toucher éteignait
+    // l'adaptatif sans le dire. « clavier » les remplace : la seule question que
+    // la frise ne peut pas poser, parce qu'elle ne parle que du mode adaptatif.
+    const attendus = ['aide', 'clavier', 'repartition', 'tolerance', 'reponse'];
     for (const id of attendus) {
         assert.ok(ecran.some(p => p.id === id),
             `« ${id} » n'est plus marqué comme réglage d'écran`);

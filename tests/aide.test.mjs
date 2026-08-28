@@ -17,7 +17,7 @@ import {
     aideAuRang, repartitionDe, repartitionDuMode, ecrireRepartition,
     aideSelonEtat, etatDepart, apresReponse, affine,
     lireZones, ecrireZones, normaliserZones, zonesDuMode, zoneDuRang,
-    modeVoisin, MODES_ZONE
+    modeVoisin, MODES_ZONE, modeZone, plafonnerClavier
 } from '../js/core/aide.js';
 
 test('la répartition s\'écrit et se relit sans se déformer', () => {
@@ -252,4 +252,48 @@ test('DEUX ZONES VOISINES NE PORTENT JAMAIS LE MÊME MODE', () => {
     // progression bizarre, mais c'est celle que le professeur a écrite.
     assert.equal(
         normaliserZones([{ n: 2, mode: '4' }, { n: 2, mode: 'k' }, { n: 2, mode: '4' }], 6).length, 3);
+});
+
+test('LE CLAVIER REFUSE PLAFONNE L\'ADAPTATIF, ET IL NE MANQUE AUCUNE PORTE', () => {
+    // Rémy : « l'exercice s'adapte (par défaut), mais là c'est un peu
+    // configurable en autorisant ou non le clavier ». Une classe qui découvre
+    // une notion doit pouvoir rester en propositions du début à la fin, sans
+    // pour autant renoncer à l'adaptation.
+    //
+    // L'ADAPTATIF A DEUX PORTES, ET IL FAUT LES DEUX. `aideAuRangAuto` sert
+    // l'aperçu et les exercices sans mémoire ; `aideSelonEtat` sert l'élève
+    // qui monte et descend l'échelle en jouant. N'en plafonner qu'une, c'est
+    // décocher le réglage et voir le pavé apparaître quand même — au troisième
+    // succès, quand l'échelle est montée.
+    for (let r = 1; r <= 20; r++) {
+        assert.equal(aideAuRang({ aide: 'progressive', clavier: false }, r, 20).clavier, false,
+            `rang ${r} : le pavé ne doit jamais s'ouvrir`);
+    }
+    // Et le clavier reste la valeur ordinaire : le réglage ne se déclenche que
+    // s'il est explicitement refusé, jamais parce qu'il est absent.
+    assert.equal(aideAuRang({ aide: 'progressive' }, 20, 20).clavier, true);
+    assert.equal(aideAuRang({ aide: 'progressive', clavier: true }, 20, 20).clavier, true);
+
+    // L'élève qui a tout réussi : son échelle est au sommet, et le sommet
+    // devient le dernier échelon SANS pavé — pas le rang du dessous, qui
+    // n'aurait aucune raison d'être celui-là.
+    let etat = etatDepart();
+    for (let i = 0; i < 30; i++) etat = apresReponse(etat, true);
+    const haut = aideSelonEtat({ aide: 'progressive', clavier: false }, etat, 10, 10);
+    assert.equal(haut.clavier, false);
+    assert.ok(haut.propositions > 0, 'sans pavé, il reste forcément des propositions');
+    assert.equal(aideSelonEtat({ aide: 'progressive' }, etat, 10, 10).clavier, true);
+
+    // LA FRISE DIT LA MÊME CHOSE QUE L'EXERCICE. Elle se construit sur
+    // `aideAuRang` : si le plafond ne s'y appliquait pas, le professeur
+    // décocherait le réglage en voyant la zone violette rester en place.
+    const zones = normaliserZones(zonesDuMode({ aide: 'progressive', clavier: false }, 20), 20);
+    assert.equal(zones.some(z => modeZone(z.mode).clavier), false,
+        'aucune zone « au clavier » quand le clavier est refusé');
+    assert.equal(zones.reduce((s2, z) => s2 + z.n, 0), 20);
+
+    // Et `plafonnerClavier` ne touche à rien quand il n'y a rien à plafonner.
+    const tel = { propositions: 4, clavier: false };
+    assert.deepEqual(plafonnerClavier(tel, { clavier: false }), tel);
+    assert.deepEqual(plafonnerClavier(tel, {}), tel);
 });

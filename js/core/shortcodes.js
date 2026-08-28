@@ -12,11 +12,9 @@
 //
 // Un code v2 commence par « M2- ». Les anciens codes restent décodables.
 
-import { normalizePath, makePath } from './path.js';
+import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
 import { getExerciseById, exercices } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy } from './policy.js';
-import { questionsConseillees } from './duree.js';
-import { getGenerator } from './registry.js';
 
 const PREFIX = 'M2-';
 
@@ -70,13 +68,7 @@ export const normaliserCourt = (code) => String(code || '')
  * exercice, tel quel » — encore faut-il que « tel quel » veuille dire la même
  * chose à l'écriture et à la relecture.
  */
-function telQuel(exerciseId) {
-    const exo = getExerciseById(exerciseId);
-    if (!exo) return 10;
-    return questionsConseillees(
-        exo.generatorId ? getGenerator(exo.generatorId) : null,
-        exo.params || {}, { activite: exo.activityId });
-}
+const telQuel = questionsConseilleesDe;
 
 /** Ce parcours se résume-t-il à « cet exercice, tel quel » ? */
 function estSimple(path) {
