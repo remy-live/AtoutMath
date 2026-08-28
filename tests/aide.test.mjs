@@ -17,7 +17,8 @@ import {
     aideAuRang, repartitionDe, repartitionDuMode, ecrireRepartition,
     aideSelonEtat, etatDepart, apresReponse, affine,
     lireZones, ecrireZones, normaliserZones, zonesDuMode, zoneDuRang,
-    modeVoisin, MODES_ZONE, modeZone, plafonnerClavier
+    modeVoisin, MODES_ZONE, modeZone, plafonnerClavier,
+    MODELES_FRISE, zonesDuModele
 } from '../js/core/aide.js';
 
 test('la répartition s\'écrit et se relit sans se déformer', () => {
@@ -296,4 +297,50 @@ test('LE CLAVIER REFUSE PLAFONNE L\'ADAPTATIF, ET IL NE MANQUE AUCUNE PORTE', ()
     const tel = { propositions: 4, clavier: false };
     assert.deepEqual(plafonnerClavier(tel, { clavier: false }), tel);
     assert.deepEqual(plafonnerClavier(tel, {}), tel);
+});
+
+test('UN MODÈLE DE FRISE NE PERD NI N\'INVENTE JAMAIS DE QUESTION', () => {
+    // Rémy : « un petit bouton réglage au-dessus de la frise pour avoir des
+    // templates pour l'ensemble de la frise, genre QCM 2 ou QCM 4, QCM 2-4,
+    // QCM 2-4-Clavier, qui donne alors des proportions à la frise. »
+    //
+    // LA SOMME EST LA SEULE CHOSE QUI NE SE DISCUTE PAS. Un modèle change la
+    // forme de l'exercice, jamais sa longueur : le nombre de questions se règle
+    // ailleurs, et lui seul. Un arrondi qui mange une question rendrait le
+    // bouton dangereux — on ne s'en apercevrait qu'en classe.
+    for (const m of MODELES_FRISE) {
+        for (let n = 1; n <= 50; n++) {
+            const z = zonesDuModele(m.cle, n);
+            assert.ok(z && z.length, `${m.cle} sur ${n} questions : aucune zone`);
+            assert.equal(z.reduce((s2, x) => s2 + x.n, 0), n,
+                `${m.cle} sur ${n} questions : la somme ne fait pas le total`);
+            // Pas de zone vide, et jamais plus de zones que le modèle n'en décrit.
+            assert.ok(z.every(x => x.n >= 1), `${m.cle} sur ${n} : une zone vide`);
+            assert.ok(z.length <= m.parts.length, `${m.cle} sur ${n} : trop de zones`);
+            // Deux voisines ne portent jamais le même mode — sinon la frise
+            // montrerait deux rectangles collés qu'on ne peut pas distinguer.
+            for (let i = 1; i < z.length; i++) assert.notEqual(z[i].mode, z[i - 1].mode);
+        }
+    }
+});
+
+test('LES PROPORTIONS DU MODÈLE SONT DES PARTS, PAS DES NOMBRES ÉCRITS', () => {
+    // Un modèle doit valoir pour huit questions comme pour cinquante : c'est
+    // ce qui le distingue d'un préréglage figé. « QCM 2, 4, puis clavier » est
+    // écrit « 1, 2, 1 » — un quart, la moitié, un quart.
+    assert.deepEqual(zonesDuModele('q24k', 16),
+        [{ n: 4, mode: '2' }, { n: 8, mode: '4' }, { n: 4, mode: 'k' }]);
+    assert.deepEqual(zonesDuModele('q24k', 40),
+        [{ n: 10, mode: '2' }, { n: 20, mode: '4' }, { n: 10, mode: 'k' }]);
+    // Un modèle à une seule phase couvre tout, quel que soit le total.
+    assert.deepEqual(zonesDuModele('q2', 15), [{ n: 15, mode: '2' }]);
+    assert.deepEqual(zonesDuModele('q4', 3), [{ n: 3, mode: '4' }]);
+    // TROP DE PHASES POUR TROP PEU DE QUESTIONS : on en garde ce qui tient, et
+    // la somme reste juste. Trois zones sur deux questions n'existent pas.
+    const petit = zonesDuModele('q24k', 2);
+    assert.equal(petit.reduce((s2, x) => s2 + x.n, 0), 2);
+    assert.ok(petit.length <= 2);
+    // Une clé inconnue ne fabrique rien : le bouton n'a alors aucun effet,
+    // plutôt qu'un effet inventé.
+    assert.equal(zonesDuModele('inexistant', 10), null);
 });

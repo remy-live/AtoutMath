@@ -2698,55 +2698,105 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-zone--6 { background: #6366f1; }
 .cfg-zone--t { background: #a855f7; }
 .cfg-zone--k { background: #7c3aed; }
-/* EN ADAPTATIF, LA FRISE EST UN EXEMPLE, PAS UNE CONSIGNE : elle se raye. Ces
-   rangs-là sont ceux d'un élève qui suivrait la marche moyenne. */
-.cfg-scene--auto .cfg-zone {
-    background-image: repeating-linear-gradient(45deg,
-        rgba(255,255,255,.28) 0 6px, transparent 6px 12px);
-    cursor: default;
-}
 
-/* LA FLÈCHE, SOUS LA FRISE : ce qui se regarde, séparé de ce qui se règle.
-   Quarante-quatre pixels de haut avec sa zone de prise — la taille d'une cible
-   tactile — pour un triangle qui n'en fait que dix. */
-.cfg-fleches { position: relative; height: 22px; }
-.cfg-fleche {
-    position: absolute; top: 0; width: 44px; height: 22px; margin-left: -22px;
+/* LE TRAIT ENTRE DEUX ZONES, QU'ON PEUT BOUGER. Rémy : « entre chaque zone, tu
+   as un trait que tu peux bouger. »
+
+   TRENTE PIXELS DE PRISE POUR UN TRAIT DE TROIS. La cible tactile déborde
+   largement du dessin — c'est la seule façon d'attraper une borne au doigt sur
+   un téléphone —, mais elle reste dans la bande, qui la rogne : deux bornes
+   voisines ne peuvent donc pas se recouvrir au-delà de leur moitié, et c'est
+   toujours la plus proche qui gagne. */
+.cfg-borne {
+    position: absolute; top: 0; bottom: 0; width: 30px; margin-left: -15px;
     padding: 0; border: none; background: transparent; cursor: ew-resize;
-    touch-action: none;
+    touch-action: none; z-index: 2;
 }
-.cfg-fleche::before {
-    content: ''; position: absolute; left: 50%; top: 1px;
-    width: 0; height: 0; margin-left: -8px;
-    border-left: 8px solid transparent; border-right: 8px solid transparent;
-    border-bottom: 9px solid var(--primary);
+.cfg-borne::before {
+    content: ''; position: absolute; left: 50%; top: 3px; bottom: 3px;
+    width: 3px; margin-left: -1.5px; border-radius: 2px;
+    background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.28);
 }
-.cfg-fleche::after {
-    content: ''; position: absolute; left: 50%; top: 10px; bottom: 2px;
-    width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--primary);
+/* UNE PASTILLE AU MILIEU DIT QUE ÇA SE TIRE. Sans elle, le trait blanc est
+   indiscernable d'une séparation simplement dessinée — et c'est exactement le
+   reproche que Rémy avait fait à la version d'avant, où trois barres blanches
+   identiques ne se distinguaient pas. Une forme, et non un caractère : ⟨⟩ ou ⌨
+   dépendent d'une police qui peut manquer, un rectangle non. */
+.cfg-borne::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 11px; height: 15px; margin: -7.5px 0 0 -5.5px;
+    border-radius: 4px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    pointer-events: none;
 }
-.cfg-fleche:focus-visible::before { border-bottom-color: var(--warning); }
+.cfg-borne:focus-visible::before { background: var(--warning); }
+
+/* LE PETIT BOUTON RÉGLAGE AU-DESSUS DE LA FRISE, et ses modèles. Rémy : « un
+   petit bouton réglage au-dessus de la frise pour avoir des templates pour
+   l'ensemble de la frise ». Un `details` natif : il s'ouvre au clavier, se
+   ferme à Échap, et n'a aucun état à garder ailleurs. */
+.cfg-modeles { position: relative; flex: 0 0 auto; }
+.cfg-modeles-btn {
+    list-style: none; display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--bg-app);
+    color: var(--text-muted);
+}
+.cfg-modeles-btn::-webkit-details-marker { display: none; }
+/* Le `summary` est une boîte flex : sans cela son dessin se fait écraser à
+   quatre pixels de large — mesuré. */
+.cfg-modeles-btn svg { flex: 0 0 auto; }
+.cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary); }
+.cfg-modeles[open] .cfg-modeles-btn { border-color: var(--primary); color: var(--primary); }
+.cfg-modeles-liste {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 5;
+    min-width: 220px; padding: 8px; border-radius: 12px;
+    background: var(--bg-panel); border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-md); display: flex; flex-direction: column; gap: 4px;
+}
+.cfg-modeles-titre {
+    font-size: .66rem; font-weight: 800; letter-spacing: .04em;
+    color: var(--text-muted); padding: 2px 6px 4px;
+}
+.cfg-modele {
+    text-align: left; padding: 8px 10px; border-radius: 9px; cursor: pointer;
+    border: none; background: transparent; color: var(--text-main);
+    font: inherit; font-size: .82rem; font-weight: 700; text-transform: none;
+    letter-spacing: 0;
+}
+.cfg-modele:hover { background: var(--bg-hover); color: var(--primary); }
 
 /* LA BULLE : la vraie question du rang que la flèche montre.
 
    AU-DESSUS DE LA FRISE, JAMAIS EN DESSOUS. Sur une tablette, le doigt couvre
    ce qu'il touche : une bulle posée sous le point de contact serait invisible
    exactement pendant qu'on la consulte. */
+/* LA BULLE PREND TOUTE LA LARGEUR, ET C'EST LA FLÈCHE QUI VISE.
+
+   Rémy : « la flèche de la bulle de l'aperçu est au-dessus du centre
+   horizontal de la zone. » Une bulle étroite ne peut pas tenir cette promesse :
+   posée sur la première zone, elle sortirait du panneau, donc on la retenait au
+   bord — et sa flèche, collée à son milieu, désignait alors une zone qui
+   n'était pas la bonne. Mesuré : flèche à 127 px pour un centre de zone à 26.
+
+   Pleine largeur, le problème disparaît par construction. La bulle ne bouge
+   plus du tout ; seule la flèche court sous elle, exactement sur le centre de
+   la zone choisie, et elle ne peut plus rien déborder. */
 .cfg-bulle {
-    position: absolute; top: 0; width: 176px; margin-left: -88px;
-    /* Elle ne sort jamais du panneau : `clamp` la retient aux deux bords, même
-       quand la flèche est sur la première ou la dernière question. */
-    left: clamp(88px, var(--cfg-bulle-x, 50%), calc(100% - 88px));
+    position: absolute; top: 0; left: 0; right: 0;
     padding: 8px 10px 10px; border-radius: 12px; box-sizing: border-box;
     background: var(--bg-panel); border: 2px solid var(--primary);
     box-shadow: var(--shadow-md); pointer-events: none;
-    transition: left .1s linear;
 }
 .cfg-bulle::after {
-    content: ''; position: absolute; left: 50%; bottom: -8px;
+    content: ''; position: absolute; bottom: -8px;
+    /* `--cfg-bulle-x` est un pourcentage de la scène ; la bulle en fait toute
+       la largeur, donc c'est aussi un pourcentage d'elle-même. Le `clamp`
+       garde la pointe entièrement sur la bordure, coins arrondis compris. */
+    left: clamp(16px, var(--cfg-bulle-x, 50%), calc(100% - 16px));
     width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg);
     background: var(--bg-panel);
     border-right: 2px solid var(--primary); border-bottom: 2px solid var(--primary);
+    transition: left .12s ease;
 }
 .cfg-bulle-rang {
     font-size: .66rem; font-weight: 800; letter-spacing: .04em;
@@ -2816,10 +2866,27 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-size: .78rem; font-weight: 800; color: var(--text-muted);
     text-transform: uppercase; letter-spacing: .02em;
 }
+/* LE SWITCH PROPOSITIONS / CLAVIER. Rémy : « quand on clique sur une zone, on
+   a un switch proposition/clavier ». Deux moitiés d'un même bloc, et non deux
+   boutons posés côte à côte : on doit voir d'un coup d'œil que c'est l'un OU
+   l'autre, jamais les deux ni aucun. */
+.cfg-bascule {
+    display: inline-flex; padding: 2px; border-radius: 10px; gap: 2px;
+    background: var(--bg-hover); border: 1.5px solid var(--border);
+}
+.cfg-bsc {
+    padding: 5px 10px; border: none; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--text-muted);
+    font: inherit; font-size: .76rem; font-weight: 800;
+    -webkit-tap-highlight-color: transparent;
+}
+.cfg-bsc--ici { background: var(--primary); color: #fff; }
+.cfg-bsc:disabled { opacity: .35; cursor: default; }
+.cfg-zdit { font-size: .78rem; font-weight: 700; color: var(--text-muted); }
 .cfg-zpas { display: flex; align-items: center; gap: 8px; }
 .cfg-zpas b {
-    min-width: 8.5em; text-align: center;
-    font-size: .84rem; font-weight: 800; color: var(--text-main);
+    min-width: 2.5em; text-align: center;
+    font-size: .95rem; font-weight: 900; color: var(--text-main);
 }
 .cfg-zbtn {
     width: 30px; height: 30px; border-radius: 9px; cursor: pointer; padding: 0;
@@ -2843,7 +2910,6 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .cfg-scene { padding-top: 116px; }
     .cfg-legendes { gap: 3px 10px; }
     .cfg-leg { font-size: .7rem; }
-    .cfg-zpas b { min-width: 7em; font-size: .78rem; }
 }
 
 /* Les traits sur le rail, à la même abscisse : la graduation se voit même
@@ -3050,6 +3116,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-apercu-titre {
     font-size: .78rem; font-weight: 800; letter-spacing: .04em;
     text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .cfg-apercu-ruban { display: flex; align-items: stretch; gap: 8px; }
 .cfg-apercu-pas {

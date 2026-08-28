@@ -22,8 +22,8 @@ import {
 import { paliersAide, rangsEnMots, palierEnMots } from '../core/apercuAide.js';
 // La répartition explicite des phases — voir `apercuAideHtml`.
 import {
-    lireZones, ecrireZones, normaliserZones, zonesDuMode, zoneDuRang,
-    modeZone, MODES_ZONE, ZONES_MAX
+    lireZones, ecrireZones, normaliserZones, zonesDuMode,
+    modeZone, MODES_ZONE, ZONES_MAX, MODELES_FRISE, zonesDuModele
 } from '../core/aide.js';
 
 // --- Champs -----------------------------------------------------------------
@@ -956,24 +956,52 @@ function modeTenable(cle, possibles) {
     return possibles[0] || MODES_ZONE[0].cle;
 }
 
-/** Les réglages d'aide du rang `r` : c'est ce que la bulle doit montrer. */
-function paliersDuRang(zones, r) {
-    const m = modeZone(zoneDuRang(zones, r).zone.mode);
+/**
+ * LE CLAVIER SE DESSINE, IL NE S'ÉCRIT PAS.
+ *
+ * Rémy : « le clavier dans la frise ressemble à un -. » Il décrivait un vrai
+ * défaut de rendu : le caractère ⌨ (U+2328) n'est présent dans presque aucune
+ * police d'interface, et le navigateur le remplaçait par le glyphe le plus
+ * proche qu'il trouvait — un trait. Au milieu de zones qui portent des
+ * CHIFFRES, ce trait se lisait comme un moins.
+ *
+ * Un petit dessin en `currentColor` ne dépend d'aucune police, hérite du blanc
+ * de la zone, et reste lisible à quinze pixels de large.
+ */
+const PAVE_SVG = '<svg class="cfg-pave" viewBox="0 0 24 16" aria-hidden="true">'
+    + '<rect x="1" y="2.2" width="22" height="12.6" rx="2.4" fill="none"'
+    + ' stroke="currentColor" stroke-width="1.6"/><g fill="currentColor">'
+    + [[3.6, 4.7, 2.4], [7.2, 4.7, 2.4], [10.8, 4.7, 2.4], [14.4, 4.7, 2.4], [18, 4.7, 2.4],
+        [5.4, 7.9, 2.4], [9, 7.9, 2.4], [12.6, 7.9, 2.4], [16.2, 7.9, 2.4],
+        [6, 11.1, 12]]
+        .map(([x, y, w]) => `<rect x="${x}" y="${y}" width="${w}" height="1.8" rx=".5"/>`)
+        .join('')
+    + '</g></svg>';
+
+/** Les réglages d'aide d'une zone : c'est ce que la bulle doit montrer. */
+function palierDeZone(zone) {
+    const m = modeZone(zone.mode);
     return {
-        de: r, a: r, clavier: m.clavier,
-        propositions: m.clavier ? 4 : m.propositions, nom: m.nom
+        clavier: m.clavier,
+        propositions: m.clavier ? 4 : m.propositions,
+        nom: m.nom
     };
 }
 
 /**
- * LA BULLE : la vraie question du rang qu'on montre du doigt.
+ * LA BULLE : la vraie question de la zone qu'on a choisie.
  *
- * Elle porte trois choses et pas une de plus — le rang, la question, les
- * propositions. Y ajouter le nom du palier serait redondant : la frise, juste
- * en dessous, le dit par sa couleur.
+ * Elle porte trois choses et pas une de plus — les rangs de la zone, la
+ * question, les propositions. Y ajouter le nom du palier serait redondant : la
+ * frise, juste en dessous, le dit par sa couleur.
  */
-export function bulleApercuHtml(zones, r, params, total, exoId) {
-    const p = paliersDuRang(zones, r);
+export function bulleApercuHtml(zones, i, params, total, exoId) {
+    const k = Math.max(0, Math.min(zones.length - 1, i));
+    const zone = zones[k] || { n: total, mode: '4' };
+    let de = 1;
+    for (let j = 0; j < k; j++) de += zones[j].n;
+    const a = de + zone.n - 1;
+    const p = palierDeZone(zone);
     const vraie = vraieQuestion(exoId, p, params);
     const pave = '<div class="cfg-bulle-pave">' + '<i></i>'.repeat(9) + '</div>';
     const corps = vraie
@@ -987,7 +1015,8 @@ export function bulleApercuHtml(zones, r, params, total, exoId) {
         : `<div class="cfg-bulle-q cfg-bulle-q--vide">${p.nom}</div>`
         + (p.clavier ? pave
             : `<div class="cfg-bulle-choix">${'<b>&nbsp;</b>'.repeat(p.propositions || 6)}</div>`);
-    return `<div class="cfg-bulle-rang">Question ${r} sur ${total}</div>${corps}`;
+    const rangs = zone.n === 1 ? `Question ${de}` : `Questions ${de} à ${a}`;
+    return `<div class="cfg-bulle-rang">${rangs}</div>${corps}`;
 }
 
 /**
@@ -1001,10 +1030,7 @@ export function bulleApercuHtml(zones, r, params, total, exoId) {
  * du premier coup, puis deux, et le redescend après deux ratés (voir `ECHELONS`
  * dans core/aide.js). Deux élèves de la même classe n'y font pas les mêmes
  * questions — ce qui est tout l'intérêt, et ce qu'aucun nombre écrit d'avance
- * ne peut rendre. La frise affichée en adaptatif est donc UN DÉROULÉ POSSIBLE
- * parmi d'autres, et l'écran le dit — jamais « ce que verrait un élève
- * moyen », qui serait à la fois blessant et faux : l'échelle ne suit aucune
- * moyenne, elle suit chaque élève.
+ * ne peut rendre.
  */
 const MODES_PROGRESSION = [
     {
@@ -1027,155 +1053,191 @@ function choixProgression(adaptatif) {
         </button>`).join('')}</div>`;
 }
 
-/** Le rang que montre la tête de lecture : au départ la première question. */
-const rangLu = (boite, total) => {
-    const v = boite && Number(boite.dataset.rang);
-    return Math.max(1, Math.min(total, Number.isFinite(v) && v > 0 ? v : 1));
-};
+/** Le petit bouton réglage au-dessus de la frise, et ses modèles. */
+function menuModeles() {
+    // UN `details`, ET NON UN MENU MAISON. Il s'ouvre au clavier, se ferme à
+    // Échap, ne demande aucun état à garder quelque part — et la frise se
+    // redessine entièrement quand on choisit, ce qui le referme tout seul.
+    return `<details class="cfg-modeles">
+        <summary class="cfg-modeles-btn" title="Modèles de progression"
+                 aria-label="Modèles de progression">${ICONE_REGLAGE}</summary>
+        <div class="cfg-modeles-liste">
+            <div class="cfg-modeles-titre">Appliquer un modèle</div>
+            ${MODELES_FRISE.map(m => `<button type="button" class="cfg-modele"
+                data-modele="${m.cle}">${m.nom}</button>`).join('')}
+        </div>
+    </details>`;
+}
+
+const ICONE_REGLAGE = '<svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">'
+    + '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'
+    + ' d="M4 7h10M18 7h2M4 17h4M12 17h8"/>'
+    + '<circle cx="16" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/>'
+    + '<circle cx="10" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/>'
+    + '</svg>';
 
 /**
  * LA BANDE, SA LÉGENDE ET SA BULLE — tout le bloc « comment l'élève répond ».
  *
- * `rang` est la position de la tête de lecture. Il vit dans le DOM (`data-rang`)
- * et non dans une variable de module : deux panneaux peuvent être ouverts en
- * même temps — celui de l'étape et celui d'avant-partie —, et une variable
- * partagée ferait sauter la tête de l'un quand on touche l'autre.
+ * DEUX CAS, ET RIEN N'EST COMMUN AUX DEUX. Rémy, après six passages sur ce
+ * panneau : « quand on a cliqué sur "l'exercice s'adapte", il n'y a pas
+ * d'option, donc "un déroulé possible" n'apparaît pas. Quand on clique sur
+ * "je définis", cela apparaît. »
+ *
+ * IL A RAISON, ET J'AVAIS PRIS LE PROBLÈME À L'ENVERS. Je montrais la frise
+ * dans les deux modes, rayée en adaptatif pour dire « ceci n'est qu'un exemple
+ * ». Mais une frise qu'on ne peut pas régler, sous un mode qui ne se règle
+ * pas, n'est pas une aide : c'est une image qui a l'air d'une commande. En
+ * adaptatif il n'y a RIEN à décider sur l'ordre des questions — c'est la
+ * définition même du mode —, donc rien à afficher.
+ *
+ * `choisie` est l'INDICE DE LA ZONE choisie, pas un rang de question. Il vit
+ * dans le DOM (`data-zone`) : deux panneaux peuvent être ouverts en même temps,
+ * et une variable de module ferait sauter la sélection de l'un quand on touche
+ * l'autre.
  */
-export function apercuAideHtml(params, total, exoId = '', rang = 1, reglable = true) {
+export function apercuAideHtml(params, total, exoId = '', choisie = 0, reglable = true) {
     const ecrites = lireZones(params, total);
+
+    // L'ADAPTATIF N'A PAS DE FRISE. Voir ci-dessus : il n'y a pas de déroulé à
+    // montrer, parce qu'il n'y en a pas un seul.
+    if (!ecrites) return reglable ? choixProgression(true) : '';
+
     const possibles = modesPossibles(exoId, params);
     // ON MONTRE CE QUI SE PASSERA, pas ce qui a été demandé : un mode enregistré
     // que l'exercice ne sait plus tenir s'affiche au plus proche en dessous.
-    const zones = (ecrites || normaliserZones(zonesDuMode(params, total), total))
-        .map(z => ({ ...z, mode: modeTenable(z.mode, possibles) }));
-    const adaptatif = !ecrites;
-    const r = Math.max(1, Math.min(total, Math.round(rang) || 1));
-    const ici = zoneDuRang(zones, r);
+    const zones = ecrites.map(z => ({ ...z, mode: modeTenable(z.mode, possibles) }));
+    const i = Math.max(0, Math.min(zones.length - 1, Math.round(choisie) || 0));
 
-    const part = (n) => `${(n / total * 100).toFixed(3)}%`;
+    // LA FLÈCHE DE LA BULLE VISE LE CENTRE DE LA ZONE. Rémy : « quand tu
+    // cliques sur une zone, tu as l'aperçu au-dessus, et la flèche de la bulle
+    // de l'aperçu est au-dessus du centre horizontal de la zone. » C'est ce qui
+    // rattache l'un à l'autre : sans elle, la bulle serait un panneau de plus,
+    // posé au-dessus, sans lien visible avec ce qu'on vient de toucher.
+    let avant = 0;
+    for (let k = 0; k < i; k++) avant += zones[k].n;
+    const centre = `${((avant + zones[i].n / 2) / total * 100).toFixed(3)}%`;
 
-    // LE CLAVIER SE DESSINE, IL NE S'ÉCRIT PAS.
-    //
-    // Rémy : « Le clavier dans la frise ressemble à un -. » Il décrivait un
-    // vrai défaut de rendu : le caractère ⌨ (U+2328) n'est présent dans
-    // presque aucune police d'interface, et le navigateur le remplaçait par
-    // le glyphe le plus proche qu'il trouvait — un trait. Au milieu de zones
-    // qui portent des CHIFFRES, ce trait se lisait comme un moins.
-    //
-    // Un petit dessin en `currentColor` ne dépend d'aucune police, hérite du
-    // blanc de la zone, et reste lisible à quinze pixels de large.
-    const paveSvg = '<svg class="cfg-pave" viewBox="0 0 24 16" aria-hidden="true">'
-        + '<rect x="1" y="2.2" width="22" height="12.6" rx="2.4" fill="none"'
-        + ' stroke="currentColor" stroke-width="1.6"/><g fill="currentColor">'
-        + [[3.6, 4.7, 2.4], [7.2, 4.7, 2.4], [10.8, 4.7, 2.4], [14.4, 4.7, 2.4], [18, 4.7, 2.4],
-            [5.4, 7.9, 2.4], [9, 7.9, 2.4], [12.6, 7.9, 2.4], [16.2, 7.9, 2.4],
-            [6, 11.1, 12]]
-            .map(([x, y, w]) => `<rect x="${x}" y="${y}" width="${w}" height="1.8" rx=".5"/>`)
-            .join('')
-        + '</g></svg>';
-
-
-    // LA FRISE. Rémy : « je mettrai plutôt une flèche sous la frise pour
-    // naviguer dessus, et quand on clique sur une zone, on a au-dessus
-    // l'aperçu. »
-    //
-    // IL AVAIT RAISON, ET LE DÉFAUT SE VOYAIT SUR SA CAPTURE : la tête de
-    // lecture était un trait blanc DANS la bande, exactement comme les deux
-    // bornes. Trois barres verticales identiques, dont une seule ne se tire
-    // pas — on ne pouvait pas deviner laquelle. Sortir la tête de la bande, et
-    // en faire une flèche posée dessous, sépare pour de bon ce qui SE RÈGLE de
-    // ce qui SE REGARDE.
     let depart = 1;
-    const bandes = zones.map((z, i) => {
+    const bandes = zones.map((z, k) => {
         const m = modeZone(z.mode);
         const de = depart, a = depart + z.n - 1;
         depart += z.n;
         const rangs = z.n === 1 ? `question ${de}` : `questions ${de} à ${a}`;
         return `<button type="button" class="cfg-zone cfg-zone--${m.cle}${
-            i === ici.i ? ' cfg-zone--ici' : ''}" data-zone="${i}"
+            k === i ? ' cfg-zone--ici' : ''}" data-zone="${k}"
             title="${escapeAttr(`${m.nom} — ${rangs}`)}"
-            style="flex-grow:${z.n}"><span>${m.clavier ? paveSvg : (m.propositions ?? '∗')}</span></button>`;
+            style="flex-grow:${z.n}"><span>${m.clavier ? PAVE_SVG : (m.propositions ?? '∗')}</span></button>`;
+    }).join('');
+
+    // ENTRE CHAQUE ZONE, UN TRAIT QU'ON PEUT BOUGER. Rémy, mot pour mot. C'est
+    // le geste qui manquait : on pouvait ajouter, retirer et changer une zone,
+    // mais pas dire OÙ elle commence — il fallait passer par « ajouter », qui
+    // coupait en deux parts égales, et recommencer. Une borne se prend et se
+    // pose ; c'est la façon évidente de partager quinze questions en trois.
+    let cumul = 0;
+    const bornes = zones.slice(0, -1).map((z, k) => {
+        cumul += z.n;
+        return `<button type="button" class="cfg-borne" data-borne="${k}"
+            style="left:${(cumul / total * 100).toFixed(3)}%"
+            aria-label="${escapeAttr(`Limite après la question ${cumul}`)}"></button>`;
     }).join('');
 
     // La légende PORTE LES RANGS — l'information que Rémy réclamait depuis le
     // début, et qui reste lisible quand une zone est trop étroite pour son nom.
     let d2 = 1;
-    const legende = zones.map((z, i) => {
+    const legende = zones.map((z, k) => {
         const m = modeZone(z.mode);
         const de = d2, a = d2 + z.n - 1;
         d2 += z.n;
-        return `<span class="cfg-leg cfg-leg--${m.cle}${i === ici.i ? ' cfg-leg--ici' : ''}">
-            <i></i><b>${m.nom}</b><em>${adaptatif ? '≈ ' : ''}${
-    z.n === 1 ? de : `${de} à ${a}`}</em></span>`;
+        return `<span class="cfg-leg cfg-leg--${m.cle}${k === i ? ' cfg-leg--ici' : ''}">
+            <i></i><b>${m.nom}</b><em>${z.n === 1 ? de : `${de} à ${a}`}</em></span>`;
     }).join('');
 
-    // L'ÉLÈVE NE RÈGLE PAS LA PROGRESSION DE SA CLASSE : il garde la frise, qui
-    // lui montre ce qui l'attend, et perd les commandes.
-    //
-    // ET ON NE PARLE JAMAIS D'« ÉLÈVE MOYEN ». Rémy, net : « ne mets surtout
-    // jamais l'élève moyen, j'ai lu cela ». Il a raison, et pas seulement par
-    // délicatesse : l'expression est FAUSSE ici. L'adaptatif ne suit aucune
-    // moyenne — il suit CHAQUE élève, un par un. Ce que la frise montre alors
-    // n'est pas le portrait d'un élève tiède, c'est un DÉROULÉ POSSIBLE parmi
-    // d'autres, et c'est cela qu'il faut écrire.
-    //
-    // Et le titre parle à celui qui lit : un écran d'élève qui parlerait d'un
+    // Le titre parle à celui qui lit : un écran d'élève qui parlerait d'un
     // élève à la troisième personne parlerait de quelqu'un d'autre que lui.
-    const qui = reglable
-        ? (adaptatif ? 'Un déroulé possible' : 'Ce que l\'élève verra')
-        : (adaptatif ? 'Ce que tu peux rencontrer' : 'Ce que tu verras');
+    const qui = reglable ? 'Ce que l\'élève verra' : 'Ce que tu verras';
 
-    return `${reglable ? choixProgression(adaptatif) : ''}
-        <div class="cfg-apercu-titre">${qui}, sur ${total} question${total > 1 ? 's' : ''}</div>
-        <div class="cfg-scene${adaptatif ? ' cfg-scene--auto' : ''}" data-scene data-rang="${r}">
-            <div class="cfg-bulle" data-bulle style="--cfg-bulle-x:${part(r - 0.5)}">
-                ${bulleApercuHtml(zones, r, params, total, exoId)}
+    return `${reglable ? choixProgression(false) : ''}
+        <div class="cfg-apercu-titre">
+            <span>${qui}, sur ${total} question${total > 1 ? 's' : ''}</span>
+            ${reglable ? menuModeles() : ''}
+        </div>
+        <!-- data-zone-ici, ET SURTOUT PAS data-zone : les zones de la frise
+                 portent deja data-zone, et un closest('[data-zone]') lance
+                 depuis un bouton de reglage remontait jusqu'a la scene. Tout
+                 clic dans le bloc etait donc lu comme un clic de zone, qui
+                 redessinait tout — et l'ecouteur suivant, celui des vraies
+                 commandes, ne trouvait plus que des noeuds detaches. Aucun
+                 reglage ne passait.
+                 (Pas d'accent grave ici : ce commentaire vit DANS un
+                 litteral de gabarit, et le premier le fermerait.) -->
+        <div class="cfg-scene" data-scene data-zone-ici="${i}">
+            <div class="cfg-bulle" data-bulle style="--cfg-bulle-x:${centre}">
+                ${bulleApercuHtml(zones, i, params, total, exoId)}
             </div>
-            <div class="cfg-bande" data-bande>${bandes}</div>
-            <div class="cfg-fleches" data-fleches>
-                <button type="button" class="cfg-fleche" data-fleche
-                        style="left:${part(r - 0.5)}"
-                        aria-label="Question ${r} sur ${total}"></button>
-            </div>
+            <div class="cfg-bande" data-bande>${bandes}${reglable ? bornes : ''}</div>
             <div class="cfg-legendes">${legende}</div>
-            ${reglable && !adaptatif ? commandesZone(zones, ici, total, possibles) : ''}
+            ${reglable ? commandesZone(zones, i, possibles) : ''}
         </div>`;
 }
 
 /**
  * LES COMMANDES DE LA ZONE CHOISIE — et d'elle seule.
  *
- * Rémy : « un bouton pour ajouter ou enlever le nombre de propositions ; on
- * peut aussi enlever la zone, et on a un bouton pour en rajouter. »
+ * Rémy : « quand on clique sur une zone, on a un switch proposition / clavier.
+ * S'il est sur proposition, on peut choisir le nombre de propositions. On peut
+ * ajouter ou supprimer des zones. »
  *
- * UNE SEULE ZONE À LA FOIS, ce qui tient sur une ligne. C'était tout le défaut
- * des trois cartes : elles montraient les commandes des trois phases en même
- * temps, alors qu'on n'en règle jamais qu'une. La frise dit l'ensemble, cette
- * ligne dit le détail de ce qu'on touche — et rien d'autre n'est à l'écran.
+ * LE SWITCH D'ABORD, LE NOMBRE ENSUITE, ET LE NOMBRE DISPARAÎT AU CLAVIER.
+ * C'était le défaut de la version d'avant : un seul bouton − / + parcourait
+ * une échelle qui allait de « 2 propositions » jusqu'au clavier en passant par
+ * « toutes ». Deux questions de nature différente sur le même axe — répond-on
+ * en choisissant ou en écrivant ? et, si l'on choisit, parmi combien ? — donc
+ * un « + » qui, au dernier cran, changeait de sujet sans prévenir.
+ *
+ * UNE SEULE ZONE À LA FOIS. La frise dit l'ensemble, cette ligne dit le détail
+ * de ce qu'on touche, et rien d'autre n'est à l'écran.
  */
-function commandesZone(zones, ici, total, possibles = MODES_ZONE.map(x => x.cle)) {
-    const m = modeZone(ici.zone.mode);
-    const i = possibles.indexOf(ici.zone.mode);
-    const premier = i <= 0;
-    const dernier = i < 0 || i >= possibles.length - 1;
+function commandesZone(zones, i, possibles = MODES_ZONE.map(x => x.cle)) {
+    const zone = zones[i];
+    const m = modeZone(zone.mode);
+    let de = 1;
+    for (let k = 0; k < i; k++) de += zones[k].n;
+    const a = de + zone.n - 1;
+
+    const props = possibles.filter(c => !modeZone(c).clavier);
+    const j = props.indexOf(zone.mode);
+    const nombre = m.clavier ? '' : `
+        <div class="cfg-zligne">
+            <span class="cfg-zdit">Nombre de propositions</span>
+            <span class="cfg-zpas">
+                <button type="button" class="cfg-zbtn" data-zprop="-1" ${j <= 0 ? 'disabled' : ''}
+                        aria-label="Moins de propositions">−</button>
+                <b>${m.propositions ?? 'toutes'}</b>
+                <button type="button" class="cfg-zbtn" data-zprop="1"
+                        ${j < 0 || j >= props.length - 1 ? 'disabled' : ''}
+                        aria-label="Plus de propositions">+</button>
+            </span>
+        </div>`;
+
     return `<div class="cfg-zreglages">
         <div class="cfg-zligne">
             <span class="cfg-zquoi"><i class="cfg-zpuce cfg-zpuce--${m.cle}"></i>${
-    ici.zone.n === 1 ? `Question ${ici.de}` : `Questions ${ici.de} à ${ici.a}`}</span>
-            <span class="cfg-zpas">
-                <button type="button" class="cfg-zbtn" data-zmode="-1" ${premier ? 'disabled' : ''}
-                        aria-label="Moins de propositions">−</button>
-                <b>${m.nom}</b>
-                <button type="button" class="cfg-zbtn" data-zmode="1" ${dernier ? 'disabled' : ''}
-                        aria-label="Plus de propositions">+</button>
+    zone.n === 1 ? `Question ${de}` : `Questions ${de} à ${a}`}</span>
+            <span class="cfg-bascule" role="group" aria-label="Comment l'élève répond">
+                <button type="button" class="cfg-bsc${m.clavier ? '' : ' cfg-bsc--ici'}"
+                        data-zbascule="p" ${props.length ? '' : 'disabled'}
+                        aria-pressed="${!m.clavier}">Propositions</button>
+                <button type="button" class="cfg-bsc${m.clavier ? ' cfg-bsc--ici' : ''}"
+                        data-zbascule="k" aria-pressed="${m.clavier}">Clavier</button>
             </span>
-        </div>
+        </div>${nombre}
         <div class="cfg-zligne cfg-zligne--fin">
             <button type="button" class="cfg-zsupp" data-zsupp
                     ${zones.length <= 1 ? 'disabled' : ''}>✕ Retirer cette zone</button>
             <button type="button" class="cfg-zplus" data-zplus
-                    ${zones.length >= ZONES_MAX || ici.zone.n < 2 || possibles.length < 2
-        ? 'disabled' : ''}>+ Ajouter une zone</button>
+                    ${zones.length >= ZONES_MAX || zone.n < 2 ? 'disabled' : ''}>+ Ajouter une zone</button>
         </div>
     </div>`;
 }
@@ -1217,24 +1279,37 @@ function paramsAide(racine) {
  * L'aperçu montre alors ce qu'il donnerait, et rien n'est engagé — voir
  * `apercuDuCran`.
  */
-export function rafraichirApercu(racine, rang) {
+export function rafraichirApercu(racine, zone) {
     const boite = racine && racine.querySelector('[data-apercu]');
     if (!boite) return;
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const hote = racine.closest && racine.closest('[data-exo]');
-    // LA TÊTE DE LECTURE SURVIT AU REDESSIN. Sans cela, chaque pas de borne la
-    // renverrait à la question 1 : on tirerait une frontière en regardant une
-    // bulle qui parle d'ailleurs.
-    const r = rang !== undefined ? rang : rangLu(boite.querySelector('[data-scene]'), total);
     const params = paramsAide(racine);
+    // LA ZONE CHOISIE SURVIT AU REDESSIN. Sans cela, chaque pas de borne
+    // renverrait la bulle sur la première zone : on tirerait une frontière en
+    // regardant une question qui parle d'ailleurs.
+    const scene = boite.querySelector('[data-scene]');
+    const i = zone !== undefined ? zone
+        : Math.max(0, Math.round(Number(scene && scene.dataset.zoneIci)) || 0);
     boite.innerHTML = apercuAideHtml(params, total,
-        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '', r,
+        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '', i,
         racine.dataset.role !== 'eleve');
     // « Autoriser le clavier » ne parle qu'à l'adaptatif : dès qu'il y a des
     // zones écrites, c'est la frise qui décide, et le bouton s'efface.
+    //
+    // ET UN ÉLÈVE NE SE L'AUTORISE PAS LUI-MÊME. C'est un choix de classe —
+    // « on reste en propositions, on découvre la notion » — et le laisser sur
+    // l'écran d'avant-partie serait offrir à l'élève d'éteindre la partie la
+    // plus exigeante de son propre exercice.
+    const eleve = racine.dataset.role === 'eleve';
     const siAuto = racine.querySelector('[data-si-auto]');
-    if (siAuto) siAuto.hidden = !!lireZones(params, total);
+    if (siAuto) siAuto.hidden = eleve || !!lireZones(params, total);
+    // UN TITRE SANS RIEN DESSOUS N'EST PAS UN TITRE. Côté élève, en adaptatif,
+    // il n'y a ni frise (il n'y a pas de déroulé) ni réglage (ce n'est pas à
+    // lui de régler) : « Comment tu réponds » surplombait alors le vide.
+    const groupe = boite.closest && boite.closest('.cfg-sous-groupe');
+    if (groupe) groupe.hidden = !boite.innerHTML.trim() && (!siAuto || siAuto.hidden);
 }
 
 /**
@@ -1543,26 +1618,20 @@ document.addEventListener('click', (e) => {
 });
 
 
-// --- LA FRISE : CHOISIR UNE ZONE, PROMENER LA FLÈCHE ------------------------
+// --- LA FRISE : CHOISIR UNE ZONE, TIRER UNE BORNE ---------------------------
 //
-// Rémy : « je mettrai plutôt une flèche sous la frise pour naviguer dessus, et
-// quand on clique sur une zone, on a au-dessus l'aperçu (attention à ce que
-// cela ne fasse pas sauter le scroll) ».
+// Rémy, en décrivant ce qu'il voulait depuis le début : « tu as la frise, la
+// frise est séparée en zones, entre chaque zone tu as un trait que tu peux
+// bouger. Quand tu cliques sur une zone, tu as l'aperçu au-dessus et la flèche
+// de la bulle est au-dessus du centre horizontal de la zone. »
 //
-// DEUX OBJETS DISTINCTS, DEUX GESTES SANS AMBIGUÏTÉ. La frise, au-dessus, se
-// CLIQUE : on choisit la zone qu'on veut régler. La flèche, en dessous, se
-// GLISSE : on promène l'aperçu question par question. Rien ne se confond,
-// parce que rien ne se ressemble — c'était tout le défaut de la version
-// précédente, où la tête de lecture et les deux bornes étaient trois barres
-// blanches identiques.
-
-/** Le rang de question sous le doigt, entre 1 et le total. */
-function rangSousLeDoigt(bande, clientX, total) {
-    const r = bande.getBoundingClientRect();
-    if (!r.width) return 1;
-    const t = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
-    return Math.max(1, Math.min(total, Math.floor(t * total) + 1));
-}
+// DEUX GESTES, DEUX OBJETS, ET RIEN QUI SE RESSEMBLE. La zone se CLIQUE — on
+// choisit celle qu'on règle, et la bulle vient se poser au-dessus d'elle. La
+// borne se TIRE — on décide où l'une finit et où l'autre commence. Il n'y a
+// plus de troisième objet : la tête de lecture qui se promenait question par
+// question a disparu, parce qu'elle répondait à une question que personne ne
+// se posait (« que verrait-on à la question 9 ? ») pendant que la vraie
+// (« où commence le clavier ? ») n'avait pas de geste.
 
 /** Le total de questions du panneau qui porte cette frise. */
 const totalDe = (hote) => {
@@ -1576,6 +1645,13 @@ function zonesDe(hote, total) {
     return lireZones({ repartition: champ ? champ.value : 'auto' }, total)
         || normaliserZones(zonesDuMode(paramsAide(hote), total), total);
 }
+
+/** La zone que le panneau montre en ce moment. */
+const zoneChoisie = (hote, zones) => {
+    const scene = hote && hote.querySelector('[data-scene]');
+    const v = Math.round(Number(scene && scene.dataset.zoneIci));
+    return Math.max(0, Math.min(zones.length - 1, Number.isFinite(v) && v >= 0 ? v : 0));
+};
 
 /**
  * ÉCRIRE LES ZONES SANS FAIRE SAUTER LE DÉFILEMENT.
@@ -1609,124 +1685,155 @@ function sansSauter(hote, faire) {
     requestAnimationFrame(reposer);
 }
 
-function ecrireZonesSansSauter(hote, zones, rang) {
+function ecrireZonesSansSauter(hote, zones, i) {
     const champ = hote.querySelector('[data-param="repartition"]');
     if (!champ) return;
     sansSauter(hote, () => {
         champ.value = ecrireZones(zones);
-        rafraichirApercu(hote, rang);
+        rafraichirApercu(hote, i);
+        // Le panneau enregistre sur `change` : sans lui, tout ce qu'on règle
+        // sur la frise resterait à l'écran sans jamais atteindre l'étape.
+        champ.dispatchEvent(new Event('change', { bubbles: true }));
     });
 }
 
-let flecheTiree = null;
-
-document.addEventListener('pointerdown', (e) => {
-    const fleche = e.target.closest && e.target.closest('[data-fleche]');
-    if (!fleche) return;
-    const hote = fleche.closest('.cfg-apercu-hote');
-    if (!hote) return;
-    // PAS DE `setPointerCapture`. Le panneau se redessine pendant le geste, et
-    // la capture serait posée sur l'élément qu'on vient de jeter ; l'écouteur
-    // au niveau du document, lui, survit à tous les redessins.
-    flecheTiree = hote;
-    e.preventDefault();
-});
-
-document.addEventListener('pointermove', (e) => {
-    if (!flecheTiree) return;
-    const bande = flecheTiree.querySelector('[data-bande]');
-    if (!bande) return;
-    poserFleche(flecheTiree, rangSousLeDoigt(bande, e.clientX, totalDe(flecheTiree)));
-});
-document.addEventListener('pointerup', () => { flecheTiree = null; });
-document.addEventListener('pointercancel', () => { flecheTiree = null; });
-
-/**
- * DÉPLACER LA FLÈCHE SANS TOUT REDESSINER.
- *
- * Promener l'aperçu ne change AUCUN réglage : il n'y a donc rien à redessiner
- * que la flèche, la bulle et son contenu. C'est aussi ce qui évite d'appeler
- * le générateur soixante fois par seconde, et ce qui garantit que le
- * défilement ne bouge pas — on ne remplace rien d'assez gros pour cela.
- */
-function poserFleche(hote, rang) {
-    const scene = hote.querySelector('[data-scene]');
-    if (!scene) return;
-    const total = totalDe(hote);
-    const r = Math.max(1, Math.min(total, rang));
-    if (Number(scene.dataset.rang) === r) return;
-    scene.dataset.rang = String(r);
-    const x = `${((r - 0.5) / total * 100).toFixed(3)}%`;
-    const fleche = scene.querySelector('[data-fleche]');
-    if (fleche) {
-        fleche.style.left = x;
-        fleche.setAttribute('aria-label', `Question ${r} sur ${total}`);
-    }
-    const zones = zonesDe(hote, total);
-    const ici = zoneDuRang(zones, r);
-    // LA ZONE SOUS LA FLÈCHE S'ALLUME. Sans cela, promener la flèche montrerait
-    // des questions sans dire à quelle zone elles appartiennent — et c'est
-    // justement le lien qu'on cherche à faire voir.
-    scene.querySelectorAll('[data-zone]').forEach((z, i) =>
-        z.classList.toggle('cfg-zone--ici', i === ici.i));
-    scene.querySelectorAll('.cfg-leg').forEach((l, i) =>
-        l.classList.toggle('cfg-leg--ici', i === ici.i));
-    const bulle = scene.querySelector('[data-bulle]');
-    if (bulle) {
-        bulle.style.setProperty('--cfg-bulle-x', x);
-        bulle.innerHTML = bulleApercuHtml(zones, r, paramsAide(hote), total, hote.dataset.exo || '');
-    }
-    // Les commandes suivent la zone : on règle toujours celle qu'on regarde.
-    const reglages = scene.querySelector('.cfg-zreglages');
-    if (reglages) reglages.outerHTML = commandesZone(zones, ici, total);
-}
-
-// CLIQUER UNE ZONE LA CHOISIT, et pose l'aperçu sur sa PREMIÈRE question.
-//
-// Sa première et non son milieu : c'est celle que l'élève rencontrera en y
-// entrant, donc celle qui dit le mieux ce que la zone change.
+// CLIQUER UNE ZONE LA CHOISIT — et la bulle vient se poser au-dessus d'elle.
 document.addEventListener('click', (e) => {
     const z = e.target.closest && e.target.closest('[data-zone]');
     if (!z) return;
     const hote = z.closest('.cfg-apercu-hote');
     if (!hote) return;
     e.preventDefault();
-    const total = totalDe(hote);
-    const zones = zonesDe(hote, total);
-    const i = Number(z.dataset.zone);
-    let debut = 1;
-    for (let k = 0; k < i && k < zones.length; k++) debut += zones[k].n;
-    sansSauter(hote, () => poserFleche(hote, debut));
+    sansSauter(hote, () => rafraichirApercu(hote, Number(z.dataset.zone)));
 });
 
-// LES COMMANDES DE LA ZONE CHOISIE — voir `commandesZone`.
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest
-        && e.target.closest('[data-zmode], [data-zsupp], [data-zplus]');
-    if (!btn || btn.disabled) return;
-    const hote = btn.closest('.cfg-apercu-hote');
-    const scene = hote && hote.querySelector('[data-scene]');
-    if (!scene) return;
+// --- LA BORNE QUI SE TIRE ---------------------------------------------------
+//
+// Une borne porte l'indice de la zone qui la précède : la tirer déplace des
+// questions de l'une à l'autre SANS TOUCHER AU TOTAL. C'est la propriété qui
+// compte — le nombre de questions se règle ailleurs, et lui seul ; une borne
+// ne doit jamais pouvoir rallonger ni raccourcir l'exercice.
+
+let borneTiree = null;
+
+/** La position d'une borne sous le doigt : le rang après lequel elle tombe. */
+function borneSousLeDoigt(bande, clientX, total) {
+    const r = bande.getBoundingClientRect();
+    if (!r.width) return null;
+    const t = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    return Math.round(t * total);
+}
+
+function poserBorne(hote, k, coupe) {
+    const total = totalDe(hote);
+    const zones = zonesDe(hote, total);
+    if (!zones || k < 0 || k + 1 >= zones.length) return;
+    let avant = 0;
+    for (let j = 0; j < k; j++) avant += zones[j].n;
+    // CHACUNE DES DEUX GARDE AU MOINS UNE QUESTION. Pousser une borne jusqu'au
+    // bout ferait disparaître une zone en silence, alors qu'il existe un bouton
+    // pour cela — et qu'une zone effacée par mégarde emporte son réglage.
+    const bloc = zones[k].n + zones[k + 1].n;
+    const pris = Math.max(1, Math.min(bloc - 1, Math.round(coupe) - avant));
+    if (pris === zones[k].n) return;
+    zones[k] = { ...zones[k], n: pris };
+    zones[k + 1] = { ...zones[k + 1], n: bloc - pris };
+    ecrireZonesSansSauter(hote, zones, zoneChoisie(hote, zones));
+}
+
+document.addEventListener('pointerdown', (e) => {
+    const borne = e.target.closest && e.target.closest('[data-borne]');
+    if (!borne) return;
+    const hote = borne.closest('.cfg-apercu-hote');
+    if (!hote) return;
+    // PAS DE `setPointerCapture`. La frise se redessine pendant le geste, et la
+    // capture serait posée sur l'élément qu'on vient de jeter ; l'écouteur au
+    // niveau du document, lui, survit à tous les redessins.
+    borneTiree = { hote, k: Number(borne.dataset.borne) };
+    e.preventDefault();
+});
+
+document.addEventListener('pointermove', (e) => {
+    if (!borneTiree) return;
+    // LA BANDE SE RELIT À CHAQUE FOIS. Elle est remplacée à chaque pas de la
+    // borne : garder l'élément d'origine, c'est mesurer un nœud détaché, dont
+    // la largeur vaut zéro — et la borne saute alors au bout de la frise dès le
+    // premier mouvement. C'est arrivé, et c'est ce qui coûte le plus cher à
+    // diagnostiquer sur ce genre de geste.
+    const bande = borneTiree.hote.querySelector('[data-bande]');
+    if (!bande) return;
+    const coupe = borneSousLeDoigt(bande, e.clientX, totalDe(borneTiree.hote));
+    if (coupe !== null) poserBorne(borneTiree.hote, borneTiree.k, coupe);
+});
+document.addEventListener('pointerup', () => { borneTiree = null; });
+document.addEventListener('pointercancel', () => { borneTiree = null; });
+
+// Les flèches du clavier sur une borne : le même geste, sans souris.
+document.addEventListener('keydown', (e) => {
+    const borne = e.target.closest && e.target.closest('[data-borne]');
+    if (!borne || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    const hote = borne.closest('.cfg-apercu-hote');
+    if (!hote) return;
     e.preventDefault();
     const total = totalDe(hote);
     const zones = zonesDe(hote, total);
-    const rang = Math.max(1, Math.min(total, Number(scene.dataset.rang) || 1));
-    const ici = zoneDuRang(zones, rang);
+    const k = Number(borne.dataset.borne);
+    let coupe = 0;
+    for (let j = 0; j <= k && j < zones.length; j++) coupe += zones[j].n;
+    poserBorne(hote, k, coupe + (e.key === 'ArrowRight' ? 1 : -1));
+});
 
-    if (btn.dataset.zmode !== undefined) {
-        // PLUS DE PROPOSITIONS, OU MOINS : on parcourt l'échelle d'aide, de
-        // « 2 propositions » jusqu'au clavier. Un seul bouton par sens, parce
-        // qu'il n'y a qu'une échelle — et non un menu de six entrées qu'il
-        // faudrait lire pour comprendre qu'elles sont ordonnées.
-        // ON AVANCE DANS LES MODES POSSIBLES, pas dans l'échelle complète : sauter
-        // sur « 6 propositions » qu'un exercice à quatre choix ne sait pas
-        // fabriquer promettrait une légende que l'élève ne verrait jamais.
-        const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
-        const j = poss.indexOf(zones[ici.i].mode);
-        const k = Math.max(0, Math.min(poss.length - 1,
-            (j < 0 ? 0 : j) + Number(btn.dataset.zmode)));
-        zones[ici.i] = { ...zones[ici.i], mode: poss[k] };
-        return ecrireZonesSansSauter(hote, zones, rang);
+// --- LES COMMANDES DE LA ZONE CHOISIE — voir `commandesZone` ----------------
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest
+        && e.target.closest('[data-zbascule], [data-zprop], [data-zsupp], [data-zplus]');
+    if (!btn || btn.disabled) return;
+    const hote = btn.closest('.cfg-apercu-hote');
+    if (!hote) return;
+    e.preventDefault();
+    const total = totalDe(hote);
+    const zones = zonesDe(hote, total);
+    const i = zoneChoisie(hote, zones);
+    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
+    const props = poss.filter(c => !modeZone(c).clavier);
+
+    // LE SWITCH PROPOSITIONS / CLAVIER. Rémy : « quand on clique sur une zone,
+    // on a un switch proposition/clavier ; s'il est sur proposition on peut
+    // choisir le nombre de proposition ». Ce sont deux questions distinctes, et
+    // les mettre sur le même axe — comme le faisait le − / + d'avant — donnait
+    // un bouton qui changeait de sujet au dernier cran.
+    if (btn.dataset.zbascule !== undefined) {
+        const versClavier = btn.dataset.zbascule === 'k';
+        if (modeZone(zones[i].mode).clavier === versClavier) return;
+        // EN REVENANT AUX PROPOSITIONS, ON REPREND QUATRE — le cas ordinaire —
+        // ou le plus grand nombre que cet exercice sache produire s'il n'y
+        // arrive pas. Repartir de deux ferait reculer sans qu'on l'ait demandé.
+        //
+        // MAIS JAMAIS LE MODE D'UNE VOISINE. Mesuré : sur « clavier, 4, clavier »,
+        // rebasculer la première zone en propositions lui donnait quatre — donc
+        // exactement sa voisine —, les deux fondaient à la normalisation, et la
+        // frise passait de trois zones à deux. Le professeur croyait changer une
+        // zone, il en perdait une. On prend alors le plus proche voisinage libre.
+        const voisins = [zones[i - 1], zones[i + 1]].filter(Boolean).map(z => z.mode);
+        const libres = props.filter(c => !voisins.includes(c));
+        const retour = libres.includes('4') ? '4'
+            : (libres[libres.length - 1] || (props.includes('4') ? '4' : props[props.length - 1]));
+        if (!versClavier && !retour) return;
+        zones[i] = { ...zones[i], mode: versClavier ? 'k' : retour };
+        return ecrireZonesSansSauter(hote, normaliserZones(zones, total), i);
+    }
+
+    // LE NOMBRE DE PROPOSITIONS — parmi ceux que l'exercice sait VRAIMENT
+    // fabriquer. Offrir « 6 » à un générateur qui n'en produit que quatre
+    // écrirait une légende que l'élève ne verrait jamais.
+    if (btn.dataset.zprop !== undefined) {
+        const j = props.indexOf(zones[i].mode);
+        const k = Math.max(0, Math.min(props.length - 1,
+            (j < 0 ? 0 : j) + Number(btn.dataset.zprop)));
+        if (props[k] === zones[i].mode) return;
+        zones[i] = { ...zones[i], mode: props[k] };
+        return ecrireZonesSansSauter(hote, normaliserZones(zones, total), i);
     }
 
     if (btn.dataset.zsupp !== undefined) {
@@ -1734,11 +1841,11 @@ document.addEventListener('click', (e) => {
         // RETIRER UNE ZONE REND SES QUESTIONS À LA VOISINE, celle d'avant si
         // elle existe. Les perdre raccourcirait l'exercice sans qu'on l'ait
         // demandé — le nombre de questions se règle ailleurs, et lui seul.
-        const rendues = zones[ici.i].n;
-        zones.splice(ici.i, 1);
-        const voisine = Math.max(0, ici.i - 1);
+        const rendues = zones[i].n;
+        zones.splice(i, 1);
+        const voisine = Math.max(0, i - 1);
         zones[voisine] = { ...zones[voisine], n: zones[voisine].n + rendues };
-        return ecrireZonesSansSauter(hote, normaliserZones(zones, total), Math.max(1, ici.de - 1));
+        return ecrireZonesSansSauter(hote, normaliserZones(zones, total), voisine);
     }
 
     // AJOUTER UNE ZONE : elle naît APRÈS celle qu'on regarde, et prend la
@@ -1746,22 +1853,39 @@ document.addEventListener('click', (e) => {
     // disparaîtrait à la normalisation —, et lui donner des questions prises
     // ailleurs qu'à sa voisine déplacerait toute la progression.
     if (zones.length >= ZONES_MAX) return;
-    const source = zones[ici.i];
+    const source = zones[i];
     if (source.n < 2) return;
     const prise = Math.floor(source.n / 2);
-    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
     // LA NOUVELLE ZONE DOIT ÊTRE DIFFÉRENTE DE SES VOISINES, sinon elle fond
     // avec elles à la normalisation et le bouton semble ne rien faire. On prend
     // le mode d'après ; si la source est déjà au bout de l'échelle, celui
     // d'avant. S'il n'y a qu'un mode possible, il n'y a rien à découper.
     const j = Math.max(0, poss.indexOf(source.mode));
-    const suivante = zones[ici.i + 1];
+    const suivante = zones[i + 1];
     const candidats = [poss[j + 1], poss[j - 1]].filter(Boolean)
         .filter(m => m !== source.mode && (!suivante || m !== suivante.mode));
     if (!candidats.length) return;
-    zones[ici.i] = { ...source, n: source.n - prise };
-    zones.splice(ici.i + 1, 0, { n: prise, mode: candidats[0] });
-    ecrireZonesSansSauter(hote, normaliserZones(zones, total), ici.de + source.n - prise);
+    zones[i] = { ...source, n: source.n - prise };
+    zones.splice(i + 1, 0, { n: prise, mode: candidats[0] });
+    ecrireZonesSansSauter(hote, normaliserZones(zones, total), i + 1);
+});
+
+// --- LES MODÈLES DE FRISE — voir `MODELES_FRISE` dans core/aide.js ----------
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-modele]');
+    if (!btn) return;
+    const hote = btn.closest('.cfg-apercu-hote');
+    if (!hote) return;
+    e.preventDefault();
+    const total = totalDe(hote);
+    const zones = zonesDuModele(btn.dataset.modele, total);
+    if (!zones) return;
+    // ON RABAT SUR CE QUE L'EXERCICE SAIT FAIRE. Un modèle est écrit une fois
+    // pour tout le catalogue ; « QCM 4 » sur un exercice qui n'a que deux
+    // réponses possibles doit donner deux, pas une promesse.
+    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
+    const tenables = zones.map(z => ({ ...z, mode: modeTenable(z.mode, poss) }));
+    ecrireZonesSansSauter(hote, normaliserZones(tenables, total), 0);
 });
 
 document.addEventListener('input', (e) => {

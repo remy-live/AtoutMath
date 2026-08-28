@@ -65,8 +65,16 @@ import { parDefautDe, uniteDe, getActivity, getGenerator } from './registry.js';
 /** Ce que vaut un exercice ordinaire, sans nature ni progression déclarée. */
 export const QUESTIONS_PAR_DEFAUT = 10;
 
-/** Les longueurs par nature d'exercice. */
-export const DUREES = { reflexe: 20, notion: 10 };
+/**
+ * Les longueurs par nature d'exercice.
+ *
+ * QUINZE POUR UN RÉFLEXE. Rémy, deux fois de suite sur ce nombre : d'abord
+ * « par défaut propose 20 questions lorsque ce sont des calculs », puis, en
+ * voyant le panneau : « de base le nombre de question est 15 ». C'est le
+ * second qui compte — vingt tenait la page, mais quinze tient une fin de
+ * séance, et c'est là que ces exercices se font.
+ */
+export const DUREES = { reflexe: 15, notion: 10 };
 
 /**
  * Le minimum pour que l'escalier de l'AIDE ait le temps de monter : trois

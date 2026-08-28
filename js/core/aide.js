@@ -243,6 +243,58 @@ export function normaliserZones(zones, total) {
 }
 
 /** À quelle zone appartient la question `rang` ? */
+/**
+ * LES MODÈLES DE FRISE — la forme entière d'un coup, pas zone par zone.
+ *
+ * Rémy : « on peut avoir un petit bouton réglage au-dessus de la frise pour
+ * avoir des templates pour l'ensemble de la frise, genre QCM 2 ou QCM 4,
+ * QCM 2-4, QCM 2-4-Clavier, qui donne alors des proportions à la frise. »
+ *
+ * DÉCOUPER À LA MAIN EST LE CAS RARE. Un professeur qui prépare une heure sait
+ * ce qu'il veut — « tout en deux propositions », « on finit au clavier » — et
+ * ne devrait pas avoir à poser trois bornes pour le dire. Les quatre modèles
+ * couvrent ce qu'on demande vraiment ; les bornes restent, pour le jour où
+ * l'on veut autre chose.
+ *
+ * LES PROPORTIONS SONT DES PARTS, PAS DES NOMBRES. « 1, 2, 1 » veut dire un
+ * quart, la moitié, un quart : le modèle vaut pour huit questions comme pour
+ * cinquante, ce qu'une liste de nombres écrits ne saurait pas faire.
+ */
+export const MODELES_FRISE = [
+    { cle: 'q2', nom: 'QCM 2', parts: [[1, '2']] },
+    { cle: 'q4', nom: 'QCM 4', parts: [[1, '4']] },
+    { cle: 'q24', nom: 'QCM 2 puis 4', parts: [[1, '2'], [2, '4']] },
+    { cle: 'q24k', nom: 'QCM 2, 4, puis clavier', parts: [[1, '2'], [2, '4'], [1, 'k']] }
+];
+
+/**
+ * Les zones qu'un modèle donne pour ce nombre de questions.
+ *
+ * LA SOMME FAIT TOUJOURS LE TOTAL, par construction et non par table
+ * d'arrondis : chaque zone prend sa part arrondie en réservant une question à
+ * chacune de celles qui suivent, et la dernière ramasse ce qui reste. On ne
+ * peut donc ni perdre ni inventer une question, quel que soit le total.
+ */
+export function zonesDuModele(cle, total) {
+    const m = MODELES_FRISE.find(x => x.cle === cle);
+    if (!m) return null;
+    const n = Math.max(1, Math.round(Number(total) || 10));
+    // Pas plus de zones que de questions : une zone de zéro question n'existe
+    // pas, et un modèle à trois phases sur deux questions n'en a que deux.
+    const parts = m.parts.slice(0, n);
+    const somme = parts.reduce((s, x) => s + x[0], 0);
+    let reste = n;
+    const zones = parts.map(([part, mode], i) => {
+        const apres = parts.length - 1 - i;
+        const pris = i === parts.length - 1
+            ? reste
+            : Math.max(1, Math.min(reste - apres, Math.round(part / somme * n)));
+        reste -= pris;
+        return { n: pris, mode };
+    });
+    return normaliserZones(zones, n);
+}
+
 export function zoneDuRang(zones, rang) {
     let debut = 1;
     for (let i = 0; i < zones.length; i++) {
