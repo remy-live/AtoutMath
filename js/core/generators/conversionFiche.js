@@ -58,10 +58,20 @@ export const conversionFicheGenerator = {
             aide: 'Décoché, il ne reste que les conversions à faire, alignées sur '
                 + 'la feuille : c\'est l\'exercice une fois le tableau su.'
         },
+        // « DONNER LES UNITÉS EN EN-TÊTE » N'EST PLUS UN CHOIX. Rémy : « enlève,
+        // ça ne sert à rien. »
+        //
+        // Il a raison, et l'aide que j'avais écrite le disait sans le voir :
+        // « décoché, c'est un AUTRE exercice ». Un tableau de conversion sans
+        // ses unités n'est plus un tableau de conversion, c'est un exercice de
+        // récitation de préfixes — qui a sa place, mais pas caché dans une case
+        // à cocher d'un exercice qui n'annonce pas cela. Le tableau porte donc
+        // toujours ses unités ; c'est ce que fait un tableau.
+        //
+        // Le champ reste, à `true`, pour les fiches déjà enregistrées.
         {
-            id: 'entetes', type: 'checkbox', label: 'Donner les unités en en-tête', default: true,
-            aide: 'Décoché, l\'élève écrit lui-même km, hm, dam… : c\'est un autre '
-                + 'exercice, et c\'est celui où l\'on se trompe — hecto vient avant déca.'
+            id: 'entetes', type: 'checkbox', label: 'Donner les unités en en-tête',
+            default: true, cache: true
         },
         {
             id: 'decimales', type: 'checkbox', label: 'Nombres à virgule', default: false

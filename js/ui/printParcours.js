@@ -532,9 +532,23 @@ export function ouvrirFicheParcours(chemin) {
     // devient le sien et on cesse d'y toucher — la ligne d'explication signale
     // alors l'écart avec la note plutôt que de le masquer.
     let baremeTouche = false;
+    // LA NOTE SUIT LE BARÈME, ET NON L'INVERSE.
+    //
+    // Rémy : « c'est le nombre de points = le nombre de questions, c'est le
+    // prof qui corrige au besoin pour chaque exercice. »
+    //
+    // Une interrogation de trente-huit questions se note donc sur trente-huit,
+    // et l'avertissement « le barème totalise 38 points pour une note sur 20 »
+    // disparaît — il signalait un désaccord que le logiciel créait lui-même.
+    // Le professeur reste libre d'écrire « sur 20 » : c'est alors un vrai choix
+    // de sa part, et l'écart lui est signalé parce qu'il compte.
+    let noteTouchee = false;
     const repartirPoints = () => {
         const sur = Math.max(5, Math.min(100, Number(noteSurEl.value) || 20));
         Object.assign(points, repartirBareme(quantites, sur));
+        if (noteTouchee) return;
+        const total = Object.values(points).reduce((t, p) => t + p, 0);
+        if (total >= 5 && total <= 100) noteSurEl.value = String(total);
     };
     repartirPoints();
 
@@ -1254,7 +1268,10 @@ export function ouvrirFicheParcours(chemin) {
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     noteSurEl.oninput = () => {
-        if (!baremeTouche) repartirPoints();
+        // LA NOTE TAPÉE EST LA SIENNE : on cesse de la recalculer. Sans cela,
+        // le premier changement de quantité l'écrasait par le total du barème,
+        // et le professeur voyait son « sur 20 » disparaître tout seul.
+        noteTouchee = true;
         rendre();
     };
     m.querySelector('#pp-regen').onclick = () => { toutOublier(); rendre(); };

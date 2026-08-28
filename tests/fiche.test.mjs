@@ -370,34 +370,40 @@ test('questions et grilles cohabitent sur la même fiche', () => {
 
 import { repartirBareme } from '../js/core/fiche.js';
 
-test('le barème par défaut tombe juste sur la note', () => {
-    // Cinq exercices très inégaux : dix additions, dix soustractions, puis
-    // trois séries de six grilles. Le professeur a dit « sur 20 » : la somme
-    // des barèmes doit valoir 20, pas 38.
+test('UN POINT PAR QUESTION, ET LE TOTAL EST LE NOMBRE DE QUESTIONS', () => {
+    // Rémy : « si c'est un mode interro, par défaut c'est le nombre de points =
+    // le nombre de questions ; c'est le prof qui corrige au besoin pour chaque
+    // exercice. »
+    //
+    // On répartissait une note sur vingt au prorata. Le calcul était juste et
+    // le résultat inutilisable : douze questions d'un côté, trois de l'autre,
+    // cela donnait « 16 points » et « 4 points » — des nombres qu'on ne peut ni
+    // annoncer avant l'interrogation ni vérifier après, et qui changeaient le
+    // poids d'un exercice selon ce qu'il y avait à côté de lui.
     const quantites = { add: 10, sub: 10, sudoku: 6, garam: 6, binairo: 6 };
-    for (const sur of [7, 10, 20, 40, 100]) {
-        const pts = repartirBareme(quantites, sur);
-        const somme = Object.values(pts).reduce((s, p) => s + p, 0);
-        assert.equal(somme, sur, `barème sur ${sur}`);
-        assert.ok(Object.values(pts).every(p => p >= 1), 'aucun exercice à zéro point');
-    }
-    // Et le partage suit le travail demandé : dix additions valent plus que
-    // six grilles.
     const pts = repartirBareme(quantites, 20);
-    assert.ok(pts.add > pts.sudoku, 'dix questions pèsent plus que six grilles');
+    assert.deepEqual(pts, { add: 10, sub: 10, sudoku: 6, garam: 6, binairo: 6 });
+    const somme = Object.values(pts).reduce((s, p) => s + p, 0);
+    assert.equal(somme, 38, 'le total est le nombre de questions, pas la note');
+
+    // LA NOTE DEMANDÉE N'Y CHANGE RIEN : c'est le professeur qui corrige les
+    // cases s'il veut retomber sur vingt, et le panneau lui signale l'écart.
+    for (const sur of [7, 10, 20, 40, 100]) {
+        assert.deepEqual(repartirBareme(quantites, sur), pts, `note sur ${sur}`);
+    }
 });
 
 test('un exercice à zéro question ne vaut aucun point', () => {
     const pts = repartirBareme({ add: 10, retire: 0 }, 20);
     assert.equal(pts.retire, 0);
-    assert.equal(pts.add, 20, 'tout le barème va au seul exercice qui reste');
+    assert.equal(pts.add, 10, 'un point par question, et rien pour ce qui n\'est pas demandé');
 });
 
-test('plus d\'exercices que de points : un point chacun, sans négatif', () => {
-    // Cas dégénéré, mais il ne doit ni boucler ni produire un barème absurde.
-    const quantites = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`e${i}`, 4]));
-    const pts = repartirBareme(quantites, 5);
-    assert.deepEqual([...new Set(Object.values(pts))], [1]);
+test('aucun exercice demandé ne vaut zéro point', () => {
+    // Un exercice qui EST sur la feuille vaut au moins un point, même si son
+    // compte a été mis à une valeur qui s'arrondirait à zéro : une question
+    // posée se corrige.
+    assert.deepEqual(repartirBareme({ a: 0.4, b: 3 }, 20), { a: 1, b: 3 });
 });
 
 test('sans aucun exercice actif, le barème reste vide', () => {

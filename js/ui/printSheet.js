@@ -6342,7 +6342,7 @@ function dessinerAnglePdf(doc, item, slot, solution) {
 // Les cotes sont écrites sur les côtés, pas dans un énoncé : sur une fiche de
 // géométrie, une longueur se lit sur la figure.
 
-function geoRectangle(item, slot) {
+function geoRectangle(item, slot, tous) {
     const m = item.meta;
     const lignes = m.demande.length;
     // TOUTE LA BOÎTE, PAS LE CARRÉ INSCRIT. Rémy : « je pense que tu peux
@@ -6356,7 +6356,7 @@ function geoRectangle(item, slot) {
     const zone = b.h - lignes * ligneH;
     // La place des cotes : le nombre à gauche de la figure, le nombre dessous.
     const coteW = Math.min(b.w * 0.15, 12);
-    const coteH = Math.min(zone * 0.26, 6);
+    const coteH = Math.min(zone * 0.2, 4.5);
     const dispoW = Math.max(6, b.w - coteW - 2);
     const dispoH = Math.max(6, zone - coteH - 1);
     // L'ÉCHELLE EST CELLE DE LA FICHE, PAS CELLE DU RECTANGLE. On la calcule
@@ -6366,7 +6366,23 @@ function geoRectangle(item, slot) {
     // dessin qui ment en premier. Le facteur 0,7 est la largeur maximale que
     // le générateur s'autorise, il borne donc la hauteur.
     const grand = Math.max(m.max || m.L, m.L);
-    const ech = Math.min(dispoW / grand, dispoH / (grand * 0.7));
+    // LA HAUTEUR RÉSERVÉE EST CELLE DE LA PLUS HAUTE FIGURE DE LA FEUILLE.
+    //
+    // Rémy : « on pourrait faire les figures un peu plus grandes. » On leur
+    // gardait la place d'un rectangle dont la largeur ferait 70 % de la plus
+    // grande dimension possible — un chiffre en l'air, qui n'était ni sûr ni
+    // généreux. Ni sûr : le générateur tire la largeur jusqu'à L − 1, donc un
+    // 12 × 11 débordait. Ni généreux : une feuille de rectangles plats, qui
+    // est le cas ordinaire, se voyait rogner un tiers de sa hauteur pour une
+    // figure qui n'y était pas.
+    //
+    // On regarde donc ce que la feuille contient VRAIMENT. L'échelle reste
+    // commune à tous les blocs — c'est elle qui fait qu'un 4 cm se voit plus
+    // court qu'un 10 cm, et sur une fiche de géométrie c'est le dessin qui
+    // ment en premier —, mais elle n'est plus bridée par un cas absent.
+    const metas = (tous && tous.length ? tous : [item]).map(it => it.meta || {});
+    const hautMax = Math.max(m.l, ...metas.map(x => Number(x.l) || 0));
+    const ech = Math.min(dispoW / grand, dispoH / Math.max(1, hautMax));
     const w = m.L * ech, h = m.l * ech;
     return {
         m, lignes, ligneH, w, h, b,
@@ -6402,8 +6418,8 @@ const TEINTES_FIGURE = [
 const teinteFigure = (i) => TEINTES_FIGURE[(i || 0) % TEINTES_FIGURE.length];
 const rvbCss = (c) => `rgb(${c.join(',')})`;
 
-function rectanglePreviewHtml(item, slot, k, solution, rang) {
-    const g = geoRectangle(item, slot);
+function rectanglePreviewHtml(item, slot, k, solution, rang, tous) {
+    const g = geoRectangle(item, slot, tous);
     const m = g.m;
     const T = (v) => (v * k).toFixed(2);
     // Le périmètre est un TOUR : c'est le trait qu'on colore, et l'intérieur
@@ -6415,7 +6431,7 @@ function rectanglePreviewHtml(item, slot, k, solution, rang) {
              fill="${couleur ? rvbCss(t.fond) : 'none'}"
              fill-opacity="${remplit ? 1 : 0.35}"
              stroke="${couleur ? rvbCss(t.trait) : '#1a202c'}"
-             stroke-width="${T(remplit ? 0.5 : 0.8)}"/>`;
+             stroke-width="${T(remplit ? 0.35 : 0.5)}"/>`;
     // Les cotes : la longueur sous la figure, la largeur à gauche.
     d += `<text x="${T(g.x + g.w / 2)}" y="${T(g.y + g.h + g.police * 1.1)}"
           text-anchor="middle" font-size="${T(g.police)}" font-weight="700"
@@ -6438,8 +6454,8 @@ function rectanglePreviewHtml(item, slot, k, solution, rang) {
     return html;
 }
 
-function dessinerRectanglePdf(doc, item, slot, solution, champ, rang) {
-    const g = geoRectangle(item, slot);
+function dessinerRectanglePdf(doc, item, slot, solution, champ, rang, tous) {
+    const g = geoRectangle(item, slot, tous);
     const m = g.m;
     const couleur = polycopieEnCouleur();
     const t = teinteFigure(rang);
@@ -6448,7 +6464,12 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ, rang) {
     if (couleur) {
         doc.setDrawColor(...t.trait);
         doc.setFillColor(...t.fond);
-        doc.setLineWidth(remplit ? 0.5 : 0.8);
+        // LE TOUR SE VOIT SANS ÉPAISSIR LA FIGURE. Rémy : « pour le rectangle,
+        // le trait extérieur est trop gros. » Huit dixièmes de millimètre sur
+        // un rectangle de deux centimètres de haut, c'est un cadre, pas un
+        // contour : le trait mange la figure qu'il entoure et les cotes
+        // semblent flotter contre un mur.
+        doc.setLineWidth(remplit ? 0.35 : 0.5);
         doc.rect(g.x, g.y, g.w, g.h, remplit ? 'FD' : 'S');
     } else {
         doc.setDrawColor(...ENCRE.trait);
@@ -8245,7 +8266,28 @@ function geoConversion(item, slot) {
     // Une rangée d'en-tête, puis une par conversion. Une case de tableau de
     // conversion doit accueillir un chiffre écrit à la main : sept
     // millimètres, c'est l'interligne d'un cahier.
-    const rh = Math.max(6.5, Math.min((b.h - 2) / (nLignes + 1.2), 9.5));
+    // SANS TABLEAU, LES CONVERSIONS SE METTENT EN COLONNES.
+    //
+    // Rémy : « permet plusieurs colonnes pour la conversion, regarde l'espace
+    // vide. » Il envoyait la capture d'une feuille où huit conversions
+    // descendaient en une seule colonne — « 0,11 dm = ……… mm » fait quatre
+    // centimètres — et où les deux tiers droits de la page restaient blancs.
+    //
+    // Avec le tableau, la question ne se pose pas : le tableau EST large, et
+    // la conversion doit être à sa hauteur, sur la même ligne. Sans lui, il ne
+    // reste qu'une ligne de texte, et rien n'oblige à n'en mettre qu'une par
+    // rangée. On en met donc autant que la largeur en porte — quarante
+    // millimètres chacune, la place d'écrire l'énoncé et sa réponse.
+    // CINQUANTE-DEUX MILLIMÈTRES, ET NON QUARANTE. Mesuré : à quarante, la
+    // page en tenait trois par bloc, mais « 659 dam = ……… dm » s'y coupait
+    // après le « d » — on lisait « dr ». Une conversion doit tenir ENTIÈRE,
+    // unité comprise : c'est elle, la réponse.
+    const LARGEUR_CONVERSION = 52;
+    const colonnes = avecTableau
+        ? 1
+        : Math.max(1, Math.min(4, Math.floor(b.w / LARGEUR_CONVERSION)));
+    const parColonne = Math.ceil(nLignes / colonnes);
+    const rh = Math.max(6.5, Math.min((b.h - 2) / (parColonne + (avecTableau ? 1.2 : 0.2)), 9.5));
     const x0 = b.x + enonceW;
     const y0 = b.y + 1;
     const taille = Math.max(7.5, Math.min(rh * 1.15, 12));
@@ -8258,9 +8300,25 @@ function geoConversion(item, slot) {
     const pire = Math.max(1, ...m.conversions.map(c => largeurEm(c.enonce)));
     return {
         m, b, nCol, nLignes, cw, rh, x0, y0, enonceW, avecTableau, taille,
+        colonnes, parColonne,
+        // Où tombe la conversion de rang `r` : une seule colonne avec le
+        // tableau, plusieurs sans lui. Les deux rendus — l'aperçu et le PDF —
+        // passent par ici, donc ils ne peuvent pas se désaccorder.
+        placeDe: (r) => (colonnes <= 1
+            ? { x: b.x, y: y0 + (r + 1) * rh, w: enonceW - 2 }
+            : {
+                x: b.x + Math.floor(r / parColonne) * (b.w / colonnes),
+                y: y0 + (r % parColonne) * rh,
+                w: b.w / colonnes - 2
+            }),
         largeur: nCol * cw,
         // En POINTS, comme tout ce qui va dans le PDF ; l'aperçu convertit.
-        tailleEnonce: Math.max(5, Math.min(taille * 0.92, (enonceW - 3) / 0.3528 / pire)),
+        //
+        // LE CORPS SE CALCULE SUR LA COLONNE QUI PORTE LE TEXTE, et non sur le
+        // bloc entier : sans tableau, le bloc en contient plusieurs, et un
+        // corps calculé sur toute sa largeur débordait de chacune.
+        tailleEnonce: Math.max(5, Math.min(taille * 0.92,
+            ((avecTableau ? enonceW : b.w / colonnes) - 3) / 0.3528 / pire)),
         // « dam » est le plus large des en-têtes : c'est lui qui fixe leur
         // corps, sans quoi il déborde de sa case dès qu'on resserre le tableau.
         tailleEntete: Math.max(5, Math.min(rh * 1.15, 12, (cw - 0.8) / 0.6))
@@ -8326,9 +8384,10 @@ function conversionPreviewHtml(item, slot, k, solution) {
     // tableau rempli : c'est le placement des chiffres qui est la leçon, et
     // un corrigé qui donne « 1 300 m » sans dire où tombe le 1 n'explique rien.
     m.conversions.forEach((cv, r) => {
-        const y = g.y0 + (r + 1) * g.rh;
-        html += `<div style="position:absolute; left:${g.b.x * k}px; top:${y * k}px;
-            width:${(g.enonceW - 2) * k}px; height:${g.rh * k}px; display:flex;
+        const pl = g.placeDe(r);
+        const y = pl.y;
+        html += `<div style="position:absolute; left:${pl.x * k}px; top:${y * k}px;
+            width:${pl.w * k}px; height:${g.rh * k}px; display:flex;
             align-items:center; font-size:${g.tailleEnonce * 0.3528 * k}px;
             color:#1a202c; white-space:nowrap; overflow:hidden"
             >${echapperSheet(solution ? cv.complet : cv.enonce)}</div>`;
@@ -8389,10 +8448,11 @@ function dessinerConversionPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...ENCRE.trait);
     m.conversions.forEach((cv, r) => {
-        const y = g.y0 + (r + 1) * g.rh;
+        const pl = g.placeDe(r);
+        const y = pl.y;
         doc.setFontSize(g.tailleEnonce);
         doc.setTextColor(...ENCRE.trait);
-        doc.text(pourPdf(solution ? cv.complet : cv.enonce), g.b.x, y + g.rh * 0.68);
+        doc.text(pourPdf(solution ? cv.complet : cv.enonce), pl.x, y + g.rh * 0.68);
         if (!solution || !g.avecTableau) return;
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.gris);
@@ -8751,7 +8811,7 @@ function nombreEspace(n) {
 // million sans jamais manger la place où l'on dessine les glyphes.
 const LARGEUR_NOMBRE = 0.30;
 
-function geoEgypte(item, slot) {
+function geoEgypte(item, slot, tous) {
     const m = item.meta;
     const b = slot.boite;
     // LES SYMBOLES S'ÉCRIVENT À LA SUITE, comme à l'écran : c'est le même
@@ -8808,9 +8868,31 @@ function geoEgypte(item, slot) {
     // ne partagent plus la hauteur avec une ligne de réponse posée dessous.
     const LARGEUR_EGAL = 7;
     const largeurGlyphes = ecrire ? b.w - largeurTexte : largeurTexte - LARGEUR_EGAL;
+    // UN BÂTON A LA MÊME TAILLE PARTOUT SUR LA FEUILLE.
+    //
+    // Rémy : « il faut que les nombres de pharaons soient écrits à la même
+    // taille de chaque caractère. »
+    //
+    // LA CASE SE CALCULAIT SUR CE NOMBRE-CI. Trois symboles remplissaient leur
+    // colonne, neuf devaient s'y serrer — et le même bâton se retrouvait deux
+    // fois plus petit d'un bloc à l'autre. L'élève à qui l'on demande de
+    // COMPTER des signes se met alors à comparer des tailles qui ne veulent
+    // rien dire.
+    //
+    // Le raisonnement était déjà écrit vingt lignes plus haut, pour le corps
+    // du nombre : « calculé sur le PLUS LONG nombre possible, sinon un nombre
+    // court s'écrirait plus gros que son voisin ». Il ne manquait qu'à
+    // l'appliquer aux glyphes. La référence est le nombre le plus large DE
+    // CETTE FEUILLE — pas un pire cas théorique à trente-six signes, qui
+    // rapetisserait tout le monde pour un nombre qui n'y est pas.
+    const plans = (tous && tous.length ? tous : [item])
+        .map(it => placerGlyphes((it.meta && it.meta.symboles) || []));
+    const refLargeur = Math.max(plan.largeur, ...plans.map(x => x.largeur));
+    const refHaut = Math.max(hautCases,
+        ...plans.map(x => x.lignes + (x.lignes - 1) * INTERLIGNE));
     const cell = Math.min(
-        largeurGlyphes / (plan.largeur + 0.3),
-        hDispo / (hautCases + 0.3),
+        largeurGlyphes / (refLargeur + 0.3),
+        hDispo / (refHaut + 0.3),
         ecrire ? 16 : 20
     );
     // La ligne de base : sous les glyphes en « lire », sous le nombre en
@@ -8828,8 +8910,8 @@ function geoEgypte(item, slot) {
     };
 }
 
-function egyptePreviewHtml(item, slot, k, solution) {
-    const g = geoEgypte(item, slot);
+function egyptePreviewHtml(item, slot, k, solution, _rang, tous) {
+    const g = geoEgypte(item, slot, tous);
     const m = g.m;
     let html = '';
     if (m.sens === 'lire' || solution) {
@@ -8891,8 +8973,8 @@ function egyptePreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerEgyptePdf(doc, item, slot, solution) {
-    const g = geoEgypte(item, slot);
+function dessinerEgyptePdf(doc, item, slot, solution, _c, _rang, tous) {
+    const g = geoEgypte(item, slot, tous);
     const m = g.m;
     if (m.sens === 'lire' || solution) {
         g.plan.cases.forEach((c) => {
@@ -10451,6 +10533,14 @@ export const RENDUS = {
         // un chiffre à la main dans une case.
         proportions: (items) => {
             const n = Math.max(1, ...(items || []).map(i => (i && i.meta && i.meta.lignes) || 8), 8);
+            // SANS TABLEAU, LE BLOC EST DEUX FOIS MOINS HAUT. Les conversions y
+            // tiennent en plusieurs colonnes (voir `geoConversion`), donc la
+            // hauteur ne suit plus leur nombre mais celui d'une colonne. Le
+            // bloc reste large — c'est cette largeur qui porte les colonnes —,
+            // et deux blocs de front tiennent sur une page au lieu d'un.
+            const sansTableau = (items || []).length
+                && (items || []).every(i => i && i.meta && i.meta.tableau === false);
+            if (sansTableau) return { w: 1, h: 0.09 * Math.ceil(n / 2) + 0.06 };
             return { w: 1, h: 0.09 * (n + 1) + 0.06 };
         },
         // DEUX DE FRONT, PLUS TROIS. Le commentaire d'origine disait vrai — à
@@ -11207,7 +11297,7 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
             else doc.text(nom, slot.titre.x, slot.titre.y, { align: 'center' });
             // Le RANG du bloc sur la feuille : certains rendus en tirent leur
             // couleur, pour que deux figures voisines ne soient pas jumelles.
-            rendu.pdfGrille(doc, item, slot, solution, null, i);
+            rendu.pdfGrille(doc, item, slot, solution, null, i, items);
         });
     };
 
@@ -11389,7 +11479,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                     width:${slot.boite.w * k}px; top:${(slot.titre.y - 3.6) * k}px;
                     font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`
                 : `<div class="fp-titre" style="left:${(slot.titre.x - 20) * k}px; width:${40 * k}px; top:${(slot.titre.y - 3.6) * k}px; font-size:${Math.max(8, 3.2 * k)}px">${nomBloc} ${i + 1}</div>`;
-            html += rendu.previewGrille(item, slot, k, solutionsVisibles, i);
+            html += rendu.previewGrille(item, slot, k, solutionsVisibles, i, items);
             // ON CHANGE UNE GRILLE EN CLIQUANT DESSUS.
             //
             // « Autres grilles » refait la feuille entière : quand une seule

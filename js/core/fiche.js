@@ -964,17 +964,26 @@ export function repartirBareme(quantites, noteSur) {
     Object.keys(quantites).forEach(id => { points[id] = 0; });
     if (!actifs.length) return points;
 
-    const sur = Math.max(1, Math.round(noteSur) || 20);
-    const masse = actifs.reduce((s, id) => s + quantites[id], 0);
-    const parts = actifs.map(id => ({ id, exact: (quantites[id] / masse) * sur }));
-    parts.forEach(p => { points[p.id] = Math.max(1, Math.floor(p.exact)); });
-
-    // Le reste ne peut être que positif : chaque part a été arrondie vers le
-    // bas. Il ne devient négatif que dans le cas dégénéré « plus d'exercices
-    // que de points », où le plancher d'un point l'emporte — on n'y touche pas.
-    let reste = sur - parts.reduce((s, p) => s + points[p.id], 0);
-    parts.sort((a, b) => (b.exact - Math.floor(b.exact)) - (a.exact - Math.floor(a.exact)));
-    for (let i = 0; reste > 0; i++, reste--) points[parts[i % parts.length].id]++;
+    // UN POINT PAR QUESTION. C'EST TOUT.
+    //
+    // Rémy : « si c'est un mode interro, par défaut c'est le nombre de points =
+    // le nombre de questions ; c'est le prof qui corrige au besoin pour chaque
+    // exercice. »
+    //
+    // ON RÉPARTISSAIT UNE NOTE SUR VINGT au prorata des questions, avec
+    // arrondis et rattrapage des restes. Le calcul était juste et le résultat
+    // inutilisable : douze questions d'un côté, trois de l'autre, cela donnait
+    // « 16 points » et « 4 points » — des nombres que le professeur ne peut ni
+    // prévoir ni expliquer à sa classe, et qu'il devait de toute façon
+    // reprendre à la main. Pire, il n'y avait AUCUN moyen de savoir combien
+    // valait une question : le même exercice ne pesait pas pareil selon ce
+    // qu'il y avait à côté.
+    //
+    // Un point par question, c'est le barème que tout le monde connaît, celui
+    // qu'on peut annoncer avant l'interrogation et vérifier après. Le total
+    // devient le nombre de questions — et si le professeur veut une note sur
+    // vingt, il corrige les cases qu'il veut : ce sont les siennes.
+    actifs.forEach(id => { points[id] = Math.max(1, Math.round(quantites[id])); });
     return points;
 }
 

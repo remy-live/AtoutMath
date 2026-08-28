@@ -605,12 +605,17 @@ const legacy = [
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.
-    ['tour-brahma', 'La Tour de Hanoï', 'tourBrahma', 'engineTourBrahma', 'tour', 2],
-    ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 2],
-    // Le parking se compte en PARTIES : les deux parkings ont échangé ou non.
-    // Deux parties suffisent à valider — celle-ci se compte en centaines de
-    // coups, en redemander cinq serait une punition.
-    ['parking', 'Le Parking', 'parking', 'engineParking', 'échange', 2],
+    //
+    // UNE SEULE, ET C'EST DÉJÀ BEAUCOUP. Rémy : « par défaut, la tour de Hanoï,
+    // grenouilles, parking sont en UNE seule fois dans le poly. » Chacun de ces
+    // trois défis prend une PAGE ENTIÈRE sur la feuille (`proportions: 'plein'`
+    // dans ui/printSheet.js) : en demander deux, c'était imprimer deux pages
+    // pour une activité qui occupe déjà une fin d'heure. Et à l'écran, c'est le
+    // même raisonnement — une tour de Hanoï résolue est un travail fini, pas la
+    // moitié d'un exercice.
+    ['tour-brahma', 'La Tour de Hanoï', 'tourBrahma', 'engineTourBrahma', 'tour', 1],
+    ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 1],
+    ['parking', 'Le Parking', 'parking', 'engineParking', 'échange', 1],
     // L'embouteillage se compte en PARKINGS : une partie, c'est une voiture
     // rouge sortie. Trois suffisent — le niveau monte tout seul entre chaque,
     // donc trois parties, ce sont déjà trois marches.
