@@ -55,6 +55,30 @@ export const MAX_ETAPE = MAX_QUESTIONS;
  * ce que fait le code depuis toujours (`Math.min(null, n)` vaut 0) et c'est ce
  * dont l'évaluation a besoin. Le commentaire de `makeStep` disait l'inverse.
  */
+/**
+ * LE SEUIL QU'UNE ÉTAPE PROPOSE QUAND PERSONNE N'EN A CHOISI : SEPT SUR DIX.
+ *
+ * Rémy : « de base, mets 70 % de bonnes réponses exigées comme réglage par
+ * défaut. »
+ *
+ * L'ÉTAPE NE DEMANDAIT RIEN DU TOUT, et c'était le mauvais défaut. « Aller au
+ * bout » valide un élève qui s'est trompé partout — le parcours avance, la
+ * carte s'ouvre, et rien ne dit que la notion n'est pas acquise. Sept sur dix
+ * est le seuil que les professeurs écrivent d'eux-mêmes : assez haut pour
+ * vouloir dire quelque chose, assez bas pour qu'une étourderie ne coûte pas la
+ * séance.
+ *
+ * ON ARRONDIT VERS LE HAUT, ET JAMAIS AU-DELÀ DU TOTAL : sur six questions,
+ * 70 % font 4,2, donc cinq — quatre serait 67 %, en dessous de ce qu'on
+ * annonce. Sur une seule question, il en faut une.
+ */
+export const PART_EXIGEE = 0.7;
+
+export function seuilConseille(questions) {
+    const n = Math.max(1, Math.floor(Number(questions) || 0));
+    return Math.max(1, Math.min(n, Math.ceil(n * PART_EXIGEE)));
+}
+
 export function seuilRequis(step) {
     if (!step) return 0;
     const n = Math.max(0, Math.floor(Number(step.nbItems) || 0));
@@ -133,8 +157,11 @@ export function phraseDuo({ questions, exigees, evaluation = false, quota = true
     if (duo.exigees >= duo.questions) {
         return `${duo.questions} question${duo.questions > 1 ? 's' : ''} — il faut TOUT réussir.`;
     }
-    const rate = duo.questions - duo.exigees;
+    // ET RIEN DE PLUS. Rémy : « ne mets pas "2 erreurs tolérées", le prof n'est
+    // pas idiot. » La phrase se terminait sur la soustraction qu'elle venait
+    // d'écrire — 6 moins 4 — sous couvert de la reformuler. Une interface qui
+    // explique ce qu'elle vient de dire prend son lecteur pour quelqu'un qui
+    // n'a pas suivi, et fait perdre du temps à celui qui a suivi.
     return `${duo.exigees} bonne${duo.exigees > 1 ? 's' : ''} réponse${duo.exigees > 1 ? 's' : ''} `
-        + `exigée${duo.exigees > 1 ? 's' : ''} sur ${duo.questions} — `
-        + `${rate} erreur${rate > 1 ? 's' : ''} tolérée${rate > 1 ? 's' : ''}.`;
+        + `exigée${duo.exigees > 1 ? 's' : ''} sur ${duo.questions}.`;
 }

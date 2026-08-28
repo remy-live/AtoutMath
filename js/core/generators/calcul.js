@@ -129,7 +129,20 @@ export const multFactGenerator = {
     ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        { id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10, min: 5, max: 12 }
+        // « FACTEUR MAXIMUM » N'A PLUS DE CHAMP. Rémy : « pas la peine de mettre
+        // le nombre de facteur maximum, juste les cases à cocher. »
+        //
+        // Il a raison, et la preuve était déjà dans le fichier : le générateur
+        // voisin — « Facteur manquant », le même exercice à l'envers — n'a
+        // jamais eu ce réglage, et personne ne l'a jamais réclamé. Une table
+        // de multiplication VA DE UN À DIX ; c'est ce que l'élève apprend par
+        // cœur et ce que le professeur veut faire réviser. Douze ne sert
+        // qu'aux tables anglo-saxonnes, cinq ne sert à rien.
+        //
+        // Le réglage reste, caché : il vaut dix, le générateur le lit, et un
+        // parcours ancien qui portait onze continue de fonctionner.
+        { id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10,
+            min: 5, max: 12, cache: true }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;

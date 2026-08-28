@@ -3034,6 +3034,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-etape-nb::-webkit-outer-spin-button,
 .cfg-etape-nb::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .cfg-etape-unite { font-size: .68rem; font-weight: 700; color: var(--text-muted); }
+/* Ce qu'un réglage absent veut dire — voir la branche « évaluation » de
+   `glissiereDouble`. Un réglage qu'on retire sans un mot se lit comme un
+   oubli, et le professeur cherche ce qui n'existe pas. */
+.cfg-etape-note {
+    margin: 6px 0 0; font-size: .76rem; line-height: 1.35; color: var(--text-muted);
+}
+.cfg-etape-note b { color: var(--text-main); }
 /* LA PHRASE ET LA DURÉE SE LISENT ENSEMBLE. « 14 bonnes réponses exigées sur
    20 » et « ≈ 6 min » répondent à la même question — ce que cette étape
    demande —, et un professeur qui prépare son heure a besoin des deux d'un
@@ -3446,18 +3453,33 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    390 px, dix colonnes en feraient 27 — on repasse donc à cinq, soit deux
    rangées ÉGALES (et non une pleine et une orpheline, comme le faisait
    `auto-fill`). Le nombre exact de colonnes n'est rendu que lorsque le
-   panneau a la largeur de le porter. */
+   panneau a la largeur de le porter.
+
+   C'EST LA LARGEUR DU PANNEAU QUI DÉCIDE, PAS CELLE DE L'ÉCRAN. Rémy, sur les
+   tables de Flash Mult : « les cases à cocher, ici, sont illisibles et
+   devraient utiliser deux lignes. » Le repli à cinq colonnes existait déjà —
+   mais il était accroché à `@media (max-width: 900px)`, donc à la fenêtre. Sur
+   un ordinateur, la fenêtre est large et les dix colonnes revenaient… dans la
+   colonne de réglages du professeur, qui fait trois cents pixels. Trente
+   pixels par tuile, la coche qui déborde, la dixième coupée.
+
+   Une requête de CONTENEUR pose la question qui compte : « ai-je la place,
+   moi ? » — et la réponse est la même sur un téléphone et dans une colonne
+   étroite d'un grand écran, ce qui est exactement le comportement voulu. */
+.cfg-field--wide { container-type: inline-size; }
 .cfg-chips--grille { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@container (min-width: 620px) {
+    .cfg-chips--grille { grid-template-columns: repeat(var(--cfg-cols, 5), minmax(0, 1fr)); }
+}
 @media (min-width: 900px) {
-    /* Sur un écran large, le panneau s'élargit UNIQUEMENT s'il contient une
-       grille de tuiles à aligner. Élargi dans tous les cas, il laissait une
-       trentaine de centimètres de vide entre chaque libellé et son champ pour
-       trois réglages qui n'en demandaient pas tant : l'œil devait traverser le
-       panneau pour relier les deux. */
+    /* Sur un écran large, la feuille de l'élève s'élargit UNIQUEMENT si elle
+       contient une grille de tuiles à aligner. Élargie dans tous les cas, elle
+       laissait une trentaine de centimètres de vide entre chaque libellé et son
+       champ pour trois réglages qui n'en demandaient pas tant. Celle-ci reste
+       une vraie question d'écran : c'est la fenêtre qui autorise la largeur. */
     #student-config-modal .modal-panel-sm-left:has(.cfg-chips--grille) {
         width: 680px !important; max-width: 92vw;
     }
-    .cfg-chips--grille { grid-template-columns: repeat(var(--cfg-cols, 5), minmax(0, 1fr)); }
 }
 .cfg-chips--grille .cfg-chip {
     position: relative; width: 100%; min-width: 0; padding: 0;

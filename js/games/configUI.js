@@ -17,7 +17,8 @@ import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
 import { makeRng } from '../core/ids.js';
 import {
-    ajusterDuo, phraseDuo, seuilPourMode, quotaDemande, MIN_ETAPE, MAX_ETAPE
+    ajusterDuo, phraseDuo, seuilPourMode, quotaDemande, seuilConseille,
+    MIN_ETAPE, MAX_ETAPE
 } from '../core/seuilEtape.js';
 import { paliersAide, rangsEnMots, palierEnMots } from '../core/apercuAide.js';
 // La répartition explicite des phases — voir `apercuAideHtml`.
@@ -345,14 +346,25 @@ export function glissiereDouble({ idQuestions, idExigees, label, aide, aideId, m
     const q = duo.questions;
     const actif = !evaluation && quota;
     const tete = `<label class="cfg-label" for="${idQuestions}">${label}${infoBtn(aide, aideId)}</label>`;
-    return `<div class="cfg-field cfg-etape${evaluation ? ' cfg-etape--sans-seuil' : ''}" data-duo-boite>
+    return `<div class="cfg-field cfg-etape${evaluation ? ' cfg-etape--sans-seuil' : ''}" data-duo-boite data-duo-q="${questions}">
         ${tete}
         ${evaluation ? `
         <div class="cfg-etape-ligne">
             <div class="cfg-etape-rail cfg-etape-rail--eteint"><div class="cfg-duo-piste"></div></div>
             ${boutQuestions(idQuestions, min, max, q)}
         </div>
-        <input type="hidden" id="${idExigees}" value="${duo.exigees}">` : `
+        <input type="hidden" id="${idExigees}" value="${duo.exigees}">
+        <!-- POURQUOI LE SEUIL A DISPARU. Remy, devant ce panneau : « pourquoi
+             Flash Mult ne permet pas de definir le nombre de questions
+             obligatoires pour passer a la suivante ? »
+             Ce n'etait pas Flash Mult : c'etait le mode du parcours. En
+             evaluation, une etape se NOTE, elle ne se valide pas — donc pas
+             de seuil a franchir. Mais l'interface se contentait de retirer la
+             commande, sans dire ni pourquoi ni ou la retrouver. On ne devine
+             pas qu'un reglage manquant depend d'un autre ecran. -->
+        <p class="cfg-etape-note">Une évaluation se note : aucune étape n'exige
+            de seuil pour ouvrir la suivante. Le barème se règle dans
+            <b>Mode &amp; barème</b>.</p>` : `
         <div class="cfg-etape-ligne">
             <div class="cfg-etape-rail${actif ? '' : ' cfg-etape-rail--eteint'}" data-duo-rail>
                 <div class="cfg-duo-piste"></div>
@@ -392,11 +404,31 @@ function majDuo(boite) {
     if (!nb) return;
     const evaluation = boite.classList.contains('cfg-etape--sans-seuil');
     const min = Number(nb.min);
-    const duo = ajusterDuo({
-        questions: Number(nb.value),
-        exigees: ex ? Number(ex.value) : Number(nb.value),
-        max: Number(nb.max)
-    });
+
+    // LES 70 % SUIVENT LE NOMBRE DE QUESTIONS — mais seulement tant que
+    // personne n'y a touché.
+    //
+    // Sans cela, le défaut que Rémy vient de demander se dissout au premier
+    // geste : onze sur quinze, on passe à vingt questions, et l'exigence
+    // tombe à 55 % sans que rien ne le dise. On ne recalcule donc QUE si le
+    // rail porte encore, à la question près, le conseil de l'ancien total :
+    // c'est la signature d'une valeur que le professeur n'a pas choisie. Dès
+    // qu'il l'a déplacée, elle est à lui et on n'y touche plus.
+    //
+    // ET ON CALCULE SUR UNE VARIABLE, PAS SUR LE RAIL. Écrire directement dans
+    // `ex.value` ici ne marche pas : le rail porte encore l'ANCIEN maximum, et
+    // le navigateur écrête tout seul. Mesuré — passer de 15 à 30 questions
+    // écrivait 21, que le rail ramenait à 15 ; puis retomber à 7 donnait « il
+    // faut TOUT réussir ». Le reste de cette fonction reborne d'abord et pose
+    // ensuite, dans cet ordre exactement, pour la même raison.
+    const ancien = Math.round(Number(boite.dataset.duoQ)) || 0;
+    const nouveau = Math.round(Number(nb.value)) || 0;
+    let exigees = ex ? Number(ex.value) : Number(nb.value);
+    if (ex && ancien && nouveau && ancien !== nouveau && exigees === seuilConseille(ancien)) {
+        exigees = seuilConseille(nouveau);
+    }
+    if (nouveau) boite.dataset.duoQ = String(nouveau);
+    const duo = ajusterDuo({ questions: nouveau, exigees, max: Number(nb.max) });
     const actif = !evaluation && quotaCoche(boite);
 
     // LE RAIL SE REBORNE AVANT DE SE REPOSITIONNER. Poser la valeur d'abord la
@@ -1178,8 +1210,14 @@ export function apercuAideHtml(params, total, exoId = '', choisie = 0, reglable 
                 ${bulleApercuHtml(zones, i, params, total, exoId)}
             </div>
             <div class="cfg-bande" data-bande>${bandes}${reglable ? bornes : ''}</div>
-            <div class="cfg-legendes">${legende}</div>
             ${reglable ? commandesZone(zones, i, possibles) : ''}
+            <!-- LA LEGENDE EN DERNIER. Remy : « il vaut mieux ecrire la
+                 legende sous les options 2, 3, 4, clavier. » Elle separait la
+                 frise de ses propres commandes : on cliquait une zone en haut,
+                 on la reglait en bas, et trois lignes de texte passaient au
+                 milieu. Ce qui se touche est maintenant d'un seul tenant, et
+                 le recapitulatif ferme le bloc. -->
+            <div class="cfg-legendes">${legende}</div>
         </div>`;
 }
 
@@ -2015,10 +2053,11 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         aideId: 'cfg-threshold-tip',
         min: MIN_ETAPE, max: MAX_ETAPE,
         questions: nbEtape,
-        // Le rail garde une valeur MÊME SANS QUOTA : sept sur dix, pour que
-        // recocher l'interrupteur propose quelque chose de sensé au lieu de
-        // repartir à « il faut tout réussir ».
-        exigees: quotaDemande(step) ? step.threshold : Math.ceil(nbEtape * 0.7),
+        // Le rail garde une valeur MÊME SANS QUOTA, pour que recocher
+        // l'interrupteur propose quelque chose de sensé au lieu de repartir à
+        // « il faut tout réussir ». C'est le même conseil que celui posé à la
+        // création de l'étape — une seule règle, dans le noyau.
+        exigees: quotaDemande(step) ? step.threshold : seuilConseille(nbEtape),
         quota: quotaDemande(step),
         evaluation, exoId: exo.id || ''
     });

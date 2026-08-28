@@ -17,6 +17,7 @@ import { shortId } from './ids.js';
 import { questionsConseillees } from './duree.js';
 import { getGenerator } from './registry.js';
 import { SEUIL_DEFAUT } from './recompenses.js';
+import { seuilConseille } from './seuilEtape.js';
 
 export const PATH_VERSION = 2;
 
@@ -55,11 +56,18 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         // douze pour une grille de mots croisés, quarante pour un duel. On le
         // demande donc ici, une fois pour toutes.
         nbItems: opts.nbItems || questionsConseilleesDe(exerciseId),
-        // `null` = AUCUNE EXIGENCE, et non « tout réussir » : c'est ce que le
-        // meneur en fait depuis toujours (`seuilRequis` rend 0), et c'est ce dont
-        // l'évaluation et les jeux de récompense ont besoin — ils se notent ou se
-        // gagnent, ils ne se valident pas. Voir core/seuilEtape.js.
-        threshold: opts.threshold !== undefined ? opts.threshold : null,
+        // SEPT SUR DIX PAR DÉFAUT. Rémy : « de base, mets 70 % de bonnes
+        // réponses exigées comme réglage par défaut. » L'étape ne demandait
+        // rien : « aller au bout » validait un élève qui s'était trompé
+        // partout. Voir `seuilConseille` dans core/seuilEtape.js.
+        //
+        // `null` reste possible et veut dire AUCUNE EXIGENCE — c'est ce dont
+        // l'évaluation et les jeux de récompense ont besoin, eux se notent ou
+        // se gagnent, ils ne se valident pas. Mais ce n'est plus le défaut :
+        // il faut désormais le demander, en décochant le quota.
+        threshold: opts.threshold !== undefined
+            ? opts.threshold
+            : seuilConseille(opts.nbItems || questionsConseilleesDe(exerciseId)),
         weight: opts.weight || 1,
         timeLimit: opts.timeLimit || null,
         // Rejeu exact d'une question passée : la graine suffit à la régénérer,

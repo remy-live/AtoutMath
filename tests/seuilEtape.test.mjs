@@ -9,7 +9,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
-    MIN_ETAPE, MAX_ETAPE, seuilRequis, ajusterDuo, seuilPourMode, phraseDuo, quotaDemande
+    MIN_ETAPE, MAX_ETAPE, seuilRequis, ajusterDuo, seuilPourMode, phraseDuo, quotaDemande,
+    seuilConseille, PART_EXIGEE
 } from '../js/core/seuilEtape.js';
 
 // --- Ce que vaut vraiment un seuil ------------------------------------------
@@ -85,15 +86,18 @@ test('même en évaluation, l\'absurde reste impossible', () => {
 
 test('DEUX POIGNÉES SANS LÉGENDE SE LISENT COMME UN INTERVALLE', () => {
     // « de 7 à 10 », ce qui n'est pas du tout ce qu'elles disent. La phrase
-    // nomme donc les deux valeurs, et dit la marge en clair.
+    // nomme donc les deux valeurs.
     const p = phraseDuo({ questions: 10, exigees: 7 });
     assert.ok(p.includes('7') && p.includes('10'), p);
-    assert.ok(/3 erreurs tolérées/.test(p), p);
+
+    // ET ELLE S'ARRÊTE LÀ. Rémy : « ne mets pas "2 erreurs tolérées", le prof
+    // n'est pas idiot. » Elle se terminait sur la soustraction qu'elle venait
+    // d'écrire, sous couvert de la reformuler.
+    assert.ok(!/tolér/.test(p), p);
 
     assert.match(phraseDuo({ questions: 10, exigees: 10 }), /TOUT réussir/);
     assert.match(phraseDuo({ questions: 10, exigees: 7, evaluation: true }), /sans seuil/);
-    // Une seule erreur tolérée reste au singulier.
-    assert.match(phraseDuo({ questions: 5, exigees: 4 }), /1 erreur tolérée/);
+    assert.match(phraseDuo({ questions: 5, exigees: 4 }), /^4 bonnes réponses exigées sur 5\.$/);
     assert.match(phraseDuo({ questions: 1, exigees: 1 }), /^1 question /);
 });
 
@@ -149,4 +153,40 @@ test('LE MAXIMUM DU RAIL EST LE NOMBRE TAPÉ : « 11 sur 10 » n\'existe pas', (
     // au-dessus — l'état exact qu'on veut rendre irreprésentable.
     assert.deepEqual(ajusterDuo({ questions: 4, exigees: 9, bouge: 'questions' }),
         { questions: 4, exigees: 4 });
+});
+
+test('SEPT SUR DIX PAR DÉFAUT, ET UNE ÉTAPE NEUVE LE DEMANDE VRAIMENT', async () => {
+    // Rémy : « de base, mets 70 % de bonnes réponses exigées comme réglage par
+    // défaut. » L'étape ne demandait rien du tout : « aller au bout » validait
+    // un élève qui s'était trompé partout, le parcours avançait, et la carte
+    // s'ouvrait sans que la notion soit acquise.
+    assert.equal(PART_EXIGEE, 0.7);
+
+    // ON ARRONDIT VERS LE HAUT : sur six questions, 70 % font 4,2 — quatre
+    // serait 67 %, en dessous de ce qu'on annonce.
+    assert.equal(seuilConseille(6), 5);
+    assert.equal(seuilConseille(10), 7);
+    assert.equal(seuilConseille(15), 11);
+    assert.equal(seuilConseille(20), 14);
+
+    // Jamais zéro, jamais plus que le total, quoi qu'on lui donne.
+    for (const n of [1, 2, 3, 7, 33, 50]) {
+        const t = seuilConseille(n);
+        assert.ok(t >= 1 && t <= n, `${n} questions → ${t}`);
+        assert.ok(t / n >= PART_EXIGEE - 1e-9, `${n} questions → ${t}, sous les 70 %`);
+    }
+    assert.equal(seuilConseille(0), 1);
+    assert.equal(seuilConseille(null), 1);
+
+    // ET L'ÉTAPE NEUVE LE PORTE. C'est le bout qui compte : la règle pouvait
+    // exister sans que `makeStep` s'en serve, et c'était le cas jusqu'ici.
+    const { makeStep } = await import('../js/core/path.js');
+    const st = makeStep('calc-add');
+    assert.equal(st.threshold, seuilConseille(st.nbItems));
+    assert.equal(quotaDemande(st), true, 'le quota est demandé, donc coché à l\'ouverture');
+    assert.equal(seuilRequis(st), st.threshold);
+
+    // Mais « aucune exigence » reste possible — il faut le demander.
+    assert.equal(makeStep('calc-add', {}, { threshold: null }).threshold, null);
+    assert.equal(quotaDemande(makeStep('calc-add', {}, { threshold: null })), false);
 });

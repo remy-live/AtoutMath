@@ -130,7 +130,13 @@ export function direDuree(minSec, maxSec) {
 
 function enMinutes(sec) {
     const m = Math.round(sec / 60);
-    if (m <= 10) return m;                 // sous dix minutes, la minute compte
+    // JAMAIS ZÉRO MINUTE. Rémy l'a vu sur une étape courte : « ⏱ 0 min ».
+    // Sept questions rapides font une quarantaine de secondes, qui s'arrondit
+    // à zéro — et une durée nulle ne dit pas « c'est court », elle dit « il ne
+    // se passe rien ». En dessous de la minute, on annonce la minute : c'est
+    // faux d'une demi-minute, ce qui est sans conséquence, là où zéro est
+    // faux sur ce qu'on cherchait à savoir.
+    if (m <= 10) return Math.max(1, m);    // sous dix minutes, la minute compte
     return Math.round(m / 5) * 5;          // au-delà, arrondir au quart d'heure
 }
 
