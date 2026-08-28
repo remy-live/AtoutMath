@@ -2087,6 +2087,15 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     margin: 0 3px;
     background: var(--border);
 }
+/* CE QUI APPARTIENT AU PARCOURS DISPARAÎT AVEC LUI — voir `outilsDuParcours`
+   dans ui/builder.js. Rémy : « plein d'icônes n'ont pas à apparaître tant que
+   le parcours n'est pas chargé ».
+
+   `!important` À CONTRECŒUR, ET IL EST NÉCESSAIRE : `.preview-mode-group` et
+   `.toolbar-sep` portent tous deux un `display` explicite, qui l'emporte sur
+   l'attribut `hidden`. Sans lui, on écrirait « caché » et l'on verrait le
+   bouton — le pire des deux mondes, parce que le code jurerait qu'il a raison. */
+.toolbar-sep[hidden], .preview-mode-group[hidden] { display: none !important; }
 .toolbar-icon-btn--outil { color: var(--text-muted); box-shadow: none; }
 .toolbar-icon-btn--outil:hover { color: var(--text-main); }
 
@@ -2638,92 +2647,93 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-prog--ici .cfg-prog-nom { color: var(--primary); }
 .cfg-prog-dit { font-size: .71rem; line-height: 1.3; color: var(--text-muted); }
 
-/* LA BANDE DE PROGRESSION — voir `apercuAideHtml` dans games/configUI.js.
-   Rémy, cinquième passage : « chaque étape est présentée en ligne. Et en
-   dessous on a une ligne avec la structure de l'exercice et un slide qui,
-   lorsqu'on le déplace, montre l'aperçu sous une petite modale qui bouge avec
-   le slide. Il faut que ce soit clair. »
+/* LA FRISE DE PROGRESSION — voir `apercuAideHtml` dans games/configUI.js.
+   Rémy : « je mettrai plutôt une flèche sous la frise pour naviguer dessus, et
+   quand on clique sur une zone, on a au-dessus l'aperçu. »
 
-   LES TROIS CARTES FAISAIENT TROIS ÉCRANS SUR UN TÉLÉPHONE. On ne voyait
-   jamais la progression entière d'un coup d'œil — or c'est cela qu'un
-   professeur regarde : la FORME de l'escalier, pas le détail d'une marche. Une
-   bande où la largeur de chaque zone EST son nombre de questions se lit comme
-   un diagramme, sans compter quoi que ce soit. */
+   DEUX OBJETS, DEUX GESTES, ET RIEN QUI SE RESSEMBLE. La frise se CLIQUE — on
+   choisit la zone à régler ; la flèche, en dessous, se GLISSE — on promène
+   l'aperçu. La version d'avant mettait la tête de lecture DANS la bande, où
+   elle était le sosie des deux bornes : trois barres blanches identiques dont
+   une seule ne se tirait pas. */
 .cfg-scene {
     position: relative; margin-top: 6px;
-    /* La bulle vit au-dessus de la bande : on lui réserve sa hauteur, sinon
+    /* ON NE SERT PAS D'ANCRE AU DÉFILEMENT. Le navigateur déplace `scrollTop`
+       quand le contenu au-dessus du point de lecture change de hauteur ; ici
+       c'est NOUS qui changeons ce contenu, à chaque clic sur une zone, et son
+       aide se retourne contre nous. Rémy : « attention à ce que cela ne fasse
+       pas sauter le scroll ». */
+    overflow-anchor: none;
+    /* La bulle vit au-dessus de la frise : on lui réserve sa hauteur, sinon
        son apparition ferait sauter tout ce qui suit. */
-    padding-top: 118px;
+    padding-top: 122px;
 }
 .cfg-bande {
-    position: relative; display: flex; height: 34px; width: 100%;
-    border-radius: 10px; overflow: visible; cursor: pointer;
-    touch-action: pan-y;            /* le glissé horizontal nous appartient */
+    position: relative; display: flex; height: 38px; width: 100%;
+    border-radius: 10px; overflow: hidden;
     background: var(--bg-hover);
 }
 .cfg-zone {
     display: flex; align-items: center; justify-content: center;
-    min-width: 0; font-weight: 900; font-size: .9rem; color: #fff;
-    overflow: hidden; white-space: nowrap; user-select: none;
+    min-width: 0; padding: 0; border: none; cursor: pointer;
+    font: inherit; font-weight: 900; font-size: .95rem; color: #fff;
+    overflow: hidden; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
     transition: flex-grow .12s ease;
 }
-.cfg-zone:first-child { border-radius: 10px 0 0 10px; }
-.cfg-zone:last-child { border-radius: 0 10px 10px 0; }
-/* TROIS COULEURS QUI DISENT UNE PROGRESSION, du plus aidé au plus autonome :
-   le vert rassure, le bleu travaille, le violet est le but. La légende reprend
-   exactement ces trois teintes, sinon il faudrait relire pour associer. */
-.cfg-zone--deux { background: #10b981; }
-.cfg-zone--quatre { background: #3b82f6; }
-.cfg-zone--clavier { background: #7c3aed; }
-.cfg-zone--vide { flex-grow: 0 !important; }
-/* EN ADAPTATIF, LA BANDE EST UN EXEMPLE, PAS UNE CONSIGNE : elle se raye. Ces
-   rangs-là sont ceux d'un élève qui suivrait la marche moyenne, et deux élèves
-   n'ont pas la même. */
+/* LA ZONE CHOISIE EST CREUSÉE, pas cerclée : un liseré intérieur reste visible
+   même sur une zone d'une seule question, là où une bordure la ferait
+   disparaître entièrement sous son propre trait. */
+.cfg-zone--ici { box-shadow: inset 0 0 0 3px rgba(255,255,255,.9); }
+.cfg-zone span { pointer-events: none; }
+/* SIX COULEURS QUI DISENT UNE PROGRESSION, du plus aidé au plus autonome. La
+   légende reprend exactement ces teintes, sinon il faudrait relire pour
+   associer. */
+.cfg-zone--2 { background: #10b981; }
+.cfg-zone--3 { background: #14b8a6; }
+.cfg-zone--4 { background: #3b82f6; }
+.cfg-zone--6 { background: #6366f1; }
+.cfg-zone--t { background: #a855f7; }
+.cfg-zone--k { background: #7c3aed; }
+/* EN ADAPTATIF, LA FRISE EST UN EXEMPLE, PAS UNE CONSIGNE : elle se raye. Ces
+   rangs-là sont ceux d'un élève qui suivrait la marche moyenne. */
 .cfg-scene--auto .cfg-zone {
     background-image: repeating-linear-gradient(45deg,
         rgba(255,255,255,.28) 0 6px, transparent 6px 12px);
+    cursor: default;
 }
-.cfg-scene--auto .cfg-bande { cursor: default; }
 
-/* LA TÊTE DE LECTURE : où l'on regarde. Un trait blanc cerné de sombre, pour
-   rester visible sur les trois couleurs de zone. */
-.cfg-tete {
-    position: absolute; top: -4px; bottom: -4px; width: 3px;
-    margin-left: -1.5px; border-radius: 2px; pointer-events: none;
-    background: #fff; box-shadow: 0 0 0 1.5px rgba(15,23,42,.55);
+/* LA FLÈCHE, SOUS LA FRISE : ce qui se regarde, séparé de ce qui se règle.
+   Quarante-quatre pixels de haut avec sa zone de prise — la taille d'une cible
+   tactile — pour un triangle qui n'en fait que dix. */
+.cfg-fleches { position: relative; height: 22px; }
+.cfg-fleche {
+    position: absolute; top: 0; width: 44px; height: 22px; margin-left: -22px;
+    padding: 0; border: none; background: transparent; cursor: ew-resize;
+    touch-action: none;
 }
-/* LES BORNES : les deux frontières qu'on tire. Elles débordent de la bande en
-   hauteur pour être attrapables au doigt sans viser — quarante-quatre pixels
-   de haut, c'est la taille d'une cible tactile. */
-.cfg-borne {
-    position: absolute; top: -6px; height: calc(100% + 12px); width: 26px;
-    margin-left: -13px; padding: 0; border: none; background: transparent;
-    cursor: ew-resize; touch-action: none;
+.cfg-fleche::before {
+    content: ''; position: absolute; left: 50%; top: 1px;
+    width: 0; height: 0; margin-left: -8px;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-bottom: 9px solid var(--primary);
 }
-.cfg-borne::before {
-    content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px;
-    margin-left: -2px; border-radius: 3px; background: var(--bg-panel);
-    box-shadow: 0 0 0 1.5px rgba(15,23,42,.35);
+.cfg-fleche::after {
+    content: ''; position: absolute; left: 50%; top: 10px; bottom: 2px;
+    width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--primary);
 }
-.cfg-borne::after {
-    content: ''; position: absolute; left: 50%; top: 50%;
-    width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
-    background: var(--bg-panel); box-shadow: var(--shadow-md), 0 0 0 1.5px rgba(15,23,42,.35);
-}
-.cfg-borne:hover::after, .cfg-borne:active::after { background: var(--primary); }
-.cfg-borne:focus-visible::after { box-shadow: 0 0 0 3px var(--warning); }
+.cfg-fleche:focus-visible::before { border-bottom-color: var(--warning); }
 
-/* LA BULLE : la vraie question du rang qu'on montre du doigt.
+/* LA BULLE : la vraie question du rang que la flèche montre.
 
-   AU-DESSUS DE LA BANDE, JAMAIS EN DESSOUS. Sur une tablette, le doigt couvre
+   AU-DESSUS DE LA FRISE, JAMAIS EN DESSOUS. Sur une tablette, le doigt couvre
    ce qu'il touche : une bulle posée sous le point de contact serait invisible
    exactement pendant qu'on la consulte. */
 .cfg-bulle {
-    position: absolute; top: 0; width: 172px; margin-left: -86px;
-    /* Elle ne sort jamais du panneau : `clamp` la retient aux deux bords,
-       même quand la tête de lecture est sur la première ou la dernière
-       question. Sans cela, la bulle de la question 1 débordait à gauche. */
-    left: clamp(86px, var(--cfg-bulle-x, 50%), calc(100% - 86px));
+    position: absolute; top: 0; width: 176px; margin-left: -88px;
+    /* Elle ne sort jamais du panneau : `clamp` la retient aux deux bords, même
+       quand la flèche est sur la première ou la dernière question. */
+    left: clamp(88px, var(--cfg-bulle-x, 50%), calc(100% - 88px));
     padding: 8px 10px 10px; border-radius: 12px; box-sizing: border-box;
     background: var(--bg-panel); border: 2px solid var(--primary);
     box-shadow: var(--shadow-md); pointer-events: none;
@@ -2754,8 +2764,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 /* LE PAVÉ DOIT RESSEMBLER À UN PAVÉ. Étiré sur toute la largeur de la bulle,
    il donnait trois rangées de barres grises qu'on lisait comme des
-   propositions vides — c'est-à-dire l'exact contraire de ce qu'il annonce. On
-   le ramène donc à sa taille de clavier, centré, avec des touches carrées. */
+   propositions vides — l'exact contraire de ce qu'il annonce. */
 .cfg-bulle-pave {
     display: grid; grid-template-columns: repeat(3, 20px); gap: 3px;
     justify-content: center; margin-top: 2px;
@@ -2765,28 +2774,73 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: var(--bg-hover); border: 1px solid var(--border);
 }
 
-/* LA LÉGENDE PORTE LES RANGS — c'est l'information que Rémy réclamait depuis le
-   début (« comment on sait le nombre de questions ? »), et elle reste lisible
+/* LA LÉGENDE PORTE LES RANGS — l'information que Rémy réclamait depuis le
+   début (« comment on sait le nombre de questions ? »), et qui reste lisible
    même quand une zone est trop étroite pour porter son propre nom. */
-.cfg-legendes {
-    display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
-}
+.cfg-legendes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
 .cfg-leg { display: flex; align-items: center; gap: 5px; font-size: .74rem; }
-.cfg-leg i { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
-.cfg-leg--deux i { background: #10b981; }
-.cfg-leg--quatre i { background: #3b82f6; }
-.cfg-leg--clavier i { background: #7c3aed; }
+.cfg-leg i, .cfg-zpuce { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.cfg-leg--2 i, .cfg-zpuce--2 { background: #10b981; }
+.cfg-leg--3 i, .cfg-zpuce--3 { background: #14b8a6; }
+.cfg-leg--4 i, .cfg-zpuce--4 { background: #3b82f6; }
+.cfg-leg--6 i, .cfg-zpuce--6 { background: #6366f1; }
+.cfg-leg--t i, .cfg-zpuce--t { background: #a855f7; }
+.cfg-leg--k i, .cfg-zpuce--k { background: #7c3aed; }
 .cfg-leg b { font-weight: 700; color: var(--text-main); }
 .cfg-leg em {
     font-style: normal; font-weight: 800; color: var(--text-muted);
     font-variant-numeric: tabular-nums;
 }
-.cfg-leg--vide { opacity: .45; }
+.cfg-leg--ici b, .cfg-leg--ici em { color: var(--primary); }
+
+/* LES COMMANDES DE LA ZONE CHOISIE — et d'elle seule.
+   Rémy : « un bouton pour ajouter ou enlever le nombre de propositions ; on
+   peut aussi enlever la zone, et on a un bouton pour en rajouter. »
+   Une seule zone à la fois, ce qui tient sur deux lignes. C'était tout le
+   défaut des trois cartes : elles montraient les commandes des trois phases en
+   même temps, alors qu'on n'en règle jamais qu'une. */
+.cfg-zreglages {
+    margin-top: 10px; padding: 9px 10px; border-radius: 12px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+}
+.cfg-zligne {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; flex-wrap: wrap;
+}
+.cfg-zquoi {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .78rem; font-weight: 800; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .02em;
+}
+.cfg-zpas { display: flex; align-items: center; gap: 8px; }
+.cfg-zpas b {
+    min-width: 8.5em; text-align: center;
+    font-size: .84rem; font-weight: 800; color: var(--text-main);
+}
+.cfg-zbtn {
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; padding: 0;
+    border: 1.5px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font: inherit; font-weight: 900; font-size: 1.05rem;
+    line-height: 1;
+}
+.cfg-zbtn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.cfg-zbtn:disabled { opacity: .35; cursor: default; }
+.cfg-zligne--fin { justify-content: space-between; }
+.cfg-zsupp, .cfg-zplus {
+    padding: 7px 11px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--bg-app);
+    font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-muted);
+}
+.cfg-zsupp:hover:not(:disabled) { border-color: var(--danger, #dc2626); color: var(--danger, #dc2626); }
+.cfg-zplus:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.cfg-zsupp:disabled, .cfg-zplus:disabled { opacity: .35; cursor: default; }
 
 @media (max-width: 520px) {
-    .cfg-scene { padding-top: 112px; }
+    .cfg-scene { padding-top: 116px; }
     .cfg-legendes { gap: 3px 10px; }
     .cfg-leg { font-size: .7rem; }
+    .cfg-zpas b { min-width: 7em; font-size: .78rem; }
 }
 
 /* Les traits sur le rail, à la même abscisse : la graduation se voit même
@@ -8196,9 +8250,12 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     background: var(--bg-hover);
 }
 .pstep-z { display: block; min-width: 0; }
-.pstep-z--deux { background: #10b981; }
-.pstep-z--quatre { background: #3b82f6; }
-.pstep-z--clavier { background: #7c3aed; }
+.pstep-z--2 { background: #10b981; }
+.pstep-z--3 { background: #14b8a6; }
+.pstep-z--4 { background: #3b82f6; }
+.pstep-z--6 { background: #6366f1; }
+.pstep-z--t { background: #a855f7; }
+.pstep-z--k { background: #7c3aed; }
 /* L'adaptatif se raye, comme la grande bande : ces proportions-là sont un
    exemple, pas une consigne. */
 .pstep-bande--auto .pstep-z {

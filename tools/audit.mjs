@@ -254,6 +254,21 @@ async function tourDesPanneaux(p, seau) {
         await clic('#btn-role');
         await p.waitForTimeout(800);
     });
+    // UN PARCOURS D'ABORD, SINON LA MOITIÉ DE LA BARRE N'EXISTE PAS.
+    //
+    // Les commandes qui appartiennent au parcours — mode & barème, tester,
+    // code élève, imprimer, les trois aperçus — sont maintenant CACHÉES tant
+    // qu'aucune étape n'est posée (voir `outilsDuParcours` dans ui/builder.js).
+    // L'audit balayait donc huit boutons de moins sans que personne s'en
+    // aperçoive : il vérifiait consciencieusement une barre vide.
+    await p.evaluate(async () => {
+        const s = await import('/js/core/state.js');
+        const { makeStep } = await import('/js/core/path.js');
+        const bd = await import('/js/ui/builder.js');
+        s.state.currentPath.steps = [makeStep('calc-add', {}, { nbItems: 10, threshold: 7 })];
+        bd.renderTeacherPath();
+    });
+    await p.waitForTimeout(300);
     const boutons = await p.evaluate(() =>
         [...document.querySelectorAll('#builder-view button[id], header button[id], .toolbar-icon-btn')]
             .filter(b => b.offsetParent !== null).map(b => b.id).filter(Boolean));

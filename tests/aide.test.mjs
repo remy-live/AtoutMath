@@ -15,7 +15,9 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     aideAuRang, repartitionDe, repartitionDuMode, ecrireRepartition,
-    aideSelonEtat, etatDepart, apresReponse, affine
+    aideSelonEtat, etatDepart, apresReponse, affine,
+    lireZones, ecrireZones, normaliserZones, zonesDuMode, zoneDuRang,
+    modeVoisin, MODES_ZONE
 } from '../js/core/aide.js';
 
 test('la répartition s\'écrit et se relit sans se déformer', () => {
@@ -133,71 +135,121 @@ test('la répartition écrite passe AVANT l\'échelle adaptative', () => {
         { propositions: 2, clavier: false });
 });
 
-// --- LA BANDE DE PROGRESSION -------------------------------------------------
+// --- LES ZONES : LA RÉPARTITION, GÉNÉRALISÉE ---------------------------------
 //
-// Rémy, cinquième passage sur ce bloc : « chaque étape est présentée en ligne.
-// Et en dessous on a une ligne avec la structure de l'exercice et un slide qui,
-// lorsqu'on le déplace, montre l'aperçu sous une petite modale qui bouge avec
-// le slide. Il faut que ce soit clair. »
+// Rémy, sixième passage : « quand on clique sur une zone, on a au-dessus
+// l'aperçu, et un bouton pour ajouter ou enlever le nombre de propositions. On
+// peut aussi enlever la zone, et on a un bouton pour en rajouter. »
 //
-// Les trois cartes faisaient trois écrans sur un téléphone. La bande les
-// remplace : la largeur de chaque zone EST son nombre de questions, et les deux
-// bornes se tirent au doigt. Ces tests gardent l'arithmétique de ce geste, qui
-// est la seule chose qu'on puisse vérifier sans navigateur.
+// C'était une demande de FOND, pas d'interface : le modèle à deux nombres
+// supposait trois phases fixes — deux propositions, quatre, puis le clavier —
+// et cette hypothèse commode interdisait de commencer à trois, de faire deux
+// paliers séparés, ou de n'en proposer que six.
 
-test('TIRER LA PREMIÈRE BORNE POUSSE LA SECONDE, jamais l\'inverse', () => {
-    // C'est la règle qui rouvre le cul-de-sac du double curseur : bloquer la
-    // première borne contre la seconde rendait le réglage impossible à défaire
-    // dès qu'elles se touchaient.
-    const total = 20;
-    // On part de 3 questions à deux propositions, 12 à quatre, 5 au clavier.
-    let { deux, quatre } = repartitionDe({ repartition: '3-12' }, total);
-    assert.deepEqual([deux, quatre], [3, 12]);
-    // Le doigt pose la première borne à la question 15 : les quatre
-    // propositions n'ont plus la place, elles reculent.
-    deux = 15;
-    if (deux + quatre > total) quatre = total - deux;
-    assert.deepEqual([deux, quatre], [15, 5]);
-    assert.deepEqual(repartitionDe({ repartition: ecrireRepartition(deux, quatre) }, total),
-        { deux: 15, quatre: 5, clavier: 0 });
-    // Et poussée jusqu'au bout, elle prend tout : c'est un réglage légitime —
-    // « rien que des deux propositions » — pas un état interdit.
-    deux = 20; quatre = 0;
-    assert.deepEqual(repartitionDe({ repartition: ecrireRepartition(deux, quatre) }, total),
-        { deux: 20, quatre: 0, clavier: 0 });
+test('ON RELIT L\'ANCIENNE ÉCRITURE SANS PERDRE LE RÉGLAGE', () => {
+    // Les parcours déjà enregistrés portent « 3-5 ». Les relire faux effacerait
+    // sans prévenir un réglage que le professeur a posé — ce serait la pire
+    // façon de changer un modèle de données.
+    const z = lireZones({ repartition: '3-5' }, 12);
+    assert.deepEqual(z, [{ n: 3, mode: '2' }, { n: 5, mode: '4' }, { n: 4, mode: 'k' }]);
+    // Et la nouvelle écriture dit la même chose, en plus explicite.
+    assert.deepEqual(lireZones({ repartition: '3:2,5:4,4:k' }, 12), z);
+    assert.equal(ecrireZones(z), '3:2,5:4,4:k');
+    // « auto » et le vide ne sont pas des zones : c'est l'absence de réglage.
+    for (const rien of ['auto', '', null, undefined]) {
+        assert.equal(lireZones({ repartition: rien }, 10), null);
+    }
 });
 
-test('LA SOMME DES TROIS ZONES FAIT TOUJOURS LE TOTAL', () => {
-    // C'est ce qui rend la bande infaillible : on ne saisit jamais la
-    // troisième zone, elle EST ce qui reste. Aucun geste ne peut donc écrire
-    // « 21 questions sur 20 ».
-    for (const total of [1, 3, 7, 12, 20, 50]) {
-        for (let rang = 1; rang <= total; rang++) {
-            // Le doigt sur la borne « deux », à chaque rang possible.
-            let deux = rang, quatre = Math.max(0, Math.min(total - deux, 5));
-            const r = repartitionDe({ repartition: ecrireRepartition(deux, quatre) }, total);
-            assert.equal(r.deux + r.quatre + r.clavier, total,
-                `borne à ${rang} sur ${total}`);
-            assert.ok(r.deux >= 0 && r.quatre >= 0 && r.clavier >= 0);
+test('LA DERNIÈRE ZONE ABSORBE LE RESTE — la somme est infaillible', () => {
+    // C'est la règle qui remplace « la troisième phase est ce qui reste » : on
+    // ne saisit jamais le total, donc on ne peut pas se tromper dessus.
+    for (const total of [1, 4, 7, 15, 20, 50]) {
+        for (const brut of ['3:2,5:4,2:k', '1:2', '9:2,9:4,9:6,9:k', '2:3,2:6']) {
+            const z = lireZones({ repartition: brut }, total);
+            assert.equal(z.reduce((s, x) => s + x.n, 0), total,
+                `« ${brut} » sur ${total} questions`);
+            assert.ok(z.every(x => x.n > 0), 'aucune zone vide ne survit');
+            assert.ok(z.length >= 1, 'il reste toujours une façon de répondre');
         }
     }
+    // Une répartition trop longue se coupe DANS L'ORDRE, et c'est le bon
+    // choix : le nombre de questions se règle ailleurs et peut baisser APRÈS
+    // qu'on a écrit les zones. Tronquer par la fin garde le DÉBUT de la
+    // progression — c'est-à-dire l'aide, qui est ce à quoi le professeur
+    // tenait ; tout ramener à la première zone lui ferait perdre son escalier.
+    assert.deepEqual(lireZones({ repartition: '3:2,5:4,4:k' }, 4),
+        [{ n: 3, mode: '2' }, { n: 1, mode: '4' }]);
+    // Et à une seule question, il ne reste que la première façon de répondre.
+    assert.deepEqual(lireZones({ repartition: '3:2,5:4,4:k' }, 1), [{ n: 1, mode: '2' }]);
 });
 
-test('LE RANG SOUS LE DOIGT reste dans les questions qui existent', () => {
-    // La tête de lecture se calcule d'un rapport entre 0 et 1 ; le premier
-    // pixel doit donner la question 1 et le dernier la dernière, sans jamais
-    // sortir — c'est ce qui plantait quand la bande mesurée était détachée du
-    // document et rendait une largeur nulle.
-    const rang = (t, total) => Math.max(1, Math.min(total,
-        Math.floor(Math.min(1, Math.max(0, t)) * total) + 1));
-    for (const total of [1, 5, 20, 50]) {
-        assert.equal(rang(0, total), 1);
-        assert.equal(rang(1, total), total);
-        assert.equal(rang(0.999999, total), total);
-        // Hors bornes des deux côtés : on ne sort pas de l'exercice.
-        assert.equal(rang(-3, total), 1);
-        assert.equal(rang(42, total), total);
+test('LE RANG SAIT DANS QUELLE ZONE IL TOMBE', () => {
+    const z = lireZones({ repartition: '3:2,5:4,2:k' }, 10);
+    assert.deepEqual(zoneDuRang(z, 1), { i: 0, de: 1, a: 3, zone: z[0] });
+    assert.deepEqual(zoneDuRang(z, 3), { i: 0, de: 1, a: 3, zone: z[0] });
+    assert.deepEqual(zoneDuRang(z, 4), { i: 1, de: 4, a: 8, zone: z[1] });
+    assert.deepEqual(zoneDuRang(z, 10), { i: 2, de: 9, a: 10, zone: z[2] });
+    // Hors bornes, on ne sort pas de l'exercice : c'est la dernière zone.
+    assert.equal(zoneDuRang(z, 99).i, 2);
+});
+
+test('L\'ÉCHELLE D\'AIDE SE PARCOURT DANS UN SEUL SENS, et elle a deux bouts', () => {
+    // Un seul bouton par sens, parce qu'il n'y a qu'une échelle — et non un
+    // menu de six entrées qu'il faudrait lire pour comprendre qu'elles sont
+    // ordonnées, du plus aidé au plus autonome.
+    assert.equal(modeVoisin('2', 1), '3');
+    assert.equal(modeVoisin('4', 1), '6');
+    assert.equal(modeVoisin('4', -1), '3');
+    // Aux extrémités, on ne déborde pas : les boutons s'y désactivent.
+    assert.equal(modeVoisin('2', -1), '2');
+    assert.equal(modeVoisin('k', 1), 'k');
+    assert.equal(MODES_ZONE[0].cle, '2');
+    assert.equal(MODES_ZONE[MODES_ZONE.length - 1].cle, 'k');
+});
+
+test('CHAQUE ZONE COMMANDE VRAIMENT CE QUE L\'ÉLÈVE VOIT', () => {
+    // Le point qui compte : la frise n'est pas un dessin, c'est le réglage.
+    const p = { repartition: '2:2,3:6,2:t,3:k', aide: 'clavier', propositions: 9 };
+    assert.deepEqual(aideAuRang(p, 1, 10), { propositions: 2, clavier: false });
+    assert.deepEqual(aideAuRang(p, 3, 10), { propositions: 6, clavier: false });
+    assert.deepEqual(aideAuRang(p, 6, 10), { propositions: null, clavier: false });
+    // « Toutes » veut dire « autant que le générateur en fabrique ».
+    assert.deepEqual(aideAuRang(p, 8, 10), { propositions: 4, clavier: true });
+    // Et cela passe AVANT le préréglage et ses vis, comme avant.
+    assert.equal(aideAuRang(p, 1, 10).clavier, false);
+});
+
+test('LES ZONES DU PRÉRÉGLAGE regroupent les rangs voisins qui se ressemblent', () => {
+    // C'est ce qui AMORCE la saisie quand on passe à « Je définis » : le
+    // professeur part de ce que l'exercice fait déjà, pas d'une grille vide.
+    const z = normaliserZones(zonesDuMode({ aide: 'progressive' }, 10), 10);
+    assert.equal(z.reduce((s, x) => s + x.n, 0), 10);
+    // Des zones VOISINES ne portent jamais le même mode : ce serait deux
+    // rectangles collés qu'on ne pourrait pas distinguer sur la frise.
+    for (let i = 1; i < z.length; i++) {
+        assert.notEqual(z[i].mode, z[i - 1].mode, `zones ${i - 1} et ${i} identiques`);
     }
-    // Et au milieu exact d'un exercice de 20, on lit bien la onzième.
-    assert.equal(rang(0.5, 20), 11);
+    // Un préréglage qui ne change jamais donne UNE seule zone.
+    assert.equal(normaliserZones(zonesDuMode({ aide: 'clavier' }, 8), 8).length, 1);
+});
+
+test('DEUX ZONES VOISINES NE PORTENT JAMAIS LE MÊME MODE', () => {
+    // Ce seraient deux rectangles collés qu'on ne pourrait pas distinguer sur
+    // la frise, et deux lignes identiques dans la légende : un découpage qui ne
+    // découpe rien. Le cas arrive pour de vrai — monter une zone au dernier
+    // mode possible la rend identique à sa voisine, et il faut alors les fondre.
+    const z = normaliserZones([{ n: 3, mode: '2' }, { n: 4, mode: 'k' }, { n: 5, mode: 'k' }], 12);
+    assert.deepEqual(z, [{ n: 3, mode: '2' }, { n: 9, mode: 'k' }]);
+    // La fusion garde le TOTAL : ce qu'on fond, on l'additionne.
+    assert.equal(z.reduce((s2, x) => s2 + x.n, 0), 12);
+    // Trois de suite fondent aussi, et l'ordre est conservé.
+    assert.deepEqual(
+        normaliserZones([{ n: 2, mode: '4' }, { n: 2, mode: '4' }, { n: 2, mode: '4' }], 6),
+        [{ n: 6, mode: '4' }]);
+    // Mais deux zones de même mode SÉPARÉES par une autre restent distinctes :
+    // « quatre propositions, puis le clavier, puis à nouveau quatre » est une
+    // progression bizarre, mais c'est celle que le professeur a écrite.
+    assert.equal(
+        normaliserZones([{ n: 2, mode: '4' }, { n: 2, mode: 'k' }, { n: 2, mode: '4' }], 6).length, 3);
 });

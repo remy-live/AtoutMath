@@ -27,7 +27,7 @@ import { chapitresDe } from '../core/chapitres.js';
 import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide
 } from '../games/configUI.js';
-import { repartitionDe, repartitionDuMode } from '../core/aide.js';
+import { lireZones, normaliserZones, zonesDuMode, modeZone } from '../core/aide.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
 
 let selectedStepId = null;
@@ -571,6 +571,45 @@ function pastilleDuree(steps) {
     return el;
 }
 
+/**
+ * LES COMMANDES QUI APPARTIENNENT AU PARCOURS ne s'affichent qu'avec lui.
+ *
+ * Rémy : « pour la zone prof, plein d'icônes n'ont pas à apparaître tant que
+ * le parcours n'est pas chargé ; en fait il y a mode et barème par exemple qui
+ * appartient au parcours. »
+ *
+ * IL A MIS LE DOIGT SUR LA BONNE QUESTION : À QUOI CHAQUE BOUTON APPARTIENT-IL ?
+ * Neuf des onze commandes de cette barre ne veulent rien dire sans étapes —
+ * « Mode & barème » règle la notation D'UN parcours, « Tester » le joue,
+ * « Code Élève » le distribue, l'imprimante l'imprime, les trois aperçus
+ * montrent ses écrans. Un professeur qui arrive sur une page vide les voit
+ * pourtant toutes, et doit deviner lesquelles ont un sens maintenant. Onze
+ * carrés blancs dont neuf ne feraient rien, ce n'est pas une barre d'outils,
+ * c'est une devinette.
+ *
+ * DEUX SEULEMENT SURVIVENT À LA PAGE VIDE, et ce sont exactement celles qui
+ * font sortir de cet état : créer un parcours, en ouvrir un. Les outils du
+ * professeur — ses classes, ses chapitres — restent aussi, parce qu'eux ne
+ * parlent pas de ce parcours-ci.
+ *
+ * ON CACHE, ON NE DÉSACTIVE PAS. Un bouton grisé demande encore à être lu pour
+ * comprendre qu'il ne sert pas ; un bouton absent ne demande rien. La barre du
+ * début de séance tombe ainsi de onze icônes à trois.
+ */
+const OUTILS_DU_PARCOURS = [
+    'btn-path-undo', 'btn-path-redo', 'btn-path-policy',
+    'btn-presentation', 'btn-test-sequence', 'btn-generate-code', 'btn-fiche-parcours'
+];
+
+function outilsDuParcours(visible) {
+    OUTILS_DU_PARCOURS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = !visible;
+    });
+    document.querySelectorAll('.preview-mode-group, .toolbar-sep')
+        .forEach(el => { el.hidden = !visible; });
+}
+
 export function renderTeacherPath() {
     const pathBox = document.getElementById('path-container');
     if (!pathBox) return;
@@ -582,6 +621,7 @@ export function renderTeacherPath() {
     const steps = state.currentPath.steps;
     const badge = document.getElementById('path-count-badge');
     if (badge) badge.textContent = steps.length;
+    outilsDuParcours(steps.length > 0);
 
     const emptyMsg = pathBox.querySelector('.empty-msg');
     if (emptyMsg) emptyMsg.style.display = steps.length === 0 ? 'block' : 'none';
@@ -647,15 +687,15 @@ function miniBande(exo, step) {
     if (!aApercuAide(paramSchemaOf(exo))) return null;
     const total = Math.max(1, step.nbItems || 10);
     const params = { ...(exo.params || {}), ...(step.overrides || {}) };
-    const ecrite = repartitionDe(params, total);
-    const rep = ecrite || repartitionDuMode(params, total);
+    const ecrites = lireZones(params, total);
+    const zones = ecrites || normaliserZones(zonesDuMode(params, total), total);
     const el = document.createElement('span');
-    el.className = 'pstep-bande' + (ecrite ? '' : ' pstep-bande--auto');
-    el.title = ecrite
-        ? `${rep.deux} à 2 propositions, ${rep.quatre} à 4, ${rep.clavier} au clavier`
-        : 'L\'exercice s\'adapte à chaque élève — voici la marche moyenne.';
-    el.innerHTML = ['deux', 'quatre', 'clavier']
-        .map(k => (rep[k] ? `<i class="pstep-z pstep-z--${k}" style="flex-grow:${rep[k]}"></i>` : ''))
+    el.className = 'pstep-bande' + (ecrites ? '' : ' pstep-bande--auto');
+    el.title = ecrites
+        ? zones.map(z => `${z.n} × ${modeZone(z.mode).nom.toLowerCase()}`).join(', ')
+        : 'L\'exercice s\'adapte à chaque élève — voici un déroulé possible.';
+    el.innerHTML = zones
+        .map(z => `<i class="pstep-z pstep-z--${modeZone(z.mode).cle}" style="flex-grow:${z.n}"></i>`)
         .join('');
     return el;
 }

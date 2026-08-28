@@ -117,9 +117,158 @@ export function repartitionDe(params = {}, total = 10) {
     return { deux, quatre, clavier: n - deux - quatre };
 }
 
-/** La répartition telle qu'on l'écrit dans les réglages : « 3-5 ». */
+/** La répartition telle qu'on l'écrivait : « 3-5 ». Voir `ecrireZones`. */
 export const ecrireRepartition = (deux, quatre) =>
     `${Math.max(0, Math.round(deux))}-${Math.max(0, Math.round(quatre))}`;
+
+// --- LES ZONES : LA RÉPARTITION, GÉNÉRALISÉE --------------------------------
+//
+// Rémy, sixième passage sur ce réglage : « quand on clique sur une zone, on a
+// au-dessus l'aperçu, et un bouton pour ajouter ou enlever le nombre de
+// propositions. On peut aussi enlever la zone, et on a un bouton pour en
+// rajouter. »
+//
+// C'EST UNE DEMANDE DE FOND, PAS UNE DEMANDE D'INTERFACE. Le modèle d'avant
+// tenait en deux nombres parce qu'il supposait TROIS phases fixes — deux
+// propositions, quatre, puis le clavier. Cette hypothèse était commode et
+// fausse : rien n'interdit de commencer à trois propositions, de faire deux
+// paliers de quatre séparés par du clavier, ou de ne jamais en proposer que
+// six. Un professeur qui veut cela n'a pas un besoin exotique ; il a un besoin
+// que la structure de données lui refusait.
+//
+// UNE ZONE EST DONC UN COUPLE : combien de questions, et comment on y répond.
+// Les zones se suivent dans l'ordre, et LA DERNIÈRE ABSORBE LE RESTE — c'est
+// ce qui garde la somme juste sans jamais la faire saisir, exactement comme la
+// troisième phase le faisait avant.
+
+/** Les façons de répondre qu'une zone peut demander, de la plus aidée à la moins. */
+export const MODES_ZONE = [
+    { cle: '2', nom: '2 propositions', propositions: 2, clavier: false },
+    { cle: '3', nom: '3 propositions', propositions: 3, clavier: false },
+    { cle: '4', nom: '4 propositions', propositions: 4, clavier: false },
+    { cle: '6', nom: '6 propositions', propositions: 6, clavier: false },
+    { cle: 't', nom: 'Toutes les propositions', propositions: null, clavier: false },
+    { cle: 'k', nom: 'Au clavier', propositions: null, clavier: true }
+];
+
+/** Au-delà, on ne lit plus une progression : on lit un tableau de bord. */
+export const ZONES_MAX = 6;
+
+export const modeZone = (cle) =>
+    MODES_ZONE.find(m => m.cle === String(cle)) || MODES_ZONE[0];
+
+/** Le mode SUIVANT dans l'échelle d'aide — ce que fait le bouton « + ». */
+export function modeVoisin(cle, sens) {
+    const i = MODES_ZONE.findIndex(m => m.cle === String(cle));
+    const j = Math.max(0, Math.min(MODES_ZONE.length - 1, (i < 0 ? 0 : i) + sens));
+    return MODES_ZONE[j].cle;
+}
+
+/** Les zones telles qu'on les écrit dans les réglages : « 3:2,5:4,2:k ». */
+export const ecrireZones = (zones) => (zones || [])
+    .filter(z => z && z.n > 0)
+    .map(z => `${Math.max(0, Math.round(z.n))}:${modeZone(z.mode).cle}`)
+    .join(',');
+
+/**
+ * LES ZONES ÉCRITES, NORMALISÉES SUR LE TOTAL.
+ *
+ * Deux formes acceptées, et la seconde n'est pas de la complaisance : les
+ * parcours déjà enregistrés portent l'ancienne écriture à deux nombres, et
+ * les relire faux effacerait sans prévenir un réglage que le professeur a
+ * posé. « 3-5 » veut dire trois zones : trois questions à deux propositions,
+ * cinq à quatre, le reste au clavier.
+ *
+ * LA DERNIÈRE ZONE ABSORBE LE RESTE, et les zones qui débordent disparaissent.
+ * Le nombre de questions se règle ailleurs et peut baisser APRÈS : sans cette
+ * normalisation, « 3, 5 et 2 » sur un exercice ramené à quatre questions
+ * promettrait six questions qui n'existent pas.
+ *
+ * @returns {Array<{n:number, mode:string}>|null} `null` si rien n'est écrit.
+ */
+export function lireZones(params = {}, total = 10) {
+    const brut = params.repartition;
+    if (brut === undefined || brut === null || brut === 'auto' || brut === '') return null;
+    const n = Math.max(1, Math.round(Number(total) || 10));
+    const texte = String(brut).trim();
+
+    let zones;
+    if (/^\d+\s*-\s*\d+$/.test(texte)) {
+        const [a, b] = texte.split('-').map(v => Math.max(0, Math.round(Number(v) || 0)));
+        zones = [{ n: a, mode: '2' }, { n: b, mode: '4' }, { n: Math.max(0, n - a - b), mode: 'k' }];
+    } else {
+        zones = texte.split(',').map(part => {
+            const [c, m] = part.split(':');
+            return { n: Math.max(0, Math.round(Number(c) || 0)), mode: modeZone(m).cle };
+        }).filter(z => Number.isFinite(z.n));
+    }
+    if (!zones.length) return null;
+    return normaliserZones(zones, n);
+}
+
+/**
+ * Coupe les zones sur le total, et donne le reste à la dernière.
+ *
+ * ON NE REND JAMAIS UNE LISTE VIDE. Une répartition écrite qui ne couvrirait
+ * aucune question laisserait l'élève sans aucune façon de répondre.
+ */
+export function normaliserZones(zones, total) {
+    const n = Math.max(1, Math.round(Number(total) || 1));
+    const out = [];
+    let pris = 0;
+    for (const z of zones || []) {
+        if (pris >= n) break;
+        const part = Math.max(0, Math.min(Math.round(z.n) || 0, n - pris));
+        if (part === 0 && out.length) continue;
+        out.push({ n: part, mode: modeZone(z.mode).cle });
+        pris += part;
+    }
+    if (!out.length) out.push({ n: 0, mode: '2' });
+    // Le reste à la dernière : c'est la règle qui rend la somme infaillible.
+    out[out.length - 1].n += n - pris;
+    const vivantes = out.filter(z => z.n > 0);
+
+    // DEUX ZONES VOISINES NE PORTENT JAMAIS LE MÊME MODE. Ce seraient deux
+    // rectangles collés qu'on ne pourrait pas distinguer sur la frise, et deux
+    // lignes identiques dans la légende — un découpage qui ne découpe rien.
+    // Le cas arrive pour de vrai : monter une zone au dernier mode possible la
+    // rend identique à sa voisine, et il faut alors les fondre.
+    const fondues = [];
+    for (const z of vivantes) {
+        const avant = fondues[fondues.length - 1];
+        if (avant && avant.mode === z.mode) avant.n += z.n;
+        else fondues.push({ ...z });
+    }
+    return fondues;
+}
+
+/** À quelle zone appartient la question `rang` ? */
+export function zoneDuRang(zones, rang) {
+    let debut = 1;
+    for (let i = 0; i < zones.length; i++) {
+        const fin = debut + zones[i].n - 1;
+        if (rang <= fin) return { i, de: debut, a: fin, zone: zones[i] };
+        debut = fin + 1;
+    }
+    const i = Math.max(0, zones.length - 1);
+    return { i, de: debut, a: debut, zone: zones[i] };
+}
+
+/** Les zones qu'un préréglage produit, pour AMORCER la saisie du professeur. */
+export function zonesDuMode(params = {}, total = 10) {
+    const n = Math.max(1, Math.round(Number(total) || 10));
+    const out = [];
+    for (let r = 1; r <= n; r++) {
+        const a = aideAuRang({ ...params, repartition: 'auto' }, r, n);
+        const cle = a.clavier ? 'k'
+            : (a.propositions === null ? 't' : modeZone(String(a.propositions)).cle);
+        // On regroupe les rangs voisins qui demandent la même chose : c'est
+        // cela, une zone.
+        if (out.length && out[out.length - 1].mode === cle) out[out.length - 1].n++;
+        else out.push({ n: 1, mode: cle });
+    }
+    return out;
+}
 
 /**
  * La répartition qu'un préréglage produit, pour AMORCER la saisie du
@@ -150,12 +299,17 @@ export function aideAuRang(params = {}, rang = 1, total = 10) {
     // LA RÉPARTITION ÉCRITE À LA MAIN PASSE AVANT TOUT LE RESTE — voir
     // `repartitionDe`. C'est le professeur qui a décidé ; aucun préréglage
     // n'a d'avis à donner par-dessus.
-    const rep = repartitionDe(params, total);
-    if (rep) {
-        const r0 = Math.max(1, Number(rang) || 1);
-        if (r0 <= rep.deux) return { propositions: 2, clavier: false };
-        if (r0 <= rep.deux + rep.quatre) return { propositions: 4, clavier: false };
-        return { propositions: 4, clavier: true };
+    const zones = lireZones(params, total);
+    if (zones) {
+        const n = Math.max(1, Math.round(Number(total) || 10));
+        const r0 = Math.max(1, Math.min(n, Number(rang) || 1));
+        const m = modeZone(zoneDuRang(zones, r0).zone.mode);
+        // AU CLAVIER, ON GARDE QUATRE PROPOSITIONS SOUS LE PAVÉ. Un exercice
+        // qui ne sait pas se répondre au clavier a besoin de quelque chose à
+        // montrer, et c'est ce que faisait déjà l'ancienne troisième phase.
+        return m.clavier
+            ? { propositions: 4, clavier: true }
+            : { propositions: m.propositions, clavier: false };
     }
     return aideAuRangAuto(params, rang, total);
 }
