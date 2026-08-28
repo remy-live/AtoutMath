@@ -182,7 +182,9 @@ test('on rend toujours quelque chose, même dans un bloc minuscule', () => {
 
 // --- Les définitions occupent leur colonne -------------------------------------
 
-import { grossissementDefs, defsGrossies, MC_DEF as MESURES } from '../js/core/dispositionMotsCroises.js';
+import {
+    grossissementDefs, defsGrossies, MC_CORPS_MAX, MC_DEF as MESURES
+} from '../js/core/dispositionMotsCroises.js';
 
 test('LES DÉFINITIONS GROSSISSENT JUSQU\'À REMPLIR LEUR COLONNE', () => {
     // Rémy : « sur les mots croisés mathématiques, je trouve que tu ne profites
@@ -195,12 +197,20 @@ test('LES DÉFINITIONS GROSSISSENT JUSQU\'À REMPLIR LEUR COLONNE', () => {
     const proportionnel = (f) => 10 * f;
     const f = grossissementDefs(proportionnel, 100);
     assert.ok(f > 1.4, `facteur ${f}`);
-    // ET IL Y A UN PLAFOND DE LISIBILITÉ. Au-delà de 4,2 mm de corps, on n'a
-    // plus une liste de définitions mais un poème : la colonne se vide de son
-    // sens à mesure qu'elle se remplit d'encre. Quelle que soit la place, on
-    // s'arrête là.
-    assert.ok(defsGrossies(f).corps <= 4.2 + 1e-9, `${defsGrossies(f).corps} mm`);
-    assert.ok(defsGrossies(grossissementDefs(proportionnel, 100000)).corps <= 4.2 + 1e-9);
+    // ET IL Y A UN PLAFOND DE LISIBILITÉ : au-delà, on n'a plus une liste de
+    // définitions mais un poème. Quelle que soit la place, on s'arrête là.
+    //
+    // IL ÉTAIT À 4,2 MM, ET C'ÉTAIT LUI « LA PLACE PERDUE » que montrait Rémy :
+    // sur la feuille mesurée, les définitions s'arrêtaient aux trois quarts de
+    // leur colonne et le reste était blanc. Elles avaient le droit de grossir,
+    // elles butaient sur ce plafond. À 5,6 mm — du seize points, le corps d'un
+    // intertitre — la colonne se remplit à 87 % et le corps moyen gagne 46 %
+    // sur une fiche debout, 14 % sur une fiche couchée.
+    assert.ok(defsGrossies(f).corps <= MC_CORPS_MAX + 1e-9, `${defsGrossies(f).corps} mm`);
+    assert.ok(defsGrossies(grossissementDefs(proportionnel, 100000)).corps
+        <= MC_CORPS_MAX + 1e-9);
+    // Le plafond RESTE un plafond : de la place à l'infini ne le franchit pas.
+    assert.ok(MC_CORPS_MAX < 7, 'au-delà de sept millimètres ce n\'est plus une liste');
 });
 
 test('ON ESSAIE, ON NE CALCULE PAS : un texte qui se replie ne grossit pas linéairement', () => {
@@ -222,4 +232,25 @@ test('sans place, on ne grossit pas — et l\'on ne rétrécit jamais', () => {
     assert.equal(grossissementDefs((f) => 200 * f, 100), 1);
     assert.equal(grossissementDefs((f) => 10 * f, 0), 1);
     assert.equal(defsGrossies(1).corps, MESURES.corps);
+});
+
+test('LA GRILLE NE FLOTTE PLUS AU MILIEU DE LA PAGE', () => {
+    // L'autre moitié de « la place perdue ». En disposition « dessous », la
+    // grille recevait toute la hauteur laissée par les définitions, n'en
+    // prenait qu'une partie — elle est bornée par sa largeur — et centrait le
+    // reste en deux marges vides. Elle se cale désormais EN HAUT, et les
+    // définitions commencent juste sous elle.
+    const b = { x: 10, y: 20, w: 180, h: 240 };
+    // Une grille large et basse : elle sera forcément bornée par la largeur.
+    const m = {
+        largeur: 20, hauteur: 6,
+        horizontales: [{ num: 1, def: 'Une définition courte', longueur: 5 }],
+        verticales: [{ num: 2, def: 'Une autre', longueur: 4 }]
+    };
+    const d = essaiDisposition(b, m, 'dessous');
+    assert.equal(d.y, b.y, 'la grille commence en haut du bloc');
+    // Et les définitions suivent immédiatement, sans bande blanche : au plus
+    // quelques millimètres de gouttière.
+    assert.ok(d.defs.y - (d.y + d.h) <= 6,
+        `${(d.defs.y - (d.y + d.h)).toFixed(1)} mm entre la grille et les définitions`);
 });

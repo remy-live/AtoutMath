@@ -65,10 +65,21 @@ export function essaiDisposition(b, m, pose) {
         if (dispoH < 12) return null;
         const cote = Math.min((b.w - marge) / m.largeur, dispoH / m.hauteur);
         const w = cote * m.largeur, hg = cote * m.hauteur;
+        // LA BANDE BLANCHE ENTRE LA GRILLE ET LES DÉFINITIONS N'A AUCUNE RAISON
+        // D'EXISTER. C'était l'autre moitié de « la place perdue » que Rémy
+        // montrait : la grille recevait `dispoH` de hauteur, n'en prenait que
+        // `hg` — elle est bornée par sa largeur — et centrait le reste en deux
+        // marges vides, une au-dessus, une en dessous. Quarante millimètres de
+        // papier blanc au milieu d'une feuille.
+        //
+        // La grille se cale donc EN HAUT et les définitions montent juste
+        // dessous : tout ce que la grille n'a pas pris leur revient, et
+        // `grossissementDefs` s'en sert pour grossir le texte. C'est aussi la
+        // mise en page du journal, où la grille n'a jamais flotté au milieu.
         return {
             pose, cote,
-            x: b.x + (b.w - w) / 2, y: b.y + (dispoH - hg) / 2, w, h: hg,
-            defs: { colonnes: 2, largeur: demi, x: b.x, x2: b.x + demi + 4, y: b.y + dispoH + 3 }
+            x: b.x + (b.w - w) / 2, y: b.y, w, h: hg,
+            defs: { colonnes: 2, largeur: demi, x: b.x, x2: b.x + demi + 4, y: b.y + hg + 4 }
         };
     }
     // À CÔTÉ : une seule colonne, les deux listes l'une sous l'autre. Sa
@@ -94,7 +105,15 @@ export function essaiDisposition(b, m, pose) {
         // plus rien à ce qu'on rétrécisse les définitions — elle est alors
         // bornée par la hauteur —, et une colonne étroite coupe les phrases en
         // trois mots par ligne pour un blanc gagné nulle part.
-        if (mieux && cote < mieux.cote) continue;
+        //
+        // UN DIXIÈME DE MILLIMÈTRE NE VAUT PAS UNE COLONNE. La comparaison
+        // était STRICTE, si bien qu'un côté de 10,71 mm battait un côté de
+        // 10,70 mm et emportait avec lui la colonne la plus étroite : on
+        // sacrifiait deux centimètres de largeur de texte pour un gain de case
+        // que personne ne peut voir au stylo. On tolère donc un vingtième de
+        // millimètre — sous ce seuil, les deux cases sont la même case, et
+        // c'est la colonne qui tranche.
+        if (mieux && cote < mieux.cote - 0.05) continue;
         const w = cote * m.largeur, hg = cote * m.hauteur;
         // « gauche » = définitions à gauche, la grille se décale à droite.
         const xDefs = pose === 'gauche' ? b.x : b.x + b.w - largeur;
@@ -127,13 +146,26 @@ export function essaiDisposition(b, m, pose) {
  * une colonne haute de vingt-cinq centimètres, soit six pour cent de remplis.
  *
  * On grossit donc le texte jusqu'à ce qu'il OCCUPE sa colonne. Deux bornes :
- * jamais plus de 4,2 mm — au-delà on n'a plus une liste de définitions mais un
- * poème —, et jamais plus du triple, pour qu'une grille à trois définitions ne
- * les affiche pas en titres de journal.
+ * un corps maximal, et jamais plus du triple, pour qu'une grille à trois
+ * définitions ne les affiche pas en titres de journal.
+ *
+ * LE PLAFOND ÉTAIT À 4,2 MM, ET C'ÉTAIT LUI « LA PLACE PERDUE ». Rémy, capture
+ * à l'appui : « tu vois sur le mot croisé la place perdue ». Sur la feuille
+ * mesurée, les définitions s'arrêtaient aux deux tiers de leur colonne et le
+ * dernier tiers restait blanc — un rectangle vide grand comme une carte
+ * postale, en bas à gauche d'une page A4. Le texte AVAIT le droit de grossir,
+ * il butait simplement sur ce plafond.
+ *
+ * 5,6 mm, soit du seize points. On reste très en deçà du « poème » que
+ * craignait la borne précédente : c'est le corps d'un titre de paragraphe, sur
+ * une feuille qu'on lit posée sur une table, pas un livre qu'on tient. Et le
+ * facteur trois continue de protéger les grilles à trois définitions.
  *
  * @returns {number} le facteur d'agrandissement, 1 s'il n'y a rien à gagner.
  */
-export function grossissementDefs(mesurer, hauteurDispo, max = 4.2 / MC_DEF.corps) {
+export const MC_CORPS_MAX = 5.6;
+
+export function grossissementDefs(mesurer, hauteurDispo, max = MC_CORPS_MAX / MC_DEF.corps) {
     if (!(hauteurDispo > 0)) return 1;
     // ON ESSAIE, ON NE CALCULE PAS. La hauteur ne varie pas proportionnellement
     // au corps : un texte deux fois plus gros se replie sur plus de lignes, et
