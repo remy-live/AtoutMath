@@ -235,24 +235,42 @@ test('LES ZONES DU PRÉRÉGLAGE regroupent les rangs voisins qui se ressemblent'
     assert.equal(normaliserZones(zonesDuMode({ aide: 'clavier' }, 8), 8).length, 1);
 });
 
-test('DEUX ZONES VOISINES NE PORTENT JAMAIS LE MÊME MODE', () => {
-    // Ce seraient deux rectangles collés qu'on ne pourrait pas distinguer sur
-    // la frise, et deux lignes identiques dans la légende : un découpage qui ne
-    // découpe rien. Le cas arrive pour de vrai — monter une zone au dernier
-    // mode possible la rend identique à sa voisine, et il faut alors les fondre.
+test('ON NE FOND JAMAIS DEUX ZONES, MÊME IDENTIQUES', () => {
+    // Rémy : « ne fusionne pas les zones de la frise. Exemple : j'ai une zone à
+    // deux, je rajoute une zone, je clique sur 2 — elle fusionne avec la
+    // précédente, du coup je dois en recréer une pour faire un autre réglage. »
+    //
+    // LA FUSION DÉTRUISAIT UN GESTE QU'ON VENAIT DE FAIRE. Elle se défendait
+    // sur une frise SANS POIGNÉES — deux rectangles collés de la même couleur
+    // ne se distinguaient pas. Depuis qu'une borne blanche se tient entre
+    // chaque paire, la limite se voit, et deux zones de même mode sont un état
+    // de travail légitime : on ajoute, puis on règle, dans cet ordre.
     const z = normaliserZones([{ n: 3, mode: '2' }, { n: 4, mode: 'k' }, { n: 5, mode: 'k' }], 12);
-    assert.deepEqual(z, [{ n: 3, mode: '2' }, { n: 9, mode: 'k' }]);
-    // La fusion garde le TOTAL : ce qu'on fond, on l'additionne.
+    assert.equal(z.length, 3, 'les trois zones survivent');
+    assert.deepEqual(z, [{ n: 3, mode: '2' }, { n: 4, mode: 'k' }, { n: 5, mode: 'k' }]);
+    // Et le total reste juste, ce qui était la vraie raison d'être de cette
+    // fonction.
     assert.equal(z.reduce((s2, x) => s2 + x.n, 0), 12);
-    // Trois de suite fondent aussi, et l'ordre est conservé.
-    assert.deepEqual(
-        normaliserZones([{ n: 2, mode: '4' }, { n: 2, mode: '4' }, { n: 2, mode: '4' }], 6),
-        [{ n: 6, mode: '4' }]);
-    // Mais deux zones de même mode SÉPARÉES par une autre restent distinctes :
-    // « quatre propositions, puis le clavier, puis à nouveau quatre » est une
-    // progression bizarre, mais c'est celle que le professeur a écrite.
+
+    // Trois zones identiques restent trois zones.
     assert.equal(
-        normaliserZones([{ n: 2, mode: '4' }, { n: 2, mode: 'k' }, { n: 2, mode: '4' }], 6).length, 3);
+        normaliserZones([{ n: 2, mode: '4' }, { n: 2, mode: '4' }, { n: 2, mode: '4' }], 6).length, 3);
+
+    // LE SCÉNARIO DE RÉMY, DE BOUT EN BOUT. Une zone à deux propositions ; on
+    // la coupe en deux (c'est ce que fait « ajouter une zone ») ; on met la
+    // seconde à deux aussi. Il doit rester DEUX zones — sinon le clic suivant
+    // ne trouve plus la zone qu'on venait de créer.
+    let zones = normaliserZones([{ n: 10, mode: '2' }], 10);
+    assert.equal(zones.length, 1);
+    zones = normaliserZones([{ n: 5, mode: '2' }, { n: 5, mode: '4' }], 10);
+    assert.equal(zones.length, 2);
+    zones = normaliserZones([{ n: 5, mode: '2' }, { n: 5, mode: '2' }], 10);
+    assert.equal(zones.length, 2, 'la zone créée ne disparaît pas quand on lui donne le mode voisin');
+
+    // Une zone vidée, en revanche, n'existe pas : c'est autre chose que fondre
+    // deux zones pleines, et cette règle-là reste.
+    assert.deepEqual(normaliserZones([{ n: 0, mode: '2' }, { n: 6, mode: '4' }], 6),
+        [{ n: 6, mode: '4' }]);
 });
 
 test('LE CLAVIER REFUSE PLAFONNE L\'ADAPTATIF, ET IL NE MANQUE AUCUNE PORTE', () => {

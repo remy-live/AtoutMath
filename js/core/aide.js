@@ -226,20 +226,25 @@ export function normaliserZones(zones, total) {
     if (!out.length) out.push({ n: 0, mode: '2' });
     // Le reste à la dernière : c'est la règle qui rend la somme infaillible.
     out[out.length - 1].n += n - pris;
-    const vivantes = out.filter(z => z.n > 0);
-
-    // DEUX ZONES VOISINES NE PORTENT JAMAIS LE MÊME MODE. Ce seraient deux
-    // rectangles collés qu'on ne pourrait pas distinguer sur la frise, et deux
-    // lignes identiques dans la légende — un découpage qui ne découpe rien.
-    // Le cas arrive pour de vrai : monter une zone au dernier mode possible la
-    // rend identique à sa voisine, et il faut alors les fondre.
-    const fondues = [];
-    for (const z of vivantes) {
-        const avant = fondues[fondues.length - 1];
-        if (avant && avant.mode === z.mode) avant.n += z.n;
-        else fondues.push({ ...z });
-    }
-    return fondues;
+    // ON NE FOND PLUS DEUX ZONES VOISINES DE MÊME MODE.
+    //
+    // Rémy : « ne fusionne pas les zones de la frise. Exemple : j'ai une zone à
+    // deux, je rajoute une zone, je clique sur 2 — elle fusionne avec la
+    // précédente, du coup je dois en recréer une pour faire un autre réglage. »
+    //
+    // LA FUSION DÉTRUISAIT UN GESTE QU'ON VENAIT DE FAIRE. Elle avait sa raison
+    // quand je l'ai écrite : deux rectangles collés de la même couleur ne se
+    // distinguaient pas, et un découpage qui ne découpe rien n'est pas un
+    // découpage. Mais c'était vrai d'une frise SANS POIGNÉES. Depuis qu'une
+    // borne blanche se tient entre chaque paire de zones, la limite se voit —
+    // et deux zones de même mode sont un état de travail parfaitement
+    // légitime : on ajoute, puis on règle, dans cet ordre.
+    //
+    // Entre « la frise est momentanément redondante » et « le professeur perd
+    // la zone qu'il vient de créer », le choix n'est pas discutable. Une
+    // interface ne défait pas ce qu'on lui demande au motif qu'elle ferait
+    // mieux.
+    return out.filter(z => z.n > 0);
 }
 
 /** À quelle zone appartient la question `rang` ? */

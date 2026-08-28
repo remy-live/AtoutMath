@@ -1845,10 +1845,9 @@ document.addEventListener('click', (e) => {
         const vise = btn.dataset.zmode;
         if (vise === zones[i].mode || !poss.includes(vise)) return;
         zones[i] = { ...zones[i], mode: vise };
-        // NORMALISER PEUT FONDRE LA ZONE DANS SA VOISINE, et c'est voulu :
-        // deux zones voisines au même mode ne sont qu'une seule zone. Mais la
-        // sélection doit alors suivre le morceau qui reste, sinon la bulle
-        // parlerait d'une zone qui n'existe plus.
+        // LA ZONE RESTE LA ZONE, même si sa voisine porte désormais le même
+        // mode. Rémy : « ne fusionne pas les zones de la frise. » Elle fondait
+        // dans sa voisine, et il fallait la recréer pour continuer à régler.
         const apres = normaliserZones(zones, total);
         return ecrireZonesSansSauter(hote, apres, Math.min(i, apres.length - 1));
     }
@@ -1865,25 +1864,24 @@ document.addEventListener('click', (e) => {
         return ecrireZonesSansSauter(hote, normaliserZones(zones, total), voisine);
     }
 
-    // AJOUTER UNE ZONE : elle naît APRÈS celle qu'on regarde, et prend la
-    // moitié de ses questions. Une zone de zéro question n'existe pas — elle
-    // disparaîtrait à la normalisation —, et lui donner des questions prises
-    // ailleurs qu'à sa voisine déplacerait toute la progression.
+    // AJOUTER UNE ZONE : elle naît APRÈS celle qu'on regarde, prend la moitié
+    // de ses questions, ET GARDE SON MODE.
+    //
+    // Elle prenait auparavant un mode DIFFÉRENT — celui du cran d'après, ou
+    // celui d'avant —, et le bouton ne faisait carrément rien quand il n'en
+    // trouvait aucun de libre. C'était un contournement de la fusion, qui
+    // avalait toute zone identique à sa voisine. La fusion partie (voir
+    // `normaliserZones`), le geste redevient celui qu'on attend : on COUPE en
+    // deux, puis on règle la moitié qu'on veut. Rien à deviner, rien qui
+    // change tout seul, et le bouton ne peut plus rester sans effet.
     if (zones.length >= ZONES_MAX) return;
     const source = zones[i];
     if (source.n < 2) return;
     const prise = Math.floor(source.n / 2);
-    // LA NOUVELLE ZONE DOIT ÊTRE DIFFÉRENTE DE SES VOISINES, sinon elle fond
-    // avec elles à la normalisation et le bouton semble ne rien faire. On prend
-    // le mode d'après ; si la source est déjà au bout de l'échelle, celui
-    // d'avant. S'il n'y a qu'un mode possible, il n'y a rien à découper.
-    const j = Math.max(0, poss.indexOf(source.mode));
-    const suivante = zones[i + 1];
-    const candidats = [poss[j + 1], poss[j - 1]].filter(Boolean)
-        .filter(m => m !== source.mode && (!suivante || m !== suivante.mode));
-    if (!candidats.length) return;
     zones[i] = { ...source, n: source.n - prise };
-    zones.splice(i + 1, 0, { n: prise, mode: candidats[0] });
+    zones.splice(i + 1, 0, { n: prise, mode: source.mode });
+    // ON SE PLACE SUR LA NOUVELLE : c'est elle qu'on vient de créer, donc celle
+    // qu'on va régler. La bulle et le rang de boutons parlent d'elle aussitôt.
     ecrireZonesSansSauter(hote, normaliserZones(zones, total), i + 1);
 });
 
