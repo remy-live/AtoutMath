@@ -22,7 +22,7 @@ import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../co
 // `relire` : relit un calcul récrit à la main et refait sa cascade — voir
 // `retoucheGrille` du rendu « priorites ».
 import { relire as relirePriorites } from '../core/priorites.js';
-import { GLYPHES, egyptianSvg, placerGlyphes } from '../core/figures.js';
+import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
     ficheEnPortrait, reglerFichePortrait
@@ -8819,7 +8819,7 @@ function geoEgypte(item, slot) {
     return {
         m, b, plan, cell, interligne: INTERLIGNE, ecrire, texte, largeurTexte, corpsTexte,
         largeurEgal: LARGEUR_EGAL,
-        rangs: plan.lignes, colonnes: plan.largeur,
+        rangs: plan.lignes, colonnes: plan.largeur, hautCases,
         x0: b.x + 1 + (ecrire ? largeurTexte : 0),
         y0: b.y + 1,
         yReponse: b.y + 2 + hautGlyphes,
@@ -8833,11 +8833,26 @@ function egyptePreviewHtml(item, slot, k, solution) {
     const m = g.m;
     let html = '';
     if (m.sens === 'lire' || solution) {
-        // L'aperçu est du HTML : le SVG des glyphes s'y pose tel quel.
+        // L'APERÇU DESSINE CE QUE LE PDF DESSINE, au même endroit.
+        //
+        // Rémy : « l'exercice 7 est très mal présenté et mal aligné ». Il
+        // l'était, et la faute revenait à ce bloc : il posait le SVG DE
+        // L'ÉCRAN — qui porte douze pixels de marge sur chaque bord — dans une
+        // boîte calculée par la géométrie du PDF, laquelle n'en a aucune. Les
+        // deux cadres n'avaient donc ni la même taille ni les mêmes
+        // proportions, et `meet` réduisait chaque nombre d'un facteur
+        // DIFFÉRENT selon sa longueur. D'où les rangées qui ne commençaient
+        // pas au même endroit et les signes deux fois plus gros d'une ligne à
+        // l'autre.
+        //
+        // LA HAUTEUR OUBLIAIT AUSSI LES INTERLIGNES (`rangs` au lieu de
+        // `hautCases`) : sur un nombre à deux rangées, le dessin était en plus
+        // écrasé vers le haut de sa boîte, et le « = » se retrouvait à flotter
+        // sous un dessin qui ne le touchait pas.
         html += `<div style="position:absolute; left:${g.x0 * k}px; top:${g.y0 * k}px;
-            width:${(g.colonnes * g.cell) * k}px; height:${(g.rangs * g.cell) * k}px;
-            color:#1a202c">${egyptianSvg(m.symboles.map(s => ({ value: s.value, n: s.n })))
-        .replace('<svg ', `<svg style="width:100%;height:100%" preserveAspectRatio="xMinYMin meet" `)}</div>`;
+            width:${(g.colonnes * g.cell) * k}px; height:${(g.hautCases * g.cell) * k}px;
+            color:#1a202c">${egyptianSvgCadre(m.symboles.map(s => ({ value: s.value, n: s.n })))
+        .replace('<svg ', '<svg style="width:100%;height:100%" ')}</div>`;
     }
     // L'énoncé du sens « écrire » : le nombre, puis le signe d'égalité, à
     // hauteur des glyphes qu'il faudra tracer à côté.
@@ -10323,7 +10338,27 @@ export const RENDUS = {
         // la ligne de réponse — d'où huit nombres par page au lieu de six, et
         // des glyphes plus grands parce que le bloc est deux fois plus large.
         proportions: { w: 1, h: 0.34 },
-        disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 6 },
+        // L'ÉTIQUETTE SE MET AU-DESSUS DE CE QU'ELLE NOMME. Rémy : « l'exercice
+        // 7 est très mal présenté ». « Nombre 5 » était centré sur toute la
+        // largeur du bloc alors que les hiéroglyphes commencent à gauche : le
+        // titre flottait au-dessus du blanc qui sépare le dessin des
+        // pointillés, et ne désignait plus rien.
+        titreAGauche: true,
+        // SIX RANGÉES, PAS QUATRE. Un nombre en hiéroglyphes tient sur une
+        // ligne de treize millimètres ; huit nombres laissaient la moitié
+        // basse de la feuille blanche, avec des rangées écartées de trois
+        // centimètres pour combler. Douze remplissent la page SANS rétrécir
+        // les signes : ils sont bornés par la largeur du bloc, pas par sa
+        // hauteur, et la largeur ne change pas.
+        //
+        // ET JAMAIS TROIS COLONNES. La grille en proposait jusqu'à trois, et
+        // douze nombres s'y rangeaient d'eux-mêmes en 3 × 4 — au prix d'un
+        // tiers de la taille des signes, qui sont bornés par la LARGEUR du
+        // bloc. Or c'est exactement ce que Rémy demandait de ne pas faire :
+        // « utilise bien la largeur pour écrire les hiéroglyphes assez grand ».
+        // Deux colonnes de six, donc : la page se remplit et les signes ne
+        // perdent pas un millimètre.
+        disposition: { cols: 2, rows: 6, maxCols: 2, maxRows: 6 },
         parLigneDefaut: 2,
         grilleMax: 70
     },

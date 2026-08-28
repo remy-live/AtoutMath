@@ -299,11 +299,68 @@ export function placerGlyphes(symboles, o = {}) {
     return { cases, lignes: Math.max(1, ligne + 1), largeur: Math.max(1, largeur) };
 }
 
+/**
+ * L'INTERLIGNE DES HIÉROGLYPHES — une seule valeur, partout.
+ *
+ * L'écran, l'aperçu de la fiche et le PDF l'écrivaient chacun de leur côté.
+ * Trois copies d'un même nombre, c'est trois occasions qu'elles divergent, et
+ * c'est arrivé.
+ */
+export const EGY_INTERLIGNE = 0.16;
+
+/** La hauteur d'un plan, interlignes compris, en cases. */
+export const hauteurPlan = (plan) =>
+    plan.lignes + (plan.lignes - 1) * EGY_INTERLIGNE;
+
+/**
+ * LE SVG DES HIÉROGLYPHES, SANS MARGE, COLLÉ AU PLAN.
+ *
+ * Rémy, sur la fiche : « l'exercice 7 est très mal présenté et mal aligné ».
+ *
+ * IL L'ÉTAIT, ET LA CAUSE TENAIT À DOUZE PIXELS. L'aperçu posait ce SVG-ci
+ * dans une boîte calculée, elle, par la géométrie du PDF — sans marge, et
+ * d'une hauteur qui oubliait les interlignes. Comme le SVG portait douze
+ * pixels de marge sur chaque bord, les deux cadres n'avaient NI la même taille
+ * NI les mêmes proportions ; `preserveAspectRatio` faisait alors ce qu'on lui
+ * demande, c'est-à-dire rentrer le dessin dans la boîte en le centrant, et
+ * chaque nombre s'en trouvait réduit d'un facteur DIFFÉRENT — un nombre à
+ * quatre signes n'a pas la même marge relative qu'un nombre à douze.
+ *
+ * D'où la feuille de Rémy : des rangées qui ne commencent pas au même endroit,
+ * des signes deux fois plus gros d'une ligne à l'autre, et des « = » qui
+ * flottent sous des dessins qui ne les touchent pas.
+ *
+ * Cette version-ci n'a pas de marge : son viewBox EST le plan. Posée dans une
+ * boîte de mêmes proportions, elle tombe au pixel près là où le PDF la
+ * dessine — et l'aperçu redevient ce qu'il prétend être.
+ *
+ * @param {Array} symboles
+ * @param {number} [cell] la taille de case, dans l'unité de la boîte
+ */
+export function egyptianSvgCadre(symboles, cell = 44) {
+    const plan = placerGlyphes(symboles);
+    const W = plan.largeur * cell;
+    const H = hauteurPlan(plan) * cell;
+    const echelle = (cell / 32).toFixed(4);
+    const contenu = plan.cases.map(c => {
+        const x = c.col * cell;
+        const y = c.ligne * (1 + EGY_INTERLIGNE) * cell;
+        return `<g class="egy-glyph" transform="translate(${x.toFixed(2)}, ${y.toFixed(2)}) scale(${echelle})">${GLYPHES[c.value]}</g>`;
+    }).join('');
+    const description = (symboles || []).map(s => `${s.n} × ${s.value}`).join(', ');
+    return `<svg class="fig-svg egy-svg" viewBox="0 0 ${+W.toFixed(2)} ${+H.toFixed(2)}"
+         preserveAspectRatio="xMinYMin meet"
+         role="img" aria-label="Nombre en hiéroglyphes égyptiens : ${description}">${contenu}</svg>`;
+}
+
 export function egyptianSvg(symboles) {
     // Des cases de 44 px : l'exercice consiste à COMPTER des symboles, ce qui
     // suppose de les distinguer sans se pencher. La feuille reste bornée en
     // hauteur par le CSS, qui la réduira si le plateau est court.
-    const CELL = 44, PAD = 12, INTERLIGNE = 0.16;
+    //
+    // LA MARGE EST POUR L'ÉCRAN, où le dessin vit seul dans sa carte. Sur la
+    // fiche, elle désalignait tout : voir `egyptianSvgCadre`.
+    const CELL = 44, PAD = 12, INTERLIGNE = EGY_INTERLIGNE;
     const plan = placerGlyphes(symboles);
     const W = plan.largeur * CELL + PAD * 2;
     const H = (plan.lignes + (plan.lignes - 1) * INTERLIGNE) * CELL + PAD * 2;
