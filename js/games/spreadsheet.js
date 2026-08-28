@@ -218,7 +218,7 @@ class Tableur extends BaseGame {
         for (let i = 1; i <= 9; i++) {
             const b = document.createElement('button');
             b.type = 'button';
-            b.className = 'tab-niv';
+            b.className = 'btn-carre tab-niv';
             b.textContent = i;
             b.onclick = () => { if (!this.isDemo) this.montrerNiveau(i, true); };
             this.ui.menu.appendChild(b);

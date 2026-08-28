@@ -198,6 +198,48 @@ class MotsCroises extends BaseGame {
                     min-height: 1.6em; text-align: center; font-size: .82rem;
                     color: var(--text-muted); flex: 0 0 auto;
                 }
+
+                /* LA GRILLE EST CE QU'ON VIENT VOIR : TOUT LE RESTE LUI CÈDE.
+                   ─────────────────────────────────────────────────────────
+                   Rémy, sur son iPhone : « la grille superpose un peu la
+                   définition et le clavier ; il faut essayer qu'elle soit le
+                   plus grand possible. »
+
+                   MESURÉ : le corps ne recevait que 189 px de haut pour une
+                   grille de dix-sept rangées. La case tombait sur son plancher
+                   de 15 px — donc 255 px de grille dans 189 px de place —, et
+                   les 66 pixels de trop sortaient PAR LES DEUX BOUTS, puisque
+                   la grille est centrée : trente-trois par-dessus la
+                   définition, trente-trois par-dessus le clavier. Exactement
+                   ce que Rémy décrit.
+
+                   Le plancher n'était pas le coupable, il était le symptôme :
+                   la grille n'avait pas la place, et on la lui refusait en
+                   arrondissant. On la lui DONNE — quatre-vingts pixels repris
+                   à ce qui n'est pas la grille : les quatre boutons tenaient
+                   sur deux rangées faute d'être un peu plus serrés, la note
+                   redit ce que la grille montre, et la définition n'a pas
+                   besoin d'être écrite en dix-sept points sur un téléphone. */
+                @container (max-width: 520px) {
+                    .mc-indice { min-height: 1.4em; font-size: clamp(11px, 3.1cqw, 13px); }
+                    .mc-btn { padding: 4px 7px; font-size: .76rem; }
+                    .mc-barre { gap: 4px; }
+                    /* Le compte des mots et des croisements ne sert qu'une
+                       fois, à l'ouverture ; la grille sert tout le temps. */
+                    .mc-note { min-height: 0; font-size: .74rem; }
+                    .mc-wrap { gap: 3px; padding: 3px; }
+                    .mc-touche { height: clamp(24px, 4.6cqh, 34px); }
+                    /* ET LE PLANCHER DESCEND, EN DERNIER RECOURS. Les quatre-vingts
+                       pixels repris suffisent à la grille d'aujourd'hui ; une grille
+                       de vingt et une colonnes, elle, ne tiendrait toujours pas à
+                       quinze. Onze pixels, c'est petit — mais une case petite se
+                       voit, alors qu'une case posée par-dessus le clavier ne se
+                       touche pas. */
+                    .mc-grille {
+                        --mc-cote: clamp(11px, min(calc(var(--mc-place) / var(--mc-cols, 10)),
+                                         calc(97cqh / var(--mc-rows, 10))), 66px);
+                    }
+                }
                 .mc-note--ok { color: var(--success, #16a34a); font-weight: 700; }
                 .mc-note--ko { color: var(--danger, #dc2626); font-weight: 600; }
             </style>

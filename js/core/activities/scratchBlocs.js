@@ -84,12 +84,12 @@ export function mount(container, session, opts = {}) {
                     <div class="sc-palette" data-palette aria-label="Blocs disponibles"></div>
                     <div class="sc-atelier" data-atelier>
                         <div class="sc-outils">
-                            <button type="button" class="sc-outil" data-zoom="-1"
+                            <button type="button" class="btn-carre sc-outil" data-zoom="-1"
                                     aria-label="Réduire les blocs">−</button>
                             <span class="sc-outil-val" data-zoomval>100%</span>
-                            <button type="button" class="sc-outil" data-zoom="1"
+                            <button type="button" class="btn-carre sc-outil" data-zoom="1"
                                     aria-label="Agrandir les blocs">+</button>
-                            <button type="button" class="sc-outil sc-outil--vider" data-vider
+                            <button type="button" class="btn-carre sc-outil sc-outil--vider" data-vider
                                     aria-label="Tout enlever">🗑</button>
                         </div>
                     </div>

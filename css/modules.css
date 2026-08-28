@@ -505,6 +505,82 @@
     .numpad-context { --fig-plafond: max(140px, 26cqh); }
 }
 
+/* LA FIGURE PREND CE QUI RESTE, ET RIEN DE PLUS.
+   ────────────────────────────────────────────────
+   Banc d'essai de Rémy, iPhone 375×634 : « l'exercice déborde un tout petit
+   peu verticalement » (Carreaux et Surfaces), « dépasse un peu » (Le Tour du
+   Rectangle, Combien de Cubes ?). Le balayage en a trouvé un cinquième qu'il
+   n'avait pas atteint — les Angles manquants. Mesuré : 29, 29, 40 et 40 pixels
+   sous le bord, et c'est le bouton « Valider » qui passait dessous.
+
+   LES PALIERS NE POUVAIENT PAS Y ARRIVER, ET C'EST STRUCTUREL. Ils resserrent
+   la figure par crans — `max(130px, 19cqh)`, puis 140, puis 150 — en espérant
+   que la somme tombe juste. Or la somme dépend de ce qu'il y a au-dessus (un
+   énoncé sur une ou deux lignes) et du dessin lui-même (un carré est plus haut
+   qu'un rectangle plat, à largeur égale). Aucune suite de nombres écrits à la
+   main ne peut tomber juste pour tous les exercices sur tous les téléphones :
+   il en restera toujours un qui déborde de vingt pixels, et on le découvrira
+   en classe.
+
+   ON RETOURNE DONC LE CALCUL. Le pavé, l'énoncé et la barre d'indices prennent
+   ce qu'il leur faut — ce sont des objets qu'on touche, ils ne se négocient
+   pas. La figure prend LE RESTE, quel qu'il soit. Plus rien à accorder, et la
+   question tient sur l'écran par construction, sur ce téléphone-ci comme sur
+   le prochain.
+
+   Le plancher de 130 px qui existait ici disparaît avec la même logique : il
+   servait à empêcher une figure timbre-poste, mais il le faisait en laissant
+   déborder le reste — c'est-à-dire en cachant le bouton qui valide. Entre une
+   figure un peu plus petite et un exercice qu'on ne peut pas terminer, il n'y
+   a pas à hésiter. */
+@container plateau ((max-height: 700px) and (max-aspect-ratio: 6/5)) {
+    .canvas-area:has(.numpad) { display: flex; flex-direction: column; }
+    .numpad-layout {
+        flex: 1 1 auto; min-height: 0;
+        /* La rangée de l'énoncé plie, celle du pavé jamais. */
+        grid-template-rows: minmax(0, 1fr) auto;
+    }
+    .numpad-context { min-height: 0; align-self: stretch; justify-content: flex-start; }
+    .numpad-context .figure-wrap {
+        flex: 1 1 auto; min-height: 0;
+        display: flex; align-items: center; justify-content: center;
+    }
+    /* `100%` de la place restante, et le SVG garde ses proportions : c'est la
+       LARGEUR qui suit la hauteur, pas l'inverse. */
+    .numpad-context .fig-svg { max-height: 100%; }
+
+    /* ET ON REND À LA FIGURE CE QUI NE SERT À RIEN AILLEURS. Mesuré : la place
+       laissée au dessin tombait à 58 px — un rectangle coté « 6 cm » sur
+       « 10 cm » n'y est plus lisible. Le pavé, lui, ne se discute pas : quatre
+       rangées de touches de 44 px, c'est le minimum qu'un doigt vise sans se
+       tromper de chiffre. Tout le reste est du confort, et le confort cède.
+       Trente pixels repris ici, c'est la moitié de la figure en plus. */
+    .numpad-screen { min-height: 44px; padding-top: 6px; padding-bottom: 6px; margin-bottom: 6px; }
+    .numpad { gap: 5px; }
+    .numpad-device { padding-top: 8px; padding-bottom: 8px; }
+    .canvas-area:has(.numpad) .hint-bar { gap: 6px; margin-top: 4px; }
+    .canvas-area:has(.numpad) .hint-bar .btn-hint { padding-top: 6px; padding-bottom: 6px; }
+    .canvas-area:has(.numpad) .game-question { margin-bottom: 6px; }
+    .numpad-layout { padding: 4px 12px; }
+}
+
+/* LA MÊME RÈGLE POUR UNE FIGURE SUIVIE DE RÉPONSES À CHOISIR.
+   Thalès : une figure de 206 px, deux cartes d'égalité de 80 px et la barre
+   d'indices ne tenaient pas dans les 488 px du plateau — la seconde carte
+   passait sous la barre d'onglets. Les cartes sont ce qu'on TOUCHE : elles
+   gardent leur taille. La figure prend ce qui reste, comme sous le pavé. */
+@container plateau ((max-height: 700px) and (max-aspect-ratio: 6/5)) {
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) {
+        display: flex; flex-direction: column; align-items: center;
+    }
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .figure-wrap {
+        flex: 1 1 auto; min-height: 0; width: 100%;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .figure-wrap > svg { max-height: 100%; }
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .prio-btn { flex: 0 0 auto; }
+}
+
 /* Disposition en une seule colonne (complément de la règle deux colonnes) :
    figure et pavé se partagent la hauteur, la figure doit donc céder. Pour que
    les cotes restent lisibles malgré cette réduction, on les écrit plus gros
@@ -1237,8 +1313,22 @@
        « Recommencer » : des boutons de texte, larges de cent pixels et hauts
        de vingt-six. On ne touche qu'à leur HAUTEUR — leur largeur, elle, était
        déjà bonne — et l'on épargne les cases de grille, qui sont des boutons
-       carrés dont la hauteur EST la mise en page. */
-    #game-layer button:not(.game-icon-btn):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
+       carrés dont la hauteur EST la mise en page.
+
+       LA LISTE D'EXCEPTIONS NE PEUT PAS ÊTRE DEVINÉE, ET C'EST CE QUI A RATÉ.
+       Rémy, sur son iPhone : « Mastermind est tout déformé » et « sur iPhone,
+       les retenues font des ovales ». Mesuré : jetons de 25,7 × 40 px,
+       c'est-à-dire la largeur voulue et CE plancher-ci en hauteur. L'intention
+       était juste — elle est écrite deux lignes plus haut —, mais elle était
+       exprimée en devinant des morceaux de noms de classes : « case », « cell »,
+       « touche ». Un jeton ne s'appelle pas une case, un rond de retenue non
+       plus, et personne ne pouvait le savoir en écrivant cette ligne.
+
+       `btn-carre` remplace la devinette par une DÉCLARATION : le jeu dit
+       lui-même « ce bouton est carré, sa hauteur est ma mise en page ». Le
+       jour où un jeu ajoute une pastille ronde, il le dira aussi, et la règle
+       n'aura pas à changer. */
+    #game-layer button:not(.game-icon-btn):not(.btn-carre):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
         min-height: 40px;
     }
 }

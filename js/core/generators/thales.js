@@ -287,9 +287,14 @@ function etapeEgalite(rng, config) {
     const fausses = rng.shuffle(FAUSSES_EGALITES.slice()).slice(0, 3);
     return {
         f,
-        prompt: 'Quelle égalité donne le théorème de Thalès sur cette figure ?',
-        html: '<div class="game-question">Quelle égalité donne le théorème de <b>Thalès</b> '
-            + 'ici ?</div>'
+        // UN ÉNONCÉ TIENT SUR UNE LIGNE. Rémy, sur son iPhone : « dépasse un
+        // peu verticalement ; de manière générale, tu peux réduire un peu
+        // l'énoncé. » Sur 375 px, « Quelle égalité donne le théorème de Thalès
+        // ici ? » passait sur DEUX lignes de gros caractères — soixante pixels
+        // pris à la figure et aux réponses pour dire ce que le titre de
+        // l'exercice dit déjà. Il s'appelle « Le Théorème de Thalès ».
+        prompt: 'Quelle égalité de Thalès ?',
+        html: '<div class="game-question">Quelle égalité de <b>Thalès</b> ?</div>'
             + `<div class="figure-wrap">${figureThalesSvg(f)}</div>`,
         papier: 'Les droites (MN) et (BC) sont parallèles. Écris l\'égalité des trois '
             + 'rapports donnée par le théorème de Thalès.',

@@ -69,8 +69,21 @@ class Mastermind extends BaseGame {
                     font-size: calc(var(--mm-jeton) * .38);
                 }
                 .mm-jetons { display: flex; gap: 3px; }
+                /* UN JETON EST ROND, ET IL FAUT LE DIRE TROIS FOIS.
+                   Rémy, sur son iPhone : « il est tout déformé. » Mesuré :
+                   25,7 x 40 px, soit un ovale écrasé aux deux tiers.
+                   La largeur suivait bien --mm-jeton ; la HAUTEUR, elle,
+                   venait de l'étirement flex de la rangée qui les porte
+                   (align-items vaut stretch par défaut). Aucune regle CSS ne
+                   la fixait — c'est pour cela qu'on ne la trouvait pas en
+                   lisant la feuille de style.
+                   Trois verrous, donc, et chacun ferme une porte : on ne
+                   s'etire pas, on ne se laisse pas ecraser, et le rapport
+                   largeur/hauteur vaut un quoi qu'il arrive. */
                 .mm-jeton {
-                    width: var(--mm-jeton); height: var(--mm-jeton); border-radius: 50%;
+                    flex: 0 0 auto; align-self: center;
+                    width: var(--mm-jeton); height: auto; aspect-ratio: 1 / 1;
+                    min-width: 0; min-height: 0; border-radius: 50%;
                     border: 0; padding: 0; margin: 0; font: inherit;
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 800; color: #fff; letter-spacing: 0;
@@ -107,7 +120,9 @@ class Mastermind extends BaseGame {
                        faisait douter qu'il s'agisse du même objet que dans la
                        grille. */
                     --mm-pastille: clamp(26px, min(6cqw, 5cqh), 42px);
-                    width: var(--mm-pastille); height: var(--mm-pastille);
+                    flex: 0 0 auto; align-self: center;
+                    width: var(--mm-pastille); height: auto; aspect-ratio: 1 / 1;
+                    min-width: 0; min-height: 0;
                     border-radius: 50%; border: 0; color: #fff; font-weight: 800;
                     font-size: clamp(12px, 2.6cqh, 18px);
                     box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .18);
@@ -202,11 +217,11 @@ class Mastermind extends BaseGame {
             const cases = jetons.map((id, i) => {
                 const c = m.couleurs.find(x => x.id === id);
                 if (!c) {
-                    return `<button type="button" class="mm-jeton mm-jeton--vide${
+                    return `<button type="button" class="btn-carre mm-jeton mm-jeton--vide${
                         ici && i === this.vise ? ' mm-jeton--vise' : ''}"
                         data-case="${i}">·</button>`;
                 }
-                return `<button type="button" class="mm-jeton${
+                return `<button type="button" class="btn-carre mm-jeton${
                     ici && i === this.vise ? ' mm-jeton--vise' : ''}"
                     style="background:${c.hex}" data-case="${i}"
                     title="${c.nom}">${c.id}</button>`;
@@ -248,7 +263,7 @@ class Mastermind extends BaseGame {
         });
 
         this.paletteEl.innerHTML = m.couleurs.map(c =>
-            `<button type="button" class="mm-couleur" style="background:${c.hex}"
+            `<button type="button" class="btn-carre mm-couleur" style="background:${c.hex}"
                 data-couleur="${c.id}" title="${c.nom}">${c.id}</button>`).join('');
         this.paletteEl.querySelectorAll('[data-couleur]').forEach(b => {
             b.onclick = () => this.poserJeton(b.dataset.couleur);

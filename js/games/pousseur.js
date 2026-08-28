@@ -83,9 +83,25 @@ class Pousseur extends BaseGame {
                 .sk-mur { background: #6b7480; border-radius: 3px;
                     box-shadow: inset 0 0 0 2px #59626d; }
                 .sk-sol { background: #e8ebf2; box-shadow: inset 0 0 0 1px #dfe3ec; }
+                /* UN BUT SE VOIT AUSSI SUR UN TÉLÉPHONE. Rémy : « les cercles
+                   pointillés ne se voient pas sur portable. »
+
+                   MESURÉ : sur un iPhone, une case fait 40,7 px, donc le cercle
+                   à 30 % d'inset en faisait 10,3 — dont 6 mangés par les deux
+                   bords. Il restait quatre pixels de trou, et le pointillé,
+                   lui, n'avait plus la place d'être un pointillé : deux tirets
+                   sur un cercle de dix pixels ne dessinent rien.
+
+                   UN POINTILLÉ EST UNE TEXTURE, et une texture a besoin de
+                   pixels pour exister. À cette taille il faut une FORME : un
+                   anneau plein, et un fond teinté qui dit « ici, il manque une
+                   caisse » même quand l'anneau se réduit à un trait. Le cercle
+                   grandit au passage — 22 % d'inset au lieu de 30. */
                 .sk-but::after {
-                    content: ''; position: absolute; inset: 30%;
-                    border-radius: 50%; border: 3px dashed #2f855a;
+                    content: ''; position: absolute; inset: 22%;
+                    border-radius: 50%; border: 2px solid #2f855a;
+                    background: rgba(47, 133, 90, .16);
+                    box-sizing: border-box;
                 }
                 .sk-marche { cursor: pointer; }
                 .sk-marche:hover { background: #dbe3f5; }

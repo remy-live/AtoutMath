@@ -106,12 +106,27 @@ const STYLE = `
 
     .pl-retenue { height: clamp(16px, 4.5cqw, 22px); display: flex;
         align-items: center; justify-content: center; }
+    /* UNE RETENUE EST RONDE, PAS OVALE. Rémy, sur son iPhone : « sur iPhone,
+       les retenues font des ovales. »
+
+       C'est le défaut classique du bouton dans une boîte flex : flex-shrink
+       vaut 1 par défaut, donc la colonne étroite d'une multiplication posée
+       ÉCRASE la largeur du rond — sa hauteur, elle, ne bouge pas. D'où l'ovale,
+       et seulement sur les écrans où les colonnes se resserrent. Un flex-shrink
+       à zéro interdit l'écrasement, et aspect-ratio tient la promesse même si
+       une future règle touche à l'une des deux dimensions.
+       (Pas d'accent grave ici : ce commentaire vit DANS un littéral de
+       gabarit, et le premier le fermerait.) */
     .pl-rond {
+        flex: 0 0 auto; aspect-ratio: 1 / 1;
         width: clamp(15px, 4.2cqw, 21px); height: clamp(15px, 4.2cqw, 21px);
         border-radius: 50%; border: 2px dashed var(--danger); background: transparent;
         display: flex; align-items: center; justify-content: center;
         font-size: clamp(10px, 2.8cqw, 13px); font-weight: 900;
         color: var(--danger); cursor: pointer; padding: 0;
+        /* Safari donne aux boutons un box-sizing et un ajustement de police
+           qui lui sont propres : on les neutralise. */
+        box-sizing: border-box; -webkit-appearance: none; appearance: none;
     }
     .pl-rond--plein { border-style: solid; }
 
@@ -537,7 +552,7 @@ class PoserMultiplication extends PoserLongue {
             const val = this.retenues[this.ligne][c.position];
             const rond = document.createElement('button');
             rond.type = 'button';
-            rond.className = 'pl-rond' + (val !== undefined ? ' pl-rond--plein' : '');
+            rond.className = 'btn-carre pl-rond' + (val !== undefined ? ' pl-rond--plein' : '');
             rond.dataset.position = String(c.position);
             rond.textContent = val ?? '';
             rond.addEventListener('click', () => this.tournerRetenue(c.position));
@@ -555,7 +570,7 @@ class PoserMultiplication extends PoserLongue {
             cell.style.gridRow = String(ligne + 1);
             const rond = document.createElement('button');
             rond.type = 'button';
-            rond.className = 'pl-rond' + (this.retSomme[p] !== undefined ? ' pl-rond--plein' : '');
+            rond.className = 'btn-carre pl-rond' + (this.retSomme[p] !== undefined ? ' pl-rond--plein' : '');
             rond.dataset.position = String(p);
             rond.textContent = this.retSomme[p] ?? '';
             rond.addEventListener('click', () => {

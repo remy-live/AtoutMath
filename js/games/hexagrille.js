@@ -375,7 +375,7 @@ class Hexagrille extends BaseGame {
         const restants = [];
         for (let v = 1; v <= 9; v++) if (!places.has(v)) restants.push(v);
         this.reserveEl.innerHTML = restants.map(v =>
-            `<button type="button" class="hx-jeton${this.choisi === v ? ' hx-jeton--choisi' : ''}"
+            `<button type="button" class="btn-carre hx-jeton${this.choisi === v ? ' hx-jeton--choisi' : ''}"
                      data-jeton="${v}">${v}</button>`).join('');
         this.reserveEl.querySelectorAll('[data-jeton]').forEach(b => {
             const v = Number(b.dataset.jeton);
