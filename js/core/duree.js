@@ -44,7 +44,7 @@
 // Un générateur déclare donc sa nature (`duree: 'reflexe'`) ou sa progression
 // (`conseil(params)`). Sans rien, c'est une notion ordinaire : dix questions.
 
-import { parDefautDe, uniteDe } from './registry.js';
+import { parDefautDe, uniteDe, getActivity, getGenerator } from './registry.js';
 
 // UNE TROISIÈME SOURCE, ET C'EST CELLE QU'ON AVAIT OUBLIÉE : L'ACTIVITÉ.
 //
@@ -93,6 +93,26 @@ export const MAX_QUESTIONS = 50;
  * @param {Object} [opts]      `{ aide: true }` pour garantir aussi l'escalier de
  *   l'aide, `{ activite: 'sudoku' }` pour partir du compte naturel de l'activité
  */
+/**
+ * LA NATURE D'UN EXERCICE : réflexe, notion, ou jeu autonome.
+ *
+ * Elle vivait dans `ui/builder.js`, où seule la LISTE des étapes s'en servait.
+ * Le panneau de réglages en a besoin aussi — il affiche maintenant la durée à
+ * côté du nombre de questions —, et deux copies d'une même règle finissent
+ * toujours par diverger.
+ *
+ * Elle atterrit ICI et non dans `dureeParcours.js`, qui est un module PUR : lui
+ * donner une dépendance au registre pour une seule fonction lui coûterait sa
+ * testabilité sans navigateur, ce qui est cher payé.
+ */
+export function natureDe(exo) {
+    if (!exo) return 'notion';
+    const activite = getActivity(exo.activityId);
+    if (activite && activite.supports && activite.supports.autonomous && !exo.generatorId) return 'jeu';
+    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
+    return (gen && gen.duree) || 'notion';
+}
+
 export function questionsConseillees(generateur, params = {}, opts = {}) {
     // Le compte naturel de l'activité l'emporte sur le défaut générique : une
     // grille, une partie, une course ne se comptent pas comme des questions.

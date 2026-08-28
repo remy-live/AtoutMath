@@ -132,3 +132,72 @@ test('la répartition écrite passe AVANT l\'échelle adaptative', () => {
     assert.deepEqual(aideSelonEtat({ aide: 'progressive' }, neuf, 9, 10),
         { propositions: 2, clavier: false });
 });
+
+// --- LA BANDE DE PROGRESSION -------------------------------------------------
+//
+// Rémy, cinquième passage sur ce bloc : « chaque étape est présentée en ligne.
+// Et en dessous on a une ligne avec la structure de l'exercice et un slide qui,
+// lorsqu'on le déplace, montre l'aperçu sous une petite modale qui bouge avec
+// le slide. Il faut que ce soit clair. »
+//
+// Les trois cartes faisaient trois écrans sur un téléphone. La bande les
+// remplace : la largeur de chaque zone EST son nombre de questions, et les deux
+// bornes se tirent au doigt. Ces tests gardent l'arithmétique de ce geste, qui
+// est la seule chose qu'on puisse vérifier sans navigateur.
+
+test('TIRER LA PREMIÈRE BORNE POUSSE LA SECONDE, jamais l\'inverse', () => {
+    // C'est la règle qui rouvre le cul-de-sac du double curseur : bloquer la
+    // première borne contre la seconde rendait le réglage impossible à défaire
+    // dès qu'elles se touchaient.
+    const total = 20;
+    // On part de 3 questions à deux propositions, 12 à quatre, 5 au clavier.
+    let { deux, quatre } = repartitionDe({ repartition: '3-12' }, total);
+    assert.deepEqual([deux, quatre], [3, 12]);
+    // Le doigt pose la première borne à la question 15 : les quatre
+    // propositions n'ont plus la place, elles reculent.
+    deux = 15;
+    if (deux + quatre > total) quatre = total - deux;
+    assert.deepEqual([deux, quatre], [15, 5]);
+    assert.deepEqual(repartitionDe({ repartition: ecrireRepartition(deux, quatre) }, total),
+        { deux: 15, quatre: 5, clavier: 0 });
+    // Et poussée jusqu'au bout, elle prend tout : c'est un réglage légitime —
+    // « rien que des deux propositions » — pas un état interdit.
+    deux = 20; quatre = 0;
+    assert.deepEqual(repartitionDe({ repartition: ecrireRepartition(deux, quatre) }, total),
+        { deux: 20, quatre: 0, clavier: 0 });
+});
+
+test('LA SOMME DES TROIS ZONES FAIT TOUJOURS LE TOTAL', () => {
+    // C'est ce qui rend la bande infaillible : on ne saisit jamais la
+    // troisième zone, elle EST ce qui reste. Aucun geste ne peut donc écrire
+    // « 21 questions sur 20 ».
+    for (const total of [1, 3, 7, 12, 20, 50]) {
+        for (let rang = 1; rang <= total; rang++) {
+            // Le doigt sur la borne « deux », à chaque rang possible.
+            let deux = rang, quatre = Math.max(0, Math.min(total - deux, 5));
+            const r = repartitionDe({ repartition: ecrireRepartition(deux, quatre) }, total);
+            assert.equal(r.deux + r.quatre + r.clavier, total,
+                `borne à ${rang} sur ${total}`);
+            assert.ok(r.deux >= 0 && r.quatre >= 0 && r.clavier >= 0);
+        }
+    }
+});
+
+test('LE RANG SOUS LE DOIGT reste dans les questions qui existent', () => {
+    // La tête de lecture se calcule d'un rapport entre 0 et 1 ; le premier
+    // pixel doit donner la question 1 et le dernier la dernière, sans jamais
+    // sortir — c'est ce qui plantait quand la bande mesurée était détachée du
+    // document et rendait une largeur nulle.
+    const rang = (t, total) => Math.max(1, Math.min(total,
+        Math.floor(Math.min(1, Math.max(0, t)) * total) + 1));
+    for (const total of [1, 5, 20, 50]) {
+        assert.equal(rang(0, total), 1);
+        assert.equal(rang(1, total), total);
+        assert.equal(rang(0.999999, total), total);
+        // Hors bornes des deux côtés : on ne sort pas de l'exercice.
+        assert.equal(rang(-3, total), 1);
+        assert.equal(rang(42, total), total);
+    }
+    // Et au milieu exact d'un exercice de 20, on lit bien la onzième.
+    assert.equal(rang(0.5, 20), 11);
+});

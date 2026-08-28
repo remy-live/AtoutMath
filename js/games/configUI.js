@@ -7,6 +7,9 @@
 
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
 import { seuilDe } from '../core/recompenses.js';
+import { natureDe } from '../core/duree.js';
+import { estimerEtape, mesuresParExercice, direDuree } from '../core/dureeParcours.js';
+import { state } from '../core/state.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
@@ -266,33 +269,86 @@ export function glissiereNombre({ id, label, min, max, value, aide, aideId }) {
  */
 const partDuo = (t) => `calc(${Math.max(0, Math.min(1, t)).toFixed(4)} * (100% - 24px))`;
 
-export function glissiereDouble({ idQuestions, idExigees, label, aide, aideId, min, max, questions, exigees, quota = true, evaluation }) {
+/**
+ * LE NOMBRE DE QUESTIONS EST LE BOUT DU RAIL.
+ *
+ * Rémy, deux fois : « pour le nombre de questions, il est au bout du slide, on
+ * peut le modifier ». La première fois je l'avais mis SUR SA PROPRE LIGNE
+ * au-dessus du rail — ce qui répond à la lettre (on peut le modifier) mais pas
+ * à l'idée. Car l'idée est juste : ce nombre n'est pas un réglage de plus, c'est
+ * la GRADUATION MAXIMALE du rail. Posé à son extrémité, il dit d'un coup d'œil
+ * « la piste va jusqu'ici », et le quota qu'on tire dessus se lit comme une
+ * fraction de lui.
+ */
+function boutQuestions(id, min, max, q) {
+    return `<label class="cfg-etape-bout">
+        <input type="number" id="${id}" class="cfg-etape-nb" data-duo="questions"
+               min="${min}" max="${max}" step="1" value="${q}"
+               aria-label="Nombre de questions">
+        <span class="cfg-etape-unite">question${q > 1 ? 's' : ''}</span>
+    </label>`;
+}
+
+/**
+ * COMBIEN DE TEMPS CELA VA PRENDRE — la vraie question du professeur.
+ *
+ * « Vingt questions », cela ne veut rien dire tant qu'on n'a pas une heure de
+ * cours en tête. La liste des étapes affiche déjà cette estimation ; elle
+ * manquait là où l'on décide, c'est-à-dire à côté du nombre qu'on tape. On la
+ * met donc SOUS la phrase du quota, où elle complète « 14 bonnes réponses
+ * exigées sur 20 » par « et cela prendra à peu près six minutes ».
+ *
+ * `mesure` distingue une estimation d'une mesure : quand des élèves ont déjà
+ * répondu, la durée n'est plus un pari, et le « ≈ » disparaît.
+ */
+function ditDuree(exoId, questions) {
+    try {
+        const exo = getExerciseById(exoId);
+        if (!exo) return '';
+        // Les mesures du journal : quand des élèves ont déjà répondu à CET
+        // exercice, la durée n'est plus un pari.
+        const mesures = mesuresParExercice((state && state.attemptHistory) || []);
+        const d = estimerEtape(
+            { nature: natureDe(exo), questions: Math.max(1, questions) },
+            mesures[exo.id]);
+        if (!d || !Number.isFinite(d.min)) return '';
+        return `<span class="cfg-duree${d.mesure ? ' cfg-duree--mesure' : ''}">⏱ ${
+            d.mesure ? '' : '≈ '}${direDuree(d.min, d.max)}</span>`;
+    } catch { return ''; }
+}
+
+export function glissiereDouble({ idQuestions, idExigees, label, aide, aideId, min, max, questions, exigees, quota = true, evaluation, exoId = '' }) {
     const duo = ajusterDuo({ questions, exigees, max });
     const q = duo.questions;
     const actif = !evaluation && quota;
     const tete = `<label class="cfg-label" for="${idQuestions}">${label}${infoBtn(aide, aideId)}</label>`;
     return `<div class="cfg-field cfg-etape${evaluation ? ' cfg-etape--sans-seuil' : ''}" data-duo-boite>
         ${tete}
-        <div class="cfg-etape-long">
-            <input type="number" id="${idQuestions}" class="cfg-input cfg-input--num cfg-etape-nb"
-                   data-duo="questions" min="${min}" max="${max}" step="1" value="${q}"
-                   aria-label="Nombre de questions">
-            <span class="cfg-etape-unite">question${q > 1 ? 's' : ''}</span>
+        ${evaluation ? `
+        <div class="cfg-etape-ligne">
+            <div class="cfg-etape-rail cfg-etape-rail--eteint"><div class="cfg-duo-piste"></div></div>
+            ${boutQuestions(idQuestions, min, max, q)}
         </div>
-        ${evaluation ? `<input type="hidden" id="${idExigees}" value="${duo.exigees}">` : `
+        <input type="hidden" id="${idExigees}" value="${duo.exigees}">` : `
+        <div class="cfg-etape-ligne">
+            <div class="cfg-etape-rail${actif ? '' : ' cfg-etape-rail--eteint'}" data-duo-rail>
+                <div class="cfg-duo-piste"></div>
+                <div class="cfg-duo-part" data-duo-part
+                     style="width:${partDuo((duo.exigees - min) / Math.max(1, q - min))}"></div>
+                <input type="range" id="${idExigees}" class="cfg-duo-curseur"
+                       data-duo="exigees" min="${min}" max="${q}" step="1" value="${duo.exigees}"
+                       ${actif ? '' : 'disabled'} aria-label="Bonnes réponses exigées">
+            </div>
+            ${boutQuestions(idQuestions, min, max, q)}
+        </div>
         <label class="cfg-etape-quota">
             <input type="checkbox" data-duo-quota ${actif ? 'checked' : ''}>
             <span>Exiger un quota de bonnes réponses</span>
-        </label>
-        <div class="cfg-etape-rail${actif ? '' : ' cfg-etape-rail--eteint'}" data-duo-rail>
-            <div class="cfg-duo-piste"></div>
-            <div class="cfg-duo-part" data-duo-part
-                 style="width:${partDuo((duo.exigees - min) / Math.max(1, q - min))}"></div>
-            <input type="range" id="${idExigees}" class="cfg-duo-curseur"
-                   data-duo="exigees" min="${min}" max="${q}" step="1" value="${duo.exigees}"
-                   ${actif ? '' : 'disabled'} aria-label="Bonnes réponses exigées">
-        </div>`}
-        <output class="cfg-duo-dit" data-duo-dit>${phraseDuo({ ...duo, evaluation, quota: actif })}</output>
+        </label>`}
+        <div class="cfg-etape-dit">
+            <output class="cfg-duo-dit" data-duo-dit>${phraseDuo({ ...duo, evaluation, quota: actif })}</output>
+            <span data-duree>${ditDuree(exoId, q)}</span>
+        </div>
     </div>`;
 }
 
@@ -340,6 +396,14 @@ function majDuo(boite) {
     if (unite) unite.textContent = `question${duo.questions > 1 ? 's' : ''}`;
     const dit = boite.querySelector('[data-duo-dit]');
     if (dit) dit.textContent = phraseDuo({ ...duo, evaluation, quota: actif });
+    // LA DURÉE SUIT LE NOMBRE. Elle n'a d'intérêt que si elle bouge quand on
+    // tape : figée sur la valeur d'ouverture, elle mentirait dès le premier
+    // changement, ce qui est pire que de ne rien dire.
+    const duree = boite.querySelector('[data-duree]');
+    if (duree) {
+        const hote = boite.closest('[data-exo]');
+        duree.innerHTML = ditDuree((hote && hote.dataset.exo) || '', duo.questions);
+    }
 }
 
 document.addEventListener('input', (e) => {
@@ -517,7 +581,7 @@ export const TITRES_ELEVE = {
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
     // UN RÉGLAGE QUI A SA PROPRE COMMANDE N'A PAS DE CHAMP. La répartition se
-    // règle dans l'aperçu, aux compteurs de chaque phase ; elle a quand même
+    // règle dans l'aperçu, en tirant les bornes de la bande ; elle a quand même
     // besoin d'exister dans le panneau, parce que c'est là que la relecture des
     // réglages va la chercher. Un champ caché, donc, et rien à l'écran.
     if (param.cache) {
@@ -760,83 +824,72 @@ function vraieQuestion(exoId, p, params) {
     } catch { return null; }
 }
 
-/** La vignette d'un palier : des propositions vides, ou un pavé numérique. */
-function vignetteAide(p) {
-    if (p.clavier) {
-        return '<span class="cfg-vg-e"></span><span class="cfg-vg-pave">'
-            + '<i></i>'.repeat(9) + '</span>';
-    }
-    // « Toutes » n'a pas de nombre : six tuiles disent « beaucoup » sans
-    // promettre un compte que le générateur seul connaît.
-    const n = p.propositions === null ? 6 : p.propositions;
-    const cols = n % 3 === 0 ? 3 : 2;
-    return '<span class="cfg-vg-e"></span>'
-        + `<span class="cfg-vg-choix" style="--cfg-vg-cols: ${cols}">`
-        + '<i></i>'.repeat(n) + '</span>';
-}
-
-/** Le ruban complet, réglages et longueur d'exercice en main. */
 /**
- * LES PHASES DE L'EXERCICE, AVEC LEURS RANGS ET LEUR LONGUEUR RÉGLABLE.
+ * LA STRUCTURE DE L'EXERCICE TIENT SUR UNE LIGNE, ET L'APERÇU SUIT LE DOIGT.
  *
- * Rémy, quatre fois de suite sur ce bloc — « on comprend rien pour le slide »,
- * « il faut le vrai aperçu », « en dessous ya plein de propositions », enfin :
- * « comment on sait le nombre de questions avec un qcm de 2, un qcm de 4 ? on
- * ne comprend pas à quoi correspond le moment de la saisie au clavier. Soit il
- * faut expliquer au prof que l'exercice s'adapte, soit on définit vraiment —
- * par exemple sur 10 questions on fait 2 questions de qcm de 2 puis 3 de qcm
- * de 4. »
+ * Rémy, cinquième passage sur ce bloc : « chaque étape est présentée en ligne.
+ * Et en dessous on a une ligne avec la structure de l'exercice et un slide qui,
+ * lorsqu'on le déplace, montre l'aperçu sous une petite modale qui bouge avec
+ * le slide. Il faut que ce soit clair. »
  *
- * C'est la bonne question, et elle en cachait une autre : les cartes que
- * j'avais faites ne disaient PLUS combien de questions chaque façon de répondre
- * couvrait. Le ruban d'avant le disait — « Questions 1 à 3 » — et je l'avais
- * perdu en route.
+ * LES TROIS CARTES ÉTAIENT LE PROBLÈME. Elles disaient tout — les rangs, la
+ * vraie question, le compteur — mais empilées elles faisaient trois écrans sur
+ * un téléphone, et l'on ne voyait JAMAIS la progression entière d'un coup
+ * d'œil. Or c'est cela qu'un professeur regarde : la forme de l'escalier, pas
+ * le détail d'une marche.
  *
- * On rend donc les deux : les rangs SONT écrits, et ils se RÈGLENT. Trois
- * phases, chacune avec son compteur ; la troisième est ce qui reste, donc la
- * somme est juste par construction — on ne peut pas se tromper sur un total
- * qu'on ne saisit pas. Voir `repartitionDe` dans core/aide.js.
+ * UNE BANDE, DONC, où la largeur de chaque zone EST son nombre de questions.
+ * On lit la progression comme on lit un diagramme : « il passe la moitié de
+ * l'exercice à deux propositions », sans compter quoi que ce soit. Les deux
+ * bornes se tirent au doigt, et elles s'aimantent sur les questions entières —
+ * on ne peut donc pas poser une frontière à « 3,4 questions ».
+ *
+ * ET LA BULLE REMPLACE LES TROIS APERÇUS. Une tête de lecture court sur la
+ * bande ; la bulle affiche la VRAIE question de ce rang-là, avec ses vraies
+ * propositions. Un seul aperçu à la fois, mais on peut le promener partout —
+ * ce qui en montre vingt au lieu de trois.
+ *
+ * LA BULLE EST AU-DESSUS DE LA BANDE, jamais en dessous. Sur une tablette, le
+ * doigt couvre ce qu'il touche : une bulle posée sous le point de contact
+ * serait invisible exactement pendant qu'on la consulte.
  */
 const PHASES_AIDE = [
-    { cle: 'deux', nom: '2 propositions', dit: 'La bonne et l’erreur classique' },
-    { cle: 'quatre', nom: '4 propositions', dit: 'Un vrai choix' },
-    { cle: 'clavier', nom: 'Au clavier', dit: 'L’élève écrit sa réponse' }
+    { cle: 'deux', nom: '2 propositions', court: '2', dit: 'La bonne et l’erreur classique' },
+    { cle: 'quatre', nom: '4 propositions', court: '4', dit: 'Un vrai choix' },
+    { cle: 'clavier', nom: 'Au clavier', court: '⌨', dit: 'L’élève écrit sa réponse' }
 ];
 
-/** La carte d'une phase : ses rangs, la vraie question, son compteur. */
-function cartePhase(phase, rep, depart, params, total, exoId, adaptatif = false) {
-    const combien = rep[phase.cle];
-    const p = {
-        de: depart, a: depart + combien - 1,
-        propositions: phase.cle === 'deux' ? 2 : 4,
-        clavier: phase.cle === 'clavier'
-    };
-    const vraie = combien > 0 ? vraieQuestion(exoId, p, params) : null;
-    const dedans = vraie
-        ? `<span class="cfg-vg-q">${escapeAttr(vraie.texte)}</span>`
+/** Les réglages d'aide du rang `r` : c'est ce que la bulle doit montrer. */
+function paliersDuRang(rep, r) {
+    if (r <= rep.deux) return { de: r, a: r, propositions: 2, clavier: false, phase: 0 };
+    if (r <= rep.deux + rep.quatre) return { de: r, a: r, propositions: 4, clavier: false, phase: 1 };
+    return { de: r, a: r, propositions: 4, clavier: true, phase: 2 };
+}
+
+/**
+ * LA BULLE : la vraie question du rang qu'on montre du doigt.
+ *
+ * Elle porte trois choses et pas une de plus — le rang, la question, les
+ * propositions. Y ajouter le nom du palier serait redondant : la bande, juste
+ * en dessous, le dit par sa couleur.
+ */
+export function bulleApercuHtml(rep, r, params, total, exoId) {
+    const p = paliersDuRang(rep, r);
+    const vraie = vraieQuestion(exoId, p, params);
+    const corps = vraie
+        ? `<div class="cfg-bulle-q">${escapeAttr(vraie.texte)}</div>`
         + (p.clavier
-            ? '<span class="cfg-vg-pave">' + '<i></i>'.repeat(9) + '</span>'
-            : `<span class="cfg-vg-vrais">${vraie.choix.slice(0, 6).map(c =>
-                `<b>${escapeAttr(c)}</b>`).join('')}</span>`)
-        : (combien > 0 ? vignetteAide(p) : '<span class="cfg-phase-rien">—</span>');
-    // LES RANGS, EN TOUTES LETTRES. C'est l'information que Rémy cherchait :
-    // « à quoi correspond le moment de la saisie au clavier ».
-    const rangs = combien === 0 ? 'Aucune question'
-        : combien === 1 ? `Question ${p.de}`
-            : (p.de === 1 && p.a === total ? `Les ${total} questions` : `Questions ${p.de} à ${p.a}`);
-    return `<div class="cfg-phase${combien ? '' : ' cfg-phase--vide'}">
-        <div class="cfg-phase-rangs">${adaptatif ? `≈ ${rangs.toLowerCase()}` : rangs}</div>
-        <div class="cfg-carte-vue${vraie ? ' cfg-vg--vrai' : ''}">${dedans}</div>
-        <div class="cfg-phase-nom">${phase.nom}</div>
-        <div class="cfg-phase-dit">${phase.dit}</div>
-        <div class="cfg-phase-pas">
-            <button type="button" class="cfg-phase-btn" data-phase="${phase.cle}" data-pas="-1"
-                aria-label="Une question de moins">−</button>
-            <b>${combien}</b>
-            <button type="button" class="cfg-phase-btn" data-phase="${phase.cle}" data-pas="1"
-                aria-label="Une question de plus">+</button>
-        </div>
-    </div>`;
+            ? '<div class="cfg-bulle-pave">' + '<i></i>'.repeat(9) + '</div>'
+            : `<div class="cfg-bulle-choix">${vraie.choix.slice(0, 6).map(c =>
+                `<b>${escapeAttr(c)}</b>`).join('')}</div>`)
+        // SANS GÉNÉRATEUR, ON DESSINE LA FORME. Un exercice dont on ne peut pas
+        // tirer de question à la volée doit quand même dire combien de cases
+        // l'élève verra — c'est la moitié de l'information.
+        : `<div class="cfg-bulle-q cfg-bulle-q--vide">${PHASES_AIDE[p.phase].nom}</div>`
+        + (p.clavier
+            ? '<div class="cfg-bulle-pave">' + '<i></i>'.repeat(9) + '</div>'
+            : `<div class="cfg-bulle-choix">${'<b>&nbsp;</b>'.repeat(p.propositions)}</div>`);
+    return `<div class="cfg-bulle-rang">Question ${r} sur ${total}</div>${corps}`;
 }
 
 /**
@@ -845,18 +898,12 @@ function cartePhase(phase, rep, depart, params, total, exoId, adaptatif = false)
  * Rémy : « mais du coup pour la progression, ok, propose le mode adaptatif
  * quand même, qu'en penses-tu ? »
  *
- * Oui — et il manquait plus que l'option : il manquait de DIRE dans lequel des
- * deux on se trouve. Les compteurs affichaient toujours des nombres, qu'ils
- * viennent du professeur ou d'un préréglage, et rien ne distinguait « voici ce
- * que j'ai décidé » de « voici ce que le logiciel ferait ». Pire : une fois un
- * compteur touché, on ne pouvait plus revenir à l'adaptatif.
- *
  * ET LES DEUX MODES NE SONT PAS DEUX RÉGLAGES DU MÊME OBJET. L'adaptatif ne
  * suit AUCUN calendrier : il monte l'élève d'un barreau après trois réussites
  * du premier coup, puis deux, et le redescend après deux ratés (voir `ECHELONS`
  * dans core/aide.js). Deux élèves de la même classe n'y font pas les mêmes
  * questions — ce qui est tout l'intérêt, et ce qu'aucun nombre écrit d'avance
- * ne peut rendre. Les rangs affichés en adaptatif sont donc un EXEMPLE, celui
+ * ne peut rendre. La bande affichée en adaptatif est donc un EXEMPLE, celui
  * d'un élève qui suivrait la marche moyenne, et l'écran le dit.
  */
 const MODES_PROGRESSION = [
@@ -880,23 +927,88 @@ function choixProgression(adaptatif) {
         </button>`).join('')}</div>`;
 }
 
-export function apercuAideHtml(params, total, exoId = '') {
-    // La répartition écrite à la main si elle existe, sinon celle que le
-    // préréglage produit — le professeur corrige au lieu de tout composer.
+/** Le rang que montre la tête de lecture : au départ la première question. */
+const rangLu = (boite, total) => {
+    const v = boite && Number(boite.dataset.rang);
+    return Math.max(1, Math.min(total, Number.isFinite(v) && v > 0 ? v : 1));
+};
+
+/**
+ * LA BANDE, SA LÉGENDE ET SA BULLE — tout le bloc « comment l'élève répond ».
+ *
+ * `rang` est la position de la tête de lecture. Il vit dans le DOM (`data-rang`)
+ * et non dans une variable de module : deux panneaux peuvent être ouverts en
+ * même temps — celui de l'étape et celui d'avant-partie —, et une variable
+ * partagée ferait sauter la tête de l'un quand on touche l'autre.
+ */
+export function apercuAideHtml(params, total, exoId = '', rang = 1, reglable = true) {
     const ecrite = repartitionDe(params, total);
     const rep = ecrite || repartitionDuMode(params, total);
     const adaptatif = !ecrite;
+    const r = Math.max(1, Math.min(total, Math.round(rang) || 1));
+
+    // LES BORNES SE POSENT EN POURCENTAGE DE QUESTIONS, pas de pixels : la
+    // bande change de largeur avec le panneau, et une position en pixels
+    // aurait dérivé au premier redimensionnement.
+    const part = (n) => `${(n / total * 100).toFixed(3)}%`;
     let depart = 1;
-    const cartes = PHASES_AIDE.map(ph => {
-        const html = cartePhase(ph, rep, depart, params, total, exoId, adaptatif);
-        depart += rep[ph.cle];
-        return html;
+    const zones = PHASES_AIDE.map((ph, i) => {
+        const n = rep[ph.cle];
+        const de = depart, a = depart + n - 1;
+        depart += n;
+        return `<span class="cfg-zone cfg-zone--${ph.cle}${n ? '' : ' cfg-zone--vide'}"
+            style="flex-grow:${n}" data-zone="${ph.cle}"
+            title="${escapeAttr(`${ph.nom} — ${n ? (n === 1 ? `question ${de}` : `questions ${de} à ${a}`) : 'aucune question'}`)}"
+            >${n ? ph.court : ''}</span>`;
     }).join('');
-    return `${choixProgression(adaptatif)}
-        <div class="cfg-apercu-titre">${adaptatif
-        ? `Ce qu'un élève « moyen » verrait, sur ${total} question${total > 1 ? 's' : ''}`
-        : `Ce que l'élève verra, sur ${total} question${total > 1 ? 's' : ''}`}</div>
-        <div class="cfg-phases${adaptatif ? ' cfg-phases--auto' : ''}">${cartes}</div>`;
+
+    // La légende PORTE LES RANGS. C'est l'information que Rémy réclamait
+    // depuis le début — « comment on sait le nombre de questions ? » —, et
+    // elle doit rester lisible même quand une zone est trop étroite pour
+    // porter son propre nom.
+    let d2 = 1;
+    const legende = PHASES_AIDE.map(ph => {
+        const n = rep[ph.cle];
+        const de = d2, a = d2 + n - 1;
+        d2 += n;
+        const rangs = n === 0 ? '—' : n === 1 ? `${de}` : `${de} à ${a}`;
+        return `<span class="cfg-leg cfg-leg--${ph.cle}${n ? '' : ' cfg-leg--vide'}">
+            <i></i><b>${ph.nom}</b><em>${adaptatif && n ? '≈ ' : ''}${rangs}</em></span>`;
+    }).join('');
+
+    // L'ÉLÈVE NE RÈGLE PAS LA PROGRESSION DE SA CLASSE.
+    //
+    // Le même bloc sert au panneau du professeur et à celui que l'élève ouvre
+    // avant de jouer. « Les mêmes questions pour toute la classe » n'a aucun
+    // sens sur l'écran d'un élève seul chez lui — et lui donner la main sur le
+    // découpage reviendrait à lui laisser choisir combien d'aide il reçoit,
+    // c'est-à-dire à défaire l'exercice. Il garde la BANDE, qui lui montre ce
+    // qui l'attend ; il perd les commandes, qui ne le regardent pas.
+    // ET LE TITRE PARLE À CELUI QUI LIT. « Ce qu'un élève moyen verrait » sur
+    // l'écran d'un élève parle de quelqu'un d'autre que lui — c'est la même
+    // faute que « Comment l'élève répond » corrigée ailleurs.
+    const qui = reglable
+        ? (adaptatif ? 'Ce qu\'un élève « moyen » verrait' : 'Ce que l\'élève verra')
+        : (adaptatif ? 'Ce que tu verras à peu près' : 'Ce que tu verras');
+    return `${reglable ? choixProgression(adaptatif) : ''}
+        <div class="cfg-apercu-titre">${qui}, sur ${total} question${total > 1 ? 's' : ''}</div>
+        <div class="cfg-scene${adaptatif ? ' cfg-scene--auto' : ''}" data-scene data-rang="${r}">
+            <div class="cfg-bulle" data-bulle style="--cfg-bulle-x:${part(r - 0.5)}">
+                ${bulleApercuHtml(rep, r, params, total, exoId)}
+            </div>
+            <div class="cfg-bande" data-bande>
+                ${zones}
+                <div class="cfg-tete" data-tete style="left:${part(r - 0.5)}"></div>
+                ${adaptatif || !reglable ? '' : `
+                <button type="button" class="cfg-borne" data-borne="deux"
+                        style="left:${part(rep.deux)}"
+                        aria-label="Fin des questions à deux propositions"></button>
+                <button type="button" class="cfg-borne" data-borne="quatre"
+                        style="left:${part(rep.deux + rep.quatre)}"
+                        aria-label="Fin des questions à quatre propositions"></button>`}
+            </div>
+            <div class="cfg-legendes">${legende}</div>
+        </div>`;
 }
 
 /**
@@ -931,14 +1043,19 @@ function paramsAide(racine) {
  * L'aperçu montre alors ce qu'il donnerait, et rien n'est engagé — voir
  * `apercuDuCran`.
  */
-export function rafraichirApercu(racine) {
+export function rafraichirApercu(racine, rang) {
     const boite = racine && racine.querySelector('[data-apercu]');
     if (!boite) return;
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const hote = racine.closest && racine.closest('[data-exo]');
+    // LA TÊTE DE LECTURE SURVIT AU REDESSIN. Sans cela, chaque pas de borne la
+    // renverrait à la question 1 : on tirerait une frontière en regardant une
+    // bulle qui parle d'ailleurs.
+    const r = rang !== undefined ? rang : rangLu(boite.querySelector('[data-scene]'), total);
     boite.innerHTML = apercuAideHtml(paramsAide(racine), total,
-        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '');
+        (hote && hote.dataset.exo) || (racine.dataset && racine.dataset.exo) || '', r,
+        racine.dataset.role !== 'eleve');
 }
 
 /**
@@ -1231,37 +1348,152 @@ document.addEventListener('click', (e) => {
         }
         return rafraichirApercu(hote);
     }
-    // ALLONGER OU RACCOURCIR UNE PHASE — voir `apercuAideHtml`.
-    //
-    // Le compteur écrit dans le champ caché `repartition`, et c'est tout : la
-    // relecture des réglages y trouvera la valeur comme pour n'importe quel
-    // autre réglage. Deux nombres seulement — la troisième phase est ce qui
-    // reste —, si bien que la somme ne peut pas être fausse.
-    const pas = e.target.closest && e.target.closest('.cfg-phase-btn');
-    if (!pas) return;
-    e.preventDefault();
-    const hote = pas.closest('.cfg-apercu-hote');
-    const champ = hote && hote.querySelector('[data-param="repartition"]');
+});
+
+
+// --- LA BANDE DE PROGRESSION : TIRER UNE BORNE, PROMENER LA TÊTE -------------
+//
+// Rémy : « un slide qui, lorsqu'on le déplace, montre l'aperçu sous une petite
+// modale qui bouge avec le slide ».
+//
+// UN SEUL OBJET, DEUX GESTES, ET C'EST LA POSITION DU DOIGT QUI TRANCHE :
+// posé sur une borne, on déplace la frontière ; posé ailleurs, on promène la
+// tête de lecture. Aucun mode à choisir, aucun bouton à comprendre — et dans
+// les deux cas la bulle suit, parce que dans les deux cas on veut voir ce que
+// l'élève verrait à cet endroit-là.
+//
+// ON S'AIMANTE SUR LES QUESTIONS ENTIÈRES. Une frontière à « 3,4 questions »
+// n'existe pas ; laisser le doigt en poser une obligerait à l'arrondir en
+// douce, et le professeur lirait un nombre qu'il n'a pas choisi.
+
+let bandeTiree = null;
+
+/** Le rang de question sous le doigt, entre 1 et le total. */
+function rangSousLeDoigt(bande, clientX, total) {
+    const r = bande.getBoundingClientRect();
+    if (!r.width) return 1;
+    const t = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    return Math.max(1, Math.min(total, Math.floor(t * total) + 1));
+}
+
+/** Le total de questions du panneau qui porte cette bande. */
+const totalDe = (hote) => {
+    const nb = hote && hote.querySelector('#cfg-nbitems');
+    return Math.max(1, parseInt(nb && nb.value, 10) || 10);
+};
+
+/**
+ * DÉPLACER LA TÊTE SANS TOUT REDESSINER.
+ *
+ * C'était un vrai défaut, et il ne se voyait qu'en mesurant : `rafraichirApercu`
+ * REMPLACE le contenu de la boîte, donc l'élément de bande que le geste tenait
+ * en main devenait un orphelin détaché du document. Sa largeur mesurée valait
+ * alors zéro, le rapport partait à 1, et la tête sautait à la dernière question
+ * dès le premier mouvement — on croyait viser le milieu, on lisait la fin.
+ *
+ * Promener la tête ne change AUCUN réglage : il n'y a donc rien à redessiner
+ * que la tête, la bulle et son contenu. C'est aussi ce qui évite d'appeler le
+ * générateur soixante fois par seconde.
+ */
+function poserTete(hote, rang) {
+    const scene = hote.querySelector('[data-scene]');
+    if (!scene) return;
+    const total = totalDe(hote);
+    const r = Math.max(1, Math.min(total, rang));
+    if (Number(scene.dataset.rang) === r) return;
+    scene.dataset.rang = String(r);
+    const x = `${((r - 0.5) / total * 100).toFixed(3)}%`;
+    const tete = scene.querySelector('[data-tete]');
+    if (tete) tete.style.left = x;
+    const bulle = scene.querySelector('[data-bulle]');
+    if (!bulle) return;
+    bulle.style.setProperty('--cfg-bulle-x', x);
+    const params = paramsAide(hote);
+    const rep = repartitionDe(params, total) || repartitionDuMode(params, total);
+    bulle.innerHTML = bulleApercuHtml(rep, r, params, total, hote.dataset.exo || '');
+}
+
+function suivreBande(clientX) {
+    if (!bandeTiree) return;
+    const { hote, borne } = bandeTiree;
+    // ON RE-INTERROGE LE DOM À CHAQUE FOIS. Tirer une borne redessine la bande ;
+    // garder la référence d'origine reviendrait à mesurer un fantôme.
+    const bande = hote.querySelector('[data-bande]');
+    if (!bande) return;
+    const total = totalDe(hote);
+    const rang = rangSousLeDoigt(bande, clientX, total);
+    if (!borne) return poserTete(hote, rang);
+
+    // ON TIRE UNE BORNE. La frontière se pose APRÈS la question qu'on touche :
+    // le doigt sur la troisième case veut dire « trois questions ici ».
+    const champ = hote.querySelector('[data-param="repartition"]');
     if (!champ) return;
-    const nb = hote.querySelector('#cfg-nbitems');
-    const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const rep = repartitionDe({ repartition: champ.value }, total)
         || repartitionDuMode(paramsAide(hote), total);
-    const d = Number(pas.dataset.pas);
-    const quoi = pas.dataset.phase;
     let { deux, quatre } = rep;
-    // ON POUSSE SUR LA PHASE VOISINE, on ne dépasse pas le total. Allonger
-    // « 2 propositions » raccourcit forcément quelque chose d'autre : ce sera
-    // « 4 propositions » d'abord, le clavier ensuite.
-    if (quoi === 'deux') deux = Math.max(0, Math.min(total, deux + d));
-    else if (quoi === 'quatre') quatre = Math.max(0, Math.min(total - deux, quatre + d));
-    // Le clavier : allonger le clavier raccourcit les quatre propositions,
-    // puis les deux — c'est l'ordre naturel de la progression, à rebours.
-    else if (d > 0) { if (quatre > 0) quatre--; else if (deux > 0) deux--; }
-    else if (total - deux - quatre > 0) quatre = Math.min(total - deux, quatre + 1);
-    if (deux + quatre > total) quatre = Math.max(0, total - deux);
+    if (borne === 'deux') {
+        deux = Math.max(0, Math.min(total, rang));
+        // La seconde borne ne peut pas passer devant la première : on la POUSSE
+        // plutôt que de bloquer la première contre elle. Bloquer ferait un
+        // cul-de-sac — c'était exactement le défaut du double curseur.
+        if (deux + quatre > total) quatre = total - deux;
+    } else {
+        quatre = Math.max(0, Math.min(total - deux, rang - deux));
+    }
+    if (champ.value === ecrireRepartition(deux, quatre)) return;
     champ.value = ecrireRepartition(deux, quatre);
-    rafraichirApercu(hote);
+    // La bulle montre la question de la frontière : c'est celle qu'on décide.
+    rafraichirApercu(hote, rang);
+}
+
+document.addEventListener('pointerdown', (e) => {
+    const bande = e.target.closest && e.target.closest('[data-bande]');
+    if (!bande) return;
+    const hote = bande.closest('.cfg-apercu-hote');
+    if (!hote) return;
+    const borne = e.target.closest('[data-borne]');
+    // PAS DE `setPointerCapture` ICI. Tirer une borne remplace la bande, et la
+    // capture serait posée sur l'élément qu'on vient de jeter. L'écouteur au
+    // niveau du document suffit, et il survit à tous les redessins.
+    bandeTiree = { hote, borne: borne ? borne.dataset.borne : null };
+    suivreBande(e.clientX);
+    e.preventDefault();
+});
+
+document.addEventListener('pointermove', (e) => {
+    if (bandeTiree) suivreBande(e.clientX);
+});
+document.addEventListener('pointerup', () => { bandeTiree = null; });
+document.addEventListener('pointercancel', () => { bandeTiree = null; });
+
+// LE CLAVIER MÈNE LA BANDE AUSSI. Les bornes sont de vrais boutons : les
+// flèches les déplacent d'une question, ce qui est le seul moyen précis quand
+// on n'a pas de souris — et le seul moyen tout court pour qui n'utilise pas de
+// pointeur.
+document.addEventListener('keydown', (e) => {
+    const borne = e.target.closest && e.target.closest('[data-borne]');
+    if (!borne || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const hote = borne.closest('.cfg-apercu-hote');
+    const champ = hote && hote.querySelector('[data-param="repartition"]');
+    if (!champ) return;
+    e.preventDefault();
+    const total = totalDe(hote);
+    const rep = repartitionDe({ repartition: champ.value }, total)
+        || repartitionDuMode(paramsAide(hote), total);
+    const d = e.key === 'ArrowRight' ? 1 : -1;
+    let { deux, quatre } = rep;
+    if (borne.dataset.borne === 'deux') {
+        deux = Math.max(0, Math.min(total, deux + d));
+        if (deux + quatre > total) quatre = total - deux;
+    } else {
+        quatre = Math.max(0, Math.min(total - deux, quatre + d));
+    }
+    champ.value = ecrireRepartition(deux, quatre);
+    rafraichirApercu(hote, borne.dataset.borne === 'deux' ? Math.max(1, deux) : Math.max(1, deux + quatre));
+    // Le redessin a remplacé le bouton : on rend le focus à son remplaçant,
+    // sans quoi une deuxième flèche ne ferait plus rien.
+    const suivant = hote.querySelector(`[data-borne="${borne.dataset.borne}"]`);
+    if (suivant) suivant.focus({ preventScroll: true });
 });
 
 document.addEventListener('input', (e) => {
@@ -1399,15 +1631,50 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     const exo = getExerciseById(step.exerciseId) || step.exercise || {};
     const schema = paramSchemaOf(exo);
     const current = { ...(exo.params || {}), ...(step.overrides || {}) };
+    const nbEtape = step.nbItems || conseilEtape(step);
+    const blocLongueur = glissiereDouble({
+        idQuestions: 'cfg-nbitems', idExigees: 'cfg-threshold',
+        label: evaluation ? 'Nombre de questions' : 'Questions et réussite exigée',
+        aideId: 'cfg-threshold-tip',
+        min: MIN_ETAPE, max: MAX_ETAPE,
+        questions: nbEtape,
+        // Le rail garde une valeur MÊME SANS QUOTA : sept sur dix, pour que
+        // recocher l'interrupteur propose quelque chose de sensé au lieu de
+        // repartir à « il faut tout réussir ».
+        exigees: quotaDemande(step) ? step.threshold : Math.ceil(nbEtape * 0.7),
+        quota: quotaDemande(step),
+        evaluation, exoId: exo.id || ''
+    });
+
+    // LA LONGUEUR AVANT LA STRUCTURE. Rémy : « vaut-il pas mieux mettre le
+    // nombre de questions AVANT la structure ? »
+    //
+    // Oui, et pour une raison de fond : la structure DÉCOUPE la longueur. Poser
+    // le découpage avant le total, c'est demander « combien pour la première
+    // marche ? » à quelqu'un qui ne sait pas encore combien de marches il a. Le
+    // panneau se lit donc dans l'ordre où l'on décide : de quoi parlent les
+    // questions, combien il y en a, comment l'élève y répond.
+    const valeurDe = (p) => (current[p.id] !== undefined ? current[p.id] : p.default);
+    const libre = schema.filter(p => !p.groupe);
+    const groupes = schema.filter(p => p.groupe);
 
     content.innerHTML = `
         <div class="cfg-header">${exo.title || step.exerciseId}</div>
         ${exo.instruction ? `<p class="cfg-desc">${exo.instruction}</p>` : ''}
-        ${schema.length ? `<div class="cfg-group">
+        ${libre.length ? `<div class="cfg-group">
             <div class="cfg-group-title">Contenu des questions</div>
-            ${champsSchema(schema, (p) => (current[p.id] !== undefined ? current[p.id] : p.default))}
-        </div>`
-            : '<p class="cfg-empty">Cette activité n\'a pas de paramètre de contenu.</p>'}
+            ${champsSchema(libre, valeurDe)}
+        </div>` : ''}
+
+        <div class="cfg-group">
+            <div class="cfg-group-title">Longueur de l'étape</div>
+            <div id="cfg-champ-seuil">${blocLongueur}</div>
+        </div>
+
+        ${groupes.length ? `<div class="cfg-group">
+            ${champsSchema(groupes, valeurDe, { titres: TITRES_GROUPE })}
+        </div>` : ''}
+        ${!schema.length ? '<p class="cfg-empty">Cette activité n\'a pas de paramètre de contenu.</p>' : ''}
 
         <div class="cfg-group cfg-group--bonus">
             <div class="cfg-group-title">Rôle de l'étape</div>
@@ -1425,21 +1692,6 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                 Une récompense doit quand même s'arrêter : donne-lui un nombre de
                 questions, une durée, ou les deux — le premier atteint met fin au jeu.
             </p>
-            <div id="cfg-champ-seuil">${glissiereDouble({
-        idQuestions: 'cfg-nbitems', idExigees: 'cfg-threshold',
-        label: evaluation ? 'Nombre de questions' : 'Questions et réussite exigée',
-        aideId: 'cfg-threshold-tip',
-        min: MIN_ETAPE, max: MAX_ETAPE,
-        questions: step.nbItems || conseilEtape(step),
-        // Le rail garde une valeur MÊME SANS QUOTA : sept sur dix, pour que
-        // recocher l'interrupteur propose quelque chose de sensé au lieu de
-        // repartir à « il faut tout réussir ».
-        exigees: quotaDemande(step)
-            ? step.threshold
-            : Math.ceil((step.nbItems || conseilEtape(step)) * 0.7),
-        quota: quotaDemande(step),
-        evaluation
-    })}</div>
             <div class="cfg-field">
                 <label class="cfg-label" for="cfg-timelimit">Chronomètre (s)
                     ${infoBtn('0 = aucun chronomètre. Sinon, la durée en secondes.', null)}</label>
@@ -1670,6 +1922,9 @@ export function ouvrirReglagesAvantPartie(exo, onStart) {
     // ne pouvait rien montrer d'autre. On le lui dit ici, et il va chercher une
     // VRAIE question au générateur.
     content.dataset.exo = exo && exo.id ? exo.id : '';
+    // C'EST L'ÉLÈVE QUI OUVRE CETTE FENÊTRE : la bande lui montre ce qui
+    // l'attend, elle ne lui donne pas la main dessus.
+    content.dataset.role = 'eleve';
     rafraichirApercu(content);
     wireTips(content);
     modal.style.display = 'flex';

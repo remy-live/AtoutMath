@@ -12,7 +12,7 @@
 // dans des chaînes HTML. Les gestionnaires sont posés en JS, ce qui supprime
 // une dizaine de globales et rend l'échappement des données non négociable.
 
-import { exercices, getExerciseById } from '../data/catalog.js';
+import { exercices, getExerciseById, paramSchemaOf } from '../data/catalog.js';
 import { state } from '../core/state.js';
 import { Shortcodes } from '../core/shortcodes.js';
 import { makeStep, normalizePath, totalItems } from '../core/path.js';
@@ -22,9 +22,12 @@ import {
     mesuresParExercice, estimerEtape, estimerParcours,
     direDuree, tensionDuree, PHRASES_TENSION
 } from '../core/dureeParcours.js';
-import { getGenerator, getActivity } from '../core/registry.js';
+import { natureDe } from '../core/duree.js';
 import { chapitresDe } from '../core/chapitres.js';
-import { renderGameConfigUI, renderPolicyEditor, conseilEtape } from '../games/configUI.js';
+import {
+    renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide
+} from '../games/configUI.js';
+import { repartitionDe, repartitionDuMode } from '../core/aide.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
 
 let selectedStepId = null;
@@ -616,13 +619,6 @@ function abregerNiveau(n) {
     return m ? `${m[1]}ᵉ` : n;
 }
 
-function natureDe(exo) {
-    const activite = getActivity(exo.activityId);
-    if (activite && activite.supports && activite.supports.autonomous && !exo.generatorId) return 'jeu';
-    const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
-    return (gen && gen.duree) || 'notion';
-}
-
 // Les mesures sont recalculées une fois par rendu et non par étape : le journal
 // peut compter des dizaines de milliers d'événements.
 let mesuresDuJournal = {};
@@ -640,6 +636,28 @@ function dureeDeLEtape(exo, step) {
         { nature: natureDe(exo), questions: step.nbItems || 10 },
         mesuresDuJournal[exo.id]
     );
+}
+
+/**
+ * La bande de progression d'une étape, en miniature — ou `null` si l'exercice
+ * n'a pas d'aide réglable (une grille de sudoku n'a ni propositions ni
+ * clavier, et une bande vide ne dirait rien).
+ */
+function miniBande(exo, step) {
+    if (!aApercuAide(paramSchemaOf(exo))) return null;
+    const total = Math.max(1, step.nbItems || 10);
+    const params = { ...(exo.params || {}), ...(step.overrides || {}) };
+    const ecrite = repartitionDe(params, total);
+    const rep = ecrite || repartitionDuMode(params, total);
+    const el = document.createElement('span');
+    el.className = 'pstep-bande' + (ecrite ? '' : ' pstep-bande--auto');
+    el.title = ecrite
+        ? `${rep.deux} à 2 propositions, ${rep.quatre} à 4, ${rep.clavier} au clavier`
+        : 'L\'exercice s\'adapte à chaque élève — voici la marche moyenne.';
+    el.innerHTML = ['deux', 'quatre', 'clavier']
+        .map(k => (rep[k] ? `<i class="pstep-z pstep-z--${k}" style="flex-grow:${rep[k]}"></i>` : ''))
+        .join('');
+    return el;
 }
 
 function stepRow(step, index, policy) {
@@ -726,6 +744,19 @@ function stepRow(step, index, policy) {
             : 'Estimation d\'après la nature de l\'exercice.'}">`
         + `${duree.mesure ? '' : '≈ '}${escapeHtml(direDuree(duree.min, duree.max))}</span>`);
     dessous.innerHTML = morceaux.join('');
+
+    // LA BANDE, EN MINIATURE, SUR LA LIGNE DE L'ÉTAPE.
+    //
+    // Rémy : « chaque étape est présentée en ligne. Et en dessous on a une
+    // ligne avec la structure de l'exercice. »
+    //
+    // C'est la même bande que dans le panneau, réduite à quatre pixels de haut.
+    // Elle ne se règle pas ici — on l'ouvre pour cela —, mais elle rend la
+    // FORME du parcours lisible d'un seul regard : on voit d'un coup qu'une
+    // étape laisse l'élève au clavier du début à la fin pendant que la
+    // précédente l'accompagne, ce qu'aucune ligne de texte ne dit aussi vite.
+    const bande = miniBande(exo, step);
+    if (bande) dessous.appendChild(bande);
 
     const actions = document.createElement('div');
     actions.className = 'path-step-actions';

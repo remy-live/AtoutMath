@@ -2638,50 +2638,156 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-prog--ici .cfg-prog-nom { color: var(--primary); }
 .cfg-prog-dit { font-size: .71rem; line-height: 1.3; color: var(--text-muted); }
 
-.cfg-phases {
-    display: grid; gap: 8px; margin-top: 6px;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+/* LA BANDE DE PROGRESSION — voir `apercuAideHtml` dans games/configUI.js.
+   Rémy, cinquième passage : « chaque étape est présentée en ligne. Et en
+   dessous on a une ligne avec la structure de l'exercice et un slide qui,
+   lorsqu'on le déplace, montre l'aperçu sous une petite modale qui bouge avec
+   le slide. Il faut que ce soit clair. »
+
+   LES TROIS CARTES FAISAIENT TROIS ÉCRANS SUR UN TÉLÉPHONE. On ne voyait
+   jamais la progression entière d'un coup d'œil — or c'est cela qu'un
+   professeur regarde : la FORME de l'escalier, pas le détail d'une marche. Une
+   bande où la largeur de chaque zone EST son nombre de questions se lit comme
+   un diagramme, sans compter quoi que ce soit. */
+.cfg-scene {
+    position: relative; margin-top: 6px;
+    /* La bulle vit au-dessus de la bande : on lui réserve sa hauteur, sinon
+       son apparition ferait sauter tout ce qui suit. */
+    padding-top: 118px;
 }
-/* EN ADAPTATIF, LES CARTES SONT UN EXEMPLE, PAS UNE CONSIGNE. Le trait
-   pointillé le dit sans une ligne de plus : ces rangs-là sont ceux d'un élève
-   qui suivrait la marche moyenne, et deux élèves n'ont pas la même. Les
-   compteurs restent cliquables — c'est même ainsi qu'on passe à « Je définis ». */
-.cfg-phases--auto .cfg-phase { border-style: dashed; }
-.cfg-phase {
-    display: flex; flex-direction: column; gap: 4px; align-items: stretch;
-    padding: 8px; text-align: center;
-    border: 2px solid var(--border, #d7dce5); border-radius: 12px; background: #fff;
+.cfg-bande {
+    position: relative; display: flex; height: 34px; width: 100%;
+    border-radius: 10px; overflow: visible; cursor: pointer;
+    touch-action: pan-y;            /* le glissé horizontal nous appartient */
+    background: var(--bg-hover);
 }
-/* Une phase de zéro question reste VISIBLE — c'est elle qu'on va allonger. */
-.cfg-phase--vide { opacity: .5; border-style: dashed; }
-.cfg-phase-rangs {
-    font-size: .74rem; font-weight: 800; color: var(--primary);
-    text-transform: uppercase; letter-spacing: .02em;
+.cfg-zone {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; font-weight: 900; font-size: .9rem; color: #fff;
+    overflow: hidden; white-space: nowrap; user-select: none;
+    transition: flex-grow .12s ease;
 }
-.cfg-phase--vide .cfg-phase-rangs { color: var(--text-muted); }
-.cfg-phase-nom { font-weight: 800; font-size: .84rem; color: var(--text-main); }
-.cfg-phase-dit { font-size: .71rem; color: var(--text-muted); line-height: 1.25; }
-.cfg-phase-rien { color: var(--text-muted); font-size: 1.4rem; }
-.cfg-phase-pas {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    margin-top: 2px;
+.cfg-zone:first-child { border-radius: 10px 0 0 10px; }
+.cfg-zone:last-child { border-radius: 0 10px 10px 0; }
+/* TROIS COULEURS QUI DISENT UNE PROGRESSION, du plus aidé au plus autonome :
+   le vert rassure, le bleu travaille, le violet est le but. La légende reprend
+   exactement ces trois teintes, sinon il faudrait relire pour associer. */
+.cfg-zone--deux { background: #10b981; }
+.cfg-zone--quatre { background: #3b82f6; }
+.cfg-zone--clavier { background: #7c3aed; }
+.cfg-zone--vide { flex-grow: 0 !important; }
+/* EN ADAPTATIF, LA BANDE EST UN EXEMPLE, PAS UNE CONSIGNE : elle se raye. Ces
+   rangs-là sont ceux d'un élève qui suivrait la marche moyenne, et deux élèves
+   n'ont pas la même. */
+.cfg-scene--auto .cfg-zone {
+    background-image: repeating-linear-gradient(45deg,
+        rgba(255,255,255,.28) 0 6px, transparent 6px 12px);
 }
-.cfg-phase-pas b { min-width: 1.4em; font-size: .95rem; font-variant-numeric: tabular-nums; }
-.cfg-phase-btn {
-    width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--border, #d7dce5); background: #fff;
-    font-weight: 800; font-size: 1rem; line-height: 1; padding: 0;
-    color: var(--text-main);
+.cfg-scene--auto .cfg-bande { cursor: default; }
+
+/* LA TÊTE DE LECTURE : où l'on regarde. Un trait blanc cerné de sombre, pour
+   rester visible sur les trois couleurs de zone. */
+.cfg-tete {
+    position: absolute; top: -4px; bottom: -4px; width: 3px;
+    margin-left: -1.5px; border-radius: 2px; pointer-events: none;
+    background: #fff; box-shadow: 0 0 0 1.5px rgba(15,23,42,.55);
 }
-.cfg-phase-btn:hover { border-color: var(--primary); color: var(--primary); }
-.cfg-carte-vue {
-    display: flex; flex-direction: column; gap: 5px; justify-content: center;
-    min-height: 54px; padding: 6px 4px; border-radius: 8px; background: #fff;
-    border: 1px solid var(--border, #e6eaf2);
+/* LES BORNES : les deux frontières qu'on tire. Elles débordent de la bande en
+   hauteur pour être attrapables au doigt sans viser — quarante-quatre pixels
+   de haut, c'est la taille d'une cible tactile. */
+.cfg-borne {
+    position: absolute; top: -6px; height: calc(100% + 12px); width: 26px;
+    margin-left: -13px; padding: 0; border: none; background: transparent;
+    cursor: ew-resize; touch-action: none;
 }
-.cfg-carte-nom { font-weight: 800; font-size: .85rem; color: var(--text-main); }
-.cfg-carte--ici .cfg-carte-nom { color: var(--primary); }
-.cfg-carte-dit { font-size: .72rem; color: var(--text-muted); line-height: 1.25; }
+.cfg-borne::before {
+    content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px;
+    margin-left: -2px; border-radius: 3px; background: var(--bg-panel);
+    box-shadow: 0 0 0 1.5px rgba(15,23,42,.35);
+}
+.cfg-borne::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+    background: var(--bg-panel); box-shadow: var(--shadow-md), 0 0 0 1.5px rgba(15,23,42,.35);
+}
+.cfg-borne:hover::after, .cfg-borne:active::after { background: var(--primary); }
+.cfg-borne:focus-visible::after { box-shadow: 0 0 0 3px var(--warning); }
+
+/* LA BULLE : la vraie question du rang qu'on montre du doigt.
+
+   AU-DESSUS DE LA BANDE, JAMAIS EN DESSOUS. Sur une tablette, le doigt couvre
+   ce qu'il touche : une bulle posée sous le point de contact serait invisible
+   exactement pendant qu'on la consulte. */
+.cfg-bulle {
+    position: absolute; top: 0; width: 172px; margin-left: -86px;
+    /* Elle ne sort jamais du panneau : `clamp` la retient aux deux bords,
+       même quand la tête de lecture est sur la première ou la dernière
+       question. Sans cela, la bulle de la question 1 débordait à gauche. */
+    left: clamp(86px, var(--cfg-bulle-x, 50%), calc(100% - 86px));
+    padding: 8px 10px 10px; border-radius: 12px; box-sizing: border-box;
+    background: var(--bg-panel); border: 2px solid var(--primary);
+    box-shadow: var(--shadow-md); pointer-events: none;
+    transition: left .1s linear;
+}
+.cfg-bulle::after {
+    content: ''; position: absolute; left: 50%; bottom: -8px;
+    width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg);
+    background: var(--bg-panel);
+    border-right: 2px solid var(--primary); border-bottom: 2px solid var(--primary);
+}
+.cfg-bulle-rang {
+    font-size: .66rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--primary); margin-bottom: 4px;
+}
+.cfg-bulle-q {
+    font-weight: 800; font-size: .8rem; color: var(--text-main); line-height: 1.2;
+    /* Deux lignes au plus : une bulle n'est pas une fenêtre de lecture. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; margin-bottom: 5px;
+}
+.cfg-bulle-q--vide { color: var(--text-muted); font-weight: 700; }
+.cfg-bulle-choix { display: flex; flex-wrap: wrap; gap: 3px; }
+.cfg-bulle-choix b {
+    font-size: .7rem; font-weight: 700; padding: 2px 6px; border-radius: 5px;
+    background: var(--primary-soft, #eceafd); color: var(--primary);
+    white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+/* LE PAVÉ DOIT RESSEMBLER À UN PAVÉ. Étiré sur toute la largeur de la bulle,
+   il donnait trois rangées de barres grises qu'on lisait comme des
+   propositions vides — c'est-à-dire l'exact contraire de ce qu'il annonce. On
+   le ramène donc à sa taille de clavier, centré, avec des touches carrées. */
+.cfg-bulle-pave {
+    display: grid; grid-template-columns: repeat(3, 20px); gap: 3px;
+    justify-content: center; margin-top: 2px;
+}
+.cfg-bulle-pave i {
+    height: 15px; border-radius: 4px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+}
+
+/* LA LÉGENDE PORTE LES RANGS — c'est l'information que Rémy réclamait depuis le
+   début (« comment on sait le nombre de questions ? »), et elle reste lisible
+   même quand une zone est trop étroite pour porter son propre nom. */
+.cfg-legendes {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px;
+}
+.cfg-leg { display: flex; align-items: center; gap: 5px; font-size: .74rem; }
+.cfg-leg i { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.cfg-leg--deux i { background: #10b981; }
+.cfg-leg--quatre i { background: #3b82f6; }
+.cfg-leg--clavier i { background: #7c3aed; }
+.cfg-leg b { font-weight: 700; color: var(--text-main); }
+.cfg-leg em {
+    font-style: normal; font-weight: 800; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.cfg-leg--vide { opacity: .45; }
+
+@media (max-width: 520px) {
+    .cfg-scene { padding-top: 112px; }
+    .cfg-legendes { gap: 3px 10px; }
+    .cfg-leg { font-size: .7rem; }
+}
 
 /* Les traits sur le rail, à la même abscisse : la graduation se voit même
    quand les noms sont longs. C'est le rail que Rémy dessinait : « O———O———O ». */
@@ -2745,9 +2851,42 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* LA LONGUEUR SE TAPE. Rémy : « pour le nombre de questions, il est au bout du
    slide, on peut le modifier ». On SAIT qu'on veut dix questions ; la chercher
    au doigt sur cinquante crans était une corvée déguisée en confort. */
-.cfg-etape-long { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
-.cfg-etape-nb { width: 5.5em; text-align: center; font-weight: 800; font-size: 1.05rem; }
-.cfg-etape-unite { font-size: .9rem; font-weight: 600; color: var(--text-muted); }
+/* LE NOMBRE DE QUESTIONS EST LE BOUT DU RAIL, pas un champ au-dessus.
+   Rémy, deux fois : « pour le nombre de questions, il est au bout du slide, on
+   peut le modifier ». Posé à l'extrémité, il cesse d'être un réglage de plus :
+   il devient la GRADUATION MAXIMALE, et le quota qu'on tire sur le rail se lit
+   comme une fraction de lui. */
+.cfg-etape-ligne { display: flex; align-items: center; gap: 10px; }
+.cfg-etape-ligne .cfg-etape-rail { flex: 1; min-width: 0; }
+.cfg-etape-bout {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    flex: 0 0 auto; cursor: text;
+}
+.cfg-etape-nb {
+    width: 3.2em; text-align: center; font-weight: 900; font-size: 1.1rem;
+    padding: 5px 2px; border-radius: 10px; font-family: inherit;
+    border: 2px solid var(--primary); background: var(--bg-panel);
+    color: var(--text-main); -moz-appearance: textfield;
+}
+.cfg-etape-nb::-webkit-outer-spin-button,
+.cfg-etape-nb::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cfg-etape-unite { font-size: .68rem; font-weight: 700; color: var(--text-muted); }
+/* LA PHRASE ET LA DURÉE SE LISENT ENSEMBLE. « 14 bonnes réponses exigées sur
+   20 » et « ≈ 6 min » répondent à la même question — ce que cette étape
+   demande —, et un professeur qui prépare son heure a besoin des deux d'un
+   seul coup d'œil. */
+.cfg-etape-dit {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 2px 2px 0;
+}
+.cfg-etape-dit .cfg-duo-dit { padding: 0; }
+.cfg-duree {
+    font-size: .82rem; font-weight: 800; color: var(--primary);
+    white-space: nowrap;
+}
+/* Mesurée sur de vraies réponses, la durée n'est plus un pari : elle le dit
+   en perdant son « ≈ » et en prenant la couleur de ce qui est acquis. */
+.cfg-duree--mesure { color: var(--success, #16a34a); }
 /* L'INTERRUPTEUR DU QUOTA — « actif ou non selon la nécessité d'avoir un quota
    de bonne réponse ». C'était la question que le panneau ne posait pas : il
    imposait un seuil à toute étape, alors qu'un entraînement se valide très
@@ -2859,18 +2998,6 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-apercu-dit b { color: var(--text-main); font-size: .78rem; }
 
-/* La vignette : une barre d'énoncé, puis les propositions ou le pavé. Elle ne
-   montre AUCUN nombre — c'est la forme de l'écran qu'on reconnaît, et un faux
-   « 7 × 8 » aurait laissé croire que l'aperçu tire les vraies questions. */
-.cfg-vg { display: flex; flex-direction: column; gap: 5px; }
-.cfg-vg-e {
-    height: 9px; border-radius: 3px; background: var(--primary); opacity: .28;
-}
-.cfg-vg-choix, .cfg-vg-pave { display: grid; gap: 4px; }
-.cfg-vg-choix { grid-template-columns: repeat(var(--cfg-vg-cols, 2), minmax(0, 1fr)); }
-.cfg-vg-pave { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.cfg-vg-choix i { height: 13px; border-radius: 4px; background: var(--bg-hover); border: 1px solid var(--border); }
-.cfg-vg-pave i { height: 9px; border-radius: 3px; background: var(--bg-hover); border: 1px solid var(--border); }
 
 /* DANS UNE BOÎTE ÉTROITE, LE RUBAN S'EMPILE. Trois vignettes côte à côte dans
    340 px font 105 px chacune : les légendes y tombent à un mot par ligne et
@@ -7957,30 +8084,6 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .banc-q-export { width: 100%; min-height: 180px; font: 12px/1.4 ui-monospace, monospace; margin-top: 8px; }
 
 
-/* LE VRAI APERÇU : une question tirée au générateur, avec ses vraies
-   propositions. Rémy : « il faut le vrai aperçu ». Les rectangles gris
-   disaient la FORME — combien de propositions, un pavé ou non — et rien du
-   CONTENU : on ne voyait pas qu'un réglage donnait « 6 + 3 × 4 » plutôt que
-   « 2 + 3 », ni que deux distracteurs se ressemblaient trop. */
-.cfg-vg--vrai {
-    display: flex; flex-direction: column; gap: 5px;
-    align-items: stretch; justify-content: center;
-}
-.cfg-vg-q {
-    font-weight: 800; font-size: .8rem; color: var(--text-main);
-    line-height: 1.2; text-align: center;
-    /* Deux lignes au plus : une vignette n'est pas une fenêtre de lecture, et
-       un énoncé long y deviendrait illisible de toute façon. */
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-.cfg-vg-vrais { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; }
-.cfg-vg-vrais b {
-    font-size: .7rem; font-weight: 700; padding: 2px 6px;
-    border-radius: 5px; background: var(--primary-soft, #eceafd);
-    color: var(--primary); white-space: nowrap;
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-}
 
 
 /* LES DEUX BOUTONS DE RÉPONSE DU PROFESSEUR — voir `repondrePour` dans le
@@ -8077,4 +8180,28 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     border-radius: 0 10px 10px 0;
     background: color-mix(in srgb, var(--primary) 6%, transparent);
     font-size: .88rem; line-height: 1.5; color: var(--text-main);
+}
+
+
+/* ═══ LA BANDE EN MINIATURE, SUR LA LIGNE DE L'ÉTAPE ═════════════════════════
+   Rémy : « chaque étape est présentée en ligne. Et en dessous on a une ligne
+   avec la structure de l'exercice. »
+
+   Quatre pixels de haut suffisent : on ne lit pas cette bande, on la RECONNAÎT.
+   Elle rend la forme du parcours visible d'un seul regard — une étape tout en
+   violet accompagne moins qu'une étape qui commence en vert. */
+.pstep-bande {
+    display: flex; width: 62px; height: 5px; border-radius: 3px;
+    overflow: hidden; flex: 0 0 auto; align-self: center;
+    background: var(--bg-hover);
+}
+.pstep-z { display: block; min-width: 0; }
+.pstep-z--deux { background: #10b981; }
+.pstep-z--quatre { background: #3b82f6; }
+.pstep-z--clavier { background: #7c3aed; }
+/* L'adaptatif se raye, comme la grande bande : ces proportions-là sont un
+   exemple, pas une consigne. */
+.pstep-bande--auto .pstep-z {
+    background-image: repeating-linear-gradient(45deg,
+        rgba(255,255,255,.45) 0 3px, transparent 3px 6px);
 }
