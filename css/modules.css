@@ -2740,13 +2740,33 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    prix a payer est ici : les rails ne recoivent PLUS les evenements (sinon
    celui du dessus attraperait tous les clics, y compris ceux destines a la
    poignee du dessous), et on les rend uniquement aux deux poignees. */
-.cfg-duo { grid-template-columns: minmax(0, 1fr); }
-.cfg-duo .cfg-label { justify-content: flex-start; }
-.cfg-duo-rail {
+.cfg-etape { grid-template-columns: minmax(0, 1fr); }
+.cfg-etape .cfg-label { justify-content: flex-start; }
+/* LA LONGUEUR SE TAPE. Rémy : « pour le nombre de questions, il est au bout du
+   slide, on peut le modifier ». On SAIT qu'on veut dix questions ; la chercher
+   au doigt sur cinquante crans était une corvée déguisée en confort. */
+.cfg-etape-long { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.cfg-etape-nb { width: 5.5em; text-align: center; font-weight: 800; font-size: 1.05rem; }
+.cfg-etape-unite { font-size: .9rem; font-weight: 600; color: var(--text-muted); }
+/* L'INTERRUPTEUR DU QUOTA — « actif ou non selon la nécessité d'avoir un quota
+   de bonne réponse ». C'était la question que le panneau ne posait pas : il
+   imposait un seuil à toute étape, alors qu'un entraînement se valide très
+   bien en allant au bout. */
+.cfg-etape-quota {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: .88rem; font-weight: 600; color: var(--text-main);
+    padding: 4px 0 2px;
+}
+.cfg-etape-quota input { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; }
+.cfg-etape-rail {
     position: relative; width: 100%; height: 34px;
     touch-action: pan-y;            /* le glisse horizontal nous appartient */
     cursor: pointer;
 }
+/* LE RAIL ÉTEINT RESTE VISIBLE. Le faire disparaître ferait sauter la hauteur
+   du panneau à chaque clic sur la case, et surtout on ne verrait plus ce que
+   la case commande. Il s'efface, il ne s'en va pas. */
+.cfg-etape-rail--eteint { opacity: .35; cursor: default; }
 /* La piste, et la part qu'il faut reussir. C'est ce segment colore qui rend le
    reglage lisible d'un coup d'oeil : voila l'exigence, voila la marge. */
 .cfg-duo-piste, .cfg-duo-part {
@@ -2769,11 +2789,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     width: 100%; height: 34px; margin: 0; padding: 0;
     -webkit-appearance: none; appearance: none;
     background: transparent; outline: none;
-    /* AUCUN EVENEMENT SUR LES RAILS NI SUR LEURS POIGNEES : c'est la boite qui
-       recoit le doigt et decide laquelle des deux poignees bouge (voir
-       games/configUI.js). Sans cela, deux poignees superposees se recouvrent et
-       le reglage devient un cul-de-sac. Les champs restent la pour le clavier,
-       le focus et les lecteurs d'ecran. */
+    /* C'EST LA BOÎTE QUI REÇOIT LE DOIGT — on tape le rail, la poignée y va,
+       geste indispensable sur un téléphone où viser une pastille de 24 px au
+       milieu de cinquante crans n'est pas raisonnable. Le champ reste là pour
+       le clavier, le focus et les lecteurs d'écran. */
     pointer-events: none;
 }
 .cfg-duo-curseur::-webkit-slider-runnable-track { height: 8px; background: transparent; }
@@ -2781,27 +2800,26 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-duo-curseur::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
     width: 24px; height: 24px; border-radius: 50%;
-    background: var(--primary); border: 3px solid var(--bg-panel);
+    /* La poignée porte la couleur de son segment : les deux disent la même
+       chose, elles doivent se reconnaître. */
+    background: var(--success); border: 3px solid var(--bg-panel);
     box-shadow: var(--shadow-md); margin-top: -8px;
     transition: transform .1s ease;
 }
 .cfg-duo-curseur::-moz-range-thumb {
     box-sizing: border-box;
     width: 24px; height: 24px; border-radius: 50%;
-    background: var(--primary); border: 3px solid var(--bg-panel);
+    background: var(--success); border: 3px solid var(--bg-panel);
     box-shadow: var(--shadow-md);
 }
-/* La poignee du seuil porte la couleur de son segment : les deux disent la
-   meme chose, elles doivent se reconnaitre. */
-.cfg-duo-curseur--exigees::-webkit-slider-thumb { background: var(--success); }
-.cfg-duo-curseur--exigees::-moz-range-thumb { background: var(--success); }
 .cfg-duo-curseur:active::-webkit-slider-thumb { transform: scale(1.15); }
 .cfg-duo-curseur:focus-visible::-webkit-slider-thumb { border-color: var(--warning); }
 .cfg-duo-curseur:focus-visible::-moz-range-thumb { border-color: var(--warning); }
-/* En evaluation — et pour un jeu de recompense — il n'y a pas de seuil : la
-   seconde poignee s'en va au lieu de proposer un reglage sans effet. */
-.cfg-duo--sans-seuil .cfg-duo-curseur--exigees { display: none; }
-.cfg-duo--sans-seuil .cfg-duo-part { display: none; }
+/* En évaluation — et pour un jeu de récompense — il n'y a pas de quota du tout :
+   l'interrupteur et son rail s'en vont au lieu de proposer un réglage sans
+   effet. */
+.cfg-etape--sans-seuil .cfg-etape-quota,
+.cfg-etape--sans-seuil .cfg-etape-rail { display: none; }
 .cfg-duo-dit {
     display: block; padding: 2px 2px 0;
     font-size: .86rem; font-weight: 600; color: var(--text-muted); line-height: 1.35;

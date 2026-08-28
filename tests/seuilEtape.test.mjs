@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
-    MIN_ETAPE, MAX_ETAPE, seuilRequis, ajusterDuo, seuilPourMode, phraseDuo
+    MIN_ETAPE, MAX_ETAPE, seuilRequis, ajusterDuo, seuilPourMode, phraseDuo, quotaDemande
 } from '../js/core/seuilEtape.js';
 
 // --- Ce que vaut vraiment un seuil ------------------------------------------
@@ -95,4 +95,58 @@ test('DEUX POIGNÉES SANS LÉGENDE SE LISENT COMME UN INTERVALLE', () => {
     // Une seule erreur tolérée reste au singulier.
     assert.match(phraseDuo({ questions: 5, exigees: 4 }), /1 erreur tolérée/);
     assert.match(phraseDuo({ questions: 1, exigees: 1 }), /^1 question /);
+});
+
+// --- L'interrupteur du quota -------------------------------------------------
+//
+// Rémy : « il n'y a qu'un bouton sur le slide, actif ou non selon la nécessité
+// d'avoir un quota de bonne réponse. » Le panneau imposait un seuil à TOUTE
+// étape : un entraînement où l'on veut simplement que l'élève fasse ses vingt
+// calculs n'était pas exprimable, il fallait écrire « 0 sur 20 » et espérer.
+
+test('SANS QUOTA, L\'ÉTAPE N\'EXIGE RIEN — et le dit', () => {
+    const sans = seuilPourMode({ questions: 10, exigees: 7, quota: false });
+    assert.deepEqual(sans, { nbItems: 10, threshold: null });
+    // `null` et non 0 : c'est l'ABSENCE d'exigence, pas une exigence réglée au
+    // plus bas. Un 0 se relirait comme un choix, et quelqu'un finirait par
+    // l'« améliorer » en 1.
+    assert.equal(seuilRequis({ nbItems: 10, threshold: null }), 0);
+    assert.match(phraseDuo({ questions: 10, exigees: 7, quota: false }),
+        /l'étape se valide en allant au bout/);
+    // La phrase reste juste au singulier — une étape d'une seule question.
+    assert.match(phraseDuo({ questions: 1, exigees: 1, quota: false }), /^1 question —/);
+});
+
+test('l\'interrupteur décide, pas la valeur restée sur le rail', () => {
+    // Le rail garde 7 sous la main pour le jour où l'on recoche ; ce 7 ne doit
+    // JAMAIS ressortir dans l'étape tant que la case est décochée.
+    for (const exigees of [1, 5, 7, 10]) {
+        assert.equal(seuilPourMode({ questions: 10, exigees, quota: false }).threshold, null);
+    }
+    assert.equal(seuilPourMode({ questions: 10, exigees: 7, quota: true }).threshold, 7);
+    // Et l'évaluation l'emporte sur tout : même quota coché, pas de seuil.
+    assert.equal(
+        seuilPourMode({ questions: 10, exigees: 7, quota: true, evaluation: true }).threshold, null);
+});
+
+test('on relit dans l\'étape s\'il y avait un quota', () => {
+    // C'est ce que le panneau consulte pour savoir s'il coche la case. Sans
+    // cette lecture unique, chaque panneau redevinait la réponse à sa façon.
+    assert.equal(quotaDemande({ nbItems: 10, threshold: 7 }), true);
+    assert.equal(quotaDemande({ nbItems: 10, threshold: 0 }), true);   // « 0 exigée », choisi
+    assert.equal(quotaDemande({ nbItems: 10, threshold: null }), false);
+    assert.equal(quotaDemande({ nbItems: 10 }), false);
+    assert.equal(quotaDemande(null), false);
+});
+
+test('LE MAXIMUM DU RAIL EST LE NOMBRE TAPÉ : « 11 sur 10 » n\'existe pas', () => {
+    // C'est la garantie que le double curseur donnait par l'ordre des poignées,
+    // et qu'on doit continuer d'offrir maintenant qu'il n'y en a qu'une : le
+    // rail du quota est borné par le nombre de questions, pas par MAX_ETAPE.
+    assert.deepEqual(seuilPourMode({ questions: 10, exigees: 11 }), { nbItems: 10, threshold: 10 });
+    assert.deepEqual(ajusterDuo({ questions: 3, exigees: 40 }), { questions: 3, exigees: 3 });
+    // Et raccourcir le devoir tire le quota avec lui, sans quoi il resterait
+    // au-dessus — l'état exact qu'on veut rendre irreprésentable.
+    assert.deepEqual(ajusterDuo({ questions: 4, exigees: 9, bouge: 'questions' }),
+        { questions: 4, exigees: 4 });
 });

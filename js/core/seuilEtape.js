@@ -10,13 +10,22 @@
 // un `Math.min`. Le professeur voyait donc 30, l'étape en gardait 10, et
 // personne ne lui disait qu'il venait d'écrire une chose impossible.
 //
-// LES DEUX POIGNÉES SUR UN SEUL RAIL RÈGLENT CELA PAR LA FORME, pas par une
-// vérification. Les deux valeurs se comptent dans la même unité — des questions
-// — donc elles vivent sur le même axe, et l'ordre des poignées EST la règle :
-// la poignée « exigées » ne peut pas dépasser la poignée « questions », il n'y
-// a plus d'état interdit à représenter. C'est aussi ce qu'on lit d'un coup
-// d'œil : le segment coloré, c'est ce qu'il faut réussir ; le reste du rail,
-// la marge d'erreur laissée à l'élève.
+// LE DOUBLE CURSEUR A RÉGLÉ CELA, PUIS A POSÉ SON PROPRE PROBLÈME. Deux
+// poignées sur un rail rendaient bien l'état interdit irreprésentable, mais
+// Rémy est revenu dessus : « pour le nombre de questions, il est au bout du
+// slide, on peut le modifier, et il n'y a QU'UN bouton sur le slide, actif ou
+// non selon la nécessité d'avoir un quota de bonne réponse. »
+//
+// IL A RAISON, ET LA RAISON EST QUE LES DEUX NOMBRES NE SE RÈGLENT PAS PAREIL.
+// La longueur d'une étape, on la SAIT — « je veux dix questions » —, on la
+// tape ; on ne la cherche pas en glissant un doigt. Le quota, lui, se cherche :
+// « combien puis-je en tolérer ? » est une question de proportion, et c'est
+// exactement ce qu'un rail montre. Un nombre tapé, un rail, et un interrupteur
+// pour dire s'il y a un quota du tout.
+//
+// L'ÉTAT INTERDIT RESTE IRREPRÉSENTABLE, autrement : le maximum du rail EST le
+// nombre tapé. On ne peut pas exiger onze bonnes réponses sur dix, non parce
+// qu'une vérification le refuse, mais parce que le rail s'arrête à dix.
 //
 // EN ÉVALUATION, IL N'Y A PAS DE SEUIL DU TOUT. Une interrogation ne se
 // « valide » pas question par question : elle se note. Exiger 7 sur 10 y
@@ -86,9 +95,22 @@ export function ajusterDuo({ questions, exigees, bouge = 'questions', max = MAX_
  * En évaluation, `threshold` vaut `null` : c'est l'absence d'exigence, et non
  * un seuil de zéro que quelqu'un pourrait relire comme « réglé à 0 ».
  */
-export function seuilPourMode({ questions, exigees, evaluation = false, max = MAX_ETAPE }) {
+export function seuilPourMode({ questions, exigees, evaluation = false, quota = true, max = MAX_ETAPE }) {
     const duo = ajusterDuo({ questions, exigees, max });
-    return { nbItems: duo.questions, threshold: evaluation ? null : duo.exigees };
+    return { nbItems: duo.questions, threshold: (evaluation || !quota) ? null : duo.exigees };
+}
+
+/**
+ * LE QUOTA EST-IL DEMANDÉ ? Une lecture, et une seule, pour toute l'interface.
+ *
+ * Rémy : « il n'y a qu'un bouton sur le slide, actif ou non selon la nécessité
+ * d'avoir un quota de bonne réponse ». C'est un OUI/NON, et il faut le lire
+ * dans l'étape telle qu'elle est enregistrée : `threshold` absent veut dire
+ * « pas de quota », un nombre veut dire « ce nombre ». Sans cette fonction,
+ * chaque panneau redevinait la réponse à sa façon — et l'un d'eux se trompait.
+ */
+export function quotaDemande(step) {
+    return !!step && step.threshold !== null && step.threshold !== undefined;
 }
 
 /**
@@ -96,10 +118,16 @@ export function seuilPourMode({ questions, exigees, evaluation = false, max = MA
  * poignées sans légende se lisent comme un intervalle (« de 7 à 10 »), ce qui
  * n'est pas du tout ce qu'elles disent.
  */
-export function phraseDuo({ questions, exigees, evaluation = false }) {
+export function phraseDuo({ questions, exigees, evaluation = false, quota = true }) {
     const q = Math.max(MIN_ETAPE, Math.floor(Number(questions) || MIN_ETAPE));
     if (evaluation) {
         return `${q} question${q > 1 ? 's' : ''} — notées, sans seuil à franchir.`;
+    }
+    // PAS DE QUOTA : L'ÉTAPE SE VALIDE EN ALLANT AU BOUT. Il faut le DIRE, et
+    // non laisser un rail éteint le sous-entendre — c'est un choix
+    // pédagogique ordinaire (on s'entraîne, on ne trie pas), pas une panne.
+    if (!quota) {
+        return `${q} question${q > 1 ? 's' : ''} — l'étape se valide en allant au bout.`;
     }
     const duo = ajusterDuo({ questions: q, exigees });
     if (duo.exigees >= duo.questions) {
