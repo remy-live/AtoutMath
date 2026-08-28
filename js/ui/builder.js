@@ -448,10 +448,23 @@ export function refaireParcours() {
 }
 
 function majBoutonsHistorique() {
-    const annuler = document.getElementById('btn-path-undo');
-    const refaire = document.getElementById('btn-path-redo');
-    if (annuler) annuler.disabled = !(histoire && histoire.peutAnnuler());
-    if (refaire) refaire.disabled = !(histoire && histoire.peutRefaire());
+    // ON CACHE, ON NE GRISE PAS — la règle que Rémy a posée pour cette barre, et
+    // qui vaut ici aussi : « l'icône play et lien n'apparaissent que lorsque
+    // l'on charge un parcours. Undo et Redo, pareil. »
+    //
+    // « Refaire » est le cas le plus net : il n'a de sens qu'entre un « annuler »
+    // et le geste suivant, c'est-à-dire presque jamais. Grisé, il occupait en
+    // permanence un carré qu'il fallait lire pour comprendre qu'il ne servait
+    // pas ; absent, il ne demande rien, et son apparition DIT qu'il y a
+    // quelque chose à refaire.
+    const cacher = (id, peut) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.disabled = !peut;
+        el.hidden = !peut;
+    };
+    cacher('btn-path-undo', !!(histoire && histoire.peutAnnuler()));
+    cacher('btn-path-redo', !!(histoire && histoire.peutRefaire()));
 }
 
 // --- Mes outils : un bouton, quatre noms -------------------------------------
@@ -596,8 +609,14 @@ function pastilleDuree(steps) {
  * comprendre qu'il ne sert pas ; un bouton absent ne demande rien. La barre du
  * début de séance tombe ainsi de onze icônes à trois.
  */
+//
+// ANNULER / REFAIRE N'EST PAS DANS CETTE LISTE, et c'est voulu : ces deux-là
+// ont une condition PLUS FINE que « y a-t-il un parcours ? » — il faut qu'il y
+// ait quelque chose à annuler, ou à refaire. `majBoutonsHistorique` en est le
+// seul maître ; les inscrire ici aussi ferait réapparaître un « refaire »
+// inutile à chaque rendu du parcours, selon lequel des deux passe en dernier.
 const OUTILS_DU_PARCOURS = [
-    'btn-path-undo', 'btn-path-redo', 'btn-path-policy',
+    'btn-path-policy',
     'btn-presentation', 'btn-test-sequence', 'btn-generate-code', 'btn-fiche-parcours'
 ];
 
@@ -606,7 +625,7 @@ function outilsDuParcours(visible) {
         const el = document.getElementById(id);
         if (el) el.hidden = !visible;
     });
-    document.querySelectorAll('.preview-mode-group, .toolbar-sep')
+    document.querySelectorAll('.preview-mode-group')
         .forEach(el => { el.hidden = !visible; });
 }
 

@@ -192,8 +192,18 @@
 .preview-mode-group { display: flex; align-items: center; gap: 5px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
 .preview-mode-btn { padding: 6px; border: none; background: transparent; color: var(--text-muted); border-radius: 6px; cursor: pointer; }
 .preview-mode-btn.active { background: var(--primary); color: white; }
-#btn-test-sequence { background: var(--primary); color: white; border: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; padding: 8px 15px; }
-#btn-generate-code { background: var(--success); color: white; border: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; }
+/* « TESTER » ET « CODE ÉLÈVE » N'ONT PLUS DE RÈGLE À EUX, et c'est ce qui les
+   répare. Ces deux lignes dataient du temps où les boutons portaient leur
+   libellé ; elles leur donnaient un fond, une police et un `padding: 8px 15px`
+   que `.toolbar-icon-btn--primary` / `--success` fournissent désormais.
+
+   ELLES FAISAIENT DEUX DÉGÂTS. Le premier se voyait : sélecteur d'ID, donc
+   plus spécifique que `.toolbar-icon-btn[hidden]` — leur `display: flex`
+   l'emportait, et les deux boutons restaient à l'écran sur un parcours vide.
+   Rémy : « l'icône play et lien n'apparaissent que lorsque l'on charge un
+   parcours. » Le second aussi : le `padding` horizontal rendait le bouton
+   « Tester » plus large que tous ses voisins, seul carré de la barre à ne pas
+   être carré. */
 .builder-header-actions { display: flex; gap: 10px; align-items: center; }
 /* Sur téléphone, les neuf outils — désormais tous en icône seule — tiennent
    sur UNE ligne compacte au lieu des deux rangées de boutons à libellé. */

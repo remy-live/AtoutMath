@@ -1150,8 +1150,9 @@ export function apercuAideHtml(params, total, exoId = '', choisie = 0, reglable 
         const m = modeZone(z.mode);
         const de = d2, a = d2 + z.n - 1;
         d2 += z.n;
-        return `<span class="cfg-leg cfg-leg--${m.cle}${k === i ? ' cfg-leg--ici' : ''}">
-            <i></i><b>${m.nom}</b><em>${z.n === 1 ? de : `${de} à ${a}`}</em></span>`;
+        return `<button type="button" class="cfg-leg cfg-leg--${m.cle}${
+    k === i ? ' cfg-leg--ici' : ''}" data-zone="${k}">
+            <i></i><b>${m.nom}</b><em>${z.n === 1 ? de : `${de} à ${a}`}</em></button>`;
     }).join('');
 
     // Le titre parle à celui qui lit : un écran d'élève qui parlerait d'un
@@ -1206,39 +1207,43 @@ function commandesZone(zones, i, possibles = MODES_ZONE.map(x => x.cle)) {
     for (let k = 0; k < i; k++) de += zones[k].n;
     const a = de + zone.n - 1;
 
-    const props = possibles.filter(c => !modeZone(c).clavier);
-    const j = props.indexOf(zone.mode);
-    const nombre = m.clavier ? '' : `
-        <div class="cfg-zligne">
-            <span class="cfg-zdit">Nombre de propositions</span>
-            <span class="cfg-zpas">
-                <button type="button" class="cfg-zbtn" data-zprop="-1" ${j <= 0 ? 'disabled' : ''}
-                        aria-label="Moins de propositions">−</button>
-                <b>${m.propositions ?? 'toutes'}</b>
-                <button type="button" class="cfg-zbtn" data-zprop="1"
-                        ${j < 0 || j >= props.length - 1 ? 'disabled' : ''}
-                        aria-label="Plus de propositions">+</button>
-            </span>
-        </div>`;
+    // UN SEUL RANG DE BOUTONS : 2 · 3 · 4 · clavier. Rémy : « au niveau
+    // présentation, mets un switch 2, 3, 4, icône clavier ».
+    //
+    // C'ÉTAIT DEUX QUESTIONS POUR UNE SEULE DÉCISION. Il y avait un premier
+    // interrupteur « Propositions / Clavier », puis, en dessous et seulement
+    // parfois, un − / + pour le nombre. Or le professeur ne se demande jamais
+    // « propositions ou clavier ? » avant « combien ? » : il se demande
+    // COMMENT ON RÉPOND ICI, et la réponse est un nombre, ou le pavé. Un seul
+    // rang, qui montre du même coup tout ce que cet exercice sait faire.
+    const rang = possibles.map(c => {
+        const x = modeZone(c);
+        return `<button type="button" class="cfg-bsc${c === zone.mode ? ' cfg-bsc--ici' : ''}"
+            data-zmode="${c}" aria-pressed="${c === zone.mode}"
+            title="${escapeAttr(x.nom)}" aria-label="${escapeAttr(x.nom)}"
+            >${x.clavier ? PAVE_SVG : (x.propositions ?? '∗')}</button>`;
+    }).join('');
 
+    // LA CROIX ET LE PLUS SONT COLLÉS AU LIBELLÉ DE LA ZONE. Rémy : « à côté de
+    // "Questions 1 à 5", rajouter une petite croix rouge pour supprimer et un
+    // petit bouton pour ajouter ». Ils tenaient une ligne entière à eux deux,
+    // en toutes lettres, alors qu'ils agissent sur la zone dont le libellé est
+    // juste à gauche — et cette ligne poussait le reste hors de l'écran.
     return `<div class="cfg-zreglages">
         <div class="cfg-zligne">
             <span class="cfg-zquoi"><i class="cfg-zpuce cfg-zpuce--${m.cle}"></i>${
     zone.n === 1 ? `Question ${de}` : `Questions ${de} à ${a}`}</span>
-            <span class="cfg-bascule" role="group" aria-label="Comment l'élève répond">
-                <button type="button" class="cfg-bsc${m.clavier ? '' : ' cfg-bsc--ici'}"
-                        data-zbascule="p" ${props.length ? '' : 'disabled'}
-                        aria-pressed="${!m.clavier}">Propositions</button>
-                <button type="button" class="cfg-bsc${m.clavier ? ' cfg-bsc--ici' : ''}"
-                        data-zbascule="k" aria-pressed="${m.clavier}">Clavier</button>
+            <span class="cfg-zactions">
+                <button type="button" class="cfg-zx" data-zsupp
+                        ${zones.length <= 1 ? 'disabled' : ''}
+                        title="Retirer cette zone" aria-label="Retirer cette zone">✕</button>
+                <button type="button" class="cfg-zplusmini" data-zplus
+                        ${zones.length >= ZONES_MAX || zone.n < 2 ? 'disabled' : ''}
+                        title="Ajouter une zone après celle-ci"
+                        aria-label="Ajouter une zone après celle-ci">+</button>
             </span>
-        </div>${nombre}
-        <div class="cfg-zligne cfg-zligne--fin">
-            <button type="button" class="cfg-zsupp" data-zsupp
-                    ${zones.length <= 1 ? 'disabled' : ''}>✕ Retirer cette zone</button>
-            <button type="button" class="cfg-zplus" data-zplus
-                    ${zones.length >= ZONES_MAX || zone.n < 2 ? 'disabled' : ''}>+ Ajouter une zone</button>
         </div>
+        <div class="cfg-bascule" role="group" aria-label="Comment l'élève répond ici">${rang}</div>
     </div>`;
 }
 
@@ -1787,7 +1792,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('click', (e) => {
     const btn = e.target.closest
-        && e.target.closest('[data-zbascule], [data-zprop], [data-zsupp], [data-zplus]');
+        && e.target.closest('[data-zmode], [data-zsupp], [data-zplus]');
     if (!btn || btn.disabled) return;
     const hote = btn.closest('.cfg-apercu-hote');
     if (!hote) return;
@@ -1796,44 +1801,18 @@ document.addEventListener('click', (e) => {
     const zones = zonesDe(hote, total);
     const i = zoneChoisie(hote, zones);
     const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
-    const props = poss.filter(c => !modeZone(c).clavier);
 
-    // LE SWITCH PROPOSITIONS / CLAVIER. Rémy : « quand on clique sur une zone,
-    // on a un switch proposition/clavier ; s'il est sur proposition on peut
-    // choisir le nombre de proposition ». Ce sont deux questions distinctes, et
-    // les mettre sur le même axe — comme le faisait le − / + d'avant — donnait
-    // un bouton qui changeait de sujet au dernier cran.
-    if (btn.dataset.zbascule !== undefined) {
-        const versClavier = btn.dataset.zbascule === 'k';
-        if (modeZone(zones[i].mode).clavier === versClavier) return;
-        // EN REVENANT AUX PROPOSITIONS, ON REPREND QUATRE — le cas ordinaire —
-        // ou le plus grand nombre que cet exercice sache produire s'il n'y
-        // arrive pas. Repartir de deux ferait reculer sans qu'on l'ait demandé.
-        //
-        // MAIS JAMAIS LE MODE D'UNE VOISINE. Mesuré : sur « clavier, 4, clavier »,
-        // rebasculer la première zone en propositions lui donnait quatre — donc
-        // exactement sa voisine —, les deux fondaient à la normalisation, et la
-        // frise passait de trois zones à deux. Le professeur croyait changer une
-        // zone, il en perdait une. On prend alors le plus proche voisinage libre.
-        const voisins = [zones[i - 1], zones[i + 1]].filter(Boolean).map(z => z.mode);
-        const libres = props.filter(c => !voisins.includes(c));
-        const retour = libres.includes('4') ? '4'
-            : (libres[libres.length - 1] || (props.includes('4') ? '4' : props[props.length - 1]));
-        if (!versClavier && !retour) return;
-        zones[i] = { ...zones[i], mode: versClavier ? 'k' : retour };
-        return ecrireZonesSansSauter(hote, normaliserZones(zones, total), i);
-    }
-
-    // LE NOMBRE DE PROPOSITIONS — parmi ceux que l'exercice sait VRAIMENT
-    // fabriquer. Offrir « 6 » à un générateur qui n'en produit que quatre
-    // écrirait une légende que l'élève ne verrait jamais.
-    if (btn.dataset.zprop !== undefined) {
-        const j = props.indexOf(zones[i].mode);
-        const k = Math.max(0, Math.min(props.length - 1,
-            (j < 0 ? 0 : j) + Number(btn.dataset.zprop)));
-        if (props[k] === zones[i].mode) return;
-        zones[i] = { ...zones[i], mode: props[k] };
-        return ecrireZonesSansSauter(hote, normaliserZones(zones, total), i);
+    // LE RANG 2 · 3 · 4 · CLAVIER : on désigne, on ne parcourt plus.
+    if (btn.dataset.zmode !== undefined) {
+        const vise = btn.dataset.zmode;
+        if (vise === zones[i].mode || !poss.includes(vise)) return;
+        zones[i] = { ...zones[i], mode: vise };
+        // NORMALISER PEUT FONDRE LA ZONE DANS SA VOISINE, et c'est voulu :
+        // deux zones voisines au même mode ne sont qu'une seule zone. Mais la
+        // sélection doit alors suivre le morceau qui reste, sinon la bulle
+        // parlerait d'une zone qui n'existe plus.
+        const apres = normaliserZones(zones, total);
+        return ecrireZonesSansSauter(hote, apres, Math.min(i, apres.length - 1));
     }
 
     if (btn.dataset.zsupp !== undefined) {

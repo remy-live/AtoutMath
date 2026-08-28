@@ -2675,7 +2675,14 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-zone {
     display: flex; align-items: center; justify-content: center;
-    min-width: 0; padding: 0; border: none; cursor: pointer;
+    /* LA LARGEUR EST LA PROPORTION, PAS LA PROPORTION CORRIGÉE PAR LE CONTENU.
+       Rémy : « les poignées sont un peu décalées. » Elles ne l'étaient pas : la
+       frise l'était. Sans `flex-basis: 0`, chaque zone part de la largeur de son
+       contenu — et le petit clavier dessiné est plus large qu'un chiffre — puis
+       `flex-grow` ne répartit QUE ce qui reste. La zone au clavier gagnait donc
+       quelques pixels volés aux autres, et les bornes, elles, sont posées au
+       pourcentage exact : le décalage se voyait. */
+    flex: 0 1 0; min-width: 0; padding: 0; border: none; cursor: pointer;
     font: inherit; font-weight: 900; font-size: .95rem; color: #fff;
     overflow: hidden; white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
@@ -2830,8 +2837,23 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* LA LÉGENDE PORTE LES RANGS — l'information que Rémy réclamait depuis le
    début (« comment on sait le nombre de questions ? »), et qui reste lisible
    même quand une zone est trop étroite pour porter son propre nom. */
-.cfg-legendes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
-.cfg-leg { display: flex; align-items: center; gap: 5px; font-size: .74rem; }
+/* UNE ZONE PAR LIGNE, TOUJOURS. Rémy : « en dessous, va toujours à la ligne
+   pour les zones ». Sur deux colonnes, l'œil devait sauter en zigzag pour lire
+   une progression qui est, elle, strictement ordonnée — et deux rangs voisins
+   se retrouvaient à deux endroits sans rapport.
+
+   ET LA LIGNE CHOISIT SA ZONE. Rémy : « quand c'est trop serré, je ne peux
+   cliquer sur la zone ». Une zone d'une seule question fait vingt pixels de
+   large, et les deux poignées qui l'encadrent la recouvrent entièrement : elle
+   devient inatteignable sur la frise. La légende, elle, a toujours la place. */
+.cfg-legendes { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.cfg-leg {
+    display: flex; align-items: center; gap: 5px; font-size: .74rem;
+    width: 100%; text-align: left; padding: 3px 5px; border: none;
+    background: transparent; color: inherit; font-family: inherit;
+    border-radius: 7px; cursor: pointer;
+}
+.cfg-leg:hover { background: var(--bg-hover); }
 .cfg-leg i, .cfg-zpuce { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
 .cfg-leg--2 i, .cfg-zpuce--2 { background: #10b981; }
 .cfg-leg--3 i, .cfg-zpuce--3 { background: #14b8a6; }
@@ -2866,45 +2888,51 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-size: .78rem; font-weight: 800; color: var(--text-muted);
     text-transform: uppercase; letter-spacing: .02em;
 }
-/* LE SWITCH PROPOSITIONS / CLAVIER. Rémy : « quand on clique sur une zone, on
-   a un switch proposition/clavier ». Deux moitiés d'un même bloc, et non deux
-   boutons posés côte à côte : on doit voir d'un coup d'œil que c'est l'un OU
-   l'autre, jamais les deux ni aucun. */
+/* LE RANG 2 · 3 · 4 · CLAVIER. Rémy : « au niveau présentation, mets un switch
+   2, 3, 4, icône clavier ».
+
+   UN SEUL BLOC, ET NON QUATRE BOUTONS POSÉS CÔTE À CÔTE : on doit voir d'un
+   coup d'œil que c'est l'un OU l'autre, jamais deux ni aucun. Les segments se
+   partagent la largeur — le nombre de façons de répondre change d'un exercice
+   à l'autre, et une largeur fixe laisserait un vide ou déborderait. */
 .cfg-bascule {
-    display: inline-flex; padding: 2px; border-radius: 10px; gap: 2px;
+    display: flex; padding: 3px; border-radius: 11px; gap: 3px;
     background: var(--bg-hover); border: 1.5px solid var(--border);
 }
 .cfg-bsc {
-    padding: 5px 10px; border: none; border-radius: 8px; cursor: pointer;
+    flex: 1 1 0; min-width: 0; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 8px; cursor: pointer;
     background: transparent; color: var(--text-muted);
-    font: inherit; font-size: .76rem; font-weight: 800;
+    font: inherit; font-size: .95rem; font-weight: 900;
     -webkit-tap-highlight-color: transparent;
 }
 .cfg-bsc--ici { background: var(--primary); color: #fff; }
 .cfg-bsc:disabled { opacity: .35; cursor: default; }
-.cfg-zdit { font-size: .78rem; font-weight: 700; color: var(--text-muted); }
-.cfg-zpas { display: flex; align-items: center; gap: 8px; }
-.cfg-zpas b {
-    min-width: 2.5em; text-align: center;
-    font-size: .95rem; font-weight: 900; color: var(--text-main);
-}
-.cfg-zbtn {
-    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; padding: 0;
+.cfg-bsc svg { flex: 0 0 auto; }
+
+/* LA CROIX ET LE PLUS, COLLÉS AU LIBELLÉ DE LA ZONE. Rémy : « à côté de
+   "Questions 1 à 5", rajouter une petite croix rouge pour supprimer et un petit
+   bouton pour ajouter ». Deux boutons en toutes lettres tenaient une ligne à
+   eux seuls et repoussaient tout le reste hors de l'écran du téléphone. */
+.cfg-zactions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.cfg-zx, .cfg-zplusmini {
+    width: 28px; height: 28px; padding: 0; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
     border: 1.5px solid var(--border); background: var(--bg-app);
-    color: var(--text-main); font: inherit; font-weight: 900; font-size: 1.05rem;
-    line-height: 1;
+    font: inherit; font-size: .95rem; font-weight: 900; line-height: 1;
+    -webkit-tap-highlight-color: transparent;
 }
-.cfg-zbtn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-.cfg-zbtn:disabled { opacity: .35; cursor: default; }
-.cfg-zligne--fin { justify-content: space-between; }
-.cfg-zsupp, .cfg-zplus {
-    padding: 7px 11px; border-radius: 10px; cursor: pointer;
-    border: 1.5px solid var(--border); background: var(--bg-app);
-    font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-muted);
+/* LA CROIX EST ROUGE DÈS L'ARRÊT, et non au survol : elle efface une zone, et
+   c'est la seule commande de ce bloc qui détruise quelque chose. Un doigt sur
+   une tablette ne survole jamais rien. */
+.cfg-zx { color: var(--danger, #dc2626); border-color: rgba(220, 38, 38, .35); }
+.cfg-zx:hover:not(:disabled) {
+    background: var(--danger, #dc2626); color: #fff; border-color: var(--danger, #dc2626);
 }
-.cfg-zsupp:hover:not(:disabled) { border-color: var(--danger, #dc2626); color: var(--danger, #dc2626); }
-.cfg-zplus:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-.cfg-zsupp:disabled, .cfg-zplus:disabled { opacity: .35; cursor: default; }
+.cfg-zplusmini { color: var(--text-muted); }
+.cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.cfg-zx:disabled, .cfg-zplusmini:disabled { opacity: .3; cursor: default; }
 
 @media (max-width: 520px) {
     .cfg-scene { padding-top: 116px; }
