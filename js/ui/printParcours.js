@@ -939,7 +939,7 @@ export function ouvrirFicheParcours(chemin) {
             <label class="pp-roue-case">
                 <input type="checkbox" data-r-num ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
             <label class="pp-roue-case" title="Cet exercice commence alors en haut d'une page plutôt que d'être coupé en deux.">
-                <input type="checkbox" data-r-insec ${estInsecable(id) ? 'checked' : ''}> D'un seul tenant</label>
+                <input type="checkbox" data-r-insec ${estInsecable(id) ? 'checked' : ''}> Ne pas couper l'exercice</label>
             <label class="pp-roue-champ" data-r-bareme ${interro.checked ? '' : 'hidden'}>Barème
                 ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num" data-r-pts
                     min="0" max="40" value="${points[id]}">`)}</label>

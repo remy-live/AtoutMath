@@ -196,12 +196,19 @@ function assurerModale() {
                         <option value="auto">auto</option>
                         <option value="1">1</option><option value="2">2</option>
                         <option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option><option value="6">6</option>
+                        <option value="5">5</option><option value="6">6</option>
                     </select></label>
                 <label>Place pour répondre
                     <select id="fq-lignes-rep" class="cfg-input">
                         <option value="0">Sur la ligne</option>
                         <option value="1">1 ligne dessous</option>
+                        <!-- DEUX LIGNES : LE CALCUL, PUIS LA PHRASE RÉPONSE. Rémy, sur
+                             temps-distance-vitesse : « mets deux lignes, pour le calcul et
+                             la phrase réponse. » Le choix n'existait pas — on sautait de
+                             une à trois —, si bien qu'un exercice réglé sur deux lignes
+                             dans le catalogue retombait sur une liste vide et n'en traçait
+                             AUCUNE. -->
+                        <option value="2">2 lignes — le calcul, puis la réponse</option>
                         <option value="3">3 lignes — « Je sais que… »</option>
                         <option value="5">5 lignes — rédaction complète</option>
                     </select></label>

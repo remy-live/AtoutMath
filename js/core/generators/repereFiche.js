@@ -23,8 +23,8 @@ const ETIQUETTES = 'ABCDEFGHJKLMNP';
 export const repereFicheGenerator = {
     id: 'geo.repere-fiche',
     label: 'Repère : plusieurs points',
-    // `geo.repere.lire` n'existe pas : le référentiel nomme `geo.repere.coord`
-    // et `geo.repere.relatifs`, et la fiche sert les deux selon son réglage.
+    // Le référentiel nomme `geo.repere.coord` et `geo.repere.relatifs`, et la
+    // fiche sert les deux selon son réglage.
     skills: ['geo.repere.*'],
     answerKinds: ['grid'],
     params: [
@@ -74,7 +74,7 @@ export const repereFicheGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'geo.repere-fiche',
-            skillId: 'geo.repere.lire',
+            skillId: 'geo.repere.coord',
             answerKind: 'grid',
             prompt: {
                 text: mode === 'placer'

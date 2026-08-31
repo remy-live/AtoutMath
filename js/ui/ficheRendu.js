@@ -9,7 +9,7 @@
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
 import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
-import { RE_FRACTION } from '../core/fiche.js';
+import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
 import { RENDUS } from './printSheet.js';
@@ -429,7 +429,12 @@ function signePresque(pdf, x, y, taille) {
 
 /** La largeur qu'occupera une fraction empilée. */
 function largeurFraction(pdf, m) {
-    return Math.max(pdf.getTextWidth(m.num), pdf.getTextWidth(m.den)) + 1.6;
+    // Un étage vide n'a pas de largeur propre : on lui donne celle de son
+    // vis-à-vis, plus une marge — un trait de trois millimètres sous un
+    // dénominateur à deux chiffres ne se remplit pas.
+    const large = (t, autre) => (etageEstUnTrou(t)
+        ? Math.max(pdf.getTextWidth(autre), 5) : pdf.getTextWidth(t));
+    return Math.max(large(m.num, m.den), large(m.den, m.num)) + 1.6;
 }
 
 /**
@@ -448,14 +453,23 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
             x += o.taille * 1.25;
         } else {
             const w = largeurFraction(pdf, m);
+            // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
+            // la feuille, mais posé DANS la fraction, à son étage.
+            const etagePdf = (t, yEtage) => {
+                if (!etageEstUnTrou(t)) {
+                    pdf.text(t, x + (w - pdf.getTextWidth(t)) / 2, yEtage);
+                    return;
+                }
+                pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
+            };
             // LE TRAIT EST LA LIGNE D'ÉCRITURE. On le posait un tiers de corps
             // plus haut, et la fraction entière flottait au-dessus du texte :
             // le numéro de la question et le « + » paraissaient écrits une
             // ligne plus bas. Numérateur dessus, dénominateur dessous, à
             // distance égale du trait.
             const yTrait = y;
-            pdf.text(m.num, x + (w - pdf.getTextWidth(m.num)) / 2, yTrait - o.taille * 0.28);
-            pdf.text(m.den, x + (w - pdf.getTextWidth(m.den)) / 2, yTrait + o.taille * 0.98);
+            etagePdf(m.num, yTrait - o.taille * 0.28);
+            etagePdf(m.den, yTrait + o.taille * 0.98);
             pdf.setLineWidth(0.28);
             pdf.setDrawColor(...ENCRE.texte);
             pdf.line(x + 0.4, yTrait, x + w - 0.4, yTrait);
@@ -484,8 +498,13 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
     return morceauxLigne(ligne, avecFractions).map(m => {
         if (m.texte !== undefined) return texteHtml(m.texte);
         if (m.presque) return '<span class="fx-presque">&#8776;</span>';
-        return `<span class="fx-frac"><span class="fx-frac-n">${echapper(m.num)}</span>`
-            + `<span class="fx-frac-d">${echapper(m.den)}</span></span>`;
+        // UN ÉTAGE VIDE EST UN TROU, et un trou se dessine en pointillés — sans
+        // quoi la place à remplir, faite d'espaces, disparaîtrait purement et
+        // simplement dans le HTML.
+        const etage = (t) => (etageEstUnTrou(t)
+            ? `<span class="${trouCls}">${echapper(t)}</span>` : echapper(t));
+        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num)}</span>`
+            + `<span class="fx-frac-d">${etage(m.den)}</span></span>`;
     }).join('');
 }
 

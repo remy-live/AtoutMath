@@ -137,7 +137,7 @@ export const conversionFicheGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'mes.conversion-fiche',
-            skillId: 'mes.conversion',
+            skillId: 'num.conversion',
             answerKind: 'numeric',
             prompt: {
                 text: `Convertis avec le tableau : ${conversions.map(c => c.enonce).join(' ; ')}`,

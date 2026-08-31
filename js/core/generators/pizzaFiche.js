@@ -51,7 +51,7 @@ export const pizzaFicheGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'frac.pizza-fiche',
-            skillId: 'num.frac.parts',
+            skillId: 'num.frac.sens',
             answerKind: 'grid',
             prompt: {
                 text: `Colorie : ${liste}.`,

@@ -77,7 +77,15 @@ export function chaineDepuisGenerateur(sourceId, params, voulu, rng) {
     const n = Math.max(MIN_COUPLES, Math.min(MAX_COUPLES, voulu));
     const chaine = construireChaine(rassemblerCouples(tirer, n));
     chaine.source = sourceId;
-    chaine.skillId = gen.skills && gen.skills[0] ? gen.skills[0] : 'num.calcul';
+    // LA COMPÉTENCE, RÉSOLUE — jamais le motif. Rémy, sur ses points forts :
+    // « Tu notes num.mult.table, ce n'est pas du tout parlant pour
+    // l'utilisateur. » Un générateur déclare parfois un MOTIF
+    // ('num.mult.table.*', les dix tables d'un coup) ; en l'enregistrant tel
+    // quel, la planche de dominos rangeait ses réussites sous une compétence
+    // qui n'existe pas, et le profil affichait l'identifiant brut faute de
+    // libellé. `resolvedSkills` a déjà fait le travail.
+    chaine.skillId = (gen.resolvedSkills && gen.resolvedSkills[0])
+        || (gen.skills && gen.skills[0]) || 'num.calcul';
     return chaine;
 }
 

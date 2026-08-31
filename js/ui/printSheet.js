@@ -4790,9 +4790,16 @@ const rvbHex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16),
 // deux-points et en gris, et sur la fiche des droites « Je sais que : » en noir
 // — deux présentations pour un seul schéma, donc deux choses à reconnaître pour
 // l'élève au lieu d'une. Le moteur commun porte les mots, le deux-points et la
-// couleur ; ce chapitre garde SA place : ici c'est le « Donc » qui est long,
-// parce qu'il contient le calcul.
-const AMORCES = trameRaisonnement([2, 2, 4]);
+// couleur ; ce chapitre garde SA place.
+//
+// C'EST LE « OR » QUI EST LONG, PAS LE « DONC ». Rémy : « le Or doit être plus
+// long et le donc en une seule ligne. » On avait fait l'inverse — deux lignes
+// pour le Or, quatre pour le Donc — en croyant que le calcul appartenait à la
+// conclusion. Il appartient au raisonnement : le « Or » porte le théorème
+// écrit en entier POUR ce triangle, la substitution et le calcul ; le « Donc »
+// ne dit qu'une chose, « EF = 12 cm », et trois lignes vides sous elle ne font
+// qu'un blanc au bas de chaque bloc.
+const AMORCES = trameRaisonnement([2, 5, 1]);
 
 /** L'énoncé en toutes lettres, tel que le générateur l'écrit pour le papier. */
 const enoncePythagore = (item) =>
@@ -4957,7 +4964,10 @@ function dessinerThalesPdf(doc, item, slot, solution) {
 
 function geoPythagoreFiche(item, slot) {
     const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
-    const schema = item.meta.presentation === 'schema';
+    // TROIS PRÉSENTATIONS : le texte seul, la figure seule, ou les deux.
+    const presentation = item.meta.presentation;
+    const lesDeux = presentation === 'les-deux';
+    const schema = presentation === 'schema' || lesDeux;
     const gaucheW = b.w * 0.32;
     const corps = Math.max(2.2, Math.min(b.h * 0.072, 3.3));
     const nLignes = AMORCES.reduce((s, a) => s + a.lignes, 0);
@@ -4968,11 +4978,19 @@ function geoPythagoreFiche(item, slot) {
     // sur le sommet du bas et sur la longueur de la base.
     const gaucheMarge = corps * 3.2;             // les longueurs portées à gauche
     const basMarge = corps * 3.4;                // la base, sa mesure, puis la question
+    // AVEC LES DEUX, L'ÉNONCÉ PREND LE HAUT ET LA FIGURE CE QUI RESTE. Le texte
+    // se lit d'abord, la figure le traduit — c'est l'ordre du geste qu'on
+    // demande. On lui réserve trois lignes de corps : un énoncé de Pythagore
+    // tient en deux, trois par prudence.
+    // Trois lignes d'énoncé, plus la hauteur de la lettre du sommet du HAUT,
+    // qui se pose au-dessus du triangle : sans elle, le « P » venait s'écrire
+    // dans la dernière ligne de l'énoncé.
+    const hautTexte = lesDeux ? corps * 5 : 0;
     return {
-        b, schema, gaucheW, corps, pas,
-        figX: b.x + gaucheMarge, figY: b.y + corps * 0.9,
+        b, schema, lesDeux, gaucheW, corps, pas,
+        figX: b.x + gaucheMarge, figY: b.y + corps * 0.9 + hautTexte,
         figW: Math.max(6, gaucheW - gaucheMarge - corps * 1.6),
-        figH: Math.max(6, b.h - corps * 0.9 - basMarge),
+        figH: Math.max(6, b.h - corps * 0.9 - hautTexte - basMarge),
         questionY: b.y + b.h - corps * 0.5,
         droiteX: b.x + gaucheW + 3, droiteW: b.w - gaucheW - 3
     };
@@ -5046,10 +5064,14 @@ function pythagorePreviewHtml(item, slot, k, solution) {
             (Y(autres[0]) + Y(autres[1])) / 2 - g.corps * 1.3,
             cote(autres[0], autres[1]), ' fx-py-etiq--mesure');
     }
+    // L'énoncé : en haut quand il accompagne la figure, en bas — réduit à
+    // « Calcule … » — quand la figure porte tout, à sa place habituelle quand
+    // il est seul.
     html += `<div class="fx-py-enonce" style="left:${T(b.x)}px;
-        top:${T(g.schema ? g.questionY - g.corps : b.y)}px;
+        top:${T(g.lesDeux || !g.schema ? b.y : g.questionY - g.corps)}px;
         width:${T(g.gaucheW)}px; font-size:${T(g.corps)}px">${echapperSheet(
-        g.schema ? `Calcule ${item.meta.chercher || cotesDePythagore(item.meta.triangle).hypo.nom}.`
+        g.schema && !g.lesDeux
+            ? `Calcule ${item.meta.chercher || cotesDePythagore(item.meta.triangle).hypo.nom}.`
             : enoncePythagore(item))}</div>`;
 
     // À droite : les trois amorces et leurs lignes.
@@ -7513,7 +7535,8 @@ function geoMots(item, slot) {
     // La colonne des indices : large quand elle porte des définitions, étroite
     // quand elle ne porte que les mots.
     const seulsMots = m.indices === 'mots';
-    const listeW = seulsMots
+    // Ce dont la colonne a BESOIN — son plancher, pas sa part.
+    const listeMin = seulsMots
         ? Math.max(34, Math.min(b.w * 0.20, 58))
         : Math.max(58, Math.min(b.w * 0.42, 118));
 
@@ -7523,7 +7546,20 @@ function geoMots(item, slot) {
     // une grille bornée par sa largeur amputée de la colonne de mots, avec
     // quatre centimètres de blanc au-dessus ET au-dessous. C'est exactement ce
     // qu'on voyait : une grille perdue au milieu de sa page.
-    const coteA = Math.max(10, Math.min(b.w - listeW - 8, b.h));
+    const coteA = Math.max(10, Math.min(b.w - listeMin - 8, b.h));
+
+    // LE RESTE DE LA LARGEUR EST À LA COLONNE DE MOTS.
+    //
+    // Rémy : « quand la grille est toute seule sans colonne, on peut la faire
+    // un peu plus grande et mettre les mots à trouver à droite de la grille. »
+    // Les mots sont bien à droite — mais MESURÉ sur une grille seule en
+    // paysage : la case, carrée, bute sur la HAUTEUR de la page (164,6 mm) et
+    // ne peut plus grandir, pendant que la colonne prenait 20 % de la largeur
+    // et laissait CINQ CENTIMÈTRES de papier blanc à sa droite. La grille est
+    // déjà à son maximum ; c'est la colonne qui doit prendre le reste, et les
+    // mots qui doivent enfin s'écrire gros — ce sont eux qu'on relit à chaque
+    // lettre trouvée.
+    const listeW = Math.max(listeMin, b.w - coteA - 8);
     // Empilée : les mots passent SOUS la grille, sur plusieurs colonnes.
     const parCol = Math.max(3, Math.ceil(m.mots.length / (seulsMots ? 3 : 2)));
     const listeH = parCol * (seulsMots ? 6.1 : 4.6) + 2;
@@ -7548,13 +7584,21 @@ function geoMots(item, slot) {
     // Une liste de mots seuls peut être franche ; des définitions, plus
     // longues, tiennent un cran en dessous. En POINTS, comme le PDF ; l'aperçu
     // convertit.
-    const taille = seulsMots ? 11.5 : 8.5;
+    // ET LA TAILLE SUIT LA COLONNE. Une colonne deux fois plus large ne sert à
+    // rien si les mots y restent écrits en 11,5 : on remplit la largeur avec le
+    // MOT LE PLUS LONG, et l'on plafonne — passé vingt points, une liste de dix
+    // mots ne tient plus en hauteur, et l'on ne lit pas mieux pour autant.
+    const leMotLePlusLong = Math.max(...indicesMots(m).map(l => l.length), 1);
+    const tailleQuiTient = (largeur) =>
+        (largeur - 4) / Math.max(1, leMotLePlusLong * 0.3528 * 0.62);
+    const plancher = seulsMots ? 11.5 : 8.5;
+    const taille = empile ? plancher
+        : Math.max(plancher, Math.min(seulsMots ? 20 : 13, tailleQuiTient(listeW)));
     // LE NOMBRE DE COLONNES SUIT LE MOT LE PLUS LONG, pas un chiffre décidé
     // d'avance. Trois colonnes fixes convenaient à « ANGLE » et « SOMME » ;
     // « DENOMINATEUR » débordait sur sa voisine et les deux devenaient
     // illisibles — juste à l'endroit qu'on relit à chaque lettre trouvée.
-    const plusLong = Math.max(...indicesMots(m).map(l => l.length), 1);
-    const largeurMot = plusLong * taille * 0.3528 * 0.62 + 4;
+    const largeurMot = leMotLePlusLong * taille * 0.3528 * 0.62 + 4;
     const colonnesTient = Math.max(1, Math.floor((empileLargeur(b) || b.w) / largeurMot));
     return {
         m, b, cell, cote, empile, taille,
@@ -8286,14 +8330,38 @@ function geoConversion(item, slot) {
     // après le « d » — on lisait « dr ». Une conversion doit tenir ENTIÈRE,
     // unité comprise : c'est elle, la réponse.
     const LARGEUR_CONVERSION = 52;
-    const colonnes = avecTableau
-        ? 1
-        : Math.max(1, Math.min(4, Math.floor(b.w / LARGEUR_CONVERSION)));
+    // ET LE MOINS DE COLONNES QUI TIENNE, PAS LE PLUS.
+    //
+    // Rémy : « pour le tableau de conversion, quand on ne met pas le tableau,
+    // c'est tout petit, tout moche et il y a beaucoup d'espaces libres. »
+    // MESURÉ sur une feuille sans tableau : huit conversions en deux colonnes
+    // occupaient quatre rangées de 9,5 mm — TRENTE-HUIT millimètres sur une
+    // page qui en offre deux cents. Le reste était blanc.
+    //
+    // Empiler en colonnes remplit la LARGEUR ; ce qui restait vide, c'est la
+    // HAUTEUR. On prend donc le plus petit nombre de colonnes qui tienne —
+    // donc le plus de rangées, donc les lignes les plus hautes — et l'on
+    // laisse ensuite la rangée s'étirer. Une conversion s'écrit alors sur une
+    // ligne franche, comme sur un cahier, au lieu d'un timbre-poste.
+    const colonnesQuiTiennent = Math.max(1, Math.min(4, Math.floor(b.w / LARGEUR_CONVERSION)));
+    const RH_CONFORT = 9.5;
+    let colonnes = colonnesQuiTiennent;
+    if (!avecTableau) {
+        for (let c = 1; c <= colonnesQuiTiennent; c++) {
+            if (Math.ceil(nLignes / c) * RH_CONFORT <= b.h - 2) { colonnes = c; break; }
+        }
+    } else {
+        colonnes = 1;
+    }
     const parColonne = Math.ceil(nLignes / colonnes);
-    const rh = Math.max(6.5, Math.min((b.h - 2) / (parColonne + (avecTableau ? 1.2 : 0.2)), 9.5));
+    // Sans tableau, la rangée a le droit de respirer : seize millimètres, la
+    // hauteur d'une ligne de cahier bien aérée, au lieu des neuf et demi que
+    // le tableau impose à sa voisine.
+    const rhMax = avecTableau ? 9.5 : 16;
+    const rh = Math.max(6.5, Math.min((b.h - 2) / (parColonne + (avecTableau ? 1.2 : 0.2)), rhMax));
     const x0 = b.x + enonceW;
     const y0 = b.y + 1;
-    const taille = Math.max(7.5, Math.min(rh * 1.15, 12));
+    const taille = Math.max(7.5, Math.min(rh * 1.15, avecTableau ? 12 : 14));
     // L'ÉNONCÉ NE DÉBORDE PAS SUR LE TABLEAU. Ses points de suspension sont des
     // caractères PLEINE CHASSE — huit d'entre eux valent huit lettres larges —,
     // et « 248 dam = ……………… km » venait s'écrire par-dessus la première colonne
@@ -8812,7 +8880,14 @@ function nombreEspace(n) {
 
 // La part du bloc réservée au nombre et à son « = ». Assez large pour un
 // million sans jamais manger la place où l'on dessine les glyphes.
-const LARGEUR_NOMBRE = 0.30;
+//
+// QUARANTE-DEUX POUR CENT, ET NON TRENTE. Rémy, sur l'aperçu de sa feuille :
+// « écris les nombres plus gros ». MESURÉ : à trente pour cent d'un bloc de
+// 86 mm, la colonne du nombre faisait 25,8 mm, et le corps qui s'en déduit —
+// il doit loger « 1 000 000  = », douze signes — tombait à 3,4 mm, soit dix
+// points. Or dans le sens « écrire », CE NOMBRE EST L'ÉNONCÉ : c'est la seule
+// chose à lire du bloc, et le reste de la ligne n'est que des pointillés.
+const LARGEUR_NOMBRE = 0.42;
 
 function geoEgypte(item, slot, tous) {
     const m = item.meta;
@@ -8862,8 +8937,10 @@ function geoEgypte(item, slot, tous) {
     // douze signes — et non sur celui qu'on a sous la main : sinon un nombre
     // court s'écrirait plus gros que son voisin, et l'on retomberait dans le
     // dépareillé qu'on vient de corriger.
+    // Le plafond monte avec la colonne : à 4,6 mm il bornait un corps que la
+    // largeur ne bornait plus.
     const corpsTexte = ecrire
-        ? Math.min(4.6, (largeurTexte - 2) / (12 * 0.58))
+        ? Math.min(6.5, (largeurTexte - 2) / (12 * 0.58))
         : 0;
     // « UTILISE BIEN LA LARGEUR POUR ÉCRIRE LES HIÉROGLYPHES ASSEZ GRAND. »
     // En « lire », les glyphes disposent de leur colonne moins la place du
@@ -10905,10 +10982,16 @@ export const RENDUS = {
 
     pythagore: {
         titre: 'Le théorème de Pythagore',
-        consigne: () => 'Rédige comme au cahier : « Je sais que » les données de '
+        // ET SI LA FIGURE EST LÀ, ON PRÉVIENT. Rémy : « les figures ne sont pas
+        // forcément à l'échelle ». Un élève qui mesure au double décimètre sur
+        // un triangle dessiné pour tenir dans deux centimètres trouve un
+        // nombre faux et croit avoir travaillé.
+        consigne: (items) => 'Rédige comme au cahier : « Je sais que » les données de '
             + 'l\'énoncé, « Or » le théorème, « Donc » l\'égalité puis le calcul — '
             + 'et n\'oublie pas la dernière ligne, celle qui revient du carré à la '
-            + 'longueur.',
+            + 'longueur.'
+            + (items && items.some(i => i.meta && i.meta.presentation !== 'texte')
+                ? ' Les figures ne sont PAS en vraie grandeur : ne mesure pas.' : ''),
         previewGrille: pythagorePreviewHtml,
         pdfGrille: dessinerPythagorePdf,
         nomBloc: 'Exercice', nomBlocs: 'exercices',

@@ -136,8 +136,14 @@ export const fractionsExercises = [
         // dans une histoire.
         id: 'frac-probleme', status: STATUS.TEST, title: 'Histoires de Fractions',
         cree: '2026-08-20',
-        consignePapier: 'Lis l\'énoncé, pose le calcul et réponds.',
+        consignePapier: 'Lis l\'énoncé, pose le calcul et réponds par une phrase.',
         colonnesPapier: 2,
+        // UNE LIGNE POUR LA PHRASE RÉPONSE. Rémy : « laisse une ligne de
+        // pointillés en dessous pour faire une phrase réponse. » Un problème
+        // ne se répond pas par une fraction posée au bout des pointillés du
+        // calcul : « il lui reste 4/5 du mur à peindre » est la réponse, et
+        // c'est elle qu'on note.
+        lignesReponsePapier: 1,
         generatorId: 'frac.probleme', activityId: 'fraction-somme',
         params: {
             niveau: 'progressif', operation: 'les-deux', simplifier: 'non',

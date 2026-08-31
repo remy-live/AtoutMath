@@ -183,6 +183,12 @@ function tirer(rng, operation, chiffres, nombres, avecRetenue, diviseur, decs, j
     return { ops: rangees, table: poser(operation, rangees, optionsDiv) };
 }
 
+/** L'opération posée EST la compétence : une par signe. */
+const COMPETENCE_POSEE = {
+    '+': 'num.add.entiers', '-': 'num.sub.entiers',
+    '×': 'num.mult.sens', '÷': 'num.div.quotient'
+};
+
 export const poserFicheGenerator = {
     id: 'calc.poser-fiche',
     label: 'Poser une opération (fiche)',
@@ -318,7 +324,11 @@ export const poserFicheGenerator = {
         return makeItem({
             seed: rng.seed,
             generatorId: 'calc.poser-fiche',
-            skillId: 'calc.pose',
+            // LA COMPÉTENCE DE L'OPÉRATION POSÉE, et non un `calc.pose` qui
+            // n'existe pas au référentiel : sans libellé, le profil affichait
+            // l'identifiant brut. Rémy : « ce n'est pas du tout parlant pour
+            // l'utilisateur. »
+            skillId: COMPETENCE_POSEE[operation] || 'num.add.entiers',
             answerKind: 'numeric',
             prompt: {
                 text: `Pose et effectue : ${texte}`,

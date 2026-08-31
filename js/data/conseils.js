@@ -8,6 +8,12 @@
 // en fermant la page. « Avant de calculer, entoure ce que la question demande »
 // se fait dans les cinq secondes, sur l'exercice qu'il a sous les yeux.
 //
+// UN MOT INTERDIT : « DESSIN ». Rémy : « dans les conseils n'utilise pas le
+// mot dessin mais plutôt schéma ou tracé. » Un dessin, en classe, c'est un
+// travail d'arts plastiques : l'élève à qui l'on dit « fais un dessin » soigne
+// et perd son temps, quand ce qu'on lui demande est une figure à main levée
+// qui porte les données. « Schéma » et « tracé » disent le geste utile.
+//
 // Trois familles, mêlées volontairement : la MÉTHODE (comment on s'y prend),
 // l'ERREUR (comment on la repère), le TRAVAIL (comment on apprend). Les
 // séparer en trois écrans reviendrait à demander à l'élève de choisir sa
@@ -31,7 +37,7 @@ export const CONSEILS = [
     'Souligne les nombres ET leur unité. « 3 » et « 3 cm » ne se manipulent pas pareil.',
     'Repère le mot qui commande : calcule, trace, justifie, compare. Il dit ce qu\'on attend de toi.',
     '« Au moins », « au plus », « exactement » : ces trois mots changent toute la réponse. Ne les saute pas.',
-    'Si l\'énoncé donne un dessin, cherche sur le dessin ce que la phrase vient de dire. C\'est là que se cachent les données.',
+    'Si l\'énoncé donne une figure, cherche dessus ce que la phrase vient de dire. C\'est là que se cachent les données.',
     'Un énoncé qui te semble impossible cache presque toujours une donnée que tu n\'as pas encore utilisée. Cherche-la.',
     'Recopie la question dans ta tête avec tes mots. Si tu n\'y arrives pas, c\'est qu\'il faut la relire.',
     'Quand il y a plusieurs questions, lis-les toutes avant de commencer : la première prépare souvent la dernière.',
@@ -40,7 +46,7 @@ export const CONSEILS = [
     'Avant de calculer, demande-toi si le résultat sera grand ou petit. Tu repéreras tes erreurs toi-même.',
     'Estime d\'abord, calcule ensuite. Une estimation fausse de dix fois se voit ; un chiffre faux, non.',
     'Écris ce que tu sais avant de chercher ce que tu ne sais pas. La suite vient souvent toute seule.',
-    'Si tu ne sais pas par où commencer, commence par faire un dessin. Même moche.',
+    'Si tu ne sais pas par où commencer, commence par faire un schéma. Même moche.',
     'Cherche un cas plus simple : avec 2 au lieu de 100. La méthode qui marche sur 2 marchera sur 100.',
     'Un problème avec de grands nombres se comprend avec de petits nombres. Remplace, comprends, puis remets les vrais.',
     'Note les unités dès le départ. Une longueur ne s\'ajoute pas à une aire, et les unités te le diront.',
@@ -161,7 +167,7 @@ export const CONSEILS = [
     // --- Deuxième centaine : s'organiser au brouillon --------------------------------
     'Écris au brouillon la donnée que tu cherches, en haut, entourée. Tu sauras toujours où tu vas.',
     'Un brouillon n\'est pas une copie sale : c\'est un espace où l\'on a le droit de se tromper. Utilise-le vraiment.',
-    'Fais un schéma même quand on ne le demande pas. Un dessin approximatif vaut mieux qu\'une phrase relue trois fois.',
+    'Fais un schéma même quand on ne le demande pas. Un tracé approximatif vaut mieux qu\'une phrase relue trois fois.',
     'Note tes essais ratés au lieu de les effacer : ils t\'évitent de recommencer le même deux fois.',
     'Sépare le brouillon en deux colonnes : ce que tu sais à gauche, ce que tu cherches à droite.',
     'Quand un calcul devient long, arrête-toi : il existe presque toujours un chemin plus court que tu n\'as pas vu.',

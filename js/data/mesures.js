@@ -112,10 +112,15 @@ export const mesuresExercises = [
         ],
         consignePapier: "Écris la formule, remplace, calcule, et n'oublie pas l'unité.",
         colonnesPapier: 1,
-        // TROIS LIGNES POUR RÉDIGER. Une vitesse ne se répond pas au bout d'une
-        // ligne de pointillés : on pose d = v × t, on remplace, on calcule, on
-        // conclut avec l'unité — et c'est la conclusion qui se note.
-        lignesReponsePapier: 3,
+        // DEUX LIGNES POUR RÉDIGER : le calcul, puis la phrase réponse.
+        //
+        // Rémy : « pour le temps distance vitesse, mets deux lignes, pour le
+        // calcul et la phrase réponse. » Il y en avait trois — on comptait la
+        // formule, le remplacement et le calcul chacun pour une ligne. En
+        // classe, la formule et le remplacement s'écrivent sur la MÊME ligne
+        // (« d = v × t = 120 × 2 = 240 »), et la troisième ne servait qu'à
+        // faire tenir quatre questions par page au lieu de six.
+        lignesReponsePapier: 2,
         title: 'Temps, Distance, Vitesse',
         // LA CALCULATRICE EST OFFERTE ICI, et c'est le premier exercice à
         // l'avoir. Ce qui s'apprend est la formule d = v × t et le choix de

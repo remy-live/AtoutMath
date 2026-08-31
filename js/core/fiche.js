@@ -117,8 +117,19 @@ export function texteImprime(texte, reponse) {
  * demande à l'élève d'écrire l'étage manquant.
  *
  * Un étage est donc soit un nombre, soit un trou : « ? », « … », ou « ... ».
+ *
+ * ET AUSSI UN TROU DÉJÀ PERCÉ. Rémy, sur la même fiche : « la fraction avec
+ * les pointillés n'est pas en colonne. » `texteImprime` passe AVANT la mise en
+ * page et remplace le « ? » par une largeur d'espaces bordée d'insécables — si
+ * bien que l'étage n'était plus ni un chiffre ni un « ? », et que la seule
+ * fraction qui DOIT s'écrire en colonne, celle où l'élève écrit, redescendait
+ * en ligne. On reconnaît donc aussi cette forme-là, qui ne peut appartenir
+ * qu'à un trou : les insécables la bordent exprès.
  */
-const ETAGE = '(?:\\d+|\\?|\\u2026|\\.\\.\\.)';
+const TROU_PERCE = '\\u00A0 {3,}\\u00A0';
+const ETAGE = `(?:\\d+|\\?|\\u2026|\\.\\.\\.|${TROU_PERCE})`;
+/** Cet étage-là est-il le trou où l'élève écrit ? */
+export const etageEstUnTrou = (t) => /^(?:\?|\u2026|\.\.\.|\u00A0 {3,}\u00A0)$/.test(String(t ?? ''));
 export const RE_FRACTION = () => new RegExp(`(${ETAGE})\\s*\\/\\s*(${ETAGE})`, 'g');
 
 /**

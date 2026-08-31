@@ -138,7 +138,7 @@ function exoReperage(rng, quoi, combien) {
     return makeItem({
         seed: rng.seed,
         generatorId: 'logi.echecs-fiche',
-        skillId: 'geo.repere.lire',
+        skillId: 'geo.repere.coord',
         answerKind: 'grid',
         prompt: {
             text: quoi === 'nommer'
@@ -212,7 +212,7 @@ function exoDeplacements(rng) {
         return makeItem({
             seed: rng.seed,
             generatorId: 'logi.echecs-fiche',
-            skillId: 'geo.repere.lire',
+            skillId: 'geo.repere.coord',
             answerKind: 'grid',
             prompt: {
                 text: `Marque toutes les cases où ${direPiece(type, false)} peut aller.`,

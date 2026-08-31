@@ -1009,9 +1009,31 @@ export function getSkill(id) {
     return SKILLS[id] || null;
 }
 
+/**
+ * LE LIBELLÉ D'UNE COMPÉTENCE — JAMAIS SON IDENTIFIANT.
+ *
+ * Rémy, en voyant ses points forts : « Tu notes num.mult.table, ce n'est pas
+ * du tout parlant pour l'utilisateur. » Il avait joué aux dominos sur les
+ * tables, et le jeu avait enregistré le MOTIF `num.mult.table.*` au lieu de la
+ * table elle-même : sans entrée au référentiel, l'affichage retombait sur
+ * l'identifiant. La cause est corrigée là où elle est — mais un identifiant
+ * brut sous les yeux d'un élève reste une faute d'affichage, et il ne doit
+ * plus être possible d'en montrer un.
+ *
+ * Le dernier repli fabrique donc une phrase à partir de l'identifiant : on
+ * jette le domaine, on garde le reste, et l'on rend les tirets à l'espace.
+ * « num.frac.add-meme-denom » devient « Frac add meme denom » — laid, mais
+ * lisible, et surtout repérable : un libellé de cette forme signale qu'il
+ * manque une entrée au référentiel.
+ */
 export function skillLabel(id) {
     const s = SKILLS[id];
-    return s ? s.label : id;
+    if (s) return s.label;
+    if (!id) return 'Notion inconnue';
+    const mots = String(id).replace(/\*/g, '').split('.').filter(Boolean).slice(1);
+    if (!mots.length) return 'Notion inconnue';
+    const phrase = mots.join(' ').replace(/-/g, ' ').trim();
+    return phrase.charAt(0).toUpperCase() + phrase.slice(1);
 }
 
 export function allSkills() {

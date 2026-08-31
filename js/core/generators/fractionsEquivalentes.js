@@ -200,7 +200,8 @@ function schemaIndice(c) {
 
 /** Le corps d'un item de calcul posé — partagé avec les problèmes. */
 function itemDeCalcul(c, rng, {
-    generatorId, skillId, marche, enonce = '', enonceTexte = '', question = ''
+    generatorId, skillId, marche, enonce = '', enonceTexte = '', question = '',
+    avecCalcul = true
 }) {
     const op = c.signe === '−' ? '−' : '+';
     const reponse = c.simplifie
@@ -215,7 +216,12 @@ function itemDeCalcul(c, rng, {
             // Le texte nu : c'est lui qui part sur la feuille et dans le
             // carnet d'erreurs. Y laisser l'HTML de l'énoncé imprimait les
             // balises.
-            text: enonceTexte ? `${enonceTexte} (${texte})` : texte,
+            // Sans énoncé, le calcul EST la question : on ne peut pas le
+            // retirer. Avec un énoncé, il n'est qu'une aide, et le réglage
+            // décide.
+            text: enonceTexte
+                ? (avecCalcul ? `${enonceTexte} (${texte})` : enonceTexte)
+                : texte,
             html: `<div class="frac-egalite">
                     ${enonce ? `<p class="frac-enonce">${enonce}</p>` : ''}
                     ${c.a.d === 1 ? `<span class="frac-entier">${c.a.n}</span>`
@@ -448,11 +454,24 @@ export const fracProblemeGenerator = {
                 + 'faut d\'abord voir que le tout s\'écrit en neuvièmes : 1 = 9/9. Ensuite '
                 + 'viennent les problèmes à deux fractions.'
         },
-        { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10 }
+        { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10 },
+        // ÉCRIRE LE CALCUL, OU LE FAIRE CHERCHER. Rémy : « pour histoire de
+        // fraction, mets une option pour écrire ou non le calcul ». L'énoncé
+        // portait toujours « (1 − 1/5 = …) » entre parenthèses : c'est une
+        // béquille utile au début — elle dit quelle opération poser — et une
+        // réponse donnée d'avance ensuite, puisque tout le travail du problème
+        // est justement de TROUVER le calcul.
+        {
+            id: 'calcul', type: 'checkbox', label: 'Écrire le calcul dans l\'énoncé',
+            default: true,
+            aide: 'Décoché, l\'énoncé s\'arrête à la question : c\'est à l\'élève de poser '
+                + 'l\'opération. C\'est le même exercice, une marche plus haut.'
+        }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
         const maxDen = Math.min(10, Number(params.maxDen) || 10);
+        const avecCalcul = (params || {}).calcul !== false;
         const index = ctx.index || 0;
 
         // ON COMMENCE PAR LE RESTE. Un seul dénominateur, une seule idée : le
@@ -468,7 +487,7 @@ export const fracProblemeGenerator = {
                 marche: 'complement',
                 enonce: h.dit(colonneHtml(c.b)),
                 enonceTexte: h.dit(nuHtml(c.b)).replace(/&nbsp;/g, ' '),
-                question: h.quoi
+                question: h.quoi, avecCalcul
             });
         }
 
@@ -488,7 +507,7 @@ export const fracProblemeGenerator = {
         return itemDeCalcul(c, rng, {
             generatorId: 'frac.probleme',
             skillId: 'num.frac.denominateur-commun',
-            marche, enonce, enonceTexte, question: h.quoi
+            marche, enonce, enonceTexte, question: h.quoi, avecCalcul
         });
     }
 };

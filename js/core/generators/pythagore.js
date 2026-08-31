@@ -40,12 +40,20 @@ export const pythagoreGenerator = {
         // laquelle il travaille aujourd'hui.
         {
             id: 'presentation', type: 'select', label: 'Énoncé', default: 'texte',
-            aide: 'En toutes lettres, ou en figure codée — l\'angle droit marqué, '
-                + 'les longueurs connues portées sur les côtés et un « ? » sur celui '
-                + 'qu\'on cherche.',
+            aide: 'En toutes lettres, en figure codée — l\'angle droit marqué, les '
+                + 'longueurs connues portées sur les côtés et un « ? » sur celui qu\'on '
+                + 'cherche —, ou les deux : le texte, et la figure dessous.',
             options: [
                 { value: 'texte', label: 'En toutes lettres' },
-                { value: 'schema', label: 'Une figure codée' }
+                { value: 'schema', label: 'Une figure codée' },
+                // LE TEXTE ET LA FIGURE. Rémy : « pour le théorème de Pythagore,
+                // on pourrait avoir le choix ou non d'avoir les figures (qui ne
+                // sont pas forcément à l'échelle). » C'était l'un OU l'autre :
+                // la figure remplaçait l'énoncé. Or lire un énoncé PUIS le
+                // traduire en figure est justement le premier geste du chapitre,
+                // et le professeur veut pouvoir donner les deux — quitte à
+                // prévenir, sur la feuille, que le dessin n'est pas à l'échelle.
+                { value: 'les-deux', label: 'Le texte ET la figure' }
             ]
         }
     ],
@@ -95,7 +103,8 @@ export const pythagoreGenerator = {
             difficulty: versHypo ? 2 : 3,
             meta: {
                 triangle: t, chercher, niveau: niveauDe(versHypo ? 4 : 5).id,
-                presentation: (params && params.presentation) === 'schema' ? 'schema' : 'texte'
+                presentation: ['schema', 'les-deux'].includes((params || {}).presentation)
+                    ? params.presentation : 'texte'
             }
         });
     }
