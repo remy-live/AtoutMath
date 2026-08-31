@@ -32,7 +32,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     QUESTION, BOUT,
-    cheminSerpentin, boiteDe, plateauVide, casePiece, poserEnCase, retirerDeCase,
+    cheminSerpentin, longueurQuiPave, boiteDe, plateauVide, casePiece, poserEnCase, retirerDeCase,
     retournerCase, plateauFini, verifierPlateau, prochaineCase, direJoint,
     reserveMelangee, demiDe, ajusterAuCarre, insecable
 } from '../core/dominos.js';
@@ -238,7 +238,7 @@ class Dominos extends BaseGame {
     // --- Un jeu de dominos --------------------------------------------------
 
     poser() {
-        const voulu = Math.max(3, this.nbPieces - 1);
+        const voulu = longueurQuiPave(Math.max(3, this.nbPieces - 1));
         this.chaine = chaineDepuisGenerateur(this.source.id, this.params.sourceParams || {}, voulu, this.rng);
         this.recommencer();
         return true;
@@ -297,8 +297,18 @@ class Dominos extends BaseGame {
         // parte en défilement horizontal sur un téléphone.
         const large = Math.max(200, (this.wrapEl.clientWidth || 340) - 40);
         const haut = Math.max(150, (this.container.clientHeight || 480) * 0.44);
+        // LA DERNIÈRE RANGÉE VA JUSQU'AU BORD. Une rangée de serpentin porte
+        // `k + 1` pièces ; quand le compte n'en est pas un multiple, la
+        // dernière s'arrête en plein milieu et la planche a l'air inachevée —
+        // « les dominos terminent avant la fin du plateau ». On ne retient
+        // donc que les plis qui tombent juste, et l'on ne revient à tous les
+        // plis que si aucun ne tombe juste (voir `longueurQuiPave`, qui fait
+        // en sorte que ce repli ne serve jamais).
+        const justes = [];
+        for (let k = 2; k <= 7; k++) if (n % (k + 1) === 0) justes.push(k);
+        const plis = justes.length ? justes : [2, 3, 4, 5, 6, 7];
         let meilleur = null;
-        for (let k = 2; k <= 7; k++) {
+        for (const k of plis) {
             const chemin = cheminSerpentin(n, k);
             const cote = Math.min(large / chemin.colonnes, haut / chemin.lignes, 74);
             // À égalité — c'est-à-dire quand tout tient — on préfère la planche
@@ -512,8 +522,17 @@ class Dominos extends BaseGame {
         // la case d'avant. C'est lui qu'on crédite, pas la pièce.
         const couple = dedans < 0 ? this.coupleFerme(pose.index) : null;
         if (couple) {
+            // UNE PLANCHE EST UNE QUESTION, PAS UNE PIÈCE. Rémy : « Les dominos
+            // terminent avant la fin du plateau, compte en plateau pas en
+            // question. » Chaque jointure fermée comptait pour une question de
+            // la série : sur une étape de quinze questions, une planche de
+            // quinze pièces la finissait AVANT que la planche ne le soit, et
+            // l'élève voyait son travail interrompu au milieu. Le joint reste
+            // une tentative — il va aux statistiques et au carnet d'erreurs —
+            // mais c'est la planche vérifiée qui fait avancer le compte.
             this.onCorrectAnswer(null, this.chaine.skillId || COMPETENCE, {
-                questionText: couple.q, expected: couple.r, given: couple.r, points: 5
+                questionText: couple.q, expected: couple.r, given: couple.r,
+                points: 5, partiel: true
             });
         }
 

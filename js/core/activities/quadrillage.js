@@ -22,7 +22,7 @@ import { hintBar, wireHint } from './choice.js';
 // LE GESTE QUI MANQUAIT. Rémy : « ne fonctionne pas » — le clic marchait, mais
 // pas le balayage, qui est le geste naturel pour colorier plusieurs cases.
 import { peindreAuGlisse } from './glisser.js';
-import { quadrillageSvg } from '../quadrillageSvg.js';
+import { quadrillageSvg, gesteDuFilm } from '../quadrillageSvg.js';
 import { cleFigure, comparer } from '../transformations.js';
 import { imageAttendue } from '../generators/transfoQuadrillage.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
@@ -173,30 +173,23 @@ export function mount(container, session) {
      * la figure passerait par le centre au lieu de tourner autour.
      */
     function mouvementA(t, r) {
-        const tr = item.meta.transfo;
-        if (!tr) return '';
-        if (tr.genre === 'translation') {
-            return `translate(${tr.vecteur.x * r.u * t} ${tr.vecteur.y * r.u * t})`;
+        // LE GESTE SE CALCULE DANS `core/quadrillageSvg.js`, avec le
+        // demi-carreau. Il se calculait ici, et il l'avait oublié : la figure
+        // pliait autour du BORD de la case de l'axe au lieu de son milieu, et
+        // atterrissait une case à côté de sa propre correction. Rémy : « le
+        // mouvement n'est pas bon — vérifie tous les mouvements. » Mesuré :
+        // 70 films faux sur 97 ; la translation était la seule juste, parce
+        // qu'elle n'a ni axe ni centre à placer.
+        const g = gesteDuFilm(item.meta.transfo);
+        if (!g) return '';
+        if (g.genre === 'glisse') {
+            return `translate(${g.dx * r.u * t} ${g.dy * r.u * t})`;
         }
-        if (tr.genre === 'centrale' || tr.genre === 'rotation') {
-            const quarts = ((Math.round(tr.genre === 'centrale' ? 2 : tr.quarts) % 4) + 4) % 4;
-            // ON TOURNE DU CÔTÉ QU'ANNONCE LA CONSIGNE, ET DU PLUS COURT
-            // CHEMIN. Trois quarts de tour dans le sens des aiguilles arrivent
-            // au même endroit qu'un quart dans l'autre sens — mais la consigne
-            // dit « le sens direct », et une figure qui part à l'envers pendant
-            // une seconde et demie enseigne le contraire de ce qu'on lit.
-            const angle = quarts === 3 ? -90 : 90 * quarts;
-            const c = tr.centre;
-            return `rotate(${angle * t} ${r.px(c.x)} ${r.py(c.y)})`;
-        }
-        // Symétrie axiale : on plie autour de l'axe, quel que soit son sens.
-        const a = tr.axe;
-        const s = 1 - 2 * t;
-        const cx = a.type === 'v' ? r.px(a.a) : r.px(0);
-        const cy = a.type === 'v' ? r.py(0) : r.py(a.a);
-        const angle = a.type === 'v' ? 90 : a.type === 'h' ? 0 : a.type === 'd' ? 45 : -45;
-        return `translate(${cx} ${cy}) rotate(${angle}) scale(1 ${s}) `
-            + `rotate(${-angle}) translate(${-cx} ${-cy})`;
+        const cx = r.px(g.cx), cy = r.py(g.cy);
+        if (g.genre === 'tourne') return `rotate(${g.angle * t} ${cx} ${cy})`;
+        // Le pliage : on redresse l'axe, on écrase, on remet.
+        return `translate(${cx} ${cy}) rotate(${g.angle}) scale(1 ${1 - 2 * t}) `
+            + `rotate(${-g.angle}) translate(${-cx} ${-cy})`;
     }
 
     function majFilm() {

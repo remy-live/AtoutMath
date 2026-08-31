@@ -1188,34 +1188,57 @@ const AILE = 0.2;              // demi-envergure de la pointe
  * bas » ; on les fabrique par la même fonction pour qu'elles se ressemblent
  * exactement — deux dessins écrits séparément finissent toujours par différer.
  */
-function cheminFleche(x0, y0, x1, y1) {
+/**
+ * LA FLÈCHE REND SES POINTS, PAS SON DESSIN.
+ *
+ * Elle rendait une chaîne SVG — « M 0.16 0.42 L … Z » —, ce qui allait très
+ * bien à l'aperçu, qui la pose telle quelle dans un `<path d>`. Le PDF, lui,
+ * était resté à la version d'AVANT, celle où une flèche n'était qu'une paire
+ * de segments : il écrivait `traitsFleche(type).forEach(([a, b]) => …)`.
+ *
+ * DÉSTRUCTURER UNE CHAÎNE NE LÈVE AUCUNE ERREUR. `[a, b]` sur « M 0.16… »
+ * donne le CARACTÈRE `'M'` et une espace ; `'M' * cote` vaut `NaN`, et jsPDF
+ * s'arrête sur « Invalid arguments passed to jsPDF.line ». C'est le bug que
+ * Rémy a rapporté : plus aucune fiche de parcours contenant un Mot Codé ne
+ * sortait — et le message ne parlait ni de flèche, ni de mot codé.
+ *
+ * Les deux rendus partent maintenant des MÊMES POINTS, chacun les mettant en
+ * forme à sa façon. Une flèche ne peut plus être dessinée d'un côté et pas de
+ * l'autre : il n'y a plus deux descriptions à tenir d'accord.
+ *
+ * @returns {Array<[number, number]>} les sept sommets, en fraction de case
+ */
+function pointsFleche(x0, y0, x1, y1) {
     const dx = x1 - x0, dy = y1 - y0;
     const L = Math.hypot(dx, dy) || 1;
     const ux = dx / L, uy = dy / L;          // le sens de la flèche
     const nx = -uy, ny = ux;                 // sa perpendiculaire
     const bx = x1 - ux * POINTE, by = y1 - uy * POINTE;   // la base de la pointe
-    const p = (px, py) => `${px.toFixed(3)} ${py.toFixed(3)}`;
-    return 'M ' + [
-        p(x0 + nx * HAMPE, y0 + ny * HAMPE),
-        p(bx + nx * HAMPE, by + ny * HAMPE),
-        p(bx + nx * AILE, by + ny * AILE),
-        p(x1, y1),
-        p(bx - nx * AILE, by - ny * AILE),
-        p(bx - nx * HAMPE, by - ny * HAMPE),
-        p(x0 - nx * HAMPE, y0 - ny * HAMPE)
-    ].join(' L ') + ' Z';
+    return [
+        [x0 + nx * HAMPE, y0 + ny * HAMPE],
+        [bx + nx * HAMPE, by + ny * HAMPE],
+        [bx + nx * AILE, by + ny * AILE],
+        [x1, y1],
+        [bx - nx * AILE, by - ny * AILE],
+        [bx - nx * HAMPE, by - ny * HAMPE],
+        [x0 - nx * HAMPE, y0 - ny * HAMPE]
+    ];
 }
 
+/** Les mêmes points, pour l'attribut `d` d'un `<path>`. */
+const cheminFleche = (pts) => 'M ' + pts
+    .map(([x, y]) => `${x.toFixed(3)} ${y.toFixed(3)}`).join(' L ') + ' Z';
+
 const CHEMINS_FLECHE = {
-    droite: [cheminFleche(0.16, 0.5, 0.84, 0.5)],
-    bas: [cheminFleche(0.5, 0.16, 0.5, 0.84)]
+    droite: [pointsFleche(0.16, 0.5, 0.84, 0.5)],
+    bas: [pointsFleche(0.5, 0.16, 0.5, 0.84)]
 };
 // Sur une case d'angle, les deux flèches ne se superposent pas : centrées
 // toutes les deux, elles se croisent en une étoile qu'on ne lit plus. Chacune
 // dans sa moitié, comme les deux départs distincts qu'elles annoncent.
 const CHEMINS_COIN = [
-    cheminFleche(0.30, 0.28, 0.86, 0.28),
-    cheminFleche(0.28, 0.30, 0.28, 0.86)
+    pointsFleche(0.30, 0.28, 0.86, 0.28),
+    pointsFleche(0.28, 0.30, 0.28, 0.86)
 ];
 
 function traitsFleche(type) {
@@ -1233,7 +1256,6 @@ function motCodePreviewHtml(item, slot, k, solution) {
     const g = geoMotCode(item, slot);
     const T = (v) => (v * k).toFixed(2);
     const donnees = new Set(g.m.donnees);
-    const enClair = new Set(g.m.enClair || []);
     const fleches = flechesDe(g.m);
     let html = '';
     for (let y = 0; y < g.m.hauteur; y++) {
@@ -1245,19 +1267,12 @@ function motCodePreviewHtml(item, slot, k, solution) {
             if (c === null) {
                 const type = fleches.get(`${x},${y}`);
                 if (!type) continue;      // le centre de l'anneau reste blanc
-                const traits = traitsFleche(type).map(d => `<path d="${d}"/>`).join('');
+                const traits = traitsFleche(type)
+                    .map(pts => `<path d="${cheminFleche(pts)}"/>`).join('');
                 html += `<div class="fx-mk-noire" style="left:${T(X)}px; top:${T(Y)}px;
                     width:${T(g.cote)}px; height:${T(g.cote)}px">
                     <svg viewBox="0 0 1 1" preserveAspectRatio="none" class="fx-mk-fl">${traits}</svg>
                     </div>`;
-                continue;
-            }
-            // UNE LETTRE SOLITAIRE EST ÉCRITE EN CLAIR, sans numéro : elle ne
-            // paraît qu'une fois dans tout l'anneau et ne se déduit de rien.
-            if (enClair.has(c)) {
-                html += `<div class="fx-mk-case fx-mk-depart" style="left:${T(X)}px; top:${T(Y)}px;
-                    width:${T(g.cote)}px; height:${T(g.cote)}px; font-size:${T(g.cote * 0.5)}px"
-                    >${echapperSheet(c)}</div>`;
                 continue;
             }
             // LA GRILLE RESTE VIDE. Rémy : « pour les mots codés, ne remplis
@@ -1296,7 +1311,6 @@ function motCodePreviewHtml(item, slot, k, solution) {
 function dessinerMotCodePdf(doc, item, slot, solution, champ) {
     const g = geoMotCode(item, slot);
     const donnees = new Set(g.m.donnees);
-    const enClair = new Set(g.m.enClair || []);
     const fleches = flechesDe(g.m);
 
     for (let y = 0; y < g.m.hauteur; y++) for (let x = 0; x < g.m.largeur; x++) {
@@ -1312,32 +1326,21 @@ function dessinerMotCodePdf(doc, item, slot, solution, champ) {
             if (!type) continue;
             doc.setFillColor(221, 226, 234);
             doc.rect(X, Y, g.cote, g.cote, 'F');
-            doc.setDrawColor(90, 104, 126);
-            doc.setLineWidth(Math.max(0.25, g.cote * 0.07));
-            traitsFleche(type).forEach(([a, b]) => {
-                doc.line(X + a[0] * g.cote, Y + a[1] * g.cote,
-                    X + b[0] * g.cote, Y + b[1] * g.cote);
+            // LA MÊME FLÈCHE PLEINE QU'À L'ÉCRAN, et non deux traits : c'est
+            // le même polygone, tracé point par point. `doc.lines` veut des
+            // DÉPLACEMENTS depuis le point de départ, pas des coordonnées.
+            doc.setFillColor(90, 104, 126);
+            traitsFleche(type).forEach(pts => {
+                const abs = pts.map(([px, py]) => [X + px * g.cote, Y + py * g.cote]);
+                const pas = abs.slice(1).map(([px, py], i) =>
+                    [px - abs[i][0], py - abs[i][1]]);
+                doc.lines(pas, abs[0][0], abs[0][1], [1, 1], 'F', true);
             });
-            doc.setLineWidth(0.22);
             continue;
         }
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.22);
         doc.rect(X, Y, g.cote, g.cote, 'S');
-        // UNE LETTRE SOLITAIRE EST ÉCRITE EN CLAIR, sans numéro : elle ne
-        // paraît qu'une fois dans tout l'anneau et ne se déduit de rien. Un
-        // trait gras sous la case le dit sur une photocopie en noir et blanc,
-        // où aucune couleur ne survit.
-        if (enClair.has(c)) {
-            doc.setLineWidth(0.6);
-            doc.line(X, Y + g.cote, X + g.cote, Y + g.cote);
-            doc.setLineWidth(0.22);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(Math.min(12, g.cote * 1.5));
-            doc.setTextColor(...ENCRE.texte);
-            doc.text(c, X + g.cote / 2, Y + g.cote * 0.72, { align: 'center' });
-            continue;
-        }
         // LE NUMÉRO EST DANS UN COIN, PAS AU MILIEU : le milieu appartient à la
         // lettre qu'on va écrire par-dessus, et un chiffre gris sous un stylo
         // se lit encore.
@@ -10302,9 +10305,8 @@ export const RENDUS = {
             + 'la grille. Les mots se lisent en anneau autour du cadre : une flèche marque le '
             + 'début de chacun et le sens dans lequel il se lit. LA CLÉ, sous la grille, '
             + 'COMMENCE PAR UN MOT — ses lettres sont déjà posées partout où leur numéro '
-            + 'reparaît, et c\'est de là qu\'on part. Une lettre soulignée, écrite en clair et '
-            + 'sans numéro, ne paraît qu\'une seule fois : elle ne se devinerait pas. Retrouve '
-            + 'les autres — deux numéros différents ne cachent jamais la même lettre — et '
+            + 'reparaît, et c\'est de là qu\'on part. Retrouve les autres — deux numéros '
+            + 'différents ne cachent jamais la même lettre — et '
             + 'reporte chaque trouvaille dans la clé. Tous les mots sont du vocabulaire du cours'
             + (items && items[0] && items[0].meta && THEMES_MOTCODE[items[0].meta.theme]
                 ? ` (${THEMES_MOTCODE[items[0].meta.theme].toLowerCase()})` : '') + '.',

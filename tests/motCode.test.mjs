@@ -3,8 +3,8 @@
 // Rémy, après deux essais ratés : « pour le mot caché, ce n'est vraiment pas
 // ça, je te redonne un exercice que j'ai créé » — avec la photo de sa fiche.
 // Elle a été décodée case par case, et ces tests gardent ce qu'elle dit :
-// un cadre de bandes, le centre vide, des mots qui ne se croisent jamais, une
-// clé qui commence par un mot, et les lettres solitaires écrites en clair.
+// un cadre de bandes, le centre vide, des mots qui ne se croisent jamais, et
+// une clé qui commence par un mot.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -98,37 +98,36 @@ test('la grille codée est exactement la grille des mots', () => {
     // garantie que ce qu'on décode est ce qui a été écrit.
     for (let i = 0; i < 20; i++) {
         const m = faire({}, 'gr' + i);
-        const solitaires = new Set(m.enClair);
         m.cases.forEach((ligne, y) => ligne.forEach((c, x) => {
             if (c === null) return assert.equal(m.numeros[y][x], null, 'une case muette est numérotée');
-            if (solitaires.has(c)) {
-                return assert.equal(m.numeros[y][x], null, 'une lettre en clair porte un numéro');
-            }
             assert.equal(m.numeros[y][x], m.code[c]);
         }));
-        // Et chaque lettre du lexique employée est bien codée, ou donnée.
+        // Et chaque lettre du lexique employée est bien codée.
         m.mots.forEach(w => [...w.mot].forEach(l =>
-            assert.ok(m.lettres.includes(l) || solitaires.has(l), `${l} manque à l'alphabet`)));
+            assert.ok(m.lettres.includes(l), `${l} manque à l'alphabet`)));
     }
 });
 
-test('UNE LETTRE QUI NE PARAÎT QU\'UNE FOIS EST ÉCRITE EN CLAIR', () => {
-    // Chez Rémy, un « B » solitaire s'affiche au milieu de NOMBRE, et sa clé
-    // compte dix-sept numéros pour dix-huit lettres. C'est juste : un numéro
-    // qui n'apparaît qu'une seule fois dans toute la grille ne se déduit de
-    // rien — les mots de l'anneau ne se croisent pas. Le coder serait poser une
-    // devinette sans indice.
+test('TOUTE LETTRE DE LA GRILLE PORTE UN NUMÉRO, LES SOLITAIRES COMPRISES', () => {
+    // Rémy : « Même les lettres toutes seules tu peux les mettre dans la
+    // grille. » La version d'avant écrivait en clair toute lettre vue une
+    // seule fois — un « B » lisible au milieu de NOMBRE — en croyant qu'elle
+    // ne se déduisait de rien. Elle se déduit du MOT : NOM?RE n'a qu'une
+    // lettre possible. Les écrire en clair donnait la réponse, et c'est
+    // justement ce que Rémy reprochait à la grille.
     for (let i = 0; i < 15; i++) {
         const m = faire({}, 'clair' + i);
         const compte = new Map();
         m.cases.forEach(l => l.forEach(c => {
             if (c !== null) compte.set(c, (compte.get(c) || 0) + 1);
         }));
-        [...compte.entries()].forEach(([lettre, n]) => {
-            if (n === 1) assert.ok(m.enClair.includes(lettre), `${lettre} solitaire mais codée`);
-            else assert.ok(m.lettres.includes(lettre), `${lettre} paraît ${n} fois mais n'est pas codée`);
-        });
-        m.enClair.forEach(l => assert.equal(compte.get(l), 1, `${l} en clair mais pas solitaire`));
+        [...compte.entries()].forEach(([lettre, n]) =>
+            assert.ok(m.lettres.includes(lettre),
+                `${lettre} paraît ${n} fois mais n'est pas codée`));
+        // Et aucune case portant une lettre n'est laissée sans numéro.
+        m.cases.forEach((ligne, y) => ligne.forEach((c, x) =>
+            assert.equal(c === null, m.numeros[y][x] === null,
+                `la case ${x},${y} n'est pas d'accord avec elle-même`)));
     }
 });
 
@@ -256,12 +255,12 @@ test('le générateur de fiche rend de quoi imprimer ET corriger', () => {
 
 /** La part des cases DÉJÀ REMPLIES avant le premier coup — ce que l'élève voit. */
 function partRemplie(m) {
-    const offertes = new Set(m.donnees), clair = new Set(m.enClair);
+    const offertes = new Set(m.donnees);
     let pleines = 0, total = 0;
     m.cases.forEach(l => l.forEach(c => {
         if (c === null) return;
         total++;
-        if (offertes.has(c) || clair.has(c)) pleines++;
+        if (offertes.has(c)) pleines++;
     }));
     return pleines / total;
 }

@@ -5736,7 +5736,6 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     fill: #46536b; stroke: none; }
 /* LE MOT DE DÉPART, souligné : c'est de lui qu'on part, et sur une photocopie
    en noir et blanc un trait épais sous la case survit là où une couleur non. */
-.fx-mk-depart { border-bottom-width: 1.4px; }
 .fx-mc-cle-num {
     position: absolute; text-align: center; color: #6b7280;
     font-weight: 700; line-height: 1; pointer-events: none;

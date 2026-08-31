@@ -45,6 +45,89 @@ export function droiteDeLAxe(axe) {
     return { verticale: false, a: -1, b: axe.a + 1 };
 }
 
+/**
+ * LE GESTE DU FILM — et il vit ICI, avec le demi-carreau.
+ *
+ * « Montre le mouvement » rejoue la transformation : la figure glisse, tourne
+ * ou se plie jusqu'à son image. Ce geste se calculait dans l'activité, à la
+ * main, et il y avait OUBLIÉ le demi-carreau que tout ce module existe pour
+ * porter. Rémy : « le mouvement n'est pas bon pour la symétrie axiale —
+ * vérifie tous les mouvements » et « pour la symétrie centrale, le mouvement
+ * est faux ». Mesuré : 70 films faux sur 97 ; seule la translation, qui n'a
+ * pas de centre ni d'axe, tombait juste.
+ *
+ * On le rend donc PUR et on le pose à côté de `droiteDeLAxe`, dont il dépend :
+ * un test sans navigateur peut alors vérifier que le film atterrit exactement
+ * sur la correction, ce qu'aucun test ne pouvait faire tant que le calcul
+ * vivait au milieu du DOM.
+ *
+ * Les coordonnées rendues sont celles du DESSIN — demi-carreau compris.
+ *
+ * @returns {{genre:'glisse'|'tourne'|'plie', dx?, dy?, angle?, cx?, cy?}}
+ */
+export function gesteDuFilm(transfo) {
+    const tr = transfo;
+    if (!tr) return null;
+    if (tr.genre === 'translation') {
+        return { genre: 'glisse', dx: tr.vecteur.x, dy: tr.vecteur.y };
+    }
+    if (tr.genre === 'centrale' || tr.genre === 'rotation') {
+        const quarts = ((Math.round(tr.genre === 'centrale' ? 2 : tr.quarts) % 4) + 4) % 4;
+        // ON TOURNE DU CÔTÉ QU'ANNONCE LA CONSIGNE, ET DU PLUS COURT CHEMIN.
+        // Trois quarts de tour dans le sens des aiguilles arrivent au même
+        // endroit qu'un quart dans l'autre sens — mais la consigne dit « le
+        // sens direct », et une figure qui part à l'envers pendant une seconde
+        // et demie enseigne le contraire de ce qu'on lit.
+        return {
+            genre: 'tourne', angle: quarts === 3 ? -90 : 90 * quarts,
+            cx: versDessin(tr.centre.x), cy: versDessin(tr.centre.y)
+        };
+    }
+    // LA SYMÉTRIE SE JOUE COMME UN PLIAGE, autour de l'axe TEL QU'IL EST
+    // DESSINÉ. `droiteDeLAxe` porte le demi-carreau pour les quatre sens
+    // d'axe ; on ne le recalcule pas ici, sous peine de retrouver l'écart.
+    const d = droiteDeLAxe(tr.axe);
+    return {
+        genre: 'plie',
+        angle: d.verticale ? 90 : Math.atan(d.a) * 180 / Math.PI,
+        cx: d.verticale ? d.b : 0,
+        cy: d.verticale ? 0 : d.b
+    };
+}
+
+/**
+ * L'image d'un point de DESSIN à l'instant `t` du film (0 → départ, 1 → image).
+ *
+ * C'est la même matrice que celle que le SVG applique : le test peut donc
+ * vérifier l'arrivée sans navigateur, et l'écran ne peut plus diverger de la
+ * correction sans que ce test le dise.
+ */
+export function pointDuFilm(geste, t, p) {
+    if (!geste) return { ...p };
+    if (geste.genre === 'glisse') {
+        return { x: p.x + geste.dx * t, y: p.y + geste.dy * t };
+    }
+    const dx = p.x - geste.cx, dy = p.y - geste.cy;
+    if (geste.genre === 'tourne') {
+        const r = geste.angle * t * Math.PI / 180;
+        return {
+            x: geste.cx + dx * Math.cos(r) - dy * Math.sin(r),
+            y: geste.cy + dx * Math.sin(r) + dy * Math.cos(r)
+        };
+    }
+    // LE PLI : on ramène l'axe à l'horizontale, on écrase l'ordonnée de 1 à
+    // −1 en passant par 0 — le geste du papier qu'on plie —, et l'on remet
+    // l'axe où il était.
+    const r = geste.angle * Math.PI / 180;
+    const cos = Math.cos(-r), sin = Math.sin(-r);
+    const ux = dx * cos - dy * sin, uy = dx * sin + dy * cos;
+    const vy = uy * (1 - 2 * t);
+    return {
+        x: geste.cx + ux * Math.cos(r) - vy * Math.sin(r),
+        y: geste.cy + ux * Math.sin(r) + vy * Math.cos(r)
+    };
+}
+
 const esc = (s) => String(s).replace(/[&<>"]/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

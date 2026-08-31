@@ -152,6 +152,29 @@ export const seMarient = (a, b) =>
  * le bas, 'vu' vers le haut. Deux cases qui se suivent sur le chemin se
  * touchent toujours par une arête : c'est là que se lit la jointure.
  */
+/**
+ * UNE LONGUEUR DE CHAÎNE QUI REMPLIT SES RANGÉES.
+ *
+ * Rémy : « Les dominos terminent avant la fin du plateau. » Une rangée de
+ * serpentin porte `parRangee + 1` pièces — les horizontales, plus le domino
+ * debout qui fait le virage. Si le nombre de pièces n'est un multiple d'aucune
+ * de ces valeurs, la dernière rangée s'arrête en plein milieu quel que soit le
+ * pli choisi, et la planche a l'air inachevée avant même d'être remplie.
+ *
+ * Les plis utiles vont de 2 à 7 pièces par rangée, soit des rangées de 3 à 8.
+ * On arrondit donc VERS LE HAUT jusqu'au premier compte qui a l'un de ces
+ * diviseurs. MESURÉ jusqu'à deux cents pièces : il n'en faut jamais plus de
+ * DEUX de plus (22 → 24, 37 → 39, 61 → 63), et deux pièces de plus ne changent
+ * rien à l'exercice — alors qu'une rangée coupée en deux se voit tout de
+ * suite.
+ */
+export function longueurQuiPave(n) {
+    const voulu = Math.max(3, Math.floor(n));
+    const pave = (v) => [3, 4, 5, 6, 7, 8].some(r => v % r === 0);
+    for (let v = voulu; v < voulu + 8; v++) if (pave(v)) return v;
+    return voulu;
+}
+
 export function cheminSerpentin(n, parRangee = 3) {
     const k = Math.max(1, Math.floor(parRangee));
     const maxW = k * 2;                 // l'abscisse du virage, en cellules

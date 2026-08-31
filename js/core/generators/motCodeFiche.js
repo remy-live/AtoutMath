@@ -94,7 +94,7 @@ export const motCodeFicheGenerator = {
                 largeur: m.largeur, hauteur: m.hauteur,
                 cases: m.cases, numeros: m.numeros, fleches: m.fleches,
                 lettres: m.lettres, code: m.code, parNumero: m.parNumero,
-                donnees: m.donnees, enClair: m.enClair, motCle: m.motCle,
+                donnees: m.donnees, motCle: m.motCle,
                 mots: m.mots, theme
             }
         });

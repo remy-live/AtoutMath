@@ -33,12 +33,17 @@
 //     mot du thème dont toutes les lettres sont distinctes et présentes dans
 //     la grille, et on lui attribue les numéros 1, 2, 3… dans l'ordre.
 //
-//   · UNE LETTRE QUI NE PARAÎT QU'UNE FOIS EST ÉCRITE EN CLAIR. Chez lui, un
-//     « B » solitaire s'affiche au milieu de NOMBRE, et sa clé compte dix-sept
-//     numéros pour dix-huit lettres. C'est juste : un numéro qui n'apparaît
-//     qu'une seule fois dans toute la grille ne se déduit de rien — ni du mot
-//     qui l'entoure, puisque les mots ne se croisent pas, ni d'ailleurs. Le
-//     coder serait poser une devinette sans indice.
+//   · TOUTES LES LETTRES SONT CODÉES, LES SOLITAIRES COMPRISES. Rémy :
+//     « Même les lettres toutes seules tu peux les mettre dans la grille. »
+//
+//     La première version les écrivait en clair — un « B » solitaire lisible
+//     au milieu de NOMBRE —, au motif qu'un numéro vu une seule fois ne se
+//     déduirait de rien, puisque les mots de l'anneau ne se croisent pas.
+//     C'était faux, et c'est Rémy qui avait raison : il se déduit du MOT.
+//     NOM?RE n'a qu'une lettre possible, et la trouver est exactement le
+//     plaisir du mot codé. Les écrire en clair revenait à donner la réponse —
+//     ce qu'il reprochait déjà : « de base pour le mot codé, tu donnes
+//     presque toute la solution ».
 
 import { garnirAnneau } from './anneauMots.js';
 import { motsDisponibles, THEMES } from './motsCaches.js';
@@ -198,25 +203,22 @@ export function creerMotCode(options = {}) {
         if (c !== null) compte.set(c, (compte.get(c) || 0) + 1);
     }));
 
-    // UNE LETTRE SOLITAIRE S'ÉCRIT EN CLAIR. Voir l'en-tête : un numéro qui ne
-    // paraît qu'une fois ne se déduit de rien, puisque les mots de l'anneau ne
-    // se croisent pas. Le coder serait poser une devinette sans indice.
-    const enClair = [...compte.entries()].filter(([, n]) => n === 1).map(([l]) => l).sort();
-    const solitaires = new Set(enClair);
-    const lettres = [...compte.keys()].filter(l => !solitaires.has(l)).sort();
+    // TOUTE LETTRE DE LA GRILLE PORTE UN NUMÉRO, même celle qu'on n'y voit
+    // qu'une fois — voir l'en-tête : elle se déduit du mot qui l'entoure.
+    const lettres = [...compte.keys()].sort();
 
     // LA CLÉ COMMENCE PAR UN MOT : ses lettres prennent 1, 2, 3… dans l'ordre.
     const presentes = new Set(lettres);
-    // Le budget se compte sur les cases CODÉES : celles écrites en clair sont
-    // données de toute façon, les compter dans le budget le rognerait deux fois.
+    // Le budget se compte en CASES : c'est le nombre de cases déjà remplies qui
+    // dit si la grille est donnée, pas le nombre de numéros offerts.
     const casesCodees = lettres.reduce((t, l) => t + compte.get(l), 0);
     const mesure = { compte, budget: budgetCases(casesCodees, partOfferteDe(aide)) };
     // Le thème d'abord — c'est son mot qu'on veut faire lire —, puis le lexique
     // entier, et seulement si personne ne tient dans le budget on l'élargit.
     //
     // LE DERNIER REPLI REGARDE TOUT LE MONDE À LA FOIS. Il consultait le thème
-    // seul avant le lexique, et sur les grilles où beaucoup de lettres sont
-    // écrites en clair il ne reste parfois qu'UN mot du thème éligible : c'était
+    // seul avant le lexique, et sur les grilles pauvres en lettres distinctes
+    // il ne reste parfois qu'UN mot du thème éligible : c'était
     // alors lui, quel que soit son coût. D'où des ÉQUATION à soixante-neuf pour
     // cent de cases remplies sur le réglage le plus AVARE — l'inverse de ce
     // qu'on demandait. Quand on cherche le moins cher, on cherche partout.
@@ -240,13 +242,9 @@ export function creerMotCode(options = {}) {
         code, parNumero,
         // Le mot qui ouvre la clé, et les lettres qu'il donne d'avance.
         motCle: mot || '', donnees: ouverture,
-        // Les lettres solitaires, écrites en clair dans la grille.
-        enClair,
         trous: grille.trous,
-        // La grille des numéros : `null` sur une case muette OU sur une lettre
-        // écrite en clair — celle-là porte sa lettre, pas un numéro.
-        numeros: grille.cases.map(ligne => ligne.map(
-            c => (c === null || solitaires.has(c) ? null : code[c])))
+        // La grille des numéros : `null` sur une case muette, et seulement là.
+        numeros: grille.cases.map(ligne => ligne.map(c => (c === null ? null : code[c])))
     };
 }
 
@@ -298,7 +296,6 @@ export function qualiteCode(m) {
         mots: m.mots.length, lettres,
         muettes: m.fleches.length,
         alphabet: m.lettres.length,
-        enClair: m.enClair.length,
         trous: m.trous,
         cle: m.motCle
     };

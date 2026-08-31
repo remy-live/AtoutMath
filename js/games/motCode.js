@@ -160,16 +160,6 @@ class MotCode extends BaseGame {
                     fill: none; stroke: #cbd5e1; stroke-width: 2.4;
                     stroke-linecap: round; stroke-linejoin: round;
                 }
-                /* UNE LETTRE QUI NE PARAÎT QU'UNE FOIS EST DONNÉE. Elle n'a pas
-                   de numéro — un numéro unique dans toute la grille ne se déduit
-                   de rien, puisque les mots de l'anneau ne se croisent pas. On
-                   la marque donc comme un cadeau du départ, et non comme une
-                   case à trouver qu'on aurait remplie par magie. */
-                .mk-case--clair {
-                    background: #f8fafc; color: #475569;
-                    cursor: default; font-style: italic;
-                }
-
                 /* LA CLÉ : l'état du jeu, pas une légende. Elle défile si elle
                    ne tient pas — vingt lettres sur un téléphone font deux
                    rangées, et les rogner cacherait des numéros. */
@@ -326,8 +316,6 @@ class MotCode extends BaseGame {
                 return `<div class="mk-case mk-case--muette">${flecheSvg(type)}</div>`;
             }
             const num = m.numeros[y][x];
-            // Pas de numéro sur une lettre solitaire : elle est écrite en clair.
-            if (num === null) return `<div class="mk-case mk-case--clair">${c}</div>`;
             const classes = ['mk-case'];
             if (num === this.vise) classes.push('mk-case--vise');
             else if (this.saisie[num] && this.donnees.has(m.parNumero[num])) classes.push('mk-case--donnee');

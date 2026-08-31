@@ -18,7 +18,9 @@ import { pavageGenerator } from '../js/core/generators/pavage.js';
 import {
     cleFigure, direLeSens, imageFigure, memeFigure, parRotation
 } from '../js/core/transformations.js';
-import { droiteDeLAxe, quadrillageSvg, versDessin } from '../js/core/quadrillageSvg.js';
+import {
+    droiteDeLAxe, quadrillageSvg, versDessin, gesteDuFilm, pointDuFilm
+} from '../js/core/quadrillageSvg.js';
 
 const TIRAGES = 120;
 
@@ -396,5 +398,83 @@ test('L\'AXE ET LE CENTRE TOMBENT SUR LES TRAITS DU QUADRILLAGE', () => {
             assert.ok(surTrait(t.centre.x) && surTrait(t.centre.y),
                 `centre (${t.centre.x} ; ${t.centre.y}) n'est pas sur un nœud`);
         }
+    }
+});
+
+test('LE FILM ATTERRIT SUR LA CORRECTION, POUR LES QUATRE MOUVEMENTS', () => {
+    // Rémy, sur son banc : « le mouvement n'est pas bon pour la symétrie
+    // axiale — vérifie tous les mouvements » et, pour l'autre exercice,
+    // « pour la symétrie centrale, le mouvement est faux ».
+    //
+    // IL AVAIT RAISON, Y COMPRIS SUR LE « TOUS ». « Montre le mouvement »
+    // rejoue la transformation : la figure glisse, tourne ou se plie jusqu'à
+    // son image. Ce calcul vivait dans l'activité, au milieu du DOM, et il y
+    // avait OUBLIÉ le demi-carreau — la case (3 ; 2) occupe le carré de
+    // (3 ; 2) à (4 ; 3), donc l'axe « x = 3 » passe par 3,5 sur le dessin. Le
+    // film pliait autour de 3, c'est-à-dire autour du BORD de la case, et la
+    // figure atterrissait une case à côté de sa propre correction. L'élève
+    // voyait donc un mouvement qui contredisait ce qu'on lui demandait.
+    // Mesuré avant correction : 70 films faux sur 97, et la translation était
+    // la seule juste — elle n'a ni axe ni centre à placer.
+    //
+    // CE TEST EST LA RAISON D'ÊTRE DU DÉPLACEMENT. Le geste est maintenant
+    // pur (`gesteDuFilm` / `pointDuFilm` dans core/quadrillageSvg.js), donc
+    // vérifiable sans navigateur : on emmène chaque case de départ jusqu'à
+    // t = 1 et l'on exige qu'elle tombe sur l'image attendue, à la case près.
+    const cle = (p) => `${Math.round(p.x - 0.5)}|${Math.round(p.y - 0.5)}`;
+    let vus = 0;
+    for (const genre of ['axiale', 'centrale', 'translation', 'rotation']) {
+        let pourCeGenre = 0;
+        for (let i = 0; i < 40; i++) {
+            const q = tirerQuestion(makeRng(`film_${genre}_${i}`),
+                { genre, l: 12, h: 10, cases: 5, obliques: true });
+            if (!q || !q.transfo) continue;
+            pourCeGenre++; vus++;
+            const geste = gesteDuFilm(q.transfo);
+            const arrivee = (q.depart || [])
+                .map(c => pointDuFilm(geste, 1, { x: versDessin(c.x), y: versDessin(c.y) }))
+                .map(cle).sort();
+            const attendu = imageAttendue(q).map(c => `${c.x}|${c.y}`).sort();
+            assert.deepEqual(arrivee, attendu,
+                `${genre} #${i} : le film n'arrive pas sur l'image attendue`);
+        }
+        assert.ok(pourCeGenre > 0, `aucune question tirée pour « ${genre} »`);
+    }
+    assert.ok(vus >= 40, `échantillon trop maigre : ${vus} questions`);
+});
+
+test('À MI-CHEMIN, UNE SYMÉTRIE EST APLATIE SUR SON AXE', () => {
+    // C'est ce qui fait comprendre le pliage, et c'est aussi ce qui prouve que
+    // l'axe du film est bien l'axe dessiné : à t = 0,5 l'échelle vaut zéro,
+    // donc TOUTES les cases tombent exactement sur la droite.
+    const q = tirerQuestion(makeRng('pli'), { genre: 'axiale', l: 12, h: 10, cases: 5, obliques: true });
+    const geste = gesteDuFilm(q.transfo);
+    assert.equal(geste.genre, 'plie');
+    const sur = (q.depart || []).map(c =>
+        pointDuFilm(geste, 0.5, { x: versDessin(c.x), y: versDessin(c.y) }));
+    // La droite passe par (cx, cy) avec la pente donnée par l'angle.
+    const r = geste.angle * Math.PI / 180;
+    sur.forEach(p => {
+        // Distance à la droite : la composante perpendiculaire doit être nulle.
+        const dx = p.x - geste.cx, dy = p.y - geste.cy;
+        const perp = -dx * Math.sin(r) + dy * Math.cos(r);
+        assert.ok(Math.abs(perp) < 1e-9, `case hors de l'axe à mi-pliage : ${perp}`);
+    });
+});
+
+test('AU DÉPART, LE FILM NE BOUGE RIEN', () => {
+    // t = 0 doit être l'identité pour les quatre : un film qui commence par un
+    // saut ne montre pas le mouvement, il montre le résultat.
+    for (const genre of ['axiale', 'centrale', 'translation', 'rotation']) {
+        const q = tirerQuestion(makeRng(`zero_${genre}`),
+            { genre, l: 12, h: 10, cases: 5, obliques: true });
+        if (!q || !q.transfo) continue;
+        const geste = gesteDuFilm(q.transfo);
+        (q.depart || []).forEach(c => {
+            const p = { x: versDessin(c.x), y: versDessin(c.y) };
+            const p0 = pointDuFilm(geste, 0, p);
+            assert.ok(Math.abs(p0.x - p.x) < 1e-9 && Math.abs(p0.y - p.y) < 1e-9,
+                `${genre} : le film part d'ailleurs que du départ`);
+        });
     }
 });

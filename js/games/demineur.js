@@ -349,7 +349,7 @@ class Demineur extends BaseGame {
         if (su.surs.has(i)) {
             this.onCorrectAnswer(null, SKILL, {
                 points: 10, questionText: `Ouvrir ${this.nomCase(i)}`,
-                given: 'ouverte', expected: 'ouverte'
+                given: 'ouverte', expected: 'ouverte', partiel: true
             });
             this.note(`✅ Déduction juste : ${su.surs.get(i)}`);
         } else if (su.mines.has(i)) {
@@ -394,6 +394,7 @@ class Demineur extends BaseGame {
         this.onWrongAnswer(null, {
             questionText: `Ouvrir ${this.nomCase(i)}`,
             input: 'ouverte', expected: 'drapeau', concept: SKILL, silencieux: true,
+            partiel: true,
             customMessage: `${this.nomCase(i)} était déductible : ${su.mines.get(i)}`
         });
 
@@ -429,7 +430,7 @@ class Demineur extends BaseGame {
         if (etat !== DRAPEAU) return;
         if (su.mines.has(i)) {
             this.onCorrectAnswer(null, SKILL, {
-                points: 10, questionText: `Marquer ${this.nomCase(i)}`,
+                points: 10, partiel: true, questionText: `Marquer ${this.nomCase(i)}`,
                 given: 'drapeau', expected: 'drapeau'
             });
             this.note(`🚩 Bien vu : ${su.mines.get(i)}`);
@@ -437,6 +438,7 @@ class Demineur extends BaseGame {
             this.onWrongAnswer(null, {
                 questionText: `Marquer ${this.nomCase(i)}`,
                 input: 'drapeau', expected: 'ouverte', concept: SKILL, silencieux: true,
+                partiel: true,
                 customMessage: `${this.nomCase(i)} ne peut pas porter de mine : ${su.surs.get(i)}`
             });
             this.note(`🚩 <b>Non :</b> ${su.surs.get(i)}`, 'ko');
@@ -502,6 +504,13 @@ class Demineur extends BaseGame {
         if (fatale != null) this.cases[fatale].classList.add('dm-case--fatale');
         const p = this.container.querySelector('[data-note]');
         if (p && !p.innerHTML.includes('💥')) this.note('💥 Mine ! Relance une grille : la suivante est neuve.', 'ko');
+        // LA GRILLE PERDUE COMPTE POUR UNE GRILLE, ET ELLE COMPTE COMME RATÉE.
+        // Sans elle, une partie perdue n'apparaissait nulle part : ni dans le
+        // compteur, ni dans le bilan. C'est le pendant exact de `reussir`.
+        this.onWrongAnswer(null, {
+            questionText: `Grille ${this.niveau.label}`,
+            input: 'perdue', expected: 'déminée', concept: SKILL, silencieux: true
+        });
     }
 
     reussir() {

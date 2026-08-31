@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     DEPART, ARRIVEE, QUESTION, REPONSE, BOUT, compacter, rassemblerCouples,
-    construireChaine, cheminSerpentin, cellulesDe, boiteDe, plateauVide, casePiece,
+    construireChaine, cheminSerpentin, longueurQuiPave, cellulesDe, boiteDe, plateauVide, casePiece,
     poserEnCase, retirerDeCase, retournerCase, plateauFini, verifierPlateau,
     prochaineCase, seMarient, demiDe, direJoint, reserveMelangee, direChaine,
     insecable, ajusterAuCarre, largeurTexte, LIMITE_INSECABLE, MIN_COUPLES
@@ -136,6 +136,32 @@ test('le serpentin ne se coupe jamais, et ne se marche jamais dessus', () => {
                 assert.ok(y >= 0 && y < ch.lignes, `ordonnée ${y} hors du plateau`);
             });
         }
+    }
+});
+
+test('LA DERNIÈRE RANGÉE VA JUSQU\'AU BORD DE LA PLANCHE', () => {
+    // Rémy : « Les dominos terminent avant la fin du plateau. » Une rangée
+    // porte `parRangee + 1` pièces : les couchées, plus le domino debout du
+    // virage. Quand le compte n'en est pas un multiple, la dernière rangée
+    // s'arrête en plein milieu et la planche a l'air inachevée. On garantit
+    // donc qu'IL EXISTE TOUJOURS un pli qui tombe juste — c'est celui que
+    // l'écran choisira.
+    for (let voulu = 3; voulu <= 40; voulu++) {
+        const n = longueurQuiPave(voulu);
+        assert.ok(n >= voulu, `${voulu} : on ne raccourcit jamais la chaîne`);
+        assert.ok(n - voulu <= 2, `${voulu} : deux pièces de plus doivent suffire`);
+        const plis = [2, 3, 4, 5, 6, 7].filter(k => n % (k + 1) === 0);
+        assert.ok(plis.length, `${n} pièces : aucun pli ne remplit ses rangées`);
+        // Et pour chacun de ces plis, la rangée du bas touche vraiment le bord.
+        plis.forEach(k => {
+            const ch = cheminSerpentin(n, k);
+            const occupees = new Set(ch.cases.flatMap(cellulesDe).map(c => c.join(',')));
+            const bas = ch.lignes - 1;
+            for (let x = 0; x < ch.colonnes; x++) {
+                assert.ok(occupees.has(`${x},${bas}`),
+                    `${n}/${k} : la case ${x} de la dernière rangée est vide`);
+            }
+        });
     }
 });
 

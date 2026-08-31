@@ -197,6 +197,7 @@ class Pousseur extends BaseGame {
     }
 
     poser(neuf = false) {
+        this.arreterMarche();
         if (neuf) this.graine = `${this.graine}+`;
         this.fini = true;
         this.note(`Je prépare un entrepôt de niveau ${this.niveau}…`);
@@ -212,6 +213,7 @@ class Pousseur extends BaseGame {
 
     /** On repart de la position de départ, sans refabriquer l'entrepôt. */
     rejouer() {
+        this.arreterMarche();
         if (!this.jeu) return;
         this.caisses = this.jeu.caisses.slice();
         this.pousseur = this.jeu.pousseur;
@@ -291,8 +293,71 @@ class Pousseur extends BaseGame {
             + (detour > 0 ? `<span class="sk-detour">${detour} de détour</span>` : '');
     }
 
-    /** Toucher le sol : le pousseur y va, s'il peut, sans rien bouger. */
+    /**
+     * LE POUSSEUR MARCHE, IL NE SE TÉLÉPORTE PAS.
+     *
+     * Rémy : « Pour le pousseur, il va n'importe où alors qu'il doit avancer
+     * case par case. » Toucher une case lointaine reste le bon geste sur une
+     * tablette — mais le personnage y APPARAISSAIT, et on ne voyait donc
+     * jamais par où il était passé. Or c'est le chemin qui enseigne : c'est
+     * lui qui montre qu'il a dû faire le tour, et donc pourquoi telle poussée
+     * était impossible depuis l'autre côté.
+     *
+     * Il parcourt donc sa route case par case, une image toutes les 90 ms. Un
+     * nouveau geste pendant la marche la TERMINE d'un coup au lieu de
+     * l'attendre : le jeu ne doit jamais avoir l'air de ne pas répondre.
+     */
+    marcher(chemin, apres) {
+        this.finirMarche();
+        if (!chemin || !chemin.length) { if (apres) apres(); return; }
+        const p = this.jeu.plan;
+        const pas = chemin.slice();
+        let k = 0;
+        const unPas = () => {
+            const di = pas[k++];
+            const d = DIRECTIONS[di];
+            const x = this.pousseur % p.l, y = Math.floor(this.pousseur / p.l);
+            this.pousseur = (y + d.dy) * p.l + (x + d.dx);
+            this.dernierSens = di;
+            this.pas++;
+        };
+        const m = { apres: apres || null, reste: () => { while (k < pas.length) unPas(); } };
+        m.timer = setInterval(() => {
+            if (!this.isRunning && !this.isDemo) return this.arreterMarche();
+            // UN TEMPS D'ARRÊT SUR LA CASE D'ARRIVÉE avant ce qui suit. Sans
+            // lui, le dernier pas et la poussée tombaient dans la même image :
+            // on ne voyait jamais le pousseur se placer DERRIÈRE la caisse,
+            // qui est pourtant le geste que le jeu doit enseigner.
+            if (k >= pas.length) return this.finirMarche();
+            unPas();
+            this.dessiner();
+        }, 90);
+        this.marche = m;
+    }
+
+    /** Couper la marche sans la finir : on repart de zéro (nouvelle partie, sortie). */
+    arreterMarche() {
+        if (!this.marche) return;
+        clearInterval(this.marche.timer);
+        this.marche = null;
+    }
+
+    /** Arriver tout de suite au bout de la marche, et faire ce qui la suivait. */
+    finirMarche() {
+        // Une marche peut en enchaîner une autre — aller jusqu'à la caisse,
+        // PUIS la pousser : on vide la file, pas seulement sa tête.
+        for (let garde = 0; this.marche && garde < 20; garde++) {
+            const m = this.marche;
+            this.arreterMarche();
+            m.reste();
+            if (m.apres) m.apres();
+        }
+        if (this.jeu && this.plateauEl) this.dessiner();
+    }
+
+    /** Toucher le sol : le pousseur y va à pied, s'il peut, sans rien bouger. */
     toucherCase(i) {
+        this.finirMarche();
         if (this.isDemo || this.fini) return;
         this.montre = null;
         const chemin = cheminAPied(this.jeu.plan, this.caisses, this.pousseur, i);
@@ -302,15 +367,13 @@ class Pousseur extends BaseGame {
             return;
         }
         if (!chemin.length) return;
-        this.pousseur = i;
-        this.pas += chemin.length;
-        this.dernierSens = chemin[chemin.length - 1];
-        this.dessiner();
         this.note('');
+        this.marcher(chemin);
     }
 
     /** Toucher une caisse : on la pousse, si le pousseur peut se placer derrière. */
     toucherCaisse(k) {
+        this.finirMarche();
         if (this.isDemo || this.fini) return;
         this.montre = null;
         const possibles = pousseesPossibles(this.jeu.plan, this.caisses, this.pousseur)
@@ -332,6 +395,7 @@ class Pousseur extends BaseGame {
 
     /** Une flèche : le pousseur avance, et pousse ce qu'il rencontre. */
     avancer(di) {
+        this.finirMarche();
         if (this.isDemo || this.fini || !this.jeu) return;
         this.montre = null;
         const p = this.jeu.plan;
@@ -360,17 +424,28 @@ class Pousseur extends BaseGame {
         this.jouerPoussee(coup);
     }
 
+    /**
+     * Une poussée, c'est d'abord une MARCHE : le pousseur va se placer derrière
+     * la caisse, et c'est seulement là qu'il pousse. Le déplacement à pied
+     * s'affiche donc case par case comme les autres, et « Annuler » ramène
+     * bien avant la marche puisque l'histoire est enregistrée maintenant.
+     */
     jouerPoussee(coup) {
         const p = this.jeu.plan;
         this.histoire.push({ caisses: this.caisses.slice(), pousseur: this.pousseur,
             poussees: this.poussees, pas: this.pas });
+        const approche = cheminAPied(p, this.caisses, this.pousseur, coup.depuis) || [];
+        this.marcher(approche, () => this.appliquerPoussee(coup));
+    }
+
+    appliquerPoussee(coup) {
+        const p = this.jeu.plan;
         const suite = pousser(this.caisses, coup);
         this.caisses = suite.caisses;
         this.pousseur = suite.pousseur;
         this.dernierSens = coup.dir;
         this.poussees++;
-        this.pas += 1 + (cheminAPied(p, this.histoire[this.histoire.length - 1].caisses,
-            this.histoire[this.histoire.length - 1].pousseur, coup.depuis) || []).length;
+        this.pas++;
         this.dessiner();
         if (estRange(p, this.caisses)) return this.gagner();
         // LA POSITION PERDUE, DITE TOUT DE SUITE. C'est le service que le
@@ -385,6 +460,7 @@ class Pousseur extends BaseGame {
     }
 
     annuler() {
+        this.finirMarche();
         if (this.isDemo || this.fini || !this.histoire.length) return;
         const avant = this.histoire.pop();
         this.caisses = avant.caisses;
@@ -397,6 +473,7 @@ class Pousseur extends BaseGame {
     }
 
     aider() {
+        this.finirMarche();
         if (this.isDemo || this.fini) return;
         const p = this.jeu.plan;
         if (estPerdue(p, this.jeu.table, this.caisses, this.pousseur)) {
@@ -493,6 +570,7 @@ class Pousseur extends BaseGame {
     }
 
     destroy() {
+        this.arreterMarche();
         if (this.surTouche) window.removeEventListener('keydown', this.surTouche);
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
