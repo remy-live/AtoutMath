@@ -19,6 +19,7 @@ import { getActivity, getGenerator, uniteDe } from './registry.js';
 import { ItemSession } from './itemSession.js';
 import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
 import { seuilRequis } from './seuilEtape.js';
+import { etatRecompenses } from './recompenses.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import { hydratePath } from './path.js';
@@ -756,9 +757,24 @@ export class Runner {
             passed
         });
 
+        // UN CADEAU QUI S'OUVRE DOIT SE VOIR. Rémy, après sa séance : « j'ai
+        // réussi les deux exercices, mais je n'étais pas au courant que
+        // j'avais eu un exercice récompense — je pense qu'il faut revenir au
+        // monde entre les deux et voir l'effet du jeu qui apparaît. »
+        //
+        // Tout était en place SAUF le retour : la carte sait fêter un jeu qui
+        // vient de s'ouvrir (`recompensesNouvelles`, `ouvrirLeCadeau`), mais
+        // « Continuer » enchaînait droit sur l'exercice suivant. L'élève ne
+        // repassait donc jamais devant la carte, et le cadeau s'ouvrait pour
+        // personne. On compare l'état des récompenses AVANT et APRÈS la
+        // validation : si l'une vient de s'ouvrir, l'étape suivante attend.
+        const ouvertsAvant = this.recompensesOuvertes();
         if (this.isStudentPath && passed) {
             state.markStudentPathStepCompleted(step.stepId, { runId: this.runId });
         }
+        const cadeau = passed
+            ? this.recompensesOuvertes().find(id => !ouvertsAvant.includes(id))
+            : null;
 
         if (passed || !this.policy.allowRetryStep) {
             this.index++;
@@ -767,10 +783,28 @@ export class Runner {
             // méritée. Servie d'office à la suite d'un exercice, elle
             // deviendrait une étape de plus à traverser.
             while (this.steps[this.index] && this.steps[this.index].bonus) this.index++;
-            this.showStepResult(passed, solved, required);
+            this.showStepResult(passed, solved, required, cadeau);
         } else {
-            this.showStepResult(false, solved, required);
+            this.showStepResult(false, solved, required, null);
         }
+    }
+
+    /**
+     * Les jeux de récompense actuellement ouverts, par leur `stepId`.
+     *
+     * Hors parcours assigné, il n'y a pas de progrès enregistré à consulter :
+     * on rend une liste vide plutôt que d'inventer un état — un aperçu de
+     * professeur ne doit rien fêter.
+     */
+    recompensesOuvertes() {
+        if (!this.isStudentPath) return [];
+        const assigne = state.studentPath;
+        if (!assigne) return [];
+        const etat = etatRecompenses(this.path, {
+            completed: assigne.completed || [],
+            resultats: assigne.resultats
+        });
+        return etat.jeux.filter(j => j.ouvert).map(j => j.stepId);
     }
 
     /**
@@ -808,28 +842,44 @@ export class Runner {
             </div>`;
     }
 
-    showStepResult(passed, solved, required) {
+    showStepResult(passed, solved, required, cadeau = null) {
         const last = this.index >= this.steps.length;
-        const icon = passed ? '🎉' : '💪';
-        const title = passed ? 'Étape validée !' : 'Presque…';
+        // UN JEU QUI VIENT DE S'OUVRIR PASSE DEVANT TOUT LE RESTE. C'est la
+        // seule bonne nouvelle de l'écran, et elle ne se répétera pas.
+        const jeu = cadeau
+            ? this.steps.find(s => s.stepId === cadeau)
+            : null;
+        const icon = jeu ? '🎁' : (passed ? '🎉' : '💪');
+        const title = jeu ? 'Tu as gagné un jeu !' : (passed ? 'Étape validée !' : 'Presque…');
         const detail = passed
             ? `${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''} sur ${this.itemsResolved.size}.`
             : `Tu as ${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''}, il en faut ${required}.`;
+        const detailJeu = jeu
+            ? `<p class="run-screen-text run-screen-text--cadeau"><b>${escapeHtml(jeu.title)}</b>
+                vient de s'ouvrir sur ta carte.</p>`
+            : '';
 
-        const btnLabel = passed ? (last ? 'Voir mon bilan' : 'Continuer') : 'Réessayer';
+        // Le bouton ramène à la CARTE quand un cadeau s'y est ouvert : c'est
+        // là qu'il se déballe, et l'élève choisit d'y jouer maintenant ou de
+        // continuer. Servi d'office, un jeu n'est plus une récompense.
+        const btnLabel = jeu ? 'Voir ma carte'
+            : (passed ? (last ? 'Voir mon bilan' : 'Continuer') : 'Réessayer');
 
         this.canvas.innerHTML = `
             <div class="run-screen">
                 <div class="run-screen-icon" aria-hidden="true">${icon}</div>
                 <h2 class="run-screen-title ${passed ? 'run-screen-title--ok' : 'run-screen-title--ko'}">${title}</h2>
                 <p class="run-screen-text">${detail}</p>
+                ${detailJeu}
                 ${passed ? this.filDesEtapes() : ''}
                 <button id="btn-run-next" class="btn-toggle active run-screen-btn">${btnLabel}</button>
             </div>`;
 
         document.getElementById('btn-run-next').onclick = () => {
-            if (passed) this.runStep();
-            else this.runStep(); // l'index n'a pas avancé : on rejoue l'étape
+            if (jeu) return this.exit();
+            // Réussie ou non, on relance : l'index n'a avancé que si l'étape
+            // est validée, sinon on la rejoue.
+            this.runStep();
         };
     }
 

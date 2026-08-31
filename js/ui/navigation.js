@@ -6,6 +6,7 @@ import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
 import { correspond } from '../core/recherche.js';
+import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
 
@@ -59,6 +60,21 @@ export function createLibraryItem(exo) {
         openGameLayer(exo, true);
     };
     item.appendChild(btnEye);
+
+    // UN CADEAU SUR LES JEUX. Rémy : « si c'est un jeu récompense, dans la
+    // liste des exercices que l'on drag, on voit un cadeau ». Un jeu du
+    // catalogue — une activité sans générateur, donc rien à corriger — est le
+    // seul candidat à devenir une récompense de fin de parcours ; le professeur
+    // doit pouvoir les repérer dans une liste de deux cents lignes sans les
+    // ouvrir un par un.
+    if (estJeuCatalogue(exo)) {
+        const cadeau = document.createElement('span');
+        cadeau.className = 'nav-item-cadeau';
+        cadeau.textContent = '🎁';
+        cadeau.title = 'Un jeu : il peut servir de récompense dans un parcours.';
+        cadeau.setAttribute('aria-hidden', 'true');
+        item.appendChild(cadeau);
+    }
 
     const titleSpan = document.createElement('span');
     titleSpan.textContent = exo.title;

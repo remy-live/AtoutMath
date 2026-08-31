@@ -302,6 +302,25 @@ function openPresentation(steps, buildWorldMap) {
     montrer(0);
 }
 
+/**
+ * OÙ L'ON A LÂCHÉ — le rang, et non la fin de la liste.
+ *
+ * Rémy : « pour le drag drop d'exercice, il faut mettre l'exercice drag à
+ * l'endroit où on l'a posé, pas à la fin. » Le réordonnancement le faisait
+ * déjà ; un exercice VENANT DU CATALOGUE, lui, tombait toujours en dernier —
+ * il fallait le déposer puis le remonter à la main, geste par geste. C'est
+ * pourtant le même calcul : on cherche la première étape dont on a lâché
+ * au-dessus du milieu.
+ */
+function rangDuDepot(e, pathBox) {
+    const rows = [...pathBox.querySelectorAll('.path-step')];
+    for (let i = 0; i < rows.length; i++) {
+        const rect = rows[i].getBoundingClientRect();
+        if (e.clientY < rect.top + rect.height / 2) return i;
+    }
+    return rows.length;
+}
+
 function handleDrop(e, pathBox) {
     e.preventDefault();
     pathBox.classList.remove('drag-over');
@@ -309,15 +328,11 @@ function handleDrop(e, pathBox) {
     const reorderIdx = e.dataTransfer.getData('text/reorder');
     const exerciseId = e.dataTransfer.getData('text/plain');
     const steps = state.currentPath.steps;
+    const rang = rangDuDepot(e, pathBox);
 
     if (reorderIdx !== '') {
         const from = parseInt(reorderIdx, 10);
-        let to = steps.length;
-        const rows = [...pathBox.querySelectorAll('.path-step')];
-        for (let i = 0; i < rows.length; i++) {
-            const rect = rows[i].getBoundingClientRect();
-            if (e.clientY < rect.top + rect.height / 2) { to = i; break; }
-        }
+        let to = rang;
         if (from !== to) {
             const item = steps.splice(from, 1)[0];
             if (from < to) to--;
@@ -329,12 +344,12 @@ function handleDrop(e, pathBox) {
 
     const dossier = e.dataTransfer.getData('text/dossier');
     if (dossier !== '') {
-        ajouterLeDossier(dossier === '' ? [] : dossier.split(' > '));
+        ajouterLeDossier(dossier === '' ? [] : dossier.split(' > '), rang);
         return;
     }
 
     if (exerciseId && getExerciseById(exerciseId)) {
-        addStep(exerciseId);
+        addStep(exerciseId, rang);
     }
 }
 
@@ -349,7 +364,7 @@ const LOT_SANS_QUESTION = 6;
  * delà de six exercices on demande confirmation — un chapitre de vingt fait un
  * parcours d'une heure et demie, et un glissement se fait vite.
  */
-export async function ajouterLeDossier(path) {
+export async function ajouterLeDossier(path, rang) {
     const { exercicesDuDossier } = await import('./navigation.js');
     const lot = exercicesDuDossier(path);
     const nom = path.length ? path[path.length - 1] : 'tout le catalogue';
@@ -360,12 +375,17 @@ export async function ajouterLeDossier(path) {
     }
 
     const verser = () => {
-        lot.forEach(exo => {
+        const steps = state.currentPath.steps;
+        // Le dossier se verse là où on l'a lâché, comme un exercice seul — et
+        // dans son ordre : la première étape du lot prend le rang du dépôt.
+        const debut = Number.isInteger(rang)
+            ? Math.max(0, Math.min(rang, steps.length)) : steps.length;
+        lot.forEach((exo, i) => {
             // Le compte naturel de l'exercice, pas dix pour tout le monde :
             // une grille de sudoku n'est pas une question de calcul mental.
             const n = conseilEtape({ exerciseId: exo.id });
             const step = makeStep(exo.id, {}, { nbItems: n, threshold: Math.ceil(n * 0.7) });
-            state.currentPath.steps.push(step);
+            steps.splice(debut + i, 0, step);
         });
         renderTeacherPath();
         showToast(`${lot.length} exercices de « ${nom} » ajoutés au parcours.`, 'success');
@@ -381,12 +401,20 @@ export async function ajouterLeDossier(path) {
     verser();
 }
 
-export function addStep(exerciseId) {
+/**
+ * @param {string} exerciseId
+ * @param {number} [rang]  où l'insérer ; à la fin quand on ne dit rien — c'est
+ *                         le cas du clic depuis le tiroir, qui n'a pas de
+ *                         point de dépôt.
+ */
+export function addStep(exerciseId, rang) {
     const exo = getExerciseById(exerciseId);
     if (!exo) return;
     const n = conseilEtape({ exerciseId });
     const step = makeStep(exerciseId, {}, { nbItems: n, threshold: Math.ceil(n * 0.7) });
-    state.currentPath.steps.push(step);
+    const steps = state.currentPath.steps;
+    const ou = Number.isInteger(rang) ? Math.max(0, Math.min(rang, steps.length)) : steps.length;
+    steps.splice(ou, 0, step);
     renderTeacherPath();
     // Pas sur téléphone : le panneau de propriétés s'y ouvre en PLEIN ÉCRAN,
     // et chaque ajout depuis le tiroir recouvrait donc tout — impossible
@@ -748,9 +776,18 @@ function stepRow(step, index, policy) {
 
     const title = document.createElement('div');
     title.className = 'path-step-title';
+    // LE CADEAU SE VOIT DANS LA LISTE, pas seulement dans le panneau. Rémy, sur
+    // sa séance : « je n'étais pas au courant que j'avais eu un exercice
+    // récompense ». Le professeur non plus ne le voyait pas : la case « Jeu de
+    // récompense » se coche dans les propriétés, et rien n'en restait sur la
+    // ligne — une séance de huit étapes ne disait plus laquelle était le jeu.
+    if (step.bonus) row.classList.add('path-step--bonus');
     title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span>`
+        + (step.bonus ? '<span class="path-step-cadeau" title="Jeu de récompense : '
+            + 'il ne compte pas dans la note et s\'ouvre quand le travail qui le '
+            + 'précède est réussi.">🎁</span>' : '')
         + `<span class="path-step-name">${index + 1}. ${escapeHtml(exo.title)}</span>`;
-    title.title = exo.title;
+    title.title = step.bonus ? `${exo.title} — jeu de récompense` : exo.title;
     head.appendChild(title);
 
     const seuil = step.threshold ?? step.nbItems;
@@ -1034,18 +1071,19 @@ function initToolbar() {
                 return;
             }
             // LE CODE COURT SE DIT À VOIX HAUTE. Un parcours d'un seul
-            // exercice pris tel quel tient en quatre caractères : c'est celui
-            // qu'on écrit au tableau pour les devoirs du soir. On le MONTRE
+            // exercice tient en quatre caractères — sept quand le professeur a
+            // choisi le nombre de questions, « K7QP-12 » : c'est celui qu'on
+            // écrit au tableau pour les devoirs du soir. On le MONTRE
             // toujours, même quand le lien part au presse-papiers — un élève
             // qui n'a pas le lien doit pouvoir taper le code.
             const code = Shortcodes.encodePath(state.currentPath);
-            const court = code.length <= 6;
+            const court = code.length <= 8;
             try {
                 await navigator.clipboard.writeText(Shortcodes.shareUrl(state.currentPath));
                 showToast(court ? `Lien copié — code à dicter : ${code}`
                     : 'Lien copié dans le presse-papier !', 'success');
                 if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
-                    + '<br><br>Quatre caractères, à taper dans « J\'ai un code ». '
+                    + `<br><br>${code.length} caractères, à taper dans « J'ai un code ». `
                     + 'Le lien est aussi dans le presse-papiers.');
             } catch (e) {
                 showAlert(`Code du parcours :\n\n${code}`);

@@ -497,3 +497,23 @@ body.mobile-view #toast-container {
     .aide-onglet { padding: 7px 11px; font-size: .78rem; }
     .aide-question { font-size: 1.1rem; }
 }
+
+/* LE CADEAU DES JEUX, dans la liste qu'on glisse vers le parcours. Rémy :
+   « si c'est un jeu récompense, dans la liste des exercices que l'on drag, on
+   voit un cadeau ». Discret — c'est un repère, pas une décoration : il ne doit
+   pas concurrencer le titre, qui est ce qu'on lit. */
+.nav-item-cadeau {
+    flex: 0 0 auto; font-size: .82rem; line-height: 1;
+    opacity: .8; margin-right: 1px;
+}
+
+/* UNE ÉTAPE DE RÉCOMPENSE SE RECONNAÎT DANS LA LISTE. Le cadeau la marque, et
+   un liseré vert la range du côté du plaisir plutôt que du travail — c'est
+   exactement ce qu'elle est. */
+.path-step-cadeau { flex: 0 0 auto; font-size: .9rem; line-height: 1; }
+.path-step--bonus { border-left: 3px solid #2f855a; }
+
+/* LE JEU QUI VIENT DE S'OUVRIR, sur l'écran de fin d'étape. Vert comme les
+   récompenses de la carte : l'élève doit faire le lien entre les deux écrans
+   sans qu'on le lui écrive. */
+.run-screen-text--cadeau { color: #2f855a; font-weight: 700; }

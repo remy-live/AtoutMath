@@ -13,6 +13,7 @@ import { defaultPolicy } from '../js/core/policy.js';
 import { codeCourt, normaliserCourt } from '../js/core/shortcodes.js';
 import { exercices, getExerciseById } from '../js/data/catalog.js';
 import { questionsConseillees } from '../js/core/duree.js';
+import { seuilConseille } from '../js/core/seuilEtape.js';
 import { getGenerator } from '../js/core/registry.js';
 
 /** Ce que vaut « cet exercice, tel quel » — plus jamais dix pour tout le monde. */
@@ -32,13 +33,38 @@ test('un exercice pris tel quel tient en QUATRE caractères', () => {
     // l'écriture et à la relecture, sinon l'élève reçoit un exercice tronqué.
     const n = telQuel('num-relatifs-addition');
     assert.ok(n > 10, 'cet exercice a une progression : son défaut dépasse dix');
-    const step = makeStep('num-relatifs-addition', {}, { nbItems: n, threshold: 7 });
+    const step = makeStep('num-relatifs-addition', {}, { nbItems: n, threshold: seuilConseille(n) });
     const code = Shortcodes.encodePath(makePath('Relatifs', [step], defaultPolicy()));
     assert.equal(code.length, 4, `code trop long : ${code}`);
     const relu = Shortcodes.decodePath(code);
     assert.equal(relu.steps.length, 1);
     assert.equal(relu.steps[0].exerciseId, 'num-relatifs-addition');
     assert.equal(relu.steps[0].nbItems, n);
+    assert.equal(relu.steps[0].threshold, seuilConseille(n),
+        'le seuil se recalcule : il n\'a pas à voyager dans le code');
+});
+
+test('UN EXERCICE AVEC SON NOMBRE DE QUESTIONS TIENT ENCORE DANS UN CODE DICTÉ', () => {
+    // Rémy : « pour envoyer un code juste sur un exercice avec le nombre de
+    // questions, comment fait-on ? L'idéal serait que le code soit hyper
+    // court. » Changer le compte faisait basculer sur le format complet —
+    // quatre-vingt-dix caractères de base64 pour la différence d'un nombre.
+    const step = makeStep('num-relatifs-addition', {}, { nbItems: 12 });
+    const code = Shortcodes.encodePath(makePath('Relatifs', [step], defaultPolicy()));
+    assert.ok(code.length <= 7, `code trop long : ${code} (${code.length})`);
+    assert.match(code, /^[A-Z0-9]{4}-12$/, `le nombre doit se lire en clair : ${code}`);
+
+    const relu = Shortcodes.decodePath(code);
+    assert.equal(relu.steps[0].exerciseId, 'num-relatifs-addition');
+    assert.equal(relu.steps[0].nbItems, 12);
+    assert.equal(relu.steps[0].threshold, seuilConseille(12));
+
+    // Il se dicte : on le retape en minuscules, avec ou sans le tiret d'usage.
+    assert.equal(Shortcodes.decodePath(code.toLowerCase()).steps[0].nbItems, 12);
+
+    // Et le compte d'usine ne s'écrit pas : le code reste à quatre caractères.
+    const telQuelStep = makeStep('num-relatifs-addition', {}, { nbItems: telQuel('num-relatifs-addition') });
+    assert.equal(Shortcodes.encodePath(makePath('R', [telQuelStep], defaultPolicy())).length, 4);
 });
 
 test('UN JEU DE GRILLE NE SE COMPTE PAS COMME UNE QUESTION', () => {

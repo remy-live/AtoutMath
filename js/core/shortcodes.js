@@ -15,6 +15,7 @@
 import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
 import { getExerciseById, exercices } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy } from './policy.js';
+import { seuilConseille } from './seuilEtape.js';
 
 const PREFIX = 'M2-';
 
@@ -55,6 +56,20 @@ export function codeCourt(exerciseId) {
     return out;
 }
 
+/**
+ * LE NOMBRE DE QUESTIONS ÉCRIT APRÈS LE CODE, en clair : « K7QP-12 ».
+ *
+ * En clair, et non encodé : c'est justement ce que le professeur veut pouvoir
+ * dicter et l'élève relire. Deux chiffres au plus — au-delà de quatre-vingt
+ * dix-neuf questions, ce n'est plus un devoir du soir.
+ */
+function questionsDuCodeCourt(code) {
+    const m = /^[^-]+-(\d{1,2})$/.exec(String(code || '').trim());
+    if (!m) return null;
+    const n = Number(m[1]);
+    return n >= 1 && n <= 99 ? n : null;
+}
+
 /** Le code tel qu'on l'écrit au tableau : « REL-K7QP » se lit, « relk7qp » aussi. */
 export const normaliserCourt = (code) => String(code || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -70,14 +85,32 @@ export const normaliserCourt = (code) => String(code || '')
  */
 const telQuel = questionsConseilleesDe;
 
-/** Ce parcours se résume-t-il à « cet exercice, tel quel » ? */
+/**
+ * Ce parcours se résume-t-il à UN exercice, sans réglage particulier ?
+ *
+ * LE NOMBRE DE QUESTIONS NE DISQUALIFIE PLUS. Rémy : « pour envoyer un code
+ * juste sur un exercice avec le nombre de questions, comment fait-on ?
+ * L'idéal serait que le code soit hyper court. » Il n'y avait pas de moyen :
+ * changer le compte faisait basculer sur le format complet — quatre-vingts
+ * caractères de base64 pour la seule différence d'un nombre. On l'écrit donc
+ * APRÈS le code, en clair : « K7QP-12 », sept caractères qu'on dicte encore.
+ *
+ * Le seuil suit la règle des 70 % comme partout ailleurs : il n'est pas dans
+ * le code parce qu'il se recalcule.
+ */
 function estSimple(path) {
     const p = normalizePath(path);
     if (!p.steps || p.steps.length !== 1) return false;
     const s = p.steps[0];
     if (s.overrides && Object.keys(s.overrides).length) return false;
-    if (s.threshold !== null && s.threshold !== undefined && s.threshold !== 7) return false;
-    if ((s.nbItems || 10) !== telQuel(s.exerciseId) || (s.weight || 1) !== 1 || s.timeLimit) return false;
+    if ((s.weight || 1) !== 1 || s.timeLimit) return false;
+    const n = s.nbItems || telQuel(s.exerciseId);
+    if (!Number.isInteger(n) || n < 1 || n > 99) return false;
+    // Le seuil doit être celui qu'on saura reconstruire, sinon le code
+    // mentirait sur ce qu'il rend.
+    const seuilAttendu = seuilConseille(n);
+    const seuil = (s.threshold === null || s.threshold === undefined) ? seuilAttendu : s.threshold;
+    if (seuil !== seuilAttendu) return false;
     const pol = resolvePolicy(p.policy);
     const def = defaultPolicy();
     return pol.mode === def.mode && pol.hints === def.hints
@@ -199,7 +232,14 @@ export const Shortcodes = {
     encodePath(path) {
         try {
             const p = normalizePath(path);
-            if (estSimple(p)) return codeCourt(p.steps[0].exerciseId);
+            if (estSimple(p)) {
+                const s = p.steps[0];
+                const code = codeCourt(s.exerciseId);
+                const n = s.nbItems || telQuel(s.exerciseId);
+                // « K7QP » quand c'est l'exercice tel quel, « K7QP-12 » quand
+                // le professeur a choisi le nombre de questions.
+                return n === telQuel(s.exerciseId) ? code : `${code}-${n}`;
+            }
             return PREFIX + toBase64Url(JSON.stringify(compact(path)));
         } catch (e) {
             console.error('[shortcodes] encodage impossible', e);
@@ -218,9 +258,12 @@ export const Shortcodes = {
             const court = this.exerciceDuCodeCourt(trimmed);
             if (court) {
                 const path = makePath(court.title || 'Exercice', [], defaultPolicy());
+                // Le nombre de questions écrit après le tiret, s'il y est —
+                // et le seuil s'en déduit, comme partout ailleurs.
+                const n = questionsDuCodeCourt(trimmed) || telQuel(court.id);
                 path.steps = [{
                     stepId: 'sc_0', exerciseId: court.id, overrides: {},
-                    nbItems: telQuel(court.id), threshold: 7, weight: 1,
+                    nbItems: n, threshold: seuilConseille(n), weight: 1,
                     timeLimit: null, forceSeed: null
                 }];
                 return path;
@@ -234,7 +277,7 @@ export const Shortcodes = {
 
     /** L'exercice désigné par un code court, ou null. */
     exerciceDuCodeCourt(code) {
-        const cible = normaliserCourt(code);
+        const cible = normaliserCourt(String(code).split('-')[0]);
         if (cible.length !== LONGUEUR_COURT) return null;
         return exercices.find(e => normaliserCourt(codeCourt(e.id)) === cible) || null;
     },
