@@ -91,6 +91,7 @@ import { poserFicheGenerator } from '../generators/poserFiche.js';
 import { conversionFicheGenerator } from '../generators/conversionFiche.js';
 import { tangramFicheGenerator } from '../generators/tangramFiche.js';
 import { memoryFicheGenerator } from '../generators/memoryFiche.js';
+import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -135,7 +136,7 @@ import {
     poserFicheGenerator, conversionFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
-    egypteFicheGenerator
+    egypteFicheGenerator, hexagrilleFicheGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

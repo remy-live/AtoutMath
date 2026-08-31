@@ -1917,6 +1917,12 @@ export const calculExercises = [
                 + 'et un appui sur un nombre éclaire la file qu\'il désigne.'
         }],
         activityId: 'hexagrille',
+        // SUR LE PAPIER AUSSI. Rémy, banc d'essai : « Pas de pdf ». Neuf
+        // cases, huit sommes, aucune manipulation : la grille se cherche très
+        // bien au crayon — mieux, même, parce qu'on y rature. La feuille
+        // dessine la MÊME figure que l'écran, calculée au même endroit.
+        printable: 'hexagrille', printGeneratorId: 'logi.hexagrille-fiche',
+        consignePapier: 'Place les chiffres de 1 à 9, un par case.',
         sansRevision: true,
         skills: ['num.logique.hexagrille'],
         params: { niveau: 'facile' },

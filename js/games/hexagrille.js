@@ -25,74 +25,14 @@ import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 import {
     CASES, genererHexagrille, estResolue, prochainCoup, filesJustes
 } from '../core/hexagrille.js';
+// LA GÉOMÉTRIE VIT DANS LE NOYAU, parce que la FEUILLE la dessine aussi.
+// Rémy : « Pas de pdf » pour l'Hexagrille. Lui en donner un imposait de
+// partager le placement : recopié ici et là-bas, il aurait fini par diverger.
+import { R, centre, CONTOUR, repereFleche, cadreHexagrille }
+    from '../core/hexagrilleFigure.js';
 
 const COMPETENCE = 'num.logique.hexagrille';
 
-// La géométrie du dessin, en unités du viewBox. Un hexagone à sommet plat :
-// large de 2 R, haut de √3 R, et les colonnes se chevauchent d'un quart.
-const R = 30;
-const HAUT = Math.sqrt(3) * R;
-const PAS_X = 1.5 * R;
-
-// L'ORIGINE LAISSE LA PLACE AUX ÉTIQUETTES. Les sommes se posent en dehors du
-// losange — au-dessus pour les colonnes, à gauche pour les descentes et les
-// montées : sans cette marge, la somme de la première colonne sortait par le
-// haut du dessin, et celle de la première descente venait se poser dessus.
-const ORIG_X = 100;
-const ORIG_Y = 80;
-// CHAQUE FAMILLE A SON RECUL. Deux files qui partent de la MÊME case — la
-// descente et la montée s'y croisent — poseraient sinon leurs étiquettes à
-// quarante pixels l'une de l'autre. En éloignant les montées, on écarte les
-// deux couronnes d'étiquettes sans toucher au losange. Calculé sur les huit
-// files : le plus petit écart entre deux étiquettes est de 21 px.
-const RECUL = { 'bas': R + 46, 'bas-droite': R + 48, 'haut-droite': R + 88 };
-
-// DU CENTRE D'UN HEXAGONE À SON BORD, dans les trois directions employées.
-// Les files descendent (90°) ou suivent une diagonale (±30°) : ce sont les
-// milieux des côtés d'un hexagone à sommet plat, tous à la même distance.
-const BORDURE = HAUT / 2;
-// « Que les flèches arrivent jusque la bordure, avec un petit décalage » : la
-// pointe s'arrête juste avant le trait de la case, elle ne le touche pas.
-const ECART = 7;
-// L'étiquette et la flèche se tiennent : le trait part sous le chiffre.
-const SOUS_LE_CHIFFRE = 15;
-
-/** Le centre du dessin pour la case (c, r). */
-const centre = (c, r) => ({
-    x: ORIG_X + c * PAS_X,
-    y: ORIG_Y + (r + c / 2) * HAUT
-});
-
-/**
- * Où se pose la flèche d'une file : le vecteur qui la parcourt, et le point de
- * départ de son étiquette — TOUJOURS en amont de la première case, jamais
- * entre deux hexagones.
- */
-function repereFleche(f) {
-    const a = centre(CASES[f.cases[0]].c, CASES[f.cases[0]].r);
-    const b = centre(CASES[f.cases[f.cases.length - 1]].c, CASES[f.cases[f.cases.length - 1]].r);
-    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-    const ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
-    const recul = RECUL[f.sens] || R + 48;
-    return {
-        ux, uy,
-        // LE TRAIT VA DU CHIFFRE À LA CASE. Il n'était qu'un moignon de 16 px
-        // suspendu à mi-chemin : on ne voyait ni d'où il partait ni où il
-        // allait, et Rémy lisait « des soucis entre la position de la flèche
-        // et du chiffre ». Il part maintenant sous l'étiquette et sa pointe
-        // s'arrête à 7 px du bord de la première case.
-        x1: a.x - ux * (recul - SOUS_LE_CHIFFRE), y1: a.y - uy * (recul - SOUS_LE_CHIFFRE),
-        x2: a.x - ux * (BORDURE + ECART), y2: a.y - uy * (BORDURE + ECART),
-        // L'étiquette, au bout du trait, sur la même ligne.
-        ex: a.x - ux * recul, ey: a.y - uy * recul
-    };
-}
-
-/** Le contour d'un hexagone à sommet plat, centré à l'origine. */
-const CONTOUR = Array.from({ length: 6 }, (_, k) => {
-    const a = (Math.PI / 180) * (60 * k);
-    return `${(R * Math.cos(a)).toFixed(2)},${(R * Math.sin(a)).toFixed(2)}`;
-}).join(' ');
 
 class Hexagrille extends BaseGame {
     constructor(container, isDemo, params) {
@@ -278,25 +218,9 @@ class Hexagrille extends BaseGame {
 
         const fleches = P.fleches.map(f => this.fleche(f, justes.has(f.id))).join('');
 
-        // LE CADRE SE CALCULE, il ne se devine pas : on prend l'enveloppe des
-        // hexagones ET des étiquettes, avec une marge. Une constante écrite à
-        // la main laissait sortir la somme de la première colonne dès qu'elle
-        // passait à deux chiffres.
-        const points = [];
-        CASES.forEach(({ c, r }) => {
-            const { x, y } = centre(c, r);
-            points.push([x - R, y - HAUT / 2], [x + R, y + HAUT / 2]);
-        });
-        P.fleches.forEach(f => {
-            const p = repereFleche(f);
-            // L'étiquette tient sur UNE ligne depuis que « déjà 8 » a disparu :
-            // 26 px de haut suffisent, contre 40 auparavant.
-            points.push([p.ex - 22, p.ey - 14], [p.ex + 22, p.ey + 14]);
-        });
-        const minX = Math.min(...points.map(p => p[0])) - 6;
-        const minY = Math.min(...points.map(p => p[1])) - 6;
-        const W = Math.max(...points.map(p => p[0])) - minX + 6;
-        const H = Math.max(...points.map(p => p[1])) - minY + 6;
+        // Le cadre se calcule dans le noyau : voir `cadreHexagrille`.
+        const cadre = cadreHexagrille(P.fleches);
+        const minX = cadre.x, minY = cadre.y, W = cadre.w, H = cadre.h;
         this.plateauEl.innerHTML = `
             <svg class="hx-svg" viewBox="${minX.toFixed(0)} ${minY.toFixed(0)} ${W.toFixed(0)} ${H.toFixed(0)}"
                  role="img" aria-label="Hexagrille de neuf cases">

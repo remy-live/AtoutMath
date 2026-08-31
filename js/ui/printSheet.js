@@ -38,6 +38,9 @@ import {
 } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { caseCentrale } from '../core/quadrillageSvg.js';
+import { CASES as CASES_HEXA } from '../core/hexagrille.js';
+import { R as R_HEXA, SOMMETS as SOMMETS_HEXA, centre as centreHexa,
+    repereFleche as repereFlecheHexa, cadreHexagrille } from '../core/hexagrilleFigure.js';
 import { placeNoms, ancrageNom, ECART_NOM } from '../core/thales.js';
 import { MC_DEF, disposerMotsCroises } from '../core/dispositionMotsCroises.js';
 import { ecrireElement } from '../core/elementSymetrie.js';
@@ -6709,6 +6712,141 @@ const POINTILLES = '.'.repeat(120);
 // et c'est la seule raison pour laquelle l'aperçu ne peut pas mentir sur ce
 // qui sortira de l'imprimante.
 
+// --- L'HEXAGRILLE, SUR LE PAPIER ---------------------------------------------
+//
+// Rémy : « Pas de pdf ». Neuf cases, huit sommes, aucune manipulation : c'est
+// un exercice qui se cherche très bien au crayon, et qui se rature.
+//
+// LE DESSIN VIENT DU NOYAU (`core/hexagrilleFigure.js`), le même qu'à l'écran.
+// La feuille ne fait que le poser dans son bloc, à l'échelle : hexagones,
+// étiquettes de somme et flèches tombent donc exactement là où le jeu les met.
+
+/**
+ * Le bloc, et le facteur qui fait passer des unités du dessin aux millimètres.
+ *
+ * Le cadre du dessin dépend des FLÈCHES conservées — une grille difficile en
+ * garde plus, et son enveloppe est plus large. On le recalcule donc pour
+ * chaque grille au lieu de prendre une taille fixe, sinon la moitié des
+ * feuilles auraient une marge et l'autre une somme coupée.
+ */
+function geoHexagrille(item, slot) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const p = item.meta.puzzle;
+    const cadre = cadreHexagrille(p.fleches);
+    // La consigne du bloc tient sous la figure : on lui laisse sa ligne.
+    const echelle = Math.min(b.w / cadre.w, b.h / cadre.h);
+    const larg = cadre.w * echelle, haut = cadre.h * echelle;
+    return {
+        p, cadre, echelle,
+        // Centré dans son bloc : une figure collée en haut à gauche a l'air
+        // tombée là.
+        x0: b.x + (b.w - larg) / 2 - cadre.x * echelle,
+        y0: b.y + (b.h - haut) / 2 - cadre.y * echelle,
+        // Le rayon et le corps des chiffres, en millimètres.
+        rayon: R_HEXA * echelle,
+        corps: Math.max(2, Math.min(R_HEXA * echelle * 0.62, 6))
+    };
+}
+
+/** Les six sommets d'une case, en millimètres, autour de son centre. */
+function polygoneHexa(g, c, r) {
+    const o = centreHexa(c, r);
+    return SOMMETS_HEXA.map(([dx, dy]) => [
+        g.x0 + (o.x + dx) * g.echelle,
+        g.y0 + (o.y + dy) * g.echelle
+    ]);
+}
+
+function hexagrillePreviewHtml(item, slot, k, solution) {
+    const g = geoHexagrille(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let svg = '';
+
+    CASES_HEXA.forEach(({ c, r, i }) => {
+        const pts = polygoneHexa(g, c, r).map(([x, y]) => `${T(x)},${T(y)}`).join(' ');
+        // UNE CASE DONNÉE EST IMPRIMÉE, LES AUTRES SONT VIDES. Sur une
+        // photocopie en noir et blanc, c'est le FOND qui les distingue —
+        // une couleur de chiffre ne survit pas au gris.
+        const donnee = g.p.donnees[i] !== 0;
+        svg += `<polygon points="${pts}" fill="${donnee ? '#eef1f6' : '#ffffff'}"
+            stroke="#1a202c" stroke-width="${T(0.4)}"/>`;
+        const ecrit = solution ? g.p.solution[i] : (donnee ? g.p.donnees[i] : 0);
+        if (!ecrit) return;
+        const o = centreHexa(c, r);
+        svg += `<text x="${T(g.x0 + o.x * g.echelle)}" y="${T(g.y0 + o.y * g.echelle)}"
+            text-anchor="middle" dominant-baseline="central" font-size="${T(g.corps)}"
+            font-weight="700" fill="${donnee ? '#1a202c' : '#e11d48'}">${ecrit}</text>`;
+    });
+
+    g.p.fleches.forEach(f => {
+        const q = repereFlecheHexa(f);
+        const X = (v) => T(g.x0 + v * g.echelle), Y = (v) => T(g.y0 + v * g.echelle);
+        svg += `<line x1="${X(q.x1)}" y1="${Y(q.y1)}" x2="${X(q.x2)}" y2="${Y(q.y2)}"
+            stroke="#5a687e" stroke-width="${T(0.35)}"/>`;
+        // La pointe : deux traits, comme partout ailleurs sur la feuille — un
+        // marqueur SVG ne se retrouve pas dans le PDF.
+        const l = 2.6 * g.echelle;
+        const nx = -q.uy, ny = q.ux;
+        [1, -1].forEach(sens => {
+            svg += `<line x1="${X(q.x2)}" y1="${Y(q.y2)}"
+                x2="${X(q.x2 - q.ux * l + nx * l * 0.6 * sens)}"
+                y2="${Y(q.y2 - q.uy * l + ny * l * 0.6 * sens)}"
+                stroke="#5a687e" stroke-width="${T(0.35)}"/>`;
+        });
+        svg += `<text x="${X(q.ex)}" y="${Y(q.ey)}" text-anchor="middle"
+            dominant-baseline="central" font-size="${T(g.corps * 0.9)}"
+            font-weight="700" fill="#2f855a">${f.somme}</text>`;
+    });
+
+    return `<svg class="fx-hx-svg" style="left:0; top:0; width:100%; height:100%">${svg}</svg>`;
+}
+
+function dessinerHexagrillePdf(doc, item, slot, solution) {
+    const g = geoHexagrille(item, slot);
+
+    CASES_HEXA.forEach(({ c, r, i }) => {
+        const pts = polygoneHexa(g, c, r);
+        const donnee = g.p.donnees[i] !== 0;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.4);
+        if (donnee) doc.setFillColor(238, 241, 246);
+        else doc.setFillColor(255, 255, 255);
+        // `doc.lines` veut des DÉPLACEMENTS depuis le point de départ, pas des
+        // coordonnées : le même piège que les flèches du mot codé.
+        const pas = pts.slice(1).map(([x, y], k) => [x - pts[k][0], y - pts[k][1]]);
+        doc.lines(pas, pts[0][0], pts[0][1], [1, 1], 'FD', true);
+
+        const ecrit = solution ? g.p.solution[i] : (donnee ? g.p.donnees[i] : 0);
+        if (!ecrit) return;
+        const o = centreHexa(c, r);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.corps / 0.3528);
+        if (donnee) doc.setTextColor(...ENCRE.texte);
+        else doc.setTextColor(225, 29, 72);
+        doc.text(String(ecrit), g.x0 + o.x * g.echelle,
+            g.y0 + o.y * g.echelle + g.corps * 0.36, { align: 'center' });
+    });
+
+    g.p.fleches.forEach(f => {
+        const q = repereFlecheHexa(f);
+        const X = (v) => g.x0 + v * g.echelle, Y = (v) => g.y0 + v * g.echelle;
+        doc.setDrawColor(90, 104, 126);
+        doc.setLineWidth(0.35);
+        doc.line(X(q.x1), Y(q.y1), X(q.x2), Y(q.y2));
+        const l = 2.6 * g.echelle;
+        const nx = -q.uy, ny = q.ux;
+        [1, -1].forEach(sens => {
+            doc.line(X(q.x2), Y(q.y2),
+                X(q.x2 - q.ux * l + nx * l * 0.6 * sens),
+                Y(q.y2 - q.uy * l + ny * l * 0.6 * sens));
+        });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.corps * 0.9 / 0.3528);
+        doc.setTextColor(47, 133, 90);
+        doc.text(String(f.somme), X(q.ex), Y(q.ey) + g.corps * 0.32, { align: 'center' });
+    });
+}
+
 function geoMat(item, slot) {
     const ligneH = slot.taille * 0.085;
     const zone = slot.taille - ligneH;
@@ -10764,6 +10902,25 @@ export const RENDUS = {
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         proportions: { w: 1, h: 0.5 },
         parLigneDefaut: 3
+    },
+
+    hexagrille: {
+        titre: 'L\'Hexagrille',
+        consigne: () => 'PLACE LES CHIFFRES DE 1 À 9, un par case, chacun une seule fois. '
+            + 'Chaque flèche part d\'un nombre et désigne une FILE de cases : les chiffres '
+            + 'de cette file doivent faire ce nombre-là. Les cases grisées sont déjà '
+            + 'écrites. Commence par la file la plus courte — une somme sur deux cases ne '
+            + 'laisse presque jamais le choix — et déduis de proche en proche : on ne '
+            + 'devine jamais, chaque grille n\'a qu\'une solution.',
+        previewGrille: hexagrillePreviewHtml,
+        pdfGrille: dessinerHexagrillePdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        titreAGauche: true,
+        // Quatre par page : le losange est large — les étiquettes des montées
+        // se posent loin sur la gauche — et sous quatre centimètres de côté on
+        // n'écrit plus un chiffre dans un hexagone.
+        disposition: { cols: 2, rows: 2, maxCols: 2, maxRows: 3 },
+        parLigneDefaut: 2
     },
 
     mat: {

@@ -6047,6 +6047,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 
 /* L'échiquier : le damier en SVG, les lignes de réponse dessous. */
 .fx-ec-svg { position: absolute; overflow: visible; pointer-events: none; }
+/* L'HEXAGRILLE : la même couche que l'échiquier — une figure posée en
+   absolu sur la page, aux coordonnées que la mise en page a calculées.
+   Sans `position: absolute`, les quatre grilles d'une feuille se
+   suivaient dans le flux et trois d'entre elles sortaient du cadre. */
+.fx-hx-svg { position: absolute; overflow: visible; pointer-events: none; }
 .fx-ec-ligne {
     position: absolute; display: flex; align-items: center;
     box-sizing: border-box; color: #2d3748; font-weight: 700;
