@@ -8287,10 +8287,17 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     display: grid; place-items: center; position: relative;
     background: conic-gradient(#fff 0 var(--auj-part, 0%), rgba(255,255,255,.28) 0);
 }
+/* « 0 / 5 » SUR UNE SEULE LIGNE. Rémy : « le 0/5 est mal mis, ça va à la
+   ligne. » Le disque était en `display: grid` : ses DEUX enfants — le nombre
+   fait et le « /5 » — devenaient donc deux ÉLÉMENTS DE GRILLE, et une grille à
+   une colonne les empile. C'est une ligne de texte, pas une grille : elle se
+   pose en ligne, alignée sur la base commune des deux chiffres, et ne se coupe
+   jamais. */
 .auj-anneau i {
     position: absolute; inset: 9px; border-radius: 50%; background: inherit;
     background: var(--primary);
-    display: grid; place-items: center;
+    display: flex; align-items: baseline; justify-content: center;
+    white-space: nowrap;
     font-style: normal; font-weight: 900; font-size: .95rem;
 }
 .auj-carte--revision .auj-anneau i { background: #f59e0b; }

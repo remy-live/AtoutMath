@@ -360,8 +360,17 @@ class Duel extends BaseGame {
                        pivoté, donc c'est sa HAUTEUR à plat qui deviendra la
                        largeur de la bande. On la nomme, et les deux s'y
                        réfèrent. */
+                    /* LA BANDE PREND SA PART, ELLE NE SE CONTENTE PLUS DE
+                       CENT QUATRE-VINGT-SIX PIXELS. Rémy : « les boutons sont
+                       hyper compressés en mode paysage sur la tablette. »
+                       MESURÉ sur 1152 × 720 : le couloir vide occupait 740 px
+                       sur 1112 — les deux tiers de l'écran — pendant que les
+                       onze touches se serraient dans une bande plafonnée à
+                       186. Le couloir doit avoir la place de la balle, pas
+                       celle d'un terrain de football : un tiers pour chaque
+                       joueur, un tiers pour le jeu. */
                     .du-plateau {
-                        --camp: clamp(128px, 21cqw, 186px);
+                        --camp: clamp(140px, 30cqw, 420px);
                         grid-template-rows: 1fr;
                         grid-template-columns: var(--camp) minmax(120px, 1fr) var(--camp);
                     }
@@ -369,27 +378,56 @@ class Duel extends BaseGame {
                                   border-left: 2px solid #1e293b; border-right: 2px solid #1e293b; }
                     .du-filet { top: 0; bottom: 0; left: 50%; right: auto;
                                 border-top: 0; border-left: 3px dashed #334155; }
+                    /* ET LA BANDE EST SON PROPRE CONTENEUR.
+                       C'est le vrai bogue, et il ne se voyait pas : le contenu
+                       pivoté se dimensionne « aux côtés échangés », donc en
+                       unités de conteneur — mais cqh ne s'adresse PAS au
+                       conteneur qu'on nomme dans la requête, il s'adresse au
+                       plus proche conteneur ancêtre, quel que soit son nom.
+                       Ici c'était duel, pas plateau, et 100cqh rendait
+                       une longueur qui n'avait rien à voir : MESURÉ, le pavé
+                       recevait 260 px au lieu de 571, et ses onze touches
+                       tombaient à DIX-HUIT pixels de haut. En déclarant la
+                       bande elle-même conteneur, 100cqh et 100cqw ne
+                       peuvent plus désigner qu'elle : sa hauteur devient la
+                       largeur du contenu à plat, sa largeur en devient la
+                       hauteur. Plus rien à deviner. */
                     .du-cote {
                         overflow: hidden; padding: 0;
                         align-items: center; justify-content: center;
+                        container-type: size; container-name: camp;
                     }
                     /* La moitié se dessine à plat, aux dimensions échangées,
                        puis pivote autour de son centre. */
                     .du-cote--haut { transform: none; }
                     .du-cote-inner {
-                        width: 100cqh; height: var(--camp);
+                        /* MOINS LA RESPIRATION, des deux côtés : la boîte est
+                           tournée d'un quart de tour autour de son centre, si
+                           bien que son rembourrage horizontal devient vertical
+                           — MESURÉ, les vingt-deux touches dépassaient de dix
+                           pixels par un bord. On retire donc la place qu'il
+                           prend avant de tourner. */
+                        width: calc(100cqh - 12px); height: calc(100cqw - 26px);
                         display: flex; flex-direction: column; align-items: center;
                         justify-content: center; gap: 4px; padding: 5px 10px;
                         box-sizing: border-box;
                     }
                     .du-cote--0 .du-cote-inner { transform: rotate(90deg); }
                     .du-cote--1 .du-cote-inner { transform: rotate(-90deg); }
-                    /* La bande s'élargit pour loger deux rangées de touches :
-                       en une seule, elles tombaient à dix-neuf pixels. */
-                    .du-pave, .du-tables { max-width: min(620px, 94cqh); }
-                    .du-pave, .du-tables { height: clamp(64px, 13cqw, 104px); }
-                    .du-tete { font-size: clamp(.62rem, 1.7cqw, .85rem); }
-                    .du-saisie { font-size: clamp(1.1rem, 4.6cqw, 2rem); }
+                    /* Le pavé court sur toute la longueur de la bande, et son
+                       épaisseur suit la largeur de celle-ci : les deux
+                       s'expriment maintenant dans les unités de camp, donc
+                       dans celles de la bande qui les porte. */
+                    .du-pave, .du-tables { width: 90cqh; max-width: 90cqh; }
+                    /* L'ÉPAISSEUR NE PEUT PAS AVALER LA BANDE : le bandeau et
+                       l'écran de saisie se rangent à côté du pavé une fois
+                       tourné, et à cinquante-deux pour cent de la bande le
+                       pavé les poussait dehors — MESURÉ : vingt-deux touches
+                       coupées par le bord. Trente-six lui laisse sa place et
+                       leur laisse la leur. */
+                    .du-pave, .du-tables { height: clamp(56px, 36cqw, 170px); }
+                    .du-tete { font-size: clamp(.62rem, 7cqw, 1.1rem); }
+                    .du-saisie { font-size: clamp(1.1rem, 18cqw, 2.6rem); }
                     .du-annonce--haut { transform: rotate(180deg); }
                 }
                 /* Écran court MAIS étroit (téléphone en paysage serré) : on
