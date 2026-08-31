@@ -105,7 +105,13 @@ export function uniteDe(id, n = 1) {
     const a = activities.get(id);
     const mot = (a && a.unite) || 'question';
     if (n <= 1) return mot;
-    return /[sx]$/.test(mot) ? mot : `${mot}s`;
+    // LE PLURIEL FRANÇAIS N'EST PAS TOUJOURS UN « S ». L'en-tête affichait
+    // « 0 / 4 tableaus » — un mot en -eau, -eu ou -au prend un X. C'est trois
+    // lignes, et c'est ce que lit un élève à chaque question.
+    if (/[sxz]$/.test(mot)) return mot;
+    if (/(eau|au|eu)$/.test(mot)) return `${mot}x`;
+    if (/al$/.test(mot)) return `${mot.slice(0, -2)}aux`;
+    return `${mot}s`;
 }
 
 /** Le nombre d'unités d'une séance pour cette activité (10 par défaut). */

@@ -10126,6 +10126,179 @@ function dessinerBonsCheminsPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+// --- LE TABLEAU À DOUBLE ENTRÉE, SUR LE PAPIER --------------------------------
+//
+// Sa forme d'origine : Rémy est parti d'une fiche. L'énoncé au-dessus, le
+// tableau dessous, les cases à trouver vides — c'est tout.
+//
+// LES COLONNES NE SONT PAS TOUTES DE LA MÊME LARGEUR. La colonne des libellés
+// porte « Pains au chocolat », les autres portent un nombre à trois chiffres :
+// leur donner la même largeur gâcherait la moitié du bloc ou couperait les
+// mots. On mesure donc le libellé le plus long et on lui donne ce qu'il faut,
+// le reste se partageant équitablement.
+
+function geoTableauCroise(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+
+    // L'ÉNONCÉ SE MESURE AVANT DE RÉSERVER SA PLACE. On réservait une hauteur
+    // fixe : quand la phrase prenait deux lignes, la seconde se posait sur le
+    // bord du tableau.
+    const corpsTexte = 5.6;
+    const lignesTexte = couperEnLignes(m.phrase, Math.floor(b.w / (corpsTexte * 0.46)), 2);
+    const hEnonce = lignesTexte.length * corpsTexte * 1.25 + 1.8;
+    const rh = Math.min(8.5, (b.h - hEnonce) / (m.R + 2));
+
+    // LA COLONNE DES LIBELLÉS N'EST PAS COMME LES AUTRES. Elle porte « Pains au
+    // chocolat » quand les autres portent trois chiffres. Mais lui donner un
+    // tiers du bloc quand elle ne contient que « Gagnées » vole de la largeur
+    // aux en-têtes, qui se touchent alors. Elle prend donc ce que réclame son
+    // plus long libellé, entre un cinquième et un tiers du bloc.
+    const libelles = [...m.lignes, 'Total'];
+    const plusLong = libelles.reduce((a, l) => Math.max(a, l.length), 1);
+    const wLib = Math.max(b.w * 0.2, Math.min(b.w * 0.34, plusLong * 3.1 + 1.6));
+    const wCol = (b.w - wLib) / (m.C + 1);
+
+    // CHAQUE TEXTE REÇOIT LA TAILLE QUI LE FAIT TENIR DANS SA CASE — en largeur
+    // ET en hauteur. Le premier jet ne bornait que la largeur : les nombres
+    // courts prenaient la taille maximale et dépassaient de leur ligne.
+    const haut = rh * 0.62;
+    const corpsLib = Math.min(haut, tailleQuiRentre(libelles, wLib - 1.6, 8));
+    const corpsTete = Math.min(haut, tailleQuiRentre([...m.colonnes, 'Total'], wCol - 0.8, 8));
+    const corpsNb = Math.min(haut, tailleQuiRentre(m.valeurs.flat().map(String), wCol - 1.4, 8));
+
+    const x0 = b.x;
+    const y0 = b.y + hEnonce;
+    const xDe = (c) => x0 + wLib + c * wCol;    // c de 0 à C
+    const yDe = (r) => y0 + rh + r * rh;        // la ligne d'en-tête est au-dessus
+    return { b, m, rh, corpsLib, corpsTete, corpsNb, corpsTexte, lignesTexte,
+        wLib, wCol, x0, y0, xDe, yDe, hEnonce };
+}
+
+/**
+ * La plus grande taille de police (en mm) qui fait tenir TOUS ces textes dans
+ * la largeur donnée. Helvetica tourne autour de 0,5 × la taille par caractère ;
+ * on prend 0,52 pour garder une marge, parce qu'un débordement d'un millimètre
+ * se voit et qu'un demi-point de police en moins ne se voit pas.
+ */
+function tailleQuiRentre(textes, largeur, corpsMax) {
+    const plusLong = textes.reduce((a, t) => Math.max(a, String(t).length), 1);
+    // Le plancher à 3 mm vaut environ 8,5 points : c'est petit, mais lisible à
+    // l'impression — et cela reste préférable à un « Septembre » qui déborde
+    // sur la colonne voisine.
+    return Math.max(3, Math.min(corpsMax, largeur / (plusLong * 0.52)));
+}
+
+function tableauCroisePreviewHtml(item, slot, k, solution) {
+    const g = geoTableauCroise(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    const connus = new Set(m.connus);
+    let d = '';
+    const centre = (x, y, s, corps, couleur) => `<text x="${T(x)}" y="${T(y)}" fill="${couleur || '#1a202c'}"
+        font-weight="700" font-size="${(corps * k).toFixed(2)}" text-anchor="middle"
+        dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${echapperSvg(s)}</text>`;
+
+    g.lignesTexte.forEach((ligne, i) => {
+        d += `<text x="${T(g.b.x)}" y="${T(g.b.y + g.corpsTexte * (0.95 + i * 1.25))}" fill="#1a202c"
+            font-size="${(g.corpsTexte * k).toFixed(2)}" font-family="Helvetica, Arial, sans-serif">${echapperSvg(ligne)}</text>`;
+    });
+
+    for (let r = -1; r <= m.R; r++) {
+        for (let c = -1; c <= m.C; c++) {
+            const x = c < 0 ? g.x0 : g.xDe(c);
+            const w = c < 0 ? g.wLib : g.wCol;
+            const y = r < 0 ? g.y0 : g.yDe(r);
+            d += `<rect x="${T(x)}" y="${T(y)}" width="${T(w)}" height="${T(g.rh)}" fill="none"
+                stroke="#8a90a0" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+        }
+    }
+    m.colonnes.forEach((c, i) => { d += centre(g.xDe(i) + g.wCol / 2, g.y0 + g.rh / 2, c, g.corpsTete); });
+    d += centre(g.xDe(m.C) + g.wCol / 2, g.y0 + g.rh / 2, 'Total', g.corpsTete);
+    [...m.lignes, 'Total'].forEach((l, r) => {
+        d += `<text x="${T(g.x0 + 0.8)}" y="${T(g.yDe(r) + g.rh / 2)}" fill="#1a202c" font-weight="700"
+            font-size="${(g.corpsLib * k).toFixed(2)}" dominant-baseline="central"
+            font-family="Helvetica, Arial, sans-serif">${echapperSvg(l)}</text>`;
+    });
+    for (let r = 0; r <= m.R; r++) {
+        for (let c = 0; c <= m.C; c++) {
+            const donne = connus.has(`${r},${c}`);
+            if (!donne && !solution) continue;
+            d += centre(g.xDe(c) + g.wCol / 2, g.yDe(r) + g.rh / 2, String(m.valeurs[r][c]),
+                g.corpsNb, donne ? '#1a202c' : '#8a90a0');
+        }
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerTableauCroisePdf(doc, item, slot, solution) {
+    const g = geoTableauCroise(item, slot);
+    const m = g.m;
+    const connus = new Set(m.connus);
+    // jsPDF compte en points, la géométrie en millimètres : 1 mm ≈ 2,835 pt,
+    // et les fontes remplissent environ les trois quarts de leur corps.
+    const pt = (mm) => mm * 2.6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(pt(g.corpsTexte));
+    doc.setTextColor(...ENCRE.texte);
+    g.lignesTexte.forEach((ligne, i) => {
+        doc.text(pourPdf(ligne), g.b.x, g.b.y + g.corpsTexte * (0.95 + i * 1.25));
+    });
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let r = -1; r <= m.R; r++) {
+        for (let c = -1; c <= m.C; c++) {
+            const x = c < 0 ? g.x0 : g.xDe(c);
+            const w = c < 0 ? g.wLib : g.wCol;
+            const y = r < 0 ? g.y0 : g.yDe(r);
+            doc.rect(x, y, w, g.rh);
+        }
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(pt(g.corpsTete));
+    m.colonnes.forEach((c, i) => {
+        doc.text(pourPdf(c), g.xDe(i) + g.wCol / 2, g.y0 + g.rh / 2, { align: 'center', baseline: 'middle' });
+    });
+    doc.text('Total', g.xDe(m.C) + g.wCol / 2, g.y0 + g.rh / 2, { align: 'center', baseline: 'middle' });
+
+    doc.setFontSize(pt(g.corpsLib));
+    [...m.lignes, 'Total'].forEach((l, r) => {
+        doc.text(pourPdf(l), g.x0 + 0.8, g.yDe(r) + g.rh / 2, { baseline: 'middle' });
+    });
+
+    doc.setFontSize(pt(g.corpsNb));
+    for (let r = 0; r <= m.R; r++) {
+        for (let c = 0; c <= m.C; c++) {
+            const donne = connus.has(`${r},${c}`);
+            if (!donne && !solution) continue;
+            doc.setTextColor(...(donne ? ENCRE.texte : ENCRE.gris));
+            doc.text(String(m.valeurs[r][c]), g.xDe(c) + g.wCol / 2, g.yDe(r) + g.rh / 2,
+                { align: 'center', baseline: 'middle' });
+        }
+    }
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFont('helvetica', 'normal');
+}
+
+/** Couper un texte en lignes d'au plus `large` caractères, `max` lignes au plus. */
+function couperEnLignes(texte, large, max) {
+    const mots = String(texte).split(/\s+/);
+    const out = [''];
+    for (const mot of mots) {
+        const essai = out[out.length - 1] ? `${out[out.length - 1]} ${mot}` : mot;
+        if (essai.length <= large || !out[out.length - 1]) out[out.length - 1] = essai;
+        else if (out.length < max) out.push(mot);
+        else { out[out.length - 1] += '…'; break; }
+    }
+    return out;
+}
+
+const echapperSvg = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
 // --- LE LABYRINTHE DES NOMBRES, SUR LE PAPIER ---------------------------------
 //
 // Sa forme d'origine : Rémy est parti d'un livre. Une grille de nombres, un
@@ -10318,6 +10491,22 @@ export const RENDUS = {
         proportions: { w: 1, h: 1.18 },
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    'tableau-croise': {
+        titre: 'Tableaux à double entrée',
+        consigne: () => 'COMPLÈTE LES VALEURS MANQUANTES de chaque tableau. Astuce : cherche à '
+            + 'chaque fois la ligne ou la colonne où il ne manque QU\'UNE SEULE information — '
+            + 'celle-là, tu peux la boucler. Si la case qui manque est un total, tu additionnes ; '
+            + 'si elle est dans le corps du tableau, tu pars du total et tu retires ce qui est '
+            + 'déjà écrit. Le nombre que tu viens d\'écrire en ouvre alors d\'autres.',
+        previewGrille: tableauCroisePreviewHtml,
+        pdfGrille: dessinerTableauCroisePdf,
+        nomBloc: 'Tableau', nomBlocs: 'tableaux',
+        // Large et bas : un tableau se lit en largeur, et l'énoncé le surmonte.
+        proportions: { w: 1.6, h: 1 },
+        disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
+        parLigneDefaut: 2
     },
 
     sim: {

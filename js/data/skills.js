@@ -966,6 +966,14 @@ const BASE = {
         descriptor: 'Écrire une formule utilisant des références de cellules et les fonctions SOMME et MOYENNE.',
         lesson: 'Une formule commence par = et utilise les RÉFÉRENCES des cases : =A1+B1, =SOMME(A1:A4). Si une case change, le tableur recalcule tout seul — c\'est toute sa force.'
     },
+    'don.tableau.croise': {
+        label: 'Compléter un tableau à double entrée',
+        chemin: [D.DONNEES, SD.TABLEUR],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers', 'num.sub.entiers'],
+        descriptor: 'Retrouver les valeurs manquantes d\'un tableau croisé en bouclant, une par une, les lignes et les colonnes où il ne manque qu\'une information.',
+        lesson: 'Dans un tableau à double entrée, chaque ligne se termine par son total et chaque colonne aussi ; la case du coin porte le total général, et on l\'obtient aussi bien en additionnant la dernière colonne que la dernière ligne. Pour le compléter, on ne commence JAMAIS par la première case vide : on cherche la ligne ou la colonne où il ne manque qu\'UNE SEULE information. Si la case qui manque est un total, on additionne le reste de la ligne ; si elle est dans le corps du tableau, on part du total et on retire ce qui est déjà écrit. Le nombre qu\'on vient d\'écrire en ouvre alors d\'autres, et de proche en proche tout se remplit — sans jamais deviner. À la fin, on vérifie : la dernière ligne et la dernière colonne doivent toutes deux tomber sur le total général.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

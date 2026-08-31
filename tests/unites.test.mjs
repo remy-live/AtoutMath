@@ -29,12 +29,28 @@ test('toute activité a une unité, et elle s\'accorde', () => {
         if (!a) return;
         assert.equal(typeof a.unite, 'string');
         assert.ok(a.unite.length > 2, `unité douteuse pour ${id} : « ${a.unite} »`);
-        // Au singulier, pas de « s » ajouté ; au pluriel, un seul.
+        // Au singulier, rien d'ajouté ; au pluriel, une marque du pluriel.
         assert.equal(uniteDe(id, 1), a.unite);
         const pluriel = uniteDe(id, 7);
-        assert.ok(pluriel === a.unite + 's' || pluriel === a.unite,
-            `mauvais pluriel pour ${id} : ${pluriel}`);
+        assert.match(pluriel, /[sxz]$/,
+            `le pluriel de « ${a.unite} » (${id}) ne porte pas de marque : ${pluriel}`);
+        assert.ok(pluriel.length >= a.unite.length, `${id} : le pluriel a raccourci`);
     });
+});
+
+test('LE PLURIEL DES UNITÉS EST DU FRANÇAIS, PAS UN « S » COLLÉ', () => {
+    // L'en-tête affichait « 0 / 4 tableaus ». Le pluriel se fabriquait en
+    // ajoutant un « s » à tout — ce qui touchait aussi le Tableau de
+    // Proportionnalité, qui compte lui aussi des tableaux. C'est ce qu'un élève
+    // lit à chaque question, alors on le vérifie mot par mot.
+    assert.equal(uniteDe('tableau-croise', 4), 'tableaux');
+    assert.equal(uniteDe('proportion', 6), 'tableaux');
+    assert.equal(uniteDe('dix', 24), 'paires');
+    assert.equal(uniteDe('othello', 2), 'parties');
+    assert.equal(uniteDe('problemes', 6), 'problèmes');
+    assert.equal(uniteDe('compte-est-bon', 5), 'tirages');
+    // Un mot déjà au pluriel ne prend rien de plus.
+    assert.equal(uniteDe('sudoku', 1), 'grille');
 });
 
 test('LES UNITÉS QUI NE SONT PAS DES QUESTIONS SONT NOMMÉES', () => {

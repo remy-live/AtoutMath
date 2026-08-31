@@ -161,6 +161,7 @@ export const CODES_EXERCICES = {
     'mes-jezzball':               'JE',   // JezzBall
     'geo-tangram':                'TN',   // Le Tangram
     'mes-heure':                  'UH',   // Quelle heure est-il ?
+    'don-tableau-croise':         'TL',   // Le Tableau à Double Entrée (TabLeau)
     'don-tableur':                'EL',   // L'École du Tableur
     'defi-tour-brahma':           'HN',   // La Tour de Hanoï (Tour de Brahma)
     'defi-grenouilles':           'GR',   // Les Grenouilles
