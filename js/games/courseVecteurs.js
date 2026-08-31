@@ -228,8 +228,16 @@ class CourseVecteurs extends BaseGame {
                 }
                 .cv-compo--vieux { opacity: .6; }
                 .cv-voiture { stroke: #fff; stroke-width: .9; }
-                .cv-fleche { stroke-width: 1.7; stroke-linecap: round;
-                    stroke-dasharray: 2.2 1.7; opacity: .9; }
+                /* LA FLÈCHE DE VITESSE EST UN REPÈRE, PAS UN TRACÉ. Rémy :
+                   « le vecteur qui donne le Nouveau Centre doit être très
+                   discret. » Il était l'inverse : 1,7 d'épaisseur et neuf
+                   dixièmes d'opacité, contre 1,15 et pleine opacité pour les
+                   VRAIS vecteurs — la béquille se voyait donc plus que la
+                   trajectoire, qui est la seule chose qu'on lit et qu'on note.
+                   Elle passe sous eux : deux fois plus fine, trois fois plus
+                   pâle, en pointillé serré. */
+                .cv-fleche { stroke-width: .8; stroke-linecap: round;
+                    stroke-dasharray: 1.2 1.4; opacity: .38; }
                 /* Les neuf choix. Le point plein appelle le doigt ; le point
                    barré dit « pas par là » sans qu'on ait à essayer. */
                 .cv-choix { cursor: pointer; }

@@ -28,8 +28,14 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
+        // ET L'ON DIT CE QUE LE CHEVRON VEUT DIRE. Rémy : « je ne comprends pas
+        // pourquoi tu mets des flèches ». Ce n'en sont pas — c'est le codage
+        // des parallèles, celui de tous les manuels —, mais un signe que
+        // personne ne sait lire ne code rien du tout.
         instruction: 'Un angle est donné, un autre est à trouver. Cherche d\'abord COMMENT '
-            + 'les deux sont placés : c\'est la relation qui donne la réponse.'
+            + 'les deux sont placés : c\'est la relation qui donne la réponse. Les deux '
+            + 'droites qui portent le même chevron « › » sont PARALLÈLES : ce n\'est pas '
+            + 'une flèche, c\'est le codage qui le dit sans l\'écrire.'
     },
 
     // L'AUTRE MOITIÉ DU CHAPITRE, et la première dans l'ordre : l'exercice 8,

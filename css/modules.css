@@ -459,6 +459,57 @@
     transition: padding-bottom .22s ease;
 }
 
+/* LARGE ET BAS : LA FIGURE À GAUCHE, LES RÉPONSES À DROITE.
+ *
+ * Rémy, banc tablette : « les boutons débordent un tout petit peu sur tablette
+ * en paysage et en plein écran ». MESURÉ sur 1152 × 553 : le plateau fait
+ * 766 × 358, l'énoncé et la figure en prennent 175, et QUATRE boutons de
+ * quatre-vingt-onze pixels — ils portent des égalités de Thalès, donc des
+ * fractions sur deux étages — en demandent trois cent soixante-quatre. Les
+ * deux derniers sortaient de cent soixante-trois pixels sous le cadre.
+ *
+ * Rétrécir la réponse ne suffit pas : une fraction ne se lit plus en dessous
+ * d'une certaine taille, et c'est elle qu'on choisit. C'est la COLONNE qui est
+ * fautive — empiler quatre réponses sous une figure dans un plateau deux fois
+ * plus large que haut laisse la moitié droite vide. On les met donc à côté,
+ * comme sur la feuille de Thalès : la figure reste sous les yeux pendant qu'on
+ * choisit, ce qui est exactement le geste demandé.
+ *
+ * PAS EN REQUÊTE DE CONTENEUR, et c'est le piège : `.canvas-area` EST le
+ * conteneur `plateau`, et une requête de conteneur ne peut pas styler le
+ * conteneur qu'elle interroge — seulement ses descendants. La règle serait
+ * restée sans effet. On interroge donc la FENÊTRE, plus le simulateur de
+ * tablette, dont le panneau fait toujours 768 × 442 : les deux cas où le
+ * plateau est large et bas. */
+@media (min-aspect-ratio: 7/5) and (max-height: 620px) {
+    .canvas-area:has(> .prio-btn) {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        align-content: center; justify-items: center;
+        column-gap: clamp(10px, 2vmin, 26px);
+    }
+    /* L'énoncé et la figure tiennent la colonne de gauche, les réponses
+       s'empilent dans celle de droite. */
+    .canvas-area:has(> .prio-btn) > .game-question,
+    .canvas-area:has(> .prio-btn) > .figure-wrap { grid-column: 1; max-height: 100%; }
+    .canvas-area:has(> .prio-btn) > .prio-btn {
+        grid-column: 2; margin: clamp(3px, .9vmin, 8px) 0; width: 100%;
+    }
+}
+#game-layer.tablet-simulator .canvas-area:has(> .prio-btn) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-content: center; justify-items: center;
+    column-gap: 14px;
+}
+#game-layer.tablet-simulator .canvas-area:has(> .prio-btn) > .game-question,
+#game-layer.tablet-simulator .canvas-area:has(> .prio-btn) > .figure-wrap {
+    grid-column: 1; max-height: 100%;
+}
+#game-layer.tablet-simulator .canvas-area:has(> .prio-btn) > .prio-btn {
+    grid-column: 2; margin: 4px 0; width: 100%;
+}
+
 /* Pendant qu'une correction est affichée, on réserve sa hauteur : le contenu
    centré remonte au lieu d'être recouvert. On ne comprend pas une correction
    si la question a disparu derrière. */

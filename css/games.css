@@ -266,10 +266,18 @@
    grand écran où l'énoncé, lui, montait à cinquante-huit pixels. Et la boîte
    s'élargit : trois cent vingt pixels au milieu de mille trois cents, c'était
    un timbre-poste posé sur une affiche. */
+/* ET ELLE SUIT LA PLUS PETITE DIMENSION, PAS LA LARGEUR.
+   Rémy : « les boutons débordent un tout petit peu sur tablette en paysage et
+   en plein écran ». MESURÉ sur 1152 × 553 : `2.2vw` donne vingt-cinq pixels
+   parce que l'écran est LARGE, mais c'est la HAUTEUR qui manque — la figure,
+   l'énoncé et quatre boutons ne tiennent pas dans cinq cent cinquante-trois
+   pixels, et les deux derniers sortaient de cent soixante-trois pixels sous le
+   cadre. En `vmin`, la réponse grandit sur un grand écran comme avant, et se
+   serre dès qu'une des deux dimensions se serre. */
 .prio-btn {
-    --taille-choix: clamp(1.2rem, 2.2vw + 10px, 2rem);
+    --taille-choix: clamp(1.05rem, 3.2vmin + 6px, 2rem);
     display: block; width: 100%; max-width: min(480px, 100%);
-    padding: clamp(14px, 1.4vw + 8px, 22px); margin: 12px auto;
+    padding: clamp(9px, 1.6vmin + 6px, 22px); margin: clamp(5px, 1.2vmin, 12px) auto;
     font-size: var(--taille-choix);
     background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px;
     font-weight: 700; color: var(--text-main); text-align: center;

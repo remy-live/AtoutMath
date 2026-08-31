@@ -66,15 +66,22 @@ export function figureAnglesSvg(figure, { mesures = 'donne', prefixe = 'ar' } = 
         //
         // Le codage est de toute façon la bonne réponse : c'est ainsi qu'on
         // marque deux parallèles depuis toujours, dans tous les manuels, et
-        // l'élève doit apprendre à le lire. Une phrase le lui aurait épargné.
+        // l'élève doit apprendre à le lire.
+        //
+        // MAIS IL NE DOIT PAS SE LIRE COMME UNE FLÈCHE. Rémy : « je ne
+        // comprends pas pourquoi tu mets des flèches ». Un chevron posé à un
+        // sixième du bout d'une droite EST une pointe de flèche : à cet
+        // endroit-là, c'est une direction qu'on croit lire, pas un codage. On
+        // le pose donc à un tiers — assez loin du bout pour ne plus être une
+        // pointe, assez loin du milieu pour ne pas tomber sur le croisement,
+        // qui porte déjà l'angle, son secteur et sa mesure. Et la consigne dit
+        // maintenant ce qu'il veut dire, ce que le dessin seul ne peut pas.
         if (!t.pointille) return;
         const dx = b.x - a.x, dy = b.y - a.y;
         const n = Math.hypot(dx, dy) || 1;
         const ux = dx / n, uy = dy / n;         // le long du trait
         const vx = -uy, vy = ux;                // en travers
-        // À un sixième du bout : le milieu d'une de ces droites tombe sur le
-        // croisement, où il y a déjà l'angle, son secteur et sa mesure.
-        const mx = a.x + dx * 0.16, my = a.y + dy * 0.16;
+        const mx = a.x + dx * 0.33, my = a.y + dy * 0.33;
         const L = 10, E = 7.5;                  // longueur des branches, écart
         const branche = (s) => `${arr(mx - ux * L + vx * E * s)},${arr(my - uy * L + vy * E * s)} `
             + `${arr(mx)},${arr(my)} `

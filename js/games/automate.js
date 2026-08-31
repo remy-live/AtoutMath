@@ -131,7 +131,7 @@ class Automate extends BaseGame {
                            damier de timbre-poste sous trois boutons énormes.
                            C'est LE ROBOT qu'on regarde — c'est lui qui garde
                            sa place, et l'écran défile si besoin. */
-                        grid-template-rows: auto minmax(240px, 1fr) auto auto;
+                        grid-template-rows: auto minmax(180px, 1fr) auto auto;
                         /* L'enveloppe est une boîte flexible centrée à
                            l'origine ; en grille, un alignement centré
                            empêcherait les cases de s'étirer — le quadrillage
@@ -147,7 +147,17 @@ class Automate extends BaseGame {
                     }
                     .au-corps { display: contents; }
                     .au-haut { grid-area: haut; }
-                    .au-plan { grid-area: plan; min-height: 240px; overflow: hidden; }
+                    /* DEUX CENT QUARANTE PIXELS NE TIENNENT PAS SUR UN
+                       IPHONE. Rémy : « ça déborde légèrement en bas ». MESURÉ
+                       sur 375 × 634 : la note sortait de quatre-vingt-trois
+                       pixels sous le cadre, parce que le plancher du
+                       quadrillage — posé pour qu'il ne devienne pas un
+                       timbre-poste — s'ajoutait aux blocs, aux commandes et à
+                       la note sans que rien ne puisse céder. Le plancher
+                       descend à 180, et le quadrillage reprend tout ce qui
+                       reste : sur un écran haut il ne perd rien, sur un écran
+                       court plus rien ne sort. */
+                    .au-plan { grid-area: plan; min-height: 180px; overflow: hidden; }
                     .au-prog {
                         grid-area: prog; align-self: stretch; justify-self: stretch;
                         flex-direction: column; flex-wrap: nowrap; align-items: flex-start;
@@ -158,18 +168,42 @@ class Automate extends BaseGame {
                         flex-direction: column; flex-wrap: nowrap; gap: 6px;
                     }
                     .au-cmd { min-width: 64px; padding: 6px 10px; }
-                    .au-note { grid-area: note; }
+                    /* La note est la dernière à parler : elle se serre plutôt
+                       que de pousser le reste dehors. */
+                    .au-note { grid-area: note; min-height: 0; }
                 }
 
                 /* LES BLOCS. Les couleurs de Scratch, parce que ce sont celles
                    que l'élève retrouvera : bleu pour bouger, jaune pour
-                   contrôler, vert pour agir. */
+                   contrôler, vert pour agir.
+
+                   ET SA FORME. Rémy : « utilise les blocs Scratch, ou en tout
+                   cas le style — tu les as. » Les couleurs y étaient, la
+                   silhouette non : des rectangles arrondis séparés par quatre
+                   pixels de vide, qui se lisent comme une liste à puces et non
+                   comme un programme. Un bloc Scratch porte un TENON dessous
+                   et une MORTAISE dessus, et deux blocs qui se suivent
+                   s'EMBOÎTENT — c'est ce qui dit qu'ils ne se réordonnent pas
+                   au hasard. Le découpage se fait au clip-path : le tenon
+                   dépasse par le bas, la marge négative le fait entrer dans le
+                   creux du bloc suivant. */
                 .au-bloc {
+                    --au-tenon: 4px;
                     display: flex; align-items: center; gap: 5px;
-                    padding: 5px 9px; border-radius: 7px; color: #fff;
+                    padding: 6px 9px calc(6px + var(--au-tenon)); color: #fff;
                     font-weight: 700; font-size: clamp(10px, 2.3cqw, 13px);
-                    line-height: 1.25; box-shadow: 0 1px 0 rgba(0,0,0,.22);
+                    line-height: 1.25;
+                    margin-bottom: calc(-1 * var(--au-tenon));
+                    clip-path: polygon(
+                        0 0, 11px 0, 15px var(--au-tenon), 27px var(--au-tenon), 31px 0, 100% 0,
+                        100% calc(100% - var(--au-tenon)), 31px calc(100% - var(--au-tenon)),
+                        27px 100%, 15px 100%, 11px calc(100% - var(--au-tenon)),
+                        0 calc(100% - var(--au-tenon))
+                    );
                 }
+                /* Emboîtés, les blocs n'ont plus besoin d'espace entre eux :
+                   c'est le tenon qui fait la jointure. */
+                .au-prog, .au-dedans { gap: 0; }
                 .au-bloc--mvt { background: #3b7ddd; }
                 .au-bloc--action { background: #22a06b; }
                 .au-bloc--ctrl { background: #d9932a; }
@@ -260,7 +294,7 @@ class Automate extends BaseGame {
                 .au-case:hover rect { fill: rgba(59,125,221,.14); }
 
                 .au-note {
-                    min-height: 2.5em; text-align: center; width: 100%; max-width: 640px;
+                    min-height: 2.5em; margin: 0; text-align: center; width: 100%; max-width: 640px;
                     font-size: clamp(11px, 2.7cqw, 14px); line-height: 1.35;
                     color: var(--text-muted); flex: 0 0 auto;
                 }
@@ -273,7 +307,6 @@ class Automate extends BaseGame {
                 <div class="au-haut">
                     <span data-but></span>
                     <span class="au-score" data-score></span>
-                    <button type="button" class="au-btn" data-neuf>↺ Autre programme</button>
                 </div>
                 <div class="au-corps">
                     <div class="au-prog" data-prog></div>
@@ -295,7 +328,6 @@ class Automate extends BaseGame {
         this.butEl = this.container.querySelector('[data-but]');
         this.scoreEl = this.container.querySelector('[data-score]');
         this.cmdsEl = this.container.querySelector('[data-cmds]');
-        this.container.querySelector('[data-neuf]').addEventListener('click', () => this.nouveauProgramme());
         this.container.querySelectorAll('[data-geste]').forEach(b => {
             b.addEventListener('click', () => this.jouer({ type: b.dataset.geste }));
         });

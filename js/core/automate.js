@@ -233,9 +233,11 @@ export const TAILLES_NIVEAU = NIVEAUX;
  * UNE SEULE IDÉE NEUVE PAR PALIER, et la boucle arrive VITE : elle est le
  * cœur de l'exercice — c'est elle qui fait remonter l'allumage dans le
  * programme, et c'est cela qu'un enfant qui empile des blocs jusqu'à ce que
- * « ça marche » n'a jamais vu. Les deux paliers qui la précèdent ne durent
- * donc qu'un programme chacun : le temps de comprendre qu'on exécute, pas
- * qu'on écrit. La boucle est là au troisième, et ne repart plus.
+ * « ça marche » n'a jamais vu. Elle arrive donc AU DEUXIÈME palier, après un
+ * seul programme : le temps de comprendre qu'on exécute, pas qu'on écrit.
+ * Elle était au troisième, et Rémy a pu faire deux programmes sans en voir
+ * une — « tu ne proposes pas de bloc répétition ». Les pastilles, qui ne sont
+ * qu'un geste de plus, attendent leur tour.
  */
 export const PALIERS = [
     {
@@ -244,14 +246,20 @@ export const PALIERS = [
         annonce: 'Le bloc allumé dit ce qu\'il faut faire. Tu l\'exécutes, il passe au suivant.'
     },
     {
-        id: 'p2', titre: 'Poser des pastilles', niveau: 'poser',
-        surligneur: true, prediction: false, questions: 1,
-        annonce: 'Un nouveau bloc : « poser une pastille ». Le robot ne bouge pas, il marque la case.'
-    },
-    {
-        id: 'p3', titre: 'La boucle', niveau: 'boucleSimple',
+        // LA BOUCLE EN DEUXIÈME, PAS EN TROISIÈME. Rémy, après avoir joué :
+        // « tu ne proposes pas de bloc répétition ». Il y en a un — mais il
+        // n'arrivait qu'au troisième palier, et l'on peut donc faire deux
+        // programmes entiers sans jamais en voir un. C'est le bloc qui fait
+        // tout l'exercice : il passe devant les pastilles, qui ne sont qu'un
+        // geste de plus.
+        id: 'p2', titre: 'La boucle', niveau: 'boucleSimple',
         surligneur: true, prediction: false, questions: 3,
         annonce: 'Voici « répéter ». Regarde bien : l\'allumage va REMONTER dans le programme.'
+    },
+    {
+        id: 'p3', titre: 'Poser des pastilles', niveau: 'poser',
+        surligneur: true, prediction: false, questions: 1,
+        annonce: 'Un nouveau bloc : « poser une pastille ». Le robot ne bouge pas, il marque la case.'
     },
     {
         id: 'p4', titre: 'À toi de suivre', niveau: 'moyen',
