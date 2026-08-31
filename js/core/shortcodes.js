@@ -62,12 +62,26 @@ export function codeCourt(exerciseId) {
  * En clair, et non encodé : c'est justement ce que le professeur veut pouvoir
  * dicter et l'élève relire. Deux chiffres au plus — au-delà de quatre-vingt
  * dix-neuf questions, ce n'est plus un devoir du soir.
+ *
+ * ET LE SÉPARATEUR NE COMPTE PAS. Un code écrit au tableau se recopie comme on
+ * l'entend : « K7QP-12 », « k7qp 12 », « K7QP12 », un tiret long parce que le
+ * traitement de texte l'a changé. On ne lit donc pas un séparateur, on lit
+ * QUATRE CARACTÈRES puis, s'il en reste, un nombre — et le découpage ne peut
+ * pas être ambigu puisque le code fait toujours exactement quatre caractères.
+ * Tout le reste (espaces, tirets, points) tombe au nettoyage.
  */
+function decouperCodeCourt(code) {
+    const brut = normaliserCourt(code);
+    if (brut.length < LONGUEUR_COURT) return null;
+    const suite = brut.slice(LONGUEUR_COURT);
+    if (suite && !/^\d{1,2}$/.test(suite)) return null;
+    const n = suite ? Number(suite) : null;
+    return { tete: brut.slice(0, LONGUEUR_COURT), questions: (n >= 1 && n <= 99) ? n : null };
+}
+
 function questionsDuCodeCourt(code) {
-    const m = /^[^-]+-(\d{1,2})$/.exec(String(code || '').trim());
-    if (!m) return null;
-    const n = Number(m[1]);
-    return n >= 1 && n <= 99 ? n : null;
+    const d = decouperCodeCourt(code);
+    return d ? d.questions : null;
 }
 
 /** Le code tel qu'on l'écrit au tableau : « REL-K7QP » se lit, « relk7qp » aussi. */
@@ -277,9 +291,9 @@ export const Shortcodes = {
 
     /** L'exercice désigné par un code court, ou null. */
     exerciceDuCodeCourt(code) {
-        const cible = normaliserCourt(String(code).split('-')[0]);
-        if (cible.length !== LONGUEUR_COURT) return null;
-        return exercices.find(e => normaliserCourt(codeCourt(e.id)) === cible) || null;
+        const d = decouperCodeCourt(code);
+        if (!d) return null;
+        return exercices.find(e => normaliserCourt(codeCourt(e.id)) === d.tete) || null;
     },
 
     shareUrl(path) {

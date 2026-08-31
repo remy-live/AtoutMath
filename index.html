@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=485">
-    <link rel="stylesheet" href="css/layout.css?v=485">
-    <link rel="stylesheet" href="css/ui.css?v=485">
-    <link rel="stylesheet" href="css/games.css?v=485">
-    <link rel="stylesheet" href="css/components.css?v=485">
-    <link rel="stylesheet" href="css/modules.css?v=485">
+    <link rel="stylesheet" href="css/base.css?v=486">
+    <link rel="stylesheet" href="css/layout.css?v=486">
+    <link rel="stylesheet" href="css/ui.css?v=486">
+    <link rel="stylesheet" href="css/games.css?v=486">
+    <link rel="stylesheet" href="css/components.css?v=486">
+    <link rel="stylesheet" href="css/modules.css?v=486">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -905,9 +905,13 @@
                     <button id="btn-close-code" class="modal-close-btn" aria-label="Fermer">&times;</button>
                 </div>
                 <p class="modal-text">Saisis le code donné par ton professeur
-                    pour lancer une activité spécifique.</p>
+                    pour lancer une activité spécifique. Les majuscules, les
+                    espaces et les tirets n'ont pas d'importance.</p>
 
-                <input type="text" id="student-code-input" placeholder="Ex: ABJBC" aria-label="Code donné par ton professeur">
+                <!-- L'EXEMPLE MONTRE LES DEUX FORMES. Un code d'exercice fait
+                     quatre caractères ; suivi d'un nombre, il dit combien de
+                     questions. C'est la seule notice que l'élève lira. -->
+                <input type="text" id="student-code-input" placeholder="Ex : KPKL ou KPKL-12" aria-label="Code donné par ton professeur">
                 <button id="btn-submit-code" class="btn-toggle active">Lancer</button>
             </div>
         </div>

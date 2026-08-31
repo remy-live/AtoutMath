@@ -44,6 +44,29 @@ test('un exercice pris tel quel tient en QUATRE caractères', () => {
         'le seuil se recalcule : il n\'a pas à voyager dans le code');
 });
 
+test('UN CODE DICTÉ SE RECOPIE COMME ON L\'ENTEND', () => {
+    // Un code écrit au tableau ne revient jamais tel qu'on l'a écrit : tiret
+    // ou espace, majuscules ou non, tiret long parce que le traitement de
+    // texte l'a changé. Le séparateur ne porte aucune information — le code
+    // fait TOUJOURS quatre caractères —, donc il ne doit rien décider.
+    const attendu = { exercice: 'num-relatifs-addition', questions: 12 };
+    const code = Shortcodes.encodePath(makePath('R',
+        [makeStep(attendu.exercice, {}, { nbItems: attendu.questions })], defaultPolicy()));
+    const tete = code.slice(0, 4);
+    for (const ecrit of [`${tete}-12`, `${tete} 12`, `${tete}12`, `${tete} — 12`,
+        `${tete}.12`, tete.toLowerCase() + '-12', `  ${tete}-12  `]) {
+        const relu = Shortcodes.decodePath(ecrit);
+        assert.ok(relu && relu.steps[0], `« ${ecrit} » devrait se lire`);
+        assert.equal(relu.steps[0].exerciseId, attendu.exercice, `« ${ecrit} » : mauvais exercice`);
+        assert.equal(relu.steps[0].nbItems, attendu.questions, `« ${ecrit} » : mauvais compte`);
+    }
+    // Ce qui n'est pas un nombre après le code n'en est pas un code.
+    assert.equal(Shortcodes.exerciceDuCodeCourt(`${tete}AB`), null,
+        'quatre caractères suivis de lettres ne désignent aucun exercice');
+    // Et l'ancien format continue de se lire : il y a des liens dans la nature.
+    assert.ok(Shortcodes.decodePath('AA5'), 'un code d\'avant doit rester lisible');
+});
+
 test('UN EXERCICE AVEC SON NOMBRE DE QUESTIONS TIENT ENCORE DANS UN CODE DICTÉ', () => {
     // Rémy : « pour envoyer un code juste sur un exercice avec le nombre de
     // questions, comment fait-on ? L'idéal serait que le code soit hyper
