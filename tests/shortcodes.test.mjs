@@ -6,7 +6,9 @@ import './helpers.mjs';
 import '../js/core/activities/index.js';
 import { Shortcodes } from '../js/core/shortcodes.js';
 import { makeStep, makePath } from '../js/core/path.js';
-import { defaultPolicy } from '../js/core/policy.js';
+import { defaultPolicy, evaluationPolicy, resolvePolicy, CORRECTIONS, NOTES } from '../js/core/policy.js';
+import { normalizePath } from '../js/core/path.js';
+import { SEUIL_DEFAUT } from '../js/core/recompenses.js';
 
 // --- Le code court ----------------------------------------------------------
 
@@ -313,4 +315,95 @@ test('un réglage qui change ce que l\'élève reçoit repasse au format complet
         assert.ok(code.startsWith('M2-'), `${quoi} : devrait garder le format complet, on a « ${code} »`);
         assert.ok(Shortcodes.decodePath(code), `${quoi} : et rester relisible`);
     }
+});
+
+// --- Le format complet doit tout porter --------------------------------------
+
+test('UN PARCOURS PARTAGÉ ARRIVE AVEC TOUS SES RÉGLAGES', () => {
+    // Rémy : « est-ce qu'au niveau des options ça couvre tout ? » Ça ne
+    // couvrait pas tout, et c'était silencieux : un contrôle partagé arrivait
+    // chez le collègue avec la bonne note sur 10, mais l'arrondi, les
+    // pénalités, le régime de correction et « ne pas montrer la note » remis
+    // d'usine. Neuf réglages disparaissaient. Ce test les met TOUS à une
+    // valeur qui n'est pas celle par défaut : un oubli d'encodage se voit.
+    const politique = evaluationPolicy({
+        correction: CORRECTIONS.ROBOT,
+        hints: true,
+        maxAttemptsPerItem: 3,
+        adaptive: true,
+        shuffleSteps: true,
+        allowRetryStep: true,
+        pointsPerItem: 5,
+        hintPenalty: 0.5,
+        showMe: true,
+        grading: {
+            scale: 10, rule: 'ponderee', penalties: { hint: 0.1, retry: 0.9 },
+            arrondi: 0.25, showCalculation: false, note: NOTES.ENREGISTREE
+        }
+    });
+    const p = makePath('Contrôle n°2', [
+        makeStep('calc-sudoku', { taille: 6 }, {
+            nbItems: 4, threshold: 3, weight: 3, timeLimit: 600,
+            sansTotal: true, forceSeed: 12345
+        }),
+        makeStep('geo-thales', {}, { nbItems: 8, bonus: true })
+    ], politique);
+    p.bonusSeuil = 0.9;
+
+    const relu = normalizePath(Shortcodes.decodePath(Shortcodes.encodePath(p)));
+    assert.equal(relu.name, p.name);
+    assert.equal(relu.bonusSeuil, 0.9, 'le seuil qui ouvre les jeux de récompense');
+
+    const avant = resolvePolicy(p.policy), apres = resolvePolicy(relu.policy);
+    for (const cle of new Set([...Object.keys(avant), ...Object.keys(apres)])) {
+        assert.deepEqual(apres[cle], avant[cle], `politique.${cle} n'a pas survécu`);
+    }
+    p.steps.forEach((s, i) => {
+        for (const cle of ['exerciseId', 'overrides', 'nbItems', 'threshold',
+            'weight', 'timeLimit', 'forceSeed', 'sansTotal', 'bonus']) {
+            assert.deepEqual(relu.steps[i][cle], s[cle], `étape ${i + 1}.${cle} n'a pas survécu`);
+        }
+    });
+});
+
+test('LA CHAÎNE COURTE NE TAIT JAMAIS UN RÉGLAGE', () => {
+    // Elle ne sait dire que « ces exercices, dans cet ordre, avec ce nombre de
+    // questions ». Tout le reste doit la faire renoncer — sinon elle mentirait
+    // par omission, et c'est pire qu'un lien long.
+    const bonus = makePath('X', [
+        makeStep('calc-sudoku', {}, {}),
+        makeStep('geo-thales', {}, { bonus: true })], defaultPolicy());
+    assert.ok(Shortcodes.encodePath(bonus).startsWith('M2-'),
+        'une étape-jeu ne doit pas devenir un exercice ordinaire');
+    assert.equal(normalizePath(Shortcodes.decodePath(Shortcodes.encodePath(bonus))).steps[1].bonus, true);
+
+    const sansTotal = makePath('X', [makeStep('calc-sudoku', {}, { sansTotal: true })], defaultPolicy());
+    assert.ok(Shortcodes.encodePath(sansTotal).startsWith('M2-'));
+
+    const seuilBonus = makePath('X', [makeStep('calc-sudoku', {}, {})], defaultPolicy());
+    seuilBonus.bonusSeuil = 0.5;
+    assert.ok(Shortcodes.encodePath(seuilBonus).startsWith('M2-'),
+        'un seuil de récompense déplacé doit voyager');
+
+    // Et le cas ordinaire reste court : rien ne s'est mis à tout refuser.
+    const simple = makePath('X', [
+        makeStep('calc-sudoku', {}, {}), makeStep('geo-thales', {}, {})], defaultPolicy());
+    assert.equal(Shortcodes.encodePath(simple), 'SUD-TRY');
+    assert.equal(normalizePath(Shortcodes.decodePath('SUD-TRY')).bonusSeuil, SEUIL_DEFAUT);
+});
+
+test('les liens déjà envoyés continuent de se lire', () => {
+    // Le format complet a changé de clés en route. Un lien parti par courriel
+    // avant ce jour-là doit encore ouvrir le bon parcours — et l'ancien
+    // écrivait les booléens en 1/0.
+    const relu = Shortcodes.decodePath('M2-eyJuIjogIkNvbnRyw7RsZSBkJ2F2YW50IiwgInMiOiBbeyJlIjogImNhbGMtc3Vkb2t1IiwgInEiOiAzLCAidCI6IDN9XSwgInAiOiB7Im0iOiAiZXZhbHVhdGlvbiIsICJoIjogMCwgImEiOiAxLCAiZyI6IHsicyI6IDIwLCAiciI6ICJmaXJzdFRyeSJ9fX0');
+    assert.ok(relu, 'un ancien code M2- doit rester lisible');
+    assert.equal(relu.name, 'Contrôle d\'avant');
+    assert.equal(relu.steps[0].exerciseId, 'calc-sudoku');
+    assert.equal(relu.steps[0].nbItems, 3);
+    const pol = resolvePolicy(relu.policy);
+    assert.equal(pol.mode, 'evaluation');
+    assert.equal(pol.hints, false, 'le 0 de l\'ancien format vaut faux');
+    assert.equal(pol.maxAttemptsPerItem, 1);
+    assert.equal(pol.grading.scale, 20);
 });

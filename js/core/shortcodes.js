@@ -19,7 +19,8 @@
 
 import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
 import { getExerciseById } from '../data/catalog.js';
-import { defaultPolicy, resolvePolicy } from './policy.js';
+import { defaultPolicy, resolvePolicy, apprentissagePolicy, evaluationPolicy, MODES } from './policy.js';
+import { SEUIL_DEFAUT } from './recompenses.js';
 import { seuilConseille } from './seuilEtape.js';
 import { CODES_EXERCICES, EXERCICE_PAR_IDENTITE } from '../data/codesExercices.js';
 
@@ -194,6 +195,10 @@ function etapeSimple(s) {
     if (!s || !s.exerciseId) return false;
     if (s.overrides && Object.keys(s.overrides).length) return false;
     if ((s.weight || 1) !== 1 || s.timeLimit) return false;
+    // Une étape-jeu, une étape sans total, une graine imposée : trois choses
+    // que la chaîne ne sait pas dire. Les taire ferait d'un jeu de récompense
+    // un exercice ordinaire — c'est le format complet qui doit prendre.
+    if (s.bonus || s.sansTotal || s.forceSeed) return false;
     const n = s.nbItems || telQuel(s.exerciseId);
     if (!Number.isInteger(n) || n < 1 || n > 99) return false;
     const seuilAttendu = seuilConseille(n);
@@ -228,6 +233,9 @@ function chaineCourte(path) {
     const p = normalizePath(path);
     if (!p.steps || !p.steps.length) return '';
     if (!politiqueOrdinaire(p.policy)) return '';
+    // Le seuil qui ouvre les jeux de récompense ne voyage pas dans la chaîne :
+    // s'il a été déplacé, il doit voyager en entier.
+    if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) return '';
     let out = '';
     for (const s of p.steps) {
         if (!etapeSimple(s)) return '';
@@ -259,28 +267,76 @@ function fromBase64Url(code) {
     return new TextDecoder().decode(bytes);
 }
 
-// Représentation compacte : clés courtes, et on n'émet que ce qui diffère des
-// valeurs par défaut. Un parcours simple tient en une trentaine de caractères.
+/**
+ * REPRÉSENTATION COMPACTE : clés courtes, et on n'émet QUE ce qui diffère.
+ *
+ * Rémy : « est-ce qu'au niveau des options ça couvre tout ? » Non, ça ne
+ * couvrait pas tout, et c'était silencieux — un contrôle partagé arrivait chez
+ * le collègue avec la bonne note sur 10 mais l'arrondi, les pénalités, le
+ * régime de correction et « ne pas montrer la note » remis d'usine. Neuf
+ * réglages passaient à la trappe. On ne liste donc plus les champs à la main :
+ * on COMPARE la politique à celle de son mode, et tout écart voyage.
+ *
+ * « Diffère » veut dire : diffère de la politique DU MODE, pas de celle
+ * d'usine. C'est ce que `resolvePolicy` refera à la relecture — elle repart de
+ * la politique du mode et applique ce qu'on lui donne. Encoder par rapport à
+ * autre chose produirait un parcours qui ne se relit pas comme il s'écrit.
+ */
+const CLES_POLITIQUE = {
+    hints: 'h', maxAttemptsPerItem: 'a', correction: 'c', showCorrection: 'sc',
+    adaptive: 'ad', shuffleSteps: 'sh', allowRetryStep: 'rs', pointsPerItem: 'pi',
+    hintPenalty: 'hp', showMe: 'sm', guided: 'gd'
+};
+const CLES_BAREME = {
+    scale: 's', rule: 'r', penalties: 'p', arrondi: 'a',
+    showCalculation: 'sc', note: 'n'
+};
+
+const memeValeur = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+function politiqueDuMode(mode) {
+    return mode === MODES.EVALUATION ? evaluationPolicy()
+        : mode === MODES.APPRENTISSAGE ? apprentissagePolicy()
+            : defaultPolicy();
+}
+
 function compact(path) {
     const p = normalizePath(path);
     const pol = resolvePolicy(p.policy);
-    const def = defaultPolicy();
+    const base = politiqueDuMode(pol.mode);
 
     const out = { n: p.name, s: p.steps.map(compactStep) };
+    // Le seuil qui ouvre les jeux de récompense du parcours.
+    if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) out.b = p.bonusSeuil;
 
     const polOut = {};
-    if (pol.mode !== def.mode) polOut.m = pol.mode;
-    if (pol.hints !== def.hints) polOut.h = pol.hints ? 1 : 0;
-    if (pol.maxAttemptsPerItem !== def.maxAttemptsPerItem) polOut.a = pol.maxAttemptsPerItem;
+    if (pol.mode !== defaultPolicy().mode) polOut.m = pol.mode;
+    for (const [cle, court] of Object.entries(CLES_POLITIQUE)) {
+        // `showCorrection` se DÉDUIT de `correction` : l'écrire aussi ne peut
+        // que se contredire. On le laisse à `resolvePolicy`.
+        if (cle === 'showCorrection' && pol.correction) continue;
+        if (!memeValeur(pol[cle], base[cle])) polOut[court] = pol[cle];
+    }
     if (pol.grading) {
-        polOut.g = {
-            s: pol.grading.scale || null,
-            r: pol.grading.rule || 'firstTry'
-        };
+        const bBase = base.grading || {};
+        const g = {};
+        for (const [cle, court] of Object.entries(CLES_BAREME)) {
+            if (!memeValeur(pol.grading[cle], bBase[cle])) g[court] = pol.grading[cle];
+        }
+        // Un barème sur un mode qui n'en a pas d'usine doit exister même vide,
+        // sinon la relecture croirait qu'il n'y a pas de note du tout.
+        polOut.g = g;
+    } else if (base.grading) {
+        polOut.g = null;   // le professeur a retiré la note d'une évaluation
     }
     if (Object.keys(polOut).length) out.p = polOut;
     return out;
 }
+
+const CLES_ETAPE = {
+    nbItems: 'q', threshold: 't', weight: 'w', timeLimit: 'l',
+    forceSeed: 'f', sansTotal: 'st', bonus: 'b'
+};
 
 function compactStep(s) {
     const out = { e: s.exerciseId };
@@ -288,19 +344,37 @@ function compactStep(s) {
     if (s.threshold !== null && s.threshold !== undefined) out.t = s.threshold;
     if (s.weight && s.weight !== 1) out.w = s.weight;
     if (s.timeLimit) out.l = s.timeLimit;
+    if (s.forceSeed) out.f = s.forceSeed;
+    // UNE ÉTAPE-JEU et UNE ÉTAPE SANS TOTAL ne sont pas des détails
+    // d'affichage : l'une ne compte ni dans le travail ni dans la note, l'autre
+    // change l'en-tête que l'élève lit. Les perdre change le parcours.
+    if (s.sansTotal) out.st = 1;
+    if (s.bonus) out.b = 1;
     if (s.overrides && Object.keys(s.overrides).length) out.o = s.overrides;
     return out;
 }
 
 function expand(obj) {
-    const pol = { ...defaultPolicy() };
-    if (obj.p) {
-        if (obj.p.m) pol.mode = obj.p.m;
-        if (obj.p.h !== undefined) pol.hints = !!obj.p.h;
-        if (obj.p.a) pol.maxAttemptsPerItem = obj.p.a;
-        if (obj.p.g) pol.grading = { scale: obj.p.g.s, rule: obj.p.g.r, penalties: { hint: 0.25, retry: 0.5 }, arrondi: 0.5 };
+    // On repart de la politique du mode, puis on applique ce qui voyageait.
+    const p = obj.p || {};
+    const pol = { ...politiqueDuMode(p.m) };
+    if (p.m) pol.mode = p.m;
+    for (const [cle, court] of Object.entries(CLES_POLITIQUE)) {
+        if (p[court] === undefined) continue;
+        // L'ancien format écrivait les booléens en 1/0 : il y a des liens dans
+        // la nature, ils doivent continuer de se lire.
+        pol[cle] = (typeof pol[cle] === 'boolean') ? !!p[court] : p[court];
+    }
+    if (p.g === null) {
+        pol.grading = null;
+    } else if (p.g) {
+        pol.grading = { ...(politiqueDuMode(p.m).grading || {}) };
+        for (const [cle, court] of Object.entries(CLES_BAREME)) {
+            if (p.g[court] !== undefined) pol.grading[cle] = p.g[court];
+        }
     }
     const path = makePath(obj.n || 'Parcours partagé', [], resolvePolicy(pol));
+    if (obj.b !== undefined) path.bonusSeuil = obj.b;
     path.steps = (obj.s || []).map((s, i) => ({
         stepId: `sc_${i}`,
         exerciseId: s.e,
@@ -309,7 +383,9 @@ function expand(obj) {
         threshold: s.t !== undefined ? s.t : null,
         weight: s.w || 1,
         timeLimit: s.l || null,
-        forceSeed: null
+        forceSeed: s.f || null,
+        sansTotal: !!s.st,
+        bonus: !!s.b
     }));
     return path;
 }
