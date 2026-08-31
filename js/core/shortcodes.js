@@ -6,6 +6,11 @@
 // les tables en lettres. Impossible de coder une politique, un barème, un
 // paramètre non numérique.
 //
+// La table écrite à la main est revenue depuis, mais pour une autre raison et
+// sans le défaut : elle ne sert plus qu'au CODE COURT (voir plus bas), elle
+// couvre tout le catalogue, et un test échoue si un exercice y manque. Rien
+// ne peut plus disparaître en silence.
+//
 // Format v2 : le parcours est sérialisé en JSON compact puis encodé en
 // base64url. Rien à maintenir quand on ajoute un exercice, et un parcours
 // complet (politique + barème + surcharges) tient dans un lien.
@@ -13,70 +18,105 @@
 // Un code v2 commence par « M2- ». Les anciens codes restent décodables.
 
 import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
-import { getExerciseById, exercices } from '../data/catalog.js';
+import { getExerciseById } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy } from './policy.js';
 import { seuilConseille } from './seuilEtape.js';
+import { CODES_EXERCICES, EXERCICE_PAR_IDENTITE } from '../data/codesExercices.js';
 
 const PREFIX = 'M2-';
 
 /**
- * LE CODE COURT — quatre caractères, pour l'usage le plus fréquent.
+ * LE CODE COURT — TROIS LETTRES, pour l'usage le plus fréquent.
  *
  * « Fais l'exercice sur les relatifs ce soir » n'a pas besoin d'un parcours :
  * c'est UN exercice, avec ses réglages d'usine. Le format complet coûtait
  * pourtant 81 caractères de base64 — à recopier sur un téléphone, en devoirs,
  * c'est une faute de frappe garantie et un élève qui abandonne.
  *
- * Le code court est calculé À PARTIR de l'identifiant de l'exercice : rien à
- * tenir à jour quand on en ajoute un, et le code d'un exercice ne change
- * jamais tant que son identifiant ne change pas. On le VÉRIFIE : un test
- * s'assure qu'aucun couple d'exercices du catalogue ne tombe sur le même code.
+ * DEUX LETTRES D'IDENTITÉ, UNE LETTRE DE CONTRÔLE. Rémy : « pourquoi pas 2
+ * caractères, ça FAIT 26*26 possibilités de jeu ». C'est vrai : 23 lettres au
+ * carré font 529 places, largement de quoi loger les 139 exercices. Mais on a
+ * mesuré ce que deux lettres SEULES coûtaient, sur cette table-ci : sur les
+ * 6 116 façons de se tromper d'une lettre, 2 440 tombent sur un AUTRE exercice
+ * du catalogue. Deux fois sur cinq. Il s'ouvre sans un mot, l'élève travaille
+ * sagement la mauvaise chose, et personne ne le sait. (C'est même pire que le
+ * hasard, justement parce que les codes sont mnémoniques : les exercices d'une
+ * même famille se ressemblent, donc leurs codes se touchent.)
  *
- * L'alphabet écarte ce qui se lit mal recopié à la main — pas de O contre 0,
- * pas de I contre 1, pas de S contre 5.
+ * On aurait pu allonger l'identité — plus de places, moins de voisins occupés.
+ * Mais rallonger ne fait que RARÉFIER la faute silencieuse, jamais disparaître.
+ * La troisième lettre, elle, ne porte aucune information : elle vérifie les
+ * deux autres, et ramène le risque à zéro. Une lettre de plus, et c'est une
+ * garantie au lieu d'une probabilité.
+ *
+ * CE QU'ELLE GARANTIT, exactement — et c'est démontrable, pas empirique :
+ *   • toute faute d'UNE lettre, à n'importe laquelle des trois places, est
+ *     rejetée (message d'erreur, jamais un mauvais exercice) ;
+ *   • l'inversion des deux lettres d'identité est rejetée aussi.
+ * La démonstration tient à deux choses : l'alphabet compte 23 lettres, et 23
+ * est PREMIER. Le contrôle vaut (1×première + 2×deuxième) modulo 23 ; changer
+ * une lettre de d ≠ 0 change le contrôle de d ou de 2d, et ni l'un ni l'autre
+ * n'est nul modulo un nombre premier. Inverser les deux le change de
+ * (première − deuxième), nul seulement si les lettres étaient identiques —
+ * auquel cas il n'y a rien à inverser.
+ *
+ * L'alphabet écarte I, O et Q : recopiés à la main ils deviennent 1, 0 et O.
+ * Il ne contient AUCUN chiffre, et c'est utile deux fois — plus aucune
+ * confusion possible entre une lettre et un chiffre, et le nombre de questions
+ * écrit à la suite se sépare tout seul du code.
  */
-const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXYZ2346789';
-const LONGUEUR_COURT = 4;
+const ALPHABET = 'ABCDEFGHJKLMNPRSTUVWXYZ';   // 23 lettres — 23 est premier
+const LONGUEUR_IDENTITE = 2;
+const LONGUEUR_COURT = LONGUEUR_IDENTITE + 1;
 
-export function codeCourt(exerciseId) {
-    // FNV-1a, 32 bits : court, sans dépendance, et bien réparti sur des
-    // chaînes qui se ressemblent — « num-relatifs-addition » et
-    // « num-relatifs-addition-b » doivent tomber loin l'un de l'autre.
-    let h = 0x811c9dc5;
-    const s = String(exerciseId || '');
-    for (let i = 0; i < s.length; i++) {
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 0x01000193) >>> 0;
+/** La lettre qui vérifie les deux autres : (1×a + 2×b) modulo 23. */
+function lettreDeControle(identite) {
+    let somme = 0;
+    for (let i = 0; i < identite.length; i++) {
+        const rang = ALPHABET.indexOf(identite[i]);
+        if (rang < 0) return null;
+        somme += (i + 1) * rang;
     }
-    let out = '';
-    for (let i = 0; i < LONGUEUR_COURT; i++) {
-        out += ALPHABET[h % ALPHABET.length];
-        h = Math.floor(h / ALPHABET.length);
-    }
-    return out;
+    return ALPHABET[somme % ALPHABET.length];
 }
 
 /**
- * LE NOMBRE DE QUESTIONS ÉCRIT APRÈS LE CODE, en clair : « K7QP-12 ».
+ * @returns {string} les trois lettres de l'exercice, ou '' s'il n'a pas encore
+ * d'identité dans la table. Le vide n'est pas une panne : l'appelant retombe
+ * alors sur le format complet, qui sait tout coder.
+ */
+export function codeCourt(exerciseId) {
+    const identite = CODES_EXERCICES[exerciseId];
+    if (!identite) return '';
+    const controle = lettreDeControle(identite);
+    return controle ? identite + controle : '';
+}
+
+/**
+ * LE NOMBRE DE QUESTIONS ÉCRIT APRÈS LE CODE, en clair : « TPW-12 ».
  *
  * En clair, et non encodé : c'est justement ce que le professeur veut pouvoir
  * dicter et l'élève relire. Deux chiffres au plus — au-delà de quatre-vingt
  * dix-neuf questions, ce n'est plus un devoir du soir.
  *
  * ET LE SÉPARATEUR NE COMPTE PAS. Un code écrit au tableau se recopie comme on
- * l'entend : « K7QP-12 », « k7qp 12 », « K7QP12 », un tiret long parce que le
- * traitement de texte l'a changé. On ne lit donc pas un séparateur, on lit
- * QUATRE CARACTÈRES puis, s'il en reste, un nombre — et le découpage ne peut
- * pas être ambigu puisque le code fait toujours exactement quatre caractères.
- * Tout le reste (espaces, tirets, points) tombe au nettoyage.
+ * l'entend : « TPW-12 », « tpw 12 », « TPW12 », un tiret long parce que le
+ * traitement de texte l'a changé. On ne lit donc pas un séparateur : le code
+ * n'a que des lettres, le nombre n'a que des chiffres, la coupure est là où
+ * les unes cèdent la place aux autres. Tout le reste tombe au nettoyage.
  */
 function decouperCodeCourt(code) {
     const brut = normaliserCourt(code);
-    if (brut.length < LONGUEUR_COURT) return null;
-    const suite = brut.slice(LONGUEUR_COURT);
-    if (suite && !/^\d{1,2}$/.test(suite)) return null;
-    const n = suite ? Number(suite) : null;
-    return { tete: brut.slice(0, LONGUEUR_COURT), questions: (n >= 1 && n <= 99) ? n : null };
+    const m = /^([A-Z]+)([0-9]*)$/.exec(brut);
+    if (!m) return null;
+    const tete = m[1];
+    if (tete.length !== LONGUEUR_COURT) return null;
+    const identite = tete.slice(0, LONGUEUR_IDENTITE);
+    // Le contrôle d'abord : un code faux doit être refusé, pas interprété.
+    if (tete[LONGUEUR_IDENTITE] !== lettreDeControle(identite)) return null;
+    const n = m[2] ? Number(m[2]) : null;
+    if (m[2] && !(n >= 1 && n <= 99)) return null;
+    return { identite, questions: n };
 }
 
 function questionsDuCodeCourt(code) {
@@ -84,10 +124,17 @@ function questionsDuCodeCourt(code) {
     return d ? d.questions : null;
 }
 
-/** Le code tel qu'on l'écrit au tableau : « REL-K7QP » se lit, « relk7qp » aussi. */
+/**
+ * Le code tel qu'on l'écrit au tableau : « TP-W » se lit, « tpw » aussi.
+ *
+ * On ne remplace plus rien ici. L'ancien code mélangeait lettres et chiffres et
+ * devait deviner (« O » vaut-il zéro ?) ; celui-ci n'a que des lettres, et un
+ * caractère qui n'est pas de l'alphabet fait simplement échouer le code — ce
+ * qui est le bon comportement : mieux vaut « code inconnu » qu'un exercice pris
+ * au hasard.
+ */
 export const normaliserCourt = (code) => String(code || '')
-    .toUpperCase().replace(/[^A-Z0-9]/g, '')
-    .replace(/O/g, '0').replace(/I/g, '1').replace(/S/g, '5');
+    .toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 /**
  * Le nombre d'unités d'un exercice laissé « tel quel ».
@@ -107,7 +154,7 @@ const telQuel = questionsConseilleesDe;
  * L'idéal serait que le code soit hyper court. » Il n'y avait pas de moyen :
  * changer le compte faisait basculer sur le format complet — quatre-vingts
  * caractères de base64 pour la seule différence d'un nombre. On l'écrit donc
- * APRÈS le code, en clair : « K7QP-12 », sept caractères qu'on dicte encore.
+ * APRÈS le code, en clair : « TPW-12 », six caractères qu'on dicte encore.
  *
  * Le seuil suit la règle des 70 % comme partout ailleurs : il n'est pas dans
  * le code parce qu'il se recalcule.
@@ -240,17 +287,20 @@ function decodeLegacy(code) {
 
 export const Shortcodes = {
     /**
-     * @returns {string} code partageable — QUATRE CARACTÈRES quand le parcours
-     * se résume à un exercice pris tel quel, le format complet sinon.
+     * @returns {string} code partageable — TROIS LETTRES quand le parcours se
+     * résume à un exercice pris tel quel, le format complet sinon.
      */
     encodePath(path) {
         try {
             const p = normalizePath(path);
-            if (estSimple(p)) {
+            const code = estSimple(p) ? codeCourt(p.steps[0].exerciseId) : '';
+            // Pas d'identité pour cet exercice ? On ne bricole pas un code
+            // approximatif : le format complet sait tout coder, il prend le
+            // relais et le partage marche quand même.
+            if (code) {
                 const s = p.steps[0];
-                const code = codeCourt(s.exerciseId);
                 const n = s.nbItems || telQuel(s.exerciseId);
-                // « K7QP » quand c'est l'exercice tel quel, « K7QP-12 » quand
+                // « TPW » quand c'est l'exercice tel quel, « TPW-12 » quand
                 // le professeur a choisi le nombre de questions.
                 return n === telQuel(s.exerciseId) ? code : `${code}-${n}`;
             }
@@ -289,11 +339,11 @@ export const Shortcodes = {
         }
     },
 
-    /** L'exercice désigné par un code court, ou null. */
+    /** L'exercice désigné par un code court, ou null si le code ne tient pas. */
     exerciceDuCodeCourt(code) {
         const d = decouperCodeCourt(code);
         if (!d) return null;
-        return exercices.find(e => normaliserCourt(codeCourt(e.id)) === d.tete) || null;
+        return getExerciseById(EXERCICE_PAR_IDENTITE.get(d.identite)) || null;
     },
 
     shareUrl(path) {

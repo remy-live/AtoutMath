@@ -1071,20 +1071,23 @@ function initToolbar() {
                 return;
             }
             // LE CODE COURT SE DIT À VOIX HAUTE. Un parcours d'un seul
-            // exercice tient en quatre caractères — sept quand le professeur a
-            // choisi le nombre de questions, « K7QP-12 » : c'est celui qu'on
+            // exercice tient en trois lettres — six quand le professeur a
+            // choisi le nombre de questions, « TPW-12 » : c'est celui qu'on
             // écrit au tableau pour les devoirs du soir. On le MONTRE
             // toujours, même quand le lien part au presse-papiers — un élève
             // qui n'a pas le lien doit pouvoir taper le code.
             const code = Shortcodes.encodePath(state.currentPath);
-            const court = code.length <= 8;
+            const court = !code.startsWith('M2-');
             try {
                 await navigator.clipboard.writeText(Shortcodes.shareUrl(state.currentPath));
                 showToast(court ? `Lien copié — code à dicter : ${code}`
                     : 'Lien copié dans le presse-papier !', 'success');
                 if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
                     + `<br><br>${code.length} caractères, à taper dans « J'ai un code ». `
-                    + 'Le lien est aussi dans le presse-papiers.');
+                    + 'La dernière lettre vérifie les deux autres : si l\'élève '
+                    + 'en recopie une de travers, le code est refusé plutôt que '
+                    + 'de lui ouvrir un autre exercice.'
+                    + '<br>Le lien est aussi dans le presse-papiers.');
             } catch (e) {
                 showAlert(`Code du parcours :\n\n${code}`);
             }
