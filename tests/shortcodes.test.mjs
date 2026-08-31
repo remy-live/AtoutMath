@@ -221,3 +221,96 @@ test('un code trop court ou trop long ne s\'invente pas un exercice', () => {
     assert.equal(Shortcodes.exerciceDuCodeCourt(`${bon}-120`), null);
     assert.ok(Shortcodes.exerciceDuCodeCourt(`${bon}-99`), '99 questions restent lisibles');
 });
+
+// --- Plusieurs exercices dans un code dicté -----------------------------------
+
+test('UN PARCOURS DE PLUSIEURS EXERCICES SE DICTE AUSSI', () => {
+    // Rémy : « pourquoi du coup les liens sont si grands lorsqu'on met par
+    // exemple deux exercices ? » Parce que le format complet transportait le
+    // NOM DE FICHIER de chaque exercice — « num-relatifs-addition », vingt-et-un
+    // caractères, un tiers de plus une fois en base64 — plus le nom du
+    // parcours. Deux exercices : 161 caractères, un lien de 178.
+    const p = makePath('Révisions du chapitre 3', [
+        makeStep('num-relatifs-addition', {}, { nbItems: 12 }),
+        makeStep('calc-pythagore', {}, { nbItems: 20 })
+    ], defaultPolicy());
+    const code = Shortcodes.encodePath(p);
+    assert.ok(code.length <= 15, `deux exercices devraient tenir en une quinzaine : ${code}`);
+    assert.match(code, /^[A-Z]{3}-12-[A-Z]{3}-20$/, code);
+
+    const relu = Shortcodes.decodePath(code);
+    assert.equal(relu.steps.length, 2);
+    // L'ORDRE EST CE QUE LE PROFESSEUR A CONSTRUIT : il ne doit pas s'inverser.
+    assert.equal(relu.steps[0].exerciseId, 'num-relatifs-addition');
+    assert.equal(relu.steps[1].exerciseId, 'calc-pythagore');
+    assert.equal(relu.steps[0].nbItems, 12);
+    assert.equal(relu.steps[1].nbItems, 20);
+    assert.equal(relu.steps[1].threshold, seuilConseille(20));
+    // Le nom ne voyage pas, mais l'élève ne doit pas lire « Parcours partagé ».
+    assert.ok(/Relatifs/.test(relu.name) && /Pythagore/.test(relu.name), relu.name);
+});
+
+test('une chaîne se recopie comme on l\'entend, elle aussi', () => {
+    const code = Shortcodes.encodePath(makePath('C', [
+        makeStep('calc-sudoku', {}, { nbItems: 4 }),
+        makeStep('voc-mot-code', {}, {})
+    ], defaultPolicy()));
+    const attendu = ['calc-sudoku', 'voc-mot-code'];
+    for (const ecrit of [code, code.toLowerCase(), code.replace(/-/g, ''),
+        code.replace(/-/g, ' '), `  ${code}  `, code.replace('-', ' — ')]) {
+        const relu = Shortcodes.decodePath(ecrit);
+        assert.ok(relu && relu.steps.length === 2, `« ${ecrit} » devrait se lire`);
+        assert.deepEqual(relu.steps.map(s => s.exerciseId), attendu, `« ${ecrit} »`);
+        assert.equal(relu.steps[0].nbItems, 4, `« ${ecrit} » : mauvais compte`);
+    }
+});
+
+test('UNE LETTRE FAUSSE DANS UNE CHAÎNE REFUSE TOUTE LA CHAÎNE', () => {
+    // La garantie ne doit pas s'affaiblir quand le parcours s'allonge : chaque
+    // groupe de trois lettres porte son propre contrôle, donc une faute
+    // n'importe où fait échouer la lecture entière — jamais un parcours
+    // ressemblant.
+    const ALPHABET = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+    const code = Shortcodes.encodePath(makePath('C', [
+        makeStep('calc-sudoku', {}, {}),
+        makeStep('geo-thales', {}, {}),
+        makeStep('voc-mot-code', {}, {})
+    ], defaultPolicy()));
+    const brut = code.replace(/-/g, '');
+    assert.equal(brut.length, 9, code);
+    let essais = 0;
+    for (let i = 0; i < brut.length; i++) {
+        for (const lettre of ALPHABET) {
+            if (lettre === brut[i]) continue;
+            essais++;
+            const faux = brut.slice(0, i) + lettre + brut.slice(i + 1);
+            assert.equal(Shortcodes.decodePath(faux), null, `« ${faux} » se lit alors qu'il est faux`);
+        }
+    }
+    assert.equal(essais, 9 * 22);
+});
+
+test('un réglage qui change ce que l\'élève reçoit repasse au format complet', () => {
+    // La chaîne courte ne code que des exercices, un ordre et des nombres de
+    // questions. Tout ce qui modifie l'exercice lui-même doit voyager en
+    // entier — mieux vaut un lien long qu'un parcours amputé.
+    const cas = {
+        'une surcharge': makePath('X', [
+            makeStep('calc-sudoku', { taille: 9 }, {}),
+            makeStep('geo-thales', {}, {})], defaultPolicy()),
+        'un temps limité': makePath('X', [
+            makeStep('calc-sudoku', {}, { timeLimit: 300 }),
+            makeStep('geo-thales', {}, {})], defaultPolicy()),
+        'un coefficient': makePath('X', [
+            makeStep('calc-sudoku', {}, { weight: 3 }),
+            makeStep('geo-thales', {}, {})], defaultPolicy()),
+        'un seuil choisi': makePath('X', [
+            makeStep('calc-sudoku', {}, { nbItems: 10, threshold: 10 }),
+            makeStep('geo-thales', {}, {})], defaultPolicy())
+    };
+    for (const [quoi, p] of Object.entries(cas)) {
+        const code = Shortcodes.encodePath(p);
+        assert.ok(code.startsWith('M2-'), `${quoi} : devrait garder le format complet, on a « ${code} »`);
+        assert.ok(Shortcodes.decodePath(code), `${quoi} : et rester relisible`);
+    }
+});

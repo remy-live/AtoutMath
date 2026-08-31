@@ -53,6 +53,11 @@ const PREFIX = 'M2-';
  *   • toute faute d'UNE lettre, à n'importe laquelle des trois places, est
  *     rejetée (message d'erreur, jamais un mauvais exercice) ;
  *   • l'inversion des deux lettres d'identité est rejetée aussi.
+ * CE QU'ELLE NE GARANTIT PAS, et il faut le dire : les CHIFFRES du nombre de
+ * questions ne sont pas protégés. « ARF-12 » mal recopié en « ARF-13 » donne
+ * treize questions au lieu de douze. C'est délibéré : l'exercice reste le bon,
+ * la faute est visible et sans gravité, et protéger le nombre coûterait une
+ * lettre de plus à dicter pour un risque qui ne fait pas travailler à côté.
  * La démonstration tient à deux choses : l'alphabet compte 23 lettres, et 23
  * est PREMIER. Le contrôle vaut (1×première + 2×deuxième) modulo 23 ; changer
  * une lettre de d ≠ 0 change le contrôle de d ou de 2d, et ni l'un ni l'autre
@@ -104,24 +109,48 @@ export function codeCourt(exerciseId) {
  * traitement de texte l'a changé. On ne lit donc pas un séparateur : le code
  * n'a que des lettres, le nombre n'a que des chiffres, la coupure est là où
  * les unes cèdent la place aux autres. Tout le reste tombe au nettoyage.
+ *
+ * ET PLUSIEURS EXERCICES S'ÉCRIVENT À LA SUITE : « ARF-12-TPW-20 ». Rémy :
+ * « pourquoi du coup les liens sont si grands lorsqu'on met par exemple deux
+ * exercices ? » Parce que le format complet transportait le NOM DE FICHIER de
+ * chaque exercice en toutes lettres — « num-relatifs-addition », vingt-et-un
+ * caractères, puis un tiers de plus une fois passé en base64. Deux exercices
+ * coûtaient 161 caractères. Depuis que chaque exercice a ses deux lettres, il
+ * n'y a plus de raison : on enchaîne les codes courts, et les mêmes 161
+ * caractères en font 13.
+ *
+ * La lecture reste sans ambiguïté SANS séparateur, et c'est ce qui permet au
+ * nettoyage de tout jeter : trois lettres, puis zéro à deux chiffres, et on
+ * recommence. « ARF12TPW20 » se relit aussi bien que « ARF-12 TPW-20 ».
  */
-function decouperCodeCourt(code) {
+const MOTIF_ETAPE = /([A-Z]{3})([0-9]{0,2})/y;
+
+function decouperChaine(code) {
     const brut = normaliserCourt(code);
-    const m = /^([A-Z]+)([0-9]*)$/.exec(brut);
-    if (!m) return null;
-    const tete = m[1];
-    if (tete.length !== LONGUEUR_COURT) return null;
-    const identite = tete.slice(0, LONGUEUR_IDENTITE);
-    // Le contrôle d'abord : un code faux doit être refusé, pas interprété.
-    if (tete[LONGUEUR_IDENTITE] !== lettreDeControle(identite)) return null;
-    const n = m[2] ? Number(m[2]) : null;
-    if (m[2] && !(n >= 1 && n <= 99)) return null;
-    return { identite, questions: n };
+    if (!brut) return null;
+    const etapes = [];
+    let i = 0;
+    while (i < brut.length) {
+        MOTIF_ETAPE.lastIndex = i;
+        const m = MOTIF_ETAPE.exec(brut);
+        if (!m || m.index !== i) return null;
+        const identite = m[1].slice(0, LONGUEUR_IDENTITE);
+        // Le contrôle d'abord : un code faux doit être refusé, pas interprété.
+        if (m[1][LONGUEUR_IDENTITE] !== lettreDeControle(identite)) return null;
+        const exerciseId = EXERCICE_PAR_IDENTITE.get(identite);
+        if (!exerciseId || !getExerciseById(exerciseId)) return null;
+        const n = m[2] ? Number(m[2]) : null;
+        if (m[2] && !(n >= 1 && n <= 99)) return null;
+        etapes.push({ exerciseId, questions: n });
+        i = MOTIF_ETAPE.lastIndex;
+    }
+    return etapes.length ? etapes : null;
 }
 
-function questionsDuCodeCourt(code) {
-    const d = decouperCodeCourt(code);
-    return d ? d.questions : null;
+/** Le découpage d'un code à UN seul exercice, ou null. */
+function decouperCodeCourt(code) {
+    const etapes = decouperChaine(code);
+    return (etapes && etapes.length === 1) ? etapes[0] : null;
 }
 
 /**
@@ -147,7 +176,7 @@ export const normaliserCourt = (code) => String(code || '')
 const telQuel = questionsConseilleesDe;
 
 /**
- * Ce parcours se résume-t-il à UN exercice, sans réglage particulier ?
+ * Cette étape se réduit-elle à « cet exercice, tel quel » ?
  *
  * LE NOMBRE DE QUESTIONS NE DISQUALIFIE PLUS. Rémy : « pour envoyer un code
  * juste sur un exercice avec le nombre de questions, comment fait-on ?
@@ -157,25 +186,61 @@ const telQuel = questionsConseilleesDe;
  * APRÈS le code, en clair : « TPW-12 », six caractères qu'on dicte encore.
  *
  * Le seuil suit la règle des 70 % comme partout ailleurs : il n'est pas dans
- * le code parce qu'il se recalcule.
+ * le code parce qu'il se recalcule. Encore faut-il que celui de l'étape SOIT
+ * celui-là : sinon le code mentirait sur ce qu'il rend, et on repasse au
+ * format complet.
  */
-function estSimple(path) {
-    const p = normalizePath(path);
-    if (!p.steps || p.steps.length !== 1) return false;
-    const s = p.steps[0];
+function etapeSimple(s) {
+    if (!s || !s.exerciseId) return false;
     if (s.overrides && Object.keys(s.overrides).length) return false;
     if ((s.weight || 1) !== 1 || s.timeLimit) return false;
     const n = s.nbItems || telQuel(s.exerciseId);
     if (!Number.isInteger(n) || n < 1 || n > 99) return false;
-    // Le seuil doit être celui qu'on saura reconstruire, sinon le code
-    // mentirait sur ce qu'il rend.
     const seuilAttendu = seuilConseille(n);
     const seuil = (s.threshold === null || s.threshold === undefined) ? seuilAttendu : s.threshold;
-    if (seuil !== seuilAttendu) return false;
-    const pol = resolvePolicy(p.policy);
+    return seuil === seuilAttendu;
+}
+
+/** La politique est-elle celle d'usine ? Sinon elle doit voyager, donc base64. */
+function politiqueOrdinaire(policy) {
+    const pol = resolvePolicy(policy);
     const def = defaultPolicy();
     return pol.mode === def.mode && pol.hints === def.hints
         && pol.maxAttemptsPerItem === def.maxAttemptsPerItem && !pol.grading;
+}
+
+/**
+ * Le parcours écrit en codes courts enchaînés, ou '' s'il n'y tient pas.
+ *
+ * CE QUI NE TIENT PAS DANS LA CHAÎNE, et pourquoi c'est le bon partage :
+ * une surcharge (« seulement les tables de 7 »), un barème, un mode
+ * apprentissage, un temps limité, un coefficient — tout cela change ce que
+ * l'élève reçoit et doit donc voyager. Le format complet le fait. La chaîne
+ * courte ne prétend coder que ce qu'on peut dicter : des exercices, dans un
+ * ordre, avec leur nombre de questions.
+ *
+ * LE NOM DU PARCOURS N'Y EST PAS. C'est le seul vrai renoncement : « Révisions
+ * du chapitre 3 » pesait à lui seul 30 des 117 octets. À la relecture, le nom
+ * se refait à partir des exercices — moins joli, mais un élève qui reçoit
+ * « ARF-12-TPW-20 » au lieu de 178 caractères de lien y gagne largement.
+ */
+function chaineCourte(path) {
+    const p = normalizePath(path);
+    if (!p.steps || !p.steps.length) return '';
+    if (!politiqueOrdinaire(p.policy)) return '';
+    let out = '';
+    for (const s of p.steps) {
+        if (!etapeSimple(s)) return '';
+        const code = codeCourt(s.exerciseId);
+        // Pas d'identité pour cet exercice ? On ne bricole pas un code
+        // approximatif : le format complet sait tout coder, il prend le relais.
+        if (!code) return '';
+        const n = s.nbItems || telQuel(s.exerciseId);
+        // « ARF » quand c'est l'exercice tel quel, « ARF-12 » quand le
+        // professeur a choisi le nombre de questions.
+        out += (out ? '-' : '') + code + (n === telQuel(s.exerciseId) ? '' : `-${n}`);
+    }
+    return out;
 }
 
 // --- base64url ---------------------------------------------------------------
@@ -287,24 +352,13 @@ function decodeLegacy(code) {
 
 export const Shortcodes = {
     /**
-     * @returns {string} code partageable — TROIS LETTRES quand le parcours se
-     * résume à un exercice pris tel quel, le format complet sinon.
+     * @returns {string} code partageable — TROIS LETTRES par exercice quand le
+     * parcours n'est fait que d'exercices pris tels quels, le format complet
+     * dès qu'un réglage doit voyager.
      */
     encodePath(path) {
         try {
-            const p = normalizePath(path);
-            const code = estSimple(p) ? codeCourt(p.steps[0].exerciseId) : '';
-            // Pas d'identité pour cet exercice ? On ne bricole pas un code
-            // approximatif : le format complet sait tout coder, il prend le
-            // relais et le partage marche quand même.
-            if (code) {
-                const s = p.steps[0];
-                const n = s.nbItems || telQuel(s.exerciseId);
-                // « TPW » quand c'est l'exercice tel quel, « TPW-12 » quand
-                // le professeur a choisi le nombre de questions.
-                return n === telQuel(s.exerciseId) ? code : `${code}-${n}`;
-            }
-            return PREFIX + toBase64Url(JSON.stringify(compact(path)));
+            return chaineCourte(path) || PREFIX + toBase64Url(JSON.stringify(compact(path)));
         } catch (e) {
             console.error('[shortcodes] encodage impossible', e);
             return '';
@@ -319,31 +373,45 @@ export const Shortcodes = {
             if (trimmed.startsWith(PREFIX)) {
                 return expand(JSON.parse(fromBase64Url(trimmed.slice(PREFIX.length))));
             }
-            const court = this.exerciceDuCodeCourt(trimmed);
-            if (court) {
-                const path = makePath(court.title || 'Exercice', [], defaultPolicy());
-                // Le nombre de questions écrit après le tiret, s'il y est —
-                // et le seuil s'en déduit, comme partout ailleurs.
-                const n = questionsDuCodeCourt(trimmed) || telQuel(court.id);
-                path.steps = [{
-                    stepId: 'sc_0', exerciseId: court.id, overrides: {},
-                    nbItems: n, threshold: seuilConseille(n), weight: 1,
-                    timeLimit: null, forceSeed: null
-                }];
+            const chaine = decouperChaine(trimmed);
+            if (chaine) {
+                // LE NOM SE REFAIT à partir des exercices : il ne voyage pas
+                // dans la chaîne, mais l'élève doit lire autre chose que
+                // « Parcours partagé » en haut de son écran.
+                const titres = chaine.map(e => (getExerciseById(e.exerciseId) || {}).title || 'Exercice');
+                const path = makePath(titres.join(' + '), [], defaultPolicy());
+                path.steps = chaine.map((e, i) => {
+                    // Le nombre de questions écrit après le tiret, s'il y est —
+                    // et le seuil s'en déduit, comme partout ailleurs.
+                    const n = e.questions || telQuel(e.exerciseId);
+                    return {
+                        stepId: `sc_${i}`, exerciseId: e.exerciseId, overrides: {},
+                        nbItems: n, threshold: seuilConseille(n), weight: 1,
+                        timeLimit: null, forceSeed: null
+                    };
+                });
                 return path;
             }
-            return decodeLegacy(trimmed);
+            // UN CODE QU'ON NE SAIT PAS LIRE REND null, JAMAIS UN PARCOURS VIDE.
+            // L'ancien décodeur ignorait en silence ce qu'il ne reconnaissait
+            // pas et rendait un parcours sans aucune étape : l'appelant croyait
+            // avoir réussi. Refuser franchement, c'est le message d'erreur que
+            // l'élève doit voir.
+            const ancien = decodeLegacy(trimmed);
+            return (ancien && ancien.steps.length) ? ancien : null;
         } catch (e) {
             console.warn('[shortcodes] code illisible', e);
             return null;
         }
     },
 
-    /** L'exercice désigné par un code court, ou null si le code ne tient pas. */
+    /**
+     * L'exercice désigné par un code court à UN seul exercice, ou null.
+     * Une chaîne de plusieurs exercices n'en désigne pas un : elle rend null.
+     */
     exerciceDuCodeCourt(code) {
         const d = decouperCodeCourt(code);
-        if (!d) return null;
-        return getExerciseById(EXERCICE_PAR_IDENTITE.get(d.identite)) || null;
+        return d ? (getExerciseById(d.exerciseId) || null) : null;
     },
 
     shareUrl(path) {

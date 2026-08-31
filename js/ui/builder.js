@@ -1070,10 +1070,11 @@ function initToolbar() {
                 showAlert('Ajoutez au moins une activité pour générer un code.');
                 return;
             }
-            // LE CODE COURT SE DIT À VOIX HAUTE. Un parcours d'un seul
-            // exercice tient en trois lettres — six quand le professeur a
-            // choisi le nombre de questions, « TPW-12 » : c'est celui qu'on
-            // écrit au tableau pour les devoirs du soir. On le MONTRE
+            // LE CODE COURT SE DIT À VOIX HAUTE. Trois lettres par exercice,
+            // et le nombre de questions à la suite quand le professeur l'a
+            // choisi : « ARF-12-TPW-20 » pour deux exercices, treize
+            // caractères là où le format complet en demandait 161. C'est
+            // celui qu'on écrit au tableau pour les devoirs. On le MONTRE
             // toujours, même quand le lien part au presse-papiers — un élève
             // qui n'a pas le lien doit pouvoir taper le code.
             const code = Shortcodes.encodePath(state.currentPath);
@@ -1084,9 +1085,10 @@ function initToolbar() {
                     : 'Lien copié dans le presse-papier !', 'success');
                 if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
                     + `<br><br>${code.length} caractères, à taper dans « J'ai un code ». `
-                    + 'La dernière lettre vérifie les deux autres : si l\'élève '
-                    + 'en recopie une de travers, le code est refusé plutôt que '
-                    + 'de lui ouvrir un autre exercice.'
+                    + 'Chaque groupe de trois lettres est un exercice, et la '
+                    + 'troisième vérifie les deux autres : si l\'élève en '
+                    + 'recopie une de travers, le code est refusé plutôt que de '
+                    + 'lui ouvrir autre chose.'
                     + '<br>Le lien est aussi dans le presse-papiers.');
             } catch (e) {
                 showAlert(`Code du parcours :\n\n${code}`);
