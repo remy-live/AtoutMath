@@ -53,6 +53,7 @@ import { relierGenerator } from '../generators/relier.js';
 import { codageGenerator } from '../generators/codage.js';
 import { cheminNumeroteGenerator } from '../generators/cheminNumerote.js';
 import { labyNombresGenerator } from '../generators/labyrintheNombres.js';
+import { bonsCheminsFicheGenerator } from '../generators/bonsCheminsFiche.js';
 import { solidesGenerator } from '../generators/solides.js';
 import { cubesGenerator } from '../generators/cubes.js';
 import { repereFicheGenerator } from '../generators/repereFiche.js';
@@ -121,6 +122,7 @@ import {
     slitherlinkGenerator, relierGenerator, solidesGenerator, cubesGenerator,
     repereFicheGenerator,
     codageGenerator, cheminNumeroteGenerator, labyNombresGenerator,
+    bonsCheminsFicheGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,
     proportionFicheGenerator, pairesFicheGenerator, rectangleFicheGenerator,
     motsCachesFicheGenerator, plateauxPapierGenerator, anagrammesFicheGenerator,
@@ -660,6 +662,7 @@ const legacy = [
     ['relier', 'Relier les points', 'relier', 'engineRelier', 'figure', 3],
     ['chemin-numerote', 'Le Chemin Numéroté', 'chemin', 'engineChemin', 'grille', 4],
     ['laby-nombres', 'Le Labyrinthe des Nombres', 'labyNombres', 'engineLabyNombres', 'grille', 4],
+    ['bons-chemins', 'Les Bons Chemins (produits)', 'bonsChemins', 'engineBonsChemins', 'grille', 6],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel', 'échange', 40],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille', 'trajet', 6],
     ['course-vecteurs', 'Course de Vecteurs', 'courseVecteurs', 'engineCourseVecteurs', 'course', 3],

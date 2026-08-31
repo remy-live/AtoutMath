@@ -10024,6 +10024,108 @@ function dessinerCheminPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+// --- LES BONS CHEMINS, SUR LE PAPIER ------------------------------------------
+//
+// Sa forme d'origine : Rémy est parti d'une fiche photocopiée. Une grille de
+// nombres avec un D et un A dans deux coins opposés, la cible écrite dessous,
+// et rien d'autre — le chemin se trace au crayon.
+//
+// LA CIBLE EST SOUS LA GRILLE, PAS DANS LA CONSIGNE. Six blocs sur une page,
+// c'est six cibles différentes : les mettre dans la consigne commune les
+// mélangerait. Chaque bloc porte donc la sienne, en gras, exactement comme sur
+// la fiche de Rémy — « Trouve 240 ».
+
+function geoBonsChemins(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    // La ligne de la cible mange le bas du bloc : on la réserve AVANT de
+    // calculer le côté des cases, sinon la grille déborderait dessus.
+    const hCible = Math.max(4.5, Math.min(7, b.h * 0.16));
+    const dispo = { w: b.w, h: b.h - hCible };
+    const cote = Math.min(dispo.w / m.l, dispo.h / m.h);
+    const x0 = b.x + (b.w - cote * m.l) / 2;
+    const y0 = b.y + (dispo.h - cote * m.h) / 2;
+    const centre = (x, y) => ({ x: x0 + (x + 0.5) * cote, y: y0 + (y + 0.5) * cote });
+    return { b, m, cote, x0, y0, centre, yCible: y0 + cote * m.h + hCible * 0.62 };
+}
+
+function bonsCheminsPreviewHtml(item, slot, k, solution) {
+    const g = geoBonsChemins(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let dedans = '';
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            dedans += `<rect x="${T(g.x0 + x * g.cote)}" y="${T(g.y0 + y * g.cote)}"
+                width="${T(g.cote)}" height="${T(g.cote)}" fill="none"
+                stroke="#b0b6c5" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+        }
+    }
+    if (solution) {
+        const d = g.m.solution.map(([x, y], i) => {
+            const p = g.centre(x, y);
+            return `${i ? 'L' : 'M'}${T(p.x)} ${T(p.y)}`;
+        }).join(' ');
+        dedans += `<path d="${d}" fill="none" stroke="#8a90a0" stroke-linecap="round"
+            stroke-linejoin="round" stroke-width="${(g.cote * 0.3 * k).toFixed(2)}" opacity="0.5"/>`;
+    }
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            const v = String(g.m.cases[y][x]);
+            const p = g.centre(x, y);
+            dedans += `<text x="${T(p.x)}" y="${T(p.y)}" fill="#1a202c" font-weight="700"
+                font-size="${(g.cote * 0.42 * k).toFixed(2)}" text-anchor="middle"
+                dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${v}</text>`;
+        }
+    }
+    dedans += `<text x="${T(g.b.x + g.b.w / 2)}" y="${T(g.yCible)}" fill="#1a202c"
+        font-weight="700" font-size="${(g.cote * 0.4 * k).toFixed(2)}" text-anchor="middle"
+        dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">Trouve ${g.m.cible}</text>`;
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${dedans}</svg>`;
+}
+
+function dessinerBonsCheminsPdf(doc, item, slot, solution) {
+    const g = geoBonsChemins(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            doc.rect(g.x0 + x * g.cote, g.y0 + y * g.cote, g.cote, g.cote);
+        }
+    }
+
+    if (solution) {
+        // Le chemin en gros trait gris : il se lit d'un coup d'oeil sans
+        // couvrir les nombres, qu'on redessine par-dessus.
+        doc.setDrawColor(...ENCRE.gris);
+        doc.setLineWidth(g.cote * 0.26);
+        doc.setLineCap('round');
+        doc.setLineJoin('round');
+        for (let i = 1; i < g.m.solution.length; i++) {
+            const a = g.centre(...g.m.solution[i - 1]);
+            const b = g.centre(...g.m.solution[i]);
+            doc.line(a.x, a.y, b.x, b.y);
+        }
+        doc.setLineCap('butt');
+        doc.setLineJoin('miter');
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(7, Math.min(15, g.cote * 1.25)));
+    doc.setTextColor(...ENCRE.texte);
+    for (let y = 0; y < g.m.h; y++) {
+        for (let x = 0; x < g.m.l; x++) {
+            const p = g.centre(x, y);
+            doc.text(String(g.m.cases[y][x]), p.x, p.y, { align: 'center', baseline: 'middle' });
+        }
+    }
+    doc.setFontSize(Math.max(7, Math.min(13, g.cote * 1.15)));
+    doc.text(pourPdf(`Trouve ${g.m.cible}`), g.b.x + g.b.w / 2, g.yCible,
+        { align: 'center', baseline: 'middle' });
+    doc.setFont('helvetica', 'normal');
+}
+
 // --- LE LABYRINTHE DES NOMBRES, SUR LE PAPIER ---------------------------------
 //
 // Sa forme d'origine : Rémy est parti d'un livre. Une grille de nombres, un
@@ -10198,6 +10300,22 @@ export const RENDUS = {
         previewGrille: labyNombresPreviewHtml,
         pdfGrille: dessinerLabyNombresPdf,
         nomBloc: 'Grille', nomBlocs: 'grilles',
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3
+    },
+
+    'bons-chemins': {
+        titre: 'Les bons chemins',
+        consigne: () => 'TROUVE LE CHEMIN DE D À A dont le produit vaut le nombre écrit sous la '
+            + 'grille. On multiplie les nombres traversés ; on peut aller sur n\'importe quelle '
+            + 'case voisine, EN DIAGONALE AUSSI, mais jamais deux fois sur la même case. Ne '
+            + 'cherche pas au hasard : casse d\'abord le nombre en facteurs. Il te dira quels '
+            + 'nombres doivent être sur le chemin — et lesquels ne peuvent pas y être.',
+        previewGrille: bonsCheminsPreviewHtml,
+        pdfGrille: dessinerBonsCheminsPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        // Un peu plus haut que large : la cible s'écrit sous la grille.
+        proportions: { w: 1, h: 1.18 },
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
     },

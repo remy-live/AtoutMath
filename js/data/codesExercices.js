@@ -109,6 +109,7 @@ export const CODES_EXERCICES = {
     'logi-futoshiki':             'FU',   // Le Futoshiki
     'logi-carre-magique':         'MG',   // Le Carré Magique
     'logi-hexagrille':            'HX',   // L'Hexagrille
+    'calc-bons-chemins':          'BC',   // Les Bons Chemins
     'calc-2048':                  'XA',   // 2048
     'logi-dominos':               'DM',   // Les Dominos
     'logi-demineur':              'DE',   // Le Démineur

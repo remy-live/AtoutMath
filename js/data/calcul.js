@@ -1944,6 +1944,51 @@ export const calculExercises = [
         instruction: "Les neuf cases portent les chiffres de 1 à 9, chacun une seule fois. Chaque flèche donne la somme de la file qu'elle désigne. On ne devine jamais : on cherche une file où il ne manque QU'UNE case, on additionne ce qu'on y a déjà, et on soustrait de la somme visée. Les files courtes sont les plus bavardes — une somme de 3 sur deux cases, c'est 1 et 2, et rien d'autre."
     },
     {
+        // LES BONS CHEMINS. Rémy est parti d'une fiche : une grille de nombres,
+        // un D dans un coin, un A dans l'autre, et « trouve le bon chemin en
+        // multipliant les chiffres le long du chemin ».
+        //
+        // CE QUE ÇA TRAVAILLE VRAIMENT, c'est la DÉCOMPOSITION EN FACTEURS.
+        // Chercher 240 au hasard est désespérant ; voir que 240 = 2⁴ × 3 × 5,
+        // donc que le 3 est forcément sur le chemin et que le 7 ne peut pas y
+        // être, transforme la fouille en raisonnement. Le jeu pousse dans ce
+        // sens : il écrit la décomposition de la cible, il dit à chaque pas ce
+        // qu'il RESTE à faire, et il arrête net dès que le produit courant ne
+        // divise plus la cible — parce qu'à partir de là, plus aucun chemin ne
+        // peut aboutir.
+        //
+        // La règle des DIAGONALES ne figurait pas sur la fiche : on l'a
+        // retrouvée en vérifiant ses six cibles. Sans les diagonales, la
+        // première (« Trouve 8 ») est impossible. Un test le démontre.
+        id: 'calc-bons-chemins', title: 'Les Bons Chemins',
+        cree: '2026-08-31',
+        activityId: 'bons-chemins',
+        // SUR LE PAPIER AUSSI, et c'est même sa forme d'origine : une grille
+        // par bloc, la cible dessous, le chemin se trace au crayon.
+        printable: 'bons-chemins', printGeneratorId: 'logique.bons-chemins',
+        consignePapier: 'Trouve le chemin de D à A dont le produit vaut le nombre écrit dessous.',
+        sansRevision: true,
+        skills: ['num.arith.decomposition'],
+        params: { palier: 'moyen' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'moyen',
+                aide: 'Ce qui rend la recherche difficile n\'est pas la taille de la grille, c\'est '
+                    + 'la LONGUEUR du chemin : deux nombres se voient d\'un coup d\'œil, cinq '
+                    + 'obligent à casser la cible en facteurs avant de se lancer.',
+                options: [
+                    { value: 'facile', label: '3 × 3 — deux ou trois nombres' },
+                    { value: 'moyen', label: '3 × 3 — la fiche d\'origine' },
+                    { value: 'difficile', label: '3 × 3 — le grand tour' },
+                    { value: 'grand', label: '4 × 4 — la grande grille' }
+                ]
+            }
+        ],
+        motsClefs: ['chemin', 'produit', 'multiplication', 'facteurs', 'décomposition', 'diviseurs'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Pars du D, rejoins le A, et multiplie les nombres que tu traverses : le produit doit tomber exactement sur le nombre demandé. Tu peux aller sur n'importe quelle case voisine, EN DIAGONALE AUSSI, mais jamais deux fois sur la même case. Ne cherche pas au hasard : casse d'abord la cible en facteurs. 240 = 2 × 2 × 2 × 2 × 3 × 5 te dit qu'il y a forcément un 3 sur le chemin, et qu'un 7 n'y sera jamais. Et souviens-toi qu'une multiplication ne fait que grandir : si ton produit ne divise plus la cible, c'est fichu, reviens en arrière."
+    },
+    {
         // 2048. Un jeu de puissances de deux qui n'a pas besoin d'être
         // déguisé : chaque fusion est un doublement énoncé, et chaque coup
         // s'anticipe. Le robot montre la seule chose qui compte : on ne glisse
