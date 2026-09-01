@@ -1338,8 +1338,36 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: 1px solid var(--border); border-radius: 8px;
     background: var(--bg-panel); color: var(--text-main); cursor: pointer;
 }
-.path-selection-champ--mode { margin-left: auto; }
 @media (max-width: 720px) {
-    /* Poussé à la ligne, « à droite » ne veut plus rien dire. */
-    .path-selection-champ--mode { margin-left: 0; }
+    /* Poussés à la ligne, les champs restent groupés. */
+    .path-selection-reglages { gap: 6px 10px; }
+}
+
+/* --- L'ÉTAT DU RÔLE SE LIT SUR LE BOUTON -----------------------------------
+   Rémy : « si les exercices sélectionnés sont obligatoires, il faut que le
+   obligatoire soit entouré. Je pense qu'il y a une confusion. » Trois boutons
+   côte à côte ressemblent à trois actions ; ils décrivent aussi un état. */
+.path-selection-btn--actif {
+    border-color: var(--primary); color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+}
+.path-selection-btn--valider {
+    margin-left: auto; border-color: var(--primary);
+    background: var(--primary); color: #fff;
+}
+.path-selection-btn--valider:hover { filter: brightness(1.08); color: #fff; }
+
+/* Sans rien de coché, la barre se réduit à son bouton : « Tout sélectionner »
+   doit rester atteignable, sinon il faudrait cocher une case à la main pour
+   obtenir le bouton qui coche les cases. */
+.path-selection--vide {
+    border-color: var(--border);
+    background: transparent;
+}
+.path-selection--vide .path-selection-compte {
+    color: var(--text-muted); font-weight: 600;
+}
+@media (max-width: 720px) {
+    .path-selection-btn--valider { margin-left: 0; }
 }

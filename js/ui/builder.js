@@ -725,6 +725,20 @@ export function renderTeacherPath() {
 let coches = new Set();
 
 /**
+ * LA PART EXIGÉE RESTE CE QUE LE PROFESSEUR A ÉCRIT.
+ *
+ * Rémy : « le taux de réussite n'a pas de rapport, il peut rester à 70 % et ne
+ * devrait pas bouger si on change le nombre de questions. »
+ *
+ * On la relisait sur les étapes, et elle DÉRIVAIT : 70 % de douze questions
+ * font 8,4, donc neuf, et neuf sur douze se relisent 75 %. Le champ affichait
+ * alors 75 après une validation à 70, puis 80, puis… — le professeur voyait
+ * son réglage bouger tout seul. La part est donc gardée telle qu'elle a été
+ * tapée ; ce sont les étapes qui la traduisent, jamais l'inverse.
+ */
+let partVoulue = null;
+
+/**
  * La barre, posée ou retirée en tête de liste — SANS TOUCHER AUX LIGNES.
  *
  * Cocher une case ne redessine donc pas la liste : redessiner ferait perdre le
@@ -743,22 +757,59 @@ function majBarreSelection() {
 function barreDeSelection(steps) {
     const vivants = new Set(steps.map(s => s.stepId));
     [...coches].forEach(id => { if (!vivants.has(id)) coches.delete(id); });
-    if (!coches.size) return null;
+    if (!steps.length) return null;
 
-    const pris = steps.filter(s => coches.has(s.stepId));
     const barre = document.createElement('div');
     barre.className = 'path-selection';
+
+    // TOUT SÉLECTIONNER DOIT ÊTRE ATTEIGNABLE QUAND RIEN N'EST COCHÉ — sans
+    // quoi il faudrait cocher une case à la main pour obtenir le bouton qui
+    // coche les cases. La barre se montre donc toujours, réduite à ce seul
+    // bouton tant que la sélection est vide.
+    const toutes = coches.size === steps.length;
+    const tout = document.createElement('button');
+    tout.type = 'button';
+    tout.className = 'path-selection-btn path-selection-btn--fin';
+    tout.textContent = toutes ? 'Tout désélectionner' : 'Tout sélectionner';
+    tout.onclick = () => {
+        coches = toutes ? new Set() : new Set(steps.map(s => s.stepId));
+        // Une sélection vidée efface aussi la part gardée : le prochain lot
+        // d'étapes doit s'ouvrir sur SON état, pas sur le réglage du précédent.
+        if (toutes) partVoulue = null;
+        renderTeacherPath();
+    };
+
+    if (!coches.size) {
+        barre.classList.add('path-selection--vide');
+        const dis = document.createElement('span');
+        dis.className = 'path-selection-compte';
+        dis.textContent = 'Régler plusieurs étapes à la fois';
+        barre.appendChild(dis);
+        barre.appendChild(tout);
+        return barre;
+    }
+
+    const pris = steps.filter(s => coches.has(s.stepId));
     const quoi = document.createElement('span');
     quoi.className = 'path-selection-compte';
     quoi.textContent = `${pris.length} étape${pris.length > 1 ? 's' : ''} sélectionnée${pris.length > 1 ? 's' : ''}`;
     barre.appendChild(quoi);
 
-    const bouton = (texte, titre, faire) => {
+    // L'ÉTAT SE LIT SUR LE BOUTON, il ne se devine pas. Rémy : « si les
+    // exercices sélectionnés sont obligatoires, il faut que le obligatoire soit
+    // entouré. Je pense qu'il y a une confusion. » Trois boutons côte à côte
+    // ressemblent à trois actions ; ils décrivent aussi un état, et rien ne
+    // disait lequel était le bon. Celui qui décrit la sélection entière est
+    // désormais cerclé — et si la sélection est mêlée, aucun ne l'est, ce qui
+    // se lit tout aussi bien.
+    const bouton = (texte, titre, estDeja, faire) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'path-selection-btn';
+        const actif = pris.every(estDeja);
+        b.className = 'path-selection-btn' + (actif ? ' path-selection-btn--actif' : '');
         b.textContent = texte;
         b.title = titre;
+        b.setAttribute('aria-pressed', actif ? 'true' : 'false');
         b.onclick = () => {
             state.currentPath.steps = state.currentPath.steps.map(
                 s => (coches.has(s.stepId) ? faire(s) : s));
@@ -773,20 +824,17 @@ function barreDeSelection(steps) {
     // chacune, ce qui n'est jamais ce qu'on veut.
     bouton('Non obligatoires', 'Ces étapes s\'ouvrent quand le travail obligatoire qui les '
         + 'précède est réussi, mais l\'élève peut passer à la suite sans les faire.',
+    s => s.facultatif && !s.bonus,
     s => ({ ...s, facultatif: true }));
     bouton('Obligatoires', 'Ces étapes doivent être réussies pour ouvrir la suite.',
+        s => !s.facultatif && !s.bonus,
         s => ({ ...s, facultatif: false, bonus: false }));
     bouton('🎁 Récompenses', 'Un jeu de récompense ne compte pas dans la note et s\'ouvre '
         + 'quand le travail qui le précède est réussi.',
+    s => !!s.bonus,
     s => ({ ...s, bonus: true, facultatif: true, threshold: null }));
 
-    const rien = document.createElement('button');
-    rien.type = 'button';
-    rien.className = 'path-selection-btn path-selection-btn--fin';
-    rien.textContent = 'Désélectionner';
-    rien.onclick = () => { coches.clear(); majBarreSelection(); };
-    barre.appendChild(rien);
-
+    barre.appendChild(tout);
     barre.appendChild(ligneDeReglages(pris));
     return barre;
 }
@@ -794,18 +842,25 @@ function barreDeSelection(steps) {
 /**
  * LES RÉGLAGES GLOBAUX — deuxième ligne de la barre.
  *
- * Rémy : « on peut mettre un seuil commun de réussite minimal (ex 70 %, ça
- * règle tous les curseurs des exercices sélectionnés) et même le nombre de
- * questions et le mode par défaut. Rends cela simple. »
+ * Rémy : « on peut mettre un seuil commun de réussite minimal (ex 70 %) et même
+ * le nombre de questions et le mode par défaut. Rends cela simple. »
  *
- * DEUX CHAMPS, ET UN MENU, PAS PLUS. Le nombre de questions et la part exigée
- * s'appliquent à la sélection ; le mode, lui, est un réglage de la SÉANCE et
- * n'a jamais existé par étape — le proposer par étape aurait été un bouton qui
- * ne fait pas ce qu'il dit. Son étiquette le dit donc en toutes lettres.
+ * DEUX CHAMPS, UN MENU, UN BOUTON VALIDER. Les réglages s'appliquaient d'abord
+ * dès qu'on quittait un champ ; Rémy : « mets un bouton valider ». Il avait
+ * raison — un champ de nombre change de valeur pendant qu'on le tape, et on
+ * n'appuie pas sur Entrée pour dire qu'on a fini de réfléchir.
  *
- * UN CHAMP VIDE VEUT DIRE « NE PAS Y TOUCHER ». C'est ce qui rend la barre sans
- * danger : elle s'ouvre avec la valeur commune quand il y en a une, avec rien
- * du tout quand les étapes diffèrent, et on ne change que ce qu'on écrit.
+ * ET LE TAUX NE SUIT PAS LE NOMBRE DE QUESTIONS. Rémy encore : « le taux de
+ * réussite n'a pas de rapport, il peut rester à 70 % et ne devrait pas bouger
+ * si on change le nombre de questions. » Le champ affiche donc une part, cette
+ * part reste affichée quoi qu'on fasse de la longueur, et c'est elle qu'on
+ * applique : douze questions à 70 % font neuf, vingt questions à 70 % en font
+ * quatorze. Le pourcentage est le réglage ; le nombre exigé n'en est que la
+ * traduction.
+ *
+ * Le mode, lui, est un réglage de la SÉANCE et n'a jamais existé par étape — le
+ * proposer par étape aurait été un bouton qui ne fait pas ce qu'il dit. Son
+ * étiquette le dit en toutes lettres.
  */
 function ligneDeReglages(pris) {
     const ligne = document.createElement('div');
@@ -817,7 +872,7 @@ function ligneDeReglages(pris) {
     intro.textContent = `Pour ${pris.length > 1 ? `ces ${pris.length}` : 'cette'} étape${pris.length > 1 ? 's' : ''} :`;
     ligne.appendChild(intro);
 
-    const champ = (etiquette, valeur, suffixe, titre, poser) => {
+    const champ = (etiquette, valeur, suffixe, max, titre) => {
         const bloc = document.createElement('label');
         bloc.className = 'path-selection-champ';
         bloc.title = titre;
@@ -827,21 +882,11 @@ function ligneDeReglages(pris) {
         inp.type = 'number';
         inp.className = 'path-selection-num';
         inp.min = '0';
-        inp.max = etiquette === 'Réussite ≥' ? '100' : String(MAX_ETAPE);
+        inp.max = String(max);
         inp.value = valeur === null ? '' : String(valeur);
         // Valeurs mêlées : le champ reste vide et le dit, plutôt que d'afficher
         // celle de la première étape — on croirait lire la sélection entière.
         inp.placeholder = valeur === null ? '—' : '';
-        inp.onchange = () => {
-            if (inp.value === '') return;
-            const suite = poser(inp.value);
-            // ON LÂCHE LE CHAMP AVANT DE REDESSINER : il est sur le point d'être
-            // détruit, et le laisser focalisé fait partir un `blur` au beau
-            // milieu du rendu.
-            inp.blur();
-            state.currentPath.steps = suite;
-            renderTeacherPath();
-        };
         bloc.appendChild(nom);
         bloc.appendChild(inp);
         if (suffixe) {
@@ -850,23 +895,20 @@ function ligneDeReglages(pris) {
             bloc.appendChild(s);
         }
         ligne.appendChild(bloc);
+        return inp;
     };
 
-    champ('Questions', commun.questions, '',
-        'Le nombre de questions de chacune des étapes sélectionnées. Le seuil '
-        + 'de réussite suit, en gardant sa part.',
-        (v) => appliquerAuxEtapes(state.currentPath.steps, coches, { questions: Number(v) }));
-
-    champ('Réussite ≥', commun.part, '%',
+    const nb = champ('Questions', commun.questions, '', MAX_ETAPE,
+        'Le nombre de questions de chacune des étapes sélectionnées. '
+        + 'Vide, il ne change rien.');
+    const pct = champ('Réussite ≥', partVoulue !== null ? partVoulue : commun.part, '%', 100,
         'La part de bonnes réponses exigée. Chaque étape la traduit dans son '
-        + 'propre total : 70 % font 7 sur 10 et 14 sur 20. Zéro veut dire aucune exigence.',
-        (v) => appliquerAuxEtapes(state.currentPath.steps, coches, { part: Number(v) }));
+        + 'propre total : 70 % font 7 sur 10 et 14 sur 20. Zéro veut dire aucune '
+        + 'exigence, et vide ne change rien.');
 
-    // LE MODE EST CELUI DE TOUTE LA SÉANCE, et l'étiquette le dit. C'est le
-    // seul réglage de cette ligne qui déborde de la sélection ; le cacher
-    // derrière « pour ces 3 étapes » aurait été un piège.
+    // LE MODE EST CELUI DE TOUTE LA SÉANCE, et l'étiquette le dit.
     const bloc = document.createElement('label');
-    bloc.className = 'path-selection-champ path-selection-champ--mode';
+    bloc.className = 'path-selection-champ';
     bloc.title = 'Le mode s\'applique à toute la séance : il décide des essais, '
         + 'des aides, de la correction et de la note.';
     const nom = document.createElement('span');
@@ -883,16 +925,32 @@ function ligneDeReglages(pris) {
         sel.appendChild(o);
     });
     sel.value = resolvePolicy(state.currentPath.policy).mode;
-    sel.onchange = () => {
-        sel.blur();
-        state.currentPath.policy = resolvePolicy({
-            ...resolvePolicy(state.currentPath.policy), mode: sel.value
-        });
-        renderTeacherPath();
-    };
     bloc.appendChild(nom);
     bloc.appendChild(sel);
     ligne.appendChild(bloc);
+
+    const valider = document.createElement('button');
+    valider.type = 'button';
+    valider.className = 'path-selection-btn path-selection-btn--valider';
+    valider.textContent = 'Valider';
+    valider.title = 'Applique ces réglages aux étapes sélectionnées.';
+    valider.onclick = () => {
+        valider.blur();
+        partVoulue = pct.value === '' ? null : Number(pct.value);
+        const suite = appliquerAuxEtapes(state.currentPath.steps, coches, {
+            questions: nb.value === '' ? null : Number(nb.value),
+            part: partVoulue
+        });
+        const mode = sel.value;
+        if (mode !== resolvePolicy(state.currentPath.policy).mode) {
+            state.currentPath.policy = resolvePolicy({
+                ...resolvePolicy(state.currentPath.policy), mode
+            });
+        }
+        state.currentPath.steps = suite;
+        renderTeacherPath();
+    };
+    ligne.appendChild(valider);
 
     return ligne;
 }

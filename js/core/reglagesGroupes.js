@@ -110,10 +110,14 @@ export function appliquerAuxEtapes(steps, choisies, quoi = {}) {
                 max: MAX_ETAPE
             });
             suite.nbItems = duo.questions;
-            // LE SEUIL SUIT LA LONGUEUR, EN GARDANT SA PART. Passer de 10 à 20
-            // questions sans y toucher aurait laissé « 7 sur 20 » : le
-            // professeur a rallongé son étape, il n'a pas divisé son exigence
-            // par deux. Une étape sans exigence, elle, n'en gagne pas.
+            // LE TAUX NE BOUGE PAS QUAND LA LONGUEUR CHANGE. Rémy : « le taux
+            // de réussite n'a pas de rapport, il peut rester à 70 % et ne
+            // devrait pas bouger si on change le nombre de questions. » Le
+            // réglage est donc la PART ; le nombre exigé n'en est que la
+            // traduction, et il se recalcule dans le nouveau total. Laisser
+            // « 7 » sur vingt questions aurait fait tomber l'exigence de 70 %
+            // à 35 % sans que personne ne l'ait demandé. Une étape sans
+            // exigence, elle, n'en gagne pas au passage.
             if (s.threshold !== null && s.threshold !== undefined) {
                 suite.threshold = seuilPourPart(duo.questions, partDe(s));
             }
