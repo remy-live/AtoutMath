@@ -387,11 +387,23 @@ export class Runner {
 
     /** La séance mérite-t-elle une carte ? Un exercice seul n'est pas un chemin. */
     get avecCarte() {
-        // Un essai de professeur et le test pas-à-pas gardent l'ancien
-        // enchaînement : ils regardent des exercices, ils ne suivent pas un
-        // chemin. Et un exercice seul n'est pas un chemin non plus.
+        // Un exercice seul n'est pas un chemin.
+        if (this.steps.length <= 1) return false;
+        // DÈS QU'UNE ÉTAPE EST FACULTATIVE, LA CARTE N'EST PLUS UN CONFORT.
+        //
+        // Rémy : « il faut voir et forcer la carte quand on a des exercices non
+        // obligatoires qui apparaissent sur le parcours. »
+        //
+        // Et c'est une nécessité, pas une préférence : l'enchaînement SAUTE les
+        // étapes facultatives — c'est ce qui les rend facultatives — donc la
+        // carte est le seul endroit où on peut en prendre une. Sans elle, le
+        // professeur les aurait posées pour rien : personne ne les verrait
+        // jamais. Un jeu de récompense est dans le même cas.
+        if (this.steps.some(s => s.facultatif || s.bonus)) return true;
+        // Sinon, un essai de professeur et le test pas-à-pas gardent l'ancien
+        // enchaînement : ils regardent des exercices, ils ne suivent pas un chemin.
         if (this.essai || this.allowStepNavigation) return false;
-        return this.steps.length > 1;
+        return true;
     }
 
     /** Ce qui est fait : la mémoire de la séance ET celle du parcours assigné. */

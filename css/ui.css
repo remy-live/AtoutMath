@@ -1311,3 +1311,35 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     letter-spacing: .04em; color: var(--text-muted);
     border: 1px solid var(--border); border-radius: 999px; padding: 1px 6px;
 }
+
+/* --- LES RÉGLAGES GLOBAUX, deuxième ligne de la barre -----------------------
+   Rémy : « on essaie de faire des réglages globaux. Rends cela simple. » Deux
+   champs et un menu, sur une ligne qui se replie sur téléphone. Le filet du
+   dessus les sépare des boutons de rôle : ce ne sont pas les mêmes gestes. */
+.path-selection-reglages {
+    flex: 0 0 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+    margin-top: 2px; padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.path-selection-pour {
+    font-size: .78rem; font-weight: 700; color: var(--text-muted);
+}
+.path-selection-champ {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .78rem; font-weight: 600; cursor: pointer;
+}
+.path-selection-num {
+    width: 4.2em; padding: 4px 6px; font: inherit; font-weight: 700;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main); text-align: center;
+}
+.path-selection-select {
+    padding: 4px 6px; font: inherit; font-weight: 700; font-size: .78rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main); cursor: pointer;
+}
+.path-selection-champ--mode { margin-left: auto; }
+@media (max-width: 720px) {
+    /* Poussé à la ligne, « à droite » ne veut plus rien dire. */
+    .path-selection-champ--mode { margin-left: 0; }
+}

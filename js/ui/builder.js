@@ -16,7 +16,9 @@ import { exercices, getExerciseById, paramSchemaOf } from '../data/catalog.js';
 import { state } from '../core/state.js';
 import { Shortcodes } from '../core/shortcodes.js';
 import { makeStep, normalizePath, totalItems } from '../core/path.js';
-import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
+import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
+import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
+import { MAX_ETAPE } from '../core/seuilEtape.js';
 import { creerHistorique } from '../core/historique.js';
 import {
     mesuresParExercice, estimerEtape, estimerParcours,
@@ -667,7 +669,12 @@ export function renderTeacherPath() {
     retenirLEtat();
     rafraichirLesMesures();
 
-    pathBox.querySelectorAll('.path-step, .path-selection').forEach(el => el.remove());
+    // ON RETIRE EN VÉRIFIANT LE PARENT. Un champ de la barre qui perd le focus
+    // pendant qu'on redessine peut avoir déjà emporté son bloc : `remove()`
+    // lève alors une exception au milieu de la liste, et la moitié des lignes
+    // reste à l'écran. Le garde-fou coûte un test et sauve le rendu.
+    pathBox.querySelectorAll('.path-step, .path-selection')
+        .forEach(el => { if (el.parentNode) el.parentNode.removeChild(el); });
 
     const steps = state.currentPath.steps;
     const badge = document.getElementById('path-count-badge');
@@ -779,7 +786,115 @@ function barreDeSelection(steps) {
     rien.textContent = 'Désélectionner';
     rien.onclick = () => { coches.clear(); majBarreSelection(); };
     barre.appendChild(rien);
+
+    barre.appendChild(ligneDeReglages(pris));
     return barre;
+}
+
+/**
+ * LES RÉGLAGES GLOBAUX — deuxième ligne de la barre.
+ *
+ * Rémy : « on peut mettre un seuil commun de réussite minimal (ex 70 %, ça
+ * règle tous les curseurs des exercices sélectionnés) et même le nombre de
+ * questions et le mode par défaut. Rends cela simple. »
+ *
+ * DEUX CHAMPS, ET UN MENU, PAS PLUS. Le nombre de questions et la part exigée
+ * s'appliquent à la sélection ; le mode, lui, est un réglage de la SÉANCE et
+ * n'a jamais existé par étape — le proposer par étape aurait été un bouton qui
+ * ne fait pas ce qu'il dit. Son étiquette le dit donc en toutes lettres.
+ *
+ * UN CHAMP VIDE VEUT DIRE « NE PAS Y TOUCHER ». C'est ce qui rend la barre sans
+ * danger : elle s'ouvre avec la valeur commune quand il y en a une, avec rien
+ * du tout quand les étapes diffèrent, et on ne change que ce qu'on écrit.
+ */
+function ligneDeReglages(pris) {
+    const ligne = document.createElement('div');
+    ligne.className = 'path-selection-reglages';
+
+    const commun = communDe(pris);
+    const intro = document.createElement('span');
+    intro.className = 'path-selection-pour';
+    intro.textContent = `Pour ${pris.length > 1 ? `ces ${pris.length}` : 'cette'} étape${pris.length > 1 ? 's' : ''} :`;
+    ligne.appendChild(intro);
+
+    const champ = (etiquette, valeur, suffixe, titre, poser) => {
+        const bloc = document.createElement('label');
+        bloc.className = 'path-selection-champ';
+        bloc.title = titre;
+        const nom = document.createElement('span');
+        nom.textContent = etiquette;
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.className = 'path-selection-num';
+        inp.min = '0';
+        inp.max = etiquette === 'Réussite ≥' ? '100' : String(MAX_ETAPE);
+        inp.value = valeur === null ? '' : String(valeur);
+        // Valeurs mêlées : le champ reste vide et le dit, plutôt que d'afficher
+        // celle de la première étape — on croirait lire la sélection entière.
+        inp.placeholder = valeur === null ? '—' : '';
+        inp.onchange = () => {
+            if (inp.value === '') return;
+            const suite = poser(inp.value);
+            // ON LÂCHE LE CHAMP AVANT DE REDESSINER : il est sur le point d'être
+            // détruit, et le laisser focalisé fait partir un `blur` au beau
+            // milieu du rendu.
+            inp.blur();
+            state.currentPath.steps = suite;
+            renderTeacherPath();
+        };
+        bloc.appendChild(nom);
+        bloc.appendChild(inp);
+        if (suffixe) {
+            const s = document.createElement('span');
+            s.textContent = suffixe;
+            bloc.appendChild(s);
+        }
+        ligne.appendChild(bloc);
+    };
+
+    champ('Questions', commun.questions, '',
+        'Le nombre de questions de chacune des étapes sélectionnées. Le seuil '
+        + 'de réussite suit, en gardant sa part.',
+        (v) => appliquerAuxEtapes(state.currentPath.steps, coches, { questions: Number(v) }));
+
+    champ('Réussite ≥', commun.part, '%',
+        'La part de bonnes réponses exigée. Chaque étape la traduit dans son '
+        + 'propre total : 70 % font 7 sur 10 et 14 sur 20. Zéro veut dire aucune exigence.',
+        (v) => appliquerAuxEtapes(state.currentPath.steps, coches, { part: Number(v) }));
+
+    // LE MODE EST CELUI DE TOUTE LA SÉANCE, et l'étiquette le dit. C'est le
+    // seul réglage de cette ligne qui déborde de la sélection ; le cacher
+    // derrière « pour ces 3 étapes » aurait été un piège.
+    const bloc = document.createElement('label');
+    bloc.className = 'path-selection-champ path-selection-champ--mode';
+    bloc.title = 'Le mode s\'applique à toute la séance : il décide des essais, '
+        + 'des aides, de la correction et de la note.';
+    const nom = document.createElement('span');
+    nom.textContent = 'Mode (toute la séance)';
+    const sel = document.createElement('select');
+    sel.className = 'path-selection-select';
+    [
+        [MODES.ENTRAINEMENT, 'Entraînement'],
+        [MODES.APPRENTISSAGE, 'Apprentissage'],
+        [MODES.EVALUATION, 'Évaluation']
+    ].forEach(([v, t]) => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = t;
+        sel.appendChild(o);
+    });
+    sel.value = resolvePolicy(state.currentPath.policy).mode;
+    sel.onchange = () => {
+        sel.blur();
+        state.currentPath.policy = resolvePolicy({
+            ...resolvePolicy(state.currentPath.policy), mode: sel.value
+        });
+        renderTeacherPath();
+    };
+    bloc.appendChild(nom);
+    bloc.appendChild(sel);
+    ligne.appendChild(bloc);
+
+    return ligne;
 }
 
 // --- Ce que dure une étape ---------------------------------------------------
