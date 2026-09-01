@@ -134,18 +134,31 @@ export const CLASSES_DEMO = [
  */
 const TRAVAIL = [
     { skillId: 'num.add.entiers', exerciseId: 'calc-poser', famille: 'num',
-        piege: '408 + 297' },
+        piege: '408 + 297', juste: '705', faux: '695' },
     { skillId: 'num.mult.sens', exerciseId: 'calc-poser-multiplication', famille: 'num',
-        piege: '36 × 50' },
+        piege: '36 × 50', juste: '1800', faux: '180' },
     { skillId: 'num.div.quotient', exerciseId: 'calc-poser-division', famille: 'num',
-        piege: '408 ÷ 6' },
+        piege: '408 ÷ 6', juste: '68', faux: '78' },
     { skillId: 'mes.aire.rectangle', exerciseId: 'calc-arpenteurs', famille: 'geo',
-        piege: 'aire d\'un rectangle de 12 m sur 4 m' },
+        piege: 'aire d\'un rectangle de 12 m sur 4 m', juste: '48 m²', faux: '32 m' },
     { skillId: 'geo.repere.coord', exerciseId: 'geo-course-vecteurs', famille: 'geo',
-        piege: 'placer le point (−3 ; 5)' },
+        piege: 'placer le point (−3 ; 5)', juste: '(−3 ; 5)', faux: '(5 ; −3)' },
     { skillId: 'mes.grandeurs.composees', exerciseId: 'mes-grandeurs-composees', famille: 'mes',
-        piege: '90 km en 45 min : quelle vitesse ?' }
+        piege: '90 km en 45 min : quelle vitesse ?', juste: '120 km/h', faux: '90 km/h' }
 ];
+
+/** Une question ordinaire, avec sa réponse et une faute plausible. */
+function questionDe(t, q, rng) {
+    const a = 12 + Math.floor(rng.next() * 80);
+    const b = 3 + Math.floor(rng.next() * 40);
+    const paires = [
+        { texte: `${a} + ${b}`, juste: String(a + b), faux: String(a + b + (rng.next() < 0.5 ? 10 : -1)) },
+        { texte: `${a} × ${b}`, juste: String(a * b), faux: String(a * b - a) },
+        { texte: `${a * b} ÷ ${b}`, juste: String(a), faux: String(a + 1) }
+    ];
+    const p = paires[q % paires.length];
+    return { texte: p.texte, juste: p.juste, faux: p.faux };
+}
 
 const entre = (rng, [a, b]) => a + rng.next() * (b - a);
 
@@ -173,6 +186,9 @@ function repartir(nb, rng) {
  * dans la vraie application. Tout le reste se recalcule.
  */
 function journalDe(profil, rng, opts = {}) {
+    // Un second tirage pour le CONTENU des questions : mêler leurs nombres au
+    // tirage des profils ferait bouger tout le reste dès qu'on touche à l'un.
+    const r2 = makeRng('q-' + (opts.runSeed || rng.next()));
     const { debut, questionsParEtape = 8, pathId = null } = opts;
     if (profil.rien) return [];
 
@@ -205,11 +221,28 @@ function journalDe(profil, rng, opts = {}) {
         const t = TRAVAIL[k];
         const faible = profil.faible && t.famille === profil.faible;
         const taux = entre(rng, faible ? profil.reussiteFaible : profil.reussite);
+        // LE NOMBRE DE BONNES RÉPONSES EST FIXÉ, PAS TIRÉ — ET C'EST TOUTE LA
+        // DIFFÉRENCE ENTRE UNE DÉMONSTRATION ET UN JEU DE HASARD.
+        //
+        // Le premier jet tirait chaque question à pile ou face contre le taux.
+        // Mesuré : sur huit questions, un élève censé réussir à 28 % obtenait
+        // 5/8 une fois sur trente — et l'écran montrait alors un « déséquilibré
+        // en géométrie » à 63 %, c'est-à-dire exactement le contraire de ce
+        // qu'il devait exhiber. Sur cent dix-huit élèves et six compétences,
+        // l'accident est certain, et il tombe forcément sur la ligne qu'on
+        // voulait faire voir.
+        //
+        // On fixe donc le COMPTE et l'on tire seulement QUELLES questions sont
+        // ratées : le profil reste lisible à coup sûr, et la copie garde une
+        // allure naturelle.
+        const nJustes = Math.round(taux * questionsParEtape);
+        const rates = new Set(rng.shuffle([...Array(questionsParEtape).keys()])
+            .slice(0, questionsParEtape - nJustes));
         let justes = 0;
 
         for (let q = 0; q < questionsParEtape; q++) {
             const repetee = profil.repete && q === questionsParEtape - 1;
-            const juste = repetee ? false : rng.next() < taux;
+            const juste = repetee ? false : !rates.has(q);
             // Celui qui s'accroche se trompe d'abord et trouve au second essai :
             // son score final ressemble à celui du rapide, son chemin non.
             const essais = (juste && profil.essais && rng.next() < 0.5) ? profil.essais : 1;
@@ -217,12 +250,21 @@ function journalDe(profil, rng, opts = {}) {
                 const dernier = e === essais - 1;
                 const ms = Math.round(entre(rng, profil.vitesse) * (6000 + rng.next() * 9000));
                 ts += ms + 800;
+                const quoi = repetee
+                    ? { texte: exoRepete.piege, juste: exoRepete.juste, faux: exoRepete.faux }
+                    : questionDe(t, q, r2);
+                const bonne = dernier && juste;
                 emit(EventTypes.ATTEMPT, {
                     exerciseId: repetee ? exoRepete.exerciseId : t.exerciseId,
                     skillId: repetee ? exoRepete.skillId : t.skillId,
                     itemSeed: repetee ? graineRepetee : `s${k}_${q}`,
-                    questionText: repetee ? exoRepete.piege : `Question ${q + 1}`,
-                    correct: dernier && juste,
+                    questionText: quoi.texte,
+                    // CE QU'IL A RÉPONDU ET CE QU'ON ATTENDAIT. Le carnet
+                    // d'erreurs affiche les deux ; sans elles il affichait
+                    // « a répondu · attendu », soit une ligne vide répétée.
+                    expected: quoi.juste,
+                    given: bonne ? quoi.juste : quoi.faux,
+                    correct: bonne,
                     attemptIndex: e,
                     msElapsed: ms,
                     stepId: `demo_s${k}`

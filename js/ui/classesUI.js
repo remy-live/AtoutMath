@@ -112,7 +112,7 @@ function grilleHtml(b) {
             <td class="cl-signaux">${signaux}</td>${cases}</tr>`;
     }).join('');
 
-    return `<div class="cl-grille-boite">
+    return `<div class="cl-bloc-grille"><div class="cl-grille-boite">
         <table class="cl-grille">
             <thead><tr>
                 <th class="cl-coin">Élève</th>
@@ -130,7 +130,7 @@ function grilleHtml(b) {
     <div class="cl-legende cl-legende--signaux">
         ${Object.values(SIGNAUX).map(g =>
         `<span class="cl-lg"><span class="cl-signal">${g.icone}</span>${esc(g.nom)}</span>`).join('')}
-    </div>`;
+    </div></div>`;
 }
 
 // LE BLOC DE PHRASES A ÉTÉ RETIRÉ, et c'est une correction, pas une perte.
@@ -142,6 +142,33 @@ function grilleHtml(b) {
 // tableau — et la phrase entière n'a pas disparu : elle s'affiche dans le
 // panneau qu'on ouvre en cliquant un nom, c'est-à-dire au moment où on veut
 // vraiment la lire, pour un élève et un seul.
+
+/**
+ * LE PANNEAU DE CÔTÉ — une phrase, celle de l'élève qu'on regarde.
+ *
+ * Rémy : « pourquoi pas une phrase à droite du tableau ». Sous la grille, les
+ * vingt-quatre phrases demandaient trois minutes et n'étaient jamais lues. À
+ * droite, il n'y en a qu'UNE — celle de la ligne survolée —, elle apparaît sans
+ * qu'on ait rien à cliquer, et le tableau garde toute sa largeur.
+ *
+ * Le panneau ne remplace pas le détail complet : il donne de quoi décider
+ * pendant qu'on balaie, et le clic ouvre le reste.
+ */
+function coteHtml(e) {
+    if (!e) return '<p class="cl-vide">Survole un élève pour voir son bilan.</p>';
+    const signaux = (e.signaux || []).map(g =>
+        `<li class="cl-cote-signal"><span class="cl-signal">${g.icone}</span>
+            <span>${esc(g.detail)}</span></li>`).join('');
+    return `<h4 class="cl-cote-nom">${esc(e.nom)}</h4>
+        ${signaux ? `<ul class="cl-cote-signaux">${signaux}</ul>` : ''}
+        <p class="cl-cote-phrase">${esc(e.phrase)}</p>
+        <div class="cl-cote-kpis">
+            <span><b>${e.questions}</b> questions</span>
+            <span><b>${e.questions ? pc(e.reussite) : '—'}</b> de réussite</span>
+            <span><b>${e.minutes}</b> min</span>
+        </div>
+        <button type="button" class="cl-detail-btn" data-ouvre="${esc(e.id)}">Tout voir</button>`;
+}
 
 function detailHtml(e) {
     const comp = e.competences;
@@ -161,7 +188,9 @@ function detailHtml(e) {
         <h4 class="cl-d-titre">Ce qui reste à revoir</h4>
         <ul class="cl-erreurs">${e.aRevoir.map(x => `
             <li><span class="cl-err-q">${esc(x.questionText)}</span>
-                <span class="cl-err-r">a répondu ${esc(x.given)} · attendu ${esc(x.expected)}</span>
+                ${(x.given || x.expected) ? `<span class="cl-err-r">${x.given
+        ? `a répondu <b>${esc(x.given)}</b>` : ''}${(x.given && x.expected) ? ' · ' : ''}${x.expected
+        ? `attendu <b>${esc(x.expected)}</b>` : ''}</span>` : ''}
                 <span class="cl-err-n">${x.count} fois</span></li>`).join('')}</ul>`
         : '<p class="cl-vide">Aucune erreur en attente.</p>';
 
@@ -211,6 +240,13 @@ function ecranHtml() {
     const b = bilanClasse(c);
     const eleve = b.eleves.find(e => e.id === eleveOuvertId);
 
+    // LA PHRASE SE MET À CÔTÉ DU TABLEAU, ET UNE SEULE À LA FOIS.
+    //
+    // Rémy : « pourquoi pas une phrase à droite du tableau ». C'est la bonne
+    // place — sous la grille, les vingt-quatre phrases ne se lisaient pas ; à
+    // droite, celle de l'élève qu'on survole s'affiche pendant qu'on balaie,
+    // sans jamais disputer la place au tableau.
+    const premier = eleve || [...b.eleves].sort((a, z) => a.nom.localeCompare(z.nom, 'fr'))[0];
     return barre + demo + `
         <div class="cl-tete">
             <p class="cl-resume">${esc(b.phrase)}</p>
@@ -219,7 +255,10 @@ function ecranHtml() {
                 <button type="button" class="cl-btn cl-btn--fin" data-supprimer>Supprimer la classe</button>
             </div>
         </div>
-        ${grilleHtml(b)}
+        <div class="cl-corps">
+            ${grilleHtml(b)}
+            <aside class="cl-cote" data-cote>${coteHtml(premier)}</aside>
+        </div>
         ${eleve ? `<div class="cl-detail-boite">
             <div class="cl-d-tete">
                 <h3>${esc(eleve.nom)}</h3>
@@ -266,6 +305,22 @@ function choisirFichiers() {
 }
 
 function brancher(racine) {
+    // LE SURVOL MET À JOUR LE SEUL PANNEAU, ET NON L'ÉCRAN ENTIER. Redessiner
+    // vingt-six lignes et leurs cent cinquante pastilles à chaque passage de
+    // souris ferait clignoter la grille sous le curseur — et l'on ne balaie
+    // plus une grille qui bouge.
+    racine.onmouseover = (ev) => {
+        const ligne = ev.target.closest('[data-eleve]');
+        const cote = racine.querySelector('[data-cote]');
+        if (!ligne || !cote) return;
+        const c = classeActive();
+        const b = c && bilanClasse(c);
+        const e = b && b.eleves.find(x => x.id === ligne.dataset.eleve);
+        if (!e || cote.dataset.pour === e.id) return;
+        cote.dataset.pour = e.id;
+        cote.innerHTML = coteHtml(e);
+    };
+
     racine.onclick = async (ev) => {
         const el = ev.target.closest('[data-classe],[data-nouvelle],[data-ajouter],[data-supprimer],'
             + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],[data-effacer-demo]');

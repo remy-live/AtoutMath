@@ -1513,3 +1513,38 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     padding: 10px 22px; border-radius: 10px; cursor: pointer; font-size: 1rem;
 }
 .ds-ok:disabled { opacity: .45; cursor: not-allowed; }
+
+
+/* --- LA PHRASE À CÔTÉ DU TABLEAU ---------------------------------------- */
+/* Rémy : « pourquoi pas une phrase à droite du tableau ». Sous la grille, les
+   vingt-quatre phrases demandaient trois minutes et n'étaient jamais lues. À
+   droite il n'y en a qu'UNE — celle de la ligne survolée —, elle apparaît sans
+   qu'on ait rien à cliquer, et le tableau garde toute sa largeur. */
+.cl-corps {
+    display: grid; grid-template-columns: minmax(0, auto) minmax(230px, 300px);
+    gap: 16px; align-items: start;
+}
+.cl-bloc-grille { min-width: 0; }
+.cl-cote {
+    position: sticky; top: 4px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg-app); padding: 14px; font-size: .9rem;
+}
+.cl-cote-nom { margin: 0 0 8px; font-size: 1.05rem; color: var(--text-main); }
+.cl-cote-signaux { list-style: none; margin: 0 0 10px; padding: 0; }
+.cl-cote-signal {
+    display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px;
+    line-height: 1.35; font-size: .86rem; color: var(--text-main);
+}
+.cl-cote-phrase { margin: 0 0 12px; line-height: 1.45; color: var(--text-muted); }
+.cl-cote-kpis {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 12px;
+    font-size: .82rem; color: var(--text-muted);
+}
+.cl-cote-kpis b { color: var(--text-main); font-size: .95rem; }
+/* Sur un écran étroit, le panneau repasse sous la grille : deux colonnes de
+   moins de trois cents pixels ne valent mieux qu'une. */
+@media (max-width: 900px) {
+    .cl-corps { grid-template-columns: 1fr; }
+    .cl-cote { position: static; }
+}

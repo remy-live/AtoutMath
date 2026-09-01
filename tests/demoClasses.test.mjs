@@ -115,6 +115,33 @@ test('CELUI QUI S\'ACCROCHE SE VOIT DANS LES ESSAIS, PAS DANS LE SCORE', () => {
         'celui qui s\'accroche prend nettement plus d\'indices');
 });
 
+test('UNE DÉMONSTRATION DÉMONTRE : le compte de bonnes réponses est fixé', () => {
+    // MESURÉ, ET C'EST CE QUI A FAIT CHANGER LA FABRIQUE. Le premier jet tirait
+    // chaque question à pile ou face contre le taux du profil. Sur huit
+    // questions, un élève censé réussir à 28 % obtenait 5/8 une fois sur
+    // trente : l'écran montrait alors un « déséquilibré en géométrie » à 63 %,
+    // exactement le contraire de ce qu'il devait exhiber. Sur cent dix-huit
+    // élèves et six compétences, l'accident est certain — et il tombe forcément
+    // sur la ligne qu'on voulait faire voir.
+    //
+    // Le compte est donc fixé et seul le CHOIX des questions ratées est tiré.
+    // On vérifie ici que plus AUCUN profil ne peut se retourner par hasard.
+    const GEO = ['mes.aire.rectangle', 'geo.repere.coord'];
+    const ecarts = parProfil('desequilibre').map(e => {
+        const m = [...computeMastery(computeAttempts(e.evenements)).values()];
+        const geo = m.filter(x => GEO.includes(x.skillId));
+        const autres = m.filter(x => !GEO.includes(x.skillId));
+        if (!geo.length || !autres.length) return null;
+        return autres.reduce((n, x) => n + x.successRate, 0) / autres.length
+            - geo.reduce((n, x) => n + x.successRate, 0) / geo.length;
+    }).filter(x => x !== null);
+    assert.ok(ecarts.length > 10, `seulement ${ecarts.length} déséquilibrés`);
+    const pire = Math.min(...ecarts);
+    // 40 points et non 30 : la marge doit être RÉELLE, pas ajustée au seuil.
+    assert.ok(pire > 0.4, `le déséquilibre le plus faible ne fait que `
+        + `${(pire * 100).toFixed(0)} points`);
+});
+
 test('LE DÉSÉQUILIBRÉ EST BON QUELQUE PART ET PERDU AILLEURS', () => {
     // C'est le SEUL cas qui justifie un bilan par compétence : sa moyenne est
     // correcte et ne dit rien, sa ligne de pastilles dit tout.
