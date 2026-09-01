@@ -28,6 +28,7 @@ import {
     lireFichierEleve, elevesTries
 } from '../core/classes.js';
 import { bilanClasse } from '../core/bilan.js';
+import { classesDeDemo, LEGENDE_PROFILS } from '../core/demoClasses.js';
 import { LEVELS } from '../core/mastery.js';
 
 const CLE = 'classes';
@@ -173,15 +174,29 @@ function ecranHtml() {
     const barre = `<div class="cl-barre-onglets">${onglets}
         <button type="button" class="cl-onglet cl-onglet--plus" data-nouvelle>+ Nouvelle classe</button></div>`;
 
+    // LE BANDEAU DE DÉMONSTRATION, TANT QU'IL Y A DE FAUSSES CLASSES.
+    // On ne doit jamais avoir à se demander si un chiffre est vrai : une
+    // décision pédagogique prise sur des élèves inventés serait pire que pas
+    // de tableau du tout.
+    const demo = classes.some(x => x.demo)
+        ? `<div class="cl-bandeau-demo">
+            <span>⚠️ <b>Données de démonstration</b> — ces élèves n'existent pas.</span>
+            <button type="button" class="cl-btn cl-btn--mini cl-btn--fin" data-effacer-demo>
+                Tout effacer</button>
+        </div>` : '';
+
     if (!c) {
-        return barre + `<p class="cl-vide">Crée une classe, puis dépose les fichiers de progression
-            que tes élèves t'ont envoyés — un fichier par élève.</p>`;
+        return barre + demo + `<p class="cl-vide">Crée une classe, puis dépose les fichiers de progression
+            que tes élèves t'ont envoyés — un fichier par élève.</p>
+            <p class="cl-vide">Pour voir à quoi ressemble l'écran plein, tu peux aussi
+            <button type="button" class="cl-lien" data-demo>charger cinq classes de
+            démonstration</button>. Elles s'effacent d'un clic.</p>`;
     }
 
     const b = bilanClasse(c);
     const eleve = b.eleves.find(e => e.id === eleveOuvertId);
 
-    return barre + `
+    return barre + demo + `
         <div class="cl-tete">
             <p class="cl-resume">${esc(b.phrase)}</p>
             <div class="cl-actions">
@@ -239,8 +254,29 @@ function choisirFichiers() {
 function brancher(racine) {
     racine.onclick = async (ev) => {
         const el = ev.target.closest('[data-classe],[data-nouvelle],[data-ajouter],[data-supprimer],'
-            + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer]');
+            + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],[data-effacer-demo]');
         if (!el) return;
+
+        // LES CINQ CLASSES DE DÉMONSTRATION. Elles ne se mêlent pas aux vraies :
+        // elles portent une marque, un bandeau les annonce, et le bouton
+        // d'effacement ne touche qu'à elles.
+        if ('demo' in el.dataset) {
+            classes = [...classes.filter(x => !x.demo), ...classesDeDemo({})];
+            classeActiveId = (classes.find(x => x.demo) || {}).id || classeActiveId;
+            eleveOuvertId = null;
+            await enregistrer();
+            showToast('Cinq classes de démonstration chargées.', 'success');
+            return rafraichir();
+        }
+        if ('effacer-demo' in el.dataset || el.dataset.effacerDemo !== undefined) {
+            return showConfirm('Effacer toutes les classes de démonstration ?', async () => {
+                classes = classes.filter(x => !x.demo);
+                classeActiveId = classes.length ? classes[0].id : null;
+                eleveOuvertId = null;
+                await enregistrer();
+                rafraichir();
+            });
+        }
 
         if (el.dataset.classe) { classeActiveId = el.dataset.classe; eleveOuvertId = null; return rafraichir(); }
         if ('nouvelle' in el.dataset) {

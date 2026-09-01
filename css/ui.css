@@ -1422,3 +1422,20 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border-color: var(--warning);
     background: color-mix(in srgb, var(--warning) 18%, var(--bg-panel));
 }
+
+
+/* --- LE BANDEAU DE DÉMONSTRATION ---------------------------------------- */
+/* On ne doit jamais avoir à se demander si un chiffre est vrai : une décision
+   pédagogique prise sur des élèves inventés serait pire que pas de tableau du
+   tout. Le bandeau reste donc affiché tant qu'il reste une fausse classe. */
+.cl-bandeau-demo {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap; margin: 10px 0 14px; padding: 9px 14px; border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--warning) 55%, transparent);
+    background: color-mix(in srgb, var(--warning) 14%, var(--bg-panel));
+    font-size: .9rem; line-height: 1.35;
+}
+.cl-lien {
+    border: none; background: none; padding: 0; font: inherit; cursor: pointer;
+    color: var(--primary); text-decoration: underline;
+}

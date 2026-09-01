@@ -70,12 +70,45 @@ export function bilanEleve(evenements = [], now = Date.now()) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 8);
 
+    // ALLÉ AU BOUT, OU ARRÊTÉ EN CHEMIN ? C'est la distinction la plus utile du
+    // tableau, et la plus facile à manquer : un élève qui s'arrête au deuxième
+    // exercice sur six et un élève qui les rate tous les six affichent le même
+    // pourcentage. Ce sont pourtant deux situations opposées — l'un a besoin
+    // qu'on l'aide à travailler, l'autre qu'on lui réexplique.
+    //
+    // La différence est dans le journal : une séance commencée porte un
+    // RUN_STARTED, une séance achevée un RUN_FINISHED. L'absence du second est
+    // une information, pas un trou.
+    const inacheve = runs.find(r => !r.finishedAt) || null;
+    const etapesInachevees = inacheve
+        ? new Set(inacheve.steps.map(x => x.stepId)).size : 0;
+
+    // L'EFFORT NE SE LIT PAS DANS LE SCORE. Celui qui trouve au second essai
+    // finit avec le même total que celui qui trouve du premier coup ; leurs
+    // chemins n'ont rien à voir, et c'est le chemin qui dit s'il faut lui
+    // donner la suite ou refaire un tour.
+    const reprises = attempts.filter(a => a.correct && a.attemptIndex > 0).length;
+    const indices = evenements.filter(e => e.type === 'hint_used').length;
+
+    // L'ERREUR QUI REVIENT n'est pas une inattention : c'est une règle mal
+    // apprise, et c'est la seule qui vaille qu'on s'arrête. On ne la signale
+    // que si elle DOMINE — sinon on désignerait au hasard la première d'une
+    // liste également répartie.
+    const tetu = (aRevoir[0] && aRevoir[0].count >= 3
+        && aRevoir[0].count >= (aRevoir[1] ? aRevoir[1].count * 2 : 3)) ? aRevoir[0] : null;
+
     const bilan = {
         questions: attempts.length,
         justes,
         reussite: attempts.length ? justes / attempts.length : 0,
         minutes: Math.round(ms / 60000),
         seances: runs.length,
+        seancesFinies: runs.filter(r => r.finishedAt && !r.aborted).length,
+        inacheve: !!inacheve,
+        etapesInachevees,
+        reprises,
+        indices,
+        tetu,
         derniereActivite: derniere,
         joursDepuis: derniere ? Math.floor((now - derniere) / JOUR) : null,
         competences,
@@ -97,36 +130,70 @@ export function phraseDe(b) {
 
     const pc = (x) => Math.round(x * 100) + ' %';
 
+    // CE QUI SE DIT D'ABORD EST CE QUI CHANGE LA LECTURE DU RESTE.
+    //
+    // Un travail arrêté en chemin doit se lire AVANT le pourcentage, sinon le
+    // pourcentage ment : « 45 % de réussite » sur deux exercices commencés n'est
+    // pas la même chose que sur six terminés, et rien ne le signale.
+    const tetes = [];
+    if (b.inacheve) {
+        tetes.push(b.etapesInachevees
+            ? `Séance non terminée — ${b.etapesInachevees} exercice${b.etapesInachevees > 1 ? 's' : ''} `
+                + 'seulement, puis arrêt.'
+            : 'Séance ouverte, mais rien n\'a été fait.');
+    }
+
     if (!b.assez) {
         // Le cas le plus fréquent en début d'année, et celui qu'on rate le
         // plus souvent : dire « 40 % de réussite » sur huit questions est un
         // chiffre juste et une conclusion fausse.
-        return `${b.questions} question${b.questions > 1 ? 's' : ''} seulement : `
-            + `c'est trop tôt pour dire sur quoi il ou elle s'appuie. `
-            + `Il en faut ${RELIABLE_MIN_ATTEMPTS} par compétence pour conclure.`;
+        return [...tetes, `${b.questions} question${b.questions > 1 ? 's' : ''} seulement : `
+            + 'c\'est trop tôt pour dire sur quoi il ou elle s\'appuie. '
+            + `Il en faut ${RELIABLE_MIN_ATTEMPTS} par compétence pour conclure.`].join(' ');
+    }
+
+    // L'ERREUR QUI REVIENT passe avant le bilan par compétence : c'est une
+    // règle mal apprise, et on la corrige en deux minutes si on la voit.
+    if (b.tetu) {
+        const q = String(b.tetu.questionText || '').trim();
+        tetes.push(`La même erreur revient ${b.tetu.count} fois${q ? ` (${q})` : ''} : `
+            + 'ce n\'est pas de l\'inattention, il y a une règle à reprendre.');
     }
 
     const force = b.forces[0];
     const souci = b.difficultes[0];
+    const corps = [];
 
     if (force && souci) {
-        return `Solide sur « ${force.nom} » (${pc(force.taux)} sur ${force.essais} questions). `
-            + `Bute sur « ${souci.nom} » (${pc(souci.taux)}) : c'est là qu'il faut reprendre.`;
-    }
-    if (force && !souci) {
+        corps.push(`Solide sur « ${force.nom} » (${pc(force.taux)} sur ${force.essais} questions). `
+            + `Bute sur « ${souci.nom} » (${pc(souci.taux)}) : c'est là qu'il faut reprendre.`);
+    } else if (force) {
         const n = b.forces.length;
-        return `Tout ce qui a été travaillé est acquis — ${n} compétence${n > 1 ? 's' : ''}, `
-            + `dont « ${force.nom} » à ${pc(force.taux)}. On peut ouvrir de nouvelles notions.`;
-    }
-    if (!force && souci) {
+        corps.push(`Tout ce qui a été travaillé est acquis — ${n} compétence${n > 1 ? 's' : ''}, `
+            + `dont « ${force.nom} » à ${pc(force.taux)}. On peut ouvrir de nouvelles notions.`);
+    } else if (souci) {
         // Personne n'est bon nulle part : on nomme quand même le plus proche
         // d'aboutir, parce que c'est par là qu'on recommence.
         const proche = b.difficultes[b.difficultes.length - 1];
-        return `Rien n'est encore stabilisé. Le plus proche d'aboutir est `
+        corps.push('Rien n\'est encore stabilisé. Le plus proche d\'aboutir est '
             + `« ${proche.nom} » (${pc(proche.taux)}) ; le plus fragile, `
-            + `« ${souci.nom} » (${pc(souci.taux)}).`;
+            + `« ${souci.nom} » (${pc(souci.taux)}).`);
+    } else {
+        corps.push(`${b.questions} questions, ${pc(b.reussite)} de réussite.`);
     }
-    return `${b.questions} questions, ${pc(b.reussite)} de réussite.`;
+
+    // L'EFFORT SE DIT EN DERNIER, ET SEULEMENT S'IL EST NET. C'est une nuance
+    // sur ce qui précède — « il y arrive, mais » —, pas une conclusion. La
+    // mesurer sur la PART des bonnes réponses reprises et non sur leur nombre :
+    // trois reprises sur dix questions et trois sur cent ne disent pas la même
+    // chose.
+    const partReprises = b.justes ? b.reprises / b.justes : 0;
+    if (partReprises > 0.25 || (b.indices && b.indices > b.questions * 0.3)) {
+        corps.push('Y arrive en s\'accrochant : beaucoup de secondes tentatives et d\'indices — '
+            + 'c\'est acquis moins solidement que le score ne le laisse croire.');
+    }
+
+    return [...tetes, ...corps].join(' ');
 }
 
 /**
