@@ -6,6 +6,7 @@ import './helpers.mjs';
 import '../js/core/activities/index.js';
 import { makeRng } from '../js/core/ids.js';
 import { getExerciseById } from '../js/data/catalog.js';
+import { getGenerator } from '../js/core/registry.js';
 import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche,
     ancetres, estToujours, genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
@@ -259,4 +260,62 @@ test('l\'exercice du catalogue tient debout', () => {
         assert.equal(o.label, PALIERS[o.value].label, `le libellé du palier ${o.value} a divergé du noyau`);
     });
     assert.ok(MODES.FAMILLES && MODES.PROPRIETES);
+});
+
+// --- LA FICHE PAPIER ----------------------------------------------------------
+//
+// Rémy l'a demandée pour son PDF : cinq cases, treize flèches, et la liste des
+// conditions à reporter. À l'écran on glisse des cartes, sur le papier on écrit
+// une lettre — découper treize étiquettes n'est pas une leçon de géométrie.
+
+test('NEUF CONDITIONS POUR TREIZE FLÈCHES, et une lettre peut servir deux fois', () => {
+    // « Un angle droit » mène du parallélogramme au rectangle ET du losange au
+    // carré. Une liste de treize aurait été plus simple à écrire et FAUSSE à
+    // corriger : l'élève qui met la lettre de l'un des deux jumeaux aurait eu
+    // juste, et l'exercice aurait eu deux réponses.
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    assert.ok(gen, 'le générateur de la fiche doit être enregistré');
+    const item = gen.generate({}, { rng: makeRng('fiche-1') });
+    const m = item.meta;
+
+    assert.equal(m.liste.length, 9, 'neuf énoncés distincts');
+    assert.equal(new Set(m.liste.map(l => l.texte)).size, 9, 'un énoncé en double');
+    assert.equal(m.liste.reduce((n, l) => n + l.cles.length, 0), FLECHES.length,
+        'les treize flèches doivent toutes être couvertes');
+    assert.equal(m.liste.filter(l => l.cles.length === 2).length, 4,
+        'quatre conditions servent deux fois');
+
+    // CHAQUE FLÈCHE A SA LETTRE, et c'est bien celle de sa condition.
+    FLECHES.forEach(f => {
+        const lettre = m.parCle[cleFleche(f)];
+        assert.ok(lettre, `${cleFleche(f)} sans lettre`);
+        assert.equal(m.liste.find(l => l.lettre === lettre).texte, f.ajoute);
+    });
+    assert.equal(item.answer.length, FLECHES.length);
+    // La consigne prévient : sans cela, l'élève cherche une correspondance
+    // une-pour-une et bloque sur la treizième flèche.
+    assert.match(item.prompt.text, /DEUX FOIS/);
+});
+
+test('LES LETTRES CHANGENT D\'UNE COPIE À L\'AUTRE', () => {
+    // Rémy : « l'organigramme des quadrilatères est toujours le même ». Il l'est
+    // — c'est une hiérarchie —, mais l'ordre de la liste, lui, se mélange : deux
+    // voisins n'ont pas les mêmes lettres aux mêmes endroits.
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const clefs = ['a', 'b', 'c', 'd', 'e', 'f'].map(g => {
+        const m = gen.generate({}, { rng: makeRng(`copie-${g}`) }).meta;
+        return m.liste.map(l => l.lettre + l.texte).join('|');
+    });
+    assert.ok(new Set(clefs).size > 1, 'toutes les copies portent le même ordre');
+    // Mais la FIGURE, elle, ne bouge pas d'une copie à l'autre.
+    const figures = clefs.map(() => FLECHES.map(cleFleche).join(','));
+    assert.equal(new Set(figures).size, 1);
+});
+
+test('L\'EXERCICE EST IMPRIMABLE, avec son propre générateur', () => {
+    const exo = getExerciseById('geo-quadrilateres');
+    assert.equal(exo.printable, 'organigramme-quadri');
+    assert.equal(exo.printGeneratorId, 'geo.quadrilateres.organigramme');
+    // Et l'exercice à l'écran garde le sien : ce sont deux gestes différents.
+    assert.equal(exo.activityId, 'quadrilateres');
 });

@@ -18,6 +18,10 @@
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
+import {
+    FLECHES as FLECHES_Q, FAMILLES as FAMILLES_Q, POSITIONS as POSITIONS_Q,
+    traceFleche as traceFlecheQ, posEtiquette as posEtiquetteQ, cleFleche as cleFlecheQ
+} from '../core/quadrilateres.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // `relire` : relit un calcul récrit à la main et refait sa cascade — voir
 // `retoucheGrille` du rendu « priorites ».
@@ -10170,6 +10174,200 @@ function dessinerCheminPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+// --- L'ORGANIGRAMME DES QUADRILATÈRES, SUR LE PAPIER --------------------------
+//
+// Rémy l'a demandé pour sa fiche : cinq cases de figures, treize flèches, et la
+// liste des conditions à reporter. C'est la feuille qu'on colle dans le cahier
+// de leçons — celle qu'on remplit une fois et qu'on relit toute l'année.
+//
+// LE PLAN VIENT DU NOYAU, pas d'ici : `POSITIONS`, `traceFleche` et
+// `posEtiquette` sont les mêmes qu'à l'écran (voir core/quadrilateres.js). Un
+// élève qui a la feuille sous les yeux et l'exercice sur la tablette doit
+// reconnaître LA MÊME figure, au même endroit — sans quoi ce sont deux leçons.
+//
+// LA LISTE SE MET SOUS LE PLAN, sur deux colonnes. Neuf énoncés dont trois font
+// deux lignes : en une colonne ils prennent la moitié de la page, en trois ils
+// se coupent au milieu d'un mot.
+
+/** Le plan de 100 × 100 du noyau, posé dans le bloc — et la place de la liste. */
+function geoOrganigramme(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+
+    // La liste d'abord : c'est elle qui a une hauteur imposée par son texte.
+    const lignes = Math.ceil(m.liste.length / 2);
+    const hListe = Math.min(b.h * 0.34, lignes * 4.6 + 4);
+    const hPlan = b.h - hListe - 2;
+
+    // LE PLAN GARDE SES PROPORTIONS. Le noyau le dessine dans un carré de
+    // 100 × 100 mais l'organigramme y est plus haut que large : étiré à la
+    // largeur du bloc, les flèches obliques deviendraient des horizontales et
+    // les étiquettes se chevaucheraient. On lui donne donc le rapport qu'il a.
+    const RAPPORT = 0.82;                       // largeur / hauteur
+    const hUtile = Math.min(hPlan, b.w / RAPPORT);
+    const wUtile = hUtile * RAPPORT;
+    const x0 = b.x + (b.w - wUtile) / 2;
+    const y0 = b.y;
+
+    // Une case de figure : assez large pour son nom, assez haute pour le dessin
+    // qu'elle porte.
+    const caseW = wUtile * 0.26, caseH = hUtile * 0.15;
+
+    // LE PLAN SE RÉTRÉCIT DE LA MOITIÉ D'UNE CASE, DE TOUS LES CÔTÉS. Une case
+    // est CENTRÉE sur sa position, et le quadrilatère est à y = 4, le carré à
+    // y = 97 : posés tels quels, ils débordaient du plan par le haut et par le
+    // bas. Mesuré sur le premier PDF : la case « Carré » descendait sur la
+    // liste des conditions et en couvrait la première ligne.
+    const px = (v) => x0 + caseW / 2 + (v / 100) * (wUtile - caseW);
+    const py = (v) => y0 + caseH / 2 + (v / 100) * (hUtile - caseH);
+    const P = (p) => ({ x: px(p.x), y: py(p.y) });
+    return {
+        b, m, x0, y0, wUtile, hUtile,
+        P, caseW, caseH,
+        // La petite case où s'écrit la lettre.
+        lettreW: Math.max(4.5, wUtile * 0.052),
+        listeY: y0 + hUtile + 3,
+        listeH: hListe
+    };
+}
+
+/** Les sept chemins, sans répéter ceux qui portent plusieurs conditions. */
+const cheminsUniques = () => FLECHES_Q.filter(
+    (f, i) => FLECHES_Q.findIndex(x => x.de === f.de && x.vers === f.vers) === i);
+
+function organigrammePreviewHtml(item, slot, k, solution) {
+    const g = geoOrganigramme(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let out = '';
+
+    cheminsUniques().forEach(f => {
+        const pts = traceFlecheQ(f).points.map(p => g.P(p))
+            .map(p => `${T(p.x)},${T(p.y)}`).join(' ');
+        out += `<polyline points="${pts}" fill="none" stroke="#8a90a0"
+            stroke-width="${(0.4 * k).toFixed(2)}"/>`;
+    });
+
+    FAMILLES_Q.forEach(fam => {
+        const c = g.P(POSITIONS_Q[fam.id]);
+        const x = c.x - g.caseW / 2, y = c.y - g.caseH / 2;
+        out += `<rect x="${T(x)}" y="${T(y)}" width="${T(g.caseW)}" height="${T(g.caseH)}"
+            rx="${T(1.4)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
+        // La figure, dans la moitié haute de la case.
+        const fw = g.caseW * 0.42, fh = g.caseH * 0.5;
+        const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
+        const d = fam.figure.map((pt, i) =>
+            `${i ? 'L' : 'M'}${T(fx + (pt[0] / 100) * fw)} ${T(fy + (pt[1] / 100) * fh)}`).join(' ') + ' Z';
+        out += `<path d="${d}" fill="none" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
+        const nom = (g.m.avecNoms || solution) ? fam.nom : '';
+        out += `<text x="${T(c.x)}" y="${T(y + g.caseH * 0.85)}" text-anchor="middle"
+            font-size="${T(g.caseH * 0.24)}" font-weight="700" fill="#1a202c"
+            font-family="Helvetica, Arial, sans-serif">${nom}</text>`;
+        if (!nom) {
+            out += `<line x1="${T(c.x - g.caseW * 0.34)}" y1="${T(y + g.caseH * 0.86)}"
+                x2="${T(c.x + g.caseW * 0.34)}" y2="${T(y + g.caseH * 0.86)}"
+                stroke="#b0b6c5" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
+        }
+    });
+
+    FLECHES_Q.forEach(f => {
+        const e = g.P(posEtiquetteQ(f));
+        const w = g.lettreW, h = w * 0.86;
+        out += `<rect x="${T(e.x - w / 2)}" y="${T(e.y - h / 2)}" width="${T(w)}" height="${T(h)}"
+            rx="${T(0.8)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
+        if (solution) {
+            out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
+                dominant-baseline="central" font-size="${T(h * 0.7)}" font-weight="700"
+                fill="#1a202c" font-family="Helvetica, Arial, sans-serif">${g.m.parCle[cleFlecheQ(f)]}</text>`;
+        }
+    });
+
+    // La liste, sur deux colonnes.
+    const colW = g.b.w / 2;
+    const lignes = Math.ceil(g.m.liste.length / 2);
+    g.m.liste.forEach((l, i) => {
+        const col = Math.floor(i / lignes), rang = i % lignes;
+        const x = g.b.x + col * colW;
+        const y = g.listeY + rang * (g.listeH / lignes) + 2;
+        out += `<text x="${T(x)}" y="${T(y)}" font-size="${T(2.6)}" fill="#2d3748"
+            font-family="Helvetica, Arial, sans-serif"><tspan font-weight="700">${l.lettre}.</tspan>
+            <tspan> ${l.texte}</tspan></text>`;
+    });
+
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+function dessinerOrganigrammePdf(doc, item, slot, solution) {
+    const g = geoOrganigramme(item, slot);
+
+    doc.setDrawColor(...ENCRE.gris);
+    doc.setLineWidth(0.4);
+    cheminsUniques().forEach(f => {
+        const pts = traceFlecheQ(f).points.map(p => g.P(p));
+        for (let i = 1; i < pts.length; i++) doc.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
+    });
+
+    FAMILLES_Q.forEach(fam => {
+        const c = g.P(POSITIONS_Q[fam.id]);
+        const x = c.x - g.caseW / 2, y = c.y - g.caseH / 2;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.35);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(x, y, g.caseW, g.caseH, 1.4, 1.4, 'FD');
+
+        const fw = g.caseW * 0.42, fh = g.caseH * 0.5;
+        const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
+        const pts = fam.figure.map(pt => [fx + (pt[0] / 100) * fw, fy + (pt[1] / 100) * fh]);
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[i], b2 = pts[(i + 1) % pts.length];
+            doc.line(a[0], a[1], b2[0], b2[1]);
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5, Math.min(9, g.caseH * 1.9)));
+        doc.setTextColor(...ENCRE.texte);
+        if (g.m.avecNoms || solution) {
+            doc.text(fam.nom, c.x, y + g.caseH * 0.85, { align: 'center', baseline: 'alphabetic' });
+        } else {
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setLineWidth(0.3);
+            doc.line(c.x - g.caseW * 0.34, y + g.caseH * 0.86, c.x + g.caseW * 0.34, y + g.caseH * 0.86);
+        }
+    });
+
+    FLECHES_Q.forEach(f => {
+        const e = g.P(posEtiquetteQ(f));
+        const w = g.lettreW, h = w * 0.86;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.3);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(e.x - w / 2, e.y - h / 2, w, h, 0.8, 0.8, 'FD');
+        if (solution) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(6, Math.min(11, h * 2.4)));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
+        }
+    });
+
+    // La liste, sur deux colonnes.
+    const colW = g.b.w / 2;
+    const lignes = Math.ceil(g.m.liste.length / 2);
+    doc.setFontSize(7.4);
+    doc.setTextColor(...ENCRE.texte);
+    g.m.liste.forEach((l, i) => {
+        const col = Math.floor(i / lignes), rang = i % lignes;
+        const x = g.b.x + col * colW;
+        const y = g.listeY + rang * (g.listeH / lignes) + 2;
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${l.lettre}.`, x, y);
+        doc.setFont('helvetica', 'normal');
+        const texte = doc.splitTextToSize(l.texte, colW - 8);
+        doc.text(texte[0], x + 4.5, y);
+    });
+    doc.setFont('helvetica', 'normal');
+}
+
 // --- LES BONS CHEMINS, SUR LE PAPIER ------------------------------------------
 //
 // Sa forme d'origine : Rémy est parti d'une fiche photocopiée. Une grille de
@@ -10832,6 +11030,26 @@ export const RENDUS = {
         nomBloc: 'Grille', nomBlocs: 'grilles',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    'organigramme-quadri': {
+        titre: 'L\'organigramme des quadrilatères',
+        consigne: (items) => (items[0] && items[0].prompt && items[0].prompt.papier)
+            || 'Reporte la lettre de chaque condition dans la case posée sur sa flèche.',
+        previewGrille: organigrammePreviewHtml,
+        pdfGrille: dessinerOrganigrammePdf,
+        nomBloc: 'Organigramme', nomBlocs: 'organigrammes',
+        // UN SEUL PAR PAGE, ET C'EST VOULU. Rémy : « l'organigramme des
+        // quadrilatères est toujours le même » — c'est une hiérarchie, elle ne
+        // se tire pas au sort. En mettre deux côte à côte donnerait deux fois la
+        // même figure sur la même feuille. Ce qui change d'une copie à l'autre,
+        // ce sont les lettres de la liste : deux voisins ne se recopient pas.
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1,
+        // Plus haut que large : c'est la forme de l'organigramme, et la liste
+        // des conditions vient encore sous lui.
+        proportions: { w: 1, h: 1.3 },
+        titreAGauche: true
     },
 
     'bons-chemins': {

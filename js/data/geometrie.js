@@ -131,6 +131,12 @@ export const geometrieExercises = [
         title: 'L\'Organigramme des Quadrilatères',
         activityId: 'quadrilateres',
         sansRevision: true,
+        // LA FICHE PAPIER A SON PROPRE GÉNÉRATEUR. Rémy l'a demandée pour son
+        // PDF : c'est la feuille qu'on colle dans le cahier de leçons. À
+        // l'écran on glisse des cartes, sur le papier on reporte une lettre —
+        // découper treize étiquettes n'est pas une leçon de géométrie.
+        printGeneratorId: 'geo.quadrilateres.organigramme',
+        printable: 'organigramme-quadri',
         skills: ['geo.quadrilateres.familles'],
         params: { palier: 'noms' },
         paramSchema: [
