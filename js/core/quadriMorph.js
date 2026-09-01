@@ -403,26 +403,51 @@ export function figureDeDepart(rng) {
     return poserFigure(brut, []);
 }
 
+/**
+ * ON NE PART PAS TOUJOURS DU QUADRILATÈRE QUELCONQUE.
+ *
+ * Rémy, banc d'essai : « ce serait bien de pas forcément partir du
+ * quadrilatère ». Il a raison, et le palier des diagonales le réclamait sans
+ * qu'on le voie : des diagonales perpendiculaires dans un quadrilatère
+ * quelconque ne donnent RIEN du cours — c'est vrai, c'est même la découverte
+ * de la leçon, mais l'élève qui commence toujours de zéro pose la vignette,
+ * voit la figure à peine bouger et répond « quadrilatère » trois fois de
+ * suite. En partant d'un parallélogramme, la même vignette fait un losange :
+ * la question devient intéressante là où elle était vide.
+ *
+ * `departs` liste donc les états de DÉPART possibles, chacun étant la liste
+ * des propriétés déjà acquises. L'élève voit alors le nom de sa figure de
+ * départ — il ne devine pas d'où il part, il devine où il arrive.
+ */
 export const PALIERS = {
     decouverte: {
         label: 'Une seule propriété à la fois — les côtés',
         cartes: ['opposesParalleles', 'cotesOpposesEgaux', 'quatreCotesEgaux', 'unAngleDroit'],
+        // Le premier palier part TOUJOURS de zéro : c'est là qu'on découvre
+        // qu'une propriété rétrécit une famille, et il faut la plus large.
+        departs: [[]],
         poses: 1
     },
     chemin: {
         label: 'Deux propriétés à la suite — on descend l\'arbre',
         cartes: ['opposesParalleles', 'cotesOpposesEgaux', 'quatreCotesEgaux', 'unAngleDroit'],
+        departs: [[], [], ['opposesParalleles']],
         poses: 2
     },
     diagonales: {
         label: 'Les diagonales aussi disent la figure',
         cartes: ['opposesParalleles', 'diagonalesMilieu', 'diagonalesEgales',
             'diagonalesPerpendiculaires', 'cotesOpposesEgaux'],
+        // Deux fois sur trois dans un parallélogramme : c'est le seul endroit
+        // où une diagonale décide de quelque chose.
+        departs: [[], ['opposesParalleles'], ['opposesParalleles']],
         poses: 2
     },
     tout: {
         label: 'Toutes les propriétés, jusqu\'au carré',
         cartes: PROPRIETES.map(p => p.id),
+        departs: [[], ['opposesParalleles'], ['opposesParalleles', 'unAngleDroit'],
+            ['quatreCotesEgaux']],
         poses: 3
     }
 };
@@ -436,15 +461,25 @@ export const PALIERS = {
  */
 export function genererDefi({ rng = makeRng(1), palier = 'decouverte' } = {}) {
     const P = PALIERS[palier] || PALIERS.decouverte;
-    const depart = figureDeDepart(rng);
+    const deja = rng.pick(P.departs || [[]]) || [];
+    // Le quadrilatère quelconque d'abord, puis on lui impose ce qui est déjà
+    // acquis : la figure de départ est donc du même genre que toutes les
+    // autres, produite par le même solveur, et elle porte déjà son codage.
+    const depart = poserFigure(figureDeDepart(rng), deja);
     return {
         palier,
         depart,
+        // `deja` est ce que la figure de départ porte DÉJÀ : c'est là qu'on
+        // revient quand l'élève recommence, et non au quadrilatère quelconque.
+        deja: [...deja],
         points: depart,
-        posees: [],
-        cartes: rng.shuffle([...P.cartes]),
+        posees: [...deja],
+        // Les vignettes déjà posées au départ ne sont pas offertes : les
+        // reposer ne dirait que « c'était déjà vrai », et ce n'est pas une
+        // question qu'on veut poser d'entrée de jeu.
+        cartes: rng.shuffle(P.cartes.filter(id => !deja.includes(id))),
         aPoser: P.poses,
-        famille: 'quadrilatere'
+        famille: familleApres(deja)
     };
 }
 

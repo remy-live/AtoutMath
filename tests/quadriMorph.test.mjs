@@ -170,9 +170,35 @@ test('chaque palier offre des vignettes qui existent, et de quoi descendre', () 
         P.cartes.forEach(id => assert.ok(proprieteDe(id), `${nom} : vignette inconnue ${id}`));
         assert.ok(P.poses >= 1 && P.poses <= P.cartes.length, nom);
         const defi = genererDefi({ rng: makeRng(nom), palier: nom });
-        assert.equal(defi.cartes.length, P.cartes.length);
-        assert.equal(nommerFigure(defi.depart), 'quadrilatere', nom);
+        // Les vignettes déjà posées au départ ne sont pas offertes : les
+        // reposer ne dirait que « c'était déjà vrai ».
+        assert.equal(defi.cartes.length, P.cartes.length - defi.deja.length, nom);
+        assert.ok(defi.cartes.length >= 3, `${nom} : il reste trop peu à poser`);
     }
+});
+
+test('ON NE PART PAS TOUJOURS DU QUADRILATÈRE QUELCONQUE', () => {
+    // Rémy : « ce serait bien de pas forcément partir du quadrilatère ». Le
+    // palier des diagonales le réclamait sans qu'on le voie : des diagonales
+    // perpendiculaires dans un quadrilatère quelconque ne donnent rien du
+    // cours, et l'élève qui commence toujours de zéro répondait
+    // « quadrilatère » trois fois de suite.
+    for (const [nom, P] of Object.entries(PALIERS)) {
+        for (let i = 0; i < 12; i++) {
+            const defi = genererDefi({ rng: makeRng(`${nom}-${i}`), palier: nom });
+            // LA FIGURE DE DÉPART EST VRAIMENT CE QU'ON ANNONCE : c'est elle
+            // qu'on montre nommée à l'élève avant qu'il pose quoi que ce soit.
+            assert.equal(nommerFigure(defi.depart), defi.famille, `${nom} ${i}`);
+            assert.equal(defi.famille, familleApres(defi.deja), `${nom} ${i}`);
+            assert.deepEqual(defi.posees, defi.deja, `${nom} ${i}`);
+        }
+    }
+    // Le premier palier, lui, part TOUJOURS de zéro : c'est là qu'on découvre
+    // qu'une propriété rétrécit une famille, et il faut la plus large.
+    assert.deepEqual(PALIERS.decouverte.departs, [[]]);
+    // Les autres proposent au moins un départ déjà rangé.
+    ['chemin', 'diagonales', 'tout'].forEach(nom =>
+        assert.ok(PALIERS[nom].departs.some(d => d.length), nom));
 });
 
 test('la même graine redonne la même figure', () => {
@@ -214,33 +240,13 @@ test('l\'exercice du catalogue tient debout', () => {
     });
 });
 
-test('LA PROPRIÉTÉ EN ATTENTE SE VOIT SUR LA FIGURE — AVANT qu\'elle bouge', () => {
-    // Rémy : « on ne comprend rien ». La cause était là : au moment de deviner,
-    // la figure n'avait pas changé (elle ne DOIT pas changer) et la vignette
-    // avait disparu de l'écran. On demandait donc « que va-t-elle devenir ? »
-    // en ne montrant rien de ce qui allait la changer.
-    const P = figureDeDepart(makeRng('attente'));
-    const nu = figureSvg(P, []);
-    assert.equal(nu.includes('qm-avenir'), false, 'rien en attente, rien qui bat');
-    const attente = figureSvg(P, [], { enAttente: 'opposesParalleles' });
-    assert.match(attente, /qm-avenir/, 'la propriété posée doit se dessiner');
-    // Et elle ne redessine QUE ce qu'elle ajoute : ce qui est déjà acquis reste
-    // en trait plein, sinon le pointillé le remettrait en question.
-    const deja = figureSvg(P, ['opposesParalleles'], { enAttente: 'unAngleDroit' });
-    const dedans = deja.slice(deja.indexOf('qm-avenir'));
-    assert.equal((dedans.match(/#2ca02c/g) || []).length, 0,
-        'les chevrons déjà acquis ne doivent pas rebattre');
-    assert.match(dedans, /#e07b00/, 'le nouvel angle droit, lui, doit battre');
-});
-
 test('la légende n\'explique que les marques réellement dessinées', () => {
     assert.equal(legendeDuCodage([]), '', 'aucune marque, aucune légende');
     assert.match(legendeDuCodage(['opposesParalleles']), /parallèles/);
     assert.equal(/angle droit/.test(legendeDuCodage(['opposesParalleles'])), false);
     assert.match(legendeDuCodage(['unAngleDroit']), /angle droit/);
     assert.match(legendeDuCodage(['diagonalesEgales']), /diagonales/);
-    // Et la propriété en attente compte : sa marque est sur la figure.
-    assert.match(legendeDuCodage([], 'quatreCotesEgaux'), /même longueur/);
+    assert.match(legendeDuCodage(['quatreCotesEgaux']), /même longueur/);
 });
 
 test('chaque vignette de diagonale pose SA marque, pas seulement les diagonales', () => {
@@ -252,4 +258,20 @@ test('chaque vignette de diagonale pose SA marque, pas seulement les diagonales'
         .map(id => figureSvg(P, [id]));
     assert.equal(new Set(dessins).size, 3, 'les trois marques doivent différer');
     dessins.forEach(d => assert.match(d, /#9467bd/));
+});
+
+test('LA FIGURE SE DÉFORME AU DÉPÔT, ET LE NOM NE SE LIT PAS SUR LE DESSIN', () => {
+    // Rémy : « quand tu transformes la figure fais-le dès que l'on dépose. Et
+    // il faut alors deviner. » La question porte donc sur la figure OBTENUE :
+    // c'est son codage qu'il faut savoir lire, et rien dans le SVG ne doit
+    // écrire le nom de la famille.
+    const depart = figureDeDepart(makeRng('nommer'));
+    const etat = { posees: [], points: depart, famille: 'quadrilatere' };
+    const suite = poser(etat, 'quatreCotesEgaux');
+    assert.equal(suite.famille, 'losange');
+    const svg = figureSvg(suite.points, suite.posees);
+    ['Losange', 'losange', 'Carré', 'Parallélogramme'].forEach(mot =>
+        assert.equal(svg.includes(mot), false, `le dessin ne doit pas écrire « ${mot} »`));
+    // Mais il porte de quoi le trouver : quatre côtés marqués égaux.
+    assert.equal((svg.match(/#d62728/g) || []).length, 4, 'les quatre traits d\'égalité');
 });
