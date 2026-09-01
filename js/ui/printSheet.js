@@ -10167,52 +10167,125 @@ function dessinerCheminPdf(doc, item, slot, solution) {
 // c'est six cibles différentes : les mettre dans la consigne commune les
 // mélangerait. Chaque bloc porte donc la sienne, en gras, exactement comme sur
 // la fiche de Rémy — « Trouve 240 ».
+//
+// CE QUI A ÉTÉ REPRIS, ET POURQUOI. Rémy, banc d'essai : « c'est assez moche le
+// bon chemin en rendu PDF ». Trois défauts, dont un vrai bogue.
+//
+//   · LES CHIFFRES SORTAIENT DEUX FOIS TROP PETITS. L'aperçu écrivait un corps
+//     de 0,42 × la case, le PDF plafonnait le sien à 15 points : dans une case
+//     de 24 mm, cela fait un chiffre de 5 mm perdu au milieu de rien. L'aperçu
+//     ne montrait donc PAS ce qu'on imprimait, ce qui est le pire défaut qu'un
+//     aperçu puisse avoir. Les deux rendus lisent maintenant les mêmes mesures,
+//     écrites une seule fois ici — en millimètres, la seule unité que les deux
+//     partagent.
+//
+//   · LE D ET LE A RESSEMBLAIENT À DES NOMBRES. Même corps, même graisse, même
+//     noir : rien ne disait où l'on part ni où l'on arrive, alors que c'est la
+//     première chose à voir sur la grille. Leurs deux cases sont désormais
+//     teintées, et la lettre y est plus grande.
+//
+//   · LA GRILLE ÉTAIT UN TABLEAU PÂLE. Neuf rectangles dessinés un par un, en
+//     gris clair, chaque trait intérieur repassé deux fois. On trace maintenant
+//     un cadre net et des traits intérieurs fins, une seule fois chacun.
+//
+// Et « Trouve 240 » est posé dans une étiquette de la largeur de la grille : la
+// consigne de chaque bloc tient dans une forme, au lieu de flotter dessous.
 
+/** Le corps d'un texte, en points, pour un cadratin de `mm` millimètres. */
+const enPoints = (mm) => mm * 2.8346;
+
+// LE TRAIT DE LA SOLUTION EST PÂLE, ET C'EST UNE CORRECTION.
+//
+// Le PDF le traçait en gris moyen, pleine opacité, SOUS les nombres : sur la
+// page des solutions, les chiffres du chemin — ceux qu'on veut lire, puisque ce
+// sont eux qu'on multiplie — devenaient noirs sur gris foncé. L'aperçu, lui,
+// posait une opacité de 0,5 et paraissait correct : encore un endroit où il
+// mentait sur ce qui allait sortir de l'imprimante. Un ruban clair porte le
+// chemin aussi bien et laisse lire ce qu'il traverse.
+const RUBAN_CHEMIN = [205, 211, 228];
+
+/**
+ * LA GÉOMÉTRIE DU BLOC, en millimètres — et elle est la SEULE.
+ *
+ * L'aperçu la multiplie par son échelle, le PDF la prend telle quelle : c'est
+ * ce qui garantit que la feuille imprimée est celle qu'on a vue. Tout ce que
+ * les deux dessins ont besoin de savoir est ici, corps des textes compris.
+ */
 function geoBonsChemins(item, slot) {
     const b = boiteDe(slot);
     const m = item.meta;
-    // La ligne de la cible mange le bas du bloc : on la réserve AVANT de
+    // L'étiquette de la cible mange le bas du bloc : on la réserve AVANT de
     // calculer le côté des cases, sinon la grille déborderait dessus.
-    const hCible = Math.max(4.5, Math.min(7, b.h * 0.16));
+    const hCible = Math.max(5, Math.min(8.5, b.h * 0.155));
     const dispo = { w: b.w, h: b.h - hCible };
     const cote = Math.min(dispo.w / m.l, dispo.h / m.h);
-    const x0 = b.x + (b.w - cote * m.l) / 2;
-    const y0 = b.y + (dispo.h - cote * m.h) / 2;
+    const W = cote * m.l, H = cote * m.h;
+    const x0 = b.x + (b.w - W) / 2;
+    const y0 = b.y + (dispo.h - H) / 2;
     const centre = (x, y) => ({ x: x0 + (x + 0.5) * cote, y: y0 + (y + 0.5) * cote });
-    return { b, m, cote, x0, y0, centre, yCible: y0 + cote * m.h + hCible * 0.62 };
+    const estBout = (x, y) => (x === 0 && y === 0) || (x === m.l - 1 && y === m.h - 1);
+    // L'étiquette fait la largeur de la grille : les deux formes s'alignent, et
+    // le bloc se lit comme un seul objet.
+    const pill = { x: x0, y: y0 + H + hCible * 0.14, w: W, h: hCible * 0.78 };
+    return {
+        b, m, cote, x0, y0, W, H, centre, estBout, pill,
+        // Les corps, en millimètres de cadratin. Un chiffre occupe alors un peu
+        // plus du tiers de sa case : lisible de loin, sans toucher les traits.
+        corps: { nombre: cote * 0.46, lettre: cote * 0.56, cible: Math.min(pill.h * 0.62, W / 6.5) },
+        rayon: Math.min(1.6, cote * 0.1),
+        trace: cote * 0.26
+    };
 }
 
 function bonsCheminsPreviewHtml(item, slot, k, solution) {
     const g = geoBonsChemins(item, slot);
     const T = (v) => (v * k).toFixed(2);
+    const txt = (p, s, corps, poids) => `<text x="${T(p.x)}" y="${T(p.y)}" fill="#1a202c"
+        font-weight="${poids}" font-size="${T(corps)}" text-anchor="middle"
+        dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${s}</text>`;
     let dedans = '';
+
+    // Les deux bouts, teintés : on voit d'où l'on part avant d'avoir rien lu.
     for (let y = 0; y < g.m.h; y++) {
         for (let x = 0; x < g.m.l; x++) {
+            if (!g.estBout(x, y)) continue;
             dedans += `<rect x="${T(g.x0 + x * g.cote)}" y="${T(g.y0 + y * g.cote)}"
-                width="${T(g.cote)}" height="${T(g.cote)}" fill="none"
-                stroke="#b0b6c5" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+                width="${T(g.cote)}" height="${T(g.cote)}" fill="#e6eaf6"/>`;
         }
     }
+    // Le cadre, puis les traits intérieurs — chacun une seule fois.
+    dedans += `<rect x="${T(g.x0)}" y="${T(g.y0)}" width="${T(g.W)}" height="${T(g.H)}"
+        rx="${T(g.rayon)}" fill="none" stroke="#4a5266" stroke-width="${T(0.45)}"/>`;
+    for (let x = 1; x < g.m.l; x++) {
+        dedans += `<path d="M${T(g.x0 + x * g.cote)} ${T(g.y0)} V${T(g.y0 + g.H)}"
+            stroke="#b0b6c5" stroke-width="${T(0.22)}"/>`;
+    }
+    for (let y = 1; y < g.m.h; y++) {
+        dedans += `<path d="M${T(g.x0)} ${T(g.y0 + y * g.cote)} H${T(g.x0 + g.W)}"
+            stroke="#b0b6c5" stroke-width="${T(0.22)}"/>`;
+    }
+
     if (solution) {
         const d = g.m.solution.map(([x, y], i) => {
             const p = g.centre(x, y);
             return `${i ? 'L' : 'M'}${T(p.x)} ${T(p.y)}`;
         }).join(' ');
-        dedans += `<path d="${d}" fill="none" stroke="#8a90a0" stroke-linecap="round"
-            stroke-linejoin="round" stroke-width="${(g.cote * 0.3 * k).toFixed(2)}" opacity="0.5"/>`;
+        dedans += `<path d="${d}" fill="none" stroke="#cdd3e4" stroke-linecap="round"
+            stroke-linejoin="round" stroke-width="${T(g.trace)}"/>`;
     }
+
     for (let y = 0; y < g.m.h; y++) {
         for (let x = 0; x < g.m.l; x++) {
             const v = String(g.m.cases[y][x]);
-            const p = g.centre(x, y);
-            dedans += `<text x="${T(p.x)}" y="${T(p.y)}" fill="#1a202c" font-weight="700"
-                font-size="${(g.cote * 0.42 * k).toFixed(2)}" text-anchor="middle"
-                dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${v}</text>`;
+            const bout = g.estBout(x, y);
+            dedans += txt(g.centre(x, y), v, bout ? g.corps.lettre : g.corps.nombre, bout ? 800 : 700);
         }
     }
-    dedans += `<text x="${T(g.b.x + g.b.w / 2)}" y="${T(g.yCible)}" fill="#1a202c"
-        font-weight="700" font-size="${(g.cote * 0.4 * k).toFixed(2)}" text-anchor="middle"
-        dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">Trouve ${g.m.cible}</text>`;
+
+    dedans += `<rect x="${T(g.pill.x)}" y="${T(g.pill.y)}" width="${T(g.pill.w)}"
+        height="${T(g.pill.h)}" rx="${T(g.pill.h / 2)}" fill="#e6eaf6"/>`;
+    dedans += txt({ x: g.pill.x + g.pill.w / 2, y: g.pill.y + g.pill.h / 2 },
+        `Trouve ${g.m.cible}`, g.corps.cible, 700);
     return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
         overflow:visible; pointer-events:none">${dedans}</svg>`;
 }
@@ -10220,19 +10293,28 @@ function bonsCheminsPreviewHtml(item, slot, k, solution) {
 function dessinerBonsCheminsPdf(doc, item, slot, solution) {
     const g = geoBonsChemins(item, slot);
 
-    doc.setDrawColor(...ENCRE.grille);
-    doc.setLineWidth(0.25);
+    // Les deux bouts d'abord : une teinte pleine, sous tout le reste.
+    doc.setFillColor(...ENCRE.donnee);
     for (let y = 0; y < g.m.h; y++) {
         for (let x = 0; x < g.m.l; x++) {
-            doc.rect(g.x0 + x * g.cote, g.y0 + y * g.cote, g.cote, g.cote);
+            if (g.estBout(x, y)) doc.rect(g.x0 + x * g.cote, g.y0 + y * g.cote, g.cote, g.cote, 'F');
         }
     }
+    // Le cadre net, puis les traits intérieurs fins : chacun tracé UNE fois,
+    // là où neuf rectangles repassaient deux fois sur chaque trait commun.
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.45);
+    doc.roundedRect(g.x0, g.y0, g.W, g.H, g.rayon, g.rayon);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.22);
+    for (let x = 1; x < g.m.l; x++) doc.line(g.x0 + x * g.cote, g.y0, g.x0 + x * g.cote, g.y0 + g.H);
+    for (let y = 1; y < g.m.h; y++) doc.line(g.x0, g.y0 + y * g.cote, g.x0 + g.W, g.y0 + y * g.cote);
 
     if (solution) {
-        // Le chemin en gros trait gris : il se lit d'un coup d'oeil sans
-        // couvrir les nombres, qu'on redessine par-dessus.
-        doc.setDrawColor(...ENCRE.gris);
-        doc.setLineWidth(g.cote * 0.26);
+        // Le chemin en ruban clair : il se lit d'un coup d'oeil sans effacer les
+        // nombres, qu'on redessine par-dessus.
+        doc.setDrawColor(...RUBAN_CHEMIN);
+        doc.setLineWidth(g.trace);
         doc.setLineCap('round');
         doc.setLineJoin('round');
         for (let i = 1; i < g.m.solution.length; i++) {
@@ -10245,16 +10327,19 @@ function dessinerBonsCheminsPdf(doc, item, slot, solution) {
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(Math.max(7, Math.min(15, g.cote * 1.25)));
     doc.setTextColor(...ENCRE.texte);
     for (let y = 0; y < g.m.h; y++) {
         for (let x = 0; x < g.m.l; x++) {
             const p = g.centre(x, y);
+            doc.setFontSize(enPoints(g.estBout(x, y) ? g.corps.lettre : g.corps.nombre));
             doc.text(String(g.m.cases[y][x]), p.x, p.y, { align: 'center', baseline: 'middle' });
         }
     }
-    doc.setFontSize(Math.max(7, Math.min(13, g.cote * 1.15)));
-    doc.text(pourPdf(`Trouve ${g.m.cible}`), g.b.x + g.b.w / 2, g.yCible,
+
+    doc.setFillColor(...ENCRE.donnee);
+    doc.roundedRect(g.pill.x, g.pill.y, g.pill.w, g.pill.h, g.pill.h / 2, g.pill.h / 2, 'F');
+    doc.setFontSize(enPoints(g.corps.cible));
+    doc.text(pourPdf(`Trouve ${g.m.cible}`), g.pill.x + g.pill.w / 2, g.pill.y + g.pill.h / 2,
         { align: 'center', baseline: 'middle' });
     doc.setFont('helvetica', 'normal');
 }

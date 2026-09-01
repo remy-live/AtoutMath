@@ -28,11 +28,10 @@
 
 import { makeRng } from './ids.js';
 
-export const CONSIGNE = 'Pars du D, arrive au A, et multiplie les nombres que tu '
-    + 'traverses. Tu peux aller sur n\'importe quelle case voisine, y compris EN '
-    + 'DIAGONALE, mais jamais deux fois sur la même case. Avant de te lancer au '
-    + 'hasard, casse la cible en facteurs : elle te dit quels nombres doivent être '
-    + 'sur le chemin, et lesquels ne peuvent pas y être.';
+export const CONSIGNE = 'Pars du D, arrive au A, et multiplie les nombres traversés. '
+    + 'On va sur n\'importe quelle case voisine, DIAGONALES COMPRISES, mais jamais deux '
+    + 'fois sur la même. Casse d\'abord la cible en facteurs : elle dit quels nombres '
+    + 'doivent être sur le chemin.';
 
 /**
  * LES PALIERS. Ce qui rend la recherche difficile n'est pas la taille de la
@@ -175,9 +174,16 @@ export function compterChemins(g, cible) {
  * fiche, et elle n'est pas arbitraire — deux coins opposés obligent à traverser,
  * là où deux coins voisins laisseraient longer un bord.
  *
+ * `part` RANGE LA FEUILLE DU PLUS FACILE AU PLUS DUR, et corrige au passage un
+ * défaut qui se voyait : six blocs tirés au hasard dans le même palier
+ * donnaient trois fois « Trouve 48 » sur la même page. En classant les cibles
+ * possibles et en piochant à la hauteur `part` (0 = les plus petites, 1 = les
+ * plus grandes), la fiche monte bloc après bloc et ses six cibles diffèrent.
+ * L'écran, lui, ne passe rien : il tire au hasard, comme avant.
+ *
  * @returns {Object|null} null si le tirage n'a pas abouti (l'appelant retire)
  */
-export function genererGrille({ rng = makeRng(1), palier = 'moyen' } = {}) {
+export function genererGrille({ rng = makeRng(1), palier = 'moyen', part = null } = {}) {
     const P = PALIERS[palier] || PALIERS.moyen;
     for (let essai = 0; essai < 40; essai++) {
         const g = tirerGrille(P, rng);
@@ -193,7 +199,13 @@ export function genererGrille({ rng = makeRng(1), palier = 'moyen' } = {}) {
             candidats.push({ cible: p, route });
         }
         if (!candidats.length) continue;
-        const choix = rng.pick(candidats);
+        let choix;
+        if (part === null) choix = rng.pick(candidats);
+        else {
+            candidats.sort((a, b) => a.cible - b.cible);
+            const t = Math.max(0, Math.min(0.999, part));
+            choix = candidats[Math.floor(t * candidats.length)];
+        }
         g.cible = choix.cible;
         g.solution = choix.route;
         g.nbChemins = compterChemins(g, choix.cible);
@@ -274,10 +286,15 @@ export function verifier(g, chemin) {
         };
     }
     if (g.cible % p !== 0) {
+        // ON DIT L'IMPASSE SANS DIRE LE PRODUIT. Rémy : « ne donne pas le résultat
+        // du calcul ». Le message disait « 6 ne divise pas 8 » : il faisait la
+        // multiplication à la place de l'élève, dans la phrase même qui devait
+        // l'envoyer la refaire. On nomme donc le produit par ce qu'il est —
+        // « ce que tu as multiplié » — et l'élève le calcule pour vérifier.
         return {
             gagne: false, produit: p, mort: true,
-            message: `${p} ne divise pas ${g.cible} : à partir d'ici, plus aucun chemin ne peut tomber juste. `
-                + 'Reviens en arrière.'
+            message: `Ce que tu as multiplié jusqu'ici ne divise pas ${g.cible} : à partir d'ici, `
+                + 'plus aucun chemin ne peut tomber juste. Reviens en arrière.'
         };
     }
     return { gagne: false, produit: p, reste: g.cible / p };

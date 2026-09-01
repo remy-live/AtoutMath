@@ -5,17 +5,27 @@
 //
 // TROIS PARTIS PRIS.
 //
-//   · LE PRODUIT S'ÉCRIT EN GRAND, EN COURS DE ROUTE. Sur la feuille, l'élève
-//     multiplie de tête et découvre à la fin qu'il s'est trompé de chemin — ou
-//     de calcul, et il ne sait pas lequel des deux. À l'écran, « 2 × 4 = 8 »
-//     s'allonge sous ses yeux : le calcul n'est plus l'obstacle, la RECHERCHE
-//     l'est, et c'est elle qu'on veut travailler.
+//   · LE CALCUL S'ÉCRIT, SON RÉSULTAT NON. Rémy, banc d'essai : « ne donne pas le
+//     résultat du calcul au-dessus ». L'en-tête écrivait « 2 × 4 = 8 · il reste
+//     30 à faire », et il avait raison : c'était la moitié de l'exercice donnée.
+//     Multiplier de tête au fur et à mesure, et diviser la cible par ce qu'on a
+//     déjà, EST le travail — le logiciel le faisait à la place de l'élève, et il
+//     ne restait que le déplacement. On écrit donc la SUITE des nombres
+//     traversés, « 2 × 4 × 5 », telle qu'elle s'allonge : c'est le relevé de ce
+//     qu'on a fait, pas la réponse.
 //
-//   · ON DIT « IL RESTE 30 À FAIRE », PUIS ON DIT QUAND C'EST FICHU. Tant que
-//     le produit divise la cible, on affiche le quotient qui reste — c'est le
-//     nombre à chercher dans la grille. Dès qu'il ne la divise plus, on le dit
-//     tout de suite : multiplier n'enlève jamais un facteur, donc le chemin est
-//     mort, et laisser chercher serait mentir par omission.
+//   · ON DIT QUAND C'EST FICHU, SANS DIRE LE PRODUIT. Dès que ce qui est
+//     multiplié ne divise plus la cible, aucun chemin ne peut plus aboutir :
+//     multiplier n'enlève jamais un facteur. Le taire serait mentir par
+//     omission, et l'élève chercherait dix minutes pour rien. Le message nomme
+//     donc l'impasse sans faire le calcul.
+//
+//   · RIEN NE BOUGE QUAND ON CLIQUE. Rémy : « quand on clique dessus ça
+//     ragrandit ». La consigne occupait quatre lignes sous la grille et
+//     s'effaçait au premier clic : la scène récupérait la place, et la grille
+//     grandissait d'un coup sous le doigt. Les deux bandes de texte ont
+//     désormais une hauteur FIXE — ce qu'elles disent change, la mise en page
+//     jamais.
 //
 //   · ON REVIENT EN TOUCHANT SA PROPRE TRACE. Toucher une case déjà prise coupe
 //     le chemin à cet endroit. Un chemin se cherche en se trompant : tout
@@ -54,9 +64,13 @@ class BonsChemins extends BaseGame {
                     font-weight: 800; font-size: clamp(17px, 5cqw, 27px); line-height: 1.1;
                 }
                 .bc-cible b { color: var(--primary); font-size: 1.25em; }
+                /* HAUTEUR FIXE, ET UNE SEULE LIGNE. Ce qu'elle dit change à chaque
+                   clic ; si elle passait de une à deux lignes, la scène se
+                   redimensionnerait sous le doigt. */
                 .bc-facteurs {
                     color: var(--text-muted); font-size: clamp(11px, 2.6cqw, 13px);
-                    margin-top: 2px;
+                    margin-top: 2px; height: 1.5em; line-height: 1.5;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                 }
                 .bc-scene {
                     flex: 1 1 auto; width: 100%; min-height: min(88cqw, 400px, 54cqh);
@@ -90,8 +104,14 @@ class BonsChemins extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 12px; font-size: .85rem; min-height: 38px;
                 }
+                /* HAUTEUR FIXE, ET NON « min-height ». C'était LA cause du sursaut :
+                   la consigne tenait quatre lignes, le premier clic la remplaçait
+                   par du vide, la note retombait à 2,4 em et la scène — qui prend
+                   ce qui reste — récupérait deux centimètres d'un coup. La grille
+                   grandissait donc sous le doigt qui venait de la toucher. */
                 .bc-note {
-                    min-height: 2.4em; text-align: center; font-size: .85rem; line-height: 1.35;
+                    height: 4.2em; overflow-y: auto;
+                    text-align: center; font-size: .85rem; line-height: 1.35;
                     color: var(--text-muted); max-width: 620px; flex: 0 0 auto;
                 }
                 .bc-note--ok { color: var(--success); font-weight: 700; }
@@ -111,7 +131,9 @@ class BonsChemins extends BaseGame {
                     .bc-tete { grid-column: 2; grid-row: 1; }
                     .bc-scene { grid-column: 1; grid-row: 1 / 4; min-height: 0; height: 100%; align-self: stretch; }
                     .bc-barre { grid-column: 2; grid-row: 2; }
-                    .bc-note { grid-column: 2; grid-row: 3; min-height: 1.4em; }
+                    /* Couché, la note est une colonne étroite : il lui faut plus de
+                       lignes pour dire la même chose, et la hauteur reste fixe. */
+                    .bc-note { grid-column: 2; grid-row: 3; height: 6.8em; }
                 }
             </style>
             <div class="bc-wrap">
@@ -160,7 +182,7 @@ class BonsChemins extends BaseGame {
         this.chemin = traceVide(this.grille);
         this.fini = false;
         this.dessiner();
-        this.note('');
+        this.note(this.rappel());
     }
 
     revenir() {
@@ -168,7 +190,7 @@ class BonsChemins extends BaseGame {
         this.chemin = this.chemin.slice(0, -1);
         this.fini = false;
         this.dessiner();
-        this.note('');
+        this.note(this.rappel());
     }
 
     // --- Le dessin ----------------------------------------------------------
@@ -224,9 +246,16 @@ class BonsChemins extends BaseGame {
     }
 
     /**
-     * L'en-tête : la cible, puis le calcul en cours et CE QU'IL RESTE.
-     * Le reste est le vrai renseignement — c'est le nombre à trouver dans la
-     * grille, et c'est lui qu'on casse en facteurs.
+     * L'en-tête : la cible, puis LA SUITE DES NOMBRES TRAVERSÉS — et rien de plus.
+     *
+     * Rémy : « ne donne pas le résultat du calcul au-dessus ». On écrivait
+     * « 2 × 4 = 8 · il reste 30 à faire » : le produit et le quotient étaient
+     * calculés pour l'élève, c'est-à-dire tout ce qu'il y avait à faire de tête.
+     * Le relevé de ce qu'on a traversé, lui, ne donne rien qui ne soit déjà sur
+     * la grille — il évite seulement de revenir compter ses propres cases.
+     *
+     * ON N'ANNONCE LE PRODUIT QU'UNE FOIS ARRIVÉ, quand il n'est plus une aide
+     * mais la correction : le chemin est joué, l'élève doit voir ce qu'il vaut.
      */
     majTete(bilan) {
         const g = this.grille;
@@ -241,12 +270,10 @@ class BonsChemins extends BaseGame {
             this.facteursEl.textContent = 'Pars du D et clique de case en case.';
             return;
         }
-        const p = produit(g, this.chemin);
-        const suite = `${f.join(' × ')} = ${p}`;
-        if (bilan.mort) this.facteursEl.innerHTML = `${suite} — et ${p} ne divise pas ${g.cible}`;
-        else if (bilan.gagne) this.facteursEl.textContent = suite;
-        else if (bilan.reste === 1) this.facteursEl.textContent = `${suite} — rejoins le A`;
-        else this.facteursEl.textContent = `${suite} · il reste ${bilan.reste} à faire`;
+        const suite = f.join(' × ');
+        this.facteursEl.textContent = bilan.gagne || estArrivee(g, this.chemin[this.chemin.length - 1])
+            ? `${suite} = ${produit(g, this.chemin)}`
+            : suite;
     }
 
     brancherDoigt() {
@@ -263,7 +290,7 @@ class BonsChemins extends BaseGame {
             this.chemin = couper(this.chemin, cible);
             this.fini = false;
             this.dessiner();
-            this.note('');
+            this.note(this.rappel());
             return;
         }
         if (this.fini) return;
@@ -275,7 +302,7 @@ class BonsChemins extends BaseGame {
         if (bilan.gagne) return this.gagner(bilan);
         if (bilan.mort) return this.note(bilan.message, 'ko');
         if (estArrivee(this.grille, cible)) return this.rater(bilan);
-        this.note('');
+        this.note(this.rappel());
     }
 
     gagner(bilan) {
@@ -322,6 +349,21 @@ class BonsChemins extends BaseGame {
         this.dessiner();
         this.note('Solution affichée (outil d\'auteur).');
         return true;
+    }
+
+    /**
+     * CE QU'ON ÉCRIT QUAND IL N'Y A RIEN À SIGNALER.
+     *
+     * La bande a maintenant une hauteur réservée : la laisser vide creuserait un
+     * trou sous la grille. Autant qu'elle porte la règle — et c'est la règle des
+     * DIAGONALES qu'on oublie, celle sans laquelle la moitié des cibles paraît
+     * introuvable. Tant qu'aucun pas n'est fait, on la donne en entier ; ensuite
+     * on n'en garde que ce qui sert encore, dont le geste pour revenir.
+     */
+    rappel() {
+        return this.chemin.length > 1
+            ? 'Les diagonales comptent. Pour revenir en arrière, touche une case de ton trait.'
+            : CONSIGNE;
     }
 
     note(html, ton) {

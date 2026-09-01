@@ -219,6 +219,42 @@ test('LE GÉNÉRATEUR DE FICHE POSE DES GRILLES RÉSOLUBLES', () => {
     }
 });
 
+test('LE JEU NE FAIT PAS LA MULTIPLICATION À LA PLACE DE L\'ÉLÈVE', () => {
+    // Rémy : « ne donne pas le résultat du calcul au-dessus ». Le message
+    // d'impasse écrivait « 6 ne divise pas 8 » — il posait le produit tout fait
+    // dans la phrase même qui devait renvoyer l'élève le refaire.
+    const g = { ...FICHE, cible: 8 };
+    const bilan = verifier(g, [[0, 0], [1, 0], [2, 0]]);   // D → 2 → 3, donc 6
+    assert.equal(bilan.mort, true);
+    assert.match(bilan.message, /ne divise pas 8/, 'l\'impasse doit être dite');
+    assert.equal(/\b6\b/.test(bilan.message), false, 'le produit ne doit pas être écrit');
+    // Arrivé au A, en revanche, le produit N'EST PLUS UNE AIDE : c'est la
+    // correction du chemin qu'on vient de jouer, et il doit se lire.
+    const rate = verifier(g, [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]);
+    assert.match(rate.message, /2 × 3 × 5/);
+});
+
+test('SIX BLOCS, SIX CIBLES DIFFÉRENTES — et la feuille monte', () => {
+    const gen = getGenerator('logique.bons-chemins');
+    // `part` classe les cibles possibles : le bas de la pioche est plus petit
+    // que le haut. C'est ce qui range la feuille du plus simple au plus dur.
+    const bas = genererGrille({ rng: makeRng('range'), palier: 'moyen', part: 0 });
+    const haut = genererGrille({ rng: makeRng('range'), palier: 'moyen', part: 0.99 });
+    assert.ok(bas.cible < haut.cible, `${bas.cible} devrait être sous ${haut.cible}`);
+    // Et la feuille passe ce qu'elle a déjà tiré : trois fois « Trouve 48 » sur
+    // la même page, c'était mathématiquement juste et ça avait l'air d'une
+    // étourderie.
+    for (const graine of ['a', 'b', 'c']) {
+        const vus = [];
+        for (let i = 0; i < 6; i++) {
+            const item = gen.generate({ palier: 'moyen' },
+                { rng: makeRng(`${graine}-${i}`), index: i, themesExclus: [...vus] });
+            vus.push(item.meta.theme);
+        }
+        assert.equal(new Set(vus).size, 6, `${graine} : ${vus.join(' ')}`);
+    }
+});
+
 test('la fiche sait dessiner ces grilles', () => {
     const rendu = RENDUS['bons-chemins'];
     assert.ok(rendu, 'le rendu papier doit être déclaré');
@@ -232,12 +268,25 @@ test('la fiche sait dessiner ces grilles', () => {
         // AUCUNE COORDONNÉE NaN : c'est ce qui manquait, et un aperçu tout en NaN
         // passait tous les comptages sans rien dessiner.
         assert.equal(/NaN/.test(svg), false, 'coordonnées NaN dans l\'aperçu');
-        // Les neuf cases, le D, le A et la cible sous la grille.
-        assert.equal((svg.match(/<rect/g) || []).length, item.meta.l * item.meta.h);
+        // QUATRE RECTANGLES, ET PAS NEUF. On dessinait une case à la fois : les
+        // traits intérieurs étaient repassés deux fois, et le PDF sortait un
+        // tableau pâle. Il n'en reste que les deux bouts teintés, le cadre et
+        // l'étiquette de la cible ; les traits intérieurs sont des lignes,
+        // tracées une seule fois chacune.
+        assert.equal((svg.match(/<rect/g) || []).length, 4);
+        const lignes = (item.meta.l - 1) + (item.meta.h - 1);
+        assert.equal((svg.match(/<path/g) || []).length, lignes + (solution ? 1 : 0),
+            'le chemin ne se montre que sur la correction');
         assert.match(svg, />D</);
         assert.match(svg, />A</);
         assert.match(svg, new RegExp(`Trouve ${item.meta.cible}`));
-        assert.equal(/<path/.test(svg), solution, 'le chemin ne se montre que sur la correction');
+        // LE RUBAN PASSE SOUS LES NOMBRES, et il est PÂLE : c'est ce qui permet
+        // de lire les chiffres qu'on multiplie sur la page des solutions.
+        if (solution) {
+            assert.ok(svg.indexOf('stroke-linecap="round"') < svg.indexOf('>D<'),
+                'le chemin doit être tracé avant les nombres');
+            assert.match(svg, /stroke="#cdd3e4"/);
+        }
     }
 });
 

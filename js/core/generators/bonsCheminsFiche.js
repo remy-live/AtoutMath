@@ -32,9 +32,31 @@ export const bonsCheminsFicheGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const palier = PALIERS[(params || {}).palier] ? params.palier : 'moyen';
-        // Une grille manquée ne doit pas rendre un item vide : on retombe sur
-        // le palier le plus facile, qui aboutit toujours.
-        const g = genererGrille({ rng, palier }) || genererGrille({ rng, palier: 'facile' });
+        // LA FEUILLE MONTE, BLOC APRÈS BLOC — et cesse de se répéter.
+        //
+        // Six tirages au hasard dans le même palier donnaient trois fois
+        // « Trouve 48 » sur la même page : mathématiquement irréprochable, et
+        // ça a l'air d'une étourderie. En piochant à la hauteur `part` dans les
+        // cibles possibles, classées, le bloc 1 prend les plus petites et le
+        // dernier les plus grandes. L'élève commence par ce qui se voit.
+        const part = (((Number(ctx.index) || 0) % 6) + 0.5) / 6;
+        // ET DEUX BLOCS NE PORTENT PAS LA MÊME CIBLE. Le classement les écarte
+        // déjà, mais les produits d'une grille 3 × 3 se ressemblent : « 60 » et
+        // « 240 » ressortaient deux fois. La feuille passe au générateur ce
+        // qu'elle a déjà tiré (`themesExclus`) — le mécanisme existe pour les
+        // logigrammes, il sert ici de mémoire des cibles. On redécale alors la
+        // pioche jusqu'à trouver autre chose.
+        const pris = new Set(ctx.themesExclus || []);
+        let g = null;
+        for (let essai = 0; essai < 6 && !g; essai++) {
+            const t = Math.min(0.99, part + essai * 0.07);
+            const tire = genererGrille({ rng, palier, part: t })
+                || genererGrille({ rng, palier: 'facile', part: t });
+            // Au dernier essai on garde ce qu'on a : une feuille avec un doublon
+            // vaut mieux qu'un bloc vide.
+            if (tire && (!pris.has(theme(tire.cible)) || essai === 5)) g = tire;
+        }
+        if (!g) g = genererGrille({ rng, palier: 'facile' });
         const chemin = facteurs(g, g.solution);
         return makeItem({
             seed: rng.seed,
@@ -51,6 +73,9 @@ export const bonsCheminsFicheGenerator = {
             // taille de la grille : deux facteurs se voient, six se cherchent.
             difficulty: Math.max(1, Math.min(4, chemin.length - 1)),
             meta: {
+                // `theme` est la clef que la feuille relit pour ne pas se
+                // répéter : ici, c'est la cible.
+                theme: theme(g.cible),
                 l: g.l, h: g.h,
                 cases: g.cases.map(ligne => [...ligne]),
                 cible: g.cible,
@@ -60,3 +85,5 @@ export const bonsCheminsFicheGenerator = {
         });
     }
 };
+
+const theme = (cible) => `cible-${cible}`;
