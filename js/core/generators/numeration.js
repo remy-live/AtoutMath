@@ -397,7 +397,7 @@ export const lettresGenerator = {
                 answerKind: 'numeric',
                 prompt: {
                     text: `${mots} =`,
-                    html: `<div class="game-question">Écris en chiffres<br><span class="nb-words">${mots}</span></div>`
+                    html: `<div class="game-question"><span class="nb-consigne">Écris en chiffres</span><br><span class="nb-words">${mots}</span></div>`
                 },
                 answer,
                 hints: [
@@ -419,7 +419,7 @@ export const lettresGenerator = {
             answerKind: 'numeric',
             prompt: {
                 text: `${mots} =`,
-                html: `<div class="game-question">Écris en chiffres<br><span class="nb-words">${mots}</span></div>`
+                html: `<div class="game-question"><span class="nb-consigne">Écris en chiffres</span><br><span class="nb-words">${mots}</span></div>`
             },
             answer: n,
             choices: finalizeChoices(rng, [
