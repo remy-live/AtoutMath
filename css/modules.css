@@ -8604,19 +8604,26 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     display: grid; place-items: center; position: relative;
     background: conic-gradient(#fff 0 var(--auj-part, 0%), rgba(255,255,255,.28) 0);
 }
-/* « 0 / 5 » SUR UNE SEULE LIGNE. Rémy : « le 0/5 est mal mis, ça va à la
-   ligne. » Le disque était en `display: grid` : ses DEUX enfants — le nombre
-   fait et le « /5 » — devenaient donc deux ÉLÉMENTS DE GRILLE, et une grille à
-   une colonne les empile. C'est une ligne de texte, pas une grille : elle se
-   pose en ligne, alignée sur la base commune des deux chiffres, et ne se coupe
-   jamais. */
+/* « 0 / 5 » SUR UNE SEULE LIGNE, ET AU MILIEU DU DISQUE.
+   Rémy, deux fois. D'abord : « le 0/5 est mal mis, ça va à la ligne. » Le
+   disque était en `display: grid` : ses DEUX enfants — le nombre fait et le
+   « /5 » — devenaient deux ÉLÉMENTS DE GRILLE, et une grille à une colonne les
+   empile. On est passé en `flex` avec `align-items: baseline`, ce qui les a
+   bien remis sur une ligne… et les a collés en haut du disque.
+   Puis : « le 0/109 n'est pas centré verticalement ». Mesuré : le texte
+   flottait 18,5 px au-dessus du centre d'un disque de 56.
+   LA CAUSE EST LA MÊME DANS LES DEUX CAS — deux enfants là où il n'y a qu'une
+   ligne de texte. Le compte est donc enveloppé dans UN seul élément (voir
+   `anneauHtml`) : ce bloc unique se centre dans les deux sens, et les deux
+   chiffres, redevenus de simples mots dans une ligne, gardent tout seuls leur
+   base commune. */
 .auj-anneau i {
     position: absolute; inset: 9px; border-radius: 50%; background: inherit;
     background: var(--primary);
-    display: flex; align-items: baseline; justify-content: center;
-    white-space: nowrap;
+    display: grid; place-items: center;
     font-style: normal; font-weight: 900; font-size: .95rem;
 }
+.auj-anneau i b { font-weight: inherit; line-height: 1; white-space: nowrap; }
 .auj-carte--revision .auj-anneau i { background: #f59e0b; }
 .auj-carte--decouverte .auj-anneau i { background: #10b981; }
 .auj-anneau i span { opacity: .75; font-size: .8em; }

@@ -81,8 +81,14 @@ function anneauHtml(faites, total) {
     const part = total ? Math.max(0, Math.min(1, faites / total)) : 0;
     // Un `conic-gradient` plutôt qu'un SVG : c'est un anneau de progression, il
     // n'a ni trait ni forme à animer, et une seule propriété le décrit.
+    // LE COMPTE EST DANS UN SEUL ENFANT, et ce n'est pas une coquetterie de
+    // balisage : c'est ce qui permet de le CENTRER sans le couper en deux. Le
+    // disque range ses enfants ; avec deux enfants — le nombre fait et le
+    // « / total » — il les empilait ou les collait au bord. Enveloppés
+    // ensemble, ils forment une seule ligne de texte, qui se centre comme un
+    // bloc et garde sa base commune. Voir `.auj-anneau i` dans css/modules.css.
     return `<div class="auj-anneau" style="--auj-part:${(part * 100).toFixed(1)}%">
-        <i>${faites}<span>/${total}</span></i></div>`;
+        <i><b>${faites}<span>/${total}</span></b></i></div>`;
 }
 
 function echapper(s) {
