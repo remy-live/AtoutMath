@@ -23,6 +23,7 @@ import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../co
 // `retoucheGrille` du rendu « priorites ».
 import { relire as relirePriorites } from '../core/priorites.js';
 import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
+import { tracesDe } from '../core/cercleFigure.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
     ficheEnPortrait, reglerFichePortrait
@@ -820,6 +821,131 @@ function dessinerAnglesNommerPdf(doc, item, slot, solution) {
     const g = geoAnglesManquants(item, slot, 0.24);
     dessinerFigureAnglePdf(doc, g, (arc) => (arc.pas ? String(arc.pas) : ''));
     ligneReponsePdf(doc, g, 'Nom :', solution ? g.m.nom : '');
+}
+
+// --- LE VOCABULAIRE DU CERCLE, SUR LE PAPIER ----------------------------------
+//
+// Rémy : « j'aimerai bien un exercice sur le vocabulaire du cercle ».
+//
+// LA FIGURE VIENT DU MÊME MODULE QUE L'ÉCRAN. `core/cercleFigure.js` rend une
+// liste de tracés élémentaires — segments, arcs aplatis, points, mots — et les
+// deux rendus la lisent telle quelle. C'est la garantie qu'une corde imprimée
+// est à la même place que la corde affichée, et qu'aucun arc ne diverge d'un
+// degré entre deux implémentations.
+//
+// LE ROUGE DEVIENT UN TRAIT GRAS EN NOIR ET BLANC. Un polycopié photocopié
+// n'a pas de couleur, et « ce qui est tracé en rouge » n'aurait alors plus de
+// référent : l'élément surligné est donc AUSSI deux fois plus épais que les
+// autres. Il se repère sans la couleur.
+
+function geoCercleVocabulaire(item, slot) {
+    const b = boiteDe(slot);
+    const marge = 2;
+    const ligneH = Math.max(4.5, Math.min(b.h * 0.16, 7));
+    const cote = Math.min(b.w - marge * 2, b.h - ligneH - marge);
+    const x0 = b.x + (b.w - cote) / 2;
+    const y0 = b.y + marge * 0.4;
+    // Les tracés sont donnés dans un carré de 100 : on les y ramène.
+    const P = (p) => ({ x: x0 + (p.x / 100) * cote, y: y0 + (p.y / 100) * cote });
+    const u = cote / 100;
+    return {
+        m: item.meta, b, cote, x0, y0, P, u, ligneH,
+        taille: Math.max(2.4, Math.min(ligneH * 0.6, 3.8)),
+        yReponse: b.y + b.h - marge,
+        dispoH: b.h - ligneH
+    };
+}
+
+/** La réponse attendue, telle qu'on l'écrit sur la feuille de solutions. */
+const reponseCercle = (m) => (m.sens === 'trouver' ? `le tracé ${m.bon}` : m.reponse);
+
+function cercleVocabulairePreviewHtml(item, slot, k, solution) {
+    const g = geoCercleVocabulaire(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const traces = tracesDe(g.m.spec);
+    let d = '';
+    for (const t of traces) {
+        if (t.k === 'cercle' && t.plein) {
+            const c = g.P({ x: t.x, y: t.y });
+            d += `<circle cx="${T(c.x)}" cy="${T(c.y)}" r="${T(t.r * g.u)}" fill="#e6ecf7"/>`;
+        } else if (t.k === 'cercle') {
+            const c = g.P({ x: t.x, y: t.y });
+            d += `<circle cx="${T(c.x)}" cy="${T(c.y)}" r="${T(t.r * g.u)}" fill="none"
+                stroke="#1a202c" stroke-width="${T((t.fort ? 1.1 : 0.35) * g.u * 1.6)}"/>`;
+        } else if (t.k === 'ligne') {
+            const chemin = t.pts.map((p, i) => {
+                const q = g.P(p);
+                return `${i ? 'L' : 'M'}${T(q.x)} ${T(q.y)}`;
+            }).join(' ');
+            d += `<path d="${chemin}" fill="none" stroke="${t.fort ? '#1a202c' : '#8a90a0'}"
+                stroke-width="${T((t.fort ? 1.1 : 0.35) * g.u * 1.6)}"
+                stroke-linecap="round" stroke-linejoin="round"/>`;
+        } else if (t.k === 'point') {
+            const c = g.P({ x: t.x, y: t.y });
+            d += `<circle cx="${T(c.x)}" cy="${T(c.y)}" r="${T((t.fort ? 1.6 : 1.1) * g.u * 1.4)}" fill="#1a202c"/>`;
+        } else if (t.k === 'texte') {
+            const c = g.P({ x: t.x, y: t.y });
+            if (t.cadre) {
+                d += `<circle cx="${T(c.x)}" cy="${T(c.y)}" r="${T(t.taille * 0.72 * g.u)}"
+                    fill="#ffffff" stroke="#1a202c" stroke-width="${T(0.35 * g.u * 1.6)}"/>`;
+            }
+            d += `<text x="${T(c.x)}" y="${T(c.y)}" fill="#1a202c" font-weight="700"
+                font-size="${T(t.taille * g.u)}" text-anchor="middle" dominant-baseline="central"
+                font-family="Helvetica, Arial, sans-serif">${echapperSheet(t.t)}</text>`;
+        }
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`
+        + ligneAnglePreviewHtml(g, k, g.m.sens === 'trouver' ? 'Tracé n° :' : 'Nom :',
+            solution ? reponseCercle(g.m) : '');
+}
+
+function dessinerCercleVocabulairePdf(doc, item, slot, solution) {
+    const g = geoCercleVocabulaire(item, slot);
+    const traces = tracesDe(g.m.spec);
+    const epais = (fort) => Math.max(0.25, (fort ? 1.1 : 0.35) * g.u * 1.6);
+
+    for (const t of traces) {
+        if (t.k === 'cercle' && t.plein) {
+            const c = g.P({ x: t.x, y: t.y });
+            doc.setFillColor(230, 236, 247);
+            doc.circle(c.x, c.y, t.r * g.u, 'F');
+        } else if (t.k === 'cercle') {
+            const c = g.P({ x: t.x, y: t.y });
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(epais(t.fort));
+            doc.circle(c.x, c.y, t.r * g.u, 'S');
+        } else if (t.k === 'ligne') {
+            doc.setDrawColor(...(t.fort ? ENCRE.trait : ENCRE.gris));
+            doc.setLineWidth(epais(t.fort));
+            doc.setLineCap('round');
+            doc.setLineJoin('round');
+            for (let i = 1; i < t.pts.length; i++) {
+                const a = g.P(t.pts[i - 1]), b = g.P(t.pts[i]);
+                doc.line(a.x, a.y, b.x, b.y);
+            }
+            doc.setLineCap('butt');
+            doc.setLineJoin('miter');
+        } else if (t.k === 'point') {
+            const c = g.P({ x: t.x, y: t.y });
+            doc.setFillColor(...ENCRE.trait);
+            doc.circle(c.x, c.y, (t.fort ? 1.6 : 1.1) * g.u * 1.4, 'F');
+        } else if (t.k === 'texte') {
+            const c = g.P({ x: t.x, y: t.y });
+            if (t.cadre) {
+                doc.setFillColor(255, 255, 255);
+                doc.setDrawColor(...ENCRE.trait);
+                doc.setLineWidth(0.3);
+                doc.circle(c.x, c.y, t.taille * 0.72 * g.u, 'FD');
+            }
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(Math.max(5, t.taille * g.u * 2.7));
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(t.t, c.x, c.y, { align: 'center', baseline: 'middle' });
+        }
+    }
+    ligneReponsePdf(doc, g, g.m.sens === 'trouver' ? 'Tracé n° :' : 'Nom :',
+        solution ? reponseCercle(g.m) : '');
 }
 
 // --- SEGMENT, DROITE OU DEMI-DROITE : LE SCHÉMA SUR LE PAPIER -----------------
@@ -10618,6 +10744,26 @@ export const RENDUS = {
         // la consigne. « Une » et non « la » suffit à dire l'essentiel — un
         // élève dont le tracé diffère ne s'est pas trompé pour autant.
         nomSolutions: 'Une solution possible'
+    },
+
+    cercleVocabulaire: {
+        titre: 'Le vocabulaire du cercle',
+        consigne: () => 'DONNE LE NOM LE PLUS PRÉCIS. Quand un tracé est en GRAS, écris son '
+            + 'nom ; quand les tracés sont numérotés, écris le numéro de celui qu\'on te '
+            + 'demande. Deux questions à se poser chaque fois : OÙ commence et où finit le '
+            + 'tracé — au centre ? sur le cercle ? de part et d\'autre ? — et est-il DROIT ou '
+            + 'COURBE. Attention : un diamètre est bien une corde, mais il a un nom plus '
+            + 'précis, et c\'est celui-là qu\'on attend.',
+        previewGrille: cercleVocabulairePreviewHtml,
+        pdfGrille: dessinerCercleVocabulairePdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // Un peu plus haut que large : la ligne de réponse est sous la figure.
+        proportions: { w: 1, h: 1.16 },
+        // SIX PAR PAGE, ET NON NEUF. À neuf, le cercle tombe à quatre
+        // centimètres et les numéros des tracés se marchent dessus : vérifié
+        // sur l'aperçu. Une figure qu'on ne lit pas ne sert à rien.
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 4 },
+        parLigneDefaut: 3
     },
 
     sim: {

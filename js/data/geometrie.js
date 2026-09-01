@@ -60,6 +60,40 @@ export const geometrieExercises = [
             + 'par rapport à l\'autre. Commence toujours par le sommet.'
     },
 
+    // --- Le vocabulaire du cercle ---
+    // Rémy : « j'aimerai bien un exercice sur le vocabulaire du cercle ».
+    //
+    // CE CHAPITRE NE SE RATE PAS PAR MANQUE DE MÉMOIRE, il se rate par
+    // VOISINAGE. Le diamètre EST une corde — celle qui passe par le centre ;
+    // l'arc et la corde joignent les deux mêmes points, l'un courbe et l'autre
+    // droit ; la tangente et la sécante ne diffèrent que par le nombre de
+    // points de contact. Et par-dessus tout, le CERCLE est une ligne quand le
+    // DISQUE est une surface. Chaque mot porte donc ce qu'on répond à l'élève
+    // qui l'a choisi par erreur : c'est cette phrase-là qui enseigne.
+    //
+    // « LE PLUS PRÉCISÉMENT POSSIBLE » EST DANS LA QUESTION, et ce n'est pas
+    // une formule : devant un diamètre, « une corde » n'est pas faux, c'est
+    // moins précis. Sans ce mot, l'exercice serait injuste — et l'élève qui
+    // répond « corde » s'entend dire qu'il a raison, avant qu'on lui donne le
+    // nom exact.
+    {
+        id: 'geo-cercle-vocabulaire',
+        cree: '2026-09-01',
+        title: 'Le Vocabulaire du Cercle',
+        generatorId: 'geo.cercle-vocabulaire', activityId: 'buttons',
+        printable: 'cercleVocabulaire',
+        consignePapier: 'Entoure la bonne réponse. Donne le nom le plus précis.',
+        skills: ['geo.cercle.vocabulaire'],
+        params: { mots: ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'], sens: 'les-deux' },
+        motsClefs: ['cercle', 'disque', 'rayon', 'diamètre', 'corde', 'arc', 'tangente',
+            'sécante', 'centre', 'vocabulaire'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Deux questions différentes reviennent en alternance : NOMMER ce qui est tracé en rouge, et TROUVER lequel des tracés numérotés porte le nom demandé. La seconde est la plus dure, parce que la corde et le diamètre sont alors sous les yeux en même temps. Pour t\'y retrouver, pose-toi toujours les deux mêmes questions : OÙ commence et où finit le tracé (au centre ? sur le cercle ? de part et d\'autre ?), et est-il DROIT ou COURBE. Et donne toujours le nom le plus précis : un diamètre est bien une corde, mais on l\'appelle un diamètre.'
+    },
+
     // --- La notation des objets de base (fiche 4ᵉ § G) ---
     // [AB], (AB), [AB) : une notation ne se devine pas, et c'est pour cela
     // qu'on la perd. Des points partent chaque année sur « (AB) » écrit à la

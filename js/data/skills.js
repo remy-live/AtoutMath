@@ -974,6 +974,16 @@ const BASE = {
         descriptor: 'Retrouver les valeurs manquantes d\'un tableau croisé en bouclant, une par une, les lignes et les colonnes où il ne manque qu\'une information.',
         lesson: 'Dans un tableau à double entrée, chaque ligne se termine par son total et chaque colonne aussi ; la case du coin porte le total général, et on l\'obtient aussi bien en additionnant la dernière colonne que la dernière ligne. Pour le compléter, on ne commence JAMAIS par la première case vide : on cherche la ligne ou la colonne où il ne manque qu\'UNE SEULE information. Si la case qui manque est un total, on additionne le reste de la ligne ; si elle est dans le corps du tableau, on part du total et on retire ce qui est déjà écrit. Le nombre qu\'on vient d\'écrire en ouvre alors d\'autres, et de proche en proche tout se remplit — sans jamais deviner. À la fin, on vérifie : la dernière ligne et la dernière colonne doivent toutes deux tomber sur le total général.'
     },
+    'geo.cercle.vocabulaire': {
+        label: 'Le vocabulaire du cercle',
+        // Rangé avec la notation des segments et des droites : c'est le même
+        // travail — dire juste le nom d'un objet qu'on a sous les yeux.
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Nommer le centre, un rayon, un diamètre, une corde, un arc — et distinguer le cercle du disque.',
+        lesson: 'Le CERCLE est une LIGNE : tous ses points sont à la même distance du centre. Le DISQUE est la SURFACE pleine qu\'elle entoure ; c\'est la première confusion à lever. Un RAYON va du centre à un point du cercle. Un DIAMÈTRE joint deux points du cercle en passant par le centre : il vaut deux rayons, et c\'est la plus longue des cordes. Une CORDE joint deux points du cercle en ligne droite — un diamètre est donc une corde, mais on lui donne son nom précis. Un ARC est un morceau du cercle lui-même, donc une ligne COURBE : l\'arc et la corde relient les deux mêmes points, l\'un en suivant le cercle, l\'autre en coupant tout droit. Plus tard : une TANGENTE touche le cercle en un seul point, une SÉCANTE le coupe en deux.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

@@ -216,10 +216,14 @@ test('la fiche sait dessiner ces tableaux', () => {
     assert.ok(rendu, 'le rendu papier doit être déclaré');
     const item = getGenerator('donnees.tableau-croise').generate({ palier: 'facile' }, { rng: makeRng('dessin') });
     const m = item.meta;
-    const slot = { x: 10, y: 10, w: 88, h: 55 };
+    // `boiteDe` lit `slot.boite` : un slot plat donnerait des coordonnées NaN.
+    const slot = { boite: { x: 10, y: 10, w: 88, h: 55 } };
     const vide = rendu.previewGrille(item, slot, 3, false);
     const corrige = rendu.previewGrille(item, slot, 3, true);
     assert.match(vide, /<svg/);
+    // AUCUNE COORDONNÉE NaN : c'est ce qui manquait, et un aperçu tout en NaN
+    // passait tous les comptages sans rien dessiner.
+    assert.equal(/NaN/.test(vide), false, 'coordonnées NaN dans l\'aperçu');
     // Le quadrillage complet : (R+2) × (C+2) cases, en-têtes compris.
     assert.equal((vide.match(/<rect/g) || []).length, (m.R + 2) * (m.C + 2));
     // La fiche ne montre QUE les cases données ; la correction les montre toutes.

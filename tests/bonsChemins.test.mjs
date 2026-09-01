@@ -223,10 +223,15 @@ test('la fiche sait dessiner ces grilles', () => {
     const rendu = RENDUS['bons-chemins'];
     assert.ok(rendu, 'le rendu papier doit être déclaré');
     const item = getGenerator('logique.bons-chemins').generate({}, { rng: makeRng('dessin') });
-    const slot = { x: 10, y: 10, w: 55, h: 65 };
+    // `boiteDe` lit `slot.boite` : un slot plat donnerait des coordonnées NaN,
+    // et le test compterait consciencieusement des rectangles invisibles.
+    const slot = { boite: { x: 10, y: 10, w: 55, h: 65 } };
     for (const solution of [false, true]) {
         const svg = rendu.previewGrille(item, slot, 3, solution);
         assert.match(svg, /<svg/);
+        // AUCUNE COORDONNÉE NaN : c'est ce qui manquait, et un aperçu tout en NaN
+        // passait tous les comptages sans rien dessiner.
+        assert.equal(/NaN/.test(svg), false, 'coordonnées NaN dans l\'aperçu');
         // Les neuf cases, le D, le A et la cible sous la grille.
         assert.equal((svg.match(/<rect/g) || []).length, item.meta.l * item.meta.h);
         assert.match(svg, />D</);

@@ -128,6 +128,7 @@ export const CODES_EXERCICES = {
     'dec-compare':                'DD',   // Décimaux en Duel
     'geo-angles-manquants':       'VM',   // La Valeur Manquante
     'geo-angles-nommer':          'NA',   // Le Nom des Angles
+    'geo-cercle-vocabulaire':     'VC',   // Le Vocabulaire du Cercle
     'geo-notation':               'SD',   // Segment, Droite ou Demi-droite ?
     'geo-redaction':              'RJ',   // Rédiger une Justification
     'geo-pythagore':              'TE',   // Le Théorème de Pythagore

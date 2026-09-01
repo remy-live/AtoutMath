@@ -221,9 +221,13 @@ test('la fiche sait dessiner ces figures', () => {
     const rendu = RENDUS['sans-croiser'];
     assert.ok(rendu, 'le rendu papier doit être déclaré');
     const item = getGenerator('logique.sans-croiser').generate({ palier: 'moyen' }, { rng: makeRng('dessin') });
-    const slot = { x: 10, y: 10, w: 70, h: 55 };
+    // `boiteDe` lit `slot.boite` : un slot plat donnerait des coordonnées NaN.
+    const slot = { boite: { x: 10, y: 10, w: 70, h: 55 } };
     const vide = rendu.previewGrille(item, slot, 3, false);
     const corrige = rendu.previewGrille(item, slot, 3, true);
+    // AUCUNE COORDONNÉE NaN : c'est ce qui manquait, et un aperçu tout en NaN
+    // passait tous les comptages sans rien dessiner.
+    assert.equal(/NaN/.test(vide + corrige), false, 'coordonnées NaN dans l\'aperçu');
     // Le cadre plus un carré par borne ; aucun tracé tant qu'on ne corrige pas.
     assert.equal((vide.match(/<rect/g) || []).length, 1 + item.meta.bornes.length);
     assert.equal((vide.match(/<path/g) || []).length, 0, 'la fiche ne montre pas la solution');
