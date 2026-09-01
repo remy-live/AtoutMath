@@ -58,12 +58,31 @@ class Organigramme extends BaseGame {
                     text-align: center; color: var(--text-muted); flex: 0 0 auto;
                     font-size: clamp(11px, 2.5cqw, 13px); line-height: 1.3; max-width: 660px;
                 }
+                /* LE PLAN SE MESURE SUR LA SCÈNE, PAS SUR LE PLATEAU. Rémy, banc
+                   d'essai iPhone : « l'organigramme écrase l'énoncé et le noms
+                   carrés rectangles ». Mesuré sur un 375 x 634 : le plan faisait
+                   370 pixels de haut dans une scène qui n'en offrait que 300, et
+                   comme la scène centre son contenu, il débordait des deux
+                   côtés — par-dessus la consigne en haut, par-dessus les cartes
+                   en bas. Il se calait sur 62cqh, c'est-a-dire sur la hauteur du
+                   PLATEAU ENTIER, consigne, cartes, boutons et note compris : il
+                   se réservait donc une part d'une place déjà prise.
+
+                   La scène devient un conteneur de taille, et le plan se mesure
+                   sur elle : sa largeur ne dépasse plus 0,92 fois la hauteur
+                   disponible, donc sa hauteur ne dépasse plus cette hauteur. */
                 .qd-scene {
                     flex: 1 1 auto; width: 100%; min-height: 0;
                     display: flex; align-items: center; justify-content: center;
+                    container-type: size;
                 }
+                /* 84 ET NON 92 : une case est CENTRÉE sur sa position, donc la
+                   moitié de sa hauteur dépasse du plan en haut et en bas. Mesuré :
+                   treize pixels sur ordinateur, neuf sur téléphone — assez pour
+                   mordre sur la rangée de cartes. Le plan garde donc une marge
+                   de sa propre hauteur, et rien ne dépasse plus de la scène. */
                 .qd-plan {
-                    position: relative; width: min(100%, 62cqh); aspect-ratio: 0.92;
+                    position: relative; width: min(100%, 84cqh); aspect-ratio: 0.92;
                     max-width: 480px;
                 }
                 .qd-fils { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -168,10 +187,16 @@ class Organigramme extends BaseGame {
                 <div class="qd-consigne" data-consigne></div>
                 <div class="qd-scene"><div class="qd-plan" data-plan></div></div>
                 <div class="qd-cartes" data-cartes></div>
+                <!-- PAS DE BOUTON « AUTRE ORGANIGRAMME ». Rémy : « enlève autre
+                     organigramme ». Il ne servait à rien qui manque : l'exercice
+                     enchaîne tout seul trois secondes après le dernier dépôt, et
+                     l'organigramme suivant est le MÊME dessin avec d'autres trous
+                     — en changer avant d'avoir fini, c'est seulement recommencer,
+                     ce que le bouton d'à côté fait déjà. Sur un téléphone il
+                     prenait en plus une ligne entière de la hauteur. -->
                 <div class="qd-barre">
                     <button type="button" class="qd-btn" data-effacer>↺ Recommencer</button>
                     <button type="button" class="qd-btn" data-aide>💡 Aide-moi</button>
-                    <button type="button" class="qd-btn" data-neuf>Autre organigramme</button>
                 </div>
                 <div class="qd-note" data-note></div>
             </div>`;
@@ -182,7 +207,6 @@ class Organigramme extends BaseGame {
         this.consigneEl = this.container.querySelector('[data-consigne]');
         this.container.querySelector('[data-effacer]').onclick = () => this.effacer();
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
-        this.container.querySelector('[data-neuf]').onclick = () => this.showNext();
     }
 
     startGameLoop() { this.poser(); }

@@ -1069,6 +1069,60 @@
     text-align: center;
 }
 .np-outil svg { max-width: 100%; height: auto; }
+/* Le bandeau du panneau : ce qu'on regarde, et de quoi refermer. Sur
+   téléphone le panneau recouvre l'exercice — sans cette croix, on ne
+   retrouverait plus le bouton qui l'a ouvert. */
+.np-outil-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 8px; font-weight: 800; font-size: .9rem; color: var(--text-muted);
+}
+.np-outil-fermer {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+    border-radius: 999px; cursor: pointer; font: inherit; font-weight: 800;
+    width: 32px; height: 32px; line-height: 1; flex: 0 0 auto;
+}
+.np-outil-fermer:hover { border-color: var(--primary); color: var(--primary); }
+
+/* LE PANNEAU PASSAIT SOUS LE PAVÉ NUMÉRIQUE. Rémy, banc d'essai iPhone :
+   « le schéma est sous le pavé numérique », « idem pour les formules ».
+   Mesuré sur un 375 × 634 : le panneau occupait 235 → 437, le pavé 314 → 577.
+   Ils se recouvraient, et le pavé — dessiné après — le cachait.
+
+   La cause est la mise en page de téléphone juste au-dessus : la rangée de
+   l'énoncé y est bornée (`minmax(0, 1fr)`) pour que le pavé ne soit jamais
+   poussé hors de l'écran. Le panneau ouvert débordait donc de sa rangée, et
+   un débordement de grille ne pousse rien : il se superpose.
+
+   LE RÉGLER EN LE FAISANT TENIR DANS LA RANGÉE NE MARCHERAIT PAS : il y
+   resterait cent vingt pixels de haut, et un schéma de cent vingt pixels sur
+   un téléphone ne se lit pas davantage qu'un schéma caché. On consulte un
+   rappel, on ne tape pas en même temps — le panneau prend donc TOUT le
+   plateau, et se referme d'une croix.
+
+   DEUX CAS, ET LE SECOND EST COUCHÉ. La règle de téléphone debout ne suffit
+   pas : sur un 780 × 390 posé à l'horizontale, la mise en page passe à deux
+   colonnes, le panneau n'est plus caché par le pavé — il est simplement coupé
+   en bas du plateau, mesuré à 451 pixels pour 390 de haut. Un plateau bas n'a
+   la place ni dans un sens ni dans l'autre. */
+@container plateau (((max-height: 700px) and (max-aspect-ratio: 6/5)) or (max-height: 430px)) {
+    /* `:not([hidden])` n'est pas une coquetterie : `display: flex` l'emporte
+       sur la règle du navigateur qui masque un élément portant `hidden`, et le
+       panneau refermé restait alors étendu sur tout le plateau — invisible,
+       mais interceptant chaque touche du pavé. */
+    .canvas-area:has(.numpad) .np-outil:not([hidden]) {
+        position: absolute; left: 6px; right: 6px; top: 6px; height: calc(100% - 12px);
+        z-index: 6; margin: 0; max-width: none; overflow: auto;
+        display: flex; flex-direction: column;
+        box-shadow: 0 12px 44px rgba(0, 0, 0, .22);
+    }
+    .canvas-area:has(.numpad) .np-outil-tete { flex: 0 0 auto; }
+    /* Ce qu'il y a à voir prend le reste, et se centre dedans. */
+    .canvas-area:has(.numpad) .np-outil > :not(.np-outil-tete) {
+        flex: 1 1 auto; min-height: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .canvas-area:has(.numpad) .np-outil svg { max-height: 100%; }
+}
 
 /* Les trois formules, empilées : on les compare d'un coup d'œil. Écrites à la
    file elles se liraient comme une phrase, et ne se retiendraient pas. */

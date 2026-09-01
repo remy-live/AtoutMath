@@ -99,17 +99,26 @@ export function mount(container, session, opts = {}) {
         const boite = container.querySelector('[data-outil]');
         if (!outils.length || !boite) return;
         let ouvert = -1;
+        const montrer = (i) => {
+            ouvert = i;
+            // LE PANNEAU PORTE SON NOM ET SA CROIX. Sur téléphone il recouvre
+            // le plateau — le bouton qui l'a ouvert est dessous, et sans cette
+            // croix on ne saurait plus comment revenir à la question.
+            boite.innerHTML = i < 0 ? '' : `<div class="np-outil-tete">
+                <b>${echapperTexte(outils[i].label)}</b>
+                <button type="button" class="np-outil-fermer" data-outil-fermer
+                    aria-label="Fermer">✕</button></div>${outils[i].html}`;
+            boite.hidden = i < 0;
+            const croix = boite.querySelector('[data-outil-fermer]');
+            if (croix) croix.onclick = () => montrer(-1);
+            container.querySelectorAll('[data-outil-i]').forEach(b =>
+                b.setAttribute('aria-expanded', String(Number(b.dataset.outilI) === i)));
+        };
         container.querySelectorAll('[data-outil-i]').forEach(btn => {
-            btn.onclick = () => {
-                const i = Number(btn.dataset.outilI);
-                // Le même bouton referme : deux panneaux ouverts l'un sur
-                // l'autre pousseraient le pavé numérique hors de l'écran.
-                ouvert = (ouvert === i) ? -1 : i;
-                boite.innerHTML = ouvert < 0 ? '' : outils[ouvert].html;
-                boite.hidden = ouvert < 0;
-                container.querySelectorAll('[data-outil-i]').forEach(b =>
-                    b.setAttribute('aria-expanded', String(Number(b.dataset.outilI) === ouvert)));
-            };
+            // Le même bouton referme : deux panneaux ouverts l'un sur l'autre
+            // pousseraient le pavé numérique hors de l'écran.
+            btn.onclick = () => montrer(ouvert === Number(btn.dataset.outilI)
+                ? -1 : Number(btn.dataset.outilI));
         });
     }
 
