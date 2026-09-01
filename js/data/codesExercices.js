@@ -48,6 +48,7 @@ export const CODES_EXERCICES = {
     'num-ninja':                  'NN',   // Ninja des Nombres
     'num-relatifs-addition':      'AR',   // Additionner des Relatifs, pas à pas
     'num-relatifs-produit':       'MR',   // Multiplier des Relatifs, pas à pas
+    'alg-fonctions':              'FN',   // Les Fonctions : Image et Antécédent
     'num-litteral-reduire':       'SR',   // Simplifier et Réduire
     'num-litteral-puissances':    'CR',   // Carrés, Cubes et Réduction
     'num-virgule':                'VD',   // La Virgule qui se décale
@@ -160,6 +161,7 @@ export const CODES_EXERCICES = {
     'mes-perimetre-qcm':          'PH',   // Périmètre : à toi de choisir
     'mes-aire':                   'CX',   // Carreaux et Surfaces
     'mes-conversion':             'TC',   // Le Tableau de Conversion
+    'mes-grandeurs-composees':    'GC',   // Les Grandeurs Composées
     'mes-vitesse':                'TD',   // Temps, Distance, Vitesse
     'mes-jezzball':               'JE',   // JezzBall
     'geo-tangram':                'TN',   // Le Tangram

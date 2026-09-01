@@ -995,6 +995,30 @@ const BASE = {
         descriptor: 'Situer les quadrilatères les uns par rapport aux autres, et dire quelle condition fait passer de l\'un à l\'autre.',
         lesson: 'Les quadrilatères ne sont pas six familles côte à côte : elles s\'EMBOÎTENT. On part du quadrilatère quelconque, et chaque cran ajoute UNE condition. Une paire de côtés parallèles → le trapèze. L\'autre paire aussi → le parallélogramme. Un angle droit → le rectangle. Deux côtés consécutifs de même longueur → le losange. Et le carré se rejoint PAR DEUX CHEMINS : depuis le rectangle en ajoutant les longueurs égales, depuis le losange en ajoutant l\'angle droit — chacun apporte ce que l\'autre avait déjà. C\'est pourquoi tout carré est un rectangle, et aussi un losange, et aussi un parallélogramme. L\'inverse est faux : un rectangle n\'est pas forcément un carré. Dans un parallélogramme, un seul angle droit suffit pour avoir les quatre, et deux côtés consécutifs égaux suffisent pour les avoir tous les quatre.'
     },
+    'mes.grandeurs.composees': {
+        label: 'Les grandeurs composées',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.mult.sens', 'num.div.quotient'],
+        descriptor: 'Lire une unité composée, et retrouver l\'opération qu\'elle dicte.',
+        lesson: 'Une grandeur composée est un QUOTIENT de deux grandeurs, et son unité le dit : la barre « / » se lit « pour un ». « 7,9 g/cm³ » veut dire 7,9 grammes POUR UN centimètre cube ; « 2,40 €/kg », 2,40 € pour un kilogramme. De là, plus aucune formule à retenir : pour trouver la grandeur composée on DIVISE le haut par le bas ; si on connaît la valeur « pour un » et qu\'on en veut plusieurs, on MULTIPLIE ; si on connaît la valeur « pour un » et le total, on DIVISE pour savoir combien d\'unités. Et une unité composée se CONVERTIT en convertissant ses deux unités l\'une après l\'autre : des m/s en km/h, les mètres deviennent des kilomètres (÷ 1 000) et les secondes des heures (÷ 3 600), donc le rapport est multiplié par 3 600 ÷ 1 000 = 3,6. On ne retient pas le 3,6 : on le retrouve.'
+    },
+    'alg.fonction.image': {
+        label: 'Image d\'un nombre par une fonction',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Calculer f(a) en remplaçant x, et lire correctement l\'égalité obtenue.',
+        lesson: 'Une fonction est une machine : on lui donne un nombre, elle en rend un autre. « f(3) = 11 » se lit « 11 est l\'IMAGE de 3 », et donc aussi « 3 est un ANTÉCÉDENT de 11 ». On part du nombre entre parenthèses, on arrive au résultat — c\'est le seul moyen de ne pas inverser les deux mots. Calculer une image, c\'est REMPLACER x par le nombre donné, puis calculer : si f(x) = 3x − 5, alors f(4) = 3 × 4 − 5 = 7. Un tableau de valeurs range ces couples en colonnes : la ligne du haut donne x, celle du bas f(x).'
+    },
+    'alg.fonction.antecedent': {
+        label: 'Antécédent d\'un nombre par une fonction',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['alg.fonction.image'],
+        descriptor: 'Remonter le programme de calcul à l\'envers pour retrouver le nombre de départ.',
+        lesson: 'Chercher un antécédent, c\'est faire le chemin INVERSE. Calculer une image consiste à appliquer les opérations dans l\'ordre ; chercher un antécédent consiste à les DÉFAIRE dans l\'ordre inverse, en remplaçant chacune par son contraire. Pour f(x) = 3x − 5, le programme est « multiplie par 3, puis enlève 5 » ; pour remonter de 7, on commence par la fin : on ajoute 5 (on obtient 12), puis on divise par 3 (on obtient 4). Et l\'on vérifie : f(4) = 7. Toujours vérifier — c\'est gratuit, et cela attrape l\'erreur d\'ordre, qui est la plus fréquente.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

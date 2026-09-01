@@ -97,6 +97,40 @@ export const mesuresExercises = [
         instruction: "Trois \u00e9tapes, et chacune sert \u00e0 quelque chose. D'abord tu ranges les unit\u00e9s dans les colonnes \u2014 une seule fois, le tableau reste ensuite. Puis tu fais glisser le nombre : le chiffre des unit\u00e9s va dans la colonne de SON unit\u00e9, et le fant\u00f4me te montre o\u00f9 il tomberait. Enfin tu poses la virgule apr\u00e8s la colonne demand\u00e9e, tu combles de z\u00e9ros les cases vides qui la pr\u00e9c\u00e8dent, et tu lis la r\u00e9ponse."
     },
     {
+        // LES GRANDEURS COMPOSÉES. Rémy : « je pense qu'il faudrait des
+        // exercices sur les grandeurs composées ».
+        //
+        // CE CHAPITRE N'EST PAS UN CHAPITRE DE CALCUL, C'EST UN CHAPITRE DE
+        // LECTURE. Les opérations sont une division et une multiplication ; ce
+        // qui se rate, c'est de savoir LAQUELLE. Et la réponse est écrite dans
+        // l'unité : « g/cm³ » se lit « des grammes POUR UN centimètre cube ».
+        // Un élève qui lit l'unité n'a plus de formule à retenir — il les
+        // retrouve toutes, y compris pour des grandeurs qu'il n'a jamais vues.
+        //
+        // LA VITESSE N'EST PAS DANS LA LISTE, volontairement. Elle a son propre
+        // exercice juste en dessous, et elle est si familière qu'elle masque le
+        // reste : on sait faire des km/h sans avoir compris ce qu'est une
+        // grandeur composée. On travaille donc les autres — masse volumique,
+        // débit, prix au kilo, densité, rendement — là où il faut vraiment lire
+        // l'unité pour choisir l'opération.
+        id: 'mes-grandeurs-composees',
+        cree: '2026-09-01',
+        title: 'Les Grandeurs Composées',
+        generatorId: 'mes.grandeurs-composees', activityId: 'numpad',
+        consignePapier: 'Relis l\'unité : la barre « / » se lit « pour un ». Écris le calcul, puis la réponse avec son unité.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        skills: ['mes.grandeurs.composees'],
+        params: { chercher: 'melange' },
+        motsClefs: ['grandeur composée', 'masse volumique', 'débit', 'densité', 'rendement',
+            'prix au kilo', 'unité', 'quotient', 'conversion'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une grandeur composée est un QUOTIENT de deux grandeurs, et son unité le dit : la barre « / » se lit « pour un ». « 7,9 g/cm³ » veut dire 7,9 grammes POUR UN centimètre cube. À partir de là, tu n'as plus aucune formule à retenir. Pour trouver la grandeur composée, tu DIVISES le haut par le bas. Si tu connais la valeur « pour un » et que tu en veux plusieurs, tu MULTIPLIES. Si tu connais la valeur « pour un » et le total, tu DIVISES pour savoir combien d'unités. Et pour convertir une unité composée, tu convertis SES DEUX unités l'une après l'autre : des m/s en km/h, les mètres deviennent des kilomètres (÷ 1 000) et les secondes des heures (÷ 3 600), donc on multiplie par 3 600 ÷ 1 000 = 3,6. Ne retiens pas le 3,6 : retrouve-le."
+    },
+    {
         // TEMPS, DISTANCE, VITESSE. Une seule formule (d = v × t), la question
         // qui tourne, et les nombres qui tombent juste par construction : on
         // tire la vitesse et la durée, la distance en découle.

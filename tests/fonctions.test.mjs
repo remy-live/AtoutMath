@@ -1,0 +1,156 @@
+// Les fonctions : image et antécédent, les deux mots qu'on inverse.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import './helpers.mjs';
+import '../js/core/activities/index.js';
+import { makeRng } from '../js/core/ids.js';
+import { getGenerator } from '../js/core/registry.js';
+import { getExerciseById } from '../js/data/catalog.js';
+
+const gen = () => getGenerator('alg.fonctions');
+const suite = (n, params = {}, tag = 'fn') => Array.from({ length: n }, (_, i) =>
+    gen().generate(params, { rng: makeRng(`${tag}-${i}`), index: i }));
+
+/** Relit l'écriture affichée pour en retrouver a et b : si l'énoncé ment, on le voit. */
+function lireAffine(texte) {
+    const m = /f\(x\) = (−?)(\d*)x ([+−]) (\d+)/.exec(texte);
+    assert.ok(m, `pas d'écriture affine lisible dans « ${texte} »`);
+    const a = (m[1] ? -1 : 1) * (m[2] === '' ? 1 : Number(m[2]));
+    return { a, b: (m[3] === '+' ? 1 : -1) * Number(m[4]) };
+}
+
+const enNombre = (s) => Number(s.replace('−', '-'));
+
+test('LIRE UNE ÉGALITÉ NE DEMANDE AUCUN CALCUL : la réponse est dans l\'énoncé', () => {
+    // C'est tout l'intérêt de ce type de question. Si la réponse n'était pas
+    // écrite, l'exercice mesurerait le calcul au lieu de mesurer le sens des
+    // deux mots — et c'est le sens qui manque.
+    for (const it of suite(60, { quoi: 'lire' }, 'lire')) {
+        const m = /f\((\d+)\) = (−?\d+)/.exec(it.prompt.text);
+        assert.ok(m, it.prompt.text);
+        const [x, y] = [Number(m[1]), enNombre(m[2])];
+        // La réponse est l'un des deux nombres de l'égalité, jamais un troisième.
+        assert.ok(it.answer === x || it.answer === y, it.prompt.text);
+        // Et c'est le bon des deux : on part des parenthèses, on arrive au résultat.
+        const veutImage = /Quelle est l'image/.test(it.prompt.text);
+        assert.equal(it.answer, veutImage ? y : x, it.prompt.text);
+        assert.equal(it.difficulty, 1);
+    }
+});
+
+test('L\'IMAGE ANNONCÉE EST CELLE DE LA FONCTION ÉCRITE', () => {
+    // On relit l'énoncé comme le ferait l'élève, et on refait son calcul : une
+    // faute d'écriture (le « 1x », un signe perdu) rendrait l'exercice
+    // insoluble sans qu'aucun test interne ne s'en aperçoive.
+    for (const quoi of ['image', 'tableau']) {
+        for (const it of suite(60, { quoi }, quoi)) {
+            const { a, b } = lireAffine(it.prompt.text);
+            const m = quoi === 'image'
+                ? /Calcule f\((−?\d+)\)/.exec(it.prompt.text)
+                : /x = (−?\d+)/.exec(it.hints[1]);
+            assert.ok(m, it.prompt.text);
+            assert.equal(it.answer, a * enNombre(m[1]) + b, it.prompt.text);
+            assert.equal(it.meta.quoi, quoi);
+        }
+    }
+});
+
+test('L\'ANTÉCÉDENT TOMBE TOUJOURS JUSTE, parce qu\'on part de lui', () => {
+    // Chercher l'antécédent de 7 par x ↦ 3x + 1 est un exercice de fractions
+    // déguisé. On engendre donc l'énoncé À PARTIR de la réponse.
+    for (const it of suite(80, { quoi: 'antecedent' }, 'ant')) {
+        const { a, b } = lireAffine(it.prompt.text);
+        const m = /image (−?\d+)/.exec(it.prompt.text);
+        assert.ok(m, it.prompt.text);
+        const y = enNombre(m[1]);
+        assert.equal(Number.isInteger(it.answer), true, it.prompt.text);
+        assert.equal(a * it.answer + b, y, it.prompt.text);
+        // Et le chemin de retour, écrit dans l'explication, ne passe par aucun
+        // nombre à rallonge : c'est un raisonnement, pas une division.
+        assert.equal(/,\d{3,}/.test(it.explanation), false, it.explanation);
+        assert.equal(it.skillId, 'alg.fonction.antecedent');
+        assert.equal(it.difficulty, 3);
+    }
+});
+
+test('LE PROGRAMME DE CALCUL EST BIEN LA FONCTION, dite autrement', () => {
+    // C'est la porte d'entrée du chapitre : l'élève doit voir que la suite
+    // d'instructions et l'écriture f(x) = … sont la même chose. L'explication
+    // le dit, encore faut-il qu'elle dise vrai.
+    for (const it of suite(60, { quoi: 'programme' }, 'prog')) {
+        const { a, b } = lireAffine(it.explanation);
+        const m = /en partant de (\d+)/.exec(it.prompt.text);
+        assert.ok(m, it.prompt.text);
+        assert.equal(it.answer, a * Number(m[1]) + b, it.prompt.text);
+        // La multiplication vient d'abord : « ajoute 3 puis multiplie par 2 »
+        // serait une AUTRE fonction, et l'écriture affichée serait fausse.
+        assert.match(it.prompt.text, /1\. multiplie par/, it.prompt.text);
+    }
+});
+
+test('LE MOINS EST LE MÊME DANS TOUTE LA LIGNE', () => {
+    // Vu à la génération : « f(x) = −3x − 3. Calcule f(-3). » Le trait d'union
+    // du clavier est plus court et posé plus bas ; à côté d'un vrai signe moins
+    // il se voit, et l'énoncé a l'air bâclé.
+    for (const it of suite(200, {}, 'signe')) {
+        const tout = [it.prompt.text, it.prompt.papier, it.explanation, ...it.hints].join('\n');
+        assert.equal(/-\d/.test(tout), false, `trait d'union devant un chiffre : ${tout}`);
+        assert.equal(/ - /.test(tout), false, `trait d'union isolé : ${tout}`);
+        // Le point décimal anglais non plus n'a rien à faire dans un énoncé.
+        assert.equal(/\d\.\d/.test(tout), false, tout);
+    }
+});
+
+test('chaque question porte trois indices qui vont du sens vers le calcul', () => {
+    for (const it of suite(120, {}, 'aide')) {
+        assert.equal(it.hints.length, 3, it.prompt.text);
+        // Les deux premiers indices expliquent ; les derniers posent le calcul
+        // et peuvent tenir en une ligne (« f(0) = −3 × 0 − 7 »).
+        assert.ok(it.hints[0].length > 40, `${it.meta.quoi} : « ${it.hints[0]} »`);
+        it.hints.forEach(h => assert.ok(h.length > 12, `${it.meta.quoi} : « ${h} »`));
+        assert.ok(it.explanation.length > 40, it.prompt.text);
+        assert.equal(typeof it.answer, 'number');
+        assert.equal(Number.isFinite(it.answer), true, it.prompt.text);
+        assert.equal(it.answerKind, 'numeric');
+        // Le dernier indice donne le calcul fait : après lui, il ne reste plus
+        // qu'à recopier. C'est voulu — un indice qui ne débloque pas ne sert à rien.
+        assert.match(it.hints[2], /\d/);
+    }
+});
+
+test('L\'EXPLICATION DU « LIRE » NOMME LES DEUX MOTS ENSEMBLE', () => {
+    // Séparés, « image » et « antécédent » s'apprennent comme deux règles à
+    // retenir. Ensemble sur la même égalité, ils s'expliquent l'un par l'autre.
+    for (const it of suite(30, { quoi: 'lire' }, 'mots')) {
+        assert.match(it.explanation, /image/);
+        assert.match(it.explanation, /antécédent/);
+        assert.match(it.explanation, /se lit/);
+    }
+});
+
+test('le mélange fait revenir les cinq questions, « lire » en tête', () => {
+    const vus = {};
+    suite(200, {}, 'mel').forEach(it => { vus[it.meta.quoi] = (vus[it.meta.quoi] || 0) + 1; });
+    ['lire', 'image', 'programme', 'tableau', 'antecedent'].forEach(q =>
+        assert.ok(vus[q] > 10, `${q} sort trop rarement : ${vus[q] || 0}/200`));
+    assert.ok(vus.lire > vus.antecedent, 'la lecture du sens doit revenir plus souvent');
+});
+
+test('la même graine redonne le même énoncé', () => {
+    const a = gen().generate({}, { rng: makeRng('pareil'), index: 0 });
+    const b = gen().generate({}, { rng: makeRng('pareil'), index: 0 });
+    assert.equal(a.prompt.text, b.prompt.text);
+    assert.equal(a.answer, b.answer);
+});
+
+test('l\'exercice du catalogue tient debout', () => {
+    const exo = getExerciseById('alg-fonctions');
+    assert.ok(exo, 'l\'exercice doit être au catalogue');
+    assert.equal(exo.generatorId, 'alg.fonctions');
+    assert.ok(gen(), 'le générateur doit être enregistré');
+    const schema = gen().params.find(p => p.id === 'quoi');
+    const rendus = new Set(suite(200, {}, 'cat').map(it => it.meta.quoi));
+    schema.options.filter(o => o.value !== 'melange').forEach(o =>
+        assert.ok(rendus.has(o.value), `l'option « ${o.label} » ne produit rien`));
+});

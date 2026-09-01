@@ -435,6 +435,42 @@ export const numerationExercises = [
         instruction: "Douze marches, deux questions chacune. LES CINQ PREMIÈRES NE DEMANDENT PAS DE CALCULER : seulement de dire si le produit sera positif ou négatif. C'est le vrai sujet du chapitre — (−3) + (−4) fait −7, mais (−3) × (−4) fait +12, et ce n'est pas la même règle. Ensuite on calcule, d'abord avec les parenthèses puis sans. Les trois dernières marches passent à plusieurs facteurs : on ne récite plus une règle, on COMPTE les facteurs négatifs, et leur parité décide. La dernière garde les cas à part : le zéro, le 1, le −1, et le carré d'un négatif — (−4)² vaut +16, mais −4² vaut −16."
     },
     {
+        // LES FONCTIONS. Rémy : « et des exercices sur les fonctions ».
+        //
+        // CE CHAPITRE SE JOUE SUR DEUX MOTS. « f(3) = 11 » se lit « 11 est
+        // l'IMAGE de 3 », et donc « 3 est un ANTÉCÉDENT de 11 ». Les élèves les
+        // échangent, et ce n'est pas de l'étourderie : rien dans l'écriture ne
+        // dit lequel est lequel, il faut avoir compris que la fonction PART de
+        // x et ARRIVE à f(x). Tout le reste — tableaux, courbes, programmes de
+        // calcul — s'écroule si ces deux mots ne sont pas tenus.
+        //
+        // D'OÙ UN TYPE DE QUESTION QUI NE CALCULE RIEN : « f(3) = 11, quelle
+        // est l'image de 3 ? » La réponse est écrite dans l'énoncé ; la seule
+        // question est de la lire dans le bon sens. C'est là que les points se
+        // perdent, et le mélange la fait revenir aussi souvent que les autres.
+        //
+        // ET CHERCHER UN ANTÉCÉDENT, C'EST REMONTER LE PROGRAMME À L'ENVERS —
+        // les mêmes opérations, dans l'ordre inverse, chacune remplacée par son
+        // contraire. C'est la seconde idée du chapitre, et l'explication la
+        // déroule étape par étape plutôt que de poser une équation.
+        id: 'alg-fonctions',
+        cree: '2026-09-01',
+        title: 'Les Fonctions : Image et Antécédent',
+        generatorId: 'alg.fonctions', activityId: 'numpad',
+        consignePapier: 'Écris le calcul, puis la réponse. Pour un antécédent, remonte le programme à l\'envers et vérifie.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        skills: ['alg.fonction.image', 'alg.fonction.antecedent'],
+        params: { quoi: 'melange' },
+        motsClefs: ['fonction', 'image', 'antécédent', 'programme de calcul',
+            'tableau de valeurs', 'notation'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une fonction est une machine : on lui donne un nombre, elle en rend un autre. « f(3) = 11 » se lit « 11 est l'IMAGE de 3 », et donc aussi « 3 est un ANTÉCÉDENT de 11 ». Retiens le sens de la marche : on PART du nombre entre parenthèses, on ARRIVE au résultat — c'est le seul moyen de ne pas inverser les deux mots. Pour calculer une image, tu REMPLACES x par le nombre donné, puis tu calcules. Pour chercher un antécédent, tu fais le chemin INVERSE : tu reprends le programme de calcul et tu le défais en commençant par la fin, chaque opération remplacée par son contraire. Et tu vérifies toujours en recalculant l'image — c'est gratuit, et cela attrape l'erreur d'ordre, qui est la plus fréquente."
+    },
+    {
         // SIMPLIFIER ET RÉDUIRE. Rémy : « j'aimerais bien un exercice qui
         // entraîne à simplifier et à réduire des expressions littérales
         // (d'abord 2*x = 2x) — ATTENTION ON UTILISE LE SIGNE FOIS. »
