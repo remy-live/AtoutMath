@@ -109,7 +109,13 @@ export const CHAPITRES = [
         id: '6-proportionnalite', niveau: SIXIEME, nom: 'Proportionnalité',
         skills: ['num.proportion.tableau', 'num.probleme.proportion']
     },
-    { id: '6-quadrilateres', niveau: SIXIEME, nom: 'Quadrilatères', skills: [] },
+    {
+        // Le chapitre existait sans sa compétence : les deux exercices sur les
+        // familles de quadrilatères — celui qui fait CLASSER et celui qui fait
+        // CONSTRUIRE — tombaient tous les deux dans les orphelins.
+        id: '6-quadrilateres', niveau: SIXIEME, nom: 'Quadrilatères',
+        skills: ['geo.quadrilateres.familles']
+    },
     {
         id: '6-symetrie-axiale', niveau: SIXIEME, nom: 'Symétrie axiale',
         skills: ['geo.transfo.axiale']

@@ -130,6 +130,9 @@ export const CODES_EXERCICES = {
     'geo-angles-manquants':       'VM',   // La Valeur Manquante
     'geo-angles-nommer':          'NA',   // Le Nom des Angles
     'geo-quadrilateres':          'RG',   // L'oRGanigramme des Quadrilatères
+    // « QM » serait plus parlant, mais Q ne fait pas partie des vingt-trois
+    // lettres : on garde « TF », comme TransFormation.
+    'geo-quadri-morph':           'TF',   // Le quadrilatère qui se TransForme
     'geo-cercle-vocabulaire':     'VC',   // Le Vocabulaire du Cercle
     'geo-notation':               'SD',   // Segment, Droite ou Demi-droite ?
     'geo-redaction':              'RJ',   // Rédiger une Justification

@@ -1,5 +1,8 @@
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
+// Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
+// d'options qui se répondent finissent toujours par diverger.
+import { PALIERS as MORPH_PALIERS } from '../core/quadriMorph.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -81,6 +84,47 @@ export const geometrieExercises = [
     // qu'il vient de nommer. Et les cases vides montrent déjà leur figure en
     // pointillé — sans quoi l'exercice serait un jeu de mémoire, six mots pour
     // six trous, au lieu d'un raisonnement sur ce qu'on voit.
+    {
+        // LE QUADRILATÈRE QUI SE TRANSFORME — l'organigramme pris à l'envers.
+        //
+        // Rémy : « on a un quadrilatère qui n'a rien de particulier, et on a
+        // des vignettes que l'on peut faire glisser sur le quadrilatère du
+        // genre côté opposé parallèle, et on voit le quadrilatère se
+        // transformer en absorbant la nouvelle propriété et on doit deviner ce
+        // que ça va devenir. »
+        //
+        // L'AUTRE EXERCICE FAIT CLASSER, CELUI-CI FAIT CONSTRUIRE. Une
+        // propriété n'y est plus une étiquette, c'est une CONTRAINTE — et
+        // l'élève voit de ses yeux qu'ajouter une contrainte rétrécit la
+        // famille. C'est l'idée que les élèves n'ont pas, et qu'aucun manuel ne
+        // peut montrer parce qu'il faudrait que la figure bouge. Il vient donc
+        // AVANT l'organigramme dans la progression, pas après.
+        id: 'geo-quadri-morph', status: STATUS.TEST,
+        title: 'Le Quadrilatère qui se Transforme',
+        cree: '2026-09-01',
+        activityId: 'quadri-morph',
+        sansRevision: true,
+        params: { palier: 'decouverte' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'Jusqu\'où on descend', default: 'decouverte',
+                aide: 'Une seule propriété montre déjà l\'essentiel : la famille rétrécit. '
+                    + 'Deux à la suite font descendre l\'arbre — et c\'est là qu\'on découvre '
+                    + 'qu\'un angle droit posé sur un parallélogramme ne fait pas la même chose '
+                    + 'que posé sur un quadrilatère quelconque. Les diagonales, elles, disent '
+                    + 'les mêmes choses autrement.',
+                options: Object.entries(MORPH_PALIERS).map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        skills: ['geo.quadrilateres.familles'],
+        motsClefs: ['quadrilatère', 'parallélogramme', 'losange', 'rectangle', 'carré',
+            'trapèze', 'propriété', 'diagonales', 'côtés parallèles', 'transformation'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Tu pars d'un quadrilatère qui n'a rien de particulier. Chaque vignette porte une PROPRIÉTÉ : pose-la sur la figure, et la figure se déformera pour la respecter. Avant qu'elle ne bouge, dis ce qu'elle va devenir — c'est là qu'est le travail, l'animation n'est que la correction. Une propriété n'est pas une étiquette qu'on colle : c'est une contrainte, et chaque contrainte en plus RÉTRÉCIT la famille. Attention : certaines ne disent rien toutes seules. Des diagonales perpendiculaires dans un quadrilatère quelconque ne donnent aucune figure du cours ; les mêmes dans un parallélogramme font un losange. Et plusieurs chemins mènent au même endroit — côtés opposés parallèles, côtés opposés égaux, diagonales qui se coupent en leur milieu : trois propriétés différentes, un seul parallélogramme."
+    },
     {
         id: 'geo-quadrilateres',
         cree: '2026-09-01',
