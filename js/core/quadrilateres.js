@@ -5,10 +5,18 @@
 // des choses visuelles quitte à avoir des animations. »
 //
 // CE QUE L'ORGANIGRAMME DIT, ET QU'UNE LISTE DE DÉFINITIONS NE DIT PAS. Un
-// élève apprend six définitions séparées et croit avoir six familles côte à
+// élève apprend cinq définitions séparées et croit avoir cinq familles côte à
 // côte. Or elles s'EMBOÎTENT : un carré est un rectangle, un rectangle est un
-// parallélogramme, un parallélogramme est un trapèze. « Est-ce qu'un carré est
-// un rectangle ? » est la question qui départage ceux qui ont compris.
+// parallélogramme. « Est-ce qu'un carré est un rectangle ? » est la question
+// qui départage ceux qui ont compris.
+//
+// PAS DE TRAPÈZE. Rémy : « enlève le trapèze, ce n'est pas au programme ». Il
+// y était, en haut de l'arbre, parce que la hiérarchie mathématique complète le
+// place là — et c'est exactement la raison de l'enlever : ce logiciel enseigne
+// le programme du collège, pas la hiérarchie complète. Une case de plus à
+// apprendre, qui ne sera demandée nulle part, coûte à l'élève sans rien lui
+// rendre. Le quadrilatère quelconque descend donc DIRECTEMENT au
+// parallélogramme.
 //
 // ET LE CARRÉ SE REJOINT PAR DEUX CHEMINS. C'est le cœur de la figure, et sa
 // beauté : on descend au carré depuis le rectangle en ajoutant « deux côtés
@@ -22,7 +30,7 @@
 // laquelle a fait la différence.
 
 /**
- * Les six familles. `figure` est le contour à dessiner, dans un carré de 100 ;
+ * Les cinq familles. `figure` est le contour à dessiner, dans un carré de 100 ;
  * `quoi` est la définition telle qu'on la dit en classe.
  */
 export const FAMILLES = [
@@ -32,27 +40,22 @@ export const FAMILLES = [
         figure: [[10, 22], [86, 10], [92, 62], [24, 78]]
     },
     {
-        id: 'trapeze', nom: 'Trapèze', rang: 1,
-        quoi: 'au moins une paire de côtés parallèles',
-        figure: [[22, 20], [78, 20], [92, 72], [8, 72]]
-    },
-    {
-        id: 'parallelogramme', nom: 'Parallélogramme', rang: 2,
+        id: 'parallelogramme', nom: 'Parallélogramme', rang: 1,
         quoi: 'les côtés opposés sont parallèles deux à deux',
         figure: [[26, 20], [92, 20], [74, 72], [8, 72]]
     },
     {
-        id: 'rectangle', nom: 'Rectangle', rang: 3,
+        id: 'rectangle', nom: 'Rectangle', rang: 2,
         quoi: 'un parallélogramme qui a un angle droit — donc quatre',
         figure: [[12, 24], [88, 24], [88, 68], [12, 68]]
     },
     {
-        id: 'losange', nom: 'Losange', rang: 3,
+        id: 'losange', nom: 'Losange', rang: 2,
         quoi: 'un parallélogramme dont les quatre côtés sont de même longueur',
         figure: [[50, 12], [90, 46], [50, 80], [10, 46]]
     },
     {
-        id: 'carre', nom: 'Carré', rang: 4,
+        id: 'carre', nom: 'Carré', rang: 3,
         quoi: 'à la fois rectangle ET losange',
         figure: [[24, 24], [76, 24], [76, 76], [24, 76]]
     }
@@ -67,16 +70,11 @@ export const FAMILLES = [
  */
 export const FLECHES = [
     {
-        de: 'quadrilatere', vers: 'trapeze',
-        ajoute: 'deux côtés parallèles',
-        piege: 'Une seule paire de côtés parallèles suffit à faire un trapèze : c\'est la '
-            + 'toute première condition qu\'on ajoute.'
-    },
-    {
-        de: 'trapeze', vers: 'parallelogramme',
-        ajoute: 'l\'autre paire aussi parallèle',
-        piege: 'Le parallélogramme n\'ajoute pas des côtés égaux : il ajoute le SECOND '
-            + 'parallélisme. Les longueurs suivent toutes seules.'
+        de: 'quadrilatere', vers: 'parallelogramme',
+        ajoute: 'les côtés opposés parallèles',
+        piege: 'Le parallélogramme n\'ajoute pas des côtés égaux : il ajoute le '
+            + 'PARALLÉLISME des deux paires de côtés opposés. Les longueurs suivent toutes '
+            + 'seules.'
     },
     {
         de: 'parallelogramme', vers: 'rectangle',
@@ -114,11 +112,10 @@ export const familleDe = (id) => FAMILLES.find(f => f.id === id) || null;
  * simple colonne perdrait exactement ce qu'elle a d'intéressant.
  */
 export const POSITIONS = {
-    quadrilatere: { x: 50, y: 8 },
-    trapeze: { x: 50, y: 29 },
-    parallelogramme: { x: 50, y: 50 },
-    rectangle: { x: 24, y: 72 },
-    losange: { x: 76, y: 72 },
+    quadrilatere: { x: 50, y: 9 },
+    parallelogramme: { x: 50, y: 37 },
+    rectangle: { x: 24, y: 66 },
+    losange: { x: 76, y: 66 },
     carre: { x: 50, y: 93 }
 };
 
@@ -126,7 +123,7 @@ export const POSITIONS = {
  * TOUT CE QU'UN QUADRILATÈRE EST AUSSI — en remontant les flèches.
  *
  * C'est la question qui départage : « un carré est-il un rectangle ? ». Oui, et
- * un losange, et un parallélogramme, et un trapèze, et un quadrilatère.
+ * un losange, et un parallélogramme, et un quadrilatère.
  */
 export function ancetres(id) {
     const out = new Set();
@@ -151,9 +148,9 @@ export const MODES = {
 
 export const PALIERS = {
     decouverte: { label: 'Placer trois noms', mode: MODES.FAMILLES, trous: 3 },
-    noms: { label: 'Placer tous les noms', mode: MODES.FAMILLES, trous: 6 },
-    conditions: { label: 'Placer les conditions sur les flèches', mode: MODES.PROPRIETES, trous: 4 },
-    tout: { label: 'Toutes les conditions', mode: MODES.PROPRIETES, trous: 6 }
+    noms: { label: 'Placer tous les noms', mode: MODES.FAMILLES, trous: 5 },
+    conditions: { label: 'Placer les conditions sur les flèches', mode: MODES.PROPRIETES, trous: 3 },
+    tout: { label: 'Toutes les conditions', mode: MODES.PROPRIETES, trous: 5 }
 };
 
 /**

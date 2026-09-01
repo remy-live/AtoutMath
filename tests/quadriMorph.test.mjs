@@ -11,6 +11,7 @@ import {
     PROPRIETES, PALIERS, CADRE, proprieteDe, caracteresDe, familleApres, familleDeCaracteres,
     nommerFigure, poserFigure, figureDeDepart, ecarts, genererDefi, poser, cheminDe
 } from '../js/core/quadriMorph.js';
+import { figureSvg, legendeDuCodage } from '../js/games/quadriMorph.js';
 
 const ids = PROPRIETES.map(p => p.id);
 
@@ -27,7 +28,7 @@ const combinaisons = () => {
 test('LA FIGURE OBTENUE EST VRAIMENT CELLE QU\'ON ANNONCE', () => {
     // C'EST LE TEST QUI PORTE TOUT L'EXERCICE. La question posée à l'élève est
     // « que va devenir la figure ? » : si le solveur s'arrêtait à mi-chemin —
-    // un trapèze dont les côtés font encore quatorze degrés d'écart, un
+    // un parallélogramme dont les côtés font encore quatorze degrés d'écart, un
     // rectangle dont l'angle n'est droit qu'à deux degrés près —, la bonne
     // réponse serait fausse, et l'élève aurait raison contre le logiciel.
     // On relit donc CHAQUE figure produite, pour chaque combinaison possible.
@@ -39,7 +40,7 @@ test('LA FIGURE OBTENUE EST VRAIMENT CELLE QU\'ON ANNONCE', () => {
             `${lot.join(' + ') || '(rien)'} : la figure dessinée n'est pas celle annoncée`);
         vues++;
     }
-    assert.ok(vues >= 30, `trop peu de combinaisons éprouvées : ${vues}`);
+    assert.ok(vues >= 28, `trop peu de combinaisons éprouvées : ${vues}`);
 });
 
 test('LA FIGURE NE TRICHE PAS : elle est le cas GÉNÉRIQUE de sa famille', () => {
@@ -52,8 +53,8 @@ test('LA FIGURE NE TRICHE PAS : elle est le cas GÉNÉRIQUE de sa famille', () =
         { lot: ['quatreCotesEgaux'], loin: 'droit', mot: 'un losange ne doit pas avoir l\'air carré' },
         { lot: ['opposesParalleles', 'unAngleDroit'], loin: 'egaux', mot: 'un rectangle n\'est pas un carré' },
         { lot: ['opposesParalleles'], loin: 'droit', mot: 'un parallélogramme n\'a pas d\'angle droit' },
-        { lot: ['unePaireParallele'], loin: 'par2', mot: 'un trapèze n\'a qu\'UNE paire parallèle' },
-        { lot: [], loin: 'par1', mot: 'le quadrilatère quelconque n\'a aucune paire parallèle' }
+        { lot: [], loin: 'par1', mot: 'le quadrilatère quelconque n\'a aucune paire parallèle' },
+        { lot: [], loin: 'par2', mot: 'ni la seconde paire — le trapèze n\'est pas au programme' }
     ];
     cas.forEach(({ lot, loin, mot }) => {
         const e = ecarts(poserFigure(depart, lot));
@@ -134,7 +135,7 @@ test('AUCUNE IMPASSE : toute combinaison a une figure', () => {
 
 test('le quadrilatère de départ n\'a VRAIMENT rien de particulier', () => {
     // Tiré au hasard, il tombait une fois sur cinq sur deux côtés presque
-    // parallèles — et l'élève croyait voir un trapèze avant d'avoir rien posé.
+    // parallèles — et l'élève le croyait déjà rangé avant d'avoir rien posé.
     for (let i = 0; i < 25; i++) {
         const P = figureDeDepart(makeRng('depart' + i));
         assert.equal(nommerFigure(P), 'quadrilatere', `graine ${i}`);
@@ -146,8 +147,8 @@ test('le quadrilatère de départ n\'a VRAIMENT rien de particulier', () => {
 test('le chemin dans l\'arbre suit ce qu\'on a posé', () => {
     assert.deepEqual(cheminDe([]), ['quadrilatere']);
     assert.deepEqual(cheminDe(['opposesParalleles']), ['quadrilatere', 'parallelogramme']);
-    assert.deepEqual(cheminDe(['unePaireParallele', 'opposesParalleles']),
-        ['quadrilatere', 'trapeze', 'parallelogramme']);
+    assert.deepEqual(cheminDe(['quatreCotesEgaux', 'unAngleDroit']),
+        ['quadrilatere', 'losange', 'carre']);
     // Une propriété qui ne change rien n'ajoute pas de case : on ne descend
     // pas deux fois la même marche.
     assert.deepEqual(cheminDe(['opposesParalleles', 'cotesOpposesEgaux']),
@@ -181,14 +182,21 @@ test('la même graine redonne la même figure', () => {
     assert.deepEqual(a.cartes, b.cartes);
 });
 
-test('les quatre caractères décident, et les six familles en découlent', () => {
-    // Toute la hiérarchie du collège tient à quatre questions. Si l'une des six
+test('LE TRAPÈZE A DISPARU, et les cinq familles restent atteignables', () => {
+    // Rémy : « enlève le trapèze, ce n'est pas au programme ». Sa vignette part
+    // avec lui : sans trapèze, « une seule paire parallèle » ne changerait plus
+    // la famille, et l'élève verrait la figure bouger sans que le nom bouge —
+    // exactement le contraire de ce que l'exercice enseigne.
+    assert.equal(ids.includes('unePaireParallele'), false);
+    assert.equal(familleDeCaracteres({ par1: true, par2: false, egaux: false, droit: false }),
+        'quadrilatere', 'une seule paire parallèle ne fait aucune figure du cours');
+    // Toute la hiérarchie du collège tient à quatre questions. Si l'une des cinq
     // familles devenait inatteignable, l'arbre aurait un trou.
     const atteintes = new Set();
-    [[], ['unePaireParallele'], ['opposesParalleles'], ['opposesParalleles', 'unAngleDroit'],
+    [[], ['opposesParalleles'], ['opposesParalleles', 'unAngleDroit'],
         ['quatreCotesEgaux'], ['quatreCotesEgaux', 'unAngleDroit']]
         .forEach(lot => atteintes.add(familleApres(lot)));
-    assert.equal(atteintes.size, 6, 'les six familles doivent être atteignables');
+    assert.equal(atteintes.size, 5, 'les cinq familles doivent être atteignables');
     FAMILLES.forEach(f => assert.ok(atteintes.has(f.id), `${f.id} est inatteignable`));
     // Et les caractères se composent sans se contredire.
     const c = caracteresDe(['quatreCotesEgaux', 'unAngleDroit']);
@@ -204,4 +212,44 @@ test('l\'exercice du catalogue tient debout', () => {
         assert.ok(PALIERS[o.value], `palier inconnu : ${o.value}`);
         assert.equal(o.label, PALIERS[o.value].label, `le libellé de ${o.value} a divergé du noyau`);
     });
+});
+
+test('LA PROPRIÉTÉ EN ATTENTE SE VOIT SUR LA FIGURE — AVANT qu\'elle bouge', () => {
+    // Rémy : « on ne comprend rien ». La cause était là : au moment de deviner,
+    // la figure n'avait pas changé (elle ne DOIT pas changer) et la vignette
+    // avait disparu de l'écran. On demandait donc « que va-t-elle devenir ? »
+    // en ne montrant rien de ce qui allait la changer.
+    const P = figureDeDepart(makeRng('attente'));
+    const nu = figureSvg(P, []);
+    assert.equal(nu.includes('qm-avenir'), false, 'rien en attente, rien qui bat');
+    const attente = figureSvg(P, [], { enAttente: 'opposesParalleles' });
+    assert.match(attente, /qm-avenir/, 'la propriété posée doit se dessiner');
+    // Et elle ne redessine QUE ce qu'elle ajoute : ce qui est déjà acquis reste
+    // en trait plein, sinon le pointillé le remettrait en question.
+    const deja = figureSvg(P, ['opposesParalleles'], { enAttente: 'unAngleDroit' });
+    const dedans = deja.slice(deja.indexOf('qm-avenir'));
+    assert.equal((dedans.match(/#2ca02c/g) || []).length, 0,
+        'les chevrons déjà acquis ne doivent pas rebattre');
+    assert.match(dedans, /#e07b00/, 'le nouvel angle droit, lui, doit battre');
+});
+
+test('la légende n\'explique que les marques réellement dessinées', () => {
+    assert.equal(legendeDuCodage([]), '', 'aucune marque, aucune légende');
+    assert.match(legendeDuCodage(['opposesParalleles']), /parallèles/);
+    assert.equal(/angle droit/.test(legendeDuCodage(['opposesParalleles'])), false);
+    assert.match(legendeDuCodage(['unAngleDroit']), /angle droit/);
+    assert.match(legendeDuCodage(['diagonalesEgales']), /diagonales/);
+    // Et la propriété en attente compte : sa marque est sur la figure.
+    assert.match(legendeDuCodage([], 'quatreCotesEgaux'), /même longueur/);
+});
+
+test('chaque vignette de diagonale pose SA marque, pas seulement les diagonales', () => {
+    // Deux traits pointillés disaient qu'il était question des diagonales, pas
+    // ce qu'on en exigeait : « égales », « même milieu » et « perpendiculaires »
+    // donnaient exactement le même dessin.
+    const P = figureDeDepart(makeRng('diag'));
+    const dessins = ['diagonalesEgales', 'diagonalesMilieu', 'diagonalesPerpendiculaires']
+        .map(id => figureSvg(P, [id]));
+    assert.equal(new Set(dessins).size, 3, 'les trois marques doivent différer');
+    dessins.forEach(d => assert.match(d, /#9467bd/));
 });

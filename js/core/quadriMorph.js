@@ -56,14 +56,12 @@ const CARACTERES = ['par1', 'par2', 'egaux', 'droit'];
  * disent rien... sauf dans un parallélogramme, où elles font un losange. Un
  * élève qui découvre cette dépendance a compris quelque chose.
  */
+// PAS DE VIGNETTE « UNE SEULE PAIRE PARALLÈLE ». Rémy : « enlève le trapèze, ce
+// n'est pas au programme ». Or c'était sa seule raison d'être : sans le
+// trapèze, la poser ne change plus rien à la famille, et l'élève verrait la
+// figure bouger sans que le nom bouge — la démonstration exacte du contraire de
+// ce que l'exercice enseigne.
 export const PROPRIETES = [
-    {
-        id: 'unePaireParallele',
-        nom: 'Deux côtés opposés parallèles',
-        court: '2 côtés parallèles',
-        dit: 'une paire de côtés opposés est parallèle',
-        implique: (c) => { c.par1 = true; }
-    },
     {
         id: 'opposesParalleles',
         nom: 'Les côtés opposés parallèles deux à deux',
@@ -156,7 +154,9 @@ export function familleDeCaracteres(c) {
         if (c.egaux) return 'losange';
         return 'parallelogramme';
     }
-    return c.par1 ? 'trapeze' : 'quadrilatere';
+    // Une seule paire parallèle ferait un trapèze, qui n'est pas au programme :
+    // tant que les DEUX paires n'y sont pas, la figure reste quelconque.
+    return 'quadrilatere';
 }
 
 /** Ce que devient la figure une fois ces vignettes posées. */
@@ -227,8 +227,6 @@ export function nommerFigure(P) {
         egaux: Math.abs(e.egaux) < TOL.longueur,
         droit: Math.abs(e.droit) < TOL.angle
     };
-    // Une seule paire suffit au trapèze, quelle que soit laquelle.
-    if (!c.par1 && c.par2) return familleDeCaracteres({ ...c, par1: true, par2: false });
     return familleDeCaracteres(c);
 }
 
@@ -320,8 +318,8 @@ export function poserFigure(depart, actives, opts = {}) {
     //
     // Une descente de gradient tombe dans le creux le plus proche, et le plus
     // proche n'est pas toujours le bon : mesuré sur les 111 combinaisons de
-    // vignettes, trois s'arrêtaient à mi-chemin — un trapèze dont les côtés
-    // faisaient encore quatorze degrés d'écart, un rectangle dont l'angle
+    // vignettes, trois s'arrêtaient à mi-chemin — un parallélogramme dont les
+    // côtés faisaient encore quatorze degrés d'écart, un rectangle dont l'angle
     // n'était droit qu'à deux degrés près. On repart donc d'ailleurs, et l'on
     // RELIT la figure obtenue : la première qui porte vraiment le bon nom est
     // la bonne. Les départs de secours sont les figures de référence de la
@@ -392,7 +390,7 @@ function descendre(depart, buts, repousse, { tours = 1400, pas = 3.2 } = {}) {
  *
  * Rémy : « on a un quadrilatère qui n'a rien de particulier ». Tiré au hasard,
  * il tombe une fois sur cinq sur deux côtés presque parallèles — et l'élève
- * croit alors voir un trapèze avant d'avoir rien posé. On le fait donc passer
+ * croit alors le voir déjà rangé avant d'avoir rien posé. On le fait donc passer
  * par le solveur, avec zéro contrainte : les répulsions l'écartent de tout.
  */
 export function figureDeDepart(rng) {
@@ -408,12 +406,12 @@ export function figureDeDepart(rng) {
 export const PALIERS = {
     decouverte: {
         label: 'Une seule propriété à la fois — les côtés',
-        cartes: ['unePaireParallele', 'opposesParalleles', 'quatreCotesEgaux', 'unAngleDroit'],
+        cartes: ['opposesParalleles', 'cotesOpposesEgaux', 'quatreCotesEgaux', 'unAngleDroit'],
         poses: 1
     },
     chemin: {
         label: 'Deux propriétés à la suite — on descend l\'arbre',
-        cartes: ['unePaireParallele', 'opposesParalleles', 'quatreCotesEgaux', 'unAngleDroit'],
+        cartes: ['opposesParalleles', 'cotesOpposesEgaux', 'quatreCotesEgaux', 'unAngleDroit'],
         poses: 2
     },
     diagonales: {

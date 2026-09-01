@@ -17,11 +17,10 @@ test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
     assert.equal(estToujours('carre', 'rectangle'), true, 'tout carré est un rectangle');
     assert.equal(estToujours('carre', 'losange'), true, 'et un losange');
     assert.equal(estToujours('carre', 'parallelogramme'), true);
-    assert.equal(estToujours('carre', 'trapeze'), true);
     assert.equal(estToujours('carre', 'quadrilatere'), true);
     assert.equal(estToujours('rectangle', 'carre'), false, 'l\'inverse est faux');
     assert.equal(estToujours('losange', 'rectangle'), false, 'et un losange n\'est pas un rectangle');
-    assert.equal(estToujours('trapeze', 'parallelogramme'), false);
+    assert.equal(estToujours('parallelogramme', 'rectangle'), false);
     // Un carré remonte par les DEUX chemins : c'est le cœur de la figure.
     const a = ancetres('carre');
     assert.ok(a.includes('rectangle') && a.includes('losange'));
@@ -42,8 +41,12 @@ test('LE CARRÉ SE REJOINT PAR DEUX CHEMINS, ET CHACUN AJOUTE CE QUE L\'AUTRE AV
 test('chaque flèche n\'ajoute QU\'UNE condition, et chaque famille a sa figure', () => {
     // Un organigramme dont une flèche porterait deux conditions n'apprendrait
     // rien : on ne saurait pas laquelle a fait la différence.
-    assert.equal(FAMILLES.length, 6);
-    assert.equal(FLECHES.length, 6);
+    // CINQ FAMILLES, PAS SIX. Rémy : « enlève le trapèze, ce n'est pas au
+    // programme » — et le quadrilatère quelconque descend donc directement au
+    // parallélogramme.
+    assert.equal(FAMILLES.length, 5);
+    assert.equal(FAMILLES.some(f => f.id === 'trapeze'), false, 'le trapèze ne doit plus exister');
+    assert.equal(FLECHES.length, 5);
     FLECHES.forEach(f => {
         assert.ok(familleDe(f.de) && familleDe(f.vers), cleFleche(f));
         assert.ok(f.ajoute && f.ajoute.length > 5, cleFleche(f));
@@ -87,10 +90,6 @@ test('LES FIGURES SONT VRAIMENT CE QU\'ELLES PRÉTENDENT', () => {
         'le parallélogramme a ses deux paires parallèles');
     assert.equal(perpendiculaires(para[0], para[1]), false, 'sans angle droit');
 
-    const trap = cotes(familleDe('trapeze').figure);
-    assert.ok(paralleles(trap[0], trap[2]), 'le trapèze a UNE paire parallèle');
-    assert.equal(paralleles(trap[1], trap[3]), false, 'et pas l\'autre, sinon ce serait un parallélogramme');
-
     const quad = cotes(familleDe('quadrilatere').figure);
     assert.equal(quad.some((c, i) => paralleles(c, quad[(i + 2) % 4])), false,
         'le quadrilatère quelconque n\'a aucune paire parallèle');
@@ -127,6 +126,7 @@ test('UNE CONDITION QUI SERT DEUX FOIS EST JUSTE AUX DEUX ENDROITS', () => {
     // l'organigramme montre — et le jeu le DIT quand cela arrive.
     const o = genererOrganigramme({ rng: makeRng('jumelles'), palier: 'tout' });
     const angleDroit = o.cartes.find(c => flecheDe(c.id).ajoute === 'un angle droit');
+    assert.ok(angleDroit, 'la carte « un angle droit » doit être au jeu');
     for (const cle of ['parallelogramme>rectangle', 'losange>carre']) {
         const v = verifierDepot(o, cle, angleDroit);
         assert.equal(v.ok, true, `« un angle droit » devrait passer en ${cle}`);

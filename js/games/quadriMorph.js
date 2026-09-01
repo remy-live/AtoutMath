@@ -15,6 +15,26 @@
 // la question. Si la figure bougeait d'abord, il n'y aurait plus qu'à lire le
 // résultat, et l'on aurait fabriqué un exercice de reconnaissance de plus.
 //
+// CES TROIS TEMPS, IL A FALLU LES MONTRER. Rémy, banc d'essai : « l'exercice le
+// quadrilatère qui se transforme, on ne comprend rien. » Il avait raison, et
+// pour une raison précise : au temps 2, l'écran ne portait plus AUCUNE trace de
+// ce qu'on venait de poser. Les vignettes disparaissaient, remplacées par des
+// noms de familles ; la figure, elle, n'avait pas bougé — puisque justement
+// elle ne doit pas bouger avant qu'on ait répondu. L'élève voyait donc un
+// quadrilatère quelconque, inchangé, et six noms à choisir : la question
+// « que va-t-elle devenir ? » ne s'appuyait sur rien de visible.
+//
+// Trois choses le réparent, et elles vont ensemble :
+//
+//   · LA PROPRIÉTÉ EN ATTENTE SE DESSINE SUR LA FIGURE, en pointillé qui bat.
+//     On voit les deux côtés qu'on va rendre parallèles AVANT qu'ils le
+//     deviennent : la contrainte est là, posée, pas encore absorbée. C'est le
+//     dessin qui pose la question, et le mot ne fait plus que la répéter.
+//   · LES TROIS TEMPS SONT ÉCRITS EN HAUT, et celui où l'on est s'allume. On
+//     sait toujours si l'on choisit, si l'on devine, ou si l'on regarde.
+//   · LE CODAGE A SA LÉGENDE, sous la figure, et elle ne montre que les marques
+//     effectivement dessinées.
+//
 // LE CODAGE SE GAGNE AU PASSAGE. Chaque propriété posée reste sur la figure
 // sous sa forme de géomètre — flèches de parallélisme, traits d'égalité, petit
 // carré d'angle droit. L'élève apprend le codage sans qu'on le lui enseigne :
@@ -56,6 +76,48 @@ class QuadriMorph extends BaseGame {
                     overflow-y: auto;
                 }
                 .qm-consigne { font-weight: 800; font-size: 1.02rem; text-align: center; }
+
+                /* LES TROIS TEMPS, ÉCRITS. Sans eux, le passage du choix a la
+                   devinette ressemblait a un changement de boutons sans raison. */
+                .qm-etapes {
+                    display: flex; gap: 5px; align-items: center; justify-content: center;
+                    flex-wrap: wrap; font-size: .76rem; font-weight: 800;
+                }
+                .qm-etape {
+                    padding: 3px 11px; border-radius: 999px; border: 2px solid var(--border);
+                    background: var(--bg-panel); color: var(--text-muted);
+                }
+                .qm-etape--ici {
+                    border-color: var(--primary); color: var(--primary);
+                    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+                }
+                .qm-etape--faite { opacity: .5; }
+                .qm-etapes span { color: var(--text-muted); }
+
+                /* LA PROPRIÉTÉ QU'ON VIENT DE POSER, épinglée au-dessus de la
+                   figure : elle doit rester sous les yeux pendant qu'on devine. */
+                .qm-posee {
+                    display: block; margin-bottom: 5px; padding: 6px 10px; border-radius: 11px;
+                    border: 2px dashed var(--warning, #f59e0b); text-align: center;
+                    background: rgba(245, 158, 11, .10); font-weight: 800; font-size: .8rem;
+                    line-height: 1.25;
+                }
+                .qm-legende {
+                    text-align: center; font-size: .72rem; color: var(--text-muted);
+                    line-height: 1.35; margin-top: 3px; min-height: 1.35em;
+                }
+
+                /* CE QUI EST POSÉ MAIS PAS ENCORE ABSORBÉ : ça bat, et ça ne se
+                   pointille PAS. Un chevron mesure quatre unités : le couper en
+                   tirets de deux le réduisait a deux miettes, et la marque qui
+                   devait poser la question devenait invisible. Le battement
+                   suffit a dire qu'elle n'est pas encore acquise. */
+                .qm-avenir path { stroke-width: 1.4; }
+                .qm-avenir { animation: qm-battement 1.25s ease-in-out infinite; }
+                @keyframes qm-battement { 0%, 100% { opacity: .32; } 50% { opacity: .95; } }
+                @media (prefers-reduced-motion: reduce) {
+                    .qm-avenir { animation: none; opacity: .7; }
+                }
                 .qm-corps {
                     display: flex; gap: 16px; align-items: flex-start; justify-content: center;
                     width: 100%; flex-wrap: wrap;
@@ -131,19 +193,34 @@ class QuadriMorph extends BaseGame {
                    voyait plus ce sur quoi il fallait agir. L'arbre cède le
                    plus — c'est un repère, pas la zone de travail. */
                 @container (max-width: 640px) {
-                    .qm-corps { flex-direction: column; align-items: center; gap: 6px; }
-                    .qm-scene { flex: 0 0 auto; width: min(230px, 72%); max-width: 230px; }
-                    .qm-arbre { flex: 0 0 auto; width: min(190px, 62%); }
+                    /* L'ARBRE PASSE SOUS LES BOUTONS. Empilé juste après la
+                       figure, il poussait les cinq noms de familles sous le pli :
+                       au moment de répondre, on ne voyait pas de quoi répondre,
+                       et il fallait faire défiler pour trouver les boutons. Le
+                       conteneur s'efface pour que la colonne se range librement,
+                       et l'arbre — qui est un repère, pas la zone de travail —
+                       passe derrière ce sur quoi il faut agir. */
+                    .qm-corps { display: contents; }
+                    .qm-etapes { order: 1; }
+                    .qm-consigne { order: 2; }
+                    .qm-scene { order: 3; flex: 0 0 auto; width: min(230px, 78%); max-width: 230px; }
+                    .qm-wrap > [data-zone] { order: 4; }
+                    .qm-arbre { order: 5; flex: 0 0 auto; width: min(190px, 62%); }
+                    .qm-note { order: 6; }
+                    .qm-barre { order: 7; }
                     .qm-cartes .kk-chip { font-size: .78rem; padding: 7px 10px; }
                     .qm-nom { font-size: .95rem; margin-top: 2px; }
                 }
             </style>
             <div class="qm-wrap">
+                <div class="qm-etapes" data-etapes></div>
                 <div class="qm-consigne" data-consigne></div>
                 <div class="qm-corps">
                     <div class="qm-scene">
+                        <div data-posee></div>
                         <div data-figure></div>
                         <div class="qm-nom" data-famille></div>
+                        <div class="qm-legende" data-legende></div>
                     </div>
                     <div class="qm-arbre" data-arbre></div>
                 </div>
@@ -156,6 +233,9 @@ class QuadriMorph extends BaseGame {
             </div>`;
 
         this.consigneEl = this.container.querySelector('[data-consigne]');
+        this.etapesEl = this.container.querySelector('[data-etapes]');
+        this.poseeEl = this.container.querySelector('[data-posee]');
+        this.legendeEl = this.container.querySelector('[data-legende]');
         this.figEl = this.container.querySelector('[data-figure]');
         this.familleEl = this.container.querySelector('[data-famille]');
         this.arbreEl = this.container.querySelector('[data-arbre]');
@@ -191,17 +271,40 @@ class QuadriMorph extends BaseGame {
     // --- Le dessin ------------------------------------------------------------
 
     dessiner() {
-        this.figEl.innerHTML = figureSvg(this.defi.points, this.defi.posees);
+        // LA PROPRIÉTÉ EN ATTENTE VA SUR LA FIGURE. C'est elle qui pose la
+        // question : on voit, en pointillé, les côtés qu'on va rendre
+        // parallèles — avant qu'ils le soient.
+        const enAttente = this.phase === 'deviner' ? this.carte : null;
+        this.figEl.innerHTML = figureSvg(this.defi.points, this.defi.posees, { enAttente });
         this.familleEl.textContent = this.defi.posees.length
             ? nomFamille(this.defi.famille) : 'Quadrilatère quelconque';
+        this.legendeEl.innerHTML = legendeDuCodage(this.defi.posees, enAttente);
+        this.poseeEl.innerHTML = enAttente
+            ? `<div class="qm-posee">Tu viens de poser :<br>« ${echapper(proprieteDe(enAttente).nom)} »</div>`
+            : '';
         this.arbreEl.innerHTML = arbreSvg(cheminDe(this.defi.posees), this.defi.famille);
         this.dessinerZone();
     }
 
+    /** Les trois temps, et celui où l'on est. */
+    majEtapes() {
+        const temps = [
+            ['choisir', '1. Choisis'],
+            ['deviner', '2. Devine'],
+            ['montrer', '3. Regarde']
+        ];
+        const rang = temps.findIndex(t => t[0] === this.phase);
+        this.etapesEl.innerHTML = temps.map(([id, mot], i) => {
+            const etat = i === rang ? ' qm-etape--ici' : (i < rang ? ' qm-etape--faite' : '');
+            return `<b class="qm-etape${etat}">${mot}</b>`;
+        }).join('<span>→</span>');
+    }
+
     dessinerZone() {
+        this.majEtapes();
         if (this.phase === 'deviner') {
-            const prop = proprieteDe(this.carte);
-            this.consigneEl.textContent = `Tu poses « ${prop.nom} ». Que va devenir la figure ?`;
+            this.consigneEl.textContent = 'La figure va absorber cette propriété. '
+                + 'Que va-t-elle devenir ?';
             this.zoneEl.innerHTML = `<div class="qm-noms">${FAMILLES.map(f =>
                 `<button type="button" class="qm-nom-btn" data-fam="${f.id}">${f.nom}</button>`
             ).join('')}</div>`;
@@ -211,9 +314,13 @@ class QuadriMorph extends BaseGame {
             return;
         }
         const reste = this.defi.aPoser - this.defi.posees.length;
+        // LES VIGNETTES RESTENT CLIQUABLES APRÈS LE COMPTE, et la consigne doit le
+        // dire : elle annonçait « passe à une autre figure » devant des cartes
+        // encore actives, ce qui laissait croire que le jeu s'était bloqué.
         this.consigneEl.textContent = reste > 0
-            ? `Pose une propriété sur la figure — encore ${reste} à poser.`
-            : 'Bravo : tu as descendu l\'arbre. Passe à une autre figure.';
+            ? `Choisis une propriété et pose-la sur la figure — encore ${reste} à poser.`
+            : 'Bravo, tu as descendu l\'arbre. Continue à poser si tu veux voir plus bas, '
+              + 'ou prends une autre figure.';
         this.zoneEl.innerHTML = `<div class="qm-cartes">${this.defi.cartes.map(id => {
             const p = proprieteDe(id);
             const posee = this.defi.posees.includes(id);
@@ -253,8 +360,11 @@ class QuadriMorph extends BaseGame {
         if (!id || this.defi.posees.includes(id)) return;
         this.carte = id;
         this.phase = 'deviner';
-        this.dessinerZone();
-        this.note('Regarde la figure et la propriété : de quelle famille va-t-elle devenir ?');
+        // ON REDESSINE LA FIGURE ENTIÈRE, et pas seulement les boutons : c'est
+        // là que la propriété en attente vient s'inscrire dessus.
+        this.dessiner();
+        this.note('La marque qui BAT sur la figure est celle qu\'on vient d\'exiger : '
+            + 'la figure ne l\'a pas encore. Elle ne bougera qu\'une fois que tu auras répondu.');
     }
 
     deviner(famille, bouton) {
@@ -268,6 +378,10 @@ class QuadriMorph extends BaseGame {
             const bon = this.zoneEl.querySelector(`[data-fam="${suite.famille}"]`);
             if (bon) bon.classList.add('qm-nom-btn--juste');
         }
+        // La vignette n'est plus « en attente » : la figure va l'absorber sous
+        // les yeux de l'élève, et le rappel épinglé n'a plus rien à rappeler.
+        this.poseeEl.innerHTML = '';
+        this.majEtapes();
         const detail = `${nomFamille(this.defi.famille)} + « ${proprieteDe(this.carte).nom} »`;
         if (juste) {
             this.onCorrectAnswer(null, COMPETENCE, {
@@ -353,27 +467,22 @@ class QuadriMorph extends BaseGame {
  * droit : c'est la notation du collège, et l'élève l'apprend ici sans qu'on la
  * lui enseigne — parce qu'elle DIT quelque chose dont il a besoin.
  */
-export function figureSvg(P, posees = [], { pendant = false } = {}) {
+export function figureSvg(P, posees = [], { pendant = false, enAttente = null } = {}) {
     const T = (v) => Math.round(v * 100) / 100;
     const d = P.map((p, i) => `${i ? 'L' : 'M'}${T(p[0])} ${T(p[1])}`).join(' ') + ' Z';
-    const c = caracteresVus(posees);
-    let marques = '';
+    const acquis = caracteresVus(posees);
+    let marques = marquesDe(P, acquis, posees);
 
-    // Les diagonales, quand une vignette parle d'elles.
-    if (posees.some(id => id.startsWith('diagonales'))) {
-        marques += `<path d="M${T(P[0][0])} ${T(P[0][1])} L${T(P[2][0])} ${T(P[2][1])}"
-            stroke="#9467bd" stroke-width="0.8" stroke-dasharray="3 2" fill="none"/>`
-            + `<path d="M${T(P[1][0])} ${T(P[1][1])} L${T(P[3][0])} ${T(P[3][1])}"
-            stroke="#9467bd" stroke-width="0.8" stroke-dasharray="3 2" fill="none"/>`;
+    // CE QUI EST POSÉ MAIS PAS ENCORE ABSORBÉ. On dessine SEULEMENT ce que la
+    // vignette AJOUTE — le reste est déjà là, en trait plein, et le redessiner
+    // en pointillé laisserait croire qu'on le remet en question.
+    if (enAttente) {
+        const apres = caracteresVus([...posees, enAttente]);
+        const neuf = {};
+        Object.keys(apres).forEach(k => { neuf[k] = apres[k] && !acquis[k]; });
+        const attendu = marquesDe(P, neuf, [enAttente], posees);
+        if (attendu) marques += `<g class="qm-avenir">${attendu}</g>`;
     }
-    // Les flèches de parallélisme : une sur la première paire, deux sur la seconde.
-    if (c.par1) marques += chevrons(P, 0) + chevrons(P, 2);
-    if (c.par2) marques += chevrons(P, 1, 2) + chevrons(P, 3, 2);
-    // Les traits d'égalité.
-    if (c.egaux) marques += [0, 1, 2, 3].map(i => barres(P, i, 1)).join('');
-    else if (c.opposes) marques += barres(P, 0, 1) + barres(P, 2, 1) + barres(P, 1, 2) + barres(P, 3, 2);
-    // Le petit carré de l'angle droit, en A.
-    if (c.droit) marques += angleDroit(P);
 
     return `<svg class="qm-fig${pendant ? ' qm-fig--pendant' : ''}" viewBox="0 0 ${CADRE} ${CADRE}"
         role="img" aria-label="quadrilatère">
@@ -386,17 +495,118 @@ export function figureSvg(P, posees = [], { pendant = false } = {}) {
     </svg>`;
 }
 
+/**
+ * LE CODAGE D'UN JEU DE CARACTÈRES, sur cette figure-là.
+ *
+ * `ids` sert aux marques qui ne se déduisent pas des quatre caractères — celles
+ * des diagonales, qui ne changent pas la famille mais disent ce qu'on a posé.
+ * `deja` évite de retracer les diagonales que la figure porte déjà : en attente,
+ * on ne veut voir battre que la marque NOUVELLE.
+ */
+function marquesDe(P, c, ids = [], deja = []) {
+    const T = (v) => Math.round(v * 100) / 100;
+    let out = '';
+    // Les flèches de parallélisme : une sur la première paire, deux sur la seconde.
+    if (c.par1) out += chevrons(P, 0) + chevrons(P, 2);
+    if (c.par2) out += chevrons(P, 1, 2) + chevrons(P, 3, 2);
+    // Les traits d'égalité.
+    if (c.egaux) out += [0, 1, 2, 3].map(i => barres(P, i, 1)).join('');
+    else if (c.opposes) out += barres(P, 0, 1) + barres(P, 2, 1) + barres(P, 1, 2) + barres(P, 3, 2);
+    // Le petit carré de l'angle droit, en A.
+    if (c.droit) out += angleDroit(P);
+
+    // LES DIAGONALES DISENT CE QU'ON LEUR DEMANDE. Elles n'étaient que deux
+    // traits pointillés : on voyait qu'il était question d'elles, pas ce qu'on
+    // en exigeait. Chaque vignette pose donc sa marque — les longueurs égales,
+    // les milieux confondus, l'angle droit au croisement.
+    const surDiag = ids.filter(id => id.startsWith('diagonales'));
+    if (!surDiag.length) return out;
+    const [A, B, C, D] = P;
+    if (!deja.some(id => id.startsWith('diagonales'))) {
+        out += [[A, C], [B, D]].map(([u, v]) =>
+            `<path d="M${T(u[0])} ${T(u[1])} L${T(v[0])} ${T(v[1])}" stroke="#9467bd"
+            stroke-width="0.8" stroke-dasharray="3 2" fill="none"/>`).join('');
+    }
+    const I = croisement(A, C, B, D);
+    if (surDiag.includes('diagonalesEgales')) {
+        out += tirets(A, C, 0.18, 1, '#9467bd') + tirets(B, D, 0.18, 1, '#9467bd');
+    }
+    if (surDiag.includes('diagonalesMilieu') && I) {
+        // Une marque sur chaque demi-diagonale, et les deux diagonales n'ont pas
+        // la même : c'est ainsi qu'on code deux égalités différentes.
+        out += tirets(A, I, 0.5, 1, '#9467bd') + tirets(I, C, 0.5, 1, '#9467bd')
+            + tirets(B, I, 0.5, 2, '#9467bd') + tirets(I, D, 0.5, 2, '#9467bd');
+    }
+    if (surDiag.includes('diagonalesPerpendiculaires') && I) {
+        out += angleDroitEn(I, A, B, '#9467bd');
+    }
+    return out;
+}
+
 /** Ce que le codage doit montrer, d'après ce qui a été posé. */
 function caracteresVus(posees) {
     const c = { par1: false, par2: false, egaux: false, droit: false, opposes: false };
     posees.forEach(id => {
-        if (id === 'unePaireParallele') c.par1 = true;
         if (id === 'opposesParalleles') { c.par1 = true; c.par2 = true; }
         if (id === 'quatreCotesEgaux') c.egaux = true;
         if (id === 'cotesOpposesEgaux') c.opposes = true;
         if (id === 'unAngleDroit') c.droit = true;
     });
     return c;
+}
+
+/**
+ * LA LÉGENDE DU CODAGE — et elle ne montre que ce qui est dessiné.
+ *
+ * Une légende complète, affichée en permanence, redevient une liste à
+ * apprendre : trois marques à retenir dont deux ne sont pas sur la figure. Ici
+ * elle n'explique QUE ce qu'on a sous les yeux, au moment où l'on s'en sert.
+ */
+export function legendeDuCodage(posees = [], enAttente = null) {
+    const ids = enAttente ? [...posees, enAttente] : posees;
+    const c = caracteresVus(ids);
+    const bouts = [];
+    if (c.par1 || c.par2) bouts.push('<b style="color:#2ca02c">››</b> mêmes chevrons = parallèles');
+    if (c.egaux || c.opposes) bouts.push('<b style="color:#d62728">|</b> mêmes traits = même longueur');
+    if (c.droit) bouts.push('<b style="color:#e07b00">⌐</b> angle droit');
+    if (ids.some(id => id.startsWith('diagonales'))) {
+        bouts.push('<b style="color:#9467bd">┄</b> les diagonales');
+    }
+    return bouts.join(' &middot; ');
+}
+
+/** Le point où se croisent [AC] et [BD], ou null si elles sont parallèles. */
+function croisement(A, C, B, D) {
+    const r = [C[0] - A[0], C[1] - A[1]], s = [D[0] - B[0], D[1] - B[1]];
+    const den = r[0] * s[1] - r[1] * s[0];
+    if (Math.abs(den) < 1e-9) return null;
+    const t = ((B[0] - A[0]) * s[1] - (B[1] - A[1]) * s[0]) / den;
+    return [A[0] + t * r[0], A[1] + t * r[1]];
+}
+
+/** `combien` traits en travers de [AB], au paramètre `t` du segment. */
+function tirets(A, B, t, combien, couleur) {
+    const L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
+    const ux = (B[0] - A[0]) / L, uy = (B[1] - A[1]) / L;
+    let out = '';
+    for (let k = 0; k < combien; k++) {
+        const e = (k - (combien - 1) / 2) * 2.2;
+        const cx = A[0] + (B[0] - A[0]) * t + ux * e;
+        const cy = A[1] + (B[1] - A[1]) * t + uy * e;
+        out += `<path d="M${(cx - uy * 2.2).toFixed(2)} ${(cy + ux * 2.2).toFixed(2)}
+            L${(cx + uy * 2.2).toFixed(2)} ${(cy - ux * 2.2).toFixed(2)}"
+            stroke="${couleur}" stroke-width="1" stroke-linecap="round"/>`;
+    }
+    return out;
+}
+
+/** Le petit carré de l'angle droit, en un point quelconque. */
+function angleDroitEn(S, versA, versB, couleur) {
+    const u = unite(S, versA), v = unite(S, versB), t = 5;
+    return `<path d="M${(S[0] + u[0] * t).toFixed(2)} ${(S[1] + u[1] * t).toFixed(2)}
+        L${(S[0] + (u[0] + v[0]) * t).toFixed(2)} ${(S[1] + (u[1] + v[1]) * t).toFixed(2)}
+        L${(S[0] + v[0] * t).toFixed(2)} ${(S[1] + v[1] * t).toFixed(2)}"
+        fill="none" stroke="${couleur}" stroke-width="1.1"/>`;
 }
 
 /** Un ou deux chevrons au milieu du côté i, pointés dans son sens. */
@@ -463,11 +673,11 @@ function unite(A, B) {
  * construit lui-même la carte qu'il lira dans l'autre exercice.
  */
 export function arbreSvg(chemin, ici) {
-    // LA LIGNÉE, PAS SEULEMENT LES ÉTAPES POSÉES. En lâchant « côtés opposés
-    // parallèles » sur un quadrilatère quelconque, on saute directement au
-    // parallélogramme — mais on est PASSÉ par le trapèze, qu'on le veuille ou
-    // non : un parallélogramme EST un trapèze. L'arbre doit le montrer, sans
-    // quoi il laisserait croire qu'il existe un raccourci.
+    // LA LIGNÉE, PAS SEULEMENT LES ÉTAPES POSÉES. En lâchant « quatre côtés
+    // égaux » sur un quadrilatère quelconque, on saute directement au losange —
+    // mais on est PASSÉ par le parallélogramme, qu'on le veuille ou non : un
+    // losange EST un parallélogramme. L'arbre doit le montrer, sans quoi il
+    // laisserait croire qu'il existe un raccourci.
     const vues = new Set([...chemin, ici, ...ancetres(ici)]);
     const W = 100, H = 102;
     let d = '';
@@ -490,8 +700,10 @@ export function arbreSvg(chemin, ici) {
             y="${p.y}" text-anchor="middle" dominant-baseline="central">${f.nom}</text>`;
     });
 
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="auto" role="img"
-        aria-label="l'arbre des quadrilatères">${d}</svg>`;
+    // PAS DE height="auto" : ce n'est pas une longueur, le navigateur le refuse
+    // et se rabat sur 150 px. La proportion vient du viewBox et du CSS.
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="height:auto;display:block"
+        role="img" aria-label="l'arbre des quadrilatères">${d}</svg>`;
 }
 
 const echapper = (s) => String(s == null ? '' : s)

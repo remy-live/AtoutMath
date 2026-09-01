@@ -118,12 +118,12 @@ export const geometrieExercises = [
         ],
         skills: ['geo.quadrilateres.familles'],
         motsClefs: ['quadrilatère', 'parallélogramme', 'losange', 'rectangle', 'carré',
-            'trapèze', 'propriété', 'diagonales', 'côtés parallèles', 'transformation'],
+            'propriété', 'diagonales', 'côtés parallèles', 'transformation'],
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Tu pars d'un quadrilatère qui n'a rien de particulier. Chaque vignette porte une PROPRIÉTÉ : pose-la sur la figure, et la figure se déformera pour la respecter. Avant qu'elle ne bouge, dis ce qu'elle va devenir — c'est là qu'est le travail, l'animation n'est que la correction. Une propriété n'est pas une étiquette qu'on colle : c'est une contrainte, et chaque contrainte en plus RÉTRÉCIT la famille. Attention : certaines ne disent rien toutes seules. Des diagonales perpendiculaires dans un quadrilatère quelconque ne donnent aucune figure du cours ; les mêmes dans un parallélogramme font un losange. Et plusieurs chemins mènent au même endroit — côtés opposés parallèles, côtés opposés égaux, diagonales qui se coupent en leur milieu : trois propriétés différentes, un seul parallélogramme."
+        instruction: "Tu pars d'un quadrilatère qui n'a rien de particulier, et tu travailles en TROIS TEMPS. 1. Tu choisis une vignette et tu la poses sur la figure : sa marque s'y dessine aussitôt en pointillé, et ce pointillé montre ce qu'on va exiger — deux côtés qu'on rendra parallèles, quatre côtés qu'on rendra égaux. 2. Avant que rien ne bouge, tu dis ce que la figure va devenir. 3. Alors seulement elle se déforme, et tu vois si tu avais raison. Chaque vignette porte une PROPRIÉTÉ : pose-la sur la figure, et la figure se déformera pour la respecter — c'est là qu'est le travail, l'animation n'est que la correction. Une propriété n'est pas une étiquette qu'on colle : c'est une contrainte, et chaque contrainte en plus RÉTRÉCIT la famille. Attention : certaines ne disent rien toutes seules. Des diagonales perpendiculaires dans un quadrilatère quelconque ne donnent aucune figure du cours ; les mêmes dans un parallélogramme font un losange. Et plusieurs chemins mènent au même endroit — côtés opposés parallèles, côtés opposés égaux, diagonales qui se coupent en leur milieu : trois propriétés différentes, un seul parallélogramme."
     },
     {
         id: 'geo-quadrilateres',
@@ -148,13 +148,13 @@ export const geometrieExercises = [
                 ]
             }
         ],
-        motsClefs: ['quadrilatère', 'trapèze', 'parallélogramme', 'rectangle', 'losange',
+        motsClefs: ['quadrilatère', 'parallélogramme', 'rectangle', 'losange',
             'carré', 'organigramme', 'familles', 'propriétés'],
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Les quadrilatères ne sont pas six familles côte à côte : elles s'EMBOÎTENT. On part du quadrilatère quelconque, et chaque flèche descend d'un cran en ajoutant UNE SEULE condition. Une paire de côtés parallèles donne le trapèze ; l'autre paire aussi donne le parallélogramme ; un angle droit donne le rectangle ; deux côtés consécutifs de même longueur donnent le losange. Regarde bien le bas : on arrive au carré PAR DEUX CHEMINS, et chacun ajoute ce que l'autre avait déjà. C'est pour cela que tout carré est un rectangle, et aussi un losange — alors qu'un rectangle n'est pas forcément un carré. Commence toujours par la case la plus GÉNÉRALE, celle du haut, et descends."
+        instruction: "Les quadrilatères ne sont pas cinq familles côte à côte : elles s'EMBOÎTENT. On part du quadrilatère quelconque, et chaque flèche descend d'un cran en ajoutant UNE SEULE condition. Les côtés opposés parallèles donnent le parallélogramme ; un angle droit donne alors le rectangle ; deux côtés consécutifs de même longueur donnent le losange. Regarde bien le bas : on arrive au carré PAR DEUX CHEMINS, et chacun ajoute ce que l'autre avait déjà. C'est pour cela que tout carré est un rectangle, et aussi un losange — alors qu'un rectangle n'est pas forcément un carré. Commence toujours par la case la plus GÉNÉRALE, celle du haut, et descends."
     },
 
     // --- Le vocabulaire du cercle ---
