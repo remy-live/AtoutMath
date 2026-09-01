@@ -93,37 +93,51 @@ export function figureThalesSvg(f, cotes = []) {
             y0: base - taille * 0.72, y1: base + taille * 0.2
         };
     };
-    const echantillons = (b) => {
-        const pts = [];
-        for (let i = 0; i <= 4; i++) {
-            for (let j = 0; j <= 2; j++) {
-                pts.push({ x: b.x0 + (b.x1 - b.x0) * i / 4, y: b.y0 + (b.y1 - b.y0) * j / 2 });
-            }
-        }
-        return pts;
-    };
     // LES COTES DÉJÀ TRACÉES SONT DES OBSTACLES, elles aussi. Deux doubles
     // flèches parallèles posées au même écart se superposeraient — et c'est le
     // cas ordinaire, puisque [AE] est un morceau de [AB].
     const lignesPosees = [];
 
-    /** Ce qui reste de libre autour d'une boîte : traits et étiquettes déjà posées. */
-    const degagement = (b, saufSegment, posees) => {
+    /**
+     * Ce qui reste de libre autour d'un RECTANGLE TOURNÉ — la boîte d'une cote
+     * couchée le long de sa flèche.
+     *
+     * Il faut la boîte entière et pas seulement sa ligne médiane : le texte fait
+     * six unités de haut, donc un trait qui passe à deux unités de son axe le
+     * traverse. Mesuré avant de le comprendre : une cote à 0,01 unité d'un trait,
+     * déclarée dégagée.
+     */
+    const degagementBoite = (coins, saufSegment, dejaPosees) => {
         let libre = Infinity;
-        const pts = echantillons(b);
+        const [A, B, C, D] = coins;
+        const pts = [];
+        for (let i = 0; i <= 8; i++) {
+            for (let j = 0; j <= 3; j++) {
+                const u = i / 8, v = j / 3;
+                const haut = { x: A.x + (B.x - A.x) * u, y: A.y + (B.y - A.y) * u };
+                const bas = { x: D.x + (C.x - D.x) * u, y: D.y + (C.y - D.y) * u };
+                pts.push({ x: haut.x + (bas.x - haut.x) * v, y: haut.y + (bas.y - haut.y) * v });
+            }
+        }
         for (const [u, v] of SEGMENTS) {
-            if (saufSegment && ((u === saufSegment[0] && v === saufSegment[1])
-                || (u === saufSegment[1] && v === saufSegment[0]))) continue;
+            if ((u === saufSegment[0] && v === saufSegment[1])
+                || (u === saufSegment[1] && v === saufSegment[0])) continue;
             pts.forEach(c => { libre = Math.min(libre, distSegment(c, P[u], P[v])); });
         }
         lignesPosees.forEach(l => {
             pts.forEach(c => { libre = Math.min(libre, distSegment(c, l.p, l.q)); });
         });
-        posees.forEach(a => {
-            // Distance entre deux boîtes : nulle si elles se chevauchent.
-            const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1, 0);
-            const dy = Math.max(a.y0 - b.y1, b.y0 - a.y1, 0);
-            libre = Math.min(libre, Math.hypot(dx, dy));
+        // LES ÉTIQUETTES DÉJÀ ÉCRITES COMPTENT AUSSI, et il a fallu le voir pour
+        // y penser : [AE] est un morceau de [AB], donc leurs deux cotes sont
+        // portées par la MÊME droite. Décalées l'une de l'autre, leurs lignes ne
+        // se touchaient plus — mais « AE = 8 » et « AB = 16 » s'écrivaient l'un
+        // sur l'autre, et par-dessus la lettre E.
+        (dejaPosees || []).forEach(b => {
+            pts.forEach(c => {
+                const dx = Math.max(b.x0 - c.x, c.x - b.x1, 0);
+                const dy = Math.max(b.y0 - c.y, c.y - b.y1, 0);
+                libre = Math.min(libre, Math.hypot(dx, dy));
+            });
         });
         return libre;
     };
@@ -170,19 +184,31 @@ export function figureThalesSvg(f, cotes = []) {
     // d'attache qui la rattachent aux extrémités, et une flèche à chaque bout
     // qui dit « d'ici à là ». On lit alors l'étendue avant de lire le nombre.
     //
-    // OÙ LA POSER : LÀ OÙ IL N'Y A RIEN. Le décalage ne s'écrit pas à la main
-    // — la figure change à chaque question, le papillon retourne tout, et un
-    // décalage fixe finit forcément sur un trait. On propose donc dix
-    // emplacements (deux côtés, cinq distances), on mesure ce qui est libre
-    // autour de la ligne ET autour de son étiquette, et l'on garde le meilleur.
-    // Les cotes déjà tracées comptent parmi les obstacles : sans cela, celles
-    // de [AB] et de [AE] se superposeraient, étant parallèles par construction.
-    const D_COTE = 5;
-    // UNE COTE SE MET DEHORS. C'est la convention de tous les plans et de tous
-    // les manuels, et elle a une raison : à l'intérieur, l'étiquette se
-    // retrouve entre DEUX traits et l'on ne sait plus lequel elle mesure. Le
-    // critère de dégagement seul ne voit pas la différence — les deux côtés du
-    // segment sont également libres, il en prendrait un au hasard.
+    // OÙ LA POSER : CONTRE LE SEGMENT, ET DEHORS.
+    //
+    // Rémy, devant le premier jet : « ton dessin est correct mais c'est bizarre,
+    // colle les flèches aux côtés, écris les longueurs dont la direction est la
+    // même que les flèches, et c'est centré. »
+    //
+    // Il décrit la convention du dessin technique, et le premier jet s'en était
+    // écarté pour une mauvaise raison. On cherchait alors la place la plus LIBRE
+    // — deux côtés, six écarts, trois positions le long de la flèche, et l'on
+    // gardait le meilleur score. Le nombre étant écrit à l'horizontale, il lui
+    // fallait un vrai carré de blanc ; le seul moyen d'en trouver était de
+    // pousser la cote loin de la figure. D'où ces flèches qui flottaient à deux
+    // centimètres de leur segment, reliées par de longues lignes d'attache : on
+    // ne voyait plus ce qu'elles mesuraient.
+    //
+    // LE NOMBRE COUCHÉ LE LONG DE SA FLÈCHE N'A PLUS BESOIN DE CE CARRÉ. Il
+    // occupe la bande de la cote elle-même, qui est déjà dégagée puisque la cote
+    // y est. On peut donc coller la ligne au segment — trois unités —, et il ne
+    // reste qu'un seul choix à faire : DE QUEL CÔTÉ. Dehors, toujours : à
+    // l'intérieur l'étiquette se retrouve entre deux traits et l'on ne sait plus
+    // lequel elle mesure.
+    //
+    // Le second écart n'est là que pour les cotes PARALLÈLES — [AE] est un
+    // morceau de [AB], leurs deux flèches se superposeraient au même écart.
+    const D_COTE = 3;
     const centre = {
         x: Object.values(P).reduce((t, p) => t + p.x, 0) / 5,
         y: Object.values(P).reduce((t, p) => t + p.y, 0) / 5
@@ -200,51 +226,80 @@ export function figureThalesSvg(f, cotes = []) {
         const texte = `${cle} = ${longueurTexte(f[cle])}`;
         let mieux = null;
         for (const sens of [1, -1]) {
-            for (const ecart of [D_COTE, D_COTE + 4, D_COTE + 8, D_COTE + 13, D_COTE + 19,
-                D_COTE + 26]) {
-                // LE NOMBRE GLISSE LE LONG DE SA FLÈCHE. Au milieu il se lit le
-                // mieux, et c'est le premier choix ; mais une figure serrée
-                // n'offre pas toujours le milieu, et un nombre posé au tiers de
-                // SA flèche reste sans ambiguïté — c'est celle-là qu'il légende.
-                for (const t of [0.5, 0.32, 0.68]) {
+            // LE PREMIER ÉCART QUI TIENT GAGNE, mais il faut aller jusqu'au bout
+            // de la liste : sur un papillon, quatre droites se croisent en A, et
+            // une cote courte porte une étiquette PLUS LONGUE que son segment —
+            // elle dépasse des deux côtés et va se poser sur la droite voisine.
+            // Seule la distance l'en écarte.
+            for (const ecart of [D_COTE, D_COTE + 4, D_COTE + 8, D_COTE + 13,
+                D_COTE + 19, D_COTE + 26, D_COTE + 34]) {
                 const ux = -dy / n * sens, uy = dx / n * sens;
                 const p1 = { x: p.x + ux * ecart, y: p.y + uy * ecart };
                 const q1 = { x: q.x + ux * ecart, y: q.y + uy * ecart };
-                // Le nombre se pose sur la ligne de cote, poussé d'un demi-corps
-                // vers l'extérieur : il ne coupe pas la flèche.
-                const x = p1.x + (q1.x - p1.x) * t + ux * TAILLE_COTE * 0.72;
-                const y = p1.y + (q1.y - p1.y) * t + uy * TAILLE_COTE * 0.72;
-                const anc = ancrageNom({ x: ux, y: uy });
-                const bt = boite(x, y, texte, TAILLE_COTE, anc);
-                const libre = degagement(bt, [a, b], posees);
+                // Le nombre au MILIEU de la cote, poussé d'un demi-corps vers
+                // l'extérieur : il longe la flèche sans la couper.
+                const x = (p1.x + q1.x) / 2 + ux * TAILLE_COTE * 0.62;
+                const y = (p1.y + q1.y) / 2 + uy * TAILLE_COTE * 0.62;
                 const libreLigne = degagementLigne(p1, q1, [a, b]);
-                // Combien l'écart a poussé la cote VERS L'EXTÉRIEUR, compté le
-                // long du rayon qui va du centre de la figure au milieu du
-                // segment.
+                // De quel côté est le dehors ? On le mesure sur le rayon qui va
+                // du centre de la figure au milieu du segment.
                 const mx = p.x + dx / 2, my = p.y + dy / 2;
                 const rx = mx - centre.x, ry = my - centre.y;
                 const r = Math.hypot(rx, ry) || 1;
                 const dehors = (((p1.x + q1.x) / 2 - mx) * rx
                     + ((p1.y + q1.y) / 2 - my) * ry) / r;
-                // NE PAS TOUCHER LE TRAIT PASSE AVANT TOUT LE RESTE : sans ce
-                // plancher, la préférence pour l'extérieur pouvait acheter une
-                // place collée à un trait.
-                const trop = (libre < 3 ? (3 - libre) * 6 : 0)
-                    + (libreLigne < 3 ? (3 - libreLigne) * 6 : 0);
-                const score = Math.min(libre, 8) + Math.min(libreLigne, 6) * 0.8 - trop
-                    - ecart * 0.3 + Math.max(-1, Math.min(1, dehors / 4)) * 2
-                    + (t === 0.5 ? 0.6 : 0);
-                if (!mieux || score > mieux.score) mieux = { score, x, y, anc, bt, p1, q1, ux, uy };
+                // LA BOÎTE DU TEXTE, TOURNÉE COMME LUI. C'est un rectangle
+                // couché le long de la cote, et c'est lui qu'il faut mesurer :
+                // sa ligne médiane seule laissait passer des traits qui le
+                // traversent par le travers.
+                const vx = dx / n, vy = dy / n;
+                const demiL = texte.length * TAILLE_COTE * 0.28;
+                const demiH = TAILLE_COTE * 0.5;
+                const coin = (sl, sh) => ({
+                    x: x + vx * demiL * sl + ux * demiH * sh,
+                    y: y + vy * demiL * sl + uy * demiH * sh
+                });
+                const coins = [coin(-1, -1), coin(1, -1), coin(1, 1), coin(-1, 1)];
+                const libreTexte = degagementBoite(coins, [a, b], posees);
+                // NE PAS TOUCHER UN TRAIT PASSE AVANT TOUT LE RESTE.
+                // UN TRAIT TOUCHÉ NE S'ACHÈTE PAS. La pénalité doit dépasser
+                // tout ce que la proximité peut rapporter, sinon une cote bien
+                // collée se paie d'une étiquette barrée — mesuré à 0,03 unité
+                // d'un trait sur un papillon, où quatre droites se croisent en A.
+                const trop = (libreLigne < 2.2 ? (2.2 - libreLigne) * 30 : 0)
+                    + (libreTexte < 2.2 ? (2.2 - libreTexte) * 30 : 0);
+                // COLLÉE D'ABORD, DEHORS ENSUITE. L'écart pèse lourd — c'est la
+                // demande —, et le dehors tranche entre deux positions également
+                // collées.
+                const score = Math.min(libreLigne, 5) + Math.min(libreTexte, 5)
+                    - trop - ecart * 1.1 + Math.max(-1, Math.min(1, dehors / 3)) * 3;
+                if (!mieux || score > mieux.score) {
+                    mieux = { score, x, y, p1, q1, ux, uy, coins };
                 }
             }
         }
-        posees.push(mieux.bt);
         lignesPosees.push({ p: mieux.p1, q: mieux.q1 });
         fleches.push({ ...mieux, p, q });
+
+        // LE TEXTE TOURNE AVEC LA FLÈCHE, ET JAMAIS LA TÊTE EN BAS. Au-delà du
+        // quart de tour on ajoute un demi-tour : le nombre se lit toujours de
+        // gauche à droite, comme sur un plan. Il pivote autour de son point
+        // d'ancrage, donc ce demi-tour ne le déplace pas.
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (angle > 90 || angle < -90) angle += 180;
+        // La boîte du texte, pour le cadrage de la figure : couché, il s'étend
+        // le long du segment. On la prend généreuse — elle ne sert qu'à ne rien
+        // laisser dépasser du cadre.
+        const bt = {
+            x0: Math.min(...mieux.coins.map(c => c.x)), x1: Math.max(...mieux.coins.map(c => c.x)),
+            y0: Math.min(...mieux.coins.map(c => c.y)), y1: Math.max(...mieux.coins.map(c => c.y))
+        };
+        posees.push(bt);
         textes.push({
-            b: mieux.bt,
-            html: `<text x="${mieux.x.toFixed(1)}" y="${(mieux.y + ligneBase(mieux.anc, TAILLE_COTE)).toFixed(1)}"
-                text-anchor="${ancre(mieux.anc)}" class="th-cote">${texte}</text>`
+            b: bt,
+            html: `<text x="${mieux.x.toFixed(1)}" y="${mieux.y.toFixed(1)}"
+                transform="rotate(${angle.toFixed(1)} ${mieux.x.toFixed(1)} ${mieux.y.toFixed(1)})"
+                text-anchor="middle" dominant-baseline="central" class="th-cote">${texte}</text>`
         });
     }
 

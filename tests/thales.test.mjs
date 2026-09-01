@@ -289,23 +289,58 @@ function segmentsDuSvg(svg) {
 }
 
 /** Les étiquettes, avec leur boîte réelle — ancrage et ligne de base compris. */
+/**
+ * Les étiquettes du dessin, avec les QUATRE COINS de leur boîte.
+ *
+ * Quatre coins et non deux : depuis que les cotes sont couchées le long de leur
+ * flèche (Rémy : « écris les longueurs dont la direction est la même que les
+ * flèches »), une boîte alignée sur les axes ne dit plus où est l'encre. Elle
+ * en déclarerait dégagée une qui traverse un trait en biais, et inversement.
+ */
 function etiquettesDuSvg(svg) {
-    const re = /<text x="([-\d.]+)"\s+y="([-\d.]+)"\s+(?:text-anchor="(\w+)"\s+)?class="th-(nom|cote)"(?:\s+text-anchor="(\w+)")?\s*>([^<]*)<\/text>/g;
-    return [...svg.matchAll(re)].map(m => {
-        const x = +m[1], y = +m[2];
-        const ancre = m[3] || m[5] || 'start';
-        const taille = m[4] === 'nom' ? 7 : 6;
-        const texte = m[6];
-        const large = texte.length * taille * 0.56;
-        const gauche = ancre === 'start' ? x : ancre === 'end' ? x - large : x - large / 2;
-        // Un texte SVG s'aligne sur le PIED des lettres : la boîte monte
-        // au-dessus de la ligne de base, et déborde très peu en dessous.
-        return {
-            texte, taille,
-            x0: gauche, x1: gauche + large,
-            y0: y - taille * 0.72, y1: y + taille * 0.2
+    const blocs = [...svg.matchAll(/<text\b([^>]*)>([^<]*)<\/text>/g)];
+    return blocs.map(m => {
+        const att = m[1], texte = m[2];
+        const lire = (nom) => {
+            const r = new RegExp(nom + '="([^"]*)"').exec(att);
+            return r ? r[1] : null;
         };
-    });
+        const cls = lire('class') || '';
+        if (!/th-(nom|cote)/.test(cls)) return null;
+        const x = +lire('x'), y = +lire('y');
+        const taille = /th-nom/.test(cls) ? 7 : 6;
+        const large = texte.length * taille * 0.56;
+
+        const tr = lire('transform');
+        const rot = tr ? /rotate\(([-\d.]+)/.exec(tr) : null;
+        const angle = rot ? (+rot[1]) * Math.PI / 180 : 0;
+
+        // Le point d'ancrage et la boîte AUTOUR de lui, avant rotation.
+        let g, d, h, b;
+        if (/dominant-baseline="central"/.test(att)) {
+            // Une cote : centrée sur son point, dans les deux sens.
+            g = -large / 2; d = large / 2;
+            h = -taille * 0.5; b = taille * 0.5;
+        } else {
+            const ancre = lire('text-anchor') || 'start';
+            g = ancre === 'start' ? 0 : ancre === 'end' ? -large : -large / 2;
+            d = g + large;
+            // Un texte SVG s'aligne sur le PIED de ses lettres.
+            h = -taille * 0.72; b = taille * 0.2;
+        }
+        const c = Math.cos(angle), s2 = Math.sin(angle);
+        const coins = [[g, h], [d, h], [d, b], [g, b]].map(([u, v]) => ({
+            x: x + u * c - v * s2,
+            y: y + u * s2 + v * c
+        }));
+        // Et l'enveloppe droite, pour qui veut seulement savoir si l'étiquette
+        // tient dans le cadre du dessin.
+        return {
+            texte, taille, coins,
+            x0: Math.min(...coins.map(c => c.x)), x1: Math.max(...coins.map(c => c.x)),
+            y0: Math.min(...coins.map(c => c.y)), y1: Math.max(...coins.map(c => c.y))
+        };
+    }).filter(Boolean);
 }
 
 /** Distance d'un point à un segment. */
@@ -320,10 +355,16 @@ function distSegment(c, p, q) {
 function distBoiteSegment(b, s) {
     let d = Infinity;
     // Un échantillonnage de la boîte suffit et ne peut pas se tromper dans le
-    // sens dangereux : il ne déclare jamais « loin » ce qui est traversé.
+    // sens dangereux : il ne déclare jamais « loin » ce qui est traversé. Les
+    // coins étant donnés dans l'ordre du contour, on interpole DANS le
+    // quadrilatère — ce qui marche aussi bien tourné que droit.
+    const [A, B, C, D] = b.coins;
     for (let i = 0; i <= 8; i++) {
         for (let j = 0; j <= 3; j++) {
-            const c = { x: b.x0 + (b.x1 - b.x0) * i / 8, y: b.y0 + (b.y1 - b.y0) * j / 3 };
+            const u = i / 8, v = j / 3;
+            const haut = { x: A.x + (B.x - A.x) * u, y: A.y + (B.y - A.y) * u };
+            const bas = { x: D.x + (C.x - D.x) * u, y: D.y + (C.y - D.y) * u };
+            const c = { x: haut.x + (bas.x - haut.x) * v, y: haut.y + (bas.y - haut.y) * v };
             d = Math.min(d, distSegment(c, s.p, s.q));
         }
     }
