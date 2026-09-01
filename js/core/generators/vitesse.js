@@ -13,6 +13,7 @@
 // vrai obstacle du chapitre, il arrive quand la formule est en place.
 
 import { makeItem } from '../items.js';
+import { schemaVitesseSvg, formulesVitesseHtml } from '../vitesseSchema.js';
 
 // Chaque véhicule borne ses vitesses vraisemblables : un randonneur à 90 km/h
 // ou un TGV à 12 km/h feraient douter l'élève qui vérifie son ordre de
@@ -139,7 +140,23 @@ export const vitesseGenerator = {
             explanation: `${formule} : ${correction}.`
                 + (conversion && quoi !== 'duree' ? ` (${conversion.dit}.)` : ''),
             difficulty: dur2 ? 3 : 2,
-            meta: { quoi, v, t, d, mobile: mobile.sujet, conversion: conversion ? conversion.dit : null }
+            meta: {
+                quoi, v, t, d, mobile: mobile.sujet,
+                conversion: conversion ? conversion.dit : null,
+                // LES DEUX BOUTONS DE RÉMY. « On pourrait avoir un bouton
+                // schéma et un bouton formule (mais pas valable tout le
+                // temps) » : c'est l'item qui les déclare, donc ils
+                // n'apparaissent que là où ils veulent dire quelque chose.
+                // Aucun des deux ne donne la réponse — la grandeur cherchée y
+                // porte un « ? », et les trois formules sont montrées sans
+                // qu'on désigne la bonne : choisir EST l'exercice.
+                outils: [
+                    { id: 'schema', label: '📐 Voir le schéma', html: schemaVitesseSvg({
+                        quoi, direV: `${v} km/h`, direD: `${d} km`, direT: `${formatFr(t)} h`
+                    }) },
+                    { id: 'formule', label: '🧮 Les formules', html: formulesVitesseHtml() }
+                ]
+            }
         });
     }
 };

@@ -70,6 +70,49 @@ export function mount(container, session, opts = {}) {
         render(item);
     }
 
+    /**
+     * LES OUTILS DE L'EXERCICE — un rappel, jamais une réponse.
+     *
+     * Rémy, sur Temps / Distance / Vitesse : « on pourrait avoir un bouton
+     * schéma et un bouton formule (mais pas valable tout le temps) ».
+     *
+     * « PAS VALABLE TOUT LE TEMPS » EST LA CLÉ, et c'est pour cela que c'est
+     * l'ITEM qui les déclare et non l'activité : un rappel de formule n'a de
+     * sens que là où il y a une formule, un schéma que là où il y a une
+     * situation à dessiner. Un exercice qui n'en propose pas n'affiche rien.
+     *
+     * ILS SONT GRATUITS, et c'est un choix. Un indice DIT quelque chose sur la
+     * question posée, et se paie donc en points ; ces outils-là remettent
+     * l'énoncé en image ou rappellent ce qui est écrit au tableau pour toute
+     * la classe. La grandeur cherchée y porte un « ? » : ils ne résolvent rien.
+     */
+    function barreOutils(item) {
+        const outils = (item.meta && item.meta.outils) || [];
+        if (!outils.length) return '';
+        return `<div class="np-outils">${outils.map((o, i) =>
+            `<button type="button" class="np-outil-btn" data-outil-i="${i}"
+                aria-expanded="false">${echapperTexte(o.label)}</button>`).join('')}</div>`;
+    }
+
+    function brancherOutils(item) {
+        const outils = (item.meta && item.meta.outils) || [];
+        const boite = container.querySelector('[data-outil]');
+        if (!outils.length || !boite) return;
+        let ouvert = -1;
+        container.querySelectorAll('[data-outil-i]').forEach(btn => {
+            btn.onclick = () => {
+                const i = Number(btn.dataset.outilI);
+                // Le même bouton referme : deux panneaux ouverts l'un sur
+                // l'autre pousseraient le pavé numérique hors de l'écran.
+                ouvert = (ouvert === i) ? -1 : i;
+                boite.innerHTML = ouvert < 0 ? '' : outils[ouvert].html;
+                boite.hidden = ouvert < 0;
+                container.querySelectorAll('[data-outil-i]').forEach(b =>
+                    b.setAttribute('aria-expanded', String(Number(b.dataset.outilI) === ouvert)));
+            };
+        });
+    }
+
     function render(item) {
         const unit = item.meta && item.meta.unit ? item.meta.unit : '';
         // La virgule n'apparaît que si la réponse peut être décimale. Une
@@ -87,7 +130,9 @@ export function mount(container, session, opts = {}) {
             <div class="numpad-layout">
                 <div class="numpad-context">
                     ${avis ? `<div class="numpad-avis">${avis}</div>` : ''}
-                    ${item.prompt.html}</div>
+                    ${item.prompt.html}
+                    ${barreOutils(item)}
+                    <div class="np-outil" data-outil hidden></div></div>
                 <div class="numpad-panel">
                     <div class="numpad-device">
                     <div class="numpad-screen" aria-live="polite">
@@ -142,6 +187,7 @@ export function mount(container, session, opts = {}) {
         }
 
         wireHint(container, session);
+        brancherOutils(item);
 
         const validate = () => {
             if (destroyed || buffer === '') return;
@@ -270,3 +316,6 @@ function cssEscape(c) {
 function key(k) {
     return `<button type="button" class="numpad-key" data-key="${k}">${k}</button>`;
 }
+
+const echapperTexte = (s) => String(s == null ? '' : s)
+    .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

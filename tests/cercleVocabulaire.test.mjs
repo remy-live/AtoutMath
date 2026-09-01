@@ -8,7 +8,10 @@ import { makeRng } from '../js/core/ids.js';
 import { getGenerator } from '../js/core/registry.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
-import { MOTS_CERCLE, cercleVocabulaireGenerator } from '../js/core/generators/cercleVocabulaire.js';
+import {
+    MOTS_CERCLE, cercleVocabulaireGenerator, memeMot, normaliser
+} from '../js/core/generators/cercleVocabulaire.js';
+import { marcheDe } from '../js/core/activities/cercleElement.js';
 import { tracesDe, surCercle, polyArc, cercleSvg, branchesCroix, CX, CY, R } from '../js/core/cercleFigure.js';
 
 const gen = () => getGenerator('geo.cercle-vocabulaire');
@@ -204,4 +207,83 @@ test('LE DÉCOR RESTE DANS LA SÉRIE : pas de tangente en sixième', () => {
     const quatre = Array.from({ length: 12 }, (_, i) =>
         gen().generate({ mots: ['tangente', 'secante', 'corde'] }, { rng: makeRng(`q-${i}`), index: i }));
     assert.ok(quatre.some(it => it.meta.spec.elements.some(e => e.type === 'tangente')));
+});
+
+// --- RÉPONDRE SANS PROPOSITIONS ----------------------------------------------
+
+test('ÉCRIRE LE MOT : on compare des mots, pas des chaînes', () => {
+    // Rémy : « on peut aussi envisager de taper la réponse ». Refuser « rayon »
+    // parce que la réponse attendue est « un rayon » n'enseignerait rien sur le
+    // cercle — seulement sur la façon dont l'ordinateur lit.
+    MOTS_CERCLE.forEach(m => {
+        // « une » avant « un » : l'ordre des alternatives compte, et l'inverse
+        // découpait « une corde » en « e corde ».
+        const nu = m.nom.replace(/^(une|un|les|le|la|l')\s*/, '');
+        assert.equal(memeMot(m.nom, m.nom), true, m.nom);
+        assert.equal(memeMot(nu, m.nom), true, `« ${nu} » devrait valoir « ${m.nom} »`);
+        assert.equal(memeMot(nu.toUpperCase(), m.nom), true, nu);
+        assert.equal(memeMot(`  ${nu}  `, m.nom), true, nu);
+        // Sans accents : un clavier de tablette n'en met pas toujours.
+        const sansAccent = nu.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        assert.equal(memeMot(sansAccent, m.nom), true, sansAccent);
+    });
+    // Mais le rapprochement s'arrête là : deux mots différents restent deux
+    // réponses différentes, et c'est tout l'objet du chapitre.
+    assert.equal(memeMot('une corde', 'un diamètre'), false);
+    assert.equal(memeMot('un arc', 'une corde'), false);
+    assert.equal(memeMot('', 'un rayon'), false);
+    assert.equal(memeMot('   ', 'un rayon'), false);
+    // Et un mot vidé de tout par la normalisation ne vaut pas un autre vidé.
+    assert.equal(normaliser('un'), '');
+});
+
+test('CLIQUER LE TRACÉ : la figure sait quel trait est lequel', () => {
+    // L'activité ne connaît du geste de l'élève que le RANG de l'élément dans
+    // la figure. Sans la table `ecrits`, cliquer juste serait compté faux.
+    let vus = 0;
+    for (let i = 0; i < 24; i++) {
+        const item = cercleVocabulaireGenerator.generate({ sens: 'trouver' },
+            { rng: makeRng('clic-' + i), index: i });
+        if (item.meta.sens !== 'trouver') continue;
+        vus++;
+        assert.ok(Array.isArray(item.meta.ecrits), 'la table des tracés manque');
+        assert.equal(item.meta.ecrits.length, item.meta.spec.elements.length);
+        // Le tracé désigné par `bon` porte bien la réponse attendue.
+        assert.equal(item.meta.ecrits[item.meta.bon - 1], item.answer, item.prompt.text);
+        // Et aucun autre ne la porte : sinon deux clics seraient justes.
+        assert.equal(item.meta.ecrits.filter(e => e === item.answer).length, 1, item.prompt.text);
+    }
+    assert.ok(vus > 8, `trop peu de questions « trouver » : ${vus}`);
+});
+
+test('la figure porte une zone de capture par élément, et seulement sur demande', () => {
+    const item = cercleVocabulaireGenerator.generate({ sens: 'trouver' },
+        { rng: makeRng('svg'), index: 1 });
+    const traces = tracesDe(item.meta.spec);
+    const inerte = cercleSvg(traces, { taille: 260 });
+    assert.equal(/cv-hit/.test(inerte), false, 'une figure ordinaire ne se clique pas');
+
+    const vivante = cercleSvg(traces, { taille: 320, cliquables: true });
+    const cibles = [...vivante.matchAll(/data-el="(\d+)"/g)].map(m => Number(m[1]));
+    assert.ok(cibles.length > 0, 'aucune zone cliquable');
+    // Chaque élément de la figure est atteignable, celui qu'il faut compris.
+    item.meta.spec.elements.forEach((el, i) =>
+        assert.ok(cibles.includes(i), `l'élément ${i} ne se clique pas`));
+    assert.ok(cibles.includes(item.meta.bon - 1));
+    // Les zones sont transparentes : elles attrapent le doigt, elles ne se
+    // voient pas — sinon le bon tracé se distinguerait des autres.
+    assert.equal(/class="cv-hit"[^>]*stroke="(?!transparent)/.test(vivante), false);
+});
+
+test('la progression met les propositions d\'abord, et la réponse seule ensuite', () => {
+    // Commencer sans propositions fermerait la porte à l'élève qui découvre le
+    // chapitre : il ne peut pas écrire un mot qu'il n'a pas encore lu.
+    assert.equal(marcheDe('progressive', 0, 9), 'choisir');
+    assert.equal(marcheDe('progressive', 2, 9), 'choisir');
+    assert.equal(marcheDe('progressive', 3, 9), 'seul');
+    assert.equal(marcheDe('progressive', 8, 9), 'seul');
+    // Un réglage explicite l'emporte toujours : le professeur qui sait où il
+    // va fixe la marche.
+    assert.equal(marcheDe('choisir', 8, 9), 'choisir');
+    assert.equal(marcheDe('seul', 0, 9), 'seul');
 });

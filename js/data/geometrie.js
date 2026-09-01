@@ -133,11 +133,14 @@ export const geometrieExercises = [
         id: 'geo-cercle-vocabulaire',
         cree: '2026-09-01',
         title: 'Le Vocabulaire du Cercle',
-        generatorId: 'geo.cercle-vocabulaire', activityId: 'buttons',
+        generatorId: 'geo.cercle-vocabulaire', activityId: 'cercle-element',
         printable: 'cercleVocabulaire',
         consignePapier: 'Complète : réponds à la question posée sous chaque figure.',
         skills: ['geo.cercle.vocabulaire'],
-        params: { mots: ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'], sens: 'les-deux' },
+        params: {
+            mots: ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'],
+            sens: 'les-deux', reponse: 'progressive'
+        },
         motsClefs: ['cercle', 'disque', 'rayon', 'diamètre', 'corde', 'arc', 'tangente',
             'sécante', 'centre', 'vocabulaire'],
         tags: {

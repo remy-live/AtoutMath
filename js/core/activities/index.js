@@ -404,6 +404,31 @@ registerActivity({
     load: () => import('./sudoku.js')
 });
 
+// LE VOCABULAIRE DU CERCLE — deux façons de répondre, et ce ne sont pas deux
+// habillages. Rémy : « on peut aussi envisager de cliquer sur le bon élément et
+// aussi de taper la réponse ». Choisir « un rayon » dans une liste n'est ni le
+// produire, ni le trouver sur la figure.
+registerActivity({
+    id: 'cercle-element',
+    label: 'Le vocabulaire du cercle',
+    accepts: ['choice'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [{
+        id: 'reponse', type: 'select', label: 'Comment on répond', default: 'progressive',
+        papier: false, echelle: true,
+        aide: 'CHOISIR suffit à installer les mots. RÉPONDRE SEUL demande de les '
+            + 'produire : on écrit le mot quand la question nomme un tracé, on clique le '
+            + 'tracé quand elle demande de le trouver. La progression fait les deux, '
+            + 'dans cet ordre.',
+        options: [
+            { value: 'choisir', label: 'Choisir parmi les propositions' },
+            { value: 'seul', label: 'Répondre seul : écrire le mot ou cliquer la figure' },
+            { value: 'progressive', label: 'Progressive : on choisit, puis on répond seul' }
+        ]
+    }],
+    load: () => import('./cercleElement.js')
+});
+
 // « Par rapport à quoi ? » : genre de réponse 'element' — la réponse est une
 // DROITE ou un POINT du quadrillage, et l'élève le désigne de trois façons de
 // plus en plus exigeantes : en le choisissant, en le cliquant, en l'écrivant.

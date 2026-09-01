@@ -994,6 +994,95 @@
     font-size: .9rem; font-weight: 600; color: var(--text-muted);
 }
 
+/* --- Le vocabulaire du cercle : choisir, cliquer, écrire ------------------
+   Les mêmes trois façons de répondre que « Par rapport à quoi ? », et les
+   mêmes règles : la zone qui attrape le clic est transparente et large (un
+   trait de deux pixels ne se touche pas au doigt), et rien dans le dessin ne
+   distingue le bon tracé — sans quoi il n'y aurait plus rien à chercher. */
+.cv-hit { cursor: pointer; outline: none; }
+@media (hover: hover) and (pointer: fine) {
+    .cv-hit:hover { stroke: rgba(37, 99, 235, .28); fill: rgba(37, 99, 235, .12); }
+}
+.cv-hit:focus-visible { stroke: rgba(37, 99, 235, .34); }
+.cv-hit.cv-juste { stroke: rgba(22, 163, 74, .45); }
+.cv-hit.cv-faux { stroke: rgba(220, 38, 38, .4); }
+/* Le tracé qu'il fallait, montré après un échec : plein, pour qu'on le suive
+   des yeux d'un bout à l'autre. */
+.cv-hit.cv-bon { stroke: rgba(22, 163, 74, .55); }
+
+.cv-choix {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: center; margin: 4px auto 12px; max-width: 620px;
+}
+/* Les propositions sont COURTES ici — « [OG] », « une corde » : elles vont
+   côte à côte. `.prio-btn` les étale sur toute la largeur, ce qui était fait
+   pour des expressions de calcul, et donnait quatre bandes de huit centimètres
+   pour quatre mots. */
+.cv-btn { flex: 0 1 auto; width: auto; margin: 0; padding: 10px 20px; font-size: 1.02rem; }
+.cv-btn.cv-juste { border-color: var(--success); background: rgba(22, 163, 74, .12); }
+.cv-btn.cv-faux { border-color: var(--danger); background: rgba(220, 38, 38, .1); }
+
+.cv-consigne {
+    text-align: center; color: var(--text-muted);
+    font-size: .92rem; font-weight: 600; margin: 2px auto 12px;
+}
+.cv-ecriture {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 10px; margin: 2px auto 6px;
+}
+.cv-label { flex: 1 1 100%; text-align: center; font-weight: 700; font-size: .95rem; }
+.cv-champ {
+    width: min(220px, 62vw); padding: 10px 14px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    font-size: 1.1rem; font-weight: 700; text-align: center; color: var(--text-main);
+}
+.cv-champ:focus { outline: none; border-color: var(--primary); }
+.cv-statut {
+    min-height: 1.3em; text-align: center; margin: 0 auto 10px;
+    font-size: .9rem; font-weight: 600; color: var(--text-muted);
+}
+
+/* --- LES OUTILS D'UN EXERCICE : schéma, formules -------------------------
+   Rémy : « on pourrait avoir un bouton schéma et un bouton formule (mais pas
+   valable tout le temps) ». Ils vivent sous l'énoncé, du côté de la question
+   et non du côté du pavé : ce sont des rappels sur CE QU'ON LIT.
+   Discrets au repos — ce ne sont pas eux qu'on vient chercher —, et le
+   panneau qu'ils ouvrent tient dans la colonne de l'énoncé. */
+.np-outils {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin: 8px auto 0;
+}
+.np-outil-btn {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-muted);
+    border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700;
+    font-size: .82rem; padding: 6px 14px; min-height: 34px;
+    transition: border-color .15s, color .15s;
+}
+.np-outil-btn:hover { border-color: var(--primary); color: var(--primary); }
+.np-outil-btn[aria-expanded="true"] {
+    border-color: var(--primary); color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
+}
+.np-outil {
+    margin: 10px auto 0; padding: 10px 14px; max-width: 420px;
+    border: 1px solid var(--border); border-radius: 14px; background: var(--bg-panel);
+    text-align: center;
+}
+.np-outil svg { max-width: 100%; height: auto; }
+
+/* Les trois formules, empilées : on les compare d'un coup d'œil. Écrites à la
+   file elles se liraient comme une phrase, et ne se retiendraient pas. */
+.np-formules { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.np-formule {
+    display: flex; align-items: baseline; gap: 10px;
+    font-size: 1.05rem; font-weight: 800; color: var(--text-main);
+}
+.np-formule span { font-size: .8rem; font-weight: 600; color: var(--text-muted); }
+.np-formules-mot {
+    margin: 6px 0 0; font-size: .8rem; font-weight: 600; color: var(--text-muted);
+    line-height: 1.35;
+}
+
 /* La donnée de l'énoncé : axe, centre, vecteur. Le trait est épais — c'est
    l'élément qu'on regarde le plus longtemps. */
 .qd-marques { pointer-events: none; }

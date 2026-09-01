@@ -216,6 +216,35 @@ function nommerPoints(elements) {
 /** Les mots qui ne se dessinent pas comme un trait : on ne les numérote pas. */
 const GLOBAUX = new Set(['centre', 'cercle', 'disque']);
 
+/**
+ * CE QUE L'ÉLÈVE A ÉCRIT VAUT-IL LA RÉPONSE ?
+ *
+ * On compare des MOTS, pas des chaînes. « Rayon », « un rayon », « le rayon »,
+ * « rayons » et « RAYON » sont la même réponse, et refuser l'une d'elles
+ * n'enseignerait rien sur le cercle — seulement sur la façon dont l'ordinateur
+ * lit. Les accents non plus ne sont pas le sujet : « diametre » tapé sans
+ * accent sur un clavier de tablette est juste.
+ *
+ * En revanche « corde » ne vaut pas « diamètre » : le rapprochement s'arrête à
+ * l'orthographe.
+ */
+export function memeMot(donne, attendu) {
+    return normaliser(donne) === normaliser(attendu);
+}
+
+export function normaliser(mot) {
+    return String(mot == null ? '' : mot)
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')   // les accents tombent
+        .replace(/[^a-z\s']/g, ' ')
+        // Les articles ne portent aucune information ici : la question demande
+        // « que représente ce trait », l'élève répond « rayon » ou « un rayon ».
+        .replace(/\b(le|la|les|l|un|une|des|du|de|d|c est|cest)\b/g, ' ')
+        .replace(/s\b/g, '')                                 // le pluriel non plus
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 export const cercleVocabulaireGenerator = {
     id: 'geo.cercle-vocabulaire',
     label: 'Le vocabulaire du cercle',
@@ -359,7 +388,13 @@ function itemTrouver(rng, mot, liste) {
         difficulty: mot.avance ? 3 : 2,
         meta: {
             mot: mot.id, sens: 'trouver', spec, bon: bon + 1, reponse: ecrit(bon),
-            objet: ecrit(bon), enonce, theme: `cercle-trouver-${mot.id}`
+            objet: ecrit(bon), enonce, theme: `cercle-trouver-${mot.id}`,
+            // COMMENT S'ÉCRIT CHAQUE TRACÉ, dans l'ordre où la figure les
+            // porte. Quand l'élève CLIQUE au lieu de choisir, l'activité ne
+            // connaît de son geste que le rang de l'élément : c'est cette
+            // table qui le retraduit en « [OA] », c'est-à-dire en la réponse
+            // que l'item attend. Sans elle, cliquer juste serait compté faux.
+            ecrits: tous.map((m, i) => ecrit(i))
         }
     });
 }

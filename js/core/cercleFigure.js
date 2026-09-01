@@ -63,13 +63,18 @@ export function tracesDe(spec) {
 
     // LE DISQUE D'ABORD, SOUS TOUT LE RESTE : c'est un fond, pas un trait.
     const disque = els.findIndex(e => e.type === 'disque');
-    if (disque >= 0) out.push({ k: 'cercle', x: CX, y: CY, r: R, plein: true, fort: forts.has(disque) });
+    if (disque >= 0) out.push({ k: 'cercle', x: CX, y: CY, r: R, plein: true, fort: forts.has(disque), el: disque });
     const cercle = els.findIndex(e => e.type === 'cercle');
-    out.push({ k: 'cercle', x: CX, y: CY, r: R, fort: cercle >= 0 && forts.has(cercle) });
+    out.push({ k: 'cercle', x: CX, y: CY, r: R, fort: cercle >= 0 && forts.has(cercle),
+        el: cercle >= 0 ? cercle : undefined });
 
+    // CHAQUE TRACÉ SAIT DE QUEL ÉLÉMENT IL EST FAIT. Un rayon, c'est une ligne
+    // et une croix et une lettre : trois tracés pour un seul objet. Sans ce
+    // numéro, on ne saurait pas quoi rendre cliquable ensemble — et cliquer
+    // sur la lettre d'un rayon ne désignerait pas le rayon.
     els.forEach((e, i) => {
         const couleur = spec.couleurs === false ? ENCRE_FIG : COULEURS[i % COULEURS.length];
-        for (const t of traceElement(e, forts.has(i), couleur)) out.push(t);
+        for (const t of traceElement(e, forts.has(i), couleur)) out.push({ ...t, el: i });
     });
 
     // LE CENTRE EST TOUJOURS LÀ, ET IL S'APPELLE O. Même quand la question ne
@@ -187,7 +192,50 @@ export const TAILLE_CROIX = 3.4;
  * thème : cette figure part aussi à l'imprimante, et un trait « couleur du
  * texte » y sortirait blanc sur blanc.
  */
-export function cercleSvg(traces, { taille = 300 } = {}) {
+/**
+ * LES ZONES CLIQUABLES, UNE PAR ÉLÉMENT.
+ *
+ * Rémy : « on peut aussi envisager de cliquer sur le bon élément ». Un trait de
+ * deux pixels ne se touche pas au doigt : on repose donc par-dessus le dessin
+ * un calque de traits TRANSPARENTS et épais, un par élément, qui attrapent le
+ * clic. Le dessin ne change pas d'un pixel — c'est un calque, pas un style.
+ *
+ * Les points (le centre, et les extrémités nommées) reçoivent un disque de
+ * capture plutôt qu'un trait : une croix de trois millimètres se rate.
+ */
+function calqueDeCapture(traces, T, arrondi) {
+    const parElement = new Map();
+    for (const t of traces) {
+        if (t.el === undefined || t.el === null) continue;
+        if (!parElement.has(t.el)) parElement.set(t.el, []);
+        parElement.get(t.el).push(t);
+    }
+    let d = '';
+    for (const [el, lot] of parElement) {
+        const commun = `class="cv-hit" data-el="${el}" tabindex="0" role="button"`;
+        for (const t of lot) {
+            if (t.k === 'ligne') {
+                d += `<path ${commun} d="${t.pts.map((p, i) =>
+                    `${i ? 'L' : 'M'}${arrondi(p.x * T)} ${arrondi(p.y * T)}`).join(' ')}"
+                    fill="none" stroke="transparent" stroke-width="${arrondi(4.5 * T)}"
+                    stroke-linecap="round"/>`;
+            } else if (t.k === 'croix') {
+                d += `<circle ${commun} cx="${arrondi(t.x * T)}" cy="${arrondi(t.y * T)}"
+                    r="${arrondi(4 * T)}" fill="transparent"/>`;
+            } else if (t.k === 'cercle' && t.plein) {
+                d += `<circle ${commun} cx="${arrondi(t.x * T)}" cy="${arrondi(t.y * T)}"
+                    r="${arrondi(t.r * T * 0.72)}" fill="transparent"/>`;
+            } else if (t.k === 'cercle') {
+                d += `<circle ${commun} cx="${arrondi(t.x * T)}" cy="${arrondi(t.y * T)}"
+                    r="${arrondi(t.r * T)}" fill="none" stroke="transparent"
+                    stroke-width="${arrondi(4.5 * T)}"/>`;
+            }
+        }
+    }
+    return d;
+}
+
+export function cercleSvg(traces, { taille = 300, cliquables = false } = {}) {
     const k = taille / 100;
     const T = (v) => arr(v * k);
     const trait = (pts, couleur, epaisseur) => `<path d="${pts.map((p, i) =>
@@ -213,6 +261,9 @@ export function cercleSvg(traces, { taille = 300 } = {}) {
                 font-family="Helvetica, Arial, sans-serif">${t.t}</text>`;
         }
     }
+    // Le calque de capture PAR-DESSUS tout : posé dessous, le dessin lui
+    // volerait les clics là où les traits se croisent.
+    if (cliquables) d += calqueDeCapture(traces, k, arr);
     return `<svg viewBox="0 0 ${taille} ${taille}" width="${taille}" height="${taille}"
         role="img" aria-label="figure du cercle">${d}</svg>`;
 }
