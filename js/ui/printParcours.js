@@ -648,12 +648,12 @@ export function ouvrirFicheParcours(chemin) {
         oublier(id);                         // le nombre change : on retire à neuf, ICI seulement
         if (!baremeTouche) repartirPoints();
         majRoue(id);
-        rendre();
+        rendre(id);
     };
     const changerColonnes = (id, v) => {
         colonnes[id] = v;
         majRoue(id);
-        rendre();
+        rendre(id);
     };
     /** Un cran de plus ou de moins, sans jamais sortir de la liste. */
     const crantColonnes = (id, sens) => {
@@ -666,7 +666,7 @@ export function ouvrirFicheParcours(chemin) {
         points[id] = bornerNb(v);
         baremeTouche = true;                 // à partir d'ici, le barème est le sien
         majRoue(id);
-        rendre();
+        rendre(id);
     };
 
     /** Brancher les « − » et « + » d'une zone, liste ou panneau. */
@@ -740,7 +740,7 @@ export function ouvrirFicheParcours(chemin) {
         const j = i + delta;
         if (i < 0 || j < 0 || j >= ordre.length) return;
         ordre.splice(j, 0, ordre.splice(i, 1)[0]);
-        rendre();
+        rendre(id);
     };
 
 
@@ -974,19 +974,19 @@ export function ouvrirFicheParcours(chemin) {
         panneau.querySelector('[data-r-col]').onchange = (ev) => changerColonnes(id, ev.target.value);
         panneau.querySelector('[data-r-num]').onchange = (ev) => {
             numeroter[id] = ev.target.checked;
-            rendre();
+            rendre(id);
         };
         panneau.querySelector('[data-r-insec]').onchange = (ev) => {
             insecables[id] = ev.target.checked;
-            rendre();
+            rendre(id);
         };
         const pts = panneau.querySelector('[data-r-pts]');
         pts.oninput = () => {
             points[id] = Math.max(0, Math.min(40, Number(pts.value) || 0));
             baremeTouche = true;             // à partir d'ici, le barème est le sien
-            rendre();
+            rendre(id);
         };
-        panneau.querySelector('[data-r-neuf]').onclick = () => { oublier(id); rendre(); };
+        panneau.querySelector('[data-r-neuf]').onclick = () => { oublier(id); rendre(id); };
 
         // LE CONTENU. Un réglage changé retire les questions à neuf : elles ont
         // été tirées avec l'ancien, les garder afficherait des tables qu'on
@@ -1000,7 +1000,7 @@ export function ouvrirFicheParcours(chemin) {
             const relire = () => {
                 Object.assign(e.params, readParams(contenu, schema));
                 oublier(id);
-                rendre();
+                rendre(id);
             };
             contenu.addEventListener('change', relire);
             // Les boutons « Oui / Non » n'émettent rien : leur écouteur global
@@ -1015,7 +1015,23 @@ export function ouvrirFicheParcours(chemin) {
         document.addEventListener('keydown', surEchap, true);
     }
 
-    const rendre = () => {
+    /**
+     * REDESSINE LA FEUILLE — et, si l'on vient de régler un exercice précis,
+     * le RAMÈNE SOUS LES YEUX.
+     *
+     * Rémy : « l'engrenage et les flèches sont sans effet ». Éprouvé sur le
+     * banc, ils agissent : changer « jusqu'à 1 000 » en « jusqu'à 100 000 »
+     * remplace bien les nombres, une flèche échange bien deux exercices. Mais
+     * sur SA feuille — cent un exercices, six cents questions —, l'exercice
+     * réglé est à trois pages de haut : il change hors du champ de vision, et
+     * l'écran, lui, ne bouge pas. Une modification qu'on ne voit pas est une
+     * modification qui n'a pas eu lieu.
+     *
+     * On ne déplace le regard que si l'exercice a QUITTÉ l'écran : ramener de
+     * force une chose déjà visible ferait sauter la page à chaque frappe dans
+     * le champ du nombre de questions.
+     */
+    const rendre = (suivre = null) => {
         const o = options();
         // LE PANNEAU SURVIT AU REDESSIN. Il vit sur le corps du document, pas
         // dans l'aperçu : le fermer ici le ferait disparaître au premier
@@ -1206,7 +1222,19 @@ export function ouvrirFicheParcours(chemin) {
         // disparaît. C'est aussi ce qui garantit qu'ils disent toujours la
         // vérité — ils listent ce qui MANQUE à l'instant.
         garnirDirect(feuille);
+        if (suivre) ramenerSousLesYeux(suivre);
     };
+
+    /** Ramène le bandeau d'un exercice dans le cadre, s'il en est sorti. */
+    function ramenerSousLesYeux(id) {
+        const cible = apercu.querySelector(`[data-reglage="${id}"]`);
+        const cadre = apercu.closest('.fp-apercu-cadre') || apercu.parentElement;
+        if (!cible || !cadre) return;
+        const r = cible.getBoundingClientRect(), c = cadre.getBoundingClientRect();
+        if (r.top >= c.top + 4 && r.bottom <= c.bottom - 4) return;
+        cadre.scrollTop += (r.top - c.top) - c.height * 0.25;
+    }
+
     let derniers = null;
 
     // L'APERÇU EST LE PANNEAU, pour tout ce qui est dessiné dessus : le titre

@@ -8615,14 +8615,23 @@ function geoConversion(item, slot) {
     // laisse ensuite la rangée s'étirer. Une conversion s'écrit alors sur une
     // ligne franche, comme sur un cahier, au lieu d'un timbre-poste.
     const colonnesQuiTiennent = Math.max(1, Math.min(4, Math.floor(b.w / LARGEUR_CONVERSION)));
-    const RH_CONFORT = 9.5;
-    let colonnes = colonnesQuiTiennent;
+    // DEUX PAR LIGNE, ET C'EST LUI QUI TRANCHE.
+    //
+    // Rémy : « quand on n'a pas le tableau, ça laisse de l'espace, on pourrait
+    // en profiter pour avoir deux conversions par ligne. » La règle d'avant
+    // prenait le PLUS PETIT nombre de colonnes qui tienne — donc une seule dès
+    // que la hauteur suffisait, ce qui est le cas ordinaire — au motif que
+    // c'était la hauteur qui restait blanche. Mais une colonne unique laisse
+    // les deux tiers de la LARGEUR vides, et il regarde la feuille : ce vide-là
+    // se voit davantage. Deux, donc, dès que deux tiennent.
+    const RH_MINI = 7;
+    let colonnes = 1;
     if (!avecTableau) {
-        for (let c = 1; c <= colonnesQuiTiennent; c++) {
-            if (Math.ceil(nLignes / c) * RH_CONFORT <= b.h - 2) { colonnes = c; break; }
-        }
-    } else {
-        colonnes = 1;
+        colonnes = Math.min(colonnesQuiTiennent, 2);
+        // Et davantage seulement si la hauteur ne prend pas les rangées qu'il
+        // faudrait : une conversion écrite à la main veut sept millimètres.
+        while (colonnes < colonnesQuiTiennent
+            && Math.ceil(nLignes / colonnes) * RH_MINI > b.h - 2) colonnes++;
     }
     const parColonne = Math.ceil(nLignes / colonnes);
     // Sans tableau, la rangée a le droit de respirer : seize millimètres, la
@@ -8646,8 +8655,12 @@ function geoConversion(item, slot) {
         // Où tombe la conversion de rang `r` : une seule colonne avec le
         // tableau, plusieurs sans lui. Les deux rendus — l'aperçu et le PDF —
         // passent par ici, donc ils ne peuvent pas se désaccorder.
+        // SANS TABLEAU, PAS DE RANGÉE D'EN-TÊTE À SAUTER. Le « r + 1 » réserve
+        // la ligne des unités, en haut du tableau ; quand il n'y a pas de
+        // tableau, il ne réserve qu'un trou — c'est le blanc que Rémy voyait
+        // au-dessus de la première conversion.
         placeDe: (r) => (colonnes <= 1
-            ? { x: b.x, y: y0 + (r + 1) * rh, w: enonceW - 2 }
+            ? { x: b.x, y: y0 + (r + (avecTableau ? 1 : 0)) * rh, w: enonceW - 2 }
             : {
                 x: b.x + Math.floor(r / parColonne) * (b.w / colonnes),
                 y: y0 + (r % parColonne) * rh,
@@ -10407,7 +10420,12 @@ function geoTableauCroise(item, slot) {
     // CHAQUE TEXTE REÇOIT LA TAILLE QUI LE FAIT TENIR DANS SA CASE — en largeur
     // ET en hauteur. Le premier jet ne bornait que la largeur : les nombres
     // courts prenaient la taille maximale et dépassaient de leur ligne.
-    const haut = rh * 0.62;
+    // 0,52 DE LA LIGNE, ET NON 0,62. Rémy, sur une fiche de cinquième : « ça
+    // déborde un peu, les chiffres font un peu gros ». Un caractère occupe en
+    // hauteur bien plus que son corps — hampes hautes et jambages compris, à
+    // peu près 1,2 fois —, si bien qu'un corps de 0,62 ligne remplissait la
+    // case du haut en bas et venait toucher les traits.
+    const haut = rh * 0.52;
     const corpsLib = Math.min(haut, tailleQuiRentre(libelles, wLib - 1.6, 8));
     const corpsTete = Math.min(haut, tailleQuiRentre([...m.colonnes, 'Total'], wCol - 0.8, 8));
     const corpsNb = Math.min(haut, tailleQuiRentre(m.valeurs.flat().map(String), wCol - 1.4, 8));
@@ -10422,16 +10440,21 @@ function geoTableauCroise(item, slot) {
 
 /**
  * La plus grande taille de police (en mm) qui fait tenir TOUS ces textes dans
- * la largeur donnée. Helvetica tourne autour de 0,5 × la taille par caractère ;
- * on prend 0,52 pour garder une marge, parce qu'un débordement d'un millimètre
- * se voit et qu'un demi-point de police en moins ne se voit pas.
+ * la largeur donnée.
+ *
+ * 0,60 ET NON 0,52. C'était le second morceau du débordement signalé par Rémy,
+ * et c'est une erreur de mesure : ces textes-là sont écrits en GRAS, et un
+ * chiffre d'Helvetica gras fait 0,556 cadratin de large — 0,52 le sous-estimait
+ * donc de sept pour cent, sans compter la marge qu'on croyait garder. Un
+ * nombre de trois chiffres dépassait ainsi sa case d'un demi-millimètre, ce qui
+ * se voit ; un demi-point de police en moins ne se voit pas.
  */
 function tailleQuiRentre(textes, largeur, corpsMax) {
     const plusLong = textes.reduce((a, t) => Math.max(a, String(t).length), 1);
     // Le plancher à 3 mm vaut environ 8,5 points : c'est petit, mais lisible à
     // l'impression — et cela reste préférable à un « Septembre » qui déborde
     // sur la colonne voisine.
-    return Math.max(3, Math.min(corpsMax, largeur / (plusLong * 0.52)));
+    return Math.max(3, Math.min(corpsMax, largeur / (plusLong * 0.6)));
 }
 
 function tableauCroisePreviewHtml(item, slot, k, solution) {
@@ -10823,8 +10846,15 @@ export const RENDUS = {
         nomBloc: 'Grille', nomBlocs: 'grilles',
         // Un peu plus haut que large : la cible s'écrit sous la grille.
         proportions: { w: 1, h: 1.18 },
-        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
-        parLigneDefaut: 3
+        // SIX PAR LIGNE. Rémy : « bons chemins — 6 grilles par ligne par
+        // défaut ». Une grille de neuf cases n'a pas besoin de six centimètres
+        // de large : les chiffres qu'elle porte tiennent en un caractère, et
+        // c'est la HAUTEUR de la page qu'on gaspillait à trois par rangée. Six
+        // de front, et la feuille porte une vraie séance — ce qui est
+        // exactement la forme de la fiche d'origine, où la même grille était
+        // répétée en bande.
+        disposition: { cols: 6, rows: 3, maxCols: 6, maxRows: 5 },
+        parLigneDefaut: 6
     },
 
     'tableau-croise': {
