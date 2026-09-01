@@ -984,6 +984,17 @@ const BASE = {
         descriptor: 'Nommer le centre, un rayon, un diamètre, une corde, un arc — et distinguer le cercle du disque.',
         lesson: 'Le CERCLE est une LIGNE : tous ses points sont à la même distance du centre. Le DISQUE est la SURFACE pleine qu\'elle entoure ; c\'est la première confusion à lever. Un RAYON va du centre à un point du cercle. Un DIAMÈTRE joint deux points du cercle en passant par le centre : il vaut deux rayons, et c\'est la plus longue des cordes. Une CORDE joint deux points du cercle en ligne droite — un diamètre est donc une corde, mais on lui donne son nom précis. Un ARC est un morceau du cercle lui-même, donc une ligne COURBE : l\'arc et la corde relient les deux mêmes points, l\'un en suivant le cercle, l\'autre en coupant tout droit. Plus tard : une TANGENTE touche le cercle en un seul point, une SÉCANTE le coupe en deux.'
     },
+    'geo.quadrilateres.familles': {
+        label: 'Les familles de quadrilatères',
+        // Rangé avec la notation et le vocabulaire du cercle : c'est le même
+        // travail — dire juste le nom d'un objet qu'on a sous les yeux, et
+        // savoir ce qu'il est aussi.
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Situer les quadrilatères les uns par rapport aux autres, et dire quelle condition fait passer de l\'un à l\'autre.',
+        lesson: 'Les quadrilatères ne sont pas six familles côte à côte : elles s\'EMBOÎTENT. On part du quadrilatère quelconque, et chaque cran ajoute UNE condition. Une paire de côtés parallèles → le trapèze. L\'autre paire aussi → le parallélogramme. Un angle droit → le rectangle. Deux côtés consécutifs de même longueur → le losange. Et le carré se rejoint PAR DEUX CHEMINS : depuis le rectangle en ajoutant les longueurs égales, depuis le losange en ajoutant l\'angle droit — chacun apporte ce que l\'autre avait déjà. C\'est pourquoi tout carré est un rectangle, et aussi un losange, et aussi un parallélogramme. L\'inverse est faux : un rectangle n\'est pas forcément un carré. Dans un parallélogramme, un seul angle droit suffit pour avoir les quatre, et deux côtés consécutifs égaux suffisent pour les avoir tous les quatre.'
+    },
     'mes.perimetre.rectangle': {
         label: 'Périmètre d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],

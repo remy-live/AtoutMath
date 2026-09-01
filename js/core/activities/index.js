@@ -669,6 +669,7 @@ const legacy = [
     ['bons-chemins', 'Les Bons Chemins (produits)', 'bonsChemins', 'engineBonsChemins', 'grille', 6],
     ['tableau-croise', 'Tableau à double entrée', 'tableauCroise', 'engineTableauCroise', 'tableau', 4],
     ['sans-croiser', 'Relier sans croiser', 'sansCroiser', 'engineSansCroiser', 'figure', 5],
+    ['quadrilateres', 'L\'organigramme des quadrilatères', 'quadrilateres', 'engineQuadrilateres', 'organigramme', 3],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel', 'échange', 40],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille', 'trajet', 6],
     ['course-vecteurs', 'Course de Vecteurs', 'courseVecteurs', 'engineCourseVecteurs', 'course', 3],

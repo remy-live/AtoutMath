@@ -60,6 +60,59 @@ export const geometrieExercises = [
             + 'par rapport à l\'autre. Commence toujours par le sommet.'
     },
 
+    // --- Les familles de quadrilatères ---
+    // Rémy : « des exercices pour comprendre comment on passe d'un
+    // quadrilatère à un parallélogramme. J'aime l'organigramme avec les cartes
+    // à replacer. Il faut des choses visuelles quitte à avoir des animations. »
+    //
+    // CE QUE L'ORGANIGRAMME DIT, ET QU'UNE LISTE DE DÉFINITIONS NE DIT PAS :
+    // les familles s'EMBOÎTENT. Un élève qui apprend six définitions séparées
+    // croit avoir six familles côte à côte, et bute sur « est-ce qu'un carré
+    // est un rectangle ? » — la question qui départage.
+    //
+    // ET LE CARRÉ SE REJOINT PAR DEUX CHEMINS. C'est le cœur de la figure :
+    // depuis le rectangle en ajoutant les longueurs égales, depuis le losange
+    // en ajoutant l'angle droit. Chaque chemin apporte ce que l'autre avait
+    // déjà. Le plateau les met côte à côte pour qu'on ne puisse pas ne pas le
+    // voir.
+    //
+    // L'ANIMATION N'EST PAS UN ORNEMENT : quand le nom tombe juste, le contour
+    // du quadrilatère SE TRACE dans sa case, côté après côté. L'élève voit ce
+    // qu'il vient de nommer. Et les cases vides montrent déjà leur figure en
+    // pointillé — sans quoi l'exercice serait un jeu de mémoire, six mots pour
+    // six trous, au lieu d'un raisonnement sur ce qu'on voit.
+    {
+        id: 'geo-quadrilateres',
+        cree: '2026-09-01',
+        title: 'L\'Organigramme des Quadrilatères',
+        activityId: 'quadrilateres',
+        sansRevision: true,
+        skills: ['geo.quadrilateres.familles'],
+        params: { palier: 'noms' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'Ce qu\'on replace', default: 'noms',
+                aide: 'Placer les NOMS travaille la hiérarchie : qui contient qui. Placer les '
+                    + 'CONDITIONS travaille les définitions : ce qu\'il faut ajouter pour '
+                    + 'descendre d\'un cran. Les deux ensemble font le chapitre — et les '
+                    + 'conditions sont nettement plus dures.',
+                options: [
+                    { value: 'decouverte', label: 'Placer trois noms' },
+                    { value: 'noms', label: 'Placer tous les noms' },
+                    { value: 'conditions', label: 'Placer les conditions sur les flèches' },
+                    { value: 'tout', label: 'Toutes les conditions' }
+                ]
+            }
+        ],
+        motsClefs: ['quadrilatère', 'trapèze', 'parallélogramme', 'rectangle', 'losange',
+            'carré', 'organigramme', 'familles', 'propriétés'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Les quadrilatères ne sont pas six familles côte à côte : elles s'EMBOÎTENT. On part du quadrilatère quelconque, et chaque flèche descend d'un cran en ajoutant UNE SEULE condition. Une paire de côtés parallèles donne le trapèze ; l'autre paire aussi donne le parallélogramme ; un angle droit donne le rectangle ; deux côtés consécutifs de même longueur donnent le losange. Regarde bien le bas : on arrive au carré PAR DEUX CHEMINS, et chacun ajoute ce que l'autre avait déjà. C'est pour cela que tout carré est un rectangle, et aussi un losange — alors qu'un rectangle n'est pas forcément un carré. Commence toujours par la case la plus GÉNÉRALE, celle du haut, et descends."
+    },
+
     // --- Le vocabulaire du cercle ---
     // Rémy : « j'aimerai bien un exercice sur le vocabulaire du cercle ».
     //
