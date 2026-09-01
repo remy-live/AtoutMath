@@ -10,7 +10,8 @@ import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
 import {
     PALIERS, CONSIGNE, CADRE, LETTRES, genererFigure, verifierTrait, verifierFigure,
-    segmentsSeCoupent, segmentTouche, dansRect, carres, croisementsDroits, conseil
+    segmentsSeCoupent, segmentTouche, dansRect, carres, croisementsDroits, conseil,
+    demandeDePrevoir, ordreAboutit
 } from '../js/core/sansCroiser.js';
 
 const P = (x, y) => ({ x, y });
@@ -87,10 +88,16 @@ test('les carrés ne se touchent jamais', () => {
                         || cs[i].y + cs[i].h < cs[j].y || cs[j].y + cs[j].h < cs[i].y);
                     assert.equal(chevauche, false, `${nom} graine ${s} : deux carrés se touchent`);
                 }
-                // Et tout carré est bien DANS le cadre.
-                assert.ok(cs[i].x >= CADRE.x && cs[i].y >= CADRE.y
-                    && cs[i].x + cs[i].l <= CADRE.x + CADRE.l
-                    && cs[i].y + cs[i].h <= CADRE.y + CADRE.h, `${nom} : un carré déborde du cadre`);
+                // Et tout carré est bien DANS le cadre — au bord compris. Les
+                // carrés du pourtour y sont COLLÉS depuis qu'on a fermé
+                // l'anneau libre qui longeait le cadre (voir poserFigure) :
+                // « x + côté » vaut alors exactement le bord, à l'arrondi
+                // flottant près.
+                const marge = 1e-9;
+                assert.ok(cs[i].x >= CADRE.x - marge && cs[i].y >= CADRE.y - marge
+                    && cs[i].x + cs[i].l <= CADRE.x + CADRE.l + marge
+                    && cs[i].y + cs[i].h <= CADRE.y + CADRE.h + marge,
+                `${nom} : un carré déborde du cadre`);
             }
         }
     }
@@ -249,4 +256,67 @@ test('l\'exercice du catalogue tient debout', () => {
         assert.ok(PALIERS[o.value], `palier inconnu : ${o.value}`);
         assert.equal(o.label, PALIERS[o.value].label, `le libellé du palier ${o.value} a divergé du noyau`);
     });
+});
+
+test('LE COULOIR DU BORD EST FERMÉ, sinon tout se contourne par l\'extérieur', () => {
+    // Rémy : « c'est toujours trop facile ». MESURÉ AVANT : 100 % des ordres de
+    // tracé aboutissaient au niveau moyen — on prenait les paires dans
+    // n'importe quel sens et ça passait.
+    //
+    // LA RAISON ÉTAIT GÉOMÉTRIQUE : dans un rectangle semé de petits carrés
+    // posés À L'INTÉRIEUR, il reste toujours un anneau libre le long du bord.
+    // Tout se contourne par l'extérieur, donc aucun appariement n'est
+    // impossible — il n'y avait pas d'obstruction à découvrir. Coller au cadre
+    // les carrés du pourtour ferme cet anneau.
+    let colles = 0, total = 0;
+    for (let s = 1; s <= 12; s++) {
+        const fig = genererFigure({ rng: makeRng(`bord-${s}`), palier: 'moyen' });
+        if (!fig) continue;
+        carres(fig).forEach(c => {
+            total++;
+            const e = 1e-6;
+            if (Math.abs(c.x - CADRE.x) < e || Math.abs(c.y - CADRE.y) < e
+                || Math.abs(c.x + c.l - (CADRE.x + CADRE.l)) < e
+                || Math.abs(c.y + c.h - (CADRE.y + CADRE.h)) < e) colles++;
+        });
+    }
+    assert.ok(colles > 0, 'aucun carré ne touche le cadre : l\'anneau libre est rouvert');
+    assert.ok(colles < total, 'tous les carrés au bord : il n\'y aurait plus de milieu');
+});
+
+test('UNE FIGURE SE TROUVE À TOUS LES PALIERS, y compris le plus dur', () => {
+    // MESURÉ : une figure « expert » sur quatre ne sortait pas, et le jeu
+    // retombait en silence sur quatre paires — le palier le plus dur rendait
+    // donc, une fois sur quatre, le palier moyen. Le routeur marchait au
+    // hasard et se piégeait lui-même dans les culs-de-sac ; il cherche
+    // maintenant un plus court chemin sur des cases au coût tiré au sort, donc
+    // il ondule autant mais ne se perd plus.
+    for (const nom of Object.keys(PALIERS)) {
+        for (let s = 1; s <= 12; s++) {
+            const fig = genererFigure({ rng: makeRng(`sortie-${nom}-${s}`), palier: nom });
+            assert.ok(fig, `${nom} graine ${s} : aucune figure`);
+            assert.equal(fig.lettres.length, PALIERS[nom].paires,
+                `${nom} : ${fig.lettres.length} paires au lieu de ${PALIERS[nom].paires}`);
+        }
+    }
+});
+
+test('IL FAUT PRÉVOIR : au moins un ordre de tracé se retrouve coincé', () => {
+    // « Contourner » n'est pas « prévoir » : on contourne au moment où l'on
+    // bute. La seule question qui compte est celle-ci — peut-on prendre les
+    // paires dans n'importe quel ordre et arriver au bout ? Le générateur exige
+    // désormais que non, à partir du deuxième palier.
+    for (const nom of ['moyen', 'difficile', 'expert']) {
+        let piegees = 0;
+        for (let s = 1; s <= 8; s++) {
+            const fig = genererFigure({ rng: makeRng(`piege-${nom}-${s}`), palier: nom });
+            if (fig && demandeDePrevoir(fig, makeRng(`ctrl-${s}`), 6)) piegees++;
+        }
+        // PRESQUE TOUTES, ET NON TOUTES : l'épreuve est une préférence, pas une
+        // condition. Si aucun des 250 tirages ne la passe, on rend quand même
+        // le premier qui tenait debout — un élève devant un cadre vide
+        // n'apprendrait rien du tout. Mesuré : 8/8 à moyen et difficile, 7/8
+        // au palier expert, où le cadre est le plus contraint.
+        assert.ok(piegees >= 7, `${nom} : ${piegees}/8 figures demandent de prévoir`);
+    }
 });

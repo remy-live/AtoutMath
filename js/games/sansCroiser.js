@@ -56,8 +56,21 @@ class SansCroiser extends BaseGame {
                     color: var(--text-muted); font-size: clamp(11px, 2.5cqw, 13px);
                     line-height: 1.35; max-width: 660px;
                 }
+                /* LA SCÈNE A UNE HAUTEUR FIXE, ET C'EST UNE CORRECTION.
+                   Rémy : « quand on clique sur là où il faut tracer, ça se
+                   ragrandit un peu ». Mesuré sur iPhone 375 : au relâchement,
+                   le message de refus passe à deux lignes, son bloc gagne 4 px,
+                   et la scène — qui se partageait la hauteur restante avec lui
+                   — les lui rendait. La figure changeait donc de taille sous le
+                   doigt, en plein tracé. Une scène qui ne se laisse plus
+                   prendre sa place ne bouge plus : c'est la page qui défile si
+                   le message est long. */
                 .sx-scene {
-                    flex: 1 1 auto; width: 100%; min-height: min(72cqw, 380px, 56cqh);
+                    /* flex 1 0 auto : elle GRANDIT si la place est là — sur un
+                       grand écran la figure doit remplir —, mais elle ne
+                       RÉTRÉCIT jamais. C'est le rétrécissement seul qui faisait
+                       bouger la figure. */
+                    flex: 1 0 auto; width: 100%; min-height: min(72cqw, 380px, 56cqh);
                     display: flex; align-items: center; justify-content: center;
                 }
                 .sx-svg { width: 100%; height: 100%; max-width: 620px; touch-action: none; cursor: crosshair; }
@@ -81,8 +94,17 @@ class SansCroiser extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 12px; font-size: .85rem; min-height: 38px;
                 }
+                /* LE BANDEAU DU MESSAGE A UNE HAUTEUR ARRÊTÉE, et c'est lui la
+                   vraie cause du « ça se ragrandit ». Il passait de une à deux
+                   lignes quand le refus s'affichait, prenait 4 px à l'espace
+                   libre, et la scène — qui grandit avec cet espace — les
+                   rendait : la figure bougeait sous le doigt. Une hauteur fixe
+                   ne prend jamais rien à personne. Trois lignes suffisent aux
+                   refus ; le conseil, plus long, se fait défiler, et c'est
+                   celui-là qu'on a demandé exprès. */
                 .sx-note {
-                    min-height: 2.4em; text-align: center; font-size: .85rem; line-height: 1.35;
+                    height: 3.6em; overflow-y: auto; text-align: center;
+                    font-size: .85rem; line-height: 1.35;
                     color: var(--text-muted); max-width: 660px; flex: 0 0 auto;
                 }
                 .sx-note--ok { color: var(--success); font-weight: 700; }
@@ -100,9 +122,10 @@ class SansCroiser extends BaseGame {
                         align-items: center; justify-items: center; gap: 4px 12px;
                     }
                     .sx-tete { grid-column: 2; grid-row: 1; }
-                    .sx-scene { grid-column: 1; grid-row: 1 / 4; min-height: 0; height: 100%; align-self: stretch; }
+                    .sx-scene { grid-column: 1; grid-row: 1 / 4; min-height: 0; height: 100%;
+                        align-self: stretch; flex: 1 1 auto; }
                     .sx-barre { grid-column: 2; grid-row: 2; }
-                    .sx-note { grid-column: 2; grid-row: 3; min-height: 1.4em; }
+                    .sx-note { grid-column: 2; grid-row: 3; height: 5.2em; }
                     .sx-consigne { font-size: 11px; line-height: 1.25; }
                 }
             </style>

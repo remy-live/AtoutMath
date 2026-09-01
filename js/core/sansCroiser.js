@@ -53,27 +53,35 @@ export const LETTRES = ['A', 'B', 'C', 'D', 'E'];
 export const COULEURS = ['#d62728', '#1f77b4', '#2ca02c', '#ff7f0e', '#9467bd'];
 
 export const PALIERS = {
-    // RÉGLÉ APRÈS LE BANC D'ESSAI. Rémy : « c'est vraiment très très facile,
-    // mets plus de 3 lettres et rends cela un peu plus dur ». Il avait raison
-    // sur les deux points — chaque palier gagne une paire, et le nombre de
-    // traits droits qui NE passent pas monte avec. C'est ce nombre-là qui fait
-    // la difficulté réelle : une figure où tout se relie à la règle n'est pas
-    // un exercice, quel que soit le nombre de paires.
+    // RÉGLÉ DEUX FOIS, ET LA SECONDE A CORRIGÉ LA PREMIÈRE.
+    //
+    // Rémy, d'abord : « c'est vraiment très très facile, mets plus de 3 lettres
+    // et rends cela un peu plus dur ». On a ajouté des paires et exigé que les
+    // traits droits ne passent pas — `croisementsMin`. Puis, de nouveau :
+    // « c'est toujours trop facile ». Et il avait encore raison : mesuré, 100 %
+    // des ordres de tracé aboutissaient quand même. CONTOURNER N'EST PAS
+    // PRÉVOIR — on contourne au moment où l'on bute, sans avoir rien anticipé.
+    //
+    // `croisementsMin` reste, en garde-fou vite calculé contre les figures tout
+    // à fait plates ; il est descendu, parce que le vrai filtre est ailleurs :
+    // `prevoir` exige qu'AU MOINS UN ORDRE de tracé se retrouve coincé. Voir
+    // `demandeDePrevoir`. Le premier palier en est dispensé — on y vient pour
+    // comprendre la règle, pas pour se faire piéger.
     facile: {
         label: '3 paires — pour comprendre la règle',
-        paires: 3, colonnes: 10, lignes: 8, croisementsMin: 2
+        paires: 3, colonnes: 10, lignes: 8, croisementsMin: 2, prevoir: false
     },
     moyen: {
         label: '4 paires — comme sur la fiche, en plus dense',
-        paires: 4, colonnes: 13, lignes: 10, croisementsMin: 3
+        paires: 4, colonnes: 13, lignes: 10, croisementsMin: 2, prevoir: true
     },
     difficile: {
         label: '5 paires — il faut vraiment prévoir',
-        paires: 5, colonnes: 16, lignes: 12, croisementsMin: 4
+        paires: 5, colonnes: 16, lignes: 12, croisementsMin: 3, prevoir: true
     },
     expert: {
         label: '6 paires — le cadre est plein',
-        paires: 6, colonnes: 19, lignes: 14, croisementsMin: 5
+        paires: 6, colonnes: 19, lignes: 14, croisementsMin: 3, prevoir: true
     }
 };
 
@@ -243,18 +251,31 @@ export function genererFigure({ rng = makeRng(1), palier = 'moyen' } = {}) {
     // case coûte de la place, et une figure entrelacée n'est pas toujours
     // routable. On insiste — un tirage coûte deux dixièmes de milliseconde, et
     // une figure se tire une fois pour toutes.
+    // MIEUX VAUT UNE FIGURE UN PEU FACILE QUE PAS DE FIGURE. L'épreuve « il faut
+    // prévoir » est une PRÉFÉRENCE : elle écarte les tirages plats, mais si
+    // aucun tirage ne la passe, on rend le premier qui tenait debout plutôt que
+    // rien. Un élève devant un cadre vide n'apprendrait rien du tout.
+    let repli = null;
     for (let essai = 0; essai < 250; essai++) {
         const chemins = tirerFigure(P, rng);
         if (!chemins) continue;
-        const fig = poserFigure(P, chemins);
+        const fig = poserFigure(P, chemins, P.collerAuBord !== false);
         // UNE FIGURE OÙ TOUS LES TRAITS DROITS PASSENT N'EST PAS UN EXERCICE :
         // l'élève relie à la règle sans réfléchir, et n'a rien appris. On exige
         // donc que la solution naïve échoue quelque part.
         if (croisementsDroits(fig) < P.croisementsMin) continue;
+        // ET SURTOUT : elle doit se laisser piéger par au moins un ordre. Sans
+        // ce filtre, la moitié des figures se faisaient dans n'importe quel
+        // sens — mesuré. Le niveau le plus facile en est dispensé : on y vient
+        // pour comprendre la règle, pas pour se faire coincer.
+        if (P.prevoir && !demandeDePrevoir(fig, rng)) {
+            if (!repli) { repli = fig; repli.palier = palier; }
+            continue;
+        }
         fig.palier = palier;
         return fig;
     }
-    return null;
+    return repli;
 }
 
 /**
@@ -303,16 +324,14 @@ function tirerFigure(P, rng) {
     // côté. Le trait serpente, il longe les bords, et il laisse passer les
     // autres. On essaie plusieurs ordres et plusieurs tirages ; il suffit qu'un
     // seul aboutisse.
-    for (let tour = 0; tour < 60; tour++) {
+    for (let tour = 0; tour < 40; tour++) {
         const ordre = tour === 0 ? paires.map((_, i) => i) : rng.shuffle(paires.map((_, i) => i));
         const proprio = new Map();
         paires.forEach(([a, b], k) => { proprio.set(clef(...a), k); proprio.set(clef(...b), k); });
         const routes = new Array(paires.length);
         let bon = true;
         for (const k of ordre) {
-            const route = tour === 0
-                ? plusCourtChemin(proprio, paires[k][0], paires[k][1], k)
-                : cheminSerpentant(proprio, paires[k][0], paires[k][1], k);
+            const route = cheminSinueux(proprio, paires[k][0], paires[k][1], k, tour === 0);
             if (!route) { bon = false; break; }
             route.forEach(([x, y]) => proprio.set(clef(x, y), k));
             routes[k] = route;
@@ -321,48 +340,88 @@ function tirerFigure(P, rng) {
     }
     return null;
 
-    /** Un chemin qui serpente : au hasard, mais deux fois sur trois vers le but. */
-    function cheminSerpentant(proprio, a, b, k) {
-        const vus = new Set([clef(...a)]);
-        const route = [a];
-        const plafond = P.colonnes * P.lignes;
-        while (route.length < plafond) {
-            const [x, y] = route[route.length - 1];
-            if (x === b[0] && y === b[1]) return route;
-            const suites = [[1, 0], [-1, 0], [0, 1], [0, -1]]
-                .map(([dx, dy]) => [x + dx, y + dy])
-                .filter(([X, Y]) => dedans(X, Y) && !vus.has(clef(X, Y))
-                    && (libre(proprio, X, Y, k) || (X === b[0] && Y === b[1])));
-            if (!suites.length) return null;
-            // Le tri par distance au but, puis un dé : le trait avance sans
-            // filer droit. Un trait qui file droit referme le cadre.
-            suites.sort((u, v) => (Math.abs(u[0] - b[0]) + Math.abs(u[1] - b[1]))
-                - (Math.abs(v[0] - b[0]) + Math.abs(v[1] - b[1])));
-            const choix = (rng.next() < 0.66 || suites.length === 1)
-                ? suites[0] : suites[rng.int(1, suites.length - 1)];
-            route.push(choix);
-            vus.add(clef(...choix));
-        }
-        return null;
-    }
+    /**
+     * UN CHEMIN QUI SERPENTE, MAIS QU'ON TROUVE À COUP SÛR.
+     *
+     * La première version marchait au hasard, avec un biais vers le but. Elle
+     * serpentait bien, et elle SE PIÉGEAIT ELLE-MÊME : arrivée dans un cul-de-
+     * sac, elle abandonnait, et le générateur jetait une figure pourtant
+     * parfaitement routable. Mesuré : une figure « expert » sur quatre ne
+     * sortait pas et retombait en silence sur quatre paires — c'est-à-dire que
+     * le palier le plus dur rendait, une fois sur quatre, le palier moyen.
+     * Rémy voyait le résultat sans pouvoir le nommer : « c'est toujours trop
+     * facile ».
+     *
+     * On cherche donc le chemin le MOINS COÛTEUX sur des cases dont le coût est
+     * TIRÉ AU SORT. Un coût élevé se contourne, donc le trait ondule ; mais
+     * c'est un plus court chemin, donc il est trouvé dès qu'il en existe un.
+     * Le hasard décide de la forme, plus de la réussite.
+     *
+     * `direct` demande des coûts égaux : c'est le chemin le plus court, essayé
+     * en premier parce qu'il laisse le plus de place aux paires suivantes.
+     */
+    function cheminSinueux(proprio, a, b, k, direct) {
+        const C = P.colonnes, L = P.lignes, N = C * L;
+        const cout = new Int32Array(N);
+        if (!direct) for (let i = 0; i < N; i++) cout[i] = 1 + rng.int(0, 6);
+        else cout.fill(1);
 
-    /** Le plus court chemin de a à b qui n'approche aucune autre paire. */
-    function plusCourtChemin(proprio, a, b, k) {
-        const vu = new Map([[clef(...a), null]]);
-        const file = [a];
-        while (file.length) {
-            const [x, y] = file.shift();
-            if (x === b[0] && y === b[1]) {
+        const dist = new Int32Array(N).fill(0x7fffffff);
+        const pere = new Int32Array(N).fill(-1);
+        const fige = new Uint8Array(N);
+        const depart = a[1] * C + a[0], but = b[1] * C + b[0];
+        dist[depart] = 0;
+
+        // Un tas binaire, et non un balayage : le balayage coûtait deux
+        // secondes et demie par figure au niveau expert, mesuré, parce qu'il
+        // relit toutes les cases à chaque case sortie.
+        const tas = [depart];
+        const monter = (i) => {
+            while (i > 0) {
+                const pa = (i - 1) >> 1;
+                if (dist[tas[pa]] <= dist[tas[i]]) break;
+                [tas[pa], tas[i]] = [tas[i], tas[pa]];
+                i = pa;
+            }
+        };
+        const descendre = (i) => {
+            for (;;) {
+                const g = 2 * i + 1, d = g + 1;
+                let mini = i;
+                if (g < tas.length && dist[tas[g]] < dist[tas[mini]]) mini = g;
+                if (d < tas.length && dist[tas[d]] < dist[tas[mini]]) mini = d;
+                if (mini === i) return;
+                [tas[mini], tas[i]] = [tas[i], tas[mini]];
+                i = mini;
+            }
+        };
+
+        while (tas.length) {
+            const c = tas[0];
+            tas[0] = tas[tas.length - 1];
+            tas.pop();
+            if (tas.length) descendre(0);
+            if (fige[c]) continue;
+            fige[c] = 1;
+            if (c === but) {
                 const route = [];
-                for (let c = clef(x, y); c; c = vu.get(c)) route.unshift(c.split(',').map(Number));
+                for (let v = but; v >= 0; v = pere[v]) route.unshift([v % C, (v - (v % C)) / C]);
                 return route;
             }
+            const x = c % C, y = (c - x) / C;
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                 const X = x + dx, Y = y + dy;
-                if (!dedans(X, Y) || vu.has(clef(X, Y))) continue;
-                if (!libre(proprio, X, Y, k)) continue;
-                vu.set(clef(X, Y), clef(x, y));
-                file.push([X, Y]);
+                if (!dedans(X, Y)) continue;
+                const v = Y * C + X;
+                if (fige[v]) continue;
+                if (v !== but && !libre(proprio, X, Y, k)) continue;
+                const d = dist[c] + cout[v];
+                if (d < dist[v]) {
+                    dist[v] = d;
+                    pere[v] = c;
+                    tas.push(v);
+                    monter(tas.length - 1);
+                }
             }
         }
         return null;
@@ -382,27 +441,208 @@ function tirerFigure(P, rng) {
     }
 }
 
-/** Les chemins du damier deviennent une figure en unités de dessin. */
-function poserFigure(P, chemins) {
+/**
+ * Les chemins du damier deviennent une figure en unités de dessin.
+ *
+ * LES CARRÉS DU POURTOUR SONT COLLÉS AU CADRE, et ce n'est pas une coquetterie
+ * de mise en page : c'est la correction du reproche de Rémy, « c'est toujours
+ * trop facile ».
+ *
+ * MESURÉ AVANT : sur les figures de niveau facile et moyen, 100 % des ordres de
+ * tracé aboutissaient — on prenait les paires dans n'importe quel ordre, on
+ * reliait chacune au plus simple, et ça passait. Il n'y avait rien à prévoir.
+ *
+ * LA RAISON EST GÉOMÉTRIQUE, et elle condamne l'exercice tel quel : dans un
+ * rectangle vide semé de petits carrés posés À L'INTÉRIEUR, il reste toujours
+ * un anneau libre le long du bord. Tout se contourne par l'extérieur, donc
+ * AUCUN appariement n'est impossible — il n'y a pas d'obstruction à découvrir,
+ * seulement un trait à faire joliment.
+ *
+ * Coller au cadre les carrés du pourtour ferme cet anneau. Un carré collé n'est
+ * plus une étiquette au milieu de rien : c'est un BOUCHON, il coupe le couloir
+ * du bord, et le cadre se sépare enfin en régions. C'est là que « un trait posé
+ * coupe le cadre en deux » cesse d'être une phrase de consigne.
+ *
+ * Le tracé de la solution suit son carré : son premier point glisse avec lui,
+ * ce qui allonge le premier segment vers le bord sans traverser quoi que ce
+ * soit — la case voisine appartient à la même paire, par construction du damier.
+ */
+function poserFigure(P, chemins, collerAuBord) {
     const marge = 6;
     const pasX = (CADRE.l - 2 * marge) / Math.max(1, P.colonnes - 1);
     const pasY = (CADRE.h - 2 * marge) / Math.max(1, P.lignes - 1);
     const cote = Math.min(pasX, pasY) * 0.62;
     const point = ([x, y]) => ({ x: marge + x * pasX, y: marge + y * pasY });
 
+    /** Le centre d'un carré, ramené contre le cadre s'il est sur le pourtour. */
+    const borne = ([x, y]) => {
+        const p = point([x, y]);
+        if (!collerAuBord) return p;
+        if (x === 0) p.x = CADRE.x + cote / 2;
+        else if (x === P.colonnes - 1) p.x = CADRE.x + CADRE.l - cote / 2;
+        if (y === 0) p.y = CADRE.y + cote / 2;
+        else if (y === P.lignes - 1) p.y = CADRE.y + CADRE.h - cote / 2;
+        return p;
+    };
+
     const bornes = [];
     const solution = [];
     chemins.forEach((chemin, k) => {
         const lettre = LETTRES[k];
-        bornes.push({ ...point(chemin[0]), lettre, bout: 0 });
-        bornes.push({ ...point(chemin[chemin.length - 1]), lettre, bout: 1 });
-        solution.push({ lettre, points: chemin.map(point) });
+        const a = borne(chemin[0]);
+        const b = borne(chemin[chemin.length - 1]);
+        bornes.push({ ...a, lettre, bout: 0 });
+        bornes.push({ ...b, lettre, bout: 1 });
+        // Les deux bouts du tracé rejoignent leurs carrés déplacés ; le reste
+        // du chemin ne bouge pas.
+        const trace = chemin.map(point);
+        trace[0] = { ...a };
+        trace[trace.length - 1] = { ...b };
+        solution.push({ lettre, points: trace });
     });
     return {
         cadre: { ...CADRE }, cote, bornes, solution,
         lettres: chemins.map((_, k) => LETTRES[k]),
         colonnes: P.colonnes, lignes: P.lignes
     };
+}
+
+// --- « FAUT-IL PRÉVOIR ? » — l'épreuve que la figure doit passer ---------------
+//
+// Rémy, deux fois : « c'est vraiment très très facile », puis « c'est toujours
+// trop facile ». La première fois on a ajouté des paires et exigé que les
+// traits droits ne passent pas ; MESURÉ APRÈS, ce n'était pas la bonne mesure :
+// 100 % des ordres de tracé aboutissaient quand même. Contourner un carré n'est
+// pas prévoir — on le fait au moment où on bute dessus.
+//
+// LA VRAIE QUESTION EST CELLE-CI : peut-on prendre les paires dans N'IMPORTE
+// QUEL ORDRE, relier chacune au plus simple, et arriver au bout ? Si oui, il
+// n'y a rien à anticiper, et le nombre de paires n'y changera rien. Une figure
+// n'est gardée que si AU MOINS UN ordre se retrouve coincé : c'est la preuve
+// qu'il existe un piège, donc quelque chose à voir avant de tracer.
+//
+// L'épreuve se joue sur une grille fine posée sur le cadre — pas le damier du
+// générateur, qui est trop grossier pour ressembler à un trait à main levée.
+
+// LA FINESSE DE LA GRILLE EST LA LARGEUR DU DOIGT, et elle décide de tout.
+//
+// Trop grossière (quarante colonnes), le coussin d'une case vaut cinq unités de
+// dessin pour un trait qui en fait 1,3 : l'épreuve déclarait alors TOUT bouché
+// dès quatre paires, elle ne triait plus rien. À soixante-quatre, le couloir
+// laissé libre fait environ le double du trait — c'est ce qu'un doigt sait
+// faire, et l'épreuve se remet à distinguer les figures.
+const GRILLE_EPREUVE = 64;
+
+/**
+ * LA CARTE DU CADRE, calculée UNE FOIS par figure.
+ *
+ * `mur[c]` porte le rang de la lettre dont le carré occupe la case, ou -1. Tout
+ * est en tableaux plats d'entiers : l'épreuve rejoue le même parcours des
+ * dizaines de fois, et une figure se tire dans le navigateur d'un élève —
+ * refaire les `dansRect` à chaque fois coûtait sept dixièmes de seconde par
+ * figure au niveau expert, mesuré.
+ */
+function carteDuCadre(fig) {
+    const n = GRILLE_EPREUVE;
+    const m = Math.max(8, Math.round(n * (fig.cadre.h / fig.cadre.l)));
+    const px = fig.cadre.l / (n - 1), py = fig.cadre.h / (m - 1);
+    const mur = new Int8Array(n * m).fill(-1);
+    const rang = new Map(fig.lettres.map((l, k) => [l, k]));
+    // Les deux bouts de chaque lettre, en cases : ce sont les points de départ
+    // et d'arrivée de l'épreuve.
+    const bouts = fig.lettres.map(() => [[], []]);
+    carres(fig).forEach(c => {
+        const k = rang.get(c.lettre);
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < m; j++) {
+                const p = { x: fig.cadre.x + i * px, y: fig.cadre.y + j * py };
+                if (!dansRect(p, c)) continue;
+                mur[j * n + i] = k;
+                bouts[k][c.bout].push(j * n + i);
+            }
+        }
+    });
+    return { n, m, mur, bouts };
+}
+
+/**
+ * CET ORDRE-LÀ ABOUTIT-IL SANS RIEN PRÉVOIR ?
+ *
+ * On relie les paires une à une, chacune au plus court, et le trait posé bouche
+ * sa trace ET ses voisines : deux traits ne se superposent pas, et l'élève ne
+ * trace pas au micron.
+ */
+function ordreAboutitSur(carte, ordre) {
+    const { n, m, mur, bouts } = carte;
+    const occupe = new Uint8Array(n * m);
+    const vu = new Int32Array(n * m).fill(-1);
+    const pere = new Int32Array(n * m);
+    const file = new Int32Array(n * m);
+
+    for (const k of ordre) {
+        const [depart, arrivee] = bouts[k];
+        if (!depart.length || !arrivee.length) return false;
+        const but = new Set(arrivee);
+        let fin = 0;
+        depart.forEach(c => { if (vu[c] !== k) { vu[c] = k; pere[c] = -1; file[fin++] = c; } });
+        let trouve = -1;
+        for (let tete = 0; tete < fin && trouve < 0; tete++) {
+            const c = file[tete];
+            if (but.has(c)) { trouve = c; break; }
+            const i = c % n, j = (c - i) / n;
+            if (i + 1 < n) pousser(c + 1, c);
+            if (i > 0) pousser(c - 1, c);
+            if (j + 1 < m) pousser(c + n, c);
+            if (j > 0) pousser(c - n, c);
+            function pousser(d, venant) {
+                if (vu[d] === k || occupe[d]) return;
+                if (mur[d] >= 0 && mur[d] !== k) return;
+                vu[d] = k;
+                pere[d] = venant;
+                file[fin++] = d;
+            }
+        }
+        if (trouve < 0) return false;
+        // LE TRAIT POSÉ, ET LUI SEUL, avec son coussin d'une case. On avait
+        // d'abord bouché toutes les cases VISITÉES par la recherche — c'est-à-
+        // dire la moitié du cadre —, ce qui condamnait toutes les paires
+        // suivantes : l'épreuve déclarait alors chaque figure piégée, donc ne
+        // triait plus rien. Le trait se relit par ses parents.
+        for (let c = trouve; c >= 0; c = pere[c]) {
+            const i = c % n, j = (c - i) / n;
+            for (let di = -1; di <= 1; di++) {
+                for (let dj = -1; dj <= 1; dj++) {
+                    const I = i + di, J = j + dj;
+                    if (I < 0 || J < 0 || I >= n || J >= m) continue;
+                    occupe[J * n + I] = 1;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+/** Cet ordre de lettres aboutit-il ? (façade publique, pour les tests) */
+export function ordreAboutit(fig, ordre) {
+    const rang = new Map(fig.lettres.map((l, k) => [l, k]));
+    return ordreAboutitSur(carteDuCadre(fig), ordre.map(l => rang.get(l)));
+}
+
+/**
+ * LA FIGURE DEMANDE-T-ELLE DE PRÉVOIR ? Vrai dès qu'un ordre se retrouve coincé.
+ *
+ * On n'essaie pas tous les ordres — il y en a 720 à six paires, et une figure
+ * se tire dans le navigateur d'un élève. Quatre suffisent : ce qu'on cherche est
+ * l'EXISTENCE d'un piège, pas son inventaire.
+ */
+export function demandeDePrevoir(fig, rng, essais = 3) {
+    const carte = carteDuCadre(fig);
+    const rangs = fig.lettres.map((_, k) => k);
+    for (let e = 0; e < essais; e++) {
+        const ordre = e === 0 ? rangs : rng.shuffle(rangs.slice());
+        if (!ordreAboutitSur(carte, ordre)) return true;
+    }
+    return false;
 }
 
 /**
