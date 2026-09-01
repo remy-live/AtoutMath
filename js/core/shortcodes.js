@@ -191,19 +191,69 @@ const telQuel = questionsConseilleesDe;
  * celui-là : sinon le code mentirait sur ce qu'il rend, et on repasse au
  * format complet.
  */
-function etapeSimple(s) {
-    if (!s || !s.exerciseId) return false;
-    if (s.overrides && Object.keys(s.overrides).length) return false;
-    if ((s.weight || 1) !== 1 || s.timeLimit) return false;
+/**
+ * CE QUI, DANS UNE ÉTAPE, EMPÊCHE LE CODE COURT — dit en français.
+ *
+ * Rémy : « pour le lien donné dans la partie prof, j'ai du mal à comprendre
+ * quand est-ce que tu utilises le code court et le code long ». La règle
+ * existait, elle n'était écrite nulle part où il puisse la lire : le bouton
+ * disait « Lien copié » et se taisait. Une condition qui décide en silence est
+ * une condition qu'on ne peut pas apprendre — donc chaque refus porte
+ * désormais sa phrase, et l'écran la montre.
+ *
+ * @returns {string} la raison, ou '' si l'étape se dicte.
+ */
+function raisonEtape(s) {
+    if (!s || !s.exerciseId) return 'cette étape n\'a pas d\'exercice';
+    if (s.overrides && Object.keys(s.overrides).length) {
+        return 'ses réglages ont été modifiés (par exemple « seulement les tables de 7 »)';
+    }
+    if ((s.weight || 1) !== 1) return 'elle a un coefficient';
+    if (s.timeLimit) return 'elle est chronométrée';
     // Une étape-jeu, une étape sans total, une graine imposée : trois choses
     // que la chaîne ne sait pas dire. Les taire ferait d'un jeu de récompense
     // un exercice ordinaire — c'est le format complet qui doit prendre.
-    if (s.bonus || s.sansTotal || s.forceSeed) return false;
+    if (s.bonus) return 'c\'est un jeu de récompense';
+    if (s.sansTotal) return 'elle ne compte pas dans le total';
+    if (s.forceSeed) return 'elle rejoue une série précise';
+    if (!codeCourt(s.exerciseId)) return 'cet exercice n\'a pas encore de code à trois lettres';
     const n = s.nbItems || telQuel(s.exerciseId);
-    if (!Number.isInteger(n) || n < 1 || n > 99) return false;
+    if (!Number.isInteger(n) || n < 1 || n > 99) {
+        return 'son nombre de questions ne tient pas en deux chiffres';
+    }
     const seuilAttendu = seuilConseille(n);
     const seuil = (s.threshold === null || s.threshold === undefined) ? seuilAttendu : s.threshold;
-    return seuil === seuilAttendu;
+    if (seuil !== seuilAttendu) return 'son seuil de réussite a été déplacé';
+    return '';
+}
+
+function etapeSimple(s) {
+    return !raisonEtape(s);
+}
+
+/**
+ * POURQUOI CE PARCOURS N'A PAS DE CODE COURT — la liste, pour l'écran.
+ *
+ * Vide, cela veut dire que le code court suffit. Sinon chaque ligne nomme une
+ * chose qui doit voyager et que trois lettres ne savent pas dire : c'est la
+ * réponse exacte à « quand est-ce que tu utilises l'un ou l'autre ».
+ */
+export function raisonsDuCodeLong(path) {
+    const p = normalizePath(path);
+    const out = [];
+    if (!p.steps || !p.steps.length) return ['le parcours est vide'];
+    if (!politiqueOrdinaire(p.policy)) {
+        out.push('les réglages de la séance ne sont pas ceux d\'usine : mode, aides, '
+            + 'nombre d\'essais, correction, barème ou ordre des étapes');
+    }
+    if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) {
+        out.push('le seuil qui ouvre les jeux de récompense a été déplacé');
+    }
+    p.steps.forEach((s, i) => {
+        const r = raisonEtape(s);
+        if (r) out.push(`étape ${i + 1} : ${r}`);
+    });
+    return out;
 }
 
 /** La politique est-elle celle d'usine ? Sinon elle doit voyager, donc base64. */
@@ -457,6 +507,14 @@ export const Shortcodes = {
             console.error('[shortcodes] encodage impossible', e);
             return '';
         }
+    },
+
+    /**
+     * @returns {string[]} ce qui empêche le code court — vide s'il suffit.
+     * L'écran du professeur s'en sert pour DIRE pourquoi le lien est long.
+     */
+    raisonsDuCodeLong(path) {
+        try { return raisonsDuCodeLong(path); } catch (e) { return []; }
     },
 
     /** @returns {Object|null} parcours normalisé v2 */

@@ -417,3 +417,49 @@ test('les liens déjà envoyés continuent de se lire', () => {
     assert.equal(pol.maxAttemptsPerItem, 1);
     assert.equal(pol.grading.scale, 20);
 });
+
+test('LE PROFESSEUR DOIT POUVOIR LIRE POURQUOI SON LIEN EST LONG', () => {
+    // Rémy : « pour le lien donné dans la partie prof, j'ai du mal à
+    // comprendre quand est-ce que tu utilises le code court et le code long ».
+    // La règle existait et ne se lisait nulle part : chaque refus porte
+    // désormais sa phrase, et l'écran la montre.
+    const simple = makePath('Devoir',
+        [makeStep('num-relatifs-addition', {}, { nbItems: 12 })], defaultPolicy());
+    assert.deepEqual(Shortcodes.raisonsDuCodeLong(simple), [],
+        'un parcours dictable n\'a aucune raison d\'être long');
+    assert.equal(Shortcodes.encodePath(simple).startsWith('M2-'), false);
+
+    // Une surcharge sur une étape : le code court ne sait pas la dire.
+    const surcharge = makePath('X',
+        [makeStep('num-relatifs-thermometre', { niveau: 'dur' }, { nbItems: 10 })], defaultPolicy());
+    const r1 = Shortcodes.raisonsDuCodeLong(surcharge);
+    assert.equal(r1.length, 1, r1.join(' | '));
+    assert.match(r1[0], /étape 1/);
+    assert.match(r1[0], /réglages/);
+    assert.equal(Shortcodes.encodePath(surcharge).startsWith('M2-'), true);
+
+    // Un réglage de séance : la raison porte sur la séance, pas sur une étape.
+    const evalue = makePath('Contrôle',
+        [makeStep('num-relatifs-addition', {}, { nbItems: 12 })], evaluationPolicy());
+    const r2 = Shortcodes.raisonsDuCodeLong(evalue);
+    assert.ok(r2.some(x => /d'usine/.test(x)), r2.join(' | '));
+    assert.equal(Shortcodes.encodePath(evalue).startsWith('M2-'), true);
+
+    // Un chronomètre sur l'étape : encore une chose que trois lettres ne
+    // savent pas dicter, et l'élève la recevrait sans le savoir.
+    const chrono = makePath('X',
+        [makeStep('num-relatifs-addition', {}, { nbItems: 12, timeLimit: 60 })], defaultPolicy());
+    assert.ok(Shortcodes.raisonsDuCodeLong(chrono).some(x => /chronom/.test(x)));
+
+    // CHAQUE RAISON EST UNE PHRASE, pas un nom de champ : c'est un professeur
+    // qui la lit, et il doit savoir quoi défaire.
+    [...r1, ...r2].forEach(x => {
+        assert.ok(x.length > 20, `raison trop courte : « ${x} »`);
+        assert.equal(/[a-z][A-Z]/.test(x), false, `« ${x} » ressemble à un nom de champ`);
+    });
+
+    // Et un parcours vide le dit aussi, au lieu de rendre une liste vide qui
+    // laisserait croire que le code court suffit.
+    assert.deepEqual(Shortcodes.raisonsDuCodeLong(makePath('x', [], defaultPolicy())),
+        ['le parcours est vide']);
+});

@@ -1083,10 +1083,21 @@ function initToolbar() {
             // qui n'a pas le lien doit pouvoir taper le code.
             const code = Shortcodes.encodePath(state.currentPath);
             const court = !code.startsWith('M2-');
+            // ET QUAND LE CODE EST LONG, ON DIT POURQUOI. Rémy : « pour le lien
+            // donné dans la partie prof, j'ai du mal à comprendre quand est-ce
+            // que tu utilises le code court et le code long ». La règle
+            // existait, elle n'était écrite nulle part où il puisse la lire :
+            // le bouton disait « Lien copié » et se taisait. Or elle est
+            // simple — le code court ne sait dicter que des exercices pris tels
+            // quels, avec leur nombre de questions ; tout le reste doit voyager
+            // en entier. Chaque chose qui l'empêche est maintenant nommée, et
+            // le professeur voit du même coup ce qu'il aurait à défaire pour
+            // obtenir un code qui se dicte.
+            const raisons = court ? [] : Shortcodes.raisonsDuCodeLong(state.currentPath);
             try {
                 await navigator.clipboard.writeText(Shortcodes.shareUrl(state.currentPath));
                 showToast(court ? `Lien copié — code à dicter : ${code}`
-                    : 'Lien copié dans le presse-papier !', 'success');
+                    : 'Lien copié — code long (le parcours a des réglages)', 'success');
                 if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
                     + `<br><br>${code.length} caractères, à taper dans « J'ai un code ». `
                     + 'Chaque groupe de trois lettres est un exercice, et la '
@@ -1094,6 +1105,14 @@ function initToolbar() {
                     + 'recopie une de travers, le code est refusé plutôt que de '
                     + 'lui ouvrir autre chose.'
                     + '<br>Le lien est aussi dans le presse-papiers.');
+                else showAlert('<b>Le lien est copié, mais il n\'y a pas de code à dicter '
+                    + 'pour ce parcours.</b>'
+                    + '<br><br>Un code court ne sait dire que ceci : des exercices, dans un '
+                    + 'ordre, avec leur nombre de questions — tout le reste au réglage '
+                    + 'd\'usine. Dès qu\'un réglage doit voyager, il faut le lien entier, '
+                    + 'sans quoi l\'élève recevrait autre chose que ce que vous avez préparé.'
+                    + '<br><br>Ici, ce qui l\'empêche :<ul style="text-align:left;margin:6px 0 0 1em">'
+                    + raisons.map(r => `<li>${r}</li>`).join('') + '</ul>');
             } catch (e) {
                 showAlert(`Code du parcours :\n\n${code}`);
             }
