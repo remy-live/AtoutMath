@@ -427,6 +427,47 @@ export const geometrieExercises = [
     },
 
     {
+        // LA TRANSLATION SEULE, ET LA FLÈCHE QUI SE DÉPLACE.
+        //
+        // Rémy : « j'aimerais bien un exercice juste avec les translations où la
+        // flèche démarre d'un sommet de la figure puis après à un autre endroit. »
+        //
+        // C'est un exercice à part, et non un réglage de « Tracer l'Image » :
+        // les deux poses de la flèche forment une PROGRESSION qui n'a de sens
+        // que sur la translation. Partant d'un sommet, la flèche montre où va ce
+        // sommet-là — on suit la pointe, on pose la première case, le reste se
+        // recopie. Posée ailleurs, elle ne touche plus rien, et il faut avoir
+        // compris qu'un vecteur est un DÉPLACEMENT, pas un trajet entre deux
+        // points donnés. C'est précisément la marche que les élèves ratent, et
+        // elle méritait sa propre porte d'entrée.
+        id: 'geo-translation-fleche',
+        title: 'La Flèche qui Glisse',
+        cree: '2026-09-01',
+        consignePapier: 'Colorie l\'image de la figure grise par la translation que montre la flèche.',
+        generatorId: 'geo.transfo.quadrillage', activityId: 'quadrillage',
+        printable: 'quadrillage',
+        skills: ['geo.transfo.translation'],
+        // L'alternance par défaut : une question sur deux part d'un sommet.
+        // C'est en voyant les deux poses se suivre qu'on comprend ce que la
+        // seconde enlève.
+        params: { genres: ['translation'], fleche: 'melange', motsDuVecteur: false, taille: 'moyen' },
+        motsClefs: ['translation', 'vecteur', 'flèche', 'glisser', 'quadrillage',
+            'carreaux', 'déplacement'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "La translation, et elle seule. La flèche rouge donne le déplacement : "
+            + "toutes les cases font EXACTEMENT le même, sans tourner ni se retourner. "
+            + "Le réglage « D'où part la flèche » est la vraie progression de l'exercice. "
+            + "Partant d'un sommet de la figure, elle montre où va ce sommet-là, et il n'y a "
+            + "qu'à la suivre. Posée ailleurs sur le quadrillage, elle ne touche plus rien : "
+            + "il faut alors avoir compris qu'un vecteur est un déplacement, et non un trajet "
+            + "entre deux points précis. Commencez par les sommets, passez au mélange, "
+            + "finissez par « posée ailleurs »."
+    },
+
+    {
         // LA COURSE DE VECTEURS, demandée par Rémy : « j'aimerais bien le jeu
         // course de vecteur Vector Racer / Racetrack ».
         //

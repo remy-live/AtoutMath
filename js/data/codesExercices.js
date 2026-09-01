@@ -143,6 +143,7 @@ export const CODES_EXERCICES = {
     'geo-repere-lire':            'LR',   // Lire des Coordonnées
     'geo-symetrie-quadrillage':   'SY',   // Le Symétrique aux Carreaux
     'geo-transfo-quadrillage':    'TM',   // Tracer l'Image d'une Figure
+    'geo-translation-fleche':     'TG',   // La Flèche qui Glisse
     'geo-course-vecteurs':        'CV',   // La Course de Vecteurs
     'geo-pavage':                 'ST',   // Symétrique par Rapport à Quoi ?
     'geo-angles':                 'AE',   // Angle Master

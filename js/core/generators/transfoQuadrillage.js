@@ -214,8 +214,17 @@ export function tirerQuestion(rng, { genre, l, h, cases, obliques = true }) {
 
 // --- Les mots -----------------------------------------------------------------
 
-/** La consigne, dans les termes de la fiche de Rémy. */
-export function consigneDe(t) {
+/**
+ * La consigne, dans les termes de la fiche de Rémy.
+ *
+ * `motsDuVecteur` à faux fait TAIRE le déplacement : la flèche devient alors la
+ * seule donnée. Sur un exercice qui mêle les quatre transformations, les mots
+ * sont indispensables — il faut d'abord reconnaître de laquelle il s'agit. Sur
+ * un exercice de translations SEULES, ils rendent la flèche décorative : on lit
+ * « 2 carreaux vers la gauche », on compte, et l'on n'a jamais regardé le
+ * dessin. Or c'est précisément lire la flèche qu'on veut faire travailler.
+ */
+export function consigneDe(t, { motsDuVecteur = true } = {}) {
     if (t.genre === 'axiale') {
         return `Colorie l'image de la figure bleue par la symétrie d'axe (d).`;
     }
@@ -223,6 +232,10 @@ export function consigneDe(t) {
         return `Colorie l'image de la figure bleue par la symétrie de centre O.`;
     }
     if (t.genre === 'translation') {
+        if (!motsDuVecteur) {
+            return 'Colorie l\'image de la figure bleue par la translation que montre '
+                + 'la flèche rouge.';
+        }
         return `Colorie l'image de la figure bleue par la translation qui la fait glisser de `
             + `${direVecteur(t.vecteur)}.`;
     }
@@ -312,6 +325,32 @@ export const transfoQuadrillageGenerator = {
                 + 'plus : c\'est un autre exercice. En sixième, décochez.'
         },
         {
+            id: 'motsDuVecteur', type: 'checkbox', label: 'Écrire le déplacement dans la consigne',
+            default: true,
+            visibleSi: (r) => !r.genres || !r.genres.length || r.genres.includes('translation'),
+            aide: 'Décoché, la consigne dit seulement « la translation que montre la flèche » : '
+                + 'la flèche devient la seule donnée. Coché, elle annonce « 2 carreaux vers la '
+                + 'gauche et 2 vers le haut », et l\'élève peut compter sans jamais regarder le '
+                + 'dessin. Gardez-le coché quand plusieurs transformations se mêlent — il faut '
+                + 'd\'abord reconnaître laquelle —, décochez-le pour travailler la flèche.'
+        },
+        {
+            id: 'fleche', type: 'select', label: 'D\'où part la flèche', default: 'melange',
+            options: [
+                { value: 'sommet', label: 'D\'un sommet de la figure' },
+                { value: 'ailleurs', label: 'Posée ailleurs sur le quadrillage' },
+                { value: 'melange', label: 'Les deux, en alternance' }
+            ],
+            // Une flèche, il n'y en a que dans la TRANSLATION.
+            visibleSi: (r) => !r.genres || !r.genres.length || r.genres.includes('translation'),
+            aide: 'Rémy : « j\'aimerais bien un exercice juste avec les translations où la '
+                + 'flèche démarre d\'un sommet de la figure, puis après à un autre endroit. » '
+                + 'Partant d\'un sommet, la flèche MONTRE où va ce sommet-là, et il n\'y a '
+                + 'qu\'à recopier. Posée ailleurs, elle ne touche plus rien : il faut avoir '
+                + 'compris qu\'un vecteur est un déplacement, pas un trajet entre deux points '
+                + 'précis. C\'est la marche la plus difficile de la translation.'
+        },
+        {
             id: 'taille', type: 'select', label: 'Le quadrillage', default: 'moyen',
             options: [
                 { value: 'petit', label: '8 × 8 — figures de 4 cases' },
@@ -347,10 +386,16 @@ export const transfoQuadrillageGenerator = {
             q = { depart, image: imageFigure(depart, transfo), transfo };
         }
 
-        const consigne = consigneDe(q.transfo);
-        // L'ancre de la flèche : une case libre, en haut à gauche du
-        // quadrillage, pour que le vecteur ne se confonde pas avec la figure.
-        const ancre = q.transfo.genre === 'translation' ? ancreLibre(q, t) : null;
+        const consigne = consigneDe(q.transfo, { motsDuVecteur: p.motsDuVecteur !== false });
+        // OÙ PART LA FLÈCHE. Sur un mélange, l'alternance suit le rang de la
+        // question et non un tirage : deux questions de suite au même endroit
+        // n'apprennent rien de plus qu'une, et l'élève doit VOIR la différence
+        // entre les deux poses pour comprendre ce qu'elle change.
+        const depuisSommet = p.fleche === 'sommet'
+            || (p.fleche !== 'ailleurs' && (ctx.index || 0) % 2 === 0);
+        const ancre = q.transfo.genre === 'translation'
+            ? (depuisSommet ? ancreSurUnSommet(q, t) : null) || ancreLibre(q, t)
+            : null;
 
         const svg = quadrillageSvg({
             largeur: t.l, hauteur: t.h,
@@ -383,7 +428,61 @@ export const transfoQuadrillageGenerator = {
 };
 
 /**
- * Où poser la flèche du vecteur.
+ * LA FLÈCHE POSÉE SUR UN SOMMET DE LA FIGURE — le premier palier.
+ *
+ * Rémy : « j'aimerais bien un exercice juste avec les translations où la flèche
+ * démarre d'un sommet de la figure puis après à un autre endroit. »
+ *
+ * C'est une progression, et elle porte tout l'enjeu de la notion. Partant d'un
+ * sommet, la flèche MONTRE où va ce sommet-là : on suit la pointe, on pose la
+ * première case, et le reste se recopie. Posée ailleurs, elle ne touche plus
+ * rien — il faut alors avoir compris qu'un vecteur est un DÉPLACEMENT et non un
+ * trajet entre deux points donnés. C'est la marche que les élèves ratent.
+ *
+ * UN SOMMET, PAS UN COIN QUELCONQUE : on ne garde que les nœuds SAILLANTS —
+ * ceux qui n'appartiennent qu'à une seule case de la figure. Un nœud pris entre
+ * deux cases est au milieu d'un côté, et une flèche qui en part semble sortir
+ * du bord, pas d'un sommet.
+ *
+ * @returns {{x:number,y:number}|null} null si aucun sommet ne convient — la
+ *          flèche irait alors hors du quadrillage, et l'appelant reprend la
+ *          pose libre.
+ */
+function ancreSurUnSommet(q, t) {
+    const v = q.transfo.vecteur;
+    // Chaque nœud, avec le nombre de cases de la figure qui le touchent.
+    const compte = new Map();
+    q.depart.forEach(c => {
+        [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([dx, dy]) => {
+            const cle = `${c.x + dx}|${c.y + dy}`;
+            compte.set(cle, (compte.get(cle) || 0) + 1);
+        });
+    });
+
+    let meilleur = null, mieux = -Infinity;
+    for (const [cle, n] of compte) {
+        if (n !== 1) continue;
+        const [x, y] = cle.split('|').map(Number);
+        const bx = x + v.x, by = y + v.y;
+        if (bx < 0 || bx > t.l || by < 0 || by > t.h) continue;
+        // À sommets égaux, celui dont la flèche passe le plus loin des DEUX
+        // figures : une flèche qui traverse la zone à colorier gêne le tracé.
+        const l = Math.max(Math.abs(v.x), Math.abs(v.y)) || 1;
+        let pire = Infinity;
+        for (let i = 1; i < l; i++) {
+            const px = x + (v.x * i) / l, py = y + (v.y * i) / l;
+            [...q.depart, ...q.image].forEach(c => {
+                pire = Math.min(pire, Math.abs(c.x + 0.5 - px) + Math.abs(c.y + 0.5 - py));
+            });
+        }
+        if (pire === Infinity) pire = 0;   // une flèche d'un seul carreau
+        if (pire > mieux) { mieux = pire; meilleur = { x, y }; }
+    }
+    return meilleur;
+}
+
+/**
+ * Où poser la flèche du vecteur, quand elle ne part PAS d'un sommet.
  *
  * La première case libre venue ne suffit pas : la flèche est un SEGMENT, et
  * celle qu'on obtenait en balayant depuis le coin traversait la zone où l'élève

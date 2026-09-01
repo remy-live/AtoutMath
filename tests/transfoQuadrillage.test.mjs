@@ -15,6 +15,8 @@ import {
     tirerQuestion, transfoQuadrillageGenerator as G
 } from '../js/core/generators/transfoQuadrillage.js';
 import { pavageGenerator } from '../js/core/generators/pavage.js';
+import '../js/core/activities/index.js';
+import { getExerciseById } from '../js/data/catalog.js';
 import {
     cleFigure, direLeSens, imageFigure, memeFigure, parRotation
 } from '../js/core/transformations.js';
@@ -477,4 +479,94 @@ test('AU DÉPART, LE FILM NE BOUGE RIEN', () => {
                 `${genre} : le film part d'ailleurs que du départ`);
         });
     }
+});
+
+// --- LA FLÈCHE QUI GLISSE -----------------------------------------------------
+//
+// Rémy : « j'aimerais bien un exercice juste avec les translations où la flèche
+// démarre d'un sommet de la figure puis après à un autre endroit. »
+//
+// Ce n'est pas un détail de dessin, c'est LA progression de la notion. Partant
+// d'un sommet, la flèche montre où va ce sommet-là : on suit la pointe, on pose
+// la première case, le reste se recopie. Posée ailleurs, elle ne touche plus
+// rien, et il faut avoir compris qu'un vecteur est un DÉPLACEMENT et non un
+// trajet entre deux points donnés.
+
+/** Combien de cases de la figure touchent ce nœud ? Un sommet saillant : une. */
+function casesAuNoeud(depart, noeud) {
+    let n = 0;
+    depart.forEach(c => {
+        [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([dx, dy]) => {
+            if (c.x + dx === noeud.x && c.y + dy === noeud.y) n++;
+        });
+    });
+    return n;
+}
+
+test('LA FLÈCHE PART D\'UN SOMMET SAILLANT, pas d\'un milieu de côté', () => {
+    // Un nœud pris entre deux cases est au milieu d'un côté : une flèche qui en
+    // part semble sortir du bord, pas d'un sommet.
+    for (let i = 0; i < 40; i++) {
+        const item = G.generate(
+            { genres: ['translation'], fleche: 'sommet', taille: 'moyen' },
+            { rng: makeRng(`sommet-${i}`), index: i });
+        const m = item.meta;
+        assert.equal(m.genre, 'translation', 'ce réglage ne doit produire que des translations');
+        assert.equal(casesAuNoeud(m.depart, m.ancre), 1,
+            `graine ${i} : la flèche ne part pas d'un sommet saillant`);
+        // Et sa pointe reste dans le quadrillage.
+        const bout = { x: m.ancre.x + m.transfo.vecteur.x, y: m.ancre.y + m.transfo.vecteur.y };
+        assert.ok(bout.x >= 0 && bout.x <= m.largeur && bout.y >= 0 && bout.y <= m.hauteur,
+            `graine ${i} : la pointe sort du quadrillage`);
+    }
+});
+
+test('POSÉE AILLEURS, ELLE NE TOUCHE PLUS LA FIGURE', () => {
+    for (let i = 0; i < 40; i++) {
+        const item = G.generate(
+            { genres: ['translation'], fleche: 'ailleurs', taille: 'moyen' },
+            { rng: makeRng(`ailleurs-${i}`), index: i });
+        const m = item.meta;
+        assert.equal(casesAuNoeud(m.depart, m.ancre), 0,
+            `graine ${i} : la flèche part quand même d'un coin de la figure`);
+    }
+});
+
+test('EN ALTERNANCE, UNE QUESTION SUR DEUX PART D\'UN SOMMET', () => {
+    // L'alternance suit le RANG de la question et non un tirage : c'est en
+    // voyant les deux poses se suivre qu'on comprend ce que la seconde enlève.
+    // Deux questions de suite au même endroit n'apprendraient rien de plus.
+    const surSommet = [];
+    for (let i = 0; i < 12; i++) {
+        const item = G.generate(
+            { genres: ['translation'], fleche: 'melange', taille: 'moyen' },
+            { rng: makeRng(`melange-${i}`), index: i });
+        surSommet.push(casesAuNoeud(item.meta.depart, item.meta.ancre) === 1);
+    }
+    assert.deepEqual(surSommet, [true, false, true, false, true, false,
+        true, false, true, false, true, false]);
+});
+
+test('SUR UN EXERCICE DE TRANSLATIONS SEULES, LA CONSIGNE SE TAIT', () => {
+    // Annoncer « 2 carreaux vers la gauche » rend la flèche décorative : on
+    // compte, et l'on n'a jamais regardé le dessin. Or c'est lire la flèche
+    // qu'on veut faire travailler.
+    const t = { genre: 'translation', vecteur: { x: -2, y: -2 } };
+    assert.match(consigneDe(t), /2 carreaux/);
+    assert.match(consigneDe(t, { motsDuVecteur: false }), /flèche rouge/);
+    assert.equal(/carreaux vers/.test(consigneDe(t, { motsDuVecteur: false })), false);
+    // Les autres transformations ne sont pas concernées : le réglage ne touche
+    // qu'à la translation.
+    const axe = { genre: 'axiale', axe: { type: 'v', a: 4.5 } };
+    assert.equal(consigneDe(axe), consigneDe(axe, { motsDuVecteur: false }));
+});
+
+test('L\'EXERCICE « La Flèche qui Glisse » tient debout', () => {
+    const exo = getExerciseById('geo-translation-fleche');
+    assert.ok(exo, 'l\'exercice doit être au catalogue');
+    assert.deepEqual(exo.params.genres, ['translation'],
+        'Rémy le voulait « juste avec les translations »');
+    assert.equal(exo.params.motsDuVecteur, false, 'la flèche doit être la seule donnée');
+    assert.deepEqual(exo.skills, ['geo.transfo.translation']);
+    assert.ok(exo.printable, 'il doit s\'imprimer comme son grand frère');
 });

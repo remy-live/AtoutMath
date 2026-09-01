@@ -490,6 +490,14 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    contenu — c'est-à-dire sur rien. Le réglage se serait réduit à deux boutons
    collés. On lui donne donc ici la largeur qu'il n'a pas tout seul. */
 .fp-contenu .cfg-field:has(.cfg-glissiere) { width: min(300px, 100%); }
+/* UN CHAMP « PLEINE LARGEUR » TOMBAIT À ZÉRO PIXEL, et c'est le même piège que
+   la glissière juste au-dessus. Sa grille est en `minmax(0, 1fr)` — donc de
+   largeur minimale nulle — et dans une rangée en flex il se laisse écraser par
+   ses voisins : mesuré à 0 px de large sur 529 de haut. « Transformations »
+   s'écrivait alors une lettre par ligne, à la verticale, et ses quatre
+   pastilles se chevauchaient en colonne. Il prend donc ici la rangée entière,
+   ce qu'il demandait déjà : c'est ce que « pleine largeur » veut dire. */
+.fp-contenu .cfg-field--wide { flex: 1 0 100%; }
 /* LES TUILES DE NOMBRES — les tables, les diviseurs — dans la barre
    « Contenu ». Leur grille est en `1fr` par colonne, ce qui suppose un
    conteneur large ; dans une rangée en flex, le champ n'a pas de largeur
