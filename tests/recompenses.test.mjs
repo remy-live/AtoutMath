@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     etatRecompenses, direRecompense, seuilDe, estRecompense, SEUIL_DEFAUT,
-    statutEtape, etapesMontrees, cadeauCache
+    statutEtape, etapesMontrees, cadeauCache, routeOuverte, prochaineObligatoire
 } from '../js/core/recompenses.js';
 
 const exo = (id, opts = {}) => ({ stepId: id, exerciseId: 'x', nbItems: 10, ...opts });
@@ -228,4 +228,84 @@ test('L\'ORDRE LIBRE OUVRE TOUT CE QUI N\'EST PAS FAIT', () => {
     assert.equal(statutEtape(steps[2], 2, libre), 'open');
     // Ce qui est fait reste fait : l'ordre libre n'efface rien.
     assert.equal(statutEtape(steps[0], 0, libre), 'done');
+});
+
+// --- Les étapes non obligatoires --------------------------------------------
+//
+// Rémy : « ce serait cool de pouvoir sélectionner plusieurs exercices pour les
+// rendre non obligatoires ou en récompense. Par contre c'est chronologique. Si
+// les 2 premiers sont obligatoires et le 3 et 4 non obligatoires, il faut
+// réussir le 1 et 2 pour ouvrir le 3 et 4 et pouvoir faire le 5. »
+//
+// C'est son exemple, mot pour mot, qui sert de test.
+
+const libreEtape = (id) => exo(id, { facultatif: true });
+
+test('L\'EXEMPLE DE RÉMY : 1 et 2 obligatoires, 3 et 4 non, et le 5 s\'ouvre avec eux', () => {
+    const steps = [exo('e1'), exo('e2'), libreEtape('e3'), libreEtape('e4'), exo('e5')];
+
+    // Au départ, seule la première est ouverte.
+    const rien = new Set();
+    assert.deepEqual(steps.map((s, i) => routeOuverte(steps, i, rien)),
+        [true, false, false, false, false]);
+
+    // Le 1 fait : le 2 s'ouvre, le reste attend encore le 2.
+    const un = new Set(['e1']);
+    assert.deepEqual(steps.map((s, i) => routeOuverte(steps, i, un)),
+        [true, true, false, false, false]);
+
+    // LE 1 ET LE 2 FAITS : le 3, le 4 ET le 5 s'ouvrent en même temps.
+    const deux = new Set(['e1', 'e2']);
+    assert.deepEqual(steps.map((s, i) => routeOuverte(steps, i, deux)),
+        [true, true, true, true, true]);
+
+    // Et le statut vu par la carte dit la même chose, sans ordre libre.
+    const vue = { doneIds: deux, currentIndex: 2, steps };
+    assert.equal(statutEtape(steps[3], 3, vue), 'open');
+    assert.equal(statutEtape(steps[4], 4, vue), 'open');
+});
+
+test('UNE NON OBLIGATOIRE NE RETIENT PAS LE CURSEUR', () => {
+    // Sinon le parcours indiquerait éternellement « prochaine étape » sur une
+    // étape que l'élève a le droit de ne pas faire.
+    const steps = [exo('e1'), libreEtape('e2'), exo('e3')];
+    assert.equal(prochaineObligatoire(steps, new Set()), 0);
+    assert.equal(prochaineObligatoire(steps, new Set(['e1'])), 2);
+    assert.equal(prochaineObligatoire(steps, new Set(['e1', 'e3'])), -1,
+        'le parcours est fini même si la non obligatoire est restée de côté');
+    // Un jeu de récompense non plus ne retient rien.
+    const avecJeu = [exo('a1'), jeu('j1'), exo('a2')];
+    assert.equal(prochaineObligatoire(avecJeu, new Set(['a1'])), 2);
+});
+
+test('UNE NON OBLIGATOIRE SAUTÉE NE FERME PAS LA RÉCOMPENSE, et ne coûte rien', () => {
+    // Elle resterait sinon « restante » à jamais : le travail ne serait jamais
+    // fini, le cadeau jamais ouvert, et son zéro tirerait la moyenne.
+    const p = {
+        bonusSeuil: 0.75,
+        steps: [exo('e1'), libreEtape('e2'), jeu('j1')]
+    };
+    const saute = etatRecompenses(p, {
+        completed: ['e1'],
+        resultats: resultats({ e1: [10, 10] })
+    });
+    assert.equal(saute.travailFait, true);
+    assert.equal(saute.jeux[0].ouvert, true);
+    assert.equal(saute.tauxGlobal, 1);
+
+    // FAITE, EN REVANCHE, ELLE COMPTE COMME LES AUTRES : c'est du vrai travail.
+    const faite = etatRecompenses(p, {
+        completed: ['e1', 'e2'],
+        resultats: resultats({ e1: [10, 10], e2: [4, 10] })
+    });
+    assert.equal(faite.tauxGlobal, 14 / 20);
+    assert.equal(faite.jeux[0].ouvert, false, '70 % : sous le seuil de 75 %');
+});
+
+test('SANS LA LISTE DES ÉTAPES, la règle reste celle d\'avant', () => {
+    // `statutEtape` est appelé d'endroits qui ne passent que le rang. La
+    // chronologie stricte est le bon repli : c'est la même règle quand rien
+    // n'est facultatif.
+    const steps = [exo('e1'), exo('e2'), exo('e3')];
+    assert.equal(statutEtape(steps[2], 2, { doneIds: new Set(['e1']), currentIndex: 1 }), 'locked');
 });

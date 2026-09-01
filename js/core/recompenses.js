@@ -96,6 +96,15 @@ export function etatRecompenses(path, progres = {}) {
         let requis = 0, reussies = 0, restantes = 0;
         for (const s of lot) {
             const r = resultatDe(s.stepId, resultats, faites);
+            // UNE ÉTAPE NON OBLIGATOIRE LAISSÉE DE CÔTÉ N'EXISTE PAS ICI.
+            //
+            // Sinon elle resterait éternellement « restante » : le travail ne
+            // serait jamais fini, le jeu de récompense ne s'ouvrirait jamais, et
+            // le zéro qu'elle porte tirerait la moyenne vers le bas. Le
+            // professeur a dit « non obligatoire » — ne pas la faire ne doit
+            // rien coûter. FAITE, en revanche, elle compte comme les autres :
+            // c'est du vrai travail, et il serait injuste de l'effacer.
+            if (!r.fait && s.facultatif) continue;
             requis += r.requis;
             reussies += r.reussies;
             if (!r.fait) restantes++;
@@ -171,6 +180,41 @@ export function direRecompense(jeu, seuil) {
 // rendu : elle vit ici, avec les autres, et elle se teste sans navigateur.
 
 /**
+ * CE QUI BARRE LA ROUTE À L'ÉTAPE `i` — et il n'y a qu'une règle.
+ *
+ * Rémy : « c'est chronologique. Si les 2 premiers sont obligatoires et le 3 et
+ * 4 non obligatoires, il faut réussir le 1 et 2 pour ouvrir le 3 et 4 et
+ * pouvoir faire le 5. »
+ *
+ * Donc : une étape s'ouvre quand toutes les étapes OBLIGATOIRES qui la
+ * précèdent sont faites. Les facultatives ne comptent pas — ni pour elles-mêmes
+ * ni pour celles d'après —, et c'est exactement ce qui fait que le 5 s'ouvre en
+ * même temps que le 3 et le 4.
+ *
+ * @returns {boolean} vrai si tout ce qui devait être fait avant l'est.
+ */
+export function routeOuverte(steps, i, done) {
+    for (let k = 0; k < i; k++) {
+        const s = steps[k];
+        if (!s || s.facultatif || s.bonus) continue;
+        if (!done.has(s.stepId)) return false;
+    }
+    return true;
+}
+
+/**
+ * LA PROCHAINE ÉTAPE À FAIRE — celle sur laquelle se pose « en cours ».
+ *
+ * C'est la première étape OBLIGATOIRE non faite : une facultative laissée de
+ * côté ne retient pas le curseur, sans quoi l'élève qui saute le jeu du milieu
+ * verrait son parcours indiquer éternellement une étape qu'il a choisi de ne
+ * pas faire.
+ */
+export function prochaineObligatoire(steps, done) {
+    return (steps || []).findIndex(s => s && !s.facultatif && !s.bonus && !done.has(s.stepId));
+}
+
+/**
  * L'état d'une étape aux yeux de l'élève.
  * @returns {'done'|'current'|'open'|'locked'|'cadeau'|'cadeau-ferme'}
  */
@@ -186,7 +230,12 @@ export function statutEtape(step, i, opts = {}) {
     if (i === opts.currentIndex) return 'current';
     // ORDRE LIBRE : toute étape non faite est jouable, et c'est l'élève qui
     // choisit par où il commence. Voir `ordreLibre` dans core/policy.js.
-    return opts.ordreLibre ? 'open' : 'locked';
+    if (opts.ordreLibre) return 'open';
+    // SINON, LA CHRONOLOGIE — mais elle ne compte que les obligatoires. Sans
+    // la liste des étapes on ne peut pas la calculer : on retombe alors sur
+    // l'ancienne règle, qui est la même quand rien n'est facultatif.
+    if (!opts.steps) return 'locked';
+    return routeOuverte(opts.steps, i, done) ? 'open' : 'locked';
 }
 
 /**

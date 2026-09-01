@@ -1279,3 +1279,35 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     flex: 0 0 100%; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
     text-transform: uppercase; color: var(--text-muted);
 }
+
+/* --- MARQUER PLUSIEURS ÉTAPES D'UN COUP ------------------------------------
+   Rémy : « pouvoir sélectionner plusieurs exercices pour les rendre non
+   obligatoires ou en récompense ». Les cases se cochent SUR la liste, et la
+   barre d'actions n'apparaît que lorsqu'il y a quelque chose à faire. */
+.path-step-case {
+    flex: 0 0 auto; width: 17px; height: 17px; margin-right: 2px;
+    accent-color: var(--primary); cursor: pointer;
+}
+.path-selection {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    margin: 0 0 8px; padding: 8px 10px; border-radius: 12px;
+    border: 1px solid var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+}
+.path-selection-compte { font-weight: 800; font-size: .84rem; margin-right: 4px; }
+.path-selection-btn {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+    border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
+    padding: 5px 10px; font-size: .8rem; min-height: 32px;
+}
+.path-selection-btn:hover { border-color: var(--primary); color: var(--primary); }
+.path-selection-btn--fin { margin-left: auto; color: var(--text-muted); }
+
+/* Une étape non obligatoire se lit d'un coup d'œil : liseré en pointillé, et
+   le mot écrit — un liseré seul se confond avec le domaine de l'exercice. */
+.path-step--facultatif { border-style: dashed; }
+.path-step-facult {
+    flex: 0 0 auto; font-size: .66rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 1px 6px;
+}

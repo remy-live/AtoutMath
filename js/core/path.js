@@ -81,7 +81,23 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         // UNE ÉTAPE-JEU n'est pas du travail : elle ne compte ni dans les
         // exercices à faire, ni dans la note, et elle ne s'ouvre qu'une fois
         // le travail qui la précède réussi. Voir core/recompenses.js.
-        bonus: !!opts.bonus
+        bonus: !!opts.bonus,
+        // UNE ÉTAPE FACULTATIVE SE PROPOSE, ELLE NE BARRE PAS LA ROUTE.
+        //
+        // Rémy : « ce serait cool de pouvoir sélectionner plusieurs exercices
+        // pour les rendre non obligatoires ou en récompense. Par contre c'est
+        // chronologique : si les 2 premiers sont obligatoires et le 3 et 4 non
+        // obligatoires, il faut réussir le 1 et 2 pour ouvrir le 3 et 4 et
+        // pouvoir faire le 5. »
+        //
+        // La règle tient donc en une phrase, et c'est ce qui la rend sûre :
+        // une étape s'ouvre quand toutes les étapes OBLIGATOIRES qui la
+        // précèdent sont faites. Une facultative n'entre pas dans ce compte —
+        // elle s'ouvre en même temps que la suite, et l'élève choisit.
+        //
+        // Ce n'est pas l'ordre libre, qui ouvre TOUT dès le début : ici l'ordre
+        // reste, seule l'obligation tombe.
+        facultatif: !!opts.facultatif
     };
 }
 
@@ -147,15 +163,21 @@ function legacyStep(s, i) {
         timeLimit: p.timeLimit || null,
         forceSeed: p.forceSeed || null,
         forceQuestion: p.forceQuestion || null,
-        bonus: !!s.bonus
+        bonus: !!s.bonus,
+        facultatif: !!s.facultatif
     };
 }
 
 function normalizeStep(s) {
     return {
         weight: 1, nbItems: 10, threshold: null, timeLimit: null, bonus: false,
+        facultatif: false,
         ...s,
         bonus: !!s.bonus,
+        // UN JEU DE RÉCOMPENSE EST FACULTATIF PAR NATURE : il ne se fait pas
+        // pour ouvrir la suite, il se gagne. Le dire ici évite d'avoir à y
+        // penser partout où l'on compte ce qui barre la route.
+        facultatif: !!s.facultatif || !!s.bonus,
         overrides: s.overrides || {}
     };
 }

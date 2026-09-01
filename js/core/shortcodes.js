@@ -214,6 +214,10 @@ function raisonEtape(s) {
     // que la chaîne ne sait pas dire. Les taire ferait d'un jeu de récompense
     // un exercice ordinaire — c'est le format complet qui doit prendre.
     if (s.bonus) return 'c\'est un jeu de récompense';
+    // NON OBLIGATOIRE, C'EST TOUT LE PARCOURS QUI CHANGE : l'étape s'ouvre sans
+    // barrer la route, et celles d'après s'ouvrent avec elle. Trois lettres ne
+    // savent pas le dire, et le taire rendrait l'étape obligatoire à l'arrivée.
+    if (s.facultatif) return 'elle n\'est pas obligatoire';
     if (s.sansTotal) return 'elle ne compte pas dans le total';
     if (s.forceSeed) return 'elle rejoue une série précise';
     if (!codeCourt(s.exerciseId)) return 'cet exercice n\'a pas encore de code à trois lettres';
@@ -403,7 +407,7 @@ function compact(path) {
 
 const CLES_ETAPE = {
     nbItems: 'q', threshold: 't', weight: 'w', timeLimit: 'l',
-    forceSeed: 'f', sansTotal: 'st', bonus: 'b'
+    forceSeed: 'f', sansTotal: 'st', bonus: 'b', facultatif: 'nb'
 };
 
 function compactStep(s) {
@@ -418,6 +422,9 @@ function compactStep(s) {
     // change l'en-tête que l'élève lit. Les perdre change le parcours.
     if (s.sansTotal) out.st = 1;
     if (s.bonus) out.b = 1;
+    // Une étape non obligatoire voyage aussi : elle décide de ce qui ouvre la
+    // suite, donc la perdre en route change le parcours de l'élève.
+    if (s.facultatif && !s.bonus) out.nb = 1;
     if (s.overrides && Object.keys(s.overrides).length) out.o = s.overrides;
     return out;
 }
@@ -453,7 +460,8 @@ function expand(obj) {
         timeLimit: s.l || null,
         forceSeed: s.f || null,
         sansTotal: !!s.st,
-        bonus: !!s.b
+        bonus: !!s.b,
+        facultatif: !!s.nb || !!s.b
     }));
     return path;
 }

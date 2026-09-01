@@ -22,7 +22,7 @@ import { gradeRun, baremeParEtape, direBareme } from '../core/grading.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import {
-    etatRecompenses, direRecompense, estRecompense, statutEtape, etapesMontrees
+    etatRecompenses, direRecompense, estRecompense, statutEtape, etapesMontrees, prochaineObligatoire
 } from '../core/recompenses.js';
 import { prendreOuverture, ouvrirLaRoute, recompensesNouvelles } from './ouverture.js';
 
@@ -130,7 +130,10 @@ function assignedSection() {
     // terminé quand son travail l'est — pas quand ses jeux le sont.
     const etatJeux = etatRecompenses(path, { completed: assigned.completed || [], resultats: assigned.resultats });
     const parJeu = new Map(etatJeux.jeux.map(j => [j.stepId, j]));
-    const firstPending = steps.findIndex(s => !estRecompense(s) && !done.has(s.stepId));
+    // LA PROCHAINE À FAIRE EST LA PROCHAINE OBLIGATOIRE : une étape facultative
+    // laissée de côté ne retient pas le curseur, sans quoi le parcours
+    // indiquerait éternellement une étape que l'élève a choisi de ne pas faire.
+    const firstPending = prochaineObligatoire(steps, done);
     const allDone = firstPending === -1;
 
     box.innerHTML = `
@@ -543,9 +546,15 @@ function rangDansLaCarte(montres, indexEtape) {
  */
 export function construireCarte(steps, opts = {}) {
     const style = opts.style || getPathStyle();
-    return style === 'classique' ? buildClassicTimeline(steps, opts)
-        : style === 'chemin' ? buildDuoPath(steps, opts)
-            : buildWorldMap(steps, opts);
+    // LA LISTE ENTIÈRE VOYAGE AVEC LES OPTIONS. `statutEtape` en a besoin pour
+    // savoir ce qui barre la route : depuis que des étapes peuvent être
+    // facultatives, l'ouverture d'une étape ne se lit plus sur son seul rang —
+    // il faut regarder ce qui la précède. Injecté ici, donc les trois
+    // habillages en héritent sans y penser.
+    const o = { steps, ...opts };
+    return style === 'classique' ? buildClassicTimeline(steps, o)
+        : style === 'chemin' ? buildDuoPath(steps, o)
+            : buildWorldMap(steps, o);
 }
 
 /** L'habillage actif, pour qui veut le lire sans le changer. */

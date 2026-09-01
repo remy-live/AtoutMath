@@ -667,7 +667,7 @@ export function renderTeacherPath() {
     retenirLEtat();
     rafraichirLesMesures();
 
-    pathBox.querySelectorAll('.path-step').forEach(el => el.remove());
+    pathBox.querySelectorAll('.path-step, .path-selection').forEach(el => el.remove());
 
     const steps = state.currentPath.steps;
     const badge = document.getElementById('path-count-badge');
@@ -694,8 +694,92 @@ export function renderTeacherPath() {
         summary.classList.toggle('path-summary--eval', isEvaluation(policy));
     }
 
+    // LA BARRE DE SÉLECTION, EN TÊTE DE LISTE. Elle n'apparaît que lorsqu'une
+    // case est cochée : une barre d'actions permanente au-dessus d'une liste
+    // vide n'est qu'un bandeau de plus.
     steps.forEach((step, index) => pathBox.appendChild(stepRow(step, index, policy)));
+    majBarreSelection();
     autoSavePath();
+}
+
+// --- MARQUER PLUSIEURS ÉTAPES D'UN COUP -------------------------------------
+//
+// Rémy : « ce serait cool de pouvoir sélectionner dans le mode prof, dans le
+// parcours, plusieurs exercices pour les rendre non obligatoires ou en
+// récompense. »
+//
+// UNE PAR UNE, C'ÉTAIT DÉJÀ POSSIBLE — il fallait ouvrir les propriétés de
+// chacune et cocher la case. Sur une séance de dix étapes dont on veut rendre
+// quatre facultatives, cela fait quatre allers-retours dans un panneau qui
+// s'ouvre par-dessus la liste : on perd de vue ce qu'on est en train de faire.
+// Les cases se cochent donc SUR la liste, et l'action s'applique d'un coup.
+
+/** Les `stepId` cochés. Vidé dès que la sélection n'a plus de sens. */
+let coches = new Set();
+
+/**
+ * La barre, posée ou retirée en tête de liste — SANS TOUCHER AUX LIGNES.
+ *
+ * Cocher une case ne redessine donc pas la liste : redessiner ferait perdre le
+ * focus du clavier à chaque coche, et sur une longue séance on verrait la
+ * liste sauter à chaque geste.
+ */
+function majBarreSelection() {
+    const pathBox = document.getElementById('path-container');
+    if (!pathBox) return;
+    const ancienne = pathBox.querySelector('.path-selection');
+    if (ancienne) ancienne.remove();
+    const barre = barreDeSelection((state.currentPath && state.currentPath.steps) || []);
+    if (barre) pathBox.insertBefore(barre, pathBox.firstChild);
+}
+
+function barreDeSelection(steps) {
+    const vivants = new Set(steps.map(s => s.stepId));
+    [...coches].forEach(id => { if (!vivants.has(id)) coches.delete(id); });
+    if (!coches.size) return null;
+
+    const pris = steps.filter(s => coches.has(s.stepId));
+    const barre = document.createElement('div');
+    barre.className = 'path-selection';
+    const quoi = document.createElement('span');
+    quoi.className = 'path-selection-compte';
+    quoi.textContent = `${pris.length} étape${pris.length > 1 ? 's' : ''} sélectionnée${pris.length > 1 ? 's' : ''}`;
+    barre.appendChild(quoi);
+
+    const bouton = (texte, titre, faire) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'path-selection-btn';
+        b.textContent = texte;
+        b.title = titre;
+        b.onclick = () => {
+            state.currentPath.steps = state.currentPath.steps.map(
+                s => (coches.has(s.stepId) ? faire(s) : s));
+            renderTeacherPath();
+        };
+        barre.appendChild(b);
+        return b;
+    };
+
+    // LES DEUX SENS SONT OFFERTS, et non une bascule : sur une sélection mêlée
+    // — deux facultatives, une obligatoire — une bascule ferait l'inverse pour
+    // chacune, ce qui n'est jamais ce qu'on veut.
+    bouton('Non obligatoires', 'Ces étapes s\'ouvrent quand le travail obligatoire qui les '
+        + 'précède est réussi, mais l\'élève peut passer à la suite sans les faire.',
+    s => ({ ...s, facultatif: true }));
+    bouton('Obligatoires', 'Ces étapes doivent être réussies pour ouvrir la suite.',
+        s => ({ ...s, facultatif: false, bonus: false }));
+    bouton('🎁 Récompenses', 'Un jeu de récompense ne compte pas dans la note et s\'ouvre '
+        + 'quand le travail qui le précède est réussi.',
+    s => ({ ...s, bonus: true, facultatif: true, threshold: null }));
+
+    const rien = document.createElement('button');
+    rien.type = 'button';
+    rien.className = 'path-selection-btn path-selection-btn--fin';
+    rien.textContent = 'Désélectionner';
+    rien.onclick = () => { coches.clear(); majBarreSelection(); };
+    barre.appendChild(rien);
+    return barre;
 }
 
 // --- Ce que dure une étape ---------------------------------------------------
@@ -786,12 +870,36 @@ function stepRow(step, index, policy) {
     // récompense » se coche dans les propriétés, et rien n'en restait sur la
     // ligne — une séance de huit étapes ne disait plus laquelle était le jeu.
     if (step.bonus) row.classList.add('path-step--bonus');
+    // UNE ÉTAPE FACULTATIVE SE VOIT AUSSI DANS LA LISTE, et pour la même raison
+    // que le cadeau : c'est un réglage qui change ce que l'élève reçoit, et le
+    // laisser caché dans un panneau, c'est le perdre de vue.
+    if (step.facultatif && !step.bonus) row.classList.add('path-step--facultatif');
     title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span>`
         + (step.bonus ? '<span class="path-step-cadeau" title="Jeu de récompense : '
             + 'il ne compte pas dans la note et s\'ouvre quand le travail qui le '
             + 'précède est réussi.">🎁</span>' : '')
+        + (step.facultatif && !step.bonus
+            ? '<span class="path-step-facult" title="Non obligatoire : elle s\'ouvre quand '
+              + 'le travail obligatoire qui la précède est réussi, mais l\'élève peut passer '
+              + 'à la suite sans la faire.">facultative</span>' : '')
         + `<span class="path-step-name">${index + 1}. ${escapeHtml(exo.title)}</span>`;
-    title.title = step.bonus ? `${exo.title} — jeu de récompense` : exo.title;
+    title.title = step.bonus ? `${exo.title} — jeu de récompense`
+        : (step.facultatif ? `${exo.title} — non obligatoire` : exo.title);
+
+    // LA CASE DE SÉLECTION EST DEVANT LE TITRE, comme dans toutes les listes
+    // qu'on trie. Elle ne sélectionne pas l'étape au sens du panneau de
+    // propriétés — c'est un autre geste, et le clic ne doit pas se propager.
+    const case_ = document.createElement('input');
+    case_.type = 'checkbox';
+    case_.className = 'path-step-case';
+    case_.checked = coches.has(step.stepId);
+    case_.setAttribute('aria-label', `Sélectionner ${exo.title}`);
+    case_.onclick = (e) => e.stopPropagation();
+    case_.onchange = () => {
+        if (case_.checked) coches.add(step.stepId); else coches.delete(step.stepId);
+        majBarreSelection();
+    };
+    head.appendChild(case_);
     head.appendChild(title);
 
     const seuil = step.threshold ?? step.nbItems;

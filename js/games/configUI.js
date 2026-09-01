@@ -2098,6 +2098,13 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                 <span class="cfg-help">Cette étape n'est pas du travail : elle ne compte pas dans
                 la note et ne s'ouvre que si les exercices placés AVANT elle sont réussis.</span></span>
             </label>
+            <label class="cfg-case">
+                <input type="checkbox" id="cfg-facultatif" ${step.facultatif && !step.bonus ? 'checked' : ''}>
+                <span><b>Non obligatoire</b><br>
+                <span class="cfg-help">L'élève peut la sauter : elle s'ouvre quand le travail
+                obligatoire qui la précède est réussi, mais la suite s'ouvre en même temps
+                qu'elle. Pour en marquer plusieurs d'un coup, cochez-les dans la liste.</span></span>
+            </label>
         </div>
 
         <div class="cfg-group" id="cfg-groupe-deroulement">
@@ -2196,6 +2203,12 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             majDuo(duo);
         }
         cacher('cfg-champ-poids', bonus);
+        // UNE RÉCOMPENSE EST DÉJÀ NON OBLIGATOIRE : proposer la case en plus
+        // laisserait croire qu'on peut avoir un cadeau qui barre la route.
+        const fac = document.getElementById('cfg-facultatif');
+        if (fac) {
+            fac.closest('.cfg-case').style.display = bonus ? 'none' : '';
+        }
         const note = document.getElementById('cfg-note-bonus');
         if (note) note.style.display = bonus ? '' : 'none';
         const titre = document.getElementById('cfg-titre-deroulement');
@@ -2230,7 +2243,11 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             timeLimit: intVal('cfg-timelimit', 0) || null,
             timerScope: scope ? scope.value : 'etape',
             weight: intVal('cfg-weight', 1),
-            bonus
+            bonus,
+            // Un jeu de récompense ne barre jamais la route : la case cachée ne
+            // doit pas pouvoir le rendre obligatoire par inadvertance.
+            facultatif: bonus || !!(document.getElementById('cfg-facultatif')
+                && document.getElementById('cfg-facultatif').checked)
         });
     };
 

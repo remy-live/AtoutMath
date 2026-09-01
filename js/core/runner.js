@@ -19,7 +19,7 @@ import { getActivity, getGenerator, uniteDe } from './registry.js';
 import { ItemSession } from './itemSession.js';
 import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
 import { seuilRequis } from './seuilEtape.js';
-import { etatRecompenses } from './recompenses.js';
+import { etatRecompenses, prochaineObligatoire } from './recompenses.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import { hydratePath } from './path.js';
@@ -417,7 +417,7 @@ export class Runner {
             resultats: assigne ? assigne.resultats : null
         });
         const parJeu = new Map(etat.jeux.map(j => [j.stepId, j]));
-        const prochaine = this.steps.findIndex(s => !s.bonus && !faites.has(s.stepId));
+        const prochaine = prochaineObligatoire(this.steps, faites);
         const fini = prochaine === -1;
 
         // CE QU'IL Y A À FÊTER. La carte reprend l'ouverture en attente — le
@@ -436,8 +436,9 @@ export class Runner {
 
         const ecran = document.createElement('div');
         ecran.className = 'run-carte';
-        const restantes = this.steps.filter(s => !s.bonus).length
-            - this.steps.filter(s => !s.bonus && faites.has(s.stepId)).length;
+        const travailCarte = this.travailCompte(faites);
+        const restantes = travailCarte.length
+            - travailCarte.filter(s => faites.has(s.stepId)).length;
         const legende = fini
             ? 'Toutes les étapes sont faites. Il ne reste qu\'à voir ton bilan.'
             : (this.policy.ordreLibre
@@ -512,9 +513,22 @@ export class Runner {
         }
     }
 
+    /**
+     * LE TRAVAIL, C'EST-À-DIRE CE QUI COMPTE DANS « 3 / 5 ÉTAPES ».
+     *
+     * Les obligatoires, toujours. Les non obligatoires, seulement si l'élève
+     * les a faites : les compter d'avance donnerait une barre qui n'atteint
+     * jamais le bout pour quelqu'un qui a pourtant tout ce qu'on lui demandait,
+     * et les effacer une fois faites lui volerait son travail.
+     */
+    travailCompte(faites) {
+        return this.steps.filter(
+            s => !s.bonus && (!s.facultatif || faites.has(s.stepId)));
+    }
+
     /** L'en-tête compte les ÉTAPES tant qu'aucune question n'est posée. */
     majProgressionCarte(faites) {
-        const travail = this.steps.filter(s => !s.bonus);
+        const travail = this.travailCompte(faites);
         const faits = travail.filter(s => faites.has(s.stepId)).length;
         const bar = document.getElementById('game-progress-bar');
         const txt = document.getElementById('game-progress-text');
@@ -993,11 +1007,19 @@ export class Runner {
 
         if (passed || !this.policy.allowRetryStep) {
             this.index++;
-            // ON N'ENCHAÎNE JAMAIS SUR UN JEU DE RÉCOMPENSE. Une récompense se
-            // choisit — l'élève clique dessus depuis sa carte quand il l'a
-            // méritée. Servie d'office à la suite d'un exercice, elle
-            // deviendrait une étape de plus à traverser.
-            while (this.steps[this.index] && this.steps[this.index].bonus) this.index++;
+            // ON N'ENCHAÎNE JAMAIS SUR UN JEU DE RÉCOMPENSE, NI SUR UNE ÉTAPE
+            // FACULTATIVE. Une récompense se choisit — l'élève clique dessus
+            // depuis sa carte quand il l'a méritée. Servie d'office à la suite
+            // d'un exercice, elle deviendrait une étape de plus à traverser.
+            //
+            // Une facultative, c'est la même chose pour une autre raison : le
+            // professeur l'a marquée « non obligatoire », donc l'enchaîner
+            // d'office la rendrait obligatoire. Elle reste OUVERTE sur la
+            // carte — c'est là qu'on la prend si on la veut.
+            while (this.steps[this.index]
+                && (this.steps[this.index].bonus || this.steps[this.index].facultatif)) {
+                this.index++;
+            }
             this.showStepResult(passed, solved, required, cadeau);
         } else {
             this.showStepResult(false, solved, required, null);
@@ -1038,9 +1060,11 @@ export class Runner {
     filDesEtapes() {
         // Les jeux de récompense ne sont pas des étapes de travail : les
         // compter donnerait un chemin plus long qu'il n'est.
-        const travail = this.steps.filter(s => !s.bonus);
+        const faites = this.etapesFaites();
+        const travail = this.travailCompte(faites);
         if (travail.length < 2) return '';
-        const faitJusqua = this.steps.slice(0, this.index).filter(s => !s.bonus).length;
+        const faitJusqua = this.steps.slice(0, this.index)
+            .filter(s => !s.bonus && (!s.facultatif || faites.has(s.stepId))).length;
         const pastilles = travail.map((s, i) => {
             const etat = i < faitJusqua ? 'faite' : (i === faitJusqua ? 'suivante' : 'avenir');
             return `<span class="run-fil-pas run-fil-pas--${etat}"
