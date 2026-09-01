@@ -8,7 +8,8 @@ import { makeRng } from '../js/core/ids.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche,
-    ancetres, estToujours, genererOrganigramme, verifierDepot, verifierOrganigramme, conseil
+    ancetres, estToujours, genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
+    traceFleche, posEtiquette, conditionsDe
 } from '../js/core/quadrilateres.js';
 
 test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
@@ -28,14 +29,97 @@ test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
 
 test('LE CARRÉ SE REJOINT PAR DEUX CHEMINS, ET CHACUN AJOUTE CE QUE L\'AUTRE AVAIT', () => {
     // C'est la beauté de l'organigramme, et ce qu'un élève doit emporter.
+    // DEUX CASES DE DÉPART, quatre conditions : depuis la fiche de Rémy, chaque
+    // chemin s'emprunte par les côtés OU par les diagonales.
     const versCarre = FLECHES.filter(f => f.vers === 'carre');
-    assert.equal(versCarre.length, 2);
-    const parRectangle = versCarre.find(f => f.de === 'rectangle');
-    const parLosange = versCarre.find(f => f.de === 'losange');
-    // Au rectangle il manque les longueurs, au losange l'angle droit — et ces
-    // conditions sont EXACTEMENT celles qui définissaient l'autre.
-    assert.equal(parRectangle.ajoute, FLECHES.find(f => f.vers === 'losange').ajoute);
-    assert.equal(parLosange.ajoute, FLECHES.find(f => f.vers === 'rectangle').ajoute);
+    assert.deepEqual([...new Set(versCarre.map(f => f.de))].sort(), ['losange', 'rectangle']);
+    assert.equal(versCarre.length, 4);
+
+    // Et LA CONDITION QUI MANQUE À L'UN EST CELLE QUI DÉFINISSAIT L'AUTRE :
+    // c'est cela qu'il faut voir, et c'est vrai des côtés comme des diagonales.
+    const dit = (de, vers) => FLECHES.filter(f => f.de === de && f.vers === vers)
+        .map(f => f.ajoute).sort();
+    assert.deepEqual(dit('rectangle', 'carre'), dit('parallelogramme', 'losange'),
+        'du rectangle au carré, il manque exactement ce qui fait un losange');
+    assert.deepEqual(dit('losange', 'carre'), dit('parallelogramme', 'rectangle'),
+        'du losange au carré, il manque exactement ce qui fait un rectangle');
+});
+
+test('LES TREIZE CONDITIONS DE LA FICHE DE RÉMY, et les sept chemins', () => {
+    // Rémy : cinq cases de figures, treize cartes de conditions, et plusieurs
+    // flèches qui arrivent sur la même case. Ce n'est pas un compte décoratif :
+    // un élève qui n'a vu que « côtés opposés parallèles » ne reconnaît pas un
+    // parallélogramme quand on lui donne les diagonales — et c'est pourtant
+    // celle-là qui tombe dans les exercices.
+    assert.equal(FLECHES.length, 13);
+    const parChemin = {};
+    FLECHES.forEach(f => {
+        const k = `${f.de}>${f.vers}`;
+        parChemin[k] = (parChemin[k] || 0) + 1;
+    });
+    assert.deepEqual(parChemin, {
+        'quadrilatere>parallelogramme': 3,
+        'quadrilatere>rectangle': 1,
+        'quadrilatere>losange': 1,
+        'parallelogramme>rectangle': 2,
+        'parallelogramme>losange': 2,
+        'rectangle>carre': 2,
+        'losange>carre': 2
+    });
+    // LES DEUX RACCOURCIS SONT LÀ : ce sont les définitions de sixième, celles
+    // qu'on donne avant même de parler de parallélogramme.
+    assert.match(FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'rectangle').ajoute,
+        /angles droits/);
+    assert.match(FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'losange').ajoute,
+        /quatre côtés égaux/);
+});
+
+test('CHAQUE FLÈCHE A SA PROPRE CLEF, sinon une carte en remplit trois', () => {
+    // Trois conditions relient le quadrilatère au parallélogramme : sans la
+    // voie dans la clef, poser une carte sur l'une les remplissait toutes.
+    const clefs = FLECHES.map(cleFleche);
+    assert.equal(new Set(clefs).size, 13, 'deux flèches partagent une clef');
+    FLECHES.forEach(f => assert.equal(flecheDe(cleFleche(f)), f));
+});
+
+test('LES ÉTIQUETTES S\'ÉCHELONNENT, elles ne s\'empilent pas', () => {
+    // MESURÉ SUR LE PREMIER JET, qui donnait un trait à chacune des treize
+    // conditions : six paires d'étiquettes se chevauchaient et huit débordaient
+    // sur les cases. Trois libellés de quarante caractères ne tiennent pas côte
+    // à côte dans un intervalle. Elles se lisent donc l'une SOUS l'autre, le
+    // long de la même flèche — comme au tableau.
+    for (const [de, vers] of [['quadrilatere', 'parallelogramme'],
+        ['parallelogramme', 'rectangle'], ['rectangle', 'carre']]) {
+        const pos = conditionsDe(de, vers).map(posEtiquette);
+        assert.ok(pos.length >= 2, `${de} > ${vers}`);
+        for (let i = 0; i < pos.length; i++) {
+            for (let j = i + 1; j < pos.length; j++) {
+                const d = Math.hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y);
+                assert.ok(d > 5.5, `${de} > ${vers} : deux étiquettes à ${d.toFixed(1)}`);
+            }
+        }
+        // Et aucune ne tombe sur une case.
+        pos.forEach(pt => Object.values(POSITIONS).forEach(c => {
+            assert.ok(Math.abs(pt.x - c.x) > 6 || Math.abs(pt.y - c.y) > 6,
+                `${de} > ${vers} : une étiquette est posée sur une case`);
+        }));
+    }
+});
+
+test('LES RACCOURCIS CONTOURNENT PAR LE BORD', () => {
+    // « Trois ou quatre angles droits » saute la case du parallélogramme : un
+    // trait droit lui passerait DESSUS.
+    const court = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'rectangle');
+    const t = traceFleche(court);
+    assert.equal(t.contourne, true);
+    assert.ok(t.points.length > 2, 'un contournement se fait en plusieurs segments');
+    const e = posEtiquette(court);
+    assert.equal(e.bord, true);
+    assert.ok(Math.abs(e.x - POSITIONS.parallelogramme.x) > 20,
+        'l\'étiquette du raccourci doit rester loin de la case du milieu');
+    // Le contournement de droite passe de l'autre côté.
+    const droite = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'losange');
+    assert.ok(posEtiquette(droite).x > 50 && e.x < 50);
 });
 
 test('chaque flèche n\'ajoute QU\'UNE condition, et chaque famille a sa figure', () => {
@@ -46,7 +130,7 @@ test('chaque flèche n\'ajoute QU\'UNE condition, et chaque famille a sa figure'
     // parallélogramme.
     assert.equal(FAMILLES.length, 5);
     assert.equal(FAMILLES.some(f => f.id === 'trapeze'), false, 'le trapèze ne doit plus exister');
-    assert.equal(FLECHES.length, 5);
+    assert.equal(FLECHES.length, 13);
     FLECHES.forEach(f => {
         assert.ok(familleDe(f.de) && familleDe(f.vers), cleFleche(f));
         assert.ok(f.ajoute && f.ajoute.length > 5, cleFleche(f));
@@ -127,13 +211,13 @@ test('UNE CONDITION QUI SERT DEUX FOIS EST JUSTE AUX DEUX ENDROITS', () => {
     const o = genererOrganigramme({ rng: makeRng('jumelles'), palier: 'tout' });
     const angleDroit = o.cartes.find(c => flecheDe(c.id).ajoute === 'un angle droit');
     assert.ok(angleDroit, 'la carte « un angle droit » doit être au jeu');
-    for (const cle of ['parallelogramme>rectangle', 'losange>carre']) {
+    for (const cle of ['parallelogramme>rectangle#-1', 'losange>carre#-1']) {
         const v = verifierDepot(o, cle, angleDroit);
         assert.equal(v.ok, true, `« un angle droit » devrait passer en ${cle}`);
         assert.match(v.texteJuste, /deux chemins/);
     }
     // Et elle ne passe pas là où il faut les longueurs.
-    assert.equal(verifierDepot(o, 'rectangle>carre', angleDroit).ok, false);
+    assert.equal(verifierDepot(o, 'rectangle>carre#-1', angleDroit).ok, false);
 });
 
 test('LE REFUS EXPLIQUE LE SENS DE LA HIÉRARCHIE', () => {

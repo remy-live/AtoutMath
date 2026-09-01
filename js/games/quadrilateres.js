@@ -31,11 +31,15 @@ import { makeRng } from '../core/ids.js';
 import { brancherGlisserPalette } from '../core/activities/paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche,
+    FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche, traceFleche, posEtiquette,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil
 } from '../core/quadrilateres.js';
 
 const COMPETENCE = 'geo.quadrilateres.familles';
+
+/** De quoi poser un texte dans un attribut sans qu'un guillemet le coupe. */
+const enAttribut = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 class Organigramme extends BaseGame {
     constructor(container, isDemo, params) {
@@ -81,9 +85,13 @@ class Organigramme extends BaseGame {
                    treize pixels sur ordinateur, neuf sur téléphone — assez pour
                    mordre sur la rangée de cartes. Le plan garde donc une marge
                    de sa propre hauteur, et rien ne dépasse plus de la scène. */
+                /* PLUS HAUT QUE LARGE, DEPUIS LES TREIZE CONDITIONS. Trois
+                   d'entre elles s'empilent entre le quadrilatère et le
+                   parallélogramme : c'est ce trajet-là qui fixe la hauteur, et
+                   un plan carré les écrasait les unes sur les autres. */
                 .qd-plan {
-                    position: relative; width: min(100%, 84cqh); aspect-ratio: 0.92;
-                    max-width: 480px;
+                    position: relative; width: min(100%, 72cqh); aspect-ratio: 0.8;
+                    max-width: 460px;
                 }
                 .qd-fils { position: absolute; inset: 0; width: 100%; height: 100%; }
                 .qd-lien { stroke: var(--text-muted); stroke-width: 1.6; fill: none; opacity: .55; }
@@ -92,7 +100,7 @@ class Organigramme extends BaseGame {
                 /* --- Une case de l'organigramme --- */
                 .qd-case {
                     position: absolute; transform: translate(-50%, -50%);
-                    width: 30%; box-sizing: border-box;
+                    width: 26%; box-sizing: border-box;
                     border: 1.5px solid var(--border); border-radius: 10px;
                     background: var(--bg-panel); padding: 3px 2px 2px;
                     display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -123,13 +131,46 @@ class Organigramme extends BaseGame {
                 /* --- Une étiquette de flèche --- */
                 .qd-etiq {
                     position: absolute; transform: translate(-50%, -50%);
-                    min-width: 22%; max-width: 34%; box-sizing: border-box;
+                    min-width: 22%; max-width: 32%; box-sizing: border-box;
                     border: 1.5px dashed var(--border); border-radius: 8px;
                     background: var(--bg-panel); padding: 3px 5px; text-align: center;
                     font-size: clamp(7px, 1.9cqw, 11px); line-height: 1.15; font-weight: 700;
                     color: var(--text-muted);
                 }
                 .qd-etiq--pose { border-style: solid; color: var(--text-main); }
+                /* Sur un écran étroit, une condition DÉJÀ DONNÉE devient un
+                   point : on la tape pour la lire dans le bandeau du bas. Les
+                   cases à remplir, elles, gardent leur taille — c'est là qu'on
+                   pose les cartes. */
+                /* SUR UN ÉCRAN ÉTROIT, TOUTES LES ÉTIQUETTES DEVIENNENT DES
+                   PASTILLES — et on les tape pour les lire.
+                   Treize libellés de quarante caractères ne tiennent pas sur
+                   375 pixels : mesuré, ils se chevauchaient tous les treize et
+                   couvraient les noms des cases. Agrandir le plan n'est pas la
+                   solution : Rémy l'avait déjà signalé au banc d'essai iPhone,
+                   « l'organigramme écrase l'énoncé et le noms carrés
+                   rectangles », et le plan se mesure depuis sur la scène (voir
+                   plus haut). Le texte se lit donc dans le bandeau du bas, au
+                   toucher — rien n'est perdu, et la figure reste entière.
+                   Les cases à remplir sont plus grosses que les autres : c'est
+                   là qu'on dépose, et un doigt ne vise pas treize pixels. */
+                @container plateau (max-width: 620px) {
+                    .qd-etiq {
+                        min-width: 0; max-width: none; width: 22px; height: 22px;
+                        padding: 0; border-radius: 50%; font-size: 10px; overflow: hidden;
+                        display: flex; align-items: center; justify-content: center;
+                        cursor: pointer;
+                    }
+                    .qd-etiq--donnee {
+                        width: 14px; height: 14px; font-size: 0;
+                        background: color-mix(in srgb, var(--primary) 22%, var(--bg-panel));
+                        border-color: var(--primary);
+                    }
+                    .qd-etiq--pose:not(.qd-etiq--donnee),
+                    .qd-etiq--juste { font-size: 0; }
+                    .qd-etiq--pose:not(.qd-etiq--donnee)::after,
+                    .qd-etiq--juste::after { content: '✓'; font-size: 11px; }
+                }
                 .qd-etiq--juste { border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, var(--bg-panel)); color: var(--text-main); }
                 .qd-etiq--visee { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
 
@@ -241,8 +282,14 @@ class Organigramme extends BaseGame {
             : 'Glisse chaque condition sur sa flèche. Descendre d\'un cran, c\'est ajouter '
                 + 'UNE SEULE condition — celle qui manque encore à la figure du dessus.';
 
+        // UN TRAIT PAR CHEMIN, et non un par condition : trois conditions
+        // relient le quadrilatère au parallélogramme, mais elles se lisent le
+        // long d'une SEULE flèche. Dessiner les treize superposait treize fois
+        // les mêmes sept traits.
+        const chemins = FLECHES.filter(
+            (f, i) => FLECHES.findIndex(x => x.de === f.de && x.vers === f.vers) === i);
         let html = `<svg class="qd-fils" viewBox="0 0 100 100" preserveAspectRatio="none">
-            ${FLECHES.map(f => this.lienSvg(f)).join('')}</svg>`;
+            ${chemins.map(f => this.lienSvg(f)).join('')}</svg>`;
 
         for (const fam of FAMILLES) {
             const p = POSITIONS[fam.id];
@@ -264,11 +311,19 @@ class Organigramme extends BaseGame {
                 const trou = org.trous.includes(cle);
                 const pose = this.poses[cle];
                 const juste = pose && verifierDepot(org, cle, pose).ok;
-                const a = POSITIONS[f.de], b = POSITIONS[f.vers];
+                const m = posEtiquette(f);
                 const classe = juste ? 'qd-etiq--juste' : (pose ? 'qd-etiq--pose' : '');
                 const texte = trou ? (pose ? pose.texte : '?') : f.ajoute;
-                html += `<div class="qd-etiq ${trou ? classe : 'qd-etiq--pose'}"
-                    style="left:${(a.x + b.x) / 2}%; top:${(a.y + b.y) / 2}%"
+                // UNE CONDITION DÉJÀ DONNÉE SE DISTINGUE D'UNE CASE À REMPLIR,
+                // et pas seulement par son trait : sur téléphone, elle se réduit
+                // à un point qu'on tape pour la lire. Treize libellés de
+                // quarante caractères ne tiennent pas sur 375 pixels — mesuré,
+                // ils se chevauchaient tous les treize —, et les effacer aurait
+                // retiré à l'élève ce qu'il vient apprendre.
+                const donnee = !trou;
+                html += `<div class="qd-etiq ${donnee ? 'qd-etiq--pose qd-etiq--donnee' : classe}"
+                    style="left:${m.x}%; top:${m.y}%"
+                    data-donnee="${enAttribut(donnee || pose ? texte : `À compléter : la condition qui mène de ${familleDe(f.de).nom} à ${familleDe(f.vers).nom}.`)}"
                     data-case="${cle}" data-depose="${trou && !juste ? '1' : ''}">${texte}</div>`;
             }
         }
@@ -278,17 +333,29 @@ class Organigramme extends BaseGame {
         this.cartesEl.innerHTML = restantes.map(c =>
             `<div class="kk-chip" data-carte="${c.id}">${c.texte}</div>`).join('');
         this.brancherGlisser();
+        // Réduite à un point sur écran étroit, une condition déjà donnée se
+        // LIT en la tapant : le bandeau du bas l'affiche.
+        this.planEl.querySelectorAll('[data-donnee]').forEach(el => {
+            el.onclick = () => this.note(el.dataset.donnee);
+        });
         this.vientDePoser = null;
     }
 
-    /** Le trait entre deux cases, et sa flèche. */
+    /**
+     * Le trait d'une flèche.
+     *
+     * LE TRACÉ VIENT DU NOYAU, il n'est pas recalculé ici : la fiche papier
+     * dessine le même organigramme, et un élève qui a la feuille sous les yeux
+     * et l'exercice à l'écran ne doit pas voir deux figures différentes.
+     * Voir `traceFleche` dans core/quadrilateres.js.
+     */
     lienSvg(f) {
-        const a = POSITIONS[f.de], b = POSITIONS[f.vers];
+        const cle = cleFleche(f);
         const fait = this.org.mode === MODES.PROPRIETES
-            && this.poses[cleFleche(f)] && verifierDepot(this.org, cleFleche(f), this.poses[cleFleche(f)]).ok;
-        return `<line class="qd-lien ${fait ? 'qd-lien--fait' : ''}"
-            x1="${a.x}" y1="${a.y + 6}" x2="${b.x}" y2="${b.y - 6}"
-            vector-effect="non-scaling-stroke"></line>`;
+            && this.poses[cle] && verifierDepot(this.org, cle, this.poses[cle]).ok;
+        const d = traceFleche(f).points.map(p => `${p.x},${p.y}`).join(' ');
+        return `<polyline class="qd-lien ${fait ? 'qd-lien--fait' : ''}" fill="none"
+            points="${d}" vector-effect="non-scaling-stroke"></polyline>`;
     }
 
     /**
