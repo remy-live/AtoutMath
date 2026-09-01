@@ -1105,8 +1105,8 @@ export const geometrieExercises = [
         //
         // MÊME PRINCIPE QUE PYTHAGORE, ET POUR LA MÊME RAISON : on ne commence
         // pas par le calcul. La faute ordinaire de quatrième n'est pas une
-        // erreur de calcul, c'est un APPARIEMENT — on écrit AM/MB au lieu de
-        // AM/AB, le petit morceau sur le RESTE au lieu du TOUT. Le produit en
+        // erreur de calcul, c'est un APPARIEMENT — on écrit AD/DC au lieu de
+        // AD/AC, le petit morceau sur le RESTE au lieu du TOUT. Le produit en
         // croix qui suit tombe alors parfaitement juste sur une égalité
         // fausse, et rien ne prévient l'élève. D'où l'ordre : reconnaître la
         // configuration, choisir l'égalité, calculer, puis la réciproque.
@@ -1129,6 +1129,6 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Trois marches, dans l'ordre, et l'on monte tout seul toutes les trois questions. UNE : écrire l'égalité, et c'est la marche qui compte. AM/AB = AN/AC = MN/BC. Chaque petit segment se compare au segment ENTIER qui le contient — AM avec AB, jamais avec MB. C'est LÀ qu'on se trompe, et le calcul qui suit ne le rattrapera pas : il tombera parfaitement juste sur une égalité fausse. DEUX : calculer, par produit en croix. TROIS : la réciproque, qui est une autre question — on ne part plus de « les droites sont parallèles », on le DÉMONTRE en comparant AM/AB et AN/AC. Compare des fractions, pas des valeurs arrondies : 1/3 n'est pas 0,33, et un arrondi déclarerait parallèle ce qui ne l'est pas. La figure prend deux formes — triangles emboîtés quand A est en dehors des deux parallèles, papillon quand il est entre les deux —, mais le théorème s'y écrit pareil : un seul signe les sépare, et il n'y a rien à reconnaître de plus."
+        instruction: "Trois marches, dans l'ordre, et l'on monte tout seul toutes les trois questions. UNE : écrire l'égalité, et c'est la marche qui compte. AD/AC = AE/AB = DE/BC. Chaque petit segment se compare au segment ENTIER qui le contient — AD avec AC, jamais avec DC. C'est LÀ qu'on se trompe, et le calcul qui suit ne le rattrapera pas : il tombera parfaitement juste sur une égalité fausse. DEUX : calculer, par produit en croix. TROIS : la réciproque, qui est une autre question — on ne part plus de « les droites sont parallèles », on le DÉMONTRE en comparant AD/AC et AE/AB. Compare des fractions, pas des valeurs arrondies : 1/3 n'est pas 0,33, et un arrondi déclarerait parallèle ce qui ne l'est pas. La figure prend deux formes — triangles emboîtés quand A est en dehors des deux parallèles, papillon quand il est entre les deux —, mais le théorème s'y écrit pareil : un seul signe les sépare, et il n'y a rien à reconnaître de plus."
     }
 ];

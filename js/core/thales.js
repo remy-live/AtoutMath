@@ -2,14 +2,22 @@
 //
 // Rémy : « Un exercice sur le théorème de Thalès. »
 //
+// LES LETTRES SONT CELLES DE RÉMY. Il a dessiné sa figure et écrit sa
+// rédaction avec : A au sommet, D et E sur les côtés, C et B à la base — donc
+// D entre A et C, E entre A et B. « Je sais que : [CD] et [EB] sont sécantes
+// en A / (DE)//(CB) / Or : d'après le théorème de Thalès / AD/AC = AE/AB =
+// DE/BC. » Les manuels écrivent plutôt M et N ; ce sont les mêmes points, et
+// entre le manuel et le tableau du professeur qui s'en sert, c'est le tableau
+// qui gagne : l'élève doit reconnaître à l'écran ce qu'il recopie en classe.
+//
 // L'IDÉE TIENT EN UNE PHRASE, ET LES ÉLÈVES N'EN RETIENNENT QUE LES LETTRES.
 // Deux droites sécantes en A, coupées par deux parallèles : les trois rapports
-// AM/AB, AN/AC et MN/BC sont ÉGAUX. Tout le reste — la configuration en
+// AD/AC, AE/AB et DE/BC sont ÉGAUX. Tout le reste — la configuration en
 // triangles emboîtés, celle en papillon, l'ordre des lettres — n'est que la
 // même phrase vue sous deux angles.
 //
 // LA FAUTE ORDINAIRE N'EST PAS UN CALCUL, C'EST UN APPARIEMENT. L'élève écrit
-// AM/MB au lieu de AM/AB : il prend le petit morceau sur le RESTE au lieu du
+// AE/EB au lieu de AE/AB : il prend le petit morceau sur le RESTE au lieu du
 // TOUT. Aucun calcul ne le rattrapera, parce que le calcul, lui, tombe juste.
 // C'est pour cela que l'exercice fait choisir l'ÉGALITÉ avant de faire
 // calculer quoi que ce soit : tant que le rapport est mal écrit, la suite est
@@ -18,14 +26,14 @@
 // LES DEUX CONFIGURATIONS, EN COORDONNÉES :
 //
 //   EMBOÎTÉS            PAPILLON
-//        A                  M-----N
+//        A                  E-----D
 //       / \                  \   /
-//      M---N                   A
+//      E---D                   A
 //     /     \                 / \
 //    B-------C               B---C
 //
-//   M = A + k(B−A)      M = A − k(B−A)
-//   N = A + k(C−A)      N = A − k(C−A)
+//   E = A + k(B−A)      E = A − k(B−A)
+//   D = A + k(C−A)      D = A − k(C−A)
 //
 // Un seul signe les sépare, et c'est exactement ce que dit le cours : le
 // papillon, ce sont les emboîtés avec un rapport négatif. On l'écrit donc une
@@ -87,18 +95,18 @@ export function creerThales({ config = 'emboites', rng }) {
     let AC = r.q * m2 * (rng.bool() ? 1 : 2);
     if (AC === AB) AC = AB + r.q;
     // BC doit rester un vrai côté : entre |AB−AC| et AB+AC, exclus. On le prend
-    // multiple de q lui aussi pour que MN tombe juste.
+    // multiple de q lui aussi pour que DE tombe juste.
     const bas = Math.floor(Math.abs(AB - AC) / r.q) + 1;
     const haut = Math.ceil((AB + AC) / r.q) - 1;
     if (haut < bas) return null;
     const BC = r.q * rng.int(bas, haut);
 
-    const AM = AB * k, AN = AC * k, MN = BC * k;
+    const AE = AB * k, AD = AC * k, DE = BC * k;
     return {
         config: c.id, signe: c.signe, p: r.p, q: r.q, k,
-        AB, AC, BC, AM, AN, MN,
+        AB, AC, BC, AE, AD, DE,
         // Les morceaux « restants », ceux avec lesquels on confond le tout.
-        MB: AB - AM, NC: AC - AN,
+        EB: AB - AE, DC: AC - AD,
         points: pointsThales(c.signe, k)
     };
 }
@@ -117,7 +125,7 @@ export function pointsThales(signe, kB, kC = kB) {
     const C = { x: 96, y: 50 + 36 };
     // LE RAPPORT DESSINÉ N'EST PAS LE RAPPORT CALCULÉ, et c'est la même
     // décision que « pas à l'échelle », poussée jusqu'au bout. À un quart, le
-    // petit triangle d'un papillon devient un timbre et les lettres A, M, N se
+    // petit triangle d'un papillon devient un timbre et les lettres A, E, D se
     // superposent : la figure cesse d'être lisible sans rien gagner en
     // vérité, puisqu'elle n'était déjà pas à l'échelle. On étale donc les
     // rapports dans une bande confortable, par une transformation AFFINE — le
@@ -129,22 +137,22 @@ export function pointsThales(signe, kB, kC = kB) {
         x: A.x + signe * etaler(k) * (P.x - A.x),
         y: A.y + signe * etaler(k) * (P.y - A.y)
     });
-    return { A, B, C, M: vers(B, kB), N: vers(C, kC) };
+    return { A, B, C, E: vers(B, kB), D: vers(C, kC) };
 }
 
 /**
  * LA FIGURE D'UNE RÉCIPROQUE NE DOIT PAS MENTIR.
  *
- * Sur les trois premières marches, (MN) EST parallèle à (BC) : un seul rapport
+ * Sur les trois premières marches, (DE) EST parallèle à (BC) : un seul rapport
  * suffit. Sur la quatrième, on demande justement si elle l'est — et si l'on
- * dessinait quand même M et N au même rapport, la figure affirmerait le
+ * dessinait quand même E et D au même rapport, la figure affirmerait le
  * contraire de la réponse attendue. On la redessine donc avec les DEUX
  * rapports réellement donnés. Ils sont assez proches pour que l'œil ne
  * tranche pas — il faut calculer, ce qui est tout l'exercice — mais le dessin,
  * lui, reste honnête.
  */
 export const pointsReels = (f) =>
-    pointsThales(f.signe, f.AM / f.AB, f.AN / f.AC);
+    pointsThales(f.signe, f.AE / f.AB, f.AD / f.AC);
 
 // --- OÙ POSER LES LETTRES ---------------------------------------------------
 //
@@ -154,7 +162,7 @@ export const pointsReels = (f) =>
 // LES DÉCALAGES ÉTAIENT ÉCRITS À LA MAIN — « A en haut à droite, B en bas à
 // gauche » —, et ils étaient justes pour UNE figure. Or la figure bouge : le
 // rapport change à chaque question, le papillon retourne tout, et la
-// réciproque déplace M et N indépendamment. Un décalage fixe finit donc
+// réciproque déplace E et D indépendamment. Un décalage fixe finit donc
 // forcément posé sur un trait, et c'est ce que Rémy a vu.
 //
 // LE CRITÈRE JUSTE EST GÉOMÉTRIQUE, et il tient en une phrase : autour d'un
@@ -171,15 +179,15 @@ export const pointsReels = (f) =>
 /**
  * Les directions occupées autour de chaque point nommé.
  *
- * ON COMPTE LES DROITES, PAS LES SEGMENTS TRACÉS. En triangles emboîtés, M est
+ * ON COMPTE LES DROITES, PAS LES SEGMENTS TRACÉS. En triangles emboîtés, E est
  * SUR le segment [AB] : la droite le traverse et continue vers B. Ne lister
- * que A et N pour M laissait donc croire que tout le bas était libre — et la
- * lettre M s'y posait, en plein sur (AB). En papillon, B est de l'autre côté
- * mais dans la même direction que A vu de M : l'ajouter ne coûte rien.
+ * que A et D pour E laissait donc croire que tout le bas était libre — et la
+ * lettre E s'y posait, en plein sur (AB). En papillon, B est de l'autre côté
+ * mais dans la même direction que A vu de E : l'ajouter ne coûte rien.
  */
 const VOISINS_THALES = {
-    A: ['B', 'C', 'M', 'N'], B: ['A', 'C'], C: ['A', 'B'],
-    M: ['A', 'B', 'N'], N: ['A', 'C', 'M']
+    A: ['B', 'C', 'E', 'D'], B: ['A', 'C'], C: ['A', 'B'],
+    E: ['A', 'B', 'D'], D: ['A', 'C', 'E']
 };
 
 /**
@@ -230,12 +238,13 @@ export function ancrageNom(d) {
 }
 
 /**
- * L'ÉGALITÉ DE THALÈS, ÉCRITE COMME AU TABLEAU.
+ * L'ÉGALITÉ DE THALÈS, ÉCRITE COMME AU TABLEAU — celui de Rémy.
  *
  * Les trois rapports, dans l'ordre où on les pose : les deux droites d'abord,
- * la parallèle ensuite. C'est cet ordre qui rend la suite mécanique.
+ * la parallèle ensuite. C'est cet ordre qui rend la suite mécanique, et c'est
+ * mot pour mot celui qu'il a écrit : « AD/AC = AE/AB = DE/BC ».
  */
-export const egaliteThales = () => 'AM/AB = AN/AC = MN/BC';
+export const egaliteThales = () => 'AD/AC = AE/AB = DE/BC';
 
 /**
  * LES FAUSSES ÉGALITÉS, ET CE QU'ELLES TRAHISSENT.
@@ -246,23 +255,23 @@ export const egaliteThales = () => 'AM/AB = AN/AC = MN/BC';
  */
 export const FAUSSES_EGALITES = [
     {
-        texte: 'AM/MB = AN/NC = MN/BC',
-        pourquoi: 'Tu as pris le RESTE (MB) au lieu du TOUT (AB). Thalès compare chaque '
+        texte: 'AD/DC = AE/EB = DE/BC',
+        pourquoi: 'Tu as pris le RESTE (DC) au lieu du TOUT (AC). Thalès compare chaque '
             + 'petit segment au grand segment ENTIER qui le contient, pas au morceau '
             + 'qui reste.'
     },
     {
-        texte: 'AM/AB = AC/AN = MN/BC',
+        texte: 'AD/AC = AB/AE = DE/BC',
         pourquoi: 'Le deuxième rapport est à l\'envers. Les trois rapports vont tous dans '
             + 'le même sens : petit sur grand, ou grand sur petit, mais jamais mélangés.'
     },
     {
-        texte: 'AM/AB = AN/AC = BC/MN',
-        pourquoi: 'Le rapport des parallèles est retourné. MN est le petit segment, il '
-            + 'doit rester au NUMÉRATEUR comme AM et AN.'
+        texte: 'AD/AC = AE/AB = BC/DE',
+        pourquoi: 'Le rapport des parallèles est retourné. DE est le petit segment, il '
+            + 'doit rester au NUMÉRATEUR comme AD et AE.'
     },
     {
-        texte: 'AM/AN = AB/AC = MN/BC',
+        texte: 'AD/AE = AC/AB = DE/BC',
         pourquoi: 'Là tu compares les deux droites entre elles au lieu de comparer chaque '
             + 'droite à elle-même. Un rapport de Thalès ne mélange jamais les deux '
             + 'demi-droites issues de A.'
@@ -272,19 +281,19 @@ export const FAUSSES_EGALITES = [
 /**
  * LA RÉCIPROQUE : les deux droites sont-elles parallèles ?
  *
- * On compare AM/AB et AN/AC — et l'on compare des FRACTIONS, pas des nombres
+ * On compare AE/AB et AD/AC — et l'on compare des FRACTIONS, pas des nombres
  * décimaux : 1/3 et 0,333 ne sont pas égaux, et une comparaison flottante
  * déclarerait parallèle ce qui ne l'est pas.
  */
-export function sontParalleles({ AM, AB, AN, AC }) {
-    return AM * AC === AN * AB;
+export function sontParalleles({ AE, AB, AD, AC }) {
+    return AE * AC === AD * AB;
 }
 
 /**
  * DE COMBIEN ON MANQUE, quand ce n'est pas parallèle — pour l'expliquer.
  * On rend les deux rapports sous forme réduite, ce qui se lit tout seul.
  */
-export function rapportsCompares({ AM, AB, AN, AC }) {
+export function rapportsCompares({ AE, AB, AD, AC }) {
     const reduire = (a, b) => {
         const pgcd = (x, y) => (y ? pgcd(y, x % y) : x);
         // Les longueurs peuvent porter une décimale : on passe en dixièmes.
@@ -292,7 +301,7 @@ export function rapportsCompares({ AM, AB, AN, AC }) {
         const g = pgcd(na, nb) || 1;
         return `${na / g}/${nb / g}`;
     };
-    return { premier: reduire(AM, AB), second: reduire(AN, AC) };
+    return { premier: reduire(AE, AB), second: reduire(AD, AC) };
 }
 
 /**
@@ -302,18 +311,18 @@ export function rapportsCompares({ AM, AB, AN, AC }) {
  * note sur la démarche — l'égalité posée, le produit en croix, la valeur.
  *
  * @param {object} f la figure
- * @param {'AN'|'AM'|'MN'|'BC'|'AB'|'AC'} cherche la longueur demandée
+ * @param {'AD'|'AE'|'DE'|'BC'|'AB'|'AC'} cherche la longueur demandée
  */
 export function calculThales(f, cherche) {
     // Chaque inconnue se tire d'une égalité de deux rapports : on nomme les
     // trois autres longueurs qui interviennent.
     const TRIOS = {
-        AN: ['AM', 'AB', 'AC'],   // AN = AM × AC / AB
-        AM: ['AN', 'AC', 'AB'],
-        MN: ['AM', 'AB', 'BC'],
-        BC: ['MN', 'AM', 'AB'],   // BC = MN × AB / AM
-        AB: ['AM', 'AN', 'AC'],
-        AC: ['AN', 'AM', 'AB']
+        AD: ['AE', 'AB', 'AC'],   // AD = AE × AC / AB
+        AE: ['AD', 'AC', 'AB'],
+        DE: ['AE', 'AB', 'BC'],
+        BC: ['DE', 'AE', 'AB'],   // BC = DE × AB / AE
+        AB: ['AE', 'AD', 'AC'],
+        AC: ['AD', 'AE', 'AB']
     };
     const [a, b, c] = TRIOS[cherche];
     const inverse = cherche === 'BC' || cherche === 'AB' || cherche === 'AC';
@@ -324,7 +333,7 @@ export function calculThales(f, cherche) {
         valeur: Math.round(valeur * 100) / 100,
         donnees: [a, b, c],
         lignes: [
-            `Les droites (MN) et (BC) sont parallèles, donc ${egaliteThales()}.`,
+            `Les droites (DE) et (BC) sont parallèles, donc ${egaliteThales()}.`,
             `Donc ${cherche} = ${a} × ${c} / ${b} = ${L(f[a])} × ${L(f[c])} / ${L(f[b])}.`,
             `${cherche} = ${L(valeur)} cm.`
         ]

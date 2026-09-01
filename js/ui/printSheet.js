@@ -4978,7 +4978,7 @@ function geoThalesFiche(item, slot) {
 }
 
 /** Les cinq points nommés, et les segments à tracer. */
-const SEGMENTS_THALES = [['A', 'B'], ['A', 'C'], ['A', 'M'], ['A', 'N']];
+const SEGMENTS_THALES = [['A', 'B'], ['A', 'C'], ['A', 'E'], ['A', 'D']];
 
 /**
  * OÙ ÉCRIRE CHAQUE LETTRE, EN MILLIMÈTRES DE FEUILLE.
@@ -4999,7 +4999,7 @@ function nomsThales(g, X, Y, taille) {
     // L'écart est donné dans le carré de 100 de la figure ; ici on est en
     // millimètres, et `g.e` est justement le facteur d'échelle entre les deux.
     const ecart = Math.max(1.6, ECART_NOM * g.e);
-    return ['A', 'B', 'C', 'M', 'N'].map(nom => {
+    return ['A', 'B', 'C', 'E', 'D'].map(nom => {
         const d = dirs[nom], a = ancrageNom(d);
         return {
             nom,
@@ -5025,7 +5025,7 @@ function thalesPreviewHtml(item, slot, k) {
     };
     SEGMENTS_THALES.forEach(([a, b]) => trait(a, b, 'fx-th-droite'));
     trait('B', 'C', 'fx-th-base');
-    trait('M', 'N', 'fx-th-para');
+    trait('D', 'E', 'fx-th-para');
     // Plus de disque noir sur les points : « Ne met pas de rond pour le point. »
     // Un point de géométrie se nomme, il ne se colorie pas — c'est le
     // croisement des traits, et c'est déjà visible.
@@ -5064,7 +5064,7 @@ function dessinerThalesPdf(doc, item, slot, solution) {
     doc.setLineWidth(0.6);
     doc.setDrawColor(...ENCRE.trait);
     doc.line(X('B'), Y('B'), X('C'), Y('C'));
-    doc.line(X('M'), Y('M'), X('N'), Y('N'));
+    doc.line(X('D'), Y('D'), X('E'), Y('E'));
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(g.corps * 0.95 / 0.3528);

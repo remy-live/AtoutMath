@@ -3,7 +3,7 @@
 // Rémy : « Un exercice sur le théorème de Thalès. »
 //
 // ON NE COMMENCE PAS PAR CALCULER, ET C'EST TOUT LE PROPOS. La faute ordinaire
-// n'est pas une erreur de calcul : c'est d'écrire AM/MB au lieu de AM/AB — le
+// n'est pas une erreur de calcul : c'est d'écrire AE/EB au lieu de AE/AB — le
 // petit morceau sur le RESTE au lieu du TOUT. Le calcul qui suit tombe alors
 // parfaitement juste sur une égalité fausse, et rien ne prévient l'élève. On
 // fait donc CHOISIR l'égalité avant de laisser calculer quoi que ce soit.
@@ -60,7 +60,10 @@ export function figureThalesSvg(f, cotes = []) {
     const P = f.points;
     const TAILLE_NOM = 7, TAILLE_COTE = 6;
     const dirs = placeNoms(P);
-    const SEGMENTS = [['A', 'B'], ['A', 'C'], ['A', 'M'], ['A', 'N'], ['B', 'C'], ['M', 'N']];
+    // L'ORDRE DES DEUX LETTRES EST CELUI DE LA COTE : la clé cherchée est
+    // « DE », pas « ED ». Les lire à l'envers revient à ne pas trouver la
+    // longueur, et la cote disparaît en silence.
+    const SEGMENTS = [['A', 'B'], ['A', 'C'], ['A', 'E'], ['A', 'D'], ['B', 'C'], ['D', 'E']];
 
     /** Distance d'un point à un segment — la vraie, pas celle à la droite. */
     const distSegment = (c, p, q) => {
@@ -99,6 +102,11 @@ export function figureThalesSvg(f, cotes = []) {
         }
         return pts;
     };
+    // LES COTES DÉJÀ TRACÉES SONT DES OBSTACLES, elles aussi. Deux doubles
+    // flèches parallèles posées au même écart se superposeraient — et c'est le
+    // cas ordinaire, puisque [AE] est un morceau de [AB].
+    const lignesPosees = [];
+
     /** Ce qui reste de libre autour d'une boîte : traits et étiquettes déjà posées. */
     const degagement = (b, saufSegment, posees) => {
         let libre = Infinity;
@@ -108,6 +116,9 @@ export function figureThalesSvg(f, cotes = []) {
                 || (u === saufSegment[1] && v === saufSegment[0]))) continue;
             pts.forEach(c => { libre = Math.min(libre, distSegment(c, P[u], P[v])); });
         }
+        lignesPosees.forEach(l => {
+            pts.forEach(c => { libre = Math.min(libre, distSegment(c, l.p, l.q)); });
+        });
         posees.forEach(a => {
             // Distance entre deux boîtes : nulle si elles se chevauchent.
             const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1, 0);
@@ -116,11 +127,29 @@ export function figureThalesSvg(f, cotes = []) {
         });
         return libre;
     };
+
+    /** Ce qui reste de libre autour d'une LIGNE de cote, sur toute sa longueur. */
+    const degagementLigne = (p1, q1, saufSegment) => {
+        let libre = Infinity;
+        const pts = [];
+        for (let i = 0; i <= 8; i++) {
+            pts.push({ x: p1.x + (q1.x - p1.x) * i / 8, y: p1.y + (q1.y - p1.y) * i / 8 });
+        }
+        for (const [u, v] of SEGMENTS) {
+            if ((u === saufSegment[0] && v === saufSegment[1])
+                || (u === saufSegment[1] && v === saufSegment[0])) continue;
+            pts.forEach(c => { libre = Math.min(libre, distSegment(c, P[u], P[v])); });
+        }
+        lignesPosees.forEach(l => {
+            pts.forEach(c => { libre = Math.min(libre, distSegment(c, l.p, l.q)); });
+        });
+        return libre;
+    };
     // LES LETTRES D'ABORD : elles sont fixées par la géométrie du point (voir
     // `placeNoms`), les cotes s'arrangeront autour d'elles.
     const posees = [];
     const textes = [];
-    for (const nom of ['A', 'B', 'C', 'M', 'N']) {
+    for (const nom of ['A', 'B', 'C', 'E', 'D']) {
         const d = dirs[nom], a = ancrageNom(d);
         const x = P[nom].x + d.x * ECART_NOM;
         const y = P[nom].y + d.y * ECART_NOM;
@@ -130,81 +159,88 @@ export function figureThalesSvg(f, cotes = []) {
             text-anchor="${ancre(a)}" class="th-nom">${nom}</text>` });
     }
 
-    // OÙ POSER UNE COTE : LÀ OÙ IL N'Y A RIEN.
+    // UNE LONGUEUR SE COTE À LA DOUBLE FLÈCHE — c'est ce qui manquait.
     //
-    // Rémy : « Les lettres se supperpose aux trait. » Les cotes avaient le
-    // même défaut, en pire, et pour deux raisons :
+    // Rémy, deux fois : « les longueurs ne sont pas claires, mets des doubles
+    // flèches ». Une cote n'était qu'un texte posé à côté du segment, et
+    // « AB = 20 » flottant près de deux traits qui se croisent ne dit pas
+    // lequel des deux il mesure — surtout ici, où [AE] est un MORCEAU de [AB]
+    // et où les deux cotes se ressemblent. La convention du dessin technique
+    // règle exactement ce problème : une ligne de cote décalée, deux lignes
+    // d'attache qui la rattachent aux extrémités, et une flèche à chaque bout
+    // qui dit « d'ici à là ». On lit alors l'étendue avant de lire le nombre.
     //
-    //  · ON LES ÉCARTAIT DU CENTRE DE ABC. Dans un papillon, M et N sont de
-    //    l'AUTRE côté de A : ce centre-là tombe sous le point A, et la cote de
-    //    (MN) — qui est au-dessus — se faisait repousser vers l'intérieur.
-    //  · ON LES POSAIT PAR LEUR BORD GAUCHE, sans ancrage : les écarter vers
-    //    la gauche déplaçait ce bord pendant que le texte, lui, repartait vers
-    //    la droite par-dessus le trait qu'on venait de fuir.
-    //
-    // Le remède n'est pas un troisième décalage écrit à la main mais un
-    // CRITÈRE : on propose trente emplacements — cinq positions le long du
-    // segment, deux côtés, trois distances —, on mesure le dégagement de
-    // chacun, et on garde le meilleur. À dégagement égal on préfère le plus
-    // proche du segment, sans quoi la cote partirait au large et l'on ne
-    // saurait plus ce qu'elle mesure.
-    const D_COTE = 6;
+    // OÙ LA POSER : LÀ OÙ IL N'Y A RIEN. Le décalage ne s'écrit pas à la main
+    // — la figure change à chaque question, le papillon retourne tout, et un
+    // décalage fixe finit forcément sur un trait. On propose donc dix
+    // emplacements (deux côtés, cinq distances), on mesure ce qui est libre
+    // autour de la ligne ET autour de son étiquette, et l'on garde le meilleur.
+    // Les cotes déjà tracées comptent parmi les obstacles : sans cela, celles
+    // de [AB] et de [AE] se superposeraient, étant parallèles par construction.
+    const D_COTE = 5;
     // UNE COTE SE MET DEHORS. C'est la convention de tous les plans et de tous
     // les manuels, et elle a une raison : à l'intérieur, l'étiquette se
-    // retrouve entre DEUX traits et l'on ne sait plus lequel elle mesure —
-    // « AN = 19 » posé sous (MN) se lit comme la longueur de MN. Le critère de
-    // dégagement seul ne voyait pas la différence : les deux côtés du segment
-    // sont également libres, il en prenait un au hasard.
+    // retrouve entre DEUX traits et l'on ne sait plus lequel elle mesure. Le
+    // critère de dégagement seul ne voit pas la différence — les deux côtés du
+    // segment sont également libres, il en prendrait un au hasard.
     const centre = {
         x: Object.values(P).reduce((t, p) => t + p.x, 0) / 5,
         y: Object.values(P).reduce((t, p) => t + p.y, 0) / 5
     };
+    const fleches = [];
     for (const [a, b, nom] of SEGMENTS) {
         if (!cotes.includes(nom) && !cotes.includes(a + b)) continue;
         const cle = cotes.includes(nom) ? nom : a + b;
         const p = P[a], q = P[b];
         const dx = q.x - p.x, dy = q.y - p.y;
         const n = Math.hypot(dx, dy) || 1;
-        // UN SEGMENT TROP COURT NE PORTE PAS SA COTE : l'étiquette se poserait
-        // sur la lettre du point.
+        // UN SEGMENT TROP COURT NE PORTE PAS SA COTE : la flèche et le nombre
+        // se poseraient sur les lettres de ses deux extrémités.
         if (n < 14) continue;
         const texte = `${cle} = ${longueurTexte(f[cle])}`;
         let mieux = null;
-        for (const t of [0.28, 0.42, 0.56, 0.7, 0.84]) {
-            for (const sens of [1, -1]) {
-                for (const ecart of [D_COTE, D_COTE + 4, D_COTE + 8, D_COTE + 13, D_COTE + 19]) {
-                    const ux = -dy / n * sens, uy = dx / n * sens;
-                    const x = p.x + dx * t + ux * ecart, y = p.y + dy * t + uy * ecart;
-                    const anc = ancrageNom({ x: ux, y: uy });
-                    const bt = boite(x, y, texte, TAILLE_COTE, anc);
-                    const libre = degagement(bt, [a, b], posees);
-                    // AU-DELÀ DE HUIT, ÊTRE PLUS DÉGAGÉ NE SERT PLUS À RIEN —
-                    // mais être plus loin, si : une cote posée au large est
-                    // techniquement libre et pratiquement muette, on ne sait
-                    // plus quel segment elle mesure. On plafonne donc le
-                    // bénéfice du dégagement, et l'éloignement se paie plein
-                    // tarif : la cote se colle au segment dès qu'elle le peut.
-                    // Combien l'écart a poussé l'étiquette VERS L'EXTÉRIEUR,
-                    // compté le long du rayon qui va du centre de la figure au
-                    // milieu du segment.
-                    const mx = p.x + dx * t, my = p.y + dy * t;
-                    const rx = mx - centre.x, ry = my - centre.y;
-                    const r = Math.hypot(rx, ry) || 1;
-                    const dehors = ((x - mx) * rx + (y - my) * ry) / r;
-                    // NE PAS TOUCHER LE TRAIT PASSE AVANT TOUT LE RESTE.
-                    // Sans ce plancher, la préférence pour l'extérieur pouvait
-                    // acheter une place collée à un trait : deux points de
-                    // bonus contre un demi-point de dégagement perdu, le
-                    // compte était vite fait — et c'était le défaut d'origine
-                    // qui revenait par la porte de derrière.
-                    const trop = libre < 3 ? (3 - libre) * 6 : 0;
-                    const score = Math.min(libre, 8) - trop - ecart * 0.35
-                        + Math.max(-1, Math.min(1, dehors / 4)) * 2;
-                    if (!mieux || score > mieux.score) mieux = { score, x, y, anc, bt };
+        for (const sens of [1, -1]) {
+            for (const ecart of [D_COTE, D_COTE + 4, D_COTE + 8, D_COTE + 13, D_COTE + 19,
+                D_COTE + 26]) {
+                // LE NOMBRE GLISSE LE LONG DE SA FLÈCHE. Au milieu il se lit le
+                // mieux, et c'est le premier choix ; mais une figure serrée
+                // n'offre pas toujours le milieu, et un nombre posé au tiers de
+                // SA flèche reste sans ambiguïté — c'est celle-là qu'il légende.
+                for (const t of [0.5, 0.32, 0.68]) {
+                const ux = -dy / n * sens, uy = dx / n * sens;
+                const p1 = { x: p.x + ux * ecart, y: p.y + uy * ecart };
+                const q1 = { x: q.x + ux * ecart, y: q.y + uy * ecart };
+                // Le nombre se pose sur la ligne de cote, poussé d'un demi-corps
+                // vers l'extérieur : il ne coupe pas la flèche.
+                const x = p1.x + (q1.x - p1.x) * t + ux * TAILLE_COTE * 0.72;
+                const y = p1.y + (q1.y - p1.y) * t + uy * TAILLE_COTE * 0.72;
+                const anc = ancrageNom({ x: ux, y: uy });
+                const bt = boite(x, y, texte, TAILLE_COTE, anc);
+                const libre = degagement(bt, [a, b], posees);
+                const libreLigne = degagementLigne(p1, q1, [a, b]);
+                // Combien l'écart a poussé la cote VERS L'EXTÉRIEUR, compté le
+                // long du rayon qui va du centre de la figure au milieu du
+                // segment.
+                const mx = p.x + dx / 2, my = p.y + dy / 2;
+                const rx = mx - centre.x, ry = my - centre.y;
+                const r = Math.hypot(rx, ry) || 1;
+                const dehors = (((p1.x + q1.x) / 2 - mx) * rx
+                    + ((p1.y + q1.y) / 2 - my) * ry) / r;
+                // NE PAS TOUCHER LE TRAIT PASSE AVANT TOUT LE RESTE : sans ce
+                // plancher, la préférence pour l'extérieur pouvait acheter une
+                // place collée à un trait.
+                const trop = (libre < 3 ? (3 - libre) * 6 : 0)
+                    + (libreLigne < 3 ? (3 - libreLigne) * 6 : 0);
+                const score = Math.min(libre, 8) + Math.min(libreLigne, 6) * 0.8 - trop
+                    - ecart * 0.3 + Math.max(-1, Math.min(1, dehors / 4)) * 2
+                    + (t === 0.5 ? 0.6 : 0);
+                if (!mieux || score > mieux.score) mieux = { score, x, y, anc, bt, p1, q1, ux, uy };
                 }
             }
         }
         posees.push(mieux.bt);
+        lignesPosees.push({ p: mieux.p1, q: mieux.q1 });
+        fleches.push({ ...mieux, p, q });
         textes.push({
             b: mieux.bt,
             html: `<text x="${mieux.x.toFixed(1)}" y="${(mieux.y + ligneBase(mieux.anc, TAILLE_COTE)).toFixed(1)}"
@@ -212,14 +248,48 @@ export function figureThalesSvg(f, cotes = []) {
         });
     }
 
+    /**
+     * UNE DOUBLE FLÈCHE, dessinée comme sur un plan : deux lignes d'attache
+     * fines qui partent des extrémités du segment, la ligne de cote entre les
+     * deux, et une pointe à chaque bout tournée vers l'extérieur.
+     */
+    const doubleFleche = (c) => {
+        const T = (v) => v.toFixed(1);
+        const dx = c.q1.x - c.p1.x, dy = c.q1.y - c.p1.y;
+        const n = Math.hypot(dx, dy) || 1;
+        const vx = dx / n, vy = dy / n;
+        const POINTE = 2.6, LARGE = 1.15;
+        // Une pointe pleine, tournée vers l'extérieur de la ligne.
+        const pointe = (P0, sx, sy) => `<path d="M${T(P0.x)} ${T(P0.y)}
+            L${T(P0.x - sx * POINTE - (-sy) * LARGE)} ${T(P0.y - sy * POINTE - sx * LARGE)}
+            L${T(P0.x - sx * POINTE + (-sy) * LARGE)} ${T(P0.y - sy * POINTE + sx * LARGE)} Z"
+            class="th-pointe"/>`;
+        // Les lignes d'attache démarrent un peu à l'écart du point — un trait
+        // qui touche le sommet salit le croisement — et dépassent un peu la
+        // ligne de cote, comme sur un plan.
+        const attache = (P0, P1) => {
+            const ex = P1.x - P0.x, ey = P1.y - P0.y;
+            const e = Math.hypot(ex, ey) || 1;
+            const gx = ex / e, gy = ey / e;
+            return `<line x1="${T(P0.x + gx * 1.6)}" y1="${T(P0.y + gy * 1.6)}"
+                x2="${T(P1.x + gx * 1.4)}" y2="${T(P1.y + gy * 1.4)}" class="th-attache"/>`;
+        };
+        return attache(c.p, c.p1) + attache(c.q, c.q1)
+            + `<line x1="${T(c.p1.x)}" y1="${T(c.p1.y)}" x2="${T(c.q1.x)}" y2="${T(c.q1.y)}"
+                class="th-ligne-cote"/>`
+            + pointe(c.p1, -vx, -vy) + pointe(c.q1, vx, vy);
+    };
+
     // LA BOÎTE ÉPOUSE TOUT CE QU'ON A DESSINÉ, figure ET étiquettes. Un carré
     // fixe laissait tantôt la moitié d'un papillon dehors, tantôt un tiers de
     // blanc à droite d'un emboîté ; une boîte calculée sur les seuls points
     // coupait les cotes, qui sortent de la figure.
     const bx = [...Object.values(P).map(p => p.x), ...textes.map(t => t.b.x0),
-        ...textes.map(t => t.b.x1)];
+        ...textes.map(t => t.b.x1),
+        ...fleches.flatMap(c => [c.p1.x, c.q1.x])];
     const by = [...Object.values(P).map(p => p.y), ...textes.map(t => t.b.y0),
-        ...textes.map(t => t.b.y1)];
+        ...textes.map(t => t.b.y1),
+        ...fleches.flatMap(c => [c.p1.y, c.q1.y])];
     const m = 2;
     const x0 = Math.min(...bx) - m, x1 = Math.max(...bx) + m;
     const y0 = Math.min(...by) - m, y1 = Math.max(...by) + m;
@@ -236,13 +306,18 @@ export function figureThalesSvg(f, cotes = []) {
             .th-base { stroke: #2b6cb0; stroke-width: 1.5; fill: none; }
             .th-nom { font-size: ${TAILLE_NOM}px; font-weight: 800; fill: #1a202c; }
             .th-cote { font-size: ${TAILLE_COTE}px; font-weight: 700; fill: #2c5282; }
+            /* La cote est du dessin technique : trait fin, pointe pleine. */
+            .th-ligne-cote { stroke: #2c5282; stroke-width: .55; }
+            .th-attache { stroke: #2c5282; stroke-width: .35; opacity: .6; }
+            .th-pointe { fill: #2c5282; }
         </style>
         ${trait('A', 'B', 'th-droite')}
         ${trait('A', 'C', 'th-droite')}
-        ${trait('A', 'M', 'th-droite')}
-        ${trait('A', 'N', 'th-droite')}
+        ${trait('A', 'E', 'th-droite')}
+        ${trait('A', 'D', 'th-droite')}
         ${trait('B', 'C', 'th-base')}
-        ${trait('M', 'N', 'th-para')}
+        ${trait('D', 'E', 'th-para')}
+        ${fleches.map(doubleFleche).join('\n        ')}
         ${textes.map(t => t.html).join('\n        ')}
     </svg>`;
 }
@@ -251,24 +326,24 @@ export function figureThalesSvg(f, cotes = []) {
 //
 // Rémy : « Ecris les fraction en colonne. »
 //
-// « AM/AB », c'est une commodité de clavier, pas une écriture mathématique.
+// « AE/AB », c'est une commodité de clavier, pas une écriture mathématique.
 // Or c'est justement l'ÉCRITURE qu'on travaille sur cette marche : l'élève
 // doit reconnaître que le petit segment est au NUMÉRATEUR et le grand au
 // DÉNOMINATEUR, et la barre oblique ne montre ni l'un ni l'autre — elle les
 // met côte à côte. Une barre horizontale les met l'un SUR l'autre, et la
-// faute qu'on traque (AM sur MB) devient visible sans lire.
+// faute qu'on traque (AE sur EB) devient visible sans lire.
 //
 // ON TRADUIT LE TEXTE PLUTÔT QUE DE DOUBLER LES DONNÉES. Les quatre fausses
 // égalités sont écrites une fois, en texte, avec leur diagnostic ; en écrire
 // une seconde version en HTML les aurait fait diverger au premier ajout.
-// Cette fonction lit « AM/AB = AN/AC = MN/BC » et le dessine — donc toute
+// Cette fonction lit « AE/AB = AD/AC = DE/BC » et le dessine — donc toute
 // égalité nouvelle est dessinée sans qu'on y pense.
 
 /** Une fraction à deux étages, comme au tableau. */
 const fracHtml = (n, d) => `<span class="fraction"><span class="fraction-num">${n}</span>`
     + `<span class="fraction-den">${d}</span></span>`;
 
-/** « AM/AB = AN/AC = MN/BC » dessiné en trois fractions et deux signes égal. */
+/** « AE/AB = AD/AC = DE/BC » dessiné en trois fractions et deux signes égal. */
 export function egaliteEnColonnes(texte) {
     const morceaux = String(texte).split('=').map(x => x.trim());
     return `<span class="th-eg">` + morceaux.map(m => {
@@ -296,7 +371,7 @@ function etapeEgalite(rng, config) {
         prompt: 'Quelle égalité de Thalès ?',
         html: '<div class="game-question">Quelle égalité de <b>Thalès</b> ?</div>'
             + `<div class="figure-wrap">${figureThalesSvg(f)}</div>`,
-        papier: 'Les droites (MN) et (BC) sont parallèles. Écris l\'égalité des trois '
+        papier: 'Les droites (DE) et (BC) sont parallèles. Écris l\'égalité des trois '
             + 'rapports donnée par le théorème de Thalès.',
         answer: egaliteThales(),
         // `value` reste le TEXTE — c'est la clé de la réponse, elle est
@@ -311,10 +386,10 @@ function etapeEgalite(rng, config) {
             why: x.pourquoi
         }))),
         explanation: `${egaliteThales()}. Chaque petit segment se compare au segment ENTIER `
-            + 'qui le contient — AM avec AB, pas avec MB — et les trois rapports vont tous '
+            + 'qui le contient — AE avec AB, pas avec EB — et les trois rapports vont tous '
             + 'dans le même sens.',
         hints: ['Chaque rapport compare un petit segment au GRAND segment qui le contient.',
-            'AM va avec AB (et non avec MB), AN va avec AC, MN va avec BC.'],
+            'AE va avec AB (et non avec EB), AD va avec AC, DE va avec BC.'],
         difficulty: 3
     };
 }
@@ -324,17 +399,17 @@ function etapeCalculer(rng, config) {
     if (!f) return null;
     // On cherche une longueur du petit triangle : c'est le sens direct, celui
     // qu'on rencontre d'abord.
-    const cherche = rng.pick(['AN', 'MN', 'AM']);
+    const cherche = rng.pick(['AD', 'DE', 'AE']);
     const calc = calculThales(f, cherche);
     const cotes = calc.donnees;
     const L = longueurTexte;
     const donnees = cotes.map(n => `${n} = ${L(f[n])} cm`).join(', ');
     return {
         f,
-        prompt: `(MN) et (BC) sont parallèles. ${donnees}. Calcule ${cherche}, en cm.`,
-        html: `<div class="game-question">(MN) // (BC). Calcule <b>${cherche}</b> (en cm).</div>`
+        prompt: `(DE) et (BC) sont parallèles. ${donnees}. Calcule ${cherche}, en cm.`,
+        html: `<div class="game-question">(DE) // (BC). Calcule <b>${cherche}</b> (en cm).</div>`
             + `<div class="figure-wrap">${figureThalesSvg(f, cotes)}</div>`,
-        papier: `Les droites (MN) et (BC) sont parallèles, ${donnees}. Calcule ${cherche}, en cm.`,
+        papier: `Les droites (DE) et (BC) sont parallèles, ${donnees}. Calcule ${cherche}, en cm.`,
         answer: calc.valeur,
         numerique: true,
         explanation: calc.lignes.join(' '),
@@ -355,21 +430,21 @@ function etapeReciproque(rng, config) {
     const g = { ...f };
     if (!paralleles) {
         const ecart = rng.pick([1, -1, 2, -2]);
-        g.AN = Math.max(1, Math.round((f.AN + ecart) * 10) / 10);
-        if (sontParalleles(g)) g.AN = Math.round((g.AN + 1) * 10) / 10;
+        g.AD = Math.max(1, Math.round((f.AD + ecart) * 10) / 10);
+        if (sontParalleles(g)) g.AD = Math.round((g.AD + 1) * 10) / 10;
     }
     // La figure suit les longueurs DONNÉES, pas le rapport d'origine : sans
-    // cela, elle dessinerait (MN) parallèle à (BC) alors que la réponse est
+    // cela, elle dessinerait (DE) parallèle à (BC) alors que la réponse est
     // « non ».
     g.points = pointsReels(g);
     const vrai = sontParalleles(g);
     const r = rapportsCompares(g);
     const L = longueurTexte;
-    const donnees = `AM = ${L(g.AM)} cm, AB = ${L(g.AB)} cm, AN = ${L(g.AN)} cm, `
+    const donnees = `AE = ${L(g.AE)} cm, AB = ${L(g.AB)} cm, AD = ${L(g.AD)} cm, `
         + `AC = ${L(g.AC)} cm`;
     return {
         f: g,
-        prompt: `${donnees}. Les droites (MN) et (BC) sont-elles parallèles ?`,
+        prompt: `${donnees}. Les droites (DE) et (BC) sont-elles parallèles ?`,
         // LES QUATRE LONGUEURS VONT SUR LA FIGURE, PAS DANS L'ÉNONCÉ. Rémy :
         // « Le texte des boutons est petit. » Elles y étaient pour deux : un
         // énoncé de quatre-vingts caractères prend deux lignes en très gros
@@ -377,10 +452,10 @@ function etapeReciproque(rng, config) {
         // suit — c'est ce qui rendait les propositions minuscules. Et c'est
         // par ailleurs la présentation de tous les manuels : une figure de
         // réciproque PORTE ses mesures, sinon on ne sait pas quoi comparer.
-        html: '<div class="game-question">Les droites (MN) et (BC) sont-elles '
+        html: '<div class="game-question">Les droites (DE) et (BC) sont-elles '
             + '<b>parallèles</b> ?</div>'
-            + `<div class="figure-wrap">${figureThalesSvg(g, ['AM', 'AB', 'AN', 'AC'])}</div>`,
-        papier: `${donnees}. Les droites (MN) et (BC) sont-elles parallèles ? Justifie.`,
+            + `<div class="figure-wrap">${figureThalesSvg(g, ['AE', 'AB', 'AD', 'AC'])}</div>`,
+        papier: `${donnees}. Les droites (DE) et (BC) sont-elles parallèles ? Justifie.`,
         answer: vrai ? 'Oui, elles sont parallèles' : 'Non, elles ne sont pas parallèles',
         choices: [
             { value: vrai ? 'Oui, elles sont parallèles' : 'Non, elles ne sont pas parallèles',
@@ -391,18 +466,18 @@ function etapeReciproque(rng, config) {
                     : `Les deux rapports valent ${r.premier} et ${r.second} : ce n'est pas `
                         + 'la même fraction, donc les droites ne sont pas parallèles.' },
             { value: 'On ne peut pas savoir',
-                why: 'Si : la réciproque de Thalès tranche. Il suffit de comparer AM/AB et '
-                    + 'AN/AC — s\'ils sont égaux, c\'est parallèle.' }
+                why: 'Si : la réciproque de Thalès tranche. Il suffit de comparer AE/AB et '
+                    + 'AD/AC — s\'ils sont égaux, c\'est parallèle.' }
         ],
         nbChoix: 3,
-        explanation: `AM/AB = ${r.premier} et AN/AC = ${r.second}. `
+        explanation: `AE/AB = ${r.premier} et AD/AC = ${r.second}. `
             + (vrai
                 ? 'Les deux rapports sont ÉGAUX, et les points sont dans le même ordre : '
-                    + 'd\'après la réciproque du théorème de Thalès, (MN) et (BC) sont parallèles.'
-                : 'Les deux rapports sont DIFFÉRENTS, donc (MN) et (BC) ne sont pas '
+                    + 'd\'après la réciproque du théorème de Thalès, (DE) et (BC) sont parallèles.'
+                : 'Les deux rapports sont DIFFÉRENTS, donc (DE) et (BC) ne sont pas '
                     + 'parallèles. Attention : compare des fractions, pas des valeurs '
                     + 'arrondies — 1/3 n\'est pas 0,33.'),
-        hints: ['Calcule les deux rapports AM/AB et AN/AC, avec les longueurs '
+        hints: ['Calcule les deux rapports AE/AB et AD/AC, avec les longueurs '
             + 'écrites sur la figure.',
             'Compare-les en FRACTIONS (produit en croix), pas en valeurs approchées.'],
         cotes: [],
@@ -439,7 +514,7 @@ export const thalesGenerator = {
             aide: '« Tout en ordre » monte d\'une marche toutes les trois questions : '
                 + 'écrire l\'égalité, calculer une longueur, puis la réciproque. On ne '
                 + 'commence pas par le calcul, et c\'est voulu : la faute ordinaire est '
-                + 'd\'écrire AM/MB au lieu de AM/AB, et le calcul qui suit tombe alors '
+                + 'd\'écrire AE/EB au lieu de AE/AB, et le calcul qui suit tombe alors '
                 + 'parfaitement juste sur une égalité fausse.',
             options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur' }]
                 .concat(ORDRE_THALES.map(e => ({ value: e, label: ETAPES_THALES[e].label })))
@@ -488,7 +563,7 @@ export const thalesGenerator = {
                 // La fiche redessine la figure : il lui faut les points et les
                 // longueurs, pas le SVG de l'écran.
                 points: q.f.points,
-                longueurs: ['AB', 'AC', 'BC', 'AM', 'AN', 'MN']
+                longueurs: ['AB', 'AC', 'BC', 'AE', 'AD', 'DE']
                     .reduce((o, n) => ({ ...o, [n]: q.f[n] }), {}),
                 cotes: q.cotes || []
             }
