@@ -282,6 +282,10 @@ function openPresentation(steps, buildWorldMap) {
 
     const map = buildWorldMap(steps, {
         allUnlocked: true,
+        // LE PROFESSEUR VOIT SA SÉANCE ENTIÈRE, jeux compris. Côté élève ils
+        // restent cachés jusqu'à ce qu'ils soient gagnés (voir `visibles` dans
+        // ui/pathView.js) — mais celui qui l'a composée doit pouvoir la relire.
+        montrerCadeaux: true,
         onNodeClick: (i) => montrer(i)
     });
     overlay.querySelector('.presentation-map').appendChild(map);

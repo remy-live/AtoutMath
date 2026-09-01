@@ -64,6 +64,13 @@ export class Runner {
         // démonstration (l'élève vient de voir le robot, inutile de re-proposer).
         this._skipIntro = !!cfg.skipIntro;
         this.runId = 'run_' + uuid();
+        // LES ÉTAPES VALIDÉES PENDANT CETTE SÉANCE. Le parcours assigné les
+        // garde d'une fois sur l'autre (`state.studentPath.completed`) ; un
+        // parcours joué sans être assigné — celui d'un professeur essayé sur
+        // le poste, une séance conseillée — n'a nulle part où les ranger. La
+        // carte a pourtant besoin de savoir ce qui est fait, sinon elle
+        // rouvre la séance à zéro entre deux exercices.
+        this.faites = new Set();
         this.startedAt = 0;
         this.handle = null;
         this.session = null;
@@ -122,6 +129,7 @@ export class Runner {
         this.showLayer();
         this.setupStepNavigation();
         if (isEvaluation(this.policy)) this.showBriefing();
+        else if (this.avecCarte) this.showPathMap();
         else this.runStep();
         return true;
     }
@@ -316,7 +324,164 @@ export class Runner {
                 ${bareme}
                 <button id="btn-run-begin" class="btn-toggle active run-screen-btn">Commencer</button>
             </div>`;
-        document.getElementById('btn-run-begin').onclick = () => this.runStep();
+        document.getElementById('btn-run-begin').onclick = () =>
+            (this.avecCarte ? this.showPathMap() : this.runStep());
+    }
+
+    // --- LA CARTE, ENTRE LES EXERCICES --------------------------------------
+    //
+    // Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
+    // occupe tout l'espace en dessous. Entre chaque exercice, on revoit le
+    // parcours. Quand on commence le parcours, on peut appuyer sur le bouton
+    // c'est parti, ou sur le premier élément, ou sur les éléments disponibles
+    // s'il n'y a pas d'obligation d'ordre. »
+    //
+    // La carte n'était visible que dans l'onglet « Parcours », c'est-à-dire
+    // AVANT et APRÈS la séance, jamais pendant. On enchaînait exercice après
+    // exercice sans jamais revoir le chemin : l'élève ne savait ni d'où il
+    // venait, ni ce qu'il lui restait, et les jeux qu'il gagnait s'ouvraient
+    // dans une pièce vide. La carte devient donc l'ÉCRAN D'ACCUEIL de la
+    // séance : on y part, on y revient après chaque étape, et c'est là que
+    // tout ce qui se gagne se voit.
+    //
+    // Elle se dessine dans la couche de jeu, qui occupe déjà l'écran entier —
+    // le catalogue et sa colonne disparaissent d'eux-mêmes.
+
+    /** La séance mérite-t-elle une carte ? Un exercice seul n'est pas un chemin. */
+    get avecCarte() {
+        // Un essai de professeur et le test pas-à-pas gardent l'ancien
+        // enchaînement : ils regardent des exercices, ils ne suivent pas un
+        // chemin. Et un exercice seul n'est pas un chemin non plus.
+        if (this.essai || this.allowStepNavigation) return false;
+        return this.steps.length > 1;
+    }
+
+    /** Ce qui est fait : la mémoire de la séance ET celle du parcours assigné. */
+    etapesFaites() {
+        const assigne = this.isStudentPath ? state.studentPath : null;
+        return new Set([...this.faites, ...((assigne && assigne.completed) || [])]);
+    }
+
+    async showPathMap() {
+        this.teardownStep();
+        this.step = null;
+        this.stopTimer();
+        state.activeExo = null;
+        reglerCalculatrice(null);
+
+        const [carte, fete] = await Promise.all([
+            import('../ui/pathView.js'), import('../ui/ouverture.js')
+        ]);
+        const assigne = this.isStudentPath ? state.studentPath : null;
+        const faites = this.etapesFaites();
+        const etat = etatRecompenses(this.path, {
+            completed: [...faites],
+            resultats: assigne ? assigne.resultats : null
+        });
+        const parJeu = new Map(etat.jeux.map(j => [j.stepId, j]));
+        const prochaine = this.steps.findIndex(s => !s.bonus && !faites.has(s.stepId));
+        const fini = prochaine === -1;
+
+        // CE QU'IL Y A À FÊTER. La carte reprend l'ouverture en attente — le
+        // morceau de route qui vient de s'ouvrir — et les jeux gagnés depuis
+        // le dernier coup d'œil. C'est ici, et pas dans l'onglet « Parcours »,
+        // que l'élève regarde : la fête doit se jouer là.
+        const aFeter = fete.prendreOuverture();
+        const iFeter = aFeter ? this.steps.findIndex(s => s.stepId === aFeter) : -1;
+        const ouverture = (iFeter >= 0 && faites.has(aFeter)) ? iFeter : undefined;
+        const gagnes = new Set(fete.recompensesNouvelles(
+            new Set(etat.jeux.filter(j => j.ouvert).map(j => j.stepId))));
+
+        const titreEl = document.getElementById('game-title');
+        if (titreEl) titreEl.textContent = this.path.name || 'Mon parcours';
+        this.majProgressionCarte(faites);
+
+        const ecran = document.createElement('div');
+        ecran.className = 'run-carte';
+        const restantes = this.steps.filter(s => !s.bonus).length
+            - this.steps.filter(s => !s.bonus && faites.has(s.stepId)).length;
+        const legende = fini
+            ? 'Toutes les étapes sont faites. Il ne reste qu\'à voir ton bilan.'
+            : (this.policy.ordreLibre
+                ? 'Choisis l\'étape que tu veux faire : l\'ordre est libre.'
+                : `Prochaine étape : ${this.steps[prochaine].title}.`);
+        // AU DÉPART, LA RÈGLE DE LA SÉANCE. Elle décide de tout — combien
+        // d'essais, s'il y a des aides, si cela compte — et c'est la seule
+        // chose qu'on ne devrait jamais apprendre en cours de route. Ensuite
+        // on ne la répète pas : l'élève sait où il a mis les pieds.
+        const regle = faites.size ? '' : `<p class="run-carte-regle">${escapeHtml(describePolicy(this.policy))}</p>`;
+        ecran.innerHTML = `
+            <div class="run-carte-tete">
+                <h2 class="run-carte-nom">${escapeHtml(this.path.name || 'Mon parcours')}</h2>
+                <p class="run-carte-sous">${escapeHtml(legende)}</p>
+                ${regle}
+            </div>
+            <div class="run-carte-scene"></div>`;
+        // L'habillage se change en cours de séance : carte des mondes, chemin
+        // d'étapes ou liste. C'est le même réglage que dans « Mon Parcours ».
+        ecran.querySelector('.run-carte-tete')
+            .appendChild(carte.barreDeStyles(() => this.showPathMap()));
+
+        const rendu = carte.construireCarte(this.steps, {
+            doneIds: faites,
+            currentIndex: prochaine,
+            recompenses: parJeu,
+            seuilRecompense: etat.seuil,
+            ordreLibre: !!this.policy.ordreLibre,
+            ouverture,
+            gagnes,
+            onNodeClick: (i, statut) => {
+                if (statut === 'locked' || statut === 'cadeau-ferme') return;
+                this.index = i;
+                this.runStep();
+            }
+        });
+        ecran.querySelector('.run-carte-scene').appendChild(rendu);
+
+        // LE BOUTON QUI DONNE LE DÉPART — et qui n'enlève rien aux pastilles :
+        // « on peut appuyer sur le bouton c'est parti OU sur le premier
+        // élément ». Les deux mènent au même endroit, et c'est très bien : un
+        // élève cherche le bouton, un autre tape sur la carte.
+        const bouton = document.createElement('button');
+        bouton.id = 'btn-run-carte';
+        bouton.className = 'btn-toggle active run-screen-btn';
+        bouton.textContent = fini ? 'Voir mon bilan'
+            : (faites.size ? 'Continuer' : 'C\'est parti !');
+        bouton.onclick = () => {
+            if (fini) return this.finish();
+            this.index = prochaine;
+            this.runStep();
+        };
+        ecran.appendChild(bouton);
+
+        this.canvas.innerHTML = '';
+        this.canvas.appendChild(ecran);
+
+        // ON AMÈNE LE REGARD OÙ ÇA SE PASSE. Un parcours de douze étapes ne
+        // tient pas sur un écran : la carte s'ouvrait en haut, et l'étape en
+        // cours — ou le jeu qui vient d'être gagné — se trouvait hors champ.
+        requestAnimationFrame(() => {
+            const vise = rendu.querySelector('.world-node--gagne, .world-node--current')
+                || rendu.querySelector('.path-timeline-step--cadeau, .card--current');
+            if (vise && vise.scrollIntoView) vise.scrollIntoView({ block: 'center' });
+        });
+
+        if (ouverture !== undefined || gagnes.size) {
+            // Après la mise en page : un sentier n'a de longueur qu'une fois posé.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                fete.ouvrirLaRoute(rendu, rendu.__ouvertureRang, rendu.__sentierDefinitif);
+            }));
+        }
+    }
+
+    /** L'en-tête compte les ÉTAPES tant qu'aucune question n'est posée. */
+    majProgressionCarte(faites) {
+        const travail = this.steps.filter(s => !s.bonus);
+        const faits = travail.filter(s => faites.has(s.stepId)).length;
+        const bar = document.getElementById('game-progress-bar');
+        const txt = document.getElementById('game-progress-text');
+        if (bar) bar.style.width = `${travail.length ? (faits / travail.length) * 100 : 0}%`;
+        if (txt) txt.textContent = `${faits} / ${travail.length} étapes`;
     }
 
     // --- Étapes -------------------------------------------------------------
@@ -769,8 +934,20 @@ export class Runner {
         // personne. On compare l'état des récompenses AVANT et APRÈS la
         // validation : si l'une vient de s'ouvrir, l'étape suivante attend.
         const ouvertsAvant = this.recompensesOuvertes();
-        if (this.isStudentPath && passed) {
-            state.markStudentPathStepCompleted(step.stepId, { runId: this.runId });
+        if (passed) {
+            this.faites.add(step.stepId);
+            if (this.isStudentPath) {
+                state.markStudentPathStepCompleted(step.stepId, {
+                    runId: this.runId,
+                    solved, required, questions: this.itemsResolved.size, passed: true
+                });
+            } else {
+                // Hors parcours assigné, personne n'annonce l'étape ouverte :
+                // c'est `markStudentPathStepCompleted` qui émet l'événement.
+                // La carte de la séance doit pourtant se tracer aussi.
+                import('../ui/ouverture.js').then(m => m.noterOuverture(step.stepId))
+                    .catch(() => { /* la carte s'affichera sans la fête */ });
+            }
         }
         const cadeau = passed
             ? this.recompensesOuvertes().find(id => !ouvertsAvant.includes(id))
@@ -859,11 +1036,16 @@ export class Runner {
                 vient de s'ouvrir sur ta carte.</p>`
             : '';
 
-        // Le bouton ramène à la CARTE quand un cadeau s'y est ouvert : c'est
-        // là qu'il se déballe, et l'élève choisit d'y jouer maintenant ou de
-        // continuer. Servi d'office, un jeu n'est plus une récompense.
+        // ON REPASSE PAR LA CARTE. Rémy : « entre chaque exercice, on revoit le
+        // parcours. » C'est là que la route se trace, que les jeux gagnés
+        // s'ouvrent, et que l'élève voit ce qu'il lui reste — enchaîner droit
+        // sur l'exercice suivant lui cachait tout cela. Une étape ratée, elle,
+        // se rejoue sur place : repasser par la carte pour revenir au même
+        // endroit ne serait qu'un détour.
+        const parLaCarte = passed && !last && this.avecCarte;
         const btnLabel = jeu ? 'Voir ma carte'
-            : (passed ? (last ? 'Voir mon bilan' : 'Continuer') : 'Réessayer');
+            : (passed ? (last ? 'Voir mon bilan' : (parLaCarte ? 'Voir ma carte' : 'Continuer'))
+                : 'Réessayer');
 
         this.canvas.innerHTML = `
             <div class="run-screen">
@@ -876,7 +1058,7 @@ export class Runner {
             </div>`;
 
         document.getElementById('btn-run-next').onclick = () => {
-            if (jeu) return this.exit();
+            if (jeu || parLaCarte) return this.showPathMap();
             // Réussie ou non, on relance : l'index n'a avancé que si l'étape
             // est validée, sinon on la rejoue.
             this.runStep();
@@ -1098,7 +1280,18 @@ export class Runner {
         if (this.step && this.isStudentPath) {
             const requis = seuilRequis(this.step);
             if (this.itemsSolved.size >= requis) {
-                state.markStudentPathStepCompleted(this.step.stepId, { runId: this.runId });
+                // AVEC CE QU'IL A FAIT, pas seulement « c'est fait ». Le
+                // marqueur ne disait rien de plus que l'identifiant de
+                // l'étape : le taux de réussite valait donc zéro, et l'élève
+                // qui fermait une étape RÉUSSIE voyait son jeu de récompense
+                // rester fermé — puni d'être parti quand la cloche a sonné.
+                state.markStudentPathStepCompleted(this.step.stepId, {
+                    runId: this.runId,
+                    solved: this.itemsSolved.size,
+                    questions: this.itemsResolved.size,
+                    required: requis,
+                    passed: true
+                });
             }
         }
         this.finish(true);

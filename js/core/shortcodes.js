@@ -207,11 +207,29 @@ function etapeSimple(s) {
 }
 
 /** La politique est-elle celle d'usine ? Sinon elle doit voyager, donc base64. */
+/**
+ * La séance est-elle réglée d'usine ? Si oui, la chaîne courte suffit.
+ *
+ * ELLE SE COMPARE CLÉ PAR CLÉ, sur la liste que le format complet sait
+ * écrire. Elle vérifiait quatre réglages nommés — le mode, les aides, les
+ * essais, la note — et laissait passer tout le reste : le jour où l'on a
+ * ajouté « l'élève choisit l'ordre des étapes », un parcours qui l'utilisait
+ * partait en chaîne courte, qui ne sait pas le dire, et arrivait chez le
+ * collègue verrouillé dans l'ordre. Sans un mot. Une liste nommée en dur ne
+ * peut que se démoder : celle-ci suit CLES_POLITIQUE, donc tout réglage
+ * partageable est couvert le jour où il naît.
+ */
 function politiqueOrdinaire(policy) {
     const pol = resolvePolicy(policy);
-    const def = defaultPolicy();
-    return pol.mode === def.mode && pol.hints === def.hints
-        && pol.maxAttemptsPerItem === def.maxAttemptsPerItem && !pol.grading;
+    const def = resolvePolicy(defaultPolicy());
+    if (pol.mode !== def.mode || pol.grading) return false;
+    for (const cle of Object.keys(CLES_POLITIQUE)) {
+        // `showCorrection` se déduit de `correction` : le comparer deux fois
+        // ne peut que se contredire (voir `compact`).
+        if (cle === 'showCorrection' && pol.correction) continue;
+        if (!memeValeur(pol[cle], def[cle])) return false;
+    }
+    return true;
 }
 
 /**
@@ -284,7 +302,7 @@ function fromBase64Url(code) {
  */
 const CLES_POLITIQUE = {
     hints: 'h', maxAttemptsPerItem: 'a', correction: 'c', showCorrection: 'sc',
-    adaptive: 'ad', shuffleSteps: 'sh', allowRetryStep: 'rs', pointsPerItem: 'pi',
+    adaptive: 'ad', shuffleSteps: 'sh', ordreLibre: 'ol', allowRetryStep: 'rs', pointsPerItem: 'pi',
     hintPenalty: 'hp', showMe: 'sm', guided: 'gd'
 };
 const CLES_BAREME = {

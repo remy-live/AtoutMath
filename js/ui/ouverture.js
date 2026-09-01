@@ -117,35 +117,68 @@ export function etoiles(cible, { nombre = 18, duree = 1100 } = {}) {
 }
 
 /**
- * UN JEU BONUS S'OUVRE — et ça, ça se fête pour de bon.
+ * UN JEU BONUS APPARAÎT — et ça, ça se fête pour de bon.
  *
- * Rémy : « fais le plus sympa pour les jeux bonus ». Un jeu gagné n'est pas
- * une étape de plus sur la carte : c'est la récompense du travail qui la
- * précède, et le seul moment de la séance où l'élève reçoit quelque chose.
- * Il a donc droit à sa propre séquence, plus longue et plus voyante que
- * l'ouverture d'une étape ordinaire :
+ * Rémy, deux fois. D'abord : « fais le plus sympa pour les jeux bonus ». Puis,
+ * en voyant la carte : « les jeux récompenses apparaissent déjà, alors que ce
+ * serait bien qu'ils apparaissent après. Si on a bien réussi et qu'un exercice
+ * récompense arrive, alors sur la carte du monde il faut le voir réapparaître
+ * avec un effet de particules ; et si c'est une présentation en ligne, il faut
+ * le voir s'insérer. »
  *
- *   le paquet TREMBLE (il y a quelque chose dedans),
- *   il S'OUVRE en grand avec une couronne de lumière,
+ * Le jeu n'était donc pas sur la carte une seconde plus tôt : il n'y a rien à
+ * déverrouiller, il y a quelque chose à FAIRE VENIR. La pastille est posée
+ * réduite à rien, puis :
+ *
+ *   elle SURGIT en dépassant sa taille avant de se poser,
  *   quarante étoiles jaillissent en deux gerbes,
  *   et un ruban dit ce qui vient d'être gagné.
+ *
+ * En liste, où il n'y a pas de pastille à faire éclore, la ligne se DÉPLIE :
+ * elle pousse les suivantes vers le bas, et l'on voit qu'elle s'insère.
  */
 export function ouvrirLeCadeau(noeud) {
     if (!noeud || !noeud.isConnected) return;
     const cible = noeud.querySelector('.world-node-btn') || noeud;
-    if (animationsCoupees()) { noeud.classList.add('world-node--cadeau-ouvert'); return; }
+    const enListe = noeud.classList.contains('path-timeline-step');
+    if (animationsCoupees()) {
+        noeud.classList.remove('world-node--gagne');
+        noeud.classList.add('world-node--cadeau-ouvert');
+        return;
+    }
 
-    noeud.classList.add('world-node--tremble');
+    // L'état d'attente part AVANT tout le reste : gardé pendant l'animation,
+    // ses marges annulées reviendraient d'un coup au milieu du passage — et
+    // surtout la ligne resterait écrasée pendant qu'on la mesure.
+    noeud.classList.remove('world-node--gagne');
+
+    // UNE LIGNE SE DÉPLIE À SA VRAIE HAUTEUR, pas à une hauteur devinée.
+    // `auto` ne s'anime pas, un pixel de trop se voit, et une valeur en dur
+    // casserait au premier titre sur deux lignes : on mesure la ligne rendue,
+    // maintenant qu'elle a repris sa taille.
+    const anime = enListe ? 'path-timeline-step--insere' : 'world-node--surgit';
+    if (enListe) {
+        noeud.style.setProperty('--haut', `${noeud.getBoundingClientRect().height}px`);
+        // ET L'ON REND SA LIBERTÉ À LA LIGNE UNE FOIS DÉPLIÉE. L'animation
+        // s'arrête sur `max-height` et `overflow: hidden` : les garder
+        // rognerait le jour où le titre passe sur deux lignes.
+        noeud.addEventListener('animationend', () => {
+            noeud.classList.remove(anime);
+            noeud.style.removeProperty('--haut');
+        }, { once: true });
+    }
+    noeud.classList.add(anime);
+    // Le temps que la ligne se fasse une place ; sur la carte, la pastille
+    // éclot tout de suite — il n'y a rien à pousser.
     setTimeout(() => {
         if (!noeud.isConnected) return;
-        noeud.classList.remove('world-node--tremble');
         noeud.classList.add('world-node--cadeau-ouvert');
         // Deux gerbes décalées : la seconde repart quand la première retombe,
         // et l'on voit une VRAIE explosion plutôt qu'un anneau régulier.
         etoiles(cible, { nombre: 24, duree: 1400 });
         setTimeout(() => etoiles(cible, { nombre: 16, duree: 1100 }), 180);
         ruban(cible, '🎁 Un jeu s\'ouvre !');
-    }, 620);
+    }, enListe ? 380 : 260);
 }
 
 /** Le ruban qui monte au-dessus d'un jeu gagné, et s'efface. */
@@ -177,7 +210,10 @@ function ruban(cible, texte) {
  * LE PASSAGE S'OUVRE.
  *
  * @param {Element} hote     la carte rendue
- * @param {number}  indexFait l'étape qui vient d'être réussie
+ * @param {number}  indexFait LE RANG, DANS LA CARTE, de l'étape qu'on vient de
+ *   réussir — et non son numéro d'étape : depuis que les jeux non gagnés ne
+ *   sont plus dessinés, les deux diffèrent. Les constructeurs de carte le
+ *   posent sur l'hôte (`__ouvertureRang`), c'est lui qu'on passe ici.
  * @param {Function} [retracer] rend le sentier dans son état définitif
  */
 export function ouvrirLaRoute(hote, indexFait, retracer) {

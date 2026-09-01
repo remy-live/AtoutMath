@@ -2414,6 +2414,15 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             <input type="checkbox" id="cfg-adaptive" ${p.adaptive ? 'checked' : ''}>
             Cibler les notions fragiles de l'élève
         </label>
+        <!-- L'ORDRE EST-IL IMPOSÉ ? Par défaut oui : le professeur a composé
+             sa séance dans l'ordre où il veut qu'elle se fasse, et c'est cet
+             ordre qui donne leur sens aux jeux de récompense — « quatre
+             exercices PUIS un jeu » n'a plus de règle si l'on peut commencer
+             par la fin. Un plan de travail, lui, se choisit. -->
+        <label class="cfg-check">
+            <input type="checkbox" id="cfg-ordre-libre" ${p.ordreLibre ? 'checked' : ''}>
+            Laisser l'élève choisir l'ordre des étapes
+        </label>
 
         <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
             <div class="cfg-group-title">Barème</div>
@@ -2505,6 +2514,7 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             maxAttemptsPerItem: intVal('cfg-attempts', base.maxAttemptsPerItem),
             hints: document.getElementById('cfg-hints').checked,
             adaptive: document.getElementById('cfg-adaptive').checked,
+            ordreLibre: document.getElementById('cfg-ordre-libre').checked,
             // Ce que l'ordinateur fait après chaque réponse. `resolvePolicy`
             // en déduira `showCorrection` : c'est le mot qui commande.
             correction: (document.getElementById('cfg-correction') || {}).value || base.correction,

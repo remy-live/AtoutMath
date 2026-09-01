@@ -332,6 +332,7 @@ test('UN PARCOURS PARTAGÉ ARRIVE AVEC TOUS SES RÉGLAGES', () => {
         maxAttemptsPerItem: 3,
         adaptive: true,
         shuffleSteps: true,
+        ordreLibre: true,
         allowRetryStep: true,
         pointsPerItem: 5,
         hintPenalty: 0.5,
@@ -384,6 +385,15 @@ test('LA CHAÎNE COURTE NE TAIT JAMAIS UN RÉGLAGE', () => {
     seuilBonus.bonusSeuil = 0.5;
     assert.ok(Shortcodes.encodePath(seuilBonus).startsWith('M2-'),
         'un seuil de récompense déplacé doit voyager');
+
+    // L'ORDRE LIBRE CHANGE CE QUE L'ÉLÈVE PEUT FAIRE : un parcours partagé qui
+    // le perdrait rendrait au collègue une séance verrouillée dans l'ordre.
+    const libre = makePath('X', [makeStep('calc-sudoku', {}, {}), makeStep('geo-thales', {}, {})],
+        defaultPolicy({ ordreLibre: true }));
+    libre.policy.ordreLibre = true;
+    assert.ok(Shortcodes.encodePath(libre).startsWith('M2-'));
+    assert.equal(resolvePolicy(normalizePath(
+        Shortcodes.decodePath(Shortcodes.encodePath(libre))).policy).ordreLibre, true);
 
     // Et le cas ordinaire reste court : rien ne s'est mis à tout refuser.
     const simple = makePath('X', [

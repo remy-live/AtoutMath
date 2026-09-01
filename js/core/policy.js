@@ -59,6 +59,19 @@ export function defaultPolicy() {
         showCorrection: true,   // correction affichée juste après la réponse
         adaptive: true,         // biaise le tirage vers les notions faibles
         shuffleSteps: false,
+        // L'ORDRE DES ÉTAPES EST-IL IMPOSÉ ?
+        //
+        // Rémy, sur l'écran de départ d'un parcours : « on peut appuyer sur le
+        // bouton c'est parti ou sur le premier élément, ou sur les éléments
+        // disponibles s'il n'y a pas d'obligation d'ordre. »
+        //
+        // Par défaut on impose l'ordre : le professeur a composé sa séance
+        // dans celui où il veut qu'elle se fasse, et c'est aussi lui qui donne
+        // leur sens aux jeux de récompense — « quatre exercices PUIS un jeu »
+        // n'a plus de règle si l'on peut commencer par la fin. Mais un plan de
+        // travail, une séance d'atelier ou une révision libre se choisissent :
+        // le réglage existe, il est simplement décoché.
+        ordreLibre: false,
         allowRetryStep: true,   // réessayer une étape ratée
         pointsPerItem: 10,
         hintPenalty: 0.25,      // part de points perdue par aide utilisée

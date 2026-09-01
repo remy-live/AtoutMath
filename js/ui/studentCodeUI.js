@@ -57,13 +57,12 @@ export function applyCode(code, { autoStart = true } = {}) {
     showToast(`Parcours « ${path.name} » chargé. ${describePolicy(path.policy)}`, 'success', 5000);
 
     // Le code décodé, l'élève voyait la première question avant d'avoir vu son
-    // parcours. On lui montre la carte, et c'est lui qui donne le départ ; s'il
-    // préfère attendre, le parcours reste chargé dans « Mon Parcours ».
+    // parcours. Le parcours s'ouvre donc sur SA CARTE, plein écran, et c'est
+    // lui qui donne le départ ; s'il préfère attendre, le parcours reste
+    // chargé dans « Mon Parcours ».
     import('./navigation.js').then(m => m.setTopNavMode('path'));
     if (autoStart) {
-        import('./pathView.js').then(async ({ apercuParcours }) => {
-            if (!await apercuParcours(path, { titre: 'Le parcours de ton professeur' })) return;
-            const { Runner } = await import('../core/runner.js');
+        import('../core/runner.js').then(({ Runner }) => {
             new Runner({ path, deviceMode: 'none', isStudentPath: true }).start();
         });
     }

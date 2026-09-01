@@ -162,3 +162,69 @@ export function direRecompense(jeu, seuil) {
             return '';
     }
 }
+
+// --- CE QU'ON MONTRE DU PARCOURS, ET DANS QUEL ÉTAT ---------------------------
+//
+// Trois habillages dessinent le même parcours — carte des mondes, chemin
+// d'étapes, liste. Ils partagent donc la question qui précède le dessin :
+// quelles étapes montre-t-on, et dans quel état ? C'est une règle, pas un
+// rendu : elle vit ici, avec les autres, et elle se teste sans navigateur.
+
+/**
+ * L'état d'une étape aux yeux de l'élève.
+ * @returns {'done'|'current'|'open'|'locked'|'cadeau'|'cadeau-ferme'}
+ */
+export function statutEtape(step, i, opts = {}) {
+    const done = opts.doneIds || new Set();
+    // UN JEU DE RÉCOMPENSE suit sa propre règle : il n'est ni « l'étape en
+    // cours » ni « à débloquer plus tard », il est ouvert ou mérité.
+    const jeu = opts.recompenses && opts.recompenses.get(step.stepId);
+    if (jeu) return jeu.ouvert ? 'cadeau' : 'cadeau-ferme';
+    if (step.bonus) return opts.allUnlocked ? 'cadeau' : 'cadeau-ferme';
+    if (opts.allUnlocked) return 'open';
+    if (done.has(step.stepId)) return 'done';
+    if (i === opts.currentIndex) return 'current';
+    // ORDRE LIBRE : toute étape non faite est jouable, et c'est l'élève qui
+    // choisit par où il commence. Voir `ordreLibre` dans core/policy.js.
+    return opts.ordreLibre ? 'open' : 'locked';
+}
+
+/**
+ * LES ÉTAPES QU'ON MONTRE — et le jeu qu'on ne montre pas encore.
+ *
+ * Rémy : « les jeux récompenses sur le parcours apparaissent déjà. Alors que
+ * ce serait bien qu'ils apparaissent après. »
+ *
+ * Un cadenas posé sur la carte dès le premier jour annonce la récompense et la
+ * refuse dans le même geste : l'élève sait ce qu'il n'a pas. En la cachant, on
+ * lui rend la seule chose qu'une récompense doit avoir — la surprise. Le jeu
+ * SURGIT sur la carte au moment où il est gagné, et c'est cet instant-là qui
+ * vaut quelque chose (voir `ouvrirLeCadeau` dans ui/ouverture.js).
+ *
+ * Deux exceptions : le professeur, qui compose la séance et doit voir ce qu'il
+ * y a mis (`montrerCadeaux`), et un jeu posé en tête de parcours, qui n'est la
+ * récompense de rien et s'ouvre tout de suite.
+ *
+ * Les index d'origine sont conservés : ce sont eux qui désignent l'étape à
+ * lancer, et un tableau refiltré les décalerait tous.
+ */
+export function etapesMontrees(steps, opts = {}) {
+    const vus = [];
+    // LE NUMÉRO QU'ON AFFICHE N'EST PAS L'INDEX DE L'ÉTAPE. Les jeux ne sont
+    // pas du travail : les compter donnerait « 1, 2, 4 » sur une carte de
+    // trois exercices, et l'élève chercherait la troisième. On numérote donc
+    // le travail, et l'index d'origine sert à lancer l'étape — les deux
+    // voyagent ensemble.
+    let numero = 0;
+    steps.forEach((step, i) => {
+        if (!step.bonus) numero++;
+        if (!cadeauCache(step, opts)) vus.push({ step, i, numero });
+    });
+    return vus;
+}
+
+export function cadeauCache(step, opts = {}) {
+    if (!step.bonus || opts.montrerCadeaux) return false;
+    const jeu = opts.recompenses && opts.recompenses.get(step.stepId);
+    return !jeu || !jeu.ouvert;
+}

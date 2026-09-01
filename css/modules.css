@@ -1162,6 +1162,51 @@
 .run-screen-title--ko { color: var(--warning); }
 .run-screen-text { font-size: 1.1rem; color: var(--text-main); max-width: 480px; line-height: 1.5; }
 .run-screen-btn { font-size: 1.25rem; padding: 14px 32px; margin-top: 10px; }
+
+/* ═══ LA CARTE, ENTRE LES EXERCICES ═══════════════════════════════════════════
+   Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
+   occupe tout l'espace en dessous. Entre chaque exercice, on revoit le
+   parcours. » La carte n'est plus seulement l'onglet d'avant et d'après : elle
+   est l'écran d'accueil de la séance, dans la couche de jeu, qui prend déjà
+   l'écran entier — la colonne du catalogue disparaît d'elle-même.
+
+   Elle DÉFILE, et le bouton reste en bas : une séance de douze étapes ne tient
+   pas sur un écran de portable, et « C'est parti » ne doit pas se chercher. */
+.run-carte {
+    display: flex; flex-direction: column; align-items: center;
+    height: 100%; width: 100%; gap: 10px; padding: 14px 16px 0;
+    overflow: hidden;
+}
+.run-carte-tete {
+    text-align: center; flex: 0 0 auto;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.run-carte-nom { font-size: 1.5rem; margin: 0; color: var(--primary); }
+.run-carte-sous { margin: 0; color: var(--text-muted); font-size: .95rem; }
+.run-carte-regle {
+    margin: 0; font-size: .85rem; color: var(--text-muted);
+    background: var(--bg-soft, rgba(0, 0, 0, .04)); border-radius: 999px; padding: 4px 14px;
+}
+.run-carte-scene {
+    flex: 1 1 auto; width: 100%; max-width: 900px; overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column;
+    /* La gerbe d'étoiles d'un jeu qui s'ouvre déborde de sa pastille : sans
+       cette marge, elle serait coupée par le bord de la zone défilante. */
+    padding: 8px 4px 12px;
+}
+/* CENTRÉ PAR LA MARGE, PAS PAR `justify-content`. Une boîte défilante qui
+   centre ses enfants coupe le haut de ce qui dépasse, et l'on ne peut plus y
+   remonter : la première étape d'un parcours de douze devenait inaccessible.
+   `margin: auto` centre tant que ça tient, et rend la main dès que ça déborde. */
+.run-carte-scene > * { margin-block: auto; }
+.run-carte .world-map, .run-carte .duo-path, .run-carte .path-timeline { width: 100%; }
+.run-carte > .run-screen-btn { flex: 0 0 auto; margin: 6px 0 16px; }
+@media (max-width: 640px) {
+    .run-carte { padding: 10px 8px 0; }
+    .run-carte-nom { font-size: 1.2rem; }
+    .run-carte-sous { font-size: .85rem; }
+    .run-carte > .run-screen-btn { font-size: 1.05rem; padding: 11px 22px; margin-bottom: 10px; }
+}
 .run-screen-sub { font-size: .92rem; color: var(--text-muted); max-width: 460px; line-height: 1.5; margin: -4px 0 4px; }
 .run-briefing-note {
     background: var(--tag-niv-bg); color: var(--tag-niv-txt);
@@ -2014,19 +2059,55 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     35% { transform: scale(1.16); filter: drop-shadow(0 0 12px rgba(245, 158, 11, .9)); }
 }
 
-/* ═══ UN JEU BONUS S'OUVRE ═══════════════════════════════════════════════════
-   Rémy : « fais le plus sympa pour les jeux bonus ». Un jeu gagné n'est pas
-   une étape de plus : c'est la récompense du travail qui la précède, et le
-   seul moment de la séance où l'élève reçoit quelque chose. Il a donc droit à
-   sa propre séquence — le paquet tremble, puis s'ouvre en grand. */
-.world-node--tremble .world-node-btn { animation: cadeau-tremble .6s ease-in-out; }
-@keyframes cadeau-tremble {
-    0%, 100% { transform: rotate(0) scale(1); }
-    12% { transform: rotate(-9deg) scale(1.04); }
-    30% { transform: rotate(8deg) scale(1.06); }
-    48% { transform: rotate(-7deg) scale(1.08); }
-    66% { transform: rotate(6deg) scale(1.1); }
-    84% { transform: rotate(-4deg) scale(1.06); }
+/* ═══ UN JEU BONUS APPARAÎT ══════════════════════════════════════════════════
+   Rémy : « fais le plus sympa pour les jeux bonus », puis « les jeux
+   récompenses apparaissent déjà, alors que ce serait bien qu'ils apparaissent
+   après — sur la carte du monde il faut le voir réapparaître avec un effet de
+   particules, et si c'est une présentation en ligne il faut le voir
+   s'insérer. »
+
+   Le jeu n'est donc PAS sur la carte tant qu'il n'est pas gagné : un cadenas
+   posé dès le premier jour annonce la récompense et la refuse dans le même
+   geste. `world-node--gagne` est l'état « il vient d'être gagné, mais l'élève
+   ne l'a pas encore vu » : la pastille garde sa place — sans quoi toute la
+   carte sauterait au moment de l'apparition, et le sentier avec — mais elle
+   n'est rien. */
+.world-node--gagne .world-node-socle,
+.world-node--gagne .world-node-label,
+.world-node--gagne .world-node-meta { opacity: 0; transform: scale(.2); }
+
+/* ELLE SURGIT : elle dépasse sa taille, puis se pose. */
+.world-node--surgit .world-node-socle,
+.world-node--surgit .world-node-label,
+.world-node--surgit .world-node-meta {
+    animation: cadeau-surgit .55s cubic-bezier(.22, 1.5, .38, 1) both;
+}
+.world-node--surgit .world-node-label { animation-delay: .12s; }
+.world-node--surgit .world-node-meta { animation-delay: .18s; }
+@keyframes cadeau-surgit {
+    0% { opacity: 0; transform: scale(.2) rotate(-14deg); }
+    60% { opacity: 1; transform: scale(1.18) rotate(4deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* EN LISTE, LA LIGNE SE DÉPLIE et pousse les suivantes : c'est ce qui donne à
+   voir qu'elle S'INSÈRE, là où une pastille, elle, éclot sur place. La hauteur
+   d'arrivée est mesurée par le script (`--haut`) : `auto` ne s'anime pas. */
+.path-timeline-step--cadeau.world-node--gagne {
+    max-height: 0; opacity: 0; overflow: hidden;
+    margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;
+}
+.path-timeline-step--insere {
+    overflow: hidden;
+    animation: cadeau-insere .5s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes cadeau-insere {
+    0% { max-height: 0; opacity: 0; transform: translateX(-26px); }
+    100% { max-height: var(--haut, 200px); opacity: 1; transform: translateX(0); }
+}
+.path-timeline-icon--cadeau {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #422006; border-color: #f59e0b;
 }
 .world-node--cadeau-ouvert .world-node-btn {
     animation: cadeau-eclate .9s cubic-bezier(.22, 1.3, .38, 1) both;
@@ -2088,9 +2169,15 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 @media (prefers-reduced-motion: reduce) {
     .etoile, .ruban-gagne,
     .world-node--ouvre .world-node-btn, .world-node--fete .world-node-btn,
-    .world-node--tremble .world-node-btn, .world-node--cadeau-ouvert .world-node-btn,
+    .world-node--surgit .world-node-socle, .path-timeline-step--insere,
+    .world-node--cadeau-ouvert .world-node-btn,
     .world-node--cadeau-ouvert .world-node-socle::after { animation: none; }
     .world-node--cadeau-ouvert .world-node-socle::after { display: none; }
+    /* Sans animation, le jeu gagné est simplement LÀ : il ne doit pas rester
+       dans son état d'attente, sinon il n'apparaît jamais. */
+    .world-node--surgit .world-node-socle, .world-node--surgit .world-node-label,
+    .world-node--surgit .world-node-meta { opacity: 1; transform: none; }
+    .path-timeline-step--insere { max-height: none; opacity: 1; transform: none; }
 }
 
 .world-node {

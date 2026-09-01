@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
-    etatRecompenses, direRecompense, seuilDe, estRecompense, SEUIL_DEFAUT
+    etatRecompenses, direRecompense, seuilDe, estRecompense, SEUIL_DEFAUT,
+    statutEtape, etapesMontrees, cadeauCache
 } from '../js/core/recompenses.js';
 
 const exo = (id, opts = {}) => ({ stepId: id, exerciseId: 'x', nbItems: 10, ...opts });
@@ -172,4 +173,59 @@ test('sans « questions », le seuil sert de dénominateur par défaut', () => {
     });
     assert.equal(e.jeux[0].taux, 0.8);
     assert.equal(e.jeux[0].ouvert, true);
+});
+
+// --- CE QU'ON MONTRE DU PARCOURS ---------------------------------------------
+
+test('UN JEU NON GAGNÉ N\'EST PAS SUR LA CARTE', () => {
+    // Rémy : « les jeux récompenses sur le parcours apparaissent déjà. Alors
+    // que ce serait bien qu'ils apparaissent après. » Un cadenas posé dès le
+    // premier jour annonce la récompense et la refuse dans le même geste.
+    const p = parcours(0.75);
+    const rien = etatRecompenses(p, { completed: [] });
+    const opts = { recompenses: new Map(rien.jeux.map(j => [j.stepId, j])) };
+    const montres = etapesMontrees(p.steps, opts);
+    assert.deepEqual(montres.map(v => v.step.stepId), ['e1', 'e2', 'e3', 'e4']);
+    assert.equal(cadeauCache(jeu('j1'), opts), true);
+
+    // Et le jour où il est gagné, il est là.
+    const gagne = etatRecompenses(p, {
+        completed: ['e1', 'e2', 'e3', 'e4'],
+        resultats: resultats({ e1: [10, 10], e2: [10, 10], e3: [10, 10], e4: [10, 10] })
+    });
+    const ouvert = { recompenses: new Map(gagne.jeux.map(j => [j.stepId, j])) };
+    assert.equal(etapesMontrees(p.steps, ouvert).length, 5);
+    assert.equal(statutEtape(jeu('j1'), 4, ouvert), 'cadeau');
+});
+
+test('LE PROFESSEUR VOIT LA SÉANCE QU\'IL A COMPOSÉE, jeux compris', () => {
+    // La surprise est pour l'élève. Celui qui a posé le jeu doit le relire.
+    const p = parcours(0.75);
+    assert.equal(etapesMontrees(p.steps, { montrerCadeaux: true }).length, 5);
+    assert.equal(statutEtape(jeu('j1'), 4, { montrerCadeaux: true, allUnlocked: true }), 'cadeau');
+});
+
+test('LES NUMÉROS COMPTENT LE TRAVAIL, pas les jeux', () => {
+    // Un jeu au milieu donnerait « 1, 2, 4 » sur une carte de trois exercices,
+    // et l'élève chercherait la troisième.
+    const steps = [exo('e1'), jeu('j1'), exo('e2'), exo('e3')];
+    const montres = etapesMontrees(steps, {});
+    assert.deepEqual(montres.map(v => v.numero), [1, 2, 3]);
+    // L'index d'origine, lui, ne bouge pas : c'est lui qui lance l'étape.
+    assert.deepEqual(montres.map(v => v.i), [0, 2, 3]);
+});
+
+test('L\'ORDRE LIBRE OUVRE TOUT CE QUI N\'EST PAS FAIT', () => {
+    // Rémy : « on peut appuyer sur le premier élément, ou sur les éléments
+    // disponibles s'il n'y a pas d'obligation d'ordre. »
+    const steps = [exo('e1'), exo('e2'), exo('e3')];
+    const impose = { doneIds: new Set(['e1']), currentIndex: 1 };
+    assert.equal(statutEtape(steps[0], 0, impose), 'done');
+    assert.equal(statutEtape(steps[1], 1, impose), 'current');
+    assert.equal(statutEtape(steps[2], 2, impose), 'locked');
+
+    const libre = { ...impose, ordreLibre: true };
+    assert.equal(statutEtape(steps[2], 2, libre), 'open');
+    // Ce qui est fait reste fait : l'ordre libre n'efface rien.
+    assert.equal(statutEtape(steps[0], 0, libre), 'done');
 });

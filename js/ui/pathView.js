@@ -21,8 +21,9 @@ import { computeRuns } from '../core/projections.js';
 import { gradeRun, baremeParEtape, direBareme } from '../core/grading.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
-import { showModal } from './modal.js';
-import { etatRecompenses, direRecompense, estRecompense } from '../core/recompenses.js';
+import {
+    etatRecompenses, direRecompense, estRecompense, statutEtape, etapesMontrees
+} from '../core/recompenses.js';
 import { prendreOuverture, ouvrirLaRoute, recompensesNouvelles } from './ouverture.js';
 
 // --- Style de présentation du parcours --------------------------------------
@@ -49,26 +50,29 @@ function memoriserStyle(id) {
     try { localStorage.setItem(STYLE_KEY, id); } catch (e) { /* mode privé */ }
 }
 
-function setPathStyle(id) {
-    memoriserStyle(id);
-    renderStudentPathView();
-}
-
-function styleSwitcher() {
+/**
+ * Les trois boutons d'habillage. `onChange` dit quoi redessiner : la vue
+ * « Parcours » se refait entière, la carte d'une séance en cours se refait
+ * seule — c'est le même choix, rangé au même endroit.
+ */
+export function barreDeStyles(onChange) {
     const box = document.createElement('div');
     box.className = 'path-style-switcher';
-    const actif = getPathStyle();
     STYLES.forEach(s => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'path-style-btn' + (s.id === actif ? ' path-style-btn--active' : '');
+        btn.className = 'path-style-btn' + (s.id === getPathStyle() ? ' path-style-btn--active' : '');
         btn.textContent = s.icon;
         btn.title = s.label;
         btn.setAttribute('aria-label', `Présentation : ${s.label}`);
-        btn.onclick = () => setPathStyle(s.id);
+        btn.onclick = () => { memoriserStyle(s.id); onChange(s.id); };
         box.appendChild(btn);
     });
     return box;
+}
+
+function styleSwitcher() {
+    return barreDeStyles(() => renderStudentPathView());
 }
 
 /**
@@ -171,6 +175,8 @@ function assignedSection() {
         bareme: baremeParEtape(steps, path.policy),
         recompenses: parJeu,
         seuilRecompense: etatJeux.seuil,
+        // L'élève choisit-il son ordre ? C'est une règle de la séance.
+        ordreLibre: !!policy.ordreLibre,
         ouverture,
         gagnes,
         onNodeClick: (i, statut) => {
@@ -178,16 +184,13 @@ function assignedSection() {
             launchAssigned(path, i);
         }
     };
-    const style = getPathStyle();
-    const rendu = style === 'classique' ? buildClassicTimeline(steps, opts)
-        : style === 'chemin' ? buildDuoPath(steps, opts)
-            : buildWorldMap(steps, opts);
+    const rendu = construireCarte(steps, opts);
     box.appendChild(rendu);
 
     if (ouverture !== undefined || gagnes.size) {
         // Après la mise en page : le sentier n'a de longueur qu'une fois posé.
         requestAnimationFrame(() => requestAnimationFrame(() => {
-            ouvrirLaRoute(rendu, ouverture, rendu.__sentierDefinitif);
+            ouvrirLaRoute(rendu, rendu.__ouvertureRang, rendu.__sentierDefinitif);
         }));
     }
 
@@ -294,7 +297,7 @@ function pictoDe(step) {
  * Une pastille de parcours, identique pour les deux habillages illustrés.
  * Le numéro n'est pas perdu : il passe dans une petite gommette d'angle.
  */
-function creerNoeud(step, i, statut, opts) {
+function creerNoeud(step, i, statut, opts, numero = i + 1) {
     const node = document.createElement('div');
     node.className = `world-node world-node--${statut}`;
     // Un jeu bonus qui vient d'être gagné : il se dessine encore FERMÉ, et
@@ -316,14 +319,14 @@ function creerNoeud(step, i, statut, opts) {
     const dit = statut === 'done' ? 'terminé'
         : statut === 'cadeau' ? 'jeu ouvert'
             : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer' : 'jouer';
-    btn.setAttribute('aria-label', `${cadeau ? 'Jeu' : 'Étape ' + (i + 1)} : ${step.title} — ${dit}`);
+    btn.setAttribute('aria-label', `${cadeau ? 'Jeu' : 'Étape ' + numero} : ${step.title} — ${dit}`);
     btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
 
     const rang = document.createElement('span');
     rang.className = 'world-node-rang';
     // Un jeu ne porte pas de numéro d'étape : il n'est pas du travail, et le
     // numéroter le ferait compter dans la série.
-    rang.textContent = cadeau ? '🎁' : (statut === 'done' ? '★' : String(i + 1));
+    rang.textContent = cadeau ? '🎁' : (statut === 'done' ? '★' : String(numero));
 
     socle.append(btn, rang);
     node.appendChild(socle);
@@ -359,10 +362,17 @@ function creerNoeud(step, i, statut, opts) {
     const meta = document.createElement('span');
     meta.className = 'world-node-meta';
     if (cadeau) {
-        // Sous un jeu fermé, ce qu'il reste à faire — jamais « interdit ».
-        const jeu = opts.recompenses.get(step.stepId);
+        // SOUS UN JEU OUVERT, TROIS MOTS. « C'est gagné : le jeu est ouvert »
+        // tient sur trois lignes de 124 px, déborde de la pastille et vient
+        // écrire par-dessus la rangée suivante. Le ruban et la gerbe d'étoiles
+        // viennent de dire que c'était gagné : il ne reste qu'à inviter.
+        // Fermé — ce que seul le professeur voit désormais —, la phrase
+        // complète dit ce qu'il manque, et c'est elle qui compte.
+        const jeu = opts.recompenses && opts.recompenses.get(step.stepId);
         meta.classList.add('world-node-meta--cadeau');
-        meta.textContent = direRecompense(jeu, opts.seuilRecompense ?? 0.75);
+        meta.textContent = (statut === 'cadeau' || !jeu)
+            ? 'À toi de jouer !'
+            : direRecompense(jeu, opts.seuilRecompense ?? 0.75);
     } else {
         // Le barème tient sous la pastille : « 5 q. • 4 pts ». C'est court, et
         // c'est ce qu'un élève regarde avant de choisir où passer son temps.
@@ -486,16 +496,16 @@ export function buildWorldMap(steps, opts = {}) {
     const map = document.createElement('div');
     map.className = 'world-map';
 
+    const montres = etapesMontrees(steps, opts);
     const PAR_RANGEE = 3;
-    for (let debut = 0; debut < steps.length; debut += PAR_RANGEE) {
+    for (let debut = 0; debut < montres.length; debut += PAR_RANGEE) {
         const rangee = document.createElement('div');
         const inversee = (debut / PAR_RANGEE) % 2 === 1;
         rangee.className = 'world-row' + (inversee ? ' world-row--reverse' : '');
 
-        const paquet = steps.slice(debut, debut + PAR_RANGEE);
-        paquet.forEach((step, j) => {
-            const i = debut + j;
-            const n = creerNoeud(step, i, statutDe(step, i, opts), opts);
+        const paquet = montres.slice(debut, debut + PAR_RANGEE);
+        paquet.forEach(({ step, i, numero }, j) => {
+            const n = creerNoeud(step, i, statutEtape(step, i, opts), opts, numero);
             if (j === 0 && debut > 0) n.dataset.virage = '1';
             rangee.appendChild(n);
         });
@@ -509,20 +519,37 @@ export function buildWorldMap(steps, opts = {}) {
 
         map.appendChild(rangee);
     }
-    tracerSentier(map, opts.ouverture);
+    // LE RANG DANS LA CARTE, PAS LE NUMÉRO D'ÉTAPE. Depuis que les jeux non
+    // gagnés ne sont plus dessinés, les deux ont divergé : la fête se serait
+    // jouée sur la mauvaise pastille. On traduit une fois, ici, là où l'on
+    // sait ce qui a été posé.
+    const rang = rangDansLaCarte(montres, opts.ouverture);
+    map.__ouvertureRang = rang;
+    tracerSentier(map, rang);
     return map;
 }
 
-function statutDe(step, i, opts) {
-    const done = opts.doneIds || new Set();
-    // UN JEU DE RÉCOMPENSE suit sa propre règle : il n'est ni « l'étape en
-    // cours » ni « à débloquer plus tard », il est ouvert ou mérité.
-    const jeu = opts.recompenses && opts.recompenses.get(step.stepId);
-    if (jeu) return jeu.ouvert ? 'cadeau' : 'cadeau-ferme';
-    if (opts.allUnlocked) return 'open';
-    if (done.has(step.stepId)) return 'done';
-    return i === opts.currentIndex ? 'current' : 'locked';
+/** La position d'une étape parmi celles qui ont été dessinées, ou `undefined`. */
+function rangDansLaCarte(montres, indexEtape) {
+    if (indexEtape === undefined || indexEtape === null) return undefined;
+    const r = montres.findIndex(v => v.i === indexEtape);
+    return r < 0 ? undefined : r;
 }
+
+/**
+ * La carte d'un parcours, dans l'habillage choisi sur ce poste. Les trois
+ * présentations sont interchangeables et prennent les mêmes options : c'est
+ * le seul endroit qui sait laquelle est active.
+ */
+export function construireCarte(steps, opts = {}) {
+    const style = opts.style || getPathStyle();
+    return style === 'classique' ? buildClassicTimeline(steps, opts)
+        : style === 'chemin' ? buildDuoPath(steps, opts)
+            : buildWorldMap(steps, opts);
+}
+
+/** L'habillage actif, pour qui veut le lire sans le changer. */
+export { getPathStyle as styleDeParcours };
 
 /**
  * Présentation classique : la liste verticale d'étapes détaillées, avec la
@@ -533,15 +560,25 @@ export function buildClassicTimeline(steps, opts = {}) {
     timeline.className = 'path-timeline';
     timeline.appendChild(Object.assign(document.createElement('div'), { className: 'path-timeline-line' }));
 
-    steps.forEach((step, i) => {
-        const statut = statutDe(step, i, opts);
+    etapesMontrees(steps, opts).forEach(({ step, i, numero }) => {
+        const statut = statutEtape(step, i, opts);
+        const cadeau = statut === 'cadeau' || statut === 'cadeau-ferme';
 
         const row = document.createElement('div');
-        row.className = 'path-timeline-step' + (statut === 'locked' ? ' path-timeline-step--locked' : '');
+        row.className = 'path-timeline-step' + (statut === 'locked' ? ' path-timeline-step--locked' : '')
+            + (cadeau ? ' path-timeline-step--cadeau' : '');
+        // UN JEU QUI VIENT D'ÊTRE GAGNÉ S'INSÈRE DANS LA LISTE. Rémy : « si
+        // c'est une présentation en ligne, il faut le voir s'insérer. » La
+        // ligne n'existait pas ; elle est posée à hauteur nulle, et
+        // ui/ouverture.js la déplie sous les yeux de l'élève.
+        if (opts.gagnes && opts.gagnes.has(step.stepId)) row.classList.add('world-node--gagne');
 
         const icon = document.createElement('div');
-        icon.className = 'path-timeline-icon path-timeline-icon--' + (statut === 'done' ? 'done' : statut === 'current' ? 'current' : statut === 'open' ? 'current' : 'locked');
-        icon.textContent = statut === 'done' ? '✓' : statut === 'locked' ? '🔒' : String(i + 1);
+        icon.className = 'path-timeline-icon path-timeline-icon--' + (statut === 'done' ? 'done'
+            : statut === 'cadeau' ? 'cadeau'
+                : (statut === 'current' || statut === 'open') ? 'current' : 'locked');
+        icon.textContent = cadeau ? (statut === 'cadeau' ? '🎁' : '🔒')
+            : statut === 'done' ? '✓' : statut === 'locked' ? '🔒' : String(numero);
 
         const card = document.createElement('div');
         card.className = 'card card--flush' + (statut === 'current' ? ' card--current' : '');
@@ -553,9 +590,18 @@ export function buildClassicTimeline(steps, opts = {}) {
 
         const meta = document.createElement('div');
         meta.className = 'timeline-step-meta';
-        const pts = opts.bareme && opts.bareme.get(step.stepId);
-        meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
-            + (pts ? ` • sur ${direBareme(pts)}` : '');
+        if (cadeau) {
+            // Sous un jeu, ce qu'il vaut : une récompense, pas une étape de
+            // plus — et donc ni compte de questions ni points.
+            const jeu = opts.recompenses && opts.recompenses.get(step.stepId);
+            meta.textContent = (statut === 'cadeau' || !jeu)
+                ? 'Ta récompense : à toi de jouer !'
+                : direRecompense(jeu, opts.seuilRecompense ?? 0.75);
+        } else {
+            const pts = opts.bareme && opts.bareme.get(step.stepId);
+            meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
+                + (pts ? ` • sur ${direBareme(pts)}` : '');
+        }
         card.appendChild(meta);
 
         if (statut === 'done') {
@@ -563,10 +609,10 @@ export function buildClassicTimeline(steps, opts = {}) {
             st.className = 'timeline-step-status';
             st.textContent = 'Terminé !';
             card.appendChild(st);
-        } else if (statut === 'current' || statut === 'open') {
+        } else if (statut === 'current' || statut === 'open' || statut === 'cadeau') {
             const btn = document.createElement('button');
             btn.className = 'btn-toggle' + (statut === 'current' ? ' active' : ' btn-toggle--sm');
-            btn.textContent = 'Jouer';
+            btn.textContent = statut === 'cadeau' ? 'Jouer au jeu' : 'Jouer';
             btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
             card.appendChild(btn);
         } else {
@@ -590,16 +636,18 @@ export function buildDuoPath(steps, opts = {}) {
     const chemin = document.createElement('div');
     chemin.className = 'duo-path';
 
-    steps.forEach((step, i) => {
-        const node = creerNoeud(step, i, statutDe(step, i, opts), opts);
+    const montres = etapesMontrees(steps, opts);
+    montres.forEach(({ step, i, numero }, rang) => {
+        const node = creerNoeud(step, i, statutEtape(step, i, opts), opts, numero);
         node.classList.add('duo-node');
         // Serpentin : décalage sinusoïdal autour de l'axe, en pourcentage de
         // la largeur disponible pour que la courbe tienne aussi sur un
         // téléphone (en pixels fixes, les pastilles sortaient du cadre).
-        node.style.setProperty('--duo-decalage', `${(Math.sin(i * 1.05) * 20).toFixed(1)}%`);
+        node.style.setProperty('--duo-decalage', `${(Math.sin(rang * 1.05) * 20).toFixed(1)}%`);
         chemin.appendChild(node);
     });
-    tracerSentier(chemin);
+    chemin.__ouvertureRang = rangDansLaCarte(montres, opts.ouverture);
+    tracerSentier(chemin, chemin.__ouvertureRang);
     return chemin;
 }
 
@@ -638,9 +686,10 @@ function teacherPathsSection() {
         btn.className = 'btn-toggle active';
         btn.textContent = 'Voir le parcours';
         btn.onclick = async () => {
-            // On montre la carte AVANT de lancer : « Jouer » engageait l'élève
-            // pour douze étapes sans lui avoir dit lesquelles.
-            if (!await apercuParcours(normalized)) return;
+            // ON MONTRE LA CARTE AVANT DE LANCER — et c'est désormais le
+            // parcours lui-même qui s'en charge : il s'ouvre sur sa carte,
+            // plein écran, et c'est l'élève qui donne le départ. Une fenêtre
+            // d'aperçu par-dessus aurait montré deux fois la même chose.
             const { Runner } = await import('../core/runner.js');
             new Runner({ path: normalized, deviceMode: 'none' }).start();
         };
@@ -748,120 +797,6 @@ function lastResultSection() {
 
 function formatNote(n) {
     return Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
-}
-
-// --- L'APERÇU D'UN PARCOURS, AVANT DE S'Y ENGAGER ---------------------------
-//
-// Jusqu'ici, choisir un parcours — en cliquant une carte ou en saisissant le
-// code du professeur — jetait l'élève directement dans la première question.
-// Il découvrait le contenu de sa séance en la faisant, et n'apprenait qu'à la
-// fin qu'elle comptait douze étapes.
-//
-// L'aperçu montre le chemin AVANT de s'y engager, dans le même habillage que
-// la vue « Mon Parcours » : la carte des mondes, le chemin d'étapes ou la
-// liste, au choix de l'élève. On y lit d'un coup d'œil combien d'étapes, quoi
-// (les pictogrammes disent la notion), combien de questions, et s'il s'agit
-// d'un entraînement ou d'une évaluation — la seule chose qu'on ne devrait
-// jamais apprendre en cours de route.
-
-/**
- * Ouvre l'aperçu illustré d'un parcours et attend la décision de l'élève.
- * @param {Object} path      parcours normalisé
- * @param {Object} [opts]
- * @param {string} [opts.titre]   titre de la fenêtre
- * @param {string} [opts.action]  texte du bouton de départ
- * @returns {Promise<boolean>} vrai si l'élève se lance
- */
-export function apercuParcours(path, opts = {}) {
-    const { steps } = hydratePath(path);
-    if (!steps.length) return Promise.resolve(false);
-    const policy = resolvePolicy(path.policy);
-    const evaluation = isEvaluation(policy);
-
-    return new Promise((resolve) => {
-        const corps = document.createElement('div');
-        corps.className = 'apercu-parcours';
-
-        const tete = document.createElement('div');
-        tete.className = 'apercu-tete';
-        const total = steps.reduce((s, e) => s + (e.nbItems || 0), 0);
-        tete.innerHTML = `
-            <div>
-                <div class="apercu-nom">${escapeHtml(path.name || 'Parcours')}</div>
-                <div class="apercu-chiffres">${steps.length} étape${steps.length > 1 ? 's' : ''}
-                    • ${total} question${total > 1 ? 's' : ''}</div>
-            </div>
-            <div class="apercu-genre ${evaluation ? 'apercu-genre--eval' : ''}">
-                ${evaluation ? '📝 Évaluation' : '🎯 Entraînement'}</div>`;
-        corps.appendChild(tete);
-
-        const regle = document.createElement('p');
-        regle.className = 'apercu-regle';
-        regle.textContent = describePolicy(policy);
-        corps.appendChild(regle);
-
-        // La carte elle-même, redessinée quand l'élève change d'habillage.
-        const scene = document.createElement('div');
-        scene.className = 'apercu-carte';
-        corps.appendChild(scene);
-
-        const dessiner = () => {
-            scene.innerHTML = '';
-            // Toutes les étapes sont montrées, aucune n'est encore faite : les
-            // cadenas n'apprendraient rien ici, ils feraient seulement peur.
-            const o = { allUnlocked: true, currentIndex: 0, doneIds: new Set() };
-            const style = getPathStyle();
-            scene.appendChild(
-                style === 'classique' ? buildClassicTimeline(steps, o)
-                    : style === 'chemin' ? buildDuoPath(steps, o)
-                        : buildWorldMap(steps, o));
-        };
-
-        const barre = document.createElement('div');
-        barre.className = 'apercu-styles';
-        STYLES.forEach(s => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'path-style-btn' + (s.id === getPathStyle() ? ' path-style-btn--active' : '');
-            b.textContent = s.icon;
-            b.title = s.label;
-            b.setAttribute('aria-label', `Présentation : ${s.label}`);
-            b.onclick = () => {
-                memoriserStyle(s.id);
-                barre.querySelectorAll('.path-style-btn').forEach(x => x.classList.remove('path-style-btn--active'));
-                b.classList.add('path-style-btn--active');
-                dessiner();
-            };
-            barre.appendChild(b);
-        });
-        tete.appendChild(barre);
-        dessiner();
-
-        const actions = document.createElement('div');
-        actions.className = 'apercu-actions';
-        const retour = document.createElement('button');
-        retour.type = 'button';
-        retour.className = 'btn-toggle';
-        retour.textContent = 'Plus tard';
-        const partir = document.createElement('button');
-        partir.type = 'button';
-        partir.className = 'btn-toggle active';
-        partir.textContent = opts.action || (evaluation ? 'Commencer l\'évaluation' : 'C\'est parti !');
-        actions.append(retour, partir);
-        corps.appendChild(actions);
-
-        let choisi = false;
-        const fenetre = showModal(opts.titre || 'Ton parcours', '', {
-            width: '640px',
-            onClose: () => resolve(choisi)
-        });
-        // showModal pose l'en-tête puis le corps défilant : c'est ce dernier
-        // bloc qui accueille la carte.
-        fenetre.element.lastElementChild.appendChild(corps);
-
-        retour.onclick = () => fenetre.close();
-        partir.onclick = () => { choisi = true; fenetre.close(); };
-    });
 }
 
 function escapeHtml(s) {
