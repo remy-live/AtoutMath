@@ -19,18 +19,32 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=512">
-    <link rel="stylesheet" href="css/layout.css?v=512">
-    <link rel="stylesheet" href="css/ui.css?v=512">
-    <link rel="stylesheet" href="css/games.css?v=512">
-    <link rel="stylesheet" href="css/components.css?v=512">
-    <link rel="stylesheet" href="css/modules.css?v=512">
+    <link rel="stylesheet" href="css/base.css?v=513">
+    <link rel="stylesheet" href="css/layout.css?v=513">
+    <link rel="stylesheet" href="css/ui.css?v=513">
+    <link rel="stylesheet" href="css/games.css?v=513">
+    <link rel="stylesheet" href="css/components.css?v=513">
+    <link rel="stylesheet" href="css/modules.css?v=513">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
          stockage retombe en mémoire et que le PDF devienne impossible à
          fabriquer. Une application qui se veut utilisable hors ligne ne peut
          pas dépendre d'un serveur qu'elle ne maîtrise pas. -->
+    <!-- UN CODE DANS L'URL : ON NE MONTRE PAS L'APPLICATION.
+         Rémy : « quand il y a un code dans l'URL, il faut charger tout de
+         suite le parcours et pas voir l'interface ». L'élève qui suit le lien
+         de son professeur n'a rien à faire du catalogue, de la barre du haut
+         ni de la barre du bas : il voyait tout cela s'afficher, puis le
+         parcours venir par-dessus une seconde plus tard. Ce drapeau se pose
+         AVANT le premier rendu — c'est pour cela qu'il est ici, dans la page,
+         et non dans un module chargé plus tard : à partir d'un module, le
+         catalogue a déjà eu le temps de s'afficher. -->
+    <script>
+        if (/[?&]code=/.test(location.search)) {
+            document.documentElement.classList.add('depuis-code');
+        }
+    </script>
     <script src="vendor/localforage/localforage.min.js"></script>
     <script src="vendor/confetti/confetti.browser.js"></script>
 </head>

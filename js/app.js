@@ -98,9 +98,39 @@ window.addEventListener('DOMContentLoaded', async () => {
     // lancé par un lien de parcours.
     initBilanExercice();
 
-    // Parcours partagé par lien.
+    // PARCOURS PARTAGÉ PAR LIEN — et l'application reste cachée jusqu'à lui.
+    //
+    // Rémy : « quand il y a un code dans l'URL, il faut charger tout de suite
+    // le parcours et pas voir l'interface ». Le drapeau est posé dans la page
+    // elle-même, avant le premier rendu (voir `depuis-code` dans index.html) ;
+    // ici on ne fait que le LEVER, dans les deux cas où il le faut : le
+    // parcours est à l'écran, ou le code ne vaut rien et l'élève doit pouvoir
+    // se servir de l'application.
     const code = new URLSearchParams(window.location.search).get('code');
-    if (code) applyCode(code, { autoStart: true });
+    if (code) {
+        const ouvert = applyCode(code, { autoStart: true });
+        if (!ouvert) {
+            document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+        } else {
+            // Le voile s'efface quand la couche de jeu est vraiment dessinée :
+            // les modules du parcours se chargent en différé, et lever le voile
+            // avant eux montrerait un écran vide en guise de parcours.
+            const attendre = () => {
+                const gl = document.getElementById('game-layer');
+                if (gl && gl.style.display && gl.style.display !== 'none') {
+                    document.documentElement.classList.add('parcours-pret');
+                    return;
+                }
+                if (Date.now() - depart > 8000) {
+                    document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+                    return;
+                }
+                requestAnimationFrame(attendre);
+            };
+            const depart = Date.now();
+            requestAnimationFrame(attendre);
+        }
+    }
 
     window.showGameConfigUI = (step, onSave, containerId = 'builder-config-content', opts) => {
         import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId, opts));
@@ -297,6 +327,10 @@ function initGameControls() {
             const gl = document.getElementById('game-layer');
             gl.classList.remove('device-simulator', 'tablet-simulator');
             gl.style.display = 'none';
+            // ON REND L'APPLICATION quand l'élève referme un parcours ouvert
+            // par lien : elle était cachée pour qu'il ne la voie pas AVANT son
+            // parcours, pas pour la lui interdire après.
+            document.documentElement.classList.remove('depuis-code', 'parcours-pret');
         };
     }
 

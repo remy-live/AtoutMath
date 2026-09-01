@@ -289,3 +289,30 @@ svg { vertical-align: middle; }
 }
 #game-layer.device-simulator { height: 90vh; width: 400px; max-height: 850px; }
 #game-layer.tablet-simulator { height: 80vh; width: 768px; max-height: 1024px; }
+
+/* --- UN CODE DANS L'URL : LE PARCOURS, ET RIEN D'AUTRE ---------------------
+   Rémy : « quand il y a un code dans l'URL, il faut charger tout de suite le
+   parcours et pas voir l'interface ».
+
+   ON CACHE, ON NE DÉMONTE PAS. `visibility` plutôt que `display` : la barre du
+   haut, le corps et la barre du bas gardent leur place, donc rien ne saute au
+   moment où l'on rend la main — et surtout leurs mesures restent justes, ce
+   dont le plateau de jeu a besoin pour se dimensionner. Le plateau et les
+   fenêtres, eux, ne sont pas concernés : c'est là que le parcours s'ouvre.
+
+   LE VOILE DIT QU'IL SE PASSE QUELQUE CHOSE. Un écran vide pendant qu'on
+   décode et qu'on charge les modules se lit comme une panne. */
+html.depuis-code #top-navbar,
+html.depuis-code #app-body,
+html.depuis-code #bottom-nav { visibility: hidden; }
+
+html.depuis-code::after {
+    content: "Chargement du parcours…";
+    position: fixed; inset: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-app, #f7f8fc); color: var(--text-muted, #6b7280);
+    font-weight: 700; font-size: 1rem;
+}
+/* Le voile s'efface dès que le parcours est à l'écran ; les barres, elles,
+   restent cachées tant qu'on y est. */
+html.depuis-code.parcours-pret::after { content: none; }
