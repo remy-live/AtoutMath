@@ -5,11 +5,22 @@
 // le monde rate, entre le CERCLE (la ligne) et le DISQUE (la surface).
 //
 // CE MODULE NE DÉCIDE RIEN, IL DESSINE. Il transforme une description
-// (« un rayon à 40°, une corde de 200° à 320°, on surligne le premier ») en une
-// liste de TRACÉS élémentaires — des segments, des arcs, des points, des mots.
-// L'écran en fait du SVG, la feuille en fait du jsPDF, et les deux lisent la
-// même liste : c'est la garantie que ce que l'élève voit à l'écran est ce qui
-// sort de l'imprimante.
+// (« un rayon vers 40°, nommé A ; une corde de 200° à 320°, nommée B et C ») en
+// une liste de TRACÉS élémentaires — des segments, des arcs, des croix, des
+// mots. L'écran en fait du SVG, la feuille en fait du jsPDF, et les deux lisent
+// la même liste : c'est la garantie que ce que l'élève voit à l'écran est ce
+// qui sort de l'imprimante.
+//
+// UN POINT EST UNE CROIX. Rémy, banc d'essai : « je te rappelle qu'un point est
+// représenté par une croix ». C'est la convention du collège, et elle n'est pas
+// décorative : un disque plein occupe une surface, alors qu'un point n'en a
+// pas — c'est l'INTERSECTION des deux traits qui EST le point, et cela se voit.
+//
+// LES POINTS SONT NOMMÉS, et c'est ce qui change tout pour l'énoncé. « Que
+// représente le segment [OA] ? » désigne exactement ce qu'on montre ; « comment
+// s'appelle le tracé 2 » désignait un rang dans une liste. La notation est
+// elle-même au programme : l'exercice de vocabulaire la fait travailler en
+// passant.
 //
 // UN ARC EST UNE POLYLIGNE, pas une primitive. jsPDF ne sait pas tracer d'arc,
 // et deux implémentations d'arc — une par rendu — finiraient forcément par
@@ -27,14 +38,23 @@ export function surCercle(a, r = R) {
 const arr = (v) => Math.round(v * 100) / 100;
 
 /**
+ * LES COULEURS. Rémy : « n'hésite pas à mettre de la couleur ». Une par
+ * élément, prises dans la palette catégorielle usuelle — celles qui restent
+ * distinctes y compris en luminosité, donc encore séparables une fois
+ * photocopiées en gris. L'élément dont on parle reste en plus le plus ÉPAIS :
+ * la couleur ne porte jamais l'information toute seule.
+ */
+export const COULEURS = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd', '#e07b00', '#17a2b8'];
+export const ENCRE_FIG = '#1a202c';
+
+/**
  * LES TRACÉS D'UNE FIGURE.
  *
  * @param {Object} spec
- *   `elements`  : [{ type, a, b }] — le vocabulaire à dessiner
+ *   `elements`  : [{ type, a, b, noms }] — le vocabulaire à dessiner
  *   `surligne`  : index (ou liste d'index) des éléments mis en avant
- *   `numerote`  : true pour écrire 1, 2, 3… à côté de chaque élément
- *   `nommer`    : true pour écrire O au centre et A, B aux bouts du surligné
- * @returns {Array} des objets { k: 'cercle'|'ligne'|'point'|'texte', … }
+ *   `couleurs`  : true pour donner une couleur à chaque élément
+ * @returns {Array} des objets { k: 'cercle'|'ligne'|'croix'|'texte', … }
  */
 export function tracesDe(spec) {
     const els = spec.elements || [];
@@ -42,27 +62,40 @@ export function tracesDe(spec) {
     const out = [];
 
     // LE DISQUE D'ABORD, SOUS TOUT LE RESTE : c'est un fond, pas un trait.
-    if (els.some(e => e.type === 'disque')) out.push({ k: 'cercle', x: CX, y: CY, r: R, plein: true });
-    out.push({ k: 'cercle', x: CX, y: CY, r: R, fort: els.some((e, i) => e.type === 'cercle' && forts.has(i)) });
+    const disque = els.findIndex(e => e.type === 'disque');
+    if (disque >= 0) out.push({ k: 'cercle', x: CX, y: CY, r: R, plein: true, fort: forts.has(disque) });
+    const cercle = els.findIndex(e => e.type === 'cercle');
+    out.push({ k: 'cercle', x: CX, y: CY, r: R, fort: cercle >= 0 && forts.has(cercle) });
 
     els.forEach((e, i) => {
-        const fort = forts.has(i);
-        const n = spec.numerote ? String(i + 1) : null;
-        for (const t of traceElement(e, fort, n)) out.push(t);
+        const couleur = spec.couleurs === false ? ENCRE_FIG : COULEURS[i % COULEURS.length];
+        for (const t of traceElement(e, forts.has(i), couleur)) out.push(t);
     });
 
-    if (spec.nommer !== false) {
-        out.push({ k: 'point', x: CX, y: CY, fort: els.some((e, i) => e.type === 'centre' && forts.has(i)) });
-        out.push({ k: 'texte', x: CX - 4.5, y: CY + 5.5, t: 'O', taille: 6 });
-    }
+    // LE CENTRE EST TOUJOURS LÀ, ET IL S'APPELLE O. Même quand la question ne
+    // porte pas sur lui : c'est de lui qu'on parle pour dire ce qu'est un rayon
+    // ou un diamètre, et une figure sans son centre nommé rendrait l'énoncé
+    // muet.
+    const centre = els.findIndex(e => e.type === 'centre');
+    out.push({ k: 'croix', x: CX, y: CY, fort: centre >= 0 && forts.has(centre),
+        couleur: centre >= 0 && forts.has(centre) ? COULEURS[centre % COULEURS.length] : ENCRE_FIG });
+    out.push({ k: 'texte', x: CX - 5, y: CY + 5.5, t: 'O', taille: 6.5 });
+
     return out.map(t => (t.k === 'ligne'
         ? { ...t, pts: t.pts.map(p => ({ x: arr(p.x), y: arr(p.y) })) }
         : t));
 }
 
-function traceElement(e, fort, n) {
+function traceElement(e, fort, couleur) {
     const out = [];
-    const etiquette = (p) => (n ? [{ k: 'texte', x: p.x, y: p.y, t: n, taille: 5.5, cadre: true }] : []);
+    const noms = e.noms || [];
+    /** Une croix et sa lettre, posée du côté opposé au centre. */
+    const pointNomme = (p, nom) => {
+        out.push({ k: 'croix', x: p.x, y: p.y, fort, couleur });
+        if (!nom) return;
+        const q = ecarteDuCentre(p, 6);
+        out.push({ k: 'texte', x: q.x, y: q.y, t: nom, taille: 6.5 });
+    };
 
     if (e.type === 'centre' || e.type === 'cercle' || e.type === 'disque') {
         // Ces trois-là sont la figure elle-même : rien de plus à tracer.
@@ -70,26 +103,23 @@ function traceElement(e, fort, n) {
     }
     if (e.type === 'rayon') {
         const p = surCercle(e.a);
-        out.push({ k: 'ligne', pts: [{ x: CX, y: CY }, p], fort });
-        out.push(...etiquette(auxTroisQuarts({ x: CX, y: CY }, p)));
+        out.push({ k: 'ligne', pts: [{ x: CX, y: CY }, p], fort, couleur });
+        pointNomme(p, noms[0]);
         return out;
     }
-    if (e.type === 'diametre') {
-        const p = surCercle(e.a), q = surCercle(e.a + 180);
-        out.push({ k: 'ligne', pts: [p, q], fort });
-        out.push(...etiquette(decale(auxTroisQuarts(p, q), p, q)));
-        return out;
-    }
-    if (e.type === 'corde') {
-        const p = surCercle(e.a), q = surCercle(e.b);
-        out.push({ k: 'ligne', pts: [p, q], fort });
-        out.push(...etiquette(decale(auxTroisQuarts(p, q), p, q)));
+    if (e.type === 'diametre' || e.type === 'corde') {
+        const p = surCercle(e.a);
+        const q = surCercle(e.type === 'diametre' ? e.a + 180 : e.b);
+        out.push({ k: 'ligne', pts: [p, q], fort, couleur });
+        pointNomme(p, noms[0]);
+        pointNomme(q, noms[1]);
         return out;
     }
     if (e.type === 'arc') {
         const pts = polyArc(e.a, e.b);
-        out.push({ k: 'ligne', pts, fort, arc: true });
-        out.push(...etiquette(ecarteDuCentre(pts[Math.floor(pts.length / 2)], 5)));
+        out.push({ k: 'ligne', pts, fort, couleur, arc: true });
+        pointNomme(pts[0], noms[0]);
+        pointNomme(pts[pts.length - 1], noms[1]);
         return out;
     }
     if (e.type === 'tangente') {
@@ -98,11 +128,16 @@ function traceElement(e, fort, n) {
         const p = surCercle(e.a);
         const dir = { x: -Math.sin((e.a * Math.PI) / 180), y: -Math.cos((e.a * Math.PI) / 180) };
         const L = 30;
-        const A = { x: p.x - dir.x * L, y: p.y - dir.y * L };
-        const B = { x: p.x + dir.x * L, y: p.y + dir.y * L };
-        out.push({ k: 'ligne', pts: [A, B], fort });
-        out.push({ k: 'point', x: p.x, y: p.y, petit: true, fort });
-        out.push(...etiquette(ecarteDuCentre(milieu(p, B), 3)));
+        const bout = { x: p.x + dir.x * L * 0.7, y: p.y + dir.y * L * 0.7 };
+        out.push({
+            k: 'ligne', fort, couleur,
+            pts: [{ x: p.x - dir.x * L, y: p.y - dir.y * L }, { x: p.x + dir.x * L, y: p.y + dir.y * L }]
+        });
+        pointNomme(p, noms[0]);
+        // UNE DROITE SE NOMME PAR DEUX POINTS. Le second est posé sur la
+        // tangente, hors du cercle : sans lui, on ne pourrait pas écrire
+        // « (AB) » dans l'énoncé, et la question perdrait sa notation.
+        pointNomme(bout, noms[1]);
         return out;
     }
     if (e.type === 'secante') {
@@ -110,35 +145,18 @@ function traceElement(e, fort, n) {
         const d = { x: q.x - p.x, y: q.y - p.y };
         const L = Math.hypot(d.x, d.y) || 1;
         const u = { x: d.x / L, y: d.y / L };
-        const A = { x: p.x - u.x * 12, y: p.y - u.y * 12 };
-        const B = { x: q.x + u.x * 12, y: q.y + u.y * 12 };
-        out.push({ k: 'ligne', pts: [A, B], fort });
-        out.push(...etiquette(decale(auxTroisQuarts(p, q), p, q)));
+        out.push({
+            k: 'ligne', fort, couleur,
+            pts: [{ x: p.x - u.x * 13, y: p.y - u.y * 13 }, { x: q.x + u.x * 13, y: q.y + u.y * 13 }]
+        });
+        pointNomme(p, noms[0]);
+        pointNomme(q, noms[1]);
         return out;
     }
     return out;
 }
 
-const milieu = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
-
-/**
- * LE POINT OÙ L'ON POSE LE NUMÉRO — aux trois quarts, et non au milieu.
- *
- * Au milieu, les numéros se tassaient tous près du centre : le milieu d'un
- * rayon est à mi-chemin du centre, celui d'un diamètre EST le centre, et trois
- * étiquettes se recouvraient sur la feuille imprimée. Aux trois quarts, chaque
- * numéro part vers son propre bout de figure.
- */
-const auxTroisQuarts = (p, q) => ({ x: p.x + (q.x - p.x) * 0.74, y: p.y + (q.y - p.y) * 0.74 });
-
-/** Décale l'étiquette perpendiculairement au trait, pour ne pas la poser dessus. */
-function decale(m, p, q) {
-    const d = { x: q.x - p.x, y: q.y - p.y };
-    const L = Math.hypot(d.x, d.y) || 1;
-    return { x: m.x - (d.y / L) * 4.5, y: m.y + (d.x / L) * 4.5 };
-}
-
-/** Pousse un point vers l'extérieur du cercle, pour poser l'étiquette d'un arc. */
+/** Pousse un point vers l'extérieur du cercle, pour poser sa lettre à côté. */
 function ecarteDuCentre(p, d) {
     const v = { x: p.x - CX, y: p.y - CY };
     const L = Math.hypot(v.x, v.y) || 1;
@@ -155,39 +173,46 @@ export function polyArc(a, b, r = R) {
     return pts;
 }
 
+/** Les deux segments d'une croix, en coordonnées de la figure. */
+export function branchesCroix(x, y, taille) {
+    const d = taille / 2;
+    return [[{ x: x - d, y: y - d }, { x: x + d, y: y + d }],
+        [{ x: x - d, y: y + d }, { x: x + d, y: y - d }]];
+}
+
+export const TAILLE_CROIX = 3.4;
+
 /**
  * Le SVG d'une figure. Les couleurs sont écrites en dur et non en variables de
  * thème : cette figure part aussi à l'imprimante, et un trait « couleur du
  * texte » y sortirait blanc sur blanc.
  */
-export function cercleSvg(traces, { taille = 300, fond = false } = {}) {
+export function cercleSvg(traces, { taille = 300 } = {}) {
     const k = taille / 100;
     const T = (v) => arr(v * k);
+    const trait = (pts, couleur, epaisseur) => `<path d="${pts.map((p, i) =>
+        `${i ? 'L' : 'M'}${T(p.x)} ${T(p.y)}`).join(' ')}" fill="none" stroke="${couleur}"
+        stroke-width="${T(epaisseur)}" stroke-linecap="round" stroke-linejoin="round"/>`;
     let d = '';
     for (const t of traces) {
         if (t.k === 'cercle' && t.plein) {
-            d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.r)}" fill="#dbeafe"/>`;
+            d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.r)}"
+                fill="${t.fort ? '#fde2e2' : '#eef2f9'}"/>`;
         } else if (t.k === 'cercle') {
             d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.r)}" fill="none"
-                stroke="${t.fort ? '#d62728' : '#1a202c'}" stroke-width="${T(t.fort ? 1.5 : 0.7)}"/>`;
+                stroke="${t.fort ? COULEURS[0] : ENCRE_FIG}" stroke-width="${T(t.fort ? 1.6 : 0.7)}"/>`;
         } else if (t.k === 'ligne') {
-            const chemin = t.pts.map((p, i) => `${i ? 'L' : 'M'}${T(p.x)} ${T(p.y)}`).join(' ');
-            d += `<path d="${chemin}" fill="none" stroke="${t.fort ? '#d62728' : '#6e7684'}"
-                stroke-width="${T(t.fort ? 1.5 : 0.7)}" stroke-linecap="round" stroke-linejoin="round"/>`;
-        } else if (t.k === 'point') {
-            d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.petit ? 1.1 : 1.5)}"
-                fill="${t.fort ? '#d62728' : '#1a202c'}"/>`;
-        } else if (t.k === 'texte') {
-            if (t.cadre) {
-                d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.taille * 0.72)}"
-                    fill="#ffffff" stroke="#1a202c" stroke-width="${T(0.4)}"/>`;
+            d += trait(t.pts, t.couleur || ENCRE_FIG, t.fort ? 1.6 : 0.8);
+        } else if (t.k === 'croix') {
+            for (const b of branchesCroix(t.x, t.y, TAILLE_CROIX)) {
+                d += trait(b, t.couleur || ENCRE_FIG, t.fort ? 1.1 : 0.75);
             }
-            d += `<text x="${T(t.x)}" y="${T(t.y)}" fill="#1a202c" font-weight="700"
+        } else if (t.k === 'texte') {
+            d += `<text x="${T(t.x)}" y="${T(t.y)}" fill="${ENCRE_FIG}" font-weight="700"
                 font-size="${T(t.taille)}" text-anchor="middle" dominant-baseline="central"
                 font-family="Helvetica, Arial, sans-serif">${t.t}</text>`;
         }
     }
-    const style = fond ? ' style="background:#ffffff;border-radius:10px"' : '';
     return `<svg viewBox="0 0 ${taille} ${taille}" width="${taille}" height="${taille}"
-        role="img" aria-label="figure du cercle"${style}>${d}</svg>`;
+        role="img" aria-label="figure du cercle">${d}</svg>`;
 }

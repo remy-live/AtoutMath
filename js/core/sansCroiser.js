@@ -53,21 +53,27 @@ export const LETTRES = ['A', 'B', 'C', 'D', 'E'];
 export const COULEURS = ['#d62728', '#1f77b4', '#2ca02c', '#ff7f0e', '#9467bd'];
 
 export const PALIERS = {
+    // RÉGLÉ APRÈS LE BANC D'ESSAI. Rémy : « c'est vraiment très très facile,
+    // mets plus de 3 lettres et rends cela un peu plus dur ». Il avait raison
+    // sur les deux points — chaque palier gagne une paire, et le nombre de
+    // traits droits qui NE passent pas monte avec. C'est ce nombre-là qui fait
+    // la difficulté réelle : une figure où tout se relie à la règle n'est pas
+    // un exercice, quel que soit le nombre de paires.
     facile: {
-        label: '2 paires — pour comprendre la règle',
-        paires: 2, colonnes: 9, lignes: 7, croisementsMin: 1
+        label: '3 paires — pour comprendre la règle',
+        paires: 3, colonnes: 10, lignes: 8, croisementsMin: 2
     },
     moyen: {
-        label: '3 paires — comme sur la fiche',
-        paires: 3, colonnes: 10, lignes: 8, croisementsMin: 1
+        label: '4 paires — comme sur la fiche, en plus dense',
+        paires: 4, colonnes: 13, lignes: 10, croisementsMin: 3
     },
     difficile: {
-        label: '4 paires — il faut vraiment prévoir',
-        paires: 4, colonnes: 11, lignes: 9, croisementsMin: 2
+        label: '5 paires — il faut vraiment prévoir',
+        paires: 5, colonnes: 16, lignes: 12, croisementsMin: 4
     },
     expert: {
-        label: '5 paires — le cadre est plein',
-        paires: 5, colonnes: 14, lignes: 10, croisementsMin: 3
+        label: '6 paires — le cadre est plein',
+        paires: 6, colonnes: 19, lignes: 14, croisementsMin: 5
     }
 };
 

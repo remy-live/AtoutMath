@@ -82,7 +82,7 @@ export const geometrieExercises = [
         title: 'Le Vocabulaire du Cercle',
         generatorId: 'geo.cercle-vocabulaire', activityId: 'buttons',
         printable: 'cercleVocabulaire',
-        consignePapier: 'Entoure la bonne réponse. Donne le nom le plus précis.',
+        consignePapier: 'Complète : réponds à la question posée sous chaque figure.',
         skills: ['geo.cercle.vocabulaire'],
         params: { mots: ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'], sens: 'les-deux' },
         motsClefs: ['cercle', 'disque', 'rayon', 'diamètre', 'corde', 'arc', 'tangente',
@@ -91,7 +91,7 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: 'Deux questions différentes reviennent en alternance : NOMMER ce qui est tracé en rouge, et TROUVER lequel des tracés numérotés porte le nom demandé. La seconde est la plus dure, parce que la corde et le diamètre sont alors sous les yeux en même temps. Pour t\'y retrouver, pose-toi toujours les deux mêmes questions : OÙ commence et où finit le tracé (au centre ? sur le cercle ? de part et d\'autre ?), et est-il DROIT ou COURBE. Et donne toujours le nom le plus précis : un diamètre est bien une corde, mais on l\'appelle un diamètre.'
+        instruction: 'Deux questions différentes reviennent en alternance : dire ce que REPRÉSENTE un objet nommé — « que représente le segment [OA] ? » —, et TROUVER lequel des tracés porte le nom demandé. La seconde est la plus dure, parce que la corde et le diamètre sont alors sous les yeux en même temps. Pour t\'y retrouver, pose-toi toujours les deux mêmes questions : OÙ commence et où finit le tracé (au centre ? sur le cercle ? de part et d\'autre ?), et est-il DROIT ou COURBE. Et donne toujours le nom le plus précis : un diamètre est bien une corde, mais on l\'appelle un diamètre.'
     },
 
     // --- La notation des objets de base (fiche 4ᵉ § G) ---
@@ -690,10 +690,10 @@ export const geometrieExercises = [
                     + 'le générateur ne garde que les figures où relier à la règle échoue quelque '
                     + 'part. Deux paires bien enchevêtrées valent trois paires posées côte à côte.',
                 options: [
-                    { value: 'facile', label: '2 paires — pour comprendre la règle' },
-                    { value: 'moyen', label: '3 paires — comme sur la fiche' },
-                    { value: 'difficile', label: '4 paires — il faut vraiment prévoir' },
-                    { value: 'expert', label: '5 paires — le cadre est plein' }
+                    { value: 'facile', label: '3 paires — pour comprendre la règle' },
+                    { value: 'moyen', label: '4 paires — comme sur la fiche, en plus dense' },
+                    { value: 'difficile', label: '5 paires — il faut vraiment prévoir' },
+                    { value: 'expert', label: '6 paires — le cadre est plein' }
                 ]
             }
         ],

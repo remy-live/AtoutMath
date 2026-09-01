@@ -17,12 +17,14 @@
 //     seule information » —, et elle EST la méthode. La donner comme conseil
 //     apprend à chercher ; donner le nombre n'apprend rien.
 //
-//   · LA CALCULATRICE EST LÀ POUR DÉCOUVRIR, PUIS ELLE S'ÉTEINT. Rémy : « avec
-//     utilisation pour le début de la calculatrice ». L'obstacle de cet
-//     exercice est le RAISONNEMENT — savoir quelle ligne boucler —, pas
-//     l'addition de quatre nombres à deux chiffres. On enlève donc l'addition
-//     du chemin au début. Au dernier palier elle disparaît, parce que c'est
-//     alors l'addition en colonne qu'on veut faire travailler.
+//   · UN PAVÉ POUR ÉCRIRE, PAS UNE CALCULATRICE. Rémy avait d'abord demandé
+//     « l'utilisation pour le début de la calculatrice », puis, au banc
+//     d'essai : « n'en crée pas une, rajoute des boutons pour écrire les
+//     valeurs numériques ». Il a raison — l'application a déjà sa calculatrice
+//     en accès permanent, et ce qui manquait ici n'était pas de calculer mais
+//     d'ÉCRIRE, sur une tablette sans clavier. Le pavé écrit dans la case
+//     active ; il disparaît au dernier palier, quand on veut que l'addition en
+//     colonne se fasse seule.
 //
 //   · LE TABLEAU ENTIER COMPTE POUR UNE QUESTION. Neuf cases, c'est un exercice,
 //     pas neuf. Chaque case juste est enregistrée pour le carnet d'erreurs —
@@ -45,7 +47,7 @@ class TableauCroise extends BaseGame {
         this.rng = makeRng(this.params.seed);
         this.palier = PALIERS[this.params.palier] ? this.params.palier : 'facile';
         this.saisies = {};
-        this.calc = { ecran: '0', memoire: null, op: null, neuf: true };
+        this.actif = null;
     }
 
     render() {
@@ -93,23 +95,23 @@ class TableauCroise extends BaseGame {
                 td.tc-faux { background: color-mix(in srgb, var(--danger) 18%, var(--bg-panel)); }
                 td.tc-vise { outline: 2px dashed var(--primary); outline-offset: -2px; }
 
-                /* --- La calculatrice --- */
+                /* --- Le pavé numérique --- */
                 .tc-calc {
-                    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
-                    width: 190px; flex: 0 0 auto;
+                    display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
+                    width: 168px; flex: 0 0 auto;
                 }
-                .tc-ecran {
-                    grid-column: 1 / -1; background: var(--bg-hover); border: 1px solid var(--border);
-                    border-radius: 8px; padding: 6px 10px; text-align: right; font-weight: 800;
-                    font-size: 1.15rem; font-variant-numeric: tabular-nums; overflow: hidden;
+                .tc-calc-titre {
+                    grid-column: 1 / -1; text-align: center; font-size: .75rem;
+                    color: var(--text-muted); font-weight: 700;
                 }
                 .tc-touche {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
-                    border-radius: 8px; cursor: pointer; font: inherit; font-weight: 700;
-                    padding: 8px 0; min-height: 36px;
+                    border-radius: 8px; cursor: pointer; font: inherit; font-weight: 800;
+                    font-size: 1.05rem; padding: 9px 0; min-height: 40px;
                 }
-                .tc-touche--op { color: var(--primary); }
-                .tc-touche--eff { color: var(--danger); }
+                .tc-touche:active { background: var(--bg-hover); }
+                .tc-touche--eff { color: var(--danger); font-size: .95rem; }
+                .tc-touche--ok { color: var(--success); font-size: .95rem; }
 
                 .tc-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .tc-btn {
@@ -215,7 +217,7 @@ class TableauCroise extends BaseGame {
         html += '</tbody></table>';
         this.tableEl.innerHTML = html;
         this.brancherCases();
-        this.dessinerCalculatrice();
+        this.dessinerPave();
     }
 
     nomDeCase(r, c) {
@@ -233,14 +235,52 @@ class TableauCroise extends BaseGame {
             // en serait une.
             el.onblur = () => this.valider(el);
             el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } };
+            // La case ACTIVE, celle où le pavé numérique écrit.
+            el.onfocus = () => { this.actif = { r: Number(el.dataset.r), c: Number(el.dataset.c) }; };
         });
+    }
+
+    /** Le champ de la case active, ou le premier champ libre s'il n'y en a pas. */
+    champActif() {
+        const cible = this.actif
+            && this.tableEl.querySelector(`.tc-case[data-r="${this.actif.r}"][data-c="${this.actif.c}"]`);
+        if (cible && !cible.hasAttribute('readonly')) return cible;
+        return this.tableEl.querySelector('.tc-case:not([readonly])');
+    }
+
+    /**
+     * ON NE REDESSINE QUE LA CASE, PAS TOUT LE TABLEAU.
+     *
+     * Rémy, banc d'essai : « à l'ordinateur, je ne peux pas taper les valeurs ».
+     * Mesuré : on pouvait en taper UNE. La validation se faisait à la sortie du
+     * champ et redessinait la table entière — donc, au moment précis où l'élève
+     * cliquait sur la case suivante, l'élément visé était détruit et le clic
+     * tombait dans le vide. Une seule valeur passait, et le tableau semblait
+     * refuser le clavier.
+     */
+    majCase(r, c) {
+        const td = this.tableEl.querySelector(`[data-cell="${r},${c}"]`);
+        if (!td) return;
+        const saisie = this.saisies[cle(r, c)];
+        const juste = saisie !== undefined && Number(saisie) === this.tableau.valeurs[r][c];
+        const faux = saisie !== undefined && saisie !== '' && !juste;
+        td.classList.toggle('tc-juste', juste);
+        td.classList.toggle('tc-faux', faux);
+        const champ = td.querySelector('.tc-case');
+        if (champ) {
+            champ.value = saisie === undefined ? '' : saisie;
+            // Une case juste se ferme : ce qui est écrit est vrai, on peut
+            // s'appuyer dessus sans arrière-pensée.
+            if (juste) champ.setAttribute('readonly', 'readonly');
+            else champ.removeAttribute('readonly');
+        }
     }
 
     valider(el) {
         if (this.isDemo || this.fini) return;
         const r = Number(el.dataset.r), c = Number(el.dataset.c);
         const brut = (el.value || '').trim();
-        if (brut === '') { delete this.saisies[cle(r, c)]; this.dessiner(); return; }
+        if (brut === '') { delete this.saisies[cle(r, c)]; this.majCase(r, c); return; }
         const n = Number(brut);
         const attendu = this.tableau.valeurs[r][c];
         this.saisies[cle(r, c)] = brut;
@@ -252,7 +292,7 @@ class TableauCroise extends BaseGame {
                 // fait avancer le compteur.
                 partiel: true
             });
-            this.dessiner();
+            this.majCase(r, c);
             // Une case juste ouvre la suivante : on enchaîne sur le conseil
             // plutôt que sur un « bravo » qui n'apprend rien.
             if (this.reste()) this.note(conseil(this.tableau, this.saisies));
@@ -264,7 +304,7 @@ class TableauCroise extends BaseGame {
             questionText: `${this.tableau.titre} — case « ${this.nomDeCase(r, c)} »`,
             input: brut, expected: String(attendu), partiel: true, silencieux: true
         });
-        this.dessiner();
+        this.majCase(r, c);
         this.note(this.pourquoiFaux(r, c, n), 'ko');
     }
 
@@ -346,57 +386,49 @@ class TableauCroise extends BaseGame {
         this.noteEl.className = 'tc-note' + (ton ? ` tc-note--${ton}` : '');
     }
 
-    // --- La calculatrice ----------------------------------------------------
+    // --- Le pavé numérique --------------------------------------------------
+    //
+    // Rémy, banc d'essai : « pour la calculatrice, on a un bouton calculatrice
+    // dont on peut se servir. N'en crée pas une, rajoute des boutons pour
+    // écrire les valeurs numériques. »
+    //
+    // Il a raison deux fois. L'application a déjà sa calculatrice, en accès
+    // permanent : en refaire une dans l'exercice, c'était deux calculatrices
+    // différentes dans la même fenêtre. Et surtout, ce n'est pas de calculer
+    // que l'élève avait besoin ici — c'est d'ÉCRIRE, sur une tablette où il n'y
+    // a pas de clavier. Le pavé écrit donc dans la case active.
 
-    dessinerCalculatrice() {
+    dessinerPave() {
         const active = !!(this.tableau && this.tableau.calculatrice);
         this.calcEl.hidden = !active;
         if (!active) return;
-        if (this.calcEl.childElementCount) { this.majEcran(); return; }
-        const touches = [
-            ['7', '8', '9', '÷'], ['4', '5', '6', '×'],
-            ['1', '2', '3', '−'], ['C', '0', '=', '+']
-        ];
-        let html = '<div class="tc-ecran" data-ecran>0</div>';
-        touches.forEach(ligne => ligne.forEach(t => {
-            const op = '÷×−+='.includes(t);
-            const eff = t === 'C';
-            html += `<button type="button" class="tc-touche${op ? ' tc-touche--op' : ''}`
-                + `${eff ? ' tc-touche--eff' : ''}" data-touche="${t}">${t}</button>`;
-        }));
+        if (this.calcEl.childElementCount) return;
+        let html = '<div class="tc-calc-titre">Écrire dans la case</div>';
+        ['7', '8', '9', '4', '5', '6', '1', '2', '3'].forEach(t => {
+            html += `<button type="button" class="tc-touche" data-touche="${t}">${t}</button>`;
+        });
+        html += '<button type="button" class="tc-touche tc-touche--eff" data-touche="eff">⌫</button>';
+        html += '<button type="button" class="tc-touche" data-touche="0">0</button>';
+        html += '<button type="button" class="tc-touche tc-touche--ok" data-touche="ok">✓</button>';
         this.calcEl.innerHTML = html;
         this.calcEl.querySelectorAll('[data-touche]').forEach(b => {
-            b.onclick = () => this.taper(b.dataset.touche);
+            // `mousedown` plutôt que `click`, et on empêche le défaut : sinon
+            // le bouton prend le focus, la case le perd, et le chiffre suivant
+            // n'a plus où aller.
+            b.onmousedown = (e) => { e.preventDefault(); this.taper(b.dataset.touche); };
+            b.ontouchstart = (e) => { e.preventDefault(); this.taper(b.dataset.touche); };
         });
-        this.majEcran();
     }
 
-    /**
-     * Une calculatrice à quatre opérations, sans priorités : chaque opérateur
-     * ferme le calcul en cours, exactement comme la calculatrice de poche que
-     * l'élève a dans sa trousse. En imiter une autre le tromperait.
-     */
     taper(t) {
-        const c = this.calc;
-        if (t === 'C') { this.calc = { ecran: '0', memoire: null, op: null, neuf: true }; return this.majEcran(); }
-        if (/[0-9]/.test(t)) {
-            c.ecran = (c.neuf || c.ecran === '0') ? t : (c.ecran + t).slice(0, 12);
-            c.neuf = false;
-            return this.majEcran();
-        }
-        const valeur = Number(c.ecran);
-        if (c.op !== null && c.memoire !== null && !c.neuf) {
-            c.ecran = String(appliquer(c.memoire, valeur, c.op));
-        }
-        c.memoire = Number(c.ecran);
-        c.op = (t === '=') ? null : t;
-        c.neuf = true;
-        this.majEcran();
-    }
-
-    majEcran() {
-        const el = this.calcEl.querySelector('[data-ecran]');
-        if (el) el.textContent = this.calc.ecran;
+        if (this.isDemo || this.fini) return;
+        const champ = this.champActif();
+        if (!champ) return;
+        champ.focus();
+        if (t === 'ok') { champ.blur(); return; }
+        if (t === 'eff') { champ.value = champ.value.slice(0, -1); return; }
+        // Trois chiffres suffisent : au-delà, c'est une faute de frappe.
+        if (champ.value.length < 3) champ.value += t;
     }
 
     // --- La démonstration ---------------------------------------------------
@@ -445,14 +477,6 @@ class TableauCroise extends BaseGame {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
     }
-}
-
-function appliquer(a, b, op) {
-    if (op === '+') return a + b;
-    if (op === '−') return a - b;
-    if (op === '×') return a * b;
-    if (op === '÷') return b === 0 ? 0 : Math.round((a / b) * 1e6) / 1e6;
-    return b;
 }
 
 const echapper = (s) => String(s).replace(/[&<>"]/g, (c) =>

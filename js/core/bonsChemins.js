@@ -43,11 +43,16 @@ export const CONSIGNE = 'Pars du D, arrive au A, et multiplie les nombres que tu
 export const PALIERS = {
     facile: {
         label: '3 × 3 — deux ou trois nombres',
-        l: 3, h: 3, nombres: [2, 2, 3, 4, 5, 5, 10], longueur: [2, 3], cibleMax: 300
+        l: 3, h: 3, nombres: [2, 2, 3, 4, 5, 5, 10], longueur: [2, 3], cibleMax: 120
     },
     moyen: {
         label: '3 × 3 — la fiche d\'origine',
-        l: 3, h: 3, nombres: [2, 2, 2, 3, 4, 5, 6, 10], longueur: [3, 5], cibleMax: 3000
+        // CIBLE PLAFONNÉE À 600, ET NON 3000. Rémy, banc d'essai : « le premier
+        // calcul que tu m'as demandé est 1800, c'est super dur ». Il avait
+        // raison : 1800 = 2³ × 3² × 5², cinq facteurs à replacer d'entrée de
+        // jeu. Le palier « la fiche d'origine » doit ressembler à la fiche —
+        // ses cibles à elle sont 8, 30 et 40 avant de monter.
+        l: 3, h: 3, nombres: [2, 2, 2, 3, 4, 5, 6, 10], longueur: [3, 4], cibleMax: 600
     },
     difficile: {
         // Le grand tour : le chemin traverse presque toute la grille, et la

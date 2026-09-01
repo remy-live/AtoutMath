@@ -233,7 +233,12 @@ class BonsChemins extends BaseGame {
         this.cibleEl.innerHTML = `Trouve <b>${g.cible}</b>`;
         const f = facteurs(g, this.chemin);
         if (!f.length) {
-            this.facteursEl.textContent = `${g.cible} = ${decomposer(g.cible).join(' × ')}`;
+            // LA DÉCOMPOSITION NE S'AFFICHE PLUS D'OFFICE. Rémy, banc d'essai :
+            // « retire les décompositions du nombre ». Écrite sous la cible,
+            // elle donnait la moitié du travail avant même d'avoir commencé —
+            // et elle occupait la place au moment où il n'y a rien à dire. Elle
+            // reste dans « Aide-moi », qui est là pour ça.
+            this.facteursEl.textContent = 'Pars du D et clique de case en case.';
             return;
         }
         const p = produit(g, this.chemin);
@@ -338,9 +343,8 @@ class BonsChemins extends BaseGame {
         const g = this.grille;
         if (!await cur.pause(500) || !this.isRunning) return fin();
         cur.say(`Il faut arriver à ${g.cible} en multipliant les nombres traversés. `
-            + `Avant de chercher un chemin, je casse le nombre : ${g.cible} = `
-            + `${decomposer(g.cible).join(' × ')}. Ce sont EUX que je dois trouver sur la grille.`,
-        this.cibleEl);
+            + 'Avant de chercher un chemin au hasard, je casse le nombre en facteurs — '
+            + 'le bouton « Aide-moi » le fait pour moi si je bloque.', this.cibleEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         const caseEl = ([x, y]) => this.svg.querySelector(`[data-x="${x}"][data-y="${y}"]`);

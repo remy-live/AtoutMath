@@ -9,7 +9,7 @@ import { getGenerator } from '../js/core/registry.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
 import { MOTS_CERCLE, cercleVocabulaireGenerator } from '../js/core/generators/cercleVocabulaire.js';
-import { tracesDe, surCercle, polyArc, cercleSvg, CX, CY, R } from '../js/core/cercleFigure.js';
+import { tracesDe, surCercle, polyArc, cercleSvg, branchesCroix, CX, CY, R } from '../js/core/cercleFigure.js';
 
 const gen = () => getGenerator('geo.cercle-vocabulaire');
 const suite = (n, params = {}) => Array.from({ length: n }, (_, i) =>
@@ -48,7 +48,7 @@ test('UN DIAMÈTRE EST UNE CORDE, ET LE JEU LE RECONNAÎT', () => {
     const it = gen().generate({ mots: ['diametre'], sens: 'nommer' },
         { rng: makeRng('diam'), index: 0 });
     assert.equal(it.answer, 'un diamètre');
-    assert.match(it.prompt.text, /le plus précisément possible/);
+    assert.match(it.prompt.text, /Que représente le segment \[[A-Z][A-Z]\] \?/);
     const corde = it.choices.find(c => c.value === 'une corde');
     assert.ok(corde, 'la corde doit être proposée : c\'est l\'erreur attendue');
     assert.match(corde.why, /Tu as raison/);
@@ -73,15 +73,18 @@ test('« TROUVER » DÉSIGNE VRAIMENT LE BON TRACÉ', () => {
         const it = gen().generate({ sens: 'trouver' }, { rng: makeRng(`tr-${i}`), index: i });
         if (it.meta.sens !== 'trouver') continue;
         const spec = it.meta.spec;
-        const bon = Number(it.answer);
-        assert.ok(bon >= 1 && bon <= spec.elements.length, `graine ${i}`);
+        const bonIdx = it.meta.bon;
+        assert.ok(bonIdx >= 1 && bonIdx <= spec.elements.length, `graine ${i}`);
         // Le tracé désigné doit être du type qu'on demande.
         const attendu = { arc: 'arc', corde: 'corde', rayon: 'rayon', diametre: 'diametre',
             tangente: 'tangente', secante: 'secante' }[it.meta.mot];
-        assert.equal(spec.elements[bon - 1].type, attendu, `graine ${i} : mauvais tracé désigné`);
+        assert.equal(spec.elements[bonIdx - 1].type, attendu, `graine ${i} : mauvais tracé désigné`);
+        // LES TRACÉS SE DÉSIGNENT PAR LEUR NOTATION, pas par un rang. Rémy :
+        // « ne mets pas Tracé 1, tracé 2, mets plutôt des [AB] ».
+        it.choices.forEach(c => assert.match(c.value, /^(\[[A-Z][A-Z]\]|\([A-Z][A-Z]\)|l'arc [A-Z][A-Z])$/, c.value));
         // Et chaque leurre explique ce qu'il EST : c'est là que ça s'apprend.
         it.choices.filter(c => !c.correct).forEach(c => {
-            assert.match(c.why, /^Le tracé \d+, c'est /, c.why);
+            assert.match(c.why, /, c'est /, c.why);
         });
     }
 });
@@ -124,6 +127,14 @@ test('la figure se dessine, et ses points sont bien sur le cercle', () => {
     assert.equal(traces[0].k, 'cercle');
     assert.equal(traces[0].plein, true);
     assert.ok(traces.some(t => t.k === 'ligne' && t.fort), 'le rayon surligné doit être marqué fort');
+    // UN POINT EST UNE CROIX. Rémy : « je te rappelle qu'un point est
+    // représenté par une croix » — c'est la convention du collège, et
+    // l'intersection des deux traits EST le point.
+    assert.ok(traces.some(t => t.k === 'croix'), 'les points doivent être des croix');
+    assert.equal(traces.some(t => t.k === 'point'), false, 'plus aucun disque plein');
+    assert.equal(branchesCroix(10, 20, 4).length, 2, 'une croix, ce sont deux segments');
+    // Et le centre porte toujours son nom : c'est de lui qu'on parle.
+    assert.ok(traces.some(t => t.k === 'texte' && t.t === 'O'));
     assert.match(cercleSvg(traces), /^<svg/);
 });
 

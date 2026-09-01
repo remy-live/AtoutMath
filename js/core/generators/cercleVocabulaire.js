@@ -110,6 +110,109 @@ export const MOTS_CERCLE = [
 
 const motDe = (id) => MOTS_CERCLE.find(m => m.id === id) || null;
 
+/**
+ * COMBIEN DE POINTS À NOMMER, ET COMMENT ON ÉCRIT L'OBJET.
+ *
+ * Rémy, banc d'essai : « ne mets pas Tracé 1, tracé 2, mets plutôt des [AB] ».
+ * Il a raison, et cela change la nature de l'exercice : « que représente le
+ * segment [OA] ? » désigne exactement ce qu'on montre, là où « le tracé 2 »
+ * désignait un rang dans une liste. La notation est elle-même au programme —
+ * l'exercice de vocabulaire la fait travailler en passant.
+ */
+const FORMES = {
+    centre: { points: 0, ecrire: () => 'le point O', question: () => 'Que représente le point O ?' },
+    rayon: {
+        points: 1,
+        ecrire: (n) => `[O${n[0]}]`,
+        question: (n) => `Que représente le segment [O${n[0]}] ?`
+    },
+    diametre: {
+        points: 2,
+        ecrire: (n) => `[${n[0]}${n[1]}]`,
+        question: (n) => `Que représente le segment [${n[0]}${n[1]}] ?`
+    },
+    corde: {
+        points: 2,
+        ecrire: (n) => `[${n[0]}${n[1]}]`,
+        question: (n) => `Que représente le segment [${n[0]}${n[1]}] ?`
+    },
+    arc: {
+        points: 2,
+        ecrire: (n) => `l'arc ${n[0]}${n[1]}`,
+        question: (n) => `Que représente la partie en gras, de ${n[0]} à ${n[1]} ?`
+    },
+    tangente: {
+        points: 2,
+        ecrire: (n) => `(${n[0]}${n[1]})`,
+        question: (n) => `Que représente la droite (${n[0]}${n[1]}) ?`
+    },
+    secante: {
+        points: 2,
+        ecrire: (n) => `(${n[0]}${n[1]})`,
+        question: (n) => `Que représente la droite (${n[0]}${n[1]}) ?`
+    },
+    cercle: { points: 0, ecrire: () => 'la ligne en gras', question: () => 'Comment appelle-t-on la ligne en gras ?' },
+    disque: { points: 0, ecrire: () => 'la partie coloriée', question: () => 'Comment appelle-t-on la partie coloriée ?' }
+};
+
+/**
+ * LES LETTRES DES POINTS, dans l'ordre — et jamais O ni I.
+ *
+ * O est pris par le centre, et deux points nommés O sur la même figure
+ * rendraient « [OA] » ambigu. I se confond avec le 1 dans une copie manuscrite,
+ * et c'est déjà pour cela qu'il est écarté ailleurs dans l'application.
+ */
+const LETTRES_POINTS = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+
+/**
+ * LES POINTS NE DOIVENT PAS SE MARCHER DESSUS.
+ *
+ * Vu sur la feuille imprimée : « F », « C » et « A » empilés au même endroit du
+ * cercle, illisibles. Trois éléments tirés indépendamment tombent
+ * régulièrement au même angle, et leurs lettres se superposent — la figure
+ * devient fausse à lire alors que la géométrie est juste.
+ *
+ * On impose donc VINGT DEGRÉS d'écart entre deux points quelconques du cercle,
+ * et l'on retire le tirage tant que ce n'est pas le cas.
+ */
+const ECART_MIN = 20;
+
+function anglesDe(e) {
+    if (e.type === 'rayon' || e.type === 'tangente') return [e.a];
+    if (e.type === 'diametre') return [e.a, e.a + 180];
+    if (e.type === 'corde' || e.type === 'arc' || e.type === 'secante') return [e.a, e.b];
+    return [];
+}
+
+function pointsEcartes(elements) {
+    const angles = elements.flatMap(anglesDe).map(a => ((a % 360) + 360) % 360);
+    for (let i = 0; i < angles.length; i++) {
+        for (let j = i + 1; j < angles.length; j++) {
+            const d = Math.abs(angles[i] - angles[j]);
+            if (Math.min(d, 360 - d) < ECART_MIN) return false;
+        }
+    }
+    return true;
+}
+
+/** Retire le tirage jusqu'à ce que les points soient lisibles. */
+function tirerLisible(rng, faire) {
+    let derniers = faire();
+    for (let essai = 0; essai < 40 && !pointsEcartes(derniers); essai++) derniers = faire();
+    return derniers;
+}
+
+/** Donne un nom aux points de chaque élément, sans jamais réutiliser une lettre. */
+function nommerPoints(elements) {
+    let k = 0;
+    return elements.map(e => {
+        const forme = FORMES[e.type];
+        const noms = [];
+        for (let i = 0; i < forme.points; i++) noms.push(LETTRES_POINTS[k++ % LETTRES_POINTS.length]);
+        return { ...e, noms };
+    });
+}
+
 /** Les mots qui ne se dessinent pas comme un trait : on ne les numérote pas. */
 const GLOBAUX = new Set(['centre', 'cercle', 'disque']);
 
@@ -163,20 +266,15 @@ export const cercleVocabulaireGenerator = {
     }
 };
 
-/** On surligne un trait, l'élève le nomme. */
+/** On met un élément en gras, et l'élève dit ce qu'il représente. */
 function itemNommer(rng, mot, liste) {
-    const spec = { elements: [mot.tirer(rng)], surligne: 0 };
-    // Un décor : deux ou trois traits gris, pour que la figure ressemble à
-    // celle du cours et non à un schéma isolé. Ils ne sont jamais surlignés.
-    for (const d of decor(rng, mot, liste, 2)) spec.elements.push(d);
-    // « LE PLUS PRÉCIS », et ce n'est pas une formule de politesse : un diamètre
-    // EST une corde, donc « une corde » n'est pas faux devant un diamètre —
-    // c'est seulement moins précis. Sans ce mot dans la question, l'exercice
-    // serait injuste, et l'élève aurait raison de protester.
-    const enonce = mot.id === 'disque'
-        ? 'Comment s\'appelle la partie coloriée ?'
-        : (mot.id === 'centre' ? 'Comment s\'appelle le point rouge ?'
-            : 'Comment s\'appelle, le plus précisément possible, ce qui est tracé en rouge ?');
+    // Le surligné D'ABORD, pour qu'il reçoive les premières lettres : « [OA] »
+    // se lit mieux que « [OF] », et c'est la question qu'on va poser.
+    const elements = nommerPoints(tirerLisible(rng,
+        () => [mot.tirer(rng), ...decor(rng, mot, liste, 2)]));
+    const spec = { elements, surligne: 0 };
+    const noms = elements[0].noms;
+    const enonce = FORMES[mot.id].question(noms);
     const autres = MOTS_CERCLE.filter(m => m.id !== mot.id)
         .map(m => ({ value: m.nom, label: m.nom, why: contreDe(m, mot) }));
     return makeItem({
@@ -195,45 +293,47 @@ function itemNommer(rng, mot, liste) {
             { value: mot.nom, label: mot.nom, correct: true }, ...autres
         ], { count: Math.min(5, MOTS_CERCLE.length) }),
         hints: [
-            'Regarde d\'abord OÙ commence et où finit le tracé : au centre ? sur le cercle ? '
+            'Regarde d\'abord OÙ commence et où finit le tracé : au centre O ? sur le cercle ? '
                 + 'des deux côtés du cercle ?',
             'Puis regarde s\'il est DROIT ou COURBE — c\'est ce qui sépare la corde de l\'arc.',
             `C'est ${mot.nom}.`
         ],
         explanation: `C'est ${mot.nom} : ${mot.pourquoi}.`,
         difficulty: mot.avance ? 3 : 2,
-        // `reponse` voyage pour la FEUILLE DE SOLUTIONS : elle n'a pas accès
-        // aux propositions, seulement à `meta`.
-        meta: { mot: mot.id, sens: 'nommer', spec, reponse: mot.nom, theme: `cercle-${mot.id}` }
+        // `reponse` et `objet` voyagent pour la FEUILLE, qui n'a pas accès aux
+        // propositions — seulement à `meta`.
+        meta: {
+            mot: mot.id, sens: 'nommer', spec, reponse: mot.nom,
+            objet: FORMES[mot.id].ecrire(noms), enonce, theme: `cercle-${mot.id}`
+        }
     });
 }
 
-/** Plusieurs traits numérotés, l'élève désigne celui qu'on nomme. */
+/** Plusieurs tracés NOMMÉS, et l'élève désigne celui qui porte le nom demandé. */
 function itemTrouver(rng, mot, liste) {
-    // LES LEURRES SONT LES VOISINS, pas des traits au hasard : on met la corde
+    // LES LEURRES SONT LES VOISINS, pas des tracés au hasard : on met la corde
     // à côté du diamètre, l'arc à côté de la corde. C'est entre eux que l'élève
     // hésite, et une figure qui ne présente pas la confusion ne l'enseigne pas.
-    // Les voisins RESTREINTS À LA SÉRIE : une tangente au milieu d'une série de
-    // sixième est un objet que l'élève ne sait pas nommer, et qu'on ne lui a
-    // pas demandé de savoir nommer.
-    const permis = new Set(liste.map(m => m.id));
-    const voisins = (VOISINS[mot.id] || MOTS_CERCLE.filter(m => m.id !== mot.id).map(m => m.id))
-        .filter(id => permis.has(id) && !GLOBAUX.has(id));
+    //
     // ET JAMAIS UN DIAMÈTRE FACE À UNE CORDE. Un diamètre EST une corde : la
     // question « lequel est une corde ? » aurait alors deux bonnes réponses, et
     // l'élève qui désigne le diamètre aurait raison. Trois tracés au lieu de
     // quatre valent mieux qu'une question fausse.
+    const permis = new Set(liste.map(m => m.id));
+    const voisins = (VOISINS[mot.id] || MOTS_CERCLE.filter(m => m.id !== mot.id).map(m => m.id))
+        .filter(id => permis.has(id) && !GLOBAUX.has(id));
     const compagnons = rng.shuffle(voisins.map(motDe).filter(Boolean)
         .filter(m => !(mot.id === 'corde' && m.id === 'diametre'))).slice(0, 3);
     const tous = rng.shuffle([mot, ...compagnons]);
-    const spec = { elements: tous.map(m => m.tirer(rng)), numerote: true };
-    const bon = tous.indexOf(mot) + 1;
-    const enonce = `Sur cette figure, lequel de ces tracés est ${mot.nom} ?`;
-    const autres = tous.map((m, i) => ({ index: i + 1, m }))
-        .filter(o => o.m.id !== mot.id)
+    const elements = nommerPoints(tirerLisible(rng, () => tous.map(m => m.tirer(rng))));
+    const spec = { elements, surligne: [] };
+    const ecrit = (i) => FORMES[tous[i].id].ecrire(elements[i].noms);
+    const bon = tous.indexOf(mot);
+    const enonce = `Parmi ces tracés, lequel est ${mot.nom} ?`;
+    const autres = tous.map((m, i) => ({ i, m })).filter(o => o.m.id !== mot.id)
         .map(o => ({
-            value: String(o.index), label: `Le tracé ${o.index}`,
-            why: `Le tracé ${o.index}, c'est ${o.m.nom} : ${o.m.pourquoi}.`
+            value: ecrit(o.i), label: ecrit(o.i),
+            why: `${ecrit(o.i)}, c'est ${o.m.nom} : ${o.m.pourquoi}.`
         }));
     return makeItem({
         seed: rng.seed,
@@ -246,18 +346,21 @@ function itemTrouver(rng, mot, liste) {
             html: `<div class="game-question">${enonce}</div>`
                 + encadrer(cercleSvg(tracesDe(spec), { taille: 260 }))
         },
-        answer: String(bon),
+        answer: ecrit(bon),
         choices: finalizeChoices(rng, [
-            { value: String(bon), label: `Le tracé ${bon}`, correct: true }, ...autres
+            { value: ecrit(bon), label: ecrit(bon), correct: true }, ...autres
         ], { count: tous.length }),
         hints: [
             `${mot.nom.charAt(0).toUpperCase()}${mot.nom.slice(1)} : ${mot.pourquoi}.`,
             'Élimine d\'abord ceux qui ne partent pas du bon endroit, puis regarde droit ou courbe.',
-            `C'est le tracé ${bon}.`
+            `C'est ${ecrit(bon)}.`
         ],
-        explanation: `Le tracé ${bon} est ${mot.nom} : ${mot.pourquoi}.`,
+        explanation: `${ecrit(bon)} est ${mot.nom} : ${mot.pourquoi}.`,
         difficulty: mot.avance ? 3 : 2,
-        meta: { mot: mot.id, sens: 'trouver', spec, bon, reponse: mot.nom, theme: `cercle-trouver-${mot.id}` }
+        meta: {
+            mot: mot.id, sens: 'trouver', spec, bon: bon + 1, reponse: ecrit(bon),
+            objet: ecrit(bon), enonce, theme: `cercle-trouver-${mot.id}`
+        }
     });
 }
 
