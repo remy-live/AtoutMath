@@ -324,6 +324,12 @@ function initGameControls() {
             // La calculatrice flotte sur <body>, pas dans la couche de jeu :
             // sans ce balayage elle resterait posée sur la page d'accueil.
             import('./ui/calculatrice.js').then(m => m.reglerCalculatrice(null));
+            // ET LE FANTÔME D'UN JETON QU'ON GLISSAIT, pour la même raison —
+            // c'est le TROISIÈME élément posé sur <body> qu'il faut balayer ici.
+            // Rémy a vu le mot « Quadrilatère » rester en haut de l'écran, puis
+            // le suivre sur la pizza et sur les fonctions : un fantôme
+            // d'organigramme qui avait survécu à son propre exercice.
+            import('./core/activities/paletteDrag.js').then(m => m.nettoyerFantomes());
             const gl = document.getElementById('game-layer');
             gl.classList.remove('device-simulator', 'tablet-simulator');
             gl.style.display = 'none';

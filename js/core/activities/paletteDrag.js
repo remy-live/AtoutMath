@@ -8,8 +8,28 @@
 // Partagé entre le Mathdoku et le Binairo : même fantôme, même visée, même
 // dépôt — seule change la signification du jeton, que chaque activité
 // interprète dans son `deposer`.
+//
+// LA FIN DU GESTE S'ÉCOUTE SUR LA FENÊTRE, PAS SUR LE JETON, et c'est une
+// correction. Rémy a vu le mot « Quadrilatère » rester collé en haut de
+// l'écran, puis le suivre sur la pizza, sur les fonctions, partout — un
+// fantôme d'organigramme survivant à la fermeture de son propre exercice.
+//
+// La cause : le fantôme est posé sur `document.body` — il le faut, pour qu'il
+// glisse au-dessus de tout —, mais le `pointerup` qui l'efface était écouté sur
+// le JETON. Or le jeton disparaît à chaque redessin, et avec lui l'écouteur :
+// personne n'effaçait plus rien. La fenêtre, elle, ne disparaît jamais.
 
 const SEUIL = 8; // px en deçà desquels le geste reste un appui
+
+/**
+ * Efface les fantômes oubliés. Filet de sécurité appelé au début de chaque
+ * geste et à la fermeture d'un exercice : un fantôme est un élément posé sur
+ * le corps de la page, rien ne l'emporte quand l'écran change.
+ */
+export function nettoyerFantomes() {
+    document.querySelectorAll('.drag-ghost').forEach(g => g.remove());
+    document.querySelectorAll('.drag-source').forEach(s => s.classList.remove('drag-source'));
+}
 
 /**
  * @param {HTMLElement} conteneur - racine contenant palette et grille
@@ -28,9 +48,12 @@ export function brancherGlisserPalette(conteneur, {
         chip.addEventListener('pointerdown', (event) => {
             if (event.button !== undefined && event.button !== 0) return;
             if (bloque && bloque()) return;
+            // Un geste commence : on solde d'abord ce qu'un précédent aurait
+            // laissé derrière lui.
+            nettoyerFantomes();
             const depart = { x: event.clientX, y: event.clientY };
             let ghost = null;
-            chip.setPointerCapture(event.pointerId);
+            try { chip.setPointerCapture(event.pointerId); } catch (e) { /* déjà parti */ }
 
             const marquerVisee = (cible) => {
                 conteneur.querySelectorAll(`.${classeVisee}`).forEach(x => x.classList.remove(classeVisee));
@@ -55,20 +78,36 @@ export function brancherGlisserPalette(conteneur, {
                 ghost.style.top = `${Number(ghost.dataset.originY) + dy}px`;
                 marquerVisee(cibleSous(e));
             };
-            const onUp = (e) => {
-                chip.removeEventListener('pointermove', onMove);
-                chip.removeEventListener('pointerup', onUp);
-                chip.removeEventListener('pointercancel', onUp);
+
+            const finir = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                window.removeEventListener('pointercancel', onUp);
+                window.removeEventListener('blur', onUp);
                 chip.classList.remove('drag-source');
                 marquerVisee(null);
-                if (!ghost) return;   // simple appui : le clic éventuel prend le relais
-                ghost.remove(); ghost = null;
+                if (ghost) { ghost.remove(); ghost = null; }
+            };
+
+            const onUp = (e) => {
+                const avait = !!ghost;
+                finir();
+                // Simple appui : le clic éventuel prend le relais.
+                if (!avait) return;
+                // UN GESTE INTERROMPU NE DÉPOSE RIEN. `blur` et `pointercancel`
+                // n'ont pas de position ; le doigt est parti ailleurs, on
+                // range le fantôme et l'on s'arrête là.
+                if (!e || e.type !== 'pointerup') return;
                 const cible = cibleSous(e);
                 if (cible) deposer(cible, chip);
             };
-            chip.addEventListener('pointermove', onMove);
-            chip.addEventListener('pointerup', onUp);
-            chip.addEventListener('pointercancel', onUp);
+
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+            window.addEventListener('pointercancel', onUp);
+            // Un onglet qu'on quitte au milieu d'un glissé ne renvoie jamais de
+            // `pointerup` : sans cela, le fantôme restait à l'écran au retour.
+            window.addEventListener('blur', onUp);
         });
     });
 }
