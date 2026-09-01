@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { U, silhouette, gelule, versSvg, versPdf, largeurChamp } from '../js/core/blocScratch.js';
+import { scriptScratchSvg } from '../js/ui/scriptScratchSvg.js';
 
 /** Tous les points d'ancrage d'un chemin (on ignore les points de contrôle). */
 const ancres = (ch) => [ch.debut, ...ch.pas.map(s => (s[0] === 'L' ? [s[1], s[2]] : [s[5], s[6]]))];
@@ -63,4 +64,69 @@ test('la gélule d\'un nombre grandit avec lui, sans jamais se refermer', () => 
     const ys = ancres(g).map(p => p[1]);
     assert.equal(Math.min(...ys), 0);
     assert.equal(Math.max(...ys), U.champH);
+});
+
+// --- UN SCRIPT ENTIER, POSÉ ---------------------------------------------------
+
+test('LA BOUCLE ENVELOPPE VRAIMENT CE QU\'ELLE RÉPÈTE', () => {
+    // Rémy, sur l'Automate : « les blocs sont très mal imbriqués pour les
+    // boucles ». Ils l'étaient : un en-tête, une barre de couleur, un petit
+    // pied — trois morceaux qui ne fermaient rien. Dans Scratch une boucle est
+    // UNE SEULE PIÈCE, et c'est sa silhouette qui dit « tout ce qui est dedans
+    // se refait ». On vérifie donc que le corps tient DANS la bouche.
+    const svg = scriptScratchSvg([
+        { id: '0', texte: 'tourner à droite', famille: 'mouvement' },
+        {
+            id: '1', texte: 'répéter 3 fois', famille: 'controle', corps: [
+                { id: '1-0', texte: 'avancer de 2 cases', famille: 'mouvement' },
+                { id: '1-1', texte: 'tourner à droite', famille: 'mouvement' }
+            ]
+        },
+        { id: '2', texte: 'avancer de 1 case', famille: 'mouvement' }
+    ]);
+    // Chaque bloc est désignable : c'est tout ce dont le surligneur a besoin.
+    ['0', '1', '1-0', '1-1', '2'].forEach(id =>
+        assert.match(svg, new RegExp(`data-bloc="${id}"`), id));
+    assert.equal(/NaN|undefined/.test(svg), false);
+
+    // Le corps est décalé du retrait de Scratch, et il commence sous l'en-tête.
+    const y = (id) => {
+        const m = new RegExp(`data-bloc="${id}"><path d="M ([-0-9.]+) ([-0-9.]+)`).exec(svg);
+        assert.ok(m, id);
+        return { x: Number(m[1]), y: Number(m[2]) };
+    };
+    const boucle = y('1'), premier = y('1-0'), second = y('1-1'), apres = y('2');
+    assert.equal(Math.round(premier.x - boucle.x), U.retrait, 'le corps est en retrait');
+    assert.equal(Math.round(second.x - boucle.x), U.retrait);
+    assert.ok(premier.y > boucle.y, 'le corps commence sous l\'en-tête');
+    assert.equal(Math.round(second.y - premier.y), U.ligne, 'les blocs du corps s\'enchaînent');
+    // ET LE BLOC SUIVANT PASSE SOUS LA BOUCLE ENTIÈRE, pas sous son en-tête :
+    // c'est la barre du bas qui referme le C, et elle prend sa place.
+    assert.ok(apres.y >= second.y + U.ligne + U.basBoucle - 1,
+        `le bloc d'après chevauche la boucle (${apres.y} vs ${second.y})`);
+    assert.equal(Math.round(apres.x - boucle.x), 0, 'et il revient à la marge');
+});
+
+test('une boucle vide garde une bouche, et le script grandit avec son contenu', () => {
+    const vide = scriptScratchSvg([{ id: 'a', texte: 'répéter 2 fois', famille: 'controle', corps: [] }]);
+    const haut = (s) => Number(/viewBox="0 0 [0-9.]+ ([0-9.]+)"/.exec(s)[1]);
+    assert.ok(haut(vide) >= U.ligne + U.boucheVide + U.basBoucle);
+
+    const pleine = scriptScratchSvg([{
+        id: 'a', texte: 'répéter 2 fois', famille: 'controle',
+        corps: [{ id: 'a-0', texte: 'avancer', famille: 'mouvement' }]
+    }]);
+    assert.ok(haut(pleine) > haut(vide), 'la bouche s\'ouvre pour ce qu\'on y met');
+});
+
+test('le compteur de tours est dans l\'en-tête de la boucle, et caché au repos', () => {
+    // Il ne s'allume qu'au tour où l'on est : affiché d'emblée, il donnerait
+    // une information que l'élève doit justement tenir lui-même.
+    const svg = scriptScratchSvg([{ id: 'b', texte: 'répéter 4 fois', famille: 'controle', corps: [] }]);
+    assert.match(svg, /data-tour="b"/);
+    assert.match(svg, /visibility:hidden/);
+    assert.match(svg, /data-tour-texte/);
+    // Un bloc simple n'en a pas : il ne compte rien.
+    const simple = scriptScratchSvg([{ id: 'c', texte: 'avancer', famille: 'mouvement' }]);
+    assert.equal(/data-tour/.test(simple), false);
 });

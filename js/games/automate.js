@@ -21,6 +21,7 @@ import {
     tirerProgramme, derouler, jugerGeste, jugerArrivee, direBloc,
     devant, nomCap, tourner, PALIERS, palierPour, TAILLES_NIVEAU
 } from '../core/automate.js';
+import { scriptScratchSvg } from '../ui/scriptScratchSvg.js';
 
 const SKILL = 'geo.espace.programme';
 const ANGLES = { N: 0, E: 90, S: 180, O: 270 };
@@ -173,64 +174,43 @@ class Automate extends BaseGame {
                     .au-note { grid-area: note; min-height: 0; }
                 }
 
-                /* LES BLOCS. Les couleurs de Scratch, parce que ce sont celles
-                   que l'élève retrouvera : bleu pour bouger, jaune pour
-                   contrôler, vert pour agir.
-
-                   ET SA FORME. Rémy : « utilise les blocs Scratch, ou en tout
-                   cas le style — tu les as. » Les couleurs y étaient, la
-                   silhouette non : des rectangles arrondis séparés par quatre
-                   pixels de vide, qui se lisent comme une liste à puces et non
-                   comme un programme. Un bloc Scratch porte un TENON dessous
-                   et une MORTAISE dessus, et deux blocs qui se suivent
-                   s'EMBOÎTENT — c'est ce qui dit qu'ils ne se réordonnent pas
-                   au hasard. Le découpage se fait au clip-path : le tenon
-                   dépasse par le bas, la marge négative le fait entrer dans le
-                   creux du bloc suivant. */
-                .au-bloc {
-                    --au-tenon: 4px;
-                    display: flex; align-items: center; gap: 5px;
-                    padding: 6px 9px calc(6px + var(--au-tenon)); color: #fff;
-                    font-weight: 700; font-size: clamp(10px, 2.3cqw, 13px);
-                    line-height: 1.25;
-                    margin-bottom: calc(-1 * var(--au-tenon));
-                    clip-path: polygon(
-                        0 0, 11px 0, 15px var(--au-tenon), 27px var(--au-tenon), 31px 0, 100% 0,
-                        100% calc(100% - var(--au-tenon)), 31px calc(100% - var(--au-tenon)),
-                        27px 100%, 15px 100%, 11px calc(100% - var(--au-tenon)),
-                        0 calc(100% - var(--au-tenon))
-                    );
+                /* LE PROGRAMME EST UN DESSIN, plus une pile de <div>.
+                   Rémy, deux fois. D'abord : « utilise les blocs Scratch, ou
+                   en tout cas le style — tu les as. » Puis, en les revoyant :
+                   « les blocs sont très mal imbriqués pour les boucles ».
+                   Ils l'étaient : la boucle se faisait en trois morceaux — un
+                   en-tête, une barre de couleur à gauche, un petit pied —, et
+                   rien ne FERMAIT la forme. Or dans Scratch une boucle est UNE
+                   SEULE PIÈCE qui enveloppe ce qu'elle répète, et c'est cette
+                   silhouette-là qui dit « tout ce qui est dedans se refait ».
+                   Le dessin vient maintenant du module que le Chat Géomètre et
+                   la fiche imprimée utilisent déjà (core/blocScratch.js), posé
+                   par ui/scriptScratchSvg.js : trois rendus, une géométrie.
+                   Il ne reste ici que ce qui est propre à l'Automate — le bloc
+                   allumé, et les blocs déjà passés. */
+                /* LE SCRIPT NE SE LAISSE PAS ÉCRASER. Posé dans une colonne
+                   flexible à hauteur bornée, il se comportait en élément
+                   rétractable : le navigateur lui rognait sa hauteur, et le
+                   rapport de forme du SVG réduisait alors TOUT le dessin — sur
+                   téléphone, un programme de huit blocs se lisait à six pixels.
+                   Il garde donc sa taille naturelle, et c'est le panneau qui
+                   défile, lui qui est déjà en défilement automatique.
+                   (Pas d'accent grave ici : ce commentaire vit DANS un
+                   littéral de gabarit, et le premier le fermerait.) */
+                .sb-script {
+                    flex: 0 0 auto; align-self: flex-start;
+                    width: 100%; max-width: 100%; height: auto; display: block;
                 }
-                /* Emboîtés, les blocs n'ont plus besoin d'espace entre eux :
-                   c'est le tenon qui fait la jointure. */
-                .au-prog, .au-dedans { gap: 0; }
-                .au-bloc--mvt { background: #3b7ddd; }
-                .au-bloc--action { background: #22a06b; }
-                .au-bloc--ctrl { background: #d9932a; }
-                .au-bloc b { font-size: 1.1em; }
                 /* Le bloc allumé : c'est le compteur ordinal, la notion même
                    qu'on veut rendre visible. Il ne peut pas être discret. */
-                .au-bloc--actif {
-                    outline: 3px solid #0f172a; outline-offset: 1px;
+                .au-bloc--actif > path {
+                    stroke: #0f172a; stroke-width: 2.5;
                     animation: au-pulse 1.15s ease-in-out infinite;
                 }
                 @keyframes au-pulse {
-                    50% { filter: brightness(1.28) drop-shadow(0 0 7px rgba(15,23,42,.5)); }
+                    50% { filter: brightness(1.3) drop-shadow(0 0 6px rgba(15,23,42,.55)); }
                 }
                 .au-bloc--fait { opacity: .5; }
-                .au-c { display: flex; flex-direction: column; }
-                /* Le C de « répéter » : la barre de gauche montre d'un coup
-                   d'œil ce qui est DANS la boucle et ce qui n'y est pas. */
-                .au-dedans {
-                    margin-left: 9px; padding-left: 9px; border-left: 7px solid #d9932a;
-                    display: flex; flex-direction: column; gap: 4px; padding-block: 4px;
-                }
-                .au-pied { margin-left: 9px; height: 8px; width: 46px;
-                    background: #d9932a; border-radius: 0 0 7px 7px; }
-                .au-tour {
-                    margin-left: auto; background: rgba(0,0,0,.28); border-radius: 999px;
-                    padding: 1px 7px; font-size: .82em; white-space: nowrap;
-                }
 
                 .au-cmds { display: flex; gap: 9px; justify-content: center; flex: 0 0 auto; flex-wrap: wrap; }
                 .au-cmd {
@@ -456,25 +436,36 @@ class Automate extends BaseGame {
 
     // --- Le programme à l'écran -------------------------------------------------
 
+    /**
+     * LE PROGRAMME EST DESSINÉ, PAS EMPILÉ. Rémy : « les blocs sont très mal
+     * imbriqués pour les boucles, utilise des blocs scratch que l'on a déjà ».
+     * La boucle se rendait en trois morceaux de CSS — un en-tête, une barre de
+     * couleur à gauche, un petit pied — qui ne fermaient rien. Dans Scratch une
+     * boucle est UNE SEULE PIÈCE qui enveloppe ce qu'elle répète, et c'est
+     * cette silhouette-là qui dit « tout ce qui est dedans se refait ».
+     *
+     * La forme vient du module que le Chat Géomètre et la fiche imprimée
+     * utilisent déjà (core/blocScratch.js) : trois rendus, une géométrie.
+     */
     dessinerProgramme() {
-        this.progEl.innerHTML = this.programme.map((b, i) => this.blocHtml(b, [i])).join('');
+        this.progEl.innerHTML = scriptScratchSvg(
+            this.programme.map((b, i) => this.enBloc(b, [i])));
     }
 
-    blocHtml(b, chemin) {
+    /** Le programme de l'automate, dit dans la langue du dessinateur de blocs. */
+    enBloc(b, chemin) {
         const id = chemin.join('-');
         if (b.type === 'repete') {
-            return `<div class="au-c">
-                <div class="au-bloc au-bloc--ctrl" data-bloc="${id}">
-                    🔁 répéter <b>${b.n}</b> fois
-                    <span class="au-tour" data-tour="${id}" hidden></span>
-                </div>
-                <div class="au-dedans">${b.corps.map((c, i) => this.blocHtml(c, [...chemin, i])).join('')}</div>
-                <div class="au-pied"></div>
-            </div>`;
+            return {
+                id, famille: 'controle', texte: `🔁 répéter ${b.n} fois`,
+                corps: b.corps.map((c, i) => this.enBloc(c, [...chemin, i]))
+            };
         }
-        const cat = b.type === 'pose' ? 'action' : 'mvt';
         const ico = { avance: '⬆', droite: '↻', gauche: '↺', pose: '⬤' }[b.type] || '';
-        return `<div class="au-bloc au-bloc--${cat}" data-bloc="${id}">${ico} ${direBloc(b)}</div>`;
+        return {
+            id, texte: `${ico} ${direBloc(b)}`,
+            famille: b.type === 'pose' ? 'apparence' : 'mouvement'
+        };
     }
 
     /**
@@ -488,7 +479,11 @@ class Automate extends BaseGame {
         this.progEl.querySelectorAll('[data-bloc]').forEach(el => {
             el.classList.remove('au-bloc--actif', 'au-bloc--fait');
         });
-        this.progEl.querySelectorAll('[data-tour]').forEach(el => { el.hidden = true; });
+        // `hidden` ne fait rien sur un élément SVG : c'est `visibility` qui
+        // commande, et le compteur de tours vit maintenant dans le dessin.
+        this.progEl.querySelectorAll('[data-tour]').forEach(el => {
+            el.style.visibility = 'hidden';
+        });
         const p = this.deroule.pas[this.k];
         if (!p || !this.reglage.surligneur) return;
 
@@ -499,8 +494,8 @@ class Automate extends BaseGame {
             const cheminBoucle = p.chemin.slice(0, prof + 1).join('-');
             const badge = this.progEl.querySelector(`[data-tour="${cheminBoucle}"]`);
             if (badge) {
-                badge.textContent = `tour ${t.tour} / ${t.total}`;
-                badge.hidden = false;
+                badge.querySelector('[data-tour-texte]').textContent = `${t.tour}/${t.total}`;
+                badge.style.visibility = 'visible';
             }
         });
     }
