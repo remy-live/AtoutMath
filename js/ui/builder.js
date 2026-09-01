@@ -1348,6 +1348,21 @@ function initToolbar() {
         };
     }
 
+    // DONNER À UNE CLASSE — le geste le plus fréquent, donc le plus proche.
+    //
+    // Rémy : « je ne sais pas comment j'envoie un parcours à une classe. » Il
+    // n'y avait rien à trouver : le noyau existait, le bouton non. Il se pose
+    // ici, dans la barre du parcours qu'on vient d'écrire — donner un travail
+    // se fait DEPUIS le travail, jamais depuis un autre écran où il faudrait le
+    // retrouver.
+    const btnDonner = document.getElementById('btn-donner-classe');
+    if (btnDonner) {
+        btnDonner.onclick = async () => {
+            const { ouvrirDonnerSeance } = await import('./donnerSeance.js');
+            ouvrirDonnerSeance(state.currentPath);
+        };
+    }
+
     const btnCode = document.getElementById('btn-generate-code');
     if (btnCode) {
         btnCode.onclick = async () => {

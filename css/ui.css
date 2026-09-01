@@ -1458,3 +1458,58 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    pas une urgence, c'est une absence. */
 .cl-signal--rien { color: var(--text-muted); font-size: 1.3rem; opacity: .5; }
 .cl-legende--signaux { margin-top: 2px; opacity: .85; }
+
+
+/* --- DONNER UN PARCOURS À UNE CLASSE ------------------------------------- */
+/* Rémy : « comment j'attribue mon parcours à un niveau (mes 2 sixièmes) ou à
+   une classe ou à un groupe d'élèves ? » Le geste est celui qu'un professeur
+   fait le plus souvent : il tient donc en une boîte, ouverte depuis le parcours
+   qu'on vient d'écrire, et refermée sur un clic. */
+.ds-titre-parcours {
+    margin: 0 0 14px; font-weight: 800; font-size: 1.02rem; color: var(--text-main);
+}
+.ds-n {
+    margin-left: 8px; font-weight: 600; font-size: .8rem; color: var(--text-muted);
+}
+.ds-groupe { margin-bottom: 10px; }
+/* LE NIVEAU EST UN RACCOURCI DE CASES, pas une case de plus : on le clique pour
+   cocher ses classes d'un coup, et l'on voit tout de suite lesquelles. */
+.ds-niveau {
+    border: none; background: none; padding: 0 0 4px; cursor: pointer; font: inherit;
+    font-weight: 800; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--primary);
+}
+.ds-classes { display: flex; flex-wrap: wrap; gap: 6px; }
+.ds-classe, .ds-eleve, .ds-choix {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    border: 1.5px solid var(--border); border-radius: 9px; padding: 6px 10px;
+    background: var(--bg-app); font-size: .9rem;
+}
+.ds-classe:has(input:checked), .ds-eleve:has(input:checked) {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+}
+.ds-choix { border: none; background: none; padding: 8px 0 0; }
+.ds-liste-eleves {
+    display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 2px;
+    max-height: 190px; overflow-y: auto;
+}
+.ds-eleve { padding: 4px 8px; font-size: .85rem; }
+.ds-date {
+    width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 10px;
+    border: 1.5px solid var(--border); border-radius: 9px; font: inherit;
+    background: var(--bg-app); color: var(--text-main);
+}
+/* ON DIT CE QUI VA PARTIR AVANT DE LE FAIRE. « Deux séances » surprend quand on
+   a coché un niveau — mieux vaut que la surprise arrive ici que dans la liste. */
+.ds-resume {
+    margin: 14px 0 12px; padding: 9px 12px; border-radius: 9px;
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-app));
+    font-size: .9rem; line-height: 1.35; color: var(--text-main);
+}
+.ds-actions { text-align: right; }
+.ds-ok {
+    border: none; background: var(--primary); color: #fff; font: inherit; font-weight: 700;
+    padding: 10px 22px; border-radius: 10px; cursor: pointer; font-size: 1rem;
+}
+.ds-ok:disabled { opacity: .45; cursor: not-allowed; }
