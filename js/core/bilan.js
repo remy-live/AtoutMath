@@ -197,6 +197,82 @@ export function phraseDe(b) {
 }
 
 /**
+ * LES SIGNAUX D'UN ÉLÈVE — ce qui se BALAIE, au lieu de se lire.
+ *
+ * Rémy, devant les vingt-quatre phrases posées sous la grille : « c'est
+ * tellement indigeste le bilan, tu mets le bilan hors tableau, il faut mieux
+ * faire, le prof ne le lira jamais. »
+ *
+ * Il a raison, et l'erreur était de croire qu'on lit un tableau de classe. On
+ * ne le lit pas : on le BALAIE, on s'arrête sur ce qui dépasse, et l'on va voir
+ * l'élève. De la prose sous une grille, fût-elle juste, ne sera jamais lue —
+ * vingt-quatre paragraphes demandent trois minutes, et personne n'a trois
+ * minutes en début d'heure.
+ *
+ * Un signal tient donc en un caractère, se pose DANS la ligne de l'élève, et
+ * répond à une seule question : chez qui dois-je aller ? Le détail chiffré vit
+ * dans l'infobulle, la phrase entière dans le panneau qu'on ouvre en cliquant.
+ *
+ * DEUX SIGNAUX AU PLUS, ET DANS CET ORDRE. Une colonne qui en porterait quatre
+ * redeviendrait un texte à déchiffrer. On garde donc les plus décisifs : ce qui
+ * empêche de lire le score passe avant ce qui le nuance.
+ */
+export const SIGNAUX = {
+    RIEN: { code: 'rien', icone: '·', nom: 'N\'a rien fait' },
+    ARRET: { code: 'arret', icone: '⏸', nom: 'S\'est arrêté en chemin' },
+    TETU: { code: 'tetu', icone: '🔁', nom: 'La même erreur revient' },
+    ACCROCHE: { code: 'accroche', icone: '💪', nom: 'Y arrive en s\'accrochant' },
+    FACILE: { code: 'facile', icone: '⚡', nom: 'Tout acquis — donner plus dur' }
+};
+
+export function signauxDe(b) {
+    if (!b || !b.questions) {
+        return [{ ...SIGNAUX.RIEN, detail: 'N\'a pas ouvert la séance.' }];
+    }
+    const out = [];
+
+    // CE QUI EMPÊCHE DE LIRE LE SCORE PASSE EN PREMIER. « 45 % » sur deux
+    // exercices commencés et « 45 % » sur six terminés ne se comparent pas.
+    if (b.inacheve) {
+        out.push({
+            ...SIGNAUX.ARRET,
+            detail: b.etapesInachevees
+                ? `Séance non terminée : ${b.etapesInachevees} exercice`
+                    + `${b.etapesInachevees > 1 ? 's' : ''} seulement, puis arrêt.`
+                : 'Séance ouverte, mais rien n\'a été fait.'
+        });
+    }
+    // Une règle mal apprise, et non de l'inattention : deux minutes suffisent à
+    // la reprendre, encore faut-il la voir.
+    if (b.tetu) {
+        const q = String(b.tetu.questionText || '').trim();
+        out.push({
+            ...SIGNAUX.TETU,
+            detail: `La même erreur revient ${b.tetu.count} fois${q ? ` : ${q}` : ''}.`
+        });
+    }
+    const partReprises = b.justes ? b.reprises / b.justes : 0;
+    if (partReprises > 0.25 || (b.indices && b.indices > b.questions * 0.3)) {
+        out.push({
+            ...SIGNAUX.ACCROCHE,
+            detail: `${b.reprises} bonne${b.reprises > 1 ? 's' : ''} réponse`
+                + `${b.reprises > 1 ? 's' : ''} au deuxième essai, ${b.indices} indice`
+                + `${b.indices > 1 ? 's' : ''} : moins solide que le score.`
+        });
+    }
+    // Celui à qui il faut donner plus dur. Il ne se signale jamais tout seul —
+    // il a bien travaillé, il n'a besoin de rien, on l'oublie.
+    if (!out.length && b.assez && b.forces.length && !b.difficultes.length) {
+        out.push({
+            ...SIGNAUX.FACILE,
+            detail: `${b.forces.length} compétence${b.forces.length > 1 ? 's' : ''} acquise`
+                + `${b.forces.length > 1 ? 's' : ''}, aucune difficulté : on peut ouvrir la suite.`
+        });
+    }
+    return out.slice(0, 2);
+}
+
+/**
  * Le bilan de la classe : les élèves, et surtout LES COMPÉTENCES VUES DE FACE.
  *
  * La colonne qui compte est celle où beaucoup d'élèves sont en rouge : c'est
@@ -210,7 +286,7 @@ export function bilanClasse(classe, now = Date.now()) {
         nom: e.nom,
         majLe: e.majLe,
         ...bilanEleve(e.evenements || [], now)
-    }));
+    })).map(e => ({ ...e, signaux: signauxDe(e) }));
 
     const parCompetence = new Map();
     for (const el of eleves) {

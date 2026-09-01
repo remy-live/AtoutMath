@@ -1439,3 +1439,22 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: none; background: none; padding: 0; font: inherit; cursor: pointer;
     color: var(--primary); text-decoration: underline;
 }
+
+
+/* --- LA COLONNE DES SIGNAUX --------------------------------------------- */
+/* Rémy : « c'est tellement indigeste le bilan, tu mets le bilan hors tableau,
+   il faut mieux faire, le prof ne le lira jamais. » Un tableau de classe ne se
+   lit pas, il se BALAIE : on s'arrête sur ce qui dépasse, et on va voir
+   l'élève. Le signal tient donc en un caractère, dans la ligne, et le détail
+   chiffré vit dans l'infobulle. */
+.cl-col--signal { width: 3.2em; text-align: center; font-size: 1rem; }
+.cl-signaux { text-align: center; white-space: nowrap; }
+.cl-signal {
+    display: inline-block; font-size: 1.05rem; line-height: 1; cursor: help;
+    margin: 0 1px;
+}
+/* CELUI QUI N'A RIEN FAIT NE CRIE PAS. Un point gris se remarque par ce qu'il
+   n'a pas — toute la ligne est vide autour — et non par une alarme : ce n'est
+   pas une urgence, c'est une absence. */
+.cl-signal--rien { color: var(--text-muted); font-size: 1.3rem; opacity: .5; }
+.cl-legende--signaux { margin-top: 2px; opacity: .85; }

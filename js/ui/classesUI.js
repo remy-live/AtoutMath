@@ -27,7 +27,7 @@ import {
     creerClasse, poserEleve, retirerEleve, renommerEleve,
     lireFichierEleve, elevesTries
 } from '../core/classes.js';
-import { bilanClasse } from '../core/bilan.js';
+import { bilanClasse, SIGNAUX } from '../core/bilan.js';
 import { classesDeDemo, LEGENDE_PROFILS } from '../core/demoClasses.js';
 import { LEVELS } from '../core/mastery.js';
 
@@ -97,16 +97,28 @@ function grilleHtml(b) {
         const par = new Map(e.competences.map(c => [c.skillId, c]));
         const cases = colonnes.map(c => `<td>${pastille(par.get(c.skillId))}</td>`).join('');
         const muet = e.questions ? '' : ' cl-ligne--muette';
+        // LE SIGNAL EST DANS LA LIGNE, PAS SOUS LE TABLEAU. Rémy : « c'est
+        // tellement indigeste le bilan […] le prof ne le lira jamais. » Le
+        // détail chiffré vit dans l'infobulle, la phrase entière dans le
+        // panneau qu'on ouvre en cliquant le nom.
+        const signaux = (e.signaux || []).map(g =>
+            `<span class="cl-signal cl-signal--${g.code}" title="${esc(g.nom)} — ${esc(g.detail)}"
+                aria-label="${esc(g.nom)}">${g.icone}</span>`).join('');
         return `<tr class="cl-ligne${muet}" data-eleve="${e.id}">
             <th class="cl-eleve" scope="row">
                 <button type="button" class="cl-nom" data-ouvre="${e.id}">${esc(e.nom)}</button>
                 <span class="cl-eleve-chiffre">${e.questions ? pc(e.reussite) : '—'}</span>
-            </th>${cases}</tr>`;
+            </th>
+            <td class="cl-signaux">${signaux}</td>${cases}</tr>`;
     }).join('');
 
     return `<div class="cl-grille-boite">
         <table class="cl-grille">
-            <thead><tr><th class="cl-coin">Élève</th>${entetes}</tr></thead>
+            <thead><tr>
+                <th class="cl-coin">Élève</th>
+                <th class="cl-col cl-col--signal" title="Chez qui aller voir">⚑</th>
+                ${entetes}
+            </tr></thead>
             <tbody>${lignes}</tbody>
         </table>
     </div>
@@ -114,19 +126,22 @@ function grilleHtml(b) {
         ${['E', 'A', 'EC', 'NA'].map(k =>
         `<span class="cl-lg"><span class="cl-case cl-case--${k.toLowerCase()}">${LEVELS[k].short}</span>${LEVELS[k].label}</span>`).join('')}
         <span class="cl-lg"><span class="cl-case cl-case--flou">?</span>Pas assez de questions</span>
+    </div>
+    <div class="cl-legende cl-legende--signaux">
+        ${Object.values(SIGNAUX).map(g =>
+        `<span class="cl-lg"><span class="cl-signal">${g.icone}</span>${esc(g.nom)}</span>`).join('')}
     </div>`;
 }
 
-function phrasesHtml(b) {
-    const eleves = [...b.eleves].sort((a, z) => a.nom.localeCompare(z.nom, 'fr'));
-    if (!eleves.length) return '';
-    return `<div class="cl-phrases">${eleves.map(e => `
-        <div class="cl-phrase${e.questions ? '' : ' cl-phrase--muette'}" data-eleve="${e.id}">
-            <button type="button" class="cl-phrase-nom" data-ouvre="${e.id}">${esc(e.nom)}</button>
-            <span class="cl-phrase-texte">${esc(e.phrase)}</span>
-            <button type="button" class="cl-detail-btn" data-ouvre="${e.id}">Détail</button>
-        </div>`).join('')}</div>`;
-}
+// LE BLOC DE PHRASES A ÉTÉ RETIRÉ, et c'est une correction, pas une perte.
+//
+// Rémy : « c'est tellement indigeste le bilan, tu mets le bilan hors tableau,
+// il faut mieux faire, le prof ne le lira jamais. » Vingt-quatre paragraphes
+// sous une grille demandent trois minutes, et personne n'a trois minutes en
+// début d'heure. Ce qui les remplace est la colonne des signaux, DANS le
+// tableau — et la phrase entière n'a pas disparu : elle s'affiche dans le
+// panneau qu'on ouvre en cliquant un nom, c'est-à-dire au moment où on veut
+// vraiment la lire, pour un élève et un seul.
 
 function detailHtml(e) {
     const comp = e.competences;
@@ -205,7 +220,6 @@ function ecranHtml() {
             </div>
         </div>
         ${grilleHtml(b)}
-        ${phrasesHtml(b)}
         ${eleve ? `<div class="cl-detail-boite">
             <div class="cl-d-tete">
                 <h3>${esc(eleve.nom)}</h3>

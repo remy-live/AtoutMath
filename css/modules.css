@@ -6943,27 +6943,29 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .cl-btn:hover { filter: brightness(1.06); }
 
 .cl-grille-boite { overflow-x: auto; margin-bottom: 6px; }
-.cl-grille { border-collapse: separate; border-spacing: 3px; font-size: .84rem; }
+.cl-grille { border-collapse: separate; border-spacing: 3px; font-size: .84rem; width: auto; }
 .cl-coin { text-align: left; font-size: .78rem; color: var(--text-muted); font-weight: 700; }
-/* Les intitulés de compétence sont longs et les colonnes étroites : on les
-   couche à la verticale plutôt que de les tronquer à trois lettres, qui ne
-   veulent rien dire. */
-/* 168 px et non 128 : « Additionner des nombres relatifs » se lisait
-   « Additionner des nom… », c'est-à-dire ne se lisait pas. Un intitulé de
-   colonne tronqué oblige à survoler chaque colonne pour savoir ce qu'on
-   regarde — le tableau ne se lit alors plus d'un coup d'œil, ce qui était
-   toute sa raison d'être. */
-.cl-col { vertical-align: bottom; height: 168px; padding: 0; }
-/* L'intitulé s'ENROULE sur deux lignes verticales au lieu d'être coupé.
-   « Additionner des nombres relatifs » fait trente-deux caractères : sur une
-   seule ligne il aurait fallu 200 px de haut, et tronqué il devenait
-   « Additionner des nom… », c'est-à-dire illisible. `white-space: normal` en
-   écriture verticale répartit le texte sur plusieurs colonnes — deux lignes
-   couchées — et le nom tient en entier. */
+/* L'EN-TÊTE SE LIT À L'HORIZONTALE, ET LA RANGÉE NE FAIT PLUS 168 PIXELS.
+   Les intitulés étaient couchés à la verticale pour tenir dans une colonne
+   étroite : cela coûtait cent soixante-huit pixels de hauteur — avant la
+   première ligne d'élève — pour un texte qu'il fallait pencher la tête pour
+   lire. Six colonnes ne demandent pas cette économie. On leur donne la largeur
+   d'un nom sur deux lignes, l'infobulle porte le nom entier, et la grille
+   commence tout de suite.
+
+   SERRÉES À 78 PIXELS, aussi : mesuré à 88, les pastilles se retrouvaient à un
+   centimètre les unes des autres, et une ligne rouge ne saute plus aux yeux
+   quand ses cases sont espacées — c'est pourtant TOUT ce qu'on demande à une
+   grille. */
+.cl-col { vertical-align: bottom; padding: 0 0 6px; }
 .cl-col-nom {
-    display: block; writing-mode: vertical-rl; transform: rotate(180deg);
-    max-height: 160px; white-space: normal; overflow: hidden;
-    font-size: .74rem; font-weight: 600; color: var(--text-muted); line-height: 1.25;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; white-space: normal; hyphens: auto;
+    font-size: .72rem; font-weight: 600; color: var(--text-muted); line-height: 1.2;
+}
+.cl-grille .cl-col {
+    width: 78px; min-width: 78px; max-width: 78px;
+    vertical-align: bottom; padding-bottom: 6px;
 }
 .cl-eleve { text-align: left; white-space: nowrap; padding-right: 10px; font-weight: 600; }
 .cl-nom {
