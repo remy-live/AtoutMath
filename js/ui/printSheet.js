@@ -20,7 +20,8 @@ import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
 import {
     FLECHES as FLECHES_Q, FAMILLES as FAMILLES_Q, POSITIONS as POSITIONS_Q,
-    traceFleche as traceFlecheQ, posEtiquette as posEtiquetteQ, cleFleche as cleFlecheQ
+    traceFleche as traceFlecheQ, posEtiquette as posEtiquetteQ, cleFleche as cleFlecheQ,
+    CASE_L as CASE_L_Q, CASE_H as CASE_H_Q
 } from '../core/quadrilateres.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // `relire` : relit un calcul récrit à la main et refait sa cascade — voir
@@ -10199,19 +10200,21 @@ function geoOrganigramme(item, slot) {
     const hListe = Math.min(b.h * 0.34, lignes * 4.6 + 4);
     const hPlan = b.h - hListe - 2;
 
-    // LE PLAN GARDE SES PROPORTIONS. Le noyau le dessine dans un carré de
-    // 100 × 100 mais l'organigramme y est plus haut que large : étiré à la
-    // largeur du bloc, les flèches obliques deviendraient des horizontales et
-    // les étiquettes se chevaucheraient. On lui donne donc le rapport qu'il a.
-    const RAPPORT = 0.82;                       // largeur / hauteur
-    const hUtile = Math.min(hPlan, b.w / RAPPORT);
-    const wUtile = hUtile * RAPPORT;
+    // LE PLAN GARDE LES PROPORTIONS DE CELUI DE L'ÉCRAN, et c'est la règle du
+    // chapitre : un élève qui a la feuille sous les yeux et l'exercice sur la
+    // tablette doit reconnaître LA MÊME figure. L'organigramme est couché
+    // depuis que Rémy a jugé la version en colonne « illisible » — le
+    // quadrilatère à gauche, le carré à droite —, il est donc bien plus large
+    // que haut, et la fiche suit.
+    const RAPPORT = 1.75;                       // largeur / hauteur
+    const wUtile = Math.min(b.w, hPlan * RAPPORT);
+    const hUtile = wUtile / RAPPORT;
     const x0 = b.x + (b.w - wUtile) / 2;
     const y0 = b.y;
 
-    // Une case de figure : assez large pour son nom, assez haute pour le dessin
-    // qu'elle porte.
-    const caseW = wUtile * 0.26, caseH = hUtile * 0.15;
+    // LA CASE A LA MÊME TAILLE QU'À L'ÉCRAN — les deux constantes viennent du
+    // noyau, comme le tracé des flèches et la place des étiquettes.
+    const caseW = wUtile * (CASE_L_Q / 100), caseH = hUtile * (CASE_H_Q / 100);
 
     // LE PLAN SE RÉTRÉCIT DE LA MOITIÉ D'UNE CASE, DE TOUS LES CÔTÉS. Une case
     // est CENTRÉE sur sa position, et le quadrilatère est à y = 4, le carré à
@@ -10224,16 +10227,25 @@ function geoOrganigramme(item, slot) {
     return {
         b, m, x0, y0, wUtile, hUtile,
         P, caseW, caseH,
-        // La petite case où s'écrit la lettre.
-        lettreW: Math.max(4.5, wUtile * 0.052),
+        // LA PETITE CASE OÙ S'ÉCRIT LA LETTRE — et elle est petite pour de bon.
+        // Mesuré à 5,2 % de la largeur du plan : les trois cases du chemin
+        // quadrilatère → parallélogramme, empilées dans un intervalle de dix
+        // unités, se touchaient bord à bord et l'on ne savait plus laquelle
+        // appartenait à quelle flèche. À 3,5 % elles font neuf millimètres —
+        // largement de quoi écrire une lettre à la main — et il reste trois
+        // unités de blanc entre deux.
+        lettreW: Math.max(4.5, wUtile * 0.035),
         listeY: y0 + hUtile + 3,
         listeH: hListe
     };
 }
 
-/** Les sept chemins, sans répéter ceux qui portent plusieurs conditions. */
-const cheminsUniques = () => FLECHES_Q.filter(
-    (f, i) => FLECHES_Q.findIndex(x => x.de === f.de && x.vers === f.vers) === i);
+// UN TRAIT PAR CONDITION, comme à l'écran depuis que l'organigramme est
+// couché. En colonne il n'y avait la place que d'un trait par CHEMIN, avec les
+// conditions échelonnées dessus ; l'élève ne pouvait pas compter les portes du
+// regard. Ici les treize se dessinent, et le nombre de traits qui arrivent sur
+// une case dit à lui seul de combien de façons on y accède.
+const cheminsUniques = () => FLECHES_Q;
 
 function organigrammePreviewHtml(item, slot, k, solution) {
     const g = geoOrganigramme(item, slot);
@@ -11048,7 +11060,11 @@ export const RENDUS = {
         parLigneDefaut: 1,
         // Plus haut que large : c'est la forme de l'organigramme, et la liste
         // des conditions vient encore sous lui.
-        proportions: { w: 1, h: 1.3 },
+        // COUCHÉ, ET LA LISTE DES CONDITIONS SOUS LUI. Le plan fait 1,75 fois
+        // plus large que haut — c'est la forme de l'organigramme depuis qu'il se
+        // lit de gauche à droite —, et les neuf énoncés viennent en dessous sur
+        // deux colonnes.
+        proportions: { w: 1.35, h: 1 },
         titreAGauche: true
     },
 

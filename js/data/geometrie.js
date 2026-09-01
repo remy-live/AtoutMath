@@ -142,15 +142,17 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'Ce qu\'on replace', default: 'noms',
-                aide: 'Placer les NOMS travaille la hiérarchie : qui contient qui. Placer les '
-                    + 'CONDITIONS travaille les définitions : ce qu\'il faut ajouter pour '
-                    + 'descendre d\'un cran. Les deux ensemble font le chapitre — et les '
-                    + 'conditions sont nettement plus dures.',
+                aide: 'Placer les NOMS travaille la hiérarchie : qui contient qui, dans un '
+                    + 'organigramme déjà tracé. CONSTRUIRE l\'organigramme travaille les '
+                    + 'définitions, et se joue en sept étapes : à chacune, deux cases et une '
+                    + 'seule question — qu\'est-ce que celle de droite a de plus que celle de '
+                    + 'gauche ? Les deux paliers de construction ne diffèrent que par le '
+                    + 'nombre de cartes-intrus mêlées aux bonnes.',
                 options: [
                     { value: 'decouverte', label: 'Placer trois noms' },
                     { value: 'noms', label: 'Placer tous les noms' },
-                    { value: 'conditions', label: 'Placer les conditions sur les flèches' },
-                    { value: 'tout', label: 'Toutes les conditions' }
+                    { value: 'conditions', label: 'Construire l\'organigramme, étape par étape' },
+                    { value: 'tout', label: 'Étape par étape, avec des intrus' }
                 ]
             }
         ],
@@ -160,7 +162,7 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Les quadrilatères ne sont pas cinq familles côte à côte : elles s'EMBOÎTENT. On part du quadrilatère quelconque, et chaque flèche descend d'un cran en ajoutant UNE SEULE condition. Les côtés opposés parallèles donnent le parallélogramme ; un angle droit donne alors le rectangle ; deux côtés consécutifs de même longueur donnent le losange. Regarde bien le bas : on arrive au carré PAR DEUX CHEMINS, et chacun ajoute ce que l'autre avait déjà. C'est pour cela que tout carré est un rectangle, et aussi un losange — alors qu'un rectangle n'est pas forcément un carré. Commence toujours par la case la plus GÉNÉRALE, celle du haut, et descends."
+        instruction: "Les quadrilatères ne sont pas cinq familles côte à côte : elles s'EMBOÎTENT. On part du quadrilatère quelconque, à gauche, et chaque flèche avance d'un cran en ajoutant UNE SEULE condition. Les côtés opposés parallèles donnent le parallélogramme ; un angle droit donne alors le rectangle ; deux côtés consécutifs de même longueur donnent le losange. Et attention : on peut atteindre la même case de PLUSIEURS façons. Il y a trois manières d'être un parallélogramme — par les côtés parallèles, par les côtés égaux, ou par les diagonales qui se coupent en leur milieu — et un élève qui n'en connaît qu'une ne reconnaît pas les deux autres dans un exercice. Regarde enfin la droite : on arrive au carré PAR DEUX CHEMINS, et chacun ajoute ce que l'autre avait déjà. C'est pour cela que tout carré est un rectangle, et aussi un losange — alors qu'un rectangle n'est pas forcément un carré."
     },
 
     // --- Le vocabulaire du cercle ---

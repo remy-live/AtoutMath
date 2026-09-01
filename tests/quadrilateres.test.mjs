@@ -10,7 +10,8 @@ import { getGenerator } from '../js/core/registry.js';
 import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche,
     ancetres, estToujours, genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
-    traceFleche, posEtiquette, conditionsDe
+    traceFleche, posEtiquette, conditionsDe, CASE_L, CASE_H,
+    ETAPES, genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape
 } from '../js/core/quadrilateres.js';
 
 test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
@@ -83,44 +84,77 @@ test('CHAQUE FLÈCHE A SA PROPRE CLEF, sinon une carte en remplit trois', () => 
     FLECHES.forEach(f => assert.equal(flecheDe(cleFleche(f)), f));
 });
 
-test('LES ÉTIQUETTES S\'ÉCHELONNENT, elles ne s\'empilent pas', () => {
-    // MESURÉ SUR LE PREMIER JET, qui donnait un trait à chacune des treize
-    // conditions : six paires d'étiquettes se chevauchaient et huit débordaient
-    // sur les cases. Trois libellés de quarante caractères ne tiennent pas côte
-    // à côte dans un intervalle. Elles se lisent donc l'une SOUS l'autre, le
-    // long de la même flèche — comme au tableau.
-    for (const [de, vers] of [['quadrilatere', 'parallelogramme'],
-        ['parallelogramme', 'rectangle'], ['rectangle', 'carre']]) {
-        const pos = conditionsDe(de, vers).map(posEtiquette);
-        assert.ok(pos.length >= 2, `${de} > ${vers}`);
-        for (let i = 0; i < pos.length; i++) {
-            for (let j = i + 1; j < pos.length; j++) {
-                const d = Math.hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y);
-                assert.ok(d > 5.5, `${de} > ${vers} : deux étiquettes à ${d.toFixed(1)}`);
-            }
+test('COUCHÉ, LES TREIZE ÉTIQUETTES NE SE TOUCHENT PLUS', () => {
+    // MESURÉ SUR LA VERSION EN COLONNE, celle que Rémy a jugée « illisible » :
+    // trois libellés de quarante caractères ne tiennent pas dans l'intervalle
+    // entre deux cases superposées. Couché, chaque condition a son propre trait
+    // et son propre point de passage — on vérifie ici qu'aucun de ces treize
+    // points n'en touche un autre, ni ne tombe sur une case.
+    //
+    // Les unités des deux axes n'ont pas la même valeur à l'écran : le plan
+    // fait 1,75 fois plus large que haut, donc une unité de x vaut 1,75 unité
+    // de y en distance réelle. La mesure en tient compte, sans quoi elle
+    // déclarerait sûres des étiquettes empilées à la verticale.
+    const RAPPORT = 1.75;
+    const pos = FLECHES.map(posEtiquette);
+    for (let i = 0; i < pos.length; i++) {
+        for (let j = i + 1; j < pos.length; j++) {
+            const dx = (pos[i].x - pos[j].x) * RAPPORT, dy = pos[i].y - pos[j].y;
+            const d = Math.hypot(dx, dy);
+            assert.ok(d > 8, `deux étiquettes à ${d.toFixed(1)} : `
+                + `${cleFleche(FLECHES[i])} et ${cleFleche(FLECHES[j])}`);
         }
-        // Et aucune ne tombe sur une case.
-        pos.forEach(pt => Object.values(POSITIONS).forEach(c => {
-            assert.ok(Math.abs(pt.x - c.x) > 6 || Math.abs(pt.y - c.y) > 6,
-                `${de} > ${vers} : une étiquette est posée sur une case`);
-        }));
     }
+    // Et aucune ne tombe dans une case. Une case occupe une demi-largeur et une
+    // demi-hauteur de part et d'autre de sa position, ramenées aux unités du
+    // plan rétréci — voir CASE_L et CASE_H.
+    const demiX = (CASE_L / 2) / (100 - CASE_L) * 100;
+    const demiY = (CASE_H / 2) / (100 - CASE_H) * 100;
+    pos.forEach((pt, i) => Object.entries(POSITIONS).forEach(([nom, c]) => {
+        assert.ok(Math.abs(pt.x - c.x) > demiX || Math.abs(pt.y - c.y) > demiY,
+            `${cleFleche(FLECHES[i])} : son étiquette est posée sur la case ${nom}`);
+    }));
 });
 
-test('LES RACCOURCIS CONTOURNENT PAR LE BORD', () => {
-    // « Trois ou quatre angles droits » saute la case du parallélogramme : un
-    // trait droit lui passerait DESSUS.
+test('COUCHÉ, LES RACCOURCIS PASSENT EN LIGNE DROITE', () => {
+    // EN COLONNE ILS DEVAIENT CONTOURNER PAR LE BORD : « trois ou quatre angles
+    // droits » va du quadrilatère au rectangle en sautant le parallélogramme, et
+    // un trait droit lui passait DESSUS. Couché, le rectangle est en haut et le
+    // losange en bas : le trait passe très au-dessus, ou très au-dessous, de la
+    // case du milieu. C'est un gain réel de la disposition, pas un détail de
+    // dessin — trois segments coudés se lisent moins bien qu'une droite.
     const court = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'rectangle');
     const t = traceFleche(court);
-    assert.equal(t.contourne, true);
-    assert.ok(t.points.length > 2, 'un contournement se fait en plusieurs segments');
-    const e = posEtiquette(court);
-    assert.equal(e.bord, true);
-    assert.ok(Math.abs(e.x - POSITIONS.parallelogramme.x) > 20,
-        'l\'étiquette du raccourci doit rester loin de la case du milieu');
-    // Le contournement de droite passe de l'autre côté.
-    const droite = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'losange');
-    assert.ok(posEtiquette(droite).x > 50 && e.x < 50);
+    assert.equal(t.contourne, false, 'plus de contournement par le bord de la page');
+
+    // Le trait passe-t-il vraiment à côté de la case du parallélogramme ? On
+    // échantillonne toute la polyligne, et on mesure l'écart à la case à
+    // l'endroit le plus serré. MESURÉ SUR LE TRAIT DROIT : 2,5 unités, soit six
+    // pixels sur un écran d'ordinateur — on croyait le voir s'arrêter sur la
+    // case. C'est ce qui a fait incurver les deux raccourcis.
+    const demiX = (CASE_L / 2) / (100 - CASE_L) * 100;
+    const demiY = (CASE_H / 2) / (100 - CASE_H) * 100;
+    const par = POSITIONS.parallelogramme;
+    const ecart = (fleche) => {
+        const pts = traceFleche(fleche).points;
+        let pire = Infinity;
+        for (let i = 1; i < pts.length; i++) {
+            for (let k = 0; k <= 100; k++) {
+                const a = pts[i - 1], b = pts[i];
+                const x = a.x + (b.x - a.x) * (k / 100), y = a.y + (b.y - a.y) * (k / 100);
+                if (Math.abs(x - par.x) > demiX) continue;
+                pire = Math.min(pire, Math.abs(y - par.y) - demiY);
+            }
+        }
+        return pire;
+    };
+    assert.ok(ecart(court) > 12, `le raccourci frôle le parallélogramme à ${ecart(court).toFixed(1)}`);
+
+    // Et les deux raccourcis partent de part et d'autre : l'un vers le haut,
+    // l'autre vers le bas.
+    const bas = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'losange');
+    assert.ok(ecart(bas) > 12, `le raccourci du bas frôle à ${ecart(bas).toFixed(1)}`);
+    assert.ok(posEtiquette(court).y < 50 && posEtiquette(bas).y > 50);
 });
 
 test('chaque flèche n\'ajoute QU\'UNE condition, et chaque famille a sa figure', () => {
@@ -189,10 +223,11 @@ test('ON PERCE EN PARTANT DU BAS, là où les distinctions se jouent', () => {
     assert.equal(o.trous.includes('quadrilatere'), false);
 });
 
-test('chaque palier donne autant de cartes que de trous, et pas une de plus', () => {
+test('les paliers de NOMS donnent autant de cartes que de trous, et pas une de plus', () => {
     // Une carte en trop transformerait un exercice de classement en exercice
     // d'élimination : ce n'est plus la même chose qu'on travaille.
-    for (const [nom, P] of Object.entries(PALIERS)) {
+    for (const nom of ['decouverte', 'noms']) {
+        const P = PALIERS[nom];
         const o = genererOrganigramme({ rng: makeRng(nom), palier: nom });
         assert.equal(o.mode, P.mode, nom);
         assert.equal(o.trous.length, P.trous, nom);
@@ -205,20 +240,122 @@ test('chaque palier donne autant de cartes que de trous, et pas une de plus', ()
     }
 });
 
-test('UNE CONDITION QUI SERT DEUX FOIS EST JUSTE AUX DEUX ENDROITS', () => {
-    // « Un angle droit » mène du parallélogramme au rectangle ET du losange au
-    // carré. Refuser l'une des deux enseignerait le contraire de ce que
-    // l'organigramme montre — et le jeu le DIT quand cela arrive.
-    const o = genererOrganigramme({ rng: makeRng('jumelles'), palier: 'tout' });
-    const angleDroit = o.cartes.find(c => flecheDe(c.id).ajoute === 'un angle droit');
-    assert.ok(angleDroit, 'la carte « un angle droit » doit être au jeu');
-    for (const cle of ['parallelogramme>rectangle#-1', 'losange>carre#-1']) {
-        const v = verifierDepot(o, cle, angleDroit);
-        assert.equal(v.ok, true, `« un angle droit » devrait passer en ${cle}`);
-        assert.match(v.texteJuste, /deux chemins/);
+// --- L'ORGANIGRAMME PROGRESSIF ------------------------------------------------
+//
+// Rémy : « il faut le faire apparaître au fur et à mesure : on part du
+// quadrilatère puis le parallélogramme, et on cherche les liens entre les deux
+// en posant les cartes ; puis parallélogramme au rectangle, puis parallélogramme
+// au losange, puis losange au carré, puis rectangle au carré. Ça ne fait qu'un
+// exercice. »
+
+test('LES SEPT ÉTAPES COUVRENT LES TREIZE CONDITIONS, sans en répéter aucune', () => {
+    // Une condition oubliée serait une porte que l'élève ne verrait jamais ; une
+    // condition demandée deux fois lui ferait croire qu'il s'est trompé.
+    const vues = ETAPES.flatMap(e => conditionsDe(e.de, e.vers));
+    assert.equal(vues.length, FLECHES.length, 'les treize flèches doivent être couvertes');
+    assert.equal(new Set(vues.map(cleFleche)).size, FLECHES.length, 'une flèche demandée deux fois');
+
+    // ET L'ORDRE EST CELUI DE RÉMY, avec les deux raccourcis de sixième glissés
+    // juste après l'étape qui fait apparaître leur case d'arrivée : c'est le
+    // premier moment où l'on peut les poser.
+    assert.deepEqual(ETAPES.map(e => `${e.de}>${e.vers}`), [
+        'quadrilatere>parallelogramme',
+        'parallelogramme>rectangle', 'quadrilatere>rectangle',
+        'parallelogramme>losange', 'quadrilatere>losange',
+        'losange>carre', 'rectangle>carre'
+    ]);
+});
+
+test('LES CASES APPARAISSENT AU FUR ET À MESURE, jamais toutes d\'un coup', () => {
+    // C'est la demande de Rémy, et ce n'est pas cosmétique : voir les cinq cases
+    // d'emblée, c'est chercher où ranger une carte parmi treize trous — un
+    // problème de rangement. En voir deux, c'est répondre à « qu'est-ce qu'un
+    // rectangle a de plus qu'un parallélogramme ? » — une question de géométrie.
+    assert.deepEqual(casesVisibles(0).sort(), ['parallelogramme', 'quadrilatere']);
+    assert.equal(casesVisibles(1).includes('rectangle'), true);
+    assert.equal(casesVisibles(1).includes('losange'), false, 'le losange arrive plus tard');
+    assert.equal(casesVisibles(2).includes('carre'), false);
+    assert.equal(casesVisibles(ETAPES.length - 1).length, 5, 'à la fin, les cinq cases');
+    // Et une case n'apparaît jamais avant celle dont elle descend.
+    for (let r = 0; r < ETAPES.length; r++) {
+        const vues = casesVisibles(r);
+        vues.forEach(id => ancetres(id).forEach(a =>
+            assert.ok(vues.includes(a), `${id} est visible sans ${a} à l'étape ${r}`)));
     }
-    // Et elle ne passe pas là où il faut les longueurs.
-    assert.equal(verifierDepot(o, 'rectangle>carre#-1', angleDroit).ok, false);
+});
+
+test('CHAQUE ÉTAPE MÊLE DES INTRUS AUX BONNES CARTES', () => {
+    // Sans intrus, une étape à deux fentes et deux cartes se remplirait sans
+    // réfléchir : la dernière carte tomberait toute seule.
+    for (const [palier, intrus] of [['conditions', 1], ['tout', 3]]) {
+        const o = genererProgressif({ rng: makeRng(palier), palier });
+        assert.equal(o.etapes.length, ETAPES.length, palier);
+        let total = 0;
+        o.etapes.forEach(e => {
+            total += e.bonnes.length;
+            assert.equal(e.cartes.filter(c => c.juste).length, e.bonnes.length, palier);
+            assert.equal(e.cartes.length, e.bonnes.length + intrus, `${palier} — ${e.titre}`);
+            // UN INTRU NE PORTE JAMAIS LE TEXTE D'UNE BONNE RÉPONSE. « Un angle
+            // droit » sert deux fois dans la figure : pris comme intrus là où il
+            // est juste, il aurait été refusé à tort.
+            e.cartes.filter(c => !c.juste).forEach(c =>
+                assert.equal(e.bonnes.includes(c.texte), false, `intrus juste : ${c.texte}`));
+            // Et une carte d'étape se pose : elle est acceptée.
+            e.cartes.filter(c => c.juste).forEach(c =>
+                assert.equal(verifierEtape(e, c).ok, true, `${e.titre} refuse ${c.texte}`));
+        });
+        assert.equal(total, FLECHES.length, `${palier} : treize conditions en tout`);
+    }
+});
+
+test('LES FENTES D\'UNE ÉTAPE SONT INTERCHANGEABLES', () => {
+    // Les trois façons d'être un parallélogramme sont trois flèches distinctes,
+    // mais aucune n'est « la première ». Exiger un ordre aurait inventé une
+    // difficulté qui n'existe pas en mathématiques : on demande l'ENSEMBLE des
+    // conditions qui mènent de A à B.
+    const o = genererProgressif({ rng: makeRng('ordre'), palier: 'conditions' });
+    const e = o.etapes[0];
+    assert.equal(e.bonnes.length, 3, 'trois façons d\'être un parallélogramme');
+    e.cartes.filter(c => c.juste).forEach(c =>
+        assert.equal(verifierEtape(e, c).ok, true, `${c.texte} devrait passer`));
+});
+
+test('LE REFUS NOMME LA VRAIE PLACE DE LA CARTE, et la confusion', () => {
+    // Un refus qui dit « non » n'apprend rien. Celui-ci dit d'où vient la carte,
+    // puis reprend la phrase écrite pour cette confusion-là.
+    const o = genererProgressif({ rng: makeRng('refus'), palier: 'tout' });
+    const versRect = o.etapes.find(e => e.de === 'parallelogramme' && e.vers === 'rectangle');
+    const r = refusEtape(versRect, 'les diagonales sont perpendiculaires');
+    assert.match(r, /parallélogramme au rectangle/);
+    assert.match(r, /au losange/, 'le refus doit dire où va vraiment la carte');
+    assert.match(r, /PERPENDICULAIRES/, 'et reprendre la phrase qui enseigne');
+
+    // Et la carte qui sert DEUX FOIS est juste aux deux endroits : « un angle
+    // droit » mène du parallélogramme au rectangle ET du losange au carré.
+    const versCarre = o.etapes.find(e => e.de === 'losange' && e.vers === 'carre');
+    [versRect, versCarre].forEach(e => {
+        const v = verifierEtape(e, { texte: 'un angle droit' });
+        assert.equal(v.ok, true, `« un angle droit » devrait passer en ${e.titre}`);
+        assert.match(v.texteJuste, /deux chemins/);
+    });
+    // Mais pas là où il faut les longueurs.
+    const rectCarre = o.etapes.find(e => e.de === 'rectangle' && e.vers === 'carre');
+    assert.equal(verifierEtape(rectCarre, { texte: 'un angle droit' }).ok, false);
+});
+
+test('L\'AIDE DONNE LES TROIS REGISTRES, jamais la réponse', () => {
+    // Une condition de cet organigramme se dit toujours par les CÔTÉS, par les
+    // ANGLES ou par les DIAGONALES — il n'y a pas de quatrième façon. L'élève
+    // qui bloque a presque toujours trouvé un registre et oublié les deux
+    // autres : c'est cela qu'il faut lui rendre, pas le mot qui manque.
+    const o = genererProgressif({ rng: makeRng('aide'), palier: 'conditions' });
+    const e = o.etapes[0];
+    const texte = conseilEtape(e, 1);
+    assert.match(texte, /CÔTÉS/);
+    assert.match(texte, /ANGLES/);
+    assert.match(texte, /DIAGONALES/);
+    assert.match(texte, /2 conditions/, 'l\'aide dit combien il en reste');
+    e.bonnes.forEach(b => assert.equal(texte.includes(b), false, `l\'aide donne la réponse : ${b}`));
 });
 
 test('LE REFUS EXPLIQUE LE SENS DE LA HIÉRARCHIE', () => {

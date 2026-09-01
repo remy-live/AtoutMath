@@ -121,14 +121,19 @@ export const FLECHES = [
 
     // --- Les deux raccourcis, ceux de la sixième ------------------------------
     {
-        de: 'quadrilatere', vers: 'rectangle', voie: 0,
+        // LA VOIE ÉCARTE LE RACCOURCI DE LA CASE DU MILIEU. Mesuré sur le trait
+        // droit : il frôlait le parallélogramme à 2,5 unités, soit six pixels
+        // sur un écran d'ordinateur — assez pour qu'on croie qu'il s'y arrête.
+        // Incurvé vers le haut, il passe à 22 unités.
+        de: 'quadrilatere', vers: 'rectangle', voie: -1,
         ajoute: 'trois ou quatre angles droits',
         piege: 'Trois suffisent : la somme des angles d\'un quadrilatère vaut 360°, donc le '
             + 'quatrième est droit lui aussi. C\'est la définition du rectangle qu\'on donne '
             + 'en sixième, sans passer par le parallélogramme.'
     },
     {
-        de: 'quadrilatere', vers: 'losange', voie: 0,
+        // Et son symétrique s'incurve vers le bas, par-dessous.
+        de: 'quadrilatere', vers: 'losange', voie: 1,
         ajoute: 'quatre côtés égaux',
         piege: 'QUATRE côtés égaux, pas deux : c\'est la définition du losange, et elle part '
             + 'directement du quadrilatère quelconque. Dans un parallélogramme, deux côtés '
@@ -200,16 +205,27 @@ export const familleDe = (id) => FAMILLES.find(f => f.id === id) || null;
  * figure doit montrer qu'on y arrive des deux côtés. Une hiérarchie dessinée en
  * simple colonne perdrait exactement ce qu'elle a d'intéressant.
  */
-// TROIS ÉTIQUETTES DOIVENT TENIR ENTRE LE QUADRILATÈRE ET LE PARALLÉLOGRAMME,
-// l'une sous l'autre : c'est ce trajet-là qui fixe la hauteur de tout le reste.
-// Mesuré : moins de six unités entre deux étiquettes et elles se chevauchent à
-// l'écran. L'organigramme est donc PLUS HAUT QUE LARGE, comme sur la fiche.
+// L'ORGANIGRAMME SE LIT DE GAUCHE À DROITE. Rémy, devant la version en
+// colonne : « illisible. Il faut faire mieux, on peut imaginer le lire à
+// l'horizontal ». Il avait raison, et pas seulement pour le confort : une
+// condition s'écrit en quarante caractères, et quarante caractères ne tiennent
+// pas dans la largeur d'une case. Empilés entre deux cases superposées, les
+// libellés se marchaient dessus ; posés le long d'une flèche HORIZONTALE, ils
+// ont toute la largeur de la page.
+//
+// Et la place se répartit autrement : le quadrilatère à gauche, le carré à
+// droite, le rectangle et le losange l'un au-dessus de l'autre au milieu. Les
+// deux chemins qui mènent au carré restent visibles d'un coup d'œil — c'est la
+// leçon de la figure —, et les deux raccourcis de sixième (du quadrilatère
+// directement au rectangle, ou au losange) passent enfin en ligne droite, très
+// au-dessus et très au-dessous de la case du parallélogramme. En colonne il
+// fallait les faire contourner par le bord.
 export const POSITIONS = {
-    quadrilatere: { x: 50, y: 4 },
-    parallelogramme: { x: 50, y: 48 },
-    rectangle: { x: 19, y: 78 },
-    losange: { x: 81, y: 78 },
-    carre: { x: 50, y: 97 }
+    quadrilatere: { x: 0, y: 50 },
+    parallelogramme: { x: 32, y: 50 },
+    rectangle: { x: 65, y: 2 },
+    losange: { x: 65, y: 98 },
+    carre: { x: 100, y: 50 }
 };
 
 /**
@@ -242,9 +258,52 @@ export const MODES = {
 export const PALIERS = {
     decouverte: { label: 'Placer trois noms', mode: MODES.FAMILLES, trous: 3 },
     noms: { label: 'Placer tous les noms', mode: MODES.FAMILLES, trous: 5 },
-    conditions: { label: 'Placer les conditions sur les flèches', mode: MODES.PROPRIETES, trous: 3 },
-    tout: { label: 'Toutes les conditions', mode: MODES.PROPRIETES, trous: 5 }
+    // LES CONDITIONS SE POSENT ÉTAPE PAR ÉTAPE, et les deux paliers ne diffèrent
+    // que par le nombre d'INTRUS mêlés aux bonnes cartes. Voir `ETAPES`.
+    conditions: { label: 'Construire l\'organigramme, étape par étape', mode: MODES.PROPRIETES, intrus: 1 },
+    tout: { label: 'Étape par étape, avec des intrus', mode: MODES.PROPRIETES, intrus: 3 }
 };
+
+/**
+ * LES SEPT ÉTAPES — l'organigramme se construit, il ne s'affiche pas.
+ *
+ * Rémy : « il faut le faire apparaître au fur et à mesure : on part du
+ * quadrilatère puis le parallélogramme, et on cherche les liens entre les deux
+ * en posant les cartes ; puis parallélogramme au rectangle, puis parallélogramme
+ * au losange, puis losange au carré, puis rectangle au carré. Ça ne fait qu'un
+ * exercice. »
+ *
+ * CE QUE LA PROGRESSION CHANGE, ET CE N'EST PAS QU'UNE QUESTION DE PLACE. La
+ * version précédente montrait les cinq cases et les treize flèches d'un coup :
+ * l'élève cherchait où poser une carte parmi treize trous, ce qui est un
+ * problème de rangement. Ici on lui pose UNE question à la fois — « qu'est-ce
+ * qu'un rectangle a de plus qu'un parallélogramme ? » — et c'est une question
+ * de géométrie. La carte se construit sous ses yeux comme on la construit au
+ * tableau.
+ *
+ * ET LES SLOTS D'UNE ÉTAPE SONT INTERCHANGEABLES. Les trois façons d'être un
+ * parallélogramme sont trois flèches distinctes, mais aucune n'est « la
+ * première » : exiger un ordre aurait inventé une difficulté qui n'existe pas
+ * en mathématiques. On demande l'ENSEMBLE des conditions qui mènent de A à B ;
+ * peu importe laquelle on écrit d'abord.
+ *
+ * LES DEUX RACCOURCIS ONT LEUR PROPRE ÉTAPE, glissée juste après celle qui fait
+ * apparaître leur case d'arrivée — c'est le premier moment où l'on peut les
+ * poser. Ce sont les définitions de sixième, celles qu'on donne avant même de
+ * parler de parallélogramme : « trois ou quatre angles droits » fait un
+ * rectangle, « quatre côtés égaux » fait un losange, directement. Les passer
+ * sous silence aurait laissé croire qu'on ne peut atteindre le rectangle qu'en
+ * passant par le parallélogramme, ce qui est faux.
+ */
+export const ETAPES = [
+    { de: 'quadrilatere', vers: 'parallelogramme' },
+    { de: 'parallelogramme', vers: 'rectangle' },
+    { de: 'quadrilatere', vers: 'rectangle' },
+    { de: 'parallelogramme', vers: 'losange' },
+    { de: 'quadrilatere', vers: 'losange' },
+    { de: 'losange', vers: 'carre' },
+    { de: 'rectangle', vers: 'carre' }
+];
 
 /**
  * Un organigramme à compléter.
@@ -258,7 +317,12 @@ export const PALIERS = {
  * @returns {Object} { mode, trous, cartes, solution }
  */
 export function genererOrganigramme({ rng, palier = 'noms' } = {}) {
-    const P = PALIERS[palier] || PALIERS.noms;
+    // LES PALIERS DE CONDITIONS NE PASSENT PLUS PAR ICI : ils se jouent étape
+    // par étape, et c'est `genererProgressif` qui les fabrique. Un appel avec un
+    // de ces paliers est une erreur d'aiguillage ; on retombe sur le palier de
+    // noms le plus proche plutôt que de rendre un organigramme sans trous.
+    const demande = PALIERS[palier];
+    const P = (demande && demande.mode === MODES.FAMILLES) ? demande : PALIERS.noms;
     if (P.mode === MODES.FAMILLES) {
         const ordre = [...FAMILLES].sort((a, b) => b.rang - a.rang);
         const trous = ordre.slice(0, Math.min(P.trous, ordre.length)).map(f => f.id);
@@ -297,56 +361,95 @@ export const cleFleche = (f) => `${f.de}>${f.vers}#${f.voie === undefined ? 0 : 
 export const flecheDe = (cle) => FLECHES.find(f => cleFleche(f) === cle) || null;
 
 /**
- * OÙ PASSE LE TRAIT D'UN CHEMIN, dans le repère de 100 × 100 des positions.
+ * OÙ PASSE LE TRAIT D'UNE CONDITION, dans le repère de 100 × 100 des positions.
  *
  * La géométrie vit ICI, et non dans le jeu ni dans la fiche, pour une raison
  * simple : l'écran et le papier doivent dessiner LE MÊME organigramme. Un élève
- * qui a la fiche sous les yeux et l'exercice à l'écran ne doit pas voir deux
+ * qui a la feuille sous les yeux et l'exercice à l'écran ne doit pas voir deux
  * figures différentes.
  *
- * UN SEUL TRAIT PAR CHEMIN, ET LES CONDITIONS ÉCHELONNÉES DESSUS. Le premier
- * jet donnait un trait à CHACUNE des treize conditions, écartés en éventail.
- * Mesuré à l'écran : six paires d'étiquettes se chevauchaient et huit débordaient
- * sur les cases — trois libellés de quarante caractères ne tiennent pas côte à
- * côte dans un intervalle. Les trois façons d'être un parallélogramme se lisent
- * donc l'une SOUS l'autre, le long de la même flèche : c'est d'ailleurs ainsi
- * qu'on les écrit au tableau.
+ * UN TRAIT PAR CONDITION, ET NON UN PAR CHEMIN. La version en colonne faisait
+ * l'inverse : une seule flèche du quadrilatère au parallélogramme, et les trois
+ * conditions échelonnées dessus. Il le fallait, faute de place. Couché, le plan
+ * en a : les trois façons d'être un parallélogramme deviennent TROIS FLÈCHES,
+ * et l'élève compte du regard combien de portes mènent d'une case à l'autre.
+ * C'est exactement ce que l'exercice lui demande de trouver.
  *
- * LES DEUX RACCOURCIS CONTOURNENT PAR L'EXTÉRIEUR. « Trois ou quatre angles
- * droits » va du quadrilatère au rectangle en sautant le parallélogramme : un
- * trait droit passerait sur la case du milieu. Il descend donc par le bord, en
- * trois segments, comme sur toutes les fiches.
+ * Les voies s'écartent perpendiculairement au segment, de part et d'autre : la
+ * voie 0 va tout droit, les voies -1 et +1 s'incurvent de chaque côté.
+ *
+ * @returns {{points: Array<{x,y}>, contourne: boolean}}
+ */
+// UNE CASE OCCUPE 16 % DE LA LARGEUR DU PLAN ET 22 % DE SA HAUTEUR, à l'écran
+// comme sur le papier. Sa position la CENTRE, donc le plan s'étend en réalité
+// d'une demi-case au-delà de 0 et de 100 : c'est ce qui permet au quadrilatère
+// d'être à x = 0 et au carré à x = 100 sans rien couper.
+//
+// SEIZE ET NON DIX-NEUF. Mesuré à dix-neuf : entre le quadrilatère et le
+// parallélogramme il ne restait que huit unités, soit trente-six pixels, pour
+// loger trois flèches parallèles — et le mot « Parallélogramme », plus large
+// que sa case, débordait sur celle d'à côté. À seize, l'intervalle passe à
+// treize unités et les noms tiennent.
+export const CASE_L = 16;   // largeur d'une case, en % de la largeur du plan
+export const CASE_H = 22;   // hauteur d'une case, en % de la hauteur du plan
+
+/** La demi-case, ramenée aux unités du plan — celles des POSITIONS. */
+export const DEMI_X = (CASE_L / 2) / (100 - CASE_L) * 100;
+export const DEMI_Y = (CASE_H / 2) / (100 - CASE_H) * 100;
+
+const ECART = 10; // l'écartement de deux voies voisines
+
+/**
+ * OÙ LA DROITE (p → q) SORT DE LA CASE CENTRÉE EN c.
+ *
+ * La case est un RECTANGLE, et le calcul le prend pour tel. Une ellipse
+ * inscrite aurait été plus courte à écrire, mais elle rentre dans les coins :
+ * mesuré, les voies obliques et les voies décalées repartaient de l'INTÉRIEUR
+ * de la case, et l'on voyait le trait sourdre sous le dessin du quadrilatère.
+ */
+function sortie(c, p, q) {
+    const dx = q.x - p.x, dy = q.y - p.y;
+    // Un point de départ déjà hors de la case : le trait part de là.
+    if (Math.abs(p.x - c.x) > DEMI_X || Math.abs(p.y - c.y) > DEMI_Y) return { x: p.x, y: p.y };
+    const borne = (demi, ecart, d) =>
+        (d === 0 ? Infinity : Math.max((-demi - ecart) / d, (demi - ecart) / d));
+    const t = Math.min(borne(DEMI_X, p.x - c.x, dx), borne(DEMI_Y, p.y - c.y, dy));
+    if (!(t > 0) || t > 1) return { x: p.x, y: p.y };
+    return { x: p.x + dx * t, y: p.y + dy * t };
+}
+
+/**
+ * OÙ PASSE LE TRAIT D'UNE CONDITION, dans le repère de 100 × 100 des positions.
+ *
+ * La géométrie vit ICI, et non dans le jeu ni dans la fiche, pour une raison
+ * simple : l'écran et le papier doivent dessiner LE MÊME organigramme. Un élève
+ * qui a la feuille sous les yeux et l'exercice à l'écran ne doit pas voir deux
+ * figures différentes.
+ *
+ * UN TRAIT PAR CONDITION, ET NON UN PAR CHEMIN. La version en colonne faisait
+ * l'inverse : une seule flèche du quadrilatère au parallélogramme, et les trois
+ * conditions échelonnées dessus. Il le fallait, faute de place. Couché, le plan
+ * en a : les trois façons d'être un parallélogramme deviennent TROIS FLÈCHES,
+ * et l'élève compte du regard combien de portes mènent d'une case à l'autre.
+ * C'est exactement ce que l'exercice lui demande de trouver.
+ *
+ * LES VOIES SONT PARALLÈLES, ELLES NE SE BOMBENT PAS. Le premier jet les
+ * faisait passer par un point de passage écarté du milieu : entre deux cases
+ * voisines l'intervalle mesure treize unités et l'écartement dix, si bien que
+ * les trois voies du parallélogramme dessinaient un losange au lieu de trois
+ * flèches. Décalées sur toute leur longueur, elles se lisent pour ce qu'elles
+ * sont — trois chemins parallèles d'une case à l'autre.
  *
  * @returns {{points: Array<{x,y}>, contourne: boolean}}
  */
 export function traceFleche(f) {
     const a = POSITIONS[f.de], b = POSITIONS[f.vers];
-    const RAYON = 8;   // la demi-hauteur d'une case, en unités du plan
-
-    const saute = f.de === 'quadrilatere' && (f.vers === 'rectangle' || f.vers === 'losange');
-    if (saute) {
-        const gauche = f.vers === 'rectangle';
-        const bord = gauche ? 4 : 96;
-        return {
-            points: [
-                { x: a.x + (gauche ? -16 : 16), y: a.y },
-                { x: bord, y: a.y },
-                { x: bord, y: b.y },
-                { x: b.x + (gauche ? -14 : 14), y: b.y }
-            ],
-            contourne: true
-        };
-    }
-
+    const voie = f.voie === undefined ? 0 : f.voie;
     const dx = b.x - a.x, dy = b.y - a.y;
     const n = Math.hypot(dx, dy) || 1;
-    return {
-        points: [
-            { x: a.x + (dx / n) * RAYON, y: a.y + (dy / n) * RAYON },
-            { x: b.x - (dx / n) * RAYON, y: b.y - (dy / n) * RAYON }
-        ],
-        contourne: false
-    };
+    const ox = (-dy / n) * ECART * voie, oy = (dx / n) * ECART * voie;
+    const p = { x: a.x + ox, y: a.y + oy }, q = { x: b.x + ox, y: b.y + oy };
+    return { points: [sortie(a, p, q), sortie(b, q, p)], contourne: false };
 }
 
 /** Les conditions d'un même chemin, dans l'ordre où elles se lisent. */
@@ -355,49 +458,16 @@ export function conditionsDe(de, vers) {
 }
 
 /**
- * OÙ SE POSE L'ÉTIQUETTE D'UNE CONDITION — échelonnée le long de sa flèche.
+ * OÙ SE POSE L'ÉTIQUETTE D'UNE CONDITION : au point de passage de sa voie.
  *
- * Deux conditions sur le même chemin se lisent l'une après l'autre, réparties
- * sur la longueur du trait plutôt qu'empilées au même endroit. Sur un
- * contournement, elles descendent le long du bord, là où il n'y a rien.
+ * Chaque condition a désormais son propre trait, donc son propre endroit — il
+ * n'y a plus à échelonner plusieurs libellés le long d'une même flèche, ni à
+ * les écarter du trait pour qu'ils ne tombent pas sur une case. C'est le gain
+ * de la disposition couchée, et c'est pour cela qu'elle a été faite.
  */
 export function posEtiquette(f) {
-    const soeurs = conditionsDe(f.de, f.vers);
-    const rang = Math.max(0, soeurs.indexOf(f));
-    const k = soeurs.length;
-
-    // LES DEUX BRANCHES QUI SE REJOIGNENT SUR LE CARRÉ SE PARTAGENT UN TRIANGLE
-    // ÉTROIT, et leurs étiquettes se marchaient dessus des deux façons : dedans
-    // elles se rencontraient au milieu, dehors elles retombaient sur la case
-    // dont elles partent. Elles descendent donc dans la MOITIÉ BASSE du trait,
-    // sous les cases, là où la page est vide des deux côtés.
-    const rejoint = f.vers === 'carre';
-    const t = rejoint
-        ? (k === 1 ? 0.7 : 0.5 + (rang / (k - 1)) * 0.4)
-        : (rang + 1) / (k + 1);
-
-    const trace = traceFleche(f);
-    if (trace.contourne) {
-        const [, haut, bas] = trace.points;
-        return { x: haut.x, y: haut.y + (bas.y - haut.y) * t, bord: true };
-    }
-    const [d, a] = trace.points;
-    const x = d.x + (a.x - d.x) * t, y = d.y + (a.y - d.y) * t;
-
-    // UNE ÉTIQUETTE POSÉE SUR UNE FLÈCHE OBLIQUE TOMBE SUR UNE CASE. Mesuré :
-    // quatre des treize se retrouvaient par-dessus « Rectangle » ou « Losange »,
-    // dont elles cachaient le nom. Les obliques écartent donc leur étiquette du
-    // trait — mais PAS TOUJOURS DU MÊME CÔTÉ, et c'est là qu'est la subtilité.
-    //
-    // Toutes vont vers l'EXTÉRIEUR — les marges de la page —, et celles du bas
-    // s'en tirent parce qu'elles sont descendues sous les cases (voir `t`
-    // ci-dessus).
-    const dx = a.x - d.x, dy = a.y - d.y;
-    const n = Math.hypot(dx, dy) || 1;
-    if (Math.abs(dx) < 1) return { x, y, bord: false };
-    const dehors = x < 50 ? -1 : 1;
-    const px = Math.abs(dy / n) * dehors;
-    return { x: x + px * 13, y, bord: false };
+    const [d, a] = traceFleche(f).points;
+    return { x: (d.x + a.x) / 2, y: (d.y + a.y) / 2, bord: false };
 }
 
 /**
@@ -443,6 +513,107 @@ function mauvaiseFamille(attendu, propose) {
     }
     return `${p.nom} et ${a.nom} ne sont pas au même niveau : on descend en ajoutant une `
         + 'condition à la fois.';
+}
+
+/**
+ * L'ORGANIGRAMME PROGRESSIF : sept étapes, treize conditions, un seul exercice.
+ *
+ * Chaque étape apporte ses bonnes cartes MÊLÉES À DES INTRUS. Sans intrus, une
+ * étape à deux fentes et deux cartes se remplirait sans réfléchir : la dernière
+ * carte tomberait toute seule. Les intrus sont pris parmi les autres conditions
+ * de l'organigramme, jamais inventés — ce sont précisément celles qu'on
+ * confond, et le refus les renvoie à leur vraie place.
+ *
+ * @returns {{mode, palier, etapes: Array}}
+ */
+export function genererProgressif({ rng, palier = 'conditions' } = {}) {
+    const P = PALIERS[palier] || PALIERS.conditions;
+    const intrus = P.intrus === undefined ? 1 : P.intrus;
+    let numero = 0;
+
+    const etapes = ETAPES.map((e, rang) => {
+        const fleches = conditionsDe(e.de, e.vers);
+        const bonnes = fleches.map(f => f.ajoute);
+        // Les intrus : d'autres conditions de la figure, jamais le même texte
+        // qu'une bonne réponse — « un angle droit » sert deux fois, et il serait
+        // juste ici comme là.
+        const ailleurs = [];
+        FLECHES.forEach(f => {
+            if (bonnes.includes(f.ajoute) || ailleurs.includes(f.ajoute)) return;
+            ailleurs.push(f.ajoute);
+        });
+        const faux = rng.shuffle(ailleurs.slice()).slice(0, intrus);
+        const cartes = rng.shuffle(bonnes.concat(faux).map(texte => ({
+            id: 'c' + (numero++), texte,
+            juste: bonnes.includes(texte)
+        })));
+        return {
+            rang, de: e.de, vers: e.vers,
+            cles: fleches.map(cleFleche),
+            bonnes, cartes,
+            titre: `${familleDe(e.de).nom} → ${familleDe(e.vers).nom}`
+        };
+    });
+    return { mode: MODES.PROPRIETES, palier, progressif: true, etapes };
+}
+
+/** Les cases visibles quand on aborde l'étape numéro `rang`. */
+export function casesVisibles(rang) {
+    const vues = new Set(['quadrilatere']);
+    for (let i = 0; i <= rang && i < ETAPES.length; i++) {
+        vues.add(ETAPES[i].de);
+        vues.add(ETAPES[i].vers);
+    }
+    return [...vues];
+}
+
+/** La carte posée convient-elle à cette étape ? */
+export function verifierEtape(etape, carte) {
+    if (!carte) return { ok: false, raison: '' };
+    if (etape.bonnes.includes(carte.texte)) {
+        return { ok: true, texteJuste: memeTexte(FLECHES.find(f => f.ajoute === carte.texte)) };
+    }
+    return { ok: false, raison: refusEtape(etape, carte.texte) };
+}
+
+/**
+ * POURQUOI CETTE CARTE N'EST PAS ICI — et où elle est vraiment.
+ *
+ * Le refus ne dit jamais « non » tout court : il nomme la flèche à laquelle la
+ * condition appartient, puis reprend le `piege` de cette flèche, qui est la
+ * phrase écrite pour cette confusion-là. Un élève qui pose « les diagonales
+ * sont perpendiculaires » entre le parallélogramme et le rectangle apprend, au
+ * moment où il se trompe, que c'est la paire qu'on échange le plus souvent.
+ */
+export function refusEtape(etape, texte) {
+    const A = familleDe(etape.de).nom.toLowerCase();
+    const B = familleDe(etape.vers).nom.toLowerCase();
+    const maisons = FLECHES.filter(f => f.ajoute === texte);
+    if (!maisons.length) return `« ${texte} » ne fait pas passer du ${A} au ${B}.`;
+    const ou = maisons.map(f => `du ${familleDe(f.de).nom.toLowerCase()} au `
+        + familleDe(f.vers).nom.toLowerCase());
+    const liste = ou.length > 1 ? `${ou.slice(0, -1).join(', ')} et ${ou[ou.length - 1]}` : ou[0];
+    return `« ${texte} » ne fait pas passer du ${A} au ${B} : c'est la condition qui mène `
+        + `${liste}. ${maisons[0].piege}`;
+}
+
+/**
+ * L'AIDE D'UNE ÉTAPE NE DONNE PAS LA RÉPONSE : elle donne les trois registres.
+ *
+ * Une condition de cet organigramme se dit toujours par les CÔTÉS, par les
+ * ANGLES ou par les DIAGONALES — il n'y a pas de quatrième façon. L'élève qui
+ * bloque a presque toujours trouvé un registre et oublié les deux autres ;
+ * c'est cela qu'il faut lui rendre, pas le mot qui manque.
+ */
+export function conseilEtape(etape, posees = 0) {
+    const reste = etape.bonnes.length - posees;
+    const A = familleDe(etape.de).nom.toLowerCase();
+    const B = familleDe(etape.vers).nom.toLowerCase();
+    return (reste > 1
+        ? `Il reste ${reste} conditions à trouver — et il y en a bien plusieurs : `
+        : 'Il reste une condition à trouver : ')
+        + `demande-toi ce qu'un ${B} a de plus qu'un ${A}. Une réponse se dit toujours `
+        + 'd\'une de ces trois façons : par les CÔTÉS, par les ANGLES, ou par les DIAGONALES.';
 }
 
 /** L'organigramme est-il complet et juste ? */
