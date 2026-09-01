@@ -1379,3 +1379,46 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 @media (max-width: 720px) {
     .path-selection-btn--valider { margin-left: 0; }
 }
+
+
+/* --- L'ÉTAPE SOUS CLÉ ---------------------------------------------------- */
+/* Rémy : « il ne faut pas vraiment que l'élève ait accès aux interros à la
+   maison. » Quatre caractères dictés en classe ouvrent l'étape ; le champ est
+   donc large, espacé et en capitales — on y recopie ce qu'on vient d'entendre,
+   pas un mot qu'on connaît. */
+.verrou-boite { text-align: center; }
+.verrou-dit {
+    margin: 0 0 14px; color: var(--text-muted); line-height: 1.4; font-size: .95rem;
+}
+.verrou-champ {
+    width: 100%; box-sizing: border-box; text-align: center;
+    font-size: 1.9rem; font-weight: 800; letter-spacing: .35em; text-indent: .35em;
+    text-transform: uppercase; font-family: inherit;
+    padding: 10px 8px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-app); color: var(--text-main);
+}
+.verrou-champ:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+.verrou-erreur {
+    min-height: 1.3em; margin: 8px 0 12px; font-size: .9rem; font-weight: 600;
+    color: var(--danger);
+}
+.verrou-ok {
+    border: none; background: var(--primary); color: #fff; font: inherit; font-weight: 700;
+    padding: 10px 24px; border-radius: 10px; cursor: pointer; font-size: 1rem;
+}
+
+/* LA PASTILLE SOUS CLÉ PORTE UNE CLÉ, PAS UN CADENAS — et elle se tape.
+   Le cadenas veut dire « pas encore mérité », la clé « le professeur
+   l'ouvrira » : ce ne sont pas les mêmes attentes, et l'une se clique. */
+.world-node--cle .world-node-btn {
+    border-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 14%, var(--bg-panel));
+    cursor: pointer;
+}
+.path-timeline-step--cle .path-timeline-pastille {
+    border-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 18%, var(--bg-panel));
+}

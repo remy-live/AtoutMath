@@ -24,6 +24,8 @@
 // que l'élève a fait, on rend un état. C'est ce qui permet de le tester.
 
 /** Le seuil par défaut : trois quarts de bonnes réponses sur le travail exigé. */
+import { etatVerrou } from './verrou.js';
+
 export const SEUIL_DEFAUT = 0.75;
 
 /** Une étape est-elle un jeu de récompense ? */
@@ -216,10 +218,25 @@ export function prochaineObligatoire(steps, done) {
 
 /**
  * L'état d'une étape aux yeux de l'élève.
- * @returns {'done'|'current'|'open'|'locked'|'cadeau'|'cadeau-ferme'}
+ * @returns {'done'|'current'|'open'|'locked'|'cle'|'cadeau'|'cadeau-ferme'}
  */
 export function statutEtape(step, i, opts = {}) {
     const done = opts.doneIds || new Set();
+    // LA CLÉ PASSE AVANT TOUT LE RESTE, ET MÊME AVANT « L'ÉTAPE EN COURS ».
+    //
+    // Rémy : « il ne faut pas vraiment que l'élève ait accès aux interros à la
+    // maison. » Le curseur ne doit donc pas se poser sur une porte que l'élève
+    // ne peut pas ouvrir — il la verrait comme son travail du moment et
+    // buterait dessus. Une étape DÉJÀ FAITE reste « faite » : la refermer après
+    // coup effacerait ce qu'il a réussi.
+    //
+    // L'ordre libre ne la contourne pas davantage : c'est une fermeture voulue
+    // par le professeur, pas une conséquence de la chronologie. Seul
+    // `allUnlocked` — l'aperçu du banc d'essai — la traverse, parce qu'il ne
+    // s'adresse pas à un élève.
+    if (!opts.allUnlocked && !done.has(step.stepId) && etatVerrou(step, opts).ferme) {
+        return 'cle';
+    }
     // UN JEU DE RÉCOMPENSE suit sa propre règle : il n'est ni « l'étape en
     // cours » ni « à débloquer plus tard », il est ouvert ou mérité.
     const jeu = opts.recompenses && opts.recompenses.get(step.stepId);

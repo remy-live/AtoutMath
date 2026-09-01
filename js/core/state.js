@@ -17,7 +17,7 @@ import { journal, EventTypes } from './journal.js';
 import { initIdentity, getActiveProfileId, getDeviceId, namespaceFor } from './profile.js';
 import {
     computeScore, computeTime, computeBadges, computeAttempts, computeErrors,
-    countCorrect, computeAssignedPath, errorKeyOf, computeExploits
+    countCorrect, computeAssignedPath, errorKeyOf, computeExploits, computeVerrousOuverts
 } from './projections.js';
 import { computeMastery } from './mastery.js';
 import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
@@ -115,6 +115,9 @@ export const state = {
     get timeSpentPerGame() { return memo('time', () => computeTime(journal.all())).perExercise; },
     get studentPath() { return memo('assigned', () => computeAssignedPath(journal.all())); },
     get correctCount() { return memo('correct', () => countCorrect(journal.all())); },
+    // LES ÉTAPES SOUS CLÉ QUE L'ÉLÈVE A OUVERTES, et jusqu'à quand. Voir
+    // core/verrou.js — la clé n'ouvre pas pour toujours.
+    get verrousOuverts() { return memo('verrous', () => computeVerrousOuverts(journal.all())); },
     get exploits() { return memo('exploits', () => computeExploits(journal.all())); },
 
     // --- Cycle de vie -------------------------------------------------------
@@ -321,6 +324,21 @@ export const state = {
             policy: meta.policy || null,
             steps: steps.map((s, i) => ({ ...s, stepId: s.stepId || `${pathId}_s${i}` }))
         });
+        invalidate();
+        document.dispatchEvent(new CustomEvent('studentPath_updated'));
+    },
+
+    /**
+     * L'ÉLÈVE VIENT DE DONNER LA BONNE CLÉ.
+     *
+     * On écrit au journal, et non dans un réglage : l'ouverture se synchronise
+     * alors toute seule entre les appareils, et le professeur voit à quelle
+     * heure sa clé a servi — ce qui est précisément ce qu'on veut savoir d'une
+     * interrogation.
+     */
+    ouvrirVerrou(sel, jusqua) {
+        if (!sel) return;
+        journal.emit(EventTypes.VERROU_OUVERT, { sel, jusqua: jusqua === undefined ? null : jusqua });
         invalidate();
         document.dispatchEvent(new CustomEvent('studentPath_updated'));
     },

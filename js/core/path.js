@@ -97,7 +97,18 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         //
         // Ce n'est pas l'ordre libre, qui ouvre TOUT dès le début : ici l'ordre
         // reste, seule l'obligation tombe.
-        facultatif: !!opts.facultatif
+        facultatif: !!opts.facultatif,
+        // UNE ÉTAPE PEUT NE S'OUVRIR QU'EN CLASSE. Rémy : « il ne faut pas
+        // vraiment que l'élève ait accès aux interros à la maison, mais il
+        // peut très bien avoir accès à la séquence avant mon cours. »
+        //
+        // Le verrou porte une EMPREINTE de clé, jamais la clé : un parcours
+        // voyage dans un lien, et un lien se décode. Voir core/verrou.js.
+        verrou: opts.verrou || null,
+        // Et l'autre face de la même idée : une étape qui n'existe pas encore.
+        // C'est ce qui permet de distribuer la séquence entière d'avance et de
+        // la laisser s'ouvrir séance après séance.
+        ouvertureLe: opts.ouvertureLe || null
     };
 }
 
@@ -171,7 +182,7 @@ function legacyStep(s, i) {
 function normalizeStep(s) {
     return {
         weight: 1, nbItems: 10, threshold: null, timeLimit: null, bonus: false,
-        facultatif: false,
+        facultatif: false, verrou: null, ouvertureLe: null,
         ...s,
         bonus: !!s.bonus,
         // UN JEU DE RÉCOMPENSE EST FACULTATIF PAR NATURE : il ne se fait pas

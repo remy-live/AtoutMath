@@ -25,6 +25,84 @@ import {
     etatRecompenses, direRecompense, estRecompense, statutEtape, etapesMontrees, prochaineObligatoire
 } from '../core/recompenses.js';
 import { prendreOuverture, ouvrirLaRoute, recompensesNouvelles } from './ouverture.js';
+import {
+    LONGUEUR_CLE, normaliserCle, verifierCle, finDe, etatVerrou, clefOuverture, direFermeture
+} from '../core/verrou.js';
+import { showModal, showToast, showAlert } from './modal.js';
+
+/**
+ * LA CLÉ QU'ON TAPE — quatre caractères dictés en classe.
+ *
+ * Rémy : « il ne faut pas vraiment que l'élève ait accès aux interros à la
+ * maison, mais il peut très bien avoir accès à la séquence avant mon cours. »
+ *
+ * TROIS PARTIS PRIS.
+ *
+ *   · ON DIT POURQUOI C'EST FERMÉ, TOUJOURS. Une porte qui refuse sans un mot
+ *     passe pour une panne, et l'élève appelle. Une étape datée annonce sa date,
+ *     une étape sous clé dit que le professeur la donnera.
+ *
+ *   · LA SAISIE EST TOLÉRANTE. Minuscules, espaces, tirets : la clé est dictée
+ *     à voix haute et recopiée à la main. Refuser « kt rb » serait refuser pour
+ *     une mauvaise raison, et trente mains se lèveraient.
+ *
+ *   · LE REFUS N'EN DIT PAS PLUS QUE « CE N'EST PAS ÇA ». Signaler qu'une
+ *     lettre sur quatre est juste transformerait un million d'essais en une
+ *     centaine.
+ */
+function demanderLaCle(step, onOuvert) {
+    const etat = etatVerrou(step, { ouverts: state.verrousOuverts });
+    // UNE DATE NE SE FORCE PAS. Elle dit que l'étape n'existe pas encore ;
+    // proposer d'y entrer une clé laisserait croire qu'on peut la contourner.
+    if (etat.raison === 'date') return showAlert(direFermeture(etat));
+
+    const modal = showModal('Cette étape s\'ouvre avec une clé', `
+        <div class="verrou-boite">
+            <p class="verrou-dit">${escapeHtml(direFermeture(etat))}</p>
+            <input class="verrou-champ" type="text" inputmode="text" autocomplete="off"
+                autocapitalize="characters" spellcheck="false"
+                maxlength="${LONGUEUR_CLE + 4}" aria-label="La clé du professeur"
+                placeholder="${'•'.repeat(LONGUEUR_CLE)}">
+            <p class="verrou-erreur" role="status" aria-live="polite"></p>
+            <button type="button" class="verrou-ok">Ouvrir</button>
+        </div>`, { width: '380px' });
+
+    const champ = modal.element.querySelector('.verrou-champ');
+    const erreur = modal.element.querySelector('.verrou-erreur');
+    modal.element.querySelector('.verrou-ok').onclick = essayer;
+    champ.oninput = () => {
+        champ.value = normaliserCle(champ.value);
+        erreur.textContent = '';
+    };
+    champ.onkeydown = (e) => { if (e.key === 'Enter') essayer(); };
+    setTimeout(() => champ.focus(), 50);
+
+    let enCours = false;
+    async function essayer() {
+        if (enCours) return;
+        const saisie = normaliserCle(champ.value);
+        if (saisie.length < LONGUEUR_CLE) {
+            erreur.textContent = `Il faut ${LONGUEUR_CLE} caractères.`;
+            return;
+        }
+        // LA VÉRIFICATION PREND UN INSTANT, ET C'EST VOULU — l'empreinte est
+        // lente à calculer exprès (voir core/verrou.js). On le dit, sinon
+        // l'élève tape trois fois de suite en croyant que rien ne se passe.
+        enCours = true;
+        erreur.textContent = 'Vérification…';
+        const bon = await verifierCle(step.verrou, saisie);
+        enCours = false;
+        if (!bon) {
+            erreur.textContent = 'Ce n\'est pas la bonne clé.';
+            champ.select();
+            return;
+        }
+        state.ouvrirVerrou(clefOuverture(step), finDe(step.verrou.duree));
+        modal.close();
+        showToast('C\'est ouvert.', 'success');
+        if (onOuvert) onOuvert();
+    }
+}
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
@@ -172,6 +250,9 @@ function assignedSection() {
     const opts = {
         doneIds: done,
         currentIndex: firstPending,
+        // LES ÉTAPES SOUS CLÉ DÉJÀ OUVERTES, et jusqu'à quand. Sans elles,
+        // `statutEtape` refermerait l'interrogation entre deux questions.
+        ouverts: state.verrousOuverts,
         // LE BARÈME EST ANNONCÉ AVANT DE COMPOSER : on ne note pas sans dire
         // sur quoi. `null` hors évaluation notée — une étape d'entraînement
         // n'a pas de points, et en afficher serait mentir.
@@ -184,6 +265,11 @@ function assignedSection() {
         gagnes,
         onNodeClick: (i, statut) => {
             if (statut === 'locked' || statut === 'cadeau-ferme') return;
+            // UNE ÉTAPE SOUS CLÉ SE TAPE : le clic ne la lance pas, il demande
+            // la clé. C'est le seul cadenas de l'application sur lequel il y a
+            // quelque chose à faire, et le refuser en silence laisserait l'élève
+            // croire à une panne.
+            if (statut === 'cle') return demanderLaCle(steps[i], () => launchAssigned(path, i));
             launchAssigned(path, i);
         }
     };
@@ -314,14 +400,20 @@ function creerNoeud(step, i, statut, opts, numero = i + 1) {
     btn.type = 'button';
     btn.className = 'world-node-btn';
     const cadeau = statut === 'cadeau' || statut === 'cadeau-ferme';
+    // UNE ÉTAPE SOUS CLÉ PORTE UNE CLÉ, PAS UN CADENAS. Le cadenas veut dire
+    // « pas encore mérité » : l'élève sait qu'il l'ouvrira en travaillant. La
+    // clé veut dire « le professeur l'ouvrira » — ce n'est pas la même
+    // attente, et lui faire croire qu'il peut la gagner serait mentir.
     const picto = statut === 'cadeau' ? '🎁'
         : statut === 'cadeau-ferme' ? '🔒'
-            : statut === 'locked' ? '🔒' : pictoDe(step);
+            : statut === 'cle' ? '🔑'
+                : statut === 'locked' ? '🔒' : pictoDe(step);
     btn.innerHTML = `<span class="world-node-picto">${picto}</span>`;
     btn.title = step.title;
     const dit = statut === 'done' ? 'terminé'
         : statut === 'cadeau' ? 'jeu ouvert'
-            : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer' : 'jouer';
+            : statut === 'cle' ? 'fermée, il faut la clé du professeur'
+                : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer' : 'jouer';
     btn.setAttribute('aria-label', `${cadeau ? 'Jeu' : 'Étape ' + numero} : ${step.title} — ${dit}`);
     btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
 
@@ -575,6 +667,7 @@ export function buildClassicTimeline(steps, opts = {}) {
 
         const row = document.createElement('div');
         row.className = 'path-timeline-step' + (statut === 'locked' ? ' path-timeline-step--locked' : '')
+            + (statut === 'cle' ? ' path-timeline-step--cle' : '')
             + (cadeau ? ' path-timeline-step--cadeau' : '');
         // UN JEU QUI VIENT D'ÊTRE GAGNÉ S'INSÈRE DANS LA LISTE. Rémy : « si
         // c'est une présentation en ligne, il faut le voir s'insérer. » La
@@ -587,7 +680,8 @@ export function buildClassicTimeline(steps, opts = {}) {
             : statut === 'cadeau' ? 'cadeau'
                 : (statut === 'current' || statut === 'open') ? 'current' : 'locked');
         icon.textContent = cadeau ? (statut === 'cadeau' ? '🎁' : '🔒')
-            : statut === 'done' ? '✓' : statut === 'locked' ? '🔒' : String(numero);
+            : statut === 'done' ? '✓' : statut === 'locked' ? '🔒'
+                : statut === 'cle' ? '🔑' : String(numero);
 
         const card = document.createElement('div');
         card.className = 'card card--flush' + (statut === 'current' ? ' card--current' : '');
@@ -618,10 +712,15 @@ export function buildClassicTimeline(steps, opts = {}) {
             st.className = 'timeline-step-status';
             st.textContent = 'Terminé !';
             card.appendChild(st);
-        } else if (statut === 'current' || statut === 'open' || statut === 'cadeau') {
+        } else if (statut === 'current' || statut === 'open' || statut === 'cadeau'
+            || statut === 'cle') {
             const btn = document.createElement('button');
             btn.className = 'btn-toggle' + (statut === 'current' ? ' active' : ' btn-toggle--sm');
-            btn.textContent = statut === 'cadeau' ? 'Jouer au jeu' : 'Jouer';
+            // UNE ÉTAPE SOUS CLÉ A UN BOUTON, ET IL DIT CE QU'IL FAIT. « À
+            // débloquer » n'appelle aucun geste ; « Entrer la clé » dit à
+            // l'élève qu'il y a quelque chose à faire, et quoi.
+            btn.textContent = statut === 'cle' ? '🔑 Entrer la clé'
+                : statut === 'cadeau' ? 'Jouer au jeu' : 'Jouer';
             btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
             card.appendChild(btn);
         } else {

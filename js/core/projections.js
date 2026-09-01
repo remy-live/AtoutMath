@@ -211,6 +211,25 @@ export function latestFinishedRun(events, pathId = null) {
 }
 
 /** Parcours actuellement assigné à l'élève (dernier PATH_ASSIGNED gagne). */
+/**
+ * LES ÉTAPES SOUS CLÉ ACTUELLEMENT OUVERTES — { sel du verrou : fin }.
+ *
+ * On garde l'ouverture la plus LONGUE pour un même verrou, jamais la dernière :
+ * un élève qui retape la clé en fin d'heure ne doit pas raccourcir ce qui lui
+ * restait, ni le rallonger. `null` veut dire sans limite.
+ */
+export function computeVerrousOuverts(events) {
+    const out = {};
+    for (const e of events) {
+        if (e.type !== A.VERROU_OUVERT || !e.payload || !e.payload.sel) continue;
+        const { sel, jusqua = null } = e.payload;
+        if (!Object.prototype.hasOwnProperty.call(out, sel)) { out[sel] = jusqua; continue; }
+        if (out[sel] === null || jusqua === null) { out[sel] = null; continue; }
+        out[sel] = Math.max(out[sel], jusqua);
+    }
+    return out;
+}
+
 export function computeAssignedPath(events) {
     let assigned = null;
     for (const e of events) {

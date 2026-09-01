@@ -407,7 +407,8 @@ function compact(path) {
 
 const CLES_ETAPE = {
     nbItems: 'q', threshold: 't', weight: 'w', timeLimit: 'l',
-    forceSeed: 'f', sansTotal: 'st', bonus: 'b', facultatif: 'nb'
+    forceSeed: 'f', sansTotal: 'st', bonus: 'b', facultatif: 'nb',
+    verrou: 'k', ouvertureLe: 'd'
 };
 
 function compactStep(s) {
@@ -425,6 +426,12 @@ function compactStep(s) {
     // Une étape non obligatoire voyage aussi : elle décide de ce qui ouvre la
     // suite, donc la perdre en route change le parcours de l'élève.
     if (s.facultatif && !s.bonus) out.nb = 1;
+    // LE VERROU VOYAGE, ET C'EST TOUT L'INTÉRÊT : le professeur pose la clé
+    // chez lui, distribue le code, et l'étape reste fermée sur trente machines
+    // jusqu'à ce qu'il la dicte. Ce qui voyage est l'EMPREINTE et son sel,
+    // jamais la clé — un lien se décode.
+    if (s.verrou && s.verrou.empreinte) out.k = s.verrou;
+    if (s.ouvertureLe) out.d = s.ouvertureLe;
     if (s.overrides && Object.keys(s.overrides).length) out.o = s.overrides;
     return out;
 }
@@ -461,7 +468,9 @@ function expand(obj) {
         forceSeed: s.f || null,
         sansTotal: !!s.st,
         bonus: !!s.b,
-        facultatif: !!s.nb || !!s.b
+        facultatif: !!s.nb || !!s.b,
+        verrou: s.k || null,
+        ouvertureLe: s.d || null
     }));
     return path;
 }
