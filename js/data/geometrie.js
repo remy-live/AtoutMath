@@ -1130,5 +1130,50 @@ export const geometrieExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Trois marches, dans l'ordre, et l'on monte tout seul toutes les trois questions. UNE : écrire l'égalité, et c'est la marche qui compte. AD/AC = AE/AB = DE/BC. Chaque petit segment se compare au segment ENTIER qui le contient — AD avec AC, jamais avec DC. C'est LÀ qu'on se trompe, et le calcul qui suit ne le rattrapera pas : il tombera parfaitement juste sur une égalité fausse. DEUX : calculer, par produit en croix. TROIS : la réciproque, qui est une autre question — on ne part plus de « les droites sont parallèles », on le DÉMONTRE en comparant AD/AC et AE/AB. Compare des fractions, pas des valeurs arrondies : 1/3 n'est pas 0,33, et un arrondi déclarerait parallèle ce qui ne l'est pas. La figure prend deux formes — triangles emboîtés quand A est en dehors des deux parallèles, papillon quand il est entre les deux —, mais le théorème s'y écrit pareil : un seul signe les sépare, et il n'y a rien à reconnaître de plus."
+    },
+
+    {
+        // THALÈS : LA RÉDACTION — un exercice à part, et Rémy l'a demandé deux
+        // fois. « On va rédiger en 3 parties dans la progression de
+        // l'exercice », puis « tu n'as toujours pas fait l'exercice de
+        // rédaction ». Il en avait donné le plan ligne à ligne, jusqu'au
+        // « (on remplace par les valeurs <- ne le note pas) » et au
+        // « calculatrice autorisée ».
+        //
+        // POURQUOI UN EXERCICE SÉPARÉ, et non une marche de plus. Les trois
+        // marches du Théorème de Thalès sont des QUESTIONS : une figure, une
+        // réponse, on passe à la suivante. Rédiger n'est pas une question,
+        // c'est une page qu'on remplit de haut en bas et dont chaque partie
+        // dépend de la précédente. Les deux formes ne tiennent pas dans le
+        // même moule, et forcer la seconde dans le premier aurait donné quatre
+        // questions sans rapport apparent au lieu d'une démonstration.
+        id: 'geo-thales-redaction', status: STATUS.TEST,
+        title: 'Thalès : la Rédaction', cree: '2026-09-01',
+        activityId: 'thales-redaction', sansRevision: true,
+        skills: ['geo.thales'],
+        params: { config: 'melange' },
+        paramSchema: [
+            {
+                id: 'config', type: 'select', label: 'Configuration', default: 'melange',
+                aide: 'Le papillon est le même théorème avec le point A entre les deux '
+                    + 'parallèles. La rédaction y est mot pour mot la même — et c\'est '
+                    + 'justement ce qu\'il faut voir.',
+                options: [
+                    { value: 'melange', label: 'Les deux, mélangées' },
+                    { value: 'emboites', label: 'Triangles emboîtés seulement' },
+                    { value: 'papillon', label: 'Papillon seulement' }
+                ]
+            }
+        ],
+        // LA CALCULATRICE EST AUTORISÉE : Rémy l'a écrit. La dernière ligne est
+        // une division, et ce n'est pas elle qu'on évalue.
+        calculatrice: true,
+        motsClefs: ['thalès', 'thales', 'rédaction', 'démonstration', 'je sais que',
+            'produit en croix', 'justifier', 'rédiger', 'parallèles'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "On ne cherche pas seulement le nombre, on écrit la DÉMONSTRATION, en trois parties — c'est elle qui rapporte les points sur une copie. JE SAIS QUE : ce qui vient de l'énoncé, et rien d'autre. Thalès n'exige que deux choses : deux droites sécantes en A, et deux droites parallèles. Une hypothèse vraie mais inutile n'a pas sa place. OR : ce qui vient du cours. Tu écris toi-même l'égalité des trois rapports, chaque petit segment sur le segment ENTIER qui le contient — AD avec AC, jamais avec DC. DONC : ce que tu en déduis. On isole l'inconnue par le produit en croix, on pose le calcul, on conclut avec l'unité. La ligne où l'on remplace par les valeurs ne se recopie pas : c'est un geste de tête, pas une ligne de copie. La calculatrice est autorisée."
     }
 ];

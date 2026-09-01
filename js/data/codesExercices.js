@@ -133,6 +133,7 @@ export const CODES_EXERCICES = {
     // « QM » serait plus parlant, mais Q ne fait pas partie des vingt-trois
     // lettres : on garde « TF », comme TransFormation.
     'geo-quadri-morph':           'TF',   // Le quadrilatère qui se TransForme
+    'geo-thales-redaction':       'TZ',   // ThalÈs : la rédaction
     'geo-cercle-vocabulaire':     'VC',   // Le Vocabulaire du Cercle
     'geo-notation':               'SD',   // Segment, Droite ou Demi-droite ?
     'geo-redaction':              'RJ',   // Rédiger une Justification

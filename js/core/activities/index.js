@@ -698,6 +698,10 @@ const legacy = [
     ['sans-croiser', 'Relier sans croiser', 'sansCroiser', 'engineSansCroiser', 'figure', 5],
     ['quadrilateres', 'L\'organigramme des quadrilatères', 'quadrilateres', 'engineQuadrilateres', 'organigramme', 3],
     ['quadri-morph', 'Le quadrilatère qui se transforme', 'quadriMorph', 'engineQuadriMorph', 'propriété', 6],
+    // LA RÉDACTION SE COMPTE EN DÉMONSTRATIONS. Une « question » y est la copie
+    // entière — hypothèses, théorème, calcul — et rien ne se valide avant la
+    // dernière ligne. Trois par séance : c'est long, et c'est le but.
+    ['thales-redaction', 'Thalès : la rédaction', 'thalesRedaction', 'engineThalesRedaction', 'rédaction', 3],
     ['duel', 'Duel des Tables (à deux)', 'duel', 'engineDuel', 'échange', 40],
     ['ville', 'Le Plan de Ville', 'ville', 'engineVille', 'trajet', 6],
     ['course-vecteurs', 'Course de Vecteurs', 'courseVecteurs', 'engineCourseVecteurs', 'course', 3],
