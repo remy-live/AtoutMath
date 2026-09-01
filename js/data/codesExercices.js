@@ -146,6 +146,7 @@ export const CODES_EXERCICES = {
     'geo-coder-figure':           'FG',   // Code la figure
     'geo-laby-nombres':           'LN',   // Le labyrinthe des nombres
     'geo-chemin-numerote':        'NU',   // Le chemin numéroté
+    'geo-sans-croiser':           'RC',   // Relier sans Croiser
     'geo-relier-points':          'RP',   // Relie les points
     'geo-cubes-compter':          'CS',   // Combien de Cubes ?
     'geo-solides-denombrer':      'CL',   // Compter sur un solide

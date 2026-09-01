@@ -615,6 +615,59 @@ export const geometrieExercises = [
         instruction: "Trace UN SEUL chemin qui part du 1, passe par 2, 3, 4… dans l'ordre, et remplit TOUTES les cases. Pose le doigt sur le 1 et glisse : le chemin suit les cases, sans diagonale. Pour effacer, reviens en arrière ; pour couper, touche une case du milieu de ton chemin. La règle qu'on oublie est la seconde : il ne doit rester aucune case en dehors du chemin. Commence par regarder les COINS — un coin n'a que deux voisines, donc si le chemin ne le prend pas en passant, il ne pourra plus jamais y aller."
     },
     {
+        // RELIER SANS CROISER. Rémy : « j'aime bien aussi ce genre d'exercice,
+        // où il faut relier sans croiser et sans sortir ni passer sur le
+        // carré », avec une image : un cadre, six carrés étiquetés A, B, C —
+        // deux de chaque — et rien d'autre.
+        //
+        // CE N'EST PAS « RELIER LES POINTS » EN PLUS PETIT. Là-bas on avance de
+        // case en case et il faut REMPLIR toute la grille ; ici on trace à main
+        // levée, il n'y a pas de grille, et le troisième interdit change tout :
+        // un carré est un OBSTACLE, pas une étiquette, et il bouche des
+        // passages qu'on croyait libres.
+        //
+        // CE QUE ÇA TRAVAILLE. Rien de numérique : anticiper, se représenter
+        // l'espace, comprendre qu'un trait posé DIVISE le cadre en deux régions
+        // et que ce qui est d'un côté ne rejoindra plus jamais l'autre. C'est
+        // le raisonnement du théorème de Jordan, dix ans avant de le
+        // rencontrer.
+        //
+        // UNE FIGURE PROPOSÉE EST RÉSOLUBLE ET N'EST PAS TRIVIALE — et les deux
+        // ensemble ont demandé de refaire le générateur. Tracer des chemins
+        // séparés puis poser les carrés à leurs bouts garantissait la solution
+        // mais donnait des figures nulles : mesuré, zéro croisement sur
+        // quatre-vingts figures, chaque paire dans son coin. On pose donc les
+        // carrés d'abord, on les apparie au hasard — c'est cela qui les
+        // entrelace — et l'on CHERCHE un routage sans croisement.
+        id: 'geo-sans-croiser', title: 'Relier sans Croiser',
+        cree: '2026-09-01',
+        activityId: 'sans-croiser',
+        // SUR LE PAPIER AUSSI, et c'est sa forme d'origine : un cadre, des
+        // carrés, on trace au crayon et l'on gomme.
+        printable: 'sans-croiser', printGeneratorId: 'logique.sans-croiser',
+        consignePapier: 'Relie chaque lettre à sa jumelle sans croiser, sans sortir, sans passer sur un carré.',
+        sansRevision: true,
+        skills: ['geo.espace.reperage'],
+        params: { palier: 'moyen' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'moyen',
+                aide: 'Ce n\'est pas le nombre de paires qui compte, c\'est leur ENTRELACEMENT : '
+                    + 'le générateur ne garde que les figures où relier à la règle échoue quelque '
+                    + 'part. Deux paires bien enchevêtrées valent trois paires posées côte à côte.',
+                options: [
+                    { value: 'facile', label: '2 paires — pour comprendre la règle' },
+                    { value: 'moyen', label: '3 paires — comme sur la fiche' },
+                    { value: 'difficile', label: '4 paires — il faut vraiment prévoir' },
+                    { value: 'expert', label: '5 paires — le cadre est plein' }
+                ]
+            }
+        ],
+        motsClefs: ['relier', 'croiser', 'traits', 'obstacle', 'topologie', 'logique', 'espace'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Relie chaque lettre à sa jumelle. Trois interdits : les traits ne se croisent jamais (ni entre eux, ni eux-mêmes), ils ne sortent pas du cadre, et ils ne passent pas sur un carré — pas même sur les tiens, sauf pour en partir et y arriver. C'est ce troisième qu'on oublie : un carré n'est pas une étiquette posée là, c'est un obstacle. Regarde bien AVANT de tracer, parce qu'un trait posé coupe le cadre en deux : tout ce qui est d'un côté ne pourra plus jamais rejoindre l'autre. Commence par la paire qui a le MOINS de chemins possibles — souvent celle qui est coincée dans un coin ou derrière un carré — et pas par la plus proche. Si un trait te gêne, touche-le : il s'efface."
+    },
+    {
         // RELIER LES POINTS. Le jeu de liens, avec sa règle complète : les
         // chemins ne se croisent pas ET aucune case ne reste vide. C'est la
         // seconde moitié qui fait le raisonnement — relier deux points est

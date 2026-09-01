@@ -10299,6 +10299,93 @@ function couperEnLignes(texte, large, max) {
 
 const echapperSvg = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
+// --- RELIER SANS CROISER, SUR LE PAPIER ---------------------------------------
+//
+// Sa forme d'origine : Rémy est parti d'une image de fiche. Un cadre, des
+// carrés étiquetés, rien d'autre — on trace au crayon et l'on gomme.
+//
+// LA CORRECTION DIT « UNE » SOLUTION, PAS « LA ». Ces figures en ont presque
+// toujours plusieurs, qui ne se ressemblent même pas : un élève dont le tracé
+// diffère de la feuille de solutions ne doit pas croire qu'il s'est trompé.
+// C'est écrit dans la consigne du bloc de solutions.
+
+function geoSansCroiser(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const k = Math.min(b.w / m.cadre.l, b.h / m.cadre.h);
+    const x0 = b.x + (b.w - m.cadre.l * k) / 2;
+    const y0 = b.y + (b.h - m.cadre.h * k) / 2;
+    const point = (p) => ({ x: x0 + p.x * k, y: y0 + p.y * k });
+    return { b, m, k, x0, y0, point, cote: m.cote * k };
+}
+
+function sansCroiserPreviewHtml(item, slot, kEch, solution) {
+    const g = geoSansCroiser(item, slot);
+    const T = (v) => (v * kEch).toFixed(2);
+    let d = `<rect x="${T(g.x0)}" y="${T(g.y0)}" width="${T(g.m.cadre.l * g.k)}"
+        height="${T(g.m.cadre.h * g.k)}" fill="none" stroke="#1a202c"
+        stroke-width="${(0.4 * kEch).toFixed(2)}"/>`;
+
+    if (solution) {
+        for (const t of g.m.solution) {
+            const trace = t.points.map((p, i) => {
+                const q = g.point(p);
+                return `${i ? 'L' : 'M'}${T(q.x)} ${T(q.y)}`;
+            }).join(' ');
+            d += `<path d="${trace}" fill="none" stroke="#8a90a0" stroke-linecap="round"
+                stroke-linejoin="round" stroke-width="${(g.cote * 0.28 * kEch).toFixed(2)}" opacity="0.65"/>`;
+        }
+    }
+
+    for (const b of g.m.bornes) {
+        const c = g.point(b);
+        d += `<rect x="${T(c.x - g.cote / 2)}" y="${T(c.y - g.cote / 2)}" width="${T(g.cote)}"
+            height="${T(g.cote)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.35 * kEch).toFixed(2)}"/>`;
+        d += `<text x="${T(c.x)}" y="${T(c.y)}" fill="#1a202c" font-weight="700"
+            font-size="${(g.cote * 0.68 * kEch).toFixed(2)}" text-anchor="middle"
+            dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${b.lettre}</text>`;
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerSansCroiserPdf(doc, item, slot, solution) {
+    const g = geoSansCroiser(item, slot);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.4);
+    doc.rect(g.x0, g.y0, g.m.cadre.l * g.k, g.m.cadre.h * g.k);
+
+    if (solution) {
+        doc.setDrawColor(...ENCRE.gris);
+        doc.setLineWidth(Math.max(0.5, g.cote * 0.22));
+        doc.setLineCap('round');
+        doc.setLineJoin('round');
+        for (const t of g.m.solution) {
+            for (let i = 1; i < t.points.length; i++) {
+                const a = g.point(t.points[i - 1]);
+                const b = g.point(t.points[i]);
+                doc.line(a.x, a.y, b.x, b.y);
+            }
+        }
+        doc.setLineCap('butt');
+        doc.setLineJoin('miter');
+    }
+
+    doc.setLineWidth(0.35);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6, Math.min(14, g.cote * 1.9)));
+    for (const b of g.m.bornes) {
+        const c = g.point(b);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.rect(c.x - g.cote / 2, c.y - g.cote / 2, g.cote, g.cote, 'FD');
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(b.lettre, c.x, c.y, { align: 'center', baseline: 'middle' });
+    }
+    doc.setFont('helvetica', 'normal');
+}
+
 // --- LE LABYRINTHE DES NOMBRES, SUR LE PAPIER ---------------------------------
 //
 // Sa forme d'origine : Rémy est parti d'un livre. Une grille de nombres, un
@@ -10507,6 +10594,30 @@ export const RENDUS = {
         proportions: { w: 1.6, h: 1 },
         disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
         parLigneDefaut: 2
+    },
+
+    'sans-croiser': {
+        titre: 'Relier sans croiser',
+        consigne: () => 'RELIE CHAQUE LETTRE À SA JUMELLE. Trois interdits : les traits ne se '
+            + 'croisent pas (ni entre eux, ni eux-mêmes), ils ne sortent pas du cadre, et ils ne '
+            + 'passent pas sur un carré — pas même sur les tiens, sauf pour en partir et y '
+            + 'arriver. Regarde bien AVANT de tracer : un trait posé coupe le cadre en deux, et '
+            + 'ce qui est d\'un côté ne pourra plus rejoindre l\'autre. Commence par la paire qui '
+            + 'a le moins de chemins possibles, pas par la plus proche.',
+        previewGrille: sansCroiserPreviewHtml,
+        pdfGrille: dessinerSansCroiserPdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // Un peu plus large que haut, comme le cadre de la fiche.
+        proportions: { w: 1.28, h: 1 },
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2,
+        // « UNE » solution, pas « LA » : ces figures en ont plusieurs, qui ne
+        // se ressemblent pas. Un élève dont le tracé diffère ne s'est pas
+        // trompé pour autant, et la feuille doit le dire.
+        // Court, parce que l'en-tête le tronque : la nuance complète est dans
+        // la consigne. « Une » et non « la » suffit à dire l'essentiel — un
+        // élève dont le tracé diffère ne s'est pas trompé pour autant.
+        nomSolutions: 'Une solution possible'
     },
 
     sim: {
