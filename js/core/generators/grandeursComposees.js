@@ -21,6 +21,7 @@
 // travaille donc les AUTRES, celles où il faut vraiment lire l'unité.
 
 import { makeItem } from '../items.js';
+import { schemaTauxSvg, pileDeRappels } from '../schemaTaux.js';
 
 /**
  * LES GRANDEURS. Chacune porte son unité composée, celles de ses deux
@@ -155,6 +156,23 @@ const fr = (x) => {
 
 const grandeurDe = (id) => GRANDEURS.find(g => g.id === id) || null;
 
+/**
+ * LES TROIS GESTES DU CHAPITRE, l'un sous l'autre — et il n'y en a que trois.
+ *
+ * Ce ne sont pas des formules à retenir : ce sont les trois façons de lire la
+ * MÊME bande de paquets, selon ce qui manque. On ne dit pas laquelle prendre —
+ * la choisir est l'exercice, et c'est même TOUT l'exercice : le calcul, lui,
+ * est une addition déguisée.
+ */
+const METHODE = [
+    { quoi: 'total ÷ nombre', pour: 'combien pour UN (le taux)' },
+    { quoi: 'taux × nombre', pour: 'le total' },
+    { quoi: 'total ÷ taux', pour: 'combien d\'unités' }
+];
+const METHODE_HTML = pileDeRappels(METHODE,
+    'La barre « / » de l\'unité se lit « pour un ». Tout part de là : il n\'y a aucune '
+    + 'formule à retenir, seulement à savoir ce qui manque.');
+
 export const grandeursComposeesGenerator = {
     id: 'mes.grandeurs-composees',
     label: 'Les grandeurs composées',
@@ -250,7 +268,26 @@ export const grandeursComposeesGenerator = {
             // Chercher le dénominateur demande de retourner la relation : c'est
             // le sens que les élèves inversent.
             difficulty: quoi === 'composee' ? 2 : (quoi === 'haut' ? 2 : 3),
-            meta: { grandeur: g.id, quoi, unite, theme: `composee-${quoi}` }
+            meta: {
+                grandeur: g.id, quoi, unite, theme: `composee-${quoi}`,
+                // LE SCHÉMA, ET C'EST LE MÊME QUE POUR LA VITESSE. Rémy : « pour
+                // les grandeurs composées, peut-être faut-il des schémas ? » Oui,
+                // et un seul : la bande découpée en paquets, chacun portant ce
+                // qu'il y a POUR UN. « 7,9 g pour 1 cm³ » dessiné, c'est la
+                // multiplication rendue évidente — et la division aussi, dans
+                // l'autre sens. Une seule image pour tout le chapitre, la vitesse
+                // comprise, parce que c'est une seule idée.
+                outils: [
+                    { id: 'schema', label: '📐 Voir le schéma', html: schemaTauxSvg({
+                        parUn: { valeur: sujet.valeur, unite: g.haut.unite },
+                        combien: { valeur: bas, unite: g.bas.unite },
+                        total: { valeur: haut, unite: g.haut.unite },
+                        cherche: quoi === 'composee' ? 'parUn' : (quoi === 'haut' ? 'total' : 'combien'),
+                        taux: quoi === 'composee' ? '' : `${fr(sujet.valeur)} ${g.unite}`
+                    }) },
+                    { id: 'methode', label: '🧮 La méthode', html: METHODE_HTML }
+                ]
+            }
         });
     }
 };

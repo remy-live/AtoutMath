@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { vitesseGenerator } from '../js/core/generators/vitesse.js';
 import { makeRng } from '../js/core/ids.js';
-import { schemaVitesseSvg, FORMULES_VITESSE } from '../js/core/vitesseSchema.js';
+import { schemaTauxSvg, decouper } from '../js/core/schemaTaux.js';
+import { FORMULES_VITESSE } from '../js/core/generators/vitesse.js';
 
 const tirer = (params, graine) => vitesseGenerator.generate(params, { rng: makeRng(graine), index: 0 });
 
@@ -72,7 +73,7 @@ test('la question demandée est la question obtenue', () => {
 
 // --- LE SCHÉMA ET LES FORMULES ------------------------------------------------
 
-test('LE SCHÉMA MONTRE L\'ÉNONCÉ, ET NE DONNE JAMAIS LA RÉPONSE', () => {
+test('LE SCHÉMA MONTRE LA RÉPÉTITION, ET NE DONNE JAMAIS LA RÉPONSE', () => {
     // Rémy : « on pourrait avoir un bouton schéma et un bouton formule ». Un
     // schéma qui écrirait la grandeur cherchée ferait l'exercice à la place de
     // l'élève — et il faudrait alors le compter comme une aide. Celui-ci
@@ -86,34 +87,89 @@ test('LE SCHÉMA MONTRE L\'ÉNONCÉ, ET NE DONNE JAMAIS LA RÉPONSE', () => {
 
         const svg = outils[0].html;
         assert.equal(/NaN|undefined/.test(svg), false, svg);
-        // La réponse n'est écrite nulle part dans le dessin.
-        const cherche = { distance: 'd', vitesse: 'v', duree: 't' }[it.meta.quoi];
-        assert.ok(svg.includes(`${cherche} = ?`), `${it.meta.quoi} : ${svg}`);
-        // Les deux autres, si : c'est l'énoncé qu'on redessine.
-        ['d', 'v', 't'].filter(l => l !== cherche).forEach(l => {
-            assert.equal(svg.includes(`${l} = ?`), false, `${l} ne devrait pas être inconnue`);
-            assert.match(svg, new RegExp(`${l} = [0-9]`), `${l} manque sa valeur`);
-        });
+        // LA GRANDEUR CHERCHÉE PORTE UN « ? », les deux autres leur valeur :
+        // le schéma remet l'énoncé en image, il ne le résout pas — c'est ce qui
+        // permet de l'offrir gratuitement, sans le compter comme une aide.
+        const nombres = [...svg.matchAll(/>([^<]*)<\/text>/g)].map(m => m[1]);
+        // ON COMPARE DES NOMBRES, PAS DES MORCEAUX DE TEXTE. « 15 km » contient
+        // « 5 » : la recherche par sous-chaîne déclarait la vitesse 5 km/h
+        // divulguée par le total 15 km, et le test accusait à tort.
+        const valeurs = nombres.flatMap(x =>
+            (x.match(/[0-9]+(?:,[0-9]+)?/g) || []).map(n => Number(n.replace(',', '.'))));
+        const dit = (n) => valeurs.includes(Number(n));
+        assert.ok(nombres.some(x => x.includes('?')), 'rien n\'est marqué inconnu');
+        // UN SEUL PAQUET, ET LE PAQUET EST LA RÉPONSE. Une heure à 60 km/h, une
+        // demi-heure à 300 : le dessin montre alors une case qui vaut le total.
+        // Ce n'est pas une fuite mais la conséquence d'un schéma JUSTE devant
+        // une question immédiate — et c'est précisément ce qu'on veut que
+        // l'élève voie. On l'écarte donc de la vérification, en le disant.
+        if (it.meta.quoi === 'distance' && decouper(it.meta.t).length > 1) {
+            assert.equal(dit(it.meta.d), false, 'la distance est donnée');
+        }
+        if (it.meta.quoi === 'vitesse' && decouper(it.meta.t).length > 1) {
+            assert.equal(dit(it.meta.v), false, 'la vitesse est donnée');
+        }
+        // La répétition est là : autant de paquets que d'unités de temps.
+        if (it.meta.quoi !== 'duree' && it.meta.t <= 6) {
+            const paquets = (svg.match(/<rect/g) || []).length;
+            assert.equal(paquets, decouper(it.meta.t).length,
+                `${it.meta.t} h devrait faire ${decouper(it.meta.t).length} paquets`);
+        }
     }
+});
+
+test('LES PAQUETS SONT CE QU\'IL Y A « POUR UN », et le dernier peut être partiel', () => {
+    // 1 h 30 à 60 km/h, ce sont un paquet de 60 et un DEMI-paquet de 30 : c'est
+    // la façon la plus courte de faire comprendre pourquoi on multiplie par 1,5.
+    assert.deepEqual(decouper(3), [1, 1, 1]);
+    assert.deepEqual(decouper(1.5), [1, 0.5]);
+    assert.deepEqual(decouper(0.25), [0.25]);
+    const svg = schemaTauxSvg({
+        parUn: { valeur: 60, unite: 'km' }, combien: { valeur: 1.5, unite: 'h' },
+        total: { valeur: 90, unite: 'km' }, cherche: 'total', taux: '60 km/h'
+    });
+    assert.match(svg, /60 km/);
+    assert.match(svg, /30 km/, 'le demi-paquet vaut la moitié');
+    assert.equal(/90 km/.test(svg), false, 'le total cherché reste inconnu');
+});
+
+test('un très grand nombre de paquets s\'abrège au lieu de devenir illisible', () => {
+    // Cent centimètres cubes ne se dessinent pas en cent cases : trois, des
+    // points de suite, et le compte écrit sous la bande.
+    const svg = schemaTauxSvg({
+        parUn: { valeur: 7.9, unite: 'g' }, combien: { valeur: 100, unite: 'cm³' },
+        total: { valeur: 790, unite: 'g' }, cherche: 'total', taux: '7,9 g/cm³'
+    });
+    assert.ok((svg.match(/<rect/g) || []).length <= 5, 'trop de cases dessinées');
+    assert.match(svg, /100 cm³/);
+    assert.match(svg, /…/);
 });
 
 test('LES TROIS FORMULES SONT MONTRÉES SANS QU\'ON DÉSIGNE LA BONNE', () => {
     // Choisir la bonne EST l'exercice : la souligner ferait le travail, et le
     // bouton cesserait d'être gratuit.
     assert.equal(FORMULES_VITESSE.length, 3);
-    assert.deepEqual(FORMULES_VITESSE.map(f => f.formule), ['d = v × t', 'v = d ÷ t', 't = d ÷ v']);
+    assert.deepEqual(FORMULES_VITESSE.map(f => f.quoi), ['d = v × t', 'v = d ÷ t', 't = d ÷ v']);
     const html = tirer({ chercher: 'vitesse', difficulte: 1 }, 'f1').meta.outils[1].html;
-    FORMULES_VITESSE.forEach(f => assert.ok(html.includes(f.formule), f.formule));
+    FORMULES_VITESSE.forEach(f => assert.ok(html.includes(f.quoi), f.quoi));
     // Rien ne distingue l'une des trois — ni classe, ni marque.
     assert.equal(/juste|bonne|surlign|--actif/.test(html), false, html);
 });
 
 test('le schéma tient dans son cadre, quelles que soient les valeurs', () => {
-    // Une longue valeur (« 1 000 km ») ne doit pas sortir du dessin : tout est
-    // centré sur des repères fixes, et le SVG déclare sa boîte.
-    const svg = schemaVitesseSvg({ quoi: 'duree', direV: '1 000 km/h', direD: '12 500 km', direT: '12,5 h' });
-    assert.match(svg, /viewBox="0 0 320 /);
-    assert.ok(svg.includes('t = ?'));
-    assert.ok(svg.includes('12 500 km'));
+    // Une longue valeur ne doit pas sortir du dessin ni déborder sur la case
+    // voisine : le corps du texte se règle sur la place, et le SVG déclare sa
+    // boîte.
+    const svg = schemaTauxSvg({
+        parUn: { valeur: 1000, unite: 'km' }, combien: { valeur: 12.5, unite: 'h' },
+        total: { valeur: 12500, unite: 'km' }, cherche: 'combien', taux: '1000 km/h'
+    });
+    assert.match(svg, /viewBox="0 0 330 /);
+    assert.match(svg, /12 ?500 km|12500 km/);
     assert.equal(/NaN/.test(svg), false);
+    // Aucun texte ne sort du cadre : les x restent dans [0, 330].
+    [...svg.matchAll(/<text x="([-0-9.]+)"/g)].forEach(m => {
+        const x = Number(m[1]);
+        assert.ok(x >= 0 && x <= 330, `texte en x = ${x}`);
+    });
 });

@@ -118,3 +118,33 @@ test('l\'exercice du catalogue tient debout', () => {
     const schema = gen().params.find(p => p.id === 'grandeurs');
     schema.options.forEach(o => assert.ok(GRANDEURS.some(g => g.id === o.value), o.value));
 });
+
+test('LE SCHÉMA MONTRE LES PAQUETS, et ne donne jamais la réponse', () => {
+    // Rémy : « pour les grandeurs composées, peut-être faut-il des schémas ? »
+    // Un seul, et le même que pour la vitesse : la bande découpée en paquets,
+    // chacun portant ce qu'il y a POUR UN. C'est la multiplication rendue
+    // évidente — et la division dans l'autre sens.
+    for (let i = 0; i < 60; i++) {
+        const it = gen().generate({}, { rng: makeRng('sch-' + i), index: i });
+        if (it.meta.quoi === 'convertir') continue;   // une conversion n'a pas de paquets
+        const outils = it.meta.outils;
+        assert.equal(outils.length, 2, it.prompt.text);
+        assert.deepEqual(outils.map(o => o.id), ['schema', 'methode']);
+        const svg = outils[0].html;
+        assert.equal(/NaN|undefined/.test(svg), false, svg);
+        // Quelque chose est marqué inconnu, et c'est la grandeur cherchée.
+        assert.match(svg, /\?/, it.prompt.text);
+        // La phrase qui EST la méthode est écrite sous le dessin.
+        assert.match(svg, /pour 1 /, svg);
+    }
+});
+
+test('LA MÉTHODE TIENT EN TROIS GESTES, sans qu\'on dise lequel prendre', () => {
+    const html = gen().generate({ chercher: 'haut' }, { rng: makeRng('m'), index: 0 })
+        .meta.outils[1].html;
+    ['total ÷ nombre', 'taux × nombre', 'total ÷ taux'].forEach(g =>
+        assert.ok(html.includes(g), g));
+    assert.match(html, /pour un/);
+    // Rien ne désigne le bon : choisir est l'exercice.
+    assert.equal(/juste|bonne|surlign|--actif/.test(html), false, html);
+});

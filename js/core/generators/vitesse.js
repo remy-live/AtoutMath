@@ -13,7 +13,7 @@
 // vrai obstacle du chapitre, il arrive quand la formule est en place.
 
 import { makeItem } from '../items.js';
-import { schemaVitesseSvg, formulesVitesseHtml } from '../vitesseSchema.js';
+import { schemaTauxSvg, pileDeRappels } from '../schemaTaux.js';
 
 // Chaque véhicule borne ses vitesses vraisemblables : un randonneur à 90 km/h
 // ou un TGV à 12 km/h feraient douter l'élève qui vérifie son ordre de
@@ -48,6 +48,21 @@ const direDuree = (h) => {
     if (connu) return connu.texte;
     return h === 1 ? '1 heure' : `${formatFr(h)} heures`;
 };
+
+/**
+ * LES TROIS FORMULES, L'UNE SOUS L'AUTRE. Elles ne sont qu'une seule formule
+ * retournée trois fois, et c'est ce qu'il faut faire voir : écrites à la file
+ * dans un paragraphe elles se lisent comme une phrase et ne se retiennent pas ;
+ * empilées, on les compare d'un coup d'œil. On ne souligne pas la bonne —
+ * choisir EST l'exercice.
+ */
+export const FORMULES_VITESSE = [
+    { quoi: 'd = v × t', pour: 'la distance' },
+    { quoi: 'v = d ÷ t', pour: 'la vitesse' },
+    { quoi: 't = d ÷ v', pour: 'le temps' }
+];
+const FORMULES_HTML = pileDeRappels(FORMULES_VITESSE,
+    'Écris celle qui donne ce que l\'on cherche, puis remplace ce que l\'énoncé te donne.');
 
 export const vitesseGenerator = {
     id: 'mes.vitesse',
@@ -151,10 +166,22 @@ export const vitesseGenerator = {
                 // porte un « ? », et les trois formules sont montrées sans
                 // qu'on désigne la bonne : choisir EST l'exercice.
                 outils: [
-                    { id: 'schema', label: '📐 Voir le schéma', html: schemaVitesseSvg({
-                        quoi, direV: `${v} km/h`, direD: `${d} km`, direT: `${formatFr(t)} h`
+                    // LE SCHÉMA MONTRE LA RÉPÉTITION, il n'étiquette pas l'énoncé.
+                    // Rémy : « celui de temps distance vitesse n'aide pas
+                    // beaucoup. » Il avait raison : écrire « d = 520 km » sur une
+                    // route n'apprend rien à qui sait déjà que 520 est une
+                    // distance. Trois heures à 60 km/h, ce sont TROIS BONDS de
+                    // 60 km mis bout à bout — et la multiplication est dans le
+                    // dessin. C'est le même schéma que les grandeurs composées,
+                    // parce que c'est la même idée.
+                    { id: 'schema', label: '📐 Voir le schéma', html: schemaTauxSvg({
+                        parUn: { valeur: v, unite: 'km' },
+                        combien: { valeur: t, unite: 'h' },
+                        total: { valeur: d, unite: 'km' },
+                        cherche: quoi === 'distance' ? 'total' : (quoi === 'vitesse' ? 'parUn' : 'combien'),
+                        taux: quoi === 'vitesse' ? '' : `${v} km/h`
                     }) },
-                    { id: 'formule', label: '🧮 Les formules', html: formulesVitesseHtml() }
+                    { id: 'formule', label: '🧮 Les formules', html: FORMULES_HTML }
                 ]
             }
         });
