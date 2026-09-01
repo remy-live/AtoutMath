@@ -56,9 +56,75 @@ const PAR_MARCHE = 3;
  * porte toutes ses mesures ne demande plus rien, une figure qui n'en porte
  * aucune ne demande pas la bonne chose.
  */
+// LES DEUX TAILLES DE TEXTE DE LA FIGURE, en unités de la figure. Au niveau du
+// module parce que le tracé (SVG ou PDF) et le calcul de mise en page les
+// lisent tous les deux : une cote se place en fonction de la place que son
+// nombre occupe.
+const TAILLE_NOM = 7, TAILLE_COTE = 6;
+
 export function figureThalesSvg(f, cotes = []) {
+    const e = figureThalesElements(f, cotes);
+    const T = (v) => v.toFixed(1);
+
+    const doubleFleche = (c) => {
+        const dx = c.q1.x - c.p1.x, dy = c.q1.y - c.p1.y;
+        const n = Math.hypot(dx, dy) || 1;
+        const vx = dx / n, vy = dy / n;
+        const pointe = (P0, sx, sy) => `<path d="M${T(P0.x)} ${T(P0.y)}
+            L${T(P0.x - sx * POINTE - (-sy) * LARGE_POINTE)} ${T(P0.y - sy * POINTE + sx * -LARGE_POINTE)}
+            L${T(P0.x - sx * POINTE + (-sy) * LARGE_POINTE)} ${T(P0.y - sy * POINTE + sx * LARGE_POINTE)} Z"
+            class="th-pointe"/>`;
+        const attache = (P0, P1) => {
+            const ex = P1.x - P0.x, ey = P1.y - P0.y;
+            const l = Math.hypot(ex, ey) || 1;
+            const gx = ex / l, gy = ey / l;
+            return `<line x1="${T(P0.x + gx * ATTACHE_DEBUT)}" y1="${T(P0.y + gy * ATTACHE_DEBUT)}"
+                x2="${T(P1.x + gx * ATTACHE_FIN)}" y2="${T(P1.y + gy * ATTACHE_FIN)}" class="th-attache"/>`;
+        };
+        return attache(c.p, c.p1) + attache(c.q, c.q1)
+            + `<line x1="${T(c.p1.x)}" y1="${T(c.p1.y)}" x2="${T(c.q1.x)}" y2="${T(c.q1.y)}"
+                class="th-ligne-cote"/>`
+            + pointe(c.p1, -vx, -vy) + pointe(c.q1, vx, vy);
+    };
+
+    return `<svg viewBox="${T(e.vue.x0)} ${T(e.vue.y0)} ${T(e.vue.w)} ${T(e.vue.h)}"
+        class="th-fig fig-svg" role="img"
+        aria-label="Figure de Thalès, ${CONFIGURATIONS[f.config].label}">
+        <style>
+            .th-droite { stroke: #4a5568; stroke-width: .8; fill: none; }
+            .th-para { stroke: #2f855a; stroke-width: 1.5; fill: none; }
+            .th-base { stroke: #2b6cb0; stroke-width: 1.5; fill: none; }
+            .th-nom { font-size: ${TAILLE_NOM}px; font-weight: 800; fill: #1a202c; }
+            .th-cote { font-size: ${TAILLE_COTE}px; font-weight: 700; fill: #2c5282; }
+            /* La cote est du dessin technique : trait fin, pointe pleine. */
+            .th-ligne-cote { stroke: #2c5282; stroke-width: .55; }
+            .th-attache { stroke: #2c5282; stroke-width: .35; opacity: .6; }
+            .th-pointe { fill: #2c5282; }
+        </style>
+        ${e.traits.map(t => `<line x1="${T(t.p.x)}" y1="${T(t.p.y)}" x2="${T(t.q.x)}" y2="${T(t.q.y)}" class="th-${t.genre}"/>`).join('\n        ')}
+        ${e.cotes.map(doubleFleche).join('\n        ')}
+        ${e.noms.map(t => `<text x="${T(t.x)}" y="${T(t.yBase)}" text-anchor="${t.ancre}" class="th-nom">${t.texte}</text>`).join('\n        ')}
+        ${e.cotes.map(c => `<text x="${T(c.x)}" y="${T(c.y)}" transform="rotate(${c.angle.toFixed(1)} ${T(c.x)} ${T(c.y)})" text-anchor="middle" dominant-baseline="central" class="th-cote">${c.texte}</text>`).join('\n        ')}
+    </svg>`;
+}
+
+/** Les mesures de la double flèche, partagées par l'écran et le papier. */
+const POINTE = 2.6, LARGE_POINTE = 1.15, ATTACHE_DEBUT = 1.6, ATTACHE_FIN = 1.4;
+
+/**
+ * LA FIGURE, EN ÉLÉMENTS — ce que l'écran dessine en SVG et le papier en PDF.
+ *
+ * La mise en page d'une cote coûte cher : deux côtés, sept écarts, un score qui
+ * pèse le dégagement de la ligne, celui du texte tourné, et de quel côté est le
+ * dehors. L'écrire deux fois — une pour le navigateur, une pour l'imprimante —
+ * aurait donné deux figures qui divergent au premier réglage, et Rémy verrait
+ * sur sa feuille une cote posée ailleurs qu'à l'écran. Le calcul vit donc ici,
+ * une seule fois, et rend des coordonnées que chacun trace à sa façon.
+ *
+ * @returns {{vue, traits, noms, cotes}} tout en unités de la figure
+ */
+export function figureThalesElements(f, cotes = []) {
     const P = f.points;
-    const TAILLE_NOM = 7, TAILLE_COTE = 6;
     const dirs = placeNoms(P);
     // L'ORDRE DES DEUX LETTRES EST CELUI DE LA COTE : la clé cherchée est
     // « DE », pas « ED ». Les lire à l'envers revient à ne pas trouver la
@@ -163,14 +229,15 @@ export function figureThalesSvg(f, cotes = []) {
     // `placeNoms`), les cotes s'arrangeront autour d'elles.
     const posees = [];
     const textes = [];
+    const noms = [];
     for (const nom of ['A', 'B', 'C', 'E', 'D']) {
         const d = dirs[nom], a = ancrageNom(d);
         const x = P[nom].x + d.x * ECART_NOM;
         const y = P[nom].y + d.y * ECART_NOM;
         const b = boite(x, y, nom, TAILLE_NOM, a);
         posees.push(b);
-        textes.push({ b, html: `<text x="${x.toFixed(1)}" y="${(y + ligneBase(a, TAILLE_NOM)).toFixed(1)}"
-            text-anchor="${ancre(a)}" class="th-nom">${nom}</text>` });
+        textes.push({ b });
+        noms.push({ x, yBase: y + ligneBase(a, TAILLE_NOM), ancre: ancre(a), texte: nom });
     }
 
     // UNE LONGUEUR SE COTE À LA DOUBLE FLÈCHE — c'est ce qui manquait.
@@ -295,45 +362,10 @@ export function figureThalesSvg(f, cotes = []) {
             y0: Math.min(...mieux.coins.map(c => c.y)), y1: Math.max(...mieux.coins.map(c => c.y))
         };
         posees.push(bt);
-        textes.push({
-            b: bt,
-            html: `<text x="${mieux.x.toFixed(1)}" y="${mieux.y.toFixed(1)}"
-                transform="rotate(${angle.toFixed(1)} ${mieux.x.toFixed(1)} ${mieux.y.toFixed(1)})"
-                text-anchor="middle" dominant-baseline="central" class="th-cote">${texte}</text>`
-        });
+        textes.push({ b: bt });
+        fleches[fleches.length - 1].texte = texte;
+        fleches[fleches.length - 1].angle = angle;
     }
-
-    /**
-     * UNE DOUBLE FLÈCHE, dessinée comme sur un plan : deux lignes d'attache
-     * fines qui partent des extrémités du segment, la ligne de cote entre les
-     * deux, et une pointe à chaque bout tournée vers l'extérieur.
-     */
-    const doubleFleche = (c) => {
-        const T = (v) => v.toFixed(1);
-        const dx = c.q1.x - c.p1.x, dy = c.q1.y - c.p1.y;
-        const n = Math.hypot(dx, dy) || 1;
-        const vx = dx / n, vy = dy / n;
-        const POINTE = 2.6, LARGE = 1.15;
-        // Une pointe pleine, tournée vers l'extérieur de la ligne.
-        const pointe = (P0, sx, sy) => `<path d="M${T(P0.x)} ${T(P0.y)}
-            L${T(P0.x - sx * POINTE - (-sy) * LARGE)} ${T(P0.y - sy * POINTE - sx * LARGE)}
-            L${T(P0.x - sx * POINTE + (-sy) * LARGE)} ${T(P0.y - sy * POINTE + sx * LARGE)} Z"
-            class="th-pointe"/>`;
-        // Les lignes d'attache démarrent un peu à l'écart du point — un trait
-        // qui touche le sommet salit le croisement — et dépassent un peu la
-        // ligne de cote, comme sur un plan.
-        const attache = (P0, P1) => {
-            const ex = P1.x - P0.x, ey = P1.y - P0.y;
-            const e = Math.hypot(ex, ey) || 1;
-            const gx = ex / e, gy = ey / e;
-            return `<line x1="${T(P0.x + gx * 1.6)}" y1="${T(P0.y + gy * 1.6)}"
-                x2="${T(P1.x + gx * 1.4)}" y2="${T(P1.y + gy * 1.4)}" class="th-attache"/>`;
-        };
-        return attache(c.p, c.p1) + attache(c.q, c.q1)
-            + `<line x1="${T(c.p1.x)}" y1="${T(c.p1.y)}" x2="${T(c.q1.x)}" y2="${T(c.q1.y)}"
-                class="th-ligne-cote"/>`
-            + pointe(c.p1, -vx, -vy) + pointe(c.q1, vx, vy);
-    };
 
     // LA BOÎTE ÉPOUSE TOUT CE QU'ON A DESSINÉ, figure ET étiquettes. Un carré
     // fixe laissait tantôt la moitié d'un papillon dehors, tantôt un tiers de
@@ -349,32 +381,18 @@ export function figureThalesSvg(f, cotes = []) {
     const x0 = Math.min(...bx) - m, x1 = Math.max(...bx) + m;
     const y0 = Math.min(...by) - m, y1 = Math.max(...by) + m;
 
-    const trait = (a, b, cls) =>
-        `<line x1="${P[a].x}" y1="${P[a].y}" x2="${P[b].x}" y2="${P[b].y}" class="${cls}"/>`;
+    const trait = (a, b, genre) => ({ p: P[a], q: P[b], genre });
 
-    return `<svg viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}"
-        class="th-fig fig-svg" role="img"
-        aria-label="Figure de Thalès, ${CONFIGURATIONS[f.config].label}">
-        <style>
-            .th-droite { stroke: #4a5568; stroke-width: .8; fill: none; }
-            .th-para { stroke: #2f855a; stroke-width: 1.5; fill: none; }
-            .th-base { stroke: #2b6cb0; stroke-width: 1.5; fill: none; }
-            .th-nom { font-size: ${TAILLE_NOM}px; font-weight: 800; fill: #1a202c; }
-            .th-cote { font-size: ${TAILLE_COTE}px; font-weight: 700; fill: #2c5282; }
-            /* La cote est du dessin technique : trait fin, pointe pleine. */
-            .th-ligne-cote { stroke: #2c5282; stroke-width: .55; }
-            .th-attache { stroke: #2c5282; stroke-width: .35; opacity: .6; }
-            .th-pointe { fill: #2c5282; }
-        </style>
-        ${trait('A', 'B', 'th-droite')}
-        ${trait('A', 'C', 'th-droite')}
-        ${trait('A', 'E', 'th-droite')}
-        ${trait('A', 'D', 'th-droite')}
-        ${trait('B', 'C', 'th-base')}
-        ${trait('D', 'E', 'th-para')}
-        ${fleches.map(doubleFleche).join('\n        ')}
-        ${textes.map(t => t.html).join('\n        ')}
-    </svg>`;
+    return {
+        vue: { x0, y0, w: x1 - x0, h: y1 - y0 },
+        traits: [
+            trait('A', 'B', 'droite'), trait('A', 'C', 'droite'),
+            trait('A', 'E', 'droite'), trait('A', 'D', 'droite'),
+            trait('B', 'C', 'base'), trait('D', 'E', 'para')
+        ],
+        noms, cotes: fleches,
+        tailleNom: TAILLE_NOM, tailleCote: TAILLE_COTE
+    };
 }
 
 // --- LES FRACTIONS S'ÉCRIVENT EN COLONNE ----------------------------------------

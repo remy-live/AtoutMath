@@ -1199,6 +1199,17 @@ export const geometrieExercises = [
         id: 'geo-thales-redaction', status: STATUS.TEST,
         title: 'Thalès : la Rédaction', cree: '2026-09-01',
         activityId: 'thales-redaction', sansRevision: true,
+        // LA FICHE PAPIER A SON PROPRE GÉNÉRATEUR. Rémy : « et pour
+        // l'impression, il faut aussi proposer un exercice de rédaction ».
+        //
+        // À l'écran l'élève CHOISIT ses hypothèses parmi six et POSE des
+        // étiquettes pour écrire l'égalité : la machine l'empêche d'écrire une
+        // bêtise et lui explique chaque refus. C'est un échafaudage, fait pour
+        // être retiré. Sur la feuille il n'y a plus que trois cadres et des
+        // lignes — c'est ce qui l'attend au contrôle, et le seul endroit où
+        // l'on vérifie qu'il sait encore le faire seul.
+        printGeneratorId: 'geo.thales.redaction.fiche',
+        printable: 'thales-redaction',
         skills: ['geo.thales'],
         params: { config: 'melange' },
         paramSchema: [

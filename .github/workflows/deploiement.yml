@@ -1,0 +1,90 @@
+# PUBLIER ATOUTMATH CHEZ SON HÉBERGEUR, À CHAQUE POUSSÉE.
+#
+# Rémy : « avec la possibilité d'actualiser le site facilement ». Voilà : on
+# pousse le code, et une minute plus tard le site en ligne est à jour. Rien à
+# transférer à la main, rien à oublier.
+#
+# CE FICHIER NE FAIT RIEN TANT QUE LES TROIS SECRETS N'EXISTENT PAS. Il s'arrête
+# de lui-même avec un message clair, et c'est voulu : un dépôt sans hébergement
+# configuré ne doit pas afficher d'échec rouge à chaque poussée.
+#
+# CE QU'IL FAUT METTRE DANS GITHUB, une fois pour toutes :
+#   Settings → Secrets and variables → Actions → New repository secret
+#     HEBERGEUR_HOTE          l'adresse SFTP donnée par l'hébergeur
+#     HEBERGEUR_UTILISATEUR   l'identifiant SFTP
+#     HEBERGEUR_MOTDEPASSE    son mot de passe
+#   et, si le site ne va pas à la racine, la variable (pas le secret) :
+#     HEBERGEUR_DOSSIER       le chemin sur le serveur, par défaut « / »
+#
+# POURQUOI SFTP ET NON FTP. La plupart des hébergeurs proposent les deux ; le FTP
+# simple fait voyager le mot de passe en clair. Le port 22 est celui du SFTP.
+#
+# ET POURQUOI CE FICHIER PLUTÔT QU'UN HÉBERGEUR « BRANCHÉ SUR GIT ». Parce qu'il
+# rend le choix de l'hébergeur indifférent : tout hébergement qui donne un accès
+# SFTP devient, avec ce fichier, un hébergement qui se met à jour tout seul à
+# chaque poussée. On choisit donc sur le prix et sur le lieu, pas sur la
+# présence d'un bouton GitHub dans le panneau d'administration.
+
+name: Publier le site
+
+on:
+  push:
+    branches: [refonte-architecture]
+  # Et à la demande, depuis l'onglet Actions — pour republier sans rien changer.
+  workflow_dispatch:
+
+concurrency:
+  # UNE SEULE PUBLICATION À LA FOIS. Deux transferts simultanés vers le même
+  # dossier laisseraient le site à moitié dans une version et à moitié dans
+  # l'autre — et le pire moment pour ça est justement celui où l'on corrige en
+  # urgence.
+  group: publication
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Vérifier que l'hébergement est configuré
+        id: config
+        run: |
+          if [ -z "${{ secrets.HEBERGEUR_HOTE }}" ]; then
+            echo "::notice::Aucun hébergement configuré (secret HEBERGEUR_HOTE absent) — rien à publier."
+            echo "pret=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "pret=oui" >> "$GITHUB_OUTPUT"
+          fi
+
+      # LES TESTS AVANT LA PUBLICATION, ET C'EST LA RAISON D'ÊTRE DE CETTE
+      # ÉTAPE : un site cassé mis en ligne se voit par une classe entière avant
+      # de se voir par son auteur. Ils tournent en moins de deux minutes.
+      - name: Installer Node
+        if: steps.config.outputs.pret == 'oui'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Passer les tests
+        if: steps.config.outputs.pret == 'oui'
+        run: npm test
+
+      # CE QUI NE PART PAS SUR LE SERVEUR. Le dépôt contient de quoi
+      # développer — outils de mesure, tests, dépendances — et rien de tout cela
+      # n'a sa place sur l'hébergement : c'est du poids, et c'est de la surface
+      # exposée.
+      - name: Publier par SFTP
+        if: steps.config.outputs.pret == 'oui'
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: ${{ secrets.HEBERGEUR_HOTE }}
+          username: ${{ secrets.HEBERGEUR_UTILISATEUR }}
+          password: ${{ secrets.HEBERGEUR_MOTDEPASSE }}
+          port: 22
+          local_path: './*'
+          remote_path: ${{ vars.HEBERGEUR_DOSSIER || '/' }}
+          sftp_only: true
+          delete_remote_files: false
+          exclude_file: .deployignore

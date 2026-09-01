@@ -1,0 +1,21 @@
+# CE QUI RESTE DANS LE DÉPÔT ET NE MONTE PAS SUR LE SERVEUR.
+#
+# Le dépôt contient de quoi DÉVELOPPER l'application — les tests, les outils de
+# mesure, les dépendances de développement, les notes. Le serveur n'a besoin que
+# de ce qu'un navigateur télécharge. Tout le reste est du poids inutile, et
+# surtout de la surface exposée : un fichier publié est un fichier que n'importe
+# qui peut lire.
+.git
+.github
+node_modules
+tests
+tools
+outils
+imports
+docs
+_jeu.mjs
+package.json
+package-lock.json
+AtoutMath.command
+.deployignore
+.gitignore

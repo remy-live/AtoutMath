@@ -6,6 +6,9 @@ import './helpers.mjs';
 import '../js/core/activities/index.js';
 import { makeRng } from '../js/core/ids.js';
 import { getExerciseById } from '../js/data/catalog.js';
+import { getGenerator, generateurDeFiche, aUneFichePapier } from '../js/core/registry.js';
+import { LIGNES_CADRE } from '../js/core/generators/thalesRedactionFiche.js';
+import { figureThalesElements, figureThalesSvg } from '../js/core/generators/thales.js';
 import { creerThales, egaliteThales } from '../js/core/thales.js';
 import {
     PETITS, GRANDS, RESTES, ETIQUETTES, canon, verifierEgalite, hypotheses,
@@ -216,4 +219,84 @@ test('l\'exercice du catalogue tient debout', () => {
     assert.ok(exo.skills.includes('geo.thales'));
     exo.paramSchema.find(p => p.id === 'config').options
         .forEach(o => assert.ok(['melange', 'emboites', 'papillon'].includes(o.value), o.value));
+});
+
+
+// --- LA FICHE PAPIER ----------------------------------------------------------
+//
+// Rémy : « et pour l'impression, il faut aussi proposer un exercice de
+// rédaction ». À l'écran l'élève choisit ses hypothèses parmi six et pose des
+// étiquettes : c'est un échafaudage, fait pour être retiré. Sur la feuille il
+// n'y a plus que trois cadres et des lignes.
+
+test('LA FICHE EXISTE, avec son propre générateur', () => {
+    const exo = getExerciseById('geo-thales-redaction');
+    assert.equal(aUneFichePapier(exo), true, 'l\'exercice doit être imprimable');
+    assert.equal((generateurDeFiche(exo) || {}).id, 'geo.thales.redaction.fiche');
+    assert.equal(exo.printable, 'thales-redaction');
+    // LE GÉNÉRATEUR DE LA FICHE N'EST PAS CELUI DE L'ÉCRAN, et c'est voulu :
+    // l'un rend des questions, l'autre une page à remplir.
+    assert.ok(getGenerator('geo.thales.redaction.fiche'));
+});
+
+test('LA FIGURE DE LA FICHE NE PORTE QUE LES LONGUEURS DONNÉES', () => {
+    // Y écrire aussi celle qu'on cherche répondrait à la question ; n'en écrire
+    // aucune la rendrait insoluble.
+    const gen = getGenerator('geo.thales.redaction.fiche');
+    for (let i = 0; i < 40; i++) {
+        const it = gen.generate({}, { rng: makeRng(`fiche-${i}`) });
+        if (!it) continue;
+        const m = it.meta;
+        assert.equal(m.donnees.length, 3, 'trois longueurs données');
+        assert.equal(m.donnees.includes(m.cherche), false, 'la longueur cherchée n\'est pas donnée');
+        // Les cotes tracées sont un sous-ensemble des données : un segment trop
+        // court ne porte pas sa cote (elle se poserait sur les lettres).
+        m.figure.cotes.forEach(c => {
+            const nom = c.texte.split(' ')[0];
+            assert.ok(m.donnees.includes(nom), `${nom} est coté sans être donné`);
+        });
+        // Et l'énoncé nomme les trois, plus la cherchée.
+        m.donnees.forEach(n => assert.ok(m.enonce.includes(n), `${n} absent de l'énoncé`));
+        assert.ok(m.enonce.includes(`Calcule ${m.cherche}`));
+    }
+});
+
+test('LA CORRECTION DE LA FICHE EST LA RÉDACTION ENTIÈRE', () => {
+    // La feuille de solutions ne donne pas le nombre : elle redonne les trois
+    // parties mot pour mot, parce que c'est la rédaction qu'on corrige.
+    const gen = getGenerator('geo.thales.redaction.fiche');
+    const it = gen.generate({}, { rng: makeRng('corrige') });
+    assert.deepEqual(it.meta.redaction.map(b => b.titre), ['Je sais que', 'Or', 'Donc']);
+    // Autant de lignes de cadre qu'il en faut pour écrire la solution.
+    const compte = { 'Je sais que': LIGNES_CADRE.sais, Or: LIGNES_CADRE.or, Donc: LIGNES_CADRE.donc };
+    it.meta.redaction.forEach(b => {
+        assert.ok(b.lignes.length <= compte[b.titre],
+            `${b.titre} : ${b.lignes.length} lignes de solution pour ${compte[b.titre]} lignes de cadre`);
+    });
+    // Et la dernière ligne conclut, avec l'unité.
+    const donc = it.meta.redaction[2].lignes;
+    assert.match(donc[donc.length - 1], /cm$/);
+    assert.equal(it.answer, donc[donc.length - 1]);
+});
+
+test('LA FIGURE DE L\'ÉCRAN ET CELLE DU PAPIER SONT LA MÊME', () => {
+    // Le placement d'une cote coûte cher — deux côtés, sept écarts, un score qui
+    // pèse le dégagement. L'écrire deux fois aurait donné deux figures qui
+    // divergent au premier réglage. Le SVG se construit donc à partir des mêmes
+    // éléments que le PDF, et ce test le vérifie : chaque coordonnée du dessin
+    // se retrouve dans le texte SVG.
+    const f = creerThales({ config: 'emboites', rng: makeRng('meme') });
+    const e = figureThalesElements(f, ['AD', 'AC', 'AB']);
+    const svg = figureThalesSvg(f, ['AD', 'AC', 'AB']);
+    assert.equal(e.traits.length, 6);
+    assert.equal(e.noms.length, 5);
+    e.noms.forEach(n => {
+        assert.ok(svg.includes(`>${n.texte}</text>`), `${n.texte} absent du SVG`);
+        assert.ok(svg.includes(`x="${n.x.toFixed(1)}"`), `${n.texte} n'est pas à sa place`);
+    });
+    e.cotes.forEach(c => {
+        assert.ok(svg.includes(`>${c.texte}</text>`), `${c.texte} absent du SVG`);
+        assert.ok(svg.includes(`rotate(${c.angle.toFixed(1)}`), `${c.texte} n'a pas son angle`);
+    });
+    assert.ok(svg.includes(`viewBox="${e.vue.x0.toFixed(1)} ${e.vue.y0.toFixed(1)}`));
 });

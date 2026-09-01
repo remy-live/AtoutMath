@@ -48,6 +48,7 @@ import { CASES as CASES_HEXA } from '../core/hexagrille.js';
 import { R as R_HEXA, SOMMETS as SOMMETS_HEXA, centre as centreHexa,
     repereFleche as repereFlecheHexa, cadreHexagrille } from '../core/hexagrilleFigure.js';
 import { placeNoms, ancrageNom, ECART_NOM } from '../core/thales.js';
+import { LIGNES_CADRE as LIGNES_CADRE_Q } from '../core/generators/thalesRedactionFiche.js';
 import { MC_DEF, disposerMotsCroises } from '../core/dispositionMotsCroises.js';
 import { ecrireElement } from '../core/elementSymetrie.js';
 import { SENS as SENS_ROTATION } from '../core/transformations.js';
@@ -10240,6 +10241,273 @@ function geoOrganigramme(item, slot) {
     };
 }
 
+// --- THALÈS : LA RÉDACTION, SUR PAPIER ----------------------------------------
+//
+// Rémy : « et pour l'impression, il faut aussi proposer un exercice de
+// rédaction. »
+//
+// TROIS CADRES, DES LIGNES, ET RIEN D'AUTRE. À l'écran, l'élève choisit ses
+// hypothèses parmi six et pose des étiquettes pour écrire l'égalité : la machine
+// l'empêche d'écrire une bêtise et lui explique chaque refus. C'est un
+// échafaudage, et il est fait pour être retiré. Sur la feuille il n'y en a plus,
+// et c'est le seul endroit où l'on vérifie qu'il sait encore le faire seul.
+//
+// LA FIGURE EST CELLE DE L'ÉCRAN, au trait près : elle se calcule dans
+// `figureThalesElements` — placement des lettres, choix du côté de chaque cote,
+// écart au segment — et se trace ici au PDF, là-bas en SVG.
+
+/** La figure, l'énoncé et les trois cadres, posés dans le bloc. */
+function geoThalesRedaction(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+
+    // L'ÉNONCÉ D'ABORD : sa hauteur dépend de sa longueur, et tout le reste se
+    // partage ce qui reste.
+    const hEnonce = 9;
+
+    // LES CADRES SE DIMENSIONNENT SUR LA RÉDACTION ATTENDUE, pas sur un tiers de
+    // page chacun. Le « Or » demande cinq lignes — l'annonce, l'égalité des
+    // rapports, la même chiffrée —, le « Je sais que » deux, le « Donc » trois.
+    // Un cadre trop court fait écrire en petit dans la marge ; un cadre trop
+    // long fait croire qu'il manque quelque chose.
+    const cadres = [
+        { cle: 'sais', titre: 'Je sais que', lignes: LIGNES_CADRE_Q.sais,
+            aide: 'ce que dit l’énoncé' },
+        { cle: 'or', titre: 'Or', lignes: LIGNES_CADRE_Q.or,
+            aide: 'ce que dit le cours' },
+        { cle: 'donc', titre: 'Donc', lignes: LIGNES_CADRE_Q.donc,
+            aide: 'ce qu’on en déduit' }
+    ];
+    const totalLignes = cadres.reduce((n, c) => n + c.lignes, 0);
+    const H_TITRE = 5;      // la bande du titre, au-dessus des lignes
+    const MARGE = 2.5;      // entre deux cadres
+
+    // La figure prend ce qui reste, mais jamais plus du tiers du bloc : une
+    // figure géante sur une page où l'on doit ÉCRIRE est un contresens.
+    const hFixe = hEnonce + cadres.length * (H_TITRE + MARGE + 2);
+    const hLigneMin = 5.5;  // de quoi écrire à la main
+    const restePourFigure = b.h - hFixe - totalLignes * hLigneMin;
+    const hFigure = Math.max(24, Math.min(b.h * 0.32, restePourFigure));
+    const hLigne = (b.h - hFixe - hFigure) / totalLignes;
+
+    // LA FIGURE GARDE SES PROPORTIONS. Étirée à la largeur du bloc, un papillon
+    // devient un accordéon et les cotes ne longent plus leur segment.
+    const vue = m.figure.vue;
+    const echelle = Math.min((b.w * 0.62) / vue.w, hFigure / vue.h);
+    const figW = vue.w * echelle, figH = vue.h * echelle;
+    const figX = b.x + (b.w - figW) / 2, figY = b.y + hEnonce;
+    /** Un point de la figure, en millimètres sur la page. */
+    const F = (q) => ({ x: figX + (q.x - vue.x0) * echelle, y: figY + (q.y - vue.y0) * echelle });
+
+    // Les cadres, empilés sous la figure.
+    let y = b.y + hEnonce + hFigure + 2;
+    const boites = cadres.map(c => {
+        // DEUX MILLIMÈTRES DE PLUS QUE LES LIGNES : sans eux, la dernière
+        // ligne d'écriture tombait exactement sur le bord du cadre et se
+        // confondait avec lui — on croyait le cadre plus court d'une ligne.
+        const h = H_TITRE + c.lignes * hLigne + 2;
+        const box = { ...c, x: b.x, y, w: b.w, h, hLigne, hTitre: H_TITRE };
+        y += h + MARGE;
+        return box;
+    });
+
+    return { b, m, F, echelle, figX, figY, figW, figH, hEnonce, boites, hLigne };
+}
+
+/**
+ * LA DOUBLE FLÈCHE D'UNE COTE, en millimètres — les mêmes proportions qu'en SVG.
+ *
+ * Deux lignes d'attache qui partent des extrémités du segment, la ligne de cote
+ * entre les deux, une pointe pleine à chaque bout tournée vers l'extérieur.
+ * C'est la convention du dessin technique, et elle est là pour une raison
+ * précise : « AB = 20 » posé près de deux traits qui se croisent ne dit pas
+ * lequel des deux il mesure — surtout ici, où [AE] est un morceau de [AB].
+ */
+function traitsDeCote(c, F, k) {
+    const p1 = F(c.p1), q1 = F(c.q1), p = F(c.p), q = F(c.q);
+    const dx = q1.x - p1.x, dy = q1.y - p1.y;
+    const n = Math.hypot(dx, dy) || 1;
+    const vx = dx / n, vy = dy / n;
+    const POINTE = 2.6 * k, LARGE = 1.15 * k;
+    const attache = (P0, P1) => {
+        const ex = P1.x - P0.x, ey = P1.y - P0.y;
+        const e = Math.hypot(ex, ey) || 1;
+        const gx = ex / e, gy = ey / e;
+        return { p: { x: P0.x + gx * 1.6 * k, y: P0.y + gy * 1.6 * k },
+            q: { x: P1.x + gx * 1.4 * k, y: P1.y + gy * 1.4 * k } };
+    };
+    const pointe = (P0, sx, sy) => [
+        P0,
+        { x: P0.x - sx * POINTE + sy * LARGE, y: P0.y - sy * POINTE - sx * LARGE },
+        { x: P0.x - sx * POINTE - sy * LARGE, y: P0.y - sy * POINTE + sx * LARGE }
+    ];
+    return {
+        attaches: [attache(p, c.p1 && p1), attache(q, q1)],
+        ligne: { p: p1, q: q1 },
+        pointes: [pointe(p1, -vx, -vy), pointe(q1, vx, vy)]
+    };
+}
+
+function thalesRedactionPreviewHtml(item, slot, k, solution) {
+    const g = geoThalesRedaction(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const m = g.m;
+    let out = '';
+
+    // L'énoncé.
+    out += `<text x="${T(g.b.x)}" y="${T(g.b.y + 4)}" font-size="${T(3.1)}"
+        font-family="Helvetica, Arial, sans-serif" fill="#1a202c">${echapper(m.enonce)}</text>`;
+
+    // La figure : traits, cotes, lettres.
+    const COULEUR = { droite: '#4a5568', base: '#2b6cb0', para: '#2f855a' };
+    m.figure.traits.forEach(t => {
+        const p = g.F(t.p), q = g.F(t.q);
+        out += `<line x1="${T(p.x)}" y1="${T(p.y)}" x2="${T(q.x)}" y2="${T(q.y)}"
+            stroke="${COULEUR[t.genre]}" stroke-width="${T(t.genre === 'droite' ? 0.25 : 0.4)}"/>`;
+    });
+    m.figure.cotes.forEach(c => {
+        const d = traitsDeCote(c, g.F, g.echelle);
+        d.attaches.forEach(a => {
+            out += `<line x1="${T(a.p.x)}" y1="${T(a.p.y)}" x2="${T(a.q.x)}" y2="${T(a.q.y)}"
+                stroke="#2c5282" stroke-width="${T(0.12)}" opacity=".6"/>`;
+        });
+        out += `<line x1="${T(d.ligne.p.x)}" y1="${T(d.ligne.p.y)}"
+            x2="${T(d.ligne.q.x)}" y2="${T(d.ligne.q.y)}" stroke="#2c5282" stroke-width="${T(0.18)}"/>`;
+        d.pointes.forEach(tri => {
+            out += `<path d="M${T(tri[0].x)} ${T(tri[0].y)} L${T(tri[1].x)} ${T(tri[1].y)}
+                L${T(tri[2].x)} ${T(tri[2].y)} Z" fill="#2c5282"/>`;
+        });
+        const pt = g.F({ x: c.x, y: c.y });
+        out += `<text x="${T(pt.x)}" y="${T(pt.y)}"
+            transform="rotate(${c.angle.toFixed(1)} ${T(pt.x)} ${T(pt.y)})"
+            text-anchor="middle" dominant-baseline="central"
+            font-size="${T(m.figure.tailleCote * g.echelle)}" font-weight="700" fill="#2c5282"
+            font-family="Helvetica, Arial, sans-serif">${echapper(c.texte)}</text>`;
+    });
+    m.figure.noms.forEach(t => {
+        const pt = g.F({ x: t.x, y: t.yBase });
+        out += `<text x="${T(pt.x)}" y="${T(pt.y)}" text-anchor="${t.ancre}"
+            font-size="${T(m.figure.tailleNom * g.echelle)}" font-weight="800" fill="#1a202c"
+            font-family="Helvetica, Arial, sans-serif">${echapper(t.texte)}</text>`;
+    });
+
+    // Les trois cadres.
+    g.boites.forEach(box => {
+        out += `<rect x="${T(box.x)}" y="${T(box.y)}" width="${T(box.w)}" height="${T(box.h)}"
+            rx="${T(1.5)}" fill="none" stroke="#1a202c" stroke-width="${T(0.3)}"/>`;
+        out += `<text x="${T(box.x + 2.5)}" y="${T(box.y + 3.6)}" font-size="${T(3.2)}"
+            font-weight="700" fill="#1a202c"
+            font-family="Helvetica, Arial, sans-serif">${echapper(box.titre)}</text>`;
+        if (m.rappel) {
+            out += `<text x="${T(box.x + 2.5 + box.titre.length * 1.9)}" y="${T(box.y + 3.6)}"
+                font-size="${T(2.5)}" fill="#8a90a0"
+                font-family="Helvetica, Arial, sans-serif">${echapper('— ' + box.aide)}</text>`;
+        }
+        if (solution) {
+            const lignes = (m.redaction.find(r => r.titre === box.titre) || {}).lignes || [];
+            lignes.forEach((l, i) => {
+                out += `<text x="${T(box.x + 4)}" y="${T(box.y + box.hTitre + (i + 0.7) * box.hLigne)}"
+                    font-size="${T(3)}" fill="#2c5282"
+                    font-family="Helvetica, Arial, sans-serif">${echapper(l)}</text>`;
+            });
+            return;
+        }
+        for (let i = 1; i <= box.lignes; i++) {
+            const y = box.y + box.hTitre + i * box.hLigne - 1.5;
+            out += `<line x1="${T(box.x + 3)}" y1="${T(y)}" x2="${T(box.x + box.w - 3)}" y2="${T(y)}"
+                stroke="#c9cedb" stroke-width="${T(0.18)}"/>`;
+        }
+    });
+
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+function dessinerThalesRedactionPdf(doc, item, slot, solution) {
+    const g = geoThalesRedaction(item, slot);
+    const m = g.m;
+
+    // L'énoncé.
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...ENCRE.trait);
+    doc.text(pourPdf(m.enonce), g.b.x, g.b.y + 4);
+
+    // La figure.
+    const COULEUR = { droite: [74, 85, 104], base: [43, 108, 176], para: [47, 133, 90] };
+    m.figure.traits.forEach(t => {
+        const p = g.F(t.p), q = g.F(t.q);
+        doc.setDrawColor(...COULEUR[t.genre]);
+        doc.setLineWidth(t.genre === 'droite' ? 0.25 : 0.4);
+        doc.line(p.x, p.y, q.x, q.y);
+    });
+    m.figure.cotes.forEach(c => {
+        const d = traitsDeCote(c, g.F, g.echelle);
+        doc.setDrawColor(44, 82, 130);
+        doc.setLineWidth(0.12);
+        d.attaches.forEach(a => doc.line(a.p.x, a.p.y, a.q.x, a.q.y));
+        doc.setLineWidth(0.18);
+        doc.line(d.ligne.p.x, d.ligne.p.y, d.ligne.q.x, d.ligne.q.y);
+        doc.setFillColor(44, 82, 130);
+        d.pointes.forEach(tri => {
+            doc.triangle(tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y, 'F');
+        });
+        const pt = g.F({ x: c.x, y: c.y });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(5, m.figure.tailleCote * g.echelle * 2.83));
+        doc.setTextColor(44, 82, 130);
+        // LE NOMBRE TOURNE AVEC SA FLÈCHE. jsPDF compte les angles à l'envers du
+        // SVG — sens trigonométrique contre sens horaire —, d'où le signe.
+        doc.text(pourPdf(c.texte), pt.x, pt.y, { angle: -c.angle, align: 'center', baseline: 'middle' });
+    });
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.trait);
+    m.figure.noms.forEach(t => {
+        const pt = g.F({ x: t.x, y: t.yBase });
+        doc.setFontSize(Math.max(6, m.figure.tailleNom * g.echelle * 2.83));
+        doc.text(pourPdf(t.texte), pt.x, pt.y,
+            { align: t.ancre === 'start' ? 'left' : t.ancre === 'end' ? 'right' : 'center' });
+    });
+
+    // Les trois cadres.
+    g.boites.forEach(box => {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(box.x, box.y, box.w, box.h, 1.5, 1.5, 'S');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(pourPdf(box.titre), box.x + 2.5, box.y + 3.8);
+        if (m.rappel) {
+            // LA LARGEUR DU TITRE SE MESURE AVANT DE CHANGER DE POLICE. Mesurée
+            // après, c'est la largeur du petit corps gris qu'on obtenait, et le
+            // rappel venait se coller au titre : « Je sais quece que dit
+            // l'énoncé ».
+            const largeurTitre = doc.getTextWidth(pourPdf(box.titre));
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...ENCRE.gris);
+            doc.text(pourPdf('— ' + box.aide), box.x + 2.5 + largeurTitre + 2.5, box.y + 3.8);
+        }
+        if (solution) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9.5);
+            doc.setTextColor(44, 82, 130);
+            const lignes = (m.redaction.find(r => r.titre === box.titre) || {}).lignes || [];
+            lignes.forEach((l, i) => {
+                doc.text(pourPdf(l), box.x + 4, box.y + box.hTitre + (i + 0.7) * box.hLigne);
+            });
+            return;
+        }
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.18);
+        for (let i = 1; i <= box.lignes; i++) {
+            const y = box.y + box.hTitre + i * box.hLigne - 1.5;
+            doc.line(box.x + 3, y, box.x + box.w - 3, y);
+        }
+    });
+}
+
 // UN TRAIT PAR CONDITION, comme à l'écran depuis que l'organigramme est
 // couché. En colonne il n'y avait la place que d'un trait par CHEMIN, avec les
 // conditions échelonnées dessus ; l'élève ne pouvait pas compter les portes du
@@ -10677,11 +10945,11 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
     let d = '';
     const centre = (x, y, s, corps, couleur) => `<text x="${T(x)}" y="${T(y)}" fill="${couleur || '#1a202c'}"
         font-weight="700" font-size="${(corps * k).toFixed(2)}" text-anchor="middle"
-        dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${echapperSvg(s)}</text>`;
+        dominant-baseline="central" font-family="Helvetica, Arial, sans-serif">${echapper(s)}</text>`;
 
     g.lignesTexte.forEach((ligne, i) => {
         d += `<text x="${T(g.b.x)}" y="${T(g.b.y + g.corpsTexte * (0.95 + i * 1.25))}" fill="#1a202c"
-            font-size="${(g.corpsTexte * k).toFixed(2)}" font-family="Helvetica, Arial, sans-serif">${echapperSvg(ligne)}</text>`;
+            font-size="${(g.corpsTexte * k).toFixed(2)}" font-family="Helvetica, Arial, sans-serif">${echapper(ligne)}</text>`;
     });
 
     for (let r = -1; r <= m.R; r++) {
@@ -10698,7 +10966,7 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
     [...m.lignes, 'Total'].forEach((l, r) => {
         d += `<text x="${T(g.x0 + 0.8)}" y="${T(g.yDe(r) + g.rh / 2)}" fill="#1a202c" font-weight="700"
             font-size="${(g.corpsLib * k).toFixed(2)}" dominant-baseline="central"
-            font-family="Helvetica, Arial, sans-serif">${echapperSvg(l)}</text>`;
+            font-family="Helvetica, Arial, sans-serif">${echapper(l)}</text>`;
     });
     for (let r = 0; r <= m.R; r++) {
         for (let c = 0; c <= m.C; c++) {
@@ -10777,7 +11045,7 @@ function couperEnLignes(texte, large, max) {
     return out;
 }
 
-const echapperSvg = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const echapper = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 // --- RELIER SANS CROISER, SUR LE PAPIER ---------------------------------------
 //
@@ -11042,6 +11310,26 @@ export const RENDUS = {
         nomBloc: 'Grille', nomBlocs: 'grilles',
         disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
         parLigneDefaut: 3
+    },
+
+    'thales-redaction': {
+        titre: 'Thalès : rédiger la démonstration',
+        consigne: () => 'RÉDIGE LA DÉMONSTRATION EN TROIS PARTIES, comme sur une copie. '
+            + 'Dans le « Or », chaque petit segment se met sur le segment ENTIER qui le '
+            + 'contient, jamais sur le reste. Et l\'on conclut AVEC L\'UNITÉ.',
+        previewGrille: thalesRedactionPreviewHtml,
+        pdfGrille: dessinerThalesRedactionPdf,
+        nomBloc: 'Démonstration', nomBlocs: 'démonstrations',
+        // UNE PAR PAGE PAR DÉFAUT, ET C'EST LE SUJET MÊME. Une démonstration
+        // de Thalès occupe une demi-page dans un cahier : dix lignes d'écriture
+        // à la main, plus la figure. En serrer quatre sur une feuille donnerait
+        // des cadres où l'on n'écrit qu'en abrégé — c'est-à-dire l'inverse de ce
+        // qu'on travaille ici.
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 1,
+        // Plus haut que large : la figure en haut, les trois cadres dessous.
+        proportions: { w: 1, h: 1.45 },
+        titreAGauche: true
     },
 
     'organigramme-quadri': {
