@@ -1057,6 +1057,18 @@
     font-size: 1.1rem; font-weight: 700; text-align: center; color: var(--text-main);
 }
 .cv-champ:focus { outline: none; border-color: var(--primary); }
+/* LA NOTATION EST COURTE, ET LE CHAMP AVEC. « [OA] » fait quatre signes : un
+   champ de 220 px sous une figure qu'on peut aussi cliquer invite à écrire une
+   phrase, alors qu'on attend deux lettres. Et l'étiquette rentre sur la ligne
+   au lieu de prendre la sienne — la place gagnée revient à la figure. */
+.cv-champ--court { width: min(120px, 34vw); letter-spacing: .06em; }
+.cv-ecriture:has(.cv-champ--court) { gap: 8px; margin-top: 0; }
+.cv-ecriture:has(.cv-champ--court) .cv-label {
+    flex: 0 0 auto; font-size: .88rem; color: var(--text-muted);
+}
+/* La consigne annonce DEUX gestes : elle se serre pour que le bouton qui
+   valide le second reste au-dessus du pli sur un téléphone. */
+.canvas-area:has(.cv-champ--court) .cv-consigne { margin-bottom: 6px; }
 .cv-statut {
     min-height: 1.3em; text-align: center; margin: 0 auto 10px;
     font-size: .9rem; font-weight: 600; color: var(--text-muted);

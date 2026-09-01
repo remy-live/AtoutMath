@@ -9,7 +9,7 @@ import { getGenerator } from '../js/core/registry.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
 import {
-    MOTS_CERCLE, cercleVocabulaireGenerator, memeMot, normaliser
+    MOTS_CERCLE, cercleVocabulaireGenerator, memeMot, normaliser, memeNotation, lettresDe
 } from '../js/core/generators/cercleVocabulaire.js';
 import { marcheDe } from '../js/core/activities/cercleElement.js';
 import { tracesDe, surCercle, polyArc, cercleSvg, branchesCroix, CX, CY, R } from '../js/core/cercleFigure.js';
@@ -286,4 +286,61 @@ test('la progression met les propositions d\'abord, et la réponse seule ensuite
     // va fixe la marche.
     assert.equal(marcheDe('choisir', 8, 9), 'choisir');
     assert.equal(marcheDe('seul', 0, 9), 'seul');
+});
+
+test('LA NOTATION AUSSI VAUT RÉPONSE — « [OA] », tapé', () => {
+    // Rémy : « ce serait bien de pouvoir aussi répondre [OA] ou écrire cercle
+    // ou rayon. En gardant ce que tu as déjà fait et qui est très bien. »
+    // Désigner le tracé au doigt reste ; l'écrire demande une chose de plus,
+    // qui est au programme — la notation elle-même.
+    assert.equal(memeNotation('[OA]', '[OA]'), true);
+    // Un segment se lit dans les deux sens, et la ponctuation ne dit rien de
+    // plus que ce que la figure montre déjà.
+    assert.equal(memeNotation('[AO]', '[OA]'), true);
+    assert.equal(memeNotation('oa', '[OA]'), true);
+    assert.equal(memeNotation(' O A ', '[OA]'), true);
+    assert.equal(memeNotation('AB', '(AB)'), true);
+    assert.equal(memeNotation('arc AB', 'l\'arc AB'), true);
+    // Et ce qui désigne un AUTRE tracé reste faux.
+    assert.equal(memeNotation('[OB]', '[OA]'), false);
+    assert.equal(memeNotation('', '[OA]'), false);
+    assert.equal(memeNotation('rayon', '[OA]'), false);
+
+    // L'ÉLISION SE RETIRE PAR SON APOSTROPHE, JAMAIS COMME UN MOT : un segment
+    // peut très bien s'appeler [LE], et retirer « LE » l'effacerait.
+    assert.equal(lettresDe('[LE]'), 'EL');
+    assert.equal(memeNotation('EL', '[LE]'), true);
+    // Le mot « arc » ne compte pas comme des points, même quand les points
+    // s'appellent A, R ou C.
+    assert.equal(lettresDe('l\'arc AC'), 'AC');
+    assert.equal(lettresDe('l\'arc AR'), 'AR');
+    // Tapé sans l'espace, comme sur un clavier de téléphone.
+    assert.equal(lettresDe('arcAB'), 'AB');
+});
+
+test('ce que l\'élève écrit se compare à ce que l\'item attend', () => {
+    // La réponse d'un item « trouver » EST une notation : les deux bouts de la
+    // comparaison doivent se rejoindre, sinon écrire juste serait compté faux.
+    const gen = getGenerator('geo.cercle-vocabulaire');
+    let vus = 0;
+    for (let i = 0; i < 40; i++) {
+        const item = gen.generate({ mots: ['rayon', 'diametre', 'corde', 'arc'], sens: 'trouver' },
+            { rng: makeRng(`not-${i}`), index: i });
+        if (!item || !item.meta || item.meta.sens !== 'trouver') continue;
+        vus++;
+        // Tapée telle quelle, sans crochets, ou à l'envers : c'est la même.
+        assert.equal(memeNotation(item.answer, item.answer), true, item.answer);
+        // Tel qu'un élève le taperait : les lettres, sans crochets ni article.
+        const nu = item.answer.replace(/^l['\u2019]arc\s*/, '').replace(/[[\]()]/g, '').trim();
+        assert.equal(memeNotation(nu, item.answer), true, `« ${nu} » vs « ${item.answer} »`);
+        // ET AUCUN AUTRE TRACÉ DE LA MÊME FIGURE ne passe pour le bon : deux
+        // tracés ne partagent jamais une lettre, c'est ce qui rend la
+        // comparaison par lettres sans ambiguïté.
+        (item.meta.ecrits || []).forEach(e => {
+            if (e === item.answer) return;
+            assert.equal(memeNotation(e, item.answer), false,
+                `« ${e} » ne doit pas valoir « ${item.answer} »`);
+        });
+    }
+    assert.ok(vus >= 10, `trop peu de questions « trouver » éprouvées : ${vus}`);
 });

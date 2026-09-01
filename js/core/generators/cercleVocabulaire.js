@@ -232,6 +232,52 @@ export function memeMot(donne, attendu) {
     return normaliser(donne) === normaliser(attendu);
 }
 
+/**
+ * ET LA NOTATION VAUT AUSSI LA RÉPONSE — « [OA] », tapé.
+ *
+ * Rémy : « ce serait bien pour le vocabulaire du cercle de pouvoir aussi
+ * répondre [OA] ou écrire cercle ou rayon. En gardant ce que tu as déjà fait
+ * et qui est très bien. »
+ *
+ * Sur les questions « lequel est un rayon ? », on désignait le tracé au doigt.
+ * C'est bien, et cela reste : désigner sur la figure demande d'avoir vraiment
+ * trouvé. Mais l'ÉCRIRE demande une chose de plus, qui est au programme — la
+ * notation elle-même. Un élève qui tape « [OA] » a lu la figure ET su
+ * l'écrire.
+ *
+ * ON COMPARE LES LETTRES, PAS LA PONCTUATION. [OA] et [AO] sont le même
+ * segment ; les crochets, les parenthèses, le mot « arc » et les espaces ne
+ * disent rien de plus que ce que la figure montre déjà, et refuser « OA » tapé
+ * sans crochets sur un clavier de téléphone n'enseignerait rien sur le cercle.
+ * Deux tracés d'une même figure ne partagent jamais une lettre — c'est
+ * `nommerPoints` qui s'en charge —, donc les lettres seules désignent sans
+ * ambiguïté.
+ */
+export function memeNotation(donne, attendu) {
+    const a = lettresDe(donne), b = lettresDe(attendu);
+    return a.length > 0 && a === b;
+}
+
+/** Les lettres d'une notation, rangées : « [AO] », « OA », « l'arc AO » → « AO ». */
+export function lettresDe(texte) {
+    const brut = String(texte == null ? '' : texte).toUpperCase();
+    // « ARC » et « DROITE » sont des mots, pas des points : on les retire avant
+    // de ramasser les lettres, sinon leurs A, R et C entreraient dans le compte.
+    //
+    // ET L'ÉLISION SE RETIRE PAR SON APOSTROPHE, jamais comme un mot : un
+    // segment peut très bien s'appeler [LE], et retirer « LE » l'effacerait.
+    // L'apostrophe, elle, ne sort d'aucun crochet.
+    // « ARC » se retire SANS frontière de mot : « arcAB » tapé sans espace sur
+    // un clavier de téléphone doit valoir « l'arc AB ». Aucune notation ne fait
+    // trois lettres, donc « ARC » ne peut jamais être un tracé.
+    const sansMots = brut
+        .replace(/[LD]['\u2019]/g, ' ')
+        .replace(/ARC/g, ' ')
+        .replace(/\b(DROITE|SEGMENT|POINT|CERCLE|DISQUE)\b/g, ' ');
+    const lettres = (sansMots.match(/[A-Z]/g) || []);
+    return [...new Set(lettres)].sort().join('');
+}
+
 export function normaliser(mot) {
     return String(mot == null ? '' : mot)
         .toLowerCase()

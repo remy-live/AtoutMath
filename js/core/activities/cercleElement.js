@@ -29,7 +29,7 @@ import { hintBar, wireHint } from './choice.js';
 import { tracesDe, cercleSvg } from '../cercleFigure.js';
 // La comparaison des mots vit avec le VOCABULAIRE, pas avec l'écran : c'est une
 // règle sur les mots du cercle, et elle se teste sans navigateur.
-import { memeMot } from '../generators/cercleVocabulaire.js';
+import { memeMot, memeNotation } from '../generators/cercleVocabulaire.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 /** Les deux marches, et le préréglage qui les enchaîne. */
@@ -104,7 +104,21 @@ export function mount(container, session, opts = {}) {
             ).join('')}</div>`;
         }
         if (faire === 'cliquer') {
-            return '<p class="cv-consigne">Clique sur le bon tracé, directement sur la figure.</p>';
+            // ET ON PEUT AUSSI L'ÉCRIRE. Rémy : « ce serait bien de pouvoir
+            // aussi répondre [OA] ». Désigner au doigt demande d'avoir trouvé ;
+            // ÉCRIRE demande une chose de plus, qui est au programme — la
+            // notation elle-même. Les deux gestes restent ouverts en même
+            // temps : celui qui sait l'écrire n'a pas à viser un trait de deux
+            // millimètres, celui qui hésite montre du doigt.
+            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation.</p>
+                <div class="cv-ecriture">
+                    <label class="cv-label" for="cv-champ">Notation :</label>
+                    <input id="cv-champ" class="cv-champ cv-champ--court" type="text"
+                           inputmode="text" autocomplete="off" spellcheck="false"
+                           autocapitalize="characters" placeholder="[  ]">
+                    <button type="button" class="kk-btn-valider" data-valider>Valider</button>
+                </div>
+                <p class="cv-statut" role="status"></p>`;
         }
         // PAS D'EXEMPLE DANS LE CHAMP. « un rayon » en filigrane est la réponse
         // d'une question sur deux : on donnerait le mot à celui qui doit le
@@ -136,13 +150,16 @@ export function mount(container, session, opts = {}) {
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jouer(); }
                 });
             });
-            return;
         }
         const champ = container.querySelector('#cv-champ');
-        const valider = () => repondreParEcriture(champ.value);
+        if (!champ) return;
+        const valider = () => repondreParEcriture(champ.value, faire);
         champ.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); valider(); } };
         container.querySelector('[data-valider]').onclick = valider;
-        champ.focus({ preventScroll: true });
+        // ON NE VOLE PAS LE FOCUS QUAND LA FIGURE EST L'OUTIL PRINCIPAL : sur
+        // un téléphone, ouvrir le clavier recouvre le dessin qu'on demande de
+        // regarder. Le champ attend qu'on vienne le chercher.
+        if (faire === 'ecrire') champ.focus({ preventScroll: true });
     }
 
     /**
@@ -157,14 +174,22 @@ export function mount(container, session, opts = {}) {
         return (ecrits && ecrits[el] !== undefined) ? ecrits[el] : `tracé ${el}`;
     }
 
-    function repondreParEcriture(texte) {
+    /**
+     * ON REND LA RÉPONSE ATTENDUE QUAND C'EST LA MÊME CHOSE. La session compare
+     * des chaînes ; c'est ici que « rayon » et « un rayon » se rejoignent, ici
+     * aussi que « OA » rejoint « [OA] », et nulle part ailleurs — le journal
+     * doit enregistrer la même réponse quel que soit le geste.
+     */
+    function repondreParEcriture(texte, faire) {
         if (session.locked || destroyed) return;
-        if (!texte.trim()) { statut('Écris le mot qui nomme ce tracé.'); return; }
-        // ON REND LA RÉPONSE ATTENDUE QUAND C'EST LE MÊME MOT. La session
-        // compare des chaînes ; c'est ici que « rayon » et « un rayon » se
-        // rejoignent, et nulle part ailleurs — le journal doit enregistrer la
-        // même réponse pour les deux.
-        conclure(memeMot(texte, item.answer) ? item.answer : texte.trim(), null);
+        const notation = faire === 'cliquer';
+        if (!texte.trim()) {
+            statut(notation ? 'Écris la notation du tracé, par exemple [OA].'
+                : 'Écris le mot qui nomme ce tracé.');
+            return;
+        }
+        const memeChose = notation ? memeNotation(texte, item.answer) : memeMot(texte, item.answer);
+        conclure(memeChose ? item.answer : texte.trim(), null);
     }
 
     function conclure(valeur, element) {
