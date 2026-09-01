@@ -19,12 +19,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=497">
-    <link rel="stylesheet" href="css/layout.css?v=497">
-    <link rel="stylesheet" href="css/ui.css?v=497">
-    <link rel="stylesheet" href="css/games.css?v=497">
-    <link rel="stylesheet" href="css/components.css?v=497">
-    <link rel="stylesheet" href="css/modules.css?v=497">
+    <link rel="stylesheet" href="css/base.css?v=498">
+    <link rel="stylesheet" href="css/layout.css?v=498">
+    <link rel="stylesheet" href="css/ui.css?v=498">
+    <link rel="stylesheet" href="css/games.css?v=498">
+    <link rel="stylesheet" href="css/components.css?v=498">
+    <link rel="stylesheet" href="css/modules.css?v=498">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -124,6 +124,18 @@
             <button class="debug-btn" id="db-solution" title="Montrer la solution (outil d'auteur)"
                     aria-label="Montrer la solution">
                 <svg viewBox="0 0 24 24"><circle cx="8.5" cy="15.5" r="3.5"/><path d="m11 13 8.5-8.5"/><path d="m16 8 2 2M18.5 5.5l2 2"/></svg>
+            </button>
+            <!-- LES RÉGLAGES DE L'EXERCICE EN COURS, SANS SORTIR.
+                 Rémy : « on pourrait rajouter un bouton paramètre pour changer
+                 les paramètres en temps réel (2 réponses, saisir la réponse),
+                 ça permettrait de voir directement ce que cela donne ».
+                 Pour comparer deux propositions et quatre, il fallait fermer,
+                 revenir au catalogue, rerégler, relancer — et à l'arrivée on
+                 ne comparait plus rien : on avait oublié le précédent.
+                 L'icône : les curseurs d'une table de mixage. -->
+            <button class="debug-btn" id="db-params" title="Régler l'exercice en cours et le relancer"
+                    aria-label="Régler l'exercice en cours">
+                <svg viewBox="0 0 24 24"><path d="M5 4v6M5 14v6M12 4v3M12 11v9M19 4v10M19 18v2"/><path d="M2.5 12h5M9.5 9h5M16.5 16h5"/></svg>
             </button>
             <!-- Reculer et avancer d'une question, dans n'importe quel
                  exercice : mettre au point la dixième sans jouer les neuf
@@ -1058,7 +1070,7 @@
         <div id="student-config-modal" class="modal-overlay">
             <div class="glass-panel modal-panel-sm-left">
                 <h3 id="student-config-title" class="modal-title modal-title--center">Réglages de la partie</h3>
-                <p class="modal-text modal-text--center">Personnalise ton jeu avant de commencer !</p>
+                <p id="student-config-sub" class="modal-text modal-text--center">Personnalise ton jeu avant de commencer !</p>
                 <div id="student-config-content">
                     <!-- Champs injectés dynamiquement par configUI.js -->
                 </div>

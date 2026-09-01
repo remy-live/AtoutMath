@@ -281,6 +281,44 @@ export class Runner {
         this.runStep();
     }
 
+    /**
+     * RÉGLER L'EXERCICE SANS SORTIR DE L'EXERCICE — outil d'auteur.
+     *
+     * Rémy : « pour le débug, on pourrait rajouter un bouton paramètre pour
+     * changer les paramètres en temps réel (2 réponses, saisir la réponse), ça
+     * permettrait de voir directement ce que cela donne. »
+     *
+     * Pour voir ce que donnent deux propositions au lieu de quatre, il fallait
+     * fermer l'exercice, revenir au catalogue, le rouvrir, rerégler, relancer —
+     * et à l'arrivée on ne comparait plus rien, on avait oublié à quoi
+     * ressemblait le précédent. On remplace donc les réglages de l'étape en
+     * cours et on la relance sur place : la question suivante sort avec les
+     * nouveaux réglages, immédiatement.
+     *
+     * L'ÉTAPE REPART DU DÉBUT, et c'est voulu : changer le nombre de
+     * propositions en milieu de série donnerait une série moitié-moitié, dont
+     * on ne saurait rien conclure.
+     *
+     * @param {Object} params réglages complets, tels que rendus par la fenêtre
+     * @returns {boolean} faux s'il n'y a pas d'étape à régler
+     */
+    rejouerAvec(params) {
+        const step = this.steps[this.index];
+        if (!step || !params) return false;
+        const { nbQuestions, ...contenu } = params;
+        step.params = { ...step.params, ...contenu };
+        step.overrides = { ...(step.overrides || {}), ...contenu };
+        if (nbQuestions) {
+            step.nbItems = nbQuestions;
+            // Le seuil suivait le nombre de questions : passer de vingt à
+            // cinq questions avec un seuil de quatorze rendait l'étape
+            // impossible à valider, sans que rien ne le dise.
+            if (step.threshold > nbQuestions) step.threshold = nbQuestions;
+        }
+        this.runStep();
+        return true;
+    }
+
     hideStepNavigation() {
         ['preview-step-nav', 'preview-question-nav'].forEach(id => {
             const el = document.getElementById(id);

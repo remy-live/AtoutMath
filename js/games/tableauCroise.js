@@ -35,7 +35,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    PALIERS, CONSIGNE, ASTUCE, genererTableau, estDonnee, cle, estTotalLigne,
+    PALIERS, genererTableau, estDonnee, cle, estTotalLigne, consigneDe,
     estTotalColonne, prochaineLigne, conseil, nomDeLigne, nomDeColonne, totalGeneral
 } from '../core/tableauCroise.js';
 
@@ -46,6 +46,11 @@ class TableauCroise extends BaseGame {
         super(container, isDemo, params, 'tableau-croise');
         this.rng = makeRng(this.params.seed);
         this.palier = PALIERS[this.params.palier] ? this.params.palier : 'facile';
+        // D'OÙ VIENNENT LES NOMBRES. « tableau » : ils sont déjà écrits, il
+        // n'y a qu'à compléter. « enonce » : ils sont dits en toutes lettres et
+        // le tableau part vide — c'est l'exercice que Rémy a demandé, et le
+        // travail commence une étape plus tôt, au rangement.
+        this.depart = this.params.depart === 'enonce' ? 'enonce' : 'tableau';
         this.saisies = {};
         this.actif = null;
     }
@@ -126,6 +131,20 @@ class TableauCroise extends BaseGame {
                 .tc-note--ok { color: var(--success); font-weight: 700; }
                 .tc-note--ko { color: var(--danger); font-weight: 600; }
 
+                /* LA LISTE DES DONNÉES DE L'ÉNONCÉ. Deux colonnes dès qu'il y
+                   a la place : douze puces en file indienne repoussaient le
+                   tableau hors de l'écran. */
+                .tc-faits {
+                    margin: 8px auto 0; padding: 0 0 0 18px; text-align: left;
+                    max-width: 620px; columns: 2; column-gap: 22px;
+                    font-size: .88rem; line-height: 1.5;
+                }
+                .tc-faits li { break-inside: avoid; margin-bottom: 2px; }
+                /* Rangée : barrée et pâlie. On la garde à l'écran — c'est une
+                   donnée du problème, on peut avoir à la relire. */
+                .tc-fait--pose { text-decoration: line-through; opacity: .45; }
+                @container (max-width: 620px) { .tc-faits { columns: 1; font-size: .82rem; } }
+
                 /* Sur un téléphone, la calculatrice passe SOUS le tableau :
                    côte à côte, le tableau se serrerait jusqu'à l'illisible. */
                 @container (max-width: 620px) {
@@ -161,12 +180,12 @@ class TableauCroise extends BaseGame {
     startGameLoop() { this.poser(); }
 
     poser() {
-        this.tableau = genererTableau({ rng: this.rng, palier: this.palier });
+        this.tableau = genererTableau({ rng: this.rng, palier: this.palier, depart: this.depart });
         if (!this.tableau) return false;
         this.saisies = {};
         this.fini = false;
         this.dessiner();
-        this.note(ASTUCE);
+        this.note(consigneDe(this.tableau));
         return true;
     }
 
@@ -184,8 +203,25 @@ class TableauCroise extends BaseGame {
 
     dessiner() {
         const t = this.tableau;
+        // L'ÉNONCÉ PORTE LES DONNÉES, quand elles n'ont pas été écrites dans le
+        // tableau. Une LISTE, et non un paragraphe : douze faits dans une seule
+        // phrase à rallonge, on en perd la moitié en cours de route — et l'on
+        // veut pouvoir cocher mentalement ce qu'on a déjà reporté.
+        const faits = (t.depart === 'enonce' && t.donnees)
+            ? `<ul class="tc-faits">${t.donnees.map(d => {
+                const pose = Number(this.saisies[cle(d.r, d.c)]) === d.valeur;
+                // La puce ouvre une phrase : elle prend la majuscule. Dans la
+                // fiche imprimée les mêmes faits s'enchaînent après « On sait
+                // que : », et y restent en minuscules — c'est la même règle.
+                const dit = d.phrase.charAt(0).toUpperCase() + d.phrase.slice(1);
+                return `<li class="${pose ? 'tc-fait--pose' : ''}">${echapper(dit)}</li>`;
+            }).join('')}</ul>`
+            : '';
         this.enonceEl.innerHTML = `<b>${echapper(t.titre)}</b><br>${echapper(t.phrase)} `
-            + 'Complète les valeurs manquantes.';
+            + (t.depart === 'enonce'
+                ? 'Reporte ces informations dans le tableau, puis complète-le.'
+                : 'Complète les valeurs manquantes.')
+            + faits;
 
         let html = '<table class="tc-table"><thead><tr><th></th>';
         t.colonnes.forEach(c => { html += `<th>${echapper(c)}</th>`; });
@@ -274,6 +310,23 @@ class TableauCroise extends BaseGame {
             if (juste) champ.setAttribute('readonly', 'readonly');
             else champ.removeAttribute('readonly');
         }
+        this.majFaits();
+    }
+
+    /**
+     * LA PHRASE RANGÉE SE BARRE. Sur douze faits à reporter, on perd le fil de
+     * ce qu'on a déjà placé et l'on recommence deux fois le même — c'est ce que
+     * fait n'importe qui devant une liste, et c'est pour cela qu'on coche.
+     */
+    majFaits() {
+        const t = this.tableau;
+        if (!t || t.depart !== 'enonce' || !t.donnees) return;
+        const items = this.enonceEl.querySelectorAll('.tc-faits li');
+        t.donnees.forEach((d, i) => {
+            if (!items[i]) return;
+            items[i].classList.toggle('tc-fait--pose',
+                Number(this.saisies[cle(d.r, d.c)]) === d.valeur);
+        });
     }
 
     valider(el) {

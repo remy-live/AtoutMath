@@ -755,6 +755,35 @@ function initDebugToolbar() {
     const btnBack = document.getElementById('db-back');
     if (btnBack) btnBack.onclick = naviguer('revenirQuestion', 'Cet exercice ne sait pas revenir en arrière.');
 
+    // LES RÉGLAGES DE L'EXERCICE EN COURS. C'est la MÊME fenêtre que celle
+    // d'avant-partie — celle que l'élève voit —, et c'est le but : ce qu'on
+    // règle ici est ce qu'il aura. Elle se rouvre sur les réglages COURANTS de
+    // l'étape, pas sur ceux du catalogue, sinon chaque ouverture effacerait le
+    // réglage précédent et l'on ne pourrait jamais en essayer deux à la suite.
+    const btnParams = document.getElementById('db-params');
+    if (btnParams) btnParams.onclick = async () => {
+        const { showToast } = await import('./ui/modal.js');
+        const runner = state.activeSequenceRunner;
+        const step = runner && runner.steps[runner.index];
+        if (!step || !step.exercise) return showToast('Aucun exercice en cours.', 'warning');
+        const { ouvrirReglagesAvantPartie } = await import('./games/configUI.js');
+        ouvrirReglagesAvantPartie(
+            { ...step.exercise, params: { ...step.params, nbQuestions: step.nbItems } },
+            (params) => {
+                runner.rejouerAvec(params);
+                showToast('Exercice relancé avec les nouveaux réglages.', 'success', 2500);
+            },
+            // En AUTEUR : la bande d'aide se règle au lieu de se regarder.
+            { role: 'auteur' });
+        // « AFFINER… » S'OUVRE D'OFFICE POUR L'AUTEUR. C'est là que vivent les
+        // deux réglages que Rémy nomme — le nombre de propositions et le
+        // passage au clavier —, repliés parce qu'un parent qui distribue des
+        // tablettes n'en a pas besoin. Celui qui met l'exercice au point,
+        // si : il vient pour eux.
+        document.querySelectorAll('#student-config-content details.cfg-affiner')
+            .forEach(d => { d.open = true; });
+    };
+
     // La solution : chaque jeu décide s'il sait la montrer. Aucun ne la donne
     // à l'élève — le bouton n'existe que dans la palette d'auteur.
     const btnSol = document.getElementById('db-solution');

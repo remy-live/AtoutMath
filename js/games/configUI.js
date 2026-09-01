@@ -2260,7 +2260,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
  * téléphone, et le renommer ferait courir un risque de mise en page pour un
  * gain de vocabulaire.
  */
-export function ouvrirReglagesAvantPartie(exo, onStart) {
+export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     const modal = document.getElementById('student-config-modal');
     const content = document.getElementById('student-config-content');
     if (!modal || !content) return onStart({ ...(exo.params || {}) });
@@ -2338,7 +2338,29 @@ export function ouvrirReglagesAvantPartie(exo, onStart) {
     content.dataset.exo = exo && exo.id ? exo.id : '';
     // C'EST L'ÉLÈVE QUI OUVRE CETTE FENÊTRE : la bande lui montre ce qui
     // l'attend, elle ne lui donne pas la main dessus.
-    content.dataset.role = 'eleve';
+    //
+    // SAUF QUAND C'EST L'AUTEUR. La même fenêtre sert au bouton « réglages »
+    // de la palette d'auteur, qui existe pour une raison précise — Rémy :
+    // « changer les paramètres en temps réel (2 réponses, saisir la réponse) ».
+    // Ces deux réglages-là sont justement ceux qu'on retire à l'élève : lui
+    // rendre la fenêtre en mode élève, c'est lui cacher ce pour quoi il l'a
+    // ouverte.
+    const auteur = opts.role === 'auteur';
+    content.dataset.role = auteur ? 'auteur' : 'eleve';
+    // ET LA FENÊTRE DIT À QUI ELLE PARLE. « Personnalise ton jeu avant de
+    // commencer » devant un professeur qui remet au point le sixième exercice
+    // d'une passe de test n'est pas seulement faux : au bout de six fois, on ne
+    // sait plus lequel on règle. Le titre porte donc le nom de l'exercice.
+    const titre = document.getElementById('student-config-title');
+    const sous = document.getElementById('student-config-sub');
+    if (titre) titre.textContent = auteur ? (exo.title || 'Réglages') : 'Réglages de la partie';
+    if (sous) {
+        sous.textContent = auteur
+            ? 'Les réglages sont appliqués et l\'exercice repart aussitôt.'
+            : 'Personnalise ton jeu avant de commencer !';
+    }
+    const partir = document.getElementById('btn-student-config-start');
+    if (partir) partir.textContent = auteur ? 'Relancer' : 'Jouer !';
     rafraichirApercu(content);
     wireTips(content);
     modal.style.display = 'flex';

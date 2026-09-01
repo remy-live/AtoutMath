@@ -9,7 +9,7 @@
 // diverger de l'écran — et la correction ne peut pas mentir.
 
 import { makeItem } from '../items.js';
-import { genererTableau, PALIERS, ASTUCE, totalGeneral } from '../tableauCroise.js';
+import { genererTableau, PALIERS, totalGeneral, consigneDe } from '../tableauCroise.js';
 
 export const tableauCroiseFicheGenerator = {
     id: 'donnees.tableau-croise',
@@ -20,6 +20,13 @@ export const tableauCroiseFicheGenerator = {
         {
             id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
             options: Object.entries(PALIERS).map(([value, p]) => ({ value, label: p.label }))
+        },
+        {
+            id: 'depart', type: 'select', label: 'D\'où viennent les nombres', default: 'tableau',
+            options: [
+                { value: 'tableau', label: 'Écrits dans le tableau' },
+                { value: 'enonce', label: 'Dits dans l\'énoncé — le tableau part vide' }
+            ]
         }
     ],
 
@@ -29,18 +36,21 @@ export const tableauCroiseFicheGenerator = {
         // `ctx.index` est le numéro du bloc sur la feuille : le noyau s'en sert
         // pour tourner dans la liste des énoncés au lieu de tirer, et deux
         // blocs voisins ne se répètent plus.
-        const t = genererTableau({ rng, palier, tour: ctx.index });
+        const depart = (params || {}).depart === 'enonce' ? 'enonce' : 'tableau';
+        const t = genererTableau({ rng, palier, depart, tour: ctx.index });
         return makeItem({
             seed: rng.seed,
             generatorId: 'donnees.tableau-croise',
             skillId: 'don.tableau.croise',
             answerKind: 'grid',
             prompt: {
-                text: `${t.phrase} Complète les valeurs manquantes.`,
+                text: t.depart === 'enonce'
+                    ? `${t.phrase} Reporte ces informations dans le tableau, puis complète-le.`
+                    : `${t.phrase} Complète les valeurs manquantes.`,
                 html: `<div class="game-question">${t.titre}</div>`
             },
             answer: `${totalGeneral(t)} ${t.unite} en tout`,
-            explanation: ASTUCE,
+            explanation: consigneDe(t),
             // La difficulté suit la taille du tableau à balayer : c'est elle qui
             // décide combien de lignes il faut relire pour trouver la suivante.
             difficulty: Math.max(1, Math.min(4, t.R + t.C - 4)),
@@ -49,7 +59,12 @@ export const tableauCroiseFicheGenerator = {
                 lignes: t.lignes, colonnes: t.colonnes,
                 R: t.R, C: t.C,
                 valeurs: t.valeurs.map(l => [...l]),
-                connus: [...t.connus]
+                connus: [...t.connus],
+                // EN MODE « ÉNONCÉ », LE TABLEAU IMPRIMÉ EST VIDE et les
+                // nombres sont dans la liste au-dessus : c'est le rendu qui
+                // lit `depart` pour savoir lequel des deux il dessine.
+                depart: t.depart,
+                donnees: t.donnees ? t.donnees.map(d => ({ ...d })) : null
             }
         });
     }

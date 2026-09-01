@@ -510,6 +510,61 @@
     grid-column: 2; margin: 4px 0; width: 100%;
 }
 
+/* ET SUR UN ÉCRAN D'ORDINATEUR, LARGE MAIS PAS BAS.
+ *
+ * Rémy, sur Thalès : « sur ordi, c'est un peu grand verticalement l'ensemble,
+ * ça déborde. » Mesuré dans une fenêtre de 1280 × 800 : l'énoncé 45 px, la
+ * figure 290, deux cartes d'égalité de 117 chacune, la barre d'indices 37 —
+ * 740 px pour un plateau de 730. La seconde carte passait sous le bord.
+ *
+ * LE PLAFOND DE HAUTEUR ÉTAIT LA FAUTE. La règle ci-dessus ne se déclenche
+ * qu'en dessous de 620 px de haut, celle qui comprime la figure qu'en dessous
+ * de 700 px ET dans un plateau presque carré : entre les deux — c'est-à-dire
+ * exactement sur l'écran d'un professeur — il ne restait rien, et la colonne
+ * débordait sans que personne ne la rattrape. Or la raison de mettre les
+ * réponses à côté n'a jamais été le manque de hauteur : c'est la LARGEUR
+ * perdue. Empiler des réponses sous une figure dans un plateau deux fois plus
+ * large que haut laisse la moitié droite vide, à 730 px de haut comme à 600.
+ *
+ * On garde donc la même disposition, sans plafond — mais réservée au cas où
+ * il y a une FIGURE. Un QCM sans dessin n'a rien à mettre dans la colonne de
+ * gauche : ses réponses restent centrées, comme aujourd'hui.
+ *
+ * LE SEUIL EST À 6/5, ET NON 7/5. Mesuré aussi : un 1024 × 768 laisse un
+ * plateau de 1024 × 698, dont le rapport vaut 1,47 — trop carré pour l'ancien
+ * seuil de 1,4 ? non, mais trop peu haut pour tenir en colonne, et c'est
+ * pourtant ce qu'il faisait. À 1,2 on couvre tous les écrans d'ordinateur,
+ * y compris les vieux 4/3 des salles de classe. */
+@media (min-aspect-ratio: 6/5) {
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        align-content: center; justify-items: center;
+        grid-auto-rows: min-content;
+        column-gap: clamp(10px, 2vmin, 26px);
+    }
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .game-question {
+        grid-column: 1 / -1;
+    }
+    /* LA FIGURE TRAVERSE LES LIGNES DES RÉPONSES, au lieu d'en occuper une.
+       Placée sur une seule ligne, elle la rendait haute de 294 px : la
+       première réponse s'y étalait, la seconde tombait 130 px plus bas, et
+       les deux cartes flottaient loin l'une de l'autre. En traversant vingt
+       lignes — bien plus qu'il n'y aura jamais de réponses —, sa hauteur se
+       répartit sur les lignes VIDES du bas, et les réponses restent
+       serrées les unes contre les autres, comme sur une feuille. */
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .figure-wrap {
+        grid-area: 2 / 1 / span 20 / span 1; align-self: center; max-height: 100%;
+    }
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .figure-wrap > svg { max-height: 100%; }
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .prio-btn {
+        grid-column: 2; margin: clamp(3px, .9vmin, 8px) 0; width: 100%;
+    }
+    /* La barre d'indices reprend toute la largeur, sous les deux colonnes :
+       dans la colonne de droite elle se serait glissée entre deux réponses. */
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .hint-bar { grid-column: 1 / -1; }
+}
+
 /* Pendant qu'une correction est affichée, on réserve sa hauteur : le contenu
    centré remonte au lieu d'être recouvert. On ne comprend pas une correction
    si la question a disparu derrière. */

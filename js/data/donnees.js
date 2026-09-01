@@ -48,9 +48,29 @@ export const donneesExercises = [
                     { value: 'moyen', label: '3 lignes, 4 colonnes — tous les totaux cachés' },
                     { value: 'difficile', label: '4 lignes, 4 colonnes — sans calculatrice' }
                 ]
+            },
+            {
+                // CE QUE L'EXERCICE DEMANDE VRAIMENT. Rémy : « j'aimerais bien
+                // aussi des exercices où on a un énoncé, le tableau est vide et
+                // il faut remplir puis calculer et remplir ». Ce n'est pas une
+                // variante d'affichage : quand les nombres sont dits au lieu
+                // d'être écrits, le travail commence une étape plus tôt — il
+                // faut comprendre chaque phrase et savoir où elle va. C'est
+                // précisément le geste qu'on rate en évaluation.
+                id: 'depart', type: 'select', label: 'D\'où viennent les nombres', default: 'tableau',
+                affiner: true,
+                aide: 'Dans le TABLEAU, les nombres connus sont déjà écrits : il ne reste qu\'à '
+                    + 'compléter. Dans l\'ÉNONCÉ, ils sont donnés en toutes lettres et le tableau '
+                    + 'part vide : l\'élève doit d\'abord les ranger dans les bonnes cases, et '
+                    + 'c\'est là que tout se joue.',
+                options: [
+                    { value: 'tableau', label: 'Écrits dans le tableau' },
+                    { value: 'enonce', label: 'Dits dans l\'énoncé — le tableau part vide' }
+                ]
             }
         ],
-        motsClefs: ['tableau', 'double entrée', 'totaux', 'effectifs', 'données', 'croisé'],
+        motsClefs: ['tableau', 'double entrée', 'totaux', 'effectifs', 'données', 'croisé',
+            'énoncé', 'lecture'],
         tags: { chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.TABLEUR], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Complète les cases vides du tableau. Ne commence pas par la première case venue : cherche à chaque fois la LIGNE ou la COLONNE où il ne manque qu'une seule information — celle-là, tu peux la boucler tout de suite. Si la case qui manque est un total, tu additionnes toute la ligne ; si elle est dans le corps du tableau, tu pars du total et tu retires ce qui est déjà écrit. Le nombre que tu viens d'écrire en ouvre alors d'autres, et de proche en proche tout se remplit. On n'a jamais besoin de deviner."
     },

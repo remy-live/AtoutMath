@@ -10277,10 +10277,37 @@ function geoTableauCroise(item, slot) {
     // L'ÉNONCÉ SE MESURE AVANT DE RÉSERVER SA PLACE. On réservait une hauteur
     // fixe : quand la phrase prenait deux lignes, la seconde se posait sur le
     // bord du tableau.
-    const corpsTexte = 5.6;
-    const lignesTexte = couperEnLignes(m.phrase, Math.floor(b.w / (corpsTexte * 0.46)), 2);
+    // ET EN MODE « ÉNONCÉ », C'EST L'ÉNONCÉ QUI PORTE LES NOMBRES : il y en a
+    // huit ou douze, écrits en toutes lettres, et le tableau part vide. Le
+    // texte prend donc beaucoup plus de place — jusqu'à sept lignes, en plus
+    // petit — et le tableau se contente de ce qui reste. Les faits s'enchaînent
+    // en une seule phrase séparée par des points-virgules : douze puces sur un
+    // bloc de huit centimètres ne tiendraient pas, et se liraient mal.
+    const parEnonce = m.depart === 'enonce' && Array.isArray(m.donnees) && m.donnees.length;
+    const texte = parEnonce
+        ? `${m.phrase} On sait que : ${m.donnees.map(d => d.phrase).join(' ; ')}.`
+        : m.phrase;
+
+    // LE TABLEAU GARDE SA PLACE, C'EST LE TEXTE QUI RÉTRÉCIT. Mesuré : à corps
+    // fixe, huit faits mangeaient les deux tiers du bloc et il ne restait que
+    // quatre millimètres pour trois lignes de tableau — les libellés étaient
+    // illisibles, et sur deux blocs le tableau avait entièrement disparu. On
+    // réserve donc d'abord de quoi écrire dans les cases (5,2 mm par ligne,
+    // le minimum où un nombre à trois chiffres reste lisible), et l'on cherche
+    // le plus grand corps de texte qui tient dans ce qui reste.
+    const hauteurMini = (m.R + 2) * 5.2;
+    let corpsTexte = 5.6;
+    let lignesTexte = couperEnLignes(texte, Math.floor(b.w / (corpsTexte * 0.46)), 2);
+    if (parEnonce) {
+        const place = Math.max(10, b.h - hauteurMini);
+        for (const corps of [4.6, 4.2, 3.8, 3.4, 3.1, 2.8]) {
+            corpsTexte = corps;
+            lignesTexte = couperEnLignes(texte, Math.floor(b.w / (corps * 0.46)), 40);
+            if (lignesTexte.length * corps * 1.25 + 1.8 <= place) break;
+        }
+    }
     const hEnonce = lignesTexte.length * corpsTexte * 1.25 + 1.8;
-    const rh = Math.min(8.5, (b.h - hEnonce) / (m.R + 2));
+    const rh = Math.min(8.5, Math.max(4.4, (b.h - hEnonce) / (m.R + 2)));
 
     // LA COLONNE DES LIBELLÉS N'EST PAS COMME LES AUTRES. Elle porte « Pains au
     // chocolat » quand les autres portent trois chiffres. Mais lui donner un
@@ -10326,7 +10353,9 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
     const g = geoTableauCroise(item, slot);
     const m = g.m;
     const T = (v) => (v * k).toFixed(2);
-    const connus = new Set(m.connus);
+    // EN MODE « ÉNONCÉ », AUCUNE CASE N'EST IMPRIMÉE : les nombres connus sont
+    // dans le texte, et les recopier dans le tableau supprimerait l'exercice.
+    const connus = new Set(m.depart === 'enonce' ? [] : m.connus);
     let d = '';
     const centre = (x, y, s, corps, couleur) => `<text x="${T(x)}" y="${T(y)}" fill="${couleur || '#1a202c'}"
         font-weight="700" font-size="${(corps * k).toFixed(2)}" text-anchor="middle"
@@ -10368,7 +10397,7 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
 function dessinerTableauCroisePdf(doc, item, slot, solution) {
     const g = geoTableauCroise(item, slot);
     const m = g.m;
-    const connus = new Set(m.connus);
+    const connus = new Set(m.depart === 'enonce' ? [] : m.connus);
     // jsPDF compte en points, la géométrie en millimètres : 1 mm ≈ 2,835 pt,
     // et les fontes remplissent environ les trois quarts de leur corps.
     const pt = (mm) => mm * 2.6;
@@ -10715,11 +10744,27 @@ export const RENDUS = {
 
     'tableau-croise': {
         titre: 'Tableaux à double entrée',
-        consigne: () => 'COMPLÈTE LES VALEURS MANQUANTES de chaque tableau. Astuce : cherche à '
-            + 'chaque fois la ligne ou la colonne où il ne manque QU\'UNE SEULE information — '
-            + 'celle-là, tu peux la boucler. Si la case qui manque est un total, tu additionnes ; '
-            + 'si elle est dans le corps du tableau, tu pars du total et tu retires ce qui est '
-            + 'déjà écrit. Le nombre que tu viens d\'écrire en ouvre alors d\'autres.',
+        // LA CONSIGNE DIT CE QU'ON DEMANDE VRAIMENT, et ce n'est pas la même
+        // chose selon d'où viennent les nombres : quand le tableau part vide,
+        // le premier travail est de RANGER l'énoncé, et c'est celui-là qu'on
+        // rate. `consigne` reçoit les items : elle le lit sur eux.
+        consigne: (items) => {
+            const astuce = 'Astuce : cherche à chaque fois la ligne ou la colonne où il ne '
+                + 'manque QU\'UNE SEULE information — celle-là, tu peux la boucler. Si la case '
+                + 'qui manque est un total, tu additionnes ; si elle est dans le corps du '
+                + 'tableau, tu pars du total et tu retires ce qui est déjà écrit. Le nombre que '
+                + 'tu viens d\'écrire en ouvre alors d\'autres.';
+            const parEnonce = (items || []).some(it => it.meta && it.meta.depart === 'enonce');
+            // L'en-tête de la feuille coupe ce qui dépasse : la variante
+            // « énoncé » ajoute une phrase, elle en retranche donc une autre.
+            // Ce qu'on garde est ce qui ne se devine pas.
+            return parEnonce
+                ? 'REPORTE D\'ABORD LES INFORMATIONS DE L\'ÉNONCÉ dans le tableau — une phrase, '
+                    + 'une case — puis complète les valeurs manquantes. Astuce : cherche à chaque '
+                    + 'fois la ligne ou la colonne où il ne manque QU\'UNE SEULE information : '
+                    + 'celle-là, tu peux la boucler.'
+                : 'COMPLÈTE LES VALEURS MANQUANTES de chaque tableau. ' + astuce;
+        },
         previewGrille: tableauCroisePreviewHtml,
         pdfGrille: dessinerTableauCroisePdf,
         nomBloc: 'Tableau', nomBlocs: 'tableaux',

@@ -10,7 +10,7 @@ import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
 import {
     PALIERS, ENONCES, ASTUCE, genererTableau, resoudre, estDonnee, cle,
-    prochaineLigne, conseil, totalGeneral, trousMaximum
+    prochaineLigne, conseil, totalGeneral, trousMaximum, estConnue, consigneDe, faitDe
 } from '../js/core/tableauCroise.js';
 
 /** Le tableau de la fiche de Rémy, tel quel. */
@@ -295,4 +295,113 @@ test('la fiche donne six blocs tous différents', () => {
     assert.equal(new Set(enonces).size, 6, enonces.join(' | '));
     // Et les nombres, eux, ne se répètent pas non plus.
     assert.ok(new Set(enonces).size >= 6);
+});
+
+// --- QUAND LES NOMBRES SONT DANS L'ÉNONCÉ -------------------------------------
+
+test('LE TABLEAU PART VIDE, ET L\'ÉNONCÉ PORTE TOUT CE QU\'ON SAIT', () => {
+    // Rémy : « des exercices où on a un énoncé, le tableau est vide et il faut
+    // remplir puis calculer et remplir. » Le tableau est le MÊME — même
+    // génération, même garantie de résolubilité —, seule change la place des
+    // nombres donnés. Si l'une des deux se perdait, l'exercice serait
+    // impossible sans que rien ne le dise.
+    for (const palier of Object.keys(PALIERS)) {
+        const t = genererTableau({ rng: makeRng('en-' + palier), palier, depart: 'enonce' });
+        assert.equal(t.depart, 'enonce');
+        // Une phrase par case donnée, ni plus ni moins.
+        assert.equal(t.donnees.length, t.connus.length, palier);
+        t.donnees.forEach(d => {
+            assert.equal(d.valeur, t.valeurs[d.r][d.c], `${palier} (${d.r},${d.c})`);
+            assert.ok(d.phrase && d.phrase.length > 6, d.phrase);
+            assert.ok(d.phrase.includes(String(d.valeur)), d.phrase);
+            // Et la case reste connue au sens du solveur.
+            assert.equal(estConnue(t, d.r, d.c), true);
+            // Mais aucune n'est écrite dans le tableau : il part vide.
+            assert.equal(estDonnee(t, d.r, d.c), false);
+        });
+        // Le tableau reste résoluble : c'est la même donnée, dite autrement.
+        assert.equal(resoudre(t.valeurs, new Set(t.connus), t.R, t.C).complet, true, palier);
+    }
+});
+
+test('LES PHRASES DE L\'ÉNONCÉ SONT DU FRANÇAIS CORRECT', () => {
+    // Dix-neuf contextes, quatre formes de case : c'est là que se logent les
+    // « de le », les « 12 gâteaus » et les accords ratés. On les lit tous.
+    for (const e of ENONCES) {
+        assert.ok(e.dit, `${e.id} n'a pas de phrases`);
+        ['croise', 'ligne', 'colonne', 'total'].forEach(f =>
+            assert.equal(typeof e.dit[f], 'function', `${e.id}.${f}`));
+        const vues = [
+            e.dit.total(7),
+            ...e.lignes.map(l => e.dit.ligne(7, l)),
+            ...e.colonnes.map(c => e.dit.colonne(7, c)),
+            ...e.lignes.flatMap(l => e.colonnes.map(c => e.dit.croise(7, l, c)))
+        ];
+        vues.forEach(p => {
+            assert.equal(typeof p, 'string', `${e.id} : phrase absente`);
+            assert.equal(/undefined|NaN|\[object/.test(p), false, `${e.id} : « ${p} »`);
+            assert.equal(/ de le | de les | à le |  /.test(p), false, `${e.id} : « ${p} »`);
+            assert.ok(p.includes('7'), `${e.id} : « ${p} » ne dit pas le nombre`);
+            assert.equal(p.trim(), p, `${e.id} : « ${p} »`);
+        });
+    }
+});
+
+test('L\'AIDE FAIT RANGER AVANT DE FAIRE CALCULER', () => {
+    // Tant qu'une phrase n'est pas reportée, il n'y a rien à déduire :
+    // conseiller une ligne à ce moment-là enverrait l'élève chercher un
+    // raisonnement là où il lui manque une lecture.
+    const t = genererTableau({ rng: makeRng('aide-enonce'), palier: 'facile', depart: 'enonce' });
+    const debut = conseil(t, {});
+    assert.match(debut, /énoncé/);
+    assert.ok(t.donnees.some(d => debut.includes(d.phrase)), debut);
+
+    // Tout reporté : l'aide redevient celle de la propagation.
+    const saisies = {};
+    t.donnees.forEach(d => { saisies[cle(d.r, d.c)] = String(d.valeur); });
+    const apres = conseil(t, saisies);
+    assert.equal(/Reprends l'énoncé/.test(apres), false, apres);
+    assert.match(apres, /ligne|colonne/);
+
+    // Et l'aide ne donne jamais le nombre à écrire.
+    const restant = t.valeurs.flat().filter((v, i) => !t.connus.includes(cle(
+        Math.floor(i / (t.C + 1)), i % (t.C + 1))));
+    restant.forEach(v => assert.equal(apres.includes(String(v)), false, apres));
+});
+
+test('la consigne dit lequel des deux exercices on fait', () => {
+    const dansLeTableau = genererTableau({ rng: makeRng('c1'), palier: 'facile' });
+    const dansLEnonce = genererTableau({ rng: makeRng('c1'), palier: 'facile', depart: 'enonce' });
+    assert.match(consigneDe(dansLEnonce), /énoncé/);
+    assert.equal(/énoncé/.test(consigneDe(dansLeTableau)), false);
+    // Les deux rappellent la méthode : c'est elle qu'on travaille dans les deux cas.
+    [dansLeTableau, dansLEnonce].forEach(t => assert.ok(consigneDe(t).includes('UNE SEULE')));
+    // Et `faitDe` retrouve la phrase d'une case.
+    const d = dansLEnonce.donnees[0];
+    assert.equal(faitDe(dansLEnonce, d.r, d.c).valeur, d.valeur);
+    assert.equal(faitDe(dansLeTableau, 0, 0), null, 'sans énoncé, aucune phrase');
+});
+
+test('la fiche imprimée part vide, elle aussi', () => {
+    const gen = getGenerator('donnees.tableau-croise');
+    const item = gen.generate({ palier: 'facile', depart: 'enonce' },
+        { rng: makeRng('fiche-enonce'), index: 0 });
+    assert.equal(item.meta.depart, 'enonce');
+    assert.equal(item.meta.donnees.length, item.meta.connus.length);
+    assert.match(item.prompt.text, /Reporte/);
+    // Le rendu ne recopie AUCUN nombre dans les cases : ils sont dans le texte.
+    const slot = { boite: { x: 10, y: 10, w: 90, h: 70 } };
+    const vide = RENDUS['tableau-croise'].previewGrille(item, slot, 1, false);
+    assert.equal(/NaN/.test(vide), false);
+    item.meta.donnees.forEach(d => {
+        // Le nombre peut apparaître dans l'énoncé, jamais au centre d'une case.
+        const cases = vide.match(/<text[^>]*text-anchor="middle"[^>]*>([^<]*)<\/text>/g) || [];
+        assert.equal(cases.some(c => c.includes(`>${d.valeur}<`)), false,
+            `${d.valeur} est imprimé dans une case alors qu'il est dans l'énoncé`);
+    });
+    // Avec les solutions, en revanche, tout est écrit.
+    const plein = RENDUS['tableau-croise'].previewGrille(item, slot, 1, true);
+    assert.ok((plein.match(/<text/g) || []).length > (vide.match(/<text/g) || []).length);
+    // Et la consigne de la feuille change avec le mode.
+    assert.match(RENDUS['tableau-croise'].consigne([item]), /ÉNONCÉ/);
 });
