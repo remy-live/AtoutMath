@@ -9,7 +9,8 @@ import { getExerciseById } from '../js/data/catalog.js';
 import { creerThales, egaliteThales } from '../js/core/thales.js';
 import {
     PETITS, GRANDS, RESTES, ETIQUETTES, canon, verifierEgalite, hypotheses,
-    isolements, trio, calculEcrit, redactionComplete
+    isolements, trio, calculEcrit, redactionComplete, egaliteChiffree, chiffrer,
+    verifierChiffres
 } from '../js/core/thalesRedaction.js';
 
 test('L\'ÉGALITÉ SE TAPE, ET ON NE LUI IMPOSE NI ORDRE NI SENS', () => {
@@ -122,20 +123,87 @@ test('LE CALCUL ÉCRIT TOMBE SUR LA VRAIE LONGUEUR', () => {
     }
 });
 
-test('LA RÉDACTION COMPLÈTE EST BIEN EN TROIS PARTIES, et sans la ligne interdite', () => {
-    // Rémy : « (on remplace par les valeurs <- ne le note pas) ». Substituer est
-    // un geste mental, pas une ligne de copie : elle ne doit apparaître nulle
-    // part, ni dans ce qu'on fait écrire, ni dans le corrigé.
+test('LA RÉDACTION COMPLÈTE EST EN TROIS PARTIES, ligne chiffrée comprise', () => {
+    // Rémy : « juste après l'égalité de fractions dans le OR, tu rajoutes une
+    // ligne de fractions où on remplace par les valeurs quand on les a, et on
+    // recopie le nom du côté sinon. »
+    //
+    // J'AVAIS LU SA PREMIÈRE CONSIGNE À L'ENVERS : son plan portait
+    // « (on remplace par les valeurs <- ne le note pas) », et j'y avais lu que
+    // la LIGNE ne devait pas exister. C'était l'aparté qu'il ne fallait pas
+    // recopier. Ce test disait donc le contraire de ce qu'il demandait.
     const f = creerThales({ config: 'emboites', rng: makeRng('complete') });
     const r = redactionComplete(f, 'AD');
     assert.deepEqual(r.map(p => p.titre), ['Je sais que', 'Or', 'Donc']);
     assert.equal(r[0].lignes.length, 2);
     assert.ok(r[1].lignes.includes(egaliteThales()));
+    // LE « OR » PORTE DEUX ÉGALITÉS : celle du cours, puis la même chiffrée.
+    assert.equal(r[1].lignes.length, 3);
+    assert.equal(r[1].lignes[2], egaliteChiffree(f, 'AD').texte);
     assert.equal(r[2].lignes.length, 3, 'isoler, calculer, conclure');
-    const tout = r.flatMap(p => p.lignes).join(' ');
-    assert.equal(/remplace/.test(tout), false, 'la ligne de substitution ne se recopie pas');
     // La conclusion porte son unité : sans elle, ce n'est pas une longueur.
     assert.match(r[2].lignes[2], /cm/);
+});
+
+test('LA LIGNE CHIFFRÉE : les longueurs données deviennent des nombres, les autres non', () => {
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 40; i++) {
+            const f = creerThales({ config, rng: makeRng(`chif-${config}-${i}`) });
+            if (!f) continue;
+            for (const cherche of ['AD', 'AE', 'DE']) {
+                const connues = new Set(trio(cherche));
+                const eg = ['AD', 'AC', 'AE', 'AB', 'DE', 'BC'];
+                const ligne = chiffrer(f, cherche, eg);
+                eg.forEach((nom, k) => {
+                    if (connues.has(nom)) {
+                        assert.match(ligne[k], /^[\d, ]+$/,
+                            `${nom} est donnée : elle doit devenir un nombre`);
+                    } else {
+                        assert.equal(ligne[k], nom, `${nom} est inconnue : son nom reste`);
+                    }
+                });
+                // LA LONGUEUR CHERCHÉE N'EST JAMAIS CHIFFRÉE : ce serait donner
+                // la réponse dans l'énoncé de la démonstration.
+                assert.equal(ligne[eg.indexOf(cherche)], cherche);
+            }
+        }
+    }
+});
+
+test('LA LIGNE CHIFFRÉE SUIT L\'ÉGALITÉ DE L\'ÉLÈVE, pas la canonique', () => {
+    // Il a pu écrire les trois rapports dans un autre ordre — c'est accepté, et
+    // c'est la même égalité. Lui présenter ensuite une ligne rangée autrement
+    // serait lui dire que son écriture était fausse après l'avoir dite juste.
+    const f = creerThales({ config: 'emboites', rng: makeRng('ordre') });
+    const sien = ['DE', 'BC', 'AD', 'AC', 'AE', 'AB'];
+    const ligne = chiffrer(f, 'DE', sien);
+    assert.equal(ligne[0], 'DE');
+    assert.equal(ligne[1], String(f.BC).replace('.', ','));
+    // Et la vérification accepte SA ligne.
+    assert.equal(verifierChiffres(f, 'DE', sien, ligne).ok, true);
+});
+
+test('CHAQUE REFUS DE LA LIGNE CHIFFRÉE NOMME LA CONFUSION', () => {
+    const f = creerThales({ config: 'emboites', rng: makeRng('refus') });
+    const eg = ['AD', 'AC', 'AE', 'AB', 'DE', 'BC'];
+    const juste = chiffrer(f, 'DE', eg);
+
+    // Garder le nom d'une longueur donnée : on n'a pas lu l'énoncé.
+    const garde = juste.slice(); garde[2] = 'AE';
+    assert.match(verifierChiffres(f, 'DE', eg, garde).raison, /donnée dans l'énoncé/);
+
+    // Inventer un nombre là où la longueur est inconnue : on a mesuré sur le
+    // dessin, qui n'est pas à l'échelle.
+    const invente = juste.slice(); invente[4] = '7';
+    assert.match(verifierChiffres(f, 'DE', eg, invente).raison, /On ne connaît pas DE/);
+
+    // Le mauvais nombre : on a lu la mauvaise cote.
+    const faux = juste.slice(); faux[2] = String(Number(String(f.AE)) + 1);
+    assert.match(verifierChiffres(f, 'DE', eg, faux).raison, /Ce n'est pas la longueur/);
+
+    // Une case vide n'est pas une réponse.
+    const vide = juste.slice(); vide[0] = '';
+    assert.match(verifierChiffres(f, 'DE', eg, vide).raison, /manque/);
 });
 
 test('l\'exercice du catalogue tient debout', () => {

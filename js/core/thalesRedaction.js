@@ -21,11 +21,18 @@
 // une copie, et c'est elle qui rapporte les points : un élève qui écrit le bon
 // nombre sans la justifier ne démontre rien.
 //
-// « ON REMPLACE PAR LES VALEURS <- NE LE NOTE PAS ». La consigne est de Rémy et
-// elle est fine : substituer est un geste MENTAL, pas une ligne de copie. On
-// passe donc directement du théorème à l'isolement du produit en croix — la
-// ligne intermédiaire n'apparaît nulle part, ni dans la rédaction attendue, ni
-// dans le corrigé.
+// « ON REMPLACE PAR LES VALEURS <- NE LE NOTE PAS » : J'AVAIS LU CETTE LIGNE À
+// L'ENVERS. Le plan de Rémy la portait entre l'égalité et l'isolement, et j'y
+// avais lu « cette ligne ne doit pas exister » — d'où un module qui expliquait
+// doctement que substituer est un geste mental. C'était l'APARTÉ qu'il ne
+// fallait pas recopier, la parenthèse elle-même, pas la ligne. Il a fallu qu'il
+// la redemande pour que je comprenne : « juste après l'égalité de fractions
+// dans le OR, tu rajoutes une ligne de fractions où on remplace par les valeurs
+// quand on les a, et on recopie le nom du côté sinon. »
+//
+// Elle est donc là, et elle a sa place : c'est celle qu'on écrit au tableau, et
+// c'est en la lisant qu'on voit lequel des trois rapports est complet — donc
+// lequel sert de pivot, et lequel on va isoler.
 //
 // Module pur : ni DOM, ni hasard propre.
 
@@ -222,6 +229,113 @@ export function trio(cherche) {
     return TRIOS[cherche] || TRIOS.AD;
 }
 
+/**
+ * L'ÉGALITÉ UNE SECONDE FOIS, AVEC LES NOMBRES À LA PLACE DES LONGUEURS CONNUES.
+ *
+ * Rémy : « juste après l'égalité de fractions dans le OR, tu rajoutes une ligne
+ * de fractions où on remplace par les valeurs quand on les a, et on recopie le
+ * nom du côté sinon. »
+ *
+ * J'AVAIS LU SA PREMIÈRE CONSIGNE À L'ENVERS. Son plan portait, entre l'égalité
+ * et l'isolement, la ligne « (on remplace par les valeurs <- ne le note pas) ».
+ * J'y avais lu « cette ligne ne doit pas exister », et le module s'en expliquait
+ * longuement : substituer serait un geste mental. C'était l'APARTÉ qu'il ne
+ * fallait pas recopier — la parenthèse elle-même —, pas la ligne. Elle est donc
+ * là, et elle a sa place : c'est celle qu'on écrit au tableau, et celle où l'on
+ * voit enfin lequel des trois rapports est complet.
+ *
+ * TROIS LONGUEURS SUR SIX SONT CONNUES — celles de l'énoncé —, et les trois
+ * autres gardent leur nom. Le rapport entièrement chiffré est celui qui sert de
+ * pivot ; celui qui porte la longueur cherchée est celui qu'on va isoler.
+ *
+ * @returns {{cases: string[], connue: (nom:string)=>boolean}} les six cases,
+ *          dans l'ordre des trois fractions.
+ */
+export function egaliteChiffree(f, cherche) {
+    const connues = new Set(trio(cherche));
+    const dit = (nom) => (connues.has(nom) ? longueurTexte(f[nom]) : nom);
+    return {
+        cases: [
+            dit('AD'), dit('AC'),
+            dit('AE'), dit('AB'),
+            dit('DE'), dit('BC')
+        ],
+        connue: (nom) => connues.has(nom),
+        texte: `${dit('AD')}/${dit('AC')} = ${dit('AE')}/${dit('AB')} = ${dit('DE')}/${dit('BC')}`
+    };
+}
+
+/**
+ * LA LIGNE CHIFFRÉE SUIT L'ÉGALITÉ QUE L'ÉLÈVE A ÉCRITE, pas la canonique.
+ *
+ * Il a pu écrire les trois rapports dans un autre ordre, ou retourner
+ * l'égalité — c'est accepté, et c'est la même égalité. Lui présenter ensuite
+ * une ligne rangée autrement serait lui dire que son écriture était fausse
+ * après l'avoir déclarée juste.
+ */
+export function chiffrer(f, cherche, cases) {
+    const connues = new Set(trio(cherche));
+    return (cases || []).map(m => {
+        const n = canon(m);
+        return connues.has(n) ? longueurTexte(f[n]) : n;
+    });
+}
+
+/** Un nombre écrit à la française ou à l'anglaise, ramené à un nombre. */
+function nombreDe(mot) {
+    const t = String(mot == null ? '' : mot).trim().replace(',', '.');
+    if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
+    return Number(t);
+}
+
+/**
+ * LA LIGNE CHIFFRÉE EST-ELLE JUSTE ? Et si non, ce refus nomme la confusion.
+ *
+ * Trois fautes, et chacune dit quelque chose de différent :
+ *   · garder le NOM d'une longueur donnée — on n'a pas lu l'énoncé ;
+ *   · mettre un NOMBRE là où la longueur est inconnue — on invente une mesure,
+ *     souvent celle qu'on croit deviner sur le dessin ;
+ *   · le mauvais nombre — on a lu la mauvaise cote.
+ *
+ * @param {string[]} egalite les six segments tels que l'élève les a écrits
+ * @param {string[]} poses   les six cases de la ligne chiffrée
+ */
+export function verifierChiffres(f, cherche, egalite, poses) {
+    const attendu = chiffrer(f, cherche, egalite);
+    const connues = new Set(trio(cherche));
+    for (let i = 0; i < attendu.length; i++) {
+        const mot = String((poses && poses[i]) || '').trim();
+        if (!mot) return { ok: false, raison: 'Il manque une case : chacune reçoit soit une longueur, soit un nom.' };
+        const nom = canon(egalite[i]);
+        const donnee = connues.has(nom);
+        const n = nombreDe(mot);
+
+        if (donnee && n === null) {
+            return {
+                ok: false,
+                raison: `${nom} est donnée dans l'énoncé : à sa place on écrit sa LONGUEUR, `
+                    + 'pas son nom. C\'est tout l\'intérêt de cette ligne — on voit alors '
+                    + 'quel rapport est complet.'
+            };
+        }
+        if (!donnee && n !== null) {
+            return {
+                ok: false,
+                raison: `On ne connaît pas ${nom} : l'énoncé ne la donne pas. On recopie son `
+                    + 'NOM. Une longueur qu\'on lit sur le dessin n\'est pas une longueur '
+                    + 'connue — la figure n\'est pas à l\'échelle.'
+            };
+        }
+        if (donnee && Math.abs(n - f[nom]) > 1e-9) {
+            return { ok: false, raison: `Ce n'est pas la longueur de ${nom} : relis l'énoncé.` };
+        }
+        if (!donnee && canon(mot) !== nom) {
+            return { ok: false, raison: `Cette case porte ${nom} : recopie-la telle quelle.` };
+        }
+    }
+    return { ok: true };
+}
+
 /** La valeur cherchée, et la ligne de calcul telle qu'on l'écrit au cahier. */
 export function calculEcrit(f, cherche) {
     const [a, b, c] = trio(cherche);
@@ -248,7 +362,13 @@ export function redactionComplete(f, cherche) {
         { titre: 'Je sais que', lignes: hypotheses().filter(h => h.vrai).map(h => h.texte) },
         {
             titre: 'Or',
-            lignes: ['d\'après le théorème de Thalès :', egaliteThales()]
+            lignes: [
+                'd\'après le théorème de Thalès :',
+                egaliteThales(),
+                // La même égalité, chiffrée : c'est la ligne que Rémy voulait,
+                // et c'est elle qui montre quel rapport est complet.
+                egaliteChiffree(f, cherche).texte
+            ]
         },
         { titre: 'Donc', lignes: [calc.formule, calc.chiffres, calc.conclusion] }
     ];

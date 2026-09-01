@@ -189,17 +189,38 @@ function itemProgramme(rng, a, b, f) {
     });
 }
 
-/** COMPLÉTER UN TABLEAU DE VALEURS : la fonction, vue comme une machine. */
+/**
+ * COMPLÉTER UN TABLEAU DE VALEURS : la fonction, vue comme une machine.
+ *
+ * LE TABLEAU EST UN VRAI TABLEAU, et il a fallu que Rémy le voie pour qu'on
+ * s'en aperçoive. Il était écrit en texte, aligné à coups d'espaces — ce qui
+ * marche dans un terminal et nulle part ailleurs : l'écran replie les espaces
+ * et avale les retours à la ligne, et l'énoncé arrivait en une bouillie,
+ * « x : −2 2 3 5 f(x) : ? 7 9 13 ». Or c'est précisément LIRE UN TABLEAU qu'on
+ * travaille ici : une colonne, un couple.
+ */
 function itemTableau(rng, a, b, f, ecrit) {
     const xs = rng.shuffle([-2, -1, 0, 1, 2, 3, 4, 5]).slice(0, 4).sort((u, v) => u - v);
     const trou = rng.int(0, xs.length - 1);
     const ligne = xs.map((x, i) => (i === trou ? '?' : nb(f(x))));
-    const tableau = `x       : ${xs.map(x => nb(x).padStart(4)).join(' ')}\n`
-        + `f(x)  : ${ligne.map(v => v.padStart(4)).join(' ')}`;
+    // SUR LE PAPIER, DES BARRES PLUTÔT QUE DES ESPACES. La feuille n'aligne pas
+    // en colonnes non plus — c'est du texte suivi —, mais une barre verticale
+    // sépare les cases sans ambiguïté, quelle que soit la police.
+    const tableau = `x : ${xs.map(nb).join(' | ')}\nf(x) : ${ligne.join(' | ')}`;
     const x0 = xs[trou];
+    const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
+    // ESPACE INSÉCABLE DEVANT LE DEUX-POINTS : sans lui, il se retrouve seul en
+    // tête de la deuxième ligne quand l'énoncé se replie.
+    const html = `<div class="game-question">Soit ${ecrit}. Complète le tableau : quelle `
+        + 'valeur remplace le « ? » ?</div>'
+        + `<table class="fn-valeurs"><tbody>
+            <tr><th>x</th>${cellules(xs.map(nb))}</tr>
+            <tr><th>f(x)</th>${cellules(ligne)}</tr>
+        </tbody></table>`;
     return item(rng, {
         quoi: 'tableau', reponse: f(x0),
         texte: `Soit ${ecrit}. Complète le tableau : quelle valeur remplace le « ? » ?\n${tableau}`,
+        html,
         papier: `Soit ${ecrit}. Complète le tableau de valeurs.\n${tableau}`,
         hints: [
             'Un tableau de valeurs, c\'est une image par colonne : la ligne du haut donne x, '
@@ -246,13 +267,15 @@ function itemAntecedent(rng, a, b, f, ecrit) {
     });
 }
 
-function item(rng, { quoi, texte, papier, reponse, hints, explanation, difficulty }) {
+function item(rng, { quoi, texte, html, papier, reponse, hints, explanation, difficulty }) {
     return makeItem({
         seed: rng.seed,
         generatorId: 'alg.fonctions',
         skillId: quoi === 'antecedent' ? 'alg.fonction.antecedent' : 'alg.fonction.image',
         answerKind: 'numeric',
-        prompt: { text: texte, papier: papier || texte },
+        // `html` n'existe que là où l'énoncé porte un DESSIN — ici le tableau de
+        // valeurs. Ailleurs, `text` suffit et l'écran l'habille lui-même.
+        prompt: { text: texte, papier: papier || texte, ...(html ? { html } : {}) },
         answer: reponse,
         hints,
         explanation,

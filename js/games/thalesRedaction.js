@@ -35,7 +35,7 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import { CONFIGURATIONS, creerThales, longueurTexte } from '../core/thales.js';
 import { figureThalesSvg, egaliteEnColonnes } from '../core/generators/thales.js';
 import {
-    ETIQUETTES, hypotheses, isolements, trio, calculEcrit, verifierEgalite
+    ETIQUETTES, hypotheses, isolements, trio, calculEcrit, verifierEgalite, verifierChiffres
 } from '../core/thalesRedaction.js';
 
 const COMPETENCE = 'geo.thales';
@@ -87,6 +87,12 @@ class ThalesRedaction extends BaseGame {
                 .thr-bloc--ici .thr-titre { color: var(--primary); }
                 .thr-bloc--fait .thr-titre { color: var(--success); }
                 .thr-ligne { font-size: .95rem; line-height: 1.5; font-weight: 600; }
+                /* La phrase qui dit quoi faire sur la ligne chiffrée : plus
+                   discrète que le calcul, elle n'est pas de la rédaction. */
+                .thr-ligne--dit {
+                    color: var(--text-muted); font-weight: 600; font-size: .84em;
+                    margin: 4px 0 2px;
+                }
                 .thr-ligne--calcul { font-family: inherit; letter-spacing: .01em; }
 
                 /* Les propositions d'hypothèses, et les formes du produit en croix. */
@@ -202,6 +208,11 @@ class ThalesRedaction extends BaseGame {
         this.hyp = this.rng.shuffle(hypotheses());
         this.prises = [];
         this.formeChoisie = null;
+        this.egaliteEcrite = null;
+        this.egaliteCases = null;
+        this.chiffres = null;
+        this.chiffresEcrits = null;
+        this.saisie = [];
         this.phase = 'sais';
         this.fautes = 0;
         this.dessiner();
@@ -213,6 +224,11 @@ class ThalesRedaction extends BaseGame {
         if (this.isDemo || !this.f) return;
         this.prises = [];
         this.formeChoisie = null;
+        this.egaliteEcrite = null;
+        this.egaliteCases = null;
+        this.chiffres = null;
+        this.chiffresEcrits = null;
+        this.saisie = [];
         this.phase = 'sais';
         this.dessiner();
         this.note('On reprend au début de la rédaction.');
@@ -231,11 +247,19 @@ class ThalesRedaction extends BaseGame {
 
     /** L'état d'un bloc : fait, en cours, ou pas encore ouvert. */
     etatBloc(nom) {
-        const ordre = ['sais', 'or', 'isole', 'donc', 'fini'];
-        const blocs = { sais: 'sais', or: 'or', donc: 'isole' };
+        // LA LIGNE CHIFFRÉE EST UNE MARCHE DU « OR », pas un bloc à part : c'est
+        // la même phrase du théorème, écrite une seconde fois avec les nombres.
+        const ordre = ['sais', 'or', 'chiffres', 'isole', 'donc', 'fini'];
+        const blocs = { sais: 'sais', or: 'chiffres', donc: 'isole' };
         const rang = ordre.indexOf(this.phase);
         if (nom === 'donc') {
             return rang >= ordre.indexOf('isole') ? (this.phase === 'fini' ? 'fait' : 'ici') : '';
+        }
+        // Le « Or » reste en cours tant que l'égalité OU sa ligne chiffrée
+        // s'écrivent : ce sont deux gestes du même bloc.
+        if (nom === 'or') {
+            return rang > ordre.indexOf('chiffres') ? 'fait'
+                : (rang >= ordre.indexOf('or') ? 'ici' : '');
         }
         const r = ordre.indexOf(blocs[nom]);
         return rang > r ? 'fait' : (rang === r ? 'ici' : '');
@@ -265,13 +289,38 @@ class ThalesRedaction extends BaseGame {
     }
 
     htmlOr() {
+        // LA LIGNE CHIFFRÉE, une fois écrite ou pendant qu'on l'écrit.
+        //
+        // Rémy : « juste après l'égalité de fractions dans le OR, tu rajoutes
+        // une ligne de fractions où on remplace par les valeurs quand on les a,
+        // et on recopie le nom du côté sinon. » Les cases arrivent PRÉ-REMPLIES
+        // de ce qu'il vient d'écrire : le travail est de remplacer les trois
+        // longueurs données par leur mesure, pas de tout retaper.
+        if (this.phase === 'chiffres') {
+            const frac2 = (a, b) => `<div class="thr-frac">
+                <input class="thr-case" data-chiffre="${a}" maxlength="6" autocomplete="off"
+                    inputmode="text" aria-label="numérateur"><hr>
+                <input class="thr-case" data-chiffre="${b}" maxlength="6" autocomplete="off"
+                    inputmode="text" aria-label="dénominateur"></div>`;
+            return `<div class="thr-ligne">d'après le théorème de Thalès :</div>`
+                + `<div class="thr-ligne">${egaliteEnColonnes(this.egaliteEcrite || '')}</div>`
+                + `<div class="thr-ligne thr-ligne--dit">Remplace par les longueurs que
+                    l'énoncé donne ; recopie le nom des autres.</div>
+                <div class="thr-eg">${frac2(0, 1)}<span class="thr-egal">=</span>${frac2(2, 3)}
+                    <span class="thr-egal">=</span>${frac2(4, 5)}</div>
+                <div class="thr-barre" style="margin-top:6px">
+                    <button type="button" class="thr-btn thr-btn--fort" data-verif-chiffres>Vérifier</button>
+                </div>`;
+        }
         if (this.etatBloc('or') !== 'ici') {
             // L'ÉGALITÉ RETENUE S'ÉCRIT EN FRACTIONS, comme au tableau. Rémy :
             // « écris les fractions en colonne ». La barre oblique met le petit
             // segment À CÔTÉ du grand ; la barre horizontale le met DESSUS, et
             // c'est cette place-là qu'on apprend.
             return `<div class="thr-ligne">d'après le théorème de Thalès :</div>`
-                + `<div class="thr-ligne">${egaliteEnColonnes(this.egaliteEcrite || '')}</div>`;
+                + `<div class="thr-ligne">${egaliteEnColonnes(this.egaliteEcrite || '')}</div>`
+                + (this.chiffresEcrits
+                    ? `<div class="thr-ligne">${egaliteEnColonnes(this.chiffresEcrits)}</div>` : '');
         }
         const frac = (a, b) => `<div class="thr-frac">
             <input class="thr-case" data-case="${a}" maxlength="2" autocomplete="off"
@@ -329,6 +378,17 @@ class ThalesRedaction extends BaseGame {
                 if (el.value.length >= 2 && cases[i + 1]) cases[i + 1].focus();
             };
         });
+        const chiffres = [...this.copieEl.querySelectorAll('[data-chiffre]')];
+        chiffres.forEach((el, i) => {
+            el.value = (this.chiffres || [])[Number(el.dataset.chiffre)] || '';
+            el.oninput = () => {
+                this.lireChiffres();
+                if (el.value.length >= 2 && chiffres[i + 1]) chiffres[i + 1].focus();
+            };
+            el.onkeydown = (e) => { if (e.key === 'Enter') this.verifierChiffresEcrits(); };
+        });
+        const vc = this.copieEl.querySelector('[data-verif-chiffres]');
+        if (vc) vc.onclick = () => this.verifierChiffresEcrits();
         this.copieEl.querySelectorAll('[data-eti]').forEach(b => {
             b.onclick = () => this.poserEtiquette(b.dataset.eti);
         });
@@ -399,10 +459,42 @@ class ThalesRedaction extends BaseGame {
             return this.note(v.raison, 'ko');
         }
         this.egaliteEcrite = this.saisieTexte();
+        this.egaliteCases = this.saisie.slice();
+        // La ligne chiffrée part de ce qu'il vient d'écrire : il n'a que trois
+        // cases à changer.
+        this.chiffres = this.saisie.slice();
+        this.phase = 'chiffres';
+        this.dessinerCopie();
+        this.note('C\'est bien l\'égalité de Thalès. Récris-la maintenant avec les '
+            + 'longueurs de l\'énoncé : celles qu\'on connaît deviennent des nombres, '
+            + 'les autres gardent leur nom.', 'ok');
+    }
+
+    verifierChiffresEcrits() {
+        this.lireChiffres();
+        const v = verifierChiffres(this.f, this.cherche, this.egaliteCases, this.chiffres);
+        if (!v.ok) {
+            this.fautes++;
+            this.rate('La ligne chiffrée', this.chiffresTexte(), v.raison);
+            return this.note(v.raison, 'ko');
+        }
+        this.chiffresEcrits = this.chiffresTexte();
         this.phase = 'isole';
         this.dessinerCopie();
-        this.note('C\'est bien l\'égalité de Thalès. On ne recopie PAS la ligne où l\'on '
-            + 'remplace par les valeurs : on passe directement au produit en croix.', 'ok');
+        this.note('Voilà. Le rapport entièrement chiffré sert de pivot, et celui qui porte '
+            + `${this.cherche} est celui qu'on isole.`, 'ok');
+    }
+
+    lireChiffres() {
+        this.chiffres = [0, 1, 2, 3, 4, 5].map(i => {
+            const el = this.copieEl.querySelector(`[data-chiffre="${i}"]`);
+            return el ? el.value.trim().toUpperCase() : '';
+        });
+    }
+
+    chiffresTexte() {
+        const s = this.chiffres || [];
+        return `${s[0]}/${s[1]} = ${s[2]}/${s[3]} = ${s[4]}/${s[5]}`;
     }
 
     saisieTexte() {

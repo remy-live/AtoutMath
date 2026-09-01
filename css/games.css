@@ -452,3 +452,23 @@
 @media (max-width: 260px) {
     .choice-cartes { grid-template-columns: 1fr; }
 }
+
+/* --- LE TABLEAU DE VALEURS D'UNE FONCTION -----------------------------------
+   Rémy, devant l'énoncé aplati : « je ne comprends pas… bizarre ». Il était
+   écrit en texte, aligné à coups d'espaces ; l'écran replie les espaces et
+   avale les retours à la ligne, et l'on lisait « x : −2 2 3 5 f(x) : ? 7 9 13 ».
+   Or lire un tableau — une colonne, un couple — est exactement ce que
+   l'exercice travaille. */
+.fn-valeurs {
+    border-collapse: collapse; margin: 8px auto 4px;
+    font-weight: 800; font-size: clamp(.95rem, 2.6vw, 1.15rem);
+}
+.fn-valeurs th,
+.fn-valeurs td {
+    border: 1.5px solid var(--border); padding: 5px 12px; text-align: center;
+    min-width: 2.6em;
+}
+.fn-valeurs th {
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+    color: var(--primary); text-align: right; min-width: 0;
+}
