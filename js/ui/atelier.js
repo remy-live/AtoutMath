@@ -36,6 +36,7 @@ import { estJeuCatalogue } from '../core/revue.js';
 import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
 import { journalConsole } from './consoleLog.js';
+import { FORMATS, sonder, rapportEnTexte } from './controle.js';
 
 const CLE_NOTES = 'mathbox-atelier-notes';
 const CLE_EXO = 'mathbox-atelier-exo';
@@ -45,6 +46,9 @@ const CLE_VOLETS = 'mathbox-atelier-volets';
 let panneau = null;
 let exoCourant = null;
 let paramsCourants = {};
+let bilans = [];
+let controleArrete = false;
+let controleEnCours = false;
 
 /**
  * LES EXERCICES DU PLUS NEUF AU PLUS ANCIEN.
@@ -266,6 +270,35 @@ function assurerPanneau() {
                 background: var(--bg-app); color: var(--text-main); line-height: 1.4;
             }
             .atl-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+            .atl-controle { font-size: .74rem; line-height: 1.4; }
+            .atl-controle-ligne { margin-bottom: 5px; }
+            .atl-controle-nom { font-weight: 800; }
+            .atl-controle-ok { color: var(--success); }
+            .atl-controle-ko { color: var(--danger); font-weight: 600; }
+            .atl-controle-attente { color: var(--text-muted); }
+            .atl-controle-detail { color: var(--text-muted); padding-left: 10px; display: block; }
+
+            /* LE CONTRÔLE SE REGARDE. Un cadre posé hors de l'écran est bridé
+               par le navigateur — les jeux qui dessinent à chaque image n'y
+               avancent pas, et l'on conclurait « plateau vide » sur un exercice
+               qui marche. On le montre donc, à sa vraie taille, réduit par une
+               mise à l'échelle qui ne change rien à la mise en page dedans. */
+            .atl-controle-voile {
+                position: fixed; inset: 0; z-index: 100002; display: flex;
+                flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+                background: color-mix(in srgb, var(--bg-app) 92%, transparent);
+                padding: 14px; box-sizing: border-box;
+            }
+            .atl-controle-voile[hidden] { display: none; }
+            .atl-controle-tete { font-size: .86rem; font-weight: 700; text-align: center; }
+            .atl-controle-scene {
+                flex: 1 1 auto; width: 100%; min-height: 0;
+                display: flex; align-items: center; justify-content: center;
+            }
+            .ctl-cadre {
+                border: 8px solid var(--text-muted); border-radius: 18px; background: #fff;
+                box-shadow: 0 12px 40px rgba(0, 0, 0, .28); transform-origin: center;
+            }
 
             /* SUR UN ÉCRAN ÉTROIT, LES VOLETS S'EMPILENT. Un atelier à trois
                colonnes sur un téléphone ne montre rien du tout ; empilé, il
@@ -335,6 +368,10 @@ function assurerPanneau() {
                     <div class="atl-bloc-titre">Où c'est rangé</div>
                     <dl class="atl-rangement" id="atl-rangement"></dl>
                 </div>
+                <div class="atl-bloc" id="atl-bloc-controle" hidden>
+                    <div class="atl-bloc-titre">Le contrôle</div>
+                    <div class="atl-controle" id="atl-controle"></div>
+                </div>
                 <div class="atl-bloc">
                     <div class="atl-bloc-titre">Le carnet</div>
                     <textarea class="atl-notes" id="atl-notes"
@@ -345,9 +382,17 @@ function assurerPanneau() {
                             title="Tout ce qu'il faut pour décrire l'état, dans le presse-papier">📋 Relevé</button>
                         <button class="atl-btn" id="atl-telecharger"
                             title="Le même relevé, en fichier texte">⤓ Télécharger</button>
+                        <button class="atl-btn" id="atl-controler"
+                            title="Lancer l'exercice en téléphone, tablette et ordinateur, et mesurer"
+                            >🔎 Contrôler</button>
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="atl-controle-voile" id="atl-controle-voile" hidden>
+            <div class="atl-controle-tete" id="atl-controle-dit"></div>
+            <div class="atl-controle-scene" id="atl-controle-scene"></div>
+            <button class="atl-btn" id="atl-controle-stop">Arrêter</button>
         </div>`;
     document.body.appendChild(panneau);
 
@@ -394,6 +439,8 @@ function assurerPanneau() {
     panneau.querySelector('#atl-photo').onclick = photo;
     panneau.querySelector('#atl-releve').onclick = releve;
     panneau.querySelector('#atl-telecharger').onclick = telechargerReleve;
+    panneau.querySelector('#atl-controler').onclick = controler;
+    panneau.querySelector('#atl-controle-stop').onclick = () => { controleArrete = true; };
     return panneau;
 }
 
@@ -538,6 +585,10 @@ function peindreListe() {
 function choisir(id) {
     const exo = exercices.find(e => e.id === id);
     if (!exo) return;
+    // Le contrôle porte sur UN exercice : le garder à l'écran après en avoir
+    // changé ferait lire le verdict du précédent sur le suivant.
+    bilans = [];
+    panneau.querySelector('#atl-bloc-controle').hidden = true;
     exoCourant = exo;
     paramsCourants = { ...(exo.params || {}) };
     try { localStorage.setItem(CLE_EXO, id); } catch (e) { /* privé */ }
@@ -630,6 +681,99 @@ function enImage(el) {
     });
 }
 
+
+/**
+ * LE CONTRÔLE — l'audit, mais ici, et sur CET exercice.
+ *
+ * Rémy : « peut-être as-tu une meilleure méthode pour déboguer efficacement. »
+ *
+ * C'est celle-ci, et elle n'a rien de malin : on n'AFFICHE pas, on MESURE. Le
+ * contrôle lance l'exercice avec les réglages courants dans un téléphone, une
+ * tablette et un ordinateur — trois vraies mises en page, pas trois idées de
+ * mise en page —, attend que le plateau se garnisse, chronomètre, cherche ce
+ * qui sort de la vitre, ramasse ce que la console a crié. Le même travail que
+ * `tools/audit.mjs` fait sur les cent cinquante-deux exercices d'un coup, mais
+ * sur celui qu'on a sous les yeux, avec ses réglages, sans ligne de commande.
+ *
+ * SIX SONDAGES : le jeu dans les trois formats, la feuille dans deux (c'est
+ * une page, elle ne dépend guère de l'écran), et le robot une fois — une
+ * démonstration casse là où l'exercice tient, parce qu'elle vise des cases que
+ * l'élève, lui, atteint autrement.
+ *
+ * ET ON NE CONTRÔLE PAS CE QUI N'EXISTE PAS. La moitié du catalogue n'a pas de
+ * fiche à imprimer, quelques exercices n'ont pas de démonstration : les sonder
+ * quand même remontait « l'aperçu de la feuille ne se garnit pas » sur des
+ * exercices parfaitement sains — mesuré, trois sur six au premier essai. Un
+ * vérificateur qui crie au loup ne se lit plus.
+ */
+const TOURNEE = [
+    { quoi: 'jeu', formats: ['telephone', 'tablette', 'ordinateur'] },
+    { quoi: 'fiche', formats: ['telephone', 'ordinateur'], si: (e) => aUneFichePapier(e) },
+    {
+        quoi: 'demo', formats: ['ordinateur'],
+        si: (e) => {
+            const act = getActivity(e.activityId);
+            return !(act && act.supports && act.supports.demo === false);
+        }
+    }
+];
+
+async function controler() {
+    if (controleEnCours) return;
+    controleEnCours = true;
+    controleArrete = false;
+    bilans = [];
+    const voile = panneau.querySelector('#atl-controle-voile');
+    const scene = panneau.querySelector('#atl-controle-scene');
+    const dit = panneau.querySelector('#atl-controle-dit');
+    voile.hidden = false;
+    panneau.querySelector('#atl-bloc-controle').hidden = false;
+    try {
+        for (const etape of TOURNEE) {
+            if (etape.si && !etape.si(exoCourant)) continue;
+            for (const id of etape.formats) {
+                if (controleArrete) break;
+                const format = FORMATS.find(f => f.id === id);
+                dit.textContent = `${exoCourant.title} — ${etape.quoi} en ${format.nom.toLowerCase()}`
+                    + ` (${format.l} × ${format.h})`;
+                peindreControle(`${format.nom} · ${etape.quoi} — en cours…`);
+                bilans.push(await sonder({
+                    url: adresse(etape.quoi), format, scene, quoi: etape.quoi
+                }));
+                peindreControle();
+            }
+            if (controleArrete) break;
+        }
+    } finally {
+        voile.hidden = true;
+        scene.innerHTML = '';
+        controleEnCours = false;
+    }
+    peindreControle(controleArrete ? 'Contrôle interrompu.' : null);
+    const soucis = bilans.reduce((n, b) => n + b.soucis.length, 0);
+    const { showToast } = await import('./modal.js');
+    showToast(soucis
+        ? `Contrôle terminé : ${soucis} point${soucis > 1 ? 's' : ''} à regarder.`
+        : 'Contrôle terminé : rien à signaler.', soucis ? 'warning' : 'success');
+}
+
+function peindreControle(enAttente) {
+    const zone = panneau.querySelector('#atl-controle');
+    if (!zone) return;
+    const lignes = bilans.map(b => {
+        const tete = `<span class="atl-controle-nom">${echapper(b.nom)} · ${echapper(b.quoi)}</span>`
+            + (b.ms === null ? '' : ` <span class="atl-controle-attente">${b.ms} ms</span>`);
+        if (!b.soucis.length) return `<div class="atl-controle-ligne">${tete} `
+            + '<span class="atl-controle-ok">✓</span></div>';
+        return `<div class="atl-controle-ligne">${tete} <span class="atl-controle-ko">`
+            + `${b.soucis.length}</span>`
+            + b.soucis.map(x => `<span class="atl-controle-detail">· ${echapper(x)}</span>`).join('')
+            + '</div>';
+    });
+    if (enAttente) lignes.push(`<div class="atl-controle-attente">${echapper(enAttente)}</div>`);
+    zone.innerHTML = lignes.join('') || '<span class="atl-controle-attente">—</span>';
+}
+
 /**
  * LE RELEVÉ — l'état complet, en texte, dans le presse-papier.
  *
@@ -665,6 +809,11 @@ function texteReleve() {
         if (q) lignes.push(`à l'écran : ${(q.innerText || '').trim().slice(0, 400).replace(/\s+/g, ' ')}`);
         deborde(d).forEach(t => lignes.push(`DÉBORDE : ${t}`));
     });
+    if (bilans.length) {
+        lignes.push('');
+        lignes.push('## Le contrôle');
+        lignes.push(rapportEnTexte(bilans));
+    }
     const notes = panneau.querySelector('#atl-notes').value.trim();
     if (notes) { lignes.push(''); lignes.push('## Le carnet'); lignes.push(notes); }
     const journal = journalConsole().slice(-25);
@@ -800,6 +949,12 @@ export async function ouvrirVoletAtelier(quoi, params) {
     try { regles = JSON.parse(decodeURIComponent(params.get('p') || '{}')) || {}; } catch (e) { regles = {}; }
     const complet = { ...exo, params: { ...(exo.params || {}), ...regles } };
     document.documentElement.classList.add('volet-atelier');
+    // LE VOLET REND SON JOURNAL. La page mère ne peut pas atteindre le module
+    // de journalisation d'un cadre — chaque document a ses propres modules, et
+    // un `import()` depuis le parent rendrait la copie du PARENT, toujours
+    // vide. On pose donc la lecture sur `window` : le contrôle la trouve là,
+    // et il n'y a rien d'autre à faire passer.
+    window.__journalAtelier = journalConsole;
     if (quoi === 'fiche') {
         const { ouvrirFicheModal } = await import('./printSheet.js');
         ouvrirFicheModal(complet, complet.params);

@@ -10,6 +10,20 @@
     <link rel="icon" href="icons/icon-192.png" type="image/png">
     <!-- Application installable (PWA) : manifeste, couleur de thème et icône
          d'écran d'accueil iOS. Le service worker est enregistré en fin de page. -->
+    <!-- UN VOLET DE L'ATELIER SE SAIT VOLET AVANT DE S'AFFICHER.
+         La classe était posée par `app.js`, donc après le chargement des
+         modules : pendant ces quelques centaines de millisecondes, le volet
+         montrait l'application ENTIÈRE — barre de navigation, catalogue,
+         palette d'auteur — avant de se replier sur ce qu'on lui demandait.
+         On le voyait clignoter à chaque rechargement, et surtout pendant le
+         contrôle, où l'on regarde justement le cadre se remplir. Deux lignes
+         dans l'en-tête suffisent : la feuille de style est déjà là quand le
+         premier pixel se dessine. -->
+    <script>
+        if (new URLSearchParams(location.search).get('atelier')) {
+            document.documentElement.classList.add('volet-atelier');
+        }
+    </script>
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#6366f1">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -19,12 +33,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=556">
-    <link rel="stylesheet" href="css/layout.css?v=556">
-    <link rel="stylesheet" href="css/ui.css?v=556">
-    <link rel="stylesheet" href="css/games.css?v=556">
-    <link rel="stylesheet" href="css/components.css?v=556">
-    <link rel="stylesheet" href="css/modules.css?v=556">
+    <link rel="stylesheet" href="css/base.css?v=557">
+    <link rel="stylesheet" href="css/layout.css?v=557">
+    <link rel="stylesheet" href="css/ui.css?v=557">
+    <link rel="stylesheet" href="css/games.css?v=557">
+    <link rel="stylesheet" href="css/components.css?v=557">
+    <link rel="stylesheet" href="css/modules.css?v=557">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le

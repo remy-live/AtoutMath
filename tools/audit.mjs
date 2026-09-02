@@ -32,11 +32,13 @@
 //     exige `(pointer: coarse)` : sans pointeur tactile, on mesurait un écran
 //     de bureau rétréci que personne n'a jamais eu sous les yeux.
 //
-// ET DEUX RÈGLES POUR NE PAS CRIER AU LOUP. Un élément qui sort de l'écran
+// ET DEUX RÈGLES POUR NE PAS CRIER AU LOUP. Un élément qui sort du plateau
 // n'est un défaut que si rien ne le DÉCOUPE : les météorites du jeu de tir
 // entrent en scène par le bord, c'est leur métier. Et l'intérieur d'un SVG se
 // place dans le repère du dessin, pas dans celui de la page — le mesurer
-// remontait cinquante faux positifs par écran.
+// remontait cinquante faux positifs par écran. La deuxième a failli tout
+// annuler : voir `debordements`, qui innocentait le plateau entier parce qu'il
+// se découpe lui-même.
 //
 // Usage :  node tools/audit.mjs [--tel] [--rapide] [--port 8123]
 //          (le petit serveur doit tourner : python3 tools/serve.py 8123)
@@ -95,27 +97,41 @@ async function attendrePlateau(p) {
     return null;
 }
 
-/** Ce qui sort de l'écran SANS être découpé par un cadre. */
+/**
+ * CE QUI SORT DU PLATEAU — et cette sonde était AVEUGLE.
+ *
+ * Elle mesurait par rapport à la VITRE, en écartant tout ce qu'un cadre
+ * découpe. La règle est juste — les météorites du jeu de tir entrent en scène
+ * par le bord, c'est leur métier — mais elle remontait la chaîne des parents à
+ * partir de l'élément, et le PREMIER parent est `#game-board`, qui porte
+ * `overflow: hidden auto`. Tout élément du plateau était donc « découpé », donc
+ * innocenté : la sonde n'a jamais rien pu trouver. Mesuré en lui posant exprès
+ * une boîte de trois cents pixels à 120 % de la largeur — liste vide.
+ *
+ * On mesure donc par rapport au PLATEAU, qui est le vrai cadre, et la règle
+ * d'innocence s'arrête à lui : un cadre intérieur qui découpe volontairement —
+ * la fenêtre glissante de l'organigramme — ne se signale pas. Même code que
+ * `js/ui/controle.js`, qui met la sonde à portée de l'Atelier.
+ */
 async function debordements(p) {
     return p.evaluate(() => {
         const z = document.getElementById('game-board');
         if (!z) return 0;
-        const large = document.documentElement.clientWidth;
+        const cadre = z.getBoundingClientRect();
+        let pire = Math.max(0, z.scrollWidth - z.clientWidth);
         const decoupe = (el) => {
-            for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
-                const o = getComputedStyle(n).overflow;
-                if (o === 'hidden' || o === 'clip' || o === 'auto' || o === 'scroll') return true;
+            for (let n = el.parentElement; n && n !== z; n = n.parentElement) {
+                if (getComputedStyle(n).overflow !== 'visible') return true;
             }
             return false;
         };
-        let pire = 0;
         z.querySelectorAll('*').forEach(el => {
             if (el.ownerSVGElement) return;          // le repère du dessin, pas celui de la page
             const r = el.getBoundingClientRect();
             if (!r.width || !r.height) return;
             const cs = getComputedStyle(el);
             if (cs.visibility === 'hidden' || cs.display === 'none') return;
-            const d = Math.round(Math.max(r.right - large, -r.left));
+            const d = Math.round(Math.max(r.right - cadre.right, cadre.left - r.left));
             if (d > 4 && !decoupe(el)) pire = Math.max(pire, d);
         });
         return pire;
