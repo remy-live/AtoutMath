@@ -31,6 +31,19 @@ import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
+/**
+ * UN JEU À DÉCOUPER NE SE TIRE QU'À UN EXEMPLAIRE.
+ *
+ * Rémy : « pour la tour de hanoi, les grenouilles et le parking, pour
+ * l'impression, une seule colonne, pas plus, et aussi mettre une seule fois
+ * l'exercice. » La feuille du parcours demandait six « grilles » par défaut,
+ * comme pour un sudoku : elle sortait six Tours de Hanoï identiques sur deux
+ * pages. Une série de sudokus a un sens — on en fait un, puis un autre ; six
+ * fois le même plateau à découper n'en a aucun. Le rendu le déclare
+ * (`unique`), la feuille et l'engrenage s'y tiennent.
+ */
+const unExemplaire = (e) => !!(e && e.grille && RENDUS[e.grille] && RENDUS[e.grille].unique);
+
 /** La proportion d'un rendu : une valeur, ou une fonction des grilles. */
 const proportionsRendu = (rendu, tire) => (typeof rendu.proportions === 'function'
     ? rendu.proportions((tire || []).map(g => g.item))
@@ -455,7 +468,7 @@ export function ouvrirFicheParcours(chemin) {
     const points = {};
     papier.forEach(e => {
         const n = Math.max(1, Math.min(40, e.nbItems || (e.grille ? 2 : 5)));
-        quantites[e.stepId] = e.grille ? Math.min(6, n) : n;
+        quantites[e.stepId] = unExemplaire(e) ? 1 : (e.grille ? Math.min(6, n) : n);
     });
     // LA MISE EN PAGE, EXERCICE PAR EXERCICE. Pour les questions c'est un
     // nombre de colonnes, pour les grilles un nombre par ligne : dans les deux
@@ -464,7 +477,9 @@ export function ouvrirFicheParcours(chemin) {
     // trois colonnes pour des nombres en lettres, six pour comparer deux
     // fractions. Le professeur garde la main sur le réglage.
     const colonnes = {};
-    papier.forEach(e => { colonnes[e.stepId] = e.exercise.colonnesPapier || 'auto'; });
+    papier.forEach(e => {
+        colonnes[e.stepId] = unExemplaire(e) ? 1 : (e.exercise.colonnesPapier || 'auto');
+    });
     // NUMÉROTER, OU NON, EXERCICE PAR EXERCICE. Par défaut oui — c'est ce
     // qu'on attend d'une fiche. Mais six grilles de sudoku appelées « 7. » à
     // « 12. » n'y gagnent rien : ce qu'on écrit dedans n'est pas la réponse à
@@ -633,7 +648,11 @@ export function ouvrirFicheParcours(chemin) {
     // déjà — OU d'un « − » et d'un « + » : essayer trois colonnes puis quatre
     // pour voir laquelle tient, ça se fait au doigt, pas en tapant un chiffre.
     const COLONNES_POSSIBLES = ['auto', 1, 2, 3, 4, 5, 6];
-    const bornerNb = (v) => Math.max(0, Math.min(40, Number(v) || 0));
+    const bornerNb = (v, plafond) => Math.max(0, Math.min(plafond || 40, Number(v) || 0));
+    /** Combien d'exemplaires cet exercice-là accepte : un jeu à découper, un seul. */
+    const plafondDe = (id) => (unExemplaire(parId.get(id)) ? 1 : 40);
+    /** Et sur combien de colonnes : un plateau à découper prend toute la page. */
+    const colonnesPossibles = (id) => (unExemplaire(parId.get(id)) ? [1] : COLONNES_POSSIBLES);
 
     /** Le pavé « − [champ] + », en HTML — le même partout. */
     const pas = (cible, id, dedans) => `<span class="fp-pas">
@@ -644,7 +663,7 @@ export function ouvrirFicheParcours(chemin) {
             data-sens="1" aria-label="Plus">+</button></span>`;
 
     const changerQuantite = (id, v) => {
-        quantites[id] = bornerNb(v);
+        quantites[id] = bornerNb(v, plafondDe(id));
         oublier(id);                         // le nombre change : on retire à neuf, ICI seulement
         if (!baremeTouche) repartirPoints();
         majRoue(id);
@@ -657,9 +676,10 @@ export function ouvrirFicheParcours(chemin) {
     };
     /** Un cran de plus ou de moins, sans jamais sortir de la liste. */
     const crantColonnes = (id, sens) => {
-        const i = COLONNES_POSSIBLES.findIndex(v => String(v) === String(colonnes[id]));
-        const j = Math.max(0, Math.min(COLONNES_POSSIBLES.length - 1, (i < 0 ? 0 : i) + sens));
-        changerColonnes(id, String(COLONNES_POSSIBLES[j]));
+        const possibles = colonnesPossibles(id);
+        const i = possibles.findIndex(v => String(v) === String(colonnes[id]));
+        const j = Math.max(0, Math.min(possibles.length - 1, (i < 0 ? 0 : i) + sens));
+        changerColonnes(id, String(possibles[j]));
     };
 
     const changerPoints = (id, v) => {
@@ -930,10 +950,10 @@ export function ouvrirFicheParcours(chemin) {
             <div class="pp-roue-titre">${echapper(e.title)}</div>
             <label class="pp-roue-champ">${unite}
                 ${pas('nb', id, `<input type="number" class="cfg-input cfg-input--num" data-r-nb
-                    min="0" max="40" value="${quantites[id]}">`)}</label>
+                    min="0" max="${plafondDe(id)}" value="${quantites[id]}">`)}</label>
             <label class="pp-roue-champ">${e.grille ? 'Par ligne' : 'Colonnes'}
                 ${pas('col', id, `<select class="cfg-input cfg-input--num" data-r-col>
-                    ${COLONNES_POSSIBLES.map(v => `<option value="${v}"
+                    ${colonnesPossibles(id).map(v => `<option value="${v}"
                         ${String(colonnes[id]) === String(v) ? 'selected' : ''}>${v === 'auto' ? 'auto' : v}</option>`).join('')}
                 </select>`)}</label>
             <label class="pp-roue-case">

@@ -10450,6 +10450,124 @@ function traitsDeCote(c, F, k) {
     };
 }
 
+/**
+ * L'ÉGALITÉ DE THALÈS S'ÉCRIT EN FRACTIONS, SUR LE PAPIER AUSSI.
+ *
+ * Rémy : « pour le théorème de Thalès, à l'impression fais l'égalité en
+ * fraction. » Le corrigé posait « AD/AC = AE/AB = DE/BC » avec des barres
+ * obliques. À l'écran, l'exercice l'affiche depuis toujours en vraies
+ * fractions — numérateur, trait, dénominateur —, et c'est ainsi qu'elle
+ * s'écrit au tableau et dans le cahier. Deux écritures pour une seule
+ * égalité, c'est une de trop : l'élève qui compare sa copie au corrigé doit
+ * y retrouver ce qu'il a écrit.
+ *
+ * On ne touche pas à la feuille vierge : elle ne porte que des lignes.
+ */
+const EN_FRACTIONS = /^[^/\s]+\/[^/\s]+(\s*=\s*[^/\s]+\/[^/\s]+)*$/;
+
+/**
+ * UNE FRACTION OCCUPE DEUX LIGNES. Le numérateur au-dessus du trait, le
+ * dénominateur en dessous : sur une seule ligne, le « AC » de la première
+ * égalité venait s'asseoir sur le « 5 » de la seconde. C'est aussi ce que
+ * l'élève fait sur sa copie — deux interlignes pour un rapport.
+ */
+const LIGNES_FRACTION = 2;
+
+/**
+ * Les morceaux d'une égalité, dans l'ordre, chacun avec la largeur qu'il
+ * prendra. `mesurer(texte, corps)` rend une largeur en millimètres : le PDF
+ * sait la sienne exactement, l'aperçu l'approche (voir `largeurHelvetica`).
+ */
+function planFractions(ligne, mesurer, corps) {
+    const petit = corps * 0.86;
+    const morceaux = [];
+    String(ligne).split('=').forEach((brut, i) => {
+        const t = brut.trim();
+        if (i) morceaux.push({ texte: '=', w: mesurer('=', corps), ecart: corps * 0.4 });
+        const coupe = t.split('/');
+        if (coupe.length === 2 && coupe[0] && coupe[1]) {
+            // Le trait de fraction déborde un peu de chaque côté du plus long
+            // des deux termes : c'est ce débord qui le fait lire comme un
+            // trait de fraction et non comme un soulignement.
+            const w = Math.max(mesurer(coupe[0], petit), mesurer(coupe[1], petit)) + corps * 0.5;
+            morceaux.push({ haut: coupe[0], bas: coupe[1], w, petit, ecart: corps * 0.4 });
+        } else {
+            morceaux.push({ texte: t, w: mesurer(t, corps), ecart: corps * 0.4 });
+        }
+    });
+    return morceaux;
+}
+
+/**
+ * UNE LARGEUR DE TEXTE APPROCHÉE, pour l'aperçu — qui construit sa chaîne SVG
+ * sans pouvoir mesurer quoi que ce soit. Les fractions n'y portent que des
+ * majuscules et des chiffres, dont l'Helvetica fait à peu de choses près
+ * 0,58 cadratin ; la virgule et le point, moitié moins. L'erreur se voit sur
+ * l'espacement entre deux rapports, jamais sur l'alignement d'une fraction,
+ * qui se centre sur elle-même.
+ */
+function largeurHelvetica(texte, corps) {
+    return String(texte).split('').reduce((n, c) => n + (/[.,'’ ]/.test(c) ? 0.29 : 0.58), 0) * corps;
+}
+
+/** L'égalité en fractions, en SVG — pour l'aperçu de la feuille de solutions. */
+function fractionsSvg(ligne, x, yBase, corps, T, couleur) {
+    const plan = planFractions(ligne, largeurHelvetica, corps);
+    const police = 'font-family="Helvetica, Arial, sans-serif"';
+    // La barre de fraction se pose à la hauteur de la barre du « = », soit un
+    // tiers de corps au-dessus de la ligne de base.
+    const barre = yBase - corps * 0.32;
+    let out = '', cx = x;
+    plan.forEach(m => {
+        if (m.texte !== undefined) {
+            out += `<text x="${T(cx)}" y="${T(yBase)}" font-size="${T(corps)}"
+                ${police} fill="${couleur}">${echapper(m.texte)}</text>`;
+        } else {
+            const mid = cx + m.w / 2;
+            out += `<text x="${T(mid)}" y="${T(barre - corps * 0.24)}" text-anchor="middle"
+                font-size="${T(m.petit)}" ${police} fill="${couleur}">${echapper(m.haut)}</text>`;
+            out += `<line x1="${T(cx + corps * 0.08)}" y1="${T(barre)}"
+                x2="${T(cx + m.w - corps * 0.08)}" y2="${T(barre)}"
+                stroke="${couleur}" stroke-width="${T(0.22)}"/>`;
+            out += `<text x="${T(mid)}" y="${T(barre + m.petit * 0.94)}" text-anchor="middle"
+                font-size="${T(m.petit)}" ${police} fill="${couleur}">${echapper(m.bas)}</text>`;
+        }
+        cx += m.w + m.ecart;
+    });
+    return out;
+}
+
+/**
+ * La même égalité au PDF, où l'on sait mesurer pour de bon. `rgb` est la
+ * couleur du TRAIT de fraction : sans lui, la barre héritait de la couleur du
+ * cadre — de l'encre noire sous des chiffres bleus.
+ */
+function dessinerFractionsPdf(doc, ligne, x, yBase, corps, rgb) {
+    const mesurer = (t, taille) => {
+        doc.setFontSize(taille / 0.3528);
+        return doc.getTextWidth(pourPdf(t));
+    };
+    const plan = planFractions(ligne, mesurer, corps);
+    const barre = yBase - corps * 0.32;
+    let cx = x;
+    plan.forEach(m => {
+        if (m.texte !== undefined) {
+            doc.setFontSize(corps / 0.3528);
+            doc.text(pourPdf(m.texte), cx, yBase);
+        } else {
+            const mid = cx + m.w / 2;
+            doc.setFontSize(m.petit / 0.3528);
+            doc.text(pourPdf(m.haut), mid, barre - corps * 0.24, { align: 'center' });
+            doc.text(pourPdf(m.bas), mid, barre + m.petit * 0.94, { align: 'center' });
+            doc.setDrawColor(...(rgb || ENCRE.trait));
+            doc.setLineWidth(0.22);
+            doc.line(cx + corps * 0.08, barre, cx + m.w - corps * 0.08, barre);
+        }
+        cx += m.w + m.ecart;
+    });
+    doc.setFontSize(corps / 0.3528);
+}
+
 function thalesRedactionPreviewHtml(item, slot, k, solution) {
     const g = geoThalesRedaction(item, slot);
     const T = (v) => (v * k).toFixed(2);
@@ -10507,10 +10625,19 @@ function thalesRedactionPreviewHtml(item, slot, k, solution) {
         }
         if (solution) {
             const lignes = (m.redaction.find(r => r.titre === box.titre) || {}).lignes || [];
-            lignes.forEach((l, i) => {
-                out += `<text x="${T(box.x + 4)}" y="${T(box.y + box.hTitre + (i + 0.7) * box.hLigne)}"
+            let rang = 0;
+            lignes.forEach((l) => {
+                const texte = String(l).trim();
+                if (EN_FRACTIONS.test(texte)) {
+                    out += fractionsSvg(texte, box.x + 4,
+                        box.y + box.hTitre + (rang + 1.3) * box.hLigne, 3, T, '#2c5282');
+                    rang += LIGNES_FRACTION;
+                    return;
+                }
+                out += `<text x="${T(box.x + 4)}" y="${T(box.y + box.hTitre + (rang + 0.7) * box.hLigne)}"
                     font-size="${T(3)}" fill="#2c5282"
                     font-family="Helvetica, Arial, sans-serif">${echapper(l)}</text>`;
+                rang += 1;
             });
             return;
         }
@@ -10596,8 +10723,17 @@ function dessinerThalesRedactionPdf(doc, item, slot, solution) {
             doc.setFontSize(9.5);
             doc.setTextColor(44, 82, 130);
             const lignes = (m.redaction.find(r => r.titre === box.titre) || {}).lignes || [];
-            lignes.forEach((l, i) => {
-                doc.text(pourPdf(l), box.x + 4, box.y + box.hTitre + (i + 0.7) * box.hLigne);
+            let rang = 0;
+            lignes.forEach((l) => {
+                const texte = String(l).trim();
+                if (EN_FRACTIONS.test(texte)) {
+                    dessinerFractionsPdf(doc, texte, box.x + 4,
+                        box.y + box.hTitre + (rang + 1.3) * box.hLigne, 3.35, [44, 82, 130]);
+                    rang += LIGNES_FRACTION;
+                    return;
+                }
+                doc.text(pourPdf(l), box.x + 4, box.y + box.hTitre + (rang + 0.7) * box.hLigne);
+                rang += 1;
             });
             return;
         }
@@ -11801,13 +11937,24 @@ export const RENDUS = {
         previewGrille: parkingPreviewHtml,
         pdfGrille: dessinerParkingPdf,
         nomBloc: 'Jeu', nomBlocs: 'jeux',
-        // UN SEUL PAR PAGE, ET IL PREND TOUTE LA PAGE. Rémy : « les exercices
-        // énigmes doivent être en version unique de base et occuper le maximum
-        // d'espace pour être plus facile à découper. » Une proportion déclarée
-        // laissait quarante-cinq millimètres de blanc au bord droit ; « plein »
-        // rend au plateau la page entière (voir core/dispositionFiche.js).
+        // UN SEUL, UNE SEULE FOIS, ET IL PREND TOUTE LA PAGE.
+        //
+        // Rémy, d'abord : « les exercices énigmes doivent être en version
+        // unique de base et occuper le maximum d'espace pour être plus facile
+        // à découper. » Une proportion déclarée laissait quarante-cinq
+        // millimètres de blanc au bord droit ; « plein » rend au plateau la
+        // page entière (voir core/dispositionFiche.js).
+        //
+        // Puis, la feuille en main : « pour la tour de hanoi, les grenouilles
+        // et le parking, pour l'impression, une seule colonne, pas plus, et
+        // aussi mettre une seule fois l'exercice. » `maxCols: 2` autorisait
+        // encore deux plateaux côte à côte, et la feuille du parcours en
+        // demandait six par défaut : on découpait six fois le même jeu. Un
+        // jeu à découper n'est pas une série d'exercices — on en distribue un
+        // par élève, et il n'y en a qu'un à faire.
         proportions: 'plein',
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        unique: true,
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1
     },
 
@@ -11825,15 +11972,24 @@ export const RENDUS = {
         previewGrille: brahmaPreviewHtml,
         pdfGrille: dessinerBrahmaPdf,
         nomBloc: 'Jeu', nomBlocs: 'jeux',
-        // UN SEUL PAR PAGE : c'est un jeu qu'on découpe et qu'on manipule.
-        // Deux par feuille donneraient deux jeux trop petits pour les doigts.
-        // UN SEUL PAR PAGE, ET IL PREND TOUTE LA PAGE. Rémy : « les exercices
-        // énigmes doivent être en version unique de base et occuper le maximum
-        // d'espace pour être plus facile à découper. » Une proportion déclarée
-        // laissait quarante-cinq millimètres de blanc au bord droit ; « plein »
-        // rend au plateau la page entière (voir core/dispositionFiche.js).
+        // UN SEUL, UNE SEULE FOIS, ET IL PREND TOUTE LA PAGE.
+        //
+        // Rémy, d'abord : « les exercices énigmes doivent être en version
+        // unique de base et occuper le maximum d'espace pour être plus facile
+        // à découper. » Une proportion déclarée laissait quarante-cinq
+        // millimètres de blanc au bord droit ; « plein » rend au plateau la
+        // page entière (voir core/dispositionFiche.js).
+        //
+        // Puis, la feuille en main : « pour la tour de hanoi, les grenouilles
+        // et le parking, pour l'impression, une seule colonne, pas plus, et
+        // aussi mettre une seule fois l'exercice. » `maxCols: 2` autorisait
+        // encore deux plateaux côte à côte, et la feuille du parcours en
+        // demandait six par défaut : on découpait six fois le même jeu. Un
+        // jeu à découper n'est pas une série d'exercices — on en distribue un
+        // par élève, et il n'y en a qu'un à faire.
         proportions: 'plein',
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        unique: true,
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1
     },
 
@@ -11851,13 +12007,24 @@ export const RENDUS = {
         previewGrille: grenouillesPreviewHtml,
         pdfGrille: dessinerGrenouillesPdf,
         nomBloc: 'Jeu', nomBlocs: 'jeux',
-        // UN SEUL PAR PAGE, ET IL PREND TOUTE LA PAGE. Rémy : « les exercices
-        // énigmes doivent être en version unique de base et occuper le maximum
-        // d'espace pour être plus facile à découper. » Une proportion déclarée
-        // laissait quarante-cinq millimètres de blanc au bord droit ; « plein »
-        // rend au plateau la page entière (voir core/dispositionFiche.js).
+        // UN SEUL, UNE SEULE FOIS, ET IL PREND TOUTE LA PAGE.
+        //
+        // Rémy, d'abord : « les exercices énigmes doivent être en version
+        // unique de base et occuper le maximum d'espace pour être plus facile
+        // à découper. » Une proportion déclarée laissait quarante-cinq
+        // millimètres de blanc au bord droit ; « plein » rend au plateau la
+        // page entière (voir core/dispositionFiche.js).
+        //
+        // Puis, la feuille en main : « pour la tour de hanoi, les grenouilles
+        // et le parking, pour l'impression, une seule colonne, pas plus, et
+        // aussi mettre une seule fois l'exercice. » `maxCols: 2` autorisait
+        // encore deux plateaux côte à côte, et la feuille du parcours en
+        // demandait six par défaut : on découpait six fois le même jeu. Un
+        // jeu à découper n'est pas une série d'exercices — on en distribue un
+        // par élève, et il n'y en a qu'un à faire.
         proportions: 'plein',
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        unique: true,
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1
     },
 
