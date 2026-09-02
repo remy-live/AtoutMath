@@ -124,21 +124,24 @@ export const FLECHES = [
     // --- Du quadrilatère quelconque au parallélogramme : trois chemins --------
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: -1,
-        ajoute: 'les côtés opposés sont parallèles deux à deux', court: 'côtés opposés parallèles', propriete: 'opposesParalleles',
+        ajoute: 'Qui a ses côtés opposés parallèles', court: 'côtés opposés parallèles',
+        famille: 'cotes', propriete: 'opposesParalleles',
         piege: 'Le parallélogramme n\'ajoute pas des côtés égaux : il ajoute le '
             + 'PARALLÉLISME des deux paires de côtés opposés. Les longueurs suivent toutes '
             + 'seules.'
     },
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: 0,
-        ajoute: 'les côtés opposés sont égaux deux à deux', court: 'côtés opposés égaux', propriete: 'cotesOpposesEgaux',
+        ajoute: 'Qui a ses côtés opposés égaux', court: 'côtés opposés égaux',
+        famille: 'cotes', propriete: 'cotesOpposesEgaux',
         piege: 'Deux paires de côtés opposés de même longueur suffisent : le parallélisme '
             + 'suit. Attention, il faut bien les côtés OPPOSÉS — deux côtés consécutifs '
             + 'égaux ne donnent rien du tout dans un quadrilatère quelconque.'
     },
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: 1,
-        ajoute: 'les diagonales se coupent en leur milieu', court: 'diagonales : même milieu', propriete: 'diagonalesMilieu',
+        ajoute: 'Qui a ses diagonales se croisant en leur milieu', court: 'diagonales : même milieu',
+        famille: 'diagonales', propriete: 'diagonalesMilieu',
         piege: 'C\'est la troisième façon d\'être un parallélogramme, et la plus oubliée. '
             + 'Les diagonales se coupent en leur MILIEU — qu\'elles se coupent tout court '
             + 'n\'apprend rien, tout quadrilatère non croisé le fait.'
@@ -151,7 +154,7 @@ export const FLECHES = [
         // sur un écran d'ordinateur — assez pour qu'on croie qu'il s'y arrête.
         // Incurvé vers le haut, il passe à 22 unités.
         de: 'quadrilatere', vers: 'rectangle', voie: -1,
-        ajoute: 'trois ou quatre angles droits', court: '3 ou 4 angles droits',
+        ajoute: 'Qui a 3 ou 4 angles droits', court: '3 ou 4 angles droits', famille: 'raccourci',
         piege: 'Trois suffisent : la somme des angles d\'un quadrilatère vaut 360°, donc le '
             + 'quatrième est droit lui aussi. C\'est la définition du rectangle qu\'on donne '
             + 'en sixième, sans passer par le parallélogramme.'
@@ -159,7 +162,8 @@ export const FLECHES = [
     {
         // Et son symétrique s'incurve vers le bas, par-dessous.
         de: 'quadrilatere', vers: 'losange', voie: 1,
-        ajoute: 'quatre côtés égaux', court: '4 côtés égaux', propriete: 'quatreCotesEgaux',
+        ajoute: 'Qui a 4 côtés égaux', court: '4 côtés égaux',
+        famille: 'raccourci', propriete: 'quatreCotesEgaux',
         piege: 'QUATRE côtés égaux, pas deux : c\'est la définition du losange, et elle part '
             + 'directement du quadrilatère quelconque. Dans un parallélogramme, deux côtés '
             + 'consécutifs auraient suffi.'
@@ -168,13 +172,15 @@ export const FLECHES = [
     // --- Du parallélogramme au rectangle : deux chemins -----------------------
     {
         de: 'parallelogramme', vers: 'rectangle', voie: -1,
-        ajoute: 'un angle droit', court: 'un angle droit', propriete: 'unAngleDroit',
+        ajoute: 'Qui a deux côtés consécutifs perpendiculaires', court: 'un angle droit',
+        famille: 'cotes', propriete: 'unAngleDroit',
         piege: 'Un seul angle droit suffit dans un parallélogramme : les trois autres le '
             + 'deviennent forcément.'
     },
     {
         de: 'parallelogramme', vers: 'rectangle', voie: 1,
-        ajoute: 'les diagonales ont la même longueur', court: 'diagonales égales', propriete: 'diagonalesEgales',
+        ajoute: 'Qui a ses diagonales de même longueur', court: 'diagonales égales',
+        famille: 'diagonales', propriete: 'diagonalesEgales',
         piege: 'Des diagonales de MÊME LONGUEUR font le rectangle ; des diagonales '
             + 'PERPENDICULAIRES font le losange. C\'est la paire qu\'on échange le plus '
             + 'souvent.'
@@ -183,13 +189,15 @@ export const FLECHES = [
     // --- Du parallélogramme au losange : deux chemins -------------------------
     {
         de: 'parallelogramme', vers: 'losange', voie: -1,
-        ajoute: 'deux côtés consécutifs égaux', court: '2 côtés consécutifs égaux',
+        ajoute: 'Qui a deux côtés consécutifs de même longueur', court: '2 côtés consécutifs égaux',
+        famille: 'cotes',
         piege: 'Dans un parallélogramme, deux côtés CONSÉCUTIFS de même longueur suffisent : '
             + 'les côtés opposés étaient déjà égaux.'
     },
     {
         de: 'parallelogramme', vers: 'losange', voie: 1,
-        ajoute: 'les diagonales sont perpendiculaires', court: 'diagonales perpendiculaires', propriete: 'diagonalesPerpendiculaires',
+        ajoute: 'Qui a ses diagonales perpendiculaires', court: 'diagonales perpendiculaires',
+        famille: 'diagonales', propriete: 'diagonalesPerpendiculaires',
         piege: 'Des diagonales PERPENDICULAIRES font le losange ; des diagonales de même '
             + 'LONGUEUR font le rectangle. C\'est la paire qu\'on échange le plus souvent.'
     },
@@ -197,61 +205,35 @@ export const FLECHES = [
     // --- Et le carré, par les deux côtés --------------------------------------
     {
         de: 'rectangle', vers: 'carre', voie: -1,
-        ajoute: 'deux côtés consécutifs égaux', court: '2 côtés consécutifs égaux',
+        ajoute: 'Qui a deux côtés consécutifs de même longueur', court: '2 côtés consécutifs égaux',
+        famille: 'cotes',
         piege: 'Au rectangle il manque les longueurs ; au losange il manque l\'angle droit. '
             + 'Ce n\'est pas la même carte qui les complète.'
     },
     {
         de: 'rectangle', vers: 'carre', voie: 1,
-        ajoute: 'les diagonales sont perpendiculaires', court: 'diagonales perpendiculaires', propriete: 'diagonalesPerpendiculaires',
+        ajoute: 'Qui a ses diagonales perpendiculaires', court: 'diagonales perpendiculaires',
+        famille: 'diagonales', propriete: 'diagonalesPerpendiculaires',
         piege: 'Au rectangle, les diagonales sont déjà de même longueur : ce qui lui manque, '
             + 'c\'est qu\'elles soient PERPENDICULAIRES.'
     },
     {
         de: 'losange', vers: 'carre', voie: -1,
-        ajoute: 'un angle droit', court: 'un angle droit', propriete: 'unAngleDroit',
+        ajoute: 'Qui a deux côtés consécutifs perpendiculaires', court: 'un angle droit',
+        famille: 'cotes', propriete: 'unAngleDroit',
         piege: 'Au losange il manque l\'angle droit ; au rectangle il manque les longueurs. '
             + 'Ce n\'est pas la même carte qui les complète.'
     },
     {
         de: 'losange', vers: 'carre', voie: 1,
-        ajoute: 'les diagonales ont la même longueur', court: 'diagonales égales', propriete: 'diagonalesEgales',
+        ajoute: 'Qui a ses diagonales de même longueur', court: 'diagonales égales',
+        famille: 'diagonales', propriete: 'diagonalesEgales',
         piege: 'Au losange, les diagonales sont déjà perpendiculaires : ce qui lui manque, '
             + 'c\'est qu\'elles aient la MÊME LONGUEUR.'
     }
 ];
 
 export const familleDe = (id) => FAMILLES.find(f => f.id === id) || null;
-
-/**
- * LES POSITIONS DE L'ORGANIGRAMME, dans un repère de 100 × 100.
- *
- * Le losange et le rectangle sont côte à côte, et le carré SOUS LES DEUX : la
- * figure doit montrer qu'on y arrive des deux côtés. Une hiérarchie dessinée en
- * simple colonne perdrait exactement ce qu'elle a d'intéressant.
- */
-// L'ORGANIGRAMME SE LIT DE GAUCHE À DROITE. Rémy, devant la version en
-// colonne : « illisible. Il faut faire mieux, on peut imaginer le lire à
-// l'horizontal ». Il avait raison, et pas seulement pour le confort : une
-// condition s'écrit en quarante caractères, et quarante caractères ne tiennent
-// pas dans la largeur d'une case. Empilés entre deux cases superposées, les
-// libellés se marchaient dessus ; posés le long d'une flèche HORIZONTALE, ils
-// ont toute la largeur de la page.
-//
-// Et la place se répartit autrement : le quadrilatère à gauche, le carré à
-// droite, le rectangle et le losange l'un au-dessus de l'autre au milieu. Les
-// deux chemins qui mènent au carré restent visibles d'un coup d'œil — c'est la
-// leçon de la figure —, et les deux raccourcis de sixième (du quadrilatère
-// directement au rectangle, ou au losange) passent enfin en ligne droite, très
-// au-dessus et très au-dessous de la case du parallélogramme. En colonne il
-// fallait les faire contourner par le bord.
-export const POSITIONS = {
-    quadrilatere: { x: 0, y: 50 },
-    parallelogramme: { x: 32, y: 50 },
-    rectangle: { x: 65, y: 2 },
-    losange: { x: 65, y: 98 },
-    carre: { x: 100, y: 50 }
-};
 
 /**
  * TOUT CE QU'UN QUADRILATÈRE EST AUSSI — en remontant les flèches.
@@ -377,104 +359,167 @@ export function genererOrganigramme({ rng, palier = 'noms' } = {}) {
 }
 
 /**
- * LA CLEF D'UNE FLÈCHE PORTE SA VOIE, et il le faut : depuis que trois
- * conditions relient le quadrilatère au parallélogramme, « quadrilatere >
- * parallelogramme » désigne trois flèches différentes. Sans la voie, poser une
- * carte sur l'une les remplissait toutes les trois.
+ * LA FIGURE DE RÉMY, REPRISE TELLE QUELLE.
+ *
+ * Il a envoyé sa fiche : l'organigramme rempli, le même vide, et la planche de
+ * vignettes à découper. « Je ne suis pas satisfait de l'organigramme. » Il
+ * avait raison, et sur trois points qui ne sont pas des détails.
+ *
+ * 1. UNE CONDITION EST UNE CASE, PAS UNE ÉTIQUETTE DE FLÈCHE. Sur sa fiche, on
+ *    lit « Un quadrilatère → [Qui a ses côtés opposés parallèles] →
+ *    Parallélogramme ». La condition est une ÉTAPE du chemin, avec sa boîte,
+ *    ses deux flèches, sa place. C'est ce qui permet de la découper, de la
+ *    poser, de la déplacer — et c'est ce que « cartes à replacer » veut dire.
+ *    Une étiquette collée sur un trait n'est pas une carte.
+ *
+ * 2. LA LECTURE VA DE HAUT EN BAS. J'avais couché la figure pour faire tenir
+ *    des libellés de quarante caractères sur des flèches horizontales. Le
+ *    problème était réel, mais la solution attaquait le mauvais bout : dès que
+ *    la condition a sa propre case, la largeur ne manque plus, et l'on retrouve
+ *    le sens naturel — on DESCEND vers le plus particulier. Le carré est en
+ *    bas, sous ses deux parents, et l'on voit d'un coup d'œil qu'on l'atteint
+ *    des deux côtés.
+ *
+ * 3. LA COULEUR DIT LA FAMILLE DE LA PROPRIÉTÉ. Bleu, ce qui parle des CÔTÉS ;
+ *    rouge, ce qui parle des DIAGONALES ; mauve, les deux raccourcis qui
+ *    descendent directement du quadrilatère. Ce n'est pas de la décoration :
+ *    l'élève qui cherche « ce qui manque au rectangle pour être un carré » sait
+ *    qu'il y a une réponse bleue et une rouge, et les deux disent la même
+ *    chose autrement. C'est l'idée de Rémy, et elle vaut mieux qu'un long
+ *    discours.
+ *
+ * LE REPÈRE VA DE 0 À 100 EN X ET EN Y, y vers le bas. Les cases de figures
+ * sont carrées, les cases de conditions sont larges et basses : ce sont deux
+ * objets différents, et ils ne doivent pas se confondre.
  */
-export const cleFleche = (f) => `${f.de}>${f.vers}#${f.voie === undefined ? 0 : f.voie}`;
-export const flecheDe = (cle) => FLECHES.find(f => cleFleche(f) === cle) || null;
+export const POSITIONS = {
+    quadrilatere: { x: 50, y: 10 },
+    parallelogramme: { x: 50, y: 50 },
+    rectangle: { x: 28, y: 90 },
+    losange: { x: 72, y: 90 },
+    carre: { x: 50, y: 130 }
+};
 
 /**
- * OÙ PASSE LE TRAIT D'UNE CONDITION, dans le repère de 100 × 100 des positions.
- *
- * La géométrie vit ICI, et non dans le jeu ni dans la fiche, pour une raison
- * simple : l'écran et le papier doivent dessiner LE MÊME organigramme. Un élève
- * qui a la feuille sous les yeux et l'exercice à l'écran ne doit pas voir deux
- * figures différentes.
- *
- * UN TRAIT PAR CONDITION, ET NON UN PAR CHEMIN. La version en colonne faisait
- * l'inverse : une seule flèche du quadrilatère au parallélogramme, et les trois
- * conditions échelonnées dessus. Il le fallait, faute de place. Couché, le plan
- * en a : les trois façons d'être un parallélogramme deviennent TROIS FLÈCHES,
- * et l'élève compte du regard combien de portes mènent d'une case à l'autre.
- * C'est exactement ce que l'exercice lui demande de trouver.
- *
- * Les voies s'écartent perpendiculairement au segment, de part et d'autre : la
- * voie 0 va tout droit, les voies -1 et +1 s'incurvent de chaque côté.
- *
- * @returns {{points: Array<{x,y}>, contourne: boolean}}
+ * LE PLAN EST EN PORTRAIT, comme la fiche : huit rangées alternées, figures et
+ * conditions. Cent de large, cent quarante de haut. C'est la seule forme où les
+ * treize conditions ont chacune leur boîte sans qu'aucune n'en touche une autre
+ * — et c'est celle qu'a choisie Rémy en la dessinant à la main.
  */
-// UNE CASE OCCUPE 16 % DE LA LARGEUR DU PLAN ET 22 % DE SA HAUTEUR, à l'écran
-// comme sur le papier. Sa position la CENTRE, donc le plan s'étend en réalité
-// d'une demi-case au-delà de 0 et de 100 : c'est ce qui permet au quadrilatère
-// d'être à x = 0 et au carré à x = 100 sans rien couper.
-//
-// SEIZE ET NON DIX-NEUF. Mesuré à dix-neuf : entre le quadrilatère et le
-// parallélogramme il ne restait que huit unités, soit trente-six pixels, pour
-// loger trois flèches parallèles — et le mot « Parallélogramme », plus large
-// que sa case, débordait sur celle d'à côté. À seize, l'intervalle passe à
-// treize unités et les noms tiennent.
-export const CASE_L = 16;   // largeur d'une case, en % de la largeur du plan
-export const CASE_H = 22;   // hauteur d'une case, en % de la hauteur du plan
+export const PLAN_L = 100;
+export const PLAN_H = 140;
 
-/** La demi-case, ramenée aux unités du plan — celles des POSITIONS. */
-export const DEMI_X = (CASE_L / 2) / (100 - CASE_L) * 100;
-export const DEMI_Y = (CASE_H / 2) / (100 - CASE_H) * 100;
+/** La case d'une figure : carrée, elle porte un dessin et un nom. */
+export const CASE_L = 15;
+export const CASE_H = 19;
 
-const ECART = 10; // l'écartement de deux voies voisines
+/** La case d'une condition : large et basse, elle porte une phrase. */
+export const COND_L = 16;
+export const COND_H = 13;
 
 /**
- * OÙ LA DROITE (p → q) SORT DE LA CASE CENTRÉE EN c.
+ * OÙ SE POSE CHAQUE CONDITION, dans l'ordre de `FLECHES`.
  *
- * La case est un RECTANGLE, et le calcul le prend pour tel. Une ellipse
- * inscrite aurait été plus courte à écrire, mais elle rentre dans les coins :
- * mesuré, les voies obliques et les voies décalées repartaient de l'INTÉRIEUR
- * de la case, et l'on voyait le trait sourdre sous le dessin du quadrilatère.
+ * Quatre rangées, exactement celles de la fiche : les trois chemins vers le
+ * parallélogramme au milieu et les deux raccourcis à leurs côtés ; les quatre
+ * chemins du parallélogramme ; les quatre chemins vers le carré.
+ *
+ * LES DEUX COULOIRS DU BORD, à x = 3 et x = 97, ne portent aucune case : ils
+ * sont réservés aux traits des raccourcis, qui descendent de tout en haut à
+ * tout en bas. Un raccourci qui couperait au plus court traverserait quatre
+ * autres boîtes — mesuré, et c'est ce que Rémy a évité en les faisant longer
+ * l'extérieur.
  */
-function sortie(c, p, q) {
-    const dx = q.x - p.x, dy = q.y - p.y;
-    // Un point de départ déjà hors de la case : le trait part de là.
-    if (Math.abs(p.x - c.x) > DEMI_X || Math.abs(p.y - c.y) > DEMI_Y) return { x: p.x, y: p.y };
-    const borne = (demi, ecart, d) =>
-        (d === 0 ? Infinity : Math.max((-demi - ecart) / d, (demi - ecart) / d));
-    const t = Math.min(borne(DEMI_X, p.x - c.x, dx), borne(DEMI_Y, p.y - c.y, dy));
-    if (!(t > 0) || t > 1) return { x: p.x, y: p.y };
-    return { x: p.x + dx * t, y: p.y + dy * t };
+export const POSITIONS_CONDITIONS = [
+    { x: 33, y: 30 },   // quadrilatère → parallélogramme : côtés opposés parallèles
+    { x: 67, y: 30 },   // quadrilatère → parallélogramme : côtés opposés égaux
+    { x: 50, y: 30 },   // quadrilatère → parallélogramme : diagonales, même milieu
+    { x: 14, y: 30 },   // raccourci : 3 ou 4 angles droits → rectangle
+    { x: 86, y: 30 },   // raccourci : 4 côtés égaux → losange
+    { x: 12, y: 70 },   // parallélogramme → rectangle : côtés consécutifs perpendiculaires
+    { x: 37, y: 70 },   // parallélogramme → rectangle : diagonales de même longueur
+    { x: 63, y: 70 },   // parallélogramme → losange : côtés consécutifs de même longueur
+    { x: 88, y: 70 },   // parallélogramme → losange : diagonales perpendiculaires
+    { x: 12, y: 110 },  // rectangle → carré : côtés consécutifs de même longueur
+    { x: 37, y: 110 },  // rectangle → carré : diagonales perpendiculaires
+    { x: 63, y: 110 },  // losange → carré : côtés consécutifs perpendiculaires
+    { x: 88, y: 110 }   // losange → carré : diagonales de même longueur
+];
+
+/** Les couloirs latéraux, où passent les traits des raccourcis. */
+export const COULOIR_G = 3;
+export const COULOIR_D = 97;
+
+/** L'identifiant d'une condition : sa place dans `FLECHES`, et rien d'autre. */
+export const cleFleche = (f) => `${f.de}>${f.vers}#${FLECHES.indexOf(f)}`;
+
+/** Retrouver une condition par sa clef. */
+export const flecheDe = (cle) => FLECHES[Number(String(cle).split('#')[1])] || null;
+
+/** La position d'une condition, par son rang dans `FLECHES`. */
+export const posCondition = (f) => POSITIONS_CONDITIONS[FLECHES.indexOf(f)] || { x: 50, y: 50 };
+
+/** Le rectangle occupé par une case, centré sur sa position. */
+const boite = (p, l, h) => ({
+    x1: p.x - l / 2, x2: p.x + l / 2,
+    y1: p.y - h / 2, y2: p.y + h / 2
+});
+
+export const boiteFigure = (id) => boite(POSITIONS[id], CASE_L, CASE_H);
+export const boiteCondition = (f) => boite(posCondition(f), COND_L, COND_H);
+
+/**
+ * LE TRAIT D'UNE FIGURE À UNE CONDITION, ou d'une condition à une figure.
+ *
+ * ORTHOGONAL, EN TROIS SEGMENTS, comme sur la fiche : on sort par le bas (ou le
+ * haut), on se décale à l'horizontale à mi-chemin, on entre par le haut (ou le
+ * bas). Un trait oblique traverserait les cases voisines — sur une figure aussi
+ * dense, c'est ce qui la rend illisible.
+ *
+ * LES RACCOURCIS LONGENT LE BORD. « 3 ou 4 angles droits » est en haut à gauche
+ * et doit rejoindre le rectangle, tout en bas : passer tout droit traverserait
+ * la moitié de l'organigramme. Le trait descend donc le long du bord extérieur,
+ * comme Rémy l'a tracé.
+ *
+ * @returns {Array<{x, y}>} la polyligne, du départ vers l'arrivée
+ */
+export function traceLien(depart, arrivee, { bord = 0 } = {}) {
+    const a = depart, b = arrivee;
+    // Le sens : on descend presque toujours, mais un raccourci peut remonter.
+    const versLeBas = b.y1 >= a.y2;
+    const sortie = { x: a.x, y: versLeBas ? a.y2 : a.y1 };
+    const entree = { x: b.x, y: versLeBas ? b.y1 : b.y2 };
+
+    if (bord) {
+        // LE CHEMIN DU BORD : on sort sur le côté, on longe le couloir, on entre
+        // par le côté. Le couloir ne porte aucune case — voir POSITIONS_CONDITIONS.
+        const aGauche = bord < 0;
+        const xBord = aGauche ? COULOIR_G : COULOIR_D;
+        return [
+            { x: aGauche ? a.x1 : a.x2, y: a.y },
+            { x: xBord, y: a.y },
+            { x: xBord, y: b.y },
+            { x: aGauche ? b.x1 : b.x2, y: b.y }
+        ];
+    }
+
+    if (Math.abs(sortie.x - entree.x) < 0.5) return [sortie, entree];
+    const milieu = (sortie.y + entree.y) / 2;
+    return [sortie, { x: sortie.x, y: milieu }, { x: entree.x, y: milieu }, entree];
 }
 
-/**
- * OÙ PASSE LE TRAIT D'UNE CONDITION, dans le repère de 100 × 100 des positions.
- *
- * La géométrie vit ICI, et non dans le jeu ni dans la fiche, pour une raison
- * simple : l'écran et le papier doivent dessiner LE MÊME organigramme. Un élève
- * qui a la feuille sous les yeux et l'exercice à l'écran ne doit pas voir deux
- * figures différentes.
- *
- * UN TRAIT PAR CONDITION, ET NON UN PAR CHEMIN. La version en colonne faisait
- * l'inverse : une seule flèche du quadrilatère au parallélogramme, et les trois
- * conditions échelonnées dessus. Il le fallait, faute de place. Couché, le plan
- * en a : les trois façons d'être un parallélogramme deviennent TROIS FLÈCHES,
- * et l'élève compte du regard combien de portes mènent d'une case à l'autre.
- * C'est exactement ce que l'exercice lui demande de trouver.
- *
- * LES VOIES SONT PARALLÈLES, ELLES NE SE BOMBENT PAS. Le premier jet les
- * faisait passer par un point de passage écarté du milieu : entre deux cases
- * voisines l'intervalle mesure treize unités et l'écartement dix, si bien que
- * les trois voies du parallélogramme dessinaient un losange au lieu de trois
- * flèches. Décalées sur toute leur longueur, elles se lisent pour ce qu'elles
- * sont — trois chemins parallèles d'une case à l'autre.
- *
- * @returns {{points: Array<{x,y}>, contourne: boolean}}
- */
-export function traceFleche(f) {
-    const a = POSITIONS[f.de], b = POSITIONS[f.vers];
-    const voie = f.voie === undefined ? 0 : f.voie;
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const n = Math.hypot(dx, dy) || 1;
-    const ox = (-dy / n) * ECART * voie, oy = (dx / n) * ECART * voie;
-    const p = { x: a.x + ox, y: a.y + oy }, q = { x: b.x + ox, y: b.y + oy };
-    return { points: [sortie(a, p, q), sortie(b, q, p)], contourne: false };
+/** Les deux traits d'une condition : ce qui y entre, et ce qui en sort. */
+export function traitsDeCondition(f) {
+    const dep = { ...boiteFigure(f.de), x: POSITIONS[f.de].x, y: POSITIONS[f.de].y };
+    const arr = { ...boiteFigure(f.vers), x: POSITIONS[f.vers].x, y: POSITIONS[f.vers].y };
+    const c = posCondition(f);
+    const cond = { ...boiteCondition(f), x: c.x, y: c.y };
+    // LES RACCOURCIS SORTENT PAR LE CÔTÉ et longent le bord — voir `traceLien`.
+    const bord = f.famille === 'raccourci' ? (c.x < 50 ? -1 : 1) : 0;
+    return {
+        entrant: traceLien(dep, cond, { bord: bord && 0 }),
+        sortant: traceLien(cond, arr, { bord })
+    };
 }
 
 /** Les conditions d'un même chemin, dans l'ordre où elles se lisent. */
@@ -483,16 +528,14 @@ export function conditionsDe(de, vers) {
 }
 
 /**
- * OÙ SE POSE L'ÉTIQUETTE D'UNE CONDITION : au point de passage de sa voie.
+ * OÙ SE POSE L'ÉTIQUETTE D'UNE CONDITION : dans sa case, évidemment.
  *
- * Chaque condition a désormais son propre trait, donc son propre endroit — il
- * n'y a plus à échelonner plusieurs libellés le long d'une même flèche, ni à
- * les écarter du trait pour qu'ils ne tombent pas sur une case. C'est le gain
- * de la disposition couchée, et c'est pour cela qu'elle a été faite.
+ * La fonction reste, parce que la fiche papier et l'écran l'appellent tous les
+ * deux — et parce qu'ils doivent dessiner le MÊME organigramme.
  */
 export function posEtiquette(f) {
-    const [d, a] = traceFleche(f).points;
-    return { x: (d.x + a.x) / 2, y: (d.y + a.y) / 2, bord: false };
+    const c = posCondition(f);
+    return { x: c.x, y: c.y, bord: false };
 }
 
 /**

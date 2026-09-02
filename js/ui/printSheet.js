@@ -20,8 +20,10 @@ import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
 import {
     FLECHES as FLECHES_Q, FAMILLES as FAMILLES_Q, POSITIONS as POSITIONS_Q,
-    traceFleche as traceFlecheQ, posEtiquette as posEtiquetteQ, cleFleche as cleFlecheQ,
-    CASE_L as CASE_L_Q, CASE_H as CASE_H_Q
+    traitsDeCondition as traitsQ, posEtiquette as posEtiquetteQ, cleFleche as cleFlecheQ,
+    boiteCondition as boiteCondQ,
+    CASE_L as CASE_L_Q, CASE_H as CASE_H_Q,
+    COND_L as COND_L_Q, COND_H as COND_H_Q, PLAN_L as PLAN_L_Q, PLAN_H as PLAN_H_Q
 } from '../core/quadrilateres.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // `relire` : relit un calcul récrit à la main et refait sa cascade — voir
@@ -10201,13 +10203,15 @@ function geoOrganigramme(item, slot) {
     const hListe = Math.min(b.h * 0.34, lignes * 4.6 + 4);
     const hPlan = b.h - hListe - 2;
 
-    // LE PLAN GARDE LES PROPORTIONS DE CELUI DE L'ÉCRAN, et c'est la règle du
+    // LE PLAN GARDE LES PROPORTIONS DE CELUI DU NOYAU, et c'est la règle du
     // chapitre : un élève qui a la feuille sous les yeux et l'exercice sur la
-    // tablette doit reconnaître LA MÊME figure. L'organigramme est couché
-    // depuis que Rémy a jugé la version en colonne « illisible » — le
-    // quadrilatère à gauche, le carré à droite —, il est donc bien plus large
-    // que haut, et la fiche suit.
-    const RAPPORT = 1.75;                       // largeur / hauteur
+    // tablette doit reconnaître LA MÊME figure.
+    //
+    // IL EST EN PORTRAIT depuis qu'on a repris la fiche de Rémy : huit rangées
+    // qui alternent figures et conditions, du quadrilatère tout en haut au
+    // carré tout en bas. C'est la seule forme où les treize conditions ont
+    // chacune leur boîte — et c'est celle qu'il a dessinée à la main.
+    const RAPPORT = PLAN_L_Q / PLAN_H_Q;        // largeur / hauteur
     const wUtile = Math.min(b.w, hPlan * RAPPORT);
     const hUtile = wUtile / RAPPORT;
     const x0 = b.x + (b.w - wUtile) / 2;
@@ -10215,19 +10219,24 @@ function geoOrganigramme(item, slot) {
 
     // LA CASE A LA MÊME TAILLE QU'À L'ÉCRAN — les deux constantes viennent du
     // noyau, comme le tracé des flèches et la place des étiquettes.
-    const caseW = wUtile * (CASE_L_Q / 100), caseH = hUtile * (CASE_H_Q / 100);
+    const caseW = wUtile * (CASE_L_Q / PLAN_L_Q), caseH = hUtile * (CASE_H_Q / PLAN_H_Q);
+    const condW = wUtile * (COND_L_Q / PLAN_L_Q), condH = hUtile * (COND_H_Q / PLAN_H_Q);
 
     // LE PLAN SE RÉTRÉCIT DE LA MOITIÉ D'UNE CASE, DE TOUS LES CÔTÉS. Une case
     // est CENTRÉE sur sa position, et le quadrilatère est à y = 4, le carré à
     // y = 97 : posés tels quels, ils débordaient du plan par le haut et par le
     // bas. Mesuré sur le premier PDF : la case « Carré » descendait sur la
     // liste des conditions et en couvrait la première ligne.
-    const px = (v) => x0 + caseW / 2 + (v / 100) * (wUtile - caseW);
-    const py = (v) => y0 + caseH / 2 + (v / 100) * (hUtile - caseH);
+    // Le repère du noyau va de 0 à PLAN_L en x et de 0 à PLAN_H en y, et les
+    // boîtes y tiennent déjà tout entières : il n'y a plus à rétrécir d'une
+    // demi-case comme du temps où les positions étaient des CENTRES posés sur
+    // les bords du plan.
+    const px = (v) => x0 + (v / PLAN_L_Q) * wUtile;
+    const py = (v) => y0 + (v / PLAN_H_Q) * hUtile;
     const P = (p) => ({ x: px(p.x), y: py(p.y) });
     return {
         b, m, x0, y0, wUtile, hUtile,
-        P, caseW, caseH,
+        P, caseW, caseH, condW, condH,
         // LA PETITE CASE OÙ S'ÉCRIT LA LETTRE — et elle est petite pour de bon.
         // Mesuré à 5,2 % de la largeur du plan : les trois cases du chemin
         // quadrilatère → parallélogramme, empilées dans un intervalle de dix
@@ -10515,16 +10524,49 @@ function dessinerThalesRedactionPdf(doc, item, slot, solution) {
 // une case dit à lui seul de combien de façons on y accède.
 const cheminsUniques = () => FLECHES_Q;
 
+/**
+ * LES TROIS TEINTES DE LA FICHE DE RÉMY, claires pour qu'on écrive dessus.
+ *
+ * Bleu ce qui parle des CÔTÉS, rouge ce qui parle des DIAGONALES, mauve les
+ * deux raccourcis qui descendent directement du quadrilatère. Ce n'est pas de
+ * la décoration : l'élève qui cherche ce qui manque au rectangle pour être un
+ * carré sait qu'il y a une réponse bleue et une rouge, et que les deux disent
+ * la même chose autrement.
+ *
+ * ELLES SONT PÂLES À DESSEIN. Sur la fiche de Rémy le fond est saturé et le
+ * texte blanc ; photocopié en noir et blanc, cela donne trois gris qu'on ne
+ * distingue plus, et la case ne se remplit pas au crayon. Ici la teinte est
+ * assez claire pour qu'on écrive dedans et assez marquée pour qu'on la lise en
+ * couleur.
+ */
+/** Les mêmes trois teintes, en composantes — jsPDF ne lit pas le dièse. */
+const RVB_COND = {
+    cotes: [220, 230, 245],
+    diagonales: [250, 222, 219],
+    raccourci: [237, 220, 234]
+};
+
+const TEINTE_COND = {
+    cotes: '#dce6f5',
+    diagonales: '#fadedb',
+    raccourci: '#eddcea'
+};
+
 function organigrammePreviewHtml(item, slot, k, solution) {
     const g = geoOrganigramme(item, slot);
     const T = (v) => (v * k).toFixed(2);
     let out = '';
 
+    // DEUX TRAITS PAR CONDITION : ce qui y entre, ce qui en sort. Sur la fiche
+    // de Rémy, la condition est une CASE sur le chemin — pas une étiquette
+    // collée sur une flèche —, et c'est ce qui permet de la découper.
     cheminsUniques().forEach(f => {
-        const pts = traceFlecheQ(f).points.map(p => g.P(p))
-            .map(p => `${T(p.x)},${T(p.y)}`).join(' ');
-        out += `<polyline points="${pts}" fill="none" stroke="#8a90a0"
-            stroke-width="${(0.4 * k).toFixed(2)}"/>`;
+        const t = traitsQ(f);
+        [t.entrant, t.sortant].forEach(seg => {
+            const pts = seg.map(q => g.P(q)).map(q => `${T(q.x)},${T(q.y)}`).join(' ');
+            out += `<polyline points="${pts}" fill="none" stroke="#8a90a0"
+                stroke-width="${(0.4 * k).toFixed(2)}"/>`;
+        });
     });
 
     FAMILLES_Q.forEach(fam => {
@@ -10533,27 +10575,31 @@ function organigrammePreviewHtml(item, slot, k, solution) {
         out += `<rect x="${T(x)}" y="${T(y)}" width="${T(g.caseW)}" height="${T(g.caseH)}"
             rx="${T(1.4)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
         // La figure, dans la moitié haute de la case.
-        const fw = g.caseW * 0.42, fh = g.caseH * 0.5;
+        const fw = g.caseW * 0.5, fh = g.caseH * 0.46;
         const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
         const d = fam.figure.map((pt, i) =>
             `${i ? 'L' : 'M'}${T(fx + (pt[0] / 100) * fw)} ${T(fy + (pt[1] / 100) * fh)}`).join(' ') + ' Z';
         out += `<path d="${d}" fill="none" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
         const nom = (g.m.avecNoms || solution) ? fam.nom : '';
-        out += `<text x="${T(c.x)}" y="${T(y + g.caseH * 0.85)}" text-anchor="middle"
-            font-size="${T(g.caseH * 0.24)}" font-weight="700" fill="#1a202c"
+        out += `<text x="${T(c.x)}" y="${T(y + g.caseH * 0.78)}" text-anchor="middle"
+            dominant-baseline="central"
+            font-size="${T(g.caseW * 0.15)}" font-weight="700" fill="#1a202c"
             font-family="Helvetica, Arial, sans-serif">${nom}</text>`;
         if (!nom) {
-            out += `<line x1="${T(c.x - g.caseW * 0.34)}" y1="${T(y + g.caseH * 0.86)}"
-                x2="${T(c.x + g.caseW * 0.34)}" y2="${T(y + g.caseH * 0.86)}"
+            out += `<line x1="${T(c.x - g.caseW * 0.34)}" y1="${T(y + g.caseH * 0.84)}"
+                x2="${T(c.x + g.caseW * 0.34)}" y2="${T(y + g.caseH * 0.84)}"
                 stroke="#b0b6c5" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
         }
     });
 
     FLECHES_Q.forEach(f => {
         const e = g.P(posEtiquetteQ(f));
-        const w = g.lettreW, h = w * 0.86;
+        const w = g.condW, h = g.condH;
+        // LA COULEUR DIT LA FAMILLE — l'idée de Rémy, reprise telle quelle :
+        // bleu les côtés, rouge les diagonales, mauve les deux raccourcis.
+        const teinte = TEINTE_COND[f.famille] || '#ffffff';
         out += `<rect x="${T(e.x - w / 2)}" y="${T(e.y - h / 2)}" width="${T(w)}" height="${T(h)}"
-            rx="${T(0.8)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
+            rx="${T(0.8)}" fill="${teinte}" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
         if (solution) {
             out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
                 dominant-baseline="central" font-size="${T(h * 0.7)}" font-weight="700"
@@ -10583,8 +10629,13 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
     doc.setDrawColor(...ENCRE.gris);
     doc.setLineWidth(0.4);
     cheminsUniques().forEach(f => {
-        const pts = traceFlecheQ(f).points.map(p => g.P(p));
-        for (let i = 1; i < pts.length; i++) doc.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
+        const t = traitsQ(f);
+        [t.entrant, t.sortant].forEach(seg => {
+            const pts = seg.map(q => g.P(q));
+            for (let i = 1; i < pts.length; i++) {
+                doc.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
+            }
+        });
     });
 
     FAMILLES_Q.forEach(fam => {
@@ -10595,7 +10646,12 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         doc.setFillColor(255, 255, 255);
         doc.roundedRect(x, y, g.caseW, g.caseH, 1.4, 1.4, 'FD');
 
-        const fw = g.caseW * 0.42, fh = g.caseH * 0.5;
+        // LA FIGURE PREND LES DEUX TIERS DU HAUT, le nom le dernier tiers. La
+        // case a rétréci en passant en portrait, et le nom, calé à 85 % de sa
+        // hauteur avec une police plancher de 5 points, débordait dessous —
+        // mesuré sur le premier PDF, « Parallélogramme » chevauchait le trait
+        // qui descend vers la rangée suivante.
+        const fw = g.caseW * 0.5, fh = g.caseH * 0.46;
         const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
         const pts = fam.figure.map(pt => [fx + (pt[0] / 100) * fw, fy + (pt[1] / 100) * fh]);
         for (let i = 0; i < pts.length; i++) {
@@ -10604,27 +10660,28 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         }
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.max(5, Math.min(9, g.caseH * 1.9)));
+        doc.setFontSize(Math.max(4.2, Math.min(7.5, g.caseW * 0.42)));
         doc.setTextColor(...ENCRE.texte);
         if (g.m.avecNoms || solution) {
-            doc.text(fam.nom, c.x, y + g.caseH * 0.85, { align: 'center', baseline: 'alphabetic' });
+            doc.text(fam.nom, c.x, y + g.caseH * 0.78, { align: 'center', baseline: 'middle' });
         } else {
             doc.setDrawColor(...ENCRE.grille);
             doc.setLineWidth(0.3);
-            doc.line(c.x - g.caseW * 0.34, y + g.caseH * 0.86, c.x + g.caseW * 0.34, y + g.caseH * 0.86);
+            doc.line(c.x - g.caseW * 0.34, y + g.caseH * 0.84, c.x + g.caseW * 0.34, y + g.caseH * 0.84);
         }
     });
 
     FLECHES_Q.forEach(f => {
         const e = g.P(posEtiquetteQ(f));
-        const w = g.lettreW, h = w * 0.86;
+        const w = g.condW, h = g.condH;
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.3);
-        doc.setFillColor(255, 255, 255);
+        const teinte = RVB_COND[f.famille] || [255, 255, 255];
+        doc.setFillColor(...teinte);
         doc.roundedRect(e.x - w / 2, e.y - h / 2, w, h, 0.8, 0.8, 'FD');
         if (solution) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(Math.max(6, Math.min(11, h * 2.4)));
+            doc.setFontSize(Math.max(5, Math.min(11, h * 2.4)));
             doc.setTextColor(...ENCRE.texte);
             doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
         }

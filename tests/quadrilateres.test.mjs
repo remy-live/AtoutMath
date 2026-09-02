@@ -10,7 +10,8 @@ import { getGenerator } from '../js/core/registry.js';
 import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche,
     ancetres, estToujours, genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
-    traceFleche, posEtiquette, conditionsDe, CASE_L, CASE_H,
+    posEtiquette, conditionsDe, CASE_L, CASE_H, COND_L, COND_H,
+    PLAN_L, PLAN_H, boiteFigure, boiteCondition, traitsDeCondition, POSITIONS_CONDITIONS,
     ETAPES, genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape,
     vignetteDe
 } from '../js/core/quadrilateres.js';
@@ -75,7 +76,7 @@ test('LES TREIZE CONDITIONS DE LA FICHE DE RÉMY, et les sept chemins', () => {
     assert.match(FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'rectangle').ajoute,
         /angles droits/);
     assert.match(FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'losange').ajoute,
-        /quatre côtés égaux/);
+        /4 côtés égaux/);
 });
 
 test('CHAQUE FLÈCHE A SA PROPRE CLEF, sinon une carte en remplit trois', () => {
@@ -86,77 +87,113 @@ test('CHAQUE FLÈCHE A SA PROPRE CLEF, sinon une carte en remplit trois', () => 
     FLECHES.forEach(f => assert.equal(flecheDe(cleFleche(f)), f));
 });
 
-test('COUCHÉ, LES TREIZE ÉTIQUETTES NE SE TOUCHENT PLUS', () => {
-    // MESURÉ SUR LA VERSION EN COLONNE, celle que Rémy a jugée « illisible » :
-    // trois libellés de quarante caractères ne tiennent pas dans l'intervalle
-    // entre deux cases superposées. Couché, chaque condition a son propre trait
-    // et son propre point de passage — on vérifie ici qu'aucun de ces treize
-    // points n'en touche un autre, ni ne tombe sur une case.
+test('AUCUNE BOÎTE N\'EN TOUCHE UNE AUTRE — la figure de Rémy tient', () => {
+    // Rémy a envoyé sa fiche : l'organigramme rempli, le même vide, la planche
+    // de vignettes. « Je ne suis pas satisfait de l'organigramme. »
     //
-    // Les unités des deux axes n'ont pas la même valeur à l'écran : le plan
-    // fait 1,75 fois plus large que haut, donc une unité de x vaut 1,75 unité
-    // de y en distance réelle. La mesure en tient compte, sans quoi elle
-    // déclarerait sûres des étiquettes empilées à la verticale.
-    const RAPPORT = 1.75;
-    const pos = FLECHES.map(posEtiquette);
-    for (let i = 0; i < pos.length; i++) {
-        for (let j = i + 1; j < pos.length; j++) {
-            const dx = (pos[i].x - pos[j].x) * RAPPORT, dy = pos[i].y - pos[j].y;
-            const d = Math.hypot(dx, dy);
-            assert.ok(d > 8, `deux étiquettes à ${d.toFixed(1)} : `
-                + `${cleFleche(FLECHES[i])} et ${cleFleche(FLECHES[j])}`);
+    // CE QUI A CHANGÉ, ET QUI EST LE VRAI SUJET : une condition n'est plus une
+    // étiquette collée sur un trait, c'est une CASE — une carte, avec sa boîte,
+    // posée SUR le chemin entre deux figures. C'est ce qui permet de la
+    // découper sur le papier et de la glisser à l'écran ; « cartes à replacer »
+    // ne veut rien dire d'autre.
+    //
+    // Dix-huit boîtes doivent donc cohabiter sans se toucher : cinq figures et
+    // treize conditions. C'est la contrainte qui a fixé le plan en portrait.
+    const boites = [
+        ...Object.keys(POSITIONS).map(id => ({ nom: id, b: boiteFigure(id) })),
+        ...FLECHES.map((f, i) => ({ nom: `C${i} ${f.court}`, b: boiteCondition(f) }))
+    ];
+    assert.equal(boites.length, 18);
+
+    for (let i = 0; i < boites.length; i++) {
+        for (let j = i + 1; j < boites.length; j++) {
+            const a = boites[i].b, c = boites[j].b;
+            const touche = a.x1 < c.x2 && a.x2 > c.x1 && a.y1 < c.y2 && a.y2 > c.y1;
+            assert.equal(touche, false,
+                `« ${boites[i].nom} » chevauche « ${boites[j].nom} »`);
         }
     }
-    // Et aucune ne tombe dans une case. Une case occupe une demi-largeur et une
-    // demi-hauteur de part et d'autre de sa position, ramenées aux unités du
-    // plan rétréci — voir CASE_L et CASE_H.
-    const demiX = (CASE_L / 2) / (100 - CASE_L) * 100;
-    const demiY = (CASE_H / 2) / (100 - CASE_H) * 100;
-    pos.forEach((pt, i) => Object.entries(POSITIONS).forEach(([nom, c]) => {
-        assert.ok(Math.abs(pt.x - c.x) > demiX || Math.abs(pt.y - c.y) > demiY,
-            `${cleFleche(FLECHES[i])} : son étiquette est posée sur la case ${nom}`);
-    }));
+    // Et tout tient dans le plan.
+    boites.forEach(({ nom, b }) => {
+        assert.ok(b.x1 >= 0 && b.x2 <= PLAN_L, `${nom} sort du plan en largeur`);
+        assert.ok(b.y1 >= 0 && b.y2 <= PLAN_H, `${nom} sort du plan en hauteur`);
+    });
+    // Chaque condition a bien sa place déclarée : une de plus dans FLECHES sans
+    // sa position, et elles s'empileraient toutes au centre.
+    assert.equal(POSITIONS_CONDITIONS.length, FLECHES.length);
 });
 
-test('COUCHÉ, LES RACCOURCIS PASSENT EN LIGNE DROITE', () => {
-    // EN COLONNE ILS DEVAIENT CONTOURNER PAR LE BORD : « trois ou quatre angles
-    // droits » va du quadrilatère au rectangle en sautant le parallélogramme, et
-    // un trait droit lui passait DESSUS. Couché, le rectangle est en haut et le
-    // losange en bas : le trait passe très au-dessus, ou très au-dessous, de la
-    // case du milieu. C'est un gain réel de la disposition, pas un détail de
-    // dessin — trois segments coudés se lisent moins bien qu'une droite.
-    const court = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'rectangle');
-    const t = traceFleche(court);
-    assert.equal(t.contourne, false, 'plus de contournement par le bord de la page');
-
-    // Le trait passe-t-il vraiment à côté de la case du parallélogramme ? On
-    // échantillonne toute la polyligne, et on mesure l'écart à la case à
-    // l'endroit le plus serré. MESURÉ SUR LE TRAIT DROIT : 2,5 unités, soit six
-    // pixels sur un écran d'ordinateur — on croyait le voir s'arrêter sur la
-    // case. C'est ce qui a fait incurver les deux raccourcis.
-    const demiX = (CASE_L / 2) / (100 - CASE_L) * 100;
-    const demiY = (CASE_H / 2) / (100 - CASE_H) * 100;
-    const par = POSITIONS.parallelogramme;
-    const ecart = (fleche) => {
-        const pts = traceFleche(fleche).points;
-        let pire = Infinity;
-        for (let i = 1; i < pts.length; i++) {
-            for (let k = 0; k <= 100; k++) {
-                const a = pts[i - 1], b = pts[i];
-                const x = a.x + (b.x - a.x) * (k / 100), y = a.y + (b.y - a.y) * (k / 100);
-                if (Math.abs(x - par.x) > demiX) continue;
-                pire = Math.min(pire, Math.abs(y - par.y) - demiY);
-            }
+test('AUCUN TRAIT NE TRAVERSE UNE BOÎTE QU\'IL NE RELIE PAS', () => {
+    // C'est ce qui rend la fiche de Rémy lisible, et c'est ce qui manquait :
+    // les raccourcis « 3 ou 4 angles droits » et « 4 côtés égaux » vont du haut
+    // de l'organigramme jusqu'au rectangle et au losange, tout en bas. Au plus
+    // court, ils traverseraient quatre autres cases. Ils longent donc le bord,
+    // dans un couloir où l'on n'a posé aucune boîte — exactement comme sur la
+    // fiche.
+    const boites = [
+        ...Object.keys(POSITIONS).map(id => ({ nom: id, b: boiteFigure(id) })),
+        ...FLECHES.map((f, i) => ({ nom: 'C' + i, b: boiteCondition(f), f }))
+    ];
+    const dedans = (p, b) => p.x > b.x1 + 0.3 && p.x < b.x2 - 0.3
+        && p.y > b.y1 + 0.3 && p.y < b.y2 - 0.3;
+    const coupe = (p, q, b) => {
+        for (let t = 0; t <= 1; t += 0.01) {
+            if (dedans({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t }, b)) return true;
         }
-        return pire;
+        return false;
     };
-    assert.ok(ecart(court) > 12, `le raccourci frôle le parallélogramme à ${ecart(court).toFixed(1)}`);
 
-    // Et les deux raccourcis partent de part et d'autre : l'un vers le haut,
-    // l'autre vers le bas.
-    const bas = FLECHES.find(f => f.de === 'quadrilatere' && f.vers === 'losange');
-    assert.ok(ecart(bas) > 12, `le raccourci du bas frôle à ${ecart(bas).toFixed(1)}`);
-    assert.ok(posEtiquette(court).y < 50 && posEtiquette(bas).y > 50);
+    FLECHES.forEach((f, i) => {
+        const t = traitsDeCondition(f);
+        [t.entrant, t.sortant].forEach(pts => {
+            assert.ok(pts.length >= 2, `${f.court} : trait vide`);
+            for (let k = 0; k + 1 < pts.length; k++) {
+                boites.forEach(x => {
+                    if (x.nom === f.de || x.nom === f.vers || x.nom === 'C' + i) return;
+                    assert.equal(coupe(pts[k], pts[k + 1], x.b), false,
+                        `le trait de « ${f.court} » traverse ${x.nom}`);
+                });
+            }
+        });
+    });
+});
+
+test('LA COULEUR DIT LA FAMILLE DE LA PROPRIÉTÉ', () => {
+    // L'idée de Rémy, reprise telle quelle : bleu ce qui parle des CÔTÉS, rouge
+    // ce qui parle des DIAGONALES, mauve les deux raccourcis. Ce n'est pas de
+    // la décoration — l'élève qui cherche ce qui manque au rectangle pour être
+    // un carré sait qu'il y a une réponse bleue et une rouge, et que les deux
+    // disent la même chose autrement.
+    FLECHES.forEach(f => {
+        assert.ok(['cotes', 'diagonales', 'raccourci'].includes(f.famille),
+            `« ${f.ajoute} » : famille « ${f.famille} »`);
+        // La couleur ne ment pas sur le contenu.
+        if (f.famille === 'diagonales') assert.match(f.ajoute, /diagonale/i);
+        if (f.famille === 'cotes') assert.match(f.ajoute, /côté/i);
+    });
+    // Les deux raccourcis, et eux seuls, partent du quadrilatère sans passer
+    // par le parallélogramme.
+    const raccourcis = FLECHES.filter(f => f.famille === 'raccourci');
+    assert.equal(raccourcis.length, 2);
+    raccourcis.forEach(f => {
+        assert.equal(f.de, 'quadrilatere');
+        assert.ok(['rectangle', 'losange'].includes(f.vers));
+    });
+});
+
+test('LES LIBELLÉS SONT CEUX DE LA FICHE, au mot près', () => {
+    // Ils commencent tous par « Qui a », et ce n'est pas un détail de style :
+    // c'est ce qui permet de lire le chemin comme une phrase — « un
+    // quadrilatère QUI A ses côtés opposés parallèles est un parallélogramme ».
+    // Une étiquette qui dirait « côtés opposés parallèles » ne se lirait pas.
+    FLECHES.forEach(f => {
+        assert.match(f.ajoute, /^Qui a /, `« ${f.ajoute} » ne commence pas par « Qui a »`);
+    });
+    const dits = FLECHES.map(f => f.ajoute);
+    assert.ok(dits.includes('Qui a ses diagonales se croisant en leur milieu'));
+    assert.ok(dits.includes('Qui a deux côtés consécutifs perpendiculaires'));
+    assert.ok(dits.includes('Qui a 3 ou 4 angles droits'));
+    assert.ok(dits.includes('Qui a 4 côtés égaux'));
 });
 
 test('chaque flèche n\'ajoute QU\'UNE condition, et chaque famille a sa figure', () => {
@@ -327,7 +364,7 @@ test('LE REFUS NOMME LA VRAIE PLACE DE LA CARTE, et la confusion', () => {
     // puis reprend la phrase écrite pour cette confusion-là.
     const o = genererProgressif({ rng: makeRng('refus'), palier: 'tout' });
     const versRect = o.etapes.find(e => e.de === 'parallelogramme' && e.vers === 'rectangle');
-    const r = refusEtape(versRect, 'les diagonales sont perpendiculaires');
+    const r = refusEtape(versRect, 'Qui a ses diagonales perpendiculaires');
     assert.match(r, /parallélogramme au rectangle/);
     assert.match(r, /au losange/, 'le refus doit dire où va vraiment la carte');
     assert.match(r, /PERPENDICULAIRES/, 'et reprendre la phrase qui enseigne');
@@ -336,13 +373,14 @@ test('LE REFUS NOMME LA VRAIE PLACE DE LA CARTE, et la confusion', () => {
     // droit » mène du parallélogramme au rectangle ET du losange au carré.
     const versCarre = o.etapes.find(e => e.de === 'losange' && e.vers === 'carre');
     [versRect, versCarre].forEach(e => {
-        const v = verifierEtape(e, { texte: 'un angle droit' });
-        assert.equal(v.ok, true, `« un angle droit » devrait passer en ${e.titre}`);
+        const v = verifierEtape(e, { texte: 'Qui a deux côtés consécutifs perpendiculaires' });
+        assert.equal(v.ok, true, `« côtés consécutifs perpendiculaires » devrait passer en ${e.titre}`);
         assert.match(v.texteJuste, /deux chemins/);
     });
     // Mais pas là où il faut les longueurs.
     const rectCarre = o.etapes.find(e => e.de === 'rectangle' && e.vers === 'carre');
-    assert.equal(verifierEtape(rectCarre, { texte: 'un angle droit' }).ok, false);
+    assert.equal(verifierEtape(rectCarre,
+        { texte: 'Qui a deux côtés consécutifs perpendiculaires' }).ok, false);
 });
 
 test('L\'AIDE DONNE LES TROIS REGISTRES, jamais la réponse', () => {
@@ -462,7 +500,7 @@ test('L\'EXERCICE EST IMPRIMABLE, avec son propre générateur', () => {
 
 // --- LES VIGNETTES DE PROPRIÉTÉS -------------------------------------------------
 
-test('CHAQUE FLÈCHE A SA VIGNETTE, et elle tient sur un trait', () => {
+test('CHAQUE CONDITION A SA VIGNETTE, courte, pour la carte de la palette', () => {
     // Rémy : « pour l'organigramme, j'aimerais aussi inclure les vignettes de
     // propriétés. Exemple : on part du quadrilatère et pour aller au
     // parallélogramme, on glisse la vignette côtés opposés parallèles. »
@@ -474,17 +512,21 @@ test('CHAQUE FLÈCHE A SA VIGNETTE, et elle tient sur un trait', () => {
     // et rien dans le code ne le garantit sinon ce test.
     FLECHES.forEach(f => {
         assert.ok(f.court, `${f.de} → ${f.vers} : pas de vignette`);
+        // La vignette n'a plus à tenir sur un TRAIT — la condition a sa boîte
+        // depuis qu'on a repris la fiche de Rémy. Elle doit encore tenir sur
+        // une CARTE de la palette, qu'on lit d'un coup d'œil avant de la poser.
         assert.ok(f.court.length <= 28,
-            `« ${f.court} » fait ${f.court.length} caractères — trop long pour une flèche`);
+            `« ${f.court} » fait ${f.court.length} caractères — trop long pour une carte`);
         // La vignette résume la phrase — ou lui est égale quand la phrase
         // était déjà une vignette : « un angle droit » ne s'abrège pas.
         assert.ok(f.court.length <= f.ajoute.length,
             `« ${f.court} » est plus long que « ${f.ajoute} »`);
     });
-    // On la retrouve depuis la phrase, c'est ce dont l'écran se sert.
-    assert.equal(vignetteDe('un angle droit'), 'un angle droit');
-    assert.equal(vignetteDe('les côtés opposés sont parallèles deux à deux'),
+    // On la retrouve depuis la phrase de la fiche, c'est ce dont l'écran se sert.
+    assert.equal(vignetteDe('Qui a ses côtés opposés parallèles'),
         'côtés opposés parallèles');
+    assert.equal(vignetteDe('Qui a deux côtés consécutifs perpendiculaires'),
+        'un angle droit');
     // Une phrase inconnue ne fait pas planter l'écran : elle se rend elle-même.
     assert.equal(vignetteDe('n\'importe quoi'), 'n\'importe quoi');
 });
