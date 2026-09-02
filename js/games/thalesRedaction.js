@@ -70,6 +70,13 @@ class ThalesRedaction extends BaseGame {
                     text-align: center; font-weight: 700; font-size: .92rem; line-height: 1.35;
                     color: var(--text-muted); margin-bottom: 4px;
                 }
+                /* Chaque partie de l'énoncé sur sa ligne — voir la méthode dessiner. */
+                .thr-l { display: block; }
+                /* « AB = 18 cm » NE SE COUPE PAS EN DEUX. Un nombre séparé de
+                   son unité par un retour à la ligne se relit mal, et sur une
+                   figure où trois longueurs se ressemblent, c'est là qu'on va
+                   chercher le mauvais chiffre. */
+                .thr-enonce b { white-space: nowrap; }
                 .thr-enonce b { color: var(--text-main); }
 
                 /* LA COPIE. Trois blocs, et le mot qui les ouvre est en marge,
@@ -238,9 +245,22 @@ class ThalesRedaction extends BaseGame {
 
     dessiner() {
         const L = longueurTexte;
-        this.enonceEl.innerHTML = `(DE) // (CB). On donne `
+        // TROIS LIGNES, ET C'EST L'ÉNONCÉ TEL QU'ON L'ÉCRIT AU TABLEAU.
+        //
+        // Rémy : « plutôt écrire sur 3 lignes : (DE) // (CB). On donne : / AE =
+        // 12 cm, AB = 18 cm, BC = 21 cm. / Calcule DE. »
+        //
+        // En un seul paragraphe, la coupure tombait où elle voulait — « AB = 18 »
+        // se cassait entre le 18 et son « cm » — et les trois choses que dit un
+        // énoncé de Thalès se mélangeaient. Elles sont de nature différente et
+        // se lisent séparément : L'HYPOTHÈSE (les parallèles), LES DONNÉES
+        // (les trois longueurs), LA QUESTION. Une ligne chacune, et l'œil sait
+        // où revenir quand il cherche un nombre.
+        this.enonceEl.innerHTML = `<span class="thr-l">(DE) // (CB). On donne :</span>`
+            + `<span class="thr-l">`
             + this.donnees.map(n => `<b>${n} = ${L(this.f[n])} cm</b>`).join(', ')
-            + `. Calcule <b>${this.cherche}</b>.`;
+            + `.</span>`
+            + `<span class="thr-l">Calcule <b>${this.cherche}</b>.</span>`;
         this.figEl.innerHTML = figureThalesSvg(this.f, this.donnees);
         this.dessinerCopie();
     }

@@ -208,12 +208,29 @@ export function figureThalesElements(f, cotes = []) {
         return libre;
     };
 
-    /** Ce qui reste de libre autour d'une LIGNE de cote, sur toute sa longueur. */
+    /**
+     * Ce qui reste de libre autour d'une LIGNE de cote — SUR SON MILIEU.
+     *
+     * ON NE MESURE PAS SES DEUX BOUTS, et c'est ce qui explique les flèches qui
+     * flottaient loin de leur segment. Mesuré sur un papillon, où quatre droites
+     * se croisent en A : la cote de [AE] commence AU POINT A, donc son premier
+     * point est à `ecart × sin(angle)` de la branche voisine [AC] — 0,36 unité
+     * pour un écart de 3. Aucun écart ne la dégageait vraiment (2,30 à dix-neuf
+     * unités !), et l'algorithme la poussait donc toujours plus loin en croyant
+     * gagner de la place.
+     *
+     * Or ce rapprochement-là est NORMAL et se lit très bien : deux cotes qui
+     * partent du même point convergent forcément près de lui, et les lignes
+     * d'attache disent ce que chacune mesure. Ce qu'il faut vraiment protéger,
+     * c'est le MILIEU de la cote — là où passe le nombre — et la boîte du texte,
+     * qui garde, elle, sa pénalité entière.
+     */
     const degagementLigne = (p1, q1, saufSegment) => {
         let libre = Infinity;
         const pts = [];
         for (let i = 0; i <= 8; i++) {
-            pts.push({ x: p1.x + (q1.x - p1.x) * i / 8, y: p1.y + (q1.y - p1.y) * i / 8 });
+            const u = 0.15 + (i / 8) * 0.70;
+            pts.push({ x: p1.x + (q1.x - p1.x) * u, y: p1.y + (q1.y - p1.y) * u });
         }
         for (const [u, v] of SEGMENTS) {
             if ((u === saufSegment[0] && v === saufSegment[1])
@@ -298,7 +315,18 @@ export function figureThalesElements(f, cotes = []) {
             // une cote courte porte une étiquette PLUS LONGUE que son segment —
             // elle dépasse des deux côtés et va se poser sur la droite voisine.
             // Seule la distance l'en écarte.
-            for (const ecart of [D_COTE, D_COTE + 4, D_COTE + 8, D_COTE + 13,
+            // L'ÉCHELLE EST FINE PRÈS DU SEGMENT, ET LARGE AU LOIN.
+            //
+            // Rémy, capture à l'appui : « on pourrait rapprocher les flèches en
+            // haut ». Mesuré sur un papillon : la cote du bas se posait à 3
+            // unités de son segment, celles du haut à 16 et 22. La raison n'est
+            // pas la place — c'est l'échelle des essais, qui sautait de 3 à 7
+            // puis à 11 : quand 3 était refusé pour une unité de trop, le
+            // suivant qui tenait était déjà trois fois plus loin. Des marches
+            // d'une unité près du segment laissent trouver le premier écart qui
+            // passe, et non le premier de la liste qui passe.
+            for (const ecart of [D_COTE, D_COTE + 1, D_COTE + 2, D_COTE + 3, D_COTE + 4.5,
+                D_COTE + 6, D_COTE + 8, D_COTE + 10.5, D_COTE + 13, D_COTE + 16,
                 D_COTE + 19, D_COTE + 26, D_COTE + 34]) {
                 const ux = -dy / n * sens, uy = dx / n * sens;
                 const p1 = { x: p.x + ux * ecart, y: p.y + uy * ecart };
@@ -338,8 +366,14 @@ export function figureThalesElements(f, cotes = []) {
                 // COLLÉE D'ABORD, DEHORS ENSUITE. L'écart pèse lourd — c'est la
                 // demande —, et le dehors tranche entre deux positions également
                 // collées.
-                const score = Math.min(libreLigne, 5) + Math.min(libreTexte, 5)
-                    - trop - ecart * 1.1 + Math.max(-1, Math.min(1, dehors / 3)) * 3;
+                // COLLÉE PÈSE PLUS LOURD QU'AVANT. Le dégagement au-delà de
+                // deux unités et demie n'apporte plus rien à la lecture — un
+                // trait ne se touche pas plus à cinq unités qu'à trois — alors
+                // que chaque unité d'écart, elle, éloigne la flèche de ce
+                // qu'elle mesure. On plafonne donc le gain de dégagement plus
+                // bas et l'on double le prix de la distance.
+                const score = Math.min(libreLigne, 2.8) + Math.min(libreTexte, 2.8)
+                    - trop - ecart * 2.2 + Math.max(-1, Math.min(1, dehors / 3)) * 3;
                 if (!mieux || score > mieux.score) {
                     mieux = { score, x, y, p1, q1, ux, uy, coins };
                 }

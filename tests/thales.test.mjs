@@ -9,7 +9,7 @@ import {
 } from '../js/core/thales.js';
 import {
     thalesGenerator, ORDRE_THALES, ETAPES_THALES, marcheThales, figureThalesSvg,
-    egaliteEnColonnes
+    egaliteEnColonnes, figureThalesElements
 } from '../js/core/generators/thales.js';
 import { getExerciseById, paramSchemaOf } from '../js/data/catalog.js';
 
@@ -444,4 +444,48 @@ test('l\'égalité se dessine en fractions, sans jamais perdre son texte', () =>
         });
         assert.equal(it.answer, it.choices.find(c => c.correct).value);
     }
+});
+
+
+test('LES COTES SONT COLLÉES À LEUR SEGMENT', () => {
+    // Rémy, capture à l'appui : « on pourrait rapprocher les flèches en haut ».
+    // Mesuré avant : sur un papillon, la cote du bas se posait à 3 unités de son
+    // segment et celles du haut à 16 et 22. La cause n'était pas la place — la
+    // cote de [AE] commence AU POINT A, où quatre droites se croisent, donc son
+    // premier point est forcément près de la branche voisine, à tout écart. On
+    // ne mesure donc plus que le MILIEU de la ligne de cote ; sa boîte de texte,
+    // elle, garde toute sa pénalité.
+    //
+    // CE TEST NE VÉRIFIE PAS UN NOMBRE, IL VÉRIFIE UNE INTENTION : la plupart
+    // des cotes doivent être au plus près. Celles qui s'écartent le font pour
+    // une raison — sur les emboîtés, [AE] est un morceau de [AB] et leurs deux
+    // flèches se superposeraient.
+    const dist = (c, p, q) => {
+        const dx = q.x - p.x, dy = q.y - p.y, l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / l2)) : 0;
+        return Math.hypot(c.x - (p.x + t * dx), c.y - (p.y + t * dy));
+    };
+    let collees = 0, total = 0, pire = 0;
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 40; i++) {
+            const f = creerThales({ config, rng: makeRng(`colle-${config}-${i}`) });
+            if (!f) continue;
+            const e = figureThalesElements(f, ['AE', 'AB', 'BC']);
+            for (const c of e.cotes) {
+                const mid = { x: (c.p1.x + c.q1.x) / 2, y: (c.p1.y + c.q1.y) / 2 };
+                const d = dist(mid, c.p, c.q);
+                total++;
+                if (d <= 4) collees++;
+                pire = Math.max(pire, d);
+            }
+        }
+    }
+    // MESURÉ : 193 cotes sur 240 sont à trois unités de leur segment, la
+    // médiane est à 3. Les autres s'écartent parce que deux cotes se
+    // superposeraient — sur les emboîtés, [AE] est un morceau de [AB] —, et la
+    // plus lointaine est à 22 unités sur une figure qui en fait 100. On garde
+    // donc une borne LARGE : ce test protège l'intention, pas un réglage.
+    assert.ok(collees / total > 0.75,
+        `seulement ${collees}/${total} cotes collées à leur segment`);
+    assert.ok(pire <= 24, `une cote à ${pire.toFixed(1)} unités de son segment`);
 });
