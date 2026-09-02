@@ -121,6 +121,25 @@ export const fonctionsGenerator = {
     }
 };
 
+/**
+ * L'ÉNONCÉ D'UNE FONCTION TIENT SUR DEUX LIGNES.
+ *
+ * Rémy : « pour les fonctions, tu vois, écris "soit f(x) = 3x + 5" puis va à
+ * la ligne. » La DÉFINITION de la fonction et la QUESTION qu'on pose dessus
+ * sont deux choses. La définition, on la relit à chaque étape du calcul ;
+ * collée en tête de la question, il faut aller la rechercher au milieu d'une
+ * phrase à chaque fois. Au tableau, personne n'écrit autrement : la fonction
+ * sur une ligne, ce qu'on demande sur la suivante.
+ *
+ * (Et « Soit f(x) = … » suffit : « Soit la fonction f(x) = … » ajoute trois
+ * mots que la notation dit déjà.)
+ */
+const enonceFonction = (ecrit, question) => `Soit ${ecrit}.\n${question}`;
+
+/** Le même énoncé pour l'écran, où le retour à la ligne se dit `<br>`. */
+const enonceFonctionHtml = (ecrit, question) =>
+    `<div class="game-question">Soit <b>${ecrit}</b>.<br>${question}</div>`;
+
 /** LIRE UNE ÉGALITÉ : aucun calcul, seulement le sens des deux mots. */
 function itemLire(rng, a, b, f, ecrit) {
     const x = rng.int(2, 9);
@@ -152,7 +171,8 @@ function itemImage(rng, a, b, f, ecrit) {
     const signe = b > 0 ? '+' : '−';
     return item(rng, {
         quoi: 'image', reponse: f(x),
-        texte: `Soit la fonction ${ecrit}. Calcule f(${nb(x)}).`,
+        texte: enonceFonction(ecrit, `Calcule f(${nb(x)}).`),
+        html: enonceFonctionHtml(ecrit, `Calcule f(${nb(x)}).`),
         hints: [
             `Calculer f(${nb(x)}), c'est REMPLACER x par ${nb(x)} dans l'écriture de f, `
                 + 'puis calculer.',
@@ -211,17 +231,16 @@ function itemTableau(rng, a, b, f, ecrit) {
     const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
     // ESPACE INSÉCABLE DEVANT LE DEUX-POINTS : sans lui, il se retrouve seul en
     // tête de la deuxième ligne quand l'énoncé se replie.
-    const html = `<div class="game-question">Soit ${ecrit}. Complète le tableau : quelle `
-        + 'valeur remplace le « ? » ?</div>'
+    const html = enonceFonctionHtml(ecrit, 'Complète le tableau : quelle valeur remplace le « ? » ?')
         + `<table class="fn-valeurs"><tbody>
             <tr><th>x</th>${cellules(xs.map(nb))}</tr>
             <tr><th>f(x)</th>${cellules(ligne)}</tr>
         </tbody></table>`;
     return item(rng, {
         quoi: 'tableau', reponse: f(x0),
-        texte: `Soit ${ecrit}. Complète le tableau : quelle valeur remplace le « ? » ?\n${tableau}`,
+        texte: enonceFonction(ecrit, `Complète le tableau : quelle valeur remplace le « ? » ?\n${tableau}`),
         html,
-        papier: `Soit ${ecrit}. Complète le tableau de valeurs.\n${tableau}`,
+        papier: enonceFonction(ecrit, `Complète le tableau de valeurs.\n${tableau}`),
         hints: [
             'Un tableau de valeurs, c\'est une image par colonne : la ligne du haut donne x, '
                 + 'celle du bas donne f(x).',
@@ -250,8 +269,10 @@ function itemAntecedent(rng, a, b, f, ecrit) {
         .join(', puis ');
     return item(rng, {
         quoi: 'antecedent', reponse: x,
-        texte: `Soit ${ecrit}. Quel nombre a pour image ${nb(y)} ? (autrement dit : trouve un `
-            + `antécédent de ${nb(y)})`,
+        texte: enonceFonction(ecrit, `Quel nombre a pour image ${nb(y)} ? `
+            + `(autrement dit : trouve un antécédent de ${nb(y)})`),
+        html: enonceFonctionHtml(ecrit, `Quel nombre a pour image ${nb(y)} ? `
+            + `(autrement dit : trouve un antécédent de ${nb(y)})`),
         hints: [
             'Calculer une image, c\'est faire les opérations DANS L\'ORDRE. Chercher un '
                 + 'antécédent, c\'est les DÉFAIRE dans l\'ordre inverse.',

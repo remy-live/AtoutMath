@@ -204,6 +204,21 @@ export function minimumParking(n) {
     return restantsParking(p, departParking(p));
 }
 
+/**
+ * LA PARTIE PARFAITE, POSITION PAR POSITION — pour la feuille de solutions.
+ * Le départ, puis le plateau après chaque coup. Voir `etapesBrahma`.
+ */
+export function etapesParking(n) {
+    const p = plateauParking(n);
+    let etat = departParking(p);
+    const etapes = [etat];
+    for (const c of (cheminLePlusCourtParking(p, etat) || [])) {
+        etat = jouerParking(p, etat, c.de, c.vers);
+        etapes.push(etat);
+    }
+    return etapes;
+}
+
 /** De quoi juger une partie : le compte, le minimum, et l'écart. */
 export function qualiteParking(n, joues) {
     const mini = minimumParking(n);

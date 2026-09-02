@@ -610,11 +610,21 @@ export function composerBlocs(exos, opts, mesurer) {
             // bloc qui remplit exactement la page déclenche un saut, la page
             // suivante recommence, et l'on tourne en rond — dix pages vides
             // pour quatre jeux, exactement ce qu'on a mesuré.
-            const hauteurBloc2 = exo.grillePleine
-                ? Math.max(60, basPage - haut() - enteteH - entreRangees)
-                : cote * ratio;
+            //
+            // ET ELLE SE RECALCULE APRÈS LE SAUT DE PAGE. `haut()` ne rend pas
+            // la même valeur sur la première page que sur les suivantes — la
+            // première porte le cartouche « Nom / Date », les autres le
+            // bandeau courant. Un bloc plein mesuré AVANT le saut se retrouvait
+            // donc trop haut d'un bandeau une fois posé sur la page suivante :
+            // le test de rangée le repoussait encore, et l'on obtenait un
+            // bandeau seul sur une page, puis le bloc en « (suite) » sur la
+            // suivante. C'est exactement ce que faisait le corrigé des
+            // grenouilles, coincé derrière celui de la Tour de Hanoï.
+            const hauteurPleine = () => Math.max(60, basPage - haut() - enteteH - entreRangees);
+            let hauteurBloc2 = exo.grillePleine ? hauteurPleine() : cote * ratio;
             if (iExo > 0 && page.items.length && y > haut()) y += o.entreExercices - o.entreQuestions;
             if (page.items.length && y + enteteH + hauteurBloc2 > basPage) nouvellePage();
+            if (exo.grillePleine) hauteurBloc2 = hauteurPleine();
 
             page.items.push({
                 // L'IDENTIFIANT SUIT LE BANDEAU. L'aperçu accroche dessus un

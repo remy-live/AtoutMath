@@ -524,6 +524,11 @@ export function ouvrirFicheParcours(chemin) {
     // général ; `true` ou `false` est une décision prise sur CET exercice, et
     // elle l'emporte — c'est la règle partout ailleurs dans la fiche.
     const insecables = {};
+    // UN JEU À DÉCOUPER NE SE COUPE PAS. Il occupe la page entière : sa
+    // bannière restait seule en bas d'une page — titre, consigne, et rien
+    // dessous — pendant que le plateau partait sur la suivante en « (suite) ».
+    // Une page perdue par jeu, et un corrigé qu'on cherche.
+    papier.forEach(e => { if (unExemplaire(e)) insecables[e.stepId] = true; });
     const estInsecable = (id) => insecables[id] ?? insecEl.checked;
 
     // LES QUESTIONS RÉÉCRITES À LA MAIN, par étape et par rang.
@@ -1141,7 +1146,11 @@ export function ouvrirFicheParcours(chemin) {
                     // Rémy : « les paires de paires ne sont pas collées, il
                     // faut que cela fasse un bloc ». Une planche de cartes se
                     // découpe d'un trait de massicot, pas paire par paire.
-                    blocsColles: !!(e.grille && RENDUS[e.grille].blocsColles)
+                    blocsColles: !!(e.grille && RENDUS[e.grille].blocsColles),
+                    // Un jeu à découper : sa planche de solution prend la page
+                    // entière, et sa consigne n'a rien à y faire (voir
+                    // `aGrilles`).
+                    jeuUnique: unExemplaire(e)
                 };
             })
             .filter(x => x.questions.length || x.grilles.length);
@@ -1155,7 +1164,15 @@ export function ouvrirFicheParcours(chemin) {
         // rédaction écrite : leur solution est une figure, pas une ligne dans
         // une liste. La vue « solutions » est donc en deux temps — la liste des
         // réponses écrites, puis les blocs redessinés avec leur contenu.
-        const aGrilles = exos.filter(x => x.grilles.length);
+        // SUR LE CORRIGÉ, UN JEU À DÉCOUPER N'A PLUS DE CONSIGNE.
+        //
+        // « DÉCOUPE LES 8 GRENOUILLES et place-les comme sur la vignette
+        // Départ » n'apprend rien à qui relit la solution — et ces trois
+        // lignes suffisaient à pousser la planche de vignettes, qui prend la
+        // page entière, sur la page d'après : on obtenait une page de bandeau
+        // seul, puis le corrigé en « (suite) ».
+        const aGrilles = exos.filter(x => x.grilles.length)
+            .map(x => (x.jeuUnique ? { ...x, consigne: '' } : x));
 
         // L'APERÇU MONTRE LE DOCUMENT ENTIER, solutions comprises.
         //

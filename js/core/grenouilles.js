@@ -137,6 +137,20 @@ export function prochainCoupGrenouilles(etat, n) {
     return chemin && chemin.length ? chemin[0] : null;
 }
 
+/**
+ * LA PARTIE PARFAITE, POSITION PAR POSITION — pour la feuille de solutions.
+ * Le départ, puis le ruban après chaque coup. Voir `etapesBrahma`.
+ */
+export function etapesGrenouilles(n) {
+    let etat = departGrenouilles(n);
+    const etapes = [etat];
+    for (const c of (cheminLePlusCourt(etat, n) || [])) {
+        etat = jouerGrenouille(etat, c.de);
+        etapes.push(etat);
+    }
+    return etapes;
+}
+
 /** De quoi juger une partie : le compte, le minimum, et l'écart. */
 export function qualiteGrenouilles(n, joues) {
     const mini = minimumGrenouilles(n);

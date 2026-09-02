@@ -107,6 +107,27 @@ export function prochainCoupBrahma(etat, n, cible = 2) {
 }
 
 /**
+ * LA PARTIE PARFAITE, POSITION PAR POSITION — pour la feuille de solutions.
+ *
+ * Rémy : « pour les solutions des grenouilles, parking, hanoï, dessine des
+ * vignettes des étapes pour la correction. » Il faut donc, non pas le nombre
+ * de coups, mais la SUITE DES POSITIONS : celle du départ, puis celle après
+ * chaque coup. `coupsRestants` connaît déjà le chemin entier — on le rejoue.
+ *
+ * Le premier élément est le départ : la vignette « Départ » du corrigé, celle
+ * à laquelle on compare la sienne avant même d'avoir joué.
+ */
+export function etapesBrahma(n, cible = 2) {
+    let etat = departBrahma(n);
+    const etapes = [etat];
+    for (const c of coupsRestants(etat, n, cible)) {
+        etat = jouer(etat, c.de, c.vers);
+        etapes.push(etat);
+    }
+    return etapes;
+}
+
+/**
  * DE QUOI JUGER UNE PARTIE : le compte, le minimum, et surtout l'écart. Un
  * élève qui finit en dix-neuf coups au lieu de quinze n'a pas échoué — il a
  * fait quatre détours, et c'est un nombre qu'on peut regarder ensemble.

@@ -4,12 +4,12 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     departBrahma, coupValide, jouer, estGagneBrahma, coupsRestants,
-    prochainCoupBrahma, minimumBrahma, qualiteBrahma, TAILLES_BRAHMA
+    prochainCoupBrahma, minimumBrahma, qualiteBrahma, TAILLES_BRAHMA, etapesBrahma
 } from '../js/core/tourBrahma.js';
 import {
     departGrenouilles, arriveeGrenouilles, coupsPossibles, jouerGrenouille,
     estGagneGrenouilles, estBloque, cheminLePlusCourt, prochainCoupGrenouilles,
-    minimumGrenouilles, qualiteGrenouilles, TAILLES_GRENOUILLES
+    minimumGrenouilles, qualiteGrenouilles, TAILLES_GRENOUILLES, etapesGrenouilles
 } from '../js/core/grenouilles.js';
 import { tourBrahmaFicheGenerator as GB } from '../js/core/generators/tourBrahmaFiche.js';
 import { grenouillesFicheGenerator as GG } from '../js/core/generators/grenouillesFiche.js';
@@ -242,4 +242,40 @@ test('les générateurs de fiche portent la taille et le minimum', () => {
     // Un réglage farfelu retombe sur le jeu par défaut plutôt que de casser.
     assert.equal(GB.generate({ taille: 'douze' }, { rng: makeRng('x') }).meta.n, 4);
     assert.equal(GG.generate({ taille: 'douze' }, { rng: makeRng('x') }).meta.n, 4);
+});
+
+// --- LES VIGNETTES DE LA CORRECTION --------------------------------------------
+//
+// Rémy : « pour les solutions des grenouilles, parking, hanoï, dessine des
+// vignettes des étapes pour la correction. » La feuille dessine ce que ces
+// fonctions rendent : une position de départ, puis une par coup.
+
+test('la partie parfaite compte un état de plus que de coups, et finit gagnée', () => {
+    for (const t of Object.values(TAILLES_BRAHMA)) {
+        const etapes = etapesBrahma(t.n);
+        assert.equal(etapes.length, minimumBrahma(t.n) + 1, `${t.n} boules`);
+        assert.deepEqual(etapes[0], departBrahma(t.n), 'la première vignette est le départ');
+        assert.ok(estGagneBrahma(etapes[etapes.length - 1], t.n), 'la dernière est gagnée');
+    }
+    for (const t of Object.values(TAILLES_GRENOUILLES)) {
+        const etapes = etapesGrenouilles(t.n);
+        assert.equal(etapes.length, minimumGrenouilles(t.n) + 1, `${t.n} grenouilles`);
+        assert.deepEqual(etapes[0], departGrenouilles(t.n), 'la première vignette est le départ');
+        assert.deepEqual(etapes[etapes.length - 1], arriveeGrenouilles(t.n), 'la dernière est l\'arrivée');
+    }
+});
+
+test('chaque vignette se déduit de la précédente par UN coup légal', () => {
+    // Une correction dont deux vignettes voisines ne s'enchaînent pas est pire
+    // qu'une absence de correction : l'élève y cherche son erreur.
+    const etapes = etapesBrahma(4);
+    for (let i = 1; i < etapes.length; i++) {
+        const c = coupsRestants(etapes[i - 1], 4)[0];
+        assert.deepEqual(etapes[i], jouer(etapes[i - 1], c.de, c.vers), `coup ${i}`);
+    }
+    const rubans = etapesGrenouilles(3);
+    for (let i = 1; i < rubans.length; i++) {
+        const bouges = rubans[i].filter((v, j) => v !== rubans[i - 1][j]).length;
+        assert.equal(bouges, 2, `coup ${i} : une grenouille quitte sa case et en occupe une`);
+    }
 });

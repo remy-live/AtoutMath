@@ -5972,6 +5972,19 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .fx-gr-decoupe svg { width: 82%; height: 82%; }
 
+/* LA PLANCHE DE VIGNETTES D'UNE SOLUTION — Rémy : « pour les solutions des
+   grenouilles, parking, hanoï, dessine des vignettes des étapes pour la
+   correction. » Un titre en haut de page, puis un numéro de coup au-dessus de
+   chaque petit plateau. Le numéro est gris et petit : c'est un repère, le
+   sujet est la position. */
+.fx-pas-titre {
+    position: absolute; text-align: center; font-weight: 700; color: #2d3748;
+}
+.fx-pas-legende {
+    position: absolute; text-align: center; font-weight: 700; color: #6e7684;
+    line-height: 1;
+}
+
 /* --- Fiche « Le théorème de Thalès » ---------------------------------------
    La figure à gauche, l'énoncé et trois lignes de rédaction à droite. L'aperçu
    et le PDF lisent la même géométrie (geoThalesFiche) : le trait est un simple

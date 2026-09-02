@@ -26,6 +26,13 @@ import {
     COND_L as COND_L_Q, COND_H as COND_H_Q, PLAN_L as PLAN_L_Q, PLAN_H as PLAN_H_Q
 } from '../core/quadrilateres.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
+// LA SOLUTION DES TROIS CASSE-TÊTE, POSITION PAR POSITION. Rémy : « pour les
+// solutions des grenouilles, parking, hanoï, dessine des vignettes des étapes
+// pour la correction. » Les noyaux savent jouer la partie parfaite ; la
+// feuille n'a plus qu'à la dessiner.
+import { etapesBrahma } from '../core/tourBrahma.js';
+import { etapesGrenouilles } from '../core/grenouilles.js';
+import { etapesParking } from '../core/parking.js';
 // `relire` : relit un calcul récrit à la main et refait sa cascade — voir
 // `retoucheGrille` du rendu « priorites ».
 import { relire as relirePriorites } from '../core/priorites.js';
@@ -3450,6 +3457,255 @@ function miniTour(x, y, w, h, piles, n) {
     };
 }
 
+/**
+ * LA PLANCHE DE VIGNETTES D'UNE SOLUTION, ET COMMENT ELLE SE RANGE.
+ *
+ * Rémy : « pour les solutions des grenouilles, parking, hanoï, dessine des
+ * vignettes des étapes pour la correction. » La page de solutions redessinait
+ * jusqu'ici le plateau VIDE — le même que l'énoncé, à ceci près qu'il était
+ * annoncé comme un corrigé. Elle ne corrigeait donc rien.
+ *
+ * Une solution de casse-tête ne s'écrit pas, elle se regarde : quinze coups
+ * pour la tour, vingt-quatre pour les grenouilles, cent quatre pour le
+ * parking. Une vignette par position — le départ, puis l'état après chaque
+ * coup —, numérotée, et l'on suit du doigt.
+ *
+ * LE NOMBRE DE COLONNES NE SE DÉCRÈTE PAS, IL SE CHERCHE. Cent cinq plateaux
+ * de parking sur une page : à huit colonnes chaque vignette fait vingt
+ * millimètres, à quinze elle en fait onze. On essaie donc toutes les
+ * découpes et l'on garde CELLE QUI DONNE LA PLUS GRANDE VIGNETTE — c'est le
+ * seul critère qui compte pour un corrigé qu'on lit à un mètre.
+ *
+ * @param {Object} b        - la boîte du bloc, en millimètres
+ * @param {number} nb       - combien de positions à montrer
+ * @param {number} rapport  - largeur / hauteur d'un mini-plateau
+ * @param {Object} [opts]   - { hTitre } la bande du titre, en haut
+ */
+function planchePasAPas(b, nb, rapport, opts = {}) {
+    const hTitre = opts.hTitre === undefined ? 7 : opts.hTitre;
+    const dispoH = Math.max(1, b.h - hTitre);
+    let best = null;
+    for (let cols = 1; cols <= nb; cols++) {
+        const rows = Math.ceil(nb / cols);
+        const cw = b.w / cols, ch = dispoH / rows;
+        // La légende — « Départ », « 1 », « 2 »… — vit au-dessus de sa
+        // vignette : sans elle on ne sait plus à quel coup on en est.
+        const legende = Math.max(1.6, Math.min(3, ch * 0.2));
+        // UNE GOUTTIÈRE ENTRE DEUX VIGNETTES. À 94 % de leur case, cent cinq
+        // plateaux de parking se touchaient bord à bord et l'on ne savait plus
+        // où finissait l'un et où commençait l'autre.
+        const w = Math.min(cw * 0.86, (ch - legende * 1.5) * rapport);
+        if (!(w > 0.5)) continue;
+        const cand = { cols, rows, cw, ch, w, h: w / rapport, legende };
+        if (!best || cand.w > best.w) best = cand;
+    }
+    if (!best) return null;
+    /** Où tombe la vignette numéro `i` : sa légende, puis son plateau. */
+    const place = (i) => {
+        const c = i % best.cols, r = Math.floor(i / best.cols);
+        const x0 = b.x + c * best.cw, y0 = b.y + hTitre + r * best.ch;
+        return {
+            x: x0 + (best.cw - best.w) / 2,
+            y: y0 + best.legende * 1.4,
+            xLegende: x0 + best.cw / 2,
+            yLegende: y0 + best.legende
+        };
+    };
+    /** « Départ », puis le numéro du coup. */
+    const legendeDe = (i) => (i === 0 ? 'Départ' : String(i));
+    return { ...best, hTitre, place, legendeDe };
+}
+
+/**
+ * LE RAPPORT D'UNE VIGNETTE DE TOUR : trois conduits de large, et de quoi
+ * empiler toutes les boules. On l'écrit pour que la planche cherche ses
+ * colonnes sur la vraie forme du plateau, et non sur un carré.
+ */
+const rapportTour = (n) => 3 / (0.86 * sommeParts(n));
+
+/** Le titre de la planche : ce que le corrigé annonce en haut de page. */
+const titrePasAPas = (coups) => `La partie parfaite, coup par coup — ${coups} coups`;
+
+/** LA SOLUTION DE LA TOUR, en vignettes — aperçu. */
+function brahmaSolutionHtml(item, slot, k) {
+    const b = boiteDe(slot);
+    const n = item.meta.n;
+    const etapes = etapesBrahma(n);
+    const pl = planchePasAPas(b, etapes.length, rapportTour(n));
+    if (!pl) return '';
+    const T = (v) => (v * k).toFixed(2);
+    let html = `<div class="fx-pas-titre" style="left:${T(b.x)}px; top:${T(b.y)}px;
+        width:${T(b.w)}px; font-size:${T(4)}px">${titrePasAPas(etapes.length - 1)}</div>`;
+    etapes.forEach((piles, i) => {
+        const o = pl.place(i);
+        html += `<div class="fx-pas-legende" style="left:${T(o.x)}px;
+            top:${T(o.yLegende - pl.legende)}px; width:${T(pl.w)}px;
+            font-size:${T(pl.legende)}px">${pl.legendeDe(i)}</div>`;
+        const mini = miniTour(o.x, o.y, pl.w, pl.h, piles, n);
+        mini.cadres.forEach(c => {
+            html += `<div class="fx-tb-mini" style="left:${T(c.x)}px; top:${T(c.y)}px;
+                width:${T(c.w)}px; height:${T(c.h)}px"></div>`;
+        });
+        mini.boules.forEach(o2 => {
+            html += `<div class="fx-tb-miniboule" style="left:${T(o2.cx - o2.w / 2)}px;
+                top:${T(o2.cy - o2.hh / 2)}px; width:${T(o2.w)}px; height:${T(o2.hh)}px"></div>`;
+        });
+    });
+    return html;
+}
+
+/** LA SOLUTION DE LA TOUR, en vignettes — PDF. */
+function dessinerBrahmaSolutionPdf(doc, item, slot) {
+    const b = boiteDe(slot);
+    const n = item.meta.n;
+    const etapes = etapesBrahma(n);
+    const pl = planchePasAPas(b, etapes.length, rapportTour(n));
+    if (!pl) return;
+    const aplat = polycopieEnCouleur();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(4 / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(titrePasAPas(etapes.length - 1)), b.x + b.w / 2, b.y + 4, { align: 'center' });
+    etapes.forEach((piles, i) => {
+        const o = pl.place(i);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(4, pl.legende / 0.3528));
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(pl.legendeDe(i)), o.xLegende, o.yLegende, { align: 'center' });
+        const mini = miniTour(o.x, o.y, pl.w, pl.h, piles, n);
+        doc.setLineWidth(0.2);
+        doc.setDrawColor(...ENCRE.grille);
+        mini.cadres.forEach(c => doc.roundedRect(c.x, c.y, c.w, c.h, 0.5, 0.5));
+        mini.boules.forEach(o2 => {
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setFillColor(...(aplat ? ENCRE.donnee : [255, 255, 255]));
+            doc.setLineWidth(0.25);
+            doc.roundedRect(o2.cx - o2.w / 2, o2.cy - o2.hh / 2, o2.w, o2.hh,
+                o2.hh / 2, o2.hh / 2, 'FD');
+        });
+    });
+}
+
+/** LA SOLUTION DES GRENOUILLES, en vignettes — aperçu. */
+function grenouillesSolutionHtml(item, slot, k) {
+    const b = boiteDe(slot);
+    const n = item.meta.n, cases = n * 2 + 1;
+    const etapes = etapesGrenouilles(n);
+    const pl = planchePasAPas(b, etapes.length, cases);
+    if (!pl) return '';
+    const T = (v) => (v * k).toFixed(2);
+    const pad = pl.w / cases;
+    let html = `<div class="fx-pas-titre" style="left:${T(b.x)}px; top:${T(b.y)}px;
+        width:${T(b.w)}px; font-size:${T(4)}px">${titrePasAPas(etapes.length - 1)}</div>`;
+    etapes.forEach((ruban, i) => {
+        const o = pl.place(i);
+        html += `<div class="fx-pas-legende" style="left:${T(o.x)}px;
+            top:${T(o.yLegende - pl.legende)}px; width:${T(pl.w)}px;
+            font-size:${T(pl.legende)}px">${pl.legendeDe(i)}</div>`;
+        ruban.forEach((c, j) => {
+            html += `<div class="fx-gr-mini${c ? ` fx-gr-mini--${c}` : ''}"
+                style="left:${T(o.x + j * pad)}px; top:${T(o.y)}px;
+                width:${T(pad)}px; height:${T(pad)}px"></div>`;
+        });
+    });
+    return html;
+}
+
+/** LA SOLUTION DES GRENOUILLES, en vignettes — PDF. */
+function dessinerGrenouillesSolutionPdf(doc, item, slot) {
+    const b = boiteDe(slot);
+    const n = item.meta.n, cases = n * 2 + 1;
+    const etapes = etapesGrenouilles(n);
+    const pl = planchePasAPas(b, etapes.length, cases);
+    if (!pl) return;
+    const aplat = polycopieEnCouleur();
+    const pad = pl.w / cases;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(4 / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(titrePasAPas(etapes.length - 1)), b.x + b.w / 2, b.y + 4, { align: 'center' });
+    etapes.forEach((ruban, i) => {
+        const o = pl.place(i);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(4, pl.legende / 0.3528));
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(pl.legendeDe(i)), o.xLegende, o.yLegende, { align: 'center' });
+        ruban.forEach((c, j) => {
+            doc.setLineWidth(0.18);
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setFillColor(...(aplat && c
+                ? (c === 'V' ? [220, 240, 214] : [251, 220, 220]) : [255, 255, 255]));
+            doc.roundedRect(o.x + j * pad, o.y, pad, pad, 0.4, 0.4, 'FD');
+            if (!c) return;
+            // Trop petite pour une bête dessinée : l'INITIALE dit la couleur,
+            // et elle survit à la photocopieuse en noir et blanc.
+            doc.setFontSize(Math.max(3.5, pad * 1.5));
+            doc.setTextColor(...(c === 'V' ? [47, 107, 35] : [143, 31, 20]));
+            doc.text(c, o.x + (j + 0.5) * pad, o.y + pad * 0.74, { align: 'center' });
+        });
+    });
+}
+
+/** LA SOLUTION DU PARKING, en vignettes — aperçu. */
+function parkingSolutionHtml(item, slot, k) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const etapes = etapesParking(m.n);
+    const pl = planchePasAPas(b, etapes.length, 5 / m.hauteur);
+    if (!pl) return '';
+    const T = (v) => (v * k).toFixed(2);
+    const cote = pl.w / 5;
+    let html = `<div class="fx-pas-titre" style="left:${T(b.x)}px; top:${T(b.y)}px;
+        width:${T(b.w)}px; font-size:${T(4)}px">${titrePasAPas(etapes.length - 1)}</div>`;
+    etapes.forEach((etat, i) => {
+        const o = pl.place(i);
+        html += `<div class="fx-pas-legende" style="left:${T(o.x)}px;
+            top:${T(o.yLegende - pl.legende)}px; width:${T(pl.w)}px;
+            font-size:${T(pl.legende)}px">${pl.legendeDe(i)}</div>`;
+        m.cases.forEach((c, j) => {
+            const col = etat[j];
+            html += `<div class="fx-pk-mini${col ? ` fx-pk-mini--${col}` : ''}"
+                style="left:${T(o.x + c.x * cote)}px; top:${T(o.y + c.y * cote)}px;
+                width:${T(cote)}px; height:${T(cote)}px"></div>`;
+        });
+    });
+    return html;
+}
+
+/** LA SOLUTION DU PARKING, en vignettes — PDF. */
+function dessinerParkingSolutionPdf(doc, item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const etapes = etapesParking(m.n);
+    const pl = planchePasAPas(b, etapes.length, 5 / m.hauteur);
+    if (!pl) return;
+    const aplat = polycopieEnCouleur();
+    const cote = pl.w / 5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(4 / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(titrePasAPas(etapes.length - 1)), b.x + b.w / 2, b.y + 4, { align: 'center' });
+    etapes.forEach((etat, i) => {
+        const o = pl.place(i);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.max(3.5, pl.legende / 0.3528));
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(pl.legendeDe(i)), o.xLegende, o.yLegende, { align: 'center' });
+        m.cases.forEach((c, j) => {
+            const col = etat[j];
+            doc.setLineWidth(0.15);
+            doc.setDrawColor(...ENCRE.grille);
+            doc.setFillColor(...(aplat && col
+                ? (col === 'B' ? [214, 226, 250] : [251, 220, 220]) : [255, 255, 255]));
+            doc.rect(o.x + c.x * cote, o.y + c.y * cote, cote, cote, 'FD');
+            if (!col) return;
+            doc.setFontSize(Math.max(3.5, cote * 1.5));
+            doc.setTextColor(...(col === 'B' ? [28, 58, 138] : [143, 31, 20]));
+            doc.text(col, o.x + (c.x + 0.5) * cote, o.y + (c.y + 0.74) * cote, { align: 'center' });
+        });
+    });
+}
+
 function geoBrahma(item, slot) {
     const m = item.meta;
     const b = boiteDe(slot);
@@ -3517,7 +3773,8 @@ function vignettesBrahma(g) {
     ];
 }
 
-function brahmaPreviewHtml(item, slot, k) {
+function brahmaPreviewHtml(item, slot, k, solution) {
+    if (solution) return brahmaSolutionHtml(item, slot, k);
     const g = geoBrahma(item, slot);
     const T = (v) => (v * k).toFixed(2);
     let html = `<div class="fx-tb-socle" style="left:${T(g.socle.x)}px; top:${T(g.socle.y)}px;
@@ -3567,7 +3824,8 @@ function brahmaPreviewHtml(item, slot, k) {
     return html;
 }
 
-function dessinerBrahmaPdf(doc, item, slot) {
+function dessinerBrahmaPdf(doc, item, slot, solution) {
+    if (solution) return dessinerBrahmaSolutionPdf(doc, item, slot);
     const g = geoBrahma(item, slot);
     const aplat = polycopieEnCouleur();
 
@@ -3756,7 +4014,8 @@ const vignettesGrenouilles = (n) => [
     { titre: 'Arrivée', ruban: [...new Array(n).fill('R'), null, ...new Array(n).fill('V')] }
 ];
 
-function grenouillesPreviewHtml(item, slot, k) {
+function grenouillesPreviewHtml(item, slot, k, solution) {
+    if (solution) return grenouillesSolutionHtml(item, slot, k);
     const g = geoGrenouilles(item, slot);
     const T = (v) => (v * k).toFixed(2);
     let html = '';
@@ -3819,7 +4078,8 @@ function grenouilleSvgFiche(vert) {
         <circle cx="72" cy="24" r="5.5" fill="#1a202c"/></svg>`;
 }
 
-function dessinerGrenouillesPdf(doc, item, slot) {
+function dessinerGrenouillesPdf(doc, item, slot, solution) {
+    if (solution) return dessinerGrenouillesSolutionPdf(doc, item, slot);
     const g = geoGrenouilles(item, slot);
     const aplat = polycopieEnCouleur();
     const VERT = [[47, 107, 35], [108, 191, 74]];
@@ -3965,7 +4225,8 @@ function voitureSvgFiche(bleue) {
         <rect x="14" y="30" width="32" height="30" rx="7" fill="#4a5568"/></svg>`;
 }
 
-function parkingPreviewHtml(item, slot, k) {
+function parkingPreviewHtml(item, slot, k, solution) {
+    if (solution) return parkingSolutionHtml(item, slot, k);
     const g = geoParking(item, slot);
     const T = (v) => (v * k).toFixed(2);
     const P = g.plateau;
@@ -4035,7 +4296,8 @@ function dessinerVoiturePdf(doc, x, y, w, h, fonce, clair, aplat) {
     doc.roundedRect(x + w * 0.24, y + h * 0.3, w * 0.52, h * 0.3, w * 0.1, w * 0.1, 'FD');
 }
 
-function dessinerParkingPdf(doc, item, slot) {
+function dessinerParkingPdf(doc, item, slot, solution) {
+    if (solution) return dessinerParkingSolutionPdf(doc, item, slot);
     const g = geoParking(item, slot);
     const aplat = polycopieEnCouleur();
     const BLEU = [[28, 58, 138], [47, 95, 208]];

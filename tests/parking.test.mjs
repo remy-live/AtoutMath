@@ -5,7 +5,8 @@ import { makeRng } from '../js/core/ids.js';
 import {
     TAILLES_PARKING, plateauParking, departParking, arriveeParking,
     coupsPossiblesParking, jouerParking, estGagneParking, restantsParking,
-    prochainCoupParking, cheminLePlusCourtParking, minimumParking, qualiteParking
+    prochainCoupParking, cheminLePlusCourtParking, minimumParking, qualiteParking,
+    etapesParking
 } from '../js/core/parking.js';
 import { parkingFicheGenerator as GP } from '../js/core/generators/parkingFiche.js';
 import { exercices } from '../js/data/catalog.js';
@@ -229,4 +230,24 @@ test('le parking est rangé dans les défis, avec sa fiche et sa consigne', () =
     // La consigne doit parler de la place : c'est la seule chose que l'élève
     // ne trouvera pas tout seul.
     assert.ok(/place|range/i.test(e.instruction));
+});
+
+// --- LES VIGNETTES DE LA CORRECTION --------------------------------------------
+
+test('la partie parfaite du parking : une vignette de départ, puis une par coup', () => {
+    // Rémy : « pour les solutions des grenouilles, parking, hanoï, dessine des
+    // vignettes des étapes pour la correction. » La feuille dessine ceci.
+    for (const t of [TAILLES_PARKING.minuscule, TAILLES_PARKING.petit]) {
+        const p = plateauParking(t.n);
+        const etapes = etapesParking(t.n);
+        assert.equal(etapes.length, minimumParking(t.n) + 1, `${t.n} contre ${t.n}`);
+        assert.deepEqual(etapes[0], departParking(p), 'la première vignette est le départ');
+        assert.ok(estGagneParking(p, etapes[etapes.length - 1]), 'la dernière est gagnée');
+        // Et chaque vignette se déduit de la précédente par UNE voiture qui
+        // bouge : deux cases changent, jamais plus.
+        for (let i = 1; i < etapes.length; i++) {
+            const bouges = etapes[i].filter((v, j) => v !== etapes[i - 1][j]).length;
+            assert.equal(bouges, 2, `coup ${i}`);
+        }
+    }
 });
