@@ -393,29 +393,45 @@ export function genererOrganigramme({ rng, palier = 'noms' } = {}) {
  * objets différents, et ils ne doivent pas se confondre.
  */
 export const POSITIONS = {
-    quadrilatere: { x: 50, y: 10 },
-    parallelogramme: { x: 50, y: 50 },
-    rectangle: { x: 28, y: 90 },
-    losange: { x: 72, y: 90 },
-    carre: { x: 50, y: 130 }
+    quadrilatere: { x: 100, y: 13 },
+    parallelogramme: { x: 100, y: 55 },
+    rectangle: { x: 56, y: 97 },
+    losange: { x: 144, y: 97 },
+    carre: { x: 100, y: 139 }
 };
 
 /**
- * LE PLAN EST EN PORTRAIT, comme la fiche : huit rangées alternées, figures et
- * conditions. Cent de large, cent quarante de haut. C'est la seule forme où les
- * treize conditions ont chacune leur boîte sans qu'aucune n'en touche une autre
- * — et c'est celle qu'a choisie Rémy en la dessinant à la main.
+ * LE PLAN S'ÉTALE, ET C'EST CE QUI LE REND LISIBLE.
+ *
+ * Rémy : « je suis un peu déçu de l'organigramme, celui que je t'ai donné était
+ * plus joli. » Le plan faisait cent de large sur cent quarante de haut, donc
+ * plus haut que large — et il s'affiche dans une scène qui, elle, est toujours
+ * plus large que haute. Mesuré sur un écran d'ordinateur : le plan occupait
+ * 445 pixels de large dans une scène qui en offrait 1400. Mille pixels de blanc
+ * de chaque côté, pendant que « diagonales perpendiculaires » se rognait dans
+ * une case de soixante-dix.
+ *
+ * Ce n'est pas la taille des cases qu'il fallait discuter, c'est le FORMAT du
+ * plan : la largeur d'une case, en pixels, vaut sa largeur de plan divisée par
+ * la HAUTEUR du plan, multipliée par la hauteur offerte. Un plan haut et étroit
+ * ne peut donc pas avoir de grandes cases, quelle que soit la place disponible
+ * à côté. En l'étalant — deux cents de large — chaque case DOUBLE, et rien
+ * d'autre ne change : mêmes huit rangées, même ordre, mêmes chemins.
+ *
+ * SUR LE PAPIER AUSSI. La feuille est en A4 portrait, mais le plan y était
+ * dessiné dans un tiers de sa largeur, avec cinquante millimètres de blanc de
+ * chaque côté. Étalé, il prend la feuille et la liste se range dessous.
  */
-export const PLAN_L = 100;
-export const PLAN_H = 140;
+export const PLAN_L = 200;
+export const PLAN_H = 150;
 
-/** La case d'une figure : carrée, elle porte un dessin et un nom. */
-export const CASE_L = 15;
-export const CASE_H = 19;
+/** La case d'une figure : elle porte un dessin et un nom sous lui. */
+export const CASE_L = 30;
+export const CASE_H = 22;
 
 /** La case d'une condition : large et basse, elle porte une phrase. */
-export const COND_L = 16;
-export const COND_H = 13;
+export const COND_L = 34;
+export const COND_H = 14;
 
 /**
  * OÙ SE POSE CHAQUE CONDITION, dans l'ordre de `FLECHES`.
@@ -431,24 +447,24 @@ export const COND_H = 13;
  * l'extérieur.
  */
 export const POSITIONS_CONDITIONS = [
-    { x: 33, y: 30 },   // quadrilatère → parallélogramme : côtés opposés parallèles
-    { x: 67, y: 30 },   // quadrilatère → parallélogramme : côtés opposés égaux
-    { x: 50, y: 30 },   // quadrilatère → parallélogramme : diagonales, même milieu
-    { x: 14, y: 30 },   // raccourci : 3 ou 4 angles droits → rectangle
-    { x: 86, y: 30 },   // raccourci : 4 côtés égaux → losange
-    { x: 12, y: 70 },   // parallélogramme → rectangle : côtés consécutifs perpendiculaires
-    { x: 37, y: 70 },   // parallélogramme → rectangle : diagonales de même longueur
-    { x: 63, y: 70 },   // parallélogramme → losange : côtés consécutifs de même longueur
-    { x: 88, y: 70 },   // parallélogramme → losange : diagonales perpendiculaires
-    { x: 12, y: 110 },  // rectangle → carré : côtés consécutifs de même longueur
-    { x: 37, y: 110 },  // rectangle → carré : diagonales perpendiculaires
-    { x: 63, y: 110 },  // losange → carré : côtés consécutifs perpendiculaires
-    { x: 88, y: 110 }   // losange → carré : diagonales de même longueur
+    { x: 64, y: 34 },   // quadrilatère → parallélogramme : côtés opposés parallèles
+    { x: 136, y: 34 },  // quadrilatère → parallélogramme : côtés opposés égaux
+    { x: 100, y: 34 },  // quadrilatère → parallélogramme : diagonales, même milieu
+    { x: 28, y: 34 },   // raccourci : 3 ou 4 angles droits → rectangle
+    { x: 172, y: 34 },  // raccourci : 4 côtés égaux → losange
+    { x: 24, y: 76 },   // parallélogramme → rectangle : côtés consécutifs perpendiculaires
+    { x: 74, y: 76 },   // parallélogramme → rectangle : diagonales de même longueur
+    { x: 126, y: 76 },  // parallélogramme → losange : côtés consécutifs de même longueur
+    { x: 176, y: 76 },  // parallélogramme → losange : diagonales perpendiculaires
+    { x: 24, y: 118 },  // rectangle → carré : côtés consécutifs de même longueur
+    { x: 74, y: 118 },  // rectangle → carré : diagonales perpendiculaires
+    { x: 126, y: 118 }, // losange → carré : côtés consécutifs perpendiculaires
+    { x: 176, y: 118 }  // losange → carré : diagonales de même longueur
 ];
 
 /** Les couloirs latéraux, où passent les traits des raccourcis. */
-export const COULOIR_G = 3;
-export const COULOIR_D = 97;
+export const COULOIR_G = 4;
+export const COULOIR_D = 196;
 
 /** L'identifiant d'une condition : sa place dans `FLECHES`, et rien d'autre. */
 export const cleFleche = (f) => `${f.de}>${f.vers}#${FLECHES.indexOf(f)}`;
@@ -506,6 +522,31 @@ export function traceLien(depart, arrivee, { bord = 0 } = {}) {
     if (Math.abs(sortie.x - entree.x) < 0.5) return [sortie, entree];
     const milieu = (sortie.y + entree.y) / 2;
     return [sortie, { x: sortie.x, y: milieu }, { x: entree.x, y: milieu }, entree];
+}
+
+/**
+ * LA POINTE D'UNE FLÈCHE : où elle se pose, et vers où elle regarde.
+ *
+ * Rémy : « celui que je t'ai donné était plus joli. » Un organigramme dessiné
+ * avec des TRAITS n'est pas un organigramme — c'est un treillis. Ce qui se lit
+ * d'un coup d'œil sur sa fiche, c'est le SENS : on descend du général au
+ * particulier, et chaque trait le dit par sa pointe. Sans elles, il faut
+ * deviner qui descend vers qui, et l'on perd la seule chose que la figure
+ * enseigne.
+ *
+ * La pointe se pose au bout du dernier segment, et son sens est celui de ce
+ * segment — vertical presque partout, horizontal pour les deux raccourcis qui
+ * longent le bord. On rend un vecteur unitaire plutôt qu'un nom de direction :
+ * l'écran, l'aperçu et le PDF n'ont plus qu'à le multiplier par la taille
+ * qu'ils veulent donner à la pointe.
+ */
+export function pointeDe(polyligne) {
+    const n = polyligne.length;
+    if (n < 2) return null;
+    const fin = polyligne[n - 1], avant = polyligne[n - 2];
+    const dx = fin.x - avant.x, dy = fin.y - avant.y;
+    const d = Math.hypot(dx, dy) || 1;
+    return { x: fin.x, y: fin.y, ux: dx / d, uy: dy / d };
 }
 
 /** Les deux traits d'une condition : ce qui y entre, et ce qui en sort. */

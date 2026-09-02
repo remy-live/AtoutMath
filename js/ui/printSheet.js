@@ -23,7 +23,8 @@ import {
     traitsDeCondition as traitsQ, posEtiquette as posEtiquetteQ, cleFleche as cleFlecheQ,
     boiteCondition as boiteCondQ,
     CASE_L as CASE_L_Q, CASE_H as CASE_H_Q,
-    COND_L as COND_L_Q, COND_H as COND_H_Q, PLAN_L as PLAN_L_Q, PLAN_H as PLAN_H_Q
+    COND_L as COND_L_Q, COND_H as COND_H_Q, PLAN_L as PLAN_L_Q, PLAN_H as PLAN_H_Q,
+    pointeDe as pointeDeQ
 } from '../core/quadrilateres.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // LA SOLUTION DES TROIS CASSE-TÊTE, POSITION PAR POSITION. Rémy : « pour les
@@ -10536,9 +10537,6 @@ function geoOrganigramme(item, slot) {
     // Avec des vignettes, c'est la PLANCHE qui commande, et elle se calcule à
     // rebours du plan (voir `planVignettes`).
     const planche = m.vignettes ? planVignettes(b, m, RAPPORT_PLAN) : null;
-    const lignes = Math.ceil(m.liste.length / 2);
-    const hListe = planche ? planche.besoin : Math.min(b.h * 0.34, lignes * 4.6 + 4);
-    const hPlan = b.h - hListe - 2;
 
     // LE PLAN GARDE LES PROPORTIONS DE CELUI DU NOYAU, et c'est la règle du
     // chapitre : un élève qui a la feuille sous les yeux et l'exercice sur la
@@ -10553,9 +10551,19 @@ function geoOrganigramme(item, slot) {
     // cheveu plus grand que celui sur lequel la planche s'était accordée, donc
     // des cases un cheveu plus grandes que les cartes : invisible à l'œil, et
     // faux là où c'est gênant — une carte doit entrer dans sa case, exactement.
+    // LE PLAN PREND TOUTE LA LARGEUR DE LA FEUILLE, et la liste ce qui reste.
+    //
+    // Rémy : « je suis un peu déçu de l'organigramme. » Il tenait dans un tiers
+    // de la page — cinquante millimètres de blanc de chaque côté — parce que la
+    // largeur se déduisait de la hauteur laissée par la liste, elle-même
+    // dimensionnée en premier. On prend le problème dans l'autre sens : le plan
+    // s'étale sur la largeur (le format du noyau lui donne sa hauteur), et la
+    // liste occupe le bas de la feuille.
     const RAPPORT = PLAN_L_Q / PLAN_H_Q;        // largeur / hauteur
-    const wUtile = planche ? planche.wUtile : Math.min(b.w, hPlan * RAPPORT);
-    const hUtile = planche ? planche.hUtile : wUtile / RAPPORT;
+    const voulu = Math.min(b.w / RAPPORT, b.h * 0.74);
+    const wUtile = planche ? planche.wUtile : voulu * RAPPORT;
+    const hUtile = planche ? planche.hUtile : voulu;
+    const hListe = planche ? planche.besoin : Math.max(16, b.h - hUtile - 4);
     const x0 = b.x + (b.w - wUtile) / 2;
     const y0 = b.y;
 
@@ -11030,18 +11038,96 @@ const cheminsUniques = () => FLECHES_Q;
  * assez claire pour qu'on écrive dedans et assez marquée pour qu'on la lise en
  * couleur.
  */
+/**
+ * TROIS TEINTES QUI SE DISTINGUENT AUSSI EN NOIR ET BLANC.
+ *
+ * Rémy imprime « noir et blanc — la photocopieuse ». Les trois teintes avaient
+ * la même clarté : passées au gris, elles tombaient toutes sur le même
+ * 88 % — treize cases d'un gris uniforme, et la couleur qui dit la famille ne
+ * disait plus rien. On les échelonne donc en CLARTÉ autant qu'en teinte : le
+ * bleu des côtés très clair, le rouge des diagonales à mi-chemin, le mauve des
+ * raccourcis plus soutenu. En couleur on lit la teinte, en gris on lit la
+ * clarté, et les deux disent la même chose.
+ */
 /** Les mêmes trois teintes, en composantes — jsPDF ne lit pas le dièse. */
 const RVB_COND = {
-    cotes: [220, 230, 245],
-    diagonales: [250, 222, 219],
-    raccourci: [237, 220, 234]
+    cotes: [234, 242, 253],
+    diagonales: [247, 211, 205],
+    raccourci: [205, 191, 224]
 };
 
 const TEINTE_COND = {
-    cotes: '#dce6f5',
-    diagonales: '#fadedb',
-    raccourci: '#eddcea'
+    cotes: '#eaf2fd',
+    diagonales: '#f7d3cd',
+    raccourci: '#cdbfe0'
 };
+
+/**
+ * LA TAILLE DU NOM D'UNE FIGURE : celle qui tient dans sa case.
+ *
+ * « Parallélogramme » fait quinze lettres. Écrit à un sixième de la hauteur de
+ * la case, il en débordait des deux côtés et s'asseyait sur le trait du bas —
+ * ce qui se voyait d'autant plus que la case venait de grandir. La largeur
+ * commande : le nom le plus long décide, et les cinq cases gardent la même
+ * taille de police pour que l'une ne paraisse pas plus importante que l'autre.
+ */
+/**
+ * LA CLEF DES COULEURS, dans l'ordre où on la lit.
+ */
+const LEGENDE_COND = [
+    { famille: 'cotes', mot: 'les côtés' },
+    { famille: 'diagonales', mot: 'les diagonales' },
+    { famille: 'raccourci', mot: 'les raccourcis de 6ᵉ' }
+];
+
+/**
+ * L'ÉCART ENTRE DEUX LIGNES DE LA LISTE, BORNÉ.
+ *
+ * La liste occupe le bas de la feuille, et depuis que le plan s'étale ce bas
+ * est large : réparties dessus, cinq lignes se retrouvaient à dix-sept
+ * millimètres l'une de l'autre — une liste de neuf conditions qui ressemblait
+ * à un sommaire. Neuf millimètres suffisent pour deux lignes de texte, et le
+ * blanc qui reste est du blanc, pas de l'espacement.
+ */
+const pasListe = (g, lignes) => Math.min(g.listeH / lignes, 9);
+
+/** Le côté du carré blanc où l'élève écrit sa lettre. */
+const carreLettre = (g) => Math.min(g.condH * 0.62, g.condW * 0.28, 9);
+
+function policeNomFigure(caseW, caseH) {
+    const plusLong = Math.max(...FAMILLES_Q.map(f => f.nom.length));
+    // 0,52 cadratin par lettre : c'est la largeur moyenne d'une capitale et
+    // d'une bas-de-casse en Helvetica gras, mesurée sur les cinq noms.
+    return Math.min(caseH * 0.17, (caseW * 0.88) / (plusLong * 0.52));
+}
+
+/**
+ * LES TROIS POINTS D'UNE POINTE DE FLÈCHE, en millimètres sur la feuille.
+ *
+ * Rémy : « celui que je t'ai donné était plus joli. » Sa fiche est tracée à la
+ * flèche ; la nôtre l'était au trait. Un organigramme sans pointes ne dit plus
+ * dans quel sens il se lit — or c'est précisément ce qu'il enseigne : on
+ * DESCEND du général au particulier, et chaque flèche ajoute une condition.
+ *
+ * La pointe se pose au bout du trait et regarde dans le sens du dernier
+ * segment (voir `pointeDe` dans le noyau). Elle est calculée ici en
+ * millimètres pour que l'aperçu et le PDF la dessinent identique.
+ */
+function pointeMm(trait, g, taille) {
+    const q = pointeDeQ(trait);
+    if (!q) return null;
+    const bout = g.P({ x: q.x, y: q.y });
+    // Le vecteur du plan vers la feuille : les deux axes n'ont pas la même
+    // échelle depuis que le plan s'étale, et une pointe calculée sur l'un
+    // sortirait de travers sur l'autre.
+    const kx = g.wUtile / PLAN_L_Q, ky = g.hUtile / PLAN_H_Q;
+    const vx = q.ux * kx, vy = q.uy * ky;
+    const n = Math.hypot(vx, vy) || 1;
+    const ux = vx / n, uy = vy / n;
+    const base = { x: bout.x - ux * taille, y: bout.y - uy * taille };
+    const px = -uy * taille * 0.42, py = ux * taille * 0.42;
+    return [bout, { x: base.x + px, y: base.y + py }, { x: base.x - px, y: base.y - py }];
+}
 
 function organigrammePreviewHtml(item, slot, k, solution) {
     const g = geoOrganigramme(item, slot);
@@ -11051,12 +11137,18 @@ function organigrammePreviewHtml(item, slot, k, solution) {
     // DEUX TRAITS PAR CONDITION : ce qui y entre, ce qui en sort. Sur la fiche
     // de Rémy, la condition est une CASE sur le chemin — pas une étiquette
     // collée sur une flèche —, et c'est ce qui permet de la découper.
+    const tailleP = Math.max(1.6, g.wUtile * 0.011);
     cheminsUniques().forEach(f => {
         const t = traitsQ(f);
         [t.entrant, t.sortant].forEach(seg => {
             const pts = seg.map(q => g.P(q)).map(q => `${T(q.x)},${T(q.y)}`).join(' ');
-            out += `<polyline points="${pts}" fill="none" stroke="#8a90a0"
-                stroke-width="${(0.4 * k).toFixed(2)}"/>`;
+            out += `<polyline points="${pts}" fill="none" stroke="#5a6274"
+                stroke-width="${(0.45 * k).toFixed(2)}"/>`;
+            const tri = pointeMm(seg, g, tailleP);
+            if (tri) {
+                out += `<path d="M${T(tri[0].x)} ${T(tri[0].y)} L${T(tri[1].x)} ${T(tri[1].y)}
+                    L${T(tri[2].x)} ${T(tri[2].y)} Z" fill="#5a6274"/>`;
+            }
         });
     });
 
@@ -11065,20 +11157,24 @@ function organigrammePreviewHtml(item, slot, k, solution) {
         const x = c.x - g.caseW / 2, y = c.y - g.caseH / 2;
         out += `<rect x="${T(x)}" y="${T(y)}" width="${T(g.caseW)}" height="${T(g.caseH)}"
             rx="${T(1.4)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
-        // La figure, dans la moitié haute de la case.
-        const fw = g.caseW * 0.5, fh = g.caseH * 0.46;
+        // LA FIGURE RESTE CARRÉE. La case est devenue plus large que haute en
+        // même temps que le plan s'est étalé ; une figure calculée en
+        // pourcentages de la case en serait sortie aplatie — un carré qui n'est
+        // plus carré, sur la feuille qui enseigne les quadrilatères.
+        const fw = Math.min(g.caseW * 0.42, g.caseH * 0.52), fh = fw;
         const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
         const d = fam.figure.map((pt, i) =>
             `${i ? 'L' : 'M'}${T(fx + (pt[0] / 100) * fw)} ${T(fy + (pt[1] / 100) * fh)}`).join(' ') + ' Z';
         out += `<path d="${d}" fill="none" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
         const nom = (g.m.avecNoms || solution) ? fam.nom : '';
-        out += `<text x="${T(c.x)}" y="${T(y + g.caseH * 0.78)}" text-anchor="middle"
+        const corpsNom = policeNomFigure(g.caseW, g.caseH);
+        out += `<text x="${T(c.x)}" y="${T(y + g.caseH * 0.84)}" text-anchor="middle"
             dominant-baseline="central"
-            font-size="${T(g.caseW * 0.15)}" font-weight="700" fill="#1a202c"
+            font-size="${T(corpsNom)}" font-weight="700" fill="#1a202c"
             font-family="Helvetica, Arial, sans-serif">${nom}</text>`;
         if (!nom) {
-            out += `<line x1="${T(c.x - g.caseW * 0.34)}" y1="${T(y + g.caseH * 0.84)}"
-                x2="${T(c.x + g.caseW * 0.34)}" y2="${T(y + g.caseH * 0.84)}"
+            out += `<line x1="${T(c.x - g.caseW * 0.38)}" y1="${T(y + g.caseH * 0.9)}"
+                x2="${T(c.x + g.caseW * 0.38)}" y2="${T(y + g.caseH * 0.9)}"
                 stroke="#b0b6c5" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
         }
     });
@@ -11094,16 +11190,27 @@ function organigrammePreviewHtml(item, slot, k, solution) {
         // — il suffirait d'assortir les couleurs sans lire une seule phrase.
         const teinte = g.planche ? '#ffffff' : (TEINTE_COND[f.famille] || '#ffffff');
         out += `<rect x="${T(e.x - w / 2)}" y="${T(e.y - h / 2)}" width="${T(w)}" height="${T(h)}"
-            rx="${T(0.8)}" fill="${teinte}" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
-        if (solution) {
-            if (g.planche) {
+            rx="${T(1.6)}" fill="${teinte}" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
+        if (g.planche) {
+            if (solution) {
                 dessinerVignetteSvg(g.mesures[cleFlecheQ(f)], f.famille,
                     e.x - w / 2, e.y - h / 2, w, h, k, (html) => { out += html; });
-            } else {
-                out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
-                    dominant-baseline="central" font-size="${T(h * 0.7)}" font-weight="700"
-                    fill="#1a202c" font-family="Helvetica, Arial, sans-serif">${g.m.parCle[cleFlecheQ(f)]}</text>`;
             }
+            return;
+        }
+        // LA CASE OÙ S'ÉCRIT LA LETTRE, EN BLANC AU MILIEU DE LA TEINTE.
+        //
+        // La case de condition fait maintenant trois centimètres de large : sans
+        // repère, c'est un grand rectangle gris où l'on ne sait pas où poser sa
+        // lettre, et personne n'écrit au crayon sur un aplat. Un carré blanc au
+        // milieu dit les deux choses à la fois — écris ICI, et écris en blanc.
+        const cw = carreLettre(g);
+        out += `<rect x="${T(e.x - cw / 2)}" y="${T(e.y - cw / 2)}" width="${T(cw)}" height="${T(cw)}"
+            rx="${T(0.8)}" fill="#ffffff" stroke="#5a6274" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+        if (solution) {
+            out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
+                dominant-baseline="central" font-size="${T(cw * 0.72)}" font-weight="700"
+                fill="#1a202c" font-family="Helvetica, Arial, sans-serif">${g.m.parCle[cleFlecheQ(f)]}</text>`;
         }
     });
 
@@ -11116,16 +11223,35 @@ function organigrammePreviewHtml(item, slot, k, solution) {
             overflow:visible; pointer-events:none">${out}</svg>`;
     }
 
-    // La liste, sur deux colonnes.
+    // La liste, sur deux colonnes — et en entier, comme au PDF.
     const colW = g.b.w / 2;
     const lignes = Math.ceil(g.m.liste.length / 2);
+    const pas = pasListe(g, lignes);
     g.m.liste.forEach((l, i) => {
         const col = Math.floor(i / lignes), rang = i % lignes;
         const x = g.b.x + col * colW;
-        const y = g.listeY + rang * (g.listeH / lignes) + 2;
-        out += `<text x="${T(x)}" y="${T(y)}" font-size="${T(2.6)}" fill="#2d3748"
-            font-family="Helvetica, Arial, sans-serif"><tspan font-weight="700">${l.lettre}.</tspan>
-            <tspan> ${l.texte}</tspan></text>`;
+        const y = g.listeY + rang * pas + 3;
+        out += `<text x="${T(x)}" y="${T(y)}" font-size="${T(3)}" font-weight="700"
+            fill="#2d3748" font-family="Helvetica, Arial, sans-serif">${l.lettre}.</text>`;
+        couperEnLignes(l.texte, colW - 10, 3, (t, taille) => t.length * taille * 0.5)
+            .forEach((t, j) => {
+                out += `<text x="${T(x + 5.5)}" y="${T(y + j * 3.6)}" font-size="${T(3)}"
+                    fill="#2d3748" font-family="Helvetica, Arial, sans-serif">${echapperXml(t)}</text>`;
+            });
+    });
+
+    // LA CLEF DES COULEURS. C'est l'idée de Rémy — bleu les côtés, rouge les
+    // diagonales, mauve les deux raccourcis de sixième — et elle ne servait à
+    // rien tant que la feuille ne disait pas ce que les teintes veulent dire.
+    let lx = g.b.x;
+    const ly = g.listeY + lignes * pas + 4;
+    LEGENDE_COND.forEach(({ famille, mot }) => {
+        out += `<rect x="${T(lx)}" y="${T(ly - 2.4)}" width="${T(3.4)}" height="${T(3.4)}"
+            rx="${T(0.6)}" fill="${TEINTE_COND[famille]}" stroke="#5a6274"
+            stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+        out += `<text x="${T(lx + 4.6)}" y="${T(ly)}" font-size="${T(2.9)}" fill="#5a6274"
+            font-family="Helvetica, Arial, sans-serif">${echapperXml(mot)}</text>`;
+        lx += 6 + mot.length * 1.42;
     });
 
     return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
@@ -11245,8 +11371,10 @@ function plancheVignettesSvg(g, k) {
 function dessinerOrganigrammePdf(doc, item, slot, solution) {
     const g = geoOrganigramme(item, slot);
 
-    doc.setDrawColor(...ENCRE.gris);
-    doc.setLineWidth(0.4);
+    const tailleP = Math.max(1.6, g.wUtile * 0.011);
+    doc.setDrawColor(90, 98, 116);
+    doc.setFillColor(90, 98, 116);
+    doc.setLineWidth(0.45);
     cheminsUniques().forEach(f => {
         const t = traitsQ(f);
         [t.entrant, t.sortant].forEach(seg => {
@@ -11254,6 +11382,8 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
             for (let i = 1; i < pts.length; i++) {
                 doc.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
             }
+            const tri = pointeMm(seg, g, tailleP);
+            if (tri) doc.triangle(tri[0].x, tri[0].y, tri[1].x, tri[1].y, tri[2].x, tri[2].y, 'F');
         });
     });
 
@@ -11270,7 +11400,7 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         // hauteur avec une police plancher de 5 points, débordait dessous —
         // mesuré sur le premier PDF, « Parallélogramme » chevauchait le trait
         // qui descend vers la rangée suivante.
-        const fw = g.caseW * 0.5, fh = g.caseH * 0.46;
+        const fw = Math.min(g.caseW * 0.42, g.caseH * 0.52), fh = fw;
         const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
         const pts = fam.figure.map(pt => [fx + (pt[0] / 100) * fw, fy + (pt[1] / 100) * fh]);
         for (let i = 0; i < pts.length; i++) {
@@ -11279,14 +11409,14 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         }
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.max(4.2, Math.min(7.5, g.caseW * 0.42)));
+        doc.setFontSize(policeNomFigure(g.caseW, g.caseH) / 0.352778);
         doc.setTextColor(...ENCRE.texte);
         if (g.m.avecNoms || solution) {
-            doc.text(fam.nom, c.x, y + g.caseH * 0.78, { align: 'center', baseline: 'middle' });
+            doc.text(pourPdf(fam.nom), c.x, y + g.caseH * 0.84, { align: 'center', baseline: 'middle' });
         } else {
             doc.setDrawColor(...ENCRE.grille);
             doc.setLineWidth(0.3);
-            doc.line(c.x - g.caseW * 0.34, y + g.caseH * 0.84, c.x + g.caseW * 0.34, y + g.caseH * 0.84);
+            doc.line(c.x - g.caseW * 0.38, y + g.caseH * 0.9, c.x + g.caseW * 0.38, y + g.caseH * 0.9);
         }
     });
 
@@ -11314,10 +11444,16 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         doc.setLineWidth(0.3);
         const teinte = RVB_COND[f.famille] || [255, 255, 255];
         doc.setFillColor(...teinte);
-        doc.roundedRect(e.x - w / 2, e.y - h / 2, w, h, 0.8, 0.8, 'FD');
+        doc.roundedRect(e.x - w / 2, e.y - h / 2, w, h, 1.6, 1.6, 'FD');
+        // La case blanche où s'écrit la lettre — voir l'aperçu.
+        const cw = carreLettre(g);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(90, 98, 116);
+        doc.setLineWidth(0.25);
+        doc.roundedRect(e.x - cw / 2, e.y - cw / 2, cw, cw, 0.8, 0.8, 'FD');
         if (solution) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(Math.max(5, Math.min(11, h * 2.4)));
+            doc.setFontSize((cw * 0.72) / 0.352778);
             doc.setTextColor(...ENCRE.texte);
             doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
         }
@@ -11329,21 +11465,43 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         return;
     }
 
-    // La liste, sur deux colonnes.
+    // LA LISTE, EN ENTIER — et c'était un vrai défaut.
+    //
+    // On repliait le libellé à la largeur de la colonne… puis on n'imprimait
+    // que sa PREMIÈRE ligne. La feuille annonçait donc « Qui a ses côtés
+    // opposés », « Qui a deux côtés consécutifs de », « Qui a ses diagonales » :
+    // quatre conditions sur neuf s'arrêtaient au milieu d'une phrase, et
+    // l'exercice devenait indevinable. On écrit maintenant toutes les lignes.
     const colW = g.b.w / 2;
     const lignes = Math.ceil(g.m.liste.length / 2);
-    doc.setFontSize(7.4);
+    const pas = pasListe(g, lignes);
+    doc.setFontSize(8.4);
     doc.setTextColor(...ENCRE.texte);
     g.m.liste.forEach((l, i) => {
         const col = Math.floor(i / lignes), rang = i % lignes;
         const x = g.b.x + col * colW;
-        const y = g.listeY + rang * (g.listeH / lignes) + 2;
+        const y = g.listeY + rang * pas + 3;
         doc.setFont('helvetica', 'bold');
         doc.text(`${l.lettre}.`, x, y);
         doc.setFont('helvetica', 'normal');
-        const texte = doc.splitTextToSize(l.texte, colW - 8);
-        doc.text(texte[0], x + 4.5, y);
+        doc.splitTextToSize(pourPdf(l.texte), colW - 10)
+            .forEach((t, j) => doc.text(t, x + 5.5, y + j * 3.6));
     });
+
+    // La clef des couleurs — voir l'aperçu.
+    let lx = g.b.x;
+    const ly = g.listeY + lignes * pas + 4;
+    doc.setFontSize(8.2);
+    LEGENDE_COND.forEach(({ famille, mot }) => {
+        doc.setFillColor(...RVB_COND[famille]);
+        doc.setDrawColor(90, 98, 116);
+        doc.setLineWidth(0.25);
+        doc.roundedRect(lx, ly - 2.4, 3.4, 3.4, 0.6, 0.6, 'FD');
+        doc.setTextColor(...ENCRE.gris);
+        doc.text(pourPdf(mot), lx + 4.6, ly);
+        lx += 6 + doc.getTextWidth(pourPdf(mot));
+    });
+    doc.setTextColor(...ENCRE.texte);
     doc.setFont('helvetica', 'normal');
 }
 
@@ -12043,16 +12201,20 @@ export const RENDUS = {
         // se tire pas au sort. En mettre deux côte à côte donnerait deux fois la
         // même figure sur la même feuille. Ce qui change d'une copie à l'autre,
         // ce sont les lettres de la liste : deux voisins ne se recopient pas.
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1,
-        // DEBOUT, ET C'EST LA FORME DE LA FICHE DE RÉMY. Le plan fait 100 sur
-        // 140 — huit rangées empilées, du quadrilatère tout en haut au carré
-        // tout en bas — et la liste (ou la planche de vignettes) vient dessous.
-        // Le commentaire précédent parlait encore d'un organigramme couché à
-        // 1,75 : il datait d'avant la reprise de sa fiche, et laissait la
-        // feuille sortir en paysage, où le plan se tassait à 84 mm de large.
+        unique: true,
+        // LA FEUILLE ENTIÈRE, DEBOUT. Rémy : « je suis un peu déçu de
+        // l'organigramme, celui que je t'ai donné était plus joli. »
+        //
+        // Le bloc était déclaré à 1,3 fois sa largeur, et la mise en page lui
+        // donnait donc un carré de la moitié de la page ; le plan, plus haut
+        // que large, s'y tassait dans un tiers de la largeur — cinquante
+        // millimètres de blanc de chaque côté. Un organigramme qu'on colle dans
+        // le cahier de leçons se donne la page entière : le plan s'étale sur
+        // toute la largeur, la liste des conditions se range dessous.
         portrait: true,
-        proportions: { w: 1, h: 1.3 },
+        proportions: 'plein',
         titreAGauche: true
     },
 

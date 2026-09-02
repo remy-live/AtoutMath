@@ -36,7 +36,7 @@ import {
     familleDe, flecheDe, cleFleche, traitsDeCondition,
     boiteFigure, boiteCondition,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
-    genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe
+    genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe, pointeDe
 } from '../core/quadrilateres.js';
 import { ajusterAuRectangle } from '../core/dominos.js';
 
@@ -133,6 +133,33 @@ const placerBoite = (b, v) => ({
     haute: ((b.y2 - b.y1) / v.h) * 100
 });
 
+/**
+ * LES POINTES DE FLÈCHE, EN CARRÉS CSS.
+ *
+ * Rémy : « celui que je t'ai donné était plus joli. » Les traits n'avaient pas
+ * de pointe : on lisait un treillis, pas un organigramme, et le SENS de
+ * lecture — du général vers le particulier — se devinait au lieu de se voir.
+ *
+ * Elles ne se dessinent PAS dans le SVG des traits : celui-ci est étiré
+ * (`preserveAspectRatio="none"`), et une pointe y sortirait aplatie dans un
+ * sens et étirée dans l'autre. Un triangle de bordures CSS, posé en pourcentage
+ * du plan, garde sa forme quelle que soit la fenêtre.
+ */
+function pointesHtml(traits, v) {
+    return traits.map(t => {
+        const q = pointeDe(t);
+        if (!q) return '';
+        const r = placer(q, v);
+        // Les segments sont orthogonaux : quatre sens suffisent, et une classe
+        // par sens vaut mieux qu'une rotation — les bordures restent nettes.
+        const sens = Math.abs(q.uy) > Math.abs(q.ux)
+            ? (q.uy > 0 ? 'bas' : 'haut')
+            : (q.ux > 0 ? 'droite' : 'gauche');
+        return `<i class="qd-pointe qd-pointe--${sens}"
+            style="left:${r.gauche.toFixed(2)}%; top:${r.haut.toFixed(2)}%"></i>`;
+    }).join('');
+}
+
 /** Une polyligne du plan, en points « x,y » de pourcentage. */
 const traitEnPoints = (pts, v) => pts
     .map(q => { const r = placer(q, v); return `${r.gauche.toFixed(2)},${r.haut.toFixed(2)}`; })
@@ -202,9 +229,36 @@ class Organigramme extends BaseGame {
                    gaspillerait la moitié de la place dans l'un des deux cas. */
                 .qd-plan { position: relative; width: 100%; margin: 0 auto; }
                 .qd-fils { position: absolute; inset: 0; width: 100%; height: 100%; }
-                .qd-lien { stroke: var(--text-muted); stroke-width: 1.4; fill: none; opacity: .4; }
-                .qd-lien--ouvert { opacity: .85; stroke-dasharray: 3 3; stroke: var(--primary); }
+                /* LES TRAITS. Plus sombres et plus francs qu'avant : à 40 %
+                   d'opacité sur du gris clair, l'organigramme ressemblait à un
+                   filigrane. Rémy : « celui que je t'ai donné était plus
+                   joli » — sa fiche est tracée au feutre noir. */
+                .qd-lien { stroke: var(--text-muted); stroke-width: 1.6; fill: none; opacity: .75; }
+                .qd-lien--ouvert { opacity: .9; stroke-dasharray: 3 3; stroke: var(--primary); }
                 .qd-lien--fait { stroke: var(--success); opacity: 1; stroke-width: 2; }
+                /* LA POINTE DE LA FLÈCHE — un triangle de bordures, posé par sa
+                   pointe. Elle dit le SENS de lecture, qui est tout ce qu'un
+                   organigramme a de plus qu'un treillis. */
+                .qd-pointe {
+                    position: absolute; width: 0; height: 0; border: 5px solid transparent;
+                    color: var(--text-muted); opacity: .75; pointer-events: none;
+                }
+                .qd-pointe--bas {
+                    border-top: 7px solid currentColor; border-bottom-width: 0;
+                    transform: translate(-50%, -100%);
+                }
+                .qd-pointe--haut {
+                    border-bottom: 7px solid currentColor; border-top-width: 0;
+                    transform: translate(-50%, 0);
+                }
+                .qd-pointe--droite {
+                    border-left: 7px solid currentColor; border-right-width: 0;
+                    transform: translate(-100%, -50%);
+                }
+                .qd-pointe--gauche {
+                    border-right: 7px solid currentColor; border-left-width: 0;
+                    transform: translate(0, -50%);
+                }
 
                 /* --- Une case de l'organigramme --- */
                 /* POSÉE PAR SON COIN, plus par son centre : placerBoite rend
@@ -319,7 +373,14 @@ class Organigramme extends BaseGame {
                     overflow-wrap: normal; hyphens: none;
                     border: 1.5px solid var(--border); background: var(--bg-panel);
                     color: var(--text-main);
+                    box-shadow: 0 1px 2px rgba(20, 26, 40, .10);
                 }
+                /* LE TEXTE DANS SON PROPRE ÉLÉMENT : c'est LUI qu'on mesure.
+                   Un modèle de largeur ne remplacera jamais la police du
+                   navigateur, et c'est ce qui écrivait « diagonales
+                   rpendiculai » — le mot débordait des deux côtés d'une case
+                   qui le rognait en silence. Voir ajusterCartes(). */
+                .qd-cond-t { display: block; }
                 /* LA COULEUR DIT LA FAMILLE DE LA PROPRIÉTÉ, et c'est l'idée de
                    Rémy : bleu ce qui parle des CÔTÉS, rouge ce qui parle des
                    DIAGONALES, mauve les deux raccourcis qui descendent
@@ -584,6 +645,10 @@ class Organigramme extends BaseGame {
 
         let html = `<svg class="qd-fils" viewBox="0 0 100 100"
             preserveAspectRatio="none">${traits}</svg>`;
+        html += pointesHtml(montrees.flatMap(f => {
+            const t = traitsDeCondition(f);
+            return [t.entrant, t.sortant];
+        }), v);
 
         for (const fam of FAMILLES) {
             if (!visibles.includes(fam.id)) continue;
@@ -616,12 +681,13 @@ class Organigramme extends BaseGame {
                 ? `<div class="qd-cond qd-cond--${f.famille} qd-cond--posee"
                         style="${style}; font-size:clamp(5px, ${pol.cqw}cqw, 15px)"
                         data-donnee="${enAttribut(texte)}" title="${enAttribut(texte)}"
-                        >${pol.lignes.map(enAttribut).join('<br>')}</div>`
+                        ><span class="qd-cond-t">${pol.lignes.map(enAttribut).join('<br>')}</span></div>`
                 : `<div class="qd-cond qd-cond--vide" style="${style}"
                         data-fente="${enAttribut(cle)}" data-depose="1">?</div>`;
         }
 
         this.planEl.innerHTML = html;
+        this.ajusterCartes();
         this.planEl.querySelectorAll('[data-donnee]').forEach(el => {
             el.onclick = () => this.note(el.dataset.donnee);
         });
@@ -733,6 +799,10 @@ class Organigramme extends BaseGame {
         }).join('');
         let html = `<svg class="qd-fils" viewBox="0 0 100 100"
             preserveAspectRatio="none">${traits}</svg>`;
+        html += pointesHtml(FLECHES.flatMap(f => {
+            const t = traitsDeCondition(f);
+            return [t.entrant, t.sortant];
+        }), v);
 
         for (const fam of FAMILLES) {
             const b = placerBoite(boiteFigure(fam.id), v);
@@ -766,10 +836,11 @@ class Organigramme extends BaseGame {
                 style="left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%;
                     font-size:clamp(4px, ${p.cqw}cqw, 14px)"
                 title="${enAttribut(f.ajoute)}"
-                >${p.lignes.map(enAttribut).join('<br>')}</div>`;
+                ><span class="qd-cond-t">${p.lignes.map(enAttribut).join('<br>')}</span></div>`;
         }
 
         this.planEl.innerHTML = html;
+        this.ajusterCartes();
 
         const restantes = org.cartes.filter(c => !Object.values(this.poses).some(p => p.id === c.id));
         this.cartesEl.innerHTML = restantes.map(c =>
@@ -800,6 +871,36 @@ class Organigramme extends BaseGame {
      * borne à la place disponible — au plus la largeur de la scène, au plus sa
      * hauteur. Les cases occupent alors tout ce qu'on peut leur donner.
      */
+    /**
+     * AUCUNE CARTE NE DÉBORDE DE SA CASE — mesuré, pas estimé.
+     *
+     * `policeCondition` choisit une taille avec le modèle de largeur du noyau,
+     * celui de la planche à découper du PDF. Il est calibré sur l'Helvetica de
+     * jsPDF ; à l'écran la carte est écrite en GRAS dans la police d'interface,
+     * plus large. L'écart est petit — quelques pour cent — et suffisait à faire
+     * dépasser « perpendiculaires », le mot le plus long du chapitre, qui se
+     * rognait alors des DEUX côtés : « rpendiculai ».
+     *
+     * On garde le modèle pour COUPER les lignes — c'est lui qui fait que la
+     * carte de l'écran et celle du papier se coupent aux mêmes endroits — et
+     * l'on demande ensuite au navigateur si ça tient. Tant que non, on descend
+     * d'un cran. Deux ou trois tours suffisent, et rien n'est plus à calibrer.
+     */
+    ajusterCartes() {
+        this.planEl.querySelectorAll('.qd-cond').forEach(el => {
+            const t = el.querySelector('.qd-cond-t');
+            if (!t) return;
+            const tient = () => t.scrollWidth <= el.clientWidth - 3
+                && t.scrollHeight <= el.clientHeight - 2;
+            if (tient()) return;
+            let taille = parseFloat(getComputedStyle(el).fontSize) || 11;
+            for (let i = 0; i < 16 && !tient() && taille > 5; i++) {
+                taille = Math.max(5, taille - Math.max(0.4, taille * 0.07));
+                el.style.fontSize = `${taille}px`;
+            }
+        });
+    }
+
     cadrer(v) {
         this.planEl.style.setProperty('--zoom', v.zoom.toFixed(3));
         this.planEl.style.aspectRatio = v.rapport.toFixed(4);
