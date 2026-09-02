@@ -590,6 +590,18 @@ const BASE = {
         descriptor: 'Conclure à coup sûr à partir de nombres qui comptent : savoir quand on sait, et quand on devine.',
         lesson: 'Chaque chiffre est une petite équation : il annonce combien de mines se cachent parmi ses huit voisines. Deux cas suffisent à tout démarrer. Si les drapeaux déjà posés atteignent le chiffre, toutes ses autres voisines sont sûres. S\'il reste autant de cases cachées que de mines à trouver, ce sont toutes des mines. Le troisième cas est le plus puissant : quand les cases d\'un chiffre sont toutes comprises dans celles d\'un autre, on soustrait — 2 mines ici, 1 déjà comptée là, il en reste 1 pour la différence.'
     },
+    'num.logique.colorier': {
+        label: 'Colorier par les nombres',
+        // Rangée avec le démineur : c'est la même compétence, et elle n'a pas
+        // d'autre nom que celui-là — conclure à coup sûr, et savoir qu'on le
+        // fait à coup sûr. Ce qui change est la forme du renseignement : un
+        // compte de voisines là-bas, une longueur de bloc ici.
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Déduire des cases certaines à partir de longueurs de blocs, sans jamais deviner.',
+        lesson: 'Les nombres d\'une ligne donnent la longueur de ses BLOCS coloriés, dans l\'ordre, séparés d\'au moins une case blanche. On ne devine jamais : on cherche ce qui est CERTAIN. LE RECOUVREMENT EST LA TECHNIQUE DE DÉPART, et c\'est un calcul. Un bloc large ne peut pas beaucoup bouger : dans une ligne de 5, un bloc de 4 ne peut se poser que de deux façons, et les deux couvrent les mêmes 3 cases du milieu. La formule tient en une ligne : bloc + bloc − largeur. Un 4 sur 5 donne 3 cases sûres, un 3 sur 5 en donne 1, un 2 sur 5 n\'en donne aucune — il faudra croiser avec une colonne. DEUX AUTRES CAS SE VOIENT D\'UN COUP : si la somme des blocs vaut la largeur, la ligne est pleine ; si l\'indice est 0, elle est vide, et c\'est souvent le renseignement le plus utile de la grille. BARRE CE QUE TU SAIS BLANC. Une croix n\'est pas une décoration : elle interdit des placements, donc elle fait avancer la déduction exactement comme une case coloriée. Un joueur qui ne barre pas refait dix fois le même raisonnement. ET QUAND ÇA COINCE, on croise : une ligne à moitié faite renseigne les colonnes qu\'elle traverse, et celles-ci renseignent les autres lignes.'
+    },
     'geo.para-perp': {
         label: 'Parallèles et perpendiculaires (rédiger)',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

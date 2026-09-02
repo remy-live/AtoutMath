@@ -114,6 +114,9 @@ export const CODES_EXERCICES = {
     'calc-2048':                  'XA',   // 2048
     'logi-dominos':               'DM',   // Les Dominos
     'logi-demineur':              'DE',   // Le Démineur
+    // « CN » et « CB » sont pris (le Chantier des Blocs, le Compte est Bon) :
+    // on garde « BL », comme les BLocs qu'on colorie.
+    'logi-colorier-nombres':      'BL',   // colorier les BLocs
     'calc-math-crush':            'CU',   // Math Crush
     'num-problemes':              'HP',   // Histoires en Pagaille
     'num-proportion-tableau':     'TB',   // Tableau de Proportionnalité

@@ -2048,6 +2048,49 @@ export const calculExercises = [
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Une pièce porte une question à droite et la réponse d'une AUTRE question à gauche. On lit le bout ouvert de la chaîne, on calcule dans sa tête, et on cherche ce résultat à gauche d'une pièce de la réserve — il n'y en a qu'une, car deux questions n'ont jamais la même réponse. Quand la dernière pièce porte ARRIVÉE et que la réserve est vide, tout est juste : personne n'a besoin de te le dire."
     },
+    // --- Colorier par les nombres ---
+    // Rémy : « on pourrait faire un paint by numbers où on donne le nombre de
+    // cases à colorier. Il faut commencer par hyper simple. »
+    //
+    // CE N'EST PAS UN COLORIAGE, c'est une déduction — et le calcul du
+    // RECOUVREMENT en est le cœur : un bloc de 4 dans une ligne de 5 couvre les
+    // mêmes 3 cases où qu'on le pose, et 4 + 4 − 5 = 3 le dit. L'élève ne
+    // devine jamais ; il calcule ce qu'il sait déjà.
+    //
+    // TOUTE GRILLE PROPOSÉE SE TERMINE PAR DÉDUCTION SEULE, vérifié à la
+    // génération. Un nonogramme tiré au hasard réclame très souvent un
+    // essai-erreur à quinze coups de profondeur : un élève qui bloque là-dessus
+    // ne bloque pas sur une notion, il bloque sur une grille mal faite.
+    {
+        id: 'logi-colorier-nombres', status: STATUS.TEST,
+        title: 'Colorier par les Nombres',
+        cree: '2026-09-02',
+        activityId: 'colorier-nombres', skills: ['num.logique.colorier'],
+        sansRevision: true,
+        params: { palier: 'decouverte' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'Grille', default: 'decouverte',
+                aide: 'On commence par le plus simple qui soit : cinq sur cinq, et UN SEUL '
+                    + 'bloc par ligne et par colonne — il n\'y a qu\'à compter. Le palier '
+                    + 'suivant coupe les blocs en deux, et il faut alors croiser les lignes '
+                    + 'et les colonnes. Les grilles de dix dessinent quelque chose, ce qui '
+                    + 'donne une raison de finir et un moyen de repérer ses fautes.',
+                options: [
+                    { value: 'decouverte', label: 'Cinq sur cinq, un seul bloc par ligne' },
+                    { value: 'simple', label: 'Cinq sur cinq, plusieurs blocs' },
+                    { value: 'image', label: 'Dix sur dix : ça dessine quelque chose' }
+                ]
+            }
+        ],
+        motsClefs: ['colorier', 'paint by numbers', 'nonogramme', 'picross', 'logimage',
+            'grille', 'blocs', 'déduction', 'coloriage', 'logique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Les nombres écrits devant chaque ligne et au-dessus de chaque colonne donnent la longueur des BLOCS coloriés, dans l'ordre, séparés d'au moins une case blanche. « 2 1 » veut dire : un bloc de deux, puis au moins une blanche, puis un bloc d'un. ON NE DEVINE JAMAIS, on cherche ce qui est CERTAIN. Commence par les grands nombres : un bloc large ne peut pas beaucoup bouger. Dans une ligne de 5, un bloc de 4 ne se pose que de deux façons, et les deux couvrent les mêmes 3 cases du milieu — c'est le RECOUVREMENT, et il se calcule : bloc + bloc − largeur. Un 4 sur 5 donne 3 cases sûres, un 3 en donne 1, un 2 n'en donne aucune. Regarde aussi les cas évidents : si la somme des blocs vaut la largeur, la ligne est pleine ; si l'indice est 0, elle est entièrement blanche — et c'est souvent le renseignement le plus utile de la grille. BARRE LES CASES QUE TU SAIS BLANCHES : une croix vaut autant qu'une case coloriée, parce qu'elle interdit des placements et fait avancer la déduction. Enfin, quand une ligne ne dit plus rien, croise : ce que tu viens de poser renseigne les colonnes qu'elle traverse."
+    },
     {
         id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
         cree: '2026-08-07',

@@ -622,6 +622,8 @@ const legacy = [
     ['escadrille', 'Escadrille des Tables', 'escadrille', 'engineEscadrille'],
     ['nova', 'Nova', 'nova', 'engineNova'],
     ['demineur', 'Le Démineur', 'demineur', 'engineDemineur', 'grille', 3],
+    ['colorier-nombres', 'Colorier par les nombres', 'colorierNombres',
+        'engineColorierNombres', 'grille', 3],
     ['chantier', 'Le Chantier des Blocs', 'chantier', 'engineChantier', 'chantier', 4],
     ['motscaches', 'Mots Cachés Mathématiques', 'motsCaches', 'engineMotsCaches', 'mot', 12],
     ['anagrammes', 'Anagrammes du vocabulaire', 'anagrammes', 'engineAnagrammes', 'mot'],
