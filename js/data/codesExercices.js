@@ -134,6 +134,10 @@ export const CODES_EXERCICES = {
     // lettres : on garde « TF », comme TransFormation.
     'geo-quadri-morph':           'TF',   // Le quadrilatère qui se TransForme
     'geo-thales-redaction':       'TZ',   // ThalÈs : la rédaction
+    // « TG » aurait été plus parlant, mais il est déjà pris par la Flèche qui
+    // Glisse : on garde « HY », comme HYpoténuse — c'est le côté par lequel on
+    // commence, et celui qui donne son nom au reste.
+    'geo-trigo-cotes':            'HY',   // HYpoténuse, opposé, adjacent
     'geo-cercle-vocabulaire':     'VC',   // Le Vocabulaire du Cercle
     'geo-notation':               'SD',   // Segment, Droite ou Demi-droite ?
     'geo-redaction':              'RJ',   // Rédiger une Justification

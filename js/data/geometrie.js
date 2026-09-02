@@ -1235,5 +1235,46 @@ export const geometrieExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "On ne cherche pas seulement le nombre, on écrit la DÉMONSTRATION, en trois parties — c'est elle qui rapporte les points sur une copie. JE SAIS QUE : ce qui vient de l'énoncé, et rien d'autre. Thalès n'exige que deux choses : deux droites sécantes en A, et deux droites parallèles. Une hypothèse vraie mais inutile n'a pas sa place. OR : ce qui vient du cours. Tu écris toi-même l'égalité des trois rapports, chaque petit segment sur le segment ENTIER qui le contient — AD avec AC, jamais avec DC. DONC : ce que tu en déduis. On isole l'inconnue par le produit en croix, on pose le calcul, on conclut avec l'unité. La ligne où l'on remplace par les valeurs ne se recopie pas : c'est un geste de tête, pas une ligne de copie. La calculatrice est autorisée."
+    },
+
+    // --- Trigonométrie : repérer les côtés ---
+    // Rémy : « On va commencer un exercice sur la trigonométrie où il faut
+    // repérer le côté adjacent, l'opposé et l'hypoténuse ».
+    //
+    // « COMMENCER » EST LE MOT. Avant sinus, cosinus et tangente, avant la
+    // moindre formule, il y a un travail de LECTURE : sur cette figure-là,
+    // quel côté porte quel nom. Un élève qui se trompe de côté applique une
+    // formule juste à des longueurs fausses, et rien dans son calcul ne le
+    // prévient — la calculatrice rend un nombre, l'angle est plausible, la
+    // copie est fausse. C'est pour cela que ce repérage mérite un exercice à
+    // lui seul, et pas trois lignes d'introduction au chapitre suivant.
+    {
+        id: 'geo-trigo-cotes', status: STATUS.TEST,
+        title: 'Hypoténuse, Opposé, Adjacent',
+        cree: '2026-09-02',
+        activityId: 'trigo-cotes',
+        // PAS DE RÉVISION ESPACÉE : ce n'est pas un fait à retenir, c'est une
+        // lecture à refaire à chaque figure. On le reverra dans le chapitre
+        // qui s'en sert, pas dans une pile de rappels.
+        sansRevision: true,
+        skills: ['geo.trigo.cotes'],
+        params: { tourner: true },
+        paramSchema: [
+            {
+                id: 'tourner', type: 'boolean', label: 'Faire tourner la figure', default: true,
+                aide: 'Un triangle toujours posé l\'angle droit en bas à gauche enseigne une '
+                    + 'règle fausse — « adjacent = horizontal » — qui s\'effondre au premier '
+                    + 'contrôle. On peut la figer le temps de la découverte, mais il faut la '
+                    + 'faire tourner ensuite : c\'est là qu\'on vérifie que l\'élève lit la '
+                    + 'figure et ne récite pas une position.'
+            }
+        ],
+        motsClefs: ['trigonométrie', 'trigo', 'hypoténuse', 'opposé', 'adjacent',
+            'triangle rectangle', 'côté', 'sinus', 'cosinus', 'tangente', 'sohcahtoa'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Trois côtés, trois noms, et un ordre pour les trouver. COMMENCE PAR L'HYPOTÉNUSE : c'est le côté en face de l'ANGLE DROIT, le plus long, et le seul qui ne change jamais de nom quel que soit l'angle qu'on regarde — c'est ton point d'appui. Les deux autres, eux, DÉPENDENT DE L'ANGLE marqué sur la figure. Le côté OPPOSÉ est celui qui ne le touche pas, celui d'en face. Le côté ADJACENT est celui qui le touche ET qui touche aussi l'angle droit. ATTENTION, C'EST LÀ QU'ON SE TROMPE : l'hypoténuse touche l'angle elle aussi, et « adjacent » veut dire « à côté de » — beaucoup la donnent donc pour adjacente. Un seul mot les sépare : l'adjacent touche AUSSI l'angle droit. Et la figure TOURNE d'une question à l'autre : « adjacent » n'est pas « horizontal ». Si tu apprends une position au lieu d'une définition, le premier triangle penché du contrôle te le fera payer."
     }
 ];

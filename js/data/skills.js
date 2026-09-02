@@ -622,6 +622,18 @@ const BASE = {
         descriptor: 'Identifier l\'hypoténuse, écrire l\'égalité de Pythagore et calculer une longueur dans un triangle rectangle.',
         lesson: 'Tout commence par l\'ANGLE DROIT : le côté d\'en face est l\'hypoténuse, toujours le plus long. Le théorème dit une seule chose : son carré vaut la somme des carrés des deux autres côtés. Pour CALCULER, deux cas et pas trois : on cherche l\'hypoténuse, on ADDITIONNE les deux carrés ; on cherche un côté de l\'angle droit, on SOUSTRAIT du carré de l\'hypoténuse. Et la dernière ligne est celle qu\'on oublie : le calcul donne un CARRÉ, il faut la racine carrée pour revenir à la longueur. Un résultat de 100 n\'est pas une longueur de 100 cm — c\'est 10 cm.'
     },
+    'geo.trigo.cotes': {
+        label: 'Repérer les côtés d\'un triangle rectangle',
+        // Rangé avec Pythagore : c'est la même figure, et la même première
+        // lecture — l'angle droit, puis le côté d'en face. Ce qui change, c'est
+        // qu'ici les deux autres côtés prennent un nom qui DÉPEND de l'angle
+        // qu'on regarde, et c'est précisément là que tout se joue.
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['geo.pythagore'],
+        descriptor: 'Nommer l\'hypoténuse, le côté opposé et le côté adjacent à un angle aigu donné, sur une figure quelconque.',
+        lesson: 'AVANT TOUTE FORMULE, il faut savoir nommer. Trois côtés, trois noms, et un seul ordre pour les trouver. L\'HYPOTÉNUSE D\'ABORD : c\'est le côté en face de l\'ANGLE DROIT, le plus long, et surtout le seul qui ne change JAMAIS de nom — quel que soit l\'angle qu\'on considère, c\'est toujours le même. C\'est pour cela qu\'on la cherche en premier : c\'est le point d\'appui. LES DEUX AUTRES DÉPENDENT DE L\'ANGLE. On choisit un angle aigu — jamais l\'angle droit, la question n\'aurait pas de sens. Le CÔTÉ OPPOSÉ est celui qui ne le touche pas, celui d\'en face. Le CÔTÉ ADJACENT est celui qui le touche ET qui touche aussi l\'angle droit. LA FAUTE DU CHAPITRE EST LÀ : l\'hypoténuse touche l\'angle elle aussi, et « adjacent » veut dire « à côté de » — alors on la donne pour adjacente. Ce qui les sépare tient en un mot : l\'adjacent touche AUSSI l\'angle droit, l\'hypoténuse est en face de lui. Et changer d\'angle ÉCHANGE l\'opposé et l\'adjacent, sans toucher à l\'hypoténuse : c\'est la même figure, lue depuis l\'autre coin. DERNIER PIÈGE, celui des figures : « adjacent » n\'est pas « horizontal » et « opposé » n\'est pas « vertical ». Un triangle toujours dessiné dans le même sens fabrique cette règle fausse, qui s\'effondre au premier contrôle où la figure est penchée.'
+    },
     'geo.figures.coder': {
         label: 'Coder un quadrilatère',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

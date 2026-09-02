@@ -701,6 +701,10 @@ const legacy = [
     ['tableau-croise', 'Tableau à double entrée', 'tableauCroise', 'engineTableauCroise', 'tableau', 4],
     ['sans-croiser', 'Relier sans croiser', 'sansCroiser', 'engineSansCroiser', 'figure', 5],
     ['quadrilateres', 'L\'organigramme des quadrilatères', 'quadrilateres', 'engineQuadrilateres', 'organigramme', 3],
+    // TROIS CÔTÉS PAR TRIANGLE, ET DONC UNE « QUESTION » PAR TRIANGLE. Repérer
+    // l'hypoténuse seule n'apprend rien : c'est l'enchaînement des trois — le
+    // repère fixe, puis les deux qui dépendent de l'angle — qui fait la leçon.
+    ['trigo-cotes', 'Trigonométrie : repérer les côtés', 'trigonometrie', 'engineTrigonometrie', 'triangle', 6],
     ['quadri-morph', 'Le quadrilatère qui se transforme', 'quadriMorph', 'engineQuadriMorph', 'propriété', 6],
     // LA RÉDACTION SE COMPTE EN DÉMONSTRATIONS. Une « question » y est la copie
     // entière — hypothèses, théorème, calcul — et rien ne se valide avant la

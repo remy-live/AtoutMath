@@ -191,13 +191,23 @@ class PointAPoint extends BaseGame {
         this.sceneEl.style.width = `${cote}px`;
         this.sceneEl.style.height = `${cote}px`;
         this.sceneEl.querySelectorAll('.pp-point').forEach(el => {
-            // DES CERCLES PLUS PETITS, demandé deux fois : « fais des cercles
+            // DES CERCLES PLUS PETITS, DEMANDÉ TROIS FOIS. « Fais des cercles
             // plus petits » sur ordinateur, « sur téléphone les ronds sont
-            // gros ». Un point à point se joue sur des POINTS ; à 45 pixels de
-            // diamètre, le tracé disparaissait sous ses propres pastilles. Le
-            // plancher descend aussi : c'est lui qui décidait sur un écran
-            // étroit. La zone qu'on touche, elle, reste large (voir le CSS).
-            const r = Math.max(6, Math.round(cote * 0.022));
+            // gros », et encore une fois après le premier rétrécissement — ce
+            // qui veut dire que les deux premiers n'étaient pas assez francs.
+            //
+            // Un point à point se joue sur des POINTS. Le rond n'est pas la
+            // cible qu'on vise — le bouton fait 34 pixels et ne bouge pas —,
+            // c'est seulement la marque qui dit « ici ». Elle doit donc être
+            // aussi petite qu'un point de crayon, sans quoi le tracé disparaît
+            // sous ses propres pastilles et l'image ne se voit plus à la fin,
+            // ce qui est pourtant tout le plaisir de l'exercice.
+            //
+            // Mesuré : 0,022 donnait 22 pixels de diamètre sur une scène de
+            // 500, soit un rond plus large que l'écart entre deux points
+            // voisins des dessins les plus serrés. À 0,015 il en fait 15, et le
+            // plancher passe de 6 à 4 : c'est lui qui décide sur un téléphone.
+            const r = Math.max(4, Math.round(cote * 0.015));
             el.querySelector('b').style.cssText = `width:${r * 2}px; height:${r * 2}px`;
             // Un cran plus petit qu'avant : « les calculs sont un peu gros ».
             // Ce qui doit se lire d'un coup d'œil, c'est le RÉSULTAT qu'on
@@ -416,6 +426,32 @@ class PointAPoint extends BaseGame {
     }
 
     // --- La démonstration -------------------------------------------------------
+
+    /**
+     * LA SOLUTION, POUR L'AUTEUR — le dessin achevé d'un coup.
+     *
+     * Rémy : « rajoute peut-être dans la barre de debug quelque chose qui donne
+     * la solution ». Le bouton existait déjà dans la palette ; ce jeu-ci ne
+     * savait pas y répondre, et l'on obtenait « ce jeu ne sait pas montrer sa
+     * solution » — c'est-à-dire un bouton qui ment sur ce qu'il fait.
+     *
+     * ON REJOUE LES CLICS PLUTÔT QUE DE PEINDRE LE RÉSULTAT. Poser directement
+     * la liste finale sauterait `cliquer`, donc les vérifications qu'il porte :
+     * la solution affichée pourrait alors être un dessin que le jeu lui-même
+     * refuserait. En la faisant passer par le même chemin que l'élève, ce qu'on
+     * montre est exactement ce qu'il aurait obtenu.
+     */
+    montrerSolution() {
+        if (!this.etat || !this.exercice) return false;
+        this.effacer();
+        for (let k = 1; k <= this.exercice.total; k++) cliquer(this.etat, k);
+        this.corrige = true;
+        this.dessinerTraits();
+        this.majTout();
+        this.sceneEl.classList.add('pp-scene--fini');
+        this.note('Solution affichée (outil d\'auteur).');
+        return true;
+    }
 
     async runDemoSequence() {
         const cur = createDemoCursor();
