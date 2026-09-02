@@ -131,6 +131,14 @@ const BASE = {
         descriptor: 'Appliquer les règles de priorité dans un calcul sans parenthèses.',
         lesson: 'La multiplication et la division passent avant l\'addition et la soustraction. Dans 2 + 3 × 4, on calcule d\'abord 3 × 4.'
     },
+    'num.prio.relatifs': {
+        label: 'Priorités et nombres relatifs',
+        chemin: [D.NUMERIQUE, SD.PRIORITES],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.prio', 'num.relatifs.produit'],
+        descriptor: 'Calculer une expression où la règle de priorité et la règle des signes se rencontrent.',
+        lesson: 'CE N\'EST PAS LA SOMME DE DEUX LEÇONS, C\'EST UNE TROISIÈME. On peut savoir que « × passe avant − », savoir que « − (−6) = + 6 », et se tromper quand même sur 5 − 3 × (−2) : il faut faire les trois pas DANS L\'ORDRE. 1. La règle de priorité désigne l\'opération : c\'est 3 × (−2), pas le 5 − 3. 2. La règle des signes la calcule : 3 × (−2) = −6. 3. On réécrit la ligne entière : 5 − (−6). 4. Et seulement là, soustraire un négatif revient à ajouter : 5 + 6 = 11. Le résultat surprend tout le monde la première fois. DEUX PIÈGES D\'ÉCRITURE. Le « − » collé à un nombre entre parenthèses est son SIGNE, pas une opération : dans 5 − 3 × (−2), il n\'y a que deux opérations, pas trois. Et deux signes ne se suivent jamais : on écrit 3 × (−2), jamais 3 × −2 — les parenthèses du nombre négatif font partie de son écriture, elles ne groupent aucun calcul.'
+    },
     'num.frac.sens': {
         label: 'Sens d\'une fraction',
         chemin: [D.NUMERIQUE, SD.FRACTIONS],

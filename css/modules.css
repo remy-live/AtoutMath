@@ -419,6 +419,11 @@
     transform: translateY(2px);
     box-shadow: 0 0 0 var(--border), inset 0 2px 5px rgba(15, 23, 42, .12);
 }
+/* LE « ± » N'EST PAS UN CHIFFRE, et se lit comme tel : il porte la couleur
+   d'accent, comme la touche d'effacement porte celle de l'avertissement. Sur
+   un chapitre où le signe EST la question, il ne doit pas se confondre avec
+   les dix touches qu'on enfonce sans réfléchir. */
+.numpad-key--signe { color: var(--primary); }
 .numpad-key--del { color: var(--warning); }
 .numpad-key--del svg { width: clamp(20px, 3cqh, 25px); height: auto; }
 .numpad-key--ok {

@@ -365,7 +365,12 @@ export const relatifsProduitGenerator = {
             meta: {
                 etape: etape.id, temps: etape.temps, titre: etape.titre,
                 marche: rangGlobal + 1, marches: ETAPES.length,
-                facteurs: q.facteurs, surLeSigne
+                facteurs: q.facteurs, surLeSigne,
+                // LE PAVÉ DOIT PORTER LA TOUCHE « ± ». Quand l'aide passe au
+                // clavier, (−3) × (+4) attend −12 : sans elle la question
+                // n'avait pas de réponse possible. Et elle est là pour TOUTES
+                // les marches, sinon sa présence annoncerait le signe.
+                signe: true
             }
         });
     }

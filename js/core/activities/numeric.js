@@ -131,6 +131,22 @@ export function mount(container, session, opts = {}) {
             ? item.meta.decimal
             : !Number.isInteger(Number(item.answer));
 
+        // LA TOUCHE « ± », ET POURQUOI ELLE NE SE DÉDUIT PAS DE LA RÉPONSE.
+        //
+        // Sans elle, l'exercice qui couple les priorités et les relatifs
+        // devenait INJOUABLE dès que l'aide passe au clavier : la réponse
+        // était −31 et le pavé n'offrait que des chiffres. On ne peut pas pour
+        // autant la faire apparaître « quand la réponse est négative » — ce
+        // serait donner le signe avant d'avoir rien calculé, sur le seul
+        // chapitre où le signe EST la question. C'est donc l'EXERCICE qui la
+        // demande (`meta.signe`), pour toutes ses questions, positives
+        // comprises. Le repli sur la réponse ne sert qu'aux exercices qui
+        // n'ont rien déclaré : mieux vaut un signe deviné qu'une question sans
+        // réponse possible.
+        const signe = item.meta && item.meta.signe !== undefined
+            ? !!item.meta.signe
+            : Number(item.answer) < 0;
+
         // Deux colonnes dès qu'il y a la place : énoncé et figure à gauche,
         // saisie à droite. En une seule colonne, l'ensemble énoncé + figure +
         // pavé + validation dépassait la hauteur d'écran et imposait un
@@ -151,7 +167,13 @@ export function mount(container, session, opts = {}) {
                     </div>
                     <div class="numpad" role="group" aria-label="Pavé numérique">
                         ${DIGITS.map(k => key(k)).join('')}
-                        ${decimal ? key(',') : '<span class="numpad-blank" aria-hidden="true"></span>'}
+                        ${/* LA CASE LIBRE EST À GAUCHE DU ZÉRO, là où toutes les
+                              calculatrices posent le « ± ». Quand la virgule
+                              l'occupe déjà — une réponse à la fois décimale et
+                              signée —, le signe prend une rangée à lui plutôt
+                              que de pousser le pavé à quatre colonnes. */ ''}
+                        ${decimal && signe ? `${keySigne()}${BLANC}${BLANC}` : ''}
+                        ${decimal ? key(',') : (signe ? keySigne() : BLANC)}
                         ${key('0')}
                         <button type="button" class="numpad-key numpad-key--del" data-key="←"
                                 aria-label="Effacer le dernier chiffre">${ICON_BACKSPACE}</button>
@@ -180,7 +202,12 @@ export function mount(container, session, opts = {}) {
             // « 1234567 » restait un mur de chiffres. C'est la CSS qui donne
             // au blanc la largeur qu'il faut.
             display.textContent = '';
-            espacerMilliers(buffer).split(FINE).forEach(groupe => {
+            // LE TAMPON GARDE LE TRAIT D'UNION, L'ÉCRAN MONTRE LE VRAI SIGNE
+            // MOINS. C'est le tampon qu'on envoie à la comparaison, et « -31 »
+            // est ce qu'un clavier produit ; c'est « −31 » qu'un professeur
+            // écrit au tableau, et l'élève doit retrouver à l'écran le signe
+            // qu'il lit dans l'énoncé.
+            espacerMilliers(buffer).replace('-', '\u2212').split(FINE).forEach(groupe => {
                 const g = document.createElement('span');
                 g.className = 'numpad-groupe';
                 g.textContent = groupe;
@@ -199,7 +226,7 @@ export function mount(container, session, opts = {}) {
         brancherOutils(item);
 
         const validate = () => {
-            if (destroyed || buffer === '') return;
+            if (destroyed || buffer === '' || buffer === '-') return;
             const result = session.submit(buffer, { element: display });
             if (result.ignored) return;
 
@@ -232,7 +259,8 @@ export function mount(container, session, opts = {}) {
                 const k = btn.dataset.key;
                 if (k === '←') setBuffer(buffer.slice(0, -1));
                 else if (k === ',') { if (!buffer.includes(',') && buffer !== '') setBuffer(buffer + ','); }
-                else if (buffer.length < 7) setBuffer(buffer + k);
+                else if (k === '\u00b1') setBuffer(basculerSigne(buffer));
+                else if (buffer.replace('-', '').length < 7) setBuffer(buffer + k);
             };
         });
         container.querySelector('[data-validate]').onclick = validate;
@@ -245,6 +273,8 @@ export function mount(container, session, opts = {}) {
             if (/^[0-9]$/.test(e.key)) { setBuffer(buffer + e.key); e.preventDefault(); }
             else if (e.key === 'Backspace') { setBuffer(buffer.slice(0, -1)); e.preventDefault(); }
             else if (e.key === ',' || e.key === '.') { if (!buffer.includes(',')) setBuffer(buffer + ','); e.preventDefault(); }
+            // Le trait d'union du clavier bascule le signe, comme la touche.
+            else if (e.key === '-' && signe) { setBuffer(basculerSigne(buffer)); e.preventDefault(); }
             else if (e.key === 'Enter') { validate(); e.preventDefault(); }
         };
     }
@@ -277,7 +307,10 @@ export function mount(container, session, opts = {}) {
         if (!await cursor.pause(DEMO_SPEED.press) || destroyed) return;
 
         for (let i = 0; i < target.length; i++) {
-            const touche = container.querySelector(`[data-key="${cssEscape(target[i])}"]`);
+            // Le robot ne cherche pas une touche « - » : elle n'existe pas,
+            // c'est « ± » qui porte le signe.
+            const cle = target[i] === '-' ? '\u00b1' : target[i];
+            const touche = container.querySelector(`[data-key="${cssEscape(cle)}"]`);
             if (touche) {
                 if (!await cursor.tap(touche, 420) || destroyed) return;
                 touche.classList.add('numpad-key--demo');
@@ -324,6 +357,24 @@ function cssEscape(c) {
 
 function key(k) {
     return `<button type="button" class="numpad-key" data-key="${k}">${k}</button>`;
+}
+
+const BLANC = '<span class="numpad-blank" aria-hidden="true"></span>';
+
+/** « 31 » ↔ « -31 ». Le signe vit en tête du tampon, jamais ailleurs. */
+const basculerSigne = (v) => (v.startsWith('-') ? v.slice(1) : '-' + v);
+
+/**
+ * LE CHANGEMENT DE SIGNE, ET NON UN « MOINS » À TAPER.
+ *
+ * Un « − » qui s'écrirait comme un chiffre obligerait à le poser EN PREMIER —
+ * « 31− » ne veut rien dire — et l'élève qui s'aperçoit à la fin que son
+ * résultat est négatif devrait tout effacer. La touche bascule donc le signe
+ * du nombre entier, à n'importe quel moment, et se reprend d'un second appui.
+ */
+function keySigne() {
+    return '<button type="button" class="numpad-key numpad-key--signe" data-key="\u00b1"'
+        + ' aria-label="Changer le signe">\u00b1</button>';
 }
 
 const echapperTexte = (s) => String(s == null ? '' : s)

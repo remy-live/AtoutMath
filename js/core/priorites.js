@@ -64,8 +64,16 @@ export function ecrire(jetons) {
         // « ( 3 + 4 ) » n'est pas ce qu'on écrit au tableau.
         const colle = !avant || avant.type === '(' || j.type === ')';
         if (!colle) out += ' ';
-        if (j.type === 'n') out += String(j.valeur).replace('.', ',');
-        else if (j.type === 'p') out += ecrirePuissance(j);
+        // UN NOMBRE NÉGATIF QUI SUIT UN OPÉRATEUR PREND SES PARENTHÈSES.
+        // « 4 × −2 » ne s'écrit nulle part : deux signes qui se suivent ne se
+        // lisent pas, et c'est justement la notation que le chapitre des
+        // relatifs installe. En tête d'expression, en revanche, « −3 + 4 »
+        // s'écrit sans rien.
+        if (j.type === 'n' && j.valeur < 0 && avant && avant.type === 'op') {
+            out += `(${String(j.valeur).replace('-', '−').replace('.', ',')})`;
+        } else if (j.type === 'n') {
+            out += String(j.valeur).replace('-', '−').replace('.', ',');
+        } else if (j.type === 'p') out += ecrirePuissance(j);
         else if (j.type === 'op') out += j.op === '-' ? '−' : j.op;
         else out += j.type;
     });
@@ -125,7 +133,23 @@ export function lire(texte) {
     while (i < t.length) {
         const c = t[i];
         if (c === ' ') { i++; continue; }
-        if (c === '(') { jetons.push(ouvrante()); i++; continue; }
+        // « (-2) » EST UN NOMBRE, pas une parenthèse contenant un calcul. Sans
+        // cette lecture, le moteur y cherchait une opération, n'en trouvait
+        // pas, et déclarait la cascade insoluble — c'est-à-dire qu'il refusait
+        // le calcul le plus banal du chapitre des relatifs.
+        if (c === '(') {
+            const m = /^\(\s*-\s*(\d+(?:\.\d+)?)\s*\)/.exec(t.slice(i));
+            if (m) { jetons.push(nombre(-Number(m[1]))); i += m[0].length; continue; }
+            jetons.push(ouvrante()); i++; continue;
+        }
+        // UN MOINS QUI N'A RIEN À SA GAUCHE EST UN SIGNE, pas une soustraction :
+        // « −3 + 4 » commence par le nombre −3.
+        if (c === '-') {
+            const precedent = jetons[jetons.length - 1];
+            const signe = !precedent || precedent.type === 'op' || precedent.type === '(';
+            const m = signe && /^-\s*(\d+(?:\.\d+)?)/.exec(t.slice(i));
+            if (m) { jetons.push(nombre(-Number(m[1]))); i += m[0].length; continue; }
+        }
         if (c === ')') { jetons.push(fermante()); i++; continue; }
         if ('+-×÷'.includes(c)) { jetons.push(operateur(c)); i++; continue; }
         if (/\d/.test(c)) {
@@ -173,13 +197,24 @@ export function relire(texte) {
 }
 
 /** Applique une opération. Rend null si elle est interdite à ce niveau. */
-export function calculer(a, op, b) {
+export function calculer(a, op, b, { relatifs = false } = {}) {
     if (op === '+') return a + b;
     if (op === '×') return a * b;
-    // Pas de négatif : au collège, les priorités s'apprennent avant les
-    // relatifs, et un résultat négatif en cours de route brouille la leçon.
-    if (op === '-') return a >= b ? a - b : null;
-    if (op === '÷') return (b !== 0 && a % b === 0) ? a / b : null;
+    // PAS DE NÉGATIF PAR DÉFAUT : au collège, les priorités s'apprennent avant
+    // les relatifs, et un résultat négatif en cours de route brouille la leçon.
+    //
+    // SAUF QUAND C'EST JUSTEMENT LA LEÇON. Rémy : « on va coupler deux
+    // exercices, celui de priorités opératoires et aussi les nombres
+    // relatifs ». Les deux difficultés se combinent — et se piègent l'une
+    // l'autre : dans « 5 − 3 × (−2) », il faut d'abord voir que la
+    // multiplication passe avant, PUIS que son résultat est négatif, PUIS que
+    // soustraire un négatif ajoute. Trois pas où l'on peut tomber.
+    if (op === '-') return (relatifs || a >= b) ? a - b : null;
+    if (op === '÷') {
+        if (b === 0) return null;
+        const q = a / b;
+        return Number.isInteger(q) ? q : null;
+    }
     return null;
 }
 
@@ -205,7 +240,7 @@ export function groupeInterieur(jetons) {
  * @returns {{index:number, op:string, gauche:number, droite:number,
  *            valeur:number|null, raison:string, dans:Object|null}|null}
  */
-export function operationPrioritaire(jetons) {
+export function operationPrioritaire(jetons, opts = {}) {
     const groupe = groupeInterieur(jetons);
     // On ne cherche que DANS le groupe le plus intérieur s'il en reste un :
     // c'est la première règle, et elle prime sur toutes les autres.
@@ -258,7 +293,7 @@ export function operationPrioritaire(jetons) {
     return {
         index, op, unaire: false,
         gauche: g, droite: d,
-        valeur: (g !== null && d !== null) ? calculer(g, op, d) : null,
+        valeur: (g !== null && d !== null) ? calculer(g, op, d, opts) : null,
         // CE QU'ON DIT À L'ÉLÈVE, écrit une fois ici. « 4 × 5 » se lit avec son
         // signe, « 4² » sans : c'est au noyau de le savoir, pas à chaque phrase
         // de l'écran de le refabriquer.
@@ -273,8 +308,8 @@ export function operationPrioritaire(jetons) {
  * Pourquoi l'opérateur cliqué n'est pas le bon — dit en mots d'élève.
  * Rend null quand c'est le bon.
  */
-export function critiquer(jetons, index) {
-    const bonne = operationPrioritaire(jetons);
+export function critiquer(jetons, index, opts = {}) {
+    const bonne = operationPrioritaire(jetons, opts);
     if (!bonne) return 'Il n\'y a plus d\'opération à faire.';
     if (index === bonne.index) return null;
     const j = jetons[index];
@@ -358,11 +393,11 @@ export const terminee = (jetons) => jetons.length === 1 && jetons[0].type === 'n
  * La suite complète des lignes, telle qu'on l'écrirait au tableau.
  * Rend null si l'expression rencontre une opération interdite en chemin.
  */
-export function etapes(jetons) {
+export function etapes(jetons, opts = {}) {
     const lignes = [{ jetons, texte: ecrire(jetons) }];
     let courant = jetons;
     for (let garde = 0; garde < 40 && !terminee(courant); garde++) {
-        const p = operationPrioritaire(courant);
+        const p = operationPrioritaire(courant, opts);
         if (!p || p.valeur === null) return null;
         const suivant = reduire(courant, p.index, p.valeur);
         lignes.push({
@@ -376,8 +411,8 @@ export function etapes(jetons) {
 }
 
 /** La valeur finale, ou null si l'expression n'est pas calculable ici. */
-export function valeurFinale(jetons) {
-    const l = etapes(jetons);
+export function valeurFinale(jetons, opts = {}) {
+    const l = etapes(jetons, opts);
     return l ? l[l.length - 1].jetons[0].valeur : null;
 }
 
@@ -460,6 +495,14 @@ export function etapesMax({
  */
 export function tirerExpression({
     rng, niveau = 2, parentheses = true, max = 9, imposer = false,
+    // LES NOMBRES RELATIFS DANS LA CASCADE. Rémy : « on va coupler deux
+    // exercices, celui de priorités opératoires et aussi les nombres
+    // relatifs ». Ce n'est pas la somme de deux exercices, c'est un troisième :
+    // les deux difficultés se piègent l'une l'autre. Dans « 5 − 3 × (−2) », il
+    // faut voir que la multiplication passe avant, PUIS que son résultat est
+    // négatif, PUIS que soustraire un négatif ajoute — et 11 surprend tout le
+    // monde la première fois.
+    relatifs = false,
     // DES PUISSANCES DANS LA CASCADE. Rémy : « des priorités avec les
     // puissances. Tu as déjà un moteur hyper complet. » On ne change donc ni
     // les formes ni le tirage : on remplace APRÈS COUP un ou deux nombres par
@@ -488,7 +531,15 @@ export function tirerExpression({
     for (let essai = 0; essai < 600; essai++) {
         const forme = formes[rng.int(0, formes.length - 1)];
         const jetons = forme.map(t => {
-            if (t === 'n') return nombre(rng.int(2, grand));
+            // ON NE TIRE JAMAIS ZÉRO NI UN : « × 1 » et « + 0 » ne font rien, et
+            // une cascade où une étape ne change rien n'enseigne rien. En
+            // relatifs, le signe se tire à part, sinon la moitié des
+            // expressions n'auraient que des positifs et l'exercice ne
+            // porterait pas sur ce qu'il annonce.
+            if (t === 'n') {
+                const v = rng.int(2, grand);
+                return nombre(relatifs && rng.next() < 0.45 ? -v : v);
+            }
             if (t === 'op') return operateur(rng.pick(['+', '-', '×', '÷']));
             return t === '(' ? ouvrante() : fermante();
         });
@@ -507,20 +558,25 @@ export function tirerExpression({
                 jetons[i] = puissance(rng.int(2, 5), rng.int(2, 3));
             });
         }
-        const lignes = etapes(jetons);
+        const lignes = etapes(jetons, { relatifs });
         if (!lignes) continue;                          // une étape interdite
         const finale = lignes[lignes.length - 1].jetons[0].valeur;
-        if (finale < 0 || finale > plafond) continue;
+        // EN RELATIFS, UN RÉSULTAT NÉGATIF EST LA NORME et non un échec : c'est
+        // même ce qu'on veut voir arriver. On borne seulement la taille.
+        if (relatifs ? Math.abs(finale) > plafond : (finale < 0 || finale > plafond)) continue;
+        // ET AU MOINS UN NÉGATIF DOIT SE VOIR, sinon l'exercice s'ouvre sur une
+        // cascade de positifs et ne porte pas sur ce qu'il annonce.
+        if (relatifs && !jetons.some(j => j.type === 'n' && j.valeur < 0)) continue;
         // AU MOINS DEUX ÉTAPES, sinon il n'y a pas de priorité à trancher.
         if (lignes.length < 3) continue;
         // Et l'ordre naïf de gauche à droite doit donner AUTRE CHOSE : sans
         // cela, l'élève qui ignore la règle tombe juste et n'apprend rien.
-        if (!parentheses && naif(jetons) === finale) continue;
+        if (!parentheses && naif(jetons, { relatifs }) === finale) continue;
 
         return {
             jetons, texte: ecrire(jetons), lignes,
             resultat: finale, etapes: lignes.length - 1,
-            avecParentheses: forme.includes('(')
+            avecParentheses: forme.includes('('), relatifs
         };
     }
     // Filet : la plus simple des expressions à priorité — avec sa puissance si
@@ -528,23 +584,25 @@ export function tirerExpression({
     // que son titre.
     const secours = puissances
         ? [nombre(3), operateur('+'), puissance(4, 2), operateur('×'), nombre(2)]
-        : [nombre(3), operateur('+'), nombre(4), operateur('×'), nombre(5)];
-    const lignes = etapes(secours);
+        : relatifs
+            ? [nombre(5), operateur('-'), nombre(3), operateur('×'), nombre(-2)]
+            : [nombre(3), operateur('+'), nombre(4), operateur('×'), nombre(5)];
+    const lignes = etapes(secours, { relatifs });
     return {
         jetons: secours, texte: ecrire(secours), lignes,
         resultat: lignes[lignes.length - 1].jetons[0].valeur,
-        etapes: lignes.length - 1, avecParentheses: false
+        etapes: lignes.length - 1, avecParentheses: false, relatifs
     };
 }
 
 /** Le résultat qu'obtient celui qui calcule bêtement de gauche à droite. */
-export function naif(jetons) {
+export function naif(jetons, opts = {}) {
     // Ni parenthèses ni puissances : « calculer bêtement de gauche à droite »
     // n'a de sens que sur une suite plate d'opérations.
     if (jetons.some(j => j.type === '(' || j.type === ')' || j.type === 'p')) return null;
     let v = jetons[0].valeur;
     for (let i = 1; i < jetons.length - 1; i += 2) {
-        v = calculer(v, jetons[i].op, jetons[i + 1].valeur);
+        v = calculer(v, jetons[i].op, jetons[i + 1].valeur, opts);
         if (v === null) return null;
     }
     return v;

@@ -66,6 +66,9 @@ export const CODES_EXERCICES = {
     'calc-prio-parentheses':      'BT',   // Prio-Bot Parenthèses
     'calc-prio-resultat':         'PC',   // Prio-Bot Calcul
     'calc-prio-cascade':          'PL',   // Priorités : ligne par ligne
+    // « PR » va aux puissances et « PS » n'est pas libre : le X marque la
+    // rencontre des deux chapitres.
+    'calc-prio-relatifs':         'PX',   // Prio-Bot Relatifs — Priorités × relatifs
     'calc-compte-est-bon':        'CB',   // Le Compte est Bon
     'calc-poser':                 'PS',   // Poser une opération
     'calc-poser-multiplication':  'MU',   // Poser une multiplication

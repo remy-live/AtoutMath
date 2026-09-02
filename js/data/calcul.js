@@ -191,6 +191,35 @@ export const calculExercises = [
         instruction: "Calcule l'expression en respectant les priorités opératoires."
     },
     {
+        // LES DEUX CHAPITRES QUI SE PIÈGENT L'UN L'AUTRE. Rémy : « on va coupler
+        // deux exercices, celui de priorités opératoires et aussi les nombres
+        // relatifs. Tu le rajoutes en exercice à part. »
+        //
+        // À PART, ET NON UNE CASE À COCHER DU PREMIER. Mêlé aux séries de
+        // priorités pures, on n'aurait jamais su ce qui coince : la règle de
+        // priorité, la règle des signes, ou leur rencontre. Séparé, il a sa
+        // compétence et sa ligne au bilan — et le professeur voit lequel des
+        // deux il doit reprendre.
+        id: 'calc-prio-relatifs',
+        cree: '2026-09-02',
+        consignePapier: "Calcule en respectant les priorités. Attention aux signes.",
+        colonnesPapier: 2,
+        title: 'Prio-Bot Relatifs',
+        generatorId: 'calc.priorites-relatifs', activityId: 'bubbles',
+        skills: ['num.prio.relatifs'],
+        params: { mode: 'resultat', niveau: 2, parentheses: false, progressif: true },
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Calcule l'expression en respectant les priorités — et cette fois les nombres "
+            + "peuvent être négatifs. Fais les trois pas dans l'ordre : la règle de priorité "
+            + "DÉSIGNE l'opération, la règle des signes la CALCULE, puis on réécrit la ligne "
+            + "entière. Le « − » collé à un nombre entre parenthèses est son SIGNE, pas une "
+            + "opération : dans 5 − 3 × (−2), il n'y a que deux opérations. Et soustraire un "
+            + "nombre négatif revient à ajouter son opposé : 5 − (−6) = 5 + 6 = 11."
+    },
+    {
         // LA RÉÉCRITURE LIGNE À LIGNE. Les deux exercices ci-dessus posent la
         // question en QCM : quelle opération, ou quel résultat. Celui-ci fait
         // ÉCRIRE la suite du calcul — et c'est là qu'apparaît la faute qui

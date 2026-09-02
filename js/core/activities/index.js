@@ -95,6 +95,7 @@ import { chatFicheGenerator } from '../generators/chatFiche.js';
 import { echecsFicheGenerator } from '../generators/echecsFiche.js';
 import { matFicheGenerator } from '../generators/matFiche.js';
 import { prioritesFicheGenerator } from '../generators/prioritesFiche.js';
+import { prioritesRelatifsGenerator } from '../generators/prioritesRelatifs.js';
 import { poserFicheGenerator } from '../generators/poserFiche.js';
 import { conversionFicheGenerator } from '../generators/conversionFiche.js';
 import { tangramFicheGenerator } from '../generators/tangramFiche.js';
@@ -145,6 +146,7 @@ import {
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
+    prioritesRelatifsGenerator,
     poserFicheGenerator, conversionFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
