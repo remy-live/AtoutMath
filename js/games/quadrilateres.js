@@ -32,11 +32,45 @@ import { brancherGlisserPalette } from '../core/activities/paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, PLAN_L, PLAN_H,
+    COND_L, COND_H,
     familleDe, flecheDe, cleFleche, traitsDeCondition,
     boiteFigure, boiteCondition,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
     genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe
 } from '../core/quadrilateres.js';
+import { ajusterAuRectangle } from '../core/dominos.js';
+
+/**
+ * LA TAILLE DU TEXTE D'UNE CARTE — calculée, et non laissée au navigateur.
+ *
+ * Rémy, devant l'organigramme complet : « c'est carrément illisible ». Mesuré
+ * sur un écran d'ordinateur : le plan n'y fait que 368 pixels de large pour
+ * treize conditions, chaque case en fait donc soixante, et « diagonales
+ * perpendiculaires » s'y écrivait « diagonales perpendic ulaires ». La coupure
+ * à l'intérieur du mot évitait bien le débordement — en rendant la carte
+ * illisible, ce qui est pire.
+ *
+ * ON CALCULE DONC LA POLICE, comme pour la planche à découper du PDF, et avec
+ * LE MÊME modèle (`ajusterAuRectangle`) : la carte qu'on lit à l'écran et celle
+ * qu'on découpe sur la feuille coupent leurs phrases aux mêmes endroits.
+ *
+ * Le calcul se fait dans le repère de la CASE, en pourcentages de sa largeur —
+ * `container-type: inline-size` est déjà posé sur `.qd-cond`, donc `cqw` vaut
+ * exactement un centième de la case, quelle que soit la taille de l'écran.
+ */
+const RAPPORT_COND = COND_H / COND_L;
+
+export function policeCondition(texte) {
+    // 86 % DE LA CASE, ET NON 92. Le modèle de largeur de `ajusterAuRectangle`
+    // est calibré sur l'Helvetica du PDF ; à l'écran la carte est écrite en
+    // GRAS, dans une police d'interface plus large. Mesuré : « diagonales
+    // perpendiculaires » calculé pour 92 % débordait quand même de sa case et
+    // s'affichait « liagonale ». La marge supplémentaire couvre l'écart entre
+    // les deux polices — c'est le prix d'un modèle unique, et il est moins cher
+    // qu'un second modèle qui divergerait du premier.
+    const m = ajusterAuRectangle(texte, 86, RAPPORT_COND * 88, { max: 40, min: 5 });
+    return { cqw: m.taille, lignes: m.lignes };
+}
 
 /**
  * LA FENÊTRE SE CALCULE SUR LES BOÎTES, plus sur les points.
@@ -271,9 +305,18 @@ class Organigramme extends BaseGame {
                        unité. */
                     container-type: inline-size;
                     font-size: clamp(5px, 11cqw, 11px);
-                    /* Un mot plus large que la case doit céder, sinon il sort
-                       de la boîte au lieu de passer à la ligne. */
-                    overflow-wrap: anywhere; hyphens: auto;
+                    /* ON NE COUPE PLUS À L'INTÉRIEUR DES MOTS. Rémy, devant
+                       l'organigramme complet : « c'est carrément illisible ».
+                       Mesuré : « diagonales perpendiculaires » s'écrivait
+                       « diagonales perpendic ulaires », et « 2 côtés
+                       consécutifs égaux » devenait « consécutif s égaux ». La
+                       coupure à l'intérieur d'un mot évitait bien le
+                       débordement — en rendant la carte illisible, ce qui est
+                       pire. C'est la TAILLE qui doit céder, pas le mot : elle
+                       est calculée par case (voir policeCondition), avec le
+                       même modèle que la planche à découper du PDF, donc les
+                       deux coupent aux mêmes endroits. */
+                    overflow-wrap: normal; hyphens: none;
                     border: 1.5px solid var(--border); background: var(--bg-panel);
                     color: var(--text-main);
                 }
@@ -568,10 +611,12 @@ class Organigramme extends BaseGame {
             const texte = poses[cle];
             const style = `left:${b.gauche}%; top:${b.haut}%; `
                 + `width:${b.large}%; height:${b.haute}%`;
+            const pol = texte !== undefined ? policeCondition(texte) : null;
             html += texte !== undefined
-                ? `<div class="qd-cond qd-cond--${f.famille} qd-cond--posee" style="${style}"
+                ? `<div class="qd-cond qd-cond--${f.famille} qd-cond--posee"
+                        style="${style}; font-size:clamp(5px, ${pol.cqw}cqw, 15px)"
                         data-donnee="${enAttribut(texte)}" title="${enAttribut(texte)}"
-                        >${enAttribut(texte)}</div>`
+                        >${pol.lignes.map(enAttribut).join('<br>')}</div>`
                 : `<div class="qd-cond qd-cond--vide" style="${style}"
                         data-fente="${enAttribut(cle)}" data-depose="1">?</div>`;
         }
@@ -716,9 +761,12 @@ class Organigramme extends BaseGame {
         // figures — qui l'écrit en clair.
         for (const f of FLECHES) {
             const b = placerBoite(boiteCondition(f), v);
+            const p = policeCondition(f.court);
             html += `<div class="qd-cond qd-cond--${f.famille}"
-                style="left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%"
-                title="${enAttribut(f.ajoute)}">${enAttribut(f.court)}</div>`;
+                style="left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%;
+                    font-size:clamp(4px, ${p.cqw}cqw, 14px)"
+                title="${enAttribut(f.ajoute)}"
+                >${p.lignes.map(enAttribut).join('<br>')}</div>`;
         }
 
         this.planEl.innerHTML = html;

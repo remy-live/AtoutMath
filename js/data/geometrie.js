@@ -141,10 +141,24 @@ export const geometrieExercises = [
         printGeneratorId: 'geo.quadrilateres.organigramme',
         printable: 'organigramme-quadri',
         skills: ['geo.quadrilateres.familles'],
-        params: { palier: 'noms' },
+        // LE DÉFAUT EST L'ÉTAPE PAR ÉTAPE, ET NON L'ORGANIGRAMME ENTIER.
+        //
+        // Rémy, devant la carte complète : « c'est carrément illisible ».
+        // Mesuré, et il a raison : sur un écran d'ordinateur, le plan de
+        // l'organigramme ne fait que 400 px de large, chacune de ses treize
+        // cases en fait 62, et huit d'entre elles ne peuvent pas contenir leur
+        // phrase — « diagonales perpendiculaires » n'y tient à aucune taille
+        // lisible. Ce n'est pas un défaut de police : treize conditions et cinq
+        // figures ne se lisent pas d'un coup sur un écran.
+        //
+        // L'étape par étape, elle, zoome sur DEUX figures et trois cases : la
+        // même leçon, une question à la fois, et tout tient en grand. C'est
+        // aussi ce que Rémy décrit : « tu as un quadrilatère et le
+        // parallélogramme et les 3 cases vides pour le transformer ».
+        params: { palier: 'conditions' },
         paramSchema: [
             {
-                id: 'palier', type: 'select', label: 'Ce qu\'on replace', default: 'noms',
+                id: 'palier', type: 'select', label: 'Ce qu\'on replace', default: 'conditions',
                 aide: 'Placer les NOMS travaille la hiérarchie : qui contient qui, dans un '
                     + 'organigramme déjà tracé. CONSTRUIRE l\'organigramme travaille les '
                     + 'définitions, et se joue en sept étapes : à chacune, deux cases et une '
