@@ -156,8 +156,21 @@ export const CHAPITRES = [
         skills: ['num.proportion.tableau', 'num.probleme.proportion']
     },
     {
+        // LES PRIORITÉS EXISTAIENT EN 6ᵉ, ET LES EXERCICES SONT EN 5ᵉ.
+        // Conséquence mesurée sur un téléphone, dans la liste d'un parcours :
+        // « Prio-Bot Express · hors chapitre ». Le chapitre était bien là, mais
+        // un cran plus bas, et un exercice ne retient que les chapitres de SON
+        // niveau. Les priorités se revoient en cinquième — c'est même là qu'on
+        // les travaille pour de bon —, le chapitre y a donc sa place.
+        id: '5-priorites', niveau: CINQUIEME, nom: 'Priorités opératoires',
+        skills: ['num.prio', 'num.prio.relatifs']
+    },
+    {
         id: '5-relatifs', niveau: CINQUIEME, nom: 'Relatifs',
-        skills: ['num.relatifs.sens', 'num.relatifs.somme']
+        // La rencontre des deux chapitres appartient aux deux : un professeur
+        // qui prépare ses relatifs doit la trouver là, et celui qui prépare ses
+        // priorités aussi.
+        skills: ['num.relatifs.sens', 'num.relatifs.somme', 'num.prio.relatifs']
     },
     {
         id: '5-solides', niveau: CINQUIEME, nom: 'Solides',
@@ -188,7 +201,7 @@ export const CHAPITRES = [
     { id: '4-probabilite', niveau: QUATRIEME, nom: 'Probabilité', skills: [] },
     {
         id: '4-produits-relatifs', niveau: QUATRIEME, nom: 'Produits de relatifs',
-        skills: ['num.relatifs.somme']
+        skills: ['num.relatifs.somme', 'num.relatifs.produit', 'num.prio.relatifs']
     },
     {
         id: '4-proportionnalite', niveau: QUATRIEME, nom: 'Proportionnalité',

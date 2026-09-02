@@ -908,7 +908,11 @@ function ligneDeReglages(pris) {
 
     // LE MODE EST CELUI DE TOUTE LA SÉANCE, et l'étiquette le dit.
     const bloc = document.createElement('label');
-    bloc.className = 'path-selection-champ';
+    // LA MARQUE `--mode` SERT À LA MISE EN PAGE ÉTROITE : sur téléphone, les
+    // deux champs de nombre tiennent côte à côte, le menu du mode prend la
+    // ligne entière — il porte l'étiquette la plus longue et la seule liste
+    // déroulante. La CSS a besoin de savoir lequel des trois c'est.
+    bloc.className = 'path-selection-champ path-selection-champ--mode';
     bloc.title = 'Le mode s\'applique à toute la séance : il décide des essais, '
         + 'des aides, de la correction et de la note.';
     const nom = document.createElement('span');

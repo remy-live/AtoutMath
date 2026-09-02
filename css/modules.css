@@ -2795,9 +2795,17 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    le faut : son nom complet reste en info-bulle et dans le panneau de
    propriétés. Chronomètre et barème, eux, attendent le dépliage. */
 @media (max-width: 700px) {
-    .path-step-head { flex-wrap: wrap; row-gap: 8px; }
-    .path-step-title { flex: 1 1 0; min-width: 0; }
-    .path-step-rule { order: 2; margin-left: auto; font-size: .78rem; }
+    /* CHAQUE PIXEL RENDU AU TITRE SE VOIT. Mesuré sur un iPhone : la ligne fait
+       276 px, et il n'en restait que 130 pour le nom — « 1. Le Chat Géom… »
+       alors qu'il n'en manquait que seize. Les gouttières de dix pixels, la
+       taille du nom et celle du barème étaient réglées pour un écran large ;
+       resserrées, elles rendent vingt-cinq pixels, et trois titres sur quatre
+       s'écrivent en entier. Celui qui reste coupé — « L'Organigramme des
+       Quadrilatères » — est deux fois trop long pour la ligne : là, tronquer
+       est la bonne réponse, et l'info-bulle garde le nom complet. */
+    .path-step-head { flex-wrap: wrap; row-gap: 8px; gap: 7px; }
+    .path-step-title { flex: 1 1 0; min-width: 0; font-size: .92rem; gap: 6px; }
+    .path-step-rule { order: 2; margin-left: auto; font-size: .72rem; }
     .path-step-extras { display: none; }
     .path-step--ouvert .path-step-extras { display: inline; }
     .path-step-toggle {

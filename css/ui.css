@@ -1380,6 +1380,93 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     .path-selection-btn--valider { margin-left: 0; }
 }
 
+/* --- LA BARRE SUR UN TÉLÉPHONE ---------------------------------------------
+   Rémy, capture d'iPhone à l'appui : « sur portable ce n'est pas terrible ».
+   Mesuré : la barre faisait 270 px de haut sur un écran de 844 — un tiers du
+   téléphone pour régler une étape —, et surtout elle était EN ESCALIER. Deux
+   `margin-left: auto` en étaient la cause : dans une rangée qui se replie, ils
+   ne poussent plus un bouton à droite de la ligne, ils lui font une ligne à lui
+   tout seul avec un grand vide devant. « Tout sélectionner » et « Valider »
+   flottaient donc chacun sur leur rangée, et les trois rôles se répartissaient
+   deux par deux au petit bonheur.
+
+   ON PASSE DONC EN GRILLE quand la barre est étroite, et tout se range :
+   le compte et « Tout sélectionner » sur la première rangée, LES TROIS RÔLES
+   CÔTE À CÔTE sur la deuxième — ils décrivent trois états d'une même chose, un
+   rang de trois le dit mieux que trois boutons éparpillés —, puis les réglages.
+
+   ET C'EST UNE REQUÊTE DE CONTENEUR, PAS D'ÉCRAN. La colonne du parcours est
+   étroite sur un téléphone, mais aussi sur une tablette en mode professeur, où
+   le catalogue lui prend la moitié de la largeur. C'est la largeur de la BARRE
+   qui décide, jamais celle de l'appareil. */
+/* LE CONTENEUR EST LE PARENT, ET NON LA BARRE : un élément ne peut pas
+   interroger sa propre largeur — il interroge celle de son conteneur. Le nom
+   évite qu'une autre requête de conteneur, ailleurs dans la page, ne tombe par
+   hasard sur celui-ci. */
+#path-container { container: parcoursBarre / inline-size; }
+
+/* LE SEUIL EST CELUI OÙ LA RANGÉE SE REPLIE, ET NON UNE TAILLE D'APPAREIL.
+   Mesuré : le compte, les trois rôles et « Tout sélectionner » demandent 620 px
+   pour tenir sur une ligne. En dessous, la rangée se replie — et c'est là que
+   les `margin-left: auto` font l'escalier. On bascule donc en grille dès 640,
+   ce qui prend au passage la tablette en mode professeur, où le catalogue
+   mange la moitié de la largeur. */
+@container parcoursBarre (max-width: 640px) {
+    .path-selection {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px; align-items: stretch; padding: 8px;
+    }
+    .path-selection-compte { grid-area: 1 / 1 / 2 / 3; align-self: center; margin: 0; }
+    /* Les trois rôles occupent la deuxième rangée, une colonne chacun. */
+    .path-selection-btn {
+        grid-row: 2; padding: 6px 4px; font-size: .72rem; line-height: 1.15;
+        min-height: 40px; display: flex; align-items: center; justify-content: center;
+        text-align: center;
+    }
+    /* Écrit après, donc il l'emporte : « Tout sélectionner » reprend sa place
+       en haut à droite, et perd le `margin-left: auto` qui le faisait fuir. */
+    .path-selection-btn--fin { grid-area: 1 / 3 / 2 / 4; margin-left: 0; }
+
+    /* DEUX COLONNES, MAIS PAS PLUS LARGES QU'IL NE FAUT. Sans le plafond, une
+       barre de tablette étalait « Questions » à gauche et son champ à cent
+       soixante pixels de là : on ne lisait plus l'un avec l'autre. */
+    .path-selection-reglages {
+        grid-column: 1 / -1; display: grid;
+        grid-template-columns: repeat(2, minmax(0, 215px));
+        justify-content: start;
+        gap: 7px 10px; padding-top: 7px; margin-top: 0;
+    }
+    /* « POUR CETTE ÉTAPE : » DISPARAÎT, et ne manque à personne. Il coûtait une
+       rangée entière pour répéter ce que la première ligne vient de dire —
+       « 1 étape sélectionnée » —, et la seule chose qu'il apportait, la
+       distinction avec le réglage de séance, est déjà écrite en toutes lettres
+       sur l'étiquette du mode. */
+    .path-selection-pour { display: none; }
+    /* LE NOMBRE SE COLLE À DROITE DE SON ÉTIQUETTE, et non juste après elle :
+       « Questions 10 » et « Réussite ≥ 70 % » alignent alors leurs deux champs
+       l'un sous l'autre, et l'on relit la colonne des valeurs d'un coup d'œil. */
+    .path-selection-champ .path-selection-num { margin-left: auto; }
+    /* Le mode porte l'étiquette la plus longue et la seule liste déroulante :
+       il prend la ligne entière plutôt que d'écraser le champ d'à côté. */
+    .path-selection-champ--mode { grid-column: 1 / -1; }
+    .path-selection-champ--mode .path-selection-select { margin-left: auto; }
+    .path-selection-btn--valider {
+        grid-column: 1 / -1; grid-row: auto; min-height: 42px; margin-left: 0;
+    }
+}
+
+/* LES TRÈS PETITS ÉCRANS — un iPhone SE fait 320 points de large, et la
+   colonne du parcours n'en garde que 236. Trois colonnes y font 69 pixels
+   chacune : « Récompenses » y débordait de sa case, et « Tout désélectionner »
+   aussi. On resserre d'un cran de plus. Le 🎁 passe alors sur sa propre ligne,
+   ce qui est très bien : il se lit comme une icône, et le mot reste entier. */
+@container parcoursBarre (max-width: 360px) {
+    .path-selection-btn { font-size: .64rem; padding: 6px 2px; }
+    .path-selection-champ { font-size: .72rem; }
+    .path-selection-num { width: 3.4em; padding: 4px 2px; }
+    .path-selection-select { font-size: .72rem; padding: 4px 2px; }
+}
+
 
 /* --- L'ÉTAPE SOUS CLÉ ---------------------------------------------------- */
 /* Rémy : « il ne faut pas vraiment que l'élève ait accès aux interros à la
