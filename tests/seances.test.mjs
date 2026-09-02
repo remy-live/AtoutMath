@@ -12,6 +12,7 @@ import {
     ETATS, donnerSeance, etatSeance, clore, rouvrir, poserMot,
     seancesDe, seanceDuMoment, archivees, vivantes, comptePourLaNote, direSeance,
     donnerAuxClasses, classesDuNiveau, niveauxDe, memeLot, concerne, elevesDe, aRattraper
+    , retirer, remettre, estRetiree
 } from '../js/core/seances.js';
 import { makePath, makeStep } from '../js/core/path.js';
 import { creerClasse } from '../js/core/classes.js';
@@ -240,4 +241,34 @@ test('LE RATTRAPAGE DÉSIGNE CEUX QUI ONT RATÉ, pas ceux qui n\'ont rien fait',
     assert.deepEqual(aRattraper(bilans), ['a', 'c']);
     assert.deepEqual(aRattraper(bilans, 0.9), ['a', 'b', 'c']);
     assert.deepEqual(aRattraper([]), []);
+});
+
+
+test('DÉCOCHER UNE CLASSE NE DÉTRUIT PAS LE TRAVAIL DES ÉLÈVES', () => {
+    // LE GESTE QU'ON FAIT PAR MÉGARDE. Le panneau du parcours met une case à
+    // cocher devant chaque classe ; décocher retire la séance. Une case, ça se
+    // décoche d'un clic de trop — et vingt-six bilans ne doivent pas dépendre
+    // de la précision d'un clic.
+    const classe = { id: 'c1', nom: '5eB' };
+    const parcours = { id: 'p1', name: 'Les angles', steps: [{ stepId: 'a', exerciseId: 'x' }] };
+    const s = donnerSeance(classe, parcours);
+
+    assert.equal(estRetiree(s), false);
+    assert.equal(vivantes([s]).length, 1);
+
+    const r = retirer(s, 1000);
+    assert.equal(estRetiree(r), true);
+    // Elle quitte l'écran des élèves…
+    assert.equal(vivantes([r]).length, 0);
+    // …mais elle existe toujours, avec sa copie du parcours et ses mots.
+    assert.equal(r.path.steps.length, 1);
+    assert.deepEqual(seancesDe([r], 'c1').map(x => x.id), [s.id]);
+
+    // Et elle revient d'un clic.
+    assert.equal(estRetiree(remettre(r)), false);
+    assert.equal(vivantes([remettre(r)]).length, 1);
+
+    // Les cas vides ne plantent pas.
+    assert.equal(retirer(null), null);
+    assert.equal(estRetiree(null), false);
 });

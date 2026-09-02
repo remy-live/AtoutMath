@@ -30,6 +30,9 @@
 import { makeRng } from './ids.js';
 import { creerClasse, creerEleve } from './classes.js';
 import { EventTypes } from './journal.js';
+import { makeStep, PATH_VERSION } from './path.js';
+import { defaultPolicy } from './policy.js';
+import { donnerSeance } from './seances.js';
 
 /**
  * LES PRÉNOMS. Volontairement variés et volontairement banals : ce sont des
@@ -132,6 +135,11 @@ export const CLASSES_DEMO = [
  * `famille` sert au profil déséquilibré : il faut pouvoir dire « bon ici,
  * perdu là » sans lire les identifiants.
  */
+// L'HEURE DE COURS D'UNE CLASSE. Les cinq classes de démonstration se suivent
+// d'heure en heure : c'est ce créneau qui range les journaux des élèves DANS la
+// fenêtre de leur séance, et les deux calculs doivent lire la même constante.
+const CRENEAU = 3600000;
+
 const TRAVAIL = [
     { skillId: 'num.add.entiers', exerciseId: 'calc-poser', famille: 'num',
         piege: '408 + 297', juste: '705', faux: '695' },
@@ -322,16 +330,79 @@ export function classesDeDemo({ seed = 'demo', jours = 3 } = {}) {
         classe.eleves = noms.map((nom, ie) => {
             const profil = profils[ie];
             const r = makeRng(`${seed}-${ic}-${ie}`);
-            // Chacun ne commence pas à la même seconde : une classe où trente
-            // élèves démarrent ensemble ne ressemble à aucune heure de cours.
-            const t0 = debut + Math.round(r.next() * 900000);
-            const eleve = creerEleve(nom, journalDe(profil, r, { debut: t0, pathId: `demo_path_${ic}` }));
+            // CHAQUE CLASSE A SON HEURE, ET C'EST UNE CORRECTION DE BUG.
+            //
+            // Mesuré : sans le décalage `ic`, les cinq classes travaillaient à
+            // la même minute, alors que leurs séances s'ouvrent d'heure en
+            // heure — on n'a pas ses cinq classes en même temps. Résultat, le
+            // travail des quatre dernières tombait AVANT l'ouverture de leur
+            // séance, donc hors de la fenêtre : une seule classe sur cinq
+            // affichait un bilan, et les quatre autres semblaient n'avoir rien
+            // fait alors que leurs journaux étaient pleins.
+            //
+            // Le décalage est donc le MÊME que celui de `seancesDeDemo` — les
+            // deux se lisent ensemble, et l'écart entre eux était le bug.
+            const t0 = debut + ic * CRENEAU + Math.round(r.next() * 900000);
+            // UN SEUL PARCOURS POUR LES CINQ CLASSES, et c'est délibéré :
+            // c'est ce qui rend l'engrenage démontrable — on ouvre le panneau
+            // du parcours de démonstration et l'on voit cinq classes cochées,
+            // chacune avec son bilan. Cinq pathId différents auraient donné
+            // cinq panneaux vides.
+            const eleve = creerEleve(nom, journalDe(profil, r, { debut: t0, pathId: PARCOURS_DEMO.id }));
             eleve.profil = profil.id;
             eleve.demo = true;
             return eleve;
         });
         return classe;
     });
+}
+
+/**
+ * LE PARCOURS DE DÉMONSTRATION — celui que les cinq classes ont fait.
+ *
+ * Il porte les six exercices de `TRAVAIL`, dans le même ordre : le bilan de
+ * séance montre alors exactement les six notions travaillées, et rien d'autre.
+ * C'est la démonstration de ce que Rémy demandait — « le bilan par classe,
+ * c'est tout ce qu'ils ont fait, ça pourra être très lourd » : ici, six
+ * colonnes au lieu de tout l'historique.
+ *
+ * SON IDENTIFIANT EST FIXE. Les journaux des élèves le citent ; le tirer au
+ * hasard casserait le lien entre le parcours et le travail qu'on lui rattache.
+ */
+export const PARCOURS_DEMO = {
+    id: 'demo_path',
+    version: PATH_VERSION,
+    name: 'Séance de démonstration',
+    demo: true,
+    policy: defaultPolicy(),
+    steps: TRAVAIL.map((t, i) => ({
+        ...makeStep(t.exerciseId),
+        stepId: `demo_s${i}`
+    }))
+};
+
+/**
+ * LES SÉANCES DE DÉMONSTRATION — une par classe, comme dans la vraie vie.
+ *
+ * Elles sont CLOSES : la démonstration montre l'après-cours, c'est-à-dire le
+ * moment où l'on regarde un bilan. Une séance en cours n'aurait rien à
+ * raconter.
+ */
+export function seancesDeDemo(classes, { jours = 3 } = {}) {
+    const debut = Date.now() - jours * 86400000;
+    return (classes || []).map((c, i) => ({
+        ...donnerSeance(c, PARCOURS_DEMO, {
+            // Chaque classe a son heure : on n'a pas ses cinq classes en même
+            // temps, et des séances toutes ouvertes à la même minute se
+            // repéreraient tout de suite comme un décor. Le créneau est celui
+            // de `classesDeDemo` — les journaux doivent tomber DEDANS.
+            ouvreLe: debut + i * CRENEAU,
+            donneeLe: debut - 86400000
+        }),
+        id: `demo_seance_${i}`,
+        demo: true,
+        closeLe: debut + i * CRENEAU + 55 * 60000
+    }));
 }
 
 /** Ce que chaque profil est censé montrer — pour l'écran de démonstration. */

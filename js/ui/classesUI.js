@@ -30,6 +30,27 @@ import {
 import { bilanClasse, SIGNAUX } from '../core/bilan.js';
 import { classesDeDemo, LEGENDE_PROFILS } from '../core/demoClasses.js';
 import { LEVELS } from '../core/mastery.js';
+import { state } from '../core/state.js';
+
+/**
+ * LE PARCOURS DE DÉMONSTRATION DOIT ÊTRE DANS LA BIBLIOTHÈQUE, sinon la
+ * démonstration s'arrête à mi-chemin.
+ *
+ * Les cinq classes portent le travail ; l'engrenage du parcours montre à qui
+ * il a été donné. Sans le parcours lui-même dans la liste du professeur, il n'y
+ * a rien à ouvrir : on verrait des bilans sans jamais voir d'où ils viennent.
+ *
+ * ON NE LE DUPLIQUE PAS : son identifiant est fixe, on le remplace s'il existe.
+ */
+async function rangerParcoursDemo(modele) {
+    const ID = 'demo_path_biblio';
+    const entree = {
+        id: ID, name: modele.name, data: modele,
+        folderId: 'root', demo: true, timestamp: Date.now()
+    };
+    state.teacherPaths = [entree, ...state.teacherPaths.filter(p => p.id !== ID)];
+    state.saveTeacherPaths();
+}
 
 const CLE = 'classes';
 
@@ -330,11 +351,21 @@ function brancher(racine) {
         // elles portent une marque, un bandeau les annonce, et le bouton
         // d'effacement ne touche qu'à elles.
         if ('demo' in el.dataset) {
-            classes = [...classes.filter(x => !x.demo), ...classesDeDemo({})];
+            const demos = classesDeDemo({});
+            classes = [...classes.filter(x => !x.demo), ...demos];
             classeActiveId = (classes.find(x => x.demo) || {}).id || classeActiveId;
             eleveOuvertId = null;
             await enregistrer();
-            showToast('Cinq classes de démonstration chargées.', 'success');
+            // LES SÉANCES VIENNENT AVEC LES CLASSES. Sans elles, les cinq
+            // classes ont des journaux mais aucune séance à laquelle les
+            // rattacher : l'engrenage du parcours s'ouvrirait vide, et c'est
+            // justement ce qu'on veut donner à voir.
+            const { seancesDeDemo, PARCOURS_DEMO } = await import('../core/demoClasses.js');
+            const { lireSeances, ecrireSeances } = await import('./donnerSeance.js');
+            const autres = (await lireSeances()).filter(x => !x.demo);
+            await ecrireSeances([...autres, ...seancesDeDemo(demos)]);
+            await rangerParcoursDemo(PARCOURS_DEMO);
+            showToast('Cinq classes de démonstration chargées, avec leur séance.', 'success');
             return rafraichir();
         }
         if ('effacer-demo' in el.dataset || el.dataset.effacerDemo !== undefined) {
@@ -343,6 +374,12 @@ function brancher(racine) {
                 classeActiveId = classes.length ? classes[0].id : null;
                 eleveOuvertId = null;
                 await enregistrer();
+                // Les séances de démonstration partent avec les classes : une
+                // séance dont la classe n'existe plus n'est nulle part.
+                const { lireSeances, ecrireSeances } = await import('./donnerSeance.js');
+                await ecrireSeances((await lireSeances()).filter(x => !x.demo));
+                state.teacherPaths = state.teacherPaths.filter(p => !p.demo);
+                state.saveTeacherPaths();
                 rafraichir();
             });
         }

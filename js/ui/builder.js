@@ -1348,18 +1348,23 @@ function initToolbar() {
         };
     }
 
-    // DONNER À UNE CLASSE — le geste le plus fréquent, donc le plus proche.
+    // L'ENGRENAGE — « à qui ce parcours est donné », dans le panneau de droite.
     //
-    // Rémy : « je ne sais pas comment j'envoie un parcours à une classe. » Il
-    // n'y avait rien à trouver : le noyau existait, le bouton non. Il se pose
-    // ici, dans la barre du parcours qu'on vient d'écrire — donner un travail
-    // se fait DEPUIS le travail, jamais depuis un autre écran où il faudrait le
-    // retrouver.
+    // Rémy : « je ne sais pas comment j'envoie un parcours à une classe » —
+    // puis, une fois le bouton posé : « à côté du parcours, on pourrait avoir
+    // un engrenage et cela se met à la place des paramètres […] pour savoir les
+    // classes à qui c'est attribué ».
+    //
+    // LA BOÎTE DE DIALOGUE DEVIENT UN PANNEAU, et c'est un vrai gain. Une boîte
+    // est un geste sans mémoire : on donne, elle se referme, et plus rien ne
+    // dit à qui. Le panneau montre l'ÉTAT — cochées, les classes qui l'ont.
+    // Donner devient alors la même chose que voir, et il n'y a plus qu'un
+    // endroit à consulter.
     const btnDonner = document.getElementById('btn-donner-classe');
     if (btnDonner) {
         btnDonner.onclick = async () => {
-            const { ouvrirDonnerSeance } = await import('./donnerSeance.js');
-            ouvrirDonnerSeance(state.currentPath);
+            const { ouvrirPanneauClasses } = await import('./parcoursClasses.js');
+            ouvrirPanneauClasses(state.currentPath, () => renderTeacherPath());
         };
     }
 

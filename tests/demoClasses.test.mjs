@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { classesDeDemo, CLASSES_DEMO, PROFILS } from '../js/core/demoClasses.js';
+import { seancesDeDemo, PARCOURS_DEMO, classesDeDemo, CLASSES_DEMO, PROFILS } from '../js/core/demoClasses.js';
 import { bilanEleve } from '../js/core/bilan.js';
 import { computeMastery } from '../js/core/mastery.js';
 import { computeAttempts, computeErrors } from '../js/core/projections.js';
@@ -254,4 +254,37 @@ test('LES COMPÉTENCES SONT DE VRAIES COMPÉTENCES DU CATALOGUE', async () => {
         .map(x => x.payload.skillId).filter(Boolean));
     assert.ok(ids.size >= 5, `seulement ${ids.size} compétences`);
     ids.forEach(id => assert.ok(SKILLS[id], `compétence inventée : ${id}`));
+});
+
+
+test('CHAQUE CLASSE DE DÉMONSTRATION A UN BILAN DE SÉANCE, pas seulement la première', async () => {
+    // MESURÉ AU NAVIGATEUR, ET C'EST CE QUI L'A FAIT ÉCRIRE. Les cinq classes
+    // travaillaient à la même minute, alors que leurs séances s'ouvrent d'heure
+    // en heure — on n'a pas ses cinq classes en même temps. Le travail des
+    // quatre dernières tombait donc AVANT l'ouverture de leur séance, hors de
+    // la fenêtre : le panneau affichait un lien « bilan » sur la première
+    // classe et rien sur les quatre autres, dont les journaux étaient pleins.
+    //
+    // L'écart entre deux constantes qu'on lisait chacune de son côté : c'est
+    // exactement ce qu'un test doit tenir.
+    const { bilanSeance, aTravaille } = await import('../js/core/bilanSeance.js');
+    const classes = classesDeDemo({});
+    const seances = seancesDeDemo(classes);
+    assert.equal(seances.length, classes.length);
+
+    seances.forEach((s, i) => {
+        const classe = classes[i];
+        assert.equal(s.pathId, PARCOURS_DEMO.id, `${classe.nom} : mauvais parcours`);
+        const actifs = (classe.eleves || []).filter(e => aTravaille(s, e.evenements || []));
+        assert.ok(actifs.length > classe.eleves.length * 0.6,
+            `${classe.nom} : seulement ${actifs.length}/${classe.eleves.length} dans la fenêtre`);
+
+        const b = bilanSeance(s, classe);
+        // SIX COLONNES, PAS QUARANTE : c'est la raison d'être du bilan de séance.
+        assert.equal(b.competences.length, PARCOURS_DEMO.steps.length,
+            `${classe.nom} : ${b.competences.length} colonnes`);
+        assert.ok(b.moyenneReussite > 0.4 && b.moyenneReussite < 0.9,
+            `${classe.nom} : réussite ${b.moyenneReussite}`);
+        assert.ok(b.phrase.length > 20);
+    });
 });

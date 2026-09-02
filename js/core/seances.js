@@ -98,6 +98,8 @@ export function donnerSeance(classe, parcours, opts = {}) {
         donneeLe: opts.donneeLe || Date.now(),
         ouvreLe: opts.ouvreLe || null,
         closeLe: null,
+        // RETIRÉE DE L'ÉCRAN DES ÉLÈVES, mais gardée — voir `retirer`.
+        retireeLe: null,
         // Les mots que le professeur ajoute à un élève PENDANT la séance.
         // Rémy : « je ne peux taper une phrase pour chaque élève, mais pourquoi
         // pas personnaliser quand je peux pendant la séance. » D'où un mot par
@@ -268,8 +270,33 @@ export function archivees(seances, { jours = 21, maintenant = Date.now() } = {})
 
 export function vivantes(seances, opts = {}) {
     const vieilles = new Set(archivees(seances, opts).map(s => s.id));
-    return (seances || []).filter(s => !vieilles.has(s.id));
+    return (seances || []).filter(s => !vieilles.has(s.id) && !estRetiree(s));
 }
+
+/**
+ * RETIRER UNE SÉANCE — ce qui remplace la suppression.
+ *
+ * Le panneau du parcours met une CASE À COCHER devant chaque classe : cocher
+ * donne, décocher retire. C'est le bon geste, et c'est aussi un geste qu'on
+ * fait par mégarde — une case, ça se décoche d'un clic de trop.
+ *
+ * ON NE SUPPRIME DONC JAMAIS UNE SÉANCE OÙ QUELQU'UN A TRAVAILLÉ. Vingt-six
+ * élèves ont passé une heure dessus ; leur bilan ne doit pas dépendre de la
+ * précision d'un clic. La séance retirée disparaît de l'écran des élèves —
+ * c'est ce qu'on voulait — mais son bilan reste consultable, et `remettre` la
+ * rend en un clic. Une séance que PERSONNE n'a ouverte, elle, se supprime pour
+ * de bon : il n'y a rien à protéger, et la garder encombrerait pour rien.
+ */
+export function retirer(seance, quand = Date.now()) {
+    return seance ? { ...seance, retireeLe: quand } : seance;
+}
+
+/** Remettre une séance retirée sous les yeux des élèves. */
+export function remettre(seance) {
+    return seance ? { ...seance, retireeLe: null } : seance;
+}
+
+export const estRetiree = (s) => !!(s && s.retireeLe);
 
 /**
  * LA NOTE COMPTE-T-ELLE CETTE RÉPONSE ?

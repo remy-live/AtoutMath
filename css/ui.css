@@ -1548,3 +1548,161 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     .cl-corps { grid-template-columns: 1fr; }
     .cl-cote { position: static; }
 }
+
+
+/* ===========================================================================
+   L'ENGRENAGE DU PARCOURS — « à qui c'est donné », dans le panneau de droite.
+
+   Rémy : « à côté du parcours fait par le professeur, on pourrait avoir un
+   engrenage et cela se met à la place des paramètres. Sur l'ordinateur donc à
+   droite pour savoir les classes à qui c'est attribué ».
+
+   LA COLONNE FAIT 330 PIXELS, et c'est elle qui commande tout le dessin. Une
+   ligne de classe y porte quatre choses — la case, le nom, l'état, le bilan —
+   plus le chevron. Rien ne rentre en tableau : chaque élément est donc dimen-
+   sionné pour rétrécir sauf le nom, qui coupe en dernier.
+   ======================================================================== */
+.pc-boite { display: flex; flex-direction: column; gap: 4px; }
+
+/* LE MODE EN PREMIER : il décide de ce que le bilan VEUT DIRE. */
+.pc-mode {
+    display: flex; flex-direction: column; gap: 5px;
+    margin-bottom: 2px;
+}
+.pc-mode-nom {
+    font-weight: 800; font-size: .78rem; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--primary);
+}
+.pc-mode-select {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit;
+    border: 1.5px solid var(--border); border-radius: 9px;
+    background: var(--bg-app); color: var(--text-main); cursor: pointer;
+}
+.pc-mode-dit {
+    margin: 0 0 12px; font-size: .82rem; line-height: 1.35; color: var(--text-muted);
+}
+
+.pc-classes { display: flex; flex-direction: column; gap: 6px; }
+.pc-classe {
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 7px 9px; background: var(--bg-app);
+}
+.pc-classe:has(input:checked) {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+}
+/* UNE SÉANCE RETIRÉE RESTE VISIBLE, EN GRIS. Elle a quitté l'écran des élèves,
+   son bilan est encore là, et sa case se recoche : l'effacer de la liste
+   rendrait le retour impossible à trouver. */
+.pc-classe--retiree { opacity: .62; border-style: dashed; }
+
+.pc-ligne { display: flex; align-items: center; gap: 6px; }
+.pc-case {
+    display: flex; align-items: center; gap: 7px; cursor: pointer;
+    flex: 1 1 auto; min-width: 0;
+}
+.pc-nom {
+    font-weight: 700; font-size: .92rem; color: var(--text-main);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pc-eff { font-size: .78rem; color: var(--text-muted); flex: 0 0 auto; }
+
+.pc-puce {
+    flex: 0 0 auto; font-size: .68rem; font-weight: 800; letter-spacing: .02em;
+    padding: 2px 6px; border-radius: 999px; white-space: nowrap;
+}
+.pc-vif { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+.pc-attente { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.pc-calme { background: color-mix(in srgb, var(--text-muted) 18%, transparent); color: var(--text-muted); }
+
+.pc-bilan {
+    flex: 0 0 auto; border: none; background: none; padding: 2px 4px; cursor: pointer;
+    font: inherit; font-size: .78rem; font-weight: 700; color: var(--primary);
+    text-decoration: underline; text-underline-offset: 2px;
+}
+/* CLORE EST DISCRET MAIS PRÉSENT. C'est un geste qu'on fait une fois par
+   séance, pas un bouton d'action principale — mais il doit être là, à côté du
+   bilan qu'on lit juste après. */
+.pc-clore {
+    flex: 0 0 auto; border: none; background: none; padding: 2px 4px; cursor: pointer;
+    font: inherit; font-size: .74rem; font-weight: 700; color: var(--text-muted);
+    text-decoration: underline; text-underline-offset: 2px;
+}
+.pc-clore:hover { color: var(--text-main); }
+.pc-plier {
+    flex: 0 0 auto; border: none; background: none; cursor: pointer;
+    font-size: .9rem; color: var(--text-muted); padding: 2px 4px;
+    /* La cible tactile fait bien plus que le chevron ne montre. */
+    min-width: 26px; min-height: 26px;
+}
+.pc-etat { font-size: .76rem; color: var(--text-muted); margin: 4px 0 0 25px; }
+
+/* MESURÉ : une 5ᵉ de vingt-six élèves dépliée poussait les quatre autres
+   classes hors de l'écran, et l'on ne pouvait plus la replier sans remonter
+   toute la liste. La liste dépliée défile donc dans sa propre boîte. */
+.pc-eleves {
+    display: flex; flex-direction: column; gap: 2px; margin: 6px 0 0 12px;
+    max-height: 300px; overflow-y: auto;
+}
+.pc-eleve {
+    display: flex; align-items: baseline; gap: 6px; font-size: .84rem;
+    padding: 2px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.pc-eleve-nom { flex: 1 1 auto; min-width: 0; color: var(--text-main);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-chiffre { flex: 0 0 auto; font-size: .76rem; color: var(--text-muted); }
+.pc-rien { flex: 0 0 auto; font-size: .74rem; color: var(--text-muted); font-style: italic; }
+
+.pc-compte {
+    margin: 12px 0 0; padding: 8px 11px; border-radius: 9px;
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-app));
+    font-size: .85rem; line-height: 1.35; color: var(--text-main);
+}
+.pc-vide { font-size: .84rem; color: var(--text-muted); line-height: 1.4; }
+
+/* LE BILAN S'OUVRE SOUS LA LISTE, pas dans une boîte par-dessus : on veut
+   pouvoir passer d'un élève à l'autre sans refermer, et une boîte modale
+   oblige à refermer entre chaque. */
+.pc-rapport-zone { margin-top: 14px; }
+.pc-rapport {
+    border: 1.5px solid var(--border); border-radius: 11px; padding: 11px 12px;
+    background: var(--bg-app);
+}
+.pc-rapport h4 { margin: 0 0 6px; font-size: .95rem; color: var(--text-main); }
+.pc-rapport h5 {
+    margin: 12px 0 5px; font-size: .76rem; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+.pc-resume { margin: 0 0 6px; font-size: .84rem; color: var(--text-muted); line-height: 1.35; }
+.pc-phrase { margin: 0 0 8px; font-size: .87rem; line-height: 1.4; color: var(--text-main); }
+.pc-alerte {
+    margin: 0 0 8px; font-size: .84rem; font-weight: 700; color: var(--danger);
+}
+.pc-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.pc-table th {
+    text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--text-muted); font-weight: 800; padding: 3px 4px;
+}
+.pc-table td { padding: 3px 4px; border-top: 1px solid var(--border); color: var(--text-main); }
+.pc-table td:nth-child(2), .pc-table td:nth-child(3),
+.pc-table th:nth-child(2), .pc-table th:nth-child(3) { text-align: right; width: 4.5em; }
+.pc-rouge { color: var(--danger); font-weight: 800; }
+
+.pc-liste { margin: 0; padding-left: 0; list-style: none; font-size: .84rem; line-height: 1.5; }
+.pc-liste li { display: flex; align-items: baseline; gap: 6px; color: var(--text-main); }
+.pc-pastille {
+    flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%;
+    display: inline-block; align-self: center;
+}
+/* LE MOT DU PROFESSEUR, écrit pendant la séance. Il se lit comme une note dans
+   la marge, et non comme une donnée de plus. */
+.pc-mot {
+    display: block; margin: 6px 0 0; font-size: .82rem; font-style: italic;
+    color: var(--primary);
+}
+.pc-eleves-bilan { display: flex; flex-direction: column; gap: 1px; }
+.pc-fermer-rapport {
+    margin-top: 8px; width: 100%; padding: 7px; font: inherit; font-size: .82rem;
+    border: 1.5px solid var(--border); border-radius: 9px;
+    background: var(--bg-panel); color: var(--text-main); cursor: pointer;
+}
