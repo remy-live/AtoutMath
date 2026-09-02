@@ -11,8 +11,10 @@ import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, familleDe, flecheDe, cleFleche,
     ancetres, estToujours, genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
     traceFleche, posEtiquette, conditionsDe, CASE_L, CASE_H,
-    ETAPES, genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape
+    ETAPES, genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape,
+    vignetteDe
 } from '../js/core/quadrilateres.js';
+import { PROPRIETES, proprieteDe } from '../js/core/quadriMorph.js';
 
 test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
     // C'est la question qui départage ceux qui ont compris : « est-ce qu'un
@@ -455,4 +457,85 @@ test('L\'EXERCICE EST IMPRIMABLE, avec son propre générateur', () => {
     assert.equal(exo.printGeneratorId, 'geo.quadrilateres.organigramme');
     // Et l'exercice à l'écran garde le sien : ce sont deux gestes différents.
     assert.equal(exo.activityId, 'quadrilateres');
+});
+
+
+// --- LES VIGNETTES DE PROPRIÉTÉS -------------------------------------------------
+
+test('CHAQUE FLÈCHE A SA VIGNETTE, et elle tient sur un trait', () => {
+    // Rémy : « pour l'organigramme, j'aimerais aussi inclure les vignettes de
+    // propriétés. Exemple : on part du quadrilatère et pour aller au
+    // parallélogramme, on glisse la vignette côtés opposés parallèles. »
+    //
+    // MESURÉ AU NAVIGATEUR, ET C'EST LA RAISON DE LA LONGUEUR MAXIMALE : posées
+    // en clair, treize conditions de quarante-cinq caractères donnaient
+    // quatorze recouvrements sur un plan de 560 x 320 pixels — « Parallélogramme »
+    // disparaissait sous trois d'entre elles. La vignette doit rester courte,
+    // et rien dans le code ne le garantit sinon ce test.
+    FLECHES.forEach(f => {
+        assert.ok(f.court, `${f.de} → ${f.vers} : pas de vignette`);
+        assert.ok(f.court.length <= 28,
+            `« ${f.court} » fait ${f.court.length} caractères — trop long pour une flèche`);
+        // La vignette résume la phrase — ou lui est égale quand la phrase
+        // était déjà une vignette : « un angle droit » ne s'abrège pas.
+        assert.ok(f.court.length <= f.ajoute.length,
+            `« ${f.court} » est plus long que « ${f.ajoute} »`);
+    });
+    // On la retrouve depuis la phrase, c'est ce dont l'écran se sert.
+    assert.equal(vignetteDe('un angle droit'), 'un angle droit');
+    assert.equal(vignetteDe('les côtés opposés sont parallèles deux à deux'),
+        'côtés opposés parallèles');
+    // Une phrase inconnue ne fait pas planter l'écran : elle se rend elle-même.
+    assert.equal(vignetteDe('n\'importe quoi'), 'n\'importe quoi');
+});
+
+test('LES DEUX EXERCICES PARLENT LA MÊME LANGUE', () => {
+    // La carte qu'on glisse sur une figure pour la déformer, dans « Le
+    // Quadrilatère qui se Transforme », doit porter EXACTEMENT les mots de
+    // celle qu'on pose sur une flèche ici. Deux exercices, un seul vocabulaire
+    // — sans quoi l'élève apprend deux listes au lieu d'une notion.
+    //
+    // C'est le genre d'accord qui se défait tout seul : deux listes recopiées
+    // dans deux fichiers, une retouche d'un côté, et personne ne le voit.
+    const avecPropriete = FLECHES.filter(f => f.propriete);
+    assert.ok(avecPropriete.length >= 9,
+        `seulement ${avecPropriete.length} flèches rattachées à une vignette`);
+
+    avecPropriete.forEach(f => {
+        const p = proprieteDe(f.propriete);
+        assert.ok(p, `${f.court} : propriété « ${f.propriete} » inconnue de quadriMorph`);
+        assert.equal(f.court, p.court,
+            `« ${f.court} » ici, « ${p.court} » dans l'autre exercice`);
+    });
+
+    // Les deux flèches sans équivalent le sont pour une raison, et pas par
+    // oubli : ce sont les raccourcis de sixième, que l'autre exercice ne
+    // montre pas.
+    const sans = FLECHES.filter(f => !f.propriete).map(f => f.court);
+    assert.deepEqual([...new Set(sans)].sort(),
+        ['2 côtés consécutifs égaux', '3 ou 4 angles droits']);
+
+    // Et toute vignette de l'autre exercice qui décrit un passage du cours se
+    // retrouve ici : on n'en a pas perdu en route.
+    const ici = new Set(FLECHES.map(f => f.propriete).filter(Boolean));
+    PROPRIETES.forEach(p => {
+        assert.ok(ici.has(p.id), `« ${p.court} » n'a aucune flèche dans l'organigramme`);
+    });
+});
+
+test('LA CARTE POSÉE PORTE LES DEUX ÉCRITURES', () => {
+    // `court` s'affiche, `texte` juge et se relit. Perdre l'un des deux casse
+    // soit la lisibilité du plan, soit le carnet.
+    const org = genererProgressif({ rng: makeRng('vign') });
+    org.etapes.forEach(e => {
+        e.cartes.forEach(c => {
+            assert.ok(c.texte, 'une carte sans phrase');
+            assert.ok(c.court, `« ${c.texte} » sans vignette`);
+            assert.equal(c.court, vignetteDe(c.texte));
+        });
+        // Et c'est bien la PHRASE qui juge : la vignette « un angle droit » est
+        // identique à elle-même sur deux flèches différentes.
+        e.bonnes.forEach(b => assert.equal(verifierEtape(e,
+            e.cartes.find(c => c.texte === b)).ok, true));
+    });
 });

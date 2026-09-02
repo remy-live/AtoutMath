@@ -8241,10 +8241,6 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 /* Les parallèles en pointillés : le trait DIT qu'elles sont parallèles, il n'y
    a pas besoin de l'écrire à côté. */
 .ar-trait--par { stroke-dasharray: 9 6; }
-/* Le codage des parallèles : un chevron sur chacune des deux droites. C'est la
-   convention des manuels, et elle ne coûte pas une ligne d'énoncé. */
-.ar-chevron { fill: none; stroke: #334155; stroke-width: 3.2;
-    stroke-linecap: round; stroke-linejoin: round; }
 .ar-sommet { fill: var(--text-main); }
 .ar-droit { fill: none; stroke: var(--text-main); stroke-width: 2; }
 /* LES TROIS TEINTES SONT OPAQUES, ET CE SONT CELLES DU PDF (voir ENCRE_ANGLE

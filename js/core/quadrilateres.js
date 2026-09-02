@@ -86,6 +86,31 @@ export const FAMILLES = [
  * les deux, parce que c'est ainsi que la propriété se rencontre, et parce que
  * la remarque vaut d'être faite.
  *
+ * `court` EST LA VIGNETTE, et c'est ce qui a changé en dernier.
+ *
+ * Rémy : « pour l'organigramme, j'aimerais aussi inclure les vignettes de
+ * propriétés. Exemple : on part du quadrilatère et pour aller au
+ * parallélogramme, on glisse la vignette côtés opposés parallèles. »
+ *
+ * Une PHRASE ne tient pas sur une flèche. « Les côtés opposés sont parallèles
+ * deux à deux » fait quarante-cinq caractères : posée au milieu d'un trait,
+ * elle recouvre les deux cases qu'il relie. C'est pourquoi les réponses
+ * atterrissaient jusqu'ici dans des bandes SOUS le schéma — et l'on perdait
+ * alors ce que l'exercice enseigne : que cette condition-là est portée par
+ * CETTE flèche-là. La vignette, elle, tient sur le trait.
+ *
+ * ET C'EST LA VIGNETTE DE L'AUTRE EXERCICE. `propriete` renvoie à `PROPRIETES`
+ * dans core/quadriMorph.js : la carte qu'on glisse sur une figure pour la
+ * déformer, dans « Le Quadrilatère qui se Transforme », porte exactement les
+ * mêmes mots que celle qu'on pose sur une flèche ici. Deux exercices, un seul
+ * vocabulaire — sans quoi l'élève apprend deux listes au lieu d'une notion.
+ * Un test le vérifie ; l'écart entre deux listes recopiées est justement le
+ * genre de chose qui se défait toute seule.
+ *
+ * DEUX FLÈCHES N'ONT PAS DE VIGNETTE ÉQUIVALENTE, et c'est normal :
+ * « 3 ou 4 angles droits » et « 2 côtés consécutifs égaux » ne servent qu'ici.
+ * L'autre exercice n'a pas de trapèze ni de raccourci de sixième à montrer.
+ *
  * `ajoute` est ce qu'on écrit SUR la flèche. `piege` est ce qu'on répond à
  * l'élève qui place cette carte au mauvais endroit — c'est la phrase qui
  * enseigne, et c'est pour elle que ce tableau existe plutôt qu'une liste de
@@ -99,21 +124,21 @@ export const FLECHES = [
     // --- Du quadrilatère quelconque au parallélogramme : trois chemins --------
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: -1,
-        ajoute: 'les côtés opposés sont parallèles deux à deux',
+        ajoute: 'les côtés opposés sont parallèles deux à deux', court: 'côtés opposés parallèles', propriete: 'opposesParalleles',
         piege: 'Le parallélogramme n\'ajoute pas des côtés égaux : il ajoute le '
             + 'PARALLÉLISME des deux paires de côtés opposés. Les longueurs suivent toutes '
             + 'seules.'
     },
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: 0,
-        ajoute: 'les côtés opposés sont égaux deux à deux',
+        ajoute: 'les côtés opposés sont égaux deux à deux', court: 'côtés opposés égaux', propriete: 'cotesOpposesEgaux',
         piege: 'Deux paires de côtés opposés de même longueur suffisent : le parallélisme '
             + 'suit. Attention, il faut bien les côtés OPPOSÉS — deux côtés consécutifs '
             + 'égaux ne donnent rien du tout dans un quadrilatère quelconque.'
     },
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: 1,
-        ajoute: 'les diagonales se coupent en leur milieu',
+        ajoute: 'les diagonales se coupent en leur milieu', court: 'diagonales : même milieu', propriete: 'diagonalesMilieu',
         piege: 'C\'est la troisième façon d\'être un parallélogramme, et la plus oubliée. '
             + 'Les diagonales se coupent en leur MILIEU — qu\'elles se coupent tout court '
             + 'n\'apprend rien, tout quadrilatère non croisé le fait.'
@@ -126,7 +151,7 @@ export const FLECHES = [
         // sur un écran d'ordinateur — assez pour qu'on croie qu'il s'y arrête.
         // Incurvé vers le haut, il passe à 22 unités.
         de: 'quadrilatere', vers: 'rectangle', voie: -1,
-        ajoute: 'trois ou quatre angles droits',
+        ajoute: 'trois ou quatre angles droits', court: '3 ou 4 angles droits',
         piege: 'Trois suffisent : la somme des angles d\'un quadrilatère vaut 360°, donc le '
             + 'quatrième est droit lui aussi. C\'est la définition du rectangle qu\'on donne '
             + 'en sixième, sans passer par le parallélogramme.'
@@ -134,7 +159,7 @@ export const FLECHES = [
     {
         // Et son symétrique s'incurve vers le bas, par-dessous.
         de: 'quadrilatere', vers: 'losange', voie: 1,
-        ajoute: 'quatre côtés égaux',
+        ajoute: 'quatre côtés égaux', court: '4 côtés égaux', propriete: 'quatreCotesEgaux',
         piege: 'QUATRE côtés égaux, pas deux : c\'est la définition du losange, et elle part '
             + 'directement du quadrilatère quelconque. Dans un parallélogramme, deux côtés '
             + 'consécutifs auraient suffi.'
@@ -143,13 +168,13 @@ export const FLECHES = [
     // --- Du parallélogramme au rectangle : deux chemins -----------------------
     {
         de: 'parallelogramme', vers: 'rectangle', voie: -1,
-        ajoute: 'un angle droit',
+        ajoute: 'un angle droit', court: 'un angle droit', propriete: 'unAngleDroit',
         piege: 'Un seul angle droit suffit dans un parallélogramme : les trois autres le '
             + 'deviennent forcément.'
     },
     {
         de: 'parallelogramme', vers: 'rectangle', voie: 1,
-        ajoute: 'les diagonales ont la même longueur',
+        ajoute: 'les diagonales ont la même longueur', court: 'diagonales égales', propriete: 'diagonalesEgales',
         piege: 'Des diagonales de MÊME LONGUEUR font le rectangle ; des diagonales '
             + 'PERPENDICULAIRES font le losange. C\'est la paire qu\'on échange le plus '
             + 'souvent.'
@@ -158,13 +183,13 @@ export const FLECHES = [
     // --- Du parallélogramme au losange : deux chemins -------------------------
     {
         de: 'parallelogramme', vers: 'losange', voie: -1,
-        ajoute: 'deux côtés consécutifs égaux',
+        ajoute: 'deux côtés consécutifs égaux', court: '2 côtés consécutifs égaux',
         piege: 'Dans un parallélogramme, deux côtés CONSÉCUTIFS de même longueur suffisent : '
             + 'les côtés opposés étaient déjà égaux.'
     },
     {
         de: 'parallelogramme', vers: 'losange', voie: 1,
-        ajoute: 'les diagonales sont perpendiculaires',
+        ajoute: 'les diagonales sont perpendiculaires', court: 'diagonales perpendiculaires', propriete: 'diagonalesPerpendiculaires',
         piege: 'Des diagonales PERPENDICULAIRES font le losange ; des diagonales de même '
             + 'LONGUEUR font le rectangle. C\'est la paire qu\'on échange le plus souvent.'
     },
@@ -172,25 +197,25 @@ export const FLECHES = [
     // --- Et le carré, par les deux côtés --------------------------------------
     {
         de: 'rectangle', vers: 'carre', voie: -1,
-        ajoute: 'deux côtés consécutifs égaux',
+        ajoute: 'deux côtés consécutifs égaux', court: '2 côtés consécutifs égaux',
         piege: 'Au rectangle il manque les longueurs ; au losange il manque l\'angle droit. '
             + 'Ce n\'est pas la même carte qui les complète.'
     },
     {
         de: 'rectangle', vers: 'carre', voie: 1,
-        ajoute: 'les diagonales sont perpendiculaires',
+        ajoute: 'les diagonales sont perpendiculaires', court: 'diagonales perpendiculaires', propriete: 'diagonalesPerpendiculaires',
         piege: 'Au rectangle, les diagonales sont déjà de même longueur : ce qui lui manque, '
             + 'c\'est qu\'elles soient PERPENDICULAIRES.'
     },
     {
         de: 'losange', vers: 'carre', voie: -1,
-        ajoute: 'un angle droit',
+        ajoute: 'un angle droit', court: 'un angle droit', propriete: 'unAngleDroit',
         piege: 'Au losange il manque l\'angle droit ; au rectangle il manque les longueurs. '
             + 'Ce n\'est pas la même carte qui les complète.'
     },
     {
         de: 'losange', vers: 'carre', voie: 1,
-        ajoute: 'les diagonales ont la même longueur',
+        ajoute: 'les diagonales ont la même longueur', court: 'diagonales égales', propriete: 'diagonalesEgales',
         piege: 'Au losange, les diagonales sont déjà perpendiculaires : ce qui lui manque, '
             + 'c\'est qu\'elles aient la MÊME LONGUEUR.'
     }
@@ -526,6 +551,12 @@ function mauvaiseFamille(attendu, propose) {
  *
  * @returns {{mode, palier, etapes: Array}}
  */
+/** La vignette d'une condition, à partir de sa phrase entière. */
+export const vignetteDe = (texte) => {
+    const f = FLECHES.find(x => x.ajoute === texte);
+    return (f && f.court) || texte;
+};
+
 export function genererProgressif({ rng, palier = 'conditions' } = {}) {
     const P = PALIERS[palier] || PALIERS.conditions;
     const intrus = P.intrus === undefined ? 1 : P.intrus;
@@ -543,8 +574,12 @@ export function genererProgressif({ rng, palier = 'conditions' } = {}) {
             ailleurs.push(f.ajoute);
         });
         const faux = rng.shuffle(ailleurs.slice()).slice(0, intrus);
+        // LA CARTE PORTE LES DEUX ÉCRITURES. `court` est ce qu'on lit sur la
+        // vignette et sur la flèche ; `texte` reste la phrase entière, celle
+        // qui juge, celle du carnet et celle qu'on relit. Une seule des deux
+        // tient sur un trait, l'autre seule fait une leçon.
         const cartes = rng.shuffle(bonnes.concat(faux).map(texte => ({
-            id: 'c' + (numero++), texte,
+            id: 'c' + (numero++), texte, court: vignetteDe(texte),
             juste: bonnes.includes(texte)
         })));
         return {

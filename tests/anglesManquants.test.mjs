@@ -127,20 +127,26 @@ test('la figure tient dans son cadre', () => {
 
 // --- LE CODAGE DES PARALLÈLES ---------------------------------------------------
 
-test('les droites parallèles portent leur chevron, et elles seules', () => {
-    // Rémy : « Préciser que les droites en pointillés sont parallèles. » La
-    // feuille le disait dans sa consigne ; l'écran, non — et l'y écrire aurait
-    // coûté une seconde ligne d'énoncé, c'est-à-dire trente pixels pris sur la
-    // figure, qui est la seule chose qu'il y ait à regarder. Le codage est de
-    // toute façon la bonne réponse : c'est ainsi qu'on marque deux parallèles
-    // dans tous les manuels, et l'élève doit apprendre à le lire.
+test('AUCUNE MARQUE SUR LE TRAIT — le pointillé suffit à dire « parallèles »', () => {
+    // Rémy, deux fois : « je ne comprends pas pourquoi tu mets des flèches »,
+    // puis « ne mets pas de flèche sur les tracés des valeurs manquantes des
+    // angles ». Le chevron est bien le codage des manuels, mais posé sur une
+    // droite qui s'arrête au bord du cadre il se lit comme une pointe — et un
+    // codage qu'on lit de travers est pire que pas de codage.
+    //
+    // CE QUI PORTE L'INFORMATION reste : le POINTILLÉ distingue les deux
+    // parallèles de la sécante, et la consigne le dit en toutes lettres.
     const vus = new Set();
     for (let k = 0; k < 60; k++) {
         const it = G.generate({}, { rng: makeRng(`chev${k}`), index: k });
-        const chevrons = (it.prompt.html.match(/ar-chevron/g) || []).length;
+        const pointes = (it.prompt.html.match(/ar-chevron|marker-end|polyline class="ar-fleche/g) || []).length;
+        assert.equal(pointes, 0,
+            `${it.meta.famille} : ${pointes} marque(s) sur le trait`);
         const pointilles = (it.prompt.html.match(/ar-trait--par/g) || []).length;
-        assert.equal(chevrons, pointilles,
-            `${it.meta.famille} : ${chevrons} chevrons pour ${pointilles} droites en pointillés`);
+        // Les parallèles restent distinguables : quand il y en a, elles sont
+        // DEUX, et elles seules sont en pointillés.
+        assert.ok(pointilles === 0 || pointilles === 2,
+            `${it.meta.famille} : ${pointilles} droites en pointillés`);
         vus.add(pointilles > 0);
     }
     // On a bien rencontré les deux cas : des figures à parallèles, et des

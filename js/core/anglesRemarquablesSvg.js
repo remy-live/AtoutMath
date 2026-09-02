@@ -56,37 +56,24 @@ export function figureAnglesSvg(figure, { mesures = 'donne', prefixe = 'ar' } = 
         const a = P(t.x1, t.y1), b = P(t.x2, t.y2);
         d += `<line class="ar-trait${t.pointille ? ' ar-trait--par' : ''}"
             x1="${arr(a.x)}" y1="${arr(a.y)}" x2="${arr(b.x)}" y2="${arr(b.y)}"/>`;
-        // LE CHEVRON DIT « PARALLÈLE », ET C'EST LA SEULE FAÇON DE LE DIRE SUR
-        // UN DESSIN.
+        // PAS DE MARQUE SUR LE TRAIT. Rémy, deux fois : « je ne comprends pas
+        // pourquoi tu mets des flèches », puis « ne mets pas de flèche sur les
+        // tracés des valeurs manquantes des angles ».
         //
-        // Rémy : « Préciser que les droites en pointillés sont parallèles. »
-        // La feuille le disait dans sa consigne ; l'écran, non — et l'y écrire
-        // aurait coûté une seconde ligne d'énoncé, c'est-à-dire trente pixels
-        // pris sur la figure, qui est la seule chose qu'il y ait à regarder.
+        // Le chevron est bien le codage des parallèles, celui de tous les
+        // manuels — mais posé sur une droite qui s'arrête au bord du cadre, il
+        // se lit comme une pointe. On l'avait déplacé du sixième au tiers ; ça
+        // n'a pas suffi, et deux demandes valent mieux qu'un argument.
         //
-        // Le codage est de toute façon la bonne réponse : c'est ainsi qu'on
-        // marque deux parallèles depuis toujours, dans tous les manuels, et
-        // l'élève doit apprendre à le lire.
+        // CE QUI PORTE L'INFORMATION À SA PLACE. Le POINTILLÉ distingue déjà les
+        // deux parallèles de la sécante — c'est la figure de Rémy —, et la
+        // consigne le dit en toutes lettres, à l'écran comme sur la feuille. La
+        // figure garde donc son seul décor utile : le sommet, l'arc, la mesure.
         //
-        // MAIS IL NE DOIT PAS SE LIRE COMME UNE FLÈCHE. Rémy : « je ne
-        // comprends pas pourquoi tu mets des flèches ». Un chevron posé à un
-        // sixième du bout d'une droite EST une pointe de flèche : à cet
-        // endroit-là, c'est une direction qu'on croit lire, pas un codage. On
-        // le pose donc à un tiers — assez loin du bout pour ne plus être une
-        // pointe, assez loin du milieu pour ne pas tomber sur le croisement,
-        // qui porte déjà l'angle, son secteur et sa mesure. Et la consigne dit
-        // maintenant ce qu'il veut dire, ce que le dessin seul ne peut pas.
-        if (!t.pointille) return;
-        const dx = b.x - a.x, dy = b.y - a.y;
-        const n = Math.hypot(dx, dy) || 1;
-        const ux = dx / n, uy = dy / n;         // le long du trait
-        const vx = -uy, vy = ux;                // en travers
-        const mx = a.x + dx * 0.33, my = a.y + dy * 0.33;
-        const L = 10, E = 7.5;                  // longueur des branches, écart
-        const branche = (s) => `${arr(mx - ux * L + vx * E * s)},${arr(my - uy * L + vy * E * s)} `
-            + `${arr(mx)},${arr(my)} `
-            + `${arr(mx - ux * L - vx * E * s)},${arr(my - uy * L - vy * E * s)}`;
-        d += `<polyline class="ar-chevron" points="${branche(1)}"/>`;
+        // AILLEURS, LE CHEVRON RESTE. Dans « Rédiger une justification » il est
+        // la CONCLUSION du théorème, et dans « Le quadrilatère qui se
+        // transforme » l'élève doit précisément apprendre à le lire. Ici il ne
+        // servait qu'à redire ce que le pointillé disait déjà.
     });
     if (figure.droit) {
         const pts = equerreDe(figure.droit)

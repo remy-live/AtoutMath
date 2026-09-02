@@ -34,7 +34,7 @@ import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, CASE_L, CASE_H,
     familleDe, flecheDe, cleFleche, traceFleche, posEtiquette,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
-    genererProgressif, casesVisibles, verifierEtape, conseilEtape
+    genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe
 } from '../core/quadrilateres.js';
 
 /**
@@ -101,6 +101,23 @@ const placerPoint = (f, v) => {
     const q = placer(posEtiquette(f), v);
     return { x: q.gauche, y: q.haut };
 };
+
+/**
+ * EN DESSOUS DE CETTE LARGEUR, ON N'ÉCRIT PLUS : on met une pastille.
+ *
+ * MESURÉ, ET C'EST CE QUI DÉCIDE. Sur l'ordinateur, le couloir d'une flèche
+ * d'étape fait 144 pixels : « côtés opposés parallèles » y tient sur deux
+ * lignes et se lit. Sur un téléphone, le même couloir tombe à trente : l'écrire
+ * quand même, c'est soit trois lettres par ligne, soit une étiquette qui mord
+ * sur la figure d'à côté. J'ai essayé les deux ; aucune n'est lisible.
+ *
+ * Le choix ne dépend donc PAS de l'appareil mais de la place réelle — un
+ * téléphone en paysage, ou un ordinateur en fenêtre étroite, tombent du bon
+ * côté tout seuls. En dessous du seuil, la pastille reprend son rôle : elle
+ * marque la flèche, son infobulle porte la vignette, l'appui rend la phrase, et
+ * le carnet répète tout en clair juste dessous.
+ */
+const LARGEUR_LISIBLE = 70;   // pixels
 
 const COMPETENCE = 'geo.quadrilateres.familles';
 
@@ -240,24 +257,76 @@ class Organigramme extends BaseGame {
                 .qd-etiq--juste { border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, var(--bg-panel)); color: var(--text-main); }
                 .qd-etiq--visee { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
 
-                /* LA PASTILLE D'UNE CONDITION TROUVÉE. Le texte ne revient JAMAIS
-                   sur le plan — c'est ce qui le rendait illisible. Une flèche
-                   remplie porte un point vert qu'on tape pour relire sa
-                   condition dans le bandeau du bas. */
+                /* LA VIGNETTE SUR LA FLÈCHE — le cœur de la demande de Rémy.
+                   « On part du quadrilatère et pour aller au parallélogramme,
+                   on glisse la vignette côtés opposés parallèles. »
+
+                   Elle remplace deux choses à la fois : la pastille verte, qui
+                   ne disait rien de ce qu'elle marquait, et les bandes empilées
+                   sous le schéma, qui disaient la condition sans dire de quelle
+                   flèche elle venait. La vignette dit les deux, parce qu'elle
+                   est POSÉE là où elle agit.
+
+                   ELLE NE GRANDIT PAS AVEC LE ZOOM : centrée sur le milieu de
+                   sa flèche, elle est dimensionnée en pixels. Une étiquette
+                   calculée en pourcentage du plan devenait illisible à l'étape
+                   1, où le plan est zoomé sur deux cases. */
+                .qd-vignette {
+                    position: absolute; transform: translate(-50%, -50%);
+                    /* La largeur vient du style en ligne — voir couloirDe(). */
+                    max-width: 116px; box-sizing: border-box;
+                    padding: 3px 7px; border-radius: 8px; cursor: pointer;
+                    text-align: center; line-height: 1.15; font-weight: 700;
+                    font-size: clamp(9px, 2cqw, 11.5px);
+                    border: 2px solid var(--border);
+                    background: var(--bg-panel);
+                }
+                .qd-vignette--posee {
+                    border-color: var(--success); color: var(--text-main);
+                    background: color-mix(in srgb, var(--success) 16%, var(--bg-panel));
+                    /* SON ANIMATION GARDE LE RECENTRAGE, et c'est un piège qui
+                       m'a coûté trois mesures fausses. Une vignette est centrée
+                       sur sa flèche par translate(-50%, -50%) ; l'animation
+                       qd-poser ne pose qu'un scale(), et une animation REMPLACE
+                       la propriété transform entière pendant qu'elle joue. Sous
+                       cette animation-là, l'étiquette sautait donc d'une
+                       demi-largeur vers la droite pendant quatre dixièmes de
+                       seconde — pile sur la case d'arrivée, et pile au moment
+                       où l'œil s'y porte. Il lui faut sa propre animation. */
+                    animation: qd-vignette-poser .4s ease-out;
+                }
+                @keyframes qd-vignette-poser {
+                    from { transform: translate(-50%, -50%) scale(.9); }
+                    to { transform: translate(-50%, -50%) scale(1); }
+                }
+                /* LA FENTE VIDE EST UNE CIBLE, et elle doit se voir comme telle :
+                   pointillée, en attente, et assez large pour qu'un doigt la
+                   trouve — 34 pixels de haut, pas les 20 du texte. */
+                .qd-vignette--fente {
+                    border-style: dashed; min-width: 46px; min-height: 34px;
+                    display: flex; align-items: center; justify-content: center;
+                    color: var(--text-muted);
+                    background: color-mix(in srgb, var(--warning) 10%, var(--bg-panel));
+                }
+                .qd-vignette--visee {
+                    border-color: var(--primary); border-style: solid;
+                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
+                }
+
+                /* LA PASTILLE D'UNE ÉTAPE DÉJÀ FAITE. Elle n'est plus muette :
+                   son infobulle porte la vignette, l'appui rend la phrase
+                   entière, et le carnet la répète en clair juste dessous. */
                 .qd-point {
                     position: absolute; transform: translate(-50%, -50%);
                     width: 13px; height: 13px; border-radius: 50%; cursor: pointer;
                     border: 2px solid var(--success); box-sizing: border-box;
                     background: color-mix(in srgb, var(--success) 35%, var(--bg-panel));
                 }
-                .qd-point--neuf { animation: qd-venir .45s ease-out; }
 
-                /* --- LE PANNEAU DE L'ÉTAPE : la question, en toutes lettres --- */
-                /* C'EST ICI QUE LES CONDITIONS SE LISENT, et plus sur le plan.
-                   Une condition fait quarante caractères ; posée sur une flèche
-                   elle recouvre une case, et treize d'entre elles se recouvrent
-                   entre elles. Dans un panneau qui prend toute la largeur, elles
-                   tiennent sur une ligne chacune. */
+                /* --- LE PANNEAU DE L'ÉTAPE : la question, et rien qu'elle --- */
+                /* IL A PERDU SES FENTES, ET C'EST TOUT LE CHANGEMENT. Elles sont
+                   montées sur les flèches ; il ne reste ici que ce qui ne se
+                   dessine pas — la question posée et le nombre de chemins. */
                 .qd-etape {
                     flex: 0 0 auto; width: 100%; max-width: 660px;
                     display: flex; flex-direction: column; gap: 4px;
@@ -474,17 +543,75 @@ class Organigramme extends BaseGame {
             </div>`;
         }
 
-        // Une condition trouvée devient un POINT sur sa flèche, jamais un texte :
-        // c'est le texte qui rendait le plan illisible. On le tape pour le relire
-        // dans le bandeau du bas.
-        for (const [cle, texte] of Object.entries(this.pointsPoses())) {
+        // LES CONDITIONS DÉJÀ TROUVÉES, écrites sur LEUR flèche.
+        //
+        // Elles n'étaient qu'un point vert : c'est la phrase entière qui rendait
+        // le plan illisible, et l'on avait tranché en n'écrivant plus rien. La
+        // vignette change la donne — « côtés opposés parallèles » tient sur le
+        // trait, la phrase non — et l'organigramme se relit enfin d'un coup
+        // d'œil, ce qui est tout ce qu'on lui demande. La phrase entière reste
+        // au bout d'un appui, et dans le carnet.
+        // LA VIGNETTE EN CLAIR LÀ OÙ L'ON TRAVAILLE, une pastille ailleurs.
+        //
+        // MESURÉ, ET C'EST CE QUI A TRANCHÉ : les treize conditions écrites en
+        // clair sur un plan de 560 x 320 pixels donnent quatorze recouvrements.
+        // « Parallélogramme » disparaissait sous trois vignettes, et
+        // l'organigramme complet — le moment précis où il devient une leçon —
+        // était le plus illisible des sept.
+        //
+        // L'étape en cours, elle, n'a que deux ou trois flèches, et la place
+        // existe : zéro recouvrement, mesuré aux sept étapes. On écrit donc en
+        // clair ce qu'on est en train de chercher, et l'on range le reste en
+        // pastille — qui rend sa vignette à l'appui, et que le carnet répète
+        // en toutes lettres juste dessous. Rien n'est perdu, tout reste lisible.
+        const poses = this.pointsPoses();
+        const enCours = new Set(e ? e.cles : []);
+        for (const [cle, texte] of Object.entries(poses)) {
             const f = flecheDe(cle);
             if (!f) continue;
             const m = placerPoint(f, v);
-            html += `<div class="qd-point" style="left:${m.x}%; top:${m.y}%"
-                data-donnee="${enAttribut(texte)}" title="${enAttribut(texte)}"></div>`;
+            const court = vignetteDe(texte);
+            // ON ÉCRIT SUR LA FLÈCHE DE L'ÉTAPE EN COURS, on marque ailleurs.
+            // `recentrerEtiquettes` peut encore rétrograder celle-ci en pastille
+            // si le couloir mesuré ne laisse pas la place d'un mot lisible.
+            html += enCours.has(cle)
+                ? `<div class="qd-vignette qd-vignette--posee"
+                    style="left:${m.x}%; top:${m.y}%"
+                    data-de="${f.de}" data-vers="${f.vers}"
+                    data-donnee="${enAttribut(texte)}" title="${enAttribut(texte)}"
+                    >${enAttribut(court)}</div>`
+                : `<div class="qd-point" style="left:${m.x}%; top:${m.y}%"
+                    data-de="${f.de}" data-vers="${f.vers}"
+                    data-donnee="${enAttribut(texte)}" title="${enAttribut(court)}"></div>`;
+        }
+
+        // LES FENTES VIDES DE L'ÉTAPE EN COURS, sur les flèches qui restent.
+        //
+        // Rémy : « on part du quadrilatère et pour aller au parallélogramme, on
+        // glisse la vignette côtés opposés parallèles ». C'est là que la
+        // vignette doit tomber — sur le chemin qu'elle ouvre. Les trois bandes
+        // empilées sous le schéma disaient « il manque trois réponses » ;
+        // elles ne disaient pas de quoi. Sur les traits, la question se pose
+        // toute seule : ce trait-là, qu'est-ce qui le fait ?
+        //
+        // LES FENTES D'UNE ÉTAPE RESTENT INTERCHANGEABLES — voir `deposerEtape`.
+        // On garnit donc les voies encore libres dans l'ordre : aucune n'est
+        // « la bonne », et exiger un ordre inventerait une difficulté qui
+        // n'existe pas en mathématiques.
+        if (e) {
+            const libres = e.cles.filter(c => !poses[c]);
+            libres.forEach((cle, i) => {
+                const f = flecheDe(cle);
+                if (!f) return;
+                const m = placerPoint(f, v);
+                html += `<div class="qd-vignette qd-vignette--fente"
+                    style="left:${m.x}%; top:${m.y}%"
+                    data-de="${f.de}" data-vers="${f.vers}"
+                    data-fente="${i}" data-depose="1">?</div>`;
+            });
         }
         this.planEl.innerHTML = html;
+        this.recentrerEtiquettes();
         this.planEl.querySelectorAll('[data-donnee]').forEach(el => {
             el.onclick = () => this.note(el.dataset.donnee);
         });
@@ -492,9 +619,13 @@ class Organigramme extends BaseGame {
         this.dessinerEtape(e);
         this.dessinerCarnet();
 
+        // LA PALETTE PORTE LA VIGNETTE. La phrase entière reste en infobulle :
+        // ce sont les mêmes mots que dans « Le Quadrilatère qui se Transforme »,
+        // et c'est exprès — deux exercices, un seul vocabulaire.
         const restantes = e ? e.cartes.filter(c => !this.posesEtape.includes(c.id)) : [];
         this.cartesEl.innerHTML = restantes.map(c =>
-            `<div class="kk-chip" data-carte="${c.id}">${c.texte}</div>`).join('');
+            `<div class="kk-chip" data-carte="${c.id}"
+                title="${enAttribut(c.texte)}">${enAttribut(c.court || c.texte)}</div>`).join('');
         this.brancherGlisser();
         // UN SIMPLE APPUI SUFFIT, et c'est particulier à ce mode : les fentes
         // d'une étape sont interchangeables, donc viser l'une d'elles ne veut
@@ -514,17 +645,17 @@ class Organigramme extends BaseGame {
         this.etapeEl.hidden = false;
         const A = familleDe(e.de).nom, B = familleDe(e.vers).nom;
         const combien = e.bonnes.length;
-        const fentes = [];
-        for (let i = 0; i < combien; i++) {
-            const carte = this.posesEtape[i] && e.cartes.find(c => c.id === this.posesEtape[i]);
-            fentes.push(carte
-                ? `<div class="qd-fente qd-fente--pleine">${carte.texte}</div>`
-                : `<div class="qd-fente" data-fente="${i}" data-depose="1">…</div>`);
-        }
+        // LES FENTES SONT MONTÉES SUR LE PLAN, plus ici. Le panneau ne garde
+        // que la question et le compte — c'est-à-dire ce qui ne se dessine pas.
+        const reste = combien - this.posesEtape.length;
+        const dit = combien === 1
+            ? 'Pose la vignette sur la flèche.'
+            : (reste === combien
+                ? `Il y a <b>${combien}</b> chemins : pose une vignette sur chaque flèche.`
+                : `Il en reste <b>${reste}</b> sur <b>${combien}</b>.`);
         this.etapeEl.innerHTML = `<div class="qd-etape-titre">Que faut-il ajouter à un
             <b>${A.toLowerCase()}</b> pour qu'il soit un <b>${B.toLowerCase()}</b> ?
-            ${combien > 1 ? `Il y a <b>${combien}</b> réponses.` : 'Il y a une réponse.'}</div>
-            <div class="qd-fentes">${fentes.join('')}</div>`;
+            ${dit}</div>`;
     }
 
     /**
@@ -598,6 +729,58 @@ class Organigramme extends BaseGame {
     }
 
     /**
+     * LA LARGEUR D'UNE ÉTIQUETTE SE DÉCIDE SUR LE PLAN DESSINÉ, pas avant.
+     *
+     * Le couloir libre entre deux cases dépend du plan, du zoom de l'étape et
+     * de la flèche ; aucune valeur écrite dans la feuille de style ne peut le
+     * connaître. On le MESURE une fois le plan écrit, et l'on en tire deux
+     * choses :
+     *   · la largeur maximale de l'étiquette — bornée au couloir moins une
+     *     marge, sans quoi elle a l'air collée aux cases plutôt que posée sur
+     *     la flèche ;
+     *   · et, quand ce couloir est trop étroit pour un mot lisible, le fait
+     *     qu'on RENONCE à écrire : la vignette redevient une pastille. Sur un
+     *     téléphone le couloir tombe à trente pixels, et « côtés opposés
+     *     parallèles » n'y tient pas — trois lettres par ligne n'est pas une
+     *     lecture. L'infobulle, l'appui et le carnet gardent le texte.
+     *
+     * CE QUE CETTE PASSE NE FAIT PAS, ET POURQUOI C'EST ÉCRIT ICI. Elle ne
+     * déplace rien. J'ai longtemps cru que le centre était faux — l'étiquette
+     * tombait sur la case d'arrivée — et j'ai écrit deux corrections de
+     * position avant de mesurer la bonne chose : le centre était juste, c'est
+     * l'ANIMATION de pose qui écrasait le translate(-50%, -50%) pendant quatre
+     * dixièmes de seconde. Corrigée là où était la faute (voir
+     * qd-vignette-poser), la position est exacte sans qu'on y touche.
+     */
+    recentrerEtiquettes() {
+        const plan = this.planEl.getBoundingClientRect();
+        if (!plan.width) return;
+        const bords = {};
+        this.planEl.querySelectorAll('[data-case]').forEach(el => {
+            const r = el.getBoundingClientRect();
+            bords[el.dataset.case] = { g: r.left - plan.left, d: r.right - plan.left };
+        });
+
+        this.planEl.querySelectorAll('.qd-vignette[data-de]').forEach(el => {
+            const a = bords[el.dataset.de], b = bords[el.dataset.vers];
+            if (!a || !b) return;
+            const [gauche, droite] = a.g <= b.g ? [a, b] : [b, a];
+            const vide = droite.g - gauche.d;
+            if (vide <= 0) return;   // cases l'une au-dessus de l'autre : on laisse
+            const utile = vide * 0.88;
+
+            if (el.classList.contains('qd-vignette--posee') && utile < LARGEUR_LISIBLE) {
+                el.title = el.dataset.donnee ? vignetteDe(el.dataset.donnee) : el.textContent;
+                el.textContent = '';
+                el.className = 'qd-point';
+                el.style.maxWidth = '';
+                return;
+            }
+            el.style.maxWidth = `${Math.min(utile, 116).toFixed(1)}px`;
+        });
+    }
+
+    /**
      * Le trait d'une condition.
      *
      * LE TRACÉ VIENT DU NOYAU, il n'est pas recalculé ici : la fiche papier
@@ -635,7 +818,7 @@ class Organigramme extends BaseGame {
     brancherGlisser() {
         if (this.isDemo) return;
         brancherGlisserPalette(this.container, {
-            classeVisee: this.progressif ? 'qd-fente--visee' : 'qd-case--visee',
+            classeVisee: this.progressif ? 'qd-vignette--visee' : 'qd-case--visee',
             bloque: () => this.fini,
             cibleSous: (e) => {
                 const el = document.elementFromPoint(e.clientX, e.clientY);

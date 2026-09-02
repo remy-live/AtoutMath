@@ -31,14 +31,17 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        // ET L'ON DIT CE QUE LE CHEVRON VEUT DIRE. Rémy : « je ne comprends pas
-        // pourquoi tu mets des flèches ». Ce n'en sont pas — c'est le codage
-        // des parallèles, celui de tous les manuels —, mais un signe que
-        // personne ne sait lire ne code rien du tout.
+        // LE PARALLÉLISME S'ÉCRIT, IL NE SE CODE PLUS SUR LE TRAIT. Rémy, deux
+        // fois : « je ne comprends pas pourquoi tu mets des flèches », puis
+        // « ne mets pas de flèche sur les tracés ». Le chevron est pourtant le
+        // codage des manuels — mais posé sur une droite qui s'arrête au bord du
+        // cadre, il se lit comme une pointe, et un codage qu'on lit de travers
+        // est pire que pas de codage. Le POINTILLÉ distingue les deux
+        // parallèles de la sécante, et la phrase dit le reste.
         instruction: 'Un angle est donné, un autre est à trouver. Cherche d\'abord COMMENT '
             + 'les deux sont placés : c\'est la relation qui donne la réponse. Les deux '
-            + 'droites qui portent le même chevron « › » sont PARALLÈLES : ce n\'est pas '
-            + 'une flèche, c\'est le codage qui le dit sans l\'écrire.'
+            + 'droites tracées EN POINTILLÉS sont PARALLÈLES ; celle qui les coupe est la '
+            + 'sécante. C\'est de là que tout part.'
     },
 
     // L'AUTRE MOITIÉ DU CHAPITRE, et la première dans l'ordre : l'exercice 8,
