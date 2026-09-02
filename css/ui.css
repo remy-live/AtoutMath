@@ -1766,3 +1766,62 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .pc-retour {
     border-color: var(--border); color: var(--text-main); background: var(--bg-panel);
 }
+
+/* LES DEUX SUITES D'UN BILAN, CÔTE À CÔTE : ce qu'on fait des élèves en peine,
+   et ce qu'on emporte sur papier. Elles se lisent ensemble parce qu'on décide
+   des deux au même moment — en sortant de cours. */
+/* LA LIGNE D'UN RATTRAPAGE, sous sa classe : décalée, en ambre, et discrète.
+   Elle dit qu'un travail supplémentaire court pour quelques élèves — sans
+   prendre la place de la séance de la classe entière. */
+.pc-rattr {
+    display: flex; align-items: center; gap: 8px;
+    margin: 2px 0 0 22px; padding: 3px 0;
+    color: var(--warning); font-size: .78rem; font-weight: 700;
+}
+.pc-rattr > span { flex: 1 1 auto; min-width: 0; }
+
+.pc-suites { display: flex; gap: 8px; }
+.pc-suites > * { flex: 1 1 0; margin-top: 10px; }
+.pc-rattrapage {
+    padding: 8px; font: inherit; font-size: .84rem; font-weight: 700;
+    border-radius: 9px; cursor: pointer;
+    border: 1.5px solid var(--warning); color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 10%, var(--bg-panel));
+}
+.pc-rattrapage:hover { filter: brightness(1.06); }
+
+/* LE MOT QU'ON ÉCRIT À UN ÉLÈVE — sous son bilan, parce que c'est là qu'on a
+   quelque chose à lui dire. */
+.pc-mot-label { display: block; margin-top: 12px; font-size: .82rem; font-weight: 800; }
+.pc-mot-champ {
+    width: 100%; margin-top: 4px; padding: 8px 10px; font: inherit; font-size: .85rem;
+    border: 1.5px solid var(--border); border-radius: 9px; resize: vertical;
+    background: var(--bg-panel); color: var(--text-main);
+}
+.pc-mot-champ:focus { outline: none; border-color: var(--primary); }
+.pc-mot-actions { display: flex; gap: 6px; margin-top: 6px; }
+.pc-mot-ok, .pc-mot-non {
+    flex: 1 1 0; padding: 7px; font: inherit; font-size: .82rem; font-weight: 700;
+    border-radius: 8px; cursor: pointer;
+    border: 1.5px solid var(--primary); color: #fff; background: var(--primary);
+}
+.pc-mot-non { border-color: var(--border); color: var(--text-muted); background: var(--bg-panel); }
+
+/* ── LE RATTRAPAGE ───────────────────────────────────────────────────────── */
+.rt { display: flex; flex-direction: column; gap: 10px; }
+.rt-dit { margin: 0; font-size: .95rem; }
+.rt-aide { margin: 0; color: var(--text-muted); font-size: .85rem; }
+.rt-liste { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+.rt-eleve {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 9px; background: var(--bg-hover); cursor: pointer;
+}
+.rt-nom { font-weight: 700; }
+/* LE TAUX EST LA RAISON D'ÊTRE DE LA LIGNE : il se lit d'un coup d'œil, et il
+   est en ambre parce qu'il est en dessous du seuil. */
+.rt-taux { color: var(--warning); font-weight: 800; font-variant-numeric: tabular-nums; }
+.rt-ok {
+    padding: 11px; font: inherit; font-weight: 800; border: 0; border-radius: 10px;
+    color: #fff; background: var(--primary); cursor: pointer;
+}
+.rt-ok:hover { filter: brightness(1.06); }

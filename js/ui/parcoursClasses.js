@@ -33,12 +33,13 @@
 // lit « qu'est-ce que je note ». Lire l'un pour l'autre est l'erreur la plus
 // coûteuse de l'écran, et elle se prévient d'une ligne.
 
-import { showToast, showConfirm, showAlert } from './modal.js';
+import { showToast, showConfirm, showAlert, showModal } from './modal.js';
 import { MODES, resolvePolicy } from '../core/policy.js';
 import { Shortcodes } from '../core/shortcodes.js';
 import {
     donnerSeance, seancesDe, etatSeance, direSeance, ETATS,
-    clore, rouvrir, retirer, remettre, estRetiree, elevesDe
+    clore, rouvrir, retirer, remettre, estRetiree, elevesDe,
+    poserMot, aRattraper
 } from '../core/seances.js';
 import { bilanSeance, bilanEleveSeance, aTravaille } from '../core/bilanSeance.js';
 import { lireClasses, lireSeances, ecrireSeances } from './donnerSeance.js';
@@ -89,7 +90,8 @@ function pourcent(x) { return Math.round((x || 0) * 100) + ' %'; }
  *   · séance retirée         → case vide et grise, bilan encore là.
  */
 function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
-    const siennes = seancesDe(seances, classe.id).filter(s => s.pathId === pathId);
+    const toutes = seancesDe(seances, classe.id);
+    const siennes = toutes.filter(s => s.pathId === pathId);
     const vivante = siennes.find(s => !estRetiree(s)) || null;
     const retiree = siennes.find(s => estRetiree(s)) || null;
     const seance = vivante || retiree;
@@ -98,7 +100,17 @@ function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
         donnee: !!vivante,
         retiree: !!retiree && !vivante,
         etat: seance ? etatSeance(seance, maintenant) : null,
-        travaille: seance ? (classe.eleves || []).some(e => aTravaille(seance, e.evenements || [])) : false
+        travaille: seance ? (classe.eleves || []).some(e => aTravaille(seance, e.evenements || [])) : false,
+        // LES RATTRAPAGES SONT DES SÉANCES À PART, ET ILS SE RETROUVENT ICI.
+        //
+        // Un rattrapage porte une COPIE du parcours avec un identifiant neuf,
+        // et non le parcours d'origine. Deux raisons, et la seconde est
+        // décisive : le bilan d'une séance rassemble les travaux qui portent
+        // son `pathId`, donc un rattrapage partageant l'identifiant afficherait
+        // le travail de la séance d'origine comme s'il était le sien. On garde
+        // le lien par `origine`, ce qui permet de le retrouver — c'est-à-dire
+        // de lire son bilan — sans jamais mélanger les deux.
+        rattrapages: toutes.filter(s => s.origine === pathId && !estRetiree(s))
     };
 }
 
@@ -133,6 +145,11 @@ function ligneClasseHtml(classe, info) {
                 aria-expanded="false" aria-label="Voir les élèves de ${esc(classe.nom)}">▸</button>
         </div>
         ${info.seance ? `<div class="pc-etat">${esc(direSeance(info.seance))}</div>` : ''}
+        ${(info.rattrapages || []).map(r => `<div class="pc-rattr">
+            <span>↻ Rattrapage — ${(r.eleveIds || []).length} élève${(r.eleveIds || []).length > 1 ? 's' : ''}</span>
+            <button type="button" class="pc-bilan" data-bilan-rattrapage="${esc(r.id)}"
+                data-classe="${esc(classe.id)}">bilan</button>
+        </div>`).join('')}
         <div class="pc-eleves" hidden></div>
     </div>`;
 }
@@ -213,7 +230,14 @@ function bilanClasseHtml(b) {
         : ''}</span>
                 ${e.mot ? `<span class="pc-mot">${esc(e.mot)}</span>` : ''}
             </button>`).join('')}</div>
-        <button type="button" class="pc-pdf" data-pdf>📄 Exporter ce bilan en PDF</button>
+        <div class="pc-suites">
+            <!-- LE GESTE QUI MANQUE LE PLUS APRÈS UNE SÉANCE. Rémy : « ceux qui
+                 ont raté refont ça pendant que les autres avancent ». Les
+                 élèves sont DÉJÀ désignés par leur résultat ; il ne reste qu'à
+                 accepter la liste. -->
+            <button type="button" class="pc-rattrapage" data-rattrapage>↻ Donner un rattrapage</button>
+            <button type="button" class="pc-pdf" data-pdf>📄 Exporter ce bilan en PDF</button>
+        </div>
     </div>`;
 }
 
@@ -232,7 +256,23 @@ function bilanEleveHtml(b) {
         </li>`).join('')}</ul>` : '<p class="pc-vide">Trop peu de réponses pour conclure.</p>'}
         ${b.aRevoir.length ? `<h5>À revoir</h5><ul class="pc-liste">${b.aRevoir.slice(0, 4)
         .map(e => `<li>${esc(e.questionText || e.exerciseTitle || 'question')}${e.count > 1 ? ` — ${e.count} fois` : ''}</li>`).join('')}</ul>` : ''}
-        ${b.mot ? `<p class="pc-mot">« ${esc(b.mot)} »</p>` : ''}
+        <!-- LE MOT S'ÉCRIT LÀ OÙ ON LE PENSE.
+             Rémy : « je pourrai pendant la séance envoyer un message ». Le
+             moment où l'on a quelque chose à dire à un élève est celui où l'on
+             vient de lire son bilan — pas trois écrans plus loin. Le champ est
+             donc SOUS ce qu'on vient de lire, et l'élève le voit sur la carte
+             de sa séance, à l'endroit exact où il clique pour travailler.
+             DEUX CENTS CARACTÈRES, et ce n'est pas de l'avarice : au-delà, ce
+             n'est plus un mot, c'est un cours — et un cours ne se lit pas sur
+             une carte d'accueil. -->
+        <label class="pc-mot-label" for="pc-mot-champ">Un mot pour ${esc(b.nom)}</label>
+        <textarea id="pc-mot-champ" class="pc-mot-champ" rows="2" maxlength="200"
+            data-mot="${esc(b.id)}"
+            placeholder="Reprends les priorités avec moi lundi.">${esc(b.mot || '')}</textarea>
+        <div class="pc-mot-actions">
+            <button type="button" class="pc-mot-ok" data-mot-envoyer>Envoyer</button>
+            ${b.mot ? '<button type="button" class="pc-mot-non" data-mot-effacer>Retirer</button>' : ''}
+        </div>
     </div>`;
 }
 
@@ -311,12 +351,19 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                     if (!eleve) return;
                     montrer(bilanEleveHtml(bilanEleveSeance(contexte.seance, eleve))
                         + `<button type="button" class="pc-retour" data-retour>← Revenir à la classe</button>`,
-                    contexte);
+                    { ...contexte, eleve });
                 };
             });
             const retour = z.querySelector('[data-retour]');
+            // ON REVIENT À LA CLASSE, DONC ON QUITTE L'ÉLÈVE : garder `eleve`
+            // dans le contexte laisserait le champ « un mot » branché sur
+            // quelqu'un qu'on ne regarde plus.
             if (retour) retour.onclick = () => montrer(
-                bilanClasseHtml(bilanSeance(contexte.seance, contexte.classe)), contexte);
+                bilanClasseHtml(bilanSeance(contexte.seance, contexte.classe)),
+                { seance: contexte.seance, classe: contexte.classe });
+
+            brancherMot(z, contexte);
+            brancherRattrapage(z, contexte);
 
             const pdf = z.querySelector('[data-pdf]');
             if (pdf) pdf.onclick = async () => {
@@ -339,6 +386,108 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
     async function enregistrer() {
         await ecrireSeances(seances);
+    }
+
+    /**
+     * ÉCRIRE UN MOT À UN ÉLÈVE — et le voir partir.
+     *
+     * Le mot est posé SUR LA SÉANCE, pas sur l'élève : c'est « ce que je t'ai
+     * dit à propos de ce travail-là ». Un mot rangé sur l'élève traînerait
+     * d'une séance à l'autre et finirait par parler d'un exercice qu'il ne fait
+     * plus depuis trois semaines.
+     */
+    function brancherMot(z, contexte) {
+        const champ = z.querySelector('[data-mot]');
+        if (!champ || !contexte.eleve) return;
+        const poser = async (texte) => {
+            const id = contexte.seance.id;
+            seances = seances.map(x => (x.id === id ? poserMot(x, contexte.eleve.id, texte) : x));
+            contexte.seance = seances.find(x => x.id === id);
+            await enregistrer();
+            showToast(texte
+                ? `Mot envoyé à ${contexte.eleve.nom}.`
+                : `Mot retiré pour ${contexte.eleve.nom}.`, 'success');
+            montrer(bilanEleveHtml(bilanEleveSeance(contexte.seance, contexte.eleve))
+                + '<button type="button" class="pc-retour" data-retour>← Revenir à la classe</button>',
+            contexte);
+        };
+        const envoyer = z.querySelector('[data-mot-envoyer]');
+        if (envoyer) envoyer.onclick = () => poser(champ.value.trim());
+        const effacer = z.querySelector('[data-mot-effacer]');
+        if (effacer) effacer.onclick = () => poser('');
+    }
+
+    /**
+     * LE RATTRAPAGE — un clic, et la liste est déjà faite.
+     *
+     * Rémy : « ceux qui ont raté refont ça pendant que les autres avancent ».
+     * `aRattraper` désigne les élèves : ceux qui ont travaillé et qui sont en
+     * dessous de 60 %. PAS CEUX QUI N'ONT RIEN FAIT — leur problème n'est pas
+     * la notion, c'est qu'ils n'ont pas ouvert la séance, et leur donner un
+     * rattrapage sur un chapitre qu'ils n'ont pas vu n'a aucun sens.
+     *
+     * ON MONTRE LA LISTE AVANT DE L'ENVOYER, avec ses cases. Le seuil est une
+     * moyenne, pas un jugement : le professeur connaît l'élève qui a raté parce
+     * qu'il était malade, et celui qui a fini à 62 % en n'ayant rien compris.
+     * Un rattrapage qui part sans qu'on ait vu à qui est un rattrapage qu'on
+     * n'ose plus donner.
+     *
+     * C'EST LE MÊME PARCOURS, DONNÉ À UN GROUPE. Rien de neuf à construire :
+     * la séance de groupe existe déjà (`eleveIds`), et l'élève concerné la
+     * verra arriver sur sa carte comme n'importe quel autre travail.
+     */
+    function brancherRattrapage(z, contexte) {
+        const bouton = z.querySelector('[data-rattrapage]');
+        if (!bouton) return;
+        bouton.onclick = () => {
+            const b = bilanSeance(contexte.seance, contexte.classe);
+            const ids = aRattraper(b.eleves);
+            if (!ids.length) {
+                return showAlert('Personne n\'est en dessous de 60 % sur cette séance. '
+                    + '<br><br>Les élèves qui n\'ont rien fait ne sont pas comptés : '
+                    + 'ce n\'est pas la notion qui leur manque.');
+            }
+            const concernes = ids
+                .map(id => b.eleves.find(e => e.id === id)).filter(Boolean);
+            const modal = showModal('Donner un rattrapage', `
+                <div class="rt">
+                    <p class="rt-dit">Ces élèves refont <b>${esc(parcours.name || 'ce parcours')}</b>.
+                        Les autres n'y touchent pas.</p>
+                    <div class="rt-liste">${concernes.map(e => `
+                        <label class="rt-eleve">
+                            <input type="checkbox" data-rt="${esc(e.id)}" checked>
+                            <span class="rt-nom">${esc(e.nom)}</span>
+                            <span class="rt-taux">${pourcent(e.reussite)}</span>
+                        </label>`).join('')}</div>
+                    <p class="rt-aide">Ils le verront sur leur écran d'accueil, à la place
+                        de la séance du jour.</p>
+                    <button type="button" class="rt-ok" data-rt-ok>Donner le rattrapage</button>
+                </div>`, { width: '420px' });
+            modal.element.querySelector('[data-rt-ok]').onclick = async () => {
+                const choisis = [...modal.element.querySelectorAll('[data-rt]:checked')]
+                    .map(x => x.dataset.rt);
+                if (!choisis.length) return;
+                // UNE COPIE DU PARCOURS, AVEC UN IDENTIFIANT NEUF — voir
+                // `etatClasse`. Le rattrapage est un AUTRE acte : son bilan ne
+                // doit pas ramasser le travail de la séance d'origine.
+                const copie = {
+                    ...parcours,
+                    id: 'p_' + Math.random().toString(36).slice(2, 10),
+                    name: `${parcours.name || 'Parcours'} — rattrapage`
+                };
+                const seance = donnerSeance(contexte.classe, copie, {
+                    code: Shortcodes.encodePath(copie),
+                    eleveIds: choisis
+                });
+                seance.origine = parcours.id;
+                seances = [...seances, seance];
+                await enregistrer();
+                modal.close();
+                showToast(`Rattrapage donné à ${choisis.length} élève${choisis.length > 1 ? 's' : ''}.`,
+                    'success');
+                dessiner();
+            };
+        };
     }
 
     function brancher() {
@@ -396,6 +545,15 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             };
         });
 
+        panel.querySelectorAll('[data-bilan-rattrapage]').forEach(b => {
+            b.onclick = () => {
+                const classe = classes.find(c => c.id === b.dataset.classe);
+                const seance = seances.find(s => s.id === b.dataset.bilanRattrapage);
+                if (!classe || !seance) return;
+                montrer(bilanClasseHtml(bilanSeance(seance, classe)), { seance, classe });
+            };
+        });
+
         panel.querySelectorAll('[data-bilan-classe]').forEach(b => {
             b.onclick = () => {
                 const classe = classes.find(c => c.id === b.dataset.bilanClasse);
@@ -413,7 +571,11 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 const info = etatClasse(classe, seances, pathId);
                 const eleve = (classe.eleves || []).find(e => e.id === b.dataset.bilanEleve);
                 if (!info.seance || !eleve) return;
-                montrer(bilanEleveHtml(bilanEleveSeance(info.seance, eleve)));
+                // LE CONTEXTE VOYAGE MÊME PAR CE CHEMIN-LÀ. Sans lui, le champ
+                // « un mot pour… » s'affichait et n'envoyait rien : un champ
+                // qui ne fait rien est pire qu'un champ absent.
+                montrer(bilanEleveHtml(bilanEleveSeance(info.seance, eleve)),
+                    { seance: info.seance, classe, eleve });
             };
         });
     }

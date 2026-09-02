@@ -257,3 +257,42 @@ test('LE TABLEAU DE SÉANCE EST COURT — c\'est tout l\'intérêt', () => {
     assert.deepEqual(court.competences.map(c => c.skillId).sort(),
         ['geo.angles.mesure', 'geo.angles.relations']);
 });
+
+
+// --- LE RATTRAPAGE NE MÉLANGE PAS SES COMPTES -------------------------------
+//
+// Rémy : « ceux qui ont raté refont ça pendant que les autres avancent ». Le
+// rattrapage porte une COPIE du parcours avec un identifiant neuf, et c'est
+// cette copie qui rend ses comptes lisibles : un rattrapage qui partagerait le
+// `pathId` de la séance d'origine ramasserait le travail de celle-ci et
+// afficherait comme « refait » ce qui n'a jamais été refait. C'est exactement
+// la mesure sur laquelle le professeur décide qui il revoit jeudi.
+
+test('LE BILAN D\'UN RATTRAPAGE NE RAMASSE PAS LE TRAVAIL DE LA SÉANCE D\'ORIGINE', () => {
+    const origine = donnerSeance({ id: 'c1', nom: '5e B' }, parcours);
+    // Le travail de la séance d'origine : deux justes, six faux.
+    const eleve = { id: 'e1', nom: 'Zoé', evenements: run({
+        runId: 'r1', pathId: parcours.id, debut: T0 + H,
+        skill: 'num.prio', exerciseId: 'geo-angles-nommer', justes: 2, faux: 6
+    }) };
+
+    // Le rattrapage : même contenu, identifiant neuf.
+    const copie = { ...parcours, id: 'p_rattrapage', name: 'Les angles — rattrapage' };
+    const rattrapage = donnerSeance({ id: 'c1', nom: '5e B' }, copie, { eleveIds: ['e1'] });
+
+    // Rien n'a encore été refait : le bilan du rattrapage doit être VIDE.
+    assert.equal(aTravaille(rattrapage, eleve.evenements), false);
+    assert.equal(bilanEleveSeance(rattrapage, eleve).questions, 0);
+    // Et celui de l'origine, lui, compte bien ses huit questions.
+    assert.equal(bilanEleveSeance(origine, eleve).questions, 8);
+
+    // L'élève refait le travail : c'est le rattrapage qui bouge, pas l'origine.
+    eleve.evenements = [...eleve.evenements, ...run({
+        runId: 'r2', pathId: copie.id, debut: T0 + 48 * H,
+        skill: 'num.prio', exerciseId: 'geo-angles-nommer', justes: 7, faux: 1
+    })];
+    assert.equal(bilanEleveSeance(rattrapage, eleve).questions, 8);
+    assert.equal(bilanEleveSeance(rattrapage, eleve).reussite, 7 / 8);
+    assert.equal(bilanEleveSeance(origine, eleve).questions, 8);
+    assert.equal(bilanEleveSeance(origine, eleve).reussite, 2 / 8);
+});
