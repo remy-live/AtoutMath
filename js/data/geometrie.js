@@ -1261,8 +1261,26 @@ export const geometrieExercises = [
         // qui s'en sert, pas dans une pile de rappels.
         sansRevision: true,
         skills: ['geo.trigo.cotes'],
-        params: { tourner: true },
+        params: { palier: 'reperer', tourner: true },
         paramSchema: [
+            {
+                // TROIS PALIERS, LE MÊME TRIANGLE. Rémy : « tu peux aussi poser
+                // une question quel est le côté opposé à G […] et il peut aussi
+                // l'écrire avec les crochets. On pourrait y inclure l'écriture
+                // des formules, en aidant au départ. »
+                id: 'palier', type: 'select', label: 'Ce qu\'on demande',
+                default: 'reperer', echelle: true,
+                aide: 'Montrer prouve qu\'on a LU la figure ; écrire prouve en plus '
+                    + 'qu\'on sait NOMMER un segment par ses deux extrémités — et c\'est '
+                    + 'cette écriture-là qui servira dans une formule. Le troisième palier '
+                    + 'fait écrire cos, sin ou tan : le rapport est rappelé sur les deux '
+                    + 'premières figures, puis il faut le savoir.',
+                options: [
+                    { value: 'reperer', label: 'Cliquer le côté sur la figure', court: 'Cliquer' },
+                    { value: 'ecrire', label: 'Écrire le nom du côté — [AB]', court: 'Écrire' },
+                    { value: 'formule', label: 'Écrire la formule — cos(G) = …', court: 'Formule' }
+                ]
+            },
             {
                 id: 'tourner', type: 'boolean', label: 'Faire tourner la figure', default: true,
                 aide: 'Un triangle toujours posé l\'angle droit en bas à gauche enseigne une '
@@ -1278,6 +1296,6 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Trois côtés, trois noms, et un ordre pour les trouver. COMMENCE PAR L'HYPOTÉNUSE : c'est le côté en face de l'ANGLE DROIT, le plus long, et le seul qui ne change jamais de nom quel que soit l'angle qu'on regarde — c'est ton point d'appui. Les deux autres, eux, DÉPENDENT DE L'ANGLE marqué sur la figure. Le côté OPPOSÉ est celui qui ne le touche pas, celui d'en face. Le côté ADJACENT est celui qui le touche ET qui touche aussi l'angle droit. ATTENTION, C'EST LÀ QU'ON SE TROMPE : l'hypoténuse touche l'angle elle aussi, et « adjacent » veut dire « à côté de » — beaucoup la donnent donc pour adjacente. Un seul mot les sépare : l'adjacent touche AUSSI l'angle droit. Et la figure TOURNE d'une question à l'autre : « adjacent » n'est pas « horizontal ». Si tu apprends une position au lieu d'une définition, le premier triangle penché du contrôle te le fera payer."
+        instruction: "Trois côtés, trois noms, et un ordre pour les trouver. COMMENCE PAR L'HYPOTÉNUSE : c'est le côté en face de l'ANGLE DROIT, le plus long, et le seul qui ne change jamais de nom quel que soit l'angle qu'on regarde — c'est ton point d'appui. Les deux autres, eux, DÉPENDENT DE L'ANGLE marqué sur la figure. Le côté OPPOSÉ est celui qui ne le touche pas, celui d'en face. Le côté ADJACENT est celui qui le touche ET qui touche aussi l'angle droit. ATTENTION, C'EST LÀ QU'ON SE TROMPE : l'hypoténuse touche l'angle elle aussi, et « adjacent » veut dire « à côté de » — beaucoup la donnent donc pour adjacente. Un seul mot les sépare : l'adjacent touche AUSSI l'angle droit. Et la figure TOURNE d'une question à l'autre : « adjacent » n'est pas « horizontal ». Si tu apprends une position au lieu d'une définition, le premier triangle penché du contrôle te le fera payer. SELON LE RÉGLAGE, on te demandera de CLIQUER le côté, de l'ÉCRIRE — deux lettres, celles de ses extrémités, et les crochets si tu les connais : [AB] est le SEGMENT, (AB) la droite, AB la longueur — ou d'écrire la FORMULE. Pour la formule, deux gestes dans cet ordre, et ils se ratent séparément : d'abord LE RAPPORT (CAH SOH TOA : cosinus = adjacent sur hypoténuse, sinus = opposé sur hypoténuse, tangente = opposé sur adjacent), ensuite LA FIGURE (quel côté joue ce rôle pour l'angle marqué). Se tromper de rapport et se tromper de côté ne sont pas la même faute, et ne se rattrapent pas de la même façon."
     }
 ];

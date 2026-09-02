@@ -9,7 +9,10 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     ROLES, tirerTriangle, rolesDe, cotesDe, roleDe, memeCote, nomCote,
-    sommetDroit, sommetVise, pointsDe, questionsDe, verifier, conseil, laLecon
+    sommetDroit, sommetVise, pointsDe, questionsDe, verifier, conseil, laLecon,
+    lireCote, avecCrochets, questionEcrite, verifierEcrit,
+    FONCTIONS, ORDRE_FONCTIONS, formuleDe, verifierFormule, conseilFormule,
+    laLeconFormule, MEMO
 } from '../js/core/trigonometrie.js';
 
 const tirage = (n = 200) => Array.from({ length: n }, (_, i) => tirerTriangle(makeRng('tri' + i)));
@@ -195,4 +198,155 @@ test('DEUX CÔTÉS SE COMPARENT SANS TENIR COMPTE DE L\'ORDRE DES LETTRES', () =
     assert.equal(nomCote(t, 2, 0), nomCote(t, 0, 2), 'le nom d\'un côté ne dépend pas du sens');
     assert.equal(roleDe(t, rolesDe(t)[ROLES.OPPOSE]), ROLES.OPPOSE);
     assert.equal(roleDe(t, 'ZZ'), null);
+});
+
+
+/* ═══════════════ ÉCRIRE LE CÔTÉ, ET NON LE MONTRER ═══════════════════════ */
+//
+// Rémy : « tu peux aussi poser une question quel est le côté opposé à G […] et
+// il peut aussi l'écrire avec les crochets. »
+
+test('LES CROCHETS SONT ACCEPTÉS, PAS EXIGÉS', () => {
+    // [AB] est le SEGMENT, (AB) la droite, AB la longueur. On veut voir la
+    // bonne notation arriver, mais refuser « AB » dans un exercice qui porte
+    // sur le REPÉRAGE reviendrait à sanctionner une notation là où l'on
+    // apprend autre chose.
+    for (const ecrit of ['[AB]', 'AB', '(AB)', ' ab ', 'A B', '[ a b ]']) {
+        assert.equal(lireCote(ecrit), 'AB', ecrit);
+    }
+    for (const ecrit of ['A', 'ABC', '', '12', null]) {
+        assert.equal(lireCote(ecrit), '', String(ecrit));
+    }
+    // Et l'on SAIT si les crochets y étaient : c'est ce qui permet de les
+    // saluer sans les imposer.
+    assert.equal(avecCrochets('[AB]'), true);
+    assert.equal(avecCrochets('AB'), false);
+    assert.equal(avecCrochets('(AB)'), false);
+});
+
+test('la question est celle du professeur, pas celle de la machine', () => {
+    const t = tirerTriangle(makeRng('q1'));
+    const A = sommetVise(t);
+    assert.equal(questionEcrite(t, ROLES.OPPOSE), `Quel est le côté opposé à l'angle en ${A} ?`);
+    assert.equal(questionEcrite(t, ROLES.ADJACENT), `Quel est le côté adjacent à l'angle en ${A} ?`);
+    // L'hypoténuse ne dépend d'aucun angle : la question ne le mentionne pas.
+    assert.doesNotMatch(questionEcrite(t, ROLES.HYPOTENUSE), /angle en/);
+});
+
+test('UNE ÉCRITURE QUI N\'EN EST PAS UNE SE DIT AUTREMENT QU\'UN MAUVAIS CÔTÉ', () => {
+    // « G » et « GH » ne se corrigent pas de la même façon : le premier n'a pas
+    // compris comment on nomme un segment, le second a mal lu la figure.
+    const t = tirerTriangle(makeRng('q2'));
+    const r = rolesDe(t);
+    assert.equal(verifierEcrit(t, ROLES.OPPOSE, sommetVise(t)).faute, 'ecriture');
+    assert.equal(verifierEcrit(t, ROLES.OPPOSE, t.nom).faute, 'ecriture');
+    assert.equal(verifierEcrit(t, ROLES.OPPOSE, '').faute, 'ecriture');
+    const L = t.sommets[0];
+    assert.equal(verifierEcrit(t, ROLES.OPPOSE, L + L).faute, 'ecriture');
+    for (const ecrit of [r[ROLES.OPPOSE], `[${r[ROLES.OPPOSE]}]`,
+        r[ROLES.OPPOSE].split('').reverse().join('')]) {
+        assert.equal(verifierEcrit(t, ROLES.OPPOSE, ecrit).ok, true, ecrit);
+    }
+    assert.equal(verifierEcrit(t, ROLES.OPPOSE, `[${r[ROLES.OPPOSE]}]`).crochets, true);
+    assert.equal(verifierEcrit(t, ROLES.OPPOSE, r[ROLES.OPPOSE]).crochets, false);
+});
+
+/* ═══════════════════════ ÉCRIRE LA FORMULE ═══════════════════════════════ */
+
+test('LES TROIS RAPPORTS SONT CEUX DU COURS', () => {
+    assert.equal(FONCTIONS.cos.haut, ROLES.ADJACENT);
+    assert.equal(FONCTIONS.cos.bas, ROLES.HYPOTENUSE);
+    assert.equal(FONCTIONS.sin.haut, ROLES.OPPOSE);
+    assert.equal(FONCTIONS.sin.bas, ROLES.HYPOTENUSE);
+    assert.equal(FONCTIONS.tan.haut, ROLES.OPPOSE);
+    assert.equal(FONCTIONS.tan.bas, ROLES.ADJACENT);
+    // L'hypoténuse est au dénominateur des deux premiers et absente du
+    // troisième : c'est le seul repère utile derrière le moyen mnémotechnique.
+    assert.notEqual(FONCTIONS.tan.haut, ROLES.HYPOTENUSE);
+    assert.notEqual(FONCTIONS.tan.bas, ROLES.HYPOTENUSE);
+    ['CAH', 'SOH', 'TOA'].forEach(m => assert.match(MEMO, new RegExp(m)));
+});
+
+test('la formule s\'écrit comme au tableau, sur la figure tirée', () => {
+    for (let i = 0; i < 60; i++) {
+        const t = tirerTriangle(makeRng('f' + i));
+        const r = rolesDe(t);
+        for (const cle of ORDRE_FONCTIONS) {
+            const f = formuleDe(t, cle);
+            assert.equal(f.gauche, `${cle}(${sommetVise(t)})`);
+            assert.equal(f.attenduHaut, r[FONCTIONS[cle].haut]);
+            assert.equal(f.attenduBas, r[FONCTIONS[cle].bas]);
+            assert.equal(f.texte, `${cle}(${sommetVise(t)}) = [${f.attenduHaut}] / [${f.attenduBas}]`);
+            // LE RAPPEL DU DÉPART NE NOMME JAMAIS DE CÔTÉ : il donne le rapport
+            // et laisse la lecture de la figure à l'élève. Sinon l'aide fait
+            // l'exercice.
+            assert.doesNotMatch(f.rappel, new RegExp(f.attenduHaut));
+            assert.doesNotMatch(f.rappel, new RegExp(f.attenduBas));
+        }
+    }
+});
+
+test('LA FRACTION RENVERSÉE A SON PROPRE DIAGNOSTIC', () => {
+    // Ce n'est pas « à moitié juste » : les deux côtés sont les bons, ils sont
+    // à l'envers. Nommer cette faute est la seule façon de dire à l'élève ce
+    // qu'il doit revoir — le rapport, et non la figure.
+    for (let i = 0; i < 40; i++) {
+        const t = tirerTriangle(makeRng('r' + i));
+        for (const cle of ORDRE_FONCTIONS) {
+            const f = formuleDe(t, cle);
+            const v = verifierFormule(t, cle, f.attenduBas, f.attenduHaut);
+            assert.equal(v.ok, false);
+            assert.equal(v.faute, 'renversee', `${cle} sur ${t.nom}`);
+            assert.match(v.raison, /autre sens|inverse/);
+        }
+    }
+});
+
+test('la formule juste passe, quelle que soit l\'écriture', () => {
+    const t = tirerTriangle(makeRng('ok'));
+    const f = formuleDe(t, 'cos');
+    const inverse = (n) => n.split('').reverse().join('');
+    assert.equal(verifierFormule(t, 'cos', f.attenduHaut, f.attenduBas).ok, true);
+    assert.equal(verifierFormule(t, 'cos', `[${f.attenduHaut}]`, `[${f.attenduBas}]`).ok, true);
+    assert.equal(verifierFormule(t, 'cos', inverse(f.attenduHaut), f.attenduBas).ok, true);
+    // Les crochets sont relevés quand ils sont aux DEUX cases : la moitié ne
+    // fait pas une habitude.
+    assert.equal(verifierFormule(t, 'cos', `[${f.attenduHaut}]`, `[${f.attenduBas}]`).crochets, true);
+    assert.equal(verifierFormule(t, 'cos', `[${f.attenduHaut}]`, f.attenduBas).crochets, false);
+});
+
+test('un côté mal repéré dit OÙ, et pourquoi', () => {
+    const t = tirerTriangle(makeRng('c1'));
+    const f = formuleDe(t, 'cos');
+    const r = rolesDe(t);
+    const v = verifierFormule(t, 'cos', r[ROLES.HYPOTENUSE], f.attenduBas);
+    assert.equal(v.ok, false);
+    assert.equal(v.ou, 'haut');
+    assert.match(v.raison, /NUMÉRATEUR/);
+    const w = verifierFormule(t, 'cos', f.attenduHaut, r[ROLES.OPPOSE]);
+    assert.equal(w.ok, false);
+    assert.equal(w.ou, 'bas');
+    assert.match(w.raison, /DÉNOMINATEUR/);
+});
+
+test('une case vide n\'est pas une erreur de géométrie', () => {
+    const t = tirerTriangle(makeRng('vide'));
+    const f = formuleDe(t, 'cos');
+    assert.equal(verifierFormule(t, 'cos', '', f.attenduBas).faute, 'ecriture');
+    assert.equal(verifierFormule(t, 'cos', f.attenduHaut, 'X').faute, 'ecriture');
+});
+
+test('L\'AIDE DONNE LE RAPPORT, JAMAIS LE CÔTÉ', () => {
+    for (let i = 0; i < 30; i++) {
+        const t = tirerTriangle(makeRng('a' + i));
+        for (const cle of ORDRE_FONCTIONS) {
+            const f = formuleDe(t, cle);
+            const c = conseilFormule(t, cle);
+            assert.match(c, new RegExp(FONCTIONS[cle].memo));
+            assert.doesNotMatch(c, new RegExp(`\\b${f.attenduHaut}\\b`), c);
+            assert.doesNotMatch(c, new RegExp(`\\b${f.attenduBas}\\b`), c);
+            // La leçon, elle, la donne : elle vient APRÈS la réponse.
+            assert.match(laLeconFormule(t, cle), new RegExp(f.attenduHaut));
+        }
+    }
 });

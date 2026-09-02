@@ -194,14 +194,28 @@
    (34cqh) empêche deux bulles sur un écran très large de devenir des ballons.
    Le cadre de simulation du téléphone, lui, garde ses 110 px : c'est un
    téléphone qu'on y regarde. */
+/* LA TAILLE SE CALCULE SUR LA LARGEUR QU'ON A VRAIMENT, ET NON SUR LE PLATEAU.
+   Rémy, capture à l'appui : « dommage que ça aille en ligne » — quatre
+   propositions rangées trois puis une. Mesuré sur un écran de 2000 px : la
+   bulle valait 220 px (calculée sur 100cqw, la largeur du PLATEAU) alors que la
+   rangée, elle, est plafonnée à 900 px. Quatre bulles de 220 et trois
+   gouttières font 964 : la quatrième passait à la ligne. Le plafond entrait
+   donc dans la mise en page sans entrer dans le calcul. On calcule maintenant
+   sur `min(96cqw, 900px)` — la largeur réellement disponible —, et les quatre
+   tiennent toujours sur une ligne, à toutes les tailles d'écran. */
 .bubble-container {
     --n: 4; --ecart: clamp(8px, 2.4cqw, 28px);
-    --bulle: min(220px, 34cqh, calc((100cqw - 30px - (var(--n) - 1) * var(--ecart)) / var(--n)));
+    --large: min(96cqw, 900px);
+    /* Les 4 px de marge évitent qu'un arrondi au demi-pixel ne fasse tomber la
+       dernière bulle à la ligne alors que le compte est juste. */
+    --bulle: min(220px, 34cqh,
+        calc((var(--large) - 4px - (var(--n) - 1) * var(--ecart)) / var(--n)));
     display: flex; gap: var(--ecart); flex-wrap: wrap; justify-content: center;
-    width: 100%; max-width: min(96cqw, 900px);
+    width: 100%; max-width: var(--large);
 }
 .device-simulator .bubble-container, .tablet-simulator .bubble-container {
-    --bulle: min(110px, calc((100cqw - 30px - (var(--n) - 1) * var(--ecart)) / var(--n)));
+    --bulle: min(110px,
+        calc((var(--large) - 4px - (var(--n) - 1) * var(--ecart)) / var(--n)));
 }
 .bubble { width: var(--bulle); height: var(--bulle); flex: 0 0 auto;
     font-size: min(2.2rem, calc(var(--bulle) * .4)); border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }

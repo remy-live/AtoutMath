@@ -290,3 +290,212 @@ export function laLecon(t) {
         + `face de l'angle droit. Pour l'angle en ${A} : ${r[ROLES.OPPOSE]} est en face `
         + `(opposé), ${r[ROLES.ADJACENT]} le touche sans être l'hypoténuse (adjacent).`;
 }
+
+/* ═══════════════════ ÉCRIRE LE CÔTÉ, ET NON LE MONTRER ═══════════════════ */
+//
+// Rémy : « tu peux aussi poser une question quel est le côté opposé à G, et on
+// passe à la question suivante. Et il peut aussi l'écrire avec les crochets. »
+//
+// POURQUOI ÉCRIRE N'EST PAS MONTRER. Cliquer le bon segment prouve qu'on a LU
+// la figure ; l'écrire prouve en plus qu'on sait le NOMMER — c'est-à-dire
+// désigner un segment par ses deux extrémités, avec la notation du cours. Or
+// c'est cette écriture-là qui servira ensuite : une formule s'écrit
+// « cos(G) = [GF] / [GH] », pas en pointant du doigt. Un élève qui montre
+// juste et qui écrit « G » ou « GFH » n'a pas encore le geste.
+//
+// LES CROCHETS SONT ACCEPTÉS, PAS EXIGÉS. C'est la notation juste — [FH] est le
+// SEGMENT, (FH) la droite, FH la longueur — et l'on veut la voir arriver. Mais
+// refuser « FH » sur un exercice qui porte sur le repérage des côtés, ce serait
+// sanctionner une notation dans l'exercice où l'on apprend autre chose. On
+// accepte donc les deux, et l'on FÉLICITE les crochets : c'est ainsi qu'une
+// habitude se prend, pas en la punissant.
+
+/**
+ * Ce que l'élève a écrit, ramené à deux lettres majuscules.
+ *
+ * On accepte les crochets, les parenthèses, les espaces, les minuscules — tout
+ * ce qu'une main d'élève produit — et l'on rend « » si ce n'est pas la
+ * désignation d'un segment.
+ */
+export function lireCote(texte) {
+    const brut = String(texte == null ? '' : texte)
+        .toUpperCase()
+        .replace(/[[\]()\s.,;·-]/g, '');
+    return /^[A-Z]{2}$/.test(brut) ? brut : '';
+}
+
+/** L'élève a-t-il mis les crochets du segment ? */
+export const avecCrochets = (texte) => /\[\s*[A-Za-z]\s*[A-Za-z]\s*\]/.test(String(texte || ''));
+
+/**
+ * LA QUESTION, ÉCRITE COMME LE PROFESSEUR LA POSE.
+ *
+ * « Quel est le côté opposé à l'angle en G ? » — et non « clique le côté
+ * opposé ». Le verbe change le geste attendu, il doit changer dans l'énoncé.
+ */
+export function questionEcrite(t, role) {
+    if (role === ROLES.HYPOTENUSE) return 'Quelle est l\'hypoténuse de ce triangle ?';
+    const A = sommetVise(t);
+    return `Quel est le côté ${role === ROLES.OPPOSE ? 'opposé' : 'adjacent'} `
+        + `à l'angle en ${A} ?`;
+}
+
+/**
+ * LE REFUS, QUAND ON A ÉCRIT PLUTÔT QUE MONTRÉ.
+ *
+ * Trois familles d'erreur, et elles ne se corrigent pas de la même façon :
+ * l'écriture qui n'en est pas une (« G », « GFH »), le côté qui n'existe pas
+ * dans ce triangle, et le mauvais côté — c'est là qu'on retombe sur `verifier`,
+ * qui sait déjà nommer la confusion.
+ */
+export function verifierEcrit(t, role, saisie) {
+    const nom = lireCote(saisie);
+    if (!nom) {
+        return {
+            ok: false, faute: 'ecriture',
+            raison: 'Un côté se désigne par SES DEUX EXTRÉMITÉS : deux lettres, '
+                + 'comme [AB]. Une seule lettre nomme un point, trois nomment le triangle.'
+        };
+    }
+    if (nom[0] === nom[1]) {
+        return {
+            ok: false, faute: 'ecriture',
+            raison: `« ${nom} » n'est pas un côté : ses deux extrémités sont le même point.`
+        };
+    }
+    const v = verifier(t, role, nom);
+    if (!v.ok) return v;
+    // JUSTE — et l'on dit si la notation y était, sans l'avoir exigée.
+    return { ok: true, crochets: avecCrochets(saisie), nom };
+}
+
+/* ═══════════════════════ ÉCRIRE LA FORMULE ═══════════════════════════════ */
+//
+// Rémy : « on pourrait y inclure l'écriture des formules, en aidant au départ. »
+//
+// CE N'EST PAS LA MARCHE SUIVANTE, C'EST LA MÊME. Un élève qui sait dire quel
+// côté est l'adjacent et qui écrit quand même « cos = opposé / hypoténuse » n'a
+// pas un problème de repérage : il a un problème de FORMULE. Et l'inverse est
+// vrai. Les deux fautes coûtent le même zéro et se corrigent autrement, donc
+// elles se travaillent l'une après l'autre — sur la MÊME figure, pour que le
+// lien se voie.
+//
+// L'AIDE DU DÉPART EST LE RAPPORT EN TOUTES LETTRES. Au premier palier, on
+// donne « cosinus = adjacent / hypoténuse » et l'élève n'a plus qu'à remplir
+// les deux côtés : il travaille le repérage DANS une formule, ce qui n'est pas
+// le même exercice que le repérage tout court. Au palier suivant le rappel
+// disparaît, et il faut savoir lequel des trois rapports on écrit.
+
+export const FONCTIONS = {
+    cos: {
+        cle: 'cos', nom: 'cos', libelle: 'cosinus',
+        haut: ROLES.ADJACENT, bas: ROLES.HYPOTENUSE, memo: 'CAH'
+    },
+    sin: {
+        cle: 'sin', nom: 'sin', libelle: 'sinus',
+        haut: ROLES.OPPOSE, bas: ROLES.HYPOTENUSE, memo: 'SOH'
+    },
+    tan: {
+        cle: 'tan', nom: 'tan', libelle: 'tangente',
+        haut: ROLES.OPPOSE, bas: ROLES.ADJACENT, memo: 'TOA'
+    }
+};
+
+export const ORDRE_FONCTIONS = ['cos', 'sin', 'tan'];
+
+/**
+ * LE MOYEN MNÉMOTECHNIQUE, ET CE QU'IL VAUT.
+ *
+ * « CAH SOH TOA » se retient en une minute et se récite toute une vie ; il ne
+ * dit rien de ce que les rapports SIGNIFIENT, et c'est très bien — on ne lui
+ * demande que de tenir la place le jour du contrôle. La phrase qui l'accompagne,
+ * elle, porte le seul repère utile : l'hypoténuse est en bas de cos et de sin,
+ * et elle disparaît de la tangente.
+ */
+export const MEMO = 'CAH · SOH · TOA — Cosinus : Adjacent sur Hypoténuse. '
+    + 'Sinus : Opposé sur Hypoténuse. Tangente : Opposé sur Adjacent. '
+    + 'L\'hypoténuse est au dénominateur des deux premiers, et absente du troisième : '
+    + 'la tangente ne parle que des deux côtés de l\'angle droit.';
+
+/** La formule attendue pour cette figure et cette fonction. */
+export function formuleDe(t, cle) {
+    const f = FONCTIONS[cle];
+    if (!f) return null;
+    const r = rolesDe(t);
+    return {
+        fonction: f,
+        angle: sommetVise(t),
+        // Ce qui s'écrit à gauche du signe égal : « cos(G) ».
+        gauche: `${f.nom}(${sommetVise(t)})`,
+        haut: f.haut, bas: f.bas,
+        attenduHaut: r[f.haut], attenduBas: r[f.bas],
+        // Le rappel du palier d'aide : le rapport en toutes lettres.
+        rappel: `${f.libelle} = ${COURTS[f.haut]} / ${COURTS[f.bas]}`,
+        // La formule complète, telle qu'on l'écrit au tableau.
+        texte: `${f.nom}(${sommetVise(t)}) = [${r[f.haut]}] / [${r[f.bas]}]`
+    };
+}
+
+/**
+ * LES DEUX MOITIÉS SE CORRIGENT SÉPARÉMENT — et c'est tout l'intérêt.
+ *
+ * « cos(G) = [GH] / [GF] » n'est pas « à moitié juste » : c'est la formule
+ * RENVERSÉE, une faute précise qui a son nom. La distinguer de « j'ai pris le
+ * mauvais côté en haut » est la seule façon de dire à l'élève ce qu'il doit
+ * revoir — le rapport, ou la figure.
+ */
+export function verifierFormule(t, cle, hautSaisi, basSaisi) {
+    const f = formuleDe(t, cle);
+    if (!f) return { ok: false, raison: 'Fonction inconnue.' };
+    const h = lireCote(hautSaisi), b = lireCote(basSaisi);
+    if (!h || !b) {
+        return {
+            ok: false, faute: 'ecriture',
+            raison: 'Chaque case attend un CÔTÉ : deux lettres, comme [AB].'
+        };
+    }
+    const hOk = memeCote(h, f.attenduHaut);
+    const bOk = memeCote(b, f.attenduBas);
+    if (hOk && bOk) {
+        return { ok: true, crochets: avecCrochets(hautSaisi) && avecCrochets(basSaisi) };
+    }
+    // LA FRACTION RENVERSÉE — la faute la plus fréquente, et la plus vexante :
+    // les deux côtés sont les bons, ils sont juste à l'envers.
+    if (memeCote(h, f.attenduBas) && memeCote(b, f.attenduHaut)) {
+        return {
+            ok: false, faute: 'renversee',
+            raison: 'Les deux côtés sont les bons, mais dans l\'autre sens : '
+                + `${f.fonction.libelle} = ${COURTS[f.haut]} / ${COURTS[f.bas]}, `
+                + `donc [${f.attenduHaut}] AU-DESSUS et [${f.attenduBas}] en dessous. `
+                + 'Un rapport renversé donne son inverse, pas le même nombre.'
+        };
+    }
+    // Sinon, c'est un côté mal repéré : on rend le diagnostic du repérage, qui
+    // sait nommer la confusion (hypoténuse prise pour l'adjacent, etc.).
+    const quel = !hOk ? f.haut : f.bas;
+    const donne = !hOk ? h : b;
+    const v = verifier(t, quel, donne);
+    return {
+        ok: false, faute: v.faute || 'cote',
+        ou: !hOk ? 'haut' : 'bas',
+        raison: `Au ${!hOk ? 'NUMÉRATEUR' : 'DÉNOMINATEUR'}, on attend `
+            + `${LIBELLES[quel]}. ${v.raison || ''}`.trim()
+    };
+}
+
+/** L'aide de la formule : le rapport, jamais le côté. */
+export function conseilFormule(t, cle) {
+    const f = formuleDe(t, cle);
+    if (!f) return '';
+    return `${f.fonction.memo} : ${f.fonction.libelle} = ${COURTS[f.haut]} / ${COURTS[f.bas]}. `
+        + `Reste à lire la figure : quel côté est ${LIBELLES[f.haut]} de l'angle en ${f.angle}, `
+        + `et quel côté est ${LIBELLES[f.bas]} ?`;
+}
+
+/** Ce qu'on retient une fois la formule écrite. */
+export function laLeconFormule(t, cle) {
+    const f = formuleDe(t, cle);
+    if (!f) return '';
+    return `${f.texte} — ${f.fonction.libelle} = ${COURTS[f.haut]} sur ${COURTS[f.bas]}, `
+        + `lus par rapport à l'angle en ${f.angle}.`;
+}
