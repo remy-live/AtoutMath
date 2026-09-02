@@ -711,12 +711,43 @@ export const vignetteDe = (texte) => {
     return (f && f.court) || texte;
 };
 
-export function genererProgressif({ rng, palier = 'conditions' } = {}) {
+/**
+ * CODER LA FIGURE QU'ON VIENT D'ATTEINDRE.
+ *
+ * Rémy : « On part du quadrilatère pour aller au parallélogramme. Si l'élève se
+ * trompe, on recommence. Ensuite, on lui demande de coder le parallélogramme.
+ * Puis on passe au rectangle. […] On code le rectangle puis après on met les
+ * vignettes. »
+ *
+ * DIRE LA PROPRIÉTÉ, PUIS L'ÉCRIRE SUR LA FIGURE. Poser « les côtés opposés
+ * sont parallèles » sur une flèche, c'est reconnaître une phrase ; la CODER,
+ * c'est la retrouver sur un dessin — et c'est là qu'on voit qui a compris. Les
+ * deux gestes se suivent immédiatement, sur la figure qui vient d'apparaître :
+ * la condition qu'on vient de nommer est encore à l'écran, juste au-dessus.
+ *
+ * LES CÔTÉS ET LES SOMMETS, PAS LES DIAGONALES. Huit zones au lieu de treize :
+ * une étape de codage s'intercale ici entre deux étapes de cartes, elle ne doit
+ * pas devenir l'exercice principal — et surtout, une erreur fait tout
+ * recommencer. Le codage complet, diagonales comprises, a son exercice à lui
+ * (« Coder la figure »).
+ *
+ * LES DIMENSIONS SONT FIXES, et c'est voulu : ce sont celles de la case de
+ * l'organigramme, à peu de chose près. L'élève doit reconnaître la MÊME figure
+ * qu'il vient de voir apparaître, pas une autre du même nom.
+ */
+export const DIMS_CODAGE = {
+    parallelogramme: { base: 12, hauteur: 8, decalage: 4 },
+    rectangle: { L: 13, l: 8 },
+    losange: { p: 16, q: 11 },
+    carre: { cote: 11 }
+};
+
+export function genererProgressif({ rng, palier = 'conditions', codage = true } = {}) {
     const P = PALIERS[palier] || PALIERS.conditions;
     const intrus = P.intrus === undefined ? 1 : P.intrus;
     let numero = 0;
 
-    const etapes = ETAPES.map((e, rang) => {
+    const cartes = ETAPES.map((e, rang) => {
         const fleches = conditionsDe(e.de, e.vers);
         const bonnes = fleches.map(f => f.ajoute);
         // Les intrus : d'autres conditions de la figure, jamais le même texte
@@ -737,12 +768,34 @@ export function genererProgressif({ rng, palier = 'conditions' } = {}) {
             juste: bonnes.includes(texte)
         })));
         return {
+            genre: 'condition',
             rang, de: e.de, vers: e.vers,
             cles: fleches.map(cleFleche),
             bonnes, cartes,
+            vues: casesVisibles(rang),
             titre: `${familleDe(e.de).nom} → ${familleDe(e.vers).nom}`
         };
     });
+
+    // L'ALTERNANCE : on pose les vignettes, on code la figure qu'elles viennent
+    // de faire apparaître, on repart. Une figure ne se code qu'UNE fois — les
+    // deux raccourcis de sixième arrivent sur une case déjà codée, et redemander
+    // le même codage pour la troisième fois n'apprendrait rien.
+    const etapes = [];
+    const codees = new Set();
+    cartes.forEach(e => {
+        etapes.push(e);
+        if (!codage || codees.has(e.vers) || !DIMS_CODAGE[e.vers]) return;
+        codees.add(e.vers);
+        etapes.push({
+            genre: 'codage', figure: e.vers, dims: DIMS_CODAGE[e.vers],
+            rang: e.rang, vues: e.vues,
+            // Les quatre figures codables sont masculines : « le
+            // parallélogramme », « le rectangle », « le losange », « le carré ».
+            titre: `Coder le ${familleDe(e.vers).nom.toLowerCase()}`
+        });
+    });
+    etapes.forEach((e, i) => { e.numero = i; });
     return { mode: MODES.PROPRIETES, palier, progressif: true, etapes };
 }
 

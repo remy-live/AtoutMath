@@ -13,9 +13,14 @@ import {
     posEtiquette, conditionsDe, CASE_L, CASE_H, COND_L, COND_H,
     PLAN_L, PLAN_H, boiteFigure, boiteCondition, traitsDeCondition, POSITIONS_CONDITIONS,
     ETAPES, genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape,
+    DIMS_CODAGE,
     vignetteDe
 } from '../js/core/quadrilateres.js';
 import { PROPRIETES, proprieteDe } from '../js/core/quadriMorph.js';
+import {
+    construireFigure, classesDeLongueur, anglesDroitsDe, verifierCodage,
+    segmentsDe, pointsAngleDe
+} from '../js/core/codage.js';
 import { ajusterAuRectangle, largeurTexte } from '../js/core/dominos.js';
 
 test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
@@ -329,9 +334,10 @@ test('CHAQUE ÉTAPE MÊLE DES INTRUS AUX BONNES CARTES', () => {
     // réfléchir : la dernière carte tomberait toute seule.
     for (const [palier, intrus] of [['conditions', 1], ['tout', 3]]) {
         const o = genererProgressif({ rng: makeRng(palier), palier });
-        assert.equal(o.etapes.length, ETAPES.length, palier);
+        const cartes = o.etapes.filter(e => e.genre === 'condition');
+        assert.equal(cartes.length, ETAPES.length, palier);
         let total = 0;
-        o.etapes.forEach(e => {
+        cartes.forEach(e => {
             total += e.bonnes.length;
             assert.equal(e.cartes.filter(c => c.juste).length, e.bonnes.length, palier);
             assert.equal(e.cartes.length, e.bonnes.length + intrus, `${palier} — ${e.titre}`);
@@ -346,6 +352,69 @@ test('CHAQUE ÉTAPE MÊLE DES INTRUS AUX BONNES CARTES', () => {
         });
         assert.equal(total, FLECHES.length, `${palier} : treize conditions en tout`);
     }
+});
+
+// --- CODER LA FIGURE, ENTRE DEUX ÉTAPES --------------------------------------
+//
+// Rémy : « On part du quadrilatère pour aller au parallélogramme. Si l'élève se
+// trompe, on recommence. Ensuite, on lui demande de coder le parallélogramme.
+// Puis on passe au rectangle. […] On code le rectangle puis après on met les
+// vignettes, si l'élève se trompe, il recommence depuis le début. »
+
+test('ON CODE LA FIGURE QU\'ON VIENT DE FAIRE APPARAÎTRE, et une seule fois', () => {
+    const o = genererProgressif({ rng: makeRng('codage'), palier: 'conditions' });
+    const suite = o.etapes.map(e => e.genre === 'codage' ? `coder:${e.figure}` : `${e.de}>${e.vers}`);
+    assert.deepEqual(suite, [
+        'quadrilatere>parallelogramme', 'coder:parallelogramme',
+        'parallelogramme>rectangle', 'coder:rectangle',
+        'quadrilatere>rectangle',
+        'parallelogramme>losange', 'coder:losange',
+        'quadrilatere>losange',
+        'losange>carre', 'coder:carre',
+        'rectangle>carre'
+    ]);
+    // Le quadrilatère quelconque n'a rien à coder — c'est la seule famille sans
+    // propriété à écrire, et c'est précisément ce qui la définit.
+    assert.equal(o.etapes.some(e => e.genre === 'codage' && e.figure === 'quadrilatere'), false);
+    // Une étape de codage arrive TOUJOURS après celle qui fait apparaître sa
+    // case : coder une figure qu'on n'a pas encore atteinte n'aurait pas de sens.
+    o.etapes.forEach(e => {
+        if (e.genre !== 'codage') return;
+        assert.ok(e.vues.includes(e.figure), `${e.figure} codé avant d'apparaître`);
+        assert.ok(DIMS_CODAGE[e.figure], `${e.figure} sans dimensions`);
+    });
+});
+
+test('LA FIGURE À CODER EST BIEN CELLE QU\'ELLE PRÉTEND ÊTRE', () => {
+    // Les dimensions sont écrites à la main : une faute de frappe donnerait un
+    // « losange » aux quatre côtés inégaux, et l'élève coderait une figure qui
+    // ment. On mesure, comme le fait la correction.
+    const attendus = {
+        parallelogramme: { paquets: 2, droits: 0 },
+        rectangle: { paquets: 2, droits: 4 },
+        losange: { paquets: 1, droits: 0 },
+        carre: { paquets: 1, droits: 4 }
+    };
+    Object.entries(DIMS_CODAGE).forEach(([type, dims]) => {
+        const fig = construireFigure(type, dims, 0);
+        const cotes = segmentsDe(false), sommets = pointsAngleDe(false);
+        assert.equal(classesDeLongueur(fig, cotes).length, attendus[type].paquets, type);
+        assert.equal(anglesDroitsDe(fig, sommets).length, attendus[type].droits, type);
+        // Et le codage juste se vérifie : c'est le contrat de l'étape.
+        const marques = {};
+        classesDeLongueur(fig, cotes).forEach((classe, i) => classe.forEach(id => { marques[id] = i + 1; }));
+        const angles = {};
+        anglesDroitsDe(fig, sommets).forEach(pt => { angles[pt] = true; });
+        assert.equal(verifierCodage(fig, { marques, angles }, cotes, sommets).correct, true, type);
+    });
+});
+
+test('ON PEUT SE PASSER DU CODAGE, et il ne reste que les sept étapes de cartes', () => {
+    // Le professeur règle : « Coder la figure à chaque étape » se coupe pour une
+    // classe qui n'a pas encore vu le codage.
+    const o = genererProgressif({ rng: makeRng('sans'), palier: 'conditions', codage: false });
+    assert.equal(o.etapes.length, ETAPES.length);
+    assert.equal(o.etapes.every(e => e.genre === 'condition'), true);
 });
 
 test('LES FENTES D\'UNE ÉTAPE SONT INTERCHANGEABLES', () => {
@@ -570,7 +639,7 @@ test('LA CARTE POSÉE PORTE LES DEUX ÉCRITURES', () => {
     // `court` s'affiche, `texte` juge et se relit. Perdre l'un des deux casse
     // soit la lisibilité du plan, soit le carnet.
     const org = genererProgressif({ rng: makeRng('vign') });
-    org.etapes.forEach(e => {
+    org.etapes.filter(e => e.genre === 'condition').forEach(e => {
         e.cartes.forEach(c => {
             assert.ok(c.texte, 'une carte sans phrase');
             assert.ok(c.court, `« ${c.texte} » sans vignette`);

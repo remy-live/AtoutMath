@@ -155,7 +155,7 @@ export const geometrieExercises = [
         // même leçon, une question à la fois, et tout tient en grand. C'est
         // aussi ce que Rémy décrit : « tu as un quadrilatère et le
         // parallélogramme et les 3 cases vides pour le transformer ».
-        params: { palier: 'conditions' },
+        params: { palier: 'conditions', codage: true, reprise: 'debut' },
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'Ce qu\'on replace', default: 'conditions',
@@ -170,6 +170,28 @@ export const geometrieExercises = [
                     { value: 'noms', label: 'Placer tous les noms' },
                     { value: 'conditions', label: 'Construire l\'organigramme, étape par étape' },
                     { value: 'tout', label: 'Étape par étape, avec des intrus' }
+                ]
+            },
+            // CODER LA FIGURE ENTRE DEUX ÉTAPES. Rémy : « ensuite, on lui
+            // demande de coder le parallélogramme. Puis on passe au rectangle
+            // […]. On code le rectangle puis après on met les vignettes. »
+            {
+                id: 'codage', type: 'bool', label: 'Coder la figure à chaque étape', default: true,
+                aide: 'Après chaque nouvelle case, l\'élève CODE la figure qui vient '
+                    + 'd\'apparaître : mêmes marques sur les côtés de même longueur, petit '
+                    + 'carré sur les angles droits. Dire la propriété et l\'écrire sur un '
+                    + 'dessin ne sont pas le même travail — et c\'est le second qui se voit '
+                    + 'en contrôle. Ne concerne que l\'étape par étape.'
+            },
+            {
+                id: 'reprise', type: 'select', label: 'Quand on se trompe', default: 'debut',
+                aide: 'L\'organigramme est une chaîne : chaque case se lit sur celles du '
+                    + 'dessus. Tout reprendre, c\'est tout relire — et c\'est ainsi qu\'on le '
+                    + 'retient. Refaire la seule étape ratée est plus doux, et convient à un '
+                    + 'élève qui découvre.',
+                options: [
+                    { value: 'debut', label: 'On recommence depuis le début' },
+                    { value: 'etape', label: 'On refait seulement l\'étape' }
                 ]
             }
         ],
