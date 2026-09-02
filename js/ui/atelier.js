@@ -40,6 +40,7 @@ import { journalConsole } from './consoleLog.js';
 const CLE_NOTES = 'mathbox-atelier-notes';
 const CLE_EXO = 'mathbox-atelier-exo';
 const CLE_ROBOT = 'mathbox-atelier-robot';
+const CLE_VOLETS = 'mathbox-atelier-volets';
 
 let panneau = null;
 let exoCourant = null;
@@ -114,6 +115,37 @@ function reglerRobot(actif) {
     try { localStorage.setItem(CLE_ROBOT, actif ? '1' : '0'); } catch (e) { /* privé */ }
 }
 
+/**
+ * QUELS VOLETS SONT À L'ÉCRAN — Rémy : « mets juste une fenêtre avec le mode
+ * robot en route ».
+ *
+ * Les trois volets d'un coup, c'est la vue de comparaison ; mais on veut aussi
+ * pouvoir n'en regarder qu'UN, en grand, et le plus souvent c'est celui du
+ * robot qui joue. Plutôt qu'un mode « plein écran » qui s'annule tout seul, on
+ * garde le choix : trois interrupteurs dans la barre du haut, et le ⤢ d'un
+ * volet n'est que le raccourci « celui-là, tout seul ». Le choix survit à la
+ * fermeture, parce qu'on rouvre l'Atelier pour continuer ce qu'on regardait.
+ */
+const VOLETS = ['jeu', 'fiche', 'robot'];
+let volets = { jeu: true, fiche: true, robot: true };
+
+function lireVolets() {
+    try {
+        const brut = JSON.parse(localStorage.getItem(CLE_VOLETS) || 'null');
+        if (brut && VOLETS.some(v => brut[v])) {
+            VOLETS.forEach(v => { volets[v] = !!brut[v]; });
+        }
+    } catch (e) { /* privé */ }
+}
+
+function ecrireVolets() {
+    try { localStorage.setItem(CLE_VOLETS, JSON.stringify(volets)); } catch (e) { /* privé */ }
+}
+
+/** Le cadre d'un volet, pour ceux qui en ont un. */
+const cadreDuVolet = (quoi) => panneau.querySelector(
+    quoi === 'jeu' ? '#atl-jeu' : quoi === 'robot' ? '#atl-robot' : '#atl-fiche');
+
 const echapper = (s) => String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
@@ -153,34 +185,40 @@ function assurerPanneau() {
             }
             .atl-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
             .atl-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+            .atl-volets { display: flex; gap: 4px; align-items: center; }
+            .atl-chip {
+                border: 1px solid var(--border); background: var(--bg-app); color: var(--text-muted);
+                border-radius: 999px; padding: 5px 11px; font: inherit; font-weight: 700;
+                font-size: .76rem; cursor: pointer; min-height: 30px;
+            }
+            .atl-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-            /* QUATRE VOLETS ET UN RAIL. Le jeu en haut à gauche, le robot
-               dessous — on compare la démonstration à ce qu'on vient de jouer
-               sans bouger les yeux —, la feuille sur toute la hauteur au
-               milieu, parce qu'une fiche est haute, et les réglages à droite. */
+            /* TROIS VOLETS ET UN RAIL, ET CHACUN S'ÉTEINT.
+               Le jeu et le robot empilés à gauche — on compare la
+               démonstration à ce qu'on vient de jouer sans bouger les yeux —,
+               la feuille sur toute la hauteur au milieu, parce qu'une fiche est
+               haute, et les réglages à droite.
+               UNE DISPOSITION SOUPLE, PLUS UNE GRILLE NOMMÉE : on choisit les
+               volets qu'on veut voir, et ceux qui restent se partagent la place
+               tout seuls. Avec une grille à zones il aurait fallu écrire les
+               sept combinaisons à la main. */
             .atl-corps {
-                flex: 1 1 auto; min-height: 0; display: grid; gap: 8px; padding: 8px;
-                grid-template-columns: 1fr 1fr 320px;
-                grid-template-rows: 1fr 1fr;
-                grid-template-areas: "jeu fiche rail" "robot fiche rail";
+                flex: 1 1 auto; min-height: 0; display: flex; gap: 8px; padding: 8px;
             }
-            .atl-corps[data-plein="jeu"],
-            .atl-corps[data-plein="robot"],
-            .atl-corps[data-plein="fiche"] {
-                grid-template-columns: 1fr 320px;
-                grid-template-rows: 1fr;
-                grid-template-areas: "plein rail";
+            .atl-gauche {
+                flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px;
             }
-            .atl-corps[data-plein] .atl-volet { display: none; }
-            .atl-corps[data-plein="jeu"] .atl-volet--jeu,
-            .atl-corps[data-plein="robot"] .atl-volet--robot,
-            .atl-corps[data-plein="fiche"] .atl-volet--fiche {
-                display: flex; grid-area: plein;
+            /* LES VOLETS SE PARTAGENT LEUR COLONNE, ET IL FALLAIT LE DIRE.
+               Sans cette ligne, un volet prend la hauteur de son CONTENU — et
+               le contenu est un cadre vide, qui ne fait rien : mesuré, le jeu
+               et le robot tombaient à 181 pixels de haut pendant que la feuille
+               en occupait 883. */
+            .atl-gauche > .atl-volet { flex: 1 1 0; min-height: 0; }
+            .atl-volet--fiche { flex: 1 1 0; min-width: 0; }
+            .atl-rail {
+                flex: 0 0 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
             }
-            .atl-volet--jeu { grid-area: jeu; }
-            .atl-volet--robot { grid-area: robot; }
-            .atl-volet--fiche { grid-area: fiche; }
-            .atl-rail { grid-area: rail; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+            .atl-volet[hidden], .atl-gauche[hidden] { display: none; }
 
             .atl-volet {
                 display: flex; flex-direction: column; min-height: 0; min-width: 0;
@@ -234,50 +272,59 @@ function assurerPanneau() {
                reste ce qu'il est — plusieurs vues du même exercice, qu'on fait
                défiler. */
             @media (max-width: 1000px) {
-                .atl-corps {
-                    grid-template-columns: 1fr; grid-template-rows: none;
-                    grid-auto-rows: minmax(320px, auto);
-                    grid-template-areas: "jeu" "fiche" "robot" "rail";
-                    overflow-y: auto;
-                }
-                .atl-corps[data-plein] { grid-template-columns: 1fr; grid-template-areas: "plein" "rail"; }
-                .atl-rail { overflow: visible; }
+                .atl-corps { flex-direction: column; overflow-y: auto; }
+                .atl-gauche { flex: 0 0 auto; }
+                /* Empilés, les volets ne se partagent plus une hauteur : ils
+                   prennent la leur. Sans annuler le partage écrit plus haut,
+                   le jeu et le robot tombaient à deux pixels. */
+                .atl-volet, .atl-gauche > .atl-volet { flex: 0 0 auto; min-height: 340px; }
+                /* La feuille est haute par nature : lui donner la même case
+                   que le jeu, c'est n'en montrer que le titre. */
+                .atl-volet--fiche { min-height: 560px; }
+                .atl-rail { flex: 0 0 auto; overflow: visible; }
             }
         </style>
         <div class="atl-tete">
             <span class="atl-titre">🛠️ L'Atelier</span>
             <select class="atl-select" id="atl-exo" aria-label="Exercice"></select>
+            <span class="atl-volets" role="group" aria-label="Les volets à l'écran">
+                <button class="atl-chip" data-volet="jeu" title="Montrer ou cacher le jeu">Le jeu</button>
+                <button class="atl-chip" data-volet="fiche" title="Montrer ou cacher la feuille">La feuille</button>
+                <button class="atl-chip" data-volet="robot" title="Montrer ou cacher le robot">Le robot</button>
+            </span>
             <button class="atl-btn" id="atl-recharger" title="Redessiner les trois volets">⟳ Tout relancer</button>
             <button class="atl-btn" id="atl-fermer" style="margin-left:auto">Fermer</button>
         </div>
         <div class="atl-corps" id="atl-corps">
-            <section class="atl-volet atl-volet--jeu">
-                <header class="atl-volet-tete">Le jeu
-                    <span class="atl-espace"></span>
-                    <button class="atl-mini" data-relancer="jeu" title="Relancer ce volet">⟳</button>
-                    <button class="atl-mini" data-agrandir="jeu" title="Ce volet en grand">⤢</button>
-                </header>
-                <iframe class="atl-cadre" id="atl-jeu" title="Le jeu"></iframe>
-            </section>
-            <section class="atl-volet atl-volet--fiche">
+            <div class="atl-gauche" id="atl-gauche">
+                <section class="atl-volet atl-volet--jeu" id="atl-volet-jeu">
+                    <header class="atl-volet-tete">Le jeu
+                        <span class="atl-espace"></span>
+                        <button class="atl-mini" data-relancer="jeu" title="Relancer ce volet">⟳</button>
+                        <button class="atl-mini" data-agrandir="jeu" title="Ce volet en grand">⤢</button>
+                    </header>
+                    <iframe class="atl-cadre" id="atl-jeu" title="Le jeu"></iframe>
+                </section>
+                <section class="atl-volet atl-volet--robot" id="atl-volet-robot">
+                    <header class="atl-volet-tete">Le robot
+                        <span class="atl-espace"></span>
+                        <button class="atl-mini" id="atl-robot-bascule" title="Allumer ou éteindre le robot">⏻</button>
+                        <button class="atl-mini" data-relancer="robot" title="Relancer ce volet">⟳</button>
+                        <button class="atl-mini" data-agrandir="robot" title="Ce volet en grand">⤢</button>
+                    </header>
+                    <iframe class="atl-cadre" id="atl-robot" title="Le robot"></iframe>
+                    <div class="atl-eteint" id="atl-robot-eteint" hidden>
+                        Le robot est éteint. ⏻ pour le rallumer.
+                    </div>
+                </section>
+            </div>
+            <section class="atl-volet atl-volet--fiche" id="atl-volet-fiche">
                 <header class="atl-volet-tete">L'aperçu papier
                     <span class="atl-espace"></span>
                     <button class="atl-mini" data-relancer="fiche" title="Relancer ce volet">⟳</button>
                     <button class="atl-mini" data-agrandir="fiche" title="Ce volet en grand">⤢</button>
                 </header>
                 <iframe class="atl-cadre" id="atl-fiche" title="L'aperçu papier"></iframe>
-            </section>
-            <section class="atl-volet atl-volet--robot">
-                <header class="atl-volet-tete">Le robot
-                    <span class="atl-espace"></span>
-                    <button class="atl-mini" id="atl-robot-bascule" title="Allumer ou éteindre le robot">⏻</button>
-                    <button class="atl-mini" data-relancer="robot" title="Relancer ce volet">⟳</button>
-                    <button class="atl-mini" data-agrandir="robot" title="Ce volet en grand">⤢</button>
-                </header>
-                <iframe class="atl-cadre" id="atl-robot" title="Le robot"></iframe>
-                <div class="atl-eteint" id="atl-robot-eteint" hidden>
-                    Le robot est éteint. ⏻ pour le rallumer.
-                </div>
             </section>
             <div class="atl-rail">
                 <div class="atl-bloc">
@@ -296,6 +343,8 @@ function assurerPanneau() {
                         <button class="atl-btn" id="atl-photo" title="Enregistrer l'image du volet">📷 Photo</button>
                         <button class="atl-btn atl-btn--fort" id="atl-releve"
                             title="Tout ce qu'il faut pour décrire l'état, dans le presse-papier">📋 Relevé</button>
+                        <button class="atl-btn" id="atl-telecharger"
+                            title="Le même relevé, en fichier texte">⤓ Télécharger</button>
                     </div>
                 </div>
             </div>
@@ -308,18 +357,28 @@ function assurerPanneau() {
     panneau.querySelectorAll('[data-relancer]').forEach(b => {
         b.onclick = () => recharger(b.dataset.relancer);
     });
-    // LE PLEIN ÉCRAN D'UN VOLET EST UNE BASCULE, pas un mode. On agrandit pour
-    // regarder un détail, et l'on veut retrouver les trois vues d'un seul clic
-    // — sur le MÊME bouton, sinon on le cherche.
-    // L'ATTRIBUT DU BOUTON N'EST PAS CELUI DE L'ÉTAT, et c'est voulu : le
-    // conteneur porte `data-plein` pour que le CSS sache quoi montrer, et si
-    // les boutons portaient le même nom, `[data-plein="fiche"]` désignerait
-    // deux éléments — le conteneur d'abord.
+    // MONTRER OU CACHER UN VOLET. Le dernier allumé ne s'éteint pas : un
+    // atelier vide ne sert à rien, et c'est l'erreur qu'on fait en cliquant
+    // trop vite.
+    panneau.querySelectorAll('[data-volet]').forEach(b => {
+        b.onclick = () => {
+            const quoi = b.dataset.volet;
+            if (volets[quoi] && VOLETS.filter(v => volets[v]).length === 1) return;
+            volets[quoi] = !volets[quoi];
+            ecrireVolets();
+            majVolets();
+        };
+    });
+    // LE ⤢ EST LE RACCOURCI « CELUI-LÀ, TOUT SEUL » — et c'est une bascule :
+    // on agrandit pour regarder un détail, on revient aux trois vues du même
+    // bouton, sinon on le cherche.
     panneau.querySelectorAll('[data-agrandir]').forEach(b => {
         b.onclick = () => {
-            const corps = panneau.querySelector('#atl-corps');
-            if (corps.dataset.plein === b.dataset.agrandir) delete corps.dataset.plein;
-            else corps.dataset.plein = b.dataset.agrandir;
+            const quoi = b.dataset.agrandir;
+            const seul = VOLETS.every(v => volets[v] === (v === quoi));
+            VOLETS.forEach(v => { volets[v] = seul ? true : v === quoi; });
+            ecrireVolets();
+            majVolets();
         };
     });
     panneau.querySelector('#atl-robot-bascule').onclick = () => {
@@ -331,13 +390,84 @@ function assurerPanneau() {
         try { localStorage.setItem(CLE_NOTES, notes.value); } catch (e) { /* privé */ }
     };
     try { notes.value = localStorage.getItem(CLE_NOTES) || ''; } catch (e) { /* privé */ }
+    surveillerTailles();
     panneau.querySelector('#atl-photo').onclick = photo;
     panneau.querySelector('#atl-releve').onclick = releve;
+    panneau.querySelector('#atl-telecharger').onclick = telechargerReleve;
     return panneau;
+}
+
+/**
+ * LES VOLETS À L'ÉCRAN, ET CE QU'ON RALLUME EN LES ROUVRANT.
+ *
+ * Un cadre caché garde son `src` : il continuerait à jouer derrière, pour
+ * personne. On le vide donc en le cachant, et on le recharge en le montrant —
+ * c'est aussi ce qui fait que le robot REPART du début quand on revient à lui,
+ * au lieu de reprendre au milieu d'une démonstration qu'on n'a pas vue.
+ */
+function majVolets() {
+    VOLETS.forEach(v => {
+        const section = panneau.querySelector(`#atl-volet-${v}`);
+        const montre = !!volets[v];
+        const changement = section.hidden === montre;
+        section.hidden = !montre;
+        panneau.querySelector(`[data-volet="${v}"]`).classList.toggle('active', montre);
+        if (!montre) { const c = cadreDuVolet(v); if (c) c.removeAttribute('src'); }
+        else if (changement) recharger(v);
+    });
+    // La colonne de gauche disparaît quand ses deux volets sont éteints,
+    // sinon elle garderait sa moitié d'écran pour ne rien montrer.
+    panneau.querySelector('#atl-gauche').hidden = !volets.jeu && !volets.robot;
+}
+
+/**
+ * UN VOLET QUI CHANGE DE TAILLE SE REDESSINE — et sans cela l'Atelier mentait.
+ *
+ * Mesuré : la feuille chargée dans un volet de 575 pixels calcule son échelle
+ * une fois pour toutes (`k = largeur disponible / largeur de la page`). En
+ * éteignant les deux autres volets, son cadre passait à 1156 pixels et l'aperçu
+ * restait un timbre-poste au milieu — on agrandissait pour mieux voir, et l'on
+ * voyait la même chose en plus petit. Le jeu a le même défaut, pour la raison
+ * inverse : il a mesuré sa place au chargement, et c'est justement cette mesure
+ * qu'on vient vérifier ici.
+ *
+ * On recharge donc le cadre quand sa largeur ou sa hauteur bouge vraiment. Le
+ * seuil de quarante pixels écarte les frémissements d'une barre de défilement,
+ * et le délai laisse une bascule finir son travail avant de relancer trois
+ * pages d'un coup.
+ */
+function surveillerTailles() {
+    if (typeof ResizeObserver !== 'function') return;
+    const vues = new Map();
+    let minuteur = null;
+    const obs = new ResizeObserver(entrees => {
+        const aRefaire = [];
+        entrees.forEach(e => {
+            const quoi = e.target.id.replace('atl-volet-', '');
+            const r = e.contentRect;
+            const vu = vues.get(quoi);
+            if (r.width < 20 || r.height < 20) return;
+            if (vu && Math.abs(vu.w - r.width) < 40 && Math.abs(vu.h - r.height) < 40) return;
+            vues.set(quoi, { w: r.width, h: r.height });
+            if (vu) aRefaire.push(quoi);
+        });
+        if (!aRefaire.length) return;
+        clearTimeout(minuteur);
+        // Un volet qu'on vient de rallumer s'est déjà rechargé À SA NOUVELLE
+        // TAILLE : le relancer une seconde fois ferait repartir la
+        // démonstration du robot sous les yeux de celui qui la regarde.
+        minuteur = setTimeout(() => aRefaire
+            .filter(v => Date.now() - (dernierChargement[v] || 0) > 1200)
+            .forEach(recharger), 350);
+    });
+    VOLETS.forEach(v => obs.observe(panneau.querySelector(`#atl-volet-${v}`)));
 }
 
 /** Le robot allumé montre sa démonstration ; éteint, son volet le dit. */
 function majRobot() {
+    // Volet fermé : rien à allumer. Le rallumer ici relancerait la
+    // démonstration dans un cadre que personne ne regarde.
+    if (!volets.robot) return;
     const actif = robotActif();
     const cadre = panneau.querySelector('#atl-robot');
     const eteint = panneau.querySelector('#atl-robot-eteint');
@@ -350,10 +480,13 @@ function majRobot() {
     else cadre.removeAttribute('src');
 }
 
+const dernierChargement = {};
+
 function recharger(quoi) {
+    if (!volets[quoi]) return;
+    dernierChargement[quoi] = Date.now();
     if (quoi === 'robot') { majRobot(); return; }
-    const cadre = panneau.querySelector(quoi === 'jeu' ? '#atl-jeu' : '#atl-fiche');
-    cadre.src = adresse(quoi);
+    cadreDuVolet(quoi).src = adresse(quoi);
 }
 
 /** Les réglages de l'exercice, et ils redessinent LES TROIS volets. */
@@ -415,6 +548,7 @@ function rafraichir(opts = {}) {
     if (!opts.garderSelection) peindreListe();
     peindreReglages();
     peindreRangement();
+    majVolets();
     recharger('jeu');
     recharger('fiche');
     majRobot();
@@ -434,13 +568,11 @@ function rafraichir(opts = {}) {
  */
 async function photo() {
     const { showToast } = await import('./modal.js');
-    const corps = panneau.querySelector('#atl-corps');
-    const ordre = corps.dataset.plein
-        ? [corps.dataset.plein]
-        : ['fiche', 'jeu', 'robot'];
+    // On photographie ce qui est À L'ÉCRAN : la feuille d'abord, parce que
+    // c'est elle qu'on regarde le plus, puis le jeu, puis le robot.
+    const ordre = ['fiche', 'jeu', 'robot'].filter(v => volets[v]);
     for (const quoi of ordre) {
-        const cadre = panneau.querySelector(
-            quoi === 'jeu' ? '#atl-jeu' : quoi === 'robot' ? '#atl-robot' : '#atl-fiche');
+        const cadre = cadreDuVolet(quoi);
         const doc = cadre && !cadre.hidden && cadre.contentDocument;
         if (!doc) continue;
         const dessin = plusGrandDessin(doc);
@@ -504,8 +636,14 @@ function enImage(el) {
  * C'est le pendant de la photo, et c'est souvent lui qui sert : une image dit
  * qu'un mot déborde, le relevé dit lequel, de combien, avec quels réglages et
  * quelles erreurs de console. On y met tout ce qu'il faudrait sinon redemander.
+ *
+ * DEUX BOUTONS, ET IL EN MANQUAIT UN. Rémy : « il n'y a rien pour télécharger
+ * le rapport ». Le presse-papier convient quand on colle tout de suite ; il ne
+ * convient pas quand on veut garder le relevé, le joindre, ou en comparer deux.
+ * Le repli en fichier existait, mais seulement quand la copie ÉCHOUAIT — donc
+ * jamais dans un navigateur qui marche.
  */
-async function releve() {
+function texteReleve() {
     const lignes = [];
     lignes.push(`# Atelier — ${exoCourant.title} (${exoCourant.id})`);
     lignes.push('');
@@ -515,15 +653,16 @@ async function releve() {
     lignes.push('## Où c\'est rangé');
     rangement(exoCourant).forEach(([k, v]) => lignes.push(`- ${k} : ${v}`));
     ['jeu', 'fiche', 'robot'].forEach(quoi => {
-        const cadre = panneau.querySelector(
-            quoi === 'jeu' ? '#atl-jeu' : quoi === 'robot' ? '#atl-robot' : '#atl-fiche');
+        const cadre = cadreDuVolet(quoi);
         lignes.push('');
         lignes.push(`## Volet « ${quoi} »`);
+        if (!volets[quoi]) { lignes.push('(fermé)'); return; }
         if (!cadre || cadre.hidden || !cadre.contentDocument) { lignes.push('(éteint)'); return; }
         const d = cadre.contentDocument;
         lignes.push(`taille du cadre : ${Math.round(cadre.clientWidth)} × ${Math.round(cadre.clientHeight)}`);
-        const q = d.querySelector('.game-question, .fp-apercu, #fp-apercu');
-        if (q) lignes.push(`énoncé : ${(q.innerText || '').trim().slice(0, 400).replace(/\s+/g, ' ')}`);
+        const q = d.querySelector('.game-question, .fp-apercu, #fp-apercu, #fq-apercu')
+            || d.querySelector('#game-board');
+        if (q) lignes.push(`à l'écran : ${(q.innerText || '').trim().slice(0, 400).replace(/\s+/g, ' ')}`);
         deborde(d).forEach(t => lignes.push(`DÉBORDE : ${t}`));
     });
     const notes = panneau.querySelector('#atl-notes').value.trim();
@@ -534,18 +673,40 @@ async function releve() {
         lignes.push('## Console (25 dernières lignes)');
         journal.forEach(l => lignes.push(typeof l === 'string' ? l : JSON.stringify(l)));
     }
-    const texte = lignes.join('\n');
+    return lignes.join('\n');
+}
+
+async function releve() {
+    const texte = texteReleve();
     const { showToast } = await import('./modal.js');
     try {
         await navigator.clipboard.writeText(texte);
         showToast('Relevé copié — il n\'y a plus qu\'à le coller.', 'success');
     } catch (e) {
-        const a = document.createElement('a');
-        a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(texte);
-        a.download = `atelier-${exoCourant.id}.txt`;
-        a.click();
-        showToast('Relevé enregistré en fichier.', 'success');
+        enFichier(texte);
+        showToast('Le presse-papier a refusé : relevé enregistré en fichier.', 'warning');
     }
+}
+
+async function telechargerReleve() {
+    enFichier(texteReleve());
+    const { showToast } = await import('./modal.js');
+    showToast('Relevé enregistré.', 'success');
+}
+
+// UN FICHIER, PAS UNE ADRESSE. `data:` passe par `encodeURIComponent`, qui
+// REFUSE une moitié de caractère : mesuré sur la fiche des fonctions, le relevé
+// coupait un emoji en deux au milieu d'un `slice`, et le téléchargement
+// s'arrêtait sur « URI malformed ». Un blob prend le texte tel qu'il est, et
+// n'a pas de limite de longueur.
+function enFichier(texte) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([texte], { type: 'text/plain;charset=utf-8' }));
+    // Daté : on en garde plusieurs d'affilée, avant et après un réglage.
+    a.download = `atelier-${exoCourant.id}-${new Date().toISOString().slice(0, 16)
+        .replace(/[:T]/g, '-')}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
 }
 
 /**
@@ -565,16 +726,27 @@ function deborde(doc) {
     //    trop, c'est sa raison d'être ;
     //  · ce qui porte des enfants — on cherche le mot rogné dans sa case, pas
     //    une colonne un peu longue.
+    //  · ce qui n'est pas dessiné du tout — l'en-tête du document en premier :
+    //    le `<title>` se signalait à chaque relevé, dans chaque volet, alors
+    //    qu'il n'a par définition aucune boîte à déborder.
     const FORMULAIRE = ['SELECT', 'INPUT', 'TEXTAREA', 'OPTION'];
+    const INVISIBLE = ['HEAD', 'TITLE', 'SCRIPT', 'STYLE', 'META', 'LINK', 'BASE'];
     doc.querySelectorAll('*').forEach(el => {
         if (out.length > 40) return;
-        if (FORMULAIRE.includes(el.tagName) || el.children.length > 3) return;
+        if (FORMULAIRE.includes(el.tagName) || INVISIBLE.includes(el.tagName)) return;
+        if (!el.clientWidth && !el.clientHeight) return;
+        if (el.children.length > 3) return;
         const s = doc.defaultView.getComputedStyle(el);
+        // Un texte volontairement limité à N lignes (la bannière repliée de
+        // l'aperçu, qui a son « ▾ » pour se déplier) déborde par construction.
+        if (s.webkitLineClamp && s.webkitLineClamp !== 'none') return;
         const dx = s.overflowX === 'visible' || s.overflowX === 'auto' || s.overflowX === 'scroll'
             ? 0 : el.scrollWidth - el.clientWidth;
         const dy = s.overflowY === 'visible' || s.overflowY === 'auto' || s.overflowY === 'scroll'
             ? 0 : el.scrollHeight - el.clientHeight;
-        if (dx > 2 || dy > 2) {
+        // Quatre pixels, pas deux : à deux, on remontait les arrondis de
+        // jambage d'une ligne de titre à chaque relevé.
+        if (dx > 4 || dy > 4) {
             const t = (el.textContent || '').trim().slice(0, 40).replace(/\s+/g, ' ');
             out.push(`${el.className || el.tagName} (+${dx}×${dy}px) « ${t} »`);
         }
@@ -583,6 +755,7 @@ function deborde(doc) {
 }
 
 export function ouvrirAtelier() {
+    lireVolets();
     assurerPanneau();
     if (!exoCourant) {
         let garde = null;
@@ -630,8 +803,54 @@ export async function ouvrirVoletAtelier(quoi, params) {
     if (quoi === 'fiche') {
         const { ouvrirFicheModal } = await import('./printSheet.js');
         ouvrirFicheModal(complet, complet.params);
+        replierOptionsFiche();
         return;
     }
     const { openGameLayer } = await import('../games/engine.js');
     openGameLayer({ ...complet, internalStudentConfig: true }, quoi === 'demo');
+}
+
+// Les deux fenêtres d'impression n'ont ni le même identifiant ni les mêmes
+// morceaux : celle des grilles règle le contenu, le nombre et le papier ; celle
+// des questions y ajoute le QCM. On replie les mêmes trois questions dans les
+// deux — quoi, combien, sur quel papier.
+const MODALES_FICHE = [
+    { modale: '#print-sheet-modal', morceaux: ['#fp-contenu', '.fp-combien', '#fp-plus'] },
+    {
+        modale: '#print-questions-modal',
+        morceaux: ['#fq-contenu', '.fp-controles--qcm', '.fp-combien', '#fq-plus']
+    }
+];
+
+/**
+ * DANS L'ATELIER, LA FEUILLE PASSE DEVANT SES RÉGLAGES.
+ *
+ * Rémy : « pour l'aperçu, cache les options (on peut les dérouler) ». La
+ * fenêtre d'impression est faite pour un écran entier : ses trois questions —
+ * quoi, combien, sur quel papier — occupent le haut, et dans un volet d'atelier
+ * elles mangeaient l'aperçu, c'est-à-dire la seule chose qu'on venait voir. On
+ * les replie donc TOUTES dans un tiroir fermé, sans rien enlever : un clic sur
+ * « Les options de la feuille » les retrouve intactes, écouteurs compris —
+ * `appendChild` déplace les éléments, il ne les recrée pas.
+ */
+function replierOptionsFiche(reste = 60) {
+    for (const { modale, morceaux } of MODALES_FICHE) {
+        const modal = document.querySelector(modale);
+        if (!modal) continue;
+        if (modal.querySelector('#atl-options-fiche')) return;
+        const els = morceaux.map(sel => modal.querySelector(sel)).filter(Boolean);
+        if (!els.length) return;
+        const tiroir = document.createElement('details');
+        tiroir.id = 'atl-options-fiche';
+        tiroir.className = 'fp-repli';
+        tiroir.innerHTML = '<summary>Les options de la feuille</summary>';
+        els[0].before(tiroir);
+        els.forEach(el => tiroir.appendChild(el));
+        return;
+    }
+    // LA FENÊTRE N'EST PAS TOUJOURS LÀ AU RETOUR. Un exercice sans grille
+    // imprime par `printQuestions.js`, chargé en import dynamique : au moment
+    // où `ouvrirFicheModal` rend la main, cette fenêtre-là n'existe pas encore.
+    // On repasse image par image, une seconde au plus.
+    if (reste > 0) requestAnimationFrame(() => replierOptionsFiche(reste - 1));
 }
