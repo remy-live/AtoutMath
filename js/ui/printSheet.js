@@ -4944,7 +4944,12 @@ const rvbHex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16),
 // écrit en entier POUR ce triangle, la substitution et le calcul ; le « Donc »
 // ne dit qu'une chose, « EF = 12 cm », et trois lignes vides sous elle ne font
 // qu'un blanc au bas de chaque bloc.
-const AMORCES = trameRaisonnement([2, 5, 1]);
+//
+// SIX LIGNES ET NON CINQ : quand on cherche un CÔTÉ de l'angle droit, le
+// calcul en compte six — l'égalité, l'isolement du côté cherché, la
+// substitution, les deux carrés, la somme, la racine. Avec cinq, la dernière
+// tombait dans le vide, et c'était justement celle qui donne la réponse.
+const AMORCES = trameRaisonnement([2, 6, 1]);
 
 /** L'énoncé en toutes lettres, tel que le générateur l'écrit pour le papier. */
 const enoncePythagore = (item) =>
@@ -5242,9 +5247,22 @@ function pythagorePreviewHtml(item, slot, k, solution) {
 }
 
 /**
- * La rédaction découpée en lignes, une par ligne imprimée. C'est le même texte
- * que `redactionComplete`, mais réparti sur les trois zones de la feuille — et
- * le « Donc » y déroule le calcul étape par étape, comme au cahier.
+ * LA CORRECTION, ZONE PAR ZONE — ET QUI CALCULE AU LIEU DE RÉCITER.
+ *
+ * Rémy : « la correction du théorème de Pythagore n'est pas bonne. Ne récite
+ * pas le théorème, fais les calculs détaillés. » Elle faisait exactement
+ * l'inverse. Le « Or » portait la phrase du cours — « dans un triangle
+ * rectangle, le carré de l'hypoténuse est égal à la somme des carrés des deux
+ * autres côtés » —, deux lignes que l'élève a déjà dans sa leçon et qui ne lui
+ * apprennent rien sur SON triangle. Et les six étapes du calcul, elles,
+ * étaient versées dans le « Donc », qui n'a QU'UNE ligne : cinq d'entre elles
+ * — dont celle qui donne la réponse — n'étaient tout simplement pas imprimées.
+ * La feuille de solutions ne montrait donc aucun calcul.
+ *
+ * Le calcul remonte donc dans le « Or », là où il appartient : le théorème
+ * écrit POUR ce triangle, la substitution, les carrés, la somme, la racine —
+ * une étape par ligne, comme au tableau. Le « Donc » redevient ce qu'il est,
+ * la conclusion en une ligne.
  */
 function redactionPapier(item) {
     const t = item.meta.triangle;
@@ -5259,10 +5277,8 @@ function redactionPapier(item) {
     return [
         [`le triangle ${t.nom} est rectangle en ${t.sommets[t.angleDroit]},`,
             `avec ${donnees.join(' et ')}.`],
-        ['dans un triangle rectangle, le carré de l\'hypoténuse',
-            'est égal à la somme des carrés des deux autres côtés.'],
-        [...calc.lignes.map(ligneEnTextePythagore),
-            `${calc.cherche} = ${calc.resultat} cm.`]
+        calc.lignes.map(ligneEnTextePythagore),
+        [`${calc.cherche} = ${calc.resultat} cm.`]
     ];
 }
 
@@ -12012,7 +12028,7 @@ export const RENDUS = {
         titreAGauche: true,
         // Large et bas : un trait horizontal, son énoncé au-dessus et sa ligne
         // d'écriture en dessous. Un carré lui laisserait la moitié en blanc.
-        proportions: { w: 1, h: 0.46 },
+        proportions: { w: 1, h: 0.52 },
         disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 5 },
         parLigneDefaut: 2
     },
@@ -12395,7 +12411,7 @@ export const RENDUS = {
         // ET LE BLOC EST BAS. Une cascade de trois étapes tient sur quatre
         // lignes de cahier : lui donner un carré de huit centimètres laissait
         // la moitié de sa hauteur en blanc.
-        proportions: { w: 1, h: 0.46 },
+        proportions: { w: 1, h: 0.52 },
         // DIX PAR PAGE. Une cascade est large et courte : c'est en LIGNES
         // qu'il en faut, pas en colonnes — au-delà de deux colonnes,
         // « (2 + 3) × (4 + 1) » sort de son bloc.
@@ -12681,18 +12697,23 @@ export const RENDUS = {
         // forcément à l'échelle ». Un élève qui mesure au double décimètre sur
         // un triangle dessiné pour tenir dans deux centimètres trouve un
         // nombre faux et croit avoir travaillé.
+        // La consigne dit ce que la correction montre : le calcul est dans le
+        // « Or », et le « Donc » ne porte que la réponse.
         consigne: (items) => 'Rédige comme au cahier : « Je sais que » les données de '
-            + 'l\'énoncé, « Or » le théorème, « Donc » l\'égalité puis le calcul — '
-            + 'et n\'oublie pas la dernière ligne, celle qui revient du carré à la '
-            + 'longueur.'
+            + 'l\'énoncé, « Or » l\'égalité de Pythagore écrite pour CE triangle puis '
+            + 'le calcul étape par étape, « Donc » la longueur cherchée — sans oublier '
+            + 'la ligne qui revient du carré à la longueur.'
             + (items && items.some(i => i.meta && i.meta.presentation !== 'texte')
                 ? ' Les figures ne sont PAS en vraie grandeur : ne mesure pas.' : ''),
         previewGrille: pythagorePreviewHtml,
         pdfGrille: dessinerPythagorePdf,
         nomBloc: 'Exercice', nomBlocs: 'exercices',
-        // Un bloc LARGE et BAS : l'énoncé à gauche, les lignes à droite. Six par
-        // page, ce qui est déjà beaucoup à rédiger pour une séance.
-        proportions: { w: 1, h: 0.36 },
+        // Un bloc LARGE, L'ÉNONCÉ À GAUCHE ET LES LIGNES À DROITE — ET ASSEZ
+        // HAUT POUR LES NEUF LIGNES QU'IL PORTE. À 0,36 de sa largeur il en
+        // faisait quarante millimètres de contenu dans trente-deux : le
+        // « Donc » de chaque bloc allait s'écrire dans le bloc du dessous, et
+        // la ligne de la réponse tombait par-dessus l'énoncé suivant.
+        proportions: { w: 1, h: 0.52 },
         titreAGauche: true,
         disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
         parLigneDefaut: 2

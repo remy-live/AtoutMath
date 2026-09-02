@@ -7,7 +7,7 @@
 
 import { makeItem } from '../items.js';
 import {
-    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, redactionComplete,
+    tirerTriangle, cotesDe, direTriangle, etapesCalcul, niveauDe, correctionPapier,
     ligneEnTexte, NIVEAUX
 } from '../pythagore.js';
 
@@ -95,11 +95,12 @@ export const pythagoreGenerator = {
             ],
             explanation: calc.lignes.map(ligneEnTexte).join(' ; ')
                 + `, donc ${calc.cherche} = ${calc.resultat} cm.`,
-            // SUR LE PAPIER, ON CORRIGE COMME ON RÉDIGE. Un corrigé qui répond
-            // « 15 » ne dit pas ce qu'on attendait de l'élève : ce qu'on note,
-            // c'est la rédaction — Je sais que, Or, Donc — et c'est elle que la
-            // feuille de solutions doit porter.
-            explicationPapier: redactionComplete(t, chercher).join('\n'),
+            // SUR LE PAPIER, ON CORRIGE EN CALCULANT. Rémy : « ne récite pas le
+            // théorème, fais les calculs détaillés. » Un corrigé qui répond
+            // « 15 » ne dit rien ; un corrigé qui redit le théorème non plus.
+            // Ce que l'élève compare à sa copie, ce sont les ÉTAPES — une par
+            // ligne, du carré au résultat.
+            explicationPapier: correctionPapier(t, chercher).join('\n'),
             difficulty: versHypo ? 2 : 3,
             meta: {
                 triangle: t, chercher, niveau: niveauDe(versHypo ? 4 : 5).id,

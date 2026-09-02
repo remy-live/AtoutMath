@@ -362,8 +362,8 @@ export function ligneEnTexte(ligne) {
 }
 
 /**
- * La rédaction complète, celle du cahier. C'est aussi la correction imprimée :
- * la feuille de solutions la pose telle quelle.
+ * La rédaction complète, celle du cahier — pour l'écran, où c'est la RÉDACTION
+ * qu'on apprend et qu'on note.
  */
 export function redactionComplete(t, chercher) {
     const calc = etapesCalcul(t, chercher);
@@ -378,4 +378,24 @@ export function redactionComplete(t, chercher) {
         `${AMORCES.or} d'après le théorème de Pythagore`,
         `${AMORCES.donc} ${calc.lignes.map(ligneEnTexte).join(' ; ')}.`
     ];
+}
+
+/**
+ * LA CORRECTION IMPRIMÉE : RIEN QUE LES CALCULS, UNE ÉTAPE PAR LIGNE.
+ *
+ * Rémy : « la correction du théorème de Pythagore n'est pas bonne. Ne récite
+ * pas le théorème, fais les calculs détaillés. » La feuille de solutions
+ * posait la rédaction du cahier telle quelle : deux lignes de texte — dont
+ * une qui ne fait que renommer le théorème — puis les cinq étapes du calcul
+ * écrasées sur une seule ligne, séparées par des points-virgules. On y
+ * cherchait le passage de 7² + 24² à 49 + 576 à la loupe.
+ *
+ * Le corrigé sert à comparer SON calcul à celui du professeur : ce sont donc
+ * les étapes qu'il doit montrer, l'une sous l'autre, alignées sur leur signe
+ * « = » comme au tableau. L'énoncé est écrit deux centimètres plus haut sur la
+ * même feuille : le redire n'apprend rien. Et le théorème, on ne le récite pas
+ * dans un corrigé — on l'applique.
+ */
+export function correctionPapier(t, chercher) {
+    return etapesCalcul(t, chercher).lignes.map(ligneEnTexte);
 }
