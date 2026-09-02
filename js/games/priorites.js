@@ -31,6 +31,7 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
 import {
     tirerExpression, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
+    ecrireJeton,
     ecrire, terminee
 } from '../core/priorites.js';
 
@@ -43,6 +44,17 @@ class Priorites extends BaseGame {
         this.niveau = Math.max(1, Math.min(4, parseInt(this.params.niveau) || 2));
         this.avecParentheses = this.params.parentheses !== false;
         this.avecPuissances = !!this.params.puissances;
+        // LES NOMBRES RELATIFS DANS LA CASCADE. Rémy : « sur les Prio-Bot
+        // relatifs, ne mets pas de QCM mais plutôt des calculs en ligne par
+        // étape ». C'est le bon exercice pour ce couplage : la faute des
+        // relatifs se commet À UNE LIGNE PRÉCISE — on calcule 3 × (−2) juste,
+        // puis on recopie « 5 − 6 » au lieu de « 5 − (−6) ». Un QCM ne voit que
+        // le résultat final et ne peut pas dire où l'élève a dérapé ; la
+        // cascade, elle, s'arrête sur la ligne fautive.
+        this.relatifs = !!this.params.relatifs;
+        // L'option qui voyage avec chaque appel au noyau : c'est elle qui
+        // autorise une soustraction à descendre sous zéro.
+        this.opts = { relatifs: this.relatifs };
         this.reussies = 0;
     }
 
@@ -172,7 +184,7 @@ class Priorites extends BaseGame {
     poser() {
         const e = tirerExpression({
             rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses,
-            puissances: this.avecPuissances
+            puissances: this.avecPuissances, relatifs: this.relatifs
         });
         this.expression = e;
         // Chaque ligne écrite, avec l'endroit où elle est soulignée.
@@ -223,20 +235,20 @@ class Priorites extends BaseGame {
                 const bloc = document.createElement('span');
                 bloc.className = 'pr-souligne';
                 for (let m = k; m <= l.souligne + 1 && m < l.jetons.length; m++) {
-                    bloc.appendChild(this.jetonHtml(l.jetons[m], m, false));
+                    bloc.appendChild(this.jetonHtml(l.jetons[m], m, false, l.jetons[m - 1]));
                 }
                 ligne.appendChild(bloc);
                 k = l.souligne + 2;
                 continue;
             }
-            ligne.appendChild(this.jetonHtml(l.jetons[k], k, cliquable));
+            ligne.appendChild(this.jetonHtml(l.jetons[k], k, cliquable, l.jetons[k - 1]));
             k++;
         }
         return ligne;
     }
 
     /** Un jeton : un nombre, un opérateur cliquable, ou LE TROU à remplir. */
-    jetonHtml(j, k, cliquable) {
+    jetonHtml(j, k, cliquable, avant) {
         if (j.trou) return this.trouHtml();
         const el = document.createElement('span');
         // UNE PUISSANCE SE CLIQUE COMME UN OPÉRATEUR. C'est elle, l'opération
@@ -245,7 +257,11 @@ class Priorites extends BaseGame {
         // soulignerait un ×.
         const agissant = j.type === 'op' || j.type === 'p';
         el.className = 'pr-jeton' + (agissant ? ' pr-jeton--op' : '');
-        el.textContent = ecrire([j]);
+        // LE VOISIN DE GAUCHE VOYAGE AVEC LE JETON : c'est lui qui décide si le
+        // nombre négatif prend ses parenthèses. Sans lui, la cascade écrivait
+        // « 4 + 3 ÷ −3 », deux signes qui se suivent — ce qu'on ne lit nulle
+        // part et surtout pas dans le chapitre qui installe cette notation.
+        el.textContent = ecrireJeton(j, avant);
         if (cliquable && agissant) {
             el.addEventListener('click', () => this.choisir(k, el));
         }
@@ -282,7 +298,7 @@ class Priorites extends BaseGame {
 
     /** L'élève désigne une opération. */
     choisir(index, el) {
-        const critique = critiquer(this.courant, index);
+        const critique = critiquer(this.courant, index, this.opts);
         if (critique) {
             el.classList.add('pr-jeton--faux');
             setTimeout(() => el.classList.remove('pr-jeton--faux'), 360);
@@ -293,7 +309,7 @@ class Priorites extends BaseGame {
                 concept: COMPETENCE,
                 questionText: `Quelle opération d'abord dans ${ecrire(this.courant)} ?`,
                 input: ecrire([this.courant[index]]),
-                expected: ecrire([this.courant[operationPrioritaire(this.courant).index]]),
+                expected: ecrire([this.courant[operationPrioritaire(this.courant, this.opts).index]]),
                 customMessage: critique
             });
             return;
@@ -301,7 +317,7 @@ class Priorites extends BaseGame {
         this.choisi = index;
         const ligne = this.lignes[this.lignes.length - 1];
         ligne.souligne = index;
-        const p = operationPrioritaire(ligne.jetons);
+        const p = operationPrioritaire(ligne.jetons, this.opts);
         // ON PASSE À LA LIGNE : le reste est recopié tel quel, et le résultat
         // ira dans le trou, à la place exacte du calcul souligné.
         this.brouillon = reduirePourEcrire(ligne.jetons, index);
@@ -316,13 +332,24 @@ class Priorites extends BaseGame {
      */
     valider(trou) {
         if (this.choisi === null) return false;
-        const brut = trou.value.trim().replace(',', '.');
+        // LE VRAI SIGNE MOINS EST ACCEPTÉ COMME LE TRAIT D'UNION. L'expression
+        // l'écrit « − » (U+2212) ; le clavier de l'élève produit « - ». Les
+        // deux disent la même chose, et refuser le second serait refuser le
+        // seul que l'élève puisse taper.
+        const brut = trou.value.trim().replace(',', '.').replace(/[\u2212\u2013]/g, '-');
         if (!brut) return false;
-        const p = operationPrioritaire(this.courant);
+        const p = operationPrioritaire(this.courant, this.opts);
         // DANS LE TROU, ON ÉCRIT UN NOMBRE — pas un calcul. Sans ce contrôle,
         // « 2+9 » passait pour une réponse et le reproche devenait absurde :
         // « 8 − 6 ne fait pas 2+9 ».
-        if (!/^\d+(\.\d+)?$/.test(brut)) {
+        //
+        // ET LE NOMBRE PEUT ÊTRE NÉGATIF QUAND L'EXERCICE LE PERMET. Mesuré à
+        // l'écran sur « 2 − 8 × (−4) » : l'élève tapait −32, la bonne réponse,
+        // et se voyait répondre « on écrit le RÉSULTAT, un seul nombre, pas un
+        // calcul ». Le contrôle refusait le signe, donc la cascade des relatifs
+        // était bloquée dès sa première ligne.
+        const forme = this.relatifs ? /^-?\d+(\.\d+)?$/ : /^\d+(\.\d+)?$/;
+        if (!forme.test(brut)) {
             this.note(`Dans le trou, on écrit le RÉSULTAT de ${p.libelle} `
                 + '— un seul nombre, pas un calcul.', 'ko');
             trou.value = '';
@@ -367,7 +394,7 @@ class Priorites extends BaseGame {
     }
 
     expliquer() {
-        const p = operationPrioritaire(this.courant);
+        const p = operationPrioritaire(this.courant, this.opts);
         if (!p) return this.note('Il n\'y a plus rien à calculer.');
         if (this.choisi === null) {
             this.note(`${p.raison} Cherche-la dans « ${ecrire(this.courant)} ».`);
@@ -401,7 +428,7 @@ class Priorites extends BaseGame {
             await gate.wait(2600);
 
             for (let tour = 0; tour < 6 && this.isRunning; tour++) {
-                const p = operationPrioritaire(this.courant);
+                const p = operationPrioritaire(this.courant, this.opts);
                 if (!p) break;
                 // La dernière ligne EST celle qu'on joue : le brouillon troué
                 // n'existe pas encore, on n'a pas encore souligné.

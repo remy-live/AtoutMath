@@ -64,20 +64,36 @@ export function ecrire(jetons) {
         // « ( 3 + 4 ) » n'est pas ce qu'on écrit au tableau.
         const colle = !avant || avant.type === '(' || j.type === ')';
         if (!colle) out += ' ';
-        // UN NOMBRE NÉGATIF QUI SUIT UN OPÉRATEUR PREND SES PARENTHÈSES.
-        // « 4 × −2 » ne s'écrit nulle part : deux signes qui se suivent ne se
-        // lisent pas, et c'est justement la notation que le chapitre des
-        // relatifs installe. En tête d'expression, en revanche, « −3 + 4 »
-        // s'écrit sans rien.
-        if (j.type === 'n' && j.valeur < 0 && avant && avant.type === 'op') {
-            out += `(${String(j.valeur).replace('-', '−').replace('.', ',')})`;
-        } else if (j.type === 'n') {
-            out += String(j.valeur).replace('-', '−').replace('.', ',');
-        } else if (j.type === 'p') out += ecrirePuissance(j);
-        else if (j.type === 'op') out += j.op === '-' ? '−' : j.op;
-        else out += j.type;
+        out += ecrireJeton(j, avant);
     });
     return out;
+}
+
+/**
+ * UN SEUL JETON, ÉCRIT DANS SON CONTEXTE — et le contexte tient en un voisin.
+ *
+ * UN NOMBRE NÉGATIF QUI SUIT UN OPÉRATEUR PREND SES PARENTHÈSES. « 4 × −2 » ne
+ * s'écrit nulle part : deux signes qui se suivent ne se lisent pas, et c'est
+ * justement la notation que le chapitre des relatifs installe. En tête
+ * d'expression, en revanche, « −3 + 4 » s'écrit sans rien.
+ *
+ * ET C'EST POURQUOI CETTE FONCTION EXISTE À PART. La cascade de l'écran écrit
+ * ses jetons UN PAR UN — il lui faut une balise par jeton pour les rendre
+ * cliquables et les souligner. Elle appelait donc `ecrire([j])`, un jeton seul,
+ * sans voisin : la règle ci-dessus ne pouvait pas s'appliquer, et l'élève
+ * lisait « 4 + 3 ÷ −3 ». Mesuré à l'écran, sur le premier calcul venu.
+ *
+ * @param {Object} j      le jeton à écrire
+ * @param {Object} [avant] celui qui le précède, ou rien s'il ouvre la ligne
+ */
+export function ecrireJeton(j, avant) {
+    if (j.type === 'n' && j.valeur < 0 && avant && avant.type === 'op') {
+        return `(${String(j.valeur).replace('-', '−').replace('.', ',')})`;
+    }
+    if (j.type === 'n') return String(j.valeur).replace('-', '−').replace('.', ',');
+    if (j.type === 'p') return ecrirePuissance(j);
+    if (j.type === 'op') return j.op === '-' ? '−' : j.op;
+    return j.type;
 }
 
 /**

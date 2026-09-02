@@ -202,12 +202,46 @@ export const calculExercises = [
         // deux il doit reprendre.
         id: 'calc-prio-relatifs',
         cree: '2026-09-02',
-        consignePapier: "Calcule en respectant les priorités. Attention aux signes.",
+        consignePapier: "Calcule en respectant les priorités, écris les calculs. Attention aux signes.",
         colonnesPapier: 2,
         title: 'Prio-Bot Relatifs',
-        generatorId: 'calc.priorites-relatifs', activityId: 'bubbles',
+        // LA CASCADE, ET NON LE QCM. Rémy : « sur les Prio-Bot relatifs, ne
+        // mets pas de QCM mais plutôt des calculs en ligne par étape ».
+        //
+        // Il a raison, et pour une raison qui tient à ce chapitre-là. La faute
+        // des relatifs se commet À UNE LIGNE PRÉCISE : on calcule 3 × (−2)
+        // correctement, puis on recopie « 5 − 6 » au lieu de « 5 − (−6) ». Le
+        // QCM ne voit que le résultat final — il dit « faux » sans pouvoir dire
+        // où. La cascade s'arrête sur la ligne fautive, et c'est là que la
+        // règle des signes se corrige.
+        //
+        // LE GÉNÉRATEUR RESTE, POUR LE PAPIER : les distracteurs qu'il fabrique
+        // — l'ordre de gauche à droite, le signe du produit oublié, les deux
+        // moins qui ne s'annulent pas — n'ont plus d'emploi à l'écran, mais
+        // c'est lui qui sait tirer une expression avec des négatifs.
+        activityId: 'priorites',
+        printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
+        printParams: { relatifs: true },
         skills: ['num.prio.relatifs'],
-        params: { mode: 'resultat', niveau: 2, parentheses: false, progressif: true },
+        params: { niveau: 2, parentheses: false, relatifs: true },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
+                options: [
+                    { value: 1, label: '1 — Deux opérations, sans parenthèses', court: '1' },
+                    { value: 2, label: '2 — Jusqu\'à trois opérations', court: '2' },
+                    { value: 3, label: '3 — Les parenthèses arrivent', court: '3' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses', court: '4' }
+                ],
+                default: 2
+            },
+            {
+                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
+                aide: 'Sans elles, seule la rencontre des deux règles est en jeu : '
+                    + 'la priorité désigne l\'opération, les signes la calculent.',
+                default: false
+            }
+        ],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]

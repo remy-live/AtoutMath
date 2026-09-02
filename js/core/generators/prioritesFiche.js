@@ -24,7 +24,7 @@ export const prioritesFicheGenerator = {
     id: 'calc.priorites-fiche',
     label: 'Priorités : la cascade sur le papier',
     answerKinds: ['numeric'],
-    skills: ['num.prio'],
+    skills: ['num.prio', 'num.prio.relatifs'],
     params: [
         {
             id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
@@ -39,6 +39,16 @@ export const prioritesFicheGenerator = {
             id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: true,
             aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le '
                 + 'tirage garantit qu\'un calcul mené de gauche à droite donne toujours faux.'
+        },
+        {
+            // LE MÊME COUPLAGE QU'À L'ÉCRAN. La feuille de l'exercice
+            // « Prio-Bot Relatifs » sort par ce générateur : sans ce réglage,
+            // elle imprimait des priorités sans un seul négatif, c'est-à-dire
+            // un autre exercice que celui qu'on venait de faire.
+            id: 'relatifs', type: 'checkbox', label: 'Avec des nombres relatifs', default: false,
+            aide: 'Les nombres peuvent être négatifs, et le résultat aussi. La règle de '
+                + 'priorité désigne l\'opération, la règle des signes la calcule — deux '
+                + 'gestes dans cet ordre, et ils se ratent séparément.'
         },
         {
             id: 'puissances', type: 'checkbox', label: 'Avec des puissances', default: false,
@@ -57,6 +67,7 @@ export const prioritesFicheGenerator = {
         const niveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
         const parentheses = params.parentheses !== false;
         const puissances = !!params.puissances;
+        const relatifs = !!params.relatifs;
 
         // `themesExclus` arrive par le CONTEXTE, pas par les réglages : le lire
         // au mauvais endroit ne casse rien de visible, la fiche imprime
@@ -64,17 +75,20 @@ export const prioritesFicheGenerator = {
         const dejaVus = new Set(ctx.themesExclus || []);
         let e = null;
         for (let essai = 0; essai < 40; essai++) {
-            const tire = tirerExpression({ rng, niveau, parentheses, puissances });
+            const tire = tirerExpression({ rng, niveau, parentheses, puissances, relatifs });
             if (!dejaVus.has(tire.texte)) { e = tire; break; }
             e = e || tire;
         }
 
-        const lignes = (e.lignes || etapes(e.jetons)).map(l => l.texte);
+        const lignes = (e.lignes || etapes(e.jetons, { relatifs })).map(l => l.texte);
 
         return makeItem({
             seed: rng.seed,
             generatorId: 'calc.priorites-fiche',
-            skillId: 'num.prio',
+            // LA COMPÉTENCE SUIT LE RÉGLAGE : une feuille de priorités avec
+            // des relatifs ne travaille pas la même chose, et ne doit pas se
+            // ranger au même endroit du bilan.
+            skillId: relatifs ? 'num.prio.relatifs' : 'num.prio',
             answerKind: 'numeric',
             prompt: {
                 text: e.texte,
