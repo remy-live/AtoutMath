@@ -316,3 +316,26 @@ html.depuis-code::after {
 /* Le voile s'efface dès que le parcours est à l'écran ; les barres, elles,
    restent cachées tant qu'on y est. */
 html.depuis-code.parcours-pret::after { content: none; }
+
+/* --- UN VOLET DE L'ATELIER ---------------------------------------------------
+
+   La page chargée dans un cadre de l'Atelier (`?atelier=jeu|demo|fiche`) ne
+   montre QUE ce qu'on lui demande : ni navigation, ni catalogue, ni palette
+   d'auteur — un cadre de quatre cents pixels n'a pas de place pour trois
+   barres, et ce qu'on y regarde n'est pas l'application, c'est l'exercice.
+
+   Les barres sont RETIRÉES (display:none) et non seulement masquées : dans un
+   cadre étroit, leur hauteur ferait mentir la mesure du plateau, et l'on
+   verrait déborder ce qui ne déborde pas. */
+html.volet-atelier #top-navbar,
+html.volet-atelier #app-body,
+html.volet-atelier #bottom-nav,
+html.volet-atelier #debug-toolbar { display: none !important; }
+html.volet-atelier, html.volet-atelier body { overflow: hidden; }
+/* La fiche à imprimer occupe le volet entier : dans un cadre, une modale
+   centrée sur fond sombre ne laisserait voir qu'un timbre-poste. */
+html.volet-atelier .modal-overlay { padding: 0; background: var(--bg-app); }
+html.volet-atelier .modal-overlay .glass-panel {
+    max-width: none; width: 100%; height: 100%; max-height: none;
+    border-radius: 0; border: 0;
+}

@@ -47,7 +47,7 @@ body.teacher-mode .student-only { display: none !important; }
    Le défilement horizontal reste, en dernier recours : à vingt icônes sur un
    petit téléphone, deux rangées ne suffiront plus non plus. */
 .dbg-tools {
-    display: grid; grid-auto-flow: row; grid-template-columns: repeat(8, auto);
+    display: grid; grid-auto-flow: row; grid-template-columns: repeat(9, auto);
     align-items: center; justify-content: start; gap: 4px;
     flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; -ms-overflow-style: none;

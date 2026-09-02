@@ -107,6 +107,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     // ici on ne fait que le LEVER, dans les deux cas où il le faut : le
     // parcours est à l'écran, ou le code ne vaut rien et l'élève doit pouvoir
     // se servir de l'application.
+    // L'ATELIER OUVRE SES VOLETS DANS DES CADRES, ET CHACUN EST UNE VRAIE
+    // INSTANCE. Rémy : « on pourrait un super debug avec séparation de l'écran :
+    // une où on a l'aperçu avec option, une où on a le jeu, une où on a les
+    // options, une où le robot agit. »
+    //
+    // Le jeu vit dans une COUCHE PLEIN ÉCRAN (`#game-layer`) : le poser dans un
+    // quart d'écran demanderait de le rendre redimensionnable, et l'on
+    // testerait alors une mise en page qui n'existe nulle part ailleurs. Un
+    // cadre, lui, EST un écran — le jeu s'y déploie exactement comme sur un
+    // appareil de cette taille, ce qui est précisément ce qu'on veut regarder.
+    //
+    // Chaque volet demande donc la même page avec `?atelier=…`, et cette
+    // fonction-là est tout ce qu'il a fallu ajouter au démarrage.
+    const cadreAtelier = new URLSearchParams(window.location.search).get('atelier');
+    if (cadreAtelier) {
+        import('./ui/atelier.js').then(m => m.ouvrirVoletAtelier(cadreAtelier,
+            new URLSearchParams(window.location.search)));
+    }
+
     const code = new URLSearchParams(window.location.search).get('code');
     if (code) {
         const ouvert = applyCode(code, { autoStart: true });
@@ -782,6 +801,11 @@ function initDebugToolbar() {
 
     const btnBarre = document.getElementById('db-banc-barre');
     if (btnBarre) btnBarre.onclick = () => import('./ui/bancEssai.js').then(m => m.basculerBarreBanc());
+
+    // L'ATELIER : les trois vues d'un exercice côte à côte, et les réglages qui
+    // les redessinent toutes. Chargé à la demande, comme le reste de la palette.
+    const btnAtelier = document.getElementById('db-atelier');
+    if (btnAtelier) btnAtelier.onclick = () => import('./ui/atelier.js').then(m => m.basculerAtelier());
 
     // Passer la question en cours, ou revenir sur la précédente, quel que soit
     // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
